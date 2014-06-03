@@ -1,0 +1,14 @@
+#!/bin/sh
+echo "Starting........"
+find . -iname 'sccs' -prune -o \( -name '*.[chS]' -o -name '*.inl' -o -name '*.py' -o -name '*.cpp' -o -name '*.cc' -o -name '*.hpp' \) -print | /usr/bin/etags -
+echo "done building the main TAGS file."
+echo "Making the file soft links............."
+for f in `find . \( -iname 'sccs' -o -iname docs \) -prune -o -type d`
+do
+   if [ ! -r $f/TAGS ]
+   then
+      ln -s $PWD/TAGS $f/TAGS
+#      echo $f/TAGS
+   fi
+done
+echo "Complete."

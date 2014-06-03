@@ -1,0 +1,70 @@
+#!/bin/bash
+#
+# Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Eclipse Public License v1.0 which accompanies this distribution,
+# and is available at http://www.eclipse.org/legal/epl-v10.html
+#
+#
+# cmdServer
+#
+# chkconfig: 235 82 20
+#
+
+# source the function library
+. /etc/init.d/functions
+
+PATH=/usr/bin:/u01/devl/workspace/CommandServer/src:/usr/local/mysql/bin:/usr/local/bin:$PATH
+PIDFILE=/tmp/cmdServer.pid
+basedir=/u01/devl/workspace/CommandServer/src
+ 
+DAEMON=CommandServer.py
+#CMD_OPTS="-c annie1:7770 -s fileUploadService:7777 -l /tmp/cmdServer.log"
+CMD_OPTS="-c black0:7770 -s opflexService:7777 -s consoleService:8888"
+
+
+start() {
+    # start the daemon
+    if test -d "$basedir"
+    then
+    	cd $basedir
+#    	daemon $DAEMON "$CMD_OPTS" &> /dev/null
+    	daemon $DAEMON "$CMD_OPTS" > /tmp/cmdServer.log 2>&1 &
+    else
+	echo "Can't find $basedir, terminating!"
+	exit 1
+    fi
+}
+
+stop() {
+    if test -s "$PIDFILE"
+    then
+     	cmd_pid=`cat $PIDFILE`
+      	echo "Shutting down CommandServer.py"
+        echo ""
+      	killproc -p $PIDFILE
+    fi
+}
+
+# See how we were called.
+case "$1" in
+  start)
+	echo -n $"Starting $DAEMON: "
+	start
+    echo ""
+        ;;
+  stop)
+	stop
+        ;;
+  restart|reload)
+	stop
+	start
+	RETVAL=$?
+	;;
+  *)
+        echo $"Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL
