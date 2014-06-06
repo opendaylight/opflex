@@ -47,9 +47,9 @@ static void test_setup(void)
     }
     conf_dump(stdout);
     debug_level = conf_get_value("global", "debug_level");
-    if (strcasecmp(debug_level, "OFF")) {
-        DBUG_PUSH("d:t:i:L:n:P:T:0");
-    }
+    /* if (strcasecmp(debug_level, "OFF")) { */
+    /*     DBUG_PUSH("d:t:i:L:n:P:T:0"); */
+    /* } */
 }
 /*----------------------------------------------------------------------------
  * unittests.
@@ -76,7 +76,7 @@ static int modb_insert_one(node_ele_p *ndp, const char *uri_str, result_p rs)
     (*ndp)->class_id = 123456789;
     (*ndp)->content_path_id = 2;
     (*ndp)->lri = "fake_class:fkae_type";
-    (*ndp)->uri = parse_uri(uri_str);
+    assert_false(parse_uri(&(*ndp)->uri, uri_str));
     (*ndp)->parent = NULL;
     (*ndp)->child_list = NULL;
     (*ndp)->properties_list = NULL;
@@ -135,9 +135,9 @@ static void test_modb_create_node_many(void **state)
 
     (void) state;
 
-    if (strcasecmp(debug_level, "OFF")) {
-        DBUG_PUSH("d:t:i:L:n:P:T:0");
-    }
+    /* if (strcasecmp(debug_level, "OFF")) { */
+    /*     DBUG_PUSH("d:t:i:L:n:P:T:0"); */
+    /* } */
     assert_false(modb_initialize());
 
     /* create each node and insert it */
@@ -149,14 +149,15 @@ static void test_modb_create_node_many(void **state)
         sprintf(tbuf, "fake_class:fake_type_%d", i);
         ndp->lri = strdup((const char *)&tbuf);
         sprintf(tbuf, "http://en.wikipedia-%d.org/wiki/Uniform_Resource_Identifier", i);
-        ndp->uri = parse_uri(&tbuf);
+        assert_false(parse_uri(&ndp->uri, &tbuf));
         ndp->parent = NULL;
         ndp->child_list = NULL;
         ndp->properties_list = NULL;
-        assert_false(modb_op(OP_INSERT, (void *)ndp, IT_NODE, 1, IT_NODE, &rs));
+        assert_false(modb_op(OP_INSERT, (void *)ndp, IT_NODE, 1, EXT_NODE, &rs));
         *(nparr+i) = ndp;
     }
 
+    modb_dump(true);
     modb_cleanup();
 }
 
@@ -181,14 +182,10 @@ int main(int argc, char *argv[])
         unit_test(test_modb_get_state),
         unit_test(test_modb_insert),
         unit_test(test_modb_delete_with_node),
+        unit_test(test_modb_create_node_many),
     };
 
     test_setup();
     retc = run_tests(tests);
-
-    /* for (a=0; a < 50; a++) { */
-    /*     DEBUG("****************************Loop: %d\n", a); */
-    /*     retc = run_tests(tests); */
-    /* } */
     return retc;
 }

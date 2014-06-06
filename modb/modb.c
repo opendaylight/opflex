@@ -638,7 +638,7 @@ uint32_t node_list_insert(head_list_p hdp, node_ele_p ndp)
     pag_rwlock_wrlock(&hdp->rwlock);
     save_hd_state = hdp->state;
     ndp->state = ND_ST_PENDING_INSERT;
-    rtn_id = ndp->id = sequence_next(&hdp->sequence);
+    rtn_id = ndp->id = sequence_next(hdp->sequence);
     if (list_add(&hdp->list, -1, ndp)) {
         DBUG_PRINT("WARN", ("can't add node to the list."));
         rtn_id = 0;

@@ -22,8 +22,9 @@ typedef struct _sequencer {
 } sequencer_t, *sequencer_p;
 
 
-extern bool sequence_init(sequencer_p sp, uint32_t start_num, uint32_t bump_by_value);
-extern void sequence_destroy(sequencer_p sp);
+extern bool sequence_init(sequencer_p *sp, uint32_t start_num,
+                          uint32_t bump_by_value);
+extern void sequence_destroy(sequencer_p *sp);
 extern uint32_t sequence_next(sequencer_p sp);
 extern uint32_t sequence_current(sequencer_p sp);
 extern uint32_t sequence_set(sequencer_p sp, uint32_t num);

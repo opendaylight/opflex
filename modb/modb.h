@@ -87,7 +87,7 @@ typedef enum _enum_head_state {
     
 typedef struct _head_list {
     struct pag_rwlock    rwlock;          /* this intended to lock the whole list */
-    sequencer_t          sequence;
+    sequencer_p          sequence;
     int                  num_elements;    /* number of list_node      */
     enum_head_state      state;
     list_node_p          list;            /* the defines the begineeing and end   */

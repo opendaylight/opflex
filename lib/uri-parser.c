@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 #include "uri-parser.h"
 #include "hash.h"
@@ -35,12 +36,13 @@ _is_scheme_char(int c)
 /*
  * See RFC 1738, 3986
  */
-parsed_uri_t *parse_uri(const char *uri)
+bool parse_uri(parsed_uri_p *pp, const char *uri)
 {
     static char *mod = "parse_uri";
     parsed_uri_t *puri = NULL;
     const char *tmpstr;
     const char *curstr;
+    bool retb = false;
     int len;
     int i;
     int userpass_flag;
@@ -69,6 +71,7 @@ parsed_uri_t *parse_uri(const char *uri)
         DBUG_PRINT("ERROR", ("can't find the : in: %s", uri));
         parsed_uri_free(&puri);
         puri = NULL;
+        retb = true;
         goto rtn_return;
     }
     /* Get the scheme length */
@@ -80,6 +83,7 @@ parsed_uri_t *parse_uri(const char *uri)
             DBUG_PRINT("ERROR",("invalid format: %s", uri));
             parsed_uri_free(&puri);
             puri = NULL;
+            retb = true;
             goto rtn_return;
         }
     }
@@ -106,6 +110,7 @@ parsed_uri_t *parse_uri(const char *uri)
                 parsed_uri_free(&puri);
                 DBUG_PRINT("ERROR", ("Not encoded correctly: %s", uri));
                 puri = NULL;
+                retb = true;
                 goto rtn_return;
             }
             curstr++;
@@ -159,6 +164,7 @@ parsed_uri_t *parse_uri(const char *uri)
         if ( '@' != *curstr ) {
             parsed_uri_free(&puri);
             DBUG_PRINT("ERROR", ("Not encoded correctly: %s", uri));
+            retb = true;
             puri = NULL;
             goto rtn_return;
         }
@@ -214,6 +220,7 @@ parsed_uri_t *parse_uri(const char *uri)
         parsed_uri_free(&puri);
         DBUG_PRINT("ERROR", ("Not encoded correctly: %s", uri));
         puri = NULL;
+        retb = true;
         goto rtn_return;
     }
     curstr++;
@@ -262,8 +269,8 @@ parsed_uri_t *parse_uri(const char *uri)
     }
 
  rtn_return:
-    DBUG_PRINT("<", (""));
-    return(puri);
+    *pp = puri;
+    DBUG_RETURN(retb);
 }
 
 /*

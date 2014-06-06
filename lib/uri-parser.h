@@ -32,7 +32,7 @@ typedef struct _parsed_uri {
 extern "C" {
 #endif
 
-extern parsed_uri_t *parse_uri(const char *uri);
+extern bool parse_uri(parsed_uri_p *pp, const char *uri);
 extern void parsed_uri_free(parsed_uri_p *puri);
 
 #ifdef __cplusplus
