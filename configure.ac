@@ -11,13 +11,20 @@
 
 AC_INIT([pagentd], [1.0.1], [policy-agent])
 
-# configure_flags="$*"
-# AC_DEFINE_UNQUOTED([CONFIG_FLAGS], ["$configure_flags"], [Build options.])
+m4_include([m4/ax_check_openssl.m4])
+
+# command line irectives.
 AC_ARG_WITH([tests], 
 		      [AC_HELP_STRING([--with-tests],
 		      [Builds the tests, requires cmocka])],
 		      [with_tests=yes],
 		      [with_test=no])
+
+dnl AC_ARG_WITH([tcmalloc], 
+dnl 		      [AC_HELP_STRING([--with-tcmalloc],
+dnl 		      [Builds using tcmalloc, which overrides sys malloc calls, if gperftools has been loaded])],
+dnl 		      [with_tcmalloc=yes],
+dnl 		      [with_tcmalloc=no])
 
 AM_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
@@ -35,7 +42,7 @@ AC_PROG_LIBTOOL
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_CPP 
-PAG_CHECK_OPENSSL
+AX_CHECK_OPENSSL
 
 # Print version of CC and CXX compiler (if they support --version)
 case $SYSTEM_TYPE in
@@ -149,39 +156,15 @@ AC_CHECK_FUNCS([bzero atexit bzero clock_gettime dup2 floor getcwd gethostbyaddr
 AC_LANG_C
 AC_PROG_CC
 
-# Checks for typedefs, structures, and compiler characteristics.
-AC_HEADER_STDBOOL
-AC_TYPE_UID_T
-AC_C_INLINE
-AC_TYPE_INT16_T
-AC_TYPE_INT32_T
-AC_TYPE_INT64_T
-AC_TYPE_INT8_T
-AC_TYPE_MODE_T
-AC_TYPE_OFF_T
-AC_TYPE_PID_T
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
-
-# Checks for library functions.
-AC_FUNC_FORK
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
-AC_FUNC_STRNLEN
-AC_FUNC_STRTOD
-AC_FUNC_WAIT3
 AC_CHECK_FUNCS([atexit bzero clock_gettime dup2 floor ftruncate getcwd gethostbyaddr gethostbyname gethostname gettimeofday inet_ntoa isascii localtime_r memchr memmove memset mkdir modf pathconf pow rint select socket sqrt strcasecmp strchr strcspn strdup strerror strncasecmp strndup strpbrk strrchr strspn strstr strtol strtoul strtoull])
 
 # check for tcalloc library, gperftools
-AM_CONDITIONAL([HAVE_TCMALLOC], [test "$have_tcmalloc" = yes])
-if test "$have_tcmalloc" = yes; then
-   AC_CHECK_HEADER([google/malloc_extension_c.h], 
-      [AC_DEFINE([HAVE_TCMALLOC], [1], [gperftools-libs/devel tcmalloc available])],
-      [AC_DEFINE([HAVE_TCMALLOC], [0], [gperftools-devel tcmalloc not available])])
+AC_CHECK_HEADER([/usr/include/google/malloc_extension_c.h],[has_tcmalloc=yes],[has_tcmalloc=no])
+AM_CONDITIONAL([HAVE_TCMALLOC], [test "$has_tcmalloc" = yes])
+if test "$has_tcmalloc" = yes; then
+   AC_DEFINE([HAVE_TCMALLOC], [1], [gperftools-libs/devel tcmalloc available])],
+else
+   AC_DEFINE([HAVE_TCMALLOC], [0], [gperftools-devel tcmalloc not available])
 fi
 
 AC_LANG_C
