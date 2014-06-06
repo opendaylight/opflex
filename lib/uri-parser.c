@@ -262,7 +262,8 @@ parsed_uri_t *parse_uri(const char *uri)
     }
 
  rtn_return:
-    DBUG_RETURN(puri);
+    DBUG_PRINT("<", (""));
+    return(puri);
 }
 
 /*

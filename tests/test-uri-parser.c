@@ -51,7 +51,7 @@ static void test_uri_parse(void **state)
         pp = parse_uri(test_uri[a]);
         if (pp == NULL)
             assert_null(pp);
-        parsed_uri_free(pp);
+        parsed_uri_free(&pp);
     }
 }
 

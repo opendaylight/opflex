@@ -14,7 +14,7 @@ bin_PROGRAMS += test-eventq
 METASOURCES = AUTO
 
 test_modb_SOURCES = test-modb.c
-test_uti_parser = test-uri-parser.c
+test_uri_parser = test-uri-parser.c
 # test_pag_selector = test_pag_selector.c
 # test_pag_dispatcher = test_pag_dispatcher.c
 test_eventq = test-eventq.c
