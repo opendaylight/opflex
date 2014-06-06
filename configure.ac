@@ -18,7 +18,7 @@ AC_ARG_WITH([tests],
 		      [AC_HELP_STRING([--with-tests],
 		      [Builds the tests, requires cmocka])],
 		      [with_tests=yes],
-		      [with_test=no])
+		      [with_tests=no])
 
 dnl AC_ARG_WITH([tcmalloc], 
 dnl 		      [AC_HELP_STRING([--with-tcmalloc],
@@ -42,7 +42,7 @@ AC_PROG_LIBTOOL
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_CPP 
-AX_CHECK_OPENSSL
+AX_CHECK_OPENSSL([],AC_MSG_ERROR([openssl is required]))
 
 # Print version of CC and CXX compiler (if they support --version)
 case $SYSTEM_TYPE in
@@ -179,6 +179,9 @@ AC_CONFIG_FILES([pagentd/Makefile])
 
 if test "$with_tests" = "yes"; then
    AC_CONFIG_FILES([tests/Makefile])
+   AC_CHECK_LIB([cmocka], [print_message],[],
+                [AC_MSG_FAILURE(
+                 [--with-tests was given, but test for cmocka failed])])
 fi
 AM_CONDITIONAL(BUILD_TESTS, [test "$with_tests" = "yes"])
 
