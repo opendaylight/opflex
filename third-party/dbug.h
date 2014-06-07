@@ -140,6 +140,7 @@ extern "C"
 #define DBUG_ENTER(a1)
 #define DBUG_RETURN(a1) return(a1)
 #define DBUG_VOID_RETURN return
+#define DBUG_LEAVE
 #define DBUG_EXECUTE(keyword,a1) {}
 #define DBUG_PRINT(keyword,arglist) {}
 #define DBUG_PUSH(a1) {}

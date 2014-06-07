@@ -67,7 +67,8 @@ AC_PROG_LIBTOOL
 
 # Ensure that we have --preserve-dup-deps defines, otherwise we get link
 # LIBTOOL='$(SHELL) $(top_builddir)/libtool'
-LIBTOOL='$(SHELL) /usr/bin//libtool'
+#LIBTOOL='$(SHELL) /usr/bin//libtool'
+LIBTOOL='$(SHELL) libtool'
 LIBTOOL="$LIBTOOL --preserve-dup-deps"
 AC_SUBST(LIBTOOL)dnl
 
