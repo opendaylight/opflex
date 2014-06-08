@@ -20,14 +20,15 @@ static int push_sum = 0;
 static int pop_counter = 0;
 static int pop_sum = 0;
 static int push[PE_RING_BUFFER_LENGTH+1] = { 0 };
+static struct pag_mutex pop_lock;
 
 /* the following two values are determined along with
  * PE_RING_BUFFER_LENGTH such that
  * PE_TEST_POP_THREAD_COUNT*PE_TEST_MAX_POP_COUNT=PE_RING_BUFFER_LENGTH,
  * which leaves 1 final entry to pop.
  */
-#define PE_TEST_POP_THREAD_COUNT 10
-#define PE_TEST_MAX_POP_COUNT 50
+#define PE_TEST_POP_THREAD_COUNT 5
+#define PE_TEST_MAX_POP_COUNT 20
 
 /*
 static void fill_buffer(void **state) {
@@ -67,6 +68,7 @@ static void push_pop_buffer(void **state) {
         sleep(1);
 
     /* consumer */
+    pag_mutex_init(&pop_lock);
     for(counter=0;counter<(PE_TEST_POP_THREAD_COUNT);counter++) {
         xpthread_create(&pop_thread[counter], NULL,
                         pop_off, (void *) &arg);
@@ -112,15 +114,17 @@ void *pop_off(void *arg) {
     if(sentinel != 1) {
         for(count_pops = 0; count_pops < PE_TEST_MAX_POP_COUNT; count_pops++) {
             pop = ring_buffer_pop();
+            pag_mutex_lock(&pop_lock);
             pop_counter++;
-            if (pop != NULL)
-                pop_sum += *((int *) pop);
+            pop_sum += *((int *) pop);
+            pag_mutex_unlock(&pop_lock);
         }
     } else {
         pop = ring_buffer_pop();
+        pag_mutex_lock(&pop_lock);
         pop_counter++;
-        if (pop != NULL)
-            pop_sum += *((int *) pop);
+        pop_sum += *((int *) pop);
+        pag_mutex_unlock(&pop_lock);
     }
         
     DBUG_PRINT("DEBUG",("pop_off tid %d, pop_sum/push_sum %i/%i",

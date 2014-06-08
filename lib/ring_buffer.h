@@ -17,7 +17,7 @@
  * API for ring buffer
  */
 //#define PE_RING_BUFFER_LENGTH 10
-#define PE_RING_BUFFER_LENGTH  500 /* eventually make this configurable 
+#define PE_RING_BUFFER_LENGTH  100 /* eventually make this configurable 
                                     * also, there are dependencies on this
                                     * value in test_ring_buffer.c */
 #define PE_RING_BUFFER_ENTRY_SIZE sizeof(void *) /* should be sizeof ptr
