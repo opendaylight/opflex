@@ -27,8 +27,8 @@ static struct pag_mutex pop_lock;
  * PE_TEST_POP_THREAD_COUNT*PE_TEST_MAX_POP_COUNT=PE_RING_BUFFER_LENGTH,
  * which leaves 1 final entry to pop.
  */
-#define PE_TEST_POP_THREAD_COUNT 5
-#define PE_TEST_MAX_POP_COUNT 20
+#define PE_TEST_POP_THREAD_COUNT 20
+#define PE_TEST_MAX_POP_COUNT 50
 
 /*
 static void fill_buffer(void **state) {
