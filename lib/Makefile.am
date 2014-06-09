@@ -84,6 +84,7 @@ libpag_so_la_SOURCES += list-util.c list-util.h
 libpag_so_la_SOURCES += meo-util.c meo-util.h
 libpag_so_la_SOURCES += net-util.c net-util.h
 libpag_so_la_SOURCES += opt-util.c opt-util.h
+libpag_so_la_SOURCES += ring_buffer.c ring_buffer.h
 libpag_so_la_SOURCES += seq-util.c seq-util.h
 libpag_so_la_SOURCES += signal.c sig.h
 libpag_so_la_SOURCES += skt-util.c skt-util.h
