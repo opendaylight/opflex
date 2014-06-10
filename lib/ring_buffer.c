@@ -162,5 +162,6 @@ void *ring_buffer_pop(void) {
     DBUG_PRINT("\nDEBUG", ("Fetched %p (%i) from slot %i",
                          retval, *(int*)retval, (rb_counters.pop_location-1)));
 
-    DBUG_RETURN(retval);
+    DBUG_LEAVE;
+    return(retval);
 }
