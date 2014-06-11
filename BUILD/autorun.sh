@@ -1,11 +1,11 @@
 #!/bin/bash
-# 
+
 #  Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
-# 
+#
 #  This program and the accompanying materials are made available under the
 #  terms of the Eclipse Public License v1.0 which accompanies this distribution,
 #  and is available at http://www.eclipse.org/legal/epl-v10.html
-# 
+#
 
 PROG=$(basename $0)
 SCRIPT_NAME=$(basename $0)
@@ -13,12 +13,18 @@ SCRIPT_HOME=$(dirname $0)
 BASE_DIR="/${PWD#*/}"
 VERBOSE=""
 
+for inc_file in ${SCRIPT_HOME}/_autorun.d/*
+do
+    . ${inc_file}
+done
+
 function show_options () {
     echo "Usage: $SCRIPT_NAME [options]"
     echo
     echo "Build the program environment"
     echo
     echo "Options:"
+    echo "    --no-deps -- do not prepare the bundled dependencies"
     echo "    --no-make --perform the make on the full tree."
     echo "    --tags -- runs the etags, a must for emacs"
     echo "    --stop-stage <stage> -- runs through the defined stage"
@@ -49,6 +55,7 @@ msgout() {
     return 0
 }
 
+
 die() { echo "$@"; exit 1; }
 
 if [ "${PWD##*/}" == "BUILD" ]; then 
@@ -56,10 +63,11 @@ if [ "${PWD##*/}" == "BUILD" ]; then
     usage -1
 fi    
 
+DO_DEPS="yes"
 DO_MAKE="yes"
 DO_TAGS="n"
 STOP_STAGE=""
-TEMP=`getopt -o s:tnvh --long stop-stage:,no-make::,tags::,help,verbose:: -n $SCRIPT_NAME -- "$@"`
+TEMP=`getopt -o s:tnvhd --long stop-stage:,no-make::,tags::,no-deps,help,verbose:: -n $SCRIPT_NAME -- "$@"`
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 
 # Note the quotes around `$TEMP': they are essential!                                                                                                      
@@ -68,6 +76,10 @@ eval set -- "$TEMP"
 
 while true ; do
     case "$1" in
+        -d|--no-deps)
+            DO_DEPS="yes"
+            shift 1
+            ;;
         -n|--no-make)
             case "$2" in
                 "") DO_MAKE="no"; shift 2;;
@@ -95,6 +107,10 @@ while true ; do
 done
 
 msgout "INFO" "Starting...."
+
+if [ "$DO_MAKE" == "yes" ]; then
+  build_deps
+fi
 
 # Handle "glibtoolize" (e.g., for native OS X autotools) as another
 # name for "libtoolize". Use the first one, either name, found in PATH.
