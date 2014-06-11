@@ -82,6 +82,7 @@ libpag_so_la_SOURCES += get-util.c get-util.h
 libpag_so_la_SOURCES += hash-util.c hash-util.h
 libpag_so_la_SOURCES += list-util.c list-util.h
 libpag_so_la_SOURCES += meo-util.c meo-util.h
+libpag_so_la_SOURCES += misc-util.c misc-util.h
 libpag_so_la_SOURCES += net-util.c net-util.h
 libpag_so_la_SOURCES += opt-util.c opt-util.h
 libpag_so_la_SOURCES += ring_buffer.c ring_buffer.h

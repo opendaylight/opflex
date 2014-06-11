@@ -30,17 +30,6 @@ static struct pag_mutex pop_lock;
 #define PE_TEST_POP_THREAD_COUNT 20
 #define PE_TEST_MAX_POP_COUNT 50
 
-/*
-static void fill_buffer(void **state) {
-    (void) state;
-    return;
-}
-
-static void consume_buffer(void **state) {
-    (void) state;
-    return;
-}
-*/
 static void push_pop_buffer(void **state) {
     (void) state;
     pthread_attr_t attr;
@@ -99,7 +88,6 @@ static void push_pop_buffer(void **state) {
     assert_int_equal(pop_sum,push_sum);
 
     DBUG_LEAVE;
-    //return;
 }
 
 void *pop_off(void *arg) {
