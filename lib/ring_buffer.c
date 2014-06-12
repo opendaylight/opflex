@@ -64,7 +64,7 @@ inline uint32_t get_ring_buffer_entry_size()
 void ring_buffer_destroy() {
     DBUG_ENTER("ring_buffer_destroy");
     free(ring_buffer);
-    DBUG_VOID_RETURN;
+    DBUG_LEAVE;
 }
 
 /* ============================================================
@@ -97,7 +97,7 @@ void ring_buffer_init() {
     xpthread_cond_init(&rb_counters.not_empty,NULL);
     xpthread_cond_init(&rb_counters.not_full,NULL);
 
-    DBUG_VOID_RETURN;
+    DBUG_LEAVE;
 }
 
 /* ============================================================
@@ -130,7 +130,7 @@ void ring_buffer_push(void *input_p) {
     DBUG_PRINT("\nDEBUG", ("Pushed %p (%i) into slot %i",
                   input_p, *(int *)input_p, (rb_counters.push_location-1)));
 
-    DBUG_VOID_RETURN;
+    DBUG_LEAVE;
 }
 
 /* ============================================================
