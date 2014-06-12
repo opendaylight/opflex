@@ -24,6 +24,7 @@ function show_options () {
     echo "Build the program environment"
     echo
     echo "Options:"
+    echo "    --with-tests[={yes|no}] build test suite too"
     echo "    --no-deps -- do not prepare the bundled dependencies"
     echo "    --no-make --perform the make on the full tree."
     echo "    --tags -- runs the etags, a must for emacs"
@@ -63,11 +64,12 @@ if [ "${PWD##*/}" == "BUILD" ]; then
     usage -1
 fi    
 
+DO_TESTS="no"
 DO_DEPS="yes"
 DO_MAKE="yes"
 DO_TAGS="n"
 STOP_STAGE=""
-TEMP=`getopt -o s:tnvhd --long stop-stage:,no-make::,tags::,no-deps,help,verbose:: -n $SCRIPT_NAME -- "$@"`
+TEMP=`getopt -o s:tnvhd --long stop-stage:,no-make::,tags::,no-deps,with-tests,help,verbose:: -n $SCRIPT_NAME -- "$@"`
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 
 # Note the quotes around `$TEMP': they are essential!                                                                                                      
@@ -76,6 +78,14 @@ eval set -- "$TEMP"
 
 while true ; do
     case "$1" in
+        --with-tests)
+            DO_TESTS="yes"
+            shift 1
+            ;;
+        --with-tests=*)
+            DO_TESTS="${1#--with-tests=}"
+            shift 1
+            ;;
         -d|--no-deps)
             DO_DEPS="yes"
             shift 1
@@ -207,8 +217,13 @@ if [ "$STOP_STAGE" == "autoconf" ]; then
     exit 0
 fi
 
+if [ "$DO_TESTS" == "yes" ]; then
+    WITH_TESTS="--with-tests"
+else
+    WITH_TESTS=""
+fi
 msgout "INFO" "Running the ./configure"
-./configure || die "Can't execute configure"
+./configure ${WITH_TESTS} || die "Can't execute configure"
 if [ "$?" != "0" ]; then
     msgout "ERROR" "There are configure errors."
     exit -1
