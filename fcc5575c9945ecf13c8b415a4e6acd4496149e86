@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa82b9bf_4a4c9970",
+        "filename": "policy_enforcer/policy_enforcer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 2109
+      },
+      "writtenOn": "2014-06-12T20:56:40Z",
+      "side": 1,
+      "message": "I think you want to make these CAPs, enums are like DEFINES",
+      "revId": "fcc5575c9945ecf13c8b415a4e6acd4496149e86",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
