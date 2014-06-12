@@ -84,10 +84,19 @@ typedef enum _enum_head_state {
     HD_ST_CALM,
     HD_ST_LOADED
 } enum_head_state;
-    
+
+
+/* 
+ * sequencer for the nodes in the MODB. This sequencer will be used for all
+ * node.ids in the systems, to ensure uniqueness. 
+*/
+sequencer_p          modb_sequence;
+
+/* 
+ * head list for the node parents.
+ */
 typedef struct _head_list {
     struct pag_rwlock    rwlock;          /* this intended to lock the whole list */
-    sequencer_p          sequence;
     int                  num_elements;    /* number of list_node      */
     enum_head_state      state;
     list_node_p          list;            /* the defines the begineeing and end   */
@@ -110,6 +119,7 @@ typedef enum _enum_node_state {
     ND_ST_PENDING_TRIGGER,
     ND_ST_TRIGGER_SENT,
     ND_ST_UPTODATE,
+    ND_ST_INDEXING,
     ND_ST_INDEX_ERROR,
     ND_ST_LIST_ADD_ERROR,
     ND_ST_DELETE,
@@ -253,6 +263,6 @@ extern bool modb_crash_recovery(const char *dbfile);
 extern void modb_dump(bool index_node_dump);
 extern enum_head_state modb_get_state(void);
 extern void dump_node(node_ele_p ndp);
-
+extern bool head_list_create(head_list_p *hdp);
 
 #endif /* MODB_H */

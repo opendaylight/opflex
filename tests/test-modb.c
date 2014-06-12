@@ -30,6 +30,9 @@
 
 static node_ele_t *node1;
 static int modb_insert_one(node_ele_p *ndp, const char *uri_str, result_p rs);
+static void create_node_tree(node_ele_p *parentp, int count);
+
+
 static const char *uri_str = 
     "http://en.wikipedia.org/wiki/Uniform_Resource_Identifier#Naming.2C_addressing.2C_and_identifying_resources";
 static const char *debug_level;
@@ -118,7 +121,7 @@ static void test_modb_delete_with_node_id(void **state)
     modb_insert_one(&node1, uri_str, &rs);    
     modb_dump(true);
     node_id = node1->id;
-    assert_false(modb_op(OP_DELETE, (void *)node_id, IT_NODE_INDEX, 1, EXT_NODE, &rs));
+    assert_false(modb_op(OP_DELETE, (void *)&node_id, IT_NODE_INDEX, 1, EXT_NODE, &rs));
     modb_dump(true);
     modb_cleanup();
 }
@@ -131,12 +134,11 @@ static void test_modb_create_node_many(void **state)
     int i;
     result_t rs;
     char tbuf[256] = {0};
-    int row;
 
     (void) state;
 
     /* if (strcasecmp(debug_level, "OFF")) { */
-    /*     DBUG_PUSH("d:t:i:L:n:P:T:0"); */
+    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
     /* } */
     assert_false(modb_initialize());
 
@@ -149,7 +151,7 @@ static void test_modb_create_node_many(void **state)
         sprintf(tbuf, "fake_class:fake_type_%d", i);
         ndp->lri = strdup((const char *)&tbuf);
         sprintf(tbuf, "http://en.wikipedia-%d.org/wiki/Uniform_Resource_Identifier", i);
-        assert_false(parse_uri(&ndp->uri, &tbuf));
+        assert_false(parse_uri(&ndp->uri, (const char *)&tbuf));
         ndp->parent = NULL;
         ndp->child_list = NULL;
         ndp->properties_list = NULL;
@@ -157,6 +159,90 @@ static void test_modb_create_node_many(void **state)
         *(nparr+i) = ndp;
     }
 
+    modb_dump(true);
+    modb_cleanup();
+}
+
+static void create_node_tree(node_ele_p *parentp, int count)
+{
+    node_ele_p ndp;
+    result_t rs;
+    char tbuf[256] = {0};
+    node_ele_p parent;
+    int nc = 0, i;
+    int create_count = count;
+
+    /* parent */
+    nc = 1;
+    parent = xzalloc(sizeof(node_ele_t));
+    pag_rwlock_init(&parent->rwlock);
+    parent->class_id = nc;
+    parent->content_path_id = nc;
+    sprintf(tbuf, "fake_class:fake_type_%d", nc);
+    parent->lri = strdup((const char *)&tbuf);
+    sprintf(tbuf, "http://en.wikipedia-%d.org/wiki/Uniform_Resource_Identifier", nc);
+    assert_false(parse_uri(&parent->uri, (const char *)&tbuf));
+    head_list_create(&parent->child_list);
+    parent->parent = NULL;
+
+    /* children */
+    
+    for (i=0, nc=2; nc < create_count; nc++, i++) {
+        ndp = xzalloc(sizeof(node_ele_t));
+        pag_rwlock_init(&ndp->rwlock);
+        ndp->class_id = nc;
+        ndp->content_path_id = nc;
+        sprintf(tbuf, "fake_class:fake_type_%d", nc);
+        ndp->lri = strdup((const char *)&tbuf);
+        sprintf(tbuf, "http://en.wikipedia.org/wiki/node_%d", nc);
+        assert_false(parse_uri(&ndp->uri, &tbuf));
+        ndp->parent = parent;
+        ndp->child_list = NULL;
+        ndp->properties_list = NULL;
+
+        list_add(&parent->child_list->list, -1, (void *)ndp);
+        parent->child_list->num_elements++;
+    }
+    *parentp = parent;
+}
+
+static void test_modb_create_node_tree(void **state)
+{
+    result_t rs;
+    node_ele_p parent;
+
+    (void) state;
+
+    /* if (strcasecmp(debug_level, "OFF")) { */
+    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
+    /* } */
+    assert_false(modb_initialize());
+    create_node_tree(&parent, 5);
+    assert_false(modb_op(OP_INSERT, (void *)parent, IT_NODE, 1, EXT_NODE, &rs));
+    modb_dump(true);
+    modb_cleanup();
+}
+
+static void test_modb_delete_node_tree(void **state)
+{
+    result_t rs;
+    node_ele_p parent;
+
+    (void) state;
+
+    /* if (strcasecmp(debug_level, "OFF")) { */
+    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
+    /* } */
+    
+    assert_false(modb_initialize());
+
+    /* create the tree */
+    create_node_tree(&parent, 5);
+    assert_false(modb_op(OP_INSERT, (void *)parent, IT_NODE, 1, EXT_NODE, &rs));
+    modb_dump(true);
+
+    /* delete it. */
+    assert_false(modb_op(OP_DELETE, (void *)parent, IT_NODE, 1, EXT_FULL, &rs));
     modb_dump(true);
     modb_cleanup();
 }
@@ -183,6 +269,8 @@ int main(int argc, char *argv[])
         unit_test(test_modb_insert),
         unit_test(test_modb_delete_with_node),
         unit_test(test_modb_create_node_many),
+        unit_test(test_modb_create_node_tree),
+        unit_test(test_modb_delete_node_tree),
     };
 
     test_setup();

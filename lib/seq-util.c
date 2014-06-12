@@ -81,7 +81,9 @@ uint32_t sequence_next(sequencer_p sp)
     sp->sequencer += sp->bump_value;
     rtn_seq = sp->sequencer;
     pag_rwlock_unlock(&sp->rwlock);
-    DBUG_RETURN(rtn_seq);
+    DBUG_PRINT("DEBUG", ("%s: rtn_seq=%u", mod, rtn_seq));
+    DBUG_LEAVE;
+    return(rtn_seq);
 }
     
 /* sequence_current - returns the current value of the sequncer.

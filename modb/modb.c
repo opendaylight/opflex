@@ -24,8 +24,10 @@
 #include "dirs.h"
 #include "modb.h"
 #include "eventq.h"
+#include "vlog.h"
 #include "dbug.h"
 
+VLOG_DEFINE_THIS_MODULE(modb);
 
 /*
  * modb - Managed Object Database
@@ -138,7 +140,6 @@ static const char *enforcement_state_msg[] = {
 /* 
  * Protos dcls
  */
-static bool head_list_create(head_list_p *hdp);
 static bool head_list_destroy(head_list_p *hp, bool force);
 uint32_t node_list_insert(head_list_p hdp, node_ele_p ndp);
 static bool node_list_free_all(head_list_p hp);
@@ -164,6 +165,7 @@ static bool index_add_node_to_all(hash_init_p hash_initp, node_ele_p ndp);
 static bool index_delete_node_from_all(hash_init_p hash_initp, node_ele_p ndp);
 static bool index_add_node(hash_index_p hip, node_ele_p ndp, char *key);
 static void index_dump(hash_init_p iilp, bool index_node_dump);
+static int index_add_all_in_tree(node_ele_p parent);
 
 
 
@@ -197,6 +199,11 @@ bool modb_initialize(void)
 
     /* Create the node head.   */
     head_list_create(&node_list);
+
+    /* create the sequence numbering for the head_list, this will be the 
+     * unique node.ids for all nodes in the MODB */
+    sequence_init(&modb_sequence, DEFAULT_SEQ_START_NUMBER,
+                  DEFAULT_SEQ_INC);
 
     /* crash recovery? */
     if (strcasecmp(conf_get_value(MODB_SECTION, "crash_recovery"), "true") == 0) {
@@ -269,18 +276,16 @@ int modb_op(int operation, void *dp, int itype, int dp_count,
     case OP_INSERT:
         for (i=0, ndp=(node_ele_p)dp; i < dp_count; ndp++, i++) {
             switch (extent) {
+            case EXT_FULL:
             case EXT_NODE:
                 id = node_list_insert(node_list, ndp);
                 if (id == 0) {
                     resultp->ret_code = OP_RC_ERROR;
                     sprintf(resultp->err_msg,"%s: Error inserting node inserted:%d: outof:%d", 
                             mod, resultp->rows, dp_count);
-                    DBUG_PRINT("ERROR", (resultp->err_msg));
+                    VLOG_ERR(resultp->err_msg);
                     break;
                 }
-                break;
-            case EXT_FULL:
-                /* TODO dkehn: implementation required */
                 break;
             case EXT_NODE_AND_ATTR:
                 /* TODO dkehn: implementation required */
@@ -346,7 +351,7 @@ int modb_op(int operation, void *dp, int itype, int dp_count,
         resultp->ret_code = OP_RC_ERROR;
         sprintf(resultp->err_msg, "%s: Unreconized operation code: %d", 
                 mod, operation);
-        DBUG_PRINT("ERROR", (resultp->err_msg));
+        VLOG_ERR(resultp->err_msg);
         break;
     }
 
@@ -367,6 +372,19 @@ static const char *opcode_to_string(int opc)
         "DELETE",
         "SELECT",
         "UPDATE",
+    };
+    return(opstring[opc]);
+}
+
+/* extent_to_string - converts the operation code to string.
+ */
+static const char *extent_to_string(int opc)
+{
+    static char *opstring[] = {
+        "NOP",
+        "FULL",
+        "NODE",
+        "NODE_AND_ATTR",
     };
     return(opstring[opc]);
 }
@@ -422,7 +440,12 @@ void modb_dump(bool index_node_dump)
     /* Dump the node data */
     for (i=1; i <= count; i++) {
         ndp = list_get(node_list->list, i);
-        dump_node(ndp);
+        if (ndp == NULL) {
+            VLOG_ERR("%s: ndp is NULL: %d", mod, i);
+            break;
+        } else {
+            dump_node(ndp);
+        }
     }
     pag_rwlock_unlock(&node_list->rwlock);
 
@@ -479,7 +502,7 @@ bool modb_crash_recovery(const char *dbfile)
  * retruns <retb>      - O
  *        0 if successful, else not.
  */
-static bool head_list_create(head_list_p *hdp) 
+bool head_list_create(head_list_p *hdp) 
 {
     static char *mod = "head_list_create";
     bool retb = false;
@@ -491,11 +514,42 @@ static bool head_list_create(head_list_p *hdp)
     (*hdp)->num_elements = 0;
     (*hdp)->list = NULL;
     head_change_state((*hdp), HD_ST_INITIALIZED);
-    sequence_init(&(*hdp)->sequence, DEFAULT_SEQ_START_NUMBER,
-                  DEFAULT_SEQ_INC);
-
     pag_rwlock_unlock(&(*hdp)->rwlock);
 
+    DBUG_RETURN(retb);
+}
+
+/* 
+ * head_list_destroy - this destroys the head.
+ *
+ * where:
+ *    @param0: <hdp>           -I
+ *        pointer to the head list, this will be NULLed upon freeeing
+ *    @param1  <force>        -I
+ *        force = true if the list != NULL or num_elements != 0 it
+ *        will ignore and free it. else it will do nothing.
+ */
+static bool head_list_destroy(head_list_p *hdp, bool force)
+{
+    static char *mod = "head_list_destroy";
+    bool retb = false;
+
+    DBUG_ENTER(mod);
+    DBUG_PRINT("DEBUG", ("force=%d", force));
+    pag_rwlock_wrlock(&(*hdp)->rwlock);
+    head_change_state((*hdp), HD_ST_DESTROYING);
+    if ((*hdp)->list && (*hdp)->num_elements) {
+        VLOG_WARN("The node list in not empty:%p:%d",
+                  (*hdp)->list, (*hdp)->num_elements);
+        if (force == false)
+            goto rtn_return;
+    }
+    sequence_destroy(&modb_sequence);
+    node_list_free_all(*hdp);
+    free(*hdp);
+    pag_rwlock_destroy(&(*hdp)->rwlock);        
+    *hdp = NULL;
+ rtn_return:    
     DBUG_RETURN(retb);
 }
 
@@ -520,14 +574,26 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
     bool retb = false;
     node_ele_p dp, cndp;
     bool complete = false;
-    int lpos, node_deleted, rcnt;
+    int lpos;
+    int node_deleted;
+    int rcnt;
+    int child_cnt;
     head_list_p child_hdp, attr_hdp;
     
     DBUG_ENTER(mod);
+    DBUG_PRINT("DEBUG", ("node.id:%d extent:%s", ndp->id, extent_to_string(extent)));
     node_deleted = 0;
-    while (!complete) {
+    while (complete == false) {
         pag_rwlock_wrlock(&hdp->rwlock);
         lpos = list_find(hdp->list, ndp, find_ndp_func);
+        if (lpos == 0) {
+            VLOG_ERR("%s: node id:%d uri:%s, not found in list.",
+                     mod, ndp->id, ndp->uri->uri);
+            complete = true;
+            retb = true;
+            break;
+        }
+            
         dp = list_delete(&hdp->list, lpos);
         hdp->num_elements--;
         pag_rwlock_unlock(&hdp->rwlock);
@@ -543,17 +609,30 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
 
         switch (extent) {
         case EXT_FULL:
-            if (ndp->child_list == NULL) {
+            if (child_hdp == NULL) {
                 complete = true;
             } else {
                 /* delete all the children associated to this node. */
-                pag_rwlock_wrlock(&child_hdp->rwlock);
-                while (list_length(child_hdp->list)) {
-                    cndp = list_delete(&child_hdp->list, 1);
-                    node_list_delete(child_hdp, cndp, extent, &rcnt);
-                    node_deleted += rcnt;
+                child_cnt = list_length(child_hdp->list);
+                if (child_cnt != child_hdp->num_elements) {
+                    VLOG_WARN("%s: list num_elemetsts: %d not equal to actual: %d, "
+                              "changing chdp->num_elements",
+                              mod, child_hdp->num_elements, child_cnt);
+                    child_hdp->num_elements = child_cnt;
+                }
+                for (; child_cnt != 0; child_cnt--) {
+                    cndp = list_get(child_hdp->list, -1);
+                    if (cndp) {
+                        node_list_delete(child_hdp, cndp, extent, &rcnt);
+                        node_deleted += rcnt;
+                    } else {
+                        VLOG_ERR("%s: list_get return NULL, count:%d",
+                                 mod, child_cnt);
+                        break;
+                    }
                 }
                 head_list_destroy(&child_hdp, true);
+                complete = true;
             }
             break;
         case EXT_NODE_AND_ATTR:
@@ -563,7 +642,7 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
         default:
             retb = true;
             complete = true;
-            DBUG_PRINT("ERROR", ("invalid extent value: %d", extent));
+            VLOG_ERR("invalid extent value: %d", extent);
             break;
         }
 
@@ -574,46 +653,13 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
         *rows = node_deleted;
         
     }
-    DBUG_RETURN(retb);
+    DBUG_LEAVE;
+    return(retb);
 }
 
 static bool find_ndp_func(void *item, void *dp)
 {
     return(item == dp);
-}
-
-/* 
- * head_list_destroy - this destroys the head.
- *
- * where:
- *    @param0: <hdp>           -I
- *        pointer to the head list, this will be NULLed upon freeeing
- *    @param1  <force>        -I
- *        force = true if the list != NULL or num_elements != 0 it
- *        will ignore and free it. else it will do nothing.
- */
-static bool head_list_destroy(head_list_p *hdp, bool force)
-{
-    static char *mod = "head_list_destroy";
-    bool retb = false;
-
-    DBUG_ENTER(mod);
-    DBUG_PRINT("DEBUG", ("force=%d", force));
-    pag_rwlock_wrlock(&(*hdp)->rwlock);
-    head_change_state((*hdp), HD_ST_DESTROYING);
-    if ((*hdp)->list && (*hdp)->num_elements) {
-        DBUG_PRINT("WARN", ("The node list in not empty:%p:%d",
-                  (*hdp)->list, (*hdp)->num_elements));
-        if (force == false)
-            goto rtn_return;
-    }
-    sequence_destroy(&(*hdp)->sequence);
-    node_list_free_all(*hdp);
-    free(*hdp);
-    pag_rwlock_destroy(&(*hdp)->rwlock);        
-    *hdp = NULL;
- rtn_return:    
-    DBUG_RETURN(retb);
 }
 
 /*
@@ -638,37 +684,39 @@ uint32_t node_list_insert(head_list_p hdp, node_ele_p ndp)
     pag_rwlock_wrlock(&hdp->rwlock);
     save_hd_state = hdp->state;
     ndp->state = ND_ST_PENDING_INSERT;
-    rtn_id = ndp->id = sequence_next(hdp->sequence);
+    rtn_id = ndp->id = sequence_next(modb_sequence);
     if (list_add(&hdp->list, -1, ndp)) {
-        DBUG_PRINT("WARN", ("can't add node to the list."));
+        VLOG_ERR("can't add node to the list.");
         rtn_id = 0;
         ndp->state = ND_ST_LIST_ADD_ERROR;
         hdp->state = save_hd_state;
         pag_rwlock_unlock(&hdp->rwlock);
-        goto rtn_return;
-    }
-    hdp->num_elements++;
-    hdp->state = save_hd_state;
-    pag_rwlock_unlock(&hdp->rwlock);
-    
-    /* update the indexes */
-    if (index_add_node_to_all(index_init_list, ndp)) {;
-        DBUG_PRINT("ERROR", ("can't update indexes with node id:%d.", ndp->id));
-        ndp->state = ND_ST_INDEX_ERROR;
-        rtn_id = 0;
+        pag_rwlock_unlock(&ndp->rwlock);
+    } else {
+        hdp->num_elements++;
+        hdp->state = save_hd_state;
+        hdp->state = HD_ST_CALM;
+        pag_rwlock_unlock(&hdp->rwlock);
+        
+        /* update the indexes, the index has to assume the locking. */
+        /* if (index_add_node_to_all(index_init_list, ndp)) {; */
+        ndp->state = ND_ST_PENDING_ENFORCEMENT;
+        ndp->enforce_state = EF_ST_PENDING;
+        pag_rwlock_unlock(&ndp->rwlock);
+        if (index_add_all_in_tree(ndp) == 0) {;
+            VLOG_ERR("can't update indexes with node id:%d.", ndp->id);
+            ndp->state = ND_ST_INDEX_ERROR;
+            rtn_id = 0;
+        }
     }
 
-    ndp->state = ND_ST_PENDING_ENFORCEMENT;
-    ndp->enforce_state = EF_ST_PENDING;
- rtn_return:
-    hdp->state = HD_ST_CALM;
-    pag_rwlock_unlock(&ndp->rwlock);
     DBUG_RETURN(rtn_id);
 }
 
 /*
 * node_list_free_all - this will free everything in the Node list
 *    including the attributes assciated to each node.
+* NOTE: this does not lock the hdp!
 *
 * where:
 *
@@ -681,7 +729,6 @@ static bool node_list_free_all(head_list_p hdp)
     int save_hd_state;
 
     DBUG_ENTER(mod);
-    pag_rwlock_wrlock(&hdp->rwlock);
     save_hd_state = hdp->state;
     hdp->state = HD_ST_FREEALL;
     
@@ -695,7 +742,6 @@ static bool node_list_free_all(head_list_p hdp)
     }
 
     hdp->state = save_hd_state;
-    pag_rwlock_wrlock(&hdp->rwlock);
     DBUG_RETURN(retb);
 }
 
@@ -913,7 +959,8 @@ static bool index_destroy(hash_index_p hip)
     shash_destroy(&hip->htable);
     free(hip->name);
     pag_rwlock_destroy(&hip->rwlock);
-    DBUG_RETURN(retb);
+    DBUG_LEAVE;
+    return(retb);
 }
 
 /* 
@@ -955,8 +1002,62 @@ static bool index_add_node_to_all(hash_init_p hash_initp, node_ele_p ndp)
         }
         index_add_node(iilp->hidx, ndp, key);
     }
-    
-    DBUG_RETURN(retb);
+    DBUG_LEAVE;
+    return(retb);
+}
+
+/*
+ * index_add_all_in_tree - this will walk the tree and add all
+ * childen ndp(s) to all indexes. 
+ *
+  * where:
+ * param0 <ndp>         - I
+ *        Points to the parent or branch of a tree that may or may not 
+ *        have children associated to it.
+ * retruns <ndp_count>      - O
+ *        number of node_ele_t(s) encountered.
+ */
+static int index_add_all_in_tree(node_ele_p parent)
+{
+    static char *mod = "index_add_all_in_tree";
+    head_list_p hdp;
+    int head_cnt;
+    node_ele_p ndp;
+    int num_added = 0;
+    int node_save_state;
+
+    DBUG_ENTER(mod);
+    /* lock the parent */
+    pag_rwlock_rdlock(&parent->rwlock);
+    node_save_state = parent->state;
+    parent->state = ND_ST_INDEXING;
+    index_add_node_to_all(index_init_list, parent);
+    num_added++;
+    if (parent->child_list) {
+        hdp = parent->child_list;
+        head_cnt = list_length(hdp->list);
+        if (hdp->num_elements != head_cnt) {
+            DBUG_PRINT("WARN", 
+                       ("%s: list num_elemetsts: %d not euqal to actual: %d, changing nhead->num_elements",
+                        mod, hdp->num_elements, head_cnt));
+            hdp->num_elements = head_cnt;
+        }
+        for (; head_cnt != 0; head_cnt--) {
+            ndp = (node_ele_p)list_get(hdp->list, head_cnt);
+            /* if the unique ID has not been added, i.e. insert, add it. */
+            pag_rwlock_wrlock(&ndp->rwlock);
+            if (ndp->id == 0) 
+                ndp->id = sequence_next(modb_sequence);
+            ndp->state = ND_ST_PENDING_ENFORCEMENT;
+            ndp->enforce_state = EF_ST_NO_EVENT;
+            pag_rwlock_unlock(&ndp->rwlock);
+            num_added += index_add_all_in_tree(ndp);
+        }
+    }
+    parent->state = node_save_state;
+    pag_rwlock_unlock(&parent->rwlock);
+    DBUG_LEAVE;
+    return(num_added);
 }
 
 /* 
@@ -1004,13 +1105,12 @@ static bool index_delete_node_from_all(hash_init_p hash_initp, node_ele_p ndp)
         if (sndp) {
             shash_delete(&iilp->hidx->htable, sndp);
         } else {
-            DBUG_PRINT("ERROR", ("key:%s not found in %s index", 
-                                 key, iilp->name));
+            VLOG_ERR("key:%s not found in %s index", key, iilp->name);
         }
         pag_rwlock_unlock(&iilp->hidx->rwlock);
     }
-    
-    DBUG_RETURN(retb);
+    DBUG_LEAVE;
+    return(retb);
 }
 
 /* 
@@ -1029,11 +1129,12 @@ static bool index_add_node(hash_index_p hip, node_ele_p ndp, char *key)
     bool retb = false;
     
     DBUG_ENTER(mod);
-    DBUG_PRINT("DEBUG", ("%s:%s", hip->name, key));
+    DBUG_PRINT("DEBUG", ("name:%s key:%s", hip->name, key));
     pag_rwlock_wrlock(&hip->rwlock);
     shash_add(&hip->htable, key, ndp);
     pag_rwlock_unlock(&hip->rwlock);
-    DBUG_RETURN(retb);
+    DBUG_LEAVE;
+    return(retb);
 }
 
 /* 
@@ -1064,8 +1165,9 @@ static void index_dump(hash_init_p iilp, bool index_node_dump)
         hip = iilp->hidx;
         pag_rwlock_rdlock(&hip->rwlock);
         count = shash_count(&hip->htable);
-        DBUG_PRINT("INFO", (" IndexName:%s cnt:%d addr:%p", iilp->name, 
-                            (int)count, (void *)&hip->htable));
+        DBUG_PRINT("INFO", (" ========= IndexName:%s cnt:%d addr:%p",
+                            iilp->name, (int)count,
+                            (void *)&hip->htable));
         SHASH_FOR_EACH(snp, &hip->htable) {
             DBUG_PRINT("INFO", ("  name: %s data: %p", snp->name, snp->data));
             if (index_node_dump) {

@@ -52,6 +52,7 @@
 #include "list-util.h"			/* List manipulation definitions. */
 #include "util.h"
 #include "vlog.h"
+#include "dbug.h"
 
 /*
  *    List Data Structures - each list is represented internally using a
@@ -95,8 +96,10 @@ typedef  struct  _list_node {
  */
 int list_add(list_node_p *list, int position, void *item)
 {
+    static char *mod = "list_add";
     list_node  *node, *prev;
 
+    DBUG_ENTER(mod);
     /* Create a list node. */
     node = (list_node *) xzalloc(sizeof (list_node));
     node->prev = node->next = NULL;
@@ -126,11 +129,10 @@ int list_add(list_node_p *list, int position, void *item)
                 (node->next)->prev = node;
         }
     }
-    return (0);
+    DBUG_RETURN(0);
 }
 
 /*
- *
  * @brief list_delete - deletes an item from a list.  An item being
  *   deleted is denoted by its position, 1..N, in the list; deleting
  *   an item adjusts the positions of all the items that follow in the
@@ -159,11 +161,12 @@ int list_add(list_node_p *list, int position, void *item)
  */
 void *list_delete (list_node_p *list, int position)
 {
+    static char *mod = "list_delete";
     list_node  *node, *prev;
     void  *data;
 
     /* Locate the item in the list. */
-
+    DBUG_ENTER(mod);
     node = *list;
     if ((node == NULL) || (position < 1)) {
         return (NULL);
@@ -183,6 +186,7 @@ void *list_delete (list_node_p *list, int position)
 
     data = node->data;
     free ((char *) node);
+    DBUG_LEAVE;
     return (data);
 }
 
@@ -207,11 +211,15 @@ void *list_delete (list_node_p *list, int position)
  */
 int list_find (list_node_p list, void *item, bool (*findFunc)(void *, void *))
 {
+    static char *mod = "list_find";
     int  i;
 
+    DBUG_ENTER(mod);
     for (i = 1;  list != NULL;  list = list->next, i++)
         if (findFunc(item, list->data)) break;
 
+    DBUG_PRINT("DEBUG", ("%s: pos=%d", mod, (list == NULL) ? 0 : i));
+    DBUG_LEAVE;
     return ((list == NULL) ? 0 : i);
 }
 
@@ -262,24 +270,39 @@ int list_find_with_dp (list_node_p list, void *item)
  *           returns the deleted item, cast as a (VOID *) pointer.  NULL is
  *           returned if POSITION > N or if POSITION = 0 or if N = 0.
  *
- **/
+ */
 void *list_get (list_node_p list, int position)
 {
+    static char *mod = "list_get";
+    void *rtnp = NULL;
+    
+    DBUG_ENTER(mod);
+    DBUG_PRINT("DEBUG", ("%s: position=%d", mod, position));
     if (list == NULL)			/* Empty list? */
-        return (NULL);
-    else if (position < 0)		/* Return last item? */
-        return ((list->prev)->data);
+        goto rtn_return;
+    else if (position < 0) {		/* Return last item? */
+        rtnp = (list->prev)->data;
+        /* return ((list->prev)->data); */
+        goto rtn_return;
+    }
     else if (position == 0)		/* I = 0? */
-        return (NULL);
+        goto rtn_return;
 
     /* Position to the desired item in the list. */
 
     while ((--position > 0) && (list != NULL))
         list = list->next;
-    if (list == NULL)			/* I > N */
-        return (NULL);
-    else				/* 1 <= I <= N */
-        return (list->data);
+    if (list == NULL) {			/* I > N */
+        rtnp = NULL;
+        goto rtn_return;
+    } else	{			/* 1 <= I <= N */
+        rtnp = list->data;
+        goto rtn_return;
+    }
+
+ rtn_return:
+    DBUG_LEAVE;
+    return(rtnp);
 }
 
 /*
@@ -296,11 +319,15 @@ void *list_get (list_node_p list, int position)
  */
 int list_length (list_node_p list)
 { 
+    static char *mod = "list_length";
     int  count;
 
+    DBUG_ENTER(mod);
     /* Count the number of items in the list. */
     for (count = 0;  list != NULL;  count++)
         list = list->next;
 
-    return (count);
+    DBUG_PRINT("DEBUG", ("count=%d", count));
+    DBUG_LEAVE;
+    return(count);
 }
