@@ -163,7 +163,7 @@ AC_CHECK_FUNCS([atexit bzero clock_gettime dup2 floor ftruncate getcwd gethostby
 AC_CHECK_HEADER([/usr/include/google/malloc_extension_c.h],[has_tcmalloc=yes],[has_tcmalloc=no])
 AM_CONDITIONAL([HAVE_TCMALLOC], [test "$has_tcmalloc" = yes])
 if test "$has_tcmalloc" = yes; then
-   AC_DEFINE([HAVE_TCMALLOC], [1], [gperftools-libs/devel tcmalloc available])],
+   AC_DEFINE([HAVE_TCMALLOC], [1], [gperftools-libs/devel tcmalloc available])
 else
    AC_DEFINE([HAVE_TCMALLOC], [0], [gperftools-devel tcmalloc not available])
 fi
@@ -177,6 +177,7 @@ AC_CONFIG_FILES([third-party/Makefile])
 AC_CONFIG_FILES([lib/Makefile])
 AC_CONFIG_FILES([modb/Makefile])
 AC_CONFIG_FILES([pagentd/Makefile])
+AC_CONFIG_FILES([policy_enforcer/Makefile])
 
 if test "$with_tests" = "yes"; then
    AC_CONFIG_FILES([tests/Makefile])
