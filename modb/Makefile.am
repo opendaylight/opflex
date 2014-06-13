@@ -11,6 +11,7 @@ METASOURCES = AUTO
 
 
 AM_CFLAGS=-Wall -O0 -fPIC -DPIC -I -g -I. -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/lib
+AM_CFLAGS += -std=gnu11
 AM_CPPFLAGS=-DBSD_COMP=1 
 if HAVE_TCMALLOC
 AM_LDFLAGS=-L/usr/lib -lnsl -lm -lpthread -L$(top_builddir)/lib -L$(top_builddir)/third-party -ltcmalloc
