@@ -15,6 +15,7 @@ pagentd_SOURCES += pagentd_cli.c pagentd_cli.h
 # set the include path found by configure
 
 pagentd_CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I/usr/local/include -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(top_builddir)/policy_enforcer -I$(srcdir)
+pagentd_CFLAGS += -std=gnu99
 pagentd_CPPFLAGS=-DBSD_COMP=1 
 
 # the library search path.

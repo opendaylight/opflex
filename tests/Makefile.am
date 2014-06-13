@@ -29,6 +29,7 @@ test_eventq = test-eventq.c
 # set the include path found by configure
 
 CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I/usr/local/include -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(srcdir) -I$(top_builddir)/policy_enforcer
+CFLAGS += -std=gnu99
 CPPFLAGS=-DBSD_COMP=1 
 
 # the library search path.
