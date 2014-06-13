@@ -43,7 +43,7 @@ AM_CFLAGS =  -Wall -Werror $(HARDEN_CFLAGS)
 # Add -pthread GCC flag, which also sets -D_REENTRANT and -lpthread
 AM_CFLAGS += -pthread
 # For ADS gcc.c4.5.3-p0, gnu99 triggers define of needed LLONG_MIN/LLONG_MAX
-AM_CFLAGS += -std=gnu99
+AM_CFLAGS += -std=gnu11
 AM_CFLAGS += $(COMPILE_OPTS)
 
 #Automak CPP flags

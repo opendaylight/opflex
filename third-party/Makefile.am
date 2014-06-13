@@ -68,6 +68,7 @@ run_python =
 #     (stabs, COFF, XCOFF, or DWARF 2). GDB can work with this debugging information. 
 
 AM_CFLAGS=-Wall -O0 -fPIC -DPIC -I -g -I. -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/lib
+AM_CFLAGS += -std=gnu11
 AM_CPPFLAGS=-DBSD_COMP=1 
 if HAVE_TCMALLOC
 AM_LDFLAGS=-L/usr/lib -lnsl -lm -lpthread -ltcmalloc
