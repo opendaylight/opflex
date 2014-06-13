@@ -9,6 +9,7 @@
 AUTOMAKE_OPTIONS = foreign 1.4
 
 SUBDIRS =  third-party
+SUBDIRS += common
 SUBDIRS += lib 
 SUBDIRS += modb
 SUBDIRS += policy_enforcer
