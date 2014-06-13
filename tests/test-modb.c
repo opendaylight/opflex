@@ -87,6 +87,71 @@ static int modb_insert_one(node_ele_p *ndp, const char *uri_str, result_p rs)
     return(0);
 }    
 
+static void test_node_create(void **state)
+{
+    node_ele_p ndp;
+    const char *lri_str = "fake_class:fake_type";
+    int content_path_id = 2;
+
+    (void) state;
+
+    assert_false(node_create(&ndp, uri_str, lri_str, content_path_id));
+    parsed_uri_free(&ndp->uri);
+    free(ndp->lri);
+    free(ndp);
+}
+
+static void test_node_create_delete1(void **state)
+{
+    node_ele_p ndp;
+    const char *lri_str = "fake_class:fake_type";
+    int content_path_id = 2;
+    int count;
+
+    (void) state;
+    /* if (strcasecmp(debug_level, "OFF")) { */
+    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
+    /* } */
+
+    assert_false(node_create(&ndp, uri_str, lri_str, content_path_id));
+    assert_false(node_delete(&ndp, &count));
+    if (strcasecmp(debug_level, "OFF")) {
+        DBUG_PUSH("");
+    }
+}
+
+static void test_node_create_del_with_children(void **state)
+{
+#define NUM_OF_CHILDREN 10
+    node_ele_p parent;
+    node_ele_p child[NUM_OF_CHILDREN] = {NULL};
+    const char *lri_str = "fake_class:fake_type";
+    char lri_buf[256] = {0};
+    char uri_buf[256] = {0};
+    int content_path_id = 999999999;
+    int count, i;
+
+    (void) state;
+    /* if (strcasecmp(debug_level, "OFF")) { */
+    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
+    /* } */
+
+    assert_false(node_create(&parent, uri_str, &lri_str, content_path_id));
+    for (i=0; i < NUM_OF_CHILDREN; i++) {
+        memset(lri_buf, 0, sizeof(lri_buf));
+        sprintf(lri_buf, "fake_class:fake_type_%d", i);
+        memset(uri_buf, 0, sizeof(uri_buf));
+        sprintf(uri_buf, "http://en.wikipedia-%d.org/wiki/Uniform_Resource_Identifier", i);
+        content_path_id = i;
+        assert_false(node_create(&child[i], uri_str, lri_str, content_path_id));
+        assert_false(node_attach_child(parent, child[i]));
+    }
+    assert_false(node_delete(&parent, &count));
+    if (strcasecmp(debug_level, "OFF")) {
+        DBUG_PUSH("");
+    }
+}
+
 static void test_modb_insert(void **state)
 {
     result_t rs;
@@ -166,7 +231,6 @@ static void test_modb_create_node_many(void **state)
 static void create_node_tree(node_ele_p *parentp, int count)
 {
     node_ele_p ndp;
-    result_t rs;
     char tbuf[256] = {0};
     node_ele_p parent;
     int nc = 0, i;
@@ -195,7 +259,7 @@ static void create_node_tree(node_ele_p *parentp, int count)
         sprintf(tbuf, "fake_class:fake_type_%d", nc);
         ndp->lri = strdup((const char *)&tbuf);
         sprintf(tbuf, "http://en.wikipedia.org/wiki/node_%d", nc);
-        assert_false(parse_uri(&ndp->uri, &tbuf));
+        assert_false(parse_uri(&ndp->uri, (char *)&tbuf));
         ndp->parent = parent;
         ndp->child_list = NULL;
         ndp->properties_list = NULL;
@@ -265,12 +329,15 @@ int main(int argc, char *argv[])
 
     const UnitTest tests[] = {
         unit_test(test_modb_initialize),
+        unit_test(test_node_create_delete1),
+        unit_test(test_node_create_del_with_children),
         unit_test(test_modb_get_state),
         unit_test(test_modb_insert),
         unit_test(test_modb_delete_with_node),
         unit_test(test_modb_create_node_many),
         unit_test(test_modb_create_node_tree),
         unit_test(test_modb_delete_node_tree),
+
     };
 
     test_setup();

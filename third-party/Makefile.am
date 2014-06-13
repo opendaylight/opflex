@@ -205,7 +205,6 @@ $(srcdir)/third-party/ofp-msgs.inc: \
 ofp-msgs.c: $(srcdir)/third-party/ofp-msgs.inc
 lib3party_so_la_SOURCES += ofp-msgs.inc
 
-
 lib_lib3party_so_la = third-party/lib3party.so.la
 
 lib_libdbug_so_la = third-party/libdbug.so.la

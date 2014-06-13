@@ -167,16 +167,21 @@ void *list_delete (list_node_p *list, int position)
 
     /* Locate the item in the list. */
     DBUG_ENTER(mod);
+    DBUG_PRINT("DEBUG", ("position=%d", position));
     node = *list;
     if ((node == NULL) || (position < 1)) {
-        return (NULL);
+        data = NULL;
+        goto rtn_return;
     } else if (position == 1) {			/* Item 1 in list? */
         *list = node->next;
         if (node->next != NULL)  (node->next)->prev = node->prev;
     } else {					/* Item 2..N in list? */
         while ((--position > 0) && (node != NULL))
             node = node->next;
-        if (node == NULL)  return (NULL);
+        if (node == NULL) {
+            data = NULL;
+            goto rtn_return;
+        }
         prev = node->prev;  prev->next = node->next;
         if (node->next == NULL)			/* Very last item in list? */
             (*list)->prev = prev;
@@ -186,6 +191,7 @@ void *list_delete (list_node_p *list, int position)
 
     data = node->data;
     free ((char *) node);
+ rtn_return:
     DBUG_LEAVE;
     return (data);
 }

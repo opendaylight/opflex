@@ -265,4 +265,9 @@ extern enum_head_state modb_get_state(void);
 extern void dump_node(node_ele_p ndp);
 extern bool head_list_create(head_list_p *hdp);
 
+extern bool node_create(node_ele_p *ndp, const char *uri_str, const char *lri,
+                             uint32_t ctid);
+extern bool node_attach_child(node_ele_p parent, node_ele_p child);
+extern bool node_delete(node_ele_p *ndp, int *del_cnt);
+
 #endif /* MODB_H */

@@ -232,6 +232,155 @@ enum_head_state modb_get_state(void)
     DBUG_RETURN(state);
 }
 
+/* node_create - this wiil allocate the node_ele_t and initialize it
+ * in preparation for inserting into the MODB.
+ *
+ * where:
+ * @param0 <ndp>           - I/O
+ *        This will be a pointer to a pointer , in otherwords this routine will
+ *        allocate the memory and return it back via this ptr.
+ * @param1 <uri>           - I 
+ *        this is the point to the uri string that this node will be 
+ *        know by, If NULL, the uri struct will not be allocated.
+ * @param2 <lri>            - I
+ *        If not NULL the lri will be loaded,
+ * @param3 <ctid>           - I
+ *        content_path_id.
+ * @returns:
+ *        0 if successful, else !=0
+ * 
+ */
+bool node_create(node_ele_p *ndp, const char *uri_str, const char *lri, 
+                 uint32_t ctid)
+{
+    static char *mod = "node_create";
+
+    DBUG_ENTER(mod);
+    DBUG_PRINT("DEBUG",("uri=%s lri=%s", uri_str, lri));
+
+    *ndp = xzalloc(sizeof(node_ele_t));
+    pag_rwlock_init(&(*ndp)->rwlock);
+    (*ndp)->content_path_id = ctid;
+    if (lri)
+        (*ndp)->lri = strdup(lri);
+    if (uri_str)
+        parse_uri(&(*ndp)->uri, uri_str);
+    (*ndp)->parent = NULL;
+    (*ndp)->child_list = NULL;
+    (*ndp)->properties_list = NULL;
+    (*ndp)->state = ND_ST_PENDING_INSERT;
+
+    DBUG_LEAVE;
+    return(0);
+}
+
+/* node_delete - this wiil delete a node that is not in the DB.
+ *
+ * where:
+ * @param0 <ndp>           - I
+ *        The node pointer
+ * @returns:
+ *        0 if successful, else !=0
+ * 
+ */
+bool node_delete(node_ele_p *ndp, int *del_cnt)
+{
+    static char *mod = "node_delete";
+    bool retb = false;
+    bool complete = false;
+    int child_cnt;
+    node_ele_p cndp;
+    head_list_p child_hdp, attr_hdp;
+    int rcnt;
+
+    DBUG_ENTER(mod);
+    DBUG_PRINT("DEBUG",("uri=%s lri=%s", (*ndp)->uri->uri,
+                        (*ndp)->lri));
+    *del_cnt = 0;
+
+    /* make sure this is not in the MODB */
+    if (shash_find(&uri_shash, (*ndp)->uri->uri) != NULL) {
+        VLOG_ERR("%s: node: %s is found in the MODB", mod, (*ndp)->uri->uri);
+        retb = true;
+        goto rtn_return;
+    }
+    
+    while (complete == false) {
+        pag_rwlock_wrlock(&(*ndp)->rwlock);
+        (*ndp)->state = ND_ST_DELETE;
+        child_hdp = (*ndp)->child_list;
+        attr_hdp = (*ndp)->properties_list;
+        attr_list_free_all(&attr_hdp);
+
+        if (child_hdp == NULL) {
+            complete = true;
+        } else {
+            /* delete all the children associated to this node. */
+            child_cnt = list_length(child_hdp->list);
+            if (child_cnt != child_hdp->num_elements) {
+                VLOG_WARN("%s: list num_elemetsts: %d not equal to actual: %d, "
+                          "changing chdp->num_elements",
+                          mod, child_hdp->num_elements, child_cnt);
+                child_hdp->num_elements = child_cnt;
+            }
+            while (list_length(child_hdp->list)) {
+                cndp = list_delete(&child_hdp->list, 1);
+                if (cndp) {
+                    node_delete(&cndp, &rcnt);
+                    *del_cnt += rcnt;
+                } else {
+                    VLOG_ERR("%s: list_get return NULL, count:%d",
+                             mod, child_cnt);
+                    break;
+                }
+            }
+            head_list_destroy(&child_hdp, true);
+            complete = true;
+        }
+        pag_rwlock_destroy(&(*ndp)->rwlock);
+            
+        free(*ndp);
+        *del_cnt++;
+    }
+    
+ rtn_return:
+    DBUG_LEAVE;
+    return(retb);
+}
+
+/* node_attach_child - this wiil attach child to parent nodes.
+ *
+ * where:
+ * @param0 <parent>           - I
+ *        pointer to the parent node
+ * @param1 <child>           - I 
+ *        point to the child that will be attached to the child
+ * @returns:
+ *        0 if successful, else !=0
+ * 
+ */
+bool node_attach_child(node_ele_p parent, node_ele_p child)
+{
+    static char *mod = "node_attach_child";
+
+    DBUG_ENTER(mod);
+
+    pag_rwlock_wrlock(&parent->rwlock);
+    if (parent->child_list == NULL) {
+        head_list_create(&parent->child_list);
+        parent->child_list->state = HD_ST_LOADED;
+    }
+    pag_rwlock_wrlock(&child->rwlock);
+    child->parent = parent;
+    list_add(&parent->child_list->list, -1, (void *)child);
+    parent->child_list->num_elements++;
+    pag_rwlock_unlock(&child->rwlock);
+    pag_rwlock_unlock(&parent->rwlock);
+
+    DBUG_LEAVE;
+    return(0);
+}
+
 /* modb_op - operations on the DB.
  * 
  * where:
