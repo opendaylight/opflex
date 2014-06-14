@@ -29,20 +29,27 @@ typedef struct _ring_buffer_counters {
     int32_t pop_location;
     int32_t push_location;
     int32_t unused_count;
-    struct pag_mutex lock;
+//    struct pag_rwlock rwlock;
+    struct pag_mutex  lock;
     pthread_cond_t not_empty;
     pthread_cond_t not_full;
 } ring_buffer_counters_t;
 
+typedef struct _ring_buffer_cond_vars {
+    uint32_t count;          /* number of condition variables in struct */
+    pthread_cond_t **list;   /* array of cond variables */
+} rb_cond_vars_t;
+
 /* public prototypes */
+void ring_buffer_init(void);
+void ring_buffer_destroy(void);
 void ring_buffer_push(void *);
 void *ring_buffer_pop(void);
 
 /* gettors */
 inline uint32_t get_ring_buffer_length(void);
 inline uint32_t get_ring_buffer_entry_size(void);
-void ring_buffer_init(void);
-void ring_buffer_destroy(void);
+void rb_broadcast_cond_variables(void);
 
 /* settors */
 //bool pe_set_ring_buffer_length(uint32_t);

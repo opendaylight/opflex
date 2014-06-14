@@ -11,8 +11,8 @@ AUTOMAKE_OPTIONS = foreign 1.4
 SUBDIRS =  third-party
 SUBDIRS += lib 
 SUBDIRS += modb
-SUBDIRS += pagentd
 SUBDIRS += policy_enforcer
+SUBDIRS += pagentd
 if BUILD_TESTS
 SUBDIRS += tests
 endif
