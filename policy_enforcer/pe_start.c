@@ -32,7 +32,12 @@ static void pe_set_state(pe_state_t);
  * \return { bool - true or false }
  *
  **/
-bool pe_start(void) {
+void *pe_start(void *arg) {
+    (void) arg;
+
+    /*TODO: all signals should be masked so that a signal here
+     * will invoke the proper clean up call.
+     */
 
     pe_set_state(INITIALIZING);
     /* call function to collect data (pe_scan.c) */
@@ -44,6 +49,7 @@ bool pe_start(void) {
     pe_set_state(MONITORING);
 
     /* initialize ring buffer/thread pool (pe_workers.c)*/
+    pe_workers_init();
     pe_set_state(WORKERS_RUNNING);
 
     /* initialize translator (pe_translator.c)*/
@@ -52,9 +58,10 @@ bool pe_start(void) {
     /* pthread_join calls */
     pe_set_state(TERMINATING);
 
-    /* call clean up routing */
-    return(true);
+    /* call clean up routine */
+    /* pe_destroy(); */
 
+    return((void *) NULL);
 }
 
 /* ============================================================
@@ -85,10 +92,14 @@ pe_state_t pe_get_state() {
  **/
 bool pe_initialize() {
     bool retval = true;
+    pthread_t pe_thread;
 
     /* initialize configuration params */
+    //conf_initialize(&pe_config_defaults);
 
-    /* start pe thread by invoking pe_start via pxthread_create() */
+    /* use xpthread_key_create() to create a key for the thread? */
+    /* start pe thread by invoking pe_start via xpthread_create() */
+    xpthread_create(pe_thread,NULL,pe_start,NULL);
 
     return(retval);
 }

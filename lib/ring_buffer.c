@@ -17,7 +17,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-#define DBUG_OFF 1 //turn off debugging
+//#define DBUG_OFF 1 //turn off debugging
 
 #include "pag-thread.h"
 #include "dbug.h"
@@ -33,10 +33,6 @@ static ring_buffer_counters_t rb_counters;
 static uint32_t rb_length = 0;
 static uint32_t rb_entry_size = 0;
 
-/* Private prototypes */
-
-/* Public funtions */
-
 /* Ring buffer size (set at run time?) */
 inline uint32_t get_ring_buffer_length()
 {
@@ -45,6 +41,17 @@ inline uint32_t get_ring_buffer_length()
 inline uint32_t get_ring_buffer_entry_size()
 {
     return ( (uint32_t) PE_RING_BUFFER_ENTRY_SIZE );
+}
+void rb_broadcast_cond_variables() {
+    int save_errno = 0;
+
+    if ((save_errno = pthread_cond_broadcast(&rb_counters.not_full))
+         != 0)
+        pag_abort(save_errno,"pthread_cond_broadcast failed!");
+    if ((save_errno = pthread_cond_broadcast(&rb_counters.not_empty))
+         != 0)
+        pag_abort(save_errno,"pthread_cond_broadcast failed!");
+
 }
 
 /* Private functions */
@@ -148,6 +155,9 @@ void *ring_buffer_pop(void) {
     void *retval = NULL;
 
     DBUG_ENTER("ring_buffer_pop");
+
+    DBUG_PRINT("\nDEBUG", ("Thread %p entering ring_buffer_pop",
+                            pthread_self()));
 
     pag_mutex_lock(&rb_counters.lock);
     while(rb_counters.push_location == rb_counters.pop_location) {

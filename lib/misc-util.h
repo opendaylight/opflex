@@ -11,6 +11,8 @@
 /* This header file consists of wrapper routines for popen() and pclose()
  * See pipe-util.c for more details.
  */
+#ifndef MISC_UTIL_H
+#define MISC_UTIL_H 1
 
 #define PAG_ERROR_MSG_LEN 80
 
@@ -21,3 +23,5 @@ FILE *pipe_write(const char *);
 FILE *pipe_read(const char *);
 int pipe_close(FILE *);
 void strerr_wrapper(int);
+
+#endif //MISC_UTIL_H

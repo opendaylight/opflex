@@ -14,7 +14,7 @@ pagentd_SOURCES += pagentd_cli.c pagentd_cli.h
 
 # set the include path found by configure
 
-pagentd_CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I/usr/local/include -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(srcdir)
+pagentd_CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I/usr/local/include -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(top_builddir)/policy_enforcer -I$(srcdir)
 pagentd_CPPFLAGS=-DBSD_COMP=1 
 
 # the library search path.
@@ -25,6 +25,6 @@ else
 pagentd_LDFLAGS = -L/usr/lib -L$(srcdir)/../lib -lssl -lcrypto -lrt -lreadline -lnsl -lm -lpthread
 endif
 
-pagentd_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la  $(top_builddir)/modb/libmodb.so.la 
+pagentd_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la  $(top_builddir)/modb/libmodb.so.la $(top_builddir)/policy_enforcer/libpe.so.la 
 
 bin_pagentd = $(srcdir)/pagentd

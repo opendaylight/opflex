@@ -8,6 +8,11 @@
 * http://www.eclipse.org/legal/epl-v10.html
 */
 
+#ifndef POLICY_ENFORCER_H
+#define POLICY_ENFORCER_H 1
+
+#include <stdbool.h>
+
 #include "config-file.h"
 
 /* initialization for configuration data */
@@ -29,12 +34,13 @@ static struct option_ele pe_config_defaults[] = {
     {PE_SECTION, "pe_ring_buffer_length", "1000"},
     {PE_SECTION, "pe_test_pop_thread_count", "20"},
     {PE_SECTION, "pe_test_max_pop_count", "50"},
+    {PE_SECTION, "pe_max_worker_count", "50"},
     {NULL, NULL, NULL}
 };
 
 /* prototypes */
-bool pe_start(void);
+void *pe_start(void *);
 pe_state_t pe_get_state(void);
 extern bool pe_initialize(void);
 
-
+#endif //POLICY_ENFORCER_H
