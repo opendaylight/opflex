@@ -177,6 +177,7 @@ AC_CONFIG_FILES([third-party/Makefile])
 AC_CONFIG_FILES([lib/Makefile])
 AC_CONFIG_FILES([modb/Makefile])
 AC_CONFIG_FILES([common/Makefile])
+AC_CONFIG_FILES([comms/Makefile])
 AC_CONFIG_FILES([pagentd/Makefile])
 AC_CONFIG_FILES([policy_enforcer/Makefile])
 
