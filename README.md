@@ -15,6 +15,19 @@ This agent will handle policy as defined in the OpFlex Control
 Protocol IETF draft [1]. pagentd is a multi-threaded agent which can 
 operate as a PE (Policy Element) according to the draft.
 
+## Build
+
+Preparing:
+```bash
+git submodule update --init --recursive
+```
+
+Building:
+```bash
+BUILD/autorun.sh --with-tests
+```
+git submodule update --init --recursive
+
 
 [1] draft-smith-opflex-00c [Link to appear here]
 
