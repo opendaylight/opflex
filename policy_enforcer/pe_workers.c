@@ -15,7 +15,7 @@
 #include <errno.h>
 #include <string.h>
 
-//#define DBUG_OFF 1
+#define DBUG_OFF 1
 
 #include "pag-thread.h"
 #include "dbug.h"
@@ -44,11 +44,11 @@ void *pe_workers_fetch_flow(void *arg);
  *         0 if sucessful, else the return from the pthread calls.
  *               
  **/
-void pe_crew_destroy(pe_crew_t *crew) 
+void pe_crew_destroy() 
 {
     static char mod[] = "pe_crew_destroy";
     rb_cond_vars_t *cond_list;
-    int counter = 0;
+    int crew_index = 0;
 
     DBUG_ENTER(mod);
     VLOG_DBG("%s: -->", mod);
@@ -58,7 +58,10 @@ void pe_crew_destroy(pe_crew_t *crew)
 
     VLOG_DBG("%s: Broadcast for termination.", mod);
 
-    pag_rwlock_destroy(&crew->rwlock);
+    for (crew_index = 0; crew_index < crew.size; crew_index++)
+        xpthread_join(crew.worker[crew_index]->thread, NULL);
+
+    pag_rwlock_destroy(&crew.rwlock);
 
     DBUG_LEAVE;
 
@@ -115,7 +118,7 @@ void pe_crew_create ()
         DBUG_PRINT("DEBUG ",("Worker's index %i recorded as %i\n",
                               crew_index, crew.worker[crew_index]->index));
 
-
+/*
         if((save_errno = pthread_attr_init(&crew.worker[crew_index]->attr))
            != 0)
             strerr_wrapper(save_errno); //core dump
@@ -127,6 +130,11 @@ void pe_crew_create ()
 
         xpthread_create(&crew.worker[crew_index]->thread,
                         &crew.worker[crew_index]->attr,
+                        pe_workers_fetch_flow,
+                        (void *) crew.worker[crew_index]);
+*/
+        xpthread_create(&crew.worker[crew_index]->thread,
+                        NULL,
                         pe_workers_fetch_flow,
                         (void *) crew.worker[crew_index]);
     }
@@ -171,7 +179,7 @@ void *pe_workers_fetch_flow(void *arg) {
                                &this_worker->thread,
                                work_item)); 
         if (pe_get_crew_quit_status() == true) {
-            DBUG_PRINT("\nDEBUG ",("Thread %i got quit\n",this_worker->index));
+            VLOG_INFO("Thread %i got quit\n",this_worker->index);
             break;
         }
         pe_translate(work_item);
@@ -238,7 +246,7 @@ void pe_workers_destroy() {
 
     DBUG_ENTER(mod);
 
-    pe_crew_destroy(&crew);
+    pe_crew_destroy();
     ring_buffer_destroy();
 
     DBUG_LEAVE;

@@ -17,7 +17,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-//#define DBUG_OFF 1 //turn off debugging
+#define DBUG_OFF 1 //turn off debugging
 
 #include "pag-thread.h"
 #include "dbug.h"
@@ -69,9 +69,9 @@ void rb_broadcast_cond_variables() {
  **/
 
 void ring_buffer_destroy() {
-    DBUG_ENTER("ring_buffer_destroy");
+//    DBUG_ENTER("ring_buffer_destroy");
     free(ring_buffer);
-    DBUG_LEAVE;
+//    DBUG_LEAVE;
 }
 
 /* ============================================================

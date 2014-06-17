@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-//#define DBUG_OFF 1 //turn off debugging
+#define DBUG_OFF 1 //turn off debugging
 
 #include "pag-thread.h"
 #include "ring_buffer.h"
@@ -52,8 +52,6 @@ static void rt_pe_workers(void **state) {
         xpthread_join(push_thread[tcount], (void **) NULL);
         push_thread_counter++;
     }
-
-    sleep(1);
 
     pe_workers_destroy();
 
