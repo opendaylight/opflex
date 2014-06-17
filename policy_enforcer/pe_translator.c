@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+//#define DBUG_OFF 1
+
 #include "dbug.h"
 #include "vlog.h"
 

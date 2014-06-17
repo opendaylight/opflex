@@ -134,8 +134,10 @@ void ring_buffer_push(void *input_p) {
     xpthread_cond_signal(&rb_counters.not_empty);
     pag_mutex_unlock(&rb_counters.lock);
 
-    DBUG_PRINT("\nDEBUG", ("Pushed %p (%i) into slot %i",
-                  input_p, *(int *)input_p, (rb_counters.push_location-1)));
+//    DBUG_PRINT("\nDEBUG", ("Pushed %p (%i) into slot %i",
+//                  input_p, *(int *)input_p, (rb_counters.push_location-1)));
+    DBUG_PRINT("\nDEBUG", ("Pushed %p into slot %i",
+                  input_p, (rb_counters.push_location-1)));
 
     DBUG_LEAVE;
 }
@@ -169,8 +171,10 @@ void *ring_buffer_pop(void) {
     xpthread_cond_signal(&rb_counters.not_full);
     pag_mutex_unlock(&rb_counters.lock);
 
-    DBUG_PRINT("\nDEBUG", ("Fetched %p (%i) from slot %i",
-                         retval, *(int*)retval, (rb_counters.pop_location-1)));
+//    DBUG_PRINT("\nDEBUG", ("Fetched %p (%i) from slot %i",
+//                         retval, *(int*)retval, (rb_counters.pop_location-1)));
+    DBUG_PRINT("\nDEBUG", ("Fetched %p from slot %i",
+                         retval, (rb_counters.pop_location-1)));
 
     DBUG_LEAVE;
     return(retval);

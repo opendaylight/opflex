@@ -180,7 +180,7 @@ void *pe_workers_fetch_flow(void *arg) {
     VLOG_INFO("Thread %i (%p) leaving work.\n",this_worker->index,
                                                 this_worker->thread); 
     DBUG_LEAVE;
-    return((void *) NULL);
+    pthread_exit((void *) NULL);
 }
 
 /* ============================================================
@@ -262,9 +262,9 @@ static bool pe_get_crew_quit_status() {
     DBUG_ENTER(mod);
 
     pag_rwlock_rdlock(&crew.rwlock);
-    crew.quit = bret;
+    bret = crew.quit;
     pag_rwlock_unlock (&crew.rwlock);
 
     DBUG_LEAVE;
-    return(crew.quit);
+    return(bret);
 }
