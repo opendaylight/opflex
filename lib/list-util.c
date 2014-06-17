@@ -44,7 +44,7 @@
  *    list_length() - returns the number of items in a list.
  * 
  */
- 
+#define USE_VLOG 1 
 #include <errno.h>			/* System error definitions. */
 #include <stdio.h>			/* Standard I/O definitions. */
 #include <stdlib.h>			/* Standard C Library definitions. */
@@ -53,6 +53,8 @@
 #include "util.h"
 #include "vlog.h"
 #include "dbug.h"
+
+VLOG_DEFINE_THIS_MODULE(list_util);
 
 /*
  *    List Data Structures - each list is represented internally using a
@@ -99,7 +101,7 @@ int list_add(list_node_p *list, int position, void *item)
     static char *mod = "list_add";
     list_node  *node, *prev;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     /* Create a list node. */
     node = (list_node *) xzalloc(sizeof (list_node));
     node->prev = node->next = NULL;
@@ -129,7 +131,8 @@ int list_add(list_node_p *list, int position, void *item)
                 (node->next)->prev = node;
         }
     }
-    DBUG_RETURN(0);
+    LEAVE(mod);
+    return(0);
 }
 
 /*
@@ -166,15 +169,20 @@ void *list_delete (list_node_p *list, int position)
     void  *data;
 
     /* Locate the item in the list. */
-    DBUG_ENTER(mod);
+    ENTER(mod);
+#ifdef USE_VLOG
+    VLOG_DBG("position=%d", position);
+#else
     DBUG_PRINT("DEBUG", ("position=%d", position));
+#endif
     node = *list;
     if ((node == NULL) || (position < 1)) {
         data = NULL;
         goto rtn_return;
     } else if (position == 1) {			/* Item 1 in list? */
         *list = node->next;
-        if (node->next != NULL)  (node->next)->prev = node->prev;
+        if (node->next != NULL)  
+            (node->next)->prev = node->prev;
     } else {					/* Item 2..N in list? */
         while ((--position > 0) && (node != NULL))
             node = node->next;
@@ -192,7 +200,7 @@ void *list_delete (list_node_p *list, int position)
     data = node->data;
     free ((char *) node);
  rtn_return:
-    DBUG_LEAVE;
+    LEAVE(mod);
     return (data);
 }
 
@@ -208,7 +216,7 @@ void *list_delete (list_node_p *list, int position)
  *           is the list of items.
  * @param1 <findFunc>		- I
  *           pointer to a fuctions that expects the item,s as a ptr
- *           this routine will return a True if a match occurs, else 
+r *           this routine will return a True if a match occurs, else 
  *           false. By doing this the call will retain the knowledge of
  *           the data structure (i.e. item).  
  * @return <position>	- O
@@ -220,12 +228,16 @@ int list_find (list_node_p list, void *item, bool (*findFunc)(void *, void *))
     static char *mod = "list_find";
     int  i;
 
-    DBUG_ENTER(mod);
-    for (i = 1;  list != NULL;  list = list->next, i++)
-        if (findFunc(item, list->data)) break;
+    ENTER(mod);
+    for (i = 1;  list != NULL;  list = list->next, i++) {
+        if (findFunc(item, list->data)) {
+            VLOG_DBG("%s: MATCH: position=%d", mod, i);
+            break;
+        }
+    }
 
     DBUG_PRINT("DEBUG", ("%s: pos=%d", mod, (list == NULL) ? 0 : i));
-    DBUG_LEAVE;
+    LEAVE(mod);
     return ((list == NULL) ? 0 : i);
 }
 
@@ -282,8 +294,12 @@ void *list_get (list_node_p list, int position)
     static char *mod = "list_get";
     void *rtnp = NULL;
     
-    DBUG_ENTER(mod);
+    ENTER(mod);
+#ifdef USE_VLOG
+    VLOG_DBG("%s: position=%d", mod, position);
+#else
     DBUG_PRINT("DEBUG", ("%s: position=%d", mod, position));
+#endif
     if (list == NULL)			/* Empty list? */
         goto rtn_return;
     else if (position < 0) {		/* Return last item? */
@@ -307,7 +323,7 @@ void *list_get (list_node_p list, int position)
     }
 
  rtn_return:
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(rtnp);
 }
 
@@ -328,12 +344,16 @@ int list_length (list_node_p list)
     static char *mod = "list_length";
     int  count;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     /* Count the number of items in the list. */
     for (count = 0;  list != NULL;  count++)
         list = list->next;
 
+#ifdef USE_LOG
+    VLOG_DBG("count=%d", count);
+#else
     DBUG_PRINT("DEBUG", ("count=%d", count));
-    DBUG_LEAVE;
+#endif
+    LEAVE(mod);
     return(count);
 }

@@ -8,11 +8,12 @@
 
 #include <ctype.h>
 #include "cnf-parser.h"
-#include "dbug.h"
+#include "vlog.h"
 
 #define ASCIILINESZ         (1024)
 #define CNF_INVALID_KEY     ((char*)-1)
 
+VLOG_DEFINE_THIS_MODULE(cnf_parser);
 
 /*   Privates */
 
@@ -615,7 +616,7 @@ dictionary *cnf_parser_load(const char *cnfname)
     dictionary *dict;
 
     if ((in = fopen(cnfname, "r"))==NULL) {
-        DBUG_PRINT("ERROR", ("cnf_parser: cannot open %s\n", cnfname));
+        VLOG_ERR("cnf_parser: cannot open %s\n", cnfname);
     // fprintf(stderr, "cnf_parser: cannot open %s\n", cnfname);
         return NULL;
     }

@@ -30,18 +30,18 @@
 #define CLASS_IDX_SZ_TAG "class_index_size"
 #define NODE_IDX_SZ_TAG "node_index_size"
 #define URI_IDX_SZ_TAG "uri_index_size"
-#define URI_ATTR_IDX_SZ_TAG "uri_attr_index_size"
+#define ATTR_IDX_SZ_TAG "attr_index_size"
 
 #define CLASS_IDX_DBUG_TAG "class_index_debug"
 #define NODE_IDX_DBUG_TAG "node_index_debug"
 #define URI_IDX_DBUG_TAG "uri_index_debug"
-#define URI_ATTR_IDX_DBUG_TAG "uri_attr_index_debug"
+#define ATTR_IDX_DBUG_TAG "attr_index_debug"
 
 /* index names */
 #define NODE_INDEX_NAME "node_index"
 #define CLASS_INDEX_NAME "class_index"
 #define URI_INDEX_NAME "uri_index"
-#define URI_ATTR_INDEX_NAME "uri:att_index"
+#define ATTR_INDEX_NAME "attr_index"
 
 /* The Node definition
  * The node is the basis of the database each object translated to a node and
@@ -73,7 +73,8 @@
  */
 
 typedef enum _enum_head_state {
-    HD_ST_CHECKPOINT_STARTED=0,
+    HD_ST_NOT_INITIALIZED = 0,
+    HD_ST_CHECKPOINT_STARTED,
     HD_ST_CHECKPOINT_COMPLETE,
     HD_ST_INITIALIZED,
     HD_ST_DESTROYING,
@@ -144,6 +145,7 @@ typedef enum _enum_itype {
     IT_NODE_INDEX,               /* query through node_id_index     */
     IT_CLASS_ID_INDEX,           /* query through class_id_index    */
     IT_URI_INDEX,                /* use the udi_index               */
+    IT_ANY,
 } enum_itype;
 
 /* This tells the nature of the operation:
@@ -195,14 +197,14 @@ typedef struct node_ele {
 /* 
  * attributes (properties)
  */
-typedef enum _field_types {
-    INTEGER = 1,
-    LONG,
-    DATE,
-    STRING,
-    MAC,
-    IPADDR
-} field_types;
+typedef enum _enum_field_types {
+    AT_INTEGER = 0,
+    AT_LONG,
+    AT_DATE,
+    AT_STRING,
+    AT_MAC,
+    AT_IPADDR
+} enum_field_types;
 
 /* 
  * An attribute is essentually a property on a Node 
@@ -210,15 +212,20 @@ typedef enum _field_types {
  * to the node.
  */
 typedef struct _attribute {
-    uint32_t         id;
+    node_ele_p       ndp;
     char             *field_name;
-    /* this defines how the void *dp is interepted */
-    field_types      attr_type;
-    /* for string-type fields, this is the maximum number of characters. */
-    uint32_t         field_length; 
+    uint32_t         flags;         /* see ATTR_FLG_XXXX */       
+    enum_field_types attr_type;     /* this defines void *dp is interepted */
+    uint32_t         field_length;  /* length of dp */
     void             *dp;
-} atrribute_t, *attribute_p;
+} attribute_t, *attribute_p;
 
+
+
+#define ATTR_FG_CURRENT  0x0000
+#define ATTR_FG_NEW      0x0001
+#define ATTR_FG_DUP      0x8000
+#define ATTR_FG_OLD      0x0002
 
 /* This is the results that are returned from the various DB calls i.e.
  * select, delete, update, insert, etc.
@@ -239,7 +246,7 @@ typedef struct _result {
 /* 
  * index structures
  */
-typedef struct hash_index {
+typedef struct _hash_index {
     char *name;
     struct pag_rwlock rwlock;
     struct shash htable;
@@ -256,18 +263,25 @@ typedef struct _hash_init {
  * Protos
  */
 extern bool modb_initialize(void);
+extern bool modb_is_initialized(void);
 extern int  modb_op(int operation, void *dp, int itype, int dp_count,
                     int extent, result_p resultp);
 extern void modb_cleanup(void);
 extern bool modb_crash_recovery(const char *dbfile);
 extern void modb_dump(bool index_node_dump);
+
 extern enum_head_state modb_get_state(void);
-extern void dump_node(node_ele_p ndp);
+extern void node_dump(node_ele_p ndp);
 extern bool head_list_create(head_list_p *hdp);
 
 extern bool node_create(node_ele_p *ndp, const char *uri_str, const char *lri,
                              uint32_t ctid);
 extern bool node_attach_child(node_ele_p parent, node_ele_p child);
 extern bool node_delete(node_ele_p *ndp, int *del_cnt);
+
+extern bool attr_create(attribute_p *ap, char *name, int atype,
+                        void *dp, uint32_t dp_len, node_ele_p ndp);
+extern bool attr_delete(node_ele_p ndp, char *name);
+extern void attr_dump(node_ele_p ndp);
 
 #endif /* MODB_H */

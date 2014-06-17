@@ -19,7 +19,7 @@
 #include "modb.h"
 #include "config-file.h"
 #include "uri-parser.h"
-#include "dbug.h"
+#include "vlog.h"
 
 
 #ifdef NDEBUG
@@ -50,6 +50,10 @@ static void test_setup(void)
     }
     conf_dump(stdout);
     debug_level = conf_get_value("global", "debug_level");
+    
+    if (strcasecmp(debug_level, "OFF")) {
+        vlog_set_levels_from_string("WARN");
+    }
     /* if (strcasecmp(debug_level, "OFF")) { */
     /*     DBUG_PUSH("d:t:i:L:n:P:T:0"); */
     /* } */
@@ -101,6 +105,93 @@ static void test_node_create(void **state)
     free(ndp);
 }
 
+static void test_attr_create(void **state)
+{
+    node_ele_p ndp;
+    const char *lri_str = "fake_class:fake_type";
+    int content_path_id = 2;
+    char *field_name = "test_attr";
+    char *field_data = "1234567";
+    attribute_p ap;
+    char *log_level_save = vlog_get_levels();
+
+    (void) state;
+
+    /* if (strcasecmp(debug_level, "OFF")) { */
+    /*     vlog_set_levels_from_string("DBG"); */
+    /* } */
+
+    assert_false(node_create(&ndp, uri_str, lri_str, content_path_id));
+    assert_false(attr_create(&ap, field_name, AT_STRING, field_data, strlen(field_data), ndp));
+    assert_false(attr_delete(ndp, field_name));
+
+    parsed_uri_free(&ndp->uri);
+    free(ndp->lri);
+    free(ndp);
+    vlog_set_levels_from_string(log_level_save);
+}
+
+static void test_attr_same_create(void **state)
+{
+    node_ele_p ndp;
+    const char *lri_str = "fake_class:fake_type";
+    int content_path_id = 2;
+    char *field_name = "test_attr";
+    char *field_data = "1234567";
+    attribute_p ap, ap1;
+    char *log_level_save = vlog_get_levels();
+
+    (void) state;
+
+    if (strcasecmp(debug_level, "OFF")) {
+        vlog_set_levels_from_string("INFO");
+    }
+
+    assert_false(node_create(&ndp, uri_str, lri_str, content_path_id));
+    assert_false(attr_create(&ap, field_name, AT_STRING, field_data, strlen(field_data), ndp));
+    assert_false(attr_create(&ap1, field_name, AT_STRING, field_data, strlen(field_data), ndp));
+    node_dump(ndp);
+
+    assert_false(attr_delete(ndp, field_name));
+    node_dump(ndp);
+
+    parsed_uri_free(&ndp->uri);
+    free(ndp->lri);
+    free(ndp);
+    vlog_set_levels_from_string(log_level_save);
+}
+
+static void test_attr_same_name_data_diff(void **state)
+{
+    node_ele_p ndp;
+    const char *lri_str = "fake_class:fake_type";
+    int content_path_id = 2;
+    const char *field_name1 = "test_attr";
+    const char *field_name2 = "test different name same attr value";
+    char *field_data = "1234567";
+    attribute_p ap, ap1;
+    char *log_level_save = vlog_get_levels();
+
+    (void) state;
+
+    if (strcasecmp(debug_level, "OFF")) {
+        vlog_set_levels_from_string("INFO");
+    }
+
+    assert_false(node_create(&ndp, uri_str, lri_str, content_path_id));
+    assert_false(attr_create(&ap, field_name1, AT_STRING, field_data, strlen(field_data), ndp));
+    assert_false(attr_create(&ap1, field_name2, AT_STRING, field_data, strlen(field_data), ndp));
+    node_dump(ndp);
+    assert_false(attr_delete(ndp, field_name1));
+    assert_false(attr_delete(ndp, field_name2));
+    node_dump(ndp);
+
+    parsed_uri_free(&ndp->uri);
+    free(ndp->lri);
+    free(ndp);
+    vlog_set_levels_from_string(log_level_save);
+}
+
 static void test_node_create_delete1(void **state)
 {
     node_ele_p ndp;
@@ -109,15 +200,9 @@ static void test_node_create_delete1(void **state)
     int count;
 
     (void) state;
-    /* if (strcasecmp(debug_level, "OFF")) { */
-    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
-    /* } */
 
     assert_false(node_create(&ndp, uri_str, lri_str, content_path_id));
     assert_false(node_delete(&ndp, &count));
-    if (strcasecmp(debug_level, "OFF")) {
-        DBUG_PUSH("");
-    }
 }
 
 static void test_node_create_del_with_children(void **state)
@@ -132,9 +217,6 @@ static void test_node_create_del_with_children(void **state)
     int count, i;
 
     (void) state;
-    /* if (strcasecmp(debug_level, "OFF")) { */
-    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
-    /* } */
 
     assert_false(node_create(&parent, uri_str, &lri_str, content_path_id));
     for (i=0; i < NUM_OF_CHILDREN; i++) {
@@ -147,10 +229,8 @@ static void test_node_create_del_with_children(void **state)
         assert_false(node_attach_child(parent, child[i]));
     }
     assert_false(node_delete(&parent, &count));
-    if (strcasecmp(debug_level, "OFF")) {
-        DBUG_PUSH("");
-    }
 }
+
 
 static void test_modb_insert(void **state)
 {
@@ -202,9 +282,6 @@ static void test_modb_create_node_many(void **state)
 
     (void) state;
 
-    /* if (strcasecmp(debug_level, "OFF")) { */
-    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
-    /* } */
     assert_false(modb_initialize());
 
     /* create each node and insert it */
@@ -277,9 +354,6 @@ static void test_modb_create_node_tree(void **state)
 
     (void) state;
 
-    /* if (strcasecmp(debug_level, "OFF")) { */
-    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
-    /* } */
     assert_false(modb_initialize());
     create_node_tree(&parent, 5);
     assert_false(modb_op(OP_INSERT, (void *)parent, IT_NODE, 1, EXT_NODE, &rs));
@@ -293,10 +367,6 @@ static void test_modb_delete_node_tree(void **state)
     node_ele_p parent;
 
     (void) state;
-
-    /* if (strcasecmp(debug_level, "OFF")) { */
-    /*     DBUG_PUSH("-#d:t:i:L:n:P:T:0"); */
-    /* } */
     
     assert_false(modb_initialize());
 
@@ -337,7 +407,9 @@ int main(int argc, char *argv[])
         unit_test(test_modb_create_node_many),
         unit_test(test_modb_create_node_tree),
         unit_test(test_modb_delete_node_tree),
-
+        unit_test(test_attr_create),
+        unit_test(test_attr_same_create),
+        unit_test(test_attr_same_name_data_diff),
     };
 
     test_setup();

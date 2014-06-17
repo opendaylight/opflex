@@ -57,6 +57,7 @@
 extern "C" {
 #endif
 
+
 #define FIN "<--"
 #define FUNC_IN "<--"
 #define FUNC_OUT "-->"
@@ -294,6 +295,14 @@ void vlog_usage(void);
             VLL_INFO,                                  /* min_level */  \
             true                               /* honor_rate_limits */  \
         };
+
+#define VLOG_ENTER(a) VLOG_DBG("%s:%d:%s:<-", __FILE__, __LINE__, a)
+#define VLOG_LEAVE(a) VLOG_DBG("%s:%d:%s:->", __FILE__, __LINE__, a)
+
+#ifdef USE_VLOG
+#define ENTER VLOG_ENTER
+#define LEAVE(a) VLOG_LEAVE(a)
+#endif
 
 #ifdef  __cplusplus
 }

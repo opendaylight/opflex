@@ -157,6 +157,12 @@ extern "C"
 #define DBUG_my_pthread_mutex_unlock_FILE
 #define DBUG_ASSERT(A) {}
 #endif
+
+#ifndef USE_VLOG
+#define ENTER DBUG_ENTER
+#define LEAVE(a) DBUG_LEAVE
+#endif
+
 #ifdef	__cplusplus
 }
 #endif

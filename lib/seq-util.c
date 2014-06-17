@@ -5,6 +5,7 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
+#define USE_VLOG 1
 
 #include <config.h>
 #include <stdlib.h>
@@ -13,7 +14,10 @@
 
 #include "seq-util.h"
 #include "util.h"
+#include "vlog.h"
 #include "dbug.h"
+
+VLOG_DEFINE_THIS_MODULE(seq_util);
 
 
 /* sequence_init - initialize a sequence.
@@ -34,14 +38,15 @@ sequence_init(sequencer_p *sp, uint32_t start_num, uint32_t bump_by_value)
 {
     static char *mod = "sequence_init";
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     *sp = xzalloc(sizeof(sequencer_t));
     pag_rwlock_init(&(*sp)->rwlock);
     pag_rwlock_wrlock(&(*sp)->rwlock);
     (*sp)->sequencer = start_num;
     (*sp)->bump_value = bump_by_value;
     pag_rwlock_unlock(&(*sp)->rwlock);
-    DBUG_RETURN(0);
+    LEAVE(mod);
+    return(0);
 }
 
 /* sequence_destroy - destorys the sequence.
@@ -55,11 +60,12 @@ sequence_destroy(sequencer_p *sp)
 {
     static char *mod = "sequence_destroy";
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     pag_rwlock_wrlock(&(*sp)->rwlock);
     pag_rwlock_destroy(&(*sp)->rwlock);
     free(*sp);
-    DBUG_VOID_RETURN;
+    LEAVE(mod);
+    return;
 }
     
 /* sequence_next - bumps the sequncer by the bump_value and returnes 
@@ -76,13 +82,13 @@ uint32_t sequence_next(sequencer_p sp)
     static char *mod = "sequence_next";
     uint32_t rtn_seq = 0;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     pag_rwlock_wrlock(&sp->rwlock);
     sp->sequencer += sp->bump_value;
     rtn_seq = sp->sequencer;
     pag_rwlock_unlock(&sp->rwlock);
-    DBUG_PRINT("DEBUG", ("%s: rtn_seq=%u", mod, rtn_seq));
-    DBUG_LEAVE;
+    VLOG_DBG("%s: rtn_seq=%u", mod, rtn_seq);
+    LEAVE(mod);
     return(rtn_seq);
 }
     
@@ -100,11 +106,12 @@ sequence_current(sequencer_p sp)
     static char *mod = "sequence_current";
     uint32_t rtn_seq = 0;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     pag_rwlock_rdlock(&sp->rwlock);
     rtn_seq = sp->sequencer;
     pag_rwlock_unlock(&sp->rwlock);
-    DBUG_RETURN(rtn_seq);
+    LEAVE(mod);
+    return(rtn_seq);
 }
 
 /* sequence_set - set the sequencer.
@@ -123,9 +130,10 @@ sequence_set(sequencer_p sp, uint32_t num)
     static char *mod = "sequence_set";
     uint32_t rtn_seq = 0;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     pag_rwlock_wrlock(&sp->rwlock);
     rtn_seq = sp->sequencer = num;
     pag_rwlock_unlock(&sp->rwlock);
-    DBUG_RETURN(rtn_seq);
+    LEAVE(mod);
+    return(rtn_seq);
 }

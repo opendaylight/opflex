@@ -5,17 +5,19 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
-
+#define USE_VLOG 1
 #include <config.h>
 #include <stdlib.h>
 #include "util.h"
 #include "cnf-parser.h"
 #include "config-file.h"
+#include "vlog.h"
 #include "dbug.h"
 
 /* 
  * This is the config file management.
  */
+VLOG_DEFINE_THIS_MODULE(config_file);
 
 /*
  * TODO dkehn@noironetworks.com - this need to be driver by the 
@@ -75,7 +77,7 @@ static char *conf_getitem(const char * group, const char *key) {
         if (!conf_load(config_fname)) {
             dp = get_default(group, key);
             if (dp = NULL) {
-                DBUG_PRINT("WARN", ("conf_getitem: Invalid key:[%s]", key));
+                VLOG_WARN("conf_getitem: Invalid key:[%s]", key);
                 retp = NULL; 
             }
             else {
@@ -115,8 +117,10 @@ bool conf_initialize(struct option_ele *mod_options)
     struct option_ele *gp;
     int cnt;
 
+#ifndef USE_VLOG
     DBUG_PROCESS("config");
-    DBUG_ENTER(mod);
+#endif
+    ENTER(mod);
     /* if its not been initialized then create it with the globals */
     if (opt_default_lookup == NULL) {
         DBUG_PRINT("DEBUG", ("adding globals"));
@@ -141,7 +145,8 @@ bool conf_initialize(struct option_ele *mod_options)
         /* last cell NULLs */
         gp->group = gp->key = gp->default_val = NULL;
     }
-    DBUG_RETURN(0);
+    LEAVE(mod);
+    return(0);
 }
 
 const char *conf_get_value(char *section, char *key)
@@ -151,8 +156,12 @@ const char *conf_get_value(char *section, char *key)
     char *dp = NULL;
     char *retp;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
+#ifdef USE_VLOG
+    VLOG_DBG("(section=%s, key=%s)", section, key);
+#else
     DBUG_PRINT("DEBUG", ("(section=%s, key=%s)", section, key));
+#endif
     /* get the default, becuse we always need it for
        cnf_parser_getstring. */
     if ((dp = get_default(section, key)) == NULL) {
@@ -167,7 +176,8 @@ const char *conf_get_value(char *section, char *key)
     } else {
         retp = dp;
     }
-    DBUG_RETURN(retp);
+    LEAVE(mod);
+    return(retp);
 }
 
 bool conf_file_isloaded(void)
@@ -179,13 +189,13 @@ bool conf_load(const char *cnf_fname)
 {
     int retc = 0;
 
-    DBUG_PRINT("INFO", ("conf_load loading %s", cnf_fname));
+    VLOG_INFO("conf_load loading %s", cnf_fname);
     if ((my_configs = cnf_parser_load(cnf_fname))) {
         memset(config_fname, sizeof(config_fname), 0);
         strcpy(config_fname, cnf_fname);
         retc = 1;
     } else {
-        DBUG_PRINT("ERROR", ("conf_load failed, can't load %s", cnf_fname));
+        VLOG_ERR("conf_load failed, can't load %s", cnf_fname);
         retc = 0;
     }
     return (retc);

@@ -5,6 +5,7 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
+#define USE_VLOG 1
 
 #include <config.h>
 #include <stdlib.h>
@@ -27,7 +28,9 @@
 #include "vlog.h"
 #include "dbug.h"
 
+
 VLOG_DEFINE_THIS_MODULE(modb);
+
 
 /*
  * modb - Managed Object Database
@@ -46,6 +49,7 @@ VLOG_DEFINE_THIS_MODULE(modb);
  */
 static pthread_t modb_tid;
 static FILENAME modb_fname;
+static bool modb_initialized = false;
 
 /*
  * config definitions:
@@ -75,23 +79,23 @@ static struct option_ele modb_config_defaults[] = {
     {MODB_SECTION, CLASS_IDX_SZ_TAG, "4000"},
     {MODB_SECTION, NODE_IDX_SZ_TAG, "4000"},
     {MODB_SECTION, URI_IDX_SZ_TAG, "4000"},
-    {MODB_SECTION, URI_ATTR_IDX_SZ_TAG, "8000"},
+    {MODB_SECTION, ATTR_IDX_SZ_TAG, "8000"},
     {MODB_SECTION, "mod_debug", "false"},
     {NULL, NULL, NULL}
 };
 
 /* Index lookups
 */
-static struct hash_index class_id_shash = {0};
-static struct hash_index node_id_shash = {0};
-static struct hash_index uri_shash = {0};
-static struct hash_index uri_attr_shash = {0};
+static hash_index_t class_id_shash = {0};
+static hash_index_t node_id_shash = {0};
+static hash_index_t uri_shash = {0};
+static hash_index_t attr_shash = {0};
 
 static hash_init_t index_init_list[] = { 
     {NODE_INDEX_NAME, &node_id_shash},
     {CLASS_INDEX_NAME, &class_id_shash},
     {URI_INDEX_NAME, &uri_shash},
-    {URI_ATTR_INDEX_NAME, &uri_attr_shash},
+    {ATTR_INDEX_NAME, &attr_shash},
     {NULL, NULL}
 };
 
@@ -147,13 +151,14 @@ static bool find_ndp_func(void *item, void *dp);
 static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *rows);
 static void node_ele_destroy(node_ele_p *ndp);
 static const char *opcode_to_string(int opc);
-
+static node_ele_p node_search(void *dp, enum_itype itype);
 
 /* Attr protos */
 static bool attr_list_free_all(head_list_p *ahdp);
-static void attr_ele_destroy(attribute_p *attrp);
+static void attr_ele_destroy(attribute_p ap);
 static bool attr_add_to_node(node_ele_p ndp, attribute_p attrp);
-
+static bool attr_find_list_name(void *search_name, void *ap);
+static char *attr_type_to_string(int ftype);
 
 /* 
  * Index protos 
@@ -166,6 +171,7 @@ static bool index_delete_node_from_all(hash_init_p hash_initp, node_ele_p ndp);
 static bool index_add_node(hash_index_p hip, node_ele_p ndp, char *key);
 static void index_dump(hash_init_p iilp, bool index_node_dump);
 static int index_add_all_in_tree(node_ele_p parent);
+static bool index_add_attr(hash_index_p hip, attribute_p ap);
 
 
 
@@ -184,34 +190,45 @@ bool modb_initialize(void)
     bool retb = 0;
     hash_init_p iilp = NULL;
 
-    //    DBUG_PUSH("d:t:i:L:n:P:T:0");
+    ENTER(mod);
+#ifndef USE_VLOG
     DBUG_PROCESS("modb");
+#endif
 
-    DBUG_ENTER(mod);
+    if (!modb_initialized) {
+        modb_tid = pthread_self();
+        conf_initialize(modb_config_defaults);
 
-    modb_tid = pthread_self();
-    conf_initialize(modb_config_defaults);
+        /* Initialize the indexes */
+        for (iilp = index_init_list; iilp->name != NULL; iilp++) {
+            index_create(iilp->hidx, iilp->name);
+        }
 
-    /* Initialize the indexes */
-    for (iilp = index_init_list; iilp->name != NULL; iilp++) {
-        index_create(iilp->hidx, iilp->name);
+        /* Create the node head.   */
+        head_list_create(&node_list);
+
+        /* create the sequence numbering for the head_list, this will be the 
+         * unique node.ids for all nodes in the MODB */
+        sequence_init(&modb_sequence, DEFAULT_SEQ_START_NUMBER,
+                      DEFAULT_SEQ_INC);
+
+        /* crash recovery? */
+        if (strcasecmp(conf_get_value(MODB_SECTION, "crash_recovery"), "true") == 0) {
+            modb_fname = fnm_create(".dat", MODB_FNAME, pag_dbdir(), NULL);
+            modb_crash_recovery(fnm_path(modb_fname));
+        }
+
+        modb_initialized = true;
     }
+    LEAVE(mod);
+    return(retb);
+}
 
-    /* Create the node head.   */
-    head_list_create(&node_list);
-
-    /* create the sequence numbering for the head_list, this will be the 
-     * unique node.ids for all nodes in the MODB */
-    sequence_init(&modb_sequence, DEFAULT_SEQ_START_NUMBER,
-                  DEFAULT_SEQ_INC);
-
-    /* crash recovery? */
-    if (strcasecmp(conf_get_value(MODB_SECTION, "crash_recovery"), "true") == 0) {
-        modb_fname = fnm_create(".dat", MODB_FNAME, pag_dbdir(), NULL);
-        modb_crash_recovery(fnm_path(modb_fname));
-    }
-    
-    DBUG_RETURN(retb);
+/* modb_is_intiialized - returns the modb_initialized flag.
+ */
+bool modb_is_initialized(void) 
+{
+    return(modb_initialized);
 }
 
 /* modb_get_state - This is an accessor for the head state.
@@ -224,12 +241,17 @@ enum_head_state modb_get_state(void)
     static char *mod = "modb_get_state";
     enum_head_state state;
 
-    DBUG_ENTER(mod);
-    pag_rwlock_rdlock(&node_list->rwlock);
-    state = node_list->state;
-    pag_rwlock_unlock(&node_list->rwlock);
+    ENTER(mod);
+    if (modb_is_initialized()) {
+        pag_rwlock_rdlock(&node_list->rwlock);
+        state = node_list->state;
+        pag_rwlock_unlock(&node_list->rwlock);
+    } else {
+        state = HD_ST_NOT_INITIALIZED;
+    }
 
-    DBUG_RETURN(state);
+    LEAVE(mod);
+    return(state);
 }
 
 /* node_create - this wiil allocate the node_ele_t and initialize it
@@ -255,8 +277,13 @@ bool node_create(node_ele_p *ndp, const char *uri_str, const char *lri,
 {
     static char *mod = "node_create";
 
+#ifdef USE_VLOG
+    VLOG_ENTER(mod);
+    VLOG_DBG("%s: uri=%s lri=%s", mod, uri_str, lri);
+#else
     DBUG_ENTER(mod);
     DBUG_PRINT("DEBUG",("uri=%s lri=%s", uri_str, lri));
+#endif
 
     *ndp = xzalloc(sizeof(node_ele_t));
     pag_rwlock_init(&(*ndp)->rwlock);
@@ -270,7 +297,7 @@ bool node_create(node_ele_p *ndp, const char *uri_str, const char *lri,
     (*ndp)->properties_list = NULL;
     (*ndp)->state = ND_ST_PENDING_INSERT;
 
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(0);
 }
 
@@ -293,16 +320,22 @@ bool node_delete(node_ele_p *ndp, int *del_cnt)
     head_list_p child_hdp, attr_hdp;
     int rcnt;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
+#ifdef USE_VLOG
+    VLOG_INFO("uri=%s lri=%s", (*ndp)->uri->uri, (*ndp)->lri);
+#else
     DBUG_PRINT("DEBUG",("uri=%s lri=%s", (*ndp)->uri->uri,
                         (*ndp)->lri));
+#endif
     *del_cnt = 0;
 
     /* make sure this is not in the MODB */
-    if (shash_find(&uri_shash, (*ndp)->uri->uri) != NULL) {
-        VLOG_ERR("%s: node: %s is found in the MODB", mod, (*ndp)->uri->uri);
-        retb = true;
-        goto rtn_return;
+    if (modb_initialized) {
+        if (shash_find(&uri_shash.htable, (*ndp)->uri->uri) != NULL) {
+            VLOG_ERR("%s: node: %s is found in the MODB", mod, (*ndp)->uri->uri);
+            retb = true;
+            goto rtn_return;
+        }
     }
     
     while (complete == false) {
@@ -340,11 +373,11 @@ bool node_delete(node_ele_p *ndp, int *del_cnt)
         pag_rwlock_destroy(&(*ndp)->rwlock);
             
         free(*ndp);
-        *del_cnt++;
+        *del_cnt += 1;
     }
     
  rtn_return:
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(retb);
 }
 
@@ -363,7 +396,7 @@ bool node_attach_child(node_ele_p parent, node_ele_p child)
 {
     static char *mod = "node_attach_child";
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
 
     pag_rwlock_wrlock(&parent->rwlock);
     if (parent->child_list == NULL) {
@@ -377,7 +410,7 @@ bool node_attach_child(node_ele_p parent, node_ele_p child)
     pag_rwlock_unlock(&child->rwlock);
     pag_rwlock_unlock(&parent->rwlock);
 
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(0);
 }
 
@@ -413,14 +446,23 @@ int modb_op(int operation, void *dp, int itype, int dp_count,
     struct timeval start = tv_tod();
     struct timeval elapsed;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
+#ifdef USE_VLOG
+    VLOG_INFO("op=%s",opcode_to_string(operation));
+#else
     DBUG_PRINT("DEBUG", ("op=%s",opcode_to_string(operation)));
+#endif
 
     memset(resultp, 0, sizeof(result_t));
     resultp->ret_code = OP_RC_SUCCESS;
     resultp->op = operation;
     memset(resultp->err_msg, 0, ERR_MSG_SZ);
 
+    if (!modb_initialized) {
+        sprintf(resultp->err_msg, "MODB not initialized");
+        resultp->ret_code = OP_RC_ERROR;
+        goto rtn_return;
+    }
     switch (operation) {
     case OP_INSERT:
         for (i=0, ndp=(node_ele_p)dp; i < dp_count; ndp++, i++) {
@@ -508,7 +550,8 @@ int modb_op(int operation, void *dp, int itype, int dp_count,
     elapsed = tv_subtract(tv_tod(), start);
     memset(resultp->elapsed, 0, ELAPSED_TIME_SZ);
     sprintf(resultp->elapsed,"%s secs.", tv_show(elapsed, false, NULL));
-    DBUG_RETURN(resultp->ret_code);
+    LEAVE(mod);
+    return(resultp->ret_code);
 }
 
 /* opcode_to_string - converts the operation code to string.
@@ -549,14 +592,16 @@ void modb_cleanup(void)
     static char *mod = "modb_cleanup";
     hash_init_p iilp = NULL;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
 
-    /* remove the indexes */
-    for (iilp = index_init_list; iilp->name != NULL; iilp++) {
-        index_destroy(iilp->hidx);
+    if (modb_initialized) {
+        /* remove the indexes */
+        for (iilp = index_init_list; iilp->name != NULL; iilp++) {
+            index_destroy(iilp->hidx);
+        }
+        modb_initialized = false;
     }
-
-    DBUG_VOID_RETURN;
+    LEAVE(mod);
 }
 
 /* modb_dump - this is a diagnostic tool for dumping the contents of the
@@ -574,32 +619,44 @@ void modb_dump(bool index_node_dump)
     size_t count = 0;
     int i;
 
-    DBUG_ENTER(mod);
-    pag_rwlock_rdlock(&node_list->rwlock);
-    count = (size_t)list_length(node_list->list);
+    ENTER(mod);
+    if (modb_initialized) {
+        pag_rwlock_rdlock(&node_list->rwlock);
+        count = (size_t)list_length(node_list->list);
 
-    /* dump the head */
-    DBUG_PRINT("INFO", ("*************************************"));
-    DBUG_PRINT("INFO", ("***** MODB DUMP *********************"));
-    DBUG_PRINT("INFO", ("*************************************"));
-    DBUG_PRINT("INFO", (" State:%s", head_state_msg[node_list->state]));
-    DBUG_PRINT("INFO", (" head count:%d   actual:%d", node_list->num_elements,
-                        (int)count));
+        /* dump the head */
+#ifdef USE_VLOG
+        VLOG_INFO("*************************************");
+        VLOG_INFO("***** MODB DUMP *********************");
+        VLOG_INFO("*************************************");
+        VLOG_INFO(" State:%s", head_state_msg[node_list->state]);
+        VLOG_INFO(" head count:%d   actual:%d", node_list->num_elements,
+                  (int)count);
+#else
+        DBUG_PRINT("INFO", ("*************************************"));
+        DBUG_PRINT("INFO", ("***** MODB DUMP *********************"));
+        DBUG_PRINT("INFO", ("*************************************"));
+        DBUG_PRINT("INFO", (" State:%s", head_state_msg[node_list->state]));
+        DBUG_PRINT("INFO", (" head count:%d   actual:%d", node_list->num_elements,
+                            (int)count));
+#endif
     
-    /* Dump the node data */
-    for (i=1; i <= count; i++) {
-        ndp = list_get(node_list->list, i);
-        if (ndp == NULL) {
-            VLOG_ERR("%s: ndp is NULL: %d", mod, i);
-            break;
-        } else {
-            dump_node(ndp);
+        /* Dump the node data */
+        for (i=1; i <= count; i++) {
+            ndp = list_get(node_list->list, i);
+            if (ndp == NULL) {
+                VLOG_ERR("%s: ndp is NULL: %d", mod, i);
+                break;
+            } else {
+                node_dump(ndp);
+            }
         }
-    }
-    pag_rwlock_unlock(&node_list->rwlock);
+        pag_rwlock_unlock(&node_list->rwlock);
 
-    index_dump(index_init_list, index_node_dump);
-    DBUG_VOID_RETURN;
+        index_dump(index_init_list, index_node_dump);
+    }
+    LEAVE(mod);
+    return;
 }
 
 /* 
@@ -621,18 +678,24 @@ bool modb_crash_recovery(const char *dbfile)
     char *dbpath;
     FILENAME dbfname = {0};
     
-    DBUG_ENTER(mod);
+    ENTER(mod);
+#ifdef USE_VLOG
+    VLOG_INFO("dbfile=%s", dbfile);
+#else
     DBUG_PRINT("DEBUG", ("dbfile=%s", dbfile));
-    
-    dbpath = (char *)pag_dbdir();
-    if (fnm_exists(dbfname)) {
-        DBUG_PRINT("DEBUG" , ("%s: loading: %s\n", mod, fnm_path(dbfname)));
+#endif
 
-        /* TODO: dkehn, must build out the crash recovery */
-        retb = 0;
+    if (modb_initialized) {
+        dbpath = (char *)pag_dbdir();
+        if (fnm_exists(dbfname)) {
+            DBUG_PRINT("DEBUG" , ("%s: loading: %s\n", mod, fnm_path(dbfname)));
+
+            /* TODO: dkehn, must build out the crash recovery */
+            retb = 0;
+        }
     }
-
-    DBUG_RETURN(retb);
+    LEAVE(mod);
+    return(retb);
 }
 
 /* ****************************************************************************
@@ -656,7 +719,7 @@ bool head_list_create(head_list_p *hdp)
     static char *mod = "head_list_create";
     bool retb = false;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     *hdp = xzalloc(sizeof(head_list_t));
     pag_rwlock_init(&(*hdp)->rwlock);
     pag_rwlock_wrlock(&(*hdp)->rwlock);
@@ -665,7 +728,8 @@ bool head_list_create(head_list_p *hdp)
     head_change_state((*hdp), HD_ST_INITIALIZED);
     pag_rwlock_unlock(&(*hdp)->rwlock);
 
-    DBUG_RETURN(retb);
+    LEAVE(mod);
+    return(retb);
 }
 
 /* 
@@ -683,7 +747,7 @@ static bool head_list_destroy(head_list_p *hdp, bool force)
     static char *mod = "head_list_destroy";
     bool retb = false;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     DBUG_PRINT("DEBUG", ("force=%d", force));
     pag_rwlock_wrlock(&(*hdp)->rwlock);
     head_change_state((*hdp), HD_ST_DESTROYING);
@@ -699,7 +763,63 @@ static bool head_list_destroy(head_list_p *hdp, bool force)
     pag_rwlock_destroy(&(*hdp)->rwlock);        
     *hdp = NULL;
  rtn_return:    
-    DBUG_RETURN(retb);
+    LEAVE(mod);
+    return(retb);
+}
+
+/* node_search - this is used to find a node in the indexes, will
+ *   return a point of that node to the caller.
+ *
+ * where:
+ * @param0 <dp>               - I
+ *          data pointer, can be a uri, node.id, class_id
+ * @param0 <itype>            - I
+ *          enum_itype, which defines with index to use.
+ * @return <ndp>              - I
+ *        if successful, will return a valid ndp from the MODB.
+ *         
+ */
+static node_ele_p node_search(void *dp, enum_itype itype)
+{
+    static char *mod = "node_search";
+    node_ele_p rtn_ndp = NULL;
+    char key[256] = {0};
+    struct shash_node *shp = NULL;
+    hash_index_p hashp;
+    
+    ENTER(mod);
+    if (modb_initialized) {
+        switch (itype) {
+        case IT_NODE_INDEX:
+            sprintf(key, "%u", *((uint32_t *)dp));
+            hashp = &node_id_shash;
+            break;
+        case IT_CLASS_ID_INDEX:
+            sprintf(key, "%u", *((uint32_t *)dp));
+            hashp = &class_id_shash;
+            break;
+        case IT_ANY:
+        case IT_NODE:
+            sprintf(key, "%s", ((node_ele_p)dp)->uri->uri);
+            hashp = &uri_shash;
+            break;
+        case IT_URI_INDEX:
+            sprintf(key, "%s", (char *)dp);
+            hashp = &uri_shash;
+            break;
+        default:
+            hashp = NULL;
+            break;
+        }
+        if (hashp) {
+            shp = shash_find(&hashp->htable, (char *)&key);
+            if (shp) {
+                rtn_ndp = (node_ele_p)shp->data;
+            }
+        }
+    }
+    LEAVE(mod);
+    return(rtn_ndp);
 }
 
 /* node_list_delete - this uses nopde_ele_p to delete a node and based
@@ -729,8 +849,12 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
     int child_cnt;
     head_list_p child_hdp, attr_hdp;
     
-    DBUG_ENTER(mod);
+    ENTER(mod);
+#ifdef USE_VLOG
+    VLOG_DBG("node.id:%d extent:%s", ndp->id, extent_to_string(extent));
+#else
     DBUG_PRINT("DEBUG", ("node.id:%d extent:%s", ndp->id, extent_to_string(extent)));
+#endif
     node_deleted = 0;
     while (complete == false) {
         pag_rwlock_wrlock(&hdp->rwlock);
@@ -802,7 +926,7 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
         *rows = node_deleted;
         
     }
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(retb);
 }
 
@@ -828,7 +952,7 @@ uint32_t node_list_insert(head_list_p hdp, node_ele_p ndp)
     uint32_t rtn_id = 0;
     enum_head_state save_hd_state;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     pag_rwlock_wrlock(&ndp->rwlock);
     pag_rwlock_wrlock(&hdp->rwlock);
     save_hd_state = hdp->state;
@@ -859,7 +983,8 @@ uint32_t node_list_insert(head_list_p hdp, node_ele_p ndp)
         }
     }
 
-    DBUG_RETURN(rtn_id);
+    LEAVE(mod);
+    return(rtn_id);
 }
 
 /*
@@ -877,7 +1002,7 @@ static bool node_list_free_all(head_list_p hdp)
     node_ele_t *ndp;
     int save_hd_state;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     save_hd_state = hdp->state;
     hdp->state = HD_ST_FREEALL;
     
@@ -891,7 +1016,8 @@ static bool node_list_free_all(head_list_p hdp)
     }
 
     hdp->state = save_hd_state;
-    DBUG_RETURN(retb);
+    LEAVE(mod);
+    return(retb);
 }
 
 /* node_ele_destroy - frees and node_ele_t and its attr.
@@ -904,7 +1030,7 @@ static bool node_list_free_all(head_list_p hdp)
 static void node_ele_destroy(node_ele_p *ndp)
 {
     static char *mod = "node-ele_destroy";
-    DBUG_ENTER(mod);
+    ENTER(mod);
     
     pag_rwlock_wrlock(&(*ndp)->rwlock);
     DBUG_PRINT("DEBUG", ("deleting %p:%d", *ndp, (*ndp)->uri->hash));
@@ -917,18 +1043,34 @@ static void node_ele_destroy(node_ele_p *ndp)
     parsed_uri_free(&(*ndp)->uri);
     pag_rwlock_destroy(&(*ndp)->rwlock);
     free(*ndp);
-    DBUG_VOID_RETURN;
+    LEAVE(mod);
+    return;
 }
 
-/* dump_node - dumps the data in a node.
+/* node_dump - dumps the data in a node.
  *
  * where:
  * @param0 <ndp>          - I
  *         pointer to the node (node_ele_t *)
  *
  */
-void dump_node(node_ele_p ndp)
+void node_dump(node_ele_p ndp)
 {
+#ifdef USE_VLOG
+    VLOG_INFO(" ****** Node[%p]: id=%d class_id:%d cpid:%d",
+              ndp, ndp->id, ndp->class_id, ndp->content_path_id);
+    VLOG_INFO("  state:%s enfstate:%s", node_state_msg[ndp->state],
+              enforcement_state_msg[ndp->enforce_state]);
+    VLOG_INFO("  lri:%s", ndp->lri);
+    VLOG_INFO("  uri:uri:%s", ndp->uri->uri);
+    VLOG_INFO("  uri:host:%s", ndp->uri->host);
+    VLOG_INFO("  uri:hash:%u", ndp->uri->hash);
+    VLOG_INFO("  uri:path:%s", ndp->uri->path);
+    VLOG_INFO("  parent:%p", ndp->parent);
+    VLOG_INFO("  child_list:%p", ndp->child_list);
+    VLOG_INFO("  properties_list:%p", ndp->properties_list);
+    attr_dump(ndp);
+#else
     DBUG_PRINT("INFO", (" ****** Node[%p]: id=%d class_id:%d cpid:%d",
                         ndp, ndp->id, ndp->class_id, ndp->content_path_id));
     DBUG_PRINT("INFO", ("  state:%s enfstate:%s", node_state_msg[ndp->state],
@@ -941,6 +1083,7 @@ void dump_node(node_ele_p ndp)
     DBUG_PRINT("INFO", ("  parent:%p", ndp->parent));
     DBUG_PRINT("INFO", ("  uri:%p", ndp->child_list));
     DBUG_PRINT("INFO", ("  uri:%p", ndp->properties_list));
+#endif
 }
 
 
@@ -961,21 +1104,22 @@ static bool attr_list_free_all(head_list_p *ahdp)
 {
     static char *mod = "attr_list_free_all";
     bool retb = false;
-    atrribute_t *attr_p = NULL;
+    attribute_t *attr_p = NULL;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     if ((*ahdp)) {
         pag_rwlock_wrlock(&(*ahdp)->rwlock);
         while ((*ahdp)->num_elements) {
             attr_p = list_delete(&(*ahdp)->list, 1);
             /* Note: the index is deleted from node_delete operation */        
-            attr_ele_destroy(&attr_p);
+            attr_ele_destroy(attr_p);
         }
         pag_rwlock_destroy(&(*ahdp)->rwlock);
         free(*ahdp);
         *ahdp = NULL;
     }
-    DBUG_RETURN(retb);
+    LEAVE(mod);
+    return(retb);
 }
 
 /* 
@@ -987,15 +1131,104 @@ static bool attr_list_free_all(head_list_p *ahdp)
  *         attribute_p
  *
  */
-static void attr_ele_destroy(attribute_p *attrp)
+static void attr_ele_destroy(attribute_p ap)
 {
     static char *mod = "attr_ele_destory";
 
-    DBUG_ENTER(mod);
-    free((*attrp)->field_name);
-    free((*attrp)->dp);
-    free(*attrp);
-    DBUG_VOID_RETURN;
+    ENTER(mod);
+    free(ap->field_name);
+    free(ap->dp);
+    free(ap);
+    LEAVE(mod);
+    return;
+}
+
+/*
+ * attr_create - creates a strribute that would be attached to a node_ele_t
+ *    If the node_ele_p is not NULL it will attache to the node's 
+ *    properties_list.
+ *
+ * where:
+ * @param0: <ap>           - I/O
+ *          this is a ** to where the attributes will be returned
+ * @param1 <name>          - I
+ *          the name of the attribute.
+ * @param2 <atype>         - I
+ *          enum_field_type for the dp.
+ * @param3 <dp>            - I 
+ *          pointere to the data.
+ * @param4 <dp_len>        - I
+ *          The len of data in dp should include room for ending '\0' 
+ *          if necessary.
+ * @param5 <ndp>           - I
+ *          If present (non-NULL), the newly created ap will be 
+ *          attached to this ndp.
+ * @returns: 0 sucess, else 1.
+ *
+ */
+bool attr_create(attribute_p *ap, char *name, int atype,
+                 void *dp, uint32_t dp_len, node_ele_p ndp)
+{
+    static char *mod = "attr_create";
+    bool retb = false;
+
+    ENTER(mod);
+    *ap = xzalloc(sizeof(attribute_t));
+    (*ap)->ndp = NULL;
+    /* (*ap)->field_name = xzalloc(strlen(name)+1); */
+    /* memcpy((*ap)->field_name, name, strlen(name)); */
+    (*ap)->field_name = strdup(name);
+    (*ap)->dp = xzalloc(dp_len);
+    memcpy((*ap)->dp, dp, dp_len);
+    (*ap)->field_length = dp_len;
+    (*ap)->attr_type = atype;
+    (*ap)->flags = ATTR_FG_NEW;
+
+    if (ndp) {
+        attr_add_to_node(ndp, (*ap));
+    }
+    LEAVE(mod);
+    return(retb);
+}
+
+/*
+ * attr_delete - deletes an attribute associated to a node by its name, 
+ *    if there are duplicates it will delete them all.
+ *
+ * where:
+ * @param0: <ndp>           - I
+ *          this is the node ptr to where the propoerty is to be added.
+ * @param1: <name>        - I
+ *          attribute name (field_name)
+ * @returns: 0 success, else 1, NOTE: 1 is returned if not found, and
+ *   0 returned if dups were found and deleted.
+ *
+ */
+bool attr_delete(node_ele_p ndp, char *name)
+{
+    static char *mod = "attr_delete";
+    bool retb = false;
+    attribute_p del_attrp;
+    int lpos;
+
+    ENTER(mod);
+    pag_rwlock_wrlock(&ndp->rwlock);
+    if (ndp->properties_list == NULL) {
+        VLOG_ERR("%s: No property_list on node: %s", mod, ndp->uri->uri);
+        retb = true;
+        goto rtn_return;
+    }
+
+    while ( (lpos = list_find(ndp->properties_list->list, name, attr_find_list_name)) ) {
+        del_attrp = list_delete(&ndp->properties_list->list, lpos);
+        ndp->properties_list->num_elements--;
+        attr_ele_destroy(del_attrp);
+    }
+
+ rtn_return:
+    pag_rwlock_unlock(&ndp->rwlock);
+    LEAVE(mod);
+    return(retb);
 }
 
 /*
@@ -1013,13 +1246,119 @@ static bool attr_add_to_node(node_ele_p ndp, attribute_p attrp)
 {
     static char *mod = "attr_add_to_node";
     bool retb = false;
+    node_ele_p sndp = NULL;
+    attribute_p dup_attrp;
+    int lpos;
+    bool add_attr = true;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     pag_rwlock_wrlock(&ndp->rwlock);
-    list_add(&ndp->properties_list->list, 1, (void *)attrp);
-    ndp->properties_list->num_elements++;
+    attrp->ndp = ndp;
+    if (ndp->properties_list == NULL) {
+        head_list_create(&ndp->properties_list);
+    }
+    /* determine if this is a new or replace of an existing attr */
+    lpos = list_find(ndp->properties_list->list, attrp->field_name, attr_find_list_name);
+    if (lpos > 0) {
+        dup_attrp = list_get(ndp->properties_list->list, lpos);
+        if ( (dup_attrp->field_length == attrp->field_length) && 
+             (!memcmp(dup_attrp->dp, attrp->dp, dup_attrp->field_length)) ) {
+            attr_ele_destroy(attrp);
+            add_attr = false;
+        } else {
+            dup_attrp->flags = ATTR_FG_OLD | ATTR_FG_DUP;
+            attrp->flags |= ATTR_FG_DUP;
+            add_attr = true;
+        }
+    }
+        
+    if (add_attr) {
+        list_add(&ndp->properties_list->list, 1, (void *)attrp);
+        ndp->properties_list->num_elements++;
+        sndp = node_search(ndp->uri->uri, IT_URI_INDEX);
+        if (sndp && sndp == ndp) {
+            /* Index the attr the node is in the MODB */
+            index_add_attr(&attr_shash, attrp);
+        }
+    }
     pag_rwlock_unlock(&ndp->rwlock);
-    DBUG_RETURN(retb);
+
+    LEAVE(mod);
+    return(retb);
+}
+
+/* 
+ * attr_find_list_name - list search function for the get_list call.
+ * 
+ * where:
+ * @param0 <search_name>         - I
+ *      the name we are looking for.
+ * @param1 <ap>                  - I
+ *      the attrp from the list to search against.
+ * @returns <match>              - O
+ *      false if no match, else true is does match
+ */
+static bool attr_find_list_name(void *search_name, void *ap) 
+{
+    static char *mod = "attr_find_list_name";
+    bool match = false;
+    
+    ENTER(mod);
+    if (!strcasecmp((char *)search_name, ((attribute_p)ap)->field_name)) {
+        VLOG_DBG("%s: MATCH: s1:%s, s2:%s", mod, (char *) search_name, 
+                 ((attribute_p)ap)->field_name);
+        match = true;
+    }
+    LEAVE(mod);
+    return(match);
+}
+
+/*
+ * attr_dump - dumps the attr info
+ *
+ * where:
+ * @param0 <ndp>       - I
+ *
+ */
+void attr_dump(node_ele_p ndp)
+{
+    attribute_p ap;
+    int act_count, i, lpos;
+
+    if (ndp->properties_list) {
+        act_count = list_length(ndp->properties_list->list);
+        VLOG_INFO(" === Properties: count: %d actual:%d ===",
+                  ndp->properties_list->num_elements, act_count);
+        if (act_count != ndp->properties_list->num_elements) {
+            pag_rwlock_wrlock(&ndp->rwlock);
+            ndp->properties_list->num_elements = act_count;
+            pag_rwlock_unlock(&ndp->rwlock);
+        }
+  
+        for (i = 0, lpos = 1; i < act_count; i++, lpos++) {
+            ap = list_get(ndp->properties_list->list, lpos);
+            VLOG_INFO("  name:[%s] flags:0x%04x type:%s len:%d val:%s",
+                      ap->field_name, ap->flags, 
+                      attr_type_to_string(ap->attr_type), 
+                      ap->field_length, (char *)ap->dp);
+        }
+    }
+}
+
+/*
+ * attr_type_to_string - converts field type to string
+ */
+static char *attr_type_to_string(int ftype)
+{
+    static char *type_string[] = {
+        "INTEGER",
+        "LONG",
+        "DATE",
+        "STRING",
+        "MAC",
+        "STRING"
+    };
+    return(type_string[ftype]);
 }
 
 /***************************************************************************
@@ -1042,11 +1381,12 @@ static bool index_create(hash_index_p hip, char *name)
     static char *mod = "index_create";
     bool retb = false;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     hip->name = strdup(name);
     shash_init(&hip->htable);
     pag_rwlock_init(&hip->rwlock);
-    DBUG_RETURN(retb);
+    LEAVE(mod);
+    return(retb);
 }
 
 /* index_get_ptr - retrives a single pointer to a node_ele_p from the 
@@ -1068,7 +1408,7 @@ static node_ele_p index_get_ptr(hash_init_p hash_initp, void *idp, int itype)
     hash_index_t *idxp = NULL;
     struct shash_node *shp;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
 
     /* so which index to use */
     idxp = (hash_initp+itype)->hidx;
@@ -1084,7 +1424,8 @@ static node_ele_p index_get_ptr(hash_init_p hash_initp, void *idp, int itype)
     pag_rwlock_unlock(&idxp->rwlock);
     ndp = (node_ele_p)shp->data;
 
-    DBUG_RETURN(ndp);
+    LEAVE(mod);
+    return(ndp);
 }
 
 /*
@@ -1103,12 +1444,12 @@ static bool index_destroy(hash_index_p hip)
     static char *mod = "index_destroy";
     bool retb = false;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     pag_rwlock_wrlock(&hip->rwlock);
     shash_destroy(&hip->htable);
     free(hip->name);
     pag_rwlock_destroy(&hip->rwlock);
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(retb);
 }
 
@@ -1132,7 +1473,7 @@ static bool index_add_node_to_all(hash_init_p hash_initp, node_ele_p ndp)
     bool retb = false;
     char key[256];
     
-    DBUG_ENTER(mod);
+    ENTER(mod);
 
     for (iilp = hash_initp; iilp->name != NULL; iilp++) {
         memset(key, 0, sizeof(key));
@@ -1151,7 +1492,7 @@ static bool index_add_node_to_all(hash_init_p hash_initp, node_ele_p ndp)
         }
         index_add_node(iilp->hidx, ndp, key);
     }
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(retb);
 }
 
@@ -1175,7 +1516,7 @@ static int index_add_all_in_tree(node_ele_p parent)
     int num_added = 0;
     int node_save_state;
 
-    DBUG_ENTER(mod);
+    ENTER(mod);
     /* lock the parent */
     pag_rwlock_rdlock(&parent->rwlock);
     node_save_state = parent->state;
@@ -1205,7 +1546,7 @@ static int index_add_all_in_tree(node_ele_p parent)
     }
     parent->state = node_save_state;
     pag_rwlock_unlock(&parent->rwlock);
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(num_added);
 }
 
@@ -1232,7 +1573,7 @@ static bool index_delete_node_from_all(hash_init_p hash_initp, node_ele_p ndp)
     bool retb = false;
     char key[256];
     
-    DBUG_ENTER(mod);
+    ENTER(mod);
 
     for (iilp = hash_initp; iilp->name != NULL; iilp++) {
         memset(key, 0, sizeof(key));
@@ -1258,7 +1599,7 @@ static bool index_delete_node_from_all(hash_init_p hash_initp, node_ele_p ndp)
         }
         pag_rwlock_unlock(&iilp->hidx->rwlock);
     }
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(retb);
 }
 
@@ -1277,13 +1618,37 @@ static bool index_add_node(hash_index_p hip, node_ele_p ndp, char *key)
     static char *mod = "index_add_node";
     bool retb = false;
     
-    DBUG_ENTER(mod);
+    ENTER(mod);
     DBUG_PRINT("DEBUG", ("name:%s key:%s", hip->name, key));
     pag_rwlock_wrlock(&hip->rwlock);
     shash_add(&hip->htable, key, ndp);
     pag_rwlock_unlock(&hip->rwlock);
-    DBUG_LEAVE;
+    LEAVE(mod);
     return(retb);
+}
+
+/* 
+ * index_add_attr - add the attr to the attr_hash.
+ *         uses the attribute.field_name as the key. Hence
+ *         there should be a lot of dups.
+ *
+ * where:
+ * @param0 <hip>                 - I
+ *         hash_index_pointer
+ * @param1 <ap>                  - I
+ *         attribute_p to what is to be added.
+ *
+ */
+static bool index_add_attr(hash_index_p hip, attribute_p ap)
+{
+    static char *mod = "index_add_attr";
+    ENTER(mod);
+    DBUG_PRINT("DEBUG", ("name:%s key:%s", hip->name, ap->field_name));
+    pag_rwlock_wrlock(&hip->rwlock);
+    shash_add(&hip->htable, ap->field_name, ap);
+    pag_rwlock_unlock(&hip->rwlock);
+    LEAVE(mod);
+    return(0);
 }
 
 /* 
@@ -1303,29 +1668,44 @@ static void index_dump(hash_init_p iilp, bool index_node_dump)
     struct shash_node *snp;
     size_t count;
     
-    DBUG_ENTER(mod);
+    ENTER(mod);
 
     /* dump the indexes */
+#ifdef USE_VLOG
+    VLOG_INFO("*************************************");
+    VLOG_INFO("***** INDEX DUMP ********************");
+    VLOG_INFO("*************************************");
+#else
     DBUG_PRINT("INFO", ("*************************************"));
     DBUG_PRINT("INFO", ("***** INDEX DUMP ********************"));
     DBUG_PRINT("INFO", ("*************************************"));
+#endif
     /* remove the indexes */
     for ( ;iilp->name != NULL; iilp++) {
         hip = iilp->hidx;
         pag_rwlock_rdlock(&hip->rwlock);
         count = shash_count(&hip->htable);
+#ifdef USE_VLOG
+        VLOG_INFO(" ========= IndexName:%s cnt:%d addr:%p",
+                  iilp->name, (int)count,
+                  (void *)&hip->htable);
+#else
         DBUG_PRINT("INFO", (" ========= IndexName:%s cnt:%d addr:%p",
                             iilp->name, (int)count,
                             (void *)&hip->htable));
+#endif
         SHASH_FOR_EACH(snp, &hip->htable) {
+#ifdef USE_VLOG
+            VLOG_INFO("  name: %s data: %p", snp->name, snp->data);
+#else
             DBUG_PRINT("INFO", ("  name: %s data: %p", snp->name, snp->data));
+#endif
             if (index_node_dump) {
-                dump_node((node_ele_p)snp->data);
+                node_dump((node_ele_p)snp->data);
             }
         }
         
         pag_rwlock_unlock(&hip->rwlock);
     }
-
-    DBUG_VOID_RETURN;
+    LEAVE(mod);
 }
