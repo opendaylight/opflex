@@ -39,6 +39,7 @@
 #include "config-file.h"
 #include "modb.h"
 #include "policy_enforcer.h"
+#include "pol-mgmt.h"
 #include "vlog.h"
 
 VLOG_DEFINE_THIS_MODULE(pagentd);
@@ -266,7 +267,8 @@ typedef struct _CmdStruct {
  */
 static INIT_JMP_TABLE initialize_funcs[] = {
     MODB_INITIALIZE,
-    PE_INITIALIZE,
+    PM_INITIALIZE,
+    PE_INITIALIZE,    
     {NULL, NULL}
 };
 

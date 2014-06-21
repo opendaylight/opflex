@@ -178,6 +178,7 @@ AC_CONFIG_FILES([lib/Makefile])
 AC_CONFIG_FILES([modb/Makefile])
 AC_CONFIG_FILES([pagentd/Makefile])
 AC_CONFIG_FILES([policy_enforcer/Makefile])
+AC_CONFIG_FILES([policy-mgmt/Makefile])
 
 if test "$with_tests" = "yes"; then
    AC_CONFIG_FILES([tests/Makefile])

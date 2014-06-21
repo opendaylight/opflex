@@ -12,6 +12,7 @@ SUBDIRS =  third-party
 SUBDIRS += lib 
 SUBDIRS += modb
 SUBDIRS += policy_enforcer
+SUBDIRS += policy-mgmt
 SUBDIRS += pagentd
 if BUILD_TESTS
 SUBDIRS += tests
