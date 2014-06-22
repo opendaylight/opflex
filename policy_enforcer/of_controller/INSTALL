@@ -1,9 +1,0 @@
-#
-# Currently, the of_controller within the policy_enforcer is
-# a work in progress. Nothing currently runs, but it builds.
-#
-# To build here, execute the following:
-
-$ autoreconf
-$ ./configure
-$ make
