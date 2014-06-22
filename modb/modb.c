@@ -18,7 +18,7 @@
 #include "config-file.h"
 #include "fnm-util.h"
 #include "meo-util.h"
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "seq-util.h"
 #include "hash-util.h"
 #include "tv-util.h"
@@ -214,7 +214,7 @@ bool modb_initialize(void)
 
         /* crash recovery? */
         if (strcasecmp(conf_get_value(MODB_SECTION, "crash_recovery"), "true") == 0) {
-            modb_fname = fnm_create(".dat", MODB_FNAME, pag_dbdir(), NULL);
+            modb_fname = fnm_create(".dat", MODB_FNAME, ovs_dbdir(), NULL);
             modb_crash_recovery(fnm_path(modb_fname));
         }
 
@@ -243,9 +243,9 @@ enum_head_state modb_get_state(void)
 
     ENTER(mod);
     if (modb_is_initialized()) {
-        pag_rwlock_rdlock(&node_list->rwlock);
+        ovs_rwlock_rdlock(&node_list->rwlock);
         state = node_list->state;
-        pag_rwlock_unlock(&node_list->rwlock);
+        ovs_rwlock_unlock(&node_list->rwlock);
     } else {
         state = HD_ST_NOT_INITIALIZED;
     }
@@ -286,7 +286,7 @@ bool node_create(node_ele_p *ndp, const char *uri_str, const char *lri,
 #endif
 
     *ndp = xzalloc(sizeof(node_ele_t));
-    pag_rwlock_init(&(*ndp)->rwlock);
+    ovs_rwlock_init(&(*ndp)->rwlock);
     (*ndp)->content_path_id = ctid;
     if (lri)
         (*ndp)->lri = strdup(lri);
@@ -339,7 +339,7 @@ bool node_delete(node_ele_p *ndp, int *del_cnt)
     }
     
     while (complete == false) {
-        pag_rwlock_wrlock(&(*ndp)->rwlock);
+        ovs_rwlock_wrlock(&(*ndp)->rwlock);
         (*ndp)->state = ND_ST_DELETE;
         child_hdp = (*ndp)->child_list;
         attr_hdp = (*ndp)->properties_list;
@@ -370,7 +370,7 @@ bool node_delete(node_ele_p *ndp, int *del_cnt)
             head_list_destroy(&child_hdp, true);
             complete = true;
         }
-        pag_rwlock_destroy(&(*ndp)->rwlock);
+        ovs_rwlock_destroy(&(*ndp)->rwlock);
             
         free(*ndp);
         *del_cnt += 1;
@@ -398,17 +398,17 @@ bool node_attach_child(node_ele_p parent, node_ele_p child)
 
     ENTER(mod);
 
-    pag_rwlock_wrlock(&parent->rwlock);
+    ovs_rwlock_wrlock(&parent->rwlock);
     if (parent->child_list == NULL) {
         head_list_create(&parent->child_list);
         parent->child_list->state = HD_ST_LOADED;
     }
-    pag_rwlock_wrlock(&child->rwlock);
+    ovs_rwlock_wrlock(&child->rwlock);
     child->parent = parent;
     list_add(&parent->child_list->list, -1, (void *)child);
     parent->child_list->num_elements++;
-    pag_rwlock_unlock(&child->rwlock);
-    pag_rwlock_unlock(&parent->rwlock);
+    ovs_rwlock_unlock(&child->rwlock);
+    ovs_rwlock_unlock(&parent->rwlock);
 
     LEAVE(mod);
     return(0);
@@ -621,7 +621,7 @@ void modb_dump(bool index_node_dump)
 
     ENTER(mod);
     if (modb_initialized) {
-        pag_rwlock_rdlock(&node_list->rwlock);
+        ovs_rwlock_rdlock(&node_list->rwlock);
         count = (size_t)list_length(node_list->list);
 
         /* dump the head */
@@ -651,7 +651,7 @@ void modb_dump(bool index_node_dump)
                 node_dump(ndp);
             }
         }
-        pag_rwlock_unlock(&node_list->rwlock);
+        ovs_rwlock_unlock(&node_list->rwlock);
 
         index_dump(index_init_list, index_node_dump);
     }
@@ -686,7 +686,7 @@ bool modb_crash_recovery(const char *dbfile)
 #endif
 
     if (modb_initialized) {
-        dbpath = (char *)pag_dbdir();
+        dbpath = (char *)ovs_dbdir();
         if (fnm_exists(dbfname)) {
             DBUG_PRINT("DEBUG" , ("%s: loading: %s\n", mod, fnm_path(dbfname)));
 
@@ -721,12 +721,12 @@ bool head_list_create(head_list_p *hdp)
 
     ENTER(mod);
     *hdp = xzalloc(sizeof(head_list_t));
-    pag_rwlock_init(&(*hdp)->rwlock);
-    pag_rwlock_wrlock(&(*hdp)->rwlock);
+    ovs_rwlock_init(&(*hdp)->rwlock);
+    ovs_rwlock_wrlock(&(*hdp)->rwlock);
     (*hdp)->num_elements = 0;
     (*hdp)->list = NULL;
     head_change_state((*hdp), HD_ST_INITIALIZED);
-    pag_rwlock_unlock(&(*hdp)->rwlock);
+    ovs_rwlock_unlock(&(*hdp)->rwlock);
 
     LEAVE(mod);
     return(retb);
@@ -749,7 +749,7 @@ static bool head_list_destroy(head_list_p *hdp, bool force)
 
     ENTER(mod);
     DBUG_PRINT("DEBUG", ("force=%d", force));
-    pag_rwlock_wrlock(&(*hdp)->rwlock);
+    ovs_rwlock_wrlock(&(*hdp)->rwlock);
     head_change_state((*hdp), HD_ST_DESTROYING);
     if ((*hdp)->list && (*hdp)->num_elements) {
         VLOG_WARN("The node list in not empty:%p:%d",
@@ -760,7 +760,7 @@ static bool head_list_destroy(head_list_p *hdp, bool force)
     sequence_destroy(&modb_sequence);
     node_list_free_all(*hdp);
     free(*hdp);
-    pag_rwlock_destroy(&(*hdp)->rwlock);        
+    ovs_rwlock_destroy(&(*hdp)->rwlock);        
     *hdp = NULL;
  rtn_return:    
     LEAVE(mod);
@@ -857,7 +857,7 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
 #endif
     node_deleted = 0;
     while (complete == false) {
-        pag_rwlock_wrlock(&hdp->rwlock);
+        ovs_rwlock_wrlock(&hdp->rwlock);
         lpos = list_find(hdp->list, ndp, find_ndp_func);
         if (lpos == 0) {
             VLOG_ERR("%s: node id:%d uri:%s, not found in list.",
@@ -869,11 +869,11 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
             
         dp = list_delete(&hdp->list, lpos);
         hdp->num_elements--;
-        pag_rwlock_unlock(&hdp->rwlock);
+        ovs_rwlock_unlock(&hdp->rwlock);
 
         node_deleted++;
 
-        pag_rwlock_wrlock(&dp->rwlock);
+        ovs_rwlock_wrlock(&dp->rwlock);
         dp->state = ND_ST_DELETE;
         child_hdp = dp->child_list;
         attr_hdp = dp->properties_list;
@@ -919,7 +919,7 @@ static bool node_list_delete(head_list_p hdp, node_ele_p ndp, int extent, int *r
             break;
         }
 
-        pag_rwlock_destroy(&dp->rwlock);
+        ovs_rwlock_destroy(&dp->rwlock);
             
         free(dp);
         ndp = dp = NULL;
@@ -953,8 +953,8 @@ uint32_t node_list_insert(head_list_p hdp, node_ele_p ndp)
     enum_head_state save_hd_state;
 
     ENTER(mod);
-    pag_rwlock_wrlock(&ndp->rwlock);
-    pag_rwlock_wrlock(&hdp->rwlock);
+    ovs_rwlock_wrlock(&ndp->rwlock);
+    ovs_rwlock_wrlock(&hdp->rwlock);
     save_hd_state = hdp->state;
     ndp->state = ND_ST_PENDING_INSERT;
     rtn_id = ndp->id = sequence_next(modb_sequence);
@@ -963,19 +963,19 @@ uint32_t node_list_insert(head_list_p hdp, node_ele_p ndp)
         rtn_id = 0;
         ndp->state = ND_ST_LIST_ADD_ERROR;
         hdp->state = save_hd_state;
-        pag_rwlock_unlock(&hdp->rwlock);
-        pag_rwlock_unlock(&ndp->rwlock);
+        ovs_rwlock_unlock(&hdp->rwlock);
+        ovs_rwlock_unlock(&ndp->rwlock);
     } else {
         hdp->num_elements++;
         hdp->state = save_hd_state;
         hdp->state = HD_ST_CALM;
-        pag_rwlock_unlock(&hdp->rwlock);
+        ovs_rwlock_unlock(&hdp->rwlock);
         
         /* update the indexes, the index has to assume the locking. */
         /* if (index_add_node_to_all(index_init_list, ndp)) {; */
         ndp->state = ND_ST_PENDING_ENFORCEMENT;
         ndp->enforce_state = EF_ST_PENDING;
-        pag_rwlock_unlock(&ndp->rwlock);
+        ovs_rwlock_unlock(&ndp->rwlock);
         if (index_add_all_in_tree(ndp) == 0) {;
             VLOG_ERR("can't update indexes with node id:%d.", ndp->id);
             ndp->state = ND_ST_INDEX_ERROR;
@@ -1032,7 +1032,7 @@ static void node_ele_destroy(node_ele_p *ndp)
     static char *mod = "node-ele_destroy";
     ENTER(mod);
     
-    pag_rwlock_wrlock(&(*ndp)->rwlock);
+    ovs_rwlock_wrlock(&(*ndp)->rwlock);
     DBUG_PRINT("DEBUG", ("deleting %p:%d", *ndp, (*ndp)->uri->hash));
     
     /* free the propoerties */
@@ -1041,7 +1041,7 @@ static void node_ele_destroy(node_ele_p *ndp)
     }
     free((*ndp)->lri);
     parsed_uri_free(&(*ndp)->uri);
-    pag_rwlock_destroy(&(*ndp)->rwlock);
+    ovs_rwlock_destroy(&(*ndp)->rwlock);
     free(*ndp);
     LEAVE(mod);
     return;
@@ -1108,13 +1108,13 @@ static bool attr_list_free_all(head_list_p *ahdp)
 
     ENTER(mod);
     if ((*ahdp)) {
-        pag_rwlock_wrlock(&(*ahdp)->rwlock);
+        ovs_rwlock_wrlock(&(*ahdp)->rwlock);
         while ((*ahdp)->num_elements) {
             attr_p = list_delete(&(*ahdp)->list, 1);
             /* Note: the index is deleted from node_delete operation */        
             attr_ele_destroy(attr_p);
         }
-        pag_rwlock_destroy(&(*ahdp)->rwlock);
+        ovs_rwlock_destroy(&(*ahdp)->rwlock);
         free(*ahdp);
         *ahdp = NULL;
     }
@@ -1212,7 +1212,7 @@ bool attr_delete(node_ele_p ndp, char *name)
     int lpos;
 
     ENTER(mod);
-    pag_rwlock_wrlock(&ndp->rwlock);
+    ovs_rwlock_wrlock(&ndp->rwlock);
     if (ndp->properties_list == NULL) {
         VLOG_ERR("%s: No property_list on node: %s", mod, ndp->uri->uri);
         retb = true;
@@ -1226,7 +1226,7 @@ bool attr_delete(node_ele_p ndp, char *name)
     }
 
  rtn_return:
-    pag_rwlock_unlock(&ndp->rwlock);
+    ovs_rwlock_unlock(&ndp->rwlock);
     LEAVE(mod);
     return(retb);
 }
@@ -1252,7 +1252,7 @@ static bool attr_add_to_node(node_ele_p ndp, attribute_p attrp)
     bool add_attr = true;
 
     ENTER(mod);
-    pag_rwlock_wrlock(&ndp->rwlock);
+    ovs_rwlock_wrlock(&ndp->rwlock);
     attrp->ndp = ndp;
     if (ndp->properties_list == NULL) {
         head_list_create(&ndp->properties_list);
@@ -1281,7 +1281,7 @@ static bool attr_add_to_node(node_ele_p ndp, attribute_p attrp)
             index_add_attr(&attr_shash, attrp);
         }
     }
-    pag_rwlock_unlock(&ndp->rwlock);
+    ovs_rwlock_unlock(&ndp->rwlock);
 
     LEAVE(mod);
     return(retb);
@@ -1330,9 +1330,9 @@ void attr_dump(node_ele_p ndp)
         VLOG_INFO(" === Properties: count: %d actual:%d ===",
                   ndp->properties_list->num_elements, act_count);
         if (act_count != ndp->properties_list->num_elements) {
-            pag_rwlock_wrlock(&ndp->rwlock);
+            ovs_rwlock_wrlock(&ndp->rwlock);
             ndp->properties_list->num_elements = act_count;
-            pag_rwlock_unlock(&ndp->rwlock);
+            ovs_rwlock_unlock(&ndp->rwlock);
         }
   
         for (i = 0, lpos = 1; i < act_count; i++, lpos++) {
@@ -1384,7 +1384,7 @@ static bool index_create(hash_index_p hip, char *name)
     ENTER(mod);
     hip->name = strdup(name);
     shash_init(&hip->htable);
-    pag_rwlock_init(&hip->rwlock);
+    ovs_rwlock_init(&hip->rwlock);
     LEAVE(mod);
     return(retb);
 }
@@ -1419,9 +1419,9 @@ static node_ele_p index_get_ptr(hash_init_p hash_initp, void *idp, int itype)
     } else {
         sprintf(key, "%u", *(unsigned int *)idp);
     }
-    pag_rwlock_rdlock(&idxp->rwlock);
+    ovs_rwlock_rdlock(&idxp->rwlock);
     shp = shash_find(&idxp->htable, key);
-    pag_rwlock_unlock(&idxp->rwlock);
+    ovs_rwlock_unlock(&idxp->rwlock);
     ndp = (node_ele_p)shp->data;
 
     LEAVE(mod);
@@ -1445,10 +1445,10 @@ static bool index_destroy(hash_index_p hip)
     bool retb = false;
 
     ENTER(mod);
-    pag_rwlock_wrlock(&hip->rwlock);
+    ovs_rwlock_wrlock(&hip->rwlock);
     shash_destroy(&hip->htable);
     free(hip->name);
-    pag_rwlock_destroy(&hip->rwlock);
+    ovs_rwlock_destroy(&hip->rwlock);
     LEAVE(mod);
     return(retb);
 }
@@ -1518,7 +1518,7 @@ static int index_add_all_in_tree(node_ele_p parent)
 
     ENTER(mod);
     /* lock the parent */
-    pag_rwlock_rdlock(&parent->rwlock);
+    ovs_rwlock_rdlock(&parent->rwlock);
     node_save_state = parent->state;
     parent->state = ND_ST_INDEXING;
     index_add_node_to_all(index_init_list, parent);
@@ -1535,17 +1535,17 @@ static int index_add_all_in_tree(node_ele_p parent)
         for (; head_cnt != 0; head_cnt--) {
             ndp = (node_ele_p)list_get(hdp->list, head_cnt);
             /* if the unique ID has not been added, i.e. insert, add it. */
-            pag_rwlock_wrlock(&ndp->rwlock);
+            ovs_rwlock_wrlock(&ndp->rwlock);
             if (ndp->id == 0) 
                 ndp->id = sequence_next(modb_sequence);
             ndp->state = ND_ST_PENDING_ENFORCEMENT;
             ndp->enforce_state = EF_ST_NO_EVENT;
-            pag_rwlock_unlock(&ndp->rwlock);
+            ovs_rwlock_unlock(&ndp->rwlock);
             num_added += index_add_all_in_tree(ndp);
         }
     }
     parent->state = node_save_state;
-    pag_rwlock_unlock(&parent->rwlock);
+    ovs_rwlock_unlock(&parent->rwlock);
     LEAVE(mod);
     return(num_added);
 }
@@ -1590,14 +1590,14 @@ static bool index_delete_node_from_all(hash_init_p hash_initp, node_ele_p ndp)
             /* TODO dkehn: need to do the uri:attr key */
             memcpy(key, ndp->uri, sizeof(key));
         }
-        pag_rwlock_wrlock(&iilp->hidx->rwlock);
+        ovs_rwlock_wrlock(&iilp->hidx->rwlock);
         sndp = shash_find((const struct shash *)&iilp->hidx->htable, key);
         if (sndp) {
             shash_delete(&iilp->hidx->htable, sndp);
         } else {
             VLOG_ERR("key:%s not found in %s index", key, iilp->name);
         }
-        pag_rwlock_unlock(&iilp->hidx->rwlock);
+        ovs_rwlock_unlock(&iilp->hidx->rwlock);
     }
     LEAVE(mod);
     return(retb);
@@ -1620,9 +1620,9 @@ static bool index_add_node(hash_index_p hip, node_ele_p ndp, char *key)
     
     ENTER(mod);
     DBUG_PRINT("DEBUG", ("name:%s key:%s", hip->name, key));
-    pag_rwlock_wrlock(&hip->rwlock);
+    ovs_rwlock_wrlock(&hip->rwlock);
     shash_add(&hip->htable, key, ndp);
-    pag_rwlock_unlock(&hip->rwlock);
+    ovs_rwlock_unlock(&hip->rwlock);
     LEAVE(mod);
     return(retb);
 }
@@ -1644,9 +1644,9 @@ static bool index_add_attr(hash_index_p hip, attribute_p ap)
     static char *mod = "index_add_attr";
     ENTER(mod);
     DBUG_PRINT("DEBUG", ("name:%s key:%s", hip->name, ap->field_name));
-    pag_rwlock_wrlock(&hip->rwlock);
+    ovs_rwlock_wrlock(&hip->rwlock);
     shash_add(&hip->htable, ap->field_name, ap);
-    pag_rwlock_unlock(&hip->rwlock);
+    ovs_rwlock_unlock(&hip->rwlock);
     LEAVE(mod);
     return(0);
 }
@@ -1683,7 +1683,7 @@ static void index_dump(hash_init_p iilp, bool index_node_dump)
     /* remove the indexes */
     for ( ;iilp->name != NULL; iilp++) {
         hip = iilp->hidx;
-        pag_rwlock_rdlock(&hip->rwlock);
+        ovs_rwlock_rdlock(&hip->rwlock);
         count = shash_count(&hip->htable);
 #ifdef USE_VLOG
         VLOG_INFO(" ========= IndexName:%s cnt:%d addr:%p",
@@ -1705,7 +1705,7 @@ static void index_dump(hash_init_p iilp, bool index_node_dump)
             }
         }
         
-        pag_rwlock_unlock(&hip->rwlock);
+        ovs_rwlock_unlock(&hip->rwlock);
     }
     LEAVE(mod);
 }
