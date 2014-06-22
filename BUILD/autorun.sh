@@ -22,7 +22,7 @@ function show_options () {
     echo "    --no-make --perform the make on the full tree."
     echo "    --tags -- runs the etags, a must for emacs"
     echo "    --stop-stage <stage> -- runs through the defined stage"
-    echo "          choices are: aclocal, autoheader,"
+    echo "          choices are: ovs, aclocal, autoheader,"
     echo "          libtoolize, automake, autoconf."
     echo "    --verbose - just what it says"
     echo
@@ -112,6 +112,32 @@ do
   fi
 done
 IFS="$save_ifs"
+
+msgout "INFO" "First, build OVS."
+origDIR=`pwd`
+msgout "INFO" "Currently in `pwd`"
+cd third-party/ovs
+ovsBuildDIR=`pwd`
+msgout "INFO" "Entered `pwd`"
+make distclean
+# We need our vlog.h
+msgout "INFO" "Copying OpFlex vlog.h into OVS"
+mv -v lib/vlog.h lib/orig.vlog.h
+cp -v ../vlog.h ./lib
+# Build ovs
+cd $ovsBuildDIR
+msgout "INFO" "Running boot.sh in $ovsBuildDIR"
+./boot.sh || die "Can't run ovs/boot.sh"
+msgout "INFO" "Running configure in $ovsBuildDIR"
+./configure || die "Can't run ovs/configure"
+msgout "INFO" "Running make in $ovsBuildDIR"
+make || die "Can't make ovs"
+cd $origDIR
+
+if [ "$STOP_STAGE" == ovs ]; then
+    msgout "INFO" "Stop-stage set at ovs."
+    exit 0
+fi
 
 msgout "INFO" "make distclean: clean out everyting."
 make distclean
