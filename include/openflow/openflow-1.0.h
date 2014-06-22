@@ -1,18 +1,3 @@
-/* Copyright (c) 2014 Cisco Systems, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 /*
  * Copyright (c) 2008, 2009, 2010, 2011, 2012, 2013 Nicira, Inc.
  *
@@ -109,43 +94,43 @@ enum ofp10_port_features {
 
 /* Description of a physical port */
 struct ofp10_phy_port {
-    pag_be16 port_no;
+    ovs_be16 port_no;
     uint8_t hw_addr[OFP_ETH_ALEN];
     char name[OFP_MAX_PORT_NAME_LEN]; /* Null-terminated */
 
-    pag_be32 config;        /* Bitmap of OFPPC_* and OFPPC10_* flags. */
-    pag_be32 state;         /* Bitmap of OFPPS_* and OFPPS10_* flags. */
+    ovs_be32 config;        /* Bitmap of OFPPC_* and OFPPC10_* flags. */
+    ovs_be32 state;         /* Bitmap of OFPPS_* and OFPPS10_* flags. */
 
     /* Bitmaps of OFPPF_* and OFPPF10_* that describe features.  All bits
      * zeroed if unsupported or unavailable. */
-    pag_be32 curr;          /* Current features. */
-    pag_be32 advertised;    /* Features being advertised by the port. */
-    pag_be32 supported;     /* Features supported by the port. */
-    pag_be32 peer;          /* Features advertised by peer. */
+    ovs_be32 curr;          /* Current features. */
+    ovs_be32 advertised;    /* Features being advertised by the port. */
+    ovs_be32 supported;     /* Features supported by the port. */
+    ovs_be32 peer;          /* Features advertised by peer. */
 };
 OFP_ASSERT(sizeof(struct ofp10_phy_port) == 48);
 
 /* Modify behavior of the physical port */
 struct ofp10_port_mod {
-    pag_be16 port_no;
+    ovs_be16 port_no;
     uint8_t hw_addr[OFP_ETH_ALEN]; /* The hardware address is not
                                       configurable.  This is used to
                                       sanity-check the request, so it must
                                       be the same as returned in an
                                       ofp10_phy_port struct. */
 
-    pag_be32 config;        /* Bitmap of OFPPC_* flags. */
-    pag_be32 mask;          /* Bitmap of OFPPC_* flags to be changed. */
+    ovs_be32 config;        /* Bitmap of OFPPC_* flags. */
+    ovs_be32 mask;          /* Bitmap of OFPPC_* flags to be changed. */
 
-    pag_be32 advertise;     /* Bitmap of "ofp_port_features"s.  Zero all
+    ovs_be32 advertise;     /* Bitmap of "ofp_port_features"s.  Zero all
                                bits to prevent any action taking place. */
     uint8_t pad[4];         /* Pad to 64-bits. */
 };
 OFP_ASSERT(sizeof(struct ofp10_port_mod) == 24);
 
 struct ofp10_packet_queue {
-    pag_be32 queue_id;          /* id for the specific queue. */
-    pag_be16 len;               /* Length in bytes of this queue desc. */
+    ovs_be32 queue_id;          /* id for the specific queue. */
+    ovs_be16 len;               /* Length in bytes of this queue desc. */
     uint8_t pad[2];             /* 64-bit alignment. */
     /* Followed by any number of queue properties expressed using
      * ofp_queue_prop_header, to fill out a total of 'len' bytes. */
@@ -154,7 +139,7 @@ OFP_ASSERT(sizeof(struct ofp10_packet_queue) == 8);
 
 /* Query for port queue configuration. */
 struct ofp10_queue_get_config_request {
-    pag_be16 port;          /* Port to be queried. Should refer
+    ovs_be16 port;          /* Port to be queried. Should refer
                                to a valid physical port (i.e. < OFPP_MAX) */
     uint8_t pad[2];
     /* 32-bit alignment. */
@@ -163,7 +148,7 @@ OFP_ASSERT(sizeof(struct ofp10_queue_get_config_request) == 4);
 
 /* Queue configuration for a given port. */
 struct ofp10_queue_get_config_reply {
-    pag_be16 port;
+    ovs_be16 port;
     uint8_t pad[6];
     /* struct ofp10_packet_queue queues[0]; List of configured queues. */
 };
@@ -171,9 +156,9 @@ OFP_ASSERT(sizeof(struct ofp10_queue_get_config_reply) == 8);
 
 /* Packet received on port (datapath -> controller). */
 struct ofp10_packet_in {
-    pag_be32 buffer_id;     /* ID assigned by datapath. */
-    pag_be16 total_len;     /* Full length of frame. */
-    pag_be16 in_port;       /* Port on which frame was received. */
+    ovs_be32 buffer_id;     /* ID assigned by datapath. */
+    ovs_be16 total_len;     /* Full length of frame. */
+    ovs_be16 in_port;       /* Port on which frame was received. */
     uint8_t reason;         /* Reason packet is being sent (one of OFPR_*) */
     uint8_t pad;
     uint8_t data[0];        /* Ethernet frame, halfway through 32-bit word,
@@ -206,30 +191,30 @@ enum ofp10_action_type {
  * number of bytes to send.  A 'max_len' of zero means no bytes of the
  * packet should be sent. */
 struct ofp10_action_output {
-    pag_be16 type;                  /* OFPAT10_OUTPUT. */
-    pag_be16 len;                   /* Length is 8. */
-    pag_be16 port;                  /* Output port. */
-    pag_be16 max_len;               /* Max length to send to controller. */
+    ovs_be16 type;                  /* OFPAT10_OUTPUT. */
+    ovs_be16 len;                   /* Length is 8. */
+    ovs_be16 port;                  /* Output port. */
+    ovs_be16 max_len;               /* Max length to send to controller. */
 };
 OFP_ASSERT(sizeof(struct ofp10_action_output) == 8);
 
 /* OFPAT10_ENQUEUE action struct: send packets to given queue on port. */
 struct ofp10_action_enqueue {
-    pag_be16 type;            /* OFPAT10_ENQUEUE. */
-    pag_be16 len;             /* Len is 16. */
-    pag_be16 port;            /* Port that queue belongs. Should
+    ovs_be16 type;            /* OFPAT10_ENQUEUE. */
+    ovs_be16 len;             /* Len is 16. */
+    ovs_be16 port;            /* Port that queue belongs. Should
                                  refer to a valid physical port
                                  (i.e. < OFPP_MAX) or OFPP_IN_PORT. */
     uint8_t pad[6];           /* Pad for 64-bit alignment. */
-    pag_be32 queue_id;        /* Where to enqueue the packets. */
+    ovs_be32 queue_id;        /* Where to enqueue the packets. */
 };
 OFP_ASSERT(sizeof(struct ofp10_action_enqueue) == 16);
 
 /* Send packet (controller -> datapath). */
 struct ofp10_packet_out {
-    pag_be32 buffer_id;           /* ID assigned by datapath or UINT32_MAX. */
-    pag_be16 in_port;             /* Packet's input port (OFPP_NONE if none). */
-    pag_be16 actions_len;         /* Size of action array in bytes. */
+    ovs_be32 buffer_id;           /* ID assigned by datapath or UINT32_MAX. */
+    ovs_be16 in_port;             /* Packet's input port (OFPP_NONE if none). */
+    ovs_be16 actions_len;         /* Size of action array in bytes. */
     /* Followed by:
      *   - Exactly 'actions_len' bytes (possibly 0 bytes, and always a multiple
      *     of 8) containing actions.
@@ -286,22 +271,22 @@ enum ofp10_flow_wildcards {
 
 /* Fields to match against flows */
 struct ofp10_match {
-    pag_be32 wildcards;        /* Wildcard fields. */
-    pag_be16 in_port;          /* Input switch port. */
+    ovs_be32 wildcards;        /* Wildcard fields. */
+    ovs_be16 in_port;          /* Input switch port. */
     uint8_t dl_src[OFP_ETH_ALEN]; /* Ethernet source address. */
     uint8_t dl_dst[OFP_ETH_ALEN]; /* Ethernet destination address. */
-    pag_be16 dl_vlan;          /* Input VLAN. */
+    ovs_be16 dl_vlan;          /* Input VLAN. */
     uint8_t dl_vlan_pcp;       /* Input VLAN priority. */
     uint8_t pad1[1];           /* Align to 64-bits. */
-    pag_be16 dl_type;          /* Ethernet frame type. */
+    ovs_be16 dl_type;          /* Ethernet frame type. */
     uint8_t nw_tos;            /* IP ToS (DSCP field, 6 bits). */
     uint8_t nw_proto;          /* IP protocol or lower 8 bits of
                                   ARP opcode. */
     uint8_t pad2[2];           /* Align to 64-bits. */
-    pag_be32 nw_src;           /* IP source address. */
-    pag_be32 nw_dst;           /* IP destination address. */
-    pag_be16 tp_src;           /* TCP/UDP source port. */
-    pag_be16 tp_dst;           /* TCP/UDP destination port. */
+    ovs_be32 nw_src;           /* IP source address. */
+    ovs_be32 nw_dst;           /* IP destination address. */
+    ovs_be16 tp_src;           /* TCP/UDP source port. */
+    ovs_be16 tp_dst;           /* TCP/UDP destination port. */
 };
 OFP_ASSERT(sizeof(struct ofp10_match) == 40);
 
@@ -312,20 +297,20 @@ enum ofp10_flow_mod_flags {
 /* Flow setup and teardown (controller -> datapath). */
 struct ofp10_flow_mod {
     struct ofp10_match match;    /* Fields to match */
-    pag_be64 cookie;             /* Opaque controller-issued identifier. */
+    ovs_be64 cookie;             /* Opaque controller-issued identifier. */
 
     /* Flow actions. */
-    pag_be16 command;             /* One of OFPFC_*. */
-    pag_be16 idle_timeout;        /* Idle time before discarding (seconds). */
-    pag_be16 hard_timeout;        /* Max time before discarding (seconds). */
-    pag_be16 priority;            /* Priority level of flow entry. */
-    pag_be32 buffer_id;           /* Buffered packet to apply to (or -1).
+    ovs_be16 command;             /* One of OFPFC_*. */
+    ovs_be16 idle_timeout;        /* Idle time before discarding (seconds). */
+    ovs_be16 hard_timeout;        /* Max time before discarding (seconds). */
+    ovs_be16 priority;            /* Priority level of flow entry. */
+    ovs_be32 buffer_id;           /* Buffered packet to apply to (or -1).
                                      Not meaningful for OFPFC_DELETE*. */
-    pag_be16 out_port;            /* For OFPFC_DELETE* commands, require
+    ovs_be16 out_port;            /* For OFPFC_DELETE* commands, require
                                      matching entries to include this as an
                                      output port.  A value of OFPP_NONE
                                      indicates no restriction. */
-    pag_be16 flags;               /* One of OFPFF_*. */
+    ovs_be16 flags;               /* One of OFPFF_*. */
     struct ofp_action_header actions[0]; /* The action length is inferred
                                             from the length field in the
                                             header. */
@@ -335,27 +320,27 @@ OFP_ASSERT(sizeof(struct ofp10_flow_mod) == 64);
 /* Flow removed (datapath -> controller). */
 struct ofp10_flow_removed {
     struct ofp10_match match; /* Description of fields. */
-    pag_be64 cookie;          /* Opaque controller-issued identifier. */
+    ovs_be64 cookie;          /* Opaque controller-issued identifier. */
 
-    pag_be16 priority;        /* Priority level of flow entry. */
+    ovs_be16 priority;        /* Priority level of flow entry. */
     uint8_t reason;           /* One of OFPRR_*. */
     uint8_t pad[1];           /* Align to 32-bits. */
 
-    pag_be32 duration_sec;    /* Time flow was alive in seconds. */
-    pag_be32 duration_nsec;   /* Time flow was alive in nanoseconds beyond
+    ovs_be32 duration_sec;    /* Time flow was alive in seconds. */
+    ovs_be32 duration_nsec;   /* Time flow was alive in nanoseconds beyond
                                  duration_sec. */
-    pag_be16 idle_timeout;    /* Idle timeout from original flow mod. */
+    ovs_be16 idle_timeout;    /* Idle timeout from original flow mod. */
     uint8_t pad2[2];          /* Align to 64-bits. */
-    pag_be64 packet_count;
-    pag_be64 byte_count;
+    ovs_be64 packet_count;
+    ovs_be64 byte_count;
 };
 OFP_ASSERT(sizeof(struct ofp10_flow_removed) == 80);
 
 /* Statistics request or reply message. */
 struct ofp10_stats_msg {
     struct ofp_header header;
-    pag_be16 type;              /* One of the OFPST_* constants. */
-    pag_be16 flags;             /* Requests: always 0.
+    ovs_be16 type;              /* One of the OFPST_* constants. */
+    ovs_be16 flags;             /* Requests: always 0.
                                  * Replies: 0 or OFPSF_REPLY_MORE. */
 };
 OFP_ASSERT(sizeof(struct ofp10_stats_msg) == 12);
@@ -366,7 +351,7 @@ struct ofp10_flow_stats_request {
     uint8_t table_id;         /* ID of table to read (from ofp_table_stats)
                                  or 0xff for all tables. */
     uint8_t pad;              /* Align to 32 bits. */
-    pag_be16 out_port;        /* Require matching entries to include this
+    ovs_be16 out_port;        /* Require matching entries to include this
                                  as an output port.  A value of OFPP_NONE
                                  indicates no restriction. */
 };
@@ -374,21 +359,21 @@ OFP_ASSERT(sizeof(struct ofp10_flow_stats_request) == 44);
 
 /* Body of reply to OFPST_FLOW request. */
 struct ofp10_flow_stats {
-    pag_be16 length;          /* Length of this entry. */
+    ovs_be16 length;          /* Length of this entry. */
     uint8_t table_id;         /* ID of table flow came from. */
     uint8_t pad;
     struct ofp10_match match; /* Description of fields. */
-    pag_be32 duration_sec;    /* Time flow has been alive in seconds. */
-    pag_be32 duration_nsec;   /* Time flow has been alive in nanoseconds
+    ovs_be32 duration_sec;    /* Time flow has been alive in seconds. */
+    ovs_be32 duration_nsec;   /* Time flow has been alive in nanoseconds
                                  beyond duration_sec. */
-    pag_be16 priority;        /* Priority of the entry. Only meaningful
+    ovs_be16 priority;        /* Priority of the entry. Only meaningful
                                  when this is not an exact-match entry. */
-    pag_be16 idle_timeout;    /* Number of seconds idle before expiration. */
-    pag_be16 hard_timeout;    /* Number of seconds before expiration. */
+    ovs_be16 idle_timeout;    /* Number of seconds idle before expiration. */
+    ovs_be16 hard_timeout;    /* Number of seconds before expiration. */
     uint8_t pad2[6];          /* Align to 64 bits. */
-    pag_32aligned_be64 cookie;       /* Opaque controller-issued identifier. */
-    pag_32aligned_be64 packet_count; /* Number of packets in flow. */
-    pag_32aligned_be64 byte_count;   /* Number of bytes in flow. */
+    ovs_32aligned_be64 cookie;       /* Opaque controller-issued identifier. */
+    ovs_32aligned_be64 packet_count; /* Number of packets in flow. */
+    ovs_32aligned_be64 byte_count;   /* Number of bytes in flow. */
     struct ofp_action_header actions[0]; /* Actions. */
 };
 OFP_ASSERT(sizeof(struct ofp10_flow_stats) == 88);
@@ -399,18 +384,18 @@ struct ofp10_table_stats {
                                 are consulted first. */
     uint8_t pad[3];          /* Align to 32-bits. */
     char name[OFP_MAX_TABLE_NAME_LEN];
-    pag_be32 wildcards;      /* Bitmap of OFPFW10_* wildcards that are
+    ovs_be32 wildcards;      /* Bitmap of OFPFW10_* wildcards that are
                                 supported by the table. */
-    pag_be32 max_entries;    /* Max number of entries supported. */
-    pag_be32 active_count;   /* Number of active entries. */
-    pag_32aligned_be64 lookup_count;  /* # of packets looked up in table. */
-    pag_32aligned_be64 matched_count; /* Number of packets that hit table. */
+    ovs_be32 max_entries;    /* Max number of entries supported. */
+    ovs_be32 active_count;   /* Number of active entries. */
+    ovs_32aligned_be64 lookup_count;  /* # of packets looked up in table. */
+    ovs_32aligned_be64 matched_count; /* Number of packets that hit table. */
 };
 OFP_ASSERT(sizeof(struct ofp10_table_stats) == 64);
 
 /* Stats request of type OFPST_PORT. */
 struct ofp10_port_stats_request {
-    pag_be16 port_no;        /* OFPST_PORT message may request statistics
+    ovs_be16 port_no;        /* OFPST_PORT message may request statistics
                                 for a single port (specified with port_no)
                                 or for all ports (port_no == OFPP_NONE). */
     uint8_t pad[6];
@@ -420,24 +405,24 @@ OFP_ASSERT(sizeof(struct ofp10_port_stats_request) == 8);
 /* Body of reply to OFPST_PORT request. If a counter is unsupported, set
  * the field to all ones. */
 struct ofp10_port_stats {
-    pag_be16 port_no;
+    ovs_be16 port_no;
     uint8_t pad[6];          /* Align to 64-bits. */
-    pag_32aligned_be64 rx_packets;     /* Number of received packets. */
-    pag_32aligned_be64 tx_packets;     /* Number of transmitted packets. */
-    pag_32aligned_be64 rx_bytes;       /* Number of received bytes. */
-    pag_32aligned_be64 tx_bytes;       /* Number of transmitted bytes. */
-    pag_32aligned_be64 rx_dropped;     /* Number of packets dropped by RX. */
-    pag_32aligned_be64 tx_dropped;     /* Number of packets dropped by TX. */
-    pag_32aligned_be64 rx_errors; /* Number of receive errors.  This is a
+    ovs_32aligned_be64 rx_packets;     /* Number of received packets. */
+    ovs_32aligned_be64 tx_packets;     /* Number of transmitted packets. */
+    ovs_32aligned_be64 rx_bytes;       /* Number of received bytes. */
+    ovs_32aligned_be64 tx_bytes;       /* Number of transmitted bytes. */
+    ovs_32aligned_be64 rx_dropped;     /* Number of packets dropped by RX. */
+    ovs_32aligned_be64 tx_dropped;     /* Number of packets dropped by TX. */
+    ovs_32aligned_be64 rx_errors; /* Number of receive errors.  This is a
                                      super-set of receive errors and should be
                                      great than or equal to the sum of all
                                      rx_*_err values. */
-    pag_32aligned_be64 tx_errors; /* Number of transmit errors.  This is a
+    ovs_32aligned_be64 tx_errors; /* Number of transmit errors.  This is a
                                      super-set of transmit errors. */
-    pag_32aligned_be64 rx_frame_err; /* Number of frame alignment errors. */
-    pag_32aligned_be64 rx_over_err;  /* Number of packets with RX overrun. */
-    pag_32aligned_be64 rx_crc_err;   /* Number of CRC errors. */
-    pag_32aligned_be64 collisions;   /* Number of collisions. */
+    ovs_32aligned_be64 rx_frame_err; /* Number of frame alignment errors. */
+    ovs_32aligned_be64 rx_over_err;  /* Number of packets with RX overrun. */
+    ovs_32aligned_be64 rx_crc_err;   /* Number of CRC errors. */
+    ovs_32aligned_be64 collisions;   /* Number of collisions. */
 };
 OFP_ASSERT(sizeof(struct ofp10_port_stats) == 104);
 
@@ -446,28 +431,28 @@ OFP_ASSERT(sizeof(struct ofp10_port_stats) == 104);
 
 /* Body for stats request of type OFPST_QUEUE. */
 struct ofp10_queue_stats_request {
-    pag_be16 port_no;        /* All ports if OFPP_ALL. */
+    ovs_be16 port_no;        /* All ports if OFPP_ALL. */
     uint8_t pad[2];          /* Align to 32-bits. */
-    pag_be32 queue_id;       /* All queues if OFPQ_ALL. */
+    ovs_be32 queue_id;       /* All queues if OFPQ_ALL. */
 };
 OFP_ASSERT(sizeof(struct ofp10_queue_stats_request) == 8);
 
 /* Body for stats reply of type OFPST_QUEUE consists of an array of this
  * structure type. */
 struct ofp10_queue_stats {
-    pag_be16 port_no;
+    ovs_be16 port_no;
     uint8_t pad[2];          /* Align to 32-bits. */
-    pag_be32 queue_id;       /* Queue id. */
-    pag_32aligned_be64 tx_bytes;   /* Number of transmitted bytes. */
-    pag_32aligned_be64 tx_packets; /* Number of transmitted packets. */
-    pag_32aligned_be64 tx_errors;  /* # of packets dropped due to overrun. */
+    ovs_be32 queue_id;       /* Queue id. */
+    ovs_32aligned_be64 tx_bytes;   /* Number of transmitted bytes. */
+    ovs_32aligned_be64 tx_packets; /* Number of transmitted packets. */
+    ovs_32aligned_be64 tx_errors;  /* # of packets dropped due to overrun. */
 };
 OFP_ASSERT(sizeof(struct ofp10_queue_stats) == 32);
 
 /* Vendor extension stats message. */
 struct ofp10_vendor_stats_msg {
     struct ofp10_stats_msg osm; /* Type OFPST_VENDOR. */
-    pag_be32 vendor;            /* Vendor ID:
+    ovs_be32 vendor;            /* Vendor ID:
                                  * - MSB 0: low-order bytes are IEEE OUI.
                                  * - MSB != 0: defined by OpenFlow
                                  *   consortium. */
