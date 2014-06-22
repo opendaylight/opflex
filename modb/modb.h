@@ -10,7 +10,7 @@
 #define MODB_H 1
 
 #include "config-file.h"
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "shash.h"
 #include "list-util.h"
 #include "seq-util.h"
@@ -97,7 +97,7 @@ sequencer_p          modb_sequence;
  * head list for the node parents.
  */
 typedef struct _head_list {
-    struct pag_rwlock    rwlock;          /* this intended to lock the whole list */
+    struct ovs_rwlock    rwlock;          /* this intended to lock the whole list */
     int                  num_elements;    /* number of list_node      */
     enum_head_state      state;
     list_node_p          list;            /* the defines the begineeing and end   */
@@ -180,7 +180,7 @@ typedef enum _enum_op_rtn_code {
  * node definition in the MODB 
 */
 typedef struct node_ele {
-    struct pag_rwlock      rwlock;
+    struct ovs_rwlock      rwlock;
     uint32_t               id;
     uint32_t               class_id;
     uint32_t               content_path_id;
@@ -248,7 +248,7 @@ typedef struct _result {
  */
 typedef struct _hash_index {
     char *name;
-    struct pag_rwlock rwlock;
+    struct ovs_rwlock rwlock;
     struct shash htable;
 } hash_index_t, *hash_index_p;
 

@@ -19,7 +19,7 @@
 #include "gendcls.h"
 #include "config-file.h"
 #include "fnm-util.h"
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "hash-util.h"
 #include "dirs.h"
 #include "eventq.h"
@@ -324,20 +324,20 @@ static void *test_thread (void *arg)
             dWait = 0;
         }
 
-        pag_mutex_lock(&crew->mutex);
+        ovs_mutex_lock(&crew->mutex);
 
         /* If there is nothing to do wait for something......
          */
         if (crew->work_count == 0) {
             /* DEBUG("%s:%d: waiting for work\n", mod, mine->index); */
-            pag_mutex_cond_wait(&crew->go, &crew->mutex);
+            ovs_mutex_cond_wait(&crew->go, &crew->mutex);
         }
 
         if (crew->quit == 1) {
             pthread_cond_signal(&crew->done);
             /* DEBUG("%s:%d: quiting\n", mod, mine->index); */
             crew->crew_size--;
-            pag_mutex_unlock(&crew->mutex);
+            ovs_mutex_unlock(&crew->mutex);
             goto rtn_return;
         }
 
@@ -357,14 +357,14 @@ static void *test_thread (void *arg)
             work->next = NULL;
             crew->work_count--;
 
-            pag_mutex_unlock (&crew->mutex);
+            ovs_mutex_unlock (&crew->mutex);
 	
             work->state = 2;
             DEBUG("%s: Dispatching on %d: %s \n", mod, work->uuid.parts[0],
                   tv_show(tv_subtract(tv_tod(), work->tv), false, NULL));
         }
         else {
-            pag_mutex_unlock(&crew->mutex);
+            ovs_mutex_unlock(&crew->mutex);
         }
     }
 
