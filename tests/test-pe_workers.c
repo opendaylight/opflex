@@ -7,7 +7,7 @@
 
 #define DBUG_OFF 1 //turn off debugging
 
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "ring_buffer.h"
 #include "pe_workers.h"
 //#include "policy_enforcer.h"
@@ -44,7 +44,8 @@ static void rt_pe_workers(void **state) {
     //                                   PTHREAD_CREATE_DETACHED);
     for(tcount = 0; tcount < PE_TEST_PRODUCER_THREADS; tcount++) {
         idx[tcount] = tcount;
-        xpthread_create(&push_thread[tcount],
+        //TODO: check return codes
+        pthread_create(&push_thread[tcount],
                         NULL, push_on, (void *) &idx[tcount]);
     }
 

@@ -9,14 +9,14 @@
 #define SEQ_UTIL_H 1
 
 #include <config.h>
-#include "pag-thread.h"
+#include "ovs-thread.h"
 
 
 #define DEFAULT_SEQ_INC 1
 #define DEFAULT_SEQ_START_NUMBER 0
 
 typedef struct _sequencer {
-    struct pag_rwlock rwlock;
+    struct ovs_rwlock rwlock;
     uint32_t bump_value;
     uint32_t sequencer;
 } sequencer_t, *sequencer_p;
