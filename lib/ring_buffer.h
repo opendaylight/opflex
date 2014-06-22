@@ -11,7 +11,7 @@
 #ifndef RING_BUFFER_H
 #define RING_BUFFER_H 1
 
-#include "pag-thread.h"
+#include "ovs-thread.h"
 
 /*
  * API for ring buffer
@@ -29,8 +29,8 @@ typedef struct _ring_buffer_counters {
     int32_t pop_location;
     int32_t push_location;
     int32_t unused_count;
-//    struct pag_rwlock rwlock;
-    struct pag_mutex  lock;
+//    struct ovs_rwlock rwlock;
+    struct ovs_mutex  lock;
     pthread_cond_t not_empty;
     pthread_cond_t not_full;
 } ring_buffer_counters_t;

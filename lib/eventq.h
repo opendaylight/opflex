@@ -12,7 +12,7 @@
 #include <config.h>
 #include <sys/time.h>
 
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "timeval.h"
 #include "uuid.h"
 
@@ -43,7 +43,7 @@ typedef struct _eventq_ele {
  * the event Q external interface.
  **/
 typedef struct _eventq {
-    struct pag_mutex mutex;             /* control over the queue.     */
+    struct ovs_mutex mutex;             /* control over the queue.     */
     eventq_ele_t     *first, *last; 
     int              num_in_q;          /* number of free ele in the q  */
     int              q_size;            /* total number of ele in the q */
@@ -69,7 +69,7 @@ typedef struct crew_tag {
   int                 work_count;     /* Count of work items */
   eventq_ele_t        *first, *last;  /* First & last work item */
   int                 quit;           /* thread should quit */
-  struct pag_mutex    mutex;          /* Mutex for crew data */
+  struct ovs_mutex    mutex;          /* Mutex for crew data */
   pthread_cond_t      go;             /* work in Q      */
   pthread_cond_t      done;           /* will indicate when we are done */
 } crew_t, *crew_p;

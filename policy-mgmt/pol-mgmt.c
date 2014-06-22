@@ -18,7 +18,7 @@
 #include "config-file.h"
 #include "fnm-util.h"
 #include "meo-util.h"
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "seq-util.h"
 #include "hash-util.h"
 #include "tv-util.h"
@@ -109,7 +109,7 @@ bool pm_initialize(void)
 
         /* 2. crash recovery? */
         if (!strcasecmp(conf_get_value(PM_SECTION, "crash_recovery"), "true"))  {
-            pm_fname = fnm_create(".dat", PM_FNAME, pag_dbdir(), NULL);
+            pm_fname = fnm_create(".dat", PM_FNAME, ovs_dbdir(), NULL);
             pm_crash_recovery(fnm_path(pm_fname));
         }
 
@@ -210,7 +210,7 @@ bool pm_crash_recovery(const char *dbfile)
     VLOG_INFO("dbfile=%s", dbfile);
 
     if (pm_initialized) {
-        dbpath = (char *)pag_dbdir();
+        dbpath = (char *)ovs_dbdir();
         if (fnm_exists(dbfname)) {
             VLOG_INFO("%s: loading: %s\n", mod, fnm_path(dbfname));
 
