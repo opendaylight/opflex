@@ -178,7 +178,7 @@ parse_cmdline_options(int argc, char *argv[], char **unixctl_pathp)
             usage();
 
         case 'V':
-            pag_print_version(OFP10_VERSION, OFP10_VERSION);
+            ovs_print_version(OFP10_VERSION, OFP10_VERSION);
             exit(EXIT_SUCCESS);
 
         case 'f':
@@ -225,7 +225,7 @@ parse_cmdline_options(int argc, char *argv[], char **unixctl_pathp)
 
     switch (argc) {
     case 0:
-        return xasprintf("unix:%s/db.sock", pag_rundir());
+        return xasprintf("unix:%s/db.sock", ovs_rundir());
 
     case 1:
         return xstrdup(argv[0]);

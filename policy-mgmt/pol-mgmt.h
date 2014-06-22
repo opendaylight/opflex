@@ -9,7 +9,7 @@
 #define POL_MGMT_H 1
 
 #include "config-file.h"
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "shash.h"
 
 #define PM_SECTION "policy-management"

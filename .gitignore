@@ -15,6 +15,12 @@ missing
 *.pyc
 *.status
 *.in
+!third-party/ovs/lib/string.h.in
+!third-party/ovs/lib/stdio.h.in
+!third-party/ovs/tests/atlocal.in
+!third-party/ovs/datapath/linux/Kbuild.in
+!third-party/ovs/datapath/linux/Makefile.in
+!third-party/ovs/datapath/linux/Makefile.main.in
 Makefile
 stamp-h1
 libtool
