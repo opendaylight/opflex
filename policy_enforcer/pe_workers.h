@@ -39,7 +39,7 @@ struct _pe_crew {
   pe_worker_t         **worker;       /* ptr to array of workers
                                        * (crew members) */
   bool                quit;           /* should thread quit?*/
-  struct pag_rwlock   rwlock;         /* rw lock for crew data */
+  struct ovs_rwlock   rwlock;         /* rw lock for crew data */
   pthread_cond_t      done;           /* will indicate when we are done */
 };
 
