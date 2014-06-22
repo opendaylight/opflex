@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #include "dbug.h"
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "policy_enforcer.h"
 
 /* private */
@@ -99,7 +99,8 @@ bool pe_initialize() {
 
     /* use xpthread_key_create() to create a key for the thread? */
     /* start pe thread by invoking pe_start via xpthread_create() */
-    xpthread_create(pe_thread,NULL,pe_start,NULL);
+    //check return codes
+    pthread_create(pe_thread,NULL,pe_start,NULL);
 
     return(retval);
 }

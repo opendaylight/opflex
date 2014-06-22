@@ -17,11 +17,17 @@
 #define PAG_ERROR_MSG_LEN 80
 
 #include <stdio.h>
+#include <stdbool.h>
+
+typedef char fstring[128];
 
 /* protos */
 FILE *pipe_write(const char *);
 FILE *pipe_read(const char *);
 int pipe_close(FILE *);
 void strerr_wrapper(int);
+bool file_exist(char *);
+char *timestring(void);
+size_t get_file_size(char *);
 
 #endif //MISC_UTIL_H
