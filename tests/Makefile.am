@@ -26,14 +26,16 @@ test_eventq = test-eventq.c
 
 # set the include path found by configure
 
-CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I/usr/local/include -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(srcdir) -I$(top_builddir)/policy_enforcer -I$(top_builddir)/policy-mgmt
-CPPFLAGS=-DBSD_COMP=1 
+AM_CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I/usr/local/include -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(srcdir) -I$(top_builddir)/policy_enforcer -I$(top_builddir)/policy-mgmt
+AM_CFLAGS += -I$(top_builddir)/third-party/ovs/lib -I$(top_builddir)/third-party/ovs/ovsdb
+AM_CPPFLAGS=-DBSD_COMP=1 
 
 # the library search path.
 # pagentd_LDFLAGS = $(all_libraries)
-LDFLAGS = -L/usr/lib -L$(srcdir)/../lib -lssl -lcrypto -lrt -lreadline -lnsl -lm -lpthread -lcmocka
+AM_LDFLAGS = -L/usr/lib -L$(srcdir)/../lib -lssl -lcrypto -lrt -lreadline -lnsl -lm -lpthread -lcmocka
+AM_LDFLAGS += $(top_builddir)/third-party/ovs/lib/libopenvswitch.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la
 if HAVE_TCMALLOC
-LDFLAGS += -ltcmalloc
+AM_LDFLAGS += -ltcmalloc
 endif 
 
 test_modb_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/modb/libmodb.so.la 

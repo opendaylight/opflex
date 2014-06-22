@@ -17,7 +17,7 @@
 
 #define DBUG_OFF 1
 
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "dbug.h"
 #include "util.h"
 #include "misc-util.h"
@@ -61,7 +61,7 @@ void pe_crew_destroy()
     for (crew_index = 0; crew_index < crew.size; crew_index++)
         xpthread_join(crew.worker[crew_index]->thread, NULL);
 
-    pag_rwlock_destroy(&crew.rwlock);
+    ovs_rwlock_destroy(&crew.rwlock);
 
     DBUG_LEAVE;
 
@@ -95,7 +95,7 @@ void pe_crew_create ()
     /*
      * Initialize synchronization objects
      */
-    pag_rwlock_init(&crew.rwlock);
+    ovs_rwlock_init(&crew.rwlock);
 
     DBUG_PRINT("DEBUG ",("Set quit status false. Lock initialized %p\n",
                             &crew.rwlock));
@@ -133,7 +133,8 @@ void pe_crew_create ()
                         pe_workers_fetch_flow,
                         (void *) crew.worker[crew_index]);
 */
-        xpthread_create(&crew.worker[crew_index]->thread,
+        //TODO:CHeck return codes
+        pthread_create(&crew.worker[crew_index]->thread,
                         NULL,
                         pe_workers_fetch_flow,
                         (void *) crew.worker[crew_index]);
@@ -222,9 +223,9 @@ void pe_set_crew_quit_status(bool status) {
 
     DBUG_ENTER(mod);
 
-    pag_rwlock_wrlock(&crew.rwlock);
+    ovs_rwlock_wrlock(&crew.rwlock);
     crew.quit = status;
-    pag_rwlock_unlock (&crew.rwlock);
+    ovs_rwlock_unlock (&crew.rwlock);
 
     DBUG_LEAVE;
 }
@@ -269,9 +270,9 @@ static bool pe_get_crew_quit_status() {
 
     DBUG_ENTER(mod);
 
-    pag_rwlock_rdlock(&crew.rwlock);
+    ovs_rwlock_rdlock(&crew.rwlock);
     bret = crew.quit;
-    pag_rwlock_unlock (&crew.rwlock);
+    ovs_rwlock_unlock (&crew.rwlock);
 
     DBUG_LEAVE;
     return(bret);
