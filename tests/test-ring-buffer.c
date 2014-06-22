@@ -6,7 +6,7 @@
 
 #define DBUG_OFF 1 //turn off debugging
 
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "ring_buffer.h"
 #include "dbug.h"
 
@@ -20,7 +20,7 @@ static int push_sum = 0;
 static int pop_counter = 0;
 static int pop_sum = 0;
 static int push[PE_RING_BUFFER_LENGTH+1] = { 0 };
-static struct pag_mutex pop_lock;
+static struct ovs_mutex pop_lock;
 
 /* the following two values are determined along with
  * PE_RING_BUFFER_LENGTH such that
@@ -50,16 +50,18 @@ static void push_pop_buffer(void **state) {
     (void) pthread_attr_init(&attr); //non portable
     (void) pthread_attr_setdetachstate(&attr,
                                        PTHREAD_CREATE_DETACHED);
-    xpthread_create(&push_thread, &attr, push_on, NULL);
+    //TODO: check return codes`
+    pthread_create(&push_thread, &attr, push_on, NULL);
 
     /* make sure the producer fills the buffer */
     while(push_counter != (PE_RING_BUFFER_LENGTH-1))
         sleep(1);
 
     /* consumer */
-    pag_mutex_init(&pop_lock);
+    ovs_mutex_init(&pop_lock);
     for(counter=0;counter<(PE_TEST_POP_THREAD_COUNT);counter++) {
-        xpthread_create(&pop_thread[counter], NULL,
+        //TODO:check return codes
+        pthread_create(&pop_thread[counter], NULL,
                         pop_off, (void *) &arg);
         DBUG_PRINT("\nDEBUG---",("created pop thread %i",counter));
     }
@@ -72,7 +74,8 @@ static void push_pop_buffer(void **state) {
     /* at this point, there should be 1 remaing entry to pop */
     
     arg = 1;
-    xpthread_create(&last_pop_thread, NULL, pop_off, (void *) &arg);
+    //TODO:check return codes
+    pthread_create(&last_pop_thread, NULL, pop_off, (void *) &arg);
     DBUG_PRINT("\nDEBUG---",("created last pop thread"));
     xpthread_join(last_pop_thread, (void **) NULL);
     DBUG_PRINT("\nDEBUG---",("joined last pop thread"));
@@ -102,17 +105,17 @@ void *pop_off(void *arg) {
     if(sentinel != 1) {
         for(count_pops = 0; count_pops < PE_TEST_MAX_POP_COUNT; count_pops++) {
             pop = ring_buffer_pop();
-            pag_mutex_lock(&pop_lock);
+            ovs_mutex_lock(&pop_lock);
             pop_counter++;
             pop_sum += *((int *) pop);
-            pag_mutex_unlock(&pop_lock);
+            ovs_mutex_unlock(&pop_lock);
         }
     } else {
         pop = ring_buffer_pop();
-        pag_mutex_lock(&pop_lock);
+        ovs_mutex_lock(&pop_lock);
         pop_counter++;
         pop_sum += *((int *) pop);
-        pag_mutex_unlock(&pop_lock);
+        ovs_mutex_unlock(&pop_lock);
     }
         
     DBUG_PRINT("DEBUG",("pop_off tid %d, pop_sum/push_sum %i/%i",

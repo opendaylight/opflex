@@ -1,0 +1,68 @@
+AT_BANNER([ovs-vswitchd])
+
+dnl The OVS initscripts never make an empty database (one without even an
+dnl Open_vSwitch record) visible to ovs-vswitchd, but hand-rolled scripts
+dnl sometimes do.  At one point, "ovs-vswitchd --detach" would never detach
+dnl and use 100% CPU if this happened, so this test checks for regression.
+AT_SETUP([ovs-vswitchd detaches correctly with empty db])
+OVS_RUNDIR=`pwd`; export OVS_RUNDIR
+OVS_LOGDIR=`pwd`; export OVS_LOGDIR
+OVS_DBDIR=`pwd`; export OVS_DBDIR
+OVS_SYSCONFDIR=`pwd`; export OVS_SYSCONFDIR
+ON_EXIT([kill `cat ovsdb-server.pid ovs-vswitchd.pid`])
+
+dnl Create database.
+touch .conf.db.~lock~
+AT_CHECK([ovsdb-tool create conf.db $abs_top_srcdir/vswitchd/vswitch.ovsschema])
+
+dnl Start ovsdb-server.  *Don't* initialize database.
+AT_CHECK([ovsdb-server --detach --no-chdir --pidfile --log-file --remote=punix:$OVS_RUNDIR/db.sock], [0], [ignore], [ignore])
+AT_CAPTURE_FILE([ovsdb-server.log])
+
+dnl Start ovs-vswitchd.
+AT_CHECK([ovs-vswitchd --detach --no-chdir --pidfile --enable-dummy --disable-system --log-file], [0], [], [stderr])
+AT_CAPTURE_FILE([ovs-vswitchd.log])
+
+dnl ovs-vswitchd detached OK or we wouldn't have made it this far.  Success.
+AT_CLEANUP
+
+
+dnl ----------------------------------------------------------------------
+m4_define([OVS_VSCTL_CHECK_RX_PKT], [
+AT_CHECK([ovs-vsctl list int $1 | grep statistics | sed -n 's/^.*\(rx_packets=[[0-9]][[0-9]]*\).*$/\1/p'],[0],
+[dnl
+rx_packets=$2
+])
+])
+
+AT_SETUP([ovs-vswitchd -- stats-update-interval])
+OVS_VSWITCHD_START([add-port br0 p1 -- set int p1 type=internal])
+ovs-appctl time/stop
+
+dnl at the beginning, the update of rx_packets should happen every 5 seconds.
+for i in `seq 0 10`; do ovs-appctl time/warp 1000; done
+OVS_VSCTL_CHECK_RX_PKT([p1], [0])
+AT_CHECK([ovs-appctl netdev-dummy/receive p1 'eth(src=50:54:00:00:00:09,dst=50:54:00:00:00:0a),eth_type(0x0800),ipv4(src=10.0.0.2,dst=10.0.0.1,proto=1,tos=0,ttl=64,frag=no),icmp(type=8,code=0)'])
+for i in `seq 0 10`; do ovs-appctl time/warp 1000; done
+OVS_VSCTL_CHECK_RX_PKT([p1], [1])
+
+dnl set the stats update interval to 100K ms, the following 'recv' should not be updated.
+AT_CHECK([ovs-vsctl set O . other_config:stats-update-interval=100000])
+for i in `seq 0 50`; do ovs-appctl time/warp 1000; done
+for i in `seq 1 5`; do
+    AT_CHECK([ovs-appctl netdev-dummy/receive p1 'eth(src=50:54:00:00:00:09,dst=50:54:00:00:00:0a),eth_type(0x0800),ipv4(src=10.0.0.2,dst=10.0.0.1,proto=1,tos=0,ttl=64,frag=no),icmp(type=8,code=0)'])
+done
+
+OVS_VSCTL_CHECK_RX_PKT([p1], [1])
+dnl advance the clock by 100K ms, the previous 'recv' should be updated.
+for i in `seq 0 99`; do ovs-appctl time/warp 1000; done
+OVS_VSCTL_CHECK_RX_PKT([p1], [6])
+
+dnl now remove the configuration. 'recv' one packet.  there should be an update after 5000 ms.
+AT_CHECK([ovs-vsctl clear O . other_config])
+AT_CHECK([ovs-appctl netdev-dummy/receive p1 'eth(src=50:54:00:00:00:09,dst=50:54:00:00:00:0a),eth_type(0x0800),ipv4(src=10.0.0.2,dst=10.0.0.1,proto=1,tos=0,ttl=64,frag=no),icmp(type=8,code=0)'])
+for i in `seq 0 10`; do ovs-appctl time/warp 1000; done
+OVS_VSCTL_CHECK_RX_PKT([p1], [7])
+
+OVS_VSWITCHD_STOP
+AT_CLEANUP

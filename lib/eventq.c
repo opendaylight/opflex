@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include <asm/errno.h>
 
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "eventq.h"
 #include "uuid.h"
 #include "vlog.h"
@@ -65,7 +65,7 @@ bool scan_queue_for_uuid (crew_t *crew, struct uuid *uuid)
     int a;
   
     VLOG_DBG("%s: <--\n",  mod);  
-    pag_mutex_lock(&crew->mutex);
+    ovs_mutex_lock(&crew->mutex);
 
     if (crew->work_count > 0) {
         for (a = 0, wp = crew->first; 
@@ -77,7 +77,7 @@ bool scan_queue_for_uuid (crew_t *crew, struct uuid *uuid)
             }
         }
     }     
-    pag_mutex_unlock(&crew->mutex);
+    ovs_mutex_unlock(&crew->mutex);
     VLOG_DBG("%s: -->%d", mod, retc);
     return retc;
 }
@@ -115,20 +115,20 @@ void *worker_routine (void *arg)
             dWait = 0;
         }
 
-        pag_mutex_lock(&crew->mutex);
+        ovs_mutex_lock(&crew->mutex);
 
         /* If there is nothing to do wait for something......
          */
         if (crew->work_count == 0) {
             VLOG_DBG("%s:%d: waiting for work", mod, mine->index);
-            pag_mutex_cond_wait(&crew->go, &crew->mutex);
+            ovs_mutex_cond_wait(&crew->go, &crew->mutex);
         }
 
         if (crew->quit == 1) {
             pthread_cond_signal(&crew->done);
             VLOG_DBG("%s:%d: quiting", mod, mine->index);
             crew->crew_size--;
-            pag_mutex_unlock(&crew->mutex);
+            ovs_mutex_unlock(&crew->mutex);
             pthread_exit(NULL);
         }      
       
@@ -147,7 +147,7 @@ void *worker_routine (void *arg)
             work->next = NULL;
             crew->work_count--;
 
-            pag_mutex_unlock (&crew->mutex);
+            ovs_mutex_unlock (&crew->mutex);
 	      
             /* ap = &work->aebsRqst; */
             /* /\* We have the work item now process it.... */
@@ -163,7 +163,7 @@ void *worker_routine (void *arg)
             /*     } */
         }
         else {
-            pag_mutex_unlock(&crew->mutex);
+            ovs_mutex_unlock(&crew->mutex);
         }
     }
 
@@ -239,13 +239,13 @@ bool init_workpool(int cmd_size, int ele_size,
 
     /* init the queue */
     *eqp = xzalloc(sizeof(eventq_t));
-    pag_mutex_init(&(*eqp)->mutex);
+    ovs_mutex_init(&(*eqp)->mutex);
     (*eqp)->first = (*eqp)->last = NULL;
     (*eqp)->num_in_q = 0;
     (*eqp)->q_size = 0;
     
     /*  build up the buffer pool  */
-    pag_mutex_lock(&(*eqp)->mutex);
+    ovs_mutex_lock(&(*eqp)->mutex);
 
     /* 
      * setup the link list ptrs
@@ -272,7 +272,7 @@ bool init_workpool(int cmd_size, int ele_size,
         this = next;
     }
 
-    pag_mutex_unlock(&(*eqp)->mutex);
+    ovs_mutex_unlock(&(*eqp)->mutex);
     VLOG_DBG("%s: -->%d", mod, retc);
     return(retc);
 }
@@ -300,7 +300,7 @@ eventq_ele_t *get_event_from_queue(eventq_t *qp)
      * very dangerous, we will stay in theis loop if 
      * while there are no more free work_ele available.
      */
-    pag_mutex_lock(&qp->mutex);
+    ovs_mutex_lock(&qp->mutex);
 
     if (qp->num_in_q > 0) {
         if ((wap = qp->first) != NULL) {
@@ -313,7 +313,7 @@ eventq_ele_t *get_event_from_queue(eventq_t *qp)
             --qp->num_in_q;
             count = qp->num_in_q;
       
-            pag_mutex_unlock(&qp->mutex);
+            ovs_mutex_unlock(&qp->mutex);
             VLOG_DBG("%s: Returning with %p num_in_q %d UNLOCKED",
                      mod, wap, count);
 
@@ -338,7 +338,7 @@ eventq_ele_t *get_event_from_queue(eventq_t *qp)
         VLOG_DBG("%s: No Elements left in the event queue\n", mod);
     }
     
-    pag_mutex_unlock(&qp->mutex);
+    ovs_mutex_unlock(&qp->mutex);
     VLOG_DBG("%s: -->", mod);
     return NULL;    
 }
@@ -377,7 +377,7 @@ bool put_work_back_in_queue (eventq_t * qp, eventq_ele_t *wp )
     /* wp->bhead = NULL;  */
     /* wp->numBlks = 0; */
 
-    pag_mutex_lock(&qp->mutex);
+    ovs_mutex_lock(&qp->mutex);
 
     //DEBUG_OUT(THIS_DB_LEVEL, ("(%s) Called LOCKED :num_in_q=%d \n", 
     //    mod,qp->.num_in_q));
@@ -392,7 +392,7 @@ bool put_work_back_in_queue (eventq_t * qp, eventq_ele_t *wp )
     count = qp->num_in_q;
   
     /* relase the lock */
-    pag_mutex_unlock(&qp->mutex);
+    ovs_mutex_unlock(&qp->mutex);
     wp = NULL;
     VLOG_DBG("%s: -->%d", mod, retc);
     return retc;    
@@ -427,7 +427,7 @@ int eventq_add (crew_p crew, eventq_ele_t *request)
     /* 
      * get ahold of the crew.
      */
-    pag_mutex_lock(&crew->mutex);
+    ovs_mutex_lock(&crew->mutex);
 
     /*
      * Add the request to the end of the queue, updating the
@@ -442,7 +442,7 @@ int eventq_add (crew_p crew, eventq_ele_t *request)
     }
   
     wcnt = ++crew->work_count;  
-    pag_mutex_unlock(&crew->mutex);
+    ovs_mutex_unlock(&crew->mutex);
 
     if ((wcnt - 1) == 0) {
         status = pthread_cond_signal(&crew->go);
@@ -478,9 +478,9 @@ int crew_destroy(eventq_t *qp, crew_t *crew)
 
     VLOG_DBG("%s: -->", mod);
 
-    pag_mutex_lock(&crew->mutex);
+    ovs_mutex_lock(&crew->mutex);
     crew->quit = 1;
-    pag_mutex_unlock (&crew->mutex);
+    ovs_mutex_unlock (&crew->mutex);
     pthread_cond_broadcast(&crew->go);
 
     /*
@@ -496,15 +496,15 @@ int crew_destroy(eventq_t *qp, crew_t *crew)
             pthread_cond_broadcast(&crew->go);
             VLOG_DBG("%s: Issued Go for termination.", mod);
         }
-        //pag_mutex_cond_wait(&crew->done, &crew->mutex);
+        //ovs_mutex_cond_wait(&crew->done, &crew->mutex);
     }
 
-    /* pag_mutex_lock(&qp->mutex); */
-    /* pag_mutex_unlock (&crew->mutex); */
-    /* pag_mutex_unlock (&qp->mutex); */
+    /* ovs_mutex_lock(&qp->mutex); */
+    /* ovs_mutex_unlock (&crew->mutex); */
+    /* ovs_mutex_unlock (&qp->mutex); */
 
-    /* pag_mutex_destroy(&qp->mutex); */
-    pag_mutex_destroy(&crew->mutex);
+    /* ovs_mutex_destroy(&qp->mutex); */
+    ovs_mutex_destroy(&crew->mutex);
     status = pthread_cond_destroy(&crew->done);
     status = pthread_cond_destroy(&crew->go);
 
@@ -561,7 +561,7 @@ bool crew_create (crew_t *crew, int crew_size, int max_crew_size,
     /*
      * Initialize synchronization objects
      */
-    pag_mutex_init(&crew->mutex);
+    ovs_mutex_init(&crew->mutex);
     retc = pthread_cond_init (&crew->done, NULL);
     if (retc != 0) goto rtn_return;
     retc = pthread_cond_init (&crew->go, NULL);
