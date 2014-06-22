@@ -19,7 +19,7 @@
 
 #define DBUG_OFF 1 //turn off debugging
 
-#include "pag-thread.h"
+#include "ovs-thread.h"
 #include "dbug.h"
 #include "util.h"
 #include "ring_buffer.h"
@@ -47,10 +47,10 @@ void rb_broadcast_cond_variables() {
 
     if ((save_errno = pthread_cond_broadcast(&rb_counters.not_full))
          != 0)
-        pag_abort(save_errno,"pthread_cond_broadcast failed!");
+        ovs_abort(save_errno,"pthread_cond_broadcast failed!");
     if ((save_errno = pthread_cond_broadcast(&rb_counters.not_empty))
          != 0)
-        pag_abort(save_errno,"pthread_cond_broadcast failed!");
+        ovs_abort(save_errno,"pthread_cond_broadcast failed!");
 
 }
 
@@ -100,7 +100,7 @@ void ring_buffer_init() {
 
     ring_buffer = xcalloc((size_t) rb_length, (size_t) rb_entry_size);
 
-    pag_mutex_init(&rb_counters.lock);
+    ovs_mutex_init(&rb_counters.lock);
     xpthread_cond_init(&rb_counters.not_empty,NULL);
     xpthread_cond_init(&rb_counters.not_full,NULL);
 
@@ -122,17 +122,17 @@ void ring_buffer_push(void *input_p) {
     
     DBUG_ENTER("ring_buffer_push");
 
-    pag_mutex_lock(&rb_counters.lock);
+    ovs_mutex_lock(&rb_counters.lock);
     while(((rb_counters.push_location +1) % rb_length) ==
             rb_counters.pop_location) {
-        pag_mutex_cond_wait(&rb_counters.not_full,&rb_counters.lock);
+        ovs_mutex_cond_wait(&rb_counters.not_full,&rb_counters.lock);
     }
     ring_buffer[rb_counters.push_location] = input_p;
     rb_counters.push_location++;
     if(rb_counters.push_location >= rb_length)
             rb_counters.push_location = 0;
     xpthread_cond_signal(&rb_counters.not_empty);
-    pag_mutex_unlock(&rb_counters.lock);
+    ovs_mutex_unlock(&rb_counters.lock);
 
 //    DBUG_PRINT("\nDEBUG", ("Pushed %p (%i) into slot %i",
 //                  input_p, *(int *)input_p, (rb_counters.push_location-1)));
@@ -161,15 +161,15 @@ void *ring_buffer_pop(void) {
     DBUG_PRINT("\nDEBUG", ("Thread %p entering ring_buffer_pop",
                             pthread_self()));
 
-    pag_mutex_lock(&rb_counters.lock);
+    ovs_mutex_lock(&rb_counters.lock);
     while(rb_counters.push_location == rb_counters.pop_location) {
-        pag_mutex_cond_wait(&rb_counters.not_empty, &rb_counters.lock);
+        ovs_mutex_cond_wait(&rb_counters.not_empty, &rb_counters.lock);
     }
     retval = ring_buffer[rb_counters.pop_location];
     rb_counters.pop_location++;
     if(rb_counters.pop_location >= rb_length) rb_counters.pop_location = 0;
     xpthread_cond_signal(&rb_counters.not_full);
-    pag_mutex_unlock(&rb_counters.lock);
+    ovs_mutex_unlock(&rb_counters.lock);
 
 //    DBUG_PRINT("\nDEBUG", ("Fetched %p (%i) from slot %i",
 //                         retval, *(int*)retval, (rb_counters.pop_location-1)));

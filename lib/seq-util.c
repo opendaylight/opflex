@@ -40,11 +40,11 @@ sequence_init(sequencer_p *sp, uint32_t start_num, uint32_t bump_by_value)
 
     ENTER(mod);
     *sp = xzalloc(sizeof(sequencer_t));
-    pag_rwlock_init(&(*sp)->rwlock);
-    pag_rwlock_wrlock(&(*sp)->rwlock);
+    ovs_rwlock_init(&(*sp)->rwlock);
+    ovs_rwlock_wrlock(&(*sp)->rwlock);
     (*sp)->sequencer = start_num;
     (*sp)->bump_value = bump_by_value;
-    pag_rwlock_unlock(&(*sp)->rwlock);
+    ovs_rwlock_unlock(&(*sp)->rwlock);
     LEAVE(mod);
     return(0);
 }
@@ -61,8 +61,8 @@ sequence_destroy(sequencer_p *sp)
     static char *mod = "sequence_destroy";
 
     ENTER(mod);
-    pag_rwlock_wrlock(&(*sp)->rwlock);
-    pag_rwlock_destroy(&(*sp)->rwlock);
+    ovs_rwlock_wrlock(&(*sp)->rwlock);
+    ovs_rwlock_destroy(&(*sp)->rwlock);
     free(*sp);
     LEAVE(mod);
     return;
@@ -83,10 +83,10 @@ uint32_t sequence_next(sequencer_p sp)
     uint32_t rtn_seq = 0;
 
     ENTER(mod);
-    pag_rwlock_wrlock(&sp->rwlock);
+    ovs_rwlock_wrlock(&sp->rwlock);
     sp->sequencer += sp->bump_value;
     rtn_seq = sp->sequencer;
-    pag_rwlock_unlock(&sp->rwlock);
+    ovs_rwlock_unlock(&sp->rwlock);
     VLOG_DBG("%s: rtn_seq=%u", mod, rtn_seq);
     LEAVE(mod);
     return(rtn_seq);
@@ -107,9 +107,9 @@ sequence_current(sequencer_p sp)
     uint32_t rtn_seq = 0;
 
     ENTER(mod);
-    pag_rwlock_rdlock(&sp->rwlock);
+    ovs_rwlock_rdlock(&sp->rwlock);
     rtn_seq = sp->sequencer;
-    pag_rwlock_unlock(&sp->rwlock);
+    ovs_rwlock_unlock(&sp->rwlock);
     LEAVE(mod);
     return(rtn_seq);
 }
@@ -131,9 +131,9 @@ sequence_set(sequencer_p sp, uint32_t num)
     uint32_t rtn_seq = 0;
 
     ENTER(mod);
-    pag_rwlock_wrlock(&sp->rwlock);
+    ovs_rwlock_wrlock(&sp->rwlock);
     rtn_seq = sp->sequencer = num;
-    pag_rwlock_unlock(&sp->rwlock);
+    ovs_rwlock_unlock(&sp->rwlock);
     LEAVE(mod);
     return(rtn_seq);
 }

@@ -79,7 +79,7 @@ static void test_modb_get_state(void **state)
 static int modb_insert_one(node_ele_p *ndp, const char *uri_str, result_p rs)
 {
     *ndp = xzalloc(sizeof(node_ele_t));
-    pag_rwlock_init(&(*ndp)->rwlock);
+    ovs_rwlock_init(&(*ndp)->rwlock);
     (*ndp)->class_id = 123456789;
     (*ndp)->content_path_id = 2;
     (*ndp)->lri = "fake_class:fkae_type";
@@ -287,7 +287,7 @@ static void test_modb_create_node_many(void **state)
     /* create each node and insert it */
     for (i = 0; i < MANY_NODES; i++) {
         ndp = xzalloc(sizeof(node_ele_t));
-        pag_rwlock_init(&ndp->rwlock);
+        ovs_rwlock_init(&ndp->rwlock);
         ndp->class_id = i;
         ndp->content_path_id = i;
         sprintf(tbuf, "fake_class:fake_type_%d", i);
@@ -316,7 +316,7 @@ static void create_node_tree(node_ele_p *parentp, int count)
     /* parent */
     nc = 1;
     parent = xzalloc(sizeof(node_ele_t));
-    pag_rwlock_init(&parent->rwlock);
+    ovs_rwlock_init(&parent->rwlock);
     parent->class_id = nc;
     parent->content_path_id = nc;
     sprintf(tbuf, "fake_class:fake_type_%d", nc);
@@ -330,7 +330,7 @@ static void create_node_tree(node_ele_p *parentp, int count)
     
     for (i=0, nc=2; nc < create_count; nc++, i++) {
         ndp = xzalloc(sizeof(node_ele_t));
-        pag_rwlock_init(&ndp->rwlock);
+        ovs_rwlock_init(&ndp->rwlock);
         ndp->class_id = nc;
         ndp->content_path_id = nc;
         sprintf(tbuf, "fake_class:fake_type_%d", nc);

@@ -15,9 +15,13 @@
 #include <string.h>
 #include <errno.h>
 #include <features.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <time.h>
 
 #include "dbug.h"
-#include "util.h" //for pag_abort
+#include "util.h" //for ovs_abort
 #include "misc-util.h"
 
 
@@ -33,7 +37,7 @@
  *
  * \brief pipe_write()
  *        Remove an entry from the ring buffer.
- *        On error, this function calls pag_abort, which will
+ *        On error, this function calls ovs_abort, which will
  *        dump core.
  *
  * @param[]
@@ -48,7 +52,7 @@ FILE *pipe_write(const char *cmd) {
 
     DBUG_ENTER("pipe_write");
     if (cmd == NULL)
-        pag_abort(-1,"NULL passed into %s",__func__);
+        ovs_abort(-1,"NULL passed into %s",__func__);
 
     pipe_p = popen(cmd,"w");
     save_errno = errno;
@@ -63,7 +67,7 @@ FILE *pipe_write(const char *cmd) {
  *
  * \brief pipe_read()
  *        Remove an entry from the ring buffer.
- *        On error, this function calls pag_abort, which will
+ *        On error, this function calls ovs_abort, which will
  *        dump core.
  *
  * @param[]
@@ -79,7 +83,7 @@ FILE *pipe_read(const char *cmd) {
     DBUG_ENTER("pipe_read");
 
     if (cmd == NULL)
-        pag_abort(-1,"NULL passed into %s",__func__);
+        ovs_abort(-1,"NULL passed into %s",__func__);
 
     pipe_p = popen(cmd,"r");
     save_errno = errno;
@@ -93,7 +97,7 @@ FILE *pipe_read(const char *cmd) {
 /* ============================================================
  *
  * \brief pipe_close()
- *        Close an open pipe. On error this function calls pag_abort,
+ *        Close an open pipe. On error this function calls ovs_abort,
  *        which will cause a core dump.
  *
  * @param[]
@@ -109,7 +113,7 @@ int pipe_close(FILE *pipe_p) {
     DBUG_ENTER("pipe_close");
 
     if (pipe_p == NULL)
-        pag_abort(-1,"NULL passed into %s",__func__);
+        ovs_abort(-1,"NULL passed into %s",__func__);
     
     retval = pclose(pipe_p);
     save_errno = errno;
@@ -142,15 +146,75 @@ void strerr_wrapper(int err_no) {
     str_err = strerror_r(err_no,error_message,PAG_ERROR_MSG_LEN);
     save_errno = errno;
     if (str_err == 0)
-        pag_abort(save_errno, error_message);
+        ovs_abort(save_errno, error_message);
     else
-        pag_abort(save_errno,"Unknown error %i/%i",str_err,save_errno);
+        ovs_abort(save_errno,"Unknown error %i/%i",str_err,save_errno);
 #else /* PAG_USING_GNU */
     char *msg = NULL;
     msg = strerror_r(err_no,error_message,PAG_ERROR_MSG_LEN);
     if (msg != NULL)
-        pag_abort(save_errno, error_message);
+        ovs_abort(save_errno, error_message);
     else
-        pag_abort(save_errno,"Unknown error %i",save_errno);
+        ovs_abort(save_errno,"Unknown error %i",save_errno);
 #endif
 }
+
+/*
+ * @brief file-exists 
+ *  check if a file exists
+ *
+ * @param0 char * of the file
+ *
+ * @return True if flie exists, else False if not
+ *
+ */
+bool file_exist(char *fname)
+{
+    struct stat st;
+
+    if (stat(fname,&st) != 0)
+        return (false);      /* Not found. */
+
+    return(true);
+}
+
+/*
+ * @brief timestring()  Returns the date and time as a string
+ *
+ * @return the date string
+ *
+ */
+char *timestring(void)
+{
+    static fstring tbuf;
+    time_t t;
+    struct tm *tm;
+
+    t = time(NULL);
+    tm = localtime(&t);
+    if (!tm) {
+        snprintf(tbuf, sizeof(tbuf)-1, "%ld seconds since the Epoch",  (long)t);
+    } else {
+        strftime(tbuf,100,"%b-%d %H:%M:%S",tm);
+    }
+
+    return(tbuf);
+}
+
+/*
+ * @brief get_file_size() gets the file size
+ *
+ * @param0 char * the file path
+ *
+ * @return the size in bytes of the named file
+ *
+ */
+size_t get_file_size(char *file_name)
+{
+    struct stat buf;
+    buf.st_size = 0;
+    if(stat(file_name,&buf) != 0)
+        return (0)-1;
+    return(buf.st_size);
+}
+
