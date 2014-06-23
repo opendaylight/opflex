@@ -19,6 +19,8 @@ function show_options () {
     echo "Build the program environment"
     echo
     echo "Options:"
+    echo "    --force-ovs-build -- even though the OVS libs exist,"
+    echo "                         rebuild OVS."
     echo "    --no-make --perform the make on the full tree."
     echo "    --tags -- runs the etags, a must for emacs"
     echo "    --stop-stage <stage> -- runs through the defined stage"
@@ -58,8 +60,9 @@ fi
 
 DO_MAKE="yes"
 DO_TAGS="n"
+BUILD_OVS="no"
 STOP_STAGE=""
-TEMP=`getopt -o s:tnvh --long stop-stage:,no-make::,tags::,help,verbose:: -n $SCRIPT_NAME -- "$@"`
+TEMP=`getopt -o s:tnvhf --long stop-stage:,no-make::,tags::,help,force-ovs-build,verbose:: -n $SCRIPT_NAME -- "$@"`
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 
 # Note the quotes around `$TEMP': they are essential!                                                                                                      
@@ -68,6 +71,11 @@ eval set -- "$TEMP"
 
 while true ; do
     case "$1" in
+        -f|--force-ovs-build)
+            case "$2" in
+                "") BUILD_OVS="yes"; shift 1 ;;
+                *) BUILD_OVS="yes"; shift 1 ;;
+            esac ;;
         -n|--no-make)
             case "$2" in
                 "") DO_MAKE="no"; shift 2;;
@@ -113,26 +121,33 @@ do
 done
 IFS="$save_ifs"
 
-msgout "INFO" "First, build OVS."
-origDIR=`pwd`
-msgout "INFO" "Currently in `pwd`"
-cd third-party/ovs
-ovsBuildDIR=`pwd`
-msgout "INFO" "Entered `pwd`"
-make distclean
-# We need our vlog.h
-msgout "INFO" "Copying OpFlex vlog.h into OVS"
-mv -v lib/vlog.h lib/orig.vlog.h
-cp -v ../vlog.h ./lib
-# Build ovs
-cd $ovsBuildDIR
-msgout "INFO" "Running boot.sh in $ovsBuildDIR"
-./boot.sh || die "Can't run ovs/boot.sh"
-msgout "INFO" "Running configure in $ovsBuildDIR"
-./configure || die "Can't run ovs/configure"
-msgout "INFO" "Running make in $ovsBuildDIR"
-make || die "Can't make ovs"
-cd $origDIR
+# Build OVS
+if [ ! -f third-party/ovs/lib/libopenvswitch.la -o \
+     ! -f third-party/ovs/ovsdb/libovsdb.la -o \
+     "$BUILD_OVS" = "yes" ]
+then
+    msgout "INFO" "First, build OVS."
+    origDIR=`pwd`
+    msgout "INFO" "Currently in `pwd`"
+    cd third-party/ovs
+    ovsBuildDIR=`pwd`
+    msgout "INFO" "Entered `pwd`"
+    make distclean
+    # We need our vlog.h
+    msgout "INFO" "Copying OpFlex vlog.h into OVS"
+    mv -v lib/vlog.h lib/orig.vlog.h
+    cp -v ../vlog.h ./lib
+    # Build ovs
+    cd $ovsBuildDIR
+    msgout "INFO" "Running boot.sh in $ovsBuildDIR"
+    ./boot.sh || die "Can't run ovs/boot.sh"
+    msgout "INFO" "Running configure in $ovsBuildDIR"
+    ./configure || die "Can't run ovs/configure"
+    msgout "INFO" "Running make in $ovsBuildDIR"
+    make || die "Can't make ovs"
+    cd $origDIR
+fi
+#end BUILD ovs
 
 if [ "$STOP_STAGE" == ovs ]; then
     msgout "INFO" "Stop-stage set at ovs."
