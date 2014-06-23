@@ -15,6 +15,11 @@ missing
 *.pyc
 *.status
 *.in
+*.dirstamp
+*traces.*
+*output.*
+*distfiles
+*manpage-check
 !third-party/ovs/utilities/ovs-l3ping.in
 !third-party/ovs/utilities/ovs-test.in
 !third-party/ovs/utilities/ovs-dpctl.8.in
