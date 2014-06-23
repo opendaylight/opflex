@@ -77,7 +77,6 @@ config.h
 *~
 pagentd/pagentd
 autom4te.cache/*
-*/Makefile.in
 TAGS
 lib/ofp-errors.inc
 lib/ofp-msgs.inc
