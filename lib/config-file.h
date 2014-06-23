@@ -27,6 +27,6 @@ bool conf_file_isloaded(void);
 void conf_free(void);
 bool conf_load(const char *cnf_fname);
 void conf_dump(FILE *fd);
-const char *conf_get_value(char *section, char *key);
+char *conf_get_value(char *section, char *key);
 
 #endif /* config-file.h */

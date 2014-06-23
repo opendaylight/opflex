@@ -59,11 +59,11 @@ static char *debug_level;
  * the config file then the config option will defualt to what is 
  * defined here.
  */
-static struct option_ele pm_config_defaults[] = {
+struct option_ele pm_config_defaults[] = {
     {PM_SECTION, "crash_recovery", "false"},
     {PM_SECTION, "checkpoint_method", "acid"},
     {PM_SECTION, "default_controller", "json:localhost:8888"},
-    {PM_SECTION, "pm_debug_level", "false"},
+    {PM_SECTION, "pm_debug_level", "INFO"},
     {PM_SECTION, "max_active_sessions", "10"},
     {PM_SECTION, "max_active_sessions", "10"},
     {PM_SECTION, "port", "8085"},
@@ -73,7 +73,7 @@ static struct option_ele pm_config_defaults[] = {
 /* 
  * Protos dcls
  */
-static char *set_debug_level(const char *section, const char *param);
+static char *set_debug_level(char *section, char *param);
 
 
 /******************************************************************************
@@ -162,7 +162,7 @@ void pm_cleanup(void)
  *         name of the paramater.
  * @returns: N/A
  */
-static char *set_debug_level(const char *section, const char *param) 
+static char *set_debug_level(char *section, char *param) 
 {
     static char *mod = "set_debug_level";
     char *vl_string;

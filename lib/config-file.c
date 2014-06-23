@@ -77,7 +77,7 @@ static char *conf_getitem(const char * group, const char *key) {
         if (!conf_load(config_fname)) {
             dp = get_default(group, key);
             if (dp = NULL) {
-                VLOG_WARN("conf_getitem: Invalid key:[%s]", key);
+                VLOG_WARN("conf_getitem: Invalid key:[%s:%s]", group, key);
                 retp = NULL; 
             }
             else {
@@ -123,7 +123,7 @@ bool conf_initialize(struct option_ele *mod_options)
     ENTER(mod);
     /* if its not been initialized then create it with the globals */
     if (opt_default_lookup == NULL) {
-        DBUG_PRINT("DEBUG", ("adding globals"));
+        VLOG_DBG("%s: adding globals", mod);
         cnt = option_count(global_options);
         opt_default_lookup = xzalloc((cnt+1) * sizeof(struct option_ele));
         opt_default_lookup_count = cnt+1;
@@ -131,7 +131,7 @@ bool conf_initialize(struct option_ele *mod_options)
         memcpy(opt_default_lookup, global_options, (cnt * sizeof(struct option_ele)));
     }
     if (mod_options != NULL) {
-        DBUG_PRINT("DEBUG", ("adding %s", mod_options->group));
+        VLOG_DBG("%s: adding %s", mod, mod_options->group);
         cnt = option_count(mod_options);
         opt_default_lookup = xrealloc(opt_default_lookup, 
                       (sizeof(struct option_ele) *
@@ -149,7 +149,7 @@ bool conf_initialize(struct option_ele *mod_options)
     return(0);
 }
 
-const char *conf_get_value(char *section, char *key)
+char *conf_get_value(char *section, char *key)
 {
     static char *mod = "conf_get_value";
     char real_key[80] = "";
@@ -158,14 +158,14 @@ const char *conf_get_value(char *section, char *key)
 
     ENTER(mod);
 #ifdef USE_VLOG
-    VLOG_DBG("(section=%s, key=%s)", section, key);
+    VLOG_DBG("%s: section=%s, key=%s)", mod, section, key);
 #else
     DBUG_PRINT("DEBUG", ("(section=%s, key=%s)", section, key));
 #endif
     /* get the default, becuse we always need it for
        cnf_parser_getstring. */
     if ((dp = get_default(section, key)) == NULL) {
-        DBUG_PRINT("WARN", ("Invalid key:[%s]", key));
+        VLOG_WARN("%s: Invalid key:[%s.%s]", mod, section, key);
         return (NULL);
     }
 
@@ -187,15 +187,16 @@ bool conf_file_isloaded(void)
 
 bool conf_load(const char *cnf_fname)
 {
+    static char *mod = "conf_load";
     int retc = 0;
 
-    VLOG_INFO("conf_load loading %s", cnf_fname);
+    VLOG_INFO("%s: conf_load loading %s", mod, cnf_fname);
     if ((my_configs = cnf_parser_load(cnf_fname))) {
         memset(config_fname, sizeof(config_fname), 0);
         strcpy(config_fname, cnf_fname);
         retc = 1;
     } else {
-        VLOG_ERR("conf_load failed, can't load %s", cnf_fname);
+        VLOG_ERR("%s: conf_load failed, can't load %s", mod, cnf_fname);
         retc = 0;
     }
     return (retc);

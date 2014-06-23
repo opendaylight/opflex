@@ -20,6 +20,9 @@
  */
 #define PM_INITIALIZE {"pm_init", pm_initialize}
 
+/* global dcls */
+struct option_ele pm_config_defaults[];
+
 /* 
  * Protos
  */

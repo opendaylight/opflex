@@ -39,13 +39,14 @@ static const char *debug_level;
 static void test_setup(void) 
 {
     char *test_conf_fname = "./test-policy-agent.conf";
+    vlog_set_levels_from_string("DBG");
 
-    conf_initialize(NULL);
+    conf_initialize(pm_config_defaults);
     if (!conf_file_isloaded()) {
         conf_load(test_conf_fname);
     }
     conf_dump(stdout);
-    debug_level = conf_get_value(PM_SECTION, "debug_level");
+    debug_level = conf_get_value(PM_SECTION, "pm_debug_level");
     
     vlog_set_levels_from_string(debug_level);
 }
