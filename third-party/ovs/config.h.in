@@ -137,13 +137,13 @@
 /* Define if strtok_r macro segfaults on some inputs */
 #undef HAVE_STRTOK_R_BUG
 
-/* Define to 1 if `ifr_flagshigh' is a member of `struct ifreq'. */
+/* Define to 1 if `ifr_flagshigh' is member of `struct ifreq'. */
 #undef HAVE_STRUCT_IFREQ_IFR_FLAGSHIGH
 
-/* Define to 1 if `st_mtimensec' is a member of `struct stat'. */
+/* Define to 1 if `st_mtimensec' is member of `struct stat'. */
 #undef HAVE_STRUCT_STAT_ST_MTIMENSEC
 
-/* Define to 1 if `st_mtim.tv_nsec' is a member of `struct stat'. */
+/* Define to 1 if `st_mtim.tv_nsec' is member of `struct stat'. */
 #undef HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
 
 /* Define to 1 if you have the <sys/statvfs.h> header file. */
@@ -190,9 +190,6 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
-
-/* Define to the home page for this package. */
-#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
@@ -241,11 +238,6 @@
 # ifndef WORDS_BIGENDIAN
 #  undef WORDS_BIGENDIAN
 # endif
-#endif
-
-/* Enable large inode numbers on Mac OS X 10.5.  */
-#ifndef _DARWIN_USE_64_BIT_INODE
-# define _DARWIN_USE_64_BIT_INODE 1
 #endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */

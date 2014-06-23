@@ -38,12 +38,12 @@ if HAVE_TCMALLOC
 AM_LDFLAGS += -ltcmalloc
 endif 
 
-test_modb_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/modb/libmodb.so.la 
-test_ring_buffer_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la 
-test_pe_workers_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy_enforcer/libpe.so.la
-test_pipe_utils_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la
-test_uri_parser_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la
-test_pol_mgmt_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/third-party/lib3party.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy-mgmt/libpm.so.la
+test_modb_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/modb/libmodb.so.la $(top_builddir)/third-party/ovs/lib/libopenvswitch.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la
+test_ring_buffer_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la  $(top_builddir)/third-party/ovs/lib/libopenvswitch.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la
+test_pe_workers_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy_enforcer/libpe.so.la $(top_builddir)/third-party/ovs/lib/libopenvswitch.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la
+test_pipe_utils_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/third-party/ovs/lib/libopenvswitch.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la
+test_uri_parser_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/third-party/ovs/lib/libopenvswitch.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la
+test_pol_mgmt_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy-mgmt/libpm.so.la $(top_builddir)/third-party/ovs/lib/libopenvswitch.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la
 
 test_eventq_LDADD = $(test_uri_parser_LDADD)
 
