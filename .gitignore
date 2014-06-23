@@ -15,6 +15,11 @@ missing
 *.pyc
 *.status
 *.in
+*.dirstamp
+*traces.*
+*output.*
+*distfiles
+*manpage-check
 !third-party/ovs/utilities/ovs-l3ping.in
 !third-party/ovs/utilities/ovs-test.in
 !third-party/ovs/utilities/ovs-dpctl.8.in
@@ -69,7 +74,11 @@ missing
 !third-party/ovs/rhel/openvswitch.spec.in
 !third-party/ovs/rhel/openvswitch-kmod-rhel6.spec.in
 !third-party/ovs/rhel/openvswitch-fedora.spec.in
-!third-party/Makefile.in
+third-party/Makefile.in
+third-party/ovs/autom4te.cache/output.1
+third-party/ovs/autom4te.cache/requests
+third-party/ovs/autom4te.cache/traces.1
+third-party/ovs/config.h.in
 Makefile
 stamp-h1
 libtool
