@@ -3,6 +3,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #define DBUG_OFF 1 //turn off debugging
 

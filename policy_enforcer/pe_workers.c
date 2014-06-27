@@ -134,7 +134,7 @@ void pe_crew_create ()
                         (void *) crew.worker[crew_index]);
 */
         //TODO:CHeck return codes
-        pthread_create(&crew.worker[crew_index]->thread,
+        pag_pthread_create(&crew.worker[crew_index]->thread,
                         NULL,
                         pe_workers_fetch_flow,
                         (void *) crew.worker[crew_index]);

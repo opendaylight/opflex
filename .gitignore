@@ -47,7 +47,6 @@ missing
 !third-party/ovs/utilities/ovs-l3ping.8.in
 !third-party/ovs/utilities/ovs-appctl.8.in
 !third-party/ovs/vswitchd/ovs-vswitchd.8.in
-!third-party/ovs/config.h.in
 !third-party/ovs/tests/test-controller.8.in
 !third-party/ovs/tests/valgrind-wrapper.in
 !third-party/ovs/tests/atlocal.in
@@ -56,7 +55,6 @@ missing
 !third-party/ovs/ovsdb/ovsdb-client.1.in
 !third-party/ovs/ovsdb/ovsdb-dot.in
 !third-party/ovs/ovsdb/ovsdb-idlc.in
-!third-party/ovs/Makefile.in
 !third-party/ovs/datapath/Makefile.in
 !third-party/ovs/datapath/linux/Makefile.main.in
 !third-party/ovs/datapath/linux/Makefile.in
@@ -75,9 +73,8 @@ missing
 !third-party/ovs/rhel/openvswitch-kmod-rhel6.spec.in
 !third-party/ovs/rhel/openvswitch-fedora.spec.in
 third-party/Makefile.in
-third-party/ovs/autom4te.cache/output.1
-third-party/ovs/autom4te.cache/requests
-third-party/ovs/autom4te.cache/traces.1
+third-party/ovs/Makefile.in
+third-party/ovs/autom4te.cache/*
 third-party/ovs/config.h.in
 Makefile
 stamp-h1

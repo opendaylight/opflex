@@ -87,9 +87,9 @@ void ring_buffer_destroy() {
  **/
 void ring_buffer_init() {
 
-    DBUG_PUSH("d:F:i:L:n:t");
-    DBUG_PROCESS("ring_buffer");
-    DBUG_ENTER("ring_buffer_init");
+//    DBUG_PUSH("d:F:i:L:n:t");
+//    DBUG_PROCESS("ring_buffer");
+//    DBUG_ENTER("ring_buffer_init");
 
     rb_length = get_ring_buffer_length();
     rb_entry_size = get_ring_buffer_entry_size();
@@ -104,7 +104,7 @@ void ring_buffer_init() {
     xpthread_cond_init(&rb_counters.not_empty,NULL);
     xpthread_cond_init(&rb_counters.not_full,NULL);
 
-    DBUG_LEAVE;
+//    DBUG_LEAVE;
 }
 
 /* ============================================================
@@ -120,7 +120,7 @@ void ring_buffer_init() {
  **/
 void ring_buffer_push(void *input_p) {
     
-    DBUG_ENTER("ring_buffer_push");
+//    DBUG_ENTER("ring_buffer_push");
 
     ovs_mutex_lock(&rb_counters.lock);
     while(((rb_counters.push_location +1) % rb_length) ==
@@ -136,10 +136,10 @@ void ring_buffer_push(void *input_p) {
 
 //    DBUG_PRINT("\nDEBUG", ("Pushed %p (%i) into slot %i",
 //                  input_p, *(int *)input_p, (rb_counters.push_location-1)));
-    DBUG_PRINT("\nDEBUG", ("Pushed %p into slot %i",
-                  input_p, (rb_counters.push_location-1)));
+//    DBUG_PRINT("\nDEBUG", ("Pushed %p into slot %i",
+//                  input_p, (rb_counters.push_location-1)));
 
-    DBUG_LEAVE;
+//    DBUG_LEAVE;
 }
 
 /* ============================================================
@@ -156,10 +156,10 @@ void ring_buffer_push(void *input_p) {
 void *ring_buffer_pop(void) {
     void *retval = NULL;
 
-    DBUG_ENTER("ring_buffer_pop");
+//    DBUG_ENTER("ring_buffer_pop");
 
-    DBUG_PRINT("\nDEBUG", ("Thread %p entering ring_buffer_pop",
-                            pthread_self()));
+//    DBUG_PRINT("\nDEBUG", ("Thread %p entering ring_buffer_pop",
+//                            pthread_self()));
 
     ovs_mutex_lock(&rb_counters.lock);
     while(rb_counters.push_location == rb_counters.pop_location) {
@@ -173,9 +173,9 @@ void *ring_buffer_pop(void) {
 
 //    DBUG_PRINT("\nDEBUG", ("Fetched %p (%i) from slot %i",
 //                         retval, *(int*)retval, (rb_counters.pop_location-1)));
-    DBUG_PRINT("\nDEBUG", ("Fetched %p from slot %i",
-                         retval, (rb_counters.pop_location-1)));
+//    DBUG_PRINT("\nDEBUG", ("Fetched %p from slot %i",
+//                         retval, (rb_counters.pop_location-1)));
 
-    DBUG_LEAVE;
+//    DBUG_LEAVE;
     return(retval);
 }

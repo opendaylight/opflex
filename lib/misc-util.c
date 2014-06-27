@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+#include <pthread.h>
 
 #include "dbug.h"
 #include "util.h" //for ovs_abort
@@ -218,3 +219,47 @@ size_t get_file_size(char *file_name)
     return(buf.st_size);
 }
 
+/*
+ * @brief pag_pthread_create() calls pthread_create()
+ *        and manages the error conditions
+ *
+ * @param0 pthread_t * the pointer to the pthread_t struct
+ *
+ * @param1 pthread_attr_t * the pointer to the pthread_attr_t struct
+ *
+ * @param2 routine - the pointer to the function which the thread executes
+ *
+ * @param3 void * - pointer to the argument(s) passed into routine
+ *
+ * @return void
+ *
+ */
+void pag_pthread_create(pthread_t *thread,
+                        const pthread_attr_t *attr,
+                        void *(*routine) (void *),
+                        void *arg)
+{
+    int save_errno = 0;
+
+    if ((save_errno = pthread_create(thread, attr, routine, arg)) != 0)
+        ovs_abort(save_errno, "pthread_create failed");
+}
+
+/*
+ * @brief pag_pthread_join() calls pthread_join()
+ *        and manages the error conditions
+ *
+ * @param0 pthread_t - the pthread_t struct
+ *
+ * @param1 void ** exit status of the terminated thread
+ *
+ * @return void
+ *
+ */
+void pag_pthread_join(pthread_t thread, void **retval)
+{
+    int save_errno = 0;
+
+    if((save_errno = pthread_join(thread, retval)) != 0)
+        ovs_abort(save_errno, "pthread_join failed");
+}
