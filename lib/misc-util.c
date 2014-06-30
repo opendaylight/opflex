@@ -21,7 +21,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#include "dbug.h"
+#include "vlog.h"
 #include "util.h" //for ovs_abort
 #include "misc-util.h"
 
@@ -34,10 +34,74 @@
 #    define PAG_USING_GNU
 #endif
 
+VLOG_DEFINE_THIS_MODULE(misc_util);
+
+/* ============================================================
+ *
+ * \brief pipe_write_na()
+ *        Open a pipe for writing.
+ *        Same as pipe_write except that on error, this function 
+ *        does not abort, but returns errno in save_errno
+ *
+ * @param0
+ *          cmd - string containing the command to execute
+ * @param1
+ *          save_errno - set to errno returned by popen()
+ *
+ * \return { FILE * to the pipe }
+ *
+ **/
+FILE *pipe_write_na(const char *cmd, int save_errno) {
+    FILE *pipe_p;
+
+    VLOG_ENTER("pipe_write");
+    if (cmd == NULL)
+        ovs_abort(-1,"NULL passed into %s",__func__);
+
+    pipe_p = popen(cmd,"w");
+    save_errno = errno;
+
+    VLOG_LEAVE("pipe_write");
+    return(pipe_p);
+}
+
+/* ============================================================
+ *
+ * \brief pipe_read()
+ *        Open a pipe for reading.
+ *        Same as pipe_write except that on error, this function 
+ *        does not abort, but returns errno in save_errno
+ *
+ * @param0
+ *          cmd - string containing the command to execute
+ * @param1
+ *          save_errno - set to errno returned by popen()
+ *
+ * \return { FILE * to the pipe }
+ *
+ **/
+FILE *pipe_read_na(const char *cmd, int save_errno) {
+    FILE *pipe_p;
+
+    VLOG_ENTER("pipe_read");
+
+    if (cmd == NULL)
+        ovs_abort(-1,"NULL passed into %s",__func__);
+
+    pipe_p = popen(cmd,"r");
+    save_errno = errno;
+
+    fprintf(stderr,"errno is %d/%p\n",save_errno,pipe_p);
+    VLOG_DBG("errno is %d\n",save_errno);
+
+    VLOG_LEAVE("pipe_read");
+    return(pipe_p);
+}
+
 /* ============================================================
  *
  * \brief pipe_write()
- *        Remove an entry from the ring buffer.
+ *        Open a pipe for writing.
  *        On error, this function calls ovs_abort, which will
  *        dump core.
  *
@@ -51,7 +115,7 @@ FILE *pipe_write(const char *cmd) {
     FILE *pipe_p;
     int save_errno = 0;
 
-    DBUG_ENTER("pipe_write");
+    VLOG_ENTER("pipe_write");
     if (cmd == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
 
@@ -60,14 +124,14 @@ FILE *pipe_write(const char *cmd) {
     if (pipe_p == NULL)
         strerr_wrapper(save_errno);
 
-    DBUG_LEAVE;
+    VLOG_LEAVE("pipe_write");
     return(pipe_p);
 }
 
 /* ============================================================
  *
  * \brief pipe_read()
- *        Remove an entry from the ring buffer.
+ *        Open a pipe for reading.
  *        On error, this function calls ovs_abort, which will
  *        dump core.
  *
@@ -81,7 +145,7 @@ FILE *pipe_read(const char *cmd) {
     FILE *pipe_p;
     int save_errno = 0;
 
-    DBUG_ENTER("pipe_read");
+    VLOG_ENTER("pipe_read");
 
     if (cmd == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
@@ -91,7 +155,7 @@ FILE *pipe_read(const char *cmd) {
     if (pipe_p == NULL)
         strerr_wrapper(save_errno);
 
-    DBUG_LEAVE;
+    VLOG_LEAVE("pipe_read");
     return(pipe_p);
 }
 
@@ -111,7 +175,7 @@ int pipe_close(FILE *pipe_p) {
     int retval = 0;
     int save_errno = 0;
 
-    DBUG_ENTER("pipe_close");
+    VLOG_ENTER("pipe_close");
 
     if (pipe_p == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
@@ -121,14 +185,14 @@ int pipe_close(FILE *pipe_p) {
     if (retval == -1)
         strerr_wrapper(save_errno);
 
-    DBUG_LEAVE;
+    VLOG_LEAVE("pipe_close");
     return(retval);
 }
 
 /* ============================================================
  *
- * \brief ring_buffer_pop()
- *        Remove an entry from the ring buffer.
+ * \brief strerr_wrapper()
+ *        Convert errno to a string using thread-save strerror_r
  *
  * @param[]
  *          none

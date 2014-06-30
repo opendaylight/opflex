@@ -25,6 +25,8 @@ typedef char fstring[128];
 /* protos */
 FILE *pipe_write(const char *);
 FILE *pipe_read(const char *);
+FILE *pipe_write_na(const char *, int); //na is for "no abort"
+FILE *pipe_read_na(const char *, int);
 int pipe_close(FILE *);
 void strerr_wrapper(int);
 bool file_exist(char *);

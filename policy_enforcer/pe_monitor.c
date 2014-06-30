@@ -51,32 +51,32 @@ static struct table_style table_style = TABLE_STYLE_DEFAULT;
 
 /* protos */
 static void
-check_ovsdb_error(struct ovsdb_error *error);
+pe_check_ovsdb_error(struct ovsdb_error *error);
 static void
-check_txn(int error, struct jsonrpc_msg **reply_);
+pe_check_txn(int error, struct jsonrpc_msg **reply_);
 static struct ovsdb_schema *
-fetch_schema(struct jsonrpc *rpc, const char *database);
+pe_fetch_schema(struct jsonrpc *rpc, const char *database);
 static struct jsonrpc *
-open_jsonrpc(const char *server);
+pe_open_jsonrpc(const char *server);
 static struct json *
-parse_monitor_columns(char *arg, const char *server, const char *database,
+pe_parse_monitor_columns(char *arg, const char *server, const char *database,
                       const struct ovsdb_table_schema *table,
                       struct ovsdb_column_set *columns);
 static void
-add_column(const char *server, const struct ovsdb_column *column,
+pe_add_column(const char *server, const struct ovsdb_column *column,
            struct ovsdb_column_set *columns, struct json *columns_json);
 static void
-ovsdb_monitor_block(struct unixctl_conn *conn, int argc OVS_UNUSED,
+pe_ovsdb_monitor_block(struct unixctl_conn *conn, int argc OVS_UNUSED,
                    const char *argv[] OVS_UNUSED, void *blocked_);
 static void
-ovsdb_monitor_unblock(struct unixctl_conn *conn, int argc OVS_UNUSED,
+pe_ovsdb_monitor_unblock(struct unixctl_conn *conn, int argc OVS_UNUSED,
                      const char *argv[] OVS_UNUSED, void *blocked_);
 static void
-ovsdb_monitor_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
+pe_ovsdb_monitor_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
                   const char *argv[] OVS_UNUSED, void *exiting_);
 static void
 pe_ovsdb_monitor(void *);
-static void add_monitored_table(const char *server,
+static void pe_add_monitored_table(const char *server,
                                 const char *database,
                                 struct ovsdb_table_schema *table,
                                 struct json *monitor_requests,
@@ -84,26 +84,28 @@ static void add_monitored_table(const char *server,
                                 size_t *n_mts,
                                 size_t *allocated_mts);
 
+/* routines */
 
 void pe_monitor_init() {
+    static char *mod = "pe_monitor_init";
     pthread_t ovsdb_monitor;
     bool pe_monitor_quit = false;
 
-    /* Eventually, this routine will start monitors for
-     * appropriate southbound devices/v-devices. For now
-     * it only supports OVS
-     */
+    VLOG_ENTER(mod);
 
     /* Separate thread that runs ovsdb monitor ALL */
     pag_pthread_create(&ovsdb_monitor,NULL,pe_ovsdb_monitor,NULL);
 
     pag_pthread_join(ovsdb_monitor,(void **) NULL); 
 
+    VLOG_LEAVE(mod);
+
 }
 
 void pe_ovsdb_monitor(void *arg) {
+    static char *mod = "pe_ovsdb_monitor";
     int save_errno = 0;
-    struct jsonrpc *rpc = open_jsonrpc(PE_OVSDB_SOCK);
+    struct jsonrpc *rpc = pe_open_jsonrpc(PE_OVSDB_SOCK);
     const char *server = jsonrpc_get_name(rpc);
     const char *table_name = "ALL"; // monitor everything
     struct unixctl_server *unixctl;
@@ -117,19 +119,21 @@ void pe_ovsdb_monitor(void *arg) {
     size_t n_mts, allocated_mts, table_count, icount;
     const struct shash_node **nodes;
     const char *database = PE_OVSDB_NAME;
+    char *json_string = NULL;
 
+    VLOG_ENTER(mod);
     
     if((save_errno = unixctl_server_create(NULL, &unixctl)) != 0)
         ovs_fatal(save_errno, "failed to create unixctl server");
 
     unixctl_command_register("exit", "", 0, 0,
-                             ovsdb_monitor_exit, &exiting);
+                             pe_ovsdb_monitor_exit, &exiting);
     unixctl_command_register("ovsdb-monitor/block", "", 0, 0,
-                             ovsdb_monitor_block, &blocked);
+                             pe_ovsdb_monitor_block, &blocked);
     unixctl_command_register("ovsdb-monitor/unblock", "", 0, 0,
-                                 ovsdb_monitor_unblock, &blocked);
+                                 pe_ovsdb_monitor_unblock, &blocked);
 
-    schema = fetch_schema(rpc, database);
+    schema = pe_fetch_schema(rpc, database);
 
     monitor_requests = json_object_create();
 
@@ -142,7 +146,7 @@ void pe_ovsdb_monitor(void *arg) {
     for (icount = 0; icount < table_count; icount++) {
         struct ovsdb_table_schema *table = nodes[icount]->data;
 
-        add_monitored_table(server, database, table,
+        pe_add_monitored_table(server, database, table,
                             monitor_requests,
                             &mts, &n_mts, &allocated_mts);
     }
@@ -172,17 +176,23 @@ void pe_ovsdb_monitor(void *arg) {
                                                        msg->id));
             } else if (msg->type == JSONRPC_REPLY
                        && json_equal(msg->id, request_id)) {
-//maybe convert to string and then print
-                //monitor_print(msg->result, mts, n_mts, true);
-                //fflush(stdout);
+                VLOG_INFO("Message received: %s\n",
+                          (json_string = json_to_string(msg->result,
+                                                       JSSF_PRETTY)));
+                //TODO: this data will have to be checked and pushed up
+                //      not just printed
             } else if (msg->type == JSONRPC_NOTIFY
                        && !strcmp(msg->method, "update")) {
                 struct json *params = msg->params;
                 if (params->type == JSON_ARRAY
                     && params->u.array.n == 2
                     && params->u.array.elems[0]->type == JSON_NULL) {
-                    //monitor_print(params->u.array.elems[1], mts, n_mts, false);
-                    //fflush(stdout);
+                    VLOG_INFO("Message received: %s\n",
+                              (json_string =
+                                json_to_string(params->u.array.elems[1],
+                                               JSSF_PRETTY)));
+                //TODO: this data will have to be checked and pushed up
+                //      not just printed
                 }
             }
             jsonrpc_msg_destroy(msg);
@@ -201,11 +211,13 @@ void pe_ovsdb_monitor(void *arg) {
         poll_block();
     }
 
+    VLOG_LEAVE(mod);
+
     pthread_exit(NULL);
 }
 
 static void
-ovsdb_monitor_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
+pe_ovsdb_monitor_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
                   const char *argv[] OVS_UNUSED, void *exiting_)
 {
     bool *exiting = exiting_;
@@ -214,7 +226,7 @@ ovsdb_monitor_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
 }
 
 static void
-ovsdb_monitor_block(struct unixctl_conn *conn, int argc OVS_UNUSED,
+pe_ovsdb_monitor_block(struct unixctl_conn *conn, int argc OVS_UNUSED,
                    const char *argv[] OVS_UNUSED, void *blocked_)
 {
     bool *blocked = blocked_;
@@ -228,7 +240,7 @@ ovsdb_monitor_block(struct unixctl_conn *conn, int argc OVS_UNUSED,
 }
 
 static void
-ovsdb_monitor_unblock(struct unixctl_conn *conn, int argc OVS_UNUSED,
+pe_ovsdb_monitor_unblock(struct unixctl_conn *conn, int argc OVS_UNUSED,
                      const char *argv[] OVS_UNUSED, void *blocked_)
 {
     bool *blocked = blocked_;
@@ -241,7 +253,7 @@ ovsdb_monitor_unblock(struct unixctl_conn *conn, int argc OVS_UNUSED,
     }
 }
 
-add_monitored_table(const char *server,
+pe_add_monitored_table(const char *server,
                     const char *database,
                     struct ovsdb_table_schema *table,
                     struct json *monitor_requests,
@@ -260,19 +272,19 @@ add_monitored_table(const char *server,
     ovsdb_column_set_init(&mt->columns);
 
     monitor_request_array = json_array_create_empty();
-        /* Allocate a writable empty string since parse_monitor_columns()
+        /* Allocate a writable empty string since pe_parse_monitor_columns()
          * is going to strtok() it and that's risky with literal "". */
         char empty[] = "";
         json_array_add(
             monitor_request_array,
-            parse_monitor_columns(empty, server, PE_OVSDB_NAME,
+            pe_parse_monitor_columns(empty, server, PE_OVSDB_NAME,
                                   table, &mt->columns));
 
     json_object_put(monitor_requests, table->name, monitor_request_array);
 }
 
 static struct json *
-parse_monitor_columns(char *arg, const char *server, const char *database,
+pe_parse_monitor_columns(char *arg, const char *server, const char *database,
                       const struct ovsdb_table_schema *table,
                       struct ovsdb_column_set *columns)
 {
@@ -305,7 +317,7 @@ parse_monitor_columns(char *arg, const char *server, const char *database,
                           "column named \"%s\"",
                           server, table->name, database, token);
             }
-            add_column(server, column, columns, columns_json);
+            pe_add_column(server, column, columns, columns_json);
         }
     }
 
@@ -319,12 +331,12 @@ parse_monitor_columns(char *arg, const char *server, const char *database,
             const struct ovsdb_column *column = nodes[i]->data;
             if (column->index != OVSDB_COL_UUID
                 && column->index != OVSDB_COL_VERSION) {
-                add_column(server, column, columns, columns_json);
+                pe_add_column(server, column, columns, columns_json);
             }
         }
         free(nodes);
 
-        add_column(server, ovsdb_table_schema_get_column(table, "_version"),
+        pe_add_column(server, ovsdb_table_schema_get_column(table, "_version"),
                    columns, columns_json);
     }
 
@@ -341,7 +353,7 @@ parse_monitor_columns(char *arg, const char *server, const char *database,
 }
 
 static void
-add_column(const char *server, const struct ovsdb_column *column,
+pe_add_column(const char *server, const struct ovsdb_column *column,
            struct ovsdb_column_set *columns, struct json *columns_json)
 {
     if (ovsdb_column_set_contains(columns, column->index)) {
@@ -353,7 +365,7 @@ add_column(const char *server, const struct ovsdb_column *column,
 }
 
 static struct jsonrpc *
-open_jsonrpc(const char *server)
+pe_open_jsonrpc(const char *server)
 {
     struct stream *stream;
     int error;
@@ -382,7 +394,7 @@ open_jsonrpc(const char *server)
 }
 
 static struct ovsdb_schema *
-fetch_schema(struct jsonrpc *rpc, const char *database)
+pe_fetch_schema(struct jsonrpc *rpc, const char *database)
 {
     struct jsonrpc_msg *request, *reply;
     struct ovsdb_schema *schema;
@@ -391,15 +403,15 @@ fetch_schema(struct jsonrpc *rpc, const char *database)
                                      json_array_create_1(
                                          json_string_create(database)),
                                      NULL);
-    check_txn(jsonrpc_transact_block(rpc, request, &reply), &reply);
-    check_ovsdb_error(ovsdb_schema_from_json(reply->result, &schema));
+    pe_check_txn(jsonrpc_transact_block(rpc, request, &reply), &reply);
+    pe_check_ovsdb_error(ovsdb_schema_from_json(reply->result, &schema));
     jsonrpc_msg_destroy(reply);
 
     return schema;
 }
 
 static void
-check_txn(int error, struct jsonrpc_msg **reply_)
+pe_check_txn(int error, struct jsonrpc_msg **reply_)
 {
     struct jsonrpc_msg *reply = *reply_;
 
@@ -414,7 +426,7 @@ check_txn(int error, struct jsonrpc_msg **reply_)
 }
 
 static void
-check_ovsdb_error(struct ovsdb_error *error)
+pe_check_ovsdb_error(struct ovsdb_error *error)
 {
     if (error) {
         ovs_fatal(0, "%s", ovsdb_error_to_string(error));

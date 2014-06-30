@@ -16,6 +16,7 @@
 
 /* need to variablize PE_OVSDB_* below */
 #define PE_OVSDB_SOCK "unix:/var/run/openvswitch/db.sock"
+#define PE_OVSDB_SOCK_PATH "/var/run/openvswitch/db.sock"
 #define PE_OVSDB_NAME "Open_vSwitch"
 
 struct monitored_table {
