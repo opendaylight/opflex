@@ -88,7 +88,6 @@ void pe_crew_create ()
     memset((void *) &crew, 0, sizeof(pe_crew_t));
 
     crew.size = PE_MAX_WORKER_COUNT;
-    pe_set_crew_quit_status(false);
 
     //VLOG_DBG("%s <-- crew=%p crew_size=%d\n", mod, crew, crew.size);
 
@@ -96,6 +95,7 @@ void pe_crew_create ()
      * Initialize synchronization objects
      */
     ovs_rwlock_init(&crew.rwlock);
+    pe_set_crew_quit_status(false);
 
     DBUG_PRINT("DEBUG ",("Set quit status false. Lock initialized %p\n",
                             &crew.rwlock));
