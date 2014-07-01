@@ -16,32 +16,32 @@
 
 static char *section = "global";
 
-const char *ovs_sysconfdir(void)
+const char *pag_sysconfdir(void)
 {
     return (conf_get_value(section, "sysconfig"));
 }
 
-const char *ovs_pkgdatadir(void)
+const char *pag_pkgdatadir(void)
 {
     return (conf_get_value(section, "pkgdatadir"));
 }
 
-const char *ovs_rundir(void)
+const char *pag_rundir(void)
 {
     return (conf_get_value(section, "rundir"));
 }
 
-const char *ovs_logdir(void)
+const char *pag_logdir(void)
 {
     return (conf_get_value(section, "logdir"));
 }
 
-const char *ovs_dbdir(void)
+const char *pag_dbdir(void)
 {
     return (conf_get_value(section, "dbdir"));
 }
 
-const char *ovs_bindir(void)
+const char *pag_bindir(void)
 {
     return (conf_get_value(section, "bindir"));
 }

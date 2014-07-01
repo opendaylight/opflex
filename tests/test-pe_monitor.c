@@ -38,12 +38,12 @@ static void rt_pe_monitor(void **state) {
     err_no = errno;
 
     if (stat_retval == 0) {
-        /* sets up the monitor */
-        pthread_create(&monitor,NULL,test_monitor_init,NULL);
-        sleep(3);
-        pe_monitor_quit = true;
-        sleep(2);
-        xpthread_join(monitor,NULL);
+         /* sets up the monitor */
+         pthread_create(&monitor,NULL,test_monitor_init,NULL);
+         sleep(3);
+         pe_monitor_quit = true;
+         sleep(2);
+         xpthread_join(monitor,NULL);
      } else {
          VLOG_WARN("OVSDB not running, test cannot proceed\n");
          VLOG_INFO("      stat returned: %s",strerror(err_no));
@@ -57,7 +57,13 @@ static void rt_pe_monitor(void **state) {
 void *test_monitor_init(void *input) {
     (void) input;
 
+    VLOG_ENTER("test_monitor_input");
+
+    VLOG_DBG("Calling pe_monitor_init()");
+
     pe_monitor_init();
+
+    VLOG_LEAVE("test_monitor_input");
 
     return(NULL);
 }

@@ -225,7 +225,7 @@ parse_cmdline_options(int argc, char *argv[], char **unixctl_pathp)
 
     switch (argc) {
     case 0:
-        return xasprintf("unix:%s/db.sock", ovs_rundir());
+        return xasprintf("unix:%s/db.sock", pag_rundir());
 
     case 1:
         return xstrdup(argv[0]);

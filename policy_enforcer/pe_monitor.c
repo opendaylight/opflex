@@ -105,8 +105,8 @@ void pe_monitor_init() {
 void pe_ovsdb_monitor(void *arg) {
     static char *mod = "pe_ovsdb_monitor";
     int save_errno = 0;
-    struct jsonrpc *rpc = pe_open_jsonrpc(PE_OVSDB_SOCK);
-    const char *server = jsonrpc_get_name(rpc);
+    struct jsonrpc *rpc;
+    const char *server;
     const char *table_name = "ALL"; // monitor everything
     struct unixctl_server *unixctl;
     struct ovsdb_schema *schema;
@@ -121,8 +121,13 @@ void pe_ovsdb_monitor(void *arg) {
     const char *database = PE_OVSDB_NAME;
     char *json_string = NULL;
 
-    VLOG_ENTER(mod);
-    
+    VLOG_ENTER(mod); 
+
+    VLOG_DBG("Opening %s\n", PE_OVSDB_SOCK);
+
+    rpc = pe_open_jsonrpc(PE_OVSDB_SOCK);
+    server = jsonrpc_get_name(rpc);
+
     if((save_errno = unixctl_server_create(NULL, &unixctl)) != 0)
         ovs_fatal(save_errno, "failed to create unixctl server");
 
@@ -370,17 +375,22 @@ pe_open_jsonrpc(const char *server)
     struct stream *stream;
     int error;
 
+    VLOG_ENTER("pe_open_jsonrpc");
+
     error = stream_open_block(jsonrpc_stream_open(server, &stream,
                               DSCP_DEFAULT), &stream);
+    VLOG_DBG("Got %i from stream_open_block\n",error);
     if (error == EAFNOSUPPORT) {
         struct pstream *pstream;
 
         error = jsonrpc_pstream_open(server, &pstream, DSCP_DEFAULT);
+        VLOG_DBG("Got %i from jsonrpc_stream_open\n",error);
         if (error) {
             ovs_fatal(error, "failed to connect or listen to \"%s\"", server);
         }
         VLOG_INFO("%s: waiting for connection...", server);
         error = pstream_accept_block(pstream, &stream);
+        VLOG_DBG("Got %i from jsonrpc_stream_open\n",error);
         if (error) {
             ovs_fatal(error, "failed to accept connection on \"%s\"", server);
         }
@@ -389,6 +399,8 @@ pe_open_jsonrpc(const char *server)
     } else if (error) {
         ovs_fatal(error, "failed to connect to \"%s\"", server);
     }
+
+    VLOG_LEAVE("pe_open_jsonrpc");
 
     return jsonrpc_open(stream);
 }
