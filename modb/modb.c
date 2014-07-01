@@ -22,7 +22,7 @@
 #include "seq-util.h"
 #include "hash-util.h"
 #include "tv-util.h"
-#include "dirs.h"
+#include "pag-dirs.h"
 #include "modb.h"
 #include "eventq.h"
 #include "vlog.h"
@@ -214,7 +214,7 @@ bool modb_initialize(void)
 
         /* crash recovery? */
         if (strcasecmp(conf_get_value(MODB_SECTION, "crash_recovery"), "true") == 0) {
-            modb_fname = fnm_create(".dat", MODB_FNAME, ovs_dbdir(), NULL);
+            modb_fname = fnm_create(".dat", MODB_FNAME, pag_dbdir(), NULL);
             modb_crash_recovery(fnm_path(modb_fname));
         }
 
@@ -686,7 +686,7 @@ bool modb_crash_recovery(const char *dbfile)
 #endif
 
     if (modb_initialized) {
-        dbpath = (char *)ovs_dbdir();
+        dbpath = (char *)pag_dbdir();
         if (fnm_exists(dbfname)) {
             DBUG_PRINT("DEBUG" , ("%s: loading: %s\n", mod, fnm_path(dbfname)));
 
