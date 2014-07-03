@@ -54,9 +54,6 @@ static void test_setup(void)
     if (strcasecmp(debug_level, "OFF")) {
         vlog_set_levels_from_string("WARN");
     }
-    /* if (strcasecmp(debug_level, "OFF")) { */
-    /*     DBUG_PUSH("d:t:i:L:n:P:T:0"); */
-    /* } */
 }
 /*----------------------------------------------------------------------------
  * unittests.

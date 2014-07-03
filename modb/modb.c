@@ -20,11 +20,10 @@
 #include "meo-util.h"
 #include "ovs-thread.h"
 #include "seq-util.h"
-#include "hash-util.h"
 #include "tv-util.h"
 #include "pag-dirs.h"
 #include "modb.h"
-#include "eventq.h"
+#include "modb-event.h"
 #include "vlog.h"
 #include "dbug.h"
 
@@ -76,11 +75,13 @@ static struct option_ele modb_config_defaults[] = {
     {MODB_SECTION, "crash_recovery", "false"},
     {MODB_SECTION, "checkpoint_method", "acid"},
     {MODB_SECTION, "checkpoint_interval", "1"},
-    {MODB_SECTION, CLASS_IDX_SZ_TAG, "4000"},
-    {MODB_SECTION, NODE_IDX_SZ_TAG, "4000"},
-    {MODB_SECTION, URI_IDX_SZ_TAG, "4000"},
-    {MODB_SECTION, ATTR_IDX_SZ_TAG, "8000"},
-    {MODB_SECTION, "mod_debug", "false"},
+    /* {MODB_SECTION, CLASS_IDX_SZ_TAG, "4000"}, */
+    /* {MODB_SECTION, NODE_IDX_SZ_TAG, "4000"}, */
+    /* {MODB_SECTION, URI_IDX_SZ_TAG, "4000"}, */
+    /* {MODB_SECTION, ATTR_IDX_SZ_TAG, "8000"}, */
+    {MODB_SECTION, "max_subscribers", "5"},
+    {MODB_SECTION, "modb_debug_level", "INFO"},
+    {MODB_SECTION, "event_debug_level", "INFO"},
     {NULL, NULL, NULL}
 };
 

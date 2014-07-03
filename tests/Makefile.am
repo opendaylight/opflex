@@ -14,9 +14,11 @@ bin_PROGRAMS += test-pe_workers
 bin_PROGRAMS += test-pe_monitor
 bin_PROGRAMS += test-pipe-utils
 bin_PROGRAMS += test-pol-mgmt
+bin_PROGRAMS += test-modb-event
 METASOURCES = AUTO
 
 test_modb_SOURCES = test-modb.c
+test_modb_event_SOURCES = test-modb-event.c
 test_ring_buffer_SOURCES = test-ring-buffer.c
 test_pe_workers_SOURCES = test-pe_workers.c
 test_pe_monitor_SOURCES = test-pe_monitor.c
@@ -41,6 +43,8 @@ test_modb_LDFLAGS += $(ovs_libs) $(ovs_libs)
 if HAVE_TCMALLOC
 test_modb_LDFLAGS += -ltcmalloc
 endif 
+
+test_modb_event_LDFLAGS = $(test_modb_LDFLAGS)
 test_ring_buffer_LFLAGS= $(test_modb_LDFLAGS)
 test_pe_workers_LFLAGS= $(test_modb_LDFLAGS)
 test_pipe_utils_LFLAGS= $(test_modb_LDFLAGS)
@@ -57,8 +61,10 @@ test_uri_parser_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir
 test_pol_mgmt_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy-mgmt/libpm.so.la $(ovs_libs)
 
 test_eventq_LDADD = $(test_uri_parser_LDADD)
+test_modb_event_LDADD = $(test_modb_LDADD)
 
 bin_test_modb = $(srcdir)/tests
+bin_test_modb_event = $(srcdir)/tests
 bin_test_ring_buffer = $(srcdir)/tests
 bin_test_pe_workers = $(srcdir)/tests
 bin_test_pe_monitor = $(srcdir)/tests

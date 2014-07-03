@@ -20,6 +20,6 @@ AM_LDFLAGS=-L/usr/lib -lnsl -lm -lpthread -L$(top_builddir)/lib -L$(top_builddir
 endif
 
 libmodb_so_la_SOURCES = modb.c modb.h
-# libmodb_so_la_SOURCES += index-util.c index-util.h
+libmodb_so_la_SOURCES += modb-event.c modb-event.h
 
 lib_libmodb_so_la = modb/libmodb.so.la

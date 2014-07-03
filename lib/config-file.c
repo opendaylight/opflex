@@ -36,7 +36,7 @@ static struct option_ele global_options[] = {
     {"global", "logdir", "/usr/local/var/log/policy-agent"},
     {"global", "dbdir", "/usr/local/etc/policy-agent"},
     {"global", "bindir", "/usr/local/bin"},
-    {"global", "debug_level", "OFF"},
+    {"global", "debug_level", "INFO"},
     {NULL, NULL, NULL}
 };
 
@@ -138,7 +138,8 @@ bool conf_initialize(struct option_ele *mod_options)
                        (opt_default_lookup_count + cnt)));
         
         /* copy the new options into the default */
-        for (gp = (opt_default_lookup+cnt-1); cnt > 0; cnt--, gp++, op++) {
+        for (gp = (opt_default_lookup+opt_default_lookup_count-1); 
+             cnt > 0; cnt--, gp++, op++) {
             memcpy(gp, op, sizeof(struct option_ele));
             opt_default_lookup_count++;
         }
