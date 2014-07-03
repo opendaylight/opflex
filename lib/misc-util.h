@@ -34,7 +34,7 @@ char *timestring(void);
 size_t get_file_size(char *);
 void pag_pthread_create(pthread_t *,
                         const pthread_attr_t *,
-                        void *(*) (void *),
+                        void * (*) (void *),
                         void *);
 void pag_pthread_join(pthread_t thread, void **retval);
 

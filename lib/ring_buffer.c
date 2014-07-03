@@ -17,13 +17,12 @@
 #include <pthread.h>
 #include <errno.h>
 
-#define DBUG_OFF 1 //turn off debugging
-
 #include "ovs-thread.h"
-#include "dbug.h"
+#include "vlog.h"
 #include "util.h"
 #include "ring_buffer.h"
 
+VLOG_DEFINE_THIS_MODULE(ring_buffer);
 
 static void **ring_buffer; /* instead of void * this should be correct ptr
                             * type?
@@ -69,9 +68,9 @@ void rb_broadcast_cond_variables() {
  **/
 
 void ring_buffer_destroy() {
-//    DBUG_ENTER("ring_buffer_destroy");
+//    VLOG_ENTER("ring_buffer_destroy");
     free(ring_buffer);
-//    DBUG_LEAVE;
+//    VLOG_LEAVE(NULL);
 }
 
 /* ============================================================
@@ -87,9 +86,7 @@ void ring_buffer_destroy() {
  **/
 void ring_buffer_init() {
 
-//    DBUG_PUSH("d:F:i:L:n:t");
-//    DBUG_PROCESS("ring_buffer");
-//    DBUG_ENTER("ring_buffer_init");
+    VLOG_ENTER("ring_buffer_init");
 
     rb_length = get_ring_buffer_length();
     rb_entry_size = get_ring_buffer_entry_size();
@@ -104,7 +101,7 @@ void ring_buffer_init() {
     xpthread_cond_init(&rb_counters.not_empty,NULL);
     xpthread_cond_init(&rb_counters.not_full,NULL);
 
-//    DBUG_LEAVE;
+    VLOG_LEAVE(NULL);
 }
 
 /* ============================================================
@@ -120,7 +117,7 @@ void ring_buffer_init() {
  **/
 void ring_buffer_push(void *input_p) {
     
-//    DBUG_ENTER("ring_buffer_push");
+    VLOG_ENTER("ring_buffer_push");
 
     ovs_mutex_lock(&rb_counters.lock);
     while(((rb_counters.push_location +1) % rb_length) ==
@@ -134,12 +131,12 @@ void ring_buffer_push(void *input_p) {
     xpthread_cond_signal(&rb_counters.not_empty);
     ovs_mutex_unlock(&rb_counters.lock);
 
-//    DBUG_PRINT("\nDEBUG", ("Pushed %p (%i) into slot %i",
-//                  input_p, *(int *)input_p, (rb_counters.push_location-1)));
-//    DBUG_PRINT("\nDEBUG", ("Pushed %p into slot %i",
-//                  input_p, (rb_counters.push_location-1)));
+    VLOG_DBG("Pushed %p (%i) into slot %i",
+                  input_p, *(int *)input_p, (rb_counters.push_location-1));
+    VLOG_DBG("Pushed %p into slot %i",
+                  input_p, (rb_counters.push_location-1));
 
-//    DBUG_LEAVE;
+    VLOG_LEAVE(NULL);
 }
 
 /* ============================================================
@@ -156,10 +153,9 @@ void ring_buffer_push(void *input_p) {
 void *ring_buffer_pop(void) {
     void *retval = NULL;
 
-//    DBUG_ENTER("ring_buffer_pop");
+    VLOG_ENTER("ring_buffer_pop");
 
-//    DBUG_PRINT("\nDEBUG", ("Thread %p entering ring_buffer_pop",
-//                            pthread_self()));
+    VLOG_DBG("Thread %p entering ring_buffer_pop", pthread_self());
 
     ovs_mutex_lock(&rb_counters.lock);
     while(rb_counters.push_location == rb_counters.pop_location) {
@@ -171,11 +167,11 @@ void *ring_buffer_pop(void) {
     xpthread_cond_signal(&rb_counters.not_full);
     ovs_mutex_unlock(&rb_counters.lock);
 
-//    DBUG_PRINT("\nDEBUG", ("Fetched %p (%i) from slot %i",
-//                         retval, *(int*)retval, (rb_counters.pop_location-1)));
-//    DBUG_PRINT("\nDEBUG", ("Fetched %p from slot %i",
-//                         retval, (rb_counters.pop_location-1)));
+    VLOG_DBG("Fetched %p (%i) from slot %i",
+                         retval, *(int*)retval, (rb_counters.pop_location-1));
+    VLOG_DBG("Fetched %p from slot %i",
+                         retval, (rb_counters.pop_location-1));
 
-//    DBUG_LEAVE;
+    VLOG_LEAVE(retval);
     return(retval);
 }

@@ -12,6 +12,8 @@
 #define POLICY_ENFORCER_H 1
 
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
 #include "config-file.h"
 
@@ -29,13 +31,30 @@ typedef enum {
     READY,
     TERMINATING
 } pe_state_t;
-
+/*
+ * TODO: for conf-file.c need to flush this stuff out
 static struct option_ele pe_config_defaults[] = {
     {PE_SECTION, "pe_ring_buffer_length", "1000"},
     {PE_SECTION, "pe_test_pop_thread_count", "20"},
     {PE_SECTION, "pe_test_max_pop_count", "50"},
     {PE_SECTION, "pe_max_worker_count", "50"},
     {NULL, NULL, NULL}
+};
+*/
+
+/* linked list types for pe_translate and pe_commands
+ * TODO: this should have an enum for the command and
+ *       maybe an argument string instead of a vector?
+ */
+typedef struct _command_node command_node_t;
+struct _command_node {
+    uint32_t id;
+    uint32_t **dependency;
+    command_node_t *next;
+    command_node_t *previous;
+    const char *command;
+    uint32_t nr_args;
+    void **v_args;
 };
 
 /* prototypes */

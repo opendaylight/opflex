@@ -25,8 +25,7 @@ struct monitored_table {
 };
 
 
-extern bool pe_monitor_quit;
-
+void pe_set_monitor_quit(bool);
 void pe_monitor_init(void);
 
 #endif //PE_MONITOR_H

@@ -8,3 +8,6 @@
 * http://www.eclipse.org/legal/epl-v10.html
 */
 
+/*
+ * This module pushes data up to the managed objects module.
+ */

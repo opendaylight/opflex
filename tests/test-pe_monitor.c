@@ -39,12 +39,13 @@ static void rt_pe_monitor(void **state) {
 
     if (stat_retval == 0) {
          /* sets up the monitor */
-         pthread_create(&monitor,NULL,test_monitor_init,NULL);
+         pag_pthread_create(&monitor,NULL,test_monitor_init,NULL);
          sleep(3);
-         pe_monitor_quit = true;
+         pe_set_monitor_quit(true);
          sleep(2);
          xpthread_join(monitor,NULL);
      } else {
+         //need to find a good way to start ovs in this case
          VLOG_WARN("OVSDB not running, test cannot proceed\n");
          VLOG_INFO("      stat returned: %s",strerror(err_no));
      }

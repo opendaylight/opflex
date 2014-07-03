@@ -142,7 +142,10 @@ then
     msgout "INFO" "Running boot.sh in $ovsBuildDIR"
     ./boot.sh || die "Can't run ovs/boot.sh"
     msgout "INFO" "Running configure in $ovsBuildDIR"
-    ./configure || die "Can't run ovs/configure"
+# Running configure with --prefix=/usr --localstatedir=/var
+# but this should be variablized with these options as the
+# default.
+    ./configure --prefix=/usr --localstatedir=/var || die "Can't run ovs/configure"
     msgout "INFO" "Running make in $ovsBuildDIR"
     make || die "Can't make ovs"
     cd $origDIR

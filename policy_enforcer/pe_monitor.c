@@ -48,6 +48,7 @@
 VLOG_DEFINE_THIS_MODULE(pe_monitor);
 
 static struct table_style table_style = TABLE_STYLE_DEFAULT;
+static bool pe_monitor_quit;
 
 /* protos */
 static void
@@ -83,15 +84,18 @@ static void pe_add_monitored_table(const char *server,
                                 struct monitored_table **mts,
                                 size_t *n_mts,
                                 size_t *allocated_mts);
+static bool
+pe_get_monitor_quit(void);
 
 /* routines */
 
 void pe_monitor_init() {
     static char *mod = "pe_monitor_init";
     pthread_t ovsdb_monitor;
-    bool pe_monitor_quit = false;
 
     VLOG_ENTER(mod);
+
+    pe_set_monitor_quit(false);
 
     /* Separate thread that runs ovsdb monitor ALL */
     pag_pthread_create(&ovsdb_monitor,NULL,pe_ovsdb_monitor,NULL);
@@ -168,6 +172,9 @@ void pe_ovsdb_monitor(void *arg) {
         while (!blocked) {
             struct jsonrpc_msg *msg;
             int error;
+
+            if (pe_get_monitor_quit() == true)
+                break;
 
             error = jsonrpc_recv(rpc, &msg);
             if (error == EAGAIN) {
@@ -445,3 +452,12 @@ pe_check_ovsdb_error(struct ovsdb_error *error)
     }
 }
 
+static bool
+pe_get_monitor_quit() {
+    return(pe_monitor_quit);
+}
+
+void
+pe_set_monitor_quit(bool bval) {
+    pe_monitor_quit = bval;
+}

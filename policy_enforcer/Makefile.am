@@ -20,7 +20,11 @@ AM_LDFLAGS=-L/usr/lib -lnsl -lm -lpthread -L$(top_builddir)/lib -L$(top_builddir
 endif
 
 libpe_so_la_SOURCES = pe_start.c policy_enforcer.h
-libpe_so_la_SOURCES += pe_workers.c pe_push.c pe_translator.c
-libpe_so_la_SOURCES += pe_monitor.c pe_scan.c
+libpe_so_la_SOURCES += pe_commands.c
+libpe_so_la_SOURCES += pe_monitor.c pe_monitor.h
+libpe_so_la_SOURCES += pe_push.c
+libpe_so_la_SOURCES += pe_scan.c
+libpe_so_la_SOURCES += pe_translator.c
+libpe_so_la_SOURCES += pe_workers.c pe_workers.h
 
 lib_libpe_so_la = policy_enforcer/libpe.so.la

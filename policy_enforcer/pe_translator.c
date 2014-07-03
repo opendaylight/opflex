@@ -7,6 +7,11 @@
 * distribution, and is available at
 * http://www.eclipse.org/legal/epl-v10.html
 */
+
+/*
+ * This module translates MODB data into an OVS command list, which
+ * is then passed to the pe_command module.
+ */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -14,9 +19,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define DBUG_OFF 1
-
-#include "dbug.h"
 #include "vlog.h"
 
 VLOG_DEFINE_THIS_MODULE(pe_translator);
@@ -36,11 +38,9 @@ VLOG_DEFINE_THIS_MODULE(pe_translator);
 void pe_translate(void *item) {
     static char mod[] = "pe_translate";
 
-    DBUG_ENTER(mod);
+    VLOG_ENTER(mod);
 
-    DBUG_PRINT("DEBUG",("Received work item %p\n",item));
     VLOG_INFO("Received work item %p\n",item);
 
-    DBUG_LEAVE;
-
+    VLOG_LEAVE(NULL);
 }
