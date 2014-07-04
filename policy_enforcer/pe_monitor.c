@@ -49,6 +49,7 @@ VLOG_DEFINE_THIS_MODULE(pe_monitor);
 
 static struct table_style table_style = TABLE_STYLE_DEFAULT;
 static bool pe_monitor_quit;
+static struct ovs_rwlock pe_monitor_rwlock;
 
 /* protos */
 static void
@@ -95,11 +96,16 @@ void pe_monitor_init() {
 
     VLOG_ENTER(mod);
 
+    ovs_rwlock_init(&pe_monitor_rwlock);
     pe_set_monitor_quit(false);
 
     /* Separate thread that runs ovsdb monitor ALL */
     pag_pthread_create(&ovsdb_monitor,NULL,pe_ovsdb_monitor,NULL);
 
+    /* probably should add signal handling and allow for
+     * cancelling of this thread because the monitor will only
+     * terminate if it gets a message and pe_get_monitor_quit()
+     * returns true */
     pag_pthread_join(ovsdb_monitor,(void **) NULL); 
 
     VLOG_LEAVE(mod);
@@ -173,10 +179,14 @@ void pe_ovsdb_monitor(void *arg) {
             struct jsonrpc_msg *msg;
             int error;
 
-            if (pe_get_monitor_quit() == true)
+            if (pe_get_monitor_quit() == true) {
+                VLOG_INFO("Got quit message.");
+                exiting = true;
                 break;
+            }
 
             error = jsonrpc_recv(rpc, &msg);
+
             if (error == EAGAIN) {
                 break;
             } else if (error) {
@@ -454,10 +464,19 @@ pe_check_ovsdb_error(struct ovsdb_error *error)
 
 static bool
 pe_get_monitor_quit() {
-    return(pe_monitor_quit);
+    bool bret;
+
+    ovs_rwlock_rdlock(&pe_monitor_rwlock);
+    bret = pe_monitor_quit;
+    ovs_rwlock_unlock(&pe_monitor_rwlock);
+    return(bret);
 }
 
 void
 pe_set_monitor_quit(bool bval) {
+    
+    ovs_rwlock_wrlock(&pe_monitor_rwlock);
     pe_monitor_quit = bval;
+    ovs_rwlock_unlock(&pe_monitor_rwlock);
+
 }

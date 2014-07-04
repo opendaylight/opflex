@@ -23,31 +23,39 @@ VLOG_DEFINE_THIS_MODULE(test_pe_monitor);
 
 static void rt_pe_monitor(void **state) {
     (void) state;
+    uid_t myuid;
     pthread_t monitor;
-    bool pe_monitor_quit;
-    struct stat *sbuf;
+    struct stat *stbuf;
     int stat_retval = 0;
     int err_no = 0;
 
     VLOG_ENTER(__func__);
 
-    sbuf = xzalloc(sizeof(struct stat));
+    stbuf = xzalloc(sizeof(struct stat));
 
-    stat_retval = stat(PE_OVSDB_SOCK_PATH, sbuf);
+    stat_retval = stat(PE_OVSDB_SOCK_PATH, stbuf);
     err_no = errno;
 
     if (stat_retval == 0) {
          /* sets up the monitor */
-         pag_pthread_create(&monitor,NULL,test_monitor_init,NULL);
-         sleep(3);
-         pe_set_monitor_quit(true);
-         sleep(2);
-         xpthread_join(monitor,NULL);
-     } else {
+//         pag_pthread_create(&monitor,NULL,test_monitor_init,NULL);
+        if(stbuf->st_uid == (myuid = geteuid())) {
+            pe_monitor_init();
+            VLOG_INFO("Monitor started.");
+            sleep(3);
+            pe_set_monitor_quit(true);
+            sleep(2);
+//         xpthread_join(monitor,NULL);
+        } else {
+            VLOG_WARN("Test must run with same uid as OVS, but"
+                      " OVS is running as uid=%i and this uid=%i",
+                      stbuf->st_uid,myuid);
+        }
+    } else {
          //need to find a good way to start ovs in this case
          VLOG_WARN("OVSDB not running, test cannot proceed\n");
          VLOG_INFO("      stat returned: %s",strerror(err_no));
-     }
+    }
 
 //    assert_int_equal(push_counter, PE_TEST_PRODUCER_MAX_PUSH);
 //    assert_int_equal(push_thread_counter, PE_TEST_PRODUCER_THREADS);
@@ -65,7 +73,7 @@ void *test_monitor_init(void *input) {
 
     VLOG_LEAVE(__func__);
 
-    return(NULL);
+    pthread_exit(NULL);
 }
 
 int main(void) {
