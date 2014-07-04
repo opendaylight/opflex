@@ -42,5 +42,5 @@ void pe_translate(void *item) {
 
     VLOG_INFO("Received work item %p\n",item);
 
-    VLOG_LEAVE(NULL);
+    VLOG_LEAVE(mod);
 }

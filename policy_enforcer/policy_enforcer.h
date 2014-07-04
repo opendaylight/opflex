@@ -42,21 +42,6 @@ static struct option_ele pe_config_defaults[] = {
 };
 */
 
-/* linked list types for pe_translate and pe_commands
- * TODO: this should have an enum for the command and
- *       maybe an argument string instead of a vector?
- */
-typedef struct _command_node command_node_t;
-struct _command_node {
-    uint32_t id;
-    uint32_t **dependency;
-    command_node_t *next;
-    command_node_t *previous;
-    const char *command;
-    uint32_t nr_args;
-    void **v_args;
-};
-
 /* prototypes */
 void *pe_start(void *);
 pe_state_t pe_get_state(void);

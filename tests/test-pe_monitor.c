@@ -28,9 +28,8 @@ static void rt_pe_monitor(void **state) {
     struct stat *sbuf;
     int stat_retval = 0;
     int err_no = 0;
-    static char *mod = "rt_pe_monitor";
 
-    VLOG_ENTER(mod);
+    VLOG_ENTER(__func__);
 
     sbuf = xzalloc(sizeof(struct stat));
 
@@ -52,19 +51,19 @@ static void rt_pe_monitor(void **state) {
 
 //    assert_int_equal(push_counter, PE_TEST_PRODUCER_MAX_PUSH);
 //    assert_int_equal(push_thread_counter, PE_TEST_PRODUCER_THREADS);
-    VLOG_LEAVE(mod);
+    VLOG_LEAVE(__func__);
 }
 
 void *test_monitor_init(void *input) {
     (void) input;
 
-    VLOG_ENTER("test_monitor_input");
+    VLOG_ENTER(__func__);
 
     VLOG_DBG("Calling pe_monitor_init()");
 
     pe_monitor_init();
 
-    VLOG_LEAVE("test_monitor_input");
+    VLOG_LEAVE(__func__);
 
     return(NULL);
 }

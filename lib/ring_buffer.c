@@ -68,9 +68,9 @@ void rb_broadcast_cond_variables() {
  **/
 
 void ring_buffer_destroy() {
-//    VLOG_ENTER("ring_buffer_destroy");
+    VLOG_ENTER(__func__);
     free(ring_buffer);
-//    VLOG_LEAVE(NULL);
+    VLOG_LEAVE(__func__);
 }
 
 /* ============================================================
@@ -86,7 +86,7 @@ void ring_buffer_destroy() {
  **/
 void ring_buffer_init() {
 
-    VLOG_ENTER("ring_buffer_init");
+    VLOG_ENTER(__func__);
 
     rb_length = get_ring_buffer_length();
     rb_entry_size = get_ring_buffer_entry_size();
@@ -101,7 +101,7 @@ void ring_buffer_init() {
     xpthread_cond_init(&rb_counters.not_empty,NULL);
     xpthread_cond_init(&rb_counters.not_full,NULL);
 
-    VLOG_LEAVE(NULL);
+    VLOG_LEAVE(__func__);
 }
 
 /* ============================================================
@@ -117,7 +117,7 @@ void ring_buffer_init() {
  **/
 void ring_buffer_push(void *input_p) {
     
-    VLOG_ENTER("ring_buffer_push");
+    VLOG_ENTER(__func__);
 
     ovs_mutex_lock(&rb_counters.lock);
     while(((rb_counters.push_location +1) % rb_length) ==
@@ -136,7 +136,7 @@ void ring_buffer_push(void *input_p) {
     VLOG_DBG("Pushed %p into slot %i",
                   input_p, (rb_counters.push_location-1));
 
-    VLOG_LEAVE(NULL);
+    VLOG_LEAVE(__func__);
 }
 
 /* ============================================================
@@ -153,7 +153,7 @@ void ring_buffer_push(void *input_p) {
 void *ring_buffer_pop(void) {
     void *retval = NULL;
 
-    VLOG_ENTER("ring_buffer_pop");
+    VLOG_ENTER(__func__);
 
     VLOG_DBG("Thread %p entering ring_buffer_pop", pthread_self());
 
@@ -172,6 +172,6 @@ void *ring_buffer_pop(void) {
     VLOG_DBG("Fetched %p from slot %i",
                          retval, (rb_counters.pop_location-1));
 
-    VLOG_LEAVE(retval);
+    VLOG_LEAVE(__func__);
     return(retval);
 }

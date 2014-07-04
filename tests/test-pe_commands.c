@@ -19,12 +19,12 @@ VLOG_DEFINE_THIS_MODULE(test_pe_commands);
 static void rt_pe_commands(void **state) {
     (void) state;
 
-    VLOG_ENTER("rt_pe_commands");
+    VLOG_ENTER(__func__);
 
     //set up container and start ovs + ovsdb
     //start with bridge creation as first command into pe_command
 
-    VLOG_LEAVE(NULL);
+    VLOG_LEAVE(__func__);
 }
 
 int main(void) {

@@ -4,6 +4,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #define DBUG_OFF 1 //turn off debugging
 
@@ -31,10 +32,10 @@ static void write_pipe(void **state) {
     //printf("file_p is %p\n",file_p);
     assert_non_null(file_p);
 
-    str = fgets(&str_to_check,6,file_p);
+    str = fgets(str_to_check,6,file_p);
     assert_non_null(str);
 
-    assert_int_equal(strncmp(&str_to_check,"Hello",5),0);
+    assert_int_equal(strncmp((const char *) str_to_check,"Hello",5),0);
     assert_int_equal(fclose(file_p),0);
     assert_int_equal(pipe_close(pipe_p),0);
 
