@@ -15,12 +15,15 @@
 
 /*
  * API for ring buffer
+ *  Note: currently this is implemented via static functions. It may make
+ *        sense to generalize and make this instansiable (is that a word?)
  */
 //#define PE_RING_BUFFER_LENGTH 10
-#define PE_RING_BUFFER_LENGTH 1000 /* eventually make this configurable 
+#define PE_RING_BUFFER_LENGTH 1000 /* TODO: eventually make this configurable 
+                                    * see pe_config_defaults in policy_enforcer.h
                                     * also, there are dependencies on this
                                     * value in test_ring_buffer.c */
-#define PE_RING_BUFFER_ENTRY_SIZE sizeof(void *) /* should be sizeof ptr
+#define PE_RING_BUFFER_ENTRY_SIZE sizeof(void *) /* should this be configurable?
                                                   * to structs that are
                                                   * pushed into ring buf
                                                   */

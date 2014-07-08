@@ -15,9 +15,9 @@
 #include "column.h"
 
 /* need to variablize PE_OVSDB_* below */
-#define PE_OVSDB_SOCK "unix:/var/run/openvswitch/db.sock"
-#define PE_OVSDB_SOCK_PATH "/var/run/openvswitch/db.sock"
-#define PE_OVSDB_NAME "Open_vSwitch"
+#define PE_OVSDB_SOCK "unix:/var/run/openvswitch/db.sock" /* TODO: replace with */
+#define PE_OVSDB_SOCK_PATH "/var/run/openvswitch/db.sock" /*       pe_config_defaults */
+#define PE_OVSDB_NAME "Open_vSwitch"                      /*       in policy_enforcer.h */
 
 struct monitored_table {
     struct ovsdb_table_schema *table;

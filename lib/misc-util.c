@@ -54,14 +54,21 @@ VLOG_DEFINE_THIS_MODULE(misc_util);
 FILE *pipe_write_na(const char *cmd, int save_errno) {
     FILE *pipe_p;
 
-    VLOG_ENTER("pipe_write");
+    VLOG_ENTER(__func__);
     if (cmd == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
 
     pipe_p = popen(cmd,"w");
     save_errno = errno;
 
-    VLOG_LEAVE("pipe_write");
+    if(pipe_p == NULL) {
+        if(errno != 0)
+            VLOG_ERR("errno is %d\n",save_errno);
+        else
+            VLOG_ERR("pipe_p is NULL & errno 0 => fork or pipe failed.\n");
+    }
+
+    VLOG_LEAVE(__func__);
     return(pipe_p);
 }
 
@@ -83,7 +90,7 @@ FILE *pipe_write_na(const char *cmd, int save_errno) {
 FILE *pipe_read_na(const char *cmd, int save_errno) {
     FILE *pipe_p;
 
-    VLOG_ENTER("pipe_read");
+    VLOG_ENTER(__func__);
 
     if (cmd == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
@@ -91,10 +98,14 @@ FILE *pipe_read_na(const char *cmd, int save_errno) {
     pipe_p = popen(cmd,"r");
     save_errno = errno;
 
-    fprintf(stderr,"errno is %d/%p\n",save_errno,pipe_p);
-    VLOG_DBG("errno is %d\n",save_errno);
+    if(pipe_p == NULL) {
+        if(errno != 0)
+            VLOG_ERR("errno is %d\n",save_errno);
+        else
+            VLOG_ERR("pipe_p is NULL & errno 0 => fork or pipe failed.\n");
+    }
 
-    VLOG_LEAVE("pipe_read");
+    VLOG_LEAVE(__func__);
     return(pipe_p);
 }
 
@@ -115,7 +126,7 @@ FILE *pipe_write(const char *cmd) {
     FILE *pipe_p;
     int save_errno = 0;
 
-    VLOG_ENTER("pipe_write");
+    VLOG_ENTER(__func__);
     if (cmd == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
 
@@ -124,7 +135,7 @@ FILE *pipe_write(const char *cmd) {
     if (pipe_p == NULL)
         strerr_wrapper(save_errno);
 
-    VLOG_LEAVE("pipe_write");
+    VLOG_LEAVE(__func__);
     return(pipe_p);
 }
 
@@ -145,7 +156,7 @@ FILE *pipe_read(const char *cmd) {
     FILE *pipe_p;
     int save_errno = 0;
 
-    VLOG_ENTER("pipe_read");
+    VLOG_ENTER(__func__);
 
     if (cmd == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
@@ -155,7 +166,7 @@ FILE *pipe_read(const char *cmd) {
     if (pipe_p == NULL)
         strerr_wrapper(save_errno);
 
-    VLOG_LEAVE("pipe_read");
+    VLOG_LEAVE(__func__);
     return(pipe_p);
 }
 
@@ -175,7 +186,7 @@ int pipe_close(FILE *pipe_p) {
     int retval = 0;
     int save_errno = 0;
 
-    VLOG_ENTER("pipe_close");
+    VLOG_ENTER(__func__);
 
     if (pipe_p == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
@@ -185,7 +196,36 @@ int pipe_close(FILE *pipe_p) {
     if (retval == -1)
         strerr_wrapper(save_errno);
 
-    VLOG_LEAVE("pipe_close");
+    VLOG_LEAVE(__func__);
+    return(retval);
+}
+
+/* ============================================================
+ *
+ * \brief pipe_close_na()
+ *        Close an open pipe and pass error codes back.
+ *
+ * @param[]
+ *          pipe_p - an open FILE *
+ *          save_errno - holder for errno if needed
+ *
+ * \return { int containing termination status from process }
+ *
+ **/
+int pipe_close_na(FILE *pipe_p, int save_errno) {
+    int retval = 0;
+
+    VLOG_ENTER(__func__);
+
+    save_errno = 0;
+
+    if (pipe_p == NULL)
+        ovs_abort(-1,"NULL passed into %s",__func__);
+    
+    retval = pclose(pipe_p);
+    save_errno = errno;
+
+    VLOG_LEAVE(__func__);
     return(retval);
 }
 

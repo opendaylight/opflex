@@ -35,9 +35,14 @@ typedef enum {
  * TODO: for conf-file.c need to flush this stuff out
 static struct option_ele pe_config_defaults[] = {
     {PE_SECTION, "pe_ring_buffer_length", "1000"},
-    {PE_SECTION, "pe_test_pop_thread_count", "20"},
-    {PE_SECTION, "pe_test_max_pop_count", "50"},
-    {PE_SECTION, "pe_max_worker_count", "50"},
+//    {PE_SECTION, "pe_test_pop_thread_count", "20"},
+//    {PE_SECTION, "pe_test_max_pop_count", "50"},
+    {PE_SECTION, "pe_max_worker_count", "10"},
+    {PE_SECTION, "pe_ovsdb_sock", "unix:/var/run/openvswitch/db.sock"},
+    {PE_SECTION, "pe_ovsdb_sock_path", "/var/run/openvswitch/db.sock"},
+    {PE_SECTION, "pe_ovsdb_name", "Open_vSwitch"},
+    {PE_SECTION, "pe_ovs_cmd_path", "/usr/bin"},
+    {PE_SECTION, "pe_ovs_script_path", "/usr/share/openvswitch/scripts"},
     {NULL, NULL, NULL}
 };
 */

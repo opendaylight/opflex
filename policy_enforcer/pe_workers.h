@@ -14,8 +14,8 @@
 
 #include "config-file.h"
 
-#define PE_MAX_WORKER_COUNT 10 /* needs to be a config variable
-                                * pe_config_defaults
+#define PE_MAX_WORKER_COUNT 10 /* TODO: needs to be a config variable
+                                * pe_config_defaults - see policy_enforcer.h
                                 */
 
 /* Each of the following depends on the other, so these come first */
