@@ -51,7 +51,7 @@ VLOG_DEFINE_THIS_MODULE(misc_util);
  * \return { FILE * to the pipe }
  *
  **/
-FILE *pipe_write_na(const char *cmd, int save_errno) {
+FILE *pipe_write_na(const char *cmd, int *save_errno) {
     FILE *pipe_p;
 
     VLOG_ENTER(__func__);
@@ -59,11 +59,11 @@ FILE *pipe_write_na(const char *cmd, int save_errno) {
         ovs_abort(-1,"NULL passed into %s",__func__);
 
     pipe_p = popen(cmd,"w");
-    save_errno = errno;
+    *save_errno = errno;
 
     if(pipe_p == NULL) {
         if(errno != 0)
-            VLOG_ERR("errno is %d\n",save_errno);
+            VLOG_ERR("errno is %d\n",*save_errno);
         else
             VLOG_ERR("pipe_p is NULL & errno 0 => fork or pipe failed.\n");
     }
@@ -74,9 +74,9 @@ FILE *pipe_write_na(const char *cmd, int save_errno) {
 
 /* ============================================================
  *
- * \brief pipe_read()
+ * \brief pipe_read_na()
  *        Open a pipe for reading.
- *        Same as pipe_write except that on error, this function 
+ *        Same as pipe_read except that on error, this function 
  *        does not abort, but returns errno in save_errno
  *
  * @param0
@@ -87,7 +87,7 @@ FILE *pipe_write_na(const char *cmd, int save_errno) {
  * \return { FILE * to the pipe }
  *
  **/
-FILE *pipe_read_na(const char *cmd, int save_errno) {
+FILE *pipe_read_na(const char *cmd, int *save_errno) {
     FILE *pipe_p;
 
     VLOG_ENTER(__func__);
@@ -96,11 +96,11 @@ FILE *pipe_read_na(const char *cmd, int save_errno) {
         ovs_abort(-1,"NULL passed into %s",__func__);
 
     pipe_p = popen(cmd,"r");
-    save_errno = errno;
+    *save_errno = errno;
 
     if(pipe_p == NULL) {
         if(errno != 0)
-            VLOG_ERR("errno is %d\n",save_errno);
+            VLOG_ERR("errno is %d\n",*save_errno);
         else
             VLOG_ERR("pipe_p is NULL & errno 0 => fork or pipe failed.\n");
     }
@@ -193,6 +193,9 @@ int pipe_close(FILE *pipe_p) {
     
     retval = pclose(pipe_p);
     save_errno = errno;
+
+    VLOG_INFO("pclose returned %i and errno is %i\n", retval, errno);
+
     if (retval == -1)
         strerr_wrapper(save_errno);
 
@@ -212,18 +215,18 @@ int pipe_close(FILE *pipe_p) {
  * \return { int containing termination status from process }
  *
  **/
-int pipe_close_na(FILE *pipe_p, int save_errno) {
+int pipe_close_na(FILE *pipe_p, int *save_errno) {
     int retval = 0;
 
     VLOG_ENTER(__func__);
 
-    save_errno = 0;
+    *save_errno = 0;
 
     if (pipe_p == NULL)
         ovs_abort(-1,"NULL passed into %s",__func__);
     
     retval = pclose(pipe_p);
-    save_errno = errno;
+    *save_errno = errno;
 
     VLOG_LEAVE(__func__);
     return(retval);

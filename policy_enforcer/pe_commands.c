@@ -25,77 +25,42 @@
 
 VLOG_DEFINE_THIS_MODULE(pe_commands);
 
+#define PE_OVS_BAD_COMMAND 256 /* Greater than 255, largest shell exit code */
+#define PE_OVS_MAX_COMMAND_SIZE 1024
+#define PE_OVS_MAX_RESPONSE_SIZE 1024
+static const char *PE_FILENAME_SEPARATOR="/";
+static const char *PE_SINGLE_SPACE=" ";
 
 /* static protos */
-static uint32_t
-pe_command_jump(pe_ovs_command_t, uint32_t, void **);
-static uint32_t
-pe_ovs_create_bridge(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_delete_bridge(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_create_broadcast_domain(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_create_host_port(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_create_router(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_bd_member(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_flow_arp(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_flow_select_sepg(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_flow_select_depg_l2(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_flow_select_depg_l3(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_flow_policy_permit(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_flow_policy_permit_bi(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_flow_policy_deny(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_add_flow_policy_drop(pe_ovs_command_t, void **);
-static uint32_t
-pe_ovs_commit_flows(pe_ovs_command_t, void **);
-
-/* jump table - NB: indexing into this table uses pe_ovs_command_t */
-static uint32_t (*pe_ovs_commands[])(pe_ovs_command_t,void **) = {
-    pe_ovs_create_bridge,
-    pe_ovs_create_broadcast_domain,
-    pe_ovs_create_host_port,
-    pe_ovs_create_router,
-    pe_ovs_add_bd_member,
-    pe_ovs_add_flow_arp,
-    pe_ovs_add_flow_select_sepg,
-    pe_ovs_add_flow_select_depg_l2,
-    pe_ovs_add_flow_select_depg_l3,
-    pe_ovs_add_flow_policy_deny,
-    pe_ovs_add_flow_policy_drop,
-    pe_ovs_add_flow_policy_permit,
-    pe_ovs_add_flow_policy_permit_bi,
-    pe_ovs_commit_flows
-};
+static char *
+pe_ovs_build_command(pe_ovs_command_t,
+                     uint32_t,
+                     void **,
+                     uint32_t,
+                     void **);
+static void
+pe_ovs_command_exec(char *, pe_command_results_t *);
 
 /* command enum to string array - add a command to
  * pe_command_string_defs.h
  */
-static const char *pe_ovs_command_array[PE_OVS_COMMAND_TOTAL]= {
+/* TODO: set up appropriate sizes for strings of commands and subcommands*/
+static const char
+pe_ovs_command_array[PE_OVS_COMMAND_TOTAL+1][PE_OVS_MAX_COMMAND_SIZE] = {
 #define COMMAND_DEFN(a,b,c) b,
 #include "pe_command_string_defs.h"
 #undef COMMAND_DEFN
     "end_of_array"
 };
 
-static uint32_t pe_nr_of_required_args[PE_OVS_COMMAND_TOTAL]= {
+static const char
+pe_ovs_subcommand_array[PE_OVS_COMMAND_TOTAL+1][PE_OVS_MAX_COMMAND_SIZE] = {
 #define COMMAND_DEFN(a,b,c) c,
 #include "pe_command_string_defs.h"
 #undef COMMAND_DEFN
 0
 };
 
-#define PE_OVS_BAD_COMMAND 256 /* Greater than 255, largest shell exit code */
 
 /* ============================================================
  *
@@ -113,33 +78,67 @@ static uint32_t pe_nr_of_required_args[PE_OVS_COMMAND_TOTAL]= {
  *
  **/
 
-uint32_t **pe_command_list_processor(pe_command_node_t *list, uint32_t count) {
-    uint32_t results[count];
-    uint32_t **retval;
+/* calling function needs to release memory for results struct */
+pe_command_results_t *
+pe_command_list_processor(pe_command_node_t *list, uint32_t count) {
+    char *command[count];
     pe_command_node_t *current;
+    pe_command_results_t *result;
+    pe_command_results_t *result_head;
     uint32_t total_count = 0;
     uint32_t good_count = 0;
     uint32_t fail_count = 0;
 
     VLOG_ENTER(__func__);
 
+    result_head = xzalloc(sizeof(pe_command_results_t)); /* need at least one */
+    result_head->next = NULL;
+    result_head->previous = NULL;
+    result_head->retcode = 0;
+    result_head->err_no = 0;
+
     if(list == NULL) {
         VLOG_ERR("NULL passed into %s",__func__);
-        retval = NULL;
+        result_head->retcode = PE_OVS_BAD_COMMAND;
     } else {
         current = list;
         do { /* there's always at least one */
+            if (total_count > 0) {
+                result->next = xzalloc(sizeof(pe_command_results_t)); 
+                result->next->previous = result;
+                result = result->next;
+                result->retcode = 0;
+                result->err_no = 0;
+                result->next = NULL;
+            } else {
+                result = result_head;
+            }
 
             VLOG_DBG("Current pointer at %i in group %i command %i\n",
                        current->cmd_id, current->group_id, current->cmd);
-        
-            results[total_count] = pe_command_jump(current->cmd,
-                                                   current->nr_args,
-                                                   current->v_args);
-        
-            VLOG_DBG("In %s; result is %i\n",__func__, results[total_count]);
 
-            if (results[total_count] == 0) {
+            if ((command[total_count] = pe_ovs_build_command(current->cmd,
+                                 current->nr_args, current->v_args,
+                                 current->nr_opts, current->v_opts))
+                 == NULL)
+            {
+                // TODO: fail the command and fail dependencies
+                // TODO: set current to proper pointer
+                result->retcode = PE_OVS_BAD_COMMAND;
+                current = current->next;
+                continue;
+            }
+
+            VLOG_INFO("Executing %s\n",command[total_count]);
+            pe_ovs_command_exec(command[total_count], result);
+
+            // TODO: at this point, if the result is an error, need to
+            // check dependencies (and fail those, too)
+        
+            VLOG_DBG("In %s; result is %i\n",__func__,
+                      result->retcode);
+
+            if (result->retcode == 0) {
                 good_count++;
             } else {
                 fail_count++;
@@ -149,59 +148,105 @@ uint32_t **pe_command_list_processor(pe_command_node_t *list, uint32_t count) {
             total_count++;
         } while(current != NULL);
         VLOG_DBG("good count %i, fail count %i\n",good_count,fail_count);
-        retval = &results;
     }
     VLOG_LEAVE(__func__);
-    return(retval);
+    return(result_head);
 }
 
-static uint32_t
-pe_command_jump(pe_ovs_command_t cmd, uint32_t c_args, void **c_argv) {
-    uint32_t result = 0;
-
+/* space for dest is allocated here and freed in pe_ovs_command_exec */
+static char *
+pe_ovs_build_command(pe_ovs_command_t cmd,
+                     uint32_t nr_args,
+                     void **v_args,
+                     uint32_t nr_opts,
+                     void **v_opts)
+{
+    uint32_t count;
+    char *dest;
 
     VLOG_ENTER(__func__);
 
-    if (c_args == pe_nr_of_required_args[cmd]) {
-
-        result = pe_ovs_commands[cmd] (cmd, c_argv);
-
-        VLOG_DBG("In %s; result is %i\n",__func__, result);
-
+    /* allocate space and copy base path into command string */
+    dest = xmalloc(sizeof(PE_OVSDB_CMD_PATH));
+    if (snprintf(dest,sizeof(PE_OVSDB_CMD_PATH),PE_OVSDB_CMD_PATH)
+        < 0) {
+        dest = NULL;
     } else {
+        /* at this point the string has the base path in it
+         * increase size by 1 for final \0
+         */
+        size_t str_size = strlen(dest) + 1;
+        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                   dest, strlen(dest), str_size);
 
-        VLOG_ERR("%s requires %i argument(s), but %i was supplied\n",
-                  pe_ovs_command_array[cmd],
-                  pe_nr_of_required_args[cmd],
-                  c_args);
-        result = PE_OVS_BAD_COMMAND;
+        /* now add the "/" */
+        str_size += strlen(PE_FILENAME_SEPARATOR);
+        dest = realloc(dest,str_size);
+        strncat(dest,PE_FILENAME_SEPARATOR,strlen(PE_FILENAME_SEPARATOR));
+
+        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                   dest, strlen(dest), str_size);
+
+        /* add command */
+        str_size += strlen(pe_ovs_command_array[cmd]);
+        dest = xrealloc(dest,str_size);
+        strncat(dest, pe_ovs_command_array[cmd],
+                strlen(pe_ovs_command_array[cmd]));
+
+        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                   dest, strlen(dest), str_size);
+        
+        /* add options to command */
+        for (count = 0; count < nr_opts; count++) {
+            str_size += (strlen(PE_SINGLE_SPACE) +
+                         strlen(v_opts[count]));
+            dest = xrealloc(dest,str_size);
+            strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
+            strncat(dest, v_opts[count], strlen(v_opts[count]));
+        }
+
+        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                   dest, strlen(dest), str_size);
+         
+        /* add space then sub-command */
+        str_size += strlen(PE_SINGLE_SPACE);
+        dest = xrealloc(dest,str_size);
+        strncat(dest,PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
+        str_size += strlen(pe_ovs_subcommand_array[cmd]);
+        dest = xrealloc(dest,str_size);
+        strncat(dest, pe_ovs_subcommand_array[cmd],
+                      sizeof(pe_ovs_subcommand_array[cmd]));
+
+        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                   dest, strlen(dest), str_size);
+
+        /* add arguments to subcommand */
+        for (count = 0; count < nr_args; count++) {
+            str_size += (strlen(PE_SINGLE_SPACE) +
+                         strlen(v_args[count]));
+            dest = xrealloc(dest,str_size);
+            strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
+            strncat(dest, v_args[count], strlen(v_args[count]));
+        }
+
+        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                   dest, strlen(dest), str_size);
+
+        /* Make sure the string is terminiated */
+        dest[str_size] = '\0';
+
+        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                   dest, strlen(dest), str_size);
     }
-    
     VLOG_LEAVE(__func__);
-    return(result);
+    return(dest);
 }
-
-static uint32_t
-pe_ovs_create_bridge(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-    uint32_t count;
-    int exit_status;
+static void
+pe_ovs_command_exec(char *command, pe_command_results_t *result) {
+    char response[PE_OVS_MAX_RESPONSE_SIZE];
     FILE *pipe_fs;
-    char command[1024]; //TODO:  need #define for 1024
-    char response[1024];//TODO:  need #define for 1024
 
     VLOG_ENTER(__func__);
-
-    /*
-     * Build the command - TODO: need a util for this
-     */
-    snprintf(command,sizeof(PE_OVSDB_CMD_PATH),PE_OVSDB_CMD_PATH);
-    (void) strncat(command,"/",1);
-    (void) strncat(command, pe_ovs_command_array[cmd], (sizeof(command)-1));
-    (void) strncat(command," ", 1);
-    for (count = 0; count < pe_nr_of_required_args[cmd]; count++) {
-        (void) strncat(command, c_argv[count], (sizeof(command)-1));
-    }
 
     pipe_fs = pipe_read(command);
     
@@ -211,166 +256,13 @@ pe_ovs_create_bridge(pe_ovs_command_t cmd, void **c_argv) {
         }
     }
 
-    exit_status = pipe_close(pipe_fs);
-    result = WEXITSTATUS(exit_status);
-    VLOG_INFO("Execution of %s returned exit status %i\n",
-               command, result);
+    //result = WEXITSTATUS(pipe_close(pipe_fs));
+    result->retcode = pipe_close_na(pipe_fs, &result->err_no);
+
+    VLOG_DBG("Execution of %s returned exit status %i\n",
+               command, result->retcode);
+
+    free(command);
 
     VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_delete_bridge(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-    uint32_t count;
-    int exit_status;
-    FILE *pipe_fs;
-    char command[1024]; //TODO:  need #define for 1024
-    char response[1024];//TODO:  need #define for 1024
-
-    VLOG_ENTER(__func__);
-
-    /*
-     * Build the command - TODO: need a util for this
-     */
-    snprintf(command,sizeof(PE_OVSDB_CMD_PATH),PE_OVSDB_CMD_PATH);
-    (void) strncat(command,"/",1);
-    (void) strncat(command, pe_ovs_command_array[cmd], (sizeof(command)-1));
-    (void) strncat(command," ", 1);
-    for (count = 0; count < pe_nr_of_required_args[cmd]; count++) {
-        (void) strncat(command, c_argv[count], (sizeof(command)-1));
-    }
-
-    pipe_fs = pipe_read(command);
-    
-    if (VLOG_IS_DBG_ENABLED() == true) {
-        while(fgets(response, sizeof(response), pipe_fs)) {
-            VLOG_DBG("Response of %s to command %s\n", response, command);
-        }
-    }
-
-    exit_status = pipe_close(pipe_fs);
-    result = WEXITSTATUS(exit_status);
-    VLOG_INFO("Execution of %s returned exit status %i\n",
-               command, result);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_create_broadcast_domain(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_create_host_port(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_create_router(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_bd_member(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_flow_arp(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_flow_select_sepg(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_flow_select_depg_l2(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_flow_select_depg_l3(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_flow_policy_permit(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_flow_policy_permit_bi(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_flow_policy_deny(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_add_flow_policy_drop(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
-}
-static uint32_t
-pe_ovs_commit_flows(pe_ovs_command_t cmd, void **c_argv) {
-    uint32_t result = 0;
-
-    VLOG_ENTER(__func__);
-
-    VLOG_LEAVE(__func__);
-    return(result);
 }

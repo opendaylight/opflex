@@ -27,28 +27,12 @@ typedef enum {
 #include "pe_command_string_defs.h"
 #undef COMMAND_DEFN
     PE_OVS_COMMAND_TOTAL
-/*    CREATE_BRIDGE,
-    DELETE_BRIDGE,
-    CREATE_BROADCAST_DOMAIN,
-    CREATE_HOST_PORT,
-    CREATE_ROUTER,
-    ADD_BD_MEMBER,
-    ADD_FLOW_ARP,
-    ADD_FLOW_SELECT_SEPG,
-    ADD_FLOW_SELECT_DEPG_L2,
-    ADD_FLOW_SELECT_DEPG_L3,
-    ADD_FLOW_POLICY_DENY,
-    ADD_FLOW_POLICY_DROP,
-    ADD_FLOW_POLICY_PERMIT,
-    ADD_FLOW_POLICY_PERMIT_BI,
-    COMMIT_FLOWS */
 } pe_ovs_command_t;
 
 /* linked list types for pe_translate and pe_commands
- * TODO: this should have an enum for the command
  */
 typedef struct _pe_command_node pe_command_node_t;
-//typedef struct _pe_command_results pe_command_results_t;
+typedef struct _pe_command_results pe_command_results_t;
 struct _pe_command_node {
     uint32_t group_id;        /* ID of this linked list */
     uint32_t cmd_id;          /* Ordered ID of this command */
@@ -61,22 +45,18 @@ struct _pe_command_node {
     pe_ovs_command_t cmd;     /* command to execute */
     uint32_t nr_args;         /* number of args to command */
     void **v_args;            /* array of args to command */
+    uint32_t nr_opts;         /* number of options to command */
+    void **v_opts;            /* array of options to command */
 };
 
-/*
 struct _pe_command_results {
-    uint32_t group_id;
-    uint32_t cmd_id;
-    pe_command_node *cmd;
-    uint32_t result;
-    int save_errno;
+    uint32_t retcode;
+    int err_no;
     pe_command_results_t *next;
     pe_command_results_t *previous;
 };
-*/
-
 
 /* prototypes */
-uint32_t **pe_command_list_processor(pe_command_node_t *, uint32_t);
+pe_command_results_t *pe_command_list_processor(pe_command_node_t *, uint32_t);
 
 #endif //PE_COMMANDS_H

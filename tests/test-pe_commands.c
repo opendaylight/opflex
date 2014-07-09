@@ -18,63 +18,75 @@ VLOG_DEFINE_THIS_MODULE(test_pe_commands);
 /* private */
 static void rt_delete_bridge(void **state) {
     (void) state;
-    char *this_arg = "test_br1";
-    uint32_t **these_results;
+    char brname[9] = "test_br1";
+    void *arg_array[1];
+    pe_command_results_t *these_results;
     pe_command_node_t c_node;
 
     VLOG_ENTER(__func__);
 
     //set up container and start ovs + ovsdb
     //start with bridge creation as first command into pe_command
-
-    // pass a bridge creation command
+    arg_array[0] = (void *) brname;
+    
     c_node.group_id = 0;
     c_node.cmd_id = 0;
     c_node.next = NULL;
-    c_node.previous = NULL;
-    c_node.cmd = DELETE_BRIDGE;
+    c_node.cmd = VS_DELETE_BRIDGE;
     c_node.nr_args = 1;
-    c_node.v_args[0] = (void *) this_arg;
+    c_node.v_args = arg_array;
+    c_node.nr_opts = 0;
+    c_node.v_opts = NULL;
 
     these_results = pe_command_list_processor(&c_node, 1);
 
-    VLOG_INFO("Deletion of test_br1 returned: %i\n",*these_results[0]);
+    VLOG_INFO("Deletion of test_br1 returned: %d with errno = %d\n",
+               these_results->retcode, these_results->err_no);
 
-    assert_int_equal(*these_results[0],0);
+    assert_int_equal(these_results->retcode,0);
+
+    free(these_results);
 
     VLOG_LEAVE(__func__);
 
-    return(0);
 }
 
 static void rt_create_bridge(void **state) {
     (void) state;
-    char *this_arg = "test_br1";
-    uint32_t **these_results;
+    char brname[9] = "test_br1";
+    void *arg_array[1];
+    pe_command_results_t *these_results;
     pe_command_node_t c_node;
 
     VLOG_ENTER(__func__);
 
+//    c_node = xzalloc(sizeof(pe_command_node_t));
+
     //set up container and start ovs + ovsdb
     //start with bridge creation as first command into pe_command
+    arg_array[0] = (void *) brname;
 
     // pass a bridge creation command
     c_node.group_id = 0;
     c_node.cmd_id = 0;
     c_node.next = NULL;
-    c_node.cmd = CREATE_BRIDGE;
+    c_node.cmd = VS_CREATE_BRIDGE;
     c_node.nr_args = 1;
-    c_node.v_args[0] = (void *) this_arg;
+    c_node.v_args = arg_array;
+    c_node.nr_opts = 0;
+    c_node.v_opts = NULL;
 
     these_results = pe_command_list_processor(&c_node, 1);
 
-    VLOG_INFO("Creation of test_br1 returned: %i\n",*these_results[0]);
+    VLOG_INFO("Creation of test_br1 returned: %d with errno = %d\n",
+               these_results->retcode, these_results->err_no);
 
-    assert_int_equal(*these_results[0],0);
+    assert_int_equal(these_results->retcode,0);
+
+    free(these_results);
 
     VLOG_LEAVE(__func__);
 
-    return(0);
 }
 
 int main(void) {
@@ -85,6 +97,5 @@ int main(void) {
         unit_test(rt_delete_bridge),
     };
     
-    retval = run_tests(tests);
-    return(retval);
+    return(run_tests(tests));
 }

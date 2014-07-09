@@ -26,9 +26,9 @@ typedef char fstring[128];
 FILE *pipe_write(const char *);
 FILE *pipe_read(const char *);
 int pipe_close(FILE *);
-FILE *pipe_write_na(const char *, int); //na is for "no abort"
-FILE *pipe_read_na(const char *, int);
-int pipe_close_na(FILE *, int);
+FILE *pipe_write_na(const char *, int *); //na is for "no abort"
+FILE *pipe_read_na(const char *, int *);
+int pipe_close_na(FILE *, int *);
 void strerr_wrapper(int);
 bool file_exist(char *);
 char *timestring(void);
