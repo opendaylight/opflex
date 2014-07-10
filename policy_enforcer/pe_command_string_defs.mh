@@ -1,0 +1,38 @@
+/*
+* Copyright (c) 2014 Cisco Systems, Inc. and others.
+*               All rights reserved.
+*
+* This program and the accompanying materials are made available under
+* the terms of the Eclipse Public License v1.0 which accompanies this
+* distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
+*/
+
+/* This file is used to synchronize the enums with
+ * commands and arguments
+ * Note that it may be included more than once in
+ * a file.
+ */
+
+/* Syntax:
+ * COMMAND_DEFN(pe_ovs_command_t, char *, char *)
+ *              enum, command, subcommand
+ */
+
+COMMAND_DEFN( VS_CREATE_BRIDGE, "ovs-vsctl", "add-br")   // 0
+COMMAND_DEFN( VS_DELETE_BRIDGE, "ovs-vsctl", "del-br")   // 1
+COMMAND_DEFN( VS_ADD_PORT, "ovs-vsctl", "add-port")      // 2
+COMMAND_DEFN( VS_DEL_PORT, "ovs-vsctl", "del-port")      // 3
+COMMAND_DEFN( VS_GP_CMD, "ovs-vsctl", " ")               // 4
+COMMAND_DEFN( OF_ADD_GROUP, "ovs-ofctl", "add-group")    // 5
+COMMAND_DEFN( OF_MOD_GROUP, "ovs-ofctl", "mod-group")    // 6
+COMMAND_DEFN( OF_DEL_GROUPS, "ovs-ofctl", "del-groups")  // 7
+COMMAND_DEFN( OF_ADD_FLOW, "ovs-ofctl", "add-flow")      // 8
+COMMAND_DEFN( OF_MOD_FLOW, "ovs-ofctl", "mod-flow")      // 9
+COMMAND_DEFN( OF_DEL_FLOWS, "ovs-ofctl", "del-flows")    // 10
+COMMAND_DEFN( OF_GP_CMD, "ovs-ofctl", " ")               // 11
+COMMAND_DEFN( SYS_IP_ADDR_ADD, "ip addr", "add")         // 12
+COMMAND_DEFN( SYS_IP_ADDR_DEL, "ip addr", "del")         // 13
+COMMAND_DEFN( SYS_IP_LINK_ADD,"ip link", "add")          // 14
+COMMAND_DEFN( SYS_IP_LINK_DEL,"ip link", "del")          // 15
+//TOTAL                                                     16

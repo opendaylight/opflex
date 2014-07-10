@@ -42,6 +42,7 @@ static struct option_ele pe_config_defaults[] = {
     {PE_SECTION, "pe_ovsdb_sock_path", "/var/run/openvswitch/db.sock"},
     {PE_SECTION, "pe_ovsdb_name", "Open_vSwitch"},
     {PE_SECTION, "pe_ovs_cmd_path", "/usr/bin"},
+    {PE_SECTION, "pe_sys_cmd_path", "/usr/sbin"},
     {PE_SECTION, "pe_ovs_script_path", "/usr/share/openvswitch/scripts"},
     {NULL, NULL, NULL}
 };

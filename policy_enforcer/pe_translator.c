@@ -36,11 +36,16 @@ VLOG_DEFINE_THIS_MODULE(pe_translator);
  *
  **/
 void pe_translate(void *item) {
-    static char mod[] = "pe_translate";
 
-    VLOG_ENTER(mod);
+    VLOG_ENTER(__func__);
 
     VLOG_INFO("Received work item %p\n",item);
+/* NB: this module is multi-threaded, but it will pass its
+ *     work in the form of a pe_ovs_command_t *list into
+ *     a ring buffer for the pe_command module to process.
+ *     The pe_command_module is a single thread because it
+ *     is executing commands that must be processed sequentially.
+ */
 
-    VLOG_LEAVE(mod);
+    VLOG_LEAVE(__func__);
 }

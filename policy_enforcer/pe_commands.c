@@ -42,13 +42,13 @@ static void
 pe_ovs_command_exec(char *, pe_command_results_t *);
 
 /* command enum to string array - add a command to
- * pe_command_string_defs.h
+ * pe_command_string_defs.mh
  */
 /* TODO: set up appropriate sizes for strings of commands and subcommands*/
 static const char
 pe_ovs_command_array[PE_OVS_COMMAND_TOTAL+1][PE_OVS_MAX_COMMAND_SIZE] = {
 #define COMMAND_DEFN(a,b,c) b,
-#include "pe_command_string_defs.h"
+#include "pe_command_string_defs.mh"
 #undef COMMAND_DEFN
     "end_of_array"
 };
@@ -56,7 +56,7 @@ pe_ovs_command_array[PE_OVS_COMMAND_TOTAL+1][PE_OVS_MAX_COMMAND_SIZE] = {
 static const char
 pe_ovs_subcommand_array[PE_OVS_COMMAND_TOTAL+1][PE_OVS_MAX_COMMAND_SIZE] = {
 #define COMMAND_DEFN(a,b,c) c,
-#include "pe_command_string_defs.h"
+#include "pe_command_string_defs.mh"
 #undef COMMAND_DEFN
 0
 };
@@ -91,7 +91,8 @@ pe_command_list_processor(pe_command_node_t *list, uint32_t count) {
 
     VLOG_ENTER(__func__);
 
-    result_head = xzalloc(sizeof(pe_command_results_t)); /* need at least one */
+    result_head = xmalloc(sizeof(pe_command_results_t)); /* need at least one */
+    result_head->cmd_ptr = list;
     result_head->next = NULL;
     result_head->previous = NULL;
     result_head->retcode = 0;
@@ -104,12 +105,13 @@ pe_command_list_processor(pe_command_node_t *list, uint32_t count) {
         current = list;
         do { /* there's always at least one */
             if (total_count > 0) {
-                result->next = xzalloc(sizeof(pe_command_results_t)); 
+                result->next = xmalloc(sizeof(pe_command_results_t)); 
                 result->next->previous = result;
                 result = result->next;
                 result->retcode = 0;
                 result->err_no = 0;
                 result->next = NULL;
+                result->cmd_ptr = current;
             } else {
                 result = result_head;
             }
@@ -122,7 +124,9 @@ pe_command_list_processor(pe_command_node_t *list, uint32_t count) {
                                  current->nr_opts, current->v_opts))
                  == NULL)
             {
-                // TODO: fail the command and fail dependencies
+                // TODO: fail the command and fail dependencies without
+                //       executing them (optimize), but calling layer
+                //       (pe_translate) will determine what to do.
                 // TODO: set current to proper pointer
                 result->retcode = PE_OVS_BAD_COMMAND;
                 current = current->next;
@@ -163,80 +167,102 @@ pe_ovs_build_command(pe_ovs_command_t cmd,
 {
     uint32_t count;
     char *dest;
+    char *path;
+    int rval = 0;
+
+//  Uncomment next line to turn on debugging
+//    vlog_set_levels(vlog_module_from_name("pe_commands"), -1, VLL_DBG);
 
     VLOG_ENTER(__func__);
 
-    /* allocate space and copy base path into command string */
-    dest = xmalloc(sizeof(PE_OVSDB_CMD_PATH));
-    if (snprintf(dest,sizeof(PE_OVSDB_CMD_PATH),PE_OVSDB_CMD_PATH)
-        < 0) {
-        dest = NULL;
+    /* set up the proper command path */
+    if(strncmp(pe_ovs_command_array[cmd],"ovs",3) == 0)
+    {
+        path = xmalloc(strlen(PE_OVSDB_CMD_PATH) + 1);
+        rval = snprintf(path, strlen(PE_OVSDB_CMD_PATH)+1, PE_OVSDB_CMD_PATH);
     } else {
-        /* at this point the string has the base path in it
-         * increase size by 1 for final \0
-         */
-        size_t str_size = strlen(dest) + 1;
-        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
-                   dest, strlen(dest), str_size);
+        path = xmalloc(strlen(PE_SYS_CMD_PATH) + 1);
+        rval = snprintf(path, strlen(PE_SYS_CMD_PATH)+1, PE_SYS_CMD_PATH);
+    }
+    if (rval < 0)
+    {
+        VLOG_ERR("snprintf failed for cmd %s and returned %d at %i\n",
+                 pe_ovs_command_array[cmd], rval,__LINE__);
+    } else {
+        /* allocate space and copy base path into command string */
+        dest = xmalloc(strlen(path));
+        if ((rval = snprintf(dest,strlen(path)+1,path))
+            < 0) {
+            VLOG_ERR("snprintf failed and returned %d at %i\n",rval,__LINE__);
+            dest = NULL;
+        } else {
+            /* at this point the string has the base path in it
+             * increase size by 1 for final \0
+             */
+            size_t str_size = strlen(dest) + 1;
 
-        /* now add the "/" */
-        str_size += strlen(PE_FILENAME_SEPARATOR);
-        dest = realloc(dest,str_size);
-        strncat(dest,PE_FILENAME_SEPARATOR,strlen(PE_FILENAME_SEPARATOR));
+            VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                       dest, strlen(dest), str_size);
 
-        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
-                   dest, strlen(dest), str_size);
+            /* now add the "/" */
+            str_size += strlen(PE_FILENAME_SEPARATOR);
+            dest = realloc(dest,str_size);
+            strncat(dest,PE_FILENAME_SEPARATOR,strlen(PE_FILENAME_SEPARATOR));
 
-        /* add command */
-        str_size += strlen(pe_ovs_command_array[cmd]);
-        dest = xrealloc(dest,str_size);
-        strncat(dest, pe_ovs_command_array[cmd],
-                strlen(pe_ovs_command_array[cmd]));
+            VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                       dest, strlen(dest), str_size);
 
-        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
-                   dest, strlen(dest), str_size);
+            /* add command */
+            str_size += strlen(pe_ovs_command_array[cmd]);
+            dest = xrealloc(dest,str_size);
+            strncat(dest, pe_ovs_command_array[cmd],
+                    strlen(pe_ovs_command_array[cmd]));
+
+            VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                       dest, strlen(dest), str_size);
         
-        /* add options to command */
-        for (count = 0; count < nr_opts; count++) {
-            str_size += (strlen(PE_SINGLE_SPACE) +
-                         strlen(v_opts[count]));
-            dest = xrealloc(dest,str_size);
-            strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
-            strncat(dest, v_opts[count], strlen(v_opts[count]));
-        }
+            /* add options to command */
+            for (count = 0; count < nr_opts; count++) {
+                str_size += (strlen(PE_SINGLE_SPACE) +
+                             strlen(v_opts[count]));
+                dest = xrealloc(dest,str_size);
+                strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
+                strncat(dest, v_opts[count], strlen(v_opts[count]));
+            }
 
-        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
-                   dest, strlen(dest), str_size);
+            VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                       dest, strlen(dest), str_size);
          
-        /* add space then sub-command */
-        str_size += strlen(PE_SINGLE_SPACE);
-        dest = xrealloc(dest,str_size);
-        strncat(dest,PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
-        str_size += strlen(pe_ovs_subcommand_array[cmd]);
-        dest = xrealloc(dest,str_size);
-        strncat(dest, pe_ovs_subcommand_array[cmd],
-                      sizeof(pe_ovs_subcommand_array[cmd]));
-
-        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
-                   dest, strlen(dest), str_size);
-
-        /* add arguments to subcommand */
-        for (count = 0; count < nr_args; count++) {
-            str_size += (strlen(PE_SINGLE_SPACE) +
-                         strlen(v_args[count]));
+            /* add space then sub-command */
+            str_size += strlen(PE_SINGLE_SPACE);
             dest = xrealloc(dest,str_size);
-            strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
-            strncat(dest, v_args[count], strlen(v_args[count]));
+            strncat(dest,PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
+            str_size += strlen(pe_ovs_subcommand_array[cmd]);
+            dest = xrealloc(dest,str_size);
+            strncat(dest, pe_ovs_subcommand_array[cmd],
+                          sizeof(pe_ovs_subcommand_array[cmd]));
+
+            VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                       dest, strlen(dest), str_size);
+
+            /* add arguments to subcommand */
+            for (count = 0; count < nr_args; count++) {
+                str_size += (strlen(PE_SINGLE_SPACE) +
+                             strlen(v_args[count]));
+                dest = xrealloc(dest,str_size);
+                strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
+                strncat(dest, v_args[count], strlen(v_args[count]));
+            }
+
+            VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                       dest, strlen(dest), str_size);
+
+            /* Make sure the string is terminiated */
+            dest[str_size] = '\0';
+
+            VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
+                       dest, strlen(dest), str_size);
         }
-
-        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
-                   dest, strlen(dest), str_size);
-
-        /* Make sure the string is terminiated */
-        dest[str_size] = '\0';
-
-        VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
-                   dest, strlen(dest), str_size);
     }
     VLOG_LEAVE(__func__);
     return(dest);

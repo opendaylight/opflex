@@ -18,13 +18,14 @@
 /* TODO: Following #defines need to be variableized in pe_config_defaults.
  *       See policy_enforcer.h
  */
-#define PE_OVSDB_CMD_PATH "/usr/bin"
-#define PE_OVSDB_SCRIPT_PATH "/usr/share/openvswitch/scripts"
+const char *PE_OVSDB_CMD_PATH    = "/usr/bin";
+const char *PE_SYS_CMD_PATH      = "/usr/sbin";
+const char *PE_OVSDB_SCRIPT_PATH = "/usr/share/openvswitch/scripts";
 
 /* enums for ovs commands */
 typedef enum {
 #define COMMAND_DEFN(a,b,c) a,
-#include "pe_command_string_defs.h"
+#include "pe_command_string_defs.mh"
 #undef COMMAND_DEFN
     PE_OVS_COMMAND_TOTAL
 } pe_ovs_command_t;
@@ -52,6 +53,7 @@ struct _pe_command_node {
 struct _pe_command_results {
     uint32_t retcode;
     int err_no;
+    pe_command_node_t *cmd_ptr;
     pe_command_results_t *next;
     pe_command_results_t *previous;
 };
