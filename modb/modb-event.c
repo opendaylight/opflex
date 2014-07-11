@@ -130,8 +130,8 @@ int modb_event_destroy(void)
 
     if (is_initialized()) {
         /* sleep for .25 secs */
-        ts.tv_sec = 1;
-        ts.tv_nsec = 0;
+        ts.tv_sec = 0;
+        ts.tv_nsec = 250000;
 
         ovs_rwlock_wrlock(&subscriber_arr_rwlock);
 
@@ -154,7 +154,9 @@ int modb_event_destroy(void)
         }
         if (do_delay) 
             nanosleep(&ts, &tem);
-        
+        /* TODO dkehn: I'm leaving this in there may become applicable when I have
+         * time to really lo at it.
+         */
         /* for (done_flag = false, tout = 0; !done_flag || tout < 10; tout++ ) { */
         /*     done_flag = true; */
         /*     for (i = 0; i < max_subscribers; i ++) { */
@@ -203,9 +205,6 @@ int modb_event_subscribe(unsigned int evt_type, unsigned int evt_source)
     ENTER(mod);
 
     if (is_initialized()) {
-        /* get the lock on the subscriber_arr */
-        ovs_rwlock_wrlock(&subscriber_arr_rwlock);
-
         /* this this a refinement of a previous subscribe? */
         idx = modb_event_find_slot();
         if (idx >= 0) {
@@ -220,13 +219,12 @@ int modb_event_subscribe(unsigned int evt_type, unsigned int evt_source)
                 if ((idx = modb_event_find_slot()) < 0) {
                     if ((idx = modb_event_find_open_slot()) < 0) {
                         retc = 1;
-                        ovs_rwlock_unlock(&subscriber_arr_rwlock);
                         goto rtn_return;
                     }
                 }
 
+                ovs_rwlock_wrlock(&subscriber_arr_rwlock);
                 sp = subscriber_arr[idx];
-                /* sp = xzalloc(sizeof(subscriber_t)); */
                 ovs_mutex_init(&sp->mutex);
                 sp->thread_id = pthread_self();
                 sp->evt_counter = 0;
@@ -235,11 +233,11 @@ int modb_event_subscribe(unsigned int evt_type, unsigned int evt_source)
                 pthread_cond_init(&sp->go, &sp->mutex);
                 subscriber_arr[idx] = sp;
                 subscriber_count++;
+                ovs_rwlock_unlock(&subscriber_arr_rwlock);
                 VLOG_DBG("%s: adding thread_id:%lu to subscribers array",
                          mod, sp->thread_id);
             }
         }
-        ovs_rwlock_unlock(&subscriber_arr_rwlock);
     }
     else {
         retc = 1;
@@ -281,12 +279,10 @@ int modb_event_unsubscribe(unsigned int evt_type, unsigned int evt_source)
     ENTER(mod);
 
     if (is_initialized()) {
-        /* get the lock on the subscriber_arr */
-        ovs_rwlock_wrlock(&subscriber_arr_rwlock);
-
         idx = modb_event_find_slot();
         
         if (idx >= 0) {            
+            ovs_rwlock_wrlock(&subscriber_arr_rwlock);
             sp = subscriber_arr[idx];
             ovs_mutex_lock(&sp->mutex);
             sp->evt_type &= ~evt_type;
@@ -302,12 +298,12 @@ int modb_event_unsubscribe(unsigned int evt_type, unsigned int evt_source)
             else {
                 ovs_mutex_unlock(&sp->mutex);
             }
+            ovs_rwlock_unlock(&subscriber_arr_rwlock);
         } else {
             VLOG_DBG("%s: unknown thread_id:%lu from subscribers array:%d",
                      mod, pthread_self(), subscriber_count);
             retc = 1;
         }
-        ovs_rwlock_unlock(&subscriber_arr_rwlock);
     } else {
         retc = 1;
         VLOG_ERR("%s: modb_event is not initialized, please modb_event_initialize.",
@@ -317,6 +313,46 @@ int modb_event_unsubscribe(unsigned int evt_type, unsigned int evt_source)
     return(retc);
 }
 
+/* modb_event_etype_to_string - converts the flags to its string representation.
+ *
+ */
+char *modb_event_etype_to_string(unsigned int etype)
+{
+    static char *etype_lookup[] = {
+        "INSERT",
+        "DELETE",
+        "UPDATE",
+        "DESTROY",
+        "TEST",
+        "ANY",
+        NULL,
+    };
+    int i;
+    char *ret_string;
+
+    if (etype == MEVT_TYPE_ANY) {
+        ret_string = strdup("ANY");
+        goto rtn_return;
+    }
+
+    if (etype == MEVT_TYPE_NOP) {
+        ret_string = strdup("NOP");
+        goto rtn_return;
+    }
+
+    ret_string = xzalloc(64);
+    for (i=0; etype_lookup[i]; i++) {
+        if ((etype >> i) & 0x0001) {
+            if (strlen(ret_string)) 
+                ret_string = strcat(ret_string, "|");
+            ret_string = strcat(ret_string, etype_lookup[i]);
+        }
+    }
+ rtn_return:
+    return(ret_string);
+}
+    
+    
 /*
  * modb_event_wait - this is the part of the eventing structure that when called
  * will perform a wait on the cond in the previous subscriber's subscriber_arr slot
@@ -340,11 +376,14 @@ int modb_event_wait(modb_event_p *evtp)
             VLOG_ERR("%s: no subscriber in array with thread_id:%lu", 
                      mod, pthread_self());
             retc =1;
-        } else {
+        } 
+        else {
             sp = subscriber_arr[idx];
             ovs_mutex_lock(&sp->mutex);
             sp->evt_read = false;
-            ovs_mutex_cond_wait(&sp->go, &sp->mutex);
+            pthread_cond_wait(&sp->go, &sp->mutex);
+            VLOG_DBG("%s: %lu got event: 0x%04x count:%ld", mod, pthread_self(),
+                     sp->evtp->etype, sp->evt_counter);
             *evtp = sp->evtp;
             sp->evt_read = true;
             sp->evt_new--;
@@ -360,6 +399,31 @@ int modb_event_wait(modb_event_p *evtp)
     return(retc);
 }
 
+/*
+ * modb_event_is_all_read - returns  the OR status of the read flags from the slots.
+ *
+ */
+bool modb_event_is_all_read(void)
+{
+    static char *mod = "modb_event_all_read";
+    bool retb = true;
+    int i;
+
+    ENTER(mod);
+    if (is_initialized() && subscriber_count) {
+        ovs_rwlock_rdlock(&subscriber_arr_rwlock);
+        for (i = 0; i < max_subscribers; i++) {
+            if (!subscriber_arr[i]->evt_read) {
+                retb = false; 
+                break;
+            }
+        }
+        ovs_rwlock_unlock(&subscriber_arr_rwlock);
+    }
+    LEAVE(mod);
+    return(retb);
+}
+
 /* 
  * modb_event_dump - dumps the subscriber_arr and any events in the evnt_p.
  *
@@ -370,6 +434,7 @@ void modb_event_dump(void)
     subscriber_p sp;
 
     if (is_initialized()) {
+        ovs_rwlock_rdlock(&subscriber_arr_rwlock);
         VLOG_INFO("======= Subscriber Dump ==========");
         for (i = 0; i < max_subscribers; i++) {
             sp = subscriber_arr[i];
@@ -391,6 +456,7 @@ void modb_event_dump(void)
                 }
             }
         }
+        ovs_rwlock_unlock(&subscriber_arr_rwlock);
     }
     return;
 }
@@ -410,7 +476,8 @@ void modb_event_free(modb_event_p evp)
     static char *mod = "modb_event_free";
 
     ENTER(mod);
-    free(evp->dp_arr);
+    VLOG_DBG("%s: thread:%lu\n", mod, pthread_self());
+    /* free(evp->dp_arr); */
     free(evp);
     LEAVE(mod);
     return;
@@ -427,27 +494,38 @@ void modb_event_free(modb_event_p evp)
  *
  */
 int modb_event_push(unsigned int evt_type, unsigned int evt_source,
-                     int obj_type, int dp_count, void *dp)
+                     int obj_type, int dp_count, void *dp[])
 {
     static char *mod = "modb_event_push";
     int retc = 0;
     modb_event_p evtp;
     size_t evt_sz;
+    modb_event_t evt;
 
     ENTER(mod);
     switch (obj_type) {
     case MEVT_OBJ_NODE:
     case MEVT_OBJ_TREE:
-        evt_sz = sizeof(modb_event_t) + (dp_count * sizeof(node_ele_p));
-        evtp = (modb_event_p)xzalloc(evt_sz);
-        evtp->eobj = obj_type;
-        evtp->etype = evt_type;
-        evtp->esrc = evt_source;
-        evtp->dp_count = dp_count;
-        memcpy(evtp->dp_arr, dp, dp_count* sizeof(node_ele_p));
-        evtp->timestamp = tv_tod();
-        retc = modb_event_send(evtp, evt_sz);
-        modb_event_free(evtp);
+        /* evt_sz = sizeof(modb_event_t) + (dp_count * sizeof(node_ele_p)); */
+        /* evtp = (modb_event_p)xzalloc(evt_sz); */
+        /* memset(evtp, 0, evt_sz); */
+        /* evtp->eobj = obj_type; */
+        /* evtp->etype = evt_type; */
+        /* evtp->esrc = evt_source; */
+        /* evtp->dp_count = dp_count; */
+        /* memcpy(evtp->dp_arr, dp, dp_count* sizeof(node_ele_p)); */
+        /* evtp->timestamp = tv_tod(); */
+        /* retc = modb_event_send(evtp, evt_sz); */
+        /* modb_event_free(evtp); */
+
+        memset(&evt, 0, sizeof(modb_event_t));
+        evt.eobj = obj_type;
+        evt.etype = evt_type;
+        evt.esrc = evt_source;
+        evt.dp_count = dp_count;
+        *evt.dp_arr = *dp;
+        evt.timestamp = tv_tod();
+        retc = modb_event_send(&evt, sizeof(modb_event_t));
         break;
         
     case MEVT_OBJ_PROPERTY:
@@ -464,6 +542,16 @@ int modb_event_push(unsigned int evt_type, unsigned int evt_source,
     LEAVE(mod);
     return(retc);
 }
+
+/*
+ * modb_event_subscribers - returns the number of threads that have
+ * subscribed to events.
+ */
+int modb_event_subscribers(void)
+{
+    return(subscriber_count);
+}
+           
 
 /* =========================================================================
  * Private code .
@@ -489,23 +577,33 @@ static int modb_event_send(modb_event_p evtp, size_t evtp_sz)
     
     ENTER(mod);
 
+    ovs_rwlock_wrlock(&subscriber_arr_rwlock);
     for (i = 0; i < max_subscribers; i++) {
-        ovs_rwlock_wrlock(&subscriber_arr_rwlock);
         sp = subscriber_arr[i];
-        if ( sp->thread_id && (sp->evt_type && evtp->etype) && 
-            (sp->evt_source && evtp->esrc) ) {
-            ovs_mutex_lock(&sp->mutex);
-            sp->evtp = xmemdup0(evtp, evtp_sz);
-            sp->evt_counter++;
-            sp->evt_read = false;
-            sp->evt_new++;
-            ovs_mutex_unlock(&sp->mutex);
-            pthread_cond_signal(&sp->go);
-            VLOG_DBG("%s: signaling subscriber:slot[%d]:id:%lu count:%d", 
-                     mod, i, sp->thread_id, sp->evt_counter);
+        if (sp->thread_id) {
+            /* this the where the filtering is handled to determine
+             * which slot(s) will the event. In the case of MEVT_TYPE_ANY & 
+             * MEVT_TYPE_DESTROY, all occupied slot(s) get the event.
+             */
+            if ( ((sp->evt_type & evtp->etype) && 
+                  (sp->evt_source & evtp->esrc)) ||
+                 (sp->evt_type & MEVT_TYPE_DESTROY) ||
+                 (sp->evt_type == MEVT_TYPE_ANY) ) {
+                ovs_mutex_lock(&sp->mutex);
+                VLOG_DBG("%s: xzalloc: %d", mod, evtp_sz);
+                sp->evtp = xzalloc(evtp_sz);
+                memcpy(sp->evtp, evtp, evtp_sz);
+                sp->evt_counter++;
+                sp->evt_read = false;
+                sp->evt_new++;
+                ovs_mutex_unlock(&sp->mutex);
+                VLOG_DBG("%s: signaling subscriber:slot[%d]:id:%lu count:%ld type:0x%04x",
+                         mod, i, sp->thread_id, sp->evt_counter, sp->evtp->etype);
+                pthread_cond_signal(&sp->go);
+            }
         }
-        ovs_rwlock_unlock(&subscriber_arr_rwlock);
     }
+    ovs_rwlock_unlock(&subscriber_arr_rwlock);
     
     LEAVE(mod);
     return(retc);
@@ -523,6 +621,7 @@ static int modb_event_find_slot(void)
     int idx = 0;
     pthread_t this_id = pthread_self();
     
+    ovs_rwlock_rdlock(&subscriber_arr_rwlock);
     for (idx = 0; idx < max_subscribers; idx++) {
         if (subscriber_arr[idx]->thread_id != 0) {
             if (this_id == subscriber_arr[idx]->thread_id) {
@@ -534,6 +633,7 @@ static int modb_event_find_slot(void)
         idx = -1;
     }
 
+    ovs_rwlock_unlock(&subscriber_arr_rwlock);
     LEAVE(mod);
     return(idx);
 }
@@ -548,8 +648,11 @@ static int modb_event_find_open_slot(void)
     int idx = 0;
 
     ENTER(mod);
+
+    ovs_rwlock_wrlock(&subscriber_arr_rwlock);
     for (idx = 0; idx < max_subscribers; idx++) {
         if (subscriber_arr[idx]->thread_id == 0) {
+            subscriber_arr[idx]->thread_id = pthread_self();
             break;
         }
     }
@@ -558,6 +661,7 @@ static int modb_event_find_open_slot(void)
         VLOG_ERR("%s: more subscribers than slots allocated: %d max_slots%d",
                  mod, idx, max_subscribers);
     }
+    ovs_rwlock_unlock(&subscriber_arr_rwlock);
     VLOG_DBG("%s: idx=%d", mod, idx);
     LEAVE(mod);
     return(idx);

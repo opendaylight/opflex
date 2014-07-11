@@ -35,10 +35,11 @@ typedef enum _enum_mevt_object {
  * this defines the operation that produced the event.
  */
 #define MEVT_TYPE_NOP          0x0000
-#define MEVT_TYPE_ADD          0x0001
+#define MEVT_TYPE_INS          0x0001
 #define MEVT_TYPE_DEL          0x0002
 #define MEVT_TYPE_UPD          0x0004
 #define MEVT_TYPE_DESTROY      0x0008
+#define MEVT_TYPE_TEST         0x0010
 #define MEVT_TYPE_ANY          0xffff
 
 
@@ -153,5 +154,9 @@ extern int modb_event_unsubscribe(unsigned int evt_type,
                                   unsigned int evt_source);
 extern void modb_event_dump(void);
 extern void modb_event_free(modb_event_p evtp);
-
+extern int modb_event_push(unsigned int evt_type, unsigned int evt_source,
+                           int obj_type, int dp_count, void *dp[]);
+extern bool modb_event_is_all_read(void);
+extern char *modb_event_etype_to_string(unsigned int etype);
+extern int modb_event_subscribers(void);
 #endif
