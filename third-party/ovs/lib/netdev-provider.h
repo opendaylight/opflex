@@ -250,13 +250,16 @@ struct netdev_class {
     const struct netdev_tunnel_config *
         (*get_tunnel_config)(const struct netdev *netdev);
 
-    /* Sends the buffer on 'netdev'.
-     * Returns 0 if successful, otherwise a positive errno value.  Returns
-     * EAGAIN without blocking if the packet cannot be queued immediately.
-     * Returns EMSGSIZE if a partial packet was transmitted or if the packet
-     * is too big or too small to transmit on the device.
+    /* Sends buffers on 'netdev'.
+     * Returns 0 if successful (for every buffer), otherwise a positive errno value.
+     * Returns EAGAIN without blocking if one or more packets cannot be
+     * queued immediately. Returns EMSGSIZE if a partial packet was transmitted
+     * or if a packet is too big or too small to transmit on the device.
      *
-     * To retain ownership of 'buffer' caller can set may_steal to false.
+     * If the function returns a non-zero value, some of the packets might have
+     * been sent anyway.
+     *
+     * To retain ownership of 'buffers' caller can set may_steal to false.
      *
      * The network device is expected to maintain a packet transmission queue,
      * so that the caller does not ordinarily have to do additional queuing of
@@ -268,7 +271,8 @@ struct netdev_class {
      * network device from being usefully used by the netdev-based "userspace
      * datapath".  It will also prevent the OVS implementation of bonding from
      * working properly over 'netdev'.) */
-    int (*send)(struct netdev *netdev, struct ofpbuf *buffer, bool may_steal);
+    int (*send)(struct netdev *netdev, struct dpif_packet **buffers, int cnt,
+                bool may_steal);
 
     /* Registers with the poll loop to wake up from the next call to
      * poll_block() when the packet transmission queue for 'netdev' has
@@ -661,8 +665,8 @@ struct netdev_class {
     void (*rxq_destruct)(struct netdev_rxq *);
     void (*rxq_dealloc)(struct netdev_rxq *);
 
-    /* Attempts to receive batch of packets from 'rx' and place array of pointers
-     * into '*pkt'. netdev is responsible for allocating buffers.
+    /* Attempts to receive batch of packets from 'rx' and place array of
+     * pointers into '*pkts'. netdev is responsible for allocating buffers.
      * '*cnt' points to packet count for given batch. Once packets are returned
      * to caller, netdev should give up ownership of ofpbuf data.
      *
@@ -672,7 +676,8 @@ struct netdev_class {
      * Caller is expected to pass array of size MAX_RX_BATCH.
      * This function may be set to null if it would always return EOPNOTSUPP
      * anyhow. */
-    int (*rxq_recv)(struct netdev_rxq *rx, struct ofpbuf **pkt, int *cnt);
+    int (*rxq_recv)(struct netdev_rxq *rx, struct dpif_packet **pkts,
+                    int *cnt);
 
     /* Registers with the poll loop to wake up from the next call to
      * poll_block() when a packet is ready to be received with netdev_rxq_recv()

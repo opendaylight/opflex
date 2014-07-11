@@ -310,6 +310,7 @@ nl_sock_recv__(struct nl_sock *sock, struct ofpbuf *buf, bool wait)
     struct iovec iov[2];
     struct msghdr msg;
     ssize_t retval;
+    int error;
 
     ovs_assert(buf->allocated >= sizeof *nlmsghdr);
     ofpbuf_clear(buf);
@@ -323,12 +324,23 @@ nl_sock_recv__(struct nl_sock *sock, struct ofpbuf *buf, bool wait)
     msg.msg_iov = iov;
     msg.msg_iovlen = 2;
 
+    /* Receive a Netlink message from the kernel.
+     *
+     * This works around a kernel bug in which the kernel returns an error code
+     * as if it were the number of bytes read.  It doesn't actually modify
+     * anything in the receive buffer in that case, so we can initialize the
+     * Netlink header with an impossible message length and then, upon success,
+     * check whether it changed. */
+    nlmsghdr = ofpbuf_base(buf);
     do {
+        nlmsghdr->nlmsg_len = UINT32_MAX;
         retval = recvmsg(sock->fd, &msg, wait ? 0 : MSG_DONTWAIT);
-    } while (retval < 0 && errno == EINTR);
-
-    if (retval < 0) {
-        int error = errno;
+        error = (retval < 0 ? errno
+                 : retval == 0 ? ECONNRESET /* not possible? */
+                 : nlmsghdr->nlmsg_len != UINT32_MAX ? 0
+                 : retval);
+    } while (error == EINTR);
+    if (error) {
         if (error == ENOBUFS) {
             /* Socket receive buffer overflow dropped one or more messages that
              * the kernel tried to send to us. */
@@ -343,7 +355,6 @@ nl_sock_recv__(struct nl_sock *sock, struct ofpbuf *buf, bool wait)
         return E2BIG;
     }
 
-    nlmsghdr = ofpbuf_data(buf);
     if (retval < sizeof *nlmsghdr
         || nlmsghdr->nlmsg_len < sizeof *nlmsghdr
         || nlmsghdr->nlmsg_len > retval) {
@@ -703,6 +714,7 @@ nl_dump_start(struct nl_dump *dump, int protocol, const struct ofpbuf *request)
     atomic_init(&dump->status, status << 1);
     dump->nl_seq = nl_msg_nlmsghdr(request)->nlmsg_seq;
     dump->status_seq = seq_create();
+    ovs_mutex_init(&dump->mutex);
 }
 
 /* Attempts to retrieve another reply from 'dump' into 'buffer'. 'dump' must
@@ -745,7 +757,15 @@ nl_dump_next(struct nl_dump *dump, struct ofpbuf *reply, struct ofpbuf *buffer)
             return false;
         }
 
+        /* Take the mutex here to avoid an in-kernel race.  If two threads try
+         * to read from a Netlink dump socket at once, then the socket error
+         * can be set to EINVAL, which will be encountered on the next recv on
+         * that socket, which could be anywhere due to the way that we pool
+         * Netlink sockets.  Serializing the recv calls avoids the issue. */
+        ovs_mutex_lock(&dump->mutex);
         retval = nl_sock_recv__(dump->sock, buffer, false);
+        ovs_mutex_unlock(&dump->mutex);
+
         if (retval) {
             ofpbuf_clear(buffer);
             if (retval == EAGAIN) {
@@ -824,6 +844,7 @@ nl_dump_done(struct nl_dump *dump)
     }
     nl_pool_release(dump->sock);
     seq_destroy(dump->status_seq);
+    ovs_mutex_destroy(&dump->mutex);
     return status >> 1;
 }
 

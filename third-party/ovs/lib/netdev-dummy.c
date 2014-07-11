@@ -29,6 +29,7 @@
 #include "odp-util.h"
 #include "ofp-print.h"
 #include "ofpbuf.h"
+#include "packet-dpif.h"
 #include "packets.h"
 #include "pcap-file.h"
 #include "poll-loop.h"
@@ -779,7 +780,8 @@ netdev_dummy_rxq_dealloc(struct netdev_rxq *rxq_)
 }
 
 static int
-netdev_dummy_rxq_recv(struct netdev_rxq *rxq_, struct ofpbuf **arr, int *c)
+netdev_dummy_rxq_recv(struct netdev_rxq *rxq_, struct dpif_packet **arr,
+                      int *c)
 {
     struct netdev_rxq_dummy *rx = netdev_rxq_dummy_cast(rxq_);
     struct netdev_dummy *netdev = netdev_dummy_cast(rx->up.netdev);
@@ -803,7 +805,10 @@ netdev_dummy_rxq_recv(struct netdev_rxq *rxq_, struct ofpbuf **arr, int *c)
     ovs_mutex_unlock(&netdev->mutex);
 
     dp_packet_pad(packet);
-    arr[0] = packet;
+
+    /* This performs a (sometimes unnecessary) copy */
+    arr[0] = dpif_packet_clone_from_ofpbuf(packet);
+    ofpbuf_delete(packet);
     *c = 1;
     return 0;
 }
@@ -841,50 +846,61 @@ netdev_dummy_rxq_drain(struct netdev_rxq *rxq_)
 }
 
 static int
-netdev_dummy_send(struct netdev *netdev, struct ofpbuf *pkt, bool may_steal)
+netdev_dummy_send(struct netdev *netdev, struct dpif_packet **pkts, int cnt,
+                  bool may_steal)
 {
     struct netdev_dummy *dev = netdev_dummy_cast(netdev);
-    const void *buffer = ofpbuf_data(pkt);
-    size_t size = ofpbuf_size(pkt);
+    int error = 0;
+    int i;
 
-    if (size < ETH_HEADER_LEN) {
-        return EMSGSIZE;
-    } else {
-        const struct eth_header *eth = buffer;
-        int max_size;
+    for (i = 0; i < cnt; i++) {
+        const void *buffer = ofpbuf_data(&pkts[i]->ofpbuf);
+        size_t size = ofpbuf_size(&pkts[i]->ofpbuf);
+
+        if (size < ETH_HEADER_LEN) {
+            error = EMSGSIZE;
+            break;
+        } else {
+            const struct eth_header *eth = buffer;
+            int max_size;
+
+            ovs_mutex_lock(&dev->mutex);
+            max_size = dev->mtu + ETH_HEADER_LEN;
+            ovs_mutex_unlock(&dev->mutex);
+
+            if (eth->eth_type == htons(ETH_TYPE_VLAN)) {
+                max_size += VLAN_HEADER_LEN;
+            }
+            if (size > max_size) {
+                error = EMSGSIZE;
+                break;
+            }
+        }
 
         ovs_mutex_lock(&dev->mutex);
-        max_size = dev->mtu + ETH_HEADER_LEN;
+        dev->stats.tx_packets++;
+        dev->stats.tx_bytes += size;
+
+        dummy_packet_conn_send(&dev->conn, buffer, size);
+
+        if (dev->tx_pcap) {
+            struct ofpbuf packet;
+
+            ofpbuf_use_const(&packet, buffer, size);
+            ovs_pcap_write(dev->tx_pcap, &packet);
+            fflush(dev->tx_pcap);
+        }
+
         ovs_mutex_unlock(&dev->mutex);
-
-        if (eth->eth_type == htons(ETH_TYPE_VLAN)) {
-            max_size += VLAN_HEADER_LEN;
-        }
-        if (size > max_size) {
-            return EMSGSIZE;
-        }
     }
 
-    ovs_mutex_lock(&dev->mutex);
-    dev->stats.tx_packets++;
-    dev->stats.tx_bytes += size;
-
-    dummy_packet_conn_send(&dev->conn, buffer, size);
-
-    if (dev->tx_pcap) {
-        struct ofpbuf packet;
-
-        ofpbuf_use_const(&packet, buffer, size);
-        ovs_pcap_write(dev->tx_pcap, &packet);
-        fflush(dev->tx_pcap);
-    }
-
-    ovs_mutex_unlock(&dev->mutex);
     if (may_steal) {
-        ofpbuf_delete(pkt);
+        for (i = 0; i < cnt; i++) {
+            dpif_packet_delete(pkts[i]);
+        }
     }
 
-    return 0;
+    return error;
 }
 
 static int

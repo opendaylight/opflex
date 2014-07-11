@@ -37,6 +37,7 @@
 #include "lacp.h"
 #include "learn.h"
 #include "mac-learning.h"
+#include "mcast-snooping.h"
 #include "meta-flow.h"
 #include "multipath.h"
 #include "netdev-vport.h"
@@ -227,6 +228,7 @@ enum revalidate_reason {
     REV_PORT_TOGGLED,          /* Port enabled or disabled by CFM, LACP, ...*/
     REV_FLOW_TABLE,            /* Flow table changed. */
     REV_MAC_LEARNING,          /* Mac learning changed. */
+    REV_MCAST_SNOOPING,        /* Multicast snooping changed. */
 };
 COVERAGE_DEFINE(rev_reconfigure);
 COVERAGE_DEFINE(rev_stp);
@@ -234,6 +236,7 @@ COVERAGE_DEFINE(rev_bond);
 COVERAGE_DEFINE(rev_port_toggled);
 COVERAGE_DEFINE(rev_flow_table);
 COVERAGE_DEFINE(rev_mac_learning);
+COVERAGE_DEFINE(rev_mcast_snooping);
 
 /* All datapaths of a given type share a single dpif backer instance. */
 struct dpif_backer {
@@ -286,6 +289,7 @@ struct ofproto_dpif {
     struct dpif_ipfix *ipfix;
     struct hmap bundles;        /* Contains "struct ofbundle"s. */
     struct mac_learning *ml;
+    struct mcast_snooping *ms;
     bool has_bonded_bundles;
     bool lacp_enabled;
     struct mbridge *mbridge;
@@ -487,6 +491,7 @@ type_run(const char *type)
     }
 
     dpif_run(backer->dpif);
+    udpif_run(backer->udpif);
 
     /* If vswitchd started with other_config:flow_restore_wait set as "true",
      * and the configuration has now changed to "false", enable receiving
@@ -574,6 +579,7 @@ type_run(const char *type)
         case REV_PORT_TOGGLED:   COVERAGE_INC(rev_port_toggled);   break;
         case REV_FLOW_TABLE:     COVERAGE_INC(rev_flow_table);     break;
         case REV_MAC_LEARNING:   COVERAGE_INC(rev_mac_learning);   break;
+        case REV_MCAST_SNOOPING: COVERAGE_INC(rev_mcast_snooping); break;
         }
         backer->need_revalidate = 0;
 
@@ -589,7 +595,7 @@ type_run(const char *type)
             xlate_ofproto_set(ofproto, ofproto->up.name,
                               ofproto->backer->dpif, ofproto->miss_rule,
                               ofproto->no_packet_in_rule, ofproto->ml,
-                              ofproto->stp, ofproto->mbridge,
+                              ofproto->stp, ofproto->ms, ofproto->mbridge,
                               ofproto->sflow, ofproto->ipfix,
                               ofproto->netflow, ofproto->up.frag_handling,
                               ofproto->up.forward_bpdu,
@@ -1130,6 +1136,7 @@ construct(struct ofproto *ofproto_)
     ofproto->dump_seq = 0;
     hmap_init(&ofproto->bundles);
     ofproto->ml = mac_learning_create(MAC_ENTRY_DEFAULT_IDLE_TIME);
+    ofproto->ms = NULL;
     ofproto->mbridge = mbridge_create();
     ofproto->has_bonded_bundles = false;
     ofproto->lacp_enabled = false;
@@ -1290,12 +1297,7 @@ destruct(struct ofproto *ofproto_)
     hmap_remove(&all_ofproto_dpifs, &ofproto->all_ofproto_dpifs_node);
 
     OFPROTO_FOR_EACH_TABLE (table, &ofproto->up) {
-        struct cls_cursor cursor;
-
-        fat_rwlock_rdlock(&table->cls.rwlock);
-        cls_cursor_init(&cursor, &table->cls, NULL);
-        fat_rwlock_unlock(&table->cls.rwlock);
-        CLS_CURSOR_FOR_EACH_SAFE (rule, next_rule, up.cr, &cursor) {
+        CLS_FOR_EACH_SAFE (rule, next_rule, up.cr, &table->cls) {
             ofproto_rule_delete(&ofproto->up, &rule->up);
         }
     }
@@ -1314,6 +1316,7 @@ destruct(struct ofproto *ofproto_)
     dpif_sflow_unref(ofproto->sflow);
     hmap_destroy(&ofproto->bundles);
     mac_learning_unref(ofproto->ml);
+    mcast_snooping_unref(ofproto->ms);
 
     hmap_destroy(&ofproto->vlandev_map);
     hmap_destroy(&ofproto->realdev_vid_map);
@@ -1341,6 +1344,7 @@ run(struct ofproto *ofproto_)
         ovs_rwlock_wrlock(&ofproto->ml->rwlock);
         mac_learning_flush(ofproto->ml);
         ovs_rwlock_unlock(&ofproto->ml->rwlock);
+        mcast_snooping_mdb_flush(ofproto->ms);
     }
 
     /* Always updates the ofproto->pins_seqno to avoid frequent wakeup during
@@ -1398,6 +1402,10 @@ run(struct ofproto *ofproto_)
         ofproto->backer->need_revalidate = REV_MAC_LEARNING;
     }
     ovs_rwlock_unlock(&ofproto->ml->rwlock);
+
+    if (mcast_snooping_run(ofproto->ms)) {
+        ofproto->backer->need_revalidate = REV_MCAST_SNOOPING;
+    }
 
     new_dump_seq = seq_read(udpif_dump_seq(ofproto->backer->udpif));
     if (ofproto->dump_seq != new_dump_seq) {
@@ -1460,6 +1468,7 @@ wait(struct ofproto *ofproto_)
     ovs_rwlock_rdlock(&ofproto->ml->rwlock);
     mac_learning_wait(ofproto->ml);
     ovs_rwlock_unlock(&ofproto->ml->rwlock);
+    mcast_snooping_wait(ofproto->ms);
     stp_wait(ofproto);
     if (ofproto->backer->need_revalidate) {
         /* Shouldn't happen, but if it does just go around again. */
@@ -1977,6 +1986,7 @@ update_stp_port_state(struct ofport_dpif *ofport)
             ovs_rwlock_wrlock(&ofproto->ml->rwlock);
             mac_learning_flush(ofproto->ml);
             ovs_rwlock_unlock(&ofproto->ml->rwlock);
+            mcast_snooping_mdb_flush(ofproto->ms);
         }
         fwd_change = stp_forward_in_state(ofport->stp_state)
                         != stp_forward_in_state(state);
@@ -2102,6 +2112,7 @@ stp_run(struct ofproto_dpif *ofproto)
             ovs_rwlock_wrlock(&ofproto->ml->rwlock);
             mac_learning_flush(ofproto->ml);
             ovs_rwlock_unlock(&ofproto->ml->rwlock);
+            mcast_snooping_mdb_flush(ofproto->ms);
         }
     }
 }
@@ -2686,6 +2697,56 @@ set_mac_table_config(struct ofproto *ofproto_, unsigned int idle_time,
     mac_learning_set_max_entries(ofproto->ml, max_entries);
     ovs_rwlock_unlock(&ofproto->ml->rwlock);
 }
+
+/* Configures multicast snooping on 'ofport' using the settings
+ * defined in 's'. */
+static int
+set_mcast_snooping(struct ofproto *ofproto_,
+                   const struct ofproto_mcast_snooping_settings *s)
+{
+    struct ofproto_dpif *ofproto = ofproto_dpif_cast(ofproto_);
+
+    /* Only revalidate flows if the configuration changed. */
+    if (!s != !ofproto->ms) {
+        ofproto->backer->need_revalidate = REV_RECONFIGURE;
+    }
+
+    if (s) {
+        if (!ofproto->ms) {
+            ofproto->ms = mcast_snooping_create();
+        }
+
+        ovs_rwlock_wrlock(&ofproto->ms->rwlock);
+        mcast_snooping_set_idle_time(ofproto->ms, s->idle_time);
+        mcast_snooping_set_max_entries(ofproto->ms, s->max_entries);
+        if (mcast_snooping_set_flood_unreg(ofproto->ms, s->flood_unreg)) {
+            ofproto->backer->need_revalidate = REV_RECONFIGURE;
+        }
+        ovs_rwlock_unlock(&ofproto->ms->rwlock);
+    } else {
+        mcast_snooping_unref(ofproto->ms);
+        ofproto->ms = NULL;
+    }
+
+    return 0;
+}
+
+/* Configures multicast snooping port's flood setting on 'ofproto'. */
+static int
+set_mcast_snooping_port(struct ofproto *ofproto_, void *aux, bool flood)
+{
+    struct ofproto_dpif *ofproto = ofproto_dpif_cast(ofproto_);
+    struct ofbundle *bundle = bundle_lookup(ofproto, aux);
+
+    if (ofproto->ms) {
+        ovs_rwlock_wrlock(&ofproto->ms->rwlock);
+        mcast_snooping_set_port_flood(ofproto->ms, bundle->vlan, bundle,
+                                      flood);
+        ovs_rwlock_unlock(&ofproto->ms->rwlock);
+    }
+    return 0;
+}
+
 
 /* Ports. */
 
@@ -3291,39 +3352,39 @@ rule_dpif_lookup_in_table(struct ofproto_dpif *ofproto, uint8_t table_id,
     struct classifier *cls = &ofproto->up.tables[table_id].cls;
     const struct cls_rule *cls_rule;
     struct rule_dpif *rule;
+    struct flow ofpc_normal_flow;
 
-    fat_rwlock_rdlock(&cls->rwlock);
     if (ofproto->up.frag_handling != OFPC_FRAG_NX_MATCH) {
-        if (wc) {
-            memset(&wc->masks.dl_type, 0xff, sizeof wc->masks.dl_type);
-            if (is_ip_any(flow)) {
-                wc->masks.nw_frag |= FLOW_NW_FRAG_MASK;
-            }
-        }
+        /* We always unwildcard dl_type and nw_frag (for IP), so they
+         * need not be unwildcarded here. */
 
         if (flow->nw_frag & FLOW_NW_FRAG_ANY) {
             if (ofproto->up.frag_handling == OFPC_FRAG_NORMAL) {
                 /* We must pretend that transport ports are unavailable. */
-                struct flow ofpc_normal_flow = *flow;
+                ofpc_normal_flow = *flow;
                 ofpc_normal_flow.tp_src = htons(0);
                 ofpc_normal_flow.tp_dst = htons(0);
-                cls_rule = classifier_lookup(cls, &ofpc_normal_flow, wc);
+                flow = &ofpc_normal_flow;
             } else {
-                /* Must be OFPC_FRAG_DROP (we don't have OFPC_FRAG_REASM). */
+                /* Must be OFPC_FRAG_DROP (we don't have OFPC_FRAG_REASM).
+                 * Use the drop_frags_rule (which cannot disappear). */
                 cls_rule = &ofproto->drop_frags_rule->up.cr;
+                rule = rule_dpif_cast(rule_from_cls_rule(cls_rule));
+                if (take_ref) {
+                    rule_dpif_ref(rule);
+                }
+                return rule;
             }
-        } else {
-            cls_rule = classifier_lookup(cls, flow, wc);
         }
-    } else {
-        cls_rule = classifier_lookup(cls, flow, wc);
     }
 
-    rule = rule_dpif_cast(rule_from_cls_rule(cls_rule));
-    if (take_ref) {
-        rule_dpif_ref(rule);
-    }
-    fat_rwlock_unlock(&cls->rwlock);
+    do {
+        cls_rule = classifier_lookup(cls, flow, wc);
+
+        rule = rule_dpif_cast(rule_from_cls_rule(cls_rule));
+
+        /* Try again if the rule was released before we get the reference. */
+    } while (rule && take_ref && !rule_dpif_try_ref(rule));
 
     return rule;
 }
@@ -3818,6 +3879,36 @@ ofproto_unixctl_fdb_flush(struct unixctl_conn *conn, int argc,
     unixctl_command_reply(conn, "table successfully flushed");
 }
 
+static void
+ofproto_unixctl_mcast_snooping_flush(struct unixctl_conn *conn, int argc,
+                                     const char *argv[], void *aux OVS_UNUSED)
+{
+    struct ofproto_dpif *ofproto;
+
+    if (argc > 1) {
+        ofproto = ofproto_dpif_lookup(argv[1]);
+        if (!ofproto) {
+            unixctl_command_reply_error(conn, "no such bridge");
+            return;
+        }
+
+        if (!mcast_snooping_enabled(ofproto->ms)) {
+            unixctl_command_reply_error(conn, "multicast snooping is disabled");
+            return;
+        }
+        mcast_snooping_mdb_flush(ofproto->ms);
+    } else {
+        HMAP_FOR_EACH (ofproto, all_ofproto_dpifs_node, &all_ofproto_dpifs) {
+            if (!mcast_snooping_enabled(ofproto->ms)) {
+                continue;
+            }
+            mcast_snooping_mdb_flush(ofproto->ms);
+        }
+    }
+
+    unixctl_command_reply(conn, "table successfully flushed");
+}
+
 static struct ofport_dpif *
 ofbundle_get_a_port(const struct ofbundle *bundle)
 {
@@ -3852,6 +3943,61 @@ ofproto_unixctl_fdb_show(struct unixctl_conn *conn, int argc OVS_UNUSED,
                       mac_entry_age(ofproto->ml, e));
     }
     ovs_rwlock_unlock(&ofproto->ml->rwlock);
+    unixctl_command_reply(conn, ds_cstr(&ds));
+    ds_destroy(&ds);
+}
+
+static void
+ofproto_unixctl_mcast_snooping_show(struct unixctl_conn *conn,
+                                    int argc OVS_UNUSED,
+                                    const char *argv[],
+                                    void *aux OVS_UNUSED)
+{
+    struct ds ds = DS_EMPTY_INITIALIZER;
+    const struct ofproto_dpif *ofproto;
+    const struct ofbundle *bundle;
+    const struct mcast_group *grp;
+    struct mcast_group_bundle *b;
+    struct mcast_mrouter_bundle *mrouter;
+
+    ofproto = ofproto_dpif_lookup(argv[1]);
+    if (!ofproto) {
+        unixctl_command_reply_error(conn, "no such bridge");
+        return;
+    }
+
+    if (!mcast_snooping_enabled(ofproto->ms)) {
+        unixctl_command_reply_error(conn, "multicast snooping is disabled");
+        return;
+    }
+
+    ds_put_cstr(&ds, " port  VLAN  GROUP                Age\n");
+    ovs_rwlock_rdlock(&ofproto->ms->rwlock);
+    LIST_FOR_EACH (grp, group_node, &ofproto->ms->group_lru) {
+        LIST_FOR_EACH(b, bundle_node, &grp->bundle_lru) {
+            char name[OFP_MAX_PORT_NAME_LEN];
+
+            bundle = b->port;
+            ofputil_port_to_string(ofbundle_get_a_port(bundle)->up.ofp_port,
+                                   name, sizeof name);
+            ds_put_format(&ds, "%5s  %4d  "IP_FMT"         %3d\n",
+                          name, grp->vlan, IP_ARGS(grp->ip4),
+                          mcast_bundle_age(ofproto->ms, b));
+        }
+    }
+
+    /* ports connected to multicast routers */
+    LIST_FOR_EACH(mrouter, mrouter_node, &ofproto->ms->mrouter_lru) {
+        char name[OFP_MAX_PORT_NAME_LEN];
+
+        bundle = mrouter->port;
+        ofputil_port_to_string(ofbundle_get_a_port(bundle)->up.ofp_port,
+                               name, sizeof name);
+            ds_put_format(&ds, "%5s  %4d  querier             %3d\n",
+                      name, mrouter->vlan,
+                      mcast_mrouter_age(ofproto->ms, mrouter));
+    }
+    ovs_rwlock_unlock(&ofproto->ms->rwlock);
     unixctl_command_reply(conn, ds_cstr(&ds));
     ds_destroy(&ds);
 }
@@ -4536,6 +4682,10 @@ ofproto_dpif_unixctl_init(void)
                              ofproto_unixctl_fdb_flush, NULL);
     unixctl_command_register("fdb/show", "bridge", 1, 1,
                              ofproto_unixctl_fdb_show, NULL);
+    unixctl_command_register("mdb/flush", "[bridge]", 0, 1,
+                             ofproto_unixctl_mcast_snooping_flush, NULL);
+    unixctl_command_register("mdb/show", "bridge", 1, 1,
+                             ofproto_unixctl_mcast_snooping_show, NULL);
     unixctl_command_register("dpif/dump-dps", "", 0, 0,
                              ofproto_unixctl_dpif_dump_dps, NULL);
     unixctl_command_register("dpif/show", "", 0, 0, ofproto_unixctl_dpif_show,
@@ -4973,6 +5123,8 @@ const struct ofproto_class ofproto_dpif_class = {
     is_mirror_output_bundle,
     forward_bpdu_changed,
     set_mac_table_config,
+    set_mcast_snooping,
+    set_mcast_snooping_port,
     set_realdev,
     NULL,                       /* meter_get_features */
     NULL,                       /* meter_set */

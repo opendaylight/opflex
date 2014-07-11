@@ -62,6 +62,7 @@
 #include "ofpbuf.h"
 #include "openflow/openflow.h"
 #include "ovs-atomic.h"
+#include "packet-dpif.h"
 #include "packets.h"
 #include "poll-loop.h"
 #include "rtnetlink-link.h"
@@ -984,10 +985,12 @@ netdev_linux_rxq_recv_tap(int fd, struct ofpbuf *buffer)
 }
 
 static int
-netdev_linux_rxq_recv(struct netdev_rxq *rxq_, struct ofpbuf **packet, int *c)
+netdev_linux_rxq_recv(struct netdev_rxq *rxq_, struct dpif_packet **packets,
+                      int *c)
 {
     struct netdev_rxq_linux *rx = netdev_rxq_linux_cast(rxq_);
     struct netdev *netdev = rx->up.netdev;
+    struct dpif_packet *packet;
     struct ofpbuf *buffer;
     ssize_t retval;
     int mtu;
@@ -996,7 +999,9 @@ netdev_linux_rxq_recv(struct netdev_rxq *rxq_, struct ofpbuf **packet, int *c)
         mtu = ETH_PAYLOAD_MAX;
     }
 
-    buffer = ofpbuf_new_with_headroom(VLAN_ETH_HEADER_LEN + mtu, DP_NETDEV_HEADROOM);
+    packet = dpif_packet_new_with_headroom(VLAN_ETH_HEADER_LEN + mtu,
+                                           DP_NETDEV_HEADROOM);
+    buffer = &packet->ofpbuf;
 
     retval = (rx->is_tap
               ? netdev_linux_rxq_recv_tap(rx->fd, buffer)
@@ -1007,10 +1012,10 @@ netdev_linux_rxq_recv(struct netdev_rxq *rxq_, struct ofpbuf **packet, int *c)
             VLOG_WARN_RL(&rl, "error receiving Ethernet packet on %s: %s",
                          ovs_strerror(errno), netdev_rxq_get_name(rxq_));
         }
-        ofpbuf_delete(buffer);
+        dpif_packet_delete(packet);
     } else {
         dp_packet_pad(buffer);
-        packet[0] = buffer;
+        packets[0] = packet;
         *c = 1;
     }
 
@@ -1052,12 +1057,16 @@ netdev_linux_rxq_drain(struct netdev_rxq *rxq_)
  * The kernel maintains a packet transmission queue, so the caller is not
  * expected to do additional queuing of packets. */
 static int
-netdev_linux_send(struct netdev *netdev_, struct ofpbuf *pkt, bool may_steal)
+netdev_linux_send(struct netdev *netdev_, struct dpif_packet **pkts, int cnt,
+                  bool may_steal)
 {
-    const void *data = ofpbuf_data(pkt);
-    size_t size = ofpbuf_size(pkt);
+    int i;
+    int error = 0;
 
-    for (;;) {
+    /* 'i' is incremented only if there's no error */
+    for (i = 0; i < cnt;) {
+        const void *data = ofpbuf_data(&pkts[i]->ofpbuf);
+        size_t size = ofpbuf_size(&pkts[i]->ofpbuf);
         ssize_t retval;
 
         if (!is_tap_netdev(netdev_)) {
@@ -1107,31 +1116,41 @@ netdev_linux_send(struct netdev *netdev_, struct ofpbuf *pkt, bool may_steal)
             retval = write(netdev->tap_fd, data, size);
         }
 
-        if (may_steal) {
-            ofpbuf_delete(pkt);
-        }
-
         if (retval < 0) {
             /* The Linux AF_PACKET implementation never blocks waiting for room
              * for packets, instead returning ENOBUFS.  Translate this into
              * EAGAIN for the caller. */
-            if (errno == ENOBUFS) {
-                return EAGAIN;
-            } else if (errno == EINTR) {
+            error = errno == ENOBUFS ? EAGAIN : errno;
+            if (error == EINTR) {
+                /* continue without incrementing 'i', i.e. retry this packet */
                 continue;
-            } else if (errno != EAGAIN) {
-                VLOG_WARN_RL(&rl, "error sending Ethernet packet on %s: %s",
-                             netdev_get_name(netdev_), ovs_strerror(errno));
             }
-            return errno;
+            break;
         } else if (retval != size) {
-            VLOG_WARN_RL(&rl, "sent partial Ethernet packet (%"PRIuSIZE" bytes of "
-                         "%"PRIuSIZE") on %s", retval, size, netdev_get_name(netdev_));
-            return EMSGSIZE;
-        } else {
-            return 0;
+            VLOG_WARN_RL(&rl, "sent partial Ethernet packet (%"PRIuSIZE" bytes"
+                              " of %"PRIuSIZE") on %s", retval, size,
+                         netdev_get_name(netdev_));
+            error = EMSGSIZE;
+            break;
+        }
+
+        /* Process the next packet in the batch */
+        i++;
+    }
+
+    if (may_steal) {
+        for (i = 0; i < cnt; i++) {
+            dpif_packet_delete(pkts[i]);
         }
     }
+
+    if (error && error != EAGAIN) {
+            VLOG_WARN_RL(&rl, "error sending Ethernet packet on %s: %s",
+                         netdev_get_name(netdev_), ovs_strerror(error));
+    }
+
+    return error;
+
 }
 
 /* Registers with the poll loop to wake up from the next call to poll_block()

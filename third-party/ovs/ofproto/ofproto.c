@@ -721,6 +721,33 @@ ofproto_set_mac_table_config(struct ofproto *ofproto, unsigned idle_time,
     }
 }
 
+/* Multicast snooping configuration. */
+
+/* Configures multicast snooping on 'ofproto' using the settings
+ * defined in 's'.  If 's' is NULL, disables multicast snooping.
+ *
+ * Returns 0 if successful, otherwise a positive errno value. */
+int
+ofproto_set_mcast_snooping(struct ofproto *ofproto,
+                           const struct ofproto_mcast_snooping_settings *s)
+{
+    return (ofproto->ofproto_class->set_mcast_snooping
+            ? ofproto->ofproto_class->set_mcast_snooping(ofproto, s)
+            : EOPNOTSUPP);
+}
+
+/* Configures multicast snooping flood setting on 'ofp_port' of 'ofproto'.
+ *
+ * Returns 0 if successful, otherwise a positive errno value.*/
+int
+ofproto_port_set_mcast_snooping(struct ofproto *ofproto, void *aux, bool flood)
+{
+    return (ofproto->ofproto_class->set_mcast_snooping_port
+            ? ofproto->ofproto_class->set_mcast_snooping_port(ofproto, aux,
+                                                              flood)
+            : EOPNOTSUPP);
+}
+
 void
 ofproto_set_threads(int n_handlers_, int n_revalidators_)
 {
@@ -1187,10 +1214,11 @@ ofproto_configure_table(struct ofproto *ofproto, int table_id,
     }
 
     table->max_flows = s->max_flows;
-    fat_rwlock_wrlock(&table->cls.rwlock);
-    classifier_set_prefix_fields(&table->cls,
-                                 s->prefix_fields, s->n_prefix_fields);
-    fat_rwlock_unlock(&table->cls.rwlock);
+
+    if (classifier_set_prefix_fields(&table->cls,
+                                     s->prefix_fields, s->n_prefix_fields)) {
+        /* XXX: Trigger revalidation. */
+    }
 
     ovs_mutex_lock(&ofproto_mutex);
     evict_rules_from_table(table, 0);
@@ -1256,16 +1284,12 @@ ofproto_flush__(struct ofproto *ofproto)
     ovs_mutex_lock(&ofproto_mutex);
     OFPROTO_FOR_EACH_TABLE (table, ofproto) {
         struct rule *rule, *next_rule;
-        struct cls_cursor cursor;
 
         if (table->flags & OFTABLE_HIDDEN) {
             continue;
         }
 
-        fat_rwlock_rdlock(&table->cls.rwlock);
-        cls_cursor_init(&cursor, &table->cls, NULL);
-        fat_rwlock_unlock(&table->cls.rwlock);
-        CLS_CURSOR_FOR_EACH_SAFE (rule, next_rule, cr, &cursor) {
+        CLS_FOR_EACH_SAFE (rule, next_rule, cr, &table->cls) {
             ofproto_rule_delete__(rule, OFPRR_DELETE);
         }
     }
@@ -1429,7 +1453,6 @@ ofproto_run(struct ofproto *p)
         for (i = 0; i < p->n_tables; i++) {
             struct oftable *table = &p->tables[i];
             struct eviction_group *evg;
-            struct cls_cursor cursor;
             struct rule *rule;
 
             if (!table->eviction_fields) {
@@ -1437,9 +1460,7 @@ ofproto_run(struct ofproto *p)
             }
 
             ovs_mutex_lock(&ofproto_mutex);
-            fat_rwlock_rdlock(&table->cls.rwlock);
-            cls_cursor_init(&cursor, &table->cls, NULL);
-            CLS_CURSOR_FOR_EACH (rule, cr, &cursor) {
+            CLS_FOR_EACH (rule, cr, &table->cls) {
                 if (rule->idle_timeout || rule->hard_timeout) {
                     if (!rule->eviction_group) {
                         eviction_group_add_rule(rule);
@@ -1449,7 +1470,6 @@ ofproto_run(struct ofproto *p)
                     }
                 }
             }
-            fat_rwlock_unlock(&table->cls.rwlock);
 
             HEAP_FOR_EACH (evg, size_node, &table->eviction_groups_by_size) {
                 heap_rebuild(&evg->rules);
@@ -1530,9 +1550,7 @@ ofproto_get_memory_usage(const struct ofproto *ofproto, struct simap *usage)
 
     n_rules = 0;
     OFPROTO_FOR_EACH_TABLE (table, ofproto) {
-        fat_rwlock_rdlock(&table->cls.rwlock);
         n_rules += classifier_count(&table->cls);
-        fat_rwlock_unlock(&table->cls.rwlock);
     }
     simap_increase(usage, "rules", n_rules);
 
@@ -1820,7 +1838,6 @@ ofproto_add_flow(struct ofproto *ofproto, const struct match *match,
 
     /* First do a cheap check whether the rule we're looking for already exists
      * with the actions that we want.  If it does, then we're done. */
-    fat_rwlock_rdlock(&ofproto->tables[0].cls.rwlock);
     rule = rule_from_cls_rule(classifier_find_match_exactly(
                                   &ofproto->tables[0].cls, match, priority));
     if (rule) {
@@ -1830,7 +1847,6 @@ ofproto_add_flow(struct ofproto *ofproto, const struct match *match,
     } else {
         must_add = true;
     }
-    fat_rwlock_unlock(&ofproto->tables[0].cls.rwlock);
 
     /* If there's no such rule or the rule doesn't have the actions we want,
      * fall back to a executing a full flow mod.  We can't optimize this at
@@ -1861,7 +1877,6 @@ ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
         struct rule *rule;
         bool done = false;
 
-        fat_rwlock_rdlock(&table->cls.rwlock);
         rule = rule_from_cls_rule(classifier_find_match_exactly(&table->cls,
                                                                 &fm->match,
                                                                 fm->priority));
@@ -1886,7 +1901,6 @@ ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
             }
             ovs_mutex_unlock(&rule->mutex);
         }
-        fat_rwlock_unlock(&table->cls.rwlock);
 
         if (done) {
             return 0;
@@ -1910,10 +1924,8 @@ ofproto_delete_flow(struct ofproto *ofproto,
 
     /* First do a cheap check whether the rule we're looking for has already
      * been deleted.  If so, then we're done. */
-    fat_rwlock_rdlock(&cls->rwlock);
     rule = rule_from_cls_rule(classifier_find_match_exactly(cls, target,
                                                             priority));
-    fat_rwlock_unlock(&cls->rwlock);
     if (!rule) {
         return;
     }
@@ -2509,6 +2521,15 @@ ofproto_rule_ref(struct rule *rule)
     }
 }
 
+bool
+ofproto_rule_try_ref(struct rule *rule)
+{
+    if (rule) {
+        return ovs_refcount_try_ref_rcu(&rule->ref_count);
+    }
+    return false;
+}
+
 /* Decrements 'rule''s ref_count and schedules 'rule' to be destroyed if the
  * ref_count reaches 0.
  *
@@ -2518,7 +2539,7 @@ ofproto_rule_ref(struct rule *rule)
 void
 ofproto_rule_unref(struct rule *rule)
 {
-    if (rule && ovs_refcount_unref(&rule->ref_count) == 1) {
+    if (rule && ovs_refcount_unref_relaxed(&rule->ref_count) == 1) {
         ovsrcu_postpone(rule_destroy_cb, rule);
     }
 }
@@ -2573,7 +2594,7 @@ rule_actions_destroy(const struct rule_actions *actions)
 
 /* Returns true if 'rule' has an OpenFlow OFPAT_OUTPUT or OFPAT_ENQUEUE action
  * that outputs to 'port' (output to OFPP_FLOOD and OFPP_ALL doesn't count). */
-static bool
+bool
 ofproto_rule_has_out_port(const struct rule *rule, ofp_port_t port)
     OVS_REQUIRES(ofproto_mutex)
 {
@@ -3087,9 +3108,7 @@ handle_table_stats_request(struct ofconn *ofconn,
         ots[i].instructions = htonl(OFPIT11_ALL);
         ots[i].config = htonl(OFPTC11_TABLE_MISS_MASK);
         ots[i].max_entries = htonl(1000000); /* An arbitrary big number. */
-        fat_rwlock_rdlock(&p->tables[i].cls.rwlock);
         ots[i].active_count = htonl(classifier_count(&p->tables[i].cls));
-        fat_rwlock_unlock(&p->tables[i].cls.rwlock);
     }
 
     p->ofproto_class->get_tables(p, ots);
@@ -3465,15 +3484,11 @@ collect_rules_loose(struct ofproto *ofproto,
         }
     } else {
         FOR_EACH_MATCHING_TABLE (table, criteria->table_id, ofproto) {
-            struct cls_cursor cursor;
             struct rule *rule;
 
-            fat_rwlock_rdlock(&table->cls.rwlock);
-            cls_cursor_init(&cursor, &table->cls, &criteria->cr);
-            CLS_CURSOR_FOR_EACH (rule, cr, &cursor) {
+            CLS_FOR_EACH_TARGET (rule, cr, &table->cls, &criteria->cr) {
                 collect_rule(rule, criteria, rules, &n_readonly);
             }
-            fat_rwlock_unlock(&table->cls.rwlock);
         }
     }
 
@@ -3526,10 +3541,8 @@ collect_rules_strict(struct ofproto *ofproto,
         FOR_EACH_MATCHING_TABLE (table, criteria->table_id, ofproto) {
             struct rule *rule;
 
-            fat_rwlock_rdlock(&table->cls.rwlock);
             rule = rule_from_cls_rule(classifier_find_rule_exactly(
                                           &table->cls, &criteria->cr));
-            fat_rwlock_unlock(&table->cls.rwlock);
             if (rule) {
                 collect_rule(rule, criteria, rules, &n_readonly);
             }
@@ -3672,15 +3685,11 @@ ofproto_get_all_flows(struct ofproto *p, struct ds *results)
     struct oftable *table;
 
     OFPROTO_FOR_EACH_TABLE (table, p) {
-        struct cls_cursor cursor;
         struct rule *rule;
 
-        fat_rwlock_rdlock(&table->cls.rwlock);
-        cls_cursor_init(&cursor, &table->cls, NULL);
-        CLS_CURSOR_FOR_EACH (rule, cr, &cursor) {
+        CLS_FOR_EACH (rule, cr, &table->cls) {
             flow_stats_ds(rule, results);
         }
-        fat_rwlock_unlock(&table->cls.rwlock);
     }
 }
 
@@ -3987,9 +3996,7 @@ add_flow(struct ofproto *ofproto, struct ofputil_flow_mod *fm,
     cls_rule_init(&cr, &fm->match, fm->priority);
 
     /* Transform "add" into "modify" if there's an existing identical flow. */
-    fat_rwlock_rdlock(&table->cls.rwlock);
     rule = rule_from_cls_rule(classifier_find_rule_exactly(&table->cls, &cr));
-    fat_rwlock_unlock(&table->cls.rwlock);
     if (rule) {
         struct rule_collection rules;
 
@@ -4006,13 +4013,7 @@ add_flow(struct ofproto *ofproto, struct ofputil_flow_mod *fm,
 
     /* Check for overlap, if requested. */
     if (fm->flags & OFPUTIL_FF_CHECK_OVERLAP) {
-        bool overlaps;
-
-        fat_rwlock_rdlock(&table->cls.rwlock);
-        overlaps = classifier_rule_overlaps(&table->cls, &cr);
-        fat_rwlock_unlock(&table->cls.rwlock);
-
-        if (overlaps) {
+        if (classifier_rule_overlaps(&table->cls, &cr)) {
             cls_rule_destroy(&cr);
             return OFPERR_OFPFMFC_OVERLAP;
         }
@@ -4074,9 +4075,7 @@ add_flow(struct ofproto *ofproto, struct ofputil_flow_mod *fm,
         meter_insert_rule(rule);
     }
 
-    fat_rwlock_wrlock(&table->cls.rwlock);
     classifier_insert(&table->cls, CONST_CAST(struct cls_rule *, &rule->cr));
-    fat_rwlock_unlock(&table->cls.rwlock);
 
     error = ofproto->ofproto_class->rule_insert(rule);
     if (error) {
@@ -4099,7 +4098,7 @@ add_flow(struct ofproto *ofproto, struct ofputil_flow_mod *fm,
     }
 
     ofmonitor_report(ofproto->connmgr, rule, NXFME_ADDED, 0,
-                     req ? req->ofconn : NULL, req ? req->xid : 0);
+                     req ? req->ofconn : NULL, req ? req->xid : 0, NULL);
 
     return req ? send_buffered_packet(req->ofconn, fm->buffer_id, rule) : 0;
 }
@@ -4189,7 +4188,6 @@ modify_flows__(struct ofproto *ofproto, struct ofputil_flow_mod *fm,
         if (change_actions) {
             ovsrcu_set(&rule->actions, rule_actions_create(fm->ofpacts,
                                                            fm->ofpacts_len));
-            rule_actions_destroy(actions);
         }
 
         if (change_actions || reset_counters) {
@@ -4198,12 +4196,14 @@ modify_flows__(struct ofproto *ofproto, struct ofputil_flow_mod *fm,
 
         if (event != NXFME_MODIFIED || change_actions || change_cookie) {
             ofmonitor_report(ofproto->connmgr, rule, event, 0,
-                             req ? req->ofconn : NULL, req ? req->xid : 0);
+                             req ? req->ofconn : NULL, req ? req->xid : 0,
+                             change_actions ? actions : NULL);
         }
 
         if (change_actions) {
             learned_cookies_inc(ofproto, rule_get_actions(rule));
             learned_cookies_dec(ofproto, actions, &dead_cookies);
+            rule_actions_destroy(actions);
         }
     }
     learned_cookies_flush(ofproto, &dead_cookies);
@@ -4311,7 +4311,8 @@ delete_flows__(const struct rule_collection *rules,
             ofproto_rule_send_removed(rule, reason);
 
             ofmonitor_report(ofproto->connmgr, rule, NXFME_DELETED, reason,
-                             req ? req->ofconn : NULL, req ? req->xid : 0);
+                             req ? req->ofconn : NULL, req ? req->xid : 0,
+                             NULL);
             oftable_remove_rule(rule);
             ofproto->ofproto_class->rule_delete(rule);
 
@@ -4794,15 +4795,11 @@ ofproto_collect_ofmonitor_refresh_rules(const struct ofmonitor *m,
 
     cls_rule_init_from_minimatch(&target, &m->match, 0);
     FOR_EACH_MATCHING_TABLE (table, m->table_id, ofproto) {
-        struct cls_cursor cursor;
         struct rule *rule;
 
-        fat_rwlock_rdlock(&table->cls.rwlock);
-        cls_cursor_init(&cursor, &table->cls, &target);
-        CLS_CURSOR_FOR_EACH (rule, cr, &cursor) {
+        CLS_FOR_EACH_TARGET (rule, cr, &table->cls, &target) {
             ofproto_collect_ofmonitor_refresh_rule(m, rule, seqno, rules);
         }
-        fat_rwlock_unlock(&table->cls.rwlock);
     }
     cls_rule_destroy(&target);
 }
@@ -4823,6 +4820,24 @@ ofmonitor_collect_resume_rules(struct ofmonitor *m,
     OVS_REQUIRES(ofproto_mutex)
 {
     ofproto_collect_ofmonitor_refresh_rules(m, seqno, rules);
+}
+
+static enum ofperr
+flow_monitor_delete(struct ofconn *ofconn, uint32_t id)
+    OVS_REQUIRES(ofproto_mutex)
+{
+    struct ofmonitor *m;
+    enum ofperr error;
+
+    m = ofmonitor_lookup(ofconn, id);
+    if (m) {
+        ofmonitor_destroy(m);
+        error = 0;
+    } else {
+        error = OFPERR_OFPMOFC_UNKNOWN_MONITOR;
+    }
+
+    return error;
 }
 
 static enum ofperr
@@ -4905,20 +4920,13 @@ static enum ofperr
 handle_flow_monitor_cancel(struct ofconn *ofconn, const struct ofp_header *oh)
     OVS_EXCLUDED(ofproto_mutex)
 {
-    struct ofmonitor *m;
     enum ofperr error;
     uint32_t id;
 
     id = ofputil_decode_flow_monitor_cancel(oh);
 
     ovs_mutex_lock(&ofproto_mutex);
-    m = ofmonitor_lookup(ofconn, id);
-    if (m) {
-        ofmonitor_destroy(m);
-        error = 0;
-    } else {
-        error = OFPERR_OFPMOFC_UNKNOWN_MONITOR;
-    }
+    error = flow_monitor_delete(ofconn, id);
     ovs_mutex_unlock(&ofproto_mutex);
 
     return error;
@@ -6341,10 +6349,8 @@ oftable_init(struct oftable *table)
     table->max_flows = UINT_MAX;
     atomic_init(&table->config, (unsigned int)OFPROTO_TABLE_MISS_DEFAULT);
 
-    fat_rwlock_wrlock(&table->cls.rwlock);
     classifier_set_prefix_fields(&table->cls, default_prefix_fields,
                                  ARRAY_SIZE(default_prefix_fields));
-    fat_rwlock_unlock(&table->cls.rwlock);
 
     atomic_init(&table->n_matched, 0);
     atomic_init(&table->n_missed, 0);
@@ -6356,9 +6362,7 @@ oftable_init(struct oftable *table)
 static void
 oftable_destroy(struct oftable *table)
 {
-    fat_rwlock_rdlock(&table->cls.rwlock);
     ovs_assert(classifier_is_empty(&table->cls));
-    fat_rwlock_unlock(&table->cls.rwlock);
     oftable_disable_eviction(table);
     classifier_destroy(&table->cls);
     free(table->name);
@@ -6419,7 +6423,6 @@ oftable_enable_eviction(struct oftable *table,
                         const struct mf_subfield *fields, size_t n_fields)
     OVS_REQUIRES(ofproto_mutex)
 {
-    struct cls_cursor cursor;
     struct rule *rule;
 
     if (table->eviction_fields
@@ -6440,12 +6443,9 @@ oftable_enable_eviction(struct oftable *table,
     hmap_init(&table->eviction_groups_by_id);
     heap_init(&table->eviction_groups_by_size);
 
-    fat_rwlock_rdlock(&table->cls.rwlock);
-    cls_cursor_init(&cursor, &table->cls, NULL);
-    CLS_CURSOR_FOR_EACH (rule, cr, &cursor) {
+    CLS_FOR_EACH (rule, cr, &table->cls) {
         eviction_group_add_rule(rule);
     }
-    fat_rwlock_unlock(&table->cls.rwlock);
 }
 
 /* Removes 'rule' from the oftable that contains it. */
@@ -6455,9 +6455,7 @@ oftable_remove_rule__(struct ofproto *ofproto, struct rule *rule)
 {
     struct classifier *cls = &ofproto->tables[rule->table_id].cls;
 
-    fat_rwlock_wrlock(&cls->rwlock);
     classifier_remove(cls, CONST_CAST(struct cls_rule *, &rule->cr));
-    fat_rwlock_unlock(&cls->rwlock);
 
     cookies_remove(ofproto, rule);
 
@@ -6547,12 +6545,9 @@ ofproto_get_vlan_usage(struct ofproto *ofproto, unsigned long int *vlan_bitmap)
     ofproto->vlans_changed = false;
 
     OFPROTO_FOR_EACH_TABLE (oftable, ofproto) {
-        struct cls_cursor cursor;
         struct rule *rule;
 
-        fat_rwlock_rdlock(&oftable->cls.rwlock);
-        cls_cursor_init(&cursor, &oftable->cls, &target);
-        CLS_CURSOR_FOR_EACH (rule, cr, &cursor) {
+        CLS_FOR_EACH_TARGET (rule, cr, &oftable->cls, &target) {
             if (minimask_get_vid_mask(&rule->cr.match.mask) == VLAN_VID_MASK) {
                 uint16_t vid = miniflow_get_vid(&rule->cr.match.flow);
 
@@ -6560,7 +6555,6 @@ ofproto_get_vlan_usage(struct ofproto *ofproto, unsigned long int *vlan_bitmap)
                 bitmap_set1(ofproto->vlan_bitmap, vid);
             }
         }
-        fat_rwlock_unlock(&oftable->cls.rwlock);
     }
 
     cls_rule_destroy(&target);

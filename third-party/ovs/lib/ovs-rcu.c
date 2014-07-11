@@ -60,7 +60,6 @@ static void ovsrcu_flush_cbset(struct ovsrcu_perthread *);
 static void ovsrcu_unregister__(struct ovsrcu_perthread *);
 static bool ovsrcu_call_postponed(void);
 static void *ovsrcu_postpone_thread(void *arg OVS_UNUSED);
-static void ovsrcu_synchronize(void);
 
 static struct ovsrcu_perthread *
 ovsrcu_perthread_get(void)
@@ -132,7 +131,10 @@ ovsrcu_quiesce_start(void)
 }
 
 /* Indicates a momentary quiescent state.  See "Details" near the top of
- * ovs-rcu.h. */
+ * ovs-rcu.h.
+ *
+ * Provides a full memory barrier via seq_change().
+ */
 void
 ovsrcu_quiesce(void)
 {
@@ -150,7 +152,7 @@ ovsrcu_is_quiescent(void)
     return pthread_getspecific(perthread_key) == NULL;
 }
 
-static void
+void
 ovsrcu_synchronize(void)
 {
     unsigned int warning_threshold = 1000;

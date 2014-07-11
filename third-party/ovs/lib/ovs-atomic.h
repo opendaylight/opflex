@@ -161,13 +161,39 @@
  * In this section, A is an atomic type and C is the corresponding non-atomic
  * type.
  *
- * The "store" primitives match C11:
+ * The "store" and "compare_exchange" primitives match C11:
  *
  *     void atomic_store(A *object, C value);
  *     void atomic_store_explicit(A *object, C value, memory_order);
  *
  *         Atomically stores 'value' into '*object', respecting the given
  *         memory order (or memory_order_seq_cst for atomic_store()).
+ *
+ *     bool atomic_compare_exchange_strong(A *object, C *expected, C desired);
+ *     bool atomic_compare_exchange_weak(A *object, C *expected, C desired);
+ *     bool atomic_compare_exchange_strong_explicit(A *object, C *expected,
+ *                                                  C desired,
+ *                                                  memory_order success,
+ *                                                  memory_order failure);
+ *     bool atomic_compare_exchange_weak_explicit(A *object, C *expected,
+ *                                                  C desired,
+ *                                                  memory_order success,
+ *                                                  memory_order failure);
+ *
+ *         Atomically loads '*object' and compares it with '*expected' and if
+ *         equal, stores 'desired' into '*object' (an atomic read-modify-write
+ *         operation) and returns true, and if non-equal, stores the actual
+ *         value of '*object' into '*expected' (an atomic load operation) and
+ *         returns false.  The memory order for the successful case (atomic
+ *         read-modify-write operation) is 'success', and for the unsuccessful
+ *         case (atomic load operation) 'failure'.  'failure' may not be
+ *         stronger than 'success'.
+ *
+ *         The weak forms may fail (returning false) also when '*object' equals
+ *         '*expected'.  The strong form can be implemented by the weak form in
+ *         a loop.  Some platforms can implement the weak form more
+ *         efficiently, so it should be used if the application will need to
+ *         loop anyway.
  *
  * The following primitives differ from the C11 ones (and have different names)
  * because there does not appear to be a way to implement the standard
@@ -314,13 +340,17 @@ ovs_refcount_init(struct ovs_refcount *refcount)
     atomic_init(&refcount->count, 1);
 }
 
-/* Increments 'refcount'. */
+/* Increments 'refcount'.
+ *
+ * Does not provide a memory barrier, as the calling thread must have
+ * protected access to the object already. */
 static inline void
 ovs_refcount_ref(struct ovs_refcount *refcount)
 {
     unsigned int old_refcount;
 
-    atomic_add(&refcount->count, 1, &old_refcount);
+    atomic_add_explicit(&refcount->count, 1, &old_refcount,
+                        memory_order_relaxed);
     ovs_assert(old_refcount > 0);
 }
 
@@ -331,18 +361,32 @@ ovs_refcount_ref(struct ovs_refcount *refcount)
  *     // ...uninitialize object...
  *     free(object);
  * }
- */
+ *
+ * Provides a release barrier making the preceding loads and stores to not be
+ * reordered after the unref. */
 static inline unsigned int
 ovs_refcount_unref(struct ovs_refcount *refcount)
 {
     unsigned int old_refcount;
 
-    atomic_sub(&refcount->count, 1, &old_refcount);
+    atomic_sub_explicit(&refcount->count, 1, &old_refcount,
+                        memory_order_release);
     ovs_assert(old_refcount > 0);
+    if (old_refcount == 1) {
+        /* 'memory_order_release' above means that there are no (reordered)
+         * accesses to the protected object from any other thread at this
+         * point.
+         * An acquire barrier is needed to keep all subsequent access to the
+         * object's memory from being reordered before the atomic operation
+         * above. */
+        atomic_thread_fence(memory_order_acquire);
+    }
     return old_refcount;
 }
 
-/* Reads and returns 'ref_count_''s current reference count.
+/* Reads and returns 'refcount_''s current reference count.
+ *
+ * Does not provide a memory barrier.
  *
  * Rarely useful. */
 static inline unsigned int
@@ -352,8 +396,82 @@ ovs_refcount_read(const struct ovs_refcount *refcount_)
         = CONST_CAST(struct ovs_refcount *, refcount_);
     unsigned int count;
 
-    atomic_read(&refcount->count, &count);
+    atomic_read_explicit(&refcount->count, &count, memory_order_relaxed);
     return count;
+}
+
+/* Increments 'refcount', but only if it is non-zero.
+ *
+ * This may only be called for an object which is RCU protected during
+ * this call.  This implies that its possible destruction is postponed
+ * until all current RCU threads quiesce.
+ *
+ * Returns false if the refcount was zero.  In this case the object may
+ * be safely accessed until the current thread quiesces, but no additional
+ * references to the object may be taken.
+ *
+ * Does not provide a memory barrier, as the calling thread must have
+ * RCU protected access to the object already.
+ *
+ * It is critical that we never increment a zero refcount to a
+ * non-zero value, as whenever a refcount reaches the zero value, the
+ * protected object may be irrevocably scheduled for deletion. */
+static inline bool
+ovs_refcount_try_ref_rcu(struct ovs_refcount *refcount)
+{
+    unsigned int count;
+
+    atomic_read_explicit(&refcount->count, &count, memory_order_relaxed);
+    do {
+        if (count == 0) {
+            return false;
+        }
+    } while (!atomic_compare_exchange_weak_explicit(&refcount->count, &count,
+                                                    count + 1,
+                                                    memory_order_relaxed,
+                                                    memory_order_relaxed));
+    return true;
+}
+
+/* Decrements 'refcount' and returns the previous reference count.  To
+ * be used only when a memory barrier is already provided for the
+ * protected object independently.
+ *
+ * For example:
+ *
+ * if (ovs_refcount_unref_relaxed(&object->ref_cnt) == 1) {
+ *     // Schedule uninitialization and freeing of the object:
+ *     ovsrcu_postpone(destructor_function, object);
+ * }
+ *
+ * Here RCU quiescing already provides a full memory barrier.  No additional
+ * barriers are needed here.
+ *
+ * Or:
+ *
+ * if (stp && ovs_refcount_unref_relaxed(&stp->ref_cnt) == 1) {
+ *     ovs_mutex_lock(&mutex);
+ *     list_remove(&stp->node);
+ *     ovs_mutex_unlock(&mutex);
+ *     free(stp->name);
+ *     free(stp);
+ * }
+ *
+ * Here a mutex is used to guard access to all of 'stp' apart from
+ * 'ref_cnt'.  Hence all changes to 'stp' by other threads must be
+ * visible when we get the mutex, and no access after the unlock can
+ * be reordered to happen prior the lock operation.  No additional
+ * barriers are needed here.
+ */
+static inline unsigned int
+ovs_refcount_unref_relaxed(struct ovs_refcount *refcount)
+{
+    unsigned int old_refcount;
+
+    atomic_sub_explicit(&refcount->count, 1, &old_refcount,
+                        memory_order_relaxed);
+    ovs_assert(old_refcount > 0);
+    return old_refcount;
 }
 
 #endif /* ovs-atomic.h */

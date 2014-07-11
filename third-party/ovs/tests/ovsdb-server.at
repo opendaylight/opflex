@@ -194,10 +194,17 @@ AT_CHECK([ovsdb-client list-tables unix:socket constraints], [0], [ignore], [ign
 AT_CHECK([ovsdb-client list-tables unix:socket ordinals], [0], [ignore], [ignore])
 
 # Add an already added database.
-AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/add-db db2], 2, [],
+if test $IS_WIN32 = "yes"; then
+  AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/add-db db2], 2, [],
+  [I/O error: db2: failed to lock lockfile (Resource deadlock avoided)
+ovs-appctl: ovsdb-server: server returned an error
+])
+else
+  AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/add-db db2], 2, [],
   [db2: already open
 ovs-appctl: ovsdb-server: server returned an error
 ])
+fi
 
 # Add a non-existing database.
 AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/add-db db3], 2, [], [stderr])
@@ -246,6 +253,7 @@ AT_CLEANUP
 
 AT_SETUP([ovsdb-server/add-db with --monitor])
 AT_KEYWORDS([ovsdb server positive])
+AT_SKIP_IF([test "$IS_WIN32" = "yes"])
 # Start ovsdb-server, initially with one db.
 OVS_RUNDIR=`pwd`; export OVS_RUNDIR
 OVS_LOGDIR=`pwd`; export OVS_LOGDIR
@@ -278,6 +286,7 @@ AT_CLEANUP
 
 AT_SETUP([ovsdb-server/add-db and remove-db with --monitor])
 AT_KEYWORDS([ovsdb server positive])
+AT_SKIP_IF([test "$IS_WIN32" = "yes"])
 # Start ovsdb-server, initially with one db.
 OVS_RUNDIR=`pwd`; export OVS_RUNDIR
 OVS_LOGDIR=`pwd`; export OVS_LOGDIR
@@ -382,14 +391,22 @@ AT_CHECK([ovsdb-server --detach --no-chdir --pidfile db])
 
 AT_CHECK([test ! -e socket1])
 AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/add-remote punix:socket1])
-OVS_WAIT_UNTIL([test -S socket1])
+if test "$IS_WIN32" = "yes"; then
+  OVS_WAIT_UNTIL([test -s socket1])
+else
+  OVS_WAIT_UNTIL([test -S socket1])
+fi
 AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/list-remotes],
   [0], [punix:socket1
 ])
 
 AT_CHECK([test ! -e socket2])
 AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/add-remote punix:socket2])
-OVS_WAIT_UNTIL([test -S socket2])
+if test "$IS_WIN32" = "yes"; then
+  OVS_WAIT_UNTIL([test -s socket2])
+else
+  OVS_WAIT_UNTIL([test -S socket2])
+fi
 AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/list-remotes],
   [0], [punix:socket1
 punix:socket2
@@ -402,7 +419,11 @@ ovs-appctl: ovsdb-server: server returned an error
 
 AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/remove-remote punix:socket1])
 OVS_WAIT_UNTIL([test ! -e socket1])
-AT_CHECK([test -S socket2])
+if test "$IS_WIN32" = "yes"; then
+  AT_CHECK([test -s socket2])
+else
+  AT_CHECK([test -S socket2])
+fi
 AT_CHECK([ovs-appctl -t ovsdb-server ovsdb-server/list-remotes],
   [0], [punix:socket2
 ])
@@ -415,6 +436,7 @@ AT_CLEANUP
 
 AT_SETUP([ovsdb-server/add-remote with --monitor])
 AT_KEYWORDS([ovsdb server positive])
+AT_SKIP_IF([test "$IS_WIN32" = "yes"])
 # Start ovsdb-server, initially with no remotes.
 OVS_RUNDIR=`pwd`; export OVS_RUNDIR
 OVS_LOGDIR=`pwd`; export OVS_LOGDIR
@@ -445,6 +467,7 @@ AT_CLEANUP
 
 AT_SETUP([ovsdb-server/add-remote and remove-remote with --monitor])
 AT_KEYWORDS([ovsdb server positive])
+AT_SKIP_IF([test "$IS_WIN32" = "yes"])
 # Start ovsdb-server, initially with no remotes.
 OVS_RUNDIR=`pwd`; export OVS_RUNDIR
 OVS_LOGDIR=`pwd`; export OVS_LOGDIR
@@ -480,7 +503,10 @@ AT_CLEANUP
 AT_SETUP([SSL db: implementation])
 AT_KEYWORDS([ovsdb server positive ssl $5])
 AT_SKIP_IF([test "$HAVE_OPENSSL" = no])
-PKIDIR=$abs_top_builddir/tests
+# For this test, we pass PKIDIR through a ovsdb-tool transact and
+# msys on Windows does not convert the path style automatically.
+# So, do that forcefully with a 'pwd -W' (called through pwd() function).
+PKIDIR="$(cd $abs_top_builddir/tests && pwd)"
 AT_SKIP_IF([expr "$PKIDIR" : ".*[ 	'\"
 \\]"])
 AT_DATA([schema],
@@ -526,7 +552,7 @@ AT_CHECK(
 cat stdout >> output
 AT_CHECK_UNQUOTED(
   [cat output], [0],
-  [[[{"rows":[{"private_key":"$PKIDIR/testpki-privkey2.pem"}]}]
+  [[@<:@{"rows":@<:@{"private_key":"$PKIDIR/testpki-privkey2.pem"}@:>@}@:>@
 ]], [ignore], [test ! -e pid || kill `cat pid`])
 OVSDB_SERVER_SHUTDOWN
 AT_CLEANUP

@@ -145,7 +145,7 @@ then
 # Running configure with --prefix=/usr --localstatedir=/var
 # but this should be variablized with these options as the
 # default.
-    ./configure --prefix=/usr --localstatedir=/var || die "Can't run ovs/configure"
+    ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var || die "Can't run ovs/configure"
     msgout "INFO" "Running make in $ovsBuildDIR"
     make || die "Can't make ovs"
     cd $origDIR

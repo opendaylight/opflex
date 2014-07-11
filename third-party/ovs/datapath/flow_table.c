@@ -286,10 +286,10 @@ static void tbl_mask_array_delete_mask(struct mask_array *ma,
 	 * </Note>
 	 */
 	for (i = 0; i < ma->count; i++)
-		if (mask == ma->masks[i]) {
+		if (mask == ovsl_dereference(ma->masks[i])) {
 			struct sw_flow_mask *last;
 
-			last = ma->masks[ma->count - 1];
+			last = ovsl_dereference(ma->masks[ma->count - 1]);
 			rcu_assign_pointer(ma->masks[i], last);
 			ma->count--;
 			break;
@@ -297,7 +297,7 @@ static void tbl_mask_array_delete_mask(struct mask_array *ma,
 
 	/* Remove the deleted mask pointers from the invalid section. */
 	for (i = ma->count; i < ma->max; i++)
-		if (mask == ma->masks[i])
+		if (mask == ovsl_dereference(ma->masks[i]))
 			RCU_INIT_POINTER(ma->masks[i], NULL);
 }
 
@@ -682,8 +682,31 @@ struct sw_flow *ovs_flow_tbl_lookup(struct flow_table *tbl,
 	u32 __always_unused n_mask_hit;
 	u32 __always_unused index;
 
-	n_mask_hit = 0;
 	return flow_lookup(tbl, ti, ma, key, &n_mask_hit, &index);
+}
+
+struct sw_flow *ovs_flow_tbl_lookup_exact(struct flow_table *tbl,
+					  struct sw_flow_match *match)
+{
+	struct table_instance *ti = rcu_dereference_ovsl(tbl->ti);
+	struct mask_array *ma = rcu_dereference_ovsl(tbl->mask_array);
+	struct sw_flow *flow;
+	u32 __always_unused n_mask_hit;
+	int i;
+
+	/* Always called under ovs-mutex. */
+	for (i = 0; i < ma->count; i++) {
+		struct sw_flow_mask *mask;
+
+		mask = ovsl_dereference(ma->masks[i]);
+		if (mask) {
+			flow = masked_flow_lookup(ti, match->key, mask, &n_mask_hit);
+			if (flow && ovs_flow_cmp_unmasked_key(flow, match)) { /* Found */
+				return flow;
+			}
+		}
+	}
+	return NULL;
 }
 
 int ovs_flow_tbl_num_masks(const struct flow_table *table)

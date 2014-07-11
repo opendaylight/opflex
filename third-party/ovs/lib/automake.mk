@@ -103,6 +103,8 @@ lib_libopenvswitch_la_SOURCES = \
 	lib/mac-learning.h \
 	lib/match.c \
 	lib/match.h \
+	lib/mcast-snooping.c \
+	lib/mcast-snooping.h \
 	lib/memory.c \
 	lib/memory.h \
 	lib/meta-flow.c \
@@ -165,6 +167,8 @@ lib_libopenvswitch_la_SOURCES = \
 	lib/ovsdb-parser.h \
 	lib/ovsdb-types.c \
 	lib/ovsdb-types.h \
+	lib/packet-dpif.c \
+	lib/packet-dpif.h \
 	lib/packets.c \
 	lib/packets.h \
 	lib/pcap-file.c \
@@ -173,6 +177,8 @@ lib_libopenvswitch_la_SOURCES = \
 	lib/poll-loop.h \
 	lib/process.c \
 	lib/process.h \
+	lib/pvector.c \
+	lib/pvector.h \
 	lib/random.c \
 	lib/random.h \
 	lib/rconn.c \

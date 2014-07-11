@@ -34,6 +34,7 @@
 #include "ofp-print.h"
 #include "ofp-util.h"
 #include "ofpbuf.h"
+#include "packet-dpif.h"
 #include "packets.h"
 #include "poll-loop.h"
 #include "shash.h"
@@ -95,7 +96,7 @@ static void log_flow_put_message(struct dpif *, const struct dpif_flow_put *,
 static void log_flow_del_message(struct dpif *, const struct dpif_flow_del *,
                                  int error);
 static void log_execute_message(struct dpif *, const struct dpif_execute *,
-                                int error);
+                                bool subexecute, int error);
 
 static void
 dp_initialize(void)
@@ -1060,25 +1061,51 @@ struct dpif_execute_helper_aux {
 /* This is called for actions that need the context of the datapath to be
  * meaningful. */
 static void
-dpif_execute_helper_cb(void *aux_, struct ofpbuf *packet,
+dpif_execute_helper_cb(void *aux_, struct dpif_packet **packets, int cnt,
                        struct pkt_metadata *md,
                        const struct nlattr *action, bool may_steal OVS_UNUSED)
 {
     struct dpif_execute_helper_aux *aux = aux_;
-    struct dpif_execute execute;
     int type = nl_attr_type(action);
+    struct ofpbuf * packet = &packets[0]->ofpbuf;
+
+    ovs_assert(cnt == 1);
 
     switch ((enum ovs_action_attr)type) {
     case OVS_ACTION_ATTR_OUTPUT:
     case OVS_ACTION_ATTR_USERSPACE:
-    case OVS_ACTION_ATTR_RECIRC:
-        execute.actions = action;
-        execute.actions_len = NLA_ALIGN(action->nla_len);
+    case OVS_ACTION_ATTR_RECIRC: {
+        struct dpif_execute execute;
+        struct ofpbuf execute_actions;
+        uint64_t stub[256 / 8];
+
+        if (md->tunnel.ip_dst) {
+            /* The Linux kernel datapath throws away the tunnel information
+             * that we supply as metadata.  We have to use a "set" action to
+             * supply it. */
+            ofpbuf_use_stub(&execute_actions, stub, sizeof stub);
+            odp_put_tunnel_action(&md->tunnel, &execute_actions);
+            ofpbuf_put(&execute_actions, action, NLA_ALIGN(action->nla_len));
+
+            execute.actions = ofpbuf_data(&execute_actions);
+            execute.actions_len = ofpbuf_size(&execute_actions);
+        } else {
+            execute.actions = action;
+            execute.actions_len = NLA_ALIGN(action->nla_len);
+        }
+
         execute.packet = packet;
         execute.md = *md;
         execute.needs_help = false;
         aux->error = aux->dpif->dpif_class->execute(aux->dpif, &execute);
+
+        log_execute_message(aux->dpif, &execute, true, aux->error);
+
+        if (md->tunnel.ip_dst) {
+            ofpbuf_uninit(&execute_actions);
+        }
         break;
+    }
 
     case OVS_ACTION_ATTR_HASH:
     case OVS_ACTION_ATTR_PUSH_VLAN:
@@ -1102,13 +1129,29 @@ static int
 dpif_execute_with_help(struct dpif *dpif, struct dpif_execute *execute)
 {
     struct dpif_execute_helper_aux aux = {dpif, 0};
+    struct dpif_packet packet, *pp;
 
     COVERAGE_INC(dpif_execute_with_help);
 
-    odp_execute_actions(&aux, execute->packet, false, &execute->md,
-                        execute->actions, execute->actions_len,
-                        dpif_execute_helper_cb);
+    packet.ofpbuf = *execute->packet;
+    pp = &packet;
+
+    odp_execute_actions(&aux, &pp, 1, false, &execute->md, execute->actions,
+                        execute->actions_len, dpif_execute_helper_cb);
+
+    /* Even though may_steal is set to false, some actions could modify or
+     * reallocate the ofpbuf memory. We need to pass those changes to the
+     * caller */
+    *execute->packet = packet.ofpbuf;
+
     return aux.error;
+}
+
+/* Returns true if the datapath needs help executing 'execute'. */
+static bool
+dpif_execute_needs_help(const struct dpif_execute *execute)
+{
+    return execute->needs_help || nl_attr_oversized(execute->actions_len);
 }
 
 /* Causes 'dpif' to perform the 'execute->actions_len' bytes of actions in
@@ -1134,14 +1177,14 @@ dpif_execute(struct dpif *dpif, struct dpif_execute *execute)
 
     COVERAGE_INC(dpif_execute);
     if (execute->actions_len > 0) {
-        error = (execute->needs_help || nl_attr_oversized(execute->actions_len)
+        error = (dpif_execute_needs_help(execute)
                  ? dpif_execute_with_help(dpif, execute)
                  : dpif->dpif_class->execute(dpif, execute));
     } else {
         error = 0;
     }
 
-    log_execute_message(dpif, execute, error);
+    log_execute_message(dpif, execute, false, error);
 
     return error;
 }
@@ -1165,7 +1208,8 @@ dpif_operate(struct dpif *dpif, struct dpif_op **ops, size_t n_ops)
             for (chunk = 0; chunk < n_ops; chunk++) {
                 struct dpif_op *op = ops[chunk];
 
-                if (op->type == DPIF_OP_EXECUTE && op->u.execute.needs_help) {
+                if (op->type == DPIF_OP_EXECUTE
+                    && dpif_execute_needs_help(&op->u.execute)) {
                     break;
                 }
             }
@@ -1190,7 +1234,8 @@ dpif_operate(struct dpif *dpif, struct dpif_op **ops, size_t n_ops)
                         break;
 
                     case DPIF_OP_EXECUTE:
-                        log_execute_message(dpif, &op->u.execute, op->error);
+                        log_execute_message(dpif, &op->u.execute, false,
+                                            op->error);
                         break;
                     }
                 }
@@ -1509,9 +1554,26 @@ log_flow_del_message(struct dpif *dpif, const struct dpif_flow_del *del,
     }
 }
 
+/* Logs that 'execute' was executed on 'dpif' and completed with errno 'error'
+ * (0 for success).  'subexecute' should be true if the execution is a result
+ * of breaking down a larger execution that needed help, false otherwise.
+ *
+ *
+ * XXX In theory, the log message could be deceptive because this function is
+ * called after the dpif_provider's '->execute' function, which is allowed to
+ * modify execute->packet and execute->md.  In practice, though:
+ *
+ *     - dpif-linux doesn't modify execute->packet or execute->md.
+ *
+ *     - dpif-netdev does modify them but it is less likely to have problems
+ *       because it is built into ovs-vswitchd and cannot have version skew,
+ *       etc.
+ *
+ * It would still be better to avoid the potential problem.  I don't know of a
+ * good way to do that, though, that isn't expensive. */
 static void
 log_execute_message(struct dpif *dpif, const struct dpif_execute *execute,
-                    int error)
+                    bool subexecute, int error)
 {
     if (!(error ? VLOG_DROP_WARN(&error_rl) : VLOG_DROP_DBG(&dpmsg_rl))) {
         struct ds ds = DS_EMPTY_INITIALIZER;
@@ -1519,7 +1581,11 @@ log_execute_message(struct dpif *dpif, const struct dpif_execute *execute,
 
         packet = ofp_packet_to_string(ofpbuf_data(execute->packet),
                                       ofpbuf_size(execute->packet));
-        ds_put_format(&ds, "%s: execute ", dpif_name(dpif));
+        ds_put_format(&ds, "%s: %sexecute ",
+                      dpif_name(dpif),
+                      (subexecute ? "sub-"
+                       : dpif_execute_needs_help(execute) ? "super-"
+                       : ""));
         format_odp_actions(&ds, execute->actions, execute->actions_len);
         if (error) {
             ds_put_format(&ds, " failed (%s)", ovs_strerror(error));

@@ -63,6 +63,31 @@ Prints to the console statistics for each of the flow tables used by
 Prints to the console features for each of the flow tables used by
 \fIswitch\fR.
 .
+.IP "\fBmod\-table \fIswitch\fR \fItable_id\fR  \fIflow_miss_handling\fR"
+An OpenFlow 1.0 switch looks up each packet that arrives at the switch
+in table 0, then in table 1 if there is no match in table 0, then in
+table 2, and so on until the packet finds a match in some table.
+Finally, if no match was found, the switch sends the packet to the
+controller
+.IP
+OpenFlow 1.1 and later offer more flexibility.  This command
+configures the flow table miss handling configuration for table
+\fItable_id\fR in \fIswitch\fR.  \fItable_id\fR may be an OpenFlow
+table number between 0 and 254, inclusive, or the keyword \fBALL\fR to
+modify all tables.  \fIflow_miss_handling\fR may be any one of the
+following:
+.RS
+.IP \fBdrop\fR
+Drop the packet.
+.IP \fBcontinue\fR
+Continue to the next table in the pipeline.  (This is how an OpenFlow
+1.0 switch always handles packets that do not match any flow, in
+tables other than the last one.)
+.IP \fBcontroller\fR
+Send to controller.  (This is how an OpenFlow 1.0 switch always
+handles packets that do not match any flow in the last table.)
+.RE
+.
 .TP
 \fBdump\-ports \fIswitch\fR [\fInetdev\fR]
 Prints to the console statistics for network devices associated with 
@@ -231,31 +256,6 @@ Prints to the console statistics for the specified \fIgroups in the
 groups are printed.  See \fBGroup Syntax\fR, below, for the syntax of
 \fIgroups\fR.
 .
-.IP "\fBmod\-table \fIswitch\fR \fItable_id\fR  \fIflow_miss_handling\fR"
-An OpenFlow 1.0 switch looks up each packet that arrives at the switch
-in table 0, then in table 1 if there is no match in table 0, then in
-table 2, and so on until the packet finds a match in some table.
-Finally, if no match was found, the switch sends the packet to the
-controller
-.IP
-OpenFlow 1.1 and later offer more flexibility.  This command
-configures the flow table miss handling configuration for table
-\fItable_id\fR in \fIswitch\fR.  \fItable_id\fR may be an OpenFlow
-table number between 0 and 254, inclusive, or the keyword \fBALL\fR to
-modify all tables.  \fIflow_miss_handling\fR may be any one of the
-following:
-.RS
-.IP \fBdrop\fR
-Drop the packet.
-.IP \fBcontinue\fR
-Continue to the next table in the pipeline.  (This is how an OpenFlow
-1.0 switch always handles packets that do not match any flow, in
-tables other than the last one.)
-.IP \fBcontroller\fR
-Send to controller.  (This is how an OpenFlow 1.0 switch always
-handles packets that do not match any flow in the last table.)
-.RE
-.
 .SS "OpenFlow 1.3+ Switch Meter Table Commands"
 .
 These commands manage the meter table in an OpenFlow switch.  In each
@@ -353,7 +353,8 @@ differences were found.
 .
 .IP "\fBpacket\-out \fIswitch in_port actions packet\fR..."
 Connects to \fIswitch\fR and instructs it to execute the OpenFlow
-\fIactions\fR on each \fIpacket\fR.  For the purpose of executing the
+\fIactions\fR on each \fIpacket\fR.  Each \fBpacket\fR is specified as a
+series of hex digits.  For the purpose of executing the
 actions, the packets are considered to have arrived on \fIin_port\fR,
 which may be an OpenFlow port number or name (e.g. \fBeth0\fR), the
 keyword \fBLOCAL\fR (the preferred way to refer to the OpenFlow
@@ -1144,6 +1145,10 @@ This form of \fBoutput\fR was added in Open vSwitch 1.3.0.  This form
 of \fBoutput\fR uses an OpenFlow extension that is not supported by
 standard OpenFlow switches.
 .
+.IP \fBgroup:\fIgroup_id\fR
+Outputs the packet to the OpenFlow group \fIgroup_id\fR. Group tables
+are only supported in OpenFlow 1.1+. See Group Syntax for more details.
+.
 .IP \fBnormal\fR
 Subjects the packet to the device's normal L2/L3 processing.  (This
 action is not implemented by all OpenFlow switches.)
@@ -1895,11 +1900,13 @@ be specified.
 \fIbucket_parameters\fR consists of a list of \fIfield\fB=\fIvalue\fR
 assignments, separated by commas or white space followed by a
 comma-separated list of actions.
-The syntax of actions are same
-to \fBactions=\fR field described in \fBFlow Syntax\fR above.
 The fields for \fIbucket_parameters\fR are:
 .
 .RS
+.IP \fBactions=\fR[\fIaction\fR][\fB,\fIaction\fR...]\fR
+The syntax of actions are identical to the \fBactions=\fR field described in
+\fBFlow Syntax\fR above. Specyfing \fBactions=\fR is optional, any unknown
+bucket parameter will be interpreted as an action.
 .IP \fBweight=\fIvalue\fR
 The relative weight of the bucket as an integer. This may be used by the switch
 during bucket select for groups whose \fBtype\fR is \fBselect\fR.

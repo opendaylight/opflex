@@ -285,15 +285,13 @@ out:
 }
 
 /* Must be called with rcu_read_lock. */
-void ovs_dp_process_received_packet(struct vport *p, struct sk_buff *skb)
+void ovs_dp_process_received_packet(struct sk_buff *skb)
 {
 	int error;
 	struct sw_flow_key key;
 
-	OVS_CB(skb)->input_vport = p;
-
 	/* Extract flow from 'skb' into 'key'. */
-	error = ovs_flow_extract(skb, p->port_no, &key);
+	error = ovs_flow_extract(skb, OVS_CB(skb)->input_vport->port_no, &key);
 	if (unlikely(error)) {
 		kfree_skb(skb);
 		return;
@@ -382,7 +380,7 @@ static size_t key_attr_size(void)
 {
 	/* Whenever adding new OVS_KEY_ FIELDS, we should consider
 	 * updating this function.  */
-	BUILD_BUG_ON(OVS_KEY_ATTR_TUNNEL_INFO != 21);
+	BUILD_BUG_ON(OVS_KEY_ATTR_TUNNEL_INFO != 22);
 
 	return    nla_total_size(4)   /* OVS_KEY_ATTR_PRIORITY */
 		+ nla_total_size(0)   /* OVS_KEY_ATTR_TUNNEL */
@@ -586,7 +584,7 @@ static int ovs_packet_cmd_execute(struct sk_buff *skb, struct genl_info *info)
 		goto err_flow_free;
 
 	err = ovs_nla_copy_actions(a[OVS_PACKET_ATTR_ACTIONS],
-				   &flow->key, 0, &acts);
+				   &flow->key, &acts);
 	rcu_assign_pointer(flow->sf_acts, acts);
 	if (err)
 		goto err_flow_free;
@@ -675,9 +673,9 @@ static void get_dp_stats(struct datapath *dp, struct ovs_dp_stats *stats,
 		percpu_stats = per_cpu_ptr(dp->stats_percpu, i);
 
 		do {
-			start = u64_stats_fetch_begin_bh(&percpu_stats->sync);
+			start = u64_stats_fetch_begin_irq(&percpu_stats->sync);
 			local_stats = *percpu_stats;
-		} while (u64_stats_fetch_retry_bh(&percpu_stats->sync, start));
+		} while (u64_stats_fetch_retry_irq(&percpu_stats->sync, start));
 
 		stats->n_hit += local_stats.n_hit;
 		stats->n_missed += local_stats.n_missed;
@@ -845,10 +843,14 @@ static int ovs_flow_cmd_new(struct sk_buff *skb, struct genl_info *info)
 
 	/* Must have key and actions. */
 	error = -EINVAL;
-	if (!a[OVS_FLOW_ATTR_KEY])
+	if (!a[OVS_FLOW_ATTR_KEY]) {
+		OVS_NLERR("Flow key attribute not present in new flow.\n");
 		goto error;
-	if (!a[OVS_FLOW_ATTR_ACTIONS])
+	}
+	if (!a[OVS_FLOW_ATTR_ACTIONS]) {
+		OVS_NLERR("Flow actions attribute not present in new flow.\n");
 		goto error;
+	}
 
 	/* Most of the time we need to allocate a new flow, do it before
 	 * locking. */
@@ -874,7 +876,7 @@ static int ovs_flow_cmd_new(struct sk_buff *skb, struct genl_info *info)
 		goto err_kfree_flow;
 
 	error = ovs_nla_copy_actions(a[OVS_FLOW_ATTR_ACTIONS], &new_flow->key,
-				     0, &acts);
+				     &acts);
 	if (error) {
 		OVS_NLERR("Flow actions may not be safe on all matching packets.\n");
 		goto err_kfree_acts;
@@ -929,8 +931,12 @@ static int ovs_flow_cmd_new(struct sk_buff *skb, struct genl_info *info)
 		}
 		/* The unmasked key has to be the same for flow updates. */
 		if (unlikely(!ovs_flow_cmp_unmasked_key(flow, &match))) {
-			error = -EEXIST;
-			goto err_unlock_ovs;
+			/* Look for any overlapping flow. */
+			flow = ovs_flow_tbl_lookup_exact(&dp->table, &match);
+			if (!flow) {
+				error = -ENOENT;
+				goto err_unlock_ovs;
+			}
 		}
 		/* Update actions. */
 		old_acts = ovsl_dereference(flow->sf_acts);
@@ -978,7 +984,7 @@ static struct sw_flow_actions *get_flow_actions(const struct nlattr *a,
 		return acts;
 
 	ovs_flow_mask_key(&masked_key, key, mask);
-	error = ovs_nla_copy_actions(a, &masked_key, 0, &acts);
+	error = ovs_nla_copy_actions(a, &masked_key, &acts);
 	if (error) {
 		OVS_NLERR("Flow actions may not be safe on all matching packets.\n");
 		kfree(acts);
@@ -1003,8 +1009,10 @@ static int ovs_flow_cmd_set(struct sk_buff *skb, struct genl_info *info)
 
 	/* Extract key. */
 	error = -EINVAL;
-	if (!a[OVS_FLOW_ATTR_KEY])
+	if (!a[OVS_FLOW_ATTR_KEY]) {
+		OVS_NLERR("Flow key attribute not present in set flow.\n");
 		goto error;
+	}
 
 	ovs_match_init(&match, &key, &mask);
 	error = ovs_nla_get_match(&match,
@@ -1037,16 +1045,12 @@ static int ovs_flow_cmd_set(struct sk_buff *skb, struct genl_info *info)
 		goto err_unlock_ovs;
 	}
 	/* Check that the flow exists. */
-	flow = ovs_flow_tbl_lookup(&dp->table, &key);
+	flow = ovs_flow_tbl_lookup_exact(&dp->table, &match);
 	if (unlikely(!flow)) {
 		error = -ENOENT;
 		goto err_unlock_ovs;
 	}
-	/* The unmasked key has to be the same for flow updates. */
-	if (unlikely(!ovs_flow_cmp_unmasked_key(flow, &match))) {
-		error = -EEXIST;
-		goto err_unlock_ovs;
-	}
+
 	/* Update actions, if present. */
 	if (likely(acts)) {
 		old_acts = ovsl_dereference(flow->sf_acts);
@@ -1119,8 +1123,8 @@ static int ovs_flow_cmd_get(struct sk_buff *skb, struct genl_info *info)
 		goto unlock;
 	}
 
-	flow = ovs_flow_tbl_lookup(&dp->table, &key);
-	if (!flow || !ovs_flow_cmp_unmasked_key(flow, &match)) {
+	flow = ovs_flow_tbl_lookup_exact(&dp->table, &match);
+	if (!flow) {
 		err = -ENOENT;
 		goto unlock;
 	}
@@ -1167,8 +1171,8 @@ static int ovs_flow_cmd_del(struct sk_buff *skb, struct genl_info *info)
 		err = ovs_flow_tbl_flush(&dp->table);
 		goto unlock;
 	}
-	flow = ovs_flow_tbl_lookup(&dp->table, &key);
-	if (unlikely(!flow || !ovs_flow_cmp_unmasked_key(flow, &match))) {
+	flow = ovs_flow_tbl_lookup_exact(&dp->table, &match);
+	if (unlikely(!flow)) {
 		err = -ENOENT;
 		goto unlock;
 	}

@@ -520,6 +520,10 @@ A: Open vSwitch has two kinds of flows (see the previous question), so
         dumps datapath flows for only the specified bridge, regardless
         of the type.
 
+Q: How does multicast snooping works with VLANs?
+
+A: Open vSwitch maintains snooping tables for each VLAN.
+
 
 Performance
 -----------
@@ -1123,6 +1127,12 @@ A: Do you have a controller configured on br0 (as the commands above
    do)?  If so, then this is a variant on the previous question, "My
    OpenFlow controller doesn't see the VLANs that I expect," and you
    can refer to the answer there for more information.
+
+Q: How MAC learning works with VLANs?
+
+A: Open vSwitch implements Independent VLAN Learning (IVL) for
+   OFPP_NORMAL action.  I.e. it logically has separate learning tables
+   for each VLANs.
 
 
 VXLANs

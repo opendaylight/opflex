@@ -213,7 +213,7 @@
  * The classifier may safely be accessed by many reader threads concurrently or
  * by a single writer. */
 
-#include "fat-rwlock.h"
+#include "cmap.h"
 #include "match.h"
 #include "meta-flow.h"
 
@@ -221,13 +221,9 @@
 extern "C" {
 #endif
 
-/* Needed only for the lock annotation in struct classifier. */
-extern struct ovs_mutex ofproto_mutex;
-
 /* Classifier internal data structures. */
 struct cls_classifier;
 struct cls_subtable;
-struct cls_partition;
 struct cls_match;
 
 enum {
@@ -236,7 +232,6 @@ enum {
 
 /* A flow classifier. */
 struct classifier {
-    struct fat_rwlock rwlock OVS_ACQ_AFTER(ofproto_mutex);
     struct cls_classifier *cls;
 };
 
@@ -265,43 +260,33 @@ bool cls_rule_is_catchall(const struct cls_rule *);
 bool cls_rule_is_loose_match(const struct cls_rule *rule,
                              const struct minimatch *criteria);
 
-void classifier_init(struct classifier *cls, const uint8_t *flow_segments);
+void classifier_init(struct classifier *, const uint8_t *flow_segments);
 void classifier_destroy(struct classifier *);
-void classifier_set_prefix_fields(struct classifier *cls,
+bool classifier_set_prefix_fields(struct classifier *,
                                   const enum mf_field_id *trie_fields,
-                                  unsigned int n_trie_fields)
-    OVS_REQ_WRLOCK(cls->rwlock);
+                                  unsigned int n_trie_fields);
 
-bool classifier_is_empty(const struct classifier *cls)
-    OVS_REQ_RDLOCK(cls->rwlock);
-int classifier_count(const struct classifier *cls)
-    OVS_REQ_RDLOCK(cls->rwlock);
-void classifier_insert(struct classifier *cls, struct cls_rule *)
-    OVS_REQ_WRLOCK(cls->rwlock);
-struct cls_rule *classifier_replace(struct classifier *cls, struct cls_rule *)
-    OVS_REQ_WRLOCK(cls->rwlock);
-void classifier_remove(struct classifier *cls, struct cls_rule *)
-    OVS_REQ_WRLOCK(cls->rwlock);
-struct cls_rule *classifier_lookup(const struct classifier *cls,
+bool classifier_is_empty(const struct classifier *);
+int classifier_count(const struct classifier *);
+void classifier_insert(struct classifier *, struct cls_rule *);
+struct cls_rule *classifier_replace(struct classifier *, struct cls_rule *);
+
+void classifier_remove(struct classifier *, struct cls_rule *);
+struct cls_rule *classifier_lookup(const struct classifier *,
                                    const struct flow *,
-                                   struct flow_wildcards *)
-    OVS_REQ_RDLOCK(cls->rwlock);
-struct cls_rule *classifier_lookup_miniflow_first(const struct classifier *cls,
-                                                  const struct miniflow *)
-    OVS_REQ_RDLOCK(cls->rwlock);
-bool classifier_rule_overlaps(const struct classifier *cls,
-                              const struct cls_rule *)
-    OVS_REQ_RDLOCK(cls->rwlock);
+                                   struct flow_wildcards *);
+void classifier_lookup_miniflow_batch(const struct classifier *cls,
+                                      const struct miniflow **flows,
+                                      struct cls_rule **rules, size_t len);
+bool classifier_rule_overlaps(const struct classifier *,
+                              const struct cls_rule *);
 
-typedef void cls_cb_func(struct cls_rule *, void *aux);
+struct cls_rule *classifier_find_rule_exactly(const struct classifier *,
+                                              const struct cls_rule *);
 
-struct cls_rule *classifier_find_rule_exactly(const struct classifier *cls,
-                                              const struct cls_rule *)
-    OVS_REQ_RDLOCK(cls->rwlock);
-struct cls_rule *classifier_find_match_exactly(const struct classifier *cls,
+struct cls_rule *classifier_find_match_exactly(const struct classifier *,
                                                const struct match *,
-                                               unsigned int priority)
-    OVS_REQ_RDLOCK(cls->rwlock);
+                                               unsigned int priority);
 
 /* Iteration. */
 
@@ -309,26 +294,66 @@ struct cls_cursor {
     const struct cls_classifier *cls;
     const struct cls_subtable *subtable;
     const struct cls_rule *target;
+    struct cmap_cursor subtables;
+    struct cmap_cursor rules;
+    bool safe;
 };
 
-void cls_cursor_init(struct cls_cursor *cursor, const struct classifier *cls,
-                     const struct cls_rule *match) OVS_REQ_RDLOCK(cls->rwlock);
-struct cls_rule *cls_cursor_first(struct cls_cursor *cursor);
-struct cls_rule *cls_cursor_next(struct cls_cursor *, const struct cls_rule *);
 
-#define CLS_CURSOR_FOR_EACH(RULE, MEMBER, CURSOR)                       \
-    for (ASSIGN_CONTAINER(RULE, cls_cursor_first(CURSOR), MEMBER);      \
+/* Iteration requires mutual exclusion of writers.  We do this by taking
+ * a mutex for the duration of the iteration, except for the
+ * 'SAFE' variant, where we release the mutex for the body of the loop. */
+struct cls_cursor cls_cursor_init(const struct classifier *cls,
+                                  const struct cls_rule *target,
+                                  void **pnode, const void *offset, bool safe);
+
+struct cls_rule *cls_cursor_next(struct cls_cursor *cursor,
+                                 const struct cls_rule *);
+
+#define CLS_CURSOR_START(RULE, MEMBER, CLS, TARGET)                     \
+    cls_cursor_init(CLS, (TARGET), (void **)&(RULE),                    \
+                    OBJECT_CONTAINING(NULL, RULE, MEMBER), false)
+
+#define CLS_CURSOR_START_SAFE(RULE, MEMBER, CLS, TARGET)                \
+    cls_cursor_init(CLS, (TARGET), (void **)&(RULE),                    \
+                    OBJECT_CONTAINING(NULL, RULE, MEMBER), true)
+
+#define CLS_FOR_EACH(RULE, MEMBER, CLS)                                 \
+    for (struct cls_cursor cursor__ = CLS_CURSOR_START(RULE, MEMBER, CLS, \
+                                                       NULL);           \
          RULE != OBJECT_CONTAINING(NULL, RULE, MEMBER);                 \
-         ASSIGN_CONTAINER(RULE, cls_cursor_next(CURSOR, &(RULE)->MEMBER), \
+         ASSIGN_CONTAINER(RULE, cls_cursor_next(&cursor__, &(RULE)->MEMBER), \
                           MEMBER))
 
-#define CLS_CURSOR_FOR_EACH_SAFE(RULE, NEXT, MEMBER, CURSOR)            \
-    for (ASSIGN_CONTAINER(RULE, cls_cursor_first(CURSOR), MEMBER);      \
+#define CLS_FOR_EACH_TARGET(RULE, MEMBER, CLS, TARGET)                  \
+    for (struct cls_cursor cursor__ = CLS_CURSOR_START(RULE, MEMBER, CLS, \
+                                                       TARGET);         \
+         RULE != OBJECT_CONTAINING(NULL, RULE, MEMBER);                 \
+         ASSIGN_CONTAINER(RULE, cls_cursor_next(&cursor__, &(RULE)->MEMBER), \
+                          MEMBER))
+
+/* This form allows classifier_remove() to be called within the loop. */
+#define CLS_FOR_EACH_SAFE(RULE, NEXT, MEMBER, CLS)                      \
+    for (struct cls_cursor cursor__ = CLS_CURSOR_START_SAFE(RULE, MEMBER, \
+                                                            CLS, NULL); \
          (RULE != OBJECT_CONTAINING(NULL, RULE, MEMBER)                 \
-          ? ASSIGN_CONTAINER(NEXT, cls_cursor_next(CURSOR, &(RULE)->MEMBER), \
-                             MEMBER), 1                                 \
-          : 0);                                                         \
+          ? ASSIGN_CONTAINER(NEXT, cls_cursor_next(&cursor__,           \
+                                                   &(RULE)->MEMBER),    \
+                             MEMBER), true                              \
+          : false);                                                     \
          (RULE) = (NEXT))
+
+/* This form allows classifier_remove() to be called within the loop. */
+#define CLS_FOR_EACH_TARGET_SAFE(RULE, NEXT, MEMBER, CLS, TARGET)       \
+    for (struct cls_cursor cursor__ = CLS_CURSOR_START_SAFE(RULE, MEMBER, \
+                                                            CLS, TARGET); \
+         (RULE != OBJECT_CONTAINING(NULL, RULE, MEMBER)                 \
+          ? ASSIGN_CONTAINER(NEXT, cls_cursor_next(&cursor__,           \
+                                                   &(RULE)->MEMBER),    \
+                             MEMBER), true                              \
+          : false);                                                     \
+         (RULE) = (NEXT))
+
 
 #ifdef __cplusplus
 }

@@ -598,6 +598,15 @@ miniflow_extract(struct ofpbuf *packet, const struct pkt_metadata *md,
                 miniflow_push_be16(mf, tp_src, htons(icmp->icmp_type));
                 miniflow_push_be16(mf, tp_dst, htons(icmp->icmp_code));
             }
+        } else if (OVS_LIKELY(nw_proto == IPPROTO_IGMP)) {
+            if (OVS_LIKELY(size >= IGMP_HEADER_LEN)) {
+                const struct igmp_header *igmp = data;
+
+                miniflow_push_be16(mf, tp_src, htons(igmp->igmp_type));
+                miniflow_push_be16(mf, tp_dst, htons(igmp->igmp_code));
+                miniflow_push_be32(mf, igmp_group_ip4,
+                                   get_16aligned_be32(&igmp->group));
+            }
         } else if (OVS_LIKELY(nw_proto == IPPROTO_ICMPV6)) {
             if (OVS_LIKELY(size >= sizeof(struct icmp6_hdr))) {
                 const struct in6_addr *nd_target = NULL;
@@ -656,7 +665,7 @@ flow_unwildcard_tp_ports(const struct flow *flow, struct flow_wildcards *wc)
 void
 flow_get_metadata(const struct flow *flow, struct flow_metadata *fmd)
 {
-    BUILD_ASSERT_DECL(FLOW_WC_SEQ == 26);
+    BUILD_ASSERT_DECL(FLOW_WC_SEQ == 27);
 
     fmd->dp_hash = flow->dp_hash;
     fmd->recirc_id = flow->recirc_id;
@@ -900,7 +909,7 @@ miniflow_hash_5tuple(const struct miniflow *flow, uint32_t basis)
     if (flow) {
         ovs_be16 dl_type = MINIFLOW_GET_BE16(flow, dl_type);
 
-        hash = mhash_add(hash, MINIFLOW_GET_U8(flow, nw_proto));
+        hash = hash_add(hash, MINIFLOW_GET_U8(flow, nw_proto));
 
         /* Separate loops for better optimization. */
         if (dl_type == htons(ETH_TYPE_IPV6)) {
@@ -909,7 +918,7 @@ miniflow_hash_5tuple(const struct miniflow *flow, uint32_t basis)
             uint32_t value;
 
             MINIFLOW_FOR_EACH_IN_MAP(value, flow, map) {
-                hash = mhash_add(hash, value);
+                hash = hash_add(hash, value);
             }
         } else {
             uint64_t map = MINIFLOW_MAP(nw_src) | MINIFLOW_MAP(nw_dst)
@@ -917,10 +926,10 @@ miniflow_hash_5tuple(const struct miniflow *flow, uint32_t basis)
             uint32_t value;
 
             MINIFLOW_FOR_EACH_IN_MAP(value, flow, map) {
-                hash = mhash_add(hash, value);
+                hash = hash_add(hash, value);
             }
         }
-        hash = mhash_finish(hash, 42); /* Arbitrary number. */
+        hash = hash_finish(hash, 42); /* Arbitrary number. */
     }
     return hash;
 }
@@ -941,22 +950,22 @@ flow_hash_5tuple(const struct flow *flow, uint32_t basis)
     if (flow) {
         const uint32_t *flow_u32 = (const uint32_t *)flow;
 
-        hash = mhash_add(hash, flow->nw_proto);
+        hash = hash_add(hash, flow->nw_proto);
 
         if (flow->dl_type == htons(ETH_TYPE_IPV6)) {
             int ofs = offsetof(struct flow, ipv6_src) / 4;
             int end = ofs + 2 * sizeof flow->ipv6_src / 4;
 
             while (ofs < end) {
-                hash = mhash_add(hash, flow_u32[ofs++]);
+                hash = hash_add(hash, flow_u32[ofs++]);
             }
         } else {
-            hash = mhash_add(hash, (OVS_FORCE uint32_t) flow->nw_src);
-            hash = mhash_add(hash, (OVS_FORCE uint32_t) flow->nw_dst);
+            hash = hash_add(hash, (OVS_FORCE uint32_t) flow->nw_src);
+            hash = hash_add(hash, (OVS_FORCE uint32_t) flow->nw_dst);
         }
-        hash = mhash_add(hash, flow_u32[offsetof(struct flow, tp_src) / 4]);
+        hash = hash_add(hash, flow_u32[offsetof(struct flow, tp_src) / 4]);
 
-        hash = mhash_finish(hash, 42); /* Arbitrary number. */
+        hash = hash_finish(hash, 42); /* Arbitrary number. */
     }
     return hash;
 }
@@ -1131,9 +1140,9 @@ flow_hash_in_wildcards(const struct flow *flow,
 
     hash = basis;
     for (i = 0; i < FLOW_U32S; i++) {
-        hash = mhash_add(hash, flow_u32[i] & wc_u32[i]);
+        hash = hash_add(hash, flow_u32[i] & wc_u32[i]);
     }
-    return mhash_finish(hash, 4 * FLOW_U32S);
+    return hash_finish(hash, 4 * FLOW_U32S);
 }
 
 /* Sets the VLAN VID that 'flow' matches to 'vid', which is interpreted as an
@@ -1318,7 +1327,7 @@ flow_push_mpls(struct flow *flow, int n, ovs_be16 mpls_eth_type,
         flow->mpls_lse[0] = set_mpls_lse_values(ttl, tc, 1, htonl(label));
 
         /* Clear all L3 and L4 fields. */
-        BUILD_ASSERT(FLOW_WC_SEQ == 26);
+        BUILD_ASSERT(FLOW_WC_SEQ == 27);
         memset((char *) flow + FLOW_SEGMENT_2_ENDS_AT, 0,
                sizeof(struct flow) - FLOW_SEGMENT_2_ENDS_AT);
     }
@@ -1429,6 +1438,15 @@ flow_compose_l4(struct ofpbuf *b, const struct flow *flow)
             icmp->icmp_type = ntohs(flow->tp_src);
             icmp->icmp_code = ntohs(flow->tp_dst);
             icmp->icmp_csum = csum(icmp, ICMP_HEADER_LEN);
+        } else if (flow->nw_proto == IPPROTO_IGMP) {
+            struct igmp_header *igmp;
+
+            l4_len = sizeof *igmp;
+            igmp = ofpbuf_put_zeros(b, l4_len);
+            igmp->igmp_type = ntohs(flow->tp_src);
+            igmp->igmp_code = ntohs(flow->tp_dst);
+            put_16aligned_be32(&igmp->group, flow->igmp_group_ip4);
+            igmp->igmp_csum = csum(igmp, IGMP_HEADER_LEN);
         } else if (flow->nw_proto == IPPROTO_ICMPV6) {
             struct icmp6_hdr *icmp;
 

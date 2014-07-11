@@ -54,6 +54,7 @@
 #include "ofpbuf.h"
 #include "openflow/openflow.h"
 #include "ovs-thread.h"
+#include "packet-dpif.h"
 #include "packets.h"
 #include "poll-loop.h"
 #include "shash.h"
@@ -620,10 +621,12 @@ netdev_rxq_bsd_recv_tap(struct netdev_rxq_bsd *rxq, struct ofpbuf *buffer)
 }
 
 static int
-netdev_bsd_rxq_recv(struct netdev_rxq *rxq_, struct ofpbuf **packet, int *c)
+netdev_bsd_rxq_recv(struct netdev_rxq *rxq_, struct dpif_packet **packets,
+                    int *c)
 {
     struct netdev_rxq_bsd *rxq = netdev_rxq_bsd_cast(rxq_);
     struct netdev *netdev = rxq->up.netdev;
+    struct dpif_packet *packet;
     struct ofpbuf *buffer;
     ssize_t retval;
     int mtu;
@@ -632,17 +635,19 @@ netdev_bsd_rxq_recv(struct netdev_rxq *rxq_, struct ofpbuf **packet, int *c)
         mtu = ETH_PAYLOAD_MAX;
     }
 
-    buffer = ofpbuf_new_with_headroom(VLAN_ETH_HEADER_LEN + mtu, DP_NETDEV_HEADROOM);
+    packet = dpif_packet_new_with_headroom(VLAN_ETH_HEADER_LEN + mtu,
+                                           DP_NETDEV_HEADROOM);
+    buffer = &packet->ofpbuf;
 
     retval = (rxq->pcap_handle
             ? netdev_rxq_bsd_recv_pcap(rxq, buffer)
             : netdev_rxq_bsd_recv_tap(rxq, buffer));
 
     if (retval) {
-        ofpbuf_delete(buffer);
+        dpif_packet_delete(packet);
     } else {
         dp_packet_pad(buffer);
-        packet[0] = buffer;
+        packets[0] = packet;
         *c = 1;
     }
     return retval;
@@ -681,13 +686,13 @@ netdev_bsd_rxq_drain(struct netdev_rxq *rxq_)
  * system or a tap device.
  */
 static int
-netdev_bsd_send(struct netdev *netdev_, struct ofpbuf *pkt, bool may_steal)
+netdev_bsd_send(struct netdev *netdev_, struct dpif_packet **pkts, int cnt,
+                bool may_steal)
 {
     struct netdev_bsd *dev = netdev_bsd_cast(netdev_);
     const char *name = netdev_get_name(netdev_);
-    const void *data = ofpbuf_data(pkt);
-    size_t size = ofpbuf_size(pkt);
     int error;
+    int i;
 
     ovs_mutex_lock(&dev->mutex);
     if (dev->tap_fd < 0 && !dev->pcap) {
@@ -696,35 +701,43 @@ netdev_bsd_send(struct netdev *netdev_, struct ofpbuf *pkt, bool may_steal)
         error = 0;
     }
 
-    while (!error) {
-        ssize_t retval;
-        if (dev->tap_fd >= 0) {
-            retval = write(dev->tap_fd, data, size);
-        } else {
-            retval = pcap_inject(dev->pcap, data, size);
-        }
-        if (retval < 0) {
-            if (errno == EINTR) {
-                continue;
+    for (i = 0; i < cnt; i++) {
+        const void *data = ofpbuf_data(&pkts[i]->ofpbuf);
+        size_t size = ofpbuf_size(&pkts[i]->ofpbuf);
+
+        while (!error) {
+            ssize_t retval;
+            if (dev->tap_fd >= 0) {
+                retval = write(dev->tap_fd, data, size);
             } else {
-                error = errno;
-                if (error != EAGAIN) {
-                    VLOG_WARN_RL(&rl, "error sending Ethernet packet on %s: "
-                                 "%s", name, ovs_strerror(error));
-                }
+                retval = pcap_inject(dev->pcap, data, size);
             }
-        } else if (retval != size) {
-            VLOG_WARN_RL(&rl, "sent partial Ethernet packet (%"PRIuSIZE" bytes of "
-                         "%"PRIuSIZE") on %s", retval, size, name);
-            error = EMSGSIZE;
-        } else {
-            break;
+            if (retval < 0) {
+                if (errno == EINTR) {
+                    continue;
+                } else {
+                    error = errno;
+                    if (error != EAGAIN) {
+                        VLOG_WARN_RL(&rl, "error sending Ethernet packet on"
+                                     " %s: %s", name, ovs_strerror(error));
+                    }
+                }
+            } else if (retval != size) {
+                VLOG_WARN_RL(&rl, "sent partial Ethernet packet "
+                                  "(%"PRIuSIZE" bytes of "
+                                  "%"PRIuSIZE") on %s", retval, size, name);
+                error = EMSGSIZE;
+            } else {
+                break;
+            }
         }
     }
 
     ovs_mutex_unlock(&dev->mutex);
     if (may_steal) {
-        ofpbuf_delete(pkt);
+        for (i = 0; i < cnt; i++) {
+            dpif_packet_delete(pkts[i]);
+        }
     }
 
     return error;
@@ -996,7 +1009,7 @@ netdev_bsd_get_stats(const struct netdev *netdev_, struct netdev_stats *stats)
                         netdev_get_name(netdev_), ovs_strerror(errno));
             return errno;
         } else if (!strcmp(ifmd.ifmd_name, netdev_get_name(netdev_))) {
-            convert_stats(netdev, stats, &ifdr.ifdr_data);
+            convert_stats(netdev_, stats, &ifmd.ifmd_data);
             break;
         }
     }
@@ -1786,6 +1799,7 @@ ifr_set_flags(struct ifreq *ifr, int flags)
 #endif
 }
 
+#if defined(__NetBSD__)
 /* Calls ioctl() on an AF_LINK sock, passing the specified 'command' and
  * 'arg'.  Returns 0 if successful, otherwise a positive errno value. */
 int
@@ -1807,3 +1821,4 @@ af_link_ioctl(unsigned long command, const void *arg)
             : ioctl(sock, command, arg) == -1 ? errno
             : 0);
 }
+#endif

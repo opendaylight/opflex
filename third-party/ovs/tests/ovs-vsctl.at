@@ -159,8 +159,14 @@ AT_CHECK(
   [0], [], [stderr])
 AT_CHECK([grep -c 'terminating with signal' stderr], [0], [1
 ])
-AT_CHECK([kill -l `cat status`], [0], [ALRM
+if test "$IS_WIN32" = "yes"; then
+  AT_CHECK([cat status], [0], [3
 ])
+else
+  # 128 + SIGALRM
+  AT_CHECK([cat status], [0], [142
+])
+fi
 
 dnl Without --retry, we should retry for passive connections.
 AT_CHECK(
@@ -169,8 +175,14 @@ AT_CHECK(
   [0], [], [stderr])
 AT_CHECK([grep -c 'terminating with signal' stderr], [0], [1
 ])
-AT_CHECK([kill -l `cat status`], [0], [ALRM
+if test "$IS_WIN32" = "yes"; then
+  AT_CHECK([cat status], [0], [3
 ])
+else
+  # 128 + SIGALRM
+  AT_CHECK([cat status], [0], [142
+])
+fi
 AT_CLEANUP
 
 dnl ----------------------------------------------------------------------
@@ -639,6 +651,7 @@ fail_mode           : []
 flood_vlans         : []
 flow_tables         : {}
 ipfix               : []
+mcast_snooping_enable: false
 mirrors             : []
 name                : "br0"
 netflow             : []
@@ -1131,6 +1144,7 @@ fail_mode           : []
 flood_vlans         : []
 flow_tables         : {}
 ipfix               : []
+mcast_snooping_enable: false
 mirrors             : []
 name                : "br0"
 netflow             : []
@@ -1169,8 +1183,9 @@ AT_CHECK([RUN_OVS_VSCTL(
 type                : linux-htb
 ], [], [OVS_VSCTL_CLEANUP])
 AT_CHECK([RUN_OVS_VSCTL(
-   [--columns=other_config list Queue | sort | xargs echo])], [0],
-[other_config : {max-rate=100000000, min-rate=100000000} other_config : {min-rate=500000000}
+   [--columns=other_config list Queue | sort | sed '/^$/d'])], [0],
+[other_config        : {max-rate="100000000", min-rate="100000000"}
+other_config        : {min-rate="500000000"}
 ], [], [OVS_VSCTL_CLEANUP])
 AT_CHECK([RUN_OVS_VSCTL(
    [clear Port a1 qos],

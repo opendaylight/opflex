@@ -58,11 +58,11 @@ or from a distribution tar ball.
 
 * Run make for the ported executables in the top source directory, e.g.:
 
-  % make lib/vswitch-idl.h lib/vtep-idl.h ofproto/ipfix-entities.def
-  % make ovsdb/ovsdb-server.exe ovsdb/ovsdb-tool.exe ovsdb/ovsdb-client.exe \
-         utilities/ovs-vsctl.exe utilities/ovs-ofctl.exe \
-         utilities/ovs-dpctl.exe vswitchd/ovs-vswitchd.exe \
-         utilities/ovs-appctl.exe
+  % make
+
+* To run all the unit tests:
+
+  % make check
 
 OpenSSL, Open vSwitch and Visual C++
 ------------------------------------
@@ -93,3 +93,4 @@ TODO:
 are used as a fallback, but some features, such as OVS-RCU are really
 slow without native atomics support. Atomics support for Windows has to
 be brought in.
+* Investigate the working of sFlow on Windows and re-enable the unit tests.

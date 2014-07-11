@@ -59,12 +59,14 @@ static struct hook hooks[MAX_HOOKS];
 static size_t n_hooks;
 
 static int signal_fds[2];
-static HANDLE wevent;
 static volatile sig_atomic_t stored_sig_nr = SIG_ATOMIC_MAX;
+
+#ifdef _WIN32
+static HANDLE wevent;
+#endif
 
 static struct ovs_mutex mutex;
 
-static void atexit_handler(void);
 static void call_hooks(int sig_nr);
 #ifdef _WIN32
 static BOOL WINAPI ConsoleHandlerRoutine(DWORD dwCtrlType);
@@ -115,7 +117,7 @@ fatal_signal_init(void)
             }
 #endif
         }
-        atexit(atexit_handler);
+        atexit(fatal_signal_atexit_handler);
     }
 }
 
@@ -200,6 +202,7 @@ fatal_signal_run(void)
         VLOG_WARN("terminating with signal %d", (int)sig_nr);
 #endif
         call_hooks(sig_nr);
+        fflush(stderr);
 
         /* Re-raise the signal with the default handling so that the program
          * termination status reflects that we were killed by this signal */
@@ -215,7 +218,11 @@ void
 fatal_signal_wait(void)
 {
     fatal_signal_init();
-    poll_fd_wait_event(signal_fds[0], wevent, POLLIN);
+#ifdef _WIN32
+    poll_wevent_wait(wevent);
+#else
+    poll_fd_wait(signal_fds[0], POLLIN);
+#endif
 }
 
 void
@@ -226,8 +233,8 @@ fatal_ignore_sigpipe(void)
 #endif
 }
 
-static void
-atexit_handler(void)
+void
+fatal_signal_atexit_handler(void)
 {
     call_hooks(0);
 }

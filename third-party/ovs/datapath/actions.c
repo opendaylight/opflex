@@ -35,6 +35,8 @@
 #include <net/sctp/checksum.h>
 
 #include "datapath.h"
+#include "gso.h"
+#include "mpls.h"
 #include "vlan.h"
 #include "vport.h"
 
@@ -47,6 +49,98 @@ static int make_writable(struct sk_buff *skb, int write_len)
 		return 0;
 
 	return pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
+}
+
+/* The end of the mac header.
+ *
+ * For non-MPLS skbs this will correspond to the network header.
+ * For MPLS skbs it will be before the network_header as the MPLS
+ * label stack lies between the end of the mac header and the network
+ * header. That is, for MPLS skbs the end of the mac header
+ * is the top of the MPLS label stack.
+ */
+static unsigned char *mac_header_end(const struct sk_buff *skb)
+{
+	return skb_mac_header(skb) + skb->mac_len;
+}
+
+static int push_mpls(struct sk_buff *skb,
+		     const struct ovs_action_push_mpls *mpls)
+{
+	__be32 *new_mpls_lse;
+	struct ethhdr *hdr;
+
+	if (skb_cow_head(skb, MPLS_HLEN) < 0)
+		return -ENOMEM;
+
+	skb_push(skb, MPLS_HLEN);
+	memmove(skb_mac_header(skb) - MPLS_HLEN, skb_mac_header(skb),
+		skb->mac_len);
+	skb_reset_mac_header(skb);
+
+	new_mpls_lse = (__be32 *)mac_header_end(skb);
+	*new_mpls_lse = mpls->mpls_lse;
+
+	if (skb->ip_summed == CHECKSUM_COMPLETE)
+		skb->csum = csum_add(skb->csum, csum_partial(new_mpls_lse,
+							     MPLS_HLEN, 0));
+
+	hdr = eth_hdr(skb);
+	hdr->h_proto = mpls->mpls_ethertype;
+	if (!ovs_skb_get_inner_protocol(skb))
+		ovs_skb_set_inner_protocol(skb, skb->protocol);
+	skb->protocol = mpls->mpls_ethertype;
+	return 0;
+}
+
+static int pop_mpls(struct sk_buff *skb, const __be16 ethertype)
+{
+	struct ethhdr *hdr;
+	int err;
+
+	err = make_writable(skb, skb->mac_len + MPLS_HLEN);
+	if (unlikely(err))
+		return err;
+
+	if (skb->ip_summed == CHECKSUM_COMPLETE)
+		skb->csum = csum_sub(skb->csum,
+				     csum_partial(mac_header_end(skb),
+						  MPLS_HLEN, 0));
+
+	memmove(skb_mac_header(skb) + MPLS_HLEN, skb_mac_header(skb),
+		skb->mac_len);
+
+	__skb_pull(skb, MPLS_HLEN);
+	skb_reset_mac_header(skb);
+
+	/* mac_header_end() is used to locate the ethertype
+	 * field correctly in the presence of VLAN tags.
+	 */
+	hdr = (struct ethhdr *)(mac_header_end(skb) - ETH_HLEN);
+	hdr->h_proto = ethertype;
+	if (eth_p_mpls(skb->protocol))
+		skb->protocol = ethertype;
+	return 0;
+}
+
+static int set_mpls(struct sk_buff *skb, const __be32 *mpls_lse)
+{
+	__be32 *stack = (__be32 *)mac_header_end(skb);
+	int err;
+
+	err = make_writable(skb, skb->mac_len + MPLS_HLEN);
+	if (unlikely(err))
+		return err;
+
+	if (skb->ip_summed == CHECKSUM_COMPLETE) {
+		__be32 diff[] = { ~(*stack), *mpls_lse };
+		skb->csum = ~csum_partial((char *)diff, sizeof(diff),
+					  ~skb->csum);
+	}
+
+	*stack = *mpls_lse;
+
+	return 0;
 }
 
 /* remove VLAN header from packet and update csum accordingly. */
@@ -71,7 +165,8 @@ static int __pop_vlan_tci(struct sk_buff *skb, __be16 *current_tci)
 
 	vlan_set_encap_proto(skb, vhdr);
 	skb->mac_header += VLAN_HLEN;
-	skb_reset_mac_len(skb);
+	/* Update mac_len for subsequent MPLS actions */
+	skb->mac_len -= VLAN_HLEN;
 
 	return 0;
 }
@@ -115,6 +210,9 @@ static int push_vlan(struct sk_buff *skb, const struct ovs_action_push_vlan *vla
 
 		if (!__vlan_put_tag(skb, skb->vlan_proto, current_tag))
 			return -ENOMEM;
+
+		/* Update mac_len for subsequent MPLS actions */
+		skb->mac_len += VLAN_HLEN;
 
 		if (skb->ip_summed == CHECKSUM_COMPLETE)
 			skb->csum = csum_add(skb->csum, csum_partial(skb->data
@@ -388,21 +486,14 @@ static int set_sctp(struct sk_buff *skb,
 	return 0;
 }
 
-static int do_output(struct datapath *dp, struct sk_buff *skb, int out_port)
+static void do_output(struct datapath *dp, struct sk_buff *skb, int out_port)
 {
-	struct vport *vport;
+	struct vport *vport = ovs_vport_rcu(dp, out_port);
 
-	if (unlikely(!skb))
-		return -ENOMEM;
-
-	vport = ovs_vport_rcu(dp, out_port);
-	if (unlikely(!vport)) {
+	if (likely(vport))
+		ovs_vport_send(vport, skb);
+	else
 		kfree_skb(skb);
-		return -ENODEV;
-	}
-
-	ovs_vport_send(vport, skb);
-	return 0;
 }
 
 static int output_userspace(struct datapath *dp, struct sk_buff *skb,
@@ -478,6 +569,9 @@ static int sample(struct datapath *dp, struct sk_buff *skb,
 		skb_get(skb);
 	} else {
 		sample_skb = skb_clone(skb, GFP_ATOMIC);
+		if (!sample_skb)
+			/* Skip the sample action when out of memory. */
+			return 0;
 	}
 
 	/* Note that do_execute_actions() never consumes skb.
@@ -545,6 +639,10 @@ static int execute_set_action(struct sk_buff *skb,
 	case OVS_KEY_ATTR_SCTP:
 		err = set_sctp(skb, nla_data(nested_attr));
 		break;
+
+	case OVS_KEY_ATTR_MPLS:
+		err = set_mpls(skb, nla_data(nested_attr));
+		break;
 	}
 
 	return err;
@@ -588,8 +686,12 @@ static int do_execute_actions(struct datapath *dp, struct sk_buff *skb,
 	     a = nla_next(a, &rem)) {
 		int err = 0;
 
-		if (prev_port != -1) {
-			do_output(dp, skb_clone(skb, GFP_ATOMIC), prev_port);
+		if (unlikely(prev_port != -1)) {
+			struct sk_buff *out_skb = skb_clone(skb, GFP_ATOMIC);
+
+			if (out_skb)
+				do_output(dp, out_skb, prev_port);
+
 			prev_port = -1;
 		}
 
@@ -606,6 +708,14 @@ static int do_execute_actions(struct datapath *dp, struct sk_buff *skb,
 			execute_hash(skb, a);
 			break;
 
+		case OVS_ACTION_ATTR_PUSH_MPLS:
+			err = push_mpls(skb, nla_data(a));
+			break;
+
+		case OVS_ACTION_ATTR_POP_MPLS:
+			err = pop_mpls(skb, nla_get_be16(a));
+			break;
+
 		case OVS_ACTION_ATTR_PUSH_VLAN:
 			err = push_vlan(skb, nla_data(a));
 			if (unlikely(err)) /* skb already freed. */
@@ -619,15 +729,17 @@ static int do_execute_actions(struct datapath *dp, struct sk_buff *skb,
 		case OVS_ACTION_ATTR_RECIRC: {
 			struct sk_buff *recirc_skb;
 
-			if (!last_action(a, rem))
-				recirc_skb = skb_clone(skb, GFP_ATOMIC);
-			else
-				recirc_skb = skb;
+			if (last_action(a, rem))
+				return execute_recirc(dp, skb, a);
 
-			err = execute_recirc(dp, recirc_skb, a);
+			/* Recirc action is the not the last action
+			 * of the action list. */
+			recirc_skb = skb_clone(skb, GFP_ATOMIC);
 
-			if (recirc_skb == skb)
-				return err;
+			/* Skip the recirc action when out of memory, but
+			 * continue on with the rest of the action list. */
+			if (recirc_skb)
+				err = execute_recirc(dp, recirc_skb, a);
 
 			break;
 		}

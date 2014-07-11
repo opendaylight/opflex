@@ -179,7 +179,7 @@ while :; do
     fi
     i=`expr $i + 1`
     if test $i = 50; then
-        AT_CHECK([:], [1])
+        AT_FAIL_IF([:])
     fi
     ovs-appctl time/warp 100
 done

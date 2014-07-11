@@ -32,6 +32,7 @@
 #include "coverage.h"
 #include "ovs-rcu.h"
 #include "ovs-thread.h"
+#include "socket-util.h"
 #include "vlog.h"
 #ifdef HAVE_PTHREAD_SET_NAME_NP
 #include <pthread_np.h>
@@ -42,7 +43,7 @@ VLOG_DEFINE_THIS_MODULE(util);
 COVERAGE_DEFINE(util_xalloc);
 
 /* argv[0] without directory names. */
-const char *program_name;
+char *program_name;
 
 /* Name for the currently running thread or process, for log messages, process
  * listings, and debuggers. */
@@ -454,25 +455,23 @@ void
 set_program_name__(const char *argv0, const char *version, const char *date,
                    const char *time)
 {
-#ifdef _WIN32
     char *basename;
+#ifdef _WIN32
     size_t max_len = strlen(argv0) + 1;
 
     SetErrorMode(GetErrorMode() | SEM_NOGPFAULTERRORBOX);
+    _set_output_format(_TWO_DIGIT_EXPONENT);
 
-    if (program_name) {
-        free(program_name);
-    }
     basename = xmalloc(max_len);
     _splitpath_s(argv0, NULL, 0, NULL, 0, basename, max_len, NULL, 0);
-    assert_single_threaded();
-    program_name = basename;
 #else
     const char *slash = strrchr(argv0, '/');
-    assert_single_threaded();
-    program_name = slash ? slash + 1 : argv0;
+    basename = xstrdup(slash ? slash + 1 : argv0);
 #endif
 
+    assert_single_threaded();
+    free(program_name);
+    program_name = basename;
     free(program_version);
 
     if (!strcmp(version, VERSION)) {
@@ -771,6 +770,7 @@ all_slashes_name(const char *s)
                    : ".");
 }
 
+#ifndef _WIN32
 /* Returns the directory name portion of 'file_name' as a malloc()'d string,
  * similar to the POSIX dirname() function but thread-safe. */
 char *
@@ -812,6 +812,7 @@ base_name(const char *file_name)
 
     return xmemdup0(file_name + start, end - start);
 }
+#endif /* _WIN32 */
 
 /* If 'file_name' starts with '/', returns a copy of 'file_name'.  Otherwise,
  * returns an absolute path to 'file_name' considering it relative to 'dir',
@@ -1802,5 +1803,15 @@ ftruncate(int fd, off_t length)
         return -1;
     }
     return 0;
+}
+
+OVS_CONSTRUCTOR(winsock_start) {
+    WSADATA wsaData;
+    int error;
+
+    error = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (error != 0) {
+        VLOG_FATAL("WSAStartup failed: %s", sock_strerror(sock_errno()));
+   }
 }
 #endif

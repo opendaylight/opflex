@@ -400,7 +400,6 @@ get_value(unsigned int *x, unsigned n_values)
 
 static void
 compare_classifiers(struct classifier *cls, struct tcls *tcls)
-    OVS_REQ_RDLOCK(cls->rwlock)
 {
     static const int confidence = 500;
     unsigned int i;
@@ -432,6 +431,9 @@ compare_classifiers(struct classifier *cls, struct tcls *tcls)
         flow.nw_proto = nw_proto_values[get_value(&x, N_NW_PROTO_VALUES)];
         flow.nw_tos = nw_dscp_values[get_value(&x, N_NW_DSCP_VALUES)];
 
+        /* This assertion is here to suppress a GCC 4.9 array-bounds warning */
+        ovs_assert(cls->cls->n_tries <= CLS_MAX_TRIES);
+
         cr0 = classifier_lookup(cls, &flow, &wc);
         cr1 = tcls_lookup(tcls, &flow);
         assert((cr0 == NULL) == (cr1 == NULL));
@@ -451,39 +453,105 @@ static void
 destroy_classifier(struct classifier *cls)
 {
     struct test_rule *rule, *next_rule;
-    struct cls_cursor cursor;
 
-    fat_rwlock_wrlock(&cls->rwlock);
-    cls_cursor_init(&cursor, cls, NULL);
-    CLS_CURSOR_FOR_EACH_SAFE (rule, next_rule, cls_rule, &cursor) {
+    CLS_FOR_EACH_SAFE (rule, next_rule, cls_rule, cls) {
         classifier_remove(cls, &rule->cls_rule);
         free_rule(rule);
     }
-    fat_rwlock_unlock(&cls->rwlock);
     classifier_destroy(cls);
 }
 
 static void
+pvector_verify(struct pvector *pvec)
+{
+    void *ptr OVS_UNUSED;
+    unsigned int priority, prev_priority = UINT_MAX;
+
+    PVECTOR_FOR_EACH (ptr, pvec) {
+        priority = cursor__.vector[cursor__.entry_idx].priority;
+        if (priority > prev_priority) {
+            VLOG_ABORT("Priority vector is out of order (%u > %u)",
+                       priority, prev_priority);
+        }
+        prev_priority = priority;
+    }
+}
+
+static unsigned int
+trie_verify(const rcu_trie_ptr *trie, unsigned int ofs, unsigned int n_bits)
+{
+    const struct trie_node *node = ovsrcu_get(struct trie_node *, trie);
+
+    if (node) {
+        assert(node->n_rules == 0 || node->n_bits > 0);
+        ofs += node->n_bits;
+        assert((ofs > 0 || (ofs == 0 && node->n_bits == 0)) && ofs <= n_bits);
+
+        return node->n_rules
+            + trie_verify(&node->edges[0], ofs, n_bits)
+            + trie_verify(&node->edges[1], ofs, n_bits);
+    }
+    return 0;
+}
+
+static void
+verify_tries(struct classifier *cls_)
+{
+    struct cls_classifier *cls = cls_->cls;
+    unsigned int n_rules = 0;
+    int i;
+
+    for (i = 0; i < cls->n_tries; i++) {
+        n_rules += trie_verify(&cls->tries[i].root, 0,
+                               cls->tries[i].field->n_bits);
+    }
+    ovs_mutex_lock(&cls->mutex);
+    assert(n_rules <= cls->n_rules);
+    ovs_mutex_unlock(&cls->mutex);
+}
+
+static void
 check_tables(const struct classifier *cls, int n_tables, int n_rules,
-             int n_dups) OVS_REQ_RDLOCK(cls->rwlock)
+             int n_dups)
 {
     const struct cls_subtable *table;
     struct test_rule *test_rule;
-    struct cls_cursor cursor;
     int found_tables = 0;
     int found_rules = 0;
     int found_dups = 0;
     int found_rules2 = 0;
 
-    HMAP_FOR_EACH (table, hmap_node, &cls->cls->subtables_map) {
+    pvector_verify(&cls->cls->subtables);
+    CMAP_FOR_EACH (table, cmap_node, &cls->cls->subtables_map) {
         const struct cls_match *head;
         unsigned int max_priority = 0;
         unsigned int max_count = 0;
+        bool found = false;
+        const struct cls_subtable *iter;
 
-        assert(!hmap_is_empty(&table->rules));
+        /* Locate the subtable from 'subtables'. */
+        PVECTOR_FOR_EACH (iter, &cls->cls->subtables) {
+            if (iter == table) {
+                if (found) {
+                    VLOG_ABORT("Subtable %p duplicated in 'subtables'.",
+                               table);
+                }
+                found = true;
+            }
+        }
+        if (!found) {
+            VLOG_ABORT("Subtable %p not found from 'subtables'.", table);
+        }
+
+        assert(!cmap_is_empty(&table->rules));
+
+        ovs_mutex_lock(&cls->cls->mutex);
+        assert(trie_verify(&table->ports_trie, 0, table->ports_mask_len)
+               == (table->ports_mask_len ? table->n_rules : 0));
+        ovs_mutex_unlock(&cls->cls->mutex);
 
         found_tables++;
-        HMAP_FOR_EACH (head, hmap_node, &table->rules) {
+        CMAP_FOR_EACH (head, cmap_node, &table->rules) {
             unsigned int prev_priority = UINT_MAX;
             const struct cls_match *rule;
 
@@ -495,6 +563,7 @@ check_tables(const struct classifier *cls, int n_tables, int n_rules,
             }
 
             found_rules++;
+            ovs_mutex_lock(&cls->cls->mutex);
             LIST_FOR_EACH (rule, list, &head->list) {
                 assert(rule->priority < prev_priority);
                 assert(rule->priority <= table->max_priority);
@@ -502,21 +571,26 @@ check_tables(const struct classifier *cls, int n_tables, int n_rules,
                 prev_priority = rule->priority;
                 found_rules++;
                 found_dups++;
+                ovs_mutex_unlock(&cls->cls->mutex);
                 assert(classifier_find_rule_exactly(cls, rule->cls_rule)
                        == rule->cls_rule);
+                ovs_mutex_lock(&cls->cls->mutex);
             }
+            ovs_mutex_unlock(&cls->cls->mutex);
         }
+        ovs_mutex_lock(&cls->cls->mutex);
         assert(table->max_priority == max_priority);
         assert(table->max_count == max_count);
+        ovs_mutex_unlock(&cls->cls->mutex);
     }
 
-    assert(found_tables == hmap_count(&cls->cls->subtables_map));
-    assert(n_tables == -1 || n_tables == hmap_count(&cls->cls->subtables_map));
+    assert(found_tables == cmap_count(&cls->cls->subtables_map));
+    assert(found_tables == pvector_count(&cls->cls->subtables));
+    assert(n_tables == -1 || n_tables == cmap_count(&cls->cls->subtables_map));
     assert(n_rules == -1 || found_rules == n_rules);
     assert(n_dups == -1 || found_dups == n_dups);
 
-    cls_cursor_init(&cursor, cls, NULL);
-    CLS_CURSOR_FOR_EACH (test_rule, cls_rule, &cursor) {
+    CLS_FOR_EACH (test_rule, cls_rule, cls) {
         found_rules2++;
     }
     assert(found_rules == found_rules2);
@@ -618,6 +692,14 @@ static enum mf_field_id trie_fields[2] = {
     MFF_IPV4_DST, MFF_IPV4_SRC
 };
 
+static void
+set_prefix_fields(struct classifier *cls)
+{
+    verify_tries(cls);
+    classifier_set_prefix_fields(cls, trie_fields, ARRAY_SIZE(trie_fields));
+    verify_tries(cls);
+}
+
 /* Tests an empty classifier. */
 static void
 test_empty(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
@@ -626,13 +708,11 @@ test_empty(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
     struct tcls tcls;
 
     classifier_init(&cls, flow_segment_u32s);
-    fat_rwlock_wrlock(&cls.rwlock);
-    classifier_set_prefix_fields(&cls, trie_fields, ARRAY_SIZE(trie_fields));
+    set_prefix_fields(&cls);
     tcls_init(&tcls);
     assert(classifier_is_empty(&cls));
     assert(tcls_is_empty(&tcls));
     compare_classifiers(&cls, &tcls);
-    fat_rwlock_unlock(&cls.rwlock);
     classifier_destroy(&cls);
     tcls_destroy(&tcls);
 }
@@ -659,15 +739,13 @@ test_single_rule(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
                          hash_bytes(&wc_fields, sizeof wc_fields, 0), 0);
 
         classifier_init(&cls, flow_segment_u32s);
-        fat_rwlock_wrlock(&cls.rwlock);
-        classifier_set_prefix_fields(&cls, trie_fields,
-                                     ARRAY_SIZE(trie_fields));
+        set_prefix_fields(&cls);
         tcls_init(&tcls);
 
         tcls_rule = tcls_insert(&tcls, rule);
         classifier_insert(&cls, &rule->cls_rule);
-        check_tables(&cls, 1, 1, 0);
         compare_classifiers(&cls, &tcls);
+        check_tables(&cls, 1, 1, 0);
 
         classifier_remove(&cls, &rule->cls_rule);
         tcls_remove(&tcls, tcls_rule);
@@ -676,7 +754,6 @@ test_single_rule(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
         compare_classifiers(&cls, &tcls);
 
         free_rule(rule);
-        fat_rwlock_unlock(&cls.rwlock);
         classifier_destroy(&cls);
         tcls_destroy(&tcls);
     }
@@ -700,25 +777,24 @@ test_rule_replacement(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
         rule2->aux += 5;
 
         classifier_init(&cls, flow_segment_u32s);
-        fat_rwlock_wrlock(&cls.rwlock);
-        classifier_set_prefix_fields(&cls, trie_fields,
-                                     ARRAY_SIZE(trie_fields));
+        set_prefix_fields(&cls);
         tcls_init(&tcls);
         tcls_insert(&tcls, rule1);
         classifier_insert(&cls, &rule1->cls_rule);
-        check_tables(&cls, 1, 1, 0);
         compare_classifiers(&cls, &tcls);
+        check_tables(&cls, 1, 1, 0);
         tcls_destroy(&tcls);
 
         tcls_init(&tcls);
         tcls_insert(&tcls, rule2);
+
         assert(test_rule_from_cls_rule(
                    classifier_replace(&cls, &rule2->cls_rule)) == rule1);
         free_rule(rule1);
-        check_tables(&cls, 1, 1, 0);
         compare_classifiers(&cls, &tcls);
+        check_tables(&cls, 1, 1, 0);
+
         tcls_destroy(&tcls);
-        fat_rwlock_unlock(&cls.rwlock);
         destroy_classifier(&cls);
     }
 }
@@ -814,9 +890,7 @@ test_many_rules_in_one_list (int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
             }
 
             classifier_init(&cls, flow_segment_u32s);
-            fat_rwlock_wrlock(&cls.rwlock);
-            classifier_set_prefix_fields(&cls, trie_fields,
-                                         ARRAY_SIZE(trie_fields));
+            set_prefix_fields(&cls);
             tcls_init(&tcls);
 
             for (i = 0; i < ARRAY_SIZE(ops); i++) {
@@ -845,14 +919,13 @@ test_many_rules_in_one_list (int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
                     tcls_rules[j] = NULL;
                     pri_rules[pris[j]] = -1;
                 }
+                compare_classifiers(&cls, &tcls);
 
                 n = 0;
                 for (m = 0; m < N_RULES; m++) {
                     n += tcls_rules[m] != NULL;
                 }
                 check_tables(&cls, n > 0, n, n - 1);
-
-                compare_classifiers(&cls, &tcls);
             }
 
             for (i = 0; i < N_RULES; i++) {
@@ -861,8 +934,6 @@ test_many_rules_in_one_list (int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
                 }
                 free_rule(rules[i]);
             }
-
-            fat_rwlock_unlock(&cls.rwlock);
             classifier_destroy(&cls);
             tcls_destroy(&tcls);
         } while (next_permutation(ops, ARRAY_SIZE(ops)));
@@ -921,9 +992,7 @@ test_many_rules_in_one_table(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
         } while ((1 << count_ones(value_mask)) < N_RULES);
 
         classifier_init(&cls, flow_segment_u32s);
-        fat_rwlock_wrlock(&cls.rwlock);
-        classifier_set_prefix_fields(&cls, trie_fields,
-                                     ARRAY_SIZE(trie_fields));
+        set_prefix_fields(&cls);
         tcls_init(&tcls);
 
         for (i = 0; i < N_RULES; i++) {
@@ -935,22 +1004,22 @@ test_many_rules_in_one_table(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
 
             rules[i] = make_rule(wcf, priority, value_pats[i]);
             tcls_rules[i] = tcls_insert(&tcls, rules[i]);
+
             classifier_insert(&cls, &rules[i]->cls_rule);
+            compare_classifiers(&cls, &tcls);
 
             check_tables(&cls, 1, i + 1, 0);
-            compare_classifiers(&cls, &tcls);
         }
 
         for (i = 0; i < N_RULES; i++) {
             tcls_remove(&tcls, tcls_rules[i]);
             classifier_remove(&cls, &rules[i]->cls_rule);
+            compare_classifiers(&cls, &tcls);
             free_rule(rules[i]);
 
             check_tables(&cls, i < N_RULES - 1, N_RULES - (i + 1), 0);
-            compare_classifiers(&cls, &tcls);
         }
 
-        fat_rwlock_unlock(&cls.rwlock);
         classifier_destroy(&cls);
         tcls_destroy(&tcls);
     }
@@ -985,9 +1054,7 @@ test_many_rules_in_n_tables(int n_tables)
         shuffle(priorities, ARRAY_SIZE(priorities));
 
         classifier_init(&cls, flow_segment_u32s);
-        fat_rwlock_wrlock(&cls.rwlock);
-        classifier_set_prefix_fields(&cls, trie_fields,
-                                     ARRAY_SIZE(trie_fields));
+        set_prefix_fields(&cls);
         tcls_init(&tcls);
 
         for (i = 0; i < MAX_RULES; i++) {
@@ -998,29 +1065,28 @@ test_many_rules_in_n_tables(int n_tables)
             rule = make_rule(wcf, priority, value_pat);
             tcls_insert(&tcls, rule);
             classifier_insert(&cls, &rule->cls_rule);
-            check_tables(&cls, -1, i + 1, -1);
             compare_classifiers(&cls, &tcls);
+            check_tables(&cls, -1, i + 1, -1);
         }
 
         while (!classifier_is_empty(&cls)) {
             struct test_rule *rule, *next_rule;
             struct test_rule *target;
-            struct cls_cursor cursor;
 
             target = clone_rule(tcls.rules[random_range(tcls.n_rules)]);
 
-            cls_cursor_init(&cursor, &cls, &target->cls_rule);
-            CLS_CURSOR_FOR_EACH_SAFE (rule, next_rule, cls_rule, &cursor) {
+            CLS_FOR_EACH_TARGET_SAFE (rule, next_rule, cls_rule, &cls,
+                                      &target->cls_rule) {
                 classifier_remove(&cls, &rule->cls_rule);
                 free_rule(rule);
             }
+
             tcls_delete_matches(&tcls, &target->cls_rule);
             compare_classifiers(&cls, &tcls);
             check_tables(&cls, -1, -1, -1);
             free_rule(target);
         }
 
-        fat_rwlock_unlock(&cls.rwlock);
         destroy_classifier(&cls);
         tcls_destroy(&tcls);
     }

@@ -18,13 +18,7 @@ AT_TESTED([ovs-vswitchd])
 AT_TESTED([ovs-vsctl])
 AT_TESTED([perl])
 
-m4_ifndef([AT_CHECK_UNQUOTED],
- [m4_copy([AT_CHECK_NOESCAPE], [AT_CHECK_UNQUOTED])])
-
-m4_ifndef([AT_SKIP_IF],
-  [m4_define([AT_SKIP_IF],
-    [AT_CHECK([($1) \
-    && exit 77 || exit 0], [0], [ignore], [ignore])])])
+m4_include([m4/compat.at])
 
 m4_divert_push([PREPARE_TESTS])
 [

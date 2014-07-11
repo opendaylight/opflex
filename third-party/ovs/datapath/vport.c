@@ -32,6 +32,7 @@
 #include <net/net_namespace.h>
 
 #include "datapath.h"
+#include "gso.h"
 #include "vport.h"
 #include "vport-internal_dev.h"
 
@@ -310,9 +311,9 @@ void ovs_vport_get_stats(struct vport *vport, struct ovs_vport_stats *stats)
 		percpu_stats = per_cpu_ptr(vport->percpu_stats, i);
 
 		do {
-			start = u64_stats_fetch_begin_bh(&percpu_stats->syncp);
+			start = u64_stats_fetch_begin_irq(&percpu_stats->syncp);
 			local_stats = *percpu_stats;
-		} while (u64_stats_fetch_retry_bh(&percpu_stats->syncp, start));
+		} while (u64_stats_fetch_retry_irq(&percpu_stats->syncp, start));
 
 		stats->rx_bytes		+= local_stats.rx_bytes;
 		stats->rx_packets	+= local_stats.rx_packets;
@@ -478,8 +479,10 @@ void ovs_vport_receive(struct vport *vport, struct sk_buff *skb,
 	stats->rx_bytes += skb->len;
 	u64_stats_update_end(&stats->syncp);
 
+	ovs_skb_init_inner_protocol(skb);
 	OVS_CB(skb)->tun_info = tun_info;
-	ovs_dp_process_received_packet(vport, skb);
+	OVS_CB(skb)->input_vport = vport;
+	ovs_dp_process_received_packet(skb);
 }
 
 /**
