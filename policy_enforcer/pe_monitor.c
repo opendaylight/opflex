@@ -90,9 +90,11 @@ pe_get_monitor_quit(void);
 
 /* routines */
 
-void pe_monitor_init() {
+/* This function must be called as a thread as it will block on a cond variable */
+void *pe_monitor_init(void *arg) {
     static char *mod = "pe_monitor_init";
     pthread_t ovsdb_monitor;
+    pe_monitor_thread_mgmt_t *tm = (pe_monitor_thread_mgmt_t *) arg;
 
     VLOG_ENTER(mod);
 
@@ -106,10 +108,17 @@ void pe_monitor_init() {
      * cancelling of this thread because the monitor will only
      * terminate if it gets a message and pe_get_monitor_quit()
      * returns true */
+
+    xpthread_mutex_lock(tm->lock);
+    ovs_mutex_cond_wait(tm->quit_notice, tm->lock);
+    xpthread_mutex_unlock(tm->lock);
+
+    pthread_cancel(ovsdb_monitor);
+
     pag_pthread_join(ovsdb_monitor,(void **) NULL); 
 
     VLOG_LEAVE(mod);
-
+    pthread_exit(NULL);
 }
 
 void pe_ovsdb_monitor(void *arg) {
@@ -200,7 +209,8 @@ void pe_ovsdb_monitor(void *arg) {
                        && json_equal(msg->id, request_id)) {
                 VLOG_INFO("Message received: %s\n",
                           (json_string = json_to_string(msg->result,
-                                                       JSSF_PRETTY)));
+                                                        0)));
+                                                    // JSSF_PRETTY)));
                 //TODO: this data will have to be checked and pushed up
                 //      not just printed
             } else if (msg->type == JSONRPC_NOTIFY
@@ -212,7 +222,8 @@ void pe_ovsdb_monitor(void *arg) {
                     VLOG_INFO("Message received: %s\n",
                               (json_string =
                                 json_to_string(params->u.array.elems[1],
-                                               JSSF_PRETTY)));
+                                               0)));
+                                             //JSSF_PRETTY)));
                 //TODO: this data will have to be checked and pushed up
                 //      not just printed
                 }
@@ -473,10 +484,11 @@ pe_get_monitor_quit() {
 }
 
 void
-pe_set_monitor_quit(bool bval) {
+pe_set_monitor_quit(bool nval) {
     
     ovs_rwlock_wrlock(&pe_monitor_rwlock);
-    pe_monitor_quit = bval;
+    pe_monitor_quit = nval;
+    fprintf(stderr,"New value in %s is %d\n",__func__,pe_monitor_quit);
     ovs_rwlock_unlock(&pe_monitor_rwlock);
 
 }

@@ -23,29 +23,41 @@ VLOG_DEFINE_THIS_MODULE(test_pe_monitor);
 
 static void rt_pe_monitor(void **state) {
     (void) state;
+    const char *logfile = "/var/log/openvswitch/pe_monitor.log";
     uid_t myuid;
     pthread_t monitor;
+    struct ovs_mutex lock;
+    pthread_cond_t quit_notice;
+    pe_monitor_thread_mgmt_t arg;
     struct stat *stbuf;
     int stat_retval = 0;
     int err_no = 0;
+
+    if (vlog_set_log_file(logfile) != 0)
+        VLOG_ERR("Cannot open %s\n",logfile);
 
     VLOG_ENTER(__func__);
 
     stbuf = xzalloc(sizeof(struct stat));
 
+    ovs_mutex_init(&lock);
+    xpthread_cond_init(&quit_notice, NULL);
+    arg.lock = &lock;
+    arg.quit_notice = &quit_notice;
+ 
     stat_retval = stat(PE_OVSDB_SOCK_PATH, stbuf);
     err_no = errno;
 
     if (stat_retval == 0) {
-         /* sets up the monitor */
-//         pag_pthread_create(&monitor,NULL,test_monitor_init,NULL);
+        /* sets up the monitor */
         if(stbuf->st_uid == (myuid = geteuid())) {
-            pe_monitor_init();
+            pag_pthread_create(&monitor,NULL,pe_monitor_init,(void *) &arg);
             VLOG_INFO("Monitor started.");
             sleep(3);
             pe_set_monitor_quit(true);
-            sleep(2);
-//         xpthread_join(monitor,NULL);
+            xpthread_cond_signal(&quit_notice);
+            sleep(1);
+            pag_pthread_join(monitor,NULL);
         } else {
             VLOG_WARN("Test must run with same uid as OVS, but"
                       " OVS is running as uid=%i and this uid=%i",
@@ -61,7 +73,7 @@ static void rt_pe_monitor(void **state) {
 //    assert_int_equal(push_thread_counter, PE_TEST_PRODUCER_THREADS);
     VLOG_LEAVE(__func__);
 }
-
+/*
 void *test_monitor_init(void *input) {
     (void) input;
 
@@ -75,6 +87,7 @@ void *test_monitor_init(void *input) {
 
     pthread_exit(NULL);
 }
+*/
 
 int main(void) {
     const UnitTest tests[] = {

@@ -51,7 +51,7 @@ struct _pe_command_node {
 };
 
 struct _pe_command_results {
-    uint32_t retcode;
+    int32_t retcode;
     int err_no;
     pe_command_node_t *cmd_ptr;
     pe_command_results_t *next;

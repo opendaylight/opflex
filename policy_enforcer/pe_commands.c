@@ -25,7 +25,7 @@
 
 VLOG_DEFINE_THIS_MODULE(pe_commands);
 
-#define PE_OVS_BAD_COMMAND 256 /* Greater than 255, largest shell exit code */
+#define PE_OVS_BAD_COMMAND -256 /* Different that standard shell exit code */
 #define PE_OVS_MAX_COMMAND_SIZE 1024
 #define PE_OVS_MAX_RESPONSE_SIZE 1024
 static const char *PE_FILENAME_SEPARATOR="/";
@@ -119,6 +119,13 @@ pe_command_list_processor(pe_command_node_t *list, uint32_t count) {
             VLOG_DBG("Current pointer at %i in group %i command %i\n",
                        current->cmd_id, current->group_id, current->cmd);
 
+            /* current->cmd must be valid */
+            if ((current->cmd < 0) || (current->cmd > PE_OVS_COMMAND_TOTAL)) {
+                result->retcode = PE_OVS_BAD_COMMAND;
+                current = current->next;
+                continue;
+            }
+
             if ((command[total_count] = pe_ovs_build_command(current->cmd,
                                  current->nr_args, current->v_args,
                                  current->nr_opts, current->v_opts))
@@ -146,7 +153,7 @@ pe_command_list_processor(pe_command_node_t *list, uint32_t count) {
                 good_count++;
             } else {
                 fail_count++;
-                //check dependencies and fail them
+                //check dependencies and fail them, too (optimize)
             }
             current = current->next;
             total_count++;
@@ -171,7 +178,7 @@ pe_ovs_build_command(pe_ovs_command_t cmd,
     int rval = 0;
 
 //  Uncomment next line to turn on debugging
-//    vlog_set_levels(vlog_module_from_name("pe_commands"), -1, VLL_DBG);
+    vlog_set_levels(vlog_module_from_name("pe_commands"), -1, VLL_DBG);
 
     VLOG_ENTER(__func__);
 
@@ -223,11 +230,18 @@ pe_ovs_build_command(pe_ovs_command_t cmd,
         
             /* add options to command */
             for (count = 0; count < nr_opts; count++) {
-                str_size += (strlen(PE_SINGLE_SPACE) +
-                             strlen(v_opts[count]));
-                dest = xrealloc(dest,str_size);
-                strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
-                strncat(dest, v_opts[count], strlen(v_opts[count]));
+                if(v_opts[count] != NULL) {
+                    str_size += (strlen(PE_SINGLE_SPACE) +
+                                 strlen(v_opts[count]));
+                    dest = xrealloc(dest,str_size);
+                    strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
+                    strncat(dest, v_opts[count], strlen(v_opts[count]));
+                } else {
+                    VLOG_ERR("Expecting non-null option while"
+                             "building %s\n", dest); 
+                    dest = NULL;
+                    goto done_due_to_error;
+                }
             }
 
             VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
@@ -247,11 +261,18 @@ pe_ovs_build_command(pe_ovs_command_t cmd,
 
             /* add arguments to subcommand */
             for (count = 0; count < nr_args; count++) {
-                str_size += (strlen(PE_SINGLE_SPACE) +
-                             strlen(v_args[count]));
-                dest = xrealloc(dest,str_size);
-                strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
-                strncat(dest, v_args[count], strlen(v_args[count]));
+                if(v_args[count] != NULL) {
+                    str_size += (strlen(PE_SINGLE_SPACE) +
+                                 strlen(v_args[count]));
+                    dest = xrealloc(dest,str_size);
+                    strncat(dest, PE_SINGLE_SPACE, strlen(PE_SINGLE_SPACE));
+                    strncat(dest, v_args[count], strlen(v_args[count]));
+                } else {
+                    VLOG_ERR("Expecting non-null argument while"
+                             "building %s\n", dest); 
+                    dest = NULL;
+                    goto done_due_to_error;
+                }
             }
 
             VLOG_DBG("dest/size \"%s\"/%d str_size %d\n",
@@ -264,6 +285,7 @@ pe_ovs_build_command(pe_ovs_command_t cmd,
                        dest, strlen(dest), str_size);
         }
     }
+done_due_to_error:
     VLOG_LEAVE(__func__);
     return(dest);
 }

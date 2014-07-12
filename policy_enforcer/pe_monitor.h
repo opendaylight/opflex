@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include "ovsdb/table.h"
 #include "column.h"
+#include "ovs-thread.h"
 
 /* need to variablize PE_OVSDB_* below */
 #define PE_OVSDB_SOCK "unix:/var/run/openvswitch/db.sock" /* TODO: replace with */
@@ -24,8 +25,14 @@ struct monitored_table {
     struct ovsdb_column_set columns;
 };
 
+typedef struct _pe_monitor_thread_mgmt pe_monitor_thread_mgmt_t;
+
+struct _pe_monitor_thread_mgmt {
+    struct ovs_mutex *lock;
+    pthread_cond_t *quit_notice;
+};
 
 void pe_set_monitor_quit(bool);
-void pe_monitor_init(void);
+void *pe_monitor_init(void *);
 
 #endif //PE_MONITOR_H
