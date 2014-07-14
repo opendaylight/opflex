@@ -573,6 +573,7 @@ static int modb_event_send(modb_event_p evtp, size_t evtp_sz)
     static char *mod = "modb_event_push";
     int retc = 0;
     int i;
+    bool override_filters = false;
     subscriber_p sp;
     
     ENTER(mod);
@@ -585,10 +586,12 @@ static int modb_event_send(modb_event_p evtp, size_t evtp_sz)
              * which slot(s) will the event. In the case of MEVT_TYPE_ANY & 
              * MEVT_TYPE_DESTROY, all occupied slot(s) get the event.
              */
-            if ( ((sp->evt_type & evtp->etype) && 
-                  (sp->evt_source & evtp->esrc)) ||
-                 (sp->evt_type & MEVT_TYPE_DESTROY) ||
-                 (sp->evt_type == MEVT_TYPE_ANY) ) {
+            if ((evtp->etype & MEVT_TYPE_DESTROY) ||
+                (sp->evt_type == MEVT_TYPE_ANY) ) {
+                override_filters = true;
+            }
+            if ((sp->evt_type & evtp->etype) && 
+                (sp->evt_source & evtp->esrc) || override_filters) {
                 ovs_mutex_lock(&sp->mutex);
                 VLOG_DBG("%s: xzalloc: %d", mod, evtp_sz);
                 sp->evtp = xzalloc(evtp_sz);
