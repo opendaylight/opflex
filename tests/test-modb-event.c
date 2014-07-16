@@ -48,13 +48,13 @@ static const char *debug_level;
 
 #define THREAD_WAIT 400000
 
-static pthread_mutex_t upd_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t del_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t ins_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* static pthread_mutex_t upd_mutex = PTHREAD_MUTEX_INITIALIZER; */
+/* static pthread_mutex_t del_mutex = PTHREAD_MUTEX_INITIALIZER; */
+/* static pthread_mutex_t ins_mutex = PTHREAD_MUTEX_INITIALIZER; */
 
-static unsigned long upd_counter;
-static unsigned long del_counter;
-static unsigned long ins_counter;
+/* static unsigned long upd_counter; */
+/* static unsigned long del_counter; */
+/* static unsigned long ins_counter; */
 
 
 /* ---------------------------------------------------------------------------
@@ -69,7 +69,6 @@ static void test_setup(void)
         conf_load(test_conf_fname);
     }
     conf_dump(stdout);
-    assert_false(modb_initialize());
 
 }
 
@@ -86,121 +85,6 @@ static void thread_delay(int timev)
     /* printf("============= thread_delay: %d ======================\n", timev); */
     nanosleep(&wts, &tem);
     modb_event_is_all_read();
-}
-
-/*----------------------------------------------------------------------------
- * unittests.
- */
-static void test_modb_event_initialize(void **state)
-{
-    (void) state;
-    assert_false(modb_event_initialize());
-    assert_false(modb_event_destroy());
-}
-
-static void test_modb_event_subscribe(void **state)
-{
-    (void) state;
-
-    assert_false(modb_event_initialize());
-    assert_return_code(modb_event_subscribe(MEVT_TYPE_ANY, MEVT_SRC_ANY), 0);
-    modb_event_dump();
-    assert_return_code(modb_event_unsubscribe(MEVT_TYPE_ANY, MEVT_SRC_ANY), 0);
-    assert_false(modb_event_destroy());
-    modb_cleanup();
-}
-
-static void test_modb_event_subscribe_no_unsubscribe(void **state)
-{
-    (void) state;
-
-    assert_false(modb_event_initialize());
-    assert_return_code(modb_event_subscribe(MEVT_TYPE_ANY, MEVT_SRC_ANY), 0);
-    modb_event_dump();
-    assert_false(modb_event_destroy());
-    modb_cleanup();
-}
-
-static void test_modb_event_etype_to_string( void **state)
-{
-    char *etype_string;
-    (void) state;
-
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_NOP);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_INS);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_DEL);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_UPD);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_INS | MEVT_TYPE_DEL);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_DESTROY);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_TEST);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_ANY);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    etype_string = modb_event_etype_to_string(MEVT_TYPE_INS | MEVT_TYPE_DESTROY | MEVT_TYPE_UPD);
-    printf("etype_string=%s\n", etype_string); 
-    free(etype_string);
-    
-}
-static pthread_attr_t wc_attr;
-
-static void test_modb_event_subscribers(void **state)
-{
-#define NUM_SUBSCRIBERS 9
-    int i;
-    pthread_t tid[NUM_SUBSCRIBERS];
-    unsigned int filter_type = MEVT_TYPE_ANY;
-    (void) state;
-    node_ele_p ndp[5] = {0};
-    node_ele_t node;
-    char tname[64];
-    int *retval;
-    int retc;
-
-    assert_false(modb_event_initialize());
-
-    for (i=0; i < NUM_SUBSCRIBERS; i++) {
-        /* Create the subscribers */
-        bzero(&tname, 64);
-        sprintf(tname, "thread-%d", i);
-        retc = pthread_attr_init(&wc_attr);
-        retc = pthread_attr_setdetachstate(&wc_attr,
-                                           PTHREAD_CREATE_JOINABLE);
-        pthread_create(&tid[i], NULL, subscriber_thread1, &filter_type);
-        printf("test_modb_event_subscribers: thread:%lu started\n", tid[i]);
-    }
-
-    while (modb_event_subscribers() != NUM_SUBSCRIBERS)
-        thread_delay(0);
-
-    ndp[0] = &node;
-    assert_return_code(modb_event_push(MEVT_TYPE_TEST, MEVT_SRC_INTERNAL,
-                                      MEVT_OBJ_NODE, 1, (void **)ndp), 0);
-
-    thread_delay(1);
-    assert_return_code(modb_event_push(MEVT_TYPE_DESTROY, MEVT_SRC_INTERNAL,
-                                      MEVT_OBJ_NODE, 1, (void *)&node), 0);
-
-    for (i=0; i < NUM_SUBSCRIBERS; i++) {
-        pthread_join(tid[i], &retval);
-        printf("pthread_join:%lu\n", tid[i]);
-    }
-
-    assert_false(modb_event_destroy());
-    modb_cleanup();
 }
 
 static void *subscriber_thread1(void *arg)
@@ -247,73 +131,6 @@ static void *subscriber_thread1(void *arg)
     pthread_exit(&retc);
     return(NULL);
 } 
-
-static void test_modb_event_subscribers_filters(void **state)
-{
-#define NUM_SUBSCRIBERS_2 3
-    int i;
-    pthread_t tid[NUM_SUBSCRIBERS_2];
-    unsigned int filter_type = MEVT_TYPE_ANY;
-    (void) state;
-    node_ele_p ndp[5] = {0};
-    node_ele_t node;
-    int *retval;
-    int retc;
-    bool all_threads_active = false;
-    int act_thr;
-
-    assert_false(modb_event_initialize());
-
-    /* Create the subscribers */
-    retc = pthread_attr_init(&wc_attr);
-    retc = pthread_attr_setdetachstate(&wc_attr,
-                                       PTHREAD_CREATE_JOINABLE);
-    pthread_create(&tid[i++], NULL, subscriber_thread_upd, &filter_type);
-    pthread_create(&tid[i++], NULL, subscriber_thread_del, &filter_type);
-    pthread_create(&tid[i++], NULL, subscriber_thread_ins, &filter_type);
-
-
-    for (all_threads_active = false; all_threads_active == false; ) {
-        act_thr = modb_event_subscribers();
-        if (act_thr == NUM_SUBSCRIBERS_2) {
-            all_threads_active = true;
-        }
-        else {
-            thread_delay(0);
-        }
-    }
-
-    ndp[0] = &node;
-
-    /* events */
-    assert_return_code(modb_event_push(MEVT_TYPE_INS, MEVT_SRC_NORTH,
-                                      MEVT_OBJ_NODE, 1, (void **)ndp), 0);
-
-    thread_delay(0);
-    assert_return_code(modb_event_push(MEVT_TYPE_UPD, MEVT_SRC_NORTH,
-                                      MEVT_OBJ_NODE, 1, (void **)ndp), 0);
-
-    thread_delay(0);
-    assert_return_code(modb_event_push(MEVT_TYPE_DEL, MEVT_SRC_NORTH,
-                                      MEVT_OBJ_NODE, 1, (void **)ndp), 0);
-
-    thread_delay(1);
-
-
-    /* Destroy the eventing system */
-    assert_return_code(modb_event_push(MEVT_TYPE_DESTROY, MEVT_SRC_INTERNAL,
-                                      MEVT_OBJ_NODE, 1, (void *)&node), 0);
-
-    thread_delay(1);
-
-    for (i=0; i < NUM_SUBSCRIBERS_2; i++) {
-        pthread_join(tid[i], &retval);
-        printf("pthread_join:%lu\n", tid[i]);
-    }
-
-    assert_false(modb_event_destroy());
-    modb_cleanup();
-}
 
 static void *subscriber_thread_upd(void *arg)
 {
@@ -438,6 +255,185 @@ static char *mevt_obj_to_string(int otype)
     };
     return(mevt_obj_lookup[otype]);
 }
+
+/*----------------------------------------------------------------------------
+ * unittests.
+ */
+static void test_modb_event_initialize(void **state)
+{
+    (void) state;
+    assert_false(modb_initialize());
+    modb_cleanup();
+}
+
+static void test_modb_event_subscribe(void **state)
+{
+    (void) state;
+
+    assert_false(modb_initialize());
+    assert_return_code(modb_event_subscribe(MEVT_TYPE_ANY, MEVT_SRC_ANY), 0);
+    modb_event_dump();
+    assert_return_code(modb_event_unsubscribe(MEVT_TYPE_ANY, MEVT_SRC_ANY), 0);
+    modb_cleanup();
+}
+
+static void test_modb_event_subscribe_no_unsubscribe(void **state)
+{
+    (void) state;
+
+    assert_false(modb_initialize());
+    assert_return_code(modb_event_subscribe(MEVT_TYPE_ANY, MEVT_SRC_ANY), 0);
+    modb_event_dump();
+    modb_cleanup();
+}
+
+static void test_modb_event_etype_to_string( void **state)
+{
+    char *etype_string;
+    (void) state;
+
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_NOP);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_INS);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_DEL);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_UPD);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_INS | MEVT_TYPE_DEL);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_DESTROY);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_TEST);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_ANY);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    etype_string = modb_event_etype_to_string(MEVT_TYPE_INS | MEVT_TYPE_DESTROY | MEVT_TYPE_UPD);
+    printf("etype_string=%s\n", etype_string); 
+    free(etype_string);
+    
+}
+static pthread_attr_t wc_attr;
+
+static void test_modb_event_subscribers(void **state)
+{
+#define NUM_SUBSCRIBERS 9
+    int i;
+    pthread_t tid[NUM_SUBSCRIBERS];
+    unsigned int filter_type = MEVT_TYPE_ANY;
+    (void) state;
+    node_ele_p ndp[5] = {0};
+    node_ele_t node;
+    char tname[64];
+    int *retval;
+    int retc;
+
+    assert_false(modb_initialize());
+
+    for (i=0; i < NUM_SUBSCRIBERS; i++) {
+        /* Create the subscribers */
+        bzero(&tname, 64);
+        sprintf(tname, "thread-%d", i);
+        retc = pthread_attr_init(&wc_attr);
+        retc = pthread_attr_setdetachstate(&wc_attr,
+                                           PTHREAD_CREATE_JOINABLE);
+        pthread_create(&tid[i], NULL, subscriber_thread1, &filter_type);
+        printf("test_modb_event_subscribers: thread:%lu started\n", tid[i]);
+    }
+
+    while (modb_event_subscribers() != NUM_SUBSCRIBERS)
+        thread_delay(0);
+
+    ndp[0] = &node;
+    assert_return_code(modb_event_push(MEVT_TYPE_TEST, MEVT_SRC_INTERNAL,
+                                      MEVT_OBJ_NODE, 1, (void **)ndp), 0);
+
+    thread_delay(1);
+    assert_return_code(modb_event_push(MEVT_TYPE_DESTROY, MEVT_SRC_INTERNAL,
+                                      MEVT_OBJ_NODE, 1, (void *)&node), 0);
+
+    for (i=0; i < NUM_SUBSCRIBERS; i++) {
+        pthread_join(tid[i], &retval);
+        printf("pthread_join:%lu\n", tid[i]);
+    }
+
+    modb_cleanup();
+}
+
+static void test_modb_event_subscribers_filters(void **state)
+{
+#define NUM_SUBSCRIBERS_2 3
+    int i;
+    pthread_t tid[NUM_SUBSCRIBERS_2];
+    unsigned int filter_type = MEVT_TYPE_ANY;
+    (void) state;
+    node_ele_p ndp[5] = {0};
+    node_ele_t node;
+    int *retval;
+    int retc;
+    bool all_threads_active = false;
+    int act_thr;
+
+    assert_false(modb_initialize());
+
+    /* Create the subscribers */
+    retc = pthread_attr_init(&wc_attr);
+    retc = pthread_attr_setdetachstate(&wc_attr,
+                                       PTHREAD_CREATE_JOINABLE);
+    pthread_create(&tid[i++], NULL, subscriber_thread_upd, &filter_type);
+    pthread_create(&tid[i++], NULL, subscriber_thread_del, &filter_type);
+    pthread_create(&tid[i++], NULL, subscriber_thread_ins, &filter_type);
+
+
+    for (all_threads_active = false; all_threads_active == false; ) {
+        act_thr = modb_event_subscribers();
+        if (act_thr == NUM_SUBSCRIBERS_2) {
+            all_threads_active = true;
+        }
+        else {
+            thread_delay(0);
+        }
+    }
+
+    ndp[0] = &node;
+
+    /* events */
+    assert_return_code(modb_event_push(MEVT_TYPE_INS, MEVT_SRC_NORTH,
+                                      MEVT_OBJ_NODE, 1, (void **)ndp), 0);
+
+    thread_delay(0);
+    assert_return_code(modb_event_push(MEVT_TYPE_UPD, MEVT_SRC_NORTH,
+                                      MEVT_OBJ_NODE, 1, (void **)ndp), 0);
+
+    thread_delay(0);
+    assert_return_code(modb_event_push(MEVT_TYPE_DEL, MEVT_SRC_NORTH,
+                                      MEVT_OBJ_NODE, 1, (void **)ndp), 0);
+
+    thread_delay(1);
+
+
+    /* Destroy the eventing system */
+    assert_return_code(modb_event_push(MEVT_TYPE_DESTROY, MEVT_SRC_INTERNAL,
+                                      MEVT_OBJ_NODE, 1, (void *)&node), 0);
+
+    thread_delay(1);
+
+    for (i=0; i < NUM_SUBSCRIBERS_2; i++) {
+        pthread_join(tid[i], &retval);
+        printf("pthread_join:%lu\n", tid[i]);
+    }
+
+    modb_cleanup();
+}
+
 
 /* ---------------------------------------------------------------------------
  * Test driver.

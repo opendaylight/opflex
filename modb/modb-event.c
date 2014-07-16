@@ -35,10 +35,11 @@ VLOG_DEFINE_THIS_MODULE(modb_event);
  *      is based upon a publish-->subscribe model. Where the queue is created
  *      with what type of events will be published to that queue and 
  *      subscribers subscript to that quese to receive events.
-
  *
  * History:
  *     28-JUN-2014 dkehn@noironetworks.com - created.
+ *     16-JUL-2014 dkehn@noironetworks.com - Integration with MODB.
+ *
  */
 
 /* 
@@ -55,10 +56,6 @@ static char *this_debug_level;
 /* 
  * Private protos
  */
-static inline bool is_initialized(void) { 
-    return(modb_event_initialized); 
-}
-
 static int modb_event_find_slot(void);
 static int modb_event_find_open_slot(void);
 static char *mevt_obj_to_string(int otype);
@@ -113,6 +110,13 @@ bool modb_event_initialize(void)
     return(retb);
 }
 
+/* modb_event_is_initialized - global routine to determin if
+ * the modb_event sub-system is initialized.
+ */
+bool modb_event_is_initialized(void) { 
+    return(modb_event_initialized); 
+}
+
 /* 
  * modb_event_destroy - destroys the eventing system. Each subscriber
  * receive an MEVT_TYPE_DESTORY type event. The meaning is that all 
@@ -128,7 +132,7 @@ int modb_event_destroy(void)
 
     ENTER(mod);
 
-    if (is_initialized()) {
+    if (modb_event_is_initialized()) {
         /* sleep for .25 secs */
         ts.tv_sec = 0;
         ts.tv_nsec = 250000;
@@ -204,7 +208,7 @@ int modb_event_subscribe(unsigned int evt_type, unsigned int evt_source)
     
     ENTER(mod);
 
-    if (is_initialized()) {
+    if (modb_event_is_initialized()) {
         /* this this a refinement of a previous subscribe? */
         idx = modb_event_find_slot();
         if (idx >= 0) {
@@ -278,7 +282,7 @@ int modb_event_unsubscribe(unsigned int evt_type, unsigned int evt_source)
     
     ENTER(mod);
 
-    if (is_initialized()) {
+    if (modb_event_is_initialized()) {
         idx = modb_event_find_slot();
         
         if (idx >= 0) {            
@@ -313,7 +317,8 @@ int modb_event_unsubscribe(unsigned int evt_type, unsigned int evt_source)
     return(retc);
 }
 
-/* modb_event_etype_to_string - converts the flags to its string representation.
+/* 
+ * modb_event_etype_to_string - converts the flags to its string representation.
  *
  */
 char *modb_event_etype_to_string(unsigned int etype)
@@ -352,6 +357,38 @@ char *modb_event_etype_to_string(unsigned int etype)
     return(ret_string);
 }
     
+/* 
+ * modb_event_etype_to_string - converts the flags to its string representation.
+ *
+ */
+char *modb_event_esource_to_string(unsigned int esrc)
+{
+    static char *esrc_lookup[] = {
+        "INTERNAL",
+        "NORTH",
+        "SOUTH",
+        "ANY",
+        NULL,
+    };
+    int i;
+    char *ret_string;
+
+    if (esrc == MEVT_SRC_ANY) {
+        ret_string = strdup("ANY");
+        goto rtn_return;
+    }
+
+   ret_string = xzalloc(64);
+   for (i=0; esrc_lookup[i]; i++) {
+       if ((esrc >> i) & 0x0001) {
+           if (strlen(ret_string)) 
+               ret_string = strcat(ret_string, "|");
+           ret_string = strcat(ret_string, esrc_lookup[i]);
+       }
+   }
+ rtn_return:
+    return(ret_string);
+}
     
 /*
  * modb_event_wait - this is the part of the eventing structure that when called
@@ -370,7 +407,7 @@ int modb_event_wait(modb_event_p *evtp)
     subscriber_p sp;
 
     ENTER(mod);
-    if (is_initialized()) {
+    if (modb_event_is_initialized()) {
         idx = modb_event_find_slot();
         if (idx < 0) {
             VLOG_ERR("%s: no subscriber in array with thread_id:%lu", 
@@ -410,7 +447,7 @@ bool modb_event_is_all_read(void)
     int i;
 
     ENTER(mod);
-    if (is_initialized() && subscriber_count) {
+    if (modb_event_is_initialized() && subscriber_count) {
         ovs_rwlock_rdlock(&subscriber_arr_rwlock);
         for (i = 0; i < max_subscribers; i++) {
             if (!subscriber_arr[i]->evt_read) {
@@ -433,7 +470,7 @@ void modb_event_dump(void)
     int i, a;
     subscriber_p sp;
 
-    if (is_initialized()) {
+    if (modb_event_is_initialized()) {
         ovs_rwlock_rdlock(&subscriber_arr_rwlock);
         VLOG_INFO("======= Subscriber Dump ==========");
         for (i = 0; i < max_subscribers; i++) {
@@ -498,32 +535,21 @@ int modb_event_push(unsigned int evt_type, unsigned int evt_source,
 {
     static char *mod = "modb_event_push";
     int retc = 0;
-    modb_event_p evtp;
-    size_t evt_sz;
     modb_event_t evt;
 
     ENTER(mod);
     switch (obj_type) {
     case MEVT_OBJ_NODE:
     case MEVT_OBJ_TREE:
-        /* evt_sz = sizeof(modb_event_t) + (dp_count * sizeof(node_ele_p)); */
-        /* evtp = (modb_event_p)xzalloc(evt_sz); */
-        /* memset(evtp, 0, evt_sz); */
-        /* evtp->eobj = obj_type; */
-        /* evtp->etype = evt_type; */
-        /* evtp->esrc = evt_source; */
-        /* evtp->dp_count = dp_count; */
-        /* memcpy(evtp->dp_arr, dp, dp_count* sizeof(node_ele_p)); */
-        /* evtp->timestamp = tv_tod(); */
-        /* retc = modb_event_send(evtp, evt_sz); */
-        /* modb_event_free(evtp); */
-
         memset(&evt, 0, sizeof(modb_event_t));
         evt.eobj = obj_type;
         evt.etype = evt_type;
         evt.esrc = evt_source;
         evt.dp_count = dp_count;
-        *evt.dp_arr = *dp;
+        if (dp_count)
+            *evt.dp_arr = *dp;
+        else
+            *evt.dp_arr = NULL;
         evt.timestamp = tv_tod();
         retc = modb_event_send(&evt, sizeof(modb_event_t));
         break;
@@ -674,6 +700,7 @@ static int modb_event_find_open_slot(void)
 static char *mevt_obj_to_string(int otype)
 {
     static char *mevt_obj_lookup[] = {
+        "None",
         "Node",
         "Tree",
         "Property"

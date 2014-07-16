@@ -168,6 +168,18 @@ typedef enum _enum_q_op_code {
     OP_UPDATE,
 } enum_q_op_code;
 
+/*
+ * Source of the operation on the MODB, this primarily used to define
+ * the direction of an operation on the MODB such that it can be used
+ * as the souirce in the eventing system.
+ */
+typedef enum _enum_op_source {
+    OP_SRC_POL_MGMT = 0,
+    OP_SRC_POL_ENFORCE,
+    OP_SRC_INTERNAL,
+    OP_SRC_ACT_O_GOD,
+} enum_op_source;
+
 /* 
  * operation return codes from the modb
  */
@@ -264,8 +276,9 @@ typedef struct _hash_init {
  */
 extern bool modb_initialize(void);
 extern bool modb_is_initialized(void);
-extern int  modb_op(int operation, void *dp, int itype, int dp_count,
-                    int extent, result_p resultp);
+extern int  modb_op(enum_q_op_code operation, enum_op_source op_src, void *dp,
+                    int itype, int dp_count, enum_query_extent extent,
+                    result_p resultp);
 extern void modb_cleanup(void);
 extern bool modb_crash_recovery(const char *dbfile);
 extern void modb_dump(bool index_node_dump);

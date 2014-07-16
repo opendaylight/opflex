@@ -84,7 +84,8 @@ static int modb_insert_one(node_ele_p *ndp, const char *uri_str, result_p rs)
     (*ndp)->parent = NULL;
     (*ndp)->child_list = NULL;
     (*ndp)->properties_list = NULL;
-    assert_false(modb_op(OP_INSERT, (void *)(*ndp), IT_NODE, 1, EXT_NODE, rs));
+    assert_false(modb_op(OP_INSERT, OP_SRC_INTERNAL, (void *)(*ndp),
+                         IT_NODE, 1, EXT_NODE, rs));
     return(0);
 }    
 
@@ -248,7 +249,8 @@ static void test_modb_delete_with_node(void **state)
     assert_false(modb_initialize());
     modb_insert_one(&node1, uri_str, &rs);    
     modb_dump(true);
-    assert_false(modb_op(OP_DELETE, (void *)node1, IT_NODE, 1, EXT_NODE_AND_ATTR, &rs));
+    assert_false(modb_op(OP_DELETE, OP_SRC_INTERNAL, (void *)node1, IT_NODE, 1,
+                         EXT_NODE_AND_ATTR, &rs));
     modb_dump(true);
     modb_cleanup();
 }
@@ -263,7 +265,8 @@ static void test_modb_delete_with_node_id(void **state)
     modb_insert_one(&node1, uri_str, &rs);    
     modb_dump(true);
     node_id = node1->id;
-    assert_false(modb_op(OP_DELETE, (void *)&node_id, IT_NODE_INDEX, 1, EXT_NODE, &rs));
+    assert_false(modb_op(OP_DELETE, OP_SRC_INTERNAL, (void *)&node_id,
+                         IT_NODE_INDEX, 1, EXT_NODE, &rs));
     modb_dump(true);
     modb_cleanup();
 }
@@ -294,7 +297,8 @@ static void test_modb_create_node_many(void **state)
         ndp->parent = NULL;
         ndp->child_list = NULL;
         ndp->properties_list = NULL;
-        assert_false(modb_op(OP_INSERT, (void *)ndp, IT_NODE, 1, EXT_NODE, &rs));
+        assert_false(modb_op(OP_INSERT, OP_SRC_INTERNAL, (void *)ndp,
+                             IT_NODE, 1, EXT_NODE, &rs));
         *(nparr+i) = ndp;
     }
 
@@ -353,7 +357,8 @@ static void test_modb_create_node_tree(void **state)
 
     assert_false(modb_initialize());
     create_node_tree(&parent, 5);
-    assert_false(modb_op(OP_INSERT, (void *)parent, IT_NODE, 1, EXT_NODE, &rs));
+    assert_false(modb_op(OP_INSERT, OP_SRC_INTERNAL, (void *)parent,
+                         IT_NODE, 1, EXT_NODE, &rs));
     modb_dump(true);
     modb_cleanup();
 }
@@ -369,11 +374,13 @@ static void test_modb_delete_node_tree(void **state)
 
     /* create the tree */
     create_node_tree(&parent, 5);
-    assert_false(modb_op(OP_INSERT, (void *)parent, IT_NODE, 1, EXT_NODE, &rs));
+    assert_false(modb_op(OP_INSERT, OP_SRC_INTERNAL, (void *)parent,
+                         IT_NODE, 1, EXT_NODE, &rs));
     modb_dump(true);
 
     /* delete it. */
-    assert_false(modb_op(OP_DELETE, (void *)parent, IT_NODE, 1, EXT_FULL, &rs));
+    assert_false(modb_op(OP_DELETE, OP_SRC_INTERNAL, (void *)parent,
+                         IT_NODE, 1, EXT_FULL, &rs));
     modb_dump(true);
     modb_cleanup();
 }

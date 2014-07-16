@@ -39,7 +39,9 @@ VLOG_DEFINE_THIS_MODULE(modb);
  * and the state of the device layer is also represent herein.
  *
  * History:
- *    09-APR-2014 dkehn@noironetworks.com - created.
+ *     09-APR-2014 dkehn@noironetworks.com - created.
+ *     15-JUM-2014 dkehn@noironetworks.com - Completed basic MODB features.
+ *     16-JUL-2014 dkehn@noironetworks.com - Integration with MODB.
  *
  */
 
@@ -140,11 +142,25 @@ static const char *enforcement_state_msg[] = {
     "UPDATED"
 };
 
-
+/* 
+ * This is to provide mapping from enum_op_source --> filter flags
+ */
+static unsigned int evt_src_lookup[] = {
+    MEVT_SRC_NORTH,
+    MEVT_SRC_SOUTH,
+    MEVT_SRC_INTERNAL,
+    MEVT_SRC_ANY
+};
 
 /* 
  * Protos dcls
  */
+
+static char *modb_esource_to_string(int esrc);
+static bool modb_generate_event(unsigned int etype, enum_op_source esrc,
+                                enum_mevt_object otype, int ncount,
+                                node_ele_p *ndp);
+
 static bool head_list_destroy(head_list_p *hp, bool force);
 uint32_t node_list_insert(head_list_p hdp, node_ele_p ndp);
 static bool node_list_free_all(head_list_p hp);
@@ -219,6 +235,9 @@ bool modb_initialize(void)
             modb_crash_recovery(fnm_path(modb_fname));
         }
 
+        if (modb_event_initialize()) {
+            VLOG_FATAL("%s: failed to initialize the MODB eveting sub-system.", mod);
+        }
         modb_initialized = true;
     }
     LEAVE(mod);
@@ -420,25 +439,29 @@ bool node_attach_child(node_ele_p parent, node_ele_p child)
  * where:
  * @param0 <operation>     - I
  *         this will one of the possible enum_q_op_code.
- * @param1 <dp>            - I
+ * @param1 <op_src>        - I
+ *         this defines from where the call to this routine is 
+ *         originating.
+ * @param2 <dp>            - I
  *         this is defined by the itype, it can be a 
  *         NULL, node_id, Class_id, URI and it will point to an array
  *         defined by count. NOTE: for insert the dp must point to
  *         node_ele_t *.
- * @param1 <itype.         - I
+ * @param3 <itype>         - I
  *         itype defines the nature of the dp data and the index
  *         that should be used to resolve the dp.
- * @param3 <count>         - I
+ * @param4 <dp_count>      - I
  *         count define how many dp are pointing to, CURRENTLY only set to 1.
- * @param4 <extent>        - I
+ * @param5 <extent>        - I
  *         the extent of the query operation, how much will be effected.
- * @param5 <resultp>       - O
+ * @param6 <resultp>       - O
  *         See the structure definition in modb.h, but basically the results
  *         from the operation.
  * @returns: 0 = success or resultp->ret_code.
  */
-int modb_op(int operation, void *dp, int itype, int dp_count,
-                         int extent, result_p resultp)
+int modb_op(enum_q_op_code operation, enum_op_source op_src, void *dp,
+            int itype, int dp_count, enum_query_extent extent,
+            result_p resultp)
 {
     static char *mod = "modb_op";
     node_ele_p ndp;
@@ -448,11 +471,7 @@ int modb_op(int operation, void *dp, int itype, int dp_count,
     struct timeval elapsed;
 
     ENTER(mod);
-#ifdef USE_VLOG
     VLOG_INFO("op=%s",opcode_to_string(operation));
-#else
-    DBUG_PRINT("DEBUG", ("op=%s",opcode_to_string(operation)));
-#endif
 
     memset(resultp, 0, sizeof(result_t));
     resultp->ret_code = OP_RC_SUCCESS;
@@ -473,11 +492,15 @@ int modb_op(int operation, void *dp, int itype, int dp_count,
                 id = node_list_insert(node_list, ndp);
                 if (id == 0) {
                     resultp->ret_code = OP_RC_ERROR;
-                    sprintf(resultp->err_msg,"%s: Error inserting node inserted:%d: outof:%d", 
+                    sprintf(resultp->err_msg,
+                            "%s: Error inserting node inserted:%d: outof:%d", 
                             mod, resultp->rows, dp_count);
                     VLOG_ERR(resultp->err_msg);
                     break;
                 }
+                /* generate the modb_event */
+                modb_generate_event(MEVT_TYPE_INS, op_src,
+                                    MEVT_OBJ_NODE, 1, dp);
                 break;
             case EXT_NODE_AND_ATTR:
                 /* TODO dkehn: implementation required */
@@ -500,6 +523,10 @@ int modb_op(int operation, void *dp, int itype, int dp_count,
                             mod, resultp->rows);
                     goto rtn_return;
                 }
+                /* generate the modb_event */
+                modb_generate_event(MEVT_TYPE_DEL, op_src,
+                                    MEVT_OBJ_NODE, 1, dp);
+
             }
             /* the dp is pointing at an array of node_ids */
             resultp->ret_code = OP_RC_SUCCESS;
@@ -514,6 +541,9 @@ int modb_op(int operation, void *dp, int itype, int dp_count,
                             mod, resultp->rows);
                     goto rtn_return;
                 }
+                /* generate the modb_event */
+                modb_generate_event(MEVT_TYPE_DEL, op_src,
+                                    MEVT_OBJ_NODE, 1, dp);
             }
             /* the dp is pointing at an array of node_ids */
             resultp->ret_code = OP_RC_SUCCESS;
@@ -592,6 +622,8 @@ void modb_cleanup(void)
 {
     static char *mod = "modb_cleanup";
     hash_init_p iilp = NULL;
+    struct timespec wts, tem;
+    int wait_counter;
 
     ENTER(mod);
 
@@ -599,6 +631,23 @@ void modb_cleanup(void)
         /* remove the indexes */
         for (iilp = index_init_list; iilp->name != NULL; iilp++) {
             index_destroy(iilp->hidx);
+        }
+        if (modb_event_is_initialized()) {
+            /* send the destroy event */
+            modb_generate_event(MEVT_TYPE_DESTROY, OP_SRC_ACT_O_GOD,
+                                MEVT_OBJ_NONE, 0, NULL);
+            
+            /* wait for the threads to get the event */
+            wts.tv_sec = 0;
+            wts.tv_nsec = MEVT_DESTROY_THREAD_WAIT;
+            for (wait_counter = 0; wait_counter < 100; wait_counter++) {
+                if (modb_event_subscribers())
+                    nanosleep(&wts, &tem);
+                else
+                    break;
+            }
+        
+            modb_event_destroy();
         }
         modb_initialized = false;
     }
@@ -702,6 +751,68 @@ bool modb_crash_recovery(const char *dbfile)
 /* ****************************************************************************
  * Local routines.
  *****************************************************************************/
+
+/* *******************************************************/
+/* ******** eventing routine(s)s *************************/
+/* *******************************************************/
+
+/* 
+ * modb_generate_event - builds up an event and send it to the eventing sub-system.
+ *
+ * where:
+ * @param0 <etype>             - I
+ *         the event type.
+ * @param1 <esrc>              - I
+ *         Defined the source of the event.
+ * @param2 <otype>             - I 
+ *         Defines the object type being passed in the ndp pointer.
+ * @param3 <ncount>            - I
+ *         number of pointers in the ndp
+ * @param4 <ndp>               - I 
+ *         Array of pointers.
+ * @returns: 0 if successful, else 1
+ *
+ */
+static bool modb_generate_event(unsigned int etype, enum_op_source esrc,
+                                enum_mevt_object otype, int ncount,
+                                node_ele_p *ndp)
+{
+     static char *mod = "modb_generate_event";
+     bool retb = false;
+     unsigned int event_source;
+
+     ENTER(mod);
+     if (modb_event_is_initialized()) {
+         event_source = evt_src_lookup[esrc];
+
+         VLOG_DBG("%s: MODB event sent: %s src:%s", mod,
+                  modb_event_etype_to_string(etype), 
+                  modb_esource_to_string(esrc));
+         if (modb_event_push(etype, event_source, otype, ncount, ndp))
+             retb = true;
+     }
+     else {
+         VLOG_ERR("%s: MODB eventing sub-system not initialized.", mod);
+     }
+
+     LEAVE(mod);
+     return(retb);
+}
+
+/* modb_esource_to_string - code to string converter.
+ *
+ */
+static char *modb_esource_to_string(int esrc)
+{
+    static char *esrc_lookup[] = {
+        "POLICY MGMT",
+        "POLICT ENFORCER",
+        "INTERNAL",
+        "ACT O GOD",
+    };
+    return (esrc_lookup[esrc]);
+}
+
 
 /* *******************************************************/
 /* ******** node_list routines ***************************/

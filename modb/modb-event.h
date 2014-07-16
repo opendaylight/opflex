@@ -26,6 +26,7 @@
  * what you want back.
  */
 typedef enum _enum_mevt_object {
+    MEVT_OBJ_NONE =0,
     MEVT_OBJ_NODE = 1,
     MEVT_OBJ_TREE,
     MEVT_OBJ_PROPERTY,
@@ -42,7 +43,6 @@ typedef enum _enum_mevt_object {
 #define MEVT_TYPE_TEST         0x0010
 #define MEVT_TYPE_ANY          0xffff
 
-
 /* 
  * These flags define the source of the event, eith from the north or 
  * south interface, or both.
@@ -52,6 +52,8 @@ typedef enum _enum_mevt_object {
 #define MEVT_SRC_NORTH         0x0004
 #define MEVT_SRC_ANY           0xffff
 
+
+#define MEVT_DESTROY_THREAD_WAIT 500000
 
 /* 
  * modb_event is the structure that holds the event information back 
@@ -158,5 +160,7 @@ extern int modb_event_push(unsigned int evt_type, unsigned int evt_source,
                            int obj_type, int dp_count, void *dp[]);
 extern bool modb_event_is_all_read(void);
 extern char *modb_event_etype_to_string(unsigned int etype);
+extern char *modb_event_source_to_string(unsigned int esrc);
 extern int modb_event_subscribers(void);
+extern bool modb_event_is_initialized(void);
 #endif
