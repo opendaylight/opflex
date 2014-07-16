@@ -8,8 +8,8 @@
 * http://www.eclipse.org/legal/epl-v10.html
 */
 
-#ifndef POLICY_ENFORCER_H
-#define POLICY_ENFORCER_H 1
+#ifndef PEOVS_H
+#define PEOVS_H 1
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -19,7 +19,7 @@
 
 /* initialization for configuration data */
 #define PE_INITIALIZE {"pe_initialize",pe_initialize}
-#define PE_SECTION "policy_enforcer"
+#define PEOVS_SECTION "peovs"
 
 /* data */
 typedef enum {
@@ -53,4 +53,4 @@ void *pe_start(void *);
 pe_state_t pe_get_state(void);
 extern bool pe_initialize(void);
 
-#endif //POLICY_ENFORCER_H
+#endif //PEOVS_H

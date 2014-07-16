@@ -38,7 +38,7 @@
 #include "util.h"
 #include "config-file.h"
 #include "modb.h"
-#include "policy_enforcer.h"
+#include "peovs.h"
 #include "pol-mgmt.h"
 #include "vlog.h"
 

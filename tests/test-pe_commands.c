@@ -7,8 +7,8 @@
 #include <unistd.h>
 
 #include "ovs-thread.h"
-#include "policy_enforcer.h"
-#include "pe_commands.h"
+#include "peovs.h"
+#include "peovs_commands.h"
 #include "vlog.h"
 
 VLOG_DEFINE_THIS_MODULE(test_pe_commands);

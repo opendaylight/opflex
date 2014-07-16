@@ -20,9 +20,9 @@
 #include "ovs-thread.h"
 #include "vlog.h"
 #include "util.h"
-#include "ring_buffer.h"
+#include "peovs_ring_buffer.h"
 
-VLOG_DEFINE_THIS_MODULE(ring_buffer);
+VLOG_DEFINE_THIS_MODULE(peovs_ring_buffer);
 
 static void **ring_buffer; /* instead of void * this should be correct ptr
                             * type?

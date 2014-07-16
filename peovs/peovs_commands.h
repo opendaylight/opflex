@@ -8,15 +8,15 @@
 * http://www.eclipse.org/legal/epl-v10.html
 */
 
-#ifndef PE_COMMANDS_H
-#define PE_COMMANDS_H 1
+#ifndef PEOVS_COMMANDS_H
+#define PEOVS_COMMANDS_H 1
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
 /* TODO: Following #defines need to be variableized in pe_config_defaults.
- *       See policy_enforcer.h
+ *       See peovs.h
  */
 const char *PE_OVSDB_CMD_PATH    = "/usr/bin";
 const char *PE_SYS_CMD_PATH      = "/usr/sbin";
@@ -25,7 +25,7 @@ const char *PE_OVSDB_SCRIPT_PATH = "/usr/share/openvswitch/scripts";
 /* enums for ovs commands */
 typedef enum {
 #define COMMAND_DEFN(a,b,c) a,
-#include "pe_command_string_defs.mh"
+#include "peovs_command_string_defs.mh"
 #undef COMMAND_DEFN
     PE_OVS_COMMAND_TOTAL
 } pe_ovs_command_t;
@@ -61,4 +61,4 @@ struct _pe_command_results {
 /* prototypes */
 pe_command_results_t *pe_command_list_processor(pe_command_node_t *, uint32_t);
 
-#endif //PE_COMMANDS_H
+#endif //PEOVS_COMMANDS_H

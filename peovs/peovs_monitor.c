@@ -20,7 +20,7 @@
 #include <pthread.h>
 
 #include "misc-util.h"
-#include "pe_monitor.h"
+#include "peovs_monitor.h"
 #include "command-line.h"
 #include "column.h"
 #include "compiler.h"
@@ -45,7 +45,7 @@
 #include "util.h"
 #include "vlog.h"
 
-VLOG_DEFINE_THIS_MODULE(pe_monitor);
+VLOG_DEFINE_THIS_MODULE(peovs_monitor);
 
 static struct table_style table_style = TABLE_STYLE_DEFAULT;
 static bool pe_monitor_quit;

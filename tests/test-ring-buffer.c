@@ -5,11 +5,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#define DBUG_OFF 1 //turn off debugging
-
 #include "ovs-thread.h"
-#include "ring_buffer.h"
+#include "peovs_ring_buffer.h"
 #include "dbug.h"
+#include "vlog.h"
 
 /* protos */
 void *push_on(void *arg);
@@ -31,6 +30,8 @@ static struct ovs_mutex pop_lock;
 #define PE_TEST_POP_THREAD_COUNT 20
 #define PE_TEST_MAX_POP_COUNT 50
 
+VLOG_DEFINE_THIS_MODULE(test_peovs_ring_buffer);
+
 static void push_pop_buffer(void **state) {
     (void) state;
     pthread_attr_t attr;
@@ -40,11 +41,9 @@ static void push_pop_buffer(void **state) {
     int counter = 0;
     int arg = 0;
 
-    //DBUG_PUSH("d:F:i:L:n:t");
-    DBUG_PUSH("d:t:i:L:n:P:T:0");
-    DBUG_ENTER("push_pop_buffer");
-    DBUG_PRINT("DEBUG",("file %s/func %s/line %i\n",
-                        __FILE__, __func__,__LINE__));
+    VLOG_ENTER(__func__);
+    VLOG_DBG("file %s/func %s/line %i\n",
+                        __FILE__, __func__,__LINE__);
 
     ring_buffer_init();
     /* producer */
@@ -64,12 +63,12 @@ static void push_pop_buffer(void **state) {
         //TODO:check return codes
         pthread_create(&pop_thread[counter], NULL,
                         pop_off, (void *) &arg);
-        DBUG_PRINT("\nDEBUG---",("created pop thread %i",counter));
+        VLOG_DBG("created pop thread %i",counter);
     }
 
     for(counter=0;counter<(PE_TEST_POP_THREAD_COUNT);counter++) {
         xpthread_join(pop_thread[counter], (void **) NULL);
-        DBUG_PRINT("\nDEBUG---",("joined pop thread %i",counter));
+        VLOG_DBG("joined pop thread %i",counter);
     }
 
     /* at this point, there should be 1 remaing entry to pop */
@@ -77,21 +76,21 @@ static void push_pop_buffer(void **state) {
     arg = 1;
     //TODO:check return codes
     pthread_create(&last_pop_thread, NULL, pop_off, (void *) &arg);
-    DBUG_PRINT("\nDEBUG---",("created last pop thread"));
+    VLOG_DBG("created last pop thread");
     xpthread_join(last_pop_thread, (void **) NULL);
-    DBUG_PRINT("\nDEBUG---",("joined last pop thread"));
+    VLOG_DBG("joined last pop thread");
 
-    DBUG_PRINT("\nDEBUG---",("results: push_count %i, push_sum %i",
-                            push_counter,push_sum));
-    DBUG_PRINT("\nDEBUG---",("         pop_count %i,  pop_sum %i",
-                            pop_counter,pop_sum));
+    VLOG_DBG("results: push_count %i, push_sum %i",
+                            push_counter,push_sum);
+    VLOG_DBG("         pop_count %i,  pop_sum %i",
+                            pop_counter,pop_sum);
 
 
     ring_buffer_destroy();
 
     assert_int_equal(pop_sum,push_sum);
 
-    DBUG_LEAVE;
+    VLOG_LEAVE(__func__);
 }
 
 void *pop_off(void *arg) {
@@ -99,7 +98,7 @@ void *pop_off(void *arg) {
     int count_pops = 0;
     int sentinel;
 
-    DBUG_ENTER("pop_off");
+    VLOG_ENTER(__func__);
 
     sentinel = *((int *)arg);
 
@@ -119,9 +118,9 @@ void *pop_off(void *arg) {
         ovs_mutex_unlock(&pop_lock);
     }
         
-    DBUG_PRINT("DEBUG",("pop_off tid %d, pop_sum/push_sum %i/%i",
-                        pthread_self(),pop_sum,push_sum));
-    DBUG_LEAVE;
+    VLOG_DBG("pop_off tid %p, pop_sum/push_sum %i/%i",
+                        pthread_self(),pop_sum,push_sum);
+    VLOG_LEAVE(__func__);
 
     pthread_exit((void *) NULL);
 }
@@ -130,7 +129,7 @@ void *push_on(void *arg) {
     int counter = 0;
     (void) arg;
 
-    DBUG_ENTER("push_on");
+    VLOG_ENTER(__func__);
 
     for(counter=0;counter<(PE_RING_BUFFER_LENGTH+1);counter++) {
         push[counter] = counter + 1;
@@ -139,7 +138,7 @@ void *push_on(void *arg) {
         push_sum += push[counter];
     }
 
-    DBUG_LEAVE;
+    VLOG_LEAVE(__func__);
 
     return((void *) NULL);
 }

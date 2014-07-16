@@ -21,11 +21,11 @@
 #include "dbug.h"
 #include "util.h"
 #include "misc-util.h"
-#include "ring_buffer.h"
+#include "peovs_ring_buffer.h"
 #include "vlog.h"
-#include "pe_workers.h"
+#include "peovs_workers.h"
 
-VLOG_DEFINE_THIS_MODULE(pe_workers);
+VLOG_DEFINE_THIS_MODULE(peovs_workers);
 
 /* private */
 
@@ -89,8 +89,6 @@ void pe_crew_create ()
 
     crew.size = PE_MAX_WORKER_COUNT;
 
-    //VLOG_DBG("%s <-- crew=%p crew_size=%d\n", mod, crew, crew.size);
-
     /*
      * Initialize synchronization objects
      */
@@ -118,22 +116,6 @@ void pe_crew_create ()
         DBUG_PRINT("DEBUG ",("Worker's index %i recorded as %i\n",
                               crew_index, crew.worker[crew_index]->index));
 
-/*
-        if((save_errno = pthread_attr_init(&crew.worker[crew_index]->attr))
-           != 0)
-            strerr_wrapper(save_errno); //core dump
-
-        if((save_errno = 
-            pthread_attr_setdetachstate(&crew.worker[crew_index]->attr,
-                                       PTHREAD_CREATE_DETACHED)) != 0)
-            strerr_wrapper(save_errno); //core dump
-
-        xpthread_create(&crew.worker[crew_index]->thread,
-                        &crew.worker[crew_index]->attr,
-                        pe_workers_fetch_flow,
-                        (void *) crew.worker[crew_index]);
-*/
-        //TODO:CHeck return codes
         pag_pthread_create(&crew.worker[crew_index]->thread,
                         NULL,
                         pe_workers_fetch_flow,
@@ -171,16 +153,17 @@ void *pe_workers_fetch_flow(void *arg) {
 
     /* infinite loop to process work items */
     for(;;) {
-        DBUG_PRINT("\nDEBUG ",("Thread %i (%d) calling ring_buffer_pop\n",
-                               this_worker->index,
-                               &this_worker->thread));
+
+//TODO: this will end up using the modb-event.h interface
         work_item = ring_buffer_pop();
-        DBUG_PRINT("\nDEBUG ",("Thread %i (%d) popped %p\n",
+
+        VLOG_DBG("Thread %i (%d) popped %p\n",
                                this_worker->index,
                                &this_worker->thread,
-                               work_item)); 
+                               work_item); 
+
         if (pe_get_crew_quit_status() == true) {
-            VLOG_INFO("Thread %i got quit\n",this_worker->index);
+            VLOG_INFO("Thread %i got quit message\n",this_worker->index);
             break;
         }
         pe_translate(work_item);
@@ -206,28 +189,27 @@ void *pe_workers_fetch_flow(void *arg) {
 void pe_workers_init() {
     static char mod[] = "pe_workers_init";
 
-    DBUG_PUSH("d:F:i:L:n:t");
-    DBUG_PROCESS("pe_workers");
-    DBUG_ENTER(mod);
+    VLOG_ENTER(mod);
 
+    //TODO: replace with modb stuff
     ring_buffer_init();
 
-    /* create the crew and put them to sleep on the ring buffer*/
+    /* create the crew and put them to sleep on modb_event_wait() */
     pe_crew_create();
 
-    DBUG_LEAVE;
+    VLOG_LEAVE(mod);
 }
 
 void pe_set_crew_quit_status(bool status) {
     static char mod[] = "pe_set_crew_quit_status";
 
-    DBUG_ENTER(mod);
+    VLOG_ENTER(mod);
 
     ovs_rwlock_wrlock(&crew.rwlock);
     crew.quit = status;
     ovs_rwlock_unlock (&crew.rwlock);
 
-    DBUG_LEAVE;
+    VLOG_LEAVE(mod);
 }
 
 
@@ -245,12 +227,13 @@ void pe_set_crew_quit_status(bool status) {
 void pe_workers_destroy() {
     static char mod[] = "pe_workers_destroy";
 
-    DBUG_ENTER(mod);
+    VLOG_ENTER(mod);
 
     pe_crew_destroy();
+    //TODO: will become clean up of modb stuff
     ring_buffer_destroy();
 
-    DBUG_LEAVE;
+    VLOG_LEAVE(mod);
 }
 
 /* ============================================================
@@ -268,12 +251,12 @@ static bool pe_get_crew_quit_status() {
     static char mod[] = "pe_get_crew_quit_status";
     bool bret = false;
 
-    DBUG_ENTER(mod);
+    VLOG_ENTER(mod);
 
     ovs_rwlock_rdlock(&crew.rwlock);
     bret = crew.quit;
     ovs_rwlock_unlock (&crew.rwlock);
 
-    DBUG_LEAVE;
+    VLOG_LEAVE(mod);
     return(bret);
 }

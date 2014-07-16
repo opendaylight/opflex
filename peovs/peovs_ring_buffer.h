@@ -8,8 +8,8 @@
 * http://www.eclipse.org/legal/epl-v10.html
 */
 
-#ifndef RING_BUFFER_H
-#define RING_BUFFER_H 1
+#ifndef PEOVS_RING_BUFFER_H
+#define PEOVS_RING_BUFFER_H 1
 
 #include "ovs-thread.h"
 
@@ -57,4 +57,4 @@ void rb_broadcast_cond_variables(void);
 /* settors */
 //bool pe_set_ring_buffer_length(uint32_t);
 
-#endif //RING_BUFFER_H
+#endif //PEOVS_RING_BUFFER_H

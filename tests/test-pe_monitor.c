@@ -11,7 +11,7 @@
 
 #include "ovs-thread.h"
 #include "misc-util.h"
-#include "pe_monitor.h"
+#include "peovs_monitor.h"
 #include "vlog.h"
 
 #define USE_VLOG 1

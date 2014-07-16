@@ -7,14 +7,14 @@
 * distribution, and is available at
 * http://www.eclipse.org/legal/epl-v10.html
 */
-#ifndef PE_WORKERS_H
-#define PE_WORKERS_H 1
+#ifndef PEOVS_WORKERS_H
+#define PEOVS_WORKERS_H 1
 
 #include <stdbool.h>
 
 #include "config-file.h"
 
-#define PE_MAX_WORKER_COUNT 10 /* TODO: needs to be a config variable
+#define PE_MAX_WORKER_COUNT  4 /* TODO: needs to be a config variable
                                 * pe_config_defaults - see policy_enforcer.h
                                 */
 
@@ -50,4 +50,4 @@ void pe_set_crew_quit_status(bool);   /* set this to true and all workers
                                        * will terminate gracefully.
                                        */
 
-#endif //PE_WORKERS_H
+#endif //PEOVS_WORKERS_H

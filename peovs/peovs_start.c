@@ -14,7 +14,7 @@
 
 #include "dbug.h"
 #include "ovs-thread.h"
-#include "policy_enforcer.h"
+#include "peovs.h"
 
 /* private */
 static pe_state_t pe_current_state = STOPPED;
@@ -54,6 +54,8 @@ void *pe_start(void *arg) {
 
     /* initialize translator (pe_translator.c)*/
     pe_set_state(READY);
+
+    /* TODO: wait here for signal to clean up */
 
     /* pthread_join calls */
     pe_set_state(TERMINATING);
@@ -97,9 +99,6 @@ bool pe_initialize() {
     /* initialize configuration params */
     //conf_initialize(&pe_config_defaults);
 
-    /* use xpthread_key_create() to create a key for the thread? */
-    /* start pe thread by invoking pe_start via xpthread_create() */
-    //check return codes
     pag_pthread_create(pe_thread,NULL,pe_start,NULL);
 
     return(retval);

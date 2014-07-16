@@ -7,8 +7,8 @@
 * distribution, and is available at
 * http://www.eclipse.org/legal/epl-v10.html
 */
-#ifndef PE_MONITOR_H
-#define PE_MONITOR_H 1
+#ifndef PEOVS_MONITOR_H
+#define PEOVS_MONITOR_H 1
 
 #include <stdbool.h>
 #include "ovsdb/table.h"
@@ -35,4 +35,4 @@ struct _pe_monitor_thread_mgmt {
 void pe_set_monitor_quit(bool);
 void *pe_monitor_init(void *);
 
-#endif //PE_MONITOR_H
+#endif //PEOVS_MONITOR_H

@@ -18,8 +18,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "policy_enforcer.h"
-#include "pe_commands.h"
+#include "peovs.h"
+#include "peovs_commands.h"
 #include "misc-util.h"
 #include "vlog.h"
 
@@ -48,7 +48,7 @@ pe_ovs_command_exec(char *, pe_command_results_t *);
 static const char
 pe_ovs_command_array[PE_OVS_COMMAND_TOTAL+1][PE_OVS_MAX_COMMAND_SIZE] = {
 #define COMMAND_DEFN(a,b,c) b,
-#include "pe_command_string_defs.mh"
+#include "peovs_command_string_defs.mh"
 #undef COMMAND_DEFN
     "end_of_array"
 };
@@ -56,7 +56,7 @@ pe_ovs_command_array[PE_OVS_COMMAND_TOTAL+1][PE_OVS_MAX_COMMAND_SIZE] = {
 static const char
 pe_ovs_subcommand_array[PE_OVS_COMMAND_TOTAL+1][PE_OVS_MAX_COMMAND_SIZE] = {
 #define COMMAND_DEFN(a,b,c) c,
-#include "pe_command_string_defs.mh"
+#include "peovs_command_string_defs.mh"
 #undef COMMAND_DEFN
 0
 };

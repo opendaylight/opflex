@@ -32,7 +32,7 @@ test_eventq_SOURCES = test-eventq.c
 
 # set the include path found by configure
 
-AM_CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(srcdir) -I$(top_builddir)/policy_enforcer -I$(top_builddir)/policy-mgmt
+AM_CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(srcdir) -I$(top_builddir)/peovs -I$(top_builddir)/policy-mgmt
 AM_CFLAGS += -I$(top_builddir)/third-party/ovs/lib -I$(top_builddir)/third-party/ovs/ovsdb -I$(top_builddir)/third-party/ovs -I/usr/local/include
 AM_CPPFLAGS=-DBSD_COMP=1 
 
@@ -55,10 +55,10 @@ test_pol_mgmt_LFLAGS= $(test_modb_LDFLAGS)
 test_eventq_LFLAGS= $(test_modb_LDFLAGS)
 
 test_modb_LDADD = $(top_builddir)/third-party/libdbug.so.la $(ovs_libs) $(top_builddir)/lib/libpag.so.la $(top_builddir)/modb/libmodb.so.la $(ovs_libs) 
-test_ring_buffer_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(ovs_libs)
-test_pe_workers_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy_enforcer/libpe.so.la $(ovs_libs)
-test_pe_monitor_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy_enforcer/libpe.so.la $(ovs_libs)
-test_pe_commands_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy_enforcer/libpe.so.la $(ovs_libs)
+test_ring_buffer_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/peovs/libpeovs.so.la $(ovs_libs)
+test_pe_workers_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/peovs/libpeovs.so.la $(ovs_libs)
+test_pe_monitor_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/peovs/libpeovs.so.la $(ovs_libs)
+test_pe_commands_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/peovs/libpeovs.so.la $(ovs_libs)
 test_pipe_utils_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(ovs_libs)
 test_uri_parser_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(ovs_libs)
 test_pol_mgmt_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la $(top_builddir)/policy-mgmt/libpm.so.la $(ovs_libs)

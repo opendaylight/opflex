@@ -14,7 +14,7 @@ pagentd_SOURCES += pagentd_cli.c pagentd_cli.h
 
 # set the include path found by configure
 
-pagentd_CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I/usr/local/include -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(top_builddir)/policy_enforcer -I$(top_builddir)/policy-mgmt -I$(srcdir)
+pagentd_CFLAGS=-g -O0 -Wall -DUSE_TEST_CONFIG -I/usr/local/include -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/modb -I$(top_builddir)/lib -I$(top_builddir)/peovs -I$(top_builddir)/policy-mgmt -I$(srcdir)
 pagentd_CFLAGS += -I$(top_builddir)/third-party/ovs/lib -I$(top_builddir)/third-party/ovs/ovsdb
 pagentd_CPPFLAGS=-DBSD_COMP=1 
 
@@ -25,7 +25,7 @@ if HAVE_TCMALLOC
 pagentd_LDFLAGS += -ltcmalloc
 endif
 
-#pagentd_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la  $(top_builddir)/modb/libmodb.so.la $(top_builddir)/policy_enforcer/libpe.so.la $(top_builddir)/policy-mgmt/libpm.so.la
-pagentd_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la  $(top_builddir)/modb/libmodb.so.la $(top_builddir)/policy_enforcer/libpe.so.la $(top_builddir)/policy-mgmt/libpm.so.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la $(top_builddir)/third-party/ovs/lib/libopenvswitch.la
+#pagentd_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la  $(top_builddir)/modb/libmodb.so.la $(top_builddir)/peovs/libpeovs.so.la $(top_builddir)/policy-mgmt/libpm.so.la
+pagentd_LDADD = $(top_builddir)/third-party/libdbug.so.la $(top_builddir)/lib/libpag.so.la  $(top_builddir)/modb/libmodb.so.la $(top_builddir)/peovs/libpeovs.so.la $(top_builddir)/policy-mgmt/libpm.so.la $(top_builddir)/third-party/ovs/ovsdb/libovsdb.la $(top_builddir)/third-party/ovs/lib/libopenvswitch.la
 
 bin_pagentd = $(srcdir)/pagentd

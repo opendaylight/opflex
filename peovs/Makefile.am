@@ -6,7 +6,7 @@
 #  * and is available at http://www.eclipse.org/legal/epl-v10.html
 #  */
 
-lib_LTLIBRARIES = libpe.so.la
+lib_LTLIBRARIES = libpeovs.so.la
 METASOURCES = AUTO
 
 
@@ -19,12 +19,13 @@ else
 AM_LDFLAGS=-L/usr/lib -lnsl -lm -lpthread -L$(top_builddir)/lib -L$(top_builddir)/third-party
 endif
 
-libpe_so_la_SOURCES = pe_start.c policy_enforcer.h
-libpe_so_la_SOURCES += pe_commands.c
-libpe_so_la_SOURCES += pe_monitor.c pe_monitor.h
-libpe_so_la_SOURCES += pe_push.c
-libpe_so_la_SOURCES += pe_scan.c
-libpe_so_la_SOURCES += pe_translator.c
-libpe_so_la_SOURCES += pe_workers.c pe_workers.h
+libpeovs_so_la_SOURCES = peovs_start.c peovs.h
+libpeovs_so_la_SOURCES += peovs_commands.c
+libpeovs_so_la_SOURCES += peovs_monitor.c peovs_monitor.h
+libpeovs_so_la_SOURCES += peovs_ring_buffer.c peovs_ring_buffer.h
+libpeovs_so_la_SOURCES += peovs_push.c
+libpeovs_so_la_SOURCES += peovs_scan.c
+libpeovs_so_la_SOURCES += peovs_translator.c
+libpeovs_so_la_SOURCES += peovs_workers.c peovs_workers.h
 
-lib_libpe_so_la = policy_enforcer/libpe.so.la
+lib_libpeovs_so_la = peovs/libpeovs.so.la
