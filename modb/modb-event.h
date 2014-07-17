@@ -60,6 +60,10 @@ typedef enum _enum_mevt_object {
  * to the subscriber(s).
  */
 typedef struct _modb_event {
+    /* this corresponds to the slot:evt_counter
+     */
+    unsigned long            event_id;
+
     /* this defines when this event was created and is used
      * by the mamanger thread to remove events from the queue. 
      */
@@ -107,7 +111,7 @@ typedef struct _subscriber {
     /* the count of the number of times the evt_go has been
      * signalled.
      */
-    long                  evt_counter;
+    unsigned long         evt_counter;
 
     /* this will be the event type from the MODB, these are flags and 
      * can be OR-ed together, so for example if you wantthis thread to 

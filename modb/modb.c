@@ -635,7 +635,7 @@ void modb_cleanup(void)
         if (modb_event_is_initialized()) {
             /* send the destroy event */
             modb_generate_event(MEVT_TYPE_DESTROY, OP_SRC_ACT_O_GOD,
-                                MEVT_OBJ_NONE, 0, NULL);
+                                MEVT_OBJ_NODE, 0, NULL);
             
             /* wait for the threads to get the event */
             wts.tv_sec = 0;

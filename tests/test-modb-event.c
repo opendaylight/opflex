@@ -6,7 +6,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-
 #include <config.h>
 
 #include <stdio.h>
@@ -106,21 +105,17 @@ static void *subscriber_thread1(void *arg)
         chk_type = mevtp->etype;
 
         etp = modb_event_etype_to_string(mevtp->etype);
-        printf("%s: +++++++ EVENT RECEIVED: %lu ts:%s type:%s count:%d +++++\n", mod, this,
-               tv_show(mevtp->timestamp, true, NULL), etp, mevtp->dp_count); 
-        /* printf("%s:%lu:  obj      : %s\n", mod, this, */
-        /*           mevt_obj_to_string(mevtp->eobj)); */
-        /* printf("%s:%lu  etype    : 0x%04x:%s\n", mod, this, */
-        /*           chk_type, etp); */
+        printf("%s: +++++++ EVENT RECEIVED: %lu ts:%s type:%s id:%lu count:%d +++++\n",
+               mod, this, tv_show(mevtp->timestamp, true, NULL), etp, 
+               mevtp->event_id, mevtp->dp_count); 
         free(etp);
-        /* printf("%s:%lu  evt_src  : 0x%04x\n", mod, this, mevtp->esrc); */
-        /* printf("%s:%lu  dp_count : %d\n", mod, this, mevtp->dp_count); */
         fflush(stdout);
 
         if (mevtp->etype & MEVT_TYPE_DESTROY) {
             retc = 0;
-            printf("%s: ****** DESTROY EVENT RECEIVED: %lu ts:%s type:0x%04x *****\n", mod, this,
-                   tv_show(mevtp->timestamp, true, NULL), mevtp->etype);
+            printf("%s: ****** DESTROY EVENT RECEIVED: %lu ts:%s id:%ld type:0x%04x *****\n",
+                   mod, this, tv_show(mevtp->timestamp, true, NULL), 
+                   mevtp->event_id, mevtp->etype);
             printf("***** %s:%lu setting run_flag to false\n", mod, this);
             run_flag = false;
         }
@@ -151,15 +146,16 @@ static void *subscriber_thread_upd(void *arg)
         chk_type = mevtp->etype;
 
         etp = modb_event_etype_to_string(mevtp->etype);
-        printf("%s: +++++++ EVENT RECEIVED: %lu ts:%s type:%s count:%d +++++\n", mod, this,
-               tv_show(mevtp->timestamp, true, NULL), etp, mevtp->dp_count); 
+        printf("%s: +++++++ EVENT RECEIVED: %lu ts:%s type:%s id:%ld count:%d +++++\n", mod, this,
+               tv_show(mevtp->timestamp, true, NULL), etp, mevtp->event_id, mevtp->dp_count); 
         free(etp);
         fflush(stdout);
 
         if (mevtp->etype & MEVT_TYPE_DESTROY) {
             retc = 0;
-            printf("%s: ****** DESTROY EVENT RECEIVED: %lu ts:%s type:0x%04x *****\n", mod, this,
-                   tv_show(mevtp->timestamp, true, NULL), mevtp->etype);
+            printf("%s: ****** DESTROY EVENT RECEIVED: %lu ts:%s id:%ld type:0x%04x *****\n",
+                   mod, this, tv_show(mevtp->timestamp, true, NULL),
+                   mevtp->event_id, mevtp->etype);
             run_flag = false;
         }
         memset(mevtp, 0, sizeof(modb_event_t));
@@ -189,15 +185,16 @@ static void *subscriber_thread_del(void *arg)
         chk_type = mevtp->etype;
 
         etp = modb_event_etype_to_string(mevtp->etype);
-        printf("%s: +++++++ EVENT RECEIVED: %lu ts:%s type:%s count:%d +++++\n", mod, this,
-               tv_show(mevtp->timestamp, true, NULL), etp, mevtp->dp_count); 
+        printf("%s: +++++++ EVENT RECEIVED: %lu ts:%s type:%s id:%ld count:%d +++++\n", mod, this,
+               tv_show(mevtp->timestamp, true, NULL), etp, mevtp->event_id, mevtp->dp_count); 
         free(etp);
         fflush(stdout);
 
         if (mevtp->etype & MEVT_TYPE_DESTROY) {
             retc = 0;
-            printf("%s: ****** DESTROY EVENT RECEIVED: %lu ts:%s type:0x%04x *****\n", mod, this,
-                   tv_show(mevtp->timestamp, true, NULL), mevtp->etype);
+            printf("%s: ****** DESTROY EVENT RECEIVED: %lu ts:%s id:%ld type:0x%04x *****\n",
+                   mod, this, tv_show(mevtp->timestamp, true, NULL), 
+                   mevtp->event_id, mevtp->etype);
             run_flag = false;
         }
         memset(mevtp, 0, sizeof(modb_event_t));
@@ -227,15 +224,16 @@ static void *subscriber_thread_ins(void *arg)
         chk_type = mevtp->etype;
 
         etp = modb_event_etype_to_string(mevtp->etype);
-        printf("%s: +++++++ EVENT RECEIVED: %lu ts:%s type:%s count:%d +++++\n", mod, this,
-               tv_show(mevtp->timestamp, true, NULL), etp, mevtp->dp_count); 
+        printf("%s: +++++++ EVENT RECEIVED: %lu ts:%s type:%s id:%ld count:%d +++++\n", mod, this,
+               tv_show(mevtp->timestamp, true, NULL), etp, mevtp->event_id, mevtp->dp_count); 
         free(etp);
         fflush(stdout);
 
         if (mevtp->etype & MEVT_TYPE_DESTROY) {
             retc = 0;
-            printf("%s: ****** DESTROY EVENT RECEIVED: %lu ts:%s type:0x%04x *****\n", mod, this,
-                   tv_show(mevtp->timestamp, true, NULL), mevtp->etype);
+            printf("%s: ****** DESTROY EVENT RECEIVED: %lu ts:%s id:%ld type:0x%04x *****\n",
+                   mod, this, tv_show(mevtp->timestamp, true, NULL),
+                   mevtp->event_id, mevtp->etype);
             run_flag = false;
         }
         memset(mevtp, 0, sizeof(modb_event_t));
@@ -254,6 +252,48 @@ static char *mevt_obj_to_string(int otype)
         "Property"
     };
     return(mevt_obj_lookup[otype]);
+}
+
+static void create_node_tree(node_ele_p *parentp, int count)
+{
+    node_ele_p ndp;
+    char tbuf[256] = {0};
+    node_ele_p parent;
+    int nc = 0, i;
+    int create_count = count;
+
+    /* parent */
+    nc = 1;
+    parent = xzalloc(sizeof(node_ele_t));
+    ovs_rwlock_init(&parent->rwlock);
+    parent->class_id = nc;
+    parent->content_path_id = nc;
+    sprintf(tbuf, "fake_class:fake_type_%d", nc);
+    parent->lri = strdup((const char *)&tbuf);
+    sprintf(tbuf, "http://en.wikipedia-%d.org/wiki/Uniform_Resource_Identifier", nc);
+    assert_false(parse_uri(&parent->uri, (const char *)&tbuf));
+    head_list_create(&parent->child_list);
+    parent->parent = NULL;
+
+    /* children */
+    
+    for (i=0, nc=2; nc < create_count; nc++, i++) {
+        ndp = xzalloc(sizeof(node_ele_t));
+        ovs_rwlock_init(&ndp->rwlock);
+        ndp->class_id = nc;
+        ndp->content_path_id = nc;
+        sprintf(tbuf, "fake_class:fake_type_%d", nc);
+        ndp->lri = strdup((const char *)&tbuf);
+        sprintf(tbuf, "http://en.wikipedia.org/wiki/node_%d", nc);
+        assert_false(parse_uri(&ndp->uri, (char *)&tbuf));
+        ndp->parent = parent;
+        ndp->child_list = NULL;
+        ndp->properties_list = NULL;
+
+        list_add(&parent->child_list->list, -1, (void *)ndp);
+        parent->child_list->num_elements++;
+    }
+    *parentp = parent;
 }
 
 /*----------------------------------------------------------------------------
@@ -361,7 +401,7 @@ static void test_modb_event_subscribers(void **state)
                                       MEVT_OBJ_NODE, 1, (void *)&node), 0);
 
     for (i=0; i < NUM_SUBSCRIBERS; i++) {
-        pthread_join(tid[i], &retval);
+        pthread_join(tid[i], (void *)&retval);
         printf("pthread_join:%lu\n", tid[i]);
     }
 
@@ -427,11 +467,62 @@ static void test_modb_event_subscribers_filters(void **state)
     thread_delay(1);
 
     for (i=0; i < NUM_SUBSCRIBERS_2; i++) {
-        pthread_join(tid[i], &retval);
+        pthread_join(tid[i], (void *)&retval);
         printf("pthread_join:%lu\n", tid[i]);
     }
 
     modb_cleanup();
+}
+
+static void test_modb_event_db_integration(void **state)
+{
+#define NUM_DB_INTRG_SUBSCRIBERS 4
+    int i;
+    pthread_t tid[NUM_DB_INTRG_SUBSCRIBERS];
+    unsigned int filter_type = MEVT_TYPE_ANY;
+    (void) state;
+    node_ele_p ndp[5] = {0};
+    node_ele_t node;
+    char tname[64];
+    int *retval;
+    int retc;
+    node_ele_p parent;
+    result_t rs;
+
+    assert_false(modb_initialize());
+
+    create_node_tree(&parent, 2);
+
+    for (i = 0; i < NUM_DB_INTRG_SUBSCRIBERS; i++) {
+        /* Create the subscribers */
+        bzero(&tname, 64);
+        sprintf(tname, "thread-%d", i);
+        retc = pthread_attr_init(&wc_attr);
+        retc = pthread_attr_setdetachstate(&wc_attr,
+                                           PTHREAD_CREATE_JOINABLE);
+        pthread_create(&tid[i], NULL, subscriber_thread1, &filter_type);
+        printf("test_modb_event_subscribers: thread:%lu started\n", tid[i]);
+    }
+
+    while (modb_event_subscribers() != NUM_DB_INTRG_SUBSCRIBERS)
+        thread_delay(0);
+
+    /* subscribers are waiting */
+    assert_false(modb_op(OP_INSERT, OP_SRC_INTERNAL, (void *)parent,
+                         IT_NODE, 1, EXT_NODE, &rs));
+    modb_dump(true);
+    thread_delay(1);
+    assert_false(modb_op(OP_DELETE, OP_SRC_INTERNAL, (void *)parent,
+                         IT_NODE, 1, EXT_NODE, &rs));
+    modb_dump(true);
+    thread_delay(1);
+    modb_cleanup();
+    thread_delay(1);
+
+    for (i=0; i < NUM_DB_INTRG_SUBSCRIBERS; i++) {
+        pthread_join(tid[i], (void *)&retval);
+        printf("pthread_join:%lu\n", tid[i]);
+    }
 }
 
 
@@ -449,6 +540,7 @@ int main(int argc, char *argv[])
         unit_test(test_modb_event_subscribe_no_unsubscribe),
         unit_test(test_modb_event_subscribers),
         unit_test(test_modb_event_subscribers_filters),
+        unit_test(test_modb_event_db_integration),
     };
 
     test_setup();

@@ -539,6 +539,7 @@ int modb_event_push(unsigned int evt_type, unsigned int evt_source,
 
     ENTER(mod);
     switch (obj_type) {
+    case MEVT_OBJ_NONE:
     case MEVT_OBJ_NODE:
     case MEVT_OBJ_TREE:
         memset(&evt, 0, sizeof(modb_event_t));
@@ -546,7 +547,7 @@ int modb_event_push(unsigned int evt_type, unsigned int evt_source,
         evt.etype = evt_type;
         evt.esrc = evt_source;
         evt.dp_count = dp_count;
-        if (dp_count)
+        if ( dp_count && (obj_type != MEVT_OBJ_NONE) )
             *evt.dp_arr = *dp;
         else
             *evt.dp_arr = NULL;
@@ -623,6 +624,7 @@ static int modb_event_send(modb_event_p evtp, size_t evtp_sz)
                 sp->evtp = xzalloc(evtp_sz);
                 memcpy(sp->evtp, evtp, evtp_sz);
                 sp->evt_counter++;
+                sp->evtp->event_id = sp->evt_counter;
                 sp->evt_read = false;
                 sp->evt_new++;
                 ovs_mutex_unlock(&sp->mutex);
