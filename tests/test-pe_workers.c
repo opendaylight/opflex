@@ -8,7 +8,7 @@
 #define DBUG_OFF 1 //turn off debugging
 
 #include "ovs-thread.h"
-#include "peovs_ring_buffer.h"
+#include "ring_buffer.h"
 #include "peovs_workers.h"
 #include "dbug.h"
 

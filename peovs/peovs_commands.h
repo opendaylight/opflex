@@ -22,6 +22,9 @@ const char *PE_OVSDB_CMD_PATH    = "/usr/bin";
 const char *PE_SYS_CMD_PATH      = "/usr/sbin";
 const char *PE_OVSDB_SCRIPT_PATH = "/usr/share/openvswitch/scripts";
 
+#define PE_OVS_BAD_COMMAND             -256
+#define PE_OVS_FAIL_DEPENDENCY_COMMAND -257
+
 /* enums for ovs commands */
 typedef enum {
 #define COMMAND_DEFN(a,b,c) a,

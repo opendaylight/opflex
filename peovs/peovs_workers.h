@@ -21,6 +21,7 @@
 /* Each of the following depends on the other, so these come first */
 typedef struct _pe_worker pe_worker_t;
 typedef struct _pe_crew pe_crew_t;
+typedef struct _pe_worker_data pe_worker_data_t;
 
 /* One of these is initialized for each worker thread in the
  * crew. It contains the "identity" of each worker.
@@ -43,9 +44,17 @@ struct _pe_crew {
   pthread_cond_t      done;           /* will indicate when we are done */
 };
 
+/*
+ * data for the crew member inside of pe_workers_fetch_flow()
+ */
+struct _pe_worker_data {
+    pe_worker_t   *worker_id;
+    ring_buffer_t *rb;
+};
+
 /* prototypes */
-void pe_workers_destroy(void);
-void pe_workers_init(void);
+void pe_workers_destroy(ring_buffer_t *);
+void pe_workers_init(ring_buffer_t *);
 void pe_set_crew_quit_status(bool);   /* set this to true and all workers
                                        * will terminate gracefully.
                                        */

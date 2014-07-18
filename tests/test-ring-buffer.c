@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "ovs-thread.h"
-#include "peovs_ring_buffer.h"
+#include "ring_buffer.h"
 #include "dbug.h"
 #include "vlog.h"
 

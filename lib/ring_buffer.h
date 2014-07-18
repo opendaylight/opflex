@@ -32,27 +32,28 @@ typedef struct _ring_buffer_counters {
     int32_t pop_location;
     int32_t push_location;
     int32_t unused_count;
-//    struct ovs_rwlock rwlock;
     struct ovs_mutex  lock;
     pthread_cond_t not_empty;
     pthread_cond_t not_full;
 } ring_buffer_counters_t;
 
-typedef struct _ring_buffer_cond_vars {
-    uint32_t count;          /* number of condition variables in struct */
-    pthread_cond_t **list;   /* array of cond variables */
-} rb_cond_vars_t;
+typedef struct _ring_buffer {
+    uint32_t length;        /* how many slots */
+    uint32_t entry_size;    /* size of each slot */
+    void **buffer;        
+    ring_buffer_counters_t rb_counters;
+} ring_buffer_t;
 
 /* public prototypes */
-void ring_buffer_init(void);
-void ring_buffer_destroy(void);
-void ring_buffer_push(void *);
-void *ring_buffer_pop(void);
+void ring_buffer_init(ring_buffer_t *);
+void ring_buffer_destroy(ring_buffer_t *);
+void ring_buffer_push(ring_buffer_t *, void *);
+void *ring_buffer_pop(ring_buffer_t *);
+void rb_broadcast_cond_variables(ring_buffer_t *);
 
 /* gettors */
-inline uint32_t get_ring_buffer_length(void);
-inline uint32_t get_ring_buffer_entry_size(void);
-void rb_broadcast_cond_variables(void);
+//inline uint32_t get_ring_buffer_length(void);
+//inline uint32_t get_ring_buffer_entry_size(void);
 
 /* settors */
 //bool pe_set_ring_buffer_length(uint32_t);
