@@ -46,11 +46,11 @@ struct _pe_crew {
 
 /*
  * data for the crew member inside of pe_workers_fetch_flow()
- */
 struct _pe_worker_data {
-    pe_worker_t   *worker_id;
+    pe_worker_t   *worker_ptr;
     ring_buffer_t *rb;
 };
+ */
 
 /* prototypes */
 void pe_workers_destroy(ring_buffer_t *);

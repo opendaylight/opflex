@@ -22,7 +22,7 @@
 #include "util.h"
 #include "ring_buffer.h"
 
-VLOG_DEFINE_THIS_MODULE(peovs_ring_buffer);
+VLOG_DEFINE_THIS_MODULE(ring_buffer);
 
 /* Ring buffer size (set at run time?) */
 /*
@@ -47,39 +47,6 @@ void rb_broadcast_cond_variables(ring_buffer_t *rb) {
 
 }
 
-
-/* ============================================================
- *
- * \brief ring_buffer_destroy(ring_buffer_t *)
- *        Destroy the ring buffer.
- *
- * @param[in]
- *          pointer to the ring_buffer_t
- *
- * \return { void }
- *
- **/
-
-void ring_buffer_destroy(ring_buffer_t *rb) {
-    int count = 0;
-    uint32_t len = rb->length;
-    void *buf = NULL;
-
-    VLOG_ENTER(__func__);
-
-    count = 0;
-    while(count < len) {
-        buf = *rb->buffer;
-        *rb->buffer++;
-        count++;
-        free(buf);
-    }
-        
-    free(rb);
-
-    VLOG_LEAVE(__func__);
-}
-
 /* ============================================================
  *
  * \brief ring_buffer_init(ring_buffer_t *)
@@ -87,7 +54,8 @@ void ring_buffer_destroy(ring_buffer_t *rb) {
  *
  * @param[in]
  *          pointer to a ring_buffer_t - caller is responsible
- *          for allocating memory
+ *          for allocating memory for the ring_buffer_t, but
+ *          not the buffer itself
  *
  * \return { void; all error codes are trapped elsewhere }
  *
@@ -99,8 +67,6 @@ void ring_buffer_init(ring_buffer_t *rb) {
     rb->rb_counters.pop_location = 0;
     rb->rb_counters.push_location = 0;
     rb->rb_counters.unused_count = rb->length;
-
-    rb->buffer = xcalloc((size_t) rb->length, (size_t) rb->entry_size);
 
     ovs_mutex_init(&rb->rb_counters.lock);
     xpthread_cond_init(&rb->rb_counters.not_empty,NULL);

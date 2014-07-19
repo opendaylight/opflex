@@ -46,7 +46,6 @@ typedef struct _ring_buffer {
 
 /* public prototypes */
 void ring_buffer_init(ring_buffer_t *);
-void ring_buffer_destroy(ring_buffer_t *);
 void ring_buffer_push(ring_buffer_t *, void *);
 void *ring_buffer_pop(ring_buffer_t *);
 void rb_broadcast_cond_variables(ring_buffer_t *);

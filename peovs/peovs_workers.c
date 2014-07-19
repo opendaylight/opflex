@@ -65,6 +65,8 @@ static void pe_crew_destroy(ring_buffer_t *rb)
 
     ovs_rwlock_destroy(&crew.rwlock);
 
+//need to free crew.worker
+
     VLOG_LEAVE(__func__);
 
 }
@@ -115,17 +117,13 @@ static void pe_crew_create(ring_buffer_t *rb)
 
         crew.worker[crew_index]->index = crew_index;
 
-        pe_worker_data_t worker_data;
-        worker_data.worker_id = crew.worker[crew_index];
-        worker_data.rb = rb;
-
-        VLOG_DBG("Worker's index %i recorded as %i\n",
+        VLOG_INFO("Worker's index %i recorded as %i\n",
                               crew_index, crew.worker[crew_index]->index);
 
         pag_pthread_create(&crew.worker[crew_index]->thread,
                         NULL,
                         pe_workers_fetch_flow,
-                        (void *) &worker_data);
+                        (void *) rb);
     }
 
     VLOG_LEAVE(__func__);
@@ -149,15 +147,13 @@ static void pe_crew_create(ring_buffer_t *rb)
 
 void *pe_workers_fetch_flow(void *arg) {
     static char mod[] = "pe_workers_fetch_flow";
-    pe_worker_data_t *this_worker_data = (pe_worker_data_t *) arg;
-    pe_worker_t *this_worker = this_worker_data->worker_id;
-    ring_buffer_t *rb = this_worker_data->rb;
+    ring_buffer_t *rb = (ring_buffer_t *) arg;
     void *work_item = NULL;
 
     VLOG_ENTER(mod);
 
-    VLOG_INFO("Thread %i (%p) going to work.\n",this_worker->index,
-                                                &this_worker->thread); 
+    VLOG_INFO("Ring buffer %p\n",rb);
+    VLOG_INFO("Thread (%p) going to work.\n",(void *) pthread_self()); 
 
     /* infinite loop to process work items */
     for(;;) {
@@ -165,20 +161,18 @@ void *pe_workers_fetch_flow(void *arg) {
 //TODO: this will end up using the modb-event.h interface
         work_item = ring_buffer_pop(rb);
 
-        VLOG_DBG("Thread %i (%d) popped %p\n",
-                               this_worker->index,
-                               &this_worker->thread,
+        VLOG_DBG("Thread (%p) popped %p\n",
+                               (void *) pthread_self(),
                                work_item); 
 
         if (pe_get_crew_quit_status() == true) {
-            VLOG_INFO("Thread %i got quit message\n",this_worker->index);
+            VLOG_INFO("Thread %p got quit message\n",(void *) pthread_self());
             break;
         }
         pe_translate(work_item);
     }
 
-    VLOG_INFO("Thread %i (%p) leaving work.\n",this_worker->index,
-                                                this_worker->thread); 
+    VLOG_INFO("Thread (%p) leaving work.\n", (void *) pthread_self()); 
     VLOG_LEAVE(mod);
     pthread_exit((void *) NULL);
 }
@@ -239,7 +233,7 @@ void pe_workers_destroy(ring_buffer_t *rb) {
 
     pe_crew_destroy(rb);
     //TODO: will become clean up of modb stuff
-    ring_buffer_destroy(rb);
+    //free(rb->buffer); caller?
 
     VLOG_LEAVE(mod);
 }
