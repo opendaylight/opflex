@@ -24,29 +24,6 @@
 
 VLOG_DEFINE_THIS_MODULE(ring_buffer);
 
-/* Ring buffer size (set at run time?) */
-/*
-inline uint32_t get_ring_buffer_length()
-{
-    return ( (uint32_t) PE_RING_BUFFER_LENGTH );
-}
-inline uint32_t get_ring_buffer_entry_size()
-{
-    return ( (uint32_t) PE_RING_BUFFER_ENTRY_SIZE );
-}
-*/
-void rb_broadcast_cond_variables(ring_buffer_t *rb) {
-    int save_errno = 0;
-
-    if ((save_errno = pthread_cond_broadcast(&rb->rb_counters.not_full))
-         != 0)
-        ovs_abort(save_errno,"pthread_cond_broadcast failed!");
-    if ((save_errno = pthread_cond_broadcast(&rb->rb_counters.not_empty))
-         != 0)
-        ovs_abort(save_errno,"pthread_cond_broadcast failed!");
-
-}
-
 /* ============================================================
  *
  * \brief ring_buffer_init(ring_buffer_t *)
@@ -54,8 +31,8 @@ void rb_broadcast_cond_variables(ring_buffer_t *rb) {
  *
  * @param[in]
  *          pointer to a ring_buffer_t - caller is responsible
- *          for allocating memory for the ring_buffer_t, but
- *          not the buffer itself
+ *          for allocating memory for the ring_buffer_t, as well
+ *          as the buffer itself
  *
  * \return { void; all error codes are trapped elsewhere }
  *
@@ -64,6 +41,11 @@ void ring_buffer_init(ring_buffer_t *rb) {
 
     VLOG_ENTER(__func__);
 
+    /* Enable debugging
+    vlog_set_levels(vlog_module_from_name("ring_buffer"), -1, VLL_DBG);
+    */
+    vlog_set_levels(vlog_module_from_name("ring_buffer"), -1, VLL_INFO);
+
     rb->rb_counters.pop_location = 0;
     rb->rb_counters.push_location = 0;
     rb->rb_counters.unused_count = rb->length;
@@ -71,6 +53,17 @@ void ring_buffer_init(ring_buffer_t *rb) {
     ovs_mutex_init(&rb->rb_counters.lock);
     xpthread_cond_init(&rb->rb_counters.not_empty,NULL);
     xpthread_cond_init(&rb->rb_counters.not_full,NULL);
+
+    VLOG_LEAVE(__func__);
+}
+
+void ring_buffer_destroy(ring_buffer_t *rb) {
+
+    VLOG_ENTER(__func__);
+
+    ovs_mutex_destroy(&rb->rb_counters.lock);
+    xpthread_cond_destroy(&rb->rb_counters.not_empty);
+    xpthread_cond_destroy(&rb->rb_counters.not_full);
 
     VLOG_LEAVE(__func__);
 }
@@ -99,16 +92,23 @@ void ring_buffer_push(ring_buffer_t *rb, void *input_p) {
         ovs_mutex_cond_wait(&rb->rb_counters.not_full,&rb->rb_counters.lock);
     }
     rb->buffer[rb->rb_counters.push_location] = input_p;
+
+    if (VLOG_IS_DBG_ENABLED() == true) {
+    /* The first dbg output statement is for the test-ring-buffer code
+     * which uses ints in its data. The second is more general purpose.
+     * If you turn on debugging, you should probably turn off the first.
+     */
+        VLOG_DBG("RB(%p) Pushed %p (%i) into slot %i", rb,
+                  input_p, *(int *)input_p, rb->rb_counters.push_location);
+//      VLOG_DBG("RB(%p) Pushed %p into slot %i", rb,
+//                  input_p, (rb->rb_counters.push_location-1));
+    }
+
     rb->rb_counters.push_location++;
     if(rb->rb_counters.push_location >= rb->length)
             rb->rb_counters.push_location = 0;
     xpthread_cond_signal(&rb->rb_counters.not_empty);
     ovs_mutex_unlock(&rb->rb_counters.lock);
-
-    VLOG_DBG("Pushed %p (%i) into slot %i",
-                  input_p, *(int *)input_p, (rb->rb_counters.push_location-1));
-    VLOG_DBG("Pushed %p into slot %i",
-                  input_p, (rb->rb_counters.push_location-1));
 
     VLOG_LEAVE(__func__);
 }
@@ -136,17 +136,39 @@ void *ring_buffer_pop(ring_buffer_t *rb) {
         ovs_mutex_cond_wait(&rb->rb_counters.not_empty, &rb->rb_counters.lock);
     }
     retval = rb->buffer[rb->rb_counters.pop_location];
+
+    if (VLOG_IS_DBG_ENABLED() == true) {
+    /* The first dbg output statement is for the test-ring-buffer code
+     * which uses ints in its data. The second is more general purpose.
+     * If you turn on debugging, you should probably turn off the first.
+     */
+        VLOG_DBG("RB(%p) Fetched %p (%i) from slot %i", rb,
+             retval, *(int*)retval, rb->rb_counters.pop_location);
+//      VLOG_DBG("RB(%p) Fetched %p from slot %i", rb,
+//             retval, rb->rb_counters.pop_location);
+    }
+
     rb->rb_counters.pop_location++;
     if(rb->rb_counters.pop_location >= rb->length)
         rb->rb_counters.pop_location = 0;
     xpthread_cond_signal(&rb->rb_counters.not_full);
     ovs_mutex_unlock(&rb->rb_counters.lock);
 
-    VLOG_DBG("Fetched %p (%i) from slot %i",
-             retval, *(int*)retval, (rb->rb_counters.pop_location-1));
-    VLOG_DBG("Fetched %p from slot %i",
-             retval, (rb->rb_counters.pop_location-1));
-
     VLOG_LEAVE(__func__);
     return(retval);
+}
+
+/* helper function for waking up all threads, usually to tell them
+ * to quit.
+ */
+void rb_broadcast_cond_variables(ring_buffer_t *rb) {
+    int save_errno = 0;
+
+    if ((save_errno = pthread_cond_broadcast(&rb->rb_counters.not_full))
+         != 0)
+        ovs_abort(save_errno,"pthread_cond_broadcast failed!");
+    if ((save_errno = pthread_cond_broadcast(&rb->rb_counters.not_empty))
+         != 0)
+        ovs_abort(save_errno,"pthread_cond_broadcast failed!");
+
 }

@@ -33,6 +33,9 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_CONFIG_SRCDIR([pagentd/pagentd.c])
 # AC_CONFIG_HEADERS([config.h])
 
+# To disable automatic setting of -O2 in CFLAGS by AC_PROG_CC
+‘: ${CFLAGS=""}’
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_LIBTOOL

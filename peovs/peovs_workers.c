@@ -174,7 +174,8 @@ void *pe_workers_fetch_flow(void *arg) {
 
     VLOG_INFO("Thread (%p) leaving work.\n", (void *) pthread_self()); 
     VLOG_LEAVE(mod);
-    pthread_exit((void *) NULL);
+//    pthread_exit((void *) NULL);
+    return(NULL);
 }
 
 /* ============================================================

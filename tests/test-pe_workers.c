@@ -13,6 +13,14 @@
 
 VLOG_DEFINE_THIS_MODULE(test_pe_workers);
 
+#define PE_RING_BUFFER_LENGTH 1000 /* TODO: eventually make this configurable 
+                                    * see pe_config_defaults in peovs.h
+                                    * also, there are dependencies on this
+                                    * value in test_ring_buffer.c */
+#define PE_RING_BUFFER_ENTRY_SIZE sizeof(void *) /* should this be configurable?
+                                                  * to structs that are
+                                                  * pushed into ring buf
+                                                  */
 #define PE_TEST_PRODUCER_THREADS 5
 #define PE_TEST_PRODUCER_MAX_PUSH 1010
 
