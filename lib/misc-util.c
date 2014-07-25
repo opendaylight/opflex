@@ -7,6 +7,16 @@
 * distribution, and is available at
 * http://www.eclipse.org/legal/epl-v10.html
 */
+/*
+ * A collection of wrappers and utilities used throughout the
+ * opflex agent.
+ *
+ * History:
+ *     03-March-2014 dkehn@noironetworks.com = created
+ *     11-June-2014 smann@noironetworks.com = added popen utils
+ *     23-June-2014 smann@noironetworks.com = added pthread wrappers
+ *
+ */
 
 #include <stdio.h>
 #include <stdlib.h>

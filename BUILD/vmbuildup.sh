@@ -53,7 +53,7 @@ echo "updating....."
 sudo $UPD_CMD update -y
 
 echo "installing packages......"
-sudo $UPD_CMD install ssh git htop emacs vim build-essential python-setuptools python2.7-dev libzip2 libzip-dev libxml2 libpq-dev libxslt1-dev python-ncrypt openssl openssl-devel libmysqlclient-dev python-pip readline readline-devl -y
+sudo $UPD_CMD install ssh git htop emacs vim build-essential python-setuptools python2.7-dev libvirt libvirt-devel libzip2 libzip-dev libxml2 libpq-dev libxslt1-dev python-ncrypt openssl openssl-devel libmysqlclient-dev python-pip readline readline-devl -y
 if [ -f "/etc/redhat-release" ]; then
     sudo yum remove autoconf libtool automake -y
     cwd="$PWD"

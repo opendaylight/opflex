@@ -10,6 +10,9 @@
 
 /*
 * Ring buffer management code
+*
+* History:
+*      3-May-2014 smann@noironetworks.com = created.
 */
 
 #include <stdlib.h>
