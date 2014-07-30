@@ -8,6 +8,15 @@
 * http://www.eclipse.org/legal/epl-v10.html
 */
 
+/*
+* Ring buffer management code
+*
+* History:
+*      8-May-2014 smann@noironetworks.com = created.
+*     24-May-2014 smann@noironetworks.com = ovsdb monitor.
+*     29-July-2014 smann@noironetworks.com = libvirt monitor.
+*/
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <ctype.h>
@@ -48,8 +57,6 @@
 VLOG_DEFINE_THIS_MODULE(peovs_monitor);
 
 static struct table_style table_style = TABLE_STYLE_DEFAULT;
-static bool pe_monitor_quit;
-static struct ovs_rwlock pe_monitor_rwlock;
 
 /* protos */
 static void
@@ -76,8 +83,10 @@ pe_ovsdb_monitor_unblock(struct unixctl_conn *conn, int argc OVS_UNUSED,
 static void
 pe_ovsdb_monitor_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
                   const char *argv[] OVS_UNUSED, void *exiting_);
-static void
+static void *
 pe_ovsdb_monitor(void *);
+static void *
+pe_libvirt_monitor(void * arg);
 static void pe_add_monitored_table(const char *server,
                                 const char *database,
                                 struct ovsdb_table_schema *table,
@@ -85,24 +94,27 @@ static void pe_add_monitored_table(const char *server,
                                 struct monitored_table **mts,
                                 size_t *n_mts,
                                 size_t *allocated_mts);
-static bool
-pe_get_monitor_quit(void);
-
 /* routines */
 
 /* This function must be called as a thread as it will block on a cond variable */
 void *pe_monitor_init(void *arg) {
     static char *mod = "pe_monitor_init";
     pthread_t ovsdb_monitor;
+    pthread_t libvirt_monitor;
     pe_monitor_thread_mgmt_t *tm = (pe_monitor_thread_mgmt_t *) arg;
 
     VLOG_ENTER(mod);
 
-    ovs_rwlock_init(&pe_monitor_rwlock);
-    pe_set_monitor_quit(false);
+    //ovs_rwlock_init(&pe_monitor_rwlock);
+
+    /* calling routine should set this to true, when it is time to quit
+     * or TODO: remove pe_monitor_quit and related
+     * */
+    //pe_set_monitor_quit(false);
 
     /* Separate thread that runs ovsdb monitor ALL */
     pag_pthread_create(&ovsdb_monitor,NULL,pe_ovsdb_monitor,NULL);
+    pag_pthread_create(&libvirt_monitor,NULL,pe_libvirt_monitor,NULL);
 
     /* probably should add signal handling and allow for
      * cancelling of this thread because the monitor will only
@@ -114,14 +126,16 @@ void *pe_monitor_init(void *arg) {
     xpthread_mutex_unlock(tm->lock);
 
     pthread_cancel(ovsdb_monitor);
+    pthread_cancel(libvirt_monitor);
 
     pag_pthread_join(ovsdb_monitor,(void **) NULL); 
+    pag_pthread_join(libvirt_monitor,(void **) NULL); 
 
     VLOG_LEAVE(mod);
-    pthread_exit(NULL);
+    return(NULL);
 }
 
-void pe_ovsdb_monitor(void *arg) {
+static void *pe_ovsdb_monitor(void *arg) {
     static char *mod = "pe_ovsdb_monitor";
     int save_errno = 0;
     struct jsonrpc *rpc;
@@ -188,11 +202,13 @@ void pe_ovsdb_monitor(void *arg) {
             struct jsonrpc_msg *msg;
             int error;
 
+/*
             if (pe_get_monitor_quit() == true) {
                 VLOG_INFO("Got quit message.");
                 exiting = true;
                 break;
             }
+*/
 
             error = jsonrpc_recv(rpc, &msg);
 
@@ -246,7 +262,7 @@ void pe_ovsdb_monitor(void *arg) {
 
     VLOG_LEAVE(mod);
 
-    pthread_exit(NULL);
+    return(NULL);
 }
 
 static void
@@ -473,22 +489,13 @@ pe_check_ovsdb_error(struct ovsdb_error *error)
     }
 }
 
-static bool
-pe_get_monitor_quit() {
-    bool bret;
+/*
+ * Initial function for libvirt monitoring thread
+ */
+static void *pe_libvirt_monitor(void * arg) {
 
-    ovs_rwlock_rdlock(&pe_monitor_rwlock);
-    bret = pe_monitor_quit;
-    ovs_rwlock_unlock(&pe_monitor_rwlock);
-    return(bret);
-}
+    VLOG_ENTER(__func__);
 
-void
-pe_set_monitor_quit(bool nval) {
-    
-    ovs_rwlock_wrlock(&pe_monitor_rwlock);
-    pe_monitor_quit = nval;
-    fprintf(stderr,"New value in %s is %d\n",__func__,pe_monitor_quit);
-    ovs_rwlock_unlock(&pe_monitor_rwlock);
-
+    VLOG_LEAVE(__func__);
+    return(NULL);
 }

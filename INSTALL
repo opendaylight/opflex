@@ -22,16 +22,9 @@ you can execute the ./BUILD/autorun.sh as shown below.
 
 Building on CentOS 6.5
 ======================
-You need to upgrade autoconf to version 2.69 since CentOS 6.5 ships with an
-older version of autoconf. To do this, follow these instructions:
-  * Download autoconf-2.69:
-    * http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
-  * Build and install autoconf-2.69:
-    * tar xvzf autoconf-2.69.tar.gz
-    * cd autoconf-2.69
-    * ./configure
-    * make
-    * sudo make install
+We use autoconf version 2.63 for compatibility with CentOS 6.5 stock. You
+can try a newer version and see if it works (we've tried up through 2.69),
+but if the OVS build has problems, try downgrading to 2.63.
 
 Initial to setup the environment, which uses the autoconf, automake, and libtool,
 you have build the Makefiles. The automake and autoconf tools can be used to 

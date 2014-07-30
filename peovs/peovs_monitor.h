@@ -32,7 +32,6 @@ struct _pe_monitor_thread_mgmt {
     pthread_cond_t *quit_notice;
 };
 
-void pe_set_monitor_quit(bool);
 void *pe_monitor_init(void *);
 
 #endif //PEOVS_MONITOR_H

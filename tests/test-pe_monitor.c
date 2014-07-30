@@ -54,7 +54,6 @@ static void rt_pe_monitor(void **state) {
             pag_pthread_create(&monitor,NULL,pe_monitor_init,(void *) &arg);
             VLOG_INFO("Monitor started.");
             sleep(3);
-            pe_set_monitor_quit(true);
             xpthread_cond_signal(&quit_notice);
             sleep(1);
             pag_pthread_join(monitor,NULL);
