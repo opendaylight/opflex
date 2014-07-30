@@ -22,15 +22,14 @@
 #include "seq-util.h"
 #include "hash-util.h"
 #include "tv-util.h"
-#include "pag-dirs.h"
+#include "dirs.h"
 #include "pol-mgmt.h"
+#include "sess.h"
 #include "eventq.h"
 #include "vlog.h"
-#include "dbug.h"
 
 
 VLOG_DEFINE_THIS_MODULE(modb);
-
 
 /*
  * pol-mgmt - Policy Management
@@ -47,7 +46,7 @@ VLOG_DEFINE_THIS_MODULE(modb);
 
 static bool pm_initialized = false;
 static FILENAME pm_fname;
-static char *debug_level;
+
 /*
  * config definitions:
  *  crash_recovery: (true/false): true we look for the $dbdir/pol-mgmt.dat
@@ -62,13 +61,21 @@ static char *debug_level;
 struct option_ele pm_config_defaults[] = {
     {PM_SECTION, "crash_recovery", "false"},
     {PM_SECTION, "checkpoint_method", "acid"},
-    {PM_SECTION, "default_controller", "json:localhost:8888"},
+    {PM_SECTION, "default_controller", "tcp:127.0.0.1:7777"},
     {PM_SECTION, "pm_debug_level", "INFO"},
     {PM_SECTION, "max_active_sessions", "10"},
-    {PM_SECTION, "max_active_sessions", "10"},
-    {PM_SECTION, "port", "8085"},
+    {PM_SECTION, "sess_debug_level", "INFO"},
+    {PM_SECTION, "sess_protocol", "OPFLEX"},
+    {PM_SECTION, "max_session_threads", "10"},
+    {PM_SECTION, "session_queue_depth", "20"},    
     {NULL, NULL, NULL}
 };
+
+/*
+ * Local dcls
+ */
+static char *gdebug_level;
+static char *this_debug_level;
 
 /* 
  * Protos dcls
@@ -90,30 +97,48 @@ bool pm_initialize(void)
 {
     static char *mod= "pm_initialize";
     bool retb = 0;
-
-    ENTER(mod);
+    int l1, l2;
 
     conf_initialize(pm_config_defaults);
-    debug_level = set_debug_level(PM_SECTION, "pm_debug_level");
-    if (debug_level == NULL) {
-        debug_level = "INFO";
-        vlog_set_levels_from_string(debug_level);
+
+    /* setup the debug level for the eventing sub-systems 
+     * We are going to make the assumption this if global debug is
+     * set, then this won't matter.
+     * 
+     */
+    gdebug_level = conf_get_value("global", "debug_level");    
+    this_debug_level = conf_get_value(PM_SECTION, "pm_debug_level");
+    
+    l1 = vlog_get_level_val(gdebug_level);
+    l2 = vlog_get_level_val(this_debug_level);
+
+    if (l2 > l1) {
+        vlog_set_levels(vlog_module_from_name("modb_event"), -1, l2);
     }
-            
+    ENTER(mod);
+
     if (!pm_initialized) {
-        
         
         /* 1. setup the session shash, this keeps track of connections that 
          * are active and inactive.
          */
+        if (sess_initialize()) {
+            VLOG_FATAL("%s: Can't initialize the session list.", mod);
+        }
 
         /* 2. crash recovery? */
         if (!strcasecmp(conf_get_value(PM_SECTION, "crash_recovery"), "true"))  {
-            pm_fname = fnm_create(".dat", PM_FNAME, pag_dbdir(), NULL);
+            pm_fname = fnm_create(".dat", PM_FNAME, ovs_dbdir(), NULL);
             pm_crash_recovery(fnm_path(pm_fname));
         }
 
         /* 3. setup the server */
+
+        /* 4. wait for the system to become initialized, policy-enforcer-scans, etc. */
+
+        /* 5. send the Identify to controller, and process the Identify and perform
+        *     further connections to Observer, PR, etc.
+        */
 
         pm_initialized = true;
     }
@@ -147,6 +172,7 @@ void pm_cleanup(void)
     ENTER(mod);
 
     if (pm_initialized) {
+        sess_cleanup();
         pm_initialized = false;
     }
     LEAVE(mod);
@@ -210,7 +236,7 @@ bool pm_crash_recovery(const char *dbfile)
     VLOG_INFO("dbfile=%s", dbfile);
 
     if (pm_initialized) {
-        dbpath = (char *)pag_dbdir();
+        dbpath = (char *)ovs_dbdir();
         if (fnm_exists(dbfname)) {
             VLOG_INFO("%s: loading: %s\n", mod, fnm_path(dbfname));
 

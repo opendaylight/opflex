@@ -69,12 +69,13 @@ class opflexService(Service):
             'echo':                 self.echo_handler,
             "resolve_policy":       self.resolve_policy_handler,
             "udpate_policy":        self.update_policy_handler,
-            "trigger_policy":       self.trigger_handler,
+            "trigger_policy":       self.trigger_policy_handler,
             "endpoint_declaration": self.endpoint_declaration_handler,
             "endpoint_request":     self.endpoint_request_handler,
             "endpoint_update":      self.endpoint_update_handler,
             "state_report":         self.state_report_handler,
             'quit':                 self.quit_handler,
+            'error':                self.error_handler,
             }
         
         self.log.debug("[%s}-->return." % (mod))
@@ -92,7 +93,9 @@ class opflexService(Service):
         pdb.set_trace()
         # -- the command processor for this service
         while (self.quit_flag == False):
-            opf_msg = conn.recv(1024)
+            opf_msg = conn.recv(4096)
+            if not opf_msg:
+                break
             msg = self.deserialize_msg(opf_msg)
             self.cmdLookup[msg['method']](conn, msg)
 
@@ -110,12 +113,14 @@ class opflexService(Service):
     def deserialize_msg(self, msg):
         mod = "%s:%s" % (self.__class__.__name__, sys._getframe().f_code.co_name)
         self.log.debug("%s:<--" % (mod))
+        raw_msg = {}
 
         # TODO: dkehn should probably check this agains a known set of keys.
         try:
             raw_msg = json.loads(msg)
         except:
-            pass
+            errmsg = ("raw_msg=%s" % (raw_msg))
+            raw_msg = {'method': 'error', 'msg': errmsg}
 
         self.log.debug("%s:-->.%s" % (mod, raw_msg))
         return raw_msg
@@ -167,6 +172,14 @@ class opflexService(Service):
         mod = "%s:%s" % (self.__class__.__name__, sys._getframe().f_code.co_name)
         self.log.debug("%s:<--" % (mod))        
         self.quit_flag = True
+        self.log.debug("%s:<--quit_flag=%d" % (mod, self.quit_flag))
+
+    # --- error handler
+    # Prints out whats in the error msg.
+    def error_handler(self, conn, msg):
+        mod = "%s:%s" % (self.__class__.__name__, sys._getframe().f_code.co_name)
+        self.log.debug("%s:<--" % (mod))
+        self.log.error(msg)
         self.log.debug("%s:<--quit_flag=%d" % (mod, self.quit_flag))
 
     # --- Identity handling

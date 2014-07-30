@@ -17,6 +17,7 @@
 #include <cmocka.h>
 
 #include "pol-mgmt.h"
+#include "sess.h"
 #include "config-file.h"
 #include "uri-parser.h"
 #include "vlog.h"
@@ -39,16 +40,12 @@ static const char *debug_level;
 static void test_setup(void) 
 {
     char *test_conf_fname = "./test-policy-agent.conf";
-    vlog_set_levels_from_string("DBG");
 
-    conf_initialize(pm_config_defaults);
+    conf_initialize(NULL);
     if (!conf_file_isloaded()) {
         conf_load(test_conf_fname);
     }
     conf_dump(stdout);
-    debug_level = conf_get_value(PM_SECTION, "pm_debug_level");
-    
-    vlog_set_levels_from_string(debug_level);
 }
 
 /*----------------------------------------------------------------------------
@@ -62,6 +59,25 @@ static void test_pm_initialize(void **state)
 }
 
 
+/* +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ * Session tests
+ */
+static void test_sess_open(void **state)
+{
+    char *default_controller;
+    (void) state;
+    assert_false(pm_initialize());
+
+    /* the following assumes that there is a simulator running at
+     * the default _controller
+     */
+    default_controller = conf_get_value(PM_SECTION, "default_controller");
+    assert_false(sess_open(default_controller, SESS_TYPE_CLIENT));
+    assert_return_code(sess_get_session_count(), 1);
+    assert_false(sess_close(default_controller));
+    pm_cleanup();
+}
+
 
 /* ---------------------------------------------------------------------------
  * Test driver.
@@ -72,6 +88,7 @@ int main(int argc, char *argv[])
 
     const UnitTest tests[] = {
         unit_test(test_pm_initialize),
+        unit_test(test_sess_open),
     };
 
     test_setup();
