@@ -30,6 +30,7 @@ typedef struct _pe_monitor_thread_mgmt pe_monitor_thread_mgmt_t;
 struct _pe_monitor_thread_mgmt {
     struct ovs_mutex *lock;
     pthread_cond_t *quit_notice;
+    const char *lvirt; //path for libvirt open calls (e.g. "qemu:///system")
 };
 
 void *pe_monitor_init(void *);

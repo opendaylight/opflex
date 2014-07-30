@@ -27,6 +27,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <stdint.h>
+
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
 
 #include "misc-util.h"
 #include "peovs_monitor.h"
@@ -56,7 +60,16 @@
 
 VLOG_DEFINE_THIS_MODULE(peovs_monitor);
 
+/* declarations and definitions */
 static struct table_style table_style = TABLE_STYLE_DEFAULT;
+static bool peovs_libvirt_monitor_stop;
+
+typedef enum {
+    DOMAIN_REBOOT,
+    DOMAIN_SHUTDOWN,
+    NETWORK_LIFECYCLE, 
+    PEOVS_NR_EVENT_CALLBACKS
+} PEOVS_EVENT_T;
 
 /* protos */
 static void
@@ -85,8 +98,6 @@ pe_ovsdb_monitor_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
                   const char *argv[] OVS_UNUSED, void *exiting_);
 static void *
 pe_ovsdb_monitor(void *);
-static void *
-pe_libvirt_monitor(void * arg);
 static void pe_add_monitored_table(const char *server,
                                 const char *database,
                                 struct ovsdb_table_schema *table,
@@ -94,6 +105,15 @@ static void pe_add_monitored_table(const char *server,
                                 struct monitored_table **mts,
                                 size_t *n_mts,
                                 size_t *allocated_mts);
+static void *
+pe_libvirt_monitor(void * arg);
+static int domain_reboot_callback(virConnectPtr,
+                                  virDomainPtr,
+                                  void *);
+static int network_lifecycle(virConnectPtr,
+                             virNetworkPtr,
+                             void *);
+/* end protos */
 /* routines */
 
 /* This function must be called as a thread as it will block on a cond variable */
@@ -111,6 +131,7 @@ void *pe_monitor_init(void *arg) {
      * or TODO: remove pe_monitor_quit and related
      * */
     //pe_set_monitor_quit(false);
+    peovs_libvirt_monitor_stop = false;
 
     /* Separate thread that runs ovsdb monitor ALL */
     pag_pthread_create(&ovsdb_monitor,NULL,pe_ovsdb_monitor,NULL);
@@ -121,12 +142,12 @@ void *pe_monitor_init(void *arg) {
      * terminate if it gets a message and pe_get_monitor_quit()
      * returns true */
 
-    xpthread_mutex_lock(tm->lock);
+    xpthread_mutex_lock(&tm->lock->lock);
     ovs_mutex_cond_wait(tm->quit_notice, tm->lock);
-    xpthread_mutex_unlock(tm->lock);
+    xpthread_mutex_unlock(&tm->lock->lock);
 
     pthread_cancel(ovsdb_monitor);
-    pthread_cancel(libvirt_monitor);
+    peovs_libvirt_monitor_stop = true;
 
     pag_pthread_join(ovsdb_monitor,(void **) NULL); 
     pag_pthread_join(libvirt_monitor,(void **) NULL); 
@@ -493,9 +514,109 @@ pe_check_ovsdb_error(struct ovsdb_error *error)
  * Initial function for libvirt monitoring thread
  */
 static void *pe_libvirt_monitor(void * arg) {
+    pe_monitor_thread_mgmt_t *tm = (pe_monitor_thread_mgmt_t *) arg;
+    virConnectPtr mconn = NULL;
+    int event_callback_id[PEOVS_NR_EVENT_CALLBACKS] = { 0 };
 
     VLOG_ENTER(__func__);
 
+    if((mconn = virConnectOpen(tm->lvirt)) == NULL)
+        VLOG_ABORT("Failed to open connection to libvirt: %s\n",tm->lvirt);
+
+    if (virEventRegisterDefaultImpl() < 0) {
+        virErrorPtr err = virGetLastError();
+        VLOG_ABORT("Failed to register with libvirt: %s\n",
+                   err && err->message ? err->message: "Unknown error");
+    }
+
+    /* set up callbacks */
+    /* TODO: if free functions are needed use a jump table with
+     * NETWORK/DOMAIN_EVENT_T as index
+     */
+    event_callback_id[DOMAIN_REBOOT] =
+        virConnectDomainEventRegisterAny(
+            mconn,
+            NULL,
+            VIR_DOMAIN_EVENT_ID_REBOOT,
+            VIR_DOMAIN_EVENT_CALLBACK(domain_reboot_callback),
+            NULL,
+            NULL);
+/*
+    event_callback_id[NETWORK_LIFECYCLE] =
+        virConnectNetworkEventRegisterAny(
+            mconn,
+            NULL,
+	    VIR_NETWORK_EVENT_ID_LIFECYCLE,
+            VIR_NETWORK_EVENT_CALLBACK(network_lifecycle),
+            NULL,
+            NULL)
+*/
+    if(event_callback_id[DOMAIN_REBOOT] != -1 &&
+       event_callback_id[NETWORK_LIFECYCLE]  != -1) {
+        if (virConnectSetKeepAlive(mconn, 5, 3) < 0) {
+            virErrorPtr err = virGetLastError();
+            VLOG_ERR("Failed to start keepalive protocol: %s\n",
+                    err && err->message ? err->message : "Unknown error");
+            peovs_libvirt_monitor_stop = true;
+        }
+
+        while(peovs_libvirt_monitor_stop == false) {
+            /* run loop for libvirt events */
+            if (virEventRunDefaultImpl() < 0) {
+                virErrorPtr err = virGetLastError();
+                VLOG_ABORT("Failed to run event loop: %s\n",
+                     err && err->message ? err->message : "Unknown error");
+            }
+        }
+    }
+
+    /* deregister callbacks */
+    if(event_callback_id[DOMAIN_REBOOT] != -1) {
+        virConnectDomainEventDeregisterAny(mconn,
+            event_callback_id[DOMAIN_REBOOT]);
+    } else {
+        VLOG_ERR("Failed to register for domain reboot.\n");
+    }
+/*
+    if(event_callback_id[NETWORK_LIFECYCLE] != -1) {
+        virConnectNetworkEventDeregisterAny(mconn,
+               event_callback_id[NETWORK_LIFECYCLE]);
+    } else {
+        VLOG_ERR("Failed to register for network lifecycle.\n");
+    }
+*/
+    virConnectClose(mconn);
+
     VLOG_LEAVE(__func__);
     return(NULL);
+}
+
+/* libvirt monitor callbacks */
+static int domain_reboot_callback(virConnectPtr conn,
+                                  virDomainPtr dom,
+                                  void *opaque) {
+    (void) conn;
+    (void) opaque;
+
+    VLOG_ENTER(__func__);
+
+    VLOG_INFO("Domain event: %s(%d) rebooted\n",virDomainGetName(dom),
+                                                virDomainGetID(dom));
+
+    VLOG_LEAVE(__func__);
+    return(0);
+}
+
+static int network_lifecycle(virConnectPtr conn,
+                             virNetworkPtr net,
+                             void *opaque) {
+    (void) conn;
+    (void) opaque;
+
+    VLOG_ENTER(__func__);
+
+    VLOG_INFO("Network lifecycle event: %s\n",virNetworkGetName(net));
+
+    VLOG_LEAVE(__func__);
+    return(0);
 }

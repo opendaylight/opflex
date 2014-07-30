@@ -34,7 +34,7 @@
 
 #define USE_VLOG 1
 
-void *test_monitor_init(void *input);
+//void *test_monitor_init(void *input);
 
 
 VLOG_DEFINE_THIS_MODULE(test_peovs_scan);
