@@ -20,7 +20,7 @@
 /*
  *    Hash Table Structures (Client View) and Definitions.
  */
-typedef struct _hash_table *hash_table ;
+typedef struct _hash_table *hash_table;
 
 /*
  *    Miscellaneous declarations.

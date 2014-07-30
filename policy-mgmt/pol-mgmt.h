@@ -29,6 +29,6 @@ struct option_ele pm_config_defaults[];
 extern bool pm_initialize(void);
 extern bool pm_crash_recovery(const char *dbfile);
 extern bool pm_is_initialized(void);
-extern void pe_cleanup(void);
+extern void pm_cleanup(void);
 
 #endif /* POL_MGMT_H */

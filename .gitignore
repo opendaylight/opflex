@@ -78,6 +78,7 @@ missing
 !third-party/ovs/rhel/openvswitch.spec.in
 !third-party/ovs/rhel/openvswitch-kmod-rhel6.spec.in
 !third-party/ovs/rhel/openvswitch-fedora.spec.in
+third-party/ovs/lib/orig.vlog.h
 third-party/Makefile.in
 third-party/ovs/Makefile.in
 third-party/ovs/autom4te.cache/*

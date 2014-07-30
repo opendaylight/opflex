@@ -20,6 +20,6 @@ AM_LDFLAGS=-L/usr/lib -lnsl -lm -lpthread -L$(top_builddir)/lib -L$(top_builddir
 endif
 
 libpm_so_la_SOURCES = pol-mgmt.c pol-mgmt.h
-# libpm_so_la_SOURCES += index-util.c index-util.h
+libpm_so_la_SOURCES += sess.c sess.h
 
 lib_libpm_so_la = policy-mgmt/libpm.so.la
