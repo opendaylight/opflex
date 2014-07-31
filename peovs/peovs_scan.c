@@ -136,6 +136,7 @@ static void get_libvirt_domains(virConnectPtr conn) {
         VLOG_INFO("\nList of active (%d) domains:\n", nr_active_domains);
         for (count = 0; count < nr_active_domains; count++) {
             VLOG_INFO("    %s\n", virDomainGetName(adomains[count]));
+            VLOG_INFO("    %s\n", virDomainGetXMLDesc(adomains[count],VIR_DOMAIN_XML_SECURE));
             virDomainFree(adomains[count]);
         }
     } else {
@@ -146,6 +147,8 @@ static void get_libvirt_domains(virConnectPtr conn) {
         VLOG_INFO("\nList of inactive (%d) domains:\n",nr_inactive_domains);
         for (count = 0; count < nr_inactive_domains; count++) {
             VLOG_INFO("    %s\n", virDomainGetName(idomains[count]));
+            VLOG_INFO("    %s\n", virDomainGetXMLDesc(idomains[count],
+                                  VIR_DOMAIN_XML_SECURE|VIR_DOMAIN_XML_INACTIVE));
             virDomainFree(idomains[count]);
         }
     } else {
@@ -189,6 +192,8 @@ static void get_libvirt_networks(virConnectPtr conn) {
         VLOG_INFO("\nList of active (%d) nets:\n", nr_active_nets);
         for (count = 0; count < nr_active_nets; count++) {
             VLOG_INFO("    %s\n", virNetworkGetName(a_nets[count]));
+            VLOG_INFO("    %s\n", virNetworkGetXMLDesc(a_nets[count],
+                                  0));
             virNetworkFree(a_nets[count]);
         }
     } else {
@@ -199,6 +204,8 @@ static void get_libvirt_networks(virConnectPtr conn) {
         VLOG_INFO("\nList of inactive (%d) nets:\n",nr_inactive_nets);
         for (count = 0; count < nr_inactive_nets; count++) {
             VLOG_INFO("    %s\n", virNetworkGetName(i_nets[count]));
+            VLOG_INFO("    %s\n", virNetworkGetXMLDesc(i_nets[count],
+                                  VIR_NETWORK_XML_INACTIVE));
             virNetworkFree(i_nets[count]);
         }
     } else {
@@ -241,6 +248,8 @@ static void get_libvirt_interfaces(virConnectPtr conn) {
         VLOG_INFO("\nList of active (%d) ifaces:\n", nr_active_ifaces);
         for (count = 0; count < nr_active_ifaces; count++) {
             VLOG_INFO("    %s\n", virInterfaceGetName(a_ifaces[count]));
+            VLOG_INFO("    %s\n", virInterfaceGetXMLDesc(a_ifaces[count],
+                                  0));
             virInterfaceFree(a_ifaces[count]);
         }
     } else {
@@ -251,6 +260,8 @@ static void get_libvirt_interfaces(virConnectPtr conn) {
         VLOG_INFO("\nList of inactive (%d) ifaces:\n",nr_inactive_ifaces);
         for (count = 0; count < nr_inactive_ifaces; count++) {
             VLOG_INFO("    %s\n", virInterfaceGetName(i_ifaces[count]));
+            VLOG_INFO("    %s\n", virInterfaceGetXMLDesc(a_ifaces[count],
+                                  VIR_INTERFACE_XML_INACTIVE));
             virInterfaceFree(i_ifaces[count]);
         }
     } else {
