@@ -26,6 +26,7 @@ function show_options () {
     echo "    --stop-stage <stage> -- runs through the defined stage"
     echo "          choices are: ovs, aclocal, autoheader,"
     echo "          libtoolize, automake, autoconf."
+    echo "    --with-tests - pass --with-tests argument to configure"
     echo "    --verbose - just what it says"
     echo
     exit $1
@@ -61,8 +62,9 @@ fi
 DO_MAKE="yes"
 DO_TAGS="n"
 BUILD_OVS="no"
+WITH_TEST=""
 STOP_STAGE=""
-TEMP=`getopt -o s:tnvhf --long stop-stage:,no-make::,tags::,help,force-ovs-build,verbose:: -n $SCRIPT_NAME -- "$@"`
+TEMP=`getopt -o s:tnvhfw --long stop-stage:,no-make::,tags::,help,force-ovs-build,with-tests,verbose:: -n $SCRIPT_NAME -- "$@"`
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 
 # Note the quotes around `$TEMP': they are essential!                                                                                                      
@@ -95,6 +97,11 @@ while true ; do
            case "$2" in
                 "") VERBOSE="True"; shift 2;;
                 *) VERBOSE=$2; shift 2;;
+            esac ;;
+        -w|--with-tests)
+            case "$2" in
+                "") WITH_TEST="--with-tests"; shift 1 ;;
+                *) WITH_TEST="--with-tests"; shift 1 ;;
             esac ;;
         -h|--help) show_options 0;;
         --) shift ; break ;;
@@ -235,8 +242,8 @@ if [ "$STOP_STAGE" == "autoconf" ]; then
     exit 0
 fi
 
-msgout "INFO" "Running the ./configure"
-./configure || die "Can't execute configure"
+msgout "INFO" "Running ./configure $WITH_TEST"
+./configure $WITH_TEST || die "Can't execute configure"
 if [ "$?" != "0" ]; then
     msgout "ERROR" "There are configure errors."
     exit -1
