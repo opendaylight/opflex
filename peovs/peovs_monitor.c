@@ -61,17 +61,16 @@
 VLOG_DEFINE_THIS_MODULE(peovs_monitor);
 
 /* declarations and definitions */
-static struct table_style table_style = TABLE_STYLE_DEFAULT;
-static bool peovs_libvirt_monitor_stop;
+#define ALWAYS_TRUE 1
 
-typedef enum {
-    DOMAIN_REBOOT,
-    DOMAIN_SHUTDOWN,
-    NETWORK_LIFECYCLE, 
-    PEOVS_NR_EVENT_CALLBACKS
-} PEOVS_EVENT_T;
+static struct table_style table_style = TABLE_STYLE_DEFAULT;
+
+static int event_callback_id[PEOVS_NR_EVENT_CALLBACKS] = { 0 };
 
 /* protos */
+static void pe_ovsdb_cleanup(void *);
+static void pe_libvirt_cleanup(void *);
+static void pe_libvirt_deregister(virConnectPtr);
 static void
 pe_check_ovsdb_error(struct ovsdb_error *error);
 static void
@@ -105,8 +104,7 @@ static void pe_add_monitored_table(const char *server,
                                 struct monitored_table **mts,
                                 size_t *n_mts,
                                 size_t *allocated_mts);
-static void *
-pe_libvirt_monitor(void * arg);
+static void *pe_libvirt_monitor(void * arg);
 static int domain_reboot_callback(virConnectPtr,
                                   virDomainPtr,
                                   void *);
@@ -114,9 +112,9 @@ static int network_lifecycle(virConnectPtr,
                              virNetworkPtr,
                              void *);
 /* end protos */
-/* routines */
 
-/* This function must be called as a thread as it will block on a cond variable */
+/* This function must be called as a thread since it will block
+ * on a cond variable */
 void *pe_monitor_init(void *arg) {
     static char *mod = "pe_monitor_init";
     pthread_t ovsdb_monitor;
@@ -125,29 +123,24 @@ void *pe_monitor_init(void *arg) {
 
     VLOG_ENTER(mod);
 
-    //ovs_rwlock_init(&pe_monitor_rwlock);
-
-    /* calling routine should set this to true, when it is time to quit
-     * or TODO: remove pe_monitor_quit and related
-     * */
-    //pe_set_monitor_quit(false);
-    peovs_libvirt_monitor_stop = false;
-
     /* Separate thread that runs ovsdb monitor ALL */
     pag_pthread_create(&ovsdb_monitor,NULL,pe_ovsdb_monitor,NULL);
-    pag_pthread_create(&libvirt_monitor,NULL,pe_libvirt_monitor,NULL);
+    pag_pthread_create(&libvirt_monitor,NULL,pe_libvirt_monitor,(void *) tm);
 
-    /* probably should add signal handling and allow for
-     * cancelling of this thread because the monitor will only
-     * terminate if it gets a message and pe_get_monitor_quit()
-     * returns true */
+    /* this function is a thread and it needs to be notified
+     * via a xpthread_cond_signal(&tm->quit.notice) when it is time to
+     * terminate. A pe_monitor_thread_mgmt_t must be allocated,
+     * initialized, and passed via arg through pthread_create.
+     * See tests/test-pe_monitor.c for an example.
+     */
+    xpthread_mutex_lock(&tm->lock.lock);
+    ovs_mutex_cond_wait(&tm->quit_notice, &tm->lock);
+    xpthread_mutex_unlock(&tm->lock.lock);
 
-    xpthread_mutex_lock(&tm->lock->lock);
-    ovs_mutex_cond_wait(tm->quit_notice, tm->lock);
-    xpthread_mutex_unlock(&tm->lock->lock);
+    /* time to quit */
 
     pthread_cancel(ovsdb_monitor);
-    peovs_libvirt_monitor_stop = true;
+    pthread_cancel(libvirt_monitor);
 
     pag_pthread_join(ovsdb_monitor,(void **) NULL); 
     pag_pthread_join(libvirt_monitor,(void **) NULL); 
@@ -161,7 +154,7 @@ static void *pe_ovsdb_monitor(void *arg) {
     int save_errno = 0;
     struct jsonrpc *rpc;
     const char *server;
-    const char *table_name = "ALL"; // monitor everything
+    //const char *table_name = "ALL"; // monitor everything
     struct unixctl_server *unixctl;
     struct ovsdb_schema *schema;
     struct ovsdb_table_schema *table;
@@ -216,6 +209,11 @@ static void *pe_ovsdb_monitor(void *arg) {
     request = jsonrpc_create_request("monitor", monitor, NULL);
     request_id = json_clone(request->id);
     jsonrpc_send(rpc, request);
+
+    /* Main monitor loop - infinite. It will stop on a pthread_cancel()
+     * called from pe_monitor_init(). Note that pthread_cleanup*()
+     * functions take care of releasing memory, etc. */
+    pthread_cleanup_push(pe_ovsdb_cleanup,(void *) rpc);
 
     for (;;) {
         unixctl_server_run(unixctl);
@@ -280,6 +278,9 @@ static void *pe_ovsdb_monitor(void *arg) {
         unixctl_server_wait(unixctl);
         poll_block();
     }
+
+    /* force cleanup */
+    pthread_cleanup_pop(ALWAYS_TRUE);
 
     VLOG_LEAVE(mod);
 
@@ -516,7 +517,6 @@ pe_check_ovsdb_error(struct ovsdb_error *error)
 static void *pe_libvirt_monitor(void * arg) {
     pe_monitor_thread_mgmt_t *tm = (pe_monitor_thread_mgmt_t *) arg;
     virConnectPtr mconn = NULL;
-    int event_callback_id[PEOVS_NR_EVENT_CALLBACKS] = { 0 };
 
     VLOG_ENTER(__func__);
 
@@ -553,39 +553,22 @@ static void *pe_libvirt_monitor(void * arg) {
 */
     if(event_callback_id[DOMAIN_REBOOT] != -1 &&
        event_callback_id[NETWORK_LIFECYCLE]  != -1) {
-        if (virConnectSetKeepAlive(mconn, 5, 3) < 0) {
-            virErrorPtr err = virGetLastError();
-            VLOG_ERR("Failed to start keepalive protocol: %s\n",
-                    err && err->message ? err->message : "Unknown error");
-            peovs_libvirt_monitor_stop = true;
-        }
 
-        while(peovs_libvirt_monitor_stop == false) {
+        /* setup clean up callback for pthread_cancel() */
+        pthread_cleanup_push(pe_libvirt_cleanup,(void *) mconn);
+
+        for(;;) {
             /* run loop for libvirt events */
+            /* only stops on pthread_cancel() from pe_monitor_init() */
             if (virEventRunDefaultImpl() < 0) {
                 virErrorPtr err = virGetLastError();
                 VLOG_ABORT("Failed to run event loop: %s\n",
                      err && err->message ? err->message : "Unknown error");
             }
         }
+        /* force cleanup */
+        pthread_cleanup_pop(ALWAYS_TRUE);
     }
-
-    /* deregister callbacks */
-    if(event_callback_id[DOMAIN_REBOOT] != -1) {
-        virConnectDomainEventDeregisterAny(mconn,
-            event_callback_id[DOMAIN_REBOOT]);
-    } else {
-        VLOG_ERR("Failed to register for domain reboot.\n");
-    }
-/*
-    if(event_callback_id[NETWORK_LIFECYCLE] != -1) {
-        virConnectNetworkEventDeregisterAny(mconn,
-               event_callback_id[NETWORK_LIFECYCLE]);
-    } else {
-        VLOG_ERR("Failed to register for network lifecycle.\n");
-    }
-*/
-    virConnectClose(mconn);
 
     VLOG_LEAVE(__func__);
     return(NULL);
@@ -619,4 +602,50 @@ static int network_lifecycle(virConnectPtr conn,
 
     VLOG_LEAVE(__func__);
     return(0);
+}
+
+/* supporting functions */
+static void pe_libvirt_cleanup(void *arg) {
+    virConnectPtr conn = (virConnectPtr) arg;
+
+    VLOG_ENTER(__func__);
+
+    VLOG_INFO("pe_libvirt_cleanup called\n");
+
+    pe_libvirt_deregister(conn);
+    virConnectClose(conn);
+
+    VLOG_LEAVE(__func__);
+
+}
+
+static void pe_libvirt_deregister(virConnectPtr conn) {
+
+    VLOG_ENTER(__func__);
+    if(event_callback_id[DOMAIN_REBOOT] != -1) {
+        virConnectDomainEventDeregisterAny(conn,
+            event_callback_id[DOMAIN_REBOOT]);
+    } else {
+        VLOG_ERR("Failed to deregister domain reboot.\n");
+    }
+/*
+    if(event_callback_id[NETWORK_LIFECYCLE] != -1) {
+        virConnectNetworkEventDeregisterAny(conn,
+               event_callback_id[NETWORK_LIFECYCLE]);
+    } else {
+        VLOG_ERR("Failed to deregister network lifecycle.\n");
+    }
+*/
+
+    VLOG_LEAVE(__func__);
+
+}
+
+static void pe_ovsdb_cleanup(void *rpc) {
+
+    VLOG_ENTER(__func__);
+    jsonrpc_close((struct jsonrpc *) rpc);
+    VLOG_INFO("pe_ovsdb_cleanup called\n");
+    VLOG_LEAVE(__func__);
+
 }

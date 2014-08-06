@@ -27,9 +27,16 @@ struct monitored_table {
 
 typedef struct _pe_monitor_thread_mgmt pe_monitor_thread_mgmt_t;
 
+typedef enum {
+    DOMAIN_REBOOT,
+    DOMAIN_SHUTDOWN,
+    NETWORK_LIFECYCLE,
+    PEOVS_NR_EVENT_CALLBACKS
+} PEOVS_EVENT_T;
+
 struct _pe_monitor_thread_mgmt {
-    struct ovs_mutex *lock;
-    pthread_cond_t *quit_notice;
+    struct ovs_mutex lock;
+    pthread_cond_t quit_notice;
     const char *lvirt; //path for libvirt open calls (e.g. "qemu:///system")
 };
 
