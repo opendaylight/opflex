@@ -31,7 +31,7 @@ enum q_cmd_types {
  * The element of an event
  */
 typedef struct _eventq_ele {
-    struct uuid        uuid;     /* UID for reference.          */
+    /* struct uuid        uuid;     /\* UID for reference.          *\/ */
     struct _eventq_ele *next;    /* linkto the next item in q   */
     uint32_t           state;    /* state flag                  */
     struct timeval     tv;       /* performance data timeings   */
@@ -87,7 +87,7 @@ extern bool put_work_back_in_queue(eventq_t *qp, eventq_ele_t *wp);
 extern bool crew_create(crew_t *crew, int crew_size, int max_crew_size,
                        void *(*worker_routine)(void *args));
 extern int workq_init(int num_threads);
-extern bool scan_queue_for_uuid(crew_t *crew, struct uuid *uuid);
+/* extern bool scan_queue_for_uuid(crew_t *crew, struct uuid *uuid); */
 extern int crew_destroy(eventq_t *qp, crew_t *old_crew);
 extern int eventq_add(crew_p crew, eventq_ele_t *request);
 

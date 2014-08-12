@@ -18,7 +18,6 @@
 #include "eventq.h"
 #include "shash.h"
 
-//struct jsonrpc_session;
 
 typedef enum _enum_counter_direction {
     CNTR_DEC = 0,
@@ -40,6 +39,16 @@ typedef enum _enum_sess_type {
     SESS_TYPE_CLIENT,
 } enum_sess_type;
 
+typedef enum _enum_sess_comm_type {
+    SESS_COMM_ASYNC=0,
+    SESS_COMM_SYNC,
+} enum_sess_comm_type;
+    
+typedef enum _enum_sess_evtq_state {
+    SESS_EVTQ_ST_NEW = 0,
+    SESS_EVTQ_ST_DSPH,
+} enum_sess_evtq_state;
+
 /* the data in the session will be the data defined in the sess_list->data
  *  pointer. 
  */
@@ -60,6 +69,13 @@ typedef struct _session {
      */
     int fd;
 
+    /* Session type is going to be used to define if this is an async
+     * or sync model. If async its fd is going to be in the epoll_monitor's
+     * list, if sync the fd will not be in the epoll, in othere words the caller
+     * will have to do a revc to get messgaes from it.
+     */
+    enum_sess_comm_type comm_type;
+
     /* This is the point to either the client data, if it was a active
      * session established, or server session point if it was a passive
      * session setup.
@@ -69,6 +85,10 @@ typedef struct _session {
 } session_t, *session_p;
 
 typedef struct _sess_manage {
+    /* this defines the serializer that this session will use.
+     */
+    enum_data_format df_type;
+
     struct ovs_rwlock rwlock;
 
     /* This is the default controller that was read from the configuration
@@ -132,7 +152,8 @@ typedef struct _sess_manage {
      */
     int (*close)(void);
 
-    /* this will start the server thread for listening for un-solicited connections
+    /* this will start the server thread for listening for un-solicited
+     * connections.
      */
     int (*start_server)(void);
 
@@ -166,11 +187,15 @@ typedef struct _sess_manage {
  */
 extern bool sess_initialize(void);
 extern void sess_cleanup(void);
-extern bool sess_open(char *name, enum_sess_type sess_type);
+extern bool sess_open(char *name, enum_sess_type sess_type,
+                      enum_sess_comm_type ctype);
 extern session_p sess_get(char *name);
 extern bool sess_close(char *name);
-extern  session_p sess_list_search(char *name);
+extern session_p sess_list_search(char *name);
 extern bool sess_is_initialized(void);
 extern int sess_get_session_count(void);
+extern bool sess_is_alive(char *name);
+extern bool sess_is_connected(char *name);
+extern void *sess_recv(char *name, long timeout_secs, bool cvt_to_string);
 
 #endif

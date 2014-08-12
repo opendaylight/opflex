@@ -58,14 +58,17 @@ static FILENAME pm_fname;
  * the config file then the config option will defualt to what is 
  * defined here.
  */
-struct option_ele pm_config_defaults[] = {
+struct option_ele pm_config_defaults[] = {    
+    {PM_SECTION, "pe_name", "PE1"},
+    {PM_SECTION, "pe_domain", "this_domain"},
+    {PM_SECTION, "pe_role", "policy_element"},
     {PM_SECTION, "crash_recovery", "false"},
     {PM_SECTION, "checkpoint_method", "acid"},
     {PM_SECTION, "default_controller", "tcp:127.0.0.1:7777"},
     {PM_SECTION, "pm_debug_level", "INFO"},
     {PM_SECTION, "max_active_sessions", "10"},
     {PM_SECTION, "sess_debug_level", "INFO"},
-    {PM_SECTION, "sess_protocol", "OPFLEX"},
+    {PM_SECTION, "sess_protocol", "JSON"},
     {PM_SECTION, "max_session_threads", "10"},
     {PM_SECTION, "session_queue_depth", "20"},    
     {NULL, NULL, NULL}

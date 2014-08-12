@@ -29,6 +29,7 @@
 #include "json.h"
 #include "jsonrpc.h"
 #include "poll-loop.h"
+#include "ofpbuf.h"
 #include "sort.h"
 #include "svec.h"
 #include "socket-util.h"
@@ -37,10 +38,10 @@
 #include "pol-mgmt.h"
 #include "sess.h"
 #include "eventq.h"
-#include "hash-util.h"
 #include "tv-util.h"
 #include "util.h"
 #include "config-file.h"
+#include "skt-util.h"
 #include "fnm-util.h"
 #include "meo-util.h"
 #include "vlog.h"
@@ -61,8 +62,13 @@ VLOG_DEFINE_THIS_MODULE(session);
  * Local dcls
  */
 static bool sess_initialized = false;
+
 static pthread_t sess_mgr_thread;
-static bool thread_running = false;
+static bool session_worker_thread_running = false;
+
+static bool sess_epoll_thread_running = false;
+static pthread_t sess_epoll_thread;
+
 static sess_manage_p sess_info;
 static char *not_init_msg = "%s: session layer has not been intialized.";
 
@@ -105,19 +111,23 @@ struct jsonrpc_session {
  */
 static void *session_worker_thread (void *arg);
 static struct jsonrpc *sess_open_jsonrpc(const char *server);
-//static struct stream_fd *stream_fd_cast(struct stream *stream);
 static struct jsonrpc_session *sess_open_jsonsession(char *server);
 static bool sess_epoll_modify(session_p sessp, bool add_flag);
+static void *sess_epoll_monitor_thread(void *sip_);
 
+static int sess_list_mod_count(enum_counter_direction inc_flag,
+                               enum_locking lock_flag);
 
-static int sess_list_mod_count(enum_counter_direction inc_flag, enum_locking lock_flag);
 static inline struct stream_fd *stream_fd_cast(struct stream *stream)
 {
     return CONTAINER_OF(stream, struct stream_fd, stream);
 }
+
 static bool sess_list_add(session_p sessp, char *name);
-static void session_connect(struct jsonrpc_session *s);
-static void session_disconnect(struct jsonrpc_session *s);
+static void jsonrpc_session_connect(struct jsonrpc_session *s);
+static void jsonrpc_session_disconnect(struct jsonrpc_session *s);
+static void sess_jsonrpc_session_close(struct jsonrpc_session *s);
+
 static void jsonrpc_error(struct jsonrpc *rpc, int error);
 static void jsonrpc_cleanup(struct jsonrpc *rpc);
 
@@ -135,6 +145,8 @@ bool sess_initialize(void)
     static char *mod = "sess_initialize";
     bool retb = false;
     sess_manage_p sip = NULL;
+    char *df_type_string;
+    int retc;
 
     ENTER(mod);
 
@@ -147,7 +159,30 @@ bool sess_initialize(void)
         ovs_rwlock_init(&sip->rwlock);
         ovs_rwlock_wrlock(&sip->rwlock);
 
-        sip->max_sessions = atoi(conf_get_value(PM_SECTION, "max_active_sessions"));
+        /* Setup the protocol 
+         */
+        df_type_string = conf_get_value(PM_SECTION, "sess_protocol");
+        if (strlen(df_type_string)) {
+            if (strcasecmp(df_type_string, "json") == 0) {
+                sip->df_type = DF_JSON;
+            }            
+            else if (strcasecmp(df_type_string, "xml") == 0) {
+                sip->df_type = DF_XML;
+            }
+            else {
+                VLOG_FATAL("%s: unsupport sess_protocol type: %s",
+                           mod, df_type_string);
+                free(sip);
+                retb = true;
+                goto rtn_return;
+            }
+        }
+        else {
+            sip->df_type = DF_JSON;
+        }
+           
+        sip->max_sessions = atoi(conf_get_value(PM_SECTION,
+                                                "max_active_sessions"));
 
         shash_init(&sip->sess_list);
         ovs_rwlock_init(&sip->sess_list_rwlock);
@@ -156,10 +191,12 @@ bool sess_initialize(void)
         /*
          * setup the session_work_q & threads
          */
-        sip->sess_q_depth = atoi(conf_get_value(PM_SECTION, "session_queue_depth"));
+        sip->sess_q_depth = atoi(conf_get_value(PM_SECTION,
+                                                "session_queue_depth"));
         if (init_workpool(sip->sess_q_depth, sizeof(session_t), 1,
                           sip->sess_q_depth, &sip->sess_event_q)) {
-            VLOG_FATAL("%s: Can't allocate the session event queue of depth: %d.",
+            VLOG_FATAL("%s: Can't allocate the session event "
+                       "queue of depth: %d.",
                        mod, sip->sess_q_depth);
             retb = true;
         }
@@ -167,7 +204,8 @@ bool sess_initialize(void)
         /*
          * create the work crew 
          */
-        sip->max_sess_threads = atoi(conf_get_value(PM_SECTION, "max_session_threads"));
+        sip->max_sess_threads = atoi(conf_get_value(PM_SECTION,
+                                                    "max_session_threads"));
         sip->workq = xzalloc(sizeof(crew_t));
         if (crew_create(sip->workq, sip->max_sess_threads,
                         sip->max_sess_threads, session_worker_thread)) {
@@ -176,13 +214,20 @@ bool sess_initialize(void)
             retb = true;
         }
 
-        /* ============================================ */
-        /* TODO: LEAVE THIS HERE AS EXAMPLE, this is how we get access tot he FD */
-        /* default_controller = conf_get_value(PM_SECTION, "default_controller"); */
-        /* rpc = sess_open_jsonrpc(default_controller); */
-        /* s = stream_fd_cast(rpc->stream); */
-        /* VLOG_INFO("%s: %p fd:%d", mod, rpc, s->fd); */
-        
+        /*
+         * start the sess_epoll_thread, this basically start with no 
+         * FDs in the monitoring pool and as sess_open occurr FDs will
+         * be put inot it.
+         */
+        retc = pthread_create(&sess_epoll_thread, NULL,
+                              sess_epoll_monitor_thread, sip);
+        if (retc) {
+            VLOG_FATAL("%s: error creating sess_epoll_monitor_thread: %d",
+                       mod, retc);
+            retb = true;
+            goto rtn_return;
+        }
+
         ovs_rwlock_unlock(&sip->sess_list_rwlock);
         ovs_rwlock_unlock(&sip->rwlock);
         sess_initialized = true;
@@ -191,27 +236,29 @@ bool sess_initialize(void)
         VLOG_ERR("%s: Session already initialized", mod);
         retb = true;
     }
-
+ rtn_return:
     LEAVE(mod);
     return(retb);
 }
 
 /*
- * sess_open - this creates and opens a session to the name <protocol>:server:port>
- * and adds it to the sess_list. Adds it to the epoll_wait
- * and adds it as session to the sess_list. If this session already exists will
- * not create a new one.
+ * sess_open - this creates and opens a session to the name
+ * <protocol>:server:port> and adds it to the sess_list. Adds it
+ * to the epoll_wait and adds it as session to the sess_list. If
+ * this session already exists will not create a new one.
  *
  * where:
- *   @param0 <name>                - I
- *        This will either be a server or client side pointer to the session
- *        point.
- *   @param <sess_type>            - I
- *        Identifies the json session pointer enum_sess_type.
+ *  @param0 <name>                - I
+ *          This will either be a server or client side pointer to the session
+ *          point.
+ *  @param1 <sess_type>            - I
+ *          Identifies the json session pointer enum_sess_type.
+ *  @param2 <df_type>              - I
+ *          Defines the type of serializer that will be used.
  * @returns <retb>
  *
  */
-bool sess_open(char *name, enum_sess_type sess_type)
+bool sess_open(char *name, enum_sess_type sess_type, enum_sess_comm_type ctype)
 {
     static char *mod = "sess_add";
     bool retb = false;
@@ -246,6 +293,7 @@ bool sess_open(char *name, enum_sess_type sess_type)
                     retb = true;
                     goto rtn_return;
                 }
+
                 VLOG_INFO("%s: jsonrpc session open to:%s status:%d", mod,
                           name, jsonrpc_session_get_status(jsp));
                 s = stream_fd_cast(jsp->stream);
@@ -254,21 +302,26 @@ bool sess_open(char *name, enum_sess_type sess_type)
                 ovs_rwlock_wrlock(&sessp->rwlock);
                 sessp->sess_start_ts = tv_tod();
                 sessp->fd = s->fd;
+                sessp->comm_type = ctype;
                 sessp->jsessp = jsp;
                 ovs_rwlock_unlock(&sessp->rwlock);
 
                 /* add it to the sessin list */
                 if (sess_list_add(sessp, name)) {
                     VLOG_WARN("%s: cant add %s to the sess_list", mod, name);
-                    jsonrpc_session_close(jsp);
+                    sess_jsonrpc_session_close(jsp);
                     free(sessp);
                     retb = true;
                 }
-                /* need to add it to the monitoring epoll */
-                if (sess_epoll_modify(sessp, true)) {
-                    VLOG_WARN("%s: can't add %s to epoll monitor list", mod,
-                              name);
-                    retb = true;
+                /* if this is an async session need to add it to the
+                 * monitoring epoll, if its sync then we do not add it.
+                 */
+                if (ctype == SESS_COMM_ASYNC) {
+                    if (sess_epoll_modify(sessp, true)) {
+                        VLOG_WARN("%s: can't add %s to epoll monitor list", mod,
+                                  name);
+                        retb = true;
+                    }
                 }
                 if (retb == false) {
                     sess_list_mod_count(CNTR_INC, WITH_LOCKING);
@@ -359,7 +412,7 @@ bool sess_close(char *name)
         ovs_rwlock_unlock(&sip->sess_list_rwlock);
 
         if (sessp) {
-            jsonrpc_session_close(sessp->jsessp);
+            sess_jsonrpc_session_close(sessp->jsessp);
             sess_list_mod_count(CNTR_DEC, WOUT_LOCKING);
             sess_epoll_modify(sessp, false);
             free(sessp);
@@ -386,6 +439,187 @@ bool sess_close(char *name)
 bool sess_is_initialized(void)
 {
     return(sess_initialized);
+}
+
+/* 
+ * sess_is_connected - determins if the session is connected.
+ * 
+ * where:
+ * @param0 <name>               - I
+ *         name of the previously connected session name.
+ * @returns true if connected else false.
+ *
+ */
+bool sess_is_alive(char *name) 
+{
+    static char *mod = "sess_is_connected";
+    bool retb = false;
+    session_p sessp;
+    
+    ENTER(mod);
+
+    if ((sessp = sess_get(name))) {
+        retb = jsonrpc_session_is_alive(sessp->jsessp);
+    }
+    else {
+        VLOG_WARN("%s: this session is not connected: %s",
+                  mod, name);
+        retb = false;
+    }
+
+    VLOG_DBG("%s: name:%s retb=%d", mod, name, retb);
+    LEAVE(mod);
+    return(retb);
+}
+
+/* 
+ * sess_is_connected - determins if the session is connected.
+ * 
+ * where:
+ * @param0 <name>               - I
+ *         name of the previously connected session name.
+ * @returns true if connected else false.
+ *
+ */
+bool sess_is_connected(char *name) 
+{
+    static char *mod = "sess_is_connected";
+    bool retb = false;
+    session_p sessp;
+    int retc;
+    char *peer;
+    
+    ENTER(mod);
+
+    if ((sessp = sess_get(name))) {
+        retc = skt_is_up(name, sessp->fd);
+        if (retc) {
+            peer = skt_peer(name, sessp->fd);
+            VLOG_INFO("%s: is up connected: %d", mod, retc);
+            retb = true;
+        }
+
+        else {
+            VLOG_INFO("%s: this session is not connected: %s",
+                      mod, name);
+            retb = false;
+        }
+    }
+
+    VLOG_DBG("%s: name:%s retb=%d", mod, name, retb);
+    LEAVE(mod);
+    return(retb);
+}
+
+/*
+ * sess_recv - recv a message from the session.
+ *
+ * where:
+ *   @param0 <name>             - I
+ *           name of the session.
+ *   @param1 <timeout_secs>     - I
+ *           timeout in seconds.
+ *   @returns <ret_string>     - O
+ *            string or NULL if error.
+ *
+ */
+void *sess_recv(char *name, long timeout_secs, bool cvt_to_string)
+{
+    static char *mod = "sess_recv";
+    void *ret_dp = NULL;
+
+    struct jsonrpc_msg *msg;
+    session_p sessp;
+    struct timeval end, ctime;
+    int timeout, retc;
+
+    ENTER(mod);
+
+    if ((sessp = sess_get(name)) == NULL) {
+        VLOG_ERR("%s: no active session named: %s", mod, name);
+        ret_dp = NULL;
+        goto rtn_return;
+    }
+
+    end = tv_add(tv_tod(), tv_create(timeout_secs, 0));
+    for (timeout = 1; timeout; ) {
+        retc = jsonrpc_recv(sessp->jsessp->rpc, &msg);
+        if (retc == EAGAIN) {
+            ctime = tv_subtract(end, tv_tod());
+            if (ctime.tv_sec <= 0 && ctime.tv_usec <= 0) {
+                timeout = 0;
+            }
+        }
+        else if (retc != 0) {
+            VLOG_ERR("%s: bad recv json msg: %d", mod, retc);
+            ret_dp = NULL;
+            break;
+        }
+        else {
+            if (cvt_to_string) {
+                ret_dp = json_to_string(msg->result, 0);
+            }
+            else {
+                ret_dp = (void *)msg;
+            }
+            break;
+        }
+    }  /* for */
+ rtn_return:
+    LEAVE(mod);
+    return(ret_dp);
+}
+
+/*
+ * sess_send - sends a message to the previously opened session, 
+ *
+ * where:
+ * @param0 <sess_name>                - I
+ *         a previously opened session name.
+ * @param1 <msg>                      - I
+ *         this is a message structure that will be cast by the session handler
+ * @returns flase, all is good else, true.
+ *
+ */
+bool sess_send(char *sess_name, void *msg)
+{
+    static char *mod = "sess_send";
+    bool retb = false;
+    session_p sessp = NULL;
+    sess_manage_p sip = sess_info;
+
+    ENTER(mod);
+
+    if (!sess_is_initialized()) {
+        VLOG_WARN("%s: can't delete %s from the sess_list.",
+                  mod, sess_name);
+        retb = true;
+        goto rtn_return;
+    }
+    
+    if ((sessp = sess_get(sess_name)) == NULL) {
+        VLOG_WARN("%s: No session open with name: %s.",
+                  mod, sess_name);
+        retb = true;
+        goto rtn_return;
+    }
+
+    if (sip->df_type == DF_JSON) {
+        if (jsonrpc_session_send(sessp->jsessp, (struct jsonrpc_msg *)msg)) {
+            VLOG_ERR("%s: can't send message to %s", mod, sess_name);
+            retb = true;
+            goto rtn_return;
+        }
+    }
+    else {
+        VLOG_WARN("%s: unsupported protocol: %d", mod, sip->df_type);
+            retb = true;
+            goto rtn_return;
+    }
+
+ rtn_return:
+    LEAVE(mod);
+    return(retb);
 }
 
 /* 
@@ -518,19 +752,24 @@ static struct jsonrpc_session *sess_open_jsonsession(char *server)
 
     ENTER(mod);
 
+
     jsessp = jsonrpc_session_open(server, false);
-    session_connect(jsessp);
+    jsonrpc_session_connect(jsessp);
+    jsessp->rpc = jsonrpc_open(jsessp->stream);
 
     LEAVE(mod);
     return(jsessp);
 }
 
-static void session_connect(struct jsonrpc_session *s)
+/*
+ * jsonrpc_session_connect
+ */
+static void jsonrpc_session_connect(struct jsonrpc_session *s)
 {
     const char *name = reconnect_get_name(s->reconnect);
     int error;
 
-    session_disconnect(s);
+    jsonrpc_session_disconnect(s);
     if (!reconnect_is_passive(s->reconnect)) {
         error = jsonrpc_stream_open(name, &s->stream, s->dscp);
         if (!error) {
@@ -552,7 +791,7 @@ static void session_connect(struct jsonrpc_session *s)
     s->seqno++;
 }
 
-static void session_disconnect(struct jsonrpc_session *s)
+static void jsonrpc_session_disconnect(struct jsonrpc_session *s)
 {
     if (s->rpc) {
         jsonrpc_error(s->rpc, EOF);
@@ -574,6 +813,22 @@ static void jsonrpc_error(struct jsonrpc *rpc, int error)
         jsonrpc_cleanup(rpc);
     }
 }
+
+static void sess_jsonrpc_session_close(struct jsonrpc_session *s)
+{
+    if (s) {
+        jsonrpc_close(s->rpc);
+        reconnect_destroy(s->reconnect);
+        if (s->stream) 
+            if (s->stream->class->close)
+                stream_close(s->stream);
+        if (s->pstream)
+            if (s->pstream->class->close)
+                pstream_close(s->pstream);
+        free(s);
+    }
+}
+
 
 static void jsonrpc_cleanup(struct jsonrpc *rpc)
 {
@@ -676,7 +931,7 @@ static bool sess_epoll_modify(session_p sessp, bool add_flag)
     struct epoll_event event;
     struct stream_fd *s;
     int fd;
-    int op;
+    int op, retc;
     sess_manage_p sip = sess_info;
 
     ENTER(mod);
@@ -687,6 +942,7 @@ static bool sess_epoll_modify(session_p sessp, bool add_flag)
     event.data.ptr = sessp;
     s = stream_fd_cast(sessp->jsessp->stream);
     fd = s->fd;
+    event.data.fd = fd;
 
     ovs_rwlock_wrlock(&sip->rwlock);
     if (add_flag) {
@@ -700,7 +956,12 @@ static bool sess_epoll_modify(session_p sessp, bool add_flag)
     }
     ovs_rwlock_unlock(&sip->rwlock);
 
-    epoll_ctl(sip->epoll_fd, op, s->fd, &event);
+    retc = epoll_ctl(sip->epoll_fd, op, s->fd, &event);
+    if (retc) {
+        VLOG_ERR("%s: epoll_ctl setup, epoll_fd:%d socket:%d op:%d err:%s",
+                 mod, sip->epoll_fd, s->fd, op, strerror(errno));
+        retb = true;
+    }
 
     LEAVE(mod);
     return(retb);
@@ -711,42 +972,74 @@ static bool sess_epoll_modify(session_p sessp, bool add_flag)
  * event_q for processing.
  *
  */
-static bool sess_epoll_thread(void)
+static void *sess_epoll_monitor_thread(void *sip_)
 {
     static char *mod = "sess_epoll_thread";
-    bool retb = false;
-    int epoll_timeout, retval;
-    sess_manage_p sip = sess_info;
-    struct epoll_event event;
+    int epoll_timeout, retval, i, retc;
+    sess_manage_p sip = sip_;
+    struct epoll_event *events;
+    eventq_ele_t *evtqp;
 
     ENTER(mod);
+    VLOG_INFO("%s: *********** epoll thread started ********", mod);
 
     /* setup the epoll fd */
     ovs_rwlock_rdlock(&sip->rwlock);
     sip->epoll_fd = epoll_create(sip->max_sessions);
-    ovs_rwlock_unlock(&sip->rwlock);
+    if (sip->epoll_fd < 0) {
+        VLOG_FATAL("%s: can't create the epoll instance: %s", mod,
+                   strerror(errno));
+        ovs_rwlock_unlock(&sip->rwlock);
+        goto rtn_return;
+    }
 
-    epoll_timeout = 500;     /* 500 mills timeout */
+    ovs_rwlock_unlock(&sip->rwlock);
+    epoll_timeout = 50000;     /* 50000 mills timeout, 50 secs */
 
     for (sip->epoll_monitor_run = true; sip->epoll_monitor_run; ) {
         if (sip->sess_list_count) {
             do {
-                retval = epoll_wait(sip->epoll_fd, &event,
+                retval = epoll_wait(sip->epoll_fd, &events,
                                     sip->max_sessions, epoll_timeout);
             } while (retval < 0 && errno == EINTR);
+            VLOG_DBG("%s: retval:%d errno:%s", mod, retval, strerror(errno));
             if (retval < 0) {
                 VLOG_WARN("%s: epoll_wait failed(%s)", mod, strerror(errno));
             } else if (retval > 0) {
                 sip->epoll_n_events = retval;
-                /* TODO dkehn: this is where we put the event into the
+                VLOG_INFO("%s:+++++++ PSUEDO FIRE UP OPFLEX DISPATCHER "
+                          "retval:%d", mod, retval);
+                /* TODO dkehn: this is where we put the event into the evetq
+                 * that signals message is pending.
                  */
-            }
-        }
+                for (i = 0; i < retval; i++) {
+                    if ((events[i].events & EPOLLERR) ||
+                        (events[i].events & EPOLLHUP) ||
+                        (!(events[i].events & EPOLLIN))) {
+                        VLOG_ERR("%s: epoll error: 0x%08x", mod,
+                                 events[i].events);
+                    }
+                    else {
+                        /* put this event on the queue */
+                        evtqp = xzalloc(sizeof(eventq_ele_t));
+                        evtqp->tv = tv_tod();
+                        evtqp->cmd_size = 1;
+                        evtqp->state = SESS_EVTQ_ST_DSPH;
+                        evtqp->dp = events[i].data.ptr;
+                        retc = eventq_add(sip->workq, evtqp);
+                        if (retc) {
+                            VLOG_ERR("%s: error putting event on the queue",
+                                     mod);
+                            free(evtqp);
+                        }
+                    } /* else */
+                } /* for */
+            } /* else if */
+        } /* (sip->sess_list_count) */
     }
-
+ rtn_return:
     LEAVE(mod);
-    pthread_exit(&retb);
-    return(retb);
+    return(NULL);
 }
 
 /*
@@ -809,11 +1102,12 @@ static void *session_worker_thread (void *arg)
     crew_p crew = mine->crew;
     eventq_ele_t *work;
     int dWait = 1;
+    session_p sessp;
 
     /*
      * loop here forever processing work
      */
-    for (thread_running = true; ; ) {
+    for (session_worker_thread_running = true; ; ) {
         /* Wait while there is nothing to do, and the hope of something
          * coming along later. If crew->first is NULL, there's no work.
          */
@@ -858,8 +1152,11 @@ static void *session_worker_thread (void *arg)
             ovs_mutex_unlock (&crew->mutex);
 
             work->state = 2;
-            VLOG_DBG("%s: Dispatching on %d: %s \n", mod, work->uuid.parts[0],
+            sessp = (session_p)work->dp;
+            VLOG_DBG("%s: Dispatching on: %s \n", mod,
                   tv_show(tv_subtract(tv_tod(), work->tv), false, NULL));
+            
+            free(work);
         }
         else {
             ovs_mutex_unlock(&crew->mutex);
@@ -867,88 +1164,8 @@ static void *session_worker_thread (void *arg)
     }
 
  rtn_return:
-    thread_running = false;
+    session_worker_thread_running = false;
     LEAVE(mod);
     pthread_exit(NULL);
     return NULL;
 }
-
-
-#ifdef OPLEX
-/* init_opflex_protocol
- *
- */
-static sess_manage_p init_opflex_protocol(void)
-{
-    static char *mod = "init_opflex_protocol";
-
-    ENTER(mod);
-
-    LEAVE(mod);
-    return(sp);
-}
-/***************************************************************
- * OPFLEX PROTOCAL
- *************************************************************/
-
-/*
- * opflex_cmd_dispatcher - this handles the dispatching of opflex commands and
- *   responsds to opflex requests
- *
- */
-bool opflex_cmd_dispatcher(int cmd)
-{
-    static char *mod = "opflex_cmd_dispatcher";
-
-    ENTER(mod);
-    VLOG_DBG("%s: cmd=%s", mod, opflex_cmd_tostring(cmd));
-
-    LEAVE(mod);
-    retrun(retb);
-}
-
-/* opflex_dcmd_tostring.
- *
- */
-static char *opflex_dcmd_tostring(enum_opflex_dcmds dcmd)
-{
-    static char *dcmd_tostring_lookup[] = {
-        "Identify",
-        "Policy Reqsolution",
-        "Policy Update",
-        "Echo",
-        "Policy Trigger",
-        "Endpoint Declaration",
-        "Endpoint Request",
-        "Endpoint Policy Update",
-        "Close Seesion",
-        "Kill All",
-    };
-    return(dcmd_tostring_lookup[dcmd]);
-}
-
-/*
- * sess_mgr_thread - this is the main session manager for the server and active
- *     sessions to the northbound API.
- *
- */
-static void *sess_mgr_thread(void *arg)
-{
-    static char *mod = "sess_mgr_thread";
-    sess_manage_p *sessp = arg;
-
-    ENTER(mod);
-
-    /* TODO: need to waiting until the MODB & policy_enforcer are ready */
-
-    /* Send out the Identify msg to controller from config file */
-
-    for ( ;; ) {
-        break;
-    }
-
-    LEAVE();
-    return(NULL);
-}
-
-#endif

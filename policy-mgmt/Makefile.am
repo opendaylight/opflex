@@ -21,5 +21,6 @@ endif
 
 libpm_so_la_SOURCES = pol-mgmt.c pol-mgmt.h
 libpm_so_la_SOURCES += sess.c sess.h
+libpm_so_la_SOURCES += opflex.c opflex.h
 
 lib_libpm_so_la = policy-mgmt/libpm.so.la

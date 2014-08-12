@@ -266,7 +266,7 @@ static void test_eventq_add_repeat(void **state)
 
     /* fill in request */
     rqstp->state = 1;
-    rqstp->uuid.parts[0] = 0;
+    /* rqstp->uuid.parts[0] = 0; */
     rqstp->tv = t0 = tv_tod();
     rqstp->cmd_size = cmd_size;
     rqstp->dp = xzalloc(cmd_size);
@@ -277,7 +277,7 @@ static void test_eventq_add_repeat(void **state)
     for (count=0; count < test_loop_counter; count++) {
         /* setup the work ele header and send it */
         rqstp->state = 1;
-        rqstp->uuid.parts[0] = count;
+        /* rqstp->uuid.parts[0] = count; */
         rqstp->tv = t0 = tv_tod();
         retc = eventq_add(workq, rqstp);
         assert_false(retc);
@@ -360,7 +360,7 @@ static void *test_thread (void *arg)
             ovs_mutex_unlock (&crew->mutex);
 	
             work->state = 2;
-            DEBUG("%s: Dispatching on %d: %s \n", mod, work->uuid.parts[0],
+            DEBUG("%s: Dispatching on: %s \n",
                   tv_show(tv_subtract(tv_tod(), work->tv), false, NULL));
         }
         else {

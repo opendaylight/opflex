@@ -57,30 +57,30 @@ static q_cmd cmdLookup[] = {
  *         if an item in wp match the fd in the connect True, Else False.
  *
  **/
-bool scan_queue_for_uuid (crew_t *crew, struct uuid *uuid) 
-{
-    static char mod[] = "scan_queue_for_uuid";
-    eventq_ele_t *wp;
-    bool retc = false;
-    int a;
+/* bool scan_queue_for_uuid (crew_t *crew, struct uuid *uuid)  */
+/* { */
+/*     static char mod[] = "scan_queue_for_uuid"; */
+/*     eventq_ele_t *wp; */
+/*     bool retc = false; */
+/*     int a; */
   
-    VLOG_DBG("%s: <--\n",  mod);  
-    ovs_mutex_lock(&crew->mutex);
+/*     VLOG_DBG("%s: <--\n",  mod);   */
+/*     ovs_mutex_lock(&crew->mutex); */
 
-    if (crew->work_count > 0) {
-        for (a = 0, wp = crew->first; 
-             a < crew->work_count && wp->next != NULL; 
-             a++,wp=wp->next) {
-            if (!bcmp((const void *)uuid, (const void *)&wp->uuid, UUID_OCTET)) {
-                retc = true;
-                break;
-            }
-        }
-    }     
-    ovs_mutex_unlock(&crew->mutex);
-    VLOG_DBG("%s: -->%d", mod, retc);
-    return retc;
-}
+/*     if (crew->work_count > 0) { */
+/*         for (a = 0, wp = crew->first;  */
+/*              a < crew->work_count && wp->next != NULL;  */
+/*              a++,wp=wp->next) { */
+/*             if (!bcmp((const void *)uuid, (const void *)&wp->uuid, UUID_OCTET)) { */
+/*                 retc = true; */
+/*                 break; */
+/*             } */
+/*         } */
+/*     }      */
+/*     ovs_mutex_unlock(&crew->mutex); */
+/*     VLOG_DBG("%s: -->%d", mod, retc); */
+/*     return retc; */
+/* } */
 
 /* =====================================================================
  * @brief work_routine () 
@@ -386,7 +386,7 @@ bool put_work_back_in_queue (eventq_t * qp, eventq_ele_t *wp )
      */
     qp->last->next = wp;
     qp->last = wp;
-    bzero((void *)&wp->uuid, UUID_OCTET);
+    /* bzero((void *)&wp->uuid, UUID_OCTET); */
     wp->next = NULL;
     ++qp->num_in_q;
     count = qp->num_in_q;
