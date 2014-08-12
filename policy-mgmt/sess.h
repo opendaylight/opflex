@@ -43,7 +43,7 @@ typedef enum _enum_sess_comm_type {
     SESS_COMM_ASYNC=0,
     SESS_COMM_SYNC,
 } enum_sess_comm_type;
-    
+
 typedef enum _enum_sess_evtq_state {
     SESS_EVTQ_ST_NEW = 0,
     SESS_EVTQ_ST_DSPH,

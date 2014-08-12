@@ -107,8 +107,6 @@ static void test_opflex_send(void **state)
     /* close it out */
     assert_false(sess_close(default_controller));
     pm_cleanup();
-    
-
 }
 
 /* ---------------------------------------------------------------------------

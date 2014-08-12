@@ -58,7 +58,7 @@ static FILENAME pm_fname;
  * the config file then the config option will defualt to what is 
  * defined here.
  */
-struct option_ele pm_config_defaults[] = {    
+struct option_ele pm_config_defaults[] = {
     {PM_SECTION, "pe_name", "PE1"},
     {PM_SECTION, "pe_domain", "this_domain"},
     {PM_SECTION, "pe_role", "policy_element"},

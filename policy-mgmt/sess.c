@@ -159,13 +159,13 @@ bool sess_initialize(void)
         ovs_rwlock_init(&sip->rwlock);
         ovs_rwlock_wrlock(&sip->rwlock);
 
-        /* Setup the protocol 
+        /* Setup the protocol
          */
         df_type_string = conf_get_value(PM_SECTION, "sess_protocol");
         if (strlen(df_type_string)) {
             if (strcasecmp(df_type_string, "json") == 0) {
                 sip->df_type = DF_JSON;
-            }            
+            }
             else if (strcasecmp(df_type_string, "xml") == 0) {
                 sip->df_type = DF_XML;
             }
@@ -180,7 +180,7 @@ bool sess_initialize(void)
         else {
             sip->df_type = DF_JSON;
         }
-           
+
         sip->max_sessions = atoi(conf_get_value(PM_SECTION,
                                                 "max_active_sessions"));
 
@@ -215,7 +215,7 @@ bool sess_initialize(void)
         }
 
         /*
-         * start the sess_epoll_thread, this basically start with no 
+         * start the sess_epoll_thread, this basically start with no
          * FDs in the monitoring pool and as sess_open occurr FDs will
          * be put inot it.
          */
@@ -441,21 +441,21 @@ bool sess_is_initialized(void)
     return(sess_initialized);
 }
 
-/* 
+/*
  * sess_is_connected - determins if the session is connected.
- * 
+ *
  * where:
  * @param0 <name>               - I
  *         name of the previously connected session name.
  * @returns true if connected else false.
  *
  */
-bool sess_is_alive(char *name) 
+bool sess_is_alive(char *name)
 {
     static char *mod = "sess_is_connected";
     bool retb = false;
     session_p sessp;
-    
+
     ENTER(mod);
 
     if ((sessp = sess_get(name))) {
@@ -472,16 +472,16 @@ bool sess_is_alive(char *name)
     return(retb);
 }
 
-/* 
+/*
  * sess_is_connected - determins if the session is connected.
- * 
+ *
  * where:
  * @param0 <name>               - I
  *         name of the previously connected session name.
  * @returns true if connected else false.
  *
  */
-bool sess_is_connected(char *name) 
+bool sess_is_connected(char *name)
 {
     static char *mod = "sess_is_connected";
     bool retb = false;
@@ -571,7 +571,7 @@ void *sess_recv(char *name, long timeout_secs, bool cvt_to_string)
 }
 
 /*
- * sess_send - sends a message to the previously opened session, 
+ * sess_send - sends a message to the previously opened session,
  *
  * where:
  * @param0 <sess_name>                - I
@@ -596,7 +596,7 @@ bool sess_send(char *sess_name, void *msg)
         retb = true;
         goto rtn_return;
     }
-    
+
     if ((sessp = sess_get(sess_name)) == NULL) {
         VLOG_WARN("%s: No session open with name: %s.",
                   mod, sess_name);
@@ -819,7 +819,7 @@ static void sess_jsonrpc_session_close(struct jsonrpc_session *s)
     if (s) {
         jsonrpc_close(s->rpc);
         reconnect_destroy(s->reconnect);
-        if (s->stream) 
+        if (s->stream)
             if (s->stream->class->close)
                 stream_close(s->stream);
         if (s->pstream)
@@ -1155,7 +1155,7 @@ static void *session_worker_thread (void *arg)
             sessp = (session_p)work->dp;
             VLOG_DBG("%s: Dispatching on: %s \n", mod,
                   tv_show(tv_subtract(tv_tod(), work->tv), false, NULL));
-            
+
             free(work);
         }
         else {

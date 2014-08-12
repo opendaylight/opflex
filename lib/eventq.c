@@ -63,7 +63,7 @@ static q_cmd cmdLookup[] = {
 /*     eventq_ele_t *wp; */
 /*     bool retc = false; */
 /*     int a; */
-  
+
 /*     VLOG_DBG("%s: <--\n",  mod);   */
 /*     ovs_mutex_lock(&crew->mutex); */
 

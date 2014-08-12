@@ -98,11 +98,11 @@ bool opflex_cmd_dispatcher(int cmd)
  * @param0 <opfcmd>                       - I
  *         opflex command (enum_opflex_cmd).
  */
-char *opflex_recv(char *target, long timeout_secs) 
+char *opflex_recv(char *target, long timeout_secs)
 {
     static char *mod = "opflex_recv";
     char *opflex_string = NULL;
-    
+
     ENTER(mod);
     VLOG_DBG("%s: name:%s tmout: %ld", mod, target, timeout_secs);
     opflex_string = sess_recv(target, timeout_secs, true);
@@ -129,17 +129,17 @@ bool opflex_send(enum_opflex_dcmd opfcmd, char *target)
     struct json *params, *transaction;
     char *method_str = opflex_dcmd_tomethod(opfcmd);
     session_p sessp;
-    
+
     ENTER(mod);
-    
+
     if ((sessp = sess_get(target)) == NULL) {
         VLOG_ERR("%s: no active session: %s", mod, target);
         retb = true;
         goto rtn_return;
     }
-            
+
     switch (opfcmd) {
-    case OPFLEX_DCMD_IDENTIFY:        
+    case OPFLEX_DCMD_IDENTIFY:
         transaction = json_array_create_empty();
         params = json_object_create();
         pe_name = conf_get_value(PM_SECTION, "pe_name");
@@ -154,7 +154,7 @@ bool opflex_send(enum_opflex_dcmd opfcmd, char *target)
         request = jsonrpc_create_request(method_str, transaction, NULL);
 
         jsonrpc_session_send(sessp->jsessp, request);
-        
+
         break;
     case OPFLEX_DCMD_ECHO:
         params = json_object_create();
@@ -184,7 +184,7 @@ bool opflex_send(enum_opflex_dcmd opfcmd, char *target)
 
 /*
  * oplex_dispatcher - the sess_epoll_monitor_thread calles this routine to read
- * the message from the pipe once epoll has detect that there is data from a 
+ * the message from the pipe once epoll has detect that there is data from a
  * session. This will read the data and dispatch on the mothod in the message.
  *
  * where:
@@ -219,9 +219,9 @@ bool opflex_dispatcher(session_p sessp)
         retb = true;
         goto rtn_return;
     }
-    
+
     switch (dcmd) {
-    case OPFLEX_DCMD_IDENTIFY:        
+    case OPFLEX_DCMD_IDENTIFY:
     case OPFLEX_DCMD_ECHO:
     case OPFLEX_DCMD_POL_RES:
     case OPFLEX_DCMD_POL_UPD:
@@ -237,21 +237,21 @@ bool opflex_dispatcher(session_p sessp)
         VLOG_ERR("%s: unknow opflex command: %s", mod, msg->method);
         break;
     }
-    
+
  rtn_return:
     jsonrpc_msg_destroy(msg);
     LEAVE(mod);
     return(retb);
 }
 
-/* 
+/*
  * opflex_list_delete - delete a opflex list.
  *
  */
 void opflex_list_delete(struct list *list)
 {
     static char *mod = "opflex_list_delete";
-    
+  
     ENTER(mod);
     struct ofpbuf *b, *next;
 
@@ -285,7 +285,7 @@ static char *opflex_dcmd_tostring(enum_opflex_dcmd dcmd)
 }
 
 /*
- * opflex_method_to_dcmd - 
+ * opflex_method_to_dcmd - use for when a msg comes in to match to the enum
  *
  */
 static enum_opflex_dcmd opflex_method_to_dcmd(char *method)
@@ -306,7 +306,7 @@ static enum_opflex_dcmd opflex_method_to_dcmd(char *method)
     int i;
 
     for (i=0; dcmd_tomethod_lookup[i]; i++) {
-        if (strcasecmp(method, dcmd_tomethod_lookup[i]) == 0)            
+        if (strcasecmp(method, dcmd_tomethod_lookup[i]) == 0)
             break;
     }
     if (dcmd_tomethod_lookup[i] == NULL)
@@ -331,7 +331,3 @@ static char *opflex_dcmd_tomethod(enum_opflex_dcmd dcmd)
     };
     return(dcmd_tomethod_lookup[dcmd]);
 }
-
-
-
-    
