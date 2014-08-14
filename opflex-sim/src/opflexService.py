@@ -65,17 +65,17 @@ class opflexService(Service):
 
         # basic commands the the generic service provides in the command lookup.
         self.cmdLookup = {
-            'identity':             self.identity_handler,
-            'echo':                 self.echo_handler,
-            "resolve_policy":       self.resolve_policy_handler,
-            "udpate_policy":        self.update_policy_handler,
-            "trigger_policy":       self.trigger_policy_handler,
-            "endpoint_declaration": self.endpoint_declaration_handler,
-            "endpoint_request":     self.endpoint_request_handler,
-            "endpoint_update":      self.endpoint_update_handler,
-            "state_report":         self.state_report_handler,
-            'quit':                 self.quit_handler,
-            'error':                self.error_handler,
+            'send_identity':          self.identity_handler,
+            'echo':                   self.echo_handler,
+            "resolve_policy":         self.resolve_policy_handler,
+            "udpate_policy":          self.update_policy_handler,
+            "trigger_policy":         self.trigger_policy_handler,
+            "endpoint_declaration":   self.endpoint_declaration_handler,
+            "endpoint_request":       self.endpoint_request_handler,
+            "endpoint_update_policy": self.endpoint_update_handler,
+            "state_report":           self.state_report_handler,
+            'quit':                   self.quit_handler,
+            'error':                  self.error_handler,
             }
         
         self.log.debug("[%s}-->return." % (mod))
@@ -94,10 +94,15 @@ class opflexService(Service):
         # -- the command processor for this service
         while (self.quit_flag == False):
             opf_msg = conn.recv(4096)
-            if not opf_msg:
+            if not opf_msg: 
                 break
             msg = self.deserialize_msg(opf_msg)
-            self.cmdLookup[msg['method']](conn, msg)
+            try:
+                self.cmdLookup[msg['method']](conn, msg)
+            except KeyError:
+                self.log.error("%s: Bad method [%s] in message: %s", 
+                               mod, msg['method'], msg);
+                break;
 
 
         opflexService.server = None
@@ -110,6 +115,14 @@ class opflexService(Service):
     def close(self):
         pass
 
+    def serialize_msg(self, msg):
+        mod = "%s:%s" % (self.__class__.__name__, sys._getframe().f_code.co_name)
+        self.log.debug("%s:<--" % (mod))
+        json_msg = json.JSONEncoder().encode(msg)
+        self.log.debug("%s:-->%s" % (mod, json_msg))
+        return json_msg
+
+        
     def deserialize_msg(self, msg):
         mod = "%s:%s" % (self.__class__.__name__, sys._getframe().f_code.co_name)
         self.log.debug("%s:<--" % (mod))
@@ -131,31 +144,31 @@ class opflexService(Service):
 
     def get_lan_ip(self):
         ip = socket.gethostbyname(socket.gethostname())
-        if ip.startswith("127."):
-            interfaces = [
-                "eth0",
-                "eth1",
-                "eth2",
-                "eth3",
-                "eth4",
-                "wlan0",
-                "wlan1",
-                "wifi0",
-                "ath0",
-                "ath1",
-                "ppp0",
-                ]
-            for ifname in interfaces:
-                try:
-                    ip = get_interface_ip(ifname)
-                    break
-                except IOError:
-                    pass
+        # if ip.startswith("127."):
+        #     interfaces = [
+        #         "eth0",
+        #         "eth1",
+        #         "eth2",
+        #         "eth3",
+        #         "eth4",
+        #         "wlan0",
+        #         "wlan1",
+        #         "wifi0",
+        #         "ath0",
+        #         "ath1",
+        #         "ppp0",
+        #         ]
+        #     for ifname in interfaces:
+        #         try:
+        #             ip = get_interface_ip(ifname)
+        #             break
+        #         except IOError:
+        #             pass
         return ip
 
     def validate_keys(self, key_list, params):
         mod = "%s:%s" % (self.__class__.__name__, sys._getframe().f_code.co_name)
-        self.log.debug("%s:<--keys=%s, buf=%s" % (mod, keys, params))
+        self.log.debug("%s:<--keys=%s, buf=%s" % (mod, key_list, params))
         validates = True
 
         for k in params.keys():
@@ -163,7 +176,8 @@ class opflexService(Service):
                 validates = False
                 break;
 
-        self.log.debug("%s:<--validates=%d" % (mod, vlaidates))
+        self.log.debug("%s:<--validates=%d" % (mod, validates))
+        return validates
 
     # --- quit handler
     # the quit will terminate this service, this is NOT part of the OpFlex
@@ -178,7 +192,7 @@ class opflexService(Service):
     # Prints out whats in the error msg.
     def error_handler(self, conn, msg):
         mod = "%s:%s" % (self.__class__.__name__, sys._getframe().f_code.co_name)
-        self.log.debug("%s:<--" % (mod))
+        self.log.debug("%s:<--" % (mod))        
         self.log.error(msg)
         self.log.debug("%s:<--quit_flag=%d" % (mod, self.quit_flag))
 
@@ -214,29 +228,30 @@ class opflexService(Service):
         mod = "%s:%s" % (self.__class__.__name__, sys._getframe().f_code.co_name)
         self.log.debug("%s:<--%s" % (mod, msg))
 
-        pdb.set_trace()
-        ip = self.get_lan_ip()
+        ip = socket.gethostbyname(socket.gethostname())
         keys = ['domain', 'name', 'my_role', 'id']
         response = {
             "result": {
                 "name": ("controller:%s" % ip),
                 "my_roles": ["controller"],
                 "domain": "my_domeain",
-                "id": "24df1d04-d5cb-41e1-8de5-61ed77c558df",
                 "roles": [{"role": "controller", "connectivity_info": ("%s" % ip)},
                  {"role": "repository", "connectivity_info": ("%s" % ip)}]
                 }
             }
 
+        # make sure the id from request gets in the response
+        response['id'] = msg['id']
+
         self.log.info("IDENTITY: %s" % msg)
 
-        if (self.validate_keys(keys, msg['params'])):
-            json_rsp = json.encode(response);
+        if (self.validate_keys(keys, msg['params'][0])):
+            json_rsp = self.serialize_msg(response)
             self.log.debug("%s: json_rsp=%s", mod, json_rsp)
             conn.send(json_rsp)
         else:
             self.log.error("%s: JSON message validation error: expected keys=%s, actual=%s",
-                           mod, keys, msg['params'].keys())
+                           mod, keys, msg['params'][0].keys())
 
         
         self.log.debug("%s:<--" % (mod))

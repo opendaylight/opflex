@@ -84,7 +84,7 @@ static void test_sess_open(void **state)
 }
 
 /* +++++++++++++OPFLEX TESTS +++++++++++++++++++++++++++++++++++++++++++++++ */
-static void test_opflex_send(void **state)
+static void test_opflex_send_sync(void **state)
 {
     char *default_controller;
     (void) state;
@@ -109,6 +109,33 @@ static void test_opflex_send(void **state)
     pm_cleanup();
 }
 
+
+static void test_opflex_send_async(void **state)
+{
+    char *default_controller;
+    (void) state;
+
+    DEBUG("test_opflex_send\n");
+    assert_false(pm_initialize());
+
+    /* the following assumes that there is a simulator running at
+     * the default _controller
+     */
+    default_controller = conf_get_value(PM_SECTION, "default_controller");
+    assert_false(sess_open(default_controller, SESS_TYPE_CLIENT,
+                           SESS_COMM_ASYNC));
+    assert_true(sess_is_connected(default_controller));
+    assert_return_code(sess_get_session_count(), 1);
+
+    assert_false(opflex_send(OPFLEX_DCMD_IDENTIFY, default_controller));
+    sleep(5); /* this is unsure that the dispatcher gets the core */
+
+    /* close it out */
+    assert_false(sess_close(default_controller));
+    pm_cleanup();
+}
+
+
 /* ---------------------------------------------------------------------------
  * Test driver.
  */
@@ -119,7 +146,8 @@ int main(int argc, char *argv[])
     const UnitTest tests[] = {
         /* unit_test(test_pm_initialize), */
         /* unit_test(test_sess_open), */
-        unit_test(test_opflex_send),
+        /* unit_test(test_opflex_send_sync), */
+        unit_test(test_opflex_send_async),
     };
 
     test_setup();

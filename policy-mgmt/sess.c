@@ -32,6 +32,7 @@
 #include "ofpbuf.h"
 #include "sort.h"
 #include "svec.h"
+#include "shash.h"
 #include "socket-util.h"
 #include "ovs-thread.h"
 #include "unixctl.h"
@@ -41,6 +42,7 @@
 #include "tv-util.h"
 #include "util.h"
 #include "config-file.h"
+#include "opflex.h"
 #include "skt-util.h"
 #include "fnm-util.h"
 #include "meo-util.h"
@@ -114,6 +116,7 @@ static struct jsonrpc *sess_open_jsonrpc(const char *server);
 static struct jsonrpc_session *sess_open_jsonsession(char *server);
 static bool sess_epoll_modify(session_p sessp, bool add_flag);
 static void *sess_epoll_monitor_thread(void *sip_);
+static session_p sess_get_with_fd(int fd);
 
 static int sess_list_mod_count(enum_counter_direction inc_flag,
                                enum_locking lock_flag);
@@ -735,8 +738,36 @@ int sess_get_session_count(void)
  * ========================================================================= */
 
 /*
- * sess_open_jsonsession - this is what opens a session to a server and establishes
- * the session.
+ * sess_get_with_fd - searches the session list for the matching fd and
+ * returns it.
+ *
+ * where:
+ * @param0 <sfd>                  - I
+ *         fd to search for.
+ * @returns session_p if found or NULL if not found.
+ */
+static session_p sess_get_with_fd(int fd)
+{
+    static char *mod = "sess_get_with_fd";
+    session_p sessp = NULL;
+    struct shash_node *node;
+
+    ENTER(mod);
+
+    SHASH_FOR_EACH(node, &sess_info->sess_list) {
+        if (((session_p)node->data)->fd == fd) {
+            sessp = (session_p)node->data;
+            break;
+        }
+    }
+
+    VLOG_DBG("%s: sessp: %p", mod, sessp);
+    LEAVE(mod);
+    return(sessp);
+}
+/*
+ * sess_open_jsonsession - this is what opens a session to a server and
+ *  establishesthe session.
  *
  * where:
  * @param0  <server>         - I
@@ -977,13 +1008,15 @@ static void *sess_epoll_monitor_thread(void *sip_)
     static char *mod = "sess_epoll_thread";
     int epoll_timeout, retval, i, retc;
     sess_manage_p sip = sip_;
-    struct epoll_event *events;
     eventq_ele_t *evtqp;
+    struct epoll_event *events;
+    session_p sessp;
 
     ENTER(mod);
     VLOG_INFO("%s: *********** epoll thread started ********", mod);
 
     /* setup the epoll fd */
+    events = xzalloc(sizeof(struct epoll_event) * sip->max_sessions);
     ovs_rwlock_rdlock(&sip->rwlock);
     sip->epoll_fd = epoll_create(sip->max_sessions);
     if (sip->epoll_fd < 0) {
@@ -999,7 +1032,7 @@ static void *sess_epoll_monitor_thread(void *sip_)
     for (sip->epoll_monitor_run = true; sip->epoll_monitor_run; ) {
         if (sip->sess_list_count) {
             do {
-                retval = epoll_wait(sip->epoll_fd, &events,
+                retval = epoll_wait(sip->epoll_fd, events,
                                     sip->max_sessions, epoll_timeout);
             } while (retval < 0 && errno == EINTR);
             VLOG_DBG("%s: retval:%d errno:%s", mod, retval, strerror(errno));
@@ -1012,6 +1045,8 @@ static void *sess_epoll_monitor_thread(void *sip_)
                 /* TODO dkehn: this is where we put the event into the evetq
                  * that signals message is pending.
                  */
+
+                VLOG_DBG("%s: checking the events: %d", mod, retval);
                 for (i = 0; i < retval; i++) {
                     if ((events[i].events & EPOLLERR) ||
                         (events[i].events & EPOLLHUP) ||
@@ -1021,11 +1056,18 @@ static void *sess_epoll_monitor_thread(void *sip_)
                     }
                     else {
                         /* put this event on the queue */
+                        sessp = sess_get_with_fd(events[i].data.fd);
+                        if (sessp == NULL) {
+                            VLOG_ERR("%s: epoll event fd:%d "
+                                     "not found in session list", mod, 
+                                     events[i].data.fd);
+                            break;
+                        }
                         evtqp = xzalloc(sizeof(eventq_ele_t));
                         evtqp->tv = tv_tod();
                         evtqp->cmd_size = 1;
                         evtqp->state = SESS_EVTQ_ST_DSPH;
-                        evtqp->dp = events[i].data.ptr;
+                        evtqp->dp = sessp;
                         retc = eventq_add(sip->workq, evtqp);
                         if (retc) {
                             VLOG_ERR("%s: error putting event on the queue",
@@ -1155,6 +1197,8 @@ static void *session_worker_thread (void *arg)
             sessp = (session_p)work->dp;
             VLOG_DBG("%s: Dispatching on: %s \n", mod,
                   tv_show(tv_subtract(tv_tod(), work->tv), false, NULL));
+            if (opflex_dispatcher(sessp)) 
+                VLOG_ERR("%s: error from opflex_dispatcher", mod);
 
             free(work);
         }

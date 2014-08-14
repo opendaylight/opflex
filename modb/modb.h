@@ -193,17 +193,59 @@ typedef enum _enum_op_rtn_code {
 */
 typedef struct node_ele {
     struct ovs_rwlock      rwlock;
+    /* unique id that is a sequence number.
+     */
     uint32_t               id;
+
+    /* class id.
+     */
     uint32_t               class_id;
+
+    /* This was defined by dvorkin, but no clear definition as to
+     *  what this will be.
+     */
     uint32_t               content_path_id;
+
+    /* each time this node or it's properties are modified
+     * is bummped.
+     */
     uint32_t               update_cnt;
+
+    /* this nodes state, is updated for updates,inserts, etc.
+     */
     enum_node_state        state;
+
+    /* enforcement state and quick check for the policy enforcers
+     * state of where this is at.
+     */
     enum_enforcement_state enforce_state;
+
+    /* local resource indicator - see dvorkin.
+     */
     char                   *lri;
+
+    /* the URI parsed and as a whole of the URI recieved from
+     * above.
+     */
     parsed_uri_p           uri;
+
+    /* points to this node's parent.
+     */
     struct node_ele        *parent;
+
+    /* link list of the children assocated with this parent node, if
+     * this is the end of the branch in the tree this will be NULL.
+     */
     head_list_t            *child_list;
+
+    /* link list to the attributes (propoerties) associated to this 
+     * node.
+     */
     head_list_t            *properties_list;
+
+    /* A pointer to the policy enfforcer's private data
+     */
+    void                   *pe_data;
 } node_ele_t, *node_ele_p;
 
 /* 

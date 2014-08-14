@@ -29,6 +29,6 @@ typedef enum _enum_opflex_dcmd {
 extern bool opflex_send(enum_opflex_dcmd cmd, char *target);
 extern char *opflex_recv(char *target, long timeout_secs);
 extern void opflex_list_delete(struct list *list);
-
+extern bool opflex_dispatcher(session_p sessp);
 
 #endif

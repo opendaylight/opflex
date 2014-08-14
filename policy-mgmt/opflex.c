@@ -214,32 +214,51 @@ bool opflex_dispatcher(session_p sessp)
     }
     msg = (struct jsonrpc_msg *)sess_recv(name, timeout_secs, false);
     VLOG_INFO("%s:%ld recv method:%s", mod, my_pid, msg->method);
-    if ((dcmd = opflex_method_to_dcmd(msg->method)) == -1) {
-        VLOG_ERR("%s: unknown OpFlex method:%s ", mod, msg->method);
-        retb = true;
-        goto rtn_return;
-    }
+    if (msg->type == JSONRPC_REQUEST) {
+        if ((dcmd = opflex_method_to_dcmd(msg->method)) == -1) {
+            VLOG_ERR("%s: unknown OpFlex method:%s ", mod, msg->method);
+            retb = true;
+            goto rtn_return;
+        }
 
-    switch (dcmd) {
-    case OPFLEX_DCMD_IDENTIFY:
-    case OPFLEX_DCMD_ECHO:
-    case OPFLEX_DCMD_POL_RES:
-    case OPFLEX_DCMD_POL_UPD:
-    case OPFLEX_DCMD_POL_TRIG:
-    case OPFLEX_DCMD_EP_DCL:
-    case OPFLEX_DCMD_EP_RQST:
-    case OPFLEX_DCMD_EP_POL_UPD:
-    case OPFLEX_DCMD_CLOSE:
-        VLOG_WARN("%s: OpFlex command: %s, not supported yet.",
-                  mod, msg->method);
-        break;
-    default:
-        VLOG_ERR("%s: unknow opflex command: %s", mod, msg->method);
-        break;
+        switch (dcmd) {
+        case OPFLEX_DCMD_IDENTIFY:
+        case OPFLEX_DCMD_ECHO:
+        case OPFLEX_DCMD_POL_RES:
+        case OPFLEX_DCMD_POL_UPD:
+        case OPFLEX_DCMD_POL_TRIG:
+        case OPFLEX_DCMD_EP_DCL:
+        case OPFLEX_DCMD_EP_RQST:
+        case OPFLEX_DCMD_EP_POL_UPD:
+        case OPFLEX_DCMD_CLOSE:
+            VLOG_WARN("%s: OpFlex command: %s, not supported yet.",
+                      mod, msg->method);
+            break;
+        default:
+            VLOG_ERR("%s: I do not understand this opflex command: %s",
+                     mod, msg->method);
+            break;
+        }
     }
-
- rtn_return:
+    else if (msg->type == JSONRPC_REPLY) {
+        VLOG_INFO("%s: recved JSONRPC_REPLY: %s", mod,
+                 json_to_string(msg->result, 0));
+    }
+    else if (msg->type == JSONRPC_NOTIFY) {
+        VLOG_INFO("%s: recved JSONRPC_NOTIFY: %s", mod,
+                 json_to_string(msg->result, 0));
+    }
+    else if (msg->type == JSONRPC_ERROR) {
+        VLOG_ERR("%s: recved JSONRPC_ERROR: %s", mod,
+                 json_to_string(msg->result, 0));
+    }
+    else {
+        VLOG_ERR("%s: recved ?????????: %s", mod,
+                 json_to_string(msg->result, 0));
+    }
     jsonrpc_msg_destroy(msg);
+    
+ rtn_return:
     LEAVE(mod);
     return(retb);
 }
