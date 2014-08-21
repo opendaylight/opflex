@@ -187,7 +187,7 @@ typedef struct _sess_manage {
  */
 extern bool sess_initialize(void);
 extern void sess_cleanup(void);
-extern bool sess_open(char *name, enum_sess_type sess_type,
+extern session_p sess_open(char *name, enum_sess_type sess_type,
                       enum_sess_comm_type ctype);
 extern session_p sess_get(char *name);
 extern bool sess_close(char *name);

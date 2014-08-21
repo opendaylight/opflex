@@ -65,6 +65,7 @@ struct option_ele pm_config_defaults[] = {
     {PM_SECTION, "crash_recovery", "false"},
     {PM_SECTION, "checkpoint_method", "acid"},
     {PM_SECTION, "default_controller", "tcp:127.0.0.1:7777"},
+    {PM_SECTION, "opflex_listener_port", "ptcp:6670"},
     {PM_SECTION, "pm_debug_level", "INFO"},
     {PM_SECTION, "max_active_sessions", "10"},
     {PM_SECTION, "sess_debug_level", "INFO"},

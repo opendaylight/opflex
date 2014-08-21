@@ -113,7 +113,8 @@ struct jsonrpc_session {
  */
 static void *session_worker_thread (void *arg);
 static struct jsonrpc *sess_open_jsonrpc(const char *server);
-static struct jsonrpc_session *sess_open_jsonsession(char *server);
+static struct jsonrpc_session *sess_open_jsonsession(char *server,
+                                                     enum_sess_comm_type sess_type);
 static bool sess_epoll_modify(session_p sessp, bool add_flag);
 static void *sess_epoll_monitor_thread(void *sip_);
 static session_p sess_get_with_fd(int fd);
@@ -258,27 +259,31 @@ bool sess_initialize(void)
  *          Identifies the json session pointer enum_sess_type.
  *  @param2 <df_type>              - I
  *          Defines the type of serializer that will be used.
- * @returns <retb>
+ * @returns <jsp>                  - O 
+ *          session pointer or NULL if error. In the case of a client
+ *          this is the session_p in the session_list, in the case of the
+ *          server its is not in the session_list.
  *
  */
-bool sess_open(char *name, enum_sess_type sess_type, enum_sess_comm_type ctype)
+session_p
+sess_open(char *name, enum_sess_type sess_type, enum_sess_comm_type ctype)
 {
     static char *mod = "sess_add";
-    bool retb = false;
-    struct jsonrpc_session *jsp;
+    struct jsonrpc_session *jsp = NULL;
     sess_manage_p sip = sess_info;
-    session_p sessp;
+    session_p sessp = NULL;
     struct stream_fd *s;
     int current_sessions;
 
     ENTER(mod);
     VLOG_INFO("%s: server %s", mod, name);
+
     if (sess_is_initialized()) {
         current_sessions = sess_get_session_count();
         if (current_sessions >= sip->max_sessions) {
             VLOG_WARN("%s: session max_session reached: max:%d current:%d",
                       mod, sip->max_sessions, current_sessions);
-            retb = true;
+            sessp = NULL;
             goto rtn_return;
         }
     
@@ -287,13 +292,14 @@ bool sess_open(char *name, enum_sess_type sess_type, enum_sess_comm_type ctype)
             if ((sessp = sess_list_search(name))) {
                 VLOG_INFO("%s: %s already exists.", mod,
                           jsonrpc_session_get_name(sessp->jsessp));
+                sessp = NULL;
                 goto rtn_return;
             }
             else {
                 /* let try and connect */
-                if ((jsp = sess_open_jsonsession(name)) == NULL) {
+                if ((jsp = sess_open_jsonsession(name, ctype)) == NULL) {
                     VLOG_ERR("%s: failed json session to %s.", mod, name);
-                    retb = true;
+                    sessp = NULL;
                     goto rtn_return;
                 }
 
@@ -314,7 +320,8 @@ bool sess_open(char *name, enum_sess_type sess_type, enum_sess_comm_type ctype)
                     VLOG_WARN("%s: cant add %s to the sess_list", mod, name);
                     sess_jsonrpc_session_close(jsp);
                     free(sessp);
-                    retb = true;
+                    sessp = NULL;
+                    goto rtn_return;
                 }
                 /* if this is an async session need to add it to the
                  * monitoring epoll, if its sync then we do not add it.
@@ -323,27 +330,57 @@ bool sess_open(char *name, enum_sess_type sess_type, enum_sess_comm_type ctype)
                     if (sess_epoll_modify(sessp, true)) {
                         VLOG_WARN("%s: can't add %s to epoll monitor list", mod,
                                   name);
-                        retb = true;
+                        sessp = NULL;;
                     }
                 }
-                if (retb == false) {
+                if (sessp) {
                     sess_list_mod_count(CNTR_INC, WITH_LOCKING);
                 }
             }
         }
         else {
-            VLOG_WARN("%s: Server session not supported at this time", mod);
-            retb = true;
+            /* creates and opens up a session for the server, this will not be
+             * put into the session list, its connections from the outside
+             * will be put into the session_list. Upon returning the session 
+             * struct is completed but the call must do the listen/accept.
+             */
+            struct pstream *listener;
+            int error;
+            
+            if ((jsp = sess_open_jsonsession(name, ctype)) == NULL) {
+                VLOG_ERR("%s: failed creating the json session for the server:%s.",
+                         mod, name);
+                sessp = NULL;
+                goto rtn_return;
+            }
+            
+            sessp = xzalloc(sizeof(session_t));
+            ovs_rwlock_init(&sessp->rwlock);
+            ovs_rwlock_wrlock(&sessp->rwlock);
+            sessp->sess_start_ts = tv_tod();
+            sessp->fd = 0;
+            sessp->comm_type = ctype;
+            sessp->jsessp = jsp;
+
+            error = jsonrpc_pstream_open(name, &listener, 0);
+            if (error && error != EAFNOSUPPORT) {
+                VLOG_ERR("%s: listen failed on: %s error:%s",
+                         mod, name, strerror(error));
+                sessp = NULL;
+                goto rtn_return;
+            }
+            sessp->jsessp->pstream = listener;
+            ovs_rwlock_unlock(&sessp->rwlock);
         }
     }
     else {
         VLOG_ERR(not_init_msg, mod);
-        retb = true;
+        sessp = NULL;
     }
 
  rtn_return:
     LEAVE(mod);
-    return(retb);
+    return(sessp);
 }
 
 /*
@@ -732,6 +769,80 @@ int sess_get_session_count(void)
     return(retc);
 }
 
+/*
+ * sess_server_wait - this waits for a connection and if instructed puts the 
+ * session into the session_list and epoll thread list.
+ *
+ * where:
+ * @param0 <srv_sessp>            - I
+ *         this is the server session_p definition that has been
+ *         previously setup.
+ * @param1 <add_to_list>          - I
+ *         true, the new connected client is added to the session list and 
+ *         epoll rooutine, false its dropped.
+ *
+ */
+int sess_server_wait(session_p srv_sessp, bool add_to_list)
+{
+    static char *mod = "sess_server_wait";
+    sess_manage_p sip = sess_info;
+    session_p sessp = NULL;
+    struct stream_fd *s;
+    struct stream *stream;
+    struct jsonrpc_session *jsp;
+    char *name;
+    int error;
+
+    ENTER(mod);
+    name = jsonrpc_session_get_name(srv_sessp);
+    error = pstream_accept(srv_sessp->jsessp->pstream, &stream);
+    if (!error) {
+        if (sess_get_session_count() < sip->max_sessions) {
+            VLOG_ERR("%s: max sessions reached.", mod);
+            error = EUSERS;
+        }
+        else {
+            jsp = xmalloc(sizeof *jsp);
+            jsp->reconnect = reconnect_create(time_msec());
+            reconnect_set_name(jsp->reconnect, name);
+            reconnect_enable(jsp->reconnect, time_msec());
+            jsp->rpc = NULL;
+            jsp->stream = stream;
+            jsp->pstream = NULL;
+            jsp->seqno = 0;
+            jsp->dscp = 0;
+            jsp->last_error = 0;
+
+            s = stream_fd_cast(stream);
+            sessp = xzalloc(sizeof(session_t));
+            ovs_rwlock_init(&sessp->rwlock);
+            ovs_rwlock_wrlock(&sessp->rwlock);
+            sessp->sess_start_ts = tv_tod();
+            sessp->fd = s->fd;
+            sessp->comm_type = SESS_COMM_ASYNC;
+            sessp->jsessp = jsp;
+            ovs_rwlock_unlock(&sessp->rwlock);
+            if (sess_list_add(sessp, name)) {
+                VLOG_WARN("%s: cant add %s to the sess_list", mod, name);
+                sess_jsonrpc_session_close(jsp);
+                free(sessp);
+                error = ENOSR;
+                goto rtn_return;
+            }
+            if (sess_epoll_modify(sessp, true)) {
+                VLOG_WARN("%s: can't add %s to epoll monitor list: %s", mod,
+                          name, strerror(errno));
+                error = errno;
+            }
+            if (sessp) {
+                sess_list_mod_count(CNTR_INC, WITH_LOCKING);
+            }
+        }
+    }
+ rtn_return:
+    LEAVE(mod);
+    return(error);
+}
 
 /* ============================================================================
  * Private Routines
@@ -772,21 +883,25 @@ static session_p sess_get_with_fd(int fd)
  * where:
  * @param0  <server>         - I
  *          the server string <protocol:address:port>
+ * @param1 <sess_type>       - I
+ *          defines the session type (*client/server)
  * returns: <jsonp>         - O
  *          returns the ptr to jsonrpc structure.
  *
  */
-static struct jsonrpc_session *sess_open_jsonsession(char *server)
+static struct jsonrpc_session *
+sess_open_jsonsession(char *server, enum_sess_comm_type sess_type)
 {
     static char *mod = "sess_open_jsonrpc";
     struct jsonrpc_session *jsessp;
 
     ENTER(mod);
 
-
     jsessp = jsonrpc_session_open(server, false);
-    jsonrpc_session_connect(jsessp);
-    jsessp->rpc = jsonrpc_open(jsessp->stream);
+    if (sess_type == SESS_TYPE_CLIENT) {
+        jsonrpc_session_connect(jsessp);
+        jsessp->rpc = jsonrpc_open(jsessp->stream);
+    }
 
     LEAVE(mod);
     return(jsessp);

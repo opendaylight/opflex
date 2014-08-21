@@ -60,7 +60,8 @@ VLOG_DEFINE_THIS_MODULE(opflex);
 /*
  * Local dcls
  */
-
+static pthread_t opflex_server_thread_id;
+static bool opflex_server_running = false;
 
 /*
  * Protos dcls
@@ -68,24 +69,53 @@ VLOG_DEFINE_THIS_MODULE(opflex);
 static char *opflex_dcmd_tomethod(enum_opflex_dcmd dcmd);
 static char *opflex_dcmd_tostring(enum_opflex_dcmd dcmd);
 static enum_opflex_dcmd opflex_method_to_dcmd(char *method);
+static void *opflex_server_thread(void *arg);
 
 
 /* ===========================================================================
  * PUBLIC ROUTINES
  * ======================================================================== */
 
-/*
- * opflex_cmd_dispatcher - this handles the dispatching of opflex commands and
- *   responsds to opflex requests
+/* 
+ * opflex_server_create - create the server to listen on the designated 
+ * (config file port).
  *
  */
-bool opflex_cmd_dispatcher(int cmd)
+bool opflex_server_create(char *port)
 {
-    static char *mod = "opflex_cmd_dispatcher";
+    static char *mod = "opflex_server_create";
     bool retb = false;
+    int retc;
 
     ENTER(mod);
-    VLOG_DBG("%s: cmd=%s", mod, opflex_dcmd_tostring(cmd));
+
+    /* create the server thread */
+    
+    retc = pthread_create(&opflex_server_thread_id, NULL,
+                          opflex_server_thread, port);
+    if (retc) {
+        VLOG_ERR("%s: can't create the OpFlex Server thread: %s",
+                 mod, strerror(errno));
+        retb = true;
+    }
+
+    LEAVE(mod);
+    return(retb);
+}
+
+/* 
+ * opflex_server_destroy
+ *
+ */
+void opflex_server_destroy(void)
+{
+    static char *mod = "opflex_server_create";
+    bool retb = false;
+    int retc;
+
+    ENTER(mod);
+
+    opflex_server_running = false;
 
     LEAVE(mod);
     return(retb);
@@ -281,6 +311,45 @@ void opflex_list_delete(struct list *list)
     }
 
     LEAVE(mod);
+}
+
+/* ============================================================================
+ * LOCAL 
+ * ========================================================================== */
+
+/* 
+ * opflex_server_thread - this is the routine that performs the listen and
+ * accpet then hands it off to the epoll thread for anything else.
+ *
+ */
+static void *opflex_server_thread(void *arg)
+{
+    static char *mod = "opflex_server_thread";
+    char *port = arg;
+    session_p svr_sessp = NULL;
+    int error;
+    
+
+    ENTER(mod);
+
+    svr_sessp = sess_open(port, SESS_TYPE_SERVER, SESS_COMM_ASYNC);
+    if (!svr_sessp) {
+        VLOG_FATAL("%s: Can't create session for server on: %s", mod, port);
+        svr_sessp = NULL;
+        goto rtn_return;
+    }
+    for (opflex_server_running = true; opflex_server_running; ) {
+        VLOG_DBG("%s: opflex_server running on: %s", mod, port);
+        error = sess_server_wait(svr_sessp, true);
+        if (error)
+            VLOG_ERR("%s; opflex server:%s error:%s", mod, port, 
+                     strerror(error));
+
+    }
+
+ rtn_return:
+    LEAVE(mod);
+    return(NULL);
 }
 
 /* opflex_dcmd_tostring.
