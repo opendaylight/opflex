@@ -60,7 +60,7 @@ run_python =
 # -g: Produce debugging information in the operating system's native format
 #     (stabs, COFF, XCOFF, or DWARF 2). GDB can work with this debugging information. 
 
-AM_CFLAGS=-Wall -O0 -fPIC -DPIC -I -g -I. -I$(top_builddir)/include -I$(top_builddir)/third-party
+AM_CFLAGS=-Wall -O0 -fPIC -DPIC -I -g -I. -I$(top_builddir)/include -I$(top_builddir)/third-party  -I$(top_builddir)/lib
 AM_CFLAGS += -I$(top_builddir)/third-party/ovs/lib -I$(top_builddir)/third-party/ovs/ovsdb
 AM_CPPFLAGS=-DBSD_COMP=1 
 if HAVE_TCMALLOC

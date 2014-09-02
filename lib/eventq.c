@@ -17,6 +17,7 @@
 #include "eventq.h"
 #include "uuid.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 VLOG_DEFINE_THIS_MODULE(eventq);
 

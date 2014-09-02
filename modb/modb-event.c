@@ -23,6 +23,7 @@
 #include "modb.h"
 #include "modb-event.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 VLOG_DEFINE_THIS_MODULE(modb_event);
 

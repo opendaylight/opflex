@@ -31,6 +31,7 @@
 #include "misc-util.h"
 #include "peovs_scan.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 #define USE_VLOG 1
 

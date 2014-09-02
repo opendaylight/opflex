@@ -12,6 +12,7 @@
 #include "cnf-parser.h"
 #include "config-file.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 #include "dbug.h"
 
 /* 

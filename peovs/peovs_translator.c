@@ -20,6 +20,7 @@
 #include <stdbool.h>
 
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 VLOG_DEFINE_THIS_MODULE(pe_translator);
 

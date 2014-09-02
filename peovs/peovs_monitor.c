@@ -57,6 +57,7 @@
 #include "unixctl.h"
 #include "util.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 VLOG_DEFINE_THIS_MODULE(peovs_monitor);
 

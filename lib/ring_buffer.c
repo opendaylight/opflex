@@ -22,6 +22,8 @@
 
 #include "ovs-thread.h"
 #include "vlog.h"
+#include "vlog.h"
+#include "vlog-opflex.h"
 #include "util.h"
 #include "ring_buffer.h"
 

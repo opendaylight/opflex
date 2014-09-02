@@ -44,6 +44,7 @@
 #include "util.h"
 #include "config-file.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 
 VLOG_DEFINE_THIS_MODULE(opflex);

@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include "cnf-parser.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 #define ASCIILINESZ         (1024)
 #define CNF_INVALID_KEY     ((char*)-1)

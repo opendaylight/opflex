@@ -141,9 +141,9 @@ then
     msgout "INFO" "Entered `pwd`"
     make distclean
     # We need our vlog.h
-    msgout "INFO" "Copying OpFlex vlog.h into OVS"
-    mv -v lib/vlog.h lib/orig.vlog.h
-    cp -v ../vlog.h ./lib
+    #msgout "INFO" "Copying OpFlex vlog.h into OVS"
+    #mv -v lib/vlog.h lib/orig.vlog.h
+    #cp -v ../vlog.h ./lib
     # Build ovs
     cd $ovsBuildDIR
     msgout "INFO" "Running boot.sh in $ovsBuildDIR"

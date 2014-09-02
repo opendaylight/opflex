@@ -19,6 +19,7 @@
 #include "config-file.h"
 #include "uri-parser.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 
 #ifdef NDEBUG

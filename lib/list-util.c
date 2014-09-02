@@ -52,6 +52,7 @@
 #include "list-util.h"			/* List manipulation definitions. */
 #include "util.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 #include "dbug.h"
 
 VLOG_DEFINE_THIS_MODULE(list_util);

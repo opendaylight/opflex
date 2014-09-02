@@ -27,6 +27,7 @@
 #include <libvirt/virterror.h>
 
 #include "vlog.h"
+#include "vlog-opflex.h"
 #include "peovs_scan.h"
 
 //TODO: move to conf-file (see peovs.h)

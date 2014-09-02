@@ -41,6 +41,7 @@
 #include "peovs.h"
 #include "pol-mgmt.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 VLOG_DEFINE_THIS_MODULE(pagentd);
 

@@ -32,6 +32,7 @@
 #include "util.h"
 #include "pagentd_conf.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 /*
  * Local dcls

@@ -32,6 +32,7 @@
 #include <pthread.h>
 
 #include "vlog.h"
+#include "vlog-opflex.h"
 #include "util.h" //for ovs_abort
 #include "misc-util.h"
 

@@ -24,6 +24,7 @@
 #include "ring_buffer.h"
 #include "modb-event.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 #include "peovs_workers.h"
 
 VLOG_DEFINE_THIS_MODULE(peovs_workers);

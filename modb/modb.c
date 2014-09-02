@@ -25,6 +25,7 @@
 #include "modb.h"
 #include "modb-event.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 #include "dbug.h"
 
 

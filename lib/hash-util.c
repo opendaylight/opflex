@@ -85,7 +85,8 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  "str-util.h"
-#include  "vlog.h"
+#include "vlog.h"
+#include  "vlog-opflex.h"
 #include  "hash-util.h"
 
 VLOG_DEFINE_THIS_MODULE(hash_util);

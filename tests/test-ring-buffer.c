@@ -11,6 +11,7 @@
 #include "misc-util.h"
 #include "dbug.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 /* For push_pop_buffer()
  * the following two values are determined along with

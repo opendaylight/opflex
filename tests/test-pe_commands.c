@@ -10,6 +10,7 @@
 #include "peovs.h"
 #include "peovs_commands.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 VLOG_DEFINE_THIS_MODULE(test_pe_commands);
 

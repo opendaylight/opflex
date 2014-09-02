@@ -22,6 +22,8 @@
 #include "peovs_commands.h"
 #include "misc-util.h"
 #include "vlog.h"
+#include "vlog.h"
+#include "vlog-opflex.h"
 
 VLOG_DEFINE_THIS_MODULE(pe_commands);
 

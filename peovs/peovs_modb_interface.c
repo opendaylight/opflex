@@ -28,6 +28,7 @@
 #include "modb-event.h"
 #include "lib/ovs-thread.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 VLOG_DEFINE_THIS_MODULE(peovs_modb_interface);
 

@@ -9,6 +9,7 @@
 #include "ring_buffer.h"
 #include "peovs_workers.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 #include "dbug.h"
 
 VLOG_DEFINE_THIS_MODULE(test_pe_workers);

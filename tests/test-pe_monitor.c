@@ -15,6 +15,7 @@
 #include "util.h"
 #include "peovs_monitor.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 #define USE_VLOG 1
 

@@ -15,6 +15,7 @@
 #include "seq-util.h"
 #include "util.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 #include "dbug.h"
 
 VLOG_DEFINE_THIS_MODULE(seq_util);

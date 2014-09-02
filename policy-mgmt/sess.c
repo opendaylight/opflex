@@ -47,6 +47,7 @@
 #include "fnm-util.h"
 #include "meo-util.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 
 VLOG_DEFINE_THIS_MODULE(session);

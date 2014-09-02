@@ -27,6 +27,7 @@
 #include "sess.h"
 #include "eventq.h"
 #include "vlog.h"
+#include "vlog-opflex.h"
 
 
 VLOG_DEFINE_THIS_MODULE(modb);
