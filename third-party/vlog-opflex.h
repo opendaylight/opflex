@@ -29,8 +29,8 @@
  * limitations under the License.
  */
 
-#ifndef VLOG_H
-#define VLOG_H 1
+#ifndef VLOG_OPFLEX_H
+#define VLOG_OPFLEX_H 1
 
 /* Logging.
  *
@@ -41,17 +41,8 @@
  * Fully thread safe.
  */
 
-#include <limits.h>
 #include <stdarg.h>
-#include <stdbool.h>
-#include <time.h>
 
-#include "compiler.h"
-#include "ovs-thread.h"
-#include "sat-math.h"
-#include "token-bucket.h"
-#include "util.h"
-#include "list.h"
 #include "vlog.h"
 
 #ifdef  __cplusplus
@@ -78,4 +69,4 @@ extern "C" {
 #endif
 
 
-#endif /* vlog.h */
+#endif /* vlog-opflex.h */
