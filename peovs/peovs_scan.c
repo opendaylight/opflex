@@ -25,9 +25,10 @@
 #include <stdlib.h>
 #include <libvirt/libvirt.h>
 #include <libvirt/virterror.h>
+#include <libxml2/libxml/parser.h>
+#include <libxml2/libxml/tree.h>
 
 #include "vlog.h"
-#include "vlog-opflex.h"
 #include "peovs_scan.h"
 
 //TODO: move to conf-file (see peovs.h)
@@ -38,6 +39,7 @@ static void pe_scan_collect_libvirt(const char *);
 static void get_libvirt_domains(virConnectPtr);
 static void get_libvirt_networks(virConnectPtr);
 static void get_libvirt_interfaces(virConnectPtr);
+static void recurse_element(xmlNode *);
 /**/
 
 VLOG_DEFINE_THIS_MODULE(peovs_scan);
@@ -103,8 +105,8 @@ static void pe_scan_collect_libvirt(const char *lvirt) {
 }
 
 static void get_libvirt_domains(virConnectPtr conn) {
-    virDomainPtr *adomains = { 0, 0 };
-    virDomainPtr *idomains = { 0, 0 };
+    virDomainPtr *adomains = { 0 };
+    virDomainPtr *idomains = { 0 };
     int count = 0;
     int nr_active_domains = 0;
     int nr_inactive_domains = 0;
@@ -147,9 +149,26 @@ static void get_libvirt_domains(virConnectPtr conn) {
     if (nr_inactive_domains > 0) {
         VLOG_INFO("\nList of inactive (%d) domains:\n",nr_inactive_domains);
         for (count = 0; count < nr_inactive_domains; count++) {
+
+            const char *domain_desc = virDomainGetXMLDesc(idomains[count],
+                             VIR_DOMAIN_XML_SECURE|VIR_DOMAIN_XML_INACTIVE);
+            xmlDoc *document = NULL;
+
             VLOG_INFO("    %s\n", virDomainGetName(idomains[count]));
-            VLOG_INFO("    %s\n", virDomainGetXMLDesc(idomains[count],
-                                  VIR_DOMAIN_XML_SECURE|VIR_DOMAIN_XML_INACTIVE));
+            VLOG_INFO("    %s\n", domain_desc);
+
+            document = xmlReadMemory(domain_desc,
+                                     strlen(domain_desc) +1,
+                                     "noname.xml",
+                                     NULL,
+                                     0);
+
+            if( document == NULL)
+                VLOG_ABORT("Failed to parse xml in memory\n");
+
+            recurse_element(xmlDocGetRootElement(document));
+
+            xmlFreeDoc(document);
             virDomainFree(idomains[count]);
         }
     } else {
@@ -159,9 +178,29 @@ static void get_libvirt_domains(virConnectPtr conn) {
     VLOG_LEAVE(__func__);
 }
 
+static void recurse_element(xmlNode *top_node) {
+    xmlNode *cur_node = NULL;
+
+    VLOG_ENTER(__func__);
+
+    for (cur_node = top_node; cur_node; cur_node = cur_node->next) {
+
+        if (cur_node->type == XML_ELEMENT_NODE) {
+            printf("Element: %s\n", cur_node->name);
+            printf("  content: %s\n",cur_node->content);
+        }
+
+        recurse_element(cur_node->children);
+
+    }
+
+    VLOG_LEAVE(__func__);
+
+}
+
 static void get_libvirt_networks(virConnectPtr conn) {
-    virNetworkPtr *a_nets = { 0, 0 };
-    virNetworkPtr *i_nets = { 0, 0 };
+    virNetworkPtr *a_nets = { 0 };
+    virNetworkPtr *i_nets = { 0 };
     int count = 0;
     int nr_active_nets = 0;
     int nr_inactive_nets = 0;
@@ -216,8 +255,8 @@ static void get_libvirt_networks(virConnectPtr conn) {
     VLOG_LEAVE(__func__);
 }
 static void get_libvirt_interfaces(virConnectPtr conn) {
-    virInterfacePtr *a_ifaces = { 0, 0 };
-    virInterfacePtr *i_ifaces = { 0, 0 };
+    virInterfacePtr *a_ifaces = { 0 };
+    virInterfacePtr *i_ifaces = { 0 };
     int count = 0;
     int nr_active_ifaces = 0;
     int nr_inactive_ifaces = 0;

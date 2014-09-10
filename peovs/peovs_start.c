@@ -41,15 +41,22 @@ void *pe_start(void *arg) {
 
     pe_set_state(INITIALIZING);
     /* call function to collect data (pe_scan.c) */
+    //peovs_scan_init();
 
     pe_set_state(DATA_PUSH);
     /* push data up to MODB (pe_push.c)*/
 
+    //Set up northbound
     /* start monitoring thread (pe_monitor.c)*/
+    //pe_monitor_init();
     pe_set_state(MONITORING);
+ 
 
     /* initialize ring buffer/thread pool (pe_workers.c)*/
-    pe_workers_init();
+    //southbound iface
+    //pe_modb_interface_init();
+    //
+//    pe_workers_init();
     pe_set_state(WORKERS_RUNNING);
 
     /* initialize translator (pe_translator.c)*/
