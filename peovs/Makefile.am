@@ -10,7 +10,7 @@ lib_LTLIBRARIES = libpeovs.so.la
 METASOURCES = AUTO
 
 
-AM_CFLAGS=-Wall -O0 -fPIC -DPIC -I -g -I. -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/lib -I$(top_builddir)/modb
+AM_CFLAGS=-Wall -O0 -fPIC -DPIC -I -g -I. -I$(top_builddir)/include -I$(top_builddir)/third-party -I$(top_builddir)/lib 
 AM_CFLAGS += -I$(top_builddir)/third-party/ovs -I$(top_builddir)/third-party/ovs/lib -I$(top_builddir)/third-party/ovs/ovsdb -I/usr/include/libxml2
 AM_CPPFLAGS=-DBSD_COMP=1 
 if HAVE_TCMALLOC
@@ -21,7 +21,7 @@ endif
 
 libpeovs_so_la_SOURCES = peovs_start.c peovs.h
 libpeovs_so_la_SOURCES += peovs_commands.c
-libpeovs_so_la_SOURCES += peovs_modb_interface.c peovs_modb_interface.h
+#libpeovs_so_la_SOURCES += peovs_modb_interface.c peovs_modb_interface.h
 libpeovs_so_la_SOURCES += peovs_monitor.c peovs_monitor.h
 libpeovs_so_la_SOURCES += peovs_push.c
 libpeovs_so_la_SOURCES += peovs_scan.c peovs_scan.h

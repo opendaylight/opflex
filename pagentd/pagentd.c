@@ -37,9 +37,9 @@
 #include "unixctl.h"
 #include "util.h"
 #include "config-file.h"
-#include "modb.h"
+//#include "modb.h"
 #include "peovs.h"
-#include "pol-mgmt.h"
+//#include "pol-mgmt.h"
 #include "vlog.h"
 #include "vlog-opflex.h"
 
@@ -267,12 +267,11 @@ typedef struct _CmdStruct {
  * Everythiong in here gets called int eh init_server
  */
 static INIT_JMP_TABLE initialize_funcs[] = {
-    MODB_INITIALIZE,
-    PM_INITIALIZE,
+//    MODB_INITIALIZE,
+//    PM_INITIALIZE,
     PE_INITIALIZE,    
     {NULL, NULL}
 };
-
 static bool
 init_server(void)
 {
