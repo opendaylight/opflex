@@ -1,0 +1,1248 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- This template is for creating an Internet Draft using xml2rfc,
+     which is available here: http://xml.resource.org. -->
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!-- One method to get references from the online citation libraries.
+     There has to be one entity for each item to be referenced. 
+     An alternate method (rfc include) is described in the references. -->
+
+<!ENTITY RFC2119 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
+<!ENTITY RFC2629 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2629.xml">
+<!ENTITY RFC3552 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3552.xml">
+<!ENTITY RFC4627 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4627.xml">
+<!ENTITY RFC3986 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3986.xml">
+<!ENTITY RFC5246 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml">
+]>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<!-- used by XSLT processors -->
+<!-- For a complete list and description of processing instructions (PIs), 
+     please see http://xml.resource.org/authoring/README.html. -->
+<!-- Below are generally applicable Processing Instructions (PIs) that most I-Ds might want to use.
+     (Here they are set differently than their defaults in xml2rfc v1.32) -->
+<?rfc strict="yes" ?>
+<!-- give errors regarding ID-nits and DTD validation -->
+<!-- control the table of contents (ToC) -->
+<?rfc toc="yes"?>
+<!-- generate a ToC -->
+<?rfc tocdepth="4"?>
+<!-- the number of levels of subsections in ToC. default: 3 -->
+<!-- control references -->
+<?rfc symrefs="yes"?>
+<!-- use symbolic references tags, i.e, [RFC2119] instead of [1] -->
+<?rfc sortrefs="yes" ?>
+<!-- sort the reference entries alphabetically -->
+<!-- control vertical white space 
+     (using these PIs as follows is recommended by the RFC Editor) -->
+<?rfc compact="yes" ?>
+<!-- do not start each main section on a new page -->
+<?rfc subcompact="no" ?>
+<!-- keep one blank line between list items -->
+<!-- end of list of popular I-D processing instructions -->
+<rfc category="info" docName="draft-smith-opflex-00" ipr="trust200902">
+  <!-- category values: std, bcp, info, exp, and historic
+     ipr values: full3667, noModification3667, noDerivatives3667
+     you can add the attributes updates="NNNN" and obsoletes="NNNN" 
+     they will automatically be output with "(if approved)" -->
+
+  <!-- ***** FRONT MATTER ***** -->
+
+  <front>
+    <!-- The abbreviated title is used in the page header - it is only necessary if the 
+         full title is longer than 39 characters -->
+
+    <title>OpFlex Control Protocol</title>
+
+    <!-- add 'role="editor"' below for the editors if appropriate -->
+
+    <!-- Another author who claims to be an editor -->
+
+    <author fullname="Michael Smith" initials="M." 
+            surname="Smith">
+      <organization>Cisco Systems, Inc.</organization>
+
+      <address>
+        <postal>
+          <street>170 West Tasman Drive</street>
+
+          <!-- Reorder these if your country does things differently -->
+
+          <city>San Jose</city>
+
+          <region>California</region>
+
+          <code>95134</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>michsmit@cisco.com</email>
+
+        <!-- uri and facsimile elements may also be added -->
+      </address>
+    </author>
+
+    <author fullname="Robert Edward Adams" initials="R.E." 
+            surname="Adams">
+      <organization>Cisco Systems, Inc.</organization>
+
+      <address>
+        <postal>
+          <street>170 West Tasman Drive</street>
+
+          <!-- Reorder these if your country does things differently -->
+
+          <city>San Jose</city>
+
+          <region>California</region>
+
+          <code>95134</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>readams@readams.net</email>
+      </address>
+    </author>
+
+    <author fullname="Mike Dvorkin" initials="M." 
+            surname="Dvorkin">
+      <organization>Cisco Systems, Inc.</organization>
+
+      <address>
+        <postal>
+          <street>170 West Tasman Drive</street>
+
+          <!-- Reorder these if your country does things differently -->
+
+          <city>San Jose</city>
+
+          <region>California</region>
+
+          <code>95134</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>midvorki@cisco.com</email>
+
+        <!-- uri and facsimile elements may also be added -->
+      </address>
+    </author>
+
+    <author fullname="Youcef Laribi" initials="Y." 
+            surname="Laribi">
+      <organization>Citrix</organization>
+
+      <address>
+        <postal>
+          <street>4988 Great America Parkway</street>
+
+          <!-- Reorder these if your country does things differently -->
+
+          <city>Santa Clara</city>
+
+          <region>California</region>
+
+          <code>95054</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>Youcef.Laribi@citrix.com</email>
+
+        <!-- uri and facsimile elements may also be added -->
+      </address>
+    </author>
+
+    <author fullname="Vijoy Pandey" initials="V." 
+            surname="Pandey">
+      <organization>IBM</organization>
+
+      <address>
+        <postal>
+
+          <street>4400 N First Street</street>
+          <city>San Jose</city>
+          <region>California</region>
+          <!-- Reorder these if your country does things differently -->
+          <code>95134</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>vijoy.pandey@us.ibm.com</email>
+
+        <!-- uri and facsimile elements may also be added -->
+      </address>
+    </author>
+
+    <author fullname="Pankaj Garg" initials="P." 
+            surname="Garg">
+      <organization>Microsoft Corporation</organization>
+
+      <address>
+        <postal>
+          <street>1 Microsoft Way</street>
+
+          <!-- Reorder these if your country does things differently -->
+
+          <city>Redmond</city>
+
+          <region>Washington</region>
+
+          <code>98052</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>pankajg@microsoft.com</email>
+
+        <!-- uri and facsimile elements may also be added -->
+      </address>
+    </author>
+
+    <author fullname="Nik Weidenbacher" initials="N." 
+            surname="Weidenbacher">
+      <organization>Sungard Availability Services</organization>
+
+      <address>
+        <postal>
+
+          <!-- Reorder these if your country does things differently -->
+
+          <street></street>
+
+          <city>Philadelphia</city>
+
+          <region>Pennsylvania</region>
+
+          <country>USA</country>
+        </postal>
+
+        <email>nik.weidenbacher@sungard.com</email>
+
+        <!-- uri and facsimile elements may also be added -->
+      </address>
+    </author>
+
+    <date month="September" year="2014" />
+
+    <!-- If the month and year are both specified and are the current ones, xml2rfc will fill 
+         in the current day for you. If only the current year is specified, xml2rfc will fill 
+         in the current day and month for you. If the year is not the current one, it is 
+         necessary to specify at least a month (xml2rfc assumes day="1" if not specified for the 
+         purpose of calculating the expiry date).  With drafts it is normally sufficient to 
+         specify just the year. -->
+
+    <!-- Meta-data Declarations -->
+
+    <area>General</area>
+
+    <workgroup>Internet Engineering Task Force</workgroup>
+
+    <!-- WG name at the upperleft corner of the doc,
+         IETF is fine for individual submissions.  
+         If this element is not present, the default is "Network Working Group",
+         which is used by the RFC Editor as a nod to the history of the IETF. -->
+
+    <keyword>template</keyword>
+
+    <!-- Keywords will be incorporated into HTML output
+         files in a meta tag but they have no effect on text or nroff
+         output. If you submit your draft to the RFC Editor, the
+         keywords will be used for the search engine. -->
+
+    <abstract>
+      <t>The OpFlex architecture provides a distributed control system
+      based on a declarative policy information model.  The policies
+      are defined at a logically centralized policy repository (PR) and
+      enforced within a set of distributed policy elements (PE).  The
+      PR communicates with the subordinate PEs using the OpFlex
+      Control protocol.  This protocol allows for bidirectional
+      communication of policy, events, statistics, and faults.  This
+      document defines the OpFlex Control Protocol.</t>
+
+    </abstract>
+  </front>
+
+  <middle>
+    <section title="Introduction">
+      <t>As software development processes merge with IT operations,
+      there is an increasing demand for automation and agility within
+      the IT infrastructure.  Application deployment has been impeded
+      due to the existing IT infrastructure operational models.
+      Management at scale is a very difficult problem and existing
+      imperative management models typically falter when challenged
+      with the heterogeneity of various platforms, applications, and
+      releases.  In such environments, declarative management models
+      have shown to cope quite well.  In these systems, agents have
+      autonomy of control and provide a declaration of intent
+      regarding behavior. Declarative policy is rendered locally to
+      provide desired system behavior.  The OpFlex architecture is
+      founded in these concepts.</t>
+
+      <section title="Requirements Language">
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+        document are to be interpreted as described in <xref
+        target="RFC2119">RFC 2119</xref>.</t>
+      </section>
+         <section title="Terminology">
+             <t><list hangIndent="16" style="hanging">
+             <t hangText="PD:">Policy Domain.  A logical instantiation
+             of the OpFlex system components controlled by a single
+             administrative policy.</t>
+             <t hangText="EP:">Endpoint.  A device connected to the system.</t>
+             <t hangText="OC:">OpFlex Component.  An entity that
+             communicates using the OpFlex protocol.</t>
+             <t hangText="EPR:">Endpoint Registry.  A logically centralized entity
+             containing the endpoint registrations within associated
+             policy domain.</t>
+             <t hangText="OB:">Observer.  A logically centralized
+             entity that serves as a repository for statistics,
+             faults, and events.</t>
+             <t hangText="PE:">Policy Element.  A function
+             associated with entities comprising the policy
+             policy domain that is responsible for local
+             rendering of policy.</t>
+             <t hangText="PR:">Policy Repository.  A logically centralized entity
+             containing the definition of all policies governing the
+             behavior of the associated policy domain.</t>
+             <t hangText="OpFlex Device:">Entity under the management of a
+             Policy Element.</t>
+             <t hangText="JSON:">Javascript Object Notation <xref target="RFC4627"></xref></t>
+             </list></t>
+         </section>
+     </section>
+
+    <section title="Scope">
+       <t>This document defines the OpFlex Control Protocol used
+       between OpFlex system components.  It does not define the
+       policy object model or the policy object model schemas.  A
+       System Overview section is provided for reference.</t>
+    </section>
+
+    <section title="System Overview">
+      <t>OpFlex is a policy driven system used to control a large set
+      of physical and virtual devices. The OpFlex system architecture
+      consists of a number of logical components.  These are the
+      Policy Repository (PR), Endpoint Registry (EPR), Observer, and
+      the Policy Elements (PE).  These components and their
+      interactions are described in the following subsections.</t>
+
+        <section title="Policy Repository">
+            <t>Within each policy domain of the OpFlex system,
+            there is a single logical entity referred to as the Policy
+            Repository (PR) that serves as the single source of all
+            policies.  The PR handles policy resolution requests from
+            the Policy Elements within the same policy domain.
+            An example scope of an policy domain would be a
+            datacenter fabric.  These policies are configured directly
+            by the user via a policy administration interface
+            (API/UI/CLI/etc.) or indirectly (implicitly through the
+            application of higher order policy constructs).  These
+            policies represent a declarative statement of desired
+            state.  Policies are typically abstracted from the
+            underlying implementation.</t>
+
+        <section title="Management Information Model">
+           <t>All of the physical and logical components that comprise
+           the policy domain are represented in a hierarchical
+           management information model (MIM), also referred to as the
+           management information tree (MIT).  The hierarchical
+           structure starts at a root node and all policies within the
+           system can be reached via parent and child containment
+           relationships.  Each node has a unique Uniform Resource
+           Identifier (URI) <xref target="RFC3986"></xref> that
+           indicates its place in the tree.</t>
+           
+        <section title="Managed Object">
+           <t>Each node in the tree represents a managed object (MO)
+           or group of objects and contains its administrative state
+           and operational state.  An MO can represent a concrete
+           object, such as a switch or adapter, or a logical object,
+           such as a policy or fault.  An MO consists of the following
+           items:</t>
+
+             <t><list hangIndent="18" style="hanging">
+             <t hangText="Properties:">A property is a named instance
+             of policy data and is interpreted by the Policy Element
+             in local rendering of the policy.</t></list></t>
+
+             <t><list hangIndent="18" style="hanging">
+             <t hangText="Child Relations:">A containment relationship
+             between MOs where the children MOs are contained within
+             the parent MO.</t></list></t>
+
+             <t><list hangIndent="18" style="hanging">
+             <t hangText="Parent Relation:">The inverse of the
+             children relationship.  This relation is implicit and is
+             implied through the hierarchical name of the MO
+             name.</t></list></t>
+
+             <t><list hangIndent="18" style="hanging"> 
+             <t hangText="Observables:">These are MOs that track state
+             relevant to the observed MOs, such as statistics, faults,
+             or health information.  These MOs are reported to the
+             Observer.</t></list></t>
+
+         </section>
+
+        </section>
+
+        </section>
+
+        <section title="Endpoint Registry">
+            <t>The Endpoint Registry (EPR) is the component that
+            stores the current operational state of the endpoints (EP)
+            within the system.  PEs register the EPs with the EPR upon
+            EP attachment to the local device where the PE is
+            resident.  Upon EP detachment, the registration will be
+            withdrawn.  The EP registration information contains the
+            scope of the EP such as the Tenant or logical network as
+            well as location information such as the hypervisor where
+            the EP resides, or other metadata and labels as required
+            by the policy model.  The EPR can be used by PEs to
+            resolve the current EPR registrations as well as receive
+            updates when the information changes.</t>
+        </section>
+
+        <section title="Observer">
+            <t>The Observer serves as the monitoring subsystem that
+            provides a detailed view of the system operational state
+            and performance.  It serves as a data repository for
+            performance and state data that pertains to the devices
+            under control.  This could include information related to
+            trending, forensics, and long-term visibility data such as
+            statistics, events, and faults.  Statistical data is
+            reported to the Observer at expiration of reporting
+            intervals and statistics will be rolled up for longer-term
+            trend analysis.</t>
+        </section>
+
+        <section title="Policy Element">
+            <t>Policy elements (PEs) are a policy enforcement entity
+            that is part of the policy domain. Policy elements reside
+            on physical or virtual devices that are subjected to
+            policy control under a given policy domain. In addition, a
+            policy element might serve as a proxy for a device that
+            lacks an embedded policy element.  Policies are resolved
+            with the PR using the OpFlex protocol.  This protocol
+            allows bidirectional communication, and allows the
+            exchange of policy information. Policies are represented
+            as managed object "sub-trees". Upon policy resolution, the
+            PE renders the policy to the configuration of the
+            underlying subsystem, and continuously performs health
+            monitoring of the subsystem.  PEs perform local corrective
+            actions as needed for the enforcement of policies in its
+            scope. The PE performs this enforcement continuously
+            rather than only when the policy is changed, which is a
+            departure from a more traditional orchestrated scheme.
+            Operational transitions can also cause new or
+            additional/incremental policy resolutions such as the
+            attachment of new EPs to the corresponding device.</t>
+        </section>
+    </section>
+    <section title="OpFlex Control Protocol">
+      <t>The OpFlex Control Protocol is used by OpFlex system
+      components to communicate policy and operational data.  This
+      document describes a JSON format and uses JSON-RPC version 1.0
+      <xref target="JSON-RPC"></xref>.  The JSON-RPC transport SHOULD
+      be over TCP.</t>
+
+    <section title="JSON Usage">
+       <t>The descriptions below use the following shorthand notations
+       for JSON values.  Terminology follows <xref target="RFC4627"></xref>.</t>
+
+       <t><list hangIndent="4" style="hanging">
+         <t hangText="&lt;string&gt;:"><vspace blankLines="0" />A JSON
+         string.  Any Unicode string is allowed.  Implementations
+       SHOULD disallow null bytes.</t></list></t>
+
+       <t><list hangIndent="4" style="hanging">
+         <t hangText="&lt;integer&gt;:"><vspace blankLines="0" />A
+       JSON number with an integer value, within the range
+       -(2**63)...+(2**63)-1.</t></list></t>
+
+       <t><list hangIndent="4" style="hanging">
+         <t hangText="&lt;json-value&gt;:"><vspace blankLines="0"
+         />Any JSON value.</t></list></t>
+
+       <t><list hangIndent="4" style="hanging">
+         <t hangText="&lt;nonnull-json-value&gt;:"><vspace blankLines="0"
+         />Any JSON value except null.</t></list></t>
+
+       <t><list hangIndent="4" style="hanging">
+         <t hangText="&lt;URI&gt;:"><vspace blankLines="0"
+         />A JSON string in the form of a Uniform Resource
+       Identifier<xref target="RFC3986"></xref>.</t></list></t>
+
+       <t><list hangIndent="4" style="hanging">
+         <t hangText="&lt;status&gt;:"><vspace blankLines="0"
+         />An enumeration specifying one of the following set of
+       strings: "created", "modified", or "deleted".</t></list></t>
+
+       <t><list hangIndent="4" style="hanging">
+         <t hangText="&lt;role&gt;:"><vspace blankLines="0"
+         />An enumeration specifying one of the following set of
+       strings: "policy_element", "observer", "policy_repository", or
+       "endpoint_registry".</t></list></t>
+
+       <t><list hangIndent="4" style="hanging">
+         <t hangText="&lt;mo&gt;:"><vspace blankLines="0"/>
+         A JSON object with the following members:</t>
+         <t>"subject": &lt;string&gt;<vspace blankLines="0"/>
+         "uri": &lt;URI&gt;<vspace blankLines="0"/>
+         "properties": [{"name":&lt;string&gt;, "data": &lt;json-value&gt;}*]<vspace blankLines="0"/>
+         "parent_subject": &lt;string&gt;<vspace blankLines="0"/>
+         "parent_uri": &lt;URI&gt;<vspace blankLines="0"/>
+         "parent_relation": &lt;string&gt;<vspace blankLines="0"/>
+         "children":   [&lt;URI&gt;*]<vspace blankLines="0" />
+         </t>
+
+         <t>All of the members of the JSON object are REQUIRED.
+         However, the corresponding value MAY consist of the empty set
+         for all members except for "name".  It is REQUIRED that the
+         "name" be specified.</t>
+
+         <t>The "subject" provides the class of entity for which the
+         declaration applies.  The applicable object classes are
+         dependent on the particular MIT.</t>
+
+         <t>The "uri" uniquely identifies the managed object within
+         the scope of the policy domain and indicates its
+         location within the MIT.</t>
+
+         <t>The "properties" holds a set of named policy data.</t>
+
+         <t>The "parent_subject" provides the class of entity for the
+         parent of the managed object.  This field is optional.  If
+         omitted, then the managed object is a root element.</t>
+
+         <t>The "parent_uri" the uri of the parent managed object.
+         The parent URI MUST be a prefix of the URI of the child
+         object.  This field is optional.  If omitted, then the
+         managed object is a root element.</t>
+
+         <t>The "parent_relation" is the name of the relation from
+         parent to child.  This field is optional.  If omitted, the
+         parent relation is considered equal to the subject field.</t>
+
+         <t>The "children" identifies a set of MOs where each MO is
+         considered a child of this particular MO.</t>
+
+         </list></t>
+    </section>
+
+    <section title="RPC Methods">
+      <t>The following subsections describe the RPC methods that are
+      supported.  As described in the JSON-RPC 1.0 specification, each
+      request comprises a string containing the name of the method, a
+      (possibly null) array of parameters to pass to the method, and a
+      request ID, which can be used to match the response to the
+      request.  Each response comprises a result object (non-null in
+      the event of a successful invocation), an error object (non-null
+      in the event of an error), and the ID of the matching request.
+      More details on each method, its parameters, and its results are
+      described below.</t>
+
+      <t>A Policy Element is configured with the connectivity
+      information of at least one peer OpFlex Control Protocol participant.
+      The connectivity information consists of the information
+      necessary to establish the initial connection such as the IP
+      address and wire encapsulation.  A Policy Element MAY be
+      configured with the connectivity information for one or more of
+      the OpFlex logical components.  A Policy Element MUST connect to
+      each of the configured OpFlex logical components.</t>
+
+      <section title="Error Responses">
+        <t>In the event of an error, the response contains an error
+        object, and the response object is null or omitted.  The error
+        response is as follows:</t>
+
+        <figure><artwork><![CDATA[{
+    "error": {
+        "code": <string>,
+        "message": <string>,
+        "trace": <json-value>,
+        "data": <json-value>
+    },
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The "code" parameter is an error code that indicates the
+        type of failure.  The code MUST be one of the following
+        strings:</t>
+
+        <t><list hangIndent="4" style="hanging">
+          <t hangText="&quot;ERROR&quot;"><vspace blankLines="0"/>
+          A generic error not covered by any of the following errors.</t>
+
+          <t hangText="&quot;EUNSUPPORTED&quot;"><vspace blankLines="0"/>
+          The request could not be fulfilled because it is not
+          supported.</t>
+
+          <t hangText="&quot;ESTATE&quot;"><vspace blankLines="0"/>
+          The session is not in a state that allows the specified
+          request.</t>
+
+          <t hangText="&quot;EPROTO&quot;"><vspace blankLines="0"/>
+          The OpFlex protocol version is not supported.</t>
+
+          <t hangText="&quot;EDOMAIN&quot;"><vspace blankLines="0"/>
+          The policy domains do not match.</t>
+
+        </list></t>
+
+        <t>An OpFlex component MUST be capable of receiving an
+        error response containing a code that is not in the above
+        list, in which case it MAY treat the code the same as
+        "ERROR".</t>
+
+        <t>The "message" parameter is a human-readable error message
+        that corresponds to the error code.  The message field is
+        optional, but it MAY contain additional details not conveyed
+        by the code.</t>
+
+        <t>The "trace" parameter is a JSON object that MAY convey
+        debug or trace information, such as a stack trace, in an
+        implementation-dependent way.  This parameter is
+        optional.</t>
+
+        <t> The "data" parameter is a JSON object that can contain
+        additional data related to the specific request.  This
+        parameter MUST be present if required by the request.</t>
+
+        <t>The "id" parameter is the same ID as was sent in the
+        request.</t>
+        
+      </section>
+
+      <section title="Identity">
+        <t>This method identifies the participant to its peer in the
+        protocol exchange and MUST be sent as the first OpFlex
+        protocol method.  The method indicates the transmitter's role
+        and the policy domain to which it belongs.  Upon
+        receiving an Identity message, the response will contain the
+        configured connectivity information that the participant is
+        using to communicate with each of the OpFlex components.  If
+        the response receiver is a Policy Element and is not
+        configured with connectivity information for certain OpFlex
+        logical components, it SHOULD use the peer's connectivity
+        information to establish communication with the OpFlex logical
+        components that have not been locally configured.</t>
+
+        <t>If a request type other than Identity is received before
+        the Identity message, then the OpFlex Component MUST response
+        with an error response with the error code set to ESTATE.</t>
+
+        <t>The Identity request is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "method": "send_identity",
+    "params": [{
+        "proto_version": "1.0",
+        "name": <string>,
+        "domain": <string>,
+        "my_role": [<role>+]
+    }],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The "proto_version" is a string that represents the version
+        of the OpFlex protocol.  This is the fixed value "1.0".</t>
+
+        <t>The "name" is an identifier of the OpFlex Control Protocol
+        participant that is unique within the policy
+        domain.</t>
+
+        <t>The "domain" is a globally unique identifier indicating the
+        policy domain that this participant exists.</t>
+
+        <t>The "my_role" states the particular OpFlex component
+        contained within this participant.  Since a participant may be
+        capable of acting as more than 1 type of component, there may
+        be multiple "my_role" parameters passed.</t>
+
+        <t>The response object is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {
+        "name": <string>,
+        "my_role": [<role>+],
+        "domain": <string>
+          [ {"role": <role>, 
+          "connectivity_info": <string>}* ]
+    },
+    "error": null,
+    "id": same "id" as request
+}]]></artwork></figure>
+        <t>The "name" is the identifier of the OpFlex Control Protocol
+        participant sending the response.</t>
+
+        <t>The "my_role" states the OpFlex component roles contained
+        within the participant sending the response.</t>
+
+        <t>The "domain" is a globally unique identifier indicating the
+        policy domain that the participant sending the
+        response exists.</t>
+
+        <t>The "role" and associated "connectivity_info" give the
+        reachability information (i.e. IP address or DNS name) and the
+        role of the entity that the participant is communicating using
+        the OpFlex Control Protocol.  This information MAY be gleaned
+        by a receiving participant to resolve reachability for various
+        OpFlex components.</t>
+
+        <t>If the protocol version is not supported by the recipient
+        of the Identity request, then it MUST reply with an error
+        response with the "code" field set to "EPROTO".  If the policy
+        domain does not match the policy domain of the recipient, then
+        it MUST reply with an error response with the "code" field set
+        to "EDOMAIN".</t>
+
+      </section>
+      
+      <section title="Echo">
+        <t>The "echo" method can be used by OpFlex Control Protocol
+        peers to verify the liveness of a connection.  It MUST be
+        implemented by all participants.</t>
+
+        <t>The request is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "method": "echo",
+    "params": [],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The response object is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {},
+    "id": same "id" as request
+}]]></artwork></figure>
+      </section>
+
+      <section title="Policy Resolve">
+        <t>This method retrieves the policy associated with the given
+        policy name.  The policy is returned as a set of managed
+        objects.  This method is typically sent by the PE to the
+        PR.</t>
+
+        <t>The request is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "method": "policy_resolve",
+    "params": [{
+        "subject": <string>,
+        "policy_uri": <URI>,
+        "policy_ident": {
+            "name": <string>,
+            "context": <URI>
+        }
+        "data": <string>,
+        "prr": <integer>
+    }*],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+        <t>The "subject" provides the class of entity for which the
+        policy is being resolved.  The applicable object classes are
+        dependent on the particular MIT.</t>
+
+        <t>The "policy_uri" is the URI of the policy that needs to be
+        resolved.  Exactly one of "policy_uri" and "policy_ident" MUST
+        be set.</t>
+
+        <t>The "policy_ident" is an identifier for the policy that
+        needs to be resolved.  It contains a "context" which is a
+        scope or namespace in which the policy should be resolved, and
+        a "name" which is a name that uniquely identifies the policy
+        within the context.  A common example of a context would be
+        the URI of a tenant object. Exactly one of "policy_uri" and
+        "policy_ident" MUST be set.</t>
+
+        <t>The "data" provides additional opaque data that may be used
+        to assist in the policy resolution.  This parameter is
+        optional.</t>
+
+        <t>The "prr" or Policy Refresh Rate provides the amount of
+        time that a PE should use the policy as provided in the
+        request.  The &lt;integer&gt; indicates the time in seconds
+        that the policy should be kept by the PE.  A PE SHOULD issue
+        another policy resolution request before the expiration of the
+        prr timer if the PE still requires the policy.  If the PE is
+        unable to subsequently resolve the policy after the prr timer
+        expires, the PE MAY continue to use the resolved policy.  The
+        PE SHOULD raise an alarm if the policy cannot be resolved
+        after multiple attempts.</t>
+
+        <t>Note that a policy resolve request can contain more than
+        one request.</t>
+
+        <t>Upon successful policy resolution, the response object is
+        as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {
+        "policy": [<mo>*],
+    },
+    "id": same "id" as request
+}]]></artwork></figure>
+
+        <t>The "policy" parameter contains the managed objects that
+        represent the resolved policy.  This includes the requested
+        object and all of its transitive children.  These objects are
+        used by the Policy Element to render and apply the local
+        policy.  If the requested policy is not currently known, then
+        the policy response MAY be the empty array.</t>
+
+        <t>When a policy resolution request is received by an OpFlex
+        component, it MAY reply with the requested policy in the
+        response.  It MAY also reply with an empty response, and send
+        the requested policy later with a policy update.</t>
+
+        <t>If the requested policy or any of its children are
+        modified, deleted, or created, before the expiration of the
+        PRR, the policy repository MUST send a policy update that
+        represents the policy modifications.  If the PRR expires
+        before a new policy resolve message is received, then the
+        policy repository SHOULD stop sending the updates.  Note that
+        these updates MUST be sent even if the requested policy is
+        unknown at the time of the resolve request.</t>
+
+      </section>
+
+      <section title="Policy Unresolve">
+        <t>This method indicates that the policy element is no longer
+        interested in updates to a particular policy.  Upon receipt of
+        this message, the policy repository SHOULD stop sending
+        updates related to the indicated policy object.</t>
+
+        <t>The request is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "method": "policy_unresolve",
+    "params": [{
+         "subject": <string>,
+         "policy_uri": <URI>,
+         "policy_ident": {
+              "name": <string>,
+              "context": <URI>
+          }}*
+    ],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+        <t>The "subject" provides the class of entity to which the
+        request applies.  The applicable object classes are dependent
+        on the particular MIT.</t>
+
+        <t>The "policy_uri" is a URI to unresolve that corresponds to
+        an earlier resolve request.  Exactly one of "policy_uri" and
+        "policy_ident" MUST be set for each unresolve request.</t>
+
+        <t>The "policy_ident" is an identifier to unresolve that
+        corresponds to an earlier resolve request.  Note that a policy
+        that was resolved using the "policy_ident" field can only be
+        unresolved in the same way.  Exactly one of "policy_uri" and
+        "policy_ident" MUST be set for each unresolve request.</t>
+
+        <t>Note that a policy that was resolved using the "policy_uri"
+        or "policy_ident" field can only be unresolved in the same
+        way. If a policy is resolved multiple times in different ways,
+        then the policy repository MUST continue to provide updates
+        until all unique resolutions are either unresolved or timed
+        out.</t>
+
+        <t>Further note that a policy unresolve request can contain
+        multiple requests in the params list.</t>
+
+        <t>Upon successful completion, the response object is as
+        follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {},
+    "id": same "id" as request
+}]]></artwork></figure>
+      </section>
+
+      <section title="Policy Update">
+        <t>This method is sent to Policy Elements when there has been
+        a change of policy definition for policies for which the
+        Policy Element has requested resolution.  Policy Updates will
+        only be sent to Policy Element for which the policy refresh
+        rate timer has not expired.</t>
+
+        <t>The Policy Update contains the following members:</t>
+
+        <figure><artwork><![CDATA[{
+    "method": "policy_update",
+    "params": [{
+        "replace": [<mo>*],
+        "merge-children": [<mo>*],
+        "delete": [<URI>*],
+    }],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The "replace" parameter contains a list of changed managed
+        objects.  These objects completely replace the managed objects
+        specified.  If the existing object has any child elements that
+        do not appear in the specified object's child list, then these
+        child elements MUST be deleted.</t>
+
+        <t>The "merge-children" parameter contains a list of objects
+        that will replace the properties of any existing object,
+        including unsetting any properties that are set in the
+        existing object but not set in the specified object.  Any
+        children that are specified will added to the set of children
+        already present, but no children will be deleted.</t>
+
+        <t>The "delete" parameter specifies a list of URIs that
+        reference objects that no longer exist and should be
+        deleted.</t>
+
+        <t>The response object is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {},
+    "id": same "id" as request
+}]]></artwork></figure>
+      </section>
+
+      <section title="Endpoint Declare">
+        <t>This method is used to indicate the attachment or
+        modification of an endpoint.  It is sent from the Policy
+        Element to the Endpoint Registry.</t>
+
+        <t>The request is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "method": "endpoint_declare",
+    "params": [{
+        "endpoint": [<MO>+],
+        "prr": <integer>}+
+    ],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The "endpoint" parameter is a list of managed objects
+        representing the endpoints to declare.  The endpoint managed
+        object will contain one or more identifiers that can be used
+        to look up the endpoint with an endpoint resolve request.</t>
+
+        <t>The "prr" or Policy Refresh Rate provides provides the
+        amount of time that the endpoint declaration will remain
+        valid.  The &lt;integer&gt; indicates the time in seconds that
+        the endpoint declaration should be kept by the EPR.  A PE
+        SHOULD issue another endpoint declaration before the
+        expiration of the prr timer if the endpoint is to continue
+        existing within the system.</t>
+
+        <t>Note that an endpoint declare request can contain more than
+        one endpoint declaration.</t>
+
+        <t>The response object is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {},
+    "id": same "id" as request
+}]]></artwork></figure>
+      </section>
+      
+      <section title="Endpoint Undeclare">
+        <t>This method is used to indicate the detachment of an
+        endpoint. It is sent from the Policy Element to the Endpoint
+        Registry.</t>
+
+        <t>The request is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "method": "endpoint_undeclare",
+    "params": [{"subject": <string>,
+                "endpoint_uri": <URI>}+
+    ],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The "subject" provides the class of entity to which the
+        declaration applies.  This will typically be the class
+        representing the endpoint.  The applicable object classes are
+        dependent on the particular MIT.</t>
+          
+        <t>The "endpoint_uri" is used to identify the endpoint or
+        endpoints that are being detached.</t>
+
+        <t>Note that an endpoint undeclare request can contain more
+        than one endpoint undeclaration.</t>
+
+        <t>The response object is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {},
+    "id": same "id" as request
+}]]></artwork></figure>
+      </section>
+
+      <section title="Endpoint Resolve">
+        <t>This method resolves the registration of a particular EP
+        from the EPR.  The request is made using the identifiers of
+        the endpoint.  Since multiple identifiers may be used to
+        uniquely identify a particular endpoint, there may be more
+        than 1 endpoint returned in the reply if the identifiers
+        presented do not uniquely specify the endpoint.</t>
+
+        <t>The request is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "method": "endpoint_resolve",
+    "params": [{
+        "subject": <string>,
+        "endpoint_uri": <URI>,
+        "endpoint_ident": {
+            "context": <URI>,
+            "identifier": <string>
+        },
+        "prr": <integer>}+
+    ],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The "subject" provides the class of entity to which the
+        request applies.  This will typically be the class
+        representing the endpoint.  The applicable object classes are
+        dependent on the particular MIT.</t>
+
+        <t>The "endpoint_uri" is the URI of the endpoint that needs to
+        be resolved.  Exactly one of "endpoint_uri" and
+        "endpoint_ident" MUST be set.</t>
+
+        <t>The "endpoint_ident" is an identifier for the endpoint that
+        needs to be resolved.  It contains a "context" which is a
+        scope or namespace in which the endpoint should be resolved,
+        and a "identifier" which is a name that uniquely identifies
+        the endpoint within the context.  A common example of a
+        context would be the URI of an IP namespace object, and an
+        within this namespace would be an IP address. Exactly one of
+        "endpoint_uri" and "endpoint_ident" MUST be set.</t>
+
+        <t>The "prr" or Policy Refresh Rate provides provides the
+        amount of time that the endpoint information will remain
+        valid.  The &lt;integer&gt; indicates the time in seconds that
+        the endpoint information should be kept by the PE.  A PE
+        SHOULD issue another endpoint request before the expiration of
+        the prr timer if the communication is still required with the
+        endpoint.</t>
+
+        <t>Note that the endpoint resolve request can contain multiple
+        endpoints to resolve.</t>
+        
+        <t>The response object contains the registrations of zero or
+        more endpoints.  Each endpoint contains the same information
+        that was present in the original registration.  The following
+        members are present in the response:</t>
+
+        <t>The response object is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {
+        "endpoint": [<mo>*],
+    },
+    "id": same "id" as request
+}]]></artwork></figure>
+
+        <t>The "endpoint" parameter contains the managed objects that
+        represent the endpoint registrations.  This includes the
+        requested object and all of its transitive children.  If the
+        requested endpoint is not currently known, then the policy
+        response MAY be the empty array.</t>
+
+        <t>When an endpoint resolution request is received by an
+        OpFlex component, it MAY reply with the requested endpoint
+        registration in the response.  It MAY also reply with an empty
+        response, and send the requested policy later with an endpoint
+        update.</t>
+
+        <t>If the requested endpoint object or any of its children are
+        modified before the expiration of the PRR, the endpoint
+        repository MUST send an endpoint update that represents the
+        endpoint modifications.  If the PRR expires before a new
+        endpoint resolve message is received, then the endpoint
+        repository SHOULD stop sending the updates.  Note that these
+        updates MUST be sent even if the requested endpoint is unknown
+        at the time of the resolve request.</t>
+      </section>
+
+      <section title="Endpoint Unresolve">
+        <t>This method indicates that the policy element is no longer
+        interested in updates to a particular endpoint.  Upon receipt
+        of this message, the policy repository SHOULD stop sending
+        updates related to the indicated policy object.</t>
+
+        <t>The request is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "method": "endpoint_unresolve",
+    "params": [{
+        "subject": <string>,
+        "endpoint_uri": <URI>,
+        "endpoint_ident": {
+            "context": <URI>,
+            "identifier": <string>
+        }}+
+    ],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+        <t>The "subject" provides the class of entity for which the
+        policy is being resolved.  The applicable object classes are
+        dependent on the particular MIT.</t>
+
+        <t>The "endpoint_uri" is a URI to unresolve that corresponds
+        to an earlier resolve request.  Exactly one of "endpoint_uri"
+        and "endpoint_ident" MUST be set for each unresolve
+        request.</t>
+
+        <t>The "endpoint_ident" is an identifier to unresolve that
+        corresponds to an earlier resolve request.  Exactly one of
+        "endpoint_uri" and "endpoint_ident" MUST be set for each
+        unresolve request.</t>
+
+        <t>Note that an endpoint that was resolved using the
+        "endpoint_uri" or "endpoint_ident" field can only be
+        unresolved in the same way.  If an endpoint is resolved
+        multiple times in different ways, then the endpoint registry
+        MUST continue to provide updates until all unique resolutions
+        are either unresolved or timed out.</t>
+
+        <t>Note that an endpoint unresolve request can can contain
+        multiple unresolve requests in the params list.</t>
+
+        <t>Upon successful completion, the response object is as
+        follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {},
+    "id": same "id" as request
+}]]></artwork></figure>
+      </section>
+
+      <section title="Endpoint Update">
+        <t>This method is sent to Policy Elements by the EPR when
+        there has been a change relating to the EP Declaration for an
+        Endpoint that the Policy Element has requested.  Policy
+        Updates will only be sent to Policy Elements for which the
+        Policy Refresh Rate timer timer for the Endpoint Request has
+        not expired.</t>
+
+        <t>The Endpoint Update contains the following members:</t>
+
+        <figure><artwork><![CDATA[{
+    "method": "endpoint_update",
+    "params": [{
+        "replace": [<mo>*],
+        "delete": [<URI>*],
+    }],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The "replace" parameter contains a list of changed managed
+        objects.  These objects completely replace the managed objects
+        specified.  If the existing object has any child elements that
+        do not appear in the specified object's child list, then these
+        child elements MUST be deleted.</t>
+
+        <t>The "delete" parameter specifies a list of URIs that
+        reference objects that no longer exist and should be
+        deleted.</t>
+
+        <t>The response object is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {},
+    "id": same "id" as request
+}]]></artwork></figure>
+      </section>
+
+      <section title="State Report">
+        <t>This method is sent by the Policy Element to the Observer.
+        It provides fault, event, statistics, and health information
+        in the form of managed objects.</t>
+
+        <t>The state report contains the following members:</t>
+        <figure><artwork><![CDATA[{
+    "method": "state_report",
+    "params": [{
+        "object": <URI>,
+        "observable": [<mo>*]}+
+    ],
+    "id": <nonnull-json-value>
+}]]></artwork></figure>
+
+        <t>The "object" parameter is a URI that indicates the managed
+        object to which this state report applies.</t>
+
+        <t>The "observable" parameter is a list of managed objects
+        that will be updated in this state report.  Each of these
+        managed objects will completely replace any existing
+        observable managed object with the same URI.</t>
+
+        <t>The response object is as follows:</t>
+        <figure><artwork><![CDATA[{
+    "result": {},
+    "id": same "id" as request
+}]]></artwork></figure>
+
+      </section>
+
+    </section>
+    </section>
+    <!-- This PI places the pagebreak correctly (before the section title) in the text output. -->
+
+    <?rfc needLines="8" ?>
+
+    <!-- Possibly a 'Contributors' section ... -->
+
+    <section anchor="IANA" title="IANA Considerations">
+      <t>A TCP port will be requested from IANA for the OpFlex
+      Control Protocol.</t>
+    </section>
+
+    <section anchor="Security" title="Security Considerations">
+      <t>The OpFlex Control Protocol itself does not address
+      authentication, integrity, and privacy of the communication
+      between the various OpFlex components.  In order to protect the
+      communication, the OpFlex Control Protocol SHOULD be secured
+      using Transport Layer Security (TLS) <xref
+      target="RFC5246"></xref>.  The distribution of credentials will
+      vary depending on the deployment.  In some deployments, existing
+      secure channels can be used to distribute the credentials.</t>
+
+    </section>
+
+    <section anchor="Acknowledgements" title="Acknowledgements">
+      <t>The authors would like to thank Vijay Chander, Mike Cohen,
+      and Brad McConnell for their comments and contributions.</t>
+
+    </section>
+
+
+  </middle>
+
+  <!--  *****BACK MATTER ***** -->
+
+  <back>
+    <!-- References split into informative and normative -->
+
+    <!-- There are 2 ways to insert reference entries from the citation libraries:
+     1. define an ENTITY at the top, and use "ampersand character"RFC2629; here (as shown)
+     2. simply use a PI "less than character"?rfc include="reference.RFC.2119.xml"?> here
+        (for I-Ds: include="reference.I-D.narten-iana-considerations-rfc2434bis.xml")
+
+     Both are cited textually in the same manner: by using xref elements.
+     If you use the PI option, xml2rfc will, by default, try to find included files in the same
+     directory as the including file. You can also define the XML_LIBRARY environment variable
+     with a value containing a set of directories to search.  These can be either in the local
+     filing system or remote ones accessed by http (http://domain/dir/... ).-->
+
+    <references title="Normative References">
+      <!--?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml"?-->
+      &RFC2119;
+      &RFC4627;
+      &RFC3986;
+      &RFC5246;
+
+      <reference anchor="JSON-RPC"
+                 target="http://json-rpc.org/wiki/specification">
+        <front>
+          <title>JSON-RPC Specification, Version 1.0</title>
+          <author initials="J.K" surname="Kollhof" />
+          <date day="18" month="January" year="2006" />
+
+        </front>
+      </reference>
+
+    </references>
+  </back>
+</rfc>
