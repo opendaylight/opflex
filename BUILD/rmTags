@@ -1,9 +1,0 @@
-#!/bin/sh
-echo "Starting........"
-for f in `find . -name TAGS -print`
-do
-      rm $f
-#      echo "rm-->$f"
-done
-echo "Complete."
-
