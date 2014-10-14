@@ -1,8 +1,0 @@
-General Rules For Hacking on Policy Agent
------------------------------------
-1. 4 spaces, no tabs.
-
-2. 80 characters.
-
-3. Commits need a "Signed-off-by", see document here:
-   http://elinux.org/Developer_Certificate_Of_Origin
