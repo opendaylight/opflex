@@ -1,0 +1,6 @@
+Doxyfile
+Doxyfile-internal
+/html/*
+/html-internal/*
+/latex/*
+/latex-internal/*
