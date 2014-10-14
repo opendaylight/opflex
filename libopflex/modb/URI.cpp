@@ -1,0 +1,125 @@
+/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
+/*
+ * Implementation for URI class.
+ *
+ * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+#include <cctype>
+#include <cstdlib>
+
+#include <boost/make_shared.hpp>
+#include <boost/algorithm/string/split.hpp>
+
+#include "opflex/modb/URI.h"
+
+namespace opflex {
+namespace modb {
+
+using std::string;
+using std::vector;
+using std::stringstream;
+using boost::algorithm::is_iequal;
+using boost::algorithm::split_iterator;
+using boost::algorithm::make_split_iterator;
+using boost::algorithm::first_finder;
+using boost::iterator_range;
+using boost::copy_range;
+
+const URI URI::ROOT = URI("/");
+
+URI::URI(const boost::shared_ptr<const std::string>& uri_)
+    : uri(uri_) {
+    
+}
+
+URI::URI(const std::string& uri_) {
+    uri = boost::make_shared<const std::string>(uri_);
+}
+
+URI::URI(const URI& uri_)
+    : uri(uri_.uri) {
+    
+}
+
+URI::~URI() {
+}
+
+const std::string& URI::toString() const {
+    return *uri;
+}
+
+typedef split_iterator<string::const_iterator> string_split_iter;
+
+enum UState {
+    BEGIN,
+    P1,
+    P2
+};
+
+void URI::getElements(/* out */ vector<string>& elements) const {
+    char p[3];
+    p[2] = '\0';
+
+    for(string_split_iter it =
+        make_split_iterator(*uri, first_finder("/", is_iequal()));
+        it != string_split_iter();
+        ++it) {
+        UState state = BEGIN;
+        bool found = false;
+        stringstream estream;
+
+        for (string::const_iterator segment = it->begin(); 
+             segment != it->end(); ++segment) {
+            char c = *segment;
+            switch (state) {
+            case BEGIN:
+                if (c == '%') {
+                    state = P1;
+                } else {
+                    estream << c;
+                    found = true;
+                }
+                break;
+            case P1:
+                p[0] = c;
+                state = P2;
+                break;
+            case P2:
+                p[1] = c;
+                state = BEGIN;
+                if (isxdigit(p[0]) && isxdigit(p[1])) {
+                    estream << (char)strtol(p, NULL, 16);
+                    found = true;
+                }
+                break;
+            }
+        }
+        if (found)
+            elements.push_back(estream.str());
+    }
+}
+
+URI& URI::operator=(const URI& rhs) {
+    uri = rhs.uri;
+    return *this;
+}
+
+bool operator==(const URI& lhs, const URI& rhs) {
+    return *lhs.uri == *rhs.uri;
+}
+bool operator!=(const URI& lhs, const URI& rhs) {
+    return !operator==(lhs,rhs);
+}
+size_t hash_value(URI const& uri) {
+    std::size_t seed = 0;
+    boost::hash_combine(seed, *uri.uri);
+    return seed;
+}
+
+} /* namespace modb */
+} /* namespace opflex */
