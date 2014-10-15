@@ -1,0 +1,13 @@
+metadata
+{
+    ref[module]
+    {
+        node[class]
+        {
+            qual[name]
+            prop[super]
+            option[abstract]
+            option[concrete]
+        }
+    }
+}
