@@ -1,0 +1,9 @@
+/target
+/GENTEST
+.project
+.settings
+.classpath
+/genlog
+.idea
+genie.iml
+*~

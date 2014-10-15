@@ -1,0 +1,40 @@
+metadata
+{
+    ref[module]
+    {
+        ref[class]
+        {
+            ref[member]
+            {
+                node[validate;
+                     use=module/type/validate]
+                {
+                    node[range;
+                         use=module/type/validate/range]
+
+                    node[remove-range;
+                         use=module/type/validate/remove-range]
+
+                    node[content;
+                         use=module/type/validate/content]
+
+                    node[remove-content;
+                         use=module/type/validate/remove-content]
+                }
+
+                node[clobber-validate;
+                     use=module/type/clobber-validate
+                     ]
+                {
+                    node[range;
+                         use=module/type/clobber-validate/range]
+                    node[content;
+                         use=module/type/clobber-validate/content]
+                }
+
+                node[remove-validate;
+                     use=module/type/remove-validate]
+            }
+        }
+    }
+}
