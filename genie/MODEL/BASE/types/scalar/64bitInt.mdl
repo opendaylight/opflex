@@ -1,0 +1,52 @@
+module[scalar]
+{
+    # 64-bit signed integer
+    primitive[SInt64]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint64_t;
+                 pass-by=value;
+                 pass-const=yes;
+                 ]
+        {
+            constraints[default=0;
+                        min=-9223372036854775807;
+                        max=9223372036854775807;
+                        size=8;
+                        ]
+
+            constants[defined-in=dec;
+                      suffix=ll;
+                      ]
+        }
+
+        language[c;
+                 like=scalar/SInt64/cpp]
+
+    }
+
+    # 64-bit unsigned integer
+    primitive[UInt64]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint64_t;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=18446744073709551615;
+                        size=8;
+                        ]
+
+            constants[defined-in=dec;
+                      suffix=ull]
+        }
+
+        language[c;
+                 like=scalar/UInt64/cpp]
+
+    }
+}

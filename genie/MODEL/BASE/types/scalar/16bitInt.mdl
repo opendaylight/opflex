@@ -1,0 +1,55 @@
+module[scalar]
+{
+    # 16-bit signed integer
+    primitive[SInt16]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint16_t;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[default=0;
+                        min=-32767;
+                        max=32767;
+                        size=2;
+                        ]
+
+            constants[defined-in=dec]
+        }
+
+        language[c;
+                 like=scalar/SInt16/cpp]
+
+    }
+
+    # 16-bit signed integer
+    primitive[UInt16]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint16_t;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=65535;
+                        size=2;
+                        ]
+
+            constants[defined-in=dec]
+        }
+
+        language[c;
+                 like=scalar/UInt16/cpp]
+
+    }
+
+    # signed 16 bit word
+    type[SWord;super=scalar/SInt16]
+
+    # unsigned 16 bit word
+    type[UWord;super=scalar/UInt16]
+
+}

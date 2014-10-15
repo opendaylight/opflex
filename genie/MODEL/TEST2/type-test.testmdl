@@ -1,0 +1,124 @@
+module[testo]
+{
+    primitive[int]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint32_t]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=22;
+                        size=16;
+                        ]
+
+
+
+            constants[defined-in=dec;]
+        }
+
+        language[c;
+                 syntax=int]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=22;
+                        size=16;
+                        ]
+
+            constants[defined-in=dec;]
+        }
+
+        const[crazy; value=777]
+
+        validate[crazy]
+        {
+            range[default;
+                  min="222";
+                  max="33";
+                  size="12"]
+
+            content[default;
+                    regex=jhjdshjasd&63636
+                    ]
+        }
+
+        validate[supah]
+        {
+            range[default;
+                  min="222";
+                  max="33";
+                  size="12"]
+
+            content[default;
+                    regex=jhjdshjasd&63636
+                    ]
+        }
+    }
+
+    type[derint; super=scalar/int]
+    {
+        const[firstconst;
+              value=0]
+
+        const[someconst;
+              value=1]
+
+        revertive-const[otherconst; value=2]
+
+        map-const[thatconst; target=someconst]
+
+        transitive-const[
+                tranconst;
+                value=3;
+                target=someconst
+                ]
+
+        clobber-validate[default]
+        {
+
+            range[blah;
+                  min="222";
+                  max="33";
+                  size="12"]
+
+            content[blah;
+                    regex=jhjdshjasd&63636
+                    ]
+        }
+
+        validate[supah]
+        {
+
+            range[blah;
+                  min="222";
+                  max="33";
+                  size="12"]
+
+            range[blahblah;
+                  min="333";
+                  max="44";
+                  size="32"]
+
+            content[blah;
+                    regex=poshel&63636
+                    ]
+
+
+        }
+    }
+}
+
+module[john]
+{
+    type[derint; super=scalar/derint]
+    {
+        #removeconst[firstconst]
+        map-const[otherconst; target=firstconst]
+    }
+}
+
+module[bobby]
+{
+    type[derinti; super=john/derint]
+}

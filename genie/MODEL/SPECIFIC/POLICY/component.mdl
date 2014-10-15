@@ -1,0 +1,19 @@
+module[policy]
+{
+    class[Component;
+          abstract;
+          ]
+
+    class[NamedComponent;
+          super=policy/Component;
+          abstract;
+          ]
+    {
+        member[name; type=policy/Name]
+    }
+
+    class[NameResolvedComponent;
+                  super=policy/NamedComponent;
+                  abstract;
+                  ]
+}
