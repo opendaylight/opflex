@@ -1,0 +1,32 @@
+metadata
+{
+    node[loader;
+         generic]
+    {
+        node[domain;
+             namespace=loader]
+        {
+            qual[name;
+                 namespace=loader]
+
+            node[feature;
+                 namespace=loader]
+            {
+                qual[name]
+
+                node[include;
+                     namespace=loader]
+                {
+                    qual[name]
+
+                    # directory where model files are
+                    prop[dir]
+                    # extension in format of .ext
+                    prop[ext]
+                    # stage can be pre-load, load or post-load
+                    prop[stage]
+                }
+            }
+        }
+    }
+}

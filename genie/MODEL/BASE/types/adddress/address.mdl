@@ -1,0 +1,56 @@
+module[address]
+{
+    primitive[MAC]
+    {
+        hint[address:mac]
+        language[cpp;
+                 syntax=uint64_t;
+                 pass-by=reference;
+                 pass-const=yes]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=(2^64 - 1);
+                        size=64;
+                        ]
+            constants[defined-in=hex]
+        }
+
+        language[c;
+                 syntax=uint64_t;
+                 pass-by=reference;
+                 pass-const=yes]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=(2^64 - 1);
+                        size=64;
+                        ]
+
+            constants[defined-in=hex]
+        }
+    }
+
+    primitive[IP]
+    {
+        hint[address:ip]
+        language[cpp;
+                 syntax=std::string;
+                 pass-by=reference;
+                 pass-const=yes]
+        {
+            constraints[]
+            constants[defined-in=dec]
+        }
+
+        language[c;
+                 syntax=char*;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[]
+
+            constants[defined-in=dec]
+        }
+    }
+}

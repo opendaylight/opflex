@@ -1,0 +1,13 @@
+module[naming]
+{
+    type[Name; super=ascii/Name]
+
+    type[Description; super=ascii/Description]
+
+    primitive[Reference;like=ascii/String]
+
+    primitive[URL; like=ascii/String]
+    {
+        hint[reference:URL]
+    }
+}

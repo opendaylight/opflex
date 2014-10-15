@@ -1,0 +1,57 @@
+module[scalar]
+{
+    # 32-bit signed integer
+    primitive[SInt32]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint32_t;
+                 pass-by=value;
+                 pass-const=yes;
+                 ]
+        {
+            constraints[default=0;
+                        min=-2147483647;
+                        max=2147483647;
+                        size=4;
+                        ]
+
+            constants[defined-in=dec;
+                      suffix=l;
+                      ]
+        }
+
+        language[c;
+                 like=scalar/SInt32/cpp]
+
+    }
+
+    # 32-bit unsigned integer
+    primitive[UInt32]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint32_t;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=4294967295;
+                        size=4;
+                        ]
+
+            constants[defined-in=dec;
+                      suffix=ul]
+        }
+
+        language[c;
+                 like=scalar/UInt32/cpp]
+    }
+
+    # signed 32 bit double word
+    type[SDWord;super=scalar/SInt16]
+
+    # unsigned 32 bit double word
+    type[UDWord;super=scalar/UInt16]
+}

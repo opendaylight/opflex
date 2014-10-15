@@ -1,0 +1,43 @@
+metadata
+{
+    ref[module]
+    {
+        ref[class]
+        {
+            # definition of class data member (property/attribute)
+            node[member;
+                namespace=prop;
+                ]
+            {
+                # name of the data member (property/attribute)
+                qual[name]
+                # data type of the data member (property/attribute)
+                prop[type]
+                # member group of the data member (property/attribute)
+                prop[group]
+            }
+
+            # specification of removal of class data member (property/attribute)
+            node[remove-member;
+                 use=module/class/member;
+                 inherit-props=no
+                 ]
+            {
+                # name of removed data member (property/attribute)
+                qual[name]
+            }
+
+            # specification of override of data member (property/attribute)
+            node[override-member;
+                 use=module/class/member;
+                 inherit-props=no
+                 ]
+            {
+                # name of the overridden member (property/attribute)
+                qual[name]
+                # member group of the data member (property/attribute)
+                prop[group]
+            }
+        }
+    }
+}

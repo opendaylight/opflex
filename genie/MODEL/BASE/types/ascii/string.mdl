@@ -1,0 +1,36 @@
+module[ascii]
+{
+    # ascii string
+    primitive[String]
+    {
+        hint[ascii:string]
+
+        language[cpp;
+                 syntax=std::string;
+                 pass-by=reference;
+                 pass-const=yes]
+        {
+            constraints[default="";
+                        size=128;
+                        ]
+
+            constants[defined-in=ascii]
+        }
+
+        language[c;
+                 syntax=char*;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[default="";
+                        size=128;
+                        ]
+
+            constants[defined-in=ascii]
+        }
+    }
+
+    # text name string
+    type[Name; super=ascii/String]
+    type[Description; super=ascii/String]
+}
