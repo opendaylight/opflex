@@ -1,0 +1,265 @@
+########################################################################################################################
+# specification of a tenant
+########################################################################################################################
+tenant <tenant-name>
+
+    ####################################################################################################################
+    #specification of a group
+    ####################################################################################################################
+    group <group-name>
+        # OPTIONAL: specification of inheritance from another group
+        extends <group-name>
+
+        # specification of consuming or providing a specific named contract by name
+        # mutual indicates that the contract is applied to the end-points within the group
+        [provides|consumes|mutual|peer] contract -name <contract-name>
+
+            # OPTIONAL: group providing capability label specification. only for provides
+            capability <capability-name>
+
+            # OPTIONAL: group consumption requirement label specification. only for consumes
+            requirement <requirement-name>
+
+            # OPTIONAL: specification of condition
+            condition <condition-name>
+
+        # OPTIONAL: specification of consuming or providing a contract selected a contract target match criteria.
+        # Think of this as selection criteria for multiple contracts to be selected at the same time.
+        # mutual indicates that the contract is applied to the end-points within the group
+        [provides|consumes|mutual|peer] contract -matching [<match-name-space>|ANY/*]
+            expression
+                [AND|OR|XOR|NOT] [[expression|<matching-contract-target-quality-name>]*]|ANY]
+
+            # OPTIONAL: group providing capability label specification. only for provides
+            capability <capability-name>
+
+            # OPTIONAL: group consumption requirement label specification. only for consumes
+            requirement <requirement-name>
+
+            # OPTIONAL: specification of condition
+            condition <condition-name>
+
+        #  OPTIONAL: specified what network domain this group is part of
+        part-of-network-domain [<subnet-domain-name>*|<flood-domain-name>|<bridge-domain-name>|<l3-domain-name>|DEFAULT]
+
+    ####################################################################################################################
+    # specification of the contract
+    ####################################################################################################################
+    contract <name>
+
+        # OPTIONAL: specification of inheritance from another contract
+        extends <contract-name>
+
+        # OPTIONAL: specification of selection target:
+        # this is how we make the contract visible to groups that select te contract by expression.
+        target <target-name>
+            quality <quality-name>
+
+        subject <subject name>
+            classifier [in|out|bi-directional|reflexive] <classifier-name>
+            action [sensitivity|redirection] <target-name>
+
+        # OPTIONAL: specifies what subjects are in scope for a set of consumers and providers under what conditions
+        clause <clause name>
+            order <evaluation-priority>
+            consumer-requirements <expression>
+            consumer-conditions <expression>
+            provider-capabilities <expression>
+            provider-conditions<expression>
+            subject <subject-name>
+
+    ####################################################################################################################
+    # specification of a network domains
+    ####################################################################################################################
+
+    l3-subnet-domain <subnet-domain-name>
+        address-range <IPv4-range|IPv6-range>
+        # can be a part of flood domain, bridge domain or l3-domain
+        part-of-domain <network-domain>|DEFAULT-L3-DOMAIN
+
+    l2-flood-domain <flood-domain-name>
+        part-of-domain <l2-bridge-domain-name>|DEFAULT-BRIDGE-DOMAIN
+
+    l2-bridge-domain <bridge-domain-name>
+        part-of-domain <l3-domain-name>|DEFAULT-L3-DOMAIN
+
+    l3-domain <l3-domain-name>
+
+####################################################################################################################
+# EXAMPLE
+####################################################################################################################
+tenant dave
+    group daveness
+        peer contract pingability
+        part-of-domain foo
+
+    group awsomeness
+        peer contract pingability
+        part-of-domain foo
+
+    contract pingability
+        subject
+            classifier in icmp
+
+    l2-bridge-domain foo
+        part-of-domain mystuff
+
+    l3-domain mystuff
+
+####################################################################################################################
+# EXAMPLE
+####################################################################################################################
+tenant common
+
+    contract pingability
+        subject
+            classifier in icmp
+
+tenant dave
+    group daveness
+        peer contract pingability
+        part-of-domain foo
+
+    group awsomeness
+        peer contract pingability
+        part-of-domain foo
+
+
+    l2-bridge-domain foo
+        part-of-domain mystuff
+
+    l3-domain mystuff
+
+####################################################################################################################
+# EXAMPLE
+####################################################################################################################
+tenant common
+
+    contract pingability
+        subject
+            classifier in icmp
+
+tenant dave
+
+    group daveness
+        peer contract pingability
+        part-of-domain mystuff
+
+    l3-domain mystuff
+
+tenant keith
+
+    group internet
+        external subnets ....
+        consumes web
+
+    group amazingness
+        peer contract pingability
+        provide contract web
+        provide contract funkery
+        part-of-domain greatstuff
+
+    group awsomeness
+        peer contract pingability
+        provide contract web
+        part-of-domain greatstuff
+
+    l3-domain greatstuff
+
+####################################################################################################################
+# EXAMPLE
+####################################################################################################################
+
+encap group vxlan
+
+map switch <ID OF THE SWITCH> port 666 to group XXX
+
+
+
+JSON EXAMPLE
+
+{tenant: {
+   "name": "dave",
+
+   "endpoint-group": {
+       "uuid":
+            {"name": "daveness",
+             "provider-named-selector": {
+                 "pns1": {
+                    "name": "pns1",
+                    "contract": contractId
+                 }
+             }
+   }
+
+   "contract": {
+       contractId: {
+           "name": "pingability",
+           "subject": {
+               subjectName: {
+                    "name": subjectName,
+                    classifier-instance {
+                        "icmp",
+                        direction: {"bidirectional"}
+                    }
+               }
+           }
+           "clause": {
+               "clause1": {
+                    {"subject-ref": subjectName}
+               }
+           }
+       }
+   }
+
+}
+
+{
+    "tenant" : {
+        "name": "dave"
+        "group": {
+            "name": "daveness"
+            "contract": {
+                "type": "peer"
+                "name": "pingability"
+            }
+            "part-of-domain": "foo"
+        }
+        "group": {
+            "name": "awsomeness"
+            "contract": {
+                "type": "peer"
+                "name": "pingability"
+            }
+            "part-of-domain": "foo"
+        }
+        "contract":{
+            "name": "pingability"
+            "subject":{
+                "name": "blah"
+                "classifier":{
+                    "dir": "in"
+                    "ref": "icmp"
+                }
+            }
+        }
+    }
+}
+
+tenant dave
+    group daveness
+        peer contract pingability
+        part-of-domain foo
+
+    group awsomeness
+        peer contract pingability
+        part-of-domain foo
+
+    contract pingability
+        subject
+            classifier in icmp
+
+    l2-bridge-domain foo
+        part-of-domain mystuff
+
+    l3-domain mystuff

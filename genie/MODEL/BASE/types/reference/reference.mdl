@@ -1,0 +1,26 @@
+module[reference]
+{
+    # local resource identifier: generally identifies the child in the context of its parent
+    primitive[LRI; like=ascii/String]
+    {
+        hint[reference:LRI]
+    }
+
+    # universal/global resource identifier: generally identifies an object globally
+    primitive[URI; like=ascii/String]
+    {
+        hint[reference:URI]
+    }
+
+    # name resolved resource identifier: identifies resource by name for hierarchical resolution
+    primitive[NRI; like=ascii/String]
+    {
+        hint[reference:Named]
+    }
+
+    # class reference
+    primitive[CRI; like=scalar/Enum32]
+    {
+        hint[reference:Class]
+    }
+}

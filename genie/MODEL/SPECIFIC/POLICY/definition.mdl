@@ -1,0 +1,19 @@
+module[policy]
+{
+    class[Definition;
+          abstract;
+          ]
+
+    class[NamedDefinition;
+          super=policy/Definition;
+          abstract;
+          ]
+    {
+        member[name; type=policy/Name]
+    }
+
+    class[NameResolvedDefinition;
+              super=policy/NamedDefinition;
+              abstract;
+              ]
+}

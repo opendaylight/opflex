@@ -1,0 +1,57 @@
+module[gbp]
+{
+    class[L2BehavioralGroup;
+          super=gbp/ForwardingBehavioralGroup;
+          abstract]
+
+    class[BridgeDomain;
+          super=gbp/L2BehavioralGroup;
+          concrete]
+    {
+        dependency[network;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/RoutingDomain;
+               cardinality=many;
+               ]
+        }
+        contained
+        {
+            parent[class=policy/Space]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=bd;
+                          member=name]
+            }
+        }
+    }
+
+    class[FloodDomain;
+          super=gbp/L2BehavioralGroup;
+          concrete]
+    {
+        dependency[networkDomain;
+                   cardinality=single;]
+        {
+            to[class=gbp/BridgeDomain;
+               cardinality=many;
+               ]
+        }
+        contained
+        {
+            parent[class=policy/Space]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=fd;
+                          member=name]
+            }
+        }
+    }
+}

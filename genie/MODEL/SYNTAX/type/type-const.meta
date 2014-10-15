@@ -1,0 +1,30 @@
+metadata
+{
+    ref[module]
+    {
+        ref[type]
+        {
+            node[const]
+            {
+                qual[name]
+                prop[value]
+                prop[target]
+            }
+
+            node[map-const;
+                 use=module/type/const]
+            node[remove-const;
+                 use=module/type/const]
+            node[revertive-const;
+                 use=module/type/const]
+            node[transitive-const;
+                 use=module/type/const]
+            node[unsettable-const;
+                 use=module/type/const]
+            node[default;
+                 use=module/type/const]
+            node[exclusive;
+                 use=module/type/const]
+        }
+    }
+}
