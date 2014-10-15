@@ -57,14 +57,28 @@ public:
      * @param elementValue the value of the element
      */
     URIBuilder& addElement(const std::string& elementValue);
-        
+
+    /**
+     * Add an unsigned int-valued path element to the URI path.
+     *
+     * @param elementValue the value of the element
+     */
+    URIBuilder& addElement(uint32_t elementValue);
+
+    /**
+     * Add a signed int-valued path element to the URI path.
+     *
+     * @param elementValue the value of the element
+     */
+    URIBuilder& addElement(int32_t elementValue);
+
     /**
      * Add an unsigned int-valued path element to the URI path.
      *
      * @param elementValue the value of the element
      */
     URIBuilder& addElement(uint64_t elementValue);
-        
+
     /**
      * Add a signed int-valued path element to the URI path.
      *

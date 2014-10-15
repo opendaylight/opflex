@@ -75,6 +75,16 @@ URIBuilder& URIBuilder::addElement(int64_t elementValue) {
     return *this;
 }
 
+URIBuilder& URIBuilder::addElement(uint32_t elementValue) {
+    pimpl->uri_stream << elementValue << '/';
+    return *this;
+}
+
+URIBuilder& URIBuilder::addElement(int32_t elementValue) {
+    pimpl->uri_stream << elementValue << '/';
+    return *this;
+}
+
 URIBuilder& URIBuilder::addElement(const string& elementValue) {
     writeStringEscape(pimpl->uri_stream, elementValue);
     pimpl->uri_stream << '/';
