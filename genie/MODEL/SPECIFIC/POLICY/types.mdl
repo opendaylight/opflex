@@ -1,0 +1,4 @@
+module[policy]
+{
+    type[Name; super=naming/Name]
+}

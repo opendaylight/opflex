@@ -1,0 +1,12 @@
+owner[testowner]
+{
+    module[*]
+    {
+        class[*]
+    }
+}
+
+owner[bob]
+{
+    class[gbp/BehavioralGroup]
+}

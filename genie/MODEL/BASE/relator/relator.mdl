@@ -1,0 +1,122 @@
+module[relator]
+{
+    # relationship type
+    type[Type;super=scalar/Enum8]
+    {
+        # direct association: source and target explicitly point at each other; initiated by source
+        const[direct-association; value=1;]
+        # named association: source resolves to the target via name; target directly points back at source; initiated by source
+        const[named-association; value=2;]
+        # direct dependency: source directly points to target; target is resolved but does not point back
+        const[direct-dependency; value=3;]
+        # named resolved dependency: source resolves to the target; target does not point back at source
+        const[named-dependency; value=4;]
+        # reference
+        const[reference; value=8;]
+    }
+
+    type[Role;super=scalar/Enum8]
+    {
+        const[source; value=1;]
+        const[target; value=2;]
+        const[resolver; value=4;]
+    }
+
+    type[RelatedURI; super=reference/URI]
+    type[RelatedName; super=reference/URI]
+    type[RelatedClass; super=scalar/Enum16]
+
+    class[Item;
+          abstract;
+          ]
+    {
+        member[type; type=relator/Type;]
+        member[role; type=relator/Role;]
+
+    }
+
+    class[Source;
+          super=relator/Item;
+          abstract;
+          ]
+    {
+        # role can only have one value: source; set by default
+        override-member[role]
+        {
+            exclusive[source]
+        }
+    }
+
+    class[DirectRelSource;
+          super=relator/Source;
+          abstract;
+          ]
+    {
+        override-member[type]
+        {
+            remove-const[named-association]
+            remove-const[named-dependency]
+        }
+        member[target;type=relator/RelatedURI]
+    }
+
+    class[NameResolvedRelSource;
+          super=relator/Source;
+          abstract;
+          ]
+    {
+        override-member[type]
+        {
+            remove-const[direct-association]
+            remove-const[direct-dependency]
+            remove-const[reference]
+        }
+        member[targetName;type=relator/RelatedName]
+        member[targetClass;type=relator/RelatedClass]
+    }
+
+    class[Target;
+          super=relator/Item;
+          abstract;
+          ]
+    {
+        # role can only have one value: target; set by default
+        override-member[role]
+        {
+            exclusive[target]
+        }
+
+        member[source;type=relator/RelatedURI]
+    }
+
+    class[Universe;
+          concrete]
+    {
+        # relator:Universe is a root node
+        root
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=resolvers]
+            }
+        }
+    }
+
+    class[Resolver;
+          super=relator/Item;
+          abstract;
+          ]
+    {
+        # role can only have one value: resolver; set by default
+        override-member[role]
+        {
+            exclusive[resolver]
+        }
+        contained
+        {
+            parent[class=relator/Universe]
+        }
+    }
+}
