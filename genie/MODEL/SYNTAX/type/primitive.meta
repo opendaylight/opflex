@@ -1,0 +1,93 @@
+metadata
+{
+    ref[module]
+    {
+        node[primitive;
+             use=module/type;
+             inherit-props=no;
+             ]
+        {
+            # name of the primitive type
+            qual[name]
+
+            # specifies if primitive type is like some other primitive type
+            # this means that all language bindings, constants and validators are borrowed
+            # like=/<module-name>/<primitive-name>
+            prop[like]
+
+            node[hint; namespace=type]
+            {
+                qual[name]
+            }
+
+            node[language;
+                 namespace=type]
+            {
+                # name of the language.
+                # for example: c++, python, c, java
+                qual[name]
+
+                # target language syntax for this type.
+                # like uint32_t
+                prop[syntax]
+
+                # target language syntax for object containing this type...
+                # for example, in java, a primitive int has object equivalent of java.lang.Integer
+                prop[object-syntax]
+
+                # identifies whether value is passed by: value, reference, pointer
+                prop[pass-by]
+
+                # identifies whether value should always be passed as constant
+                prop[pass-const]
+
+                # required include statement for this type
+                prop[include]
+
+                # specifies if language binding is like some other language binding
+                # this means that all constraints and constants rules are borrowed
+                # like=/<module-name>/<primitive-name>/<language>
+                prop[like]
+
+                # type constraints
+                node[constraints;
+                     namespace=type;]
+                {
+                    # absolute min value for this type
+                    prop[min]
+                    # absolute max value for this type
+                    prop[max]
+                    # absolute default value for this type
+                    prop[default]
+                    # specifies size of the datatype
+                    prop[size]
+                    # default regex statement
+                    prop[regex]
+                    # target type that allows constraints to be defined in another type (useful for strings etc.)
+                    # if range specification requires a different type than the one that the range is contained by,
+                    # this construct allows type indirection, where another type is used for definition of the range
+                    prop[use-type]
+                }
+
+                # rules applied to constants
+                node[constants;
+                     namespace=type;
+                     ]
+                {
+                    # specifies what format values are to be defined.
+                    # for example: dec, hex, octal, ...
+                    prop[defined-in]
+
+                    # a literal prefix that is required before constant definition.
+                    # as in 0x.... or something like that
+                    prop[prefix]
+
+                    # literal suffix that is required before constant definition.
+                    # as in ll, ull: ... = ...6666ull;
+                    prop[suffix]
+                }
+
+            }
+        }
+    }
+}

@@ -1,0 +1,55 @@
+metadata
+{
+    node[owner;
+         namespace=dataowner;]
+    {
+        qual[name]
+        node[module;
+             namespace=dataowner;]
+        {
+            qual[name]
+            node[class;
+                 use=owner/class;
+                 namespace=dataowner;]
+            {
+                qual[name]
+                node[member;
+                     use=owner/class/member;
+                     namespace=dataowner;]
+                {
+
+                }
+                node[group;
+                     use=owner/class/member;
+                     namespace=dataowner;]
+                {
+
+                }
+            }
+        }
+
+        node[class;
+             namespace=dataowner;]
+        {
+            qual[name]
+
+            node[member;
+                 namespace=dataowner;]
+            {
+                qual[name]
+            }
+
+            node[member-group;
+                 use=owner/group;
+                 namespace=dataowner;]
+            {
+            }
+        }
+
+        node[group;
+             namespace=dataowner;]
+        {
+            qual[name]
+        }
+    }
+}
