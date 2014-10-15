@@ -1,0 +1,26 @@
+module[scalar]
+{
+    primitive[Bitmask8;
+              like=scalar/UInt8]
+    {
+        hint[bitmask]
+    }
+
+    primitive[Bitmask16;
+              like=scalar/UInt16]
+    {
+        hint[bitmask]
+    }
+
+    primitive[Bitmask32;
+              like=scalar/UInt32]
+    {
+        hint[bitmask]
+    }
+
+    primitive[Bitmask64;
+              like=scalar/UInt64]
+    {
+        hint[bitmask]
+    }
+}

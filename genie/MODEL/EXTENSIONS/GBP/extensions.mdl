@@ -1,0 +1,26 @@
+module[gbpe]
+{
+    type[VNid; super=scalar/UInt32]
+    type[ClassId; super=scalar/UInt32]
+
+    # represents a set of extensions that specify specific identifiers used by the data plane of the wire
+    class[InstContext;
+          concrete]
+    {
+        member[vnid; type=gbpe/VNid]
+        member[classid; type=gbpe/ClassId]
+        contained
+        {
+            parent[class=gbp/EpGroup]
+            parent[class=gbp/BridgeDomain]
+            parent[class=gbp/RoutingDomain]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ext-context]
+            }
+        }
+    }
+}
