@@ -1,0 +1,177 @@
+#     DIRECT_ASSOCIATION(new String[]{"direct-association", "relation"} , false, true, true, false),
+#     NAMED_ASSOCIATION(new String[]{"named-association"}, true, true, true, false),
+#     DIRECT_DEPENDENCY(new String[]{"direct-dependency"}, false, true, true, true),
+#     NAMED_DEPENDENCY(new String[]{"direct-association", "dependency"}, true, true, true, true),
+#     REFERENCE
+
+metadata
+{
+    ref[module]
+    {
+        ref[class]
+        {
+
+            node[relation;
+                 use=module/class/dependency]
+            {
+                node[to;
+                     use=module/class/dependency/to;
+                     ]
+            }
+
+            node[direct-association;
+                 use=module/class/dependency]
+            {
+                node[to;
+                     use=module/class/dependency/to]
+            }
+
+            node[named-association;
+                 use=module/class/dependency]
+            {
+                node[to;
+                     use=module/class/dependency/to]
+            }
+
+            node[direct-dependency;
+                 use=module/class/dependency]
+            {
+                node[to;
+                     use=module/class/dependency/to]
+            }
+
+            node[named-dependency;
+                 use=module/class/dependency]
+            {
+                node[to;
+                     use=module/class/dependency/to]
+            }
+
+            node[reference;
+                 use=module/class/dependency]
+            {
+                node[to;
+                     use=module/class/dependency/to]
+            }
+
+            node[dependency;
+                 use=module/dependency;
+                 inherit-props=no]
+            {
+                qual[name]
+                prop[cardinality]
+
+                node[to;
+                     use=module/dependency/to
+                     ]
+            }
+        }
+
+        node[relation;
+             use=module/dependency]
+        {
+            node[to;
+                 use=module/dependency/to]
+        }
+
+        node[direct-association;
+             use=dependency]
+        {
+            node[to;
+                 use=dependency/to]
+        }
+
+        node[named-association;
+             use=dependency]
+        {
+            node[to;
+                 use=dependency/to]
+        }
+
+        node[direct-dependency;
+             use=dependency]
+        {
+            node[to;
+                 use=dependency/to]
+        }
+
+        node[named-dependency;
+             use=dependency]
+        {
+            node[to;
+                 use=dependency/to]
+        }
+
+        node[reference;
+             use=dependency]
+        {
+            node[to;
+                 use=dependency/to]
+        }
+
+        node[dependency;
+             use=dependency]
+        {
+            qual[name]
+
+            node[to;
+                 use=dependency/to]
+        }
+    }
+    node[relation;
+         use=dependency]
+    {
+        node[to;
+             use=dependency/to]
+    }
+
+    node[direct-association;
+         use=dependency]
+    {
+        node[to;
+             use=dependency/to]
+    }
+
+    node[named-association;
+         use=dependency]
+    {
+        node[to;
+             use=dependency/to]
+    }
+
+    node[direct-dependency;
+         use=dependency]
+    {
+        node[to;
+             use=dependency/to]
+    }
+
+    node[named-dependency;
+         use=dependency]
+    {
+        node[to;
+             use=dependency/to]
+    }
+
+    node[reference;
+         use=dependency]
+    {
+        node[to;
+             use=dependency/to]
+    }
+
+    node[dependency;
+         namespace=reference]
+    {
+        qual[name]
+        prop[class]
+        prop[cardinality]
+
+        node[to;
+             namespace=reference]
+        {
+            qual[class]
+            prop[cardinality]
+        }
+    }
+}

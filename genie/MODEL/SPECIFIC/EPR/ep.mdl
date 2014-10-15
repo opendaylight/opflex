@@ -1,0 +1,71 @@
+module[epr]
+{
+    type[DetectionContext; super=scalar/UInt32]
+    type[ExternalId; super=ascii/String]
+
+    # Superclass for all end points declared in the epr universes.
+    # End point is a networking device attaching to the network
+    # as part of group
+    class[EndPoint;
+          abstract;
+          ]
+    {
+        # mac address of the end-point
+        member[mac; type=address/MAC]
+        # ip address of the end-point
+        member[ip; type=address/IP]
+        # context in which end-point has been detected (like port)
+        member[detectionContext; type=epr/DetectionContext]
+        # external identifier like uuid/oid
+        member[externalId; type=epr/ExternalId]
+
+        dependency[group;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
+    }
+
+    # L2 end-point that is part of the L2 universe
+    class[L2Ep;
+          super=epr/EndPoint;
+          concrete
+          ]
+    {
+        contained
+        {
+            parent[class=epr/L2Universe]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=detectionContext]
+                component[prefix=-;member=mac]
+            }
+        }
+    }
+
+    # L3 end-point that is part of the L3 universe
+    class[L3Ep;
+          super=epr/EndPoint;
+          concrete
+          ]
+    {
+        contained
+        {
+            parent[class=epr/L3Universe]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=detectionContext]
+                component[prefix=-;member=ip]
+            }
+        }
+    }
+}

@@ -1,0 +1,76 @@
+metadata
+{
+    ref[module]
+    {
+        ref[class]
+        {
+            # Specifies containment for this specific class.
+            # Allows creation of multiple containment rules
+            # with multiple containment parents
+            node[contained;
+                 use=module/contained;
+                 inherit-props=no;
+                 ]
+            {
+                # containment parent
+                node[parent;
+                     use=module/contained/parent;
+                     ]
+            }
+
+            # containment rule that specifies that this class is a tree root (instantiated under anonymous dmtree-root)
+            node[root;
+                 use=module/root;
+                 inherit-props=no]
+        }
+
+        # containment rule applied to specified class that identifies that the class is a tree root
+        # (instantiated under anonymous dmtree-root)
+        node[root;
+             use=root
+             ]
+
+        # containment rule applied to specified class that identifies that this class is contained by
+        # enclosed list of parent classes
+        node[contained;
+             namespace=containment;
+             use=contained
+             ]
+        {
+            # containment parent
+            node[parent;
+                 namespace=containment;
+                 use=contained/parent]
+        }
+    }
+
+    # containment rule applied to specified class that identifies that the class is a tree root
+    # (instantiated under anonymous dmtree-root)
+    node[root;
+         use=contained;
+         inherit-props=no
+         ]
+    {
+        prop[class]
+    }
+
+    # containment rule applied to specified class that identifies that this class is contained by
+    # enclosed list of parent classes
+    node[contained;
+         namespace=containment;
+         ]
+    {
+        # target class for which this rule is specified
+        prop[class]
+
+        # containment parent
+        node[parent;
+             namespace=containment;]
+        {
+           prop[class]
+           # access rules
+           # hide properties
+           # ...
+        }
+    }
+}
