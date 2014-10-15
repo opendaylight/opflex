@@ -1,0 +1,26 @@
+module[scalar]
+{
+    primitive[Enum8;
+              like=scalar/UInt8]
+    {
+        hint[enum]
+    }
+
+    primitive[Enum16;
+              like=scalar/UInt16]
+    {
+        hint[enum]
+    }
+
+    primitive[Enum32;
+              like=scalar/UInt32]
+    {
+        hint[enum]
+    }
+
+    primitive[Enum64;
+              like=scalar/UInt64]
+    {
+        hint[enum]
+    }
+}

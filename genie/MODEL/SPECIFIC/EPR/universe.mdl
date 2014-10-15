@@ -1,0 +1,43 @@
+module[epr]
+{
+    # Universe is an abstract superclass for all end-point-registry container objects
+    # Universe contains a set of corresponding end-points that are within the scope of
+    # the given universe.
+    class[Universe;
+          abstract;
+          ]
+    {
+        # All Universes are instantiated under the root
+        root
+    }
+
+    # Universe containing L2 end-points
+    class[L2Universe;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=l2;]
+            }
+        }
+    }
+
+    # universe containing L3 end-points
+    class[L3Universe;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=l3;]
+            }
+        }
+    }
+}

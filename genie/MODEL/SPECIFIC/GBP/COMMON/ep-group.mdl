@@ -1,0 +1,30 @@
+module[gbp]
+{
+    class[EpGroup;
+          super=gbp/BehavioralGroup;
+          concrete;
+          ]
+    {
+        dependency[network;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/ForwardingBehavioralGroup;
+                cardinality=many;
+                ]
+        }
+
+        contained
+        {
+            parent[class=policy/Space]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ep-group;
+                          member=name]
+            }
+        }
+    }
+}

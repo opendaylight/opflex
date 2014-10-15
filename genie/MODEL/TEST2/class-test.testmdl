@@ -1,0 +1,15 @@
+module[motest]
+{
+    class[MoBase;
+          abstract;]
+    {
+
+    }
+
+    class[MoOne;
+          concrete;
+          super=motest/MoBase]
+    {
+
+    }
+}

@@ -1,0 +1,21 @@
+metadata
+{
+    ref[module]
+    {
+        ref[primitive]
+        {
+            node[const;
+                 use=module/type/const]
+            node[map-const;
+                 use=module/type/map-const]
+            node[revertive-const;
+                 use=module/type/revertive-const]
+            node[transitive-const;
+                 use=module/type/transitive-const]
+            node[unsettable-const;
+                 use=module/type/unsettable-const]
+            node[default;
+                 use=module/type/default]
+        }
+    }
+}
