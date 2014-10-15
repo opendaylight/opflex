@@ -1,0 +1,40 @@
+module[ascii]
+{
+    # 8 bit ascii character
+    primitive[Char]
+    {
+        hint[ascii:char]
+        language[cpp;
+                 syntax=unsigned char;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[default='\0';
+                        min=0;
+                        max=127;
+                        size=8;
+                        ]
+
+            constants[defined-in=ascii]
+        }
+
+        language[c;
+                 like=ascii/Char/cpp]
+    }
+
+    # 8 bit ascii text character
+    primitive[TextChar;
+             like=ascii/Char;
+             ]
+    {
+        language[cpp]
+        {
+            constraints[min=32;
+                        max=126;
+                        default='/0'
+                        ]
+        }
+        language[c;
+                 like=ascii/TextChar/cpp]
+    }
+}

@@ -1,0 +1,50 @@
+module[scalar]
+{
+    # 8-bit signed integer
+    primitive[SInt8]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint8_t;
+                 pass-by=value;
+                 pass-const=yes;
+                 ]
+        {
+            constraints[default=0;
+                        min=-127;
+                        max=127;
+                        size=1;
+                        ]
+
+            constants[defined-in=dec;]
+        }
+
+        language[c;
+                 like=scalar/SInt8/cpp]
+    }
+
+    # 8-bit unsigned integer
+    primitive[UInt8]
+    {
+        hint[scalar]
+        language[cpp;
+                 syntax=uint8_t;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=255;
+                        size=1;
+                        ]
+
+            constants[defined-in=dec;]
+        }
+
+        language[c;
+                 like=scalar/UInt8/cpp]
+    }
+
+    type[SByte;super=scalar/SInt8]
+    type[UByte;super=scalar/UInt8]
+}

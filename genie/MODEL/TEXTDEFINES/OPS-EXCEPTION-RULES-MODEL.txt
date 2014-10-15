@@ -1,0 +1,119 @@
+########################################################################################################################
+# specification of rule augmentation
+########################################################################################################################
+augment
+    ####################################################################################################################
+    # specification of a tenant
+    ####################################################################################################################
+    tenant-override [common|<tenant-name>|*]
+
+        ################################################################################################################
+        # For contracts in scope, these are override rules.
+        # Contract can be matched directly by name or by contract quality matching expression
+        # It is also possible to add new behaviors by specifying new contract (contract-define)
+        # Note that contract-define only works with *contract-name*.
+        ################################################################################################################
+        contract-[override|define] [<_contract-name_>|contract-quality-matching-expresion| ANY/*]
+
+            ############################################################################################################
+            # evaluation order for override evaluation. not sure if it's necessary... let's discuss
+            ############################################################################################################
+            order <evaluation-priority>
+
+            ############################################################################################################
+            # Override or definition of the contract clause.
+            # If the contract is defined inline (with contract-define <name>), user can't override, as there are no
+            # existing clauses
+            ############################################################################################################
+            clause-[override|define] <clause-name>
+
+                ########################################################################################################
+                # evaluation order
+                ########################################################################################################
+                order <evaluation-priority>
+
+                ########################################################################################################
+                # consumer side definitions. more precise rule always wins.
+                ########################################################################################################
+                consumer end-point [ <end-point-identifier> |condition-expression | _ANY/*_ ]
+                consumer group [ <group-name> | requirements-expression | _ANY/*_ ]
+
+                ########################################################################################################
+                # provider side definitions. more precise rule always wins.
+                ########################################################################################################
+                producer end-point [ <end-point-identifier> |condition-expression | _ANY/*_ ]
+                producer group [ <group-name> | capabilities-expression | _ANY/*_ ]
+
+                ########################################################################################################
+                # mutual/peer definitions. more precise rule always wins.
+                ########################################################################################################
+                [peer|mutual] end-point [ <end-point-identifier> |condition-expression | _ANY/*_ ]
+                [peer|mutual] group [ <group-name> | _ANY/*_ ]
+
+                ########################################################################################################
+                # (re)define subjects in scope.
+                ########################################################################################################
+                add subject <subject-name>
+                remove subject [<subject-name>|ALL/*]
+
+            ########################################################################################################
+            # (re)define subjects in contract.
+            ########################################################################################################
+            [add|clobber|remove] subject <subject-name>
+                classifier [replace|append] [in|out|bi-directional|reflexive] <classifier-name>
+                action [pre | post | remove | clobber ] [sensitivity|redirection] <target-action-name>
+
+
+
+tenant-override john
+    contract-define UC666
+        clause
+            mutual end-point 10.10.6.6
+            mutual end-point 10.10.6.8
+            add subject whatever
+
+        subject whatever
+            classifier append 6666
+            action HighQoS
+
+########################################################################################################
+
+tenant dave
+    group daveness
+        peer contract pingability
+        part-of-domain foo
+
+    group awsomeness
+        peer contract pingability
+        part-of-domain foo
+
+    contract pingability
+        subject icmp
+            classifier in icmp
+
+    l2-bridge-domain foo
+        part-of-domain mystuff
+
+    l3-domain mystuff
+
+
+
+tenant-override *
+    contract-override *
+
+        add-subject "foo"
+            classifier append blahblah
+            action go-crazy
+
+        add-subject "boohoo"
+            classifier append cheers
+            action go-mild
+
+        clause
+            peer-end-point match(that are marked as crazy)
+            add-subject 6666 actions: prepend knock-yourself-out-set
+            add-subject "boohoo"
+            remove-subject icmp
+
+
+
