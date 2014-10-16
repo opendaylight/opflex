@@ -69,20 +69,6 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 # ---------------------------------------------------------------
 # Configure options
 
-# modify the name of the binary tgz package 
-AC_SUBST([pkgtgz], ['${PACKAGE_TARNAME}-${PACKAGE_VERSION}-${SDK_BVERSION}-${host}.tgz'])
-AC_ARG_WITH(pkgtgz,
-            AC_HELP_STRING([--with-pkgtarball], 
-                           [binary tarball file [[name-VERSION-HOST.tgz]]]),
-            [pkgtgz=${withval}],
-            [])
-# control whether to generate a debug build or a regular build
-AC_SUBST([tgztarget], ['install-strip'])
-AC_ARG_ENABLE([debugtgz],
-              AC_HELP_STRING([--enable-debugtgz], 
-                             [Generate a tgz package with debug symbols]), 
-              [tgztarget='install'], [])
-
 # Modify the release/build version
 AC_ARG_WITH(buildversion,
             AC_HELP_STRING([--with-buildversion], 
@@ -136,10 +122,15 @@ AM_CONDITIONAL([LINT_SPECIFICATIONS],
 # Checks for header files
 AC_STDC_HEADERS
 
+# Boost dependencies
 AX_BOOST_BASE([1.49.0], [], AC_MSG_ERROR([Boost is required]))
 AX_BOOST_UNIT_TEST_FRAMEWORK
 
+# libuv
 PKG_CHECK_MODULES([UV], [libuv >= 0.11.0])
+
+# rapidjson
+AC_CHECK_HEADER("rapidjson/rapidjson.h", [], AC_MSG_ERROR([RapidJson is required]))
 
 # Older versions of autoconf don't define docdir
 if test x$docdir = x; then
@@ -162,7 +153,6 @@ AC_DEFINE_UNQUOTED(SDK_FULL_VERSION, ["sdk_pversion.sdk_sversion.sdk_iversion-${
 
 AC_CONFIG_FILES([\
         Makefile \
-	3rdparty/Makefile \
         util/Makefile \
         logging/Makefile \
         comms/Makefile \
@@ -176,8 +166,7 @@ AC_CONFIG_FILES([\
         cwrapper/test/Makefile \
         libopflex.pc \
         doc/Doxyfile \
-        doc/Doxyfile-internal \
-        ietf/Makefile \
+        doc/Doxyfile-internal
 ])
 AC_OUTPUT
 
