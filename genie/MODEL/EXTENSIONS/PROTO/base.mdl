@@ -1,0 +1,35 @@
+module[platform]
+{
+    type[AdminState; super=scalar/Enum8]
+    {
+        const[name=off; value=0]
+        const[name=on; value=1]
+    }
+
+    class[Config;
+          super=policy/NameResolvedDefinition;
+          concrete
+          ]
+    {
+        contained
+        {
+            parent[class=policy/Universe]
+            {
+                name-component[prefix=platform; member=name]
+            }
+        }
+    }
+
+    class[ConfigComponent;
+          abstract;
+          ]
+    {
+        contained
+        {
+            parent[class=policy/Universe]
+            {
+                name-component
+            }
+        }
+    }
+}

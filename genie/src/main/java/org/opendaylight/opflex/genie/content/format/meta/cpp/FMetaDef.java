@@ -66,6 +66,8 @@ public class FMetaDef
     {
         out.println(0, "#include <boost/assign/list_of.hpp>");
         out.println(0, "#include <" + Config.getProjName() + "/metadata/metadata.hpp>");
+        out.println(0, "#include <" + Config.getProjName() + "/dmtree/Root.hpp>");
+
         out.println(0, "namespace " + Config.getProjName());
         out.println(0, "{");
 
@@ -145,6 +147,10 @@ public class FMetaDef
         case "UINT16":
         case "UINT8":
         case "MAC":
+        case "BITMASK8":
+        case "BITMASK16":
+        case "BITMASK32":
+        case "BITMASK64":
             return "U64";
         default:
             return lType;
