@@ -73,7 +73,11 @@ public:
                                list_of 
                                    (PropertyInfo(9, "prop9",
                                                  PropertyInfo::STRING, 
-                                                 PropertyInfo::SCALAR)),
+                                                 PropertyInfo::SCALAR))
+                                   (PropertyInfo(12, "class6",
+                                                 PropertyInfo::COMPOSITE, 
+                                                 6, 
+                                                 PropertyInfo::VECTOR)),
                                list_of(9)))
                     (ClassInfo(5, ClassInfo::LOCAL_ONLY, "class5", "owner2",
                                list_of 
@@ -84,6 +88,12 @@ public:
                                                  PropertyInfo::REFERENCE,
                                                  PropertyInfo::VECTOR)),
                                list_of(10)))
+                    (ClassInfo(6, ClassInfo::POLICY, "class6", "owner2",
+                               list_of 
+                                   (PropertyInfo(13, "prop12",
+                                                 PropertyInfo::STRING, 
+                                                 PropertyInfo::SCALAR)),
+                               list_of(12)))
              ) { }
 
     ModelMetadata md;

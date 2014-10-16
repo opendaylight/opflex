@@ -82,7 +82,10 @@ public:
      *
      * @param class_id the class ID for the object being inserted
      * @param uri the URI to remove
-     * @param recursive remove all the children of the object as well
+
+     * @param recursive remove all the children of the object as well.
+     * Setting this to true is equivalent to calling remove
+     * nonrecursively followed by calling removeChildren.
      * @param notifs an optional notification map that will get added
      * to for any URI that is recursively removed, though not the
      * top-level node.
@@ -161,6 +164,20 @@ public:
                      prop_id_t parent_prop,
                      class_id_t child_class,
                      /* out */ std::vector<URI>& output);
+
+    /**
+     * Remove all the children of the given object, exluding the
+     * object itself.
+     *
+     * @param class_id the class ID for the object being inserted
+     * @param uri the URI to remove
+     * @param notifs an optional notification map that will get added
+     * to for any URI that is recursively removed, though not the
+     * top-level node.
+     */
+    void removeChildren(class_id_t class_id,
+                        const URI& uri,
+                        notif_t* notifs);
 
     /**
      * Get the parent for the given child URI.

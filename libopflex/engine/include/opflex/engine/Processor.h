@@ -265,7 +265,7 @@ private:
                    const modb::reference_t& up);
     void processItem(obj_state_by_exp::iterator& it);
     void updateItemExpiration(obj_state_by_exp::iterator& it);
-
+    bool isOrphan(const item& item);
 };
 
 } /* namespace engine */

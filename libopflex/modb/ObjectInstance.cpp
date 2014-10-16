@@ -31,7 +31,7 @@ using std::vector;
 using std::pair;
 using std::make_pair;
 using boost::make_tuple;
-using boost::any_cast;
+using boost::get;
 
 static PropertyInfo::property_type_t
 normalize(PropertyInfo::property_type_t type) {
@@ -52,21 +52,21 @@ ObjectInstance::Value::Value(const Value& val)
     : type(val.type), cardinality(val.cardinality) {
     if (cardinality == PropertyInfo::SCALAR) {
         if (type == PropertyInfo::STRING) {
-            if (!val.value.empty())
-                value = new string(*any_cast<string*>(val.value));
+            if (val.value.which() != 0)
+                value = new string(*get<string*>(val.value));
         } else {
             value = val.value;
         }
     } else if (cardinality == PropertyInfo::VECTOR && 
-               !val.value.empty()) {
+               val.value.which() != 0) {
         if (type == PropertyInfo::U64)
-            value = new vector<uint64_t>(*any_cast<vector<uint64_t>*>(val.value));
+            value = new vector<uint64_t>(*get<vector<uint64_t>*>(val.value));
         else if (type == PropertyInfo::S64)
-            value = new vector<int64_t>(*any_cast<vector<int64_t>*>(val.value));
+            value = new vector<int64_t>(*get<vector<int64_t>*>(val.value));
         else if (type == PropertyInfo::REFERENCE)
-            value = new vector<reference_t>(*any_cast<vector<reference_t>*>(val.value));
+            value = new vector<reference_t>(*get<vector<reference_t>*>(val.value));
         else if (type == PropertyInfo::STRING)
-            value = new vector<string>(*any_cast<vector<string>*>(val.value));
+            value = new vector<string>(*get<vector<string>*>(val.value));
     }
 }
 
@@ -77,18 +77,18 @@ ObjectInstance::Value::~Value() {
 void ObjectInstance::Value::clear() {
     if (cardinality == PropertyInfo::SCALAR &&
         type == PropertyInfo::STRING) {
-        if (!value.empty())
-            delete any_cast<string*>(value);
+        if (value.which() != 0)
+            delete get<string*>(value);
     } else if (cardinality == PropertyInfo::VECTOR && 
-               !value.empty()) {
+               value.which() != 0) {
         if (type == PropertyInfo::U64)
-            delete any_cast<vector<uint64_t>*>(value);
+            delete get<vector<uint64_t>*>(value);
         else if (type == PropertyInfo::S64)
-            delete any_cast<vector<int64_t>*>(value);
+            delete get<vector<int64_t>*>(value);
         else if (type == PropertyInfo::REFERENCE)
-            delete any_cast<vector<reference_t>*>(value);
+            delete get<vector<reference_t>*>(value);
         else if (type == PropertyInfo::STRING)
-            delete any_cast<vector<string>*>(value);
+            delete get<vector<string>*>(value);
     }
 }
 
@@ -100,21 +100,21 @@ ObjectInstance::Value& ObjectInstance::Value::operator=(const Value& val) {
 
     if (cardinality == PropertyInfo::SCALAR) {
         if (type == PropertyInfo::STRING) {
-            if (!val.value.empty())
-                value = new string(*any_cast<string*>(val.value));
+            if (val.value.which() != 0)
+                value = new string(*get<string*>(val.value));
         } else {
             value = val.value;
         }
     } else if (cardinality == PropertyInfo::VECTOR && 
-               !val.value.empty()) {
+               val.value.which() != 0) {
         if (type == PropertyInfo::U64)
-            value = new vector<uint64_t>(*any_cast<vector<uint64_t>*>(val.value));
+            value = new vector<uint64_t>(*get<vector<uint64_t>*>(val.value));
         else if (type == PropertyInfo::S64)
-            value = new vector<int64_t>(*any_cast<vector<int64_t>*>(val.value));
+            value = new vector<int64_t>(*get<vector<int64_t>*>(val.value));
         else if (type == PropertyInfo::REFERENCE)
-            value = new vector<reference_t>(*any_cast<vector<reference_t>*>(val.value));
+            value = new vector<reference_t>(*get<vector<reference_t>*>(val.value));
         else if (type == PropertyInfo::STRING)
-            value = new vector<string>(*any_cast<vector<string>*>(val.value));
+            value = new vector<string>(*get<vector<string>*>(val.value));
     }
     return *this;
 }
@@ -144,7 +144,7 @@ uint64_t ObjectInstance::getUInt64(prop_id_t prop_id) const {
     const Value& v = prop_map.at(make_tuple(PropertyInfo::U64, 
                                             PropertyInfo::SCALAR, 
                                             prop_id));
-    return any_cast<uint64_t>(v.value);
+    return get<uint64_t>(v.value);
 }
 
 uint64_t ObjectInstance::getUInt64(prop_id_t prop_id, 
@@ -152,7 +152,7 @@ uint64_t ObjectInstance::getUInt64(prop_id_t prop_id,
     const Value& v = prop_map.at(make_tuple(PropertyInfo::U64, 
                                             PropertyInfo::VECTOR, 
                                             prop_id));
-    return any_cast<vector<uint64_t>*>(v.value)->at(index);
+    return get<vector<uint64_t>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getUInt64Size(prop_id_t prop_id) const {
@@ -161,14 +161,14 @@ size_t ObjectInstance::getUInt64Size(prop_id_t prop_id) const {
                                  PropertyInfo::VECTOR, 
                                  prop_id));
     if (it == prop_map.end()) return 0;
-    return any_cast<vector<uint64_t>*>(it->second.value)->size();
+    return get<vector<uint64_t>*>(it->second.value)->size();
 }
 
 int64_t ObjectInstance::getInt64(prop_id_t prop_id) const {
     const Value& v = prop_map.at(make_tuple(PropertyInfo::S64, 
                                             PropertyInfo::SCALAR, 
                                             prop_id));
-    return any_cast<int64_t>(v.value);
+    return get<int64_t>(v.value);
 }
 
 int64_t ObjectInstance::getInt64(prop_id_t prop_id, 
@@ -176,7 +176,7 @@ int64_t ObjectInstance::getInt64(prop_id_t prop_id,
     const Value& v = prop_map.at(make_tuple(PropertyInfo::S64, 
                                             PropertyInfo::VECTOR, 
                                             prop_id));
-    return any_cast<vector<int64_t>*>(v.value)->at(index);
+    return get<vector<int64_t>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getInt64Size(prop_id_t prop_id) const {
@@ -185,14 +185,14 @@ size_t ObjectInstance::getInt64Size(prop_id_t prop_id) const {
                                  PropertyInfo::VECTOR, 
                                  prop_id));
     if (it == prop_map.end()) return 0;
-    return any_cast<vector<int64_t>*>(it->second.value)->size();
+    return get<vector<int64_t>*>(it->second.value)->size();
 }
 
 const string& ObjectInstance::getString(prop_id_t prop_id) const {
     const Value& v = prop_map.at(make_tuple(PropertyInfo::STRING, 
                                             PropertyInfo::SCALAR, 
                                             prop_id));
-    return *any_cast<string*>(v.value);
+    return *get<string*>(v.value);
 }
 
 const string& ObjectInstance::getString(prop_id_t prop_id, 
@@ -200,7 +200,7 @@ const string& ObjectInstance::getString(prop_id_t prop_id,
     const Value& v = prop_map.at(make_tuple(PropertyInfo::STRING, 
                                             PropertyInfo::VECTOR, 
                                             prop_id));
-    return any_cast<vector<string>*>(v.value)->at(index);
+    return get<vector<string>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getStringSize(prop_id_t prop_id) const {
@@ -209,14 +209,14 @@ size_t ObjectInstance::getStringSize(prop_id_t prop_id) const {
                                  PropertyInfo::VECTOR, 
                                  prop_id));
     if (it == prop_map.end()) return 0;
-    return any_cast<vector<string>*>(it->second.value)->size();
+    return get<vector<string>*>(it->second.value)->size();
 }
 
 reference_t ObjectInstance::getReference(prop_id_t prop_id) const {
     const Value& v = prop_map.at(make_tuple(PropertyInfo::REFERENCE, 
                                             PropertyInfo::SCALAR, 
                                             prop_id));
-    return any_cast<reference_t>(v.value);
+    return get<reference_t>(v.value);
 }
 
 reference_t ObjectInstance::getReference(prop_id_t prop_id, 
@@ -224,7 +224,7 @@ reference_t ObjectInstance::getReference(prop_id_t prop_id,
     const Value& v = prop_map.at(make_tuple(PropertyInfo::REFERENCE, 
                                             PropertyInfo::VECTOR, 
                                             prop_id));
-    return any_cast<vector<reference_t>*>(v.value)->at(index);
+    return get<vector<reference_t>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getReferenceSize(prop_id_t prop_id) const {
@@ -233,7 +233,7 @@ size_t ObjectInstance::getReferenceSize(prop_id_t prop_id) const {
                                  PropertyInfo::VECTOR, 
                                  prop_id));
     if (it == prop_map.end()) return 0;
-    return any_cast<vector<reference_t>*>(it->second.value)->size();
+    return get<vector<reference_t>*>(it->second.value)->size();
 }
 
 void ObjectInstance::setUInt64(prop_id_t prop_id, uint64_t value) {
@@ -252,8 +252,8 @@ void ObjectInstance::setUInt64(prop_id_t prop_id,
                                    prop_id)];
     v.type = PropertyInfo::U64;
     v.cardinality = PropertyInfo::VECTOR;
-    if (!v.value.empty())
-        delete any_cast<vector<uint64_t>*>(v.value);
+    if (v.value.which() != 0)
+        delete get<vector<uint64_t>*>(v.value);
     v.value = new vector<uint64_t>(value);
 }
 
@@ -273,8 +273,8 @@ void ObjectInstance::setInt64(prop_id_t prop_id,
                                    prop_id)];
     v.type = PropertyInfo::S64;
     v.cardinality = PropertyInfo::VECTOR;
-    if (!v.value.empty())
-        delete any_cast<vector<int64_t>*>(v.value);
+    if (v.value.which() != 0)
+        delete get<vector<int64_t>*>(v.value);
     v.value = new vector<int64_t>(value);
 }
 
@@ -284,8 +284,8 @@ void ObjectInstance::setString(prop_id_t prop_id, const string& value) {
                                    prop_id)];
     v.type = PropertyInfo::STRING;
     v.cardinality = PropertyInfo::SCALAR;
-    if (!v.value.empty())
-        delete any_cast<vector<string>*>(v.value);
+    if (v.value.which() != 0)
+        delete get<vector<string>*>(v.value);
     v.value = new string(value);
 }
 
@@ -296,8 +296,8 @@ void ObjectInstance::setString(prop_id_t prop_id,
                                    prop_id)];
     v.type = PropertyInfo::STRING;
     v.cardinality = PropertyInfo::VECTOR;
-    if (!v.value.empty())
-        delete any_cast<vector<string>*>(v.value);
+    if (v.value.which() != 0)
+        delete get<vector<string>*>(v.value);
     v.value = new vector<string>(value);
 }
 
@@ -319,8 +319,8 @@ void ObjectInstance::setReference(prop_id_t prop_id,
                                    prop_id)];
     v.type = PropertyInfo::REFERENCE;
     v.cardinality = PropertyInfo::VECTOR;
-    if (!v.value.empty())
-        delete any_cast<vector<reference_t>*>(v.value);
+    if (v.value.which() != 0)
+        delete get<vector<reference_t>*>(v.value);
     v.value = new vector<reference_t>(value);
 }
 
@@ -329,12 +329,12 @@ void ObjectInstance::addUInt64(prop_id_t prop_id, uint64_t value) {
                                    PropertyInfo::VECTOR, 
                                    prop_id)];
     vector<uint64_t>* val;
-    if (v.value.empty()) {
+    if (v.value.which() == 0) {
         v.type = PropertyInfo::U64;
         v.cardinality = PropertyInfo::VECTOR;
         v.value = val = new vector<uint64_t>();
     } else {
-        val = any_cast<vector<uint64_t>*>(v.value);
+        val = get<vector<uint64_t>*>(v.value);
     }
     val->push_back(value);
 }
@@ -344,12 +344,12 @@ void ObjectInstance::addInt64(prop_id_t prop_id, int64_t value) {
                                    PropertyInfo::VECTOR, 
                                    prop_id)];
     vector<int64_t>* val;
-    if (v.value.empty()) {
+    if (v.value.which() == 0) {
         v.type = PropertyInfo::S64;
         v.cardinality = PropertyInfo::VECTOR;
         v.value = val = new vector<int64_t>();
     } else {
-        val = any_cast<vector<int64_t>*>(v.value);
+        val = get<vector<int64_t>*>(v.value);
     }
     val->push_back(value);
 }
@@ -359,12 +359,12 @@ void ObjectInstance::addString(prop_id_t prop_id, const string& value) {
                                    PropertyInfo::VECTOR, 
                                    prop_id)];
     vector<string>* val;
-    if (v.value.empty()) {
+    if (v.value.which() == 0) {
         v.type = PropertyInfo::STRING;
         v.cardinality = PropertyInfo::VECTOR;
         v.value = val = new vector<string>();
     } else {
-        val = any_cast<vector<string>*>(v.value);
+        val = get<vector<string>*>(v.value);
     }
     val->push_back(value);
 }
@@ -376,12 +376,12 @@ void ObjectInstance::addReference(prop_id_t prop_id,
                                    PropertyInfo::VECTOR, 
                                    prop_id)];
     vector<reference_t>* val;
-    if (v.value.empty()) {
+    if (v.value.which() == 0) {
         v.type = PropertyInfo::REFERENCE;
         v.cardinality = PropertyInfo::VECTOR;
         v.value = val = new vector<reference_t>();
     } else {
-        val = any_cast<vector<reference_t>*>(v.value);
+        val = get<vector<reference_t>*>(v.value);
     }
     val->push_back(make_pair(class_id, uri));
 }

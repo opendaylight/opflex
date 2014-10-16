@@ -302,6 +302,7 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     StoreClient::notif_t notifs;
     URI c4u("/class4/test");
     URI c5u("/class5/test");
+    URI c6u("/class4/test/class6/test2");
     shared_ptr<ObjectInstance> oi5 = 
         shared_ptr<ObjectInstance>(new ObjectInstance(5));
     oi5->setString(10, "test");
@@ -310,20 +311,28 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     shared_ptr<ObjectInstance> oi4 = 
         shared_ptr<ObjectInstance>(new ObjectInstance(4));
     oi4->setString(9, "test");
+    shared_ptr<ObjectInstance> oi6 = 
+        shared_ptr<ObjectInstance>(new ObjectInstance(6));
+    oi6->setString(12, "test2");
 
     // put in both in one operation, so the metadata object will be
     // already present
     client2->put(5, c5u, oi5);
     client2->put(4, c4u, oi4);
+    client2->put(6, c6u, oi6);
+    client2->addChild(4, c4u, 12, 6, c6u);
 
     client2->queueNotification(5, c5u, notifs);
     client2->queueNotification(4, c4u, notifs);
+    client2->queueNotification(6, c6u, notifs);
     client2->deliverNotifications(notifs);
     notifs.clear();
 
     BOOST_CHECK(itemPresent(client2, 4, c4u));
     BOOST_CHECK(itemPresent(client2, 5, c5u));
+    BOOST_CHECK(itemPresent(client2, 6, c6u));
     WAIT_FOR(processor.getRefCount(c4u) > 0, 1000);
+    BOOST_CHECK(itemPresent(client2, 6, c6u));
 
     client2->remove(5, c5u, false, &notifs);
     client2->queueNotification(5, c5u, notifs);
@@ -333,8 +342,10 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     BOOST_CHECK(!itemPresent(client2, 5, c5u));
     WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
     BOOST_CHECK_EQUAL(0, processor.getRefCount(c4u));
+    BOOST_CHECK(!itemPresent(client2, 6, c6u));
 
-    // put in one at a time so the metadata object is not present
+    // add the reference and then the referent so the metadata object
+    // is not present
     client2->put(5, c5u, oi5);
     client2->queueNotification(5, c5u, notifs);
     client2->deliverNotifications(notifs);
@@ -344,11 +355,15 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     WAIT_FOR(processor.getRefCount(c4u) > 0, 1000);
 
     client2->put(4, c4u, oi4);
+    client2->put(6, c6u, oi6);
+    client2->addChild(4, c4u, 12, 6, c6u);
     client2->queueNotification(4, c4u, notifs);
+    client2->queueNotification(6, c6u, notifs);
     client2->deliverNotifications(notifs);
     notifs.clear();
  
     BOOST_CHECK(itemPresent(client2, 4, c4u));
+    BOOST_CHECK(itemPresent(client2, 6, c6u));
 
     client2->remove(5, c5u, false, &notifs);
     client2->queueNotification(5, c5u, notifs);
@@ -358,6 +373,7 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     BOOST_CHECK(!itemPresent(client2, 5, c5u));
     WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
     BOOST_CHECK_EQUAL(0, processor.getRefCount(c4u));
+    BOOST_CHECK(!itemPresent(client2, 6, c6u));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

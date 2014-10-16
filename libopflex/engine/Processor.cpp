@@ -151,10 +151,38 @@ static bool isLocal(ClassInfo::class_type_t type) {
             (type == ClassInfo::LOCAL_ONLY));
 }
 
+// check if the object has a zero refcount and it has no remote
+// ancestor that has a zero refcount.
+bool Processor::isOrphan(const item& item) {
+    // simplest case: refcount is nonzero
+    if (item.details->refcount > 0)
+        return false;
+
+    try {
+        const std::pair<URI, prop_id_t>& parent =
+            client->getParent(item.details->class_id, item.uri);
+        const ClassInfo& parent_ci = store->getPropClassInfo(parent.second);
+        
+        // the parent is local, so there can be no remote parent with
+        // a nonzero refcount
+        if (isLocal(parent_ci.getType())) return true;
+
+        obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
+        obj_state_by_uri::iterator uit = uri_index.find(parent.first);
+        // parent missing
+        if (uit == uri_index.end()) return true;
+
+        return isOrphan(*uit);
+    } catch (std::out_of_range e) {
+        return true;
+    }
+}
+
 // Process the item.  This is where we do most of the actual work of
 // syncing the managed object over opflex
 void Processor::processItem(obj_state_by_exp::iterator& it) {
     ItemState newState = IN_SYNC;
+    StoreClient::notif_t notifs;
 
     const ClassInfo& ci = store->getClassInfo(it->details->class_id);
     shared_ptr<const ObjectInstance> oi;
@@ -171,13 +199,13 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         }
     }
 
-    LOG(INFO) << "Processing item " << it->uri.toString() 
-              << " of class " << ci.getId()
-              << " and type " << ci.getType()
-              << " in state " << it->details->state;
+    //LOG(INFO) << "Processing item " << it->uri.toString() 
+    //          << " of class " << ci.getId()
+    //          << " and type " << ci.getType()
+    //          << " in state " << it->details->state;
 
     // Check whether this item needs to be garbage collected
-    if (it->details->refcount <= 0 && !isLocal(ci.getType()) && oi) {
+    if (!isLocal(ci.getType()) && oi && isOrphan(*it)) {
         switch (it->details->state) {
         case NEW:
             {
@@ -195,11 +223,10 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 // Remove object from store and dispatch a notification
                 LOG(DEBUG) << "Removing nonlocal object with zero refcount "
                            << it->uri.toString();
-                StoreClient::notif_t notifs;
                 client->remove(it->details->class_id,
                                it->uri,
-                               true, &notifs);
-                client->deliverNotifications(notifs);
+                               false, &notifs);
+                client->queueNotification(it->details->class_id, it->uri, notifs);
                 oi.reset();
                 newState = DELETED;
                 break;
@@ -257,17 +284,24 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         break;
     }
 
-    {
+    if (oi) {
         util::LockGuard guard(&item_mutex);
-        if (oi) {
-            it->details->state = newState;
-        } else if (newState == DELETED) {
-            LOG(DEBUG) << "Purging state for " << it->uri.toString();
+        
+        it->details->state = newState;
+    } else if (newState == DELETED) {
+        LOG(DEBUG) << "Purging state for " << it->uri.toString();
+        client->removeChildren(it->details->class_id,
+                               it->uri,
+                               &notifs);
+        {
+            util::LockGuard guard(&item_mutex);
             obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
             exp_index.erase(it);
-            return;
         }
     }
+
+    if (notifs.size() > 0)
+        client->deliverNotifications(notifs);
 
     //LOG(INFO) << "Set item " << it->uri.toString() 
     //          << " state to " << it->details->state;

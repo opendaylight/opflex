@@ -19,7 +19,7 @@
 #include <boost/tuple/tuple_comparison.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/unordered_map.hpp>
-#include <boost/any.hpp>
+#include <boost/variant.hpp>
 
 #include "opflex/modb/PropertyInfo.h"
 #include "opflex/modb/URI.h"
@@ -340,7 +340,15 @@ private:
     struct Value {
         PropertyInfo::property_type_t type;
         PropertyInfo::cardinality_t cardinality;
-        boost::any value;
+        boost::variant<boost::blank,
+                       uint64_t,
+                       int64_t,
+                       std::string*,
+                       reference_t,
+                       std::vector<uint64_t>*,
+                       std::vector<int64_t>*,
+                       std::vector<std::string>*,
+                       std::vector<reference_t>*> value;
 
         Value() {}
         Value(const Value& val);

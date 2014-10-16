@@ -71,6 +71,30 @@ boost::shared_ptr<const ObjectInstance> StoreClient::get(class_id_t class_id,
     return r->get(uri);
 }
 
+void StoreClient::removeChildren(class_id_t class_id, const URI& uri,
+                                 notif_t* notifs) {
+    const ClassInfo& ci = store->getClassInfo(class_id);
+    const ClassInfo::property_map_t& pmap = ci.getProperties();
+    ClassInfo::property_map_t::const_iterator it;
+    for (it = pmap.begin(); it != pmap.end(); ++it) {
+        if (it->second.getType() == PropertyInfo::COMPOSITE) {
+            class_id_t prop_class = it->second.getClassId();
+            prop_id_t prop_id = it->second.getId();
+            std::vector<URI> children;
+            getChildren(class_id, uri, prop_id, prop_class, children);
+            std::vector<URI>::iterator cit;
+            for (cit = children.begin(); cit != children.end(); ++cit) {
+                // unlink the parent/child
+                delChild(class_id, uri, prop_id, prop_class, *cit);
+                // remove the child object
+                remove(prop_class, *cit, true);
+                if (notifs)
+                    (*notifs)[*cit] = prop_class;
+            }
+        }
+    }
+}
+
 bool StoreClient::remove(class_id_t class_id, const URI& uri,
                          bool recursive, notif_t* notifs) {
     Region* r = checkOwner(store, readOnly, region, class_id);
@@ -94,26 +118,8 @@ bool StoreClient::remove(class_id_t class_id, const URI& uri,
     if (!recursive) return result;
 
     // Remove all the children if requested
-    const ClassInfo& ci = store->getClassInfo(class_id);
-    const ClassInfo::property_map_t& pmap = ci.getProperties();
-    ClassInfo::property_map_t::const_iterator it;
-    for (it = pmap.begin(); it != pmap.end(); ++it) {
-        if (it->second.getType() == PropertyInfo::COMPOSITE) {
-            class_id_t prop_class = it->second.getClassId();
-            prop_id_t prop_id = it->second.getId();
-            std::vector<URI> children;
-            getChildren(class_id, uri, prop_id, prop_class, children);
-            std::vector<URI>::iterator cit;
-            for (cit = children.begin(); cit != children.end(); ++cit) {
-                // unlink the parent/child
-                delChild(class_id, uri, prop_id, prop_class, *cit);
-                // remove the child object
-                remove(prop_class, *cit, true);
-                if (notifs)
-                    (*notifs)[*cit] = prop_class;
-            }
-        }
-    }
+    removeChildren(class_id, uri, notifs);
+
     return result;
 }
 
