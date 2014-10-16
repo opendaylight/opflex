@@ -22,7 +22,6 @@ AM_CPPFLAGS  = $(BOOST_CPPFLAGS)
 AM_CPPFLAGS += -I$(srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/logging/include
-AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/rapidjson/include
 
 libcomms_la_CXXFLAGS  =
 libcomms_la_CXXFLAGS += $(UV_CFLAGS)
