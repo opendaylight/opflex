@@ -1,0 +1,24 @@
+# lacp:LagPolDef (min/max links, lacpMode, control bits)
+module[lacp]
+{
+
+    type[Mode; super=scalar/Enum8]
+    {
+        # TODO: ADD VALUES
+    }
+
+    type[ControlBits; super=scalar/Bitmask8]
+    {
+        # TODO: ADD VALUES
+    }
+
+    class[Config;
+          super=platform/ConfigComponent;
+          concrete]
+    {
+        member[minLinks; type=scalar/UInt16]
+        member[maxLinks; type=scalar/UInt16]
+        member[mode; type=lacp/Mode]
+        member[controlBits; type=lacp/ControlBits]
+    }
+}

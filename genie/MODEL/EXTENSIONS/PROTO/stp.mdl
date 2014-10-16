@@ -1,0 +1,10 @@
+module[stp]
+{
+    class[Config;
+          super=platform/ConfigComponent;
+          concrete]
+    {
+        member[bpduGuard; type=platform/AdminState]
+        member[bpduFilter; type=platform/AdminState]
+    }
+}

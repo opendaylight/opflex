@@ -1,0 +1,10 @@
+module[l2]
+{
+    type[Mtu; super=scalar/UInt32]
+    class[Config;
+          super=platform/ConfigComponent;
+          concrete]
+    {
+        member[state; type=l2/Mtu]
+    }
+}
