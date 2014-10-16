@@ -13,7 +13,6 @@
 ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS  =
-SUBDIRS += 3rdparty
 SUBDIRS += util
 SUBDIRS += logging
 SUBDIRS += modb
@@ -21,7 +20,6 @@ SUBDIRS += comms
 SUBDIRS += engine
 SUBDIRS += ofcore
 SUBDIRS += cwrapper
-SUBDIRS += ietf
 SUBDIRS += .
 
 modb_includedir = $(includedir)/opflex/modb
@@ -69,15 +67,6 @@ libopflex_la_LIBADD += logging/liblogging.la
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libopflex.pc
-
-# make a binary tgz package
-tgz:
-	rm -rf "${top_builddir}/tgz-tmp"
-	mkdir "${top_builddir}/tgz-tmp"
-	make ${tgztarget} DESTDIR="`cd ${top_builddir}/tgz-tmp; pwd`"
-	test -z "${extratar}" || tar -xC "${top_builddir}/tgz-tmp" -f "${extratar}"
-	(cd "${top_builddir}/tgz-tmp"; $(AMTAR) cf - --owner 0 --group 0 usr | GZIP=$(GZIP_ENV) $(GZIP_BIN) -c >../${pkgtgz})
-	rm -rf "${top_builddir}/tgz-tmp"
 
 if HAVE_DOXYGEN
   noinst_DATA = \
