@@ -1,0 +1,6 @@
+# TODO: DEFINE!
+# span:VDestGrpDef
+# span:VDestDef (pointer to EPG)
+# span:VSrcGrpDef (adminState)
+# span:VSrcDef (pointer to EPG)
+# span:CEpDef (MAC)

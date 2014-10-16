@@ -1,0 +1,10 @@
+module[lldp]
+{
+    class[Config;
+          super=platform/ConfigComponent;
+          concrete]
+    {
+        member[rx; type=platform/AdminState]
+        member[tx; type=platform/AdminState]
+    }
+}

@@ -32,6 +32,18 @@ public class MNamer extends Item
         {
             lNamer = new MNamer(aInGClassName);
         }
+        else
+        {
+            // NOW, SINCE WE HAVEN'T FOUND THE NAMER, LET'S LOOK IN THE SUPERCLASS
+            MClass lClass = MClass.get(aInGClassName);
+            if (null != lClass)
+            {
+                for (lClass = lClass.getSuperclass(); null != lClass && null == lNamer; lClass = lClass.getSuperclass())
+                {
+                    lNamer = (MNamer) MY_CAT.getItem(lClass.getGID().getName());
+                }
+            }
+        }
         return lNamer;
     }
 

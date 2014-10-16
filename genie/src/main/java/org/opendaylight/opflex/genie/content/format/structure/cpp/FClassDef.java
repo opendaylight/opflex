@@ -288,21 +288,29 @@ public class FClassDef extends ItemFormatterTask
     public static String getTypeAccessor(String aInPType)
     {
         if (aInPType.startsWith("Enum") ||
-                aInPType.equalsIgnoreCase("MAC") ||
-                aInPType.startsWith("UInt"))
+            aInPType.startsWith("Bitmask") ||
+            aInPType.equalsIgnoreCase("MAC") ||
+            aInPType.startsWith("UInt"))
+        {
             aInPType = "UInt64";
+        }
         else if (aInPType.equals("URI") ||
-                aInPType.equals("IP"))
+                 aInPType.equals("IP"))
+        {
             aInPType = "String";
+        }
         return aInPType;
     }
 
     public static String getCast(String aInPType, String aInSyntax)
     {
         if (aInPType.startsWith("Enum") ||
-                (aInPType.startsWith("UInt") &&
-                 !aInPType.equals("UInt64")))
+            aInPType.startsWith("Bitmask") ||
+            (aInPType.startsWith("UInt") &&
+             !aInPType.equals("UInt64")))
+        {
             return "(" + aInSyntax + ")";
+        }
         return "";
     }
 
