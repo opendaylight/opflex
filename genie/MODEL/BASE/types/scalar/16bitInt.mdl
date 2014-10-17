@@ -7,7 +7,7 @@ module[scalar]
         language[cpp;
                  syntax=uint16_t;
                  pass-by=value;
-                 pass-const=yes]
+                 pass-const=no]
         {
             constraints[default=0;
                         min=-32767;
@@ -30,7 +30,7 @@ module[scalar]
         language[cpp;
                  syntax=uint16_t;
                  pass-by=value;
-                 pass-const=yes]
+                 pass-const=no]
         {
             constraints[default=0;
                         min=0;

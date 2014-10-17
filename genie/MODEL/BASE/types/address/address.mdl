@@ -5,8 +5,8 @@ module[address]
         hint[address:mac]
         language[cpp;
                  syntax=uint64_t;
-                 pass-by=reference;
-                 pass-const=yes]
+                 pass-by=value;
+                 pass-const=no]
         {
             constraints[default=0;
                         min=0;
@@ -18,8 +18,8 @@ module[address]
 
         language[c;
                  syntax=uint64_t;
-                 pass-by=reference;
-                 pass-const=yes]
+                 pass-by=value;
+                 pass-const=no]
         {
             constraints[default=0;
                         min=0;

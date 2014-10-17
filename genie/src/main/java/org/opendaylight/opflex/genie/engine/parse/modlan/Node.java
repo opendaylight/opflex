@@ -41,7 +41,12 @@ public class Node
 
     public boolean checkFlag(String aInName)
     {
-        return (!Strings.isEmpty(aInName)) &&  hasNamedValues() && nvps.containsKey(aInName);
+        if (Strings.isEmpty(aInName) || !hasNamedValues())
+        {
+            return false;
+        }
+        String result = getNamedValue(aInName, "false", false);
+        return (!"false".equals(result) && !"no".equals(result));
     }
 
     public boolean getNamedOption(String aInName, boolean aInPositiveDefault)

@@ -408,7 +408,7 @@ public class FClassDef extends ItemFormatterTask
 
     private void genPropAccessor(
             int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInComments, String aInCheckName, String aInName, String aInSyntax, String aInPType,
+            Collection<String> aInComments, String aInCheckName, String aInName, String aInEffSyntax, String aInPType,
             String aInCast, String aInAccessor)
     {
         //
@@ -425,7 +425,7 @@ public class FClassDef extends ItemFormatterTask
         }
         lComment[lCommentIdx++] = "@return the value of " + aInName + " or boost::none if not set";
         out.printHeaderComment(aInIndent,lComment);
-        out.println(aInIndent,"boost::optional<" + aInSyntax + "> get" + Strings.upFirstLetter(aInName) + "()");
+        out.println(aInIndent,"boost::optional<" + aInEffSyntax + "> get" + Strings.upFirstLetter(aInName) + "()");
         out.println(aInIndent,"{");
             out.println(aInIndent + 1,"if (is" + Strings.upFirstLetter(aInCheckName) + "Set())");
                 out.println(aInIndent + 2,"return " + aInCast + "getObjectInstance().get" + aInPType + "(" + aInPropIdx + ")" + aInAccessor + ";");
@@ -440,11 +440,11 @@ public class FClassDef extends ItemFormatterTask
     {
         String lName = aInProp.getLID().getName();
         String lPType = Strings.upFirstLetter(aInBaseType.getLID().getName());
-        String lSyntax = aInBaseType.getLanguageBinding(Language.CPP).getSyntax();
-        String lCast = getCast(lPType, lSyntax);
+        String lEffSyntax = getPropEffSyntax(aInBaseType);
+        String lCast = getCast(lPType, lEffSyntax);
         lPType = getTypeAccessor(lPType);
         genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments, 
-                        lName, lName, lSyntax, lPType, lCast, "");
+                        lName, lName, lEffSyntax, lPType, lCast, "");
     }
 
     private void genRefAccessors(
@@ -460,7 +460,7 @@ public class FClassDef extends ItemFormatterTask
 
     private void genPropDefaultedAccessor(
             int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInComments, String aInName, String aInSyntax)
+            Collection<String> aInComments, String aInName, String aInEffSyntax)
     {
         //
         // COMMENT
@@ -480,7 +480,7 @@ public class FClassDef extends ItemFormatterTask
         lComment[lCommentIdx++] = "@param defaultValue default value returned if the property is not set";
         lComment[lCommentIdx++] = "@return the value of " + aInName + " if set, otherwise the value of default passed in";
         out.printHeaderComment(aInIndent,lComment);
-        out.println(aInIndent, aInSyntax + " get" + Strings.upFirstLetter(aInName) + "(" + aInSyntax + " defaultValue)");
+        out.println(aInIndent, aInEffSyntax + " get" + Strings.upFirstLetter(aInName) + "(" + aInEffSyntax + " defaultValue)");
         //
         // BODY
         //
@@ -495,8 +495,8 @@ public class FClassDef extends ItemFormatterTask
             Collection<String> aInComments)
     {
         genPropDefaultedAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments, 
-                                 aInProp.getLID().getName(), 
-                                 aInBaseType.getLanguageBinding(Language.CPP).getSyntax());
+                                 aInProp.getLID().getName(),
+                                 getPropEffSyntax(aInBaseType));
 
     }
 
@@ -512,7 +512,7 @@ public class FClassDef extends ItemFormatterTask
     }
 
     private void genPropMutator(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInBaseComments, Collection<String> aInComments, String aInName, String aInPType, String aInSyntax, String aInParamName, String aInParamHelp,
+            Collection<String> aInBaseComments, Collection<String> aInComments, String aInName, String aInPType, String aInEffSyntax, String aInParamName, String aInParamHelp,
             String aInSetterPrefix)
     {
         //
@@ -532,7 +532,7 @@ public class FClassDef extends ItemFormatterTask
         //
         // DEF
         //
-        out.println(aInIndent,  getClassName(aInClass, true) + "& set" + Strings.upFirstLetter(aInName) + "(" + aInSyntax + " " + aInParamName + ")");
+        out.println(aInIndent,  getClassName(aInClass, true) + "& set" + Strings.upFirstLetter(aInName) + "(" + aInEffSyntax + " " + aInParamName + ")");
         //
         // BODY
         //
@@ -620,7 +620,7 @@ public class FClassDef extends ItemFormatterTask
             "Set " + lName + " to the specified value in the currently-active mutator.");
         genPropMutator(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType,
                        lComments, aInComments, lName, lPType,
-                       aInBaseType.getLanguageBinding(Language.CPP).getSyntax(), "newValue", "the new value to set.",
+                       getPropEffSyntax(aInBaseType), "newValue", "the new value to set.",
                        "");
     }
 
@@ -669,7 +669,6 @@ public class FClassDef extends ItemFormatterTask
         lComment[lCommentIdx++] = "@return a reference to the current object";
         lComment[lCommentIdx++] = "@see opflex::modb::Mutator";
         out.printHeaderComment(aInIndent,lComment);
-        aInBaseType.getLanguageBinding(Language.CPP).getSyntax();
 
         out.println(aInIndent,  getClassName(aInClass, true) + "& unset" + Strings.upFirstLetter(aInName) + "()");
         //
@@ -1088,6 +1087,36 @@ public class FClassDef extends ItemFormatterTask
         return lSb.toString();
     }
 
+    public static String getPropEffSyntax(MType aInBaseType)
+    {
+        StringBuilder lRet = new StringBuilder();
+        MLanguageBinding lLang = aInBaseType.getLanguageBinding(Language.CPP);
+        boolean lPassAsConst = lLang.getPassConst();
+        PassBy lPassBy = lLang.getPassBy();
+
+        String lSyntax = aInBaseType.getLanguageBinding(Language.CPP).getSyntax();
+        if (lPassAsConst)
+        {
+            lRet.append("const ");
+        }
+        lRet.append(lSyntax);
+
+        switch (lPassBy)
+        {
+        case REFERENCE:
+        case POINTER:
+
+            lRet.append('&');
+            break;
+
+        case VALUE:
+        default:
+
+            break;
+        }
+        return lRet.toString();
+    }
+
     public static String getPropParamDef(MClass aInClass, String aInPropName)
     {
         MProp lProp = aInClass.findProp(aInPropName, false);
@@ -1100,30 +1129,8 @@ public class FClassDef extends ItemFormatterTask
         MProp lBaseProp = lProp.getBase();
         MType lType = lBaseProp.getType(false);
         MType lBaseType = lType.getBuiltInType();
-        MLanguageBinding lLang = lBaseType.getLanguageBinding(Language.CPP);
-        String lSyntax = lLang.getSyntax();
-        PassBy lPassBy = lLang.getPassBy();
-        boolean lPassAsConst = lLang.getPassConst();
         StringBuilder lRet = new StringBuilder();
-        if (lPassAsConst)
-        {
-            lRet.append("const ");
-        }
-        lRet.append(lSyntax);
-
-        switch (lPassBy)
-        {
-            case REFERENCE:
-            case POINTER:
-
-                lRet.append('&');
-                break;
-
-            case VALUE:
-            default:
-
-                break;
-        }
+        lRet.append(getPropEffSyntax(lBaseType));
         lRet.append(" ");
         getPropParamName(aInClass, aInPropName, lRet);
         return lRet.toString();

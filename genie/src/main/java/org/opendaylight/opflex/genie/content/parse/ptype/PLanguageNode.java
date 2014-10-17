@@ -36,7 +36,6 @@ public class PLanguageNode
                 aInData.checkFlag("pass-const"),
                 aInData.getNamedValue("include", null, false),
                 aInData.getNamedValue("like", null, false));
-
         return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE, lLang);
     }
 
