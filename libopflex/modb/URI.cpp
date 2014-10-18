@@ -34,16 +34,19 @@ const URI URI::ROOT = URI("/");
 
 URI::URI(const boost::shared_ptr<const std::string>& uri_)
     : uri(uri_) {
-    
+    hashv = 0;
+    boost::hash_combine(hashv, *uri);
 }
 
 URI::URI(const std::string& uri_) {
     uri = boost::make_shared<const std::string>(uri_);
+    hashv = 0;
+    boost::hash_combine(hashv, uri_);
 }
 
 URI::URI(const URI& uri_)
     : uri(uri_.uri) {
-    
+    hashv = uri_.hashv;
 }
 
 URI::~URI() {
@@ -106,6 +109,7 @@ void URI::getElements(/* out */ vector<string>& elements) const {
 
 URI& URI::operator=(const URI& rhs) {
     uri = rhs.uri;
+    hashv = rhs.hashv;
     return *this;
 }
 
@@ -116,9 +120,7 @@ bool operator!=(const URI& lhs, const URI& rhs) {
     return !operator==(lhs,rhs);
 }
 size_t hash_value(URI const& uri) {
-    std::size_t seed = 0;
-    boost::hash_combine(seed, *uri.uri);
-    return seed;
+    return uri.hashv;
 }
 
 } /* namespace modb */

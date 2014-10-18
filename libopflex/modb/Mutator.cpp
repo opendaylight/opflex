@@ -159,6 +159,11 @@ void Mutator::commit() {
         pimpl->client.remove(rit->first, rit->second, false);
         pimpl->client.queueNotification(rit->first, rit->second, notifs);
     }
+
+    pimpl->obj_map.clear();
+    pimpl->removed_objects.clear();
+    pimpl->added_children.clear();
+
     pimpl->client.deliverNotifications(notifs);
 }
 

@@ -85,7 +85,9 @@ public:
     /**
      * Commit the changes stored in the mutator to the object store.
      * If this method is not called, these changes will simply be
-     * lost.
+     * lost.  After you call commit(), you can continue to make
+     * changes using the same mutator which will be effectively a new
+     * "transaction".
      */
     void commit();
 

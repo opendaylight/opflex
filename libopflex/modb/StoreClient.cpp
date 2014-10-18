@@ -37,6 +37,8 @@ static Region* checkOwner(ObjectStore* store, bool readOnly,
 
 void StoreClient::queueNotification(class_id_t class_id, const URI& uri,
                                     notif_t& notifs) {
+    if (notifs.find(uri) != notifs.end())
+        return;
     // walk up the tree to the root and queue notifications along the
     // path.
     try {

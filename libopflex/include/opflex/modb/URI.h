@@ -83,6 +83,7 @@ public:
 
 private:
     boost::shared_ptr<const std::string> uri;
+    size_t hashv;
 
     friend bool operator==(const URI& lhs, const URI& rhs);
     friend bool operator!=(const URI& lhs, const URI& rhs);
