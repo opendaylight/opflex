@@ -13,6 +13,8 @@
 
 #include "opflex/logging/StdOutLogHandler.h"
 
+#include <uv.h>
+
 namespace opflex {
 namespace logging {
 
@@ -26,7 +28,7 @@ void StdOutLogHandler::handleMessage(const std::string& file,
                                      const std::string& message) {
     if (level < logLevel_) return;
 
-    std::cout << file << ":" << line << ":" << function <<
+    std::cout << uv_now(uv_default_loop()) << " " << file << ":" << line << ":" << function <<
         "[" << level <<"] " << message << std::endl;
 }
 
