@@ -140,9 +140,11 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
         return;
     }
 
-    /* FIXME: check for failures */
-    uv_tcp_init(listener->uv_loop_selector(), &peer->handle);
     int rc;
+    if ((rc = tcp_init(listener->uv_loop_selector(), &peer->handle))) {
+        peer->down();  // this is invoked with an intent to delete!
+        return;
+    }
     if ((rc = uv_accept(server_handle, (uv_stream_t*) &peer->handle))) {
         LOG(DEBUG) << "uv_accept: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
