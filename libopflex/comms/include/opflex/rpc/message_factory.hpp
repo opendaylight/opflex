@@ -15,6 +15,7 @@
 #include <opflex/comms/comms-internal.hpp>
 #include <boost/function.hpp>
 #include <rapidjson/writer.h>
+#include <opflex/rpc/send_handler.hpp>
 
 namespace opflex {
 
@@ -27,7 +28,7 @@ namespace rpc { class InboundMessage;
 
                 typedef rapidjson::Value::StringRefType const
                     MethodName;
-                typedef rapidjson::Writer<rapidjson::StringBuffer>
+                typedef rapidjson::Writer< ::opflex::rpc::internal::StringQueue>
                     SendHandler;
                 typedef boost::function<bool (opflex::rpc::SendHandler &)>
                     PayloadGenerator;

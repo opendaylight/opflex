@@ -19,4 +19,5 @@ do
     fi
 done
 
+cd ..
 autoreconf -fis

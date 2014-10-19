@@ -220,7 +220,7 @@ opflex::comms::internal::ConnectionHandler doNothingOnConnect = DoNothingOnConne
 class StartPingingOnConnect {
   public:
     void operator()(opflex::comms::internal::CommunicationPeer * p) {
-        p->startKeepAlive(300, 50, 100);
+        p->startKeepAlive();
     }
 };
 
