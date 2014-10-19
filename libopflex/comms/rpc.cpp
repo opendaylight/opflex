@@ -55,6 +55,7 @@ bool OutboundMessage::Accept(opflex::rpc::SendHandler& handler) {
         && payloadGenerator_(handler)
 
         && handler.EndObject()
+
     ;
 
 }
@@ -63,18 +64,14 @@ void OutboundMessage::send() {
 
     LOG(DEBUG);
 
-    opflex::comms::internal::CommunicationPeer const * p = getPeer();
+    ::opflex::comms::internal::CommunicationPeer const * peer = getPeer();
 
-    assert(p && "peer needs to be set before outbound messages are sent");
+    assert(peer && "peer needs to be set before outbound messages are sent");
 
-    rapidjson::StringBuffer s;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+    Accept(peer->getWriter());
 
-    Accept(writer);
-
-    // FIXME: finish it up
-
-    p->writeMsg(s.GetString());
+    peer->delimitFrame();
+    peer->write();
 
 }
 
