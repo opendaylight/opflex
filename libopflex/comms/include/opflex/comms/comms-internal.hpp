@@ -17,9 +17,12 @@
 #include <rapidjson/document.h>
 #include <opflex/rpc/message_factory.hpp>
 #include <opflex/rpc/send_handler.hpp>
+#include <iovec-utils.hh>
 #include <boost/intrusive/list.hpp>
-
-#define COMMS_BUF_SZ 4096
+#ifndef NDEBUG
+#include <boost/atomic.hpp>
+#endif
+#include <iostream>
 
 namespace opflex { namespace comms { namespace internal {
 
@@ -36,17 +39,23 @@ void on_active_connection(uv_connect_t *req, int status);
 void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp);
 int addr_from_ip_and_port(const char * ip_address, uint16_t port,
         struct sockaddr_storage * addr);
-int tcp_init(uv_loop_t * loop, uv_tcp_t * handle);
 
 
 
 class Peer : public ::boost::intrusive::list_base_hook<
              ::boost::intrusive::link_mode< ::boost::intrusive::auto_unlink> > {
+#ifndef NDEBUG
+    static ::boost::atomic<size_t> counter;
+#endif
   public:
+
     typedef ::boost::intrusive::list<Peer,
             ::boost::intrusive::constant_time_size<false> > List;
 
     class LoopData {
+#ifndef NDEBUG
+        static ::boost::atomic<size_t> counter;
+#endif
       public:
 
         typedef enum {
@@ -55,10 +64,25 @@ class Peer : public ::boost::intrusive::list_base_hook<
           RETRY_TO_CONNECT,
           RETRY_TO_LISTEN,
           ATTEMPTING_TO_CONNECT,
+          PENDING_DELETE,
 
           /* don't touch past here */
           TOTAL_STATES
         } PeerState;
+
+#ifndef NDEBUG
+        explicit LoopData() {
+            ++counter;
+        }
+
+        ~LoopData() {
+            --counter;
+        }
+
+        static size_t getCounter() {
+            return counter;
+        }
+#endif
 
         Peer::List peers[LoopData::TOTAL_STATES];
 
@@ -75,7 +99,11 @@ class Peer : public ::boost::intrusive::list_base_hook<
 
     template <typename T, typename U>
     static T * get(U * h) {
-        return static_cast<T *>(h->data);
+        T * peer = static_cast<T *>(h->data);
+
+        peer->__checkInvariants();
+
+        return peer;
     }
 
     static CommunicationPeer * get(uv_write_t * r);
@@ -85,6 +113,12 @@ class Peer : public ::boost::intrusive::list_base_hook<
     static ActivePeer * get(uv_connect_t * r);
 
     static ActivePeer * get(uv_getaddrinfo_t * r);
+
+#ifndef NDEBUG
+    static size_t getCounter() {
+        return counter;
+    }
+#endif
 
     /* Ideally nested as Peer::PeerStatus, but this is only possible with C++11 */
     enum PeerStatus {
@@ -103,26 +137,38 @@ class Peer : public ::boost::intrusive::list_base_hook<
          uv_loop_selector_fn uv_loop_selector = NULL,
          Peer::PeerStatus status = kPS_UNINITIALIZED)
             :
-              passive(passive),
-              pending(0),
               uv_loop_selector_(uv_loop_selector ? : &uv_default_loop),
-              status(status),
-              uvRefCnt_(1)
+              uvRefCnt_(1),
+              connected_(0),
+              destroying_(0),
+              passive_(passive),
+              pending_(0),
+              ___________(0),
+              status_(status)
             {
-                handle.data = this;
-                handle.loop = uv_loop_selector_();
+                handle_.data = this;
+                handle_.loop = uv_loop_selector_();
+#ifndef NDEBUG
+                ++counter;
+#endif
             }
+
+#ifndef NDEBUG
+    virtual char const * peerType() const {return "?";} //= 0;
+#endif
 
     void up() {
 
-        LOG(DEBUG) << this << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ + 1;
+        LOG(DEBUG) << this
+            << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ + 1;
 
         ++uvRefCnt_;
     }
 
     void down() {
 
-        LOG(DEBUG) << this << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ - 1;
+        LOG(DEBUG) << this 
+            << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ - 1;
 
         if (--uvRefCnt_) {
             return;
@@ -133,20 +179,29 @@ class Peer : public ::boost::intrusive::list_base_hook<
         delete this;
     }
 
+    virtual void destroy() = 0;
+
+#ifndef NDEBUG
+    virtual void __checkInvariants() const {
+    }
+#else
+    static inline void __checkInvariants() const {}
+#endif
+
     /**
      * Get the uv_loop_t * for this peer
      *
      * @return the uv_loop_t * for this peer
      */
     uv_loop_t * getUvLoop() const {
-        return handle.loop;
+        return handle_.loop;
     }
 
     void insert(Peer::LoopData::PeerState peerState) {
         Peer::LoopData::getPeerList(getUvLoop(), peerState)->push_back(*this);
     }
 
-    uv_tcp_t handle;
+    uv_tcp_t handle_;
     union {
         union {
             struct {
@@ -160,19 +215,30 @@ class Peer : public ::boost::intrusive::list_base_hook<
         uv_timer_t keepAliveTimer_;
     };
     uv_loop_selector_fn uv_loop_selector_;
-    unsigned char passive   :1;
-          mutable
-    unsigned char pending   :1;
-    unsigned char status    :5;
     unsigned int  uvRefCnt_;
+    unsigned char connected_  :1;
+    unsigned char destroying_ :1;
+    unsigned char passive_    :1;
+          mutable
+    unsigned char pending_    :1;
+    unsigned char ___________ :1;
+    unsigned char status_     :3;
 
   protected:
     /* don't leak memory! */
-    virtual ~Peer() {}
+    virtual ~Peer() {
+#ifndef NDEBUG
+        --counter;
+#endif
+    }
+    friend std::ostream& operator<< (std::ostream&, Peer const *);
 };
 
 class CommunicationPeer : public Peer {
 
+#ifndef NDEBUG
+    static ::boost::atomic<size_t> counter;
+#endif
   public:
 
     explicit CommunicationPeer(bool passive,
@@ -182,11 +248,37 @@ class CommunicationPeer : public Peer {
             :
                 Peer(passive, uv_loop_selector, status),
                 connectionHandler_(connectionHandler),
+                writer_(s_),
                 nextId_(0),
+                keepAliveInterval_(0),
                 lastHeard_(0)
             {
                 req_.data = this;
+#ifndef NDEBUG
+                ++counter;
+#endif
             }
+
+#ifndef NDEBUG
+    static size_t getCounter() {
+        return counter;
+    }
+#endif
+
+#ifndef NDEBUG
+    virtual void __checkInvariants() const {
+        if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
+            LOG(DEBUG) << this
+                << " keepAliveInterval_ = " << keepAliveInterval_
+                << " keepAliveTimer_ = " << (
+                uv_is_active((uv_handle_t *)&keepAliveTimer_) ? "" : "in")
+                << "active";
+            ;
+            assert(!!keepAliveInterval_ == !!uv_is_active((uv_handle_t *)&keepAliveTimer_));
+        }
+        Peer::__checkInvariants();
+    }
+#endif
 
     size_t readChunk(char const * buffer) {
         ssize_t chunk_size = - ssIn_.tellp();
@@ -197,51 +289,52 @@ class CommunicationPeer : public Peer {
 
     opflex::rpc::InboundMessage * parseFrame();
 
+    void onWrite() {
+        pending_ = 0;
+
+        s_.deque_.erase(first_, last_);
+
+        write(); /* kick the can */
+    }
+
+    bool delimitFrame() const {
+        s_.Put('\0');
+
+        return true;
+    }
+
     int write() const {
 
-        uv_buf_t buf = {
-            /* .base = */ buffer,
-            /* .len  = */ ssOut_.readsome(buffer, sizeof(buffer))
-        };
+        if (pending_) {
+            return 0;
+        }
 
-        if (!buf.len) {
-            pending = 0;
+        pending_ = 1;
+        first_ = s_.deque_.begin();
+        last_ = s_.deque_.end();
+
+        std::vector<iovec> iov = more::get_iovec(first_, last_);
+
+        std::vector<iovec>::size_type size = iov.size();
+
+        if (!size) {
+            pending_ = 0;
             return 0;
         }
 
         /* FIXME: handle errors!!! */
         return uv_write(&write_req,
-                (uv_stream_t*) &handle,
-                &buf,
-                1,
+                (uv_stream_t*) &handle_,
+                (uv_buf_t*)&iov[0],
+                size,
                 on_write);
 
     }
 
-    int writeMsg(char const * msg) const {
-
-        LOG(DEBUG)
-            << "peer = " << this
-            << " Queued up for sending: \"" << msg << "\""
-        ;
-
-        ssOut_ << msg << '\0';
-
-        /* for now, we have at most one outstanding write request per peer */
-        if (pending) {
-            return 0;
-        }
-
-        pending = 1;
-        /* FIXME: handle errors!!! */
-        return write();
-
-    }
-
     void startKeepAlive(
-            uint64_t interval = 1000,
-            uint64_t begin = 250,
-            uint64_t repeat = 500) {
+            uint64_t interval = 2500,
+            uint64_t begin = 100,
+            uint64_t repeat = 1250) {
 
         LOG(DEBUG) << this
             << " interval=" << interval
@@ -252,16 +345,16 @@ class CommunicationPeer : public Peer {
         sendEchoReq();
         bumpLastHeard();
 
-        keepaliveInterval_ = interval;
+        keepAliveInterval_ = interval;
         uv_timer_start(&keepAliveTimer_, on_timeout, begin, repeat);
     }
 
     void stopKeepAlive() {
         LOG(DEBUG) << this;
-        if (uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
-            LOG(DEBUG) << this;
-            uv_timer_stop(&keepAliveTimer_);
-        }
+     // assert(keepAliveInterval_ && uv_is_active((uv_handle_t *)&keepAliveTimer_));
+
+        uv_timer_stop(&keepAliveTimer_);
+        keepAliveInterval_ = 0;
     }
 
     static void on_timeout(uv_timer_t * timer) {
@@ -301,6 +394,7 @@ class CommunicationPeer : public Peer {
     }
 
     void bumpLastHeard() {
+        LOG(DEBUG) << this << " " << lastHeard_ << " -> " << now();
         lastHeard_ = now();
     }
 
@@ -313,11 +407,56 @@ class CommunicationPeer : public Peer {
     }
 
     void onConnect() {
+        connected_ = 1;
         keepAliveTimer_.data = this;
+        LOG(DEBUG) << this << " up() for a timer init";
+        up();
         uv_timer_init(getUvLoop(), &keepAliveTimer_);
         uv_unref((uv_handle_t*) &keepAliveTimer_);
 
         connectionHandler_(this);
+    }
+
+    void onDisconnect() {
+        LOG(DEBUG);
+        connected_ = 0;
+
+        if (getKeepAliveInterval()) {
+            stopKeepAlive();
+        }
+
+        LOG(DEBUG) << this << " issuing close for keepAliveTimer and tcp handle";
+        uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
+        uv_close((uv_handle_t*)&handle_, on_close);
+
+        unlink();
+
+        if (destroying_) {
+            return;
+        }
+
+        if (!passive_) {
+            LOG(DEBUG) << this << " active => retry queue";
+            /* we should attempt to reconnect later */
+            insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
+        } else {
+            LOG(DEBUG) << this << " passive => eventually drop";
+            /* whoever it was, hopefully will reconnect again */
+            insert(internal::Peer::LoopData::PENDING_DELETE);
+        }
+    }
+
+    virtual void destroy() {
+        LOG(DEBUG) << this;
+     // Peer::destroy();
+        destroying_ = 1;
+        if (connected_) {
+            onDisconnect();
+        }
+    }
+
+    uint64_t getKeepAliveInterval() const {
+        return keepAliveInterval_;
     }
 
     union {
@@ -327,26 +466,66 @@ class CommunicationPeer : public Peer {
         uv_req_t req_;
     };
 
+    ::opflex::rpc::SendHandler & getWriter() const {
+        writer_.Reset(s_);
+        return writer_;
+    }
+
+    int tcpInit() {
+
+        int rc;
+
+        if ((rc = uv_tcp_init(getUvLoop(), &handle_))) {
+            LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "] " <<
+                uv_strerror(rc);
+            return rc;
+        }
+
+     // LOG(DEBUG) << "{" << this << "}AP up() for a tcp init";
+     // up();
+
+        if ((rc = uv_tcp_keepalive(&handle_, 1, 60))) {
+            LOG(WARNING) << "uv_tcp_keepalive: [" << uv_err_name(rc) << "] " <<
+                uv_strerror(rc);
+        }
+
+        if ((rc = uv_tcp_nodelay(&handle_, 1))) {
+            LOG(WARNING) << "uv_tcp_nodelay: [" << uv_err_name(rc) << "] " <<
+                uv_strerror(rc);
+        }
+
+        return 0;
+    }
+
   protected:
     /* don't leak memory! */
-    virtual ~CommunicationPeer() {}
+    virtual ~CommunicationPeer() {
+#ifndef NDEBUG
+        --counter;
+#endif
+    }
 
   private:
     ConnectionHandler connectionHandler_;
 
-    mutable char buffer[COMMS_BUF_SZ];
     rapidjson::Document docIn_;
-
     std::stringstream ssIn_;
-    mutable std::stringstream ssOut_;
 
+    mutable ::opflex::rpc::internal::StringQueue s_;
+    mutable ::opflex::rpc::SendHandler writer_;
+    mutable std::deque<rapidjson::UTF8<>::Ch>::iterator first_;
+    mutable std::deque<rapidjson::UTF8<>::Ch>::iterator last_;
     mutable uint64_t nextId_;
-    uint64_t keepaliveInterval_;
+
+    uint64_t keepAliveInterval_;
     uint64_t lastHeard_;
 
 };
 
 class ActivePeer : public CommunicationPeer {
+#ifndef NDEBUG
+    static ::boost::atomic<size_t> counter;
+#endif
   public:
     explicit ActivePeer(
             ConnectionHandler connectionHandler,
@@ -357,23 +536,57 @@ class ActivePeer : public CommunicationPeer {
                     connectionHandler,
                     uv_loop_selector,
                     kPS_RESOLVING)
-        {}
+        {
+#ifndef NDEBUG
+            ++counter;
+#endif
+        }
+
+#ifndef NDEBUG
+    static size_t getCounter() {
+        return counter;
+    }
+#endif
+
+#ifndef NDEBUG
+    virtual char const * peerType() const {
+        return "A";
+    }
+#endif
 
     void reset(uv_loop_selector_fn uv_loop_selector = NULL) {
         unlink();
         if (!uv_loop_selector_) {
             uv_loop_selector_ = uv_loop_selector ? : &uv_default_loop;
         }
-        this->passive = false;
-        this->status  = Peer::kPS_RESOLVING;
+        this->passive_ = 0;
+        this->status_  = Peer::kPS_RESOLVING;
     }
+
+    virtual void destroy() {
+        CommunicationPeer::destroy();
+        down();
+    }
+
+#ifndef NDEBUG
+    virtual void __checkInvariants() const {
+        CommunicationPeer::__checkInvariants();
+    }
+#endif
 
   protected:
     /* don't leak memory! */
-    virtual ~ActivePeer() {}
+    virtual ~ActivePeer() {
+#ifndef NDEBUG
+        --counter;
+#endif
+    }
 };
 
 class PassivePeer : public CommunicationPeer {
+#ifndef NDEBUG
+    static ::boost::atomic<size_t> counter;
+#endif
   public:
     explicit PassivePeer(
             ConnectionHandler connectionHandler,
@@ -384,7 +597,23 @@ class PassivePeer : public CommunicationPeer {
                     connectionHandler,
                     uv_loop_selector,
                     kPS_RESOLVING)
-        {}
+        {
+#ifndef NDEBUG
+            ++counter;
+#endif
+        }
+
+#ifndef NDEBUG
+    static size_t getCounter() {
+        return counter;
+    }
+#endif
+
+#ifndef NDEBUG
+    virtual char const * peerType() const {
+        return "P";
+    }
+#endif
 
 #ifdef PASSIVE_PEER_COULD_BE_RESET
     void reset(uv_loop_selector_fn uv_loop_selector = NULL) {
@@ -392,17 +621,30 @@ class PassivePeer : public CommunicationPeer {
         if (!this->uv_loop_selector) {
             this->uv_loop_selector = uv_loop_selector ? : &uv_default_loop;
         }
-        this->passive = true;
-        this->status  = Peer::kPS_RESOLVING;
+        this->passive_= 1;
+        this->status_ = Peer::kPS_RESOLVING;
+    }
+#endif
+
+#ifndef NDEBUG
+    virtual void __checkInvariants() const {
+        CommunicationPeer::__checkInvariants();
     }
 #endif
 
   protected:
     /* don't leak memory! */
-    virtual ~PassivePeer() {}
+    virtual ~PassivePeer() {
+#ifndef NDEBUG
+        --counter;
+#endif
+    }
 };
 
 class ListeningPeer : public Peer {
+#ifndef NDEBUG
+    static ::boost::atomic<size_t> counter;
+#endif
   public:
     explicit ListeningPeer(
             ConnectionHandler & connectionHandler,
@@ -413,7 +655,23 @@ class ListeningPeer : public Peer {
             Peer(false, uv_loop_selector, kPS_UNINITIALIZED)
         {
             _.listener.uv_loop = listener_uv_loop ? : uv_default_loop();
+#ifndef NDEBUG
+            ++counter;
+#endif
         }
+
+#ifndef NDEBUG
+    static size_t getCounter() {
+        return counter;
+    }
+#endif
+
+#ifndef NDEBUG
+    virtual char const * peerType() const {
+        return "L";
+    }
+#endif
+
     void reset(uv_loop_t * listener_uv_loop = NULL,
             uv_loop_selector_fn uv_loop_selector = NULL) {
         unlink();
@@ -424,6 +682,23 @@ class ListeningPeer : public Peer {
             uv_loop_selector_ = uv_loop_selector ? : &uv_default_loop;
         }
     }
+
+    virtual void destroy() {
+        LOG(DEBUG) << this;
+     // Peer::destroy();
+        destroying_ = 1;
+        down();
+        if (connected_) {
+            connected_ = 0;
+            uv_close((uv_handle_t*)&handle_, on_close);
+        }
+    }
+
+#ifndef NDEBUG
+    virtual void __checkInvariants() const {
+        Peer::__checkInvariants();
+    }
+#endif
 
     struct sockaddr_storage listen_on;
 

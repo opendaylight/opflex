@@ -71,41 +71,45 @@ int comms_passive_listener(
         }
     }
 
-    if ((rc = uv_tcp_init(peer->uv_loop_selector_(), &peer->handle))) {
+    if ((rc = uv_tcp_init(peer->uv_loop_selector_(), &peer->handle_))) {
         LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "]" <<
             uv_strerror(rc);
         goto failed_tcp_init;
     }
 
-    if ((rc = uv_tcp_bind(&peer->handle,
+    LOG(DEBUG) << peer << " up() for listening tcp init";
+    peer->up();
+
+    if ((rc = uv_tcp_bind(&peer->handle_,
                 (struct sockaddr *) &((ListeningPeer *)peer)->listen_on,
                 0))) {
         LOG(WARNING) << "uv_tcp_bind: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        peer->status = Peer::kPS_FAILED_BINDING;
-        goto failed_bind;
+        peer->status_ = Peer::kPS_FAILED_BINDING;
+        goto failed_after_init;
     }
 
-    if ((rc = uv_listen((uv_stream_t*) &peer->handle, 1024,
+    if ((rc = uv_listen((uv_stream_t*) &peer->handle_, 1024,
                 on_passive_connection))) {
         LOG(WARNING) << "uv_tcp_listen: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        peer->status = Peer::kPS_FAILED_LISTENING;
-        goto failed_bind;
+        peer->status_ = Peer::kPS_FAILED_LISTENING;
+        goto failed_after_init;
     }
 
-    peer->up();
-
-    peer->status = Peer::kPS_LISTENING;
+    peer->status_ = Peer::kPS_LISTENING;
 
     peer->insert(internal::Peer::LoopData::LISTENING);
 
     LOG(DEBUG) << "listening!";
 
+    peer->connected_ = 1;
+
     return 0;
 
-failed_bind:
-    uv_close((uv_handle_t*) &peer->handle, NULL);
+failed_after_init:
+    LOG(DEBUG) << "closing tcp handle because of immediate failure after init";
+    uv_close((uv_handle_t*) &peer->handle_, on_close);
 
 failed_tcp_init:
     peer->insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
@@ -135,29 +139,30 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
     ListeningPeer * listener = Peer::get<ListeningPeer>(server_handle);
     PassivePeer *peer;
 
-    if (!(peer = new (std::nothrow) PassivePeer(listener->connectionHandler_))) {
+    if (!(peer = new (std::nothrow) PassivePeer(
+                    listener->connectionHandler_,
+                    listener->uv_loop_selector_
+                    ))) {
         LOG(WARNING) << "out of memory, dropping new peer on the floor";
         return;
     }
 
     int rc;
-    if ((rc = tcp_init(listener->uv_loop_selector_(), &peer->handle))) {
+    if ((rc = peer->tcpInit())) {
         peer->down();  // this is invoked with an intent to delete!
         return;
     }
-    if ((rc = uv_accept(server_handle, (uv_stream_t*) &peer->handle))) {
+
+    if ((rc = uv_accept(server_handle, (uv_stream_t*) &peer->handle_))) {
         LOG(DEBUG) << "uv_accept: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        peer->down();  // this is invoked with an intent to delete!
+        uv_close((uv_handle_t*)&peer->handle_, on_close);
         return;
     }
-
-    peer->up();
-
-    if ((rc = uv_read_start((uv_stream_t*) &peer->handle, alloc_cb, on_read))) {
+    if ((rc = uv_read_start((uv_stream_t*) &peer->handle_, alloc_cb, on_read))) {
         LOG(WARNING) << "uv_read_start: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        uv_close((uv_handle_t*)&peer->handle, on_close);
+        uv_close((uv_handle_t*)&peer->handle_, on_close);
         return;
     }
 

@@ -38,31 +38,6 @@ void finiCommunicationLoop(uv_loop_t * loop) {
 
 }
 
-namespace internal {
-
-int tcp_init(uv_loop_t * loop, uv_tcp_t * handle) {
-
-    int rc;
-
-    if ((rc = uv_tcp_init(loop, handle))) {
-        LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
-        return rc;
-    }
-
-    if ((rc = uv_tcp_keepalive(handle, 1, 60))) {
-        LOG(WARNING) << "uv_tcp_keepalive: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
-    }
-
-    if ((rc = uv_tcp_nodelay(handle, 1))) {
-        LOG(WARNING) << "uv_tcp_nodelay: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
-    }
-
-    return rc;
-}
-
 
 
 /*
@@ -81,6 +56,8 @@ int tcp_init(uv_loop_t * loop, uv_tcp_t * handle) {
                                                               (Common Callbacks)
 */
 
+namespace internal {
+
 void alloc_cb(uv_handle_t * _, size_t size, uv_buf_t* buf) {
 
     LOG(DEBUG);
@@ -96,20 +73,8 @@ void on_close(uv_handle_t * h) {
 
     LOG(DEBUG) << peer;
 
-    peer->stopKeepAlive();  // OK to invoke even if Keep-Alive was never started
-
-    peer->down();  // will be invoked once for active, twice for passive
-
-    peer->unlink();
-    if (!peer->passive) {
-        LOG(DEBUG) << "active => retry queue";
-        /* we should attempt to reconnect later */
-        peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
-    } else {
-        LOG(DEBUG) << "passive => drop";
-        /* whoever it was, hopefully will reconnect again */
-        peer->down();  // this is invoked with an intent to delete!
-    }
+    LOG(DEBUG) << peer << " down() for an on_close()";
+    peer->down();
 
     return;
 }
@@ -127,7 +92,7 @@ void on_write(uv_write_t *req, int status) {
 
     CommunicationPeer * peer = Peer::get(req);
 
-    peer->write(); /* kick the can */
+    peer->onWrite();
 
     return;
 }
@@ -135,19 +100,20 @@ void on_write(uv_write_t *req, int status) {
 void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf)
 {
 
-    LOG(DEBUG);
+    CommunicationPeer * peer = Peer::get<CommunicationPeer>(h);
+
+    LOG(DEBUG) << peer;
 
     if (nread < 0) {
         LOG(INFO) << "nread = " << nread << " [" << uv_err_name(nread) <<
             "] " << uv_strerror(nread) << " => closing";
-        uv_close((uv_handle_t*) h, on_close);
+        peer->onDisconnect();
     }
 
     if (nread > 0) {
 
-        LOG(INFO) << "read " << nread << " into buffer of size " << buf->len;
-
-        CommunicationPeer * peer = Peer::get<CommunicationPeer>(h);
+        LOG(INFO) << peer
+            << " read " << nread << " into buffer of size " << buf->len;
 
         char * buffer = buf->base;
         size_t chunk_size;
