@@ -1,0 +1,3 @@
+[submodule "codes"]
+	path = libopflex/3rdparty/codes
+	url = https://github.com/awgn/codes.git

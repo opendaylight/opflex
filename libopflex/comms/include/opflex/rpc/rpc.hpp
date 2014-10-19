@@ -18,6 +18,8 @@
 #include <uv.h>
 #include <rapidjson/writer.h>
 #include <boost/function.hpp>
+#include <opflex/rpc/send_handler.hpp>
+#include <deque>
 
 namespace opflex {
 
@@ -26,7 +28,7 @@ namespace comms { namespace internal { class CommunicationPeer; }}
 namespace rpc {
 
 typedef rapidjson::Value::StringRefType const MethodName;
-typedef rapidjson::Writer<rapidjson::StringBuffer> SendHandler;
+typedef rapidjson::Writer< ::opflex::rpc::internal::StringQueue > SendHandler;
 typedef boost::function<bool (opflex::rpc::SendHandler &)> PayloadGenerator;
 
 class GeneratorFromValue {
