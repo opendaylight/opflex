@@ -9,6 +9,7 @@
 #include <opflex/comms/comms-internal.hpp>
 #include <tricks/container_of.h>
 #include <opflex/rpc/message_factory.inl.hpp>
+#include <rapidjson/error/en.h>
 
 namespace opflex { namespace comms { namespace internal {
 
@@ -65,11 +66,13 @@ void CommunicationPeer::sendEchoReq() {
 
 void CommunicationPeer::timeout() {
 
+    uint64_t rtt = now() - lastHeard_;
+
     LOG(INFO) << this
         << " refcnt: " << uvRefCnt_
         << " lastHeard_: " << lastHeard_
         << " now(): " << now()
-        << " now() - lastHeard_: " << now() - lastHeard_
+        << " rtt >= " << rtt
         << " keepaliveInterval_: " << keepaliveInterval_
     ;
 
@@ -79,7 +82,7 @@ void CommunicationPeer::timeout() {
         return;
     }
 
-    if (now() - lastHeard_ < (keepaliveInterval_ >> 1) ) {
+    if (rtt <= (keepaliveInterval_ >> 2) ) {
 
         LOG(DEBUG) << this << " still waiting";
 
@@ -87,7 +90,7 @@ void CommunicationPeer::timeout() {
 
     }
 
-    if (now() - lastHeard_ > (keepaliveInterval_ << 1) ) {
+    if (rtt > (keepaliveInterval_ << 2) ) {
 
         LOG(INFO) << this << " tearing down the connection upon timeout";
 
@@ -98,7 +101,7 @@ void CommunicationPeer::timeout() {
     }
 
     /* send echo request */
-    LOG(DEBUG) << "sending a ping for keep-alive";
+    LOG(DEBUG) << this << " sending a ping for keep-alive";
     sendEchoReq();
 
 }
