@@ -115,8 +115,17 @@ opflex::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
     bumpLastHeard();
     opflex::comms::internal::wrapper::IStreamWrapper is(ssIn_);
 
-    /* FIXME: missing error checking */
     docIn_.ParseStream(is);
+    if (docIn_.HasParseError()) {
+        rapidjson::ParseErrorCode e = docIn_.GetParseError();
+        size_t o = docIn_.GetErrorOffset();
+
+        LOG(ERROR)
+            << "Error: " << rapidjson::GetParseError_En(e)
+            << " at offset " << o
+            << " near '" << std::string(ssIn_.str()).substr(o, 10) << "...'"
+        ;
+    }
 
     /* wipe ssIn_ out */
     // std::stringstream().swap(ssIn_); // C++11 only
