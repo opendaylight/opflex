@@ -20,6 +20,8 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 	-I$(top_srcdir)/comms/include \
 	-I$(top_srcdir)/comms 
 
+AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp
+
 noinst_LTLIBRARIES = libengine.la
 
 libengine_la_CXXFLAGS = $(UV_CFLAGS)

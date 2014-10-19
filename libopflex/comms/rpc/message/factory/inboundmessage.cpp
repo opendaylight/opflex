@@ -67,7 +67,7 @@ MessageFactory::InboundMessage(
     /* id must be an array for replies, and its first element must be a string */
     assert(id.IsArray());
     assert(id[rapidjson::SizeType(0)].IsString());
-    if (!id.IsArray() || !id.IsString()) {
+    if (!id.IsArray() || !id[rapidjson::SizeType(0)].IsString()) {
         return NULL;
     }
 

@@ -20,8 +20,6 @@
 #include <iovec-utils.hh>
 #include <boost/intrusive/list.hpp>
 
-#define COMMS_BUF_SZ 4096
-
 namespace opflex { namespace comms { namespace internal {
 
 using namespace opflex::comms;
@@ -163,7 +161,7 @@ class Peer : public ::boost::intrusive::list_base_hook<
     uv_loop_selector_fn uv_loop_selector_;
     unsigned char passive   :1;
           mutable
-    unsigned char pending   :1;
+    unsigned char pending_  :1;
     unsigned char status    :5;
     unsigned int  uvRefCnt_;
 
@@ -183,6 +181,7 @@ class CommunicationPeer : public Peer {
             :
                 Peer(passive, uv_loop_selector, status),
                 connectionHandler_(connectionHandler),
+                writer_(s_),
                 nextId_(0),
                 lastHeard_(0)
             {
@@ -198,51 +197,52 @@ class CommunicationPeer : public Peer {
 
     opflex::rpc::InboundMessage * parseFrame();
 
+    void onWrite() {
+        pending_ = 0;
+
+        s_.deque_.erase(first_, last_);
+
+        write(); /* kick the can */
+    }
+
+    bool delimitFrame() const {
+        s_.Put('\0');
+
+        return true;
+    }
+
     int write() const {
 
-        uv_buf_t buf = {
-            /* .base = */ buffer,
-            /* .len  = */ ssOut_.readsome(buffer, sizeof(buffer))
-        };
+        if (pending_) {
+            return 0;
+        }
 
-        if (!buf.len) {
-            pending = 0;
+        pending_ = 1;
+        first_ = s_.deque_.begin();
+        last_ = s_.deque_.end();
+
+        std::vector<iovec> iov = more::get_iovec(first_, last_);
+
+        std::vector<iovec>::size_type size = iov.size();
+
+        if (!size) {
+            pending_ = 0;
             return 0;
         }
 
         /* FIXME: handle errors!!! */
         return uv_write(&write_req,
                 (uv_stream_t*) &handle,
-                &buf,
-                1,
+                (uv_buf_t*)&iov[0],
+                size,
                 on_write);
 
     }
 
-    int writeMsg(char const * msg) const {
-
-        LOG(DEBUG)
-            << "peer = " << this
-            << " Queued up for sending: \"" << msg << "\""
-        ;
-
-        ssOut_ << msg << '\0';
-
-        /* for now, we have at most one outstanding write request per peer */
-        if (pending) {
-            return 0;
-        }
-
-        pending = 1;
-        /* FIXME: handle errors!!! */
-        return write();
-
-    }
-
     void startKeepAlive(
-            uint64_t interval = 1000,
-            uint64_t begin = 250,
-            uint64_t repeat = 500) {
+            uint64_t interval = 2500,
+            uint64_t begin = 100,
+            uint64_t repeat = 1250) {
 
         LOG(DEBUG) << this
             << " interval=" << interval
@@ -302,6 +302,7 @@ class CommunicationPeer : public Peer {
     }
 
     void bumpLastHeard() {
+        LOG(DEBUG) << this << " " << lastHeard_ << " -> " << now();
         lastHeard_ = now();
     }
 
@@ -328,6 +329,11 @@ class CommunicationPeer : public Peer {
         uv_req_t req_;
     };
 
+    ::opflex::rpc::SendHandler & getWriter() const {
+        writer_.Reset(s_);
+        return writer_;
+    }
+
   protected:
     /* don't leak memory! */
     virtual ~CommunicationPeer() {}
@@ -335,13 +341,15 @@ class CommunicationPeer : public Peer {
   private:
     ConnectionHandler connectionHandler_;
 
-    mutable char buffer[COMMS_BUF_SZ];
     rapidjson::Document docIn_;
-
     std::stringstream ssIn_;
-    mutable std::stringstream ssOut_;
 
+    mutable ::opflex::rpc::internal::StringQueue s_;
+    mutable ::opflex::rpc::SendHandler writer_;
+    mutable std::deque<rapidjson::UTF8<>::Ch>::iterator first_;
+    mutable std::deque<rapidjson::UTF8<>::Ch>::iterator last_;
     mutable uint64_t nextId_;
+
     uint64_t keepaliveInterval_;
     uint64_t lastHeard_;
 

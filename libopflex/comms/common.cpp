@@ -127,7 +127,7 @@ void on_write(uv_write_t *req, int status) {
 
     CommunicationPeer * peer = Peer::get(req);
 
-    peer->write(); /* kick the can */
+    peer->onWrite();
 
     return;
 }
