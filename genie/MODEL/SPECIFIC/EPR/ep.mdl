@@ -1,7 +1,9 @@
 module[epr]
 {
-    type[DetectionContext; super=scalar/UInt32]
-    type[ExternalId; super=ascii/String]
+    type[name=Context; super=reference/URI]
+    type[name=L2Context; super=epr/Context]
+    type[name=L3Context; super=epr/Context]
+    type[name=GroupContext; super=epr/Context]
 
     # Superclass for all end points declared in the epr universes.
     # End point is a networking device attaching to the network
@@ -10,14 +12,27 @@ module[epr]
           abstract;
           ]
     {
+        # context in which end-point has been detected (like port)
+        member[uuid; type=reference/UUID]
+
         # mac address of the end-point
         member[mac; type=address/MAC]
-        # ip address of the end-point
-        member[ip; type=address/IP]
-        # context in which end-point has been detected (like port)
-        member[detectionContext; type=epr/DetectionContext]
-        # external identifier like uuid/oid
-        member[externalId; type=epr/ExternalId]
+
+    }
+
+    # abstraction of local end-point identifies an end-point that is locally discovered.
+    class[LocalEp;
+          super=epr/EndPoint;
+          abstract
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
 
         dependency[group;
                    cardinality=single;
@@ -29,12 +44,52 @@ module[epr]
         }
     }
 
+    # abstraction of local L2 end-point identifies an end-point that is locally discovered.
+    class[LocalL2Ep;
+          super=epr/LocalEp;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=epr/L2Discovered]
+        }
+    }
+
+    # abstraction of local L3 end-point identifies an end-point that is locally discovered.
+    class[LocalL3Ep;
+          super=epr/LocalEp;
+          concrete;
+          ]
+    {
+        # ip address of the end-point
+        member[ip; type=address/IP]
+
+        contained
+        {
+            parent[class=epr/L3Discovered]
+        }
+
+    }
+
+    # abstraction of externally reportable ep
+    class[ReportedEp;
+          super=epr/EndPoint;
+          abstract
+          ]
+    {
+        member[group; type=epr/GroupContext]
+    }
+
     # L2 end-point that is part of the L2 universe
     class[L2Ep;
-          super=epr/EndPoint;
+          super=epr/ReportedEp;
           concrete
           ]
     {
+        # L2 context for the end-point
+        member[context; type=epr/L2Context]
+
         contained
         {
             parent[class=epr/L2Universe]
@@ -43,18 +98,42 @@ module[epr]
         {
             parent[class=*;]
             {
-                component[member=detectionContext]
+                component[member=context]
                 component[prefix=-;member=mac]
+            }
+        }
+    }
+
+    # ip address that belongs to a L2Ep (a mac address).
+    # a mac address can have many ip addresses associated with it (interface multi-netting)
+    class[L3Net; concrete]
+    {
+        member[ip; type=address/IP]
+        contained
+        {
+            parent[class=epr/L2Ep]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=ip]
             }
         }
     }
 
     # L3 end-point that is part of the L3 universe
     class[L3Ep;
-          super=epr/EndPoint;
+          super=epr/ReportedEp;
           concrete
           ]
     {
+        # ip address of the end-point
+        member[ip; type=address/IP]
+
+        # L3 context for the end-point
+        member[context; type=epr/L3Context]
+
         contained
         {
             parent[class=epr/L3Universe]
@@ -63,7 +142,7 @@ module[epr]
         {
             parent[class=*;]
             {
-                component[member=detectionContext]
+                component[member=context]
                 component[prefix=-;member=ip]
             }
         }

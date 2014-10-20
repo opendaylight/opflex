@@ -295,7 +295,8 @@ public class FClassDef extends ItemFormatterTask
             aInPType = "UInt64";
         }
         else if (aInPType.equals("URI") ||
-                 aInPType.equals("IP"))
+                 aInPType.equals("IP") ||
+                 aInPType.equals("UUID"))
         {
             aInPType = "String";
         }
