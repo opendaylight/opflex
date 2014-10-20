@@ -86,7 +86,10 @@ void ObjectStore::stop() {
 }
 
 Region* ObjectStore::getRegion(const std::string& owner) {
-    return region_owner_map.at(owner);
+    region_owner_map_t::iterator it = region_owner_map.find(owner);
+    if (it == region_owner_map.end())
+        throw std::out_of_range("No region with owner " + owner);
+    return it->second;
 }
 
 Region* ObjectStore::getRegion(class_id_t class_id) {

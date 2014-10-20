@@ -49,6 +49,7 @@ AX_BOOST_BASE([1.49.0], [], AC_MSG_ERROR([Boost is required]))
 AX_BOOST_UNIT_TEST_FRAMEWORK
 PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])
+PKG_CHECK_MODULES([libglog], [libglog >= 0.3.3])
 
 # Older versions of autoconf don't define docdir
 if test x$docdir = x; then
