@@ -9,32 +9,25 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <iostream>
-#include <modelgbp/metadata/metadata.hpp>
-#include <modelgbp/dmtree/Root.hpp>
-#include <opflex/ofcore/OFFramework.h>
+#include <glog/logging.h>
 
-using opflex::modb::ModelMetadata;
-using opflex::modb::Mutator;
+#include "Agent.h"
+#include "GLogLogHandler.h"
+
+using ovsagent::Agent;
+using ovsagent::GLogLogHandler;
 using opflex::ofcore::OFFramework;
+using opflex::logging::OFLogHandler;
+
+GLogLogHandler logHandler(OFLogHandler::INFO);
 
 int main(int argc, char** argv) {
-    OFFramework::defaultInstance().setModel(modelgbp::getMetadata());
-    OFFramework::defaultInstance().start();
+    google::InitGoogleLogging(argv[0]);
+    OFLogHandler::registerHandler(logHandler);
 
-    {
-        Mutator mutator("testowner");
-        boost::shared_ptr<modelgbp::dmtree::Root> root = 
-            modelgbp::dmtree::Root::createRootElement();
-        boost::shared_ptr<modelgbp::policy::Universe> puniverse = 
-            root->addPolicyUniverse();
-        boost::shared_ptr<modelgbp::policy::Space> nspace = 
-            puniverse->addPolicySpace("testspace");
-        mutator.commit();
-    }
+    LOG(INFO) << "Starting OVS Agent";
 
-    boost::optional<boost::shared_ptr<modelgbp::policy::Space> > rspace =
-        modelgbp::policy::Space::resolve("testspace");
-    std::cout << "Got testspace " << rspace.get()->getName().get() << std::endl;
-    OFFramework::defaultInstance().stop();
+    Agent agent(OFFramework::defaultInstance());
+
+    LOG(INFO) << "OVS Agent Shutting Down";
 }
