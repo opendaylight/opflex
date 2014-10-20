@@ -141,6 +141,7 @@ public class FMetaDef
         switch (lType) {
         case "URI":
         case "IP":
+        case "UUID":
             return "STRING";
         case "UINT64":
         case "UINT32":
