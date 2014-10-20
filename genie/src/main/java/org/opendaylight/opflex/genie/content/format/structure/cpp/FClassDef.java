@@ -295,7 +295,8 @@ public class FClassDef extends ItemFormatterTask
             aInPType = "UInt64";
         }
         else if (aInPType.equals("URI") ||
-                 aInPType.equals("IP"))
+                 aInPType.equals("IP") ||
+                 aInPType.equals("UUID"))
         {
             aInPType = "String";
         }
@@ -1103,6 +1104,7 @@ public class FClassDef extends ItemFormatterTask
         MLanguageBinding lLang = lBaseType.getLanguageBinding(Language.CPP);
         String lSyntax = lLang.getSyntax();
         PassBy lPassBy = lLang.getPassBy();
+
         boolean lPassAsConst = lLang.getPassConst();
         StringBuilder lRet = new StringBuilder();
         if (lPassAsConst)
