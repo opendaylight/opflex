@@ -5,7 +5,7 @@ module[address]
         hint[address:mac]
         language[cpp;
                  syntax=uint64_t;
-                 pass-by=reference;
+                 pass-by=value;
                  pass-const=yes]
         {
             constraints[default=0;
@@ -18,7 +18,7 @@ module[address]
 
         language[c;
                  syntax=uint64_t;
-                 pass-by=reference;
+                 pass-by=value;
                  pass-const=yes]
         {
             constraints[default=0;

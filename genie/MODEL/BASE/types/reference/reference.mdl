@@ -23,4 +23,28 @@ module[reference]
     {
         hint[reference:Class]
     }
+
+
+    primitive[UUID]
+    {
+        hint[reference:uuid]
+        language[cpp;
+                 syntax=std::string;
+                 pass-by=reference;
+                 pass-const=yes]
+        {
+            constraints[]
+            constants[defined-in=dec]
+        }
+
+        language[c;
+                 syntax=char*;
+                 pass-by=value;
+                 pass-const=yes]
+        {
+            constraints[]
+
+            constants[defined-in=dec]
+        }
+    }
 }
