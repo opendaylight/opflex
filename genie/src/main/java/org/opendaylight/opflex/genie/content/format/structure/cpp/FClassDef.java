@@ -1103,6 +1103,7 @@ public class FClassDef extends ItemFormatterTask
         MLanguageBinding lLang = lBaseType.getLanguageBinding(Language.CPP);
         String lSyntax = lLang.getSyntax();
         PassBy lPassBy = lLang.getPassBy();
+
         boolean lPassAsConst = lLang.getPassConst();
         StringBuilder lRet = new StringBuilder();
         if (lPassAsConst)
