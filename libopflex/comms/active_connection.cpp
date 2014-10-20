@@ -140,13 +140,15 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     ActivePeer * peer = Peer::get(req);
     assert(!peer->passive);
 
+    void retry_later(ActivePeer * peer);
+
     if (status < 0) {
         LOG(WARNING) << "getaddrinfo callback error: [" << uv_err_name(status) <<
             "] " << uv_strerror(status);
         peer->status = Peer::kPS_FAILED_TO_RESOLVE;
         uv_freeaddrinfo(resp);
 
-        goto retry;
+        return retry_later(peer);
     }
 
     peer->status = Peer::kPS_RESOLVED;
@@ -154,38 +156,22 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     debug_resolution_entries(resp);
 
     int rc;
+    int tcp_init(uv_loop_t * loop, uv_tcp_t * handle);
 
     /* FIXME: pass the loop along */
-    if ((rc = uv_tcp_init(uv_default_loop(), &peer->handle))) {
-        LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
-        goto retry;
-    }
-
-    if ((rc = uv_tcp_keepalive(&peer->handle, 1, 60))) {
-        LOG(WARNING) << "uv_tcp_keepalive: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
-        goto retry;
+    if ((rc = tcp_init(uv_default_loop(), &peer->handle))) {
+        return retry_later(peer);
     }
 
     peer->_.ai_next = peer->_.ai = resp;
     if ((rc = connect_to_next_address(peer))) {
         LOG(WARNING) << "connect_to_next_address: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        goto retry;
+        return retry_later(peer);
     }
 
     peer->status = Peer::kPS_CONNECTING;
 
-    return;
-
-retry:
-    d_intr_list_unlink(&peer->peer_hook);
-    d_intr_list_insert(&peer->peer_hook, &peers.retry);
-
-    peer->down();
-
-    return;
 }
 
 
@@ -272,9 +258,41 @@ void debug_resolution_entries(struct addrinfo const * ai) {
 
 }
 
-int connect_to_next_address(ActivePeer * peer) {
+void retry_later(ActivePeer * peer) {
+    d_intr_list_unlink(&peer->peer_hook);
+    d_intr_list_insert(&peer->peer_hook, &peers.retry);
 
-    LOG(DEBUG);
+    peer->down();
+
+    return;
+}
+
+void swap_stack_on_close(uv_handle_t * h) {
+
+    ActivePeer * peer = Peer::get<ActivePeer>(h);  // can't possibly crash yet
+
+    LOG(DEBUG) << peer;
+
+    int rc;
+    /* FIXME: pass the loop along */
+    if ((rc = tcp_init(uv_default_loop(), &peer->handle))) {
+
+        retry_later(peer);
+
+        return;
+    }
+
+    if ((rc = connect_to_next_address(peer, false))) {
+        LOG(WARNING) << "connect_to_next_address: [" << uv_err_name(rc) << "] " <<
+            uv_strerror(rc);
+        return retry_later(peer);
+    }
+
+}
+
+int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
+
+    LOG(DEBUG) << peer;
 
     struct addrinfo const * ai = peer->_.ai_next;
 
@@ -284,9 +302,18 @@ int connect_to_next_address(ActivePeer * peer) {
 
     while (ai && (rc = uv_tcp_connect(&peer->connect_req, &peer->handle,
                 ai->ai_addr, on_active_connection))) {
-        ai = ai->ai_next;
         LOG(ai ? INFO : WARNING) << "uv_tcp_connect: [" << uv_err_name(rc) <<
             "] " << uv_strerror(rc);
+
+        if ((-EINVAL == rc) && swap_stack) {
+
+            LOG(INFO) << "destroying socket and retrying";
+            uv_close((uv_handle_t*)&peer->handle, swap_stack_on_close);
+
+            return 0;
+        }
+
+        ai = ai->ai_next;
 
         debug_address(ai);
     }
@@ -300,8 +327,7 @@ int connect_to_next_address(ActivePeer * peer) {
     }
 
     if (rc) {
-        d_intr_list_unlink(&peer->peer_hook);
-        d_intr_list_insert(&peer->peer_hook, &peers.retry);
+        retry_later(peer);
     }
 
     return rc;

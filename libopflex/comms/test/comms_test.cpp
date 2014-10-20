@@ -226,7 +226,6 @@ class StartPingingOnConnect {
 
 opflex::comms::internal::ConnectionHandler startPingingOnConnect = StartPingingOnConnect();
 
-#ifndef __APPLE__
 BOOST_FIXTURE_TEST_CASE( test_ipv4, CommsFixture ) {
 
     LOG(DEBUG);
@@ -237,14 +236,13 @@ BOOST_FIXTURE_TEST_CASE( test_ipv4, CommsFixture ) {
 
     BOOST_CHECK_EQUAL(rc, 0);
 
-    rc = comms_active_connection(doNothingOnConnect, "127.0.0.1", "65535");
+    rc = comms_active_connection(doNothingOnConnect, "localhost", "65535");
 
     BOOST_CHECK_EQUAL(rc, 0);
 
     loop_until_final(2, pc_successful_connect);
 
 }
-#endif
 
 BOOST_FIXTURE_TEST_CASE( test_ipv6, CommsFixture ) {
 
@@ -256,7 +254,7 @@ BOOST_FIXTURE_TEST_CASE( test_ipv6, CommsFixture ) {
 
     BOOST_CHECK_EQUAL(rc, 0);
 
-    rc = comms_active_connection(doNothingOnConnect, "::1", "65534");
+    rc = comms_active_connection(doNothingOnConnect, "localhost", "65534");
 
     BOOST_CHECK_EQUAL(rc, 0);
 

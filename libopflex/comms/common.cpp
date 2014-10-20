@@ -38,6 +38,31 @@ void finiCommunicationLoop(uv_loop_t * loop) {
 
 }
 
+namespace internal {
+
+int tcp_init(uv_loop_t * loop, uv_tcp_t * handle) {
+
+    int rc;
+
+    if ((rc = uv_tcp_init(loop, handle))) {
+        LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "] " <<
+            uv_strerror(rc);
+        return rc;
+    }
+
+    if ((rc = uv_tcp_keepalive(handle, 1, 60))) {
+        LOG(WARNING) << "uv_tcp_keepalive: [" << uv_err_name(rc) << "] " <<
+            uv_strerror(rc);
+    }
+
+    if ((rc = uv_tcp_nodelay(handle, 1))) {
+        LOG(WARNING) << "uv_tcp_nodelay: [" << uv_err_name(rc) << "] " <<
+            uv_strerror(rc);
+    }
+
+    return rc;
+}
+
 /*
         ____                  ____        _        _
        |  _ \ ___  ___ _ __  |  _ \  __ _| |_ __ _| |__   __ _ ___  ___
@@ -47,8 +72,6 @@ void finiCommunicationLoop(uv_loop_t * loop) {
 
                                                                  (Peer Database)
 */
-
-namespace internal {
 
 peer_db_t peers;
 

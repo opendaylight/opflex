@@ -31,11 +31,12 @@ void on_close(uv_handle_t * h);
 void on_write(uv_write_t *req, int status);
 void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf);
 void on_passive_connection(uv_stream_t * server_handle, int status);
-int connect_to_next_address(ActivePeer * peer);
+int connect_to_next_address(ActivePeer * peer, bool swap_stack = true);
 void on_active_connection(uv_connect_t *req, int status);
 void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp);
 int addr_from_ip_and_port(const char * ip_address, uint16_t port,
         struct sockaddr_storage * addr);
+int tcp_init(uv_loop_t * loop, uv_tcp_t * handle);
 
 
 
