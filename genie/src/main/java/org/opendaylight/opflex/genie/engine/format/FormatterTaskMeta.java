@@ -313,6 +313,7 @@ public class FormatterTaskMeta
                                                     aInCtx.getStats(),
                                                     //NO NEED FOR CATEGORY: catOrNull,
                                                     lItem);
+                            lTask.setMeta(this);
                             Processor.get().getDsp().trigger(lTask);
                         }
                         else
@@ -337,6 +338,7 @@ public class FormatterTaskMeta
                                 aInCtx.getStats(),
                                 catOrNull);
 
+                        lTask.setMeta(this);
                         Processor.get().getDsp().trigger(lTask);
                     }
                     else
@@ -360,6 +362,7 @@ public class FormatterTaskMeta
                                 isUser,
                                 aInCtx.getStats());
 
+                        lTask.setMeta(this);
                         Processor.get().getDsp().trigger(lTask);
                     }
                     else
