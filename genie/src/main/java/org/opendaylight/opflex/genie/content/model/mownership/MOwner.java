@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
+import org.opendaylight.opflex.genie.content.model.module.Module;
 import org.opendaylight.opflex.genie.engine.model.Cat;
 import org.opendaylight.opflex.genie.engine.model.Item;
 
@@ -65,11 +66,28 @@ public class MOwner extends MOwnershipComponent
     public void postLoadCb()
     {
         super.postLoadCb();
-        TreeMap<String,MClass> lClasses = new TreeMap<String, MClass>();
-        getClasses(lClasses);
-        for (MClass lClass : lClasses.values())
+        initTargets();
+    }
+
+    public void initTargets()
+    {
         {
-            lClass.addOwner(getLID().getName());
+            LinkedList<Item> lModuleOwns = new LinkedList<>();
+            getChildItems(MModuleRule.MY_CAT, lModuleOwns);
+            for (Item lIt : lModuleOwns)
+            {
+                MModuleRule lRule = (MModuleRule) lIt;
+                lRule.initTargets();
+            }
+        }
+        {
+            LinkedList<Item> lClassOwns = new LinkedList<>();
+            getChildItems(MClassRule.MY_CAT, lClassOwns);
+            for (Item lIt : lClassOwns)
+            {
+                MClassRule lRule = (MClassRule) lIt;
+                lRule.initTargets();
+            }
         }
     }
 }

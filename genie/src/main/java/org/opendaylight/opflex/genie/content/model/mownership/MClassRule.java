@@ -2,6 +2,7 @@ package org.opendaylight.opflex.genie.content.model.mownership;
 
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.module.Module;
@@ -18,12 +19,12 @@ public class MClassRule extends MOwnershipRule
 
     public MClassRule(MOwner aInParent, String aInNameOrAll)
     {
-        super(MY_CAT,aInParent,aInNameOrAll,DefinitionScope.OWNER);
+        super(MY_CAT, aInParent, aInNameOrAll, DefinitionScope.OWNER);
     }
 
     public MClassRule(MModuleRule aInParent, String aInNameOrAll)
     {
-        super(MY_CAT,aInParent,aInNameOrAll,DefinitionScope.MODULE);
+        super(MY_CAT, aInParent, aInNameOrAll, DefinitionScope.MODULE);
     }
 
     public void getClasses(Map<String, MClass> aOut)
@@ -32,79 +33,107 @@ public class MClassRule extends MOwnershipRule
         {
             case OWNER:
 
+            {
+                if (isWildCard())
                 {
-                    if (isWildCard())
+                    // THIS IS WILD CARD, ALL CLASSES ARE IN SCOPE
+                    for (Item lIt : MClass.MY_CAT.getNodes().getItemsList())
                     {
-                        // THIS IS WILD CARD, ALL CLASSES ARE IN SCOPE
-                        for (Item lIt : MClass.MY_CAT.getNodes().getItemsList())
-                        {
-                            aOut.put(lIt.getGID().getName(),(MClass) lIt);
-                        }
+                        aOut.put(lIt.getGID().getName(), (MClass) lIt);
+                    }
+                }
+                else
+                {
+                    // NOT A WILD CARD, FIND SPECIFIC CLASS
+                    MClass lIt = MClass.get(getLID().getName());
+                    if (null != lIt)
+                    {
+                        aOut.put(lIt.getGID().getName(), lIt);
                     }
                     else
                     {
-                        // NOT A WILD CARD, FIND SPECIFIC CLASS
-                        MClass lIt = MClass.get(getLID().getName());
-                        if (null != lIt)
-                        {
-                            aOut.put(lIt.getGID().getName(), lIt);
-                        }
-                        else
-                        {
-                            Severity.DEATH.report("ownership rule class retrieval", "", "",
-                                                  "no such class: " + getLID().getName());
-                        }
+                        Severity.DEATH.report("ownership rule class retrieval", "", "", "no such class: " + getLID().getName());
                     }
                 }
-                break;
+            }
+            break;
 
             case MODULE:
 
+            {
+                MModuleRule lModuleRule = (MModuleRule) getParent();
+                if (lModuleRule.isWildCard())
                 {
-                    MModuleRule lModuleRule = (MModuleRule) getParent();
-                    if (lModuleRule.isWildCard())
+                    // MODULE IS WILDCARD --> ANY MODULE, MATCH LOCAL NAMES OF THE CLASSES
+                    if (isWildCard())
                     {
-                        // MODULE IS WILDCARD --> ANY MODULE, MATCH LOCAL NAMES OF THE CLASSES
-                        if (isWildCard())
+                        // ALL CLASSES IN THE UNIVERSE
+                        for (Item lIt : MClass.MY_CAT.getNodes().getItemsList())
                         {
-                            // ALL CLASSES IN THE UNIVERSE
-                            for (Item lIt : MClass.MY_CAT.getNodes().getItemsList())
-                            {
-                                aOut.put(lIt.getGID().getName(),(MClass) lIt);
-                            }
-                        }
-                        else
-                        {
-                            // MATCH LOCAL NAMES OF THE CLASSES IN THE UNIVERSE
-                            for (Item lIt : MClass.MY_CAT.getNodes().getItemsList())
-                            {
-                                if (lIt.getLID().getName().equals(getLID().getName()))
-                                {
-                                    aOut.put(lIt.getGID().getName(), (MClass) lIt);
-                                }
-                            }
+                            aOut.put(lIt.getGID().getName(), (MClass) lIt);
                         }
                     }
                     else
                     {
-                        // MODULE IS SPECIFIED
-                        Module lModule = Module.get(lModuleRule.getLID().getName());
-                        if (null != lModule)
+                        // MATCH LOCAL NAMES OF THE CLASSES IN THE UNIVERSE
+                        for (Item lIt : MClass.MY_CAT.getNodes().getItemsList())
                         {
-                            LinkedList<Item> lIts = new LinkedList<Item>();
-                            lModule.getChildItems(MClass.MY_CAT, lIts);
-                            for (Item lIt : lIts)
+                            if (lIt.getLID().getName().equals(getLID().getName()))
                             {
-                                aOut.put(lIt.getGID().getName(),(MClass) lIt);
+                                aOut.put(lIt.getGID().getName(), (MClass) lIt);
                             }
-                        }
-                        else
-                        {
-                            Severity.DEATH.report("ownership rule class retrieval", "", "",
-                                                  "no such module: " + lModuleRule.getLID().getName());
                         }
                     }
                 }
+                else
+                {
+                    // MODULE IS SPECIFIED
+                    Module lModule = Module.get(lModuleRule.getLID().getName());
+                    if (null != lModule)
+                    {
+                        LinkedList<Item> lIts = new LinkedList<Item>();
+                        lModule.getChildItems(MClass.MY_CAT, lIts);
+                        for (Item lIt : lIts)
+                        {
+                            aOut.put(lIt.getGID().getName(), (MClass) lIt);
+                        }
+                    }
+                    else
+                    {
+                        Severity.DEATH.report("ownership rule class retrieval", "", "", "no such module: " + lModuleRule.getLID().getName());
+                    }
+                }
+            }
         }
+    }
+
+    public void initTargets()
+    {
+        MOwner lOwn = getOwner();
+        TreeMap<String, MClass> lClasses = new TreeMap<>();
+        getClasses(lClasses);
+        for (MClass lClass : lClasses.values())
+        {
+            lClass.addOwner(lOwn, this);
+        }
+    }
+
+    public int rank()
+    {
+        int lRank = 10;
+        switch (getDefinitionScope())
+        {
+            case OWNER:
+                // NO GAIN
+                lRank -= (isWildCard() ? 0 : 5);
+                break;
+
+            case MODULE:
+                // GAIN OF RANK IF MODULE IS NO WILD-CARD
+                lRank -= (((MModuleRule) getParent()).isWildCard() ? 1 : 2);
+                lRank -= (isWildCard() ? 1 : 2);
+                break;
+        }
+        return lRank;
     }
 }

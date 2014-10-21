@@ -15,6 +15,7 @@ import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.proc.Config;
+import org.opendaylight.opflex.modlan.report.Severity;
 
 /**
  * Created by midvorki on 9/24/14.

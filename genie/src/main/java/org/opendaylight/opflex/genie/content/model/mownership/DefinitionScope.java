@@ -7,10 +7,10 @@ public enum DefinitionScope
 {
     GLOBAL,
     OWNER,
-    CLASS,
     MODULE,
+    CLASS,
+    GROUP,
     MEMBER,
-    GROUP
     ;
 
     public static DefinitionScope get(String aIn)

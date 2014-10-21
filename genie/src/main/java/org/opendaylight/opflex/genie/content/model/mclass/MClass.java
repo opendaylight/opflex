@@ -11,8 +11,10 @@ import org.opendaylight.opflex.genie.content.model.mnaming.MNameRule;
 import org.opendaylight.opflex.genie.content.model.mnaming.MNamer;
 import org.opendaylight.opflex.genie.content.model.module.Module;
 import org.opendaylight.opflex.genie.content.model.module.SubModuleItem;
+import org.opendaylight.opflex.genie.content.model.mownership.MClassRule;
 import org.opendaylight.opflex.genie.content.model.mownership.MOwned;
 import org.opendaylight.opflex.genie.content.model.mownership.MOwner;
+import org.opendaylight.opflex.genie.content.model.mownership.MOwnershipRule;
 import org.opendaylight.opflex.genie.content.model.mprop.MProp;
 import org.opendaylight.opflex.genie.content.model.mprop.MPropGroup;
 import org.opendaylight.opflex.genie.content.model.mtype.Language;
@@ -786,49 +788,58 @@ public class MClass
     // OWNER APIs
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public void addOwner(String aInOwner)
+    public void addOwner(MOwner aInOwner, MClassRule aInRule)
     {
-        if (null == getChildItem(MOwned.MY_CAT, aInOwner))
+        if (null == getChildItem(MOwned.MY_CAT, aInOwner.getLID().getName()))
         {
-            new MOwned(this, aInOwner);
+            new MOwned(this, aInOwner, aInRule);
         }
     }
 
-    public void findOwned(TreeMap<String, MOwned> aOut)
+    public void findOwned(TreeMap<Integer, MOwned> aOut)
     {
         LinkedList<Item> ll = new LinkedList<Item>();
-        for (MClass lThis = this; lThis != null; lThis = lThis.getSuperclass())
-        {
-            lThis.getChildItems(MOwned.MY_CAT,ll);
-        }
+        getChildItems(MOwned.MY_CAT,ll);
+
         for (Item lIt : ll)
         {
-            if (!aOut.containsKey(lIt.getLID().getName()))
+            MOwned lOwned = (MOwned) lIt;
+            MClassRule lOwnRule = lOwned.getRule();
+            int lRank = lOwnRule.rank();
+            if (!aOut.containsKey(lRank))
             {
-                aOut.put(lIt.getLID().getName(), (MOwned) lIt);
+                aOut.put(lRank, lOwned);
             }
+        }
+        if (hasSuperclass())
+        {
+            getSuperclass().findOwned(aOut);
         }
     }
 
-    public void findOwners(TreeMap<String, MOwner> aOut)
+    public void findOwners(TreeMap<Integer, MOwner> aOut)
     {
         LinkedList<Item> ll = new LinkedList<Item>();
-        for (MClass lThis = this; lThis != null; lThis = lThis.getSuperclass())
-        {
-            lThis.getChildItems(MOwned.MY_CAT,ll);
-        }
+        getChildItems(MOwned.MY_CAT,ll);
         for (Item lIt : ll)
         {
-            if (!aOut.containsKey(lIt.getLID().getName()))
+            MOwned lOwned = (MOwned) lIt;
+            MClassRule lOwnRule = lOwned.getRule();
+            int lRank = lOwnRule.rank();
+            if (!aOut.containsKey(lRank))
             {
-                aOut.put(lIt.getLID().getName(), ((MOwned) lIt).getOwner());
+                aOut.put(lRank, lOwned.getOwner());
             }
+        }
+        if (hasSuperclass())
+        {
+            getSuperclass().findOwners(aOut);
         }
     }
 
     public Collection<MOwner> findOwners()
     {
-        TreeMap<String, MOwner> lOwners = new TreeMap<String, MOwner>();
+        TreeMap<Integer, MOwner> lOwners = new TreeMap<Integer, MOwner>();
         findOwners(lOwners);
         return lOwners.values();
     }
