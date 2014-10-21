@@ -71,7 +71,7 @@ int comms_passive_listener(
         }
     }
 
-    if ((rc = uv_tcp_init(peer->uv_loop_selector(), &peer->handle))) {
+    if ((rc = uv_tcp_init(peer->uv_loop_selector_(), &peer->handle))) {
         LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "]" <<
             uv_strerror(rc);
         goto failed_tcp_init;
@@ -98,7 +98,7 @@ int comms_passive_listener(
 
     peer->status = Peer::kPS_LISTENING;
 
-    d_intr_list_insert(&peer->peer_hook, &peers.listening);
+    peer->insert(internal::Peer::LoopData::LISTENING);
 
     LOG(DEBUG) << "listening!";
 
@@ -108,7 +108,7 @@ failed_bind:
     uv_close((uv_handle_t*) &peer->handle, NULL);
 
 failed_tcp_init:
-    d_intr_list_insert(&peer->peer_hook, &peers.retry_listening);
+    peer->insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
 
     return rc;
 }
@@ -141,7 +141,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
     }
 
     int rc;
-    if ((rc = tcp_init(listener->uv_loop_selector(), &peer->handle))) {
+    if ((rc = tcp_init(listener->uv_loop_selector_(), &peer->handle))) {
         peer->down();  // this is invoked with an intent to delete!
         return;
     }
@@ -161,7 +161,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
         return;
     }
 
-    d_intr_list_insert(&peer->peer_hook, &peers.online);
+    peer->insert(internal::Peer::LoopData::ONLINE);
 
     /* kick the ball */
     peer->onConnect();

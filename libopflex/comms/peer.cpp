@@ -7,7 +7,6 @@
  */
 
 #include <opflex/comms/comms-internal.hpp>
-#include <tricks/container_of.h>
 #include <opflex/rpc/message_factory.inl.hpp>
 
 namespace opflex { namespace comms { namespace internal {
