@@ -67,14 +67,17 @@ int comms_active_connection(
         }
     }
 
-    d_intr_list_insert(&peer->peer_hook, &peers.attempting);
 
     int rc;
-    if ((rc = uv_getaddrinfo(peer->uv_loop_selector(), &peer->dns_req,
+    if ((rc = uv_getaddrinfo(peer->getUvLoop(), &peer->dns_req,
                     on_resolved, host, service, &hints))) {
         LOG(WARNING) << "uv_getaddrinfo: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-    } else peer->up();
+        peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
+    } else {
+        peer->up();
+        peer->insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
+    }
 
     return rc;
 }
@@ -116,8 +119,8 @@ void on_active_connection(uv_connect_t *req, int status) {
     peer->ai_next = NULL;
 #endif
 
-    d_intr_list_unlink(&peer->peer_hook);
-    d_intr_list_insert(&peer->peer_hook, &peers.online);
+    peer->unlink();
+    peer->insert(internal::Peer::LoopData::ONLINE);
 
     if ((rc = uv_read_start(req->handle, alloc_cb, on_read))) {
         LOG(WARNING) << "uv_read_start: [" << uv_err_name(rc) << "] " <<
@@ -259,8 +262,8 @@ void debug_resolution_entries(struct addrinfo const * ai) {
 }
 
 void retry_later(ActivePeer * peer) {
-    d_intr_list_unlink(&peer->peer_hook);
-    d_intr_list_insert(&peer->peer_hook, &peers.retry);
+    peer->unlink();
+    peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
 
     peer->down();
 
