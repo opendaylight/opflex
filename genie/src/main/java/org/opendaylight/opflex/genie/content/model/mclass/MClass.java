@@ -42,18 +42,56 @@ public class MClass
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // CONSTRUCTION
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    public MClass(
-            Module aInModule, String aInLName, boolean aInIsConcrete
-                 )
+
+
+    protected MClass(Module aInModule, String aInLName)
     {
         super(MY_CAT, aInModule, aInLName);
-        isConcrete = aInIsConcrete;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // CLASS RETRIEVAL APIs
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * defines a class under passed in module by the passed in name.
+     * @param aInModule module under which the class is defined
+     * @param aInLName name of the class to be defined
+     * @param aInOptionalIsConcrete optional specification if the object is concrete, not used if null is passed in
+     * @return defined object that is either found or newly created.
+     */
+    public static MClass defineClass(Module aInModule, String aInLName, Boolean aInOptionalIsConcrete)
+    {
+        MClass lClass = get(aInModule,aInLName,true);
+        if (null != aInOptionalIsConcrete)
+        {
+            lClass.setConcrete(aInOptionalIsConcrete);
+        }
+        return lClass;
+    }
+
+    /**
+     * retrieves class under module by name; optionally creates a class if aInCreateIfNotFound is true
+     * @param aInModule module under which class is defined
+     * @param aInLName local name of the class
+     * @param aInCreateIfNotFound identifies whether class needs to be created if not found
+     * @return class associated with a local name under the module passed in
+     */
+    public static synchronized MClass get(Module aInModule, String aInLName, boolean aInCreateIfNotFound)
+    {
+        MClass lClass = getClass(aInModule,aInLName);
+        if (null == lClass)
+        {
+            lClass = new MClass(aInModule, aInLName);
+        }
+        return lClass;
+    }
+
+    /**
+     * looks up a class definition by global name
+     * @param aInGName global name of the class to be looked up
+     * @return class definition corresponding to the name passed in
+     */
     public static MClass get(String aInGName)
     {
         return (MClass) MY_CAT.getItem(aInGName);
@@ -69,9 +107,35 @@ public class MClass
         return (MClass) aIn.getAncestorOfCat(MClass.MY_CAT);
     }
 
+    /**
+     * retrieves a class by module and local name
+     * @param aInModule module under which class is defined
+     * @param aInLName local name of the class
+     * @return class that corresponds to the name under the module passed in
+     */
+    public static MClass getClass(Module aInModule, String aInLName)
+    {
+        return (MClass) aInModule.getChildItem(MClass.MY_CAT,aInLName);
+    }
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // CONCRETENESS API
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    public void setConcrete(Boolean aIn)
+    {
+        if (null == isConcrete)
+        {
+            isConcrete = aIn;
+        }
+        else if (aIn != isConcrete && (null == aIn || (!aIn.equals(isConcrete))))
+        {
+            Severity.DEATH.report(
+                    toString(),
+                    "specify concreteness",
+                    "redundant definition",
+                    "current: " + isConcrete + "; desired: " + aIn);
+        }
+    }
 
     /**
      * specifies whether this managed class if concrete
@@ -79,6 +143,15 @@ public class MClass
      */
     public boolean isConcrete()
     {
+        if (null == isConcrete)
+        {
+            Severity.DEATH.report(
+                    toString(),
+                    "determination of concreteness",
+                    "no definition",
+                    "must define whether this class is concrete or abstract: check the model");
+
+        }
         return isConcrete;
     }
 
@@ -382,6 +455,12 @@ public class MClass
         }
     }
 
+    /**
+     * Gets a set of classes that contain this class
+     * @param aInIncludeSuperclasses indication of whether to include superclasses in this search
+     * @param aInIsResolveToConcrete indication of whether to resolve found classes to concrete subclasses
+     * @returncollection of containing classes
+     */
     public Collection<MClass> getContainedByClasses(boolean aInIncludeSuperclasses, boolean aInIsResolveToConcrete)
     {
         TreeMap<Ident,MClass> lOut = new TreeMap<Ident, MClass>();
@@ -476,6 +555,10 @@ public class MClass
         }
     }
 
+    /**
+     * retrieves containment path for this class: all of the potential paths from this object to the root of the containment tree
+     * @return all possible paths from any of the containment locations of this object towards the root of the tree
+     */
     public Collection<List<MClass>> getContainmentPaths()
     {
         LinkedList<List<MClass>> lRet = new LinkedList<List<MClass>>();
@@ -483,6 +566,10 @@ public class MClass
         return lRet;
     }
 
+    /**
+     * retrieves containment path for this class: all of the potential paths from this object to the root of the containment tree
+     * @param aOut all possible paths from any of the containment locations of this object towards the root of the tree
+     */
     public void getContainmentPaths(Collection<List<MClass>> aOut)
     {
         if (isConcrete())
@@ -492,6 +579,11 @@ public class MClass
         }
     }
 
+    /**
+     * helper function to explore containment path of this object
+     * @param aInCurrStack current stack identifying where we are in the current path
+     * @param aOut all of the collected containment paths
+     */
     private void exploreContainmentPaths(Stack<MClass> aInCurrStack, Collection<List<MClass>> aOut)
     {
         if (isRoot())
@@ -655,6 +747,10 @@ public class MClass
         }
     }
 
+    /**
+     * counts locally defined properties
+     * @return number of properties originally defined under this class (excluding overrides.)
+     */
     public int countMyDefinedProps()
     {
         if (-1 == numOfBaseProps)
@@ -684,6 +780,10 @@ public class MClass
         return numOfBaseProps;
     }
 
+    /**
+     * counts all properties defined at or inherited
+     * @return number of propertoes defined or inherited by this class
+     */
     public int countProps()
     {
         if (-1 == numOfAllBaseProps)
@@ -697,6 +797,10 @@ public class MClass
         return numOfAllBaseProps;
     }
 
+    /**
+     * counts all of the inherited properties
+     * @return number of inherited properties
+     */
     public int countInheritedProps()
     {
         return hasSuperclass() ? getSuperclass().countProps() : 0;
@@ -788,6 +892,14 @@ public class MClass
     // OWNER APIs
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Adds owner and the rule which defines the ownership to this class.
+     * This method results in creation of MOwned item under this class item.
+     * This item identifies that this class is owned by the corresponding
+     * owner and rule.
+     * @param aInOwner owner of this class
+     * @param aInRule rule which defines ownership
+     */
     public void addOwner(MOwner aInOwner, MClassRule aInRule)
     {
         if (null == getChildItem(MOwned.MY_CAT, aInOwner.getLID().getName()))
@@ -796,6 +908,10 @@ public class MClass
         }
     }
 
+    /**
+     * find all ownership claims that this class has
+     * @param aOut ownership claims
+     */
     public void findOwned(TreeMap<Integer, MOwned> aOut)
     {
         LinkedList<Item> ll = new LinkedList<Item>();
@@ -817,6 +933,10 @@ public class MClass
         }
     }
 
+    /**
+     * finds all owners that claim ownership of this object.
+     * @param aOut a map of ownership rank to the owner. rank is [0..10], with 0 being the highest rank.
+     */
     public void findOwners(TreeMap<Integer, MOwner> aOut)
     {
         LinkedList<Item> ll = new LinkedList<Item>();
@@ -837,6 +957,10 @@ public class MClass
         }
     }
 
+    /**
+     * finds owners that claim ownership of this object
+     * @return collection of owners arranged by rank
+     */
     public Collection<MOwner> findOwners()
     {
         TreeMap<Integer, MOwner> lOwners = new TreeMap<Integer, MOwner>();
@@ -1127,11 +1251,12 @@ public class MClass
     public void postValidateCb()
     {
         super.postValidateCb();
+        isConcrete();
         initPropLocalIdx();
     }
 
 
-    private final boolean isConcrete;
+    private Boolean isConcrete = null;
     private int numOfBaseProps = -1;
     private int numOfAllBaseProps = -1;
 }

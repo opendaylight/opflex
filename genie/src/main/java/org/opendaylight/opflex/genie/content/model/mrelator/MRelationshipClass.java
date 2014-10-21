@@ -22,7 +22,8 @@ public class MRelationshipClass extends MClass
             String aInLName,
             MRelationship aInReln)
     {
-        super(aInModule, aInLName, true);
+        super(aInModule, aInLName);
+        setConcrete(true);
         addSource(aInReln.getSourceClassGName());
         reln.add(aInReln);
     }
