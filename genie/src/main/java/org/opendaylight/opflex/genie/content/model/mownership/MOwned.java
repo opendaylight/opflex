@@ -12,7 +12,7 @@ public class MOwned extends Item
 
     public MOwned(Item aInParent, MOwner aInOwner, MClassRule aInRule)
     {
-        super(MY_CAT,aInParent,aInOwner.getLID().getName());
+        super(MY_CAT,aInParent,aInRule.getGID().getName());
         owner = aInOwner;
         rule = aInRule;
     }

@@ -149,6 +149,20 @@ public abstract class FormatterTask implements Task
     {
         return "formatter::task(" + fileNameRule.getName() + ')';
     }
+
+
+    public void setMeta(FormatterTaskMeta aInMeta)
+    {
+        meta = aInMeta;
+    }
+
+    public FormatterTaskMeta getMeta()
+    {
+        return meta;
+    }
+
+    protected FormatterTaskMeta meta = null;
+
     private FormattedFile file = null;
 
     private final FormatterCtx formatterCtx;
