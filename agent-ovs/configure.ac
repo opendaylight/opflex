@@ -35,6 +35,7 @@ AC_PROG_INSTALL
 AM_PROG_AS
 AC_LANG([C++])
 
+
 # check for doxygen
 AC_CHECK_PROGS(DOXYGEN,doxygen,none)
 AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone']) 
@@ -51,6 +52,10 @@ PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])
 PKG_CHECK_MODULES([libglog], [libglog >= 0.3.3])
 
+# check for libopenvswitch. Should use pkg-config
+AC_CHECK_LIB([openvswitch], main, [OVS_LIB="-lopenvswitch -lpthread -lrt -lssl -lcrypto"; AC_SUBST(OVS_LIB)], [echo "libopenvswitch not found; agent won't be built"])
+AM_CONDITIONAL([HAVE_OVS], [test "$ac_cv_lib_openvswitch_main" = yes])
+
 # Older versions of autoconf don't define docdir
 if test x$docdir = x; then
    AC_SUBST(docdir, ['${prefix}/share/doc/'$PACKAGE])
@@ -61,6 +66,8 @@ fi
 
 AC_CONFIG_FILES([\
 	Makefile \
+	src/enforcer/Makefile \
+	src/enforcer/test/Makefile \
 	doc/Doxyfile])
 AC_OUTPUT
 
