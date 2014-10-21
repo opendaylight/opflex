@@ -1,9 +1,10 @@
-owner[testowner]
+owner[fwkfromhell]
 {
     module[*]
     {
         class[*]
     }
+    class[relator/Resolver]
 }
 
 owner[bob]
@@ -14,6 +15,14 @@ owner[bob]
 owner[otherstuff]
 {
     module[epr]
+    {
+        class[*]
+    }
+}
+
+owner[nososcarystuff]
+{
+    module[relator]
     {
         class[*]
     }

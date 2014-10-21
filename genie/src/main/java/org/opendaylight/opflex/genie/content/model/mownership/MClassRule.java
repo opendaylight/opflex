@@ -121,6 +121,7 @@ public class MClassRule extends MOwnershipRule
     public int rank()
     {
         int lRank = 10;
+
         switch (getDefinitionScope())
         {
             case OWNER:
