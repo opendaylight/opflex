@@ -1,0 +1,54 @@
+module[epdr]
+{
+    # abstraction of locally discovered en-point
+    class[EndPoint;
+          super=epr/LocalEp;
+          abstract
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        dependency[group;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
+    }
+
+    # abstraction of local L2 end-point identifies an end-point that is locally discovered.
+    class[LocalL2Ep;
+          super=epdr/EndPoint;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=epdr/L2Discovered]
+        }
+    }
+
+    # abstraction of local L3 end-point identifies an end-point that is locally discovered.
+    class[LocalL3Ep;
+          super=epdr/EndPoint;
+          concrete;
+          ]
+    {
+        # ip address of the end-point
+        member[ip; type=address/IP]
+
+        contained
+        {
+            parent[class=epdr/L3Discovered]
+        }
+
+    }
+}

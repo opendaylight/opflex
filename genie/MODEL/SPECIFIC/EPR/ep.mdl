@@ -25,52 +25,7 @@ module[epr]
           super=epr/EndPoint;
           abstract
           ]
-    {
-        named
-        {
-            parent[class=*;]
-            {
-                component[member=uuid]
-            }
-        }
 
-        dependency[group;
-                   cardinality=single;
-                   ]
-        {
-            to[class=gbp/EpGroup;
-                cardinality=many;
-                ]
-        }
-    }
-
-    # abstraction of local L2 end-point identifies an end-point that is locally discovered.
-    class[LocalL2Ep;
-          super=epr/LocalEp;
-          concrete;
-          ]
-    {
-        contained
-        {
-            parent[class=epr/L2Discovered]
-        }
-    }
-
-    # abstraction of local L3 end-point identifies an end-point that is locally discovered.
-    class[LocalL3Ep;
-          super=epr/LocalEp;
-          concrete;
-          ]
-    {
-        # ip address of the end-point
-        member[ip; type=address/IP]
-
-        contained
-        {
-            parent[class=epr/L3Discovered]
-        }
-
-    }
 
     # abstraction of externally reportable ep
     class[ReportedEp;

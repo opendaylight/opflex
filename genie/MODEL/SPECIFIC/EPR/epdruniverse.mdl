@@ -1,0 +1,33 @@
+module[epdr]
+{
+    # universe containing discovered L2 eps
+    class[L2Discovered;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=l2discovered;]
+            }
+        }
+    }
+
+    # universe containing discovered L2 eps
+    class[L3Discovered;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=l3discovered;]
+            }
+        }
+    }
+
+}
