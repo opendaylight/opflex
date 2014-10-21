@@ -54,12 +54,6 @@ else
   libcomms_la_SOURCES += $(comms_headers) $(rpc_headers)
 endif
 
-libcomms_la_SOURCES += include/adt/intrusive_slist.inl.h
-libcomms_la_SOURCES += include/adt/intrusive_slist.h
-libcomms_la_SOURCES += include/adt/intrusive_dlist.h
-libcomms_la_SOURCES += include/adt/intrusive_dlist.inl.h
-libcomms_la_SOURCES += tricks/container_of.h
-libcomms_la_SOURCES += tricks/compiler.h
 libcomms_la_SOURCES += tricks/overload.h
 
 libcomms_la_SOURCES += active_connection.cpp

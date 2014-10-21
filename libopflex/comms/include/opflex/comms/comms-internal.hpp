@@ -14,10 +14,10 @@
 #include <sstream>  /* for basic_stringstream<> */
 #include <opflex/comms/comms.hpp>
 #include <opflex/comms/internal/json.hpp>
-#include <adt/intrusive_dlist.h>
 #include <rapidjson/document.h>
-#include <tricks/container_of.h>
 #include <opflex/rpc/message_factory.hpp>
+#include <opflex/rpc/send_handler.hpp>
+#include <boost/intrusive/list.hpp>
 
 #define COMMS_BUF_SZ 4096
 
@@ -40,8 +40,38 @@ int tcp_init(uv_loop_t * loop, uv_tcp_t * handle);
 
 
 
-class Peer {
+class Peer : public ::boost::intrusive::list_base_hook<
+             ::boost::intrusive::link_mode< ::boost::intrusive::auto_unlink> > {
   public:
+    typedef ::boost::intrusive::list<Peer,
+            ::boost::intrusive::constant_time_size<false> > List;
+
+    class LoopData {
+      public:
+
+        typedef enum {
+          ONLINE,
+          LISTENING,
+          RETRY_TO_CONNECT,
+          RETRY_TO_LISTEN,
+          ATTEMPTING_TO_CONNECT,
+
+          /* don't touch past here */
+          TOTAL_STATES
+        } PeerState;
+
+        Peer::List peers[LoopData::TOTAL_STATES];
+
+        static Peer::LoopData * getLoopData(uv_loop_t * uv_loop) {
+            return static_cast<Peer::LoopData *>(uv_loop->data);
+        }
+
+        static Peer::List * getPeerList(
+                uv_loop_t * uv_loop,
+                Peer::LoopData::PeerState peerState) {
+            return &getLoopData(uv_loop)->peers[peerState];
+        }
+    };
 
     template <typename T, typename U>
     static T * get(U * h) {
@@ -75,15 +105,12 @@ class Peer {
             :
               passive(passive),
               pending(0),
-              uv_loop_selector(uv_loop_selector ? : &uv_default_loop),
+              uv_loop_selector_(uv_loop_selector ? : &uv_default_loop),
               status(status),
               uvRefCnt_(1)
             {
-#ifndef NDEBUG
-                peer_hook.link[0] = &peer_hook;
-                peer_hook.link[1] = &peer_hook;
-#endif
                 handle.data = this;
+                handle.loop = uv_loop_selector_();
             }
 
     void up() {
@@ -106,7 +133,19 @@ class Peer {
         delete this;
     }
 
-    d_intr_hook_t peer_hook;
+    /**
+     * Get the uv_loop_t * for this peer
+     *
+     * @return the uv_loop_t * for this peer
+     */
+    uv_loop_t * getUvLoop() const {
+        return handle.loop;
+    }
+
+    void insert(Peer::LoopData::PeerState peerState) {
+        Peer::LoopData::getPeerList(getUvLoop(), peerState)->push_back(*this);
+    }
+
     uv_tcp_t handle;
     union {
         union {
@@ -120,7 +159,7 @@ class Peer {
         } _;
         uv_timer_t keepAliveTimer_;
     };
-    uv_loop_selector_fn uv_loop_selector;
+    uv_loop_selector_fn uv_loop_selector_;
     unsigned char passive   :1;
           mutable
     unsigned char pending   :1;
@@ -197,15 +236,6 @@ class CommunicationPeer : public Peer {
         /* FIXME: handle errors!!! */
         return write();
 
-    }
-
-    /**
-     * Get the uv_loop_t * for this peer
-     *
-     * @return the uv_loop_t * for this peer
-     */
-    uv_loop_t * getUvLoop() const {
-        return handle.loop;
     }
 
     void startKeepAlive(
@@ -330,9 +360,9 @@ class ActivePeer : public CommunicationPeer {
         {}
 
     void reset(uv_loop_selector_fn uv_loop_selector = NULL) {
-        d_intr_list_unlink(&this->peer_hook);
-        if (!this->uv_loop_selector) {
-            this->uv_loop_selector = uv_loop_selector ? : &uv_default_loop;
+        unlink();
+        if (!uv_loop_selector_) {
+            uv_loop_selector_ = uv_loop_selector ? : &uv_default_loop;
         }
         this->passive = false;
         this->status  = Peer::kPS_RESOLVING;
@@ -356,14 +386,16 @@ class PassivePeer : public CommunicationPeer {
                     kPS_RESOLVING)
         {}
 
+#ifdef PASSIVE_PEER_COULD_BE_RESET
     void reset(uv_loop_selector_fn uv_loop_selector = NULL) {
-        d_intr_list_unlink(&this->peer_hook);
+        unlink();
         if (!this->uv_loop_selector) {
             this->uv_loop_selector = uv_loop_selector ? : &uv_default_loop;
         }
         this->passive = true;
         this->status  = Peer::kPS_RESOLVING;
     }
+#endif
 
   protected:
     /* don't leak memory! */
@@ -384,29 +416,18 @@ class ListeningPeer : public Peer {
         }
     void reset(uv_loop_t * listener_uv_loop = NULL,
             uv_loop_selector_fn uv_loop_selector = NULL) {
-        d_intr_list_unlink(&this->peer_hook);
+        unlink();
         if (!this->_.listener.uv_loop) {
             this->_.listener.uv_loop = listener_uv_loop ? : uv_default_loop();
         }
-        if (!this->uv_loop_selector) {
-            this->uv_loop_selector = uv_loop_selector ? : &uv_default_loop;
+        if (!uv_loop_selector_) {
+            uv_loop_selector_ = uv_loop_selector ? : &uv_default_loop;
         }
     }
 
     struct sockaddr_storage listen_on;
 
     ConnectionHandler connectionHandler_;
-};
-
-union peer_db_ {
-    struct {
-        d_intr_head_t online;
-        d_intr_head_t retry;  /* periodically re-attempt to reconnect */
-        d_intr_head_t attempting;
-        d_intr_head_t listening;
-        d_intr_head_t retry_listening;
-    };
-    d_intr_head_t __all_doubly_linked_lists[4];
 };
 
 }}}
