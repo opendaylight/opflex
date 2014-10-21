@@ -34,6 +34,11 @@ libagent_ovs_la_SOURCES = \
 	src/EndpointManager.cpp \
 	src/Agent.cpp
 
+SUBDIRS =
+if HAVE_OVS
+SUBDIRS += src/enforcer
+endif
+
 bin_PROGRAMS=agent_ovs
 agent_ovs_SOURCES = \
 	src/main.cpp
