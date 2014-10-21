@@ -10,3 +10,11 @@ owner[bob]
 {
     class[gbp/BehavioralGroup]
 }
+
+owner[otherstuff]
+{
+    module[epr]
+    {
+        class[*]
+    }
+}

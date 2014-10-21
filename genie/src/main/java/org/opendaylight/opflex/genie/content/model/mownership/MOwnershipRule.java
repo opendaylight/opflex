@@ -11,4 +11,9 @@ public class MOwnershipRule extends MOwnershipComponent
     {
         super(aInCat,aInParent,aInName, aInDefScope);
     }
+
+    public MOwner getOwner()
+    {
+        return (MOwner) getAncestorOfCat(MOwner.MY_CAT);
+    }
 }

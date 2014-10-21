@@ -10,13 +10,23 @@ public class MOwned extends Item
 {
     public static final Cat MY_CAT = Cat.getCreate("mowned");
 
-    public MOwned(Item aInParent, String aInOwner)
+    public MOwned(Item aInParent, MOwner aInOwner, MClassRule aInRule)
     {
-        super(MY_CAT,aInParent,aInOwner);
+        super(MY_CAT,aInParent,aInOwner.getLID().getName());
+        owner = aInOwner;
+        rule = aInRule;
     }
 
     public MOwner getOwner()
     {
-        return MOwner.get(getLID().getName(),false);
+        return owner;
     }
+
+    public MClassRule getRule() { return rule; }
+
+    public DefinitionScope getScope() { return rule.getDefinitionScope(); }
+
+
+    private final MOwner owner;
+    private final MClassRule rule;
 }
