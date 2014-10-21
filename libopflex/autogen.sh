@@ -18,5 +18,6 @@ do
         rm "${i}"
     fi
 done
+git submodule update --init --recursive
 
 autoreconf -fis
