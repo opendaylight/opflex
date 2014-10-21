@@ -37,17 +37,31 @@ public class PClassNode
 
 
         // DETERMINE IF THIS CLASS IS CONCRETE
-        boolean lIsAbstract = aInData.checkFlag(Strings.ABSTRACT);
+        //boolean lIsAbstract = aInData.checkFlag(Strings.ABSTRACT);
+        String lIsAbstract = aInData.getNamedValue(Strings.ABSTRACT, null, false);
+        String lIsConcrete = aInData.getNamedValue(Strings.CONCRETE, null, false);
 
-        boolean lIsConcrete = (!lIsAbstract) &&
-                              aInData.checkFlag(Strings.CONCRETE);
-        // CREATE A CLASS
-        MClass lClass = new MClass(
-                (Module) aInParentItem,
-                lName,
-                lIsConcrete);
+        Boolean lAbstractnessSpec =
+                Strings.isEmpty(lIsAbstract) ?
+                        null :
+                        (("true".equalsIgnoreCase(lIsAbstract) ||
+                          Strings.CONCRETE.equalsIgnoreCase(lIsAbstract) ||
+                          !"false".equalsIgnoreCase(lIsAbstract)));
 
+        Boolean lConcretenessSpec =
+                Strings.isEmpty(lIsConcrete) ?
+                        null :
+                        (("true".equalsIgnoreCase(lIsConcrete) ||
+                          Strings.CONCRETE.equalsIgnoreCase(lIsConcrete) ||
+                          !"false".equalsIgnoreCase(lIsConcrete)));
 
+        Boolean lConcreteness = null == lConcretenessSpec ?
+                                    null == lAbstractnessSpec ?
+                                            null :
+                                            !lAbstractnessSpec :
+                                    lConcretenessSpec;
+
+        MClass lClass = MClass.defineClass((Module) aInParentItem, lName, lConcreteness, true);
         // ADD SUPERCLASS IF ONE IS DECLARED
         String lSuper = aInData.getNamedValue(Strings.SUPER,null,false);
         if (!Strings.isEmpty(lSuper))
@@ -56,5 +70,4 @@ public class PClassNode
         }
         return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lClass);
     }
-
 }
