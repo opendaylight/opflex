@@ -13,10 +13,10 @@
 SUBDIRS = . test
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
-    -I$(srcdir)/include \
-    -I$(top_srcdir)/src/include \
-    -I/usr/include/ovs/include \
-    -fpermissive
+	-I$(srcdir)/include \
+	-I$(top_srcdir)/src/include \
+	-I/usr/include/ovs/include \
+	-fpermissive
 # OVS headers need -fpermissive to avoid casting errors :(
 
 noinst_LTLIBRARIES = libenforcer.la
@@ -26,19 +26,18 @@ noinst_LTLIBRARIES = libenforcer.la
 #libenforcer_la_LIBADD = $(UV_LIBS)
 
 libenforcer_la_SOURCES = \
-    enforcer.cpp \
-    enforcer.h \
-    enforcerImpl.h \
-    inventory.cpp \
-    inventory.h \
-    flowManager.cpp \
-    flowManager.h \
-    tableState.cpp \
-    flow/tableState.h \
-    flowExecutor.cpp \
-    flowExecutor.h \
-    actionBuilder.cpp \
-    flow/actionBuilder.h \
-    ovs.h \
-    internal/model.h \
-    internal/modb.h
+	include/flowExecutor.h \
+	include/flowManager.h \
+	include/ovs.h \
+	include/inventory.h \
+	include/flow/tableState.h \
+	include/flow/actionBuilder.h \
+	include/enforcerImpl.h \
+	include/internal/model.h \
+	include/internal/modb.h \
+	enforcer.cpp \
+	inventory.cpp \
+	flowManager.cpp \
+	tableState.cpp \
+	flowExecutor.cpp \
+	actionBuilder.cpp 
