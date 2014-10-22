@@ -15,10 +15,21 @@
 
 namespace ovsagent {
 
+class EndpointFixture : public BaseFixture {
+public:
+    EndpointFixture() {
+
+    }
+
+    virtual ~EndpointFixture() {
+
+    }
+};
+
 BOOST_AUTO_TEST_SUITE(EndpointManager_test)
 
-BOOST_FIXTURE_TEST_CASE( basic, BaseFixture ) {
-    LOG(INFO) << "Test";
+BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
+
 
 }
 

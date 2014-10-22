@@ -39,10 +39,17 @@ public:
      */
     ~EndpointManager();
 
-private:
+    /**
+     * Start the endpoint manager
+     */
     void start();
+
+    /**
+     * Stop the endpoint manager
+     */
     void stop();
 
+private:
     opflex::ofcore::OFFramework& framework;
 };
 

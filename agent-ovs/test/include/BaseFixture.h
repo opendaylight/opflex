@@ -31,9 +31,11 @@ class BaseFixture {
 public:
     BaseFixture() : agent(framework) {
         google::InitGoogleLogging("");
+        agent.start();
     }
 
-    ~BaseFixture() {
+    virtual ~BaseFixture() {
+        agent.stop();
     }
 
     MockOFFramework framework;

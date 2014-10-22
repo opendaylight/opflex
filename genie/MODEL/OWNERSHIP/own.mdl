@@ -1,20 +1,52 @@
-owner[testowner]
+owner[framework]
 {
     module[*]
     {
         class[*]
     }
+    class[relator/Resolver]
 }
 
-owner[bob]
+owner[init]
 {
-    class[gbp/BehavioralGroup]
+    class[relator/Universe]
+    class[policy/Universe]
+    class[epr/Universe]
+    module[dmtree]
+    {
+        class[*]
+    }
 }
 
-owner[otherstuff]
+owner[policyreg]
+{
+    module[gbp]
+    {
+        class[*]
+    }
+    module[gbpe]
+    {
+        class[*]
+    }
+    module[policy]
+    {
+        class[*]
+    }
+    module[platform]
+    {
+        class[*]
+    }
+}
+
+owner[endpointreg]
 {
     module[epr]
     {
         class[*]
     }
+}
+
+owner[pe]
+{
+    class[epr/LocalEp]
 }

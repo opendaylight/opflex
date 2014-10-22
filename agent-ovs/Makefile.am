@@ -20,18 +20,24 @@ noinst_LTLIBRARIES = libagent_ovs.la
 libagent_ovs_la_CXXFLAGS = \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS) \
+	$(libvirt_CFLAGS) \
 	$(libglog_CFLAGS)
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
+	$(libvirt_LIBS) \
 	$(libglog_LIBS)
 
 libagent_ovs_la_SOURCES = \
 	src/include/GLogLogHandler.h \
 	src/include/EndpointManager.h \
+	src/include/EndpointSource.h \
+	src/include/VirtEndpointSource.h \
 	src/include/Agent.h \
 	src/GLogLogHandler.cpp \
 	src/EndpointManager.cpp \
+	src/EndpointSource.cpp \
+	src/VirtEndpointSource.cpp \
 	src/Agent.cpp
 
 SUBDIRS =
@@ -40,9 +46,12 @@ SUBDIRS += src/enforcer
 endif
 
 bin_PROGRAMS=agent_ovs
+agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
 agent_ovs_SOURCES = \
 	src/main.cpp
-agent_ovs_LDADD = libagent_ovs.la
+agent_ovs_LDADD = \
+	libagent_ovs.la \
+	$(BOOST_PROGRAM_OPTIONS_LIB)
 
 TESTS = agent_test
 noinst_PROGRAMS = $(TESTS)

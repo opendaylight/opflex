@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation for EndpointManager class.
+ * Implementation for EndpointSource class.
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -9,24 +9,16 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include "EndpointManager.h"
+#include "EndpointSource.h"
 
 namespace ovsagent {
 
-EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_)
-    : framework(framework_) {
-    start();
-}
+EndpointSource::EndpointSource(EndpointManager* manager_) 
+    : manager(manager_) {}
 
-EndpointManager::~EndpointManager() {
-    stop();
-}
+EndpointSource::~EndpointSource() {}
 
-void EndpointManager::start() {
-
-}
-
-void EndpointManager::stop() {
+void EndpointSource::updateEndpoint() {
 
 }
 

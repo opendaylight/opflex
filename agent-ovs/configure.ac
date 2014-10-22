@@ -24,6 +24,7 @@ AC_CONFIG_MACRO_DIR([m4])
 
 m4_include([m4/ax_boost_base.m4])
 m4_include([m4/ax_boost_unit_test_framework.m4])
+m4_include([m4/ax_boost_program_options.m4])
 
 # ---------------------------------------------------------------
 # Environment introspection
@@ -47,10 +48,13 @@ AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone'])
 AC_STDC_HEADERS
 
 AX_BOOST_BASE([1.49.0], [], AC_MSG_ERROR([Boost is required]))
+AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_UNIT_TEST_FRAMEWORK
+
 PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])
 PKG_CHECK_MODULES([libglog], [libglog >= 0.3.3])
+PKG_CHECK_MODULES([libvirt], [libvirt >= 0.10.2])
 
 # check for libopenvswitch. Should use pkg-config
 AC_CHECK_LIB([openvswitch], main, [OVS_LIB="-lopenvswitch -lpthread -lrt -lssl -lcrypto"; AC_SUBST(OVS_LIB)], [echo "libopenvswitch not found; agent won't be built"])
