@@ -1,5 +1,6 @@
 package org.opendaylight.opflex.genie.engine.parse.model;
 
+import java.util.Collection;
 import java.util.TreeMap;
 
 import org.opendaylight.opflex.genie.engine.parse.modlan.Processor;
@@ -71,6 +72,29 @@ public abstract class ProcessorNode
             children = new TreeMap<String, ProcessorNode>();
         }
         children.put(aInNode.getName(), aInNode);
+        Collection<String> lAliases = aInNode.getAliases();
+        if (null != lAliases && !lAliases.isEmpty())
+        {
+            for (String lAlias : lAliases)
+            {
+                ProcessorNode lThatPN = children.get(lAlias);
+                if (null == lThatPN)
+                {
+                    children.put(lAlias, aInNode);
+                }
+                else if (lThatPN == aInNode)
+                {
+                    Severity.WARN.report(toString(), "child processor node registration", "",
+                                         "child " + aInNode.getName() + " is already registered with alias " + lAlias);
+                }
+                else
+                {
+                    Severity.DEATH.report(toString(), "child processor node registration", "",
+                                          "child " + aInNode.getName() + " has alias " + lAlias + " tat conflicts with "
+                                          + lThatPN);
+                }
+            }
+        }
         aInNode.addParent(this);
     }
 
@@ -111,9 +135,19 @@ public abstract class ProcessorNode
         lSb.append(']');
         return lSb.toString();
     }
+    public void setAliases(Collection<String> aIn)
+    {
+        aliases = aIn;
+    }
+
+    public Collection<String> getAliases()
+    {
+        return aliases;
+    }
 
     private String name;
     private boolean isRecursive;
     private TreeMap<String, ProcessorNode> children = null;
     private ProcessorNode parent = null;
+    private Collection<String> aliases = null;
 }

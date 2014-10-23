@@ -81,8 +81,8 @@ public class Processor
 
 
         Severity.INFO.report("","", "",Config.print());
-        metadataLoadPaths = new String[][] {{Config.getSyntaxPath(), Config.getSyntaxSuffix()}};
-        modelPreLoadPaths = new String[][] {{Config.getLoaderPath(), Config.getLoaderSuffix()}};
+        metadataLoadPaths = Config.getSyntaxPathArray();
+        modelPreLoadPaths = Config.getLoaderPathArray();
         formatterCtxs = new FormatterCtx[]{new FormatterCtx("*", Config.getGenDestPath())};
     }
 

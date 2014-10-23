@@ -4,6 +4,7 @@ metadata
     {
         node[class]
         {
+            alias[augment-class]
             qual[name]
             prop[super]
             option[abstract]

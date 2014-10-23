@@ -2,6 +2,9 @@ package org.opendaylight.opflex.genie.engine.proc;
 
 import org.opendaylight.opflex.modlan.utils.Strings;
 
+import java.util.Collection;
+import java.util.LinkedList;
+
 /**
  * Created by midvorki on 10/8/14.
  */
@@ -14,12 +17,38 @@ public class Config
     public static String getHomePath() { return homePath; }
     public static String getWorkingPath() { return workingPath; }
     public static String getConfigPath() { return configPath; }
-    public static String getSyntaxPath() { return syntaxPath; }
-    public static String getSyntaxSuffix() { return syntaxSuffix; }
-    public static String getLoaderPath() { return loaderPath; }
-    public static String getLoaderSuffix() { return loaderSuffix; }
     public static String getGenDestPath() { return genDestPath; }
     public static String getLogDirParent() { return logDirParent; }
+
+    public static Collection<SearchPath> getSyntaxPath() { return syntaxPath; }
+    public static String[][] getSyntaxPathArray()
+    {
+        String lRet[][] = new String[getSyntaxPath().size()][2];
+        int lIdx = 0;
+        for (SearchPath lSp : getSyntaxPath())
+        {
+            lRet[lIdx][0] = lSp.getPath();
+            lRet[lIdx][1] = lSp.getSuffix();
+        }
+        return lRet;
+    }
+
+    public static Collection<SearchPath> getLoaderPath() { return loaderPath; }
+
+    public static String[][] getLoaderPathArray()
+    {
+        String lRet[][] = new String[getLoaderPath().size()][2];
+        int lIdx = 0;
+        for (SearchPath lSp : getLoaderPath())
+        {
+            lRet[lIdx][0] = lSp.getPath();
+            lRet[lIdx][1] = lSp.getSuffix();
+        }
+        return lRet;
+    }
+
+
+
 
     public static void setLibName(String aIn)
     {
@@ -34,14 +63,12 @@ public class Config
 
     public static void setSyntaxRelPath(String aIn, String aInSuffix)
     {
-        syntaxPath = concatPath(homePath,aIn);
-        syntaxSuffix = aInSuffix;
+        syntaxPath.add(new SearchPath(concatPath(homePath,aIn), aInSuffix));
     };
 
     public static void setLoaderRelPath(String aIn, String aInSuffix)
     {
-        loaderPath = concatPath(homePath,aIn);
-        loaderSuffix = aInSuffix;
+        loaderPath.add(new SearchPath(concatPath(homePath,aIn), aInSuffix));
     }
 
     public static void setLogDirParent(String aIn)
@@ -78,10 +105,8 @@ public class Config
     public static String libName = null;
     public static String homePath = null;
     public static String workingPath = initWorkingPath();
-    public static String syntaxPath = null;
-    public static String syntaxSuffix = null;
-    public static String loaderPath = null;
-    public static String loaderSuffix = null;
+    public static Collection<SearchPath> syntaxPath = new LinkedList<SearchPath>();
+    public static Collection<SearchPath> loaderPath = new LinkedList<SearchPath>();
     public static String genDestPath = null;
     public static String configPath = null;
     public static String logDirParent = null;

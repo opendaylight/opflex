@@ -2,6 +2,9 @@ package org.opendaylight.opflex.genie.content.parse.modlan;
 
 import org.opendaylight.opflex.genie.content.model.mmeta.NodeType;
 import org.opendaylight.opflex.genie.content.parse.pconfig.PConfigNode;
+import org.opendaylight.opflex.genie.content.parse.pconfig.PLoaderNode;
+import org.opendaylight.opflex.genie.content.parse.pconfig.PSyntaxNode;
+import org.opendaylight.opflex.genie.content.parse.pmeta.PAlias;
 import org.opendaylight.opflex.genie.content.parse.pmeta.PNode;
 import org.opendaylight.opflex.genie.content.parse.pmeta.PProp;
 import org.opendaylight.opflex.genie.engine.parse.model.ParseNode;
@@ -30,6 +33,10 @@ public class ParseRegistry
                         ProcessorNode node = new PNode(lNt);
                         metadata.addChild(node);
                         {
+                            PAlias lAlias = new PAlias("alias");
+                            node.addChild(lAlias);
+                        }
+                        {
                             PProp prop = new PProp(Strings.PROP);
                             node.addChild(prop);
                         }
@@ -45,6 +52,10 @@ public class ParseRegistry
                         {
                             ProcessorNode subNode = new PNode(NodeType.NODE);
                             node.addChild(subNode);
+                            {
+                                PAlias lAlias = new PAlias("alias");
+                                subNode.addChild(lAlias);
+                            }
                             {
                                 PProp prop = new PProp(Strings.PROP);
                                 subNode.addChild(prop);
@@ -62,8 +73,16 @@ public class ParseRegistry
                 }
             }
             {
-                ProcessorNode config = new PConfigNode("config");
+                ProcessorNode config = new PConfigNode();
                 lDocRoot.addChild(config);
+                {
+                    PLoaderNode lLoader = new PLoaderNode();
+                    config.addChild(lLoader);
+                }
+                {
+                    PSyntaxNode lSyntax = new PSyntaxNode();
+                    config.addChild(lSyntax);
+                }
             }
         }
         return lPTree;
