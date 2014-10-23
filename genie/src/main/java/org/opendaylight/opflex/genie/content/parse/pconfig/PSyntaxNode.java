@@ -8,28 +8,26 @@ import org.opendaylight.opflex.genie.engine.parse.modlan.ParseDirective;
 import org.opendaylight.opflex.genie.engine.proc.Config;
 
 /**
- * Created by midvorki on 10/8/14.
+ * Created by midvorki on 10/22/14.
  */
-public class PConfigNode
+public class PSyntaxNode
         extends ParseNode
 {
     /**
      * Constructor
      */
-    public PConfigNode()
+    public PSyntaxNode()
     {
-        super("config", false);
+        super("syntax", false);
     }
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        Config.setLibName(aInData.getNamedValue("libname", "genierated", true));
-        Config.setSyntaxRelPath(aInData.getNamedValue("syntax", null, true),aInData.getNamedValue("syntaxfiletype", ".meta", true));
-        Config.setLoaderRelPath(aInData.getNamedValue("loader", null, true), aInData.getNamedValue("loaderfiletype", ".cfg", true));
-        Config.setGenDestPath(aInData.getNamedValue("gendest", ".", true));
-        Config.setLogDirParent(aInData.getNamedValue("logfile", ".", true));
+        Config.setSyntaxRelPath(
+                aInData.getNamedValue("path", null, true),
+                aInData.getNamedValue("filetype", ".meta", true));
 
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,null);
+        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,aInParentItem);
     }
 
     /**

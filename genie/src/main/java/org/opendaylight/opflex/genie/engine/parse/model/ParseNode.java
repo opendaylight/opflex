@@ -74,4 +74,5 @@ public class ParseNode extends ProcessorNode
     }
 
     private Map<String,ParseNodeProp> props = null;
+
 }
