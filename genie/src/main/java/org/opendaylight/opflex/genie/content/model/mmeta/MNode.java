@@ -1,5 +1,6 @@
 package org.opendaylight.opflex.genie.content.model.mmeta;
 
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeMap;
@@ -196,6 +197,12 @@ public class MNode extends Item
             try
             {
                 ParseNode lParseNode = (ParseNode) lParserClass.getConstructors()[0].newInstance(getLID().getName());
+                LinkedList<String> lAliases = new LinkedList<String>();
+                getAliases(lAliases);
+                if (!lAliases.isEmpty())
+                {
+                    lParseNode.setAliases(lAliases);
+                }
                 lParentParseNode.addChild(lParseNode);
                 TreeMap<String,MNodeProp> lNodeProps = new TreeMap<String,MNodeProp>();
                 getProps(lNodeProps);
@@ -254,6 +261,16 @@ public class MNode extends Item
             {
                 lUses.getProps(aOut);
             }
+        }
+    }
+
+    public void getAliases(Collection<String> aOut)
+    {
+        LinkedList<Item> lAliasList = new LinkedList<Item>();
+        getChildItems(MNodeAlias.MY_CAT,lAliasList);
+        for (Item lIt : lAliasList)
+        {
+            aOut.add(lIt.getLID().getName());
         }
     }
 
