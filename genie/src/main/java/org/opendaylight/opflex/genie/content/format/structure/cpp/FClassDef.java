@@ -644,7 +644,7 @@ public class FClassDef extends ItemFormatterTask
             boolean lIsUniqueNaming = lTargetClass.getNamingPaths(lNamingPaths, Language.CPP);
             for (List<Pair<String, MNameRule>> lNamingPath : lNamingPaths)
             {
-                if (!hasValidPath(lNamingPath)) continue;
+//                if (!hasValidPath(lNamingPath)) continue;
                 genNamedPropMutators(aInIndent, aInClass, lTargetClass, aInPropIdx, lNamingPath, lIsUniqueNaming,
                                     lName, "Reference", ", " + lTargetClass.getGID().getId());
             }
@@ -802,7 +802,6 @@ public class FClassDef extends ItemFormatterTask
         boolean lIsUniqueNaming = aInClass.getNamingPaths(lNamingPaths, Language.CPP);
         for (List<Pair<String, MNameRule>> lNamingPath : lNamingPaths)
         {
-            if (!hasValidPath(lNamingPath)) continue;
             genNamedSelfResolvers(aInIdent, aInClass, lNamingPath, lIsUniqueNaming);
         }
     }
@@ -1006,7 +1005,7 @@ public class FClassDef extends ItemFormatterTask
             out.println(")");
         }
         out.println(aInIdent,"{");
-        out.println(aInIdent + 1, lMethodName + "(opflex::ofcore::OFFramework::defaultInstance(), " + getNamingPropList(aInClass, aInNamingPath) + ");");
+        out.println(aInIdent + 1, lMethodName + "(opflex::ofcore::OFFramework::defaultInstance()" + getNamingPropList(aInClass, aInNamingPath) + ");");
         out.println(aInIdent,"}");
         out.println();
 
@@ -1230,7 +1229,6 @@ public class FClassDef extends ItemFormatterTask
 
     public static void getNamingPropList(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
     {
-        boolean lIsFirst = true;
         for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
         {
             MNameRule lNr = lNamingNode.getSecond();
@@ -1241,14 +1239,7 @@ public class FClassDef extends ItemFormatterTask
             {
                 if (lNc.hasPropName())
                 {
-                    if (lIsFirst)
-                    {
-                        lIsFirst = false;
-                    }
-                    else
-                    {
-                        aOut.append(',');
-                    }
+                	aOut.append(',');
                     getPropParamName(lThisContClass, lNc.getPropName(), aOut);
                 }
             }
@@ -1349,7 +1340,7 @@ public class FClassDef extends ItemFormatterTask
             out.println(")");
         }
         out.println(aInIdent,"{");
-        out.println(aInIdent + 1, "return " + lMethodName + "(opflex::ofcore::OFFramework::defaultInstance()," + getNamingPropList(aInClass, aInNamingPath) + ");");
+        out.println(aInIdent + 1, "return " + lMethodName + "(opflex::ofcore::OFFramework::defaultInstance()" + getNamingPropList(aInClass, aInNamingPath) + ");");
         out.println(aInIdent,"}");
         out.println();
 

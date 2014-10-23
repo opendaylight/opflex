@@ -9,12 +9,14 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <opflex/ofcore/OFFramework.h>
+#include <modelgbp/metadata/metadata.hpp>
+
+#include "PolicyManager.h"
+
 #pragma once
 #ifndef OVSAGENT_ENDPOINTMANAGER_H
 #define OVSAGENT_ENDPOINTMANAGER_H
-
-#include <opflex/ofcore/OFFramework.h>
-#include <modelgbp/metadata/metadata.hpp>
 
 namespace ovsagent {
 
@@ -32,7 +34,8 @@ public:
      * Instantiate a new endpoint manager using the specified framework
      * instance.
      */
-    EndpointManager(opflex::ofcore::OFFramework& framework_);
+    EndpointManager(opflex::ofcore::OFFramework& framework,
+                    PolicyManager& policyManager);
 
     /**
      * Destroy the endpoint manager and clean up all state
@@ -51,6 +54,7 @@ public:
 
 private:
     opflex::ofcore::OFFramework& framework;
+    PolicyManager& policyManager;
 };
 
 } /* namespace ovsagent */

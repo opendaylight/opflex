@@ -63,13 +63,19 @@ public:
     void stop();
 
     /**
+     * Get the policy manager object for this agent
+     */
+    PolicyManager& getPolicyManager() { return policyManager; }
+
+    /**
      * Get the endpoint manager object for this agent
      */
-    EndpointManager& getEndpointManager() { return epManager; }
+    EndpointManager& getEndpointManager() { return endpointManager; }
 
 private:
     opflex::ofcore::OFFramework& framework;
-    EndpointManager epManager;
+    PolicyManager policyManager;
+    EndpointManager endpointManager;
 
     std::set<std::string> hypervisorNames;
     std::set<EndpointSource*> endpointSources;

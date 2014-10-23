@@ -25,14 +25,12 @@ using boost::shared_ptr;
 using boost::property_tree::ptree;
 
 Agent::Agent(OFFramework& framework_) 
-    : framework(framework_), epManager(framework) {
+    : framework(framework_), policyManager(framework), 
+      endpointManager(framework, policyManager) {
 
 }
 
 Agent::~Agent() {
-    BOOST_FOREACH(EndpointSource* source, endpointSources) {
-        delete source;
-    }
 }
 
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
@@ -66,18 +64,26 @@ void Agent::start() {
     root->addEpdrL3Discovered();
     mutator.commit();
 
-    // instantiate the endpoint manager
-    epManager.start();
+    // instantiate other components
+    policyManager.start();
+    endpointManager.start();
 
     BOOST_FOREACH(const std::string& name, hypervisorNames) {
-        EndpointSource* source = new VirtEndpointSource(&epManager, name);
+        EndpointSource* source = new VirtEndpointSource(&endpointManager, name);
         endpointSources.insert(source);
     }
 }
 
 void Agent::stop() {
     LOG(INFO) << "Stopping OVS Agent";
-    epManager.stop();
+
+    BOOST_FOREACH(EndpointSource* source, endpointSources) {
+        delete source;
+    }
+    endpointSources.clear();
+
+    endpointManager.stop();
+    policyManager.stop();
     framework.stop();
 }
 

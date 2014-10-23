@@ -13,13 +13,14 @@
 
 namespace ovsagent {
 
-EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_)
-    : framework(framework_) {
-    start();
+    EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
+                                     PolicyManager& policyManager_)
+        : framework(framework_), policyManager(policyManager_) {
+
 }
 
 EndpointManager::~EndpointManager() {
-    stop();
+
 }
 
 void EndpointManager::start() {

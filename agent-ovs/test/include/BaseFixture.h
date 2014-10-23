@@ -30,7 +30,6 @@ using opflex::ofcore::MockOFFramework;
 class BaseFixture {
 public:
     BaseFixture() : agent(framework) {
-        google::InitGoogleLogging("");
         agent.start();
     }
 
@@ -41,6 +40,19 @@ public:
     MockOFFramework framework;
     Agent agent;
 };
+
+// wait for a condition to become true because of an event in another
+// thread
+#define WAIT_FOR(condition, count)                             \
+    {                                                          \
+        int _c = 0;                                            \
+        while (_c < count) {                                   \
+           if (condition) break;                               \
+           _c += 1;                                            \
+           usleep(1000);                                       \
+        }                                                      \
+        BOOST_CHECK((condition));                              \
+    }
 
 } /* namespace ovsagent */
 

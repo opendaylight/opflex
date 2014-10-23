@@ -26,15 +26,19 @@ libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(libvirt_LIBS) \
-	$(libglog_LIBS)
+	$(libglog_LIBS) \
+	$(BOOST_SYSTEM_LIB) \
+	$(BOOST_THREAD_LIB) 
 
 libagent_ovs_la_SOURCES = \
 	src/include/GLogLogHandler.h \
+	src/include/PolicyManager.h \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \
 	src/include/VirtEndpointSource.h \
 	src/include/Agent.h \
 	src/GLogLogHandler.cpp \
+	src/PolicyManager.cpp \
 	src/EndpointManager.cpp \
 	src/EndpointSource.cpp \
 	src/VirtEndpointSource.cpp \
@@ -62,6 +66,7 @@ agent_test_CXXFLAGS = \
 agent_test_SOURCES = \
 	test/include/BaseFixture.h \
 	test/main.cpp \
+	test/PolicyManager_test.cpp \
 	test/EndpointManager_test.cpp
 agent_test_LDADD = \
 	libagent_ovs.la \
