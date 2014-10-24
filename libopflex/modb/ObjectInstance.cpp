@@ -11,6 +11,8 @@
 
 #include <utility>
 
+#include <boost/foreach.hpp>
+
 #include "opflex/modb/mo-internal/ObjectInstance.h"
 
 namespace opflex {
@@ -285,7 +287,7 @@ void ObjectInstance::setString(prop_id_t prop_id, const string& value) {
     v.type = PropertyInfo::STRING;
     v.cardinality = PropertyInfo::SCALAR;
     if (v.value.which() != 0)
-        delete get<vector<string>*>(v.value);
+        delete get<string*>(v.value);
     v.value = new string(value);
 }
 
@@ -384,6 +386,95 @@ void ObjectInstance::addReference(prop_id_t prop_id,
         val = get<vector<reference_t>*>(v.value);
     }
     val->push_back(make_pair(class_id, uri));
+}
+
+template <typename T>
+bool equal(const ObjectInstance::Value& lhs, 
+           const ObjectInstance::Value& rhs) {
+    if (lhs.cardinality != rhs.cardinality) return false;
+    switch (lhs.cardinality) {
+    case PropertyInfo::VECTOR:
+        {
+            const vector<T>& l = *get<vector<T>*>(lhs.value);
+            const vector<T>& r = *get<vector<T>*>(rhs.value);
+            if (l != r) return false;
+            return true;
+        }
+        break;
+    case PropertyInfo::SCALAR:
+        {
+            switch (lhs.type) {
+            case PropertyInfo::STRING:
+                {
+                    const T& l = *get<T*>(lhs.value);
+                    const T& r = *get<T*>(rhs.value);
+                    if (l != r) return false;
+                }
+                break;
+            default:
+                {
+                    const T& l = get<T>(lhs.value);
+                    const T& r = get<T>(rhs.value);
+                    if (l != r) return false;
+                }
+                break;
+            }
+        }
+        break;
+    }
+    return true;
+}
+
+bool operator==(const ObjectInstance::Value& lhs, 
+                const ObjectInstance::Value& rhs) {
+    if (lhs.type != rhs.type) return false;
+    
+    switch (lhs.type) {
+    case PropertyInfo::ENUM8:
+    case PropertyInfo::ENUM16:
+    case PropertyInfo::ENUM32:
+    case PropertyInfo::ENUM64:
+    case PropertyInfo::U64:
+        return equal<uint64_t>(lhs, rhs);
+    case PropertyInfo::S64:
+        return equal<int64_t>(lhs, rhs);
+    case PropertyInfo::STRING:
+        return equal<string>(lhs, rhs);
+    case PropertyInfo::REFERENCE:
+        return equal<reference_t>(lhs, rhs);
+        break;
+    default:
+        // should not happen
+        return false;
+    }
+
+    return true;
+}
+
+bool operator!=(const ObjectInstance::Value& lhs, 
+                const ObjectInstance::Value& rhs) {
+    return !operator==(lhs,rhs);
+}
+
+bool operator==(const ObjectInstance& lhs, const ObjectInstance& rhs) {
+    BOOST_FOREACH(const ObjectInstance::prop_map_t::value_type& v,
+                  lhs.prop_map) {
+        ObjectInstance::prop_map_t::const_iterator it =
+            rhs.prop_map.find(v.first);
+        if (it == rhs.prop_map.end()) return false;
+        if (v.second != it->second) return false;
+    }
+    BOOST_FOREACH(ObjectInstance::prop_map_t::value_type v,
+                  rhs.prop_map) {
+        ObjectInstance::prop_map_t::const_iterator it =
+            lhs.prop_map.find(v.first);
+        if (it == rhs.prop_map.end()) return false;
+    }
+    return true;
+}
+
+bool operator!=(const ObjectInstance& lhs, const ObjectInstance& rhs) {
+    return !operator==(lhs,rhs);
 }
 
 } /* namespace mointernal */

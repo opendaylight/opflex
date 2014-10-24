@@ -360,7 +360,27 @@ private:
 
     typedef boost::unordered_map<prop_key_t, Value> prop_map_t;
     prop_map_t prop_map;
+
+    friend bool operator==(const ObjectInstance& lhs, 
+                           const ObjectInstance& rhs);
+    friend bool operator!=(const ObjectInstance& lhs, 
+                           const ObjectInstance& rhs);
+    friend bool operator==(const Value& lhs, 
+                           const Value& rhs);
+    friend bool operator!=(const Value& lhs, 
+                           const Value& rhs);
+    template <typename T>
+    friend bool equal(const Value& lhs, const Value& rhs);
 };
+
+/**
+ * Check for ObjectInstance equality.
+ */
+bool operator==(const ObjectInstance& lhs, const ObjectInstance& rhs);
+/**
+ * Check for ObjectInstance inequality.
+ */
+bool operator!=(const ObjectInstance& lhs, const ObjectInstance& rhs);
 
 } /* namespace mointernal */
 } /* namespace modb */

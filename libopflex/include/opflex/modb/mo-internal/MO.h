@@ -243,7 +243,19 @@ private:
     class MOImpl;
     friend class MOImpl;
     MOImpl* pimpl;
+
+    friend bool operator==(const MO& lhs, const MO& rhs);
+    friend bool operator!=(const MO& lhs, const MO& rhs);
 };
+
+/**
+ * Check for MO equality.
+ */
+bool operator==(const MO& lhs, const MO& rhs);
+/**
+ * Check for MO inequality.
+ */
+bool operator!=(const MO& lhs, const MO& rhs);
 
 } /* namespace mointernal */
 } /* namespace modb */
