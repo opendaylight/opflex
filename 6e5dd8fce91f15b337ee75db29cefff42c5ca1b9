@@ -16,6 +16,24 @@
       "revId": "6e5dd8fce91f15b337ee75db29cefff42c5ca1b9",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba8cc1f7_957224e4",
+        "filename": "agent-ovs/src/PolicyManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2014-10-24T16:31:32Z",
+      "side": 1,
+      "message": "This is computing the indexes I need for the endpoint manager functionality, but they\u0027re not just simple relationships, as will be more clear when I finish with the next chunk of code.  I\u0027m really just implementing the exact design I did with ODL which I know works.  If we need/want to refactor later we can, but I\u0027d like to make progress now",
+      "parentUuid": "ba8cc1f7_75352045",
+      "revId": "6e5dd8fce91f15b337ee75db29cefff42c5ca1b9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
