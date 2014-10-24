@@ -58,6 +58,8 @@ public:
      * Object instance for this managed object
      */
     boost::shared_ptr<const modb::mointernal::ObjectInstance> oi;
+
+    friend bool operator==(const MO& lhs, const MO& rhs);
 };
 
 MO::MO(OFFramework& framework,
@@ -121,6 +123,17 @@ void MO::unregisterListener(ofcore::OFFramework& framework,
                             class_id_t class_id) {
     framework.getStore().unregisterListener(class_id,
                                             listener);
+}
+
+bool operator==(const MO& lhs, const MO& rhs) {
+    if (lhs.pimpl->uri != rhs.pimpl->uri) return false;
+    if (lhs.pimpl->class_id != rhs.pimpl->class_id) return false;
+    if (*lhs.pimpl->oi != *rhs.pimpl->oi) return false;
+    return true;
+}
+
+bool operator!=(const MO& lhs, const MO& rhs) {
+    return !operator==(lhs,rhs);
 }
 
 } /* namespace mointernal */
