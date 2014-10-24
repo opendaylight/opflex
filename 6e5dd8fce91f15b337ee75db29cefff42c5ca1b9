@@ -34,6 +34,24 @@
       "revId": "6e5dd8fce91f15b337ee75db29cefff42c5ca1b9",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba8cc1f7_555b3c54",
+        "filename": "agent-ovs/src/PolicyManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-10-24T18:42:59Z",
+      "side": 1,
+      "message": "The inventory class is largely based on your ODL code, just done a little differently so that everything is triggered through MODB notifications. I\u0027ll sync up with you on Monday.",
+      "parentUuid": "ba8cc1f7_957224e4",
+      "revId": "6e5dd8fce91f15b337ee75db29cefff42c5ca1b9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
