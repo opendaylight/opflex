@@ -72,6 +72,11 @@ agent_test_LDADD = \
 	libagent_ovs.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
+if HAVE_DOXYGEN
+  noinst_DATA = \
+	doc/html
+endif
+
 doc/html: $(model_include_HEADERS) doc/Doxyfile 
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html

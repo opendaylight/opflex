@@ -20,7 +20,7 @@
 namespace ovsagent {
 
 /**
- * An @ref OFLogHandler that logs to google log library
+ * An OFLogHandler that logs to google log library
  */
 class GLogLogHandler : public opflex::logging::OFLogHandler {
 public:

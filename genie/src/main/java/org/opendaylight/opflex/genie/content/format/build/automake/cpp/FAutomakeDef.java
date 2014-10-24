@@ -106,8 +106,8 @@ public class FAutomakeDef
         out.println(ainIndent, "pkgconfig_DATA = " + aInLibName + ".pc");
         out.println();
         out.println(ainIndent ,"if HAVE_DOXYGEN");
-            out.println(ainIndent + 1, "noinst_DATA = \\");
-                        out.println(ainIndent + 2, "doc/html");
+            out.println(ainIndent, "    noinst_DATA = \\");
+                        out.println(ainIndent + 1, "doc/html");
         out.println(ainIndent ,"endif");
         out.println();
         out.println(ainIndent,"doc/html: $(metadata_include_HEADERS) " + 

@@ -114,7 +114,7 @@ STRIP_FROM_PATH        =
 # definition is used. Otherwise one should specify the include paths that 
 # are normally passed to the compiler using the -I flag.
 
-STRIP_FROM_INC_PATH    = 
+STRIP_FROM_INC_PATH    = @top_srcdir@/include
 
 # If the SHORT_NAMES tag is set to YES, doxygen will generate much shorter 
 # (but less readable) file names. This can be useful is your file systems 
@@ -169,7 +169,7 @@ ALIASES                =
 # For instance, some of the names that are used will be different. The list 
 # of all members will be omitted, etc.
 
-OPTIMIZE_OUTPUT_FOR_C  = YES
+OPTIMIZE_OUTPUT_FOR_C  = NO
 
 # Set the OPTIMIZE_OUTPUT_JAVA tag to YES if your project consists of Java 
 # sources only. Doxygen will then generate output that is more tailored for Java. 
@@ -869,18 +869,6 @@ GENERATE_XML           = NO
 # put in front of it. If left blank `xml' will be used as the default path.
 
 XML_OUTPUT             = xml
-
-# The XML_SCHEMA tag can be used to specify an XML schema, 
-# which can be used by a validating XML parser to check the 
-# syntax of the XML files.
-
-XML_SCHEMA             = 
-
-# The XML_DTD tag can be used to specify an XML DTD, 
-# which can be used by a validating XML parser to check the 
-# syntax of the XML files.
-
-XML_DTD                = 
 
 # If the XML_PROGRAMLISTING tag is set to YES Doxygen will 
 # dump the program listings (including syntax highlighting 

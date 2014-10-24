@@ -53,6 +53,9 @@ public:
     virtual void stop() = 0;
 
 protected:
+    /**
+     * The endpoint manager that will be updated
+     */
     EndpointManager* manager;
 };
 
