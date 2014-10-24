@@ -81,7 +81,7 @@ public class FAutomakeDef
 
             Collection<MClass> lClasses = lModuleNode.getSecond();
 
-            out.println(ainIndent, lModName + "_include_HEADERS = \\");
+            out.print(ainIndent, lModName + "_include_HEADERS =");
             for (MClass lClass : lClasses)
             {
                 out.println(" \\");

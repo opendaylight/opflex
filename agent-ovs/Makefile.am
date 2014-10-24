@@ -32,6 +32,7 @@ libagent_ovs_la_LIBADD = \
 
 libagent_ovs_la_SOURCES = \
 	src/include/GLogLogHandler.h \
+	src/include/PolicyListener.h \
 	src/include/PolicyManager.h \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \

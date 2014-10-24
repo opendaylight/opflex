@@ -39,7 +39,7 @@ public:
         bd = space->addGbpBridgeDomain("bd");
         rd = space->addGbpRoutingDomain("rd");
     
-        fd->addGbpFloodDomainToNetworkDomainRSrc()
+        fd->addGbpFloodDomainToNetworkRSrc()
             ->setTargetBridgeDomain(bd->getURI());
         bd->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
@@ -59,6 +59,10 @@ public:
         subnetsrd1 = subnetsrd->addGbpSubnet("subnetsrd1");
         subnetsrd->addGbpSubnetsToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
+
+        eg = space->addGbpEpGroup("group");
+        eg->addGbpEpGroupToNetworkRSrc()
+            ->setTargetSubnet(subnetsfd1->getURI());
     
         mutator.commit();
     }
@@ -78,6 +82,8 @@ public:
     shared_ptr<Subnet> subnetsbd1;
     shared_ptr<Subnets> subnetsrd;
     shared_ptr<Subnet> subnetsrd1;
+
+    shared_ptr<EpGroup> eg;
 };
 
 BOOST_AUTO_TEST_SUITE(PolicyManager_test)
@@ -102,8 +108,21 @@ BOOST_FIXTURE_TEST_CASE( subnet, PolicyFixture ) {
                           subnetsrd1->getURI()));
 }
 
-BOOST_FIXTURE_TEST_CASE( epg, PolicyFixture ) {
+static bool checkFd(PolicyManager& policyManager, 
+                    const URI& egURI,
+                    const URI& domainURI) {
+    optional<shared_ptr<FloodDomain> > rfd = 
+        policyManager.getFDForGroup(egURI);
+    if (!rfd) return false;
+    URI u = rfd.get()->getURI();
+    return (u == domainURI);
+}
 
+BOOST_FIXTURE_TEST_CASE( domain, PolicyFixture ) {
+    WAIT_FOR(checkFd(agent.getPolicyManager(),
+                     eg->getURI(), fd->getURI()), 500);
+
+    
 }
 
 BOOST_AUTO_TEST_SUITE_END()
