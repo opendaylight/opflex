@@ -34,7 +34,7 @@ module[gbp]
           super=gbp/L2BehavioralGroup;
           concrete]
     {
-        dependency[networkDomain;
+        dependency[network;
                    cardinality=single;]
         {
             to[class=gbp/BridgeDomain;

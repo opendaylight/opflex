@@ -10,6 +10,8 @@
  */
 
 #include <string>
+#include <vector>
+#include <list>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/thread.hpp>
@@ -17,6 +19,8 @@
 #include <opflex/modb/ObjectListener.h>
 #include <modelgbp/metadata/metadata.hpp>
 #include <modelgbp/dmtree/Root.hpp>
+
+#include "PolicyListener.h"
 
 #pragma once
 #ifndef OVSAGENT_POLICYMANAGER_H
@@ -52,8 +56,78 @@ public:
     void stop();
 
     /**
-     * Get the subnet URIs for subnets that reference the given
-     * network domain URI
+     * Register a listener for policy change events
+     *
+     * @param listener the listener functional object that should be
+     * called when changes occur related to the class.  This memory is
+     * owned by the caller and should be freed only after it has been
+     * unregistered.
+     * @see PolicyListener
+     */
+    void registerListener(PolicyListener* listener);
+
+    /**
+     * Unregister the specified listener
+     *
+     * @param listener the listener to unregister
+     * @throws std::out_of_range if there is no such class
+     */
+    void unregisterListener(PolicyListener* listener);
+
+    /**
+     * Get the routing domain for the specified endpoint group if it
+     * exists
+     *
+     * @param uri the URI for the endpoint group
+     * @return the routing domain or boost::none if the group or the
+     * domain is not found
+     */
+    boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> >
+    getRDForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the bridge domain for the specified endpoint group if it
+     * exists
+     *
+     * @param uri the URI for the endpoint group
+     * @return the bridge domain or boost::none if the group or the
+     * domain is not found
+     */
+    boost::optional<boost::shared_ptr<modelgbp::gbp::BridgeDomain> >
+    getBDForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the flood domain for the specified endpoint group if it
+     * exists
+     *
+     * @param uri the URI for the endpoint group
+     * @return the flood domain or boost::none if the group or the
+     * domain is not found
+     */
+    boost::optional<boost::shared_ptr<modelgbp::gbp::FloodDomain> >
+    getFDForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * A vector of Subnet objects
+     */
+    typedef std::vector<boost::shared_ptr<modelgbp::gbp::Subnet> > 
+    subnet_vector_t;
+
+    /**
+     * Get all the relevent subnets for the endpoint group specified.
+     * This includes any subnets that are directly referenced by the
+     * group, as well as any subnets that directly reference an
+     * "ancestor" forwarding domain.
+     *
+     * @param uri the URI for the endpoint group
+     * @param subnets a vector that will receive the subnets
+     */
+    void getSubnetsForGroup(const opflex::modb::URI& eg,
+                            /* out */ subnet_vector_t& subnets);
+
+    /**
+     * Get the subnet URIs for subnets that directly reference the
+     * given network domain URI
      *
      * @param domainUri a URI referencing a network domain
      * @param uris the set of URIs that reference the domain
@@ -68,9 +142,9 @@ private:
      * State and indices related to a given endpoint group
      */
     struct GroupState {
-        boost::shared_ptr<modelgbp::gbp::RoutingDomain> routingDomain;
-        boost::shared_ptr<modelgbp::gbp::BridgeDomain> bridgeDomain;
-        boost::shared_ptr<modelgbp::gbp::FloodDomain> floodDomain;
+        boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
+        boost::optional<boost::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;
+        boost::optional<boost::shared_ptr<modelgbp::gbp::FloodDomain> > floodDomain;
         typedef boost::unordered_map<opflex::modb::URI,
                                      boost::shared_ptr<modelgbp::gbp::Subnet> > subnet_map_t;
         subnet_map_t subnet_map;
@@ -110,15 +184,34 @@ private:
     friend class DomainListener;
 
     /**
-     * Update the subnet URI map 
+     * The policy listeners that have been registered
+     */
+    std::list<PolicyListener*> policyListeners;
+    boost::mutex listener_mutex;
+
+    /**
+     * Update the subnet URI map.  You must hold a state lock to call
+     * this function.
      */
     void updateSubnetIndex();
 
     /**
      * Update the EPG domain cache information for the specified EPG
-     * URI
+     * URI.  You must hold a state lock to call this function.
+     *
+     * @param egURI the URI of the EPG that should be updated
+     * @return true if the endpoint group was updated
      */
-    void updateEPGDomains(const opflex::modb::URI& uri);
+    bool updateEPGDomains(const opflex::modb::URI& egURI);
+
+    /**
+     * Notify policy listeners about an update to the forwarding
+     * domains for an endpoint group.
+     *
+     * @param egURI the URI of the endpoint group that has been
+     * updated
+     */
+    void notifyEPGDomain(const opflex::modb::URI& egURI);
 };
 
 } /* namespace ovsagent */
