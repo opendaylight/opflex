@@ -75,6 +75,7 @@ int comms_active_connection(
             uv_strerror(rc);
         peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
     } else {
+        LOG(DEBUG) << peer << " up() for a pending getaddrinfo()";
         peer->up();
         peer->insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
     }
@@ -101,13 +102,21 @@ void on_active_connection(uv_connect_t *req, int status) {
 
     LOG(DEBUG) << peer;
 
+    if (peer->destroying_) {
+        LOG(INFO) << peer << " peer is being destroyed. down() it";
+        peer->down();
+        return;
+    }
+
+    void retry_later(ActivePeer * peer);
+
     int rc;
     if (status < 0) {
         LOG(WARNING) << "connect: [" << uv_err_name(status) <<
             "] " << uv_strerror(status);
         if ((rc = connect_to_next_address(peer))) {
             LOG(WARNING) << "connect: no more resolved addresses";
-            uv_close((uv_handle_t*)req->handle, on_close);
+            retry_later(peer);
         }
         return;
     }
@@ -141,28 +150,34 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     LOG(DEBUG);
 
     ActivePeer * peer = Peer::get(req);
-    assert(!peer->passive);
+    assert(!peer->passive_);
+    assert(peer->peerType()[0]=='A');
 
     void retry_later(ActivePeer * peer);
+
+    if (peer->destroying_) {
+        LOG(INFO) << peer << " peer is being destroyed. down() it";
+        peer->down();
+        return;
+    }
 
     if (status < 0) {
         LOG(WARNING) << "getaddrinfo callback error: [" << uv_err_name(status) <<
             "] " << uv_strerror(status);
-        peer->status = Peer::kPS_FAILED_TO_RESOLVE;
+        peer->status_ = Peer::kPS_FAILED_TO_RESOLVE;
         uv_freeaddrinfo(resp);
 
         return retry_later(peer);
     }
 
-    peer->status = Peer::kPS_RESOLVED;
+    peer->status_ = Peer::kPS_RESOLVED;
 
     debug_resolution_entries(resp);
 
     int rc;
-    int tcp_init(uv_loop_t * loop, uv_tcp_t * handle);
 
     /* FIXME: pass the loop along */
-    if ((rc = tcp_init(uv_default_loop(), &peer->handle))) {
+    if ((rc = peer->tcpInit())) {
         return retry_later(peer);
     }
 
@@ -173,7 +188,9 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
         return retry_later(peer);
     }
 
-    peer->status = Peer::kPS_CONNECTING;
+    peer->status_ = Peer::kPS_CONNECTING;
+
+    LOG(DEBUG) << peer << " waiting for connection completion";
 
 }
 
@@ -262,9 +279,13 @@ void debug_resolution_entries(struct addrinfo const * ai) {
 }
 
 void retry_later(ActivePeer * peer) {
+
+    LOG(DEBUG) << peer;
+
     peer->unlink();
     peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
 
+    LOG(DEBUG) << peer << " down() for a retry_later()";
     peer->down();
 
     return;
@@ -276,9 +297,12 @@ void swap_stack_on_close(uv_handle_t * h) {
 
     LOG(DEBUG) << peer;
 
+ // LOG(DEBUG) << "{" << peer << "}A down() for a swap_stack_on_close()";
+ // peer->down();
+
     int rc;
     /* FIXME: pass the loop along */
-    if ((rc = tcp_init(uv_default_loop(), &peer->handle))) {
+    if ((rc = peer->tcpInit())) {
 
         retry_later(peer);
 
@@ -303,7 +327,7 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
 
     int rc = UV_EAI_FAIL;
 
-    while (ai && (rc = uv_tcp_connect(&peer->connect_req, &peer->handle,
+    while (ai && (rc = uv_tcp_connect(&peer->connect_req, &peer->handle_,
                 ai->ai_addr, on_active_connection))) {
         LOG(ai ? INFO : WARNING) << "uv_tcp_connect: [" << uv_err_name(rc) <<
             "] " << uv_strerror(rc);
@@ -311,7 +335,7 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
         if ((-EINVAL == rc) && swap_stack) {
 
             LOG(INFO) << "destroying socket and retrying";
-            uv_close((uv_handle_t*)&peer->handle, swap_stack_on_close);
+            uv_close((uv_handle_t*)&peer->handle_, swap_stack_on_close);
 
             return 0;
         }
@@ -330,7 +354,9 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
     }
 
     if (rc) {
-        retry_later(peer);
+        LOG(DEBUG) << "unable to issue a(nother) connect request";
+    } else {
+        LOG(DEBUG) << "issued a connect request";
     }
 
     return rc;

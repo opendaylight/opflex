@@ -12,27 +12,53 @@
 
 namespace opflex { namespace comms { namespace internal {
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winvalid-offsetof"
+::boost::atomic<size_t> Peer::counter(0);
+::boost::atomic<size_t> Peer::LoopData::counter(0);
+::boost::atomic<size_t> CommunicationPeer::counter(0);
+::boost::atomic<size_t> ActivePeer::counter(0);
+::boost::atomic<size_t> PassivePeer::counter(0);
+::boost::atomic<size_t> ListeningPeer::counter(0);
+
+std::ostream& operator<< (std::ostream& os, Peer const * p) {
+    return os << "{" << reinterpret_cast<void const *>(p) << "}"
+#ifndef NDEBUG
+        << p->peerType()
+#endif
+        << "[" << p->uvRefCnt_ << "]";
+}
 
 CommunicationPeer * Peer::get(uv_write_t * r) {
-    return static_cast<CommunicationPeer *>(r->data);
+    CommunicationPeer * peer = static_cast<CommunicationPeer *>(r->data);
+
+    peer->__checkInvariants();
+
+    return peer;
 }
 
 CommunicationPeer * Peer::get(uv_timer_t * h) {
-    return static_cast<CommunicationPeer *>(h->data);
+    CommunicationPeer * peer = static_cast<CommunicationPeer *>(h->data);
+
+    peer->__checkInvariants();
+
+    return peer;
 }
 
 ActivePeer * Peer::get(uv_connect_t * r) {
     /* the following would also work */
-    return Peer::get<ActivePeer>(r->handle);
+    ActivePeer * peer = Peer::get<ActivePeer>(r->handle);
+
+    peer->__checkInvariants();
+
+    return peer;
 }
 
 ActivePeer * Peer::get(uv_getaddrinfo_t * r) {
-    return static_cast<ActivePeer *>(r->data);
-}
+    ActivePeer * peer = static_cast<ActivePeer *>(r->data);
 
-#pragma clang diagnostic pop
+    peer->__checkInvariants();
+
+    return peer;
+}
 
 class EchoGen {
   public:
@@ -65,12 +91,14 @@ void CommunicationPeer::sendEchoReq() {
 
 void CommunicationPeer::timeout() {
 
+    uint64_t rtt = now() - lastHeard_;
+
     LOG(INFO) << this
         << " refcnt: " << uvRefCnt_
         << " lastHeard_: " << lastHeard_
         << " now(): " << now()
-        << " now() - lastHeard_: " << now() - lastHeard_
-        << " keepaliveInterval_: " << keepaliveInterval_
+        << " rtt >= " << rtt
+        << " keepAliveInterval_: " << keepAliveInterval_
     ;
 
     if (uvRefCnt_ == 1) {
@@ -79,7 +107,7 @@ void CommunicationPeer::timeout() {
         return;
     }
 
-    if (now() - lastHeard_ < (keepaliveInterval_ >> 1) ) {
+    if (rtt <= (keepAliveInterval_ >> 2) ) {
 
         LOG(DEBUG) << this << " still waiting";
 
@@ -87,18 +115,18 @@ void CommunicationPeer::timeout() {
 
     }
 
-    if (now() - lastHeard_ > (keepaliveInterval_ << 1) ) {
+    if (rtt > (keepAliveInterval_ << 2) ) {
 
         LOG(INFO) << this << " tearing down the connection upon timeout";
 
         /* close the connection and hope for the best */
-        uv_close((uv_handle_t*)&handle, on_close);
+        uv_close((uv_handle_t*)&handle_, on_close);
 
         return;
     }
 
     /* send echo request */
-    LOG(DEBUG) << "sending a ping for keep-alive";
+    LOG(DEBUG) << this << " sending a ping for keep-alive";
     sendEchoReq();
 
 }

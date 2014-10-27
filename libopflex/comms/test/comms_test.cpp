@@ -34,8 +34,11 @@ class CommsFixture {
             idler((typeof(idler))malloc(sizeof(*idler))),
             timer((typeof(timer))malloc(sizeof(*timer))) {
 
+        LOG(INFO) << "\n\n\n\n\n\n\n\n";
+
         LOG(DEBUG) << "idler = " << idler;
         LOG(DEBUG) << "timer = " << timer;
+        idler->data = timer->data = this;
 
         int rc = opflex::comms::initCommunicationLoop(uv_default_loop());
 
@@ -51,7 +54,7 @@ class CommsFixture {
         uv_idle_start(idler, check_peer_db_cb);
 
         uv_timer_init(uv_default_loop(), timer);
-        uv_timer_start(timer, timeout_cb, 500, 0);
+        uv_timer_start(timer, timeout_cb, 1800, 0);
         uv_unref((uv_handle_t*) timer);
 
     }
@@ -59,17 +62,17 @@ class CommsFixture {
     struct PeerDisposer {
         void operator()(Peer *peer)
         {
-            LOG(DEBUG) << "down() with intent of deleting " << peer;
-            peer->down();
+            LOG(DEBUG) << peer << " destroy() with intent of deleting";
+            peer->destroy();
         }
     };
 
-    ~CommsFixture() {
+    void cleanup() {
+
+        LOG(DEBUG);
 
         uv_timer_stop(timer);
         uv_idle_stop(idler);
-        uv_close((uv_handle_t *)timer, (uv_close_cb)free);
-        uv_close((uv_handle_t *)idler, (uv_close_cb)free);
 
         for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
             Peer::LoopData::getPeerList(uv_default_loop(),
@@ -78,7 +81,18 @@ class CommsFixture {
 
         }
 
+        uv_idle_start(idler, wait_for_zero_peers_cb);
+
+    }
+
+    ~CommsFixture() {
+
+        uv_close((uv_handle_t *)timer, (uv_close_cb)free);
+        uv_close((uv_handle_t *)idler, (uv_close_cb)free);
+
         opflex::comms::finiCommunicationLoop(uv_default_loop());
+
+        LOG(INFO) << "\n\n\n\n\n\n\n\n";
 
     }
 
@@ -128,7 +142,7 @@ class CommsFixture {
             dbgLog << " listening: " << m;
         }
 
-        dbgLog << " " << final_peers << "\0";
+        dbgLog << " TOTAL FINAL: " << final_peers << "\0";
 
         newDbgLog = dbgLog.str();
 
@@ -141,9 +155,36 @@ class CommsFixture {
         return final_peers;
     }
 
+    static void wait_for_zero_peers_cb(uv_idle_t * handle) {
+
+        static size_t old_count;
+        size_t count = Peer::getCounter();
+
+        if (count) {
+            if (old_count != count) {
+                LOG(DEBUG) << count << " peers left";
+            }
+            old_count = count;
+            return;
+        }
+        LOG(DEBUG) << "no peers left";
+
+        uv_idle_stop(handle);
+        uv_stop(uv_default_loop());
+
+    }
+
     static void check_peer_db_cb(uv_idle_t * handle) {
 
-        (void) handle;
+        /* check all easily reachable peers' invariants */
+        for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
+            Peer::List * pL = Peer::LoopData::getPeerList(uv_default_loop(),
+                        Peer::LoopData::PeerState(i));
+
+            for(Peer::List::iterator it = pL->begin(); it != pL->end(); ++it) {
+                it->__checkInvariants();
+            }
+        }
 
         if (count_final_peers() < required_final_peers) {
             return;
@@ -151,8 +192,7 @@ class CommsFixture {
 
         (*required_post_conditions)();
 
-        uv_idle_stop(handle);
-        uv_stop(uv_default_loop());
+        reinterpret_cast<CommsFixture*>(handle->data)->cleanup();
 
     }
 
@@ -166,7 +206,8 @@ class CommsFixture {
 
         (*required_post_conditions)();
 
-        uv_stop(uv_default_loop());
+        reinterpret_cast<CommsFixture*>(handle->data)->cleanup();
+
     }
 
     void loop_until_final(size_t final_peers, pc post_conditions, bool timeout = false) {
@@ -222,7 +263,7 @@ class DoNothingOnConnect {
   public:
     void operator()(opflex::comms::internal::CommunicationPeer * p) {
         LOG(INFO) << "chill out, we just had a" << (
-                p->passive ? " pass" : "n act"
+                p->passive_ ? " pass" : "n act"
             ) << "ive connection";
     }
 };
@@ -232,7 +273,7 @@ opflex::comms::internal::ConnectionHandler doNothingOnConnect = DoNothingOnConne
 class StartPingingOnConnect {
   public:
     void operator()(opflex::comms::internal::CommunicationPeer * p) {
-        p->startKeepAlive(300, 50, 100);
+        p->startKeepAlive();
     }
 };
 
