@@ -331,13 +331,16 @@ public class FClassDef extends ItemFormatterTask
             {
                 genRef(aInIndent,aInClass,aInProp,aInPropIdx,lType,lBaseType,lComments, true);
             }
-        //}
+        }
         //else if (aInClass.isConcreteSuperclassOf("relator/Target") &&
-        //           aInProp.getLID().getName().toLowerCase().startsWith("source")) {
-        //    if (aInProp.getLID().getName().equalsIgnoreCase("source")) {
+        //           aInProp.getLID().getName().toLowerCase().startsWith("source"))
+        //{
+        //    if (aInProp.getLID().getName().equalsIgnoreCase("source"))
+        //    {
         //        genRef(aInIndent,aInClass,aInProp,aInPropIdx,lType,lBaseType,lComments, false);
         //    }
-        } else
+        //}
+        else
         {
             genPropCheck(aInIndent,aInClass,aInProp,aInPropIdx,lType,lBaseType,lComments);
             genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, lType, lBaseType, lComments);
@@ -348,13 +351,13 @@ public class FClassDef extends ItemFormatterTask
     }
 
     private void genRef(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInComments, boolean target)
+            Collection<String> aInComments, boolean aInTarget)
     {
-        genRefCheck(aInIndent,aInClass,aInProp,aInPropIdx,aInType,aInType,aInComments, target);
-        genRefAccessors(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, target);
-        genRefDefaultedAccessors(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, target);
-        genRefMutators(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, target);
-        genRefUnset(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, target);
+        genRefCheck(aInIndent,aInClass,aInProp,aInPropIdx,aInType,aInType,aInComments, aInTarget);
+        genRefAccessors(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
+        genRefDefaultedAccessors(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
+        genRefMutators(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
+        genRefUnset(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
     }
     
     private void genPropCheck(
@@ -1420,7 +1423,7 @@ public class FClassDef extends ItemFormatterTask
                 out.println(aInIdent,"void resolve" + lConcatenatedChildClassName + "(/* out */ std::vector<boost::shared_ptr<" + lFormattefChildClassName+ "> >& out)");
                 out.println(aInIdent,"{");
                 out.println(aInIdent + 1, "opflex::modb::mointernal::MO::resolveChildren<" + lFormattefChildClassName + ">(");
-                out.println(aInIdent + 2, "getFramework(), CLASS_ID, getURI(), " + (aInChildClass.getGID().getId() + 1000) + ", " + aInChildClass.getGID().getId() + ", out);");
+                out.println(aInIdent + 2, "getFramework(), CLASS_ID, getURI(), " + (aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ", out);");
                 out.println(aInIdent,"}");
                 out.println();
             }
@@ -1465,7 +1468,7 @@ public class FClassDef extends ItemFormatterTask
             }
             out.println(aInIdent,"{");
                 out.println(aInIdent + 1, "boost::shared_ptr<" + lFormattefChildClassName + "> result = addChild<" + lFormattefChildClassName+ ">(");
-                    out.println(aInIdent + 2, "CLASS_ID, getURI(), " + (aInChildClass.getGID().getId() + 1000) + ", " + aInChildClass.getGID().getId() + ",");
+                    out.println(aInIdent + 2, "CLASS_ID, getURI(), " + (aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
                     out.println(aInIdent + 2, lUriBuilder);
                     out.println(aInIdent + 2, ");");
 
