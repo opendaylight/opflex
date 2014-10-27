@@ -118,9 +118,14 @@ public class MClass
         return (MClass) aInModule.getChildItem(MClass.MY_CAT,aInLName);
     }
 
+    /**
+     * if this class is treated as property, this method returns property id corresponding to this class
+     * @param aInContainer class that contains this class. the containing class is used for context in prop id generation
+     * @return property id corresponding to this class
+     */
     public int getClassAsPropId(MClass aInContainer)
     {
-        return 0xA0000000 | (aInContainer.getGID().getId() << 15) | getGID().getId();
+        return 0x80000000 | (aInContainer.getGID().getId() << 15) | getGID().getId();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
