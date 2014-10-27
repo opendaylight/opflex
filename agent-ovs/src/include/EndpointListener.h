@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Include file for policy listener
+ * Include file for endpoint listener
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -12,29 +12,35 @@
 #include <opflex/modb/URI.h>
 
 #pragma once
-#ifndef OVSAGENT_POLICYLISTENER_H
-#define OVSAGENT_POLICYLISTENER_H
+#ifndef OVSAGENT_ENDPOINTLISTENER_H
+#define OVSAGENT_ENDPOINTLISTENER_H
 
 namespace ovsagent {
 
 /**
  * An abstract interface for classes interested in updates related to
- * the policy and the indices.
+ * the endpoints
  */
-class PolicyListener {
+class EndpointListener {
 public:
     /**
-     * Destroy the policy listener and clean up all state
+     * Instantiate a new endpoint listener
      */
-    virtual ~PolicyListener() {};
+    EndpointListener();
 
     /**
-     * Called when the forwarding domains for an endpoint group have
-     * been updated.
+     * Destroy the endpoint listener and clean up all state
      */
-    virtual void egDomainUpdated(const opflex::modb::URI& egURI) = 0;
+    virtual ~EndpointListener() {};
+
+    /**
+     * Called when an endpoint is added, updated, or removed.
+     *
+     * @param uuid the UUID for the endpoint
+     */
+    virtual void endpointUpdated(const std::string& uuid) = 0;
 };
 
 } /* namespace ovsagent */
 
-#endif /* OVSAGENT_POLICYMANAGER_H */
+#endif /* OVSAGENT_ENDPOINTMANAGER_H */

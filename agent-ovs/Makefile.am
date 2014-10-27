@@ -34,6 +34,8 @@ libagent_ovs_la_SOURCES = \
 	src/include/GLogLogHandler.h \
 	src/include/PolicyListener.h \
 	src/include/PolicyManager.h \
+	src/include/Endpoint.h \
+	src/include/EndpointListener.h \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \
 	src/include/VirtEndpointSource.h \

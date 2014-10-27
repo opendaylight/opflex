@@ -108,7 +108,7 @@ void OFFramework::registerTLMutator(modb::Mutator& mutator) {
 modb::Mutator& OFFramework::getTLMutator() {
     modb::Mutator* r = ((modb::Mutator*)uv_key_get(&pimpl->mutator_key));
     if (r == NULL)
-        throw std::logic_error("No mutator current active");
+        throw std::logic_error("No mutator currently active");
     return *r;
 }
 void OFFramework::clearTLMutator() {

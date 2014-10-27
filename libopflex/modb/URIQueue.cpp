@@ -60,11 +60,16 @@ void URIQueue::start() {
 void URIQueue::stop() {
     if (proc_shouldRun) {
         proc_shouldRun = false;
-        uv_cond_signal(&item_cond);
+        {
+            util::LockGuard guard(&item_mutex);
+            uv_cond_signal(&item_cond);
+        }
         uv_thread_join(&proc_thread);
 
-        util::LockGuard guard(&item_mutex);
-        item_queue.clear();
+        {
+            util::LockGuard guard(&item_mutex);
+            item_queue.clear();
+        }
     }
 }
 
@@ -72,8 +77,8 @@ void URIQueue::queueItem(const URI& uri, const boost::any& data) {
     {
         util::LockGuard guard(&item_mutex);
         item_queue.push_back(item(uri, data));
+        uv_cond_signal(&item_cond);
     }
-    uv_cond_signal(&item_cond);
 }
 
 } /* namespace modb */

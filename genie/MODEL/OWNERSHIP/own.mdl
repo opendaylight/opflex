@@ -38,15 +38,14 @@ owner[policyreg]
     }
 }
 
-owner[endpointreg]
+owner[policyelement]
 {
     module[epr]
     {
         class[*]
     }
-}
-
-owner[pe]
-{
-    class[epr/LocalEp]
+    module[epdr]
+    {
+        class[*]
+    }
 }

@@ -57,6 +57,10 @@ void PolicyManager::stop() {
     RoutingDomain::unregisterListener(framework, &domainListener);
     Subnets::unregisterListener(framework, &domainListener);
     EpGroup::unregisterListener(framework, &domainListener);
+
+    lock_guard<mutex> guard(state_mutex);
+    group_map.clear();
+    subnet_ref_map.clear();
 }
 
 void PolicyManager::registerListener(PolicyListener* listener) {
@@ -176,9 +180,11 @@ bool PolicyManager::updateEPGDomains(const URI& egURI) {
         domainURI = ref.get()->getTargetURI();
     }
 
-    // walk up the chain of domain
+    // walk up the chain of domains
     while (domainURI && domainClass) {
         URI du = domainURI.get();
+        optional<class_id_t> ndomainClass;
+        optional<URI> ndomainURI;
 
         // Update the subnet map with all the subnets that reference
         // this domain
@@ -197,8 +203,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI) {
         case RoutingDomain::CLASS_ID:
             {
                 newrd = RoutingDomain::resolve(framework, du);
-                domainClass = boost::none;
-                domainURI = boost::none;
+                ndomainClass = boost::none;
+                ndomainURI = boost::none;
             }
             break;
         case BridgeDomain::CLASS_ID:
@@ -208,8 +214,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI) {
                     optional<shared_ptr<BridgeDomainToNetworkRSrc> > dref = 
                         newbd.get()->resolveGbpBridgeDomainToNetworkRSrc();
                     if (dref) {
-                        domainClass = dref.get()->getTargetClass();
-                        domainURI = dref.get()->getTargetURI();
+                        ndomainClass = dref.get()->getTargetClass();
+                        ndomainURI = dref.get()->getTargetURI();
                     }
                 }
             }
@@ -221,8 +227,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI) {
                     optional<shared_ptr<FloodDomainToNetworkRSrc> > dref = 
                         newfd.get()->resolveGbpFloodDomainToNetworkRSrc();
                     if (dref) {
-                        domainClass = dref.get()->getTargetClass();
-                        domainURI = dref.get()->getTargetURI();
+                        ndomainClass = dref.get()->getTargetClass();
+                        ndomainURI = dref.get()->getTargetURI();
                     }
                 }
             }
@@ -235,8 +241,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI) {
                     optional<shared_ptr<SubnetsToNetworkRSrc> > dref = 
                         subnets.get()->resolveGbpSubnetsToNetworkRSrc();
                     if (dref) {
-                        domainClass = dref.get()->getTargetClass();
-                        domainURI = dref.get()->getTargetURI();
+                        ndomainClass = dref.get()->getTargetClass();
+                        ndomainURI = dref.get()->getTargetURI();
                     }
                 }
             }
@@ -257,12 +263,15 @@ bool PolicyManager::updateEPGDomains(const URI& egURI) {
                         ub.addElement(elements[i]);
                     }
                     class_id_t scid = Subnets::CLASS_ID;
-                    domainClass = scid;
-                    domainURI = ub.build();
+                    ndomainClass = scid;
+                    ndomainURI = ub.build();
                 }
             }
             break;
         }
+        
+        domainClass = ndomainClass;
+        domainURI = ndomainURI;
     }
 
     bool updated = false;
