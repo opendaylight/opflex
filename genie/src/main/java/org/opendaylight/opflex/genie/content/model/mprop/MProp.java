@@ -436,9 +436,9 @@ public class MProp extends SubStructItem
         return getBase().localIdx;
     }
 
-    public int getPropId()
+    public int getPropId(MClass aInConcreteClass)
     {
-        return getBase().getGID().getId();
+        return (aInConcreteClass.getGID().getId() << 16) | getBase().getGID().getId();
     }
 
     private String group = null;

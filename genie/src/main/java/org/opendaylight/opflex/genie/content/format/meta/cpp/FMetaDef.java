@@ -257,7 +257,7 @@ public class FMetaDef
                     MType lPrimitiveType = lPropType.getBuiltInType();
                     //MTypeHint lHint = lPrimitiveType.getTypeHint();
 
-                    int lLocalId = lProp.getPropId();
+                    int lLocalId = lProp.getPropId(aInClass);
 
                     if (isRelationshipSource(aInClass)) {
                         if (lProp.getLID().getName().equalsIgnoreCase("targetClass"))
@@ -334,7 +334,7 @@ public class FMetaDef
                         MProp lProp = aInClass.findProp(lIt.getPropName(),false);
                         if (null != lProp)
                         {
-                            out.println(aInIndent + 1, "(" + lProp.getPropId() + ") //" + lProp + " of name component " + lIt);
+                            out.println(aInIndent + 1, "(" + lProp.getPropId(aInClass) + ") //" + lProp + " of name component " + lIt);
                         }
                     }
                 }
