@@ -294,7 +294,7 @@ public class FMetaDef
             // HANDLE CONTAINED CLASSES
                 for (MClass lContained : lConts.values())
                 {
-                    out.println(aInIndent + 1, "(PropertyInfo(" + (1000 + lContained.getGID().getId()) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
+                    out.println(aInIndent + 1, "(PropertyInfo(" + (lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
                 }
 
                 out.println(aInIndent + 1, ",");
