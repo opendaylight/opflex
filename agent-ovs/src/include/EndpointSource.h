@@ -9,6 +9,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include "Endpoint.h"
+
 #pragma once
 #ifndef OVSAGENT_ENDPOINTSOURCE_H
 #define OVSAGENT_ENDPOINTSOURCE_H
@@ -37,10 +39,19 @@ public:
     virtual ~EndpointSource();
     
     /**
-     * Update the endpoint manager with the endpoint information
-     * specified.
+     * Add or update the specified endpoint in the endpoint manager.
+     * 
+     * @param endpoint the endpoint to add/update
      */
-    virtual void updateEndpoint();
+    virtual void updateEndpoint(const Endpoint& endpoint);
+    
+    /**
+     * Remove an endpoint that no longer exists from the endpoint
+     * manager
+     *
+     * @param uuid the endpoint that no longer exists
+     */
+    virtual void removeEndpoint(const std::string& uuid);
 
     /**
      * Start the endpoint source

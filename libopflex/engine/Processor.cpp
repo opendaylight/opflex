@@ -339,7 +339,10 @@ void Processor::timer_thread_func(void* processor_) {
 void Processor::timer_callback(uv_timer_t* handle) {
     Processor* processor = (Processor*)handle->data;
     // wake up the processor thread periodically
-    uv_cond_signal(&processor->item_cond);
+    {
+        util::LockGuard guard(&processor->item_mutex);
+        uv_cond_signal(&processor->item_cond);
+    }
 }
 
 void Processor::start() {
@@ -371,7 +374,10 @@ void Processor::stop() {
         uv_thread_join(&timer_loop_thread);
         uv_loop_close(&timer_loop);
         
-        uv_cond_signal(&item_cond);
+        {
+            util::LockGuard guard(&item_mutex);
+            uv_cond_signal(&item_cond);
+        }
         uv_thread_join(&proc_thread);
     }
 }
@@ -394,8 +400,8 @@ void Processor::objectUpdated(modb::class_id_t class_id,
             uit->details->state = UPDATED;
             uri_index.modify(uit, Processor::change_expiration(nexp));
         }
+        uv_cond_signal(&item_cond);
     }
-    uv_cond_signal(&item_cond);
 }
 
 } /* namespace engine */

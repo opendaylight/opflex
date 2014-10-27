@@ -10,6 +10,7 @@
  */
 
 #include "EndpointSource.h"
+#include "EndpointManager.h"
 
 namespace ovsagent {
 
@@ -18,8 +19,12 @@ EndpointSource::EndpointSource(EndpointManager* manager_)
 
 EndpointSource::~EndpointSource() {}
 
-void EndpointSource::updateEndpoint() {
+void EndpointSource::updateEndpoint(const Endpoint& endpoint) {
+    manager->updateEndpoint(endpoint);
+}
 
+void EndpointSource::removeEndpoint(const std::string& uuid) {
+    manager->removeEndpoint(uuid);
 }
 
 } /* namespace ovsagent */

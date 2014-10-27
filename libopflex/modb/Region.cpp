@@ -43,9 +43,13 @@ shared_ptr<const ObjectInstance> Region::get(const URI& uri) {
 void Region::put(class_id_t class_id, const URI& uri, 
                  const shared_ptr<const ObjectInstance>& oi) {
     LockGuard guard(&region_mutex);
-    ClassIndex& ci = class_map.at(class_id);
-    uri_map[uri] = oi;
-    ci.addInstance(uri);
+    try {
+        ClassIndex& ci = class_map.at(class_id);
+        uri_map[uri] = oi;
+        ci.addInstance(uri);
+    } catch (std::out_of_range e) {
+        throw std::out_of_range("Unknown class ID");
+    }
 }
 
 bool Region::remove(class_id_t class_id, const URI& uri) {
