@@ -16,6 +16,24 @@
       "revId": "6c65489864e1d6c104cde0916472f589c427a0f5",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba8cc1f7_21f8ba7b",
+        "filename": "agent-ovs/src/enforcer/test/connection_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-10-28T20:40:57Z",
+      "side": 1,
+      "message": "Integration tests won\u0027t break. Unfortunately, the absence of an OVS library means that all the OVS-interfacing code is not built/tested by Jenkins.",
+      "parentUuid": "ba8cc1f7_c109ce96",
+      "revId": "6c65489864e1d6c104cde0916472f589c427a0f5",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
