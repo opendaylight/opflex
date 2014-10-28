@@ -17,15 +17,16 @@
 extern "C" {
 #endif
 
-#include <ovs/lib/ofp-util.h>
+#include <ovs/lib/dirs.h>
+#include <ovs/lib/vconn.h>
+#include <ovs/lib/rconn.h>
 #include <ovs/lib/ofpbuf.h>
 #include <ovs/lib/ofp-msgs.h>
 #include <ovs/lib/flow.h>
 #include <ovs/lib/match.h>
 #include <ovs/lib/ofp-actions.h>
-#include <ovs/lib/ofpbuf.h>
-#include <ovs/lib/vconn.h>
-#include <ovs/lib/rconn.h>
+#include <ovs/lib/socket-util.h>
+#include <ovs/lib/ofp-util.h>
 
 #ifdef __cplusplus
 }
