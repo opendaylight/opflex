@@ -12,7 +12,9 @@
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
     -I$(top_srcdir)/include \
     -I$(top_srcdir)/src/enforcer \
-    -I$(top_srcdir)/src/enforcer/include
+    -I$(top_srcdir)/src/enforcer/include \
+    -I/usr/include/ovs/include \
+    -fpermissive
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 TESTS = enforcer_test
@@ -21,11 +23,14 @@ enforcer_test_SOURCES = \
     modbFixture.h \
     main.cpp \
     inventory_test.cpp \
-    renderer_test.cpp
+    renderer_test.cpp \
+    connection_test.cpp
 
 enforcer_test_LDADD = ../libenforcer.la \
     $(libopflex_LIBS) \
     $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-    $(OVS_LIB)
+    $(OVS_LIB) \
+    $(UV_LIBS) \
+    $(libglog_LIBS)
 
 noinst_PROGRAMS = $(TESTS)
