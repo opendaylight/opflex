@@ -80,6 +80,30 @@ if HAVE_DOXYGEN
 	doc/html
 endif
 
+if HAVE_OVS
+noinst_PROGRAMS += integration_test
+
+integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
+    -I$(top_srcdir)/include \
+    -I$(top_srcdir)/src/enforcer/include \
+    -I/usr/include/ovs/include \
+    -fpermissive
+integration_test_LDFLAGS = $(BOOST_LDFLAGS)
+
+integration_test_SOURCES = \
+    integration-test/main.cpp \
+    integration-test/connection_test.cpp
+
+integration_test_LDADD = $(top_builddir)/src/enforcer/libenforcer.la \
+    $(libopflex_LIBS) \
+    $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
+    $(OVS_LIB) \
+    $(UV_LIBS) \
+    $(libglog_LIBS)
+endif
+
+check-integration: agent_ovs
+	$(top_builddir)/integration_test
 doc/html: $(model_include_HEADERS) doc/Doxyfile 
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html
