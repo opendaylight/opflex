@@ -21,9 +21,9 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 
 noinst_LTLIBRARIES = libenforcer.la
 
-#libenforcer_la_CXXFLAGS = $(UV_CFLAGS)
+libenforcer_la_CXXFLAGS = $(UV_CFLAGS)
 
-#libenforcer_la_LIBADD = $(UV_LIBS)
+libenforcer_la_LIBADD =
 
 libenforcer_la_SOURCES = \
 	include/flowExecutor.h \
@@ -35,9 +35,11 @@ libenforcer_la_SOURCES = \
 	include/enforcerImpl.h \
 	include/internal/model.h \
 	include/internal/modb.h \
+	include/switchConnection.h \
 	enforcer.cpp \
 	inventory.cpp \
 	flowManager.cpp \
 	tableState.cpp \
 	flowExecutor.cpp \
-	actionBuilder.cpp 
+	actionBuilder.cpp \
+	switchConnection.cpp

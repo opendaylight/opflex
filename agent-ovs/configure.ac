@@ -78,6 +78,7 @@ AC_CONFIG_FILES([\
 	Makefile \
 	src/enforcer/Makefile \
 	src/enforcer/test/Makefile \
+	integration-test/Makefile \
 	doc/Doxyfile])
 AC_OUTPUT
 

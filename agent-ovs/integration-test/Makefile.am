@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
 #
 # This program and the accompanying materials are made available under the
@@ -9,27 +8,23 @@
 #
 # Process this file with automake to produce a Makefile.in
 
+noinst_PROGRAMS = integration_test
+
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
     -I$(top_srcdir)/include \
-    -I$(top_srcdir)/src/enforcer \
     -I$(top_srcdir)/src/enforcer/include \
     -I/usr/include/ovs/include \
     -fpermissive
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
-TESTS = enforcer_test
-enforcer_test_SOURCES = \
-    mockModb.cpp \
-    modbFixture.h \
+integration_test_SOURCES = \
     main.cpp \
-    inventory_test.cpp \
-    renderer_test.cpp
+    connection_test.cpp
 
-enforcer_test_LDADD = ../libenforcer.la \
+integration_test_LDADD = $(top_builddir)/src/enforcer/libenforcer.la \
     $(libopflex_LIBS) \
     $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
     $(OVS_LIB) \
     $(UV_LIBS) \
     $(libglog_LIBS)
 
-noinst_PROGRAMS = $(TESTS)

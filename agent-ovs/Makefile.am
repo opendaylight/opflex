@@ -50,6 +50,7 @@ libagent_ovs_la_SOURCES = \
 SUBDIRS =
 if HAVE_OVS
 SUBDIRS += src/enforcer
+SUBDIRS += integration-test
 endif
 
 bin_PROGRAMS=agent_ovs
@@ -80,6 +81,8 @@ if HAVE_DOXYGEN
 	doc/html
 endif
 
+check-integration: agent_ovs
+	$(top_builddir)/integration-test/integration_test
 doc/html: $(model_include_HEADERS) doc/Doxyfile 
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html
