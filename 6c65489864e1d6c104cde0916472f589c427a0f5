@@ -70,6 +70,24 @@
       "revId": "6c65489864e1d6c104cde0916472f589c427a0f5",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba8cc1f7_871436f6",
+        "filename": "agent-ovs/src/enforcer/test/connection_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2014-10-29T17:40:10Z",
+      "side": 1,
+      "message": "It\u0027s fine if it requires the OVS library, but not if it requires OVS to be running and set up in a certain way.  That\u0027s an integration test not a unit test.  It\u0027s easy to imagine this could even cause problems in the event that someone builds the library on the system they\u0027re trying to use it on; we\u0027re likely to mess up their OVS setup.\n\nPerhaps we can move any tests that require this to a separate integration test that doesn\u0027t run when you run make check.  We can add a make integration target or similar.",
+      "parentUuid": "ba8cc1f7_274bea2c",
+      "revId": "6c65489864e1d6c104cde0916472f589c427a0f5",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
