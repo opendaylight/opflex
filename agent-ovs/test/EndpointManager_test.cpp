@@ -22,6 +22,7 @@ namespace ovsagent {
 using opflex::modb::ObjectListener;
 using opflex::modb::class_id_t;
 using opflex::modb::URI;
+using opflex::modb::MAC;
 using opflex::modb::URIBuilder;
 using opflex::modb::Mutator;
 using opflex::ofcore::OFFramework;
@@ -171,13 +172,13 @@ bool hasEPREntry(OFFramework& framework, const URI& uri) {
 BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     URI epgu = URI("/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/");
     Endpoint ep1("e82e883b-851d-4cc6-bedb-fb5e27530043");
-    ep1.setMAC(1);
+    ep1.setMAC(MAC(1));
     ep1.addIP("10.1.1.2");
     ep1.addIP("10.1.1.3");
     ep1.setInterfaceName("veth1");
     ep1.setEgURI(epgu);
     Endpoint ep2("72ffb982-b2d5-4ae4-91ac-0dd61daf527a");
-    ep2.setMAC(2);
+    ep2.setMAC(MAC(2));
     ep2.setInterfaceName("veth2");
     ep2.addIP("10.1.1.4");
     ep2.setEgURI(epgu);
@@ -189,12 +190,12 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
         .addElement("EprL2Universe")
         .addElement("EprL2Ep")
         .addElement(bduri.toString())
-        .addElement(1).build();
+        .addElement(MAC(1)).build();
     URI l2epr2 = URIBuilder()
         .addElement("EprL2Universe")
         .addElement("EprL2Ep")
         .addElement(bduri.toString())
-        .addElement(2).build();
+        .addElement(MAC(2)).build();
     URI l3epr1_2 = URIBuilder()
         .addElement("EprL3Universe")
         .addElement("EprL3Ep")
@@ -240,7 +241,7 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
         .addElement("EprL2Universe")
         .addElement("EprL2Ep")
         .addElement(bduri.toString())
-        .addElement((uint64_t)0x10ff00a3010000ll).build();
+        .addElement(MAC("10:ff:00:a3:01:00")).build();
     URI l3epr_1 = URIBuilder()
         .addElement("EprL3Universe")
         .addElement("EprL3Ep")
@@ -260,7 +261,7 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
         .addElement("EprL2Universe")
         .addElement("EprL2Ep")
         .addElement(bduri.toString())
-        .addElement((uint64_t)0x10ff00a3010100ll).build();
+        .addElement(MAC("10:ff:00:a3:01:01")).build();
 
     // check for a new EP added to watch directory
     fs::path path2(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c755.ep");

@@ -17,6 +17,7 @@
 #include <string>
 
 #include "opflex/modb/URI.h"
+#include "opflex/modb/MAC.h"
 
 namespace opflex {
 namespace modb {
@@ -85,6 +86,13 @@ public:
      * @param elementValue the value of the element
      */
     URIBuilder& addElement(int64_t elementValue);
+
+    /**
+     * Add a mac-address-valued path element to the URI path.
+     *
+     * @param elementValue the value of the element
+     */
+    URIBuilder& addElement(const MAC& elementValue);
 
     /**
      * Build the URI from the path elements and return it

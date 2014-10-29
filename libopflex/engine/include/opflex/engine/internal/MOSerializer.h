@@ -161,6 +161,24 @@ public:
                 }
                 writer.EndObject();
                 break;
+            case modb::PropertyInfo::MAC:
+                writer.StartObject();
+                writer.String("name");
+                writer.String(pit->second.getName().c_str());
+                writer.String("data");
+                if (pit->second.getCardinality() == modb::PropertyInfo::SCALAR) {
+                    writer.String(oi->getMAC(pit->first).toString().c_str());
+                } else {
+                    writer.StartArray();
+                    size_t len = oi->getMACSize(pit->first);
+                    for (size_t i = 0; i < len; ++i) {
+                        writer.String(oi->getMAC(pit->first, i)
+                                      .toString().c_str());
+                    }
+                    writer.EndArray();
+                }
+                writer.EndObject();
+                break;
             case modb::PropertyInfo::REFERENCE:
                 writer.StartObject();
                 writer.String("name");
