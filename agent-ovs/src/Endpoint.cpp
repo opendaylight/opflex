@@ -21,24 +21,10 @@ namespace ovsagent {
 std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
     os << "Endpoint["
        << "uuid=" << ep.getUUID()
-       << ",mac=";
+       << ",mac=" << ep.getMAC()
+       << ",ips=[";
 
-    uint64_t mac = ep.getMAC();
-    os << std::hex;
     bool first = true;
-    uint8_t* m8 = (uint8_t*)&mac;
-    for (int i = 2; i < 8; ++i) {
-        if (first) first = false;
-        else os << ":";
-        if (ntohl(1) == 1)
-            os << std::setw(2) << (int)m8[i];
-        else
-            os << std::setw(2) << (int)m8[8-i];
-    }
-    os << std::dec;
-
-    os << ",ips=[";
-    first = true;
     BOOST_FOREACH(const std::string& ip, ep.getIPs()) {
         if (first) first = false;
         else os << ",";
