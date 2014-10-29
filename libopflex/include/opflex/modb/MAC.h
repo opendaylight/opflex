@@ -47,6 +47,7 @@ public:
      */
     explicit MAC(const std::string& mac);
 
+#if 0
     /**
      * Construct a MAC using a uint64_t, which must be in host byte
      * order, so that a constant such as 0x112233445566llu will
@@ -55,6 +56,7 @@ public:
      * @param mac the mac address
      */
     explicit MAC(uint64_t mac);
+#endif
 
     /**
      * Construct a MAC using an array of 6 bytes, in network byte

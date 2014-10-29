@@ -54,6 +54,7 @@ MAC::MAC(const std::string& mac_)
     : mac(parseMac(mac_)) {
 }
 
+#if 0
 MAC::MAC(uint64_t mac_) {
     std::cerr << "Before: 0x" << std::hex << mac_ << std::endl;
     if (htonl(1) == 1) {
@@ -68,6 +69,7 @@ MAC::MAC(uint64_t mac_) {
     }
     std::cerr << "After: 0x" << std::hex << mac << std::endl;
 }
+#endif
 
 MAC::MAC(uint8_t mac_[6]) : mac(0) {
     uint8_t* m8 = (uint8_t*)&mac;
