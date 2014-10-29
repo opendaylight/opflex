@@ -93,9 +93,6 @@ fi
 # ---------------------------------------------------------------
 # Output
 
-AC_SUBST([FILESYSTEM_WATCH_DIR],
-	[${localstatedir}/run/opflex-agent-ovs]	)
-
 AC_CONFIG_FILES([\
 	Makefile \
 	src/enforcer/Makefile \

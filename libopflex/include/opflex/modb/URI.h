@@ -91,6 +91,11 @@ private:
 };
 
 /**
+ * URI stream insertion
+ */
+std::ostream & operator<<(std::ostream &os, const URI& uri);
+
+/**
  * Check for URI equality.
  */
 bool operator==(const URI& lhs, const URI& rhs);

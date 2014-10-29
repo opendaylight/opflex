@@ -23,6 +23,7 @@ using modb::ObjectStore;
 using modb::ClassInfo;
 using modb::PropertyInfo;
 using modb::URI;
+using modb::MAC;
 using modb::mointernal::ObjectInstance;
 using rapidjson::Value;
 using rapidjson::Document;
@@ -163,10 +164,29 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                                               pvalue.GetUint64());
                             }
                             break;
+                        case PropertyInfo::MAC:
+                            if (pinfo.getCardinality() == PropertyInfo::VECTOR) {
+                                if (!pvalue.IsArray()) continue;
+                                for (SizeType j = 0; j < pvalue.Size(); ++j) {
+                                    const Value& v = pvalue[j];
+                                    if (!v.IsString()) continue;
+                                    oi->addMAC(pinfo.getId(), MAC(v.GetString()));
+                                }
+                            } else {
+                                if (!pvalue.IsString()) continue;
+                                oi->setMAC(pinfo.getId(),
+                                           MAC(pvalue.GetString()));
+                            }
+                            break;
                         case PropertyInfo::COMPOSITE:
                             // do nothing;
                             break;
                         }
+                    } catch (std::invalid_argument e) {
+                        LOG(DEBUG) << "Invalid property " 
+                                   << pname.GetString() 
+                                   << " in class " 
+                                   << ci.getName();
                     } catch (std::out_of_range e) {
                         LOG(DEBUG) << "Unknown property " 
                                    << pname.GetString() 

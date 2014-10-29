@@ -4,9 +4,9 @@ module[address]
     {
         hint[address:mac]
         language[cpp;
-                 syntax=uint64_t;
-                 pass-by=value;
-                 pass-const=no]
+                 syntax=opflex::modb::MAC;
+                 pass-by=reference;
+                 pass-const=yes]
         {
             constraints[default=0;
                         min=0;

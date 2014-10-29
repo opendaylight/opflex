@@ -46,6 +46,7 @@ namespace fs = boost::filesystem;
 using std::string;
 using std::runtime_error;
 using opflex::modb::URI;
+using opflex::modb::MAC;
 
 FSEndpointSource::FSEndpointSource(EndpointManager* manager_,
                                    const std::string& endpointDir_) 
@@ -109,25 +110,6 @@ void FSEndpointSource::scanPath() {
     }
 }
 
-static uint64_t parseMac(string macstr) {
-    uint64_t result = 0;
-    uint8_t* r8 = (uint8_t*)&result;
-    int r[6];
-    if (std::sscanf(macstr.c_str(),
-                   "%02x:%02x:%02x:%02x:%02x:%02x",
-                    r, r+1, r+2, r+3, r+4, r+5) != 6) {
-        throw std::runtime_error(macstr + " is not a valid MAC address");
-    }
-
-    for (int i = 0; i < 6; ++i) {
-        if (ntohl(1) == 1)
-            r8[i+2] = (uint8_t)r[i];
-        else
-            r8[8-(i+2)] = (uint8_t)r[i];
-    }
-    return result;
-}
-
 static bool isep(fs::path filePath) {
     string fstr = filePath.filename().string();
     return (boost::algorithm::ends_with(fstr, ".ep") &&
@@ -137,11 +119,11 @@ static bool isep(fs::path filePath) {
 void FSEndpointSource::readEndpoint(fs::path filePath) {
     if (!isep(filePath)) return;
 
-    static const std::string UUID("uuid");
-    static const std::string MAC("mac");
-    static const std::string IP("ip");
-    static const std::string ENDPOINT_GROUP("endpoint-group");
-    static const std::string IFACE_NAME("interface-name");
+    static const std::string EP_UUID("uuid");
+    static const std::string EP_MAC("mac");
+    static const std::string EP_IP("ip");
+    static const std::string EP_GROUP("endpoint-group");
+    static const std::string EP_IFACE_NAME("interface-name");
 
     try {
         using boost::property_tree::ptree;
@@ -151,19 +133,19 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
         string pathstr = filePath.string();
 
         read_json(pathstr, properties);
-        newep.setUUID(properties.get<string>(UUID));
-        newep.setMAC(parseMac(properties.get<string>(MAC)));
-        optional<ptree&> ips = properties.get_child_optional(IP);
+        newep.setUUID(properties.get<string>(EP_UUID));
+        newep.setMAC(MAC(properties.get<string>(EP_MAC)));
+        optional<ptree&> ips = properties.get_child_optional(EP_IP);
         if (ips) {
             BOOST_FOREACH(const ptree::value_type &v, ips.get())
                 newep.addIP(v.second.data());
         }
         optional<string> eg = 
-            properties.get_optional<string>(ENDPOINT_GROUP);
+            properties.get_optional<string>(EP_GROUP);
         if (eg)
             newep.setEgURI(URI(eg.get()));
         optional<string> iface = 
-            properties.get_optional<string>(IFACE_NAME);
+            properties.get_optional<string>(EP_IFACE_NAME);
         if (iface)
             newep.setInterfaceName(iface.get());
 
