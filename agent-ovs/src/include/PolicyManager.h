@@ -78,7 +78,7 @@ public:
      * Get the routing domain for the specified endpoint group if it
      * exists
      *
-     * @param uri the URI for the endpoint group
+     * @param eg the URI for the endpoint group
      * @return the routing domain or boost::none if the group or the
      * domain is not found
      */
@@ -89,7 +89,7 @@ public:
      * Get the bridge domain for the specified endpoint group if it
      * exists
      *
-     * @param uri the URI for the endpoint group
+     * @param eg the URI for the endpoint group
      * @return the bridge domain or boost::none if the group or the
      * domain is not found
      */
@@ -100,7 +100,7 @@ public:
      * Get the flood domain for the specified endpoint group if it
      * exists
      *
-     * @param uri the URI for the endpoint group
+     * @param eg the URI for the endpoint group
      * @return the flood domain or boost::none if the group or the
      * domain is not found
      */
@@ -119,7 +119,7 @@ public:
      * group, as well as any subnets that directly reference an
      * "ancestor" forwarding domain.
      *
-     * @param uri the URI for the endpoint group
+     * @param eg the URI for the endpoint group
      * @param subnets a vector that will receive the subnets
      */
     void getSubnetsForGroup(const opflex::modb::URI& eg,

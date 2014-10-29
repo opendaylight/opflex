@@ -14,7 +14,7 @@
 #include <modelgbp/dmtree/Root.hpp>
 
 #include "Agent.h"
-#include "VirtEndpointSource.h"
+#include "FSEndpointSource.h"
 
 namespace ovsagent {
 
@@ -23,6 +23,7 @@ using opflex::modb::Mutator;
 using opflex::ofcore::OFFramework;
 using boost::shared_ptr;
 using boost::property_tree::ptree;
+using boost::optional;
 
 Agent::Agent(OFFramework& framework_) 
     : framework(framework_), policyManager(framework), 
@@ -34,16 +35,17 @@ Agent::~Agent() {
 }
 
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
-    // A list of hypervisor names that we should use to discover
-    // guest endpoints through libvirt
-    static const std::string HYPERVISOR_NAME("endpoint-sources.hypervisors");
+    // A list of filesystem paths that we should check for endpoint
+    // information
+    static const std::string ENDPOINT_SOURCE_PATH("endpoint-sources.filesystem");
 
-    try {
-        BOOST_FOREACH(const ptree::value_type &v, 
-                      properties.get_child(HYPERVISOR_NAME))
-            hypervisorNames.insert(v.second.data());
-    } catch (boost::property_tree::ptree_bad_path e) {
-        LOG(WARNING) << HYPERVISOR_NAME << " not found in configuration";
+    optional<const ptree&> endpointSource = 
+        properties.get_child_optional(ENDPOINT_SOURCE_PATH);
+    BOOST_FOREACH(const ptree::value_type &v, endpointSource.get())
+        endpointSourcePaths.insert(v.second.data());
+
+    if (!endpointSource) {
+        LOG(WARNING) << "No endpoint source found in configuration.";
     }
 }
 
@@ -68,8 +70,8 @@ void Agent::start() {
     policyManager.start();
     endpointManager.start();
 
-    BOOST_FOREACH(const std::string& name, hypervisorNames) {
-        EndpointSource* source = new VirtEndpointSource(&endpointManager, name);
+    BOOST_FOREACH(const std::string& path, endpointSourcePaths) {
+        EndpointSource* source = new FSEndpointSource(&endpointManager, path);
         endpointSources.insert(source);
     }
 }

@@ -77,7 +77,7 @@ private:
     PolicyManager policyManager;
     EndpointManager endpointManager;
 
-    std::set<std::string> hypervisorNames;
+    std::set<std::string> endpointSourcePaths;
     std::set<EndpointSource*> endpointSources;
 };
 
