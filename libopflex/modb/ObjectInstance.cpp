@@ -166,6 +166,30 @@ size_t ObjectInstance::getUInt64Size(prop_id_t prop_id) const {
     return get<vector<uint64_t>*>(it->second.value)->size();
 }
 
+const MAC& ObjectInstance::getMAC(prop_id_t prop_id) const {
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::U64, 
+                                            PropertyInfo::SCALAR, 
+                                            prop_id));
+    return get<MAC>(v.value);
+}
+
+const MAC& ObjectInstance::getMAC(prop_id_t prop_id, 
+                                   size_t index) const {
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::U64, 
+                                            PropertyInfo::VECTOR, 
+                                            prop_id));
+    return get<vector<MAC>*>(v.value)->at(index);
+}
+
+size_t ObjectInstance::getMACSize(prop_id_t prop_id) const {
+    prop_map_t::const_iterator it = 
+        prop_map.find(make_tuple(PropertyInfo::U64, 
+                                 PropertyInfo::VECTOR, 
+                                 prop_id));
+    if (it == prop_map.end()) return 0;
+    return get<vector<MAC>*>(it->second.value)->size();
+}
+
 int64_t ObjectInstance::getInt64(prop_id_t prop_id) const {
     const Value& v = prop_map.at(make_tuple(PropertyInfo::S64, 
                                             PropertyInfo::SCALAR, 
@@ -259,6 +283,27 @@ void ObjectInstance::setUInt64(prop_id_t prop_id,
     v.value = new vector<uint64_t>(value);
 }
 
+void ObjectInstance::setMAC(prop_id_t prop_id, const MAC& value) {
+    Value& v = prop_map[make_tuple(PropertyInfo::U64, 
+                                   PropertyInfo::SCALAR, 
+                                   prop_id)];
+    v.type = PropertyInfo::U64;
+    v.cardinality = PropertyInfo::SCALAR;
+    v.value = value;
+}
+
+void ObjectInstance::setMAC(prop_id_t prop_id, 
+                               const vector<MAC>& value) {
+    Value& v = prop_map[make_tuple(PropertyInfo::U64, 
+                                   PropertyInfo::VECTOR, 
+                                   prop_id)];
+    v.type = PropertyInfo::U64;
+    v.cardinality = PropertyInfo::VECTOR;
+    if (v.value.which() != 0)
+        delete get<vector<MAC>*>(v.value);
+    v.value = new vector<MAC>(value);
+}
+
 void ObjectInstance::setInt64(prop_id_t prop_id, int64_t value) {
     Value& v = prop_map[make_tuple(PropertyInfo::S64, 
                                    PropertyInfo::SCALAR, 
@@ -337,6 +382,21 @@ void ObjectInstance::addUInt64(prop_id_t prop_id, uint64_t value) {
         v.value = val = new vector<uint64_t>();
     } else {
         val = get<vector<uint64_t>*>(v.value);
+    }
+    val->push_back(value);
+}
+
+void ObjectInstance::addMAC(prop_id_t prop_id, const MAC& value) {
+    Value& v = prop_map[make_tuple(PropertyInfo::U64, 
+                                   PropertyInfo::VECTOR, 
+                                   prop_id)];
+    vector<MAC>* val;
+    if (v.value.which() == 0) {
+        v.type = PropertyInfo::U64;
+        v.cardinality = PropertyInfo::VECTOR;
+        v.value = val = new vector<MAC>();
+    } else {
+        val = get<vector<MAC>*>(v.value);
     }
     val->push_back(value);
 }
@@ -436,6 +496,8 @@ bool operator==(const ObjectInstance::Value& lhs,
     case PropertyInfo::ENUM64:
     case PropertyInfo::U64:
         return equal<uint64_t>(lhs, rhs);
+    case PropertyInfo::MAC:
+        return equal<MAC>(lhs, rhs);
     case PropertyInfo::S64:
         return equal<int64_t>(lhs, rhs);
     case PropertyInfo::STRING:

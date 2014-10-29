@@ -14,6 +14,7 @@
 #include <boost/unordered_set.hpp>
 #include <boost/optional.hpp>
 #include <opflex/modb/URI.h>
+#include <opflex/modb/MAC.h>
 
 #pragma once
 #ifndef OVSAGENT_ENDPOINT_H
@@ -30,7 +31,7 @@ public:
     /**
      * Default constructor for containers
      */
-    Endpoint() {}
+    Endpoint() : mac((uint64_t)0) {}
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that
@@ -39,7 +40,8 @@ public:
      *
      * @param uuid_ the unique ID for the endpoint.
      */
-    explicit Endpoint(const std::string& uuid_) : uuid(uuid_), mac(0) {}
+    explicit Endpoint(const std::string& uuid_) 
+        : uuid(uuid_), mac((uint64_t)0) {}
 
     /**
      * Get the endpoint group URI associated with this endpoint.
@@ -101,7 +103,7 @@ public:
      *
      * @return the MAC address
      */
-    uint64_t getMAC() const {
+    const opflex::modb::MAC& getMAC() const {
         return mac;
     }
 
@@ -110,7 +112,7 @@ public:
      *
      * @param mac the MAC address
      */
-    void setMAC(uint64_t mac) {
+    void setMAC(const opflex::modb::MAC& mac) {
         this->mac = mac;
     }
 
@@ -162,7 +164,7 @@ public:
 
 private:
     std::string uuid;
-    uint64_t mac;
+    opflex::modb::MAC mac;
     boost::unordered_set<std::string> ips;
     boost::optional<opflex::modb::URI> egURI;
     boost::optional<std::string> interfaceName;
