@@ -1,0 +1,7 @@
+{
+    // Endpoint sources provide metadata about local endpoints
+    "endpoint-sources": {
+	// Filesystem path to monitor for endpoint information
+	"filesystem": ["FILESYSTEM_WATCH_DIR"]
+    }
+}

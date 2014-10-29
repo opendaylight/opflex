@@ -11,6 +11,9 @@
 
 #include <opflex/modb/ObjectListener.h>
 #include <boost/test/unit_test.hpp>
+#include <boost/filesystem/fstream.hpp>
+
+#include "FSEndpointSource.h"
 
 #include "BaseFixture.h"
 
@@ -25,6 +28,7 @@ using opflex::ofcore::OFFramework;
 using boost::optional;
 using boost::shared_ptr;
 
+namespace fs = boost::filesystem;
 using namespace modelgbp;
 using namespace modelgbp::epdr;
 using namespace modelgbp::epr;
@@ -142,6 +146,21 @@ public:
     URI rduri;
 };
 
+class FSEndpointFixture : public EndpointFixture {
+public:
+    FSEndpointFixture() 
+        : EndpointFixture(),
+          temp(fs::temp_directory_path() / fs::unique_path()) {
+        fs::create_directory(temp);
+    }
+
+    ~FSEndpointFixture() {
+        fs::remove_all(temp);
+    }
+
+    fs::path temp;
+};
+
 BOOST_AUTO_TEST_SUITE(EndpointManager_test)
 
 template<typename T>
@@ -152,16 +171,16 @@ bool hasEPREntry(OFFramework& framework, const URI& uri) {
 BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     URI epgu = URI("/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/");
     Endpoint ep1("e82e883b-851d-4cc6-bedb-fb5e27530043");
-    ep1.setMac(1);
-    ep1.addIp("10.1.1.2");
-    ep1.addIp("10.1.1.3");
+    ep1.setMAC(1);
+    ep1.addIP("10.1.1.2");
+    ep1.addIP("10.1.1.3");
     ep1.setInterfaceName("veth1");
-    ep1.setEgUri(epgu);
+    ep1.setEgURI(epgu);
     Endpoint ep2("72ffb982-b2d5-4ae4-91ac-0dd61daf527a");
-    ep2.setMac(2);
+    ep2.setMAC(2);
     ep2.setInterfaceName("veth2");
-    ep2.addIp("10.1.1.4");
-    ep2.setEgUri(epgu);
+    ep2.addIP("10.1.1.4");
+    ep2.setEgURI(epgu);
 
     epSource.updateEndpoint(ep1);
     epSource.updateEndpoint(ep2);
@@ -199,6 +218,68 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr1_3), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_4), 500);
 
+}
+
+BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
+
+    // check already existing
+    fs::ofstream os(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c754.ep");
+    os << "{"
+       << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c754\","
+       << "\"mac\":\"10:ff:00:a3:01:00\","
+       << "\"ip\":[\"10.0.0.1\",\"10.0.0.2\"],"
+       << "\"interface-name\":\"veth0\","
+       << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\""
+       << "}" << std::endl;
+    os.close();
+
+    FSEndpointSource source(&agent.getEndpointManager(),
+                             temp.string());
+
+    URI l2epr = URIBuilder()
+        .addElement("EprL2Universe")
+        .addElement("EprL2Ep")
+        .addElement(bduri.toString())
+        .addElement((uint64_t)0x10ff00a3010000ll).build();
+    URI l3epr_1 = URIBuilder()
+        .addElement("EprL3Universe")
+        .addElement("EprL3Ep")
+        .addElement(rduri.toString())
+        .addElement("10.0.0.1").build();
+    URI l3epr_2 = URIBuilder()
+        .addElement("EprL3Universe")
+        .addElement("EprL3Ep")
+        .addElement(rduri.toString())
+        .addElement("10.0.0.2").build();
+
+    WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_1), 500);
+    WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_2), 500);
+    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr), 500);
+
+    URI l2epr2 = URIBuilder()
+        .addElement("EprL2Universe")
+        .addElement("EprL2Ep")
+        .addElement(bduri.toString())
+        .addElement((uint64_t)0x10ff00a3010100ll).build();
+
+    // check for a new EP added to watch directory
+    fs::path path2(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c755.ep");
+    fs::ofstream os2(path2);
+    os2 << "{"
+       << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c755\","
+       << "\"mac\":\"10:ff:00:a3:01:01\","
+       << "\"ip\":[\"10.0.0.3\"],"
+       << "\"interface-name\":\"veth1\","
+       << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\""
+       << "}" << std::endl;
+    os2.close();
+    
+    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
+
+    // check for removing an endpoint
+    fs::remove(path2);
+
+    WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr2), 500);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

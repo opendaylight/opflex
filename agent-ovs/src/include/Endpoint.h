@@ -46,7 +46,7 @@ public:
      *
      * @return the endpoint URI
      */
-    const boost::optional<opflex::modb::URI>& getEgUri() const {
+    const boost::optional<opflex::modb::URI>& getEgURI() const {
         return egURI;
     }
 
@@ -55,16 +55,16 @@ public:
      * endpoint group URI controls the policies that are applied to
      * the endpoint.
      *
-     * @param egUri the URI to set
+     * @param egURI the URI to set
      */
-    void setEgUri(const opflex::modb::URI& egUri) {
-        egURI = egUri;
+    void setEgURI(const opflex::modb::URI& egURI) {
+        this->egURI = egURI;
     }
 
     /**
      * Unset the endpoing group URI
      */
-    void unsetEgUri() {
+    void unsetEgURI() {
         egURI = boost::none;
     }
 
@@ -73,7 +73,7 @@ public:
      *
      * @return the list of IP addresses
      */
-    const boost::unordered_set<std::string>& getIps() const {
+    const boost::unordered_set<std::string>& getIPs() const {
         return ips;
     }
 
@@ -81,9 +81,9 @@ public:
      * Set the IP addresses for this endpoint.  This will overwrite
      * any existing IP addresses
      *
-     * @params ips the IP addresses
+     * @param ips the IP addresses
      */
-    void setIps(const boost::unordered_set<std::string>& ips) {
+    void setIPs(const boost::unordered_set<std::string>& ips) {
         this->ips = ips;
     }
 
@@ -92,7 +92,7 @@ public:
      *
      * @param ip the IP address to add
      */
-    void addIp(const std::string& ip) {
+    void addIP(const std::string& ip) {
         this->ips.insert(ip);
     }
 
@@ -101,7 +101,7 @@ public:
      *
      * @return the MAC address
      */
-    uint64_t getMac() const {
+    uint64_t getMAC() const {
         return mac;
     }
 
@@ -110,7 +110,7 @@ public:
      *
      * @param mac the MAC address
      */
-    void setMac(uint64_t mac) {
+    void setMAC(uint64_t mac) {
         this->mac = mac;
     }
 
@@ -118,8 +118,17 @@ public:
      * Get the UUID for this endpoint
      * @return the unique ID for the endpoint.
      */
-    const std::string& getUuid() const {
+    const std::string& getUUID() const {
         return uuid;
+    }
+
+    /**
+     * Set the UUID for the endpoint
+     *
+     * @param uuid the unique ID for the endpoint
+     */
+    void setUUID(const std::string& uuid) {
+        this->uuid = uuid;
     }
 
     /**
@@ -158,6 +167,11 @@ private:
     boost::optional<opflex::modb::URI> egURI;
     boost::optional<std::string> interfaceName;
 };
+
+/**
+ * Print an endpoint to an ostream
+ */
+std::ostream & operator<<(std::ostream &os, const Endpoint& ep);
 
 } /* namespace ovsagent */
 

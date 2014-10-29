@@ -28,6 +28,7 @@ libagent_ovs_la_LIBADD = \
 	$(libvirt_LIBS) \
 	$(libglog_LIBS) \
 	$(BOOST_SYSTEM_LIB) \
+	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_THREAD_LIB) 
 
 libagent_ovs_la_SOURCES = \
@@ -38,13 +39,14 @@ libagent_ovs_la_SOURCES = \
 	src/include/EndpointListener.h \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \
-	src/include/VirtEndpointSource.h \
+	src/include/FSEndpointSource.h \
 	src/include/Agent.h \
 	src/GLogLogHandler.cpp \
 	src/PolicyManager.cpp \
+	src/Endpoint.cpp \
 	src/EndpointManager.cpp \
 	src/EndpointSource.cpp \
-	src/VirtEndpointSource.cpp \
+	src/FSEndpointSource.cpp \
 	src/Agent.cpp
 
 SUBDIRS =
@@ -74,6 +76,14 @@ agent_test_SOURCES = \
 agent_test_LDADD = \
 	libagent_ovs.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
+
+agentconfdir=$(sysconfdir)/opflex-agent-ovs
+agentconf_DATA = opflex-agent-ovs.conf
+
+defwatchdir=${localstatedir}/run/opflex-agent-ovs
+opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
+	sed -e "s|FILESYSTEM_WATCH_DIR|${defwatchdir}|" \
+	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
 
 if HAVE_DOXYGEN
   noinst_DATA = \

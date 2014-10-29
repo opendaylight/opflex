@@ -77,23 +77,23 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     using namespace modelgbp::epdr;
 
     unique_lock<mutex> guard(ep_mutex);
-    const string& uuid = endpoint.getUuid();
+    const string& uuid = endpoint.getUUID();
 
     EndpointState& es = ep_map[uuid];
 
-    const optional<URI>& oldEgUri = es.endpoint.getEgUri();
-    const optional<URI>& egUri = endpoint.getEgUri();
+    const optional<URI>& oldEgURI = es.endpoint.getEgURI();
+    const optional<URI>& egURI = endpoint.getEgURI();
 
     // update endpoint group to endpoint mapping
-    if (es.endpoint.getEgUri() != egUri) {
-        if (oldEgUri) {
-            unordered_set<string> eps = group_ep_map[oldEgUri.get()];
+    if (es.endpoint.getEgURI() != egURI) {
+        if (oldEgURI) {
+            unordered_set<string> eps = group_ep_map[oldEgURI.get()];
             eps.erase(uuid);
             if (eps.size() == 0)
-                group_ep_map.erase(oldEgUri.get());
+                group_ep_map.erase(oldEgURI.get());
         }
-        if (egUri) {
-            group_ep_map[egUri.get()].insert(uuid);
+        if (egURI) {
+            group_ep_map[egURI.get()].insert(uuid);
         }
     }
 
@@ -103,7 +103,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 
     Mutator mutator(framework, "policyelement");
 
-    if (egUri) {
+    if (egURI) {
         // Update LocalL2 objects in the MODB, which will trigger
         // resolution of the endpoint group, if needed.
         optional<shared_ptr<L2Discovered> > l2d = 
@@ -111,9 +111,9 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
         if (l2d) {
             shared_ptr<LocalL2Ep> l2e = l2d.get()
                 ->addEpdrLocalL2Ep(uuid);
-            l2e->setMac(endpoint.getMac())
+            l2e->setMac(endpoint.getMAC())
                 .addEpdrEndPointToGroupRSrc()
-                ->setTargetEpGroup(egUri.get());
+                ->setTargetEpGroup(egURI.get());
             newlocall2eps.insert(l2e->getURI());
         }
 
@@ -123,13 +123,13 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
         optional<shared_ptr<L3Discovered> > l3d = 
             L3Discovered::resolve(framework);
         if (l3d) {
-            BOOST_FOREACH(const string& ip, endpoint.getIps()) {
+            BOOST_FOREACH(const string& ip, endpoint.getIPs()) {
                 shared_ptr<LocalL3Ep> l3e = l3d.get()
                     ->addEpdrLocalL3Ep(uuid);
                 l3e->setIp(ip)
-                    .setMac(endpoint.getMac())
+                    .setMac(endpoint.getMAC())
                     .addEpdrEndPointToGroupRSrc()
-                    ->setTargetEpGroup(egUri.get());
+                    ->setTargetEpGroup(egURI.get());
                 newlocall3eps.insert(l3e->getURI());
             }
         }
@@ -192,17 +192,17 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     if (it == ep_map.end()) return false;
 
     EndpointState& es = it->second;
-    const optional<URI>& egUri = es.endpoint.getEgUri();
+    const optional<URI>& egURI = es.endpoint.getEgURI();
     unordered_set<URI> newl3eps;
     unordered_set<URI> newl2eps;
     optional<shared_ptr<RoutingDomain> > rd;
     optional<shared_ptr<BridgeDomain> > bd; 
 
-    if (egUri) {
+    if (egURI) {
         // check whether the l2 and l3 routing contexts are already
         // resolved.
-        rd = policyManager.getRDForGroup(egUri.get());
-        bd = policyManager.getBDForGroup(egUri.get());
+        rd = policyManager.getRDForGroup(egURI.get());
+        bd = policyManager.getBDForGroup(egURI.get());
     }
 
     Mutator mutator(framework, "policyelement");
@@ -214,7 +214,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
         // endpoint
         shared_ptr<L2Ep> l2e = l2u.get()
             ->addEprL2Ep(bd.get()->getURI().toString(),
-                         es.endpoint.getMac());
+                         es.endpoint.getMAC());
         newl2eps.insert(l2e->getURI());
     }
 
@@ -223,10 +223,10 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     if (l3u && rd) {
         // If the routing domain is known, we can register the l3
         // endpoints in the endpoint registry
-        BOOST_FOREACH(const string& ip, es.endpoint.getIps()) {
+        BOOST_FOREACH(const string& ip, es.endpoint.getIPs()) {
             shared_ptr<L3Ep> l3e = l3u.get()
                 ->addEprL3Ep(rd.get()->getURI().toString(), ip);
-            l3e->setMac(es.endpoint.getMac());
+            l3e->setMac(es.endpoint.getMAC());
             newl3eps.insert(l3e->getURI());
         }
     }

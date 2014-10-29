@@ -48,6 +48,8 @@ void URIQueue::proc_thread_func(void* queue_) {
         } catch (const std::exception& ex) {
             LOG(ERROR) << "Exception while processing notification queue: " <<
                 ex.what();
+        } catch (...) {
+            LOG(ERROR) << "Unknown error while processing notification queue";
         }
     }
 }
