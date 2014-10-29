@@ -30,7 +30,7 @@ using boost::algorithm::first_finder;
 using boost::iterator_range;
 using boost::copy_range;
 
-const URI URI::ROOT = URI("/");
+const URI URI::ROOT("/");
 
 URI::URI(const boost::shared_ptr<const std::string>& uri_)
     : uri(uri_) {

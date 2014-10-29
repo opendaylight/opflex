@@ -19,7 +19,6 @@ using namespace opflex;
 using namespace modb;
 
 BOOST_AUTO_TEST_CASE( basic ) {
-    MAC mac1(0x112233445566llu);
     MAC mac2("11:22:33:44:55:66");
     uint8_t bytes[6] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
     MAC mac3(bytes);
@@ -29,14 +28,12 @@ BOOST_AUTO_TEST_CASE( basic ) {
     MAC mac5(bytes2);
     MAC mac6("a:bb:cc:dd:e:ff");
 
-    BOOST_CHECK_EQUAL("11:22:33:44:55:66", mac1.toString());
     BOOST_CHECK_EQUAL("11:22:33:44:55:66", mac2.toString());
     BOOST_CHECK_EQUAL("11:22:33:44:55:66", mac3.toString());
     BOOST_CHECK_EQUAL("0a:bb:cc:dd:0e:ff", mac5.toString());
     BOOST_CHECK_EQUAL(mac2, mac3);
     BOOST_CHECK_EQUAL(mac4, mac3);
     BOOST_CHECK_EQUAL(mac5, mac6);
-    BOOST_CHECK_EQUAL(MAC("10:ff:00:a3:01:01"), MAC(0x10ff00a30101llu));
     BOOST_CHECK(mac4 != mac5);
 }
 

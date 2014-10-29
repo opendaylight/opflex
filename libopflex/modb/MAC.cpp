@@ -50,12 +50,13 @@ static uint64_t parseMac(const string& macstr) {
     return result;
 }
 
+MAC::MAC() : mac(0) { }
+
 MAC::MAC(const std::string& mac_) 
     : mac(parseMac(mac_)) {
 }
 
 MAC::MAC(uint64_t mac_) {
-    std::cerr << "Before: 0x" << std::hex << mac_ << std::endl;
     if (htonl(1) == 1) {
         mac = (mac_ << 16);
     } else {
@@ -63,10 +64,8 @@ MAC::MAC(uint64_t mac_) {
         uint32_t* mac32 = (uint32_t*)&mac;
         mac32[0] = htonl(mac32_[1]);
         mac32[1] = htonl(mac32_[0]);
-        std::cerr << "Swapped: 0x" << std::hex << mac << std::endl;
         mac = (mac >> 16);
     }
-    std::cerr << "After: 0x" << std::hex << mac << std::endl;
 }
 
 MAC::MAC(uint8_t mac_[6]) : mac(0) {

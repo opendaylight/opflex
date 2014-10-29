@@ -40,21 +40,17 @@ namespace modb {
 class MAC {
 public:
     /**
+     * Construct a MAC consisting of all zeroes
+     */
+    MAC();
+
+    /**
      * Construct a MAC using the given string representation
      *
      * @param mac the string representation of the mac
      * @throws std::invalid_argument if the MAC address is not valid
      */
     explicit MAC(const std::string& mac);
-
-    /**
-     * Construct a MAC using a uint64_t, which must be in host byte
-     * order, so that a constant such as 0x112233445566llu will
-     * correspond to 11:22:33:44:55:66.
-     *
-     * @param mac the mac address
-     */
-    explicit MAC(uint64_t mac);
 
     /**
      * Construct a MAC using an array of 6 bytes, in network byte
@@ -75,6 +71,15 @@ public:
     std::string toString() const;
 
 private:
+    /**
+     * Construct a MAC using a uint64_t, which must be in host byte
+     * order, so that a constant such as 0x112233445566llu will
+     * correspond to 11:22:33:44:55:66.
+     *
+     * @param mac the mac address
+     */
+    explicit MAC(uint64_t mac);
+
     /**
      * The MAC address, which will be stored in network byte order
      * using the leftmost 6 bytes
