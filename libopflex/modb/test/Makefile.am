@@ -24,6 +24,7 @@ modb_test_SOURCES = \
 	TestListener.h \
 	main.cpp \
 	URIBuilder_test.cpp \
+	MAC_test.cpp \
 	ObjectInstance_test.cpp \
 	ObjectStore_test.cpp
 modb_test_LDADD = ../libmodb.la \

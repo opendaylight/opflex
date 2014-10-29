@@ -289,7 +289,6 @@ public class FClassDef extends ItemFormatterTask
     {
         if (aInPType.startsWith("Enum") ||
             aInPType.startsWith("Bitmask") ||
-            aInPType.equalsIgnoreCase("MAC") ||
             aInPType.startsWith("UInt"))
         {
             aInPType = "UInt64";

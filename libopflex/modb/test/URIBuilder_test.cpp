@@ -65,6 +65,15 @@ BOOST_AUTO_TEST_CASE( string ) {
     }
 }
 
+BOOST_AUTO_TEST_CASE( mac ) {
+    URIBuilder builder;
+    builder
+        .addElement("macprop")
+        .addElement(MAC("11:22:33:44:55:66"));
+    BOOST_CHECK_EQUAL("/macprop/11:22:33:44:55:66/",
+                      builder.build().toString());
+}
+
 BOOST_AUTO_TEST_CASE( getelements ) {
     URI u1("/");
     std::vector<std::string> elements;
