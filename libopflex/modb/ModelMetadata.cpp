@@ -15,8 +15,10 @@ namespace opflex {
 namespace modb {
 
 ModelMetadata::ModelMetadata(const std::string& name,
-                             const std::vector<ClassInfo>& classes_)
-    : classes(classes_) {
+                             const std::vector<ClassInfo>& classes_,
+                             const std::vector<EnumInfo>& enums_)
+    : classes(classes_),
+      enums(enums_) {
     
 }
 

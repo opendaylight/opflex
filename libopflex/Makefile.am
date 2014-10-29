@@ -25,6 +25,8 @@ SUBDIRS += .
 modb_includedir = $(includedir)/opflex/modb
 modb_include_HEADERS = \
 	include/opflex/modb/ClassInfo.h \
+	include/opflex/modb/ConstInfo.h \
+	include/opflex/modb/EnumInfo.h \
 	include/opflex/modb/ModelMetadata.h \
 	include/opflex/modb/Mutator.h \
 	include/opflex/modb/ObjectListener.h \

@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "opflex/modb/ClassInfo.h"
+#include "opflex/modb/EnumInfo.h"
 
 namespace opflex {
 namespace modb {
@@ -51,9 +52,12 @@ public:
      * @param model_name the name of the model
      * @param classes a vector containing the classes to be used with
      * the model
+     * @param enums a vector containing the enums to be used with
+     * the model
      */
     ModelMetadata(const std::string& model_name,
-                  const std::vector<ClassInfo>& classes);
+                  const std::vector<ClassInfo>& classes,
+                  const std::vector<EnumInfo>& enums);
 
     /**
      * Destroy the class index
@@ -72,6 +76,12 @@ public:
      */
     const std::vector<ClassInfo>& getClasses() const { return classes; }
 
+    /**
+    * Get the enums that exist in this model
+    * @return a vector of EnumInfo objects
+    */
+    const std::vector<EnumInfo>& getEnums() const { return enums; }
+
 private:
     /**
      * The name for this model
@@ -87,6 +97,11 @@ private:
      * The properties for this class
      */
     std::vector<ClassInfo> classes;
+
+    /*
+     * The enums defined in this model
+     */
+    std::vector<EnumInfo> enums;
 };
 
 /* @} metadata */
