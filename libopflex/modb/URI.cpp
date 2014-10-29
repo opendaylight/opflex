@@ -52,6 +52,11 @@ URI::URI(const URI& uri_)
 URI::~URI() {
 }
 
+std::ostream & operator<<(std::ostream &os, const URI& uri) {
+    os << uri.toString();
+    return os;
+}
+
 const std::string& URI::toString() const {
     return *uri;
 }

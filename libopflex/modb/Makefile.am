@@ -26,6 +26,7 @@ libmodb_la_SOURCES = \
 	include/opflex/modb/internal/Region.h \
 	include/opflex/modb/internal/URIQueue.h \
 	include/opflex/modb/internal/ClassIndex.h \
+	MAC.cpp \
 	URI.cpp \
 	URIBuilder.cpp \
 	URIQueue.cpp \

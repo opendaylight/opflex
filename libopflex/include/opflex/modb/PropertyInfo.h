@@ -64,6 +64,8 @@ public:
         S64,
         /** An unsigned 64-bit integer value */
         U64,
+        /** A MAC address */
+        MAC,
         /** An 8-bit enum value */
         ENUM8,
         /** A 16-bit enum value */
