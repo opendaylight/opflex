@@ -92,8 +92,16 @@ public:
                                list_of 
                                    (PropertyInfo(13, "prop12",
                                                  PropertyInfo::STRING, 
+                                                 PropertyInfo::SCALAR))
+                                   (PropertyInfo(14, "prop14",
+                                                 PropertyInfo::ENUM8,
                                                  PropertyInfo::SCALAR)),
-                               list_of(12)))
+                               list_of(12))),
+             list_of(EnumInfo("PlatformAdminState", PropertyInfo::ENUM8,
+                              list_of
+                                  (ConstInfo("off", 0))
+                                  (ConstInfo("on", 1)),
+                              list_of(14)))
              ) { }
 
     ModelMetadata md;
