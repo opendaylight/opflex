@@ -31,11 +31,15 @@ libcomms_la_LIBADD  =
 libcomms_la_LIBADD += librpcperfect.la
 libcomms_la_LIBADD += $(UV_LIBS)
 
-comms_headers = 
+comms_headers =
 comms_headers += include/opflex/comms/comms-internal.hpp
 comms_headers += include/opflex/comms/comms.hpp
 comms_headers += include/opflex/comms/internal/json.hpp
-rpc_headers = 
+
+codes_headers =
+codes_headers += ../3rdparty/codes/trunk/codes.cpp/iovec-utils.hh
+
+rpc_headers =
 rpc_headers += include/opflex/rpc/internal/meta.hpp
 rpc_headers += include/opflex/rpc/message_factory.hpp
 rpc_headers += include/opflex/rpc/message_factory.inl.hpp
@@ -48,12 +52,16 @@ libcomms_la_SOURCES  =
 if SEPARATE_COMMS
   comms_includedir = $(includedir)/opflex/comms
   comms_include_HEADERS = $(comms_headers)
+
   rpc_includedir = $(includedir)/opflex/rpc
   rpc_include_HEADERS = $(rpc_headers)
+
   libcomms_la_LIBADD += ../logging/liblogging.la
 else
-  libcomms_la_SOURCES += $(comms_headers) $(rpc_headers)
+  libcomms_la_SOURCES += $(comms_headers) $(codes_headers) $(rpc_headers)
 endif
+
+EXTRA_DIST = $(comms_headers) $(codes_headers)
 
 libcomms_la_SOURCES += tricks/overload.h
 
