@@ -23,6 +23,7 @@
 
 #include "opflex/modb/PropertyInfo.h"
 #include "opflex/modb/URI.h"
+#include "opflex/modb/MAC.h"
 
 namespace opflex {
 namespace modb {
@@ -209,6 +210,35 @@ public:
     size_t getReferenceSize(prop_id_t prop_id) const;
 
     /**
+     * Get the MAC-address-valued property for prop_name.
+     *
+     * @param prop_id the property ID to look up
+     * @return the property value
+     * @throws std::out_of_range if no such element is present.
+     */
+    const MAC& getMAC(prop_id_t prop_id) const;
+
+    /**
+     * For a vector-valued MAC address property, get the specified
+     * property value at the specified index
+     *
+     * @param prop_id the property ID to look up
+     * @param index the vector index to retrieve
+     * @return the property value
+     * @throws std::out_of_range if no such element is present.
+     */
+    const MAC& getMAC(prop_id_t prop_id, size_t index) const;
+
+    /**
+     * Get the number of MAC address values for the specified
+     * property
+     *
+     * @param prop_id the property ID to look up
+     * @return the number of elements
+     */
+    size_t getMACSize(prop_id_t prop_id) const;
+
+    /**
      * Set the uint64-valued parameter to the specified value
      *
      * @param prop_id the property ID to set
@@ -293,6 +323,26 @@ public:
                       const std::vector<reference_t>& value);
 
     /**
+     * Set the MAC address-valued parameter to the specified value
+     *
+     * @param prop_id the property ID to set
+     * @param value the value to set
+     * @return a reference to this object that can be used to chain
+     * the calls
+     */
+    void setMAC(prop_id_t prop_id, const MAC& value);
+
+    /**
+     * Set the MAC address-vector-valued parameter to the specified value
+     *
+     * @param prop_id the property ID to set
+     * @param value the value to set
+     * @return a reference to this object that can be used to chain
+     * the calls
+     */
+    void setMAC(prop_id_t prop_id, const std::vector<MAC>& value);
+
+    /**
      * Add a value to a the specified unsigned 64-bit vector
      *
      * @param prop_id the property ID to set
@@ -334,6 +384,16 @@ public:
     void addReference(prop_id_t prop_id, 
                       class_id_t class_id, const URI& uri);
 
+    /**
+     * Add a value to a the specified MAC address vector
+     *
+     * @param prop_id the property ID to set
+     * @param value the value to set
+     * @return a reference to this object that can be used to chain
+     * the calls
+     */
+    void addMAC(prop_id_t prop_id, const MAC& value);
+
 private:
     class_id_t class_id;
 
@@ -345,10 +405,12 @@ private:
                        int64_t,
                        std::string*,
                        reference_t,
+                       MAC,
                        std::vector<uint64_t>*,
                        std::vector<int64_t>*,
                        std::vector<std::string>*,
-                       std::vector<reference_t>*> value;
+                       std::vector<reference_t>*,
+                       std::vector<MAC>*> value;
 
         Value() {}
         Value(const Value& val);

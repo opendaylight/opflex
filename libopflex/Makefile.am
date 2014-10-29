@@ -30,7 +30,8 @@ modb_include_HEADERS = \
 	include/opflex/modb/ObjectListener.h \
 	include/opflex/modb/PropertyInfo.h \
 	include/opflex/modb/URIBuilder.h \
-	include/opflex/modb/URI.h
+	include/opflex/modb/URI.h \
+	include/opflex/modb/MAC.h
 modb_mo_includedir = $(includedir)/opflex/modb/mo-internal
 modb_mo_include_HEADERS = \
 	include/opflex/modb/mo-internal/MO.h \

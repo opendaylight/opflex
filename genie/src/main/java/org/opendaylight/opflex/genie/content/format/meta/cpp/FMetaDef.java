@@ -148,7 +148,6 @@ public class FMetaDef
         case "UINT32":
         case "UINT16":
         case "UINT8":
-        case "MAC":
         case "BITMASK8":
         case "BITMASK16":
         case "BITMASK32":
