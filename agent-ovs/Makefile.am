@@ -96,8 +96,7 @@ noinst_PROGRAMS += integration_test
 integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/src/enforcer/include \
-	-I/usr/include/ovs/include \
-	-fpermissive
+	$(OVS_CFLAGS)
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 
 integration_test_SOURCES = \
@@ -107,7 +106,7 @@ integration_test_SOURCES = \
 integration_test_LDADD = $(top_builddir)/src/enforcer/libenforcer.la \
 	$(libopflex_LIBS) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	$(OVS_LIB) \
+	$(OVS_LIBS) \
 	$(UV_LIBS) \
 	$(libglog_LIBS)
 endif

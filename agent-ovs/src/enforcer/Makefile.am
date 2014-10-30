@@ -15,9 +15,7 @@ SUBDIRS = . test
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 	-I$(srcdir)/include \
 	-I$(top_srcdir)/src/include \
-	-I/usr/include/ovs/include \
-	-fpermissive
-# OVS headers need -fpermissive to avoid casting errors :(
+	$(OVS_CFLAGS)
 
 noinst_LTLIBRARIES = libenforcer.la
 
