@@ -38,6 +38,7 @@ comms_headers += include/opflex/comms/internal/json.hpp
 
 codes_headers =
 codes_headers += ../3rdparty/codes/trunk/codes.cpp/iovec-utils.hh
+codes_headers += ../3rdparty/codes/trunk/codes.cpp/mtp.hh
 
 rpc_headers =
 rpc_headers += include/opflex/rpc/internal/meta.hpp
@@ -45,6 +46,7 @@ rpc_headers += include/opflex/rpc/message_factory.hpp
 rpc_headers += include/opflex/rpc/message_factory.inl.hpp
 rpc_headers += include/opflex/rpc/method_lookup.hpp
 rpc_headers += include/opflex/rpc/methods.hpp
+rpc_headers += include/opflex/rpc/send_handler.hpp
 rpc_headers += include/opflex/rpc/rpc.hpp
 
 libcomms_la_SOURCES  =
@@ -62,8 +64,6 @@ else
 endif
 
 EXTRA_DIST = $(comms_headers) $(codes_headers)
-
-libcomms_la_SOURCES += tricks/overload.h
 
 libcomms_la_SOURCES += active_connection.cpp
 libcomms_la_SOURCES += passive_listener.cpp
