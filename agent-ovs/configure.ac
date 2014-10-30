@@ -64,7 +64,14 @@ PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])
 PKG_CHECK_MODULES([libglog], [libglog >= 0.3.3])
 
 # check for libopenvswitch. Should use pkg-config
-AC_CHECK_LIB([openvswitch], main, [OVS_LIB="-lopenvswitch -lpthread -lrt -lssl -lcrypto"; AC_SUBST(OVS_LIB)], [echo "libopenvswitch not found; agent won't be built"])
+OVS_PREFIX=/usr/local
+AC_SUBST(OVS_PREFIX)
+AC_CHECK_LIB([openvswitch], main,
+    [OVS_LIBS="-lopenvswitch -lpthread -lrt -lssl -lcrypto";
+     OVS_CFLAGS="-I\$(OVS_PREFIX)/include -I\$(OVS_PREFIX)/include/ovs/include -fpermissive"],
+    [echo "libopenvswitch not found; agent won't be built"])
+AC_SUBST(OVS_LIBS)
+AC_SUBST(OVS_CFLAGS)
 AM_CONDITIONAL([HAVE_OVS], [test "$ac_cv_lib_openvswitch_main" = yes])
 
 # inotify check
