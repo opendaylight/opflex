@@ -17,6 +17,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
 #include <string>
+#include "EnumInfo.h"
 
 namespace opflex {
 namespace modb {
@@ -101,6 +102,15 @@ public:
                  cardinality_t cardinality);
 
     /**
+     * Construct a property info object with enum info of the specified type.
+     */
+    PropertyInfo(prop_id_t prop_id,
+                 const std::string& property_name,
+                 property_type_t type,
+                 cardinality_t cardinality,
+                 const EnumInfo& enum_info);
+
+    /**
      * Construct a property info object with either a composite or
      * reference data type of the specified type.
      */
@@ -141,6 +151,11 @@ public:
      */
     const cardinality_t getCardinality() const { return cardinality; }
 
+    /**
+     * Get the associated enum info for this property if it is an enum.
+     */
+    const EnumInfo& getEnumInfo() const { return enum_info; }
+
 private:
     /**
      * The property ID for this property
@@ -167,6 +182,11 @@ private:
      * The cardinality of the provided property
      */
     cardinality_t cardinality;
+
+    /**
+     * Associated enum info if this property is an enum type.
+     */
+    EnumInfo enum_info;
 };
 
 /* @} metadata */

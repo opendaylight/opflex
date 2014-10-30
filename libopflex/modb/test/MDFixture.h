@@ -94,6 +94,16 @@ public:
                                                  PropertyInfo::STRING, 
                                                  PropertyInfo::SCALAR)),
                                list_of(12)))
+                    (ClassInfo(7, ClassInfo::LOCAL_ONLY, "class7", "owner2",
+                               list_of
+                                   (PropertyInfo(14, "prop14",
+                                                 PropertyInfo::ENUM8,
+                                                 PropertyInfo::SCALAR,
+                                                 EnumInfo("PlatformAdminState",
+                                                          list_of
+                                                              (ConstInfo("off", 0))
+                                                              (ConstInfo("on", 1))))),
+                               list_of(14)))
              ) { }
 
     ModelMetadata md;

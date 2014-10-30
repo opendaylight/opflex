@@ -38,6 +38,29 @@ PropertyInfo::PropertyInfo(prop_id_t prop_id_,
 }
 
 PropertyInfo::PropertyInfo(prop_id_t prop_id_,
+                           const std::string& property_name_,
+                           property_type_t type_,
+                           cardinality_t cardinality_,
+                           const EnumInfo& enum_info_)
+    : prop_id(prop_id_),
+      property_name(property_name_),
+      prop_type(type_),
+      class_id(0),
+      cardinality(cardinality_),
+      enum_info(enum_info_) {
+    switch(prop_type) {
+    case ENUM8:
+    case ENUM16:
+    case ENUM32:
+    case ENUM64:
+       prop_type = U64;
+       break;
+    default:
+       break;
+    }
+}
+
+PropertyInfo::PropertyInfo(prop_id_t prop_id_,
                            const std::string& property_name_, 
                            property_type_t type_,
                            class_id_t class_id_,
