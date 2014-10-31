@@ -45,17 +45,18 @@ public class Node
         {
             return false;
         }
-        String result = getNamedValue(aInName, "false", false);
-        return (!"false".equals(result) && !"no".equals(result));
+        else
+        {
+            String result = validateBoolean(aInName, getNamedValue(aInName, Strings.NO, false), true);
+            return !Strings.NO.equals(result);
+        }
     }
 
     public boolean getNamedOption(String aInName, boolean aInPositiveDefault)
     {
         return hasNamedValues() ?
                 (Strings.YES.equalsIgnoreCase(
-                        getNamedValue(
-                            aInName,aInPositiveDefault ? Strings.YES : Strings.NO, true)) /**||
-                        nvps.containsKey(aInName)**/) :
+                        validateBoolean(aInName, getNamedValue(aInName, aInPositiveDefault ? Strings.YES : Strings.NO, true), true))) :
                 aInPositiveDefault;
     }
 
@@ -88,7 +89,7 @@ public class Node
                     "node named value retrieval", "value not found", "value by name \'" + aInName + "\' not found;" +
                     "no default provided; available named values: " + nvps.keySet());
         }
-        return lRet;
+        return validateBoolean(aInName, lRet, false);
     }
 
     public Map<String,String> getNvps()
@@ -511,6 +512,27 @@ public class Node
     public int getColumnNum()
     {
         return columnNum;
+    }
+
+    public final String validateBoolean(String aInName, String aInValue, boolean aInFull)
+    {
+        if (!Strings.isEmpty(aInValue))
+        {
+            if (aInValue.equalsIgnoreCase(aInName))
+            {
+                return aInValue;
+            }
+            else if (aInValue.equalsIgnoreCase("true") || aInValue.equalsIgnoreCase("false"))
+            {
+                Severity.DEATH.report(toString(), "parse of boolean flag", "",
+                                      "use yes|no. do not use true|false for flags; \"" + aInValue + "\" is encountered");
+            }
+            else if (aInFull && !(Strings.YES.equalsIgnoreCase(aInValue) || Strings.NO.equalsIgnoreCase(aInValue)))
+            {
+                Severity.DEATH.report(toString(), "parse of boolean flag", "", "use yes|no; \"" + aInValue + "\" is encountered");
+            }
+        }
+        return aInValue;
     }
 
     private final String name;

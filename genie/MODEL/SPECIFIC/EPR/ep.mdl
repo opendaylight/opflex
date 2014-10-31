@@ -17,7 +17,6 @@ module[epr]
 
         # mac address of the end-point
         member[mac; type=address/MAC]
-
     }
 
     # abstraction of local end-point identifies an end-point that is locally discovered.

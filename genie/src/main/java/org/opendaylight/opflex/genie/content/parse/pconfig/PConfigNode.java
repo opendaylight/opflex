@@ -28,7 +28,11 @@ public class PConfigNode
         Config.setLoaderRelPath(aInData.getNamedValue("loader", null, true), aInData.getNamedValue("loaderfiletype", ".cfg", true));
         Config.setGenDestPath(aInData.getNamedValue("gendest", ".", true));
         Config.setLogDirParent(aInData.getNamedValue("logfile", ".", true));
-
+        Config.setIsEnumSupport(
+                    aInData.validateBoolean(
+                            "enums",
+                            aInData.getNamedValue("enums", null, false),
+                            true));
         return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,null);
     }
 
