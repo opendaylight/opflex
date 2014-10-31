@@ -19,9 +19,15 @@
 #include <opflex/rpc/send_handler.hpp>
 #include <iovec-utils.hh>
 #include <boost/intrusive/list.hpp>
+
 #ifndef NDEBUG
-#include <boost/atomic.hpp>
+#  include <boost/version.hpp>
+#  if BOOST_VERSION > 105300
+#    define COMMS_DEBUG_OBJECT_COUNT
+#    include <boost/atomic.hpp>
+#  endif
 #endif
+
 #include <iostream>
 
 namespace opflex { namespace comms { namespace internal {
@@ -44,7 +50,7 @@ int addr_from_ip_and_port(const char * ip_address, uint16_t port,
 
 class Peer : public ::boost::intrusive::list_base_hook<
              ::boost::intrusive::link_mode< ::boost::intrusive::auto_unlink> > {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static ::boost::atomic<size_t> counter;
 #endif
   public:
@@ -53,7 +59,7 @@ class Peer : public ::boost::intrusive::list_base_hook<
             ::boost::intrusive::constant_time_size<false> > List;
 
     class LoopData {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
         static ::boost::atomic<size_t> counter;
 #endif
       public:
@@ -70,7 +76,7 @@ class Peer : public ::boost::intrusive::list_base_hook<
           TOTAL_STATES
         } PeerState;
 
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
         explicit LoopData() {
             ++counter;
         }
@@ -114,7 +120,7 @@ class Peer : public ::boost::intrusive::list_base_hook<
 
     static ActivePeer * get(uv_getaddrinfo_t * r);
 
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static size_t getCounter() {
         return counter;
     }
@@ -148,7 +154,7 @@ class Peer : public ::boost::intrusive::list_base_hook<
             {
                 handle_.data = this;
                 handle_.loop = uv_loop_selector_();
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
 #endif
             }
@@ -227,7 +233,7 @@ class Peer : public ::boost::intrusive::list_base_hook<
   protected:
     /* don't leak memory! */
     virtual ~Peer() {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
         --counter;
 #endif
     }
@@ -236,7 +242,7 @@ class Peer : public ::boost::intrusive::list_base_hook<
 
 class CommunicationPeer : public Peer {
 
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static ::boost::atomic<size_t> counter;
 #endif
   public:
@@ -254,12 +260,12 @@ class CommunicationPeer : public Peer {
                 lastHeard_(0)
             {
                 req_.data = this;
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
 #endif
             }
 
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static size_t getCounter() {
         return counter;
     }
@@ -500,7 +506,7 @@ class CommunicationPeer : public Peer {
   protected:
     /* don't leak memory! */
     virtual ~CommunicationPeer() {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
         --counter;
 #endif
     }
@@ -523,7 +529,7 @@ class CommunicationPeer : public Peer {
 };
 
 class ActivePeer : public CommunicationPeer {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static ::boost::atomic<size_t> counter;
 #endif
   public:
@@ -537,12 +543,12 @@ class ActivePeer : public CommunicationPeer {
                     uv_loop_selector,
                     kPS_RESOLVING)
         {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
 #endif
         }
 
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static size_t getCounter() {
         return counter;
     }
@@ -577,14 +583,14 @@ class ActivePeer : public CommunicationPeer {
   protected:
     /* don't leak memory! */
     virtual ~ActivePeer() {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
         --counter;
 #endif
     }
 };
 
 class PassivePeer : public CommunicationPeer {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static ::boost::atomic<size_t> counter;
 #endif
   public:
@@ -598,12 +604,12 @@ class PassivePeer : public CommunicationPeer {
                     uv_loop_selector,
                     kPS_RESOLVING)
         {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
 #endif
         }
 
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static size_t getCounter() {
         return counter;
     }
@@ -635,14 +641,14 @@ class PassivePeer : public CommunicationPeer {
   protected:
     /* don't leak memory! */
     virtual ~PassivePeer() {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
         --counter;
 #endif
     }
 };
 
 class ListeningPeer : public Peer {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static ::boost::atomic<size_t> counter;
 #endif
   public:
@@ -655,12 +661,12 @@ class ListeningPeer : public Peer {
             Peer(false, uv_loop_selector, kPS_UNINITIALIZED)
         {
             _.listener.uv_loop = listener_uv_loop ? : uv_default_loop();
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
 #endif
         }
 
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
     static size_t getCounter() {
         return counter;
     }
