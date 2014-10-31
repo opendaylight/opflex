@@ -7,6 +7,7 @@ import org.opendaylight.opflex.genie.engine.parse.load.LoadStage;
 import org.opendaylight.opflex.genie.engine.parse.load.LoaderRegistry;
 import org.opendaylight.opflex.genie.engine.parse.model.ProcessorTree;
 import org.opendaylight.opflex.modlan.report.Severity;
+import org.opendaylight.opflex.modlan.utils.Strings;
 
 /**
  * Created by midvorki on 4/4/14.
@@ -167,7 +168,7 @@ public class Processor
      * argument finder
      * @param aInArgs list of arguments in [[name]=[value]] or [name] format.
      * @param aInName name of the argument searched
-     * @return value of the argument. if argument is a flag, "true" or "false" is returned depending if the flag appears in the args.
+     * @return value of the argument. if argument is a flag, "yes" or "no" is returned depending if the flag appears in the args.
      */
     private static String getArg(String[] aInArgs, String aInName)
     {
@@ -177,7 +178,7 @@ public class Processor
             {
                 if (lArg.equalsIgnoreCase(aInName))
                 {
-                    return "true";
+                    return Strings.YES;
                 }
                 else
                 {
@@ -195,9 +196,9 @@ public class Processor
 
     private void handleHelp(String[] aInArgs)
     {
-        if ("true".equalsIgnoreCase(getArg(aInArgs, "help")) ||
-            "true".equalsIgnoreCase(getArg(aInArgs, "helme")) ||
-            "true".equalsIgnoreCase(getArg(aInArgs, "--help")))
+        if (Strings.YES.equalsIgnoreCase(getArg(aInArgs, "help")) ||
+            Strings.YES.equalsIgnoreCase(getArg(aInArgs, "helme")) ||
+            Strings.YES.equalsIgnoreCase(getArg(aInArgs, "--help")))
         {
             System.err.println("Genie, the code generation robot can show you a lot of love.");
             System.err.println("To make it show you more love, you can help it look for useful things");
