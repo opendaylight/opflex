@@ -1,15 +1,20 @@
 package org.opendaylight.opflex.genie.content.format.meta.cpp;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.TreeMap;
 
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
+import org.opendaylight.opflex.genie.content.model.mconst.ConstAction;
+import org.opendaylight.opflex.genie.content.model.mconst.MConst;
 import org.opendaylight.opflex.genie.content.model.mnaming.MNameComponent;
 import org.opendaylight.opflex.genie.content.model.mnaming.MNameRule;
 import org.opendaylight.opflex.genie.content.model.mownership.MOwner;
 import org.opendaylight.opflex.genie.content.model.mprop.MProp;
 import org.opendaylight.opflex.genie.content.model.mrelator.MRelationshipClass;
 import org.opendaylight.opflex.genie.content.model.mtype.MType;
+import org.opendaylight.opflex.genie.content.model.mtype.MTypeHint;
+import org.opendaylight.opflex.genie.content.model.mtype.TypeInfo;
 import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
@@ -130,6 +135,14 @@ public class FMetaDef
         {
             return "ClassInfo::ABSTRACT";
         }
+        else if (isGlobalEp(aIn))
+        {
+            return "ClassInfo::LOCAL_ENDPOINT";
+        }
+        else if (isLocalEp(aIn))
+        {
+            return "ClassInfo::LOCAL_ONLY";
+        }
         else
         {
             return "ClassInfo::LOCAL_ONLY";
@@ -139,24 +152,35 @@ public class FMetaDef
     public static String getTypeName(MType aIn)
     {
         String lType = aIn.getLID().getName().toUpperCase();
-        switch (lType) {
-        case "URI":
-        case "IP":
-        case "UUID":
-            return "STRING";
-        case "UINT64":
-        case "UINT32":
-        case "UINT16":
-        case "UINT8":
-        case "MAC":
-        case "BITMASK8":
-        case "BITMASK16":
-        case "BITMASK32":
-        case "BITMASK64":
-            return "U64";
-        default:
-            return lType;
+        switch (lType)
+        {
+            case "URI":
+            case "IP":
+            case "UUID":
+                return "STRING";
+            case "UINT64":
+            case "UINT32":
+            case "UINT16":
+            case "UINT8":
+            case "MAC":
+            case "BITMASK8":
+            case "BITMASK16":
+            case "BITMASK32":
+            case "BITMASK64":
+                return "U64";
+            default:
+                return lType;
         }
+    }
+
+    public static boolean isLocalEp(MClass aIn)
+    {
+        return aIn.getModule().getLID().getName().equalsIgnoreCase("epdr");
+    }
+
+    public static boolean isGlobalEp(MClass aIn)
+    {
+        return aIn.getModule().getLID().getName().equalsIgnoreCase("epr");
     }
 
     public static boolean isPolicy(MClass aIn)
@@ -255,7 +279,7 @@ public class FMetaDef
                 {
                     MType lPropType = lProp.getType(false);
                     MType lPrimitiveType = lPropType.getBuiltInType();
-                    //MTypeHint lHint = lPrimitiveType.getTypeHint();
+                    MTypeHint lHint = lPrimitiveType.getTypeHint();
 
                     int lLocalId = lProp.getPropId(aInClass);
 
@@ -281,6 +305,18 @@ public class FMetaDef
 
                     }
                      **/
+                    else if (Config.isEnumSupport() &&
+                             (lHint.getInfo() == TypeInfo.ENUM ||
+                              lHint.getInfo() == TypeInfo.BITMASK))
+                    {
+                        out.println(
+                                aInIndent + 1,
+                                "(PropertyInfo(" + lLocalId + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR,");
+                        genConsts(aInIndent + 2, aInClass, lProp, lPropType);
+                        out.println(
+                                ")) // "
+                                + lProp.toString());
+                    }
                     else
                     {
                         out.println(
@@ -299,6 +335,38 @@ public class FMetaDef
 
                 out.println(aInIndent + 1, ",");
         }
+    }
+    private void genConsts(int aInIndent, MClass aInClass, MProp aInProp, MType aInType)
+    {
+        Map<String, MConst> lConsts = new TreeMap<String,MConst>();
+        aInProp.findConst(lConsts, true);
+        out.println(aInIndent, "EnumInfo(\"" + aInType.getFullConcatenatedName() + "\", " + aInType.getGID().getId() + "/* id */,");
+
+        if (lConsts.isEmpty())
+        {
+            out.println(aInIndent, "std::vector<ConstInfo>()");
+        }
+        else
+        {
+            int lCount = 0;
+            for (MConst lConst : lConsts.values())
+            {
+                if (ConstAction.REMOVE != lConst.getAction())
+                {
+                    lCount++;
+                    if (1 == lCount)
+                    {
+                        out.println(aInIndent + 1, "list_of");
+                    }
+                    out.println(aInIndent + 3, "(ConstInfo(\"" + lConst.getLID().getName() + "\", " + lConst.getValue().getValue() + ")) // " + lConst);
+                }
+            }
+            if (0 == lCount)
+            {
+                out.println(aInIndent, "std::vector<ConstInfo>() // NO CONSTS DEFINED");
+            }
+        }
+        out.print(aInIndent + 1,")");
     }
 
     private void genNamingProps(int aInIndent, MClass aInClass)

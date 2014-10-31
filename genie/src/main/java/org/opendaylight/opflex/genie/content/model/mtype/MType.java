@@ -503,6 +503,19 @@ public class MType extends SubModuleItem
         }
     }
 
+    public Item getClosestConstantHolder()
+    {
+        for (MType lThisType = this;
+             null != lThisType;
+             lThisType = lThisType.getSupertype())
+        {
+            if (lThisType.hasChildren(MConst.MY_CAT))
+            {
+                return lThisType;
+            }
+        }
+        return null;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // VALIDATOR APIs
