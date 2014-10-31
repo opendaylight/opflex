@@ -43,6 +43,16 @@ public class Strings
 
     public static boolean isWildCard(String aIn) { return isEmpty(aIn) || WILDCARD.equals(aIn); }
 
+    public static boolean isYes(String aIn)
+    {
+        return YES.equalsIgnoreCase(aIn);
+    }
+
+    public static boolean isNo(String aIn)
+    {
+        return NO.equalsIgnoreCase(aIn);
+    }
+
     public static String replaceChar(String aIn, int aInPos, char aInNewChar)
     {
         if (null != aIn && aInPos < aIn.length())

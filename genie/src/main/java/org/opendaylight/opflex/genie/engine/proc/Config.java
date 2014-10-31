@@ -19,6 +19,7 @@ public class Config
     public static String getConfigPath() { return configPath; }
     public static String getGenDestPath() { return genDestPath; }
     public static String getLogDirParent() { return logDirParent; }
+    public static boolean isEnumSupport() { return isEnumSupport; } // TODO:
 
     public static Collection<SearchPath> getSyntaxPath() { return syntaxPath; }
     public static String[][] getSyntaxPathArray()
@@ -46,9 +47,6 @@ public class Config
         }
         return lRet;
     }
-
-
-
 
     public static void setLibName(String aIn)
     {
@@ -91,6 +89,25 @@ public class Config
         configPath = Strings.isAny(aIn) ? concatPath(System.getProperty("user.dir"), CONFIG_FILE_NAME) : aIn;
     }
 
+    public static void setIsEnumSupport(String aIn)
+    {
+        setIsEnumSupportOption(
+                Strings.isEmpty(aIn) ?
+                        null :
+                        "enums".equalsIgnoreCase(aIn) || Strings.isYes(aIn));
+    }
+    public static void setIsEnumSupportOption(Boolean aInOptional)
+    {
+        if (null != aInOptional)
+        {
+            setIsEnumSupport(aInOptional.booleanValue());
+        }
+    }
+
+    public static void setIsEnumSupport(boolean aIn)
+    {
+        isEnumSupport = aIn;
+    }
     private static String concatPath(String aInP1, String aInP2)
     {
         return aInP1 + ((aInP1.endsWith("/") || aInP2.startsWith("/")) ? "" : "/") + aInP2;
@@ -110,4 +127,5 @@ public class Config
     public static String genDestPath = null;
     public static String configPath = null;
     public static String logDirParent = null;
+    public static boolean isEnumSupport = true;
 }

@@ -324,6 +324,24 @@ public class MProp extends SubStructItem
         }
     }
 
+    public Item getClosestConstantHolder()
+    {
+        for (MProp lThisProp = this;
+             null != lThisProp;
+             lThisProp = lThisProp.getOverridden(false))
+        {
+            if (lThisProp.hasChildren(MConst.MY_CAT))
+            {
+                return lThisProp;
+            }
+            else if (lThisProp.isBase())
+            {
+                return lThisProp.getType(false).getClosestConstantHolder();
+            }
+        }
+        return null;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // PROP GROUP APIs
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

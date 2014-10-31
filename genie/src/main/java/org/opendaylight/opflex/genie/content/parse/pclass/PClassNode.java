@@ -44,16 +44,16 @@ public class PClassNode
         Boolean lAbstractnessSpec =
                 Strings.isEmpty(lIsAbstract) ?
                         null :
-                        (("true".equalsIgnoreCase(lIsAbstract) ||
+                        (("yes".equalsIgnoreCase(lIsAbstract) ||
                           Strings.CONCRETE.equalsIgnoreCase(lIsAbstract) ||
-                          !"false".equalsIgnoreCase(lIsAbstract)));
+                          !"no".equalsIgnoreCase(lIsAbstract)));
 
         Boolean lConcretenessSpec =
                 Strings.isEmpty(lIsConcrete) ?
                         null :
-                        (("true".equalsIgnoreCase(lIsConcrete) ||
+                        (("yes".equalsIgnoreCase(lIsConcrete) ||
                           Strings.CONCRETE.equalsIgnoreCase(lIsConcrete) ||
-                          !"false".equalsIgnoreCase(lIsConcrete)));
+                          !"no".equalsIgnoreCase(lIsConcrete)));
 
         Boolean lConcreteness = null == lConcretenessSpec ?
                                     null == lAbstractnessSpec ?
