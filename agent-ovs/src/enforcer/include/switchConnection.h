@@ -10,16 +10,49 @@
 #ifndef _SWITCHCONNECTION_H_
 #define _SWITCHCONNECTION_H_
 
-
-struct rconn;
+#include <queue>
+#include <boost/unordered_map.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 
 namespace opflex {
 namespace enforcer {
 
-/**
- * @brief Class to handle communication with the OpenFlow switch
- */
+class SwitchConnection;
 
+/**
+ * @brief Abstract base-class for a OpenFlow message handler.
+ */
+class MessageHandler {
+public:
+    /**
+     * Called after a message is received.
+     * @param swConn Connection where message was received
+     * @param msg The received message
+     */
+    virtual void Handle(SwitchConnection *swConn, ofpbuf *msg) = 0;
+};
+
+/**
+ * @brief Abstract base-class for handling on-connect events.
+ */
+class OnConnectListener {
+public:
+    /**
+     * Called after every successful connection attempt.
+     * @param swConn Connection that became connected
+     */
+    virtual void Connected(SwitchConnection *swConn) = 0;
+};
+
+/**
+ * @brief Class to handle communication with the OpenFlow switch.
+ * Allows sending of OpenFlow messages and respond to received
+ * messages by registering message-handlers. If connection to the
+ * switch is lost, tries to automatically reconnect till an
+ * explicit disconnect is issued. OnConnect listeners are fired
+ * each time a connection is established successfully.
+ */
 class SwitchConnection {
 public:
     SwitchConnection(const std::string& swName);
@@ -28,8 +61,9 @@ public:
     /**
      * Connect to the switch and monitor the connection.
      * @param protoVer Version of OpenFlow protocol to use
+     * @return 0 on success, openvswitch error code on failure
      */
-    bool Connect(ofp_version protoVer);
+    int Connect(ofp_version protoVer);
 
     /**
      * Disconnect from switch.
@@ -37,15 +71,112 @@ public:
     void Disconnect();
 
     /**
-     * Returns true is connected to the switch.
+     * Returns true if connected to the switch.
      */
     bool IsConnected();
+
+    /**
+     * Register handler for on-connect events.
+     * @param l Listener to register
+     */
+    void RegisterOnConnectListener(OnConnectListener *l);
+
+    /**
+     * Unregister a previously registered on-connect listener.
+     * @param l Listener to unregister
+     */
+    void UnregisterOnConnectListener(OnConnectListener *l);
+
+    /**
+     * Register handler for an OpenFlow message.
+     * @param msgType OpenFlow message type to register for
+     * @param handler Handler to register
+     */
+    void RegisterMessageHandler(ofptype msgType, MessageHandler *handler);
+
+    /**
+     * Unregister a previously registered handler for OpenFlow message.
+     * @param msgType OpenFlow message type to unregister for
+     * @param handler Handler to unregister
+     */
+    void UnregisterMessageHandler(ofptype msgType, MessageHandler *handler);
+
+    /**
+     * Send a message to the switch.
+     * @return 0 on success, openvswitch error code on failure
+     */
+    int SendMessage(ofpbuf *msg);
+
+    /** Interface: Boost thread */
+    void operator()();
+
+private:
+    /**
+     * Does actual work of establishing connection to the switch.
+     * @return 0 on success, openvswitch error code on failure
+     */
+    int DoConnect();
+
+    /**
+     * Main loop for receiving messages on the connection, monitoring
+     * it for liveness and automatic reconnection.
+     * Runs in a thread of its own.
+     */
+    void Monitor();
+
+    /**
+     * Check if any messages were received and handle them.
+     * @return 0 on success, openvswitch error code on failure
+     */
+    int ReceiveMessage();
+
+    /**
+     * Make the poll-loop watch for activity on poll-event-FD.
+     * Needs to be done repeatedly because the poll-loop
+     * watches the FD exactly once.
+     * Must be called from the poll-loop thread.
+     */
+    void WatchPollEvent();
+
+    /**
+     * Cause monitor poll-loop to break-out.
+     * @return true if successful in sending event
+     */
+    bool SignalPollEvent();
+
+    /**
+     * Invoke all on-connect listeners
+     */
+    void FireOnConnectListeners();
 
 private:
     std::string switchName;
     vconn *ofConn;
     ofp_version ofProtoVersion;
-    bool isConnected;
+    bool isDisconnecting;
+
+    boost::thread *connThread;
+    boost::mutex connMtx;
+
+    typedef std::list<MessageHandler *>     HandlerList;
+    typedef boost::unordered_map<ofptype, HandlerList> HandlerMap;
+    HandlerMap msgHandlers;
+
+    typedef std::list<OnConnectListener *>  OnConnectList;
+    OnConnectList onConnectListeners;
+
+    int pollEventFd;
+
+private:
+    /**
+     * @brief Handle ECHO requests from the switch by replying immediately.
+     * Needed to keep the connection to switch alive.
+     */
+    class EchoRequestHandler : public MessageHandler {
+        void Handle(SwitchConnection *swConn, ofpbuf *msg);
+    };
+
+    EchoRequestHandler echoReqHandler;
 };
 
 }   // namespace enforcer

@@ -27,6 +27,9 @@ extern "C" {
 #include <ovs/lib/ofp-actions.h>
 #include <ovs/lib/socket-util.h>
 #include <ovs/lib/ofp-util.h>
+#include <ovs/lib/poll-loop.h>
+#include <ovs/lib/ofp-print.h>
+#include <ovs/lib/dynamic-string.h>
 
 #ifdef __cplusplus
 }

@@ -13,16 +13,13 @@
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 
+#include <ovs.h>
 #include <internal/modb.h>
 #include <internal/model.h>
 #include <flowManager.h>
 #include <flowExecutor.h>
 
 #include <test/modbFixture.h>
-extern "C" {
-#include <ovs/lib/dynamic-string.h>
-#include <ovs/lib/ofp-print.h>
-}
 
 using namespace std;
 using namespace opflex::enforcer;

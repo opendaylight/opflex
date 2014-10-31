@@ -6,12 +6,25 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <sys/eventfd.h>
 #include <string>
+#include <boost/unordered_map.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/lock_guard.hpp>
+#include <boost/foreach.hpp>
+#include <boost/scope_exit.hpp>
 #include <glog/logging.h>
+
 #include <ovs.h>
 #include <switchConnection.h>
 
 using namespace std;
+using namespace boost;
+
+typedef lock_guard<mutex> mutex_guard;
+
+const int LOST_CONN_BACKOFF_SEC = 5;
 
 namespace opflex {
 namespace enforcer {
@@ -19,70 +32,257 @@ namespace enforcer {
 SwitchConnection::SwitchConnection(const std::string& swName) :
         switchName(swName) {
     ofConn = NULL;
+    connThread = NULL;
     ofProtoVersion = OFP10_VERSION;
+    isDisconnecting = false;
+
+    pollEventFd = eventfd(0, 0);
+
+    RegisterMessageHandler(OFPTYPE_ECHO_REQUEST, &echoReqHandler);
 }
 
 SwitchConnection::~SwitchConnection() {
     Disconnect();
 }
 
+void
+SwitchConnection::RegisterOnConnectListener(OnConnectListener *l) {
+    if (l) {
+        mutex_guard lock(connMtx);
+        onConnectListeners.push_back(l);
+    }
+}
 
-bool
+void
+SwitchConnection::UnregisterOnConnectListener(OnConnectListener *l) {
+    mutex_guard lock(connMtx);
+    onConnectListeners.remove(l);
+}
+
+void
+SwitchConnection::RegisterMessageHandler(ofptype msgType,
+        MessageHandler *handler)
+{
+    if (handler) {
+        mutex_guard lock(connMtx);
+        msgHandlers[msgType].push_back(handler);
+    }
+}
+
+void
+SwitchConnection::UnregisterMessageHandler(ofptype msgType,
+        MessageHandler *handler)
+{
+    mutex_guard lock(connMtx);
+    HandlerMap::iterator itr = msgHandlers.find(msgType);
+    if (itr != msgHandlers.end()) {
+        itr->second.remove(handler);
+    }
+}
+
+int
 SwitchConnection::Connect(ofp_version protoVer) {
     if (ofConn != NULL) {    // connection already created
-        return isConnected;
+        return true;
     }
 
+    ofProtoVersion = protoVer;
+    int err = DoConnect();
+    if (err != 0) {
+        LOG(ERROR) << "Failed to connect to " << switchName << ": "
+                << ovs_strerror(err);
+        return err;
+    }
+
+    connThread = new boost::thread(boost::ref(*this));
+    FireOnConnectListeners();
+    return true;
+}
+
+int
+SwitchConnection::DoConnect() {
     string swPath;
     swPath.append("unix:").append(ovs_rundir()).append("/")
             .append(switchName).append(".mgmt");
 
-    uint32_t versionBitmap = 1u << protoVer;
+    uint32_t versionBitmap = 1u << ofProtoVersion;
+    vconn *newConn;
     int error;
-    error = vconn_open(swPath.c_str(), versionBitmap, DSCP_DEFAULT,
-                       &ofConn);
+    error = vconn_open_block(swPath.c_str(), versionBitmap, DSCP_DEFAULT,
+            &newConn);
     if (error) {
-        LOG(ERROR) << "Unable to open socket to " << swPath
-                << ": " << ovs_strerror(error);
-        return false;
-    }
-
-    error = vconn_connect_block(ofConn);
-    if (error) {
-        LOG(ERROR) << "Failed to connect to " << swPath
-                << ": " << ovs_strerror(error);
-        return false;
+        return error;
     }
 
     /* Verify we have the correct protocol version */
-    ofp_version connVersion = (enum ofp_version)vconn_get_version(ofConn);
-    if (connVersion != protoVer) {
+    ofp_version connVersion = (ofp_version)vconn_get_version(newConn);
+    if (connVersion != ofProtoVersion) {
         LOG(WARNING) << "Remote supports version " << connVersion <<
                 ", wanted " << ofProtoVersion;
     }
-    ofProtoVersion = connVersion;
-    isConnected = true;
     LOG(INFO) << "Connected to switch " << swPath
             << " using protocol version " << ofProtoVersion;
-    return true;
+    {
+        mutex_guard lock(connMtx);
+        ofConn = newConn;
+        ofProtoVersion = connVersion;
+    }
 }
 
 void
 SwitchConnection::Disconnect() {
-    if (ofConn == NULL) {
-        return;
+    isDisconnecting = true;
+    if (connThread && SignalPollEvent()) {
+        connThread->join();
+        delete connThread;
+        connThread = NULL;
     }
 
-    vconn_close(ofConn);
-    ofConn = NULL;
-    isConnected = false;
+    mutex_guard lock(connMtx);
+    if (ofConn != NULL) {
+        vconn_close(ofConn);
+        ofConn = NULL;
+    }
+    isDisconnecting = false;
 }
 
 bool
 SwitchConnection::IsConnected() {
-    return ofConn != NULL && isConnected;
+    mutex_guard lock(connMtx);
+    return ofConn != NULL && vconn_get_status(ofConn) == 0;
+}
+
+void
+SwitchConnection::operator()() {
+    Monitor();
+}
+
+bool
+SwitchConnection::SignalPollEvent() {
+    uint64_t data = 1;
+    ssize_t szWrote = write(pollEventFd, &data, sizeof(data));
+    if (szWrote != sizeof(data)) {
+        LOG(ERROR) << "Failed to send event to poll loop: " << strerror(errno);
+        return false;
+    }
+    return true;
+}
+
+void
+SwitchConnection::WatchPollEvent() {
+    poll_fd_wait(pollEventFd, POLLIN);
+}
+
+void
+SwitchConnection::Monitor() {
+    DLOG(INFO) << "Connection monitor started ...";
+
+    WatchPollEvent();
+    bool connLost = false;
+    while (true) {
+        if (connLost) {
+            LOG(ERROR) << "Connection lost, trying to auto reconnect";
+            mutex_guard lock(connMtx);
+            if (ofConn != NULL) {
+                vconn_close(ofConn);
+                ofConn = NULL;
+            }
+        }
+        bool oldConnLost = connLost;
+        while (connLost && !isDisconnecting) {
+            sleep(LOST_CONN_BACKOFF_SEC);
+            connLost = (DoConnect() != 0);
+        }
+        if (!connLost) {
+            mutex_guard lock(connMtx);
+            vconn_run_wait(ofConn);
+        }
+        if (isDisconnecting) {
+            return;
+        }
+        if (oldConnLost != connLost) {
+            FireOnConnectListeners();
+        }
+        connLost = (EOF == ReceiveMessage());
+        WatchPollEvent();
+    }
+    return;
+}
+
+int
+SwitchConnection::ReceiveMessage() {
+    do {
+        int err;
+        ofpbuf *recvMsg;
+        {
+            mutex_guard lock(connMtx);
+            err = vconn_recv(ofConn, &recvMsg);
+        }
+        if (err == EAGAIN) {
+            return 0;
+        } else if (err != 0) {
+            LOG(ERROR) << "Error while receiving message: "
+                    << ovs_strerror(err);
+            ofpbuf_delete(recvMsg);
+            return err;
+        } else {
+            ofpbuf tmpMsg = *recvMsg;
+            ofptype msgType;
+            if (ofptype_pull(&msgType, &tmpMsg) == 0) {
+                HandlerMap::const_iterator itr = msgHandlers.find(msgType);
+                if (itr != msgHandlers.end()) {
+                    BOOST_FOREACH(MessageHandler *h, itr->second) {
+                        h->Handle(this, recvMsg);
+                    }
+                }
+            }
+            ofpbuf_delete(recvMsg);
+        }
+    } while (true);
+    return 0;
+}
+
+int
+SwitchConnection::SendMessage(ofpbuf *msg) {
+    BOOST_SCOPE_EXIT((&msg)) {
+        if (!msg) {
+            ofpbuf_delete(msg);
+        }
+    } BOOST_SCOPE_EXIT_END
+    while(true) {
+        if (!IsConnected()) {
+            return ENOTCONN;
+        }
+        mutex_guard lock(connMtx);
+        int err = vconn_send(ofConn, msg);
+        if (err == 0) {
+            msg = NULL;
+            return 0;
+        } else if (err != EAGAIN) {
+            LOG(ERROR) << "Error sending message: " << ovs_strerror(err);
+            return err;
+        } else {
+            vconn_run(ofConn);
+            vconn_send_wait(ofConn);
+        }
+    }
+}
+
+void
+SwitchConnection::FireOnConnectListeners() {
+    BOOST_FOREACH(OnConnectListener *l, onConnectListeners) {
+        l->Connected(this);
+    }
+}
+
+void
+SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
+        ofpbuf *msg) {
+    DLOG(INFO) << "Got ECHO request";
+    const ofp_header *rq = (const ofp_header *)ofpbuf_data(msg);
+    struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
+    swConn->SendMessage(echoReplyMsg);
 }
 
 }   // namespace enforcer
 }   // namespace opflex
-
