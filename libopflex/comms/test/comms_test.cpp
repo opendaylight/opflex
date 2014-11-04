@@ -91,6 +91,7 @@ class CommsFixture {
         uv_idle_stop(idler);
 
         for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
+            LOG(DEBUG) << " Clearing up peers in state " << i;
             Peer::LoopData::getPeerList(uv_default_loop(),
                         Peer::LoopData::PeerState(i))
                 ->clear_and_dispose(PeerDisposer());

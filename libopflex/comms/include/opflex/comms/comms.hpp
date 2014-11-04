@@ -23,10 +23,6 @@ class ListeningPeer;
 
 typedef boost::function<void (CommunicationPeer *)> ConnectionHandler;
 
-typedef union peer_db_ peer_db_t;
-
-extern peer_db_t peers;
-
 }
 
 typedef uv_loop_t * (*uv_loop_selector_fn)(void);

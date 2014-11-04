@@ -60,13 +60,14 @@ int comms_active_connection(
         peer->reset(uv_loop_selector);
     } else {
         if (!(peer = new (std::nothrow) ActivePeer(
+                        host,
+                        service,
                         connectionHandler,
                         uv_loop_selector))) {
             LOG(WARNING) << ": out of memory, dropping new peer on the floor";
             return UV_ENOMEM;
         }
     }
-
 
     int rc;
     if ((rc = uv_getaddrinfo(peer->getUvLoop(), &peer->dns_req,
