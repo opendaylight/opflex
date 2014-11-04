@@ -342,7 +342,7 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     BOOST_CHECK(!itemPresent(client2, 5, c5u));
     WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
     BOOST_CHECK_EQUAL(0, processor.getRefCount(c4u));
-    BOOST_CHECK(!itemPresent(client2, 6, c6u));
+    WAIT_FOR(!itemPresent(client2, 6, c6u), 1000);
 
     // add the reference and then the referent so the metadata object
     // is not present
@@ -373,7 +373,7 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     BOOST_CHECK(!itemPresent(client2, 5, c5u));
     WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
     BOOST_CHECK_EQUAL(0, processor.getRefCount(c4u));
-    BOOST_CHECK(!itemPresent(client2, 6, c6u));
+    WAIT_FOR(!itemPresent(client2, 6, c6u), 1000);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

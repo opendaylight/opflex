@@ -67,6 +67,7 @@ libopflex_la_LIBADD += ofcore/libcore.la
 libopflex_la_LIBADD += cwrapper/libcwrapper.la
 libopflex_la_LIBADD += util/libutil.la
 libopflex_la_LIBADD += logging/liblogging.la
+libopflex_la_LDFLAGS = -version-info ${VERSION_INFO}
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libopflex.pc

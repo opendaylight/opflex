@@ -28,6 +28,8 @@
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/modb/mo-internal/StoreClient.h"
 
+#include "opflex/engine/internal/OpflexPool.h"
+#include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/MOSerializer.h"
 #include "opflex/engine/internal/AbstractObjectListener.h"
 
@@ -41,7 +43,8 @@ namespace engine {
  * The processor also maintains an index containing protocol state
  * information for each of the managed objects in the MODB.
  */
-class Processor : public internal::AbstractObjectListener {
+class Processor : public internal::AbstractObjectListener,
+                  public internal::HandlerFactory {
 public:
     /**
      * Construct a processor associated with the given object store
@@ -53,6 +56,28 @@ public:
      * Destroy the processor
      */
     ~Processor();
+
+    /**
+     * Set the opflex identity information for this framework
+     * instance.
+     *
+     * @param name the unique name for this opflex component within
+     * the policy domain
+     * @param domain the globally unique name for this policy domain
+     * @see opflex::ofcore::OFFramework::addOpflexIdentity
+     */
+    void setOpflexIdentity(const std::string& name,
+                           const std::string& domain);
+
+    /**
+     * Add an OpFlex peer.
+     *
+     * @param hostname the hostname or IP address to connect to
+     * @param port the TCP port to connect on
+     * @see opflex::ofcore::OFFramework::addPeer
+     */
+    virtual void addPeer(const std::string& hostname,
+                         int port);
 
     /**
      * Start the processor thread.  Should call only after the
@@ -95,6 +120,10 @@ public:
      */
     void setDelay(uint64_t delay) { processingDelay = delay; }
 
+    // See HandlerFactory::newHandler
+    virtual 
+    internal::OpflexHandler* newHandler(internal::OpflexConnection* conn);
+
 private:
     /**
      * The system store client
@@ -105,6 +134,11 @@ private:
      * an MO serializer
      */
     internal::MOSerializer serializer;
+
+    /**
+     * The pool of Opflex connections
+     */
+    internal::OpflexPool pool;
 
     /**
      * The status of items in the MODB with respect to the opflex

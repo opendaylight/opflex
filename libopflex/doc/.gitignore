@@ -4,3 +4,4 @@ Doxyfile-internal
 /html-internal/*
 /latex/*
 /latex-internal/*
+/doxygen_*.db

@@ -15,6 +15,7 @@
 
 #include <boost/foreach.hpp>
 
+#include "opflex/engine/internal/OpflexPEHandler.h"
 #include "opflex/engine/Processor.h"
 #include "LockGuard.h"
 #include "opflex/logging/internal/logging.hpp"
@@ -37,14 +38,18 @@ using modb::mointernal::StoreClient;
 using modb::mointernal::ObjectInstance;
 using modb::hash_value;
 
+using namespace internal;
+
 static const uint64_t LOCAL_REFRESH_RATE = 1000*60*30;
 static const uint64_t DEFAULT_DELAY = 250;
 
 size_t hash_value(pair<class_id_t, URI> const& p);
 
 Processor::Processor(ObjectStore* store_)
-    : AbstractObjectListener(store_), 
-      proc_shouldRun(false), serializer(store_), 
+    : AbstractObjectListener(store_),
+      serializer(store_),
+      pool(*this),
+      proc_shouldRun(false),
       processingDelay(DEFAULT_DELAY) {
     uv_mutex_init(&item_mutex);
     uv_cond_init(&item_cond);
@@ -52,6 +57,9 @@ Processor::Processor(ObjectStore* store_)
 
 Processor::~Processor() {
     stop();
+    uv_cond_destroy(&item_cond);
+    uv_mutex_destroy(&item_mutex);
+   
 }
 
 // get the current time in milliseconds since something
@@ -402,6 +410,20 @@ void Processor::objectUpdated(modb::class_id_t class_id,
         }
         uv_cond_signal(&item_cond);
     }
+}
+
+void Processor::setOpflexIdentity(const std::string& name,
+                                  const std::string& domain) {
+    pool.setOpflexIdentity(name, domain);
+}
+
+void Processor::addPeer(const std::string& hostname,
+                        int port) {
+    pool.addPeer(hostname, port);
+}
+
+OpflexHandler* Processor::newHandler(OpflexConnection* conn) {
+    return new OpflexPEHandler(conn, this);
 }
 
 } /* namespace engine */
