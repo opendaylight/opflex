@@ -28,9 +28,11 @@ public:
     /**
      * Called after a message is received.
      * @param swConn Connection where message was received
+     * @param msgType Type of the received message
      * @param msg The received message
      */
-    virtual void Handle(SwitchConnection *swConn, ofpbuf *msg) = 0;
+    virtual void Handle(SwitchConnection *swConn, ofptype msgType,
+            ofpbuf *msg) = 0;
 };
 
 /**
@@ -105,7 +107,12 @@ public:
      * Send a message to the switch.
      * @return 0 on success, openvswitch error code on failure
      */
-    int SendMessage(ofpbuf *msg);
+    virtual int SendMessage(ofpbuf *msg);
+
+    /**
+     * Returns the OpenFlow protocol version being used by the connection.
+     */
+    virtual ofp_version GetProtocolVersion();
 
     /** Interface: Boost thread */
     void operator()();
@@ -149,6 +156,11 @@ private:
      */
     void FireOnConnectListeners();
 
+    /**
+     * Same as IsConnected() but assumes lock is held by caller.
+     */
+    bool IsConnectedLocked();
+
 private:
     std::string switchName;
     vconn *ofConn;
@@ -173,7 +185,7 @@ private:
      * Needed to keep the connection to switch alive.
      */
     class EchoRequestHandler : public MessageHandler {
-        void Handle(SwitchConnection *swConn, ofpbuf *msg);
+        void Handle(SwitchConnection *swConn, ofptype type, ofpbuf *msg);
     };
 
     EchoRequestHandler echoReqHandler;

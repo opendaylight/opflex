@@ -149,7 +149,17 @@ SwitchConnection::Disconnect() {
 bool
 SwitchConnection::IsConnected() {
     mutex_guard lock(connMtx);
+    return IsConnectedLocked();
+}
+
+bool
+SwitchConnection::IsConnectedLocked() {
     return ofConn != NULL && vconn_get_status(ofConn) == 0;
+}
+
+ofp_version
+SwitchConnection::GetProtocolVersion() {
+    return ofProtoVersion;
 }
 
 void
@@ -226,13 +236,12 @@ SwitchConnection::ReceiveMessage() {
             ofpbuf_delete(recvMsg);
             return err;
         } else {
-            ofpbuf tmpMsg = *recvMsg;
-            ofptype msgType;
-            if (ofptype_pull(&msgType, &tmpMsg) == 0) {
-                HandlerMap::const_iterator itr = msgHandlers.find(msgType);
+            ofptype type;
+            if (!ofptype_decode(&type, (ofp_header *)ofpbuf_data(recvMsg))) {
+                HandlerMap::const_iterator itr = msgHandlers.find(type);
                 if (itr != msgHandlers.end()) {
                     BOOST_FOREACH(MessageHandler *h, itr->second) {
-                        h->Handle(this, recvMsg);
+                        h->Handle(this, type, recvMsg);
                     }
                 }
             }
@@ -250,10 +259,10 @@ SwitchConnection::SendMessage(ofpbuf *msg) {
         }
     } BOOST_SCOPE_EXIT_END
     while(true) {
-        if (!IsConnected()) {
+        mutex_guard lock(connMtx);
+        if (!IsConnectedLocked()) {
             return ENOTCONN;
         }
-        mutex_guard lock(connMtx);
         int err = vconn_send(ofConn, msg);
         if (err == 0) {
             msg = NULL;
@@ -277,7 +286,7 @@ SwitchConnection::FireOnConnectListeners() {
 
 void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
-        ofpbuf *msg) {
+        ofptype msgType, ofpbuf *msg) {
     DLOG(INFO) << "Got ECHO request";
     const ofp_header *rq = (const ofp_header *)ofpbuf_data(msg);
     struct ofpbuf *echoReplyMsg = make_echo_reply(rq);

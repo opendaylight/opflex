@@ -22,7 +22,8 @@ enforcer_test_SOURCES = \
     modbFixture.h \
     main.cpp \
     inventory_test.cpp \
-    renderer_test.cpp
+    renderer_test.cpp \
+    portmapper_test.cpp
 
 enforcer_test_LDADD = ../libenforcer.la \
     $(libopflex_LIBS) \

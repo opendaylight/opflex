@@ -36,10 +36,12 @@ libenforcer_la_SOURCES = \
 	include/internal/model.h \
 	include/internal/modb.h \
 	include/switchConnection.h \
+	include/portMapper.h \
 	enforcer.cpp \
 	inventory.cpp \
 	flowManager.cpp \
 	tableState.cpp \
 	flowExecutor.cpp \
 	actionBuilder.cpp \
-	switchConnection.cpp
+	switchConnection.cpp \
+	portMapper.cpp

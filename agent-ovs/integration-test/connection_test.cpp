@@ -1,5 +1,5 @@
 /*
- * Test suite for class Inventory.
+ * Test suite for class SwitchConnection.
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -50,7 +50,8 @@ bool ConnectionFixture::logInitDone = false;
 class EchoReplyHandler : public MessageHandler {
 public:
     EchoReplyHandler() : counter(0) {}
-    void Handle(SwitchConnection *conn, ofpbuf *msg) {
+    void Handle(SwitchConnection *conn, ofptype type, ofpbuf *msg) {
+        BOOST_CHECK(type == OFPTYPE_ECHO_REPLY);
         ++counter;
     }
     int counter;
