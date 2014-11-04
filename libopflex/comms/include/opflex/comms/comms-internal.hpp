@@ -48,8 +48,11 @@ int addr_from_ip_and_port(const char * ip_address, uint16_t port,
 
 
 
-class Peer : public ::boost::intrusive::list_base_hook<
-             ::boost::intrusive::link_mode< ::boost::intrusive::auto_unlink> > {
+typedef ::boost::intrusive::list_base_hook<
+    ::boost::intrusive::link_mode< ::boost::intrusive::auto_unlink> >
+    SafeListBaseHook;
+
+class Peer : public SafeListBaseHook {
 #ifdef COMMS_DEBUG_OBJECT_COUNT
     static ::boost::atomic<size_t> counter;
 #endif
@@ -206,7 +209,16 @@ class Peer : public ::boost::intrusive::list_base_hook<
     }
 
     void insert(Peer::LoopData::PeerState peerState) {
+        LOG(DEBUG) << this << " is being inserted in " << peerState;
         Peer::LoopData::getPeerList(getUvLoop(), peerState)->push_back(*this);
+    }
+
+    void unlink() {
+        LOG(DEBUG) << this << " manually unlinking";
+
+        SafeListBaseHook::unlink();
+
+        return;
     }
 
     uv_tcp_t handle_;
@@ -384,16 +396,6 @@ class CommunicationPeer : public Peer {
     void sendEchoReq();
     void timeout();
 
-    /* avoid using as much as possible, and clear() greedily. if you don't know
-     * why it is here, then you probably don't need it */
-    rapidjson::MemoryPoolAllocator<> & getAllocator() const {
-
-        return *static_cast<rapidjson::MemoryPoolAllocator<>*>(
-                getUvLoop()->data
-            );
-
-    }
-
     /**
      * Get the id to use for the next message we send to this peer.
      *
@@ -465,6 +467,12 @@ class CommunicationPeer : public Peer {
 
     virtual void destroy() {
         LOG(DEBUG) << this;
+
+        assert(!destroying_);
+        if(destroying_) {
+            return;
+        }
+
      // Peer::destroy();
         destroying_ = 1;
         if (connected_) {
@@ -545,6 +553,8 @@ class ActivePeer : public CommunicationPeer {
 #endif
   public:
     explicit ActivePeer(
+            char const * hostname,
+            char const * service,
             ConnectionHandler connectionHandler,
             uv_loop_selector_fn uv_loop_selector = NULL)
         :
@@ -552,7 +562,9 @@ class ActivePeer : public CommunicationPeer {
                     false,
                     connectionHandler,
                     uv_loop_selector,
-                    kPS_RESOLVING)
+                    kPS_RESOLVING),
+            hostname_(hostname),
+            service_(service)
         {
 #ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
@@ -598,6 +610,8 @@ class ActivePeer : public CommunicationPeer {
         --counter;
 #endif
     }
+    char const * const hostname_;
+    char const * const service_;
 };
 
 class PassivePeer : public CommunicationPeer {
