@@ -192,14 +192,28 @@ class CommsFixture {
 
     static void check_peer_db_cb(uv_idle_t * handle) {
 
+        static std::string oldDbgLog;
+        std::stringstream dbgLog;
+        std::string newDbgLog;
+
         /* check all easily reachable peers' invariants */
         for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
             Peer::List * pL = Peer::LoopData::getPeerList(uv_default_loop(),
                         Peer::LoopData::PeerState(i));
+            dbgLog << " pL #" << i << " @" << pL;
 
             for(Peer::List::iterator it = pL->begin(); it != pL->end(); ++it) {
+                dbgLog << " peer " << &*it;
                 it->__checkInvariants();
             }
+        }
+
+        newDbgLog = dbgLog.str();
+
+        if (oldDbgLog != newDbgLog) {
+            oldDbgLog = newDbgLog;
+
+            LOG(DEBUG) << newDbgLog;
         }
 
         if (count_final_peers() < required_final_peers) {
