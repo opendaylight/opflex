@@ -107,7 +107,7 @@ class Peer : public ::boost::intrusive::list_base_hook<
     static T * get(U * h) {
         T * peer = static_cast<T *>(h->data);
 
-        peer->__checkInvariants();
+        assert(peer->__checkInvariants());
 
         return peer;
     }
@@ -188,11 +188,13 @@ class Peer : public ::boost::intrusive::list_base_hook<
     virtual void destroy() = 0;
 
 #ifndef NDEBUG
-    virtual void __checkInvariants() const {
-    }
+    virtual
 #else
-    static inline void __checkInvariants() const {}
+    static
 #endif
+    bool __checkInvariants() const {
+        return true;
+    }
 
     /**
      * Get the uv_loop_t * for this peer
@@ -272,17 +274,21 @@ class CommunicationPeer : public Peer {
 #endif
 
 #ifndef NDEBUG
-    virtual void __checkInvariants() const {
+    virtual bool __checkInvariants() const {
         if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
             LOG(DEBUG) << this
                 << " keepAliveInterval_ = " << keepAliveInterval_
                 << " keepAliveTimer_ = " << (
                 uv_is_active((uv_handle_t *)&keepAliveTimer_) ? "" : "in")
-                << "active";
+                << "active"
             ;
-            assert(!!keepAliveInterval_ == !!uv_is_active((uv_handle_t *)&keepAliveTimer_));
         }
-        Peer::__checkInvariants();
+        return
+            (!!keepAliveInterval_ == !!uv_is_active((uv_handle_t *)&keepAliveTimer_))
+
+            &&
+
+            Peer::__checkInvariants();
     }
 #endif
 
@@ -575,8 +581,8 @@ class ActivePeer : public CommunicationPeer {
     }
 
 #ifndef NDEBUG
-    virtual void __checkInvariants() const {
-        CommunicationPeer::__checkInvariants();
+    virtual bool __checkInvariants() const {
+        return CommunicationPeer::__checkInvariants();
     }
 #endif
 
@@ -633,8 +639,8 @@ class PassivePeer : public CommunicationPeer {
 #endif
 
 #ifndef NDEBUG
-    virtual void __checkInvariants() const {
-        CommunicationPeer::__checkInvariants();
+    virtual bool __checkInvariants() const {
+        return CommunicationPeer::__checkInvariants();
     }
 #endif
 
@@ -701,8 +707,8 @@ class ListeningPeer : public Peer {
     }
 
 #ifndef NDEBUG
-    virtual void __checkInvariants() const {
-        Peer::__checkInvariants();
+    virtual bool __checkInvariants() const {
+        return Peer::__checkInvariants();
     }
 #endif
 
