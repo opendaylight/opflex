@@ -13,12 +13,28 @@
 #include <opflex/comms/comms-internal.hpp>
 #include <opflex/logging/internal/logging.hpp>
 #include <cstdlib>
+#include <boost/test/unit_test_log.hpp>
+
+#include <dlfcn.h>
 
 using opflex::comms::comms_passive_listener;
 using opflex::comms::comms_active_connection;
 using namespace opflex::comms::internal;
 
 BOOST_AUTO_TEST_SUITE(asynchronous_sockets)
+
+struct CommsTests {
+    CommsTests() {
+        LOG(INFO) << "global setup\n";
+
+        boost::unit_test::unit_test_log_t::instance().set_threshold_level(::boost::unit_test::log_successful_tests);
+    }
+    ~CommsTests() {
+        LOG(INFO) << "global teardown\n";
+    }
+};
+
+BOOST_GLOBAL_FIXTURE( CommsTests );
 
 /**
  * A fixture for communications tests
