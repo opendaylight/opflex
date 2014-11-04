@@ -196,6 +196,9 @@ class CommsFixture {
         std::stringstream dbgLog;
         std::string newDbgLog;
 
+        bool good = true;
+        bool peerGood;
+
         /* check all easily reachable peers' invariants */
         for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
             Peer::List * pL = Peer::LoopData::getPeerList(uv_default_loop(),
@@ -204,7 +207,11 @@ class CommsFixture {
 
             for(Peer::List::iterator it = pL->begin(); it != pL->end(); ++it) {
                 dbgLog << " peer " << &*it;
-                it->__checkInvariants();
+                peerGood = it->__checkInvariants();
+                if (!peerGood) {
+                    dbgLog << " BAD!";
+                    good = false;
+                }
             }
         }
 
@@ -215,6 +222,8 @@ class CommsFixture {
 
             LOG(DEBUG) << newDbgLog;
         }
+
+        assert(good);
 
         if (count_final_peers() < required_final_peers) {
             return;
