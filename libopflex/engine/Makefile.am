@@ -29,9 +29,15 @@ libengine_la_LIBADD = $(UV_LIBS)
 libengine_la_SOURCES = \
 	include/opflex/engine/internal/MOSerializer.h \
 	include/opflex/engine/internal/AbstractObjectListener.h \
+	include/opflex/engine/internal/OpflexPEHandler.h \
+	include/opflex/engine/internal/OpflexHandler.h \
+	include/opflex/engine/internal/OpflexConnection.h \
 	include/opflex/engine/Processor.h \
-	include/opflex/engine/OpFlexHandler.h \
 	AbstractObjectListener.cpp \
 	MOSerializer.cpp \
 	Processor.cpp \
-	OpFlexHandler.cpp
+	OpflexHandler.cpp \
+	OpflexPEHandler.cpp \
+	OpflexConnection.cpp \
+	OpflexClientConnection.cpp \
+	OpflexPool.cpp

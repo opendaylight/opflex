@@ -187,10 +187,36 @@
  * OFFramework::defaultInstance().setModel(mymodel::getMetadata());
  * @endcode
  *
+ * The other critical piece of information required for initialization
+ * is the OpFlex identity information.  The identity information is
+ * required in order to successfully connect to OpFlex peers.  In
+ * OpFlex, each component has a unique name within its policy domain,
+ * and each policy domain is identified by a globally unique domain
+ * name.  You can set this identity information by calling:
+ * @code
+ * OFFramework::defaultInstance()
+ *     .setOpflexIdentity("[component hostname or IP:port]",
+ *                        "[unique domain]");
+ * @endcode
+ * 
  * You can then start the framework simply by calling:
  * @code
  * OFFramework::defaultInstance().start();
  * @endcode
+ *
+ * Finally, you can add peers after the framework is started by
+ * calling the @ref opflex::ofcore::OFFramework::addPeer method:
+ * @code
+ * OFFramework::defaultInstance().addPeer("192.168.1.5", 1234);
+ * @endcode
+ *
+ * When connecting to the peer, that peer may provide an additional
+ * list of peers to connect to, which will be automatically added as
+ * peers.  If the peer does not include itself in the list, then the
+ * framework will disconnect from that peer and add the peers in the
+ * list.  In this way, it is possible to automatically bootstrap the
+ * correct set of peers using a known hostname or IP address or a
+ * known, fixed anycast IP address.
  *
  * To cleanly shut down, you can call:
  * @code
@@ -550,7 +576,6 @@
 #include <vector>
 #include <string>
 
-#include <boost/property_tree/ptree.hpp>
 #include <boost/noncopyable.hpp>
 
 #include "opflex/modb/Mutator.h"
@@ -644,31 +669,23 @@ public:
     static OFFramework& defaultInstance();
 
     /**
-     * Defines configuration constants for OFFramework.
-     */
-    class Config {
-    public:
-        /**
-         * Configuration parameter for setting opflex peers.  This
-         * parameter can have multiple values.
-         */
-        static const std::string CONFIG_OPFLEX_PEER;
-    };
-    
-    /**
-     * Configure the framework with the property tree specified
-     * 
-     * @param properties the framework configuration properties.
-     */
-    void setProperties(const boost::property_tree::ptree& properties);
-
-    /**
      * Add the given model metadata to the managed object database.
      * Must be called before start()
      *
      * @param model the model metadata to add to the object database
      */
     void setModel(const modb::ModelMetadata& model);
+
+    /**
+     * Set the opflex identity information for this framework
+     * instance.
+     *
+     * @param name the unique name for this opflex component within
+     * the policy domain
+     * @param domain the globally unique name for this policy domain
+     */
+    void setOpflexIdentity(const std::string& name,
+                           const std::string& domain);
 
     /**
      * Start the framework.  This will start all the framework threads
@@ -680,6 +697,25 @@ public:
      * Cleanly stop the framework
      */
     virtual void stop();
+
+    /**
+     * Add an OpFlex peer.  If the framework is started, this will
+     * immediately initiate a new connection asynchronously.
+     *
+     * When connecting to the peer, that peer may provide an
+     * additional list of peers to connect to, which will be
+     * automatically added as peers.  If the peer does not include
+     * itself in the list, then the framework will disconnect from
+     * that peer and add the peers in the list.  In this way, it is
+     * possible to automatically bootstrap the correct set of peers
+     * using a known hostname or IP address or a known, fixed anycast
+     * IP address.
+     *
+     * @param hostname the hostname or IP address to connect to
+     * @param port the TCP port to connect on
+     */
+    virtual void addPeer(const std::string& hostname,
+                         int port);
 
 private:
     /**

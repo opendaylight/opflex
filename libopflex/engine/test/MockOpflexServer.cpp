@@ -1,9 +1,7 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
-/*!
- * @file OpFlexHandler.h
- * @brief Interface definition file for OpFlex message handlers
- */
 /*
+ * Implementation for MockOpflexServer
+ *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -11,15 +9,26 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef OPFLEX_ENGINE_OPFLEXHANDLER_H
-#define OPFLEX_ENGINE_OPFLEXHANDLER_H
+#include "MockOpflexServer.h"
+#include "MockServerHandler.h"
 
 namespace opflex {
 namespace engine {
+namespace internal {
 
+MockOpflexServer::MockOpflexServer(int port_, uint8_t roles_) 
+    : port(port_), roles(roles_) {
 
+}
 
+MockOpflexServer::~MockOpflexServer() {
+
+}
+
+OpflexHandler* MockOpflexServer::newHandler(OpflexConnection* conn) {
+    return new MockServerHandler(conn, this);
+}
+
+} /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */
-
-#endif /* OPFLEX_ENGINE_OPFLEXHANDLER_H */

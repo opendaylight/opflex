@@ -25,6 +25,8 @@ URIQueue::URIQueue(QProcessor* processor_)
 
 URIQueue::~URIQueue() {
     stop();
+    uv_cond_destroy(&item_cond);
+    uv_mutex_destroy(&item_mutex);
 }
 
 // listen on the item queue and dispatch events where required

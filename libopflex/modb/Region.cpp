@@ -29,6 +29,7 @@ Region::Region(ObjectStore* parent, string owner_)
 }
 
 Region::~Region() {
+    uv_mutex_destroy(&region_mutex);
 }
 
 void Region::addClass(const ClassInfo& class_info) {
