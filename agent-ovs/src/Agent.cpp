@@ -61,7 +61,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     optional<std::string> opflexDomain = 
         properties.get_optional<std::string>(OPFLEX_DOMAIN);
 
-    if (!opflexName || !opflex) {
+    if (!opflexName || !opflexDomain) {
         LOG(ERROR) << "Opflex name and domain must be set";
     } else {
         framework.setOpflexIdentity(opflexName.get(),
