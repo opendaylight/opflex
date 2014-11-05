@@ -1,5 +1,8 @@
 package org.opendaylight.opflex.genie.engine.format;
 
+import org.opendaylight.opflex.genie.engine.proc.Config;
+import org.opendaylight.opflex.modlan.report.Severity;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -25,22 +28,35 @@ public class Formatter
             String[] aInDescription,
             boolean aInDoNotOverwriteExisting)
     {
-        String[] lStr = new String[6 + (null != aInDescription ? aInDescription.length : 0)];
-        int i = 0;
-        lStr[i++] = "SOME COPYRIGHT"; // TODO: need to get copyright message,
-        lStr[i++] = " ";
-        lStr[i++] = formattedFile.getFullFileName();
-        lStr[i++] = " ";
-        lStr[i++] = "generated " + formattedFile.getFullFileName() +
-                  " file genie code generation framework free of license." +
-                  (aInDoNotOverwriteExisting ? "with manual implementation detail." : "");
-        lStr[i++] = " ";
-        if (null != aInDescription)
+        Header lHeader = Config.getHeaderFormat();
+
+        String[] lStr = new String[lHeader.getSize() + (null != aInDescription ? aInDescription.length : 0) + 1];
+        try
         {
-            for (String lThatLine : aInDescription)
+            int i = 0;
+            for (HeaderLine lLine : lHeader.get())
             {
-                lStr[i++] = lThatLine;
+                lStr[i] = lLine.getLine();
+                if (lLine.hasOption(HeaderOption.GENIE_VAR_FULL_FILE_NAME))
+                {
+                    lStr[i] = lStr[i].replace(
+                            HeaderOption.GENIE_VAR_FULL_FILE_NAME.getName(),
+                            formattedFile.getFullFileName());
+                }
+                i++;
             }
+            lStr[i++] = " ";
+            if (null != aInDescription)
+            {
+                for (String lThatLine : aInDescription)
+                {
+                    lStr[i++] = lThatLine;
+                }
+            }
+        }
+        catch (Throwable lT)
+        {
+            Severity.DEATH.report(toString(), "header comment", "header default size: " + lHeader.getSize(), lT);
         }
         return lStr;
     }

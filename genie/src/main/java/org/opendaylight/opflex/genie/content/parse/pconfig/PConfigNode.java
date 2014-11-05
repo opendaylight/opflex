@@ -33,6 +33,9 @@ public class PConfigNode
                             "enums",
                             aInData.getNamedValue("enums", null, false),
                             true));
+
+        Config.setHeaderFormat(aInData.getNamedValue("headerpath", null, false));
+
         return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,null);
     }
 

@@ -1,9 +1,17 @@
 package org.opendaylight.opflex.genie.engine.proc;
 
+import org.opendaylight.opflex.genie.engine.format.Header;
+import org.opendaylight.opflex.genie.engine.format.HeaderOption;
+import org.opendaylight.opflex.modlan.report.Severity;
 import org.opendaylight.opflex.modlan.utils.Strings;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Created by midvorki on 10/8/14.
@@ -118,6 +126,36 @@ public class Config
         return "genie:config(config path: " + configPath + "; syntax path: " + syntaxPath + "; loader path: " + loaderPath + ")";
     }
 
+    public static void setHeaderFormat(String aInPath)
+    {
+        if (!Strings.isEmpty(aInPath))
+        {
+            defaultHeaderFilePath = concatPath(homePath, aInPath);
+            defaultHeader = new Header(defaultHeaderFilePath);
+        }
+
+    }
+
+    public static Header getHeaderFormat()
+    {
+        return defaultHeader;
+    }
+
+    private static Header getDefaultHeader()
+    {
+        Header lHdr = new Header();
+
+
+        lHdr.add("SOME COPYRIGHT");
+        lHdr.add(" ");
+        lHdr.add(HeaderOption.GENIE_VAR_FULL_FILE_NAME.getName());
+        lHdr.add(" ");
+        lHdr.add("generated " + HeaderOption.GENIE_VAR_FULL_FILE_NAME.getName() +
+                    " file genie code generation framework free of license.");
+        lHdr.add(" ");
+        return lHdr;
+    }
+
     public static String projName = null;
     public static String libName = null;
     public static String homePath = null;
@@ -128,4 +166,6 @@ public class Config
     public static String configPath = null;
     public static String logDirParent = null;
     public static boolean isEnumSupport = true;
+    public static String defaultHeaderFilePath = null;
+    public static Header defaultHeader = getDefaultHeader();
 }
