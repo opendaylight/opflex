@@ -85,7 +85,14 @@ public:
          * property that will allow the user to resolve related
          * managed objects.
          */
-        RELATIONSHIP
+        RELATIONSHIP,
+        /**
+         * A reverse relationship works just like a relationship
+         * except that it represents the reverse direction.  Though a
+         * reverse relationship contains a reference to the referring
+         * object, this reference will not be automatically resolved.
+         */
+        REVERSE_RELATIONSHIP
     };
 
     /**
