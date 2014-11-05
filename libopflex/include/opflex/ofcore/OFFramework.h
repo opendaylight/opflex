@@ -195,8 +195,7 @@
  * name.  You can set this identity information by calling:
  * @code
  * OFFramework::defaultInstance()
- *     .setOpflexIdentity("[component hostname or IP:port]",
- *                        "[unique domain]");
+ *     .setOpflexIdentity("[component name]", "[unique domain]");
  * @endcode
  * 
  * You can then start the framework simply by calling:
@@ -316,12 +315,12 @@
  * - @b foo - A policy object, and a child of root, with a scalar
  *   string property called "bar", and a unsigned 64-bit integer
  *   property called baz.  The bar property is the naming property for
- *   foo.  The URI for a foo object would be "/foo/[value of bar]"
+ *   foo.  The URI for a foo object would be "/foo/[value of bar]/"
  *
  * - @b fooref - A local-only child of root, with a reference to a
  *   foo, and a scalar string property called "bar".  The bar property
  *   is the naming property for foo.  The URI for a fooref object
- *   would be "/fooref/[value of bar]"
+ *   would be "/fooref/[value of bar]/"
  *
  * In this example, we'll have a generated class for each of the
  * objects.  There are two main ways to get access to an object in the
@@ -389,7 +388,7 @@
  * @endcode
  *
  * All three of these calls will give us the same object, which is the
- * "foo" object located at "/foo/test".
+ * "foo" object located at "/foo/test/".
  *
  * The foo class has a single string property called "bar".  We can
  * easily access it as follows:
