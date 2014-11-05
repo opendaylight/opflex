@@ -1,7 +1,23 @@
 {
     // Endpoint sources provide metadata about local endpoints
     "endpoint-sources": {
-	// Filesystem path to monitor for endpoint information
-	"filesystem": ["FILESYSTEM_WATCH_DIR"]
+        // Filesystem path to monitor for endpoint information
+        "filesystem": ["FILESYSTEM_WATCH_DIR"]
+    },
+    // Configuration related to the OpFlex protocol
+    "opflex": {
+	// The globally unique policy domain for this agent.
+	"domain": "c7820284-fa76-44d5-948c-9de464f1c047",
+
+	// The unique name in the policy domain for this agent.
+	"name": "example-agent",
+
+        // a list of peers to connect to, by hostname and port.  One
+        // peer, or an anycast pseudo-peer, is sufficient to bootstrap
+        // the connection without needing an exhaustive list of all
+        // peers.
+        "peers": [
+            // example: {"hostname": "127.0.0.1", "port": 8009}
+        ]
     }
 }
