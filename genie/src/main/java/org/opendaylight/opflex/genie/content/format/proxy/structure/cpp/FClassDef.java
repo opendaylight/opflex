@@ -193,7 +193,7 @@ public class FClassDef extends ItemFormatterTask
         out.println();
         out.println(aInIndent,getInclude("boost/optional.hpp", true));
         out.println(aInIndent,getInclude("opflex/modb/URIBuilder.h", false));
-        out.println(aInIndent,getInclude("opflex/modb/mo-internal/MO.h", false));
+        out.println(aInIndent,getInclude("opflex/modb/MO.h", false));
         /**
          if (aInClass.hasSuperclass())
          {
@@ -236,7 +236,7 @@ public class FClassDef extends ItemFormatterTask
          }
          else**/
         {
-            out.println(aInIndent + 1, ": public opflex::modb::mointernal::MO");
+            out.println(aInIndent + 1, ": public opflex::modb::MO");
         }
         out.println(aInIndent, "{");
         genPublic(aInIndent + 1, aInClass);
@@ -350,7 +350,7 @@ public class FClassDef extends ItemFormatterTask
         // METHOD BODY
         //
         out.println(aInIndent,"{");
-        out.println(aInIndent + 1, "return isPropertySet(" + toUnsignedStr(aInPropIdx) + ";");
+        out.println(aInIndent + 1, "return isPropertySet(" + toUnsignedStr(aInPropIdx) + ");");
         out.println(aInIndent,"}");
         out.println();
     }
@@ -400,7 +400,7 @@ public class FClassDef extends ItemFormatterTask
         out.println(aInIndent,"boost::optional<" + aInEffSyntax + "> get" + Strings.upFirstLetter(aInName) + "()");
         out.println(aInIndent,"{");
         out.println(aInIndent + 1,"if (is" + Strings.upFirstLetter(aInCheckName) + "Set())");
-        out.println(aInIndent + 2,"return " + aInCast + "getProperty(" + toUnsignedStr(aInPropIdx) + ");");
+        out.println(aInIndent + 2,"return boost::get<" + aInEffSyntax + ">(getProperty(" + toUnsignedStr(aInPropIdx) + "));");
         out.println(aInIndent + 1,"return boost::none;");
         out.println(aInIndent,"}");
         out.println();
