@@ -31,12 +31,8 @@ BOOST_AUTO_TEST_CASE( version ) {
 
 BOOST_AUTO_TEST_CASE( init ) {
     using opflex::ofcore::OFFramework;
-    using boost::property_tree::ptree;
 
     OFFramework& fw = OFFramework::defaultInstance();
-    ptree pt;
-    pt.put("example.example", "test");
-    fw.setProperties(pt);
 
     fw.start();
     fw.stop();

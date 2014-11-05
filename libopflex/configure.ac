@@ -29,7 +29,7 @@ AC_SUBST(SDK_MARKETNAME, ["OpFlex Framework"])
 AC_DEFINE(SDK_MARKETNAME, ["OpFlex Framework"], [Marketing name for SDK])
 
 # For more information on libtool versioning, see:
-# http://www.gnu.org/software/libtool/manual.html#Versioning
+# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 # 
 # The version string is [current:revision:age] or [c:r:a].  Here are a
 # set of rules to help you update your library version information:
@@ -48,7 +48,7 @@ AC_DEFINE(SDK_MARKETNAME, ["OpFlex Framework"], [Marketing name for SDK])
 #  6. If any interfaces have been removed since the last public
 #     release, then set age to 0.
 
-AC_SUBST(VERSION_INFO, [0:0:0])
+AC_SUBST(VERSION_INFO, [1:0:1])
 
 # ---------------------------------------------------------------
 # Initialization
@@ -104,17 +104,6 @@ AC_SUBST([OUR_CXXFLAGS_COMPILE_TIME_HASH],
 # check for doxygen
 AC_CHECK_PROGS(DOXYGEN,doxygen,none)
 AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone']) 
-
-# check for ietf tools
-AC_PATH_PROG([XML2RFC], [xml2rfc], "no")
-AC_PATH_PROG([XSLTPROC], [xsltproc], "no")
-
-AM_CONDITIONAL([BUILD_SPECIFICATIONS],
-               [test "x$XML2RFC" != "xno" -a "x$XSLTPROC" != "xno"])
-
-AC_PATH_PROG([XMLLINT], [xmllint], "no")
-AM_CONDITIONAL([LINT_SPECIFICATIONS],
-               [test "x$XMLLINT" != "xno"])
 
 # ---------------------------------------------------------------
 # Dependency checks

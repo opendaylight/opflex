@@ -21,8 +21,13 @@ AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 TESTS = engine_test
 engine_test_SOURCES = \
+	MockOpflexServer.h \
+	MockServerHandler.h \
+	MockOpflexServer.cpp \
+	MockServerHandler.cpp \
 	main.cpp \
-	Processor_test.cpp
+	Processor_test.cpp \
+	OpflexPool_test.cpp
 engine_test_LDADD = \
 	../libengine.la \
 	../../util/libutil.la \

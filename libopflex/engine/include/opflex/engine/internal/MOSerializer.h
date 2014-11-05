@@ -248,6 +248,15 @@ public:
         }
     }
 
+    /**
+     * Deserialize a reference
+     * 
+     * @param client the store client
+     * @param pinfo the property info for the reference
+     * @param v the value containing the reference
+     * @param oi the object instance where we'll store the result
+     * @param scalar true if this is a scalar-valued reference
+     */
     void deserialize_ref(modb::mointernal::StoreClient& client,
                          const modb::PropertyInfo& pinfo,
                          const rapidjson::Value& v,

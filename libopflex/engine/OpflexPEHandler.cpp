@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation of opflex messages for engine
+ * Implementation for OpflexPEHandler
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -9,26 +9,30 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <string>
 #include <vector>
 #include <utility>
 
+#include <rapidjson/document.h>
 #include <boost/foreach.hpp>
 
-#include "opflex/engine/OpFlexHandler.h"
 #include "opflex/engine/Processor.h"
-#include "opflex/engine/internal/MOSerializer.h"
-
+#include "opflex/engine/internal/OpflexPool.h"
+#include "opflex/engine/internal/OpflexConnection.h"
+#include "opflex/engine/internal/OpflexPEHandler.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "opflex/comms/comms.hpp"
 #include "opflex/rpc/rpc.hpp"
 #include "opflex/rpc/methods.hpp"
+#include "opflex/engine/internal/MOSerializer.h"
 
 namespace opflex {
 namespace engine {
+namespace internal {
 
 using std::vector;
+using std::string;
 using std::pair;
-using comms::internal::CommunicationPeer;
 using rpc::SendHandler;
 using modb::class_id_t;
 using modb::reference_t;
@@ -37,52 +41,65 @@ using internal::MOSerializer;
 using modb::mointernal::StoreClient;
 using opflex::rpc::InbReq;
 using opflex::rpc::InbErr;
+using rapidjson::Value;
 
 class OpFlexMessage {
 public:
-    OpFlexMessage(CommunicationPeer const & peer_,
-                  Processor* processor_) 
-        : peer(peer_), processor(processor_) {}
+    OpFlexMessage(OpflexPEHandler& pehandler_)
+        : pehandler(pehandler_) {}
     virtual ~OpFlexMessage() {};
  
 protected:
-    CommunicationPeer const & peer;
-    Processor* processor;
+    OpflexPEHandler& pehandler;
 };
 
-class SendIdentity : protected OpFlexMessage {
+class SendIdentity {
 public:
-    SendIdentity(CommunicationPeer const & peer,
-                 Processor* processor) 
-        : OpFlexMessage(peer, processor) {}
+    SendIdentity(const std::string& name_,
+                 const std::string& domain_,
+                 const uint8_t roles_)
+        : name(name_), domain(domain_), roles(roles_) {}
 
     bool operator()(SendHandler & handler) {
-        return  handler.StartArray()
-            &&  handler.StartObject()
-            &&  handler.String("proto_version")
-            &&  handler.String("1.0")
-            &&  handler.String("model")
-            &&  handler.String(processor->getStore()->getModelName().c_str())
-            &&  handler.String("model_version")
-            &&  handler.String(processor->getStore()->getModelVersion().c_str())
-            &&  handler.String("my_role")
-            &&  handler.StartArray()
-            &&  handler.String("policy_element")
-            &&  handler.EndArray()
-            &&  handler.EndObject()
-            &&  handler.EndArray()
-        ;
+        handler.StartArray();
+        handler.StartObject();
+        handler.String("proto_version");
+        handler.String("1.0");
+        handler.String("name");
+        handler.String(name.c_str());
+        handler.String("domain");
+        handler.String(domain.c_str());
+        handler.String("my_role");
+        handler.StartArray();
+        if (roles & OpflexHandler::POLICY_ELEMENT)
+            handler.String("policy_element");
+        if (roles & OpflexHandler::POLICY_REPOSITORY)
+            handler.String("policy_repository");
+        if (roles & OpflexHandler::ENDPOINT_REGISTRY)
+            handler.String("endpoint_registry");
+        if (roles & OpflexHandler::OBSERVER)
+            handler.String("observer");
+        handler.EndArray();
+        handler.EndObject();
+        handler.EndArray();
+
+        return true;
     }
+
+private:
+    std::string name;
+    std::string domain;
+    uint8_t roles;
 };
 
 class PolicyResolve : protected OpFlexMessage {
 public:
-    PolicyResolve(CommunicationPeer const & peer,
-                  Processor* processor,
+    PolicyResolve(OpflexPEHandler& handler,
                   const vector<reference_t>& policies_)
-        : OpFlexMessage(peer, processor), policies(policies_) {}
+        : OpFlexMessage(handler), policies(policies_) {}
     
     bool operator()(SendHandler & handler) {
+        Processor* processor = pehandler.getProcessor();
         handler.StartArray();
         BOOST_FOREACH(reference_t& p, policies) {
             try {
@@ -109,12 +126,12 @@ protected:
 
 class PolicyUnresolve : protected OpFlexMessage {
 public:
-    PolicyUnresolve(CommunicationPeer const & peer,
-                    Processor* processor,
+    PolicyUnresolve(OpflexPEHandler& handler,
                     const vector<reference_t>& policies_)
-        : OpFlexMessage(peer, processor), policies(policies_) {}
+        : OpFlexMessage(handler), policies(policies_) {}
     
     bool operator()(SendHandler & handler) {
+        Processor* processor = pehandler.getProcessor();
         handler.StartArray();
         BOOST_FOREACH(reference_t& p, policies) {
             try {
@@ -139,17 +156,17 @@ protected:
 
 class PolicyUpdate : protected OpFlexMessage {
 public:
-    PolicyUpdate(CommunicationPeer const & peer,
-                 Processor* processor,
+    PolicyUpdate(OpflexPEHandler& handler,
                  const vector<reference_t>& replace_,
                  const vector<reference_t>& merge_children_,
                  const vector<URI>& del_)
-        : OpFlexMessage(peer, processor), 
+        : OpFlexMessage(handler), 
           replace(replace_), 
           merge_children(merge_children_),
           del(del_) {}
     
     bool operator()(SendHandler & handler) {
+        Processor* processor = pehandler.getProcessor();
         MOSerializer& serializer = processor->getSerializer();
         StoreClient* client = processor->getSystemClient();
 
@@ -194,13 +211,13 @@ protected:
 
 class EndpointDeclare : protected OpFlexMessage {
 public:
-    EndpointDeclare(CommunicationPeer const & peer,
-                 Processor* processor,
-                 const vector<reference_t>& endpoints_)
-        : OpFlexMessage(peer, processor), 
+    EndpointDeclare(OpflexPEHandler& handler,
+                    const vector<reference_t>& endpoints_)
+        : OpFlexMessage(handler), 
           endpoints(endpoints_) {}
     
     bool operator()(SendHandler & handler) {
+        Processor* processor = pehandler.getProcessor();
         MOSerializer& serializer = processor->getSerializer();
         StoreClient* client = processor->getSystemClient();
 
@@ -229,13 +246,13 @@ protected:
 
 class EndpointUndeclare : protected OpFlexMessage {
 public:
-    EndpointUndeclare(CommunicationPeer const & peer,
-                      Processor* processor,
+    EndpointUndeclare(OpflexPEHandler& handler,
                       const vector<reference_t>& endpoints_)
-        : OpFlexMessage(peer, processor), 
+        : OpFlexMessage(handler), 
           endpoints(endpoints_) {}
     
     bool operator()(SendHandler & handler) {
+        Processor* processor = pehandler.getProcessor();
         MOSerializer& serializer = processor->getSerializer();
         StoreClient* client = processor->getSystemClient();
 
@@ -265,14 +282,14 @@ protected:
 
 class EndpointUpdate : protected OpFlexMessage {
 public:
-    EndpointUpdate(CommunicationPeer const & peer,
-                   Processor* processor,
+    EndpointUpdate(OpflexPEHandler& handler,
                    const vector<reference_t>& replace_,
                    const vector<URI>& del_)
-        : OpFlexMessage(peer, processor), 
+        : OpFlexMessage(handler), 
           replace(replace_), del(del_) {}
     
     bool operator()(SendHandler & handler) {
+        Processor* processor = pehandler.getProcessor();
         MOSerializer& serializer = processor->getSerializer();
         StoreClient* client = processor->getSystemClient();
 
@@ -307,13 +324,13 @@ protected:
 
 class StateReport : protected OpFlexMessage {
 public:
-    StateReport(CommunicationPeer const & peer,
-                Processor* processor,
+    StateReport(OpflexPEHandler& handler,
                 const vector<reference_t>& observables_)
-        : OpFlexMessage(peer, processor), 
+        : OpFlexMessage(handler), 
           observables(observables_) {}
     
     bool operator()(SendHandler & handler) {
+        Processor* processor = pehandler.getProcessor();
         MOSerializer& serializer = processor->getSerializer();
         StoreClient* client = processor->getSystemClient();
 
@@ -338,140 +355,50 @@ protected:
     vector<reference_t> observables;
 };
 
+void OpflexPEHandler::connected() {
+    // XXX - TODO
+}
+
+void OpflexPEHandler::disconnected() {
+    // XXX - TODO
+}
+
+void OpflexPEHandler::ready() {
+    // XXX - TODO
+}
+
+void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
+    // XXX - TODO
+}
+
+void OpflexPEHandler::handlePolicyResolveRes(const Value& payload) {
+    // XXX - TODO
+}
+
+void OpflexPEHandler::handlePolicyUnresolveRes(const rapidjson::Value& payload) {
+    // nothing to do
+}
+
+void OpflexPEHandler::handleEPDeclareRes(const rapidjson::Value& payload) {
+    // nothing to do
+}
+
+void OpflexPEHandler::handleEPUndeclareRes(const rapidjson::Value& payload) {
+    // nothing to do
+}
+
+void OpflexPEHandler::handleEPResolveRes(const rapidjson::Value& payload) {
+    // XXX - TODO
+}
+
+void OpflexPEHandler::handleEPUnresolveRes(const rapidjson::Value& payload) {
+    // nothing to do
+}
+
+void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& payload) {
+    // XXX - TODO
+}
+
+} /* namespace internal */
 } /* namespace engine */
-namespace rpc {
-
-template<>
-void InbReq<&opflex::rpc::method::send_identity>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::send_identity>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::send_identity>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::policy_resolve>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::policy_resolve>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::policy_resolve>::process() const {
-
-}
-
-
-template<>
-void InbReq<&opflex::rpc::method::policy_unresolve>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::policy_unresolve>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::policy_unresolve>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::policy_update>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::policy_update>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::policy_update>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::endpoint_declare>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::endpoint_declare>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::endpoint_declare>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::endpoint_undeclare>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::endpoint_undeclare>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::endpoint_undeclare>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::endpoint_resolve>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::endpoint_resolve>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::endpoint_resolve>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::endpoint_unresolve>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::endpoint_unresolve>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::endpoint_unresolve>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::endpoint_update>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::endpoint_update>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::endpoint_update>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::state_report>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::state_report>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::state_report>::process() const {
-
-}
-
-
-} /* namespace rpc */
 } /* namespace opflex */

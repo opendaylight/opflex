@@ -25,10 +25,21 @@ namespace internal {
 class Logger {
   public:
 
+    /**
+     * Get the output buffer to write to
+     */
     std::ostream & stream() {
         return buffer_;
     }
 
+    /**
+     * Construct a new logger to handle a specific message
+     *
+     * @param level the log level 
+     * @param file the file that is generating the log
+     * @param line the line number
+     * @param the function that is generating the log
+     */
     Logger(OFLogHandler::Level const level,
            char const * file,
            int const line,

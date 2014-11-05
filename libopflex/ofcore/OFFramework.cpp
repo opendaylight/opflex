@@ -22,9 +22,6 @@
 namespace opflex {
 namespace ofcore {
 
-const std::string OFFramework::Config::CONFIG_OPFLEX_PEER("opflex.peer");
-
-using boost::property_tree::ptree;
 using namespace boost::assign;
 
 class OFFramework::OFFrameworkImpl {
@@ -34,7 +31,6 @@ public:
 
     modb::ObjectStore db;
     engine::Processor processor;
-    ptree properties;
     uv_key_t mutator_key;
 };
 
@@ -77,6 +73,16 @@ void OFFramework::stop() {
     pimpl->db.stop();
 }
 
+void OFFramework::setOpflexIdentity(const std::string& name,
+                                    const std::string& domain) {
+    pimpl->processor.setOpflexIdentity(name, domain);
+}
+
+void OFFramework::addPeer(const std::string& hostname,
+                          int port) {
+    pimpl->processor.addPeer(hostname, port);
+}
+
 void MockOFFramework::start() {
     LOG(DEBUG) << "Starting OpFlex Framework";
 
@@ -96,10 +102,6 @@ modb::ObjectStore& OFFramework::getStore() {
 OFFramework& OFFramework::defaultInstance() {
     static OFFramework staticInstance;
     return staticInstance;
-}
-
-void OFFramework::setProperties(const ptree& properties_) {
-    pimpl->properties = properties_;
 }
 
 void OFFramework::registerTLMutator(modb::Mutator& mutator) {
