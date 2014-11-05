@@ -10,6 +10,7 @@
  */
 
 #include <set>
+#include <utility>
 #include <string>
 
 #include <boost/property_tree/ptree.hpp>
@@ -79,6 +80,9 @@ private:
 
     std::set<std::string> endpointSourcePaths;
     std::set<EndpointSource*> endpointSources;
+
+    typedef std::pair<std::string, int> host_t;
+    std::set<host_t> opflexPeers;
 };
 
 } /* namespace ovsagent */
