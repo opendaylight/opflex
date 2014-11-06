@@ -275,6 +275,11 @@ class CommunicationPeer : public Peer {
 
 #ifndef NDEBUG
     virtual bool __checkInvariants() const {
+
+        if (status_ != kPS_ONLINE) {
+            return Peer::__checkInvariants();
+        }
+
         if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
             LOG(DEBUG) << this
                 << " keepAliveInterval_ = " << keepAliveInterval_
