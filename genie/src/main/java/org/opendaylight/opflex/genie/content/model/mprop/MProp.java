@@ -3,6 +3,7 @@ package org.opendaylight.opflex.genie.content.model.mprop;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.mclass.SubStructItem;
@@ -305,6 +306,13 @@ public class MProp extends SubStructItem
         }
     }
 
+    public Collection<MConst> getConst()
+    {
+        Map<String,MConst> lConsts = new TreeMap<>();
+        getConst(lConsts);
+        return lConsts.values();
+    }
+
     /**
      * retrieves all constants defined under this property or, if specified, any of the target overridden properties
      * @param aOut  All constants defined under this property or, if specified, any of the target overridden properties
@@ -330,7 +338,7 @@ public class MProp extends SubStructItem
              null != lThisProp;
              lThisProp = lThisProp.getOverridden(false))
         {
-            if (lThisProp.hasChildren(MConst.MY_CAT))
+            if (lThisProp.hasConstants())
             {
                 return lThisProp;
             }
@@ -340,6 +348,34 @@ public class MProp extends SubStructItem
             }
         }
         return null;
+    }
+
+    public Item getNextConstantHolder()
+    {
+        for (MProp lThisProp = this;
+             null != lThisProp;
+             lThisProp = lThisProp.getOverridden(false))
+        {
+            if (this != lThisProp && lThisProp.hasConstants())
+            {
+                return lThisProp;
+            }
+            else if (lThisProp.isBase())
+            {
+                return lThisProp.getType(false).getClosestConstantHolder();
+            }
+        }
+        return null;
+    }
+
+    public boolean hasConstants()
+    {
+        return hasChildren(MConst.MY_CAT);
+    }
+
+    public boolean hasEnumeratedConstants()
+    {
+        return getType(true).getTypeHint().getInfo().isEnumerated() && hasConstants();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

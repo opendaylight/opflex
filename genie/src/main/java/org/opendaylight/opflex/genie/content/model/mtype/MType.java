@@ -488,6 +488,13 @@ public class MType extends SubModuleItem
     }
 
 
+    public Collection<MConst> getConst()
+    {
+        Map<String,MConst> lConsts = new TreeMap<>();
+        getConst(lConsts);
+        return lConsts.values();
+    }
+
     /**
      * retrieves all constants defined under this type or, if specified, any of the supertypes
      * @param aOut  All constants defined under this type or, if specified, any of the supertypes
@@ -515,6 +522,30 @@ public class MType extends SubModuleItem
             }
         }
         return null;
+    }
+
+    public Item getNextConstantHolder()
+    {
+        for (MType lThisType = this;
+             null != lThisType;
+             lThisType = lThisType.getSupertype())
+        {
+            if (this != lThisType && lThisType.hasConstants())
+            {
+                return lThisType;
+            }
+        }
+        return null;
+    }
+
+    public boolean hasConstants()
+    {
+        return hasChildren(MConst.MY_CAT);
+    }
+
+    public boolean hasEnumeratedConstants()
+    {
+        return getBuiltInType().getTypeHint().getInfo().isEnumerated() && hasConstants();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
