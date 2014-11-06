@@ -63,6 +63,7 @@ public:
         eg = space->addGbpEpGroup("group");
         eg->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnet(subnetsfd1->getURI());
+        eg->addGbpeInstContext()->setVnid(1234);
     
         mutator.commit();
     }
@@ -121,8 +122,16 @@ static bool checkFd(PolicyManager& policyManager,
 BOOST_FIXTURE_TEST_CASE( domain, PolicyFixture ) {
     WAIT_FOR(checkFd(agent.getPolicyManager(),
                      eg->getURI(), fd->getURI()), 500);
+}
 
-    
+BOOST_FIXTURE_TEST_CASE( group, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    WAIT_FOR(pm.groupExists(eg->getURI()), 500);
+
+    BOOST_CHECK(pm.groupExists(URI("bad")) == false);
+
+    optional<uint32_t> vnid = pm.getVnidForGroup(eg->getURI());
+    BOOST_CHECK(vnid.get() == 1234);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

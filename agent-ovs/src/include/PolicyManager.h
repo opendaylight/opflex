@@ -135,6 +135,24 @@ public:
     void getSubnetsForDomain(const opflex::modb::URI& domainUri,
                              /* out */ boost::unordered_set<opflex::modb::URI>& uris);
 
+    /**
+     * Get the virtual-network identifier (vnid) associated with the
+     * specified endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return vnid of the group if group is found and its vnid is set,
+     * boost::none otherwise
+     */
+    boost::optional<uint32_t> getVnidForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Check if an endpoint group exists
+     *
+     * @param eg the URI for the endpoint group to check
+     * @return true if group is found, false otherwise
+     */
+    bool groupExists(const opflex::modb::URI& eg);
+
 private:
     opflex::ofcore::OFFramework& framework;
 
@@ -142,6 +160,7 @@ private:
      * State and indices related to a given endpoint group
      */
     struct GroupState {
+        boost::optional<uint32_t> vnid;
         boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
         boost::optional<boost::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;
         boost::optional<boost::shared_ptr<modelgbp::gbp::FloodDomain> > floodDomain;

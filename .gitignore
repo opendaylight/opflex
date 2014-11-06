@@ -3,3 +3,6 @@ genie.iml
 .DS
 .DS_Store
 *~
+.project
+.cproject
+.settings*
