@@ -100,4 +100,9 @@ public class Strings
         }
         return lRet;
     }
+
+    public static String repaceIllegal(String aIn)
+    {
+        return aIn.replace('-', '_').replace(':', '_');
+    }
 }

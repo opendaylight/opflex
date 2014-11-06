@@ -39,6 +39,21 @@ public enum TypeInfo
         return null;
     }
 
+    public boolean isEnumerated()
+    {
+        switch (this)
+        {
+            case ENUM:
+            case BITMASK:
+
+                return true;
+
+            default:
+
+                return false;
+        }
+    }
+
     private TypeInfo(String aInTag)
     {
         tag = aInTag;

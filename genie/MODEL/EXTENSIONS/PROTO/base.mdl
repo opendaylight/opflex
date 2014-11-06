@@ -26,7 +26,7 @@ module[platform]
     {
         contained
         {
-            parent[class=policy/Universe]
+            parent[class=platform/Config]
             {
                 name-component
             }
