@@ -124,6 +124,11 @@ public:
     virtual 
     internal::OpflexHandler* newHandler(internal::OpflexConnection* conn);
 
+    /**
+     * Get the opflex connection pool for the processor
+     */
+    internal::OpflexPool& getPool() { return pool; }
+
 private:
     /**
      * The system store client

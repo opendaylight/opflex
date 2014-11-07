@@ -13,8 +13,14 @@
 
 #include <string>
 #include <stdint.h>
+#include <sstream>
+#include <list>
+#include <utility>
 
 #include <boost/noncopyable.hpp>
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <uv.h>
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXCONNECTION_H
@@ -45,14 +51,12 @@ public:
     virtual ~OpflexConnection();
 
     /**
-     * Connect to the remote host.  This is called by the constructor
-     * but exists so it can be overridden in derived classes.
+     * Connect to the remote host.
      */
     virtual void connect();
 
     /**
-     * Disconnect this connection from the remote peer.  This is
-     * called by the destructor.
+     * Disconnect this connection from the remote peer.
      */
     virtual void disconnect();
 
@@ -78,10 +82,51 @@ public:
      */
     virtual bool isReady();
 
-private:
+    /**
+     * Get a human-readable view of the name of the remote peer
+     *
+     * @return the string name
+     */
+    virtual const std::string& getRemotePeer() = 0;
+
+    /**
+     * Write the given string buffer to the socket.  Ownership of the
+     * object passes to the connection
+     *
+     * @param buf the buffer to write
+     */
+    virtual void write(const rapidjson::StringBuffer* buf) = 0;
+
+protected:
+    /**
+     * The handler for the connection
+     */
     OpflexHandler* handler;
 
     friend class OpflexHandler;
+
+    std::stringstream* buffer;
+    rapidjson::Document document;
+
+    /**
+     * Write an opflex message to the connection using the given
+     * string buffer, ownership of which will pass to the connection
+     */
+    void write(uv_stream_t* stream, const rapidjson::StringBuffer* buf);
+    static void write_cb(uv_write_t* req, int status);
+
+    static void read_cb(uv_stream_t* stream, 
+                        ssize_t nread, 
+                        const uv_buf_t* buf);
+    static void alloc_cb(uv_handle_t* handle,
+                         size_t suggested_size,
+                         uv_buf_t* buf);
+    virtual void dispatch();
+
+    typedef std::pair<uv_write_t*, const rapidjson::StringBuffer*> write_t;
+    typedef std::list<write_t> write_list_t;
+    write_list_t write_list;
+    uv_mutex_t write_mutex;
 };
 
 /**

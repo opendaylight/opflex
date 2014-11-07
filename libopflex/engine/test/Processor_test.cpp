@@ -24,6 +24,7 @@
 
 #include "BaseFixture.h"
 #include "TestListener.h"
+#include "MockOpflexServer.h"
 
 using namespace opflex::engine;
 using namespace opflex::engine::internal;
@@ -36,11 +37,18 @@ using boost::assign::list_of;
 using boost::shared_ptr;
 using mointernal::ObjectInstance;
 using std::out_of_range;
+using std::make_pair;
+
+#define SERVER_ROLES \
+        (OpflexHandler::POLICY_REPOSITORY |     \
+         OpflexHandler::ENDPOINT_REGISTRY |     \
+         OpflexHandler::OBSERVER)
 
 class Fixture : public BaseFixture {
 public:
     Fixture() : processor(&db) {
         processor.setDelay(50);
+        processor.setOpflexIdentity("testelement", "testdomain");
         processor.start();
     }
 
@@ -49,6 +57,21 @@ public:
     }
 
     Processor processor;
+};
+
+class ServerFixture : public Fixture {
+public:
+    ServerFixture() 
+        : mockServer(8009, SERVER_ROLES,
+                     list_of(make_pair(SERVER_ROLES, "127.0.0.1:8009"))) {
+        
+    }
+
+    ~ServerFixture() {
+
+    }
+
+    MockOpflexServer mockServer;
 };
 
 BOOST_AUTO_TEST_SUITE(Processor_test)
@@ -374,6 +397,23 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
     BOOST_CHECK_EQUAL(0, processor.getRefCount(c4u));
     WAIT_FOR(!itemPresent(client2, 6, c6u), 1000);
+}
+
+BOOST_FIXTURE_TEST_CASE( bootstrap, ServerFixture ) {
+    MockOpflexServer::peer_t p1 =
+        make_pair(SERVER_ROLES, "127.0.0.1:8009");
+    MockOpflexServer::peer_t p2 =
+        make_pair(SERVER_ROLES, "127.0.0.1:8010");
+
+    MockOpflexServer anycastServer(8011, 0, list_of(p1)(p2));
+    MockOpflexServer peer2(8010, SERVER_ROLES, list_of(p1)(p2));
+
+    processor.addPeer("127.0.0.1", 8011);
+
+    WAIT_FOR(processor.getPool().getPeer("127.0.0.1", 8009) != NULL, 1000);
+    WAIT_FOR(processor.getPool().getPeer("127.0.0.1", 8010) != NULL, 1000);
+    WAIT_FOR(processor.getPool().getPeer("127.0.0.1", 8009)->isReady(), 1000);
+    WAIT_FOR(processor.getPool().getPeer("127.0.0.1", 8010)->isReady(), 1000);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
