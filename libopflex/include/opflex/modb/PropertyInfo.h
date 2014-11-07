@@ -33,12 +33,12 @@ namespace modb {
 /**
  * A unique class ID
  */
-typedef unsigned long class_id_t;
+typedef uint64_t class_id_t;
 
 /**
  * A unique property ID
  */
-typedef unsigned long prop_id_t;
+typedef uint64_t prop_id_t;
  
 /**
  * @brief Property info provides metadata about a particular managed object
