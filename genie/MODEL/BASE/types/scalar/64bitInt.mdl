@@ -5,7 +5,7 @@ module[scalar]
     {
         hint[scalar]
         language[cpp;
-                 syntax=uint64_t;
+                 syntax=int64_t;
                  pass-by=value;
                  pass-const=no;
                  ]
