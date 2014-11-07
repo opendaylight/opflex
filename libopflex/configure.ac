@@ -73,13 +73,11 @@ AC_ARG_WITH(buildversion,
             [sdk_bversion=${withval}],
             [sdk_bversion='private'])
 
-# Create an option to install communications library separate
-AC_ARG_ENABLE(comms,
-              AC_HELP_STRING([--enable-comms],
-                             [Install raw opflex communications library separately]),
-             [separate_comms='true'],
-             [separate_comms='false'])
-AM_CONDITIONAL(SEPARATE_COMMS, [test x$separate_comms != 'xfalse'])
+dnl Create an option to install communications library separately
+AC_ARG_ENABLE(separate-comms,
+              AC_HELP_STRING([--enable-separate-comms],
+                             [Install raw opflex communications library separately]))
+AM_CONDITIONAL(SEPARATE_COMMS, [test x$enable_separate_comms = 'xyes'])
 
 dnl Create an option to trace all of the function calls within the communications library
 AC_ARG_ENABLE(comms-trace,
