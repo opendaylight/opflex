@@ -14,6 +14,8 @@
 
 #include <boost/foreach.hpp>
 #include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 #include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -30,18 +32,23 @@ namespace internal {
 
 using std::string;
 using rapidjson::Value;
+using rapidjson::Writer;
 
-void OpflexHandler::handleUnexpected(const string& type) {
+void OpflexHandler::handleUnexpected(const rapidjson::Value& id,
+                                     const string& type) {
     LOG(ERROR) << "Unexpected message of type " << type;
+    sendErrorRes(id, "ESTATE", "Unexpected message");
     conn->disconnect();
 }
 
-void OpflexHandler::handleUnsupportedReq(const string& type) {
+void OpflexHandler::handleUnsupportedReq(const rapidjson::Value& id,
+                                         const string& type) {
     LOG(WARNING) << "Ignoring unsupported request of type " << type;
-    // XXX TODO send error reply
+    sendErrorRes(id, "EUNSUPPORTED", "Unsupported request");
 }
 
-void OpflexHandler::handleError(const rapidjson::Value& payload,
+void OpflexHandler::handleError(const rapidjson::Value& id,
+                                const rapidjson::Value& payload,
                                 const string& type) {
     string code;
     string message;
@@ -55,9 +62,48 @@ void OpflexHandler::handleError(const rapidjson::Value& payload,
         if (v.IsString())
             message = v.GetString();
     }
-    LOG(ERROR) << "Error handling message of type " << type
+    LOG(ERROR) << "Remote peer returned error with message (" << type
+               << "): " << code << ": " << message;
+}
+
+class ErrorRes : public OpflexMessage {
+public:
+    ErrorRes(const Value& id,
+             const string& code_,
+             const string& message_)
+        : OpflexMessage("", ERROR_RESPONSE, &id), 
+          code(code_), message(message_) {
+
+    }
+
+    virtual void serializePayload(MessageWriter& writer) {
+        (*this)(writer);
+    }
+
+    template <typename T>
+    bool operator()(Writer<T> & handler) {
+        handler.StartObject();
+        handler.String("code");
+        handler.String(code.c_str());
+        handler.String("message");
+        handler.String(message.c_str());
+        return true;
+    }
+
+    const string& code;
+    const string& message;
+};
+
+void OpflexHandler::sendErrorRes(const Value& id,
+                                 const string& code,
+                                 const string& message) {
+    ErrorRes res(id, code, message);
+    rapidjson::StringBuffer sb;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+    id.Accept(writer);
+    LOG(ERROR) << "Error processing message  " << sb.GetString()
                << ": " << code << ": " << message;
-        
+    getConnection()->write(res.serialize());
 }
 
 } /* namespace internal */

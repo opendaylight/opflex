@@ -16,6 +16,7 @@
 #include <boost/foreach.hpp>
 
 #include "opflex/engine/internal/OpflexPEHandler.h"
+#include "opflex/engine/internal/ProcessorMessage.h"
 #include "opflex/engine/Processor.h"
 #include "LockGuard.h"
 #include "opflex/logging/internal/logging.hpp"
@@ -192,13 +193,19 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     ItemState newState = IN_SYNC;
     StoreClient::notif_t notifs;
 
+    ItemState curState;
+    {
+        util::LockGuard guard(&item_mutex);
+        curState = it->details->state;
+    }
+
     const ClassInfo& ci = store->getClassInfo(it->details->class_id);
     shared_ptr<const ObjectInstance> oi;
     try {
         oi = client->get(it->details->class_id, it->uri);
     } catch (std::out_of_range e) {
         // item removed
-        switch (it->details->state) {
+        switch (curState) {
         case UNRESOLVED:
             break;
         default:
@@ -210,11 +217,11 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     //LOG(INFO) << "Processing item " << it->uri.toString() 
     //          << " of class " << ci.getId()
     //          << " and type " << ci.getType()
-    //          << " in state " << it->details->state;
+    //          << " in state " << curState;
 
     // Check whether this item needs to be garbage collected
     if (!isLocal(ci.getType()) && oi && isOrphan(*it)) {
-        switch (it->details->state) {
+        switch (curState) {
         case NEW:
             {
                 // requeue new items so if there are any pending references
@@ -276,26 +283,48 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         }
     } 
 
-    // XXX TODO - process the item by writing the appropriate opflex
-    // messages
-    switch (ci.getType()) {
-    case ClassInfo::POLICY:
-        break;
-    case ClassInfo::REMOTE_ENDPOINT:
-        break;
-    case ClassInfo::LOCAL_ENDPOINT:
-        break;
-    case ClassInfo::OBSERVABLE:
-        break;
-    default:
-        // do nothing
-        break;
-    }
-
     if (oi) {
-        util::LockGuard guard(&item_mutex);
-        
-        it->details->state = newState;
+        switch (ci.getType()) {
+        case ClassInfo::POLICY:
+            if (curState == UNRESOLVED) {
+                LOG(WARNING) << "Policy resolution not implemented";
+            }
+            break;
+        case ClassInfo::REMOTE_ENDPOINT:
+            if (curState == UNRESOLVED) {
+                LOG(WARNING) << "Remote endpoint resolution not implemented";
+            }
+            break;
+        case ClassInfo::LOCAL_ENDPOINT:
+            if (curState == NEW || curState == UPDATED) {
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id,
+                                         it->uri));
+                EndpointDeclareReq req(this, refs);
+                pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+
+                // XXX TODO - we should only do this for the
+                // highest-rank local endpoint and not for every child
+                // object individually, since the whole tree will get
+                // serialized when we send to the remote server
+            }
+            newState = IN_SYNC;
+            break;
+        case ClassInfo::OBSERVABLE:
+            if (curState == NEW || curState == UPDATED) {
+                LOG(WARNING) << "Observable reporting not implemented";
+            }
+            newState = IN_SYNC;
+            break;
+        default:
+            // do nothing
+            break;
+        }
+
+        {
+            util::LockGuard guard(&item_mutex);
+            it->details->state = newState;
+        }
     } else if (newState == DELETED) {
         LOG(DEBUG) << "Purging state for " << it->uri.toString();
         client->removeChildren(it->details->class_id,
@@ -306,6 +335,37 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
             exp_index.erase(it);
         }
+
+        
+        switch (ci.getType()) {
+        case ClassInfo::POLICY:
+            if (curState == IN_SYNC) {
+                LOG(WARNING) << "Policy resolution not implemented";
+            }
+            break;
+        case ClassInfo::REMOTE_ENDPOINT:
+            if (curState == IN_SYNC) {
+                LOG(WARNING) << "Remote endpoint resolution not implemented";
+            }
+            break;
+        case ClassInfo::LOCAL_ENDPOINT:
+            {
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id,
+                                         it->uri));
+                EndpointUndeclareReq req(this, refs);
+                pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+            }
+            
+            break;
+        case ClassInfo::OBSERVABLE:
+            LOG(WARNING) << "Observable reporting not implemented";
+            break;
+        default:
+            // do nothing
+            break;
+        }
+
     }
 
     if (notifs.size() > 0)

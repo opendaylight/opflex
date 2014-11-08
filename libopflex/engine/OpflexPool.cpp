@@ -187,6 +187,44 @@ void OpflexPool::on_conn_closed(uv_handle_t *handle) {
     }
 }
 
+void OpflexPool::writeToRole(OpflexMessage& message,
+                             OpflexHandler::OpflexRole role) {
+    std::vector<OpflexClientConnection*> conns;
+    {
+        util::LockGuard guard(&conn_mutex);
+        role_map_t::iterator it = roles.find(role);
+        if (it == roles.end())
+            return;
+        
+        BOOST_FOREACH(OpflexClientConnection* conn, it->second.conns) {
+            conns.push_back(conn);
+        }
+    }
+
+    rapidjson::StringBuffer* sb = NULL;
+    rapidjson::StringBuffer* sb_copy = NULL;
+    for (int i = 0; i < conns.size(); ++i) {
+        // only call serialize once
+        if (sb == NULL) sb = message.serialize();
+        // make a copy for all but the last connection
+        if (i + 1 < conns.size()) {
+            sb_copy = new rapidjson::StringBuffer();
+            // sadly this appears to be the only way to copy a
+            // rapidjson string buffer.  Revisit use of string buffer
+            // later
+            const char* str = sb->GetString();
+            for (int j = 0; j < sb->GetSize(); ++j)
+                sb_copy->Put(str[j]);
+        } else {
+            sb_copy = sb;
+        }
+
+        conns[i]->write(sb_copy);
+    }
+    // all allocated buffers should have been dispatched to
+    // connections
+}
+
 } /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */

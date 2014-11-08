@@ -26,6 +26,7 @@ engine_test_SOURCES = \
 	MockOpflexServer.cpp \
 	MockServerHandler.cpp \
 	main.cpp \
+	MOSerialize_test.cpp \
 	Processor_test.cpp \
 	OpflexPool_test.cpp
 engine_test_LDADD = \

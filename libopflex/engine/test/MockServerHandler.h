@@ -16,6 +16,7 @@
 #include <rapidjson/document.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
+#include "opflex/engine/internal/MOSerializer.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_MOCKSERVERHANDLER_H

@@ -97,6 +97,13 @@ public:
      */
     virtual void write(const rapidjson::StringBuffer* buf) = 0;
 
+    /**
+     * Get the handler associated with this connection
+     *
+     * @return the OpflexHandler for the connection
+     */
+    virtual OpflexHandler* getHandler() { return handler; }
+
 protected:
     /**
      * The handler for the connection

@@ -161,7 +161,7 @@ public:
      */
     virtual void handleSendIdentityReq(const rapidjson::Value& id,
                                        const rapidjson::Value& payload) {
-        handleUnsupportedReq("Send Identity Request");
+        handleUnsupportedReq(id, "Send Identity Request");
     }
 
     /**
@@ -172,7 +172,7 @@ public:
      */
     virtual void handleSendIdentityRes(const rapidjson::Value& id,
                                        const rapidjson::Value& payload) {
-        handleUnexpected("Send Identity Response");
+        handleUnexpected(id, "Send Identity Response");
     }
 
     /**
@@ -183,7 +183,7 @@ public:
      */
     virtual void handleSendIdentityErr(const rapidjson::Value& id,
                                        const rapidjson::Value& payload) {
-        handleError(payload, "Send Identity");
+        handleError(id, payload, "Send Identity");
     }
 
     /**
@@ -194,7 +194,7 @@ public:
      */
     virtual void handlePolicyResolveReq(const rapidjson::Value& id,
                                        const rapidjson::Value& payload) {
-        handleUnsupportedReq("Policy Resolve Request");
+        handleUnsupportedReq(id, "Policy Resolve Request");
     }
 
     /**
@@ -205,7 +205,7 @@ public:
      */
     virtual void handlePolicyResolveRes(const rapidjson::Value& id,
                                         const rapidjson::Value& payload) {
-        handleUnexpected("Policy Resolve Response");
+        handleUnexpected(id, "Policy Resolve Response");
     }
 
     /**
@@ -216,7 +216,7 @@ public:
      */
     virtual void handlePolicyResolveErr(const rapidjson::Value& id,
                                         const rapidjson::Value& payload) {
-        handleError(payload, "Policy Resolve");
+        handleError(id, payload, "Policy Resolve");
     }
 
     /**
@@ -227,7 +227,7 @@ public:
      */
     virtual void handlePolicyUnresolveReq(const rapidjson::Value& id,
                                           const rapidjson::Value& payload) {
-        handleUnsupportedReq("Policy Unresolve Request");
+        handleUnsupportedReq(id, "Policy Unresolve Request");
     }
 
     /**
@@ -238,7 +238,7 @@ public:
      */
     virtual void handlePolicyUnresolveRes(const rapidjson::Value& id,
                                           const rapidjson::Value& payload) {
-        handleUnexpected("Policy Unresolve Response");
+        handleUnexpected(id, "Policy Unresolve Response");
     }
 
     /**
@@ -249,7 +249,7 @@ public:
      */
     virtual void handlePolicyUnresolveErr(const rapidjson::Value& id,
                                           const rapidjson::Value& payload) {
-        handleError(payload, "Policy Unresolve");
+        handleError(id, payload, "Policy Unresolve");
     }
 
     /**
@@ -260,7 +260,7 @@ public:
      */
     virtual void handlePolicyUpdateReq(const rapidjson::Value& id,
                                        const rapidjson::Value& payload) {
-        handleUnsupportedReq("Policy Update Request");
+        handleUnsupportedReq(id, "Policy Update Request");
     }
 
     /**
@@ -271,7 +271,7 @@ public:
      */
     virtual void handlePolicyUpdateRes(const rapidjson::Value& id,
                                        const rapidjson::Value& payload) {
-        handleUnexpected("Policy Update Response");
+        handleUnexpected(id, "Policy Update Response");
     }
 
     /**
@@ -282,7 +282,7 @@ public:
      */
     virtual void handlePolicyUpdateErr(const rapidjson::Value& id,
                                        const rapidjson::Value& payload) {
-        handleError(payload, "Policy Update");
+        handleError(id, payload, "Policy Update");
     }
 
     /**
@@ -293,7 +293,7 @@ public:
      */
     virtual void handleEPDeclareReq(const rapidjson::Value& id,
                                     const rapidjson::Value& payload) {
-        handleUnsupportedReq("Endpoint Declare Request");
+        handleUnsupportedReq(id, "Endpoint Declare Request");
     }
 
     /**
@@ -304,7 +304,7 @@ public:
      */
     virtual void handleEPDeclareRes(const rapidjson::Value& id,
                                     const rapidjson::Value& payload) {
-        handleUnexpected("Endpoint Declare Response");
+        handleUnexpected(id, "Endpoint Declare Response");
     }
 
     /**
@@ -315,7 +315,7 @@ public:
      */
     virtual void handleEPDeclareErr(const rapidjson::Value& id,
                                     const rapidjson::Value& payload) {
-        handleError(payload, "Endpoint Declare");
+        handleError(id, payload, "Endpoint Declare");
     }
 
     /**
@@ -326,7 +326,7 @@ public:
      */
     virtual void handleEPUndeclareReq(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleUnsupportedReq("Endpoint Undeclare Request");
+        handleUnsupportedReq(id, "Endpoint Undeclare Request");
     }
 
     /**
@@ -337,7 +337,7 @@ public:
      */
     virtual void handleEPUndeclareRes(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleUnexpected("Endpoint Undeclare Response");
+        handleUnexpected(id, "Endpoint Undeclare Response");
     }
 
     /**
@@ -348,7 +348,7 @@ public:
      */
     virtual void handleEPUndeclareErr(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleError(payload, "Endpoint Undeclare");
+        handleError(id, payload, "Endpoint Undeclare");
     }
 
     /**
@@ -359,7 +359,7 @@ public:
      */
     virtual void handleEPResolveReq(const rapidjson::Value& id,
                                     const rapidjson::Value& payload) {
-        handleUnsupportedReq("Endpoint Resolve Request");
+        handleUnsupportedReq(id, "Endpoint Resolve Request");
     }
 
     /**
@@ -370,7 +370,7 @@ public:
      */
     virtual void handleEPResolveRes(const rapidjson::Value& id,
                                     const rapidjson::Value& payload) {
-        handleUnexpected("Endpoint Resolve Response");
+        handleUnexpected(id, "Endpoint Resolve Response");
     }
 
     /**
@@ -381,7 +381,7 @@ public:
      */
     virtual void handleEPResolveErr(const rapidjson::Value& id,
                                     const rapidjson::Value& payload) {
-        handleError(payload, "Endpoint Resolve");
+        handleError(id, payload, "Endpoint Resolve");
     }
 
     /**
@@ -392,7 +392,7 @@ public:
      */
     virtual void handleEPUnresolveReq(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleUnsupportedReq("Endpoint Unresolve Request");
+        handleUnsupportedReq(id, "Endpoint Unresolve Request");
     }
 
     /**
@@ -403,7 +403,7 @@ public:
      */
     virtual void handleEPUnresolveRes(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleUnexpected("Endpoint Unresolve Response");
+        handleUnexpected(id, "Endpoint Unresolve Response");
     }
 
     /**
@@ -414,7 +414,7 @@ public:
      */
     virtual void handleEPUnresolveErr(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleError(payload, "Endpoint Unresolve");
+        handleError(id, payload, "Endpoint Unresolve");
     }
 
     /**
@@ -425,7 +425,7 @@ public:
      */
     virtual void handleEPUpdateReq(const rapidjson::Value& id,
                                    const rapidjson::Value& payload) {
-        handleUnsupportedReq("Endpoint Update Request");
+        handleUnsupportedReq(id, "Endpoint Update Request");
     }
 
     /**
@@ -436,7 +436,7 @@ public:
      */
     virtual void handleEPUpdateRes(const rapidjson::Value& id,
                                    const rapidjson::Value& payload) {
-        handleUnexpected("Endpoint Update Response");
+        handleUnexpected(id, "Endpoint Update Response");
     }
 
     /**
@@ -447,7 +447,7 @@ public:
      */
     virtual void handleEPUpdateErr(const rapidjson::Value& id,
                                    const rapidjson::Value& payload) {
-        handleError(payload, "Endpoint Update");
+        handleError(id, payload, "Endpoint Update");
     }
 
     /**
@@ -458,7 +458,7 @@ public:
      */
     virtual void handleStateReportReq(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleUnsupportedReq("State Report Request");
+        handleUnsupportedReq(id, "State Report Request");
     }
 
     /**
@@ -469,7 +469,7 @@ public:
      */
     virtual void handleStateReportRes(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleUnexpected("State Report Response");
+        handleUnexpected(id, "State Report Response");
     }
 
     /**
@@ -480,33 +480,55 @@ public:
      */
     virtual void handleStateReportErr(const rapidjson::Value& id,
                                       const rapidjson::Value& payload) {
-        handleError(payload, "State Report");
+        handleError(id, payload, "State Report");
     }
+
+    // ***************
+    // Utility methods
+    // ***************
 
     /**
      * Generically handle an error by logging the message
      *
+     * @param id the ID of the remote message
      * @param payload the error payload
      * @param type the type of message
      */
-    virtual void handleError(const rapidjson::Value& payload,
+    virtual void handleError(const rapidjson::Value& id,
+                             const rapidjson::Value& payload,
                              const std::string& type);
 
     /**
      * Handle an unexpected message by logging an error, and then
      * disconnecting the connection.
      *
+     * @param id the ID of the remote message
      * @param type the type of message
      */
-    virtual void handleUnexpected(const std::string& type);
+    virtual void handleUnexpected(const rapidjson::Value& id,
+                                  const std::string& type);
 
     /**
      * Handle an unsupported request by responding with an error with
      * a response code of EUNSUPPORTED
      * 
+     * @param id the ID of the remote message
      * @param type the type of message
      */
-    virtual void handleUnsupportedReq(const std::string& type);
+    virtual void handleUnsupportedReq(const rapidjson::Value& id,
+                                      const std::string& type);
+
+    /**
+     * Send an error response with the given information in response
+     * to the message with the given ID.  This will also log the error.
+     *
+     * @param id the ID of the remote message
+     * @param code the Opflex error code
+     * @param message the error message to send
+     */
+    virtual void sendErrorRes(const rapidjson::Value& id,
+                              const std::string& code,
+                              const std::string& message);
 
 protected:
     /**
