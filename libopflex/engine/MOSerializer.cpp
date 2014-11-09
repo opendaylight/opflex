@@ -98,10 +98,10 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                                bool replaceChildren,
                                /* out */ modb::mointernal::StoreClient::notif_t* notifs) {
     if (!mo.IsObject()
-        || !mo.HasMember("name")
+        || !mo.HasMember("uri")
         || !mo.HasMember("subject")) return;
 
-    const Value& uriv = mo["name"];
+    const Value& uriv = mo["uri"];
     if (!uriv.IsString()) return;
     const Value& classv = mo["subject"];
     if (!classv.IsString()) return;
