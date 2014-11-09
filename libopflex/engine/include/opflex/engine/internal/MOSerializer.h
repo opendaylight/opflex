@@ -84,7 +84,7 @@ public:
         writer.String("subject");
         writer.String(ci.getName().c_str());
         
-        writer.String("name");
+        writer.String("uri");
         writer.String(uri.toString().c_str());
 
         writer.String("properties");
