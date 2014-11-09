@@ -98,10 +98,10 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                                bool replaceChildren,
                                /* out */ modb::mointernal::StoreClient::notif_t* notifs) {
     if (!mo.IsObject()
-        || !mo.HasMember("name")
+        || !mo.HasMember("uri")
         || !mo.HasMember("subject")) return;
 
-    const Value& uriv = mo["name"];
+    const Value& uriv = mo["uri"];
     if (!uriv.IsString()) return;
     const Value& classv = mo["subject"];
     if (!classv.IsString()) return;
@@ -238,8 +238,8 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
             if (notifs)
                 client.queueNotification(ci.getId(), uri, *notifs);
         }
-        if (mo.HasMember("parent_name") && mo.HasMember("parent_subject")) {
-            const Value& pname = mo["parent_name"];
+        if (mo.HasMember("parent_uri") && mo.HasMember("parent_subject")) {
+            const Value& pname = mo["parent_uri"];
             const Value& psubj = mo["parent_subject"];
             const Value* prel = &classv;
             if (mo.HasMember("parent_relation"))
