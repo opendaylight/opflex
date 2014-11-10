@@ -18,25 +18,24 @@
 #include <uv.h>
 #include <rapidjson/writer.h>
 #include <boost/function.hpp>
-#include <opflex/rpc/send_handler.hpp>
+#include <yajr/rpc/send_handler.hpp>
+#include <yajr/yajr.hpp>
 #include <deque>
 
-namespace opflex {
-
-namespace comms { namespace internal { class CommunicationPeer; }}
+namespace yajr {
 
 namespace rpc {
 
 typedef rapidjson::Value::StringRefType const MethodName;
-typedef rapidjson::Writer< ::opflex::rpc::internal::StringQueue > SendHandler;
-typedef boost::function<bool (opflex::rpc::SendHandler &)> PayloadGenerator;
+typedef rapidjson::Writer< yajr::internal::StringQueue > SendHandler;
+typedef boost::function<bool (yajr::rpc::SendHandler &)> PayloadGenerator;
 
 class GeneratorFromValue {
 
   public:
     GeneratorFromValue(rapidjson::Value const & v) : v_(v) {}
 
-    bool operator()(opflex::rpc::SendHandler & h) {
+    bool operator()(yajr::rpc::SendHandler & h) {
         return v_.Accept(h);
     }
 
@@ -47,7 +46,7 @@ class GeneratorFromValue {
 
 class Identifier {
   public:
-    virtual bool emitId(opflex::rpc::SendHandler & h) = 0;
+    virtual bool emitId(yajr::rpc::SendHandler & h) = 0;
   protected:
     virtual char const * requestMethod() = 0;
     virtual MethodName * getMethodName() = 0;
@@ -70,7 +69,7 @@ class LocalIdentifier : virtual public Identifier, private LocalId {
             LocalId(methodName, id)
         {}
 
-    bool emitId(opflex::rpc::SendHandler & h) {
+    bool emitId(yajr::rpc::SendHandler & h) {
 
         if (!h.StartArray())
             return false;
@@ -102,7 +101,7 @@ class LocalIdentifier : virtual public Identifier, private LocalId {
 class RemoteIdentifier : virtual public Identifier {
   public:
     RemoteIdentifier(rapidjson::Value const & id) : id_(id) {}
-    bool emitId(opflex::rpc::SendHandler & h) {
+    bool emitId(yajr::rpc::SendHandler & h) {
         return id_.Accept(h);
     }
     rapidjson::Value const & getRemoteId() const {
@@ -120,7 +119,7 @@ class RemoteIdentifier : virtual public Identifier {
 };
 
 /**
- * @brief A generic Opflex message.
+ * @brief A generic yajr message.
  */
 class Message {
 
@@ -131,7 +130,7 @@ class Message {
      *
      * @return a pointer to the communication peer for this message.
      */
-    opflex::comms::internal::CommunicationPeer const * getPeer() const {
+    yajr::Peer const * getPeer() const {
         return peer_;
     }
 
@@ -150,12 +149,11 @@ class Message {
     /**
      * @brief Constructor needed by derived classes
      *
-     * Construct a new Opflex message. Never invoke directly, but only
+     * Construct a new yajr message. Never invoke directly, but only
      * from derived classes' constructors.
      */
     explicit Message(
-            opflex::comms::internal::
-            CommunicationPeer const & peer
+            yajr::Peer const & peer
             )
         : peer_(&peer)
         {}
@@ -168,14 +166,14 @@ class Message {
     uv_loop_t const * getUvLoop() const;
 
     /* pointer so that it can be set multiple times */
-    opflex::comms::internal::CommunicationPeer const * peer_;
+    yajr::Peer const * peer_;
 
 };
 
 /**
- * @brief A generic inbound Opflex message.
+ * @brief A generic inbound yajr message.
  *
- * A generic outbound Opflex message is any message from the local peer that
+ * A generic outbound yajr message is any message from the local peer that
  * is destined to another peer.
  */
 class InboundMessage : public Message {
@@ -203,12 +201,11 @@ class InboundMessage : public Message {
     /**
      * @brief Constructor needed by derived classes
      *
-     * Construct a new inbound Opflex message. Never invoke directly, but only
+     * Construct a new inbound yajr message. Never invoke directly, but only
      * from derived classes' constructors.
      */
     explicit InboundMessage(
-            opflex::comms::internal::
-            CommunicationPeer const & peer,        /**< [in] where to send to */
+            yajr::Peer const & peer,        /**< [in] where to send to */
             rapidjson::Value const & payload
             )
         :
@@ -227,9 +224,9 @@ class InboundMessage : public Message {
 };
 
 /**
- * @brief A generic outbound Opflex message.
+ * @brief A generic outbound yajr message.
  *
- * A generic outbound Opflex message is any message from the local peer that
+ * A generic outbound yajr message is any message from the local peer that
  * is destined to another peer.
  */
 class OutboundMessage : public Message, virtual public Identifier {
@@ -246,8 +243,7 @@ class OutboundMessage : public Message, virtual public Identifier {
      * @return this message.
      */
     void setPeer(
-        opflex::comms::internal::
-        CommunicationPeer const & peer                   /**< the peer to set */
+        yajr::Peer const & peer                   /**< the peer to set */
         ) {
         peer_ = &peer;
     }
@@ -264,19 +260,18 @@ class OutboundMessage : public Message, virtual public Identifier {
      *
      * @return true on success, false on failure.
      */
-    bool Accept(opflex::rpc::SendHandler& handler);
+    bool Accept(yajr::rpc::SendHandler& handler);
 
   protected:
 
     /**
      * @brief Constructor needed by derived classes
      *
-     * Construct a new outbound Opflex message. Never invoke directly, but only
+     * Construct a new outbound yajr message. Never invoke directly, but only
      * from derived classes' constructors.
      */
     explicit OutboundMessage(
-        opflex::comms::internal::
-        CommunicationPeer const & peer,            /**< [in] where to send to */
+        yajr::Peer const & peer,            /**< [in] where to send to */
         PayloadGenerator const & payloadGenerator /**< [in] payload generator */
         )
         :
@@ -298,7 +293,7 @@ class OutboundMessage : public Message, virtual public Identifier {
 
     virtual bool isRequest() const = 0;
 
-    virtual bool emitMethod(opflex::rpc::SendHandler& handler) = 0;
+    virtual bool emitMethod(yajr::rpc::SendHandler& handler) = 0;
   private:
     PayloadGenerator const payloadGenerator_;
     uint64_t sent_;
@@ -309,9 +304,9 @@ class OutboundMessage : public Message, virtual public Identifier {
 };
 
 /**
- * @brief A generic outbound Opflex response message.
+ * @brief A generic outbound yajr response message.
  *
- * A generic outbound Opflex response message is any message that represents a
+ * A generic outbound yajr response message is any message that represents a
  * response from the local peer that is destined to another peer, whether an
  * error or a result.
  */
@@ -329,12 +324,11 @@ class OutboundResponse : public OutboundMessage, public RemoteIdentifier {
     /**
      * @brief Constructor needed by derived classes
      *
-     * Construct a new outbound Opflex response message. Never invoke directly,
+     * Construct a new outbound yajr response message. Never invoke directly,
      * but only * from derived classes' constructors.
      */
     explicit OutboundResponse(
-        opflex::comms::internal::
-        CommunicationPeer const & peer,            /**< [in] where to send to */
+        yajr::Peer const & peer,            /**< [in] where to send to */
         PayloadGenerator const & response, /**< [in] the error/result to send */
         rapidjson::Value const & id /**< [in] the desired id for this message */
         )
@@ -353,14 +347,14 @@ class OutboundResponse : public OutboundMessage, public RemoteIdentifier {
         return false;
     }
 
-    virtual bool emitMethod(opflex::rpc::SendHandler& handler) {
+    virtual bool emitMethod(yajr::rpc::SendHandler& handler) {
         return true;
     }
 
 };
 
 /**
- * @brief A concrete outbound Opflex error response message.
+ * @brief A concrete outbound yajr error response message.
  */
 class OutboundError : public OutboundResponse {
 
@@ -369,8 +363,7 @@ class OutboundError : public OutboundResponse {
      * @brief Constructor for an outbound error message.
      */
     explicit OutboundError(
-        opflex::comms::internal::
-        CommunicationPeer const & peer,            /**< [in] where to send to */
+        yajr::Peer const & peer,            /**< [in] where to send to */
         PayloadGenerator const & error,   /**< [in] the error value to return */
         rapidjson::Value const & id /**< [in] the desired id for this message */
         )
@@ -400,7 +393,7 @@ class OutboundError : public OutboundResponse {
 };
 
 /**
- * @brief A concrete outbound Opflex result response message.
+ * @brief A concrete outbound yajr result response message.
  */
 class OutboundResult : public OutboundResponse {
 
@@ -409,8 +402,7 @@ class OutboundResult : public OutboundResponse {
      * @brief Constructor for an outbound result message.
      */
     explicit OutboundResult(
-        opflex::comms::internal::
-        CommunicationPeer const & peer,            /**< [in] where to send to */
+        yajr::Peer const & peer,            /**< [in] where to send to */
         PayloadGenerator const & result, /**< [in] the result value to return */
         rapidjson::Value const & id /**< [in] the desired id for this message */
         )
@@ -444,7 +436,7 @@ class InboundError;
 bool operator< (rapidjson::Value const & l, rapidjson::Value const & r);
 
 /**
- * @brief A generic outbound Opflex request message.
+ * @brief A generic outbound yajr request message.
  */
 class OutboundRequest : public OutboundMessage,
                         public LocalIdentifier {
@@ -455,12 +447,11 @@ class OutboundRequest : public OutboundMessage,
      * @brief Constructor for an outbound request message, needed by derived
      * classes
      *
-     * Construct a new Opflex outbound message. Never invoke directly, but only
+     * Construct a new yajr outbound message. Never invoke directly, but only
      * from derived classes' constructors.
      */
     explicit OutboundRequest(
-        opflex::comms::internal::
-        CommunicationPeer const & peer,            /**< [in] where to send to */
+        yajr::Peer const & peer,            /**< [in] where to send to */
         PayloadGenerator const & params,   /**< [in] the params value to send */
         MethodName const * methodName,
         uint64_t id
@@ -489,7 +480,7 @@ class OutboundRequest : public OutboundMessage,
         return true;
     }
 
-    virtual bool emitMethod(opflex::rpc::SendHandler& handler) {
+    virtual bool emitMethod(yajr::rpc::SendHandler& handler) {
 
         return handler.String("method")
             && handler.String(requestMethod());
@@ -499,9 +490,9 @@ class OutboundRequest : public OutboundMessage,
 };
 
 /**
- * @brief A generic inbound Opflex response message.
+ * @brief A generic inbound yajr response message.
  *
- * A generic inbound Opflex response message is any message that represents a
+ * A generic inbound yajr response message is any message that represents a
  * response from a remote peer that is destined to the local peer, whether an
  * error or a result.
  */
@@ -522,19 +513,18 @@ class InboundResponse : public InboundMessage,
      * @brief Constructor for an inbound response message, needed by derived
      * classes
      *
-     * Construct a new Opflex inbound response message. Never invoke directly,
+     * Construct a new yajr inbound response message. Never invoke directly,
      * but only from derived classes' constructors.
      */
     InboundResponse(
-        opflex::comms::internal::
-        CommunicationPeer const & peer,      /**< [in] where we received from */
+        yajr::Peer const & peer,      /**< [in] where we received from */
         rapidjson::Value const & response,/**< [in] the error/result received */
         rapidjson::Value const & id          /**< [in] the id of this message */
         );
 };
 
 /**
- * @brief A concrete inbound Opflex error response message.
+ * @brief A concrete inbound yajr error response message.
  */
 class InboundError : public InboundResponse {
 
@@ -543,8 +533,7 @@ class InboundError : public InboundResponse {
      * @brief Constructor for an inbound error response message
      */
     InboundError(
-            opflex::comms::internal::
-            CommunicationPeer const & peer,  /**< [in] where we received from */
+            yajr::Peer const & peer,  /**< [in] where we received from */
             rapidjson::Value const & error,      /**< [in] the error received */
             rapidjson::Value const & id      /**< [in] the id of this message */
             )
@@ -563,7 +552,7 @@ class InboundError : public InboundResponse {
 };
 
 /**
- * @brief A concrete inbound Opflex result response message.
+ * @brief A concrete inbound yajr result response message.
  */
 class InboundResult : public InboundResponse {
 
@@ -572,8 +561,7 @@ class InboundResult : public InboundResponse {
      * @brief Constructor for an inbound result response message
      */
     InboundResult(
-            opflex::comms::internal::
-            CommunicationPeer const & peer,  /**< [in] where we received from */
+            yajr::Peer const & peer,  /**< [in] where we received from */
             rapidjson::Value const & result,    /**< [in] the result received */
             rapidjson::Value const & id      /**< [in] the id of this message */
             )
@@ -592,7 +580,7 @@ class InboundResult : public InboundResponse {
 };
 
 /**
- * @brief A concrete inbound Opflex request message.
+ * @brief A concrete inbound yajr request message.
  */
 class InboundRequest : public InboundMessage, public RemoteIdentifier {
 
@@ -601,8 +589,7 @@ class InboundRequest : public InboundMessage, public RemoteIdentifier {
      * @brief Constructor for an inbound request message
      */
     InboundRequest(
-            opflex::comms::internal::
-            CommunicationPeer const & peer,  /**< [in] where we received from */
+            yajr::Peer const & peer,  /**< [in] where we received from */
             rapidjson::Value const & params,/**< [in] the params value to send */
             rapidjson::Value const & id      /**< [in] the id of this message */
             )
@@ -614,12 +601,12 @@ class InboundRequest : public InboundMessage, public RemoteIdentifier {
 };
 
 std::size_t hash_value(rapidjson::Value const& v);
-std::size_t hash_value(opflex::rpc::LocalId const & id);
-std::size_t hash_value(opflex::rpc::LocalIdentifier const & id);
-std::size_t hash_value(opflex::rpc::RemoteIdentifier const & id);
+std::size_t hash_value(yajr::rpc::LocalId const & id);
+std::size_t hash_value(yajr::rpc::LocalIdentifier const & id);
+std::size_t hash_value(yajr::rpc::RemoteIdentifier const & id);
 
 }}
 
-#include <opflex/rpc/message_factory.hpp>
+#include <yajr/rpc/message_factory.hpp>
 
 #endif/*_____COMMS__INCLUDE__OPFLEX__RPC_HPP*/

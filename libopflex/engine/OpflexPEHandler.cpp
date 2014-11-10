@@ -22,9 +22,9 @@
 #include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/OpflexPEHandler.h"
 #include "opflex/logging/internal/logging.hpp"
-#include "opflex/comms/comms.hpp"
-#include "opflex/rpc/rpc.hpp"
-#include "opflex/rpc/methods.hpp"
+#include <yajr/yajr.hpp>
+#include <yajr/rpc/rpc.hpp>
+#include <yajr/rpc/methods.hpp>
 #include "opflex/engine/internal/MOSerializer.h"
 #include "opflex/engine/internal/OpflexMessage.h"
 
@@ -35,14 +35,12 @@ namespace internal {
 using std::vector;
 using std::string;
 using std::pair;
-using rpc::SendHandler;
+using yajr::rpc::SendHandler;
 using modb::class_id_t;
 using modb::reference_t;
 using modb::URI;
 using internal::MOSerializer;
 using modb::mointernal::StoreClient;
-using opflex::rpc::InbReq;
-using opflex::rpc::InbErr;
 using rapidjson::Value;
 using rapidjson::Writer;
 

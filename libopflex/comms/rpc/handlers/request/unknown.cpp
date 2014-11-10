@@ -6,12 +6,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <opflex/rpc/methods.hpp>
+#include <yajr/rpc/methods.hpp>
 
-namespace opflex { namespace rpc {
+namespace yajr { namespace rpc {
 
 template<>
-void InbReq<&opflex::rpc::method::unknown>::process() const {
+void InbReq<&yajr::rpc::method::unknown>::process() const {
 
 }
 

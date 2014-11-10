@@ -6,12 +6,9 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <opflex/comms/comms-internal.hpp>
+#include <yajr/internal/comms.hpp>
 #include <opflex/logging/internal/logging.hpp>
 
-namespace opflex { namespace comms {
-
-using namespace opflex::comms::internal;
 
 /*
                          ____               _
@@ -41,25 +38,25 @@ using namespace opflex::comms::internal;
                                                              (Public interfaces)
 */
 
-::opflex::comms::Listener * ::opflex::comms::Listener::create(
+::yajr::Listener * ::yajr::Listener::create(
         char const * ip_address,
         uint16_t port,
-        state_change_cb connectionHandler,
-        accept_cb acceptHandler,
+        ::yajr::Peer::StateChangeCb connectionHandler,
+        ::yajr::Listener::AcceptCb acceptHandler,
         void * data,
-        uv_loop_t * listener_uv_loop,
-        uv_loop_selector_fn uv_loop_selector
+        uv_loop_t * listenerUvLoop,
+        ::yajr::Peer::UvLoopSelector uvLoopSelector
     ) {
 
     LOG(INFO) << ip_address << ":" << port;
 
-    ListeningPeer * peer;
-    if (!(peer = new (std::nothrow) ListeningPeer(
+    ::yajr::comms::internal::ListeningPeer * peer;
+    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ListeningPeer(
             connectionHandler,
             acceptHandler,
             data,
-            listener_uv_loop,
-            uv_loop_selector))) {
+            listenerUvLoop,
+            uvLoopSelector))) {
         LOG(WARNING) <<  "out of memory, unable to create listener";
         return NULL;
     }
@@ -75,16 +72,20 @@ using namespace opflex::comms::internal;
     }
 
     LOG(DEBUG) << peer << " queued up for listening";
-    peer->insert(internal::Peer::LoopData::TO_LISTEN);
+    peer->insert(::yajr::comms::internal::Peer::LoopData::TO_LISTEN);
 
     return peer;
 }
 
-void ::opflex::comms::internal::ListeningPeer::retry() {
+namespace yajr { namespace comms {
+
+using namespace yajr::comms::internal;
+
+void ::yajr::comms::internal::ListeningPeer::retry() {
 
     int rc;
 
-    if ((rc = uv_tcp_init(uv_loop_selector_(), &handle_))) {
+    if ((rc = uv_tcp_init(_.listener_.uvLoop_, &handle_))) {
         LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "]" <<
             uv_strerror(rc);
         goto failed_tcp_init;
@@ -201,7 +202,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
                          |___/
 */
 
-int ::opflex::comms::internal::ListeningPeer::setAddrFromIpAndPort(
+int ::yajr::comms::internal::ListeningPeer::setAddrFromIpAndPort(
         const char * ip_address,
         uint16_t port) {
 
@@ -232,6 +233,6 @@ int ::opflex::comms::internal::ListeningPeer::setAddrFromIpAndPort(
     return rc;
 }
 
-} /* opflex::comms::internal namespace */
+} /* yajr::comms::internal namespace */
 
-}} /* opflex::comms and opflex naMespaces */
+}} /* yajr::comms and yajr naMespaces */

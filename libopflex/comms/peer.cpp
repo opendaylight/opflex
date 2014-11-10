@@ -6,11 +6,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <opflex/comms/comms-internal.hpp>
-#include <opflex/rpc/message_factory.inl.hpp>
+#include <yajr/internal/comms.hpp>
+#include <yajr/rpc/message_factory.inl.hpp>
 #include <rapidjson/error/en.h>
+#include <yajr/rpc/internal/json_stream_wrappers.hpp>
 
-namespace opflex { namespace comms { namespace internal {
+namespace yajr { namespace comms { namespace internal {
 
 ::boost::atomic<size_t> Peer::counter(0);
 ::boost::atomic<size_t> Peer::LoopData::counter(0);
@@ -87,8 +88,8 @@ class EchoGen {
 };
 
 void CommunicationPeer::sendEchoReq() {
-    opflex::rpc::OutReq<&rpc::method::echo> * req =
-        opflex::rpc::MessageFactory::
+    yajr::rpc::OutReq<&rpc::method::echo> * req =
+        yajr::rpc::MessageFactory::
         newReq<&rpc::method::echo>(*this, EchoGen(*this));
 
     req -> send();
@@ -136,7 +137,7 @@ void CommunicationPeer::timeout() {
 
 }
 
-opflex::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
+yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
 
     LOG(DEBUG)
         << "peer = " << this
@@ -144,7 +145,7 @@ opflex::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
     ;
 
     bumpLastHeard();
-    opflex::comms::internal::wrapper::IStreamWrapper is(ssIn_);
+    yajr::comms::internal::wrapper::IStreamWrapper is(ssIn_);
 
     docIn_.ParseStream(is);
     if (docIn_.HasParseError()) {
@@ -163,7 +164,7 @@ opflex::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
     ssIn_.~basic_stringstream();
     new ((void *) &ssIn_) std::stringstream();
 
-    return opflex::rpc::MessageFactory::getInboundMessage(*this, docIn_);
+    return yajr::rpc::MessageFactory::getInboundMessage(*this, docIn_);
 }
 
 bool Peer::__checkInvariants() const {
@@ -173,7 +174,7 @@ bool Peer::__checkInvariants() const {
 bool CommunicationPeer::__checkInvariants() const {
 
     if (status_ != kPS_ONLINE) {
-        return Peer::__checkInvariants();
+        return internal::Peer::__checkInvariants();
     }
 
     if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
@@ -189,7 +190,7 @@ bool CommunicationPeer::__checkInvariants() const {
 
         &&
 
-        Peer::__checkInvariants();
+        internal::Peer::__checkInvariants();
 }
 
 bool ActivePeer::__checkInvariants() const {
@@ -201,7 +202,7 @@ bool PassivePeer::__checkInvariants() const {
 }
 
 bool ListeningPeer::__checkInvariants() const {
-    return Peer::__checkInvariants();
+    return internal::Peer::__checkInvariants();
 }
 
 }}}
