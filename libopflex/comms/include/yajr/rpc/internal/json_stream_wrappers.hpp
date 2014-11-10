@@ -12,7 +12,7 @@
 
 #include <rapidjson/rapidjson.h>
 
-namespace opflex { namespace comms { namespace internal { namespace wrapper {
+namespace yajr { namespace comms { namespace internal { namespace wrapper {
 
 /* TODO: make an I/O wrapper, or resort to something else that
  * allows us to perform *in-situ* parsing... */

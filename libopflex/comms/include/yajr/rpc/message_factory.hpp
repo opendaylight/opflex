@@ -12,14 +12,14 @@
 
 #include <rapidjson/document.h>
 #include <opflex/logging/internal/logging.hpp>
-#include <opflex/comms/comms-internal.hpp>
+#include <yajr/internal/comms.hpp>
 #include <boost/function.hpp>
 #include <rapidjson/writer.h>
-#include <opflex/rpc/send_handler.hpp>
+#include <yajr/rpc/send_handler.hpp>
 
-namespace opflex {
+namespace yajr {
 
-namespace comms { namespace internal { class CommunicationPeer; }}
+class Peer;
 
 namespace rpc { class InboundMessage;
                 class InboundRequest;
@@ -28,9 +28,9 @@ namespace rpc { class InboundMessage;
 
                 typedef rapidjson::Value::StringRefType const
                     MethodName;
-                typedef rapidjson::Writer< ::opflex::rpc::internal::StringQueue>
+                typedef rapidjson::Writer< ::yajr::internal::StringQueue >
                     SendHandler;
-                typedef boost::function<bool (opflex::rpc::SendHandler &)>
+                typedef boost::function< bool (::yajr::rpc::SendHandler &) >
                     PayloadGenerator;
 
                 template <MethodName * M>
@@ -40,36 +40,36 @@ class MessageFactory {
 
   public:
 
-    static opflex::rpc::InboundMessage * getInboundMessage(
-            opflex::comms::internal::CommunicationPeer const & peer,
+    static yajr::rpc::InboundMessage * getInboundMessage(
+            yajr::Peer const & peer,
             rapidjson::Document const & doc);
 
     template <MethodName * M>
-    static opflex::rpc::OutReq<M> * newReq(
-            opflex::comms::internal::CommunicationPeer const & peer,
-            opflex::rpc::PayloadGenerator payloadGenerator);
+    static yajr::rpc::OutReq<M> * newReq(
+            yajr::Peer const & peer,
+            yajr::rpc::PayloadGenerator payloadGenerator);
 
     static MethodName const * lookupMethod(char const * method);
 
   private:
 
-    static opflex::rpc::InboundMessage * InboundMessage(
-            opflex::comms::internal::CommunicationPeer const & peer,
+    static yajr::rpc::InboundMessage * InboundMessage(
+            yajr::Peer const & peer,
             rapidjson::Document const & doc);
 
-    static opflex::rpc::InboundRequest * InboundRequest(
-            opflex::comms::internal::CommunicationPeer const & peer,
+    static yajr::rpc::InboundRequest * InboundRequest(
+            yajr::Peer const & peer,
             rapidjson::Value const & params,
             char const * method,
             rapidjson::Value const & id);
 
-    static opflex::rpc::InboundResult * InboundResult(
-            opflex::comms::internal::CommunicationPeer const & peer,
+    static yajr::rpc::InboundResult * InboundResult(
+            yajr::Peer const & peer,
             rapidjson::Value const & result,
             rapidjson::Value const & id);
 
-    static opflex::rpc::InboundError * InboundError(
-            opflex::comms::internal::CommunicationPeer const & peer,
+    static yajr::rpc::InboundError * InboundError(
+            yajr::Peer const & peer,
             rapidjson::Value const & error,
             rapidjson::Value const & id);
 

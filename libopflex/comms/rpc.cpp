@@ -8,11 +8,11 @@
 
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
-#include <opflex/rpc/rpc.hpp>
-#include <opflex/comms/comms-internal.hpp>
-#include <opflex/rpc/methods.hpp>
+#include <yajr/rpc/rpc.hpp>
+#include <yajr/internal/comms.hpp>
+#include <yajr/rpc/methods.hpp>
 
-namespace opflex { namespace rpc {
+namespace yajr { namespace rpc {
 
 Message::PayloadKeys Message::kPayloadKey = {
     "params",
@@ -40,7 +40,7 @@ bool operator< (rapidjson::Value const & l, rapidjson::Value const & r) {
     return (lh < rh);
 }
 
-bool OutboundMessage::Accept(opflex::rpc::SendHandler& handler) {
+bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
     LOG(DEBUG);
 
@@ -64,7 +64,9 @@ void OutboundMessage::send() {
 
     LOG(DEBUG);
 
-    ::opflex::comms::internal::CommunicationPeer const * peer = getPeer();
+    ::yajr::comms::internal::CommunicationPeer const * peer =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const * >
+        (getPeer());
 
     assert(peer && "peer needs to be set before outbound messages are sent");
 
@@ -76,8 +78,7 @@ void OutboundMessage::send() {
 }
 
 InboundResponse::InboundResponse(
-    opflex::comms::internal::
-    CommunicationPeer const & peer,      /**< [in] where we received from */
+    yajr::Peer const & peer,             /**< [in] where we received from */
     rapidjson::Value const & response,/**< [in] the error/result received */
     rapidjson::Value const & id          /**< [in] the id of this message */
     )
@@ -92,8 +93,9 @@ InboundResponse::InboundResponse(
     {}
 
 uv_loop_t const *
-opflex::rpc::Message::getUvLoop() const {
-    return getPeer()->getUvLoop();
+yajr::rpc::Message::getUvLoop() const {
+    return dynamic_cast< ::yajr::comms::internal::CommunicationPeer const * >
+        (getPeer())->getUvLoop();
 }
 
 std::size_t hash_value(rapidjson::Value const& v) {
@@ -153,7 +155,7 @@ std::size_t hash_value(rapidjson::Value const& v) {
     return 0;
 }
 
-std::size_t hash_value(opflex::rpc::LocalId const & id) {
+std::size_t hash_value(yajr::rpc::LocalId const & id) {
     return
         boost::hash<MethodName*>()(id.methodName_)
     ^
@@ -161,11 +163,11 @@ std::size_t hash_value(opflex::rpc::LocalId const & id) {
     ;
 }
 
-std::size_t hash_value(opflex::rpc::LocalIdentifier const & id) {
-    return boost::hash<opflex::rpc::LocalId>()(id.getLocalId());
+std::size_t hash_value(yajr::rpc::LocalIdentifier const & id) {
+    return boost::hash<yajr::rpc::LocalId>()(id.getLocalId());
 }
 
-std::size_t hash_value(opflex::rpc::RemoteIdentifier const & id) {
+std::size_t hash_value(yajr::rpc::RemoteIdentifier const & id) {
     return hash_value(id.getRemoteId());
 }
 

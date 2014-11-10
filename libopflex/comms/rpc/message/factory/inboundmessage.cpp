@@ -6,18 +6,18 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <opflex/rpc/rpc.hpp>
-#include <opflex/rpc/methods.hpp>
+#include <yajr/rpc/rpc.hpp>
+#include <yajr/rpc/methods.hpp>
 
-namespace opflex {
+namespace yajr {
 
 namespace comms { namespace internal { class CommunicationPeer; }}
 
 namespace rpc {
 
-opflex::rpc::InboundMessage *
+yajr::rpc::InboundMessage *
 MessageFactory::InboundMessage(
-        opflex::comms::internal::CommunicationPeer const & peer,
+        yajr::Peer const & peer,
         rapidjson::Document const & doc) {
 
     /* IDs are tricky because they can be any JSON entity.
@@ -90,15 +90,15 @@ MessageFactory::InboundMessage(
     return NULL;
 }
 
-opflex::rpc::InboundMessage *
+yajr::rpc::InboundMessage *
 MessageFactory::getInboundMessage(
-        opflex::comms::internal::CommunicationPeer const & peer,
+        yajr::Peer const & peer,
         rapidjson::Document const & doc
         ) {
 
     LOG(DEBUG);
 
-    opflex::rpc::InboundMessage * msg =
+    yajr::rpc::InboundMessage * msg =
         MessageFactory::InboundMessage(peer, doc);
 
     return msg;

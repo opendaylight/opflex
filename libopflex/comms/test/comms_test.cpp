@@ -10,7 +10,7 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <opflex/comms/comms-internal.hpp>
+#include <yajr/internal/comms.hpp>
 #include <opflex/logging/internal/logging.hpp>
 #include <cstdlib>
 #include <boost/test/unit_test_log.hpp>
@@ -18,7 +18,7 @@
 #include <dlfcn.h>
 #include <cstring>
 
-using namespace opflex::comms;
+using namespace yajr::comms;
 
 BOOST_AUTO_TEST_SUITE(asynchronous_sockets)
 
@@ -51,7 +51,7 @@ class CommsFixture {
 
         idler_.data = timer_.data = this;
 
-        int rc = opflex::comms::initLoop(loop_);
+        int rc = ::yajr::initLoop(loop_);
 
         BOOST_CHECK(!rc);
 
@@ -90,19 +90,7 @@ class CommsFixture {
         uv_close((uv_handle_t *)&timer_, down_on_close);
         uv_close((uv_handle_t *)&idler_, down_on_close);
 
-        opflex::comms::finiLoop(uv_default_loop());
-
-#if 0
-        for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
-            LOG(DEBUG) << " Clearing up peers in state " << i;
-            internal::Peer::LoopData::getPeerList(uv_default_loop(),
-                        internal::Peer::LoopData::PeerState(i))
-                ->clear_and_dispose(PeerDisposer());
-
-        }
-
-        uv_idle_start(idler, wait_for_zero_peers_cb);
-#endif
+        ::yajr::finiLoop(uv_default_loop());
 
     }
 
@@ -359,52 +347,60 @@ void pc_successful_connect(void) {
 
 }
 
-void DoNothingOnConnect (opflex::comms::Peer * p, void * data, int stateChange, int error) {
+void DoNothingOnConnect (
+        ::yajr::Peer * p,
+        void * data,
+        ::yajr::StateChange::To stateChange,
+        int error) {
     switch(stateChange) {
-        case StateChange::CONNECT:
+        case ::yajr::StateChange::CONNECT:
             LOG(INFO)
                 << "chill out, we just had a connection on "
-                << dynamic_cast< ::opflex::comms::internal::CommunicationPeer *>(p);
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
-        case StateChange::DISCONNECT:
+        case ::yajr::StateChange::DISCONNECT:
             break;
-        case StateChange::FAILURE:
+        case ::yajr::StateChange::FAILURE:
             break;
         default:
             assert(0);
     }
 }
 
-opflex::comms::state_change_cb doNothingOnConnect = DoNothingOnConnect;
+::yajr::Peer::StateChangeCb doNothingOnConnect = DoNothingOnConnect;
 
-void StartPingingOnConnect(opflex::comms::Peer * p, void * data, int stateChange, int error) {
+void StartPingingOnConnect(
+        ::yajr::Peer * p,
+        void * data,
+        ::yajr::StateChange::To stateChange,
+        int error) {
     switch(stateChange) {
-        case StateChange::CONNECT:
+        case ::yajr::StateChange::CONNECT:
             LOG(INFO)
                 << "starting keep-alive, as we just had a connection on "
-                << dynamic_cast< ::opflex::comms::internal::CommunicationPeer *>(p);
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             p->startKeepAlive();
             break;
-        case StateChange::DISCONNECT:
+        case ::yajr::StateChange::DISCONNECT:
             break;
-        case StateChange::FAILURE:
+        case ::yajr::StateChange::FAILURE:
             break;
         default:
             assert(0);
     }
 }
 
-opflex::comms::state_change_cb startPingingOnConnect = StartPingingOnConnect;
+::yajr::Peer::StateChangeCb startPingingOnConnect = StartPingingOnConnect;
 
 BOOST_FIXTURE_TEST_CASE( test_ipv4, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::opflex::comms::Listener * l = Listener::create("127.0.0.1", 65535, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65535, doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::opflex::comms::Peer * p = Peer::create("localhost", "65535", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65535", doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -416,11 +412,11 @@ BOOST_FIXTURE_TEST_CASE( test_ipv6, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::opflex::comms::Listener * l = Listener::create("::1", 65534, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65534, doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::opflex::comms::Peer * p = Peer::create("localhost", "65534", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65534", doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -457,7 +453,7 @@ BOOST_FIXTURE_TEST_CASE( test_non_existent_host, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::opflex::comms::Peer * p = Peer::create("non_existent_host.", "65533", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create("non_existent_host.", "65533", doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -469,7 +465,7 @@ BOOST_FIXTURE_TEST_CASE( test_non_existent_service, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::opflex::comms::Peer * p = Peer::create("127.0.0.1", "65533", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.1", "65533", doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -481,11 +477,11 @@ BOOST_FIXTURE_TEST_CASE( test_keepalive, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::opflex::comms::Listener * l = Listener::create("::1", 65532, startPingingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65532, startPingingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::opflex::comms::Peer * p = Peer::create("::1", "65532", startPingingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create("::1", "65532", startPingingOnConnect);
 
     BOOST_CHECK_EQUAL(!p, 0);
 

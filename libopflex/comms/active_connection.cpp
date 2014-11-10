@@ -6,12 +6,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <opflex/comms/comms-internal.hpp>
+#include <yajr/internal/comms.hpp>
 #include <opflex/logging/internal/logging.hpp>
-
-namespace opflex { namespace comms {
-
-using namespace opflex::comms::internal;
 
 /*
                              _        _   _
@@ -41,34 +37,38 @@ using namespace opflex::comms::internal;
                                                              (Public interfaces)
 */
 
-::opflex::comms::Peer * ::opflex::comms::Peer::create(
+::yajr::Peer * ::yajr::Peer::create(
         char const * host,
         char const * service,
-        state_change_cb connectionHandler,
+        ::yajr::Peer::StateChangeCb connectionHandler,
         void * data,
-        uv_loop_selector_fn uv_loop_selector
+        UvLoopSelector uvLoopSelector
     ) {
 
     LOG(INFO) << host << ":" << service;
 
-    ActivePeer * peer;
-    if (!(peer = new (std::nothrow) ActivePeer(
+    ::yajr::comms::internal::ActivePeer * peer;
+    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActivePeer(
                     host,
                     service,
                     connectionHandler,
                     data,
-                    uv_loop_selector))) {
+                    uvLoopSelector))) {
         LOG(WARNING) << ": out of memory, dropping new peer on the floor";
         return NULL;
     }
 
     LOG(DEBUG) << peer << " queued up for resolution";
-    peer->insert(internal::Peer::LoopData::TO_RESOLVE);
+    peer->insert(::yajr::comms::internal::Peer::LoopData::TO_RESOLVE);
 
     return peer;
 }
 
-void ::opflex::comms::internal::ActivePeer::retry() {
+namespace yajr { namespace comms {
+
+using namespace yajr::comms::internal;
+
+void ::yajr::comms::internal::ActivePeer::retry() {
 
     struct addrinfo const hints = (struct addrinfo){
         /* .ai_flags    = */ 0,
@@ -376,6 +376,6 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
     return rc;
 }
 
-} /* opflex::comms::internal namespace */
+} /* yajr::comms::internal namespace */
 
-}} /* opflex::comms and opflex namespaces */
+}} /* yajr::comms and yajr namespaces */

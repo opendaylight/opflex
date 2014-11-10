@@ -8,21 +8,17 @@
 
 #include <uv.h>
 #include <cstdlib>
-#include <opflex/comms/comms-internal.hpp>
+#include <yajr/internal/comms.hpp>
 #include <opflex/logging/internal/logging.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <opflex/rpc/rpc.hpp>
+#include <yajr/rpc/rpc.hpp>
 
 #include <cstdio>
 
-namespace opflex { namespace comms {
-
-using namespace opflex::comms::internal;
-
-int initLoop(uv_loop_t * loop) {
+int ::yajr::initLoop(uv_loop_t * loop) {
 
     if (!(loop->data = new (std::nothrow)
-                ::opflex::comms::internal::Peer::LoopData(loop))) {
+                ::yajr::comms::internal::Peer::LoopData(loop))) {
         LOG(WARNING) <<
             ": out of memory, cannot instantiate uv_loop LoopData";
         return UV_ENOMEM;
@@ -31,6 +27,18 @@ int initLoop(uv_loop_t * loop) {
     return 0;
 
 }
+
+void ::yajr::finiLoop(uv_loop_t * loop) {
+    LOG(INFO);
+
+    static_cast< ::yajr::comms::internal::Peer::LoopData *>(loop->data)->destroy();
+
+}
+
+
+namespace yajr { namespace comms {
+
+using namespace yajr::comms::internal;
 
 void internal::Peer::LoopData::onIdleLoop() {
 
@@ -62,7 +70,7 @@ void internal::Peer::LoopData::onIdleLoop() {
 
 void internal::Peer::LoopData::onIdleLoop(uv_idle_t * h) {
 
-    static_cast< ::opflex::comms::internal::Peer::LoopData *>(h->data)
+    static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data)
         ->onIdleLoop();
 
 }
@@ -70,7 +78,7 @@ void internal::Peer::LoopData::onIdleLoop(uv_idle_t * h) {
 void internal::Peer::LoopData::fini(uv_handle_t * h) {
     LOG(INFO);
 
-    static_cast< ::opflex::comms::internal::Peer::LoopData *>(h->data)->down();
+    static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data)->down();
 }
 
 void internal::Peer::LoopData::destroy() {
@@ -89,13 +97,6 @@ void internal::Peer::LoopData::destroy() {
             ->clear_and_dispose(PeerDisposer());
 
     }
-}
-
-void finiLoop(uv_loop_t * loop) {
-    LOG(INFO);
-
-    static_cast< ::opflex::comms::internal::Peer::LoopData *>(loop->data)->destroy();
-
 }
 
 
@@ -191,7 +192,7 @@ void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf)
 
                 buffer += chunk_size;
 
-                boost::scoped_ptr<opflex::rpc::InboundMessage> msg(
+                boost::scoped_ptr<yajr::rpc::InboundMessage> msg(
                         peer->parseFrame()
                     );
 
@@ -212,6 +213,6 @@ void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf)
 
 }
 
-} /* opflex::comms::internal namespace */
+} /* yajr::comms::internal namespace */
 
-}} /* opflex::comms and opflex namespaces */
+}} /* yajr::comms and opflex namespaces */

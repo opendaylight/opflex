@@ -15,7 +15,7 @@
 #include <boost/mpl/size_t.hpp>
 #include <boost/functional/hash/hash.hpp>
 
-namespace opflex { namespace rpc { namespace internal { namespace meta {
+namespace yajr { namespace rpc { namespace internal { namespace meta {
 
 #pragma warning(push)
 /* disable addition overflow warning */

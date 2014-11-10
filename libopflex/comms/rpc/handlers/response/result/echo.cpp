@@ -6,12 +6,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <opflex/rpc/methods.hpp>
+#include <yajr/rpc/methods.hpp>
 
-namespace opflex { namespace rpc {
+namespace yajr { namespace rpc {
 
 template<>
-void InbRes<&opflex::rpc::method::echo>::process() const {
+void InbRes<&yajr::rpc::method::echo>::process() const {
 
     LOG(INFO) << "Got echo reply at " << getReceived();
 
