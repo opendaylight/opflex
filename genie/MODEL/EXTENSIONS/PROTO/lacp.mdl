@@ -1,15 +1,19 @@
-# lacp:LagPolDef (min/max links, lacpMode, control bits)
 module[lacp]
 {
-
     type[Mode; super=scalar/Enum8]
     {
-        # TODO: ADD VALUES
+        const[name=off; value=0]
+        const[name=active; value=1]
+        const[name=passive; value=2]
+        const[name=mac-pin; value=3]
     }
 
     type[ControlBits; super=scalar/Bitmask8]
     {
-        # TODO: ADD VALUES
+        const[name=suspend-invididual-port; value=1]
+        const[name=graceful-convergence; value=2]
+        const[name=load-defer; value=4]
+        const[name=fast-select-hot-standby; value=8]
     }
 
     class[Config;
