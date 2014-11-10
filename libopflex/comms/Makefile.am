@@ -11,7 +11,9 @@
 # Process this file with automake to produce a Makefile.in
 
 lib_LTLIBRARIES =
-noinst_LTLIBRARIES = librpcperfect.la
+noinst_LTLIBRARIES  =
+noinst_LTLIBRARIES += librpcperfect.la
+noinst_LTLIBRARIES += libcommstrace.la
 if SEPARATE_COMMS
   lib_LTLIBRARIES += libcomms.la
 else
@@ -24,8 +26,16 @@ AM_CPPFLAGS += -I$(top_srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/logging/include
 AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp
 
+libcommstrace_la_SOURCES  =
+libcommstrace_la_SOURCES += debug_trace.cpp
+
+libcommstrace_la_CXXFLAGS  =
+
 libcomms_la_CXXFLAGS  =
 libcomms_la_CXXFLAGS += $(UV_CFLAGS)
+if TRACING_COMMS
+  libcomms_la_CXXFLAGS += -finstrument-functions
+endif
 
 libcomms_la_LIBADD  =
 libcomms_la_LIBADD += librpcperfect.la
@@ -114,6 +124,9 @@ comms_test_LDFLAGS += $(UV_LIBS)
 comms_test_LDADD  =
 comms_test_LDADD += libcomms.la
 comms_test_LDADD += ../logging/liblogging.la
+if TRACING_COMMS
+  comms_test_LDADD += libcommstrace.la
+endif
 comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 noinst_PROGRAMS = $(TESTS)
