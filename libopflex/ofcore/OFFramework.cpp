@@ -17,7 +17,6 @@
 #include "opflex/engine/Processor.h"
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/logging/internal/logging.hpp"
-#include "opflex/comms/comms.hpp"
 
 namespace opflex {
 namespace ofcore {

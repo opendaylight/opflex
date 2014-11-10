@@ -7,13 +7,15 @@
  */
 
 #pragma once
-#ifndef _____COMMS__INCLUDE__OPFLEX__RPC__METHODS_HPP
-#define _____COMMS__INCLUDE__OPFLEX__RPC__METHODS_HPP
+#ifndef _____COMMS__INCLUDE__YAJR__RPC__METHODS_HPP
+#define _____COMMS__INCLUDE__YAJR__RPC__METHODS_HPP
 
 #include <rapidjson/document.h>
-#include <opflex/rpc/rpc.hpp>
+#include <yajr/yajr.hpp>
+#include <yajr/internal/comms.hpp> // for nextId()
+#include <yajr/rpc/rpc.hpp>
 
-namespace opflex {
+namespace yajr {
 
     namespace rpc {
 
@@ -37,19 +39,24 @@ namespace opflex {
         }
 
         template <MethodName * M>
-        class OutReq : public opflex::rpc::OutboundRequest {
+        class OutReq : public yajr::rpc::OutboundRequest {
 
           public:
 
             OutReq(
-                    opflex::comms::internal::CommunicationPeer const & peer,
-                    opflex::rpc::PayloadGenerator const & payloadGenerator
+                    yajr::Peer const & peer,
+                    yajr::rpc::PayloadGenerator const & payloadGenerator
 
                 ) : OutboundRequest(
                         peer,
                         payloadGenerator,
                         M,
-                        peer.nextId())
+                        /* do a little dance so that it technically would never
+                         * throw, but at most crash with SIG11 (yet, this should
+                         * never happen)
+                         */
+                        dynamic_cast< yajr::comms::internal::CommunicationPeer
+                            const * >(&peer)->nextId())
                 {}
 
             virtual char const * requestMethod() const {
@@ -63,12 +70,12 @@ namespace opflex {
         };
 
         template <MethodName * M>
-        class InbReq : public opflex::rpc::InboundRequest {
+        class InbReq : public yajr::rpc::InboundRequest {
 
           public:
 
             InbReq(
-                    opflex::comms::internal::CommunicationPeer const & peer,
+                    yajr::Peer const & peer,
                     rapidjson::Value const & params,
                     rapidjson::Value const & id
                 )
@@ -85,12 +92,12 @@ namespace opflex {
         };
 
         template <MethodName * M>
-        class InbRes : public opflex::rpc::InboundResult {
+        class InbRes : public yajr::rpc::InboundResult {
 
           public:
 
             InbRes(
-                    opflex::comms::internal::CommunicationPeer const & peer,
+                    yajr::Peer const & peer,
                     rapidjson::Value const & params,
                     rapidjson::Value const & id
                 )
@@ -104,12 +111,12 @@ namespace opflex {
         };
 
         template <MethodName * M>
-        class InbErr : public opflex::rpc::InboundError {
+        class InbErr : public yajr::rpc::InboundError {
 
           public:
 
             InbErr(
-                    opflex::comms::internal::CommunicationPeer const & peer,
+                    yajr::Peer const & peer,
                     rapidjson::Value const & params,
                     rapidjson::Value const & id
                 )
@@ -126,4 +133,4 @@ namespace opflex {
 
 }
 
-#endif /* _____COMMS__INCLUDE__OPFLEX__RPC__METHODS_HPP */
+#endif /* _____COMMS__INCLUDE__YAJR__RPC__METHODS_HPP */

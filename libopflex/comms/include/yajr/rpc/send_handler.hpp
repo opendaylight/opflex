@@ -13,7 +13,7 @@
 #include <rapidjson/rapidjson.h>
 #include <deque>
 
-namespace opflex { namespace rpc { namespace internal {
+namespace yajr { namespace internal {
 
 template <typename Encoding = rapidjson::UTF8<> >
 struct GenericStringQueue {
@@ -44,6 +44,6 @@ struct GenericStringQueue {
 //! String buffer with UTF8 encoding
 typedef GenericStringQueue<rapidjson::UTF8<> > StringQueue;
 
-}}}
+}}
 
 #endif /* _____COMMS__INCLUDE__OPFLEX__RPC__SEND_HANDLER_HPP */

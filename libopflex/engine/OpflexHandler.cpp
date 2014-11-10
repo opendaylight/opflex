@@ -20,9 +20,9 @@
 #include "opflex/engine/Processor.h"
 
 #include "opflex/logging/internal/logging.hpp"
-#include "opflex/comms/comms.hpp"
-#include "opflex/rpc/rpc.hpp"
-#include "opflex/rpc/methods.hpp"
+#include <yajr/yajr.hpp>
+#include <yajr/rpc/rpc.hpp>
+#include <yajr/rpc/methods.hpp>
 
 namespace opflex {
 namespace engine {
@@ -62,143 +62,145 @@ void OpflexHandler::handleError(const rapidjson::Value& payload,
 
 } /* namespace internal */
 } /* namespace engine */
+} /* namespace opflex */
 
+namespace yajr {
 namespace rpc {
 
 // Following are definitions that forward the message handlers from
 // the opflex RPC library into our own handler
 
 template<>
-void InbReq<&opflex::rpc::method::send_identity>::process() const {
+void InbReq<&yajr::rpc::method::send_identity>::process() const {
 
 }
 template<>
-void InbRes<&opflex::rpc::method::send_identity>::process() const {
+void InbRes<&yajr::rpc::method::send_identity>::process() const {
 
 }
 template<>
-void InbErr<&opflex::rpc::method::send_identity>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::policy_resolve>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::policy_resolve>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::policy_resolve>::process() const {
-
-}
-
-
-template<>
-void InbReq<&opflex::rpc::method::policy_unresolve>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::policy_unresolve>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::policy_unresolve>::process() const {
+void InbErr<&yajr::rpc::method::send_identity>::process() const {
 
 }
 
 template<>
-void InbReq<&opflex::rpc::method::policy_update>::process() const {
+void InbReq<&yajr::rpc::method::policy_resolve>::process() const {
 
 }
 template<>
-void InbRes<&opflex::rpc::method::policy_update>::process() const {
+void InbRes<&yajr::rpc::method::policy_resolve>::process() const {
 
 }
 template<>
-void InbErr<&opflex::rpc::method::policy_update>::process() const {
+void InbErr<&yajr::rpc::method::policy_resolve>::process() const {
 
 }
 
+
 template<>
-void InbReq<&opflex::rpc::method::endpoint_declare>::process() const {
+void InbReq<&yajr::rpc::method::policy_unresolve>::process() const {
 
 }
 template<>
-void InbRes<&opflex::rpc::method::endpoint_declare>::process() const {
+void InbRes<&yajr::rpc::method::policy_unresolve>::process() const {
 
 }
 template<>
-void InbErr<&opflex::rpc::method::endpoint_declare>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::endpoint_undeclare>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::endpoint_undeclare>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::endpoint_undeclare>::process() const {
+void InbErr<&yajr::rpc::method::policy_unresolve>::process() const {
 
 }
 
 template<>
-void InbReq<&opflex::rpc::method::endpoint_resolve>::process() const {
+void InbReq<&yajr::rpc::method::policy_update>::process() const {
 
 }
 template<>
-void InbRes<&opflex::rpc::method::endpoint_resolve>::process() const {
+void InbRes<&yajr::rpc::method::policy_update>::process() const {
 
 }
 template<>
-void InbErr<&opflex::rpc::method::endpoint_resolve>::process() const {
-
-}
-
-template<>
-void InbReq<&opflex::rpc::method::endpoint_unresolve>::process() const {
-
-}
-template<>
-void InbRes<&opflex::rpc::method::endpoint_unresolve>::process() const {
-
-}
-template<>
-void InbErr<&opflex::rpc::method::endpoint_unresolve>::process() const {
+void InbErr<&yajr::rpc::method::policy_update>::process() const {
 
 }
 
 template<>
-void InbReq<&opflex::rpc::method::endpoint_update>::process() const {
+void InbReq<&yajr::rpc::method::endpoint_declare>::process() const {
 
 }
 template<>
-void InbRes<&opflex::rpc::method::endpoint_update>::process() const {
+void InbRes<&yajr::rpc::method::endpoint_declare>::process() const {
 
 }
 template<>
-void InbErr<&opflex::rpc::method::endpoint_update>::process() const {
+void InbErr<&yajr::rpc::method::endpoint_declare>::process() const {
 
 }
 
 template<>
-void InbReq<&opflex::rpc::method::state_report>::process() const {
+void InbReq<&yajr::rpc::method::endpoint_undeclare>::process() const {
 
 }
 template<>
-void InbRes<&opflex::rpc::method::state_report>::process() const {
+void InbRes<&yajr::rpc::method::endpoint_undeclare>::process() const {
 
 }
 template<>
-void InbErr<&opflex::rpc::method::state_report>::process() const {
+void InbErr<&yajr::rpc::method::endpoint_undeclare>::process() const {
+
+}
+
+template<>
+void InbReq<&yajr::rpc::method::endpoint_resolve>::process() const {
+
+}
+template<>
+void InbRes<&yajr::rpc::method::endpoint_resolve>::process() const {
+
+}
+template<>
+void InbErr<&yajr::rpc::method::endpoint_resolve>::process() const {
+
+}
+
+template<>
+void InbReq<&yajr::rpc::method::endpoint_unresolve>::process() const {
+
+}
+template<>
+void InbRes<&yajr::rpc::method::endpoint_unresolve>::process() const {
+
+}
+template<>
+void InbErr<&yajr::rpc::method::endpoint_unresolve>::process() const {
+
+}
+
+template<>
+void InbReq<&yajr::rpc::method::endpoint_update>::process() const {
+
+}
+template<>
+void InbRes<&yajr::rpc::method::endpoint_update>::process() const {
+
+}
+template<>
+void InbErr<&yajr::rpc::method::endpoint_update>::process() const {
+
+}
+
+template<>
+void InbReq<&yajr::rpc::method::state_report>::process() const {
+
+}
+template<>
+void InbRes<&yajr::rpc::method::state_report>::process() const {
+
+}
+template<>
+void InbErr<&yajr::rpc::method::state_report>::process() const {
 
 }
 
 
 } /* namespace rpc */
-} /* namespace opflex */
+} /* namespace yajr */

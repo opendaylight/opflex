@@ -6,20 +6,20 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <opflex/rpc/rpc.hpp>
-#include <opflex/rpc/methods.hpp>
-#include <opflex/rpc/internal/meta.hpp>
+#include <yajr/rpc/rpc.hpp>
+#include <yajr/rpc/methods.hpp>
+#include <yajr/rpc/internal/meta.hpp>
 
-namespace meta = opflex::rpc::internal::meta;
+namespace meta = yajr::rpc::internal::meta;
 
-namespace opflex { namespace rpc {
+namespace yajr { namespace rpc {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmultichar"
 
-opflex::rpc::InboundError *
+yajr::rpc::InboundError *
 MessageFactory::InboundError(
-        opflex::comms::internal::CommunicationPeer const & peer,
+        yajr::Peer const & peer,
         rapidjson::Value const & error,
         rapidjson::Value const & id) {
 
@@ -30,7 +30,7 @@ MessageFactory::InboundError(
 #undef  PERFECT_RET_VAL
 #define PERFECT_RET_VAL(method) \
     new (std::nothrow) InbErr<&method>(peer, error, id)
-#include <opflex/rpc/method_lookup.hpp>
+#include <yajr/rpc/method_lookup.hpp>
 }
 
 #pragma GCC diagnostic pop
