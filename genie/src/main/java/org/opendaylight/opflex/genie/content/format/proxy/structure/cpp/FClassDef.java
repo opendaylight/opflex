@@ -140,8 +140,6 @@ public class FClassDef extends ItemFormatterTask
         out.println(aInIndent,"#pragma once");
         out.println(aInIndent,"#ifndef " + lInclTag);
         out.println(aInIndent,"#define " + lInclTag);
-        // doesn't seem to be needed for now.  Revisit?
-        //genForwardDecls(aInIndent, aInClass);
         genIncludes(aInIndent, aInClass);
         genBody(aInIndent, aInClass);
         out.println(aInIndent,"#endif // " + lInclTag);
@@ -152,8 +150,9 @@ public class FClassDef extends ItemFormatterTask
     {
         out.println();
         out.println(aInIndent,getInclude("boost/optional.hpp", true));
+        out.println(aInIndent,getInclude("boost/pointer_cast.hpp", true));
         out.println(aInIndent,getInclude("opflex/modb/URIBuilder.h", false));
-        out.println(aInIndent,getInclude("opflex/modb/MO.h", false));
+        out.println(aInIndent, getInclude("opflex/modb/MO.h", false));
         /**
          if (aInClass.hasSuperclass())
          {
@@ -259,7 +258,7 @@ public class FClassDef extends ItemFormatterTask
             (aInPType.startsWith("UInt") &&
              !aInPType.equals("UInt64")))
         {
-            return "(" + aInSyntax + ")";
+            return aInSyntax;
         }
         return "";
     }
@@ -278,11 +277,28 @@ public class FClassDef extends ItemFormatterTask
         LinkedList<String> lComments = new LinkedList<String>();
         aInProp.getComments(lComments);
 
+        if (aInClass.isConcreteSuperclassOf("relator/Source") &&
+            aInProp.getLID().getName().toLowerCase().startsWith("target"))
+        {
+            if (aInProp.getLID().getName().equalsIgnoreCase("targetName"))
+            {
+                genRef(aInIndent,aInClass,aInProp,aInPropIdx,lType,lBaseType,lComments, true);
+            }
+        }
+        else
         {
             genPropCheck(aInIndent,aInClass,aInProp,aInPropIdx,lType,lBaseType,lComments);
             genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, lType, lBaseType, lComments);
             genPropMutator(aInIndent, aInClass, aInProp, aInPropIdx, lType, lBaseType, lComments);
         }
+    }
+
+    private void genRef(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+            Collection<String> aInComments, boolean aInTarget)
+    {
+        genRefCheck(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
+        genRefAccessors(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
+        genRefMutators(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
     }
 
     private void genPropCheck(
@@ -326,17 +342,12 @@ public class FClassDef extends ItemFormatterTask
                      lPType);
     }
 
-    private void genPropAccessor(
+    private void genRefCheck(
             int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInComments)
+            Collection<String> aInComments, boolean target)
     {
-        String lName = aInProp.getLID().getName();
-        String lPType = Strings.upFirstLetter(aInBaseType.getLID().getName());
-        String lEffSyntax = getPropEffSyntax(aInBaseType);
-        String lCast = getCast(lPType, lEffSyntax);
-        lPType = getTypeAccessor(lPType);
-        genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments,
-                        lName, lName, lEffSyntax, lPType, lCast, "");
+        genPropCheck(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType,
+                     aInComments, target ? "target" : "source", "REFERENCE");
     }
 
     private void genPropAccessor(
@@ -358,13 +369,44 @@ public class FClassDef extends ItemFormatterTask
         }
         lComment[lCommentIdx++] = "@return the value of " + aInName + " or boost::none if not set";
         out.printHeaderComment(aInIndent,lComment);
-        out.println(aInIndent,"boost::optional<" + aInEffSyntax + "> get" + Strings.upFirstLetter(aInName) + "()");
-        out.println(aInIndent,"{");
-        out.println(aInIndent + 1,"if (is" + Strings.upFirstLetter(aInCheckName) + "Set())");
-        out.println(aInIndent + 2,"return boost::get<" + aInEffSyntax + ">(getProperty(" + toUnsignedStr(aInPropIdx) + "));");
+        String lReturnType = aInCast.isEmpty() ? aInEffSyntax : aInCast;
+        out.println(aInIndent, "boost::optional<" + lReturnType + "> get" + Strings.upFirstLetter(aInName) + "()");
+        out.println(aInIndent, "{");
+        String lCast = aInCast.isEmpty() ? "" : "(" + aInCast + ")";
+        out.println(aInIndent + 1, "if (is" + Strings.upFirstLetter(aInCheckName) + "Set())");
+        if (aInPType.equals("Reference"))
+        {
+            aInEffSyntax = "opflex::modb::reference_t";
+        }
+        out.println(aInIndent + 2,"return " + lCast + "boost::get<" + aInEffSyntax + ">(getProperty(" + toUnsignedStr(aInPropIdx) + "))" + aInAccessor + ";");
         out.println(aInIndent + 1,"return boost::none;");
         out.println(aInIndent,"}");
         out.println();
+    }
+
+    private void genPropAccessor(
+            int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+            Collection<String> aInComments)
+    {
+        String lName = aInProp.getLID().getName();
+        String lPType = Strings.upFirstLetter(aInBaseType.getLID().getName());
+        String lEffSyntax = getPropEffSyntax(aInBaseType);
+        String lCast = getCast(lPType, lEffSyntax);
+        lEffSyntax = mapToInternalRep(aInBaseType, lEffSyntax);
+        lPType = getTypeAccessor(lPType);
+        genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments,
+                        lName, lName, lEffSyntax, lPType, lCast, "");
+    }
+
+    private void genRefAccessors(
+            int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+            Collection<String> aInComments, boolean target)
+    {
+        String lName = (target ? "target" : "source");
+        genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments,
+                        lName, lName + "Class", "opflex::modb::class_id_t", "Reference", "", ".first");
+        genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments,
+                        lName, lName + "URI", "opflex::modb::URI", "Reference", "", ".second");
     }
 
     private void genPropMutator(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
@@ -378,12 +420,10 @@ public class FClassDef extends ItemFormatterTask
         if (aInComments.size() > 0) lComment.add("");
         lComment.addAll(aInComments);
 //        Arrays.asList(
-        //
+ //
         lComment.add("");
         lComment.add("@param " + aInParamName + " " + aInParamHelp);
         lComment.add("@return a reference to the current object");
-        lComment.add("@throws std::logic_error if no mutator is active");
-        lComment.add("@see opflex::modb::Mutator");
         out.printHeaderComment(aInIndent,lComment);
         //
         // DEF
@@ -393,7 +433,80 @@ public class FClassDef extends ItemFormatterTask
         // BODY
         //
         out.println(aInIndent,"{");
-        out.println(aInIndent + 1, "setProperty(" + toUnsignedStr(aInPropIdx)+ ", " + aInParamName + ");");
+        if (!aInSetterPrefix.isEmpty())
+        { //<opflex::modb::class_id_t, opflex::modb::URI>
+            out.println(aInIndent + 1, "setProperty(" + toUnsignedStr(aInPropIdx) + ", (opflex::modb::reference_t)std::make_pair(" + aInSetterPrefix + ", "  + aInParamName + "));");
+        }
+        else
+        {
+            String lCast = mapToInternalRep(aInBaseType, aInEffSyntax);
+            lCast = lCast.equals(aInEffSyntax) ? "" : "(" + lCast + ")";
+            out.println(aInIndent + 1, "setProperty(" + toUnsignedStr(aInPropIdx) + ", " + lCast + aInParamName + ");");
+        }
+        out.println(aInIndent + 1, "return *this;");
+        out.println(aInIndent,"}");
+        out.println();
+    }
+
+    private void genNamedPropMutators(int aInIndent, MClass aInClass, MClass aInRefClass, int aInPropIdx,
+                                      List<Pair<String, MNameRule>> aInNamingPath, boolean aInIsUniqueNaming,
+                                      String aInMethName, String aInPType, String aInSetterPrefix)
+    {
+        String lRefClassName = getClassName(aInRefClass, false);
+        ArrayList<String> lComment = new ArrayList<>(Arrays.asList(
+            "Set the reference to point to an instance of " + lRefClassName,
+            "by constructing its URI from the path elements that lead to it.",
+            "",
+            "The reference URI generated by this function will take the form:",
+            getUriDoc(aInRefClass, aInNamingPath),
+            ""));
+        addPathComment(aInClass, aInNamingPath, lComment);
+        lComment.add("");
+        lComment.add("@return a reference to the current object");
+        out.printHeaderComment(aInIndent,lComment);
+
+        //
+        // DEF
+        //
+        String lMethName = getMethName(aInNamingPath, aInIsUniqueNaming, aInMethName);
+        out.println(aInIndent,  getClassName(aInClass, true) + "& set" + Strings.upFirstLetter(lMethName) + "(");
+        boolean lIsFirst = true;
+        for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
+        {
+            MNameRule lNr = lNamingNode.getSecond();
+            MClass lThisContClass = MClass.get(lNamingNode.getFirst());
+
+            Collection<MNameComponent> lNcs = lNr.getComponents();
+            for (MNameComponent lNc : lNcs)
+            {
+                if (lNc.hasPropName())
+                {
+                    if (lIsFirst)
+                    {
+                        lIsFirst = false;
+                    }
+                    else
+                    {
+                        out.println(",");
+                    }
+                    out.print(aInIndent + 1, getPropParamDef(lThisContClass, lNc.getPropName()));
+                }
+            }
+        }
+        if (lIsFirst)
+        {
+            out.println(aInIndent + 1, ")");
+        }
+        else
+        {
+            out.println(")");
+        }
+        //
+        // BODY
+        //
+        String lUriBuilder = getUriBuilder(aInClass, aInNamingPath);
+        out.println(aInIndent,"{");
+        out.println(aInIndent + 1, "set" + Strings.upFirstLetter(lMethName) + "(" + lUriBuilder + ");");
         out.println(aInIndent + 1, "return *this;");
         out.println(aInIndent,"}");
         out.println();
@@ -406,13 +519,105 @@ public class FClassDef extends ItemFormatterTask
         String lPType = Strings.upFirstLetter(aInBaseType.getLID().getName());
         lPType = getTypeAccessor(lPType);
         List<String> lComments = Arrays.asList(
-                "Set " + lName + " to the specified value in the currently-active mutator.");
+                "Set " + lName + " to the specified value.");
         genPropMutator(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType,
                        lComments, aInComments, lName, lPType,
                        getPropEffSyntax(aInBaseType), "newValue", "the new value to set.",
                        "");
     }
 
+    private void genRefMutators(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+                                Collection<String> aInComments, boolean target)
+    {
+        for (MClass lTargetClass : ((MRelationshipClass) aInClass).getTargetClasses(true))
+        {
+            String lName = (target ? "target" : "source") +
+                    Strings.upFirstLetter(lTargetClass.getLID().getName());
+            List<String> lComments = Arrays.asList(
+                    "Set the reference to point to an instance of " + getClassName(lTargetClass, false),
+                    "with the specified URI");
+            genPropMutator(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType,
+                    lComments, aInComments, lName, "Reference",
+                    "const opflex::modb::URI&", "uri", "The URI of the reference to add",
+                    Integer.toString(lTargetClass.getGID().getId()));
+
+            Collection<List<Pair<String, MNameRule>>> lNamingPaths = new LinkedList<List<Pair<String, MNameRule>>>();
+            boolean lIsUniqueNaming = lTargetClass.getNamingPaths(lNamingPaths, Language.CPP);
+            for (List<Pair<String, MNameRule>> lNamingPath : lNamingPaths)
+            {
+//                if (!hasValidPath(lNamingPath)) continue;
+                genNamedPropMutators(aInIndent, aInClass, lTargetClass, aInPropIdx, lNamingPath, lIsUniqueNaming,
+                        lName, "Reference", Integer.toString(lTargetClass.getGID().getId()));
+            }
+        }
+    }
+
+
+    private void genResolvers(int aInIdent, MClass aInClass)
+    {
+        if (aInClass.isRoot())
+        {
+            genRootCreation(aInIdent,aInClass);
+        }
+        genChildrenResolvers(aInIdent, aInClass);
+    }
+
+    private void genRootCreation(int aInIdent, MClass aInClass)
+    {
+        String lClassName = getClassName(aInClass, true);
+        ArrayList<String> lComment = new ArrayList<>(Arrays.asList(
+                "Create an instance of " + getClassName(aInClass, false) + ", the root element in the",
+                "management information tree."));
+        out.printHeaderComment(aInIdent,lComment);
+
+        out.println(aInIdent, "static " + lClassName + "* createRootElement()");
+        out.println(aInIdent,"{");
+        out.println(aInIdent + 1, "return new " + lClassName + "(opflex::modb::URI::ROOT, -1, opflex::modb::URI::ROOT, -1);");
+        out.println(aInIdent, "}");
+        out.println();
+    }
+
+    private void genChildrenResolvers(int aInIdent, MClass aInClass)
+    {
+        TreeMap<Ident,MClass> lConts = new TreeMap<Ident, MClass>();
+        aInClass.getContainsClasses(lConts, true, true);//true, true);
+        for (MClass lChildClass : lConts.values())
+        {
+            genChildResolvers(aInIdent,aInClass,lChildClass);
+        }
+    }
+
+    private void addPathComment(MClass aInThisContClass,
+                                Collection<MNameComponent> aInNcs,
+                                List<String> result)
+    {
+        String lclassName = getClassName(aInThisContClass, false);
+        for (MNameComponent lNc : aInNcs)
+        {
+            if (lNc.hasPropName())
+            {
+                result.add("@param " +
+                        getPropParamName(aInThisContClass, lNc.getPropName()) +
+                        " the value of " +
+                        getPropParamName(aInThisContClass, lNc.getPropName()) + ",");
+                result.add("a naming property for " + lclassName);
+            }
+        }
+    }
+
+    private void addPathComment(MClass aInClass,
+                                List<Pair<String, MNameRule>> aInNamingPath,
+                                List<String> result)
+    {
+        for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
+        {
+            MNameRule lNr = lNamingNode.getSecond();
+            MClass lThisContClass = MClass.get(lNamingNode.getFirst());
+
+            Collection<MNameComponent> lNcs = lNr.getComponents();
+            addPathComment(lThisContClass, lNcs, result);
+        }
+    }
 
     private static String getMethName(List<Pair<String, MNameRule>> aInNamingPath,
             boolean aInIsUniqueNaming,
@@ -444,26 +649,6 @@ public class FClassDef extends ItemFormatterTask
         }
     }
 
-    public static int countNamingProps(List<Pair<String, MNameRule>> aInNamingPath)
-    {
-        int lRet = 0;
-        for (Pair<String, MNameRule> lNode : aInNamingPath)
-        {
-            Collection<MNameComponent> lNcs = lNode.getSecond().getComponents();
-            if (!(null == lNcs || lNcs.isEmpty()))
-            {
-                for (MNameComponent lNc : lNcs)
-                {
-                    if (lNc.hasPropName())
-                    {
-                        lRet++;
-                    }
-                }
-            }
-        }
-        return lRet;
-    }
-
     public static void getPropParamName(MClass aInClass, String aInPropName, StringBuilder aOutSb)
     {
         aOutSb.append(aInClass.getModule().getLID().getName());
@@ -485,12 +670,11 @@ public class FClassDef extends ItemFormatterTask
         boolean lPassAsConst = lLang.getPassConst();
         PassBy lPassBy = lLang.getPassBy();
 
-        String lSyntax = aInBaseType.getLanguageBinding(Language.CPP).getSyntax();
         if (lPassAsConst)
         {
             lRet.append("const ");
         }
-        lRet.append(lSyntax);
+        lRet.append(lLang.getSyntax());
 
         switch (lPassBy)
         {
@@ -527,83 +711,61 @@ public class FClassDef extends ItemFormatterTask
         return lRet.toString();
     }
 
-    private void genConstructor(int aInIdent, MClass aInClass)
+    public static String getUriBuilder(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath)
     {
-        String lclassName = getClassName(aInClass, false);
-        String[] lComment =
-                {"Construct an instance of " + lclassName + ".",
-                        "This should not typically be called from user code."};
-        out.printHeaderComment(aInIdent,lComment);
-
-        if (aInClass.isConcrete())
-        {
-            out.println(aInIdent, aInClass.getLID().getName() + "(");
-            out.println(aInIdent + 1, "const opflex::modb::URI& uri,");
-            out.println(aInIdent + 1, "const opflex::modb::class_id_t parent_class_id,");
-            out.println(aInIdent + 1, "const opflex::modb::URI& parent_uri,");
-            out.println(aInIdent + 1, "const opflex::modb::prop_id_t parent_prop)");
-            out.println(aInIdent + 1, ": MO(CLASS_ID, uri, parent_class_id, parent_uri, parent_prop) { }");
-        }
+        StringBuilder lSb = new StringBuilder();
+        getUriBuilder(aInClass,aInNamingPath, lSb);
+        return lSb.toString();
     }
 
-    private void genResolvers(int aInIdent, MClass aInClass)
+    public static void getUriBuilder(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
     {
-        genChildrenResolvers(aInIdent, aInClass);
-    }
-
-    private void genChildrenResolvers(int aInIdent, MClass aInClass)
-    {
-        TreeMap<Ident,MClass> lConts = new TreeMap<Ident, MClass>();
-        aInClass.getContainsClasses(lConts, true, true);//true, true);
-        for (MClass lChildClass : lConts.values())
+        aOut.append("opflex::modb::URIBuilder()");
+        for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
         {
-            genChildResolvers(aInIdent,aInClass,lChildClass);
-        }
-    }
+            MNameRule lNr = lNamingNode.getSecond();
+            MClass lThisContClass = MClass.get(lNamingNode.getFirst());
+            Collection<MNameComponent> lNcs = lNr.getComponents();
+            aOut.append(".addElement(\"");
 
-    private void genChildResolvers(int aInIdent, MClass aInParentClass, MClass aInChildClass)
-    {
-        MNamer lChildNamer = MNamer.get(aInChildClass.getGID().getName(),false);
-        MNameRule lChildNr = lChildNamer.findNameRule(aInParentClass.getGID().getName());
-        if (null != lChildNr)
-        {
-            String lFormattedChildClassName = getClassName(aInChildClass,true);
-            String lConcatenatedChildClassName = aInChildClass.getFullConcatenatedName();
-            String lUriBuilder = getUriBuilder(aInParentClass,aInChildClass, lChildNr);
-            Collection<MNameComponent> lNcs = lChildNr.getComponents();
-
-            boolean lMultipleChildren = false;
+            aOut.append(lThisContClass.getFullConcatenatedName());
+            aOut.append("\")");
             for (MNameComponent lNc : lNcs)
             {
                 if (lNc.hasPropName())
                 {
-                    lMultipleChildren = true;
-                    break;
+                    aOut.append(".addElement(");
+                    getPropParamName(lThisContClass, lNc.getPropName(), aOut);
+                    aOut.append(")");
                 }
-            }
-
-            if (aInChildClass.isConcreteSuperclassOf("relator/Source"))
-            {
-                Collection<MClass> lTargetClasses = ((MRelationshipClass) aInChildClass).getTargetClasses(true);
-                for (MClass lTargetClass : lTargetClasses)
-                {
-                    genChildAdder(aInIdent, aInParentClass, aInChildClass, lNcs,
-                            lFormattedChildClassName, lConcatenatedChildClassName,
-                            lUriBuilder, lChildNr, lMultipleChildren, lTargetClass,
-                            lTargetClasses.size() == 1);
-                    if (!lMultipleChildren) break;
-                }
-            }
-            else
-            {
-                genChildAdder(aInIdent, aInParentClass, aInChildClass, lNcs,
-                        lFormattedChildClassName, lConcatenatedChildClassName,
-                        lUriBuilder, lChildNr, lMultipleChildren, null, false);
             }
         }
-        else
+        aOut.append(".build()");
+    }
+
+    public static String getUriDoc(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath)
+    {
+        StringBuilder lSb = new StringBuilder();
+        getUriDoc(aInClass,aInNamingPath, lSb);
+        return lSb.toString();
+    }
+    public static void getUriDoc(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
+    {
+        for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
         {
-            Severity.DEATH.report(aInParentClass.toString(), "child object resolver for " + aInChildClass.getGID().getName()," no naming rule", "");
+            MNameRule lNr = lNamingNode.getSecond();
+            MClass lThisContClass = MClass.get(lNamingNode.getFirst());
+            Collection<MNameComponent> lNcs = lNr.getComponents();
+            aOut.append("/" + lThisContClass.getFullConcatenatedName());
+            for (MNameComponent lNc : lNcs)
+            {
+                if (lNc.hasPropName())
+                {
+                    aOut.append("/[");
+                    getPropParamName(lThisContClass, lNc.getPropName(), aOut);
+                    aOut.append("]");
+                }
+            }
         }
     }
 
@@ -633,7 +795,6 @@ public class FClassDef extends ItemFormatterTask
         aOut.append(".build()");
     }
 
-
     private void genChildAdder(int aInIdent, MClass aInParentClass, MClass aInChildClass,
                                Collection<MNameComponent> aInNcs,
                                String aInFormattedChildClassName,
@@ -647,14 +808,10 @@ public class FClassDef extends ItemFormatterTask
 
         ArrayList<String> comment = new ArrayList<>(Arrays.asList(
                 "Create a new child object with the specified naming properties",
-                "and make it a child of this object in the currently-active",
-                "mutator.  If the object already exists in the store, get a",
-                "mutable copy of that object.  If the object already exists in",
-                "the mutator, get a reference to the object.",
+                "and make it a child of this object.",
                 ""));
         addPathComment(aInChildClass, aInNcs, comment);
-        comment.add("@throws std::logic_error if no mutator is active");
-        comment.add("@return a shared pointer to the (possibly new) object");
+        comment.add("@return a pointer to the object");
         out.printHeaderComment(aInIdent,comment);
         String lTargetClassName = null;
         if (aInTargetClass != null)
@@ -705,30 +862,111 @@ public class FClassDef extends ItemFormatterTask
         {
             out.println(aInIdent + 1, "opflex::modb::class_id_t " + getPropParamName(aInChildClass, lClassProp.getPropName()) + " = " + aInTargetClass.getGID().getId() + ";");
         }
-        out.println(aInIdent + 1, aInFormattedChildClassName + "* result = addChild<" + aInFormattedChildClassName+ ">(");
+        out.println(aInIdent + 1, "opflex::modb::MO* mo = addChild(");
         out.println(aInIdent + 2, toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
         out.println(aInIdent + 2, aInUriBuilder);
         out.println(aInIdent + 2, ");");
+        out.println(aInIdent + 1, aInFormattedChildClassName + "* result = boost::reinterpret_pointer_cast<" + aInFormattedChildClassName + ">(mo);");
+        aInNcs = aInChildNr.getComponents();
+        for (MNameComponent lNc : aInNcs)
+        {
+            if (lNc.hasPropName())
+            {
+                String lPropName = Strings.upFirstLetter(lNc.getPropName());
+                String lArgs = getPropParamName(aInChildClass, lNc.getPropName());
+                if (aInTargetClass != null) {
+                    if (lPropName.equalsIgnoreCase("targetClass"))
+                        continue;
+                    if (lPropName.equalsIgnoreCase("targetName"))
+                    {
+                        lPropName = "Target" + lTargetClassName;
+                        lArgs = "opflex::modb::URI(" + lArgs + ")";
+                    }
+                }
+                out.println(aInIdent + 1,
+                        "result->set" + lPropName +
+                                "(" + lArgs + ");");
+            }
+        }
         out.println(aInIdent + 1, "return result;");
         out.println(aInIdent,"}");
         out.println();
     }
 
-    private void addPathComment(MClass aInThisContClass,
-                                Collection<MNameComponent> aInNcs,
-                                List<String> result)
+    private void genChildResolvers(int aInIdent, MClass aInParentClass, MClass aInChildClass)
     {
-        String lclassName = getClassName(aInThisContClass, false);
-        for (MNameComponent lNc : aInNcs)
+        MNamer lChildNamer = MNamer.get(aInChildClass.getGID().getName(),false);
+        MNameRule lChildNr = lChildNamer.findNameRule(aInParentClass.getGID().getName());
+        if (null != lChildNr)
         {
-            if (lNc.hasPropName())
+            String lFormattedChildClassName = getClassName(aInChildClass,true);
+            String lConcatenatedChildClassName = aInChildClass.getFullConcatenatedName();
+            String lUriBuilder = getUriBuilder(aInParentClass,aInChildClass, lChildNr);
+            Collection<MNameComponent> lNcs = lChildNr.getComponents();
+            boolean lMultipleChildren = false;
+            for (MNameComponent lNc : lNcs)
             {
-                result.add("@param " +
-                        getPropParamName(aInThisContClass, lNc.getPropName()) +
-                        " the value of " +
-                        getPropParamName(aInThisContClass, lNc.getPropName()) + ",");
-                result.add("a naming property for " + lclassName);
+                if (lNc.hasPropName())
+                {
+                    lMultipleChildren = true;
+                    break;
+                }
+            }
+            if (aInChildClass.isConcreteSuperclassOf("relator/Source"))
+            {
+                Collection<MClass> lTargetClasses = ((MRelationshipClass) aInChildClass).getTargetClasses(true);
+                for (MClass lTargetClass : lTargetClasses)
+                {
+                    genChildAdder(aInIdent, aInParentClass, aInChildClass, lNcs,
+                            lFormattedChildClassName, lConcatenatedChildClassName,
+                            lUriBuilder, lChildNr, lMultipleChildren, lTargetClass,
+                            lTargetClasses.size() == 1);
+                    if (!lMultipleChildren) break;
+                }
+            }
+            else
+            {
+                genChildAdder(aInIdent, aInParentClass, aInChildClass, lNcs,
+                        lFormattedChildClassName, lConcatenatedChildClassName,
+                        lUriBuilder, lChildNr, lMultipleChildren, null, false);
             }
         }
+        else
+        {
+            Severity.DEATH.report(aInParentClass.toString(), "child object resolver for " + aInChildClass.getGID().getName()," no naming rule", "");
+        }
+    }
+
+    private void genConstructor(int aInIdent, MClass aInClass)
+    {
+        String lclassName = getClassName(aInClass, false);
+        String[] lComment =
+                {"Construct an instance of " + lclassName + ".",
+                        "This should not typically be called from user code."};
+        out.printHeaderComment(aInIdent,lComment);
+
+        if (aInClass.isConcrete())
+        {
+            out.println(aInIdent, aInClass.getLID().getName() + "(");
+            out.println(aInIdent + 1, "const opflex::modb::URI& uri,");
+            out.println(aInIdent + 1, "const opflex::modb::class_id_t parent_class_id,");
+            out.println(aInIdent + 1, "const opflex::modb::URI& parent_uri,");
+            out.println(aInIdent + 1, "const opflex::modb::prop_id_t parent_prop)");
+            out.println(aInIdent + 1, ": MO(CLASS_ID, uri, parent_class_id, parent_uri, parent_prop) { }");
+        }
+    }
+
+    private String mapToInternalRep(MType aInBaseType, String lEffSyntax) {
+        // need to adjust syntax to handle storing everything as 64-bit
+        // required as the metadata drops more specific types (see property_type_t)
+        if (aInBaseType.getLanguageBinding(Language.CPP).getSyntax().startsWith("uint"))
+        {
+            lEffSyntax = getPropEffSyntax(MType.get("scalar/UInt64"));
+        }
+        else if (aInBaseType.getLanguageBinding(Language.CPP).getSyntax().startsWith("int"))
+        {
+            lEffSyntax = getPropEffSyntax(MType.get("scalar/Int64"));
+        }
+        return lEffSyntax;
     }
 }
