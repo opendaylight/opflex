@@ -14,6 +14,7 @@
 #include <vector>
 #include <utility>
 
+#include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -37,7 +38,8 @@ public:
     typedef std::pair<uint8_t, std::string> peer_t;
     typedef std::vector<peer_t> peer_vec_t;
 
-    MockOpflexServer(int port, uint8_t roles, peer_vec_t peers);
+    MockOpflexServer(int port, uint8_t roles, peer_vec_t peers,
+                     const modb::ModelMetadata& md);
     ~MockOpflexServer();
 
     // See HandlerFactory::newHandler
@@ -47,6 +49,10 @@ public:
     int getPort() { return port; }
     uint8_t getRoles() { return roles; }
 
+    modb::ObjectStore& getStore() { return db; }
+    modb::mointernal::StoreClient* getSystemClient() { return client; }
+    MOSerializer& getSerializer() { return serializer; }
+
 private:
     int port;
     uint8_t roles;
@@ -54,6 +60,10 @@ private:
     peer_vec_t peers;
 
     OpflexListener listener;
+
+    modb::ObjectStore db;
+    MOSerializer serializer;
+    modb::mointernal::StoreClient* client;
 };
 
 } /* namespace internal */

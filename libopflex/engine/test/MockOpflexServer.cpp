@@ -16,14 +16,20 @@ namespace opflex {
 namespace engine {
 namespace internal {
 
-MockOpflexServer::MockOpflexServer(int port_, uint8_t roles_, peer_vec_t peers_)
+MockOpflexServer::MockOpflexServer(int port_, uint8_t roles_, 
+                                   peer_vec_t peers_,
+                                   const modb::ModelMetadata& md)
     : port(port_), roles(roles_), peers(peers_),
-      listener(*this, port_, "name", "domain") {
-
+      listener(*this, port_, "name", "domain"), 
+      serializer(&db) {
+    db.init(md);
+    db.start();
+    client = &db.getStoreClient("_SYSTEM_");
 }
 
 MockOpflexServer::~MockOpflexServer() {
     listener.disconnect();
+    db.stop();
 }
 
 OpflexHandler* MockOpflexServer::newHandler(OpflexConnection* conn) {

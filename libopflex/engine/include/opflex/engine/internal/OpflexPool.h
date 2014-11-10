@@ -21,6 +21,7 @@
 #include <uv.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
+#include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/engine/internal/OpflexClientConnection.h"
 
 #pragma once
@@ -114,6 +115,15 @@ public:
      * connection with that role
      */
     OpflexClientConnection* getMasterForRole(OpflexHandler::OpflexRole role);
+
+    /**
+     * Write a given message to all the connected and ready peers with
+     * the given role.
+     *
+     * @param message the message to write
+     * @param role
+     */
+    void writeToRole(OpflexMessage& message, OpflexHandler::OpflexRole role);
 
 private:
     HandlerFactory& factory;

@@ -46,17 +46,6 @@ using opflex::rpc::InbErr;
 using rapidjson::Value;
 using rapidjson::Writer;
 
-class OpflexPEMessage : public OpflexMessage {
-public:
-    OpflexPEMessage(const std::string& method, MessageType type,
-                    OpflexPEHandler& pehandler_)
-        : OpflexMessage(method, type), 
-          pehandler(pehandler_) {}
-    virtual ~OpflexPEMessage() {};
-protected:
-    OpflexPEHandler& pehandler;
-};
-
 class SendIdentityReq : public OpflexMessage {
 public:
     SendIdentityReq(const std::string& name_,
@@ -65,33 +54,33 @@ public:
         : OpflexMessage("send_identity", REQUEST),
           name(name_), domain(domain_), roles(roles_) {}
 
-    virtual void serializePayload(StrWriter& writer) {
+    virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
     template <typename T>
-    bool operator()(Writer<T> & handler) {
-        handler.StartArray();
-        handler.StartObject();
-        handler.String("proto_version");
-        handler.String("1.0");
-        handler.String("name");
-        handler.String(name.c_str());
-        handler.String("domain");
-        handler.String(domain.c_str());
-        handler.String("my_role");
-        handler.StartArray();
+    bool operator()(Writer<T> & writer) {
+        writer.StartArray();
+        writer.StartObject();
+        writer.String("proto_version");
+        writer.String("1.0");
+        writer.String("name");
+        writer.String(name.c_str());
+        writer.String("domain");
+        writer.String(domain.c_str());
+        writer.String("my_role");
+        writer.StartArray();
         if (roles & OpflexHandler::POLICY_ELEMENT)
-            handler.String("policy_element");
+            writer.String("policy_element");
         if (roles & OpflexHandler::POLICY_REPOSITORY)
-            handler.String("policy_repository");
+            writer.String("policy_repository");
         if (roles & OpflexHandler::ENDPOINT_REGISTRY)
-            handler.String("endpoint_registry");
+            writer.String("endpoint_registry");
         if (roles & OpflexHandler::OBSERVER)
-            handler.String("observer");
-        handler.EndArray();
-        handler.EndObject();
-        handler.EndArray();
+            writer.String("observer");
+        writer.EndArray();
+        writer.EndObject();
+        writer.EndArray();
 
         return true;
     }
@@ -101,272 +90,6 @@ private:
     std::string domain;
     uint8_t roles;
 };
-
-#if 0
-class PolicyResolve : protected OpflexPEMessage {
-public:
-    PolicyResolve(OpflexPEHandler& handler,
-                  const vector<reference_t>& policies_)
-        : OpflexPEMessage(handler), policies(policies_) {}
-    
-    bool operator()(SendHandler & handler) {
-        Processor* processor = pehandler.getProcessor();
-        handler.StartArray();
-        BOOST_FOREACH(reference_t& p, policies) {
-            try {
-                handler.StartObject();
-                handler.String("subject");
-                handler.String(processor->getStore()
-                               ->getClassInfo(p.first).getName().c_str());
-                handler.String("policy_uri");
-                handler.String(p.second.toString().c_str());
-                handler.String("prr");
-                handler.Int64(3600);
-                handler.EndObject();
-            } catch (std::out_of_range e) {
-                LOG(WARNING) << "No class found for class ID " << p.first;
-            }
-        }
-        handler.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> policies;
-};
-
-class PolicyUnresolve : protected OpflexPEMessage {
-public:
-    PolicyUnresolve(OpflexPEHandler& handler,
-                    const vector<reference_t>& policies_)
-        : OpflexPEMessage(handler), policies(policies_) {}
-    
-    bool operator()(SendHandler & handler) {
-        Processor* processor = pehandler.getProcessor();
-        handler.StartArray();
-        BOOST_FOREACH(reference_t& p, policies) {
-            try {
-                handler.StartObject();
-                handler.String("subject");
-                handler.String(processor->getStore()
-                               ->getClassInfo(p.first).getName().c_str());
-                handler.String("policy_uri");
-                handler.String(p.second.toString().c_str());
-                handler.EndObject();
-            } catch (std::out_of_range e) {
-                LOG(WARNING) << "No class found for class ID " << p.first;
-            }
-        }
-        handler.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> policies;
-};
-
-class PolicyUpdate : protected OpflexPEMessage {
-public:
-    PolicyUpdate(OpflexPEHandler& handler,
-                 const vector<reference_t>& replace_,
-                 const vector<reference_t>& merge_children_,
-                 const vector<URI>& del_)
-        : OpflexPEMessage(handler), 
-          replace(replace_), 
-          merge_children(merge_children_),
-          del(del_) {}
-    
-    bool operator()(SendHandler & handler) {
-        Processor* processor = pehandler.getProcessor();
-        MOSerializer& serializer = processor->getSerializer();
-        StoreClient* client = processor->getSystemClient();
-
-        handler.StartArray();
-        handler.StartObject();
-
-        handler.String("replace");
-        handler.StartArray();
-        BOOST_FOREACH(reference_t& p, replace) {
-            serializer.serialize(p.first, p.second, 
-                                 *client, handler,
-                                 true);
-        }
-        handler.EndArray();
-
-        handler.String("merge-children");
-        handler.StartArray();
-        BOOST_FOREACH(reference_t& p, replace) {
-            serializer.serialize(p.first, p.second, 
-                                 *client, handler,
-                                 false);
-        }
-        handler.EndArray();
-
-        handler.String("delete");
-        handler.StartArray();
-        BOOST_FOREACH(URI& u, del) {
-            handler.String(u.toString().c_str());
-        }
-        handler.EndArray();
-
-        handler.EndObject();
-        handler.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> replace;
-    vector<reference_t> merge_children;
-    vector<URI> del;
-};
-
-class EndpointDeclare : protected OpflexPEMessage {
-public:
-    EndpointDeclare(OpflexPEHandler& handler,
-                    const vector<reference_t>& endpoints_)
-        : OpflexPEMessage(handler), 
-          endpoints(endpoints_) {}
-    
-    bool operator()(SendHandler & handler) {
-        Processor* processor = pehandler.getProcessor();
-        MOSerializer& serializer = processor->getSerializer();
-        StoreClient* client = processor->getSystemClient();
-
-        handler.StartArray();
-        handler.StartObject();
-
-        handler.String("endpoint");
-        handler.StartArray();
-        BOOST_FOREACH(reference_t& p, endpoints) {
-            serializer.serialize(p.first, p.second, 
-                                 *client, handler,
-                                 true);
-        }
-        handler.EndArray();
-        handler.String("prr");
-        handler.Int64(3600);
-
-        handler.EndObject();
-        handler.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> endpoints;
-};
-
-class EndpointUndeclare : protected OpflexPEMessage {
-public:
-    EndpointUndeclare(OpflexPEHandler& handler,
-                      const vector<reference_t>& endpoints_)
-        : OpflexPEMessage(handler), 
-          endpoints(endpoints_) {}
-    
-    bool operator()(SendHandler & handler) {
-        Processor* processor = pehandler.getProcessor();
-        MOSerializer& serializer = processor->getSerializer();
-        StoreClient* client = processor->getSystemClient();
-
-        handler.StartArray();
-
-        BOOST_FOREACH(reference_t& p, endpoints) {
-            try {
-                handler.StartObject();
-                handler.String("subject");
-                handler.String(processor->getStore()
-                               ->getClassInfo(p.first).getName().c_str());
-                handler.String("endpoint_uri");
-                handler.String(p.second.toString().c_str());
-                handler.EndObject();
-            }  catch (std::out_of_range e) {
-                LOG(WARNING) << "No class found for class ID " << p.first;
-            }
-        }
-
-        handler.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> endpoints;
-};
-
-class EndpointUpdate : protected OpflexPEMessage {
-public:
-    EndpointUpdate(OpflexPEHandler& handler,
-                   const vector<reference_t>& replace_,
-                   const vector<URI>& del_)
-        : OpflexPEMessage(handler), 
-          replace(replace_), del(del_) {}
-    
-    bool operator()(SendHandler & handler) {
-        Processor* processor = pehandler.getProcessor();
-        MOSerializer& serializer = processor->getSerializer();
-        StoreClient* client = processor->getSystemClient();
-
-        handler.StartArray();
-        handler.StartObject();
-
-        handler.String("replace");
-        handler.StartArray();
-        BOOST_FOREACH(reference_t& p, replace) {
-            serializer.serialize(p.first, p.second, 
-                                 *client, handler,
-                                 true);
-        }
-        handler.EndArray();
-
-        handler.String("delete");
-        handler.StartArray();
-        BOOST_FOREACH(URI& u, del) {
-            handler.String(u.toString().c_str());
-        }
-        handler.EndArray();
-
-        handler.EndObject();
-        handler.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> replace;
-    vector<URI> del;
-};
-
-class StateReport : protected OpflexPEMessage {
-public:
-    StateReport(OpflexPEHandler& handler,
-                const vector<reference_t>& observables_)
-        : OpflexPEMessage(handler), 
-          observables(observables_) {}
-    
-    bool operator()(SendHandler & handler) {
-        Processor* processor = pehandler.getProcessor();
-        MOSerializer& serializer = processor->getSerializer();
-        StoreClient* client = processor->getSystemClient();
-
-        handler.StartArray();
-        handler.StartObject();
-
-        handler.String("observable");
-        handler.StartArray();
-        BOOST_FOREACH(reference_t& p, observables) {
-            serializer.serialize(p.first, p.second, 
-                                 *client, handler,
-                                 true);
-        }
-        handler.EndArray();
-
-        handler.EndObject();
-        handler.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> observables;
-};
-
-#endif
 
 void OpflexPEHandler::connected() {
     setState(CONNECTED);
@@ -422,18 +145,19 @@ void OpflexPEHandler::handleSendIdentityRes(const rapidjson::Value& id,
             size_t p = ci.find_last_of(':');
             if (p != string::npos) {
                 string host = ci.substr(0, p);
-                string ports = ci.substr(p + 1);
+                string portstr = ci.substr(p + 1);
                 int port;
                 try {
-                    port = boost::lexical_cast<int>( ports );
-                    pool.addPeer(host, port);
+                    port = boost::lexical_cast<int>( portstr );
+                    if (pool.getPeer(host, port) == NULL)
+                        pool.addPeer(host, port);
                         
                     if (host == conn->getHostname() &&
                         port == conn->getPort())
                         foundSelf = true;
                 } catch( boost::bad_lexical_cast const& ) {
                     LOG(ERROR) << "Invalid port in connectivity_info: " 
-                               << ports;
+                               << portstr;
                     conn->disconnect();
                     return;
                 }
@@ -447,6 +171,29 @@ void OpflexPEHandler::handleSendIdentityRes(const rapidjson::Value& id,
     }
 
     if (foundSelf) {
+        uint8_t peerRoles = 0;
+        if (payload.HasMember("my_role")) {
+            const Value& peerRolev = payload["my_role"];
+            if (peerRolev.IsArray()) {
+                Value::ConstValueIterator it;
+                for (it = peerRolev.Begin(); it != peerRolev.End(); ++it) {
+                    if (!it->IsString())
+                        continue;
+
+                    string rolestr = it->GetString();
+                    if (rolestr == "policy_element") {
+                        peerRoles |= OpflexHandler::POLICY_ELEMENT;
+                    } else if (rolestr == "policy_ELEMENT") {
+                        peerRoles |= OpflexHandler::POLICY_REPOSITORY;
+                    } else if (rolestr == "policy_repository") {
+                        peerRoles |= OpflexHandler::ENDPOINT_REGISTRY;
+                    } else if (rolestr == "endpoint_registry") {
+                        peerRoles |= OpflexHandler::OBSERVER;
+                    }
+                }
+            }
+        }
+        pool.setRoles(conn, peerRoles);
         ready();
     } else {
         LOG(INFO) << "Current peer not found in peer list; disconnecting";

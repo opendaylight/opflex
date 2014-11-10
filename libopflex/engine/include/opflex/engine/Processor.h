@@ -152,8 +152,8 @@ private:
     enum ItemState {
         NEW,
         UPDATED,
-        IN_SYNC,
         UNRESOLVED,
+        IN_SYNC,
         PENDING_DELETE,
         DELETED
     };

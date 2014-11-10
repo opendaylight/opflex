@@ -25,6 +25,7 @@ namespace internal {
 
 using rapidjson::Value;
 using rapidjson::Writer;
+using modb::mointernal::StoreClient;
 
 void MockServerHandler::connected() {
     // XXX - TODO
@@ -40,15 +41,16 @@ void MockServerHandler::ready() {
 
 class SendIdentityRes : public OpflexMessage {
 public:
-    SendIdentityRes(const std::string& name_,
+    SendIdentityRes(const rapidjson::Value& id,
+                    const std::string& name_,
                     const std::string& domain_,
                     const uint8_t roles_,
                     MockOpflexServer::peer_vec_t peers_)
-        : OpflexMessage("send_identity", RESPONSE),
+        : OpflexMessage("send_identity", RESPONSE, &id),
           name(name_), domain(domain_), roles(roles_), 
           peers(peers_) {}
 
-    virtual void serializePayload(StrWriter& writer) {
+    virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
@@ -104,10 +106,10 @@ private:
 
 void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
                                               const Value& payload) {
-    LOG(INFO) << "Got send_identity req";
+    LOG(DEBUG) << "Got send_identity req";
     std::stringstream sb;
     sb << "127.0.0.1:" << server->getPort();
-    SendIdentityRes res(sb.str(), "testdomain", 
+    SendIdentityRes res(id, sb.str(), "testdomain", 
                         server->getRoles(), 
                         server->getPeers());
     getConnection()->write(res.serialize());
@@ -115,7 +117,6 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
 
 void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                                                const Value& payload) {
-    // XXX - TODO
 }
 
 void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
@@ -125,7 +126,48 @@ void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
 
 void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
                                            const rapidjson::Value& payload) {
-    // XXX - TODO
+    Value::ConstValueIterator it;
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (!it->IsObject()) {
+            sendErrorRes(id, "ERROR", "Malformed message: not an object");
+            return;
+        }
+        if (!it->HasMember("endpoint")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no endpoint");
+            return;
+        }
+        if (!it->HasMember("prr")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no prr");
+            return;
+        }
+
+        const Value& endpoint = (*it)["endpoint"];
+        const Value& prr = (*it)["prr"];
+
+        if (!endpoint.IsArray()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: endpoint is not an array");
+            return;
+        }
+        if (!prr.IsInt()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: prr is not an integer");
+            return;
+        }
+
+        Value::ConstValueIterator ep_it;
+        StoreClient::notif_t notifs;
+        StoreClient& client = *server->getSystemClient();
+        MOSerializer& serializer = server->getSerializer();
+        for (ep_it = endpoint.Begin(); ep_it != endpoint.End(); ++ep_it) {
+            const Value& mo = *ep_it;
+            serializer.deserialize(mo, client, true, &notifs);
+        }
+        client.deliverNotifications(notifs);
+    }
+
+    OpflexMessage res("endpoint_declare", OpflexMessage::RESPONSE, &id);
+    getConnection()->write(res.serialize());
 }
 
 void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,

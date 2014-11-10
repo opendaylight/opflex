@@ -16,6 +16,7 @@
 #include <boost/noncopyable.hpp>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
+#include <rapidjson/document.h>
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXMESSAGE_H
@@ -40,22 +41,32 @@ public:
 
     /**
      * Construct a new opflex message
+     *
+     * @param method the method for the message
+     * @param type the type of message
+     * @param id if specified, use as the ID of the message.  The
+     * memory is owned by the caller
      */
-    OpflexMessage(const std::string& method, MessageType type);
+    OpflexMessage(const std::string& method, MessageType type,
+                  const rapidjson::Value* id = NULL);
 
     /**
      * Destroy the message
      */
     virtual ~OpflexMessage() {}
 
-    typedef rapidjson::Writer<rapidjson::StringBuffer> StrWriter;
+    /**
+     * A rapidjson writer that should be used to serialize messages
+     */
+    typedef rapidjson::Writer<rapidjson::StringBuffer> MessageWriter;
 
     /**
      * Serialize the payload of the message.  The payload will be
      * included in the json-rpc message in the appropriate location
-     * depending on the type of the message
+     * depending on the type of the message.  By default, the payload
+     * will be an empty object of the appropriate type
      */
-    virtual void serializePayload(StrWriter& writer) = 0;
+    virtual void serializePayload(MessageWriter& writer);
 
     /**
      * Serialize into a fully-formed opflex message
@@ -68,6 +79,8 @@ public:
 protected:
     std::string method;
     MessageType type;
+
+    const rapidjson::Value* id;
 };
 
 

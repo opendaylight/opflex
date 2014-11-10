@@ -50,7 +50,7 @@ public:
                                                  5, 
                                                  PropertyInfo::VECTOR)),
                                std::vector<prop_id_t>()))
-                    (ClassInfo(2, ClassInfo::POLICY, "class2", "owner1",
+                    (ClassInfo(2, ClassInfo::LOCAL_ENDPOINT, "class2", "owner1",
                                list_of 
                                    (PropertyInfo(4, "prop4", 
                                                  PropertyInfo::S64, 

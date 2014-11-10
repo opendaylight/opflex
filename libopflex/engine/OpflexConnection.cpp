@@ -98,29 +98,34 @@ void OpflexConnection::dispatch() {
             LOG(ERROR) << "Request '" << method << "' missing params";
             return;
         }
+        const Value& params = document["params"];
+        if (!params.IsArray()) {
+            LOG(ERROR) << "Request '" << method 
+                       << "' params is not an array";
+        }
 
         if (method == "send_identity") {
-            handler->handleSendIdentityReq(idv, document["params"]);
+            handler->handleSendIdentityReq(idv, params);
             //} else if (method == "echo") {
-            //    handler->handleEchoReq(idv, document["params"]);
+            //    handler->handleEchoReq(idv, params);
         } else if (method == "policy_resolve") {
-            handler->handlePolicyResolveReq(idv, document["params"]);
+            handler->handlePolicyResolveReq(idv, params);
         } else if (method == "policy_unresolve") {
-            handler->handlePolicyUnresolveReq(idv, document["params"]);
+            handler->handlePolicyUnresolveReq(idv, params);
         } else if (method == "policy_update") {
-            handler->handlePolicyUpdateReq(idv, document["params"]);
+            handler->handlePolicyUpdateReq(idv, params);
         } else if (method == "endpoint_declare") {
-            handler->handleEPDeclareReq(idv, document["params"]);
+            handler->handleEPDeclareReq(idv, params);
         } else if (method == "endpoint_undeclare") {
-            handler->handleEPUndeclareReq(idv, document["params"]);
+            handler->handleEPUndeclareReq(idv, params);
         } else if (method == "endpoint_resolve") {
-            handler->handleEPResolveReq(idv, document["params"]);
+            handler->handleEPResolveReq(idv, params);
         } else if (method == "endpoint_unresolve") {
-            handler->handleEPUnresolveReq(idv, document["params"]);
+            handler->handleEPUnresolveReq(idv, params);
         } else if (method == "endpoint_update") {
-            handler->handleEPUpdateReq(idv, document["params"]);
+            handler->handleEPUpdateReq(idv, params);
         } else if (method == "state_report") {
-            handler->handleStateReportReq(idv, document["params"]);
+            handler->handleStateReportReq(idv, params);
         }
     } else if (document.HasMember("result")) {
         if (!idv.IsString()) {
