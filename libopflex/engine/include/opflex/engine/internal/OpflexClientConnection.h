@@ -45,6 +45,11 @@ public:
     virtual ~OpflexClientConnection();
 
     /**
+     * Connect to the remote peer
+     */
+    virtual void connect();
+
+    /**
      * Disconnect this connection from the remote peer
      */
     virtual void disconnect();
@@ -80,11 +85,26 @@ public:
      */
     int getPort() const { return port; }
 
-private:
+    virtual const std::string& getRemotePeer() { return remote_peer; }
+
+    virtual void write(const rapidjson::StringBuffer* buf);
+
+protected:
     OpflexPool* pool;
 
     std::string hostname;
     int port;
+    std::string remote_peer;
+
+    uv_tcp_t socket;
+    uv_connect_t connect_req;
+    uv_shutdown_t shutdown;
+
+    volatile bool active;
+
+    static void connect_cb(uv_connect_t* req, int status);
+    static void shutdown_cb(uv_shutdown_t* req, int status);
+    static void on_conn_closed(uv_handle_t *handle);
 };
 
 

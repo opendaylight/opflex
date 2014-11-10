@@ -52,14 +52,22 @@ public:
     virtual void connected();
     virtual void disconnected();
     virtual void ready();
-    virtual void handleSendIdentityReq(const rapidjson::Value& payload);
-    virtual void handlePolicyResolveReq(const rapidjson::Value& payload);
-    virtual void handlePolicyUnresolveReq(const rapidjson::Value& payload);
-    virtual void handleEPDeclareReq(const rapidjson::Value& payload);
-    virtual void handleEPUndeclareReq(const rapidjson::Value& payload);
-    virtual void handleEPResolveReq(const rapidjson::Value& payload);
-    virtual void handleEPUnresolveReq(const rapidjson::Value& payload);
-    virtual void handleEPUpdateRes(const rapidjson::Value& payload);
+    virtual void handleSendIdentityReq(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload);
+    virtual void handlePolicyResolveReq(const rapidjson::Value& id,
+                                        const rapidjson::Value& payload);
+    virtual void handlePolicyUnresolveReq(const rapidjson::Value& id,
+                                          const rapidjson::Value& payload);
+    virtual void handleEPDeclareReq(const rapidjson::Value& id,
+                                    const rapidjson::Value& payload);
+    virtual void handleEPUndeclareReq(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload);
+    virtual void handleEPResolveReq(const rapidjson::Value& id,
+                                    const rapidjson::Value& payload);
+    virtual void handleEPUnresolveReq(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload);
+    virtual void handleEPUpdateRes(const rapidjson::Value& id,
+                                   const rapidjson::Value& payload);
 
 protected:
     MockOpflexServer* server;

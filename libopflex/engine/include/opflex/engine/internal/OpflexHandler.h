@@ -156,270 +156,330 @@ public:
     /**
      * Handle an Opflex send identity request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleSendIdentityReq(const rapidjson::Value& payload) {
+    virtual void handleSendIdentityReq(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload) {
         handleUnsupportedReq("Send Identity Request");
     }
 
     /**
      * Handle an Opflex send identity response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleSendIdentityRes(const rapidjson::Value& payload) {
+    virtual void handleSendIdentityRes(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload) {
         handleUnexpected("Send Identity Response");
     }
 
     /**
      * Handle an Opflex send identity error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleSendIdentityErr(const rapidjson::Value& payload) {
+    virtual void handleSendIdentityErr(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload) {
         handleError(payload, "Send Identity");
     }
 
     /**
      * Handle an Opflex policy resolve request
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyResolveReq(const rapidjson::Value& payload) {
+    virtual void handlePolicyResolveReq(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload) {
         handleUnsupportedReq("Policy Resolve Request");
     }
 
     /**
      * Handle an Opflex policy resolve response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyResolveRes(const rapidjson::Value& payload) {
+    virtual void handlePolicyResolveRes(const rapidjson::Value& id,
+                                        const rapidjson::Value& payload) {
         handleUnexpected("Policy Resolve Response");
     }
 
     /**
      * Handle an Opflex policy resolve error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyResolveErr(const rapidjson::Value& payload) {
+    virtual void handlePolicyResolveErr(const rapidjson::Value& id,
+                                        const rapidjson::Value& payload) {
         handleError(payload, "Policy Resolve");
     }
 
     /**
      * Handle an Opflex policy unresolve request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyUnresolveReq(const rapidjson::Value& payload) {
+    virtual void handlePolicyUnresolveReq(const rapidjson::Value& id,
+                                          const rapidjson::Value& payload) {
         handleUnsupportedReq("Policy Unresolve Request");
     }
 
     /**
      * Handle an Opflex policy unresolve response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyUnresolveRes(const rapidjson::Value& payload) {
+    virtual void handlePolicyUnresolveRes(const rapidjson::Value& id,
+                                          const rapidjson::Value& payload) {
         handleUnexpected("Policy Unresolve Response");
     }
 
     /**
      * Handle an Opflex policy unresolve error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyUnresolveErr(const rapidjson::Value& payload) {
+    virtual void handlePolicyUnresolveErr(const rapidjson::Value& id,
+                                          const rapidjson::Value& payload) {
         handleError(payload, "Policy Unresolve");
     }
 
     /**
      * Handle an Opflex policy update  request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyUpdateReq(const rapidjson::Value& payload) {
+    virtual void handlePolicyUpdateReq(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload) {
         handleUnsupportedReq("Policy Update Request");
     }
 
     /**
      * Handle an Opflex policy update response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyUpdateRes(const rapidjson::Value& payload) {
+    virtual void handlePolicyUpdateRes(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload) {
         handleUnexpected("Policy Update Response");
     }
 
     /**
      * Handle an Opflex policy update error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handlePolicyUpdateErr(const rapidjson::Value& payload) {
+    virtual void handlePolicyUpdateErr(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload) {
         handleError(payload, "Policy Update");
     }
 
     /**
      * Handle an Opflex endpoint declare request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPDeclareReq(const rapidjson::Value& payload) {
+    virtual void handleEPDeclareReq(const rapidjson::Value& id,
+                                    const rapidjson::Value& payload) {
         handleUnsupportedReq("Endpoint Declare Request");
     }
 
     /**
      * Handle an Opflex endpoint declare response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPDeclareRes(const rapidjson::Value& payload) {
+    virtual void handleEPDeclareRes(const rapidjson::Value& id,
+                                    const rapidjson::Value& payload) {
         handleUnexpected("Endpoint Declare Response");
     }
 
     /**
      * Handle an Opflex endpoint declare error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPDeclareErr(const rapidjson::Value& payload) {
+    virtual void handleEPDeclareErr(const rapidjson::Value& id,
+                                    const rapidjson::Value& payload) {
         handleError(payload, "Endpoint Declare");
     }
 
     /**
      * Handle an Opflex endpoint undeclare request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUndeclareReq(  const rapidjson::Value& payload) {
+    virtual void handleEPUndeclareReq(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleUnsupportedReq("Endpoint Undeclare Request");
     }
 
     /**
      * Handle an Opflex endpoint undeclare response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUndeclareRes(  const rapidjson::Value& payload) {
+    virtual void handleEPUndeclareRes(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleUnexpected("Endpoint Undeclare Response");
     }
 
     /**
      * Handle an Opflex endpoint undeclare error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUndeclareErr(  const rapidjson::Value& payload) {
+    virtual void handleEPUndeclareErr(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleError(payload, "Endpoint Undeclare");
     }
 
     /**
      * Handle an Opflex endpoint resolve request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPResolveReq(const rapidjson::Value& payload) {
+    virtual void handleEPResolveReq(const rapidjson::Value& id,
+                                    const rapidjson::Value& payload) {
         handleUnsupportedReq("Endpoint Resolve Request");
     }
 
     /**
      * Handle an Opflex endpoint resolve response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPResolveRes(const rapidjson::Value& payload) {
+    virtual void handleEPResolveRes(const rapidjson::Value& id,
+                                    const rapidjson::Value& payload) {
         handleUnexpected("Endpoint Resolve Response");
     }
 
     /**
      * Handle an Opflex endpoint resolve error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPResolveErr(const rapidjson::Value& payload) {
+    virtual void handleEPResolveErr(const rapidjson::Value& id,
+                                    const rapidjson::Value& payload) {
         handleError(payload, "Endpoint Resolve");
     }
 
     /**
      * Handle an Opflex endpoint unresolve request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUnresolveReq(const rapidjson::Value& payload) {
+    virtual void handleEPUnresolveReq(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleUnsupportedReq("Endpoint Unresolve Request");
     }
 
     /**
      * Handle an Opflex endpoint unresolve response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUnresolveRes(const rapidjson::Value& payload) {
+    virtual void handleEPUnresolveRes(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleUnexpected("Endpoint Unresolve Response");
     }
 
     /**
      * Handle an Opflex endpoint unresolve error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUnresolveErr(const rapidjson::Value& payload) {
+    virtual void handleEPUnresolveErr(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleError(payload, "Endpoint Unresolve");
     }
 
     /**
      * Handle an Opflex endpoint update request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUpdateReq(const rapidjson::Value& payload) {
+    virtual void handleEPUpdateReq(const rapidjson::Value& id,
+                                   const rapidjson::Value& payload) {
         handleUnsupportedReq("Endpoint Update Request");
     }
 
     /**
      * Handle an Opflex endpoint update response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUpdateRes(const rapidjson::Value& payload) {
+    virtual void handleEPUpdateRes(const rapidjson::Value& id,
+                                   const rapidjson::Value& payload) {
         handleUnexpected("Endpoint Update Response");
     }
 
     /**
      * Handle an Opflex endpoint update error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleEPUpdateErr(const rapidjson::Value& payload) {
+    virtual void handleEPUpdateErr(const rapidjson::Value& id,
+                                   const rapidjson::Value& payload) {
         handleError(payload, "Endpoint Update");
     }
 
     /**
      * Handle an Opflex state report request.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleStateReportReq(const rapidjson::Value& payload) {
+    virtual void handleStateReportReq(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleUnsupportedReq("State Report Request");
     }
 
     /**
      * Handle an Opflex state report response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleStateReportRes(const rapidjson::Value& payload) {
+    virtual void handleStateReportRes(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleUnexpected("State Report Response");
     }
 
     /**
      * Handle an Opflex state report error response.
      *
+     * @param id the ID of the remote message
      * @param payload the payload of the message
      */
-    virtual void handleStateReportErr(const rapidjson::Value& payload) {
+    virtual void handleStateReportErr(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
         handleError(payload, "State Report");
     }
 

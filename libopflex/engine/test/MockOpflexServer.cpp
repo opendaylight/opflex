@@ -16,14 +16,14 @@ namespace opflex {
 namespace engine {
 namespace internal {
 
-MockOpflexServer::MockOpflexServer(int port_, uint8_t roles_) 
-    : port(port_), roles(roles_), 
-      listener(*this, "127.0.0.1", 8009, "name", "domain") {
+MockOpflexServer::MockOpflexServer(int port_, uint8_t roles_, peer_vec_t peers_)
+    : port(port_), roles(roles_), peers(peers_),
+      listener(*this, port_, "name", "domain") {
 
 }
 
 MockOpflexServer::~MockOpflexServer() {
-
+    listener.disconnect();
 }
 
 OpflexHandler* MockOpflexServer::newHandler(OpflexConnection* conn) {

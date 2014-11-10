@@ -11,6 +11,11 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <set>
+#include <netinet/in.h>
+
+#include <uv.h>
+
 #include "opflex/engine/internal/OpflexServerConnection.h"
 
 #pragma once
@@ -34,11 +39,9 @@ public:
      * @param handlerFactory a factory that can allocate a handler for
      * the spawned OpflexServerConnection objects
      * @param pool the connection pool that hosts this connection
-     * @param hostname the hostname or IP address to bind to
      * @param port the TCP port number to bind to
      */
     OpflexListener(HandlerFactory& handlerFactory,
-                   const std::string& hostname, 
                    int port,
                    const std::string& name,
                    const std::string& domain);
@@ -48,11 +51,6 @@ public:
      * Stop listening on the local socket for new connections
      */
     void disconnect();
-
-    /**
-     * Get the bind hostname for this connection
-     */
-    const std::string& getHostname() const { return hostname; }
 
     /**
      * Get the bind port for this connection
@@ -81,6 +79,25 @@ private:
 
     std::string name;
     std::string domain;
+
+    volatile bool active;
+
+    uv_loop_t server_loop;
+    uv_thread_t server_thread;
+
+    uv_tcp_t bind_socket;
+
+    uv_mutex_t conn_mutex;
+    typedef std::set<OpflexServerConnection*> conn_set_t;
+    conn_set_t conns;
+
+    uv_async_t async;
+
+    static void server_thread_func(void* processor);
+    static void on_new_connection(uv_stream_t *server, int status);
+    static void on_conn_closed(uv_handle_t *handle);
+
+    friend class OpflexServerConnection;
 };
 
 

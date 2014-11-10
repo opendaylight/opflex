@@ -90,12 +90,14 @@ public:
     void addPeer(OpflexClientConnection* conn);
 
     /**
-     * Remove an already-connected peer
+     * Get the peer that is connecting to the specified host and port.
      *
-     * @param hostname the hostname of the peer to remove
-     * @param port the TCP port of the peer to remove
+     * @param hostname the remote hostname
+     * @param port the port on the remote host
+     * @returns the client connection, or NULL if there is no such
+     * connection
      */
-    void removePeer(const std::string& hostname, int port);
+    OpflexClientConnection* getPeer(const std::string& hostname, int port);
 
     /**
      * Set the roles for the specified connection
@@ -144,10 +146,21 @@ private:
     conn_map_t connections;
     role_map_t roles;
 
+    uv_loop_t client_loop;
+    uv_thread_t client_thread;
+    uv_timer_t timer;
+    uv_async_t async;
+
     void doRemovePeer(const std::string& hostname, int port);
     void doSetRoles(ConnData& cd, uint8_t newroles);
     void updateRole(ConnData& cd, uint8_t newroles, 
                     OpflexHandler::OpflexRole role);
+
+    static void client_thread_func(void* pool);
+    static void timer_cb(uv_timer_t* handle);
+    static void on_conn_closed(uv_handle_t *handle);
+
+    friend class OpflexClientConnection;
 };
 
 

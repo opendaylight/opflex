@@ -32,22 +32,22 @@ public:
     /**
      * Create a new server connection associated with the given 
      *
-     * @param handlerFactory a factory that can allocate a handler for
-     * the connection
      * @param listener the listener associated with the connection
-     * @param hostname the hostname or IP address for the remote peer
-     * @param port the TCP port number of the remote peer
      */
-    OpflexServerConnection(HandlerFactory& handlerFactory,
-                           OpflexListener* listener,
-                           const std::string& hostname, 
-                           int port);
+    OpflexServerConnection(OpflexListener* listener);
     virtual ~OpflexServerConnection();
 
     /**
      * Disconnect this connection from the remote peer
      */
     virtual void disconnect();
+
+    /**
+     * Get the listener associated with this server connection.
+     *
+     * @return the opflex listener
+     */
+    OpflexListener* getListener() { return listener; }
 
     /**
      * Get the unique name for this component in the policy domain
@@ -63,21 +63,19 @@ public:
      */
     virtual const std::string& getDomain();
 
-    /**
-     * Get the hostname for this connection
-     */
-    const std::string& getHostname() const { return hostname; }
+    virtual const std::string& getRemotePeer() { return remote_peer; }
 
-    /**
-     * Get the port for this connection
-     */
-    int getPort() const { return port; }
+    virtual void write(const rapidjson::StringBuffer* buf);
 
 private:
     OpflexListener* listener;
 
-    std::string hostname;
-    int port;
+    std::string remote_peer;
+
+    uv_tcp_t tcp_handle;
+    uv_shutdown_t shutdown;
+
+    static void shutdown_cb(uv_shutdown_t* req, int status);
 };
 
 
