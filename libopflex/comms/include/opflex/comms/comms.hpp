@@ -11,38 +11,72 @@
 #define _INCLUDE__OPFLEX__COMMS_HPP
 
 #include <uv.h>
-#include <boost/function.hpp>
 
 namespace opflex { namespace comms {
 
-namespace internal {
+int  initLoop(uv_loop_t * loop);
+void finiLoop(uv_loop_t * loop);
 
-class CommunicationPeer;
-class ActivePeer;
-class ListeningPeer;
-
-typedef boost::function<void (CommunicationPeer *)> ConnectionHandler;
-
+namespace StateChange {
+enum {
+    CONNECT,
+    DISCONNECT,
+    FAILURE,
+};
 }
 
+class Peer;
+typedef void (*state_change_cb)(Peer *, void * data, int stateChange, int error);
 typedef uv_loop_t * (*uv_loop_selector_fn)(void);
 
-int  initCommunicationLoop(uv_loop_t * loop);
-void finiCommunicationLoop(uv_loop_t * loop);
+class Peer {
 
-int comms_passive_listener(
-        internal::ConnectionHandler & connectionHandler,
-        char const * ip_address, uint16_t port,
+  public:
+
+    static Peer * create(
+        char const * host,
+        char const * service,
+        state_change_cb connectionHandler,
+        void * data = NULL,
+        uv_loop_selector_fn uv_loop_selector = NULL
+    );
+
+    virtual void destroy() = 0;
+
+    virtual void startKeepAlive(
+            uint64_t interval = 2500,
+            uint64_t begin = 100,
+            uint64_t repeat = 1250) = 0;
+
+    virtual void stopKeepAlive() = 0;
+
+  protected:
+    Peer() {}
+    ~Peer() {}
+};
+
+class Listener;
+typedef void * (*accept_cb)(Listener *, void * data, int error);
+
+class Listener {
+  public:
+
+    static Listener * create(
+        char const * ip_address,
+        uint16_t port,
+        state_change_cb connectionHandler,
+        accept_cb acceptHandler = NULL,
+        void * data = NULL,
         uv_loop_t * listener_uv_loop = NULL,
-        uv_loop_selector_fn uv_loop_selector = NULL,
-        opflex::comms::internal::ListeningPeer * peer = NULL);
+        uv_loop_selector_fn uv_loop_selector = NULL
+    );
 
-int comms_active_connection(
-        internal::ConnectionHandler & connectionHandler,
-        char const * host = NULL,
-        char const * service = NULL,
-        uv_loop_selector_fn uv_loop_selector = NULL,
-        opflex::comms::internal::ActivePeer * peer = NULL);
+    virtual void destroy() = 0;
+
+  protected:
+    Listener() {}
+    ~Listener() {}
+};
 
 }}
 
