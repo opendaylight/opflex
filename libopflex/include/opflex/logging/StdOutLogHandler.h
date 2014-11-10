@@ -30,15 +30,18 @@ public:
      * 
      * @param logLevel the minimum log level
      */
-    StdOutLogHandler(Level logLevel);
-    virtual ~StdOutLogHandler();
+    StdOutLogHandler(Level logLevel)
+        __attribute__((no_instrument_function));
+    virtual ~StdOutLogHandler()
+        __attribute__((no_instrument_function));
 
     /* see OFLogHandler */
     virtual void handleMessage(const std::string& file,
                                const int line,
                                const std::string& function,
                                const Level level,
-                               const std::string& message);
+                               const std::string& message)
+        __attribute__((no_instrument_function));
 };
 
 } /* namespace logging */

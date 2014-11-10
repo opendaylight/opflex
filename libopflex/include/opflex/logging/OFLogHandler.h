@@ -56,6 +56,7 @@ public:
      * Log levels for OpFlex framework logging
      */
     enum Level {
+        TRACE,
         DEBUG,
         INFO,
         WARNING,
@@ -72,8 +73,11 @@ public:
      * 
      * @param logLevel the minimum log level
      */
-    OFLogHandler(Level logLevel);
-    virtual ~OFLogHandler();
+    OFLogHandler(Level logLevel)
+        __attribute__((no_instrument_function));
+
+    virtual ~OFLogHandler()
+        __attribute__((no_instrument_function));
 
     /**
      * Process a single log message.  This file is called
@@ -99,9 +103,8 @@ public:
      * @param level the level of a message to log
      * @return true if the log level could be allowed
      */
-    virtual bool shouldEmit(const Level level) {
-        return level >= logLevel_;
-    }
+    virtual bool shouldEmit(const Level level)
+        __attribute__((no_instrument_function));
 
     /**
      * Register a custom handler as the log handler.  You must ensure
@@ -110,7 +113,8 @@ public:
      * 
      * @param handler the customer handler to register
      */
-    static void registerHandler(OFLogHandler& handler);
+    static void registerHandler(OFLogHandler& handler)
+        __attribute__((no_instrument_function));
 
     /**
      * Get the currently-active log handler.  Returns the default
@@ -118,7 +122,8 @@ public:
      *
      * @return the currently-active log handler
      */
-    static OFLogHandler* getHandler();
+    static OFLogHandler* getHandler()
+        __attribute__((no_instrument_function));
 
 protected:
     /**

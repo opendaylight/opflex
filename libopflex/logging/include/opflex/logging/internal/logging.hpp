@@ -28,9 +28,8 @@ class Logger {
     /**
      * Get the output buffer to write to
      */
-    std::ostream & stream() {
-        return buffer_;
-    }
+    std::ostream & stream()
+        __attribute__((no_instrument_function));
 
     /**
      * Construct a new logger to handle a specific message
@@ -44,14 +43,10 @@ class Logger {
            char const * file,
            int const line,
            char const * function)
-        :
-            level_(level),
-            file_(file),
-            line_(line),
-            function_(function)
-        {}
+        __attribute__((no_instrument_function));
 
-    ~Logger();
+    ~Logger()
+        __attribute__((no_instrument_function));
 
 private:
     OFLogHandler::Level const level_;
@@ -65,6 +60,11 @@ private:
 } /* namespace internal */
 } /* namespace logging */
 } /* namespace opflex */
+
+/**
+ * Counter-productive macro for trace log level
+ */
+#define TRACE opflex::logging::OFLogHandler::TRACE
 
 /**
  * Convenience macro for debug log level

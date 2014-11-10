@@ -30,5 +30,9 @@ OFLogHandler* OFLogHandler::getHandler() {
     return &defaultHandler;
 }
 
+bool OFLogHandler::shouldEmit(const Level level) {
+    return level >= logLevel_;
+}
+
 } /* namespace logging */
 } /* namespace opflex */

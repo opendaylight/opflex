@@ -84,6 +84,12 @@ AC_ARG_ENABLE(comms,
              [separate_comms='false'])
 AM_CONDITIONAL(SEPARATE_COMMS, [test x$separate_comms != 'xfalse'])
 
+dnl Create an option to trace all of the function calls within the communications library
+AC_ARG_ENABLE(comms-trace,
+              AS_HELP_STRING([--enable-comms-trace],
+                             [Trace all function calls within opflex communications library]))
+AM_CONDITIONAL(TRACING_COMMS, [test x$enable_comms_trace = 'xyes'])
+
 # ---------------------------------------------------------------
 # Environment introspection
 
