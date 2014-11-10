@@ -161,4 +161,42 @@ opflex::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
     return opflex::rpc::MessageFactory::getInboundMessage(*this, docIn_);
 }
 
+bool Peer::__checkInvariants() const {
+    return true;
+}
+
+bool CommunicationPeer::__checkInvariants() const {
+
+    if (status_ != kPS_ONLINE) {
+        return Peer::__checkInvariants();
+    }
+
+    if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
+        LOG(DEBUG) << this
+            << " keepAliveInterval_ = " << keepAliveInterval_
+            << " keepAliveTimer_ = " << (
+            uv_is_active((uv_handle_t *)&keepAliveTimer_) ? "" : "in")
+            << "active"
+        ;
+    }
+    return
+        (!!keepAliveInterval_ == !!uv_is_active((uv_handle_t *)&keepAliveTimer_))
+
+        &&
+
+        Peer::__checkInvariants();
+}
+
+bool ActivePeer::__checkInvariants() const {
+    return CommunicationPeer::__checkInvariants();
+}
+
+bool PassivePeer::__checkInvariants() const {
+    return CommunicationPeer::__checkInvariants();
+}
+
+bool ListeningPeer::__checkInvariants() const {
+    return Peer::__checkInvariants();
+}
+
 }}}

@@ -195,9 +195,7 @@ class Peer : public SafeListBaseHook {
 #else
     static
 #endif
-    bool __checkInvariants() const {
-        return true;
-    }
+    bool __checkInvariants() const __attribute__((no_instrument_function));
 
     /**
      * Get the uv_loop_t * for this peer
@@ -286,27 +284,7 @@ class CommunicationPeer : public Peer {
 #endif
 
 #ifndef NDEBUG
-    virtual bool __checkInvariants() const {
-
-        if (status_ != kPS_ONLINE) {
-            return Peer::__checkInvariants();
-        }
-
-        if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
-            LOG(DEBUG) << this
-                << " keepAliveInterval_ = " << keepAliveInterval_
-                << " keepAliveTimer_ = " << (
-                uv_is_active((uv_handle_t *)&keepAliveTimer_) ? "" : "in")
-                << "active"
-            ;
-        }
-        return
-            (!!keepAliveInterval_ == !!uv_is_active((uv_handle_t *)&keepAliveTimer_))
-
-            &&
-
-            Peer::__checkInvariants();
-    }
+    virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
 
     size_t readChunk(char const * buffer) {
@@ -598,9 +576,7 @@ class ActivePeer : public CommunicationPeer {
     }
 
 #ifndef NDEBUG
-    virtual bool __checkInvariants() const {
-        return CommunicationPeer::__checkInvariants();
-    }
+    virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
 
   protected:
@@ -658,9 +634,7 @@ class PassivePeer : public CommunicationPeer {
 #endif
 
 #ifndef NDEBUG
-    virtual bool __checkInvariants() const {
-        return CommunicationPeer::__checkInvariants();
-    }
+    virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
 
   protected:
@@ -726,9 +700,7 @@ class ListeningPeer : public Peer {
     }
 
 #ifndef NDEBUG
-    virtual bool __checkInvariants() const {
-        return Peer::__checkInvariants();
-    }
+    virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
 
     struct sockaddr_storage listen_on;
