@@ -27,6 +27,11 @@ std::ostream& operator<< (std::ostream& os, Peer const * p) {
         << "[" << p->uvRefCnt_ << "]";
 }
 
+std::ostream& operator<< (std::ostream& os, Peer::LoopData const * lD) {
+    return os << "{" << reinterpret_cast<void const *>(lD) << "}"
+        << "[" << lD->refCount_ << "]";
+}
+
 CommunicationPeer * Peer::get(uv_write_t * r) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(r->data);
 
