@@ -33,6 +33,7 @@
 namespace opflex { namespace comms { namespace internal {
 
 using namespace opflex::comms;
+class ActivePeer;
 
 /* we pick the storage class specifier here, and omit it at the definitions */
 void alloc_cb(uv_handle_t * _, size_t size, uv_buf_t* buf);
@@ -70,6 +71,8 @@ class Peer : public SafeListBaseHook {
         typedef enum {
           ONLINE,
           LISTENING,
+          TO_RESOLVE,
+          TO_LISTEN,
           RETRY_TO_CONNECT,
           RETRY_TO_LISTEN,
           ATTEMPTING_TO_CONNECT,
@@ -79,15 +82,21 @@ class Peer : public SafeListBaseHook {
           TOTAL_STATES
         } PeerState;
 
+        explicit LoopData(uv_loop_t * loop)
+        :
+            lastRun_(uv_now(loop)),
+            destroying_(0),
+            refCount_(1)
+        {
 #ifdef COMMS_DEBUG_OBJECT_COUNT
-        explicit LoopData() {
             ++counter;
+#endif
+            uv_idle_init(loop, &idle_);
+            uv_idle_start(&idle_, &onIdleLoop);
+            idle_.data = this;
         }
 
-        ~LoopData() {
-            --counter;
-        }
-
+#ifndef NDEBUG
         static size_t getCounter() {
             return counter;
         }
@@ -104,6 +113,68 @@ class Peer : public SafeListBaseHook {
                 Peer::LoopData::PeerState peerState) {
             return &getLoopData(uv_loop)->peers[peerState];
         }
+
+        void onIdleLoop() __attribute__((no_instrument_function));
+
+        void destroy();
+
+        struct RetryPeer {
+            void operator()(Peer *peer)
+            {
+                LOG(DEBUG) << peer << " retry";
+                peer->retry();
+            }
+        };
+
+        void up() {
+            LOG(DEBUG) << this
+                << " LoopRefCnt: " << refCount_ << " -> " << refCount_ + 1;
+
+            ++refCount_;
+        }
+
+        void down() {
+            LOG(DEBUG) << this
+                << " LoopRefCnt: " << refCount_ << " -> " << refCount_ - 1;
+
+            assert(refCount_);
+
+            --refCount_;
+
+            if (destroying_ && !refCount_) {
+                LOG(INFO) << this << " stopping uv_loop";
+                uv_stop(idle_.loop);
+                LOG(INFO) << this << " deleting loop data";
+                delete this;
+            }
+        }
+
+        void ensureResolvePending();
+
+      private:
+        friend std::ostream& operator<< (std::ostream&, Peer::LoopData const *);
+
+        ~LoopData() {
+#ifndef NDEBUG
+            --counter;
+#endif
+        }
+
+        struct PeerDisposer {
+            void operator()(Peer *peer)
+            {
+                LOG(INFO) << peer << " destroy() because this communication thread is shutting down";
+                peer->destroy();
+            }
+        };
+
+        static void onIdleLoop(uv_idle_t *) __attribute__((no_instrument_function));
+        static void fini(uv_handle_t *);
+
+        uv_idle_t idle_;
+        uint64_t lastRun_;
+        bool destroying_;
+        uint64_t refCount_;
     };
 
     template <typename T, typename U>
@@ -157,6 +228,7 @@ class Peer : public SafeListBaseHook {
             {
                 handle_.data = this;
                 handle_.loop = uv_loop_selector_();
+                getLoopData()->up();
 #ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
 #endif
@@ -165,6 +237,8 @@ class Peer : public SafeListBaseHook {
 #ifndef NDEBUG
     virtual char const * peerType() const {return "?";} //= 0;
 #endif
+
+    virtual void retry() = 0;
 
     void up() {
 
@@ -245,14 +319,19 @@ class Peer : public SafeListBaseHook {
   protected:
     /* don't leak memory! */
     virtual ~Peer() {
+        getLoopData()->down();
 #ifdef COMMS_DEBUG_OBJECT_COUNT
         --counter;
 #endif
     }
+  private:
+    Peer::LoopData * getLoopData() const {
+        return Peer::LoopData::getLoopData(getUvLoop());
+    }
     friend std::ostream& operator<< (std::ostream&, Peer const *);
 };
 
-class CommunicationPeer : public Peer {
+class CommunicationPeer : public Peer, virtual public ::opflex::comms::Peer {
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT
     static ::boost::atomic<size_t> counter;
@@ -260,12 +339,15 @@ class CommunicationPeer : public Peer {
   public:
 
     explicit CommunicationPeer(bool passive,
-        ConnectionHandler & connectionHandler,
+        state_change_cb connectionHandler,
+        void * data,
         uv_loop_selector_fn uv_loop_selector = NULL,
         Peer::PeerStatus status = kPS_UNINITIALIZED)
             :
-                Peer(passive, uv_loop_selector, status),
+                internal::Peer(passive, uv_loop_selector, status),
+                ::opflex::comms::Peer(),
                 connectionHandler_(connectionHandler),
+                data_(data),
                 writer_(s_),
                 nextId_(0),
                 keepAliveInterval_(0),
@@ -286,6 +368,7 @@ class CommunicationPeer : public Peer {
 #ifndef NDEBUG
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
+    virtual void retry() = 0;
 
     size_t readChunk(char const * buffer) {
         ssize_t chunk_size = - ssIn_.tellp();
@@ -330,7 +413,7 @@ class CommunicationPeer : public Peer {
         }
 
         /* FIXME: handle errors!!! */
-        return uv_write(&write_req,
+        return uv_write(&write_req_,
                 (uv_stream_t*) &handle_,
                 (uv_buf_t*)&iov[0],
                 size,
@@ -338,7 +421,7 @@ class CommunicationPeer : public Peer {
 
     }
 
-    void startKeepAlive(
+    virtual void startKeepAlive(
             uint64_t interval = 2500,
             uint64_t begin = 100,
             uint64_t repeat = 1250) {
@@ -356,7 +439,7 @@ class CommunicationPeer : public Peer {
         uv_timer_start(&keepAliveTimer_, on_timeout, begin, repeat);
     }
 
-    void stopKeepAlive() {
+    virtual void stopKeepAlive() {
         LOG(DEBUG) << this;
      // assert(keepAliveInterval_ && uv_is_active((uv_handle_t *)&keepAliveTimer_));
 
@@ -403,6 +486,10 @@ class CommunicationPeer : public Peer {
         return uv_now(getUvLoop());
     }
 
+    void onError(int error) {
+        connectionHandler_(this, data_, ::opflex::comms::StateChange::FAILURE, error);
+    }
+
     void onConnect() {
         connected_ = 1;
         keepAliveTimer_.data = this;
@@ -411,7 +498,7 @@ class CommunicationPeer : public Peer {
         uv_timer_init(getUvLoop(), &keepAliveTimer_);
         uv_unref((uv_handle_t*) &keepAliveTimer_);
 
-        connectionHandler_(this);
+        connectionHandler_(this, data_, StateChange::CONNECT, 0);
     }
 
     void onDisconnect() {
@@ -427,6 +514,9 @@ class CommunicationPeer : public Peer {
         uv_close((uv_handle_t*)&handle_, on_close);
 
         unlink();
+
+        /* FIXME: might be called too many times? */
+        connectionHandler_(this, data_, 0, StateChange::DISCONNECT);
 
         if (destroying_) {
             return;
@@ -463,9 +553,9 @@ class CommunicationPeer : public Peer {
     }
 
     union {
-        mutable uv_write_t write_req;
-        uv_connect_t connect_req;
-        uv_getaddrinfo_t dns_req;
+        mutable uv_write_t write_req_;
+        uv_connect_t connect_req_;
+        uv_getaddrinfo_t dns_req_;
         uv_req_t req_;
     };
 
@@ -509,7 +599,8 @@ class CommunicationPeer : public Peer {
     }
 
   private:
-    ConnectionHandler connectionHandler_;
+    state_change_cb connectionHandler_;
+    void * data_;
 
     rapidjson::Document docIn_;
     std::stringstream ssIn_;
@@ -533,12 +624,14 @@ class ActivePeer : public CommunicationPeer {
     explicit ActivePeer(
             char const * hostname,
             char const * service,
-            ConnectionHandler connectionHandler,
+            state_change_cb connectionHandler,
+            void * data,
             uv_loop_selector_fn uv_loop_selector = NULL)
         :
             CommunicationPeer(
                     false,
                     connectionHandler,
+                    data,
                     uv_loop_selector,
                     kPS_RESOLVING),
             hostname_(hostname),
@@ -561,6 +654,8 @@ class ActivePeer : public CommunicationPeer {
     }
 #endif
 
+    virtual void retry();
+
     void reset(uv_loop_selector_fn uv_loop_selector = NULL) {
         unlink();
         if (!uv_loop_selector_) {
@@ -579,6 +674,14 @@ class ActivePeer : public CommunicationPeer {
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
 
+    char const * getHostname() const {
+        return hostname_;
+    }
+
+    char const * getService() const {
+        return service_;
+    }
+
   protected:
     /* don't leak memory! */
     virtual ~ActivePeer() {
@@ -596,12 +699,14 @@ class PassivePeer : public CommunicationPeer {
 #endif
   public:
     explicit PassivePeer(
-            ConnectionHandler connectionHandler,
+            state_change_cb connectionHandler,
+            void * data,
             uv_loop_selector_fn uv_loop_selector = NULL)
         :
             CommunicationPeer(
                     true,
                     connectionHandler,
+                    data,
                     uv_loop_selector,
                     kPS_RESOLVING)
         {
@@ -621,6 +726,10 @@ class PassivePeer : public CommunicationPeer {
         return "P";
     }
 #endif
+
+    virtual void retry() {
+        assert(0);
+    }
 
 #ifdef PASSIVE_PEER_COULD_BE_RESET
     void reset(uv_loop_selector_fn uv_loop_selector = NULL) {
@@ -646,18 +755,23 @@ class PassivePeer : public CommunicationPeer {
     }
 };
 
-class ListeningPeer : public Peer {
+class ListeningPeer : public Peer, virtual public ::opflex::comms::Listener {
 #ifdef COMMS_DEBUG_OBJECT_COUNT
     static ::boost::atomic<size_t> counter;
 #endif
   public:
     explicit ListeningPeer(
-            ConnectionHandler & connectionHandler,
+            state_change_cb connectionHandler,
+            accept_cb acceptHandler,
+            void * data,
             uv_loop_t * listener_uv_loop = NULL,
             uv_loop_selector_fn uv_loop_selector = NULL)
         :
             connectionHandler_(connectionHandler),
-            Peer(false, uv_loop_selector, kPS_UNINITIALIZED)
+            acceptHandler_(acceptHandler),
+            data_(data),
+            ::opflex::comms::internal::Peer(false, uv_loop_selector, kPS_UNINITIALIZED),
+            ::opflex::comms::Listener()
         {
             _.listener.uv_loop = listener_uv_loop ? : uv_default_loop();
 #ifdef COMMS_DEBUG_OBJECT_COUNT
@@ -676,6 +790,12 @@ class ListeningPeer : public Peer {
         return "L";
     }
 #endif
+    void onError(int error) {
+        if(acceptHandler_) {
+            acceptHandler_(this, data_, error);
+        }
+    }
+    virtual void retry();
 
     void reset(uv_loop_t * listener_uv_loop = NULL,
             uv_loop_selector_fn uv_loop_selector = NULL) {
@@ -702,10 +822,31 @@ class ListeningPeer : public Peer {
 #ifndef NDEBUG
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
+    state_change_cb getConnectionHandler() const {
+        return connectionHandler_;
+    }
 
-    struct sockaddr_storage listen_on;
+    void * getConnectionHandlerData() {
+        return
+            acceptHandler_
+            ?
+            acceptHandler_(this, data_, 0)
+            :
+            NULL;
+    }
 
-    ConnectionHandler connectionHandler_;
+    uv_loop_selector_fn getUvLoopSelector() const {
+        return uv_loop_selector_;
+    }
+
+    int setAddrFromIpAndPort(const char * ip_address, uint16_t port);
+
+  private:
+    struct sockaddr_storage listen_on_;
+
+    state_change_cb const connectionHandler_;
+    accept_cb const acceptHandler_;
+    void * const data_;
 };
 
 }}}

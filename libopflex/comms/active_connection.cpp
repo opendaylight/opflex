@@ -41,13 +41,34 @@ using namespace opflex::comms::internal;
                                                              (Public interfaces)
 */
 
-/* only pass peer when re-attempting to listen following a failure */
-int comms_active_connection(
-        ConnectionHandler & connectionHandler,
-        char const * host, char const * service,
-        uv_loop_selector_fn uv_loop_selector, ActivePeer * peer) {
+::opflex::comms::Peer * ::opflex::comms::Peer::create(
+        char const * host,
+        char const * service,
+        state_change_cb connectionHandler,
+        void * data,
+        uv_loop_selector_fn uv_loop_selector
+    ) {
 
     LOG(INFO) << host << ":" << service;
+
+    ActivePeer * peer;
+    if (!(peer = new (std::nothrow) ActivePeer(
+                    host,
+                    service,
+                    connectionHandler,
+                    data,
+                    uv_loop_selector))) {
+        LOG(WARNING) << ": out of memory, dropping new peer on the floor";
+        return NULL;
+    }
+
+    LOG(DEBUG) << peer << " queued up for resolution";
+    peer->insert(internal::Peer::LoopData::TO_RESOLVE);
+
+    return peer;
+}
+
+void ::opflex::comms::internal::ActivePeer::retry() {
 
     struct addrinfo const hints = (struct addrinfo){
         /* .ai_flags    = */ 0,
@@ -56,32 +77,24 @@ int comms_active_connection(
         /* .ai_protocol = */ IPPROTO_TCP,
     };
 
-    if (peer) {
-        peer->reset(uv_loop_selector);
-    } else {
-        if (!(peer = new (std::nothrow) ActivePeer(
-                        host,
-                        service,
-                        connectionHandler,
-                        uv_loop_selector))) {
-            LOG(WARNING) << ": out of memory, dropping new peer on the floor";
-            return UV_ENOMEM;
-        }
-    }
-
     int rc;
-    if ((rc = uv_getaddrinfo(peer->getUvLoop(), &peer->dns_req,
-                    on_resolved, host, service, &hints))) {
+    if ((rc = uv_getaddrinfo(
+                    getUvLoop(),
+                    &dns_req_,
+                    on_resolved,
+                    getHostname(),
+                    getService(),
+                    &hints))) {
         LOG(WARNING) << "uv_getaddrinfo: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
+        onError(rc);
+        insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
     } else {
-        LOG(DEBUG) << peer << " up() for a pending getaddrinfo()";
-        peer->up();
-        peer->insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
+        LOG(DEBUG) << this << " up() for a pending getaddrinfo()";
+        up();
+        insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
     }
 
-    return rc;
 }
 
 
@@ -328,7 +341,7 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
 
     int rc = UV_EAI_FAIL;
 
-    while (ai && (rc = uv_tcp_connect(&peer->connect_req, &peer->handle_,
+    while (ai && (rc = uv_tcp_connect(&peer->connect_req_, &peer->handle_,
                 ai->ai_addr, on_active_connection))) {
         LOG(ai ? INFO : WARNING) << "uv_tcp_connect: [" << uv_err_name(rc) <<
             "] " << uv_strerror(rc);

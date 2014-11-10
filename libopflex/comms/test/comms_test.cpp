@@ -16,10 +16,9 @@
 #include <boost/test/unit_test_log.hpp>
 
 #include <dlfcn.h>
+#include <cstring>
 
-using opflex::comms::comms_passive_listener;
-using opflex::comms::comms_active_connection;
-using namespace opflex::comms::internal;
+using namespace opflex::comms;
 
 BOOST_AUTO_TEST_SUITE(asynchronous_sockets)
 
@@ -41,73 +40,73 @@ BOOST_GLOBAL_FIXTURE( CommsTests );
  */
 class CommsFixture {
   private:
-    uv_idle_t  * idler;
-    uv_timer_t * timer;
+    uv_idle_t  idler_;
+    uv_timer_t timer_;
+    uv_loop_t * loop_;
 
   protected:
-    CommsFixture()
-        :
-            idler((typeof(idler))malloc(sizeof(*idler))),
-            timer((typeof(timer))malloc(sizeof(*timer))) {
+    CommsFixture() : loop_(uv_default_loop()) {
 
         LOG(INFO) << "\n\n\n\n\n\n\n\n";
 
-        LOG(DEBUG) << "idler = " << idler;
-        LOG(DEBUG) << "timer = " << timer;
-        idler->data = timer->data = this;
+        idler_.data = timer_.data = this;
 
-        int rc = opflex::comms::initCommunicationLoop(uv_default_loop());
+        int rc = opflex::comms::initLoop(loop_);
 
         BOOST_CHECK(!rc);
 
-        for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
-            BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                        Peer::LoopData::PeerState(i))
+        for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
+            BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                        internal::Peer::LoopData::PeerState(i))
                     ->size(), 0);
         }
 
-        uv_idle_init(uv_default_loop(), idler);
-        uv_idle_start(idler, check_peer_db_cb);
-
-        uv_timer_init(uv_default_loop(), timer);
-        uv_timer_start(timer, timeout_cb, 1800, 0);
-        uv_unref((uv_handle_t*) timer);
+        internal::Peer::LoopData::getLoopData(loop_)->up();
+        uv_timer_init(uv_default_loop(), &timer_);
+        uv_timer_start(&timer_, timeout_cb, 7200, 0);
+        uv_unref((uv_handle_t*) &timer_);
 
     }
 
     struct PeerDisposer {
-        void operator()(Peer *peer)
+        void operator()(internal::Peer *peer)
         {
             LOG(DEBUG) << peer << " destroy() with intent of deleting";
             peer->destroy();
         }
     };
 
+    static void down_on_close(uv_handle_t * h) {
+        internal::Peer::LoopData::getLoopData(h->loop)->down();
+    }
+
     void cleanup() {
 
         LOG(DEBUG);
 
-        uv_timer_stop(timer);
-        uv_idle_stop(idler);
+        uv_timer_stop(&timer_);
+        uv_idle_stop(&idler_);
 
-        for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
+        uv_close((uv_handle_t *)&timer_, down_on_close);
+        uv_close((uv_handle_t *)&idler_, down_on_close);
+
+        opflex::comms::finiLoop(uv_default_loop());
+
+#if 0
+        for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
             LOG(DEBUG) << " Clearing up peers in state " << i;
-            Peer::LoopData::getPeerList(uv_default_loop(),
-                        Peer::LoopData::PeerState(i))
+            internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                        internal::Peer::LoopData::PeerState(i))
                 ->clear_and_dispose(PeerDisposer());
 
         }
 
         uv_idle_start(idler, wait_for_zero_peers_cb);
+#endif
 
     }
 
     ~CommsFixture() {
-
-        uv_close((uv_handle_t *)timer, (uv_close_cb)free);
-        uv_close((uv_handle_t *)idler, (uv_close_cb)free);
-
-        opflex::comms::finiCommunicationLoop(uv_default_loop());
 
         LOG(INFO) << "\n\n\n\n\n\n\n\n";
 
@@ -128,31 +127,31 @@ class CommsFixture {
         size_t final_peers = 0;
 
         size_t m;
-        if((m=Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerList(
                     uv_default_loop(),
                     internal::Peer::LoopData::ONLINE)->size())) {
             final_peers += m;
             dbgLog << " online: " << m;
         }
-        if((m=Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerList(
                     uv_default_loop(),
                     internal::Peer::LoopData::RETRY_TO_CONNECT)->size())) {
             final_peers += m;
             dbgLog << " retry-connecting: " << m;
         }
-        if((m=Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerList(
                     uv_default_loop(),
                     internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)->size())) {
             /* this is not a "final" state, from a test's perspective */
             dbgLog << " attempting: " << m;
         }
-        if((m=Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerList(
                     uv_default_loop(),
                     internal::Peer::LoopData::RETRY_TO_LISTEN)->size())) {
             final_peers += m;
             dbgLog << " retry-listening: " << m;
         }
-        if((m=Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerList(
                     uv_default_loop(),
                     internal::Peer::LoopData::LISTENING)->size())) {
             final_peers += m;
@@ -172,10 +171,11 @@ class CommsFixture {
         return final_peers;
     }
 
+#if 0
     static void wait_for_zero_peers_cb(uv_idle_t * handle) {
 
         static size_t old_count;
-        size_t count = Peer::getCounter();
+        size_t count = internal::Peer::getCounter();
 
         if (count) {
             if (old_count != count) {
@@ -190,8 +190,48 @@ class CommsFixture {
         uv_stop(uv_default_loop());
 
     }
+#endif
+
+    static void dump_peer_db_brief() {
+
+        static std::string oldDbgLog;
+        std::stringstream dbgLog;
+        std::string newDbgLog;
+
+#if 1
+        for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
+            internal::Peer::List * pL = internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                        internal::Peer::LoopData::PeerState(i));
+
+            dbgLog << "\n";
+
+            dbgLog << " pL #" << i << " @" << pL;
+
+            dbgLog
+                << "[" << static_cast<void*>(&*pL->begin())
+                << "->" << static_cast<void*>(&*pL->end()) << "]{"
+                << (
+                        static_cast<char*>(static_cast<void*>(&*pL->end()))
+                    -
+                        static_cast<char*>(static_cast<void*>(&*pL->begin()))
+                   )
+                << "}";
+        }
+#endif
+
+        newDbgLog = dbgLog.str();
+
+        if (oldDbgLog != newDbgLog) {
+            oldDbgLog = newDbgLog;
+
+            LOG(DEBUG) << newDbgLog;
+        }
+
+    }
 
     static void check_peer_db_cb(uv_idle_t * handle) {
+
+        dump_peer_db_brief();
 
         static std::string oldDbgLog;
         std::stringstream dbgLog;
@@ -201,12 +241,21 @@ class CommsFixture {
         bool peerGood;
 
         /* check all easily reachable peers' invariants */
-        for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
-            Peer::List * pL = Peer::LoopData::getPeerList(uv_default_loop(),
-                        Peer::LoopData::PeerState(i));
+#if 1
+        for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
+            internal::Peer::List * pL = internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                        internal::Peer::LoopData::PeerState(i));
+
+            dbgLog << "\n";
+
             dbgLog << " pL #" << i << " @" << pL;
 
-            for(Peer::List::iterator it = pL->begin(); it != pL->end(); ++it) {
+            dbgLog
+                << "[" << static_cast<void*>(&*pL->begin())
+                << "->" << static_cast<void*>(&*pL->end()) << "]("
+                << pL->size() << ")";
+
+            for(internal::Peer::List::iterator it = pL->begin(); it != pL->end(); ++it) {
                 dbgLog << " peer " << &*it;
                 peerGood = it->__checkInvariants();
                 if (!peerGood) {
@@ -215,6 +264,7 @@ class CommsFixture {
                 }
             }
         }
+#endif
 
         newDbgLog = dbgLog.str();
 
@@ -230,7 +280,9 @@ class CommsFixture {
             return;
         }
 
-        (*required_post_conditions)();
+        if (required_post_conditions) {
+            (*required_post_conditions)();
+        }
 
         reinterpret_cast<CommsFixture*>(handle->data)->cleanup();
 
@@ -244,7 +296,9 @@ class CommsFixture {
             BOOST_CHECK(!"the test has timed out");
         }
 
-        (*required_post_conditions)();
+        if (required_post_conditions) {
+            (*required_post_conditions)();
+        }
 
         reinterpret_cast<CommsFixture*>(handle->data)->cleanup();
 
@@ -257,6 +311,10 @@ class CommsFixture {
         required_final_peers = final_peers;
         required_post_conditions = post_conditions;
         expect_timeout = timeout;
+
+        internal::Peer::LoopData::getLoopData(loop_)->up();
+        uv_idle_init(uv_default_loop(), &idler_);
+        uv_idle_start(&idler_, check_peer_db_cb);
 
         uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -272,6 +330,8 @@ BOOST_FIXTURE_TEST_CASE( test_initialization, CommsFixture ) {
 
     LOG(DEBUG);
 
+    loop_until_final(0, NULL);
+
 }
 
 void pc_successful_connect(void) {
@@ -279,59 +339,74 @@ void pc_successful_connect(void) {
     LOG(DEBUG);
 
     /* empty */
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::RETRY_TO_CONNECT)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::RETRY_TO_LISTEN)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::ATTEMPTING_TO_CONNECT)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
 
     /* non-empty */
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::ONLINE)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::ONLINE)
             ->size(), 2);
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::LISTENING)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::LISTENING)
             ->size(), 1);
 
 }
 
-class DoNothingOnConnect {
-  public:
-    void operator()(opflex::comms::internal::CommunicationPeer * p) {
-        LOG(INFO) << "chill out, we just had a" << (
-                p->passive_ ? " pass" : "n act"
-            ) << "ive connection";
+void DoNothingOnConnect (opflex::comms::Peer * p, void * data, int stateChange, int error) {
+    switch(stateChange) {
+        case StateChange::CONNECT:
+            LOG(INFO)
+                << "chill out, we just had a connection on "
+                << dynamic_cast< ::opflex::comms::internal::CommunicationPeer *>(p);
+            break;
+        case StateChange::DISCONNECT:
+            break;
+        case StateChange::FAILURE:
+            break;
+        default:
+            assert(0);
     }
-};
+}
 
-opflex::comms::internal::ConnectionHandler doNothingOnConnect = DoNothingOnConnect();
+opflex::comms::state_change_cb doNothingOnConnect = DoNothingOnConnect;
 
-class StartPingingOnConnect {
-  public:
-    void operator()(opflex::comms::internal::CommunicationPeer * p) {
-        p->startKeepAlive();
+void StartPingingOnConnect(opflex::comms::Peer * p, void * data, int stateChange, int error) {
+    switch(stateChange) {
+        case StateChange::CONNECT:
+            LOG(INFO)
+                << "starting keep-alive, as we just had a connection on "
+                << dynamic_cast< ::opflex::comms::internal::CommunicationPeer *>(p);
+            p->startKeepAlive();
+            break;
+        case StateChange::DISCONNECT:
+            break;
+        case StateChange::FAILURE:
+            break;
+        default:
+            assert(0);
     }
-};
+}
 
-opflex::comms::internal::ConnectionHandler startPingingOnConnect = StartPingingOnConnect();
+opflex::comms::state_change_cb startPingingOnConnect = StartPingingOnConnect;
 
 BOOST_FIXTURE_TEST_CASE( test_ipv4, CommsFixture ) {
 
     LOG(DEBUG);
 
-    int rc;
+    ::opflex::comms::Listener * l = Listener::create("127.0.0.1", 65535, doNothingOnConnect);
 
-    rc = comms_passive_listener(doNothingOnConnect, "127.0.0.1", 65535);
+    BOOST_CHECK_EQUAL(!l, 0);
 
-    BOOST_CHECK_EQUAL(rc, 0);
+    ::opflex::comms::Peer * p = Peer::create("localhost", "65535", doNothingOnConnect);
 
-    rc = comms_active_connection(doNothingOnConnect, "localhost", "65535");
-
-    BOOST_CHECK_EQUAL(rc, 0);
+    BOOST_CHECK_EQUAL(!p, 0);
 
     loop_until_final(3, pc_successful_connect);
 
@@ -341,15 +416,13 @@ BOOST_FIXTURE_TEST_CASE( test_ipv6, CommsFixture ) {
 
     LOG(DEBUG);
 
-    int rc;
+    ::opflex::comms::Listener * l = Listener::create("::1", 65534, doNothingOnConnect);
 
-    rc = comms_passive_listener(doNothingOnConnect, "::1", 65534);
+    BOOST_CHECK_EQUAL(!l, 0);
 
-    BOOST_CHECK_EQUAL(rc, 0);
+    ::opflex::comms::Peer * p = Peer::create("localhost", "65534", doNothingOnConnect);
 
-    rc = comms_active_connection(doNothingOnConnect, "localhost", "65534");
-
-    BOOST_CHECK_EQUAL(rc, 0);
+    BOOST_CHECK_EQUAL(!p, 0);
 
     loop_until_final(3, pc_successful_connect);
 
@@ -360,22 +433,22 @@ static void pc_non_existent(void) {
     LOG(DEBUG);
 
     /* non-empty */
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::RETRY_TO_CONNECT)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::RETRY_TO_LISTEN)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::ATTEMPTING_TO_CONNECT)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::ONLINE)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::ONLINE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(Peer::LoopData::getPeerList(uv_default_loop(),
-                Peer::LoopData::LISTENING)
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+                internal::Peer::LoopData::LISTENING)
             ->size(), 0);
 
 }
@@ -384,9 +457,9 @@ BOOST_FIXTURE_TEST_CASE( test_non_existent_host, CommsFixture ) {
 
     LOG(DEBUG);
 
-    int rc = comms_active_connection(doNothingOnConnect, "non_existent_host.", "65533");
+    ::opflex::comms::Peer * p = Peer::create("non_existent_host.", "65533", doNothingOnConnect);
 
-    BOOST_CHECK_EQUAL(rc, 0);
+    BOOST_CHECK_EQUAL(!p, 0);
 
     loop_until_final(1, pc_non_existent);
 
@@ -396,9 +469,9 @@ BOOST_FIXTURE_TEST_CASE( test_non_existent_service, CommsFixture ) {
 
     LOG(DEBUG);
 
-    int rc = comms_active_connection(doNothingOnConnect, "127.0.0.1", "65533");
+    ::opflex::comms::Peer * p = Peer::create("127.0.0.1", "65533", doNothingOnConnect);
 
-    BOOST_CHECK_EQUAL(rc, 0);
+    BOOST_CHECK_EQUAL(!p, 0);
 
     loop_until_final(1, pc_non_existent);
 
@@ -408,15 +481,13 @@ BOOST_FIXTURE_TEST_CASE( test_keepalive, CommsFixture ) {
 
     LOG(DEBUG);
 
-    int rc;
+    ::opflex::comms::Listener * l = Listener::create("::1", 65532, startPingingOnConnect);
 
-    rc = comms_passive_listener(startPingingOnConnect, "::1", 65532);
+    BOOST_CHECK_EQUAL(!l, 0);
 
-    BOOST_CHECK_EQUAL(rc, 0);
+    ::opflex::comms::Peer * p = Peer::create("::1", "65532", startPingingOnConnect);
 
-    rc = comms_active_connection(startPingingOnConnect, "::1", "65532");
-
-    BOOST_CHECK_EQUAL(rc, 0);
+    BOOST_CHECK_EQUAL(!p, 0);
 
     loop_until_final(4, pc_successful_connect, true); // 4 is to cause a timeout
 

@@ -41,80 +41,93 @@ using namespace opflex::comms::internal;
                                                              (Public interfaces)
 */
 
-/* only pass peer when re-attempting to listen following a failure */
-int comms_passive_listener(
-        ConnectionHandler & connectionHandler,
-        char const * ip_address, uint16_t port,
-        uv_loop_t * listener_uv_loop, uv_loop_selector_fn uv_loop_selector,
-        ListeningPeer * peer) {
+::opflex::comms::Listener * ::opflex::comms::Listener::create(
+        char const * ip_address,
+        uint16_t port,
+        state_change_cb connectionHandler,
+        accept_cb acceptHandler,
+        void * data,
+        uv_loop_t * listener_uv_loop,
+        uv_loop_selector_fn uv_loop_selector
+    ) {
 
     LOG(INFO) << ip_address << ":" << port;
 
-    int rc;
-
-    /* well, this is not really a 'peer' */
-    if (peer) {
-        peer->reset(listener_uv_loop, uv_loop_selector);
-    } else {
-        if (!(peer = new (std::nothrow) ListeningPeer(
-                        connectionHandler,
-                        listener_uv_loop,
-                        uv_loop_selector))) {
-            LOG(WARNING) <<  "out of memory, unable to create listener";
-            return UV_ENOMEM;
-        }
-        if ((rc = addr_from_ip_and_port(ip_address, port,
-                        &((ListeningPeer *)peer)->listen_on))) {
-            LOG(WARNING) << "addr_from_ip_and_port: [" << uv_err_name(rc) <<
-                "] " << uv_strerror(rc);
-            return rc;
-        }
+    ListeningPeer * peer;
+    if (!(peer = new (std::nothrow) ListeningPeer(
+            connectionHandler,
+            acceptHandler,
+            data,
+            listener_uv_loop,
+            uv_loop_selector))) {
+        LOG(WARNING) <<  "out of memory, unable to create listener";
+        return NULL;
     }
 
-    if ((rc = uv_tcp_init(peer->uv_loop_selector_(), &peer->handle_))) {
+    int rc;
+
+    if ((rc = peer->setAddrFromIpAndPort(ip_address, port))) {
+        LOG(WARNING) << "addr_from_ip_and_port: [" << uv_err_name(rc) <<
+            "] " << uv_strerror(rc);
+        assert(0);
+        peer->destroy();
+        return NULL;
+    }
+
+    LOG(DEBUG) << peer << " queued up for listening";
+    peer->insert(internal::Peer::LoopData::TO_LISTEN);
+
+    return peer;
+}
+
+void ::opflex::comms::internal::ListeningPeer::retry() {
+
+    int rc;
+
+    if ((rc = uv_tcp_init(uv_loop_selector_(), &handle_))) {
         LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "]" <<
             uv_strerror(rc);
         goto failed_tcp_init;
     }
 
-    LOG(DEBUG) << peer << " up() for listening tcp init";
-    peer->up();
+    LOG(DEBUG) << this << " up() for listening tcp init";
+    up();
 
-    if ((rc = uv_tcp_bind(&peer->handle_,
-                (struct sockaddr *) &((ListeningPeer *)peer)->listen_on,
+    if ((rc = uv_tcp_bind(&handle_,
+                (struct sockaddr *) &listen_on_,
                 0))) {
         LOG(WARNING) << "uv_tcp_bind: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        peer->status_ = Peer::kPS_FAILED_BINDING;
+        status_ = Peer::kPS_FAILED_BINDING;
         goto failed_after_init;
     }
 
-    if ((rc = uv_listen((uv_stream_t*) &peer->handle_, 1024,
+    if ((rc = uv_listen((uv_stream_t*) &handle_, 1024,
                 on_passive_connection))) {
         LOG(WARNING) << "uv_tcp_listen: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        peer->status_ = Peer::kPS_FAILED_LISTENING;
+        status_ = Peer::kPS_FAILED_LISTENING;
         goto failed_after_init;
     }
 
-    peer->status_ = Peer::kPS_LISTENING;
+    status_ = Peer::kPS_LISTENING;
 
-    peer->insert(internal::Peer::LoopData::LISTENING);
+    insert(internal::Peer::LoopData::LISTENING);
 
     LOG(DEBUG) << "listening!";
 
-    peer->connected_ = 1;
+    connected_ = 1;
 
-    return 0;
+    return;
 
 failed_after_init:
     LOG(DEBUG) << "closing tcp handle because of immediate failure after init";
-    uv_close((uv_handle_t*) &peer->handle_, on_close);
+    uv_close((uv_handle_t*) &handle_, on_close);
 
 failed_tcp_init:
-    peer->insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
+    insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
 
-    return rc;
+    onError(rc);
 }
 
 
@@ -140,8 +153,9 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
     PassivePeer *peer;
 
     if (!(peer = new (std::nothrow) PassivePeer(
-                    listener->connectionHandler_,
-                    listener->uv_loop_selector_
+                    listener->getConnectionHandler(),
+                    listener->getConnectionHandlerData(),
+                    listener->getUvLoopSelector()
                     ))) {
         LOG(WARNING) << "out of memory, dropping new peer on the floor";
         return;
@@ -149,6 +163,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
 
     int rc;
     if ((rc = peer->tcpInit())) {
+        peer->onError(rc);
         peer->down();  // this is invoked with an intent to delete!
         return;
     }
@@ -156,12 +171,14 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
     if ((rc = uv_accept(server_handle, (uv_stream_t*) &peer->handle_))) {
         LOG(DEBUG) << "uv_accept: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
+        peer->onError(rc);
         uv_close((uv_handle_t*)&peer->handle_, on_close);
         return;
     }
     if ((rc = uv_read_start((uv_stream_t*) &peer->handle_, alloc_cb, on_read))) {
         LOG(WARNING) << "uv_read_start: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
+        peer->onError(rc);
         uv_close((uv_handle_t*)&peer->handle_, on_close);
         return;
     }
@@ -184,22 +201,23 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
                          |___/
 */
 
-int addr_from_ip_and_port(const char * ip_address, uint16_t port,
-        struct sockaddr_storage * addr) {
+int ::opflex::comms::internal::ListeningPeer::setAddrFromIpAndPort(
+        const char * ip_address,
+        uint16_t port) {
 
     LOG(DEBUG);
 
 #ifndef NDEBUG
     /* make Valgrind happy */
-    *addr = sockaddr_storage();
+    listen_on_ = sockaddr_storage();
 #endif
 
     int rc;
     struct sockaddr_in* addr4;
     struct sockaddr_in6* addr6;
 
-    addr4 = (struct sockaddr_in*) addr;
-    addr6 = (struct sockaddr_in6*) addr;
+    addr4 = (struct sockaddr_in*) &listen_on_;
+    addr6 = (struct sockaddr_in6*) &listen_on_;
 
     if (!(rc = uv_inet_pton(AF_INET, ip_address, &addr4->sin_addr))) {
         addr4->sin_family = AF_INET;
