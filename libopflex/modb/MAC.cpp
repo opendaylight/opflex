@@ -96,6 +96,13 @@ std::string MAC::toString() const {
     return os.str();
 }
 
+void MAC::toUIntArray(/* out */uint8_t mac_[6]) const {
+    uint8_t* m8 = (uint8_t*)&mac;
+    for (int i = 0; i < 6; ++i) {
+        mac_[i] = m8[i];
+    }
+}
+
 bool operator==(const MAC& lhs, const MAC& rhs) {
     return lhs.mac == rhs.mac;
 }

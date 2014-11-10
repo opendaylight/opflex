@@ -22,37 +22,21 @@ namespace opflex {
 namespace enforcer {
 namespace flow {
 
-/**
- * Base class for an Entry in OpenFlow table.
- */
-class Entry {
-public:
-	/**
-	 * Return true if "match" part of entry are equal
-	 */
-    virtual bool MatchEq(const Entry *) = 0;
-
-    /**
-     * Return true if "action" part of entry are equal
-     */
-    virtual bool ActionEq(const Entry *) = 0;
-};
-typedef std::vector<Entry *>    EntryList;
 
 /**
  * Class representing an entry in a flow table.
  */
-class FlowEntry : public Entry {
+class FlowEntry {
 public:
     FlowEntry();
     ~FlowEntry();
 
-    /* Interface: Entry */
-    bool MatchEq(const Entry *rhs);
-    bool ActionEq(const Entry *rhs);
+    bool MatchEq(const FlowEntry *rhs);
+    bool ActionEq(const FlowEntry *rhs);
 
     ofputil_flow_stats *entry;
 };
+typedef std::vector<FlowEntry *>    FlowEntryList;
 
 /**
  * Class that represents a list of table changes.
@@ -60,9 +44,9 @@ public:
 class FlowEdit {
 public:
     enum TYPE {add, mod, del};
-    typedef std::pair<TYPE, Entry *> EntryEdit;
+    typedef std::pair<TYPE, FlowEntry *> Entry;
 
-    std::vector<EntryEdit> edits;
+    std::vector<FlowEdit::Entry> edits;
 };
 
 
@@ -71,29 +55,22 @@ public:
  */
 class TableState {
 public:
-    enum TABLE_TYPE {PORT_SECURITY, SOURCE_FILTER, DESTINATION_FILTER,
-        POLICY, GROUP, METER};
-    TableState(TABLE_TYPE tt) : type(tt) {};
+    TableState() {}
 
     /**
-     * Update cached entry corresponding to given URI
+     * Update cached entry-list corresponding to given object-id
      */
-    void Update(const modb::URI& uri, EntryList& el);
+    void Update(const std::string& objId, FlowEntryList& el);
 
     /**
      * Compute the differences between existing and provided table-entries set
-     * for a given URI.
+     * for given object-id.
      */
-    void DiffEntry(const modb::URI& uri, const EntryList& newEntries,
+    void DiffEntry(const std::string& objId, const FlowEntryList& newEntries,
             FlowEdit& diffs);
 
-    TABLE_TYPE GetType() {
-        return type;
-    }
-
 private:
-    TABLE_TYPE type;
-    typedef boost::unordered_map<opflex::modb::URI, EntryList> EntryMap;
+    typedef boost::unordered_map<std::string, FlowEntryList> EntryMap;
     EntryMap entryMap;
 };
 

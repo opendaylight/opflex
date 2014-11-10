@@ -50,9 +50,6 @@ libagent_ovs_la_SOURCES = \
 	src/Agent.cpp
 
 SUBDIRS =
-if HAVE_OVS
-SUBDIRS += src/enforcer
-endif
 
 bin_PROGRAMS=agent_ovs
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
@@ -91,6 +88,8 @@ if HAVE_DOXYGEN
 endif
 
 if HAVE_OVS
+SUBDIRS += . src/enforcer
+
 noinst_PROGRAMS += integration_test
 
 integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \

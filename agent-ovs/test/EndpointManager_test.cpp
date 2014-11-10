@@ -186,6 +186,13 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     epSource.updateEndpoint(ep1);
     epSource.updateEndpoint(ep2);
 
+    boost::unordered_set<std::string> epUuids;
+    agent.getEndpointManager().getEndpointsForGroup(epgu, epUuids);
+    BOOST_CHECK(epUuids.size() == 2);
+    BOOST_CHECK(epUuids.find(ep1.getUUID()) != epUuids.end());
+    BOOST_CHECK(epUuids.find(ep2.getUUID()) != epUuids.end());
+
+
     URI l2epr1 = URIBuilder()
         .addElement("EprL2Universe")
         .addElement("EprL2Ep")

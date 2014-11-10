@@ -219,9 +219,10 @@ private:
      * URI.  You must hold a state lock to call this function.
      *
      * @param egURI the URI of the EPG that should be updated
+     * @param toRemove set to true is the group was removed
      * @return true if the endpoint group was updated
      */
-    bool updateEPGDomains(const opflex::modb::URI& egURI);
+    bool updateEPGDomains(const opflex::modb::URI& egURI, bool& toRemove);
 
     /**
      * Notify policy listeners about an update to the forwarding

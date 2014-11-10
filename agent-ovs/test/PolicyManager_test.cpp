@@ -132,6 +132,11 @@ BOOST_FIXTURE_TEST_CASE( group, PolicyFixture ) {
 
     optional<uint32_t> vnid = pm.getVnidForGroup(eg->getURI());
     BOOST_CHECK(vnid.get() == 1234);
+
+    Mutator mutator(framework, "policyreg");
+    eg->remove();
+    mutator.commit();
+    WAIT_FOR(pm.groupExists(eg->getURI()) == false, 500);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -268,4 +268,13 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
     }
 }
 
+void
+EndpointManager::getEndpointsForGroup(const URI& egURI,
+                                      /*out*/ unordered_set<string>& eps) {
+    unique_lock<mutex> guard(ep_mutex);
+    group_ep_map_t::const_iterator it = group_ep_map.find(egURI);
+    if (it != group_ep_map.end()) {
+        eps.insert(it->second.begin(), it->second.end());
+    }
+}
 } /* namespace ovsagent */

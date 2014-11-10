@@ -70,6 +70,11 @@ public:
      */
     std::string toString() const;
 
+    /**
+     * Get the MAC represented as an array of 6 bytes in network byte order.
+     */
+    void toUIntArray(/* out */uint8_t mac[6]) const;
+
 private:
     /**
      * Construct a MAC using a uint64_t, which must be in host byte

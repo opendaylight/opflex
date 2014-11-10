@@ -89,9 +89,9 @@ public:
      * @param eps a set that will be filled with the UUIDs of the
      * endpoint.
      */
-    const boost::unordered_set<std::string> 
+    void
     getEndpointsForGroup(const opflex::modb::URI& egURI,
-                         /* out */ const boost::unordered_set<std::string> eps);
+                         /* out */ boost::unordered_set<std::string>& eps);
 
     // see PolicyListener
     virtual void egDomainUpdated(const opflex::modb::URI& egURI);

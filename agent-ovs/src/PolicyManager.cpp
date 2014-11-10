@@ -157,7 +157,7 @@ void PolicyManager::updateSubnetIndex() {
     }
 }
 
-bool PolicyManager::updateEPGDomains(const URI& egURI) {
+bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     using namespace modelgbp;
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;
@@ -167,9 +167,10 @@ bool PolicyManager::updateEPGDomains(const URI& egURI) {
     optional<shared_ptr<EpGroup> > epg = 
         EpGroup::resolve(framework, egURI);
     if (!epg) {
-        group_map.erase(egURI);
+        toRemove = true;
         return true;
     }
+    toRemove = false;
 
     optional<shared_ptr<InstContext> > groupInstCtx;
     groupInstCtx = epg.get()->resolveGbpeInstContext();
@@ -326,9 +327,13 @@ void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
         pmanager.group_map[uri];
     }
     unordered_set<URI> notify;
-    BOOST_FOREACH(const group_map_t::value_type& v, pmanager.group_map) {
-        if (pmanager.updateEPGDomains(v.first))
-            notify.insert(v.first);
+    for (PolicyManager::group_map_t::iterator itr = pmanager.group_map.begin();
+         itr != pmanager.group_map.end(); ) {
+        bool toRemove = false;
+        if (pmanager.updateEPGDomains(itr->first, toRemove)) {
+            notify.insert(itr->first);
+        }
+        itr = (toRemove ? pmanager.group_map.erase(itr) : ++itr);
     }
     guard.unlock();
     BOOST_FOREACH(const URI& u, notify) {

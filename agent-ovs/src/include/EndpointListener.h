@@ -26,7 +26,7 @@ public:
     /**
      * Instantiate a new endpoint listener
      */
-    EndpointListener();
+    EndpointListener() {};
 
     /**
      * Destroy the endpoint listener and clean up all state

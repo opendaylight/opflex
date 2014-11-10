@@ -50,11 +50,6 @@ public:
             MakePort(5*(i+1), &p);
             ports.push_back(p);
         }
-        if (!logInitDone) {
-            google::InitGoogleLogging("");
-            FLAGS_logtostderr = 0;      // set to 1 to enable logging
-            logInitDone = true;
-        }
     }
     ~PortMapperFixture() {
         pm.UninstallListenersForConnection(&conn);
@@ -114,9 +109,7 @@ public:
     MockConnection conn;
     PortMapper pm;
     std::vector<ofputil_phy_port> ports;
-    static bool logInitDone;
 };
-bool PortMapperFixture::logInitDone = false;
 
 BOOST_AUTO_TEST_SUITE(portmapper_test)
 

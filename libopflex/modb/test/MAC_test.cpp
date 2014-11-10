@@ -31,6 +31,13 @@ BOOST_AUTO_TEST_CASE( basic ) {
     BOOST_CHECK_EQUAL("11:22:33:44:55:66", mac2.toString());
     BOOST_CHECK_EQUAL("11:22:33:44:55:66", mac3.toString());
     BOOST_CHECK_EQUAL("0a:bb:cc:dd:0e:ff", mac5.toString());
+
+    uint8_t outBytes[6];
+    mac2.toUIntArray(outBytes);
+    BOOST_CHECK(memcmp(outBytes, bytes, sizeof(bytes)) == 0);
+    mac3.toUIntArray(outBytes);
+    BOOST_CHECK(memcmp(outBytes, bytes, sizeof(bytes)) == 0);
+
     BOOST_CHECK_EQUAL(mac2, mac3);
     BOOST_CHECK_EQUAL(mac4, mac3);
     BOOST_CHECK_EQUAL(mac5, mac6);
