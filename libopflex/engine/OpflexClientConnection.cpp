@@ -69,7 +69,8 @@ void OpflexClientConnection::disconnect() {
     if (!active) return;
     
     active = false;
-    LOG(INFO) << "Disconnected from peer " << remote_peer;
+    LOG(INFO) << "[" << getRemotePeer() << "] " 
+              << "Disconnected";
     uv_read_stop((uv_stream_t*)&socket);
     handler->disconnected();
     if (0) {
@@ -84,12 +85,12 @@ void OpflexClientConnection::connect_cb(uv_connect_t* req, int status) {
         (OpflexClientConnection*)req->handle->data;
     
     if (status < 0) {
-        LOG(ERROR) << "Could not connect to " 
-                   << conn->remote_peer
-                   << ": " << uv_strerror(status);
+        LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+                   << "Could not connect: " << uv_strerror(status);
         conn->disconnect();
     } else {
-        LOG(INFO) << "Connected to peer " << conn->remote_peer;
+        LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
+                  << "New client connection";
         uv_read_start((uv_stream_t*)&conn->socket, alloc_cb, read_cb);
         conn->handler->connected();
     }

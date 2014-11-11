@@ -66,6 +66,8 @@ public:
                                         const rapidjson::Value& payload);
     virtual void handlePolicyUnresolveRes(const rapidjson::Value& id,
                                           const rapidjson::Value& payload);
+    virtual void handlePolicyUpdateReq(const rapidjson::Value& id,
+                                       const rapidjson::Value& payload);
     virtual void handleEPDeclareRes(const rapidjson::Value& id,
                                     const rapidjson::Value& payload);
     virtual void handleEPUndeclareRes(const rapidjson::Value& id,
@@ -74,7 +76,7 @@ public:
                                     const rapidjson::Value& payload);
     virtual void handleEPUnresolveRes(const rapidjson::Value& id,
                                       const rapidjson::Value& payload);
-    virtual void handleEPUpdateReq(const rapidjson::Value& id,
+    virtual void handleEPUpdateRes(const rapidjson::Value& id,
                                    const rapidjson::Value& payload);
 
 protected:

@@ -28,15 +28,15 @@ using rapidjson::Writer;
 using modb::mointernal::StoreClient;
 
 void MockServerHandler::connected() {
-    // XXX - TODO
+
 }
 
 void MockServerHandler::disconnected() {
-    // XXX - TODO
+
 }
 
 void MockServerHandler::ready() {
-    // XXX - TODO
+
 }
 
 class SendIdentityRes : public OpflexMessage {
@@ -55,44 +55,44 @@ public:
     }
 
     template <typename T>
-    bool operator()(Writer<T> & handler) {
-        handler.StartObject();
-        handler.String("name");
-        handler.String(name.c_str());
-        handler.String("domain");
-        handler.String(domain.c_str());
-        handler.String("my_role");
-        handler.StartArray();
+    bool operator()(Writer<T> & writer) {
+        writer.StartObject();
+        writer.String("name");
+        writer.String(name.c_str());
+        writer.String("domain");
+        writer.String(domain.c_str());
+        writer.String("my_role");
+        writer.StartArray();
         if (roles & OpflexHandler::POLICY_ELEMENT)
-            handler.String("policy_element");
+            writer.String("policy_element");
         if (roles & OpflexHandler::POLICY_REPOSITORY)
-            handler.String("policy_repository");
+            writer.String("policy_repository");
         if (roles & OpflexHandler::ENDPOINT_REGISTRY)
-            handler.String("endpoint_registry");
+            writer.String("endpoint_registry");
         if (roles & OpflexHandler::OBSERVER)
-            handler.String("observer");
-        handler.EndArray();
-        handler.String("peers");
-        handler.StartArray();
+            writer.String("observer");
+        writer.EndArray();
+        writer.String("peers");
+        writer.StartArray();
         BOOST_FOREACH(const MockOpflexServer::peer_t& peer, peers) {
-            handler.StartObject();
-            handler.String("role");
-            handler.StartArray();
+            writer.StartObject();
+            writer.String("role");
+            writer.StartArray();
             if (peer.first & OpflexHandler::POLICY_ELEMENT)
-                handler.String("policy_element");
+                writer.String("policy_element");
             if (peer.first & OpflexHandler::POLICY_REPOSITORY)
-                handler.String("policy_repository");
+                writer.String("policy_repository");
             if (peer.first & OpflexHandler::ENDPOINT_REGISTRY)
-                handler.String("endpoint_registry");
+                writer.String("endpoint_registry");
             if (peer.first & OpflexHandler::OBSERVER)
-                handler.String("observer");
-            handler.EndArray();
-            handler.String("connectivity_info");
-            handler.String(peer.second.c_str());
-            handler.EndObject();
+                writer.String("observer");
+            writer.EndArray();
+            writer.String("connectivity_info");
+            writer.String(peer.second.c_str());
+            writer.EndObject();
         }
-        handler.EndArray();
-        handler.EndObject();
+        writer.EndArray();
+        writer.EndObject();
         return true;
     }
 
@@ -103,6 +103,45 @@ private:
     MockOpflexServer::peer_vec_t peers;
 };
 
+class PolicyResolveRes : public OpflexMessage {
+public:
+    PolicyResolveRes(const rapidjson::Value& id,
+                     MockOpflexServer& server_,
+                     const std::vector<modb::reference_t>& mos_)
+        : OpflexMessage("policy_update", RESPONSE, &id),
+          server(server_),
+          mos(mos_) {}
+
+    virtual void serializePayload(MessageWriter& writer) {
+        (*this)(writer);
+    }
+
+    template <typename T>
+    bool operator()(Writer<T> & writer) {
+        MOSerializer& serializer = server.getSerializer();
+        modb::mointernal::StoreClient* client = server.getSystemClient();
+
+        writer.StartObject();
+        writer.String("policy");
+        writer.StartArray();
+        BOOST_FOREACH(modb::reference_t& p, mos) {
+            try {
+                serializer.serialize(p.first, p.second, 
+                                     *client, writer,
+                                     true);
+            } catch (std::out_of_range e) {
+                // policy doesn't exist locally
+            }
+        }
+        writer.EndArray();
+        writer.EndObject();
+        return true;
+    }
+
+protected:
+    MockOpflexServer& server;
+    std::vector<modb::reference_t> mos;
+};
 
 void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
                                               const Value& payload) {
@@ -117,6 +156,59 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
 
 void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                                                const Value& payload) {
+    LOG(DEBUG) << "Got policy_resolve req";
+    StoreClient& client = *server->getSystemClient();
+    MOSerializer& serializer = server->getSerializer();
+
+    Value::ConstValueIterator it;
+    std::vector<modb::reference_t> mos;
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (!it->IsObject()) {
+            sendErrorRes(id, "ERROR", "Malformed message: not an object");
+            return;
+        }
+        if (!it->HasMember("subject")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no endpoint");
+            return;
+        }
+        if (it->HasMember("policy_ident")) {
+            sendErrorRes(id, "EUNSUPPORTED", 
+                         "Policy resolution by ident is not supported");
+            return;
+        }
+        if (!it->HasMember("policy_uri")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no policy_uri");
+            return;
+        }
+
+        const Value& subjectv = (*it)["subject"];
+        const Value& puriv = (*it)["policy_uri"];
+        if (!subjectv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: subject is not a string");
+            return;
+        }
+        if (!puriv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: policy_uri is not a string");
+            return;
+        }
+
+        try {
+            const modb::ClassInfo& ci = 
+                server->getStore().getClassInfo(subjectv.GetString());
+            modb::URI puri(puriv.GetString());
+            mos.push_back(std::make_pair(ci.getId(), puri));
+        } catch (std::out_of_range e) {
+            sendErrorRes(id, "ERROR", 
+                         std::string("Unknown subject: ") + 
+                         subjectv.GetString());
+            return;
+        }
+    }
+
+    PolicyResolveRes res(id, *server, mos);
+    getConnection()->write(res.serialize());
 }
 
 void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
@@ -126,6 +218,11 @@ void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
 
 void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
                                            const rapidjson::Value& payload) {
+    LOG(DEBUG) << "Got endpoint_declare req";
+    StoreClient::notif_t notifs;
+    StoreClient& client = *server->getSystemClient();
+    MOSerializer& serializer = server->getSerializer();
+
     Value::ConstValueIterator it;
     for (it = payload.Begin(); it != payload.End(); ++it) {
         if (!it->IsObject()) {
@@ -156,15 +253,12 @@ void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
         }
 
         Value::ConstValueIterator ep_it;
-        StoreClient::notif_t notifs;
-        StoreClient& client = *server->getSystemClient();
-        MOSerializer& serializer = server->getSerializer();
         for (ep_it = endpoint.Begin(); ep_it != endpoint.End(); ++ep_it) {
             const Value& mo = *ep_it;
             serializer.deserialize(mo, client, true, &notifs);
         }
-        client.deliverNotifications(notifs);
     }
+    client.deliverNotifications(notifs);
 
     OpflexMessage res("endpoint_declare", OpflexMessage::RESPONSE, &id);
     getConnection()->write(res.serialize());
@@ -172,7 +266,54 @@ void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
 
 void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
                                              const rapidjson::Value& payload) {
-    // XXX - TODO
+    StoreClient::notif_t notifs;
+    StoreClient& client = *server->getSystemClient();
+
+    Value::ConstValueIterator it;
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (!it->IsObject()) {
+            sendErrorRes(id, "ERROR", "Malformed message: not an object");
+            return;
+        }
+        if (!it->HasMember("subject")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no subject");
+            return;
+        }
+        if (!it->HasMember("endpoint_uri")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no endpoint_uri");
+            return;
+        }
+
+        const Value& subjectv = (*it)["subject"];
+        const Value& euriv = (*it)["endpoint_uri"];
+        if (!subjectv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: subject is not a string");
+            return;
+        }
+        if (!euriv.IsString()) {
+            sendErrorRes(id, "ERROR",
+                         "Malformed message: endpoint_uri is not a string");
+            return;
+        }
+        try {
+            const modb::ClassInfo& ci = 
+                server->getStore().getClassInfo(subjectv.GetString());
+            modb::URI euri(euriv.GetString());
+            client.remove(ci.getId(), euri, false, &notifs);
+            client.queueNotification(ci.getId(), euri, notifs);
+        } catch (std::out_of_range e) {
+            sendErrorRes(id, "ERROR", 
+                         std::string("Unknown subject: ") + 
+                         subjectv.GetString());
+            return;
+        }
+
+    }
+    client.deliverNotifications(notifs);
+
+    OpflexMessage res("endpoint_undeclare", OpflexMessage::RESPONSE, &id);
+    getConnection()->write(res.serialize());
 }
 
 void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,

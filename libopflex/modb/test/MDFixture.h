@@ -55,6 +55,9 @@ public:
                                    (PropertyInfo(4, "prop4", 
                                                  PropertyInfo::S64, 
                                                  PropertyInfo::SCALAR))
+                                   (PropertyInfo(15, "prop15", 
+                                                 PropertyInfo::MAC, 
+                                                 PropertyInfo::SCALAR))
                                    (PropertyInfo(5, "class3", 
                                                  PropertyInfo::COMPOSITE, 
                                                  3,
@@ -79,7 +82,7 @@ public:
                                                  6, 
                                                  PropertyInfo::VECTOR)),
                                list_of(9)))
-                    (ClassInfo(5, ClassInfo::LOCAL_ONLY, "class5", "owner2",
+                    (ClassInfo(5, ClassInfo::RELATIONSHIP, "class5", "owner2",
                                list_of 
                                    (PropertyInfo(10, "prop10", 
                                                  PropertyInfo::STRING,
@@ -90,7 +93,7 @@ public:
                                list_of(10)))
                     (ClassInfo(6, ClassInfo::POLICY, "class6", "owner2",
                                list_of 
-                                   (PropertyInfo(13, "prop12",
+                                   (PropertyInfo(13, "prop13",
                                                  PropertyInfo::STRING, 
                                                  PropertyInfo::SCALAR)),
                                list_of(12)))

@@ -136,8 +136,6 @@ void Processor::removeRef(obj_state_by_exp::iterator& it,
                 util::LockGuard guard(&item_mutex);
                 LOG(DEBUG) << "Refcount zero " << uit->uri.toString();
                 uint64_t nexp = now(&timer_loop)+processingDelay;
-                if (uit->details->state == IN_SYNC)
-                    uit->details->state = UPDATED;
                 uri_index.modify(uit, Processor::change_expiration(nexp));
             }
         }
@@ -157,7 +155,23 @@ size_t Processor::getRefCount(const URI& uri) {
 
 static bool isLocal(ClassInfo::class_type_t type) {
     return ((type == ClassInfo::LOCAL_ENDPOINT) || 
-            (type == ClassInfo::LOCAL_ONLY));
+            (type == ClassInfo::OBSERVABLE) || 
+            (type == ClassInfo::LOCAL_ONLY) ||
+            (type == ClassInfo::RESOLVER));
+    // note that RELATIONSHIP and REVERSE_RELATIONSHIP can appear as a
+    // child of either a local or nonlocal or object, but would only
+    // be synced as children and never directly
+}
+
+static bool maybeLocal(ClassInfo::class_type_t type) {
+    return isLocal(type) || 
+        (type == ClassInfo::RELATIONSHIP) ||
+        (type == ClassInfo::REVERSE_RELATIONSHIP);
+}
+
+static bool isLocalSyncType(ClassInfo::class_type_t type) {
+    return ((type == ClassInfo::LOCAL_ENDPOINT) || 
+            (type == ClassInfo::OBSERVABLE));
 }
 
 // check if the object has a zero refcount and it has no remote
@@ -187,6 +201,26 @@ bool Processor::isOrphan(const item& item) {
     }
 }
 
+// Check if an object is the highest-rank ancestor for objects that
+// are synced to the server.  We don't bother syncing child objects
+// since those will get synced when we sync the parent.
+bool Processor::isParentSyncObject(const item& item) {
+    try {
+        const std::pair<URI, prop_id_t>& parent =
+            client->getParent(item.details->class_id, item.uri);
+        const ClassInfo& parent_ci = store->getPropClassInfo(parent.second);
+        
+        // The parent object will be synchronized
+        if (isLocalSyncType(parent_ci.getType())) return false;
+
+        return true;
+    } catch (std::out_of_range e) {
+        // possibly an unrooted object; sync anyway since it won't be
+        // garbage-collected
+        return true;
+    }
+}
+
 // Process the item.  This is where we do most of the actual work of
 // syncing the managed object over opflex
 void Processor::processItem(obj_state_by_exp::iterator& it) {
@@ -194,9 +228,11 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     StoreClient::notif_t notifs;
 
     ItemState curState;
+    size_t curRefCount;
     {
         util::LockGuard guard(&item_mutex);
         curState = it->details->state;
+        curRefCount = it->details->refcount;
     }
 
     const ClassInfo& ci = store->getClassInfo(it->details->class_id);
@@ -283,35 +319,41 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         }
     } 
 
-    if (oi) {
+    if (curRefCount > 0) {
         switch (ci.getType()) {
         case ClassInfo::POLICY:
-            if (curState == UNRESOLVED) {
-                LOG(WARNING) << "Policy resolution not implemented";
+            {
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id,
+                                         it->uri));
+                PolicyResolveReq req(this, refs);
+                pool.writeToRole(req, OpflexHandler::POLICY_REPOSITORY);
+                newState = RESOLVED;
             }
             break;
         case ClassInfo::REMOTE_ENDPOINT:
-            if (curState == UNRESOLVED) {
-                LOG(WARNING) << "Remote endpoint resolution not implemented";
-            }
+            LOG(WARNING) << "Remote endpoint resolution not implemented";
             break;
+        default:
+            // do nothing
+            break;
+        }
+    }
+
+    if (oi) {
+        switch (ci.getType()) {
         case ClassInfo::LOCAL_ENDPOINT:
-            if (curState == NEW || curState == UPDATED) {
+            if (isParentSyncObject(*it)) {
                 vector<reference_t> refs;
                 refs.push_back(make_pair(it->details->class_id,
                                          it->uri));
                 EndpointDeclareReq req(this, refs);
                 pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
-
-                // XXX TODO - we should only do this for the
-                // highest-rank local endpoint and not for every child
-                // object individually, since the whole tree will get
-                // serialized when we send to the remote server
             }
             newState = IN_SYNC;
             break;
         case ClassInfo::OBSERVABLE:
-            if (curState == NEW || curState == UPDATED) {
+            if (isParentSyncObject(*it)) {
                 LOG(WARNING) << "Observable reporting not implemented";
             }
             newState = IN_SYNC;
@@ -330,22 +372,20 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         client->removeChildren(it->details->class_id,
                                it->uri,
                                &notifs);
-        {
-            util::LockGuard guard(&item_mutex);
-            obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
-            exp_index.erase(it);
-        }
 
-        
         switch (ci.getType()) {
         case ClassInfo::POLICY:
-            if (curState == IN_SYNC) {
-                LOG(WARNING) << "Policy resolution not implemented";
+            if (curState == RESOLVED) {
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id,
+                                         it->uri));
+                PolicyUnresolveReq req(this, refs);
+                pool.writeToRole(req, OpflexHandler::POLICY_REPOSITORY);
             }
             break;
         case ClassInfo::REMOTE_ENDPOINT:
-            if (curState == IN_SYNC) {
-                LOG(WARNING) << "Remote endpoint resolution not implemented";
+            if (curState == RESOLVED) {
+                LOG(WARNING) << "Remote endpoint unresolution not implemented";
             }
             break;
         case ClassInfo::LOCAL_ENDPOINT:
@@ -356,7 +396,6 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 EndpointUndeclareReq req(this, refs);
                 pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
             }
-            
             break;
         case ClassInfo::OBSERVABLE:
             LOG(WARNING) << "Observable reporting not implemented";
@@ -366,6 +405,11 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             break;
         }
 
+        {
+            util::LockGuard guard(&item_mutex);
+            obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
+            exp_index.erase(it);
+        }
     }
 
     if (notifs.size() > 0)
@@ -416,6 +460,8 @@ void Processor::timer_callback(uv_timer_t* handle) {
 void Processor::start() {
     LOG(DEBUG) << "Starting OpFlex Processor";
 
+    pool.start();
+
     client = &store->getStoreClient("_SYSTEM_");
     store->forEachClass(&register_listeners, this);
 
@@ -447,13 +493,15 @@ void Processor::stop() {
             uv_cond_signal(&item_cond);
         }
         uv_thread_join(&proc_thread);
+
+        pool.stop();
     }
 }
 
 void Processor::objectUpdated(modb::class_id_t class_id, 
                               const modb::URI& uri) {
     const ClassInfo& ci = store->getClassInfo(class_id);
-    if (isLocal(ci.getType())) {
+    if (maybeLocal(ci.getType())) {
         util::LockGuard guard(&item_mutex);
         obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
         obj_state_by_uri::iterator uit = uri_index.find(uri);

@@ -101,7 +101,7 @@ void OpflexHandler::sendErrorRes(const Value& id,
     rapidjson::StringBuffer sb;
     rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
     id.Accept(writer);
-    LOG(ERROR) << "Error processing message  " << sb.GetString()
+    LOG(ERROR) << "Error processing message " << sb.GetString()
                << ": " << code << ": " << message;
     getConnection()->write(res.serialize());
 }

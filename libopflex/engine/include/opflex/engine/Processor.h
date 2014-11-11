@@ -150,11 +150,22 @@ private:
      * protocol
      */
     enum ItemState {
+        /** a new item written locally */
         NEW,
+        /** a local item that's been updated */
         UPDATED,
-        UNRESOLVED,
+        /** a local item that's been send to the server */
         IN_SYNC,
+        /** an unresolved remote reference */
+        UNRESOLVED,
+        /** a remote reference with resolve request sent to server */
+        RESOLVED,
+        /** An orphaned item that will be deleted unless something
+            references it in the current queue.  This is used for
+            newly-added items that are only orphaned transiently. */
         PENDING_DELETE,
+        /** An item that's actually deleted.  Items won't actually
+            appear in this state in the index. */
         DELETED
     };
 
@@ -305,6 +316,7 @@ private:
     void processItem(obj_state_by_exp::iterator& it);
     void updateItemExpiration(obj_state_by_exp::iterator& it);
     bool isOrphan(const item& item);
+    bool isParentSyncObject(const item& item);
 };
 
 } /* namespace engine */

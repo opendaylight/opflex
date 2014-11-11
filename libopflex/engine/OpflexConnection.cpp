@@ -57,7 +57,8 @@ void OpflexConnection::read_cb(uv_stream_t* stream,
     OpflexConnection* conn = (OpflexConnection*)stream->data;
     if (nread < 0) {
         if (nread != UV_EOF) {
-            LOG(ERROR) << "Error reading from socket: "
+            LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+                       << "Error reading from socket: "
                        << uv_strerror(nread);
         }
         conn->disconnect();
@@ -77,12 +78,14 @@ void OpflexConnection::dispatch() {
     delete buffer;
     buffer = new std::stringstream();
     if (document.HasParseError()) {
-        LOG(ERROR) << "Malformed message received from " << getRemotePeer();
+        LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                   << "Malformed message received";
         return;
     }
 
     if (!document.HasMember("id")) {
-        LOG(ERROR) << "Message missing ID from " << getRemotePeer();
+        LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                   << "Message missing ID";
         return;
     }
     const Value& idv = document["id"];
@@ -90,18 +93,22 @@ void OpflexConnection::dispatch() {
     if (document.HasMember("method")) {
         const Value& methodv = document["method"];
         if (!methodv.IsString()) {
-            LOG(ERROR) << "Malformed request method";
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Malformed request method";
             return;
         }
         const string method = methodv.GetString();
         if (!document.HasMember("params")) {
-            LOG(ERROR) << "Request '" << method << "' missing params";
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Request '" << method << "' missing params";
             return;
         }
         const Value& params = document["params"];
         if (!params.IsArray()) {
-            LOG(ERROR) << "Request '" << method 
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Request '" << method 
                        << "' params is not an array";
+            return;
         }
 
         if (method == "send_identity") {
@@ -129,66 +136,84 @@ void OpflexConnection::dispatch() {
         }
     } else if (document.HasMember("result")) {
         if (!idv.IsString()) {
-            LOG(ERROR) << "Malformed ID in response message";
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Malformed ID in response message";
             return;
         }
 
         const string id = idv.GetString();
 
+        const Value& result = document["result"];
+        if (!result.IsObject()) {
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Response '" << id 
+                       << "': result is not an object";
+            return;
+        }
+
         if (id == "send_identity") {
-            handler->handleSendIdentityRes(idv, document["result"]);
+            handler->handleSendIdentityRes(idv, result);
             //} else if (id == "echo") {
-            //    handler->handleEchoRes(idv, document["result"]);
+            //    handler->handleEchoRes(idv, result);
         } else if (id == "policy_resolve") {
-            handler->handlePolicyResolveRes(idv, document["result"]);
+            handler->handlePolicyResolveRes(idv, result);
         } else if (id == "policy_unresolve") {
-            handler->handlePolicyUnresolveRes(idv, document["result"]);
+            handler->handlePolicyUnresolveRes(idv, result);
         } else if (id == "policy_update") {
-            handler->handlePolicyUpdateRes(idv, document["result"]);
+            handler->handlePolicyUpdateRes(idv, result);
         } else if (id == "endpoint_declare") {
-            handler->handleEPDeclareRes(idv, document["result"]);
+            handler->handleEPDeclareRes(idv, result);
         } else if (id == "endpoint_undeclare") {
-            handler->handleEPUndeclareRes(idv, document["result"]);
+            handler->handleEPUndeclareRes(idv, result);
         } else if (id == "endpoint_resolve") {
-            handler->handleEPResolveRes(idv, document["result"]);
+            handler->handleEPResolveRes(idv, result);
         } else if (id == "endpoint_unresolve") {
-            handler->handleEPUnresolveRes(idv, document["result"]);
+            handler->handleEPUnresolveRes(idv, result);
         } else if (id == "endpoint_update") {
-            handler->handleEPUpdateRes(idv, document["result"]);
+            handler->handleEPUpdateRes(idv, result);
         } else if (id == "state_report") {
-            handler->handleStateReportRes(idv, document["result"]);
+            handler->handleStateReportRes(idv, result);
         }
         
     } else if (document.HasMember("error")) {
         if (!idv.IsString()) {
-            LOG(ERROR) << "Malformed ID in response message";
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Malformed ID in response message";
             return;
         }
 
         const string id = idv.GetString();
 
+        const Value& error = document["error"];
+        if (!error.IsObject()) {
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Response '" << id 
+                       << "': error is not an object";
+            return;
+        }
+
         if (id == "send_identity") {
-            handler->handleSendIdentityErr(idv, document["error"]);
+            handler->handleSendIdentityErr(idv, error);
             //} else if (id == "echo") {
-            //    handler->handleEchoErr(idv, document["error"]);
+            //    handler->handleEchoErr(idv, error);
         } else if (id == "policy_resolve") {
-            handler->handlePolicyResolveErr(idv, document["error"]);
+            handler->handlePolicyResolveErr(idv, error);
         } else if (id == "policy_unresolve") {
-            handler->handlePolicyUnresolveErr(idv, document["error"]);
+            handler->handlePolicyUnresolveErr(idv, error);
         } else if (id == "policy_update") {
-            handler->handlePolicyUpdateErr(idv, document["error"]);
+            handler->handlePolicyUpdateErr(idv, error);
         } else if (id == "endpoint_declare") {
-            handler->handleEPDeclareErr(idv, document["error"]);
+            handler->handleEPDeclareErr(idv, error);
         } else if (id == "endpoint_undeclare") {
-            handler->handleEPUndeclareErr(idv, document["error"]);
+            handler->handleEPUndeclareErr(idv, error);
         } else if (id == "endpoint_resolve") {
-            handler->handleEPResolveErr(idv, document["error"]);
+            handler->handleEPResolveErr(idv, error);
         } else if (id == "endpoint_unresolve") {
-            handler->handleEPUnresolveErr(idv, document["error"]);
+            handler->handleEPUnresolveErr(idv, error);
         } else if (id == "endpoint_update") {
-            handler->handleEPUpdateErr(idv, document["error"]);
+            handler->handleEPUpdateErr(idv, error);
         } else if (id == "state_report") {
-            handler->handleStateReportErr(idv, document["error"]);
+            handler->handleStateReportErr(idv, error);
         }
     }
 }
@@ -204,7 +229,8 @@ void OpflexConnection::write(uv_stream_t* stream,
         ubuf.len = buf->GetSize();
         int rc = uv_write(req, stream, &ubuf, 1, write_cb);
         if (rc < 0) {
-            LOG(ERROR) << "Could not write to socket: "
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Could not write to socket: "
                        << uv_strerror(rc);
             disconnect();
         }
@@ -223,7 +249,8 @@ void OpflexConnection::write_cb(uv_write_t* req,
     }
 
     if (status < 0) {
-        LOG(ERROR) << "Error while writing to socket: "
+        LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+                   << "Error while writing to socket: "
                    << uv_strerror(status);
         conn->disconnect();
     }

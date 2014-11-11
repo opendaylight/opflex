@@ -48,7 +48,8 @@ OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
                   : (void *) &(((struct sockaddr_in6*)&name)->sin6_addr),
                   addrbuffer, INET6_ADDRSTRLEN);
         remote_peer = addrbuffer;
-        LOG(INFO) << "New connection from " << remote_peer;
+        LOG(INFO) << "[" << getRemotePeer() << "] " 
+                  << "New server connection";
     }
 
     uv_read_start((uv_stream_t*)&tcp_handle, alloc_cb, read_cb);
@@ -78,7 +79,8 @@ void OpflexServerConnection::disconnect() {
         util::LockGuard guard(&write_mutex);
         int rc = uv_shutdown(&shutdown, (uv_stream_t*)&tcp_handle, shutdown_cb);
         if (rc < 0) {
-            LOG(ERROR) << "Could not shut down socket: " << uv_strerror(rc);
+            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                       << "Could not shut down socket: " << uv_strerror(rc);
         }
     }
 }
