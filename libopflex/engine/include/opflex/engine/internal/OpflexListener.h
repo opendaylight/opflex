@@ -17,6 +17,7 @@
 #include <uv.h>
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
+#include "opflex/engine/internal/OpflexMessage.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXLISTENER_H
@@ -70,6 +71,14 @@ public:
      * @returns the string domain name
      */
     const std::string& getDomain() { return domain; }
+
+    /**
+     * Write a given message to all the connected and ready peers.
+     *
+     * @param message the message to write
+     * @param role
+     */
+    void writeToAll(OpflexMessage& message);
 
 private:
     HandlerFactory& handlerFactory;

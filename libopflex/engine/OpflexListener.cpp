@@ -125,6 +125,14 @@ void OpflexListener::on_conn_closed(uv_handle_t *handle) {
     }
 }
 
+void OpflexListener::writeToAll(OpflexMessage& message) {
+    LockGuard guard(&conn_mutex);
+    BOOST_FOREACH(OpflexServerConnection* conn, conns) {
+        // this is inefficient but we only use this for testing
+        conn->write(message.serialize());
+    }
+}
+
 } /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */

@@ -86,7 +86,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
         const ClassInfo& ci = store->getClassInfo(classv.GetString());
         shared_ptr<ObjectInstance> oi = 
             make_shared<ObjectInstance>(ci.getId());
-        
+
         if (mo.HasMember("properties")) {
             const Value& properties = mo["properties"];
             if (properties.IsArray()) {
@@ -100,7 +100,6 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                     const Value& pname = prop["name"];
                     if (!pname.IsString())
                         continue;
-
                     const Value& pvalue = prop["data"];
 
                     try {
@@ -173,7 +172,6 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                                     oi->addMAC(pinfo.getId(), MAC(v.GetString()));
                                 }
                             } else {
-                                if (!pvalue.IsString()) continue;
                                 oi->setMAC(pinfo.getId(),
                                            MAC(pvalue.GetString()));
                             }

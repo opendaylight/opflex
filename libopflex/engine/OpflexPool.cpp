@@ -29,6 +29,13 @@ static void async_cb(uv_async_t* handle) {
 OpflexPool::OpflexPool(HandlerFactory& factory_)
     : factory(factory_) {
     uv_mutex_init(&conn_mutex);
+}
+
+OpflexPool::~OpflexPool() {
+    uv_mutex_destroy(&conn_mutex);
+}
+
+void OpflexPool::start() {
     uv_loop_init(&client_loop);
     uv_timer_init(&client_loop, &timer);
     timer.data = this;
@@ -42,15 +49,13 @@ OpflexPool::OpflexPool(HandlerFactory& factory_)
     }
 }
 
-OpflexPool::~OpflexPool() {
-    LOG(INFO) << "Shutting down Opflex client";
+void OpflexPool::stop() {
     clear();
     uv_timer_stop(&timer);
     uv_close((uv_handle_t*)&timer, NULL);
     uv_async_send(&async);
     uv_thread_join(&client_thread);
     int rc = uv_loop_close(&client_loop);
-    uv_mutex_destroy(&conn_mutex);
 }
 
 void OpflexPool::setOpflexIdentity(const std::string& name,

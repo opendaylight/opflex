@@ -52,7 +52,7 @@ protected:
 /**
  * Policy resolve request for a given set of references
  */
-class PolicyResolveReq : protected ProcessorMessage {
+class PolicyResolveReq : public ProcessorMessage {
 public:
     PolicyResolveReq(Processor* processor,
                      const std::vector<modb::reference_t>& policies_)
@@ -76,6 +76,41 @@ public:
                 writer.String(p.second.toString().c_str());
                 writer.String("prr");
                 writer.Int64(3600);
+                writer.EndObject();
+            } catch (std::out_of_range e) {
+                LOG(WARNING) << "No class found for class ID " << p.first;
+            }
+        }
+        writer.EndArray();
+        return true;
+    }
+
+protected:
+    std::vector<modb::reference_t> policies;
+};
+
+class PolicyUnresolveReq : public ProcessorMessage {
+public:
+    PolicyUnresolveReq(Processor* processor,
+                       const std::vector<modb::reference_t>& policies_)
+        : ProcessorMessage("policy_unresolve", REQUEST, processor), 
+          policies(policies_) {}
+
+    virtual void serializePayload(MessageWriter& writer) {
+        (*this)(writer);
+    }
+
+    template <typename T>
+    bool operator()(rapidjson::Writer<T> & writer) {
+        writer.StartArray();
+        BOOST_FOREACH(modb::reference_t& p, policies) {
+            try {
+                writer.StartObject();
+                writer.String("subject");
+                writer.String(processor->getStore()
+                               ->getClassInfo(p.first).getName().c_str());
+                writer.String("policy_uri");
+                writer.String(p.second.toString().c_str());
                 writer.EndObject();
             } catch (std::out_of_range e) {
                 LOG(WARNING) << "No class found for class ID " << p.first;
@@ -114,9 +149,13 @@ public:
         writer.String("endpoint");
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, endpoints) {
-            serializer.serialize(p.first, p.second, 
-                                 *client, writer,
-                                 true);
+            try {
+                serializer.serialize(p.first, p.second, 
+                                     *client, writer,
+                                     true);
+            } catch (std::out_of_range e) {
+                // endpoint no longer exists locally
+            }
         }
         writer.EndArray();
         writer.String("prr");
@@ -217,111 +256,28 @@ protected:
     std::vector<modb::URI> del;
 };
 
-#if 0
-
-class PolicyUnresolve : protected OpflexPEMessage {
+class StateReportReq : protected ProcessorMessage {
 public:
-    PolicyUnresolve(OpflexPEHandler& pehandler,
-                    const vector<reference_t>& policies_)
-        : OpflexPEMessage(pehandler), policies(policies_) {}
-    
-    bool operator()(SendHandler & writer) {
-        Processor* processor = pehandler.getProcessor();
-        writer.StartArray();
-        BOOST_FOREACH(reference_t& p, policies) {
-            try {
-                writer.StartObject();
-                writer.String("subject");
-                writer.String(processor->getStore()
-                               ->getClassInfo(p.first).getName().c_str());
-                writer.String("policy_uri");
-                writer.String(p.second.toString().c_str());
-                writer.EndObject();
-            } catch (std::out_of_range e) {
-                LOG(WARNING) << "No class found for class ID " << p.first;
-            }
-        }
-        writer.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> policies;
-};
-
-class PolicyUpdate : protected OpflexPEMessage {
-public:
-    PolicyUpdate(OpflexPEHandler& pehandler,
-                 const vector<reference_t>& replace_,
-                 const vector<reference_t>& merge_children_,
-                 const vector<URI>& del_)
-        : OpflexPEMessage(pehandler), 
-          replace(replace_), 
-          merge_children(merge_children_),
-          del(del_) {}
-    
-    bool operator()(SendHandler & writer) {
-        Processor* processor = pehandler.getProcessor();
-        MOSerializer& serializer = processor->getSerializer();
-        StoreClient* client = processor->getSystemClient();
-
-        writer.StartArray();
-        writer.StartObject();
-
-        writer.String("replace");
-        writer.StartArray();
-        BOOST_FOREACH(reference_t& p, replace) {
-            serializer.serialize(p.first, p.second, 
-                                 *client, writer,
-                                 true);
-        }
-        writer.EndArray();
-
-        writer.String("merge-children");
-        writer.StartArray();
-        BOOST_FOREACH(reference_t& p, replace) {
-            serializer.serialize(p.first, p.second, 
-                                 *client, writer,
-                                 false);
-        }
-        writer.EndArray();
-
-        writer.String("delete");
-        writer.StartArray();
-        BOOST_FOREACH(URI& u, del) {
-            writer.String(u.toString().c_str());
-        }
-        writer.EndArray();
-
-        writer.EndObject();
-        writer.EndArray();
-        return true;
-    }
-
-protected:
-    vector<reference_t> replace;
-    vector<reference_t> merge_children;
-    vector<URI> del;
-};
-
-class StateReport : protected OpflexPEMessage {
-public:
-    StateReport(OpflexPEHandler& pehandler,
-                const vector<reference_t>& observables_)
-        : OpflexPEMessage(pehandler), 
+    StateReportReq(Processor* processor,
+                   const std::vector<modb::reference_t>& observables_)
+        : ProcessorMessage("state_report", REQUEST, processor), 
           observables(observables_) {}
     
-    bool operator()(SendHandler & writer) {
-        Processor* processor = pehandler.getProcessor();
+    virtual void serializePayload(MessageWriter& writer) {
+        (*this)(writer);
+    }
+    
+    template <typename T>
+    bool operator()(rapidjson::Writer<T> & writer) {
         MOSerializer& serializer = processor->getSerializer();
-        StoreClient* client = processor->getSystemClient();
+        modb::mointernal::StoreClient* client = processor->getSystemClient();
 
         writer.StartArray();
         writer.StartObject();
 
         writer.String("observable");
         writer.StartArray();
-        BOOST_FOREACH(reference_t& p, observables) {
+        BOOST_FOREACH(modb::reference_t& p, observables) {
             serializer.serialize(p.first, p.second, 
                                  *client, writer,
                                  true);
@@ -334,10 +290,8 @@ public:
     }
 
 protected:
-    vector<reference_t> observables;
+    std::vector<modb::reference_t> observables;
 };
-
-#endif
 
 } /* namespace internal */
 } /* namespace engine */

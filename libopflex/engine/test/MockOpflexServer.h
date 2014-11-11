@@ -53,6 +53,10 @@ public:
     modb::mointernal::StoreClient* getSystemClient() { return client; }
     MOSerializer& getSerializer() { return serializer; }
 
+    void policyUpdate(const std::vector<modb::reference_t>& replace,
+                      const std::vector<modb::reference_t>& merge_children,
+                      const std::vector<modb::reference_t>& del);
+
 private:
     int port;
     uint8_t roles;

@@ -69,6 +69,16 @@ public:
                            const std::string& domain);
 
     /**
+     * Start the pool
+     */
+    void start();
+
+    /**
+     * Stop the pool
+     */
+    void stop();
+
+    /**
      * Disconnect and clear all active OpFlex connections
      */
     void clear();
