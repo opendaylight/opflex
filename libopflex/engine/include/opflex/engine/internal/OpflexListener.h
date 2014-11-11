@@ -80,6 +80,17 @@ public:
      */
     void writeToAll(OpflexMessage& message);
 
+    /**
+     * A predicate for use with applyConnPred
+     */
+    typedef bool (*conn_pred_t)(OpflexServerConnection* conn, void* user);
+
+    /**
+     * Apply the given predicate to all connection objects, returning
+     * true if the predicate is true for all connections
+     */
+    bool applyConnPred(conn_pred_t pred, void* user);
+
 private:
     HandlerFactory& handlerFactory;
 

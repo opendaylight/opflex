@@ -77,9 +77,9 @@ public:
         }
         writer.EndArray();
 
-        writer.String("merge-children");
+        writer.String("merge_children");
         writer.StartArray();
-        BOOST_FOREACH(modb::reference_t& p, replace) {
+        BOOST_FOREACH(modb::reference_t& p, merge_children) {
             serializer.serialize(p.first, p.second, 
                                  *client, writer,
                                  false);
