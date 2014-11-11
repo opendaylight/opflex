@@ -34,7 +34,8 @@ using std::vector;
 using std::string;
 using boost::unordered_set;
 
-MOSerializer::MOSerializer(ObjectStore* store_) : store(store_) {
+MOSerializer::MOSerializer(ObjectStore* store_, Listener* listener_) 
+    : store(store_), listener(listener_) {
 
 }
 
@@ -197,6 +198,8 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
         }
         
         client.put(ci.getId(), uri, oi);
+        if (listener)
+            listener->remoteObjectUpdated(ci.getId(), uri);
         if (notifs)
             client.queueNotification(ci.getId(), uri, *notifs);
         if (mo.HasMember("parent_name") && mo.HasMember("parent_subject")) {

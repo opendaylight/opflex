@@ -198,7 +198,9 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
             const modb::ClassInfo& ci = 
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
-            mos.push_back(std::make_pair(ci.getId(), puri));
+            modb::reference_t mo(ci.getId(), puri);
+            resolutions.insert(mo);
+            mos.push_back(mo);
         } catch (std::out_of_range e) {
             sendErrorRes(id, "ERROR", 
                          std::string("Unknown subject: ") + 
@@ -213,7 +215,55 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
 
 void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
                                                  const rapidjson::Value& payload) {
-    // XXX - TODO
+    LOG(DEBUG) << "Got policy_unresolve req";
+    Value::ConstValueIterator it;
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (!it->IsObject()) {
+            sendErrorRes(id, "ERROR", "Malformed message: not an object");
+            return;
+        }
+        if (!it->HasMember("subject")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no endpoint");
+            return;
+        }
+        if (it->HasMember("policy_ident")) {
+            sendErrorRes(id, "EUNSUPPORTED", 
+                         "Policy resolution by ident is not supported");
+            return;
+        }
+        if (!it->HasMember("policy_uri")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no policy_uri");
+            return;
+        }
+
+        const Value& subjectv = (*it)["subject"];
+        const Value& puriv = (*it)["policy_uri"];
+        if (!subjectv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: subject is not a string");
+            return;
+        }
+        if (!puriv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: policy_uri is not a string");
+            return;
+        }
+
+        try {
+            const modb::ClassInfo& ci = 
+                server->getStore().getClassInfo(subjectv.GetString());
+            modb::URI puri(puriv.GetString());
+            resolutions.erase(std::make_pair(ci.getId(), puri));
+        } catch (std::out_of_range e) {
+            sendErrorRes(id, "ERROR", 
+                         std::string("Unknown subject: ") + 
+                         subjectv.GetString());
+            return;
+        }
+    }
+
+    OpflexMessage res("policy_unresolve", OpflexMessage::RESPONSE, &id);
+    getConnection()->write(res.serialize());
 }
 
 void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
@@ -329,6 +379,11 @@ void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
 void MockServerHandler::handleEPUpdateRes(const rapidjson::Value& id,
                                           const rapidjson::Value& payload) {
     // nothing to do
+}
+
+bool MockServerHandler::hasResolution(modb::class_id_t class_id, 
+                                      const modb::URI& uri) {
+    return resolutions.find(std::make_pair(class_id, uri)) != resolutions.end();
 }
 
 } /* namespace internal */

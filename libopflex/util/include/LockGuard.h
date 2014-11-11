@@ -34,10 +34,15 @@ public:
      * Release the lock
      */
     ~LockGuard();
+    
+    /**
+     * Release the lock
+     */
+    void release();
 
  private:
     uv_mutex_t* mutex;
-
+    bool locked;
 };
 
 } /* namespace util */

@@ -99,23 +99,20 @@ void Processor::updateItemExpiration(obj_state_by_exp::iterator& it) {
 // add a reference if it doesn't already exist
 void Processor::addRef(obj_state_by_exp::iterator& it,
                        const reference_t& up) {
-    if (it->details->urirefs.find(up) == 
-        it->details->urirefs.end()) {
-        util::LockGuard guard(&item_mutex);
-
+    if (it->details->urirefs.find(up) == it->details->urirefs.end()) {
         obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
         obj_state_by_uri::iterator uit = uri_index.find(up.second);
         if (uit == uri_index.end()) {
             obj_state.insert(item(up.second, up.first, 
                                   0, LOCAL_REFRESH_RATE,
-                                  UNRESOLVED));
+                                  UNRESOLVED, false));
             // XXX - TODO create the resolver object as well
             uit = uri_index.find(up.second);
         } 
         uit->details->refcount += 1;
-        //LOG(INFO) << "Addref " << uit->uri.toString()
-        //          << " " << uit->details->refcount
-        //          << " state " << uit->details->state;
+        LOG(DEBUG) << "Addref " << uit->uri.toString()
+                   << " " << uit->details->refcount
+                   << " state " << uit->details->state;
         
         it->details->urirefs.insert(up);
     }
@@ -125,15 +122,13 @@ void Processor::addRef(obj_state_by_exp::iterator& it,
 // schedule the reference for collection
 void Processor::removeRef(obj_state_by_exp::iterator& it,
                           const reference_t& up) {
-    if (it->details->urirefs.find(up) != 
-        it->details->urirefs.end()) {
+    if (it->details->urirefs.find(up) != it->details->urirefs.end()) {
         it->details->refcount -= 1;
         obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
         obj_state_by_uri::iterator uit = uri_index.find(up.second);
         if (uit != uri_index.end()) {
             uit->details->refcount -= 1;
             if (uit->details->refcount <= 0) {
-                util::LockGuard guard(&item_mutex);
                 LOG(DEBUG) << "Refcount zero " << uit->uri.toString();
                 uint64_t nexp = now(&timer_loop)+processingDelay;
                 uri_index.modify(uit, Processor::change_expiration(nexp));
@@ -153,22 +148,6 @@ size_t Processor::getRefCount(const URI& uri) {
     return 0;
 }
 
-static bool isLocal(ClassInfo::class_type_t type) {
-    return ((type == ClassInfo::LOCAL_ENDPOINT) || 
-            (type == ClassInfo::OBSERVABLE) || 
-            (type == ClassInfo::LOCAL_ONLY) ||
-            (type == ClassInfo::RESOLVER));
-    // note that RELATIONSHIP and REVERSE_RELATIONSHIP can appear as a
-    // child of either a local or nonlocal or object, but would only
-    // be synced as children and never directly
-}
-
-static bool maybeLocal(ClassInfo::class_type_t type) {
-    return isLocal(type) || 
-        (type == ClassInfo::RELATIONSHIP) ||
-        (type == ClassInfo::REVERSE_RELATIONSHIP);
-}
-
 static bool isLocalSyncType(ClassInfo::class_type_t type) {
     return ((type == ClassInfo::LOCAL_ENDPOINT) || 
             (type == ClassInfo::OBSERVABLE));
@@ -177,23 +156,22 @@ static bool isLocalSyncType(ClassInfo::class_type_t type) {
 // check if the object has a zero refcount and it has no remote
 // ancestor that has a zero refcount.
 bool Processor::isOrphan(const item& item) {
-    // simplest case: refcount is nonzero
-    if (item.details->refcount > 0)
+    // simplest case: refcount is nonzero or item is local
+    if (item.details->local || item.details->refcount > 0)
         return false;
 
     try {
         const std::pair<URI, prop_id_t>& parent =
             client->getParent(item.details->class_id, item.uri);
-        const ClassInfo& parent_ci = store->getPropClassInfo(parent.second);
-        
-        // the parent is local, so there can be no remote parent with
-        // a nonzero refcount
-        if (isLocal(parent_ci.getType())) return true;
 
         obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
         obj_state_by_uri::iterator uit = uri_index.find(parent.first);
         // parent missing
         if (uit == uri_index.end()) return true;
+
+        // the parent is local, so there can be no remote parent with
+        // a nonzero refcount
+        if (uit->details->local) return true;
 
         return isOrphan(*uit);
     } catch (std::out_of_range e) {
@@ -227,13 +205,10 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     ItemState newState = IN_SYNC;
     StoreClient::notif_t notifs;
 
-    ItemState curState;
-    size_t curRefCount;
-    {
-        util::LockGuard guard(&item_mutex);
-        curState = it->details->state;
-        curRefCount = it->details->refcount;
-    }
+    util::LockGuard guard(&item_mutex);
+    ItemState curState = it->details->state;
+    size_t curRefCount = it->details->refcount;
+    bool local = it->details->local;
 
     const ClassInfo& ci = store->getClassInfo(it->details->class_id);
     shared_ptr<const ObjectInstance> oi;
@@ -250,23 +225,23 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         }
     }
 
-    //LOG(INFO) << "Processing item " << it->uri.toString() 
-    //          << " of class " << ci.getId()
-    //          << " and type " << ci.getType()
-    //          << " in state " << curState;
-
+    LOG(DEBUG) << "Processing item " << it->uri.toString() 
+               << " of class " << ci.getId()
+               << " and type " << ci.getType()
+               << " in state " << curState;
+    
     // Check whether this item needs to be garbage collected
-    if (!isLocal(ci.getType()) && oi && isOrphan(*it)) {
+    if (oi && isOrphan(*it)) {
         switch (curState) {
         case NEW:
             {
                 // requeue new items so if there are any pending references
                 // we won't remove them right away
-                util::LockGuard guard(&item_mutex);
                 newState = PENDING_DELETE;
                 obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
                 exp_index.modify(it, 
-                                 change_expiration(now(&timer_loop)+processingDelay));
+                                 change_expiration(now(&timer_loop)+
+                                                   processingDelay));
                 break;
             }
         default:
@@ -277,7 +252,8 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 client->remove(it->details->class_id,
                                it->uri,
                                false, &notifs);
-                client->queueNotification(it->details->class_id, it->uri, notifs);
+                client->queueNotification(it->details->class_id, it->uri, 
+                                          notifs);
                 oi.reset();
                 newState = DELETED;
                 break;
@@ -338,6 +314,8 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             // do nothing
             break;
         }
+
+        it->details->state = newState;
     }
 
     if (oi) {
@@ -363,12 +341,10 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             break;
         }
 
-        {
-            util::LockGuard guard(&item_mutex);
-            it->details->state = newState;
-        }
+        it->details->state = newState;
     } else if (newState == DELETED) {
         LOG(DEBUG) << "Purging state for " << it->uri.toString();
+
         client->removeChildren(it->details->class_id,
                                it->uri,
                                &notifs);
@@ -405,20 +381,14 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             break;
         }
 
-        {
-            util::LockGuard guard(&item_mutex);
-            obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
-            exp_index.erase(it);
-        }
+        obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
+        exp_index.erase(it);
     }
+
+    guard.release();
 
     if (notifs.size() > 0)
         client->deliverNotifications(notifs);
-
-    //LOG(INFO) << "Set item " << it->uri.toString() 
-    //          << " state to " << it->details->state;
-
-    //    uv_cond_signal(&item_cond);
 }
 
 // listen on the item queue and dispatch events where required
@@ -500,24 +470,35 @@ void Processor::stop() {
 
 void Processor::objectUpdated(modb::class_id_t class_id, 
                               const modb::URI& uri) {
-    const ClassInfo& ci = store->getClassInfo(class_id);
-    if (maybeLocal(ci.getType())) {
-        util::LockGuard guard(&item_mutex);
-        obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
-        obj_state_by_uri::iterator uit = uri_index.find(uri);
-        
-        uint64_t nexp = now(&timer_loop)+processingDelay;
-        
-        if (uit == uri_index.end()) {
-            obj_state.insert(item(uri, class_id, 
-                                  nexp, LOCAL_REFRESH_RATE,
-                                  NEW));
-        } else {
-            uit->details->state = UPDATED;
-            uri_index.modify(uit, Processor::change_expiration(nexp));
-        }
-        uv_cond_signal(&item_cond);
+    doObjectUpdated(class_id, uri, false);
+}
+
+void Processor::remoteObjectUpdated(modb::class_id_t class_id, 
+                                    const modb::URI& uri) {
+    doObjectUpdated(class_id, uri, true);
+}
+
+// if remote is true, then the object is coming from the server,
+// otherwise the object is coming from the listener, which could mean
+// either local or remote.
+void Processor::doObjectUpdated(modb::class_id_t class_id, 
+                                const modb::URI& uri,
+                                bool remote) {
+    util::LockGuard guard(&item_mutex);
+    obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
+    obj_state_by_uri::iterator uit = uri_index.find(uri);
+
+    uint64_t nexp = now(&timer_loop)+processingDelay;
+    if (uit == uri_index.end()) {
+        obj_state.insert(item(uri, class_id, 
+                              nexp, LOCAL_REFRESH_RATE,
+                              NEW, remote == false));
+    } else if (uit->details->local) {
+        uit->details->state = UPDATED;
+        uri_index.modify(uit, Processor::change_expiration(nexp));
     }
+    uv_cond_signal(&item_cond);
+
 }
 
 void Processor::setOpflexIdentity(const std::string& name,

@@ -133,6 +133,14 @@ void OpflexListener::writeToAll(OpflexMessage& message) {
     }
 }
 
+bool OpflexListener::applyConnPred(conn_pred_t pred, void* user) {
+    LockGuard guard(&conn_mutex);
+    BOOST_FOREACH(OpflexServerConnection* conn, conns) {
+        if (!pred(conn, user)) return false;
+    }
+    return true;
+}
+
 } /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */

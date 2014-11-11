@@ -14,12 +14,19 @@
 namespace opflex {
 namespace util {
 
-LockGuard::LockGuard(uv_mutex_t* mutex_) : mutex(mutex_) {
+LockGuard::LockGuard(uv_mutex_t* mutex_) 
+    : mutex(mutex_), locked(true) {
     uv_mutex_lock(mutex);
 }
 
 LockGuard::~LockGuard() {
-    uv_mutex_unlock(mutex);
+    release();
+}
+
+void LockGuard::release() {
+    if (locked) 
+        uv_mutex_unlock(mutex);
+    locked = false;
 }
 
 } /* namespace util */

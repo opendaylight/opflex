@@ -38,9 +38,24 @@ namespace internal {
 class MOSerializer {
 public:
     /**
+     * A listener that will get called when a managed object is
+     * updated from deserialize
+     */
+    class Listener {
+    public:
+        virtual ~Listener() {}
+
+        /**
+         * A managed object was just written to the store
+         */
+        virtual void remoteObjectUpdated(modb::class_id_t class_id, 
+                                         const modb::URI& uri) = 0;
+    };
+
+    /**
      * Allocate a new managed object serializer
      */
-    MOSerializer(modb::ObjectStore* store);
+    MOSerializer(modb::ObjectStore* store, Listener* listener = NULL);
     ~MOSerializer();
 
     /**
@@ -283,6 +298,7 @@ public:
 
 private:
     modb::ObjectStore* store;
+    Listener* listener;
 };
 
 } /* namespace internal */

@@ -251,14 +251,14 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
             }
         }
         if (it->HasMember("merge_children")) {
-            const Value& replace = (*it)["merge_children"];
-            if (!replace.IsArray()) {
+            const Value& merge = (*it)["merge_children"];
+            if (!merge.IsArray()) {
                 sendErrorRes(id, "ERROR", 
                              "Malformed message: merge_children is not an array");
                 return;
             }
             Value::ConstValueIterator it;
-            for (it = replace.Begin(); it != replace.End(); ++it) {
+            for (it = merge.Begin(); it != merge.End(); ++it) {
                 const Value& mo = *it;
                 serializer.deserialize(mo, *client, false, &notifs);
             }
@@ -337,7 +337,7 @@ void OpflexPEHandler::handleEPUndeclareRes(const rapidjson::Value& id,
 
 void OpflexPEHandler::handleEPResolveRes(const rapidjson::Value& id,
                                          const rapidjson::Value& payload) {
-    // XXX - TODO
+    // nothing to do
 }
 
 void OpflexPEHandler::handleEPUnresolveRes(const rapidjson::Value& id,
@@ -347,7 +347,7 @@ void OpflexPEHandler::handleEPUnresolveRes(const rapidjson::Value& id,
 
 void OpflexPEHandler::handleEPUpdateRes(const rapidjson::Value& id,
                                         const rapidjson::Value& payload) {
-    // XXX - TODO
+    // nothing to do
 }
 
 } /* namespace internal */

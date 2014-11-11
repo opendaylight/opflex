@@ -116,6 +116,9 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     client2->put(6, c6u, oi6);
     client2->addChild(4, c4u, 12, 6, c6u);
 
+    processor.remoteObjectUpdated(4, c4u);
+    processor.remoteObjectUpdated(6, c6u);
+
     client2->queueNotification(5, c5u, notifs);
     client2->queueNotification(4, c4u, notifs);
     client2->queueNotification(6, c6u, notifs);
@@ -151,6 +154,10 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     client2->put(4, c4u, oi4);
     client2->put(6, c6u, oi6);
     client2->addChild(4, c4u, 12, 6, c6u);
+
+    processor.remoteObjectUpdated(4, c4u);
+    processor.remoteObjectUpdated(6, c6u);
+
     client2->queueNotification(4, c4u, notifs);
     client2->queueNotification(6, c6u, notifs);
     client2->deliverNotifications(notifs);
@@ -254,6 +261,11 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare, ServerFixture ) {
     
 }
 
+bool resolutions_pred(OpflexServerConnection* conn, void* user) {
+    MockServerHandler* handler = (MockServerHandler*)conn->getHandler();
+    return handler->hasResolutions();
+}
+
 // test policy_resolve, policy_unresolve, policy_update
 BOOST_FIXTURE_TEST_CASE( policy_resolve, ServerFixture ) {
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
@@ -309,13 +321,38 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, ServerFixture ) {
     rclient->put(4, c4u, oi4);
     rclient->put(6, c6u, oi6);
     
+    merge.push_back(make_pair(4, c4u));
+    mockServer.policyUpdate(replace, merge, del);
+    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+    WAIT_FOR("moretesting" == client2->get(4, c4u)->getString(9), 1000);
+    BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
+
+    oi4->setString(9, "evenmore");
+    rclient->put(4, c4u, oi4);
+    rclient->remove(6, c6u, false);
+    mockServer.policyUpdate(replace, merge, del);
+    WAIT_FOR("evenmore" == client2->get(4, c4u)->getString(9), 1000);
+    BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
+
+    // replace
+    merge.clear();
     replace.push_back(make_pair(4, c4u));
     mockServer.policyUpdate(replace, merge, del);
-    WAIT_FOR("moretesting" == client2->get(4, c4u)->getString(9), 1000);
-    WAIT_FOR("moretesting2" == client2->get(6, c6u)->getString(13), 1000);
+    WAIT_FOR(!itemPresent(client2, 6, c6u), 1000);
 
-    // XXX TODO - test merge and delete
-    // XXX TODO - test unresolve
+    // delete
+    replace.clear();
+    del.push_back(make_pair(4, c4u));
+    mockServer.policyUpdate(replace, merge, del);
+    WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
+
+    // unresolve
+    client2->remove(5, c5u, false, &notifs);
+    client2->queueNotification(5, c5u, notifs);
+    client2->deliverNotifications(notifs);
+    notifs.clear();
+
+    WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

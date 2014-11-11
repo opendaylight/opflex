@@ -13,6 +13,7 @@
 
 #include <string>
 
+#include <boost/unordered_set.hpp>
 #include <rapidjson/document.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -46,6 +47,16 @@ public:
      */
     virtual ~MockServerHandler() {}
 
+    /**
+     * Check whether the server has recieved a specific resolution
+     */
+    bool hasResolution(modb::class_id_t class_id, const modb::URI& uri);
+
+    /**
+     * Check whether there are any active resolutions
+     */
+    bool hasResolutions() { return resolutions.size() > 0; }
+
     // *************
     // OpflexHandler
     // *************
@@ -72,6 +83,7 @@ public:
 
 protected:
     MockOpflexServer* server;
+    boost::unordered_set<modb::reference_t> resolutions;
 };
 
 } /* namespace internal */

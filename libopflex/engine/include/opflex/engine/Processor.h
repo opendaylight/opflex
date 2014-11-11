@@ -44,7 +44,8 @@ namespace engine {
  * information for each of the managed objects in the MODB.
  */
 class Processor : public internal::AbstractObjectListener,
-                  public internal::HandlerFactory {
+                  public internal::HandlerFactory,
+                  public internal::MOSerializer::Listener {
 public:
     /**
      * Construct a processor associated with the given object store
@@ -76,8 +77,7 @@ public:
      * @param port the TCP port to connect on
      * @see opflex::ofcore::OFFramework::addPeer
      */
-    virtual void addPeer(const std::string& hostname,
-                         int port);
+    void addPeer(const std::string& hostname, int port);
 
     /**
      * Start the processor thread.  Should call only after the
@@ -109,6 +109,10 @@ public:
     // See AbstractObjectListener::objectUpdated
     virtual void objectUpdated(modb::class_id_t class_id, 
                                const modb::URI& uri);
+
+    // See MOSerializer::Listener::remoteObjectUpdated
+    virtual void remoteObjectUpdated(modb::class_id_t class_id, 
+                                     const modb::URI& uri);
 
     /**
      * Get the reference count for an object
@@ -195,6 +199,11 @@ private:
          * Outgoing URI references
          */
         boost::unordered_set<modb::reference_t> urirefs;
+
+        /**
+         * Whether the item was written locally
+         */
+        bool local;
     };
 
     /**
@@ -208,13 +217,14 @@ private:
         }
         item(const modb::URI& uri_, modb::class_id_t class_id_,
              uint64_t expiration_, int64_t refresh_rate_,
-             ItemState state_)
+             ItemState state_, bool local_)
             : uri(uri_), expiration(expiration_) {
             details = new item_details();
             details->class_id = class_id_;
             details->refresh_rate = refresh_rate_;
             details->state = state_;
             details->refcount = 0;
+            details->local = local_;
         }
         ~item() { if (details) delete details; }
         item& operator=( const item& rhs ) {
@@ -317,6 +327,11 @@ private:
     void updateItemExpiration(obj_state_by_exp::iterator& it);
     bool isOrphan(const item& item);
     bool isParentSyncObject(const item& item);
+    void doObjectUpdated(modb::class_id_t class_id, 
+                         const modb::URI& uri,
+                         bool remote);
+
+    friend class MOSerializer;
 };
 
 } /* namespace engine */

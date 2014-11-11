@@ -52,6 +52,7 @@ public:
     modb::ObjectStore& getStore() { return db; }
     modb::mointernal::StoreClient* getSystemClient() { return client; }
     MOSerializer& getSerializer() { return serializer; }
+    OpflexListener& getListener() { return listener; }
 
     void policyUpdate(const std::vector<modb::reference_t>& replace,
                       const std::vector<modb::reference_t>& merge_children,
