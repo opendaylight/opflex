@@ -1,0 +1,23 @@
+module[domain]
+{
+    class[Config;
+          concrete]
+    {
+        dependency[config;
+                   cardinality=single;
+                   ]
+        {
+            to[class=platform/Config;
+                cardinality=many;
+                ]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=domain;]
+            }
+        }
+    }
+}
