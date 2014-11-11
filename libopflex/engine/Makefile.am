@@ -36,6 +36,7 @@ libengine_la_SOURCES = \
 	include/opflex/engine/internal/OpflexClientConnection.h \
 	include/opflex/engine/internal/OpflexServerConnection.h \
 	include/opflex/engine/internal/OpflexListener.h \
+	include/opflex/engine/internal/OpflexPool.h \
 	include/opflex/engine/internal/ProcessorMessage.h \
 	include/opflex/engine/Processor.h \
 	AbstractObjectListener.cpp \
