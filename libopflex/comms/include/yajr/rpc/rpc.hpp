@@ -205,7 +205,7 @@ class InboundMessage : public Message {
      * from derived classes' constructors.
      */
     explicit InboundMessage(
-            yajr::Peer const & peer,        /**< [in] where to send to */
+            yajr::Peer const & peer,               /**< [in] where to send to */
             rapidjson::Value const & payload
             )
         :
@@ -219,7 +219,7 @@ class InboundMessage : public Message {
   private:
     /* making the peer private so InboundMessage subclasses won't see it */
     using Message::peer_;
-    rapidjson::Value const & payload_;      /** params, result, error payload */
+    rapidjson::Value const & payload_;/**< [in] params, result, error payload */
     uint64_t received_;
 };
 
@@ -243,7 +243,7 @@ class OutboundMessage : public Message, virtual public Identifier {
      * @return this message.
      */
     void setPeer(
-        yajr::Peer const & peer                   /**< the peer to set */
+        yajr::Peer const & peer                     /**< [in] the peer to set */
         ) {
         peer_ = &peer;
     }
@@ -271,7 +271,7 @@ class OutboundMessage : public Message, virtual public Identifier {
      * from derived classes' constructors.
      */
     explicit OutboundMessage(
-        yajr::Peer const & peer,            /**< [in] where to send to */
+        yajr::Peer const & peer,                   /**< [in] where to send to */
         PayloadGenerator const & payloadGenerator /**< [in] payload generator */
         )
         :
