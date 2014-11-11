@@ -13,20 +13,24 @@
 #include <cstdio>
 #include <boost/foreach.hpp>
 
-#include <internal/modb.h>
-#include <internal/model.h>
+#include <Endpoint.h>
+#include <EndpointManager.h>
+#include <EndpointListener.h>
 #include <ovs.h>
 #include <flowManager.h>
 #include <flow/tableState.h>
 #include <flow/actionBuilder.h>
 
+using namespace std;
+using namespace boost;
+using namespace opflex::modb;
+using namespace ovsagent;
+using namespace opflex::enforcer::flow;
+using namespace modelgbp::gbp;
 
 namespace opflex {
 namespace enforcer {
 
-using namespace std;
-using namespace opflex::modb;
-using namespace opflex::enforcer::flow;
 
 static const uint8_t SEC_TABLE_ID = 0,
                      SRC_TABLE_ID = 1,
@@ -36,49 +40,24 @@ static const uint8_t SEC_TABLE_ID = 0,
 static const uint8_t MAC_ADDR_BROADCAST[6] =
     {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
-FlowManager::FlowManager(Inventory& im, ChangeList& cii) :
-    invtManager(im), changeInfoIn(cii),
-    sourceTable(flow::TableState::SOURCE_FILTER),
-    destinationTable(flow::TableState::DESTINATION_FILTER),
-    policyTable(flow::TableState::POLICY),
-    portSecurityTable(flow::TableState::PORT_SECURITY) {
-    ParseMacAddr("de:ad:be:ef:ce:de", routerMac);   // read from config file
-    tunnelPort = 1024;                              // read from config file
-    ParseIpv4Addr("10.10.10.10", &tunnelDstIpv4);   // read from config file
+FlowManager::FlowManager(ovsagent::Agent& ag) :
+        agent(ag) {
+    MAC("de:ad:be:ef:ce:de").toUIntArray(routerMac); // read from config file
+    tunnelPort = 1024;                               // read from config file
+    ParseIpv4Addr("10.10.10.10", &tunnelDstIpv4);    // read from config file
+    portMapper = NULL;
 }
 
 void FlowManager::Start()
 {
+    agent.getEndpointManager().registerListener(this);
+    agent.getPolicyManager().registerListener(this);
 }
 
 void FlowManager::Stop()
 {
-}
-
-void FlowManager::Generate()
-{
-    ChangeList cl;
-    cl.swap(changeInfoIn);
-
-    BOOST_FOREACH(ChangeInfo& ci, cl) {
-        switch (ci.GetClass()) {
-        case model::CLASS_ID_ENDPOINT:
-            HandleEndpoint(ci);
-            break;
-        case model::CLASS_ID_ENDPOINT_GROUP:
-            HandleEndpointGroup(ci);
-            break;
-        case model::CLASS_ID_SUBNET:
-            HandleSubnet(ci);
-            break;
-        case model::CLASS_ID_FD:
-            HandleFloodDomain(ci);
-            break;
-        case model::CLASS_ID_POLICY:
-            HandlePolicy(ci);
-            break;
-        }
-    }
+    agent.getEndpointManager().unregisterListener(this);
+    agent.getPolicyManager().unregisterListener(this);
 }
 
 /** Source table helper functions */
@@ -97,7 +76,8 @@ SetSourceAction(FlowEntry *fe, uint32_t epgId,
 }
 
 static void
-SetSourceMatchEp(FlowEntry *fe, uint16_t prio, uint32_t ofPort, const uint8_t *mac) {
+SetSourceMatchEp(FlowEntry *fe, uint16_t prio, uint32_t ofPort,
+        const uint8_t *mac) {
     fe->entry->table_id = SRC_TABLE_ID;
     fe->entry->priority = prio;
     match_set_in_port(&fe->entry->match, ofPort);
@@ -115,7 +95,8 @@ SetSourceMatchEpg(FlowEntry *fe, uint16_t prio, uint32_t tunPort,
 
 /** Destination table helper functions */
 static void
-SetDestMatchEpMac(FlowEntry *fe, uint16_t prio, const uint8_t *mac, uint32_t bdId) {
+SetDestMatchEpMac(FlowEntry *fe, uint16_t prio, const uint8_t *mac,
+        uint32_t bdId) {
     fe->entry->table_id = DST_TABLE_ID;
     fe->entry->priority = prio;
     match_set_dl_dst(&fe->entry->match, mac);
@@ -179,8 +160,8 @@ SetDestActionEpIpv4(FlowEntry *fe, bool isLocal, uint32_t epgId, uint32_t port,
 }
 
 static void
-SetDestActionEpArpIpv4(FlowEntry *fe, bool isLocal, uint32_t epgId, uint32_t port,
-        uint32_t tunDst, const uint8_t *dstMac) {
+SetDestActionEpArpIpv4(FlowEntry *fe, bool isLocal, uint32_t epgId,
+        uint32_t port, uint32_t tunDst, const uint8_t *dstMac) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
@@ -246,7 +227,7 @@ SetSecurityMatchEpIpv4(FlowEntry *fe, uint16_t prio, uint32_t port,
     match_set_in_port(&fe->entry->match, port);
     match_set_dl_src(&fe->entry->match, epMac);
     match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
-    match_set_nw_dst(&fe->entry->match, epIpv4);
+    match_set_nw_src(&fe->entry->match, epIpv4);
 }
 
 static void
@@ -267,296 +248,218 @@ SetSecurityActionAllow(FlowEntry *fe) {
     ab.Build(fe->entry);
 }
 
+bool
+FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
+        uint32_t& rdId, uint32_t& bdId, uint32_t& fdId) {
+    PolicyManager& polMgr = agent.getPolicyManager();
+    optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI);
+    if (!epgVnid) {
+        return false;
+    }
+    vnid = epgVnid.get();
+
+    optional<shared_ptr<RoutingDomain> > epgRd = polMgr.getRDForGroup(epgURI);
+    optional<shared_ptr<BridgeDomain> > epgBd = polMgr.getBDForGroup(epgURI);
+    optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
+    if (!epgRd && !epgBd && !epgFd) {
+        return false;
+    }
+
+    rdId = epgRd ?
+            GetId(RoutingDomain::CLASS_ID, epgRd.get()->getURI()) : 0;
+    bdId = epgBd ?
+            GetId(BridgeDomain::CLASS_ID, epgBd.get()->getURI()) : 0;
+    fdId = epgFd ?
+            GetId(FloodDomain::CLASS_ID, epgFd.get()->getURI()) : 0;
+    return true;
+}
+
 void
-FlowManager::HandleEndpoint(ChangeInfo& chgInfo) {
-    const MoBasePtr& obj = chgInfo.GetObject();
-    const URI& uri = chgInfo.GetUri();
-    bool isRemove = (chgInfo.changeType == ChangeInfo::REMOVE);
+FlowManager::endpointUpdated(const string& uuid) {
 
-    const string& macAddrStr = obj->Get("macAddr");
-    const string& ipAddrStr = obj->Get("ipAddr");
+    EndpointManager& epMgr = agent.getEndpointManager();
+    optional<const Endpoint&> epWrapper = epMgr.getEndpoint(uuid);
 
+    if (!epWrapper) {   // EP removed
+        WriteFlow(uuid, portSecurityTable, NULL);
+        WriteFlow(uuid, sourceTable, NULL);
+        WriteFlow(uuid, destinationTable, NULL);
+        return;
+    }
+    const Endpoint& endPoint = epWrapper.get();
     uint8_t macAddr[6];
-    bool macOk = false;
-    if (!macAddrStr.empty()) {
-        macOk = ParseMacAddr(macAddrStr, macAddr);
+    endPoint.getMAC().toUIntArray(macAddr);
+
+    /* check and parse the IP-addresses */
+    std::vector<uint32_t> ipv4Addresses;
+    std::vector<in6_addr> ipv6Addresses;
+    BOOST_FOREACH(const string& ipStr, endPoint.getIPs()) {
+        uint32_t ipv4;
+        in6_addr ipv6;
+        if (ParseIpv4Addr(ipStr, &ipv4)) {
+            ipv4Addresses.push_back(ipv4);
+        } else if (ParseIpv6Addr(ipStr, &ipv6)) {
+            ipv6Addresses.push_back(ipv6);
+        }
     }
 
-    if (!macOk) {
-        return;
+    uint32_t ofPort = OFPP_NONE;
+    optional<string> ofPortName = endPoint.getInterfaceName();
+    if (ofPortName && portMapper) {
+        ofPort = portMapper->FindPort(ofPortName.get());
     }
+    bool isLocalEp = (ofPort != OFPP_NONE);
 
-    uint32_t ipAddr = 0;
-    bool ipv4Ok = false;
-    if (!ipAddrStr.empty()) {
-        ipv4Ok = ParseIpv4Addr(ipAddrStr, &ipAddr);
-    }
-
-    const string& ofPortStr = obj->Get("ofport");
-    uint32_t ofPort = -1;
-    bool isLocalEp = false;
-    if (!ofPortStr.empty()) {
-        ofPort = atoi(ofPortStr.c_str());
-        isLocalEp = true;
-    }
-
-    /*
-     * Port security flows
-     */
+    /* Port security flows */
     if (isLocalEp) {
-        EntryList el;
-        if (!isRemove) {
-            FlowEntry *e0 = new FlowEntry();
-            SetSecurityMatchEpMac(e0, 20, ofPort, macAddr);
-            SetSecurityActionAllow(e0);
-            el.push_back(e0);
+        FlowEntryList el;
 
-            if (ipv4Ok) {
-                FlowEntry *e1 = new FlowEntry();
-                SetSecurityMatchEpIpv4(e1, 30, ofPort, macAddr, ipAddr);
-                SetSecurityActionAllow(e1);
-                el.push_back(e1);
+        FlowEntry *e0 = new FlowEntry();
+        SetSecurityMatchEpMac(e0, 20, ofPort, macAddr);
+        SetSecurityActionAllow(e0);
+        el.push_back(e0);
 
-                FlowEntry *e2 = new FlowEntry();
-                SetSecurityMatchEpArp(e2, 40, ofPort, macAddr, ipAddr);
-                SetSecurityActionAllow(e2);
-                el.push_back(e2);
-            }
+        BOOST_FOREACH(uint32_t ipAddr, ipv4Addresses) {
+            FlowEntry *e1 = new FlowEntry();
+            SetSecurityMatchEpIpv4(e1, 30, ofPort, macAddr, ipAddr);
+            SetSecurityActionAllow(e1);
+            el.push_back(e1);
+
+            FlowEntry *e2 = new FlowEntry();
+            SetSecurityMatchEpArp(e2, 40, ofPort, macAddr, ipAddr);
+            SetSecurityActionAllow(e2);
+            el.push_back(e2);
         }
-        WriteFlow(uri, portSecurityTable, el);
+        // TODO IPv6
+        WriteFlow(uuid, portSecurityTable, el);
     }
 
-    URI epgUri(obj->Get("epgUri"));
-    MoBasePtr epg = invtManager.Find(epgUri);
-    if (epg == NULL) {
-        // can't do anything more
-        return;
-    }
-    uint32_t epgId = atoi(epg->Get("id").c_str());
-    URI netDomUri(epg->Get("networkDomainUri"));
-    MoBasePtr fd = invtManager.FindNetObj(netDomUri, model::CLASS_ID_FD);
-    MoBasePtr bd = invtManager.FindNetObj(netDomUri, model::CLASS_ID_BD);
-    MoBasePtr l3domain = invtManager.FindNetObj(netDomUri, model::CLASS_ID_L3CTX);
-
-    if (fd == NULL && bd == NULL && l3domain == NULL) {
+    optional<URI> epgURI = endPoint.getEgURI();
+    if (!epgURI) {      // can't do much without EPG
         return;
     }
 
-    uint32_t fdId = 0, bdId = 0, l3Id = 0;
-    if (fd != NULL) {
-        fdId = atoi(fd->Get("id").c_str());
-    }
-    if (bd != NULL) {
-        bdId = atoi(bd->Get("id").c_str());
-    }
-    if (l3domain != NULL) {
-        l3Id = atoi(l3domain->Get("id").c_str());
+    uint32_t epgVnid, rdId, bdId, fdId;
+    if (!GetGroupForwardingInfo(epgURI.get(), epgVnid, rdId, bdId, fdId)) {
+        return;
     }
 
-    /*
-     * Source Table flows.
-     * Applicable only to local endpoints
-     */
+    /* Source Table flows; applicable only to local endpoints */
     if (isLocalEp) {
-        FlowEntry *e0 = NULL;
-        if (!isRemove) {
-            e0 = new FlowEntry();
-            SetSourceMatchEp(e0, 140, ofPort, macAddr);
-            SetSourceAction(e0, epgId, bdId, fdId, l3Id);
-        }
-        WriteFlow(uri, sourceTable, e0);
+        FlowEntry *e0 = new FlowEntry();
+        SetSourceMatchEp(e0, 140, ofPort, macAddr);
+        SetSourceAction(e0, epgVnid, bdId, fdId, rdId);
+        WriteFlow(uuid, sourceTable, e0);
     }
 
-    /*
-     * Destination Table flows.
-     * local EP:
-     * [dMac=ep.mac,NxReg4=ep->epg.bdId] ->
-     *     NxReg2=ep->epg.Id, NxReg3=ep.cgId(ep->epg), NxReg7=ep.ofport
-     * [dMac=ROUTER_MAC,dIp=ep.ip,NxReg6=ep->epg.L3Id] ->
-     *     NxReg2=ep->epg.Id, NxReg3=ep.cgId(ep->epg),NxReg7=ep.ofport,
-     *     sMac=ROUTER_MAC,dMac=ep.mac,--ttl
-     *
-     * Remote EP:
-     * [dMac=ep.mac,NxReg4=ep->epg.bdId] ->
-     *     NxReg2=ep->epg.Id, NxReg3=ep.cgId(ep->epg),NxReg7=TUN_PORT,
-     *     TUN_ID=NxReg0,TUN_DST=tunIpv4
-     * [dMac=ROUTER_MAC,dIp=ep.ip,NxReg6=ep->epg.L3Id] ->
-     *     NxReg2=ep->epg.Id, NxReg3=ep.cgId(ep->epg),NxReg7=TUN_PORT,
-     *     TUN_ID=NxReg0,TUN_DST=tunIpv4,sMac=ROUTER_MAC,--ttl
-     *
-     * ARP optimization
-     * [etherType=ARP,arpOp=1,arpTpa=ep.ip,dMac=BROADCAST] =>
-     *     NxReg2=ep->epg.Id, NxReg3=ep.cgId(ep->epg), NxReg7=ep.ofport
-     *     (or NxReg7=TUN_PORT,TUN_ID=NxReg0,TUN_DST=tunIp), dMac=ep.mac
-     *
-     */
-    if (isRemove) {
-        WriteFlow(uri, destinationTable, NULL);
-    } else {
-        EntryList el;
-        uint32_t epPort = isLocalEp ? ofPort : GetTunnelPort();
+    FlowEntryList elDst;
+    uint32_t epPort = isLocalEp ? ofPort : GetTunnelPort();
 
-        if (bd != NULL) {
-            FlowEntry *e0 = new FlowEntry();
-            SetDestMatchEpMac(e0, 10, macAddr, bdId);
-            SetDestActionEpMac(e0, isLocalEp, epgId, epPort,
-                    GetTunnelDstIpv4());
-            el.push_back(e0);
-        }
+    if (bdId != 0) {
+        FlowEntry *e0 = new FlowEntry();
+        SetDestMatchEpMac(e0, 10, macAddr, bdId);
+        SetDestActionEpMac(e0, isLocalEp, epgVnid, epPort,
+                GetTunnelDstIpv4());
+        elDst.push_back(e0);
+    }
 
-        if (ipv4Ok && l3domain != NULL) {
+    if (rdId != 0) {
+        BOOST_FOREACH (uint32_t ipAddr, ipv4Addresses) {
             FlowEntry *e0 = new FlowEntry();
-            SetDestMatchEpIpv4(e0, 15, GetRouterMacAddr(), ipAddr, l3Id);
+            SetDestMatchEpIpv4(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
             // XXX for remote EP, dl_dst needs to be the "next-hop" MAC
             const uint8_t *dstMac = isLocalEp ? macAddr : NULL;
-            SetDestActionEpIpv4(e0, isLocalEp, epgId, epPort,
+            SetDestActionEpIpv4(e0, isLocalEp, epgVnid, epPort,
                     GetTunnelDstIpv4(), GetRouterMacAddr(), dstMac);
-            el.push_back(e0);
+            elDst.push_back(e0);
 
             // ARP optimization: broadcast -> unicast
             FlowEntry *e1 = new FlowEntry();
-            SetDestMatchArpIpv4(e1, 20, ipAddr, l3Id);
-            SetDestActionEpArpIpv4(e1, isLocalEp, epgId, epPort,
+            SetDestMatchArpIpv4(e1, 20, ipAddr, rdId);
+            SetDestActionEpArpIpv4(e1, isLocalEp, epgVnid, epPort,
                     GetTunnelDstIpv4(), macAddr);
-            el.push_back(e1);
+            elDst.push_back(e1);
         }
-
         // TODO IPv6 address
-
-        WriteFlow(uri, destinationTable, el);
+        WriteFlow(uuid, destinationTable, elDst);
     }
 
     // TODO Group-table flow
-    if (fd != NULL) {
-    }
-
 }
 
 void
-FlowManager::HandleEndpointGroup(ChangeInfo& chgInfo) {
-    const MoBasePtr& epg = chgInfo.GetObject();
-    const URI& uri = chgInfo.GetUri();
-    bool isRemove = (chgInfo.changeType == ChangeInfo::REMOVE);
+FlowManager::egDomainUpdated(const URI& epgURI) {
 
-    uint32_t epgId = atoi(epg->Get("id").c_str());
-    URI netDomUri(epg->Get("networkDomainUri"));
-    MoBasePtr fd = invtManager.FindNetObj(netDomUri, model::CLASS_ID_FD);
-    MoBasePtr bd = invtManager.FindNetObj(netDomUri, model::CLASS_ID_BD);
-    MoBasePtr l3domain = invtManager.FindNetObj(netDomUri, model::CLASS_ID_L3CTX);
+    const string& epgId = epgURI.toString();
 
-    if (fd == NULL && bd == NULL && l3domain == NULL) {
+    PolicyManager& polMgr = agent.getPolicyManager();
+    if (!polMgr.groupExists(epgURI)) {  // EPG removed
+        WriteFlow(epgId, sourceTable, NULL);
+        WriteFlow(epgId, policyTable, NULL);
         return;
     }
 
-    uint32_t fdId = 0, bdId = 0, l3Id = 0;
-    if (fd != NULL) {
-        fdId = atoi(fd->Get("id").c_str());
-    }
-    if (bd != NULL) {
-        bdId = atoi(bd->Get("id").c_str());
-    }
-    if (l3domain != NULL) {
-        l3Id = atoi(l3domain->Get("id").c_str());
+    uint32_t epgVnid, rdId, bdId, fdId;
+    if (!GetGroupForwardingInfo(epgURI, epgVnid, rdId, bdId, fdId)) {
+        return;
     }
 
-    FlowEntry *e0 = NULL;
-    if (!isRemove) {
-        e0 = new FlowEntry();
-        SetSourceMatchEpg(e0, 150, GetTunnelPort(), epgId);
-        SetSourceAction(e0, epgId, bdId, fdId, l3Id);
-    }
-    WriteFlow(uri, sourceTable, e0);
+    FlowEntry *e0 = new FlowEntry();
+    SetSourceMatchEpg(e0, 150, GetTunnelPort(), epgVnid);
+    SetSourceAction(e0, epgVnid, bdId, fdId, rdId);
+    WriteFlow(epgId, sourceTable, e0);
 
     bool allowIntraGroup = true;        // XXX read from EPG
-    e0 = NULL;
-    if (!isRemove && allowIntraGroup) {
+    if (allowIntraGroup) {
         e0 = new FlowEntry();
-        SetPolicyMatchEpgs(e0, 100, epgId, epgId);
+        SetPolicyMatchEpgs(e0, 100, epgVnid, epgVnid);
         SetPolicyActionAllow(e0);
+        WriteFlow(epgId, policyTable, e0);
     }
-    WriteFlow(uri, policyTable, e0);
+
+    if (rdId != 0) {
+        UpdateGroupSubnets(epgURI, rdId);
+    }
+
+    unordered_set<string> epUuids;
+    agent.getEndpointManager().getEndpointsForGroup(epgURI, epUuids);
+    BOOST_FOREACH(const string& ep, epUuids) {
+        endpointUpdated(ep);
+    }
 }
 
 void
-FlowManager::HandleSubnet(ChangeInfo& chgInfo) {
-    const MoBasePtr& sn = chgInfo.GetObject();
-    const URI& uri = chgInfo.GetUri();
-    bool isRemove = (chgInfo.changeType == ChangeInfo::REMOVE);
+FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
+    PolicyManager::subnet_vector_t subnets;
+    agent.getPolicyManager().getSubnetsForGroup(egURI, subnets);
 
-    const string& gatewayIpStr = sn->Get("gateway");
-    uint32_t gwIpv4 = 0;
-    bool gwIpv4Ok = false;
-    if (!gatewayIpStr.empty()) {
-        gwIpv4Ok = ParseIpv4Addr(gatewayIpStr, &gwIpv4);
+    // XXX this leaks subnet-related flows when no group is using a subnet
+    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
+        optional<string> routerIpStr;
+        uint32_t routerIpv4 = 0;
+        // XXX add this to model
+        // routerIpStr = sn->getRouterAddress();
+        if (!routerIpStr ||
+            !ParseIpv4Addr(routerIpStr.get(), &routerIpv4)) {
+            continue;
+        }
+
+        FlowEntry *e0 = new FlowEntry();
+        SetDestMatchArpIpv4(e0, 20, routerIpv4, routingDomainId);
+        SetDestActionSubnetArpIpv4(e0, GetRouterMacAddr(), routerIpv4);
+        WriteFlow(sn->getURI().toString(), destinationTable, e0);
     }
-
-    URI parentUri(sn->Get("parentUri"));
-    MoBasePtr l3domain = invtManager.FindNetObj(parentUri, model::CLASS_ID_L3CTX);
-
-    if (!gwIpv4Ok || l3domain == NULL) {
-        return;
-    }
-
-    uint32_t l3Id = atoi(l3domain->Get("id").c_str());
-
-    /* Subnet Router ARP */
-   FlowEntry *e0 = NULL;
-   if (!isRemove) {
-       e0 = new FlowEntry();
-       SetDestMatchArpIpv4(e0, 20, gwIpv4, l3Id);
-       SetDestActionSubnetArpIpv4(e0, GetRouterMacAddr(), gwIpv4);
-   }
-   WriteFlow(uri, destinationTable, e0);
-}
-
-void
-FlowManager::HandleFloodDomain(ChangeInfo& chgInfo) {
-    const MoBasePtr& fd = chgInfo.GetObject();
-    uint32_t fdId = atoi(fd->Get("id").c_str());
-
-    // Group table mod
-}
-
-void
-FlowManager::HandlePolicy(ChangeInfo& chgInfo) {
-    const MoBasePtr& plcy = chgInfo.GetObject();
-    const URI& uri = chgInfo.GetUri();
-    bool isRemove = (chgInfo.changeType == ChangeInfo::REMOVE);
-
-    URI sEpgUri(plcy->Get("sEpgUri"));
-    MoBasePtr sEpg = invtManager.Find(sEpgUri);
-    URI dEpgUri(plcy->Get("dEpgUri"));
-    MoBasePtr dEpg = invtManager.Find(dEpgUri);
-
-    if (sEpg == NULL || dEpg == NULL) {
-        return;
-    }
-    uint32_t sEpgId = atoi(sEpg->Get("id").c_str());
-    uint32_t dEpgId = atoi(dEpg->Get("id").c_str());
-
-    // TODO Conditions
-    // TODO Other criteria
-
-    const string& actions = plcy->Get("actions");
-    bool drop = actions.find("drop") != string::npos;
-
-    FlowEntry *e0 = NULL;
-    if (!isRemove && !drop) {
-        e0 = new FlowEntry();
-        SetPolicyMatchEpgs(e0, 110, sEpgId, dEpgId);
-        SetPolicyActionAllow(e0);
-    }
-    WriteFlow(uri, policyTable, e0);
 }
 
 bool
-FlowManager::WriteFlow(const URI& uri, TableState& tab, EntryList& el) {
+FlowManager::WriteFlow(const string& objId, TableState& tab,
+        FlowEntryList& el) {
     FlowEdit diffs;
-    tab.DiffEntry(uri, el, diffs);
+    tab.DiffEntry(objId, el, diffs);
 
-    bool success = executor->Execute(tab.GetType(), diffs);
+    bool success = executor->Execute(diffs);
     if (success) {
-        tab.Update(uri, el);
+        tab.Update(objId, el);
     }
     // clean-up old entry data (or new entry data in case of failure)
     for (int i = 0; i < el.size(); ++i) {
@@ -567,20 +470,12 @@ FlowManager::WriteFlow(const URI& uri, TableState& tab, EntryList& el) {
 }
 
 bool
-FlowManager::WriteFlow(const URI& uri, TableState& tab, Entry *el) {
-    EntryList tmpEl;
+FlowManager::WriteFlow(const string& objId, TableState& tab, FlowEntry *el) {
+    FlowEntryList tmpEl;
     if (el != NULL) {
         tmpEl.push_back(el);
     }
-    WriteFlow(uri, tab, tmpEl);
-}
-
-bool
-FlowManager::ParseMacAddr(const string& str, uint8_t *mac) {
-    memset(mac, 0, sizeof(uint8_t)*6);
-    sscanf(str.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-            mac, mac+1, mac+2, mac+3, mac+4, mac+5);
-    return true;
+    WriteFlow(objId, tab, tmpEl);
 }
 
 bool
@@ -591,6 +486,35 @@ FlowManager::ParseIpv4Addr(const string& str, uint32_t *ip) {
     }
     *ip = addr.s_addr;
     return true;
+}
+
+bool
+FlowManager::ParseIpv6Addr(const string& str, in6_addr *ip) {
+    if (!inet_pton(AF_INET6, str.c_str(), ip)) {
+        return false;
+    }
+    return true;
+}
+
+uint32_t FlowManager::GetId(class_id_t cid, const URI& uri) {
+    IdMap *idMap = NULL;
+    switch (cid) {
+    case RoutingDomain::CLASS_ID:   idMap = &routingDomainIds; break;
+    case BridgeDomain::CLASS_ID:    idMap = &bridgeDomainIds; break;
+    case FloodDomain::CLASS_ID:     idMap = &floodDomainIds; break;
+    default:
+        assert(false);
+    }
+    return idMap->FindOrGenerate(uri);
+}
+
+uint32_t FlowManager::IdMap::FindOrGenerate(const URI& uri) {
+    unordered_map<URI, uint32_t>::const_iterator it = ids.find(uri);
+    if (it == ids.end()) {
+        ids[uri] = ++lastUsedId;
+        return lastUsedId;
+    }
+    return it->second;
 }
 
 }   // namespace enforcer

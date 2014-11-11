@@ -11,8 +11,8 @@
 
 #include <boost/scoped_ptr.hpp>
 
-#include <internal/modb.h>
-#include <inventory.h>
+#include <Agent.h>
+#include <portMapper.h>
 #include <flowExecutor.h>
 
 namespace opflex {
@@ -25,13 +25,10 @@ namespace enforcer {
  * of flow modifications that represent the changes and apply these
  * modifications.
  */
-class FlowManager {
+class FlowManager : public ovsagent::EndpointListener,
+                    public ovsagent::PolicyListener {
 public:
-	/**
-	 * Constructor with references to inventory and queue of change
-	 * notifications.
-	 */
-    FlowManager(Inventory& im, ChangeList& cii);
+    FlowManager(ovsagent::Agent& agent);
     ~FlowManager() {}
 
     /**
@@ -44,35 +41,41 @@ public:
      */
     void Stop();
 
-    /**
-     * Compute flow modifications and execute them.
-     */
-    void Generate();
-
     void SetExecutor(FlowExecutor *e) {
         executor.reset(e);
+    }
+
+    void SetPortMapper(PortMapper *m) {
+        portMapper = m;
     }
 
     uint32_t GetTunnelPort() { return tunnelPort; }
     uint32_t GetTunnelDstIpv4() { return tunnelDstIpv4; }
     const uint8_t *GetRouterMacAddr() { return routerMac; }
 
+    /** Interface: EndpointListener */
+    void endpointUpdated(const std::string& uuid);
+
+    /** Interface: PolicyListener */
+    void egDomainUpdated(const opflex::modb::URI& egURI);
+
 private:
-    void HandleEndpoint(ChangeInfo& chgInfo);
-    void HandleEndpointGroup(ChangeInfo& chgInfo);
-    void HandleSubnet(ChangeInfo& chgInfo);
-    void HandleFloodDomain(ChangeInfo& chgInfo);
-    void HandlePolicy(ChangeInfo& chgInfo);
+    bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
+            uint32_t& rdId, uint32_t& bdId, uint32_t& fdId);
+    uint32_t GetId(opflex::modb::class_id_t cid, const opflex::modb::URI& uri);
+    void UpdateGroupSubnets(const opflex::modb::URI& egUri,
+            uint32_t routingDomainId);
+    bool WriteFlow(const std::string& objId, flow::TableState& tab,
+                   flow::FlowEntryList& el);
+    bool WriteFlow(const std::string& objId, flow::TableState& tab,
+                   flow::FlowEntry *e);
 
-    bool WriteFlow(const modb::URI& uri, flow::TableState& tab, flow::EntryList& el);
-    bool WriteFlow(const modb::URI& uri, flow::TableState& tab, flow::Entry *e);
-
-    static bool ParseMacAddr(const std::string& str, uint8_t *mac);
     static bool ParseIpv4Addr(const std::string& str, uint32_t *ip);
+    static bool ParseIpv6Addr(const std::string& str, in6_addr *ip);
 
-    Inventory& invtManager;
-    ChangeList& changeInfoIn;
+    ovsagent::Agent& agent;
     boost::scoped_ptr<FlowExecutor> executor;
+    PortMapper *portMapper;
 
     uint32_t tunnelPort;
     uint32_t tunnelDstIpv4;
@@ -81,6 +84,19 @@ private:
     flow::TableState destinationTable;
     flow::TableState policyTable;
     flow::TableState portSecurityTable;
+
+    /**
+     * Helper class to assign unique numeric IDs to some object-types.
+     */
+    class IdMap {
+    public:
+        IdMap() : lastUsedId(0) {}
+        uint32_t FindOrGenerate(const opflex::modb::URI& uri);
+    private:
+        boost::unordered_map<opflex::modb::URI, uint32_t> ids;
+        unsigned long lastUsedId;
+    };
+    IdMap routingDomainIds, bridgeDomainIds, floodDomainIds;
 };
 
 }   // namespace enforcer

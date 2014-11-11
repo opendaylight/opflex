@@ -29,16 +29,12 @@ libenforcer_la_SOURCES = \
 	include/flowExecutor.h \
 	include/flowManager.h \
 	include/ovs.h \
-	include/inventory.h \
 	include/flow/tableState.h \
 	include/flow/actionBuilder.h \
-	include/enforcerImpl.h \
 	include/internal/model.h \
 	include/internal/modb.h \
 	include/switchConnection.h \
 	include/portMapper.h \
-	enforcer.cpp \
-	inventory.cpp \
 	flowManager.cpp \
 	tableState.cpp \
 	flowExecutor.cpp \

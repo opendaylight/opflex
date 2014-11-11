@@ -10,8 +10,8 @@
 # Process this file with automake to produce a Makefile.in
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
-    -I$(top_srcdir)/include \
-    -I$(top_srcdir)/src/enforcer \
+    -I$(top_srcdir)/src/include \
+    -I$(top_srcdir)/test/include \
     -I$(top_srcdir)/src/enforcer/include \
     $(OVS_CFLAGS)
 AM_LDFLAGS = $(BOOST_LDFLAGS)
@@ -21,15 +21,14 @@ enforcer_test_SOURCES = \
     mockModb.cpp \
     modbFixture.h \
     main.cpp \
-    inventory_test.cpp \
     renderer_test.cpp \
     portmapper_test.cpp
 
 enforcer_test_LDADD = ../libenforcer.la \
-    $(libopflex_LIBS) \
-    $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-    $(OVS_LIBS) \
-    $(UV_LIBS) \
-    $(libglog_LIBS)
+	../../../libagent_ovs.la \
+	$(libopflex_LIBS) \
+	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
+	$(OVS_LIBS) \
+	$(libglog_LIBS)
 
 noinst_PROGRAMS = $(TESTS)

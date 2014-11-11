@@ -31,9 +31,8 @@ FlowEntry::~FlowEntry() {
 }
 
 bool
-FlowEntry::MatchEq(const Entry *rhs) {
-    assert(dynamic_cast<const FlowEntry*>(rhs) != NULL);
-    const ofputil_flow_stats *feRhs = dynamic_cast<const FlowEntry*>(rhs)->entry;
+FlowEntry::MatchEq(const FlowEntry *rhs) {
+    const ofputil_flow_stats *feRhs = rhs->entry;
     return entry != NULL && feRhs != NULL &&
             (entry->table_id == feRhs->table_id) &&
             (entry->priority == feRhs->priority) &&
@@ -42,9 +41,8 @@ FlowEntry::MatchEq(const Entry *rhs) {
 }
 
 bool
-FlowEntry::ActionEq(const Entry *rhs) {
-    assert(dynamic_cast<const FlowEntry*>(rhs) != NULL);
-    const ofputil_flow_stats *feRhs = dynamic_cast<const FlowEntry*>(rhs)->entry;
+FlowEntry::ActionEq(const FlowEntry *rhs) {
+    const ofputil_flow_stats *feRhs = rhs->entry;
     return entry != NULL && feRhs != NULL &&
             ofpacts_equal(entry->ofpacts, entry->ofpacts_len,
                           feRhs->ofpacts, feRhs->ofpacts_len);
@@ -53,45 +51,46 @@ FlowEntry::ActionEq(const Entry *rhs) {
 
 /** TableState **/
 
-void TableState::DiffEntry(const URI& uri,
-        const EntryList& newEntries,
+void TableState::DiffEntry(const string& objId,
+        const FlowEntryList& newEntries,
         FlowEdit& diffs) {
-    EntryMap::iterator itr = entryMap.find(uri);
-    const EntryList& oldEntries = (itr != entryMap.end() ? itr->second : EntryList());
+    EntryMap::iterator itr = entryMap.find(objId);
+    const FlowEntryList& oldEntries =
+            (itr != entryMap.end() ? itr->second : FlowEntryList());
 
     vector<bool> keep(oldEntries.size(), false);
     for(int j = 0; j < newEntries.size(); ++j) {
 
-        Entry *newFe = newEntries[j];
+        FlowEntry *newFe = newEntries[j];
         bool found = false;
 
         for (int i = 0; i < keep.size(); ++i) {
-            Entry *currFe = oldEntries[i];
+            FlowEntry *currFe = oldEntries[i];
             if (currFe->MatchEq(newFe)) {
                 keep[i] = true;
                 found = true;
                 if (!currFe->ActionEq(newFe)) {
                     diffs.edits.push_back(
-                            FlowEdit::EntryEdit(FlowEdit::mod, newFe));
+                            FlowEdit::Entry(FlowEdit::mod, newFe));
                 }
                 break;
             }
         }
         if (!found) {
-            diffs.edits.push_back(FlowEdit::EntryEdit(FlowEdit::add, newFe));
+            diffs.edits.push_back(FlowEdit::Entry(FlowEdit::add, newFe));
         }
     }
     for (int i = 0; i < keep.size(); ++i) {
         if (keep[i] == false) {
             diffs.edits.push_back(
-                    FlowEdit::EntryEdit(FlowEdit::del, oldEntries[i]));
+                    FlowEdit::Entry(FlowEdit::del, oldEntries[i]));
         }
     }
 }
 
 void
-TableState::Update(const URI& uri, EntryList& newEntries) {
-    EntryMap::iterator itr = entryMap.find(uri);
+TableState::Update(const string& objId, FlowEntryList& newEntries) {
+    EntryMap::iterator itr = entryMap.find(objId);
 
     /* newEntries.empty() => delete */
     if (newEntries.empty() && itr != entryMap.end()) {
@@ -99,7 +98,7 @@ TableState::Update(const URI& uri, EntryList& newEntries) {
         entryMap.erase(itr);
     } else {
         if (itr == entryMap.end()) {
-            entryMap[uri].swap(newEntries);
+            entryMap[objId].swap(newEntries);
         } else {
             itr->second.swap(newEntries);
         }

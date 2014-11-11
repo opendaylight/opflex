@@ -20,8 +20,7 @@ namespace enforcer {
  */
 class FlowExecutor {
 public:
-    virtual bool Execute(flow::TableState::TABLE_TYPE t,
-            const flow::FlowEdit& fe) = 0;
+    virtual bool Execute(const flow::FlowEdit& fe) = 0;
 };
 
 }   // namespace enforcer
