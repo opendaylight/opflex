@@ -24,6 +24,9 @@ FlowEntry::FlowEntry() {
 }
 
 FlowEntry::~FlowEntry() {
+    if (entry->ofpacts) {
+        free((void *)entry->ofpacts);
+    }
     free(entry);
 }
 

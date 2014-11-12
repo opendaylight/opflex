@@ -96,7 +96,8 @@ agent_test_CXXFLAGS += $(OVS_CFLAGS)
 agent_test_SOURCES += \
 	test/include/ModbFixture.h \
 	test/FlowManager_test.cpp \
-	test/PortMapper_test.cpp
+	test/PortMapper_test.cpp \
+	test/FlowExecutor_test.cpp
 
 agent_test_LDADD += $(OVS_LIBS)
 endif
