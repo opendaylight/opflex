@@ -119,6 +119,68 @@ void MockOpflexServer::policyUpdate(const std::vector<modb::reference_t>& replac
     listener.writeToAll(req);
 }
 
+class EndpointUpdateReq : public OpflexMessage {
+public:
+    EndpointUpdateReq(MockOpflexServer& server_,
+                    const std::vector<modb::reference_t>& replace_,
+                    const std::vector<modb::reference_t>& del_)
+        : OpflexMessage("endpoint_update", REQUEST),
+          server(server_),
+          replace(replace_), 
+          del(del_) {}
+
+    virtual void serializePayload(MessageWriter& writer) {
+        (*this)(writer);
+    }
+
+    template <typename T>
+    bool operator()(Writer<T> & writer) {
+        MOSerializer& serializer = server.getSerializer();
+        modb::mointernal::StoreClient* client = server.getSystemClient();
+
+        writer.StartArray();
+        writer.StartObject();
+
+        writer.String("replace");
+        writer.StartArray();
+        BOOST_FOREACH(modb::reference_t& p, replace) {
+            serializer.serialize(p.first, p.second, 
+                                 *client, writer,
+                                 true);
+        }
+        writer.EndArray();
+
+        writer.String("delete");
+        writer.StartArray();
+        BOOST_FOREACH(modb::reference_t& p, del) {
+            const modb::ClassInfo& ci = 
+                server.getStore().getClassInfo(p.first);
+            writer.StartObject();
+            writer.String("subject");
+            writer.String(ci.getName().c_str());
+            writer.String("uri");
+            writer.String(p.second.toString().c_str());
+            writer.EndObject();
+        }
+        writer.EndArray();
+
+        writer.EndObject();
+        writer.EndArray();
+        return true;
+    }
+
+protected:
+    MockOpflexServer& server;
+    std::vector<modb::reference_t> replace;
+    std::vector<modb::reference_t> del;
+};
+
+void MockOpflexServer::endpointUpdate(const std::vector<modb::reference_t>& replace,
+                                      const std::vector<modb::reference_t>& del) {
+    EndpointUpdateReq req(*this, replace, del);
+    listener.writeToAll(req);
+}
+
 } /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */

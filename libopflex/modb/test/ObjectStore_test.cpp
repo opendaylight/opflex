@@ -33,9 +33,9 @@ BOOST_AUTO_TEST_SUITE(ObjectStore_test)
 // Just checks that basic metadata initialization works correctly
 BOOST_FIXTURE_TEST_CASE( metadata_init, BaseFixture ) {
     // Check metadata
-    BOOST_CHECK_EQUAL(7, md.getClasses().size());
+    BOOST_CHECK_EQUAL(10, md.getClasses().size());
     BOOST_CHECK_EQUAL("class1", md.getClasses()[0].getName());
-    BOOST_CHECK_EQUAL(md.getClasses()[0].getProperties().size(), 5);
+    BOOST_CHECK_EQUAL(md.getClasses()[0].getProperties().size(), 7);
     BOOST_CHECK_EQUAL("prop1", md.getClasses()[0].getProperty("prop1").getName());
     BOOST_CHECK_EQUAL("prop2", md.getClasses()[0].getProperty("prop2").getName());
     BOOST_CHECK_EQUAL(PropertyInfo::COMPOSITE, 

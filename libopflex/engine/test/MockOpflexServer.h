@@ -58,6 +58,9 @@ public:
                       const std::vector<modb::reference_t>& merge_children,
                       const std::vector<modb::reference_t>& del);
 
+    void endpointUpdate(const std::vector<modb::reference_t>& replace,
+                        const std::vector<modb::reference_t>& del);
+
 private:
     int port;
     uint8_t roles;

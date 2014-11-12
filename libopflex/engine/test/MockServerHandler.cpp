@@ -143,6 +143,46 @@ protected:
     std::vector<modb::reference_t> mos;
 };
 
+class EndpointResolveRes : public OpflexMessage {
+public:
+    EndpointResolveRes(const rapidjson::Value& id,
+                     MockOpflexServer& server_,
+                     const std::vector<modb::reference_t>& mos_)
+        : OpflexMessage("endpoint_update", RESPONSE, &id),
+          server(server_),
+          mos(mos_) {}
+
+    virtual void serializePayload(MessageWriter& writer) {
+        (*this)(writer);
+    }
+
+    template <typename T>
+    bool operator()(Writer<T> & writer) {
+        MOSerializer& serializer = server.getSerializer();
+        modb::mointernal::StoreClient* client = server.getSystemClient();
+
+        writer.StartObject();
+        writer.String("endpoint");
+        writer.StartArray();
+        BOOST_FOREACH(modb::reference_t& p, mos) {
+            try {
+                serializer.serialize(p.first, p.second, 
+                                     *client, writer,
+                                     true);
+            } catch (std::out_of_range e) {
+                // endpoint doesn't exist locally
+            }
+        }
+        writer.EndArray();
+        writer.EndObject();
+        return true;
+    }
+
+protected:
+    MockOpflexServer& server;
+    std::vector<modb::reference_t> mos;
+};
+
 void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
                                               const Value& payload) {
     LOG(DEBUG) << "Got send_identity req";
@@ -368,17 +408,156 @@ void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
 
 void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
                                            const rapidjson::Value& payload) {
-    // XXX - TODO
+    StoreClient& client = *server->getSystemClient();
+    MOSerializer& serializer = server->getSerializer();
+
+    Value::ConstValueIterator it;
+    std::vector<modb::reference_t> mos;
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (!it->IsObject()) {
+            sendErrorRes(id, "ERROR", "Malformed message: not an object");
+            return;
+        }
+        if (!it->HasMember("subject")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no endpoint");
+            return;
+        }
+        if (it->HasMember("endpoint_ident")) {
+            sendErrorRes(id, "EUNSUPPORTED", 
+                         "Endpoint resolution by ident is not supported");
+            return;
+        }
+        if (!it->HasMember("endpoint_uri")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no endpoint_uri");
+            return;
+        }
+
+        const Value& subjectv = (*it)["subject"];
+        const Value& puriv = (*it)["endpoint_uri"];
+        if (!subjectv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: subject is not a string");
+            return;
+        }
+        if (!puriv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: endpoint_uri is not a string");
+            return;
+        }
+
+        try {
+            const modb::ClassInfo& ci = 
+                server->getStore().getClassInfo(subjectv.GetString());
+            modb::URI puri(puriv.GetString());
+            modb::reference_t mo(ci.getId(), puri);
+            resolutions.insert(mo);
+            mos.push_back(mo);
+        } catch (std::out_of_range e) {
+            sendErrorRes(id, "ERROR", 
+                         std::string("Unknown subject: ") + 
+                         subjectv.GetString());
+            return;
+        }
+    }
+
+    EndpointResolveRes res(id, *server, mos);
+    getConnection()->write(res.serialize());
 }
 
 void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
                                              const rapidjson::Value& payload) {
-    // XXX - TODO
+    LOG(DEBUG) << "Got endpoint_unresolve req";
+    Value::ConstValueIterator it;
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (!it->IsObject()) {
+            sendErrorRes(id, "ERROR", "Malformed message: not an object");
+            return;
+        }
+        if (!it->HasMember("subject")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no endpoint");
+            return;
+        }
+        if (it->HasMember("endpoint_ident")) {
+            sendErrorRes(id, "EUNSUPPORTED", 
+                         "Endpoint resolution by ident is not supported");
+            return;
+        }
+        if (!it->HasMember("endpoint_uri")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no endpoint_uri");
+            return;
+        }
+
+        const Value& subjectv = (*it)["subject"];
+        const Value& puriv = (*it)["endpoint_uri"];
+        if (!subjectv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: subject is not a string");
+            return;
+        }
+        if (!puriv.IsString()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: endpoint_uri is not a string");
+            return;
+        }
+
+        try {
+            const modb::ClassInfo& ci = 
+                server->getStore().getClassInfo(subjectv.GetString());
+            modb::URI puri(puriv.GetString());
+            resolutions.erase(std::make_pair(ci.getId(), puri));
+        } catch (std::out_of_range e) {
+            sendErrorRes(id, "ERROR", 
+                         std::string("Unknown subject: ") + 
+                         subjectv.GetString());
+            return;
+        }
+    }
+
+    OpflexMessage res("endpoint_unresolve", OpflexMessage::RESPONSE, &id);
+    getConnection()->write(res.serialize());
 }
 
 void MockServerHandler::handleEPUpdateRes(const rapidjson::Value& id,
                                           const rapidjson::Value& payload) {
     // nothing to do
+}
+
+void MockServerHandler::handleStateReportReq(const rapidjson::Value& id,
+                                             const rapidjson::Value& payload) {
+    LOG(DEBUG) << "Got state_report req";
+    StoreClient::notif_t notifs;
+    StoreClient& client = *server->getSystemClient();
+    MOSerializer& serializer = server->getSerializer();
+
+    Value::ConstValueIterator it;
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (!it->IsObject()) {
+            sendErrorRes(id, "ERROR", "Malformed message: not an object");
+            return;
+        }
+        if (!it->HasMember("observable")) {
+            sendErrorRes(id, "ERROR", "Malformed message: no observable");
+            return;
+        }
+
+        const Value& observable = (*it)["observable"];
+
+        if (!observable.IsArray()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: observable is not an array");
+            return;
+        }
+
+        Value::ConstValueIterator ep_it;
+        for (ep_it = observable.Begin(); ep_it != observable.End(); ++ep_it) {
+            const Value& mo = *ep_it;
+            serializer.deserialize(mo, client, true, &notifs);
+        }
+    }
+    client.deliverNotifications(notifs);
+
+    OpflexMessage res("state_report", OpflexMessage::RESPONSE, &id);
+    getConnection()->write(res.serialize());
 }
 
 bool MockServerHandler::hasResolution(modb::class_id_t class_id, 
