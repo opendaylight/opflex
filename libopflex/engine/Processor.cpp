@@ -148,11 +148,6 @@ size_t Processor::getRefCount(const URI& uri) {
     return 0;
 }
 
-static bool isLocalSyncType(ClassInfo::class_type_t type) {
-    return ((type == ClassInfo::LOCAL_ENDPOINT) || 
-            (type == ClassInfo::OBSERVABLE));
-}
-
 // check if the object has a zero refcount and it has no remote
 // ancestor that has a zero refcount.
 bool Processor::isOrphan(const item& item) {
@@ -184,12 +179,13 @@ bool Processor::isOrphan(const item& item) {
 // since those will get synced when we sync the parent.
 bool Processor::isParentSyncObject(const item& item) {
     try {
+        const ClassInfo& ci = store->getPropClassInfo(item.details->class_id);
         const std::pair<URI, prop_id_t>& parent =
             client->getParent(item.details->class_id, item.uri);
         const ClassInfo& parent_ci = store->getPropClassInfo(parent.second);
         
         // The parent object will be synchronized
-        if (isLocalSyncType(parent_ci.getType())) return false;
+        if (ci.getType() == parent_ci.getType()) return false;
 
         return true;
     } catch (std::out_of_range e) {
@@ -229,7 +225,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                << " of class " << ci.getId()
                << " and type " << ci.getType()
                << " in state " << curState;
-    
+
     // Check whether this item needs to be garbage collected
     if (oi && isOrphan(*it)) {
         switch (curState) {
@@ -300,15 +296,21 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         case ClassInfo::POLICY:
             {
                 vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id,
-                                         it->uri));
+                refs.push_back(make_pair(it->details->class_id, it->uri));
                 PolicyResolveReq req(this, refs);
                 pool.writeToRole(req, OpflexHandler::POLICY_REPOSITORY);
                 newState = RESOLVED;
             }
             break;
         case ClassInfo::REMOTE_ENDPOINT:
-            LOG(WARNING) << "Remote endpoint resolution not implemented";
+            {
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id, it->uri));
+                EndpointResolveReq req(this, refs);
+                pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+                newState = RESOLVED;
+            }
+            break;
             break;
         default:
             // do nothing
@@ -323,8 +325,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         case ClassInfo::LOCAL_ENDPOINT:
             if (isParentSyncObject(*it)) {
                 vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id,
-                                         it->uri));
+                refs.push_back(make_pair(it->details->class_id, it->uri));
                 EndpointDeclareReq req(this, refs);
                 pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
             }
@@ -332,7 +333,10 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             break;
         case ClassInfo::OBSERVABLE:
             if (isParentSyncObject(*it)) {
-                LOG(WARNING) << "Observable reporting not implemented";
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id, it->uri));
+                StateReportReq req(this, refs);
+                pool.writeToRole(req, OpflexHandler::OBSERVER);
             }
             newState = IN_SYNC;
             break;
@@ -353,28 +357,26 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         case ClassInfo::POLICY:
             if (curState == RESOLVED) {
                 vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id,
-                                         it->uri));
+                refs.push_back(make_pair(it->details->class_id, it->uri));
                 PolicyUnresolveReq req(this, refs);
                 pool.writeToRole(req, OpflexHandler::POLICY_REPOSITORY);
             }
             break;
         case ClassInfo::REMOTE_ENDPOINT:
             if (curState == RESOLVED) {
-                LOG(WARNING) << "Remote endpoint unresolution not implemented";
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id, it->uri));
+                EndpointUnresolveReq req(this, refs);
+                pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
             }
             break;
         case ClassInfo::LOCAL_ENDPOINT:
             {
                 vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id,
-                                         it->uri));
+                refs.push_back(make_pair(it->details->class_id, it->uri));
                 EndpointUndeclareReq req(this, refs);
                 pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
             }
-            break;
-        case ClassInfo::OBSERVABLE:
-            LOG(WARNING) << "Observable reporting not implemented";
             break;
         default:
             // do nothing

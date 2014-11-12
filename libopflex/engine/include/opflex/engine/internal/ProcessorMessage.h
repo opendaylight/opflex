@@ -125,6 +125,81 @@ protected:
 };
 
 /**
+ * Endpoint resolve request for a given set of references
+ */
+class EndpointResolveReq : public ProcessorMessage {
+public:
+    EndpointResolveReq(Processor* processor,
+                     const std::vector<modb::reference_t>& policies_)
+        : ProcessorMessage("endpoint_resolve", REQUEST, processor), 
+          policies(policies_) {}
+
+    virtual void serializePayload(MessageWriter& writer) {
+        (*this)(writer);
+    }
+
+    template <typename T>
+    bool operator()(rapidjson::Writer<T> & writer) {
+        writer.StartArray();
+        BOOST_FOREACH(modb::reference_t& p, policies) {
+            try {
+                writer.StartObject();
+                writer.String("subject");
+                writer.String(processor->getStore()
+                               ->getClassInfo(p.first).getName().c_str());
+                writer.String("endpoint_uri");
+                writer.String(p.second.toString().c_str());
+                writer.String("prr");
+                writer.Int64(3600);
+                writer.EndObject();
+            } catch (std::out_of_range e) {
+                LOG(WARNING) << "No class found for class ID " << p.first;
+            }
+        }
+        writer.EndArray();
+        return true;
+    }
+
+protected:
+    std::vector<modb::reference_t> policies;
+};
+
+class EndpointUnresolveReq : public ProcessorMessage {
+public:
+    EndpointUnresolveReq(Processor* processor,
+                       const std::vector<modb::reference_t>& policies_)
+        : ProcessorMessage("endpoint_unresolve", REQUEST, processor), 
+          policies(policies_) {}
+
+    virtual void serializePayload(MessageWriter& writer) {
+        (*this)(writer);
+    }
+
+    template <typename T>
+    bool operator()(rapidjson::Writer<T> & writer) {
+        writer.StartArray();
+        BOOST_FOREACH(modb::reference_t& p, policies) {
+            try {
+                writer.StartObject();
+                writer.String("subject");
+                writer.String(processor->getStore()
+                               ->getClassInfo(p.first).getName().c_str());
+                writer.String("endpoint_uri");
+                writer.String(p.second.toString().c_str());
+                writer.EndObject();
+            } catch (std::out_of_range e) {
+                LOG(WARNING) << "No class found for class ID " << p.first;
+            }
+        }
+        writer.EndArray();
+        return true;
+    }
+
+protected:
+    std::vector<modb::reference_t> policies;
+};
+
+/**
  * Endpoint declare request for a set of endpoints
  */
 class EndpointDeclareReq : public ProcessorMessage {
@@ -256,7 +331,7 @@ protected:
     std::vector<modb::URI> del;
 };
 
-class StateReportReq : protected ProcessorMessage {
+class StateReportReq : public ProcessorMessage {
 public:
     StateReportReq(Processor* processor,
                    const std::vector<modb::reference_t>& observables_)

@@ -223,7 +223,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare, ServerFixture ) {
 
     URI u2_2("/class2/43/");
     shared_ptr<ObjectInstance> oi2_2 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(3));
+        shared_ptr<ObjectInstance>(new ObjectInstance(2));
     oi2_2->setInt64(4, 43);
     client1->put(2, u2_2, oi2_2);
 
@@ -349,6 +349,137 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, ServerFixture ) {
     // unresolve
     client2->remove(5, c5u, false, &notifs);
     client2->queueNotification(5, c5u, notifs);
+    client2->deliverNotifications(notifs);
+    notifs.clear();
+
+    WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+}
+
+BOOST_FIXTURE_TEST_CASE( state_report, ServerFixture ) {
+    WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
+
+    StoreClient::notif_t notifs;
+
+    URI u1("/");
+    shared_ptr<ObjectInstance> oi1 = 
+        shared_ptr<ObjectInstance>(new ObjectInstance(1));
+    client1->put(1, u1, oi1);
+
+    // check add
+    URI u2("/class2/42/");
+    shared_ptr<ObjectInstance> oi2 = 
+        shared_ptr<ObjectInstance>(new ObjectInstance(2));
+    oi2->setInt64(4, 42);
+    client1->put(2, u2, oi2);
+
+    client1->queueNotification(1, u1, notifs);
+    client1->queueNotification(2, u2, notifs);
+    client1->deliverNotifications(notifs);
+    notifs.clear();
+
+    URI u3("/class2/42/class3/12/test/");
+    shared_ptr<ObjectInstance> oi3 = 
+        shared_ptr<ObjectInstance>(new ObjectInstance(3));
+    oi3->setInt64(6, 12);
+    oi3->setString(7, "test");
+    client2->put(3, u3, oi3);
+    client2->queueNotification(3, u3, notifs);
+    client2->deliverNotifications(notifs);
+    notifs.clear();
+
+    StoreClient* rclient = mockServer.getSystemClient();
+    WAIT_FOR(itemPresent(rclient, 3, u3), 1000);
+    BOOST_CHECK_EQUAL(12, rclient->get(3, u3)->getInt64(6));
+
+    // check update
+    oi3->setString(16, "update");
+    client2->put(3, u3, oi3);
+    client2->queueNotification(3, u3, notifs);
+    client2->deliverNotifications(notifs);
+    notifs.clear();
+
+    WAIT_FOR(rclient->get(3, u3)->isSet(16, PropertyInfo::STRING), 1000);
+    BOOST_CHECK_EQUAL("update", rclient->get(3, u3)->getString(16));
+}
+
+// test endpoint_resolve, endpoint_unresolve, endpoint_update
+BOOST_FIXTURE_TEST_CASE( endpoint_resolve, ServerFixture ) {
+    WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
+
+    StoreClient::notif_t notifs;
+    URI c8u("/class8/test/");
+    URI c9u("/class9/test/");
+    URI c10u("/class8/test/class10/test2/");
+
+    // set up the server-side store
+    StoreClient* rclient = mockServer.getSystemClient();
+    shared_ptr<ObjectInstance> root = 
+        shared_ptr<ObjectInstance>(new ObjectInstance(1));
+    shared_ptr<ObjectInstance> oi8 = 
+        shared_ptr<ObjectInstance>(new ObjectInstance(8));
+    oi8->setString(17, "test");
+    shared_ptr<ObjectInstance> oi10 = 
+        shared_ptr<ObjectInstance>(new ObjectInstance(10));
+    oi10->setString(21, "test2");
+
+    rclient->put(1, URI::ROOT, root);
+    rclient->put(8, c8u, oi8);
+    rclient->put(10, c10u, oi10);
+    rclient->addChild(1, URI::ROOT, 22, 8, c8u);
+    rclient->addChild(8, c8u, 20, 10, c10u);
+
+    // create a local reference to the remote policy object
+    shared_ptr<ObjectInstance> oi9 = 
+        shared_ptr<ObjectInstance>(new ObjectInstance(9));
+    oi9->setString(18, "test");
+    oi9->addReference(19, 8, c8u);
+    client2->put(9, c9u, oi9);
+
+    client2->queueNotification(9, c9u, notifs);
+    client2->deliverNotifications(notifs);
+    notifs.clear();
+
+    // verify that the object is synced to the client
+    BOOST_CHECK(itemPresent(client2, 9, c9u));
+    WAIT_FOR(processor.getRefCount(c8u) > 0, 1000);
+    WAIT_FOR(itemPresent(client2, 8, c8u), 1000);
+    WAIT_FOR(itemPresent(client2, 10, c10u), 1000);
+    BOOST_CHECK_EQUAL("test", client2->get(8, c8u)->getString(17));
+    BOOST_CHECK_EQUAL("test2", client2->get(10, c10u)->getString(21));
+    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+
+    // perform object updates
+    vector<reference_t> replace;
+    vector<reference_t> merge;
+    vector<reference_t> del;
+    
+    oi8->setString(17, "moretesting");
+    oi10->setString(21, "moretesting2");
+    rclient->put(8, c8u, oi8);
+    rclient->put(10, c10u, oi10);
+    
+    // replace
+    replace.push_back(make_pair(8, c8u));
+    mockServer.endpointUpdate(replace, del);
+    WAIT_FOR("moretesting" == client2->get(8, c8u)->getString(17), 1000);
+    BOOST_CHECK_EQUAL("moretesting2", client2->get(10, c10u)->getString(21));
+
+    oi8->setString(17, "evenmore");
+    rclient->put(8, c8u, oi8);
+    rclient->remove(10, c10u, false);
+    mockServer.endpointUpdate(replace, del);
+    WAIT_FOR("evenmore" == client2->get(8, c8u)->getString(17), 1000);
+    WAIT_FOR(!itemPresent(client2, 10, c10u), 1000);
+
+    // delete
+    replace.clear();
+    del.push_back(make_pair(8, c8u));
+    mockServer.endpointUpdate(replace, del);
+    WAIT_FOR(!itemPresent(client2, 8, c8u), 1000);
+
+    // unresolve
+    client2->remove(9, c9u, false, &notifs);
+    client2->queueNotification(9, c9u, notifs);
     client2->deliverNotifications(notifs);
     notifs.clear();
 

@@ -76,8 +76,10 @@ public:
                                     const rapidjson::Value& payload);
     virtual void handleEPUnresolveRes(const rapidjson::Value& id,
                                       const rapidjson::Value& payload);
-    virtual void handleEPUpdateRes(const rapidjson::Value& id,
+    virtual void handleEPUpdateReq(const rapidjson::Value& id,
                                    const rapidjson::Value& payload);
+    virtual void handleStateReportRes(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload);
 
 protected:
     Processor* processor;

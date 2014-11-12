@@ -210,7 +210,7 @@ void OpflexPEHandler::handlePolicyResolveRes(const rapidjson::Value& id,
         const Value& policy = payload["policy"];
         if (!policy.IsArray()) {
             LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
-                       << "Malformed policy response: policy must be array";
+                       << "Malformed policy resolve response: policy must be array";
             conn->disconnect();
         }
 
@@ -337,7 +337,24 @@ void OpflexPEHandler::handleEPUndeclareRes(const rapidjson::Value& id,
 
 void OpflexPEHandler::handleEPResolveRes(const rapidjson::Value& id,
                                          const rapidjson::Value& payload) {
-    // nothing to do
+    StoreClient* client = getProcessor()->getSystemClient();
+    MOSerializer& serializer = getProcessor()->getSerializer();
+    StoreClient::notif_t notifs;
+    if (payload.HasMember("endpoint")) {
+        const Value& endpoint = payload["endpoint"];
+        if (!endpoint.IsArray()) {
+            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
+                       << "Malformed endpoint resolve response: endpoint must be array";
+            conn->disconnect();
+        }
+
+        Value::ConstValueIterator it;
+        for (it = endpoint.Begin(); it != endpoint.End(); ++it) {
+            const Value& mo = *it;
+            serializer.deserialize(mo, *client, true, &notifs);
+        }
+    }
+    client->deliverNotifications(notifs);
 }
 
 void OpflexPEHandler::handleEPUnresolveRes(const rapidjson::Value& id,
@@ -345,8 +362,92 @@ void OpflexPEHandler::handleEPUnresolveRes(const rapidjson::Value& id,
     // nothing to do
 }
 
-void OpflexPEHandler::handleEPUpdateRes(const rapidjson::Value& id,
+void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& id,
                                         const rapidjson::Value& payload) {
+    StoreClient* client = getProcessor()->getSystemClient();
+    MOSerializer& serializer = getProcessor()->getSerializer();
+    StoreClient::notif_t notifs;
+
+    Value::ConstValueIterator it;
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (!it->IsObject()) {
+            sendErrorRes(id, "ERROR", 
+                         "Malformed message: payload array contains a nonobject");
+            return;
+        }
+
+        if (it->HasMember("replace")) {
+            const Value& replace = (*it)["replace"];
+            if (!replace.IsArray()) {
+                sendErrorRes(id, "ERROR", 
+                             "Malformed message: replace is not an array");
+                return;
+            }
+            Value::ConstValueIterator it;
+            for (it = replace.Begin(); it != replace.End(); ++it) {
+                const Value& mo = *it;
+                serializer.deserialize(mo, *client, true, &notifs);
+            }
+        }
+        if (it->HasMember("delete")) {
+            const Value& del = (*it)["delete"];
+            if (!del.IsArray()) {
+                sendErrorRes(id, "ERROR", 
+                             "Malformed message: delete is not an array");
+                return;
+            }
+            Value::ConstValueIterator dit;
+            for (dit = del.Begin(); dit != del.End(); ++dit) {
+                if (!dit->IsObject()) {
+                    sendErrorRes(id, "ERROR", 
+                                 "Malformed message: delete contains a non-object");
+                    return;
+                }
+                if (!dit->HasMember("subject")) {
+                    sendErrorRes(id, "ERROR", 
+                                 "Malformed message: subject missing from delete");
+                    return;
+                }
+                if (!dit->HasMember("uri")) {
+                    sendErrorRes(id, "ERROR", 
+                                 "Malformed message: uri missing from delete");
+                    return;
+                }
+
+                const Value& subjectv = (*dit)["subject"];
+                const Value& puriv = (*dit)["uri"];
+                if (!subjectv.IsString()) {
+                    sendErrorRes(id, "ERROR", 
+                                 "Malformed message: subject is not a string");
+                    return;
+                }
+                if (!puriv.IsString()) {
+                    sendErrorRes(id, "ERROR", 
+                                 "Malformed message: uri is not a string");
+                    return;
+                }
+
+                try {
+                    const modb::ClassInfo& ci = 
+                        getProcessor()->getStore()->getClassInfo(subjectv.GetString());
+                    modb::URI puri(puriv.GetString());
+                    client->remove(ci.getId(), puri, false, &notifs);
+                    client->queueNotification(ci.getId(), puri, notifs);
+                } catch (std::out_of_range e) {
+                    sendErrorRes(id, "ERROR", 
+                                 std::string("Unknown subject: ") + 
+                                 subjectv.GetString());
+                    return;
+                }
+            }
+        }
+    }
+
+    client->deliverNotifications(notifs);
+}
+
+void OpflexPEHandler::handleStateReportRes(const rapidjson::Value& id,
+                                           const rapidjson::Value& payload) {
     // nothing to do
 }
 

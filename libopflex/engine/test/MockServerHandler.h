@@ -80,6 +80,8 @@ public:
                                       const rapidjson::Value& payload);
     virtual void handleEPUpdateRes(const rapidjson::Value& id,
                                    const rapidjson::Value& payload);
+    virtual void handleStateReportReq(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload);
 
 protected:
     MockOpflexServer* server;
