@@ -16,6 +16,7 @@
 
 using namespace std;
 using namespace boost;
+using namespace ovsagent;
 
 typedef lock_guard<mutex> mutex_guard;
 
@@ -94,13 +95,13 @@ PortMapper::HandlePortDescReply(ofpbuf *msg) {
     ofputil_phy_port portDesc;
     while (!ofputil_pull_phy_port((ofp_version)msgHdr->version,
                                   &tmpBuf, &portDesc)) {
-        DLOG(INFO) << "Found port: " << portDesc.port_no
+        LOG(DEBUG) << "Found port: " << portDesc.port_no
                 << " -> " << portDesc.name;
         tmpPortMap[portDesc.name] = portDesc;
     }
 
     if (done) {
-        DLOG(INFO) << "Got end of message";
+        LOG(DEBUG) << "Got end of message";
         mutex_guard lock(mapMtx);
         lastDescReqXid = -1;
         portMap.swap(tmpPortMap);

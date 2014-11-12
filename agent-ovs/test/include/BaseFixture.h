@@ -9,8 +9,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <glog/logging.h>
-
 #include <opflex/ofcore/OFFramework.h>
 #include <modelgbp/metadata/metadata.hpp>
 

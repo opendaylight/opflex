@@ -13,6 +13,7 @@
 SUBDIRS = . test
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
+	-DBOOST_LOG_DYN_LINK \
 	-I$(srcdir)/include \
 	-I$(top_srcdir)/src/include \
 	$(OVS_CFLAGS)

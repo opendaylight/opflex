@@ -9,21 +9,17 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <glog/logging.h>
+#include "logging.h"
 #include <ovs.h>
 #include <switchConnection.h>
 
 using namespace std;
 using namespace opflex::enforcer;
+using namespace ovsagent;
 
 class ConnectionFixture {
 public:
     ConnectionFixture() : testSwitchName("myTestBridge") {
-        if (!logInitDone) {
-            google::InitGoogleLogging("");
-            FLAGS_logtostderr = 0;      // set to 1 to enable logging
-            logInitDone = true;
-        }
         AddSwitch(testSwitchName);
     }
 
@@ -41,11 +37,9 @@ public:
         return system(comm.c_str());
     }
 
-    static bool logInitDone;
     string testSwitchName;
 };
 
-bool ConnectionFixture::logInitDone = false;
 
 class EchoReplyHandler : public MessageHandler {
 public:

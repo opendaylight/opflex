@@ -10,15 +10,3 @@
 
 #define BOOST_TEST_MODULE "enforcer"
 #include <boost/test/unit_test.hpp>
-
-#include "logging.h"
-
-struct LogInitializer {
-public:
-    LogInitializer() {
-        google::InitGoogleLogging("");
-        FLAGS_logtostderr = 0;      // set to 1 to enable logging
-    }
-};
-
-static LogInitializer logInit;
