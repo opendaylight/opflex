@@ -222,7 +222,6 @@ class Peer : public SafeListBaseHook {
               connected_(0),
               destroying_(0),
               passive_(passive),
-              pending_(0),
               ___________(0),
               status_(status)
             {
@@ -312,8 +311,7 @@ class Peer : public SafeListBaseHook {
     unsigned char destroying_ :1;
     unsigned char passive_    :1;
           mutable
-    unsigned char pending_    :1;
-    unsigned char ___________ :1;
+    unsigned char ___________ :2;
     unsigned char status_     :3;
 
   protected:
@@ -380,9 +378,13 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     yajr::rpc::InboundMessage * parseFrame();
 
     void onWrite() {
-        pending_ = 0;
 
-        s_.deque_.erase(first_, last_);
+        s_.deque_.erase(
+                s_.deque_.begin(),
+                s_.deque_.begin() + pendingBytes_
+        );
+
+        pendingBytes_ = 0;
 
         write(); /* kick the can */
     }
@@ -395,28 +397,27 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     int write() const {
 
-        if (pending_) {
+        if (pendingBytes_) {
             return 0;
         }
 
-        pending_ = 1;
-        first_ = s_.deque_.begin();
-        last_ = s_.deque_.end();
+        pendingBytes_ = s_.deque_.size();
 
-        std::vector<iovec> iov = more::get_iovec(first_, last_);
-
-        std::vector<iovec>::size_type size = iov.size();
-
-        if (!size) {
-            pending_ = 0;
+        if (!pendingBytes_) {
             return 0;
         }
+
+        std::vector<iovec> iov =
+            more::get_iovec(
+                    s_.deque_.begin(),
+                    s_.deque_.end()
+            );
 
         /* FIXME: handle errors!!! */
         return uv_write(&write_req_,
                 (uv_stream_t*) &handle_,
                 (uv_buf_t*)&iov[0],
-                size,
+                iov.size(),
                 on_write);
 
     }
@@ -607,8 +608,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     mutable ::yajr::internal::StringQueue s_;
     mutable ::yajr::rpc::SendHandler writer_;
-    mutable std::deque<rapidjson::UTF8<>::Ch>::iterator first_;
-    mutable std::deque<rapidjson::UTF8<>::Ch>::iterator last_;
+    mutable size_t pendingBytes_;
     mutable uint64_t nextId_;
 
     uint64_t keepAliveInterval_;
