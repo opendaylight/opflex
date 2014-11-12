@@ -105,6 +105,8 @@ integration_test_SOURCES = \
 integration_test_LDADD = $(top_builddir)/src/enforcer/libenforcer.la \
 	$(libopflex_LIBS) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
+	$(BOOST_LOG_LIB) \
+	$(BOOST_LOG_SETUP_LIB) \
 	$(OVS_LIBS) \
 	$(UV_LIBS)
 

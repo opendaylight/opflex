@@ -9,7 +9,7 @@
 #
 # Process this file with automake to produce a Makefile.in
 
-AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
+AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK -DBOOST_LOG_DYN_LINK \
     -I$(top_srcdir)/src/include \
     -I$(top_srcdir)/test/include \
     -I$(top_srcdir)/src/enforcer/include \
@@ -28,6 +28,8 @@ enforcer_test_LDADD = ../libenforcer.la \
 	../../../libagent_ovs.la \
 	$(libopflex_LIBS) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
+	$(BOOST_LOG_LIB) \
+	$(BOOST_LOG_SETUP_LIB) \
 	$(OVS_LIBS)
 
 noinst_PROGRAMS = $(TESTS)

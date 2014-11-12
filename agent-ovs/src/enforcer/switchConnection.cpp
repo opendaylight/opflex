@@ -21,6 +21,7 @@
 
 using namespace std;
 using namespace boost;
+using namespace ovsagent;
 
 typedef lock_guard<mutex> mutex_guard;
 
@@ -185,7 +186,7 @@ SwitchConnection::WatchPollEvent() {
 
 void
 SwitchConnection::Monitor() {
-    DLOG(INFO) << "Connection monitor started ...";
+    LOG(DEBUG) << "Connection monitor started ...";
 
     WatchPollEvent();
     bool connLost = false;
@@ -287,7 +288,7 @@ SwitchConnection::FireOnConnectListeners() {
 void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
         ofptype msgType, ofpbuf *msg) {
-    DLOG(INFO) << "Got ECHO request";
+    LOG(DEBUG) << "Got ECHO request";
     const ofp_header *rq = (const ofp_header *)ofpbuf_data(msg);
     struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
     swConn->SendMessage(echoReplyMsg);

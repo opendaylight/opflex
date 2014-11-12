@@ -11,7 +11,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
-
+#include "logging.h"
 #include <ovs.h>
 #include <flowManager.h>
 #include <flowExecutor.h>
@@ -42,7 +42,7 @@ public:
             string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
             const char *mod = modStr[ed.first];
 
-            DLOG(INFO) << "*** " << mod << "|" << str;
+            LOG(DEBUG) << "*** " << mod << "|" << str;
             BOOST_CHECK_MESSAGE(!mods.empty(), "\ngot " << mod << "|" << str);
             if (!mods.empty()) {
                 MOD exp = mods.front();
