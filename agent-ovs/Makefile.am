@@ -13,26 +13,26 @@
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
-	-I$(top_srcdir)/src/include
+	-I$(top_srcdir)/src/include \
+	-DBOOST_LOG_DYN_LINK
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 noinst_LTLIBRARIES = libagent_ovs.la
 libagent_ovs_la_CXXFLAGS = \
 	$(libopflex_CFLAGS) \
-	$(libmodelgbp_CFLAGS) \
-	$(libvirt_CFLAGS) \
-	$(libglog_CFLAGS)
+	$(libmodelgbp_CFLAGS)
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(libvirt_LIBS) \
-	$(libglog_LIBS) \
+	$(BOOST_LOG_LIB) \
+	$(BOOST_LOG_SETUP_LIB) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_THREAD_LIB) 
 
 libagent_ovs_la_SOURCES = \
-	src/include/GLogLogHandler.h \
+	src/include/BoostLogHandler.h \
 	src/include/PolicyListener.h \
 	src/include/PolicyManager.h \
 	src/include/Endpoint.h \
@@ -41,7 +41,7 @@ libagent_ovs_la_SOURCES = \
 	src/include/EndpointSource.h \
 	src/include/FSEndpointSource.h \
 	src/include/Agent.h \
-	src/GLogLogHandler.cpp \
+	src/BoostLogHandler.cpp \
 	src/PolicyManager.cpp \
 	src/Endpoint.cpp \
 	src/EndpointManager.cpp \
@@ -106,8 +106,8 @@ integration_test_LDADD = $(top_builddir)/src/enforcer/libenforcer.la \
 	$(libopflex_LIBS) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 	$(OVS_LIBS) \
-	$(UV_LIBS) \
-	$(libglog_LIBS)
+	$(UV_LIBS)
+
 endif
 
 check-integration: agent_ovs

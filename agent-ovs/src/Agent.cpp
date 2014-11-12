@@ -9,12 +9,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <glog/logging.h>
 #include <boost/foreach.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 
 #include "Agent.h"
 #include "FSEndpointSource.h"
+#include "logging.h"
 
 namespace ovsagent {
 

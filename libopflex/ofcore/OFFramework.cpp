@@ -25,12 +25,13 @@ using namespace boost::assign;
 
 class OFFramework::OFFrameworkImpl {
 public:
-    OFFrameworkImpl() : processor(&db) { } 
+    OFFrameworkImpl() : processor(&db), started(false) { } 
     ~OFFrameworkImpl() {}
 
     modb::ObjectStore db;
     engine::Processor processor;
     uv_key_t mutator_key;
+    bool started;
 };
 
 OFFramework::OFFramework() : pimpl(new OFFrameworkImpl()) {
@@ -60,16 +61,19 @@ void OFFramework::setModel(const modb::ModelMetadata& model) {
 
 void OFFramework::start() {
     LOG(DEBUG) << "Starting OpFlex Framework";
-
+    pimpl->started = true;
     pimpl->db.start();
     pimpl->processor.start();
 }
 
 void OFFramework::stop() {
-    LOG(DEBUG) << "Stopping OpFlex Framework";
-
-    pimpl->processor.stop();
-    pimpl->db.stop();
+    if (pimpl->started) {
+        LOG(DEBUG) << "Stopping OpFlex Framework";
+        
+        pimpl->processor.stop();
+        pimpl->db.stop();
+    }
+    pimpl->started = false;
 }
 
 void OFFramework::setOpflexIdentity(const std::string& name,

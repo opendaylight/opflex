@@ -17,23 +17,35 @@
 #include <string>
 #include <iostream>
 
-#include <glog/logging.h>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/program_options.hpp>
 
+#include <boost/log/utility/setup/file.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/expressions/formatters/date_time.hpp>
+#include <boost/log/support/date_time.hpp>
+#include <boost/log/utility/setup/console.hpp>
+
 #include "Agent.h"
-#include "GLogLogHandler.h"
+#include "BoostLogHandler.h"
+#include "logging.h"
 
 using std::vector;
 using std::string;
-using ovsagent::Agent;
-using ovsagent::GLogLogHandler;
 using opflex::ofcore::OFFramework;
 using opflex::logging::OFLogHandler;
 namespace po = boost::program_options;
+namespace logging = boost::log;
+namespace sinks = boost::log::sinks;
+namespace src = boost::log::sources;
+namespace expr = boost::log::expressions;
+namespace attrs = boost::log::attributes;
+namespace keywords = boost::log::keywords;
+using boost::log::trivial::severity_level;
+using namespace ovsagent;
 
-GLogLogHandler logHandler(OFLogHandler::INFO);
+BoostLogHandler logHandler(OFLogHandler::NO_LOGGING);
 
 void sighandler(int sig) {
     LOG(INFO) << "Got " << strsignal(sig) << " signal";
@@ -70,6 +82,7 @@ static void daemonize(void)
 }
 
 #define DEFAULT_CONF SYSCONFDIR"/opflex-agent-ovs/opflex-agent-ovs.conf"
+#define LOG_FORMAT "[%TimeStamp%] [%Severity%] %Message%"
 
 int main(int argc, char** argv) {
     // Parse command line options
@@ -79,10 +92,16 @@ int main(int argc, char** argv) {
         ("config,c",
          po::value<string>()->default_value(DEFAULT_CONF), 
          "Read configuration from the specified file")
+        ("log", po::value<string>(), "Log to the specified file (default standard out)")
+        ("level", po::value<string>(), "Use the specified log level (default INFO)")
         ("daemon", "Run the agent as a daemon")
         ;
 
     bool daemon = false;
+    OFLogHandler::Level level = OFLogHandler::INFO;
+
+    std::string log_file;
+    severity_level blevel = INFO;
 
     po::variables_map vm;
     try {
@@ -98,6 +117,28 @@ int main(int argc, char** argv) {
         if (vm.count("daemon")) {
             daemon = true;
         }
+        if (vm.count("log")) {
+            log_file = vm["log"].as<string>();
+        }
+        if (vm.count("level")) {
+            std::string levelstr = vm["level"].as<string>();
+            if (levelstr == "debug") {
+                level = OFLogHandler::DEBUG;
+                blevel = boost::log::trivial::debug;
+            } else if (levelstr == "info") {
+                level = OFLogHandler::INFO;
+                blevel = boost::log::trivial::info;
+            } else if (levelstr == "warning") {
+                level = OFLogHandler::WARNING;
+                blevel = boost::log::trivial::warning;
+            } else if (levelstr == "error") {
+                level = OFLogHandler::ERROR;
+                blevel = boost::log::trivial::error;
+            } else if (levelstr == "fatal") {
+                level = OFLogHandler::FATAL;
+                blevel = boost::log::trivial::fatal;
+            }
+        }
     } catch (po::unknown_option e) {
         std::cerr << e.what() << std::endl;
     }
@@ -106,7 +147,20 @@ int main(int argc, char** argv) {
         daemonize();
 
     // Initialize logging
-    google::InitGoogleLogging(argv[0]);
+    logging::add_common_attributes();
+    logging::core::get()->set_filter (logging::trivial::severity >= blevel);
+    logging::register_simple_formatter_factory< severity_level, char >("Severity");
+    if (log_file != "") {
+        logging::add_file_log(keywords::file_name = log_file,
+                              keywords::format = LOG_FORMAT,
+                              keywords::auto_flush = true,
+                              keywords::open_mode = (std::ios::out | std::ios::app));
+    } else {
+        logging::add_console_log(std::cout,
+                                 keywords::format = LOG_FORMAT);
+    }
+
+    logHandler.setLevel(level);
     OFLogHandler::registerHandler(logHandler);
 
     try {

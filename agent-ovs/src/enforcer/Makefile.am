@@ -22,6 +22,8 @@ noinst_LTLIBRARIES = libenforcer.la
 libenforcer_la_CXXFLAGS = $(UV_CFLAGS)
 
 libenforcer_la_LIBADD = \
+	$(BOOST_LOG_LIB) \
+	$(BOOST_LOG_SETUP_LIB) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_THREAD_LIB)
 

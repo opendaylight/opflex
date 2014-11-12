@@ -14,10 +14,10 @@
 #include <boost/thread/lock_guard.hpp>
 #include <boost/foreach.hpp>
 #include <boost/scope_exit.hpp>
-#include <glog/logging.h>
-
 #include <ovs.h>
-#include <switchConnection.h>
+
+#include "switchConnection.h"
+#include "logging.h"
 
 using namespace std;
 using namespace boost;

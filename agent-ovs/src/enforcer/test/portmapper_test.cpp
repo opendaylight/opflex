@@ -9,10 +9,11 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <glog/logging.h>
 #include <ovs.h>
-#include <switchConnection.h>
-#include <portMapper.h>
+
+#include "switchConnection.h"
+#include "portMapper.h"
+#include "logging.h"
 
 using namespace std;
 using namespace opflex::enforcer;

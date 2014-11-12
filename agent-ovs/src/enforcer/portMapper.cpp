@@ -9,10 +9,10 @@
 #include <boost/unordered_map.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
-#include <glog/logging.h>
 
 #include <ovs.h>
-#include <portMapper.h>
+#include "portMapper.h"
+#include "logging.h"
 
 using namespace std;
 using namespace boost;

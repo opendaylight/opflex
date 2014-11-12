@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation for GLogLogHandler class.
+ * Implementation for BoostLogHandler class.
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -11,42 +11,51 @@
 
 #include <iostream>
 
-#include <glog/logging.h>
+#include <boost/log/trivial.hpp>
 
-#include "GLogLogHandler.h"
+#include "BoostLogHandler.h"
+#include "logging.h"
 
 namespace ovsagent {
 
 using opflex::logging::OFLogHandler;
+using boost::log::trivial::severity_level;
 
-GLogLogHandler::GLogLogHandler(Level logLevel_): OFLogHandler(logLevel_) { }
-GLogLogHandler::~GLogLogHandler() { }
+BoostLogHandler::BoostLogHandler(Level logLevel): OFLogHandler(logLevel) { }
+BoostLogHandler::~BoostLogHandler() { }
 
-void GLogLogHandler::handleMessage(const std::string& file,
+void BoostLogHandler::setLevel(Level logLevel) {
+    logLevel_ = logLevel;
+}
+
+void BoostLogHandler::handleMessage(const std::string& file,
                                    const int line,
                                    const std::string& function,
                                    const Level level,
                                    const std::string& message) {
-    int glevel = 0;
+    severity_level blevel;
     switch (level) {
     case OFLogHandler::DEBUG:
+        blevel = ovsagent::DEBUG;
+        break;
     case OFLogHandler::INFO:
-        glevel = google::GLOG_INFO;
+        blevel = ovsagent::INFO;
         break;
     case OFLogHandler::WARNING:
-        glevel = google::GLOG_WARNING;
+        blevel = ovsagent::WARNING;
         break;
     case OFLogHandler::ERROR:
-        glevel = google::GLOG_ERROR;
+        blevel = ovsagent::ERROR;
         break;
     default:
     case OFLogHandler::FATAL:
-        glevel = google::GLOG_FATAL;
+        blevel = ovsagent::FATAL;
         break;
     }
 
-    google::LogMessage(file.c_str(), line, level).stream()
-        << "[" << function << "] " << message.c_str();
+    BOOST_LOG_STREAM_WITH_PARAMS(::boost::log::trivial::logger::get(),  \
+                                 (::boost::log::keywords::severity = blevel)) \
+        << "[" << file << ":" << line << ":" << function << "] " << message;
 }
 
 } /* namespace ovsagent */

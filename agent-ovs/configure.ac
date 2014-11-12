@@ -28,7 +28,8 @@ m4_include([m4/ax_boost_program_options.m4])
 m4_include([m4/ax_boost_thread.m4])
 m4_include([m4/ax_boost_system.m4])
 m4_include([m4/ax_boost_date_time.m4])
-m4_include([m4/ax_boost_filesystem.m4])
+m4_include([m4/ax_boost_log.m4])
+m4_include([m4/ax_boost_log_setup.m4])
 
 # ---------------------------------------------------------------
 # Environment introspection
@@ -58,10 +59,11 @@ AX_BOOST_SYSTEM
 AX_BOOST_DATE_TIME
 AX_BOOST_THREAD
 AX_BOOST_FILESYSTEM
+AX_BOOST_LOG
+AX_BOOST_LOG_SETUP
 
 PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])
-PKG_CHECK_MODULES([libglog], [libglog >= 0.3.3])
 
 # check for libopenvswitch. Should use pkg-config
 OVS_PREFIX=/usr/local

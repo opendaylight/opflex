@@ -28,7 +28,6 @@ enforcer_test_LDADD = ../libenforcer.la \
 	../../../libagent_ovs.la \
 	$(libopflex_LIBS) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	$(OVS_LIBS) \
-	$(libglog_LIBS)
+	$(OVS_LIBS)
 
 noinst_PROGRAMS = $(TESTS)

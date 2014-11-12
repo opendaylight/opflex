@@ -11,7 +11,7 @@
 #define BOOST_TEST_MODULE "enforcer"
 #include <boost/test/unit_test.hpp>
 
-#include <glog/logging.h>
+#include "logging.h"
 
 struct LogInitializer {
 public:

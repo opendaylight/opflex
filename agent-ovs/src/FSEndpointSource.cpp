@@ -30,9 +30,9 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <glog/logging.h>
 
 #include "FSEndpointSource.h"
+#include "logging.h"
 
 namespace ovsagent {
 
