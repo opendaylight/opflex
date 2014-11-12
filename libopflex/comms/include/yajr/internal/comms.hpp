@@ -347,6 +347,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 connectionHandler_(connectionHandler),
                 data_(data),
                 writer_(s_),
+                pendingBytes_(0),
                 nextId_(0),
                 keepAliveInterval_(0),
                 lastHeard_(0)
@@ -377,17 +378,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     yajr::rpc::InboundMessage * parseFrame();
 
-    void onWrite() {
-
-        s_.deque_.erase(
-                s_.deque_.begin(),
-                s_.deque_.begin() + pendingBytes_
-        );
-
-        pendingBytes_ = 0;
-
-        write(); /* kick the can */
-    }
+    void onWrite();
 
     bool delimitFrame() const {
         s_.Put('\0');
@@ -395,32 +386,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         return true;
     }
 
-    int write() const {
-
-        if (pendingBytes_) {
-            return 0;
-        }
-
-        pendingBytes_ = s_.deque_.size();
-
-        if (!pendingBytes_) {
-            return 0;
-        }
-
-        std::vector<iovec> iov =
-            more::get_iovec(
-                    s_.deque_.begin(),
-                    s_.deque_.end()
-            );
-
-        /* FIXME: handle errors!!! */
-        return uv_write(&write_req_,
-                (uv_stream_t*) &handle_,
-                (uv_buf_t*)&iov[0],
-                iov.size(),
-                on_write);
-
-    }
+    int write() const;
 
     virtual void startKeepAlive(
             uint64_t begin    =  100,
@@ -590,6 +556,13 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
         return 0;
     }
+
+    static void dumpIov(
+            std::stringstream & dbgLog,
+            std::vector<iovec> const & iov
+    );
+
+    void logDeque() const;
 
   protected:
     /* don't leak memory! */

@@ -205,4 +205,102 @@ bool ListeningPeer::__checkInvariants() const {
     return internal::Peer::__checkInvariants();
 }
 
+void CommunicationPeer::dumpIov(std::stringstream & dbgLog, std::vector<iovec> const & iov) {
+    for (size_t i=0; i < iov.size(); ++i) {
+        iovec const & j = iov[i];
+        dbgLog
+            << "\n IOV "
+            << i << ": "
+            << j.iov_base
+            << "+"
+            << j.iov_len
+        ;
+        std::copy((char*)j.iov_base,
+                  (char*)j.iov_base + j.iov_len,
+                  std::ostream_iterator<char>(dbgLog, ""));
+    }
+}
+
+void CommunicationPeer::logDeque() const {
+    static std::string oldDbgLog;
+    std::stringstream dbgLog;
+    std::string newDbgLog;
+
+    dbgLog
+        << "\n IOV "
+        << this
+    ;
+
+    if (pendingBytes_) {
+        dbgLog << "\n IOV Pending:";
+        dumpIov(dbgLog,
+            more::get_iovec(
+                s_.deque_.begin(),
+                s_.deque_.begin() + pendingBytes_
+            )
+        );
+    }
+
+    dbgLog << "\n IOV Full:";
+    dumpIov(dbgLog, more::get_iovec(
+                s_.deque_.begin(),
+                s_.deque_.end()));
+
+    newDbgLog = dbgLog.str();
+
+    if (oldDbgLog != newDbgLog) {
+        oldDbgLog = newDbgLog;
+
+        LOG(DEBUG) << newDbgLog;
+    }
+}
+
+void CommunicationPeer::onWrite() {
+
+    LOG(DEBUG) << "Write completed for " << pendingBytes_ << " bytes";
+
+    s_.deque_.erase(
+            s_.deque_.begin(),
+            s_.deque_.begin() + pendingBytes_
+    );
+
+    pendingBytes_ = 0;
+
+    write(); /* kick the can */
+}
+
+int CommunicationPeer::write() const {
+
+    if (pendingBytes_) {
+
+        LOG(DEBUG) << "Waiting for " << pendingBytes_ << " bytes to flush";
+        return 0;
+    }
+
+    pendingBytes_ = s_.deque_.size();
+
+    if (!pendingBytes_) {
+
+        LOG(DEBUG) << "Nothing left to be sent!";
+
+        return 0;
+    }
+
+    std::vector<iovec> iov =
+        more::get_iovec(
+                s_.deque_.begin(),
+                s_.deque_.end()
+        );
+
+    logDeque();
+
+    /* FIXME: handle errors!!! */
+    return uv_write(&write_req_,
+            (uv_stream_t*) &handle_,
+            (uv_buf_t*)&iov[0],
+            iov.size(),
+            on_write);
+
+}
+
 }}}
