@@ -16,6 +16,24 @@
       "revId": "43c449868c4da66454e56cab0096272ca70397e8",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba8cc1f7_723af9ce",
+        "filename": "agent-ovs/src/FlowExecutor.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-11-13T19:48:41Z",
+      "side": 1,
+      "message": "Good point. The waiting thread will likely block forever if there is reconnect after sending the barrier request. Will need to fail outstanding requests on connection-failure.",
+      "parentUuid": "ba8cc1f7_7213d95c",
+      "revId": "43c449868c4da66454e56cab0096272ca70397e8",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
