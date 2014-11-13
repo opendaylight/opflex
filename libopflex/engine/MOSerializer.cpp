@@ -196,11 +196,12 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
             }
         }
         
-        client.put(ci.getId(), uri, oi);
-        if (listener)
-            listener->remoteObjectUpdated(ci.getId(), uri);
-        if (notifs)
-            client.queueNotification(ci.getId(), uri, *notifs);
+        if (client.putIfModified(ci.getId(), uri, oi)) {
+            if (listener)
+                listener->remoteObjectUpdated(ci.getId(), uri);
+            if (notifs)
+                client.queueNotification(ci.getId(), uri, *notifs);
+        }
         if (mo.HasMember("parent_name") && mo.HasMember("parent_subject")) {
             const Value& pname = mo["parent_name"];
             const Value& psubj = mo["parent_subject"];
@@ -218,15 +219,16 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                     boost::shared_ptr<const ObjectInstance> parentoi =
                         client.get(parent_class.getId(), parent_uri);
 
-                    client.addChild(parent_class.getId(),
-                                    parent_uri,
-                                    parent_prop.getId(),
-                                    ci.getId(),
-                                    uri);
-                    if (notifs)
-                        client.queueNotification(parent_class.getId(),
-                                                 parent_uri,
-                                                 *notifs);
+                    if (client.addChild(parent_class.getId(),
+                                        parent_uri,
+                                        parent_prop.getId(),
+                                        ci.getId(),
+                                        uri)) {
+                        if (notifs)
+                            client.queueNotification(parent_class.getId(),
+                                                     parent_uri,
+                                                     *notifs);
+                    }
                 } catch (std::out_of_range e) {
                     // no parent class, property, or object instance
                     // found

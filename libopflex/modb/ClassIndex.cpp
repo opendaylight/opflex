@@ -31,14 +31,21 @@ void ClassIndex::delInstance(const URI& uri) {
     instance_map.erase(uri);
 }
 
-void ClassIndex::addChild(const URI& parent, prop_id_t parent_prop, 
+bool ClassIndex::addChild(const URI& parent, prop_id_t parent_prop, 
                           const URI& child) {
     uri_prop_map_t::iterator result = parent_map.find(child);
     if (result != parent_map.end()) {
-        delChild(result->second.first, result->second.second, child);
+        if (result->second.first == parent &&
+            result->second.second == parent_prop &&
+            result->first == child) {
+            return false;
+        } else {
+            delChild(result->second.first, result->second.second, child);
+        }
     }
     child_map[parent][parent_prop].insert(child);
     parent_map.insert(std::make_pair(child, std::make_pair(parent,parent_prop)));
+    return true;
 }
 
 bool ClassIndex::delChild(const URI& parent, prop_id_t parent_prop, 

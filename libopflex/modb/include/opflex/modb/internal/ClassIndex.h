@@ -67,8 +67,9 @@ public:
      * @param parent_prop The property ID of the parent property to
      * set
      * @param child the URI of the child object
+     * @return true if the child relationship was not already present
      */
-    void addChild(const URI& parent, prop_id_t parent_prop,
+    bool addChild(const URI& parent, prop_id_t parent_prop,
                   const URI& child);
 
     /**

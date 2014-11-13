@@ -53,6 +53,29 @@ void Region::put(class_id_t class_id, const URI& uri,
     }
 }
 
+bool Region::putIfModified(class_id_t class_id, const URI& uri, 
+                           const shared_ptr<const ObjectInstance>& oi) {
+    LockGuard guard(&region_mutex);
+    try {
+        ClassIndex& ci = class_map.at(class_id);
+        uri_map_t::iterator it = uri_map.find(uri);
+        if (it != uri_map.end()) {
+            if (*oi != *it->second) {
+                it->second = oi;
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            uri_map[uri] = oi;
+            ci.addInstance(uri);
+            return true;
+        }
+    } catch (std::out_of_range e) {
+        throw std::out_of_range("Unknown class ID");
+    }
+}
+
 bool Region::remove(class_id_t class_id, const URI& uri) {
     LockGuard guard(&region_mutex);
     ClassIndex& ci = class_map.at(class_id);
@@ -60,14 +83,14 @@ bool Region::remove(class_id_t class_id, const URI& uri) {
     return (0 != uri_map.erase(uri));
 }
 
-void Region::addChild(class_id_t parent_class, 
+bool Region::addChild(class_id_t parent_class, 
                       const URI& parent_uri, 
                       prop_id_t parent_prop,
                       class_id_t child_class, 
                       const URI& child_uri) {
     LockGuard guard(&region_mutex);
     ClassIndex& ci = class_map.at(child_class);
-    ci.addChild(parent_uri, parent_prop, child_uri);
+    return ci.addChild(parent_uri, parent_prop, child_uri);
 }
 
 bool Region::delChild(class_id_t parent_class,

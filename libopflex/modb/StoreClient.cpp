@@ -59,12 +59,18 @@ void StoreClient::deliverNotifications(const notif_t& notifs) {
     }
 }
 
-
 void StoreClient::put(class_id_t class_id,
                       const URI& uri, 
                       const boost::shared_ptr<const ObjectInstance>& oi) {
     Region* r = checkOwner(store, readOnly, region, class_id);
     r->put(class_id, uri, oi);
+}
+
+bool StoreClient::putIfModified(class_id_t class_id,
+                                const URI& uri, 
+                                const boost::shared_ptr<const ObjectInstance>& oi) {
+    Region* r = checkOwner(store, readOnly, region, class_id);
+    return r->putIfModified(class_id, uri, oi);
 }
 
 boost::shared_ptr<const ObjectInstance> StoreClient::get(class_id_t class_id,
@@ -125,7 +131,7 @@ bool StoreClient::remove(class_id_t class_id, const URI& uri,
     return result;
 }
 
-void StoreClient::addChild(class_id_t parent_class,
+bool StoreClient::addChild(class_id_t parent_class,
                            const URI& parent_uri, 
                            prop_id_t parent_prop,
                            class_id_t child_class,
@@ -147,8 +153,8 @@ void StoreClient::addChild(class_id_t parent_class,
     // add relationship to child's region.  Note that
     // it's OK if the child URI doesn't exist
     Region* r = checkOwner(store, readOnly, region, child_class);
-    r->addChild(parent_class, parent_uri, parent_prop, 
-                child_class, child_uri);
+    return r->addChild(parent_class, parent_uri, parent_prop, 
+                       child_class, child_uri);
 }
 
 void StoreClient::delChild(class_id_t parent_class,

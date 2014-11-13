@@ -88,6 +88,22 @@ public:
              const boost::shared_ptr<const mointernal::ObjectInstance>& oi);
 
     /**
+     * Set the specified URI to the provided object instance if it has
+     * been modified, atomically.  Return true if any change was made.
+     *
+     * @param class_id the class ID for the object being inserted
+     * @param uri the URI for the object instance
+     * @param oi the object instance to set
+     * @return true if the object was updated, false if the new and
+     * the old value are the same.
+     * @throws std::out_of_range if there is no such class ID
+     * registered
+     */
+    bool putIfModified(class_id_t class_id,
+                       const URI& uri, 
+                       const boost::shared_ptr<const mointernal::ObjectInstance>& oi);
+
+    /**
      * Remove the given URI from the region
      *
      * @param class_id the class ID for the object being inserted
@@ -105,10 +121,11 @@ public:
      * @param parent_prop the property ID to set for the parent
      * @param child_class the class ID of the child
      * @param child_uri the URI of the child
+     * @return true if the child relationship was not already present
      * @throws std::out_of_range if either or both class IDs are not
      * registered
      */
-    void addChild(class_id_t parent_class,
+    bool addChild(class_id_t parent_class,
                   const URI& parent_uri, 
                   prop_id_t parent_prop,
                   class_id_t child_class,
