@@ -11,9 +11,9 @@
 
 #include <boost/scoped_ptr.hpp>
 
-#include <Agent.h>
-#include <portMapper.h>
-#include <flowExecutor.h>
+#include "Agent.h"
+#include "PortMapper.h"
+#include "FlowExecutor.h"
 
 namespace opflex {
 namespace enforcer {

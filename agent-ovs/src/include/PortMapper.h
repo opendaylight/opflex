@@ -14,8 +14,8 @@
 #include <boost/unordered_map.hpp>
 #include <boost/thread/mutex.hpp>
 
-#include <switchConnection.h>
-#include <ovs.h>
+#include "SwitchConnection.h"
+#include "ovs.h"
 
 namespace opflex {
 namespace enforcer {

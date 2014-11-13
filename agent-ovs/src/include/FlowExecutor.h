@@ -9,7 +9,7 @@
 #ifndef _OPFLEX_ENFORCER_FLOWEXECUTOR_H_
 #define _OPFLEX_ENFORCER_FLOWEXECUTOR_H_
 
-#include <flow/tableState.h>
+#include "TableState.h"
 
 namespace opflex {
 namespace enforcer {

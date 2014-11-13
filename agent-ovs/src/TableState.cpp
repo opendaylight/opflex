@@ -8,17 +8,14 @@
 
 #include <boost/foreach.hpp>
 
-#include <flow/tableState.h>
-#include <opflex/modb/URI.h>
-
-#include <ovs.h>
+#include "ovs.h"
+#include "TableState.h"
 
 namespace opflex {
 namespace enforcer {
 namespace flow {
 
 using namespace std;
-using namespace opflex::modb;
 
 /** FlowEntry **/
 

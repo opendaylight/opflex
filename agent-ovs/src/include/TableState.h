@@ -14,8 +14,6 @@
 #include <vector>
 #include <boost/unordered_map.hpp>
 
-#include <opflex/modb/URI.h>
-
 struct ofputil_flow_stats;
 
 namespace opflex {
