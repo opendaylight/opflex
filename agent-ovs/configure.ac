@@ -104,8 +104,6 @@ fi
 
 AC_CONFIG_FILES([\
 	Makefile \
-	src/enforcer/Makefile \
-	src/enforcer/test/Makefile \
 	doc/Doxyfile])
 AC_OUTPUT
 

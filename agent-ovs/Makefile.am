@@ -49,7 +49,24 @@ libagent_ovs_la_SOURCES = \
 	src/FSEndpointSource.cpp \
 	src/Agent.cpp
 
-SUBDIRS =
+if HAVE_OVS
+libagent_ovs_la_CXXFLAGS += $(OVS_CFLAGS)
+
+libagent_ovs_la_SOURCES += \
+	src/include/FlowExecutor.h \
+	src/include/FlowManager.h \
+	src/include/ovs.h \
+	src/include/TableState.h \
+	src/include/ActionBuilder.h \
+	src/include/SwitchConnection.h \
+	src/include/PortMapper.h \
+	src/FlowManager.cpp \
+	src/TableState.cpp \
+	src/FlowExecutor.cpp \
+	src/ActionBuilder.cpp \
+	src/SwitchConnection.cpp \
+	src/PortMapper.cpp
+endif
 
 bin_PROGRAMS=agent_ovs
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
@@ -60,7 +77,6 @@ agent_ovs_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB)
 
 TESTS = agent_test
-noinst_PROGRAMS = $(TESTS)
 agent_test_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) \
@@ -73,6 +89,19 @@ agent_test_SOURCES = \
 agent_test_LDADD = \
 	libagent_ovs.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
+
+if HAVE_OVS
+agent_test_CXXFLAGS += $(OVS_CFLAGS)
+
+agent_test_SOURCES += \
+	test/include/ModbFixture.h \
+	test/FlowManager_test.cpp \
+	test/PortMapper_test.cpp
+
+agent_test_LDADD += $(OVS_LIBS)
+endif
+
+noinst_PROGRAMS = $(TESTS)
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
@@ -88,13 +117,9 @@ if HAVE_DOXYGEN
 endif
 
 if HAVE_OVS
-SUBDIRS += . src/enforcer
-
 noinst_PROGRAMS += integration_test
 
 integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
-	-I$(top_srcdir)/include \
-	-I$(top_srcdir)/src/enforcer/include \
 	$(OVS_CFLAGS)
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 
@@ -102,13 +127,12 @@ integration_test_SOURCES = \
 	integration-test/main.cpp \
 	integration-test/connection_test.cpp
 
-integration_test_LDADD = $(top_builddir)/src/enforcer/libenforcer.la \
+integration_test_LDADD = libagent_ovs.la \
 	$(libopflex_LIBS) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 	$(BOOST_LOG_LIB) \
 	$(BOOST_LOG_SETUP_LIB) \
-	$(OVS_LIBS) \
-	$(UV_LIBS)
+	$(OVS_LIBS)
 
 endif
 

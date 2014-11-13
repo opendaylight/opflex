@@ -6,8 +6,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <ovs.h>
-#include <flow/actionBuilder.h>
+#include "ovs.h"
+#include "ActionBuilder.h"
 
 extern const struct mf_field mf_fields[MFF_N_IDS];
 

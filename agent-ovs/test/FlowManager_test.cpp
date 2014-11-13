@@ -12,11 +12,11 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
 #include "logging.h"
-#include <ovs.h>
-#include <flowManager.h>
-#include <flowExecutor.h>
+#include "ovs.h"
+#include "FlowManager.h"
+#include "FlowExecutor.h"
 
-#include <modbFixture.h>
+#include "ModbFixture.h"
 
 using namespace std;
 using namespace opflex::enforcer;

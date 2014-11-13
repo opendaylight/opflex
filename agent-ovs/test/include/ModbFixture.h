@@ -13,9 +13,10 @@
 #include <boost/shared_ptr.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
-#include <BaseFixture.h>
-#include <EndpointSource.h>
-#include <EndpointManager.h>
+
+#include "BaseFixture.h"
+#include "EndpointSource.h"
+#include "EndpointManager.h"
 
 using namespace std;
 using namespace boost;

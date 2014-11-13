@@ -9,10 +9,10 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <ovs.h>
 
-#include "switchConnection.h"
-#include "portMapper.h"
+#include "ovs.h"
+#include "SwitchConnection.h"
+#include "PortMapper.h"
 #include "logging.h"
 
 using namespace std;
