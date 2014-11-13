@@ -120,6 +120,12 @@ public:
     size_t getRefCount(const modb::URI& uri);
 
     /**
+     * Check whether the given object metadata is either nonexistent
+     * or in state NEW
+     */
+    bool isObjNew(const modb::URI& uri);
+
+    /**
      * Set the processing delay for unit tests
      */
     void setDelay(uint64_t delay) { processingDelay = delay; }
@@ -132,6 +138,12 @@ public:
      * Get the opflex connection pool for the processor
      */
     internal::OpflexPool& getPool() { return pool; }
+
+    /**
+     * A new client connection is ready and the resolver state must be
+     * synchronized to the server.
+     */
+    void connectionReady(internal::OpflexConnection* conn);
 
 private:
     /**
@@ -330,6 +342,8 @@ private:
     void doObjectUpdated(modb::class_id_t class_id, 
                          const modb::URI& uri,
                          bool remote);
+    bool resolveObj(modb::ClassInfo::class_type_t type, const item& it);
+    bool declareObj(modb::ClassInfo::class_type_t type, const item& it);
 
     friend class MOSerializer;
 };

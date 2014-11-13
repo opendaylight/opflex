@@ -148,6 +148,16 @@ size_t Processor::getRefCount(const URI& uri) {
     return 0;
 }
 
+bool Processor::isObjNew(const URI& uri) {
+    util::LockGuard guard(&item_mutex);
+    obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
+    obj_state_by_uri::iterator uit = uri_index.find(uri);
+    if (uit != uri_index.end()) {
+        return uit->details->state == NEW;
+    }
+    return true;
+}
+
 // check if the object has a zero refcount and it has no remote
 // ancestor that has a zero refcount.
 bool Processor::isOrphan(const item& item) {
@@ -195,6 +205,61 @@ bool Processor::isParentSyncObject(const item& item) {
     }
 }
 
+bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i) {
+    switch (type) {
+    case ClassInfo::POLICY:
+        {
+            vector<reference_t> refs;
+            refs.push_back(make_pair(i.details->class_id, i.uri));
+            PolicyResolveReq req(this, refs);
+            pool.writeToRole(req, OpflexHandler::POLICY_REPOSITORY);
+            return true;
+        }
+        break;
+    case ClassInfo::REMOTE_ENDPOINT:
+        {
+            vector<reference_t> refs;
+            refs.push_back(make_pair(i.details->class_id, i.uri));
+            EndpointResolveReq req(this, refs);
+            pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+            return true;
+        }
+        break;
+    default:
+        // do nothing
+        return false;
+        break;
+    }
+
+}
+
+bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
+    switch (type) {
+    case ClassInfo::LOCAL_ENDPOINT:
+        if (isParentSyncObject(i)) {
+            vector<reference_t> refs;
+            refs.push_back(make_pair(i.details->class_id, i.uri));
+            EndpointDeclareReq req(this, refs);
+            pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+        }
+        return true;
+        break;
+    case ClassInfo::OBSERVABLE:
+        if (isParentSyncObject(i)) {
+            vector<reference_t> refs;
+            refs.push_back(make_pair(i.details->class_id, i.uri));
+            StateReportReq req(this, refs);
+            pool.writeToRole(req, OpflexHandler::OBSERVER);
+        }
+        return true;
+        break;
+    default:
+        // do nothing
+        return false;
+        break;
+    }
+}
+
 // Process the item.  This is where we do most of the actual work of
 // syncing the managed object over opflex
 void Processor::processItem(obj_state_by_exp::iterator& it) {
@@ -221,7 +286,8 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         }
     }
 
-    LOG(DEBUG) << "Processing item " << it->uri.toString() 
+    LOG(DEBUG) << "Processing " << (local ? "local" : "nonlocal")
+               << " item " << it->uri.toString() 
                << " of class " << ci.getId()
                << " and type " << ci.getType()
                << " in state " << curState;
@@ -235,7 +301,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 // we won't remove them right away
                 newState = PENDING_DELETE;
                 obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
-                exp_index.modify(it, 
+                exp_index.modify(it,
                                  change_expiration(now(&timer_loop)+
                                                    processingDelay));
                 break;
@@ -243,8 +309,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         default:
             {
                 // Remove object from store and dispatch a notification
-                LOG(DEBUG) << "Removing nonlocal object with zero refcount "
-                           << it->uri.toString();
+                LOG(DEBUG) << "Removing orphan object " << it->uri.toString();
                 client->remove(it->details->class_id,
                                it->uri,
                                false, &notifs);
@@ -292,58 +357,15 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     } 
 
     if (curRefCount > 0) {
-        switch (ci.getType()) {
-        case ClassInfo::POLICY:
-            {
-                vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
-                PolicyResolveReq req(this, refs);
-                pool.writeToRole(req, OpflexHandler::POLICY_REPOSITORY);
-                newState = RESOLVED;
-            }
-            break;
-        case ClassInfo::REMOTE_ENDPOINT:
-            {
-                vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
-                EndpointResolveReq req(this, refs);
-                pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
-                newState = RESOLVED;
-            }
-            break;
-            break;
-        default:
-            // do nothing
-            break;
-        }
+        if (resolveObj(ci.getType(), *it))
+            newState = RESOLVED;
 
         it->details->state = newState;
     }
 
     if (oi) {
-        switch (ci.getType()) {
-        case ClassInfo::LOCAL_ENDPOINT:
-            if (isParentSyncObject(*it)) {
-                vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
-                EndpointDeclareReq req(this, refs);
-                pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
-            }
+        if (declareObj(ci.getType(), *it))
             newState = IN_SYNC;
-            break;
-        case ClassInfo::OBSERVABLE:
-            if (isParentSyncObject(*it)) {
-                vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
-                StateReportReq req(this, refs);
-                pool.writeToRole(req, OpflexHandler::OBSERVER);
-            }
-            newState = IN_SYNC;
-            break;
-        default:
-            // do nothing
-            break;
-        }
 
         it->details->state = newState;
     } else if (newState == DELETED) {
@@ -490,14 +512,18 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
     obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
     obj_state_by_uri::iterator uit = uri_index.find(uri);
 
-    uint64_t nexp = now(&timer_loop)+processingDelay;
+    uint64_t curtime = now(&timer_loop);
+    uint64_t nexp = 0;
+    if (!remote) nexp = curtime+processingDelay;
     if (uit == uri_index.end()) {
         obj_state.insert(item(uri, class_id, 
                               nexp, LOCAL_REFRESH_RATE,
                               NEW, remote == false));
     } else if (uit->details->local) {
         uit->details->state = UPDATED;
-        uri_index.modify(uit, Processor::change_expiration(nexp));
+        uri_index.modify(uit, change_expiration(nexp));
+    } else {
+        uri_index.modify(uit, change_expiration(curtime+LOCAL_REFRESH_RATE));
     }
     uv_cond_signal(&item_cond);
 
@@ -515,6 +541,19 @@ void Processor::addPeer(const std::string& hostname,
 
 OpflexHandler* Processor::newHandler(OpflexConnection* conn) {
     return new OpflexPEHandler(conn, this);
+}
+
+void Processor::connectionReady(OpflexConnection* conn) {
+    util::LockGuard guard(&item_mutex);
+    BOOST_FOREACH(const item& i, obj_state) {
+        const ClassInfo& ci = store->getClassInfo(i.details->class_id);
+        if (i.details->state == RESOLVED) {
+            resolveObj(ci.getType(), i);
+        }
+        if (i.details->state == IN_SYNC) {
+            declareObj(ci.getType(), i);
+        }
+    }
 }
 
 } /* namespace engine */

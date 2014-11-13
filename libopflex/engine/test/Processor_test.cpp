@@ -15,6 +15,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
 #include <rapidjson/stringbuffer.h>
 
 #include "opflex/modb/internal/ObjectStore.h"
@@ -36,6 +37,7 @@ using namespace rapidjson;
 
 using boost::assign::list_of;
 using boost::shared_ptr;
+using boost::make_shared;
 using mointernal::ObjectInstance;
 using std::out_of_range;
 using std::make_pair;
@@ -50,7 +52,7 @@ using std::vector;
 class Fixture : public BaseFixture {
 public:
     Fixture() : processor(&db) {
-        processor.setDelay(50);
+        processor.setDelay(5);
         processor.setOpflexIdentity("testelement", "testdomain");
         processor.start();
     }
@@ -68,12 +70,14 @@ public:
         : mockServer(8009, SERVER_ROLES,
                      list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
                      md) {
-        processor.addPeer(LOCALHOST, 8009);
-
     }
 
     ~ServerFixture() {
 
+    }
+
+    void startClient() {
+        processor.addPeer(LOCALHOST, 8009);
     }
 
     MockOpflexServer mockServer;
@@ -97,52 +101,15 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     URI c4u("/class4/test/");
     URI c5u("/class5/test/");
     URI c6u("/class4/test/class6/test2/");
-    shared_ptr<ObjectInstance> oi5 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(5));
+    shared_ptr<ObjectInstance> oi5 = make_shared<ObjectInstance>(5);
     oi5->setString(10, "test");
     oi5->addReference(11, 4, c4u);
 
-    shared_ptr<ObjectInstance> oi4 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(4));
+    shared_ptr<ObjectInstance> oi4 = make_shared<ObjectInstance>(4);
     oi4->setString(9, "test");
-    shared_ptr<ObjectInstance> oi6 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(6));
+    shared_ptr<ObjectInstance> oi6 = make_shared<ObjectInstance>(6);
     oi6->setString(13, "test2");
 
-    // put in both in one operation, so the metadata object will be
-    // already present
-    client2->put(5, c5u, oi5);
-    client2->put(4, c4u, oi4);
-    client2->put(6, c6u, oi6);
-    client2->addChild(4, c4u, 12, 6, c6u);
-
-    processor.remoteObjectUpdated(4, c4u);
-    processor.remoteObjectUpdated(6, c6u);
-
-    client2->queueNotification(5, c5u, notifs);
-    client2->queueNotification(4, c4u, notifs);
-    client2->queueNotification(6, c6u, notifs);
-    client2->deliverNotifications(notifs);
-    notifs.clear();
-
-    BOOST_CHECK(itemPresent(client2, 4, c4u));
-    BOOST_CHECK(itemPresent(client2, 5, c5u));
-    BOOST_CHECK(itemPresent(client2, 6, c6u));
-    WAIT_FOR(processor.getRefCount(c4u) > 0, 1000);
-    BOOST_CHECK(itemPresent(client2, 6, c6u));
-
-    client2->remove(5, c5u, false, &notifs);
-    client2->queueNotification(5, c5u, notifs);
-    client2->deliverNotifications(notifs);
-    notifs.clear();
-
-    BOOST_CHECK(!itemPresent(client2, 5, c5u));
-    WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
-    BOOST_CHECK_EQUAL(0, processor.getRefCount(c4u));
-    WAIT_FOR(!itemPresent(client2, 6, c6u), 1000);
-
-    // add the reference and then the referent so the metadata object
-    // is not present
     client2->put(5, c5u, oi5);
     client2->queueNotification(5, c5u, notifs);
     client2->deliverNotifications(notifs);
@@ -203,27 +170,69 @@ BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
     WAIT_FOR(processor.getPool().getPeer(LOCALHOST, 8011) == NULL, 1000);
 }
 
+class EndpointDeclFixture : public ServerFixture {
+public:
+    EndpointDeclFixture() 
+        : ServerFixture(), 
+          u1("/"),
+          u2("/class2/42/"),
+          u3("/class2/42/class3/12/test/") {
+
+    }
+
+    void setup() {
+        rclient = mockServer.getSystemClient();
+        oi1 = make_shared<ObjectInstance>(1);
+        oi2 = make_shared<ObjectInstance>(2);
+        oi3 = make_shared<ObjectInstance>(3);
+
+        client1->put(1, u1, oi1);
+
+        oi2->setInt64(4, 42);
+        client1->put(2, u2, oi2);
+
+        client1->queueNotification(1, u1, notifs);
+        client1->queueNotification(2, u2, notifs);
+        client1->deliverNotifications(notifs);
+        notifs.clear();
+
+        oi3->setInt64(6, 12);
+        oi3->setString(7, "test");
+        client2->put(3, u3, oi3);
+        client2->queueNotification(3, u3, notifs);
+        client2->deliverNotifications(notifs);
+        notifs.clear();
+    }
+
+    StoreClient::notif_t notifs;
+    URI u1;
+    URI u2;
+    URI u3;
+    StoreClient* rclient;
+    shared_ptr<ObjectInstance> oi1;
+    shared_ptr<ObjectInstance> oi2;
+    shared_ptr<ObjectInstance> oi3;
+};
+
 // test endpoint_declare and endpoint_undeclare
 BOOST_FIXTURE_TEST_CASE( endpoint_declare, ServerFixture ) {
+    startClient();
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
 
     StoreClient::notif_t notifs;
 
     URI u1("/");
-    shared_ptr<ObjectInstance> oi1 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(1));
+    shared_ptr<ObjectInstance> oi1 = make_shared<ObjectInstance>(1);
     client1->put(1, u1, oi1);
 
     // check add
     URI u2_1("/class2/42/");
-    shared_ptr<ObjectInstance> oi2_1 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(2));
+    shared_ptr<ObjectInstance> oi2_1 = make_shared<ObjectInstance>(2);
     oi2_1->setInt64(4, 42);
     client1->put(2, u2_1, oi2_1);
 
     URI u2_2("/class2/43/");
-    shared_ptr<ObjectInstance> oi2_2 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(2));
+    shared_ptr<ObjectInstance> oi2_2 = make_shared<ObjectInstance>(2);
     oi2_2->setInt64(4, 43);
     client1->put(2, u2_2, oi2_2);
 
@@ -261,47 +270,64 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare, ServerFixture ) {
     
 }
 
-bool resolutions_pred(OpflexServerConnection* conn, void* user) {
+static bool resolutions_pred(OpflexServerConnection* conn, void* user) {
     MockServerHandler* handler = (MockServerHandler*)conn->getHandler();
     return handler->hasResolutions();
 }
 
-// test policy_resolve, policy_unresolve, policy_update
-BOOST_FIXTURE_TEST_CASE( policy_resolve, ServerFixture ) {
-    WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
+class PolicyFixture : public ServerFixture {
+public:
+    PolicyFixture() 
+        : ServerFixture(), 
+          c4u("/class4/test/"),
+          c5u("/class5/test/"),
+          c6u("/class4/test/class6/test2/") {
+
+    }
+
+    void setup() {
+        rclient = mockServer.getSystemClient();
+        root = make_shared<ObjectInstance>(1);
+        oi4 = make_shared<ObjectInstance>(4);
+        oi5 = make_shared<ObjectInstance>(5);
+        oi6 = make_shared<ObjectInstance>(6);
+        
+        // set up the server-side store
+        oi4->setString(9, "test");
+        oi6->setString(13, "test2");
+        
+        rclient->put(1, URI::ROOT, root);
+        rclient->put(4, c4u, oi4);
+        rclient->put(6, c6u, oi6);
+        rclient->addChild(1, URI::ROOT, 8, 4, c4u);
+        rclient->addChild(4, c4u, 12, 6, c6u);
+        
+        // create a local reference to the remote policy object
+        oi5->setString(10, "test");
+        oi5->addReference(11, 4, c4u);
+        client2->put(5, c5u, oi5);
+        
+        client2->queueNotification(5, c5u, notifs);
+        client2->deliverNotifications(notifs);
+        notifs.clear();
+    }
 
     StoreClient::notif_t notifs;
-    URI c4u("/class4/test/");
-    URI c5u("/class5/test/");
-    URI c6u("/class4/test/class6/test2/");
+    URI c4u;
+    URI c5u;
+    URI c6u;
+    StoreClient* rclient;
+    shared_ptr<ObjectInstance> root;
+    shared_ptr<ObjectInstance> oi4;
+    shared_ptr<ObjectInstance> oi5;
+    shared_ptr<ObjectInstance> oi6;
+};
 
-    // set up the server-side store
-    StoreClient* rclient = mockServer.getSystemClient();
-    shared_ptr<ObjectInstance> root = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(1));
-    shared_ptr<ObjectInstance> oi4 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(4));
-    oi4->setString(9, "test");
-    shared_ptr<ObjectInstance> oi6 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(6));
-    oi6->setString(13, "test2");
-
-    rclient->put(1, URI::ROOT, root);
-    rclient->put(4, c4u, oi4);
-    rclient->put(6, c6u, oi6);
-    rclient->addChild(1, URI::ROOT, 8, 4, c4u);
-    rclient->addChild(4, c4u, 12, 6, c6u);
-
-    // create a local reference to the remote policy object
-    shared_ptr<ObjectInstance> oi5 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(5));
-    oi5->setString(10, "test");
-    oi5->addReference(11, 4, c4u);
-    client2->put(5, c5u, oi5);
-
-    client2->queueNotification(5, c5u, notifs);
-    client2->deliverNotifications(notifs);
-    notifs.clear();
+// test policy_resolve, policy_unresolve, policy_update
+BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
+    startClient();
+    WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
+    setup();
 
     // verify that the object is synced to the client
     BOOST_CHECK(itemPresent(client2, 5, c5u));
@@ -310,6 +336,8 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, ServerFixture ) {
     WAIT_FOR(itemPresent(client2, 6, c6u), 1000);
     BOOST_CHECK_EQUAL("test", client2->get(4, c4u)->getString(9));
     BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
+
+    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 
     // perform object updates
     vector<reference_t> replace;
@@ -323,7 +351,6 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, ServerFixture ) {
     
     merge.push_back(make_pair(4, c4u));
     mockServer.policyUpdate(replace, merge, del);
-    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
     WAIT_FOR("moretesting" == client2->get(4, c4u)->getString(9), 1000);
     BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
 
@@ -355,39 +382,71 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, ServerFixture ) {
     WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
-BOOST_FIXTURE_TEST_CASE( state_report, ServerFixture ) {
+// test policy resolve after connection ready
+BOOST_FIXTURE_TEST_CASE( policy_resolve_reconnect, PolicyFixture ) {
+    setup();
+    WAIT_FOR(processor.getRefCount(c4u) > 0, 1000);
+    WAIT_FOR(!processor.isObjNew(c5u), 1000);
+    startClient();
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
 
-    StoreClient::notif_t notifs;
+    WAIT_FOR(itemPresent(client2, 4, c4u), 1000);
+    WAIT_FOR(itemPresent(client2, 6, c6u), 1000);
+    BOOST_CHECK_EQUAL("test", client2->get(4, c4u)->getString(9));
+    BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
+}
 
-    URI u1("/");
-    shared_ptr<ObjectInstance> oi1 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(1));
-    client1->put(1, u1, oi1);
+class StateFixture : public ServerFixture {
+public:
+    StateFixture() 
+        : ServerFixture(), 
+          u1("/"),
+          u2("/class2/42/"),
+          u3("/class2/42/class3/12/test/") {
+
+    }
+
+    void setup() {
+        rclient = mockServer.getSystemClient();
+        oi1 = make_shared<ObjectInstance>(1);
+        oi2 = make_shared<ObjectInstance>(2);
+        oi3 = make_shared<ObjectInstance>(3);
+
+        client1->put(1, u1, oi1);
+
+        oi2->setInt64(4, 42);
+        client1->put(2, u2, oi2);
+
+        client1->queueNotification(1, u1, notifs);
+        client1->queueNotification(2, u2, notifs);
+        client1->deliverNotifications(notifs);
+        notifs.clear();
+
+        oi3->setInt64(6, 12);
+        oi3->setString(7, "test");
+        client2->put(3, u3, oi3);
+        client2->queueNotification(3, u3, notifs);
+        client2->deliverNotifications(notifs);
+        notifs.clear();
+    }
+
+    StoreClient::notif_t notifs;
+    URI u1;
+    URI u2;
+    URI u3;
+    StoreClient* rclient;
+    shared_ptr<ObjectInstance> oi1;
+    shared_ptr<ObjectInstance> oi2;
+    shared_ptr<ObjectInstance> oi3;
+};
+
+// test state_report
+BOOST_FIXTURE_TEST_CASE( state_report, StateFixture ) {
+    startClient();
+    WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
+    setup();
 
     // check add
-    URI u2("/class2/42/");
-    shared_ptr<ObjectInstance> oi2 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(2));
-    oi2->setInt64(4, 42);
-    client1->put(2, u2, oi2);
-
-    client1->queueNotification(1, u1, notifs);
-    client1->queueNotification(2, u2, notifs);
-    client1->deliverNotifications(notifs);
-    notifs.clear();
-
-    URI u3("/class2/42/class3/12/test/");
-    shared_ptr<ObjectInstance> oi3 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(3));
-    oi3->setInt64(6, 12);
-    oi3->setString(7, "test");
-    client2->put(3, u3, oi3);
-    client2->queueNotification(3, u3, notifs);
-    client2->deliverNotifications(notifs);
-    notifs.clear();
-
-    StoreClient* rclient = mockServer.getSystemClient();
     WAIT_FOR(itemPresent(rclient, 3, u3), 1000);
     BOOST_CHECK_EQUAL(12, rclient->get(3, u3)->getInt64(6));
 
@@ -402,42 +461,71 @@ BOOST_FIXTURE_TEST_CASE( state_report, ServerFixture ) {
     BOOST_CHECK_EQUAL("update", rclient->get(3, u3)->getString(16));
 }
 
-// test endpoint_resolve, endpoint_unresolve, endpoint_update
-BOOST_FIXTURE_TEST_CASE( endpoint_resolve, ServerFixture ) {
+// test state_report after connection ready
+BOOST_FIXTURE_TEST_CASE( state_report_reconnect, StateFixture ) {
+    setup();
+    WAIT_FOR(!processor.isObjNew(u3), 1000);
+    startClient();
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
 
+    // check add
+    WAIT_FOR(itemPresent(rclient, 3, u3), 1000);
+    BOOST_CHECK_EQUAL(12, rclient->get(3, u3)->getInt64(6));
+}
+
+class EndpointResFixture : public ServerFixture {
+public:
+    EndpointResFixture() 
+        : ServerFixture(), 
+          c8u("/class8/test/"),
+          c9u("/class9/test/"),
+          c10u("/class8/test/class10/test2/") {
+
+    }
+
+    void setup() {
+        // set up the server-side store
+        rclient = mockServer.getSystemClient();
+        root = make_shared<ObjectInstance>(1);
+        oi8 = make_shared<ObjectInstance>(8);
+        oi10 = make_shared<ObjectInstance>(10);
+        oi8->setString(17, "test");
+        oi10->setString(21, "test2");
+        
+        rclient->put(1, URI::ROOT, root);
+        rclient->put(8, c8u, oi8);
+        rclient->put(10, c10u, oi10);
+        rclient->addChild(1, URI::ROOT, 22, 8, c8u);
+        rclient->addChild(8, c8u, 20, 10, c10u);
+        
+        // create a local reference to the remote policy object
+        oi9 = make_shared<ObjectInstance>(9);
+        oi9->setString(18, "test");
+        oi9->addReference(19, 8, c8u);
+        client2->put(9, c9u, oi9);
+        
+        client2->queueNotification(9, c9u, notifs);
+        client2->deliverNotifications(notifs);
+        notifs.clear();
+
+    }
+
     StoreClient::notif_t notifs;
-    URI c8u("/class8/test/");
-    URI c9u("/class9/test/");
-    URI c10u("/class8/test/class10/test2/");
+    URI c8u;
+    URI c9u;
+    URI c10u;
+    StoreClient* rclient;
+    shared_ptr<ObjectInstance> root;
+    shared_ptr<ObjectInstance> oi8;
+    shared_ptr<ObjectInstance> oi9;
+    shared_ptr<ObjectInstance> oi10;
+};
 
-    // set up the server-side store
-    StoreClient* rclient = mockServer.getSystemClient();
-    shared_ptr<ObjectInstance> root = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(1));
-    shared_ptr<ObjectInstance> oi8 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(8));
-    oi8->setString(17, "test");
-    shared_ptr<ObjectInstance> oi10 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(10));
-    oi10->setString(21, "test2");
-
-    rclient->put(1, URI::ROOT, root);
-    rclient->put(8, c8u, oi8);
-    rclient->put(10, c10u, oi10);
-    rclient->addChild(1, URI::ROOT, 22, 8, c8u);
-    rclient->addChild(8, c8u, 20, 10, c10u);
-
-    // create a local reference to the remote policy object
-    shared_ptr<ObjectInstance> oi9 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(9));
-    oi9->setString(18, "test");
-    oi9->addReference(19, 8, c8u);
-    client2->put(9, c9u, oi9);
-
-    client2->queueNotification(9, c9u, notifs);
-    client2->deliverNotifications(notifs);
-    notifs.clear();
+// test endpoint_resolve, endpoint_unresolve, endpoint_update
+BOOST_FIXTURE_TEST_CASE( endpoint_resolve, EndpointResFixture ) {
+    startClient();
+    WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
+    setup();
 
     // verify that the object is synced to the client
     BOOST_CHECK(itemPresent(client2, 9, c9u));
@@ -484,6 +572,24 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve, ServerFixture ) {
     notifs.clear();
 
     WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+}
+
+// test endpoint_resolve after connection ready
+BOOST_FIXTURE_TEST_CASE( endpoint_resolve_reconnect, EndpointResFixture ) {
+    setup();
+    WAIT_FOR(processor.getRefCount(c8u) > 0, 1000);
+    WAIT_FOR(!processor.isObjNew(c9u), 1000);
+    startClient();
+    WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
+
+    // verify that the object is synced to the client
+    BOOST_CHECK(itemPresent(client2, 9, c9u));
+    WAIT_FOR(processor.getRefCount(c8u) > 0, 1000);
+    WAIT_FOR(itemPresent(client2, 8, c8u), 1000);
+    WAIT_FOR(itemPresent(client2, 10, c10u), 1000);
+    BOOST_CHECK_EQUAL("test", client2->get(8, c8u)->getString(17));
+    BOOST_CHECK_EQUAL("test2", client2->get(10, c10u)->getString(21));
+    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

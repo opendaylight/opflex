@@ -97,7 +97,9 @@ void OpflexPEHandler::connected() {
 
 void OpflexPEHandler::disconnected() {
     setState(DISCONNECTED);
-    // XXX - TODO
+    OpflexPool& pool = getProcessor()->getPool();
+    OpflexClientConnection* conn = (OpflexClientConnection*)getConnection();
+    pool.setRoles(conn, 0);
 }
 
 void OpflexPEHandler::ready() {
@@ -105,7 +107,7 @@ void OpflexPEHandler::ready() {
               << "Handshake succeeded";
 
     setState(READY);
-    // XXX - TODO
+    getProcessor()->connectionReady(getConnection());
 }
 
 void OpflexPEHandler::handleSendIdentityRes(const rapidjson::Value& id,
