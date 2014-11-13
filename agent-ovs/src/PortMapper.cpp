@@ -10,8 +10,8 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
 
-#include <ovs.h>
-#include "portMapper.h"
+#include "ovs.h"
+#include "PortMapper.h"
 #include "logging.h"
 
 using namespace std;

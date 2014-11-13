@@ -14,9 +14,9 @@
 #include <boost/thread/lock_guard.hpp>
 #include <boost/foreach.hpp>
 #include <boost/scope_exit.hpp>
-#include <ovs.h>
 
-#include "switchConnection.h"
+#include "ovs.h"
+#include "SwitchConnection.h"
 #include "logging.h"
 
 using namespace std;
