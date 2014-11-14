@@ -133,7 +133,8 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
         BOOST_CHECK(ee.priority == fm.priority);
         BOOST_CHECK(ee.cookie ==
                 (fm.command == OFPFC_ADD ? fm.new_cookie : fm.cookie));
-        BOOST_CHECK(fm.cookie_mask == htonll(fm.command == OFPFC_ADD ? 0 : 1));
+        BOOST_CHECK(fm.cookie_mask ==
+                (fm.command == OFPFC_ADD ? htonll(0) : ~htonll(0)));
         BOOST_CHECK(match_equal(&ee.match, &fm.match));
         BOOST_CHECK(ofpacts_equal(ee.ofpacts, ee.ofpacts_len,
                                   fm.ofpacts, fm.ofpacts_len));

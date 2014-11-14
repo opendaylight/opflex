@@ -10,8 +10,9 @@
 
 #include <boost/test/unit_test.hpp>
 #include "logging.h"
-#include <ovs.h>
-#include <switchConnection.h>
+
+#include "ovs.h"
+#include "SwitchConnection.h"
 
 using namespace std;
 using namespace opflex::enforcer;

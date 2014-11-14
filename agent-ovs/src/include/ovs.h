@@ -17,19 +17,18 @@
 extern "C" {
 #endif
 
-#include <ovs/lib/dirs.h>
-#include <ovs/lib/vconn.h>
-#include <ovs/lib/rconn.h>
-#include <ovs/lib/ofpbuf.h>
-#include <ovs/lib/ofp-msgs.h>
-#include <ovs/lib/flow.h>
-#include <ovs/lib/match.h>
-#include <ovs/lib/ofp-actions.h>
-#include <ovs/lib/socket-util.h>
-#include <ovs/lib/ofp-util.h>
-#include <ovs/lib/poll-loop.h>
-#include <ovs/lib/ofp-print.h>
-#include <ovs/lib/dynamic-string.h>
+#include <openvswitch/lib/dirs.h>
+#include <openvswitch/lib/vconn.h>
+#include <openvswitch/lib/ofpbuf.h>
+#include <openvswitch/lib/ofp-msgs.h>
+#include <openvswitch/lib/flow.h>
+#include <openvswitch/lib/match.h>
+#include <openvswitch/lib/ofp-actions.h>
+#include <openvswitch/lib/socket-util.h>
+#include <openvswitch/lib/ofp-util.h>
+#include <openvswitch/lib/poll-loop.h>
+#include <openvswitch/lib/ofp-print.h>
+#include <openvswitch/lib/dynamic-string.h>
 
 #ifdef __cplusplus
 }
