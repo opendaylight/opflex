@@ -9,6 +9,7 @@
 #ifndef _OPFLEX_ENFORCER_FLOW_ACTIONBUILDER_H_
 #define _OPFLEX_ENFORCER_FLOW_ACTIONBUILDER_H_
 
+#include "ovs.h"
 
 struct ofputil_flow_stats;
 

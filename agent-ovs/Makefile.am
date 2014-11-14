@@ -12,6 +12,8 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
+OVS_ADDL_CFLAGS = -fpermissive
+
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 	-I$(top_srcdir)/src/include \
 	-DBOOST_LOG_DYN_LINK
@@ -20,7 +22,10 @@ AM_LDFLAGS = $(BOOST_LDFLAGS)
 noinst_LTLIBRARIES = libagent_ovs.la
 libagent_ovs_la_CXXFLAGS = \
 	$(libopflex_CFLAGS) \
-	$(libmodelgbp_CFLAGS)
+	$(libmodelgbp_CFLAGS) \
+	$(OVS_ADDL_CFLAGS) \
+	$(libopenvswitch_CFLAGS) \
+	$(libofproto_CFLAGS)
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
@@ -29,7 +34,9 @@ libagent_ovs_la_LIBADD = \
 	$(BOOST_LOG_SETUP_LIB) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
-	$(BOOST_THREAD_LIB) 
+	$(BOOST_THREAD_LIB) \
+	$(libopenvswitch_LIBS) \
+	$(libofproto_LIBS)
 
 libagent_ovs_la_SOURCES = \
 	src/include/BoostLogHandler.h \
@@ -50,8 +57,6 @@ libagent_ovs_la_SOURCES = \
 	src/Agent.cpp
 
 if HAVE_OVS
-libagent_ovs_la_CXXFLAGS += $(OVS_CFLAGS)
-
 libagent_ovs_la_SOURCES += \
 	src/include/FlowExecutor.h \
 	src/include/FlowManager.h \
@@ -80,6 +85,9 @@ TESTS = agent_test
 agent_test_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) \
+	$(OVS_ADDL_CFLAGS) \
+	$(libopenvswitch_CFLAGS) \
+	$(libofproto_CFLAGS) \
 	-DBOOST_TEST_DYN_LINK
 agent_test_SOURCES = \
 	test/include/BaseFixture.h \
@@ -88,18 +96,16 @@ agent_test_SOURCES = \
 	test/EndpointManager_test.cpp
 agent_test_LDADD = \
 	libagent_ovs.la \
-	$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
+	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
+	$(libopenvswitch_LIBS) \
+	$(libofproto_LIBS)
 
 if HAVE_OVS
-agent_test_CXXFLAGS += $(OVS_CFLAGS)
-
 agent_test_SOURCES += \
 	test/include/ModbFixture.h \
 	test/FlowManager_test.cpp \
 	test/PortMapper_test.cpp \
 	test/FlowExecutor_test.cpp
-
-agent_test_LDADD += $(OVS_LIBS)
 endif
 
 noinst_PROGRAMS = $(TESTS)
@@ -121,20 +127,20 @@ if HAVE_OVS
 noinst_PROGRAMS += integration_test
 
 integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
-	$(OVS_CFLAGS)
+	$(OVS_ADDL_CFLAGS)  \
+	$(libopenvswitch_CFLAGS) \
+	$(libofproto_CFLAGS)
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 
 integration_test_SOURCES = \
 	integration-test/main.cpp \
 	integration-test/connection_test.cpp
 
-integration_test_LDADD = libagent_ovs.la \
-	$(libopflex_LIBS) \
+integration_test_LDADD = \
+	libagent_ovs.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	$(BOOST_LOG_LIB) \
-	$(BOOST_LOG_SETUP_LIB) \
-	$(OVS_LIBS)
-
+	$(libopenvswitch_LIBS) \
+	$(libofproto_LIBS)
 endif
 
 check-integration: agent_ovs
