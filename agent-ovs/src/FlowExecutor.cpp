@@ -94,7 +94,7 @@ FlowExecutor::EncodeFlowMod(const FlowEdit::Entry& edit,
     flowMod.priority = flow.priority;
     if (mod != FlowEdit::add) {
         flowMod.cookie = flow.cookie;
-        flowMod.cookie_mask = htonll(1);
+        flowMod.cookie_mask = ~htonll(0);
     }
     flowMod.new_cookie = mod == FlowEdit::mod ? OVS_BE64_MAX :
             (mod == FlowEdit::add ? flow.cookie : htonll(0));
