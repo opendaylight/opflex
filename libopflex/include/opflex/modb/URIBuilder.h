@@ -95,6 +95,15 @@ public:
     URIBuilder& addElement(const MAC& elementValue);
 
     /**
+     * Add a URI path element to the URI path.  Note that this does
+     * not append the URI; this is actually a path element whose value
+     * is the URI.
+     *
+     * @param elementValue the value of the element
+     */
+    URIBuilder& addElement(const URI& elementValue);
+
+    /**
      * Build the URI from the path elements and return it
      */
     URI build();

@@ -28,6 +28,7 @@ m4_include([m4/ax_boost_program_options.m4])
 m4_include([m4/ax_boost_thread.m4])
 m4_include([m4/ax_boost_system.m4])
 m4_include([m4/ax_boost_date_time.m4])
+m4_include([m4/ax_boost_filesystem.m4])
 m4_include([m4/ax_boost_log.m4])
 m4_include([m4/ax_boost_log_setup.m4])
 

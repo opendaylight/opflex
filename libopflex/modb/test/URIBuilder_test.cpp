@@ -70,7 +70,16 @@ BOOST_AUTO_TEST_CASE( mac ) {
     builder
         .addElement("macprop")
         .addElement(MAC("11:22:33:44:55:66"));
-    BOOST_CHECK_EQUAL("/macprop/11:22:33:44:55:66/",
+    BOOST_CHECK_EQUAL("/macprop/11%3a22%3a33%3a44%3a55%3a66/",
+                      builder.build().toString());
+}
+
+BOOST_AUTO_TEST_CASE( uri ) {
+    URIBuilder builder;
+    builder
+        .addElement("uriprop")
+        .addElement(URI("/macprop/11%3a22%3a33%3a44%3a55%3a66/"));
+    BOOST_CHECK_EQUAL("/uriprop/%2fmacprop%2f11%253a22%253a33%253a44%253a55%253a66%2f/",
                       builder.build().toString());
 }
 
