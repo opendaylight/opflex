@@ -1,6 +1,17 @@
 module[l2]
 {
     type[Mtu; super=scalar/UInt32]
+    type[EtherType; super=scalar/Enum16]
+    {
+        const[name=unspecified; value=0]
+        const[name=trill; value=0x22F3]
+        const[name=arp; value=0x0806]
+        const[name=mpls_ucast; value=0x8847]
+        const[name=mac_security; value=0x88E5]
+        const[name=fcoe; value=0x8906]
+        const[name=ipv4; value=0x0800]
+        const[name=ipv6; value=0x86DD]
+    }
     class[Config;
           super=platform/ConfigComponent;
           concrete]

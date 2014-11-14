@@ -23,4 +23,26 @@ module[gbpe]
             }
         }
     }
+
+    class[L24Classifier;
+          super=gbp/Classifier;
+          concrete]
+    {
+        # ARP opcode
+        member[arpOpc; type=arp/Opcode]
+
+        # ethertype
+        member[etherT; type=l2/EtherType]
+
+        # IP protocol field
+	member[prot; type=l3/IpProt]
+
+        # Source port range [from-to]
+        member[sFromPort; type=l4/Port]
+        member[sToPort; type=l4/Port]
+
+        # Destination port range [from-to]
+        member[dFromPort; type=l4/Port]
+        member[dToPort; type=l4/Port]
+    }
 }

@@ -34,7 +34,7 @@ public class MRelationship extends Item
         sourceCardinality = aInSourceCard;
         targetCardinality = aInTargetCard;
         sourceRelnClass = initSourceRelnClass();
-        //targetRelnClass = initTargetRelnClass();
+        targetRelnClass = initTargetRelnClass();
         resolverRelnClass = initResolverRelnClass();
     }
 
@@ -48,7 +48,7 @@ public class MRelationship extends Item
     public boolean hasSourceRelnClass() { return type.hasSourceObject(); }
     public MClass getSourceRelnClass() { return sourceRelnClass; }
     public boolean hasTargetRelnClass() { return type.hasTargetObject(); }
-    //public MClass getTargetRelnClass() { return targetRelnClass; }
+    public MClass getTargetRelnClass() { return targetRelnClass; }
     public boolean hasResolverRelnClass() { return type.hasResolverObject(); }
     public MClass getResolverRelnClass() { return resolverRelnClass; }
 
@@ -178,7 +178,7 @@ public class MRelationship extends Item
     private final PointCardinality sourceCardinality;
     private final PointCardinality targetCardinality;
     private final MClass sourceRelnClass;
-    //private final MClass targetRelnClass;
+    private final MClass targetRelnClass;
     private final MClass resolverRelnClass;
     private final String moduleName;
     private final String sourceClassLocalName;

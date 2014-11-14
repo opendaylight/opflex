@@ -232,7 +232,6 @@ public class FClassDef extends ItemFormatterTask
         out.println(aInIndent, "} // namespace " + Config.getProjName());
     }
 
-
     private void genClass(int aInIndent, MClass aInClass)
     {
         out.println(aInIndent, "class " + aInClass.getLID().getName());
@@ -314,6 +313,10 @@ public class FClassDef extends ItemFormatterTask
         return "";
     }
 
+    private String toUnsignedStr(int aInInt) {
+    	return Long.toString(aInInt & 0xFFFFFFFFL) + "ul";
+    }
+
     private void genProp(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx)
     {
         MProp lBaseProp = aInProp.getBase();
@@ -385,7 +388,7 @@ public class FClassDef extends ItemFormatterTask
         // METHOD BODY
         //
         out.println(aInIndent,"{");
-            out.println(aInIndent + 1, "return getObjectInstance().isSet(" + aInPropIdx +
+            out.println(aInIndent + 1, "return getObjectInstance().isSet(" + toUnsignedStr(aInPropIdx) +
                                        ", opflex::modb::PropertyInfo::" + aInPType + ");");
         out.println(aInIndent,"}");
         out.println();
@@ -431,7 +434,7 @@ public class FClassDef extends ItemFormatterTask
         out.println(aInIndent,"boost::optional<" + aInEffSyntax + "> get" + Strings.upFirstLetter(aInName) + "()");
         out.println(aInIndent,"{");
             out.println(aInIndent + 1,"if (is" + Strings.upFirstLetter(aInCheckName) + "Set())");
-                out.println(aInIndent + 2,"return " + aInCast + "getObjectInstance().get" + aInPType + "(" + aInPropIdx + ")" + aInAccessor + ";");
+                out.println(aInIndent + 2,"return " + aInCast + "getObjectInstance().get" + aInPType + "(" + toUnsignedStr(aInPropIdx) + ")" + aInAccessor + ";");
                 out.println(aInIndent + 1,"return boost::none;");
         out.println(aInIndent,"}");
         out.println();
@@ -540,7 +543,7 @@ public class FClassDef extends ItemFormatterTask
         // BODY
         //
         out.println(aInIndent,"{");
-        out.println(aInIndent + 1, "getTLMutator().modify(getClassId(), getURI())->set" + aInPType + "(" + aInPropIdx + aInSetterPrefix + ", " + aInParamName + ");");
+        out.println(aInIndent + 1, "getTLMutator().modify(getClassId(), getURI())->set" + aInPType + "(" + toUnsignedStr(aInPropIdx) + aInSetterPrefix + ", " + aInParamName + ");");
         out.println(aInIndent + 1, "return *this;");
         out.println(aInIndent,"}");
         out.println();
@@ -607,7 +610,7 @@ public class FClassDef extends ItemFormatterTask
         //
         String lUriBuilder = getUriBuilder(aInClass, aInNamingPath);
         out.println(aInIndent,"{");
-        out.println(aInIndent + 1, "getTLMutator().modify(getClassId(), getURI())->set" + aInPType + "(" + aInPropIdx + aInSetterPrefix + ", " + lUriBuilder + ");");
+        out.println(aInIndent + 1, "getTLMutator().modify(getClassId(), getURI())->set" + aInPType + "(" + toUnsignedStr(aInPropIdx) + aInSetterPrefix + ", " + lUriBuilder + ");");
         out.println(aInIndent + 1, "return *this;");
         out.println(aInIndent,"}");
         out.println();
@@ -678,7 +681,7 @@ public class FClassDef extends ItemFormatterTask
         // BODY
         //
         out.println(aInIndent,"{");
-        out.println(aInIndent + 1, "getTLMutator().modify(getClassId(), getURI())->unset(" + aInPropIdx + ", " +
+        out.println(aInIndent + 1, "getTLMutator().modify(getClassId(), getURI())->unset(" + toUnsignedStr(aInPropIdx) + ", " +
                                    "opflex::modb::PropertyInfo::" + aInPType + ", " +
                                    "opflex::modb::PropertyInfo::SCALAR);");
         out.println(aInIndent + 1, "return *this;");
@@ -1408,8 +1411,8 @@ public class FClassDef extends ItemFormatterTask
                     "Resolve and retrieve all of the immediate children of type",
                     lFormattefChildClassName,
                     "",
-                    "Note that this retrieves only those children that exist",
-                    "in the local store.  It is possible that are other children",
+                    "Note that this retrieves only those children that exist in the",
+                    "local store.  It is possible that there are other children that",
                     "exist remotely.",
                     "",
                     "The resulting managed objects will be added to the result",
@@ -1422,7 +1425,7 @@ public class FClassDef extends ItemFormatterTask
                 out.println(aInIdent,"void resolve" + lConcatenatedChildClassName + "(/* out */ std::vector<boost::shared_ptr<" + lFormattefChildClassName+ "> >& out)");
                 out.println(aInIdent,"{");
                 out.println(aInIdent + 1, "opflex::modb::mointernal::MO::resolveChildren<" + lFormattefChildClassName + ">(");
-                out.println(aInIdent + 2, "getFramework(), CLASS_ID, getURI(), " + (aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ", out);");
+                out.println(aInIdent + 2, "getFramework(), CLASS_ID, getURI(), " + toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ", out);");
                 out.println(aInIdent,"}");
                 out.println();
             }
@@ -1467,7 +1470,7 @@ public class FClassDef extends ItemFormatterTask
             }
             out.println(aInIdent,"{");
                 out.println(aInIdent + 1, "boost::shared_ptr<" + lFormattefChildClassName + "> result = addChild<" + lFormattefChildClassName+ ">(");
-                    out.println(aInIdent + 2, "CLASS_ID, getURI(), " + (aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
+                    out.println(aInIdent + 2, "CLASS_ID, getURI(), " + toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
                     out.println(aInIdent + 2, lUriBuilder);
                     out.println(aInIdent + 2, ");");
 

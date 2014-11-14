@@ -1,5 +1,26 @@
 module[gbp]
 {
+    type[ConnTrack; super=scalar/Enum8]
+    {
+        # Match on traffic matching the classifier strictly
+        const[name=normal; value=0]
+
+        # Additionally match reverse traffic for connections
+        const[name=reflexive; value=1]
+    }
+
+    type[Direction; super=scalar/Enum8]
+    {
+        # apply to traffic in both directions
+        const[name=bidirectional; value=0]
+
+        # apply to traffic from consumer to provider
+        const[name=in; value=1]
+
+        # apply to traffic from provider to consumer
+        const[name=out; value=2]
+    }
+
     class[Classifier;
           super=gbp/AccessBehavioralGroup;
           concrete]
@@ -16,5 +37,10 @@ module[gbp]
                           member=name]
             }
         }
+
+	member[order; type=scalar/UInt32]
+	member[connectionTracking; type=gbp/ConnTrack]
+	member[direction; type=gbp/Direction]
     }
+
 }

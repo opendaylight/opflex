@@ -1,0 +1,9 @@
+module[arp]
+{
+    type[Opcode; super=scalar/Enum8]
+    {
+        const[name=unspecified; value=0]
+        const[name=request; value=1]
+        const[name=reply; value=2]
+    }
+}

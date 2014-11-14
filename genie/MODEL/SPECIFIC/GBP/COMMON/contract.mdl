@@ -17,4 +17,53 @@ module[gbp]
             }
         }
     }
+
+    class[Subject;
+          super=gbp/AccessBehavioralGroup;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbp/Contract]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=subject;
+                          member=name]
+            }
+        }
+        
+    }
+
+    class[Rule;
+          super=gbp/AccessBehavioralGroup;
+          concrete]
+    {
+        dependency[classifier;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/Classifier;
+                cardinality=many;
+                ]
+        }
+
+        contained
+        {
+            parent[class=gbp/Subject]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=rule;
+                          member=name]
+            }
+        }
+
+        member[order; type=scalar/UInt32]
+    }
+
 }

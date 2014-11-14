@@ -125,7 +125,7 @@ public class FMetaDef
         }
         else if (isRelationshipTarget(aIn))
         {
-            return "ClassInfo::RELATIONSHIP";
+            return "ClassInfo::REVERSE_RELATIONSHIP";
         }
         else  if (isRelationshipResolver(aIn))
         {
@@ -256,6 +256,10 @@ public class FMetaDef
         out.println(aInIndent, ')');
     }
 
+    private String toUnsignedStr(int aInInt) {
+    	return Long.toString(aInInt & 0xFFFFFFFFL) + "ul";
+    }
+    
     private void genProps(int aInIndent, MClass aInClass)
     {
         //boolean hasDesc = aInClass.hasProps() || aInClass.hasContained();
@@ -287,16 +291,13 @@ public class FMetaDef
                             continue;
                         else if (lProp.getLID().getName().equalsIgnoreCase("targetName")) {
                             out.println(aInIndent + 1,
-                                        "(PropertyInfo(" + lLocalId + ", \"target\", PropertyInfo::REFERENCE, PropertyInfo::SCALAR)) // " + lProp.toString());
+                                        "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"target\", PropertyInfo::REFERENCE, PropertyInfo::SCALAR)) // " + lProp.toString());
                         }
                     }
                     else if (lProp.getLID().getName().equalsIgnoreCase("source") && isRelationshipTarget(aInClass))
                     {
-                        //MClass lTargetClass = ((MRelationshipClass) aInClass).getSourceClass();
-                        out.println(
-                                aInIndent + 1,
-                                "(PropertyInfo(" + lLocalId + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR)) // "
-                                + lProp.toString());
+                        out.println(aInIndent + 1,
+                                "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"source\", PropertyInfo::REFERENCE, PropertyInfo::SCALAR)) // " + lProp.toString());
                     }
                     // TODO
                     /**else if (isRelationshipResolver(aInClass))
@@ -310,7 +311,7 @@ public class FMetaDef
                     {
                         out.println(
                                 aInIndent + 1,
-                                "(PropertyInfo(" + lLocalId + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR,");
+                                "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR,");
                         genConsts(aInIndent + 2, aInClass, lProp, lPropType);
                         out.println(
                                 ")) // "
@@ -320,7 +321,7 @@ public class FMetaDef
                     {
                         out.println(
                                 aInIndent + 1,
-                                "(PropertyInfo(" + lLocalId + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR)) // "
+                                "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR)) // "
                                 + lProp.toString());
                     }
                 }
@@ -329,7 +330,7 @@ public class FMetaDef
             // HANDLE CONTAINED CLASSES
                 for (MClass lContained : lConts.values())
                 {
-                    out.println(aInIndent + 1, "(PropertyInfo(" + (lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
+                    out.println(aInIndent + 1, "(PropertyInfo(" + toUnsignedStr(lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
                 }
 
                 out.println(aInIndent + 1, ",");

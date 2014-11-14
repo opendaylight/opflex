@@ -1,0 +1,4 @@
+module[l3]
+{
+    type[IpProt; super=scalar/UInt8]
+}
