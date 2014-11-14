@@ -92,8 +92,12 @@ URIBuilder& URIBuilder::addElement(const string& elementValue) {
 }
 
 URIBuilder& URIBuilder::addElement(const MAC& elementValue) {
-    pimpl->uri_stream << elementValue << '/';
+    return addElement(elementValue.toString());
     return *this;
+}
+
+URIBuilder& URIBuilder::addElement(const URI& elementValue) {
+    return addElement(elementValue.toString());
 }
 
 modb::URI URIBuilder::build() {
