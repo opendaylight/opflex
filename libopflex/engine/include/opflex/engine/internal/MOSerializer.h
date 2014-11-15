@@ -59,30 +59,6 @@ public:
     ~MOSerializer();
 
     /**
-     * Serialize a reference
-     * @param client the store client to use to look up the data
-     * @param writer the writer to write to
-     * @param ref the reference
-     */
-    template <typename T>
-    void serialize_ref(modb::mointernal::StoreClient& client,
-                       rapidjson::Writer<T>& writer,
-                       modb::reference_t& ref) {
-        try {
-            const modb::ClassInfo& ref_class = 
-                store->getClassInfo(ref.first);
-            writer.StartObject();
-            writer.String("subject");
-            writer.String(ref_class.getName().c_str());
-            writer.String("reference_uri");
-            writer.String(ref.second.toString().c_str());
-            writer.StartObject();
-        } catch (std::out_of_range e) {
-            LOG(ERROR) << "Could not find class for " << ref.first;
-        }
-    }
-
-    /**
      * Serialize the whole object subtree rooted at the given URI.
      *
      * @param uri the URI of the object instance
@@ -159,6 +135,24 @@ public:
             case modb::PropertyInfo::ENUM16:
             case modb::PropertyInfo::ENUM32:
             case modb::PropertyInfo::ENUM64:
+                writer.StartObject();
+                writer.String("name");
+                writer.String(pit->second.getName().c_str());
+                writer.String("data");
+                if (pit->second.getCardinality() == modb::PropertyInfo::SCALAR) {
+                    uint64_t v = oi->getUInt64(pit->first);
+                    serialize_enum(client, pit->second, writer, v);
+                } else {
+                    writer.StartArray();
+                    size_t len = oi->getReferenceSize(pit->first);
+                    for (size_t i = 0; i < len; ++i) {
+                        uint64_t v = oi->getUInt64(pit->first, i);
+                        serialize_enum(client, pit->second, writer, v);
+                    }
+                    writer.EndArray();
+                }
+                writer.EndObject();
+                break;
             case modb::PropertyInfo::U64:
                 writer.StartObject();
                 writer.String("name");
@@ -264,21 +258,6 @@ public:
     }
 
     /**
-     * Deserialize a reference
-     * 
-     * @param client the store client
-     * @param pinfo the property info for the reference
-     * @param v the value containing the reference
-     * @param oi the object instance where we'll store the result
-     * @param scalar true if this is a scalar-valued reference
-     */
-    void deserialize_ref(modb::mointernal::StoreClient& client,
-                         const modb::PropertyInfo& pinfo,
-                         const rapidjson::Value& v,
-                         modb::mointernal::ObjectInstance& oi,
-                         bool scalar);
-
-    /**
      * Deserialize the parameters from the JSON value into the object
      * instance.
      *
@@ -299,6 +278,80 @@ public:
 private:
     modb::ObjectStore* store;
     Listener* listener;
+
+    /**
+     * Serialize a reference
+     * @param client the store client to use to look up the data
+     * @param writer the writer to write to
+     * @param ref the reference
+     */
+    template <typename T>
+    void serialize_ref(modb::mointernal::StoreClient& client,
+                       rapidjson::Writer<T>& writer,
+                       modb::reference_t& ref) {
+        try {
+            const modb::ClassInfo& ref_class = 
+                store->getClassInfo(ref.first);
+            writer.StartObject();
+            writer.String("subject");
+            writer.String(ref_class.getName().c_str());
+            writer.String("reference_uri");
+            writer.String(ref.second.toString().c_str());
+            writer.EndObject();
+        } catch (std::out_of_range e) {
+            writer.Null();
+            LOG(ERROR) << "Could not find class for " << ref.first;
+        }
+    }
+
+    /**
+     * Serialize an enum
+     * @param client the store client to use to look up the data
+     * @param writer the writer to write to
+     * @param ref the reference
+     */
+    template <typename T>
+    void serialize_enum(modb::mointernal::StoreClient& client,
+                        const modb::PropertyInfo& pinfo,
+                        rapidjson::Writer<T>& writer,
+                        uint64_t v) {
+        const modb::EnumInfo& ei = pinfo.getEnumInfo();
+        try {
+            const std::string& name = ei.getNameById(v);
+            writer.String(name.c_str());
+        } catch (std::out_of_range e) {
+            writer.Null();
+            LOG(WARNING) << "No name of type "
+                         << ei.getName()
+                         << " found for value "
+                         << v;
+        }
+    }
+
+    /**
+     * Deserialize a reference
+     * 
+     * @param client the store client
+     * @param pinfo the property info for the reference
+     * @param v the value containing the reference
+     * @param oi the object instance where we'll store the result
+     * @param scalar true if this is a scalar-valued reference
+     */
+    void deserialize_ref(modb::mointernal::StoreClient& client,
+                         const modb::PropertyInfo& pinfo,
+                         const rapidjson::Value& v,
+                         modb::mointernal::ObjectInstance& oi,
+                         bool scalar);
+
+    /**
+     * Deserialize an enum
+     */
+    void deserialize_enum(modb::mointernal::StoreClient& client,
+                          const modb::PropertyInfo& pinfo,
+                          const rapidjson::Value& v,
+                          modb::mointernal::ObjectInstance& oi,
+                          bool scalar);
+
 };
 
 } /* namespace internal */

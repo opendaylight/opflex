@@ -15,8 +15,11 @@
 #define MODB_ENUMINFO_H
 
 #include <string>
-#include "ConstInfo.h"
-#include "PropertyInfo.h"
+#include <vector>
+
+#include <boost/unordered_map.hpp>
+
+#include "opflex/modb/ConstInfo.h"
 
 namespace opflex {
 namespace modb {
@@ -47,14 +50,12 @@ public:
      * Construct an enum info with the given name and consts.
      */
     EnumInfo(const std::string &name_,
-             const std::vector<ConstInfo>& consts_)
-        : name(name_),
-          consts(consts_) {}
+             const std::vector<ConstInfo>& consts_);
 
     /**
      * Destructor
      */
-    ~EnumInfo() {}
+    ~EnumInfo();
 
     /**
      * Get the name of the enum
@@ -68,6 +69,22 @@ public:
      */
     const std::vector<ConstInfo>& getConsts() const { return consts; }
 
+    /**
+     * Get the constant value by the enum name
+     *
+     * @return The integer enum value
+     * @throws std::out_of_range if the name does not exist
+     */
+    const uint64_t getIdByName(const std::string& name) const;
+
+    /**
+     * Get the enum constant name by the enum value
+     *
+     * @return the string name
+     * @throws std::out_of_range if the ID does not exist
+     */
+    const std::string& getNameById(uint64_t id) const;
+
 private:
     /**
      * The name for this enum
@@ -78,7 +95,18 @@ private:
      * Possible const values for the enum
      */
     std::vector<ConstInfo> consts;
+
+    typedef boost::unordered_map<std::string, uint64_t> const_name_map_t;
+    typedef boost::unordered_map<uint64_t, std::string> const_value_map_t;
+
+    const_name_map_t const_name_map;
+    const_value_map_t const_value_map;
 };
-}
-}
+
+/* @} metadata */
+/* @} cpp */
+
+} /* namespace modb */
+} /* namespace opflex */
+
 #endif

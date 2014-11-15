@@ -501,7 +501,7 @@ public:
         // create a local reference to the remote policy object
         oi9 = make_shared<ObjectInstance>(9);
         oi9->setString(18, "test");
-        oi9->addReference(19, 8, c8u);
+        oi9->setReference(19, 8, c8u);
         client2->put(9, c9u, oi9);
         
         client2->queueNotification(9, c9u, notifs);

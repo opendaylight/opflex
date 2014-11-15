@@ -21,6 +21,7 @@ namespace internal {
 
 using modb::ObjectStore;
 using modb::ClassInfo;
+using modb::EnumInfo;
 using modb::PropertyInfo;
 using modb::URI;
 using modb::MAC;
@@ -66,6 +67,29 @@ void MOSerializer::deserialize_ref(modb::mointernal::StoreClient& client,
         // ignore unknown class
         LOG(DEBUG) << "Could not deserialize reference of unknown class " 
                    << subject.GetString();
+    }
+}
+
+void MOSerializer::deserialize_enum(modb::mointernal::StoreClient& client,
+                                    const PropertyInfo& pinfo,
+                                    const rapidjson::Value& pvalue,
+                                    ObjectInstance& oi,
+                                    bool scalar) {
+    if (!pvalue.IsString()) return;
+    const EnumInfo& ei = pinfo.getEnumInfo();
+    try {
+        uint64_t val = ei.getIdByName(pvalue.GetString());
+        if (scalar) {
+            oi.setUInt64(pinfo.getId(), val);
+        } else {
+            oi.addUInt64(pinfo.getId(), val);
+        }
+        
+    } catch (std::out_of_range e) {
+        LOG(WARNING) << "No value of type "
+                     << ei.getName()
+                     << " found for name "
+                     << pvalue.GetString();
     }
 }
 
@@ -128,7 +152,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                                     deserialize_ref(client, pinfo, v, *oi, false);
                                 }
                             } else {
-                                deserialize_ref(client, pinfo, pvalue, *oi, false);
+                                deserialize_ref(client, pinfo, pvalue, *oi, true);
                             }
                             break;
                         case PropertyInfo::S64:
@@ -149,6 +173,18 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                         case PropertyInfo::ENUM16:
                         case PropertyInfo::ENUM32:
                         case PropertyInfo::ENUM64:
+                            {
+                                if (pinfo.getCardinality() == PropertyInfo::VECTOR) {
+                                    if (!pvalue.IsArray()) continue;
+                                    for (SizeType j = 0; j < pvalue.Size(); ++j) {
+                                        const Value& v = pvalue[j];
+                                        deserialize_enum(client, pinfo, v, *oi, false);
+                                    }
+                                } else {
+                                    deserialize_enum(client, pinfo, pvalue, *oi, true);
+                                }
+                            }
+                            break;
                         case PropertyInfo::U64:
                             if (pinfo.getCardinality() == PropertyInfo::VECTOR) {
                                 if (!pvalue.IsArray()) continue;

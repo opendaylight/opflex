@@ -25,16 +25,6 @@ PropertyInfo::PropertyInfo(prop_id_t prop_id_,
       prop_type(type_), 
       class_id(0),
       cardinality(cardinality_) {
-    switch (prop_type) {
-    case ENUM8:
-    case ENUM16:
-    case ENUM32:
-    case ENUM64:
-        prop_type = U64;
-        break;
-    default:
-        break;
-    }
 }
 
 PropertyInfo::PropertyInfo(prop_id_t prop_id_,
@@ -48,16 +38,6 @@ PropertyInfo::PropertyInfo(prop_id_t prop_id_,
       class_id(0),
       cardinality(cardinality_),
       enum_info(enum_info_) {
-    switch(prop_type) {
-    case ENUM8:
-    case ENUM16:
-    case ENUM32:
-    case ENUM64:
-       prop_type = U64;
-       break;
-    default:
-       break;
-    }
 }
 
 PropertyInfo::PropertyInfo(prop_id_t prop_id_,

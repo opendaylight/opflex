@@ -15,6 +15,7 @@
 #define MODB_CONSTINFO_H
 
 #include <string>
+#include <boost/cstdint.hpp>
 
 namespace opflex {
 namespace modb {
@@ -71,6 +72,11 @@ private:
      */
     uint64_t id;
 };
-}
-}
+
+/* @} metadata */
+/* @} cpp */
+
+} /* namespace modb */
+} /* namespace opflex */
+
 #endif

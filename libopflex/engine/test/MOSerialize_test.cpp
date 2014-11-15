@@ -10,6 +10,7 @@
  */
 
 #include <boost/test/unit_test.hpp>
+#include <boost/make_shared.hpp>
 
 #include "opflex/engine/internal/MOSerializer.h"
 
@@ -23,8 +24,11 @@ using namespace opflex::logging;
 using namespace rapidjson;
 
 using boost::shared_ptr;
+using boost::make_shared;
 using mointernal::ObjectInstance;
 using std::out_of_range;
+using std::string;
+using std::make_pair;
 
 BOOST_AUTO_TEST_SUITE(MOSerialize_test)
 
@@ -62,7 +66,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     writer.StartObject();
     writer.String("policy");
     writer.StartArray();
-    serializer.serialize<StringBuffer>(1, uri, *client1, writer);
+    serializer.serialize(1, uri, *client1, writer);
     writer.EndArray();
 
     writer.String("prr");
@@ -118,8 +122,6 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
         BOOST_CHECK_EQUAL(0, mo2children.Size());
 
     }
-
-
 }
 
 BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
@@ -242,6 +244,74 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
     // child not changed
     BOOST_CHECK(notifs.find(uri3) == notifs.end());
     notifs.clear();
+}
+
+BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
+    MOSerializer serializer(&db);
+    StringBuffer buffer;
+    Writer<StringBuffer> writer(buffer);
+
+    StoreClient& sysClient = db.getStoreClient("_SYSTEM_");
+    URI c2u("/class2/32/");
+    URI c4u("/class4/test/");
+    URI c5u("/class5/test/");
+    URI c6u("/class4/test/class6/test2/");
+    URI c7u("/class4/test/class7/0");
+
+    shared_ptr<ObjectInstance> oi1 = make_shared<ObjectInstance>(1);
+    shared_ptr<ObjectInstance> oi2 = make_shared<ObjectInstance>(2);
+    shared_ptr<ObjectInstance> oi4 = make_shared<ObjectInstance>(4);
+    shared_ptr<ObjectInstance> oi5 = make_shared<ObjectInstance>(5);
+    shared_ptr<ObjectInstance> oi6 = make_shared<ObjectInstance>(6);
+    shared_ptr<ObjectInstance> oi7 = make_shared<ObjectInstance>(7);
+
+    oi2->setInt64(4, 32);
+    oi2->setMAC(15, MAC("aa:bb:cc:dd:ee:ff"));
+    oi5->setString(10, "test");
+    oi5->addReference(11, 4, c4u);
+    oi4->setString(9, "test");
+    oi6->setString(13, "test2");
+    oi7->setUInt64(14, 0);
+
+    sysClient.put(1, URI::ROOT, oi1);
+    sysClient.put(2, c2u, oi2);
+    sysClient.put(4, c4u, oi4);
+    sysClient.put(5, c5u, oi5);
+    sysClient.put(6, c6u, oi6);
+    sysClient.put(7, c7u, oi7);
+    sysClient.addChild(1, URI::ROOT, 3, 2, c2u);
+    sysClient.addChild(1, URI::ROOT, 8, 4, c4u);
+    sysClient.addChild(1, URI::ROOT, 24, 5, c5u);
+    sysClient.addChild(4, c4u, 12, 6, c6u);
+    sysClient.addChild(4, c4u, 25, 7, c7u);
+
+    writer.StartArray();
+    serializer.serialize(1, URI::ROOT, sysClient, writer);
+    writer.EndArray();
+    string str(buffer.GetString());
+
+    //std::cerr << str << std::endl;
+
+    sysClient.remove(1, URI::ROOT, true);
+    BOOST_CHECK_THROW(sysClient.get(1, URI::ROOT), out_of_range);
+    BOOST_CHECK_THROW(sysClient.get(2, c2u), out_of_range);
+    BOOST_CHECK_THROW(sysClient.get(4, c4u), out_of_range);
+    BOOST_CHECK_THROW(sysClient.get(5, c5u), out_of_range);
+    BOOST_CHECK_THROW(sysClient.get(6, c6u), out_of_range);
+    BOOST_CHECK_THROW(sysClient.get(7, c7u), out_of_range);
+
+    Document d;
+    d.Parse(str.c_str());
+    Value::ConstValueIterator it;
+    for (it = d.Begin(); it != d.End(); ++it) {
+        serializer.deserialize(*it, sysClient, true, NULL);
+    }
+    BOOST_CHECK_EQUAL("test", sysClient.get(4, c4u)->getString(9));
+    BOOST_CHECK_EQUAL("test", sysClient.get(5, c5u)->getString(10));
+    BOOST_CHECK(make_pair(4ul, c4u) == sysClient.get(5, c5u)->getReference(11, 0));
+    BOOST_CHECK_EQUAL("test2", sysClient.get(6, c6u)->getString(13));
+    BOOST_CHECK_EQUAL(0, sysClient.get(7, c7u)->getUInt64(14));
+    BOOST_CHECK_EQUAL(MAC("aa:bb:cc:dd:ee:ff"), sysClient.get(2, c2u)->getMAC(15));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

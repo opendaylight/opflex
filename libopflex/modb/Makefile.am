@@ -31,6 +31,7 @@ libmodb_la_SOURCES = \
 	URIBuilder.cpp \
 	URIQueue.cpp \
 	PropertyInfo.cpp \
+	EnumInfo.cpp \
 	ClassInfo.cpp \
 	ModelMetadata.cpp \
 	ClassIndex.cpp \
