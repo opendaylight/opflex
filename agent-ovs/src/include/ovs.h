@@ -13,6 +13,11 @@
 
 #include <boost/static_assert.hpp>
 
+#ifdef __GNUG__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-fpermissive"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,6 +37,10 @@ extern "C" {
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __GNUG__
+#pragma GCC diagnostic pop
 #endif
 
 #endif /* OVS_H_ */
