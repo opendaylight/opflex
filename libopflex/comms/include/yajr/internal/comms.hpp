@@ -258,8 +258,12 @@ class Peer : public SafeListBaseHook {
 
         LOG(DEBUG) << "deleting " << this;
 
+        onDelete();
+
         delete this;
     }
+
+    virtual void onDelete() {}
 
     virtual void destroy() = 0;
 
@@ -390,6 +394,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     void * getData() const {
         return data_;
+    }
+
+    virtual void onDelete() {
+        connectionHandler_(dynamic_cast<yajr::Peer *>(this), data_, ::yajr::StateChange::DELETE, 0);
     }
 
     virtual void startKeepAlive(
