@@ -22,12 +22,8 @@ namespace internal {
 using std::make_pair;
 using std::string;
 
-static void async_cb(uv_async_t* handle) {
-    uv_close((uv_handle_t*)handle, NULL);
-}
-
 OpflexPool::OpflexPool(HandlerFactory& factory_)
-    : factory(factory_) {
+    : factory(factory_), active(false) {
     uv_mutex_init(&conn_mutex);
 }
 
@@ -35,12 +31,31 @@ OpflexPool::~OpflexPool() {
     uv_mutex_destroy(&conn_mutex);
 }
 
+void OpflexPool::on_async(uv_async_t* handle) {
+    OpflexPool* pool = (OpflexPool*)handle->data;
+    if (!pool->active) {
+        util::LockGuard guard(&pool->conn_mutex);
+        BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
+            v.second.conn->disconnect();
+        }
+
+        uv_close((uv_handle_t*)handle, NULL);
+    } else {
+        util::LockGuard guard(&pool->conn_mutex);
+        BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
+            v.second.conn->connect();
+        }
+    }
+}
+
 void OpflexPool::start() {
+    if (active) return;
+    active = true;
+
     uv_loop_init(&client_loop);
-    uv_timer_init(&client_loop, &timer);
-    timer.data = this;
-    uv_timer_start(&timer, timer_cb, 1000, 1000);
-    uv_async_init(&client_loop, &async, async_cb);
+
+    async.data = this;
+    uv_async_init(&client_loop, &async, on_async);
 
     int rc = uv_thread_create(&client_thread, client_thread_func, this);
     if (rc < 0) {
@@ -50,9 +65,9 @@ void OpflexPool::start() {
 }
 
 void OpflexPool::stop() {
-    clear();
-    uv_timer_stop(&timer);
-    uv_close((uv_handle_t*)&timer, NULL);
+    if (!active) return;
+    active = false;
+
     uv_async_send(&async);
     uv_thread_join(&client_thread);
     int rc = uv_loop_close(&client_loop);
@@ -85,8 +100,9 @@ void OpflexPool::addPeer(const std::string& hostname, int port) {
         OpflexClientConnection* conn = 
             new OpflexClientConnection(factory, this, hostname, port);
         cd.conn = conn;
-        conn->connect();
     }
+    guard.release();
+    uv_async_send(&async);
 }
 
 void OpflexPool::addPeer(OpflexClientConnection* conn) {
@@ -96,7 +112,6 @@ void OpflexPool::addPeer(OpflexClientConnection* conn) {
         LOG(ERROR) << "Connection for "
                    << conn->getHostname() << ":" << conn->getPort()
                    << " already exists";
-        conn->disconnect();
     }
     cd.conn = conn;
 }
@@ -108,13 +123,6 @@ void OpflexPool::doRemovePeer(const std::string& hostname, int port) {
             doSetRoles(it->second, 0);
         }
         connections.erase(it);
-    }
-}
-
-void OpflexPool::clear() {
-    util::LockGuard guard(&conn_mutex);
-    BOOST_FOREACH(conn_map_t::value_type& v, connections) {
-        v.second.conn->disconnect();
     }
 }
 
@@ -176,10 +184,6 @@ OpflexPool::getMasterForRole(OpflexHandler::OpflexRole role) {
 void OpflexPool::client_thread_func(void* pool_) {
     OpflexPool* pool = (OpflexPool*)pool_;
     uv_run(&pool->client_loop, UV_RUN_DEFAULT);
-}
-
-void OpflexPool::timer_cb(uv_timer_t* handle) {
-    // TODO retry connections, read timeouts, etc
 }
 
 void OpflexPool::on_conn_closed(uv_handle_t *handle) {

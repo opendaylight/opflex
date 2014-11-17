@@ -25,10 +25,6 @@ namespace internal {
 using std::string;
 using util::LockGuard;
 
-static void async_cb(uv_async_t* handle) {
-    uv_close((uv_handle_t*)handle, NULL);
-}
-
 OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
                                int port_,
                                const std::string& name_,
@@ -37,7 +33,8 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
       name(name_), domain(domain_), active(true) {
     uv_mutex_init(&conn_mutex);
     uv_loop_init(&server_loop);
-    uv_async_init(&server_loop, &async, async_cb);
+    uv_async_init(&server_loop, &async, on_async);
+    async.data = this;
 
     uv_tcp_init(&server_loop, &bind_socket);
     server_loop.data = this;
@@ -73,8 +70,18 @@ OpflexListener::~OpflexListener() {
     uv_mutex_destroy(&conn_mutex);
 }
 
-static void walk_cb(uv_handle_t* handle, void* arg) {
-    LOG(ERROR) << handle;
+void OpflexListener::on_async(uv_async_t* handle) {
+    OpflexListener* listener = (OpflexListener*)handle->data;
+
+    {
+        LockGuard guard(&listener->conn_mutex);
+        BOOST_FOREACH(OpflexServerConnection* conn, listener->conns) {
+            conn->disconnect();
+        }
+    }
+
+    uv_close((uv_handle_t*)&listener->bind_socket, NULL);
+    uv_close((uv_handle_t*)handle, NULL);
 }
 
 void OpflexListener::disconnect() {
@@ -82,17 +89,7 @@ void OpflexListener::disconnect() {
     active = false;
     LOG(INFO) << "Shutting down Opflex listener";
 
-    {
-        LockGuard guard(&conn_mutex);
-        BOOST_FOREACH(OpflexServerConnection* conn, conns) {
-            conn->disconnect();
-        }
-    }
-
-    uv_close((uv_handle_t*)&bind_socket, NULL);
-    // hack to wake up the event loop when the listen socket is closed
     uv_async_send(&async);
-
     uv_thread_join(&server_thread);
     uv_loop_close(&server_loop);
 }

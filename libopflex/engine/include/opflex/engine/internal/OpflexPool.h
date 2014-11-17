@@ -79,11 +79,6 @@ public:
     void stop();
 
     /**
-     * Disconnect and clear all active OpFlex connections
-     */
-    void clear();
-
-    /**
      * Add an OpFlex peer.
      *
      * @param hostname the hostname or IP address to connect to
@@ -165,10 +160,10 @@ private:
 
     conn_map_t connections;
     role_map_t roles;
+    bool active;
 
     uv_loop_t client_loop;
     uv_thread_t client_thread;
-    uv_timer_t timer;
     uv_async_t async;
 
     void doRemovePeer(const std::string& hostname, int port);
@@ -177,8 +172,8 @@ private:
                     OpflexHandler::OpflexRole role);
 
     static void client_thread_func(void* pool);
-    static void timer_cb(uv_timer_t* handle);
     static void on_conn_closed(uv_handle_t *handle);
+    static void on_async(uv_async_t *handle);
 
     friend class OpflexClientConnection;
 };
