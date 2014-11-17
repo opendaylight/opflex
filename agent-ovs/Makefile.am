@@ -130,14 +130,17 @@ if HAVE_OVS
 noinst_PROGRAMS += integration_test
 
 integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
+	-I$(top_srcdir)/integration-test/include \
 	$(OVS_ADDL_CFLAGS)  \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 
 integration_test_SOURCES = \
+	integration-test/include/ConnectionFixture.h \
 	integration-test/main.cpp \
-	integration-test/connection_test.cpp
+	integration-test/connection_test.cpp \
+	integration-test/flowmod_test.cpp
 
 integration_test_LDADD = \
 	libagent_ovs.la \

@@ -37,6 +37,11 @@ public:
 typedef std::vector<FlowEntry *>    FlowEntryList;
 
 /**
+ * Print flow entry to an output stream.
+ */
+std::ostream& operator<<(std::ostream &os, const FlowEntry& fe);
+
+/**
  * Class that represents a list of table changes.
  */
 class FlowEdit {
