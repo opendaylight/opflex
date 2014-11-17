@@ -116,6 +116,7 @@ private:
     static void server_thread_func(void* processor);
     static void on_new_connection(uv_stream_t *server, int status);
     static void on_conn_closed(uv_handle_t *handle);
+    static void on_async(uv_async_t *handle);
 
     friend class OpflexServerConnection;
 };

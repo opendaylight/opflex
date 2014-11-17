@@ -27,7 +27,7 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
                                                int port_)
     : OpflexConnection(handlerFactory),
       pool(pool_), hostname(hostname_), port(port_),
-      active(true) {
+      active(false) {
 
 }
 
@@ -50,6 +50,9 @@ void OpflexClientConnection::shutdown_cb(uv_shutdown_t* req, int status) {
 }
 
 void OpflexClientConnection::connect() {
+    if (active) return;
+    active = true;
+
     std::stringstream rp;
     rp << hostname << ":" << port;
     remote_peer = rp.str();
@@ -67,8 +70,8 @@ void OpflexClientConnection::connect() {
 
 void OpflexClientConnection::disconnect() {
     if (!active) return;
-    
     active = false;
+
     LOG(INFO) << "[" << getRemotePeer() << "] " 
               << "Disconnected";
     uv_read_stop((uv_stream_t*)&socket);

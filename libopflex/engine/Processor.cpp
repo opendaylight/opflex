@@ -451,6 +451,13 @@ void Processor::timer_callback(uv_timer_t* handle) {
     }
 }
 
+void Processor::async_cb(uv_async_t* handle) {
+    Processor* processor = (Processor*)handle->data;
+    uv_timer_stop(&processor->proc_timer);
+    uv_close((uv_handle_t*)&processor->proc_timer, NULL);
+    uv_close((uv_handle_t*)handle, NULL);
+}
+
 void Processor::start() {
     LOG(DEBUG) << "Starting OpFlex Processor";
 
@@ -461,6 +468,8 @@ void Processor::start() {
 
     uv_loop_init(&timer_loop);
     uv_timer_init(&timer_loop, &proc_timer);
+    async.data = this;
+    uv_async_init(&timer_loop, &async, async_cb);
     proc_timer.data = this;
     uv_timer_start(&proc_timer, &timer_callback, 
                    processingDelay, processingDelay);
@@ -477,11 +486,9 @@ void Processor::stop() {
 
         unlisten();
 
-        uv_timer_stop(&proc_timer);
-        uv_close((uv_handle_t*)&proc_timer, NULL);
+        uv_async_send(&async);
         uv_thread_join(&timer_loop_thread);
         uv_loop_close(&timer_loop);
-        
         {
             util::LockGuard guard(&item_mutex);
             uv_cond_signal(&item_cond);

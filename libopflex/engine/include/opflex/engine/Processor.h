@@ -327,9 +327,11 @@ private:
      */
     uv_loop_t timer_loop;
     uv_thread_t timer_loop_thread;
+    uv_async_t async;
     uv_timer_t proc_timer;
     static void timer_thread_func(void* processor);
     static void timer_callback(uv_timer_t* handle);
+    static void async_cb(uv_async_t *handle);
 
     bool hasWork(/* out */ obj_state_by_exp::iterator& it);
     void addRef(obj_state_by_exp::iterator& it,
