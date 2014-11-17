@@ -37,7 +37,7 @@ class Logger {
      * @param level the log level 
      * @param file the file that is generating the log
      * @param line the line number
-     * @param the function that is generating the log
+     * @param function the function that is generating the log
      */
     Logger(OFLogHandler::Level const level,
            char const * file,

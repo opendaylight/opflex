@@ -144,7 +144,7 @@ public:
     /**
      * Allocate a new OpflexHandler for the connection
      *
-     * @param the connection associated with the handler
+     * @param conn the connection associated with the handler
      * @return a newly-allocated handler that will be owned by the
      * connection
      */

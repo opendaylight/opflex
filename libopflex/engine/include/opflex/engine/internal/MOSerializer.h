@@ -61,6 +61,7 @@ public:
     /**
      * Serialize the whole object subtree rooted at the given URI.
      *
+     * @param class_id the class ID of the object to serialize
      * @param uri the URI of the object instance
      * @param client the store client to use to look up the data
      * @param writer the writer to write to

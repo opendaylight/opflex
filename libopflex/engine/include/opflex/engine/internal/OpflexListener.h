@@ -39,8 +39,9 @@ public:
      *
      * @param handlerFactory a factory that can allocate a handler for
      * the spawned OpflexServerConnection objects
-     * @param pool the connection pool that hosts this connection
      * @param port the TCP port number to bind to
+     * @param name the opflex name for the server
+     * @param domain the opflex domain for the server
      */
     OpflexListener(HandlerFactory& handlerFactory,
                    int port,
@@ -76,7 +77,6 @@ public:
      * Write a given message to all the connected and ready peers.
      *
      * @param message the message to write
-     * @param role
      */
     void writeToAll(OpflexMessage& message);
 

@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file OpFlexHandler.h
+ * @file OpflexHandler.h
  * @brief Interface definition file for OpFlex message handlers
  */
 /*

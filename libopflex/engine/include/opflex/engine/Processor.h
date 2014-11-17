@@ -142,6 +142,7 @@ public:
     /**
      * A new client connection is ready and the resolver state must be
      * synchronized to the server.
+     * @param conn the new connection object
      */
     void connectionReady(internal::OpflexConnection* conn);
 

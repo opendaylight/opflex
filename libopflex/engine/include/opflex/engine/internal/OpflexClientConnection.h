@@ -89,7 +89,7 @@ public:
 
     virtual void write(const rapidjson::StringBuffer* buf);
 
-protected:
+private:
     OpflexPool* pool;
 
     std::string hostname;
@@ -104,6 +104,11 @@ protected:
 
     static void connect_cb(uv_connect_t* req, int status);
     static void shutdown_cb(uv_shutdown_t* req, int status);
+
+protected:
+    /**
+     * Handler for connection close
+     */
     static void on_conn_closed(uv_handle_t *handle);
 };
 

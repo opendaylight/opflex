@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file OpFlexPEHandler.h
+ * @file OpflexPEHandler.h
  * @brief Interface definition file for OpFlex message handlers
  */
 /*
@@ -81,7 +81,7 @@ public:
     virtual void handleStateReportRes(const rapidjson::Value& id,
                                       const rapidjson::Value& payload);
 
-protected:
+private:
     Processor* processor;
 };
 

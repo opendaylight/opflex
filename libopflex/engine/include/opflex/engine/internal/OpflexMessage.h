@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file OpFlexMessage.h
+ * @file OpflexMessage.h
  * @brief Interface definition file for OpFlex messages
  */
 /*
@@ -33,9 +33,15 @@ class OpflexConnection;
  */
 class OpflexMessage  {
 public:
+    /**
+     * The type of the message
+     */
     enum MessageType {
+        /** A request */
         REQUEST,
+        /** a response message */
         RESPONSE,
+        /** an error response */
         ERROR_RESPONSE
     };
 
@@ -45,7 +51,7 @@ public:
      * @param method the method for the message
      * @param type the type of message
      * @param id if specified, use as the ID of the message.  The
-     * memory is owned by the caller
+     * memory is owned by the caller, and must be set for responses.
      */
     OpflexMessage(const std::string& method, MessageType type,
                   const rapidjson::Value* id = NULL);
@@ -65,6 +71,8 @@ public:
      * included in the json-rpc message in the appropriate location
      * depending on the type of the message.  By default, the payload
      * will be an empty object of the appropriate type
+     *
+     * @param writer the message writer to write the payload to
      */
     virtual void serializePayload(MessageWriter& writer);
 
@@ -77,9 +85,19 @@ public:
     rapidjson::StringBuffer* serialize();
 
 protected:
+    /**
+     * The request method associated with the message
+     */
     std::string method;
+    /**
+     * The message type of the message
+     */
     MessageType type;
 
+    /**
+     * The ID associated with the message; may be NULL for a request
+     * message, but a response must always set it
+     */
     const rapidjson::Value* id;
 };
 
