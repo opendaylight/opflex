@@ -128,6 +128,7 @@ SwitchConnection::DoConnect() {
         ofConn = newConn;
         ofProtoVersion = connVersion;
     }
+    return 0;
 }
 
 void
