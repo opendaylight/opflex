@@ -96,7 +96,7 @@ class Peer : public SafeListBaseHook {
             idle_.data = this;
         }
 
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT 
         static size_t getCounter() {
             return counter;
         }
@@ -155,7 +155,7 @@ class Peer : public SafeListBaseHook {
         friend std::ostream& operator<< (std::ostream&, Peer::LoopData const *);
 
         ~LoopData() {
-#ifndef NDEBUG
+#ifdef COMMS_DEBUG_OBJECT_COUNT
             --counter;
 #endif
         }

@@ -13,12 +13,14 @@
 
 namespace yajr { namespace comms { namespace internal {
 
+#ifdef COMMS_DEBUG_OBJECT_COUNT
 ::boost::atomic<size_t> Peer::counter(0);
 ::boost::atomic<size_t> Peer::LoopData::counter(0);
 ::boost::atomic<size_t> CommunicationPeer::counter(0);
 ::boost::atomic<size_t> ActivePeer::counter(0);
 ::boost::atomic<size_t> PassivePeer::counter(0);
 ::boost::atomic<size_t> ListeningPeer::counter(0);
+#endif
 
 std::ostream& operator<< (std::ostream& os, Peer const * p) {
     return os << "{" << reinterpret_cast<void const *>(p) << "}"
