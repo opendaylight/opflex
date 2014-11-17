@@ -22,6 +22,7 @@ namespace StateChange {
         CONNECT,
         DISCONNECT,
         FAILURE,
+        DELETE,
     };
 };
 
@@ -41,6 +42,10 @@ struct Peer {
      *
      * When \p stateChange is FAILURE, \p error carries a non-zero value, which
      * is to be interpreted as a libuv error code.
+     *
+     * When \p stateChange is DELETE, the Peer is about to be deleted. It's a
+     * good time to release any resources such as the memory reachable via the
+     * \p data pointer.
      */
     typedef void (*StateChangeCb)(
             yajr::Peer            *,

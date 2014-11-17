@@ -362,6 +362,8 @@ void DoNothingOnConnect (
             break;
         case ::yajr::StateChange::FAILURE:
             break;
+        case ::yajr::StateChange::DELETE:
+            break;
         default:
             assert(0);
     }
@@ -384,6 +386,8 @@ void StartPingingOnConnect(
         case ::yajr::StateChange::DISCONNECT:
             break;
         case ::yajr::StateChange::FAILURE:
+            break;
+        case ::yajr::StateChange::DELETE:
             break;
         default:
             assert(0);
