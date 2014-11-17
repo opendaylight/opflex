@@ -388,6 +388,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     int write() const;
 
+    void * getData() const {
+        return data_;
+    }
+
     virtual void startKeepAlive(
             uint64_t begin    =  100,
             uint64_t repeat   = 1250,

@@ -113,6 +113,14 @@ struct Peer {
     virtual void destroy() = 0;
 
     /**
+     * @brief retrieves the pointer to the opaque data associated with this peer
+     *
+     * @return a pointer to the opaque data for this peer, the same pointer that
+     * is provided to the State Change callback
+     */
+    virtual void * getData() const = 0;
+
+    /**
      * @brief start performing periodic keep-alive
      *
      * start performing periodic keep-alive exchanges via the json-rpc
