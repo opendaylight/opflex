@@ -48,6 +48,14 @@ FlowEntry::ActionEq(const FlowEntry *rhs) {
                           feRhs->ofpacts, feRhs->ofpacts_len);
 }
 
+ostream & operator<<(ostream &os, const FlowEntry& fe) {
+    ds strBuf;
+    ds_init(&strBuf);
+    ofp_print_flow_stats(&strBuf, fe.entry);
+    os << (const char*)(ds_cstr(&strBuf) + 1); // trim space
+    ds_destroy(&strBuf);
+    return os;
+}
 
 /** TableState **/
 
