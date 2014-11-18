@@ -15,7 +15,7 @@ module[gbp]
         }
 
         dependency[provContract;
-                   cardinality=single;
+                   cardinality=many;
                    ]
         {
             to[class=gbp/Contract;
@@ -23,7 +23,7 @@ module[gbp]
                 ]
         }
         dependency[consContract;
-                   cardinality=single;
+                   cardinality=many;
                    ]
         {
             to[class=gbp/Contract;
