@@ -50,21 +50,31 @@ void internal::Peer::LoopData::onIdleLoop() {
     peers[TO_LISTEN]
         .clear_and_dispose(RetryPeer());
 
-    if (now - lastRun_ < 30000) {
+    if (now - lastRun_ < 750) {
         return;
     }
 
-    LOG(DEBUG);
+    if (peers[RETRY_TO_CONNECT].begin() !=
+        peers[RETRY_TO_CONNECT].begin()) {
+
+        LOG(INFO) << "retrying first RETRY_TO_CONNECT peer";
+
+        /* retry just the first active peer in the queue */
+        peers[RETRY_TO_CONNECT]
+            .erase_and_dispose(peers[RETRY_TO_CONNECT].begin(), RetryPeer());
+
+    }
+
+    if (now - lastRun_ > 15000) {
+
+        LOG(INFO) << "retrying all RETRY_TO_LISTEN peers";
+
+        /* retry all listeners */
+        peers[RETRY_TO_LISTEN]
+            .clear_and_dispose(RetryPeer());
+    }
 
     lastRun_ = now;
-
-    /* retry all listeners */
-    peers[RETRY_TO_LISTEN]
-        .clear_and_dispose(RetryPeer());
-
-    /* retry just the first active peer in the queue */
-    peers[RETRY_TO_CONNECT]
-        .erase_and_dispose(peers[RETRY_TO_CONNECT].begin(), RetryPeer());
 
 }
 
