@@ -42,7 +42,7 @@ module[gbp]
           concrete]
     {
         dependency[classifier;
-                   cardinality=single;
+                   cardinality=many;
                    ]
         {
             to[class=gbp/Classifier;
