@@ -607,8 +607,8 @@ class ActivePeer : public CommunicationPeer {
 #endif
   public:
     explicit ActivePeer(
-            char const * hostname,
-            char const * service,
+            std::string const & hostname,
+            std::string const & service,
             ::yajr::Peer::StateChangeCb connectionHandler,
             void * data,
             ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
@@ -651,11 +651,11 @@ class ActivePeer : public CommunicationPeer {
 #endif
 
     char const * getHostname() const {
-        return hostname_;
+        return hostname_.c_str();
     }
 
     char const * getService() const {
-        return service_;
+        return service_.c_str();
     }
 
   protected:
@@ -665,8 +665,8 @@ class ActivePeer : public CommunicationPeer {
         --counter;
 #endif
     }
-    char const * const hostname_;
-    char const * const service_;
+    std::string const hostname_;
+    std::string const service_;
 };
 
 class PassivePeer : public CommunicationPeer {

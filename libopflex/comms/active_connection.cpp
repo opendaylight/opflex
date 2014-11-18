@@ -38,8 +38,8 @@
 */
 
 ::yajr::Peer * ::yajr::Peer::create(
-        char const * host,
-        char const * service,
+        std::string const & host,
+        std::string const & service,
         ::yajr::Peer::StateChangeCb connectionHandler,
         void * data,
         UvLoopSelector uvLoopSelector

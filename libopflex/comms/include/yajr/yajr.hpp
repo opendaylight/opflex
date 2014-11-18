@@ -96,9 +96,9 @@ struct Peer {
      * @return a pointer to the Peer created
      **/
     static Peer * create(
-            char const            * host,
+            std::string const     & host,
                                          /**< [in] the hostname to connect to */
-            char const            * service,
+            std::string const     & service,
                                                /**< [in] service name or port */
             StateChangeCb           connectionHandler,
                                               /**< [in] state change callback */
