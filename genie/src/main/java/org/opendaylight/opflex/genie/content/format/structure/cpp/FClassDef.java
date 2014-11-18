@@ -1351,65 +1351,237 @@ public class FClassDef extends ItemFormatterTask
 
     }
 
+    private void genChildAdder(int aInIdent, MClass aInParentClass, MClass aInChildClass,
+                               Collection<MNameComponent> aInNcs,
+                               String aInFormattedChildClassName,
+                               String aInConcatenatedChildClassName,
+                               String aInUriBuilder,
+                               MNameRule aInChildNr,
+                               boolean aInMultipleChildren,
+                               MClass aInTargetClass,
+                               boolean aInTargetUnique)
+    {
+
+        ArrayList<String> comment = new ArrayList<>(Arrays.asList(
+            "Create a new child object with the specified naming properties",
+            "and make it a child of this object in the currently-active",
+            "mutator.  If the object already exists in the store, get a",
+            "mutable copy of that object.  If the object already exists in",
+            "the mutator, get a reference to the object.",
+            ""));
+        addPathComment(aInChildClass, aInNcs, comment);
+        comment.add("@throws std::logic_error if no mutator is active");
+        comment.add("@return a shared pointer to the (possibly new) object");
+        out.printHeaderComment(aInIdent,comment);
+        String lTargetClassName = null;
+        if (aInTargetClass != null)
+            lTargetClassName = Strings.upFirstLetter(aInTargetClass.getLID().getName());
+        String lMethodName = "add" + aInConcatenatedChildClassName;
+
+        if (!aInTargetUnique && aInMultipleChildren && aInTargetClass != null)
+        {
+            lMethodName += lTargetClassName;
+        }
+        out.println(aInIdent, "boost::shared_ptr<" +  aInFormattedChildClassName + "> " + lMethodName + "(");
+
+        boolean lIsFirst = true;
+        MNameComponent lClassProp = null;
+        for (MNameComponent lNc : aInNcs)
+        {
+            if (lNc.hasPropName())
+            {
+                if (aInTargetClass != null)
+                {
+                    if (lNc.getPropName().equalsIgnoreCase("targetClass"))
+                    {
+                        lClassProp = lNc;
+                        continue;
+                    }
+                }
+                if (lIsFirst)
+                {
+                    lIsFirst = false;
+                }
+                else
+                {
+                    out.println(",");
+                }
+                out.print(aInIdent + 1, getPropParamDef(aInChildClass, lNc.getPropName()));
+            }
+        }
+        if (lIsFirst)
+        {
+            out.println(aInIdent + 1, ")");
+        }
+        else
+        {
+            out.println(")");
+        }
+        out.println(aInIdent,"{");
+            if (aInTargetClass != null && lClassProp != null)
+            {
+                out.println(aInIdent + 1, "opflex::modb::class_id_t " + getPropParamName(aInChildClass, lClassProp.getPropName()) + " = " + aInTargetClass.getGID().getId() + ";");
+            }
+            out.println(aInIdent + 1, "boost::shared_ptr<" + aInFormattedChildClassName + "> result = addChild<" + aInFormattedChildClassName+ ">(");
+                out.println(aInIdent + 2, "CLASS_ID, getURI(), " + toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
+                out.println(aInIdent + 2, aInUriBuilder);
+                out.println(aInIdent + 2, ");");
+
+            aInNcs = aInChildNr.getComponents();
+            for (MNameComponent lNc : aInNcs)
+            {
+                if (lNc.hasPropName())
+                {
+                    String lPropName = Strings.upFirstLetter(lNc.getPropName());
+                    String lArgs = getPropParamName(aInChildClass, lNc.getPropName());
+                    if (aInTargetClass != null) {
+                        if (lPropName.equalsIgnoreCase("targetClass"))
+                            continue;
+                        if (lPropName.equalsIgnoreCase("targetName"))
+                        {
+                            lPropName = "Target" + lTargetClassName;
+                            lArgs = "opflex::modb::URI(" + lArgs + ")";
+                        }
+                    }
+                    out.println(aInIdent + 1, 
+                                "result->set" + lPropName + 
+                                "(" + lArgs + ");");
+                }
+            }
+
+            out.println(aInIdent + 1, "return result;");
+        out.println(aInIdent,"}");
+        out.println();
+    }
+    
+    private void genChildResolver(int aInIdent, MClass aInParentClass, MClass aInChildClass,
+            Collection<MNameComponent> aInNcs,
+            String aInFormattedChildClassName,
+            String aInConcatenatedChildClassName,
+            String aInUriBuilder,
+            MNameRule aInChildNr,
+            boolean aInMultipleChildren,
+            MClass aInTargetClass,
+            boolean aInTargetUnique)
+    {
+
+        ArrayList<String> comment = new ArrayList<>(Arrays.asList(
+            "Retrieve the child object with the specified naming",
+            "properties. If the object does not exist in the local store,",
+            "returns boost::none.  Note that even though it may not exist",
+            "locally, it may still exist remotely.",
+            ""));
+        addPathComment(aInChildClass, aInNcs, comment);
+        comment.add("@return a shared pointer to the object or boost::none if it");
+        comment.add("does not exist.");
+        out.printHeaderComment(aInIdent,comment);
+        
+        String lTargetClassName = null;
+        if (aInTargetClass != null)
+            lTargetClassName = Strings.upFirstLetter(aInTargetClass.getLID().getName());
+        String lMethodName = "resolve" + aInConcatenatedChildClassName;
+
+        if (!aInTargetUnique && aInMultipleChildren && aInTargetClass != null)
+        {
+            lMethodName += lTargetClassName;
+        }
+
+        out.println(aInIdent, "boost::optional<boost::shared_ptr<" +  aInFormattedChildClassName + "> > " + lMethodName + "(");
+
+        boolean lIsFirst = true;
+        MNameComponent lClassProp = null;
+        for (MNameComponent lNc : aInNcs)
+        {
+            if (lNc.hasPropName())
+            {
+                if (aInTargetClass != null)
+                {
+                    if (lNc.getPropName().equalsIgnoreCase("targetClass"))
+                    {
+                        lClassProp = lNc;
+                        continue;
+                    }
+                }
+                if (lIsFirst)
+                {
+                    lIsFirst = false;
+                }
+                else
+                {
+                    out.println(",");
+                }
+                out.print(aInIdent + 1, getPropParamDef(aInChildClass, lNc.getPropName()));
+            }
+        }
+        if (lIsFirst)
+        {
+            out.println(aInIdent + 1, ")");
+        }
+        else
+        {
+            out.println(")");
+        }
+        out.println(aInIdent,"{");
+        if (aInTargetClass != null && lClassProp != null)
+        {
+            out.println(aInIdent + 1, "opflex::modb::class_id_t " + getPropParamName(aInChildClass, lClassProp.getPropName()) + " = " + aInTargetClass.getGID().getId() + ";");
+        }
+        out.println(aInIdent + 1, "return " + aInFormattedChildClassName + "::resolve(getFramework(), " + aInUriBuilder + ");");
+        out.println(aInIdent,"}");
+        out.println();
+    }
+
     private void genChildResolvers(int aInIdent, MClass aInParentClass, MClass aInChildClass)
     {
         MNamer lChildNamer = MNamer.get(aInChildClass.getGID().getName(),false);
         MNameRule lChildNr = lChildNamer.findNameRule(aInParentClass.getGID().getName());
         if (null != lChildNr)
         {
-            String lFormattefChildClassName = getClassName(aInChildClass,true);
+            String lFormattedChildClassName = getClassName(aInChildClass,true);
             String lConcatenatedChildClassName = aInChildClass.getFullConcatenatedName();
             String lUriBuilder = getUriBuilder(aInParentClass,aInChildClass, lChildNr);
-
             Collection<MNameComponent> lNcs = lChildNr.getComponents();
-            ArrayList<String> comment = new ArrayList<>(Arrays.asList(
-                "Retrieve the child object with the specified naming",
-                "properties. If the object does not exist in the local store,",
-                "returns boost::none.  Note that even though it may not exist",
-                "locally, it may still exist remotely.",
-                ""));
-            addPathComment(aInChildClass, lNcs, comment);
-            comment.add("@return a shared pointer to the object or boost::none if it");
-            comment.add("does not exist.");
-            out.printHeaderComment(aInIdent,comment);
             
-            out.println(aInIdent, "boost::optional<boost::shared_ptr<" +  lFormattefChildClassName + "> > resolve" + lConcatenatedChildClassName + "(");
-
-            boolean lIsFirst = true;
-            boolean multipleChildren = false;
+            boolean lMultipleChildren = false;
             for (MNameComponent lNc : lNcs)
             {
                 if (lNc.hasPropName())
                 {
-                    if (lIsFirst)
-                    {
-                        lIsFirst = false;
-                        multipleChildren = true;
-                    }
-                    else
-                    {
-                        out.println(",");
-                    }
-                    out.print(aInIdent + 1, getPropParamDef(aInChildClass, lNc.getPropName()));
+                    lMultipleChildren = true;
+                    break;
                 }
             }
-            if (lIsFirst)
-            {
-                out.println(aInIdent + 1, ")");
-            }
-            else
-            {
-                out.println(")");
-            }
-            out.println(aInIdent,"{");
-                out.println(aInIdent + 1, "return " + lFormattefChildClassName + "::resolve(getFramework(), " + lUriBuilder + ");");
-            out.println(aInIdent,"}");
-            out.println();
+            
+            if (aInChildClass.isConcreteSuperclassOf("relator/Source"))
+                {
+                    Collection<MClass> lTargetClasses = ((MRelationshipClass) aInChildClass).getTargetClasses(true);
+                    for (MClass lTargetClass : lTargetClasses)
+                    {
+                        genChildResolver(aInIdent, aInParentClass, aInChildClass, lNcs, 
+                                lFormattedChildClassName, lConcatenatedChildClassName,
+                                lUriBuilder, lChildNr, lMultipleChildren, lTargetClass,
+                                lTargetClasses.size() == 1);
+                        genChildAdder(aInIdent, aInParentClass, aInChildClass, lNcs, 
+                                lFormattedChildClassName, lConcatenatedChildClassName,
+                                lUriBuilder, lChildNr, lMultipleChildren, lTargetClass,
+                                lTargetClasses.size() == 1);
+                        if (!lMultipleChildren) break;
+                    }
+                }
+                else
+                {
+                    genChildResolver(aInIdent, aInParentClass, aInChildClass, lNcs, 
+                            lFormattedChildClassName, lConcatenatedChildClassName,
+                            lUriBuilder, lChildNr, lMultipleChildren, null, false);
+                    genChildAdder(aInIdent, aInParentClass, aInChildClass, lNcs, 
+                                  lFormattedChildClassName, lConcatenatedChildClassName,
+                                  lUriBuilder, lChildNr, lMultipleChildren, null, false);
+                }
 
-            if (multipleChildren) {
-                comment = new ArrayList<>(Arrays.asList(
+            if (lMultipleChildren) {
+                ArrayList<String> comment = new ArrayList<>(Arrays.asList(
                     "Resolve and retrieve all of the immediate children of type",
-                    lFormattefChildClassName,
+                    lFormattedChildClassName,
                     "",
                     "Note that this retrieves only those children that exist in the",
                     "local store.  It is possible that there are other children that",
@@ -1422,72 +1594,13 @@ public class FClassDef extends ItemFormatterTask
                     "objects."));
                 out.printHeaderComment(aInIdent,comment);
 
-                out.println(aInIdent,"void resolve" + lConcatenatedChildClassName + "(/* out */ std::vector<boost::shared_ptr<" + lFormattefChildClassName+ "> >& out)");
+                out.println(aInIdent,"void resolve" + lConcatenatedChildClassName + "(/* out */ std::vector<boost::shared_ptr<" + lFormattedChildClassName+ "> >& out)");
                 out.println(aInIdent,"{");
-                out.println(aInIdent + 1, "opflex::modb::mointernal::MO::resolveChildren<" + lFormattefChildClassName + ">(");
+                out.println(aInIdent + 1, "opflex::modb::mointernal::MO::resolveChildren<" + lFormattedChildClassName + ">(");
                 out.println(aInIdent + 2, "getFramework(), CLASS_ID, getURI(), " + toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ", out);");
                 out.println(aInIdent,"}");
                 out.println();
             }
-
-            comment = new ArrayList<>(Arrays.asList(
-                "Create a new child object with the specified naming properties",
-                "and make it a child of this object in the currently-active",
-                "mutator.  If the object already exists in the store, get a",
-                "mutable copy of that object.  If the object already exists in",
-                "the mutator, get a reference to the object.",
-                ""));
-            addPathComment(aInChildClass, lNcs, comment);
-            comment.add("@throws std::logic_error if no mutator is active");
-            comment.add("@return a shared pointer to the (possibly new) object");
-            out.printHeaderComment(aInIdent,comment);
-
-            out.println(aInIdent, "boost::shared_ptr<" +  lFormattefChildClassName + "> add" + lConcatenatedChildClassName + "(");
-
-            lIsFirst = true;
-            for (MNameComponent lNc : lNcs)
-            {
-                if (lNc.hasPropName())
-                {
-                    if (lIsFirst)
-                    {
-                        lIsFirst = false;
-                    }
-                    else
-                    {
-                        out.println(",");
-                    }
-                    out.print(aInIdent + 1, getPropParamDef(aInChildClass, lNc.getPropName()));
-                }
-            }
-            if (lIsFirst)
-            {
-                out.println(aInIdent + 1, ")");
-            }
-            else
-            {
-                out.println(")");
-            }
-            out.println(aInIdent,"{");
-                out.println(aInIdent + 1, "boost::shared_ptr<" + lFormattefChildClassName + "> result = addChild<" + lFormattefChildClassName+ ">(");
-                    out.println(aInIdent + 2, "CLASS_ID, getURI(), " + toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
-                    out.println(aInIdent + 2, lUriBuilder);
-                    out.println(aInIdent + 2, ");");
-
-                lNcs = lChildNr.getComponents();
-                for (MNameComponent lNc : lNcs)
-                {
-                    if (lNc.hasPropName())
-                    {
-                        out.println(aInIdent + 1, 
-                                    "result->set" + Strings.upFirstLetter(lNc.getPropName()) + 
-                                    "(" + getPropParamName(aInChildClass, lNc.getPropName()) + ");");
-                    }
-                }
-
-                out.println(aInIdent + 1, "return result;");
-            out.println(aInIdent,"}");
-            out.println();
         }
         else
         {
