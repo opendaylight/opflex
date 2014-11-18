@@ -28,6 +28,11 @@ module[gbpe]
           super=gbp/Classifier;
           concrete]
     {
+        contained
+        {
+            parent[class=policy/Space]
+        }
+
         # ARP opcode
         member[arpOpc; type=arp/Opcode]
 
