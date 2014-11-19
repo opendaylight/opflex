@@ -73,6 +73,9 @@ AC_ARG_WITH(buildversion,
             [sdk_bversion=${withval}],
             [sdk_bversion='private'])
 
+dnl allow to create final builds with assert()s disabled
+AC_HEADER_ASSERT
+
 dnl Create an option to install communications library separately
 AC_ARG_ENABLE(separate-comms,
               AC_HELP_STRING([--enable-separate-comms],
