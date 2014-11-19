@@ -67,7 +67,10 @@ struct Peer {
      *
      * @return a pointer to the desired uv_loop.
      */
-    typedef uv_loop_t * (*UvLoopSelector)(void);
+    typedef uv_loop_t * (*UvLoopSelector)(
+            void * data
+                                         /**< [in] Callback data for the Peer */
+    );
 
     /**
      * @brief Factory for an active yajr communication Peer.

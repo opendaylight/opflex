@@ -83,6 +83,14 @@ using namespace yajr::comms::internal;
 
 void ::yajr::comms::internal::ListeningPeer::retry() {
 
+    if (destroying_) {
+
+        LOG(INFO) << this << "Not retrying because of pending destroy";
+
+        return;
+
+    }
+
     int rc;
 
     if ((rc = uv_tcp_init(_.listener_.uvLoop_, &handle_))) {
