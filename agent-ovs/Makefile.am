@@ -32,7 +32,6 @@ libagent_ovs_la_CXXFLAGS = \
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
-	$(libvirt_LIBS) \
 	$(BOOST_LOG_LIB) \
 	$(BOOST_LOG_SETUP_LIB) \
 	$(BOOST_SYSTEM_LIB) \
