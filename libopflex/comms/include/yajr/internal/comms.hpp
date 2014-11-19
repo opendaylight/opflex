@@ -270,7 +270,11 @@ class Peer : public SafeListBaseHook {
 #else
     static
 #endif
-    bool __checkInvariants() const __attribute__((no_instrument_function));
+    bool __checkInvariants()
+#ifndef NDEBUG
+    const
+#endif
+    __attribute__((no_instrument_function));
 
     /**
      * Get the uv_loop_t * for this peer
