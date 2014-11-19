@@ -124,6 +124,11 @@ bool operator==(const URI& lhs, const URI& rhs) {
 bool operator!=(const URI& lhs, const URI& rhs) {
     return !operator==(lhs,rhs);
 }
+
+bool operator<(const URI& lhs, const URI& rhs) {
+    return *lhs.uri < *rhs.uri;
+}
+
 size_t hash_value(URI const& uri) {
     return uri.hashv;
 }

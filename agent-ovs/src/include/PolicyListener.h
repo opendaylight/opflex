@@ -33,6 +33,13 @@ public:
      * been updated.
      */
     virtual void egDomainUpdated(const opflex::modb::URI& egURI) = 0;
+
+    /**
+     * Called when a policy contract is updated. These include changes to
+     * the rules that comprise the contract as well as changes to the list
+     * of provider/consumer endpoint groups for the contract.
+     */
+    virtual void contractUpdated(const opflex::modb::URI& contractURI) {}
 };
 
 } /* namespace ovsagent */

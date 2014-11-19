@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <set>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/thread.hpp>
@@ -19,6 +20,7 @@
 #include <opflex/modb/ObjectListener.h>
 #include <modelgbp/metadata/metadata.hpp>
 #include <modelgbp/dmtree/Root.hpp>
+#include <modelgbp/gbpe/L24Classifier.hpp>
 
 #include "PolicyListener.h"
 
@@ -153,6 +155,52 @@ public:
      */
     bool groupExists(const opflex::modb::URI& eg);
 
+    /**
+     * List of L24Classifier objects.
+     */
+    typedef std::list<boost::shared_ptr<modelgbp::gbpe::L24Classifier> >
+        rule_list_t;
+
+    /**
+     * Set of URIs.
+     */
+    typedef boost::unordered_set<opflex::modb::URI> uri_set_t;
+
+    /**
+     * Get all endpoint groups that provide a contract.
+     *
+     * @param contractURI URI of contract to look for
+     * @param epgURIs set of EPG URIs that provide the contract
+     */
+    void getContractProviders(const opflex::modb::URI& contractURI,
+                             /* out */ uri_set_t& epgURIs);
+
+    /**
+     * Get all endpoint groups that consume a contract.
+     *
+     * @param contractURI URI of contract to look for
+     * @param epgURIs set of EPG URIs that consume the contract
+     */
+    void getContractConsumers(const opflex::modb::URI& contractURI,
+                             /* out */ uri_set_t& epgURIs);
+
+    /**
+     * Get an ordered list of L24Classifier objects that comprise a contract.
+     *
+     * @param contractURI URI of contract to look for
+     * @param rules List of classifier objects in descending order
+     */
+    void getContractRules(const opflex::modb::URI& contractURI,
+                          /* out */ rule_list_t& rules);
+
+    /**
+     * Check if a contract exists.
+     *
+     * @param contractURI URI of the contract to check
+     * @return true if contract is found, false otherwise
+     */
+    bool contractExists(const opflex::modb::URI& contractURI);
+
 private:
     opflex::ofcore::OFFramework& framework;
 
@@ -203,6 +251,59 @@ private:
     friend class DomainListener;
 
     /**
+     * Set of URIs in sorted order.
+     */
+    typedef std::set<opflex::modb::URI> uri_sorted_set_t;
+
+    /**
+     * Contracts provided and consumed by an endpoint group.
+     */
+    struct GroupContractState {
+        uri_sorted_set_t contractsProvided;
+        uri_sorted_set_t contractsConsumed;
+    };
+    typedef boost::unordered_map<opflex::modb::URI, GroupContractState>
+        group_contract_map_t;
+
+    /**
+     * Map of EPG URI to contracts it is related to.
+     */
+    group_contract_map_t groupContractMap;
+
+    /**
+     * Information about a contract.
+     */
+    struct ContractState {
+        uri_set_t providerGroups;
+        uri_set_t consumerGroups;
+        rule_list_t rules;
+    };
+    typedef boost::unordered_map<opflex::modb::URI, ContractState>
+        contract_map_t;
+
+    /**
+     * Map of Contract URI to its state.
+     */
+    contract_map_t contractMap;
+
+    /**
+     * Listener for changes related to policy objects.
+     */
+    class ContractListener : public opflex::modb::ObjectListener {
+    public:
+        ContractListener(PolicyManager& pmanager);
+        virtual ~ContractListener();
+
+        virtual void objectUpdated(opflex::modb::class_id_t class_id,
+                                    const opflex::modb::URI& uri);
+    private:
+        PolicyManager& pmanager;
+    };
+    ContractListener contractListener;
+
+    friend class ContractListener;
+
+    /**
      * The policy listeners that have been registered
      */
     std::list<PolicyListener*> policyListeners;
@@ -232,6 +333,39 @@ private:
      * updated
      */
     void notifyEPGDomain(const opflex::modb::URI& egURI);
+
+    /**
+     * Updates groupPolicyMap and contractMap according to the
+     * contracts provided and consumed by an endpoint group.
+     * If provider/consumer relationship of the group w.r.t. a
+     * contract has changed, adds it to 'updatedContracts'.
+     *
+     * @param egURI the URI of the endpoint group to update
+     * @param updatedContracts Contracts whose relationship with
+     * the group has changed
+     */
+    void updateEPGContracts(const opflex::modb::URI& egURI,
+            uri_set_t& updatedContracts);
+
+    /**
+     * Update the classifier rules associated with a contract.
+     *
+     * @param contractURI URI of contract to update
+     * @param toRemove set to true if contract was removed.
+     * @return true if rules for this contract were updated or
+     * contract was removed
+     */
+    bool updateContractRules(const opflex::modb::URI& contractURI,
+            bool& toRemove);
+
+    /**
+     * Notify policy listeners about an update to a contract.
+     *
+     * @param contractURI the URI of the contract that has been
+     * updated
+     */
+    void notifyContract(const opflex::modb::URI& contractURI);
+
 };
 
 } /* namespace ovsagent */

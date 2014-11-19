@@ -9,9 +9,11 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <algorithm>
 #include <boost/foreach.hpp>
 #include <opflex/modb/URIBuilder.h>
 
+#include "logging.h"
 #include "PolicyManager.h"
 
 namespace ovsagent {
@@ -31,7 +33,7 @@ using boost::optional;
 using boost::unordered_set;
 
 PolicyManager::PolicyManager(OFFramework& framework_)
-    : framework(framework_), domainListener(*this) {
+    : framework(framework_), domainListener(*this), contractListener(*this) {
 
 }
 
@@ -42,21 +44,35 @@ PolicyManager::~PolicyManager() {
 void PolicyManager::start() {
     using namespace modelgbp;
     using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
     BridgeDomain::registerListener(framework, &domainListener);
     FloodDomain::registerListener(framework, &domainListener);
     RoutingDomain::registerListener(framework, &domainListener);
     Subnets::registerListener(framework, &domainListener);
     EpGroup::registerListener(framework, &domainListener);
+
+    EpGroup::registerListener(framework, &contractListener);
+    Contract::registerListener(framework, &contractListener);
+    Subject::registerListener(framework, &contractListener);
+    Rule::registerListener(framework, &contractListener);
+    L24Classifier::registerListener(framework, &contractListener);
 }
 
 void PolicyManager::stop() {
     using namespace modelgbp;
     using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
     BridgeDomain::unregisterListener(framework, &domainListener);
     FloodDomain::unregisterListener(framework, &domainListener);
     RoutingDomain::unregisterListener(framework, &domainListener);
     Subnets::unregisterListener(framework, &domainListener);
     EpGroup::unregisterListener(framework, &domainListener);
+
+    EpGroup::unregisterListener(framework, &contractListener);
+    Contract::unregisterListener(framework, &contractListener);
+    Subject::unregisterListener(framework, &contractListener);
+    Rule::unregisterListener(framework, &contractListener);
+    L24Classifier::unregisterListener(framework, &contractListener);
 
     lock_guard<mutex> guard(state_mutex);
     group_map.clear();
@@ -313,6 +329,222 @@ bool PolicyManager::groupExists(const opflex::modb::URI& eg) {
     return group_map.find(eg) != group_map.end();
 }
 
+void PolicyManager::notifyContract(const URI& contractURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    BOOST_FOREACH(PolicyListener *listener, policyListeners) {
+        listener->contractUpdated(contractURI);
+    }
+}
+
+void PolicyManager::updateEPGContracts(const URI& egURI,
+        uri_set_t& updatedContracts) {
+    using namespace modelgbp::gbp;
+    GroupContractState& gcs = groupContractMap[egURI];
+
+    uri_set_t provAdded, provRemoved;
+    uri_set_t consAdded, consRemoved;
+
+    optional<shared_ptr<EpGroup> > epg =
+        EpGroup::resolve(framework, egURI);
+    if (!epg) {
+        provRemoved.insert(gcs.contractsProvided.begin(),
+                gcs.contractsProvided.end());
+        consRemoved.insert(gcs.contractsConsumed.begin(),
+                gcs.contractsConsumed.end());
+        groupContractMap.erase(egURI);
+    } else {
+        uri_sorted_set_t newProvided;
+        uri_sorted_set_t newConsumed;
+
+        vector<shared_ptr<EpGroupToProvContractRSrc> > provRel;
+        epg.get()->resolveGbpEpGroupToProvContractRSrc(provRel);
+        vector<shared_ptr<EpGroupToConsContractRSrc> > consRel;
+        epg.get()->resolveGbpEpGroupToConsContractRSrc(consRel);
+
+        BOOST_FOREACH(shared_ptr<EpGroupToProvContractRSrc>& rel, provRel) {
+            if (rel->isTargetSet()) {
+                newProvided.insert(rel->getTargetURI().get());
+            }
+        }
+        BOOST_FOREACH(shared_ptr<EpGroupToConsContractRSrc>& rel, consRel) {
+            if (rel->isTargetSet()) {
+                newConsumed.insert(rel->getTargetURI().get());
+            }
+        }
+
+#define CALC_DIFF(olds, news, added, removed)                                  \
+    std::set_difference(olds.begin(), olds.end(),                              \
+            news.begin(), news.end(), inserter(removed, removed.begin()));     \
+    std::set_difference(news.begin(), news.end(),                              \
+            olds.begin(), olds.end(), inserter(added, added.begin()));
+
+        CALC_DIFF(gcs.contractsProvided, newProvided, provAdded, provRemoved);
+        CALC_DIFF(gcs.contractsConsumed, newConsumed, consAdded, consRemoved);
+#undef CALC_DIFF
+        gcs.contractsProvided.swap(newProvided);
+        gcs.contractsConsumed.swap(newConsumed);
+    }
+
+#define INSERT_ALL(dst, src)    dst.insert(src.begin(), src.end());
+    INSERT_ALL(updatedContracts, provAdded);
+    INSERT_ALL(updatedContracts, provRemoved);
+    INSERT_ALL(updatedContracts, consAdded);
+    INSERT_ALL(updatedContracts, consRemoved);
+#undef INSERT_ALL
+
+    BOOST_FOREACH(const URI& u, provAdded) {
+        contractMap[u].providerGroups.insert(egURI);
+        LOG(DEBUG) << u << ": prov add: " << egURI;
+    }
+    BOOST_FOREACH(const URI& u, consAdded) {
+        contractMap[u].consumerGroups.insert(egURI);
+        LOG(DEBUG) << u << ": cons add: " << egURI;
+    }
+    BOOST_FOREACH(const URI& u, provRemoved) {
+        contractMap[u].providerGroups.erase(egURI);
+        LOG(DEBUG) << u << ": prov remove: " << egURI;
+    }
+    BOOST_FOREACH(const URI& u, consRemoved) {
+        contractMap[u].consumerGroups.erase(egURI);
+        LOG(DEBUG) << u << ": cons remove: " << egURI;
+    }
+}
+
+/**
+ * Comparison function for sorting Rule objects in descending order.
+ */
+static bool ruleComp(const shared_ptr<modelgbp::gbp::Rule>& lhs,
+                     const shared_ptr<modelgbp::gbp::Rule>& rhs) {
+    return lhs->getOrder(0) > rhs->getOrder(0);
+};
+
+/**
+ * Comparison function for sorting L24Classifier objects in descending order.
+ */
+static bool
+classifierComp(const shared_ptr<modelgbp::gbpe::L24Classifier>& lhs,
+               const shared_ptr<modelgbp::gbpe::L24Classifier>& rhs) {
+    return lhs->getOrder(0) > rhs->getOrder(0);
+};
+
+/**
+ * Check equality of L24Classifier objects.
+ */
+static bool
+classifierEq(const shared_ptr<modelgbp::gbpe::L24Classifier>& lhs,
+             const shared_ptr<modelgbp::gbpe::L24Classifier>& rhs) {
+    if (lhs == rhs) {
+        return true;
+    }
+    return lhs.get() && rhs.get() &&
+        lhs->getURI() == rhs->getURI() &&
+        lhs->getArpOpc() == rhs->getArpOpc() &&
+        lhs->getConnectionTracking() == rhs->getConnectionTracking() &&
+        lhs->getDFromPort() == rhs->getDFromPort() &&
+        lhs->getDToPort() == rhs->getDToPort() &&
+        lhs->getDirection() == rhs->getDirection() &&
+        lhs->getEtherT() == rhs->getEtherT() &&
+        lhs->getProt() == rhs->getProt() &&
+        lhs->getSFromPort() == rhs->getSFromPort() &&
+        lhs->getSToPort() == rhs->getSToPort();
+}
+
+bool PolicyManager::updateContractRules(const URI& contractURI,
+        bool& toRemove) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+
+    optional<shared_ptr<Contract> > contract =
+            Contract::resolve(framework, contractURI);
+    if (!contract) {
+        toRemove = true;
+        return true;
+    }
+    toRemove = false;
+
+    /* get all classifiers for this contract as an ordered-list */
+    rule_list_t newRules;
+    vector<shared_ptr<Subject> > subjects;
+    contract.get()->resolveGbpSubject(subjects);
+    BOOST_FOREACH(shared_ptr<Subject>& sub, subjects) {
+        vector<shared_ptr<Rule> > rules;
+        sub->resolveGbpRule(rules);
+        sort(rules.begin(), rules.end(), ruleComp);
+
+        BOOST_FOREACH(shared_ptr<Rule>& rule, rules) {
+            vector<shared_ptr<L24Classifier> > classifiers;
+            vector<shared_ptr<RuleToClassifierRSrc> > clsRel;
+            rule->resolveGbpRuleToClassifierRSrc(clsRel);
+
+            BOOST_FOREACH(shared_ptr<RuleToClassifierRSrc>& r, clsRel) {
+                if (!r->isTargetSet()) {
+                    continue;
+                }
+                optional<shared_ptr<L24Classifier> > cls =
+                    L24Classifier::resolve(framework, r->getTargetURI().get());
+                if (cls) {
+                    classifiers.push_back(cls.get());
+                }
+            }
+            sort(classifiers.begin(), classifiers.end(), classifierComp);
+            newRules.insert(newRules.end(), classifiers.begin(),
+                    classifiers.end());
+        }
+    }
+    ContractState& cs = contractMap[contractURI];
+
+    rule_list_t::const_iterator li = cs.rules.begin();
+    rule_list_t::const_iterator ri = newRules.begin();
+    while (li != cs.rules.end() && ri != newRules.end() &&
+           classifierEq(*li, *ri)) {
+        ++li;
+        ++ri;
+    }
+    bool updated = (li != cs.rules.end() || ri != newRules.end());
+    if (updated) {
+        cs.rules.swap(newRules);
+        BOOST_FOREACH(shared_ptr<L24Classifier>& c, cs.rules) {
+            LOG(DEBUG) << contractURI << " rule: " << c->getURI();
+        }
+    }
+    return updated;
+}
+
+void PolicyManager::getContractProviders(const URI& contractURI,
+                                         /* out */ uri_set_t& epgURIs) {
+    lock_guard<mutex> guard(state_mutex);
+    contract_map_t::const_iterator it = contractMap.find(contractURI);
+    if (it != contractMap.end()) {
+        epgURIs.insert(it->second.providerGroups.begin(),
+                it->second.providerGroups.end());
+    }
+}
+
+void PolicyManager::getContractConsumers(const URI& contractURI,
+                                         /* out */ uri_set_t& epgURIs) {
+    lock_guard<mutex> guard(state_mutex);
+    contract_map_t::const_iterator it = contractMap.find(contractURI);
+    if (it != contractMap.end()) {
+        epgURIs.insert(it->second.consumerGroups.begin(),
+                it->second.consumerGroups.end());
+    }
+}
+
+void PolicyManager::getContractRules(const URI& contractURI,
+                                     /* out */ rule_list_t& rules) {
+    lock_guard<mutex> guard(state_mutex);
+    contract_map_t::const_iterator it = contractMap.find(contractURI);
+    if (it != contractMap.end()) {
+        rules.insert(rules.end(), it->second.rules.begin(),
+                it->second.rules.end());
+    }
+}
+
+bool PolicyManager::contractExists(const opflex::modb::URI& cURI) {
+    lock_guard<mutex> guard(state_mutex);
+    return contractMap.find(cURI) != contractMap.end();
+}
+
 PolicyManager::DomainListener::DomainListener(PolicyManager& pmanager_)
     : pmanager(pmanager_) {}
 PolicyManager::DomainListener::~DomainListener() {}
@@ -338,6 +570,40 @@ void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
     guard.unlock();
     BOOST_FOREACH(const URI& u, notify) {
         pmanager.notifyEPGDomain(u);
+    }
+}
+
+PolicyManager::ContractListener::ContractListener(PolicyManager& pmanager_)
+    : pmanager(pmanager_) {}
+
+PolicyManager::ContractListener::~ContractListener() {}
+
+void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
+                                                    const URI& uri) {
+    unique_lock<mutex> guard(pmanager.state_mutex);
+
+    uri_set_t contractsToNotify;
+    if (classId == modelgbp::gbp::EpGroup::CLASS_ID) {
+        pmanager.updateEPGContracts(uri, contractsToNotify);
+    } else {
+        if (classId == modelgbp::gbp::Contract::CLASS_ID) {
+            pmanager.contractMap[uri];
+        }
+        /* recompute the rules for all contracts if a policy object changed */
+        for (PolicyManager::contract_map_t::iterator itr =
+                pmanager.contractMap.begin();
+             itr != pmanager.contractMap.end(); ) {
+            bool toRemove = false;
+            if (pmanager.updateContractRules(itr->first, toRemove)) {
+                contractsToNotify.insert(itr->first);
+            }
+            itr = (toRemove ? pmanager.contractMap.erase(itr) : ++itr);
+        }
+    }
+    guard.unlock();
+
+    BOOST_FOREACH(const URI& u, contractsToNotify) {
+        pmanager.notifyContract(u);
     }
 }
 

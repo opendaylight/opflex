@@ -11,6 +11,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/foreach.hpp>
+#include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
 
@@ -26,6 +27,8 @@ using opflex::modb::URI;
 
 using namespace modelgbp;
 using namespace modelgbp::gbp;
+using namespace modelgbp::gbpe;
+using namespace boost::assign;
 
 class PolicyFixture : public BaseFixture {
 public:
@@ -60,11 +63,44 @@ public:
         subnetsrd->addGbpSubnetsToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
 
-        eg = space->addGbpEpGroup("group");
-        eg->addGbpEpGroupToNetworkRSrc()
+        classifier1 = space->addGbpeL24Classifier("classifier1");
+        classifier1->setOrder(100);
+        classifier2 = space->addGbpeL24Classifier("classifier2");
+        classifier3 = space->addGbpeL24Classifier("classifier3");
+        classifier4 = space->addGbpeL24Classifier("classifier4");
+
+
+        con1 = space->addGbpContract("contract1");
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
+                ->setOrder(10)
+                .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
+                ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
+                ->setOrder(15)
+                .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+        con1->addGbpSubject("1_subject2")->addGbpRule("1_2_rule1")
+                ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
+
+        con2 = space->addGbpContract("contract2");
+        con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
+              ->addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
+
+        eg1 = space->addGbpEpGroup("group1");
+        eg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnet(subnetsfd1->getURI());
-        eg->addGbpeInstContext()->setVnid(1234);
-    
+        eg1->addGbpeInstContext()->setVnid(1234);
+        eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+        eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
+
+        eg2 = space->addGbpEpGroup("group2");
+        eg2->addGbpeInstContext()->setVnid(5678);
+        eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
+        eg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
+
+        eg3 = space->addGbpEpGroup("group3");
+        eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+
         mutator.commit();
     }
 
@@ -84,7 +120,17 @@ public:
     shared_ptr<Subnets> subnetsrd;
     shared_ptr<Subnet> subnetsrd1;
 
-    shared_ptr<EpGroup> eg;
+    shared_ptr<EpGroup> eg1;
+    shared_ptr<EpGroup> eg2;
+    shared_ptr<EpGroup> eg3;
+
+    shared_ptr<L24Classifier> classifier1;
+    shared_ptr<L24Classifier> classifier2;
+    shared_ptr<L24Classifier> classifier3;
+    shared_ptr<L24Classifier> classifier4;
+
+    shared_ptr<Contract> con1;
+    shared_ptr<Contract> con2;
 };
 
 BOOST_AUTO_TEST_SUITE(PolicyManager_test)
@@ -121,22 +167,130 @@ static bool checkFd(PolicyManager& policyManager,
 
 BOOST_FIXTURE_TEST_CASE( domain, PolicyFixture ) {
     WAIT_FOR(checkFd(agent.getPolicyManager(),
-                     eg->getURI(), fd->getURI()), 500);
+                     eg1->getURI(), fd->getURI()), 500);
 }
 
 BOOST_FIXTURE_TEST_CASE( group, PolicyFixture ) {
     PolicyManager& pm = agent.getPolicyManager();
-    WAIT_FOR(pm.groupExists(eg->getURI()), 500);
+    WAIT_FOR(pm.groupExists(eg1->getURI()), 500);
 
     BOOST_CHECK(pm.groupExists(URI("bad")) == false);
 
-    optional<uint32_t> vnid = pm.getVnidForGroup(eg->getURI());
+    optional<uint32_t> vnid = pm.getVnidForGroup(eg1->getURI());
     BOOST_CHECK(vnid.get() == 1234);
 
     Mutator mutator(framework, "policyreg");
-    eg->remove();
+    eg1->remove();
     mutator.commit();
-    WAIT_FOR(pm.groupExists(eg->getURI()) == false, 500);
+    WAIT_FOR(pm.groupExists(eg1->getURI()) == false, 500);
+}
+
+static bool checkContains(const PolicyManager::uri_set_t& s,
+        const URI& u) {
+    return s.find(u) != s.end();
+}
+
+BOOST_FIXTURE_TEST_CASE( group_contract, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    WAIT_FOR(pm.contractExists(con1->getURI()), 500);
+
+    PolicyManager::uri_set_t egs;
+    pm.getContractProviders(con1->getURI(), egs);
+    WAIT_FOR(egs.size() == 2, 1000);
+    BOOST_CHECK(checkContains(egs, eg1->getURI()));
+    BOOST_CHECK(checkContains(egs, eg3->getURI()));
+
+    egs.clear();
+    pm.getContractConsumers(con1->getURI(), egs);
+    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg2->getURI()));
+
+    egs.clear();
+    pm.getContractProviders(con2->getURI(), egs);
+    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg1->getURI()));
+
+    egs.clear();
+    pm.getContractConsumers(con2->getURI(), egs);
+    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg2->getURI()));
+}
+
+BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    WAIT_FOR(pm.contractExists(con1->getURI()), 500);
+
+    PolicyManager::uri_set_t egs;
+    /* remove eg1, interchange roles of eg2 and eg3 w.r.t con1 */
+    Mutator mutator(framework, "policyreg");
+    eg1->remove();
+
+    eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString())
+            ->unsetTarget();
+    eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString())
+            ->unsetTarget();
+
+    eg2->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+    eg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
+    mutator.commit();
+    WAIT_FOR(pm.groupExists(eg1->getURI()) == false, 500);
+
+    egs.clear();
+    pm.getContractProviders(con1->getURI(), egs);
+    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg2->getURI()));
+
+    egs.clear();
+    pm.getContractConsumers(con1->getURI(), egs);
+    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg3->getURI()));
+
+    egs.clear();
+    pm.getContractProviders(con2->getURI(), egs);
+    BOOST_CHECK(egs.empty());
+}
+
+static bool checkRules(const PolicyManager::rule_list_t& lhs,
+        const PolicyManager::rule_list_t& rhs) {
+    PolicyManager::rule_list_t::const_iterator li = lhs.begin();
+    PolicyManager::rule_list_t::const_iterator ri = rhs.begin();
+    while (li != lhs.end() && ri != rhs.end() &&
+           (*li)->getURI() == (*ri)->getURI()) {
+        ++li;
+        ++ri;
+    }
+    return li == lhs.end() && ri == rhs.end();
+}
+
+BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    WAIT_FOR(pm.contractExists(con1->getURI()), 500);
+
+    BOOST_CHECK(pm.groupExists(URI("invalid")) == false);
+
+    PolicyManager::rule_list_t rules;
+    pm.getContractRules(con1->getURI(), rules);
+    BOOST_CHECK(
+        checkRules(rules,
+            list_of(classifier2)(classifier1)(classifier4)(classifier3)) ||
+        checkRules(rules,
+            list_of(classifier3)(classifier2)(classifier1)(classifier4)));
+
+    /*
+     *  remove classifier2 & subject2
+     *  move classifier4 from 1_1_rule1 to 1_1_rule2
+     */
+    Mutator mutator(framework, "policyreg");
+    con1->addGbpSubject("1_subject2")->remove();
+    classifier2->remove();
+    con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
+        ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString())
+        ->unsetTarget();
+    con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
+        ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
+
+    shared_ptr<Contract> con3 = space->addGbpContract("contract3");
+    mutator.commit();
+    WAIT_FOR(pm.contractExists(con3->getURI()) == true, 500);
+
+    rules.clear();
+    pm.getContractRules(con1->getURI(), rules);
+    BOOST_CHECK(checkRules(rules, list_of(classifier4)(classifier1)));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -87,6 +87,7 @@ private:
 
     friend bool operator==(const URI& lhs, const URI& rhs);
     friend bool operator!=(const URI& lhs, const URI& rhs);
+    friend bool operator<(const URI& lhs, const URI& rhs);
     friend size_t hash_value(URI const& uri);
 };
 
@@ -103,6 +104,10 @@ bool operator==(const URI& lhs, const URI& rhs);
  * Check for URI inequality.
  */
 bool operator!=(const URI& lhs, const URI& rhs);
+/**
+ * Comparison operator for sorting.
+ */
+bool operator<(const URI& lhs, const URI& rhs);
 /**
  * Compute a hash value for the URI, making URI suitable as a key in
  * an unordered_map
