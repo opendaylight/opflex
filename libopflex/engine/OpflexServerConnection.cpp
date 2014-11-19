@@ -25,6 +25,7 @@ using std::string;
 OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
     : OpflexConnection(listener_->handlerFactory), 
       listener(listener_) {
+#ifdef SIMPLE_RPC
     uv_tcp_init(&listener->server_loop, &tcp_handle);
     tcp_handle.data = this;
     int rc = uv_accept((uv_stream_t*)&listener->bind_socket, 
@@ -53,6 +54,10 @@ OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
     }
 
     uv_read_start((uv_stream_t*)&tcp_handle, alloc_cb, read_cb);
+#else
+
+#endif
+
 }
 
 OpflexServerConnection::~OpflexServerConnection() {
@@ -67,26 +72,37 @@ const std::string& OpflexServerConnection::getDomain() {
     return listener->getDomain();
 }
 
+#ifdef SIMPLE_RPC
 void OpflexServerConnection::shutdown_cb(uv_shutdown_t* req, int status) {
     OpflexServerConnection* conn = 
         (OpflexServerConnection*)req->handle->data;
     uv_close((uv_handle_t*)&conn->tcp_handle, OpflexListener::on_conn_closed);
 }
+#endif
 
 void OpflexServerConnection::disconnect() {
+#ifdef SIMPLE_RPC
     uv_read_stop((uv_stream_t*)&tcp_handle);
     {
-        util::LockGuard guard(&write_mutex);
         int rc = uv_shutdown(&shutdown, (uv_stream_t*)&tcp_handle, shutdown_cb);
         if (rc < 0) {
             LOG(ERROR) << "[" << getRemotePeer() << "] " 
                        << "Could not shut down socket: " << uv_strerror(rc);
         }
     }
+#else
+#endif
+    OpflexConnection::disconnect();
 }
 
+#ifdef SIMPLE_RPC
 void OpflexServerConnection::write(const rapidjson::StringBuffer* buf) {
     OpflexConnection::write((uv_stream_t*)&tcp_handle, buf);
+}
+#endif
+
+void OpflexServerConnection::messagesReady() {
+    listener->messagesReady();
 }
 
 } /* namespace internal */

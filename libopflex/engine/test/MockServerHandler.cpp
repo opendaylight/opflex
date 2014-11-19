@@ -54,6 +54,10 @@ public:
         (*this)(writer);
     }
 
+    virtual SendIdentityRes* clone() { 
+        return new SendIdentityRes(*this);
+    }
+
     template <typename T>
     bool operator()(Writer<T> & writer) {
         writer.StartObject();
@@ -116,6 +120,10 @@ public:
         (*this)(writer);
     }
 
+    virtual PolicyResolveRes* clone() { 
+        return new PolicyResolveRes(*this);
+    }
+
     template <typename T>
     bool operator()(Writer<T> & writer) {
         MOSerializer& serializer = server.getSerializer();
@@ -156,6 +164,10 @@ public:
         (*this)(writer);
     }
 
+    virtual EndpointResolveRes* clone() { 
+        return new EndpointResolveRes(*this);
+    }
+
     template <typename T>
     bool operator()(Writer<T> & writer) {
         MOSerializer& serializer = server.getSerializer();
@@ -188,10 +200,11 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
     LOG(DEBUG) << "Got send_identity req";
     std::stringstream sb;
     sb << "127.0.0.1:" << server->getPort();
-    SendIdentityRes res(id, sb.str(), "testdomain", 
-                        server->getRoles(), 
-                        server->getPeers());
-    getConnection()->write(res.serialize());
+    SendIdentityRes* res = 
+        new SendIdentityRes(id, sb.str(), "testdomain", 
+                            server->getRoles(), 
+                            server->getPeers());
+    getConnection()->sendMessage(res, true);
 }
 
 void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
@@ -249,8 +262,9 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
         }
     }
 
-    PolicyResolveRes res(id, *server, mos);
-    getConnection()->write(res.serialize());
+    PolicyResolveRes* res = 
+        new PolicyResolveRes(id, *server, mos);
+    getConnection()->sendMessage(res, true);
 }
 
 void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
@@ -302,8 +316,10 @@ void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
         }
     }
 
-    OpflexMessage res("policy_unresolve", OpflexMessage::RESPONSE, &id);
-    getConnection()->write(res.serialize());
+    OpflexMessage* res = 
+        new GenericOpflexMessage("policy_unresolve",
+                                 OpflexMessage::RESPONSE, &id);
+    getConnection()->sendMessage(res, true);
 }
 
 void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
@@ -350,8 +366,10 @@ void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
     }
     client.deliverNotifications(notifs);
 
-    OpflexMessage res("endpoint_declare", OpflexMessage::RESPONSE, &id);
-    getConnection()->write(res.serialize());
+    OpflexMessage* res = 
+        new GenericOpflexMessage("endpoint_declare", 
+                                 OpflexMessage::RESPONSE, &id);
+    getConnection()->sendMessage(res, true);
 }
 
 void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
@@ -402,8 +420,10 @@ void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
     }
     client.deliverNotifications(notifs);
 
-    OpflexMessage res("endpoint_undeclare", OpflexMessage::RESPONSE, &id);
-    getConnection()->write(res.serialize());
+    OpflexMessage* res = 
+        new GenericOpflexMessage("endpoint_undeclare", 
+                                 OpflexMessage::RESPONSE, &id);
+    getConnection()->sendMessage(res, true);
 }
 
 void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
@@ -460,8 +480,9 @@ void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
         }
     }
 
-    EndpointResolveRes res(id, *server, mos);
-    getConnection()->write(res.serialize());
+    EndpointResolveRes* res = 
+        new EndpointResolveRes(id, *server, mos);
+    getConnection()->sendMessage(res, true);
 }
 
 void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
@@ -513,8 +534,10 @@ void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
         }
     }
 
-    OpflexMessage res("endpoint_unresolve", OpflexMessage::RESPONSE, &id);
-    getConnection()->write(res.serialize());
+    OpflexMessage* res = 
+        new GenericOpflexMessage("endpoint_unresolve", 
+                                 OpflexMessage::RESPONSE, &id);
+    getConnection()->sendMessage(res, true);
 }
 
 void MockServerHandler::handleEPUpdateRes(const rapidjson::Value& id,
@@ -556,8 +579,10 @@ void MockServerHandler::handleStateReportReq(const rapidjson::Value& id,
     }
     client.deliverNotifications(notifs);
 
-    OpflexMessage res("state_report", OpflexMessage::RESPONSE, &id);
-    getConnection()->write(res.serialize());
+    OpflexMessage* res = 
+        new GenericOpflexMessage("state_report", 
+                                 OpflexMessage::RESPONSE, &id);
+    getConnection()->sendMessage(res, true);
 }
 
 bool MockServerHandler::hasResolution(modb::class_id_t class_id, 

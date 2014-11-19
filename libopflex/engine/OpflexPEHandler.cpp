@@ -52,6 +52,10 @@ public:
         (*this)(writer);
     }
 
+    virtual SendIdentityReq* clone() { 
+        return new SendIdentityReq(*this);
+    }
+
     template <typename T>
     bool operator()(Writer<T> & writer) {
         writer.StartArray();
@@ -89,10 +93,11 @@ void OpflexPEHandler::connected() {
     setState(CONNECTED);
 
     OpflexPool& pool = getProcessor()->getPool();
-    SendIdentityReq req(pool.getName(),
-                        pool.getDomain(),
-                        OpflexHandler::POLICY_ELEMENT);
-    getConnection()->write(req.serialize());
+    SendIdentityReq* req = 
+        new SendIdentityReq(pool.getName(),
+                            pool.getDomain(),
+                            OpflexHandler::POLICY_ELEMENT);
+    getConnection()->sendMessage(req, true);
 }
 
 void OpflexPEHandler::disconnected() {

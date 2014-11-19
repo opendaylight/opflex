@@ -87,7 +87,10 @@ public:
 
     virtual const std::string& getRemotePeer() { return remote_peer; }
 
+#ifdef SIMPLE_RPC
     virtual void write(const rapidjson::StringBuffer* buf);
+#endif
+    virtual void messagesReady();
 
 private:
     OpflexPool* pool;
@@ -96,20 +99,31 @@ private:
     int port;
     std::string remote_peer;
 
+#ifdef SIMPLE_RPC
     uv_tcp_t socket;
     uv_connect_t connect_req;
     uv_shutdown_t shutdown;
-
+#else
+    yajr::Peer* peer;
+#endif
     volatile bool active;
 
+#ifdef SIMPLE_RPC
     static void connect_cb(uv_connect_t* req, int status);
-    static void shutdown_cb(uv_shutdown_t* req, int status);
+#else
+    static void on_state_change(yajr::Peer* p, void* data, 
+                                yajr::StateChange::To stateChange,
+                                int error);
+    static uv_loop_t* loop_selector(void* data);
+#endif
 
 protected:
+#ifdef SIMPLE_RPC
     /**
      * Handler for connection close
      */
     static void on_conn_closed(uv_handle_t *handle);
+#endif
 };
 
 

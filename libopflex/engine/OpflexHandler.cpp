@@ -80,6 +80,10 @@ public:
         (*this)(writer);
     }
 
+    virtual ErrorRes* clone() {
+        return new ErrorRes(*this);
+    }
+
     template <typename T>
     bool operator()(Writer<T> & handler) {
         handler.StartObject();
@@ -97,13 +101,12 @@ public:
 void OpflexHandler::sendErrorRes(const Value& id,
                                  const string& code,
                                  const string& message) {
-    ErrorRes res(id, code, message);
     rapidjson::StringBuffer sb;
     rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
     id.Accept(writer);
     LOG(ERROR) << "Error processing message " << sb.GetString()
                << ": " << code << ": " << message;
-    getConnection()->write(res.serialize());
+    getConnection()->sendMessage(new ErrorRes(id, code, message), true);
 }
 
 } /* namespace internal */

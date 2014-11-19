@@ -9,8 +9,11 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <boost/scoped_ptr.hpp>
+
 #include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/OpflexHandler.h"
+#include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "LockGuard.h"
 
@@ -20,11 +23,15 @@ namespace internal {
 
 using rapidjson::Value;
 using std::string;
+using boost::scoped_ptr;
 
 OpflexConnection::OpflexConnection(HandlerFactory& handlerFactory)
-    : handler(handlerFactory.newHandler(this)), 
-      buffer(new std::stringstream()) {
-    uv_mutex_init(&write_mutex);
+    : handler(handlerFactory.newHandler(this)) 
+#ifdef SIMPLE_RPC
+    ,buffer(new std::stringstream()) 
+#endif
+{
+    uv_mutex_init(&queue_mutex);
     connect();
 }
 
@@ -32,19 +39,28 @@ OpflexConnection::~OpflexConnection() {
     disconnect();
     if (handler)
         delete handler;
+#ifdef SIMPLE_RPC
     if (buffer)
         delete buffer;
-    uv_mutex_destroy(&write_mutex);
+#endif
+    uv_mutex_destroy(&queue_mutex);
 }
 
 void OpflexConnection::connect() {}
 
-void OpflexConnection::disconnect() {}
+void OpflexConnection::disconnect() {
+    util::LockGuard guard(&queue_mutex);
+    while (write_queue.size() > 0) {
+        delete write_queue.front();
+        write_queue.pop_front();
+    }
+}
 
 bool OpflexConnection::isReady() { 
     return handler->isReady();
 }
 
+#ifdef SIMPLE_RPC
 void OpflexConnection::alloc_cb(uv_handle_t* handle,
                                 size_t suggested_size,
                                 uv_buf_t* buf) {
@@ -221,32 +237,26 @@ void OpflexConnection::dispatch() {
 void OpflexConnection::write(uv_stream_t* stream,
                              const rapidjson::StringBuffer* buf) {
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
-    {
-        util::LockGuard guard(&write_mutex);
-        write_list.push_back(std::make_pair(req, buf));
-        uv_buf_t ubuf;
-        ubuf.base = (char*)buf->GetString();
-        ubuf.len = buf->GetSize();
-        int rc = uv_write(req, stream, &ubuf, 1, write_cb);
-        if (rc < 0) {
-            LOG(ERROR) << "[" << getRemotePeer() << "] " 
-                       << "Could not write to socket: "
-                       << uv_strerror(rc);
-            disconnect();
-        }
+    write_list.push_back(std::make_pair(req, buf));
+    uv_buf_t ubuf;
+    ubuf.base = (char*)buf->GetString();
+    ubuf.len = buf->GetSize();
+    int rc = uv_write(req, stream, &ubuf, 1, write_cb);
+    if (rc < 0) {
+        LOG(ERROR) << "[" << getRemotePeer() << "] " 
+                   << "Could not write to socket: "
+                   << uv_strerror(rc);
+        disconnect();
     }
 }
 
 void OpflexConnection::write_cb(uv_write_t* req,
                                 int status) {
     OpflexConnection* conn = (OpflexConnection*)req->handle->data;
-    {
-        util::LockGuard guard(&conn->write_mutex);
-        write_t& wt = conn->write_list.front();
-        free(wt.first);
-        delete wt.second;
-        conn->write_list.pop_front();
-    }
+    write_t& wt = conn->write_list.front();
+    free(wt.first);
+    delete wt.second;
+    conn->write_list.pop_front();
 
     if (status < 0) {
         LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
@@ -254,6 +264,38 @@ void OpflexConnection::write_cb(uv_write_t* req,
                    << uv_strerror(status);
         conn->disconnect();
     }
+}
+#endif /* SIMPLE_RPC */
+
+void OpflexConnection::doWrite(OpflexMessage* message) {
+    
+#ifdef SIMPLE_RPC
+        write(message->serialize());
+#else
+        
+#endif
+
+}
+
+void OpflexConnection::processWriteQueue() {
+    util::LockGuard guard(&queue_mutex);
+    while (write_queue.size() > 0) {
+        scoped_ptr<OpflexMessage> message(write_queue.front());
+        write_queue.pop_front();
+        doWrite(message.get());
+    }
+
+}
+
+void OpflexConnection::sendMessage(OpflexMessage* message, bool sync) {
+    if (sync) {
+        scoped_ptr<OpflexMessage> messagep(message);
+        doWrite(message);
+    } else {
+        util::LockGuard guard(&queue_mutex);
+        write_queue.push_back(message);
+    }
+    messagesReady();
 }
 
 } /* namespace internal */

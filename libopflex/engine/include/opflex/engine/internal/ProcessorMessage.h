@@ -69,6 +69,10 @@ public:
         (*this)(writer);
     }
 
+    virtual PolicyResolveReq* clone() {
+        return new PolicyResolveReq(*this);
+    }
+
     /**
      * Operator that will serialize the message to the given writer.
      *
@@ -120,6 +124,10 @@ public:
         (*this)(writer);
     }
 
+    virtual PolicyUnresolveReq* clone() { 
+        return new PolicyUnresolveReq(*this);
+    }
+
     /**
      * Operator that will serialize the message to the given writer.
      *
@@ -168,6 +176,10 @@ public:
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
+    }
+
+    virtual EndpointResolveReq* clone() { 
+        return new EndpointResolveReq(*this);
     }
 
     /**
@@ -222,6 +234,10 @@ public:
         (*this)(writer);
     }
 
+    virtual EndpointUnresolveReq* clone() { 
+        return new EndpointUnresolveReq(*this);
+    }
+
     /**
      * Operator that will serialize the message to the given writer.
      *
@@ -272,7 +288,11 @@ public:
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
-    
+
+    virtual EndpointDeclareReq* clone() { 
+        return new EndpointDeclareReq(*this);
+    }
+
     /**
      * Operator that will serialize the message to the given writer.
      *
@@ -330,7 +350,11 @@ public:
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
-    
+
+    virtual EndpointUndeclareReq* clone() { 
+        return new EndpointUndeclareReq(*this);
+    }
+
     /**
      * Operator that will serialize the message to the given writer.
      *
@@ -386,7 +410,11 @@ public:
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
-    
+
+    virtual StateReportReq* clone() { 
+        return new StateReportReq(*this);
+    }
+
     /**
      * Operator that will serialize the message to the given writer.
      *

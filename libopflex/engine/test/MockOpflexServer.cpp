@@ -60,6 +60,10 @@ public:
         (*this)(writer);
     }
 
+    virtual PolicyUpdateReq* clone() {
+        return new PolicyUpdateReq(*this);
+    }
+
     template <typename T>
     bool operator()(Writer<T> & writer) {
         MOSerializer& serializer = server.getSerializer();
@@ -115,8 +119,9 @@ protected:
 void MockOpflexServer::policyUpdate(const std::vector<modb::reference_t>& replace,
                                     const std::vector<modb::reference_t>& merge_children,
                                     const std::vector<modb::reference_t>& del) {
-    PolicyUpdateReq req(*this, replace, merge_children, del);
-    listener.writeToAll(req);
+    PolicyUpdateReq* req = 
+        new PolicyUpdateReq(*this, replace, merge_children, del);
+    listener.sendToAll(req);
 }
 
 class EndpointUpdateReq : public OpflexMessage {
@@ -131,6 +136,10 @@ public:
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
+    }
+
+    virtual EndpointUpdateReq* clone() {
+        return new EndpointUpdateReq(*this);
     }
 
     template <typename T>
@@ -177,8 +186,8 @@ protected:
 
 void MockOpflexServer::endpointUpdate(const std::vector<modb::reference_t>& replace,
                                       const std::vector<modb::reference_t>& del) {
-    EndpointUpdateReq req(*this, replace, del);
-    listener.writeToAll(req);
+    EndpointUpdateReq* req = new EndpointUpdateReq(*this, replace, del);
+    listener.sendToAll(req);
 }
 
 } /* namespace internal */

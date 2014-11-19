@@ -11,6 +11,8 @@
 
 #include <stdexcept>
 
+#include <boost/lexical_cast.hpp>
+
 #include "opflex/engine/internal/OpflexClientConnection.h"
 #include "opflex/engine/internal/OpflexPool.h"
 #include "opflex/logging/internal/logging.hpp"
@@ -20,6 +22,9 @@ namespace engine {
 namespace internal {
 
 using std::string;
+#ifndef SIMPLE_RPC
+using yajr::Peer;
+#endif
 
 OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory, 
                                                OpflexPool* pool_,
@@ -43,12 +48,6 @@ const std::string& OpflexClientConnection::getDomain() {
     return pool->getDomain();
 }
 
-void OpflexClientConnection::shutdown_cb(uv_shutdown_t* req, int status) {
-    OpflexClientConnection* conn = 
-        (OpflexClientConnection*)req->handle->data;
-    uv_close((uv_handle_t*)&conn->socket, on_conn_closed);
-}
-
 void OpflexClientConnection::connect() {
     if (active) return;
     active = true;
@@ -56,6 +55,8 @@ void OpflexClientConnection::connect() {
     std::stringstream rp;
     rp << hostname << ":" << port;
     remote_peer = rp.str();
+
+#ifdef SIMPLE_RPC
     uv_tcp_init(&pool->client_loop, &socket);
     socket.data = this;
     // xxx for now assume that hostname is an ipv4 address
@@ -66,6 +67,12 @@ void OpflexClientConnection::connect() {
                                  hostname);
     }
     uv_tcp_connect(&connect_req, &socket, (struct sockaddr*)&dest, connect_cb);
+#else
+    peer = yajr::Peer::create(hostname, 
+                              boost::lexical_cast<string>(port),
+                              on_state_change, 
+                              this, loop_selector);
+#endif
 }
 
 void OpflexClientConnection::disconnect() {
@@ -74,15 +81,19 @@ void OpflexClientConnection::disconnect() {
 
     LOG(INFO) << "[" << getRemotePeer() << "] " 
               << "Disconnected";
+
+#ifdef SIMPLE_RPC
     uv_read_stop((uv_stream_t*)&socket);
+    uv_close((uv_handle_t*)&socket, OpflexPool::on_conn_closed);
+#else
+    peer->destroy();
+#endif
+
+    OpflexConnection::disconnect();
     handler->disconnected();
-    if (0) {
-        uv_shutdown(&shutdown, (uv_stream_t*)&socket, shutdown_cb);
-    } else {
-        uv_close((uv_handle_t*)&socket, OpflexPool::on_conn_closed);
-    }
 }
 
+#ifdef SIMPLE_RPC
 void OpflexClientConnection::connect_cb(uv_connect_t* req, int status) {
     OpflexClientConnection* conn = 
         (OpflexClientConnection*)req->handle->data;
@@ -99,12 +110,47 @@ void OpflexClientConnection::connect_cb(uv_connect_t* req, int status) {
     }
 }
 
+void OpflexClientConnection::on_conn_closed(uv_handle_t *handle) {
+    OpflexPool::on_conn_closed(handle);
+}
+
+#else
+
+uv_loop_t* OpflexClientConnection::loop_selector(void * data) {
+    OpflexClientConnection* conn = (OpflexClientConnection*)data;
+    return conn->getPool()->getLoop();
+}
+
+void OpflexClientConnection::on_state_change(Peer * p, void * data, 
+                                             yajr::StateChange::To stateChange,
+                                             int error) {
+    OpflexClientConnection* conn = (OpflexClientConnection*)data;
+    switch (stateChange) {
+    case yajr::StateChange::CONNECT:
+        LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
+                  << "New client connection";
+        conn->handler->connected();
+        break;
+    case yajr::StateChange::DISCONNECT:
+        break;
+    case yajr::StateChange::FAILURE:
+        LOG(ERROR);
+        break;
+    case yajr::StateChange::DELETE:
+        conn->getPool()->connectionClosed(conn);
+        break;
+    }
+}
+#endif
+
+#ifdef SIMPLE_RPC
 void OpflexClientConnection::write(const rapidjson::StringBuffer* buf) {
     OpflexConnection::write((uv_stream_t*)&socket, buf);
 }
+#endif
 
-void OpflexClientConnection::on_conn_closed(uv_handle_t *handle) {
-    OpflexPool::on_conn_closed(handle);
+void OpflexClientConnection::messagesReady() {
+    pool->messagesReady();
 }
 
 } /* namespace internal */

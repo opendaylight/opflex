@@ -55,11 +55,16 @@ public:
      */
     OpflexMessage(const std::string& method, MessageType type,
                   const rapidjson::Value* id = NULL);
-
+ 
     /**
      * Destroy the message
      */
     virtual ~OpflexMessage() {}
+
+    /**
+     * Clone the opflex message
+     */
+    virtual OpflexMessage* clone() = 0;
 
     /**
      * A rapidjson writer that should be used to serialize messages
@@ -101,6 +106,27 @@ protected:
     const rapidjson::Value* id;
 };
 
+/**
+ * A generic message that can be used to send messages with no payload
+ */
+class GenericOpflexMessage : public OpflexMessage {
+public:
+    GenericOpflexMessage(const std::string& method, MessageType type,
+                         const rapidjson::Value* id = NULL)
+        : OpflexMessage(method, type, id) {}
+ 
+    /**
+     * Destroy the message
+     */
+    virtual ~GenericOpflexMessage() {}
+
+    /**
+     * Clone the opflex message
+     */
+    virtual GenericOpflexMessage* clone() {
+        return new GenericOpflexMessage(*this);
+    }
+};
 
 } /* namespace internal */
 } /* namespace engine */

@@ -12,6 +12,7 @@
 #include <stdexcept>
 
 #include <boost/foreach.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexPool.h"
@@ -31,10 +32,14 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
                                const std::string& domain_)
     : handlerFactory(handlerFactory_), port(port_), 
       name(name_), domain(domain_), active(true) {
+    int rc;
+#ifdef SIMPLE_RPC
     uv_mutex_init(&conn_mutex);
     uv_loop_init(&server_loop);
-    uv_async_init(&server_loop, &async, on_async);
-    async.data = this;
+    conn_async.data = this;
+    writeq_async.data = this;
+    uv_async_init(&server_loop, &conn_async, on_conn_async);
+    uv_async_init(&server_loop, &writeq_async, on_writeq_async);
 
     uv_tcp_init(&server_loop, &bind_socket);
     server_loop.data = this;
@@ -46,7 +51,7 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
     bind_addr.sin_port = htons(port);
     
     LOG(INFO) << "Binding to port " << port_;
-    int rc = uv_tcp_bind(&bind_socket, (struct sockaddr*)&bind_addr, 0);
+    rc = uv_tcp_bind(&bind_socket, (struct sockaddr*)&bind_addr, 0);
     if (rc) {
         throw std::runtime_error(string("Could not bind to socket: ") + 
                                  uv_strerror(rc));
@@ -57,7 +62,9 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
         throw std::runtime_error(string("Could not listen for connections: ") +
                                  uv_strerror(rc));
     }
+#else
 
+#endif
     rc = uv_thread_create(&server_thread, server_thread_func, this);
     if (rc < 0) {
         throw std::runtime_error(string("Could not create server thread: ") +
@@ -70,7 +77,7 @@ OpflexListener::~OpflexListener() {
     uv_mutex_destroy(&conn_mutex);
 }
 
-void OpflexListener::on_async(uv_async_t* handle) {
+void OpflexListener::on_conn_async(uv_async_t* handle) {
     OpflexListener* listener = (OpflexListener*)handle->data;
 
     {
@@ -80,8 +87,19 @@ void OpflexListener::on_async(uv_async_t* handle) {
         }
     }
 
+#ifdef SIMPLE_RPC
     uv_close((uv_handle_t*)&listener->bind_socket, NULL);
+#endif
+    uv_close((uv_handle_t*)&listener->writeq_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
+}
+
+void OpflexListener::on_writeq_async(uv_async_t* handle) {
+    OpflexListener* listener = (OpflexListener*)handle->data;
+    util::LockGuard guard(&listener->conn_mutex);
+    BOOST_FOREACH(OpflexServerConnection* conn, listener->conns) {
+        conn->processWriteQueue();
+    }
 }
 
 void OpflexListener::disconnect() {
@@ -89,7 +107,7 @@ void OpflexListener::disconnect() {
     active = false;
     LOG(INFO) << "Shutting down Opflex listener";
 
-    uv_async_send(&async);
+    uv_async_send(&conn_async);
     uv_thread_join(&server_thread);
     uv_loop_close(&server_loop);
 }
@@ -99,6 +117,7 @@ void OpflexListener::server_thread_func(void* listener_) {
     uv_run(&processor->server_loop, UV_RUN_DEFAULT);
 }
 
+#ifdef SIMPLE_RPC
 void OpflexListener::on_new_connection(uv_stream_t *server, int status) {
     if (status < 0) {
         LOG(ERROR) << "Error on new connection: " 
@@ -121,12 +140,14 @@ void OpflexListener::on_conn_closed(uv_handle_t *handle) {
         delete conn;
     }
 }
+#endif
 
-void OpflexListener::writeToAll(OpflexMessage& message) {
+void OpflexListener::sendToAll(OpflexMessage* message) {
+    boost::scoped_ptr<OpflexMessage> messagep(message);
     LockGuard guard(&conn_mutex);
     BOOST_FOREACH(OpflexServerConnection* conn, conns) {
         // this is inefficient but we only use this for testing
-        conn->write(message.serialize());
+        conn->sendMessage(message->clone());
     }
 }
 
@@ -136,6 +157,10 @@ bool OpflexListener::applyConnPred(conn_pred_t pred, void* user) {
         if (!pred(conn, user)) return false;
     }
     return true;
+}
+
+void OpflexListener::messagesReady() {
+    uv_async_send(&writeq_async);
 }
 
 } /* namespace internal */

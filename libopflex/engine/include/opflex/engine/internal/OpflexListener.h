@@ -74,11 +74,12 @@ public:
     const std::string& getDomain() { return domain; }
 
     /**
-     * Write a given message to all the connected and ready peers.
+     * Send a given message to all the connected and ready peers.
      *
-     * @param message the message to write
+     * @param message the message to write.  The memory will be owned
+     * by the listener
      */
-    void writeToAll(OpflexMessage& message);
+    void sendToAll(OpflexMessage* message);
 
     /**
      * A predicate for use with applyConnPred
@@ -105,18 +106,28 @@ private:
     uv_loop_t server_loop;
     uv_thread_t server_thread;
 
+#ifdef SIMPLE_RPC
     uv_tcp_t bind_socket;
+#else
+    
+#endif
 
     uv_mutex_t conn_mutex;
     typedef std::set<OpflexServerConnection*> conn_set_t;
     conn_set_t conns;
 
-    uv_async_t async;
+    uv_async_t conn_async;
+    uv_async_t writeq_async;
 
     static void server_thread_func(void* processor);
+    static void on_conn_async(uv_async_t *handle);
+    static void on_writeq_async(uv_async_t *handle);
+    void messagesReady();
+
+#ifdef SIMPLE_RPC
     static void on_new_connection(uv_stream_t *server, int status);
     static void on_conn_closed(uv_handle_t *handle);
-    static void on_async(uv_async_t *handle);
+#endif
 
     friend class OpflexServerConnection;
 };

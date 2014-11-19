@@ -10,12 +10,13 @@
 #
 # Process this file with automake to produce a Makefile.in
 
-AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
+AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK -DSIMPLE_RPC \
 	-I$(srcdir)/../include \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/logging/include \
 	-I$(top_srcdir)/modb/include \
 	-I$(top_srcdir)/modb/test \
+	-I$(top_srcdir)/comms/include \
 	-I$(top_srcdir)/util/include
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 

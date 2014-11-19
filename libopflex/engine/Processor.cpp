@@ -211,8 +211,8 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i) {
         {
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
-            PolicyResolveReq req(this, refs);
-            pool.writeToRole(req, OpflexHandler::POLICY_REPOSITORY);
+            PolicyResolveReq* req = new PolicyResolveReq(this, refs);
+            pool.sendToRole(req, OpflexHandler::POLICY_REPOSITORY);
             return true;
         }
         break;
@@ -220,8 +220,8 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i) {
         {
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
-            EndpointResolveReq req(this, refs);
-            pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+            EndpointResolveReq* req = new EndpointResolveReq(this, refs);
+            pool.sendToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
             return true;
         }
         break;
@@ -239,8 +239,8 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
         if (isParentSyncObject(i)) {
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
-            EndpointDeclareReq req(this, refs);
-            pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+            EndpointDeclareReq* req = new EndpointDeclareReq(this, refs);
+            pool.sendToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
         }
         return true;
         break;
@@ -248,8 +248,8 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
         if (isParentSyncObject(i)) {
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
-            StateReportReq req(this, refs);
-            pool.writeToRole(req, OpflexHandler::OBSERVER);
+            StateReportReq* req = new StateReportReq(this, refs);
+            pool.sendToRole(req, OpflexHandler::OBSERVER);
         }
         return true;
         break;
@@ -380,24 +380,26 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             if (curState == RESOLVED) {
                 vector<reference_t> refs;
                 refs.push_back(make_pair(it->details->class_id, it->uri));
-                PolicyUnresolveReq req(this, refs);
-                pool.writeToRole(req, OpflexHandler::POLICY_REPOSITORY);
+                PolicyUnresolveReq* req = new PolicyUnresolveReq(this, refs);
+                pool.sendToRole(req, OpflexHandler::POLICY_REPOSITORY);
             }
             break;
         case ClassInfo::REMOTE_ENDPOINT:
             if (curState == RESOLVED) {
                 vector<reference_t> refs;
                 refs.push_back(make_pair(it->details->class_id, it->uri));
-                EndpointUnresolveReq req(this, refs);
-                pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+                EndpointUnresolveReq* req = 
+                    new EndpointUnresolveReq(this, refs);
+                pool.sendToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
             }
             break;
         case ClassInfo::LOCAL_ENDPOINT:
             {
                 vector<reference_t> refs;
                 refs.push_back(make_pair(it->details->class_id, it->uri));
-                EndpointUndeclareReq req(this, refs);
-                pool.writeToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+                EndpointUndeclareReq* req = 
+                    new EndpointUndeclareReq(this, refs);
+                pool.sendToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
             }
             break;
         default:

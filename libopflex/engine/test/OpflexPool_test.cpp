@@ -36,9 +36,11 @@ public:
 
     virtual void connect() {}
     virtual void disconnect() {
+#ifdef SIMPLE_RPC
         uv_handle_t h;
         h.data = this;
         on_conn_closed(&h);
+#endif
     }
     virtual bool isReady() { return ready; }
 

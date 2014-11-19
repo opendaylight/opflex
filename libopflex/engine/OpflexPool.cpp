@@ -31,15 +31,19 @@ OpflexPool::~OpflexPool() {
     uv_mutex_destroy(&conn_mutex);
 }
 
-void OpflexPool::on_async(uv_async_t* handle) {
+void OpflexPool::on_conn_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
     if (!pool->active) {
         util::LockGuard guard(&pool->conn_mutex);
         BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
             v.second.conn->disconnect();
         }
-
+        
+        uv_close((uv_handle_t*)&pool->writeq_async, NULL);
         uv_close((uv_handle_t*)handle, NULL);
+#ifndef SIMPLE_RPC
+        yajr::finiLoop(&pool->client_loop);
+#endif
     } else {
         util::LockGuard guard(&pool->conn_mutex);
         BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
@@ -48,14 +52,27 @@ void OpflexPool::on_async(uv_async_t* handle) {
     }
 }
 
+void OpflexPool::on_writeq_async(uv_async_t* handle) {
+    OpflexPool* pool = (OpflexPool*)handle->data;
+    util::LockGuard guard(&pool->conn_mutex);
+    BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
+        v.second.conn->processWriteQueue();
+    }
+}
+
 void OpflexPool::start() {
     if (active) return;
     active = true;
 
     uv_loop_init(&client_loop);
+#ifndef SIMPLE_RPC
+    yajr::initLoop(&client_loop);
+#endif
 
-    async.data = this;
-    uv_async_init(&client_loop, &async, on_async);
+    conn_async.data = this;
+    writeq_async.data = this;
+    uv_async_init(&client_loop, &conn_async, on_conn_async);
+    uv_async_init(&client_loop, &writeq_async, on_writeq_async);
 
     int rc = uv_thread_create(&client_thread, client_thread_func, this);
     if (rc < 0) {
@@ -68,7 +85,7 @@ void OpflexPool::stop() {
     if (!active) return;
     active = false;
 
-    uv_async_send(&async);
+    uv_async_send(&conn_async);
     uv_thread_join(&client_thread);
     int rc = uv_loop_close(&client_loop);
 }
@@ -102,7 +119,7 @@ void OpflexPool::addPeer(const std::string& hostname, int port) {
         cd.conn = conn;
     }
     guard.release();
-    uv_async_send(&async);
+    uv_async_send(&conn_async);
 }
 
 void OpflexPool::addPeer(OpflexClientConnection* conn) {
@@ -186,18 +203,28 @@ void OpflexPool::client_thread_func(void* pool_) {
     uv_run(&pool->client_loop, UV_RUN_DEFAULT);
 }
 
+#ifdef SIMPLE_RPC
 void OpflexPool::on_conn_closed(uv_handle_t *handle) {
     OpflexClientConnection* conn = (OpflexClientConnection*)handle->data;
-    OpflexPool* pool = conn->getPool();
+    conn->getPool()->connectionClosed(conn);
+}
+#endif
+
+void OpflexPool::connectionClosed(OpflexClientConnection* conn) {
     if (conn != NULL) {
-        util::LockGuard guard(&pool->conn_mutex);
-        pool->doRemovePeer(conn->getHostname(), conn->getPort());
+        util::LockGuard guard(&conn_mutex);
+        doRemovePeer(conn->getHostname(), conn->getPort());
         delete conn;
     }
 }
 
-void OpflexPool::writeToRole(OpflexMessage& message,
-                             OpflexHandler::OpflexRole role) {
+void OpflexPool::messagesReady() {
+    uv_async_send(&writeq_async);
+}
+
+void OpflexPool::sendToRole(OpflexMessage* message,
+                            OpflexHandler::OpflexRole role,
+                            bool sync) {
     std::vector<OpflexClientConnection*> conns;
     {
         util::LockGuard guard(&conn_mutex);
@@ -208,27 +235,17 @@ void OpflexPool::writeToRole(OpflexMessage& message,
         BOOST_FOREACH(OpflexClientConnection* conn, it->second.conns) {
             conns.push_back(conn);
         }
-    }
 
-    rapidjson::StringBuffer* sb = NULL;
-    rapidjson::StringBuffer* sb_copy = NULL;
-    for (int i = 0; i < conns.size(); ++i) {
-        // only call serialize once
-        if (sb == NULL) sb = message.serialize();
-        // make a copy for all but the last connection
-        if (i + 1 < conns.size()) {
-            sb_copy = new rapidjson::StringBuffer();
-            // sadly this appears to be the only way to copy a
-            // rapidjson string buffer.  Revisit use of string buffer
-            // later
-            const char* str = sb->GetString();
-            for (int j = 0; j < sb->GetSize(); ++j)
-                sb_copy->Put(str[j]);
-        } else {
-            sb_copy = sb;
+        OpflexMessage* m_copy = NULL;
+        for (int i = 0; i < conns.size(); ++i) {
+            if (i + 1 < conns.size()) {
+                m_copy = message->clone();
+            } else {
+                m_copy = message;
+            }
+            
+            conns[i]->sendMessage(m_copy, sync);
         }
-
-        conns[i]->write(sb_copy);
     }
     // all allocated buffers should have been dispatched to
     // connections
