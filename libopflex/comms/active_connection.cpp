@@ -70,12 +70,25 @@ using namespace yajr::comms::internal;
 
 void ::yajr::comms::internal::ActivePeer::retry() {
 
+    if (destroying_) {
+
+        LOG(INFO) << this << "Not retrying because of pending destroy";
+
+        return;
+
+    }
+
     struct addrinfo const hints = (struct addrinfo){
         /* .ai_flags    = */ 0,
         /* .ai_family   = */ AF_UNSPEC,
         /* .ai_socktype = */ SOCK_STREAM,
         /* .ai_protocol = */ IPPROTO_TCP,
     };
+
+    /* potentially switch uv loop if some rebalancing is needed */
+    getLoopData()->down();
+    handle_.loop = uvLoopSelector_(getData());
+    getLoopData()->up();
 
     int rc;
     if ((rc = uv_getaddrinfo(

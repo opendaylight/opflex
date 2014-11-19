@@ -217,7 +217,7 @@ class Peer : public SafeListBaseHook {
          ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL,
          Peer::PeerStatus status = kPS_UNINITIALIZED)
             :
-              uvLoopSelector_(uvLoopSelector ? : &uv_default_loop),
+              uvLoopSelector_(uvLoopSelector ? : &uvDefaultLoop),
               uvRefCnt_(1),
               connected_(0),
               destroying_(0),
@@ -226,8 +226,6 @@ class Peer : public SafeListBaseHook {
               status_(status)
             {
                 handle_.data = this;
-                handle_.loop = uvLoopSelector_();
-                getLoopData()->up();
 #ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
 #endif
@@ -326,7 +324,10 @@ class Peer : public SafeListBaseHook {
         --counter;
 #endif
     }
-  private:
+    static uv_loop_t * uvDefaultLoop(void *) {
+        return uv_default_loop();
+    }
+
     Peer::LoopData * getLoopData() const {
         return Peer::LoopData::getLoopData(getUvLoop());
     }
@@ -357,6 +358,8 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 lastHeard_(0)
             {
                 req_.data = this;
+                handle_.loop = uvLoopSelector_(getData());
+                getLoopData()->up();
 #ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
 #endif
@@ -738,7 +741,8 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
             ::yajr::comms::internal::Peer(false, uvLoopSelector, kPS_UNINITIALIZED),
             ::yajr::Listener()
         {
-            _.listener_.uvLoop_ = listenerUvLoop ? : uv_default_loop();
+            handle_.loop = _.listener_.uvLoop_ = listenerUvLoop ? : uv_default_loop();
+            getLoopData()->up();
 #ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
 #endif
