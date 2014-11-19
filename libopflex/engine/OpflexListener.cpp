@@ -36,9 +36,9 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
 #ifdef SIMPLE_RPC
     uv_mutex_init(&conn_mutex);
     uv_loop_init(&server_loop);
-    conn_async.data = this;
+    cleanup_async.data = this;
     writeq_async.data = this;
-    uv_async_init(&server_loop, &conn_async, on_conn_async);
+    uv_async_init(&server_loop, &cleanup_async, on_cleanup_async);
     uv_async_init(&server_loop, &writeq_async, on_writeq_async);
 
     uv_tcp_init(&server_loop, &bind_socket);
@@ -77,7 +77,7 @@ OpflexListener::~OpflexListener() {
     uv_mutex_destroy(&conn_mutex);
 }
 
-void OpflexListener::on_conn_async(uv_async_t* handle) {
+void OpflexListener::on_cleanup_async(uv_async_t* handle) {
     OpflexListener* listener = (OpflexListener*)handle->data;
 
     {
@@ -85,6 +85,7 @@ void OpflexListener::on_conn_async(uv_async_t* handle) {
         BOOST_FOREACH(OpflexServerConnection* conn, listener->conns) {
             conn->disconnect();
         }
+        if (listener->conns.size() != 0) return;
     }
 
 #ifdef SIMPLE_RPC
@@ -107,7 +108,7 @@ void OpflexListener::disconnect() {
     active = false;
     LOG(INFO) << "Shutting down Opflex listener";
 
-    uv_async_send(&conn_async);
+    uv_async_send(&cleanup_async);
     uv_thread_join(&server_thread);
     uv_loop_close(&server_loop);
 }
@@ -133,18 +134,25 @@ void OpflexListener::on_new_connection(uv_stream_t *server, int status) {
 
 void OpflexListener::on_conn_closed(uv_handle_t *handle) {
     OpflexServerConnection* conn = (OpflexServerConnection*)handle->data;
+    conn->getListener()->connectionClosed(conn);
+}
+#endif
+
+void OpflexListener::connectionClosed(OpflexServerConnection* conn) {
     OpflexListener* listener = conn->getListener();
     if (conn != NULL) {
         LockGuard guard(&listener->conn_mutex);
         listener->conns.erase(conn);
         delete conn;
     }
+    if (!listener->active)
+        uv_async_send(&cleanup_async);
 }
-#endif
 
 void OpflexListener::sendToAll(OpflexMessage* message) {
     boost::scoped_ptr<OpflexMessage> messagep(message);
     LockGuard guard(&conn_mutex);
+    if (!active) return;
     BOOST_FOREACH(OpflexServerConnection* conn, conns) {
         // this is inefficient but we only use this for testing
         conn->sendMessage(message->clone());

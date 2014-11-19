@@ -50,22 +50,18 @@ Processor::Processor(ObjectStore* store_)
     : AbstractObjectListener(store_),
       serializer(store_),
       pool(*this),
-      proc_shouldRun(false),
+      proc_active(false),
       processingDelay(DEFAULT_DELAY) {
     uv_mutex_init(&item_mutex);
-    uv_cond_init(&item_cond);
 }
 
 Processor::~Processor() {
     stop();
-    uv_cond_destroy(&item_cond);
     uv_mutex_destroy(&item_mutex);
-   
 }
 
 // get the current time in milliseconds since something
 inline uint64_t now(uv_loop_t* loop) {
-    uv_update_time(loop);
     return uv_now(loop);
 }
 
@@ -81,7 +77,7 @@ bool Processor::hasWork(/* out */ obj_state_by_exp::iterator& it) {
     if (obj_state.size() == 0) return false;
     obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
     it = exp_index.begin();
-    if (it->expiration == 0 || now(&timer_loop) >= it->expiration) return true;
+    if (it->expiration == 0 || now(&proc_loop) >= it->expiration) return true;
     return false;
 }
 
@@ -90,7 +86,7 @@ bool Processor::hasWork(/* out */ obj_state_by_exp::iterator& it) {
 void Processor::updateItemExpiration(obj_state_by_exp::iterator& it) {
     uint64_t newexp = std::numeric_limits<uint64_t>::max();
     if (it->details->refresh_rate > 0) {
-        newexp = now(&timer_loop) + it->details->refresh_rate;
+        newexp = now(&proc_loop) + it->details->refresh_rate;
     }
     obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
     exp_index.modify(it, Processor::change_expiration(newexp));
@@ -130,7 +126,7 @@ void Processor::removeRef(obj_state_by_exp::iterator& it,
             uit->details->refcount -= 1;
             if (uit->details->refcount <= 0) {
                 LOG(DEBUG) << "Refcount zero " << uit->uri.toString();
-                uint64_t nexp = now(&timer_loop)+processingDelay;
+                uint64_t nexp = now(&proc_loop)+processingDelay;
                 uri_index.modify(uit, Processor::change_expiration(nexp));
             }
         }
@@ -302,7 +298,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 newState = PENDING_DELETE;
                 obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
                 exp_index.modify(it,
-                                 change_expiration(now(&timer_loop)+
+                                 change_expiration(now(&proc_loop)+
                                                    processingDelay));
                 break;
             }
@@ -417,22 +413,24 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         client->deliverNotifications(notifs);
 }
 
-// listen on the item queue and dispatch events where required
-void Processor::proc_thread_func(void* processor_) {
-    Processor* processor = (Processor*)processor_;
+void Processor::doProcess() {
     obj_state_by_exp::iterator it;
-
-    while (processor->proc_shouldRun) {
+    while (proc_active) {
         {
-            util::LockGuard guard(&processor->item_mutex);
-            while (processor->proc_shouldRun && !processor->hasWork(it))
-                uv_cond_wait(&processor->item_cond, &processor->item_mutex);
-            if (!processor->proc_shouldRun) return;
-
-            processor->updateItemExpiration(it);
+            util::LockGuard guard(&item_mutex);
+            if (hasWork(it)) {
+                updateItemExpiration(it);
+            } else {
+                break;
+            }
         }
-        processor->processItem(it);
+        processItem(it);
     }
+}
+
+void Processor::proc_async_cb(uv_async_t* handle) {
+    Processor* processor = (Processor*)handle->data;
+    processor->doProcess();
 }
 
 static void register_listeners(void* processor, const modb::ClassInfo& ci) {
@@ -440,65 +438,60 @@ static void register_listeners(void* processor, const modb::ClassInfo& ci) {
     p->listen(ci.getId());
 }
 
-void Processor::timer_thread_func(void* processor_) {
+void Processor::proc_thread_func(void* processor_) {
     Processor* processor = (Processor*)processor_;
-    uv_run(&processor->timer_loop, UV_RUN_DEFAULT);
-}
-void Processor::timer_callback(uv_timer_t* handle) {
-    Processor* processor = (Processor*)handle->data;
-    // wake up the processor thread periodically
-    {
-        util::LockGuard guard(&processor->item_mutex);
-        uv_cond_signal(&processor->item_cond);
-    }
+    uv_run(&processor->proc_loop, UV_RUN_DEFAULT);
 }
 
-void Processor::async_cb(uv_async_t* handle) {
+void Processor::timer_callback(uv_timer_t* handle) {
+    Processor* processor = (Processor*)handle->data;
+    processor->doProcess();
+}
+
+void Processor::cleanup_async_cb(uv_async_t* handle) {
     Processor* processor = (Processor*)handle->data;
     uv_timer_stop(&processor->proc_timer);
     uv_close((uv_handle_t*)&processor->proc_timer, NULL);
+    uv_close((uv_handle_t*)&processor->proc_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
 }
 
 void Processor::start() {
-    LOG(DEBUG) << "Starting OpFlex Processor";
+    if (proc_active) return;
+    proc_active = true;
 
-    pool.start();
+    LOG(DEBUG) << "Starting OpFlex Processor";
 
     client = &store->getStoreClient("_SYSTEM_");
     store->forEachClass(&register_listeners, this);
 
-    uv_loop_init(&timer_loop);
-    uv_timer_init(&timer_loop, &proc_timer);
-    async.data = this;
-    uv_async_init(&timer_loop, &async, async_cb);
+    uv_loop_init(&proc_loop);
+    uv_timer_init(&proc_loop, &proc_timer);
+    cleanup_async.data = this;
+    uv_async_init(&proc_loop, &cleanup_async, cleanup_async_cb);
+    proc_async.data = this;
+    uv_async_init(&proc_loop, &proc_async, proc_async_cb);
     proc_timer.data = this;
     uv_timer_start(&proc_timer, &timer_callback, 
                    processingDelay, processingDelay);
-    uv_thread_create(&timer_loop_thread, timer_thread_func, this);
-
-    proc_shouldRun = true;
     uv_thread_create(&proc_thread, proc_thread_func, this);
+
+    pool.start();
 }
 
 void Processor::stop() {
-    if (proc_shouldRun) {
-        LOG(DEBUG) << "Stopping OpFlex Processor";
-        proc_shouldRun = false;
+    if (!proc_active) return;
+    
+    LOG(DEBUG) << "Stopping OpFlex Processor";
+    proc_active = false;
 
-        unlisten();
+    unlisten();
 
-        uv_async_send(&async);
-        uv_thread_join(&timer_loop_thread);
-        uv_loop_close(&timer_loop);
-        {
-            util::LockGuard guard(&item_mutex);
-            uv_cond_signal(&item_cond);
-        }
-        uv_thread_join(&proc_thread);
+    uv_async_send(&cleanup_async);
+    uv_thread_join(&proc_thread);
+    uv_loop_close(&proc_loop);
 
-        pool.stop();
-    }
+    pool.stop();
 }
 
 void Processor::objectUpdated(modb::class_id_t class_id, 
@@ -521,7 +514,7 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
     obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
     obj_state_by_uri::iterator uit = uri_index.find(uri);
 
-    uint64_t curtime = now(&timer_loop);
+    uint64_t curtime = now(&proc_loop);
     uint64_t nexp = 0;
     if (!remote) nexp = curtime+processingDelay;
     if (uit == uri_index.end()) {
@@ -534,8 +527,7 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
     } else {
         uri_index.modify(uit, change_expiration(curtime+LOCAL_REFRESH_RATE));
     }
-    uv_cond_signal(&item_cond);
-
+    uv_async_send(&proc_async);
 }
 
 void Processor::setOpflexIdentity(const std::string& name,

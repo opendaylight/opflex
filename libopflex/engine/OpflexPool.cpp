@@ -9,6 +9,7 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <memory>
 #include <boost/foreach.hpp>
 
 #include "opflex/engine/internal/OpflexPool.h"
@@ -33,23 +34,31 @@ OpflexPool::~OpflexPool() {
 
 void OpflexPool::on_conn_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
-    if (!pool->active) {
-        util::LockGuard guard(&pool->conn_mutex);
-        BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
-            v.second.conn->disconnect();
-        }
-        
-        uv_close((uv_handle_t*)&pool->writeq_async, NULL);
-        uv_close((uv_handle_t*)handle, NULL);
-#ifndef SIMPLE_RPC
-        yajr::finiLoop(&pool->client_loop);
-#endif
-    } else {
+    if (pool->active) {
         util::LockGuard guard(&pool->conn_mutex);
         BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
             v.second.conn->connect();
         }
     }
+}
+
+void OpflexPool::on_cleanup_async(uv_async_t* handle) {
+    OpflexPool* pool = (OpflexPool*)handle->data;
+    {
+        util::LockGuard guard(&pool->conn_mutex);
+        BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
+            v.second.conn->disconnect();
+        }
+        if (pool->connections.size() > 0)
+            return;
+    }
+    
+    uv_close((uv_handle_t*)&pool->writeq_async, NULL);
+    uv_close((uv_handle_t*)&pool->conn_async, NULL);
+    uv_close((uv_handle_t*)handle, NULL);
+#ifndef SIMPLE_RPC
+    yajr::finiLoop(&pool->client_loop);
+#endif
 }
 
 void OpflexPool::on_writeq_async(uv_async_t* handle) {
@@ -70,8 +79,10 @@ void OpflexPool::start() {
 #endif
 
     conn_async.data = this;
+    cleanup_async.data = this;
     writeq_async.data = this;
     uv_async_init(&client_loop, &conn_async, on_conn_async);
+    uv_async_init(&client_loop, &cleanup_async, on_cleanup_async);
     uv_async_init(&client_loop, &writeq_async, on_writeq_async);
 
     int rc = uv_thread_create(&client_thread, client_thread_func, this);
@@ -85,9 +96,9 @@ void OpflexPool::stop() {
     if (!active) return;
     active = false;
 
-    uv_async_send(&conn_async);
+    uv_async_send(&cleanup_async);
     uv_thread_join(&client_thread);
-    int rc = uv_loop_close(&client_loop);
+    uv_loop_close(&client_loop);
 }
 
 void OpflexPool::setOpflexIdentity(const std::string& name,
@@ -108,6 +119,7 @@ OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname,
 
 void OpflexPool::addPeer(const std::string& hostname, int port) {
     util::LockGuard guard(&conn_mutex);
+    if (!active) return;
     ConnData& cd = connections[make_pair(hostname, port)];
     if (cd.conn != NULL) {
         LOG(ERROR) << "Connection for "
@@ -169,7 +181,7 @@ void OpflexPool::updateRole(ConnData& cd,
 void OpflexPool::setRoles(OpflexClientConnection* conn,
                           uint8_t newroles) {
     util::LockGuard guard(&conn_mutex);
-    ConnData& cd = connections[make_pair(conn->getHostname(), conn->getPort())];
+    ConnData& cd = connections.at(make_pair(conn->getHostname(), conn->getPort()));
     doSetRoles(cd, newroles);
 }
 
@@ -216,6 +228,8 @@ void OpflexPool::connectionClosed(OpflexClientConnection* conn) {
         doRemovePeer(conn->getHostname(), conn->getPort());
         delete conn;
     }
+    if (!active)
+        uv_async_send(&cleanup_async);
 }
 
 void OpflexPool::messagesReady() {
@@ -225,6 +239,8 @@ void OpflexPool::messagesReady() {
 void OpflexPool::sendToRole(OpflexMessage* message,
                             OpflexHandler::OpflexRole role,
                             bool sync) {
+    std::auto_ptr<OpflexMessage> messagep(message);
+    if (!active) return;
     std::vector<OpflexClientConnection*> conns;
     {
         util::LockGuard guard(&conn_mutex);
@@ -232,19 +248,18 @@ void OpflexPool::sendToRole(OpflexMessage* message,
         if (it == roles.end())
             return;
         
-        BOOST_FOREACH(OpflexClientConnection* conn, it->second.conns) {
-            conns.push_back(conn);
-        }
-
+        int i = 0;
         OpflexMessage* m_copy = NULL;
-        for (int i = 0; i < conns.size(); ++i) {
+        BOOST_FOREACH(OpflexClientConnection* conn, it->second.conns) {
             if (i + 1 < conns.size()) {
                 m_copy = message->clone();
             } else {
                 m_copy = message;
+                messagep.release();
             }
             
-            conns[i]->sendMessage(m_copy, sync);
+            conn->sendMessage(m_copy, sync);
+            i += 1;
         }
     }
     // all allocated buffers should have been dispatched to

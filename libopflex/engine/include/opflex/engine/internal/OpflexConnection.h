@@ -169,6 +169,7 @@ private:
     uv_mutex_t queue_mutex;
 
     void doWrite(OpflexMessage* message);
+    void cleanup();
 
     friend class OpflexHandler;
 };

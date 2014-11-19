@@ -169,6 +169,7 @@ private:
     uv_loop_t client_loop;
     uv_thread_t client_thread;
     uv_async_t conn_async;
+    uv_async_t cleanup_async;
     uv_async_t writeq_async;
 
     void doRemovePeer(const std::string& hostname, int port);
@@ -181,6 +182,7 @@ private:
 
     static void client_thread_func(void* pool);
     static void on_conn_async(uv_async_t *handle);
+    static void on_cleanup_async(uv_async_t *handle);
     static void on_writeq_async(uv_async_t *handle);
 #ifdef SIMPLE_RPC
     static void on_conn_closed(uv_handle_t *handle);

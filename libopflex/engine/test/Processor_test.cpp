@@ -550,7 +550,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve, EndpointResFixture ) {
     replace.push_back(make_pair(8, c8u));
     mockServer.endpointUpdate(replace, del);
     WAIT_FOR("moretesting" == client2->get(8, c8u)->getString(17), 1000);
-    BOOST_CHECK_EQUAL("moretesting2", client2->get(10, c10u)->getString(21));
+    WAIT_FOR("moretesting2" == client2->get(10, c10u)->getString(21), 1000);
 
     oi8->setString(17, "evenmore");
     rclient->put(8, c8u, oi8);

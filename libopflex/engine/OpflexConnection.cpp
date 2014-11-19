@@ -36,7 +36,7 @@ OpflexConnection::OpflexConnection(HandlerFactory& handlerFactory)
 }
 
 OpflexConnection::~OpflexConnection() {
-    disconnect();
+    cleanup();
     if (handler)
         delete handler;
 #ifdef SIMPLE_RPC
@@ -48,12 +48,16 @@ OpflexConnection::~OpflexConnection() {
 
 void OpflexConnection::connect() {}
 
-void OpflexConnection::disconnect() {
+void OpflexConnection::cleanup() {
     util::LockGuard guard(&queue_mutex);
     while (write_queue.size() > 0) {
         delete write_queue.front();
         write_queue.pop_front();
     }
+}
+
+void OpflexConnection::disconnect() {
+    cleanup();
 }
 
 bool OpflexConnection::isReady() { 
@@ -77,6 +81,7 @@ void OpflexConnection::read_cb(uv_stream_t* stream,
                        << "Error reading from socket: "
                        << uv_strerror(nread);
         }
+        LOG(INFO) << "EOF";
         conn->disconnect();
     } else if (nread > 0) {
         for (int i = 0; i < nread; ++i) {
@@ -88,7 +93,6 @@ void OpflexConnection::read_cb(uv_stream_t* stream,
     if (buf->base)
         free(buf->base);
 }
-
 void OpflexConnection::dispatch() {
     document.Parse(buffer->str().c_str());
     delete buffer;

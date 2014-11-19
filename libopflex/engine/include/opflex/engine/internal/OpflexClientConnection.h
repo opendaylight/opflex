@@ -106,6 +106,7 @@ private:
 #else
     yajr::Peer* peer;
 #endif
+    volatile bool started;
     volatile bool active;
 
 #ifdef SIMPLE_RPC

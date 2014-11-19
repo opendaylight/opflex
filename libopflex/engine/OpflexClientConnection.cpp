@@ -32,7 +32,7 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
                                                int port_)
     : OpflexConnection(handlerFactory),
       pool(pool_), hostname(hostname_), port(port_),
-      active(false) {
+      active(false), started(false) {
 
 }
 
@@ -49,7 +49,8 @@ const std::string& OpflexClientConnection::getDomain() {
 }
 
 void OpflexClientConnection::connect() {
-    if (active) return;
+    if (started) return;
+    started = true;
     active = true;
 
     std::stringstream rp;
@@ -134,7 +135,6 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
     case yajr::StateChange::DISCONNECT:
         break;
     case yajr::StateChange::FAILURE:
-        LOG(ERROR);
         break;
     case yajr::StateChange::DELETE:
         conn->getPool()->connectionClosed(conn);

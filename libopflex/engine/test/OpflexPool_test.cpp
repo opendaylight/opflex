@@ -32,7 +32,7 @@ public:
         OpflexClientConnection(handlerFactory,
                                pool,
                                hostname,
-                               port), ready(true) { }
+                               port), ready(true) {}
 
     virtual void connect() {}
     virtual void disconnect() {
@@ -49,7 +49,13 @@ public:
 
 class PoolFixture {
 public:
-    PoolFixture() : pool(handlerFactory) { }
+    PoolFixture() : pool(handlerFactory) {
+        pool.start();
+    }
+
+    ~PoolFixture() {
+        pool.stop();
+    }
 
     EmptyHandlerFactory handlerFactory;
     OpflexPool pool;

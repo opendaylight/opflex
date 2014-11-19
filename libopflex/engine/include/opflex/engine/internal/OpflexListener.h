@@ -116,11 +116,11 @@ private:
     typedef std::set<OpflexServerConnection*> conn_set_t;
     conn_set_t conns;
 
-    uv_async_t conn_async;
+    uv_async_t cleanup_async;
     uv_async_t writeq_async;
 
     static void server_thread_func(void* processor);
-    static void on_conn_async(uv_async_t *handle);
+    static void on_cleanup_async(uv_async_t *handle);
     static void on_writeq_async(uv_async_t *handle);
     void messagesReady();
 
@@ -128,6 +128,7 @@ private:
     static void on_new_connection(uv_stream_t *server, int status);
     static void on_conn_closed(uv_handle_t *handle);
 #endif
+    void connectionClosed(OpflexServerConnection* conn);
 
     friend class OpflexServerConnection;
 };
