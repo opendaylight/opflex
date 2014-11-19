@@ -145,21 +145,22 @@ AC_DEFINE_UNQUOTED(SDK_FULL_VERSION, ["sdk_pversion.sdk_sversion.sdk_iversion-${
 dnl ---------------------------------------------------------------
 dnl Output
 
-AC_CONFIG_FILES([\
-        Makefile \
-        util/Makefile \
-        logging/Makefile \
-        comms/Makefile \
-        modb/Makefile \
-        modb/test/Makefile \
-        engine/Makefile \
-        engine/test/Makefile \
-        ofcore/Makefile \
-        ofcore/test/Makefile \
-        cwrapper/Makefile \
+AC_CONFIG_FILES([              \
+        Makefile               \
+        util/Makefile          \
+        logging/Makefile       \
+        comms/Makefile         \
+        comms/include/Makefile \
+        modb/Makefile          \
+        modb/test/Makefile     \
+        engine/Makefile        \
+        engine/test/Makefile   \
+        ofcore/Makefile        \
+        ofcore/test/Makefile   \
+        cwrapper/Makefile      \
         cwrapper/test/Makefile \
-        libopflex.pc \
-        doc/Doxyfile \
+        libopflex.pc           \
+        doc/Doxyfile           \
         doc/Doxyfile-internal
 ])
 AC_OUTPUT

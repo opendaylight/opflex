@@ -10,6 +10,9 @@
 #
 # Process this file with automake to produce a Makefile.in
 
+# only recurse for installing the headers, otherwise use non-recursive make
+SUBDIRS = include
+
 lib_LTLIBRARIES =
 noinst_LTLIBRARIES  =
 noinst_LTLIBRARIES += librpcperfect.la
@@ -41,40 +44,7 @@ libcomms_la_LIBADD  =
 libcomms_la_LIBADD += librpcperfect.la
 libcomms_la_LIBADD += $(UV_LIBS)
 
-comms_headers =
-comms_headers += include/yajr/internal/comms.hpp
-comms_headers += include/yajr/yajr.hpp
-comms_headers += include/yajr/rpc/internal/json_stream_wrappers.hpp
-
-codes_headers =
-codes_headers += ../3rdparty/codes/trunk/codes.cpp/iovec-utils.hh
-codes_headers += ../3rdparty/codes/trunk/codes.cpp/mtp.hh
-
-rpc_headers =
-rpc_headers += include/yajr/rpc/internal/meta.hpp
-rpc_headers += include/yajr/rpc/message_factory.hpp
-rpc_headers += include/yajr/rpc/message_factory.inl.hpp
-rpc_headers += include/yajr/rpc/method_lookup.hpp
-rpc_headers += include/yajr/rpc/methods.hpp
-rpc_headers += include/yajr/rpc/send_handler.hpp
-rpc_headers += include/yajr/rpc/rpc.hpp
-
 libcomms_la_SOURCES  =
-
-if SEPARATE_COMMS
-  comms_includedir = $(includedir)/yajr/comms
-  comms_include_HEADERS = $(comms_headers)
-
-  rpc_includedir = $(includedir)/yajr/rpc
-  rpc_include_HEADERS = $(rpc_headers)
-
-  libcomms_la_LIBADD += ../logging/liblogging.la
-else
-  libcomms_la_SOURCES += $(comms_headers) $(codes_headers) $(rpc_headers)
-endif
-
-EXTRA_DIST = $(comms_headers) $(codes_headers)
-
 libcomms_la_SOURCES += active_connection.cpp
 libcomms_la_SOURCES += passive_listener.cpp
 libcomms_la_SOURCES += common.cpp
@@ -104,6 +74,10 @@ librpcperfect_la_SOURCES += rpc/message/factory/inbounderror.cpp
 
 librpcperfect_la_CXXFLAGS  = $(libcomms_la_CXXFLAGS)
 librpcperfect_la_CXXFLAGS += $(OUR_CXXFLAGS_COMPILE_TIME_HASH)
+
+if SEPARATE_COMMS
+  libcomms_la_LIBADD += ../logging/liblogging.la
+endif
 
 # tests
 
