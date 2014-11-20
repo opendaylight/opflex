@@ -370,4 +370,15 @@ private:
 
 } /* namespace ovsagent */
 
+/**
+ * Comparator for sorting objects in descending order of their
+ * "order" member.
+ */
+template<typename T>
+struct OrderComparator {
+    bool operator()(const T& lhs, const T& rhs) {
+        return lhs->getOrder(0) > rhs->getOrder(0);
+    }
+};
+
 #endif /* OVSAGENT_POLICYMANAGER_H */

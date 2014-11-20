@@ -68,6 +68,8 @@ public:
         classifier2 = space->addGbpeL24Classifier("classifier2");
         classifier3 = space->addGbpeL24Classifier("classifier3");
         classifier4 = space->addGbpeL24Classifier("classifier4");
+        classifier5 = space->addGbpeL24Classifier("classifier5");
+        classifier6 = space->addGbpeL24Classifier("classifier6");
 
 
         con1 = space->addGbpContract("contract1");
@@ -79,6 +81,12 @@ public:
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
                 ->setOrder(15)
                 .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
+                ->setOrder(5)
+                .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule4")
+                ->setOrder(25)
+                .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
         con1->addGbpSubject("1_subject2")->addGbpRule("1_2_rule1")
                 ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
 
@@ -128,6 +136,8 @@ public:
     shared_ptr<L24Classifier> classifier2;
     shared_ptr<L24Classifier> classifier3;
     shared_ptr<L24Classifier> classifier4;
+    shared_ptr<L24Classifier> classifier5;
+    shared_ptr<L24Classifier> classifier6;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
@@ -269,13 +279,15 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
     BOOST_CHECK(pm.contractExists(URI("invalid")) == false);
 
     PolicyManager::rule_list_t rules;
-    WAIT_FOR_DO(rules.size() == 4, 500,
+    WAIT_FOR_DO(rules.size() == 6, 500,
             rules.clear(); pm.getContractRules(con1->getURI(), rules));
     BOOST_CHECK(
         checkRules(rules,
-            list_of(classifier2)(classifier1)(classifier4)(classifier3)) ||
+            list_of(classifier6)(classifier2)(classifier1)(classifier4)
+                (classifier5)(classifier3)) ||
         checkRules(rules,
-            list_of(classifier3)(classifier2)(classifier1)(classifier4)));
+            list_of(classifier3)(classifier6)(classifier2)(classifier1)(classifier4)
+                (classifier5)));
 
     /*
      *  remove classifier2 & subject2
@@ -295,9 +307,10 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
     WAIT_FOR(pm.contractExists(con3->getURI()) == true, 500);
 
     rules.clear();
-    WAIT_FOR_DO(rules.size() == 2, 500,
+    WAIT_FOR_DO(rules.size() == 4, 500,
             rules.clear(); pm.getContractRules(con1->getURI(), rules));
-    BOOST_CHECK(checkRules(rules, list_of(classifier4)(classifier1)));
+    BOOST_CHECK(checkRules(rules,
+            list_of(classifier6)(classifier4)(classifier1)(classifier5)));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
