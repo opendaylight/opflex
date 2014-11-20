@@ -16,8 +16,8 @@
 #include "logging.h"
 #include "PolicyManager.h"
 
+using namespace std;
 namespace ovsagent {
-
 
 using std::vector;
 using std::string;
@@ -427,6 +427,14 @@ classifierComp(const shared_ptr<modelgbp::gbpe::L24Classifier>& lhs,
     return lhs->getOrder(0) > rhs->getOrder(0);
 };
 
+string toString(const vector<shared_ptr<modelgbp::gbp::Rule> >& rules) {
+    stringstream str;
+    BOOST_FOREACH(const shared_ptr<modelgbp::gbp::Rule>& r, rules) {
+        str << endl << r->getURI() << "(" << r->getOrder(0) << ")";
+    }
+    return str.str();
+}
+
 /**
  * Check equality of L24Classifier objects.
  */
@@ -469,7 +477,9 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
     BOOST_FOREACH(shared_ptr<Subject>& sub, subjects) {
         vector<shared_ptr<Rule> > rules;
         sub->resolveGbpRule(rules);
-        sort(rules.begin(), rules.end(), ruleComp);
+        LOG(DEBUG) << "RULES before: " << toString(rules);
+        std::stable_sort(rules.begin(), rules.end(), ruleComp);
+        LOG(DEBUG) << "RULES before: " << toString(rules);
 
         BOOST_FOREACH(shared_ptr<Rule>& rule, rules) {
             vector<shared_ptr<L24Classifier> > classifiers;
@@ -486,7 +496,8 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
                     classifiers.push_back(cls.get());
                 }
             }
-            sort(classifiers.begin(), classifiers.end(), classifierComp);
+            std::stable_sort(classifiers.begin(), classifiers.end(),
+                    classifierComp);
             newRules.insert(newRules.end(), classifiers.begin(),
                     classifiers.end());
         }
