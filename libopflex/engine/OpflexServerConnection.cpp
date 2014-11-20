@@ -13,6 +13,7 @@
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
+#include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "LockGuard.h"
 
@@ -54,6 +55,7 @@ OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
     }
 
     uv_read_start((uv_stream_t*)&tcp_handle, alloc_cb, read_cb);
+    handler->connected();
 #else
 
 #endif
@@ -78,6 +80,41 @@ void OpflexServerConnection::shutdown_cb(uv_shutdown_t* req, int status) {
         (OpflexServerConnection*)req->handle->data;
     uv_close((uv_handle_t*)&conn->tcp_handle, OpflexListener::on_conn_closed);
 }
+#else
+
+uv_loop_t* OpflexServerConnection::loop_selector(void * data) {
+    OpflexServerConnection* conn = (OpflexServerConnection*)data;
+    return conn->getListener()->getLoop();
+}
+
+void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data, 
+                                             yajr::StateChange::To stateChange,
+                                             int error) {
+    OpflexServerConnection* conn = (OpflexServerConnection*)data;
+    conn->peer = p;
+    switch (stateChange) {
+    case yajr::StateChange::CONNECT:
+        conn->remote_peer = "UNKNOWN";
+        LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
+                  << "New server connection";
+        conn->handler->connected();
+        break;
+    case yajr::StateChange::DISCONNECT:
+        LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+                   << "Disconnected";
+        break;
+    case yajr::StateChange::FAILURE:
+        LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+                   << "Connection error: " << uv_strerror(error);
+        break;
+    case yajr::StateChange::DELETE:
+        LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
+                  << "Connection closed";
+        conn->getListener()->connectionClosed(conn);
+        break;
+    }
+}
+
 #endif
 
 void OpflexServerConnection::disconnect() {
@@ -91,6 +128,8 @@ void OpflexServerConnection::disconnect() {
         }
     }
 #else
+    if (peer)
+        peer->destroy();
 #endif
     OpflexConnection::disconnect();
 }

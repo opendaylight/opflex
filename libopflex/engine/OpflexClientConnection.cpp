@@ -133,10 +133,16 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
         conn->handler->connected();
         break;
     case yajr::StateChange::DISCONNECT:
+        LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
+                  << "Disconnected";
         break;
     case yajr::StateChange::FAILURE:
+        LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+                   << "Connection error: " << uv_strerror(error);
         break;
     case yajr::StateChange::DELETE:
+        LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
+                  << "Connection closed";
         conn->getPool()->connectionClosed(conn);
         break;
     }

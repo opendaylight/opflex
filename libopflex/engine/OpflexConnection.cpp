@@ -17,6 +17,10 @@
 #include "opflex/logging/internal/logging.hpp"
 #include "LockGuard.h"
 
+#ifndef SIMPLE_RPC
+#include "yajr/rpc/message_factory.hpp"    
+#endif
+
 namespace opflex {
 namespace engine {
 namespace internal {
@@ -24,6 +28,11 @@ namespace internal {
 using rapidjson::Value;
 using std::string;
 using boost::scoped_ptr;
+#ifndef SIMPLE_RPC
+using yajr::rpc::OutboundRequest;
+using yajr::rpc::OutboundResult;
+using yajr::rpc::OutboundError;
+#endif
 
 OpflexConnection::OpflexConnection(HandlerFactory& handlerFactory)
     : handler(handlerFactory.newHandler(this)) 
@@ -81,7 +90,6 @@ void OpflexConnection::read_cb(uv_stream_t* stream,
                        << "Error reading from socket: "
                        << uv_strerror(nread);
         }
-        LOG(INFO) << "EOF";
         conn->disconnect();
     } else if (nread > 0) {
         for (int i = 0; i < nread; ++i) {
@@ -172,27 +180,27 @@ void OpflexConnection::dispatch() {
         }
 
         if (id == "send_identity") {
-            handler->handleSendIdentityRes(idv, result);
+            handler->handleSendIdentityRes(result);
             //} else if (id == "echo") {
-            //    handler->handleEchoRes(idv, result);
+            //    handler->handleEchoRes(result);
         } else if (id == "policy_resolve") {
-            handler->handlePolicyResolveRes(idv, result);
+            handler->handlePolicyResolveRes(result);
         } else if (id == "policy_unresolve") {
-            handler->handlePolicyUnresolveRes(idv, result);
+            handler->handlePolicyUnresolveRes(result);
         } else if (id == "policy_update") {
-            handler->handlePolicyUpdateRes(idv, result);
+            handler->handlePolicyUpdateRes(result);
         } else if (id == "endpoint_declare") {
-            handler->handleEPDeclareRes(idv, result);
+            handler->handleEPDeclareRes(result);
         } else if (id == "endpoint_undeclare") {
-            handler->handleEPUndeclareRes(idv, result);
+            handler->handleEPUndeclareRes(result);
         } else if (id == "endpoint_resolve") {
-            handler->handleEPResolveRes(idv, result);
+            handler->handleEPResolveRes(result);
         } else if (id == "endpoint_unresolve") {
-            handler->handleEPUnresolveRes(idv, result);
+            handler->handleEPUnresolveRes(result);
         } else if (id == "endpoint_update") {
-            handler->handleEPUpdateRes(idv, result);
+            handler->handleEPUpdateRes(result);
         } else if (id == "state_report") {
-            handler->handleStateReportRes(idv, result);
+            handler->handleStateReportRes(result);
         }
         
     } else if (document.HasMember("error")) {
@@ -213,27 +221,27 @@ void OpflexConnection::dispatch() {
         }
 
         if (id == "send_identity") {
-            handler->handleSendIdentityErr(idv, error);
+            handler->handleSendIdentityErr(error);
             //} else if (id == "echo") {
-            //    handler->handleEchoErr(idv, error);
+            //    handler->handleEchoErr(error);
         } else if (id == "policy_resolve") {
-            handler->handlePolicyResolveErr(idv, error);
+            handler->handlePolicyResolveErr(error);
         } else if (id == "policy_unresolve") {
-            handler->handlePolicyUnresolveErr(idv, error);
+            handler->handlePolicyUnresolveErr(error);
         } else if (id == "policy_update") {
-            handler->handlePolicyUpdateErr(idv, error);
+            handler->handlePolicyUpdateErr(error);
         } else if (id == "endpoint_declare") {
-            handler->handleEPDeclareErr(idv, error);
+            handler->handleEPDeclareErr(error);
         } else if (id == "endpoint_undeclare") {
-            handler->handleEPUndeclareErr(idv, error);
+            handler->handleEPUndeclareErr(error);
         } else if (id == "endpoint_resolve") {
-            handler->handleEPResolveErr(idv, error);
+            handler->handleEPResolveErr(error);
         } else if (id == "endpoint_unresolve") {
-            handler->handleEPUnresolveErr(idv, error);
+            handler->handleEPUnresolveErr(error);
         } else if (id == "endpoint_update") {
-            handler->handleEPUpdateErr(idv, error);
+            handler->handleEPUpdateErr(error);
         } else if (id == "state_report") {
-            handler->handleStateReportErr(idv, error);
+            handler->handleStateReportErr(error);
         }
     }
 }
@@ -269,16 +277,62 @@ void OpflexConnection::write_cb(uv_write_t* req,
         conn->disconnect();
     }
 }
-#endif /* SIMPLE_RPC */
 
-void OpflexConnection::doWrite(OpflexMessage* message) {
-    
-#ifdef SIMPLE_RPC
-        write(message->serialize());
-#else
-        
+#else /* SIMPLE_RPC */
+
+class PayloadWrapper {
+public:
+    PayloadWrapper(OpflexMessage* message_)
+        : message(message_) { }
+
+    bool operator()(yajr::rpc::SendHandler& handler) {
+        message->serializePayload(handler);
+        return true;
+    }
+
+    OpflexMessage* message;
+};
 #endif
 
+void OpflexConnection::doWrite(OpflexMessage* message) {
+#ifdef SIMPLE_RPC
+    write(message->serialize());
+#else
+    if (getPeer() == NULL) return;
+
+    PayloadWrapper wrapper(message);
+    switch (message->getType()) {
+    case OpflexMessage::REQUEST:
+        {
+            yajr::rpc::MethodName method(message->getMethod().c_str());
+            yajr::rpc::OutboundMessage* outm;
+            outm = new OutboundRequest(*getPeer(),
+                                       wrapper,
+                                       &method,
+                                       0);
+            outm->send();
+        }
+        break;
+    case OpflexMessage::RESPONSE:
+        {
+            yajr::rpc::OutboundMessage* outm;
+            outm = new OutboundResult(*getPeer(),
+                                      wrapper,
+                                      message->getId());
+            outm->send();
+        }
+        break;
+    case OpflexMessage::ERROR_RESPONSE:
+        {
+            yajr::rpc::OutboundMessage* outm;
+            outm = new OutboundError(*getPeer(),
+                                     wrapper,
+                                     message->getId());
+            outm->send();
+        }
+        break;
+    }
+#endif
 }
 
 void OpflexConnection::processWriteQueue() {

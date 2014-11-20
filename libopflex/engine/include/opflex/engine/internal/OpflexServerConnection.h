@@ -67,6 +67,12 @@ public:
 
 #ifdef SIMPLE_RPC
     virtual void write(const rapidjson::StringBuffer* buf);
+#else
+    static void on_state_change(yajr::Peer* p, void* data, 
+                                yajr::StateChange::To stateChange,
+                                int error);
+    static uv_loop_t* loop_selector(void* data);
+    virtual yajr::Peer* getPeer() { return peer; }
 #endif
     virtual void messagesReady();
 
@@ -81,7 +87,7 @@ private:
 
     static void shutdown_cb(uv_shutdown_t* req, int status);
 #else
-
+    yajr::Peer* peer;
 #endif
 };
 

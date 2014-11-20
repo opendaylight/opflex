@@ -65,6 +65,12 @@ public:
         : ProcessorMessage("policy_resolve", REQUEST, processor), 
           policies(policies_) {}
 
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
+
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
@@ -120,6 +126,12 @@ public:
         : ProcessorMessage("policy_unresolve", REQUEST, processor), 
           policies(policies_) {}
 
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
+
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
@@ -173,6 +185,12 @@ public:
                      const std::vector<modb::reference_t>& endpoints_)
         : ProcessorMessage("endpoint_resolve", REQUEST, processor), 
           endpoints(endpoints_) {}
+
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
@@ -230,6 +248,12 @@ public:
         : ProcessorMessage("endpoint_unresolve", REQUEST, processor), 
           endpoints(endpoints_) {}
 
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
+
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
@@ -284,6 +308,12 @@ public:
                        const std::vector<modb::reference_t>& endpoints_)
         : ProcessorMessage("endpoint_declare", REQUEST, processor), 
           endpoints(endpoints_) {}
+
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
@@ -347,6 +377,12 @@ public:
         : ProcessorMessage("endpoint_undeclare", REQUEST, processor), 
           endpoints(endpoints_) {}
     
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
+
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
@@ -406,7 +442,13 @@ public:
                    const std::vector<modb::reference_t>& observables_)
         : ProcessorMessage("state_report", REQUEST, processor), 
           observables(observables_) {}
-    
+
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
+
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }

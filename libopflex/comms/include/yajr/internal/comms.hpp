@@ -14,6 +14,7 @@
 #include <sstream>  /* for basic_stringstream<> */
 #include <yajr/yajr.hpp>
 #include <rapidjson/document.h>
+#include <yajr/rpc/rpc.hpp>
 #include <yajr/rpc/message_factory.hpp>
 #include <yajr/rpc/send_handler.hpp>
 #include <iovec-utils.hh>
@@ -801,7 +802,7 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
         return uvLoopSelector_;
     }
 
-    int setAddrFromIpAndPort(const char * ip_address, uint16_t port);
+    int setAddrFromIpAndPort(const std::string& ip_address, uint16_t port);
 
   private:
     struct sockaddr_storage listen_on_;

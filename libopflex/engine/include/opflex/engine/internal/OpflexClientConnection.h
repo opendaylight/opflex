@@ -89,6 +89,8 @@ public:
 
 #ifdef SIMPLE_RPC
     virtual void write(const rapidjson::StringBuffer* buf);
+#else
+    virtual yajr::Peer* getPeer() { return peer; }
 #endif
     virtual void messagesReady();
 

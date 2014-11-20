@@ -17,6 +17,7 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DSIMPLE_RPC \
 	-I$(top_srcdir)/modb/include \
 	-I$(top_srcdir)/logging/include \
 	-I$(top_srcdir)/util/include \
+	-I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp \
 	-I$(top_srcdir)/comms/include
 
 AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp

@@ -441,7 +441,7 @@ bool operator< (rapidjson::Value const & l, rapidjson::Value const & r);
 class OutboundRequest : public OutboundMessage,
                         public LocalIdentifier {
 
-  protected:
+  public:
 
     /**
      * @brief Constructor for an outbound request message, needed by derived
@@ -462,6 +462,8 @@ class OutboundRequest : public OutboundMessage,
         {
         }
 
+
+  protected:
     /**
      * @brief Get payload key
      *

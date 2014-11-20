@@ -21,7 +21,6 @@
 #include <uv.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
-#include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/engine/internal/OpflexClientConnection.h"
 
 #pragma once
@@ -31,6 +30,8 @@
 namespace opflex {
 namespace engine {
 namespace internal {
+
+class OpflexMessage;
 
 /**
  * A pool of OpFlex connections that will keep track of connection

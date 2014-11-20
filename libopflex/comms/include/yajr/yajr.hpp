@@ -211,7 +211,7 @@ struct Listener {
      * @return a pointer to the Peer created
      **/
     static Listener * create(
-        char const                 * ip_address,
+        const std::string&           ip_address,
                 /**< [in] the ip address to bind to, or "0.0.0.0" to bind all */
         uint16_t                     port,
                                                 /**< [in] the port to bind to */

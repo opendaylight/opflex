@@ -17,6 +17,7 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK -DSIMPLE_RPC \
 	-I$(top_srcdir)/modb/include \
 	-I$(top_srcdir)/modb/test \
 	-I$(top_srcdir)/comms/include \
+	-I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp \
 	-I$(top_srcdir)/util/include
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
@@ -34,6 +35,7 @@ engine_test_LDADD = \
 	../libengine.la \
 	../../util/libutil.la \
 	../../modb/libmodb.la \
+	../../comms/libcomms.la \
 	../../logging/liblogging.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
