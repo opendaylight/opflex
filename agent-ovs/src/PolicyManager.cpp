@@ -10,14 +10,15 @@
  */
 
 #include <algorithm>
+#include <sstream>
 #include <boost/foreach.hpp>
 #include <opflex/modb/URIBuilder.h>
 
 #include "logging.h"
 #include "PolicyManager.h"
 
+using namespace std;
 namespace ovsagent {
-
 
 using std::vector;
 using std::string;
@@ -449,6 +450,14 @@ classifierEq(const shared_ptr<modelgbp::gbpe::L24Classifier>& lhs,
         lhs->getSToPort() == rhs->getSToPort();
 }
 
+string toString(const vector<shared_ptr<modelgbp::gbp::Rule> >& rules) {
+    stringstream str;
+    BOOST_FOREACH(const shared_ptr<modelgbp::gbp::Rule>& r, rules) {
+        str << endl << r->getURI() << "(" << r->getOrder(0) << ")";
+    }
+    return str.str();
+}
+
 bool PolicyManager::updateContractRules(const URI& contractURI,
         bool& toRemove) {
     using namespace modelgbp::gbp;
@@ -469,7 +478,9 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
     BOOST_FOREACH(shared_ptr<Subject>& sub, subjects) {
         vector<shared_ptr<Rule> > rules;
         sub->resolveGbpRule(rules);
+        LOG(DEBUG) << "RULES before: " << toString(rules);
         sort(rules.begin(), rules.end(), ruleComp);
+        //LOG(DEBUG) << "RULES after : " << toString(rules);
 
         BOOST_FOREACH(shared_ptr<Rule>& rule, rules) {
             vector<shared_ptr<L24Classifier> > classifiers;
