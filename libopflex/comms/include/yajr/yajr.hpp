@@ -95,7 +95,7 @@ struct Peer {
      * with a FAILURE state immediately before this time.
      *
      * If \p data was allocated by the caller, \p connectionHandler should be
-     * releasing \p data upon DISCONNECT.
+     * releasing \p data upon StateChange::To::DELETE.
      *
      * @return a pointer to the Peer created
      **/
