@@ -18,7 +18,6 @@
 
 namespace ovsagent {
 
-
 using std::vector;
 using std::string;
 using opflex::ofcore::OFFramework;
@@ -469,7 +468,7 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
     BOOST_FOREACH(shared_ptr<Subject>& sub, subjects) {
         vector<shared_ptr<Rule> > rules;
         sub->resolveGbpRule(rules);
-        sort(rules.begin(), rules.end(), ruleComp);
+        std::stable_sort(rules.begin(), rules.end(), ruleComp);
 
         BOOST_FOREACH(shared_ptr<Rule>& rule, rules) {
             vector<shared_ptr<L24Classifier> > classifiers;
@@ -486,7 +485,8 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
                     classifiers.push_back(cls.get());
                 }
             }
-            sort(classifiers.begin(), classifiers.end(), classifierComp);
+            std::stable_sort(classifiers.begin(), classifiers.end(),
+                    classifierComp);
             newRules.insert(newRules.end(), classifiers.begin(),
                     classifiers.end());
         }
