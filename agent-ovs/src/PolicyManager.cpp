@@ -411,23 +411,6 @@ void PolicyManager::updateEPGContracts(const URI& egURI,
 }
 
 /**
- * Comparison function for sorting Rule objects in descending order.
- */
-static bool ruleComp(const shared_ptr<modelgbp::gbp::Rule>& lhs,
-                     const shared_ptr<modelgbp::gbp::Rule>& rhs) {
-    return lhs->getOrder(0) > rhs->getOrder(0);
-};
-
-/**
- * Comparison function for sorting L24Classifier objects in descending order.
- */
-static bool
-classifierComp(const shared_ptr<modelgbp::gbpe::L24Classifier>& lhs,
-               const shared_ptr<modelgbp::gbpe::L24Classifier>& rhs) {
-    return lhs->getOrder(0) > rhs->getOrder(0);
-};
-
-/**
  * Check equality of L24Classifier objects.
  */
 static bool
@@ -464,6 +447,8 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
 
     /* get all classifiers for this contract as an ordered-list */
     rule_list_t newRules;
+    OrderComparator<shared_ptr<Rule> > ruleComp;
+    OrderComparator<shared_ptr<L24Classifier> > classifierComp;
     vector<shared_ptr<Subject> > subjects;
     contract.get()->resolveGbpSubject(subjects);
     BOOST_FOREACH(shared_ptr<Subject>& sub, subjects) {
