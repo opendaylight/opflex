@@ -13,6 +13,7 @@
 #include <boost/foreach.hpp>
 
 #include "opflex/engine/internal/OpflexPool.h"
+#include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "LockGuard.h"
 
@@ -45,11 +46,17 @@ void OpflexPool::on_conn_async(uv_async_t* handle) {
 void OpflexPool::on_cleanup_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
     {
-        util::LockGuard guard(&pool->conn_mutex);
-        BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
-            v.second.conn->disconnect();
+        std::vector<OpflexConnection*> conns;
+        {
+            util::LockGuard guard(&pool->conn_mutex);
+            BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
+                conns.push_back(v.second.conn);
+            }
         }
-        if (pool->connections.size() > 0)
+        BOOST_FOREACH(OpflexConnection* conn, conns) {
+            conn->disconnect();
+        }
+        if (conns.size() > 0)
             return;
     }
     

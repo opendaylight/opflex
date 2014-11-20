@@ -102,9 +102,8 @@ void internal::Peer::LoopData::destroy() {
     destroying_ = 1;
 
     for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
-        Peer::LoopData::getPeerList(uv_default_loop(),
-                    Peer::LoopData::PeerState(i))
-            ->clear_and_dispose(PeerDisposer());
+        peers[Peer::LoopData::PeerState(i)]
+            .clear_and_dispose(PeerDisposer());
 
     }
 }

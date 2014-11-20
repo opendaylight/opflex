@@ -92,6 +92,12 @@ public:
      */
     bool applyConnPred(conn_pred_t pred, void* user);
 
+    /**
+     * Check whether the server is listening on the socket
+     * @return true if the server is listening
+     */
+    bool isListening();
+
 private:
     HandlerFactory& handlerFactory;
 
@@ -109,7 +115,7 @@ private:
 #ifdef SIMPLE_RPC
     uv_tcp_t bind_socket;
 #else
-    
+    yajr::Listener* listener;
 #endif
 
     uv_mutex_t conn_mutex;
@@ -123,12 +129,16 @@ private:
     static void on_cleanup_async(uv_async_t *handle);
     static void on_writeq_async(uv_async_t *handle);
     void messagesReady();
+    uv_loop_t* getLoop() { return &server_loop; }
+    void connectionClosed(OpflexServerConnection* conn);
 
 #ifdef SIMPLE_RPC
     static void on_new_connection(uv_stream_t *server, int status);
     static void on_conn_closed(uv_handle_t *handle);
+#else
+    static void* on_new_connection(yajr::Listener* listener, 
+                                   void* data, int error);
 #endif
-    void connectionClosed(OpflexServerConnection* conn);
 
     friend class OpflexServerConnection;
 };

@@ -19,6 +19,10 @@
 #include "opflex/logging/internal/logging.hpp"
 #include "LockGuard.h"
 
+#ifndef SIMPLE_RPC
+#include <yajr/internal/comms.hpp>
+#endif
+
 namespace opflex {
 namespace engine {
 namespace internal {
@@ -33,13 +37,14 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
     : handlerFactory(handlerFactory_), port(port_), 
       name(name_), domain(domain_), active(true) {
     int rc;
-#ifdef SIMPLE_RPC
     uv_mutex_init(&conn_mutex);
     uv_loop_init(&server_loop);
     cleanup_async.data = this;
     writeq_async.data = this;
     uv_async_init(&server_loop, &cleanup_async, on_cleanup_async);
     uv_async_init(&server_loop, &writeq_async, on_writeq_async);
+
+#ifdef SIMPLE_RPC
 
     uv_tcp_init(&server_loop, &bind_socket);
     server_loop.data = this;
@@ -63,7 +68,15 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
                                  uv_strerror(rc));
     }
 #else
+    yajr::initLoop(&server_loop);
 
+    listener = yajr::Listener::create("0.0.0.0", port, 
+                                      OpflexServerConnection::on_state_change,
+                                      on_new_connection,
+                                      this,
+                                      &server_loop,
+                                      OpflexServerConnection::loop_selector);
+                                      
 #endif
     rc = uv_thread_create(&server_thread, server_thread_func, this);
     if (rc < 0) {
@@ -93,6 +106,9 @@ void OpflexListener::on_cleanup_async(uv_async_t* handle) {
 #endif
     uv_close((uv_handle_t*)&listener->writeq_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
+#ifndef SIMPLE_RPC
+    yajr::finiLoop(&listener->server_loop);
+#endif
 }
 
 void OpflexListener::on_writeq_async(uv_async_t* handle) {
@@ -136,6 +152,20 @@ void OpflexListener::on_conn_closed(uv_handle_t *handle) {
     OpflexServerConnection* conn = (OpflexServerConnection*)handle->data;
     conn->getListener()->connectionClosed(conn);
 }
+#else
+void* OpflexListener::on_new_connection(yajr::Listener* ylistener, 
+                                        void* data, int error) {
+    if (error < 0) {
+        LOG(ERROR) << "Error on new connection: " 
+                   << uv_strerror(error);
+    }
+
+    OpflexListener* listener = (OpflexListener*)data;
+    LockGuard guard(&listener->conn_mutex);
+    OpflexServerConnection* conn = new OpflexServerConnection(listener);
+    listener->conns.insert(conn);
+    return conn;
+}
 #endif
 
 void OpflexListener::connectionClosed(OpflexServerConnection* conn) {
@@ -169,6 +199,16 @@ bool OpflexListener::applyConnPred(conn_pred_t pred, void* user) {
 
 void OpflexListener::messagesReady() {
     uv_async_send(&writeq_async);
+}
+
+bool OpflexListener::isListening() {
+#ifdef SIMPLE_RPC
+    return true;
+#else
+    using yajr::comms::internal::Peer;
+    return Peer::LoopData::getPeerList(&server_loop, 
+                                       Peer::LoopData::LISTENING)->size() > 0;
+#endif
 }
 
 } /* namespace internal */

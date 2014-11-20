@@ -39,7 +39,7 @@
 */
 
 ::yajr::Listener * ::yajr::Listener::create(
-        char const * ip_address,
+        const std::string& ip_address,
         uint16_t port,
         ::yajr::Peer::StateChangeCb connectionHandler,
         ::yajr::Listener::AcceptCb acceptHandler,
@@ -211,7 +211,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
 */
 
 int ::yajr::comms::internal::ListeningPeer::setAddrFromIpAndPort(
-        const char * ip_address,
+        const std::string& ip_address,
         uint16_t port) {
 
     LOG(DEBUG);
@@ -228,12 +228,12 @@ int ::yajr::comms::internal::ListeningPeer::setAddrFromIpAndPort(
     addr4 = (struct sockaddr_in*) &listen_on_;
     addr6 = (struct sockaddr_in6*) &listen_on_;
 
-    if (!(rc = uv_inet_pton(AF_INET, ip_address, &addr4->sin_addr))) {
+    if (!(rc = uv_inet_pton(AF_INET, ip_address.c_str(), &addr4->sin_addr))) {
         addr4->sin_family = AF_INET;
         addr4->sin_port = htons(port);
     } else {
         addr6->sin6_family = AF_INET6;
-        if (!(rc = uv_inet_pton(AF_INET6, ip_address, &addr6->sin6_addr))) {
+        if (!(rc = uv_inet_pton(AF_INET6, ip_address.c_str(), &addr6->sin6_addr))) {
             addr6->sin6_port = htons(port);
         }
     }

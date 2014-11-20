@@ -32,6 +32,7 @@ core_test_LDADD = ../libcore.la \
 	../../engine/libengine.la \
 	../../modb/libmodb.la \
 	../../util/libutil.la \
+	../../comms/libcomms.la \
 	../../logging/liblogging.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 

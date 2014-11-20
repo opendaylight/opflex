@@ -155,6 +155,11 @@ protected:
                          size_t suggested_size,
                          uv_buf_t* buf);
     virtual void dispatch();
+#else
+    /**
+     * Get the peer for this connection
+     */
+    virtual yajr::Peer* getPeer() = 0;
 #endif
 
 private:

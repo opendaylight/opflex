@@ -18,6 +18,10 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/document.h>
 
+#ifndef SIMPLE_RPC
+#include "yajr/rpc/message_factory.hpp"    
+#endif
+
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXMESSAGE_H
 #define OPFLEX_ENGINE_OPFLEXMESSAGE_H
@@ -67,6 +71,26 @@ public:
     virtual OpflexMessage* clone() = 0;
 
     /**
+     * Get the request method for this message
+     * @return the method for the message
+     */
+    const std::string& getMethod() const { return method; }
+
+    /**
+     * Get the message type for this message
+     *
+     * @return the type for the message
+     */
+    MessageType getType() const { return type; }
+
+    /**
+     * Get the ID for this message.  Must only be called on a response
+     * or error.
+     * @return the ID for the message
+     */
+    const rapidjson::Value& getId() const { return *id; }
+
+    /**
      * A rapidjson writer that should be used to serialize messages
      */
     typedef rapidjson::Writer<rapidjson::StringBuffer> MessageWriter;
@@ -79,7 +103,29 @@ public:
      *
      * @param writer the message writer to write the payload to
      */
-    virtual void serializePayload(MessageWriter& writer);
+    virtual void serializePayload(MessageWriter& writer) = 0;
+
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) = 0;
+#endif
+
+    /**
+     * Operator to serialize a generic empty payload to any writer
+     * @param writer the writer to serialize to
+     */
+    template <typename T>
+    bool operator()(rapidjson::Writer<T> & writer) {
+        switch (type) {
+        case REQUEST:
+            writer.StartArray();
+            writer.EndArray();
+            break;
+        default:
+            writer.StartObject();
+            writer.EndObject();
+        }
+        return true;
+    }
 
     /**
      * Serialize into a fully-formed opflex message
@@ -126,6 +172,13 @@ public:
     virtual GenericOpflexMessage* clone() {
         return new GenericOpflexMessage(*this);
     }
+
+    virtual void serializePayload(MessageWriter& writer);
+
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer);
+#endif
+
 };
 
 } /* namespace internal */

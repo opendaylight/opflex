@@ -36,7 +36,10 @@ void MockServerHandler::disconnected() {
 }
 
 void MockServerHandler::ready() {
+    LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] " 
+              << "Handshake succeeded";
 
+    setState(READY);
 }
 
 class SendIdentityRes : public OpflexMessage {
@@ -49,6 +52,12 @@ public:
         : OpflexMessage("send_identity", RESPONSE, &id),
           name(name_), domain(domain_), roles(roles_), 
           peers(peers_) {}
+
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
@@ -116,6 +125,12 @@ public:
           server(server_),
           mos(mos_) {}
 
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
+
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
@@ -159,6 +174,12 @@ public:
         : OpflexMessage("endpoint_update", RESPONSE, &id),
           server(server_),
           mos(mos_) {}
+
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
@@ -205,6 +226,7 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
                             server->getRoles(), 
                             server->getPeers());
     getConnection()->sendMessage(res, true);
+    ready();
 }
 
 void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
@@ -540,8 +562,7 @@ void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-void MockServerHandler::handleEPUpdateRes(const rapidjson::Value& id,
-                                          const rapidjson::Value& payload) {
+void MockServerHandler::handleEPUpdateRes(const rapidjson::Value& payload) {
     // nothing to do
 }
 

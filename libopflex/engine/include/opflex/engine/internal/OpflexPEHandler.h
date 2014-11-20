@@ -60,26 +60,18 @@ public:
     virtual void connected();
     virtual void disconnected();
     virtual void ready();
-    virtual void handleSendIdentityRes(const rapidjson::Value& id,
-                                       const rapidjson::Value& payload);
-    virtual void handlePolicyResolveRes(const rapidjson::Value& id,
-                                        const rapidjson::Value& payload);
-    virtual void handlePolicyUnresolveRes(const rapidjson::Value& id,
-                                          const rapidjson::Value& payload);
+    virtual void handleSendIdentityRes(const rapidjson::Value& payload);
+    virtual void handlePolicyResolveRes(const rapidjson::Value& payload);
+    virtual void handlePolicyUnresolveRes(const rapidjson::Value& payload);
     virtual void handlePolicyUpdateReq(const rapidjson::Value& id,
                                        const rapidjson::Value& payload);
-    virtual void handleEPDeclareRes(const rapidjson::Value& id,
-                                    const rapidjson::Value& payload);
-    virtual void handleEPUndeclareRes(const rapidjson::Value& id,
-                                      const rapidjson::Value& payload);
-    virtual void handleEPResolveRes(const rapidjson::Value& id,
-                                    const rapidjson::Value& payload);
-    virtual void handleEPUnresolveRes(const rapidjson::Value& id,
-                                      const rapidjson::Value& payload);
+    virtual void handleEPDeclareRes(const rapidjson::Value& payload);
+    virtual void handleEPUndeclareRes(const rapidjson::Value& payload);
+    virtual void handleEPResolveRes(const rapidjson::Value& payload);
+    virtual void handleEPUnresolveRes(const rapidjson::Value& payload);
     virtual void handleEPUpdateReq(const rapidjson::Value& id,
                                    const rapidjson::Value& payload);
-    virtual void handleStateReportRes(const rapidjson::Value& id,
-                                      const rapidjson::Value& payload);
+    virtual void handleStateReportRes(const rapidjson::Value& payload);
 
 private:
     Processor* processor;

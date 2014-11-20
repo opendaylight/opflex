@@ -56,6 +56,12 @@ public:
           merge_children(merge_children_),
           del(del_) {}
 
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
+
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
@@ -133,6 +139,12 @@ public:
           server(server_),
           replace(replace_), 
           del(del_) {}
+
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);

@@ -60,16 +60,14 @@ StringBuffer* OpflexMessage::serialize() {
     return sb;
 }
 
-void OpflexMessage::serializePayload(MessageWriter& writer) {
-    switch (type) {
-    case REQUEST:
-        writer.StartArray();
-        writer.EndArray();
-        break;
-    default:
-        writer.StartObject();
-        writer.EndObject();
-    }
+#ifndef SIMPLE_RPC
+void GenericOpflexMessage::serializePayload(yajr::rpc::SendHandler& writer) {
+    (*this)(writer);
+}
+#endif
+
+void GenericOpflexMessage::serializePayload(MessageWriter& writer) {
+    (*this)(writer);
 }
 
 } /* namespace internal */

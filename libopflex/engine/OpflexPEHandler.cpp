@@ -48,6 +48,12 @@ public:
         : OpflexMessage("send_identity", REQUEST),
           name(name_), domain(domain_), roles(roles_) {}
 
+#ifndef SIMPLE_RPC
+    virtual void serializePayload(yajr::rpc::SendHandler& writer) {
+        (*this)(writer);
+    }
+#endif
+
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
@@ -115,8 +121,7 @@ void OpflexPEHandler::ready() {
     getProcessor()->connectionReady(getConnection());
 }
 
-void OpflexPEHandler::handleSendIdentityRes(const rapidjson::Value& id,
-                                            const Value& payload) {
+void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
     OpflexPool& pool = getProcessor()->getPool();
     OpflexClientConnection* conn = (OpflexClientConnection*)getConnection();
 
@@ -208,8 +213,7 @@ void OpflexPEHandler::handleSendIdentityRes(const rapidjson::Value& id,
     }
 }
 
-void OpflexPEHandler::handlePolicyResolveRes(const rapidjson::Value& id,
-                                             const Value& payload) {
+void OpflexPEHandler::handlePolicyResolveRes(const Value& payload) {
     StoreClient* client = getProcessor()->getSystemClient();
     MOSerializer& serializer = getProcessor()->getSerializer();
     StoreClient::notif_t notifs;
@@ -327,23 +331,19 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
     client->deliverNotifications(notifs);
 }
 
-void OpflexPEHandler::handlePolicyUnresolveRes(const rapidjson::Value& id,
-                                               const rapidjson::Value& payload) {
+void OpflexPEHandler::handlePolicyUnresolveRes(const rapidjson::Value& payload) {
     // nothing to do
 }
 
-void OpflexPEHandler::handleEPDeclareRes(const rapidjson::Value& id,
-                                         const rapidjson::Value& payload) {
+void OpflexPEHandler::handleEPDeclareRes(const rapidjson::Value& payload) {
     // nothing to do
 }
 
-void OpflexPEHandler::handleEPUndeclareRes(const rapidjson::Value& id,
-                                           const rapidjson::Value& payload) {
+void OpflexPEHandler::handleEPUndeclareRes(const rapidjson::Value& payload) {
     // nothing to do
 }
 
-void OpflexPEHandler::handleEPResolveRes(const rapidjson::Value& id,
-                                         const rapidjson::Value& payload) {
+void OpflexPEHandler::handleEPResolveRes(const rapidjson::Value& payload) {
     StoreClient* client = getProcessor()->getSystemClient();
     MOSerializer& serializer = getProcessor()->getSerializer();
     StoreClient::notif_t notifs;
@@ -364,8 +364,7 @@ void OpflexPEHandler::handleEPResolveRes(const rapidjson::Value& id,
     client->deliverNotifications(notifs);
 }
 
-void OpflexPEHandler::handleEPUnresolveRes(const rapidjson::Value& id,
-                                           const rapidjson::Value& payload) {
+void OpflexPEHandler::handleEPUnresolveRes(const rapidjson::Value& payload) {
     // nothing to do
 }
 
@@ -453,8 +452,7 @@ void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& id,
     client->deliverNotifications(notifs);
 }
 
-void OpflexPEHandler::handleStateReportRes(const rapidjson::Value& id,
-                                           const rapidjson::Value& payload) {
+void OpflexPEHandler::handleStateReportRes(const rapidjson::Value& payload) {
     // nothing to do
 }
 

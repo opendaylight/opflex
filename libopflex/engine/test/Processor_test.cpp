@@ -70,6 +70,7 @@ public:
         : mockServer(8009, SERVER_ROLES,
                      list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
                      md) {
+        WAIT_FOR(mockServer.getListener().isListening(), 1000);
     }
 
     ~ServerFixture() {
@@ -159,6 +160,9 @@ BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
     MockOpflexServer anycastServer(8011, 0, list_of(p1)(p2), md);
     MockOpflexServer peer1(8009, SERVER_ROLES, list_of(p1)(p2), md);
     MockOpflexServer peer2(8010, SERVER_ROLES, list_of(p1)(p2), md);
+    WAIT_FOR(anycastServer.getListener().isListening(), 1000);
+    WAIT_FOR(peer1.getListener().isListening(), 1000);
+    WAIT_FOR(peer2.getListener().isListening(), 1000);
 
     processor.addPeer(LOCALHOST, 8011);
 
