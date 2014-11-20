@@ -185,7 +185,6 @@ BOOST_FIXTURE_TEST_CASE( group, PolicyFixture ) {
     WAIT_FOR(pm.groupExists(eg1->getURI()) == false, 500);
 }
 
-#if 0       // disable flaky tests
 static bool checkContains(const PolicyManager::uri_set_t& s,
         const URI& u) {
     return s.find(u) != s.end();
@@ -196,32 +195,30 @@ BOOST_FIXTURE_TEST_CASE( group_contract, PolicyFixture ) {
     WAIT_FOR(pm.contractExists(con1->getURI()), 500);
 
     PolicyManager::uri_set_t egs;
-    pm.getContractProviders(con1->getURI(), egs);
-    WAIT_FOR(egs.size() == 2, 1000);
+    WAIT_FOR_DO(egs.size() == 2, 500,
+            egs.clear(); pm.getContractProviders(con1->getURI(), egs));
     BOOST_CHECK(checkContains(egs, eg1->getURI()));
     BOOST_CHECK(checkContains(egs, eg3->getURI()));
 
     egs.clear();
-    pm.getContractConsumers(con1->getURI(), egs);
-    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg2->getURI()));
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractConsumers(con1->getURI(), egs));
+    BOOST_CHECK(checkContains(egs, eg2->getURI()));
 
     egs.clear();
-    pm.getContractProviders(con2->getURI(), egs);
-    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg1->getURI()));
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractProviders(con2->getURI(), egs));
+    BOOST_CHECK(checkContains(egs, eg1->getURI()));
 
     egs.clear();
-    pm.getContractConsumers(con2->getURI(), egs);
-    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg2->getURI()));
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractConsumers(con2->getURI(), egs));
+    BOOST_CHECK(checkContains(egs, eg2->getURI()));
 }
 
 BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
-    PolicyManager& pm = agent.getPolicyManager();
-    WAIT_FOR(pm.contractExists(con1->getURI()), 500);
-
-    PolicyManager::uri_set_t egs;
     /* remove eg1, interchange roles of eg2 and eg3 w.r.t con1 */
     Mutator mutator(framework, "policyreg");
-    eg1->remove();
 
     eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString())
             ->unsetTarget();
@@ -230,20 +227,27 @@ BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
 
     eg2->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
+
+    eg1->remove();
     mutator.commit();
+
+    PolicyManager& pm = agent.getPolicyManager();
     WAIT_FOR(pm.groupExists(eg1->getURI()) == false, 500);
 
-    egs.clear();
-    pm.getContractProviders(con1->getURI(), egs);
-    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg2->getURI()));
+    PolicyManager::uri_set_t egs;
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractProviders(con1->getURI(), egs));
+    BOOST_CHECK(checkContains(egs, eg2->getURI()));
 
     egs.clear();
-    pm.getContractConsumers(con1->getURI(), egs);
-    BOOST_CHECK(egs.size() == 1 && checkContains(egs, eg3->getURI()));
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractConsumers(con1->getURI(), egs));
+    BOOST_CHECK(checkContains(egs, eg3->getURI()));
 
     egs.clear();
     pm.getContractProviders(con2->getURI(), egs);
-    BOOST_CHECK(egs.empty());
+    WAIT_FOR_DO(egs.empty(), 500,
+            egs.clear(); pm.getContractProviders(con2->getURI(), egs));
 }
 
 static bool checkRules(const PolicyManager::rule_list_t& lhs,
@@ -262,10 +266,11 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
     PolicyManager& pm = agent.getPolicyManager();
     WAIT_FOR(pm.contractExists(con1->getURI()), 500);
 
-    BOOST_CHECK(pm.groupExists(URI("invalid")) == false);
+    BOOST_CHECK(pm.contractExists(URI("invalid")) == false);
 
     PolicyManager::rule_list_t rules;
-    pm.getContractRules(con1->getURI(), rules);
+    WAIT_FOR_DO(rules.size() == 4, 500,
+            rules.clear(); pm.getContractRules(con1->getURI(), rules));
     BOOST_CHECK(
         checkRules(rules,
             list_of(classifier2)(classifier1)(classifier4)(classifier3)) ||
@@ -290,10 +295,10 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
     WAIT_FOR(pm.contractExists(con3->getURI()) == true, 500);
 
     rules.clear();
-    pm.getContractRules(con1->getURI(), rules);
+    WAIT_FOR_DO(rules.size() == 2, 500,
+            rules.clear(); pm.getContractRules(con1->getURI(), rules));
     BOOST_CHECK(checkRules(rules, list_of(classifier4)(classifier1)));
 }
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

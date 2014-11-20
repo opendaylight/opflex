@@ -40,17 +40,23 @@ public:
 };
 
 // wait for a condition to become true because of an event in another
-// thread
-#define WAIT_FOR(condition, count)                             \
+// thread. Executes 'stmt' after each wait iteration.
+#define WAIT_FOR_DO(condition, count, stmt)                    \
     {                                                          \
         int _c = 0;                                            \
         while (_c < count) {                                   \
            if (condition) break;                               \
            _c += 1;                                            \
            usleep(1000);                                       \
+           stmt;                                               \
         }                                                      \
         BOOST_CHECK((condition));                              \
     }
+
+// wait for a condition to become true because of an event in another
+// thread
+#define WAIT_FOR(condition, count)  WAIT_FOR_DO(condition, count, ;)
+
 
 } /* namespace ovsagent */
 
