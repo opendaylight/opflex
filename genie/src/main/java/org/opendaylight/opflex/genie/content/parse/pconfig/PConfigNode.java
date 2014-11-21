@@ -26,7 +26,9 @@ public class PConfigNode
         Config.setLibName(aInData.getNamedValue("libname", "genierated", true));
         Config.setSyntaxRelPath(aInData.getNamedValue("syntax", null, true),aInData.getNamedValue("syntaxfiletype", ".meta", true));
         Config.setLoaderRelPath(aInData.getNamedValue("loader", null, true), aInData.getNamedValue("loaderfiletype", ".cfg", true));
+        Config.setFormatterRelPath(aInData.getNamedValue("formatter", null, true), aInData.getNamedValue("formatterfiletype", ".cfg", true));
         Config.setGenDestPath(aInData.getNamedValue("gendest", ".", true));
+        
         Config.setLogDirParent(aInData.getNamedValue("logfile", ".", true));
         Config.setIsEnumSupport(
                     aInData.validateBoolean(
