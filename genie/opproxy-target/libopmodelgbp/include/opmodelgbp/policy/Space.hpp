@@ -1,0 +1,838 @@
+/**
+ * 
+ * SOME COPYRIGHT
+ * 
+ * Space.hpp
+ * 
+ * generated Space.hpp file genie code generation framework free of license.
+ *  
+ */
+#pragma once
+#ifndef GI_POLICY_SPACE_HPP
+#define GI_POLICY_SPACE_HPP
+
+#include <boost/optional.hpp>
+#include "opflex/modb/URIBuilder.h"
+#include "opflex/modb/mo-internal/MO.h"
+/*
+ * contains: item:mclass(gbp/Classifier)
+ */
+#include "opmodelgbp/gbp/Classifier.hpp"
+/*
+ * contains: item:mclass(gbp/EpGroup)
+ */
+#include "opmodelgbp/gbp/EpGroup.hpp"
+/*
+ * contains: item:mclass(gbpe/L24Classifier)
+ */
+#include "opmodelgbp/gbpe/L24Classifier.hpp"
+/*
+ * contains: item:mclass(gbp/Contract)
+ */
+#include "opmodelgbp/gbp/Contract.hpp"
+/*
+ * contains: item:mclass(gbp/BridgeDomain)
+ */
+#include "opmodelgbp/gbp/BridgeDomain.hpp"
+/*
+ * contains: item:mclass(gbp/FloodDomain)
+ */
+#include "opmodelgbp/gbp/FloodDomain.hpp"
+/*
+ * contains: item:mclass(gbp/RoutingDomain)
+ */
+#include "opmodelgbp/gbp/RoutingDomain.hpp"
+/*
+ * contains: item:mclass(gbp/Subnets)
+ */
+#include "opmodelgbp/gbp/Subnets.hpp"
+
+namespace opmodelgbp {
+namespace policy {
+
+class Space
+    : public opflex::modb::mointernal::MO
+{
+public:
+
+    /**
+     * The unique class ID for Space
+     */
+    static const opflex::modb::class_id_t CLASS_ID = 76;
+
+    /**
+     * Check whether name has been set
+     * @return true if name has been set
+     */
+    bool isNameSet()
+    {
+        return getObjectInstance().isSet(2490369ul, opflex::modb::PropertyInfo::STRING);
+    }
+
+    /**
+     * Get the value of name if it has been set.
+     * @return the value of name or boost::none if not set
+     */
+    boost::optional<const std::string&> getName()
+    {
+        if (isNameSet())
+            return getObjectInstance().getString(2490369ul);
+        return boost::none;
+    }
+
+    /**
+     * Get the value of name if set, otherwise the value of default passed in.
+     * @param defaultValue default value returned if the property is not set
+     * @return the value of name if set, otherwise the value of default passed in
+     */
+    const std::string& getName(const std::string& defaultValue)
+    {
+        return getName().get_value_or(defaultValue);
+    }
+
+    /**
+     * Set name to the specified value in the currently-active mutator.
+     * 
+     * @param newValue the new value to set.
+     * @return a reference to the current object
+     * @throws std::logic_error if no mutator is active
+     * @see opflex::modb::Mutator
+     */
+    opmodelgbp::policy::Space& setName(const std::string& newValue)
+    {
+        getTLMutator().modify(getClassId(), getURI())->setString(2490369ul, newValue);
+        return *this;
+    }
+
+    /**
+     * Unset name in the currently-active mutator.
+     * @throws std::logic_error if no mutator is active
+     * @return a reference to the current object
+     * @see opflex::modb::Mutator
+     */
+    opmodelgbp::policy::Space& unsetName()
+    {
+        getTLMutator().modify(getClassId(), getURI())->unset(2490369ul, opflex::modb::PropertyInfo::STRING, opflex::modb::PropertyInfo::SCALAR);
+        return *this;
+    }
+
+    /**
+     * Retrieve an instance of Space from the managed
+     * object store.  If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param framework the framework instance to use
+     * @param uri the URI of the object to retrieve
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    static boost::optional<boost::shared_ptr<opmodelgbp::policy::Space> > resolve(
+        opflex::ofcore::OFFramework& framework,
+        const opflex::modb::URI& uri)
+    {
+        return opflex::modb::mointernal::MO::resolve<opmodelgbp::policy::Space>(framework, CLASS_ID, uri);
+    }
+
+    /**
+     * Retrieve an instance of Space from the managed
+     * object store using the default framework instance.  If the 
+     * object does not exist in the local store, returns boost::none. 
+     * Note that even though it may not exist locally, it may still 
+     * exist remotely.
+     * 
+     * @param uri the URI of the object to retrieve
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    static boost::optional<boost::shared_ptr<opmodelgbp::policy::Space> > resolve(
+        const opflex::modb::URI& uri)
+    {
+        return opflex::modb::mointernal::MO::resolve<opmodelgbp::policy::Space>(opflex::ofcore::OFFramework::defaultInstance(), CLASS_ID, uri);
+    }
+
+    /**
+     * Retrieve an instance of Space from the managed
+     * object store by constructing its URI from the path elements
+     * that lead to it.  If the object does not exist in the local
+     * store, returns boost::none.  Note that even though it may not
+     * exist locally, it may still exist remotely.
+     * 
+     * The object URI generated by this function will take the form:
+     * /PolicyUniverse/PolicySpace/[policySpaceName]
+     * 
+     * @param framework the framework instance to use 
+     * @param policySpaceName the value of policySpaceName,
+     * a naming property for Space
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    static boost::optional<boost::shared_ptr<opmodelgbp::policy::Space> > resolve(
+        opflex::ofcore::OFFramework& framework,
+        const std::string& policySpaceName)
+    {
+        return resolve(framework,opflex::modb::URIBuilder().addElement("PolicyUniverse").addElement("PolicySpace").addElement(policySpaceName).build());
+    }
+
+    /**
+     * Retrieve an instance of Space from the 
+     * default managed object store by constructing its URI from the
+     * path elements that lead to it.  If the object does not exist in
+     * the local store, returns boost::none.  Note that even though it
+     * may not exist locally, it may still exist remotely.
+     * 
+     * The object URI generated by this function will take the form:
+     * /PolicyUniverse/PolicySpace/[policySpaceName]
+     * 
+     * @param policySpaceName the value of policySpaceName,
+     * a naming property for Space
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    static boost::optional<boost::shared_ptr<opmodelgbp::policy::Space> > resolve(
+        const std::string& policySpaceName)
+    {
+        return resolve(opflex::ofcore::OFFramework::defaultInstance(),policySpaceName);
+    }
+
+    /**
+     * Retrieve the child object with the specified naming
+     * properties. If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param gbpClassifierName the value of gbpClassifierName,
+     * a naming property for Classifier
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    boost::optional<boost::shared_ptr<opmodelgbp::gbp::Classifier> > resolveGbpClassifier(
+        const std::string& gbpClassifierName)
+    {
+        return opmodelgbp::gbp::Classifier::resolve(getFramework(), opflex::modb::URIBuilder(getURI()).addElement("GbpClassifier").addElement(gbpClassifierName).build());
+    }
+
+    /**
+     * Create a new child object with the specified naming properties
+     * and make it a child of this object in the currently-active
+     * mutator.  If the object already exists in the store, get a
+     * mutable copy of that object.  If the object already exists in
+     * the mutator, get a reference to the object.
+     * 
+     * @param gbpClassifierName the value of gbpClassifierName,
+     * a naming property for Classifier
+     * @throws std::logic_error if no mutator is active
+     * @return a shared pointer to the (possibly new) object
+     */
+    boost::shared_ptr<opmodelgbp::gbp::Classifier> addGbpClassifier(
+        const std::string& gbpClassifierName)
+    {
+        boost::shared_ptr<opmodelgbp::gbp::Classifier> result = addChild<opmodelgbp::gbp::Classifier>(
+            CLASS_ID, getURI(), 2149974037ul, 21,
+            opflex::modb::URIBuilder(getURI()).addElement("GbpClassifier").addElement(gbpClassifierName).build()
+            );
+        result->setName(gbpClassifierName);
+        return result;
+    }
+
+    /**
+     * Resolve and retrieve all of the immediate children of type
+     * opmodelgbp::gbp::Classifier
+     * 
+     * Note that this retrieves only those children that exist in the
+     * local store.  It is possible that there are other children that
+     * exist remotely.
+     * 
+     * The resulting managed objects will be added to the result
+     * vector provided.
+     * 
+     * @param out a reference to a vector that will receive the child
+     * objects.
+     */
+    void resolveGbpClassifier(/* out */ std::vector<boost::shared_ptr<opmodelgbp::gbp::Classifier> >& out)
+    {
+        opflex::modb::mointernal::MO::resolveChildren<opmodelgbp::gbp::Classifier>(
+            getFramework(), CLASS_ID, getURI(), 2149974037ul, 21, out);
+    }
+
+    /**
+     * Retrieve the child object with the specified naming
+     * properties. If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param gbpEpGroupName the value of gbpEpGroupName,
+     * a naming property for EpGroup
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    boost::optional<boost::shared_ptr<opmodelgbp::gbp::EpGroup> > resolveGbpEpGroup(
+        const std::string& gbpEpGroupName)
+    {
+        return opmodelgbp::gbp::EpGroup::resolve(getFramework(), opflex::modb::URIBuilder(getURI()).addElement("GbpEpGroup").addElement(gbpEpGroupName).build());
+    }
+
+    /**
+     * Create a new child object with the specified naming properties
+     * and make it a child of this object in the currently-active
+     * mutator.  If the object already exists in the store, get a
+     * mutable copy of that object.  If the object already exists in
+     * the mutator, get a reference to the object.
+     * 
+     * @param gbpEpGroupName the value of gbpEpGroupName,
+     * a naming property for EpGroup
+     * @throws std::logic_error if no mutator is active
+     * @return a shared pointer to the (possibly new) object
+     */
+    boost::shared_ptr<opmodelgbp::gbp::EpGroup> addGbpEpGroup(
+        const std::string& gbpEpGroupName)
+    {
+        boost::shared_ptr<opmodelgbp::gbp::EpGroup> result = addChild<opmodelgbp::gbp::EpGroup>(
+            CLASS_ID, getURI(), 2149974041ul, 25,
+            opflex::modb::URIBuilder(getURI()).addElement("GbpEpGroup").addElement(gbpEpGroupName).build()
+            );
+        result->setName(gbpEpGroupName);
+        return result;
+    }
+
+    /**
+     * Resolve and retrieve all of the immediate children of type
+     * opmodelgbp::gbp::EpGroup
+     * 
+     * Note that this retrieves only those children that exist in the
+     * local store.  It is possible that there are other children that
+     * exist remotely.
+     * 
+     * The resulting managed objects will be added to the result
+     * vector provided.
+     * 
+     * @param out a reference to a vector that will receive the child
+     * objects.
+     */
+    void resolveGbpEpGroup(/* out */ std::vector<boost::shared_ptr<opmodelgbp::gbp::EpGroup> >& out)
+    {
+        opflex::modb::mointernal::MO::resolveChildren<opmodelgbp::gbp::EpGroup>(
+            getFramework(), CLASS_ID, getURI(), 2149974041ul, 25, out);
+    }
+
+    /**
+     * Retrieve the child object with the specified naming
+     * properties. If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param gbpeL24ClassifierName the value of gbpeL24ClassifierName,
+     * a naming property for L24Classifier
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    boost::optional<boost::shared_ptr<opmodelgbp::gbpe::L24Classifier> > resolveGbpeL24Classifier(
+        const std::string& gbpeL24ClassifierName)
+    {
+        return opmodelgbp::gbpe::L24Classifier::resolve(getFramework(), opflex::modb::URIBuilder(getURI()).addElement("GbpeL24Classifier").addElement(gbpeL24ClassifierName).build());
+    }
+
+    /**
+     * Create a new child object with the specified naming properties
+     * and make it a child of this object in the currently-active
+     * mutator.  If the object already exists in the store, get a
+     * mutable copy of that object.  If the object already exists in
+     * the mutator, get a reference to the object.
+     * 
+     * @param gbpeL24ClassifierName the value of gbpeL24ClassifierName,
+     * a naming property for L24Classifier
+     * @throws std::logic_error if no mutator is active
+     * @return a shared pointer to the (possibly new) object
+     */
+    boost::shared_ptr<opmodelgbp::gbpe::L24Classifier> addGbpeL24Classifier(
+        const std::string& gbpeL24ClassifierName)
+    {
+        boost::shared_ptr<opmodelgbp::gbpe::L24Classifier> result = addChild<opmodelgbp::gbpe::L24Classifier>(
+            CLASS_ID, getURI(), 2149974042ul, 26,
+            opflex::modb::URIBuilder(getURI()).addElement("GbpeL24Classifier").addElement(gbpeL24ClassifierName).build()
+            );
+        result->setName(gbpeL24ClassifierName);
+        return result;
+    }
+
+    /**
+     * Resolve and retrieve all of the immediate children of type
+     * opmodelgbp::gbpe::L24Classifier
+     * 
+     * Note that this retrieves only those children that exist in the
+     * local store.  It is possible that there are other children that
+     * exist remotely.
+     * 
+     * The resulting managed objects will be added to the result
+     * vector provided.
+     * 
+     * @param out a reference to a vector that will receive the child
+     * objects.
+     */
+    void resolveGbpeL24Classifier(/* out */ std::vector<boost::shared_ptr<opmodelgbp::gbpe::L24Classifier> >& out)
+    {
+        opflex::modb::mointernal::MO::resolveChildren<opmodelgbp::gbpe::L24Classifier>(
+            getFramework(), CLASS_ID, getURI(), 2149974042ul, 26, out);
+    }
+
+    /**
+     * Retrieve the child object with the specified naming
+     * properties. If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param gbpContractName the value of gbpContractName,
+     * a naming property for Contract
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    boost::optional<boost::shared_ptr<opmodelgbp::gbp::Contract> > resolveGbpContract(
+        const std::string& gbpContractName)
+    {
+        return opmodelgbp::gbp::Contract::resolve(getFramework(), opflex::modb::URIBuilder(getURI()).addElement("GbpContract").addElement(gbpContractName).build());
+    }
+
+    /**
+     * Create a new child object with the specified naming properties
+     * and make it a child of this object in the currently-active
+     * mutator.  If the object already exists in the store, get a
+     * mutable copy of that object.  If the object already exists in
+     * the mutator, get a reference to the object.
+     * 
+     * @param gbpContractName the value of gbpContractName,
+     * a naming property for Contract
+     * @throws std::logic_error if no mutator is active
+     * @return a shared pointer to the (possibly new) object
+     */
+    boost::shared_ptr<opmodelgbp::gbp::Contract> addGbpContract(
+        const std::string& gbpContractName)
+    {
+        boost::shared_ptr<opmodelgbp::gbp::Contract> result = addChild<opmodelgbp::gbp::Contract>(
+            CLASS_ID, getURI(), 2149974044ul, 28,
+            opflex::modb::URIBuilder(getURI()).addElement("GbpContract").addElement(gbpContractName).build()
+            );
+        result->setName(gbpContractName);
+        return result;
+    }
+
+    /**
+     * Resolve and retrieve all of the immediate children of type
+     * opmodelgbp::gbp::Contract
+     * 
+     * Note that this retrieves only those children that exist in the
+     * local store.  It is possible that there are other children that
+     * exist remotely.
+     * 
+     * The resulting managed objects will be added to the result
+     * vector provided.
+     * 
+     * @param out a reference to a vector that will receive the child
+     * objects.
+     */
+    void resolveGbpContract(/* out */ std::vector<boost::shared_ptr<opmodelgbp::gbp::Contract> >& out)
+    {
+        opflex::modb::mointernal::MO::resolveChildren<opmodelgbp::gbp::Contract>(
+            getFramework(), CLASS_ID, getURI(), 2149974044ul, 28, out);
+    }
+
+    /**
+     * Retrieve the child object with the specified naming
+     * properties. If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param gbpBridgeDomainName the value of gbpBridgeDomainName,
+     * a naming property for BridgeDomain
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    boost::optional<boost::shared_ptr<opmodelgbp::gbp::BridgeDomain> > resolveGbpBridgeDomain(
+        const std::string& gbpBridgeDomainName)
+    {
+        return opmodelgbp::gbp::BridgeDomain::resolve(getFramework(), opflex::modb::URIBuilder(getURI()).addElement("GbpBridgeDomain").addElement(gbpBridgeDomainName).build());
+    }
+
+    /**
+     * Create a new child object with the specified naming properties
+     * and make it a child of this object in the currently-active
+     * mutator.  If the object already exists in the store, get a
+     * mutable copy of that object.  If the object already exists in
+     * the mutator, get a reference to the object.
+     * 
+     * @param gbpBridgeDomainName the value of gbpBridgeDomainName,
+     * a naming property for BridgeDomain
+     * @throws std::logic_error if no mutator is active
+     * @return a shared pointer to the (possibly new) object
+     */
+    boost::shared_ptr<opmodelgbp::gbp::BridgeDomain> addGbpBridgeDomain(
+        const std::string& gbpBridgeDomainName)
+    {
+        boost::shared_ptr<opmodelgbp::gbp::BridgeDomain> result = addChild<opmodelgbp::gbp::BridgeDomain>(
+            CLASS_ID, getURI(), 2149974060ul, 44,
+            opflex::modb::URIBuilder(getURI()).addElement("GbpBridgeDomain").addElement(gbpBridgeDomainName).build()
+            );
+        result->setName(gbpBridgeDomainName);
+        return result;
+    }
+
+    /**
+     * Resolve and retrieve all of the immediate children of type
+     * opmodelgbp::gbp::BridgeDomain
+     * 
+     * Note that this retrieves only those children that exist in the
+     * local store.  It is possible that there are other children that
+     * exist remotely.
+     * 
+     * The resulting managed objects will be added to the result
+     * vector provided.
+     * 
+     * @param out a reference to a vector that will receive the child
+     * objects.
+     */
+    void resolveGbpBridgeDomain(/* out */ std::vector<boost::shared_ptr<opmodelgbp::gbp::BridgeDomain> >& out)
+    {
+        opflex::modb::mointernal::MO::resolveChildren<opmodelgbp::gbp::BridgeDomain>(
+            getFramework(), CLASS_ID, getURI(), 2149974060ul, 44, out);
+    }
+
+    /**
+     * Retrieve the child object with the specified naming
+     * properties. If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param gbpFloodDomainName the value of gbpFloodDomainName,
+     * a naming property for FloodDomain
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    boost::optional<boost::shared_ptr<opmodelgbp::gbp::FloodDomain> > resolveGbpFloodDomain(
+        const std::string& gbpFloodDomainName)
+    {
+        return opmodelgbp::gbp::FloodDomain::resolve(getFramework(), opflex::modb::URIBuilder(getURI()).addElement("GbpFloodDomain").addElement(gbpFloodDomainName).build());
+    }
+
+    /**
+     * Create a new child object with the specified naming properties
+     * and make it a child of this object in the currently-active
+     * mutator.  If the object already exists in the store, get a
+     * mutable copy of that object.  If the object already exists in
+     * the mutator, get a reference to the object.
+     * 
+     * @param gbpFloodDomainName the value of gbpFloodDomainName,
+     * a naming property for FloodDomain
+     * @throws std::logic_error if no mutator is active
+     * @return a shared pointer to the (possibly new) object
+     */
+    boost::shared_ptr<opmodelgbp::gbp::FloodDomain> addGbpFloodDomain(
+        const std::string& gbpFloodDomainName)
+    {
+        boost::shared_ptr<opmodelgbp::gbp::FloodDomain> result = addChild<opmodelgbp::gbp::FloodDomain>(
+            CLASS_ID, getURI(), 2149974069ul, 53,
+            opflex::modb::URIBuilder(getURI()).addElement("GbpFloodDomain").addElement(gbpFloodDomainName).build()
+            );
+        result->setName(gbpFloodDomainName);
+        return result;
+    }
+
+    /**
+     * Resolve and retrieve all of the immediate children of type
+     * opmodelgbp::gbp::FloodDomain
+     * 
+     * Note that this retrieves only those children that exist in the
+     * local store.  It is possible that there are other children that
+     * exist remotely.
+     * 
+     * The resulting managed objects will be added to the result
+     * vector provided.
+     * 
+     * @param out a reference to a vector that will receive the child
+     * objects.
+     */
+    void resolveGbpFloodDomain(/* out */ std::vector<boost::shared_ptr<opmodelgbp::gbp::FloodDomain> >& out)
+    {
+        opflex::modb::mointernal::MO::resolveChildren<opmodelgbp::gbp::FloodDomain>(
+            getFramework(), CLASS_ID, getURI(), 2149974069ul, 53, out);
+    }
+
+    /**
+     * Retrieve the child object with the specified naming
+     * properties. If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param gbpRoutingDomainName the value of gbpRoutingDomainName,
+     * a naming property for RoutingDomain
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    boost::optional<boost::shared_ptr<opmodelgbp::gbp::RoutingDomain> > resolveGbpRoutingDomain(
+        const std::string& gbpRoutingDomainName)
+    {
+        return opmodelgbp::gbp::RoutingDomain::resolve(getFramework(), opflex::modb::URIBuilder(getURI()).addElement("GbpRoutingDomain").addElement(gbpRoutingDomainName).build());
+    }
+
+    /**
+     * Create a new child object with the specified naming properties
+     * and make it a child of this object in the currently-active
+     * mutator.  If the object already exists in the store, get a
+     * mutable copy of that object.  If the object already exists in
+     * the mutator, get a reference to the object.
+     * 
+     * @param gbpRoutingDomainName the value of gbpRoutingDomainName,
+     * a naming property for RoutingDomain
+     * @throws std::logic_error if no mutator is active
+     * @return a shared pointer to the (possibly new) object
+     */
+    boost::shared_ptr<opmodelgbp::gbp::RoutingDomain> addGbpRoutingDomain(
+        const std::string& gbpRoutingDomainName)
+    {
+        boost::shared_ptr<opmodelgbp::gbp::RoutingDomain> result = addChild<opmodelgbp::gbp::RoutingDomain>(
+            CLASS_ID, getURI(), 2149974080ul, 64,
+            opflex::modb::URIBuilder(getURI()).addElement("GbpRoutingDomain").addElement(gbpRoutingDomainName).build()
+            );
+        result->setName(gbpRoutingDomainName);
+        return result;
+    }
+
+    /**
+     * Resolve and retrieve all of the immediate children of type
+     * opmodelgbp::gbp::RoutingDomain
+     * 
+     * Note that this retrieves only those children that exist in the
+     * local store.  It is possible that there are other children that
+     * exist remotely.
+     * 
+     * The resulting managed objects will be added to the result
+     * vector provided.
+     * 
+     * @param out a reference to a vector that will receive the child
+     * objects.
+     */
+    void resolveGbpRoutingDomain(/* out */ std::vector<boost::shared_ptr<opmodelgbp::gbp::RoutingDomain> >& out)
+    {
+        opflex::modb::mointernal::MO::resolveChildren<opmodelgbp::gbp::RoutingDomain>(
+            getFramework(), CLASS_ID, getURI(), 2149974080ul, 64, out);
+    }
+
+    /**
+     * Retrieve the child object with the specified naming
+     * properties. If the object does not exist in the local store,
+     * returns boost::none.  Note that even though it may not exist
+     * locally, it may still exist remotely.
+     * 
+     * @param gbpSubnetsName the value of gbpSubnetsName,
+     * a naming property for Subnets
+     * @return a shared pointer to the object or boost::none if it
+     * does not exist.
+     */
+    boost::optional<boost::shared_ptr<opmodelgbp::gbp::Subnets> > resolveGbpSubnets(
+        const std::string& gbpSubnetsName)
+    {
+        return opmodelgbp::gbp::Subnets::resolve(getFramework(), opflex::modb::URIBuilder(getURI()).addElement("GbpSubnets").addElement(gbpSubnetsName).build());
+    }
+
+    /**
+     * Create a new child object with the specified naming properties
+     * and make it a child of this object in the currently-active
+     * mutator.  If the object already exists in the store, get a
+     * mutable copy of that object.  If the object already exists in
+     * the mutator, get a reference to the object.
+     * 
+     * @param gbpSubnetsName the value of gbpSubnetsName,
+     * a naming property for Subnets
+     * @throws std::logic_error if no mutator is active
+     * @return a shared pointer to the (possibly new) object
+     */
+    boost::shared_ptr<opmodelgbp::gbp::Subnets> addGbpSubnets(
+        const std::string& gbpSubnetsName)
+    {
+        boost::shared_ptr<opmodelgbp::gbp::Subnets> result = addChild<opmodelgbp::gbp::Subnets>(
+            CLASS_ID, getURI(), 2149974082ul, 66,
+            opflex::modb::URIBuilder(getURI()).addElement("GbpSubnets").addElement(gbpSubnetsName).build()
+            );
+        result->setName(gbpSubnetsName);
+        return result;
+    }
+
+    /**
+     * Resolve and retrieve all of the immediate children of type
+     * opmodelgbp::gbp::Subnets
+     * 
+     * Note that this retrieves only those children that exist in the
+     * local store.  It is possible that there are other children that
+     * exist remotely.
+     * 
+     * The resulting managed objects will be added to the result
+     * vector provided.
+     * 
+     * @param out a reference to a vector that will receive the child
+     * objects.
+     */
+    void resolveGbpSubnets(/* out */ std::vector<boost::shared_ptr<opmodelgbp::gbp::Subnets> >& out)
+    {
+        opflex::modb::mointernal::MO::resolveChildren<opmodelgbp::gbp::Subnets>(
+            getFramework(), CLASS_ID, getURI(), 2149974082ul, 66, out);
+    }
+
+    /**
+     * Remove this instance using the currently-active mutator.  If
+     * the object does not exist, then this will be a no-op.  If this
+     * object has any children, they will be garbage-collected at some
+     * future time.
+     * 
+     * @throws std::logic_error if no mutator is active
+     */
+    void remove()
+    {
+        getTLMutator().remove(CLASS_ID, getURI());
+    }
+
+    /**
+     * Remove the Space object with the specified URI
+     * using the currently-active mutator.  If the object does not exist,
+     * then this will be a no-op.  If this object has any children, they
+     * will be garbage-collected at some future time.
+     * 
+     * @param framework the framework instance to use
+     * @param uri the URI of the object to remove
+     * @throws std::logic_error if no mutator is active
+     */
+    static void remove(opflex::ofcore::OFFramework& framework,
+                       const opflex::modb::URI& uri)
+    {
+        MO::remove(framework, CLASS_ID, uri);
+    }
+
+    /**
+     * Remove the Space object with the specified URI 
+     * using the currently-active mutator and the default framework 
+     * instance.  If the object does not exist, then this will be a
+     * no-op.  If this object has any children, they will be 
+     * garbage-collected at some future time.
+     * 
+     * @param uri the URI of the object to remove
+     * @throws std::logic_error if no mutator is active
+     */
+    static void remove(const opflex::modb::URI& uri)
+    {
+        remove(opflex::ofcore::OFFramework::defaultInstance(), uri);
+    }
+
+    /**
+     * Remove the Space object with the specified path
+     * elements from the managed object store.  If the object does
+     * not exist, then this will be a no-op.  If this object has any
+     * children, they will be garbage-collected at some future time.
+     * 
+     * The object URI generated by this function will take the form:
+     * /PolicyUniverse/PolicySpace/[policySpaceName]
+     * 
+     * @param framework the framework instance to use
+     * @param policySpaceName the value of policySpaceName,
+     * a naming property for Space
+     * @throws std::logic_error if no mutator is active
+     */
+    static void remove(
+        opflex::ofcore::OFFramework& framework,
+        const std::string& policySpaceName)
+    {
+        MO::remove(framework, CLASS_ID, opflex::modb::URIBuilder().addElement("PolicyUniverse").addElement("PolicySpace").addElement(policySpaceName).build());
+    }
+
+    /**
+     * Remove the Space object with the specified path
+     * elements from the managed object store using the default
+     * framework instance.  If the object does not exist, then
+     * this will be a no-op.  If this object has any children, they
+     * will be garbage-collected at some future time.
+     * 
+     * The object URI generated by this function will take the form:
+     * /PolicyUniverse/PolicySpace/[policySpaceName]
+     * 
+     * @param policySpaceName the value of policySpaceName,
+     * a naming property for Space
+     * @throws std::logic_error if no mutator is active
+     */
+    static void remove(
+        const std::string& policySpaceName)
+    {
+        remove(opflex::ofcore::OFFramework::defaultInstance(),policySpaceName);
+    }
+
+    /**
+     * Register a listener that will get called for changes related to
+     * this class.  This listener will be called for any modifications
+     * of this class or any transitive children of this class.
+     * 
+     * @param framework the framework instance 
+     * @param listener the listener functional object that should be
+     * called when changes occur related to the class.  This memory is
+     * owned by the caller and should be freed only after it has been
+     * unregistered.
+     */
+    static void registerListener(
+        opflex::ofcore::OFFramework& framework,
+        opflex::modb::ObjectListener* listener)
+    {
+        opflex::modb::mointernal
+            ::MO::registerListener(framework, listener, CLASS_ID);
+    }
+
+    /**
+     * Register a listener that will get called for changes related to
+     * this class with the default framework instance.  This listener
+     * will be called for any modifications of this class or any
+     * transitive children of this class.
+     * 
+     * @param listener the listener functional object that should be
+     * called when changes occur related to the class.  This memory is
+     * owned by the caller and should be freed only after it has been
+     * unregistered.
+     */
+    static void registerListener(
+        opflex::modb::ObjectListener* listener)
+    {
+        registerListener(opflex::ofcore::OFFramework::defaultInstance(), listener);
+    }
+
+    /**
+     * Unregister a listener from updates to this class.
+     * 
+     * @param framework the framework instance 
+     * @param listener The listener to unregister.
+     */
+    static void unregisterListener(
+        opflex::ofcore::OFFramework& framework,
+        opflex::modb::ObjectListener* listener)
+    {
+        opflex::modb::mointernal
+            ::MO::unregisterListener(framework, listener, CLASS_ID);
+    }
+
+    /**
+     * Unregister a listener from updates to this class from the
+     * default framework instance
+     * 
+     * @param listener The listener to unregister.
+     */
+    static void unregisterListener(
+        opflex::modb::ObjectListener* listener)
+    {
+        unregisterListener(opflex::ofcore::OFFramework::defaultInstance(), listener);
+    }
+
+    /**
+     * Construct an instance of Space.
+     * This should not typically be called from user code.
+     */
+    Space(
+        opflex::ofcore::OFFramework& framework,
+        const opflex::modb::URI& uri,
+        const boost::shared_ptr<const opflex::modb::mointernal::ObjectInstance>& oi)
+        : MO(framework, CLASS_ID, uri, oi) { }
+}; // class Space
+
+} // namespace policy
+} // namespace opmodelgbp
+#endif // GI_POLICY_SPACE_HPP

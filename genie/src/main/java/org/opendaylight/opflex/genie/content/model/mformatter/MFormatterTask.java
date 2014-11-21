@@ -55,7 +55,7 @@ public class MFormatterTask
             }
             else
             {
-                Severity.WARN.report(
+                Severity.DEATH.report(
                         toString(),"set target category","category not found", "category doesn't exist: " + aIn);
             }
         }
