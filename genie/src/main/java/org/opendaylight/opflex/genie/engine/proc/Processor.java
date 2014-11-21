@@ -83,8 +83,23 @@ public class Processor
 
         Severity.INFO.report("","", "",Config.print());
         metadataLoadPaths = Config.getSyntaxPathArray();
-        modelPreLoadPaths = Config.getLoaderPathArray();
+        modelPreLoadPaths = Config.getPreLoadPaths();
+        Severity.WARN.report("processor", "","","PRE-LOAD-PATHS:");
+        for (String[] lPath : modelPreLoadPaths)
+        {
+            Severity.WARN.report("", "","","--> " + lPath[0] + "/*" + lPath[1]);
+
+        }
         formatterCtxs = new FormatterCtx[]{new FormatterCtx("*", Config.getGenDestPath())};
+        modelPostLoadPaths = Config.getPostLoadPaths();
+
+        Severity.WARN.report("processor", "","","PRE-POST-PATHS:");
+        for (String[] lPath : modelPostLoadPaths)
+        {
+            Severity.WARN.report("", "","","--> " + lPath[0] + "/*" + lPath[1]);
+
+        }
+
     }
 
     /**
@@ -154,6 +169,14 @@ public class Processor
 
         LoaderRegistry.get().process(LoadStage.PRE);
 
+        for (i = 0; i < modelPostLoadPaths.length; i++)
+        {
+            new LoadTarget(
+                    dsp,pTree,new String[]{ modelPostLoadPaths[i][0]}, modelPostLoadPaths[i][1], false);
+            dsp.drain();
+        }
+
+
         Cat.preLoadModelComplete();
 
         LoaderRegistry.get().process(LoadStage.LOAD);
@@ -214,6 +237,8 @@ public class Processor
     }
     private String metadataLoadPaths[][];
     private String modelPreLoadPaths[][];
+    private String modelPostLoadPaths[][];
+
     private final ProcessorTree pTree;
     private FormatterCtx[] formatterCtxs;
     private Dsptchr dsp;

@@ -299,6 +299,15 @@ public class FormatterTaskMeta
             {
                 case ITEM:
                 {
+                    if (null == catOrNull)
+                    {
+                        Severity.DEATH.report(toString(),"process","ITEM","NULL CAT");
+                    }
+                    else if (null == catOrNull.getNodes())
+                    {
+                        Severity.DEATH.report(toString(),"process","ITEM","NULL CAT NODES FOR CAT: " + catOrNull);
+                    }
+
                     for (Item lItem : catOrNull.getNodes().getItemsList())
                     {
                         if (doAccept(lItem))

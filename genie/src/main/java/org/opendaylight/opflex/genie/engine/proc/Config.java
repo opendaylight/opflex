@@ -51,8 +51,49 @@ public class Config
         for (SearchPath lSp : getLoaderPath())
         {
             lRet[lIdx][0] = lSp.getPath();
-            lRet[lIdx][1] = lSp.getSuffix();
+            lRet[lIdx++][1] = lSp.getSuffix();
         }
+        return lRet;
+    }
+
+    public static Collection<SearchPath> getFormatterPath() { return formatterPath; }
+
+    public static String[][] getFormatterPathArray()
+    {
+        String lRet[][] = new String[getFormatterPath().size()][2];
+        int lIdx = 0;
+        for (SearchPath lSp : getFormatterPath())
+        {
+            lRet[lIdx][0] = lSp.getPath();
+            lRet[lIdx++][1] = lSp.getSuffix();
+        }
+        return lRet;
+    }
+
+    public static String[][] getPreLoadPaths()
+    {
+        final int lSize = (getLoaderPath().size() + getFormatterPath().size());
+        String lRet[][] = new String[lSize][2];
+        int lIdx = 0;
+        for (SearchPath lSp : getLoaderPath())
+        {
+            lRet[lIdx][0] = lSp.getPath();
+            lRet[lIdx++][1] = lSp.getSuffix();
+        }
+        return lRet;
+    }
+
+    public static String[][] getPostLoadPaths()
+    {
+        final int lSize = (getLoaderPath().size() + getFormatterPath().size());
+        String lRet[][] = new String[lSize][2];
+        int lIdx = 0;
+        for (SearchPath lSp : getFormatterPath())
+        {
+            lRet[lIdx][0] = lSp.getPath();
+            lRet[lIdx++][1] = lSp.getSuffix();
+        }
+
         return lRet;
     }
 
@@ -77,6 +118,11 @@ public class Config
         loaderPath.add(new SearchPath(concatPath(homePath,aIn), aInSuffix));
     }
 
+    public static void setFormatterRelPath(String aIn, String aInSuffix)
+    {
+        formatterPath.add(new SearchPath(concatPath(homePath,aIn), aInSuffix));
+    }
+
     public static void setLogDirParent(String aIn)
     {
         logDirParent = aIn;
@@ -94,7 +140,7 @@ public class Config
 
     public static void setConfigFile(String aIn)
     {
-        configPath = Strings.isAny(aIn) ? concatPath(System.getProperty("user.dir"), CONFIG_FILE_NAME) : aIn;
+        configPath = Strings.isAny(aIn) ? concatPath(System.getProperty("user.dir")  + "/configs", CONFIG_FILE_NAME) : aIn;
     }
 
     public static void setIsEnumSupport(String aIn)
@@ -162,6 +208,8 @@ public class Config
     public static String workingPath = initWorkingPath();
     public static Collection<SearchPath> syntaxPath = new LinkedList<SearchPath>();
     public static Collection<SearchPath> loaderPath = new LinkedList<SearchPath>();
+    public static Collection<SearchPath> formatterPath = new LinkedList<SearchPath>();
+
     public static String genDestPath = null;
     public static String configPath = null;
     public static String logDirParent = null;
