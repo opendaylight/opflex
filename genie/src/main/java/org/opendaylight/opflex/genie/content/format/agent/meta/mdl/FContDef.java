@@ -1,4 +1,4 @@
-package org.opendaylight.opflex.genie.content.format.meta.mdl;
+package org.opendaylight.opflex.genie.content.format.agent.meta.mdl;
 
 import java.util.TreeMap;
 

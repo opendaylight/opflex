@@ -94,7 +94,7 @@ public class Config
 
     public static void setConfigFile(String aIn)
     {
-        configPath = Strings.isAny(aIn) ? concatPath(System.getProperty("user.dir"), CONFIG_FILE_NAME) : aIn;
+        configPath = Strings.isAny(aIn) ? concatPath(System.getProperty("user.dir")  + "/configs", CONFIG_FILE_NAME) : aIn;
     }
 
     public static void setIsEnumSupport(String aIn)

@@ -1,4 +1,4 @@
-package org.opendaylight.opflex.genie.content.format.build.automake.cpp;
+package org.opendaylight.opflex.genie.content.format.agent.build.automake.cpp;
 
 import java.util.Collection;
 

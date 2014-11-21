@@ -1,6 +1,5 @@
-package org.opendaylight.opflex.genie.content.format.consts.cpp;
+package org.opendaylight.opflex.genie.content.format.agent.consts.cpp;
 
-import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.mconst.MConst;
 import org.opendaylight.opflex.genie.content.model.mprop.MProp;
 import org.opendaylight.opflex.genie.content.model.mtype.Language;
@@ -10,7 +9,6 @@ import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.proc.Config;
-import org.opendaylight.opflex.modlan.report.Severity;
 import org.opendaylight.opflex.modlan.utils.Strings;
 
 import java.util.Collection;
@@ -184,8 +182,6 @@ public class FEnumDef extends ItemFormatterTask
     private void genBody(int aInIndent, Item aIn)
     {
         Item lSuperHolder = getSuperHolder(aIn);
-
-        Severity.WARN.report(toString(), getItem().toString(), "","SUPERHOLDER: " + lSuperHolder);
 
         if (null != lSuperHolder)
         {

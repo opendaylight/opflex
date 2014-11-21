@@ -1,4 +1,4 @@
-package org.opendaylight.opflex.genie.content.format.meta.cpp;
+package org.opendaylight.opflex.genie.content.format.agent.meta.cpp;
 
 import java.util.Collection;
 import java.util.Map;
@@ -11,7 +11,6 @@ import org.opendaylight.opflex.genie.content.model.mnaming.MNameComponent;
 import org.opendaylight.opflex.genie.content.model.mnaming.MNameRule;
 import org.opendaylight.opflex.genie.content.model.mownership.MOwner;
 import org.opendaylight.opflex.genie.content.model.mprop.MProp;
-import org.opendaylight.opflex.genie.content.model.mrelator.MRelationshipClass;
 import org.opendaylight.opflex.genie.content.model.mtype.MType;
 import org.opendaylight.opflex.genie.content.model.mtype.MTypeHint;
 import org.opendaylight.opflex.genie.content.model.mtype.TypeInfo;
@@ -20,7 +19,6 @@ import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.proc.Config;
-import org.opendaylight.opflex.modlan.report.Severity;
 
 /**
  * Created by midvorki on 9/24/14.

@@ -1,4 +1,4 @@
-package org.opendaylight.opflex.genie.content.format.meta.cpp;
+package org.opendaylight.opflex.genie.content.format.agent.meta.cpp;
 
 import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
