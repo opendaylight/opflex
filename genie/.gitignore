@@ -1,5 +1,6 @@
 /target
 /GENTEST
+/opproxy-target
 .project
 .settings
 .classpath
