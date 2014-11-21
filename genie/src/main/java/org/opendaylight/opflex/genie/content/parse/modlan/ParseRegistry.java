@@ -3,6 +3,7 @@ package org.opendaylight.opflex.genie.content.parse.modlan;
 import org.opendaylight.opflex.genie.content.model.mmeta.NodeType;
 import org.opendaylight.opflex.genie.content.parse.pconfig.PConfigNode;
 import org.opendaylight.opflex.genie.content.parse.pconfig.PLoaderNode;
+import org.opendaylight.opflex.genie.content.parse.pconfig.PFormatterNode;
 import org.opendaylight.opflex.genie.content.parse.pconfig.PSyntaxNode;
 import org.opendaylight.opflex.genie.content.parse.pmeta.PAlias;
 import org.opendaylight.opflex.genie.content.parse.pmeta.PNode;
@@ -78,6 +79,10 @@ public class ParseRegistry
                 {
                     PLoaderNode lLoader = new PLoaderNode();
                     config.addChild(lLoader);
+                }
+                {
+                    PFormatterNode lFormatter = new PFormatterNode();
+                    config.addChild(lFormatter);
                 }
                 {
                     PSyntaxNode lSyntax = new PSyntaxNode();
