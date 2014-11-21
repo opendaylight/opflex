@@ -454,7 +454,7 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
     BOOST_FOREACH(shared_ptr<Subject>& sub, subjects) {
         vector<shared_ptr<Rule> > rules;
         sub->resolveGbpRule(rules);
-        sort(rules.begin(), rules.end(), ruleComp);
+        stable_sort(rules.begin(), rules.end(), ruleComp);
 
         BOOST_FOREACH(shared_ptr<Rule>& rule, rules) {
             vector<shared_ptr<L24Classifier> > classifiers;
@@ -471,7 +471,7 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
                     classifiers.push_back(cls.get());
                 }
             }
-            sort(classifiers.begin(), classifiers.end(), classifierComp);
+            stable_sort(classifiers.begin(), classifiers.end(), classifierComp);
             newRules.insert(newRules.end(), classifiers.begin(),
                     classifiers.end());
         }
