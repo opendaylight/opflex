@@ -90,11 +90,13 @@ class EchoGen {
 };
 
 void CommunicationPeer::sendEchoReq() {
-    yajr::rpc::OutReq<&rpc::method::echo> * req =
-        yajr::rpc::MessageFactory::
-        newReq<&rpc::method::echo>(*this, EchoGen(*this));
 
-    req -> send();
+    yajr::rpc::OutReq< &rpc::method::echo > (
+            *this,
+            EchoGen(*this)
+        )
+        . send();
+
 }
 
 void CommunicationPeer::timeout() {
