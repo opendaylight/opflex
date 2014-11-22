@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Main implementation for OVS agent
+ * Mock server standalone
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -8,50 +8,64 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
-
+#include <unistd.h>
 #include <signal.h>
-#include <string.h>
 
 #include <string>
 #include <iostream>
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/program_options.hpp>
+#include <boost/assign/list_of.hpp>
 
-#include "Agent.h"
+#include <modelgbp/dmtree/Root.hpp>
+#include <modelgbp/metadata/metadata.hpp>
+#include <opflex/test/MockOpflexServer.h>
+#include <opflex/ofcore/OFFramework.h>
+#include <opflex/ofcore/OFConstants.h>
+
 #include "logging.h"
 #include "cmd.h"
+#include "Policies.h"
 
 using std::string;
-using opflex::ofcore::OFFramework;
+using std::make_pair;
+using boost::assign::list_of;
 namespace po = boost::program_options;
+using opflex::test::MockOpflexServer;
+using opflex::ofcore::OFConstants;
 using namespace ovsagent;
 
 void sighandler(int sig) {
     LOG(INFO) << "Got " << strsignal(sig) << " signal";
 }
 
-#define DEFAULT_CONF SYSCONFDIR"/opflex-agent-ovs/opflex-agent-ovs.conf"
+#define SERVER_ROLES \
+        (OFConstants::POLICY_REPOSITORY |     \
+         OFConstants::ENDPOINT_REGISTRY |     \
+         OFConstants::OBSERVER)
+#define LOCALHOST "127.0.0.1"
 
 int main(int argc, char** argv) {
     // Parse command line options
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help,h", "Print this help message")
-        ("config,c",
-         po::value<string>()->default_value(DEFAULT_CONF), 
-         "Read configuration from the specified file")
         ("log", po::value<string>()->default_value(""), 
          "Log to the specified file (default standard out)")
-        ("level", po::value<string>()->default_value("level"), 
-         "Use the specified log level (default INFO)")
+        ("level", po::value<string>()->default_value("info"), 
+         "Use the specified log level (default info)")
+        ("sample", po::value<string>()->default_value(""), 
+         "Output a sample policy to the given file then exit")
         ("daemon", "Run the agent as a daemon")
+        ("policy,p", po::value<string>()->default_value(""),
+         "Read the specified policy file to seed the MODB")
         ;
-    
+
     bool daemon = false;
     std::string log_file;
     std::string level_str;
+    std::string policy_file;
+    std::string sample_file;
 
     po::variables_map vm;
     try {
@@ -69,6 +83,8 @@ int main(int argc, char** argv) {
         }
         log_file = vm["log"].as<string>();
         level_str = vm["level"].as<string>();
+        policy_file = vm["policy"].as<string>();
+        sample_file = vm["sample"].as<string>();
 
     } catch (po::unknown_option e) {
         std::cerr << e.what() << std::endl;
@@ -80,22 +96,32 @@ int main(int argc, char** argv) {
     initLogging(level_str, log_file);
 
     try {
-        // Initialize agent and configuration
-        Agent agent(OFFramework::defaultInstance());
-        
-        using boost::property_tree::ptree;
-        ptree properties;
-        LOG(INFO) << "Reading configuration from " << vm["config"].as<string>();
-        read_json(vm["config"].as<string>(), properties);
-        agent.setProperties(properties);
-        
-        agent.start();
+        if (sample_file != "") {
+            opflex::ofcore::MockOFFramework mframework;
+            mframework.setModel(modelgbp::getMetadata());
+            mframework.start();
+            Policies::writeBasicInit(mframework);
+            Policies::writeTestPolicy(mframework);
+            
+            mframework.dumpMODB(modelgbp::dmtree::Root::CLASS_ID,
+                                sample_file);
+            
+            mframework.stop();
+            return 0;
+        }
 
-        // Pause the main thread until interrupted
+        MockOpflexServer server(8009, SERVER_ROLES, 
+                                list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
+                                modelgbp::getMetadata());
+
+        if (policy_file != "") {
+            server.readPolicy(policy_file);
+        }
+
+        server.start();
         signal(SIGINT, sighandler);
         pause();
-        agent.stop();
-        return 0;
+        server.stop();
     } catch (const std::exception& e) {
         LOG(ERROR) << "Fatal error: " << e.what();
         return 2;

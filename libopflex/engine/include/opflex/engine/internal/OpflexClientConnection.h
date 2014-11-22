@@ -55,6 +55,11 @@ public:
     virtual void disconnect();
 
     /**
+     * Close the connection
+     */ 
+    virtual void close();
+
+    /**
      * Get the connection pool that hosts this connection
      *
      * @return a pointer to the OpflexPool
@@ -89,6 +94,7 @@ public:
 
 #ifdef SIMPLE_RPC
     virtual void write(const rapidjson::StringBuffer* buf);
+    bool shouldRetry() { return retry; }
 #else
     virtual yajr::Peer* getPeer() { return peer; }
 #endif
@@ -105,6 +111,7 @@ private:
     uv_tcp_t socket;
     uv_connect_t connect_req;
     uv_shutdown_t shutdown;
+    bool retry;
 #else
     yajr::Peer* peer;
 #endif

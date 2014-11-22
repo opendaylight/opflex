@@ -120,7 +120,7 @@ public:
      * @return the master for the role, or NULL if there is no ready
      * connection with that role
      */
-    OpflexClientConnection* getMasterForRole(OpflexHandler::OpflexRole role);
+    OpflexClientConnection* getMasterForRole(ofcore::OFConstants::OpflexRole role);
 
     /**
      * Send a given message to all the connected and ready peers with
@@ -132,7 +132,7 @@ public:
      * thread
      */
     void sendToRole(OpflexMessage* message, 
-                    OpflexHandler::OpflexRole role,
+                    ofcore::OFConstants::OpflexRole role,
                     bool sync = false);
 
 private:
@@ -172,11 +172,13 @@ private:
     uv_async_t conn_async;
     uv_async_t cleanup_async;
     uv_async_t writeq_async;
+    uv_timer_t timer;
 
     void doRemovePeer(const std::string& hostname, int port);
+    void doAddPeer(const std::string& hostname, int port);
     void doSetRoles(ConnData& cd, uint8_t newroles);
     void updateRole(ConnData& cd, uint8_t newroles, 
-                    OpflexHandler::OpflexRole role);
+                    ofcore::OFConstants::OpflexRole role);
     void connectionClosed(OpflexClientConnection* conn);
     uv_loop_t* getLoop() { return &client_loop; }
     void messagesReady();
@@ -186,7 +188,8 @@ private:
     static void on_cleanup_async(uv_async_t *handle);
     static void on_writeq_async(uv_async_t *handle);
 #ifdef SIMPLE_RPC
-    static void on_conn_closed(uv_handle_t *handle);
+    static void on_conn_closed(OpflexClientConnection* conn);
+    static void on_timer(uv_timer_t* timer);
 #endif
 
     friend class OpflexClientConnection;

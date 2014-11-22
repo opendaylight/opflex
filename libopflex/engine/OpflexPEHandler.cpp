@@ -39,6 +39,7 @@ using internal::MOSerializer;
 using modb::mointernal::StoreClient;
 using rapidjson::Value;
 using rapidjson::Writer;
+using ofcore::OFConstants;
 
 class SendIdentityReq : public OpflexMessage {
 public:
@@ -74,13 +75,13 @@ public:
         writer.String(domain.c_str());
         writer.String("my_role");
         writer.StartArray();
-        if (roles & OpflexHandler::POLICY_ELEMENT)
+        if (roles & OFConstants::POLICY_ELEMENT)
             writer.String("policy_element");
-        if (roles & OpflexHandler::POLICY_REPOSITORY)
+        if (roles & OFConstants::POLICY_REPOSITORY)
             writer.String("policy_repository");
-        if (roles & OpflexHandler::ENDPOINT_REGISTRY)
+        if (roles & OFConstants::ENDPOINT_REGISTRY)
             writer.String("endpoint_registry");
-        if (roles & OpflexHandler::OBSERVER)
+        if (roles & OFConstants::OBSERVER)
             writer.String("observer");
         writer.EndArray();
         writer.EndObject();
@@ -102,7 +103,7 @@ void OpflexPEHandler::connected() {
     SendIdentityReq* req = 
         new SendIdentityReq(pool.getName(),
                             pool.getDomain(),
-                            OpflexHandler::POLICY_ELEMENT);
+                            OFConstants::POLICY_ELEMENT);
     getConnection()->sendMessage(req, true);
 }
 
@@ -193,13 +194,13 @@ void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
 
                     string rolestr = it->GetString();
                     if (rolestr == "policy_element") {
-                        peerRoles |= OpflexHandler::POLICY_ELEMENT;
+                        peerRoles |= OFConstants::POLICY_ELEMENT;
                     } else if (rolestr == "policy_repository") {
-                        peerRoles |= OpflexHandler::POLICY_REPOSITORY;
+                        peerRoles |= OFConstants::POLICY_REPOSITORY;
                     } else if (rolestr == "endpoint_registry") {
-                        peerRoles |= OpflexHandler::ENDPOINT_REGISTRY;
+                        peerRoles |= OFConstants::ENDPOINT_REGISTRY;
                     } else if (rolestr == "observer") {
-                        peerRoles |= OpflexHandler::OBSERVER;
+                        peerRoles |= OFConstants::OBSERVER;
                     }
                 }
             }
@@ -208,8 +209,8 @@ void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
         ready();
     } else {
         LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] " 
-                  << "Current peer not found in peer list; disconnecting";
-        conn->disconnect();
+                  << "Current peer not found in peer list; closing";
+        conn->close();
     }
 }
 

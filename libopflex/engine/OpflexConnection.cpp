@@ -69,6 +69,10 @@ void OpflexConnection::disconnect() {
     cleanup();
 }
 
+void OpflexConnection::close() {
+    disconnect();
+}
+
 bool OpflexConnection::isReady() { 
     return handler->isReady();
 }

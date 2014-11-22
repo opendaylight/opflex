@@ -38,6 +38,8 @@ libengine_la_SOURCES = \
 	include/opflex/engine/internal/OpflexListener.h \
 	include/opflex/engine/internal/OpflexPool.h \
 	include/opflex/engine/internal/ProcessorMessage.h \
+	include/opflex/engine/internal/MockOpflexServerImpl.h \
+	include/opflex/engine/internal/MockServerHandler.h \
 	include/opflex/engine/Processor.h \
 	AbstractObjectListener.cpp \
 	MOSerializer.cpp \
@@ -49,4 +51,6 @@ libengine_la_SOURCES = \
 	OpflexClientConnection.cpp \
 	OpflexServerConnection.cpp \
 	OpflexListener.cpp \
-	OpflexPool.cpp
+	OpflexPool.cpp \
+	MockOpflexServer.cpp \
+	MockServerHandler.cpp

@@ -63,9 +63,17 @@ public:
 
     /**
      * Disconnect this connection from the remote peer.  Must be
-     * called from the libuv processing thread
+     * called from the libuv processing thread.  Will retry if the
+     * connection type supports it.
      */
     virtual void disconnect();
+
+    /**
+     * Disconnect this connection from the remote peer and close the
+     * connection.  Must be called from the libuv processing thread.
+     * Will not retry.
+     */
+    virtual void close();
 
     /**
      * Get the unique name for this component in the policy domain
