@@ -23,6 +23,7 @@ namespace internal {
 
 using std::make_pair;
 using std::string;
+using ofcore::OFConstants;
 
 OpflexPool::OpflexPool(HandlerFactory& factory_)
     : factory(factory_), active(false) {
@@ -54,7 +55,7 @@ void OpflexPool::on_cleanup_async(uv_async_t* handle) {
             }
         }
         BOOST_FOREACH(OpflexConnection* conn, conns) {
-            conn->disconnect();
+            conn->close();
         }
         if (conns.size() > 0)
             return;
@@ -63,7 +64,10 @@ void OpflexPool::on_cleanup_async(uv_async_t* handle) {
     uv_close((uv_handle_t*)&pool->writeq_async, NULL);
     uv_close((uv_handle_t*)&pool->conn_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
-#ifndef SIMPLE_RPC
+#ifdef SIMPLE_RPC
+    uv_timer_stop(&pool->timer);
+    uv_close((uv_handle_t*)&pool->timer, NULL);
+#else
     yajr::finiLoop(&pool->client_loop);
 #endif
 }
@@ -81,7 +85,11 @@ void OpflexPool::start() {
     active = true;
 
     uv_loop_init(&client_loop);
-#ifndef SIMPLE_RPC
+#ifdef SIMPLE_RPC
+    timer.data = this;
+    uv_timer_init(&client_loop, &timer);
+    uv_timer_start(&timer, on_timer, 5000, 5000);
+#else
     yajr::initLoop(&client_loop);
 #endif
 
@@ -126,6 +134,11 @@ OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname,
 
 void OpflexPool::addPeer(const std::string& hostname, int port) {
     util::LockGuard guard(&conn_mutex);
+    doAddPeer(hostname, port);
+    uv_async_send(&conn_async);
+}
+
+void OpflexPool::doAddPeer(const std::string& hostname, int port) {
     if (!active) return;
     ConnData& cd = connections[make_pair(hostname, port)];
     if (cd.conn != NULL) {
@@ -137,8 +150,6 @@ void OpflexPool::addPeer(const std::string& hostname, int port) {
             new OpflexClientConnection(factory, this, hostname, port);
         cd.conn = conn;
     }
-    guard.release();
-    uv_async_send(&conn_async);
 }
 
 void OpflexPool::addPeer(OpflexClientConnection* conn) {
@@ -165,7 +176,7 @@ void OpflexPool::doRemovePeer(const std::string& hostname, int port) {
 // must be called with conn_mutex held
 void OpflexPool::updateRole(ConnData& cd,
                             uint8_t newroles,
-                            OpflexHandler::OpflexRole role) {
+                            OFConstants::OpflexRole role) {
     if (cd.roles & role) {
         if (!(newroles & role)) {
             role_map_t::iterator it = roles.find(role);
@@ -194,14 +205,14 @@ void OpflexPool::setRoles(OpflexClientConnection* conn,
 
 // must be called with conn_mutex held
 void OpflexPool::doSetRoles(ConnData& cd, uint8_t newroles) {
-    updateRole(cd, newroles, OpflexHandler::POLICY_ELEMENT);
-    updateRole(cd, newroles, OpflexHandler::POLICY_REPOSITORY);
-    updateRole(cd, newroles, OpflexHandler::ENDPOINT_REGISTRY);
-    updateRole(cd, newroles, OpflexHandler::OBSERVER);
+    updateRole(cd, newroles, OFConstants::POLICY_ELEMENT);
+    updateRole(cd, newroles, OFConstants::POLICY_REPOSITORY);
+    updateRole(cd, newroles, OFConstants::ENDPOINT_REGISTRY);
+    updateRole(cd, newroles, OFConstants::OBSERVER);
 }
 
 OpflexClientConnection*
-OpflexPool::getMasterForRole(OpflexHandler::OpflexRole role) {
+OpflexPool::getMasterForRole(OFConstants::OpflexRole role) {
     util::LockGuard guard(&conn_mutex);
     role_map_t::iterator it = roles.find(role);
     if (it == roles.end())
@@ -223,9 +234,19 @@ void OpflexPool::client_thread_func(void* pool_) {
 }
 
 #ifdef SIMPLE_RPC
-void OpflexPool::on_conn_closed(uv_handle_t *handle) {
-    OpflexClientConnection* conn = (OpflexClientConnection*)handle->data;
+void OpflexPool::on_conn_closed(OpflexClientConnection* conn) {
+    std::string host = conn->getHostname();
+    int port = conn->getPort();
+    bool retry = conn->shouldRetry();
+    OpflexPool* pool = conn->getPool();
     conn->getPool()->connectionClosed(conn);
+    if (retry && pool->active)
+        pool->doAddPeer(host, port);
+}
+
+void OpflexPool::on_timer(uv_timer_t* timer) {
+    OpflexPool* pool = (OpflexPool*)timer->data;
+    on_conn_async(&pool->conn_async);
 }
 #endif
 
@@ -244,7 +265,7 @@ void OpflexPool::messagesReady() {
 }
 
 void OpflexPool::sendToRole(OpflexMessage* message,
-                            OpflexHandler::OpflexRole role,
+                            OFConstants::OpflexRole role,
                             bool sync) {
     std::auto_ptr<OpflexMessage> messagep(message);
     if (!active) return;

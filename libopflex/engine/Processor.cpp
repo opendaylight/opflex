@@ -38,6 +38,7 @@ using modb::URI;
 using modb::mointernal::StoreClient;
 using modb::mointernal::ObjectInstance;
 using modb::hash_value;
+using ofcore::OFConstants;
 
 using namespace internal;
 
@@ -208,7 +209,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i) {
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             PolicyResolveReq* req = new PolicyResolveReq(this, refs);
-            pool.sendToRole(req, OpflexHandler::POLICY_REPOSITORY);
+            pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
             return true;
         }
         break;
@@ -217,7 +218,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i) {
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             EndpointResolveReq* req = new EndpointResolveReq(this, refs);
-            pool.sendToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+            pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
             return true;
         }
         break;
@@ -236,7 +237,7 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             EndpointDeclareReq* req = new EndpointDeclareReq(this, refs);
-            pool.sendToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+            pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
         }
         return true;
         break;
@@ -245,7 +246,7 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             StateReportReq* req = new StateReportReq(this, refs);
-            pool.sendToRole(req, OpflexHandler::OBSERVER);
+            pool.sendToRole(req, OFConstants::OBSERVER);
         }
         return true;
         break;
@@ -284,7 +285,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
 
     LOG(DEBUG) << "Processing " << (local ? "local" : "nonlocal")
                << " item " << it->uri.toString() 
-               << " of class " << ci.getId()
+               << " of class " << ci.getName()
                << " and type " << ci.getType()
                << " in state " << curState;
 
@@ -377,7 +378,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 vector<reference_t> refs;
                 refs.push_back(make_pair(it->details->class_id, it->uri));
                 PolicyUnresolveReq* req = new PolicyUnresolveReq(this, refs);
-                pool.sendToRole(req, OpflexHandler::POLICY_REPOSITORY);
+                pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
             }
             break;
         case ClassInfo::REMOTE_ENDPOINT:
@@ -386,7 +387,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 refs.push_back(make_pair(it->details->class_id, it->uri));
                 EndpointUnresolveReq* req = 
                     new EndpointUnresolveReq(this, refs);
-                pool.sendToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+                pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
             }
             break;
         case ClassInfo::LOCAL_ENDPOINT:
@@ -395,7 +396,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 refs.push_back(make_pair(it->details->class_id, it->uri));
                 EndpointUndeclareReq* req = 
                     new EndpointUndeclareReq(this, refs);
-                pool.sendToRole(req, OpflexHandler::ENDPOINT_REGISTRY);
+                pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
             }
             break;
         default:

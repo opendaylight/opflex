@@ -569,6 +569,7 @@
  * 
  */
 
+#pragma once
 #ifndef OPFLEX_CORE_OFFRAMEWORK_H
 #define OPFLEX_CORE_OFFRAMEWORK_H
 
@@ -696,6 +697,16 @@ public:
      * Cleanly stop the framework
      */
     virtual void stop();
+
+    /**
+     * Dump the managed object database to the file specified as a
+     * JSON blob.
+     * 
+     * @param the class ID of the root of your managed object tree
+     * @param file the file to write to.
+     */
+    virtual void dumpMODB(modb::class_id_t root_class_id,
+                          const std::string& file);
 
     /**
      * Add an OpFlex peer.  If the framework is started, this will

@@ -16,6 +16,7 @@
 #include <opflex/modb/Mutator.h>
 
 #include "BaseFixture.h"
+#include "Policies.h"
 
 namespace ovsagent {
 
@@ -70,7 +71,6 @@ public:
         classifier4 = space->addGbpeL24Classifier("classifier4");
         classifier5 = space->addGbpeL24Classifier("classifier5");
         classifier6 = space->addGbpeL24Classifier("classifier6");
-
 
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")

@@ -9,44 +9,103 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <cstdio>
+
 #include <boost/foreach.hpp>
+#include <rapidjson/document.h>
+#include <rapidjson/filereadstream.h>
 
+#include "opflex/test/MockOpflexServer.h"
 #include "opflex/engine/internal/OpflexMessage.h"
-
-#include "MockOpflexServer.h"
-#include "MockServerHandler.h"
+#include "opflex/engine/internal/MockOpflexServerImpl.h"
+#include "opflex/engine/internal/MockServerHandler.h"
 
 namespace opflex {
+namespace test {
+
+MockOpflexServer::MockOpflexServer(int port, uint8_t roles, 
+                                   peer_vec_t peers,
+                                   const modb::ModelMetadata& md)
+    : pimpl(new engine::internal
+            ::MockOpflexServerImpl(port, roles, peers, md)) { }
+
+MockOpflexServer::~MockOpflexServer() {
+    delete pimpl;
+}
+void MockOpflexServer::start() {
+    pimpl->start();
+}
+void MockOpflexServer::stop() {
+    pimpl->stop();
+}
+
+void MockOpflexServer::readPolicy(const std::string& file) {
+    pimpl->readPolicy(file);
+}
+
+const MockOpflexServer::peer_vec_t& MockOpflexServer::getPeers() const {
+    return pimpl->getPeers();
+};
+int MockOpflexServer::getPort() const { return pimpl->getPort(); };
+uint8_t MockOpflexServer::getRoles() const { return pimpl->getRoles(); };
+
+} /* namespace test */
+
 namespace engine {
 namespace internal {
 
 using rapidjson::Value;
 using rapidjson::Writer;
 using modb::mointernal::StoreClient;
+using test::MockOpflexServer;
 
-MockOpflexServer::MockOpflexServer(int port_, uint8_t roles_, 
-                                   peer_vec_t peers_,
-                                   const modb::ModelMetadata& md)
+MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_, 
+                                           MockOpflexServer::peer_vec_t peers_,
+                                           const modb::ModelMetadata& md)
     : port(port_), roles(roles_), peers(peers_),
       listener(*this, port_, "name", "domain"), 
       serializer(&db) {
     db.init(md);
+}
+
+MockOpflexServerImpl::~MockOpflexServerImpl() {
+
+}
+
+void MockOpflexServerImpl::start() {
     db.start();
     client = &db.getStoreClient("_SYSTEM_");
+    listener.listen();
 }
 
-MockOpflexServer::~MockOpflexServer() {
+void MockOpflexServerImpl::stop() {
     listener.disconnect();
     db.stop();
+    client = NULL;
 }
 
-OpflexHandler* MockOpflexServer::newHandler(OpflexConnection* conn) {
+void MockOpflexServerImpl::readPolicy(const std::string& file) {
+    FILE* pfile = fopen(file.c_str(), "r");
+    if (pfile == NULL) {
+        LOG(ERROR) << "Could not open policy file "
+                   << file << " for reading";
+        return;
+    }
+
+    char buffer[1024];
+    rapidjson::FileReadStream f(pfile, buffer, sizeof(buffer));
+    rapidjson::Document d;
+    d.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(f);
+    serializer.deserialize(d, *client, true, NULL);
+}
+
+OpflexHandler* MockOpflexServerImpl::newHandler(OpflexConnection* conn) {
     return new MockServerHandler(conn, this);
 }
 
 class PolicyUpdateReq : public OpflexMessage {
 public:
-    PolicyUpdateReq(MockOpflexServer& server_,
+    PolicyUpdateReq(MockOpflexServerImpl& server_,
                     const std::vector<modb::reference_t>& replace_,
                     const std::vector<modb::reference_t>& merge_children_,
                     const std::vector<modb::reference_t>& del_)
@@ -116,13 +175,13 @@ public:
     }
 
 protected:
-    MockOpflexServer& server;
+    MockOpflexServerImpl& server;
     std::vector<modb::reference_t> replace;
     std::vector<modb::reference_t> merge_children;
     std::vector<modb::reference_t> del;
 };
 
-void MockOpflexServer::policyUpdate(const std::vector<modb::reference_t>& replace,
+void MockOpflexServerImpl::policyUpdate(const std::vector<modb::reference_t>& replace,
                                     const std::vector<modb::reference_t>& merge_children,
                                     const std::vector<modb::reference_t>& del) {
     PolicyUpdateReq* req = 
@@ -132,7 +191,7 @@ void MockOpflexServer::policyUpdate(const std::vector<modb::reference_t>& replac
 
 class EndpointUpdateReq : public OpflexMessage {
 public:
-    EndpointUpdateReq(MockOpflexServer& server_,
+    EndpointUpdateReq(MockOpflexServerImpl& server_,
                     const std::vector<modb::reference_t>& replace_,
                     const std::vector<modb::reference_t>& del_)
         : OpflexMessage("endpoint_update", REQUEST),
@@ -191,13 +250,13 @@ public:
     }
 
 protected:
-    MockOpflexServer& server;
+    MockOpflexServerImpl& server;
     std::vector<modb::reference_t> replace;
     std::vector<modb::reference_t> del;
 };
 
-void MockOpflexServer::endpointUpdate(const std::vector<modb::reference_t>& replace,
-                                      const std::vector<modb::reference_t>& del) {
+void MockOpflexServerImpl::endpointUpdate(const std::vector<modb::reference_t>& replace,
+                                          const std::vector<modb::reference_t>& del) {
     EndpointUpdateReq* req = new EndpointUpdateReq(*this, replace, del);
     listener.sendToAll(req);
 }

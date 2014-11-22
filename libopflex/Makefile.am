@@ -41,7 +41,11 @@ modb_mo_include_HEADERS = \
 	include/opflex/modb/mo-internal/StoreClient.h 
 core_includedir = $(includedir)/opflex/ofcore
 core_include_HEADERS = \
-	include/opflex/ofcore/OFFramework.h 
+	include/opflex/ofcore/OFFramework.h \
+	include/opflex/ofcore/OFConstants.h 
+test_includedir = $(includedir)/opflex/test
+test_include_HEADERS = \
+	include/opflex/test/MockOpflexServer.h 
 logging_includedir = $(includedir)/opflex/logging
 logging_include_HEADERS = \
 	include/opflex/logging/OFLogHandler.h \

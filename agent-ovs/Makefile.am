@@ -50,12 +50,14 @@ libagent_ovs_la_SOURCES = \
 	src/include/EndpointSource.h \
 	src/include/FSEndpointSource.h \
 	src/include/Agent.h \
+	include/cmd.h \
 	src/BoostLogHandler.cpp \
 	src/PolicyManager.cpp \
 	src/Endpoint.cpp \
 	src/EndpointManager.cpp \
 	src/EndpointSource.cpp \
 	src/FSEndpointSource.cpp \
+	src/cmd.cpp \
 	src/Agent.cpp
 
 if HAVE_OVS
@@ -84,6 +86,8 @@ agent_ovs_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB)
 
 TESTS = agent_test
+noinst_PROGRAMS = $(TESTS) mock_server
+
 agent_test_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) \
@@ -110,7 +114,16 @@ agent_test_SOURCES += \
 	test/FlowExecutor_test.cpp
 endif
 
-noinst_PROGRAMS = $(TESTS)
+mock_server_CXXFLAGS = \
+	-I$(top_srcdir)/test/include \
+	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) 
+mock_server_SOURCES = \
+	test/include/Policies.h \
+	test/Policies.cpp \
+	test/mock_server.cpp
+mock_server_LDADD = \
+	libagent_ovs.la \
+	$(BOOST_PROGRAM_OPTIONS_LIB)
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf

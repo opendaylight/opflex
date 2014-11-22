@@ -27,7 +27,7 @@ namespace opflex {
 namespace engine {
 namespace internal {
 
-class MockOpflexServer;
+class MockOpflexServerImpl;
 
 /**
  * An opflex handler for mocking a server implementation when writing
@@ -39,7 +39,7 @@ public:
      * Construct a new opflex PE handler associated with the given
      * connection
      */
-    MockServerHandler(OpflexConnection* conn, MockOpflexServer* server_) 
+    MockServerHandler(OpflexConnection* conn, MockOpflexServerImpl* server_) 
         : OpflexHandler(conn), server(server_) {}
 
     /**
@@ -83,7 +83,7 @@ public:
                                       const rapidjson::Value& payload);
 
 protected:
-    MockOpflexServer* server;
+    MockOpflexServerImpl* server;
     boost::unordered_set<modb::reference_t> resolutions;
 };
 
