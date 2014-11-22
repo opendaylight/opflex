@@ -66,6 +66,7 @@ MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
       listener(*this, port_, "name", "domain"), 
       serializer(&db) {
     db.init(md);
+    client = &db.getStoreClient("_SYSTEM_");
 }
 
 MockOpflexServerImpl::~MockOpflexServerImpl() {
@@ -74,7 +75,6 @@ MockOpflexServerImpl::~MockOpflexServerImpl() {
 
 void MockOpflexServerImpl::start() {
     db.start();
-    client = &db.getStoreClient("_SYSTEM_");
     listener.listen();
 }
 
@@ -96,7 +96,19 @@ void MockOpflexServerImpl::readPolicy(const std::string& file) {
     rapidjson::FileReadStream f(pfile, buffer, sizeof(buffer));
     rapidjson::Document d;
     d.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(f);
-    serializer.deserialize(d, *client, true, NULL);
+    if (!d.IsArray()) {
+        LOG(ERROR) << "Malformed policy file: not an array";
+        return;
+    }
+    rapidjson::Value::ConstValueIterator moit;
+    int i = 0;
+    for (moit = d.Begin(); moit != d.End(); ++ moit) {
+        const rapidjson::Value& mo = *moit;
+        serializer.deserialize(mo, *getSystemClient(), true, NULL);
+        i += 1;
+    }
+    LOG(INFO) << "Read " << i 
+              << " managed objects from policy file \"" << file << "\"";
 }
 
 OpflexHandler* MockOpflexServerImpl::newHandler(OpflexConnection* conn) {
