@@ -172,12 +172,14 @@ public class FMetaDef
 
     public static boolean isLocalEp(MClass aIn)
     {
-        return aIn.getModule().getLID().getName().equalsIgnoreCase("epdr");
+        return aIn.getModule().getLID().getName().equalsIgnoreCase("epdr") &&
+                !aIn.isSubclassOf("epr/Universe");
     }
 
     public static boolean isGlobalEp(MClass aIn)
     {
-        return aIn.getModule().getLID().getName().equalsIgnoreCase("epr");
+        return aIn.getModule().getLID().getName().equalsIgnoreCase("epr") &&
+               !aIn.isSubclassOf("epr/Universe");
     }
 
     public static boolean isPolicy(MClass aIn)
