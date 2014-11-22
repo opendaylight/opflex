@@ -50,6 +50,11 @@ public:
     ~OpflexListener();
 
     /**
+     * Start listening on the local socket for new connections
+     */
+    void listen();
+
+    /**
      * Stop listening on the local socket for new connections
      */
     void disconnect();

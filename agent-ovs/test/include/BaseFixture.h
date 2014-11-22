@@ -57,7 +57,6 @@ public:
 // thread
 #define WAIT_FOR(condition, count)  WAIT_FOR_DO(condition, count, ;)
 
-
 } /* namespace ovsagent */
 
 #endif /* OVSAGENT_TEST_BASEFIXTURE_H */

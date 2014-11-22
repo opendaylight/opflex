@@ -36,57 +36,10 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
                                const std::string& domain_)
     : handlerFactory(handlerFactory_), port(port_), 
       name(name_), domain(domain_), active(true) {
-    int rc;
     uv_mutex_init(&conn_mutex);
-    uv_loop_init(&server_loop);
-    cleanup_async.data = this;
-    writeq_async.data = this;
-    uv_async_init(&server_loop, &cleanup_async, on_cleanup_async);
-    uv_async_init(&server_loop, &writeq_async, on_writeq_async);
-
-#ifdef SIMPLE_RPC
-
-    uv_tcp_init(&server_loop, &bind_socket);
-    server_loop.data = this;
-    bind_socket.data = this;
-
-    struct sockaddr_in bind_addr;
-    bind_addr.sin_family = AF_INET;
-    bind_addr.sin_addr.s_addr = INADDR_ANY;
-    bind_addr.sin_port = htons(port);
-    
-    LOG(INFO) << "Binding to port " << port_;
-    rc = uv_tcp_bind(&bind_socket, (struct sockaddr*)&bind_addr, 0);
-    if (rc) {
-        throw std::runtime_error(string("Could not bind to socket: ") + 
-                                 uv_strerror(rc));
-    }
-
-    rc = uv_listen((uv_stream_t*)&bind_socket, 128, on_new_connection);
-    if (rc < 0) {
-        throw std::runtime_error(string("Could not listen for connections: ") +
-                                 uv_strerror(rc));
-    }
-#else
-    yajr::initLoop(&server_loop);
-
-    listener = yajr::Listener::create("0.0.0.0", port, 
-                                      OpflexServerConnection::on_state_change,
-                                      on_new_connection,
-                                      this,
-                                      &server_loop,
-                                      OpflexServerConnection::loop_selector);
-                                      
-#endif
-    rc = uv_thread_create(&server_thread, server_thread_func, this);
-    if (rc < 0) {
-        throw std::runtime_error(string("Could not create server thread: ") +
-                                 uv_strerror(rc));
-    }
 }
 
 OpflexListener::~OpflexListener() {
-    disconnect();
     uv_mutex_destroy(&conn_mutex);
 }
 
@@ -116,6 +69,55 @@ void OpflexListener::on_writeq_async(uv_async_t* handle) {
     util::LockGuard guard(&listener->conn_mutex);
     BOOST_FOREACH(OpflexServerConnection* conn, listener->conns) {
         conn->processWriteQueue();
+    }
+}
+
+void OpflexListener::listen() {
+    int rc;
+    uv_loop_init(&server_loop);
+    cleanup_async.data = this;
+    writeq_async.data = this;
+    uv_async_init(&server_loop, &cleanup_async, on_cleanup_async);
+    uv_async_init(&server_loop, &writeq_async, on_writeq_async);
+
+#ifdef SIMPLE_RPC
+
+    uv_tcp_init(&server_loop, &bind_socket);
+    server_loop.data = this;
+    bind_socket.data = this;
+
+    struct sockaddr_in bind_addr;
+    bind_addr.sin_family = AF_INET;
+    bind_addr.sin_addr.s_addr = INADDR_ANY;
+    bind_addr.sin_port = htons(port);
+    
+    LOG(INFO) << "Binding to port " << port;
+    rc = uv_tcp_bind(&bind_socket, (struct sockaddr*)&bind_addr, 0);
+    if (rc) {
+        throw std::runtime_error(string("Could not bind to socket: ") + 
+                                 uv_strerror(rc));
+    }
+
+    rc = uv_listen((uv_stream_t*)&bind_socket, 128, on_new_connection);
+    if (rc < 0) {
+        throw std::runtime_error(string("Could not listen for connections: ") +
+                                 uv_strerror(rc));
+    }
+#else
+    yajr::initLoop(&server_loop);
+
+    listener = yajr::Listener::create("0.0.0.0", port, 
+                                      OpflexServerConnection::on_state_change,
+                                      on_new_connection,
+                                      this,
+                                      &server_loop,
+                                      OpflexServerConnection::loop_selector);
+                                      
+#endif
+    rc = uv_thread_create(&server_thread, server_thread_func, this);
+    if (rc < 0) {
+        throw std::runtime_error(string("Could not create server thread: ") +
+                                 uv_strerror(rc));
     }
 }
 

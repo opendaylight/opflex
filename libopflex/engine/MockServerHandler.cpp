@@ -13,11 +13,10 @@
 
 #include <boost/foreach.hpp>
 
-#include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/logging/internal/logging.hpp"
-
-#include "MockServerHandler.h"
-#include "MockOpflexServer.h"
+#include "opflex/engine/internal/OpflexMessage.h"
+#include "opflex/engine/internal/MockServerHandler.h"
+#include "opflex/engine/internal/MockOpflexServerImpl.h"
 
 namespace opflex {
 namespace engine {
@@ -26,6 +25,8 @@ namespace internal {
 using rapidjson::Value;
 using rapidjson::Writer;
 using modb::mointernal::StoreClient;
+using ofcore::OFConstants;
+using test::MockOpflexServer;
 
 void MockServerHandler::connected() {
 
@@ -48,7 +49,7 @@ public:
                     const std::string& name_,
                     const std::string& domain_,
                     const uint8_t roles_,
-                    MockOpflexServer::peer_vec_t peers_)
+                    test::MockOpflexServer::peer_vec_t peers_)
         : OpflexMessage("send_identity", RESPONSE, &id),
           name(name_), domain(domain_), roles(roles_), 
           peers(peers_) {}
@@ -76,13 +77,13 @@ public:
         writer.String(domain.c_str());
         writer.String("my_role");
         writer.StartArray();
-        if (roles & OpflexHandler::POLICY_ELEMENT)
+        if (roles & OFConstants::POLICY_ELEMENT)
             writer.String("policy_element");
-        if (roles & OpflexHandler::POLICY_REPOSITORY)
+        if (roles & OFConstants::POLICY_REPOSITORY)
             writer.String("policy_repository");
-        if (roles & OpflexHandler::ENDPOINT_REGISTRY)
+        if (roles & OFConstants::ENDPOINT_REGISTRY)
             writer.String("endpoint_registry");
-        if (roles & OpflexHandler::OBSERVER)
+        if (roles & OFConstants::OBSERVER)
             writer.String("observer");
         writer.EndArray();
         writer.String("peers");
@@ -91,13 +92,13 @@ public:
             writer.StartObject();
             writer.String("role");
             writer.StartArray();
-            if (peer.first & OpflexHandler::POLICY_ELEMENT)
+            if (peer.first & OFConstants::POLICY_ELEMENT)
                 writer.String("policy_element");
-            if (peer.first & OpflexHandler::POLICY_REPOSITORY)
+            if (peer.first & OFConstants::POLICY_REPOSITORY)
                 writer.String("policy_repository");
-            if (peer.first & OpflexHandler::ENDPOINT_REGISTRY)
+            if (peer.first & OFConstants::ENDPOINT_REGISTRY)
                 writer.String("endpoint_registry");
-            if (peer.first & OpflexHandler::OBSERVER)
+            if (peer.first & OFConstants::OBSERVER)
                 writer.String("observer");
             writer.EndArray();
             writer.String("connectivity_info");
@@ -113,13 +114,13 @@ private:
     std::string name;
     std::string domain;
     uint8_t roles;
-    MockOpflexServer::peer_vec_t peers;
+    test::MockOpflexServer::peer_vec_t peers;
 };
 
 class PolicyResolveRes : public OpflexMessage {
 public:
     PolicyResolveRes(const rapidjson::Value& id,
-                     MockOpflexServer& server_,
+                     MockOpflexServerImpl& server_,
                      const std::vector<modb::reference_t>& mos_)
         : OpflexMessage("policy_update", RESPONSE, &id),
           server(server_),
@@ -162,14 +163,14 @@ public:
     }
 
 protected:
-    MockOpflexServer& server;
+    MockOpflexServerImpl& server;
     std::vector<modb::reference_t> mos;
 };
 
 class EndpointResolveRes : public OpflexMessage {
 public:
     EndpointResolveRes(const rapidjson::Value& id,
-                     MockOpflexServer& server_,
+                     MockOpflexServerImpl& server_,
                      const std::vector<modb::reference_t>& mos_)
         : OpflexMessage("endpoint_update", RESPONSE, &id),
           server(server_),
@@ -212,7 +213,7 @@ public:
     }
 
 protected:
-    MockOpflexServer& server;
+    MockOpflexServerImpl& server;
     std::vector<modb::reference_t> mos;
 };
 

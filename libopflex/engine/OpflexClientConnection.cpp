@@ -32,6 +32,9 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
                                                int port_)
     : OpflexConnection(handlerFactory),
       pool(pool_), hostname(hostname_), port(port_),
+#ifdef SIMPLE_RPC
+      retry(true),
+#endif
       active(false), started(false) {
 
 }
@@ -80,18 +83,26 @@ void OpflexClientConnection::disconnect() {
     if (!active) return;
     active = false;
 
-    LOG(INFO) << "[" << getRemotePeer() << "] " 
-              << "Disconnected";
+    LOG(DEBUG) << "[" << getRemotePeer() << "] " 
+               << "Disconnected";
 
 #ifdef SIMPLE_RPC
     uv_read_stop((uv_stream_t*)&socket);
-    uv_close((uv_handle_t*)&socket, OpflexPool::on_conn_closed);
+    uv_close((uv_handle_t*)&socket, on_conn_closed);
 #else
     peer->destroy();
 #endif
 
     OpflexConnection::disconnect();
     handler->disconnected();
+}
+
+void OpflexClientConnection::close() {
+    retry = false;
+    if (active)
+        disconnect();
+    else
+        pool->connectionClosed(this);
 }
 
 #ifdef SIMPLE_RPC
@@ -112,7 +123,8 @@ void OpflexClientConnection::connect_cb(uv_connect_t* req, int status) {
 }
 
 void OpflexClientConnection::on_conn_closed(uv_handle_t *handle) {
-    OpflexPool::on_conn_closed(handle);
+    OpflexClientConnection* conn = (OpflexClientConnection*)handle->data;
+    OpflexPool::on_conn_closed(conn);
 }
 
 #else

@@ -11,10 +11,12 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "opflex/ofcore/OFConstants.h"
 #include "opflex/engine/internal/OpflexPool.h"
 
 using namespace opflex::engine;
 using namespace opflex::engine::internal;
+using opflex::ofcore::OFConstants;
 
 class EmptyHandlerFactory : public HandlerFactory {
 public:
@@ -76,30 +78,30 @@ BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
     pool.addPeer(c3);
 
     pool.setRoles(c1, 
-                  OpflexHandler::POLICY_REPOSITORY |
-                  OpflexHandler::OBSERVER |
-                  OpflexHandler::ENDPOINT_REGISTRY);
+                  OFConstants::POLICY_REPOSITORY |
+                  OFConstants::OBSERVER |
+                  OFConstants::ENDPOINT_REGISTRY);
 
-    BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OpflexHandler::POLICY_REPOSITORY));
-    BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OpflexHandler::OBSERVER));
-    BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OpflexHandler::ENDPOINT_REGISTRY));
+    BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::POLICY_REPOSITORY));
+    BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::OBSERVER));
+    BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::ENDPOINT_REGISTRY));
 
     pool.setRoles(c2, 
-                  OpflexHandler::POLICY_REPOSITORY |
-                  OpflexHandler::ENDPOINT_REGISTRY);
-    BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OpflexHandler::OBSERVER));
-    pool.setRoles(c3, OpflexHandler::OBSERVER);
+                  OFConstants::POLICY_REPOSITORY |
+                  OFConstants::ENDPOINT_REGISTRY);
+    BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::OBSERVER));
+    pool.setRoles(c3, OFConstants::OBSERVER);
 
     // fail to next master
     OpflexClientConnection* m1 = 
-        pool.getMasterForRole(OpflexHandler::POLICY_REPOSITORY);
-    BOOST_CHECK_EQUAL(m1, pool.getMasterForRole(OpflexHandler::ENDPOINT_REGISTRY));
+        pool.getMasterForRole(OFConstants::POLICY_REPOSITORY);
+    BOOST_CHECK_EQUAL(m1, pool.getMasterForRole(OFConstants::ENDPOINT_REGISTRY));
     ((MockClientConn*)m1)->ready = false;
-    BOOST_CHECK(m1 != pool.getMasterForRole(OpflexHandler::ENDPOINT_REGISTRY));
+    BOOST_CHECK(m1 != pool.getMasterForRole(OFConstants::ENDPOINT_REGISTRY));
 
     // check stickiness
     ((MockClientConn*)m1)->ready = true;
-    BOOST_CHECK(m1 != pool.getMasterForRole(OpflexHandler::ENDPOINT_REGISTRY));
+    BOOST_CHECK(m1 != pool.getMasterForRole(OFConstants::ENDPOINT_REGISTRY));
 
     c1->disconnect();
     c2->disconnect();
@@ -107,3 +109,5 @@ BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+

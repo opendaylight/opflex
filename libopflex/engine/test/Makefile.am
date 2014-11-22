@@ -23,10 +23,6 @@ AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 TESTS = engine_test
 engine_test_SOURCES = \
-	MockOpflexServer.h \
-	MockServerHandler.h \
-	MockOpflexServer.cpp \
-	MockServerHandler.cpp \
 	main.cpp \
 	MOSerialize_test.cpp \
 	Processor_test.cpp \

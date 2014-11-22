@@ -9,9 +9,14 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <cstdio>
+
 #include "config.h"
 
 #include <boost/assign.hpp>
+#include <rapidjson/document.h>
+#include <rapidjson/filewritestream.h>
+#include <rapidjson/prettywriter.h>
 
 #include "opflex/ofcore/OFFramework.h"
 #include "opflex/engine/Processor.h"
@@ -22,6 +27,7 @@ namespace opflex {
 namespace ofcore {
 
 using namespace boost::assign;
+using engine::internal::MOSerializer;
 
 class OFFramework::OFFrameworkImpl {
 public:
@@ -74,6 +80,27 @@ void OFFramework::stop() {
         pimpl->db.stop();
     }
     pimpl->started = false;
+}
+
+void OFFramework::dumpMODB(modb::class_id_t root_class_id,
+                           const std::string& file) {
+    MOSerializer& serializer = pimpl->processor.getSerializer();
+    char buffer[1024];
+    FILE* pfile = fopen(file.c_str(), "w");
+    if (pfile == NULL) {
+        LOG(ERROR) << "Could not open MODB file " 
+                   << file << " for writing";
+        return;
+    }
+    rapidjson::FileWriteStream ws(pfile, buffer, sizeof(buffer));
+    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(ws);
+    writer.StartArray();
+    serializer.serialize(root_class_id,
+                         modb::URI::ROOT,
+                         pimpl->db.getReadOnlyStoreClient(),
+                         writer,
+                         true);
+    writer.EndArray();
 }
 
 void OFFramework::setOpflexIdentity(const std::string& name,

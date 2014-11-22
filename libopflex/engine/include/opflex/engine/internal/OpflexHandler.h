@@ -16,6 +16,8 @@
 #include <boost/noncopyable.hpp>
 #include <rapidjson/document.h>
 
+#include "opflex/ofcore/OFConstants.h"
+
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXHANDLER_H
 #define OPFLEX_ENGINE_OPFLEXHANDLER_H
@@ -83,33 +85,6 @@ public:
     void setState(ConnectionState state_) { state = state_; }
 
     /**
-     * The set of possible OpFlex roles
-     */
-    enum OpflexRole {
-        /**
-         * This is a client connection being used to boostrap the list
-         * of peers
-         */
-        BOOTSTRAP = 0,
-        /**
-         * The policy element role
-         */
-        POLICY_ELEMENT = 1,
-        /**
-         * The policy repository role
-         */
-        POLICY_REPOSITORY = 2,
-        /**
-         * The endpoint registry role
-         */
-        ENDPOINT_REGISTRY = 4,
-        /**
-         * The observer role
-         */
-        OBSERVER = 8
-    };
-
-    /**
      * Get the bitmask representing the set of roles for the remote
      * end of this connection
      *
@@ -125,7 +100,9 @@ public:
      * @param role the OpFlex role to check for
      * @return true if the connection has the given role 
      */
-    bool hasRemoteRole(OpflexRole role) const { return (remoteRoles & role); }
+    bool hasRemoteRole(ofcore::OFConstants::OpflexRole role) const { 
+        return (remoteRoles & role);
+    }
 
     // *************************
     // Connection state handlers
