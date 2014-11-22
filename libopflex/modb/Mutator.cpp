@@ -16,11 +16,13 @@
 #include <boost/unordered_set.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/foreach.hpp>
 
 #include "opflex/ofcore/OFFramework.h"
 #include "opflex/modb/Mutator.h"
 #include "opflex/modb/mo-internal/StoreClient.h"
 #include "opflex/modb/internal/ObjectStore.h"
+#include "opflex/logging/internal/logging.hpp"
 
 namespace opflex {
 namespace modb {
@@ -35,9 +37,9 @@ using std::make_pair;
 using mointernal::StoreClient;
 using mointernal::ObjectInstance;
 
-typedef unordered_set<pair<class_id_t, URI> > uri_set_t;
+typedef unordered_set<reference_t > uri_set_t;
 typedef unordered_map<prop_id_t, uri_set_t> prop_uri_map_t;
-typedef unordered_map<pair<class_id_t, URI>, prop_uri_map_t> uri_prop_uri_map_t;
+typedef unordered_map<reference_t, prop_uri_map_t> uri_prop_uri_map_t;
 typedef unordered_map<URI, shared_ptr<ObjectInstance> > obj_map_t;
 
 class Mutator::MutatorImpl {
@@ -126,38 +128,32 @@ void Mutator::remove(class_id_t class_id, const URI& uri) {
 }
 
 void Mutator::commit() {
-    unordered_map<URI, class_id_t> notifs;
-    obj_map_t::iterator objit;
-    for (objit = pimpl->obj_map.begin(); 
-         objit != pimpl->obj_map.end(); ++objit) {
-        pimpl->client.put(objit->second->getClassId(), objit->first, 
-                          objit->second);
-        pimpl->client.queueNotification(objit->second->getClassId(),
-                                 objit->first,
-                                 notifs);
+    StoreClient::notif_t raw_notifs;
+    StoreClient::notif_t notifs;
+    BOOST_FOREACH(obj_map_t::value_type& objt, pimpl->obj_map) {
+        pimpl->client.put(objt.second->getClassId(), objt.first, 
+                          objt.second);
+        raw_notifs[objt.first] = objt.second->getClassId();
+
     }
-    uri_prop_uri_map_t::iterator upit;
-    for (upit = pimpl->added_children.begin(); 
-         upit != pimpl->added_children.end(); ++upit) {
-        prop_uri_map_t::iterator pit;
-        for (pit = upit->second.begin(); pit != upit->second.end(); ++pit) {
-            uri_set_t::iterator uit;
-            for (uit = pit->second.begin(); uit != pit->second.end(); ++uit) {
-                pimpl->client.addChild(uit->first, uit->second, pit->first,
-                                upit->first.first, upit->first.second);
-                pimpl->client.queueNotification(upit->first.first,
-                                         upit->first.second,
-                                         notifs);
+    BOOST_FOREACH(uri_prop_uri_map_t::value_type& upt, pimpl->added_children) {
+        BOOST_FOREACH(prop_uri_map_t::value_type& pt, upt.second) {
+            BOOST_FOREACH(const reference_t& ut, pt.second) {
+                raw_notifs[upt.first.second] = upt.first.first;
+                pimpl->client.addChild(ut.first, ut.second, pt.first,
+                                upt.first.first, upt.first.second);
 
             }
         }
-
     }
-    unordered_set<pair<class_id_t, URI> >::iterator rit;
-    for (rit = pimpl->removed_objects.begin(); 
-         rit != pimpl->removed_objects.end(); ++rit) {
-        pimpl->client.remove(rit->first, rit->second, false);
-        pimpl->client.queueNotification(rit->first, rit->second, notifs);
+
+    BOOST_FOREACH(StoreClient::notif_t::value_type nt, raw_notifs) {
+        pimpl->client.queueNotification(nt.second, nt.first, notifs);
+    }
+
+    BOOST_FOREACH(const reference_t& rt, pimpl->removed_objects) {
+        pimpl->client.remove(rt.first, rt.second, false);
+        pimpl->client.queueNotification(rt.first, rt.second, notifs);
     }
 
     pimpl->obj_map.clear();
