@@ -101,6 +101,7 @@ void OFFramework::dumpMODB(modb::class_id_t root_class_id,
                          writer,
                          true);
     writer.EndArray();
+    LOG(INFO) << "Wrote MODB to " << file;
 }
 
 void OFFramework::setOpflexIdentity(const std::string& name,
