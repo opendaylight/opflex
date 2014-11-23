@@ -526,7 +526,7 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
         uit->details->state = UPDATED;
         uri_index.modify(uit, change_expiration(nexp));
     } else {
-        uri_index.modify(uit, change_expiration(curtime+LOCAL_REFRESH_RATE));
+        uri_index.modify(uit, change_expiration(curtime));
     }
     uv_async_send(&proc_async);
 }
