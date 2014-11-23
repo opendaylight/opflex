@@ -135,6 +135,14 @@ public:
                     ofcore::OFConstants::OpflexRole role,
                     bool sync = false);
 
+    /**
+     * Get the number of connections in a particular role
+     *
+     * @param role the role to search for
+     * @return the count of connections in that role
+     */
+    int getRoleCount(ofcore::OFConstants::OpflexRole role);
+
 private:
     HandlerFactory& factory;
 

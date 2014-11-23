@@ -187,19 +187,31 @@ void OpflexPool::updateRole(ConnData& cd,
                 if (it->second.conns.size() == 0)
                     roles.erase(it);
             }
+            cd.roles &= ~role;
         }
     } else if (newroles & role) {
         if (!(cd.roles & role)) {
             conn_set_t& cl = roles[role].conns;
             cl.insert(cd.conn);
+            cd.roles |= role;
         }
     }
 }
 
+int OpflexPool::getRoleCount(ofcore::OFConstants::OpflexRole role) {
+   util::LockGuard guard(&conn_mutex);
+
+   role_map_t::iterator it = roles.find(role);
+   if (it == roles.end()) return 0;
+   return it->second.conns.size();
+}
+
+
 void OpflexPool::setRoles(OpflexClientConnection* conn,
                           uint8_t newroles) {
     util::LockGuard guard(&conn_mutex);
-    ConnData& cd = connections.at(make_pair(conn->getHostname(), conn->getPort()));
+    ConnData& cd = connections.at(make_pair(conn->getHostname(),
+                                            conn->getPort()));
     doSetRoles(cd, newroles);
 }
 
@@ -279,13 +291,14 @@ void OpflexPool::sendToRole(OpflexMessage* message,
         int i = 0;
         OpflexMessage* m_copy = NULL;
         BOOST_FOREACH(OpflexClientConnection* conn, it->second.conns) {
+            if (!conn->isReady()) continue;
+
             if (i + 1 < conns.size()) {
                 m_copy = message->clone();
             } else {
                 m_copy = message;
                 messagep.release();
             }
-            
             conn->sendMessage(m_copy, sync);
             i += 1;
         }

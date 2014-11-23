@@ -85,12 +85,19 @@ BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
     BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::POLICY_REPOSITORY));
     BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::OBSERVER));
     BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::ENDPOINT_REGISTRY));
+    BOOST_CHECK_EQUAL(1, pool.getRoleCount(OFConstants::POLICY_REPOSITORY));
+    BOOST_CHECK_EQUAL(1, pool.getRoleCount(OFConstants::OBSERVER));
+    BOOST_CHECK_EQUAL(1, pool.getRoleCount(OFConstants::ENDPOINT_REGISTRY));
 
     pool.setRoles(c2, 
                   OFConstants::POLICY_REPOSITORY |
                   OFConstants::ENDPOINT_REGISTRY);
     BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::OBSERVER));
     pool.setRoles(c3, OFConstants::OBSERVER);
+
+    BOOST_CHECK_EQUAL(2, pool.getRoleCount(OFConstants::POLICY_REPOSITORY));
+    BOOST_CHECK_EQUAL(2, pool.getRoleCount(OFConstants::OBSERVER));
+    BOOST_CHECK_EQUAL(2, pool.getRoleCount(OFConstants::ENDPOINT_REGISTRY));
 
     // fail to next master
     OpflexClientConnection* m1 = 
@@ -104,8 +111,16 @@ BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
     BOOST_CHECK(m1 != pool.getMasterForRole(OFConstants::ENDPOINT_REGISTRY));
 
     c1->disconnect();
+    BOOST_CHECK_EQUAL(1, pool.getRoleCount(OFConstants::POLICY_REPOSITORY));
+    BOOST_CHECK_EQUAL(1, pool.getRoleCount(OFConstants::OBSERVER));
+    BOOST_CHECK_EQUAL(1, pool.getRoleCount(OFConstants::ENDPOINT_REGISTRY));
+
     c2->disconnect();
     c3->disconnect();
+
+    BOOST_CHECK_EQUAL(0, pool.getRoleCount(OFConstants::POLICY_REPOSITORY));
+    BOOST_CHECK_EQUAL(0, pool.getRoleCount(OFConstants::OBSERVER));
+    BOOST_CHECK_EQUAL(0, pool.getRoleCount(OFConstants::ENDPOINT_REGISTRY));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
