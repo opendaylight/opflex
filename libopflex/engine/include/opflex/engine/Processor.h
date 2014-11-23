@@ -217,6 +217,11 @@ private:
          * Whether the item was written locally
          */
         bool local;
+
+        /**
+         * The last time a resolve request was made for the item
+         */
+        uint64_t resolve_time;
     };
 
     /**
@@ -238,6 +243,7 @@ private:
             details->state = state_;
             details->refcount = 0;
             details->local = local_;
+            details->resolve_time = 0;
         }
         ~item() { if (details) delete details; }
         item& operator=( const item& rhs ) {
@@ -341,7 +347,7 @@ private:
     void doObjectUpdated(modb::class_id_t class_id, 
                          const modb::URI& uri,
                          bool remote);
-    bool resolveObj(modb::ClassInfo::class_type_t type, const item& it);
+    bool resolveObj(modb::ClassInfo::class_type_t type, const item& it, bool checkTime = true);
     bool declareObj(modb::ClassInfo::class_type_t type, const item& it);
 
     friend class MOSerializer;

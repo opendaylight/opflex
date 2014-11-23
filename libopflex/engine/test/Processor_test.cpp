@@ -394,6 +394,19 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
     notifs.clear();
 
     WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+
+    client2->put(5, c5u, oi5);
+    client2->queueNotification(5, c5u, notifs);
+    client2->deliverNotifications(notifs);
+    notifs.clear();
+    WAIT_FOR(itemPresent(client2, 4, c4u), 1000);
+
+    client2->remove(5, c5u, false, &notifs);
+    client2->queueNotification(5, c5u, notifs);
+    client2->deliverNotifications(notifs);
+    notifs.clear();
+
+    WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
 // test policy resolve after connection ready

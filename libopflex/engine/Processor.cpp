@@ -120,7 +120,6 @@ void Processor::addRef(obj_state_by_exp::iterator& it,
 void Processor::removeRef(obj_state_by_exp::iterator& it,
                           const reference_t& up) {
     if (it->details->urirefs.find(up) != it->details->urirefs.end()) {
-        it->details->refcount -= 1;
         obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
         obj_state_by_uri::iterator uit = uri_index.find(up.second);
         if (uit != uri_index.end()) {
@@ -202,7 +201,13 @@ bool Processor::isParentSyncObject(const item& item) {
     }
 }
 
-bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i) {
+bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
+                           bool checkTime) {
+    uint64_t curTime = now(&proc_loop);
+    if (checkTime && 
+        (curTime < (i.details->resolve_time + LOCAL_REFRESH_RATE/2)))
+        return false;
+    i.details->resolve_time = curTime;
     switch (type) {
     case ClassInfo::POLICY:
         {
@@ -366,46 +371,48 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
 
         it->details->state = newState;
     } else if (newState == DELETED) {
-        LOG(DEBUG) << "Purging state for " << it->uri.toString();
-
         client->removeChildren(it->details->class_id,
                                it->uri,
                                &notifs);
 
-        switch (ci.getType()) {
-        case ClassInfo::POLICY:
-            if (curState == RESOLVED) {
-                vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
-                PolicyUnresolveReq* req = new PolicyUnresolveReq(this, refs);
-                pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
-            }
-            break;
-        case ClassInfo::REMOTE_ENDPOINT:
-            if (curState == RESOLVED) {
-                vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
-                EndpointUnresolveReq* req = 
-                    new EndpointUnresolveReq(this, refs);
-                pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
-            }
-            break;
-        case ClassInfo::LOCAL_ENDPOINT:
-            {
-                vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
-                EndpointUndeclareReq* req = 
-                    new EndpointUndeclareReq(this, refs);
-                pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
-            }
-            break;
-        default:
-            // do nothing
-            break;
-        }
+        if (curRefCount <= 0) {
+            LOG(DEBUG) << "Purging state for " << it->uri.toString();
 
-        obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
-        exp_index.erase(it);
+            switch (ci.getType()) {
+            case ClassInfo::POLICY:
+                if (it->details->resolve_time > 0) {
+                    vector<reference_t> refs;
+                    refs.push_back(make_pair(it->details->class_id, it->uri));
+                    PolicyUnresolveReq* req = new PolicyUnresolveReq(this, refs);
+                    pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
+                }
+                break;
+            case ClassInfo::REMOTE_ENDPOINT:
+                if (it->details->resolve_time > 0) {
+                    vector<reference_t> refs;
+                    refs.push_back(make_pair(it->details->class_id, it->uri));
+                    EndpointUnresolveReq* req = 
+                        new EndpointUnresolveReq(this, refs);
+                    pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
+                }
+                break;
+            case ClassInfo::LOCAL_ENDPOINT:
+                {
+                    vector<reference_t> refs;
+                    refs.push_back(make_pair(it->details->class_id, it->uri));
+                    EndpointUndeclareReq* req = 
+                        new EndpointUndeclareReq(this, refs);
+                    pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
+                }
+                break;
+            default:
+                // do nothing
+                break;
+            }
+
+            obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
+            exp_index.erase(it);
+        }
     }
 
     guard.release();
@@ -526,7 +533,7 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
         uit->details->state = UPDATED;
         uri_index.modify(uit, change_expiration(nexp));
     } else {
-        uri_index.modify(uit, change_expiration(curtime+LOCAL_REFRESH_RATE));
+        uri_index.modify(uit, change_expiration(curtime));
     }
     uv_async_send(&proc_async);
 }
@@ -550,7 +557,7 @@ void Processor::connectionReady(OpflexConnection* conn) {
     BOOST_FOREACH(const item& i, obj_state) {
         const ClassInfo& ci = store->getClassInfo(i.details->class_id);
         if (i.details->state == RESOLVED) {
-            resolveObj(ci.getType(), i);
+            resolveObj(ci.getType(), i, false);
         }
         if (i.details->state == IN_SYNC) {
             declareObj(ci.getType(), i);
