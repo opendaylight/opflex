@@ -275,27 +275,6 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                 }
             }
             break;
-        case Subnet::CLASS_ID:
-            {
-                optional<shared_ptr<Subnet> > subnet = 
-                    Subnet::resolve(framework, du);
-                if (subnet) {
-                    // XXX - TODO - I'd like to not have to do this.
-                    // should add a resolve parent to modb or make it
-                    // so epgs can't reference an individual parent.
-                    vector<string> elements;
-                    du.getElements(elements);
-                    URIBuilder ub;
-                    // strip last 2 elements off subnet URI
-                    for (int i = 0; i < elements.size()-2; ++i) {
-                        ub.addElement(elements[i]);
-                    }
-                    class_id_t scid = Subnets::CLASS_ID;
-                    ndomainClass = scid;
-                    ndomainURI = ub.build();
-                }
-            }
-            break;
         }
         
         domainClass = ndomainClass;

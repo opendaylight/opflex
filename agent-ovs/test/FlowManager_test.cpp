@@ -132,7 +132,7 @@ BOOST_FIXTURE_TEST_CASE(epg, FlowManagerFixture) {
     /* forwarding object change */
     Mutator m1(framework, policyOwner);
     epg0->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnet(subnetsfd0_1->getURI());
+            ->setTargetSubnets(subnetsfd0->getURI());
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
     exec->Expect(FlowEdit::mod, fe_epg0_fd0);

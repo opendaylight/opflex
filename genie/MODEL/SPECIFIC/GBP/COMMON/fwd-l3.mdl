@@ -22,7 +22,7 @@ module[gbp]
     }
 
     class[Subnet;
-          super=gbp/L3BehavioralGroup;
+          super=gbp/BehavioralGroup;
           concrete]
     {
 

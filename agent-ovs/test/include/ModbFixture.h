@@ -91,12 +91,12 @@ protected:
 
         epg0 = space->addGbpEpGroup("epg0");
         epg0->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnet(subnetsbd0_1->getURI());
+            ->setTargetSubnets(subnetsbd0->getURI());
         epg0->addGbpeInstContext()->setVnid(0xA00A);
 
         epg1 = space->addGbpEpGroup("epg1");
         epg1->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnet(subnetsrd0_1->getURI());
+            ->setTargetSubnets(subnetsrd0->getURI());
         epg1->addGbpeInstContext()->setVnid(0xA00B);
 
         mutator.commit();

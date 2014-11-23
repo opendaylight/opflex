@@ -127,7 +127,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     eg1 = space->addGbpEpGroup("group1");
     eg1->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnet(subnetsfd1->getURI());
+        ->setTargetSubnets(subnetsfd->getURI());
     eg1->addGbpeInstContext()->setVnid(1234);
     eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
