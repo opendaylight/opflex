@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a91bd0f_c6f32272",
+        "filename": "agent-ovs/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-11-24T23:01:25Z",
+      "side": 1,
+      "message": "I guess it is time to remove this HAVE_OVS conditional behavior as well.",
+      "revId": "34acfcd6f02c1068a45ef144559999e3a8442652",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a91bd0f_66e8167d",
+        "filename": "agent-ovs/src/include/EndpointManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-11-24T23:01:25Z",
+      "side": 1,
+      "message": "remove test code",
+      "revId": "34acfcd6f02c1068a45ef144559999e3a8442652",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
