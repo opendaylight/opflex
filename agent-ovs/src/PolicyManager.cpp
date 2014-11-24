@@ -42,6 +42,8 @@ PolicyManager::~PolicyManager() {
 }
 
 void PolicyManager::start() {
+    LOG(DEBUG) << "Starting policy manager";
+
     using namespace modelgbp;
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;
@@ -59,6 +61,8 @@ void PolicyManager::start() {
 }
 
 void PolicyManager::stop() {
+    LOG(DEBUG) << "Stopping policy manager";
+
     using namespace modelgbp;
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;

@@ -13,6 +13,7 @@
 #include <boost/foreach.hpp>
 
 #include "EndpointManager.h"
+#include "logging.h"
 
 namespace ovsagent {
 
@@ -28,7 +29,7 @@ using boost::optional;
 EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
                                  PolicyManager& policyManager_)
     : framework(framework_), policyManager(policyManager_) {
-    
+
 }
 
 EndpointManager::~EndpointManager() {
@@ -36,10 +37,14 @@ EndpointManager::~EndpointManager() {
 }
 
 void EndpointManager::start() {
+    LOG(DEBUG) << "Starting endpoint manager";
+
     policyManager.registerListener(this);
 }
 
 void EndpointManager::stop() {
+    LOG(DEBUG) << "Stopping endpoint manager";
+
     policyManager.unregisterListener(this);
 
     unique_lock<mutex> guard(ep_mutex);

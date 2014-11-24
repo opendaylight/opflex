@@ -157,7 +157,9 @@ private:
      * The endpoint listeners that have been registered
      */
     std::list<EndpointListener*> endpointListeners;
+    unsigned long sent1;
     boost::mutex listener_mutex;
+    unsigned long sent2;
 
     void notifyListeners(const std::string& uuid);
 

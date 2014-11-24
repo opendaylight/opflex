@@ -42,12 +42,16 @@ public:
     void Stop();
 
     void SetExecutor(FlowExecutor *e) {
-        executor.reset(e);
+        executor = e;
     }
 
     void SetPortMapper(PortMapper *m) {
         portMapper = m;
     }
+
+    void SetTunnelType(std::string& tunnelType) { /* XXX TODO */ }
+    void SetTunnelIface(std::string& tunnelIface) { /* XXX TODO */ }
+    void SetTunnelRemoteIp(std::string& tunnelRemoteIp) { /* XXX TODO */ }
 
     uint32_t GetTunnelPort() { return tunnelPort; }
     uint32_t GetTunnelDstIpv4() { return tunnelDstIpv4; }
@@ -102,7 +106,7 @@ private:
     static bool ParseIpv6Addr(const std::string& str, in6_addr *ip);
 
     ovsagent::Agent& agent;
-    boost::scoped_ptr<FlowExecutor> executor;
+    FlowExecutor* executor;
     PortMapper *portMapper;
 
     uint32_t tunnelPort;

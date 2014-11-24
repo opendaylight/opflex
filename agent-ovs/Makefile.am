@@ -49,6 +49,8 @@ libagent_ovs_la_SOURCES = \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \
 	src/include/FSEndpointSource.h \
+	src/include/Renderer.h \
+	src/include/StitchedModeRenderer.h \
 	src/include/Agent.h \
 	src/include/cmd.h \
 	src/BoostLogHandler.cpp \
@@ -57,6 +59,8 @@ libagent_ovs_la_SOURCES = \
 	src/EndpointManager.cpp \
 	src/EndpointSource.cpp \
 	src/FSEndpointSource.cpp \
+	src/Renderer.cpp \
+	src/StitchedModeRenderer.cpp \
 	src/cmd.cpp \
 	src/Agent.cpp
 
