@@ -1,5 +1,5 @@
 module[l4]
 {
-    type[Port; super=scalar/UInt64]
+    type[Port; super=scalar/UInt16]
     type[TcpFlags; super=scalar/Bitmask32]
 }

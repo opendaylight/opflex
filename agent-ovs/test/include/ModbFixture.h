@@ -23,6 +23,7 @@ using namespace boost;
 using namespace ovsagent;
 using namespace modelgbp;
 using namespace modelgbp::gbp;
+using namespace modelgbp::gbpe;
 using namespace opflex::modb;
 
 class DummyEpSrc : public EndpointSource {
@@ -49,12 +50,20 @@ public:
     shared_ptr<policy::Universe> universe;
     shared_ptr<policy::Space> space;
     shared_ptr<Endpoint> ep0, ep1, ep2;
-    shared_ptr<EpGroup> epg0, epg1;
+    shared_ptr<EpGroup> epg0, epg1, epg2, epg3;
     shared_ptr<FloodDomain> fd0;
     shared_ptr<RoutingDomain> rd0;
     shared_ptr<BridgeDomain> bd0;
     shared_ptr<Subnets> subnetsfd0, subnetsbd0, subnetsrd0;
     shared_ptr<Subnet> subnetsfd0_1, subnetsbd0_1, subnetsrd0_1;
+
+    shared_ptr<L24Classifier> classifier0;
+    shared_ptr<L24Classifier> classifier1;
+    shared_ptr<L24Classifier> classifier2;
+
+    shared_ptr<Contract> con0;
+    shared_ptr<Contract> con1;
+    shared_ptr<Contract> con2;
     string policyOwner;
 
 protected:
@@ -99,6 +108,14 @@ protected:
             ->setTargetSubnets(subnetsrd0->getURI());
         epg1->addGbpeInstContext()->setVnid(0xA00B);
 
+        epg2 = space->addGbpEpGroup("epg2");
+        epg2->addGbpeInstContext()->setVnid(0xD00A);
+
+        epg3 = space->addGbpEpGroup("epg3");
+        epg3->addGbpeInstContext()->setVnid(0xD00B);
+
+        createPolicyObjects();
+
         mutator.commit();
 
         /* create endpoints */
@@ -120,6 +137,54 @@ protected:
         ep2->addIP("10.20.44.21");
         ep2->setEgURI(epg0->getURI());
         epSrc.updateEndpoint(*ep2);
+    }
+
+    void createPolicyObjects() {
+        /** Temporary hack - these should come from model headers */
+        static const uint16_t CONST_ARP = 0x0806;
+        static const uint16_t CONST_IPV4 = 0x0800;
+        static const uint16_t CONST_IPV6 = 0x86DD;
+        static const uint8_t CONST_IN = 1;
+        static const uint8_t CONST_OUT = 2;
+        /* End hack */
+
+        /* allow everything */
+        classifier0 = space->addGbpeL24Classifier("classifier0");
+
+        /* allow TCP to dst port 80 cons->prov */
+        classifier1 = space->addGbpeL24Classifier("classifier1");
+        classifier1->setOrder(200).setDirection(CONST_IN)
+            .setEtherT(CONST_IPV4).setProt(6 /* TCP */)
+            .setDFromPort(80);
+        /* allow ARP from prov->cons */
+        classifier2 = space->addGbpeL24Classifier("classifier2");
+        classifier2->setOrder(100).setDirection(CONST_OUT)
+            .setEtherT(CONST_ARP);
+
+        /* empty, no-rule classifier */
+        con0 = space->addGbpContract("contract0");
+
+        con1 = space->addGbpContract("contract1");
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
+            ->addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
+            ->addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+
+        con2 = space->addGbpContract("contract2");
+        con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
+            ->addGbpRuleToClassifierRSrc(classifier0->getURI().toString());
+
+        epg0->addGbpEpGroupToProvContractRSrc(con0->getURI().toString());
+        epg1->addGbpEpGroupToConsContractRSrc(con0->getURI().toString());
+
+        epg2->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
+        epg3->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
+
+        epg0->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+        epg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+
+        epg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
+        epg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     }
 };
 

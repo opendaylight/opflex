@@ -58,7 +58,21 @@ public:
 
     /** Interface: PolicyListener */
     void egDomainUpdated(const opflex::modb::URI& egURI);
+    void contractUpdated(const opflex::modb::URI& contractURI);
 
+    /**
+     * Get the VNIDs for the specified endpoint groups.
+     *
+     * @param egURIs URIs of endpoint groups to search for
+     * @egVnids VNIDs of the endpoint groups for those which have one
+     */
+    void GetGroupVnids(const boost::unordered_set<opflex::modb::URI>& egURIs,
+            /* out */boost::unordered_set<uint32_t>& egVnids);
+
+    /**
+     * Maximum flow priority of the entries in policy table.
+     */
+    static const uint16_t MAX_POLICY_RULE_PRIORITY;
 private:
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
             uint32_t& rdId, uint32_t& bdId, uint32_t& fdId);
@@ -69,6 +83,20 @@ private:
                    flow::FlowEntryList& el);
     bool WriteFlow(const std::string& objId, flow::TableState& tab,
                    flow::FlowEntry *e);
+
+    /**
+     * Create flow entries for the classifier specified and append them
+     * to the provided list.
+     *
+     * @param classifier Classifier object to get matching rules from
+     * @param priority Priority of the entry created
+     * @param svnid VNID of the source endpoint group for the entry
+     * @param dvnid VNID of the destination endpoint group for the entry
+     * @param entries List to append entry to
+     */
+    void AddEntryForClassifier(modelgbp::gbpe::L24Classifier *classifier,
+            uint16_t priority, uint32_t& svnid, uint32_t& dvnid,
+            flow::FlowEntryList& entries);
 
     static bool ParseIpv4Addr(const std::string& str, uint32_t *ip);
     static bool ParseIpv6Addr(const std::string& str, in6_addr *ip);

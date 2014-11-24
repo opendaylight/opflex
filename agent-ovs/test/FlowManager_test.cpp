@@ -11,6 +11,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
+#include <boost/assign/list_of.hpp>
 #include "logging.h"
 #include "ovs.h"
 #include "FlowManager.h"
@@ -19,6 +20,7 @@
 #include "ModbFixture.h"
 
 using namespace std;
+using namespace boost::assign;
 using namespace opflex::enforcer;
 using namespace opflex::enforcer::flow;
 using namespace opflex::modb;
@@ -96,6 +98,13 @@ public:
         WAIT_FOR(policyMgr.groupExists(epg1->getURI()), 500);
         WAIT_FOR(policyMgr.getRDForGroup(epg1->getURI()) != boost::none, 500);
 
+        PolicyManager::uri_set_t egs;
+        WAIT_FOR_DO(egs.size() == 2, 1000,
+            egs.clear(); policyMgr.getContractProviders(con1->getURI(), egs));
+        egs.clear();
+        WAIT_FOR_DO(egs.size() == 2, 500,
+            egs.clear(); policyMgr.getContractConsumers(con1->getURI(), egs));
+
         createEntriesForObjects();
         /* flowManager is not Start()-ed here to control the updates it gets */
     }
@@ -113,9 +122,10 @@ public:
     vector<string> fe_ep0_eg0_1, fe_ep0_eg0_2;
     vector<string> fe_ep0_port_1, fe_ep0_port_2, fe_ep0_port_3;
     vector<string> fe_ep2, fe_ep2_eg1;
+    vector<string> fe_con0, fe_con1, fe_con2;
 };
 
-BOOST_AUTO_TEST_SUITE(flowmanager_test)
+BOOST_AUTO_TEST_SUITE(FlowManager_test)
 
 BOOST_FIXTURE_TEST_CASE(epg, FlowManagerFixture) {
     /* create */
@@ -214,6 +224,29 @@ BOOST_FIXTURE_TEST_CASE(remoteEp, FlowManagerFixture) {
     BOOST_CHECK(exec->IsEmpty());
 }
 
+BOOST_FIXTURE_TEST_CASE(policy, FlowManagerFixture) {
+    exec->Expect(FlowEdit::add, fe_con0);
+    flowManager.contractUpdated(con0->getURI());
+    BOOST_CHECK(exec->IsEmpty());
+
+    exec->Expect(FlowEdit::add, fe_con2);
+    flowManager.contractUpdated(con2->getURI());
+    BOOST_CHECK(exec->IsEmpty());
+
+    exec->Expect(FlowEdit::add, fe_con1);
+    flowManager.contractUpdated(con1->getURI());
+    BOOST_CHECK(exec->IsEmpty());
+
+    /* remove */
+    Mutator m2(framework, policyOwner);
+    con2->remove();
+    m2.commit();
+    WAIT_FOR(policyMgr.contractExists(con2->getURI()) == false, 500);
+    exec->Expect(FlowEdit::del, fe_con2);
+    flowManager.contractUpdated(con2->getURI());
+    BOOST_CHECK(exec->IsEmpty());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 enum REG {
@@ -239,7 +272,7 @@ public:
     }
     string done() { cntr = 0; return entry; }
     Bldr& table(uint8_t t) { rep(", table=", str(t)); return *this; }
-    Bldr& priority(uint8_t p) { rep(", priority=", str(p)); return *this; }
+    Bldr& priority(uint16_t p) { rep(", priority=", str(p)); return *this; }
     Bldr& tunId(uint32_t id) { rep(",tun_id=", str(id, true)); return *this; }
     Bldr& in(uint32_t p) { rep(",in_port=", str(p)); return *this; }
     Bldr& reg(REG r, uint32_t v) {
@@ -249,11 +282,13 @@ public:
     Bldr& isEthDst(string& s) { rep(",dl_dst=", s); return *this; }
     Bldr& ip() { rep(",ip"); return *this; }
     Bldr& arp() { rep(",arp"); return *this; }
+    Bldr& tcp() { rep(",tcp"); return *this; }
     Bldr& isArpOp(uint8_t op) { rep(",arp_op=", str(op)); return *this; }
     Bldr& isSpa(string& s) { rep(",arp_spa=", s); return *this; }
     Bldr& isTpa(string& s) { rep(",arp_tpa=", s); return *this; }
     Bldr& isIpSrc(string& s) { rep(",nw_src=", s); return *this; }
     Bldr& isIpDst(string& s) { rep(",nw_dst=", s); return *this; }
+    Bldr& isTpDst(uint16_t p) { rep(",tp_dst=", str(p)); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& load(REG r, uint32_t v) {
         rep("load:", str(v, true), "->" + rstr[r]); return *this;
@@ -418,5 +453,39 @@ FlowManagerFixture::createEntriesForObjects() {
     /* ep2 connected to new group epg1 */
     fe_ep2_eg1.push_back(Bldr(fe_ep2[1]).load(DEPG, epg1_vnid).done());
     fe_ep2_eg1.push_back(Bldr(fe_ep2[2]).load(DEPG, epg1_vnid).done());
+
+    uint32_t epg2_vnid = policyMgr.getVnidForGroup(epg2->getURI()).get();
+    uint32_t epg3_vnid = policyMgr.getVnidForGroup(epg3->getURI()).get();
+    uint16_t prio = FlowManager::MAX_POLICY_RULE_PRIORITY;
+
+    /* con0 */
+    fe_con0.push_back(Bldr().table(3).priority(prio).reg(SEPG, epg1_vnid)
+            .reg(DEPG, epg0_vnid).actions().out(OUTPORT).done());
+    fe_con0.push_back(Bldr(fe_con0[0]).reg(SEPG, epg0_vnid)
+            .reg(DEPG, epg1_vnid).done());
+
+    /* con2 */
+    fe_con2.push_back(Bldr().table(3).priority(prio).reg(SEPG, epg3_vnid)
+            .reg(DEPG, epg2_vnid).actions().out(OUTPORT).done());
+    fe_con2.push_back(Bldr(fe_con2[0]).reg(SEPG, epg2_vnid)
+            .reg(DEPG, epg3_vnid).done());
+
+    /* con1 */
+    PolicyManager::uri_set_t ps, cs;
+    policyMgr.getContractProviders(con1->getURI(), ps);
+    policyMgr.getContractConsumers(con1->getURI(), cs);
+    unordered_set<uint32_t> pvnids, cvnids;
+    flowManager.GetGroupVnids(ps, pvnids);
+    flowManager.GetGroupVnids(cs, cvnids);
+    BOOST_FOREACH(uint32_t pvnid, pvnids) {
+        BOOST_FOREACH(uint32_t cvnid, cvnids) {
+            fe_con1.push_back(Bldr().table(3).priority(prio).tcp()
+                    .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
+                    .actions().out(OUTPORT).done());
+            fe_con1.push_back(Bldr().table(3).priority(prio-1).arp()
+                    .reg(SEPG, pvnid).reg(DEPG, cvnid)
+                    .actions().out(OUTPORT).done());
+        }
+    }
 }
 

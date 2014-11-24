@@ -13,6 +13,11 @@
 #include <cstdio>
 #include <boost/foreach.hpp>
 
+/** Uncomment following lines when these headers are available */
+//#include <modelgbp/arp/OpcodeEnumT.hpp>
+//#include <modelgbp/l2/EtherTypeEnumT.hpp>
+//#include <modelgbp/gbp/DirectionEnumT.hpp>
+
 #include "Endpoint.h"
 #include "EndpointManager.h"
 #include "EndpointListener.h"
@@ -27,6 +32,7 @@ using namespace opflex::modb;
 using namespace ovsagent;
 using namespace opflex::enforcer::flow;
 using namespace modelgbp::gbp;
+using namespace modelgbp::gbpe;
 
 namespace opflex {
 namespace enforcer {
@@ -39,6 +45,8 @@ static const uint8_t SEC_TABLE_ID = 0,
 
 static const uint8_t MAC_ADDR_BROADCAST[6] =
     {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+const uint16_t FlowManager::MAX_POLICY_RULE_PRIORITY = 8196;     // arbitrary
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag) {
@@ -451,6 +459,97 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
     }
 }
 
+void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
+    const string& contractId = contractURI.toString();
+
+    PolicyManager& polMgr = agent.getPolicyManager();
+    if (!polMgr.contractExists(contractURI)) {  // Contract removed
+        WriteFlow(contractId, policyTable, NULL);
+        return;
+    }
+    PolicyManager::uri_set_t provURIs;
+    PolicyManager::uri_set_t consURIs;
+    polMgr.getContractProviders(contractURI, provURIs);
+    polMgr.getContractConsumers(contractURI, consURIs);
+
+    unordered_set<uint32_t> provVnids;
+    unordered_set<uint32_t> consVnids;
+    GetGroupVnids(provURIs, provVnids);
+    GetGroupVnids(consURIs, consVnids);
+
+    PolicyManager::rule_list_t rules;
+    polMgr.getContractRules(contractURI, rules);
+
+    /* If no rules are specified, we allow bi-directional traffic.
+     * So insert a fake classifier.
+     */
+    if (rules.empty()) {
+        rules.push_back(shared_ptr<L24Classifier>());
+    }
+
+    // XXX TODO Use symbolic names instead of integer literals
+    FlowEntryList entryList;
+    BOOST_FOREACH(uint32_t pvnid, provVnids) {
+        BOOST_FOREACH(uint32_t cvnid, consVnids) {
+            uint16_t prio = MAX_POLICY_RULE_PRIORITY;
+            BOOST_FOREACH(shared_ptr<L24Classifier>& cls, rules) {
+                uint8_t dir = 0 /*DirectionEnumT::CONST_BIDIRECTIONAL*/;
+                if (cls) {
+                    dir = cls->getDirection(
+                            0 /*DirectionEnumT::CONST_BIDIRECTIONAL*/);
+                }
+                if (dir == 1 /*DirectionEnumT::CONST_IN*/ ||
+                    dir == 0 /*DirectionEnumT::CONST_BIDIRECTIONAL*/) {
+                    AddEntryForClassifier(cls.get(), prio, cvnid, pvnid,
+                            entryList);
+                }
+                if (dir == 2 /*DirectionEnumT::CONST_OUT*/ ||
+                    dir == 0 /*DirectionEnumT::CONST_BIDIRECTIONAL*/) {
+                    AddEntryForClassifier(cls.get(), prio, pvnid, cvnid,
+                            entryList);
+                }
+                --prio;
+            }
+        }
+    }
+    WriteFlow(contractId, policyTable, entryList);
+}
+
+void FlowManager::AddEntryForClassifier(L24Classifier *classifier,
+        uint16_t priority, uint32_t& svnid, uint32_t& dvnid,
+        flow::FlowEntryList& entries) {
+
+    FlowEntry *e0 = new FlowEntry();
+    match *m = &(e0->entry->match);
+    SetPolicyMatchEpgs(e0, priority, svnid, dvnid);
+    SetPolicyActionAllow(e0);
+    entries.push_back(e0);
+
+    if (classifier == NULL) {
+        return;
+    }
+    // XXX TODO Use symbolic names instead of integer literals
+    uint8_t arpOpc =
+            classifier->getArpOpc(0 /* OpcodeEnumT::CONST_UNSPECIFIED */);
+    uint16_t ethT =
+            classifier->getEtherT(0 /* EtherTypeEnumT::CONST_UNSPECIFIED */);
+    if (arpOpc != 0 /* OpcodeEnumT::CONST_UNSPECIFIED */) {
+        match_set_nw_proto(m, arpOpc);
+    }
+    if (ethT != 0 /* EtherTypeEnumT::CONST_UNSPECIFIED */) {
+        match_set_dl_type(m, htons(ethT));
+    }
+    if (classifier->isProtSet()) {
+        match_set_nw_proto(m, classifier->getProt().get());
+    }
+    if (classifier->isSFromPortSet()) {
+        match_set_tp_src(m, htons(classifier->getSFromPort().get()));
+    }
+    if (classifier->isDFromPortSet()) {
+        match_set_tp_dst(m, htons(classifier->getDFromPort().get()));
+    }
+}
+
 bool
 FlowManager::WriteFlow(const string& objId, TableState& tab,
         FlowEntryList& el) {
@@ -476,6 +575,17 @@ FlowManager::WriteFlow(const string& objId, TableState& tab, FlowEntry *el) {
         tmpEl.push_back(el);
     }
     WriteFlow(objId, tab, tmpEl);
+}
+
+void FlowManager::GetGroupVnids(const unordered_set<URI>& egURIs,
+    /* out */unordered_set<uint32_t>& egVnids) {
+    PolicyManager& pm = agent.getPolicyManager();
+    BOOST_FOREACH(const URI& u, egURIs) {
+        optional<uint32_t> vnid = pm.getVnidForGroup(u);
+        if (vnid) {
+            egVnids.insert(vnid.get());
+        }
+    }
 }
 
 bool
