@@ -82,7 +82,7 @@ public class FEnumDef extends ItemFormatterTask
         }
     }
 
-    private static String getClassName(Item aIn, boolean aInIsFullyQualified)
+    public static String getClassName(Item aIn, boolean aInIsFullyQualified)
     {
         return  (aInIsFullyQualified ? getTargetModule(aIn) : "") +
                 (aIn instanceof MProp ?
