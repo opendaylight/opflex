@@ -2,10 +2,14 @@ package org.opendaylight.opflex.genie.content.format.agent.build.automake.cpp;
 
 import java.util.Collection;
 
+import org.opendaylight.opflex.genie.content.format.agent.consts.cpp.FEnumDef;
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.module.Module;
+import org.opendaylight.opflex.genie.content.model.mprop.MProp;
+import org.opendaylight.opflex.genie.content.model.mtype.MType;
 import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
+import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.model.Pair;
 import org.opendaylight.opflex.genie.engine.proc.Config;
 import org.opendaylight.opflex.modlan.utils.Strings;
@@ -56,10 +60,10 @@ public class FAutomakeDef
     public void generate()
     {
         String lLibName = Config.getLibName();
-        generate(0, MClass.getModulesWithConcreteClasses(), lLibName);
+        generate(0, MClass.getModulesWithDefinables(), lLibName);
     }
 
-    public void generate(int ainIndent, Collection<Pair<Module, Collection<MClass>>> aInModules, String aInLibName)
+    public void generate(int ainIndent, Collection<Pair<Module, Collection<Item>>> aInModules, String aInLibName)
     {
         out.println(ainIndent, "ACLOCAL_AMFLAGS = -I m4");
         out.println();
@@ -71,7 +75,7 @@ public class FAutomakeDef
 	        include/gbpmodel/policy/Space.hpp
          */
         StringBuilder moddirs = new StringBuilder(" ");
-        for (Pair<Module,Collection<MClass>> lModuleNode : aInModules)
+        for (Pair<Module,Collection<Item>> lModuleNode : aInModules)
         {
             Module lModule = lModuleNode.getFirst();
 
@@ -79,13 +83,21 @@ public class FAutomakeDef
             moddirs.append("$(" + lModName + "_include_HEADERS) ");
             out.println(ainIndent, lModName + "_includedir = $(includedir)/" + Config.getProjName() + "/" + lModName);
 
-            Collection<MClass> lClasses = lModuleNode.getSecond();
+            Collection<Item> lItems = lModuleNode.getSecond();
 
             out.print(ainIndent, lModName + "_include_HEADERS =");
-            for (MClass lClass : lClasses)
+            for (Item lItem : lItems)
             {
                 out.println(" \\");
-                out.print(ainIndent + 1, "include/" + Config.getProjName() + "/" + lModName + "/" + Strings.upFirstLetter(lClass.getLID().getName()) + ".hpp");
+                if (lItem instanceof MClass)
+                {
+                    out.print(ainIndent + 1, "include/" + Config.getProjName() + "/" + lModName + "/" + Strings
+                                      .upFirstLetter(lItem.getLID().getName()) + ".hpp");
+                }
+                else
+                {
+                    out.print(ainIndent + 1, "include/" + Config.getProjName() + "/" + lModName + "/" + FEnumDef.getClassName(lItem,false) + ".hpp");
+                }
             }
 
             out.println();

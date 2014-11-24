@@ -1205,6 +1205,55 @@ public class MClass
         return lRet;
     }
 
+    public static Collection<Item> getDefinableItems(Module aInMod)
+    {
+        Collection<Item> lRet = new LinkedList<Item>();
+        Children lChildren =  aInMod.getChildren();
+        if (null != lChildren)
+        {
+            // HANDLE CLASSES
+            {
+                CatEntry lCatE = lChildren.getEntry(MClass.MY_CAT);
+                if (null != lCatE)
+                {
+                    for (Node lNode : lCatE.getById().values())
+                    {
+                        MClass lClass = (MClass) lNode.getItem();
+                        if (lClass.isConcrete())
+                        {
+                            lRet.add(lClass);
+                        }
+                        TreeMap<String, MProp> lProps = new TreeMap<String, MProp>();
+                        lClass.getProp(lProps, false);
+                        for (MProp lProp : lProps.values())
+                        {
+                            if (lProp.hasEnumeratedConstants())
+                            {
+                                lRet.add(lProp);
+                            }
+                        }
+                    }
+                }
+            }
+            // HANDLE TYPES
+            {
+                CatEntry lCatE = lChildren.getEntry(MType.MY_CAT);
+                if (null != lCatE)
+                {
+                    for (Node lNode : lCatE.getById().values())
+                    {
+                        MType lType = (MType) lNode.getItem();
+                        if (lType.hasEnumeratedConstants())
+                        {
+                            lRet.add(lType);
+                        }
+                    }
+                }
+            }
+        }
+        return lRet;
+    }
+
     /**
      * retrieves ALL concrete classes in the model
      * @return collection of ALL concrete classes in the model
@@ -1245,6 +1294,28 @@ public class MClass
                 if (!lConcrClasses.isEmpty())
                 {
                     lRet.add(new Pair<Module,Collection<MClass>>(lMod,lConcrClasses));
+                }
+            }
+        }
+        return lRet;
+    }
+
+    public static Collection<Pair<Module, Collection<Item>>> getModulesWithDefinables()
+    {
+        Collection<Pair<Module, Collection<Item>>> lRet = new LinkedList<>();
+
+        CatEntry lCatE = Module.MY_CAT.getNodes();
+        if (null != lCatE)
+        {
+            for (Node lNode : lCatE.getById().values())
+            {
+                Module lMod = (Module) lNode.getItem();
+                {
+                    Collection<Item> lDefinables = getDefinableItems(lMod);
+                    if (!lDefinables.isEmpty())
+                    {
+                        lRet.add(new Pair<>(lMod, lDefinables));
+                    }
                 }
             }
         }
