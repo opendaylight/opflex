@@ -1,9 +1,4 @@
 {
-    // Endpoint sources provide metadata about local endpoints
-    "endpoint-sources": {
-        // Filesystem path to monitor for endpoint information
-        "filesystem": ["FILESYSTEM_WATCH_DIR"]
-    },
     // Configuration related to the OpFlex protocol
     "opflex": {
 	// The globally unique policy domain for this agent.
@@ -19,5 +14,25 @@
         "peers": [
             // example: {"hostname": "127.0.0.1", "port": 8009}
         ]
+    },
+    // Endpoint sources provide metadata about local endpoints
+    "endpoint-sources": {
+        // Filesystem path to monitor for endpoint information
+        "filesystem": ["FILESYSTEM_WATCH_DIR"]
+    },
+    // Renderers enforce policy obtained via OpFlex.
+    "renderers": {
+        // Stitched-mode renderer for interoperating with a
+        // hardware fabric such as ACI
+	// EXAMPLE:
+        "stitched-mode": {
+            "ovs-bridge-name": "br1",
+	    "tunnel": {
+		"vxlan" : {
+		    "iface": "br1_vxlan0",
+		    "remote-ip": "10.0.0.3"
+		}
+	    }
+	}
     }
 }

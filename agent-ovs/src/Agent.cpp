@@ -10,11 +10,14 @@
  */
 
 #include <boost/foreach.hpp>
+#include <boost/unordered_map.hpp>
+#include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 
 #include "Agent.h"
 #include "FSEndpointSource.h"
 #include "logging.h"
+#include "StitchedModeRenderer.h"
 
 namespace ovsagent {
 
@@ -33,6 +36,10 @@ Agent::Agent(OFFramework& framework_)
 }
 
 Agent::~Agent() {
+    BOOST_FOREACH(Renderer* r, renderers) {
+        delete r;
+    }
+    renderers.clear();
 }
 
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
@@ -45,6 +52,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
 
     static const std::string OPFLEX_NAME("opflex.name");
     static const std::string OPFLEX_DOMAIN("opflex.domain");
+
+    static const std::string RENDERERS_STITCHED_MODE("renderers.stitched-mode");
 
     optional<const ptree&> endpointSource = 
         properties.get_child_optional(ENDPOINT_SOURCE_PATH);
@@ -83,6 +92,21 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
             }
         }
     }
+    typedef Renderer* (*rend_create)(Agent&);
+    typedef boost::unordered_map<std::string, rend_create> rend_map_t;
+    static rend_map_t rend_map =
+        boost::assign::map_list_of(RENDERERS_STITCHED_MODE,
+                                   StitchedModeRenderer::create);
+
+    BOOST_FOREACH(rend_map_t::value_type& v, rend_map) {
+        optional<const ptree&> rtree = 
+            properties.get_child_optional(v.first);
+        if (rtree) {
+            Renderer* r = v.second(*this);
+            renderers.push_back(r);
+            r->setProperties(rtree.get());
+        }
+    }
 }
 
 void Agent::start() {
@@ -113,10 +137,18 @@ void Agent::start() {
         EndpointSource* source = new FSEndpointSource(&endpointManager, path);
         endpointSources.insert(source);
     }
+
+    BOOST_FOREACH(Renderer* r, renderers) {
+        r->start();
+    }
 }
 
 void Agent::stop() {
     LOG(INFO) << "Stopping OVS Agent";
+
+    BOOST_FOREACH(Renderer* r, renderers) {
+        r->stop();
+    }
 
     BOOST_FOREACH(EndpointSource* source, endpointSources) {
         delete source;
