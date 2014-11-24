@@ -49,6 +49,15 @@ libagent_ovs_la_SOURCES = \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \
 	src/include/FSEndpointSource.h \
+	src/include/Renderer.h \
+	src/include/StitchedModeRenderer.h \
+	src/include/FlowExecutor.h \
+	src/include/FlowManager.h \
+	src/include/ovs.h \
+	src/include/TableState.h \
+	src/include/ActionBuilder.h \
+	src/include/SwitchConnection.h \
+	src/include/PortMapper.h \
 	src/include/Agent.h \
 	src/include/cmd.h \
 	src/BoostLogHandler.cpp \
@@ -57,25 +66,16 @@ libagent_ovs_la_SOURCES = \
 	src/EndpointManager.cpp \
 	src/EndpointSource.cpp \
 	src/FSEndpointSource.cpp \
-	src/cmd.cpp \
-	src/Agent.cpp
-
-if HAVE_OVS
-libagent_ovs_la_SOURCES += \
-	src/include/FlowExecutor.h \
-	src/include/FlowManager.h \
-	src/include/ovs.h \
-	src/include/TableState.h \
-	src/include/ActionBuilder.h \
-	src/include/SwitchConnection.h \
-	src/include/PortMapper.h \
+	src/Renderer.cpp \
+	src/StitchedModeRenderer.cpp \
 	src/FlowManager.cpp \
 	src/TableState.cpp \
 	src/FlowExecutor.cpp \
 	src/ActionBuilder.cpp \
 	src/SwitchConnection.cpp \
-	src/PortMapper.cpp
-endif
+	src/PortMapper.cpp \
+	src/cmd.cpp \
+	src/Agent.cpp
 
 bin_PROGRAMS=agent_ovs
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
@@ -86,7 +86,7 @@ agent_ovs_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB)
 
 TESTS = agent_test
-noinst_PROGRAMS = $(TESTS) mock_server
+noinst_PROGRAMS = $(TESTS) mock_server integration_test
 
 agent_test_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
@@ -97,22 +97,18 @@ agent_test_CXXFLAGS = \
 	-DBOOST_TEST_DYN_LINK
 agent_test_SOURCES = \
 	test/include/BaseFixture.h \
-	test/main.cpp \
+	test/include/ModbFixture.h \
 	test/PolicyManager_test.cpp \
-	test/EndpointManager_test.cpp
+	test/EndpointManager_test.cpp \
+	test/FlowManager_test.cpp \
+	test/PortMapper_test.cpp \
+	test/FlowExecutor_test.cpp \
+	test/main.cpp
 agent_test_LDADD = \
 	libagent_ovs.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS)
-
-if HAVE_OVS
-agent_test_SOURCES += \
-	test/include/ModbFixture.h \
-	test/FlowManager_test.cpp \
-	test/PortMapper_test.cpp \
-	test/FlowExecutor_test.cpp
-endif
 
 mock_server_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
@@ -138,28 +134,22 @@ if HAVE_DOXYGEN
 	doc/html
 endif
 
-if HAVE_OVS
-noinst_PROGRAMS += integration_test
-
 integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/integration-test/include \
 	$(OVS_ADDL_CFLAGS)  \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
-integration_test_LDFLAGS = $(BOOST_LDFLAGS)
-
 integration_test_SOURCES = \
 	integration-test/include/ConnectionFixture.h \
 	integration-test/main.cpp \
 	integration-test/connection_test.cpp \
 	integration-test/flowmod_test.cpp
-
+integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 integration_test_LDADD = \
 	libagent_ovs.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS)
-endif
 
 check-integration: agent_ovs
 	$(top_builddir)/integration_test

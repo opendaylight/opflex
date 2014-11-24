@@ -12,6 +12,7 @@
 #include <set>
 #include <utility>
 #include <string>
+#include <list>
 
 #include <boost/property_tree/ptree.hpp>
 #include <opflex/ofcore/OFFramework.h>
@@ -25,6 +26,8 @@
 #define OVSAGENT_AGENT_H
 
 namespace ovsagent {
+
+class Renderer;
 
 /**
  * Master object for the OVS agent.  This class holds the state for
@@ -64,6 +67,11 @@ public:
     void stop();
 
     /**
+     * Get the opflex framework object for this agent
+     */
+    opflex::ofcore::OFFramework& getFramework() { return framework; }
+
+    /**
      * Get the policy manager object for this agent
      */
     PolicyManager& getPolicyManager() { return policyManager; }
@@ -80,6 +88,8 @@ private:
 
     std::set<std::string> endpointSourcePaths;
     std::set<EndpointSource*> endpointSources;
+
+    std::list<Renderer*> renderers;
 
     typedef std::pair<std::string, int> host_t;
     std::set<host_t> opflexPeers;

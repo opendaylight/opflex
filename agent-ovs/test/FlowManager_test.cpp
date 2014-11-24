@@ -87,8 +87,7 @@ public:
     FlowManagerFixture() : ModbFixture(),
                         flowManager(agent),
                         policyMgr(agent.getPolicyManager()) {
-        exec = new MockFlowExecutor();
-        flowManager.SetExecutor(exec);
+        flowManager.SetExecutor(&exec);
         flowManager.SetPortMapper(&portmapper);
         portmapper.ports[ep0->getInterfaceName().get()] = 80;
 
@@ -112,7 +111,7 @@ public:
     }
     void createEntriesForObjects();
 
-    MockFlowExecutor *exec;
+    MockFlowExecutor exec;
     FlowManager flowManager;
     MockPortMapper portmapper;
     PolicyManager& policyMgr;
@@ -129,15 +128,15 @@ BOOST_AUTO_TEST_SUITE(FlowManager_test)
 
 BOOST_FIXTURE_TEST_CASE(epg, FlowManagerFixture) {
     /* create */
-    exec->Expect(FlowEdit::add, fe_epg0);
-    exec->Expect(FlowEdit::add, fe_ep0);
-    exec->Expect(FlowEdit::add, fe_ep2);
+    exec.Expect(FlowEdit::add, fe_epg0);
+    exec.Expect(FlowEdit::add, fe_ep0);
+    exec.Expect(FlowEdit::add, fe_ep2);
     flowManager.egDomainUpdated(epg0->getURI());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* no change */
     flowManager.egDomainUpdated(epg0->getURI());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* forwarding object change */
     Mutator m1(framework, policyOwner);
@@ -145,106 +144,106 @@ BOOST_FIXTURE_TEST_CASE(epg, FlowManagerFixture) {
             ->setTargetSubnets(subnetsfd0->getURI());
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
-    exec->Expect(FlowEdit::mod, fe_epg0_fd0);
-    exec->Expect(FlowEdit::mod, fe_ep0_fd0);
+    exec.Expect(FlowEdit::mod, fe_epg0_fd0);
+    exec.Expect(FlowEdit::mod, fe_ep0_fd0);
     flowManager.egDomainUpdated(epg0->getURI());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* remove */
     Mutator m2(framework, policyOwner);
     epg0->remove();
     m2.commit();
     WAIT_FOR(policyMgr.groupExists(epg0->getURI()) == false, 500);
-    exec->Expect(FlowEdit::del, fe_epg0_fd0);
-    exec->Expect(FlowEdit::del, fe_epg0[1]);
+    exec.Expect(FlowEdit::del, fe_epg0_fd0);
+    exec.Expect(FlowEdit::del, fe_epg0[1]);
     flowManager.egDomainUpdated(epg0->getURI());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 }
 
 BOOST_FIXTURE_TEST_CASE(localEp, FlowManagerFixture) {
     /* created */
-    exec->Expect(FlowEdit::add, fe_ep0);
+    exec.Expect(FlowEdit::add, fe_ep0);
     flowManager.endpointUpdated(ep0->getUUID());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* endpoint group change */
     ep0->setEgURI(epg1->getURI());
     epSrc.updateEndpoint(*ep0);
-    exec->Expect(FlowEdit::mod, fe_ep0_eg1);
-    exec->Expect(FlowEdit::del, fe_ep0[6]);
+    exec.Expect(FlowEdit::mod, fe_ep0_eg1);
+    exec.Expect(FlowEdit::del, fe_ep0[6]);
     flowManager.endpointUpdated(ep0->getUUID());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* endpoint group changes back to old one */
     ep0->setEgURI(epg0->getURI());
     epSrc.updateEndpoint(*ep0);
-    exec->Expect(FlowEdit::mod, fe_ep0_eg0_1);
-    exec->Expect(FlowEdit::add, fe_ep0[6]);
-    exec->Expect(FlowEdit::mod, fe_ep0_eg0_2);
+    exec.Expect(FlowEdit::mod, fe_ep0_eg0_1);
+    exec.Expect(FlowEdit::add, fe_ep0[6]);
+    exec.Expect(FlowEdit::mod, fe_ep0_eg0_2);
     flowManager.endpointUpdated(ep0->getUUID());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* port-mapping change */
     portmapper.ports[ep0->getInterfaceName().get()] = 180;
-    exec->Expect(FlowEdit::add, fe_ep0_port_1);
+    exec.Expect(FlowEdit::add, fe_ep0_port_1);
     for (int i = 0; i < fe_ep0_port_1.size(); ++i)  {
-        exec->Expect(FlowEdit::del, fe_ep0[i]);
+        exec.Expect(FlowEdit::del, fe_ep0[i]);
     }
-    exec->Expect(FlowEdit::add, fe_ep0_port_2);
+    exec.Expect(FlowEdit::add, fe_ep0_port_2);
     for (int i = fe_ep0_port_1.size();
          i < fe_ep0_port_1.size() + fe_ep0_port_2.size();
          ++i) {
-        exec->Expect(FlowEdit::del, fe_ep0[i]);
+        exec.Expect(FlowEdit::del, fe_ep0[i]);
     }
-    exec->Expect(FlowEdit::mod, fe_ep0_port_3);
+    exec.Expect(FlowEdit::mod, fe_ep0_port_3);
     flowManager.endpointUpdated(ep0->getUUID());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* remove endpoint */
     epSrc.removeEndpoint(ep0->getUUID());
-    exec->Expect(FlowEdit::del, fe_ep0_port_1);
-    exec->Expect(FlowEdit::del, fe_ep0_port_2);
-    exec->Expect(FlowEdit::del, fe_ep0_port_3);
+    exec.Expect(FlowEdit::del, fe_ep0_port_1);
+    exec.Expect(FlowEdit::del, fe_ep0_port_2);
+    exec.Expect(FlowEdit::del, fe_ep0_port_3);
     flowManager.endpointUpdated(ep0->getUUID());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 }
 
 BOOST_FIXTURE_TEST_CASE(remoteEp, FlowManagerFixture) {
     /* created */
-    exec->Expect(FlowEdit::add, fe_ep2);
+    exec.Expect(FlowEdit::add, fe_ep2);
     flowManager.endpointUpdated(ep2->getUUID());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* endpoint group change */
     ep2->setEgURI(epg1->getURI());
     epSrc.updateEndpoint(*ep2);
-    exec->Expect(FlowEdit::mod, fe_ep2_eg1);
-    exec->Expect(FlowEdit::del, fe_ep2[0]);
+    exec.Expect(FlowEdit::mod, fe_ep2_eg1);
+    exec.Expect(FlowEdit::del, fe_ep2[0]);
     flowManager.endpointUpdated(ep2->getUUID());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 }
 
 BOOST_FIXTURE_TEST_CASE(policy, FlowManagerFixture) {
-    exec->Expect(FlowEdit::add, fe_con0);
+    exec.Expect(FlowEdit::add, fe_con0);
     flowManager.contractUpdated(con0->getURI());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
-    exec->Expect(FlowEdit::add, fe_con2);
+    exec.Expect(FlowEdit::add, fe_con2);
     flowManager.contractUpdated(con2->getURI());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
-    exec->Expect(FlowEdit::add, fe_con1);
+    exec.Expect(FlowEdit::add, fe_con1);
     flowManager.contractUpdated(con1->getURI());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 
     /* remove */
     Mutator m2(framework, policyOwner);
     con2->remove();
     m2.commit();
     WAIT_FOR(policyMgr.contractExists(con2->getURI()) == false, 500);
-    exec->Expect(FlowEdit::del, fe_con2);
+    exec.Expect(FlowEdit::del, fe_con2);
     flowManager.contractUpdated(con2->getURI());
-    BOOST_CHECK(exec->IsEmpty());
+    BOOST_CHECK(exec.IsEmpty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

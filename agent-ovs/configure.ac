@@ -67,10 +67,8 @@ PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])
 
 # check for libopenvswitch
-PKG_CHECK_MODULES([libofproto], [libofproto >= 2.3.90], [], [have_ofproto="no"])
-PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.3.90], [], [have_openvswitch="no"])
-
-AM_CONDITIONAL([HAVE_OVS], [test "$have_ofproto" != "no" -a "$have_openvswitch" != "no"])
+PKG_CHECK_MODULES([libofproto], [libofproto >= 2.3.90])
+PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.3.90])
 
 # inotify check
 AC_ARG_ENABLE(inotify, "Whether to use inotify for endpoint source")
