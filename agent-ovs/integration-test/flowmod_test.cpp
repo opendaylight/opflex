@@ -114,7 +114,7 @@ public:
 BOOST_AUTO_TEST_SUITE(flowmod_test)
 
 BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
-    BOOST_REQUIRE(conn.Connect(OFP13_VERSION));
+    BOOST_REQUIRE(!conn.Connect(OFP13_VERSION));
 
     FlowEdit fe;
     vector<FlowEntry *> flows;

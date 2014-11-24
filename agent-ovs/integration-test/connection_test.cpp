@@ -44,18 +44,27 @@ BOOST_AUTO_TEST_SUITE(connection_test)
 BOOST_FIXTURE_TEST_CASE(basic, ConnectionFixture) {
     SwitchConnection conn(testSwitchName);
 
-    BOOST_CHECK(conn.Connect(OFP13_VERSION));
+    BOOST_CHECK(!conn.Connect(OFP13_VERSION));
     BOOST_CHECK(conn.IsConnected());
 
     conn.Disconnect();
     BOOST_CHECK(!conn.IsConnected());
 
-    BOOST_CHECK(conn.Connect(OFP10_VERSION));
+    BOOST_CHECK(!conn.Connect(OFP10_VERSION));
     conn.Disconnect();
+}
 
-    // check invalid bridge
-    SwitchConnection conn2("bad_bad_br0");
-    BOOST_CHECK(conn2.Connect(OFP10_VERSION) != 0);
+BOOST_FIXTURE_TEST_CASE(noswitch, ConnectionFixture) {
+    string newSwitch("newTestSwitch");
+    SwitchConnection conn(newSwitch);
+
+    BOOST_CHECK(conn.Connect(OFP13_VERSION) != 0);
+
+    AddSwitch(newSwitch);
+    WAIT_FOR(conn.IsConnected(), 10);
+
+    conn.Disconnect();
+    RemoveSwitch(newSwitch);
 }
 
 BOOST_FIXTURE_TEST_CASE(connectListener, ConnectionFixture) {
@@ -65,16 +74,16 @@ BOOST_FIXTURE_TEST_CASE(connectListener, ConnectionFixture) {
     conn.RegisterOnConnectListener(&cl1);
     conn.RegisterOnConnectListener(&cl2);
 
-    BOOST_CHECK(conn.Connect(OFP13_VERSION));
+    BOOST_CHECK(!conn.Connect(OFP13_VERSION));
 
-    BOOST_CHECK(cl1.counter == 1);
+    WAIT_FOR(cl1.counter == 1, 5);
     BOOST_CHECK(cl2.counter == 1);
     conn.Disconnect();
 
     conn.UnregisterOnConnectListener(&cl2);
-    BOOST_CHECK(conn.Connect(OFP10_VERSION));
+    BOOST_CHECK(!conn.Connect(OFP10_VERSION));
 
-    BOOST_CHECK(cl1.counter == 2);
+    WAIT_FOR(cl1.counter == 2, 5);
     BOOST_CHECK(cl2.counter == 1);
     conn.Disconnect();
 }
@@ -87,7 +96,7 @@ BOOST_FIXTURE_TEST_CASE(msghandler, ConnectionFixture) {
     conn.RegisterMessageHandler(OFPTYPE_ECHO_REPLY, &erh1);
     conn.RegisterMessageHandler(OFPTYPE_ECHO_REPLY, &erh2);
 
-    BOOST_CHECK(conn.Connect(OFP13_VERSION));
+    BOOST_CHECK(!conn.Connect(OFP13_VERSION));
 
     ofpbuf *echoReq1 = make_echo_request(OFP13_VERSION);
     BOOST_CHECK(conn.SendMessage(echoReq1) == 0);
@@ -109,7 +118,7 @@ BOOST_FIXTURE_TEST_CASE(sendrecv, ConnectionFixture) {
     EchoReplyHandler erh;
     conn.RegisterMessageHandler(OFPTYPE_ECHO_REPLY, &erh);
 
-    BOOST_CHECK(conn.Connect(OFP13_VERSION));
+    BOOST_CHECK(!conn.Connect(OFP13_VERSION));
 
     const int numEchos = 5;
     for (int i = 0; i < numEchos; ++i) {
@@ -130,8 +139,8 @@ BOOST_FIXTURE_TEST_CASE(reconnect, ConnectionFixture) {
     SimpleConnectListener cl1;
     conn.RegisterOnConnectListener(&cl1);
 
-    BOOST_CHECK(conn.Connect(OFP13_VERSION));
-    BOOST_CHECK(cl1.counter == 1);
+    BOOST_CHECK(!conn.Connect(OFP13_VERSION));
+    WAIT_FOR(cl1.counter == 1, 5);
 
     /* Break connection and make sure we can reconnect */
     RemoveSwitch(testSwitchName);

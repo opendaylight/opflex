@@ -92,12 +92,10 @@ SwitchConnection::Connect(ofp_version protoVer) {
     if (err != 0) {
         LOG(ERROR) << "Failed to connect to " << switchName << ": "
                 << ovs_strerror(err);
-        return err;
     }
 
     connThread = new boost::thread(boost::ref(*this));
-    FireOnConnectListeners();
-    return true;
+    return err;
 }
 
 int
@@ -190,7 +188,10 @@ SwitchConnection::Monitor() {
     LOG(DEBUG) << "Connection monitor started ...";
 
     WatchPollEvent();
-    bool connLost = false;
+    bool connLost = (IsConnected() == false);
+    if (!connLost) {
+        FireOnConnectListeners();
+    }
     while (true) {
         if (connLost) {
             LOG(ERROR) << "Connection lost, trying to auto reconnect";
