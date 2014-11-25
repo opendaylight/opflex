@@ -10,6 +10,9 @@
  */
 
 #include <modelgbp/dmtree/Root.hpp>
+#include <modelgbp/l2/EtherTypeEnumT.hpp>
+#include <modelgbp/gbp/ConnTrackEnumT.hpp>
+#include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "Policies.h"
@@ -24,6 +27,7 @@ using opflex::modb::URI;
 using namespace modelgbp;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
+using namespace modelgbp::l2;
 
 void Policies::writeBasicInit(opflex::ofcore::OFFramework& framework) {
     Mutator mutator(framework, "init");
@@ -58,9 +62,6 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<L24Classifier> classifier1;
     shared_ptr<L24Classifier> classifier2;
     shared_ptr<L24Classifier> classifier3;
-    shared_ptr<L24Classifier> classifier4;
-    shared_ptr<L24Classifier> classifier5;
-    shared_ptr<L24Classifier> classifier6;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
@@ -95,35 +96,41 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     subnetsrd->addGbpSubnetsToNetworkRSrc()
         ->setTargetRoutingDomain(rd->getURI());
 
+    // ARP
     classifier1 = space->addGbpeL24Classifier("classifier1");
-    classifier1->setOrder(100);
-    classifier2 = space->addGbpeL24Classifier("classifier2");
-    classifier3 = space->addGbpeL24Classifier("classifier3");
-    classifier4 = space->addGbpeL24Classifier("classifier4");
-    classifier5 = space->addGbpeL24Classifier("classifier5");
-    classifier6 = space->addGbpeL24Classifier("classifier6");
+    classifier1->setOrder(100)
+        .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
+        .setEtherT(EtherTypeEnumT::CONST_ARP);
 
+    // ICMP
+    classifier2 = space->addGbpeL24Classifier("classifier2");
+    classifier2->setOrder(100)
+        .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
+        .setEtherT(EtherTypeEnumT::CONST_IPV4)
+        .setProt(1);
+
+    // HTTP
+    classifier3 = space->addGbpeL24Classifier("classifier3");
+    classifier3->setEtherT(EtherTypeEnumT::CONST_IPV4)
+        .setProt(6)
+        .setDFromPort(80)
+        .setDToPort(80)
+        .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE)
+        .setDirection(DirectionEnumT::CONST_IN);
+
+    // Basic ARP and ICMP
     con1 = space->addGbpContract("contract1");
     con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
         ->setOrder(10)
         .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
     con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
-        ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
-    con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
-        ->setOrder(15)
+        ->setOrder(10)
         .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
-    con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
-        ->setOrder(5)
-        .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
-    con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule4")
-        ->setOrder(25)
-        .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
-    con1->addGbpSubject("1_subject2")->addGbpRule("1_2_rule1")
-        ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
 
+    // HTTP to provider, reflexive
     con2 = space->addGbpContract("contract2");
     con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
-        ->addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
+        ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
 
     eg1 = space->addGbpEpGroup("group1");
     eg1->addGbpEpGroupToNetworkRSrc()
@@ -133,6 +140,8 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
 
     eg2 = space->addGbpEpGroup("group2");
+    eg2->addGbpEpGroupToNetworkRSrc()
+        ->setTargetSubnets(subnetsfd->getURI());
     eg2->addGbpeInstContext()->setVnid(5678);
     eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
