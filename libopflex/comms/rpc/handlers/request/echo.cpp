@@ -16,9 +16,8 @@ void InbReq<&yajr::rpc::method::echo>::process() const {
     LOG(DEBUG);
 
     OutboundResult (
-            *getPeer(),  /* reply to the sender! */
-            GeneratorFromValue(getPayload()),/* payload from inbound req */
-            getRemoteId()/* id from the inbound req */
+            this,
+            GeneratorFromValue(getPayload())      /* payload from inbound req */
         )
         . send();
 

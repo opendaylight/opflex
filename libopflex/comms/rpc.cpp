@@ -64,17 +64,31 @@ void OutboundMessage::send() {
 
     LOG(DEBUG);
 
-    ::yajr::comms::internal::CommunicationPeer const * peer =
+    ::yajr::comms::internal::CommunicationPeer const * cP =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer const * >
-        (getPeer());
+        (peer_);
 
-    assert(peer && "peer needs to be set before outbound messages are sent");
+    assert(cP &&
+            "peer needs to be set "
+            "to a proper communication peer "
+            "before outbound messages are sent");
 
-    Accept(peer->getWriter());
+    Accept(cP->getWriter());
 
-    peer->delimitFrame();
-    peer->write();
+    cP->delimitFrame();
+    cP->write();
 
+}
+
+void OutboundRequest::send(
+        ::yajr::Peer const & peer
+    ) {
+
+    LOG(DEBUG);
+
+    setPeer(&peer);
+
+    send();
 }
 
 InboundResponse::InboundResponse(

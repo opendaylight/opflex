@@ -92,8 +92,8 @@ class EchoGen {
 void CommunicationPeer::sendEchoReq() {
 
     yajr::rpc::OutReq< &rpc::method::echo > (
-            *this,
-            EchoGen(*this)
+            EchoGen(*this),
+            this
         )
         . send();
 
