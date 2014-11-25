@@ -88,6 +88,7 @@ int main(int argc, char** argv) {
 
     } catch (po::unknown_option e) {
         std::cerr << e.what() << std::endl;
+        return 1;
     }
 
     if (daemon)

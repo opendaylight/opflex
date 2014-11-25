@@ -19,7 +19,6 @@ using boost::property_tree::ptree;
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_) 
     : Renderer(agent_), flowManager(agent_), connection(NULL), started(false) {
-    LOG(INFO) << &agent_;
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
 }
