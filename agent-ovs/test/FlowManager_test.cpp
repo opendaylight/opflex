@@ -253,7 +253,8 @@ enum REG {
 };
 string rstr[] = {
     "NXM_NX_REG0[]", "NXM_NX_REG2[]", "NXM_NX_REG4[]", "NXM_NX_REG5[]",
-    "NXM_NX_REG6[]", "NXM_NX_REG7[]", "NXM_NX_TUN_ID[]", "NXM_NX_TUN_IPV4_DST[]"
+    "NXM_NX_REG6[]", "NXM_NX_REG7[]", "NXM_NX_TUN_ID[0..31]",
+    "NXM_NX_TUN_IPV4_DST[]"
 };
 string rstr1[] = { "reg0", "reg2", "reg4", "reg5", "reg6", "reg7", "", ""};
 

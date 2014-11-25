@@ -168,6 +168,7 @@ void FlowModFixture::createTestFlows() {
     FlowEntry& e1 = *(testFlows.back());
     memcpy(e1.entry, e0.entry, sizeof(*e0.entry));
     ActionBuilder ab1;
+    ab1.SetRegMove(MFF_REG0, MFF_TUN_ID);
     ab1.SetGotoTable(10);
     ab1.Build(e1.entry);
 }

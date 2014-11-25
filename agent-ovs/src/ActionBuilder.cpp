@@ -6,6 +6,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <algorithm>
+
 #include "ovs.h"
 #include "ActionBuilder.h"
 
@@ -58,6 +60,9 @@ ActionBuilder::SetRegMove(mf_field_id srcRegId, mf_field_id dstRegId) {
     struct ofpact_reg_move *move = ofpact_put_REG_MOVE(&buf);
     InitSubField(&move->src, srcRegId);
     InitSubField(&move->dst, dstRegId);
+    int bitsToMove = std::min(move->src.n_bits, move->dst.n_bits);
+    move->src.n_bits = bitsToMove;
+    move->dst.n_bits  = bitsToMove;
 }
 
 void

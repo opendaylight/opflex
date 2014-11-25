@@ -128,6 +128,7 @@ FlowExecutor::DoExecuteNoBlock(const flow::FlowEdit& fe,
             mutex_guard lock(reqMtx);
             requests[barrXid.get()].reqXids.insert(xid);
         }
+        LOG(DEBUG) << "Executing xid=" << xid << ", " << *(e.second);
         int error = swConn->SendMessage(msg);
         if (error) {
             LOG(ERROR) << "Error sending flow mod message: "
