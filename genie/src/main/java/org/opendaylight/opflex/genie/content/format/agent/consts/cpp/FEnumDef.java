@@ -192,7 +192,7 @@ public class FEnumDef extends ItemFormatterTask
         }
         else
         {
-            out.println(aInIndent, "#include <cstdint>");
+            out.println(aInIndent, "#include <boost/cstdint.hpp>");
             out.println(aInIndent, "#include <cstddef>");
         }
         out.println(aInIndent, "namespace " + Config.getProjName() + " {");
