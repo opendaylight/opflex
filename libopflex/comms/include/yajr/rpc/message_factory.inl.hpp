@@ -10,8 +10,8 @@ using namespace yajr::rpc::method;
 
 template <MethodName * M>
 OutReq<M> * yajr::rpc::MessageFactory::newReq(
-        yajr::Peer const & peer,
-        PayloadGenerator payloadGenerator
+        PayloadGenerator payloadGenerator,
+        yajr::Peer const * peer
     ) {
 
     OutReq<M> * newReq = new (std::nothrow)

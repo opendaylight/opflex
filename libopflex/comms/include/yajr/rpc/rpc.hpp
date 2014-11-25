@@ -153,10 +153,25 @@ class Message {
      * from derived classes' constructors.
      */
     explicit Message(
-            yajr::Peer const & peer
+            yajr::Peer const * peer
             )
-        : peer_(&peer)
+        : peer_(peer)
         {}
+
+    /**
+     * Set the communication peer for this message.
+     *
+     * Set the communication peer for this message. Can be set any number of
+     * times for an Outbound message. Useful to send the same message to multiple
+     * peers. FIXME: handle reference counting!!!
+     *
+     * @return this message.
+     */
+    void setPeer(
+        yajr::Peer const * peer                     /**< [in] the peer to set */
+        ) {
+        peer_ = peer;
+    }
 
     /**
      * Get the uv_loop_t * for this message
@@ -209,7 +224,7 @@ class InboundMessage : public Message {
             rapidjson::Value const & payload
             )
         :
-            Message(peer),
+            Message(&peer),
             payload_(payload),
             received_(uv_now(getUvLoop()))
         {
@@ -234,24 +249,11 @@ class OutboundMessage : public Message, virtual public Identifier {
   public:
 
     /**
-     * Set the communication peer for this message.
-     *
-     * Set the communication peer for this message. Can be set any number of
-     * times for an Outbound message. Useful to send the same message to multiple
-     * peers. FIXME: handle reference counting!!!
-     *
-     * @return this message.
-     */
-    void setPeer(
-        yajr::Peer const & peer                     /**< [in] the peer to set */
-        ) {
-        peer_ = &peer;
-    }
-
-    /**
      * Send this message now!
      */
-    void send();
+    void send(
+        ::yajr::Peer const * peer = NULL
+    );
 
     /**
      * @brief Emit events to a handler
@@ -271,17 +273,13 @@ class OutboundMessage : public Message, virtual public Identifier {
      * from derived classes' constructors.
      */
     explicit OutboundMessage(
-        yajr::Peer const & peer,                   /**< [in] where to send to */
-        PayloadGenerator const & payloadGenerator /**< [in] payload generator */
+        PayloadGenerator const & payloadGenerator,/**< [in] payload generator */
+        yajr::Peer const * peer                    /**< [in] where to send to */
         )
         :
           Message(peer),
           payloadGenerator_(payloadGenerator),
-          sent_(uv_now(getUvLoop())),
-          retryIntervalMs_(200),
-          retries_(0),
-          keepPayload_(false),
-          hasPayload_(true)
+          sent_(uv_now(getUvLoop()))
         {}
 
     /**
@@ -297,11 +295,29 @@ class OutboundMessage : public Message, virtual public Identifier {
   private:
     PayloadGenerator const payloadGenerator_;
     uint64_t sent_;
-    uint64_t retryIntervalMs_;
-    size_t retries_;
-    bool keepPayload_;
-    bool hasPayload_;
 };
+
+/**
+ * @brief A concrete inbound yajr request message.
+ */
+class InboundRequest : public InboundMessage, public RemoteIdentifier {
+
+  public:
+    /**
+     * @brief Constructor for an inbound request message
+     */
+    InboundRequest(
+            yajr::Peer const & peer,  /**< [in] where we received from */
+            rapidjson::Value const & params,/**< [in] the params value to send */
+            rapidjson::Value const & id      /**< [in] the id of this message */
+            )
+        :
+            InboundMessage(peer, params),
+            RemoteIdentifier(id)
+        {}
+
+};
+
 
 /**
  * @brief A generic outbound yajr response message.
@@ -328,12 +344,28 @@ class OutboundResponse : public OutboundMessage, public RemoteIdentifier {
      * but only * from derived classes' constructors.
      */
     explicit OutboundResponse(
+        InboundRequest const * inbReq,          /**< [in] request we reply to */
+        PayloadGenerator const & response  /**< [in] the error/result to send */
+        )
+        :
+            OutboundMessage(response, inbReq->getPeer()),
+            RemoteIdentifier(inbReq->getRemoteId())
+        {
+        }
+
+    /**
+     * @brief Constructor needed by derived classes
+     *
+     * Construct a new outbound yajr response message. Never invoke directly,
+     * but only * from derived classes' constructors.
+     */
+    explicit OutboundResponse(
         yajr::Peer const & peer,            /**< [in] where to send to */
         PayloadGenerator const & response, /**< [in] the error/result to send */
         rapidjson::Value const & id /**< [in] the desired id for this message */
         )
         :
-            OutboundMessage(peer, response),
+            OutboundMessage(response, &peer),
             RemoteIdentifier(id)
         {
         }
@@ -363,7 +395,18 @@ class OutboundError : public OutboundResponse {
      * @brief Constructor for an outbound error message.
      */
     explicit OutboundError(
-        yajr::Peer const & peer,            /**< [in] where to send to */
+        InboundRequest const * inbReq,          /**< [in] request we reply to */
+        PayloadGenerator const & error    /**< [in] the error value to return */
+        )
+        : OutboundResponse(inbReq, error)
+        {
+        }
+
+    /**
+     * @brief Constructor for an outbound error message.
+     */
+    explicit OutboundError(
+        yajr::Peer const & peer,                   /**< [in] where to send to */
         PayloadGenerator const & error,   /**< [in] the error value to return */
         rapidjson::Value const & id /**< [in] the desired id for this message */
         )
@@ -398,6 +441,17 @@ class OutboundError : public OutboundResponse {
 class OutboundResult : public OutboundResponse {
 
   public:
+    /**
+     * @brief Constructor for an outbound result message.
+     */
+    explicit OutboundResult(
+        InboundRequest const * inbReq,          /**< [in] request we reply to */
+        PayloadGenerator const & result  /**< [in] the result value to return */
+        )
+        : OutboundResponse(inbReq, result)
+        {
+        }
+
     /**
      * @brief Constructor for an outbound result message.
      */
@@ -451,13 +505,13 @@ class OutboundRequest : public OutboundMessage,
      * from derived classes' constructors.
      */
     explicit OutboundRequest(
-        yajr::Peer const & peer,            /**< [in] where to send to */
         PayloadGenerator const & params,   /**< [in] the params value to send */
         MethodName const * methodName,
-        uint64_t id
+        uint64_t id, /* FIXME */
+        yajr::Peer const * peer                    /**< [in] where to send to */
         )
         :
-            OutboundMessage(peer, params),
+            OutboundMessage(params, peer),
             LocalIdentifier(methodName, id)
         {
         }
@@ -578,27 +632,6 @@ class InboundResult : public InboundResponse {
     bool isError() {
       return false;
     }
-
-};
-
-/**
- * @brief A concrete inbound yajr request message.
- */
-class InboundRequest : public InboundMessage, public RemoteIdentifier {
-
-  public:
-    /**
-     * @brief Constructor for an inbound request message
-     */
-    InboundRequest(
-            yajr::Peer const & peer,  /**< [in] where we received from */
-            rapidjson::Value const & params,/**< [in] the params value to send */
-            rapidjson::Value const & id      /**< [in] the id of this message */
-            )
-        :
-            InboundMessage(peer, params),
-            RemoteIdentifier(id)
-        {}
 
 };
 

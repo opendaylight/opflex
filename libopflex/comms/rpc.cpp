@@ -60,20 +60,23 @@ bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
 }
 
-void OutboundMessage::send() {
+void OutboundMessage::send(
+        ::yajr::Peer const * peer
+    ) {
 
     LOG(DEBUG);
 
-    ::yajr::comms::internal::CommunicationPeer const * peer =
-        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const * >
-        (getPeer());
+    peer = peer ?: getPeer();
 
-    assert(peer && "peer needs to be set before outbound messages are sent");
+    ::yajr::comms::internal::CommunicationPeer const * cP =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const * >(peer);
 
-    Accept(peer->getWriter());
+    assert(cP && "peer needs to be set before outbound messages are sent");
 
-    peer->delimitFrame();
-    peer->write();
+    Accept(cP->getWriter());
+
+    cP->delimitFrame();
+    cP->write();
 
 }
 
