@@ -44,11 +44,9 @@ namespace yajr {
           public:
 
             OutReq(
-                    yajr::Peer const & peer,
-                    yajr::rpc::PayloadGenerator const & payloadGenerator
-
+                    yajr::rpc::PayloadGenerator const & payloadGenerator,
+                    yajr::Peer const * peer
                 ) : OutboundRequest(
-                        peer,
                         payloadGenerator,
                         M,
                         /* do a little dance so that it technically would never
@@ -56,7 +54,8 @@ namespace yajr {
                          * never happen)
                          */
                         dynamic_cast< yajr::comms::internal::CommunicationPeer
-                            const * >(&peer)->nextId())
+                            const * >(peer)->nextId(),
+                        peer)
                 {}
 
             virtual char const * requestMethod() const {
