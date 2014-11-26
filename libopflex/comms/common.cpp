@@ -29,7 +29,7 @@ int ::yajr::initLoop(uv_loop_t * loop) {
 }
 
 void ::yajr::finiLoop(uv_loop_t * loop) {
-    LOG(INFO);
+    LOG(TRACE);
 
     static_cast< ::yajr::comms::internal::Peer::LoopData *>(loop->data)->destroy();
 
@@ -86,13 +86,13 @@ void internal::Peer::LoopData::onIdleLoop(uv_idle_t * h) {
 }
 
 void internal::Peer::LoopData::fini(uv_handle_t * h) {
-    LOG(INFO);
+    LOG(TRACE);
 
     static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data)->down();
 }
 
 void internal::Peer::LoopData::destroy() {
-    LOG(INFO);
+    LOG(TRACE);
 
     uv_idle_stop(&idle_);
     uv_close((uv_handle_t*)&idle_, &fini);
@@ -175,14 +175,14 @@ void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf)
     LOG(DEBUG) << peer;
 
     if (nread < 0) {
-        LOG(INFO) << "nread = " << nread << " [" << uv_err_name(nread) <<
+        LOG(TRACE) << "nread = " << nread << " [" << uv_err_name(nread) <<
             "] " << uv_strerror(nread) << " => closing";
         peer->onDisconnect();
     }
 
     if (nread > 0) {
 
-        LOG(INFO) << peer
+        LOG(TRACE) << peer
             << " read " << nread << " into buffer of size " << buf->len;
 
         char * buffer = buf->base;

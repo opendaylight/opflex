@@ -94,6 +94,7 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
     conn->peer = p;
     switch (stateChange) {
     case yajr::StateChange::CONNECT:
+        // XXX Need API to get remote peer name
         conn->remote_peer = "UNKNOWN";
         LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
                   << "New server connection";
@@ -118,6 +119,9 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
 #endif
 
 void OpflexServerConnection::disconnect() {
+    handler->disconnected();
+    OpflexConnection::disconnect();
+
 #ifdef SIMPLE_RPC
     uv_read_stop((uv_stream_t*)&tcp_handle);
     {
@@ -131,7 +135,6 @@ void OpflexServerConnection::disconnect() {
     if (peer)
         peer->destroy();
 #endif
-    OpflexConnection::disconnect();
 }
 
 #ifdef SIMPLE_RPC

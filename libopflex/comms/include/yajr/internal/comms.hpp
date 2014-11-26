@@ -143,9 +143,9 @@ class Peer : public SafeListBaseHook {
             --refCount_;
 
             if (destroying_ && !refCount_) {
-                LOG(INFO) << this << " stopping uv_loop";
+                LOG(DEBUG) << this << " stopping uv_loop";
                 uv_stop(idle_.loop);
-                LOG(INFO) << this << " deleting loop data";
+                LOG(DEBUG) << this << " deleting loop data";
                 delete this;
             }
         }
@@ -164,7 +164,7 @@ class Peer : public SafeListBaseHook {
         struct PeerDisposer {
             void operator()(Peer *peer)
             {
-                LOG(INFO) << peer << " destroy() because this communication thread is shutting down";
+                LOG(DEBUG) << peer << " destroy() because this communication thread is shutting down";
                 peer->destroy();
             }
         };

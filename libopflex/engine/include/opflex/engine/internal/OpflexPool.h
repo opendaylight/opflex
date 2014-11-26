@@ -152,6 +152,7 @@ private:
     std::string domain;
 
     uv_mutex_t conn_mutex;
+    uv_key_t conn_mutex_key;
 
     class ConnData {
     public:
@@ -188,6 +189,7 @@ private:
     void updateRole(ConnData& cd, uint8_t newroles, 
                     ofcore::OFConstants::OpflexRole role);
     void connectionClosed(OpflexClientConnection* conn);
+    void doConnectionClosed(OpflexClientConnection* conn);
     uv_loop_t* getLoop() { return &client_loop; }
     void messagesReady();
 
