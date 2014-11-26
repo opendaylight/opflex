@@ -50,7 +50,7 @@ FlowEntry::ActionEq(const FlowEntry *rhs) {
                           feRhs->ofpacts, feRhs->ofpacts_len);
 }
 
-ostream & operator<<(ostream &os, const FlowEntry& fe) {
+ostream & operator<<(ostream& os, const FlowEntry& fe) {
     ds strBuf;
     ds_init(&strBuf);
     ofp_print_flow_stats(&strBuf, fe.entry);
@@ -59,22 +59,65 @@ ostream & operator<<(ostream &os, const FlowEntry& fe) {
     return os;
 }
 
-ostream& operator<<(ostream &os, const FlowEntryList& el) {
+ostream& operator<<(ostream& os, const FlowEntryList& el) {
     for (int i = 0; i < el.size(); ++i) {
         os << endl << *(el[i]);
     }
     return os;
 }
 
-ostream& operator<<(ostream &os, const FlowEdit::Entry& fe) {
+ostream& operator<<(ostream& os, const FlowEdit::Entry& fe) {
     static const char *op[] = {"ADD", "MOD", "DEL"};
     os << op[fe.first] << "|" << *(fe.second);
     return os;
 }
 
-ostream& operator<<(ostream &os, const FlowEdit& fe) {
+ostream& operator<<(ostream& os, const FlowEdit& fe) {
     BOOST_FOREACH(const FlowEdit::Entry& e, fe.edits) {
         os << endl << e;
+    }
+}
+
+/** GroupEdit **/
+
+GroupEdit::GroupMod::GroupMod() {
+    mod = new ofputil_group_mod();
+    mod->command = OFPGC11_MODIFY;
+    mod->type = OFPGT11_ALL;
+    mod->group_id = 0;
+    mod->command_bucket_id = OFPG15_BUCKET_ALL;
+    list_init(&mod->buckets);
+}
+
+GroupEdit::GroupMod::~GroupMod() {
+    if (mod) {
+        ofputil_bucket_list_destroy(&mod->buckets);
+        delete mod;
+    }
+    mod = NULL;
+}
+
+ostream & operator<<(ostream& os, const GroupEdit::Entry& ge) {
+    static const char *groupTypeStr[] = {"all", "select", "indirect",
+        "ff", "unknown" };
+    ofputil_group_mod& mod = *(ge->mod);
+    switch (mod.command) {
+    case OFPGC11_ADD:      os << "ADD"; break;
+    case OFPGC11_MODIFY:   os << "MOD"; break;
+    case OFPGC11_DELETE:   os << "DEL"; break;
+    default:               os << "Unknown";
+    }
+    os << "|group_id=" << mod.group_id << ",type="
+       << groupTypeStr[std::min<uint8_t>(4, mod.type)];
+
+    ofputil_bucket *bkt;
+    LIST_FOR_EACH (bkt, list_node, &mod.buckets) {
+        os << ",bucket=bucket_id:" << bkt->bucket_id << ",actions=";
+        ds strBuf;
+        ds_init(&strBuf);
+        ofpacts_format(bkt->ofpacts, bkt->ofpacts_len, &strBuf);
+        os << ds_cstr(&strBuf);
+        ds_destroy(&strBuf);
     }
     return os;
 }
@@ -116,7 +159,7 @@ void TableState::DiffEntry(const string& objId,
                     FlowEdit::Entry(FlowEdit::del, oldEntries[i]));
         }
     }
-    LOG(DEBUG) << diffs.edits.size() << " diffs for objId=" << objId << diffs;
+    LOG(DEBUG) << diffs.edits.size() << " diff(s), objId=" << objId << diffs;
 }
 
 void

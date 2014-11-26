@@ -10,6 +10,8 @@
 #define _OPFLEX_ENFORCER_FLOWMANAGER_H_
 
 #include <boost/scoped_ptr.hpp>
+#include <boost/optional.hpp>
+#include <boost/unordered_map.hpp>
 
 #include "Agent.h"
 #include "PortMapper.h"
@@ -49,11 +51,11 @@ public:
         portMapper = m;
     }
 
-    void SetTunnelType(std::string& tunnelType) { /* XXX TODO */ }
-    void SetTunnelIface(std::string& tunnelIface) { /* XXX TODO */ }
-    void SetTunnelRemoteIp(std::string& tunnelRemoteIp) { /* XXX TODO */ }
+    void SetTunnelType(const std::string& tunnelType) { /* XXX TODO */ }
+    void SetTunnelIface(const std::string& tunnelIface);
+    void SetTunnelRemoteIp(const std::string& tunnelRemoteIp);
 
-    uint32_t GetTunnelPort() { return tunnelPort; }
+    uint32_t GetTunnelPort();
     uint32_t GetTunnelDstIpv4() { return tunnelDstIpv4; }
     const uint8_t *GetRouterMacAddr() { return routerMac; }
 
@@ -88,13 +90,21 @@ public:
     static const uint16_t MAX_POLICY_RULE_PRIORITY;
 private:
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
-            uint32_t& rdId, uint32_t& bdId, uint32_t& fdId);
+            uint32_t& rdId, uint32_t& bdId,
+            boost::optional<opflex::modb::URI>& fdURI, uint32_t& fdId);
     void UpdateGroupSubnets(const opflex::modb::URI& egUri,
             uint32_t routingDomainId);
     bool WriteFlow(const std::string& objId, flow::TableState& tab,
                    flow::FlowEntryList& el);
     bool WriteFlow(const std::string& objId, flow::TableState& tab,
                    flow::FlowEntry *e);
+    /**
+     * Write a group-table change to the switch
+     *
+     * @param entry Change to the group-table entry
+     * @return true is successful, false otherwise
+     */
+    bool WriteGroupMod(const flow::GroupEdit::Entry& entry);
 
     /**
      * Create flow entries for the classifier specified and append them
@@ -115,17 +125,56 @@ private:
     static bool ParseIpv4Addr(const std::string& str, uint32_t *ip);
     static bool ParseIpv6Addr(const std::string& str, in6_addr *ip);
 
+    /**
+     * Update flow-tables to associate an endpoint with a flood-domain.
+     *
+     * @param fdURI URI of flood-domain
+     * @param epUUID UUID of endpoint
+     * @param epPort Port number of endpoint
+     */
+    void UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
+            const std::string& epUUID, uint32_t epPort);
+
+    /**
+     * Update flow-tables to dis-associate an endpoint from any flood-domain.
+     *
+     * @param epUUID UUID of endpoint
+     */
+    void RemoveEndpointFromFloodDomain(const std::string& epUUID);
+
+    /*
+     * Map of endpoint to the port it is using.
+     */
+    typedef boost::unordered_map<std::string, uint32_t> Ep2PortMap;
+
+    /**
+     * Construct a group-table modification.
+     *
+     * @param type The modification type
+     * @param groupId Identifier for the flow group to edit
+     * @param ep2port Ports to be associated with this flow group
+     * @return Group-table modification entry
+     */
+    flow::GroupEdit::Entry CreateGroupMod(uint16_t type, uint32_t groupId,
+            const Ep2PortMap& ep2port);
+
     ovsagent::Agent& agent;
     FlowExecutor* executor;
     PortMapper *portMapper;
 
-    uint32_t tunnelPort;
+    std::string tunnelIface;
     uint32_t tunnelDstIpv4;
     uint8_t routerMac[6];
     flow::TableState sourceTable;
     flow::TableState destinationTable;
     flow::TableState policyTable;
     flow::TableState portSecurityTable;
+
+    /*
+     * Map of flood-domain URI to the endpoints associated with it.
+     */
+    typedef boost::unordered_map<opflex::modb::URI, Ep2PortMap> FdMap;
+    FdMap fdMap;
 
     /**
      * Helper class to assign unique numeric IDs to some object-types.

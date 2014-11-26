@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <vector>
+#include <boost/shared_ptr.hpp>
+#include <boost/noncopyable.hpp>
 #include <boost/unordered_map.hpp>
 
 struct ofputil_flow_stats;
@@ -39,12 +41,12 @@ typedef std::vector<FlowEntry *>    FlowEntryList;
 /**
  * Print flow entry to an output stream.
  */
-std::ostream& operator<<(std::ostream &os, const FlowEntry& fe);
+std::ostream& operator<<(std::ostream& os, const FlowEntry& fe);
 
 /**
  * Print list of flow entries to an output stream.
  */
-std::ostream& operator<<(std::ostream &os, const FlowEntryList& el);
+std::ostream& operator<<(std::ostream& os, const FlowEntryList& el);
 
 /**
  * Class that represents a list of table changes.
@@ -60,12 +62,37 @@ public:
 /**
  * Print a flow edit to an output stream.
  */
-std::ostream& operator<<(std::ostream &os, const FlowEdit::Entry& fe);
+std::ostream& operator<<(std::ostream& os, const FlowEdit::Entry& fe);
 
 /**
  * Print a list of flow edits to an output stream.
  */
-std::ostream& operator<<(std::ostream &os, const FlowEdit& fe);
+std::ostream& operator<<(std::ostream& os, const FlowEdit& fe);
+
+/**
+ * Class that represents a list of group table changes.
+ */
+class GroupEdit {
+public:
+    /**
+     * Class that represents change to a group-table entry.
+     */
+    class GroupMod {
+    public:
+        GroupMod();
+        ~GroupMod();
+
+        ofputil_group_mod *mod;
+    };
+    typedef boost::shared_ptr<GroupMod> Entry;
+
+    std::vector<GroupEdit::Entry> edits;
+};
+
+/**
+ * Print a group-table change to an output stream.
+ */
+std::ostream& operator<<(std::ostream& os, const GroupEdit::Entry& ge);
 
 /**
  * Class that maintains a cached version of an OpenFlow table.

@@ -30,6 +30,11 @@ public:
      */
     void Build(ofputil_flow_stats *dstEntry);
 
+    /**
+     * Construct and install the action structure to given bucket
+     */
+    void Build(ofputil_bucket *dstBucket);
+
     void SetRegLoad(mf_field_id regId, uint32_t regValue);
     void SetRegLoad(mf_field_id regId, const uint8_t *macValue);
     void SetRegMove(mf_field_id srcRegId, mf_field_id dstRegId);
@@ -38,6 +43,7 @@ public:
     void SetGotoTable(uint8_t tableId);
     void SetOutputToPort(uint32_t port);
     void SetOutputReg(mf_field_id srcRegId);
+    void SetGroup(uint32_t groupId);
 
 private:
     struct ofpbuf buf;

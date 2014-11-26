@@ -38,6 +38,10 @@ void StitchedModeRenderer::start() {
     }
 
     started = true;
+    flowManager.SetTunnelType(tunnelType);
+    flowManager.SetTunnelIface(tunnelIface);
+    flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
+
     LOG(INFO) << "Starting stitched-mode renderer on " << ovsBridgeName;
     connection = new opflex::enforcer::SwitchConnection(ovsBridgeName);
     portMapper.InstallListenersForConnection(connection);

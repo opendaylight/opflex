@@ -136,6 +136,7 @@ protected:
         ep2.reset(new Endpoint("0-0-0-2"));
         ep2->setMAC(opflex::modb::MAC("00:00:00:00:00:02"));
         ep2->addIP("10.20.44.21");
+        ep2->setInterfaceName("port11");
         ep2->setEgURI(epg0->getURI());
         epSrc.updateEndpoint(*ep2);
     }

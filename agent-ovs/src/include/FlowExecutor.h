@@ -46,6 +46,16 @@ public:
     virtual bool Execute(const flow::FlowEdit& fe);
 
     /**
+     * Construct and send group-modification messages corresponding
+     * to the group-edits specified. Waits till all the messages
+     * have been acted upon (through a barrier message).
+     * @param ge The group modifications
+     * @return false if any error occurs while sending messages or
+     * an error reply was received, true otherwise
+     */
+    virtual bool Execute(const flow::GroupEdit& ge);
+
+    /**
      * Construct and send flow-modification messages corresponding
      * to the flow-edits specified, but does not wait the messages
      * to be acted upon.
@@ -54,6 +64,16 @@ public:
      * true otherwise
      */
     virtual bool ExecuteNoBlock(const flow::FlowEdit& fe);
+
+    /**
+     * Construct and send group-modification messages corresponding
+     * to the group-edits specified, but does not wait the messages
+     * to be acted upon.
+     * @param fe The group modifications
+     * @return false if any error occurs while sending messages,
+     * true otherwise
+     */
+    virtual bool ExecuteNoBlock(const flow::GroupEdit& ge);
 
     /**
      * Register all the necessary event listeners on connection.
@@ -81,18 +101,58 @@ public:
      */
     static ofpbuf *EncodeFlowMod(const flow::FlowEdit::Entry& edit,
             ofp_version ofVersion);
+
+    /**
+     * Construct a group-modification message for the specified group-edit.
+     * @param edit The group modification
+     * @param ofVersion OpenFlow version to use for encoding
+     * @return group-modification message
+     */
+    static ofpbuf *EncodeGroupMod(const flow::GroupEdit::Entry& edit,
+            ofp_version ofVersion);
 private:
     /**
+     * Internal helper function to execute blocking flow/group-edits.
+     *
+     * @param fe The flow/group modification
+     * @return true on success, false otherwise
+     */
+    template<typename T>
+    bool ExecuteInt(const T& fe);
+
+    /**
+     * Internal helper function to execute non-blocking flow/group-edits.
+     *
+     * @param fe The flow/group modification
+     * @return true on success, false otherwise
+     */
+    template<typename T>
+    bool ExecuteIntNoBlock(const T& fe);
+
+    /**
      * Construct and send flow-modification messages corresponding
-     * to the flow-edits specified and optionally associate them with
+     * to the edits specified and optionally associate them with
      * a barrier request.
-     * @param fe The flow modifications
+     * @param fe The flow/group modifications
      * @param barrXid ID of barrier request to associate with
      * @return 0 on success, error code if any error occurs while
      * sending messages
      */
-    int DoExecuteNoBlock(const flow::FlowEdit& fe,
+    template<typename T>
+    int DoExecuteNoBlock(const T& fe,
             const boost::optional<ovs_be32>& barrXid);
+
+    /**
+     * Internal helper function to construct an OpenFlow message from
+     * a flow/group edit.
+     *
+     * @param edit The flow/group modification
+     * @param ofVersion OpenFlow version to use for encoding
+     * @return flow/group-modification message
+     */
+    template<typename T>
+    static
+    ofpbuf *EncodeMod(const T& edit, ofp_version ofVersion);
 
     /**
      * Send the barrier request specified and wait for a reply.

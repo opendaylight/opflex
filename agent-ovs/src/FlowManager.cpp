@@ -45,14 +45,16 @@ static const uint8_t SEC_TABLE_ID = 0,
 
 static const uint8_t MAC_ADDR_BROADCAST[6] =
     {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+static const uint8_t MAC_ADDR_MULTICAST[6] =
+    {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-const uint16_t FlowManager::MAX_POLICY_RULE_PRIORITY = 8196;     // arbitrary
+const uint16_t FlowManager::MAX_POLICY_RULE_PRIORITY = 8192;     // arbitrary
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag) {
     MAC("de:ad:be:ef:ce:de").toUIntArray(routerMac); // read from config file
-    tunnelPort = 1024;                               // read from config file
-    ParseIpv4Addr("10.10.10.10", &tunnelDstIpv4);    // read from config file
+    tunnelIface = "br0_vxlan0";
+    ParseIpv4Addr("127.0.0.1", &tunnelDstIpv4);
     portMapper = NULL;
 }
 
@@ -66,6 +68,27 @@ void FlowManager::Stop()
 {
     agent.getEndpointManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
+}
+
+void FlowManager::SetTunnelIface(const string& tunIf) {
+    if (tunIf.empty()) {
+        LOG(ERROR) << "Ignoring empty tunnel interface name";
+        return;
+    }
+    tunnelIface = tunIf;
+}
+
+uint32_t FlowManager::GetTunnelPort() {
+    return portMapper ? portMapper->FindPort(tunnelIface) : OFPP_NONE;
+}
+
+void FlowManager::SetTunnelRemoteIp(const string& tunnelRemoteIp) {
+    uint32_t ip;
+    if (ParseIpv4Addr(tunnelRemoteIp, &ip)) {
+        tunnelDstIpv4 = ip;
+    } else {
+        LOG(ERROR) << "Ignoring bad tunnel destination IP " << tunnelRemoteIp;
+    }
 }
 
 /** Source table helper functions */
@@ -136,6 +159,15 @@ SetDestMatchArpIpv4(FlowEntry *fe, uint16_t prio, uint32_t ipv4,
 }
 
 static void
+SetDestMatchFdBroadcast(FlowEntry *fe, uint16_t prio, uint32_t fdId) {
+    fe->entry->table_id = DST_TABLE_ID;
+    fe->entry->priority = prio;
+    match *m = &fe->entry->match;
+    match_set_reg(&fe->entry->match, 5 /* REG5 */, fdId);
+    match_set_dl_dst_masked(m, MAC_ADDR_MULTICAST, MAC_ADDR_MULTICAST);
+}
+
+static void
 SetDestActionEpMac(FlowEntry *fe, bool isLocal, uint32_t epgId,
         uint32_t port, uint32_t tunDst) {
     ActionBuilder ab;
@@ -199,6 +231,13 @@ SetDestActionSubnetArpIpv4(FlowEntry *fe, const uint8_t *specialMac,
     ab.Build(fe->entry);
 }
 
+static void
+SetDestActionFdBroadcast(FlowEntry *fe, uint32_t fdId) {
+    ActionBuilder ab;
+    ab.SetGroup(fdId);
+    ab.Build(fe->entry);
+}
+
 /** Policy table */
 static void
 SetPolicyActionAllow(FlowEntry *fe) {
@@ -258,7 +297,7 @@ SetSecurityActionAllow(FlowEntry *fe) {
 
 bool
 FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
-        uint32_t& rdId, uint32_t& bdId, uint32_t& fdId) {
+        uint32_t& rdId, uint32_t& bdId, optional<URI>& fdURI, uint32_t& fdId) {
     PolicyManager& polMgr = agent.getPolicyManager();
     optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI);
     if (!epgVnid) {
@@ -277,8 +316,11 @@ FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
             GetId(RoutingDomain::CLASS_ID, epgRd.get()->getURI()) : 0;
     bdId = epgBd ?
             GetId(BridgeDomain::CLASS_ID, epgBd.get()->getURI()) : 0;
-    fdId = epgFd ?
-            GetId(FloodDomain::CLASS_ID, epgFd.get()->getURI()) : 0;
+    fdId = 0;
+    if (epgFd) {
+        fdURI = epgFd.get()->getURI();
+        fdId = GetId(FloodDomain::CLASS_ID, fdURI.get());
+    }
     return true;
 }
 
@@ -292,6 +334,7 @@ FlowManager::endpointUpdated(const string& uuid) {
         WriteFlow(uuid, portSecurityTable, NULL);
         WriteFlow(uuid, sourceTable, NULL);
         WriteFlow(uuid, destinationTable, NULL);
+        RemoveEndpointFromFloodDomain(uuid);
         return;
     }
     const Endpoint& endPoint = epWrapper.get();
@@ -348,7 +391,9 @@ FlowManager::endpointUpdated(const string& uuid) {
     }
 
     uint32_t epgVnid, rdId, bdId, fdId;
-    if (!GetGroupForwardingInfo(epgURI.get(), epgVnid, rdId, bdId, fdId)) {
+    optional<URI> fdURI;
+    if (!GetGroupForwardingInfo(epgURI.get(), epgVnid, rdId, bdId,
+            fdURI, fdId)) {
         return;
     }
 
@@ -363,7 +408,7 @@ FlowManager::endpointUpdated(const string& uuid) {
     FlowEntryList elDst;
     uint32_t epPort = isLocalEp ? ofPort : GetTunnelPort();
 
-    if (bdId != 0) {
+    if (bdId != 0 && epPort != OFPP_NONE) {
         FlowEntry *e0 = new FlowEntry();
         SetDestMatchEpMac(e0, 10, macAddr, bdId);
         SetDestActionEpMac(e0, isLocalEp, epgVnid, epPort,
@@ -371,7 +416,7 @@ FlowManager::endpointUpdated(const string& uuid) {
         elDst.push_back(e0);
     }
 
-    if (rdId != 0) {
+    if (rdId != 0 && epPort != OFPP_NONE) {
         BOOST_FOREACH (uint32_t ipAddr, ipv4Addresses) {
             FlowEntry *e0 = new FlowEntry();
             SetDestMatchEpIpv4(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
@@ -392,12 +437,15 @@ FlowManager::endpointUpdated(const string& uuid) {
         WriteFlow(uuid, destinationTable, elDst);
     }
 
-    // TODO Group-table flow
+    if (fdURI && isLocalEp) {
+        UpdateEndpointFloodDomain(fdURI.get(), uuid, ofPort);
+    } else {
+        RemoveEndpointFromFloodDomain(uuid);
+    }
 }
 
 void
 FlowManager::egDomainUpdated(const URI& epgURI) {
-
     const string& epgId = epgURI.toString();
 
     PolicyManager& polMgr = agent.getPolicyManager();
@@ -408,18 +456,22 @@ FlowManager::egDomainUpdated(const URI& epgURI) {
     }
 
     uint32_t epgVnid, rdId, bdId, fdId;
-    if (!GetGroupForwardingInfo(epgURI, epgVnid, rdId, bdId, fdId)) {
+    optional<URI> fdURI;
+    if (!GetGroupForwardingInfo(epgURI, epgVnid, rdId, bdId, fdURI, fdId)) {
         return;
     }
 
-    FlowEntry *e0 = new FlowEntry();
-    SetSourceMatchEpg(e0, 150, GetTunnelPort(), epgVnid);
-    SetSourceAction(e0, epgVnid, bdId, fdId, rdId);
-    WriteFlow(epgId, sourceTable, e0);
+    uint32_t tunPort = GetTunnelPort();
+    if (tunPort != OFPP_NONE) {
+        FlowEntry *e0 = new FlowEntry();
+        SetSourceMatchEpg(e0, 150, tunPort, epgVnid);
+        SetSourceAction(e0, epgVnid, bdId, fdId, rdId);
+        WriteFlow(epgId, sourceTable, e0);
+    }
 
     bool allowIntraGroup = true;        // XXX read from EPG
     if (allowIntraGroup) {
-        e0 = new FlowEntry();
+        FlowEntry *e0 = new FlowEntry();
         SetPolicyMatchEpgs(e0, 100, epgVnid, epgVnid);
         SetPolicyActionAllow(e0);
         WriteFlow(epgId, policyTable, e0);
@@ -456,6 +508,103 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
         SetDestMatchArpIpv4(e0, 20, routerIpv4, routingDomainId);
         SetDestActionSubnetArpIpv4(e0, GetRouterMacAddr(), routerIpv4);
         WriteFlow(sn->getURI().toString(), destinationTable, e0);
+    }
+}
+
+/**
+ * Construct a bucket object with the specified bucket ID.
+ */
+static
+ofputil_bucket *CreateBucket(uint32_t bucketId) {
+    ofputil_bucket *bkt = (ofputil_bucket *)malloc(sizeof(ofputil_bucket));
+    bkt->weight = 1;
+    bkt->bucket_id = bucketId;
+    bkt->watch_port = OFPP_ANY;
+    bkt->watch_group = OFPG11_ANY;
+    return bkt;
+}
+
+GroupEdit::Entry
+FlowManager::CreateGroupMod(uint16_t type, uint32_t groupId,
+        const Ep2PortMap& ep2port) {
+    GroupEdit::Entry entry(new GroupEdit::GroupMod());
+    entry->mod->command = type;
+    entry->mod->group_id = groupId;
+
+    BOOST_FOREACH(const Ep2PortMap::value_type& kv, ep2port) {
+        ofputil_bucket *bkt = CreateBucket(kv.second);
+        ActionBuilder ab;
+        ab.SetOutputToPort(kv.second);
+        ab.Build(bkt);
+        list_push_back(&entry->mod->buckets, &bkt->list_node);
+    }
+    uint32_t tunPort = GetTunnelPort();
+    if (type != OFPGC11_DELETE && tunPort != OFPP_NONE) {
+        ofputil_bucket *bkt = CreateBucket(tunPort);
+        ActionBuilder ab;
+        ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
+        ab.SetRegLoad(MFF_TUN_DST, GetTunnelDstIpv4());
+        ab.SetOutputToPort(tunPort);
+        ab.Build(bkt);
+        list_push_back(&entry->mod->buckets, &bkt->list_node);
+    }
+    return entry;
+}
+
+void
+FlowManager::UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
+        const std::string& epUUID, uint32_t epPort) {
+    uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
+    string fdStrId = fdURI.toString();
+    FdMap::iterator fdItr = fdMap.find(fdURI);
+
+    optional<URI> oldFdURI;
+    if (fdItr != fdMap.end()) {
+        Ep2PortMap& epMap = fdItr->second;
+        Ep2PortMap::iterator epItr = epMap.find(epUUID);
+
+        if (epItr == epMap.end()) {
+            /* EP not attached to this FD, check/remove if it was attached
+             * to a different one */
+            RemoveEndpointFromFloodDomain(epUUID);
+        }
+        if (epItr != epMap.end() && epItr->second == epPort) {
+            return;     // nothing has changed
+        } else {
+            epMap[epUUID] = epPort;
+            GroupEdit::Entry e = CreateGroupMod(OFPGC11_MODIFY, fdId, epMap);
+            WriteGroupMod(e);
+        }
+    } else {
+        fdMap[fdURI][epUUID] = epPort;
+        GroupEdit::Entry e = CreateGroupMod(OFPGC11_ADD, fdId, fdMap[fdURI]);
+        WriteGroupMod(e);
+
+        FlowEntry *fe = new FlowEntry();
+        SetDestMatchFdBroadcast(fe, 10, fdId);
+        SetDestActionFdBroadcast(fe, fdId);
+        WriteFlow(fdStrId, destinationTable, fe);
+    }
+}
+
+void FlowManager::RemoveEndpointFromFloodDomain(const std::string& epUUID) {
+    for (FdMap::iterator itr = fdMap.begin(); itr != fdMap.end(); ++itr) {
+        const URI& fdURI = itr->first;
+        Ep2PortMap& epMap = itr->second;
+        if (epMap.erase(epUUID) == 0) {
+            continue;
+        }
+        uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
+        uint16_t type = epMap.empty() ?
+                OFPGC11_DELETE : OFPGC11_MODIFY;
+        GroupEdit::Entry e0 =
+                CreateGroupMod(type, fdId, epMap);
+        if (epMap.empty()) {
+            WriteFlow(fdURI.toString(), destinationTable, NULL);
+            fdMap.erase(fdURI);
+        }
+        WriteGroupMod(e0);
+        break;
     }
 }
 
@@ -571,6 +720,17 @@ FlowManager::WriteFlow(const string& objId, TableState& tab, FlowEntry *el) {
         tmpEl.push_back(el);
     }
     WriteFlow(objId, tab, tmpEl);
+}
+
+bool
+FlowManager::WriteGroupMod(const GroupEdit::Entry& e) {
+    GroupEdit ge;
+    ge.edits.push_back(e);
+    bool success = executor->Execute(ge);
+    if (!success) {
+        LOG(ERROR) << "Group mod failed for group_id=" << e->mod->group_id;
+    }
+    return success;
 }
 
 void FlowManager::GetGroupVnids(const unordered_set<URI>& egURIs,

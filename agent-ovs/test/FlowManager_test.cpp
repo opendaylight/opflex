@@ -8,6 +8,7 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <sstream>
 #include <boost/test/unit_test.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
@@ -18,6 +19,7 @@
 #include "FlowExecutor.h"
 
 #include "ModbFixture.h"
+#include "TableState.h"
 
 using namespace std;
 using namespace boost::assign;
@@ -29,12 +31,17 @@ using namespace ovsagent;
 
 typedef pair<FlowEdit::TYPE, string> MOD;
 
+static string CanonicalizeGroupEntryStr(const string& entryStr);
+
 class MockFlowExecutor : public FlowExecutor {
 public:
-    MockFlowExecutor() {}
+    MockFlowExecutor(): ignoreFlowMods(false) {}
     ~MockFlowExecutor() {}
 
     bool Execute(const FlowEdit& flowEdits) {
+        if (ignoreFlowMods) {
+            return true;
+        }
         const char *modStr[] = {"ADD", "MOD", "DEL"};
         struct ds strBuf;
         ds_init(&strBuf);
@@ -44,8 +51,8 @@ public:
             string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
             const char *mod = modStr[ed.first];
 
-            LOG(DEBUG) << "*** " << ed;
-            BOOST_CHECK_MESSAGE(!mods.empty(), "\ngot " << mod << "|" << str);
+            LOG(DEBUG) << "*** FlowMod " << ed;
+            BOOST_CHECK_MESSAGE(!mods.empty(), "\nexp:\ngot: " << ed);
             if (!mods.empty()) {
                 MOD exp = mods.front();
                 mods.pop_front();
@@ -54,23 +61,55 @@ public:
                         "\ngot: " << ed);
                 BOOST_CHECK_MESSAGE(exp.second == str,
                         "\nexp: " << modStr[exp.first] << "|" << exp.second <<
-                        "\ngot: " << ed);            }
+                        "\ngot: " << ed);
+            }
             ds_clear(&strBuf);
         }
         ds_destroy(&strBuf);
         return true;
     }
+    bool Execute(const GroupEdit& groupEdits) {
+        BOOST_FOREACH(const GroupEdit::Entry& ed, groupEdits.edits) {
+            LOG(DEBUG) << "*** GroupMod " << ed;
+            stringstream ss;
+            ss << ed;
+            string edStr = CanonicalizeGroupEntryStr(ss.str());
+
+            BOOST_CHECK_MESSAGE(!groupMods.empty(), "\nexp:\ngot: " << edStr);
+            if (!groupMods.empty()) {
+                string exp = groupMods.front();
+                groupMods.pop_front();
+                BOOST_CHECK_MESSAGE(exp == edStr,
+                        "\nexp: " << exp << "\ngot: " << edStr);
+            }
+        }
+        return true;
+    }
     void Expect(FlowEdit::TYPE mod, const string& fe) {
+        ignoreFlowMods = false;
         mods.push_back(MOD(mod, fe));
     }
     void Expect(FlowEdit::TYPE mod, const vector<string>& fe) {
+        ignoreFlowMods = false;
         BOOST_FOREACH(const string& s, fe) {
             mods.push_back(MOD(mod, s));
         }
     }
+    void ExpectGroup(FlowEdit::TYPE mod, const string& ge) {
+        const char *modStr[] = {"ADD", "MOD", "DEL"};
+        groupMods.push_back(CanonicalizeGroupEntryStr(
+                string(modStr[mod]) + "|" + ge));
+    }
+    void IgnoreFlowMods() {
+        ignoreFlowMods = true;
+        mods.clear();
+    }
     bool IsEmpty() { return mods.empty(); }
+    bool IsGroupEmpty() { return groupMods.empty(); }
 
     std::list<MOD> mods;
+    std::list<string> groupMods;
+    bool ignoreFlowMods;
 };
 
 class MockPortMapper : public PortMapper {
@@ -85,10 +124,16 @@ class FlowManagerFixture : public ModbFixture {
 public:
     FlowManagerFixture() : ModbFixture(),
                         flowManager(agent),
-                        policyMgr(agent.getPolicyManager()) {
+                        policyMgr(agent.getPolicyManager()),
+                        ep2_port(11) {
+        string tunIf("br0_vxlan0");
         flowManager.SetExecutor(&exec);
         flowManager.SetPortMapper(&portmapper);
+        flowManager.SetTunnelIface(tunIf);
+        flowManager.SetTunnelRemoteIp("10.11.12.13");
+
         portmapper.ports[ep0->getInterfaceName().get()] = 80;
+        portmapper.ports[tunIf] = 2048;
 
         WAIT_FOR(policyMgr.groupExists(epg0->getURI()), 500);
         WAIT_FOR(policyMgr.getBDForGroup(epg0->getURI()) != boost::none, 500);
@@ -116,11 +161,13 @@ public:
     PolicyManager& policyMgr;
 
     vector<string> fe_epg0, fe_epg0_fd0;
-    vector<string> fe_ep0, fe_ep0_fd0, fe_ep0_eg1;
+    vector<string> fe_ep0, fe_ep0_fd0_1, fe_ep0_fd0_2, fe_ep0_eg1;
     vector<string> fe_ep0_eg0_1, fe_ep0_eg0_2;
     vector<string> fe_ep0_port_1, fe_ep0_port_2, fe_ep0_port_3;
     vector<string> fe_ep2, fe_ep2_eg1;
     vector<string> fe_con1, fe_con2;
+    string ge_fd0, ge_bkt_ep0, ge_bkt_ep2, ge_bkt_tun;
+    uint32_t ep2_port;
 };
 
 BOOST_AUTO_TEST_SUITE(FlowManager_test)
@@ -144,9 +191,12 @@ BOOST_FIXTURE_TEST_CASE(epg, FlowManagerFixture) {
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
     exec.Expect(FlowEdit::mod, fe_epg0_fd0);
-    exec.Expect(FlowEdit::mod, fe_ep0_fd0);
+    exec.Expect(FlowEdit::mod, fe_ep0_fd0_1);
+    exec.Expect(FlowEdit::add, fe_ep0_fd0_2);
+    exec.ExpectGroup(FlowEdit::add, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
     flowManager.egDomainUpdated(epg0->getURI());
     BOOST_CHECK(exec.IsEmpty());
+    BOOST_CHECK(exec.IsGroupEmpty());
 
     /* remove */
     Mutator m2(framework, policyOwner);
@@ -220,6 +270,43 @@ BOOST_FIXTURE_TEST_CASE(remoteEp, FlowManagerFixture) {
     exec.Expect(FlowEdit::del, fe_ep2[0]);
     flowManager.endpointUpdated(ep2->getUUID());
     BOOST_CHECK(exec.IsEmpty());
+}
+
+BOOST_FIXTURE_TEST_CASE(fd, FlowManagerFixture) {
+    exec.IgnoreFlowMods();
+    portmapper.ports[ep2->getInterfaceName().get()] = ep2_port;
+    flowManager.endpointUpdated(ep0->getUUID());
+    flowManager.endpointUpdated(ep2->getUUID());
+
+    Mutator m1(framework, policyOwner);
+    epg0->addGbpEpGroupToNetworkRSrc()
+            ->setTargetSubnets(subnetsfd0->getURI());
+    m1.commit();
+    WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
+    exec.Expect(FlowEdit::mod, fe_ep0_fd0_1);
+    exec.Expect(FlowEdit::add, fe_ep0_fd0_2);
+    exec.ExpectGroup(FlowEdit::add, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
+    flowManager.endpointUpdated(ep0->getUUID());
+    BOOST_CHECK(exec.IsEmpty());
+    BOOST_CHECK(exec.IsGroupEmpty());
+
+    exec.IgnoreFlowMods();
+    exec.ExpectGroup(FlowEdit::mod, ge_fd0 + ge_bkt_ep0 + ge_bkt_ep2
+            + ge_bkt_tun);
+    flowManager.endpointUpdated(ep2->getUUID());
+    BOOST_CHECK(exec.IsGroupEmpty());
+
+    /* remove port-mapping for ep2 */
+    portmapper.ports.erase(ep2->getInterfaceName().get());
+    exec.ExpectGroup(FlowEdit::mod, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
+    flowManager.endpointUpdated(ep2->getUUID());
+    BOOST_CHECK(exec.IsGroupEmpty());
+
+    /* remove ep0 */
+    epSrc.removeEndpoint(ep0->getUUID());
+    exec.ExpectGroup(FlowEdit::del, ge_fd0);
+    flowManager.endpointUpdated(ep0->getUUID());
+    BOOST_CHECK(exec.IsGroupEmpty());
 }
 
 BOOST_FIXTURE_TEST_CASE(policy, FlowManagerFixture) {
@@ -297,6 +384,10 @@ public:
     Bldr& go(uint8_t t) { rep("goto_table:", str(t)); return *this; }
     Bldr& out(REG r) { rep("output:" + rstr[r]); return *this; }
     Bldr& decTtl() { rep("dec_ttl"); return *this; }
+    Bldr& group(uint32_t g) { rep("group:", str(g)); return *this; }
+    Bldr& bktId(uint32_t b) { rep("bucket_id:", str(b)); return *this; }
+    Bldr& bktActions() { rep(",actions="); cntr = 1; return *this; }
+    Bldr& outPort(uint32_t p) { rep("output:" + str(p)); return *this; }
 
 private:
     /**
@@ -355,6 +446,7 @@ FlowManagerFixture::createEntriesForObjects() {
     memcpy(rmacArr, flowManager.GetRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
     string bmac("ff:ff:ff:ff:ff:ff");
+    string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
     /* epg0 */
     uint32_t epg0_vnid = policyMgr.getVnidForGroup(epg0->getURI()).get();
@@ -400,9 +492,9 @@ FlowManagerFixture::createEntriesForObjects() {
     fe_ep0.push_back(Bldr(fe_ep0[8]).isTpa(ep0_ip1).done());
 
     /* ep0 when eg0 connected to fd0 */
-    fe_ep0_fd0.push_back(Bldr().table(1).priority(140).in(ep0_port)
-            .isEthSrc(ep0_mac).actions().load(SEPG, epg0_vnid).load(BD, 1)
-            .load(FD, 1).load(RD, 1).go(2).done());
+    fe_ep0_fd0_1.push_back(Bldr(fe_ep0[5]).load(FD, 1).done());
+    fe_ep0_fd0_2.push_back(Bldr().table(2).priority(10).reg(FD, 1)
+            .isEthDst(mmac).actions().group(1).done());
 
     /* ep0 when moved to new group epg1 */
     fe_ep0_eg1.push_back(Bldr(fe_ep0[5]).load(SEPG, epg1_vnid)
@@ -450,6 +542,16 @@ FlowManagerFixture::createEntriesForObjects() {
     fe_ep2_eg1.push_back(Bldr(fe_ep2[1]).load(DEPG, epg1_vnid).done());
     fe_ep2_eg1.push_back(Bldr(fe_ep2[2]).load(DEPG, epg1_vnid).done());
 
+    /* Group entries */
+    string bktInit = ",bucket=";
+    ge_fd0 = "group_id=1,type=all";
+    ge_bkt_ep0 = Bldr(bktInit).bktId(ep0_port).bktActions().outPort(ep0_port)
+            .done();
+    ge_bkt_ep2 = Bldr(bktInit).bktId(ep2_port).bktActions().outPort(ep2_port)
+            .done();
+    ge_bkt_tun = Bldr(bktInit).bktId(tunPort).bktActions().move(SEPG, TUNID)
+            .load(TUNDST, tunDst).outPort(tunPort).done();
+
     uint32_t epg2_vnid = policyMgr.getVnidForGroup(epg2->getURI()).get();
     uint32_t epg3_vnid = policyMgr.getVnidForGroup(epg3->getURI()).get();
     uint16_t prio = FlowManager::MAX_POLICY_RULE_PRIORITY;
@@ -486,3 +588,21 @@ FlowManagerFixture::createEntriesForObjects() {
     }
 }
 
+string CanonicalizeGroupEntryStr(const string& entryStr) {
+    size_t p = 0;
+    vector<string> tokens;
+    while (p != string::npos) {
+        size_t np = entryStr.find(",bucket=", p > 0 ? p+1 : p);
+        size_t len = np == string::npos ? string::npos : (np-p);
+        tokens.push_back(entryStr.substr(p, len));
+        p = np;
+    }
+    if (tokens.size() > 1) {
+        sort(tokens.begin()+1, tokens.end());
+    }
+    string out;
+    BOOST_FOREACH(const string& s, tokens) {
+        out.append(s);
+    }
+    return out;
+}
