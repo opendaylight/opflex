@@ -92,9 +92,9 @@ class Peer : public SafeListBaseHook {
 #ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
 #endif
-            uv_idle_init(loop, &idle_);
-            uv_idle_start(&idle_, &onIdleLoop);
-            idle_.data = this;
+            uv_prepare_init(loop, &prepare_);
+            uv_prepare_start(&prepare_, &onPrepareLoop);
+            prepare_.data = this;
         }
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT 
@@ -115,7 +115,7 @@ class Peer : public SafeListBaseHook {
             return &getLoopData(uv_loop)->peers[peerState];
         }
 
-        void onIdleLoop() __attribute__((no_instrument_function));
+        void onPrepareLoop() __attribute__((no_instrument_function));
 
         void destroy();
 
@@ -144,7 +144,7 @@ class Peer : public SafeListBaseHook {
 
             if (destroying_ && !refCount_) {
                 LOG(INFO) << this << " stopping uv_loop";
-                uv_stop(idle_.loop);
+                uv_stop(prepare_.loop);
                 LOG(INFO) << this << " deleting loop data";
                 delete this;
             }
@@ -169,10 +169,10 @@ class Peer : public SafeListBaseHook {
             }
         };
 
-        static void onIdleLoop(uv_idle_t *) __attribute__((no_instrument_function));
+        static void onPrepareLoop(uv_prepare_t *) __attribute__((no_instrument_function));
         static void fini(uv_handle_t *);
 
-        uv_idle_t idle_;
+        uv_prepare_t prepare_;
         uint64_t lastRun_;
         bool destroying_;
         uint64_t refCount_;

@@ -40,9 +40,9 @@ namespace yajr { namespace comms {
 
 using namespace yajr::comms::internal;
 
-void internal::Peer::LoopData::onIdleLoop() {
+void internal::Peer::LoopData::onPrepareLoop() {
 
-    uint64_t now = uv_now(idle_.loop);
+    uint64_t now = uv_now(prepare_.loop);
 
     peers[TO_RESOLVE]
         .clear_and_dispose(RetryPeer());
@@ -78,10 +78,10 @@ void internal::Peer::LoopData::onIdleLoop() {
 
 }
 
-void internal::Peer::LoopData::onIdleLoop(uv_idle_t * h) {
+void internal::Peer::LoopData::onPrepareLoop(uv_prepare_t * h) {
 
     static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data)
-        ->onIdleLoop();
+        ->onPrepareLoop();
 
 }
 
@@ -94,10 +94,10 @@ void internal::Peer::LoopData::fini(uv_handle_t * h) {
 void internal::Peer::LoopData::destroy() {
     LOG(INFO);
 
-    uv_idle_stop(&idle_);
-    uv_close((uv_handle_t*)&idle_, &fini);
+    uv_prepare_stop(&prepare_);
+    uv_close((uv_handle_t*)&prepare_, &fini);
 
-    assert(idle_.data == this);
+    assert(prepare_.data == this);
 
     destroying_ = 1;
 
