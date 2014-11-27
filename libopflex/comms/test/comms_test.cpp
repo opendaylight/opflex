@@ -40,7 +40,7 @@ BOOST_GLOBAL_FIXTURE( CommsTests );
  */
 class CommsFixture {
   private:
-    uv_idle_t  idler_;
+    uv_prepare_t prepare_;
     uv_timer_t timer_;
     uv_loop_t * loop_;
 
@@ -49,7 +49,7 @@ class CommsFixture {
 
         LOG(INFO) << "\n\n\n\n\n\n\n\n";
 
-        idler_.data = timer_.data = this;
+        prepare_.data = timer_.data = this;
 
         int rc = ::yajr::initLoop(loop_);
 
@@ -85,10 +85,10 @@ class CommsFixture {
         LOG(DEBUG);
 
         uv_timer_stop(&timer_);
-        uv_idle_stop(&idler_);
+        uv_prepare_stop(&prepare_);
 
         uv_close((uv_handle_t *)&timer_, down_on_close);
-        uv_close((uv_handle_t *)&idler_, down_on_close);
+        uv_close((uv_handle_t *)&prepare_, down_on_close);
 
         ::yajr::finiLoop(uv_default_loop());
 
@@ -217,7 +217,7 @@ class CommsFixture {
 
     }
 
-    static void check_peer_db_cb(uv_idle_t * handle) {
+    static void check_peer_db_cb(uv_prepare_t * handle) {
 
         dump_peer_db_brief();
 
@@ -301,8 +301,8 @@ class CommsFixture {
         expect_timeout = timeout;
 
         internal::Peer::LoopData::getLoopData(loop_)->up();
-        uv_idle_init(uv_default_loop(), &idler_);
-        uv_idle_start(&idler_, check_peer_db_cb);
+        uv_prepare_init(uv_default_loop(), &prepare_);
+        uv_prepare_start(&prepare_, check_peer_db_cb);
 
         uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
