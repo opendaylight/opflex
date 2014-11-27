@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_a804b415",
+        "filename": "libopflex/comms/common.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2014-11-27T01:55:18Z",
+      "side": 1,
+      "message": "No, this should be TRACE or removed completely.  It should be actually possible to run at debug level without the system instantly crashing because you\u0027re logging every time you get a byte from the network.",
+      "range": {
+        "startLine": 185,
+        "startChar": 12,
+        "endLine": 185,
+        "endChar": 17
+      },
+      "revId": "8da1b9d7571e35c17d41bca4b7d844b9b2949357",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
