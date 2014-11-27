@@ -182,7 +182,7 @@ void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf)
 
     if (nread > 0) {
 
-        LOG(INFO) << peer
+        LOG(DEBUG) << peer
             << " read " << nread << " into buffer of size " << buf->len;
 
         char * buffer = buf->base;
