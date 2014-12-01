@@ -35,7 +35,7 @@ public:
     ~MockFlowExecutor() {}
 
     bool Execute(const FlowEdit& flowEdits) {
-        const char *modStr[] = {"A", "M", "D"};
+        const char *modStr[] = {"ADD", "MOD", "DEL"};
         struct ds strBuf;
         ds_init(&strBuf);
 
@@ -44,18 +44,17 @@ public:
             string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
             const char *mod = modStr[ed.first];
 
-            LOG(DEBUG) << "*** " << mod << "|" << str;
+            LOG(DEBUG) << "*** " << ed;
             BOOST_CHECK_MESSAGE(!mods.empty(), "\ngot " << mod << "|" << str);
             if (!mods.empty()) {
                 MOD exp = mods.front();
                 mods.pop_front();
                 BOOST_CHECK_MESSAGE(exp.first == ed.first,
                         "\nexp: " << modStr[exp.first] <<
-                        "\ngot: " << mod << "|" << str);
+                        "\ngot: " << ed);
                 BOOST_CHECK_MESSAGE(exp.second == str,
                         "\nexp: " << modStr[exp.first] << "|" << exp.second <<
-                        "\ngot: " << mod << "|" << str);
-            }
+                        "\ngot: " << ed);            }
             ds_clear(&strBuf);
         }
         ds_destroy(&strBuf);
@@ -121,7 +120,7 @@ public:
     vector<string> fe_ep0_eg0_1, fe_ep0_eg0_2;
     vector<string> fe_ep0_port_1, fe_ep0_port_2, fe_ep0_port_3;
     vector<string> fe_ep2, fe_ep2_eg1;
-    vector<string> fe_con0, fe_con1, fe_con2;
+    vector<string> fe_con1, fe_con2;
 };
 
 BOOST_AUTO_TEST_SUITE(FlowManager_test)
@@ -224,10 +223,6 @@ BOOST_FIXTURE_TEST_CASE(remoteEp, FlowManagerFixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(policy, FlowManagerFixture) {
-    exec.Expect(FlowEdit::add, fe_con0);
-    flowManager.contractUpdated(con0->getURI());
-    BOOST_CHECK(exec.IsEmpty());
-
     exec.Expect(FlowEdit::add, fe_con2);
     flowManager.contractUpdated(con2->getURI());
     BOOST_CHECK(exec.IsEmpty());
@@ -273,6 +268,7 @@ public:
     string done() { cntr = 0; return entry; }
     Bldr& table(uint8_t t) { rep(", table=", str(t)); return *this; }
     Bldr& priority(uint16_t p) { rep(", priority=", str(p)); return *this; }
+    Bldr& cookie(uint64_t c) { rep("cookie=", str(c, hex)); return *this; }
     Bldr& tunId(uint32_t id) { rep(",tun_id=", str(id, true)); return *this; }
     Bldr& in(uint32_t p) { rep(",in_port=", str(p)); return *this; }
     Bldr& reg(REG r, uint32_t v) {
@@ -458,15 +454,12 @@ FlowManagerFixture::createEntriesForObjects() {
     uint32_t epg3_vnid = policyMgr.getVnidForGroup(epg3->getURI()).get();
     uint16_t prio = FlowManager::MAX_POLICY_RULE_PRIORITY;
 
-    /* con0 */
-    fe_con0.push_back(Bldr().table(3).priority(prio).reg(SEPG, epg1_vnid)
-            .reg(DEPG, epg0_vnid).actions().out(OUTPORT).done());
-    fe_con0.push_back(Bldr(fe_con0[0]).reg(SEPG, epg0_vnid)
-            .reg(DEPG, epg1_vnid).done());
-
     /* con2 */
-    fe_con2.push_back(Bldr().table(3).priority(prio).reg(SEPG, epg3_vnid)
-            .reg(DEPG, epg2_vnid).actions().out(OUTPORT).done());
+    uint32_t con2_cookie = flowManager.GetId(con2->getClassId(),
+            con2->getURI());
+    fe_con2.push_back(Bldr().table(3).priority(prio).cookie(con2_cookie)
+            .reg(SEPG, epg3_vnid).reg(DEPG, epg2_vnid).actions().out(OUTPORT)
+            .done());
     fe_con2.push_back(Bldr(fe_con2[0]).reg(SEPG, epg2_vnid)
             .reg(DEPG, epg3_vnid).done());
 
@@ -477,12 +470,16 @@ FlowManagerFixture::createEntriesForObjects() {
     unordered_set<uint32_t> pvnids, cvnids;
     flowManager.GetGroupVnids(ps, pvnids);
     flowManager.GetGroupVnids(cs, cvnids);
+    uint32_t con1_cookie = flowManager.GetId(con1->getClassId(),
+            con1->getURI());
     BOOST_FOREACH(uint32_t pvnid, pvnids) {
         BOOST_FOREACH(uint32_t cvnid, cvnids) {
-            fe_con1.push_back(Bldr().table(3).priority(prio).tcp()
+            fe_con1.push_back(Bldr().table(3).priority(prio)
+                    .cookie(con1_cookie).tcp()
                     .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
                     .actions().out(OUTPORT).done());
-            fe_con1.push_back(Bldr().table(3).priority(prio-1).arp()
+            fe_con1.push_back(Bldr().table(3).priority(prio-1)
+                    .cookie(con1_cookie).arp()
                     .reg(SEPG, pvnid).reg(DEPG, cvnid)
                     .actions().out(OUTPORT).done());
         }

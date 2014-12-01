@@ -351,12 +351,11 @@ private:
      * Update the classifier rules associated with a contract.
      *
      * @param contractURI URI of contract to update
-     * @param toRemove set to true if contract was removed.
-     * @return true if rules for this contract were updated or
-     * contract was removed
+     * @param notFound set to true if contract could not be resolved
+     * @return true if rules for this contract were updated
      */
     bool updateContractRules(const opflex::modb::URI& contractURI,
-            bool& toRemove);
+            bool& notFound);
 
     /**
      * Notify policy listeners about an update to a contract.

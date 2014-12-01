@@ -115,13 +115,14 @@ BOOST_AUTO_TEST_SUITE(flowmod_test)
 
 BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     BOOST_REQUIRE(!conn.Connect(OFP13_VERSION));
+    sleep(1);
 
     FlowEdit fe;
     vector<FlowEntry *> flows;
 
     /* add */
     assign::push_back(fe.edits)(FlowEdit::add, testFlows[0]);
-    fexec.Execute(fe);
+    BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
     BOOST_CHECK(flows.size() == 1);
@@ -131,7 +132,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     /* modify */
     fe.edits.clear();
     assign::push_back(fe.edits)(FlowEdit::mod, testFlows[1]);
-    fexec.Execute(fe);
+    BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
     BOOST_CHECK(flows.size() == 1);
@@ -141,7 +142,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     /* delete */
     fe.edits.clear();
     assign::push_back(fe.edits)(FlowEdit::del, testFlows[1]);
-    fexec.Execute(fe);
+    BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
     BOOST_CHECK(flows.size() == 0);

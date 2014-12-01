@@ -8,6 +8,7 @@
 
 #include <boost/foreach.hpp>
 
+#include "logging.h"
 #include "ovs.h"
 #include "TableState.h"
 
@@ -16,6 +17,7 @@ namespace enforcer {
 namespace flow {
 
 using namespace std;
+using namespace ovsagent;
 
 /** FlowEntry **/
 
@@ -57,6 +59,26 @@ ostream & operator<<(ostream &os, const FlowEntry& fe) {
     return os;
 }
 
+ostream& operator<<(ostream &os, const FlowEntryList& el) {
+    for (int i = 0; i < el.size(); ++i) {
+        os << endl << *(el[i]);
+    }
+    return os;
+}
+
+ostream& operator<<(ostream &os, const FlowEdit::Entry& fe) {
+    static const char *op[] = {"ADD", "MOD", "DEL"};
+    os << op[fe.first] << "|" << *(fe.second);
+    return os;
+}
+
+ostream& operator<<(ostream &os, const FlowEdit& fe) {
+    BOOST_FOREACH(const FlowEdit::Entry& e, fe.edits) {
+        os << endl << e;
+    }
+    return os;
+}
+
 /** TableState **/
 
 void TableState::DiffEntry(const string& objId,
@@ -94,6 +116,7 @@ void TableState::DiffEntry(const string& objId,
                     FlowEdit::Entry(FlowEdit::del, oldEntries[i]));
         }
     }
+    LOG(DEBUG) << diffs.edits.size() << " diffs for objId=" << objId << diffs;
 }
 
 void

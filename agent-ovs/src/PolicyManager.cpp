@@ -416,17 +416,17 @@ classifierEq(const shared_ptr<modelgbp::gbpe::L24Classifier>& lhs,
 }
 
 bool PolicyManager::updateContractRules(const URI& contractURI,
-        bool& toRemove) {
+        bool& notFound) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;
 
     optional<shared_ptr<Contract> > contract =
             Contract::resolve(framework, contractURI);
     if (!contract) {
-        toRemove = true;
-        return true;
+        notFound = true;
+        return false;
     }
-    toRemove = false;
+    notFound = false;
 
     /* get all classifiers for this contract as an ordered-list */
     rule_list_t newRules;
@@ -548,6 +548,7 @@ PolicyManager::ContractListener::~ContractListener() {}
 
 void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
                                                     const URI& uri) {
+    LOG(DEBUG) << "ContractListener update for URI " << uri;
     unique_lock<mutex> guard(pmanager.state_mutex);
 
     uri_set_t contractsToNotify;
@@ -561,11 +562,22 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
         for (PolicyManager::contract_map_t::iterator itr =
                 pmanager.contractMap.begin();
              itr != pmanager.contractMap.end(); ) {
-            bool toRemove = false;
-            if (pmanager.updateContractRules(itr->first, toRemove)) {
+            bool notFound = false;
+            if (pmanager.updateContractRules(itr->first, notFound)) {
                 contractsToNotify.insert(itr->first);
             }
-            itr = (toRemove ? pmanager.contractMap.erase(itr) : ++itr);
+            /*
+             * notFound == true may happen if the contract was removed or there
+             * is a reference from a group to a contract that has not been
+             * received yet. The URI given to the listener callback should
+             * match the map entry in the first case.
+             */
+            if (notFound && itr->first == uri) {
+                contractsToNotify.insert(itr->first);
+                itr = pmanager.contractMap.erase(itr);
+            } else {
+                ++itr;
+            }
         }
     }
     guard.unlock();

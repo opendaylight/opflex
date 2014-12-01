@@ -13,11 +13,11 @@
 #include <cstdio>
 #include <boost/foreach.hpp>
 
-/** Uncomment following lines when these headers are available */
-//#include <modelgbp/arp/OpcodeEnumT.hpp>
-//#include <modelgbp/l2/EtherTypeEnumT.hpp>
-//#include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/arp/OpcodeEnumT.hpp>
+#include <modelgbp/l2/EtherTypeEnumT.hpp>
+#include <modelgbp/gbp/DirectionEnumT.hpp>
 
+#include "logging.h"
 #include "Endpoint.h"
 #include "EndpointManager.h"
 #include "EndpointListener.h"
@@ -461,6 +461,7 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
 
 void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
     const string& contractId = contractURI.toString();
+    uint64_t conCookie = GetId(Contract::CLASS_ID, contractURI);
 
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.contractExists(contractURI)) {  // Contract removed
@@ -480,33 +481,27 @@ void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
     PolicyManager::rule_list_t rules;
     polMgr.getContractRules(contractURI, rules);
 
-    /* If no rules are specified, we allow bi-directional traffic.
-     * So insert a fake classifier.
-     */
-    if (rules.empty()) {
-        rules.push_back(shared_ptr<L24Classifier>());
-    }
+    LOG(INFO) << "Update for contract " << contractURI
+            << ", #prov=" << provVnids.size()
+            << ", #cons=" << consVnids.size()
+            << ", #rules=" << rules.size();
 
-    // XXX TODO Use symbolic names instead of integer literals
     FlowEntryList entryList;
     BOOST_FOREACH(uint32_t pvnid, provVnids) {
         BOOST_FOREACH(uint32_t cvnid, consVnids) {
             uint16_t prio = MAX_POLICY_RULE_PRIORITY;
             BOOST_FOREACH(shared_ptr<L24Classifier>& cls, rules) {
-                uint8_t dir = 0 /*DirectionEnumT::CONST_BIDIRECTIONAL*/;
-                if (cls) {
-                    dir = cls->getDirection(
-                            0 /*DirectionEnumT::CONST_BIDIRECTIONAL*/);
+                uint8_t dir =
+                        cls->getDirection(DirectionEnumT::CONST_BIDIRECTIONAL);
+                if (dir == DirectionEnumT::CONST_IN ||
+                    dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
+                    AddEntryForClassifier(cls.get(), prio, conCookie,
+                            cvnid, pvnid, entryList);
                 }
-                if (dir == 1 /*DirectionEnumT::CONST_IN*/ ||
-                    dir == 0 /*DirectionEnumT::CONST_BIDIRECTIONAL*/) {
-                    AddEntryForClassifier(cls.get(), prio, cvnid, pvnid,
-                            entryList);
-                }
-                if (dir == 2 /*DirectionEnumT::CONST_OUT*/ ||
-                    dir == 0 /*DirectionEnumT::CONST_BIDIRECTIONAL*/) {
-                    AddEntryForClassifier(cls.get(), prio, pvnid, cvnid,
-                            entryList);
+                if (dir == DirectionEnumT::CONST_OUT ||
+                    dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
+                    AddEntryForClassifier(cls.get(), prio, conCookie,
+                            pvnid, cvnid, entryList);
                 }
                 --prio;
             }
@@ -516,27 +511,26 @@ void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
 }
 
 void FlowManager::AddEntryForClassifier(L24Classifier *classifier,
-        uint16_t priority, uint32_t& svnid, uint32_t& dvnid,
+        uint16_t priority, uint64_t cookie, uint32_t& svnid, uint32_t& dvnid,
         flow::FlowEntryList& entries) {
+    using namespace modelgbp::arp;
+    using namespace modelgbp::l2;
 
     FlowEntry *e0 = new FlowEntry();
     match *m = &(e0->entry->match);
+    e0->entry->cookie = htonll(cookie);
     SetPolicyMatchEpgs(e0, priority, svnid, dvnid);
     SetPolicyActionAllow(e0);
     entries.push_back(e0);
 
-    if (classifier == NULL) {
-        return;
-    }
-    // XXX TODO Use symbolic names instead of integer literals
     uint8_t arpOpc =
-            classifier->getArpOpc(0 /* OpcodeEnumT::CONST_UNSPECIFIED */);
+            classifier->getArpOpc(OpcodeEnumT::CONST_UNSPECIFIED);
     uint16_t ethT =
-            classifier->getEtherT(0 /* EtherTypeEnumT::CONST_UNSPECIFIED */);
-    if (arpOpc != 0 /* OpcodeEnumT::CONST_UNSPECIFIED */) {
+            classifier->getEtherT(EtherTypeEnumT::CONST_UNSPECIFIED);
+    if (arpOpc != OpcodeEnumT::CONST_UNSPECIFIED) {
         match_set_nw_proto(m, arpOpc);
     }
-    if (ethT != 0 /* EtherTypeEnumT::CONST_UNSPECIFIED */) {
+    if (ethT != EtherTypeEnumT::CONST_UNSPECIFIED) {
         match_set_dl_type(m, htons(ethT));
     }
     if (classifier->isProtSet()) {
@@ -559,6 +553,8 @@ FlowManager::WriteFlow(const string& objId, TableState& tab,
     bool success = executor->Execute(diffs);
     if (success) {
         tab.Update(objId, el);
+    } else {
+        LOG(ERROR) << "Writing flows for " << objId << " failed";
     }
     // clean-up old entry data (or new entry data in case of failure)
     for (int i = 0; i < el.size(); ++i) {
@@ -612,6 +608,7 @@ uint32_t FlowManager::GetId(class_id_t cid, const URI& uri) {
     case RoutingDomain::CLASS_ID:   idMap = &routingDomainIds; break;
     case BridgeDomain::CLASS_ID:    idMap = &bridgeDomainIds; break;
     case FloodDomain::CLASS_ID:     idMap = &floodDomainIds; break;
+    case Contract::CLASS_ID:        idMap = &contractIds; break;
     default:
         assert(false);
     }

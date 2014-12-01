@@ -68,7 +68,7 @@ FlowExecutor::Execute(const FlowEdit& fe) {
         mutex_guard lock(reqMtx);
         requests.erase(barrXid);
     }
-    return error != 0;
+    return error == 0;
 }
 
 bool
@@ -76,7 +76,7 @@ FlowExecutor::ExecuteNoBlock(const FlowEdit& fe) {
     if (fe.edits.empty()) {
         return true;
     }
-    return DoExecuteNoBlock(fe, boost::none) != 0;
+    return DoExecuteNoBlock(fe, boost::none) == 0;
 }
 
 ofpbuf *
@@ -102,7 +102,7 @@ FlowExecutor::EncodeFlowMod(const FlowEdit::Entry& edit,
     flowMod.ofpacts_len = flow.ofpacts_len;
     flowMod.ofpacts = (ofpact*)flow.ofpacts;
     flowMod.command = mod == FlowEdit::add ? OFPFC_ADD :
-            (mod == FlowEdit::mod ? OFPFC_MODIFY : OFPFC_DELETE);
+            (mod == FlowEdit::mod ? OFPFC_MODIFY_STRICT : OFPFC_DELETE_STRICT);
     /* fill out defaults */
     flowMod.modify_cookie = false;
     flowMod.idle_timeout = OFP_FLOW_PERMANENT;
@@ -128,7 +128,7 @@ FlowExecutor::DoExecuteNoBlock(const flow::FlowEdit& fe,
             mutex_guard lock(reqMtx);
             requests[barrXid.get()].reqXids.insert(xid);
         }
-        LOG(DEBUG) << "Executing xid=" << xid << ", " << *(e.second);
+        LOG(DEBUG) << "Executing xid=" << xid << ", " << e;
         int error = swConn->SendMessage(msg);
         if (error) {
             LOG(ERROR) << "Error sending flow mod message: "
@@ -142,6 +142,7 @@ FlowExecutor::DoExecuteNoBlock(const flow::FlowEdit& fe,
 int
 FlowExecutor::WaitOnBarrier(ofpbuf *barrReq) {
     ovs_be32 barrXid = ((ofp_header *)ofpbuf_data(barrReq))->xid;
+    LOG(DEBUG) << "Sending barrier request xid=" << barrXid;
     int err = swConn->SendMessage(barrReq);
     if (err) {
         LOG(ERROR) << "Error sending barrier request: "

@@ -12,6 +12,8 @@
 
 #include <boost/shared_ptr.hpp>
 #include <modelgbp/dmtree/Root.hpp>
+#include <modelgbp/l2/EtherTypeEnumT.hpp>
+#include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "BaseFixture.h"
@@ -61,7 +63,6 @@ public:
     shared_ptr<L24Classifier> classifier1;
     shared_ptr<L24Classifier> classifier2;
 
-    shared_ptr<Contract> con0;
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
     string policyOwner;
@@ -140,29 +141,18 @@ protected:
     }
 
     void createPolicyObjects() {
-        /** Temporary hack - these should come from model headers */
-        static const uint16_t CONST_ARP = 0x0806;
-        static const uint16_t CONST_IPV4 = 0x0800;
-        static const uint16_t CONST_IPV6 = 0x86DD;
-        static const uint8_t CONST_IN = 1;
-        static const uint8_t CONST_OUT = 2;
-        /* End hack */
-
         /* allow everything */
         classifier0 = space->addGbpeL24Classifier("classifier0");
 
         /* allow TCP to dst port 80 cons->prov */
         classifier1 = space->addGbpeL24Classifier("classifier1");
-        classifier1->setOrder(200).setDirection(CONST_IN)
-            .setEtherT(CONST_IPV4).setProt(6 /* TCP */)
+        classifier1->setOrder(200).setDirection(DirectionEnumT::CONST_IN)
+            .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
             .setDFromPort(80);
         /* allow ARP from prov->cons */
         classifier2 = space->addGbpeL24Classifier("classifier2");
-        classifier2->setOrder(100).setDirection(CONST_OUT)
-            .setEtherT(CONST_ARP);
-
-        /* empty, no-rule classifier */
-        con0 = space->addGbpContract("contract0");
+        classifier2->setOrder(100).setDirection(DirectionEnumT::CONST_OUT)
+            .setEtherT(l2::EtherTypeEnumT::CONST_ARP);
 
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
@@ -174,17 +164,14 @@ protected:
         con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
             ->addGbpRuleToClassifierRSrc(classifier0->getURI().toString());
 
-        epg0->addGbpEpGroupToProvContractRSrc(con0->getURI().toString());
-        epg1->addGbpEpGroupToConsContractRSrc(con0->getURI().toString());
-
-        epg2->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
-        epg3->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
-
         epg0->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         epg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
 
         epg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
         epg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
+
+        epg2->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
+        epg3->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
     }
 };
 
