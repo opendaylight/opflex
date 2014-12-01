@@ -520,6 +520,12 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         }
     }
 
+    virtual void disconnect() {
+        if (connected_) {
+            onDisconnect();
+        }
+    }
+
     virtual void destroy() {
         LOG(DEBUG) << this;
 

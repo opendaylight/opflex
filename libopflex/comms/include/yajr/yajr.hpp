@@ -113,11 +113,23 @@ struct Peer {
     );
 
     /**
+     * @brief disconnect the peer
+     *
+     * Disconnect the peer. Active peers will re-attempt to connect, passive
+     * peers will be destroyed asynchronously.
+     *
+     * For passive peers, disconnect() and destroy() have the same effect.
+     */
+    virtual void disconnect() = 0;
+
+    /**
      * @brief perform an asynchronous delete
      *
      * Perform an asynchronous delete of this communication peer, disconnecting
      * it if still connected and destroying it as soon as no more callbacks are
      * pending for this Peer.
+     *
+     * For passive peers, disconnect() and destroy() have the same effect.
      */
     virtual void destroy() = 0;
 
