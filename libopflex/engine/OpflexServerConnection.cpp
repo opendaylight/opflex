@@ -9,8 +9,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <arpa/inet.h>
-
 #include "opflex/engine/internal/OpflexServerConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -39,31 +37,34 @@ OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
     struct sockaddr_storage name;
     int len = sizeof(name);
     rc = uv_tcp_getpeername(&tcp_handle, (struct sockaddr*)&name, &len);
-    if (rc < 0) {
-        LOG(ERROR) << "New connection but could not get remote peer IP address"
-                   << uv_strerror(rc);
-    } else {
-        char addrbuffer[INET6_ADDRSTRLEN];
-        inet_ntop(name.ss_family, 
-                  name.ss_family == AF_INET
-                  ? (void *) &(((struct sockaddr_in*)&name)->sin_addr)
-                  : (void *) &(((struct sockaddr_in6*)&name)->sin6_addr),
-                  addrbuffer, INET6_ADDRSTRLEN);
-        remote_peer = addrbuffer;
-        LOG(INFO) << "[" << getRemotePeer() << "] " 
-                  << "New server connection";
-    }
+    setRemotePeer(rc, name);
 
     uv_read_start((uv_stream_t*)&tcp_handle, alloc_cb, read_cb);
     handler->connected();
-#else
-
 #endif
-
 }
 
 OpflexServerConnection::~OpflexServerConnection() {
 
+}
+
+void OpflexServerConnection::setRemotePeer(int rc, struct sockaddr_storage& name) {
+    if (rc < 0) {
+        LOG(ERROR) << "New connection but could not get remote peer IP address"
+                   << uv_strerror(rc);
+        return;
+    } 
+
+    char addrbuffer[INET6_ADDRSTRLEN];
+    inet_ntop(name.ss_family, 
+              name.ss_family == AF_INET
+              ? (void *) &(((struct sockaddr_in*)&name)->sin_addr)
+              : (void *) &(((struct sockaddr_in6*)&name)->sin6_addr),
+              addrbuffer, INET6_ADDRSTRLEN);
+    remote_peer = addrbuffer;
+
+    LOG(INFO) << "[" << getRemotePeer() << "] " 
+              << "New server connection";
 }
 
 const std::string& OpflexServerConnection::getName() {
@@ -94,10 +95,14 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
     conn->peer = p;
     switch (stateChange) {
     case yajr::StateChange::CONNECT:
-        conn->remote_peer = "UNKNOWN";
-        LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
-                  << "New server connection";
-        conn->handler->connected();
+        {
+            struct sockaddr_storage name;
+            int len = sizeof(name);
+            int rc = p->getPeerName((struct sockaddr*)&name, &len);
+            conn->setRemotePeer(rc, name);
+
+            conn->handler->connected();
+        }
         break;
     case yajr::StateChange::DISCONNECT:
         LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
@@ -118,6 +123,9 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
 #endif
 
 void OpflexServerConnection::disconnect() {
+    handler->disconnected();
+    OpflexConnection::disconnect();
+
 #ifdef SIMPLE_RPC
     uv_read_stop((uv_stream_t*)&tcp_handle);
     {
@@ -131,7 +139,6 @@ void OpflexServerConnection::disconnect() {
     if (peer)
         peer->destroy();
 #endif
-    OpflexConnection::disconnect();
 }
 
 #ifdef SIMPLE_RPC

@@ -11,6 +11,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <arpa/inet.h>
+
 #include "opflex/engine/internal/OpflexConnection.h"
 
 #pragma once
@@ -80,6 +82,7 @@ private:
     OpflexListener* listener;
 
     std::string remote_peer;
+    void setRemotePeer(int rc, struct sockaddr_storage& name);
 
 #ifdef SIMPLE_RPC
     uv_tcp_t tcp_handle;
