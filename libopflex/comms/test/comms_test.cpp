@@ -14,6 +14,9 @@
 #include <opflex/logging/internal/logging.hpp>
 #include <cstdlib>
 #include <boost/test/unit_test_log.hpp>
+#include <opflex/logging/OFLogHandler.h>
+#include <opflex/logging/StdOutLogHandler.h>
+
 
 #include <dlfcn.h>
 #include <cstring>
@@ -23,15 +26,25 @@ using namespace yajr::comms;
 BOOST_AUTO_TEST_SUITE(asynchronous_sockets)
 
 struct CommsTests {
+
     CommsTests() {
         LOG(INFO) << "global setup\n";
 
         boost::unit_test::unit_test_log_t::instance().set_threshold_level(::boost::unit_test::log_successful_tests);
+
+        opflex::logging::OFLogHandler::registerHandler(commsTestLogger_);
     }
+
     ~CommsTests() {
         LOG(INFO) << "global teardown\n";
     }
+
+    /* potentially subject to static initialization order fiasco */
+    static opflex::logging::StdOutLogHandler commsTestLogger_;
+
 };
+
+opflex::logging::StdOutLogHandler CommsTests::commsTestLogger_(TRACE);
 
 BOOST_GLOBAL_FIXTURE( CommsTests );
 
