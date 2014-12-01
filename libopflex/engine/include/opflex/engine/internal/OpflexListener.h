@@ -124,6 +124,7 @@ private:
 #endif
 
     uv_mutex_t conn_mutex;
+    uv_key_t conn_mutex_key;
     typedef std::set<OpflexServerConnection*> conn_set_t;
     conn_set_t conns;
 
@@ -136,6 +137,7 @@ private:
     void messagesReady();
     uv_loop_t* getLoop() { return &server_loop; }
     void connectionClosed(OpflexServerConnection* conn);
+    void doConnectionClosed(OpflexServerConnection* conn);
 
 #ifdef SIMPLE_RPC
     static void on_new_connection(uv_stream_t *server, int status);

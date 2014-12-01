@@ -115,15 +115,13 @@ private:
 #else
     yajr::Peer* peer;
 #endif
-    volatile bool started;
-    volatile bool active;
+    bool started;
+    bool active;
+    bool closing;
 
 #ifdef SIMPLE_RPC
     static void connect_cb(uv_connect_t* req, int status);
 #else
-    static void on_state_change(yajr::Peer* p, void* data, 
-                                yajr::StateChange::To stateChange,
-                                int error);
     static uv_loop_t* loop_selector(void* data);
 #endif
 
@@ -133,6 +131,10 @@ protected:
      * Handler for connection close
      */
     static void on_conn_closed(uv_handle_t *handle);
+#else
+    static void on_state_change(yajr::Peer* p, void* data, 
+                                yajr::StateChange::To stateChange,
+                                int error);
 #endif
 };
 

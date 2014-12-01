@@ -10,7 +10,7 @@
 #
 # Process this file with automake to produce a Makefile.in
 
-AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK -DSIMPLE_RPC \
+AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(srcdir)/../include \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/logging/include \
