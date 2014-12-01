@@ -35,7 +35,7 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
 #ifdef SIMPLE_RPC
       retry(true),
 #endif
-      active(false), started(false) {
+      active(false), started(false), closing(false) {
 
 }
 
@@ -63,7 +63,7 @@ void OpflexClientConnection::connect() {
 #ifdef SIMPLE_RPC
     uv_tcp_init(&pool->client_loop, &socket);
     socket.data = this;
-    // xxx for now assume that hostname is an ipv4 address
+    // assume that hostname is an ipv4 address for simple rpc
     struct sockaddr_in dest;
     int rc = uv_ip4_addr(hostname.c_str(), port, &dest);
     if (rc < 0) {
@@ -85,24 +85,32 @@ void OpflexClientConnection::disconnect() {
 
     LOG(DEBUG) << "[" << getRemotePeer() << "] " 
                << "Disconnected";
+    handler->disconnected();
+    OpflexConnection::disconnect();
+
+    closing = true;
 
 #ifdef SIMPLE_RPC
     uv_read_stop((uv_stream_t*)&socket);
     uv_close((uv_handle_t*)&socket, on_conn_closed);
 #else
+    // XXX need a way to disconnect without destroying permanantly
     peer->destroy();
 #endif
-
-    OpflexConnection::disconnect();
-    handler->disconnected();
 }
 
 void OpflexClientConnection::close() {
+#ifdef SIMPLE_RPC
     retry = false;
-    if (active)
+#endif
+    if (active) {
         disconnect();
-    else
+    }
+#ifdef SIMPLE_RPC
+    else if (!closing) {
         pool->connectionClosed(this);
+    }
+#endif
 }
 
 #ifdef SIMPLE_RPC
