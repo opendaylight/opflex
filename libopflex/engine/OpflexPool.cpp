@@ -15,7 +15,7 @@
 #include "opflex/engine/internal/OpflexPool.h"
 #include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/logging/internal/logging.hpp"
-#include "LockGuard.h"
+#include "RecursiveLockGuard.h"
 
 namespace opflex {
 namespace engine {
@@ -28,16 +28,19 @@ using ofcore::OFConstants;
 OpflexPool::OpflexPool(HandlerFactory& factory_)
     : factory(factory_), active(false) {
     uv_mutex_init(&conn_mutex);
+    uv_key_create(&conn_mutex_key);
 }
 
 OpflexPool::~OpflexPool() {
+    uv_key_delete(&conn_mutex_key);
     uv_mutex_destroy(&conn_mutex);
 }
 
 void OpflexPool::on_conn_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
     if (pool->active) {
-        util::LockGuard guard(&pool->conn_mutex);
+        util::RecursiveLockGuard guard(&pool->conn_mutex, 
+                                       &pool->conn_mutex_key);
         BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
             v.second.conn->connect();
         }
@@ -47,20 +50,16 @@ void OpflexPool::on_conn_async(uv_async_t* handle) {
 void OpflexPool::on_cleanup_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
     {
-        std::vector<OpflexConnection*> conns;
-        {
-            util::LockGuard guard(&pool->conn_mutex);
-            BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
-                conns.push_back(v.second.conn);
-            }
+        util::RecursiveLockGuard guard(&pool->conn_mutex, 
+                                       &pool->conn_mutex_key);
+        conn_map_t conns(pool->connections);
+        BOOST_FOREACH(conn_map_t::value_type& v, conns) {
+            v.second.conn->close();
         }
-        BOOST_FOREACH(OpflexConnection* conn, conns) {
-            conn->close();
-        }
-        if (conns.size() > 0)
+        if (pool->connections.size() > 0)
             return;
     }
-    
+
     uv_close((uv_handle_t*)&pool->writeq_async, NULL);
     uv_close((uv_handle_t*)&pool->conn_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
@@ -74,7 +73,8 @@ void OpflexPool::on_cleanup_async(uv_async_t* handle) {
 
 void OpflexPool::on_writeq_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
-    util::LockGuard guard(&pool->conn_mutex);
+    util::RecursiveLockGuard guard(&pool->conn_mutex, 
+                                   &pool->conn_mutex_key);
     BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
         v.second.conn->processWriteQueue();
     }
@@ -124,7 +124,7 @@ void OpflexPool::setOpflexIdentity(const std::string& name,
 
 OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname, 
                                             int port) {
-    util::LockGuard guard(&conn_mutex);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     conn_map_t::iterator it = connections.find(make_pair(hostname, port));
     if (it != connections.end()) {
         return it->second.conn;
@@ -133,7 +133,7 @@ OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname,
 }
 
 void OpflexPool::addPeer(const std::string& hostname, int port) {
-    util::LockGuard guard(&conn_mutex);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     doAddPeer(hostname, port);
     uv_async_send(&conn_async);
 }
@@ -153,7 +153,7 @@ void OpflexPool::doAddPeer(const std::string& hostname, int port) {
 }
 
 void OpflexPool::addPeer(OpflexClientConnection* conn) {
-    util::LockGuard guard(&conn_mutex);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     ConnData& cd = connections[make_pair(conn->getHostname(), conn->getPort())];
     if (cd.conn != NULL) {
         LOG(ERROR) << "Connection for "
@@ -199,17 +199,17 @@ void OpflexPool::updateRole(ConnData& cd,
 }
 
 int OpflexPool::getRoleCount(ofcore::OFConstants::OpflexRole role) {
-   util::LockGuard guard(&conn_mutex);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
 
-   role_map_t::iterator it = roles.find(role);
-   if (it == roles.end()) return 0;
-   return it->second.conns.size();
+    role_map_t::iterator it = roles.find(role);
+    if (it == roles.end()) return 0;
+    return it->second.conns.size();
 }
 
 
 void OpflexPool::setRoles(OpflexClientConnection* conn,
                           uint8_t newroles) {
-    util::LockGuard guard(&conn_mutex);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     ConnData& cd = connections.at(make_pair(conn->getHostname(),
                                             conn->getPort()));
     doSetRoles(cd, newroles);
@@ -225,7 +225,8 @@ void OpflexPool::doSetRoles(ConnData& cd, uint8_t newroles) {
 
 OpflexClientConnection*
 OpflexPool::getMasterForRole(OFConstants::OpflexRole role) {
-    util::LockGuard guard(&conn_mutex);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+
     role_map_t::iterator it = roles.find(role);
     if (it == roles.end())
         return NULL;
@@ -263,13 +264,18 @@ void OpflexPool::on_timer(uv_timer_t* timer) {
 #endif
 
 void OpflexPool::connectionClosed(OpflexClientConnection* conn) {
-    if (conn != NULL) {
-        util::LockGuard guard(&conn_mutex);
-        doRemovePeer(conn->getHostname(), conn->getPort());
-        delete conn;
-    }
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+
+    doConnectionClosed(conn);
+
+    guard.release();
     if (!active)
         uv_async_send(&cleanup_async);
+}
+
+void OpflexPool::doConnectionClosed(OpflexClientConnection* conn) {
+    doRemovePeer(conn->getHostname(), conn->getPort());
+    delete conn;
 }
 
 void OpflexPool::messagesReady() {
@@ -283,7 +289,7 @@ void OpflexPool::sendToRole(OpflexMessage* message,
     if (!active) return;
     std::vector<OpflexClientConnection*> conns;
     {
-        util::LockGuard guard(&conn_mutex);
+        util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
         role_map_t::iterator it = roles.find(role);
         if (it == roles.end())
             return;
