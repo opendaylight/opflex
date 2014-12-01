@@ -77,7 +77,7 @@ BOOST_FIXTURE_TEST_CASE(multiedit, FlowExecutorFixture) {
     assign::push_back(fe.edits)(FlowEdit::add, flows[0])
             (FlowEdit::mod, flows[1])(FlowEdit::del, flows[0]);
     conn.Expect(fe);
-    BOOST_CHECK(fexec.Execute(fe) == 0);
+    BOOST_CHECK(fexec.Execute(fe));
 }
 
 BOOST_FIXTURE_TEST_CASE(noblock, FlowExecutorFixture) {
@@ -85,7 +85,7 @@ BOOST_FIXTURE_TEST_CASE(noblock, FlowExecutorFixture) {
     assign::push_back(fe.edits)(FlowEdit::add, flows[0])
             (FlowEdit::mod, flows[1]);
     conn.Expect(fe);
-    BOOST_CHECK(fexec.ExecuteNoBlock(fe) == 0);
+    BOOST_CHECK(fexec.ExecuteNoBlock(fe));
     BOOST_CHECK(conn.expectedEdits.edits.empty());
 }
 
@@ -94,7 +94,7 @@ BOOST_FIXTURE_TEST_CASE(moderror, FlowExecutorFixture) {
     assign::push_back(fe.edits)(FlowEdit::mod, flows[0]);
     conn.Expect(fe);
     conn.ReplyWithError(OFPERR_OFPFMFC_TABLE_FULL);
-    BOOST_CHECK(fexec.Execute(fe) != 0);
+    BOOST_CHECK(fexec.Execute(fe) == false);
 }
 
 BOOST_FIXTURE_TEST_CASE(reconnect, FlowExecutorFixture) {
@@ -102,13 +102,13 @@ BOOST_FIXTURE_TEST_CASE(reconnect, FlowExecutorFixture) {
     assign::push_back(fe.edits)(FlowEdit::mod, flows[0]);
     conn.Expect(fe);
     conn.reconnectReply = true;
-    BOOST_CHECK(fexec.Execute(fe) != 0);
+    BOOST_CHECK(fexec.Execute(fe) == false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
 int MockExecutorConnection::SendMessage(ofpbuf *msg) {
-    uint16_t COMM[] = {OFPFC_ADD, OFPFC_MODIFY, OFPFC_DELETE};
+    uint16_t COMM[] = {OFPFC_ADD, OFPFC_MODIFY_STRICT, OFPFC_DELETE_STRICT};
     ofp_header *msgHdr = (ofp_header *)ofpbuf_data(msg);
     ofptype type;
     ofptype_decode(&type, msgHdr);

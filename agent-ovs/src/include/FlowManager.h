@@ -74,13 +74,21 @@ public:
             /* out */boost::unordered_set<uint32_t>& egVnids);
 
     /**
+     * Get or generate a unique ID for a given object for use with flows.
+     *
+     * @param cid Class ID of the object
+     * @param uri URI of the object
+     * @return A unique ID for the object
+     */
+    uint32_t GetId(opflex::modb::class_id_t cid, const opflex::modb::URI& uri);
+
+    /**
      * Maximum flow priority of the entries in policy table.
      */
     static const uint16_t MAX_POLICY_RULE_PRIORITY;
 private:
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
             uint32_t& rdId, uint32_t& bdId, uint32_t& fdId);
-    uint32_t GetId(opflex::modb::class_id_t cid, const opflex::modb::URI& uri);
     void UpdateGroupSubnets(const opflex::modb::URI& egUri,
             uint32_t routingDomainId);
     bool WriteFlow(const std::string& objId, flow::TableState& tab,
@@ -94,12 +102,14 @@ private:
      *
      * @param classifier Classifier object to get matching rules from
      * @param priority Priority of the entry created
+     * @param cookie Cookie of the entry created
      * @param svnid VNID of the source endpoint group for the entry
      * @param dvnid VNID of the destination endpoint group for the entry
      * @param entries List to append entry to
      */
     void AddEntryForClassifier(modelgbp::gbpe::L24Classifier *classifier,
-            uint16_t priority, uint32_t& svnid, uint32_t& dvnid,
+            uint16_t priority, uint64_t cookie,
+            uint32_t& svnid, uint32_t& dvnid,
             flow::FlowEntryList& entries);
 
     static bool ParseIpv4Addr(const std::string& str, uint32_t *ip);
@@ -129,6 +139,7 @@ private:
         unsigned long lastUsedId;
     };
     IdMap routingDomainIds, bridgeDomainIds, floodDomainIds;
+    IdMap contractIds;
 };
 
 }   // namespace enforcer

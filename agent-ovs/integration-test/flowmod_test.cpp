@@ -83,15 +83,22 @@ public:
     bool replyDone;
 };
 
-class FlowModFixture : public ConnectionFixture {
+class FlowModFixture : public ConnectionFixture,
+                       public OnConnectListener {
 public:
-    FlowModFixture() : conn(testSwitchName), rdr(&conn) {
+    FlowModFixture() : conn(testSwitchName), rdr(&conn), connectDone(false) {
         fexec.InstallListenersForConnection(&conn);
+        conn.RegisterOnConnectListener(this);
         createTestFlows();
     }
     ~FlowModFixture() {
+        conn.UnregisterOnConnectListener(this);
         fexec.UninstallListenersForConnection(&conn);
+    }
 
+    /** Interface: OnConnectListener */
+    void Connected(SwitchConnection *swConn) {
+        connectDone = true;
     }
 
     void createTestFlows();
@@ -109,19 +116,21 @@ public:
     FlowReader rdr;
     FlowExecutor fexec;
     vector<FlowEntry *> testFlows;
+    bool connectDone;
 };
 
 BOOST_AUTO_TEST_SUITE(flowmod_test)
 
 BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     BOOST_REQUIRE(!conn.Connect(OFP13_VERSION));
+    WAIT_FOR(connectDone == true, 5);
 
     FlowEdit fe;
     vector<FlowEntry *> flows;
 
     /* add */
     assign::push_back(fe.edits)(FlowEdit::add, testFlows[0]);
-    fexec.Execute(fe);
+    BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
     BOOST_CHECK(flows.size() == 1);
@@ -131,7 +140,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     /* modify */
     fe.edits.clear();
     assign::push_back(fe.edits)(FlowEdit::mod, testFlows[1]);
-    fexec.Execute(fe);
+    BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
     BOOST_CHECK(flows.size() == 1);
@@ -141,7 +150,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     /* delete */
     fe.edits.clear();
     assign::push_back(fe.edits)(FlowEdit::del, testFlows[1]);
-    fexec.Execute(fe);
+    BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
     BOOST_CHECK(flows.size() == 0);
