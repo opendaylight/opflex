@@ -309,30 +309,27 @@ void OpflexConnection::doWrite(OpflexMessage* message) {
     case OpflexMessage::REQUEST:
         {
             yajr::rpc::MethodName method(message->getMethod().c_str());
-            yajr::rpc::OutboundMessage* outm;
-            outm = new OutboundRequest(*getPeer(),
-                                       wrapper,
-                                       &method,
-                                       0);
-            outm->send();
+            OutboundRequest outm(wrapper,
+                                 &method,
+                                 0,
+                                 getPeer());
+            outm.send();
         }
         break;
     case OpflexMessage::RESPONSE:
         {
-            yajr::rpc::OutboundMessage* outm;
-            outm = new OutboundResult(*getPeer(),
-                                      wrapper,
-                                      message->getId());
-            outm->send();
+            OutboundResult outm(*getPeer(),
+                                wrapper,
+                                message->getId());
+            outm.send();
         }
         break;
     case OpflexMessage::ERROR_RESPONSE:
         {
-            yajr::rpc::OutboundMessage* outm;
-            outm = new OutboundError(*getPeer(),
-                                     wrapper,
-                                     message->getId());
-            outm->send();
+            OutboundError outm(*getPeer(),
+                               wrapper,
+                               message->getId());
+            outm.send();
         }
         break;
     }

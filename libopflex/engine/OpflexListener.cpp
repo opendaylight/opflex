@@ -17,7 +17,7 @@
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexPool.h"
 #include "opflex/logging/internal/logging.hpp"
-#include "LockGuard.h"
+#include "RecursiveLockGuard.h"
 
 #ifndef SIMPLE_RPC
 #include <yajr/internal/comms.hpp>
@@ -37,9 +37,11 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
     : handlerFactory(handlerFactory_), port(port_), 
       name(name_), domain(domain_), active(true) {
     uv_mutex_init(&conn_mutex);
+    uv_key_create(&conn_mutex_key);
 }
 
 OpflexListener::~OpflexListener() {
+    uv_key_delete(&conn_mutex_key);
     uv_mutex_destroy(&conn_mutex);
 }
 
@@ -47,9 +49,11 @@ void OpflexListener::on_cleanup_async(uv_async_t* handle) {
     OpflexListener* listener = (OpflexListener*)handle->data;
 
     {
-        LockGuard guard(&listener->conn_mutex);
-        BOOST_FOREACH(OpflexServerConnection* conn, listener->conns) {
-            conn->disconnect();
+        util::RecursiveLockGuard guard(&listener->conn_mutex, 
+                                       &listener->conn_mutex_key);
+        conn_set_t conns(listener->conns);
+        BOOST_FOREACH(OpflexServerConnection* conn, conns) {
+            conn->close();
         }
         if (listener->conns.size() != 0) return;
     }
@@ -66,7 +70,8 @@ void OpflexListener::on_cleanup_async(uv_async_t* handle) {
 
 void OpflexListener::on_writeq_async(uv_async_t* handle) {
     OpflexListener* listener = (OpflexListener*)handle->data;
-    util::LockGuard guard(&listener->conn_mutex);
+    util::RecursiveLockGuard guard(&listener->conn_mutex, 
+                                   &listener->conn_mutex_key);
     BOOST_FOREACH(OpflexServerConnection* conn, listener->conns) {
         conn->processWriteQueue();
     }
@@ -145,7 +150,8 @@ void OpflexListener::on_new_connection(uv_stream_t *server, int status) {
     OpflexListener* listener = (OpflexListener*)server->data;
     if (!listener->active) return;
 
-    LockGuard guard(&listener->conn_mutex);
+    util::RecursiveLockGuard guard(&listener->conn_mutex, 
+                                   &listener->conn_mutex_key);
     OpflexServerConnection* conn = new OpflexServerConnection(listener);
     listener->conns.insert(conn);
 }
@@ -163,27 +169,30 @@ void* OpflexListener::on_new_connection(yajr::Listener* ylistener,
     }
 
     OpflexListener* listener = (OpflexListener*)data;
-    LockGuard guard(&listener->conn_mutex);
+    util::RecursiveLockGuard guard(&listener->conn_mutex, 
+                                   &listener->conn_mutex_key);
     OpflexServerConnection* conn = new OpflexServerConnection(listener);
     listener->conns.insert(conn);
     return conn;
 }
 #endif
 
+void OpflexListener::doConnectionClosed(OpflexServerConnection* conn) {
+    conns.erase(conn);
+    delete conn;
+}
+
 void OpflexListener::connectionClosed(OpflexServerConnection* conn) {
-    OpflexListener* listener = conn->getListener();
-    if (conn != NULL) {
-        LockGuard guard(&listener->conn_mutex);
-        listener->conns.erase(conn);
-        delete conn;
-    }
-    if (!listener->active)
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+    doConnectionClosed(conn);
+    guard.release();
+    if (!active)
         uv_async_send(&cleanup_async);
 }
 
 void OpflexListener::sendToAll(OpflexMessage* message) {
     boost::scoped_ptr<OpflexMessage> messagep(message);
-    LockGuard guard(&conn_mutex);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     if (!active) return;
     BOOST_FOREACH(OpflexServerConnection* conn, conns) {
         // this is inefficient but we only use this for testing
@@ -192,7 +201,7 @@ void OpflexListener::sendToAll(OpflexMessage* message) {
 }
 
 bool OpflexListener::applyConnPred(conn_pred_t pred, void* user) {
-    LockGuard guard(&conn_mutex);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     BOOST_FOREACH(OpflexServerConnection* conn, conns) {
         if (!pred(conn, user)) return false;
     }

@@ -42,9 +42,15 @@ public:
         uv_handle_t h;
         h.data = this;
         on_conn_closed(&h);
+#else
+        on_state_change(NULL, this, yajr::StateChange::DELETE, 0);
 #endif
     }
     virtual bool isReady() { return ready; }
+    virtual std::string& getRemotePeer() { 
+        static std::string dummy("DUMMY");
+        return dummy;
+    }
 
     bool ready;
 };
