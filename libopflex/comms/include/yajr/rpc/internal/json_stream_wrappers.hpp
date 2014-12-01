@@ -10,6 +10,8 @@
 #ifndef _____COMMS__INCLUDE__OPFLEX__COMMS__INTERNAL__JSON_HPP
 #define _____COMMS__INCLUDE__OPFLEX__COMMS__INTERNAL__JSON_HPP
 
+#include <istream>
+
 #include <rapidjson/rapidjson.h>
 
 namespace yajr { namespace comms { namespace internal { namespace wrapper {

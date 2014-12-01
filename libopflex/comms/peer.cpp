@@ -6,10 +6,11 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <yajr/internal/comms.hpp>
-#include <yajr/rpc/message_factory.inl.hpp>
-#include <rapidjson/error/en.h>
 #include <yajr/rpc/internal/json_stream_wrappers.hpp>
+#include <yajr/rpc/message_factory.inl.hpp>
+#include <yajr/internal/comms.hpp>
+
+#include <rapidjson/error/en.h>
 
 namespace yajr { namespace comms { namespace internal {
 

@@ -10,16 +10,21 @@
 #ifndef _____COMMS__INCLUDE__OPFLEX__RPC_HPP
 #define _____COMMS__INCLUDE__OPFLEX__RPC_HPP
 
-#include <rapidjson/document.h>
+#include <yajr/rpc/send_handler.hpp>
+#include <yajr/yajr.hpp>
+
 #include <opflex/logging/internal/logging.hpp>
+
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+
+#include <uv.h>
+
 #include <boost/intrusive/set.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <uv.h>
-#include <rapidjson/writer.h>
 #include <boost/function.hpp>
-#include <yajr/rpc/send_handler.hpp>
-#include <yajr/yajr.hpp>
+
 #include <deque>
 
 namespace yajr {
@@ -651,7 +656,5 @@ std::size_t hash_value(yajr::rpc::LocalIdentifier const & id);
 std::size_t hash_value(yajr::rpc::RemoteIdentifier const & id);
 
 }}
-
-#include <yajr/rpc/message_factory.hpp>
 
 #endif/*_____COMMS__INCLUDE__OPFLEX__RPC_HPP*/

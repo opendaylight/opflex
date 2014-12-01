@@ -9,17 +9,16 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/test/unit_test.hpp>
 #include <yajr/internal/comms.hpp>
-#include <opflex/logging/internal/logging.hpp>
-#include <cstdlib>
-#include <boost/test/unit_test_log.hpp>
+
 #include <opflex/logging/OFLogHandler.h>
 #include <opflex/logging/StdOutLogHandler.h>
 
+#include <opflex/logging/internal/logging.hpp>
 
-#include <dlfcn.h>
-#include <cstring>
+#include <boost/test/unit_test_log.hpp>
+#include <boost/test/unit_test.hpp>
+
 #include <utility>
 
 using namespace yajr::comms;

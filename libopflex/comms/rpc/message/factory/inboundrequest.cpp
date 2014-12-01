@@ -6,9 +6,9 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <yajr/rpc/rpc.hpp>
-#include <yajr/rpc/methods.hpp>
 #include <yajr/rpc/internal/meta.hpp>
+#include <yajr/rpc/methods.hpp>
+#include <yajr/rpc/rpc.hpp>
 
 namespace meta = yajr::rpc::internal::meta;
 

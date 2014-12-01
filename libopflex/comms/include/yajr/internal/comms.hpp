@@ -10,15 +10,18 @@
 #ifndef _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
 #define _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
 
-#include <cstdlib>  /* for malloc() and free() */
-#include <sstream>  /* for basic_stringstream<> */
-#include <yajr/yajr.hpp>
-#include <rapidjson/document.h>
-#include <yajr/rpc/rpc.hpp>
-#include <yajr/rpc/message_factory.hpp>
 #include <yajr/rpc/send_handler.hpp>
+#include <yajr/rpc/message_factory.hpp>
+#include <yajr/yajr.hpp>
+#include <yajr/rpc/rpc.hpp>
+
+#include <rapidjson/document.h>
 #include <iovec-utils.hh>
+
 #include <boost/intrusive/list.hpp>
+
+#include <sstream>  /* for basic_stringstream<> */
+#include <iostream>
 
 #ifndef NDEBUG
 #  include <boost/version.hpp>
@@ -27,8 +30,6 @@
 #    include <boost/atomic.hpp>
 #  endif
 #endif
-
-#include <iostream>
 
 namespace yajr { namespace comms { namespace internal {
 

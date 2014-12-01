@@ -11,6 +11,7 @@
 #define _____COMMS__INCLUDE__OPFLEX__RPC__SEND_HANDLER_HPP
 
 #include <rapidjson/rapidjson.h>
+
 #include <deque>
 
 namespace yajr { namespace internal {

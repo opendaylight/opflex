@@ -7,8 +7,8 @@
  */
 
 #include <yajr/internal/comms.hpp>
-#include <opflex/logging/internal/logging.hpp>
 
+#include <opflex/logging/internal/logging.hpp>
 
 /*
                          ____               _

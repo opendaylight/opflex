@@ -6,8 +6,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <yajr/internal/comms.hpp>
 #include <opflex/logging/internal/logging.hpp>
+#include <yajr/internal/comms.hpp>
 
 /*
                              _        _   _

@@ -6,11 +6,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <yajr/rpc/rpc.hpp>
 #include <yajr/internal/comms.hpp>
 #include <yajr/rpc/methods.hpp>
+#include <yajr/rpc/rpc.hpp>
+
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
 
 namespace yajr { namespace rpc {
 

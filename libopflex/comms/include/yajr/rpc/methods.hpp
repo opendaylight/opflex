@@ -10,10 +10,11 @@
 #ifndef _____COMMS__INCLUDE__YAJR__RPC__METHODS_HPP
 #define _____COMMS__INCLUDE__YAJR__RPC__METHODS_HPP
 
-#include <rapidjson/document.h>
-#include <yajr/yajr.hpp>
 #include <yajr/internal/comms.hpp> // for nextId()
 #include <yajr/rpc/rpc.hpp>
+#include <yajr/yajr.hpp>
+
+#include <rapidjson/document.h>
 
 namespace yajr {
 

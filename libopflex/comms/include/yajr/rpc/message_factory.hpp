@@ -10,12 +10,15 @@
 #ifndef _COMMS__INCLUDE__OPFLEX__RPC__MESSAGE_FACTORY_HPP
 #define _COMMS__INCLUDE__OPFLEX__RPC__MESSAGE_FACTORY_HPP
 
-#include <rapidjson/document.h>
-#include <opflex/logging/internal/logging.hpp>
-#include <yajr/internal/comms.hpp>
-#include <boost/function.hpp>
-#include <rapidjson/writer.h>
 #include <yajr/rpc/send_handler.hpp>
+#include <yajr/internal/comms.hpp>
+
+#include <opflex/logging/internal/logging.hpp>
+
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+
+#include <boost/function.hpp>
 
 namespace yajr {
 

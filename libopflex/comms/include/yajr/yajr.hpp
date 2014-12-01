@@ -10,8 +10,9 @@
 #ifndef _INCLUDE__YAJR__YAJR_HPP
 #define _INCLUDE__YAJR__YAJR_HPP
 
-#include <string>
 #include <uv.h>
+
+#include <string>
 
 namespace yajr {
 

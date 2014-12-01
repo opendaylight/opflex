@@ -7,9 +7,9 @@
  */
 
 #include <opflex/logging/internal/logging.hpp>
-#include <stdlib.h>
-#include <execinfo.h>
+
 #include <cxxabi.h>
+#include <execinfo.h>
 
 extern "C" void __cyg_profile_func_enter(void *this_fn, void *call_site)
                                         __attribute__((no_instrument_function));
