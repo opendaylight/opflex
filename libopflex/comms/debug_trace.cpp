@@ -6,6 +6,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <stdlib.h>
+
 #include <opflex/logging/internal/logging.hpp>
 
 #include <cxxabi.h>
