@@ -15,6 +15,11 @@
 #include <list>
 
 #include <boost/property_tree/ptree.hpp>
+#include <boost/thread.hpp>
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/noncopyable.hpp>
 #include <opflex/ofcore/OFFramework.h>
 #include <modelgbp/metadata/metadata.hpp>
 
@@ -33,7 +38,7 @@ class Renderer;
  * Master object for the OVS agent.  This class holds the state for
  * the agent and handles initialization, configuration and cleanup.
  */
-class Agent {
+class Agent : private boost::noncopyable {
 public:
     /**
      * Instantiate a new agent using the specified framework
@@ -81,6 +86,21 @@ public:
      */
     EndpointManager& getEndpointManager() { return endpointManager; }
 
+    /**
+     * Get the ASIO service for the agent for scheduling asynchronous
+     * tasks in the io service thread.  You must schedule your async
+     * tasks in your start() method and close them (possibly
+     * asynchronously) in your stop() method.
+     *
+     * @return the asio io service
+     */
+    boost::asio::io_service& getAgentIOService() { return agent_io; }
+
+    /**
+     * IO Service polling function
+     */
+    void operator()();
+
 private:
     opflex::ofcore::OFFramework& framework;
     PolicyManager policyManager;
@@ -93,6 +113,12 @@ private:
 
     typedef std::pair<std::string, int> host_t;
     std::set<host_t> opflexPeers;
+
+    /**
+     * Thread for asynchronous tasks
+     */
+    boost::thread* io_service_thread;
+    boost::asio::io_service agent_io;
 };
 
 } /* namespace ovsagent */

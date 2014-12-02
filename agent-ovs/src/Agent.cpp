@@ -124,6 +124,7 @@ void Agent::start() {
     root->addEprL3Universe();
     root->addEpdrL2Discovered();
     root->addEpdrL3Discovered();
+    root->addObserverEpStatUniverse();
     mutator.commit();
 
     BOOST_FOREACH(const host_t& h, opflexPeers)
@@ -141,6 +142,8 @@ void Agent::start() {
     BOOST_FOREACH(Renderer* r, renderers) {
         r->start();
     }
+
+    io_service_thread = new boost::thread(boost::ref(*this));
 }
 
 void Agent::stop() {
@@ -158,6 +161,13 @@ void Agent::stop() {
     endpointManager.stop();
     policyManager.stop();
     framework.stop();
+
+    io_service_thread->join();
+    delete io_service_thread;
+}
+
+void Agent::operator()() {
+    agent_io.run();
 }
 
 } /* namespace ovsagent */

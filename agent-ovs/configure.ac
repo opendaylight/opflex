@@ -31,6 +31,7 @@ m4_include([m4/ax_boost_date_time.m4])
 m4_include([m4/ax_boost_filesystem.m4])
 m4_include([m4/ax_boost_log.m4])
 m4_include([m4/ax_boost_log_setup.m4])
+m4_include([m4/ax_boost_asio.m4])
 
 # ---------------------------------------------------------------
 # Environment introspection
@@ -55,13 +56,38 @@ AC_STDC_HEADERS
 
 AX_BOOST_BASE([1.53.0], [], AC_MSG_ERROR([Boost is required]))
 AX_BOOST_PROGRAM_OPTIONS
+if test "x$ax_cv_boost_program_options" != xyes; then
+   AC_MSG_ERROR([Boost::Program_Options library is required])
+fi
 AX_BOOST_UNIT_TEST_FRAMEWORK
+if test "x$ax_cv_boost_unit_test_framework" != xyes; then
+   AC_MSG_ERROR([Boost::Test library is required])
+fi
 AX_BOOST_SYSTEM
+if test "x$ax_cv_boost_system" != xyes; then
+   AC_MSG_ERROR([Boost::System library is required])
+fi
 AX_BOOST_DATE_TIME
+if test "x$ax_cv_boost_date_time" != xyes; then
+   AC_MSG_ERROR([Boost::Date_Time library is required])
+fi
 AX_BOOST_THREAD
+if test "x$ax_cv_boost_thread" != xyes; then
+   AC_MSG_ERROR([Boost::Thread library is required])
+fi
 AX_BOOST_FILESYSTEM
+if test "x$ax_cv_boost_filesystem" != xyes; then
+   AC_MSG_ERROR([Boost::Filesystem library is required])
+fi
 AX_BOOST_LOG
 AX_BOOST_LOG_SETUP
+if test "x$ax_cv_boost_log" != xyes; then
+   AC_MSG_ERROR([Boost::Log library is required])
+fi
+AX_BOOST_ASIO
+if test "x$ax_cv_boost_asio" != xyes; then
+   AC_MSG_ERROR([Boost::ASIO library is required])
+fi
 
 PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])

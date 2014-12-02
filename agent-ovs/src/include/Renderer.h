@@ -26,7 +26,7 @@ namespace ovsagent {
  * enforce the policy by writing OpenFlow rules to a local bridge, by
  * creating ACLs and route entries on a router, or other means.
  */
-class Renderer {
+class Renderer : private boost::noncopyable {
 public:
     /**
      * Instantiate a renderer

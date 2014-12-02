@@ -11,6 +11,7 @@
 
 #include <opflex/ofcore/OFFramework.h>
 #include <modelgbp/metadata/metadata.hpp>
+#include <boost/noncopyable.hpp>
 
 #include "Endpoint.h"
 #include "EndpointListener.h"
@@ -30,7 +31,8 @@ namespace ovsagent {
  * exposes events related to endpoint updates that are useful for
  * compiling policy into local system configuration.
  */
-class EndpointManager : public PolicyListener {
+class EndpointManager : public PolicyListener, 
+                        private boost::noncopyable {
 public:
     /**
      * Instantiate a new endpoint manager using the specified framework
@@ -86,12 +88,67 @@ public:
      * Get the set of endpoints that exist for a given endpoint group
      * 
      * @param egURI the URI for the endpoint group
-     * @param eps a set that will be filled with the UUIDs of the
-     * endpoint.
+     * @param eps a set that will be filled with the UUIDs of matching
+     * endpoints.
      */
-    void
-    getEndpointsForGroup(const opflex::modb::URI& egURI,
-                         /* out */ boost::unordered_set<std::string>& eps);
+    void getEndpointsForGroup(const opflex::modb::URI& egURI,
+                              /* out */ boost::unordered_set<std::string>& eps);
+
+    /**
+     * Get the endpoints that are on a particular interface
+     *
+     * @param ifaceName the name of the interface
+     * @param eps a set that will be filled with the UUIDs of matching
+     * endpoints.
+     */
+    void getEndpointsByIface(const std::string& ifaceName,
+                             /* out */ boost::unordered_set<std::string>& eps);
+    
+    /**
+     * Counter values for endpoint stats
+     */
+    struct EpCounters {
+        /**
+         * Number of packets sent/received
+         */
+        uint64_t packets;
+
+        /**
+         * the number of dropped packets
+         */
+        uint64_t drop;
+
+        /**
+         * the number of multicast packets
+         */
+        uint64_t multicast;
+
+        /**
+         * the number of broadcast packets
+         */
+        uint64_t broadcast;
+
+        /**
+         * the number of unicast packets
+         */
+        uint64_t unicast;
+
+        /**
+         * the number of bytes sent/received
+         */
+        uint64_t bytes;
+    };
+
+    /**
+     * Update the counters for an endpoint to the specified values
+     *
+     * @param uuid the UUID of the endpoint to update
+     * @param isTx true to update tx counters, false for rx counters
+     * @param newVals the new counter values
+     */
+    void updateEndpointCounters(const std::string& uuid,
+                                bool isTx,
+                                EpCounters& newVals);
 
     // see PolicyListener
     virtual void egDomainUpdated(const opflex::modb::URI& egURI);
@@ -140,6 +197,8 @@ private:
     typedef boost::unordered_map<std::string, EndpointState> ep_map_t;
     typedef boost::unordered_map<opflex::modb::URI, 
                                  boost::unordered_set<std::string> > group_ep_map_t;
+    typedef boost::unordered_map<std::string, 
+                                 boost::unordered_set<std::string> > iface_ep_map_t;
 
     boost::mutex ep_mutex;
 
@@ -152,6 +211,11 @@ private:
      * Map endpoint group URI to a set of endpoint UUIDs
      */
     group_ep_map_t group_ep_map;
+
+    /**
+     * Map endpoint interface names to a set of endpoint UUIDs
+     */
+    iface_ep_map_t iface_ep_map;
 
     /**
      * The endpoint listeners that have been registered

@@ -36,10 +36,7 @@
 
 namespace ovsagent {
 
-using boost::chrono::milliseconds;
-using boost::this_thread::sleep_for;
 using boost::thread;
-using boost::thread_interrupted;
 using boost::scoped_array;
 using boost::optional;
 namespace fs = boost::filesystem;

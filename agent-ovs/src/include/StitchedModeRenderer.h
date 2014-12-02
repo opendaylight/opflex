@@ -14,6 +14,7 @@
 #include "FlowManager.h"
 #include "FlowExecutor.h"
 #include "PortMapper.h"
+#include "StatsManager.h"
 
 #pragma once
 #ifndef OVSAGENT_STITCHEDMODERENDERER_H
@@ -62,6 +63,7 @@ private:
     opflex::enforcer::PortMapper portMapper;
     opflex::enforcer::FlowManager flowManager;
     opflex::enforcer::SwitchConnection* connection;
+    StatsManager statsManager;
 
     std::string ovsBridgeName;
     std::string tunnelType;

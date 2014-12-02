@@ -38,6 +38,13 @@ public:
     virtual uint32_t FindPort(const std::string& name);
 
     /**
+     * Return the OpenFlow port name for the provided port number
+     * @return the string port name
+     * @throws std::out_of_range if there is no such port known
+     */
+    virtual const std::string& FindPort(uint32_t of_port_no);
+
+    /**
      * Register all the necessary event listeners on connection.
      * @param conn Connection to register
      */
@@ -70,8 +77,11 @@ private:
     void HandlePortStatus(ofpbuf *msg);
 
     typedef boost::unordered_map<std::string, ofputil_phy_port> PortMap;
+    typedef boost::unordered_map<uint32_t, std::string> RPortMap;
     PortMap portMap;
+    RPortMap rportMap;
     PortMap tmpPortMap;
+    RPortMap tmprPortMap;
 
     ovs_be32 lastDescReqXid;
 

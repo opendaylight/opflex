@@ -61,6 +61,7 @@ PortMapper::Connected(SwitchConnection *conn) {
         mutex_guard lock(mapMtx);
         lastDescReqXid = reqId;
         tmpPortMap.clear();
+        tmprPortMap.clear();
     }
 }
 
@@ -98,6 +99,7 @@ PortMapper::HandlePortDescReply(ofpbuf *msg) {
         LOG(DEBUG) << "Found port: " << portDesc.port_no
                 << " -> " << portDesc.name;
         tmpPortMap[portDesc.name] = portDesc;
+        tmprPortMap[portDesc.port_no] = portDesc.name;
     }
 
     if (done) {
@@ -106,6 +108,8 @@ PortMapper::HandlePortDescReply(ofpbuf *msg) {
         lastDescReqXid = -1;
         portMap.swap(tmpPortMap);
         tmpPortMap.clear();
+        rportMap.swap(tmprPortMap);
+        tmprPortMap.clear();
     }
 }
 
@@ -122,8 +126,10 @@ PortMapper::HandlePortStatus(ofpbuf *msg) {
     mutex_guard lock(mapMtx);
     if (portStatus.reason == OFPPR_ADD) {
         portMap[portStatus.desc.name] = portStatus.desc;
+        rportMap[portStatus.desc.port_no] = portStatus.desc.name;
     } else if (portStatus.reason == OFPPR_DELETE) {
         portMap.erase(portStatus.desc.name);
+        rportMap.erase(portStatus.desc.port_no);
     }
 }
 
@@ -132,6 +138,12 @@ PortMapper::FindPort(const std::string& name) {
     mutex_guard lock(mapMtx);
     PortMap::const_iterator itr = portMap.find(name);
     return itr == portMap.end() ? OFPP_NONE : itr->second.port_no;
+}
+
+const std::string&
+PortMapper::FindPort(uint32_t of_port_no) {
+    mutex_guard lock(mapMtx);
+    return rportMap.at(of_port_no);
 }
 
 }   // namespace enforcer

@@ -11,6 +11,7 @@
 
 #include <opflex/modb/Mutator.h>
 #include <boost/foreach.hpp>
+#include <modelgbp/gbpe/CounterDirectionEnumT.hpp>
 
 #include "EndpointManager.h"
 #include "logging.h"
@@ -50,6 +51,7 @@ void EndpointManager::stop() {
     unique_lock<mutex> guard(ep_mutex);
     ep_map.clear();
     group_ep_map.clear();
+    iface_ep_map.clear();
 }
 
 void EndpointManager::registerListener(EndpointListener* listener) {
@@ -86,11 +88,10 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 
     EndpointState& es = ep_map[uuid];
 
+    // update endpoint group to endpoint mapping
     const optional<URI>& oldEgURI = es.endpoint.getEgURI();
     const optional<URI>& egURI = endpoint.getEgURI();
-
-    // update endpoint group to endpoint mapping
-    if (es.endpoint.getEgURI() != egURI) {
+    if (oldEgURI != egURI) {
         if (oldEgURI) {
             unordered_set<string> eps = group_ep_map[oldEgURI.get()];
             eps.erase(uuid);
@@ -102,6 +103,20 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
         }
     }
 
+    // update interface name to endpoint mapping
+    const optional<std::string>& oldIface = es.endpoint.getInterfaceName();
+    const optional<std::string>& iface = endpoint.getInterfaceName();
+    if (oldIface != iface) {
+        if (oldIface) {
+            unordered_set<string> eps = iface_ep_map[oldIface.get()];
+            eps.erase(uuid);
+            if (eps.size() == 0)
+                iface_ep_map.erase(oldIface.get());
+        }
+        if (iface) {
+            iface_ep_map[iface.get()].insert(uuid);
+        }
+    }
 
     unordered_set<URI> newlocall3eps;
     unordered_set<URI> newlocall2eps;
@@ -220,6 +235,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
         shared_ptr<L2Ep> l2e = l2u.get()
             ->addEprL2Ep(bd.get()->getURI().toString(),
                          es.endpoint.getMAC());
+        l2e->setUuid(uuid);
         newl2eps.insert(l2e->getURI());
     }
 
@@ -232,6 +248,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
             shared_ptr<L3Ep> l3e = l3u.get()
                 ->addEprL3Ep(rd.get()->getURI().toString(), ip);
             l3e->setMac(es.endpoint.getMAC());
+            l3e->setUuid(uuid);
             newl3eps.insert(l3e->getURI());
         }
     }
@@ -273,13 +290,46 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
     }
 }
 
-void
-EndpointManager::getEndpointsForGroup(const URI& egURI,
-                                      /*out*/ unordered_set<string>& eps) {
+void EndpointManager::getEndpointsForGroup(const URI& egURI,
+                                           /*out*/ unordered_set<string>& eps) {
     unique_lock<mutex> guard(ep_mutex);
     group_ep_map_t::const_iterator it = group_ep_map.find(egURI);
     if (it != group_ep_map.end()) {
         eps.insert(it->second.begin(), it->second.end());
     }
 }
+
+void EndpointManager::getEndpointsByIface(const std::string& ifaceName,
+                                          /*out*/ unordered_set<string>& eps) {
+    unique_lock<mutex> guard(ep_mutex);
+    iface_ep_map_t::const_iterator it = iface_ep_map.find(ifaceName);
+    if (it != iface_ep_map.end()) {
+        eps.insert(it->second.begin(), it->second.end());
+    }
+}
+
+void EndpointManager::updateEndpointCounters(const std::string& uuid,
+                                             bool isTx,
+                                             EpCounters& newVals) {
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::observer;
+
+    Mutator mutator(framework, "policyelement");
+    optional<shared_ptr<EpStatUniverse> > su = 
+        EpStatUniverse::resolve(framework);
+    if (su) {
+        su.get()->addGbpeEpCounter(uuid)
+            ->setDirection(isTx ? CounterDirectionEnumT::CONST_TX 
+                           : CounterDirectionEnumT::CONST_RX)
+            .setPackets(newVals.packets)
+            .setDrop(newVals.drop)
+            .setBroadcast(newVals.broadcast)
+            .setMulticast(newVals.multicast)
+            .setUnicast(newVals.unicast)
+            .setBytes(newVals.bytes);
+    }
+
+    mutator.commit();
+}
+
 } /* namespace ovsagent */

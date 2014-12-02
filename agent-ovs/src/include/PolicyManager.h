@@ -16,6 +16,7 @@
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/thread.hpp>
+#include <boost/noncopyable.hpp>
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/modb/ObjectListener.h>
 #include <modelgbp/metadata/metadata.hpp>
@@ -34,7 +35,7 @@ namespace ovsagent {
  * The policy manager maintains various state and indices related
  * to policy.
  */
-class PolicyManager {
+class PolicyManager : private boost::noncopyable {
 public:
     /**
      * Instantiate a new policy manager using the specified framework
@@ -367,8 +368,6 @@ private:
 
 };
 
-} /* namespace ovsagent */
-
 /**
  * Comparator for sorting objects in descending order of their
  * "order" member.
@@ -379,5 +378,7 @@ struct OrderComparator {
         return lhs->getOrder(0) > rhs->getOrder(0);
     }
 };
+
+} /* namespace ovsagent */
 
 #endif /* OVSAGENT_POLICYMANAGER_H */

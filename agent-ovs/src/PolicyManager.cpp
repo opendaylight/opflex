@@ -18,7 +18,6 @@
 
 namespace ovsagent {
 
-
 using std::vector;
 using std::string;
 using opflex::ofcore::OFFramework;

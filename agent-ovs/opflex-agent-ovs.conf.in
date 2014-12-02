@@ -12,7 +12,8 @@
         // the connection without needing an exhaustive list of all
         // peers.
         "peers": [
-            // example: {"hostname": "127.0.0.1", "port": 8009}
+            // EXAMPLE:
+            // {"hostname": "127.0.0.1", "port": 8009}
         ]
     },
     // Endpoint sources provide metadata about local endpoints
@@ -25,14 +26,25 @@
         // Stitched-mode renderer for interoperating with a
         // hardware fabric such as ACI
 	// EXAMPLE:
-        "stitched-mode": {
-            "ovs-bridge-name": "br1",
-	    "tunnel": {
-		"vxlan" : {
-		    "iface": "br1_vxlan0",
-		    "remote-ip": "10.0.0.3"
-		}
-	    }
-	}
+        //"stitched-mode": {
+        //    "ovs-bridge-name": "s1",
+	//    "tunnel": {
+	//	"vxlan" : {
+	//	    // The name of the tunnel interface in OVS
+	//	    "tunnel-iface": "s1_vxlan0",
+	//
+	//	    // The name of the interface whose IP should be used
+	//	    // as the source IP in encapsulated traffic.
+	//	    "uplink-iface": "bond0",
+	//
+	//	    // The IP address used for the destination IP in
+	//	    // the encapsulated traffic.  This should be an
+	//	    // anycast IP address understood by the upstream
+	//	    // stiched-mode fabric.
+	//	    "remote-ip": "10.0.0.3"
+	//    
+	//	}
+	//    }
+	//}
     }
 }

@@ -18,7 +18,8 @@ using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_) 
-    : Renderer(agent_), flowManager(agent_), connection(NULL), started(false) {
+    : Renderer(agent_), flowManager(agent_), connection(NULL), 
+      statsManager(&agent_, portMapper), started(false) {
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
 }
@@ -43,6 +44,8 @@ void StitchedModeRenderer::start() {
     flowExecutor.InstallListenersForConnection(connection);
     connection->Connect(OFP13_VERSION);
     flowManager.Start();
+    statsManager.registerConnection(connection);
+    statsManager.start();
 }
 
 void StitchedModeRenderer::stop() {
@@ -51,6 +54,7 @@ void StitchedModeRenderer::stop() {
 
     LOG(DEBUG) << "Stopping stitched-mode renderer";
 
+    statsManager.stop();
     flowManager.Stop();
     connection->Disconnect();
     flowExecutor.UninstallListenersForConnection(connection);
