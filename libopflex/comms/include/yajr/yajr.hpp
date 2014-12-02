@@ -143,6 +143,23 @@ struct Peer {
     virtual void * getData() const = 0;
 
     /**
+     * @brief retrieves the address of the remote peer
+     *
+     * Retrieves the address of the remote peer the underlying socket is
+     * connected to, in the buffer pointed to by \p remoteAddress. The integer
+     * pointed to by the \p len argument should be initialized to indicate the
+     * amount of space pointed to by \p remoteAddress. On return it contains the
+     * actual size of the structure returned (in bytes). The structure is
+     * truncated if the buffer provided is too small. In this case, \p *len will
+     * return a value greater than was supplied to the call.
+     *
+     * The peer must be connected for this method to work.
+     *
+     * @return An error code is returned on failure, or 0 on success.
+     */
+    virtual int getPeerName(struct sockaddr* remoteAddress, int* len) = 0;
+
+    /**
      * @brief start performing periodic keep-alive
      *
      * start performing periodic keep-alive exchanges via the json-rpc

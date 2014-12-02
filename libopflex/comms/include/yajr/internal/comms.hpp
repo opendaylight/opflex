@@ -17,6 +17,7 @@
 
 #include <rapidjson/document.h>
 #include <iovec-utils.hh>
+#include <uv.h>
 
 #include <boost/intrusive/list.hpp>
 
@@ -525,6 +526,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         if (connected_) {
             onDisconnect();
         }
+    }
+
+    virtual int getPeerName(struct sockaddr* remoteAddress, int* len) {
+        return uv_tcp_getpeername(&handle_, remoteAddress, len);
     }
 
     virtual void destroy() {
