@@ -1,0 +1,14 @@
+module[observer]
+{
+    class[Observable;
+          abstract;
+          ]
+
+    class[UuidObservable;
+          super=observer/Observable;
+          abstract;
+          ]
+    {
+        member[uuid; type=reference/UUID]
+    }
+}

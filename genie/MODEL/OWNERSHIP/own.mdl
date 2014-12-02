@@ -12,6 +12,7 @@ owner[init]
     class[relator/Universe]
     class[policy/Universe]
     class[epr/Universe]
+    class[observer/Universe]
     module[dmtree]
     {
         class[*]
@@ -33,13 +34,14 @@ owner[policyreg]
         class[*]
     }
     module[platform]
-    {
+    {	
         class[*]
     }
 }
 
 owner[policyelement]
 {
+    class[observer/Observable]
     module[epr]
     {
         class[*]

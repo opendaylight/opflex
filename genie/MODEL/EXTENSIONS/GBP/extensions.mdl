@@ -40,7 +40,7 @@ module[gbpe]
         member[etherT; type=l2/EtherType]
 
         # IP protocol field
-	member[prot; type=l3/IpProt]
+        member[prot; type=l3/IpProt]
 
         # Source port range [from-to]
         member[sFromPort; type=l4/Port]
@@ -49,5 +49,51 @@ module[gbpe]
         # Destination port range [from-to]
         member[dFromPort; type=l4/Port]
         member[dToPort; type=l4/Port]
+    }
+
+    # A direction for an interface/flow counter (tx or rx)
+    type[CounterDirection; super=scalar/Enum8]
+    {
+        const[name=rx; value=0]
+        const[name=tx; value=1]
+    }
+
+    class[EpCounter;
+          super=observer/UuidObservable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=observer/EpStatUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # Direction of the counter update (tx or rx)
+        member[direction; type=gbpe/CounterDirection]
+
+        # number of packets sent/received
+        member[packets; type=scalar/UInt64]
+
+        # the number of dropped packets
+        member[drop; type=scalar/UInt64]
+
+        # the number of multicast packets
+        member[multicast; type=scalar/UInt64]
+
+        # the number of broadcast packets
+        member[broadcast; type=scalar/UInt64]
+
+        # the number of unicast packets
+        member[unicast; type=scalar/UInt64]
+
+        # the number of bytes sent/received
+        member[bytes; type=scalar/UInt64]
     }
 }

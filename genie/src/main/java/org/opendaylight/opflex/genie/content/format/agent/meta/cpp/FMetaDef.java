@@ -189,7 +189,7 @@ public class FMetaDef
 
     public static boolean isObservable(MClass aIn)
     {
-        return aIn.isSubclassOf("observer/Component") || aIn.isSubclassOf("observer/Definition"); //TODO: WHAT SHOULD THESE CLASSES BE?
+        return aIn.isSubclassOf("observer/Observable");
     }
 
     public static boolean isRelationshipSource(MClass aIn)
