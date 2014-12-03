@@ -52,6 +52,7 @@ libagent_ovs_la_SOURCES = \
 	src/include/FSEndpointSource.h \
 	src/include/Renderer.h \
 	src/include/StitchedModeRenderer.h \
+	src/include/TunnelEpManager.h \
 	src/include/FlowExecutor.h \
 	src/include/FlowManager.h \
 	src/include/ovs.h \
@@ -70,6 +71,7 @@ libagent_ovs_la_SOURCES = \
 	src/FSEndpointSource.cpp \
 	src/Renderer.cpp \
 	src/StitchedModeRenderer.cpp \
+	src/TunnelEpManager.cpp \
 	src/FlowManager.cpp \
 	src/TableState.cpp \
 	src/FlowExecutor.cpp \

@@ -21,6 +21,7 @@ module[platform]
     }
 
     class[ConfigComponent;
+          super=policy/NamedComponent;
           abstract;
           ]
     {

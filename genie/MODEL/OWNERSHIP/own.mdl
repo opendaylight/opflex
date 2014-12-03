@@ -34,7 +34,7 @@ owner[policyreg]
         class[*]
     }
     module[platform]
-    {	
+    {   
         class[*]
     }
 }
@@ -42,6 +42,7 @@ owner[policyreg]
 owner[policyelement]
 {
     class[observer/Observable]
+    class[gbpe/TunnelEp]
     module[epr]
     {
         class[*]
