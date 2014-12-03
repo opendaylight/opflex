@@ -93,7 +93,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     
     const Value& mo1 = policy[SizeType(0)];
     BOOST_CHECK_EQUAL("class1", const_cast<char *>(mo1["subject"].GetString()));
-    BOOST_CHECK_EQUAL("/", const_cast<char *>(mo1["name"].GetString()));
+    BOOST_CHECK_EQUAL("/", const_cast<char *>(mo1["uri"].GetString()));
     const Value& mo1props = mo1["properties"];
     BOOST_CHECK(mo1props.IsArray());
     BOOST_CHECK_EQUAL(2, mo1props.Size());
@@ -108,11 +108,11 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
                     std::string("/class2/-84") == child.GetString());
 
         const Value& mo2 = policy[SizeType(i+1)];
-        BOOST_CHECK(std::string("/class2/-42") == mo2["name"].GetString() ||
-                    std::string("/class2/-84") == mo2["name"].GetString());
+        BOOST_CHECK(std::string("/class2/-42") == mo2["uri"].GetString() ||
+                    std::string("/class2/-84") == mo2["uri"].GetString());
         BOOST_CHECK_EQUAL("class2", const_cast<char *>(mo2["subject"].GetString()));
         BOOST_CHECK_EQUAL("class1", const_cast<char *>(mo2["parent_subject"].GetString()));
-        BOOST_CHECK_EQUAL("/", const_cast<char *>(mo2["parent_name"].GetString()));
+        BOOST_CHECK_EQUAL("/", const_cast<char *>(mo2["parent_uri"].GetString()));
         BOOST_CHECK_EQUAL("class2", const_cast<char *>(mo2["parent_relation"].GetString()));
         const Value& mo2props = mo2["properties"];
         BOOST_CHECK(mo2props.IsArray());
@@ -128,13 +128,13 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
     StoreClient::notif_t notifs;
 
     static const char buffer[] = 
-        "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"name\""
+        "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st1\",\"test2\"]},{\"name\":\"prop1\",\"data\":42}],\"chi"
         "ldren\":[\"/class2/-84\",\"/class2/-42\"]},{\"subject\":"
         "\"class2\",\"name\":\"/class2/-84\",\"properties\":[{\"na"
         "me\":\"prop4\",\"data\":-84}],\"children\":[],\"parent_su"
-        "bject\":\"class1\",\"parent_name\":\"/\",\"parent_relatio"
+        "bject\":\"class1\",\"parent_uri\":\"/\",\"parent_relatio"
         "n\":\"class2\"},{\"subject\":\"class2\",\"name\":\"/class"
         "2/-42\",\"properties\":[{\"name\":\"prop4\",\"data\":-42}"
         "],\"children\":[],\"parent_subject\":\"class1\",\"parent_"
@@ -180,7 +180,7 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
 
     // remove both children
     static const char buffer2[] = 
-        "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"name\""
+        "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st3\",\"test4\"]},{\"name\":\"prop1\",\"data\":84}],\"chi"
         "ldren\":[]}],\"prr\":360"
@@ -221,7 +221,7 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
 
     // remove only one child
     static const char buffer3[] = 
-        "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"name\""
+        "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st1\",\"test2\"]},{\"name\":\"prop1\",\"data\":42}],\"chi"
         "ldren\":[\"/class2/-84\"]}],\"prr\":3600},\"id\":42}";
