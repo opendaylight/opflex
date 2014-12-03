@@ -17,9 +17,10 @@ namespace ovsagent {
 using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
 
-StitchedModeRenderer::StitchedModeRenderer(Agent& agent_) 
-    : Renderer(agent_), flowManager(agent_), connection(NULL), 
-      statsManager(&agent_, portMapper), started(false) {
+StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
+    : Renderer(agent_), flowManager(agent_), connection(NULL),
+      statsManager(&agent_, portMapper), tunnelEpManager(&agent_),
+      started(false) {
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
 }
@@ -39,11 +40,16 @@ void StitchedModeRenderer::start() {
 
     started = true;
     LOG(INFO) << "Starting stitched-mode renderer on " << ovsBridgeName;
+
+    tunnelEpManager.setUplinkIface(uplinkIface);
+    tunnelEpManager.start();
+
     connection = new opflex::enforcer::SwitchConnection(ovsBridgeName);
     portMapper.InstallListenersForConnection(connection);
     flowExecutor.InstallListenersForConnection(connection);
     connection->Connect(OFP13_VERSION);
     flowManager.Start();
+
     statsManager.registerConnection(connection);
     statsManager.start();
 }
@@ -55,12 +61,15 @@ void StitchedModeRenderer::stop() {
     LOG(DEBUG) << "Stopping stitched-mode renderer";
 
     statsManager.stop();
+
     flowManager.Stop();
     connection->Disconnect();
     flowExecutor.UninstallListenersForConnection(connection);
     portMapper.UninstallListenersForConnection(connection);
     delete connection;
     connection = NULL;
+
+    tunnelEpManager.stop();
 }
 
 Renderer* StitchedModeRenderer::create(Agent& agent) {
@@ -70,7 +79,8 @@ Renderer* StitchedModeRenderer::create(Agent& agent) {
 void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string OVS_BRIDGE_NAME("ovs-bridge-name");
     static const std::string TUNNEL_VXLAN("tunnel.vxlan");
-    static const std::string IFACE("iface");
+    static const std::string UPLINK_IFACE("uplink-iface");
+    static const std::string TUNNEL_IFACE("tunnel-iface");
     static const std::string REMOTE_IP("remote-ip");
 
     ovsBridgeName = properties.get<std::string>(OVS_BRIDGE_NAME, "");
@@ -79,7 +89,8 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
         properties.get_child_optional(TUNNEL_VXLAN);
     if (vxlan) {
         tunnelType = "vxlan";
-        tunnelIface = vxlan.get().get<std::string>(IFACE, "");
+        tunnelIface = vxlan.get().get<std::string>(TUNNEL_IFACE, "");
+        uplinkIface = vxlan.get().get<std::string>(UPLINK_IFACE, "");
         tunnelRemoteIp = vxlan.get().get<std::string>(REMOTE_IP, "");
     }
 }

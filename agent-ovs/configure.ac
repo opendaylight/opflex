@@ -103,7 +103,6 @@ if test x$enable_inotify = xno; then
 else
     AC_CHECK_HEADERS(sys/inotify.h, HAVE_INOTIFY=no, HAVE_INOTIFY=yes)
 fi
-AC_SUBST([HAVE_INOTIFY])
 
 # eventfd check
 AC_ARG_ENABLE(eventfd, "Whether to use eventfd for endpoint source")
@@ -112,7 +111,14 @@ if test x$enable_eventfd = xno; then
 else
     AC_CHECK_HEADERS(sys/eventfd.h, HAVE_EVENTFD=no, HAVE_EVENTFD=yes)
 fi
-AC_SUBST([HAVE_EVENTFD])
+
+# getifaddrs check
+AC_ARG_ENABLE(getifaddrs, "Whether to use getifaddrs for interface enumeration")
+if test x$enable_getifaddrs = xno; then
+    have_getifaddrs=no;
+else
+    AC_CHECK_HEADERS(ifaddrs.h, HAVE_GETIFADDRS=no, HAVE_GETIFADDRS=yes)
+fi
 
 # Older versions of autoconf don't define docdir
 if test x$docdir = x; then
