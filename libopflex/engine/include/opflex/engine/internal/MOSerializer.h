@@ -84,7 +84,7 @@ public:
         writer.String("subject");
         writer.String(ci.getName().c_str());
         
-        writer.String("name");
+        writer.String("uri");
         writer.String(uri.toString().c_str());
 
         writer.String("properties");
@@ -239,7 +239,7 @@ public:
 
             writer.String("parent_subject");
             writer.String(parent_class.getName().c_str());
-            writer.String("parent_name");
+            writer.String("parent_uri");
             writer.String(parent.first.toString().c_str());
             writer.String("parent_relation");
             writer.String(parent_prop.getName().c_str());
