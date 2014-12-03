@@ -23,6 +23,12 @@ namespace yajr { namespace comms { namespace internal {
 ::boost::atomic<size_t> ListeningPeer::counter(0);
 #endif
 
+std::ostream& operator<< (std::ostream& os, Peer const * p)
+                                        __attribute__((no_instrument_function));
+std::ostream& operator<< (std::ostream& os, Peer::LoopData const * lD)
+                                        __attribute__((no_instrument_function));
+
+
 std::ostream& operator<< (std::ostream& os, Peer const * p) {
     return os << "{" << reinterpret_cast<void const *>(p) << "}"
 #ifndef NDEBUG
