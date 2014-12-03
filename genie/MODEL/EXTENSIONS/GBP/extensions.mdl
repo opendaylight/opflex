@@ -5,6 +5,7 @@ module[gbpe]
 
     # represents a set of extensions that specify specific identifiers used by the data plane of the wire
     class[InstContext;
+          super=policy/Definition;
           concrete]
     {
         member[vnid; type=gbpe/VNid]
@@ -58,6 +59,7 @@ module[gbpe]
         const[name=tx; value=1]
     }
 
+    # A set of counters for a network endpoint
     class[EpCounter;
           super=observer/UuidObservable;
           concrete;
@@ -95,5 +97,43 @@ module[gbpe]
 
         # the number of bytes sent/received
         member[bytes; type=scalar/UInt64]
+    }
+
+    # universe to hold tunnel endpoints
+    class[TunnelEpUniverse;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=tunnel;]
+            }
+        }
+    }
+
+    # Tunnel endpoints are special endpoints that represent
+    # a hypervisor host tunnel terminator
+    class[TunnelEp;
+          super=epr/ReportedEp;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=gbpe/TunnelEpUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # The IP address for the tunnel terminator
+        member[terminatorIp; type=address/IP]
     }
 }

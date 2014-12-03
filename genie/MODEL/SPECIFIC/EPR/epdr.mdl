@@ -2,7 +2,7 @@ module[epdr]
 {
     # abstraction of locally discovered en-point
     class[EndPoint;
-          super=epr/LocalEp;
+          super=epr/LocalNetworkEp;
           abstract
           ]
     {
