@@ -23,12 +23,12 @@ public:
     }
 
     int AddSwitch(const std::string& swName) {
-        std::string comm("ovs-vsctl add-br " + swName);
+        std::string comm("ovs-vsctl --may-exist add-br " + swName);
         return system(comm.c_str());
     }
 
     int RemoveSwitch(const std::string& swName) {
-        std::string comm("ovs-vsctl del-br " + swName);
+        std::string comm("ovs-vsctl --if-exists del-br " + swName);
         return system(comm.c_str());
     }
 

@@ -187,7 +187,6 @@ void
 SwitchConnection::Monitor() {
     LOG(DEBUG) << "Connection monitor started ...";
 
-    WatchPollEvent();
     bool connLost = (IsConnected() == false);
     if (!connLost) {
         FireOnConnectListeners();
@@ -206,18 +205,23 @@ SwitchConnection::Monitor() {
             sleep(LOST_CONN_BACKOFF_SEC);
             connLost = (DoConnect() != 0);
         }
-        if (!connLost) {
-            mutex_guard lock(connMtx);
-            vconn_run_wait(ofConn);
-        }
         if (isDisconnecting) {
             return;
         }
         if (oldConnLost != connLost) {
             FireOnConnectListeners();
         }
-        connLost = (EOF == ReceiveMessage());
         WatchPollEvent();
+        if (!connLost) {
+            {
+                mutex_guard lock(connMtx);
+                vconn_run(ofConn);
+                vconn_run_wait(ofConn);
+                vconn_recv_wait(ofConn);
+            }
+            poll_block();
+        }
+        connLost = (EOF == ReceiveMessage());
     }
     return;
 }

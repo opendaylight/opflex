@@ -147,14 +147,7 @@ BOOST_FIXTURE_TEST_CASE(reconnect, ConnectionFixture) {
     WAIT_FOR(!conn.IsConnected(), 5);
 
     AddSwitch(testSwitchName);
-    int maxIter = 10;
-    for (int nIter = 0; nIter < maxIter; ++nIter) {
-        if (conn.IsConnected()) {
-            break;
-        }
-        sleep(1);
-    }
-    BOOST_CHECK(conn.IsConnected());
+    WAIT_FOR(conn.IsConnected(), 10);
     BOOST_CHECK(cl1.counter == 2);
 
     /* Break connection, and make sure we can disconnect */
