@@ -28,6 +28,7 @@ core_test_SOURCES = \
 	OFFramework_test.cpp \
 	MO_test.cpp
 
+core_test_CXXFLAGS = $(UV_CFLAGS)
 core_test_LDADD = ../libcore.la \
 	../../engine/libengine.la \
 	../../modb/libmodb.la \

@@ -14,6 +14,8 @@
 #ifndef OPFLEX_C_OFCORE_H
 #define OPFLEX_C_OFCORE_H
 
+#include <stdint.h>
+
 /**
  * @defgroup cwrapper C Wrapper Interface
  *
@@ -89,7 +91,7 @@ typedef void* ofobj_p;
 /**
  * A unique class ID
  */
-typedef unsigned long class_id_t;
+typedef uint64_t class_id_t;
 
 /** @} defs */
 /** @} ccore */

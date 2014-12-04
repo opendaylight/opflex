@@ -308,7 +308,8 @@ BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
     }
     BOOST_CHECK_EQUAL("test", sysClient.get(4, c4u)->getString(9));
     BOOST_CHECK_EQUAL("test", sysClient.get(5, c5u)->getString(10));
-    BOOST_CHECK(make_pair(4ul, c4u) == sysClient.get(5, c5u)->getReference(11, 0));
+    BOOST_CHECK(make_pair((class_id_t)4ul, c4u) == 
+                sysClient.get(5, c5u)->getReference(11, 0));
     BOOST_CHECK_EQUAL("test2", sysClient.get(6, c6u)->getString(13));
     BOOST_CHECK_EQUAL(0, sysClient.get(7, c7u)->getUInt64(14));
     BOOST_CHECK_EQUAL(MAC("aa:bb:cc:dd:ee:ff"), sysClient.get(2, c2u)->getMAC(15));

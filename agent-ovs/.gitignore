@@ -46,5 +46,8 @@ m4/lt*.m4
 .tags_sorted_by_file
 .dirstamp
 doc/Doxyfile
+doc/html
+doc/latex
 agent_ovs
 agent_test
+mock_server
