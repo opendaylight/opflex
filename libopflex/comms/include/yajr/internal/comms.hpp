@@ -528,7 +528,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         }
     }
 
-    virtual int getPeerName(struct sockaddr* remoteAddress, int* len) {
+    virtual int getPeerName(struct sockaddr* remoteAddress, int* len) const {
         return uv_tcp_getpeername(&handle_, remoteAddress, len);
     }
 

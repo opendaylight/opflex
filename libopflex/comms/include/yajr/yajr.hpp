@@ -157,7 +157,7 @@ struct Peer {
      *
      * @return An error code is returned on failure, or 0 on success.
      */
-    virtual int getPeerName(struct sockaddr* remoteAddress, int* len) = 0;
+    virtual int getPeerName(struct sockaddr* remoteAddress, int* len) const = 0;
 
     /**
      * @brief start performing periodic keep-alive
