@@ -16,8 +16,8 @@ OutReq<M> * yajr::rpc::MessageFactory::newReq(
 
     OutReq<M> * newReq = new (std::nothrow)
         yajr::rpc::OutReq<M>(
-                peer,
-                payloadGenerator
+                payloadGenerator,
+                peer
                );
 
     return newReq;
