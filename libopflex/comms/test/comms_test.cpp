@@ -392,7 +392,7 @@ range_t CommsFixture::required_transient_peers;
 CommsFixture::pc CommsFixture::required_post_conditions;
 bool CommsFixture::expect_timeout;
 
-BOOST_FIXTURE_TEST_CASE( test_initialization, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_initialization, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -485,7 +485,7 @@ void StartPingingOnConnect(
 
 ::yajr::Peer::StateChangeCb startPingingOnConnect = StartPingingOnConnect;
 
-BOOST_FIXTURE_TEST_CASE( test_ipv4, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv4, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -501,7 +501,7 @@ BOOST_FIXTURE_TEST_CASE( test_ipv4, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_ipv6, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( FLAKY_test_ipv6, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -553,7 +553,7 @@ static void pc_non_existent(void) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_non_existent_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -565,7 +565,7 @@ BOOST_FIXTURE_TEST_CASE( test_non_existent_host, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_non_existent_service, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_service, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -577,15 +577,15 @@ BOOST_FIXTURE_TEST_CASE( test_non_existent_service, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_keepalive, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_keepalive, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65532, startPingingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65532, startPingingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("::1", "65532", startPingingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.1", "65532", startPingingOnConnect);
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -627,11 +627,11 @@ void pc_no_peers(void) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_destroy_listener_early, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_listener_early, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65531, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65531, doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
@@ -641,11 +641,11 @@ BOOST_FIXTURE_TEST_CASE( test_destroy_listener_early, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_destroy_listener_late, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_listener_late, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65531, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65531, doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
@@ -661,7 +661,7 @@ BOOST_FIXTURE_TEST_CASE( test_destroy_listener_late, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_destroy_client_early, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( FLAKY_test_destroy_client_early, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -711,11 +711,11 @@ void pc_listening_peer(void) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_destroy_client_late, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_late, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65529, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65529, doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
@@ -839,7 +839,7 @@ void DestroyOnDisconnect (
 
 ::yajr::Peer::StateChangeCb destroyOnDisconnect = DestroyOnDisconnect;
 
-BOOST_FIXTURE_TEST_CASE( test_destroy_client_before_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( FLAKY_test_destroy_client_before_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -887,7 +887,7 @@ void pc_retrying_client(void) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_disconnect_client_before_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_before_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -899,11 +899,11 @@ BOOST_FIXTURE_TEST_CASE( test_disconnect_client_before_connect, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_destroy_client_after_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_after_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65526, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65526, doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
@@ -951,11 +951,11 @@ void pc_retrying_peers(void) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_disconnect_client_after_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_after_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65525, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65525, doNothingOnConnect);
 
     BOOST_CHECK_EQUAL(!l, 0);
 
@@ -967,11 +967,11 @@ BOOST_FIXTURE_TEST_CASE( test_disconnect_client_after_connect, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_destroy_server_after_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_server_after_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65524, destroyOnCallback);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65524, destroyOnCallback);
     BOOST_CHECK_EQUAL(!l, 0);
 
     ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65524", destroyOnDisconnect);
@@ -982,11 +982,11 @@ BOOST_FIXTURE_TEST_CASE( test_destroy_server_after_connect, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( test_disconnect_server_after_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_server_after_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65523, disconnectOnCallback);
+    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65523, disconnectOnCallback);
     BOOST_CHECK_EQUAL(!l, 0);
 
     ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65523", destroyOnDisconnect);
