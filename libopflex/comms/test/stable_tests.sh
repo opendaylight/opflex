@@ -1,5 +1,8 @@
 #!/bin/bash
 
+CATEGORY=${1:-STABLE}
+ulimit -c unlimited
+
 # Timeout.
 declare -i timeout=20
 # Interval between checks if the process is still alive.
@@ -23,4 +26,7 @@ declare -i delay=2
     kill -s SIGKILL $$
 ) 2> /dev/null &
 
-./comms_test --run_test='asynchronous_sockets/STABLE_test_*'
+./comms_test --catch_system_errors=no --run_test=asynchronous_sockets/${CATEGORY}_test_'*'
+
+# FIXME: try to parse core pattern
+find . -name '*core*' -type f -exec echo Found possible core file: '{}' \;
