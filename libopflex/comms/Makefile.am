@@ -103,4 +103,4 @@ if TRACING_COMMS
 endif
 comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
-noinst_PROGRAMS = $(TESTS)
+check_PROGRAMS = $(TESTS)

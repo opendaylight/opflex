@@ -36,4 +36,4 @@ engine_test_LDADD = \
 	../../logging/liblogging.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
-noinst_PROGRAMS = $(TESTS)
+check_PROGRAMS = $(TESTS)
