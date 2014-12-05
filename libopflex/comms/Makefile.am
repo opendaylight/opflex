@@ -81,7 +81,10 @@ endif
 
 # tests
 
-TESTS = comms_test
+TESTS               =
+TESTS              += test/stable_tests.sh
+check_PROGRAMS      = comms_test
+
 comms_test_SOURCES  =
 comms_test_SOURCES += test/main.cpp
 comms_test_SOURCES += test/comms_test.cpp
@@ -102,5 +105,3 @@ if TRACING_COMMS
   comms_test_LDADD += libcommstrace.la
 endif
 comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
-
-check_PROGRAMS = $(TESTS)
