@@ -839,7 +839,7 @@ void DestroyOnDisconnect (
 
 ::yajr::Peer::StateChangeCb destroyOnDisconnect = DestroyOnDisconnect;
 
-BOOST_FIXTURE_TEST_CASE( FLAKY_test_destroy_client_before_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( BROKEN_test_destroy_client_before_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
