@@ -54,6 +54,9 @@ void StatsManager::start() {
 void StatsManager::stop() {
     LOG(DEBUG) << "Stopping stats manager";
     stopping = true;
+
+    connection->UnregisterMessageHandler(OFPTYPE_PORT_STATS_REPLY, this);
+
     if (timer) {
         timer->cancel();
     }
@@ -90,7 +93,6 @@ void StatsManager::Handle(SwitchConnection *conn,
     const struct ofp_header *oh = (ofp_header *)ofpbuf_data(msg);
     struct ofputil_port_stats ps;
     struct ofpbuf b;
-    size_t n = 0;
 
     ofpbuf_use_const(&b, oh, ntohs(oh->length));
     ofpraw_pull_assert(&b);

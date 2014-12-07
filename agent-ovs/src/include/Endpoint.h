@@ -64,7 +64,7 @@ public:
     }
 
     /**
-     * Unset the endpoing group URI
+     * Unset the endpoint group URI
      */
     void unsetEgURI() {
         egURI = boost::none;
@@ -103,7 +103,7 @@ public:
      *
      * @return the MAC address
      */
-    const opflex::modb::MAC& getMAC() const {
+    const boost::optional<opflex::modb::MAC>& getMAC() const {
         return mac;
     }
 
@@ -114,6 +114,13 @@ public:
      */
     void setMAC(const opflex::modb::MAC& mac) {
         this->mac = mac;
+    }
+
+    /**
+     * Unset the MAC address for the endpoint
+     */
+    void unsetMAC() {
+        mac = boost::none;
     }
 
     /**
@@ -162,12 +169,30 @@ public:
         interfaceName = boost::none;
     }
 
+    /**
+     * Set the promomiscuous mode flag to the value specified
+     *
+     * @param promisciousMode the new value for the promiscuous mode
+     */
+    void setPromiscuousMode(bool promiscuousMode) {
+        this->promiscuousMode = promiscuousMode;
+    }
+
+    /**
+     * Get the value of the promiscuous mode flag
+     * @param promiscu
+     */
+    bool isPromiscuousMode() const {
+        return promiscuousMode;
+    }
+
 private:
     std::string uuid;
-    opflex::modb::MAC mac;
+    boost::optional<opflex::modb::MAC> mac;
     boost::unordered_set<std::string> ips;
     boost::optional<opflex::modb::URI> egURI;
     boost::optional<std::string> interfaceName;
+    bool promiscuousMode;
 };
 
 /**

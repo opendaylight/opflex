@@ -13,6 +13,7 @@
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "Policies.h"
@@ -44,12 +45,15 @@ void Policies::writeBasicInit(opflex::ofcore::OFFramework& framework) {
 
 void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<policy::Space> space;
-    shared_ptr<FloodDomain> fd;
+    shared_ptr<FloodDomain> fd1;
+    shared_ptr<FloodDomain> fd2;
     shared_ptr<RoutingDomain> rd;
     shared_ptr<BridgeDomain> bd;
-    shared_ptr<Subnets> subnetsfd;
-    shared_ptr<Subnet> subnetsfd1;
-    shared_ptr<Subnet> subnetsfd2;
+    shared_ptr<Subnets> subnetsfd1;
+    shared_ptr<Subnets> subnetsfd2;
+    shared_ptr<Subnet> subnetsfd1_1;
+    shared_ptr<Subnet> subnetsfd1_2;
+    shared_ptr<Subnet> subnetsfd2_1;
     shared_ptr<Subnets> subnetsbd;
     shared_ptr<Subnet> subnetsbd1;
     shared_ptr<Subnets> subnetsrd;
@@ -71,20 +75,29 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     Mutator mutator(framework, "policyreg");
     space = universe->addPolicySpace("test");
-    fd = space->addGbpFloodDomain("fd");
+    fd1 = space->addGbpFloodDomain("fd");
+    fd2 = space->addGbpFloodDomain("fd2");
+    fd2->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
     bd = space->addGbpBridgeDomain("bd");
     rd = space->addGbpRoutingDomain("rd");
     
-    fd->addGbpFloodDomainToNetworkRSrc()
+    fd1->addGbpFloodDomainToNetworkRSrc()
+        ->setTargetBridgeDomain(bd->getURI());
+    fd2->addGbpFloodDomainToNetworkRSrc()
         ->setTargetBridgeDomain(bd->getURI());
     bd->addGbpBridgeDomainToNetworkRSrc()
         ->setTargetRoutingDomain(rd->getURI());
     
-    subnetsfd = space->addGbpSubnets("subnetsfd");
-    subnetsfd1 = subnetsfd->addGbpSubnet("subnetsfd1");
-    subnetsfd2 = subnetsfd->addGbpSubnet("subnetsfd2");
-    subnetsfd->addGbpSubnetsToNetworkRSrc()
-        ->setTargetFloodDomain(fd->getURI());
+    subnetsfd1 = space->addGbpSubnets("subnetsfd1");
+    subnetsfd1_1 = subnetsfd1->addGbpSubnet("subnetsfd1_1");
+    subnetsfd1_2 = subnetsfd1->addGbpSubnet("subnetsfd1_2");
+    subnetsfd1->addGbpSubnetsToNetworkRSrc()
+        ->setTargetFloodDomain(fd1->getURI());
+
+    subnetsfd2 = space->addGbpSubnets("subnetsfd2");
+    subnetsfd2_1 = subnetsfd2->addGbpSubnet("subnetsfd2_1");
+    subnetsfd2->addGbpSubnetsToNetworkRSrc()
+        ->setTargetFloodDomain(fd2->getURI());
     
     subnetsbd = space->addGbpSubnets("subnetsbd");
     subnetsbd1 = subnetsbd->addGbpSubnet("subnetsbd1");
@@ -134,20 +147,23 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     eg1 = space->addGbpEpGroup("group1");
     eg1->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnets(subnetsfd->getURI());
+        ->setTargetSubnets(subnetsfd1->getURI());
     eg1->addGbpeInstContext()->setVnid(1234);
     eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
 
     eg2 = space->addGbpEpGroup("group2");
     eg2->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnets(subnetsfd->getURI());
+        ->setTargetSubnets(subnetsfd1->getURI());
     eg2->addGbpeInstContext()->setVnid(5678);
     eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
 
     eg3 = space->addGbpEpGroup("group3");
     eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+    eg3->addGbpEpGroupToNetworkRSrc()
+        ->setTargetSubnets(subnetsfd2->getURI());
+    eg3->addGbpeInstContext()->setVnid(5678);
 
     mutator.commit();
 }
