@@ -14,6 +14,7 @@
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "BaseFixture.h"
@@ -51,13 +52,13 @@ public:
     DummyEpSrc epSrc;
     shared_ptr<policy::Universe> universe;
     shared_ptr<policy::Space> space;
-    shared_ptr<Endpoint> ep0, ep1, ep2;
+    shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
     shared_ptr<EpGroup> epg0, epg1, epg2, epg3;
-    shared_ptr<FloodDomain> fd0;
+    shared_ptr<FloodDomain> fd0, fd1;
     shared_ptr<RoutingDomain> rd0;
     shared_ptr<BridgeDomain> bd0;
-    shared_ptr<Subnets> subnetsfd0, subnetsbd0, subnetsrd0;
-    shared_ptr<Subnet> subnetsfd0_1, subnetsbd0_1, subnetsrd0_1;
+    shared_ptr<Subnets> subnetsfd0, subnetsfd1, subnetsbd0, subnetsrd0;
+    shared_ptr<Subnet> subnetsfd0_1, subnetsfd1_1, subnetsbd0_1, subnetsrd0_1;
 
     shared_ptr<L24Classifier> classifier0;
     shared_ptr<L24Classifier> classifier1;
@@ -76,10 +77,14 @@ protected:
         Mutator mutator(framework, policyOwner);
         space = universe->addPolicySpace("tenant0");
         fd0 = space->addGbpFloodDomain("fd0");
+        fd1 = space->addGbpFloodDomain("fd1");
+        fd1->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
         bd0 = space->addGbpBridgeDomain("bd0");
         rd0 = space->addGbpRoutingDomain("rd0");
 
         fd0->addGbpFloodDomainToNetworkRSrc()
+            ->setTargetBridgeDomain(bd0->getURI());
+        fd1->addGbpFloodDomainToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
         bd0->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd0->getURI());
@@ -88,6 +93,11 @@ protected:
         subnetsfd0_1 = subnetsfd0->addGbpSubnet("subnetsfd0_1");
         subnetsfd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd0->getURI());
+
+        subnetsfd1 = space->addGbpSubnets("subnetsfd1");
+        subnetsfd1_1 = subnetsfd0->addGbpSubnet("subnetsfd1_1");
+        subnetsfd1->addGbpSubnetsToNetworkRSrc()
+            ->setTargetFloodDomain(fd1->getURI());
 
         subnetsbd0 = space->addGbpSubnets("subnetsbd0");
         subnetsbd0_1 = subnetsbd0->addGbpSubnet("subnetsbd0_1");
@@ -110,9 +120,13 @@ protected:
         epg1->addGbpeInstContext()->setVnid(0xA00B);
 
         epg2 = space->addGbpEpGroup("epg2");
+        epg2->addGbpEpGroupToNetworkRSrc()
+            ->setTargetSubnets(subnetsfd0->getURI());
         epg2->addGbpeInstContext()->setVnid(0xD00A);
 
         epg3 = space->addGbpEpGroup("epg3");
+        epg3->addGbpEpGroupToNetworkRSrc()
+            ->setTargetSubnets(subnetsfd1->getURI());
         epg3->addGbpeInstContext()->setVnid(0xD00B);
 
         createPolicyObjects();
@@ -139,6 +153,21 @@ protected:
         ep2->setInterfaceName("port11");
         ep2->setEgURI(epg0->getURI());
         epSrc.updateEndpoint(*ep2);
+
+        ep3.reset(new Endpoint("0-0-0-3"));
+        ep3->setMAC(opflex::modb::MAC("00:00:00:00:00:03"));
+        ep3->addIP("10.20.44.31");
+        ep3->setInterfaceName("eth3");
+        ep3->setEgURI(epg3->getURI());
+        epSrc.updateEndpoint(*ep3);
+
+        ep4.reset(new Endpoint("0-0-0-4"));
+        ep4->setMAC(opflex::modb::MAC("00:00:00:00:00:04"));
+        ep4->addIP("10.20.44.32");
+        ep4->setInterfaceName("eth4");
+        ep4->setEgURI(epg3->getURI());
+        ep4->setPromiscuousMode(true);
+        epSrc.updateEndpoint(*ep4);
     }
 
     void createPolicyObjects() {

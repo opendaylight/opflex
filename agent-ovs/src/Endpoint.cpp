@@ -21,7 +21,6 @@ namespace ovsagent {
 std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
     os << "Endpoint["
        << "uuid=" << ep.getUUID()
-       << ",mac=" << ep.getMAC()
        << ",ips=[";
 
     bool first = true;
@@ -35,6 +34,9 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
     const boost::optional<opflex::modb::URI>& u = ep.getEgURI();
     if (u)
         os << ",eg=" << u.get().toString();
+    const boost::optional<opflex::modb::MAC>& m = ep.getMAC();
+    if (m)
+        os << ",mac=" << m.get();
     const boost::optional<std::string>& iface = ep.getInterfaceName();
     if (iface)
         os << ",iface=" << iface.get();

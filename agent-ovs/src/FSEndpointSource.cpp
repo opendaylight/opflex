@@ -121,6 +121,7 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
     static const std::string EP_IP("ip");
     static const std::string EP_GROUP("endpoint-group");
     static const std::string EP_IFACE_NAME("interface-name");
+    static const std::string EP_PROMISCUOUS("promiscuous-mode");
 
     try {
         using boost::property_tree::ptree;
@@ -131,7 +132,10 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
 
         read_json(pathstr, properties);
         newep.setUUID(properties.get<string>(EP_UUID));
-        newep.setMAC(MAC(properties.get<string>(EP_MAC)));
+        optional<string> mac = properties.get_optional<string>(EP_MAC);
+        if (mac) {
+            newep.setMAC(MAC(mac.get()));
+        }
         optional<ptree&> ips = properties.get_child_optional(EP_IP);
         if (ips) {
             BOOST_FOREACH(const ptree::value_type &v, ips.get())
@@ -145,6 +149,10 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
             properties.get_optional<string>(EP_IFACE_NAME);
         if (iface)
             newep.setInterfaceName(iface.get());
+        optional<bool> promisc = 
+            properties.get_optional<bool>(EP_PROMISCUOUS);
+        if (promisc)
+            newep.setPromiscuousMode(promisc.get());
 
         knownEps[pathstr] = newep.getUUID();
         updateEndpoint(newep);

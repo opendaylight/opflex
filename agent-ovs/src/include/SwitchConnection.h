@@ -59,7 +59,7 @@ public:
 class SwitchConnection {
 public:
     SwitchConnection(const std::string& swName);
-    ~SwitchConnection();
+    virtual ~SwitchConnection();
 
     /**
      * Connect to the switch and monitor the connection.
@@ -190,6 +190,15 @@ private:
     };
 
     EchoRequestHandler echoReqHandler;
+
+    /**
+     * @brief Handle errors from the switch by logging.
+     */
+    class ErrorHandler : public MessageHandler {
+        void Handle(SwitchConnection *swConn, ofptype type, ofpbuf *msg);
+    };
+
+    ErrorHandler errorHandler;
 };
 
 }   // namespace enforcer

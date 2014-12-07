@@ -32,6 +32,18 @@ ActionBuilder::Build(ofputil_flow_stats *dstEntry) {
 }
 
 void
+ActionBuilder::Build(ofputil_flow_mod *dstMod) {
+    dstMod->ofpacts_len = ofpbuf_size(&buf);
+    dstMod->ofpacts = (ofpact*)ofpbuf_steal_data(&buf);
+}
+
+void
+ActionBuilder::Build(ofputil_packet_out *dstPkt) {
+    dstPkt->ofpacts_len = ofpbuf_size(&buf);
+    dstPkt->ofpacts = (ofpact*)ofpbuf_steal_data(&buf);
+}
+
+void
 ActionBuilder::Build(ofputil_bucket *dstBucket) {
     dstBucket->ofpacts_len = ofpbuf_size(&buf);
     dstBucket->ofpacts = (ofpact*)ofpbuf_steal_data(&buf);
@@ -116,6 +128,14 @@ void
 ActionBuilder::SetGroup(uint32_t groupId) {
     ofpact_group *group = ofpact_put_GROUP(&buf);
     group->group_id = groupId;
+}
+
+void
+ActionBuilder::SetController() {
+    struct ofpact_controller *contr = ofpact_put_CONTROLLER(&buf);
+    contr->max_len = 128;
+    contr->controller_id = 0;
+    contr->reason = OFPR_ACTION;
 }
 
 }   // namespace flow

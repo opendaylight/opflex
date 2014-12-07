@@ -1,5 +1,16 @@
 module[gbp]
 {
+    # Policies for contract enforcement within an endpoint group
+    type[IntraGroupPolicy; super=scalar/Enum8]
+    {
+        # Traffic between two endpoints in the group is always allowed
+        const[name=allow; value=0]
+
+        # Traffic between two endpoints in the group is allowed only
+        # when a contract exists to allow it explicitly
+        const[name=require-contract; value=1]
+    }
+
     class[EpGroup;
           super=gbp/BehavioralGroup;
           concrete;
@@ -43,5 +54,7 @@ module[gbp]
                           member=name]
             }
         }
+
+        member[intraGroupPolicy; type=gbp/IntraGroupPolicy]
     }
 }
