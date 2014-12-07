@@ -30,6 +30,28 @@ module[gbp]
         }
     }
 
+    type[ArpMode; super=scalar/Enum8]
+    {
+        # Convert ARP requests into unicast
+        const[name=unicast; value=0]
+
+        # Flood ARP requests in the flood domain
+        const[name=flood; value=1]
+
+        # Drop ARP requests
+        const[name=drop; value=2]
+    }
+
+    type[UnknownFloodMode; super=scalar/Enum8]
+    {
+        # Drop packets addressed to unknown layer 2 addresses
+        const[name=drop; value=0]
+
+        # Flood packets addressed to unknown layer 2 addresses to all
+        # interfaces in the flood domain.
+        const[name=flood; value=1]
+    }
+
     class[FloodDomain;
           super=gbp/L2BehavioralGroup;
           concrete]
@@ -53,5 +75,8 @@ module[gbp]
                           member=name]
             }
         }
+
+        member[arpMode; type=gbp/ArpMode]
+        member[unknownFloodMode; type=gbp/UnknownFloodMode]
     }
 }
