@@ -25,6 +25,15 @@ module[gbp]
           super=gbp/BehavioralGroup;
           concrete]
     {
+        # The network address
+        member[address; type=address/IP]
+
+        # prefix length for the subnet
+        member[prefixLen; type=scalar/UInt8]
+
+        # the IP address to use for a virtual gateway router for the
+        # subnet, if desired.
+        member[virtualRouterIp; type=address/IP]
 
         contained
         {
@@ -71,6 +80,4 @@ module[gbp]
             }
         }
     }
-
-
 }

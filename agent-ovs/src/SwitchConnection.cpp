@@ -40,6 +40,7 @@ SwitchConnection::SwitchConnection(const std::string& swName) :
     pollEventFd = eventfd(0, 0);
 
     RegisterMessageHandler(OFPTYPE_ECHO_REQUEST, &echoReqHandler);
+    RegisterMessageHandler(OFPTYPE_ERROR, &errorHandler);
 }
 
 SwitchConnection::~SwitchConnection() {
@@ -286,6 +287,38 @@ SwitchConnection::SendMessage(ofpbuf *msg) {
 
 void
 SwitchConnection::FireOnConnectListeners() {
+    {
+        // Set controller role to MASTER
+        ofpbuf *b0;
+        ofp12_role_request *rr;
+        b0 = ofpraw_alloc(OFPRAW_OFPT12_ROLE_REQUEST, 
+                          GetProtocolVersion(), sizeof *rr);
+        rr = (ofp12_role_request*)ofpbuf_put_zeros(b0, sizeof *rr);
+        rr->role = htonl(OFPCR12_ROLE_MASTER);
+        SendMessage(b0);
+    }
+    {
+        // Set default miss length to non-zero value to enable
+        // asynchronous messages
+        ofpbuf *b1;
+        ofp_switch_config *osc;
+        b1 = ofpraw_alloc(OFPRAW_OFPT_SET_CONFIG,
+                          GetProtocolVersion(), sizeof *osc);
+        osc = (ofp_switch_config*)ofpbuf_put_zeros(b1, sizeof *osc);
+        osc->miss_send_len = htons(OFP_DEFAULT_MISS_SEND_LEN);
+        SendMessage(b1);
+    }
+    {
+        // Set packet-in format to nicira-extended format
+        ofpbuf *b2;
+        nx_set_packet_in_format* pif;
+        b2 = ofpraw_alloc(OFPRAW_NXT_SET_PACKET_IN_FORMAT,
+                          GetProtocolVersion(), sizeof *pif);
+        pif = (nx_set_packet_in_format*)ofpbuf_put_zeros(b2, sizeof *pif);
+        pif->format = NXPIF_NXM;
+        SendMessage(b2);
+    }
+
     BOOST_FOREACH(OnConnectListener *l, onConnectListeners) {
         l->Connected(this);
     }
@@ -298,6 +331,17 @@ SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
     const ofp_header *rq = (const ofp_header *)ofpbuf_data(msg);
     struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
     swConn->SendMessage(echoReplyMsg);
+}
+
+void
+SwitchConnection::ErrorHandler::Handle(SwitchConnection *swConn,
+        ofptype msgType, ofpbuf *msg) {
+    const struct ofp_header *oh = (ofp_header *)ofpbuf_data(msg);
+    ofperr err = ofperr_decode_msg(oh, NULL);
+    LOG(ERROR) << "Got error reply from switch ("
+               << std::hex << oh->xid << "): "
+               << ofperr_get_name(err) << ": "
+               << ofperr_get_description(err);
 }
 
 }   // namespace enforcer
