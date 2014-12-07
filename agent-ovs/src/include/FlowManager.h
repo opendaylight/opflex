@@ -9,6 +9,8 @@
 #ifndef _OPFLEX_ENFORCER_FLOWMANAGER_H_
 #define _OPFLEX_ENFORCER_FLOWMANAGER_H_
 
+#include <utility>
+
 #include <boost/scoped_ptr.hpp>
 #include <boost/optional.hpp>
 #include <boost/unordered_map.hpp>
@@ -28,7 +30,8 @@ namespace enforcer {
  * modifications.
  */
 class FlowManager : public ovsagent::EndpointListener,
-                    public ovsagent::PolicyListener {
+                    public ovsagent::PolicyListener,
+                    public MessageHandler {
 public:
     FlowManager(ovsagent::Agent& agent);
     ~FlowManager() {}
@@ -50,6 +53,14 @@ public:
     void SetPortMapper(PortMapper *m) {
         portMapper = m;
     }
+
+    /**
+     * Register the given connection with the learning switch.  This
+     * connection will be queried for counters.
+     *
+     * @param connection the connection to use for learning
+     */
+    void registerConnection(opflex::enforcer::SwitchConnection* connection);
 
     void SetTunnelType(const std::string& tunnelType) { /* XXX TODO */ }
     void SetTunnelIface(const std::string& tunnelIface);
@@ -88,6 +99,11 @@ public:
      * Maximum flow priority of the entries in policy table.
      */
     static const uint16_t MAX_POLICY_RULE_PRIORITY;
+
+    // see: MessageHandler
+    void Handle(opflex::enforcer::SwitchConnection *swConn, 
+                ofptype type, ofpbuf *msg);
+
 private:
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
             uint32_t& rdId, uint32_t& bdId,
@@ -129,11 +145,14 @@ private:
      * Update flow-tables to associate an endpoint with a flood-domain.
      *
      * @param fdURI URI of flood-domain
-     * @param epUUID UUID of endpoint
+     * @param endpoint The endpoint to update
      * @param epPort Port number of endpoint
+     * @param isPromiscuous whether the endpoint port is promiscuous
      */
     void UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
-            const std::string& epUUID, uint32_t epPort);
+                                   const ovsagent::Endpoint& endPoint, 
+                                   uint32_t epPort, 
+                                   bool isPromiscuous);
 
     /**
      * Update flow-tables to dis-associate an endpoint from any flood-domain.
@@ -145,7 +164,7 @@ private:
     /*
      * Map of endpoint to the port it is using.
      */
-    typedef boost::unordered_map<std::string, uint32_t> Ep2PortMap;
+    typedef boost::unordered_map<std::string, std::pair<uint32_t, bool> > Ep2PortMap;
 
     /**
      * Construct a group-table modification.
@@ -153,14 +172,18 @@ private:
      * @param type The modification type
      * @param groupId Identifier for the flow group to edit
      * @param ep2port Ports to be associated with this flow group
+     * @param onlyPromiscuous only include promiscuous endpoints and
+     * uplinks in the group
      * @return Group-table modification entry
      */
     flow::GroupEdit::Entry CreateGroupMod(uint16_t type, uint32_t groupId,
-            const Ep2PortMap& ep2port);
+                                          const Ep2PortMap& ep2port,
+                                          bool onlyPromiscuous = false);
 
     ovsagent::Agent& agent;
     FlowExecutor* executor;
     PortMapper *portMapper;
+    SwitchConnection* connection;
 
     std::string tunnelIface;
     uint32_t tunnelDstIpv4;
@@ -169,6 +192,7 @@ private:
     flow::TableState destinationTable;
     flow::TableState policyTable;
     flow::TableState portSecurityTable;
+    flow::TableState learningTable;
 
     /*
      * Map of flood-domain URI to the endpoints associated with it.

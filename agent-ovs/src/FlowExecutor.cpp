@@ -219,9 +219,6 @@ FlowExecutor::Handle(SwitchConnection *conn, ofptype msgType, ofpbuf *msg) {
             RequestState& req = kv.second;
             if (req.reqXids.find(recvXid) != req.reqXids.end()) {
                 ofperr err = ofperr_decode_msg(msgHdr, NULL);
-                LOG(INFO) << "Request " << recvXid << " failed: "
-                        << ofperr_get_name(err) << " - "
-                        << ofperr_get_description(err);
                 req.status = err;
                 break;
             }
