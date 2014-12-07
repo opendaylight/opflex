@@ -19,8 +19,7 @@ using boost::property_tree::ptree;
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_), flowManager(agent_), connection(NULL),
-      statsManager(&agent_, portMapper), tunnelEpManager(&agent_),
-      started(false) {
+      statsManager(&agent_, portMapper), tunnelEpManager(&agent_), started(false) {
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
 }
@@ -39,10 +38,6 @@ void StitchedModeRenderer::start() {
     }
 
     started = true;
-    flowManager.SetTunnelType(tunnelType);
-    flowManager.SetTunnelIface(tunnelIface);
-    flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
-
     LOG(INFO) << "Starting stitched-mode renderer on " << ovsBridgeName;
 
     tunnelEpManager.setUplinkIface(uplinkIface);
@@ -52,6 +47,11 @@ void StitchedModeRenderer::start() {
     portMapper.InstallListenersForConnection(connection);
     flowExecutor.InstallListenersForConnection(connection);
     connection->Connect(OFP13_VERSION);
+
+    flowManager.SetTunnelType(tunnelType);
+    flowManager.SetTunnelIface(tunnelIface);
+    flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
+    flowManager.registerConnection(connection);
     flowManager.Start();
 
     statsManager.registerConnection(connection);

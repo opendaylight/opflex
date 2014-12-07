@@ -20,6 +20,7 @@ namespace ovsagent {
 
 using std::string;
 using opflex::modb::URI;
+using opflex::modb::MAC;
 using opflex::modb::Mutator;
 using boost::unique_lock;
 using boost::mutex;
@@ -123,7 +124,9 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 
     Mutator mutator(framework, "policyelement");
 
-    if (egURI) {
+    const optional<MAC>& mac = endpoint.getMAC();
+
+    if (egURI && mac) {
         // Update LocalL2 objects in the MODB, which will trigger
         // resolution of the endpoint group, if needed.
         optional<shared_ptr<L2Discovered> > l2d = 
@@ -131,7 +134,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
         if (l2d) {
             shared_ptr<LocalL2Ep> l2e = l2d.get()
                 ->addEpdrLocalL2Ep(uuid);
-            l2e->setMac(endpoint.getMAC())
+            l2e->setMac(mac.get())
                 .addEpdrEndPointToGroupRSrc()
                 ->setTargetEpGroup(egURI.get());
             newlocall2eps.insert(l2e->getURI());
@@ -147,7 +150,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
                 shared_ptr<LocalL3Ep> l3e = l3d.get()
                     ->addEpdrLocalL3Ep(uuid);
                 l3e->setIp(ip)
-                    .setMac(endpoint.getMAC())
+                    .setMac(mac.get())
                     .addEpdrEndPointToGroupRSrc()
                     ->setTargetEpGroup(egURI.get());
                 newlocall3eps.insert(l3e->getURI());
@@ -173,6 +176,8 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 
     mutator.commit();
     updateEndpointReg(uuid);
+    guard.unlock();
+    notifyListeners(uuid);
 }
 
 void EndpointManager::removeEndpoint(const std::string& uuid) {
@@ -213,6 +218,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
 
     EndpointState& es = it->second;
     const optional<URI>& egURI = es.endpoint.getEgURI();
+    const optional<MAC>& mac = es.endpoint.getMAC();
     unordered_set<URI> newl3eps;
     unordered_set<URI> newl2eps;
     optional<shared_ptr<RoutingDomain> > rd;
@@ -229,25 +235,25 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
 
     optional<shared_ptr<L2Universe> > l2u = 
         L2Universe::resolve(framework);
-    if (l2u && bd) {
+    if (l2u && bd && mac) {
         // If the bridge domain is known, we can register the l2
         // endpoint
         shared_ptr<L2Ep> l2e = l2u.get()
             ->addEprL2Ep(bd.get()->getURI().toString(),
-                         es.endpoint.getMAC());
+                         mac.get());
         l2e->setUuid(uuid);
         newl2eps.insert(l2e->getURI());
     }
 
     optional<shared_ptr<L3Universe> > l3u = 
         L3Universe::resolve(framework);
-    if (l3u && rd) {
+    if (l3u && rd && mac) {
         // If the routing domain is known, we can register the l3
         // endpoints in the endpoint registry
         BOOST_FOREACH(const string& ip, es.endpoint.getIPs()) {
             shared_ptr<L3Ep> l3e = l3u.get()
                 ->addEprL3Ep(rd.get()->getURI().toString(), ip);
-            l3e->setMac(es.endpoint.getMAC());
+            l3e->setMac(mac.get());
             l3e->setUuid(uuid);
             newl3eps.insert(l3e->getURI());
         }

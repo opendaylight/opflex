@@ -3,7 +3,8 @@ module[gbpe]
     type[VNid; super=scalar/UInt32]
     type[ClassId; super=scalar/UInt32]
 
-    # represents a set of extensions that specify specific identifiers used by the data plane of the wire
+    # represents a set of extensions that specify specific identifiers 
+    # used by the data plane of the wire
     class[InstContext;
           super=policy/Definition;
           concrete]
@@ -21,6 +22,28 @@ module[gbpe]
             parent[class=*;]
             {
                 component[prefix=ext-context]
+            }
+        }
+    }
+
+    # Contains additional context for a flood domain
+    class[FloodContext;
+          super=policy/Definition;
+          concrete]
+    {
+        # The multicast group IP address used for flooding the traffic
+        # through the fabric within the flood domain.
+        member[multicastGroupIP; type=address/IP]
+
+        contained
+        {
+            parent[class=gbp/FloodDomain]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ext-flood-context]
             }
         }
     }
