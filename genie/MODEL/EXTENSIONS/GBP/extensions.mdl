@@ -156,6 +156,10 @@ module[gbpe]
             }
         }
 
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
         # The IP address for the tunnel terminator
         member[terminatorIp; type=address/IP]
     }

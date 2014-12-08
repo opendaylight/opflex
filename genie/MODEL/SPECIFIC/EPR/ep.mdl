@@ -12,9 +12,6 @@ module[epr]
           ]
     {
 
-        # A unique identifer for the endpoint.  Could be related to a
-        # UUID for an interface, virtual machine, etc.
-        member[uuid; type=reference/UUID]
     }
 
     # abstraction of local end-point identifies an end-point that is
@@ -33,7 +30,7 @@ module[epr]
           abstract
           ]
     {
-        member[group; type=epr/GroupContext]
+
     }
 
     # an endpoint with network identifiers
@@ -42,6 +39,10 @@ module[epr]
           abstract;
           ]
     {
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
         # mac address of the end-point
         member[mac; type=address/MAC]
     }
@@ -52,8 +53,15 @@ module[epr]
           abstract;
           ]
     {
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
         # mac address of the end-point
         member[mac; type=address/MAC]
+
+        # endpoint group for the endpoint
+        member[group; type=epr/GroupContext]
     }
 
     # L2 end-point that is part of the L2 universe
