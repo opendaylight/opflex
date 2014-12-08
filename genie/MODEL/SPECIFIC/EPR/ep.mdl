@@ -3,6 +3,7 @@ module[epr]
     type[name=Context; super=reference/URI]
     type[name=L2Context; super=epr/Context]
     type[name=L3Context; super=epr/Context]
+    type[name=GroupContext; super=epr/Context]
 
     # Superclass for all end points declared in the epr universes.
     # End point is an entity to which we can apply policy
@@ -32,7 +33,7 @@ module[epr]
           abstract
           ]
     {
-
+        member[group; type=epr/GroupContext]
     }
 
     # an endpoint with network identifiers

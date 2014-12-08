@@ -241,6 +241,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
         shared_ptr<L2Ep> l2e = l2u.get()
             ->addEprL2Ep(bd.get()->getURI().toString(),
                          mac.get());
+        l2e->setGroup(egURI->toString());
         l2e->setUuid(uuid);
         newl2eps.insert(l2e->getURI());
     }
@@ -254,6 +255,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
             shared_ptr<L3Ep> l3e = l3u.get()
                 ->addEprL3Ep(rd.get()->getURI().toString(), ip);
             l3e->setMac(mac.get());
+            l3e->setGroup(egURI->toString());
             l3e->setUuid(uuid);
             newl3eps.insert(l3e->getURI());
         }
