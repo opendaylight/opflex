@@ -7,6 +7,7 @@
  */
 
 #include <algorithm>
+#include <boost/assert.hpp>
 
 #include "ovs.h"
 #include "ActionBuilder.h"
@@ -86,12 +87,16 @@ ActionBuilder::SetRegMove(mf_field_id srcRegId, mf_field_id dstRegId) {
 void
 ActionBuilder::SetEthSrcDst(const uint8_t *srcMac, const uint8_t *dstMac) {
     if (srcMac) {
-        struct ofpact_mac *eth = ofpact_put_SET_ETH_SRC(&buf);
-        memcpy(&eth->mac, srcMac, sizeof(eth->mac));
+        struct ofpact_set_field *sf = ofpact_put_SET_FIELD(&buf);
+        sf->field = &mf_fields[MFF_ETH_SRC];
+        memcpy(&(sf->value.mac), srcMac, ETH_ADDR_LEN);
+        memset(&(sf->mask.mac), 0xff, ETH_ADDR_LEN);
     }
     if (dstMac) {
-        struct ofpact_mac *eth = ofpact_put_SET_ETH_DST(&buf);
-        memcpy(&eth->mac, dstMac, sizeof(eth->mac));
+        struct ofpact_set_field *sf = ofpact_put_SET_FIELD(&buf);
+        sf->field = &mf_fields[MFF_ETH_DST];
+        memcpy(&(sf->value.mac), dstMac, ETH_ADDR_LEN);
+        memset(&(sf->mask.mac), 0xff, ETH_ADDR_LEN);
     }
 }
 
@@ -120,8 +125,8 @@ ActionBuilder::SetOutputToPort(uint32_t port) {
 void
 ActionBuilder::SetOutputReg(mf_field_id srcRegId) {
     struct ofpact_output_reg *outputReg = ofpact_put_OUTPUT_REG(&buf);
+    assert(outputReg->ofpact.raw == (uint8_t)(-1));
     InitSubField(&outputReg->src, srcRegId);
-    outputReg->max_len = UINT16_MAX;
 }
 
 void

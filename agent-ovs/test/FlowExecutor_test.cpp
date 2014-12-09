@@ -58,16 +58,14 @@ public:
     }
     ~FlowExecutorFixture() {
         fexec.UninstallListenersForConnection(&conn);
-        for (int i = 0; i < flows.size(); ++i) {
-            delete flows[i];
-        }
+        flows.clear();
     }
 
     void createTestFlows();
 
     MockExecutorConnection conn;
     FlowExecutor fexec;
-    vector<FlowEntry *> flows;
+    FlowEntryList flows;
 };
 
 BOOST_AUTO_TEST_SUITE(FlowExecutor_test)
@@ -162,7 +160,7 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
 }
 
 void FlowExecutorFixture::createTestFlows() {
-    flows.push_back(new FlowEntry());
+    flows.push_back(FlowEntryPtr(new FlowEntry()));
     FlowEntry& e0 = *(flows.back());
     e0.entry->table_id = 0;
     e0.entry->priority = 100;
@@ -175,7 +173,7 @@ void FlowExecutorFixture::createTestFlows() {
     ab0.SetOutputToPort(OFPP_IN_PORT);
     ab0.Build(e0.entry);
 
-    flows.push_back(new FlowEntry());
+    flows.push_back(FlowEntryPtr(new FlowEntry()));
     FlowEntry& e1 = *(flows.back());
     e1.entry->table_id = 5;
     e1.entry->priority = 50;
