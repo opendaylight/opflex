@@ -54,6 +54,7 @@ libagent_ovs_la_SOURCES = \
 	src/include/StitchedModeRenderer.h \
 	src/include/TunnelEpManager.h \
 	src/include/FlowExecutor.h \
+	src/include/FlowReader.h \
 	src/include/FlowManager.h \
 	src/include/ovs.h \
 	src/include/TableState.h \
@@ -63,6 +64,7 @@ libagent_ovs_la_SOURCES = \
 	src/include/StatsManager.h \
 	src/include/Agent.h \
 	src/include/cmd.h \
+	src/include/WorkQueue.h \
 	src/BoostLogHandler.cpp \
 	src/PolicyManager.cpp \
 	src/Endpoint.cpp \
@@ -75,12 +77,14 @@ libagent_ovs_la_SOURCES = \
 	src/FlowManager.cpp \
 	src/TableState.cpp \
 	src/FlowExecutor.cpp \
+	src/FlowReader.cpp \
 	src/ActionBuilder.cpp \
 	src/SwitchConnection.cpp \
 	src/PortMapper.cpp \
 	src/StatsManager.cpp \
 	src/cmd.cpp \
-	src/Agent.cpp
+	src/Agent.cpp \
+	src/WorkQueue.cpp
 
 bin_PROGRAMS=agent_ovs
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'

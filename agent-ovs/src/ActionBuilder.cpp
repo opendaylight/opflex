@@ -7,6 +7,7 @@
  */
 
 #include <algorithm>
+#include <boost/assert.hpp>
 
 #include "ovs.h"
 #include "ActionBuilder.h"
@@ -25,28 +26,30 @@ ActionBuilder::~ActionBuilder() {
     ofpbuf_uninit(&buf);
 }
 
+ofpact * ActionBuilder::GetActionsFromBuffer(ofpbuf *buf, size_t& actsLen) {
+    ofpact_pad(buf);
+    actsLen = ofpbuf_size(buf);
+    return (ofpact*)ofpbuf_steal_data(buf);
+}
+
 void
 ActionBuilder::Build(ofputil_flow_stats *dstEntry) {
-    dstEntry->ofpacts_len = ofpbuf_size(&buf);
-    dstEntry->ofpacts = (ofpact*)ofpbuf_steal_data(&buf);
+    dstEntry->ofpacts = GetActionsFromBuffer(&buf, dstEntry->ofpacts_len);
 }
 
 void
 ActionBuilder::Build(ofputil_flow_mod *dstMod) {
-    dstMod->ofpacts_len = ofpbuf_size(&buf);
-    dstMod->ofpacts = (ofpact*)ofpbuf_steal_data(&buf);
+    dstMod->ofpacts = GetActionsFromBuffer(&buf, dstMod->ofpacts_len);
 }
 
 void
 ActionBuilder::Build(ofputil_packet_out *dstPkt) {
-    dstPkt->ofpacts_len = ofpbuf_size(&buf);
-    dstPkt->ofpacts = (ofpact*)ofpbuf_steal_data(&buf);
+    dstPkt->ofpacts = GetActionsFromBuffer(&buf, dstPkt->ofpacts_len);
 }
 
 void
 ActionBuilder::Build(ofputil_bucket *dstBucket) {
-    dstBucket->ofpacts_len = ofpbuf_size(&buf);
-    dstBucket->ofpacts = (ofpact*)ofpbuf_steal_data(&buf);
+    dstBucket->ofpacts = GetActionsFromBuffer(&buf, dstBucket->ofpacts_len);
 }
 
 static void
@@ -86,12 +89,16 @@ ActionBuilder::SetRegMove(mf_field_id srcRegId, mf_field_id dstRegId) {
 void
 ActionBuilder::SetEthSrcDst(const uint8_t *srcMac, const uint8_t *dstMac) {
     if (srcMac) {
-        struct ofpact_mac *eth = ofpact_put_SET_ETH_SRC(&buf);
-        memcpy(&eth->mac, srcMac, sizeof(eth->mac));
+        struct ofpact_set_field *sf = ofpact_put_SET_FIELD(&buf);
+        sf->field = &mf_fields[MFF_ETH_SRC];
+        memcpy(&(sf->value.mac), srcMac, ETH_ADDR_LEN);
+        memset(&(sf->mask.mac), 0xff, ETH_ADDR_LEN);
     }
     if (dstMac) {
-        struct ofpact_mac *eth = ofpact_put_SET_ETH_DST(&buf);
-        memcpy(&eth->mac, dstMac, sizeof(eth->mac));
+        struct ofpact_set_field *sf = ofpact_put_SET_FIELD(&buf);
+        sf->field = &mf_fields[MFF_ETH_DST];
+        memcpy(&(sf->value.mac), dstMac, ETH_ADDR_LEN);
+        memset(&(sf->mask.mac), 0xff, ETH_ADDR_LEN);
     }
 }
 
@@ -120,8 +127,8 @@ ActionBuilder::SetOutputToPort(uint32_t port) {
 void
 ActionBuilder::SetOutputReg(mf_field_id srcRegId) {
     struct ofpact_output_reg *outputReg = ofpact_put_OUTPUT_REG(&buf);
+    assert(outputReg->ofpact.raw == (uint8_t)(-1));
     InitSubField(&outputReg->src, srcRegId);
-    outputReg->max_len = UINT16_MAX;
 }
 
 void

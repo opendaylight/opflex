@@ -56,6 +56,15 @@ public:
     void SetGroup(uint32_t groupId);
     void SetController();
 
+    /**
+     * Extract and return an array of flow actions from a buffer used
+     * for constructing those actions.
+     *
+     * @param buf buffer to extract actions from
+     * @param actsLen size, in bytes, of the extracted actions array
+     * @return the actions present in the buffer
+     */
+    static ofpact * GetActionsFromBuffer(ofpbuf *buf, size_t& actsLen);
 private:
     struct ofpbuf buf;
 };
