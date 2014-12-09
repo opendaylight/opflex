@@ -297,7 +297,8 @@ int CommunicationPeer::write() const {
                 s_.deque_.end()
         );
 
-    logDeque();
+    // Not thread-safe. Uncomment only as needed for debugging.
+    // logDeque();
 
     /* FIXME: handle errors!!! */
     return uv_write(&write_req_,
