@@ -26,6 +26,7 @@ using boost::unique_lock;
 using boost::mutex;
 using boost::unordered_set;
 using boost::shared_ptr;
+using boost::make_shared;
 using boost::optional;
 
 EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
@@ -35,6 +36,10 @@ EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
 }
 
 EndpointManager::~EndpointManager() {
+
+}
+
+EndpointManager::EndpointState::EndpointState() : endpoint(new Endpoint()) {
 
 }
 
@@ -72,12 +77,12 @@ void EndpointManager::notifyListeners(const std::string& uuid) {
     }
 }
 
-optional<const Endpoint&> EndpointManager::getEndpoint(const string& uuid) {
+shared_ptr<const Endpoint> EndpointManager::getEndpoint(const string& uuid) {
     unique_lock<mutex> guard(ep_mutex);
     ep_map_t::const_iterator it = ep_map.find(uuid);
     if (it != ep_map.end())
         return it->second.endpoint;
-    return boost::none;
+    return shared_ptr<const Endpoint>();
 }
 
 void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
@@ -90,7 +95,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     EndpointState& es = ep_map[uuid];
 
     // update endpoint group to endpoint mapping
-    const optional<URI>& oldEgURI = es.endpoint.getEgURI();
+    const optional<URI>& oldEgURI = es.endpoint->getEgURI();
     const optional<URI>& egURI = endpoint.getEgURI();
     if (oldEgURI != egURI) {
         if (oldEgURI) {
@@ -105,7 +110,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     }
 
     // update interface name to endpoint mapping
-    const optional<std::string>& oldIface = es.endpoint.getInterfaceName();
+    const optional<std::string>& oldIface = es.endpoint->getInterfaceName();
     const optional<std::string>& iface = endpoint.getInterfaceName();
     if (oldIface != iface) {
         if (oldIface) {
@@ -172,7 +177,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     }
     es.locall3EPs = newlocall3eps;
 
-    es.endpoint = endpoint;
+    es.endpoint = make_shared<const Endpoint>(endpoint);
 
     mutator.commit();
     updateEndpointReg(uuid);
@@ -217,8 +222,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     if (it == ep_map.end()) return false;
 
     EndpointState& es = it->second;
-    const optional<URI>& egURI = es.endpoint.getEgURI();
-    const optional<MAC>& mac = es.endpoint.getMAC();
+    const optional<URI>& egURI = es.endpoint->getEgURI();
+    const optional<MAC>& mac = es.endpoint->getMAC();
     unordered_set<URI> newl3eps;
     unordered_set<URI> newl2eps;
     optional<shared_ptr<RoutingDomain> > rd;
@@ -251,7 +256,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     if (l3u && rd && mac) {
         // If the routing domain is known, we can register the l3
         // endpoints in the endpoint registry
-        BOOST_FOREACH(const string& ip, es.endpoint.getIPs()) {
+        BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
             shared_ptr<L3Ep> l3e = l3u.get()
                 ->addEprL3Ep(rd.get()->getURI().toString(), ip);
             l3e->setMac(mac.get());
