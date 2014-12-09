@@ -41,6 +41,7 @@ FlowExecutor::InstallListenersForConnection(SwitchConnection *conn) {
 
 void
 FlowExecutor::UninstallListenersForConnection(SwitchConnection *conn) {
+    conn->UnregisterOnConnectListener(this);
     conn->UnregisterMessageHandler(OFPTYPE_ERROR, this);
     conn->UnregisterMessageHandler(OFPTYPE_BARRIER_REPLY, this);
 }
