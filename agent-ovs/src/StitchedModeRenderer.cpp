@@ -21,6 +21,7 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_), flowManager(agent_), connection(NULL),
       statsManager(&agent_, portMapper), tunnelEpManager(&agent_),
       started(false), virtualRouter(true) {
+    flowManager.SetFlowReader(&flowReader);
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
 }
@@ -46,17 +47,20 @@ void StitchedModeRenderer::start() {
         tunnelEpManager.start();
     }
 
-    connection = new opflex::enforcer::SwitchConnection(ovsBridgeName);
-    portMapper.InstallListenersForConnection(connection);
-    flowExecutor.InstallListenersForConnection(connection);
-    connection->Connect(OFP13_VERSION);
-
     flowManager.SetEncapType(encapType);
     flowManager.SetEncapIface(encapIface);
     flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
     flowManager.SetVirtualRouter(virtualRouter);
     flowManager.SetVirtualRouterMac(virtualRouterMac);
+
+    connection = new opflex::enforcer::SwitchConnection(ovsBridgeName);
+    portMapper.InstallListenersForConnection(connection);
+    flowExecutor.InstallListenersForConnection(connection);
+    flowReader.installListenersForConnection(connection);
     flowManager.registerConnection(connection);
+    flowManager.registerModbListeners();
+    connection->Connect(OFP13_VERSION);
+
     flowManager.Start();
 
     statsManager.registerConnection(connection);
@@ -73,6 +77,9 @@ void StitchedModeRenderer::stop() {
 
     flowManager.Stop();
     connection->Disconnect();
+    flowManager.unregisterModbListeners();
+    flowManager.unregisterConnection(connection);
+    flowReader.uninstallListenersForConnection(connection);
     flowExecutor.UninstallListenersForConnection(connection);
     portMapper.UninstallListenersForConnection(connection);
     delete connection;

@@ -163,7 +163,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg3->addGbpEpGroupToNetworkRSrc()
         ->setTargetSubnets(subnetsfd2->getURI());
-    eg3->addGbpeInstContext()->setVnid(5678);
+    eg3->addGbpeInstContext()->setVnid(3456);
 
     mutator.commit();
 }

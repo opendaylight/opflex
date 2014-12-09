@@ -12,6 +12,7 @@
 #include "Renderer.h"
 #include "SwitchConnection.h"
 #include "FlowManager.h"
+#include "FlowReader.h"
 #include "FlowExecutor.h"
 #include "PortMapper.h"
 #include "StatsManager.h"
@@ -61,6 +62,7 @@ public:
 
 private:
     opflex::enforcer::FlowExecutor flowExecutor;
+    ovsagent::FlowReader flowReader;
     opflex::enforcer::PortMapper portMapper;
     opflex::enforcer::FlowManager flowManager;
     opflex::enforcer::SwitchConnection* connection;

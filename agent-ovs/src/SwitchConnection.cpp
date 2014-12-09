@@ -287,7 +287,7 @@ SwitchConnection::SendMessage(ofpbuf *msg) {
 
 void
 SwitchConnection::FireOnConnectListeners() {
-    {
+    if (GetProtocolVersion() >= OFP12_VERSION) {
         // Set controller role to MASTER
         ofpbuf *b0;
         ofp12_role_request *rr;

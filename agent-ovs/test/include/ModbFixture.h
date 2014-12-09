@@ -53,7 +53,7 @@ public:
     shared_ptr<policy::Universe> universe;
     shared_ptr<policy::Space> space;
     shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
-    shared_ptr<EpGroup> epg0, epg1, epg2, epg3;
+    shared_ptr<EpGroup> epg0, epg1, epg2, epg3, epg4;
     shared_ptr<FloodDomain> fd0, fd1;
     shared_ptr<RoutingDomain> rd0;
     shared_ptr<BridgeDomain> bd0;
@@ -128,6 +128,11 @@ protected:
         epg3->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsfd1->getURI());
         epg3->addGbpeInstContext()->setVnid(0xD00B);
+
+        epg4 = space->addGbpEpGroup("epg4");
+        epg4->addGbpeInstContext()->setVnid(0xE00E);
+        epg4->addGbpEpGroupToNetworkRSrc()
+            ->setTargetRoutingDomain(rd0->getURI());
 
         createPolicyObjects();
 
