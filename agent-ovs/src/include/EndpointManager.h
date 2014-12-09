@@ -80,9 +80,9 @@ public:
      *
      * @param uuid the UUID for the endpoint
      * @return the endpoint object containing the detailed endpoint
-     * information, or boost::none if there is no such endpoint
+     * information, or a NULL pointer if there is no such endpoint
      */
-    boost::optional<const Endpoint&> getEndpoint(const std::string& uuid);
+    boost::shared_ptr<const Endpoint> getEndpoint(const std::string& uuid);
 
     /**
      * Get the set of endpoints that exist for a given endpoint group
@@ -179,7 +179,9 @@ private:
 
     class EndpointState {
     public:
-        Endpoint endpoint;
+        EndpointState();
+
+        boost::shared_ptr<const Endpoint> endpoint;
         
         typedef boost::unordered_set<opflex::modb::URI> uri_set_t;
         // references to the modb epdr localL2 and locall3 objects

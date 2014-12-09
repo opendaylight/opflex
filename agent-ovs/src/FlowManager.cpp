@@ -374,7 +374,7 @@ FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
 void
 FlowManager::endpointUpdated(const string& uuid) {
     EndpointManager& epMgr = agent.getEndpointManager();
-    optional<const Endpoint&> epWrapper = epMgr.getEndpoint(uuid);
+    shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(uuid);
 
     if (!epWrapper) {   // EP removed
         WriteFlow(uuid, portSecurityTable, NULL);
@@ -383,7 +383,7 @@ FlowManager::endpointUpdated(const string& uuid) {
         RemoveEndpointFromFloodDomain(uuid);
         return;
     }
-    const Endpoint& endPoint = epWrapper.get();
+    const Endpoint& endPoint = *epWrapper.get();
     uint8_t macAddr[6];
     if (endPoint.getMAC())
         endPoint.getMAC().get().toUIntArray(macAddr);
