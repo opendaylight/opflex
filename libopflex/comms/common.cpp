@@ -54,7 +54,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
     }
 
     if (peers[RETRY_TO_CONNECT].begin() !=
-        peers[RETRY_TO_CONNECT].begin()) {
+        peers[RETRY_TO_CONNECT].end()) {
 
         LOG(INFO) << "retrying first RETRY_TO_CONNECT peer";
 
