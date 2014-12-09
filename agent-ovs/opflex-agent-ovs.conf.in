@@ -1,11 +1,11 @@
 {
     // Configuration related to the OpFlex protocol
     "opflex": {
-	// The globally unique policy domain for this agent.
-	"domain": "c7820284-fa76-44d5-948c-9de464f1c047",
+        // The globally unique policy domain for this agent.
+        "domain": "c7820284-fa76-44d5-948c-9de464f1c047",
 
-	// The unique name in the policy domain for this agent.
-	"name": "example-agent",
+        // The unique name in the policy domain for this agent.
+        "name": "example-agent",
 
         // a list of peers to connect to, by hostname and port.  One
         // peer, or an anycast pseudo-peer, is sufficient to bootstrap
@@ -16,35 +16,58 @@
             // {"hostname": "127.0.0.1", "port": 8009}
         ]
     },
+
     // Endpoint sources provide metadata about local endpoints
     "endpoint-sources": {
         // Filesystem path to monitor for endpoint information
         "filesystem": ["FILESYSTEM_WATCH_DIR"]
     },
+
     // Renderers enforce policy obtained via OpFlex.
     "renderers": {
         // Stitched-mode renderer for interoperating with a
         // hardware fabric such as ACI
-	// EXAMPLE:
-        //"stitched-mode": {
-        //    "ovs-bridge-name": "s1",
-	//    "tunnel": {
-	//	"vxlan" : {
-	//	    // The name of the tunnel interface in OVS
-	//	    "tunnel-iface": "s1_vxlan0",
-	//
-	//	    // The name of the interface whose IP should be used
-	//	    // as the source IP in encapsulated traffic.
-	//	    "uplink-iface": "bond0",
-	//
-	//	    // The IP address used for the destination IP in
-	//	    // the encapsulated traffic.  This should be an
-	//	    // anycast IP address understood by the upstream
-	//	    // stiched-mode fabric.
-	//	    "remote-ip": "10.0.0.3"
-	//    
-	//	}
-	//    }
-	//}
+        // EXAMPLE:
+        // "stitched-mode": {
+        //     "ovs-bridge-name": "s1",
+        //
+        //     // Set encapsulation type.  Must set either vxlan or vlan.
+        //     "encap": {
+        //         // Encapsulate traffic with VXLAN.
+        //         "vxlan" : {
+        //             // The name of the tunnel interface in OVS
+        //             "encap-iface": "s1_vxlan0",
+        //
+        //             // The name of the interface whose IP should be used
+        //             // as the source IP in encapsulated traffic.
+        //             "uplink-iface": "eth0",
+        //
+        //             // The IP address used for the destination IP in
+        //             // the encapsulated traffic.  This should be an
+        //             // anycast IP address understood by the upstream
+        //             // stiched-mode fabric.
+        //             "remote-ip": "10.0.0.3"
+        //         }
+        //
+        //         // Encapsulate traffic with a locally-significant VLAN
+        //         // tag
+        //         // EXAMPLE:
+        //         // "vlan" : {
+        //         //     // The name of the uplink interface in OVS
+        //         //     "encap-iface": "s1_vxlan0"
+        //         // }
+        //     },
+        //
+        //     // Configure forwarding policy
+        //     "forwarding": {
+        //         // Enable virtual distributed router.  Set to true
+        //         // to enable or false to disable.  Default true.
+        //         "virtual-router": true,
+        //
+        //         // Override MAC address for virtual router.  Default is 
+        //         // "88:f0:31:b5:12:b5"
+        //         "virtual-router-mac": "88:f0:31:b5:12:b5"
+        //     }
+        // }
     }
 }

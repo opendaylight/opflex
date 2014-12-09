@@ -68,10 +68,12 @@ private:
     TunnelEpManager tunnelEpManager;
 
     std::string ovsBridgeName;
-    std::string tunnelType;
-    std::string tunnelIface;
+    opflex::enforcer::FlowManager::EncapType encapType;
+    std::string encapIface;
     std::string tunnelRemoteIp;
     std::string uplinkIface;
+    bool virtualRouter;
+    std::string virtualRouterMac;
 
     bool started;
 };

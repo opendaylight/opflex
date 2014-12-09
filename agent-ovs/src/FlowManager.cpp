@@ -54,9 +54,8 @@ static const uint8_t MAC_ADDR_MULTICAST[6] =
 const uint16_t FlowManager::MAX_POLICY_RULE_PRIORITY = 8192;     // arbitrary
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
-        agent(ag) {
-    MAC("de:ad:be:ef:ce:de").toUIntArray(routerMac); // read from config file
-    tunnelIface = "br0_vxlan0";
+    agent(ag), virtualRouterEnabled(true) {
+    memset(routerMac, 0, sizeof(routerMac));
     ParseIpv4Addr("127.0.0.1", &tunnelDstIpv4);
     portMapper = NULL;
 }
@@ -73,18 +72,22 @@ void FlowManager::Stop()
     agent.getEndpointManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
     connection->UnregisterMessageHandler(OFPTYPE_PACKET_IN, this);
+
+}
+void FlowManager::SetEncapType(EncapType encapType) {
+    this->encapType = encapType;
 }
 
-void FlowManager::SetTunnelIface(const string& tunIf) {
-    if (tunIf.empty()) {
-        LOG(ERROR) << "Ignoring empty tunnel interface name";
+void FlowManager::SetEncapIface(const string& encapIf) {
+    if (encapIf.empty()) {
+        LOG(ERROR) << "Ignoring empty encapsulation interface name";
         return;
     }
-    tunnelIface = tunIf;
+    encapIface = encapIf;
 }
 
 uint32_t FlowManager::GetTunnelPort() {
-    return portMapper ? portMapper->FindPort(tunnelIface) : OFPP_NONE;
+    return portMapper ? portMapper->FindPort(encapIface) : OFPP_NONE;
 }
 
 void FlowManager::SetTunnelRemoteIp(const string& tunnelRemoteIp) {
@@ -92,7 +95,19 @@ void FlowManager::SetTunnelRemoteIp(const string& tunnelRemoteIp) {
     if (ParseIpv4Addr(tunnelRemoteIp, &ip)) {
         tunnelDstIpv4 = ip;
     } else {
-        LOG(ERROR) << "Ignoring bad tunnel destination IP " << tunnelRemoteIp;
+        LOG(ERROR) << "Ignoring bad tunnel destination IP: " << tunnelRemoteIp;
+    }
+}
+
+void FlowManager::SetVirtualRouter(bool virtualRouterEnabled) {
+    this->virtualRouterEnabled = virtualRouterEnabled;
+}
+
+void FlowManager::SetVirtualRouterMac(const string& virtualRouterMac) {
+    try {
+        MAC(virtualRouterMac).toUIntArray(routerMac);
+    } catch (std::invalid_argument) {
+        LOG(ERROR) << "Invalid virtual router MAC: " << virtualRouterMac;
     }
 }
 

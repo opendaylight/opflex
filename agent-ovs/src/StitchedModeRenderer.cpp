@@ -19,7 +19,8 @@ using boost::property_tree::ptree;
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_), flowManager(agent_), connection(NULL),
-      statsManager(&agent_, portMapper), tunnelEpManager(&agent_), started(false) {
+      statsManager(&agent_, portMapper), tunnelEpManager(&agent_),
+      started(false), virtualRouter(true) {
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
 }
@@ -40,17 +41,21 @@ void StitchedModeRenderer::start() {
     started = true;
     LOG(INFO) << "Starting stitched-mode renderer on " << ovsBridgeName;
 
-    tunnelEpManager.setUplinkIface(uplinkIface);
-    tunnelEpManager.start();
+    if (encapType == opflex::enforcer::FlowManager::VXLAN) {
+        tunnelEpManager.setUplinkIface(uplinkIface);
+        tunnelEpManager.start();
+    }
 
     connection = new opflex::enforcer::SwitchConnection(ovsBridgeName);
     portMapper.InstallListenersForConnection(connection);
     flowExecutor.InstallListenersForConnection(connection);
     connection->Connect(OFP13_VERSION);
 
-    flowManager.SetTunnelType(tunnelType);
-    flowManager.SetTunnelIface(tunnelIface);
+    flowManager.SetEncapType(encapType);
+    flowManager.SetEncapIface(encapIface);
     flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
+    flowManager.SetVirtualRouter(virtualRouter);
+    flowManager.SetVirtualRouterMac(virtualRouterMac);
     flowManager.registerConnection(connection);
     flowManager.Start();
 
@@ -73,7 +78,9 @@ void StitchedModeRenderer::stop() {
     delete connection;
     connection = NULL;
 
-    tunnelEpManager.stop();
+    if (encapType == opflex::enforcer::FlowManager::VXLAN) {
+        tunnelEpManager.stop();
+    }
 }
 
 Renderer* StitchedModeRenderer::create(Agent& agent) {
@@ -82,21 +89,54 @@ Renderer* StitchedModeRenderer::create(Agent& agent) {
 
 void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string OVS_BRIDGE_NAME("ovs-bridge-name");
-    static const std::string TUNNEL_VXLAN("tunnel.vxlan");
+
+    static const std::string ENCAP_VXLAN("encap.vxlan");
+    static const std::string ENCAP_IVXLAN("encap.ivxlan");
+    static const std::string ENCAP_VLAN("encap.vlan");
+
     static const std::string UPLINK_IFACE("uplink-iface");
-    static const std::string TUNNEL_IFACE("tunnel-iface");
+    static const std::string ENCAP_IFACE("encap-iface");
     static const std::string REMOTE_IP("remote-ip");
+
+    static const std::string VIRTUAL_ROUTER("forwarding.virtual-router");
+    static const std::string VIRTUAL_ROUTER_MAC("forwarding.virtual-router-mac");
 
     ovsBridgeName = properties.get<std::string>(OVS_BRIDGE_NAME, "");
 
-    boost::optional<const ptree&> vxlan = 
-        properties.get_child_optional(TUNNEL_VXLAN);
+    boost::optional<const ptree&> ivxlan =
+        properties.get_child_optional(ENCAP_IVXLAN);
+    boost::optional<const ptree&> vxlan =
+        properties.get_child_optional(ENCAP_VXLAN);
+    boost::optional<const ptree&> vlan =
+        properties.get_child_optional(ENCAP_VLAN);
+
+    encapType = opflex::enforcer::FlowManager::NONE;
+    int count = 0;
+    if (ivxlan) {
+        LOG(ERROR) << "Encapsulation type ivxlan unsupported";
+        count += 1;
+    }
+    if (vlan) {
+        encapType = opflex::enforcer::FlowManager::VLAN;
+        encapIface = vlan.get().get<std::string>(ENCAP_IFACE, "");
+        count += 1;
+    }
     if (vxlan) {
-        tunnelType = "vxlan";
-        tunnelIface = vxlan.get().get<std::string>(TUNNEL_IFACE, "");
+        encapType = opflex::enforcer::FlowManager::VXLAN;
+        encapIface = vxlan.get().get<std::string>(ENCAP_IFACE, "");
         uplinkIface = vxlan.get().get<std::string>(UPLINK_IFACE, "");
         tunnelRemoteIp = vxlan.get().get<std::string>(REMOTE_IP, "");
+        count += 1;
     }
+
+    if (count > 1) {
+        LOG(WARNING) << "Multiple encapsulation types specified for "
+                     << "stitched-mode renderer";
+    }
+
+    virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
+    virtualRouterMac =
+        properties.get<std::string>(VIRTUAL_ROUTER_MAC, "88:f0:31:b5:12:b5");
 }
 
 } /* namespace ovsagent */

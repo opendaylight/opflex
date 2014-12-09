@@ -62,9 +62,32 @@ public:
      */
     void registerConnection(opflex::enforcer::SwitchConnection* connection);
 
-    void SetTunnelType(const std::string& tunnelType) { /* XXX TODO */ }
-    void SetTunnelIface(const std::string& tunnelIface);
+    /**
+     * Encap types supported by the flow manager
+     */
+    enum EncapType {
+        /**
+         * No encapsulation; traffic can be forwarded only on the
+         * local switch.
+         */
+        NONE,
+        /**
+         * Encapsulate using VLAN tags, with a (at least)
+         * locally-significant VLAN for each endpoint group.
+         */
+        VLAN,
+        /**
+         * Encapsulate using a VXLAN tunnel, with a VNID for each
+         * endpoint group.
+         */
+        VXLAN
+    };
+
+    void SetEncapType(EncapType encapType);
+    void SetEncapIface(const std::string& encapIface);
     void SetTunnelRemoteIp(const std::string& tunnelRemoteIp);
+    void SetVirtualRouter(bool virtualRouterEnabled);
+    void SetVirtualRouterMac(const std::string& mac);
 
     uint32_t GetTunnelPort();
     uint32_t GetTunnelDstIpv4() { return tunnelDstIpv4; }
@@ -185,8 +208,10 @@ private:
     PortMapper *portMapper;
     SwitchConnection* connection;
 
-    std::string tunnelIface;
+    EncapType encapType;
+    std::string encapIface;
     uint32_t tunnelDstIpv4;
+    bool virtualRouterEnabled;
     uint8_t routerMac[6];
     flow::TableState sourceTable;
     flow::TableState destinationTable;

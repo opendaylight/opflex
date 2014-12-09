@@ -154,7 +154,7 @@ public:
         string tunIf("br0_vxlan0");
         flowManager.SetExecutor(&exec);
         flowManager.SetPortMapper(&portmapper);
-        flowManager.SetTunnelIface(tunIf);
+        flowManager.SetEncapIface(tunIf);
         flowManager.SetTunnelRemoteIp("10.11.12.13");
 
         portmapper.ports[ep0->getInterfaceName().get()] = 80;
