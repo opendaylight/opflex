@@ -226,6 +226,8 @@ void CommunicationPeer::dumpIov(std::stringstream & dbgLog, std::vector<iovec> c
     }
 }
 
+#ifdef    NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
+// Not thread-safe. Build only as needed for ad-hoc debugging builds.
 void CommunicationPeer::logDeque() const {
     static std::string oldDbgLog;
     std::stringstream dbgLog;
@@ -259,6 +261,7 @@ void CommunicationPeer::logDeque() const {
         LOG(DEBUG) << newDbgLog;
     }
 }
+#endif // NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
 
 void CommunicationPeer::onWrite() {
 
@@ -297,8 +300,10 @@ int CommunicationPeer::write() const {
                 s_.deque_.end()
         );
 
-    // Not thread-safe. Uncomment only as needed for debugging.
-    // logDeque();
+#ifdef    NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
+    // Not thread-safe. Build only as needed for ad-hoc debugging builds.
+    logDeque();
+#endif // NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
 
     /* FIXME: handle errors!!! */
     return uv_write(&write_req_,

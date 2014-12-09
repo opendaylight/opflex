@@ -594,7 +594,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
             std::vector<iovec> const & iov
     );
 
+#ifdef    NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
+// Not thread-safe. Build only as needed for ad-hoc debugging builds.
     void logDeque() const;
+#endif // NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
 
   protected:
     /* don't leak memory! */
