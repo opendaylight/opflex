@@ -109,6 +109,8 @@ void OpflexClientConnection::close() {
     else if (!closing) {
         pool->connectionClosed(this);
     }
+#else
+    peer->destroy();
 #endif
 }
 
