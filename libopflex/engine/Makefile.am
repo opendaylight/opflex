@@ -12,7 +12,7 @@
 
 SUBDIRS = . test
 
-AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DSIMPLE_RPC \
+AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
         -I$(srcdir)/include -I$(top_srcdir)/include \
 	-I$(top_srcdir)/modb/include \
 	-I$(top_srcdir)/logging/include \
