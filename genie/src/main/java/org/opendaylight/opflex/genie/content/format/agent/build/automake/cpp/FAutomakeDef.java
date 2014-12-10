@@ -140,5 +140,21 @@ public class FAutomakeDef
         out.println(ainIndent + 1,"rm -rf doc/html doc/latex");
         out.println(ainIndent,"clean-local: clean-doc");
         out.println(ainIndent + 1,"rm -f *.rpm");
+        out.println();
+
+        out.println(ainIndent,"CWD=`pwd`");
+        out.println(ainIndent,"RPMFLAGS=--define \"_topdir ${CWD}/rpm\"");
+        out.println(ainIndent,"ARCH=x86_64");
+        out.println(ainIndent,"SOURCE_FILE=${PACKAGE}-${VERSION}.tar.gz");
+        out.println(ainIndent,"RPMDIRS=rpm/BUILD rpm/SOURCES rpm/RPMS rpm/SRPMS");
+        out.println(ainIndent,"rpm: dist rpm/${PACKAGE}.spec");
+        out.println(ainIndent + 1,"mkdir -p ${RPMDIRS}");
+        out.println(ainIndent + 1,"cp ${SOURCE_FILE} rpm/SOURCES/");
+        out.println(ainIndent + 1,"rpmbuild ${RPMFLAGS} -ba rpm/${PACKAGE}.spec");
+        out.println(ainIndent + 1,"cp rpm/RPMS/${ARCH}/*.rpm .");
+        out.println(ainIndent + 1,"cp rpm/SRPMS/*.rpm .");
+        out.println(ainIndent + 1,"rm -rf ${RPMDIRS}");
+
+        
     }
 }
