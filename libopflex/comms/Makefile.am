@@ -84,6 +84,7 @@ endif
 TESTS               =
 TESTS              += test/stable_tests.sh
 noinst_PROGRAMS      = comms_test
+EXTRA_DIST          = test/stable_tests.sh
 
 comms_test_SOURCES  =
 comms_test_SOURCES += test/main.cpp

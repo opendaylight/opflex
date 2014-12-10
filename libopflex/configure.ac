@@ -141,6 +141,7 @@ AC_DEFINE_UNQUOTED(SDK_BVERSION, ["${sdk_bversion}"])
 AC_DEFINE_UNQUOTED(SDK_BVERSION, [${sdk_bversion}], [Build version])
 AC_DEFINE_UNQUOTED(SDK_FULL_VERSION, ["sdk_pversion.sdk_sversion.sdk_iversion-${sdk_bversion}"], 
                                      [Full version])
+AC_SUBST(SDK_BVERSION, [${sdk_bversion}])
 
 dnl ---------------------------------------------------------------
 dnl Output
@@ -161,7 +162,8 @@ AC_CONFIG_FILES([              \
         cwrapper/test/Makefile \
         libopflex.pc           \
         doc/Doxyfile           \
-        doc/Doxyfile-internal
+        doc/Doxyfile-internal  \
+        rpm/libopflex.spec
 ])
 AC_OUTPUT
 

@@ -104,3 +104,16 @@ clean-doc-internal:
 	rm -rf doc/html-internal
 clean-local: clean-doc clean-doc-internal
 	rm -f *.rpm
+
+CWD=`pwd`
+RPMFLAGS=--define "_topdir ${CWD}/rpm"
+ARCH=x86_64
+SOURCE_FILE=${PACKAGE}-${VERSION}.tar.gz
+RPMDIRS=rpm/BUILD rpm/SOURCES rpm/RPMS rpm/SRPMS
+rpm: dist rpm/${PACKAGE}.spec
+	mkdir -p ${RPMDIRS}
+	cp ${SOURCE_FILE} rpm/SOURCES/
+	rpmbuild ${RPMFLAGS} -ba rpm/${PACKAGE}.spec
+	cp rpm/RPMS/${ARCH}/*.rpm .
+	cp rpm/SRPMS/*.rpm .
+	rm -rf ${RPMDIRS}

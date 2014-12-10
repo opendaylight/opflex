@@ -45,3 +45,6 @@ m4/lt*.m4
 .tags
 .tags_sorted_by_file
 .dirstamp
+*.rpm
+*.spec
+*.tar.gz

@@ -1,0 +1,61 @@
+Name: libopflex
+Epoch:   1
+Version: @VERSION@
+Release: @SDK_BVERSION@%{?dist}
+Summary: A framework for developing opflex-based policy agents
+
+Group: Development/Libraries
+License: EPLv1.0
+URL: https://wiki.opendaylight.org/view/OpFlex:Main
+
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
+Source: %{name}-%{version}.tar.gz
+Requires: libuv >= 1.0
+BuildRequires: libuv-devel
+
+%description
+The OpFlex project seeks to provide reference implementations of the
+OpFlex protocol, which is a protocol for implementing a distributed
+control system based on a declarative policy model.
+
+%package devel
+Summary: Development libraries for libopflex
+Group: Development/Libraries
+Requires: %{name} = %{epoch}:%{version}-%{release}
+Requires: pkgconfig
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+
+%description devel
+Development libraries for libopflex
+
+%prep
+%setup -q
+
+%build
+%configure
+make %{?_smp_mflags}
+
+%install
+%make_install
+
+%check
+# make check
+
+%post -p /sbin/ldconfig
+%postun -p /sbin/ldconfig
+
+%files
+%{_libdir}/%{name}.so.*
+
+%files devel
+%{_libdir}/%{name}.so
+%{_libdir}/%{name}.la
+%{_libdir}/%{name}.a
+%{_libdir}/pkgconfig/%{name}.pc
+%{_includedir}/opflex/
+%doc %{_docdir}/libopflex/
+
+%changelog
+* Tue Dec 09 2014 Rob Adams <readams@readams.net> - 1:0.1.0
+- New package file
