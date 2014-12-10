@@ -130,7 +130,7 @@ public enum FileTypeMeta
                        null,
                        "# ",
                        0)),
-    PKG_CONGIG_IN("pkgconfigin",
+    PKG_CONFIG_IN("pkgconfigin",
           ".pc.in",
           new Indenter("pkgconfigin", true, 10, 1, true),
           new BlockFormatDirective(
@@ -145,6 +145,21 @@ public enum FileTypeMeta
                   null,
                   "# ",
                   0)),
+    SPEC_IN("specin",
+            ".spec.in",
+            new Indenter("specin", true, 10, 1, true),
+            new BlockFormatDirective(
+                    "# ",
+                    "# ",
+                    null,
+                    "# ",
+                    0),
+                    new BlockFormatDirective(
+                            "# ",
+                            "# ",
+                            null,
+                            "# ",
+                            0)),
 
     DOXYFILE_IN("doxyfile.in",
                   ".in",

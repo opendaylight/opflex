@@ -53,17 +53,16 @@ public class FLibPcIn
         out.println("#!/bin/sh");
     }
 
-
     public void generate()
     {
-        out.println(FORMAT);
+        String lModuleName = Config.getProjName();
+        out.println(FORMAT.replaceAll("_MODULE_NAME_", lModuleName));
     }
 
     public static final String FORMAT = "prefix=@prefix@\n" + "exec_prefix=@exec_prefix@\n" + "libdir=@libdir@\n"
                                         + "includedir=@includedir@\n" + "\n" + "Name: @PACKAGE@\n"
                                         + "Description: OpFlex Framework Generated Model\n" + "Version: @VERSION@\n"
-                                        + "Libs: -L${libdir} -l@PACKAGE@\n" + "Libs.private: @LIBS@\n"
+                                        + "Libs: -L${libdir} -l_MODULE_NAME_\n" + "Libs.private: @LIBS@\n"
                                         + "Cflags: -I${includedir} @BOOST_CPPFLAGS@\n";
-
 
 }
