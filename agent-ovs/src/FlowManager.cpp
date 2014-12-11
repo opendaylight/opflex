@@ -1229,7 +1229,7 @@ void FlowManager::FlowSyncer::InitiateSync() {
 void FlowManager::FlowSyncer::GotGroups(const GroupEdit::EntryList& groups,
     bool done) {
     BOOST_FOREACH (const GroupEdit::Entry& e, groups) {
-        recvGroups.insert(e->mod->group_id);
+        recvGroups[e->mod->group_id] = e;
     }
     groupsDone = done;
     if (done) {
@@ -1305,33 +1305,42 @@ void FlowManager::FlowSyncer::ReconcileFlows() {
     }
 }
 
+void FlowManager::FlowSyncer::CheckGroupEntry(uint32_t groupId,
+        const Ep2PortMap& epMap, bool prom, GroupEdit& ge) {
+    GroupMap::iterator itr;
+    itr = recvGroups.find(groupId);
+    uint16_t comm = OFPGC11_ADD;
+    GroupEdit::Entry recv;
+    if (itr != recvGroups.end()) {
+        comm = OFPGC11_MODIFY;
+        recv = itr->second;
+    }
+    GroupEdit::Entry e0 =
+        flowManager.CreateGroupMod(comm, groupId, epMap, prom);
+    if (!GroupEdit::GroupEq(e0, recv)) {
+        ge.edits.push_back(e0);
+    }
+    if (itr != recvGroups.end()) {
+        recvGroups.erase(itr);
+    }
+}
+
 void FlowManager::FlowSyncer::ReconcileGroups() {
     GroupEdit ge;
     BOOST_FOREACH (FdMap::value_type& kv, flowManager.fdMap) {
         const URI& fdURI = kv.first;
         Ep2PortMap& epMap = kv.second;
 
-        /* TODO: Should really compare the buckets of the expected
-         * and current entries.
-         */
         uint32_t fdId = flowManager.GetId(FloodDomain::CLASS_ID, fdURI);
-        bool exists = recvGroups.erase(fdId) > 0;
-        uint16_t comm = exists ? OFPGC11_MODIFY : OFPGC11_ADD;
-        GroupEdit::Entry e0 =
-            flowManager.CreateGroupMod(comm, fdId, epMap);
-        ge.edits.push_back(e0);
+        CheckGroupEntry(fdId, epMap, false, ge);
 
         uint32_t promFdId = getPromId(fdId);
-        exists = recvGroups.erase(promFdId) > 0;
-        comm = exists ? OFPGC11_MODIFY : OFPGC11_ADD;
-        GroupEdit::Entry e1 =
-            flowManager.CreateGroupMod(comm, promFdId,  epMap, true);
-        ge.edits.push_back(e1);
+        CheckGroupEntry(promFdId, epMap, true, ge);
     }
     Ep2PortMap tmp;
-    BOOST_FOREACH (uint32_t fdId, recvGroups) {
+    BOOST_FOREACH (const GroupMap::value_type& kv, recvGroups) {
         GroupEdit::Entry e0 =
-            flowManager.CreateGroupMod(OFPGC11_DELETE, fdId, tmp);
+            flowManager.CreateGroupMod(OFPGC11_DELETE, kv.first, tmp);
         ge.edits.push_back(e0);
     }
     bool success = flowManager.executor->Execute(ge);

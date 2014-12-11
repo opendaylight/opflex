@@ -384,10 +384,26 @@ private:
          */
         void ReconcileGroups();
 
+        /**
+         * Check if a group with given ID and endpoints is present
+         * in the received groups, and update the given group-edits if the
+         * group is not found or is different. If a group is found, it is
+         * removed from the set of received groups.
+         *
+         * @param groupId ID of the group to check
+         * @param epMap endpoints in the group to check
+         * @param prom if promiscuous mode endpoints only are to be considered
+         * @param ge Container to append the changes
+         */
+        void CheckGroupEntry(uint32_t groupId,
+                const Ep2PortMap& epMap, bool prom, flow::GroupEdit& ge);
+
         FlowManager& flowManager;
         flow::FlowEntryList recvFlows[FlowManager::NUM_FLOW_TABLES];
         bool tableDone[FlowManager::NUM_FLOW_TABLES];
-        boost::unordered_set<uint32_t> recvGroups;
+
+        typedef boost::unordered_map<uint32_t, flow::GroupEdit::Entry> GroupMap;
+        GroupMap recvGroups;
         bool groupsDone;
 
         bool syncInProgress;

@@ -88,6 +88,17 @@ public:
     typedef boost::shared_ptr<GroupMod>     Entry;
     typedef std::vector<GroupEdit::Entry>   EntryList;
 
+    /**
+     * Check if two groups are the same excluding the group
+     * modification command.
+     *
+     * @param lhs One of the groups to compare
+     * @param rhs The other group to compare
+     * @return true if groups are equal
+     */
+    static bool GroupEq(const GroupEdit::Entry& lhs,
+            const GroupEdit::Entry& rhs);
+
     GroupEdit::EntryList edits;
 };
 

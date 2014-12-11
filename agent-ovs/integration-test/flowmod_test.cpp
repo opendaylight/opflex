@@ -144,6 +144,20 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     flows.clear();
 }
 
+static
+void *addBucket(uint32_t bucketId, GroupEdit::Entry& entry) {
+    ofputil_bucket *bkt = (ofputil_bucket *)malloc(sizeof(ofputil_bucket));
+    bkt->weight = 1;
+    bkt->bucket_id = bucketId;
+    bkt->watch_port = OFPP_ANY;
+    bkt->watch_group = OFPG11_ANY;
+
+    ActionBuilder ab;
+    ab.SetOutputToPort(bucketId);
+    ab.Build(bkt);
+    list_push_back(&entry->mod->buckets, &bkt->list_node);
+}
+
 BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     BOOST_REQUIRE(!conn.Connect(OFP13_VERSION));
     WAIT_FOR(connectDone == true, 5);
@@ -151,9 +165,22 @@ BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     GroupEdit::Entry entryIn1(new GroupEdit::GroupMod());
     entryIn1->mod->command = OFPGC11_ADD;
     entryIn1->mod->group_id = 0;
+    addBucket(10, entryIn1);
+    addBucket(20, entryIn1);
+    addBucket(30, entryIn1);
+
+    GroupEdit::Entry entryIn1_1(new GroupEdit::GroupMod());
+    entryIn1_1->mod->command = OFPGC11_MODIFY;
+    entryIn1_1->mod->group_id = 0;
+    addBucket(10, entryIn1_1);
+    BOOST_CHECK(!GroupEdit::GroupEq(entryIn1, entryIn1_1));
+
     GroupEdit::Entry entryIn2(new GroupEdit::GroupMod());
     entryIn2->mod->command = OFPGC11_ADD;
     entryIn2->mod->group_id = 1;
+    addBucket(15, entryIn2);
+    BOOST_CHECK(!GroupEdit::GroupEq(entryIn1, entryIn2));
+
     GroupEdit gedit;
     gedit.edits.push_back(entryIn1);
     gedit.edits.push_back(entryIn2);
@@ -162,18 +189,26 @@ BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     GroupEdit::EntryList gl;
     rdr.GetGroups(gl);
     BOOST_CHECK(gl.size() == 2);
-    BOOST_CHECK_EQUAL(gl[0]->mod->group_id, entryIn1->mod->group_id);
-    BOOST_CHECK_EQUAL(gl[1]->mod->group_id, entryIn2->mod->group_id);
+    BOOST_CHECK(GroupEdit::GroupEq(gl[0], entryIn1));
+    BOOST_CHECK(GroupEdit::GroupEq(gl[1], entryIn2));
+
+    gedit.edits.clear();
+    gedit.edits.push_back(entryIn1_1);
+    BOOST_CHECK(fexec.Execute(gedit));
+    gl.clear();
+    rdr.GetGroups(gl);
+    BOOST_CHECK(gl.size() == 2);
+    BOOST_CHECK(GroupEdit::GroupEq(gl[0], entryIn1_1));
+    BOOST_CHECK(GroupEdit::GroupEq(gl[1], entryIn2));
 
     gedit.edits.clear();
     entryIn1->mod->command = OFPGC11_DELETE;
     gedit.edits.push_back(entryIn1);
     BOOST_CHECK(fexec.Execute(gedit));
-
     gl.clear();
     rdr.GetGroups(gl);
     BOOST_CHECK(gl.size() == 1);
-    BOOST_CHECK_EQUAL(gl[0]->mod->group_id, entryIn2->mod->group_id);
+    BOOST_CHECK(GroupEdit::GroupEq(gl[0], entryIn2));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -98,6 +98,46 @@ GroupEdit::GroupMod::~GroupMod() {
     mod = NULL;
 }
 
+bool GroupEdit::GroupEq(const GroupEdit::Entry& lhs,
+                        const GroupEdit::Entry& rhs) {
+    if (lhs == rhs) {
+        return true;
+    }
+    if (lhs == NULL || rhs == NULL) {
+        return false;
+    }
+    ofputil_group_mod& lgm = *(lhs->mod);
+    ofputil_group_mod& rgm = *(rhs->mod);
+    if (lgm.group_id == rgm.group_id &&
+        lgm.type == rgm.type) {
+        bool lempty = list_is_empty(&lgm.buckets);
+        bool rempty = list_is_empty(&rgm.buckets);
+        if (lempty && rempty) {
+            return true;
+        }
+        if (lempty || rempty) {
+            return false;
+        }
+        ofputil_bucket *lhead = (ofputil_bucket *)&lgm.buckets;
+        ofputil_bucket *rhead = (ofputil_bucket *)&rgm.buckets;
+        ofputil_bucket *lbkt = ofputil_bucket_list_front(&lgm.buckets);
+        ofputil_bucket *rbkt = ofputil_bucket_list_front(&rgm.buckets);
+        while (lbkt != lhead && rbkt != rhead) {
+            /* Buckets IDs are not compared because they are assigned by the
+             * switch prior to OpenFlow 1.5
+             */
+            if (!ofpacts_equal(lbkt->ofpacts, lbkt->ofpacts_len,
+                               rbkt->ofpacts, rbkt->ofpacts_len)) {
+                return false;
+            }
+            lbkt = ofputil_bucket_list_front(&lbkt->list_node);
+            rbkt = ofputil_bucket_list_front(&rbkt->list_node);
+        }
+        return (lbkt == lhead && rbkt == rhead);
+    }
+    return false;
+}
+
 ostream & operator<<(ostream& os, const GroupEdit::Entry& ge) {
     static const char *groupTypeStr[] = {"all", "select", "indirect",
         "ff", "unknown" };
