@@ -28,7 +28,8 @@ std::ostream& operator<< (std::ostream& os, Peer const * p) {
 #ifndef NDEBUG
         << p->peerType()
 #endif
-        << "[" << p->uvRefCnt_ << "]";
+        << "[" << p->uvRefCnt_ << "]@"
+        << reinterpret_cast<void const *>(&p->handle_);
 }
 
 std::ostream& operator<< (std::ostream& os, Peer::LoopData const * lD) {
@@ -311,6 +312,90 @@ int CommunicationPeer::write() const {
             (uv_buf_t*)&iov[0],
             iov.size(),
             on_write);
+
+}
+
+
+void internal::Peer::LoopData::walkAndCloseHandlesCb(
+        uv_handle_t* h,
+        void* opaqueCloseHandle) {
+
+    CloseHandle const * closeHandle = static_cast<  CloseHandle const *  >(
+            opaqueCloseHandle
+        );
+
+    char const * type;
+
+    switch (h->type) {
+#define X(uc, lc)                               \
+        case UV_##uc: type = #lc;               \
+            break;
+      UV_HANDLE_TYPE_MAP(X)
+#undef X
+      default: type = "<unknown>";
+    }
+
+    if (uv_is_closing(h) ||
+            reinterpret_cast<uv_handle_t const *>(&closeHandle->loopData->prepare_)
+            ==
+            const_cast<uv_handle_t const *>(h)) {
+        return;
+    }
+
+    LOG(INFO)
+        << closeHandle->loopData
+        << " issuing uv_close() for handle of type "
+        << type
+        << " @"
+        << reinterpret_cast<void const *>(h);
+
+    uv_close(h, closeHandle->closeCb);
+
+}
+
+
+void internal::Peer::LoopData::walkAndCountHandlesCb(
+        uv_handle_t* h,
+        void* opaqueCountHandle) {
+
+    CountHandle * countHandle = static_cast<  CountHandle *  >(
+            opaqueCountHandle
+        );
+
+    if (
+            reinterpret_cast<uv_handle_t const *>(&countHandle->loopData->prepare_)
+            ==
+            const_cast<uv_handle_t const *>(h)) {
+        return;
+    }
+
+    ++countHandle->counter;
+
+    char const * type;
+
+    switch (h->type) {
+#define X(uc, lc)                               \
+        case UV_##uc: type = #lc;               \
+            break;
+      UV_HANDLE_TYPE_MAP(X)
+#undef X
+      default: type = "<unknown>";
+    }
+
+    LOG(INFO)
+        << countHandle->loopData
+        << " still waiting on pending handle of type "
+        << type
+        << " @"
+        << reinterpret_cast<void const *>(h)
+        << " which is "
+        << (uv_is_closing(h) ? "" : "not ")
+        << "closing"
+        ;
+
+    /** we assert() here, but everything will be cleaned up in production code */
+    assert(uv_is_closing(h));
+
 
 }
 
