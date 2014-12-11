@@ -41,6 +41,27 @@ using namespace yajr::comms::internal;
 
 void internal::Peer::LoopData::onPrepareLoop() {
 
+    if (destroying_ && !refCount_) {
+
+        CountHandle countHandle = { this, 0 };
+
+        uv_walk(prepare_.loop, walkAndCountHandlesCb, &countHandle);
+
+        if (countHandle.counter) {
+            LOG(INFO) << "Still waiting on " << countHandle.counter << " handles";
+
+            return;
+        }
+
+        LOG(INFO) << this << " Stopping and closing loop watcher";
+        uv_prepare_stop(&prepare_);
+        uv_close((uv_handle_t*)&prepare_, &fini);
+
+        assert(prepare_.data == this);
+
+        return;
+    }
+
     uint64_t now = uv_now(prepare_.loop);
 
     peers[TO_RESOLVE]
@@ -50,7 +71,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
         .clear_and_dispose(RetryPeer());
 
     if (now - lastRun_ < 750) {
-        return;
+        goto prepared;
     }
 
     if (peers[RETRY_TO_CONNECT].begin() !=
@@ -75,6 +96,8 @@ void internal::Peer::LoopData::onPrepareLoop() {
 
     lastRun_ = now;
 
+prepared:
+    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG>, this);
 }
 
 void internal::Peer::LoopData::onPrepareLoop(uv_prepare_t * h) {
@@ -87,18 +110,16 @@ void internal::Peer::LoopData::onPrepareLoop(uv_prepare_t * h) {
 void internal::Peer::LoopData::fini(uv_handle_t * h) {
     LOG(INFO);
 
-    static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data)->down();
+    delete static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data);
 }
 
 void internal::Peer::LoopData::destroy() {
     LOG(INFO);
 
-    uv_prepare_stop(&prepare_);
-    uv_close((uv_handle_t*)&prepare_, &fini);
-
     assert(prepare_.data == this);
 
     destroying_ = 1;
+    down();
 
     for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
         peers[Peer::LoopData::PeerState(i)]

@@ -85,6 +85,16 @@ class Peer : public SafeListBaseHook {
           TOTAL_STATES
         } PeerState;
 
+        struct CloseHandle {
+            LoopData const * loopData;
+            uv_close_cb      closeCb;
+        };
+
+        struct CountHandle {
+            LoopData const * loopData;
+            size_t           counter;
+        };
+
         explicit LoopData(uv_loop_t * loop)
         :
             lastRun_(uv_now(loop)),
@@ -137,6 +147,7 @@ class Peer : public SafeListBaseHook {
         }
 
         void down() {
+            LOG(DEBUG) << " Down() on Loop";
             LOG(DEBUG) << this
                 << " LoopRefCnt: " << refCount_ << " -> " << refCount_ - 1;
 
@@ -145,19 +156,29 @@ class Peer : public SafeListBaseHook {
             --refCount_;
 
             if (destroying_ && !refCount_) {
-                LOG(INFO) << this << " stopping uv_loop";
-                uv_stop(prepare_.loop);
-                LOG(INFO) << this << " deleting loop data";
-                delete this;
+                LOG(INFO) << this << " walking uv_loop before stopping it";
+                uv_walk(prepare_.loop, walkAndDumpHandlesCb< ERROR >, this);
+
+                CloseHandle closeHandle = { this, NULL };
+
+                uv_walk(prepare_.loop, walkAndCloseHandlesCb, &closeHandle);
+
             }
         }
 
         void ensureResolvePending();
 
+        template < ::opflex::logging::OFLogHandler::Level LOGGING_LEVEL >
+        static void walkAndDumpHandlesCb(uv_handle_t* handle, void* _) __attribute__((no_instrument_function));
+        static void walkAndCloseHandlesCb(uv_handle_t* handle, void* closeHandles) __attribute__((no_instrument_function));
+        static void walkAndCountHandlesCb(uv_handle_t* handle, void* countHandles) __attribute__((no_instrument_function));
+
       private:
         friend std::ostream& operator<< (std::ostream&, Peer::LoopData const *);
 
         ~LoopData() {
+            LOG(DEBUG) << "Delete on Loop";
+            LOG(DEBUG) << this << " is being deleted";
 #ifdef COMMS_DEBUG_OBJECT_COUNT
             --counter;
 #endif
@@ -826,6 +847,33 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
     ::yajr::Listener::AcceptCb const acceptHandler_;
     void * const data_;
 };
+
+template < ::opflex::logging::OFLogHandler::Level LOGGING_LEVEL >
+void internal::Peer::LoopData::walkAndDumpHandlesCb(uv_handle_t* h, void* loopData) {
+
+    char const * type;
+
+    switch (h->type) {
+#define X(uc, lc)                               \
+        case UV_##uc: type = #lc;               \
+            break;
+      UV_HANDLE_TYPE_MAP(X)
+#undef X
+      default: type = "<unknown>";
+    }
+
+    LOG(LOGGING_LEVEL)
+        << static_cast<Peer::LoopData const *>(loopData)
+        << " pending handle of type "
+        << type
+        << " @"
+        << reinterpret_cast<void const *>(h)
+        << " which is "
+        << (uv_is_closing(h) ? "" : "not ")
+        << "closing"
+        ;
+
+}
 
 }}}
 
