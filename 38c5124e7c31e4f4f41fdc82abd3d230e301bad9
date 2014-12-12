@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_dc0f69e0",
+        "filename": "agent-ovs/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2014-12-12T21:12:48Z",
+      "side": 1,
+      "message": "This should be in a subdirectory of var/run/opflex-agent-ovs rather than directly in it.  This was why I moved the endpoint directory.  Also, it should probably not be called \"agentlocalstatedir\" since localstatedir already has a specific defined meaning of \"/var\"",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 140,
+        "endChar": 18
+      },
+      "revId": "38c5124e7c31e4f4f41fdc82abd3d230e301bad9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_3c0bedd7",
+        "filename": "agent-ovs/opflex-agent-ovs.conf",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2014-12-12T21:12:48Z",
+      "side": 1,
+      "message": "This file was not supposed to be checked in",
+      "revId": "38c5124e7c31e4f4f41fdc82abd3d230e301bad9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
