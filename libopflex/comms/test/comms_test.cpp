@@ -443,15 +443,27 @@ void DoNothingOnConnect (
         int error) {
     switch(stateChange) {
         case ::yajr::StateChange::CONNECT:
+            LOG(DEBUG)
+                << "got a CONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "chill out, we just had a connection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::DISCONNECT:
+            LOG(DEBUG)
+                << "got a DISCONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::FAILURE:
+            LOG(DEBUG)
+                << "got a FAILURE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::DELETE:
+            LOG(DEBUG)
+                << "got a DELETE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         default:
             assert(0);
@@ -467,16 +479,28 @@ void StartPingingOnConnect(
         int error) {
     switch(stateChange) {
         case ::yajr::StateChange::CONNECT:
+            LOG(DEBUG)
+                << "got a CONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "starting keep-alive, as we just had a connection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             p->startKeepAlive();
             break;
         case ::yajr::StateChange::DISCONNECT:
+            LOG(DEBUG)
+                << "got a DISCONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::FAILURE:
+            LOG(DEBUG)
+                << "got a FAILURE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::DELETE:
+            LOG(DEBUG)
+                << "got a DELETE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         default:
             assert(0);
@@ -742,6 +766,9 @@ void DisconnectOnCallback (
         int error) {
     switch(stateChange) {
         case ::yajr::StateChange::CONNECT:
+            LOG(DEBUG)
+                << "got a CONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "we just had a connection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -750,6 +777,9 @@ void DisconnectOnCallback (
             p->disconnect();
             break;
         case ::yajr::StateChange::DISCONNECT:
+            LOG(DEBUG)
+                << "got a DISCONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "we had a disconnection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -758,6 +788,9 @@ void DisconnectOnCallback (
             p->disconnect();
             break;
         case ::yajr::StateChange::FAILURE:
+            LOG(DEBUG)
+                << "got a FAILURE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "we failed to have a connection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -766,6 +799,9 @@ void DisconnectOnCallback (
             p->disconnect();
             break;
         case ::yajr::StateChange::DELETE:
+            LOG(DEBUG)
+                << "got a DELETE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         default:
             assert(0);
@@ -781,6 +817,9 @@ void DestroyOnCallback (
         int error) {
     switch(stateChange) {
         case ::yajr::StateChange::CONNECT:
+            LOG(DEBUG)
+                << "got a CONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "we just had a connection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -789,8 +828,14 @@ void DestroyOnCallback (
             p->destroy();
             break;
         case ::yajr::StateChange::DISCONNECT:
+            LOG(DEBUG)
+                << "got a DISCONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::FAILURE:
+            LOG(DEBUG)
+                << "got a FAILURE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "we failed to have a connection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -799,6 +844,9 @@ void DestroyOnCallback (
             p->destroy();
             break;
         case ::yajr::StateChange::DELETE:
+            LOG(DEBUG)
+                << "got a DELETE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         default:
             assert(0);
@@ -814,8 +862,14 @@ void DestroyOnDisconnect (
         int error) {
     switch(stateChange) {
         case ::yajr::StateChange::CONNECT:
+            LOG(DEBUG)
+                << "got a CONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::DISCONNECT:
+            LOG(DEBUG)
+                << "got a DISCONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "we had a disconnection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -824,6 +878,9 @@ void DestroyOnDisconnect (
             p->destroy();
             break;
         case ::yajr::StateChange::FAILURE:
+            LOG(DEBUG)
+                << "got a FAILURE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             LOG(INFO)
                 << "we failed to have a connection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -831,6 +888,9 @@ void DestroyOnDisconnect (
             ;
             break;
         case ::yajr::StateChange::DELETE:
+            LOG(DEBUG)
+                << "got a DELETE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         default:
             assert(0);
