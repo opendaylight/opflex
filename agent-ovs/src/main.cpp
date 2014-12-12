@@ -86,8 +86,10 @@ int main(int argc, char** argv) {
         
         using boost::property_tree::ptree;
         ptree properties;
-        LOG(INFO) << "Reading configuration from " << vm["config"].as<string>();
-        read_json(vm["config"].as<string>(), properties);
+
+        string configFile = vm["config"].as<string>();
+        LOG(INFO) << "Reading configuration from " << configFile;
+        read_json(configFile, properties);
         agent.setProperties(properties);
         
         agent.start();

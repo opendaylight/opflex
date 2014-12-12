@@ -1,3 +1,13 @@
+#
+# Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Eclipse Public License v1.0 which accompanies this distribution,
+# and is available at http://www.eclipse.org/legal/epl-v10.html
+#
+
+%global _hardened_build 1
+
 Name: libopflex
 Epoch:   1
 Version: @VERSION@
@@ -12,6 +22,8 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-root
 Source: %{name}-%{version}.tar.gz
 Requires: libuv >= 1.0
 BuildRequires: libuv-devel
+BuildRequires: boost-devel
+BuildRequires: boost-test
 
 %description
 The OpFlex project seeks to provide reference implementations of the
@@ -25,6 +37,7 @@ Requires: %{name} = %{epoch}:%{version}-%{release}
 Requires: pkgconfig
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
+Provides: libopflex-static = %{version}-%{release}
 
 %description devel
 Development libraries for libopflex
@@ -33,7 +46,7 @@ Development libraries for libopflex
 %setup -q
 
 %build
-%configure
+%configure --disable-assert
 make %{?_smp_mflags}
 
 %install

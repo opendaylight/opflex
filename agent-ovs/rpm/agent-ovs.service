@@ -1,0 +1,10 @@
+[Unit]
+Description=Opflex OVS Agent
+After=openvswitch.service
+Requires=openvswitch.service
+
+[Service]
+ExecStart=/usr/bin/agent_ovs
+
+[Install]
+WantedBy=multi-user.target

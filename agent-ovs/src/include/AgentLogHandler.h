@@ -1,7 +1,7 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file BoostLogHandler.h
- * @brief Interface definition file for BoostLogHandler
+ * @file AgentLogHandler.h
+ * @brief Interface definition file for AgentLogHandler
  */
 /*
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
@@ -12,8 +12,8 @@
  */
 
 #pragma once
-#ifndef OVSAGENT_BOOSTLOGHANDLER_H
-#define OVSAGENT_BOOSTLOGHANDLER_H
+#ifndef OVSAGENT_AGENTLOGHANDLER_H
+#define OVSAGENT_AGENTLOGHANDLER_H
 
 #include <opflex/logging/OFLogHandler.h>
 
@@ -22,7 +22,7 @@ namespace ovsagent {
 /**
  * An OFLogHandler that logs to google log library
  */
-class BoostLogHandler : public opflex::logging::OFLogHandler {
+class AgentLogHandler : public opflex::logging::OFLogHandler {
 public:
     /**
      * Allocate a log handler that will log any messages with equal or
@@ -30,8 +30,8 @@ public:
      * 
      * @param logLevel the minimum log level
      */
-    BoostLogHandler(opflex::logging::OFLogHandler::Level logLevel);
-    virtual ~BoostLogHandler();
+    AgentLogHandler(opflex::logging::OFLogHandler::Level logLevel);
+    virtual ~AgentLogHandler();
 
     /* see OFLogHandler */
     virtual void handleMessage(const std::string& file,
@@ -45,4 +45,4 @@ public:
 
 } /* namespace ovsagent */
 
-#endif /* OVSAGENT_BOOSTLOGHANDLER_H */
+#endif /* OVSAGENT_AGENTLOGHANDLER_H */

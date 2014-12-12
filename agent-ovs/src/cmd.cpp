@@ -13,17 +13,24 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 
+#include <opflex/logging/OFLogHandler.h>
+
+#include "logging.h"
+
+#ifdef USE_BOOST_LOG
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/expressions/formatters/date_time.hpp>
 #include <boost/log/support/date_time.hpp>
 #include <boost/log/utility/setup/console.hpp>
+#endif
 
 #include "cmd.h"
-#include "BoostLogHandler.h"
-#include "logging.h"
+#include "AgentLogHandler.h"
 
+#ifdef USE_BOOST_LOG
 namespace logging = boost::log;
 namespace sinks = boost::log::sinks;
 namespace src = boost::log::sources;
@@ -31,11 +38,13 @@ namespace expr = boost::log::expressions;
 namespace attrs = boost::log::attributes;
 namespace keywords = boost::log::keywords;
 using boost::log::trivial::severity_level;
+#endif
+
 using opflex::logging::OFLogHandler;
 
 namespace ovsagent {
 
-BoostLogHandler logHandler(OFLogHandler::NO_LOGGING);
+AgentLogHandler logHandler(OFLogHandler::NO_LOGGING);
 
 void daemonize()
 {
@@ -69,28 +78,56 @@ void daemonize()
 
 #define LOG_FORMAT "[%TimeStamp%] [%Severity%] %Message%"
 
+#ifndef USE_BOOST_LOG
+int logLevel = INFO;
+#endif
+
 void initLogging(const std::string& levelstr,
                  const std::string& log_file) {
     OFLogHandler::Level level = OFLogHandler::INFO;
+
+#ifdef USE_BOOST_LOG
     severity_level blevel = INFO;
+#endif
 
     if (levelstr == "debug") {
         level = OFLogHandler::DEBUG;
+#ifdef USE_BOOST_LOG
         blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
     } else if (levelstr == "info") {
         level = OFLogHandler::INFO;
+#ifdef USE_BOOST_LOG
         blevel = boost::log::trivial::info;
+#else
+        logLevel = INFO;
+#endif
     } else if (levelstr == "warning") {
         level = OFLogHandler::WARNING;
+#ifdef USE_BOOST_LOG
         blevel = boost::log::trivial::warning;
+#else
+        logLevel = WARNING;
+#endif
     } else if (levelstr == "error") {
         level = OFLogHandler::ERROR;
+#ifdef USE_BOOST_LOG
         blevel = boost::log::trivial::error;
+#else
+        logLevel = ERROR;
+#endif
     } else if (levelstr == "fatal") {
         level = OFLogHandler::FATAL;
+#ifdef USE_BOOST_LOG
         blevel = boost::log::trivial::fatal;
+#else
+        logLevel = FATAL;
+#endif
     }
 
+#ifdef USE_BOOST_LOG
     logging::add_common_attributes();
     logging::core::get()->set_filter (logging::trivial::severity >= blevel);
     logging::register_simple_formatter_factory< severity_level, char >("Severity");
@@ -103,6 +140,7 @@ void initLogging(const std::string& levelstr,
         logging::add_console_log(std::cout,
                                  keywords::format = LOG_FORMAT);
     }
+#endif
 
     logHandler.setLevel(level);
     OFLogHandler::registerHandler(logHandler);

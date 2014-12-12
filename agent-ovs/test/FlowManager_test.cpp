@@ -51,7 +51,6 @@ public:
         BOOST_FOREACH(const FlowEdit::Entry& ed, flowEdits.edits) {
             ofp_print_flow_stats(&strBuf, ed.second->entry);
             string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
-            const char *mod = modStr[ed.first];
 
             BOOST_CHECK_MESSAGE(!mods.empty(), "\nexp:\ngot: " << ed);
             if (!mods.empty()) {
@@ -156,7 +155,7 @@ public:
 
     bool getFlows(uint8_t tableId, const FlowReader::FlowCb& cb) {
         FlowEntryList res;
-        for (int i = 0; i < flows.size(); ++i) {
+        for (size_t i = 0; i < flows.size(); ++i) {
             if (flows[i]->entry->table_id == tableId) {
                 res.push_back(flows[i]);
             }
@@ -316,11 +315,11 @@ BOOST_FIXTURE_TEST_CASE(localEp, FlowManagerFixture) {
     portmapper.ports[ep0->getInterfaceName().get()] = 180;
     exec.Clear();
     exec.Expect(FlowEdit::add, fe_ep0_port_1);
-    for (int i = 0; i < fe_ep0_port_1.size(); ++i)  {
+    for (size_t i = 0; i < fe_ep0_port_1.size(); ++i)  {
         exec.Expect(FlowEdit::del, fe_ep0[i]);
     }
     exec.Expect(FlowEdit::add, fe_ep0_port_2);
-    for (int i = fe_ep0_port_1.size();
+    for (size_t i = fe_ep0_port_1.size();
          i < fe_ep0_port_1.size() + fe_ep0_port_2.size();
          ++i) {
         exec.Expect(FlowEdit::del, fe_ep0[i]);
@@ -650,9 +649,9 @@ private:
         if (cntr == 1) {
             cntr = 2;
         }
-        int pos2 = 0;
+        size_t pos2 = 0;
         do {
-            int pos1 = entry.find(pfx, pos2);
+            size_t pos1 = entry.find(pfx, pos2);
             if (pos1 == string::npos) {
                 entry.append(sep).append(pfx).append(val).append(sfx);
                 return;
@@ -756,19 +755,19 @@ FlowManagerFixture::createEntriesForObjects() {
     /* ep0 when moved to new group epg1 */
     fe_ep0_eg1.push_back(Bldr(fe_ep0[5]).load(SEPG, epg1_vnid)
             .load(BD, 0).done());
-    for (int i = 7; i < fe_ep0.size(); ++i) {
+    for (size_t i = 7; i < fe_ep0.size(); ++i) {
         fe_ep0_eg1.push_back(Bldr(fe_ep0[i]).load(DEPG, epg1_vnid).done());
     }
 
     /* ep0 when moved back to old group epg0 */
     fe_ep0_eg0_1.push_back(fe_ep0[5]);
-    for (int i = 7; i < fe_ep0.size(); ++i) {
+    for (size_t i = 7; i < fe_ep0.size(); ++i) {
         fe_ep0_eg0_2.push_back(fe_ep0[i]);
     }
 
     /* ep0 on new port */
     uint32_t ep0_port_new = 180;
-    int idx = 0;
+    size_t idx = 0;
     for (; idx < 5; ++idx) {
         fe_ep0_port_1.push_back(Bldr(fe_ep0[idx]).in(ep0_port_new).done());
     }

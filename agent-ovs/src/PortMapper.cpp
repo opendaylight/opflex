@@ -74,6 +74,9 @@ PortMapper::Handle(SwitchConnection *conn, ofptype msgType, ofpbuf *msg) {
     case OFPTYPE_PORT_STATUS:
         HandlePortStatus(msg);
         break;
+    default:
+        LOG(ERROR) << "Unexpected message of type " << msgType;
+        break;
     }
 }
 

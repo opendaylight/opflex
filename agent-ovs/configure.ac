@@ -33,6 +33,20 @@ m4_include([m4/ax_boost_log.m4])
 m4_include([m4/ax_boost_log_setup.m4])
 m4_include([m4/ax_boost_asio.m4])
 
+dnl ---------------------------------------------------------------
+dnl Configure options
+
+dnl Modify the release/build version
+AC_ARG_WITH(buildversion,
+            AC_HELP_STRING([--with-buildversion], 
+                           [Version number of build]),
+            [bversion=${withval}],
+            [bversion='private'])
+AC_SUBST(BVERSION, [${bversion}])
+
+dnl allow to create final builds with assert()s disabled
+AC_HEADER_ASSERT
+
 # ---------------------------------------------------------------
 # Environment introspection
 
@@ -79,15 +93,12 @@ AX_BOOST_FILESYSTEM
 if test "x$ax_cv_boost_filesystem" != xyes; then
    AC_MSG_ERROR([Boost::Filesystem library is required])
 fi
-AX_BOOST_LOG
-AX_BOOST_LOG_SETUP
-if test "x$ax_cv_boost_log" != xyes; then
-   AC_MSG_ERROR([Boost::Log library is required])
-fi
 AX_BOOST_ASIO
 if test "x$ax_cv_boost_asio" != xyes; then
    AC_MSG_ERROR([Boost::ASIO library is required])
 fi
+AX_BOOST_LOG
+AX_BOOST_LOG_SETUP
 
 PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])
@@ -130,7 +141,8 @@ fi
 
 AC_CONFIG_FILES([\
 	Makefile \
-	doc/Doxyfile])
+	doc/Doxyfile \
+	rpm/agent-ovs.spec])
 AC_OUTPUT
 
 AC_MSG_NOTICE([
