@@ -96,6 +96,8 @@ public:
      */
     boost::asio::io_service& getAgentIOService() { return agent_io; }
 
+    const std::string& getRuntimeStatePath() { return runtimeStatePath; }
+
     /**
      * IO Service polling function
      */
@@ -113,6 +115,8 @@ private:
 
     typedef std::pair<std::string, int> host_t;
     std::set<host_t> opflexPeers;
+
+    std::string runtimeStatePath;
 
     /**
      * Thread for asynchronous tasks

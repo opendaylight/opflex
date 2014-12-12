@@ -22,6 +22,7 @@
 #include "PortMapper.h"
 #include "FlowReader.h"
 #include "FlowExecutor.h"
+#include "IdGenerator.h"
 
 namespace opflex {
 namespace enforcer {
@@ -312,19 +313,8 @@ private:
 
     ovsagent::WorkQueue workQ;
 
-    /**
-     * Helper class to assign unique numeric IDs to some object-types.
-     */
-    class IdMap {
-    public:
-        IdMap() : lastUsedId(0) {}
-        uint32_t FindOrGenerate(const opflex::modb::URI& uri);
-    private:
-        boost::unordered_map<opflex::modb::URI, uint32_t> ids;
-        unsigned long lastUsedId;
-    };
-    IdMap routingDomainIds, bridgeDomainIds, floodDomainIds;
-    IdMap contractIds;
+    const char * GetIdNamespace(opflex::modb::class_id_t cid);
+    ovsagent::IdGenerator idGen;
 
     bool isSyncing;
 
