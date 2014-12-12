@@ -145,7 +145,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
 }
 
 static
-void *addBucket(uint32_t bucketId, GroupEdit::Entry& entry) {
+void addBucket(uint32_t bucketId, GroupEdit::Entry& entry) {
     ofputil_bucket *bkt = (ofputil_bucket *)malloc(sizeof(ofputil_bucket));
     bkt->weight = 1;
     bkt->bucket_id = bucketId;

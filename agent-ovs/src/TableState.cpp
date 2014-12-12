@@ -61,7 +61,7 @@ ostream & operator<<(ostream& os, const FlowEntry& fe) {
 }
 
 ostream& operator<<(ostream& os, const FlowEntryList& el) {
-    for (int i = 0; i < el.size(); ++i) {
+    for (size_t i = 0; i < el.size(); ++i) {
         os << endl << *(el[i]);
     }
     return os;
@@ -77,6 +77,7 @@ ostream& operator<<(ostream& os, const FlowEdit& fe) {
     BOOST_FOREACH(const FlowEdit::Entry& e, fe.edits) {
         os << endl << e;
     }
+    return os;
 }
 
 /** GroupEdit **/
@@ -171,11 +172,11 @@ void TableState::CalculateAddMod(const FlowEntryList& oldEntries,
                                  FlowEdit& diffs) {
     assert(oldEntries.size() == visited.size());
 
-    for(int j = 0; j < newEntries.size(); ++j) {
+    for(size_t j = 0; j < newEntries.size(); ++j) {
         const FlowEntryPtr& newFe = newEntries[j];
         bool found = false;
 
-        for (int i = 0; i < visited.size(); ++i) {
+        for (size_t i = 0; i < visited.size(); ++i) {
             const FlowEntryPtr& currFe = oldEntries[i];
             if (currFe->MatchEq(newFe.get())) {
                 visited[i] = true;
@@ -197,7 +198,7 @@ void TableState::CalculateDel(const FlowEntryList& oldEntries,
                               std::vector<bool>& visited,
                               FlowEdit& diffs) {
     assert(oldEntries.size() == visited.size());
-    for (int i = 0; i < visited.size(); ++i) {
+    for (size_t i = 0; i < visited.size(); ++i) {
         if (visited[i] == false) {
             diffs.edits.push_back(
                     FlowEdit::Entry(FlowEdit::del, oldEntries[i]));

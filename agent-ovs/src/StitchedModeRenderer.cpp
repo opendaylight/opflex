@@ -20,7 +20,7 @@ using boost::property_tree::ptree;
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_), flowManager(agent_), connection(NULL),
       statsManager(&agent_, portMapper), tunnelEpManager(&agent_),
-      started(false), virtualRouter(true) {
+      virtualRouter(true), started(false) {
     flowManager.SetFlowReader(&flowReader);
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);

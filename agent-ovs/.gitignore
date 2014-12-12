@@ -51,3 +51,6 @@ doc/latex
 agent_ovs
 agent_test
 mock_server
+*.rpm
+*.spec
+*.tar.gz

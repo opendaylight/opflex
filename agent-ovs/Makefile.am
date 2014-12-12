@@ -42,7 +42,7 @@ libagent_ovs_la_LIBADD = \
 	$(libofproto_LIBS)
 
 libagent_ovs_la_SOURCES = \
-	src/include/BoostLogHandler.h \
+	src/include/AgentLogHandler.h \
 	src/include/PolicyListener.h \
 	src/include/PolicyManager.h \
 	src/include/Endpoint.h \
@@ -63,9 +63,10 @@ libagent_ovs_la_SOURCES = \
 	src/include/PortMapper.h \
 	src/include/StatsManager.h \
 	src/include/Agent.h \
-	src/include/cmd.h \
 	src/include/WorkQueue.h \
-	src/BoostLogHandler.cpp \
+	src/include/cmd.h \
+	src/include/logging.h \
+	src/AgentLogHandler.cpp \
 	src/PolicyManager.cpp \
 	src/Endpoint.cpp \
 	src/EndpointManager.cpp \
@@ -133,7 +134,7 @@ mock_server_LDADD = \
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
 
-defwatchdir=${localstatedir}/run/opflex-agent-ovs
+defwatchdir=${localstatedir}/run/opflex-agent-ovs/endpoints/
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	sed -e "s|FILESYSTEM_WATCH_DIR|${defwatchdir}|" \
 	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
@@ -170,3 +171,18 @@ clean-doc:
 	rm -rf doc/html doc/latex
 clean-local: clean-doc
 	rm -f *.rpm
+
+EXTRA_DIST=rpm/agent-ovs.service opflex-agent-ovs.conf.in
+
+CWD=`pwd`
+RPMFLAGS=--define "_topdir ${CWD}/rpm"
+ARCH=x86_64
+SOURCE_FILE=${PACKAGE}-${VERSION}.tar.gz
+RPMDIRS=rpm/BUILD rpm/SOURCES rpm/RPMS rpm/SRPMS
+rpm: dist rpm/${PACKAGE}.spec
+	mkdir -p ${RPMDIRS}
+	cp ${SOURCE_FILE} rpm/SOURCES/
+	rpmbuild ${RPMFLAGS} -ba rpm/${PACKAGE}.spec
+	cp rpm/RPMS/${ARCH}/*.rpm .
+	cp rpm/SRPMS/*.rpm .
+	rm -rf ${RPMDIRS}

@@ -70,10 +70,10 @@ public:
         }
     }
 
-    ofpbuf *MakeReplyMsg(int startIdx, int endIdx, bool more) {
+    ofpbuf *MakeReplyMsg(size_t startIdx, size_t endIdx, bool more) {
         ::list replies;
         ofpmp_init(&replies, (ofp_header *)ofpbuf_data(conn.lastSentMsg));
-        for (int i = startIdx; i < endIdx && i < ports.size(); ++i) {
+        for (size_t i = startIdx; i < endIdx && i < ports.size(); ++i) {
             ofputil_append_port_desc_stats_reply(&ports[i], &replies);
         }
         assert(list_size(&replies) == 1);
@@ -93,6 +93,7 @@ public:
             }
             return reply;
         }
+        return NULL;
     }
 
     ofpbuf *MakePortStatusMsg(int portIdx, ofp_port_reason reas) {
