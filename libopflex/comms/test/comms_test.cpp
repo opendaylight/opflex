@@ -525,7 +525,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv4, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( FLAKY_test_ipv6, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv6, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -685,7 +685,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_listener_late, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( FLAKY_test_destroy_client_early, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_early, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -899,7 +899,7 @@ void DestroyOnDisconnect (
 
 ::yajr::Peer::StateChangeCb destroyOnDisconnect = DestroyOnDisconnect;
 
-BOOST_FIXTURE_TEST_CASE( BROKEN_test_destroy_client_before_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_before_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
