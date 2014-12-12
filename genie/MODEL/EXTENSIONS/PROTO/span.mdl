@@ -1,6 +1,120 @@
-# TODO: DEFINE!
-# span:VDestGrpDef
-# span:VDestDef (pointer to EPG)
-# span:VSrcGrpDef (adminState)
-# span:VSrcDef (pointer to EPG)
-# span:CEpDef (MAC)
+module[span]
+{
+    type[ErspanVersion; super=scalar/Enum8]
+    {
+        const[name=v1; value=1]
+        const[name=v2; value=2]
+    }
+
+    type[ErspanDestMode; super=scalar/Enum8]
+    {
+        const[name=visible; value=1]
+        const[name=notVisible; value=2]
+    }
+
+    type[Direction; super=scalar/Enum8]
+    {
+        const[name=in; value=1]
+        const[name=out; value=2]
+        const[name=both; value=3]
+    }
+
+    class[Grp;
+          super=platform/ConfigComponent;
+          abstract]
+
+    class[SrcGrp;
+          super=span/Grp;
+          concrete]
+    {
+        member[state; type=platform/AdminState]
+        member[label; type=scalar/UInt32]
+    }
+
+    class[DstGrp;
+          super=span/Grp;
+          concrete]
+
+    class[LocalEp;
+          super=platform/ConfigComponent;
+          concrete]
+    {
+        member[nic; type=ascii/Name]
+        dependency[ep;
+                   cardinality=single;
+                   ]
+        {
+            to[class=epr/ReportedNetworkEp;
+                cardinality=many;
+                ]
+        }
+    }
+
+    class[Member;
+          super=platform/ConfigComponent;
+          abstract]
+    {
+        dependency[ref;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+
+            to[class=span/LocalEp;
+                cardinality=many;
+                ]
+        }
+
+        contained
+        {
+            parent[class=span/Grp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=mem;
+                          member=name]
+            }
+        }
+    }
+
+    class[SrcMember;
+          super=span/Member;
+          concrete]
+    {
+        member[dir; type=span/Direction]
+    }
+
+    class[DstMember;
+          super=span/Member;
+          concrete]
+
+    class[DstSummary;
+          concrete]
+    {
+        member[dest; type=address/IP]
+        member[srcPrefix; type=address/IP]
+        member[version; type=span/ErspanVersion]
+        member[flowId; type=scalar/UInt16]
+        member[ttl; type=scalar/UInt8]
+        member[vrfName; type=ascii/Name]
+        member[mtu; type=l2/Mtu]
+        member[dscp; type=scalar/UInt8]
+        member[mode; type=span/ErspanDestMode]
+
+        contained
+        {
+            parent[class=span/DstMember]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=summary]
+            }
+        }
+    }
+}
