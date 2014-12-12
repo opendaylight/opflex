@@ -315,7 +315,7 @@ SwitchConnection::FireOnConnectListeners() {
         b2 = ofpraw_alloc(OFPRAW_NXT_SET_PACKET_IN_FORMAT,
                           GetProtocolVersion(), sizeof *pif);
         pif = (nx_set_packet_in_format*)ofpbuf_put_zeros(b2, sizeof *pif);
-        pif->format = NXPIF_NXM;
+        pif->format = htonl(NXPIF_NXM);
         SendMessage(b2);
     }
 
