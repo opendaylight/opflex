@@ -204,8 +204,8 @@ public:
         WAIT_FOR_DO(egs.size() == 2, 500,
             egs.clear(); policyMgr.getContractConsumers(con1->getURI(), egs));
 
-        createEntriesForObjects();
         flowManager.Start();
+        createEntriesForObjects();
     }
     ~FlowManagerFixture() {
         flowManager.Stop();

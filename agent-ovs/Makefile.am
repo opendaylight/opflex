@@ -64,6 +64,7 @@ libagent_ovs_la_SOURCES = \
 	src/include/StatsManager.h \
 	src/include/Agent.h \
 	src/include/WorkQueue.h \
+	src/include/IdGenerator.h \
 	src/include/cmd.h \
 	src/include/logging.h \
 	src/AgentLogHandler.cpp \
@@ -85,7 +86,8 @@ libagent_ovs_la_SOURCES = \
 	src/StatsManager.cpp \
 	src/cmd.cpp \
 	src/Agent.cpp \
-	src/WorkQueue.cpp
+	src/WorkQueue.cpp \
+	src/IdGenerator.cpp
 
 bin_PROGRAMS=agent_ovs
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
@@ -113,6 +115,7 @@ agent_test_SOURCES = \
 	test/FlowManager_test.cpp \
 	test/PortMapper_test.cpp \
 	test/FlowExecutor_test.cpp \
+	test/IdGenerator_test.cpp \
 	test/main.cpp
 agent_test_LDADD = \
 	libagent_ovs.la \
@@ -134,9 +137,11 @@ mock_server_LDADD = \
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
 
-defwatchdir=${localstatedir}/run/opflex-agent-ovs/endpoints/
+agentrunstatedir=${localstatedir}/run/opflex-agent-ovs
+defwatchdir=${agentrunstatedir}/endpoints/
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	sed -e "s|FILESYSTEM_WATCH_DIR|${defwatchdir}|" \
+	    -e "s|RUNTIME_STATE_PATH|${agentrunstatedir}|" \
 	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
 
 if HAVE_DOXYGEN

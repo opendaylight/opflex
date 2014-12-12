@@ -46,6 +46,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     // A list of filesystem paths that we should check for endpoint
     // information
     static const std::string ENDPOINT_SOURCE_PATH("endpoint-sources.filesystem");
+    static const std::string RUNTIME_STATE_PATH("runtime-state-path");
     static const std::string OPFLEX_PEERS("opflex.peers");
     static const std::string HOSTNAME("hostname");
     static const std::string PORT("port");
@@ -75,6 +76,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     } else {
         framework.setOpflexIdentity(opflexName.get(),
                                     opflexDomain.get());
+    }
+
+    optional<std::string> rsp =
+        properties.get_optional<std::string>(RUNTIME_STATE_PATH);
+    if (!rsp) {
+        LOG(ERROR) << "Runtime state path not found in configuration.";
+    } else {
+        runtimeStatePath = rsp.get();
     }
 
     optional<const ptree&> peers = 
