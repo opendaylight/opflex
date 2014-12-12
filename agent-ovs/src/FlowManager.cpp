@@ -52,6 +52,11 @@ static const uint8_t MAC_ADDR_MULTICAST[6] =
 const uint16_t FlowManager::MAX_POLICY_RULE_PRIORITY = 8192;     // arbitrary
 const long DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC = 5000;
 
+static const char * ID_NMSPC_FD  = "floodDomain";
+static const char * ID_NMSPC_BD  = "bridgeDomain";
+static const char * ID_NMSPC_RD  = "routingDomain";
+static const char * ID_NMSPC_CON = "contract";
+
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), executor(NULL), portMapper(NULL), reader(NULL),
         virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this) {
@@ -68,6 +73,12 @@ void FlowManager::Start()
      * update cached state only.
      */
     isSyncing = true;
+    idGen.setPersistLocation(agent.getLocalStatePath());
+    idGen.initNamespace(ID_NMSPC_FD);
+    idGen.initNamespace(ID_NMSPC_BD);
+    idGen.initNamespace(ID_NMSPC_RD);
+    idGen.initNamespace(ID_NMSPC_CON);
+
     workQ.start();
 }
 
@@ -851,6 +862,7 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.contractExists(contractURI)) {  // Contract removed
         WriteFlow(contractId, POL_TABLE_ID, NULL);
+        idGen.erase(GetIdNamespace(Contract::CLASS_ID), contractURI);
         return;
     }
     PolicyManager::uri_set_t provURIs;
@@ -1027,26 +1039,21 @@ void FlowManager::OnConnectTimer(const system::error_code& ec) {
     flowSyncer.Sync();
 }
 
-uint32_t FlowManager::GetId(class_id_t cid, const URI& uri) {
-    IdMap *idMap = NULL;
+const char * FlowManager::GetIdNamespace(class_id_t cid) {
+    const char *nmspc = NULL;
     switch (cid) {
-    case RoutingDomain::CLASS_ID:   idMap = &routingDomainIds; break;
-    case BridgeDomain::CLASS_ID:    idMap = &bridgeDomainIds; break;
-    case FloodDomain::CLASS_ID:     idMap = &floodDomainIds; break;
-    case Contract::CLASS_ID:        idMap = &contractIds; break;
+    case RoutingDomain::CLASS_ID:   nmspc = ID_NMSPC_RD; break;
+    case BridgeDomain::CLASS_ID:    nmspc = ID_NMSPC_BD; break;
+    case FloodDomain::CLASS_ID:     nmspc = ID_NMSPC_FD; break;
+    case Contract::CLASS_ID:        nmspc = ID_NMSPC_CON; break;
     default:
         assert(false);
     }
-    return idMap->FindOrGenerate(uri);
+    return nmspc;
 }
 
-uint32_t FlowManager::IdMap::FindOrGenerate(const URI& uri) {
-    unordered_map<URI, uint32_t>::const_iterator it = ids.find(uri);
-    if (it == ids.end()) {
-        ids[uri] = ++lastUsedId;
-        return lastUsedId;
-    }
-    return it->second;
+uint32_t FlowManager::GetId(class_id_t cid, const URI& uri) {
+    return idGen.getId(GetIdNamespace(cid), uri);
 }
 
 static bool writeLearnFlow(SwitchConnection *conn, 

@@ -96,6 +96,8 @@ public:
      */
     boost::asio::io_service& getAgentIOService() { return agent_io; }
 
+    const std::string& getLocalStatePath() { return localStatePath; }
+
     /**
      * IO Service polling function
      */
@@ -113,6 +115,8 @@ private:
 
     typedef std::pair<std::string, int> host_t;
     std::set<host_t> opflexPeers;
+
+    std::string localStatePath;
 
     /**
      * Thread for asynchronous tasks

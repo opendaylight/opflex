@@ -17,6 +17,8 @@
         ]
     },
 
+    "local-state-path": "LOCAL_STATE_PATH",
+
     // Endpoint sources provide metadata about local endpoints
     "endpoint-sources": {
         // Filesystem path to monitor for endpoint information
