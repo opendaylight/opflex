@@ -24,6 +24,7 @@ Requires: libuv >= 1.0
 BuildRequires: libuv-devel
 BuildRequires: boost-devel
 BuildRequires: boost-test
+BuildRequires: rapidjson-devel >= 0.12
 
 %description
 The OpFlex project seeks to provide reference implementations of the

@@ -37,6 +37,7 @@ void AgentLogHandler::handleMessage(const std::string& file,
 #ifdef USE_BOOST_LOG
     severity_level blevel;
     switch (level) {
+    case OFLogHandler::TRACE:
     case OFLogHandler::DEBUG:
         blevel = ovsagent::DEBUG;
         break;
@@ -59,6 +60,30 @@ void AgentLogHandler::handleMessage(const std::string& file,
                                  (::boost::log::keywords::severity = blevel)) \
         << "[" << file << ":" << line << ":" << function << "] " << message;
 #else
+    int slevel;
+    switch (level) {
+    case OFLogHandler::TRACE:
+    case OFLogHandler::DEBUG:
+        slevel = LOG_DEBUG;
+        break;
+    case OFLogHandler::INFO:
+        slevel = LOG_INFO;
+        break;
+    case OFLogHandler::WARNING:
+        slevel = LOG_WARNING;
+        break;
+    case OFLogHandler::ERROR:
+        slevel = LOG_ERR;
+        break;
+    default:
+    case OFLogHandler::FATAL:
+        slevel = LOG_CRIT;
+        break;
+    }
+
+    std::cout << "<" << slevel << "> "
+              << "[" << file << ":" << line << ":" << function << "] "
+              << message << std::endl;
 
 #endif
 }
