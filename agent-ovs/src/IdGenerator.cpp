@@ -73,6 +73,12 @@ void IdGenerator::persist(const std::string& nmspc, IdMap& idmap) {
         LOG(ERROR) << "Unable to open file " << fname << " for writing";
         return;
     }
+    uint32_t formatVersion = 0x1;
+    if (file.write("opflexid", 8).fail() ||
+        file.write((char*)&formatVersion, sizeof(formatVersion)).fail()) {
+        LOG(ERROR) << "Failed to write to file: " << fname;
+        return;
+    }
     BOOST_FOREACH (const IdMap::Uri2IdMap::value_type& kv, idmap.ids) {
         const uint32_t& id = kv.second;
         const URI& uri = kv.first;
@@ -99,10 +105,26 @@ void IdGenerator::initNamespace(const std::string& nmspc) {
     LOG(DEBUG) << "Loading IDs from file " << fname;
     ifstream file(fname.c_str(), ios_base::binary);
     if (!file.is_open()) {
-        LOG(ERROR) << "Unable to open file " << fname << " for reading";
+        LOG(DEBUG) << "Unable to open file " << fname << " for reading";
         return;
     }
     idmap.lastUsedId = 0;
+
+    char magic[8];
+    uint32_t formatVersion;
+    if (file.read(magic, sizeof(magic)).eof() ||
+        file.read((char*)&formatVersion, sizeof(formatVersion)).eof()) {
+        LOG(ERROR) << fname << " exists, but could not be read";
+        return;
+    }
+    if (0 != strncmp(magic, "opflexid", sizeof(magic))) {
+        LOG(ERROR) << fname << " is not an ID file";
+        return;
+    }
+    if (formatVersion != 1) {
+        LOG(ERROR) << fname << ": Unsupported ID file format version: "
+                   << formatVersion;
+    }
     while (!file.fail()) {
         uint32_t id;
         UriLenType len;
