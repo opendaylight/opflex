@@ -107,6 +107,8 @@ class Peer : public SafeListBaseHook {
             uv_prepare_init(loop, &prepare_);
             uv_prepare_start(&prepare_, &onPrepareLoop);
             prepare_.data = this;
+            uv_timer_init(loop, &prepareAgain_);
+            prepareAgain_.data = this;
         }
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT 
@@ -196,6 +198,7 @@ class Peer : public SafeListBaseHook {
         static void fini(uv_handle_t *);
 
         uv_prepare_t prepare_;
+        uv_timer_t prepareAgain_;
         uint64_t lastRun_;
         bool destroying_;
         uint64_t refCount_;
