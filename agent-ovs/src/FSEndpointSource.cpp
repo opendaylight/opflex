@@ -30,6 +30,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <opflex/modb/URIBuilder.h>
 
 #include "FSEndpointSource.h"
 #include "logging.h"
@@ -120,6 +121,8 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
     static const std::string EP_MAC("mac");
     static const std::string EP_IP("ip");
     static const std::string EP_GROUP("endpoint-group");
+    static const std::string POLICY_SPACE_NAME("policy-space-name");
+    static const std::string EP_GROUP_NAME("endpoint-group-name");
     static const std::string EP_IFACE_NAME("interface-name");
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
 
@@ -141,10 +144,26 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
             BOOST_FOREACH(const ptree::value_type &v, ips.get())
                 newep.addIP(v.second.data());
         }
+
         optional<string> eg = 
             properties.get_optional<string>(EP_GROUP);
-        if (eg)
+        if (eg) {
             newep.setEgURI(URI(eg.get()));
+        } else {
+            optional<string> eg_name = 
+                properties.get_optional<string>(EP_GROUP_NAME);
+            optional<string> ps_name = 
+                properties.get_optional<string>(POLICY_SPACE_NAME);
+            if (eg_name && ps_name) {
+                newep.setEgURI(opflex::modb::URIBuilder()
+                               .addElement("PolicyUniverse")
+                               .addElement("PolicySpace")
+                               .addElement(ps_name.get())
+                               .addElement("GbpEpGroup")
+                               .addElement(eg_name.get()).build());
+            }
+        }
+
         optional<string> iface = 
             properties.get_optional<string>(EP_IFACE_NAME);
         if (iface)
