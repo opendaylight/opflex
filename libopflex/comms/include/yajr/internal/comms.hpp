@@ -559,6 +559,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         return uv_tcp_getpeername(&handle_, remoteAddress, len);
     }
 
+    virtual int getSockName(struct sockaddr* remoteAddress, int* len) const {
+        return uv_tcp_getsockname(&handle_, remoteAddress, len);
+    }
+
     virtual void destroy() {
         LOG(DEBUG) << this;
 
