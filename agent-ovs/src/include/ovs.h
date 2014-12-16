@@ -12,6 +12,7 @@
 #define OVS_H_
 
 #include <boost/static_assert.hpp>
+#include <boost/shared_ptr.hpp>
 
 #ifdef __GNUG__
 #pragma GCC diagnostic push
@@ -22,6 +23,7 @@
 extern "C" {
 #endif
 
+#include <openvswitch/lib/vlog.h>
 #include <openvswitch/lib/dirs.h>
 #include <openvswitch/lib/vconn.h>
 #include <openvswitch/lib/ofpbuf.h>
