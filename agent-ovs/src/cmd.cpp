@@ -16,7 +16,7 @@
 #include <stdlib.h>
 
 #include <opflex/logging/OFLogHandler.h>
-
+#include "ovs.h"
 #include "logging.h"
 
 #ifdef USE_BOOST_LOG
@@ -144,6 +144,8 @@ void initLogging(const std::string& levelstr,
 
     logHandler.setLevel(level);
     OFLogHandler::registerHandler(logHandler);
+    /* No good way to redirect OVS logs to our logs, suppress them for now */
+    vlog_set_levels(NULL, VLF_ANY_FACILITY, VLL_OFF);
 }
 
 
