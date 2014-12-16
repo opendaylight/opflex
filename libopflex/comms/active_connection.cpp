@@ -170,6 +170,8 @@ void on_active_connection(uv_connect_t *req, int status) {
     peer->unlink();
     peer->insert(internal::Peer::LoopData::ONLINE);
 
+    peer->unchoke();
+
     if ((rc = uv_read_start(req->handle, alloc_cb, on_read))) {
         LOG(WARNING) << "uv_read_start: [" << uv_err_name(rc) << "] " <<
                     uv_strerror(rc);

@@ -149,6 +149,37 @@ void CommunicationPeer::timeout() {
 
 }
 
+int comms::internal::CommunicationPeer::choke() {
+
+    int rc;
+
+    if ((rc = uv_read_stop((uv_stream_t*) &handle_))) {
+        LOG(WARNING) << "uv_read_stop: [" << uv_err_name(rc) << "] " <<
+            uv_strerror(rc);
+        /* FIXME: this might even not be a big issue if SSL is not involved */
+        onError(rc);
+        uv_close((uv_handle_t*)&handle_, on_close);
+    }
+
+    return rc;
+
+}
+
+int comms::internal::CommunicationPeer::unchoke() {
+
+    int rc;
+
+    if ((rc = uv_read_start((uv_stream_t*) &handle_, alloc_cb, on_read))) {
+        LOG(WARNING) << "uv_read_start: [" << uv_err_name(rc) << "] " <<
+            uv_strerror(rc);
+        onError(rc);
+        uv_close((uv_handle_t*)&handle_, on_close);
+    }
+
+    return rc;
+
+}
+
 yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
 
     LOG(DEBUG)

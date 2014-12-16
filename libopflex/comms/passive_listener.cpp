@@ -184,13 +184,8 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
         uv_close((uv_handle_t*)&peer->handle_, on_close);
         return;
     }
-    if ((rc = uv_read_start((uv_stream_t*) &peer->handle_, alloc_cb, on_read))) {
-        LOG(WARNING) << "uv_read_start: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
-        peer->onError(rc);
-        uv_close((uv_handle_t*)&peer->handle_, on_close);
-        return;
-    }
+
+    peer->unchoke();
 
     peer->insert(internal::Peer::LoopData::ONLINE);
 

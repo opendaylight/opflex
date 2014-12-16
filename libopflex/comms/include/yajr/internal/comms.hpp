@@ -426,6 +426,9 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     int write() const;
 
+    int   choke();
+    int unchoke();
+
     void * getData() const {
         return data_;
     }
