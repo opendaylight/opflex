@@ -16,6 +16,7 @@ namespace ovsagent {
 
 using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
+using opflex::enforcer::FlowManager;
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_), flowManager(agent_), connection(NULL),
@@ -42,11 +43,12 @@ void StitchedModeRenderer::start() {
     started = true;
     LOG(INFO) << "Starting stitched-mode renderer on " << ovsBridgeName;
 
-    if (encapType == opflex::enforcer::FlowManager::VXLAN) {
+    if (encapType == FlowManager::ENCAP_VXLAN) {
         tunnelEpManager.setUplinkIface(uplinkIface);
         tunnelEpManager.start();
     }
 
+    flowManager.SetFallbackMode(FlowManager::FALLBACK_PROXY);
     flowManager.SetEncapType(encapType);
     flowManager.SetEncapIface(encapIface);
     flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
@@ -85,7 +87,7 @@ void StitchedModeRenderer::stop() {
     delete connection;
     connection = NULL;
 
-    if (encapType == opflex::enforcer::FlowManager::VXLAN) {
+    if (encapType == FlowManager::ENCAP_VXLAN) {
         tunnelEpManager.stop();
     }
 }
@@ -117,19 +119,19 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     boost::optional<const ptree&> vlan =
         properties.get_child_optional(ENCAP_VLAN);
 
-    encapType = opflex::enforcer::FlowManager::NONE;
+    encapType = FlowManager::ENCAP_NONE;
     int count = 0;
     if (ivxlan) {
         LOG(ERROR) << "Encapsulation type ivxlan unsupported";
         count += 1;
     }
     if (vlan) {
-        encapType = opflex::enforcer::FlowManager::VLAN;
+        encapType = FlowManager::ENCAP_VLAN;
         encapIface = vlan.get().get<std::string>(ENCAP_IFACE, "");
         count += 1;
     }
     if (vxlan) {
-        encapType = opflex::enforcer::FlowManager::VXLAN;
+        encapType = FlowManager::ENCAP_VXLAN;
         encapIface = vxlan.get().get<std::string>(ENCAP_IFACE, "");
         uplinkIface = vxlan.get().get<std::string>(UPLINK_IFACE, "");
         tunnelRemoteIp = vxlan.get().get<std::string>(REMOTE_IP, "");

@@ -13,6 +13,9 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
+
+#include <modelgbp/gbp/ArpModeEnumT.hpp>
+
 #include "logging.h"
 #include "ovs.h"
 #include "FlowManager.h"
@@ -224,12 +227,14 @@ public:
     PolicyManager& policyMgr;
 
     vector<string> fe_fixed;
+    vector<string> fe_fallback;
     vector<string> fe_epg0, fe_epg0_fd0;
     vector<string> fe_ep0, fe_ep0_fd0_1, fe_ep0_fd0_2, fe_ep0_eg1;
     vector<string> fe_ep0_eg0_1, fe_ep0_eg0_2;
     vector<string> fe_ep0_port_1, fe_ep0_port_2, fe_ep0_port_3;
     vector<string> fe_ep2, fe_ep2_eg1;
     vector<string> fe_con1, fe_con2;
+    vector<string> fe_arpopt;
     string fe_connect_1, fe_connect_2;
     string ge_fd0, ge_bkt_ep0, ge_bkt_ep2, ge_bkt_tun;
     string ge_fd0_prom;
@@ -247,6 +252,7 @@ BOOST_FIXTURE_TEST_CASE(epg, FlowManagerFixture) {
     /* create */
     exec.Clear();
     exec.Expect(FlowEdit::add, fe_fixed);
+    exec.Expect(FlowEdit::add, fe_fallback);
     exec.Expect(FlowEdit::add, fe_epg0);
     exec.Expect(FlowEdit::add, fe_ep0);
     exec.Expect(FlowEdit::add, fe_ep2);
@@ -266,6 +272,19 @@ BOOST_FIXTURE_TEST_CASE(epg, FlowManagerFixture) {
     exec.Expect(FlowEdit::add, fe_ep0_fd0_2);
     exec.ExpectGroup(FlowEdit::add, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
     exec.ExpectGroup(FlowEdit::add, ge_fd0_prom + ge_bkt_tun);
+    flowManager.egDomainUpdated(epg0->getURI());
+    WAIT_FOR(exec.IsEmpty(), 500);
+    BOOST_CHECK(exec.IsGroupEmpty());
+
+    /* change arp mode */
+    fd0->setArpMode(ArpModeEnumT::CONST_FLOOD);
+    m1.commit();
+    WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()).get()
+             ->getArpMode(ArpModeEnumT::CONST_UNICAST) 
+             == ArpModeEnumT::CONST_FLOOD, 500);
+
+    exec.Clear();
+    exec.Expect(FlowEdit::del, fe_arpopt);
     flowManager.egDomainUpdated(epg0->getURI());
     WAIT_FOR(exec.IsEmpty(), 500);
     BOOST_CHECK(exec.IsGroupEmpty());
@@ -443,6 +462,7 @@ BOOST_FIXTURE_TEST_CASE(connect, FlowManagerFixture) {
 
     exec.Expect(FlowEdit::add, fe_fixed);
     exec.Expect(FlowEdit::del, fe_connect_1);
+    exec.Expect(FlowEdit::add, fe_fallback);
     exec.Expect(FlowEdit::mod, fe_connect_2);
     exec.ExpectGroup(FlowEdit::del, "group_id=10,type=all");
     flowManager.egDomainUpdated(epg4->getURI());
@@ -614,11 +634,13 @@ public:
     Bldr& ip() { rep(",ip"); return *this; }
     Bldr& arp() { rep(",arp"); return *this; }
     Bldr& tcp() { rep(",tcp"); return *this; }
+    Bldr& udp() { rep(",udp"); return *this; }
     Bldr& isArpOp(uint8_t op) { rep(",arp_op=", str(op)); return *this; }
     Bldr& isSpa(string& s) { rep(",arp_spa=", s); return *this; }
     Bldr& isTpa(string& s) { rep(",arp_tpa=", s); return *this; }
     Bldr& isIpSrc(string& s) { rep(",nw_src=", s); return *this; }
     Bldr& isIpDst(string& s) { rep(",nw_dst=", s); return *this; }
+    Bldr& isTpSrc(uint16_t p) { rep(",tp_src=", str(p)); return *this; }
     Bldr& isTpDst(uint16_t p) { rep(",tp_dst=", str(p)); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& drop() { rep("drop"); return *this; }
@@ -701,8 +723,14 @@ FlowManagerFixture::createEntriesForObjects() {
                        .actions().drop().done());
     fe_fixed.push_back(Bldr().table(0).priority(25).ip()
                        .actions().drop().done());
+    fe_fixed.push_back(Bldr().table(0).priority(27).udp()
+                       .isTpSrc(68).actions().go(1).done());
     fe_fixed.push_back(Bldr().table(0).priority(50)
                        .in(tunPort).actions().go(1).done());
+
+    fe_fallback.push_back(Bldr().table(2).priority(1)
+                          .actions().move(SEPG, TUNID).load(TUNDST, tunDst)
+                          .outPort(tunPort).done());
 
     /* epg0 */
     uint32_t epg0_vnid = policyMgr.getVnidForGroup(epg0->getURI()).get();
@@ -721,6 +749,10 @@ FlowManagerFixture::createEntriesForObjects() {
     string ep0_ip0 = *(ep0->getIPs().begin());
     string ep0_ip1 = *next(ep0->getIPs().begin());
     uint32_t ep0_port = portmapper.FindPort(ep0->getInterfaceName().get());
+    string ep0_arpopt0 = Bldr().table(2).priority(20).arp().reg(RD, 1)
+            .isEthDst(bmac).isTpa(ep0_ip0).isArpOp(1)
+            .actions().load(DEPG, epg0_vnid).load(OUTPORT, ep0_port)
+            .ethDst(ep0_mac).go(4).done();
 
     fe_ep0.push_back(Bldr().table(0).priority(20).in(ep0_port)
             .isEthSrc(ep0_mac).actions().go(1).done());
@@ -740,12 +772,10 @@ FlowManagerFixture::createEntriesForObjects() {
             .isEthDst(rmac).isIpDst(ep0_ip0)
             .actions().load(DEPG, epg0_vnid).load(OUTPORT, ep0_port)
             .ethSrc(rmac).ethDst(ep0_mac).decTtl().go(4).done());
-    fe_ep0.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
-            .isEthDst(bmac).isTpa(ep0_ip0).isArpOp(1)
-            .actions().load(DEPG, epg0_vnid).load(OUTPORT, ep0_port)
-            .ethDst(ep0_mac).go(4).done());
+    fe_ep0.push_back(ep0_arpopt0);
     fe_ep0.push_back(Bldr(fe_ep0[7]).isIpDst(ep0_ip1).done());
-    fe_ep0.push_back(Bldr(fe_ep0[8]).isTpa(ep0_ip1).done());
+    string ep0_arpopt1 = Bldr(fe_ep0[8]).isTpa(ep0_ip1).done();
+    fe_ep0.push_back(ep0_arpopt1);
 
     /* ep0 when eg0 connected to fd0 */
     fe_ep0_fd0_1.push_back(Bldr(fe_ep0[5]).load(FD, 1).done());
@@ -780,6 +810,11 @@ FlowManagerFixture::createEntriesForObjects() {
     /* Remote EP ep2 */
     string ep2_mac = ep2->getMAC().get().toString();
     string ep2_ip0 = *(ep2->getIPs().begin());
+    string ep2_arpopt = Bldr().table(2).priority(20).arp().reg(RD, 1)
+            .isEthDst(bmac).isTpa(ep2_ip0).isArpOp(1)
+            .actions().load(DEPG, epg0_vnid)
+            .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, tunDst)
+            .ethDst(ep2_mac).go(4).done();
     fe_ep2.push_back(Bldr().table(2).priority(10).reg(BD, 1).isEthDst(ep2_mac)
             .actions().load(DEPG, epg0_vnid).load(OUTPORT, tunPort)
             .move(SEPG, TUNID).load(TUNDST, tunDst).go(4)
@@ -788,11 +823,14 @@ FlowManagerFixture::createEntriesForObjects() {
             .isEthDst(rmac).isIpDst(ep2_ip0).actions().load(DEPG, epg0_vnid)
             .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, tunDst)
             .ethSrc(rmac).decTtl().go(4).done());
-    fe_ep2.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
-            .isEthDst(bmac).isTpa(ep2_ip0).isArpOp(1)
-            .actions().load(DEPG, epg0_vnid)
-            .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, tunDst)
-            .ethDst(ep2_mac).go(4).done());
+    fe_ep2.push_back(ep2_arpopt);
+
+    /**
+     * ARP flows
+     */
+    fe_arpopt.push_back(ep0_arpopt0);
+    fe_arpopt.push_back(ep0_arpopt1);
+    fe_arpopt.push_back(ep2_arpopt);
 
     /* ep2 connected to new group epg1 */
     fe_ep2_eg1.push_back(Bldr(fe_ep2[1]).load(DEPG, epg1_vnid).done());

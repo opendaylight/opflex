@@ -95,6 +95,27 @@ public:
     void unregisterModbListeners();
 
     /**
+     * How to behave on an unknown unicast destination when the flood
+     * domain is not configured to flood unknown
+     */
+    enum FallbackMode {
+        /**
+         * Drop unknown unicast traffic
+         */
+        FALLBACK_DROP,
+        /**
+         * Send the unknown unicast traffic out the tunnel interface
+         * to be handled by an upstream fabric.
+         */
+        FALLBACK_PROXY
+    };
+
+    /**
+     * Set the unknown unicast fallback mode to the specified value
+     */
+    void SetFallbackMode(FallbackMode fallbackMode);
+
+    /**
      * Encap types supported by the flow manager
      */
     enum EncapType {
@@ -102,17 +123,17 @@ public:
          * No encapsulation; traffic can be forwarded only on the
          * local switch.
          */
-        NONE,
+        ENCAP_NONE,
         /**
          * Encapsulate using VLAN tags, with a (at least)
          * locally-significant VLAN for each endpoint group.
          */
-        VLAN,
+        ENCAP_VLAN,
         /**
          * Encapsulate using a VXLAN tunnel, with a VNID for each
          * endpoint group.
          */
-        VXLAN
+        ENCAP_VXLAN
     };
 
     void SetEncapType(EncapType encapType);
@@ -264,7 +285,9 @@ private:
     void UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
                                    const ovsagent::Endpoint& endPoint, 
                                    uint32_t epPort, 
-                                   bool isPromiscuous);
+                                   bool isPromiscuous, 
+                                   boost::optional<boost::shared_ptr<
+                                       modelgbp::gbp::FloodDomain> >& fd);
 
     /**
      * Update flow-tables to dis-associate an endpoint from any flood-domain.
@@ -298,6 +321,7 @@ private:
     PortMapper *portMapper;
     ovsagent::FlowReader *reader;
 
+    FallbackMode fallbackMode;
     EncapType encapType;
     std::string encapIface;
     uint32_t tunnelDstIpv4;

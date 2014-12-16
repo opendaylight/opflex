@@ -19,6 +19,7 @@
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/IntraGroupPolicyEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
+#include <modelgbp/gbp/ArpModeEnumT.hpp>
 
 #include "logging.h"
 #include "Endpoint.h"
@@ -59,6 +60,7 @@ static const char * ID_NMSPC_CON = "contract";
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), executor(NULL), portMapper(NULL), reader(NULL),
+        fallbackMode(FALLBACK_PROXY), encapType(ENCAP_VXLAN),
         virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this) {
     memset(routerMac, 0, sizeof(routerMac));
     ParseIpv4Addr("127.0.0.1", &tunnelDstIpv4);
@@ -110,6 +112,10 @@ void FlowManager::registerModbListeners() {
 void FlowManager::unregisterModbListeners() {
     agent.getEndpointManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
+}
+
+void FlowManager::SetFallbackMode(FallbackMode fallbackMode) {
+    this->fallbackMode = fallbackMode;
 }
 
 void FlowManager::SetEncapType(EncapType encapType) {
@@ -314,6 +320,15 @@ SetDestActionFdBroadcast(FlowEntry *fe, uint32_t fdId) {
 }
 
 static void
+SetDestActionOutputToTunnel(FlowEntry *fe, uint32_t tunDst, uint32_t tunPort) {
+    ActionBuilder ab;
+    ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
+    ab.SetRegLoad(MFF_TUN_DST, tunDst);
+    ab.SetOutputToPort(tunPort);
+    ab.Build(fe->entry);
+}
+
+static void
 SetActionGotoLearn(FlowEntry *fe) {
     ActionBuilder ab;
     ab.SetGotoTable(FlowManager::LEARN_TABLE_ID);
@@ -382,6 +397,15 @@ SetSecurityMatchEpArp(FlowEntry *fe, uint16_t prio, uint32_t port,
     match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_ARP));
     if (epIpv4 != 0)
         match_set_nw_src(&fe->entry->match, epIpv4);
+}
+
+static void
+SetSecurityMatchEpDHCP(FlowEntry *fe, uint16_t prio) {
+    fe->entry->table_id = FlowManager::SEC_TABLE_ID;
+    fe->entry->priority = prio;
+    match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
+    match_set_nw_proto(&fe->entry->match, 17);
+    match_set_tp_src(&fe->entry->match, htons(68));
 }
 
 static void
@@ -525,6 +549,13 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         return;
     }
 
+    optional<shared_ptr<FloodDomain> > fd = 
+        agent.getPolicyManager().getFDForGroup(epgURI.get());
+    uint8_t arpMode = ArpModeEnumT::CONST_UNICAST;
+    if (fd && fd.get()->isArpModeSet()) {
+        arpMode = fd.get()->getArpMode().get();
+    }
+
     /* Source Table flows; applicable only to local endpoints */
     if (isLocalEp) {
         FlowEntryList src;
@@ -562,21 +593,28 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
     if (rdId != 0 && epPort != OFPP_NONE) {
         BOOST_FOREACH (uint32_t ipAddr, ipv4Addresses) {
             // XXX for remote EP, dl_dst needs to be the "next-hop" MAC
-            const uint8_t *dstMac = isLocalEp ?
+            if (virtualRouterEnabled) {
+                const uint8_t *dstMac = isLocalEp ?
                     (hasMac ? macAddr : NULL) : NULL;
-            FlowEntry *e0 = new FlowEntry();
-            SetDestMatchEpIpv4(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
-            SetDestActionEpIpv4(e0, isLocalEp, epgVnid, epPort,
-                    GetTunnelDstIpv4(), GetRouterMacAddr(), dstMac);
-            elDst.push_back(FlowEntryPtr(e0));
+                FlowEntry *e0 = new FlowEntry();
+                SetDestMatchEpIpv4(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
+                SetDestActionEpIpv4(e0, isLocalEp, epgVnid, epPort,
+                                    GetTunnelDstIpv4(), GetRouterMacAddr(), dstMac);
+                elDst.push_back(FlowEntryPtr(e0));
+            }
 
-            // ARP optimization: broadcast -> unicast
-            // XXX TODO - implement ARP policy from flood domain
-            FlowEntry *e1 = new FlowEntry();
-            SetDestMatchArpIpv4(e1, 20, ipAddr, rdId);
-            SetDestActionEpArpIpv4(e1, isLocalEp, epgVnid, epPort,
-                    GetTunnelDstIpv4(), hasMac ? macAddr : NULL);
-            elDst.push_back(FlowEntryPtr(e1));
+            if (arpMode != ArpModeEnumT::CONST_FLOOD) {
+                FlowEntry *e1 = new FlowEntry();
+                SetDestMatchArpIpv4(e1, 20, ipAddr, rdId);
+                if (arpMode == ArpModeEnumT::CONST_UNICAST) {
+                    // ARP optimization: broadcast -> unicast
+                    SetDestActionEpArpIpv4(e1, isLocalEp, epgVnid, epPort,
+                                           GetTunnelDstIpv4(), 
+                                           hasMac ? macAddr : NULL);
+                }
+                // else drop the ARP packet
+                elDst.push_back(FlowEntryPtr(e1));
+            }
         }
         // TODO IPv6 address
     }
@@ -584,7 +622,8 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
     if (fdURI && isLocalEp) {
         UpdateEndpointFloodDomain(fdURI.get(), endPoint, ofPort,
-                                  endPoint.isPromiscuousMode());
+                                  endPoint.isPromiscuousMode(),
+                                  fd);
     } else {
         RemoveEndpointFromFloodDomain(uuid);
     }
@@ -611,6 +650,11 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         SetSecurityMatchEpIpv4(dropIPv4, 25, OFPP_ANY, NULL, 0);
         fixedFlows.push_back(FlowEntryPtr(dropIPv4));
 
+        FlowEntry *allowDHCP = new FlowEntry();
+        SetSecurityMatchEpDHCP(allowDHCP, 27);
+        SetSecurityActionAllow(allowDHCP);
+        fixedFlows.push_back(FlowEntryPtr(allowDHCP));
+
         if (tunPort != OFPP_NONE) {
             // allow all traffic from the tunnel uplink through the port
             // security table
@@ -622,6 +666,19 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
 
         // TODO IPv6
         WriteFlow("static", SEC_TABLE_ID, fixedFlows);
+    }
+
+    if (fallbackMode == FALLBACK_PROXY && tunPort != OFPP_NONE) {
+        // Output to the tunnel interface, bypassing policy
+        // note that if the flood domain is set to flood unknown, then
+        // there will be a higher-priority rule installed for that
+        // flood domain.
+
+        FlowEntry *unknownTunnel = new FlowEntry();
+        unknownTunnel->entry->priority = 1;
+        unknownTunnel->entry->table_id = DST_TABLE_ID;
+        SetDestActionOutputToTunnel(unknownTunnel, GetTunnelDstIpv4(), tunPort);
+        WriteFlow("static", DST_TABLE_ID, unknownTunnel);
     }
 
     PolicyManager& polMgr = agent.getPolicyManager();
@@ -689,10 +746,12 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
             continue;
         }
 
-        FlowEntry *e0 = new FlowEntry();
-        SetDestMatchArpIpv4(e0, 20, routerIpv4, routingDomainId);
-        SetDestActionSubnetArpIpv4(e0, GetRouterMacAddr(), routerIpv4);
-        WriteFlow(sn->getURI().toString(), DST_TABLE_ID, e0);
+        if (virtualRouterEnabled) {
+            FlowEntry *e0 = new FlowEntry();
+            SetDestMatchArpIpv4(e0, 20, routerIpv4, routingDomainId);
+            SetDestActionSubnetArpIpv4(e0, GetRouterMacAddr(), routerIpv4);
+            WriteFlow(sn->getURI().toString(), DST_TABLE_ID, e0);
+        }
     }
 }
 
@@ -745,14 +804,15 @@ static uint32_t getPromId(uint32_t fdId) {
 
 void
 FlowManager::UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
-        const Endpoint& endPoint, uint32_t epPort, bool isPromiscuous) {
+                                       const Endpoint& endPoint, uint32_t epPort,
+                                       bool isPromiscuous, 
+                                       optional<shared_ptr<FloodDomain> >& fd) {
     const std::string& epUUID = endPoint.getUUID();
     std::pair<uint32_t, bool> epPair(epPort, isPromiscuous);
     uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
     string fdStrId = fdURI.toString();
     FdMap::iterator fdItr = fdMap.find(fdURI);
 
-    optional<shared_ptr<FloodDomain> > fd = FloodDomain::resolve(fdURI);
     uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
     if (fd) {
         floodMode = 
