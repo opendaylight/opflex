@@ -165,6 +165,13 @@ ActionBuilder::SetPushVlan() {
     ofpact_put_PUSH_VLAN(&buf);
 }
 
+void
+ActionBuilder::SetConntrack(uint16_t zone, uint16_t flags) {
+    ofpact_conntrack *ct = ofpact_put_CT(&buf);
+    ct->flags = flags;
+    ct->zone = zone;
+}
+
 } // namespace ovsagent
 
 

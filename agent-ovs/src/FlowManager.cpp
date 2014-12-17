@@ -19,6 +19,7 @@
 #include <modelgbp/gbp/IntraGroupPolicyEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
+#include <modelgbp/gbp/ConnTrackEnumT.hpp>
 
 #include "logging.h"
 #include "Endpoint.h"
@@ -464,6 +465,17 @@ static void
 SetPolicyActionAllow(FlowEntry *fe) {
     ActionBuilder ab;
     ab.SetOutputReg(MFF_REG7);
+    ab.Build(fe->entry);
+}
+
+static void
+SetPolicyActionConntrack(FlowEntry *fe, uint16_t zone, uint16_t flags,
+                         bool output) {
+    ActionBuilder ab;
+    ab.SetConntrack(zone, flags);
+    if (output) {
+        ab.SetOutputReg(MFF_REG7);
+    }
     ab.Build(fe->entry);
 }
 
@@ -1366,6 +1378,10 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
         uint16_t priority, uint64_t cookie, uint32_t& svnid, uint32_t& dvnid,
         FlowEntryList& entries) {
     ovs_be64 ckbe = htonll(cookie);
+    bool reflexive =
+        clsfr->isConnectionTrackingSet() &&
+        clsfr->getConnectionTracking().get() == ConnTrackEnumT::CONST_REFLEXIVE;
+    uint16_t ctZone = (uint16_t)(svnid & 0xffff);
     MaskList srcPorts;
     MaskList dstPorts;
     RangeMask::getMasks(clsfr->getSFromPort(), clsfr->getSToPort(), srcPorts);
@@ -1390,9 +1406,31 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
             match_set_tp_src_masked(m, htons(sm.first), htons(sm.second));
             match_set_tp_dst_masked(m, htons(dm.first), htons(dm.second));
 
-            SetPolicyActionAllow(e0);
+            if (reflexive) {
+                SetPolicyActionConntrack(e0, ctZone, NX_CT_F_COMMIT, true);
+            } else {
+                SetPolicyActionAllow(e0);
+            }
             entries.push_back(FlowEntryPtr(e0));
         }
+    }
+
+    if (reflexive) {    /* add the flows for reverse direction */
+        FlowEntry *e1 = new FlowEntry();
+        e1->entry->cookie = ckbe;
+        SetPolicyMatchEpgs(e1, priority, dvnid, svnid);
+        SetEntryProtocol(e1, clsfr);
+        match_set_conn_state_masked(&e1->entry->match, 0x0, 0x80);
+        SetPolicyActionConntrack(e1, ctZone, NX_CT_F_RECIRC, false);
+        entries.push_back(FlowEntryPtr(e1));
+
+        FlowEntry *e2 = new FlowEntry();
+        e2->entry->cookie = ckbe;
+        SetPolicyMatchEpgs(e2, priority, dvnid, svnid);
+        SetEntryProtocol(e2, clsfr);
+        match_set_conn_state_masked(&e2->entry->match, 0x82, 0x83);
+        SetPolicyActionAllow(e2);
+        entries.push_back(FlowEntryPtr(e2));
     }
 }
 
