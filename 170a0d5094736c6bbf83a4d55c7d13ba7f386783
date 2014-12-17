@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_3d6204d9",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-12-17T21:26:22Z",
+      "side": 1,
+      "message": "prefer dropping \"Dest\" from the function name since it was meant to indicate the table being used.",
+      "revId": "170a0d5094736c6bbf83a4d55c7d13ba7f386783",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_5d5fd00e",
+        "filename": "agent-ovs/src/StitchedModeRenderer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-12-17T21:26:22Z",
+      "side": 1,
+      "message": "this should be allowed for ivxlan as well, right?",
+      "revId": "170a0d5094736c6bbf83a4d55c7d13ba7f386783",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
