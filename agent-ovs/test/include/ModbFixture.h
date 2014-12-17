@@ -46,7 +46,7 @@ public:
         createObjects();
     }
 
-    ~ModbFixture() {
+    virtual ~ModbFixture() {
     }
 
     DummyEpSrc epSrc;
@@ -112,25 +112,25 @@ protected:
         epg0 = space->addGbpEpGroup("epg0");
         epg0->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsbd0->getURI());
-        epg0->addGbpeInstContext()->setVnid(0xA00A);
+        epg0->addGbpeInstContext()->setVnid(0xA0A);
 
         epg1 = space->addGbpEpGroup("epg1");
         epg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsrd0->getURI());
-        epg1->addGbpeInstContext()->setVnid(0xA00B);
+        epg1->addGbpeInstContext()->setVnid(0xA0B);
 
         epg2 = space->addGbpEpGroup("epg2");
         epg2->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsfd0->getURI());
-        epg2->addGbpeInstContext()->setVnid(0xD00A);
+        epg2->addGbpeInstContext()->setVnid(0xD0A);
 
         epg3 = space->addGbpEpGroup("epg3");
         epg3->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsfd1->getURI());
-        epg3->addGbpeInstContext()->setVnid(0xD00B);
+        epg3->addGbpeInstContext()->setVnid(0xD0B);
 
         epg4 = space->addGbpEpGroup("epg4");
-        epg4->addGbpeInstContext()->setVnid(0xE00E);
+        epg4->addGbpeInstContext()->setVnid(0xE0E);
         epg4->addGbpEpGroupToNetworkRSrc()
             ->setTargetRoutingDomain(rd0->getURI());
 

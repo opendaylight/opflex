@@ -51,7 +51,8 @@ void StitchedModeRenderer::start() {
     flowManager.SetFallbackMode(FlowManager::FALLBACK_PROXY);
     flowManager.SetEncapType(encapType);
     flowManager.SetEncapIface(encapIface);
-    flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
+    if (encapType == FlowManager::ENCAP_VXLAN)
+        flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
     flowManager.SetVirtualRouter(virtualRouter);
     flowManager.SetVirtualRouterMac(virtualRouterMac);
 

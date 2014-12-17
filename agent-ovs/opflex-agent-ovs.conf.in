@@ -31,18 +31,18 @@
         // hardware fabric such as ACI
         // EXAMPLE:
         // "stitched-mode": {
-        //     "ovs-bridge-name": "s1",
+        //     "ovs-bridge-name": "br0",
         //
         //     // Set encapsulation type.  Must set either vxlan or vlan.
         //     "encap": {
         //         // Encapsulate traffic with VXLAN.
         //         "vxlan" : {
         //             // The name of the tunnel interface in OVS
-        //             "encap-iface": "s1_vxlan0",
+        //             "encap-iface": "br0_vxlan0",
         //
         //             // The name of the interface whose IP should be used
         //             // as the source IP in encapsulated traffic.
-        //             "uplink-iface": "eth0",
+        //             "uplink-iface": "team0.4",
         //
         //             // The IP address used for the destination IP in
         //             // the encapsulated traffic.  This should be an
@@ -56,7 +56,7 @@
         //         // EXAMPLE:
         //         // "vlan" : {
         //         //     // The name of the uplink interface in OVS
-        //         //     "encap-iface": "s1_vxlan0"
+        //         //     "encap-iface": "team0"
         //         // }
         //     },
         //
