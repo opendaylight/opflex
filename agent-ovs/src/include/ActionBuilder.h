@@ -56,6 +56,7 @@ public:
     void SetGroup(uint32_t groupId);
     void SetController(uint16_t max_len = 128);
     void SetPushVlan();
+    void SetConntrack(uint16_t zone, uint16_t flags);
 
     /**
      * Extract and return an array of flow actions from a buffer used

@@ -16,6 +16,7 @@
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
+#include <modelgbp/gbp/ConnTrackEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "BaseFixture.h"
@@ -203,7 +204,8 @@ protected:
         classifier1 = space->addGbpeL24Classifier("classifier1");
         classifier1->setOrder(100).setDirection(DirectionEnumT::CONST_IN)
             .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
-            .setDFromPort(80);
+            .setDFromPort(80)
+            .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE);
         /* allow ARP from prov->cons */
         classifier2 = space->addGbpeL24Classifier("classifier2");
         classifier2->setOrder(200).setDirection(DirectionEnumT::CONST_OUT)

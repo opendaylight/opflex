@@ -884,6 +884,7 @@ public:
     }
     Bldr& isVlan(uint16_t v) { rep(",vlan_tci=", strpad(v), "/0x1fff"); return *this; }
     Bldr& isNdTarget(const string& t) { rep(",nd_target=", t); return *this; }
+    Bldr& connState(const string& s) { rep(",conn_state=" + s); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& drop() { rep("drop"); return *this; }
     Bldr& load(REG r, uint32_t v) {
@@ -900,6 +901,9 @@ public:
     Bldr& go(uint8_t t) { rep("goto_table:", str(t)); return *this; }
     Bldr& out(REG r) { rep("output:" + rstr[r]); return *this; }
     Bldr& decTtl() { rep("dec_ttl"); return *this; }
+    Bldr& conntrack(const string& f, uint16_t z) {
+        rep("ct(", f + ",zone=" + str(z), ")"); return *this;
+    }
     Bldr& group(uint32_t g) { rep("group:", str(g)); return *this; }
     Bldr& bktId(uint32_t b) { rep("bucket_id:", str(b)); return *this; }
     Bldr& bktActions() { rep(",actions="); cntr = 1; return *this; }
@@ -1293,9 +1297,19 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
             con1->getURI());
     BOOST_FOREACH(uint32_t pvnid, pvnids) {
         BOOST_FOREACH(uint32_t cvnid, cvnids) {
+            uint16_t ctzone = (uint16_t)cvnid;
             fe_con1.push_back(Bldr().table(4).priority(prio)
                     .cookie(con1_cookie).tcp()
                     .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
+                    .actions().conntrack("commit", ctzone).out(OUTPORT)
+                    .done());
+            fe_con1.push_back(Bldr().table(4).priority(prio)
+                    .cookie(con1_cookie).connState("-trk").tcp()
+                    .reg(SEPG, pvnid).reg(DEPG, cvnid)
+                    .actions().conntrack("recirc", ctzone).done());
+            fe_con1.push_back(Bldr().table(4).priority(prio)
+                    .cookie(con1_cookie).connState("-new+est+trk").tcp()
+                    .reg(SEPG, pvnid).reg(DEPG, cvnid)
                     .actions().out(OUTPORT).done());
             fe_con1.push_back(Bldr().table(4).priority(prio-1)
                     .cookie(con1_cookie).arp()
