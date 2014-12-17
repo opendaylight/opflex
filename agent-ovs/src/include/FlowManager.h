@@ -133,7 +133,12 @@ public:
          * Encapsulate using a VXLAN tunnel, with a VNID for each
          * endpoint group.
          */
-        ENCAP_VXLAN
+        ENCAP_VXLAN,
+        /**
+         * Encapsulate using an IVXLAN tunnel, with a VNID for each
+         * endpoint group and additional metadata in the tunnel header
+         */
+        ENCAP_IVXLAN
     };
 
     void SetEncapType(EncapType encapType);

@@ -56,8 +56,8 @@ static void
 InitSubField(struct mf_subfield *sf, enum mf_field_id id) {
     const struct mf_field *field = &mf_fields[(int)id];
     sf->field = field;
-    sf->ofs = 0;    /* start position */
-    sf->n_bits = field->n_bits;     /* number of bits */
+    sf->ofs = 0;                   /* start position */
+    sf->n_bits = field->n_bits;    /* number of bits */
 }
 
 void
@@ -81,6 +81,7 @@ ActionBuilder::SetRegMove(mf_field_id srcRegId, mf_field_id dstRegId) {
     struct ofpact_reg_move *move = ofpact_put_REG_MOVE(&buf);
     InitSubField(&move->src, srcRegId);
     InitSubField(&move->dst, dstRegId);
+
     int bitsToMove = std::min(move->src.n_bits, move->dst.n_bits);
     move->src.n_bits = bitsToMove;
     move->dst.n_bits  = bitsToMove;
@@ -144,6 +145,12 @@ ActionBuilder::SetController() {
     contr->controller_id = 0;
     contr->reason = OFPR_ACTION;
 }
+
+void
+ActionBuilder::SetPushVlan() {
+    ofpact_put_PUSH_VLAN(&buf);
+}
+
 
 }   // namespace flow
 }   // namespace enforcer

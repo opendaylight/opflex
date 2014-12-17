@@ -60,7 +60,7 @@ static const char * ID_NMSPC_CON = "contract";
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), executor(NULL), portMapper(NULL), reader(NULL),
-        fallbackMode(FALLBACK_PROXY), encapType(ENCAP_VXLAN),
+        fallbackMode(FALLBACK_PROXY), encapType(ENCAP_NONE),
         virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this) {
     memset(routerMac, 0, sizeof(routerMac));
     ParseIpv4Addr("127.0.0.1", &tunnelDstIpv4);
@@ -193,12 +193,21 @@ SetSourceMatchEp(FlowEntry *fe, uint16_t prio, uint32_t ofPort,
 }
 
 static void
-SetSourceMatchEpg(FlowEntry *fe, uint16_t prio, uint32_t tunPort,
-        uint32_t epgId) {
+SetSourceMatchEpg(FlowEntry *fe, FlowManager::EncapType encapType, 
+                  uint16_t prio, uint32_t tunPort, uint32_t epgId) {
     fe->entry->table_id = FlowManager::SRC_TABLE_ID;
     fe->entry->priority = prio;
     match_set_in_port(&fe->entry->match, tunPort);
-    match_set_tun_id(&fe->entry->match, htonll(epgId));
+    switch (encapType) {
+    case FlowManager::ENCAP_VLAN:
+        match_set_vlan_vid(&fe->entry->match, htons(0xfff & epgId));
+        break;
+    case FlowManager::ENCAP_VXLAN:
+    case FlowManager::ENCAP_IVXLAN:
+    default:
+        match_set_tun_id(&fe->entry->match, htonll(epgId));
+        break;
+    }
 }
 
 /** Destination table helper functions */
@@ -249,14 +258,33 @@ SetMatchFd(FlowEntry *fe, uint16_t prio, uint32_t fdId, bool broadcast,
 }
 
 static void
-SetDestActionEpMac(FlowEntry *fe, bool isLocal, uint32_t epgId,
-        uint32_t port, uint32_t tunDst) {
+SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type, 
+                            uint32_t tunDst) {
+    switch (type) {
+    case FlowManager::ENCAP_VLAN:
+        ab.SetPushVlan();
+        ab.SetRegMove(MFF_REG0, MFF_VLAN_VID);
+        break;
+    case FlowManager::ENCAP_VXLAN:
+        ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
+        ab.SetRegLoad(MFF_TUN_DST, tunDst);
+        // fall through
+    case FlowManager::ENCAP_IVXLAN:
+        // TODO: set additional ivxlan fields
+        break;
+    default:
+        break;
+    }
+}
+
+static void
+SetDestActionEpMac(FlowEntry *fe, FlowManager::EncapType type, bool isLocal, 
+                   uint32_t epgId, uint32_t port, uint32_t tunDst) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
     if (!isLocal) {
-        ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
-        ab.SetRegLoad(MFF_TUN_DST, tunDst);
+        SetActionTunnelMetadata(ab, type, tunDst);
     }
     ab.SetGotoTable(FlowManager::POL_TABLE_ID);
 
@@ -264,14 +292,15 @@ SetDestActionEpMac(FlowEntry *fe, bool isLocal, uint32_t epgId,
 }
 
 static void
-SetDestActionEpIpv4(FlowEntry *fe, bool isLocal, uint32_t epgId, uint32_t port,
-        uint32_t tunDst, const uint8_t *specialMac, const uint8_t *dstMac) {
+SetDestActionEpIpv4(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,  
+                    uint32_t epgId, uint32_t port,
+                    uint32_t tunDst, const uint8_t *specialMac, 
+                    const uint8_t *dstMac) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
     if (!isLocal) {
-        ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
-        ab.SetRegLoad(MFF_TUN_DST, tunDst);
+        SetActionTunnelMetadata(ab, type, tunDst);
     }
     ab.SetEthSrcDst(specialMac, dstMac);
     ab.SetDecNwTtl();
@@ -281,14 +310,14 @@ SetDestActionEpIpv4(FlowEntry *fe, bool isLocal, uint32_t epgId, uint32_t port,
 }
 
 static void
-SetDestActionEpArpIpv4(FlowEntry *fe, bool isLocal, uint32_t epgId,
-        uint32_t port, uint32_t tunDst, const uint8_t *dstMac) {
+SetDestActionEpArpIpv4(FlowEntry *fe, FlowManager::EncapType type, bool isLocal, 
+                       uint32_t epgId, uint32_t port, uint32_t tunDst, 
+                       const uint8_t *dstMac) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
     if (!isLocal) {
-        ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
-        ab.SetRegLoad(MFF_TUN_DST, tunDst);
+        SetActionTunnelMetadata(ab, type, tunDst);
     }
     ab.SetEthSrcDst(NULL, dstMac);
     ab.SetGotoTable(FlowManager::POL_TABLE_ID);
@@ -320,10 +349,10 @@ SetDestActionFdBroadcast(FlowEntry *fe, uint32_t fdId) {
 }
 
 static void
-SetDestActionOutputToTunnel(FlowEntry *fe, uint32_t tunDst, uint32_t tunPort) {
+SetDestActionOutputToTunnel(FlowEntry *fe, FlowManager::EncapType type,
+                            uint32_t tunDst, uint32_t tunPort) {
     ActionBuilder ab;
-    ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
-    ab.SetRegLoad(MFF_TUN_DST, tunDst);
+    SetActionTunnelMetadata(ab, type, tunDst);
     ab.SetOutputToPort(tunPort);
     ab.Build(fe->entry);
 }
@@ -585,8 +614,8 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
     if (bdId != 0 && hasMac && epPort != OFPP_NONE) {
         FlowEntry *e0 = new FlowEntry();
         SetDestMatchEpMac(e0, 10, macAddr, bdId);
-        SetDestActionEpMac(e0, isLocalEp, epgVnid, epPort,
-                GetTunnelDstIpv4());
+        SetDestActionEpMac(e0, encapType, isLocalEp, epgVnid, epPort,
+                           GetTunnelDstIpv4());
         elDst.push_back(FlowEntryPtr(e0));
     }
 
@@ -598,8 +627,9 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                     (hasMac ? macAddr : NULL) : NULL;
                 FlowEntry *e0 = new FlowEntry();
                 SetDestMatchEpIpv4(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
-                SetDestActionEpIpv4(e0, isLocalEp, epgVnid, epPort,
-                                    GetTunnelDstIpv4(), GetRouterMacAddr(), dstMac);
+                SetDestActionEpIpv4(e0, encapType, isLocalEp, epgVnid, epPort,
+                                    GetTunnelDstIpv4(), GetRouterMacAddr(),
+                                    dstMac);
                 elDst.push_back(FlowEntryPtr(e0));
             }
 
@@ -608,8 +638,8 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                 SetDestMatchArpIpv4(e1, 20, ipAddr, rdId);
                 if (arpMode == ArpModeEnumT::CONST_UNICAST) {
                     // ARP optimization: broadcast -> unicast
-                    SetDestActionEpArpIpv4(e1, isLocalEp, epgVnid, epPort,
-                                           GetTunnelDstIpv4(), 
+                    SetDestActionEpArpIpv4(e1, encapType, isLocalEp, epgVnid,
+                                           epPort, GetTunnelDstIpv4(), 
                                            hasMac ? macAddr : NULL);
                 }
                 // else drop the ARP packet
@@ -655,7 +685,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         SetSecurityActionAllow(allowDHCP);
         fixedFlows.push_back(FlowEntryPtr(allowDHCP));
 
-        if (tunPort != OFPP_NONE) {
+        if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
             // allow all traffic from the tunnel uplink through the port
             // security table
             FlowEntry *allowTunnel = new FlowEntry();
@@ -668,16 +698,17 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         WriteFlow("static", SEC_TABLE_ID, fixedFlows);
     }
 
-    if (fallbackMode == FALLBACK_PROXY && tunPort != OFPP_NONE) {
+    if (fallbackMode == FALLBACK_PROXY && tunPort != OFPP_NONE && 
+        encapType != ENCAP_NONE) {
         // Output to the tunnel interface, bypassing policy
         // note that if the flood domain is set to flood unknown, then
         // there will be a higher-priority rule installed for that
         // flood domain.
-
         FlowEntry *unknownTunnel = new FlowEntry();
         unknownTunnel->entry->priority = 1;
         unknownTunnel->entry->table_id = DST_TABLE_ID;
-        SetDestActionOutputToTunnel(unknownTunnel, GetTunnelDstIpv4(), tunPort);
+        SetDestActionOutputToTunnel(unknownTunnel, encapType,
+                                    GetTunnelDstIpv4(), tunPort);
         WriteFlow("static", DST_TABLE_ID, unknownTunnel);
     }
 
@@ -694,11 +725,11 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         return;
     }
 
-    if (tunPort != OFPP_NONE) {
+    if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
         // Assign the source registers based on the VNID from the
         // tunnel uplink
         FlowEntry *e0 = new FlowEntry();
-        SetSourceMatchEpg(e0, 150, tunPort, epgVnid);
+        SetSourceMatchEpg(e0, encapType, 150, tunPort, epgVnid);
         SetSourceAction(e0, epgVnid, bdId, fdId, rdId);
         WriteFlow(epgId, SRC_TABLE_ID, e0);
     } else {
@@ -786,11 +817,11 @@ FlowManager::CreateGroupMod(uint16_t type, uint32_t groupId,
         list_push_back(&entry->mod->buckets, &bkt->list_node);
     }
     uint32_t tunPort = GetTunnelPort();
-    if (type != OFPGC11_DELETE && tunPort != OFPP_NONE) {
+    if (type != OFPGC11_DELETE && tunPort != OFPP_NONE && 
+        encapType != ENCAP_NONE) {
         ofputil_bucket *bkt = CreateBucket(tunPort);
         ActionBuilder ab;
-        ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
-        ab.SetRegLoad(MFF_TUN_DST, GetTunnelDstIpv4());
+        SetActionTunnelMetadata(ab, encapType, GetTunnelDstIpv4());
         ab.SetOutputToPort(tunPort);
         ab.Build(bkt);
         list_push_back(&entry->mod->buckets, &bkt->list_node);

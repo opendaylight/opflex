@@ -55,6 +55,7 @@ public:
     void SetOutputReg(mf_field_id srcRegId);
     void SetGroup(uint32_t groupId);
     void SetController();
+    void SetPushVlan();
 
     /**
      * Extract and return an array of flow actions from a buffer used

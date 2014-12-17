@@ -43,7 +43,8 @@ void StitchedModeRenderer::start() {
     started = true;
     LOG(INFO) << "Starting stitched-mode renderer on " << ovsBridgeName;
 
-    if (encapType == FlowManager::ENCAP_VXLAN) {
+    if (encapType == FlowManager::ENCAP_VXLAN ||
+        encapType == FlowManager::ENCAP_IVXLAN) {
         tunnelEpManager.setUplinkIface(uplinkIface);
         tunnelEpManager.start();
     }
@@ -51,7 +52,9 @@ void StitchedModeRenderer::start() {
     flowManager.SetFallbackMode(FlowManager::FALLBACK_PROXY);
     flowManager.SetEncapType(encapType);
     flowManager.SetEncapIface(encapIface);
-    flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
+    if (encapType == FlowManager::ENCAP_VXLAN ||
+        encapType == FlowManager::ENCAP_IVXLAN)
+        flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
     flowManager.SetVirtualRouter(virtualRouter);
     flowManager.SetVirtualRouterMac(virtualRouterMac);
 
@@ -87,7 +90,8 @@ void StitchedModeRenderer::stop() {
     delete connection;
     connection = NULL;
 
-    if (encapType == FlowManager::ENCAP_VXLAN) {
+    if (encapType == FlowManager::ENCAP_VXLAN ||
+        encapType == FlowManager::ENCAP_IVXLAN) {
         tunnelEpManager.stop();
     }
 }
