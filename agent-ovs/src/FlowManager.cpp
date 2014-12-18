@@ -30,6 +30,7 @@
 #include "FlowManager.h"
 #include "TableState.h"
 #include "ActionBuilder.h"
+#include "RangeMask.h"
 
 using namespace std;
 using namespace boost;
@@ -1001,19 +1002,11 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
     WriteFlow(contractId, POL_TABLE_ID, entryList);
 }
 
-void FlowManager::AddEntryForClassifier(L24Classifier *classifier,
-        uint16_t priority, uint64_t cookie, uint32_t& svnid, uint32_t& dvnid,
-        flow::FlowEntryList& entries) {
+static void SetEntryProtocol(FlowEntry *fe, L24Classifier *classifier) {
     using namespace modelgbp::arp;
     using namespace modelgbp::l2;
 
-    FlowEntry *e0 = new FlowEntry();
-    match *m = &(e0->entry->match);
-    e0->entry->cookie = htonll(cookie);
-    SetPolicyMatchEpgs(e0, priority, svnid, dvnid);
-    SetPolicyActionAllow(e0);
-    entries.push_back(FlowEntryPtr(e0));
-
+    match *m = &(fe->entry->match);
     uint8_t arpOpc =
             classifier->getArpOpc(OpcodeEnumT::CONST_UNSPECIFIED);
     uint16_t ethT =
@@ -1027,11 +1020,39 @@ void FlowManager::AddEntryForClassifier(L24Classifier *classifier,
     if (classifier->isProtSet()) {
         match_set_nw_proto(m, classifier->getProt().get());
     }
-    if (classifier->isSFromPortSet()) {
-        match_set_tp_src(m, htons(classifier->getSFromPort().get()));
+}
+
+void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
+        uint16_t priority, uint64_t cookie, uint32_t& svnid, uint32_t& dvnid,
+        flow::FlowEntryList& entries) {
+    ovs_be64 ckbe = htonll(cookie);
+    MaskList srcPorts;
+    MaskList dstPorts;
+    RangeMask::getMasks(clsfr->getSFromPort(), clsfr->getSToPort(), srcPorts);
+    RangeMask::getMasks(clsfr->getDFromPort(), clsfr->getDToPort(), dstPorts);
+
+    /* Add a "ignore" mask to empty ranges - makes the loop later easy */
+    if (srcPorts.empty()) {
+        srcPorts.push_back(Mask(0x0, 0x0));
     }
-    if (classifier->isDFromPortSet()) {
-        match_set_tp_dst(m, htons(classifier->getDFromPort().get()));
+    if (dstPorts.empty()) {
+        dstPorts.push_back(Mask(0x0, 0x0));
+    }
+
+    BOOST_FOREACH (const Mask& sm, srcPorts) {
+        BOOST_FOREACH(const Mask& dm, dstPorts) {
+            FlowEntry *e0 = new FlowEntry();
+            e0->entry->cookie = ckbe;
+
+            SetPolicyMatchEpgs(e0, priority, svnid, dvnid);
+            SetEntryProtocol(e0, clsfr);
+            match *m = &(e0->entry->match);
+            match_set_tp_src_masked(m, htons(sm.first), htons(sm.second));
+            match_set_tp_dst_masked(m, htons(dm.first), htons(dm.second));
+
+            SetPolicyActionAllow(e0);
+            entries.push_back(FlowEntryPtr(e0));
+        }
     }
 }
 

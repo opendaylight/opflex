@@ -24,6 +24,7 @@
 #include "ModbFixture.h"
 #include "TableState.h"
 #include "ActionBuilder.h"
+#include "RangeMask.h"
 
 using namespace std;
 using namespace boost::assign;
@@ -228,6 +229,7 @@ public:
     void remoteEpTest();
     void fdTest();
     void policyTest();
+    void policyPortRangeTest();
     void connectTest();
 
     MockFlowExecutor exec;
@@ -243,7 +245,7 @@ public:
     vector<string> fe_ep0_eg0_1, fe_ep0_eg0_2;
     vector<string> fe_ep0_port_1, fe_ep0_port_2, fe_ep0_port_3;
     vector<string> fe_ep2, fe_ep2_eg1;
-    vector<string> fe_con1, fe_con2;
+    vector<string> fe_con1, fe_con2, fe_con3;
     vector<string> fe_arpopt;
     string fe_connect_1, fe_connect_2;
     string ge_fd0, ge_bkt_ep0, ge_bkt_ep2, ge_bkt_tun;
@@ -520,6 +522,22 @@ BOOST_FIXTURE_TEST_CASE(policy_vlan, VlanFlowManagerFixture) {
     policyTest();
 }
 
+void FlowManagerFixture::policyPortRangeTest() {
+    setConnected();
+
+    exec.Expect(FlowEdit::add, fe_con3);
+    flowManager.contractUpdated(con3->getURI());
+    WAIT_FOR(exec.IsEmpty(), 500);
+}
+
+BOOST_FIXTURE_TEST_CASE(policy_portrange_vxlan, FlowManagerFixture) {
+    policyPortRangeTest();
+}
+
+BOOST_FIXTURE_TEST_CASE(policy_portrange_vlan, FlowManagerFixture) {
+    policyPortRangeTest();
+}
+
 void FlowManagerFixture::connectTest() {
     flowManager.SetFlowReader(&reader);
 
@@ -713,6 +731,12 @@ public:
     Bldr& isIpDst(string& s) { rep(",nw_dst=", s); return *this; }
     Bldr& isTpSrc(uint16_t p) { rep(",tp_src=", str(p)); return *this; }
     Bldr& isTpDst(uint16_t p) { rep(",tp_dst=", str(p)); return *this; }
+    Bldr& isTpSrc(uint16_t p, uint16_t m) {
+        rep(",tp_src=", str(p, true) + "/" + str(m, true)); return *this;
+    }
+    Bldr& isTpDst(uint16_t p, uint16_t m) {
+        rep(",tp_dst=", str(p, true) + "/" + str(m, true)); return *this;
+    }
     Bldr& isVlan(uint16_t v) { rep(",vlan_tci=", strpad(v), "/0x1fff"); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& drop() { rep("drop"); return *this; }
@@ -1019,6 +1043,28 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                     .cookie(con1_cookie).arp()
                     .reg(SEPG, pvnid).reg(DEPG, cvnid)
                     .actions().out(OUTPORT).done());
+        }
+    }
+
+    /* con3 */
+    uint32_t con3_cookie = flowManager.GetId(con3->getClassId(),
+        con3->getURI());
+    MaskList ml_80_85 = list_of<Mask>(0x0050, 0xfffc)(0x0054, 0xfffe);
+    MaskList ml_66_69 = list_of<Mask>(0x0042, 0xfffe)(0x0044, 0xfffe);
+    MaskList ml_94_95 = list_of<Mask>(0x005e, 0xfffe);
+    BOOST_FOREACH (const Mask& mk, ml_80_85) {
+        fe_con3.push_back(Bldr().table(4).priority(prio)
+            .cookie(con3_cookie).tcp()
+            .reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
+            .isTpDst(mk.first, mk.second).actions().out(OUTPORT).done());
+    }
+    BOOST_FOREACH (const Mask& mks, ml_66_69) {
+        BOOST_FOREACH (const Mask& mkd, ml_94_95) {
+            fe_con3.push_back(Bldr().table(4).priority(prio-1)
+                .cookie(con3_cookie).tcp()
+                .reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
+                .isTpSrc(mks.first, mks.second).isTpDst(mkd.first, mkd.second)
+                .actions().out(OUTPORT).done());
         }
     }
 

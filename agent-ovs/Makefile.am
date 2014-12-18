@@ -65,6 +65,7 @@ libagent_ovs_la_SOURCES = \
 	src/include/Agent.h \
 	src/include/WorkQueue.h \
 	src/include/IdGenerator.h \
+	src/include/RangeMask.h \
 	src/include/cmd.h \
 	src/include/logging.h \
 	src/AgentLogHandler.cpp \
@@ -87,7 +88,8 @@ libagent_ovs_la_SOURCES = \
 	src/cmd.cpp \
 	src/Agent.cpp \
 	src/WorkQueue.cpp \
-	src/IdGenerator.cpp
+	src/IdGenerator.cpp \
+	src/RangeMask.cpp
 
 bin_PROGRAMS=agent_ovs
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
@@ -116,6 +118,7 @@ agent_test_SOURCES = \
 	test/PortMapper_test.cpp \
 	test/FlowExecutor_test.cpp \
 	test/IdGenerator_test.cpp \
+	test/RangeMask_test.cpp \
 	test/main.cpp
 agent_test_LDADD = \
 	libagent_ovs.la \

@@ -63,9 +63,12 @@ public:
     shared_ptr<L24Classifier> classifier0;
     shared_ptr<L24Classifier> classifier1;
     shared_ptr<L24Classifier> classifier2;
+    shared_ptr<L24Classifier> classifier3;
+    shared_ptr<L24Classifier> classifier4;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
+    shared_ptr<Contract> con3;
     string policyOwner;
 
 protected:
@@ -207,6 +210,26 @@ protected:
 
         epg2->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
         epg3->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
+
+        /* classifiers with port ranges */
+        classifier3 = space->addGbpeL24Classifier("classifier3");
+        classifier3->setOrder(200).setDirection(DirectionEnumT::CONST_IN)
+            .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
+            .setDFromPort(80).setDToPort(85);
+
+        classifier4 = space->addGbpeL24Classifier("classifier4");
+        classifier4->setOrder(100).setDirection(DirectionEnumT::CONST_IN)
+            .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
+            .setSFromPort(66).setSToPort(69)
+            .setDFromPort(94).setDToPort(95);
+        con3 = space->addGbpContract("contract3");
+        con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
+            ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
+        con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
+            ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
+        epg0->addGbpEpGroupToProvContractRSrc(con3->getURI().toString());
+        epg1->addGbpEpGroupToConsContractRSrc(con3->getURI().toString());
+
     }
 };
 
