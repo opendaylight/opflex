@@ -322,7 +322,6 @@ void EndpointManager::getEndpointsByIface(const std::string& ifaceName,
 }
 
 void EndpointManager::updateEndpointCounters(const std::string& uuid,
-                                             bool isTx,
                                              EpCounters& newVals) {
     using namespace modelgbp::gbpe;
     using namespace modelgbp::observer;
@@ -332,14 +331,18 @@ void EndpointManager::updateEndpointCounters(const std::string& uuid,
         EpStatUniverse::resolve(framework);
     if (su) {
         su.get()->addGbpeEpCounter(uuid)
-            ->setDirection(isTx ? CounterDirectionEnumT::CONST_TX 
-                           : CounterDirectionEnumT::CONST_RX)
-            .setPackets(newVals.packets)
-            .setDrop(newVals.drop)
-            .setBroadcast(newVals.broadcast)
-            .setMulticast(newVals.multicast)
-            .setUnicast(newVals.unicast)
-            .setBytes(newVals.bytes);
+            ->setRxPackets(newVals.rxPackets)
+            .setTxPackets(newVals.txPackets)
+            .setRxDrop(newVals.rxDrop)
+            .setTxDrop(newVals.txDrop)
+            .setRxBroadcast(newVals.rxBroadcast)
+            .setTxBroadcast(newVals.txBroadcast)
+            .setRxMulticast(newVals.rxMulticast)
+            .setTxMulticast(newVals.txMulticast)
+            .setRxUnicast(newVals.rxUnicast)
+            .setTxUnicast(newVals.txUnicast)
+            .setRxBytes(newVals.rxBytes)
+            .setTxBytes(newVals.txBytes);
     }
 
     mutator.commit();

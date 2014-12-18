@@ -97,15 +97,15 @@ void StatsManager::Handle(SwitchConnection *conn,
     ofpbuf_use_const(&b, oh, ntohs(oh->length));
     ofpraw_pull_assert(&b);
     while (!ofputil_decode_port_stats(&ps, &b)) {
-        EndpointManager::EpCounters txcounters;
-        EndpointManager::EpCounters rxcounters;
+        EndpointManager::EpCounters counters;
+        memset(&counters, 0, sizeof(counters));
 
-        txcounters.packets = ps.stats.tx_packets;
-        rxcounters.packets = ps.stats.rx_packets;
-        txcounters.bytes = ps.stats.tx_bytes;
-        rxcounters.bytes = ps.stats.rx_bytes;
-        txcounters.drop = ps.stats.tx_dropped;
-        rxcounters.drop = ps.stats.rx_dropped;
+        counters.txPackets = ps.stats.tx_packets;
+        counters.rxPackets = ps.stats.rx_packets;
+        counters.txBytes = ps.stats.tx_bytes;
+        counters.rxBytes = ps.stats.rx_bytes;
+        counters.txDrop = ps.stats.tx_dropped;
+        counters.rxDrop = ps.stats.rx_dropped;
 
         EndpointManager& epMgr = agent->getEndpointManager();
         boost::unordered_set<std::string> endpoints;
@@ -117,8 +117,7 @@ void StatsManager::Handle(SwitchConnection *conn,
         }
 
         BOOST_FOREACH(const std::string& uuid, endpoints) {
-            epMgr.updateEndpointCounters(uuid, true, txcounters);
-            epMgr.updateEndpointCounters(uuid, false, rxcounters);
+            epMgr.updateEndpointCounters(uuid, counters);
         }
     }
 }

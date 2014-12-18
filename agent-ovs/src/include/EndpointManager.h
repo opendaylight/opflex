@@ -109,45 +109,73 @@ public:
      */
     struct EpCounters {
         /**
-         * Number of packets sent/received
+         * Number of packets sent
          */
-        uint64_t packets;
+        uint64_t txPackets;
 
         /**
-         * the number of dropped packets
+         * Number of packets received
          */
-        uint64_t drop;
+        uint64_t rxPackets;
 
         /**
-         * the number of multicast packets
+         * the number of dropped packets sent
          */
-        uint64_t multicast;
+        uint64_t txDrop;
 
         /**
-         * the number of broadcast packets
+         * the number of dropped packets received
          */
-        uint64_t broadcast;
+        uint64_t rxDrop;
 
         /**
-         * the number of unicast packets
+         * the number of multicast packets sent
          */
-        uint64_t unicast;
+        uint64_t txMulticast;
 
         /**
-         * the number of bytes sent/received
+         * the number of multicast packets received
          */
-        uint64_t bytes;
+        uint64_t rxMulticast;
+
+        /**
+         * the number of broadcast packets sent
+         */
+        uint64_t txBroadcast;
+
+        /**
+         * the number of broadcast packets received
+         */
+        uint64_t rxBroadcast;
+
+        /**
+         * the number of unicast packets sent
+         */
+        uint64_t txUnicast;
+
+        /**
+         * the number of unicast packets received
+         */
+        uint64_t rxUnicast;
+
+        /**
+         * the number of bytes sent
+         */
+        uint64_t txBytes;
+
+        /**
+         * the number of bytes received
+         */
+        uint64_t rxBytes;
     };
 
     /**
      * Update the counters for an endpoint to the specified values
      *
      * @param uuid the UUID of the endpoint to update
-     * @param isTx true to update tx counters, false for rx counters
      * @param newVals the new counter values
      */
     void updateEndpointCounters(const std::string& uuid,
-                                bool isTx,
                                 EpCounters& newVals);
 
     // see PolicyListener

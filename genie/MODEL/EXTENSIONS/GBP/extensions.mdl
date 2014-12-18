@@ -99,27 +99,41 @@ module[gbpe]
                 component[member=uuid]
             }
         }
+        # number of packets received
+        member[rxPackets; type=scalar/UInt64]
 
-        # Direction of the counter update (tx or rx)
-        member[direction; type=gbpe/CounterDirection]
+        # number of packets sent
+        member[txPackets; type=scalar/UInt64]
 
-        # number of packets sent/received
-        member[packets; type=scalar/UInt64]
+        # the number of received packets dropped
+        member[rxDrop; type=scalar/UInt64]
 
-        # the number of dropped packets
-        member[drop; type=scalar/UInt64]
+        # the number of sent packets dropped
+        member[txDrop; type=scalar/UInt64]
 
-        # the number of multicast packets
-        member[multicast; type=scalar/UInt64]
+        # the number of received multicast packets
+        member[rxMulticast; type=scalar/UInt64]
 
-        # the number of broadcast packets
-        member[broadcast; type=scalar/UInt64]
+        # the number of sent multicast packets
+        member[txMulticast; type=scalar/UInt64]
 
-        # the number of unicast packets
-        member[unicast; type=scalar/UInt64]
+        # the number of received broadcast packets
+        member[rxBroadcast; type=scalar/UInt64]
 
-        # the number of bytes sent/received
-        member[bytes; type=scalar/UInt64]
+        # the number of sent broadcast packets
+        member[txBroadcast; type=scalar/UInt64]
+
+        # the number of received unicast packets
+        member[rxUnicast; type=scalar/UInt64]
+
+        # the number of sent unicast packets
+        member[txUnicast; type=scalar/UInt64]
+
+        # the number of bytes received
+        member[rxBytes; type=scalar/UInt64]
+
+        # the number of bytes sent
+        member[txBytes; type=scalar/UInt64]
     }
 
     # universe to hold tunnel endpoints
