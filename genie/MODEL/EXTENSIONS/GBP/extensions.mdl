@@ -75,13 +75,6 @@ module[gbpe]
         member[dToPort; type=l4/Port]
     }
 
-    # A direction for an interface/flow counter (tx or rx)
-    type[CounterDirection; super=scalar/Enum8]
-    {
-        const[name=rx; value=0]
-        const[name=tx; value=1]
-    }
-
     # A set of counters for a network endpoint
     class[EpCounter;
           super=observer/UuidObservable;

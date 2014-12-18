@@ -11,7 +11,6 @@
 
 #include <opflex/modb/Mutator.h>
 #include <boost/foreach.hpp>
-#include <modelgbp/gbpe/CounterDirectionEnumT.hpp>
 
 #include "EndpointManager.h"
 #include "logging.h"
