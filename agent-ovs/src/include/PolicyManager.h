@@ -218,6 +218,13 @@ private:
         subnet_map_t subnet_map;
     };
 
+    struct SubnetsCacheEntry {
+        SubnetsCacheEntry() : refUri(opflex::modb::URI::ROOT) {}
+
+        opflex::modb::URI refUri;
+        subnet_vector_t childSubnets;
+    };
+
     typedef boost::unordered_map<opflex::modb::URI, GroupState> group_map_t;
     typedef boost::unordered_map<opflex::modb::URI,
                                  boost::unordered_set<opflex::modb::URI> > uri_ref_map_t;
@@ -226,6 +233,13 @@ private:
      * A map from EPG URI to its state
      */ 
     group_map_t group_map;
+
+    typedef boost::unordered_map<opflex::modb::URI, SubnetsCacheEntry> subnet_index_t;
+
+    /**
+     * A cache of subnets to subnet child objects
+     */
+    subnet_index_t subnet_index; 
 
     /**
      * A map from a forwarding domain URI to a set of subnets that
@@ -314,7 +328,7 @@ private:
      * Update the subnet URI map.  You must hold a state lock to call
      * this function.
      */
-    void updateSubnetIndex();
+    void updateSubnetIndex(const opflex::modb::URI& subnetsUri);
 
     /**
      * Update the EPG domain cache information for the specified EPG

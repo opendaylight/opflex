@@ -54,6 +54,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<Subnet> subnetsfd1_1;
     shared_ptr<Subnet> subnetsfd1_2;
     shared_ptr<Subnet> subnetsfd2_1;
+    shared_ptr<Subnet> subnetsfd2_2;
     shared_ptr<Subnets> subnetsbd;
     shared_ptr<Subnet> subnetsbd1;
     shared_ptr<Subnets> subnetsrd;
@@ -66,6 +67,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<L24Classifier> classifier1;
     shared_ptr<L24Classifier> classifier2;
     shared_ptr<L24Classifier> classifier3;
+    shared_ptr<L24Classifier> classifier4;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
@@ -90,12 +92,25 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     
     subnetsfd1 = space->addGbpSubnets("subnetsfd1");
     subnetsfd1_1 = subnetsfd1->addGbpSubnet("subnetsfd1_1");
+    subnetsfd1_1->setAddress("10.0.0.0")
+        .setPrefixLen(24)
+        .setVirtualRouterIp("10.0.0.128");
     subnetsfd1_2 = subnetsfd1->addGbpSubnet("subnetsfd1_2");
+    subnetsfd1_2->setAddress("fd8f:69d8:c12c:ca62::")
+        .setPrefixLen(64)
+        .setVirtualRouterIp("fd8f:69d8:c12c:ca62::1");
     subnetsfd1->addGbpSubnetsToNetworkRSrc()
         ->setTargetFloodDomain(fd1->getURI());
 
     subnetsfd2 = space->addGbpSubnets("subnetsfd2");
     subnetsfd2_1 = subnetsfd2->addGbpSubnet("subnetsfd2_1");
+    subnetsfd2_1->setAddress("10.0.1.0")
+        .setPrefixLen(24)
+        .setVirtualRouterIp("10.0.1.128");
+    subnetsfd2_2 = subnetsfd2->addGbpSubnet("subnetsfd2_2");
+    subnetsfd2_2->setAddress("fd8c:ad36:ceb3:601f::")
+        .setPrefixLen(64)
+        .setVirtualRouterIp("fd8c:ad36:ceb3:601f::1");
     subnetsfd2->addGbpSubnetsToNetworkRSrc()
         ->setTargetFloodDomain(fd2->getURI());
     
@@ -121,10 +136,15 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
         .setEtherT(EtherTypeEnumT::CONST_IPV4)
         .setProt(1);
+    classifier3 = space->addGbpeL24Classifier("classifier3");
+    classifier3->setOrder(100)
+        .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
+        .setEtherT(EtherTypeEnumT::CONST_IPV6)
+        .setProt(58);
 
     // HTTP
-    classifier3 = space->addGbpeL24Classifier("classifier3");
-    classifier3->setEtherT(EtherTypeEnumT::CONST_IPV4)
+    classifier4 = space->addGbpeL24Classifier("classifier4");
+    classifier4->setEtherT(EtherTypeEnumT::CONST_IPV4)
         .setProt(6)
         .setDFromPort(80)
         .setDToPort(80)
@@ -137,30 +157,34 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->setOrder(10)
         .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
     con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
-        ->setOrder(10)
-        .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+        ->addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+    con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
+        ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
 
     // HTTP to provider, reflexive
     con2 = space->addGbpContract("contract2");
     con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
-        ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
+        ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
 
     eg1 = space->addGbpEpGroup("group1");
     eg1->addGbpEpGroupToNetworkRSrc()
         ->setTargetSubnets(subnetsfd1->getURI());
     eg1->addGbpeInstContext()->setVnid(1234);
     eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+    eg1->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
 
     eg2 = space->addGbpEpGroup("group2");
     eg2->addGbpEpGroupToNetworkRSrc()
         ->setTargetSubnets(subnetsfd1->getURI());
     eg2->addGbpeInstContext()->setVnid(3000);
+    eg2->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
 
     eg3 = space->addGbpEpGroup("group3");
     eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+    eg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg3->addGbpEpGroupToNetworkRSrc()
         ->setTargetSubnets(subnetsfd2->getURI());
     eg3->addGbpeInstContext()->setVnid(3456);

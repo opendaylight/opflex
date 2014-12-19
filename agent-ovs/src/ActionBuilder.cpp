@@ -61,11 +61,27 @@ InitSubField(struct mf_subfield *sf, enum mf_field_id id) {
 }
 
 void
+ActionBuilder::SetRegLoad8(mf_field_id regId, uint8_t regValue) {
+    struct ofpact_set_field *load = ofpact_put_reg_load(&buf);
+    load->field = &mf_fields[(int)regId];
+    load->value.u8 = regValue;
+    load->mask.u8 = 0xff;
+}
+
+void
+ActionBuilder::SetRegLoad16(mf_field_id regId, uint16_t regValue) {
+    struct ofpact_set_field *load = ofpact_put_reg_load(&buf);
+    load->field = &mf_fields[(int)regId];
+    load->value.be16 = htons(regValue);
+    load->mask.be16 = 0xffff;
+}
+
+void
 ActionBuilder::SetRegLoad(mf_field_id regId, uint32_t regValue) {
     struct ofpact_set_field *load = ofpact_put_reg_load(&buf);
     load->field = &mf_fields[(int)regId];
     load->value.be32 = htonl(regValue);
-    load->mask.be32 = htonl(0xffffffff);
+    load->mask.be32 = 0xffffffff;
 }
 
 void
