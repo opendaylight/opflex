@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_53557f1b",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-12-19T23:54:38Z",
+      "side": 1,
+      "message": "nit: fix indentation",
+      "revId": "7aadf75a2419948237546b719df0dd610e349e3c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_d340af58",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 916,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2014-12-19T23:54:38Z",
+      "side": 1,
+      "message": "Move these log message to DEBUG and possibly drop some of them (specially the INFO level messages inside the loop)",
+      "revId": "7aadf75a2419948237546b719df0dd610e349e3c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
