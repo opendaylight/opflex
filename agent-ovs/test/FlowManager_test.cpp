@@ -216,6 +216,7 @@ public:
         flowManager.Stop();
     }
     void setConnected() {
+        flowManager.PeerConnected();    // pretend that opflex-peer is present
         flowManager.Connected(NULL);    // force flowManager out of sync-ing
     }
     void createEntriesForObjects(FlowManager::EncapType encapType);

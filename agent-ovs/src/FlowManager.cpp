@@ -60,13 +60,14 @@ static const char * ID_NMSPC_RD  = "routingDomain";
 static const char * ID_NMSPC_CON = "contract";
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
-        agent(ag), executor(NULL), portMapper(NULL), reader(NULL),
-        fallbackMode(FALLBACK_PROXY), encapType(ENCAP_NONE),
-        virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this) {
+        agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
+        reader(NULL), fallbackMode(FALLBACK_PROXY), encapType(ENCAP_NONE),
+        virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this),
+        connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
+        opflexPeerConnected(false) {
     memset(routerMac, 0, sizeof(routerMac));
     ParseIpv4Addr("127.0.0.1", &tunnelDstIpv4);
     portMapper = NULL;
-    SetSyncDelayOnConnect(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC);
 }
 
 void FlowManager::Start()
@@ -157,10 +158,7 @@ void FlowManager::SetVirtualRouterMac(const string& virtualRouterMac) {
 }
 
 void FlowManager::SetSyncDelayOnConnect(long delay) {
-    connectTimer.reset(
-        delay > 0 ?
-        new deadline_timer(agent.getAgentIOService(), milliseconds(delay)) :
-        NULL);
+    connectDelayMs = delay;
 }
 
 ovs_be64 FlowManager::GetLearnEntryCookie() {
@@ -451,6 +449,7 @@ void FlowManager::endpointUpdated(const std::string& uuid) {
 }
 
 void FlowManager::egDomainUpdated(const opflex::modb::URI& egURI) {
+    PeerConnected();
     WorkItem w = bind(&FlowManager::HandleEndpointGroupDomainUpdate, this,
                       egURI);
     workQ.enqueue(w);
@@ -464,6 +463,29 @@ void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
 void FlowManager::Connected(SwitchConnection *swConn) {
     WorkItem w = bind(&FlowManager::HandleConnection, this, swConn);
     workQ.enqueue(w);
+}
+
+void FlowManager::PeerConnected() {
+    if (!opflexPeerConnected) {
+        opflexPeerConnected = true;
+        LOG(INFO) << "Opflex peer connected";
+        /*
+         * Set a deadline for sync-ing of switch state. If we get connected
+         * to the switch before that, then we'll wait till the deadline
+         * expires before attempting to sync.
+         */
+        if (connectDelayMs > 0) {
+            connectTimer.reset(new deadline_timer(agent.getAgentIOService(),
+                milliseconds(connectDelayMs)));
+        }
+        // Pretend that we just got connected to the switch to schedule sync
+        if (connection && connection->IsConnected()) {
+
+            WorkItem w = bind(&FlowManager::HandleConnection, this,
+                              connection);
+            workQ.enqueue(w);
+        }
+    }
 }
 
 bool
@@ -1139,9 +1161,17 @@ FlowManager::ParseIpv6Addr(const string& str, in6_addr *ip) {
 }
 
 void FlowManager::HandleConnection(SwitchConnection *swConn) {
-    LOG(DEBUG) << "Handling new connection";
+    if (opflexPeerConnected) {
+        LOG(DEBUG) << "Handling new connection to switch";
+    } else {
+        LOG(INFO) << "Opflex peer not present, ignoring new "
+            "connection to switch";
+        return;
+    }
 
     if (connectTimer) {
+        LOG(DEBUG) << "Sync state with switch will begin in "
+            << connectTimer->expires_from_now();
         connectTimer->async_wait(
             bind(&FlowManager::OnConnectTimer, this, error));
     } else {

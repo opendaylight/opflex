@@ -208,6 +208,13 @@ public:
                 ofptype type, ofpbuf *msg);
 
     /**
+     * Indicate that the agent is connected to its Opflex peer.
+     * Note: This method should not be invoked directly except for purposes
+     * of unit-testing.
+     */
+    void PeerConnected();
+
+    /**
      * Indices of tables managed by the flow-manager.
      */
     enum { SEC_TABLE_ID, SRC_TABLE_ID, DST_TABLE_ID, LEARN_TABLE_ID,
@@ -437,6 +444,9 @@ private:
      */
     void OnConnectTimer(const boost::system::error_code& ec);
     boost::scoped_ptr<boost::asio::deadline_timer> connectTimer;
+    long connectDelayMs;
+
+    bool opflexPeerConnected;
 };
 
 }   // namespace enforcer
