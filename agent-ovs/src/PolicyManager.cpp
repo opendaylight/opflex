@@ -143,37 +143,46 @@ void PolicyManager::getSubnetsForGroup(const opflex::modb::URI& eg,
     }
 }
 
-void PolicyManager::updateSubnetIndex() {
+void PolicyManager::updateSubnetIndex(const opflex::modb::URI& subnetsUri) {
     using namespace modelgbp;
     using namespace modelgbp::gbp;
 
-    subnet_ref_map.clear();
-
-    optional<shared_ptr<policy::Universe> > universe = 
-        policy::Universe::resolve(framework);
-    if (!universe) return;
-
-    vector<shared_ptr<policy::Space> > space_list;
-    universe.get()->resolvePolicySpace(space_list);
-    BOOST_FOREACH(const shared_ptr<policy::Space>& space, space_list) {
-        vector<shared_ptr<Subnets> > subnets_list;
-        space->resolveGbpSubnets(subnets_list);
-
-        BOOST_FOREACH(const shared_ptr<Subnets>& subnets, subnets_list) {
-            optional<shared_ptr<SubnetsToNetworkRSrc> > ref = 
-                subnets->resolveGbpSubnetsToNetworkRSrc();
-            if (!ref) continue;
-            optional<URI> uri = ref.get()->getTargetURI();
-            if (!uri) continue;
-
-            vector<shared_ptr<Subnet> > subnet_list;
-            subnets->resolveGbpSubnet(subnet_list);
-
-            BOOST_FOREACH(const shared_ptr<Subnet>& subnet, subnet_list) {
-                subnet_ref_map[uri.get()].insert(subnet->getURI());
+    subnet_index_t::iterator oldit = subnet_index.find(subnetsUri);
+    if (oldit != subnet_index.end()) {
+        const opflex::modb::URI& refUri = oldit->second.refUri;
+        BOOST_FOREACH(const shared_ptr<Subnet>& snet, oldit->second.childSubnets) {
+            uri_ref_map_t::iterator rit = subnet_ref_map.find(refUri);
+            if (rit != subnet_ref_map.end()) {
+                unordered_set<opflex::modb::URI>& refmap = rit->second;
+                refmap.erase(snet->getURI());
+                if (refmap.size() == 0)
+                    subnet_ref_map.erase(rit);
             }
         }
+        subnet_index.erase(oldit);
     }
+
+    optional<shared_ptr<Subnets> > subnets = 
+        Subnets::resolve(framework, subnetsUri);
+    if (!subnets) return;
+
+    optional<shared_ptr<SubnetsToNetworkRSrc> > ref = 
+        subnets.get()->resolveGbpSubnetsToNetworkRSrc();
+    if (!ref) return;
+    optional<URI> uri = ref.get()->getTargetURI();
+    if (!uri) return;
+    
+    vector<shared_ptr<Subnet> > subnet_list;
+    subnets.get()->resolveGbpSubnet(subnet_list);
+    
+    SubnetsCacheEntry& ce = subnet_index[subnetsUri];
+    ce.refUri = uri.get();
+    ce.childSubnets = subnet_list;
+
+    BOOST_FOREACH(const shared_ptr<Subnet>& subnet, subnet_list) {
+        subnet_ref_map[uri.get()].insert(subnet->getURI());
+    }
+
 }
 
 bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
@@ -520,10 +529,11 @@ void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
                                                   const URI& uri) {
 
     unique_lock<mutex> guard(pmanager.state_mutex);
-    pmanager.updateSubnetIndex();
 
     if (class_id == modelgbp::gbp::EpGroup::CLASS_ID) {
         pmanager.group_map[uri];
+    } else if (class_id == modelgbp::gbp::Subnets::CLASS_ID) {
+        pmanager.updateSubnetIndex(uri);
     }
     unordered_set<URI> notify;
     for (PolicyManager::group_map_t::iterator itr = pmanager.group_map.begin();

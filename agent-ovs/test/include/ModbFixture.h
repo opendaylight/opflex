@@ -94,16 +94,25 @@ protected:
 
         subnetsfd0 = space->addGbpSubnets("subnetsfd0");
         subnetsfd0_1 = subnetsfd0->addGbpSubnet("subnetsfd0_1");
+        subnetsfd0_1->setAddress("10.20.44.0")
+            .setPrefixLen(24)
+            .setVirtualRouterIp("10.20.44.1");
         subnetsfd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd0->getURI());
 
         subnetsfd1 = space->addGbpSubnets("subnetsfd1");
         subnetsfd1_1 = subnetsfd0->addGbpSubnet("subnetsfd1_1");
+        subnetsfd1_1->setAddress("10.20.45.0")
+            .setPrefixLen(24)
+            .setVirtualRouterIp("10.20.45.1");
         subnetsfd1->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd1->getURI());
 
         subnetsbd0 = space->addGbpSubnets("subnetsbd0");
         subnetsbd0_1 = subnetsbd0->addGbpSubnet("subnetsbd0_1");
+        subnetsbd0_1->setAddress("2001:db8::")
+            .setPrefixLen(32)
+            .setVirtualRouterIp("2001:db8::1");
         subnetsbd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
 
@@ -145,8 +154,10 @@ protected:
         ep0.reset(new Endpoint("0-0-0-0"));
         ep0->setInterfaceName("port80");
         ep0->setMAC(opflex::modb::MAC("00:00:00:00:80:00"));
-        ep0->addIP("10.20.44.1");
         ep0->addIP("10.20.44.2");
+        ep0->addIP("10.20.44.3");
+        ep0->addIP("2001:db8::2");
+        ep0->addIP("2001:db8::3");
         ep0->setEgURI(epg0->getURI());
         epSrc.updateEndpoint(*ep0);
 
@@ -164,14 +175,14 @@ protected:
 
         ep3.reset(new Endpoint("0-0-0-3"));
         ep3->setMAC(opflex::modb::MAC("00:00:00:00:00:03"));
-        ep3->addIP("10.20.44.31");
+        ep3->addIP("10.20.45.31");
         ep3->setInterfaceName("eth3");
         ep3->setEgURI(epg3->getURI());
         epSrc.updateEndpoint(*ep3);
 
         ep4.reset(new Endpoint("0-0-0-4"));
         ep4->setMAC(opflex::modb::MAC("00:00:00:00:00:04"));
-        ep4->addIP("10.20.44.32");
+        ep4->addIP("10.20.45.32");
         ep4->setInterfaceName("eth4");
         ep4->setEgURI(epg3->getURI());
         ep4->setPromiscuousMode(true);
