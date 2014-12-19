@@ -149,7 +149,7 @@ public:
     void SetVirtualRouterMac(const std::string& mac);
 
     uint32_t GetTunnelPort();
-    uint32_t GetTunnelDstIpv4() { return tunnelDstIpv4; }
+    boost::asio::ip::address& GetTunnelDst() { return tunnelDst; }
     const uint8_t *GetRouterMacAddr() { return routerMac; }
 
     /**
@@ -336,7 +336,7 @@ private:
     FallbackMode fallbackMode;
     EncapType encapType;
     std::string encapIface;
-    uint32_t tunnelDstIpv4;
+    boost::asio::ip::address tunnelDst;
     bool virtualRouterEnabled;
     uint8_t routerMac[6];
     flow::TableState flowTables[NUM_FLOW_TABLES];

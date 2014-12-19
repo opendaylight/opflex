@@ -14,7 +14,7 @@
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 
-#include <modelgbp/gbp/ArpModeEnumT.hpp>
+#include <modelgbp/gbp/AddressResModeEnumT.hpp>
 
 #include "logging.h"
 #include "ovs.h"
@@ -33,6 +33,7 @@ using namespace opflex::enforcer::flow;
 using namespace opflex::modb;
 using namespace modelgbp::gbp;
 using namespace ovsagent;
+using boost::asio::ip::address;
 
 typedef pair<FlowEdit::TYPE, string> MOD;
 
@@ -190,6 +191,7 @@ public:
         flowManager.SetEncapIface(tunIf);
         flowManager.SetTunnelRemoteIp("10.11.12.13");
         flowManager.SetSyncDelayOnConnect(0);
+        flowManager.SetVirtualRouterMac("aa:bb:cc:dd:ee:ff");
 
         portmapper.ports[ep0->getInterfaceName().get()] = 80;
         portmapper.ports[tunIf] = 2048;
@@ -241,7 +243,7 @@ public:
 
     vector<string> fe_fixed;
     vector<string> fe_fallback;
-    vector<string> fe_epg0, fe_epg0_fd0;
+    vector<string> fe_epg0, fe_epg0_fd0, fe_epg0_routers;
     vector<string> fe_ep0, fe_ep0_fd0_1, fe_ep0_fd0_2, fe_ep0_eg1;
     vector<string> fe_ep0_eg0_1, fe_ep0_eg0_2;
     vector<string> fe_ep0_port_1, fe_ep0_port_2, fe_ep0_port_3;
@@ -297,6 +299,7 @@ void FlowManagerFixture::epgTest() {
 
     exec.Clear();
     exec.Expect(FlowEdit::mod, fe_epg0_fd0);
+    exec.Expect(FlowEdit::add, fe_epg0_routers);
     exec.Expect(FlowEdit::mod, fe_ep0_fd0_1);
     exec.Expect(FlowEdit::add, fe_ep0_fd0_2);
     exec.ExpectGroup(FlowEdit::add, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
@@ -306,11 +309,12 @@ void FlowManagerFixture::epgTest() {
     BOOST_CHECK(exec.IsGroupEmpty());
 
     /* change arp mode */
-    fd0->setArpMode(ArpModeEnumT::CONST_FLOOD);
+    fd0->setArpMode(AddressResModeEnumT::CONST_FLOOD)
+        .setNeighborDiscMode(AddressResModeEnumT::CONST_FLOOD);
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()).get()
-             ->getArpMode(ArpModeEnumT::CONST_UNICAST) 
-             == ArpModeEnumT::CONST_FLOOD, 500);
+             ->getArpMode(AddressResModeEnumT::CONST_UNICAST) 
+             == AddressResModeEnumT::CONST_FLOOD, 500);
 
     exec.Clear();
     exec.Expect(FlowEdit::del, fe_arpopt);
@@ -353,7 +357,7 @@ void FlowManagerFixture::localEpTest() {
     epSrc.updateEndpoint(*ep0);
     exec.Clear();
     exec.Expect(FlowEdit::mod, fe_ep0_eg1);
-    exec.Expect(FlowEdit::del, fe_ep0[6]);
+    exec.Expect(FlowEdit::del, fe_ep0[10]);
     flowManager.endpointUpdated(ep0->getUUID());
     WAIT_FOR(exec.IsEmpty(), 500);
 
@@ -362,7 +366,7 @@ void FlowManagerFixture::localEpTest() {
     epSrc.updateEndpoint(*ep0);
     exec.Clear();
     exec.Expect(FlowEdit::mod, fe_ep0_eg0_1);
-    exec.Expect(FlowEdit::add, fe_ep0[6]);
+    exec.Expect(FlowEdit::add, fe_ep0[10]);
     exec.Expect(FlowEdit::mod, fe_ep0_eg0_2);
     flowManager.endpointUpdated(ep0->getUUID());
     WAIT_FOR(exec.IsEmpty(), 500);
@@ -431,7 +435,7 @@ BOOST_FIXTURE_TEST_CASE(remoteEp_vlan, VlanFlowManagerFixture) {
 void FlowManagerFixture::fdTest() {
     setConnected();
 
-    exec.IgnoreFlowMods(fe_ep0.size() + (fe_ep0.size() - 2 - 2));
+    exec.IgnoreFlowMods(fe_ep0.size() + 7);
     portmapper.ports[ep2->getInterfaceName().get()] = ep2_port;
     portmapper.ports[ep4->getInterfaceName().get()] = ep4_port;
     flowManager.endpointUpdated(ep0->getUUID());
@@ -689,14 +693,18 @@ BOOST_FIXTURE_TEST_CASE(learn, VxlanFlowManagerFixture) {
 }
 
 enum REG {
-    SEPG, SEPG12, DEPG, BD, FD, RD, OUTPORT, TUNID, TUNDST, VLAN
+    SEPG, SEPG12, DEPG, BD, FD, RD, OUTPORT, TUNID, TUNDST, VLAN, 
+    ETHSRC, ETHDST, ARPOP, ARPSHA, ARPTHA, ARPSPA, ARPTPA
 };
 string rstr[] = {
     "NXM_NX_REG0[]", "NXM_NX_REG0[0..11]", "NXM_NX_REG2[]", "NXM_NX_REG4[]",
     "NXM_NX_REG5[]", "NXM_NX_REG6[]", "NXM_NX_REG7[]", "NXM_NX_TUN_ID[0..31]",
-    "NXM_NX_TUN_IPV4_DST[]", "OXM_OF_VLAN_VID[]"
+    "NXM_NX_TUN_IPV4_DST[]", "OXM_OF_VLAN_VID[]", 
+    "NXM_OF_ETH_SRC[]", "NXM_OF_ETH_DST[]", "NXM_OF_ARP_OP[]", 
+    "NXM_NX_ARP_SHA[]", "NXM_NX_ARP_THA[]", "NXM_OF_ARP_SPA[]", "NXM_OF_ARP_TPA[]"
 };
-string rstr1[] = { "reg0", "reg0", "reg2", "reg4", "reg5", "reg6", "reg7", "", "", ""};
+string rstr1[] = { "reg0", "reg0", "reg2", "reg4", "reg5", "reg6", "reg7", 
+                   "", "", "", "", "", "", "" ,"", "", ""};
 
 /**
  * Helper class to build string representation of a flow entry.
@@ -719,17 +727,24 @@ public:
     Bldr& reg(REG r, uint32_t v) {
         rep("," + rstr1[r] + "=", str(v, true)); return *this;
     }
-    Bldr& isEthSrc(string& s) { rep(",dl_src=", s); return *this; }
-    Bldr& isEthDst(string& s) { rep(",dl_dst=", s); return *this; }
+    Bldr& isEthSrc(const string& s) { rep(",dl_src=", s); return *this; }
+    Bldr& isEthDst(const string& s) { rep(",dl_dst=", s); return *this; }
     Bldr& ip() { rep(",ip"); return *this; }
+    Bldr& ipv6() { rep(",ipv6"); return *this; }
     Bldr& arp() { rep(",arp"); return *this; }
     Bldr& tcp() { rep(",tcp"); return *this; }
     Bldr& udp() { rep(",udp"); return *this; }
+    Bldr& udp6() { rep(",udp6"); return *this; }
+    Bldr& icmp6() { rep(",icmp6"); return *this; }
+    Bldr& icmp_type(uint8_t t) { rep(",icmp_type=", str(t)); return *this; }
+    Bldr& icmp_code(uint8_t c) { rep(",icmp_code=", str(c)); return *this; }
     Bldr& isArpOp(uint8_t op) { rep(",arp_op=", str(op)); return *this; }
-    Bldr& isSpa(string& s) { rep(",arp_spa=", s); return *this; }
-    Bldr& isTpa(string& s) { rep(",arp_tpa=", s); return *this; }
-    Bldr& isIpSrc(string& s) { rep(",nw_src=", s); return *this; }
-    Bldr& isIpDst(string& s) { rep(",nw_dst=", s); return *this; }
+    Bldr& isSpa(const string& s) { rep(",arp_spa=", s); return *this; }
+    Bldr& isTpa(const string& s) { rep(",arp_tpa=", s); return *this; }
+    Bldr& isIpSrc(const string& s) { rep(",nw_src=", s); return *this; }
+    Bldr& isIpv6Src(const string& s) { rep(",ipv6_src=", s); return *this; }
+    Bldr& isIpDst(const string& s) { rep(",nw_dst=", s); return *this; }
+    Bldr& isIpv6Dst(const string& s) { rep(",ipv6_dst=", s); return *this; }
     Bldr& isTpSrc(uint16_t p) { rep(",tp_src=", str(p)); return *this; }
     Bldr& isTpDst(uint16_t p) { rep(",tp_dst=", str(p)); return *this; }
     Bldr& isTpSrc(uint16_t p, uint16_t m) {
@@ -739,10 +754,14 @@ public:
         rep(",tp_dst=", str(p, true) + "/" + str(m, true)); return *this;
     }
     Bldr& isVlan(uint16_t v) { rep(",vlan_tci=", strpad(v), "/0x1fff"); return *this; }
+    Bldr& isNdTarget(const string& t) { rep(",nd_target=", t); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& drop() { rep("drop"); return *this; }
     Bldr& load(REG r, uint32_t v) {
         rep("load:", str(v, true), "->" + rstr[r]); return *this;
+    }
+    Bldr& load(REG r, const string& v) {
+        rep("load:", v, "->" + rstr[r]); return *this;
     }
     Bldr& move(REG s, REG d) {
         rep("move:"+rstr[s]+"->"+rstr[d]); return *this;
@@ -757,6 +776,7 @@ public:
     Bldr& bktActions() { rep(",actions="); cntr = 1; return *this; }
     Bldr& outPort(uint32_t p) { rep("output:" + str(p)); return *this; }
     Bldr& pushVlan() { rep("push_vlan:0x8100"); return *this; }
+    Bldr& inport() { rep("IN_PORT"); return *this; }
 
 private:
     /**
@@ -815,7 +835,8 @@ private:
 void
 FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     uint32_t tunPort = flowManager.GetTunnelPort();
-    uint32_t tunDst = flowManager.GetTunnelDstIpv4();
+    address tunDstAddr = flowManager.GetTunnelDst();
+    uint32_t tunDst = tunDstAddr.to_v4().to_ulong();
     uint8_t rmacArr[6];
     memcpy(rmacArr, flowManager.GetRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
@@ -826,8 +847,15 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                        .actions().drop().done());
     fe_fixed.push_back(Bldr().table(0).priority(25).ip()
                        .actions().drop().done());
+    fe_fixed.push_back(Bldr().table(0).priority(25).ipv6()
+                       .actions().drop().done());
     fe_fixed.push_back(Bldr().table(0).priority(27).udp()
-                       .isTpSrc(68).actions().go(1).done());
+                       .isTpSrc(68).isTpDst(67).actions().go(1).done());
+    fe_fixed.push_back(Bldr().table(0).priority(27).udp6()
+                       .isTpSrc(546).isTpDst(547).actions().go(1).done());
+    fe_fixed.push_back(Bldr().table(0).priority(27)
+                       .icmp6().icmp_type(133).icmp_code(0)
+                       .actions().go(1).done());
     fe_fixed.push_back(Bldr().table(0).priority(50)
                        .in(tunPort).actions().go(1).done());
 
@@ -841,7 +869,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     case FlowManager::ENCAP_IVXLAN:
     default:
         fe_fallback.push_back(Bldr().table(2).priority(1)
-                              .actions().move(SEPG, TUNID).load(TUNDST, tunDst)
+                              .actions().move(SEPG, TUNID).load(TUNDST, htonl(tunDst))
                               .outPort(tunPort).done());
         break;
     }
@@ -870,61 +898,114 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     /* epg0 connected to fd0 */
     fe_epg0_fd0.push_back(Bldr(fe_epg0[0]).load(FD, 1).done());
 
+    address rip1 = address::from_string(subnetsfd0_1->getVirtualRouterIp(""));
+    address rip2 = address::from_string(subnetsfd1_1->getVirtualRouterIp(""));
+    fe_epg0_routers.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
+                              .isEthDst(bmac).isTpa(rip1.to_string()).isArpOp(1)
+                              .actions().move(ETHSRC, ETHDST)
+                              .load(ETHSRC, "0xaabbccddeeff")
+                              .load(ARPOP, 2)
+                              .move(ARPSHA, ARPTHA)
+                              .load(ARPSHA, "0xaabbccddeeff")
+                              .move(ARPSPA, ARPTPA)
+                              .load(ARPSPA, rip1.to_v4().to_ulong())
+                              .inport().done());
+    fe_epg0_routers.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
+                              .isEthDst(bmac).isTpa(rip2.to_string()).isArpOp(1)
+                              .actions().move(ETHSRC, ETHDST)
+                              .load(ETHSRC, "0xaabbccddeeff")
+                              .load(ARPOP, 2)
+                              .move(ARPSHA, ARPTHA)
+                              .load(ARPSHA, "0xaabbccddeeff")
+                              .move(ARPSPA, ARPTPA)
+                              .load(ARPSPA, rip2.to_v4().to_ulong())
+                              .inport().done());
+
     /* local EP ep0 */
     string ep0_mac = ep0->getMAC().get().toString();
-    string ep0_ip0 = *(ep0->getIPs().begin());
-    string ep0_ip1 = *next(ep0->getIPs().begin());
     uint32_t ep0_port = portmapper.FindPort(ep0->getInterfaceName().get());
-    string ep0_arpopt0 = Bldr().table(2).priority(20).arp().reg(RD, 1)
-            .isEthDst(bmac).isTpa(ep0_ip0).isArpOp(1)
-            .actions().load(DEPG, epg0_vnid).load(OUTPORT, ep0_port)
-            .ethDst(ep0_mac).go(4).done();
+    vector<string> ep0_arpopt;
+    const unordered_set<string>& ep0ips = 
+        agent.getEndpointManager().getEndpoint(ep0->getUUID())->getIPs();
 
     fe_ep0.push_back(Bldr().table(0).priority(20).in(ep0_port)
             .isEthSrc(ep0_mac).actions().go(1).done());
-    fe_ep0.push_back(Bldr().table(0).priority(30).ip().in(ep0_port)
-            .isEthSrc(ep0_mac).isIpSrc(ep0_ip0).actions().go(1).done());
-    fe_ep0.push_back(Bldr().table(0).priority(40).arp().in(ep0_port)
-            .isEthSrc(ep0_mac).isSpa(ep0_ip0).actions().go(1).done());
-    fe_ep0.push_back(Bldr(fe_ep0[1]).isIpSrc(ep0_ip1).done());
-    fe_ep0.push_back(Bldr(fe_ep0[2]).isSpa(ep0_ip1).done());
+    BOOST_FOREACH(const string& ip, ep0ips) {
+        LOG(INFO) << ip;
+        address ipa = address::from_string(ip);
+        if (ipa.is_v4()) {
+            fe_ep0.push_back(Bldr().table(0).priority(30).ip().in(ep0_port)
+                             .isEthSrc(ep0_mac).isIpSrc(ip).actions().go(1).done());
+            fe_ep0.push_back(Bldr().table(0).priority(40).arp().in(ep0_port)
+                             .isEthSrc(ep0_mac).isSpa(ip).actions().go(1).done());
+        } else {
+            fe_ep0.push_back(Bldr().table(0).priority(30).ipv6().in(ep0_port)
+                             .isEthSrc(ep0_mac).isIpv6Src(ip).actions().go(1).done());
+            fe_ep0.push_back(Bldr().table(0).priority(40).icmp6().in(ep0_port)
+                             .isEthSrc(ep0_mac).isIpv6Src(ip)
+                             .icmp_type(136).icmp_code(0).actions().go(1).done());
+
+        }
+    }
+
     fe_ep0.push_back(Bldr().table(1).priority(140).in(ep0_port)
             .isEthSrc(ep0_mac).actions().load(SEPG, epg0_vnid).load(BD, 1)
             .load(FD, 0).load(RD, 1).go(2).done());
     fe_ep0.push_back(Bldr().table(2).priority(10).reg(BD, 1)
             .isEthDst(ep0_mac).actions().load(DEPG, epg0_vnid)
             .load(OUTPORT, ep0_port).go(4).done());
-    fe_ep0.push_back(Bldr().table(2).priority(15).ip().reg(RD, 1)
-            .isEthDst(rmac).isIpDst(ep0_ip0)
-            .actions().load(DEPG, epg0_vnid).load(OUTPORT, ep0_port)
-            .ethSrc(rmac).ethDst(ep0_mac).decTtl().go(4).done());
-    fe_ep0.push_back(ep0_arpopt0);
-    fe_ep0.push_back(Bldr(fe_ep0[7]).isIpDst(ep0_ip1).done());
-    string ep0_arpopt1 = Bldr(fe_ep0[8]).isTpa(ep0_ip1).done();
-    fe_ep0.push_back(ep0_arpopt1);
+
+    BOOST_FOREACH(const string& ip, ep0ips) {
+        address ipa = address::from_string(ip);
+        if (ipa.is_v4()) {
+            fe_ep0.push_back(Bldr().table(2).priority(15).ip().reg(RD, 1)
+                             .isEthDst(rmac).isIpDst(ip)
+                             .actions().load(DEPG, epg0_vnid)
+                             .load(OUTPORT, ep0_port).ethSrc(rmac)
+                             .ethDst(ep0_mac).decTtl().go(4).done());
+            ep0_arpopt.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
+                                 .isEthDst(bmac).isTpa(ip).isArpOp(1)
+                                 .actions().load(DEPG, epg0_vnid)
+                                 .load(OUTPORT, ep0_port)
+                                 .ethDst(ep0_mac).go(4).done());
+            fe_ep0.push_back(*ep0_arpopt.rbegin());
+        } else {
+            fe_ep0.push_back(Bldr().table(2).priority(15).ipv6().reg(RD, 1)
+                             .isEthDst(rmac).isIpv6Dst(ip)
+                             .actions().load(DEPG, epg0_vnid)
+                             .load(OUTPORT, ep0_port).ethSrc(rmac)
+                             .ethDst(ep0_mac).decTtl().go(4).done());
+            ep0_arpopt.push_back(Bldr().table(2).priority(20).icmp6().reg(RD, 1)
+                                 .isEthDst(bmac).icmp_type(135).icmp_code(0)
+                                 .isNdTarget(ip).actions().load(DEPG, epg0_vnid)
+                                 .load(OUTPORT, ep0_port)
+                                 .ethDst(ep0_mac).go(4).done());
+            fe_ep0.push_back(*ep0_arpopt.rbegin());
+        }
+    }
 
     /* ep0 when eg0 connected to fd0 */
-    fe_ep0_fd0_1.push_back(Bldr(fe_ep0[5]).load(FD, 1).done());
+    fe_ep0_fd0_1.push_back(Bldr(fe_ep0[9]).load(FD, 1).done());
     fe_ep0_fd0_2.push_back(Bldr().table(2).priority(10).reg(FD, 1)
             .isEthDst(mmac).actions().group(1).done());
 
     /* ep0 when moved to new group epg1 */
-    fe_ep0_eg1.push_back(Bldr(fe_ep0[5]).load(SEPG, epg1_vnid)
+    fe_ep0_eg1.push_back(Bldr(fe_ep0[9]).load(SEPG, epg1_vnid)
             .load(BD, 0).done());
-    for (size_t i = 7; i < fe_ep0.size(); ++i) {
+    for (size_t i = 11; i < fe_ep0.size(); ++i) {
         fe_ep0_eg1.push_back(Bldr(fe_ep0[i]).load(DEPG, epg1_vnid).done());
     }
 
     /* ep0 when moved back to old group epg0 */
-    fe_ep0_eg0_1.push_back(fe_ep0[5]);
-    for (size_t i = 7; i < fe_ep0.size(); ++i) {
+    fe_ep0_eg0_1.push_back(fe_ep0[9]);
+    for (size_t i = 11; i < fe_ep0.size(); ++i) {
         fe_ep0_eg0_2.push_back(fe_ep0[i]);
     }
 
     /* ep0 on new port */
     uint32_t ep0_port_new = 180;
     size_t idx = 0;
-    for (; idx < 5; ++idx) {
+    for (; idx < 9; ++idx) {
         fe_ep0_port_1.push_back(Bldr(fe_ep0[idx]).in(ep0_port_new).done());
     }
     fe_ep0_port_2.push_back(Bldr(fe_ep0[idx++]).in(ep0_port_new).done());
@@ -961,15 +1042,15 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
         ep2_arpopt = Bldr().table(2).priority(20).arp().reg(RD, 1)
             .isEthDst(bmac).isTpa(ep2_ip0).isArpOp(1)
             .actions().load(DEPG, epg0_vnid)
-            .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, tunDst)
+            .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, htonl(tunDst))
             .ethDst(ep2_mac).go(4).done();
         fe_ep2.push_back(Bldr().table(2).priority(10).reg(BD, 1).isEthDst(ep2_mac)
                          .actions().load(DEPG, epg0_vnid).load(OUTPORT, tunPort)
-                         .move(SEPG, TUNID).load(TUNDST, tunDst).go(4)
+                         .move(SEPG, TUNID).load(TUNDST, htonl(tunDst)).go(4)
                          .done());
         fe_ep2.push_back(Bldr().table(2).priority(15).ip().reg(RD, 1)
                          .isEthDst(rmac).isIpDst(ep2_ip0).actions().load(DEPG, epg0_vnid)
-                         .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, tunDst)
+                         .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, htonl(tunDst))
                          .ethSrc(rmac).decTtl().go(4).done());
         break;
     }
@@ -978,8 +1059,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     /**
      * ARP flows
      */
-    fe_arpopt.push_back(ep0_arpopt0);
-    fe_arpopt.push_back(ep0_arpopt1);
+    fe_arpopt.insert(fe_arpopt.end(), ep0_arpopt.begin(), ep0_arpopt.end());
     fe_arpopt.push_back(ep2_arpopt);
 
     /* ep2 connected to new group epg1 */
@@ -1002,7 +1082,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     case FlowManager::ENCAP_IVXLAN:
     default:
         ge_bkt_tun = Bldr(bktInit).bktId(tunPort).bktActions().move(SEPG, TUNID)
-            .load(TUNDST, tunDst).outPort(tunPort).done();
+            .load(TUNDST, htonl(tunDst)).outPort(tunPort).done();
         break;
     }
     ge_fd0_prom = "group_id=2147483649,type=all";

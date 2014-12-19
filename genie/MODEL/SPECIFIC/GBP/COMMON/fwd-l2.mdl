@@ -30,15 +30,17 @@ module[gbp]
         }
     }
 
-    type[ArpMode; super=scalar/Enum8]
+    # A mode for address resolution protocols such as ARP and IPv6
+    # neighbor discovery
+    type[AddressResMode; super=scalar/Enum8]
     {
-        # Convert ARP requests into unicast
+        # Convert ARP/ND requests into unicast
         const[name=unicast; value=0]
 
-        # Flood ARP requests in the flood domain
+        # Flood ARP/ND requests in the flood domain
         const[name=flood; value=1]
 
-        # Drop ARP requests
+        # Drop ARP/ND requests
         const[name=drop; value=2]
     }
 
@@ -76,7 +78,8 @@ module[gbp]
             }
         }
 
-        member[arpMode; type=gbp/ArpMode]
+        member[arpMode; type=gbp/AddressResMode]
+        member[neighborDiscMode; type=gbp/AddressResMode]
         member[unknownFloodMode; type=gbp/UnknownFloodMode]
     }
 }

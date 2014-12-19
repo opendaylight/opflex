@@ -45,6 +45,8 @@ public:
      */
     void Build(ofputil_bucket *dstBucket);
 
+    void SetRegLoad8(mf_field_id regId, uint8_t regValue);
+    void SetRegLoad16(mf_field_id regId, uint16_t regValue);
     void SetRegLoad(mf_field_id regId, uint32_t regValue);
     void SetRegLoad(mf_field_id regId, const uint8_t *macValue);
     void SetRegMove(mf_field_id srcRegId, mf_field_id dstRegId);
