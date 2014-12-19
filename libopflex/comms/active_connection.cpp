@@ -373,10 +373,19 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
         LOG(ai ? INFO : WARNING) << "uv_tcp_connect: [" << uv_err_name(rc) <<
             "] " << uv_strerror(rc);
 
-        if ((-EINVAL == rc) && swap_stack) {
+        if (swap_stack) {
 
-            LOG(INFO) << "destroying socket and retrying";
-            uv_close((uv_handle_t*)&peer->handle_, swap_stack_on_close);
+            switch (rc) {
+                case -ECONNABORTED:
+                    /* your kernel hates you */
+                case -EPROTONOSUPPORT:
+                case -EPFNOSUPPORT:
+                case -EAFNOSUPPORT:
+                case -EPROTOTYPE:
+                case -EINVAL:
+                    LOG(INFO) << "destroying socket and retrying";
+                    uv_close((uv_handle_t*)&peer->handle_, swap_stack_on_close);
+            }
 
             return 0;
         }
