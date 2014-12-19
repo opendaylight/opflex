@@ -11,6 +11,7 @@
 #include <string>
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
 #include <boost/system/error_code.hpp>
 #include <boost/foreach.hpp>
 
@@ -19,7 +20,7 @@
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/IntraGroupPolicyEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
-#include <modelgbp/gbp/ArpModeEnumT.hpp>
+#include <modelgbp/gbp/AddressResModeEnumT.hpp>
 
 #include "logging.h"
 #include "Endpoint.h"
@@ -40,6 +41,8 @@ using namespace opflex::enforcer::flow;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
 using boost::asio::deadline_timer;
+using boost::asio::ip::address;
+using boost::asio::ip::address_v6;
 using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;
 
@@ -64,7 +67,7 @@ FlowManager::FlowManager(ovsagent::Agent& ag) :
         fallbackMode(FALLBACK_PROXY), encapType(ENCAP_NONE),
         virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this) {
     memset(routerMac, 0, sizeof(routerMac));
-    ParseIpv4Addr("127.0.0.1", &tunnelDstIpv4);
+    tunnelDst = address::from_string("127.0.0.1");
     portMapper = NULL;
     SetSyncDelayOnConnect(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC);
 }
@@ -136,11 +139,15 @@ uint32_t FlowManager::GetTunnelPort() {
 }
 
 void FlowManager::SetTunnelRemoteIp(const string& tunnelRemoteIp) {
-    uint32_t ip;
-    if (ParseIpv4Addr(tunnelRemoteIp, &ip)) {
-        tunnelDstIpv4 = ip;
+    boost::system::error_code ec;
+    address tunDst = address::from_string(tunnelRemoteIp, ec);
+    if (ec) {
+        LOG(ERROR) << "Invalid tunnel destination IP: " 
+                   << tunnelRemoteIp << ": " << ec.message();;
+    } else if (tunDst.is_v6()) {
+        LOG(ERROR) << "IPv6 tunnel destinations are not supported";
     } else {
-        LOG(ERROR) << "Ignoring bad tunnel destination IP: " << tunnelRemoteIp;
+        tunnelDst = tunDst;
     }
 }
 
@@ -174,7 +181,7 @@ SetSourceAction(FlowEntry *fe, uint32_t epgId,
                 uint8_t nextTable = FlowManager::DST_TABLE_ID)
 {
     ActionBuilder ab;
-    ab.SetRegLoad(MFF_REG0, epgId);
+  ab.SetRegLoad(MFF_REG0, epgId);
     ab.SetRegLoad(MFF_REG4, bdId);
     ab.SetRegLoad(MFF_REG5, fdId);
     ab.SetRegLoad(MFF_REG6, l3Id);
@@ -221,19 +228,32 @@ SetDestMatchEpMac(FlowEntry *fe, uint16_t prio, const uint8_t *mac,
     match_set_reg(&fe->entry->match, 4 /* REG4 */, bdId);
 }
 
+static inline void fill_in6_addr(struct in6_addr& addr, const address_v6& ip) {
+    address_v6::bytes_type bytes = ip.to_bytes();
+    std::memcpy(&addr, bytes.data(), bytes.size());
+}
+
 static void
-SetDestMatchEpIpv4(FlowEntry *fe, uint16_t prio, const uint8_t *specialMac,
-        uint32_t ipv4, uint32_t l3Id) {
+SetDestMatchEp(FlowEntry *fe, uint16_t prio, const uint8_t *specialMac,
+               const address& ip, uint32_t l3Id) {
     fe->entry->table_id = FlowManager::DST_TABLE_ID;
     fe->entry->priority = prio;
     match_set_dl_dst(&fe->entry->match, specialMac);
-    match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
-    match_set_nw_dst(&fe->entry->match, ipv4);
+    if (ip.is_v4()) {
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
+        match_set_nw_dst(&fe->entry->match, htonl(ip.to_v4().to_ulong()));
+    } else {
+        struct in6_addr addr;
+        fill_in6_addr(addr, ip.to_v6());
+
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+        match_set_ipv6_dst(&fe->entry->match, &addr);
+    }
     match_set_reg(&fe->entry->match, 6 /* REG6 */, l3Id);
 }
 
 static void
-SetDestMatchArpIpv4(FlowEntry *fe, uint16_t prio, uint32_t ipv4,
+SetDestMatchArp(FlowEntry *fe, uint16_t prio, const address& ip,
         uint32_t l3Id) {
     fe->entry->table_id = FlowManager::DST_TABLE_ID;
     fe->entry->priority = prio;
@@ -241,8 +261,28 @@ SetDestMatchArpIpv4(FlowEntry *fe, uint16_t prio, uint32_t ipv4,
     match_set_dl_type(m, htons(ETH_TYPE_ARP));
     match_set_nw_proto(m, ARP_OP_REQUEST);
     match_set_dl_dst(m, MAC_ADDR_BROADCAST);
-    match_set_nw_dst(m, ipv4);
+    match_set_nw_dst(m, htonl(ip.to_v4().to_ulong()));
+    match_set_reg(m, 6 /* REG6 */, l3Id);
+}
+
+static void
+SetDestMatchNd(FlowEntry *fe, uint16_t prio, const address& ip,
+               uint32_t l3Id) {
+    fe->entry->table_id = FlowManager::DST_TABLE_ID;
+    fe->entry->priority = prio;
+    match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+    match_set_nw_proto(&fe->entry->match, 58 /* ICMP */);
+    // OVS uses tp_src for ICMPV6_TYPE
+    match_set_tp_src(&fe->entry->match, htons(135) /* neighbor solicitation */);
+    // OVS uses tp_dst for ICMPV6_CODE
+    match_set_tp_dst(&fe->entry->match, 0);
+    match_set_dl_dst(&fe->entry->match, MAC_ADDR_BROADCAST);
     match_set_reg(&fe->entry->match, 6 /* REG6 */, l3Id);
+
+    struct in6_addr addr;
+    fill_in6_addr(addr, ip.to_v6());
+    match_set_nd_target(&fe->entry->match, &addr);
+
 }
 
 static void
@@ -260,7 +300,7 @@ SetMatchFd(FlowEntry *fe, uint16_t prio, uint32_t fdId, bool broadcast,
 
 static void
 SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type, 
-                            uint32_t tunDst) {
+                        const address& tunDst) {
     switch (type) {
     case FlowManager::ENCAP_VLAN:
         ab.SetPushVlan();
@@ -268,7 +308,12 @@ SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type,
         break;
     case FlowManager::ENCAP_VXLAN:
         ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
-        ab.SetRegLoad(MFF_TUN_DST, tunDst);
+        if (tunDst.is_v4()) {
+            ab.SetRegLoad(MFF_TUN_DST, htonl(tunDst.to_v4().to_ulong()));
+        } else {
+            // this should be unreachable
+            LOG(WARNING) << "Ipv6 tunnel destination unsupported";
+        }
         // fall through
     case FlowManager::ENCAP_IVXLAN:
         // TODO: set additional ivxlan fields
@@ -280,7 +325,7 @@ SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type,
 
 static void
 SetDestActionEpMac(FlowEntry *fe, FlowManager::EncapType type, bool isLocal, 
-                   uint32_t epgId, uint32_t port, uint32_t tunDst) {
+                   uint32_t epgId, uint32_t port, const address& tunDst) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
@@ -293,10 +338,10 @@ SetDestActionEpMac(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,
 }
 
 static void
-SetDestActionEpIpv4(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,  
-                    uint32_t epgId, uint32_t port,
-                    uint32_t tunDst, const uint8_t *specialMac, 
-                    const uint8_t *dstMac) {
+SetDestActionEp(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,  
+                uint32_t epgId, uint32_t port,
+                const address& tunDst, const uint8_t *specialMac, 
+                const uint8_t *dstMac) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
@@ -311,9 +356,9 @@ SetDestActionEpIpv4(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,
 }
 
 static void
-SetDestActionEpArpIpv4(FlowEntry *fe, FlowManager::EncapType type, bool isLocal, 
-                       uint32_t epgId, uint32_t port, uint32_t tunDst, 
-                       const uint8_t *dstMac) {
+SetDestActionEpArp(FlowEntry *fe, FlowManager::EncapType type, bool isLocal, 
+                   uint32_t epgId, uint32_t port, const address& tunDst, 
+                   const uint8_t *dstMac) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
@@ -327,16 +372,16 @@ SetDestActionEpArpIpv4(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,
 }
 
 static void
-SetDestActionSubnetArpIpv4(FlowEntry *fe, const uint8_t *specialMac,
-        uint32_t gwIpv4) {
+SetDestActionSubnetArp(FlowEntry *fe, const uint8_t *specialMac,
+                       const address& gwIp) {
     ActionBuilder ab;
     ab.SetRegMove(MFF_ETH_SRC, MFF_ETH_DST);
     ab.SetRegLoad(MFF_ETH_SRC, specialMac);
-    ab.SetRegLoad(MFF_ARP_OP, ARP_OP_REPLY);
+    ab.SetRegLoad16(MFF_ARP_OP, ARP_OP_REPLY);
     ab.SetRegMove(MFF_ARP_SHA, MFF_ARP_THA);
     ab.SetRegLoad(MFF_ARP_SHA, specialMac);
     ab.SetRegMove(MFF_ARP_SPA, MFF_ARP_TPA);
-    ab.SetRegLoad(MFF_ARP_SPA, gwIpv4);
+    ab.SetRegLoad(MFF_ARP_SPA, gwIp.to_v4().to_ulong());
     ab.SetOutputToPort(OFPP_IN_PORT);
 
     ab.Build(fe->entry);
@@ -351,7 +396,7 @@ SetDestActionFdBroadcast(FlowEntry *fe, uint32_t fdId) {
 
 static void
 SetDestActionOutputToTunnel(FlowEntry *fe, FlowManager::EncapType type,
-                            uint32_t tunDst, uint32_t tunPort) {
+                            const address& tunDst, uint32_t tunPort) {
     ActionBuilder ab;
     SetActionTunnelMetadata(ab, type, tunDst);
     ab.SetOutputToPort(tunPort);
@@ -402,22 +447,37 @@ SetSecurityMatchEpMac(FlowEntry *fe, uint16_t prio, uint32_t port,
 }
 
 static void
-SetSecurityMatchEpIpv4(FlowEntry *fe, uint16_t prio, uint32_t port,
-        const uint8_t *epMac, uint32_t epIpv4) {
+SetSecurityMatchIP(FlowEntry *fe, uint16_t prio, bool v4) {
     fe->entry->table_id = FlowManager::SEC_TABLE_ID;
     fe->entry->priority = prio;
-    if (port != OFPP_ANY)
-        match_set_in_port(&fe->entry->match, port);
-    if (epMac)
-        match_set_dl_src(&fe->entry->match, epMac);
-    match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
-    if (epIpv4 != 0)
-        match_set_nw_src(&fe->entry->match, epIpv4);
+    if (v4)
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
+    else
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+}
+
+static void
+SetSecurityMatchEp(FlowEntry *fe, uint16_t prio, uint32_t port,
+                   const uint8_t *epMac, const address& epIp) {
+    fe->entry->table_id = FlowManager::SEC_TABLE_ID;
+    fe->entry->priority = prio;
+    match_set_in_port(&fe->entry->match, port);
+    match_set_dl_src(&fe->entry->match, epMac);
+    if (epIp.is_v4()) {
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
+        match_set_nw_src(&fe->entry->match, htonl(epIp.to_v4().to_ulong()));
+    } else {
+        struct in6_addr addr;
+        fill_in6_addr(addr, epIp.to_v6());
+
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+        match_set_ipv6_src(&fe->entry->match, &addr);
+    }
 }
 
 static void
 SetSecurityMatchEpArp(FlowEntry *fe, uint16_t prio, uint32_t port,
-        const uint8_t *epMac, uint32_t epIpv4) {
+        const uint8_t *epMac, const address* epIp) {
     fe->entry->table_id = FlowManager::SEC_TABLE_ID;
     fe->entry->priority = prio;
     if (port != OFPP_ANY)
@@ -425,17 +485,64 @@ SetSecurityMatchEpArp(FlowEntry *fe, uint16_t prio, uint32_t port,
     if (epMac)
         match_set_dl_src(&fe->entry->match, epMac);
     match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_ARP));
-    if (epIpv4 != 0)
-        match_set_nw_src(&fe->entry->match, epIpv4);
+    if (epIp != NULL)
+        match_set_nw_src(&fe->entry->match, htonl(epIp->to_v4().to_ulong()));
 }
 
 static void
-SetSecurityMatchEpDHCP(FlowEntry *fe, uint16_t prio) {
+SetSecurityMatchEpND(FlowEntry *fe, uint16_t prio, uint32_t port,
+                     const uint8_t *epMac, const address* epIp,
+                     bool routerAdv) {
     fe->entry->table_id = FlowManager::SEC_TABLE_ID;
     fe->entry->priority = prio;
-    match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
+    if (port != OFPP_ANY)
+        match_set_in_port(&fe->entry->match, port);
+    if (epMac)
+        match_set_dl_src(&fe->entry->match, epMac);
+    match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+    match_set_nw_proto(&fe->entry->match, 58 /* ICMP */);
+    // OVS uses tp_src for ICMPV6_TYPE
+    if (routerAdv)
+        match_set_tp_src(&fe->entry->match, htons(134) /* Router Advertisement */);
+    else
+        match_set_tp_src(&fe->entry->match, htons(136) /* Neighbor Advertisement */);
+
+    if (epIp != NULL) {
+        struct in6_addr addr;
+        fill_in6_addr(addr, epIp->to_v6());
+        match_set_ipv6_src(&fe->entry->match, &addr);
+
+        // OVS uses tp_dst for ICMPV6_CODE
+        match_set_tp_dst(&fe->entry->match, 0);
+    }
+}
+
+static void
+SetSecurityMatchRouterSolit(FlowEntry *fe, uint16_t prio) {
+    fe->entry->table_id = FlowManager::SEC_TABLE_ID;
+    fe->entry->priority = prio;
+    match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+    match_set_nw_proto(&fe->entry->match, 58);
+    // OVS uses tp_src for ICMPV6_TYPE
+    match_set_tp_src(&fe->entry->match, htons(133) /* Router solicitation */);
+    // OVS uses tp_dst for ICMPV6_CODE
+    match_set_tp_dst(&fe->entry->match, 0);
+}
+
+static void
+SetSecurityMatchEpDHCP(FlowEntry *fe, uint16_t prio, bool v4) {
+    fe->entry->table_id = FlowManager::SEC_TABLE_ID;
+    fe->entry->priority = prio;
     match_set_nw_proto(&fe->entry->match, 17);
-    match_set_tp_src(&fe->entry->match, htons(68));
+    if (v4) {
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
+        match_set_tp_src(&fe->entry->match, htons(68));
+        match_set_tp_dst(&fe->entry->match, htons(67));
+    } else {
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+        match_set_tp_src(&fe->entry->match, htons(546));
+        match_set_tp_dst(&fe->entry->match, htons(547));
+    }
 }
 
 static void
@@ -517,15 +624,15 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         endPoint.getMAC().get().toUIntArray(macAddr);
 
     /* check and parse the IP-addresses */
-    std::vector<uint32_t> ipv4Addresses;
-    std::vector<in6_addr> ipv6Addresses;
+    std::vector<address> ipAddresses;
+    boost::system::error_code ec;
     BOOST_FOREACH(const string& ipStr, endPoint.getIPs()) {
-        uint32_t ipv4;
-        in6_addr ipv6;
-        if (ParseIpv4Addr(ipStr, &ipv4)) {
-            ipv4Addresses.push_back(ipv4);
-        } else if (ParseIpv6Addr(ipStr, &ipv6)) {
-            ipv6Addresses.push_back(ipv6);
+        address addr = address::from_string(ipStr, ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid endpoint IP: " 
+                         << ipStr << ": " << ec.message();
+        } else {
+            ipAddresses.push_back(addr);
         }
     }
 
@@ -551,19 +658,25 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             SetSecurityActionAllow(e0);
             el.push_back(FlowEntryPtr(e0));
 
-            BOOST_FOREACH(uint32_t ipAddr, ipv4Addresses) {
+            BOOST_FOREACH(const address& ipAddr, ipAddresses) {
                 FlowEntry *e1 = new FlowEntry();
-                SetSecurityMatchEpIpv4(e1, 30, ofPort, macAddr, ipAddr);
+                SetSecurityMatchEp(e1, 30, ofPort, macAddr, ipAddr);
                 SetSecurityActionAllow(e1);
                 el.push_back(FlowEntryPtr(e1));
 
-                FlowEntry *e2 = new FlowEntry();
-                SetSecurityMatchEpArp(e2, 40, ofPort, macAddr, ipAddr);
-                SetSecurityActionAllow(e2);
-                el.push_back(FlowEntryPtr(e2));
+                if (ipAddr.is_v4()) {
+                    FlowEntry *e2 = new FlowEntry();
+                    SetSecurityMatchEpArp(e2, 40, ofPort, macAddr, &ipAddr);
+                    SetSecurityActionAllow(e2);
+                    el.push_back(FlowEntryPtr(e2));
+                } else {
+                    FlowEntry *e2 = new FlowEntry();
+                    SetSecurityMatchEpND(e2, 40, ofPort, macAddr, &ipAddr, false);
+                    SetSecurityActionAllow(e2);
+                    el.push_back(FlowEntryPtr(e2));
+                }
             }
         }
-        // TODO IPv6
         WriteFlow(uuid, SEC_TABLE_ID, el);
     }
 
@@ -581,9 +694,13 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
     optional<shared_ptr<FloodDomain> > fd = 
         agent.getPolicyManager().getFDForGroup(epgURI.get());
-    uint8_t arpMode = ArpModeEnumT::CONST_UNICAST;
+    uint8_t arpMode = AddressResModeEnumT::CONST_UNICAST;
     if (fd && fd.get()->isArpModeSet()) {
         arpMode = fd.get()->getArpMode().get();
+    }
+    uint8_t ndMode = AddressResModeEnumT::CONST_UNICAST;
+    if (fd && fd.get()->isNeighborDiscModeSet()) {
+        ndMode = fd.get()->getNeighborDiscMode().get();
     }
 
     /* Source Table flows; applicable only to local endpoints */
@@ -616,38 +733,50 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         FlowEntry *e0 = new FlowEntry();
         SetDestMatchEpMac(e0, 10, macAddr, bdId);
         SetDestActionEpMac(e0, encapType, isLocalEp, epgVnid, epPort,
-                           GetTunnelDstIpv4());
+                           GetTunnelDst());
         elDst.push_back(FlowEntryPtr(e0));
     }
 
     if (rdId != 0 && epPort != OFPP_NONE) {
-        BOOST_FOREACH (uint32_t ipAddr, ipv4Addresses) {
+        BOOST_FOREACH (const address& ipAddr, ipAddresses) {
             // XXX for remote EP, dl_dst needs to be the "next-hop" MAC
             if (virtualRouterEnabled) {
                 const uint8_t *dstMac = isLocalEp ?
                     (hasMac ? macAddr : NULL) : NULL;
                 FlowEntry *e0 = new FlowEntry();
-                SetDestMatchEpIpv4(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
-                SetDestActionEpIpv4(e0, encapType, isLocalEp, epgVnid, epPort,
-                                    GetTunnelDstIpv4(), GetRouterMacAddr(),
-                                    dstMac);
+                SetDestMatchEp(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
+                SetDestActionEp(e0, encapType, isLocalEp, epgVnid, epPort,
+                                GetTunnelDst(), GetRouterMacAddr(),
+                                dstMac);
                 elDst.push_back(FlowEntryPtr(e0));
             }
 
-            if (arpMode != ArpModeEnumT::CONST_FLOOD) {
+            if (arpMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v4()) {
                 FlowEntry *e1 = new FlowEntry();
-                SetDestMatchArpIpv4(e1, 20, ipAddr, rdId);
-                if (arpMode == ArpModeEnumT::CONST_UNICAST) {
+                SetDestMatchArp(e1, 20, ipAddr, rdId);
+                if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
                     // ARP optimization: broadcast -> unicast
-                    SetDestActionEpArpIpv4(e1, encapType, isLocalEp, epgVnid,
-                                           epPort, GetTunnelDstIpv4(), 
-                                           hasMac ? macAddr : NULL);
+                    SetDestActionEpArp(e1, encapType, isLocalEp, epgVnid,
+                                       epPort, GetTunnelDst(), 
+                                       hasMac ? macAddr : NULL);
                 }
                 // else drop the ARP packet
                 elDst.push_back(FlowEntryPtr(e1));
             }
+
+            if (ndMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v6()) {
+                FlowEntry *e1 = new FlowEntry();
+                SetDestMatchNd(e1, 20, ipAddr, rdId);
+                if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
+                    // neighbor discovery optimization: broadcast -> unicast
+                    SetDestActionEpArp(e1, encapType, isLocalEp, epgVnid,
+                                       epPort, GetTunnelDst(), 
+                                       hasMac ? macAddr : NULL);
+                }
+                // else drop the ND packet
+                elDst.push_back(FlowEntryPtr(e1));
+            }
         }
-        // TODO IPv6 address
     }
     WriteFlow(uuid, DST_TABLE_ID, elDst);
 
@@ -673,18 +802,37 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         // particular EPG
         FlowEntryList fixedFlows;
 
+        // Drop IP traffic that doesn't have the correct source
+        // address
         FlowEntry *dropARP = new FlowEntry();
         SetSecurityMatchEpArp(dropARP, 25, OFPP_ANY, NULL, 0);
         fixedFlows.push_back(FlowEntryPtr(dropARP));
 
         FlowEntry *dropIPv4 = new FlowEntry();
-        SetSecurityMatchEpIpv4(dropIPv4, 25, OFPP_ANY, NULL, 0);
+        SetSecurityMatchIP(dropIPv4, 25, true);
         fixedFlows.push_back(FlowEntryPtr(dropIPv4));
 
+        FlowEntry *dropIPv6 = new FlowEntry();
+        SetSecurityMatchIP(dropIPv6, 25, false);
+        fixedFlows.push_back(FlowEntryPtr(dropIPv6));
+
+        // Allow DHCP requests but not replies
         FlowEntry *allowDHCP = new FlowEntry();
-        SetSecurityMatchEpDHCP(allowDHCP, 27);
+        SetSecurityMatchEpDHCP(allowDHCP, 27, true);
         SetSecurityActionAllow(allowDHCP);
         fixedFlows.push_back(FlowEntryPtr(allowDHCP));
+
+        // Allow IPv6 autoconfiguration (DHCP & router solicitiation)
+        // requests but not replies
+        FlowEntry *allowDHCPv6 = new FlowEntry();
+        SetSecurityMatchEpDHCP(allowDHCPv6, 27, false);
+        SetSecurityActionAllow(allowDHCPv6);
+        fixedFlows.push_back(FlowEntryPtr(allowDHCPv6));
+
+        FlowEntry *allowRouterSolit = new FlowEntry();
+        SetSecurityMatchRouterSolit(allowRouterSolit, 27);
+        SetSecurityActionAllow(allowRouterSolit);
+        fixedFlows.push_back(FlowEntryPtr(allowRouterSolit));
 
         if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
             // allow all traffic from the tunnel uplink through the port
@@ -695,7 +843,6 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
             fixedFlows.push_back(FlowEntryPtr(allowTunnel));
         }
 
-        // TODO IPv6
         WriteFlow("static", SEC_TABLE_ID, fixedFlows);
     }
 
@@ -709,7 +856,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         unknownTunnel->entry->priority = 1;
         unknownTunnel->entry->table_id = DST_TABLE_ID;
         SetDestActionOutputToTunnel(unknownTunnel, encapType,
-                                    GetTunnelDstIpv4(), tunPort);
+                                    GetTunnelDst(), tunPort);
         WriteFlow("static", DST_TABLE_ID, unknownTunnel);
     }
 
@@ -766,23 +913,33 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
 
 void
 FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
+    LOG(INFO) << "UpdateGroupSubnets: " << egURI;
     PolicyManager::subnet_vector_t subnets;
     agent.getPolicyManager().getSubnetsForGroup(egURI, subnets);
 
     // XXX this leaks subnet-related flows when no group is using a subnet
     BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
+        LOG(INFO) << "Updating subnet: " << sn->getName();
         optional<const string&> routerIpStr = sn->getVirtualRouterIp();
-        uint32_t routerIpv4 = 0;
-        if (!routerIpStr ||
-            !ParseIpv4Addr(routerIpStr.get(), &routerIpv4)) {
+        if (!routerIpStr) continue;
+        boost::system::error_code ec;
+        address routerIp = address::from_string(routerIpStr.get(), ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid router IP: "
+                         << routerIpStr << ": " << ec.message();
             continue;
         }
 
         if (virtualRouterEnabled) {
-            FlowEntry *e0 = new FlowEntry();
-            SetDestMatchArpIpv4(e0, 20, routerIpv4, routingDomainId);
-            SetDestActionSubnetArpIpv4(e0, GetRouterMacAddr(), routerIpv4);
-            WriteFlow(sn->getURI().toString(), DST_TABLE_ID, e0);
+            LOG(INFO) << "Router IP: " << routerIp;
+           if (routerIp.is_v4()) {
+                 FlowEntry *e0 = new FlowEntry();
+                SetDestMatchArp(e0, 20, routerIp, routingDomainId);
+                SetDestActionSubnetArp(e0, GetRouterMacAddr(), routerIp);
+                WriteFlow(sn->getURI().toString(), DST_TABLE_ID, e0);
+            } else {
+                // XXX TODO IPv6
+            }
         }
     }
 }
@@ -822,7 +979,7 @@ FlowManager::CreateGroupMod(uint16_t type, uint32_t groupId,
         encapType != ENCAP_NONE) {
         ofputil_bucket *bkt = CreateBucket(tunPort);
         ActionBuilder ab;
-        SetActionTunnelMetadata(ab, encapType, GetTunnelDstIpv4());
+        SetActionTunnelMetadata(ab, encapType, GetTunnelDst());
         ab.SetOutputToPort(tunPort);
         ab.Build(bkt);
         list_push_back(&entry->mod->buckets, &bkt->list_node);
@@ -1118,24 +1275,6 @@ void FlowManager::GetGroupVnids(const unordered_set<URI>& egURIs,
             egVnids.insert(vnid.get());
         }
     }
-}
-
-bool
-FlowManager::ParseIpv4Addr(const string& str, uint32_t *ip) {
-    struct in_addr addr;
-    if (!inet_pton(AF_INET, str.c_str(), &addr)) {
-        return false;
-    }
-    *ip = addr.s_addr;
-    return true;
-}
-
-bool
-FlowManager::ParseIpv6Addr(const string& str, in6_addr *ip) {
-    if (!inet_pton(AF_INET6, str.c_str(), ip)) {
-        return false;
-    }
-    return true;
 }
 
 void FlowManager::HandleConnection(SwitchConnection *swConn) {

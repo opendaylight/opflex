@@ -157,12 +157,12 @@ BOOST_FIXTURE_TEST_CASE( subnet, PolicyFixture ) {
 
     WAIT_FOR(hasUriRef(agent.getPolicyManager(), fd->getURI(), 
                        subnetsfd1->getURI()), 500);
-    BOOST_CHECK(hasUriRef(agent.getPolicyManager(), fd->getURI(), 
-                          subnetsfd2->getURI()));
-    BOOST_CHECK(hasUriRef(agent.getPolicyManager(), bd->getURI(), 
-                          subnetsbd1->getURI()));
-    BOOST_CHECK(hasUriRef(agent.getPolicyManager(), rd->getURI(), 
-                          subnetsrd1->getURI()));
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), fd->getURI(), 
+                       subnetsfd2->getURI()), 500);
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), bd->getURI(), 
+                       subnetsbd1->getURI()), 500);
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), rd->getURI(), 
+                       subnetsrd1->getURI()), 500);
 }
 
 static bool checkFd(PolicyManager& policyManager, 
