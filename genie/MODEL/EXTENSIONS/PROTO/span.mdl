@@ -36,7 +36,7 @@ module[span]
           concrete]
 
     class[LocalEp;
-          super=platform/ConfigComponent;
+          super=policy/NamedComponent;
           concrete]
     {
         member[nic; type=ascii/Name]
@@ -48,10 +48,23 @@ module[span]
                 cardinality=many;
                 ]
         }
+
+        contained
+        {
+            parent[class=span/Member]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ep;
+                          member=name]
+            }
+        }
     }
 
     class[Member;
-          super=platform/ConfigComponent;
+          super=policy/NamedComponent;
           abstract]
     {
         dependency[ref;
