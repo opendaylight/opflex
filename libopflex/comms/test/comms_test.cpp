@@ -1256,5 +1256,40 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_service,
 
 }
 
+BOOST_FIXTURE_TEST_CASE( STABLE_test_non_routable_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65517", doNothingOnConnect);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), 90000);
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_routable_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65516", destroyOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), 90000);
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_routable_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65515", disconnectOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), 90000);
+
+}
 
 BOOST_AUTO_TEST_SUITE_END()
