@@ -1204,4 +1204,53 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_client_retry_more_than_once, CommsFixture )
 
 }
 
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_existent_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("non_existent_host.", "65521", destroyOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(1,1), pc_non_existent);
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_existent_service, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.1", "65520", destroyOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(0,0), pc_no_peers);
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65519", disconnectOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(1,1), pc_retrying_client);
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_service, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65518", disconnectOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(1,1), pc_retrying_client);
+
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()
