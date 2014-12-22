@@ -133,7 +133,7 @@ void RangeMask::getMasks(const optional<uint16_t>& startOpt,
 }
 
 ostream& operator<<(ostream& os, const MaskList& m) {
-    for (int i = 0; i < m.size(); ++i) {
+    for (size_t i = 0; i < m.size(); ++i) {
         const Mask& mk = m[i];
         os << "0x" << setfill('0') << setw(4) << std::hex << mk.first
             << "/0x" << setfill('0') << setw(4) << mk.second << ", ";

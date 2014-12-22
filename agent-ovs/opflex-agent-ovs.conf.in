@@ -13,16 +13,14 @@
         // peers.
         "peers": [
             // EXAMPLE:
-            // {"hostname": "127.0.0.1", "port": 8009}
+            // {"hostname": "10.0.0.30", "port": 8009}
         ]
     },
-
-    "runtime-state-path": "RUNTIME_STATE_PATH",
 
     // Endpoint sources provide metadata about local endpoints
     "endpoint-sources": {
         // Filesystem path to monitor for endpoint information
-        "filesystem": ["FILESYSTEM_WATCH_DIR"]
+        "filesystem": ["DEFAULT_FS_ENDPOINT_DIR"]
     },
 
     // Renderers enforce policy obtained via OpFlex.
@@ -42,13 +40,13 @@
         //
         //             // The name of the interface whose IP should be used
         //             // as the source IP in encapsulated traffic.
-        //             "uplink-iface": "team0.4",
+        //             "uplink-iface": "team0.4093",
         //
         //             // The IP address used for the destination IP in
         //             // the encapsulated traffic.  This should be an
         //             // anycast IP address understood by the upstream
         //             // stiched-mode fabric.
-        //             "remote-ip": "10.0.0.3"
+        //             "remote-ip": "10.0.0.32"
         //         }
         //
         //         // Encapsulate traffic with a locally-significant VLAN
@@ -69,7 +67,10 @@
         //         // Override MAC address for virtual router.  Default is 
         //         // "88:f0:31:b5:12:b5"
         //         "virtual-router-mac": "88:f0:31:b5:12:b5"
-        //     }
+        //     },
+        //
+        //     // Location to store cached IDs for managing flow state
+        //     "flowid-cache-dir": "DEFAULT_FLOWID_CACHE_DIR",
         // }
     }
 }

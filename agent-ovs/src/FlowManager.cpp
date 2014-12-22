@@ -80,9 +80,8 @@ void FlowManager::Start()
      * update cached state only.
      */
     isSyncing = true;
-    const string& runtimeDir = agent.getRuntimeStatePath();
-    if (!runtimeDir.empty()) {
-        idGen.setPersistLocation(runtimeDir + "/ids");
+    if (!flowIdCache.empty()) {
+        idGen.setPersistLocation(flowIdCache);
     }
     idGen.initNamespace(ID_NMSPC_FD);
     idGen.initNamespace(ID_NMSPC_BD);
@@ -166,6 +165,10 @@ void FlowManager::SetVirtualRouterMac(const string& virtualRouterMac) {
 
 void FlowManager::SetSyncDelayOnConnect(long delay) {
     connectDelayMs = delay;
+}
+
+void FlowManager::SetFlowIdCache(const std::string& flowIdCache) {
+    this->flowIdCache = flowIdCache;
 }
 
 ovs_be64 FlowManager::GetLearnEntryCookie() {

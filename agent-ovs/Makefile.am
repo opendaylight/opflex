@@ -140,11 +140,11 @@ mock_server_LDADD = \
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
 
-agentrunstatedir=${localstatedir}/run/opflex-agent-ovs
-defwatchdir=${agentrunstatedir}/endpoints/
+flowidcachedir=${localstatedir}/lib/opflex-agent-ovs/ids
+defwatchdir=${localstatedir}/lib/opflex-agent-ovs/endpoints
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
-	sed -e "s|FILESYSTEM_WATCH_DIR|${defwatchdir}|" \
-	    -e "s|RUNTIME_STATE_PATH|${agentrunstatedir}|" \
+	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defwatchdir}|" \
+	    -e "s|DEFAULT_FLOWID_CACHE_DIR|${flowidcachedir}|" \
 	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
 
 if HAVE_DOXYGEN

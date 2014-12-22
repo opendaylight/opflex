@@ -57,6 +57,7 @@ void StitchedModeRenderer::start() {
         flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
     flowManager.SetVirtualRouter(virtualRouter);
     flowManager.SetVirtualRouterMac(virtualRouterMac);
+    flowManager.SetFlowIdCache(flowIdCache);
 
     connection = new opflex::enforcer::SwitchConnection(ovsBridgeName);
     portMapper.InstallListenersForConnection(connection);
@@ -114,6 +115,8 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string VIRTUAL_ROUTER("forwarding.virtual-router");
     static const std::string VIRTUAL_ROUTER_MAC("forwarding.virtual-router-mac");
 
+    static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
+
     ovsBridgeName = properties.get<std::string>(OVS_BRIDGE_NAME, "");
 
     boost::optional<const ptree&> ivxlan =
@@ -150,6 +153,8 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
     virtualRouterMac =
         properties.get<std::string>(VIRTUAL_ROUTER_MAC, "88:f0:31:b5:12:b5");
+
+    flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR, "");
 }
 
 } /* namespace ovsagent */

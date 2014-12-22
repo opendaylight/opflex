@@ -76,6 +76,7 @@ private:
     std::string uplinkIface;
     bool virtualRouter;
     std::string virtualRouterMac;
+    std::string flowIdCache;
 
     bool started;
 };

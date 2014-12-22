@@ -148,6 +148,8 @@ public:
     void SetVirtualRouter(bool virtualRouterEnabled);
     void SetVirtualRouterMac(const std::string& mac);
 
+    void SetFlowIdCache(const std::string& flowIdCache);
+
     uint32_t GetTunnelPort();
     boost::asio::ip::address& GetTunnelDst() { return tunnelDst; }
     const uint8_t *GetRouterMacAddr() { return routerMac; }
@@ -340,6 +342,7 @@ private:
     bool virtualRouterEnabled;
     uint8_t routerMac[6];
     flow::TableState flowTables[NUM_FLOW_TABLES];
+    std::string flowIdCache;
 
     /*
      * Map of flood-domain URI to the endpoints associated with it.

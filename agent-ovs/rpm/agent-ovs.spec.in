@@ -57,8 +57,8 @@ make %{?_smp_mflags}
 install -p -D -m 0644 \
         rpm/agent-ovs.service \
         $RPM_BUILD_ROOT%{_unitdir}/agent-ovs.service
-mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/opflex-agent-ovs/endpoints
-mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/opflex-agent-ovs/ids
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/endpoints
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
 
 %check
 %if %{with check}
@@ -70,7 +70,7 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/opflex-agent-ovs/ids
     %systemd_preun %{name}.service
 %else
     if [ $1 -eq 0 ] ; then
-    # Package removal, not upgrade
+        # Package removal, not upgrade
         /bin/systemctl --no-reload disable %{name}.service >/dev/null 2>&1 || :
         /bin/systemctl stop %{name}.service >/dev/null 2>&1 || :
     fi
@@ -81,8 +81,8 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/opflex-agent-ovs/ids
 %if 0%{?systemd_post:1}
     %systemd_post %{name}.service
 %else
-    # Package install, not upgrade
     if [ $1 -eq 1 ]; then
+        # Package install, not upgrade
         /bin/systemctl daemon-reload >dev/null || :
     fi
 %endif
@@ -94,17 +94,17 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/opflex-agent-ovs/ids
 %else
     /bin/systemctl daemon-reload >/dev/null 2>&1 || :
     if [ "$1" -ge "1" ] ; then
-    # Package upgrade, not uninstall
+        # Package upgrade, not uninstall
         /bin/systemctl try-restart %{name}.service >/dev/null 2>&1 || :
     fi
 %endif
 
 %files
 %{_bindir}/agent_ovs
-%{_localstatedir}/run/opflex-agent-ovs/endpoints
-%{_localstatedir}/run/opflex-agent-ovs/ids
 %config %{_sysconfdir}/opflex-agent-ovs/opflex-agent-ovs.conf
 %{_unitdir}/agent-ovs.service
+%dir %{_localstatedir}/lib/opflex-agent-ovs/endpoints
+%dir %{_localstatedir}/lib/opflex-agent-ovs/ids
 
 %changelog
 * Tue Dec 09 2014 Rob Adams <readams@readams.net> - 1:0.1.0
