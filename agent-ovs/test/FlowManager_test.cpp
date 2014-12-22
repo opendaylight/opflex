@@ -535,11 +535,11 @@ void FlowManagerFixture::policyPortRangeTest() {
     WAIT_FOR(exec.IsEmpty(), 500);
 }
 
-BOOST_FIXTURE_TEST_CASE(policy_portrange_vxlan, FlowManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(policy_portrange_vxlan, VxlanFlowManagerFixture) {
     policyPortRangeTest();
 }
 
-BOOST_FIXTURE_TEST_CASE(policy_portrange_vlan, FlowManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(policy_portrange_vlan, VlanFlowManagerFixture) {
     policyPortRangeTest();
 }
 
@@ -898,28 +898,32 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     /* epg0 connected to fd0 */
     fe_epg0_fd0.push_back(Bldr(fe_epg0[0]).load(FD, 1).done());
 
-    address rip1 = address::from_string(subnetsfd0_1->getVirtualRouterIp(""));
-    address rip2 = address::from_string(subnetsfd1_1->getVirtualRouterIp(""));
-    fe_epg0_routers.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
-                              .isEthDst(bmac).isTpa(rip1.to_string()).isArpOp(1)
-                              .actions().move(ETHSRC, ETHDST)
-                              .load(ETHSRC, "0xaabbccddeeff")
-                              .load(ARPOP, 2)
-                              .move(ARPSHA, ARPTHA)
-                              .load(ARPSHA, "0xaabbccddeeff")
-                              .move(ARPSPA, ARPTPA)
-                              .load(ARPSPA, rip1.to_v4().to_ulong())
-                              .inport().done());
-    fe_epg0_routers.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
-                              .isEthDst(bmac).isTpa(rip2.to_string()).isArpOp(1)
-                              .actions().move(ETHSRC, ETHDST)
-                              .load(ETHSRC, "0xaabbccddeeff")
-                              .load(ARPOP, 2)
-                              .move(ARPSHA, ARPTHA)
-                              .load(ARPSHA, "0xaabbccddeeff")
-                              .move(ARPSPA, ARPTPA)
-                              .load(ARPSPA, rip2.to_v4().to_ulong())
-                              .inport().done());
+    /* Router entries when epg0 is connected to fd0. Since epg0 is connected to
+     * bd0 in the beginning, get the router entries from an EPG already
+     * connected to fd0, such as epg2
+     */
+    PolicyManager::subnet_vector_t epg0_fd0_subnets;
+    policyMgr.getSubnetsForGroup(epg2->getURI(), epg0_fd0_subnets);
+    BOOST_FOREACH (shared_ptr<Subnet>& sn, epg0_fd0_subnets) {
+        if (!sn->isVirtualRouterIpSet()) {
+            continue;
+        }
+        address rip = address::from_string(sn->getVirtualRouterIp(""));
+        if (rip.is_v6()) {
+            continue;
+        }
+        fe_epg0_routers.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
+                                  .isEthDst(bmac).isTpa(rip.to_string())
+                                  .isArpOp(1)
+                                  .actions().move(ETHSRC, ETHDST)
+                                  .load(ETHSRC, "0xaabbccddeeff")
+                                  .load(ARPOP, 2)
+                                  .move(ARPSHA, ARPTHA)
+                                  .load(ARPSHA, "0xaabbccddeeff")
+                                  .move(ARPSPA, ARPTPA)
+                                  .load(ARPSPA, rip.to_v4().to_ulong())
+                                  .inport().done());
+    }
 
     /* local EP ep0 */
     string ep0_mac = ep0->getMAC().get().toString();
@@ -931,7 +935,6 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     fe_ep0.push_back(Bldr().table(0).priority(20).in(ep0_port)
             .isEthSrc(ep0_mac).actions().go(1).done());
     BOOST_FOREACH(const string& ip, ep0ips) {
-        LOG(INFO) << ip;
         address ipa = address::from_string(ip);
         if (ipa.is_v4()) {
             fe_ep0.push_back(Bldr().table(0).priority(30).ip().in(ep0_port)
@@ -944,7 +947,6 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
             fe_ep0.push_back(Bldr().table(0).priority(40).icmp6().in(ep0_port)
                              .isEthSrc(ep0_mac).isIpv6Src(ip)
                              .icmp_type(136).icmp_code(0).actions().go(1).done());
-
         }
     }
 
