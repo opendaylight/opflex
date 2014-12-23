@@ -61,6 +61,7 @@ public:
     virtual void disconnected();
     virtual void ready();
     virtual void handleSendIdentityRes(const rapidjson::Value& payload);
+    virtual void handleSendIdentityErr(const rapidjson::Value& payload);
     virtual void handlePolicyResolveRes(const rapidjson::Value& payload);
     virtual void handlePolicyUnresolveRes(const rapidjson::Value& payload);
     virtual void handlePolicyUpdateReq(const rapidjson::Value& id,
