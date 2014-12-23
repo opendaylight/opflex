@@ -29,11 +29,30 @@ module[span]
     {
         member[state; type=platform/AdminState]
         member[label; type=scalar/UInt32]
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=srcgrp;
+                          member=name]
+            }
+        }
     }
 
     class[DstGrp;
           super=span/Grp;
           concrete]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=dstgrp;
+                          member=name]
+            }
+        }
+    }
 
     class[LocalEp;
           super=policy/NamedComponent;
