@@ -3,6 +3,8 @@ module[domain]
     class[Config;
           concrete]
     {
+        root
+
         dependency[config;
                    cardinality=single;
                    ]
