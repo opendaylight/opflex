@@ -214,6 +214,12 @@ void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
     }
 }
 
+void OpflexPEHandler::handleSendIdentityErr(const Value& payload) {
+    handleError(payload, "Send Identity");
+    LOG(ERROR) << "Handshake failed; terminating connection";
+    conn->disconnect();
+}
+
 void OpflexPEHandler::handlePolicyResolveRes(const Value& payload) {
     StoreClient* client = getProcessor()->getSystemClient();
     MOSerializer& serializer = getProcessor()->getSerializer();
