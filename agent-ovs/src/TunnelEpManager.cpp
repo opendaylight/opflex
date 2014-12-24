@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #endif
+#include <fstream>
 
 #include <opflex/modb/Mutator.h>
 #include <boost/foreach.hpp>
@@ -45,9 +46,15 @@ using boost::system::error_code;
 TunnelEpManager::TunnelEpManager(Agent* agent_, long timer_interval_)
     : agent(agent_), 
       agent_io(agent_->getAgentIOService()), 
-      timer_interval(timer_interval_), stopping(false),
-      tunnelEpUUID(to_string(random_generator()())) {
+      timer_interval(timer_interval_), stopping(false) {
 
+    boost::uuids::uuid tuuid;
+    std::ifstream rndfile("/dev/urandom", std::ifstream::binary);
+    if (!rndfile.is_open() ||
+        !rndfile.read((char *)&tuuid, tuuid.size()).good()) {
+        tuuid = random_generator()();       // use boost RNG as fallback
+    }
+    tunnelEpUUID = to_string(tuuid);
 }
 
 TunnelEpManager::~TunnelEpManager() {
