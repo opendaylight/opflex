@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_f9cee959",
+        "filename": "agent-ovs/src/TunnelEpManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2014-12-24T23:55:15Z",
+      "side": 1,
+      "message": "I don\u0027t want to seed with the time here; there\u0027s actually a nonzero chance that multiple systems could come up at the same time after a power failure and then seed their RNGs at the same second.\n\nI suggest doing a read of 128 bytes from /dev/urandom if it exists and directly initializing the UUID from the resulting random bytes, and falling back to the default otherwise.",
+      "range": {
+        "startLine": 51,
+        "startChar": 19,
+        "endLine": 51,
+        "endChar": 23
+      },
+      "revId": "7d5f0b2460ab4f59fe20a2366c5e213e75ae3fd9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
