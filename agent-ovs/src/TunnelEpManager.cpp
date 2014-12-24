@@ -10,6 +10,7 @@
  */
 
 #include <config.h>
+#include <ctime>
 #ifdef HAVE_IFADDRS_H
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -45,9 +46,10 @@ using boost::system::error_code;
 TunnelEpManager::TunnelEpManager(Agent* agent_, long timer_interval_)
     : agent(agent_), 
       agent_io(agent_->getAgentIOService()), 
-      timer_interval(timer_interval_), stopping(false),
-      tunnelEpUUID(to_string(random_generator()())) {
+      timer_interval(timer_interval_), stopping(false) {
 
+    boost::mt19937 rgen(time(NULL));
+    tunnelEpUUID = to_string(random_generator(rgen)());
 }
 
 TunnelEpManager::~TunnelEpManager() {
