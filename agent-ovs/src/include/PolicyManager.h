@@ -168,6 +168,13 @@ public:
     typedef boost::unordered_set<opflex::modb::URI> uri_set_t;
 
     /**
+     * Get all known endpoint groups.
+     *
+     * @param set of URIs of endpoint groups found.
+     */
+    void getGroups(/* out */ uri_set_t& epgURIs);
+
+    /**
      * Get all endpoint groups that provide a contract.
      *
      * @param contractURI URI of contract to look for

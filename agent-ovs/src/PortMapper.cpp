@@ -9,6 +9,7 @@
 #include <boost/unordered_map.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
+#include <boost/foreach.hpp>
 
 #include "ovs.h"
 #include "PortMapper.h"
@@ -27,6 +28,24 @@ PortMapper::PortMapper() : lastDescReqXid(-1) {
 }
 
 PortMapper::~PortMapper() {
+}
+
+void PortMapper::registerPortStatusListener(PortStatusListener *l) {
+    if (l) {
+        mutex_guard lock(mapMtx);
+        portStatusListeners.push_back(l);
+    }
+}
+
+void PortMapper::unregisterPortStatusListener(PortStatusListener *l) {
+    mutex_guard lock(mapMtx);
+    portStatusListeners.remove(l);
+}
+
+void PortMapper::notifyListeners(const string& portName, uint32_t portNo) {
+    BOOST_FOREACH (PortStatusListener *l, portStatusListeners) {
+        l->portStatusUpdate(portName, portNo);
+    }
 }
 
 void
@@ -107,12 +126,17 @@ PortMapper::HandlePortDescReply(ofpbuf *msg) {
 
     if (done) {
         LOG(DEBUG) << "Got end of message";
-        mutex_guard lock(mapMtx);
-        lastDescReqXid = -1;
-        portMap.swap(tmpPortMap);
-        tmpPortMap.clear();
-        rportMap.swap(tmprPortMap);
-        tmprPortMap.clear();
+        {
+            mutex_guard lock(mapMtx);
+            lastDescReqXid = -1;
+            portMap.swap(tmpPortMap);
+            tmpPortMap.clear();
+            rportMap.swap(tmprPortMap);
+            tmprPortMap.clear();
+        }
+        BOOST_FOREACH (const PortMap::value_type& kv, portMap) {
+            notifyListeners(kv.first, kv.second.port_no);
+        }
     }
 }
 
@@ -126,14 +150,18 @@ PortMapper::HandlePortStatus(ofpbuf *msg) {
                 << ofperr_get_description(err);
         return;
     }
-    mutex_guard lock(mapMtx);
-    if (portStatus.reason == OFPPR_ADD) {
-        portMap[portStatus.desc.name] = portStatus.desc;
-        rportMap[portStatus.desc.port_no] = portStatus.desc.name;
-    } else if (portStatus.reason == OFPPR_DELETE) {
-        portMap.erase(portStatus.desc.name);
-        rportMap.erase(portStatus.desc.port_no);
+    {
+        mutex_guard lock(mapMtx);
+        if (portStatus.reason == OFPPR_ADD ||
+            portStatus.reason == OFPPR_MODIFY) {
+            portMap[portStatus.desc.name] = portStatus.desc;
+            rportMap[portStatus.desc.port_no] = portStatus.desc.name;
+        } else if (portStatus.reason == OFPPR_DELETE) {
+            portMap.erase(portStatus.desc.name);
+            rportMap.erase(portStatus.desc.port_no);
+        }
     }
+    notifyListeners(portStatus.desc.name, portStatus.desc.port_no);
 }
 
 uint32_t

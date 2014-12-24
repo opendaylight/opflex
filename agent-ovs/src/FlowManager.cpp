@@ -93,6 +93,9 @@ void FlowManager::Start()
 
 void FlowManager::Stop()
 {
+    if (portMapper) {
+        portMapper->unregisterPortStatusListener(this);
+    }
     workQ.stop();
 }
 
@@ -116,6 +119,11 @@ void FlowManager::registerModbListeners() {
 void FlowManager::unregisterModbListeners() {
     agent.getEndpointManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
+}
+
+void FlowManager::SetPortMapper(PortMapper *m) {
+    portMapper = m;
+    portMapper->registerPortStatusListener(this);
 }
 
 void FlowManager::SetFallbackMode(FallbackMode fallbackMode) {
@@ -575,6 +583,12 @@ void FlowManager::Connected(SwitchConnection *swConn) {
     workQ.enqueue(w);
 }
 
+void FlowManager::portStatusUpdate(const string& portName, uint32_t portNo) {
+    WorkItem w = bind(&FlowManager::HandlePortStatusUpdate, this,
+                      portName, portNo);
+    workQ.enqueue(w);
+}
+
 void FlowManager::PeerConnected() {
     if (!opflexPeerConnected) {
         opflexPeerConnected = true;
@@ -871,19 +885,20 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         WriteFlow("static", SEC_TABLE_ID, fixedFlows);
     }
 
+    FlowEntry *unknownTunnel = NULL;
     if (fallbackMode == FALLBACK_PROXY && tunPort != OFPP_NONE && 
         encapType != ENCAP_NONE) {
         // Output to the tunnel interface, bypassing policy
         // note that if the flood domain is set to flood unknown, then
         // there will be a higher-priority rule installed for that
         // flood domain.
-        FlowEntry *unknownTunnel = new FlowEntry();
+        unknownTunnel = new FlowEntry();
         unknownTunnel->entry->priority = 1;
         unknownTunnel->entry->table_id = DST_TABLE_ID;
         SetDestActionOutputToTunnel(unknownTunnel, encapType,
                                     GetTunnelDst(), tunPort);
-        WriteFlow("static", DST_TABLE_ID, unknownTunnel);
     }
+    WriteFlow("static", DST_TABLE_ID, unknownTunnel);
 
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.groupExists(epgURI)) {  // EPG removed
@@ -1231,6 +1246,36 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
 
             SetPolicyActionAllow(e0);
             entries.push_back(FlowEntryPtr(e0));
+        }
+    }
+}
+
+void FlowManager::HandlePortStatusUpdate(const string& portName,
+                                         uint32_t portNo) {
+    LOG(DEBUG) << "Port-status update for " << portName;
+    if (portName == encapIface) {
+        PolicyManager::uri_set_t epgURIs;
+        agent.getPolicyManager().getGroups(epgURIs);
+        BOOST_FOREACH (const URI& epg, epgURIs) {
+            HandleEndpointGroupDomainUpdate(epg);
+        }
+        /* Directly update the group-table */
+        BOOST_FOREACH (FdMap::value_type& kv, fdMap) {
+            const URI& fdURI = kv.first;
+            Ep2PortMap& epMap = kv.second;
+
+            uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
+            GroupEdit::Entry e1 = CreateGroupMod(OFPGC11_MODIFY, fdId, epMap);
+            WriteGroupMod(e1);
+            GroupEdit::Entry e2 = CreateGroupMod(OFPGC11_MODIFY,
+                getPromId(fdId), epMap, true);
+            WriteGroupMod(e2);
+        }
+    } else {
+        unordered_set<string> epUUIDs;
+        agent.getEndpointManager().getEndpointsByIface(portName, epUUIDs);
+        BOOST_FOREACH (const string& ep, epUUIDs) {
+            HandleEndpointUpdate(ep);
         }
     }
 }

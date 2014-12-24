@@ -37,7 +37,8 @@ namespace enforcer {
 class FlowManager : public ovsagent::EndpointListener,
                     public ovsagent::PolicyListener,
                     public OnConnectListener,
-                    public MessageHandler {
+                    public MessageHandler,
+                    public PortStatusListener {
 public:
     FlowManager(ovsagent::Agent& agent);
     ~FlowManager() {}
@@ -56,9 +57,7 @@ public:
         executor = e;
     }
 
-    void SetPortMapper(PortMapper *m) {
-        portMapper = m;
-    }
+    void SetPortMapper(PortMapper *m);
 
     /**
      * Set the object used for reading flows and groups from the switch.
@@ -175,6 +174,9 @@ public:
     /** Interface: OnConnectListener */
     void Connected(SwitchConnection *swConn);
 
+    /** Interface: PortStatusListener */
+    void portStatusUpdate(const std::string& portName, uint32_t portNo);
+
     /**
      * Get the VNIDs for the specified endpoint groups.
      *
@@ -252,6 +254,15 @@ private:
      * @param sw Connection to the switch
      */
     void HandleConnection(SwitchConnection *sw);
+
+    /**
+     * Handle changes to port-status by recomputing flows for endpoints
+     * and endpoint groups.
+     *
+     * @param portName Name of the port that changed
+     * @param portNo Port number of the port that changed
+     */
+    void HandlePortStatusUpdate(const std::string& portName, uint32_t portNo);
 
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
             uint32_t& rdId, uint32_t& bdId,

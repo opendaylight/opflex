@@ -320,6 +320,13 @@ bool PolicyManager::groupExists(const opflex::modb::URI& eg) {
     return group_map.find(eg) != group_map.end();
 }
 
+void PolicyManager::getGroups(uri_set_t& epURIs) {
+    lock_guard<mutex> guard(state_mutex);
+    BOOST_FOREACH (const group_map_t::value_type& kv, group_map) {
+        epURIs.insert(kv.first);
+    }
+}
+
 void PolicyManager::notifyContract(const URI& contractURI) {
     lock_guard<mutex> guard(listener_mutex);
     BOOST_FOREACH(PolicyListener *listener, policyListeners) {

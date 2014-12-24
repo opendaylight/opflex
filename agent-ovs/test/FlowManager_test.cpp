@@ -185,7 +185,7 @@ public:
                         flowManager(agent),
                         policyMgr(agent.getPolicyManager()),
                            ep2_port(11), ep4_port(22) {
-        string tunIf("br0_vxlan0");
+        tunIf = "br0_vxlan0";
         flowManager.SetExecutor(&exec);
         flowManager.SetPortMapper(&portmapper);
         flowManager.SetEncapIface(tunIf);
@@ -195,6 +195,7 @@ public:
 
         portmapper.ports[ep0->getInterfaceName().get()] = 80;
         portmapper.ports[tunIf] = 2048;
+        tun_port_new = 4096;
 
         WAIT_FOR(policyMgr.groupExists(epg0->getURI()), 500);
         WAIT_FOR(policyMgr.getBDForGroup(epg0->getURI()) != boost::none, 500);
@@ -234,6 +235,7 @@ public:
     void policyTest();
     void policyPortRangeTest();
     void connectTest();
+    void portStatusTest();
 
     MockFlowExecutor exec;
     MockFlowReader reader;
@@ -241,6 +243,7 @@ public:
     MockPortMapper portmapper;
     PolicyManager& policyMgr;
 
+    string tunIf;
     vector<string> fe_fixed;
     vector<string> fe_fallback;
     vector<string> fe_epg0, fe_epg0_fd0, fe_epg0_routers;
@@ -250,13 +253,17 @@ public:
     vector<string> fe_ep2, fe_ep2_eg1;
     vector<string> fe_con1, fe_con2, fe_con3;
     vector<string> fe_arpopt;
+    vector<string> fe_fixed_tun_new, fe_fallback_tun_new;
+    vector<string> fe_epg0_tun_new, fe_ep2_tun_new;
     string fe_connect_1, fe_connect_2;
     string ge_fd0, ge_bkt_ep0, ge_bkt_ep2, ge_bkt_tun;
     string ge_fd0_prom;
     string ge_fd1, ge_bkt_ep4;
     string ge_fd1_prom;
+    string ge_bkt_tun_new;
     uint32_t ep2_port;
     uint32_t ep4_port;
+    uint32_t tun_port_new;
 };
 
 class VxlanFlowManagerFixture : public FlowManagerFixture {
@@ -385,7 +392,7 @@ void FlowManagerFixture::localEpTest() {
         exec.Expect(FlowEdit::del, fe_ep0[i]);
     }
     exec.Expect(FlowEdit::mod, fe_ep0_port_3);
-    flowManager.endpointUpdated(ep0->getUUID());
+    flowManager.portStatusUpdate(ep0->getInterfaceName().get(), 180);
     WAIT_FOR(exec.IsEmpty(), 500);
 
     /* remove endpoint */
@@ -486,6 +493,13 @@ void FlowManagerFixture::fdTest() {
     exec.ExpectGroup(FlowEdit::add, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun);
     flowManager.endpointUpdated(ep4->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
+
+    /* group changes on tunnel port change */
+    exec.ExpectGroup(FlowEdit::mod, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun_new);
+    exec.ExpectGroup(FlowEdit::mod, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun_new);
+    portmapper.ports[tunIf] = tun_port_new;
+    flowManager.portStatusUpdate(tunIf, tun_port_new);
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(fd_vxlan, VxlanFlowManagerFixture) {
@@ -565,6 +579,61 @@ BOOST_FIXTURE_TEST_CASE(connect_vxlan, VxlanFlowManagerFixture) {
 BOOST_FIXTURE_TEST_CASE(connect_vlan, VlanFlowManagerFixture) {
     createOnConnectEntries(FlowManager::ENCAP_VLAN, reader.flows, reader.groups);
     connectTest();
+}
+
+void FlowManagerFixture::portStatusTest() {
+    setConnected();
+
+    /* create entries for epg0, ep0 and ep2 with original tunnel port */
+    exec.Clear();
+    exec.IgnoreFlowMods(fe_fixed.size() + fe_fallback.size()
+            + fe_epg0.size() + fe_ep0.size() + fe_ep2.size());
+    flowManager.egDomainUpdated(epg0->getURI());
+    WAIT_FOR(exec.IsEmpty(), 500);
+
+    /* delete all groups except epg0, then update tunnel port */
+    exec.IgnoreFlowMods();
+    vector<shared_ptr<EpGroup> > epgs;
+    space->resolveGbpEpGroup(epgs);
+    Mutator m2(framework, policyOwner);
+    BOOST_FOREACH (shared_ptr<EpGroup>& eg, epgs) {
+        if (eg->getURI() != epg0->getURI()) {
+            eg->remove();
+        }
+    }
+    m2.commit();
+    epgs.clear();
+    WAIT_FOR_DO(epgs.size() == 1, 500,
+                epgs.clear(); space->resolveGbpEpGroup(epgs));
+
+    exec.Clear();
+    exec.Expect(FlowEdit::add, fe_fixed_tun_new);
+    exec.Expect(FlowEdit::del, fe_fixed[6]);
+    exec.Expect(FlowEdit::mod, fe_fallback_tun_new);
+    exec.Expect(FlowEdit::add, fe_epg0_tun_new);
+    exec.Expect(FlowEdit::del, fe_epg0[0]);
+    exec.Expect(FlowEdit::mod, fe_ep2_tun_new);
+    portmapper.ports[tunIf] = tun_port_new;
+    flowManager.portStatusUpdate(tunIf, tun_port_new);
+    WAIT_FOR(exec.IsEmpty(), 500);
+
+    /* remove mapping for tunnel port */
+    exec.Clear();
+    exec.Expect(FlowEdit::del, fe_fixed_tun_new);
+    exec.Expect(FlowEdit::del, fe_fallback_tun_new);
+    exec.Expect(FlowEdit::del, fe_epg0_tun_new);
+    exec.Expect(FlowEdit::del, fe_ep2_tun_new);
+    portmapper.ports.erase(tunIf);
+    flowManager.portStatusUpdate(tunIf, tun_port_new);
+    WAIT_FOR(exec.IsEmpty(), 500);
+}
+
+BOOST_FIXTURE_TEST_CASE(portstatus_vxlan, VxlanFlowManagerFixture) {
+    portStatusTest();
+}
+
+BOOST_FIXTURE_TEST_CASE(portstatus_vlan, VlanFlowManagerFixture) {
+    portStatusTest();
 }
 
 BOOST_FIXTURE_TEST_CASE(learn, VxlanFlowManagerFixture) {
@@ -774,7 +843,7 @@ public:
     Bldr& group(uint32_t g) { rep("group:", str(g)); return *this; }
     Bldr& bktId(uint32_t b) { rep("bucket_id:", str(b)); return *this; }
     Bldr& bktActions() { rep(",actions="); cntr = 1; return *this; }
-    Bldr& outPort(uint32_t p) { rep("output:" + str(p)); return *this; }
+    Bldr& outPort(uint32_t p) { rep("output:", str(p)); return *this; }
     Bldr& pushVlan() { rep("push_vlan:0x8100"); return *this; }
     Bldr& inport() { rep("IN_PORT"); return *this; }
 
@@ -797,12 +866,12 @@ private:
                 return;
             }
             pos2 = pos1+pfx.size();
-            while (pos2 != string::npos && entry[pos2] != ',' &&
+            while (pos2 < entry.size() && entry[pos2] != ',' &&
                    entry[pos2] != ' ' && entry[pos2] != '-') {
                 ++pos2;
             }
             if (!sfx.empty()) {
-                if (pos2 != string::npos &&
+                if (pos2 < entry.size() &&
                     entry.compare(pos2, sfx.size(), sfx)) {
                     continue;
                 }
@@ -858,6 +927,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                        .actions().go(1).done());
     fe_fixed.push_back(Bldr().table(0).priority(50)
                        .in(tunPort).actions().go(1).done());
+    fe_fixed_tun_new.push_back(Bldr(fe_fixed[6]).in(tun_port_new).done());
 
     switch (encapType) {
     case FlowManager::ENCAP_VLAN:
@@ -873,6 +943,8 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                               .outPort(tunPort).done());
         break;
     }
+    fe_fallback_tun_new.push_back(Bldr(fe_fallback[0])
+                                  .outPort(tun_port_new).done());
 
     /* epg0 */
     uint32_t epg0_vnid = policyMgr.getVnidForGroup(epg0->getURI()).get();
@@ -894,6 +966,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     }
     fe_epg0.push_back(Bldr().table(4).priority(100).reg(SEPG, epg0_vnid)
             .reg(DEPG, epg0_vnid).actions().out(OUTPORT).done());
+    fe_epg0_tun_new.push_back(Bldr(fe_epg0[0]).in(tun_port_new).done());
 
     /* epg0 connected to fd0 */
     fe_epg0_fd0.push_back(Bldr(fe_epg0[0]).load(FD, 1).done());
@@ -1057,6 +1130,9 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
         break;
     }
     fe_ep2.push_back(ep2_arpopt);
+    BOOST_FOREACH (const string& se, fe_ep2) {
+        fe_ep2_tun_new.push_back(Bldr(se).load(OUTPORT, tun_port_new).done());
+    }
 
     /**
      * ARP flows
@@ -1087,6 +1163,8 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
             .load(TUNDST, htonl(tunDst)).outPort(tunPort).done();
         break;
     }
+    ge_bkt_tun_new = Bldr(ge_bkt_tun).bktId(tun_port_new)
+                     .outPort(tun_port_new).done();
     ge_fd0_prom = "group_id=2147483649,type=all";
 
     ge_bkt_ep4 = Bldr(bktInit).bktId(ep4_port).bktActions().outPort(ep4_port)
