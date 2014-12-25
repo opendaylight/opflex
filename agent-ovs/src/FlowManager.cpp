@@ -6,8 +6,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <netinet/ip.h>
-
 #include <string>
 #include <cstdlib>
 #include <cstdio>
@@ -26,12 +24,12 @@
 #include "Endpoint.h"
 #include "EndpointManager.h"
 #include "EndpointListener.h"
-#include "ovs.h"
 #include "SwitchConnection.h"
 #include "FlowManager.h"
 #include "TableState.h"
 #include "ActionBuilder.h"
 #include "RangeMask.h"
+#include "Packets.h"
 
 using namespace std;
 using namespace boost;
@@ -180,7 +178,11 @@ void FlowManager::SetFlowIdCache(const std::string& flowIdCache) {
 }
 
 ovs_be64 FlowManager::GetLearnEntryCookie() {
-    return htonll(0xdeadbeef);
+    return htonll((uint64_t)1 << 63 | 1);
+}
+
+ovs_be64 FlowManager::GetNDCookie() {
+    return htonll((uint64_t)1 << 63 | 2);
 }
 
 /** Source table helper functions */
@@ -275,22 +277,28 @@ SetDestMatchArp(FlowEntry *fe, uint16_t prio, const address& ip,
 }
 
 static void
-SetDestMatchNd(FlowEntry *fe, uint16_t prio, const address& ip,
-               uint32_t l3Id) {
+SetDestMatchNd(FlowEntry *fe, uint16_t prio, const address* ip,
+               uint32_t l3Id, uint64_t cookie = 0, 
+               uint8_t type = ND_NEIGHBOR_SOLICIT) {
     fe->entry->table_id = FlowManager::DST_TABLE_ID;
+    if (cookie != 0)
+        fe->entry->cookie = cookie;
     fe->entry->priority = prio;
     match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
     match_set_nw_proto(&fe->entry->match, 58 /* ICMP */);
     // OVS uses tp_src for ICMPV6_TYPE
-    match_set_tp_src(&fe->entry->match, htons(135) /* neighbor solicitation */);
+    match_set_tp_src(&fe->entry->match, htons(type));
     // OVS uses tp_dst for ICMPV6_CODE
     match_set_tp_dst(&fe->entry->match, 0);
-    match_set_dl_dst(&fe->entry->match, MAC_ADDR_BROADCAST);
     match_set_reg(&fe->entry->match, 6 /* REG6 */, l3Id);
+    match_set_dl_dst_masked(&fe->entry->match, 
+                            MAC_ADDR_MULTICAST, MAC_ADDR_MULTICAST);
 
-    struct in6_addr addr;
-    fill_in6_addr(addr, ip.to_v6());
-    match_set_nd_target(&fe->entry->match, &addr);
+    if (ip) {
+        struct in6_addr addr;
+        fill_in6_addr(addr, ip->to_v6());
+        match_set_nd_target(&fe->entry->match, &addr);
+    }
 
 }
 
@@ -420,9 +428,9 @@ SetActionGotoLearn(FlowEntry *fe) {
 }
 
 static void
-SetActionController(FlowEntry *fe) {
+SetActionController(FlowEntry *fe, uint16_t max_len = 128) {
     ActionBuilder ab;
-    ab.SetController();
+    ab.SetController(max_len);
     ab.Build(fe->entry);
 }
 
@@ -512,9 +520,9 @@ SetSecurityMatchEpND(FlowEntry *fe, uint16_t prio, uint32_t port,
     match_set_nw_proto(&fe->entry->match, 58 /* ICMP */);
     // OVS uses tp_src for ICMPV6_TYPE
     if (routerAdv)
-        match_set_tp_src(&fe->entry->match, htons(134) /* Router Advertisement */);
+        match_set_tp_src(&fe->entry->match, htons(ND_ROUTER_ADVERT));
     else
-        match_set_tp_src(&fe->entry->match, htons(136) /* Neighbor Advertisement */);
+        match_set_tp_src(&fe->entry->match, htons(ND_NEIGHBOR_ADVERT));
 
     if (epIp != NULL) {
         struct in6_addr addr;
@@ -533,7 +541,7 @@ SetSecurityMatchRouterSolit(FlowEntry *fe, uint16_t prio) {
     match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
     match_set_nw_proto(&fe->entry->match, 58);
     // OVS uses tp_src for ICMPV6_TYPE
-    match_set_tp_src(&fe->entry->match, htons(133) /* Router solicitation */);
+    match_set_tp_src(&fe->entry->match, htons(ND_ROUTER_SOLICIT));
     // OVS uses tp_dst for ICMPV6_CODE
     match_set_tp_dst(&fe->entry->match, 0);
 }
@@ -614,7 +622,9 @@ void FlowManager::PeerConnected() {
 
 bool
 FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
-        uint32_t& rdId, uint32_t& bdId, optional<URI>& fdURI, uint32_t& fdId) {
+                                    optional<URI>& rdURI, uint32_t& rdId, 
+                                    uint32_t& bdId,
+                                    optional<URI>& fdURI, uint32_t& fdId) {
     PolicyManager& polMgr = agent.getPolicyManager();
     optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI);
     if (!epgVnid) {
@@ -629,14 +639,17 @@ FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
         return false;
     }
 
-    rdId = epgRd ?
-            GetId(RoutingDomain::CLASS_ID, epgRd.get()->getURI()) : 0;
+    rdId = 0;
     bdId = epgBd ?
             GetId(BridgeDomain::CLASS_ID, epgBd.get()->getURI()) : 0;
     fdId = 0;
     if (epgFd) {
         fdURI = epgFd.get()->getURI();
         fdId = GetId(FloodDomain::CLASS_ID, fdURI.get());
+    }
+    if (epgRd) {
+        rdURI = epgRd.get()->getURI();
+        rdId = GetId(RoutingDomain::CLASS_ID, rdURI.get());
     }
     return true;
 }
@@ -725,9 +738,9 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
     }
 
     uint32_t epgVnid, rdId, bdId, fdId;
-    optional<URI> fdURI;
-    if (!GetGroupForwardingInfo(epgURI.get(), epgVnid, rdId, bdId,
-            fdURI, fdId)) {
+    optional<URI> fdURI, rdURI;
+    if (!GetGroupForwardingInfo(epgURI.get(), epgVnid, rdURI, rdId,
+                                bdId, fdURI, fdId)) {
         return;
     }
 
@@ -805,7 +818,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
             if (ndMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v6()) {
                 FlowEntry *e1 = new FlowEntry();
-                SetDestMatchNd(e1, 20, ipAddr, rdId);
+                SetDestMatchNd(e1, 20, &ipAddr, rdId);
                 if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
                     // neighbor discovery optimization: broadcast -> unicast
                     SetDestActionEpArp(e1, encapType, isLocalEp, epgVnid,
@@ -908,8 +921,9 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     }
 
     uint32_t epgVnid, rdId, bdId, fdId;
-    optional<URI> fdURI;
-    if (!GetGroupForwardingInfo(epgURI, epgVnid, rdId, bdId, fdURI, fdId)) {
+    optional<URI> fdURI, rdURI;
+    if (!GetGroupForwardingInfo(epgURI, epgVnid, rdURI, 
+                                rdId, bdId, fdURI, fdId)) {
         return;
     }
 
@@ -942,6 +956,13 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
 
     if (rdId != 0) {
         UpdateGroupSubnets(epgURI, rdId);
+
+        // XXX this leaks flows for RDs that are not tied to any epgs
+        FlowEntry *e0 = new FlowEntry();
+        SetDestMatchNd(e0, 20, NULL, rdId, FlowManager::GetNDCookie(),
+                       ND_ROUTER_SOLICIT);
+        SetActionController(e0, 0xffff);
+        WriteFlow(rdURI.get().toString(), DST_TABLE_ID, e0);
     }
 
     unordered_set<string> epUuids;
@@ -958,26 +979,31 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
 
     // XXX this leaks subnet-related flows when no group is using a subnet
     BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
+        FlowEntryList el;
         optional<const string&> routerIpStr = sn->getVirtualRouterIp();
-        if (!routerIpStr) continue;
-        boost::system::error_code ec;
-        address routerIp = address::from_string(routerIpStr.get(), ec);
-        if (ec) {
-            LOG(WARNING) << "Invalid router IP: "
-                         << routerIpStr << ": " << ec.message();
-            continue;
-        }
-
-        if (virtualRouterEnabled) {
-           if (routerIp.is_v4()) {
-                 FlowEntry *e0 = new FlowEntry();
-                SetDestMatchArp(e0, 20, routerIp, routingDomainId);
-                SetDestActionSubnetArp(e0, GetRouterMacAddr(), routerIp);
-                WriteFlow(sn->getURI().toString(), DST_TABLE_ID, e0);
-            } else {
-                // XXX TODO IPv6
+        if (routerIpStr) {
+            boost::system::error_code ec;
+            address routerIp = address::from_string(routerIpStr.get(), ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid router IP: "
+                             << routerIpStr << ": " << ec.message();
+                continue;
+            } else if (virtualRouterEnabled) {
+                if (routerIp.is_v4()) {
+                    FlowEntry *e0 = new FlowEntry();
+                    SetDestMatchArp(e0, 20, routerIp, routingDomainId);
+                    SetDestActionSubnetArp(e0, GetRouterMacAddr(), routerIp);
+                    el.push_back(FlowEntryPtr(e0));
+                } else {
+                    FlowEntry *e0 = new FlowEntry();
+                    SetDestMatchNd(e0, 20, &routerIp, routingDomainId, 
+                                   FlowManager::GetNDCookie());
+                    SetActionController(e0, 0xffff);
+                    el.push_back(FlowEntryPtr(e0));
+                }
             }
         }
+        WriteFlow(sn->getURI().toString(), DST_TABLE_ID, el);
     }
 }
 
@@ -1432,37 +1458,11 @@ static bool writeLearnFlow(SwitchConnection *conn,
     return true;
 }
 
-/**
- * Perform MAC learning for flood domains that require flooding for
- * unknown unicast traffic.  Note that this will only manage the
- * reactive flows associated with MAC learning; there are static flows
- * to enabling MAC learning elsewhere.
- */
-void FlowManager::Handle(SwitchConnection *conn, 
-                         ofptype msgType, ofpbuf *msg) {
-    assert(msgType == OFPTYPE_PACKET_IN);
-
-    const struct ofp_header *oh = (ofp_header *)ofpbuf_data(msg);
-    struct ofputil_packet_in pi;
-
-    enum ofperr err = ofputil_decode_packet_in(&pi, oh);
-    if (err) {
-        LOG(ERROR) << "Failed to decode packet-in: " << ovs_strerror(err);
-        return;
-    }
-
-    if (pi.reason != OFPR_ACTION)
-        return;
-
-    struct ofpbuf pkt;
-    struct flow flow;
-    ofpbuf_use_const(&pkt, pi.packet, pi.packet_len);
-    flow_extract(&pkt, NULL, &flow);
-
-    ofputil_protocol proto = 
-        ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
-    assert(ofputil_protocol_is_valid(proto));
-
+static void handleLearnPktIn(SwitchConnection *conn,
+                             struct ofputil_packet_in& pi,
+                             ofputil_protocol& proto,
+                             struct ofpbuf& pkt,
+                             struct flow& flow) {
     writeLearnFlow(conn, proto, pi, flow, false);
     if (writeLearnFlow(conn, proto, pi, flow, true))
         return;
@@ -1473,12 +1473,12 @@ void FlowManager::Handle(SwitchConnection *conn,
         struct ofputil_flow_mod fm;
         memset(&fm, 0, sizeof(fm));
         fm.buffer_id = pi.buffer_id;
-        fm.table_id = LEARN_TABLE_ID;
+        fm.table_id = FlowManager::LEARN_TABLE_ID;
         fm.priority = 50;
         fm.idle_timeout = 5;
         fm.hard_timeout = 60;
         fm.command = OFPFC_ADD;
-        fm.new_cookie = GetLearnEntryCookie();
+        fm.new_cookie = FlowManager::GetLearnEntryCookie();
 
         match_set_in_port(&fm.match, pi.fmd.in_port);
         match_set_reg(&fm.match, 5 /* REG5 */, pi.fmd.regs[5]);
@@ -1515,6 +1515,126 @@ void FlowManager::Handle(SwitchConnection *conn,
             LOG(ERROR) << "Could not write packet-out: " << ovs_strerror(error);
         }
     }
+}
+
+static void handleNDPktIn(Agent& agent,
+                          SwitchConnection *conn,
+                          struct ofputil_packet_in& pi,
+                          ofputil_protocol& proto,
+                          struct ofpbuf& pkt,
+                          struct flow& flow,
+                          const uint8_t* virtualRouterMac) {
+    uint32_t epgId = (uint32_t)pi.fmd.regs[0];
+    PolicyManager& polMgr = agent.getPolicyManager();
+    optional<URI> egUri = polMgr.getGroupForVnid(epgId);
+    if (!egUri)
+        return;
+
+    if (flow.dl_type != htons(ETH_TYPE_IPV6) ||
+        flow.nw_proto != 58 /* ICMPv6 */)
+        return;
+
+    size_t l4_size = ofpbuf_l4_size(&pkt);
+    if (l4_size < sizeof(struct icmp6_hdr))
+        return;
+    struct icmp6_hdr* icmp = (struct icmp6_hdr*) ofpbuf_l4(&pkt);
+    if (icmp->icmp6_code != 0)
+        return;
+
+    struct ofpbuf* b = NULL;
+
+    if (icmp->icmp6_type == ND_NEIGHBOR_SOLICIT) {
+        /* Neighbor solicitation */
+        struct nd_neighbor_solicit* neigh_sol = 
+            (struct nd_neighbor_solicit*) ofpbuf_l4(&pkt);
+        if (l4_size < sizeof(*neigh_sol))
+            return;
+
+        // we only get neighbor solicitation packets for our router
+        // IP, so we just always reply with our router MAC to the
+        // requested IP.
+        b = Packets::compose_icmp6_neigh_ad(ND_NA_FLAG_ROUTER | 
+                                            ND_NA_FLAG_SOLICITED | 
+                                            ND_NA_FLAG_OVERRIDE,
+                                            virtualRouterMac,
+                                            flow.dl_src,
+                                            &neigh_sol->nd_ns_target,
+                                            &flow.ipv6_src);
+
+    } else if (icmp->icmp6_type == ND_ROUTER_SOLICIT) {
+        LOG(INFO) << "Router solicit";
+        /* Router solicitation */
+        struct nd_router_solicit* router_sol = 
+            (struct nd_router_solicit*) ofpbuf_l4(&pkt);
+        if (l4_size < sizeof(*router_sol))
+            return;
+
+        b = Packets::compose_icmp6_router_ad(virtualRouterMac,
+                                             flow.dl_src,
+                                             &flow.ipv6_src,
+                                             egUri.get(),
+                                             polMgr);
+    }
+
+    if (b) {
+        // send reply as packet-out
+        struct ofputil_packet_out po;
+        po.buffer_id = UINT32_MAX;
+        po.packet = ofpbuf_data(b);
+        po.packet_len = ofpbuf_size(b);
+        po.in_port = pi.fmd.in_port;
+        
+        ActionBuilder ab;
+        ab.SetOutputToPort(OFPP_IN_PORT);
+        ab.Build(&po);
+    
+        struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
+        int error = conn->SendMessage(message);
+        free(po.ofpacts);
+        if (error) {
+            LOG(ERROR) << "Could not write packet-out: " << ovs_strerror(error);
+        }
+        
+        ofpbuf_delete(b);
+    }
+}
+
+/**
+ * Perform MAC learning for flood domains that require flooding for
+ * unknown unicast traffic.  Note that this will only manage the
+ * reactive flows associated with MAC learning; there are static flows
+ * to enabling MAC learning elsewhere.
+ */
+void FlowManager::Handle(SwitchConnection *conn, 
+                         ofptype msgType, ofpbuf *msg) {
+    assert(msgType == OFPTYPE_PACKET_IN);
+
+    const struct ofp_header *oh = (ofp_header *)ofpbuf_data(msg);
+    struct ofputil_packet_in pi;
+
+    enum ofperr err = ofputil_decode_packet_in(&pi, oh);
+    if (err) {
+        LOG(ERROR) << "Failed to decode packet-in: " << ovs_strerror(err);
+        return;
+    }
+
+    if (pi.reason != OFPR_ACTION)
+        return;
+
+    struct ofpbuf pkt;
+    struct flow flow;
+    ofpbuf_use_const(&pkt, pi.packet, pi.packet_len);
+    flow_extract(&pkt, NULL, &flow);
+
+    ofputil_protocol proto = 
+        ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
+    assert(ofputil_protocol_is_valid(proto));
+
+    if (pi.cookie == GetLearnEntryCookie())
+        handleLearnPktIn(conn, pi, proto, pkt, flow);
+    else if (pi.cookie == GetNDCookie())
+        handleNDPktIn(agent, conn, pi, proto, pkt, flow, routerMac);
+
 }
 
 FlowManager::FlowSyncer::FlowSyncer(FlowManager& fm) :

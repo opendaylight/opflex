@@ -147,8 +147,13 @@ void TunnelEpManager::on_timer(const error_code& ec) {
                 LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(s);
                 continue;
             }
-
             bestAddress = host;
+            // remove address scope if present
+            size_t scope = bestAddress.find_first_of('%');
+            if (scope != string::npos) {
+                bestAddress.erase(scope);
+            }
+
             bestIface = ifa->ifa_name;
             if (family == AF_INET) {
                 // prefer ipv4 address, if present

@@ -79,6 +79,7 @@ void PolicyManager::stop() {
 
     lock_guard<mutex> guard(state_mutex);
     group_map.clear();
+    vnid_map.clear();
     subnet_ref_map.clear();
 }
 
@@ -202,8 +203,11 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
 
     optional<shared_ptr<InstContext> > groupInstCtx;
     groupInstCtx = epg.get()->resolveGbpeInstContext();
+    if (gs.vnid)
+        vnid_map.erase(gs.vnid.get());
     if (groupInstCtx) {
         gs.vnid = groupInstCtx.get()->getVnid();
+        vnid_map.insert(std::make_pair(gs.vnid.get(), egURI));
     }
 
     optional<shared_ptr<RoutingDomain> > newrd;
@@ -313,6 +317,13 @@ PolicyManager::getVnidForGroup(const opflex::modb::URI& eg) {
     lock_guard<mutex> guard(state_mutex);
     group_map_t::iterator it = group_map.find(eg);
     return it != group_map.end() ? it->second.vnid : boost::none;
+}
+
+boost::optional<opflex::modb::URI>
+PolicyManager::getGroupForVnid(uint32_t vnid) {
+    lock_guard<mutex> guard(state_mutex);
+    vnid_map_t::iterator it = vnid_map.find(vnid);
+    return it != vnid_map.end() ? optional<URI>(it->second) : boost::none;
 }
 
 bool PolicyManager::groupExists(const opflex::modb::URI& eg) {
