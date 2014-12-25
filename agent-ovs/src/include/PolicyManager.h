@@ -149,6 +149,15 @@ public:
     boost::optional<uint32_t> getVnidForGroup(const opflex::modb::URI& eg);
 
     /**
+     * Get the endpoint group associated with the specified identifier
+     *
+     * @param vnid the VNID to look up
+     * @return The endpoint group with that VNID if it is known,
+     * boost::none otherwise
+     */
+    boost::optional<opflex::modb::URI> getGroupForVnid(uint32_t vnid);
+
+    /**
      * Check if an endpoint group exists
      *
      * @param eg the URI for the endpoint group to check
@@ -235,13 +244,18 @@ private:
     typedef boost::unordered_map<opflex::modb::URI, GroupState> group_map_t;
     typedef boost::unordered_map<opflex::modb::URI,
                                  boost::unordered_set<opflex::modb::URI> > uri_ref_map_t;
+    typedef boost::unordered_map<uint32_t, opflex::modb::URI> vnid_map_t;
+    typedef boost::unordered_map<opflex::modb::URI, SubnetsCacheEntry> subnet_index_t;
 
     /**
      * A map from EPG URI to its state
      */ 
     group_map_t group_map;
 
-    typedef boost::unordered_map<opflex::modb::URI, SubnetsCacheEntry> subnet_index_t;
+    /**
+     * A map from EPG vnid to EPG URI
+     */
+    vnid_map_t vnid_map;
 
     /**
      * A cache of subnets to subnet child objects

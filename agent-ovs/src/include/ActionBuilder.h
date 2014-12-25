@@ -56,7 +56,7 @@ public:
     void SetOutputToPort(uint32_t port);
     void SetOutputReg(mf_field_id srcRegId);
     void SetGroup(uint32_t groupId);
-    void SetController();
+    void SetController(uint16_t max_len = 128);
     void SetPushVlan();
 
     /**

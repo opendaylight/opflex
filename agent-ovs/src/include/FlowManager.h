@@ -203,6 +203,14 @@ public:
     static ovs_be64 GetLearnEntryCookie();
 
     /**
+     * Get the cookie used for cookies that direct neighbor discovery
+     * packets to the controller
+     *
+     * @return flow-cookie for ND packets
+     */
+    static ovs_be64 GetNDCookie();
+
+    /**
      * Maximum flow priority of the entries in policy table.
      */
     static const uint16_t MAX_POLICY_RULE_PRIORITY;
@@ -265,7 +273,7 @@ private:
     void HandlePortStatusUpdate(const std::string& portName, uint32_t portNo);
 
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
-            uint32_t& rdId, uint32_t& bdId,
+            boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId, uint32_t& bdId,
             boost::optional<opflex::modb::URI>& fdURI, uint32_t& fdId);
     void UpdateGroupSubnets(const opflex::modb::URI& egUri,
             uint32_t routingDomainId);
