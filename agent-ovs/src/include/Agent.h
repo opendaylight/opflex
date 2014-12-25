@@ -119,6 +119,8 @@ private:
      */
     boost::thread* io_service_thread;
     boost::asio::io_service agent_io;
+
+    bool started;
 };
 
 } /* namespace ovsagent */

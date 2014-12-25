@@ -97,8 +97,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setVirtualRouterIp("10.0.0.128");
     subnetsfd1_2 = subnetsfd1->addGbpSubnet("subnetsfd1_2");
     subnetsfd1_2->setAddress("fd8f:69d8:c12c:ca62::")
-        .setPrefixLen(64)
-        .setVirtualRouterIp("fd8f:69d8:c12c:ca62::1");
+        .setPrefixLen(64);
     subnetsfd1->addGbpSubnetsToNetworkRSrc()
         ->setTargetFloodDomain(fd1->getURI());
 
@@ -109,8 +108,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setVirtualRouterIp("10.0.1.128");
     subnetsfd2_2 = subnetsfd2->addGbpSubnet("subnetsfd2_2");
     subnetsfd2_2->setAddress("fd8c:ad36:ceb3:601f::")
-        .setPrefixLen(64)
-        .setVirtualRouterIp("fd8c:ad36:ceb3:601f::1");
+        .setPrefixLen(64);
     subnetsfd2->addGbpSubnetsToNetworkRSrc()
         ->setTargetFloodDomain(fd2->getURI());
     
