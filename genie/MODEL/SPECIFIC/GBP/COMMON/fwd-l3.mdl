@@ -4,6 +4,19 @@ module[gbp]
           super=gbp/ForwardingBehavioralGroup;
           abstract]
 
+    type[Autoconfig; super=scalar/Enum8]
+    {
+        # Stateless autoconfiguration
+        const[name=stateless; value=0]
+
+        # DHCP used for all configuration
+        const[name=dhcp; value=1]
+
+        # Addresses are assigned statelesslessly but other configuration
+        # is obtained via DHCP
+        const[name=both; value=2]
+    }
+
     class[RoutingDomain;
           super=gbp/L3BehavioralGroup;
           concrete]
@@ -19,6 +32,10 @@ module[gbp]
                 component[prefix=routing-domain; member=name]
             }
         }
+
+        # Set how IPv6 hosts should be configured (through DHCP or
+        # statelessly)
+        member[ipv6Autoconfig; type=scalar/UInt8]
     }
 
     class[Subnet;
@@ -32,8 +49,18 @@ module[gbp]
         member[prefixLen; type=scalar/UInt8]
 
         # the IP address to use for a virtual gateway router for the
-        # subnet, if desired.
+        # subnet, if desired.  Can be either IPv4 or IPv6.
         member[virtualRouterIp; type=address/IP]
+
+        # Valid lifetime reported in ipv6 router advertisement
+        member[ipv6AdvValidLifetime; type=scalar/UInt32]
+
+        # Set to nonzero to allow this prefix to be used for IPv6
+        # stateless autoconfiguration
+        member[ipv6AdvAutonomousFlag; type=scalar/UInt8]
+
+        # Preferred lifetime reported in ipv6 router advertisement
+        member[ipv6AdvPreferredLifetime; type=scalar/UInt32]
 
         contained
         {

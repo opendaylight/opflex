@@ -32,11 +32,13 @@ using std::make_pair;
 
 Agent::Agent(OFFramework& framework_) 
     : framework(framework_), policyManager(framework), 
-      endpointManager(framework, policyManager) {
+      endpointManager(framework, policyManager), 
+      io_service_thread(NULL), started(false) {
 
 }
 
 Agent::~Agent() {
+    stop();
     BOOST_FOREACH(Renderer* r, renderers) {
         delete r;
     }
@@ -119,6 +121,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
 
 void Agent::start() {
     LOG(INFO) << "Starting OVS Agent";
+    started = true;
+
     // instantiate the opflex framework
     framework.setModel(modelgbp::getMetadata());
     framework.start();
@@ -135,9 +139,6 @@ void Agent::start() {
     root->addObserverEpStatUniverse();
     mutator.commit();
 
-    BOOST_FOREACH(const host_t& h, opflexPeers)
-        framework.addPeer(h.first, h.second);
-
     // instantiate other components
     policyManager.start();
     endpointManager.start();
@@ -152,9 +153,13 @@ void Agent::start() {
     }
 
     io_service_thread = new boost::thread(boost::ref(*this));
+
+    BOOST_FOREACH(const host_t& h, opflexPeers)
+        framework.addPeer(h.first, h.second);
 }
 
 void Agent::stop() {
+    if (!started) return;
     LOG(INFO) << "Stopping OVS Agent";
 
     BOOST_FOREACH(Renderer* r, renderers) {
@@ -170,8 +175,12 @@ void Agent::stop() {
     policyManager.stop();
     framework.stop();
 
-    io_service_thread->join();
-    delete io_service_thread;
+    if (io_service_thread) {
+        io_service_thread->join();
+        delete io_service_thread;
+    }
+
+    started = false;
 }
 
 void Agent::operator()() {
