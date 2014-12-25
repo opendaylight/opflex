@@ -255,6 +255,7 @@ public:
     vector<string> fe_arpopt;
     vector<string> fe_fixed_tun_new, fe_fallback_tun_new;
     vector<string> fe_epg0_tun_new, fe_ep2_tun_new;
+    vector<string> fe_rd0;
     string fe_connect_1, fe_connect_2;
     string ge_fd0, ge_bkt_ep0, ge_bkt_ep2, ge_bkt_tun;
     string ge_fd0_prom;
@@ -287,16 +288,19 @@ public:
 void FlowManagerFixture::epgTest() {
     setConnected();
 
+    LOG(INFO) << "epg: create";
     /* create */
     exec.Clear();
     exec.Expect(FlowEdit::add, fe_fixed);
     exec.Expect(FlowEdit::add, fe_fallback);
     exec.Expect(FlowEdit::add, fe_epg0);
+    exec.Expect(FlowEdit::add, fe_rd0);
     exec.Expect(FlowEdit::add, fe_ep0);
     exec.Expect(FlowEdit::add, fe_ep2);
     flowManager.egDomainUpdated(epg0->getURI());
     WAIT_FOR(exec.IsEmpty(), 500);
 
+    LOG(INFO) << "epg: forwarding object change";
     /* forwarding object change */
     Mutator m1(framework, policyOwner);
     epg0->addGbpEpGroupToNetworkRSrc()
@@ -315,6 +319,7 @@ void FlowManagerFixture::epgTest() {
     WAIT_FOR(exec.IsEmpty(), 500);
     BOOST_CHECK(exec.IsGroupEmpty());
 
+    LOG(INFO) << "epg: change arp mode";
     /* change arp mode */
     fd0->setArpMode(AddressResModeEnumT::CONST_FLOOD)
         .setNeighborDiscMode(AddressResModeEnumT::CONST_FLOOD);
@@ -329,7 +334,7 @@ void FlowManagerFixture::epgTest() {
     WAIT_FOR(exec.IsEmpty(), 500);
     BOOST_CHECK(exec.IsGroupEmpty());
 
-    LOG(INFO) << "epg: Removing";
+    LOG(INFO) << "epg: remove";
     /* remove */
     Mutator m2(framework, policyOwner);
     epg0->remove();
@@ -562,6 +567,7 @@ void FlowManagerFixture::connectTest() {
 
     exec.Expect(FlowEdit::add, fe_fixed);
     exec.Expect(FlowEdit::del, fe_connect_1);
+    exec.Expect(FlowEdit::add, fe_rd0);
     exec.Expect(FlowEdit::add, fe_fallback);
     exec.Expect(FlowEdit::mod, fe_connect_2);
     exec.ExpectGroup(FlowEdit::del, "group_id=10,type=all");
@@ -654,6 +660,7 @@ BOOST_FIXTURE_TEST_CASE(learn, VxlanFlowManagerFixture) {
 
     // stage 1 
     pin1.reason = OFPR_ACTION;
+    pin1.cookie = FlowManager::GetLearnEntryCookie();
     pin1.packet = &packet_buf;
     pin1.packet_len = sizeof(packet_buf);
     pin1.total_len = sizeof(packet_buf);
@@ -790,7 +797,7 @@ public:
     string done() { cntr = 0; return entry; }
     Bldr& table(uint8_t t) { rep(", table=", str(t)); return *this; }
     Bldr& priority(uint16_t p) { rep(", priority=", str(p)); return *this; }
-    Bldr& cookie(uint64_t c) { rep("cookie=", str(c, hex)); return *this; }
+    Bldr& cookie(uint64_t c) { rep("cookie=", str64(c, true)); return *this; }
     Bldr& tunId(uint32_t id) { rep(",tun_id=", str(id, true)); return *this; }
     Bldr& in(uint32_t p) { rep(",in_port=", str(p)); return *this; }
     Bldr& reg(REG r, uint32_t v) {
@@ -846,6 +853,7 @@ public:
     Bldr& outPort(uint32_t p) { rep("output:", str(p)); return *this; }
     Bldr& pushVlan() { rep("push_vlan:0x8100"); return *this; }
     Bldr& inport() { rep("IN_PORT"); return *this; }
+    Bldr& controller(uint16_t len) { rep("CONTROLLER:", str(len)); return *this; }
 
 private:
     /**
@@ -885,6 +893,11 @@ private:
     string str(int i, bool hex = false) {
         char buf[10];
         sprintf(buf, hex && i != 0 ? "0x%x" : "%d", i);
+        return buf;
+    }
+    string str64(uint64_t i, bool hex = false) {
+        char buf[20];
+        sprintf(buf, hex && i != 0 ? "0x%lx" : "%lu", i);
         return buf;
     }
     string strpad(int i) {
@@ -978,25 +991,47 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     PolicyManager::subnet_vector_t epg0_fd0_subnets;
     policyMgr.getSubnetsForGroup(epg2->getURI(), epg0_fd0_subnets);
     BOOST_FOREACH (shared_ptr<Subnet>& sn, epg0_fd0_subnets) {
-        if (!sn->isVirtualRouterIpSet()) {
+        if (!sn->isAddressSet()) {
             continue;
         }
-        address rip = address::from_string(sn->getVirtualRouterIp(""));
+        address nip = address::from_string(sn->getAddress(""));
+        address rip;
+        if (nip.is_v6()) {
+            rip = address::from_string("fe80::a8bb:ccff:fedd:eeff");
+        } else {
+            if (!sn->isVirtualRouterIpSet()) continue;
+            rip = address::from_string(sn->getVirtualRouterIp(""));
+        }
+
         if (rip.is_v6()) {
-            continue;
+            fe_epg0_routers.push_back(Bldr()
+                                      .cookie(htonll(FlowManager::GetNDCookie()))
+                                      .table(2).priority(20).icmp6().reg(RD, 1)
+                                      .isEthDst(mmac).icmp_type(135).icmp_code(0)
+                                      .isNdTarget(rip.to_string())
+                                      .actions().controller(65535)
+                                      .done());
+        } else {
+            fe_epg0_routers.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
+                                      .isEthDst(bmac).isTpa(rip.to_string())
+                                      .isArpOp(1)
+                                      .actions().move(ETHSRC, ETHDST)
+                                      .load(ETHSRC, "0xaabbccddeeff")
+                                      .load(ARPOP, 2)
+                                      .move(ARPSHA, ARPTHA)
+                                      .load(ARPSHA, "0xaabbccddeeff")
+                                      .move(ARPSPA, ARPTPA)
+                                      .load(ARPSPA, rip.to_v4().to_ulong())
+                                      .inport().done());
         }
-        fe_epg0_routers.push_back(Bldr().table(2).priority(20).arp().reg(RD, 1)
-                                  .isEthDst(bmac).isTpa(rip.to_string())
-                                  .isArpOp(1)
-                                  .actions().move(ETHSRC, ETHDST)
-                                  .load(ETHSRC, "0xaabbccddeeff")
-                                  .load(ARPOP, 2)
-                                  .move(ARPSHA, ARPTHA)
-                                  .load(ARPSHA, "0xaabbccddeeff")
-                                  .move(ARPSPA, ARPTPA)
-                                  .load(ARPSPA, rip.to_v4().to_ulong())
-                                  .inport().done());
     }
+
+    /* rd0 router solicitation */
+    fe_rd0.push_back(Bldr().cookie(htonll(FlowManager::GetNDCookie()))
+                     .table(2).priority(20).icmp6().reg(RD, 1)
+                     .isEthDst(mmac).icmp_type(133).icmp_code(0)
+                     .actions().controller(65535)
+                     .done());
 
     /* local EP ep0 */
     string ep0_mac = ep0->getMAC().get().toString();
@@ -1051,7 +1086,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                              .load(OUTPORT, ep0_port).ethSrc(rmac)
                              .ethDst(ep0_mac).decTtl().go(4).done());
             ep0_arpopt.push_back(Bldr().table(2).priority(20).icmp6().reg(RD, 1)
-                                 .isEthDst(bmac).icmp_type(135).icmp_code(0)
+                                 .isEthDst(mmac).icmp_type(135).icmp_code(0)
                                  .isNdTarget(ip).actions().load(DEPG, epg0_vnid)
                                  .load(OUTPORT, ep0_port)
                                  .ethDst(ep0_mac).go(4).done());
