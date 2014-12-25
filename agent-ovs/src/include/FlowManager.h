@@ -196,11 +196,27 @@ public:
     uint32_t GetId(opflex::modb::class_id_t cid, const opflex::modb::URI& uri);
 
     /**
-     * Get the cookie used for flow entries that are learnt reactively.
+     * Get the cookie used for flow entries that are learned reactively.
      *
      * @return flow-cookie for learnt entries
      */
     static ovs_be64 GetLearnEntryCookie();
+
+    /**
+     * Get the cookie used for learn flow entries that are proactively
+     * installed
+     *
+     * @return flow-cookie for learnt entries
+     */
+    static ovs_be64 GetProactiveLearnEntryCookie();
+
+    /**
+     * Get the cookie used for cookies that direct neighbor discovery
+     * packets to the controller
+     *
+     * @return flow-cookie for ND packets
+     */
+    static ovs_be64 GetNDCookie();
 
     /**
      * Maximum flow priority of the entries in policy table.
@@ -265,7 +281,7 @@ private:
     void HandlePortStatusUpdate(const std::string& portName, uint32_t portNo);
 
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
-            uint32_t& rdId, uint32_t& bdId,
+            boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId, uint32_t& bdId,
             boost::optional<opflex::modb::URI>& fdURI, uint32_t& fdId);
     void UpdateGroupSubnets(const opflex::modb::URI& egUri,
             uint32_t routingDomainId);
@@ -453,12 +469,21 @@ private:
 
     FlowSyncer flowSyncer;
 
+    volatile bool stopping;
+
     /**
      * Timer callback that begins reconciliation.
      */
     void OnConnectTimer(const boost::system::error_code& ec);
     boost::scoped_ptr<boost::asio::deadline_timer> connectTimer;
     long connectDelayMs;
+
+    /**
+     * Timer callback for router advertisements
+     */
+    void OnAdvertTimer(const boost::system::error_code& ec);
+    boost::scoped_ptr<boost::asio::deadline_timer> advertTimer;
+    volatile int initialAdverts;
 
     bool opflexPeerConnected;
 };
