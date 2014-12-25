@@ -58,7 +58,8 @@ public:
     shared_ptr<RoutingDomain> rd0;
     shared_ptr<BridgeDomain> bd0;
     shared_ptr<Subnets> subnetsfd0, subnetsfd1, subnetsbd0, subnetsrd0;
-    shared_ptr<Subnet> subnetsfd0_1, subnetsfd1_1, subnetsbd0_1, subnetsrd0_1;
+    shared_ptr<Subnet> subnetsfd0_1, subnetsfd0_2, subnetsfd1_1,
+        subnetsbd0_1, subnetsrd0_1;
 
     shared_ptr<L24Classifier> classifier0;
     shared_ptr<L24Classifier> classifier1;
@@ -97,6 +98,9 @@ protected:
         subnetsfd0_1->setAddress("10.20.44.0")
             .setPrefixLen(24)
             .setVirtualRouterIp("10.20.44.1");
+        subnetsfd0_2 = subnetsfd0->addGbpSubnet("subnetsfd0_2");
+        subnetsfd0_2->setAddress("2001:db8::")
+            .setPrefixLen(32);
         subnetsfd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd0->getURI());
 
@@ -110,9 +114,6 @@ protected:
 
         subnetsbd0 = space->addGbpSubnets("subnetsbd0");
         subnetsbd0_1 = subnetsbd0->addGbpSubnet("subnetsbd0_1");
-        subnetsbd0_1->setAddress("2001:db8::")
-            .setPrefixLen(32)
-            .setVirtualRouterIp("2001:db8::1");
         subnetsbd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
 
