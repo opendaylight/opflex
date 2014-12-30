@@ -55,7 +55,7 @@ module[span]
     }
 
     class[LocalEp;
-          super=policy/NamedComponent;
+          super=platform/ConfigComponent;
           concrete]
     {
         member[nic; type=ascii/Name]
@@ -68,10 +68,6 @@ module[span]
                 ]
         }
 
-        contained
-        {
-            parent[class=span/Member]
-        }
         named
         {
             parent[class=*;]
