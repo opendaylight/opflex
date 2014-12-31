@@ -939,7 +939,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     case FlowManager::ENCAP_IVXLAN:
     default:
         fe_fallback.push_back(Bldr().table(2).priority(1)
-                              .actions().move(SEPG, TUNID).load(TUNDST, htonl(tunDst))
+                              .actions().move(SEPG, TUNID).load(TUNDST, tunDst)
                               .outPort(tunPort).done());
         break;
     }
@@ -1117,15 +1117,15 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
         ep2_arpopt = Bldr().table(2).priority(20).arp().reg(RD, 1)
             .isEthDst(bmac).isTpa(ep2_ip0).isArpOp(1)
             .actions().load(DEPG, epg0_vnid)
-            .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, htonl(tunDst))
+            .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, tunDst)
             .ethDst(ep2_mac).go(4).done();
         fe_ep2.push_back(Bldr().table(2).priority(10).reg(BD, 1).isEthDst(ep2_mac)
                          .actions().load(DEPG, epg0_vnid).load(OUTPORT, tunPort)
-                         .move(SEPG, TUNID).load(TUNDST, htonl(tunDst)).go(4)
+                         .move(SEPG, TUNID).load(TUNDST, tunDst).go(4)
                          .done());
         fe_ep2.push_back(Bldr().table(2).priority(15).ip().reg(RD, 1)
                          .isEthDst(rmac).isIpDst(ep2_ip0).actions().load(DEPG, epg0_vnid)
-                         .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, htonl(tunDst))
+                         .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, tunDst)
                          .ethSrc(rmac).decTtl().go(4).done());
         break;
     }
@@ -1160,7 +1160,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     case FlowManager::ENCAP_IVXLAN:
     default:
         ge_bkt_tun = Bldr(bktInit).bktId(tunPort).bktActions().move(SEPG, TUNID)
-            .load(TUNDST, htonl(tunDst)).outPort(tunPort).done();
+            .load(TUNDST, tunDst).outPort(tunPort).done();
         break;
     }
     ge_bkt_tun_new = Bldr(ge_bkt_tun).bktId(tun_port_new)
