@@ -318,7 +318,7 @@ SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type,
     case FlowManager::ENCAP_VXLAN:
         ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
         if (tunDst.is_v4()) {
-            ab.SetRegLoad(MFF_TUN_DST, htonl(tunDst.to_v4().to_ulong()));
+            ab.SetRegLoad(MFF_TUN_DST, tunDst.to_v4().to_ulong());
         } else {
             // this should be unreachable
             LOG(WARNING) << "Ipv6 tunnel destination unsupported";
