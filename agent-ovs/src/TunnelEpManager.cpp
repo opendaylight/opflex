@@ -15,8 +15,10 @@
 #include <ifaddrs.h>
 #endif
 #include <fstream>
+#include <cerrno>
 
 #include <opflex/modb/Mutator.h>
+#include <opflex/modb/MAC.h>
 #include <boost/foreach.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -97,6 +99,44 @@ const std::string& TunnelEpManager::getTerminationIp(const std::string& uuid) {
     return terminationIp;
 }
 
+#ifdef HAVE_IFADDRS_H
+static string getInterfaceMac(const string& iface) {
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    if (sock == -1) {
+        int err = errno;
+        LOG(ERROR) << "Socket creation failed when getting MAC address of "
+            << iface << ", error: " << strerror(err);
+        return "";
+    }
+
+    ifreq ifReq;
+    strncpy(ifReq.ifr_name, iface.c_str(), sizeof(ifReq.ifr_name));
+    if (ioctl(sock, SIOCGIFHWADDR, &ifReq) != -1) {
+        close(sock);
+        return
+            opflex::modb::MAC((uint8_t*)(ifReq.ifr_hwaddr.sa_data)).toString();
+    } else {
+        int err = errno;
+        close(sock);
+        LOG(ERROR) << "ioctl to get MAC address failed for " << iface
+            << ", error: " << strerror(err);
+        return "";
+    }
+}
+#endif
+
+static string getInterfaceEncap(const string& iface) {
+    int id;
+    int pos = iface.rfind(".");
+    if (pos != string::npos && pos < iface.size() &&
+        sscanf(iface.c_str() + pos + 1, "%d", &id) == 1) {
+        return string("vlan-") + iface.substr(pos + 1);
+    } else {
+        LOG(INFO) << "Unable to determine encap type for " << iface;
+        return "";
+    }
+}
+
 void TunnelEpManager::on_timer(const error_code& ec) {
     if (ec) {
         // shut down the timer when we get a cancellation
@@ -104,8 +144,10 @@ void TunnelEpManager::on_timer(const error_code& ec) {
         return;
     }
 
-    std::string bestAddress;
-    std::string bestIface;
+    string bestAddress;
+    string bestIface;
+    string bestMac;
+    string bestEncap;
 
 #ifdef HAVE_IFADDRS_H
     // This is linux-specific.  Other plaforms will require their own
@@ -157,17 +199,25 @@ void TunnelEpManager::on_timer(const error_code& ec) {
         }
     }
 
+    if (!bestAddress.empty()) {
+        bestMac = getInterfaceMac(bestIface);
+        bestEncap = getInterfaceEncap(bestIface);
+    }
+
     freeifaddrs(ifaddr);
 #endif
 
-    if (bestAddress != "" && bestAddress != terminationIp) {
+    if ((!bestAddress.empty() && bestAddress != terminationIp) ||
+        (!bestMac.empty() && bestMac != terminationMac)) {
         {
             unique_lock<mutex> guard(termip_mutex);
             terminationIp = bestAddress;
+            terminationMac = bestMac;
         }
 
-        LOG(INFO) << "Discovered uplink IP address " << bestAddress 
-                  << " on " << bestIface;
+        LOG(INFO) << "Discovered uplink IP: " << bestAddress
+                  << ", MAC: " << bestMac << ", Encap: " << bestEncap
+                  << " on interface: " << bestIface;
 
         using namespace modelgbp::gbpe;
         Mutator mutator(agent->getFramework(), "policyelement");
@@ -175,7 +225,9 @@ void TunnelEpManager::on_timer(const error_code& ec) {
             TunnelEpUniverse::resolve(agent->getFramework());
         if (tu) {
             tu.get()->addGbpeTunnelEp(tunnelEpUUID)
-                ->setTerminatorIp(bestAddress);
+                ->setTerminatorIp(bestAddress)
+                .setMac(opflex::modb::MAC(bestMac))
+                .setEncap(bestEncap);
         }
 
         mutator.commit();

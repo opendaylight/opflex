@@ -117,6 +117,12 @@ private:
      * system.
      */
     std::string terminationIp;
+
+    /**
+     * The tunnel termination MAC address as discovered from the local
+     * system.
+     */
+    std::string terminationMac;
     boost::mutex termip_mutex;
 
     /**
