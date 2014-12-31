@@ -169,5 +169,11 @@ module[gbpe]
 
         # The IP address for the tunnel terminator
         member[terminatorIp; type=address/IP]
+
+        # mac address of the TEP
+        member[mac; type=address/MAC]
+
+        # encap used by the TEp
+        member[encap; type=ascii/String]
     }
 }
