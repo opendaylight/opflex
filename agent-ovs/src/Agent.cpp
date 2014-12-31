@@ -14,6 +14,7 @@
 #include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 
+#include "cmd.h"
 #include "Agent.h"
 #include "FSEndpointSource.h"
 #include "logging.h"
@@ -43,6 +44,7 @@ Agent::~Agent() {
 }
 
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
+    static const std::string LOG_LEVEL("log.level");
     // A list of filesystem paths that we should check for endpoint
     // information
     static const std::string ENDPOINT_SOURCE_PATH("endpoint-sources.filesystem");
@@ -54,6 +56,12 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_DOMAIN("opflex.domain");
 
     static const std::string RENDERERS_STITCHED_MODE("renderers.stitched-mode");
+
+    optional<std::string> logLevel =
+        properties.get_optional<std::string>(LOG_LEVEL);
+    if (logLevel) {
+        setLoggingLevel(logLevel.get());
+    }
 
     optional<const ptree&> endpointSource = 
         properties.get_child_optional(ENDPOINT_SOURCE_PATH);

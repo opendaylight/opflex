@@ -84,6 +84,28 @@ int logLevel = INFO;
 
 void initLogging(const std::string& levelstr,
                  const std::string& log_file) {
+#ifdef USE_BOOST_LOG
+    logging::add_common_attributes();
+    logging::register_simple_formatter_factory< severity_level, char >("Severity");
+    if (log_file != "") {
+        logging::add_file_log(keywords::file_name = log_file,
+                              keywords::format = LOG_FORMAT,
+                              keywords::auto_flush = true,
+                              keywords::open_mode = (std::ios::out | std::ios::app));
+    } else {
+        logging::add_console_log(std::cout,
+                                 keywords::format = LOG_FORMAT);
+    }
+#endif
+
+    OFLogHandler::registerHandler(logHandler);
+
+    setLoggingLevel(levelstr);
+    /* No good way to redirect OVS logs to our logs, suppress them for now */
+    vlog_set_levels(NULL, VLF_ANY_FACILITY, VLL_OFF);
+}
+
+void setLoggingLevel(const std::string& levelstr) {
     OFLogHandler::Level level = OFLogHandler::INFO;
 
 #ifdef USE_BOOST_LOG
@@ -128,25 +150,10 @@ void initLogging(const std::string& levelstr,
     }
 
 #ifdef USE_BOOST_LOG
-    logging::add_common_attributes();
     logging::core::get()->set_filter (logging::trivial::severity >= blevel);
-    logging::register_simple_formatter_factory< severity_level, char >("Severity");
-    if (log_file != "") {
-        logging::add_file_log(keywords::file_name = log_file,
-                              keywords::format = LOG_FORMAT,
-                              keywords::auto_flush = true,
-                              keywords::open_mode = (std::ios::out | std::ios::app));
-    } else {
-        logging::add_console_log(std::cout,
-                                 keywords::format = LOG_FORMAT);
-    }
 #endif
 
     logHandler.setLevel(level);
-    OFLogHandler::registerHandler(logHandler);
-    /* No good way to redirect OVS logs to our logs, suppress them for now */
-    vlog_set_levels(NULL, VLF_ANY_FACILITY, VLL_OFF);
 }
-
 
 } /* namespace ovsagent */

@@ -1,4 +1,9 @@
 {
+    // Logging configuration
+    // "log": {
+    //     "level": "info"
+    // },
+
     // Configuration related to the OpFlex protocol
     "opflex": {
         // The globally unique policy domain for this agent.
@@ -70,7 +75,7 @@
         //     },
         //
         //     // Location to store cached IDs for managing flow state
-        //     "flowid-cache-dir": "DEFAULT_FLOWID_CACHE_DIR",
+        //     "flowid-cache-dir": "DEFAULT_FLOWID_CACHE_DIR"
         // }
     }
 }

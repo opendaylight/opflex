@@ -44,8 +44,9 @@ int main(int argc, char** argv) {
          "Read configuration from the specified file")
         ("log", po::value<string>()->default_value(""), 
          "Log to the specified file (default standard out)")
-        ("level", po::value<string>()->default_value("level"), 
-         "Use the specified log level (default INFO)")
+        ("level", po::value<string>()->default_value("info"),
+         "Use the specified log level (default INFO). "
+         "Overridden by log level in configuration file")
         ("daemon", "Run the agent as a daemon")
         ;
     
