@@ -390,13 +390,13 @@ private:
 };
 
 /**
- * Comparator for sorting objects in descending order of their
+ * Comparator for sorting objects in ascending order of their
  * "order" member.
  */
 template<typename T>
 struct OrderComparator {
     bool operator()(const T& lhs, const T& rhs) {
-        return lhs->getOrder(0) > rhs->getOrder(0);
+        return lhs->getOrder(UINT32_MAX) < rhs->getOrder(UINT32_MAX);
     }
 };
 

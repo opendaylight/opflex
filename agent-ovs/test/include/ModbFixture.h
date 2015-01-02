@@ -195,12 +195,12 @@ protected:
 
         /* allow TCP to dst port 80 cons->prov */
         classifier1 = space->addGbpeL24Classifier("classifier1");
-        classifier1->setOrder(200).setDirection(DirectionEnumT::CONST_IN)
+        classifier1->setOrder(100).setDirection(DirectionEnumT::CONST_IN)
             .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
             .setDFromPort(80);
         /* allow ARP from prov->cons */
         classifier2 = space->addGbpeL24Classifier("classifier2");
-        classifier2->setOrder(100).setDirection(DirectionEnumT::CONST_OUT)
+        classifier2->setOrder(200).setDirection(DirectionEnumT::CONST_OUT)
             .setEtherT(l2::EtherTypeEnumT::CONST_ARP);
 
         con1 = space->addGbpContract("contract1");
@@ -224,12 +224,12 @@ protected:
 
         /* classifiers with port ranges */
         classifier3 = space->addGbpeL24Classifier("classifier3");
-        classifier3->setOrder(200).setDirection(DirectionEnumT::CONST_IN)
+        classifier3->setOrder(10).setDirection(DirectionEnumT::CONST_IN)
             .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
             .setDFromPort(80).setDToPort(85);
 
         classifier4 = space->addGbpeL24Classifier("classifier4");
-        classifier4->setOrder(100).setDirection(DirectionEnumT::CONST_IN)
+        classifier4->setOrder(20).setDirection(DirectionEnumT::CONST_IN)
             .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
             .setSFromPort(66).setSToPort(69)
             .setDFromPort(94).setDToPort(95);
