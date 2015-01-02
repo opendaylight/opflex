@@ -176,11 +176,13 @@ void FlowReader::decodeReply(ofpbuf *msg, GroupEdit::EntryList& recv,
         ofputil_group_desc gd;
         int ret = ofputil_decode_group_desc_reply(&gd, msg, ver);
         if (ret != 0) {
-            if (ret != EOF) {
+            if (ret == EOF) {
+                replyDone = !ofpmp_more((ofp_header*)msg->frame);
+            } else {
                 LOG(ERROR) << "Failed to decode group desc reply: "
                     << ovs_strerror(ret);
+                replyDone = true;
             }
-            replyDone = true;
             break;
         }
 
