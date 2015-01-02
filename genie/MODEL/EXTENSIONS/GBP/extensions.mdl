@@ -1,7 +1,12 @@
 module[gbpe]
 {
-    type[VNid; super=scalar/UInt32]
     type[ClassId; super=scalar/UInt32]
+    type[EncapType; super=scalar/Enum8]
+    {
+        const[name=vlan; value=1]
+        const[name=vxlan; value=2]
+    }
+    type[EncapValue; super=scalar/UInt32]
 
     # represents a set of extensions that specify specific identifiers 
     # used by the data plane of the wire
@@ -9,8 +14,10 @@ module[gbpe]
           super=policy/Definition;
           concrete]
     {
-        member[vnid; type=gbpe/VNid]
         member[classid; type=gbpe/ClassId]
+        member[encapType; type=gbpe/EncapType]
+        member[encapValue; type=gbpe/EncapValue]
+        member[multicastGroupIP; type=address/IP]
         contained
         {
             parent[class=gbp/EpGroup]
@@ -174,6 +181,7 @@ module[gbpe]
         member[mac; type=address/MAC]
 
         # encap used by the TEp
-        member[encap; type=ascii/String]
+        member[encapType; type=gbpe/EncapType]
+        member[encapValue; type=gbpe/EncapValue]
     }
 }

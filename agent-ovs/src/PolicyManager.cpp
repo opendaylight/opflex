@@ -203,7 +203,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     optional<shared_ptr<InstContext> > groupInstCtx;
     groupInstCtx = epg.get()->resolveGbpeInstContext();
     if (groupInstCtx) {
-        gs.vnid = groupInstCtx.get()->getVnid();
+        gs.vnid = groupInstCtx.get()->getEncapValue();
     }
 
     optional<shared_ptr<RoutingDomain> > newrd;

@@ -13,6 +13,7 @@
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
+#include <modelgbp/gbpe/EncapTypeEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "BaseFixture.h"
@@ -97,12 +98,14 @@ public:
         eg1 = space->addGbpEpGroup("group1");
         eg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsfd->getURI());
-        eg1->addGbpeInstContext()->setVnid(1234);
+        eg1->addGbpeInstContext()->setEncapValue(1234)
+            .setEncapType(EncapTypeEnumT::CONST_VXLAN);
         eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
 
         eg2 = space->addGbpEpGroup("group2");
-        eg2->addGbpeInstContext()->setVnid(5678);
+        eg2->addGbpeInstContext()->setEncapValue(5678)
+            .setEncapType(EncapTypeEnumT::CONST_VXLAN);
         eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
         eg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
 

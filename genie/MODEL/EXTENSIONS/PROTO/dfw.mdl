@@ -1,0 +1,9 @@
+module[dfw]
+{
+    class[Config;
+          super=platform/ConfigComponent;
+          concrete]
+    {
+        member[state; type=platform/AdminState]
+    }
+}

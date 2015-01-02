@@ -15,6 +15,7 @@
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
+#include <modelgbp/gbpe/EncapTypeEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "BaseFixture.h"
@@ -124,25 +125,30 @@ protected:
         epg0 = space->addGbpEpGroup("epg0");
         epg0->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsbd0->getURI());
-        epg0->addGbpeInstContext()->setVnid(0xA0A);
+        epg0->addGbpeInstContext()->setEncapValue(0xA0A)
+            .setEncapType(EncapTypeEnumT::CONST_VXLAN);
 
         epg1 = space->addGbpEpGroup("epg1");
         epg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsrd0->getURI());
-        epg1->addGbpeInstContext()->setVnid(0xA0B);
+        epg1->addGbpeInstContext()->setEncapValue(0xA0B)
+            .setEncapType(EncapTypeEnumT::CONST_VXLAN);
 
         epg2 = space->addGbpEpGroup("epg2");
         epg2->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsfd0->getURI());
-        epg2->addGbpeInstContext()->setVnid(0xD0A);
+        epg2->addGbpeInstContext()->setEncapValue(0xD0A)
+            .setEncapType(EncapTypeEnumT::CONST_VXLAN);
 
         epg3 = space->addGbpEpGroup("epg3");
         epg3->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsfd1->getURI());
-        epg3->addGbpeInstContext()->setVnid(0xD0B);
+        epg3->addGbpeInstContext()->setEncapValue(0xD0B)
+            .setEncapType(EncapTypeEnumT::CONST_VXLAN);
 
         epg4 = space->addGbpEpGroup("epg4");
-        epg4->addGbpeInstContext()->setVnid(0xE0E);
+        epg4->addGbpeInstContext()->setEncapValue(0xE0E)
+            .setEncapType(EncapTypeEnumT::CONST_VXLAN);
         epg4->addGbpEpGroupToNetworkRSrc()
             ->setTargetRoutingDomain(rd0->getURI());
 

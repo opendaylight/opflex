@@ -6,11 +6,22 @@ module[platform]
         const[name=on; value=1]
     }
 
+    type[SwitchingMode; super=scalar/Enum8]
+    {
+        const[name=hairpin; value=1]
+        const[name=intra_epg; value=2]
+        const[name=intra_bd; value=3]
+        const[name=intra_rd; value=4]
+    }
+
     class[Config;
           super=policy/NameResolvedDefinition;
           concrete
           ]
     {
+        member[encapType; type=gbpe/EncapType]
+        member[mode; type=platform/SwitchingMode]
+        member[multicastGroupIP; type=address/IP]
         contained
         {
             parent[class=policy/Universe]
