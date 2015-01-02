@@ -92,7 +92,7 @@ libagent_ovs_la_SOURCES = \
 	src/RangeMask.cpp
 
 bin_PROGRAMS=agent_ovs
-agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
+agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' $(OVS_ADDL_CFLAGS)
 agent_ovs_SOURCES = \
 	src/main.cpp
 agent_ovs_LDADD = \

@@ -74,18 +74,18 @@ public:
 
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
-                ->setOrder(10)
+                ->setOrder(15)
                 .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
                 ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
-                ->setOrder(15)
+                ->setOrder(10)
                 .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
-                ->setOrder(5)
+                ->setOrder(25)
                 .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule4")
-                ->setOrder(25)
+                ->setOrder(5)
                 .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
         con1->addGbpSubject("1_subject2")->addGbpRule("1_2_rule1")
                 ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
