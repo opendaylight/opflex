@@ -169,7 +169,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     eg1 = space->addGbpEpGroup("group1");
     eg1->addGbpEpGroupToNetworkRSrc()
         ->setTargetSubnets(subnetsfd1->getURI());
-    eg1->addGbpeInstContext()->setVnid(1234);
+    eg1->addGbpeInstContext()->setEncapId(1234);
     eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg1->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
@@ -177,7 +177,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     eg2 = space->addGbpEpGroup("group2");
     eg2->addGbpEpGroupToNetworkRSrc()
         ->setTargetSubnets(subnetsfd1->getURI());
-    eg2->addGbpeInstContext()->setVnid(3000);
+    eg2->addGbpeInstContext()->setEncapId(3000);
     eg2->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
@@ -187,7 +187,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     eg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg3->addGbpEpGroupToNetworkRSrc()
         ->setTargetSubnets(subnetsfd2->getURI());
-    eg3->addGbpeInstContext()->setVnid(3456);
+    eg3->addGbpeInstContext()->setEncapId(3456);
 
     mutator.commit();
 }

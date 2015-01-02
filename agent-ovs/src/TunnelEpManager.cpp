@@ -19,6 +19,7 @@
 
 #include <opflex/modb/Mutator.h>
 #include <opflex/modb/MAC.h>
+#include <modelgbp/gbpe/EncapTypeEnumT.hpp>
 #include <boost/foreach.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -125,15 +126,15 @@ static string getInterfaceMac(const string& iface) {
 }
 #endif
 
-static string getInterfaceEncap(const string& iface) {
+static uint32_t getInterfaceEncap(const string& iface) {
     int id;
     int pos = iface.rfind(".");
     if (pos != string::npos && pos < iface.size() &&
         sscanf(iface.c_str() + pos + 1, "%d", &id) == 1) {
-        return string("vlan-") + iface.substr(pos + 1);
+        return id;
     } else {
         LOG(INFO) << "Unable to determine encap type for " << iface;
-        return "";
+        return 0;
     }
 }
 
@@ -147,7 +148,7 @@ void TunnelEpManager::on_timer(const error_code& ec) {
     string bestAddress;
     string bestIface;
     string bestMac;
-    string bestEncap;
+    uint32_t bestEncap;
 
 #ifdef HAVE_IFADDRS_H
     // This is linux-specific.  Other plaforms will require their own
@@ -216,7 +217,7 @@ void TunnelEpManager::on_timer(const error_code& ec) {
         }
 
         LOG(INFO) << "Discovered uplink IP: " << bestAddress
-                  << ", MAC: " << bestMac << ", Encap: " << bestEncap
+                  << ", MAC: " << bestMac << ", Encap: vlan-" << bestEncap
                   << " on interface: " << bestIface;
 
         using namespace modelgbp::gbpe;
@@ -227,7 +228,8 @@ void TunnelEpManager::on_timer(const error_code& ec) {
             tu.get()->addGbpeTunnelEp(tunnelEpUUID)
                 ->setTerminatorIp(bestAddress)
                 .setMac(opflex::modb::MAC(bestMac))
-                .setEncap(bestEncap);
+                .setEncapType(EncapTypeEnumT::CONST_VLAN)
+                .setEncapId(bestEncap);
         }
 
         mutator.commit();
