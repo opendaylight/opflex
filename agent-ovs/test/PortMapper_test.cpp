@@ -116,6 +116,7 @@ public:
         ofptype t;
         ofptype_decode(&t, (ofp_header *)ofpbuf_data(msg));
         pm.Handle(&conn, t, msg);
+        ofpbuf_delete(msg);
     }
 
     MockConnection conn;
@@ -123,7 +124,7 @@ public:
     std::vector<ofputil_phy_port> ports;
 };
 
-BOOST_AUTO_TEST_SUITE(portmapper_test)
+BOOST_AUTO_TEST_SUITE(PortMapper_test)
 
 BOOST_FIXTURE_TEST_CASE(portdesc_single, PortMapperFixture) {
     pm.Connected(&conn);
@@ -139,6 +140,7 @@ BOOST_FIXTURE_TEST_CASE(portdesc_single, PortMapperFixture) {
 
     /* spurious message */
     reply = MakeReplyMsg(6, ports.size(), false);
+    Received(pm, reply);
     BOOST_CHECK(pm.FindPort("test-port-45") == OFPP_NONE);
 }
 
