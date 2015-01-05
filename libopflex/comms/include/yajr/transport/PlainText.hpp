@@ -10,33 +10,28 @@
 #ifndef _____COMMS__INCLUDE__YAJR__TRANSPORT__PLAINTEXT_HPP
 #define _____COMMS__INCLUDE__YAJR__TRANSPORT__PLAINTEXT_HPP
 
-namespace yajr { namespace comms { namespace transport {
+#include <yajr/transport/engine.hpp>
 
-class PlainText {
+#include <assert.h>
+
+namespace yajr { namespace transport {
+
+class PlainText : public Transport::Engine {
   public:
-    static Transport::Callbacks kCallbacks = {
-        alloc_cb,
-        on_read,
-    };
-
+    static TransportEngine< PlainText > & getPlainTextTransport();
   private:
-    static void alloc_cb(uv_handle_t * _, size_t size, uv_buf_t* buf);
-    static void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf);
+    PlainText();
+    PlainText(const PlainText &);
+    PlainText & operator=(const PlainText &);
 };
 
 template< >
-TransportEngine< PlainText >::TransportEngine()
-    :
-        Transport(
-            &PlainText::kCallbacks
-          , NULL
-        )
-    {}
+TransportEngine< PlainText >::TransportEngine(PlainText * _ /* = NULL */);
 
 template< >
-TransportEngine::~TransportEngine() {
+inline TransportEngine< PlainText >::~TransportEngine() {
 }
 
-}}}
+}}
 
 #endif /* _____COMMS__INCLUDE__YAJR__TRANSPORT__PLAINTEXT_HPP */

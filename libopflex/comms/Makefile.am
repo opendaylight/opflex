@@ -23,18 +23,31 @@ else
   noinst_LTLIBRARIES += libcomms.la
 endif
 
-AM_CPPFLAGS  = $(BOOST_CPPFLAGS)
+AM_CPPFLAGS  =
+AM_CPPFLAGS += $(BOOST_CPPFLAGS)
 AM_CPPFLAGS += -I$(srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/logging/include
 AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp
+AM_CPPFLAGS += $(OPENSSL_CFLAGS)
+
+AM_CXXFLAGS  =
+AM_CXXFLAGS += -O0
+AM_CXXFLAGS += -ggdb3
+# AM_CXXFLAGS += -Werror
+AM_CXXFLAGS += -Wno-deprecated
+AM_CXXFLAGS += -Wno-deprecated-declarations
+# AM_CXXFLAGS += $(OUR_CXXFLAGS_UNSUPPORTED_FRIEND)
+# AM_CXXFLAGS += $(OUR_CXXFLAGS_ERROR_UNSUPPORTED_FRIEND)
 
 libcommstrace_la_SOURCES  =
 libcommstrace_la_SOURCES += debug_trace.cpp
 
-libcommstrace_la_CXXFLAGS  =
+libcommstrace_la_CXXFLAGS  = $(AM_CXXFLAGS)
 
-libcomms_la_CXXFLAGS  =
+libcomms_la_CPPFLAGS  = $(AM_CPPFLAGS)
+
+libcomms_la_CXXFLAGS  = $(AM_CXXFLAGS)
 libcomms_la_CXXFLAGS += $(UV_CFLAGS)
 if TRACING_COMMS
   libcomms_la_CXXFLAGS += -finstrument-functions
@@ -43,11 +56,13 @@ endif
 libcomms_la_LIBADD  =
 libcomms_la_LIBADD += librpcperfect.la
 libcomms_la_LIBADD += $(UV_LIBS)
+libcomms_la_LIBADD += $(OPENSSL_LIBS)
 
 libcomms_la_SOURCES  =
 libcomms_la_SOURCES += active_connection.cpp
 libcomms_la_SOURCES += passive_listener.cpp
 libcomms_la_SOURCES += common.cpp
+libcomms_la_SOURCES += transport/PlainText.cpp
 libcomms_la_SOURCES += rpc.cpp
 libcomms_la_SOURCES += peer.cpp
 
@@ -81,10 +96,13 @@ endif
 
 # tests
 
-TESTS               =
-TESTS              += test/stable_tests.sh
+TESTS                =
+TESTS               += test/stable_tests.sh
 noinst_PROGRAMS      = comms_test
-EXTRA_DIST          = test/stable_tests.sh
+dist_noinst_SCRIPTS  =
+dist_noinst_SCRIPTS += test/stable_tests.sh
+dist_noinst_SCRIPTS += test/server.pem
+dist_noinst_SCRIPTS += test/ca.pem
 
 comms_test_SOURCES  =
 comms_test_SOURCES += test/main.cpp
@@ -95,9 +113,15 @@ comms_test_CPPFLAGS  = $(AM_CPPFLAGS)
 comms_test_CPPFLAGS += -DBOOST_TEST_DYN_LINK
 comms_test_CPPFLAGS += $(UV_CFLAGS)
 
+comms_test_CXXFLAGS  = $(AM_CXXFLAGS)
+
 comms_test_LDFLAGS  = $(AM_LDFLAGS)
-comms_test_LDFLAGS += $(BOOST_LDFLAGS)
 comms_test_LDFLAGS += $(UV_LIBS)
+if HAVE_SSL
+  comms_test_LDFLAGS += $(OPENSSL_LIBS)
+  comms_test_LDFLAGS += $(BOOST_FILESYSTEM_LIB)
+  comms_test_LDFLAGS += $(BOOST_SYSTEM_LIB)
+endif
 
 comms_test_LDADD  =
 comms_test_LDADD += libcomms.la
@@ -106,3 +130,14 @@ if TRACING_COMMS
   comms_test_LDADD += libcommstrace.la
 endif
 comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
+
+if HAVE_SSL
+  libcomms_la_SOURCES += transport/ZeroCopyOpenSSL.cpp
+  libcomms_la_LIBADD += $(BOOST_FILESYSTEM_LIB)
+  libcomms_la_LIBADD += $(BOOST_SYSTEM_LIB)
+  libcomms_la_CPPFLAGS += -DYAJR_HAS_OPENSSL
+  comms_test_CPPFLAGS += -DYAJR_HAS_OPENSSL
+else
+  libcomms_la_CPPFLAGS += -DBOOST_EXCEPTION_DISABLE
+  libcomms_la_CXXFLAGS += -fno-exceptions
+endif

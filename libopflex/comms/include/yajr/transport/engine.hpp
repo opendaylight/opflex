@@ -10,7 +10,19 @@
 #ifndef _____COMMS__INCLUDE__YAJR__TRANSPORT__ENGINE_HPP
 #define _____COMMS__INCLUDE__YAJR__TRANSPORT__ENGINE_HPP
 
-namespace yajr { namespace comms { namespace transport {
+#include <uv.h>
+
+#include <boost/type_traits/is_base_of.hpp>
+#include <boost/static_assert.hpp>
+
+#include <vector>
+#include <new>
+
+namespace yajr {
+
+    namespace comms { namespace internal { class CommunicationPeer; } }
+
+    namespace transport {
 
 class Transport {
 
@@ -19,41 +31,79 @@ class Transport {
     struct Callbacks {
         uv_alloc_cb allocCb_;
         uv_read_cb  onRead_;
+        int (*sendCb_)(comms::internal::CommunicationPeer const *);
+        void (*onSent_)(comms::internal::CommunicationPeer const *);
     };
 
-    class EngineData {};
+    struct Engine {};
 
-    Transport(Callbacks * callbacks, EngineData * data)
+    Transport(Callbacks * callbacks, Engine * data)
         : callbacks_(callbacks), data_(data) {}
 
+    template< class E >
+    E * getEngine() const {
+
+        BOOST_STATIC_ASSERT_MSG(
+                (boost::is_base_of<Engine, E>::value),
+                "engine type must be a descendant of Transport::Engine"
+                );
+
+        return static_cast< E * >(data_);
+    }
+
     Callbacks const * callbacks_;
-    EngineData * data_;
+    Engine * data_;
 
 };
 
-template< class Engine >
+template< class E>
+struct Cb {
+    static void alloc_cb(uv_handle_t * _, size_t size, uv_buf_t* buf);
+    static void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf);
+    static int send_cb(comms::internal::CommunicationPeer const *);
+    static void on_sent(comms::internal::CommunicationPeer const *);
+
+    static Transport::Callbacks kCb;
+
+    struct StaticHelpers;
+};
+
+template< class E>
+Transport::Callbacks Cb< E >::kCb = {
+    &Cb< E >::alloc_cb,
+    &Cb< E >::on_read,
+    &Cb< E >::send_cb,
+    &Cb< E >::on_sent,
+};
+
+template< class E >
 class TransportEngine : public Transport {
   public:
-    TransportEngine();
+    TransportEngine(E *);
     ~TransportEngine();
-}
+};
 
-template< class Engine >
-TransportEngine::TransportEngine()
+template< class E >
+TransportEngine< E >::TransportEngine(E * e)
     :
         Transport(
-            &Engine::kCallbacks
-          , new (std::no_throw) Engine()
+            &Cb< E >::kCb
+          , e
         )
-    {}
+    {
+        BOOST_STATIC_ASSERT_MSG(
+                (boost::is_base_of<Engine, E>::value),
+                "engine type must be a descendant of Transport::Engine"
+                );
+    }
 
-template< class Engine >
-TransportEngine::~TransportEngine() {
+template< class E >
+TransportEngine< E >::~TransportEngine() {
     if (data_) {
-        delete static_cast< Engine * >(data_);
+        delete static_cast< E * >(data_);
     }
 }
 
-}}}
+}}
 
 #endif /* _____COMMS__INCLUDE__YAJR__TRANSPORT__ENGINE_HPP */

@@ -59,7 +59,10 @@ AM_CONFIG_HEADER(config.h)
 AC_CONFIG_MACRO_DIR([m4])
 LT_INIT()
 
+m4_include([m4/check-ssl.m4])
 m4_include([m4/ax_boost_base.m4])
+m4_include([m4/ax_boost_filesystem.m4])
+m4_include([m4/ax_boost_system.m4])
 m4_include([m4/ax_boost_unit_test_framework.m4])
 m4_include([m4/ax_check_compile_flags.m4])
 
@@ -105,6 +108,19 @@ AX_CHECK_COMPILE_FLAG([-Wno-multichar],
 AC_SUBST([OUR_CXXFLAGS_COMPILE_TIME_HASH],
          "$with_as_cxxflags_compile_time_hash")
 
+AX_CHECK_COMPILE_FLAG([-Wno-unsupported-friend],
+                      [with_as_cxxflags_unsupported_friend='-Wno-unsupported-friend'],
+		      [with_as_cxxflags_unsupported_friend=''])
+AC_SUBST([OUR_CXXFLAGS_UNSUPPORTED_FRIEND],
+         "$with_as_cxxflags_unsupported_friend")
+
+AX_CHECK_COMPILE_FLAG([-Wno-error=unsupported-friend],
+                      [with_as_cxxflags_error_unsupported_friend='-Wno-error=unsupported-friend'],
+		      [with_as_cxxflags_error_unsupported_friend=''])
+AC_SUBST([OUR_CXXFLAGS_ERROR_UNSUPPORTED_FRIEND],
+         "$with_as_cxxflags_error_unsupported_friend")
+
+
 dnl check for doxygen
 AC_CHECK_PROGS(DOXYGEN,doxygen,none)
 AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone']) 
@@ -117,7 +133,13 @@ AC_STDC_HEADERS
 
 dnl Boost dependencies
 AX_BOOST_BASE([1.49.0], [], AC_MSG_ERROR([Boost is required]))
+AX_BOOST_FILESYSTEM
+AX_BOOST_SYSTEM
 AX_BOOST_UNIT_TEST_FRAMEWORK
+
+dnl OpenSSL dependencies
+CHECK_SSL
+AM_CONDITIONAL(HAVE_SSL, [test x$found_ssl = 'xyes'])
 
 dnl libuv
 PKG_CHECK_MODULES([UV], [libuv >= 0.11.0])
@@ -165,6 +187,12 @@ AC_CONFIG_FILES([              \
         doc/Doxyfile-internal  \
         rpm/libopflex.spec
 ])
+
+AC_CONFIG_LINKS([
+                 comms/test/server.pem:comms/test/server.pem
+                 comms/test/ca.pem:comms/test/ca.pem]
+               )
+
 AC_OUTPUT
 
 AC_MSG_NOTICE([

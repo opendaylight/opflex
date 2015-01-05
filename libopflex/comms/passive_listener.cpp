@@ -185,8 +185,6 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
         return;
     }
 
-    peer->unchoke();
-
     peer->insert(internal::Peer::LoopData::ONLINE);
 
     /* kick the ball */
