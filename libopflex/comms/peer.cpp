@@ -9,6 +9,7 @@
 #include <yajr/rpc/internal/json_stream_wrappers.hpp>
 #include <yajr/rpc/message_factory.inl.hpp>
 #include <yajr/internal/comms.hpp>
+#include <yajr/transport/engine.hpp>
 
 #include <rapidjson/error/en.h>
 
@@ -117,6 +118,7 @@ void CommunicationPeer::timeout() {
         << " now(): " << now()
         << " rtt >= " << rtt
         << " keepAliveInterval_: " << keepAliveInterval_
+        << " handle_.flags: " << reinterpret_cast< void * >(handle_.flags)
     ;
 
     if (uvRefCnt_ == 1) {
@@ -149,42 +151,70 @@ void CommunicationPeer::timeout() {
 
 }
 
-int comms::internal::CommunicationPeer::choke() {
+int comms::internal::CommunicationPeer::choke() const {
+
+    LOG(DEBUG)
+        << this
+    ;
 
     int rc;
 
     if ((rc = uv_read_stop((uv_stream_t*) &handle_))) {
+
         LOG(WARNING) << "uv_read_stop: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
+
         /* FIXME: this might even not be a big issue if SSL is not involved */
+
         onError(rc);
+
         uv_close((uv_handle_t*)&handle_, on_close);
+
     }
 
     return rc;
 
 }
 
-int comms::internal::CommunicationPeer::unchoke() {
+int comms::internal::CommunicationPeer::unchoke() const {
+
+    LOG(DEBUG)
+        << this
+    ;
 
     int rc;
 
-    if ((rc = uv_read_start((uv_stream_t*) &handle_, alloc_cb, on_read))) {
+    if ((rc = uv_read_start(
+                    (uv_stream_t*) &handle_,
+                    transport_.callbacks_->allocCb_,
+                    transport_.callbacks_->onRead_)
+    )) {
+
         LOG(WARNING) << "uv_read_start: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
+
         onError(rc);
-        uv_close((uv_handle_t*)&handle_, on_close);
+
+        if (!uv_is_closing((uv_handle_t*)&handle_)) {
+            uv_close((uv_handle_t*)&handle_, on_close);
+        }
+
     }
 
     return rc;
 
 }
 
-yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
+yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() const {
 
     LOG(DEBUG)
-        << "peer = " << this
-        << " About to parse: \"" << ssIn_.str() << "\""
+        << this
+        << " About to parse: \""
+        << ssIn_.str()
+        << "\" from "
+        << ssIn_.str().size()
+        << " bytes at "
+        << reinterpret_cast<void const *>(ssIn_.str().data())
     ;
 
     bumpLastHeard();
@@ -198,7 +228,6 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
         LOG(ERROR)
             << "Error: " << rapidjson::GetParseError_En(e)
             << " at offset " << o
-            << " near '" << std::string(ssIn_.str()).substr(o, 10) << "...'"
         ;
     }
 
@@ -246,6 +275,74 @@ bool PassivePeer::__checkInvariants() const {
 
 bool ListeningPeer::__checkInvariants() const {
     return internal::Peer::__checkInvariants();
+}
+
+void CommunicationPeer::readBuffer(
+        char * buffer,
+        size_t nread,
+        bool canWriteJustPastTheEnd) const {
+
+    assert(nread);
+
+    if (!nread) {
+        return;
+    }
+
+    char lastByte[2];
+
+    if (!canWriteJustPastTheEnd) {
+
+        lastByte[0] = buffer[nread];
+
+        if (nread > 1) {  /* just as an optimization */
+            buffer[nread-1] = '\0';
+            readBufferZ(buffer, nread);
+        }
+
+        nread = 1;
+        buffer = lastByte;
+
+    }
+
+    buffer[nread++] = '\0';
+    readBufferZ(buffer, nread);
+
+}
+
+void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
+
+    size_t chunk_size;
+
+    while (--nread > 0) {
+        chunk_size = readChunk(buffer);
+        nread -= chunk_size++;
+
+        LOG(DEBUG)
+            << "nread="
+            << nread
+            << " chunk_size="
+            << chunk_size
+        ;
+
+        if(nread) {
+
+            LOG(DEBUG) << "got: " << chunk_size;
+
+            buffer += chunk_size;
+
+            boost::scoped_ptr<yajr::rpc::InboundMessage> msg(
+                    parseFrame()
+                );
+
+            if (!msg) {
+                LOG(ERROR) << "skipping inbound message";
+                continue;
+            }
+
+            msg->process();
+
+        }
+    }
 }
 
 void CommunicationPeer::dumpIov(std::stringstream & dbgLog, std::vector<iovec> const & iov) {
@@ -303,45 +400,46 @@ void CommunicationPeer::logDeque() const {
 
 void CommunicationPeer::onWrite() {
 
-    LOG(DEBUG) << "Write completed for " << pendingBytes_ << " bytes";
+    LOG(DEBUG)
+        << this
+        << " Write completed for "
+        << pendingBytes_
+        << " bytes"
+    ;
 
-    s_.deque_.erase(
-            s_.deque_.begin(),
-            s_.deque_.begin() + pendingBytes_
-    );
+    transport_.callbacks_->onSent_(this);
 
     pendingBytes_ = 0;
 
     write(); /* kick the can */
+
 }
 
 int CommunicationPeer::write() const {
 
     if (pendingBytes_) {
 
-        LOG(DEBUG) << "Waiting for " << pendingBytes_ << " bytes to flush";
+        LOG(DEBUG)
+            << this
+            << "Waiting for "
+            << pendingBytes_
+            << " bytes to flush"
+        ;
         return 0;
     }
 
-    pendingBytes_ = s_.deque_.size();
+    return transport_.callbacks_->sendCb_(this);
 
-    if (!pendingBytes_) {
+}
 
-        LOG(DEBUG) << "Nothing left to be sent!";
+int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
 
-        return 0;
-    }
-
-    std::vector<iovec> iov =
-        more::get_iovec(
-                s_.deque_.begin(),
-                s_.deque_.end()
-        );
-
-#ifdef    NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
-    // Not thread-safe. Build only as needed for ad-hoc debugging builds.
-    logDeque();
-#endif // NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
+    LOG(DEBUG)
+        << this
+        << " IOVEC of size "
+        << iov.size()
+    ;
+    assert(iov.size());
 
     /* FIXME: handle errors!!! */
     return uv_write(&write_req_,
@@ -351,7 +449,6 @@ int CommunicationPeer::write() const {
             on_write);
 
 }
-
 
 void internal::Peer::LoopData::walkAndCloseHandlesCb(
         uv_handle_t* h,
@@ -432,7 +529,6 @@ void internal::Peer::LoopData::walkAndCountHandlesCb(
 
     /** we assert() here, but everything will be cleaned up in production code */
     assert(uv_is_closing(h));
-
 
 }
 

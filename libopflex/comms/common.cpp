@@ -140,6 +140,15 @@ void internal::Peer::LoopData::destroy() {
 
     assert(prepare_.data == this);
 
+    if (destroying_) {
+        LOG(WARNING)
+            << this
+            << "Double destroy() detected"
+        ;
+
+        return;
+    }
+
     destroying_ = 1;
     down();
 
@@ -169,15 +178,6 @@ void internal::Peer::LoopData::destroy() {
 */
 
 namespace internal {
-
-void alloc_cb(uv_handle_t * _, size_t size, uv_buf_t* buf) {
-
-    LOG(DEBUG);
-
-    *buf = uv_buf_init((char*) malloc(size + 1), size);
-
-    return;
-}
 
 void on_close(uv_handle_t * h) {
 
@@ -209,61 +209,24 @@ void on_write(uv_write_t *req, int status) {
     return;
 }
 
-void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf)
-{
-
-    CommunicationPeer * peer = Peer::get<CommunicationPeer>(h);
-
-    LOG(DEBUG) << peer;
-
-    if (nread < 0) {
-        LOG(INFO) << "nread = " << nread << " [" << uv_err_name(nread) <<
-            "] " << uv_strerror(nread) << " => closing";
-        peer->onDisconnect();
-    }
-
-    if (nread > 0) {
-
-        LOG(INFO) << peer
-            << " read " << nread << " into buffer of size " << buf->len;
-
-        char * buffer = buf->base;
-        size_t chunk_size;
-        buffer[nread++]='\0';
-
-        while (--nread > 0) {
-            chunk_size = peer->readChunk(buffer);
-            nread -= chunk_size++;
-
-            LOG(DEBUG) << "nread=" << nread << " chunk_size=" << chunk_size;
-
-            if(nread) {
-
-                LOG(DEBUG) << "got: " << chunk_size;
-
-                buffer += chunk_size;
-
-                boost::scoped_ptr<yajr::rpc::InboundMessage> msg(
-                        peer->parseFrame()
-                    );
-
-                if (!msg) {
-                    LOG(ERROR) << "skipping inbound message";
-                    continue;
-                }
-
-                msg->process();
-
-            }
-        }
-    }
-
-    if (buf->base) {
-        free(buf->base);
-    }
-
-}
-
 } /* yajr::comms::internal namespace */
 
 }} /* yajr::comms and opflex namespaces */
+
+#ifdef BOOST_NO_EXCEPTIONS
+
+namespace boost
+{
+
+void throw_exception(std::exception const & e) {
+    assert(0);
+
+    LOG(FATAL) << e.what();
+
+    exit(127);
+}
+
+}
+
+#endif
+
