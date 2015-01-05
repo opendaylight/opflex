@@ -9,6 +9,7 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <yajr/transport/ZeroCopyOpenSSL.hpp>
 #include <yajr/internal/comms.hpp>
 
 #include <opflex/logging/OFLogHandler.h>
@@ -24,6 +25,7 @@
 #define DEFAULT_COMMSTEST_TIMEOUT 7200
 
 using namespace yajr::comms;
+using namespace yajr::transport;
 
 BOOST_AUTO_TEST_SUITE(asynchronous_sockets)
 
@@ -81,6 +83,9 @@ class CommsFixture {
 
         internal::Peer::LoopData::getLoopData(loop_)->up();
 
+#ifdef YAJR_HAS_OPENSSL
+        ZeroCopyOpenSSL::initOpenSSL(false); // false because we don't use multiple threads
+#endif
     }
 
     struct PeerDisposer {
@@ -104,6 +109,10 @@ class CommsFixture {
 
         uv_close((uv_handle_t *)&timer_, down_on_close);
         uv_close((uv_handle_t *)&prepare_, down_on_close);
+
+#ifdef YAJR_HAS_OPENSSL
+        ZeroCopyOpenSSL::finiOpenSSL();
+#endif
 
         ::yajr::finiLoop(uv_default_loop());
 
@@ -366,8 +375,8 @@ class CommsFixture {
             range_t final_peers,
             pc post_conditions,
             range_t transient_peers = range_t(0, 0),
-            unsigned int timeout = DEFAULT_COMMSTEST_TIMEOUT,
-            bool should_timeout = false
+            bool should_timeout = false,
+            unsigned int timeout = DEFAULT_COMMSTEST_TIMEOUT
             ) {
 
         LOG(DEBUG);
@@ -617,7 +626,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_keepalive, CommsFixture ) {
 
     BOOST_CHECK_EQUAL(!p, 0);
 
-    loop_until_final(range_t(4,4), pc_successful_connect, range_t(0,0), DEFAULT_COMMSTEST_TIMEOUT, true); // 4 is to cause a timeout
+    loop_until_final(range_t(4,4), pc_successful_connect, range_t(0,0), true, DEFAULT_COMMSTEST_TIMEOUT); // 4 is to cause a timeout
 
 }
 
@@ -963,7 +972,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_before_connect, CommsFixt
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_after_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( UNSTABLE_test_destroy_client_after_connect, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1256,7 +1265,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_service,
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( SLOW_STABLE_test_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1264,11 +1273,11 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_non_routable_host, CommsFixture ) {
 
     BOOST_CHECK_EQUAL(!p, 0);
 
-    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), 90000);
+    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 90000);
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( SLOW_STABLE_test_destroy_client_for_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1276,11 +1285,11 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_routable_host, Comms
 
     BOOST_CHECK_EQUAL(!p, 0);
 
-    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), 90000);
+    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), false, 90000);
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( SLOW_STABLE_test_disconnect_client_for_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1288,8 +1297,182 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_routable_host, Co
 
     BOOST_CHECK_EQUAL(!p, 0);
 
-    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), 90000);
+    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 90000);
 
 }
+
+#ifdef YAJR_HAS_OPENSSL
+
+void AttachPassiveSslTransportOnConnect(
+        ::yajr::Peer * p,
+        void * data,
+        ::yajr::StateChange::To stateChange,
+        int error) {
+    switch(stateChange) {
+        case ::yajr::StateChange::CONNECT:
+            LOG(DEBUG)
+                << "got a CONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+            LOG(INFO)
+                << "attaching passive SSL transport "
+                << data
+                << " to "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+
+            BOOST_CHECK_EQUAL(
+
+            ZeroCopyOpenSSL::attachTransport(
+                    p,
+                    static_cast<ZeroCopyOpenSSL::Ctx *>(data))
+
+            , true);
+
+            break;
+        case ::yajr::StateChange::DISCONNECT:
+            LOG(DEBUG)
+                << "got a DISCONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+            break;
+        case ::yajr::StateChange::FAILURE:
+            LOG(DEBUG)
+                << "got a FAILURE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+            break;
+        case ::yajr::StateChange::DELETE:
+            LOG(DEBUG)
+                << "got a DELETE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+            break;
+        default:
+            assert(0);
+    }
+}
+
+::yajr::Peer::StateChangeCb attachPassiveSslTransportOnConnect = AttachPassiveSslTransportOnConnect;
+
+void * passthroughAccept(yajr::Listener *, void * data, int) {
+    return data;
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_SSL, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::transport::ZeroCopyOpenSSL::Ctx * serverCtx =
+        ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
+            NULL,
+            "test/server.pem",
+            "password123"
+        );
+
+    BOOST_CHECK_EQUAL(!serverCtx, 0);
+
+    if (!serverCtx) {
+        return;
+    }
+
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1",
+            65514,
+            attachPassiveSslTransportOnConnect,
+            passthroughAccept,
+            serverCtx
+    );
+
+    BOOST_CHECK_EQUAL(!l, 0);
+
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "127.0.0.1",
+            "65514",
+            doNothingOnConnect
+    );
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    ::yajr::transport::ZeroCopyOpenSSL::Ctx * clientCtx =
+        ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
+            "test/ca.pem",
+            NULL
+        );
+
+    BOOST_CHECK_EQUAL(!clientCtx, 0);
+
+    if (!clientCtx) {
+        return;
+    }
+
+    bool ok = ZeroCopyOpenSSL::attachTransport(p, clientCtx);
+
+    BOOST_CHECK_EQUAL(ok, true);
+
+    if (!ok) {
+        return;
+    }
+
+    loop_until_final(range_t(4,4), pc_successful_connect, range_t(0,0), true, 800); // 4 is to cause a timeout
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_keepalive_on_SSL, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::transport::ZeroCopyOpenSSL::Ctx * serverCtx =
+        ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
+            NULL,
+            "test/server.pem",
+            "password123"
+        );
+
+    BOOST_CHECK_EQUAL(!serverCtx, 0);
+
+    if (!serverCtx) {
+        return;
+    }
+
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1",
+            65513,
+            attachPassiveSslTransportOnConnect,
+            passthroughAccept,
+            serverCtx
+    );
+
+    BOOST_CHECK_EQUAL(!l, 0);
+
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "127.0.0.1",
+            "65513",
+            startPingingOnConnect
+    );
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    ::yajr::transport::ZeroCopyOpenSSL::Ctx * clientCtx =
+        ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
+            "test/ca.pem",
+            NULL
+        );
+
+    BOOST_CHECK_EQUAL(!clientCtx, 0);
+
+    if (!clientCtx) {
+        return;
+    }
+
+    bool ok = ZeroCopyOpenSSL::attachTransport(p, clientCtx);
+
+    BOOST_CHECK_EQUAL(ok, true);
+
+    if (!ok) {
+        return;
+    }
+
+    loop_until_final(range_t(4,4), pc_successful_connect, range_t(0,0), true, DEFAULT_COMMSTEST_TIMEOUT); // 4 is to cause a timeout
+
+}
+
+#endif
+
 
 BOOST_AUTO_TEST_SUITE_END()
