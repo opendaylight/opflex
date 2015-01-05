@@ -137,8 +137,12 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
         BOOST_CHECK(fm.cookie_mask ==
                 (fm.command == OFPFC_ADD ? htonll(0) : ~htonll(0)));
         BOOST_CHECK(match_equal(&ee.match, &fm.match));
-        BOOST_CHECK(ofpacts_equal(ee.ofpacts, ee.ofpacts_len,
-                                  fm.ofpacts, fm.ofpacts_len));
+        if (fm.command == OFPFC_DELETE_STRICT) {
+            BOOST_CHECK_EQUAL(fm.ofpacts_len, 0);
+        } else {
+            BOOST_CHECK(ofpacts_equal(ee.ofpacts, ee.ofpacts_len,
+                                      fm.ofpacts, fm.ofpacts_len));
+        }
         free((void *)fm.ofpacts);
     } else if (type == OFPTYPE_BARRIER_REQUEST) {
          BOOST_CHECK(expectedEdits.edits.empty());

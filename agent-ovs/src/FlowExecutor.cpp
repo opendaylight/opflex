@@ -130,8 +130,10 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     flowMod.new_cookie = mod == FlowEdit::mod ? OVS_BE64_MAX :
             (mod == FlowEdit::add ? flow.cookie : htonll(0));
     memcpy(&flowMod.match, &flow.match, sizeof(flow.match));
-    flowMod.ofpacts_len = flow.ofpacts_len;
-    flowMod.ofpacts = (ofpact*)flow.ofpacts;
+    if (mod != FlowEdit::del) {
+        flowMod.ofpacts_len = flow.ofpacts_len;
+        flowMod.ofpacts = (ofpact*)flow.ofpacts;
+    }
     flowMod.command = mod == FlowEdit::add ? OFPFC_ADD :
             (mod == FlowEdit::mod ? OFPFC_MODIFY_STRICT : OFPFC_DELETE_STRICT);
     /* fill out defaults */
