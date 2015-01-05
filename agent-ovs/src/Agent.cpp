@@ -57,10 +57,10 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
 
     static const std::string RENDERERS_STITCHED_MODE("renderers.stitched-mode");
 
-    optional<std::string> logLevel =
+    optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
-    if (logLevel) {
-        setLoggingLevel(logLevel.get());
+    if (logLvl) {
+        setLoggingLevel(logLvl.get());
     }
 
     optional<const ptree&> endpointSource = 
