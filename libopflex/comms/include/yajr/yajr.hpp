@@ -10,6 +10,8 @@
 #ifndef _INCLUDE__YAJR__YAJR_HPP
 #define _INCLUDE__YAJR__YAJR_HPP
 
+#include <yajr/transport/engine.hpp>
+
 #include <uv.h>
 
 #include <string>
@@ -273,6 +275,8 @@ struct Listener {
         Peer::UvLoopSelector         uvLoopSelector    = NULL
                  /**< [in] libuv loop selector for the accepted passive peers */
     );
+
+//    transport::Ctx 
 
     /**
      * @brief perform an asynchronous delete

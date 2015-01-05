@@ -4,7 +4,7 @@ CATEGORY=${1:-STABLE}
 ulimit -c unlimited
 
 # Timeout.
-declare -i timeout=20
+declare -i timeout=60
 # Interval between checks if the process is still alive.
 declare -i interval=5
 # Delay between posting the SIGTERM signal and destroying the process by SIGKILL.
