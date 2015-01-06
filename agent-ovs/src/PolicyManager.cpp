@@ -207,7 +207,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
         vnid_map.erase(gs.vnid.get());
     if (groupInstCtx) {
         gs.vnid = groupInstCtx.get()->getEncapId();
-        vnid_map.insert(std::make_pair(gs.vnid.get(), egURI));
+        if (gs.vnid)
+            vnid_map.insert(std::make_pair(gs.vnid.get(), egURI));
     }
 
     optional<shared_ptr<RoutingDomain> > newrd;
