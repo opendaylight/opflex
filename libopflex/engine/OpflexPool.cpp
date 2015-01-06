@@ -294,7 +294,7 @@ void OpflexPool::sendToRole(OpflexMessage* message,
         if (it == roles.end())
             return;
         
-        int i = 0;
+        size_t i = 0;
         OpflexMessage* m_copy = NULL;
         BOOST_FOREACH(OpflexClientConnection* conn, it->second.conns) {
             if (!conn->isReady()) continue;

@@ -398,9 +398,6 @@ public:
      */
     template <typename T>
     bool operator()(rapidjson::Writer<T> & writer) {
-        MOSerializer& serializer = processor->getSerializer();
-        modb::mointernal::StoreClient* client = processor->getSystemClient();
-
         writer.StartArray();
 
         BOOST_FOREACH(modb::reference_t& p, endpoints) {

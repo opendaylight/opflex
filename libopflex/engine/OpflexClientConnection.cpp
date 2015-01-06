@@ -35,7 +35,7 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
 #ifdef SIMPLE_RPC
       retry(true),
 #endif
-      active(false), started(false), closing(false) {
+      started(false), active(false), closing(false) {
 
 }
 

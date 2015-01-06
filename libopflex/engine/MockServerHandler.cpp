@@ -233,8 +233,6 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
 void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                                                const Value& payload) {
     LOG(DEBUG) << "Got policy_resolve req";
-    StoreClient& client = *server->getSystemClient();
-    MOSerializer& serializer = server->getSerializer();
 
     Value::ConstValueIterator it;
     std::vector<modb::reference_t> mos;
@@ -451,9 +449,6 @@ void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
 
 void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
                                            const rapidjson::Value& payload) {
-    StoreClient& client = *server->getSystemClient();
-    MOSerializer& serializer = server->getSerializer();
-
     Value::ConstValueIterator it;
     std::vector<modb::reference_t> mos;
     for (it = payload.Begin(); it != payload.End(); ++it) {
