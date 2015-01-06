@@ -6,4 +6,28 @@ module[dfw]
     {
         member[state; type=platform/AdminState]
     }
+
+    # A set of counters for a network endpoint
+    class[EpCounter;
+          super=observer/UuidObservable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=observer/EpStatUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+        # the number of received packets dropped
+        member[rxDrop; type=scalar/UInt64]
+
+        # the number of sent packets dropped
+        member[txDrop; type=scalar/UInt64]
+    }
 }
