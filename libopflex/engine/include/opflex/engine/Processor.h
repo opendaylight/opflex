@@ -80,6 +80,14 @@ public:
     void addPeer(const std::string& hostname, int port);
 
     /**
+     * Register the given peer status listener to get updates on the
+     * health of the connection pool and on individual connections.
+     *
+     * @param listener the listener to register
+     */
+    void registerPeerStatusListener(ofcore::PeerStatusListener* listener);
+
+    /**
      * Start the processor thread.  Should call only after the
      * underlying object store is started.
      */

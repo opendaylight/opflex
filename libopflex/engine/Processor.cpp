@@ -548,6 +548,11 @@ void Processor::addPeer(const std::string& hostname,
     pool.addPeer(hostname, port);
 }
 
+void
+Processor::registerPeerStatusListener(ofcore::PeerStatusListener* listener) {
+    pool.registerPeerStatusListener(listener);
+}
+
 OpflexHandler* Processor::newHandler(OpflexConnection* conn) {
     return new OpflexPEHandler(conn, this);
 }

@@ -579,6 +579,7 @@
 #include <boost/noncopyable.hpp>
 
 #include "opflex/modb/Mutator.h"
+#include "opflex/ofcore/PeerStatusListener.h"
 
 /**
  * @defgroup cpp C++ Interface
@@ -726,6 +727,15 @@ public:
      */
     virtual void addPeer(const std::string& hostname,
                          int port);
+
+    /**
+     * Register the given peer status listener to get updates on the
+     * health of the connection pool and on individual connections.
+     * Must be called before calling start() on the framework.
+     *
+     * @param listener the listener to register
+     */
+    virtual void registerPeerStatusListener(PeerStatusListener* listener);
 
 private:
     /**
