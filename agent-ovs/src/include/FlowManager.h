@@ -170,6 +170,7 @@ public:
     /** Interface: PolicyListener */
     void egDomainUpdated(const opflex::modb::URI& egURI);
     void contractUpdated(const opflex::modb::URI& contractURI);
+    void configUpdated(const opflex::modb::URI& configURI);
 
     /** Interface: OnConnectListener */
     void Connected(SwitchConnection *swConn);
@@ -264,6 +265,14 @@ private:
     void HandleContractUpdate(const opflex::modb::URI& contractURI);
 
     /**
+     * Compare and update flow/group tables due to changes in platform
+     * config
+     *
+     * @param configURI URI of the changed contract
+     */
+    void HandleConfigUpdate(const opflex::modb::URI& configURI);
+
+    /**
      * Handle establishment of connection to a switch by reconciling
      * cached memory state with switch state.
      *
@@ -288,6 +297,12 @@ private:
     bool WriteFlow(const std::string& objId, int tableId,
             flow::FlowEntryList& el);
     bool WriteFlow(const std::string& objId, int tableId, flow::FlowEntry *e);
+
+    /**
+     * Update all current group table entries
+     */
+    void UpdateGroupTable();
+
     /**
      * Write a group-table change to the switch
      *
@@ -366,6 +381,7 @@ private:
     EncapType encapType;
     std::string encapIface;
     boost::asio::ip::address tunnelDst;
+    boost::optional<boost::asio::ip::address> mcastTunDst;
     bool virtualRouterEnabled;
     uint8_t routerMac[6];
     flow::TableState flowTables[NUM_FLOW_TABLES];
@@ -486,6 +502,8 @@ private:
     volatile int initialAdverts;
 
     bool opflexPeerConnected;
+
+    void initPlatformConfig();
 };
 
 }   // namespace enforcer

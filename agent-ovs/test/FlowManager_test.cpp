@@ -919,6 +919,9 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     uint32_t tunPort = flowManager.GetTunnelPort();
     address tunDstAddr = flowManager.GetTunnelDst();
     uint32_t tunDst = tunDstAddr.to_v4().to_ulong();
+    address mcastTunDstAddr = address::from_string("224.1.1.1");
+    uint32_t mcastTunDst = mcastTunDstAddr.to_v4().to_ulong();
+
     uint8_t rmacArr[6];
     memcpy(rmacArr, flowManager.GetRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
@@ -1195,7 +1198,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     case FlowManager::ENCAP_IVXLAN:
     default:
         ge_bkt_tun = Bldr(bktInit).bktId(tunPort).bktActions().move(SEPG, TUNID)
-            .load(TUNDST, tunDst).outPort(tunPort).done();
+            .load(TUNDST, mcastTunDst).outPort(tunPort).done();
         break;
     }
     ge_bkt_tun_new = Bldr(ge_bkt_tun).bktId(tun_port_new)

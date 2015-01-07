@@ -27,6 +27,7 @@ using namespace ovsagent;
 using namespace modelgbp;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
+using namespace modelgbp::platform;
 using namespace opflex::modb;
 
 class DummyEpSrc : public EndpointSource {
@@ -79,6 +80,9 @@ protected:
         universe = policy::Universe::resolve(framework).get();
 
         Mutator mutator(framework, policyOwner);
+        shared_ptr<Config> config = universe->addPlatformConfig("default");
+        config->setMulticastGroupIP("224.1.1.1");
+
         space = universe->addPolicySpace("tenant0");
         fd0 = space->addGbpFloodDomain("fd0");
         fd1 = space->addGbpFloodDomain("fd1");
