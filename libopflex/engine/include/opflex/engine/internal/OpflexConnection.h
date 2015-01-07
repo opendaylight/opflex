@@ -184,6 +184,8 @@ private:
     void doWrite(OpflexMessage* message);
     void cleanup();
 
+    virtual void notifyReady();
+
     friend class OpflexHandler;
 };
 

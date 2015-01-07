@@ -35,6 +35,12 @@ using std::string;
 using rapidjson::Value;
 using rapidjson::Writer;
 
+void OpflexHandler::setState(ConnectionState state_) {
+    state = state_;
+    if (state == READY)
+        conn->notifyReady();
+}
+
 void OpflexHandler::handleUnexpected(const string& type) {
     LOG(ERROR) << "Unexpected message of type " << type;
     conn->disconnect();
@@ -150,13 +156,11 @@ void InbReq<&yajr::rpc::method::policy_resolve>::process() const {
 template<>
 void InbRes<&yajr::rpc::method::policy_resolve>::process() const {
     HANDLE_RES(PolicyResolveRes);
-
 }
 template<>
 void InbErr<&yajr::rpc::method::policy_resolve>::process() const {
     HANDLE_RES(PolicyResolveErr);
 }
-
 
 template<>
 void InbReq<&yajr::rpc::method::policy_unresolve>::process() const {
@@ -261,7 +265,6 @@ template<>
 void InbErr<&yajr::rpc::method::state_report>::process() const {
     HANDLE_RES(StateReportErr);
 }
-
 
 } /* namespace rpc */
 } /* namespace yajr */

@@ -77,6 +77,10 @@ bool OpflexConnection::isReady() {
     return handler->isReady();
 }
 
+void OpflexConnection::notifyReady() { 
+
+}
+
 #ifdef SIMPLE_RPC
 void OpflexConnection::alloc_cb(uv_handle_t* handle,
                                 size_t suggested_size,

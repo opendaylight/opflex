@@ -16,6 +16,7 @@
 #include <boost/assign/list_of.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/unordered_map.hpp>
 #include <rapidjson/stringbuffer.h>
 
 #include "opflex/modb/internal/ObjectStore.h"
@@ -38,11 +39,13 @@ using namespace rapidjson;
 using boost::assign::list_of;
 using boost::shared_ptr;
 using boost::make_shared;
+using boost::unordered_map;
 using mointernal::ObjectInstance;
 using std::out_of_range;
 using std::make_pair;
 using std::vector;
 using opflex::ofcore::OFConstants;
+using opflex::ofcore::PeerStatusListener;
 using opflex::test::MockOpflexServer;
 
 #define SERVER_ROLES \
@@ -51,11 +54,28 @@ using opflex::test::MockOpflexServer;
          OFConstants::OBSERVER)
 #define LOCALHOST "127.0.0.1"
 
+class TestPeerStatusListener : public PeerStatusListener {
+public:
+    void peerStatusUpdated(const std::string& peerHostname,
+                           int peerPort,
+                           PeerStatus peerStatus) {
+        statusMap[peerPort] = peerStatus;
+    }
+
+    void healthUpdated(Health health) {
+        latestHealth = health;
+    }
+    
+    unordered_map<int, PeerStatus> statusMap;
+    Health latestHealth;
+};
+
 class Fixture : public BaseFixture {
 public:
     Fixture() : processor(&db) {
         processor.setDelay(5);
         processor.setOpflexIdentity("testelement", "testdomain");
+        processor.registerPeerStatusListener(&peerStatus);
         processor.start();
     }
 
@@ -64,6 +84,7 @@ public:
     }
 
     Processor processor;
+    TestPeerStatusListener peerStatus;
 };
 
 class ServerFixture : public Fixture {
@@ -178,6 +199,11 @@ BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8010), 1000);
     WAIT_FOR(processor.getPool().getPeer(LOCALHOST, 8011) == NULL, 1000);
+
+    BOOST_CHECK_EQUAL(PeerStatusListener::CLOSING, peerStatus.statusMap[8011]);
+    BOOST_CHECK_EQUAL(PeerStatusListener::READY, peerStatus.statusMap[8009]);
+    BOOST_CHECK_EQUAL(PeerStatusListener::READY, peerStatus.statusMap[8010]);
+    BOOST_CHECK_EQUAL(PeerStatusListener::HEALTHY, peerStatus.latestHealth);
 
     anycastServer.stop();
     peer1.stop();

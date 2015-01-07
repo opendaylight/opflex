@@ -22,6 +22,7 @@
 
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/OpflexClientConnection.h"
+#include "opflex/ofcore/PeerStatusListener.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXPOOL_H
@@ -107,6 +108,14 @@ public:
     OpflexClientConnection* getPeer(const std::string& hostname, int port);
 
     /**
+     * Register the given peer status listener to get updates on the
+     * health of the connection pool and on individual connections.
+     *
+     * @param listener the listener to register
+     */
+    void registerPeerStatusListener(ofcore::PeerStatusListener* listener);
+
+    /**
      * Set the roles for the specified connection
      */
     void setRoles(OpflexClientConnection* conn,
@@ -183,6 +192,9 @@ private:
     uv_async_t writeq_async;
     uv_timer_t timer;
 
+    std::list<ofcore::PeerStatusListener*> peerStatusListeners;
+    ofcore::PeerStatusListener::Health curHealth;
+
     void doRemovePeer(const std::string& hostname, int port);
     void doAddPeer(const std::string& hostname, int port);
     void doSetRoles(ConnData& cd, uint8_t newroles);
@@ -201,6 +213,9 @@ private:
     static void on_conn_closed(OpflexClientConnection* conn);
     static void on_timer(uv_timer_t* timer);
 #endif
+
+    void updatePeerStatus(const std::string& hostname, int port,
+                          ofcore::PeerStatusListener::PeerStatus status);
 
     friend class OpflexClientConnection;
 };

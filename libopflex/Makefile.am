@@ -42,6 +42,7 @@ modb_mo_include_HEADERS = \
 core_includedir = $(includedir)/opflex/ofcore
 core_include_HEADERS = \
 	include/opflex/ofcore/OFFramework.h \
+	include/opflex/ofcore/PeerStatusListener.h \
 	include/opflex/ofcore/OFConstants.h 
 test_includedir = $(includedir)/opflex/test
 test_include_HEADERS = \

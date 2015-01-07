@@ -114,6 +114,10 @@ void OFFramework::addPeer(const std::string& hostname,
     pimpl->processor.addPeer(hostname, port);
 }
 
+void OFFramework::registerPeerStatusListener(PeerStatusListener* listener) {
+    pimpl->processor.registerPeerStatusListener(listener);
+}
+
 void MockOFFramework::start() {
     LOG(DEBUG) << "Starting OpFlex Framework";
 

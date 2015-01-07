@@ -81,8 +81,10 @@ public:
 
     /**
      * Set the connection state for the connection
+     *
+     * @param state the new connection state
      */
-    void setState(ConnectionState state_) { state = state_; }
+    void setState(ConnectionState state);
 
     /**
      * Get the bitmask representing the set of roles for the remote

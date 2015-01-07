@@ -24,9 +24,10 @@ namespace internal {
 using std::make_pair;
 using std::string;
 using ofcore::OFConstants;
+using ofcore::PeerStatusListener;
 
 OpflexPool::OpflexPool(HandlerFactory& factory_)
-    : factory(factory_), active(false) {
+    : factory(factory_), active(false), curHealth(PeerStatusListener::DOWN) {
     uv_mutex_init(&conn_mutex);
     uv_key_create(&conn_mutex_key);
 }
@@ -120,6 +121,52 @@ void OpflexPool::setOpflexIdentity(const std::string& name,
                                    const std::string& domain) {
     this->name = name;
     this->domain = domain;
+}
+
+void
+OpflexPool::registerPeerStatusListener(PeerStatusListener* listener) {
+    peerStatusListeners.push_back(listener);
+}
+
+void OpflexPool::updatePeerStatus(const std::string& hostname, int port,
+                                  PeerStatusListener::PeerStatus status) {
+    PeerStatusListener::Health newHealth = PeerStatusListener::HEALTHY;
+    bool notifyHealth = false;
+    bool hasConnection = false;
+    {
+        util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+        BOOST_FOREACH(conn_map_t::value_type& v, connections) {
+            hasConnection = true;
+            if (!v.second.conn->isReady()) {
+                switch (newHealth) {
+                case PeerStatusListener::HEALTHY:
+                    newHealth = PeerStatusListener::DEGRADED;
+                    break;
+                case PeerStatusListener::DEGRADED:
+                case PeerStatusListener::DOWN:
+                default:
+                    newHealth = PeerStatusListener::DOWN;
+                    break;
+                }
+            }
+        }
+        if (!hasConnection)
+            newHealth = PeerStatusListener::DOWN;
+        if (newHealth != curHealth) {
+            notifyHealth = true;
+            curHealth = newHealth;
+        }
+    }
+
+    BOOST_FOREACH(PeerStatusListener* l, peerStatusListeners) {
+        l->peerStatusUpdated(hostname, port, status);
+    }
+
+    if (notifyHealth) {
+        BOOST_FOREACH(PeerStatusListener* l, peerStatusListeners) {
+            l->healthUpdated(newHealth);
+        }
+    }
 }
 
 OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname, 

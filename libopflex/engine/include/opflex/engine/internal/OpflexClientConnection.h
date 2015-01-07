@@ -125,6 +125,8 @@ private:
     static uv_loop_t* loop_selector(void* data);
 #endif
 
+    virtual void notifyReady();
+
 protected:
 #ifdef SIMPLE_RPC
     /**
@@ -136,6 +138,7 @@ protected:
                                 yajr::StateChange::To stateChange,
                                 int error);
 #endif
+
 };
 
 
