@@ -49,6 +49,24 @@ public:
     ~PolicyManager();
 
     /**
+     * Set the opflex domain for the policy manager
+     *
+     * @param opflexDomain the opflex domain
+     */
+    void setOpflexDomain(const std::string& opflexDomain) {
+        this->opflexDomain = opflexDomain;
+    }
+
+    /**
+     * Get the opflex domain for the policy manager
+     *
+     * @return opflexDomain the opflex domain
+     */
+    const std::string& getOpflexDomain() {
+        return opflexDomain;
+    }
+
+    /**
      * Start the policy manager
      */
     void start();
@@ -220,6 +238,7 @@ public:
 
 private:
     opflex::ofcore::OFFramework& framework;
+    std::string opflexDomain;
 
     /**
      * State and indices related to a given endpoint group
@@ -340,6 +359,23 @@ private:
     friend class ContractListener;
 
     /**
+     * Listener for changes related to plaform config.
+     */
+    class ConfigListener : public opflex::modb::ObjectListener {
+    public:
+        ConfigListener(PolicyManager& pmanager);
+        virtual ~ConfigListener();
+
+        virtual void objectUpdated(opflex::modb::class_id_t class_id,
+                                    const opflex::modb::URI& uri);
+    private:
+        PolicyManager& pmanager;
+    };
+    ConfigListener configListener;
+
+    friend class ConfigListener;
+
+    /**
      * The policy listeners that have been registered
      */
     std::list<PolicyListener*> policyListeners;
@@ -401,6 +437,13 @@ private:
      */
     void notifyContract(const opflex::modb::URI& contractURI);
 
+    /**
+     * Notify policy listeners about an update to the platform
+     * configuration.
+     *
+     * @param configURI the URI of the updated platform config object
+     */
+    void notifyConfig(const opflex::modb::URI& configURI);
 };
 
 /**

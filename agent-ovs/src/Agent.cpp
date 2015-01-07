@@ -85,6 +85,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     } else {
         framework.setOpflexIdentity(opflexName.get(),
                                     opflexDomain.get());
+        policyManager.setOpflexDomain(opflexDomain.get());
     }
 
     optional<const ptree&> peers = 

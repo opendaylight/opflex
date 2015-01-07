@@ -20,6 +20,7 @@ namespace ovsagent {
 
 using std::vector;
 using std::string;
+using opflex::modb::Mutator;
 using opflex::ofcore::OFFramework;
 using opflex::modb::class_id_t;
 using opflex::modb::URI;
@@ -32,7 +33,9 @@ using boost::optional;
 using boost::unordered_set;
 
 PolicyManager::PolicyManager(OFFramework& framework_)
-    : framework(framework_), domainListener(*this), contractListener(*this) {
+    : framework(framework_), opflexDomain("default"),
+      domainListener(*this), contractListener(*this),
+      configListener(*this) {
 
 }
 
@@ -46,6 +49,9 @@ void PolicyManager::start() {
     using namespace modelgbp;
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;
+
+    platform::Config::registerListener(framework, &configListener);
+
     BridgeDomain::registerListener(framework, &domainListener);
     FloodDomain::registerListener(framework, &domainListener);
     RoutingDomain::registerListener(framework, &domainListener);
@@ -57,6 +63,14 @@ void PolicyManager::start() {
     Subject::registerListener(framework, &contractListener);
     Rule::registerListener(framework, &contractListener);
     L24Classifier::registerListener(framework, &contractListener);
+
+    // resolve platform config
+    Mutator mutator(framework, "policyelement");
+    optional<shared_ptr<dmtree::Root> > root(dmtree::Root::resolve(URI::ROOT));
+    if (root)
+        root.get()->addDomainConfig()
+            ->addDomainConfigToConfigRSrc()
+            ->setTargetConfig(opflexDomain);
 }
 
 void PolicyManager::stop() {
@@ -346,6 +360,13 @@ void PolicyManager::notifyContract(const URI& contractURI) {
     }
 }
 
+void PolicyManager::notifyConfig(const URI& configURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    BOOST_FOREACH(PolicyListener *listener, policyListeners) {
+        listener->configUpdated(configURI);
+    }
+}
+
 void PolicyManager::updateEPGContracts(const URI& egURI,
         uri_set_t& updatedContracts) {
     using namespace modelgbp::gbp;
@@ -613,6 +634,16 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
     BOOST_FOREACH(const URI& u, contractsToNotify) {
         pmanager.notifyContract(u);
     }
+}
+
+PolicyManager::ConfigListener::ConfigListener(PolicyManager& pmanager_)
+    : pmanager(pmanager_) {}
+
+PolicyManager::ConfigListener::~ConfigListener() {}
+
+void PolicyManager::ConfigListener::objectUpdated(class_id_t classId,
+                                                  const URI& uri) {
+    pmanager.notifyConfig(uri);
 }
 
 } /* namespace ovsagent */

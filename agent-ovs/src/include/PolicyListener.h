@@ -40,6 +40,11 @@ public:
      * of provider/consumer endpoint groups for the contract.
      */
     virtual void contractUpdated(const opflex::modb::URI& contractURI) {}
+
+    /**
+     * Called when the platform config object is updated
+     */
+    virtual void configUpdated(const opflex::modb::URI& configURI) {}
 };
 
 } /* namespace ovsagent */

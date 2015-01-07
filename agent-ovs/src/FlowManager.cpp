@@ -95,6 +95,8 @@ void FlowManager::Start()
     idGen.initNamespace(ID_NMSPC_CON);
 
     workQ.start();
+
+    initPlatformConfig();
 }
 
 void FlowManager::Stop()
@@ -610,6 +612,12 @@ void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
     workQ.enqueue(w);
 }
 
+void FlowManager::configUpdated(const opflex::modb::URI& configURI) {
+    if (stopping) return;
+    WorkItem w = bind(&FlowManager::HandleConfigUpdate, this, configURI);
+    workQ.enqueue(w);
+}
+
 void FlowManager::Connected(SwitchConnection *swConn) {
     if (stopping) return;
     WorkItem w = bind(&FlowManager::HandleConnection, this, swConn);
@@ -1101,7 +1109,10 @@ FlowManager::CreateGroupMod(uint16_t type, uint32_t groupId,
         encapType != ENCAP_NONE) {
         ofputil_bucket *bkt = CreateBucket(tunPort);
         ActionBuilder ab;
-        SetActionTunnelMetadata(ab, encapType, GetTunnelDst());
+        address tunDst = GetTunnelDst();
+        if (mcastTunDst)
+            tunDst = mcastTunDst.get();
+        SetActionTunnelMetadata(ab, encapType, tunDst);
         ab.SetOutputToPort(tunPort);
         ab.Build(bkt);
         list_push_back(&entry->mod->buckets, &bkt->list_node);
@@ -1282,6 +1293,42 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
     WriteFlow(contractId, POL_TABLE_ID, entryList);
 }
 
+void FlowManager::initPlatformConfig() {
+
+    using namespace modelgbp::platform;
+
+    optional<shared_ptr<Config> > config =
+        Config::resolve(agent.getFramework(),
+                        agent.getPolicyManager().getOpflexDomain());
+    mcastTunDst = boost::none;
+    if (config) {
+        optional<const string&> ipStr =
+            config.get()->getMulticastGroupIP();
+        if (ipStr) {
+            boost::system::error_code ec;
+            address ip(address::from_string(ipStr.get(), ec));
+            if (ec) {
+                LOG(ERROR) << "Invalid multicast tunnel destination: "
+                           << ipStr.get() << ": " << ec.message();
+            } else if (!ip.is_v4()) {
+                LOG(ERROR) << "Multicast tunnel destination must be IPv4: "
+                           << ipStr.get();
+            } else {
+                mcastTunDst = ip;
+            }
+        }
+    }
+
+}
+
+void FlowManager::HandleConfigUpdate(const opflex::modb::URI& configURI) {
+    LOG(DEBUG) << "Updating platform config " << configURI;
+    initPlatformConfig();
+
+    /* Directly update the group-table */
+    UpdateGroupTable();
+}
+
 static void SetEntryProtocol(FlowEntry *fe, L24Classifier *classifier) {
     using namespace modelgbp::arp;
     using namespace modelgbp::l2;
@@ -1336,6 +1383,20 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
     }
 }
 
+void FlowManager::UpdateGroupTable() {
+    BOOST_FOREACH (FdMap::value_type& kv, fdMap) {
+        const URI& fdURI = kv.first;
+        uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
+        Ep2PortMap& epMap = kv.second;
+
+        GroupEdit::Entry e1 = CreateGroupMod(OFPGC11_MODIFY, fdId, epMap);
+        WriteGroupMod(e1);
+        GroupEdit::Entry e2 = CreateGroupMod(OFPGC11_MODIFY,
+                                             getPromId(fdId), epMap, true);
+        WriteGroupMod(e2);
+    }
+}
+
 void FlowManager::HandlePortStatusUpdate(const string& portName,
                                          uint32_t portNo) {
     LOG(DEBUG) << "Port-status update for " << portName;
@@ -1346,17 +1407,7 @@ void FlowManager::HandlePortStatusUpdate(const string& portName,
             HandleEndpointGroupDomainUpdate(epg);
         }
         /* Directly update the group-table */
-        BOOST_FOREACH (FdMap::value_type& kv, fdMap) {
-            const URI& fdURI = kv.first;
-            Ep2PortMap& epMap = kv.second;
-
-            uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
-            GroupEdit::Entry e1 = CreateGroupMod(OFPGC11_MODIFY, fdId, epMap);
-            WriteGroupMod(e1);
-            GroupEdit::Entry e2 = CreateGroupMod(OFPGC11_MODIFY,
-                getPromId(fdId), epMap, true);
-            WriteGroupMod(e2);
-        }
+        UpdateGroupTable();
     } else {
         unordered_set<string> epUUIDs;
         agent.getEndpointManager().getEndpointsByIface(portName, epUUIDs);
