@@ -7,8 +7,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef RANGEMASK_H_
-#define RANGEMASK_H_
+#ifndef OVSAGENT_RANGEMASK_H_
+#define OVSAGENT_RANGEMASK_H_
 
 #include <stdint.h>
 #include <ostream>
@@ -55,5 +55,5 @@ std::ostream& operator<<(std::ostream& os, const MaskList& m);
 
 }   // namespace ovsagent
 
-#endif // RANGEMASK_H_
+#endif // OVSAGENT_RANGEMASK_H_
 

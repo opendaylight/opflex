@@ -12,13 +12,10 @@
 #include "ovs.h"
 #include "TableState.h"
 
-namespace opflex {
-namespace enforcer {
-namespace flow {
+namespace ovsagent {
 
 using namespace std;
 using namespace boost;
-using namespace ovsagent;
 
 /** FlowEntry **/
 
@@ -248,6 +245,4 @@ TableState::Update(const string& objId, FlowEntryList& newEntries) {
     }
 }
 
-}   // namespace flow
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent

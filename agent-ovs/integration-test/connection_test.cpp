@@ -16,7 +16,6 @@
 #include "ConnectionFixture.h"
 
 using namespace std;
-using namespace opflex::enforcer;
 using namespace ovsagent;
 
 class EchoReplyHandler : public MessageHandler {

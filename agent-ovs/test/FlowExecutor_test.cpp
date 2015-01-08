@@ -20,9 +20,7 @@
 
 using namespace std;
 using namespace boost;
-using namespace opflex::enforcer;
-using namespace opflex::enforcer::flow;
-
+using namespace ovsagent;
 
 class MockExecutorConnection : public SwitchConnection {
 public:

@@ -29,7 +29,7 @@ class Agent;
  * distribute them as needed to other components for reporting.
  */
 class StatsManager : private boost::noncopyable,
-                     public opflex::enforcer::MessageHandler {
+                     public MessageHandler {
 public:
     /**
      * Instantiate a new stats manager that will use the provided io
@@ -39,7 +39,7 @@ public:
      * @param timer_interval the interval for the stats timer in milliseconds
      */
     StatsManager(Agent* agent, 
-                 opflex::enforcer::PortMapper& portMapper,
+                 PortMapper& portMapper,
                  long timer_interval = 30000);
 
     /**
@@ -53,7 +53,7 @@ public:
      *
      * @param connection the connection to use for stats collection
      */
-    void registerConnection(opflex::enforcer::SwitchConnection* connection);
+    void registerConnection(SwitchConnection* connection);
 
     /**
      * Start the stats manager
@@ -66,13 +66,12 @@ public:
     void stop();
 
     // see: MessageHandler
-    void Handle(opflex::enforcer::SwitchConnection *swConn, 
-                ofptype type, ofpbuf *msg);
+    void Handle(SwitchConnection *swConn, ofptype type, ofpbuf *msg);
 
 private:
     Agent* agent;
-    opflex::enforcer::PortMapper& portMapper;
-    opflex::enforcer::SwitchConnection* connection;
+    PortMapper& portMapper;
+    SwitchConnection* connection;
     boost::asio::io_service& agent_io;
     long timer_interval;
     boost::scoped_ptr<boost::asio::deadline_timer> timer;

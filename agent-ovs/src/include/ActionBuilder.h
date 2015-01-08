@@ -6,16 +6,14 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef _OPFLEX_ENFORCER_FLOW_ACTIONBUILDER_H_
-#define _OPFLEX_ENFORCER_FLOW_ACTIONBUILDER_H_
+#ifndef OVSAGENT_ACTIONBUILDER_H_
+#define OVSAGENT_ACTIONBUILDER_H_
 
 #include "ovs.h"
 
 struct ofputil_flow_stats;
 
-namespace opflex {
-namespace enforcer {
-namespace flow {
+namespace ovsagent {
 
 /**
  * Class to help construct the actions part of a table entry incrementally.
@@ -72,11 +70,6 @@ private:
     struct ofpbuf buf;
 };
 
-}   // namespace flow
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent
 
-
-
-
-#endif /* _OPFLEX_ENFORCER_FLOW_ACTIONBUILDER_H_ */
+#endif /* OVSAGENT_ACTIONBUILDER_H_ */

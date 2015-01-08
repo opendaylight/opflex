@@ -8,8 +8,8 @@
  */
 
 
-#ifndef MODBFIXTURE_H_
-#define MODBFIXTURE_H_
+#ifndef OVSAGENT_TEST_MODBFIXTURE_H_
+#define OVSAGENT_TEST_MODBFIXTURE_H_
 
 #include <boost/shared_ptr.hpp>
 #include <modelgbp/dmtree/Root.hpp>
@@ -250,4 +250,4 @@ protected:
     }
 };
 
-#endif /* MODBFIXTURE_H_ */
+#endif /* OVSAGENT_TEST_MODBFIXTURE_H_ */

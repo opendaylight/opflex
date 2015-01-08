@@ -15,7 +15,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace ovsagent;
 
 typedef unique_lock<mutex> mutex_guard;
 

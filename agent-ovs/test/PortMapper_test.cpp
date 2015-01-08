@@ -16,7 +16,7 @@
 #include "logging.h"
 
 using namespace std;
-using namespace opflex::enforcer;
+using namespace ovsagent;
 
 class MockConnection : public SwitchConnection {
 public:

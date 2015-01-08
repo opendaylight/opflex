@@ -21,14 +21,12 @@
 
 using namespace std;
 using namespace boost;
-using namespace ovsagent;
 
 typedef lock_guard<mutex> mutex_guard;
 
 const int LOST_CONN_BACKOFF_SEC = 5;
 
-namespace opflex {
-namespace enforcer {
+namespace ovsagent {
 
 SwitchConnection::SwitchConnection(const std::string& swName) :
         switchName(swName) {
@@ -344,5 +342,4 @@ SwitchConnection::ErrorHandler::Handle(SwitchConnection *swConn,
                << ofperr_get_description(err);
 }
 
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent

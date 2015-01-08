@@ -17,12 +17,10 @@
 
 using namespace std;
 using namespace boost;
-using namespace ovsagent;
 
 typedef lock_guard<mutex> mutex_guard;
 
-namespace opflex {
-namespace enforcer {
+namespace ovsagent {
 
 PortMapper::PortMapper() : lastDescReqXid(-1) {
 }
@@ -177,6 +175,5 @@ PortMapper::FindPort(uint32_t of_port_no) {
     return rportMap.at(of_port_no);
 }
 
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent
 

@@ -23,8 +23,6 @@
 using namespace std;
 using namespace boost;
 using namespace ovsagent;
-using namespace opflex::enforcer;
-using namespace opflex::enforcer::flow;
 
 class BlockingFlowReader {
 public:

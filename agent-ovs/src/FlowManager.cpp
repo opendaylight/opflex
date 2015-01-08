@@ -34,8 +34,6 @@
 using namespace std;
 using namespace boost;
 using namespace opflex::modb;
-using namespace ovsagent;
-using namespace opflex::enforcer::flow;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
 using boost::asio::deadline_timer;
@@ -45,8 +43,7 @@ using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;
 using boost::posix_time::seconds;
 
-namespace opflex {
-namespace enforcer {
+namespace ovsagent {
 
 static const uint8_t MAC_ADDR_BROADCAST[6] =
     {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -1367,7 +1364,7 @@ static void SetEntryProtocol(FlowEntry *fe, L24Classifier *classifier) {
 
 void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
         uint16_t priority, uint64_t cookie, uint32_t& svnid, uint32_t& dvnid,
-        flow::FlowEntryList& entries) {
+        FlowEntryList& entries) {
     ovs_be64 ckbe = htonll(cookie);
     MaskList srcPorts;
     MaskList dstPorts;
@@ -2020,5 +2017,4 @@ void FlowManager::FlowSyncer::ReconcileGroups() {
     groupsDone = false;
 }
 
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent

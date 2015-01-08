@@ -7,8 +7,8 @@
  */
 
 
-#ifndef _PORTMAPPER_H_
-#define _PORTMAPPER_H_
+#ifndef OVSAGENT_PORTMAPPER_H_
+#define OVSAGENT_PORTMAPPER_H_
 
 #include <string>
 #include <boost/unordered_map.hpp>
@@ -17,8 +17,7 @@
 #include "SwitchConnection.h"
 #include "ovs.h"
 
-namespace opflex {
-namespace enforcer {
+namespace ovsagent {
 
 /**
  * @brief Abstract base-class for handling port-status change events.
@@ -128,7 +127,6 @@ private:
     boost::mutex mapMtx;
 };
 
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent
 
-#endif // _PORTMAPPER_H_
+#endif // OVSAGENT_PORTMAPPER_H_

@@ -28,8 +28,6 @@
 
 using namespace std;
 using namespace boost::assign;
-using namespace opflex::enforcer;
-using namespace opflex::enforcer::flow;
 using namespace opflex::modb;
 using namespace modelgbp::gbp;
 using namespace ovsagent;

@@ -14,9 +14,7 @@
 
 extern const struct mf_field mf_fields[MFF_N_IDS];
 
-namespace opflex {
-namespace enforcer {
-namespace flow {
+namespace ovsagent {
 
 ActionBuilder::ActionBuilder() {
     ofpbuf_init(&buf, 64);
@@ -167,10 +165,7 @@ ActionBuilder::SetPushVlan() {
     ofpact_put_PUSH_VLAN(&buf);
 }
 
-
-}   // namespace flow
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent
 
 
 

@@ -8,8 +8,8 @@
 
 /* Convenience include file that includes actual libopenvswitch headers */
 
-#ifndef OVS_H_
-#define OVS_H_
+#ifndef OVSAGENT_OVS_H_
+#define OVSAGENT_OVS_H_
 
 #include <boost/static_assert.hpp>
 #include <boost/shared_ptr.hpp>
@@ -45,4 +45,4 @@ extern "C" {
 #pragma GCC diagnostic pop
 #endif
 
-#endif /* OVS_H_ */
+#endif /* OVSAGENT_OVS_H_ */

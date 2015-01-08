@@ -8,8 +8,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef FLOWREADER_H_
-#define FLOWREADER_H_
+#ifndef OVSAGENT_FLOWREADER_H_
+#define OVSAGENT_FLOWREADER_H_
 
 #include <boost/function.hpp>
 #include <boost/unordered_map.hpp>
@@ -24,7 +24,7 @@ namespace ovsagent {
 /**
  * @brief Class that allows you to read flow and group tables from a switch.
  */
-class FlowReader : public opflex::enforcer::MessageHandler {
+class FlowReader : public MessageHandler {
 public:
     /**
      * Default constructor
@@ -36,21 +36,19 @@ public:
      * Register all the necessary event listeners on connection.
      * @param conn Connection to register
      */
-    void installListenersForConnection(
-        opflex::enforcer::SwitchConnection *conn);
+    void installListenersForConnection(SwitchConnection *conn);
 
     /**
      * Unregister all event listeners from connection.
      * @param conn Connection to unregister from
      */
-    void uninstallListenersForConnection(
-        opflex::enforcer::SwitchConnection *conn);
+    void uninstallListenersForConnection(SwitchConnection *conn);
 
     /**
      * Callback function to process a list of flow-table entries.
      */
     typedef boost::function<void
-        (const opflex::enforcer::flow::FlowEntryList&, bool)> FlowCb;
+        (const FlowEntryList&, bool)> FlowCb;
 
     /**
      * Get the flow-table entries for specified table.
@@ -66,7 +64,7 @@ public:
      * Callback function to process a list of group-table entries.
      */
     typedef boost::function<void
-        (const opflex::enforcer::flow::GroupEdit::EntryList&, bool)> GroupCb;
+        (const GroupEdit::EntryList&, bool)> GroupCb;
 
     /**
      * Get the group-table entries from switch.
@@ -78,8 +76,7 @@ public:
     virtual bool getGroups(const GroupCb& cb);
 
     /* Interface: MessageHandler */
-    void Handle(opflex::enforcer::SwitchConnection *c, ofptype msgType,
-        ofpbuf *msg);
+    void Handle(SwitchConnection *c, ofptype msgType, ofpbuf *msg);
 
 private:
     /**
@@ -131,7 +128,7 @@ private:
     template<typename T>
     void decodeReply(ofpbuf *msg, T& recv, bool& replyDone);
 
-    opflex::enforcer::SwitchConnection *swConn;
+    SwitchConnection *swConn;
 
     boost::mutex reqMtx;
 
@@ -143,6 +140,4 @@ private:
 
 }   // namespace ovsagent
 
-
-
-#endif /* FLOWREADER_H_ */
+#endif /* OVSAGENT_FLOWREADER_H_ */

@@ -18,7 +18,6 @@
 
 namespace ovsagent {
 
-using namespace opflex::enforcer;
 using boost::asio::deadline_timer;
 using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;

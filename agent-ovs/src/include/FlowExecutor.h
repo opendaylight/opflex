@@ -6,8 +6,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef _OPFLEX_ENFORCER_FLOWEXECUTOR_H_
-#define _OPFLEX_ENFORCER_FLOWEXECUTOR_H_
+#ifndef OVSAGENT_FLOWEXECUTOR_H_
+#define OVSAGENT_FLOWEXECUTOR_H_
 
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
@@ -19,8 +19,7 @@
 #include "SwitchConnection.h"
 #include "TableState.h"
 
-namespace opflex {
-namespace enforcer {
+namespace ovsagent {
 
 /**
  * @brief Class that can execute a set of OpenFlow
@@ -43,7 +42,7 @@ public:
      * @return false if any error occurs while sending messages or
      * an error reply was received, true otherwise
      */
-    virtual bool Execute(const flow::FlowEdit& fe);
+    virtual bool Execute(const FlowEdit& fe);
 
     /**
      * Construct and send group-modification messages corresponding
@@ -53,7 +52,7 @@ public:
      * @return false if any error occurs while sending messages or
      * an error reply was received, true otherwise
      */
-    virtual bool Execute(const flow::GroupEdit& ge);
+    virtual bool Execute(const GroupEdit& ge);
 
     /**
      * Construct and send flow-modification messages corresponding
@@ -63,7 +62,7 @@ public:
      * @return false if any error occurs while sending messages,
      * true otherwise
      */
-    virtual bool ExecuteNoBlock(const flow::FlowEdit& fe);
+    virtual bool ExecuteNoBlock(const FlowEdit& fe);
 
     /**
      * Construct and send group-modification messages corresponding
@@ -73,7 +72,7 @@ public:
      * @return false if any error occurs while sending messages,
      * true otherwise
      */
-    virtual bool ExecuteNoBlock(const flow::GroupEdit& ge);
+    virtual bool ExecuteNoBlock(const GroupEdit& ge);
 
     /**
      * Register all the necessary event listeners on connection.
@@ -99,7 +98,7 @@ public:
      * @param ofVersion OpenFlow version to use for encoding
      * @return flow-modification message
      */
-    static ofpbuf *EncodeFlowMod(const flow::FlowEdit::Entry& edit,
+    static ofpbuf *EncodeFlowMod(const FlowEdit::Entry& edit,
             ofp_version ofVersion);
 
     /**
@@ -108,7 +107,7 @@ public:
      * @param ofVersion OpenFlow version to use for encoding
      * @return group-modification message
      */
-    static ofpbuf *EncodeGroupMod(const flow::GroupEdit::Entry& edit,
+    static ofpbuf *EncodeGroupMod(const GroupEdit::Entry& edit,
             ofp_version ofVersion);
 private:
     /**
@@ -184,8 +183,7 @@ private:
     boost::condition_variable reqCondVar;
 };
 
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent
 
 
-#endif // _OPFLEX_ENFORCER_FLOWEXECUTOR_H_
+#endif // OVSAGENT_FLOWEXECUTOR_H_

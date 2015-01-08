@@ -7,8 +7,8 @@
  */
 
 
-#ifndef _SWITCHCONNECTION_H_
-#define _SWITCHCONNECTION_H_
+#ifndef OVSAGENT_SWITCHCONNECTION_H_
+#define OVSAGENT_SWITCHCONNECTION_H_
 
 #include <queue>
 #include <boost/unordered_map.hpp>
@@ -16,8 +16,7 @@
 #include <boost/thread/mutex.hpp>
 #include "ovs.h"
 
-namespace opflex {
-namespace enforcer {
+namespace ovsagent {
 
 class SwitchConnection;
 
@@ -201,8 +200,7 @@ private:
     ErrorHandler errorHandler;
 };
 
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent
 
 
-#endif // _SWITCHCONNECTION_H_
+#endif // OVSAGENT_SWITCHCONNECTION_H_

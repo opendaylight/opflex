@@ -16,7 +16,6 @@ namespace ovsagent {
 
 using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
-using opflex::enforcer::FlowManager;
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_), flowManager(agent_), connection(NULL),
@@ -61,7 +60,7 @@ void StitchedModeRenderer::start() {
     flowManager.SetVirtualRouterMac(virtualRouterMac);
     flowManager.SetFlowIdCache(flowIdCache);
 
-    connection = new opflex::enforcer::SwitchConnection(ovsBridgeName);
+    connection = new SwitchConnection(ovsBridgeName);
     portMapper.InstallListenersForConnection(connection);
     flowExecutor.InstallListenersForConnection(connection);
     flowReader.installListenersForConnection(connection);

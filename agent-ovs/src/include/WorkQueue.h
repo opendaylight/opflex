@@ -8,8 +8,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef WORKQUEUE_H_
-#define WORKQUEUE_H_
+#ifndef OVSAGENT_WORKQUEUE_H_
+#define OVSAGENT_WORKQUEUE_H_
 
 #include <list>
 #include <boost/function.hpp>
@@ -66,4 +66,4 @@ private:
 
 } //namespace ovsagent
 
-#endif  // WORKQUEUE_H_
+#endif  // OVSAGENT_WORKQUEUE_H_

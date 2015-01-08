@@ -6,8 +6,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef _OPFLEX_ENFORCER_FLOW_TABLESTATE_H_
-#define _OPFLEX_ENFORCER_FLOW_TABLESTATE_H_
+#ifndef OVSAGENT_TABLESTATE_H_
+#define OVSAGENT_TABLESTATE_H_
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -18,10 +18,7 @@
 
 struct ofputil_flow_stats;
 
-namespace opflex {
-namespace enforcer {
-namespace flow {
-
+namespace ovsagent {
 
 /**
  * Class representing an entry in a flow table.
@@ -166,10 +163,6 @@ private:
     EntryMap entryMap;
 };
 
+} // namespace ovsagent
 
-
-}   // namespace flow
-}   // namespace enforcer
-}   // namespace opflex
-
-#endif // _OPFLEX_ENFORCER_FLOW_TABLESTATE_H_
+#endif // OVSAGENT_TABLESTATE_H_

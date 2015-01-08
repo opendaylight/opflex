@@ -7,8 +7,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef IDGENERATOR_H_
-#define IDGENERATOR_H_
+#ifndef OVSAGENT_IDGENERATOR_H_
+#define OVSAGENT_IDGENERATOR_H_
 
 #include <string>
 #include <boost/unordered_map.hpp>
@@ -98,4 +98,4 @@ private:
 
 } // ovsagent
 
-#endif // IDGENERATOR_H_
+#endif // OVSAGENT_IDGENERATOR_H_

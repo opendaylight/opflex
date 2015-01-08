@@ -16,14 +16,10 @@
 
 using namespace std;
 using namespace boost;
-using namespace opflex::enforcer;
-using namespace opflex::enforcer::flow;
-using namespace ovsagent;
 
 typedef unique_lock<mutex> mutex_guard;
 
-namespace opflex {
-namespace enforcer {
+namespace ovsagent {
 
 FlowExecutor::FlowExecutor() : swConn(NULL) {
 }
@@ -255,5 +251,4 @@ FlowExecutor::Connected(SwitchConnection *swConn) {
     reqCondVar.notify_all();
 }
 
-}   // namespace enforcer
-}   // namespace opflex
+} // namespace ovsagent
