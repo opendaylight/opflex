@@ -74,6 +74,7 @@ private:
     std::string encapIface;
     std::string tunnelRemoteIp;
     std::string uplinkIface;
+    uint16_t uplinkVlan;
     bool virtualRouter;
     std::string virtualRouterMac;
     std::string flowIdCache;
