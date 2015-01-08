@@ -67,7 +67,8 @@ static const char * ID_NMSPC_CON = "contract";
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
         reader(NULL), fallbackMode(FALLBACK_PROXY), encapType(ENCAP_NONE),
-        virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this),
+        floodScope(FLOOD_DOMAIN), virtualRouterEnabled(true),
+        isSyncing(false), flowSyncer(*this),
         connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC), stopping(false),
         opflexPeerConnected(false) {
     memset(routerMac, 0, sizeof(routerMac));
@@ -157,6 +158,10 @@ void FlowManager::SetEncapIface(const string& encapIf) {
     encapIface = encapIf;
 }
 
+void FlowManager::SetFloodScope(FloodScope fscope) {
+    floodScope = fscope;
+}
+
 uint32_t FlowManager::GetTunnelPort() {
     return portMapper ? portMapper->FindPort(encapIface) : OFPP_NONE;
 }
@@ -209,13 +214,13 @@ ovs_be64 FlowManager::GetNDCookie() {
 /** Source table helper functions */
 static void
 SetSourceAction(FlowEntry *fe, uint32_t epgId,
-                uint32_t bdId,  uint32_t fdId,  uint32_t l3Id,
+                uint32_t bdId,  uint32_t fgrpId,  uint32_t l3Id,
                 uint8_t nextTable = FlowManager::DST_TABLE_ID)
 {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG0, epgId);
     ab.SetRegLoad(MFF_REG4, bdId);
-    ab.SetRegLoad(MFF_REG5, fdId);
+    ab.SetRegLoad(MFF_REG5, fgrpId);
     ab.SetRegLoad(MFF_REG6, l3Id);
     ab.SetGotoTable(nextTable);
 
@@ -324,14 +329,14 @@ SetDestMatchNd(FlowEntry *fe, uint16_t prio, const address* ip,
 }
 
 static void
-SetMatchFd(FlowEntry *fe, uint16_t prio, uint32_t fdId, bool broadcast, 
+SetMatchFd(FlowEntry *fe, uint16_t prio, uint32_t fgrpId, bool broadcast,
            uint8_t tableId, uint8_t* dstMac = NULL, uint64_t cookie = 0) {
     fe->entry->table_id = tableId;
     if (cookie != 0)
         fe->entry->cookie = cookie;
     fe->entry->priority = prio;
     match *m = &fe->entry->match;
-    match_set_reg(&fe->entry->match, 5 /* REG5 */, fdId);
+    match_set_reg(&fe->entry->match, 5 /* REG5 */, fgrpId);
     if (broadcast)
         match_set_dl_dst_masked(m, MAC_ADDR_MULTICAST, MAC_ADDR_MULTICAST);
     if (dstMac)
@@ -428,9 +433,9 @@ SetDestActionSubnetArp(FlowEntry *fe, const uint8_t *specialMac,
 }
 
 static void
-SetDestActionFdBroadcast(FlowEntry *fe, uint32_t fdId) {
+SetDestActionFdBroadcast(FlowEntry *fe, uint32_t fgrpId) {
     ActionBuilder ab;
-    ab.SetGroup(fdId);
+    ab.SetGroup(fgrpId);
     ab.Build(fe->entry);
 }
 
@@ -659,7 +664,7 @@ bool
 FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
                                     optional<URI>& rdURI, uint32_t& rdId, 
                                     uint32_t& bdId,
-                                    optional<URI>& fdURI, uint32_t& fdId) {
+                                    optional<URI>& fgrpURI, uint32_t& fgrpId) {
     PolicyManager& polMgr = agent.getPolicyManager();
     optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI);
     if (!epgVnid) {
@@ -677,10 +682,14 @@ FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
     rdId = 0;
     bdId = epgBd ?
             GetId(BridgeDomain::CLASS_ID, epgBd.get()->getURI()) : 0;
-    fdId = 0;
-    if (epgFd) {
-        fdURI = epgFd.get()->getURI();
-        fdId = GetId(FloodDomain::CLASS_ID, fdURI.get());
+    fgrpId = 0;
+    if (epgFd) {    // FD present -> flooding is desired
+        if (floodScope == ENDPOINT_GROUP) {
+            fgrpURI = epgURI;
+        } else  {
+            fgrpURI = epgFd.get()->getURI();
+        }
+        fgrpId = GetId(FloodDomain::CLASS_ID, fgrpURI.get());
     }
     if (epgRd) {
         rdURI = epgRd.get()->getURI();
@@ -701,7 +710,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         WriteFlow(uuid, SEC_TABLE_ID, NULL);
         WriteFlow(uuid, SRC_TABLE_ID, NULL);
         WriteFlow(uuid, DST_TABLE_ID, NULL);
-        RemoveEndpointFromFloodDomain(uuid);
+        RemoveEndpointFromFloodGroup(uuid);
         return;
     }
     const Endpoint& endPoint = *epWrapper.get();
@@ -772,13 +781,18 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         return;
     }
 
-    uint32_t epgVnid, rdId, bdId, fdId;
-    optional<URI> fdURI, rdURI;
+    uint32_t epgVnid, rdId, bdId, fgrpId;
+    optional<URI> fgrpURI, rdURI;
     if (!GetGroupForwardingInfo(epgURI.get(), epgVnid, rdURI, rdId,
-                                bdId, fdURI, fdId)) {
+                                bdId, fgrpURI, fgrpId)) {
         return;
     }
 
+    /**
+     * Irrespective of flooding scope (epg vs. flood-domain), the
+     * properties of the flood-domain object decide how flooding is
+     * done.
+     */
     optional<shared_ptr<FloodDomain> > fd = 
         agent.getPolicyManager().getFDForGroup(epgURI.get());
     uint8_t arpMode = AddressResModeEnumT::CONST_UNICAST;
@@ -796,7 +810,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         if (hasMac) {
             FlowEntry *e0 = new FlowEntry();
             SetSourceMatchEp(e0, 140, ofPort, macAddr);
-            SetSourceAction(e0, epgVnid, bdId, fdId, rdId);
+            SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId);
             src.push_back(FlowEntryPtr(e0));
         }
 
@@ -806,7 +820,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             // table
             FlowEntry *e1 = new FlowEntry();
             SetSourceMatchEp(e1, 139, ofPort, NULL);
-            SetSourceAction(e1, epgVnid, bdId, fdId, rdId, LEARN_TABLE_ID);
+            SetSourceAction(e1, epgVnid, bdId, fgrpId, rdId, LEARN_TABLE_ID);
             src.push_back(FlowEntryPtr(e1));
         }
 
@@ -867,12 +881,12 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
     }
     WriteFlow(uuid, DST_TABLE_ID, elDst);
 
-    if (fdURI && isLocalEp) {
-        UpdateEndpointFloodDomain(fdURI.get(), endPoint, ofPort,
-                                  endPoint.isPromiscuousMode(),
-                                  fd);
+    if (fgrpURI && isLocalEp) {
+        UpdateEndpointFloodGroup(fgrpURI.get(), endPoint, ofPort,
+                                 endPoint.isPromiscuousMode(),
+                                 fd);
     } else {
-        RemoveEndpointFromFloodDomain(uuid);
+        RemoveEndpointFromFloodGroup(uuid);
     }
 }
 
@@ -955,10 +969,10 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         return;
     }
 
-    uint32_t epgVnid, rdId, bdId, fdId;
-    optional<URI> fdURI, rdURI;
+    uint32_t epgVnid, rdId, bdId, fgrpId;
+    optional<URI> fgrpURI, rdURI;
     if (!GetGroupForwardingInfo(epgURI, epgVnid, rdURI, 
-                                rdId, bdId, fdURI, fdId)) {
+                                rdId, bdId, fgrpURI, fgrpId)) {
         return;
     }
 
@@ -967,7 +981,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         // tunnel uplink
         FlowEntry *e0 = new FlowEntry();
         SetSourceMatchEpg(e0, encapType, 150, tunPort, epgVnid);
-        SetSourceAction(e0, epgVnid, bdId, fdId, rdId);
+        SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId);
         WriteFlow(epgId, SRC_TABLE_ID, e0);
     } else {
         WriteFlow(epgId, SRC_TABLE_ID, NULL);
@@ -1120,20 +1134,20 @@ FlowManager::CreateGroupMod(uint16_t type, uint32_t groupId,
     return entry;
 }
 
-static uint32_t getPromId(uint32_t fdId) {
-    return ((1<<31) | fdId);
+static uint32_t getPromId(uint32_t fgrpId) {
+    return ((1<<31) | fgrpId);
 }
 
 void
-FlowManager::UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
-                                       const Endpoint& endPoint, uint32_t epPort,
-                                       bool isPromiscuous, 
-                                       optional<shared_ptr<FloodDomain> >& fd) {
+FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
+                                      const Endpoint& endPoint, uint32_t epPort,
+                                      bool isPromiscuous,
+                                      optional<shared_ptr<FloodDomain> >& fd) {
     const std::string& epUUID = endPoint.getUUID();
     std::pair<uint32_t, bool> epPair(epPort, isPromiscuous);
-    uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
-    string fdStrId = fdURI.toString();
-    FdMap::iterator fdItr = fdMap.find(fdURI);
+    uint32_t fgrpId = GetId(FloodDomain::CLASS_ID, fgrpURI);
+    string fgrpStrId = fgrpURI.toString();
+    FloodGroupMap::iterator fgrpItr = floodGroupMap.find(fgrpURI);
 
     uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
     if (fd) {
@@ -1141,30 +1155,30 @@ FlowManager::UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
             fd.get()->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
     }
 
-    optional<URI> oldFdURI;
-    if (fdItr != fdMap.end()) {
-        Ep2PortMap& epMap = fdItr->second;
+    if (fgrpItr != floodGroupMap.end()) {
+        Ep2PortMap& epMap = fgrpItr->second;
         Ep2PortMap::iterator epItr = epMap.find(epUUID);
 
         if (epItr == epMap.end()) {
-            /* EP not attached to this FD, check/remove if it was attached
-             * to a different one */
-            RemoveEndpointFromFloodDomain(epUUID);
+            /* EP not attached to this flood-group, check and remove
+             * if it was attached to a different one */
+            RemoveEndpointFromFloodGroup(epUUID);
         }
         if (epItr == epMap.end() || epItr->second != epPair) {
             epMap[epUUID] = epPair;
-            GroupEdit::Entry e = CreateGroupMod(OFPGC11_MODIFY, fdId, epMap);
+            GroupEdit::Entry e = CreateGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
             WriteGroupMod(e);
-            GroupEdit::Entry e2 = CreateGroupMod(OFPGC11_MODIFY, getPromId(fdId), 
-                                                 epMap, true);
+            GroupEdit::Entry e2 =
+                CreateGroupMod(OFPGC11_MODIFY, getPromId(fgrpId), epMap, true);
             WriteGroupMod(e2);
         }
     } else {
-        fdMap[fdURI][epUUID] = epPair;
-        GroupEdit::Entry e = CreateGroupMod(OFPGC11_ADD, fdId, fdMap[fdURI]);
+        floodGroupMap[fgrpURI][epUUID] = epPair;
+        GroupEdit::Entry e =
+            CreateGroupMod(OFPGC11_ADD, fgrpId, floodGroupMap[fgrpURI]);
         WriteGroupMod(e);
-        GroupEdit::Entry e2 = CreateGroupMod(OFPGC11_ADD, getPromId(fdId), 
-                                             fdMap[fdURI], true);
+        GroupEdit::Entry e2 = CreateGroupMod(OFPGC11_ADD, getPromId(fgrpId),
+                                             floodGroupMap[fgrpURI], true);
         WriteGroupMod(e2);
 
     }
@@ -1173,25 +1187,25 @@ FlowManager::UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
     FlowEntryList epLearn;
     // deliver broadcast/multicast traffic to the group table
     FlowEntry *e0 = new FlowEntry();
-    SetMatchFd(e0, 10, fdId, true, DST_TABLE_ID);
-    SetDestActionFdBroadcast(e0, fdId);
+    SetMatchFd(e0, 10, fgrpId, true, DST_TABLE_ID);
+    SetDestActionFdBroadcast(e0, fgrpId);
     entryList.push_back(FlowEntryPtr(e0));
 
     if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
         // go to the learning table on an unknown unicast
         // destination in flood mode
         FlowEntry *unicastLearn = new FlowEntry();
-        SetMatchFd(unicastLearn, 5, fdId, false, DST_TABLE_ID);
+        SetMatchFd(unicastLearn, 5, fgrpId, false, DST_TABLE_ID);
         SetActionGotoLearn(unicastLearn);
         entryList.push_back(FlowEntryPtr(unicastLearn));
 
         // Deliver unknown packets in the flood domain when
         // learning to the controller for reactive flow setup.
         FlowEntry *fdContr = new FlowEntry();
-        SetMatchFd(fdContr, 5, fdId, false, LEARN_TABLE_ID,
+        SetMatchFd(fdContr, 5, fgrpId, false, LEARN_TABLE_ID,
                    NULL, GetProactiveLearnEntryCookie());
         SetActionController(fdContr);
-        WriteFlow(fdStrId, LEARN_TABLE_ID, fdContr);
+        WriteFlow(fgrpStrId, LEARN_TABLE_ID, fdContr);
 
         // Prepopulate a stage1 learning entry for known EPs
         if (endPoint.getMAC() && endPoint.getInterfaceName()) {
@@ -1200,7 +1214,7 @@ FlowManager::UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
                 endPoint.getMAC().get().toUIntArray(macAddr);
 
                 FlowEntry* learnEntry = new FlowEntry();
-                SetMatchFd(learnEntry, 101, fdId, false, LEARN_TABLE_ID,
+                SetMatchFd(learnEntry, 101, fgrpId, false, LEARN_TABLE_ID,
                            macAddr);
                 ActionBuilder ab;
                 ab.SetOutputToPort(epPort);
@@ -1210,28 +1224,30 @@ FlowManager::UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
             }
         }
     }
-    WriteFlow(fdStrId, DST_TABLE_ID, entryList);
+    WriteFlow(fgrpStrId, DST_TABLE_ID, entryList);
     WriteFlow(epUUID, LEARN_TABLE_ID, epLearn);
 }
 
-void FlowManager::RemoveEndpointFromFloodDomain(const std::string& epUUID) {
-    for (FdMap::iterator itr = fdMap.begin(); itr != fdMap.end(); ++itr) {
-        const URI& fdURI = itr->first;
+void FlowManager::RemoveEndpointFromFloodGroup(const std::string& epUUID) {
+    for (FloodGroupMap::iterator itr = floodGroupMap.begin();
+         itr != floodGroupMap.end();
+         ++itr) {
+        const URI& fgrpURI = itr->first;
         Ep2PortMap& epMap = itr->second;
         if (epMap.erase(epUUID) == 0) {
             continue;
         }
-        uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
+        uint32_t fgrpId = GetId(FloodDomain::CLASS_ID, fgrpURI);
         uint16_t type = epMap.empty() ?
                 OFPGC11_DELETE : OFPGC11_MODIFY;
         GroupEdit::Entry e0 =
-                CreateGroupMod(type, fdId, epMap);
+                CreateGroupMod(type, fgrpId, epMap);
         GroupEdit::Entry e1 =
-                CreateGroupMod(type, getPromId(fdId), epMap, true);
+                CreateGroupMod(type, getPromId(fgrpId), epMap, true);
         if (epMap.empty()) {
-            WriteFlow(fdURI.toString(), DST_TABLE_ID, NULL);
-            WriteFlow(fdURI.toString(), LEARN_TABLE_ID, NULL);
-            fdMap.erase(fdURI);
+            WriteFlow(fgrpURI.toString(), DST_TABLE_ID, NULL);
+            WriteFlow(fgrpURI.toString(), LEARN_TABLE_ID, NULL);
+            floodGroupMap.erase(fgrpURI);
         }
         WriteGroupMod(e0);
         WriteGroupMod(e1);
@@ -1384,15 +1400,15 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
 }
 
 void FlowManager::UpdateGroupTable() {
-    BOOST_FOREACH (FdMap::value_type& kv, fdMap) {
-        const URI& fdURI = kv.first;
-        uint32_t fdId = GetId(FloodDomain::CLASS_ID, fdURI);
+    BOOST_FOREACH (FloodGroupMap::value_type& kv, floodGroupMap) {
+        const URI& fgrpURI = kv.first;
+        uint32_t fgrpId = GetId(FloodDomain::CLASS_ID, fgrpURI);
         Ep2PortMap& epMap = kv.second;
 
-        GroupEdit::Entry e1 = CreateGroupMod(OFPGC11_MODIFY, fdId, epMap);
+        GroupEdit::Entry e1 = CreateGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
         WriteGroupMod(e1);
         GroupEdit::Entry e2 = CreateGroupMod(OFPGC11_MODIFY,
-                                             getPromId(fdId), epMap, true);
+                                             getPromId(fgrpId), epMap, true);
         WriteGroupMod(e2);
     }
 }
@@ -1980,14 +1996,14 @@ void FlowManager::FlowSyncer::CheckGroupEntry(uint32_t groupId,
 
 void FlowManager::FlowSyncer::ReconcileGroups() {
     GroupEdit ge;
-    BOOST_FOREACH (FdMap::value_type& kv, flowManager.fdMap) {
-        const URI& fdURI = kv.first;
+    BOOST_FOREACH (FloodGroupMap::value_type& kv, flowManager.floodGroupMap) {
+        const URI& fgrpURI = kv.first;
         Ep2PortMap& epMap = kv.second;
 
-        uint32_t fdId = flowManager.GetId(FloodDomain::CLASS_ID, fdURI);
-        CheckGroupEntry(fdId, epMap, false, ge);
+        uint32_t fgrpId = flowManager.GetId(FloodDomain::CLASS_ID, fgrpURI);
+        CheckGroupEntry(fgrpId, epMap, false, ge);
 
-        uint32_t promFdId = getPromId(fdId);
+        uint32_t promFdId = getPromId(fgrpId);
         CheckGroupEntry(promFdId, epMap, true, ge);
     }
     Ep2PortMap tmp;

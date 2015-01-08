@@ -143,6 +143,22 @@ public:
     void SetEncapType(EncapType encapType);
     void SetEncapIface(const std::string& encapIface);
 
+    /**
+     * Flooding scopes supported by the flow manager.
+     */
+    enum FloodScope {
+        /**
+         * Flood to all endpoints within a flood domain
+         */
+        FLOOD_DOMAIN,
+
+        /**
+         * Flood to endpoints only within an endpoint group
+         */
+        ENDPOINT_GROUP
+    };
+    void SetFloodScope(FloodScope floodScope);
+
     void SetTunnelRemoteIp(const std::string& tunnelRemoteIp);
     void SetVirtualRouter(bool virtualRouterEnabled);
     void SetVirtualRouterMac(const std::string& mac);
@@ -331,26 +347,27 @@ private:
     static bool ParseIpv6Addr(const std::string& str, in6_addr *ip);
 
     /**
-     * Update flow-tables to associate an endpoint with a flood-domain.
+     * Update flow-tables to associate an endpoint with a flood-group.
      *
-     * @param fdURI URI of flood-domain
+     * @param fgrpURI URI of flood-group (flood-domain or endpoint-group)
      * @param endpoint The endpoint to update
      * @param epPort Port number of endpoint
      * @param isPromiscuous whether the endpoint port is promiscuous
+     * @param fd Flood-domain to which the endpoint belongs
      */
-    void UpdateEndpointFloodDomain(const opflex::modb::URI& fdURI,
-                                   const ovsagent::Endpoint& endPoint, 
-                                   uint32_t epPort, 
-                                   bool isPromiscuous, 
-                                   boost::optional<boost::shared_ptr<
-                                       modelgbp::gbp::FloodDomain> >& fd);
+    void UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
+                                  const ovsagent::Endpoint& endPoint,
+                                  uint32_t epPort,
+                                  bool isPromiscuous,
+                                  boost::optional<boost::shared_ptr<
+                                      modelgbp::gbp::FloodDomain> >& fd);
 
     /**
-     * Update flow-tables to dis-associate an endpoint from any flood-domain.
+     * Update flow-tables to dis-associate an endpoint from any flood-group.
      *
      * @param epUUID UUID of endpoint
      */
-    void RemoveEndpointFromFloodDomain(const std::string& epUUID);
+    void RemoveEndpointFromFloodGroup(const std::string& epUUID);
 
     /*
      * Map of endpoint to the port it is using.
@@ -380,6 +397,7 @@ private:
     FallbackMode fallbackMode;
     EncapType encapType;
     std::string encapIface;
+    FloodScope floodScope;
     boost::asio::ip::address tunnelDst;
     boost::optional<boost::asio::ip::address> mcastTunDst;
     bool virtualRouterEnabled;
@@ -388,10 +406,11 @@ private:
     std::string flowIdCache;
 
     /*
-     * Map of flood-domain URI to the endpoints associated with it.
+     * Map of flood-group URI to the endpoints associated with it.
+     * The flood-group can either be a flood-domain or an endpoint-group
      */
-    typedef boost::unordered_map<opflex::modb::URI, Ep2PortMap> FdMap;
-    FdMap fdMap;
+    typedef boost::unordered_map<opflex::modb::URI, Ep2PortMap> FloodGroupMap;
+    FloodGroupMap floodGroupMap;
 
     ovsagent::WorkQueue workQ;
 

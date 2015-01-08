@@ -232,6 +232,7 @@ public:
     void localEpTest();
     void remoteEpTest();
     void fdTest();
+    void groupFloodTest();
     void policyTest();
     void policyPortRangeTest();
     void connectTest();
@@ -262,6 +263,7 @@ public:
     string ge_fd1, ge_bkt_ep4;
     string ge_fd1_prom;
     string ge_bkt_tun_new;
+    string ge_epg0, ge_epg0_prom, ge_epg2, ge_epg2_prom;
     uint32_t ep2_port;
     uint32_t ep4_port;
     uint32_t tun_port_new;
@@ -513,6 +515,59 @@ BOOST_FIXTURE_TEST_CASE(fd_vxlan, VxlanFlowManagerFixture) {
 
 BOOST_FIXTURE_TEST_CASE(fd_vlan, VlanFlowManagerFixture) {
     fdTest();
+}
+
+void FlowManagerFixture::groupFloodTest() {
+    flowManager.SetFloodScope(FlowManager::ENDPOINT_GROUP);
+    setConnected();
+
+    /* "create" local endpoints ep0 and ep2 */
+    exec.IgnoreFlowMods(fe_ep0.size() + 7);
+    portmapper.ports[ep2->getInterfaceName().get()] = ep2_port;
+    flowManager.endpointUpdated(ep0->getUUID());
+    flowManager.endpointUpdated(ep2->getUUID());
+    WAIT_FOR(exec.IsEmpty(), 500);
+
+    /* Move ep2 to epg2, add epg0 to fd0. Now fd0 has 2 epgs */
+    ep2->setEgURI(epg2->getURI());
+    epSrc.updateEndpoint(*ep2);
+    Mutator m1(framework, policyOwner);
+    epg0->addGbpEpGroupToNetworkRSrc()
+            ->setTargetSubnets(subnetsfd0->getURI());
+    m1.commit();
+    WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
+    WAIT_FOR(policyMgr.getFDForGroup(epg2->getURI()) != boost::none, 500);
+    exec.Clear();
+    exec.Expect(FlowEdit::mod, fe_ep0_fd0_1);
+    exec.Expect(FlowEdit::add, fe_ep0_fd0_2);
+    exec.ExpectGroup(FlowEdit::add, ge_epg0 + ge_bkt_ep0 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::add, ge_epg0_prom + ge_bkt_tun);
+    flowManager.endpointUpdated(ep0->getUUID());
+    WAIT_FOR(exec.IsEmpty(), 500);
+    BOOST_CHECK(exec.IsGroupEmpty());
+
+    exec.IgnoreFlowMods();
+    exec.Clear();
+    exec.ExpectGroup(FlowEdit::add, ge_epg2 + ge_bkt_ep2 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::add, ge_epg2_prom + ge_bkt_tun);
+    flowManager.endpointUpdated(ep2->getUUID());
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+
+    /* remove ep0 */
+    epSrc.removeEndpoint(ep0->getUUID());
+    exec.Clear();
+    exec.ExpectGroup(FlowEdit::del, ge_epg0);
+    exec.ExpectGroup(FlowEdit::del, ge_epg0_prom);
+    flowManager.endpointUpdated(ep0->getUUID());
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+}
+
+BOOST_FIXTURE_TEST_CASE(group_flood_vxlan, VxlanFlowManagerFixture) {
+    groupFloodTest();
+}
+
+BOOST_FIXTURE_TEST_CASE(group_flood_vlan, VlanFlowManagerFixture) {
+    groupFloodTest();
 }
 
 void FlowManagerFixture::policyTest() {
@@ -891,7 +946,7 @@ private:
         } while(true);
     }
     string str(int i, bool hex = false) {
-        char buf[10];
+        char buf[20];
         sprintf(buf, hex && i != 0 ? "0x%x" : "%d", i);
         return buf;
     }
@@ -1209,6 +1264,12 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
             .done();
     ge_fd1 = "group_id=2,type=all";
     ge_fd1_prom = "group_id=2147483650,type=all";
+
+    /* Group entries when flooding scope is ENDPOINT_GROUP */
+    ge_epg0 = "group_id=1,type=all";
+    ge_epg0_prom = "group_id=2147483649,type=all";
+    ge_epg2 = "group_id=2,type=all";
+    ge_epg2_prom = "group_id=2147483650,type=all";
 
     uint32_t epg2_vnid = policyMgr.getVnidForGroup(epg2->getURI()).get();
     uint32_t epg3_vnid = policyMgr.getVnidForGroup(epg3->getURI()).get();
