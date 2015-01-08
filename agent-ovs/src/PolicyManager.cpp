@@ -65,12 +65,12 @@ void PolicyManager::start() {
     L24Classifier::registerListener(framework, &contractListener);
 
     // resolve platform config
-    Mutator mutator(framework, "policyelement");
+    Mutator mutator(framework, "init");
     optional<shared_ptr<dmtree::Root> > root(dmtree::Root::resolve(URI::ROOT));
-    if (root)
-        root.get()->addDomainConfig()
-            ->addDomainConfigToConfigRSrc()
-            ->setTargetConfig(opflexDomain);
+    root.get()->addDomainConfig()
+        ->addDomainConfigToConfigRSrc()
+        ->setTargetConfig(opflexDomain);
+    mutator.commit();
 }
 
 void PolicyManager::stop() {

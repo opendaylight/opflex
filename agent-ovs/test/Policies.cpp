@@ -76,6 +76,9 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         policy::Universe::resolve(framework).get();
 
     Mutator mutator(framework, "policyreg");
+    universe->addPlatformConfig("c7820284-fa76-44d5-948c-9de464f1c047")
+        ->setMulticastGroupIP("224.1.1.1");
+
     space = universe->addPolicySpace("test");
     fd1 = space->addGbpFloodDomain("fd");
     fd2 = space->addGbpFloodDomain("fd2");
