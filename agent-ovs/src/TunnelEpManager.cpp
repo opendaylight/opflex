@@ -126,18 +126,6 @@ static string getInterfaceMac(const string& iface) {
 }
 #endif
 
-static uint32_t getInterfaceEncap(const string& iface) {
-    int id;
-    int pos = iface.rfind(".");
-    if (pos != string::npos && pos < iface.size() &&
-        sscanf(iface.c_str() + pos + 1, "%d", &id) == 1) {
-        return id;
-    } else {
-        LOG(INFO) << "Unable to determine encap type for " << iface;
-        return 0;
-    }
-}
-
 void TunnelEpManager::on_timer(const error_code& ec) {
     if (ec) {
         // shut down the timer when we get a cancellation
@@ -148,7 +136,6 @@ void TunnelEpManager::on_timer(const error_code& ec) {
     string bestAddress;
     string bestIface;
     string bestMac;
-    uint32_t bestEncap;
 
 #ifdef HAVE_IFADDRS_H
     // This is linux-specific.  Other plaforms will require their own
@@ -207,7 +194,6 @@ void TunnelEpManager::on_timer(const error_code& ec) {
 
     if (!bestAddress.empty()) {
         bestMac = getInterfaceMac(bestIface);
-        bestEncap = getInterfaceEncap(bestIface);
     }
 
     freeifaddrs(ifaddr);
@@ -222,7 +208,7 @@ void TunnelEpManager::on_timer(const error_code& ec) {
         }
 
         LOG(INFO) << "Discovered uplink IP: " << bestAddress
-                  << ", MAC: " << bestMac << ", Encap: vlan-" << bestEncap
+                  << ", MAC: " << bestMac
                   << " on interface: " << bestIface;
 
         using namespace modelgbp::gbpe;
@@ -230,11 +216,14 @@ void TunnelEpManager::on_timer(const error_code& ec) {
         optional<shared_ptr<TunnelEpUniverse> > tu = 
             TunnelEpUniverse::resolve(agent->getFramework());
         if (tu) {
-            tu.get()->addGbpeTunnelEp(tunnelEpUUID)
-                ->setTerminatorIp(bestAddress)
-                .setMac(opflex::modb::MAC(bestMac))
-                .setEncapType(EncapTypeEnumT::CONST_VLAN)
-                .setEncapId(bestEncap);
+            shared_ptr<TunnelEp> tunnelEp = 
+                tu.get()->addGbpeTunnelEp(tunnelEpUUID);
+            tunnelEp->setTerminatorIp(bestAddress)
+                .setMac(opflex::modb::MAC(bestMac));
+            if (uplinkVlan != 0) {
+                tunnelEp->setEncapType(EncapTypeEnumT::CONST_VLAN)
+                    .setEncapId(uplinkVlan);
+            }
         }
 
         mutator.commit();
