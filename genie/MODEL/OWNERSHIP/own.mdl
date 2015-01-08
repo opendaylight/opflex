@@ -13,8 +13,11 @@ owner[init]
     class[policy/Universe]
     class[epr/Universe]
     class[observer/Universe]
-    class[domain/Config]
     module[dmtree]
+    {
+        class[*]
+    }
+    module[domain]
     {
         class[*]
     }

@@ -1,3 +1,4 @@
+/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
