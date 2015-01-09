@@ -25,8 +25,12 @@ module[platform]
         contained
         {
             parent[class=policy/Universe]
+        }
+        named
+        {
+            parent[class=*]
             {
-                name-component[prefix=platform; member=name]
+                component[prefix=platform; member=name]
             }
         }
     }
