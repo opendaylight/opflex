@@ -17,7 +17,8 @@
 #include <iostream>
 
 #include "config.h"
-#if defined(HAVE_BOOST_LOG) && defined(HAVE_BOOST_LOG_SETUP)
+#if defined(HAVE_BOOST_LOG) && defined(HAVE_BOOST_LOG_SETUP) \
+    && !defined(NO_BOOST_LOG)
 #define USE_BOOST_LOG
 #endif
 

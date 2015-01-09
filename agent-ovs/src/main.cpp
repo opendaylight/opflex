@@ -42,8 +42,10 @@ int main(int argc, char** argv) {
         ("config,c",
          po::value<string>()->default_value(DEFAULT_CONF), 
          "Read configuration from the specified file")
+#ifdef USE_BOOST_LOG
         ("log", po::value<string>()->default_value(""), 
          "Log to the specified file (default standard out)")
+#endif
         ("level", po::value<string>()->default_value("info"),
          "Use the specified log level (default INFO). "
          "Overridden by log level in configuration file")
@@ -68,7 +70,9 @@ int main(int argc, char** argv) {
         if (vm.count("daemon")) {
             daemon = true;
         }
+#ifdef USE_BOOST_LOG
         log_file = vm["log"].as<string>();
+#endif
         level_str = vm["level"].as<string>();
 
     } catch (po::unknown_option e) {
