@@ -52,8 +52,12 @@ module[policy]
         contained
         {
             parent[class=policy/Universe]
+        }
+        named
+        {
+            parent[class=*]
             {
-                name-component[prefix=space; member=name]
+                component[prefix=space; member=name]
             }
         }
     }
