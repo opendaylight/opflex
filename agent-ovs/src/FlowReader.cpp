@@ -142,10 +142,13 @@ void FlowReader::decodeReply(ofpbuf *msg, FlowEntryList& recvFlows,
                 entry->entry->ofpacts_len);
         ofpbuf_uninit(&actsBuf);
 
-        /* HACK: override the "raw" field so that our comparisons work properly */
+        /* HACK: override the "raw" field so that our comparisons work properly
+         * XXX TODO See if ActionBuilder can construct actions with proper "raw" type
+         */
         ofpact *act;
         OFPACT_FOR_EACH(act, entry->entry->ofpacts, entry->entry->ofpacts_len) {
-            if (act->type == OFPACT_OUTPUT_REG) {
+            switch (act->type) {
+            case OFPACT_OUTPUT_REG: case OFPACT_REG_MOVE:
                 act->raw = (uint8_t)(-1);
             }
         }
