@@ -23,9 +23,9 @@
 extern "C" {
 #endif
 
-#include <openvswitch/lib/vlog.h>
+#include <openvswitch/vlog.h>
 #include <openvswitch/lib/dirs.h>
-#include <openvswitch/lib/vconn.h>
+#include <openvswitch/vconn.h>
 #include <openvswitch/lib/ofpbuf.h>
 #include <openvswitch/lib/ofp-msgs.h>
 #include <openvswitch/lib/flow.h>
@@ -36,6 +36,7 @@ extern "C" {
 #include <openvswitch/lib/poll-loop.h>
 #include <openvswitch/lib/ofp-print.h>
 #include <openvswitch/lib/dynamic-string.h>
+#include <openvswitch/list.h>
 
 #ifdef __cplusplus
 }

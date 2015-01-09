@@ -81,7 +81,7 @@ public:
     }
 
     ofpbuf *MakeReplyMsg(size_t startIdx, size_t endIdx, bool more) {
-        ::list replies;
+        ovs_list replies;
         ofpmp_init(&replies, (ofp_header *)ofpbuf_data(conn.lastSentMsg));
         for (size_t i = startIdx; i < endIdx && i < ports.size(); ++i) {
             ofputil_append_port_desc_stats_reply(&ports[i], &replies);

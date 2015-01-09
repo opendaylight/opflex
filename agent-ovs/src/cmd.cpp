@@ -102,7 +102,7 @@ void initLogging(const std::string& levelstr,
 
     setLoggingLevel(levelstr);
     /* No good way to redirect OVS logs to our logs, suppress them for now */
-    vlog_set_levels(NULL, VLF_ANY_FACILITY, VLL_OFF);
+    vlog_set_levels(NULL, VLF_ANY_DESTINATION, VLL_OFF);
 }
 
 void setLoggingLevel(const std::string& levelstr) {
