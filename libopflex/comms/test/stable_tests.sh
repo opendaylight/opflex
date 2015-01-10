@@ -4,9 +4,9 @@ CATEGORY=${1:-STABLE}
 ulimit -c unlimited
 
 # Timeout.
-declare -i timeout=60
+declare -i timeout=${2:-60}
 # Interval between checks if the process is still alive.
-declare -i interval=5
+declare -i interval=${3:-5}
 # Delay between posting the SIGTERM signal and destroying the process by SIGKILL.
 declare -i delay=2
 
@@ -29,7 +29,19 @@ function watcher() {
 (watcher) &> /dev/null &
 BG_WATCHER=$!
 
-./comms_test --catch_system_errors=no --run_test=asynchronous_sockets/${CATEGORY}_test_'*'
+if [ "${CATEGORY}" == "${CATEGORY//_/}" ]
+then
+    TEST_PATTERN=asynchronous_sockets/${CATEGORY}_test_'*'
+else
+    if [ "${CATEGORY}" == "${CATEGORY//\//}" ]
+    then
+        TEST_PATTERN="asynchronous_sockets/${CATEGORY}"
+    else
+        TEST_PATTERN="${CATEGORY}"
+    fi
+fi
+
+./comms_test --catch_system_errors=no --run_test="${TEST_PATTERN}"
 RET_VAL=$?
 kill -9 ${BG_WATCHER} &> /dev/null
 

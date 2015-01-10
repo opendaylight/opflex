@@ -190,8 +190,9 @@ AC_CONFIG_FILES([              \
 
 AC_CONFIG_LINKS([
                  comms/test/server.pem:comms/test/server.pem
-                 comms/test/ca.pem:comms/test/ca.pem]
-               )
+                 comms/test/ca.pem:comms/test/ca.pem
+                 comms/test/stable_tests.sh:comms/test/stable_tests.sh
+               ])
 
 AC_OUTPUT
 
