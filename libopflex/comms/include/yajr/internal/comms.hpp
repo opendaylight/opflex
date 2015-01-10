@@ -250,6 +250,7 @@ class Peer : public SafeListBaseHook {
               connected_(0),
               destroying_(0),
               passive_(passive),
+              choked_(1),
               ___________(0),
               status_(status)
             {
@@ -344,8 +345,9 @@ class Peer : public SafeListBaseHook {
     unsigned char connected_  :1;
     unsigned char destroying_ :1;
     unsigned char passive_    :1;
-          mutable
-    unsigned char ___________ :2;
+    mutable
+    unsigned char choked_     :1;
+    unsigned char ___________ :1;
     unsigned char status_     :3;
 
   protected:
@@ -547,17 +549,23 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
         connectionHandler_(this, data_, ::yajr::StateChange::CONNECT, 0);
 
-        if ((unchoke())) {
-            return;
-        }
-
         /* some transports, like for example SSL/TLS, need to start talking
          * before there's anything to say */
         (void) write();
     }
 
     void onDisconnect() {
-        LOG(DEBUG);
+
+        LOG(DEBUG)
+            << this
+            << " connected_ = "
+            << static_cast< bool >(connected_)
+        ;
+
+        if (!connected_) {
+            return;
+        }
+
         connected_ = 0;
 
         if (getKeepAliveInterval()) {
@@ -589,9 +597,9 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     }
 
     virtual void disconnect() {
-        if (connected_) {
-            onDisconnect();
-        }
+
+        onDisconnect();
+
     }
 
     virtual int getPeerName(struct sockaddr* remoteAddress, int* len) const {
@@ -605,10 +613,11 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     virtual void destroy() {
         LOG(DEBUG) << this;
 
-        if (destroying_) {
+        assert(!destroying_);
+        if(destroying_) {
             LOG(WARNING)
                 << this
-                << "Double destroy() detected"
+                << " Double destroy() detected"
             ;
 
             return;
@@ -616,9 +625,9 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
      // Peer::destroy();
         destroying_ = 1;
-        if (connected_) {
-            onDisconnect();
-        }
+
+        onDisconnect();
+
     }
 
     uint64_t getKeepAliveInterval() const {
@@ -880,10 +889,11 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
         LOG(DEBUG) << this;
      // Peer::destroy();
 
+        assert(!destroying_);
         if (destroying_) {
             LOG(WARNING)
                 << this
-                << "Double destroy() detected"
+                << " Double destroy() detected"
             ;
 
             return;

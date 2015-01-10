@@ -973,7 +973,6 @@ bool ZeroCopyOpenSSL::attachTransport(
         ZeroCopyOpenSSL::Ctx * ctx,
         bool inverted_roles) {
 
-
     if (!ctx) {
         return false;
     }
@@ -993,6 +992,14 @@ bool ZeroCopyOpenSSL::attachTransport(
     }
 
     new (peer->detachTransport()) TransportEngine< ZeroCopyOpenSSL >(e);
+
+    if (!peer->choked_) {
+
+        /* need to swap in the callback functions */
+        peer->choke();
+        peer->unchoke();
+
+    }
 
     return true;
 }

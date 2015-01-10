@@ -140,10 +140,11 @@ void internal::Peer::LoopData::destroy() {
 
     assert(prepare_.data == this);
 
+    assert(!destroying_);
     if (destroying_) {
         LOG(WARNING)
             << this
-            << "Double destroy() detected"
+            << " Double destroy() detected"
         ;
 
         return;
