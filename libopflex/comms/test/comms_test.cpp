@@ -972,7 +972,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_before_connect, CommsFixt
 
 }
 
-BOOST_FIXTURE_TEST_CASE( UNSTABLE_test_destroy_client_after_connect, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_after_connect, CommsFixture ) {
 
     LOG(DEBUG);
 

@@ -157,6 +157,16 @@ int comms::internal::CommunicationPeer::choke() const {
         << this
     ;
 
+    if (choked_) {
+
+        LOG(WARNING)
+            << this
+            << " already choked"
+        ;
+
+        return 0;
+    }
+
     int rc;
 
     if ((rc = uv_read_stop((uv_stream_t*) &handle_))) {
@@ -168,7 +178,13 @@ int comms::internal::CommunicationPeer::choke() const {
 
         onError(rc);
 
-        uv_close((uv_handle_t*)&handle_, on_close);
+        if (!uv_is_closing((uv_handle_t*)&handle_)) {
+            uv_close((uv_handle_t*)&handle_, on_close);
+        }
+
+    } else {
+
+        choked_ = 1;
 
     }
 
@@ -181,6 +197,16 @@ int comms::internal::CommunicationPeer::unchoke() const {
     LOG(DEBUG)
         << this
     ;
+
+    if (!choked_) {
+
+        LOG(WARNING)
+            << this
+            << " already unchoked"
+        ;
+
+        return 0;
+    }
 
     int rc;
 
@@ -198,6 +224,10 @@ int comms::internal::CommunicationPeer::unchoke() const {
         if (!uv_is_closing((uv_handle_t*)&handle_)) {
             uv_close((uv_handle_t*)&handle_, on_close);
         }
+
+    } else {
+
+        choked_ = 0;
 
     }
 
