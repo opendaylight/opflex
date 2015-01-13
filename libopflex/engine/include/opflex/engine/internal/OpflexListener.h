@@ -18,6 +18,9 @@
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
 #include "opflex/engine/internal/OpflexMessage.h"
+#ifndef SIMPLE_RPC
+#include "yajr/transport/ZeroCopyOpenSSL.hpp"
+#endif
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXLISTENER_H
@@ -48,6 +51,22 @@ public:
                    const std::string& name,
                    const std::string& domain);
     ~OpflexListener();
+
+    /**
+     * Enable SSL for connections to opflex peers.  Call before listen().
+     *
+     * @param caStorePath the filesystem path to a directory
+     * containing CA certificates, or to a file containing a specific
+     * CA certificate.
+     * @param serverKeyPath the path to the server private key
+     * @param serverKeyPass the passphrase for the server private key
+     * @param verifyPeers set to true to verify that peer certificates
+     * properly chain to a trusted root
+     */
+    void enableSSL(const std::string& caStorePath,
+                   const std::string& serverKeyPath,
+                   const std::string& serverKeyPass,
+                   bool verifyPeers = true);
 
     /**
      * Start listening on the local socket for new connections
@@ -108,6 +127,8 @@ private:
 
     std::string hostname;
     int port;
+
+    std::auto_ptr<yajr::transport::ZeroCopyOpenSSL::Ctx> serverCtx;
 
     std::string name;
     std::string domain;

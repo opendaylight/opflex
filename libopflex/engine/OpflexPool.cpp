@@ -25,6 +25,9 @@ using std::make_pair;
 using std::string;
 using ofcore::OFConstants;
 using ofcore::PeerStatusListener;
+#ifndef SIMPLE_RPC
+using yajr::transport::ZeroCopyOpenSSL;
+#endif
 
 OpflexPool::OpflexPool(HandlerFactory& factory_)
     : factory(factory_), active(false), curHealth(PeerStatusListener::DOWN) {
@@ -36,6 +39,17 @@ OpflexPool::~OpflexPool() {
     uv_key_delete(&conn_mutex_key);
     uv_mutex_destroy(&conn_mutex);
 }
+
+void OpflexPool::enableSSL(const std::string& caStorePath,
+                           bool verifyPeers) {
+#ifndef SIMPLE_RPC
+    OpflexConnection::initSSL();
+    clientCtx.reset(ZeroCopyOpenSSL::Ctx::createCtx(caStorePath.c_str(), NULL));
+    if (!clientCtx.get())
+        throw std::runtime_error("Could not enable SSL");
+#endif
+}
+
 
 void OpflexPool::on_conn_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;

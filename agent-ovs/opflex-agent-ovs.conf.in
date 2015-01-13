@@ -19,7 +19,20 @@
         "peers": [
             // EXAMPLE:
             // {"hostname": "10.0.0.30", "port": 8009}
-        ]
+        ],
+
+        "ssl": {
+            // SSL mode.  Possible values:
+            // disabled: communicate without encryption
+            // encrypted: encrypt but do not verify peers
+            // secure: encrypt and verify peer certificates
+            "mode": "encrypted",
+
+            // The path to a directory containing trusted certificate
+            // authority public certificates, or a file containing a
+            // specific CA certificate.
+            "ca-store": "/etc/ssl/certs/"
+        }
     },
 
     // Endpoint sources provide metadata about local endpoints

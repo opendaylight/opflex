@@ -20,6 +20,9 @@ namespace engine {
 namespace internal {
 
 using std::string;
+#ifndef SIMPLE_RPC
+using yajr::transport::ZeroCopyOpenSSL;
+#endif
 
 OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
     : OpflexConnection(listener_->handlerFactory), 
@@ -100,6 +103,10 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
             int len = sizeof(name);
             int rc = p->getPeerName((struct sockaddr*)&name, &len);
             conn->setRemotePeer(rc, name);
+
+            ZeroCopyOpenSSL::Ctx* serverCtx = conn->listener->serverCtx.get();
+            if (serverCtx)
+                ZeroCopyOpenSSL::attachTransport(p, serverCtx);
 
             conn->handler->connected();
         }

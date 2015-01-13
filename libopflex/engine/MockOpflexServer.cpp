@@ -32,6 +32,14 @@ MockOpflexServer::MockOpflexServer(int port, uint8_t roles,
 MockOpflexServer::~MockOpflexServer() {
     delete pimpl;
 }
+
+void MockOpflexServer::enableSSL(const std::string& caStorePath,
+                                 const std::string& serverKeyPath,
+                                 const std::string& serverKeyPass,
+                                 bool verifyPeers) {
+    pimpl->enableSSL(caStorePath, serverKeyPath, 
+                     serverKeyPass, verifyPeers);
+}
 void MockOpflexServer::start() {
     pimpl->start();
 }
@@ -71,6 +79,14 @@ MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
 
 MockOpflexServerImpl::~MockOpflexServerImpl() {
 
+}
+
+void MockOpflexServerImpl::enableSSL(const std::string& caStorePath,
+                                     const std::string& serverKeyPath,
+                                     const std::string& serverKeyPass,
+                                     bool verifyPeers) {
+    listener.enableSSL(caStorePath, serverKeyPath, 
+                       serverKeyPass, verifyPeers);
 }
 
 void MockOpflexServerImpl::start() {
