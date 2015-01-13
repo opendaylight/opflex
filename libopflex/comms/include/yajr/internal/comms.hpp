@@ -370,6 +370,12 @@ class Peer : public SafeListBaseHook {
 
 class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
+    friend
+    std::ostream& operator<< (
+        std::ostream& os,
+        ::yajr::comms::internal::Peer const * p
+    );
+
     template< typename E >
     friend
     int
@@ -379,6 +385,11 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     friend
     void
     transport::Cb< E >::on_sent(CommunicationPeer const *);
+
+    template< typename E >
+    friend
+    void
+    transport::Cb< E >::on_read(uv_stream_t *, ssize_t, uv_buf_t const *);
 
     template< typename E >
     friend

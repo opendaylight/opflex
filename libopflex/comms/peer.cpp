@@ -24,19 +24,42 @@ namespace yajr { namespace comms { namespace internal {
 ::boost::atomic<size_t> ListeningPeer::counter(0);
 #endif
 
-std::ostream& operator<< (std::ostream& os, Peer const * p)
+std::ostream& operator<< (
+        std::ostream& os,
+        ::yajr::comms::internal::Peer const * p)
                                         __attribute__((no_instrument_function));
-std::ostream& operator<< (std::ostream& os, Peer::LoopData const * lD)
+std::ostream& operator<< (
+        std::ostream& os,
+        Peer::LoopData const * lD)
                                         __attribute__((no_instrument_function));
 
-
-std::ostream& operator<< (std::ostream& os, Peer const * p) {
-    return os << "{" << reinterpret_cast<void const *>(p) << "}"
+std::ostream& operator<< (
+        std::ostream& os,
+        ::yajr::comms::internal::Peer const * p
+    ) {
+    os
+        << "{" << reinterpret_cast<void const *>(p) << "}"
 #ifndef NDEBUG
         << p->peerType()
 #endif
-        << "[" << p->uvRefCnt_ << "]@"
+        << "[" << p->uvRefCnt_ << "];handle@"
         << reinterpret_cast<void const *>(&p->handle_);
+    ;
+#ifndef NDEBUG
+    if ('L' != *p->peerType()) {
+        ::yajr::comms::internal::CommunicationPeer const * cP =
+            static_cast< ::yajr::comms::internal::CommunicationPeer const * >(p);
+        os
+            << ";|"
+            << cP->s_.deque_.size()
+            << "->|->"
+            << cP->pendingBytes_
+            << "|"
+        ;
+    }
+#endif
+
+    return os;
 }
 
 std::ostream& operator<< (std::ostream& os, Peer::LoopData const * lD) {
@@ -471,12 +494,25 @@ int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
     ;
     assert(iov.size());
 
-    /* FIXME: handle errors!!! */
-    return uv_write(&write_req_,
-            (uv_stream_t*) &handle_,
-            (uv_buf_t*)&iov[0],
-            iov.size(),
-            on_write);
+    int rc;
+    if ((rc = uv_write(
+                    &write_req_,
+                    (uv_stream_t*) &handle_,
+                    (uv_buf_t*)&iov[0],
+                    iov.size(),
+                    on_write))) {
+        LOG(ERROR)
+            << this
+            << "uv_write: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+        ;
+        onError(rc);
+        /* FIXME: is this enough to handle the error? */
+    }
+
+    return rc;
 
 }
 

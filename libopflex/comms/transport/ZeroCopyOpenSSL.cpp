@@ -118,6 +118,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
                 &e->bioSSL_,
                 &buffer,
                 tryRead);
+} // <--- just to make vim's %-match happy :)
 #else
 #  define tryRead 24576
     char buffer[tryRead + 1];
@@ -261,6 +262,13 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
     LOG(DEBUG) << peer;
 
     if (peer->pendingBytes_) {
+        LOG(WARNING)
+            << peer
+            << " has already "
+            << peer->pendingBytes_
+            << " pending"
+        ;
+
         return 0;
     }
 
@@ -521,16 +529,37 @@ void Cb< ZeroCopyOpenSSL >::on_read(
                 << " S="
                 << BIO_should_io_special(&e->bioSSL_)
             ;
-            if (BIO_should_retry(&e->bioSSL_)) {
-                int sent = Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(peer);
+            if (BIO_should_retry(&e->bioSSL_) && !peer->pendingBytes_) {
+                (void) Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(peer);
 
-                LOG(DEBUG)
-                    << "Retried to send and emitted "
-                    << sent
-                    << " bytes"
-                ;
-                /* a zero return value could be legit, in case of pendingBytes */
-                assert(sent >= 0);
+                if (peer->pendingBytes_) {
+
+                    LOG(DEBUG)
+                        << peer
+                        << " Retried to send and emitted "
+                        << peer->pendingBytes_
+                        << " bytes"
+                    ;
+
+                    return;
+
+                }
+
+                if (Cb< ZeroCopyOpenSSL >::StaticHelpers::
+                        tryToEncrypt(peer)) {
+                    /* kick the can */
+                    (void) Cb< ZeroCopyOpenSSL >::StaticHelpers::
+                        tryToSend(peer);
+
+                    LOG(DEBUG)
+                        << peer
+                        << " Found no handshake data,"
+                           " but found actual payload and sent "
+                        << peer->pendingBytes_
+                        << " bytes"
+                    ;
+
+                }
             }
         }
 
