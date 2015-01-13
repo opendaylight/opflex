@@ -111,6 +111,7 @@ comms_test_SOURCES += test/handlers.cpp
 
 comms_test_CPPFLAGS  = $(AM_CPPFLAGS)
 comms_test_CPPFLAGS += -DBOOST_TEST_DYN_LINK
+comms_test_CPPFLAGS += -DSRCDIR="\"$(abs_srcdir)\""
 comms_test_CPPFLAGS += $(UV_CFLAGS)
 
 comms_test_CXXFLAGS  = $(AM_CXXFLAGS)
@@ -141,3 +142,5 @@ else
   libcomms_la_CPPFLAGS += -DBOOST_EXCEPTION_DISABLE
   libcomms_la_CXXFLAGS += -fno-exceptions
 endif
+
+EXTRA_DIST=test/server.pem tests/ca.pem

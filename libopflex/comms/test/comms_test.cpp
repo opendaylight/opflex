@@ -1362,7 +1362,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_no_message_on_SSL, CommsFixture ) {
     ::yajr::transport::ZeroCopyOpenSSL::Ctx * serverCtx =
         ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
             NULL,
-            "test/server.pem",
+            SRCDIR"/test/server.pem",
             "password123"
         );
 
@@ -1392,7 +1392,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_no_message_on_SSL, CommsFixture ) {
 
     ::yajr::transport::ZeroCopyOpenSSL::Ctx * clientCtx =
         ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
-            "test/ca.pem",
+            SRCDIR"/test/ca.pem",
             NULL
         );
 
@@ -1460,7 +1460,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_single_message_on_SSL, CommsFixture ) {
     ::yajr::transport::ZeroCopyOpenSSL::Ctx * serverCtx =
         ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
             NULL,
-            "test/server.pem",
+            SRCDIR"/test/server.pem",
             "password123"
         );
 
@@ -1490,7 +1490,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_single_message_on_SSL, CommsFixture ) {
 
     ::yajr::transport::ZeroCopyOpenSSL::Ctx * clientCtx =
         ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
-            "test/ca.pem",
+            SRCDIR"/test/ca.pem",
             NULL
         );
 

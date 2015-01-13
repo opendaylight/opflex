@@ -109,6 +109,11 @@ void OFFramework::setOpflexIdentity(const std::string& name,
     pimpl->processor.setOpflexIdentity(name, domain);
 }
 
+void OFFramework::enableSSL(const std::string& caStorePath,
+                            bool verifyPeers) {
+    pimpl->processor.enableSSL(caStorePath, verifyPeers);
+}
+
 void OFFramework::addPeer(const std::string& hostname,
                           int port) {
     pimpl->processor.addPeer(hostname, port);

@@ -11,6 +11,7 @@
 # Process this file with automake to produce a Makefile.in
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
+	-DSRCDIR="\"$(abs_top_srcdir)\"" \
 	-I$(srcdir)/../include \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/logging/include \

@@ -54,6 +54,8 @@ using opflex::test::MockOpflexServer;
          OFConstants::OBSERVER)
 #define LOCALHOST "127.0.0.1"
 
+BOOST_AUTO_TEST_SUITE(Processor_test)
+
 class TestPeerStatusListener : public PeerStatusListener {
 public:
     void peerStatusUpdated(const std::string& peerHostname,
@@ -70,21 +72,37 @@ public:
     Health latestHealth;
 };
 
-class Fixture : public BaseFixture {
+class BasePFixture : public BaseFixture {
 public:
-    Fixture() : processor(&db) {
+    BasePFixture() : processor(&db) {
         processor.setDelay(5);
         processor.setOpflexIdentity("testelement", "testdomain");
         processor.registerPeerStatusListener(&peerStatus);
-        processor.start();
     }
 
-    ~Fixture() {
+    ~BasePFixture() {
         processor.stop();
     }
 
+    void testBootstrap(bool ssl);
+
     Processor processor;
     TestPeerStatusListener peerStatus;
+};
+
+class Fixture : public BasePFixture {
+public:
+    Fixture() {
+        processor.start();
+    }
+};
+
+class SSLFixture : public BasePFixture {
+public:
+    SSLFixture() {
+        processor.enableSSL(SRCDIR"/comms/test/ca.pem", true);
+        processor.start();
+    }
 };
 
 class ServerFixture : public Fixture {
@@ -107,8 +125,6 @@ public:
 
     MockOpflexServerImpl mockServer;
 };
-
-BOOST_AUTO_TEST_SUITE(Processor_test)
 
 static bool itemPresent(StoreClient* client,
                         class_id_t class_id, const URI& uri) {
@@ -174,8 +190,14 @@ static bool connReady(OpflexPool& pool, const char* host, int port) {
     return (conn != NULL && conn->isReady());
 }
 
+static void initServerSSL(MockOpflexServerImpl& server) {
+    server.enableSSL(SRCDIR"/comms/test/ca.pem",
+                     SRCDIR"/comms/test/server.pem",
+                     "password123", true);
+}
+
 // test bootstrapping of Opflex connection
-BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
+void BasePFixture::testBootstrap(bool ssl) {
     MockOpflexServer::peer_t p1 =
         make_pair(SERVER_ROLES, "127.0.0.1:8009");
     MockOpflexServer::peer_t p2 =
@@ -184,6 +206,13 @@ BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
     MockOpflexServerImpl anycastServer(8011, 0, list_of(p1)(p2), md);
     MockOpflexServerImpl peer1(8009, SERVER_ROLES, list_of(p1)(p2), md);
     MockOpflexServerImpl peer2(8010, SERVER_ROLES, list_of(p1)(p2), md);
+
+    if (ssl) {
+        initServerSSL(anycastServer);
+        initServerSSL(peer1);
+        initServerSSL(peer2);
+    }
+
     anycastServer.start();
     peer1.start();
     peer2.start();
@@ -208,6 +237,14 @@ BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
     anycastServer.stop();
     peer1.stop();
     peer2.stop();
+}
+
+BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
+    testBootstrap(false);
+}
+
+BOOST_FIXTURE_TEST_CASE( bootstrap_ssl, SSLFixture ) {
+    testBootstrap(true);
 }
 
 class EndpointDeclFixture : public ServerFixture {

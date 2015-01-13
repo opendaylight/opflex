@@ -51,6 +51,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     // information
     static const std::string ENDPOINT_SOURCE_PATH("endpoint-sources.filesystem");
     static const std::string OPFLEX_PEERS("opflex.peers");
+    static const std::string OPFLEX_SSL_MODE("opflex.ssl.mode");
+    static const std::string OPFLEX_SSL_CA_STORE("opflex.ssl.ca-store");
     static const std::string HOSTNAME("hostname");
     static const std::string PORT("port");
 
@@ -103,6 +105,15 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
             }
         }
     }
+
+    sslMode = properties.get<std::string>(OPFLEX_SSL_MODE, "disabled");
+    sslCaStore = properties.get<std::string>(OPFLEX_SSL_CA_STORE,
+                                             "/etc/ssl/certs/");
+    if (sslMode != "disabled") {
+        bool verifyPeers = sslMode != "encrypted";
+        framework.enableSSL(sslCaStore, verifyPeers);
+    }
+
     typedef Renderer* (*rend_create)(Agent&);
     typedef boost::unordered_map<std::string, rend_create> rend_map_t;
     static rend_map_t rend_map =

@@ -56,9 +56,15 @@ int main(int argc, char** argv) {
          "Use the specified log level (default info)")
         ("sample", po::value<string>()->default_value(""), 
          "Output a sample policy to the given file then exit")
-        ("daemon", "Run the agent as a daemon")
+        ("daemon", "Run the mock server as a daemon")
         ("policy,p", po::value<string>()->default_value(""),
          "Read the specified policy file to seed the MODB")
+        ("ssl_castore", po::value<string>()->default_value("/etc/ssl/certs/"),
+         "Use the specified path or certificate file as the SSL CA store")
+        ("ssl_key", po::value<string>()->default_value(""),
+         "Enable SSL and use the private key specified")
+        ("ssl_pass", po::value<string>()->default_value(""),
+         "Use the specified password for the private key")
         ;
 
     bool daemon = false;
@@ -66,6 +72,9 @@ int main(int argc, char** argv) {
     std::string level_str;
     std::string policy_file;
     std::string sample_file;
+    std::string ssl_castore;
+    std::string ssl_key;
+    std::string ssl_pass;
 
     po::variables_map vm;
     try {
@@ -85,6 +94,9 @@ int main(int argc, char** argv) {
         level_str = vm["level"].as<string>();
         policy_file = vm["policy"].as<string>();
         sample_file = vm["sample"].as<string>();
+        ssl_castore = vm["ssl_castore"].as<string>();
+        ssl_key = vm["ssl_key"].as<string>();
+        ssl_pass = vm["ssl_pass"].as<string>();
 
     } catch (po::unknown_option e) {
         std::cerr << e.what() << std::endl;
@@ -117,6 +129,10 @@ int main(int argc, char** argv) {
 
         if (policy_file != "") {
             server.readPolicy(policy_file);
+        }
+
+        if (ssl_key != "") {
+            server.enableSSL(ssl_castore, ssl_key, ssl_pass);
         }
 
         server.start();
