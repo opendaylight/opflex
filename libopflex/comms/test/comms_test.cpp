@@ -34,7 +34,8 @@ struct CommsTests {
     CommsTests() {
         LOG(INFO) << "global setup\n";
 
-        boost::unit_test::unit_test_log_t::instance().set_threshold_level(::boost::unit_test::log_successful_tests);
+        boost::unit_test::unit_test_log_t::instance()
+            .set_threshold_level(::boost::unit_test::log_successful_tests);
 
         opflex::logging::OFLogHandler::registerHandler(commsTestLogger_);
     }
@@ -1354,7 +1355,7 @@ void * passthroughAccept(yajr::Listener *, void * data, int) {
     return data;
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_SSL, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( STABLE_test_no_message_on_SSL, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1385,6 +1386,104 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_SSL, CommsFixture ) {
             "127.0.0.1",
             "65514",
             doNothingOnConnect
+    );
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    ::yajr::transport::ZeroCopyOpenSSL::Ctx * clientCtx =
+        ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
+            "test/ca.pem",
+            NULL
+        );
+
+    BOOST_CHECK_EQUAL(!clientCtx, 0);
+
+    if (!clientCtx) {
+        return;
+    }
+
+    bool ok = ZeroCopyOpenSSL::attachTransport(p, clientCtx);
+
+    BOOST_CHECK_EQUAL(ok, true);
+
+    if (!ok) {
+        return;
+    }
+
+    loop_until_final(range_t(4,4), pc_successful_connect, range_t(0,0), true, 800); // 4 is to cause a timeout
+
+}
+
+void SinglePingOnConnect(
+        ::yajr::Peer * p,
+        void * data,
+        ::yajr::StateChange::To stateChange,
+        int error) {
+    switch(stateChange) {
+        case ::yajr::StateChange::CONNECT:
+            LOG(DEBUG)
+                << "got a CONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+            LOG(INFO)
+                << "sending a single Ping, as we just had a connection on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+
+            dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
+                ->sendEchoReq(); /* just one! */
+            break;
+        case ::yajr::StateChange::DISCONNECT:
+            LOG(DEBUG)
+                << "got a DISCONNECT notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+            break;
+        case ::yajr::StateChange::FAILURE:
+            LOG(DEBUG)
+                << "got a FAILURE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+            break;
+        case ::yajr::StateChange::DELETE:
+            LOG(DEBUG)
+                << "got a DELETE notification on "
+                << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
+            break;
+        default:
+            assert(0);
+    }
+}
+
+::yajr::Peer::StateChangeCb singlePingOnConnect = SinglePingOnConnect;
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_single_message_on_SSL, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::transport::ZeroCopyOpenSSL::Ctx * serverCtx =
+        ::yajr::transport::ZeroCopyOpenSSL::Ctx::createCtx(
+            NULL,
+            "test/server.pem",
+            "password123"
+        );
+
+    BOOST_CHECK_EQUAL(!serverCtx, 0);
+
+    if (!serverCtx) {
+        return;
+    }
+
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1",
+            65514,
+            attachPassiveSslTransportOnConnect,
+            passthroughAccept,
+            serverCtx
+    );
+
+    BOOST_CHECK_EQUAL(!l, 0);
+
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "127.0.0.1",
+            "65514",
+            singlePingOnConnect
     );
 
     BOOST_CHECK_EQUAL(!p, 0);
