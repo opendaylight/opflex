@@ -37,6 +37,9 @@ extern "C" {
 #include <openvswitch/lib/ofp-print.h>
 #include <openvswitch/lib/dynamic-string.h>
 #include <openvswitch/list.h>
+#include <openvswitch/lib/json.h>
+#include <openvswitch/lib/jsonrpc.h>
+#include <openvswitch/lib/stream.h>
 
 #ifdef __cplusplus
 }
