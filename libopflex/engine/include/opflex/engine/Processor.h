@@ -71,6 +71,17 @@ public:
                            const std::string& domain);
 
     /**
+     * Enable SSL for connections to opflex peers
+     *
+     * @param caStorePath the filesystem path to a directory
+     * containing CA certificates, or to a file containing a specific
+     * CA certificate.
+     * @param verifyPeers set to true to verify that peer certificates
+     * properly chain to a trusted root
+     */
+    void enableSSL(const std::string& caStorePath, bool verifyPeers = true);
+
+    /**
      * Add an OpFlex peer.
      *
      * @param hostname the hostname or IP address to connect to

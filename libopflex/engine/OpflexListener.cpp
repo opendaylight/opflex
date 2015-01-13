@@ -29,6 +29,9 @@ namespace internal {
 
 using std::string;
 using util::LockGuard;
+#ifndef SIMPLE_RPC
+using yajr::transport::ZeroCopyOpenSSL;
+#endif
 
 OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
                                int port_,
@@ -43,6 +46,18 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
 OpflexListener::~OpflexListener() {
     uv_key_delete(&conn_mutex_key);
     uv_mutex_destroy(&conn_mutex);
+}
+
+void OpflexListener::enableSSL(const std::string& caStorePath,
+                               const std::string& serverKeyPath,
+                               const std::string& serverKeyPass,
+                               bool verifyPeers) {
+#ifndef SIMPLE_RPC
+    OpflexConnection::initSSL();
+    serverCtx.reset(ZeroCopyOpenSSL::Ctx::createCtx(caStorePath.c_str(), 
+                                                    serverKeyPath.c_str(), 
+                                                    serverKeyPass.c_str()));
+#endif
 }
 
 void OpflexListener::on_cleanup_async(uv_async_t* handle) {

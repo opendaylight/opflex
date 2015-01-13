@@ -46,6 +46,22 @@ public:
     ~MockOpflexServerImpl();
 
     /**
+     * Enable SSL for connections to opflex peers.  Call before start()
+     *
+     * @param caStorePath the filesystem path to a directory
+     * containing CA certificates, or to a file containing a specific
+     * CA certificate.
+     * @param serverKeyPath the path to the server private key
+     * @param serverKeyPass the passphrase for the server private key
+     * @param verifyPeers set to true to verify that peer certificates
+     * properly chain to a trusted root
+     */
+    void enableSSL(const std::string& caStorePath,
+                   const std::string& serverKeyPath,
+                   const std::string& serverKeyPass,
+                   bool verifyPeers);
+
+    /**
      * Start the server
      */
     void start();

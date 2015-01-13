@@ -15,6 +15,7 @@
 #include <utility>
 #include <map>
 #include <set>
+#include <memory>
 
 #include <boost/unordered_map.hpp>
 #include <boost/noncopyable.hpp>
@@ -23,6 +24,9 @@
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/OpflexClientConnection.h"
 #include "opflex/ofcore/PeerStatusListener.h"
+#ifndef SIMPLE_RPC
+#include "yajr/transport/ZeroCopyOpenSSL.hpp"
+#endif
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXPOOL_H
@@ -79,6 +83,17 @@ public:
      * Stop the pool
      */
     void stop();
+
+    /**
+     * Enable SSL for connections to opflex peers
+     *
+     * @param caStorePath the filesystem path to a directory
+     * containing CA certificates, or to a file containing a specific
+     * CA certificate.
+     * @param verifyPeers set to true to verify that peer certificates
+     * properly chain to a trusted root
+     */
+    void enableSSL(const std::string& caStorePath, bool verifyPeers = true);
 
     /**
      * Add an OpFlex peer.
@@ -159,6 +174,8 @@ private:
     std::string name;
     /** globally unique opflex domain */
     std::string domain;
+
+    std::auto_ptr<yajr::transport::ZeroCopyOpenSSL::Ctx> clientCtx;
 
     uv_mutex_t conn_mutex;
     uv_key_t conn_mutex_key;
