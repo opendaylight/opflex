@@ -26,6 +26,7 @@ namespace StateChange {
         CONNECT,
         DISCONNECT,
         FAILURE,
+        TRANSPORT_FAILURE,
         DELETE,
     };
 };
@@ -46,6 +47,15 @@ struct Peer {
      *
      * When \p stateChange is FAILURE, \p error carries a non-zero value, which
      * is to be interpreted as a libuv error code.
+     *
+     * When \p stateChange is TRANSPORT_FAILURE, \p error carries a non-zero
+     * value, which is to be interpreted as a transport library error code. For
+     * example, the error code would be an OpenSSL error code in case the
+     * ZeroCopyOpenSSL transport was attached to the peer. The PlainText
+     * transport never emits any TRANSPORT_FAILURE \p stateChange. If you never
+     * explicitly attached any transport to the peer, then by default the
+     * PlainText transport is the one attached to it, and you will never see any
+     * TRANSPORT_FAILURE.
      *
      * When \p stateChange is DELETE, the Peer is about to be deleted. It's a
      * good time to release any resources such as the memory reachable via the

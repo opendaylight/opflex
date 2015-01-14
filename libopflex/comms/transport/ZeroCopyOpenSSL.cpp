@@ -60,6 +60,21 @@ __IF_SSL_ERROR_INTO(_, variable, condition, ...)                  \
 IF_SSL_ERROR(...)                                                 \
     __IF_SSL_ERROR_INTO(_, ##__VA_ARGS__, SSL_ERROR, true)
 
+#define IF_SSL_EMIT_ERRORS(___peer___)                                          \
+    for (                                                                       \
+          int ___firstErr = ERR_peek_error(), ___lastErr = ERR_peek_last_error()\
+        ;                                                                       \
+          (                                                                     \
+            ___firstErr && (___peer___->onTransportError(___firstErr), true) && \
+            ___lastErr  && (___lastErr != ___firstErr) &&                       \
+            (___peer___->onTransportError( ___lastErr), true)                   \
+          ) || (                                                                \
+            ___firstErr                                                         \
+          )                                                                     \
+        ;                                                                       \
+          ___firstErr = 0                                                       \
+        )
+
 namespace yajr { namespace transport {
 
 using namespace yajr::comms::internal;
@@ -161,12 +176,15 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 #endif
 
     }
-    IF_SSL_ERROR(sslErr) {
-        LOG(ERROR)
-            << peer
-            << " Failed to decrypt input: "
-            << sslErr
-        ;
+    IF_SSL_EMIT_ERRORS(peer) {
+        IF_SSL_ERROR(sslErr) {
+            LOG(ERROR)
+                << peer
+                << " Failed to decrypt input: "
+                << sslErr
+            ;
+        }
+        const_cast<CommunicationPeer *>(peer)->onDisconnect();
     }
 
     LOG(DEBUG)
@@ -233,12 +251,15 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
         }
 
     }
-    IF_SSL_ERROR(sslErr, nwrite <= 0) {
-        LOG(ERROR)
-            << peer
-            << " Failed to encrypt output: "
-            << sslErr
-        ;
+    IF_SSL_EMIT_ERRORS(peer) {
+        IF_SSL_ERROR(sslErr, nwrite <= 0) {
+            LOG(ERROR)
+                << peer
+                << " Failed to encrypt output: "
+                << sslErr
+            ;
+        }
+        const_cast<CommunicationPeer *>(peer)->onDisconnect();
     }
 
     peer->s_.deque_.erase(
@@ -508,7 +529,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
         assert(advancement == nread);
 
         if (giveUp) {
-            peer->disconnect();
+            peer->onDisconnect();
             return;
         }
 

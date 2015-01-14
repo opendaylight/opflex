@@ -550,6 +550,14 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 error);
     }
 
+    void onTransportError(int error) const {
+        connectionHandler_(
+                const_cast<CommunicationPeer *>(this),
+                data_,
+                ::yajr::StateChange::TRANSPORT_FAILURE,
+                error);
+    }
+
     void onConnect() {
         connected_ = 1;
         keepAliveTimer_.data = this;
