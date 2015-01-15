@@ -47,6 +47,10 @@ owner[policyelement]
 {
     class[observer/Observable]
     class[gbpe/TunnelEp]
+    class[gbpe/VMEp]
+    class[gbpe/EpgMappingCtx]
+    class[gbpe/EpgMappingCtxToAttrSetRSrc]
+    class[gbpe/EpgMappingCtxToEpgMappingRSrc]
     module[epr]
     {
         class[*]

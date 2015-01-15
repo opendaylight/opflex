@@ -9,8 +9,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <algorithm>
+
 #include <opflex/modb/Mutator.h>
+#include <modelgbp/ascii/StringMatchTypeEnumT.hpp>
 #include <boost/foreach.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include "EndpointManager.h"
 #include "logging.h"
@@ -18,6 +22,8 @@
 namespace ovsagent {
 
 using std::string;
+using std::vector;
+using opflex::modb::class_id_t;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::Mutator;
@@ -27,10 +33,14 @@ using boost::unordered_set;
 using boost::shared_ptr;
 using boost::make_shared;
 using boost::optional;
+using boost::algorithm::starts_with;
+using boost::algorithm::ends_with;
+using boost::algorithm::contains;
 
 EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
                                  PolicyManager& policyManager_)
-    : framework(framework_), policyManager(policyManager_) {
+    : framework(framework_), policyManager(policyManager_),
+      epgMappingListener(*this) {
 
 }
 
@@ -43,13 +53,23 @@ EndpointManager::EndpointState::EndpointState() : endpoint(new Endpoint()) {
 }
 
 void EndpointManager::start() {
+    using namespace modelgbp::gbpe;
+
     LOG(DEBUG) << "Starting endpoint manager";
+
+    EpgMapping::registerListener(framework, &epgMappingListener);
+    EpAttributeSet::registerListener(framework, &epgMappingListener);
 
     policyManager.registerListener(this);
 }
 
 void EndpointManager::stop() {
+    using namespace modelgbp::gbpe;
+
     LOG(DEBUG) << "Stopping endpoint manager";
+
+    EpgMapping::unregisterListener(framework, &epgMappingListener);
+    EpAttributeSet::unregisterListener(framework, &epgMappingListener);
 
     policyManager.unregisterListener(this);
 
@@ -57,6 +77,7 @@ void EndpointManager::stop() {
     ep_map.clear();
     group_ep_map.clear();
     iface_ep_map.clear();
+    epgmapping_ep_map.clear();
 }
 
 void EndpointManager::registerListener(EndpointListener* listener) {
@@ -86,6 +107,7 @@ shared_ptr<const Endpoint> EndpointManager::getEndpoint(const string& uuid) {
 
 void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
     using namespace modelgbp::epdr;
 
     unique_lock<mutex> guard(ep_mutex);
@@ -93,27 +115,12 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 
     EndpointState& es = ep_map[uuid];
 
-    // update endpoint group to endpoint mapping
-    const optional<URI>& oldEgURI = es.endpoint->getEgURI();
-    const optional<URI>& egURI = endpoint.getEgURI();
-    if (oldEgURI != egURI) {
-        if (oldEgURI) {
-            unordered_set<string> eps = group_ep_map[oldEgURI.get()];
-            eps.erase(uuid);
-            if (eps.size() == 0)
-                group_ep_map.erase(oldEgURI.get());
-        }
-        if (egURI) {
-            group_ep_map[egURI.get()].insert(uuid);
-        }
-    }
-
     // update interface name to endpoint mapping
     const optional<std::string>& oldIface = es.endpoint->getInterfaceName();
     const optional<std::string>& iface = endpoint.getInterfaceName();
     if (oldIface != iface) {
         if (oldIface) {
-            unordered_set<string> eps = iface_ep_map[oldIface.get()];
+            unordered_set<string>& eps = iface_ep_map[oldIface.get()];
             eps.erase(uuid);
             if (eps.size() == 0)
                 iface_ep_map.erase(oldIface.get());
@@ -123,63 +130,38 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
         }
     }
 
-    unordered_set<URI> newlocall3eps;
-    unordered_set<URI> newlocall2eps;
+    // update epg mapping alias to endpoint mapping
+    const optional<std::string>& oldEpgmap = es.endpoint->getEgMappingAlias();
+    const optional<std::string>& epgmap = endpoint.getEgMappingAlias();
+    if (oldEpgmap != epgmap) {
+        if (oldEpgmap) {
+            unordered_set<string>& eps = epgmapping_ep_map[oldEpgmap.get()];
+            eps.erase(uuid);
+            if (eps.size() == 0)
+                epgmapping_ep_map.erase(oldEpgmap.get());
+        }
+        if (epgmap) {
+            epgmapping_ep_map[epgmap.get()].insert(uuid);
+        }
+    }
 
+    // Update VMEp registration
     Mutator mutator(framework, "policyelement");
-
-    const optional<MAC>& mac = endpoint.getMAC();
-
-    if (egURI && mac) {
-        // Update LocalL2 objects in the MODB, which will trigger
-        // resolution of the endpoint group, if needed.
-        optional<shared_ptr<L2Discovered> > l2d = 
-            L2Discovered::resolve(framework);
-        if (l2d) {
-            shared_ptr<LocalL2Ep> l2e = l2d.get()
-                ->addEpdrLocalL2Ep(uuid);
-            l2e->setMac(mac.get())
-                .addEpdrEndPointToGroupRSrc()
-                ->setTargetEpGroup(egURI.get());
-            newlocall2eps.insert(l2e->getURI());
-        }
-
-        // Update LocalL3 objects in the MODB, which, though it won't
-        // cause any improved functionality, may cause overall
-        // happiness in the universe to increase.
-        optional<shared_ptr<L3Discovered> > l3d = 
-            L3Discovered::resolve(framework);
-        if (l3d) {
-            BOOST_FOREACH(const string& ip, endpoint.getIPs()) {
-                shared_ptr<LocalL3Ep> l3e = l3d.get()
-                    ->addEpdrLocalL3Ep(uuid);
-                l3e->setIp(ip)
-                    .setMac(mac.get())
-                    .addEpdrEndPointToGroupRSrc()
-                    ->setTargetEpGroup(egURI.get());
-                newlocall3eps.insert(l3e->getURI());
-            }
-        }
+    if (es.vmEP) {
+        optional<shared_ptr<VMEp> > oldvme =
+            VMEp::resolve(es.vmEP.get());
+        if (oldvme && oldvme.get()->getUuid("") != uuid)
+            oldvme.get()->remove();
     }
-
-    // remove any stale local EPs
-    BOOST_FOREACH(const URI& locall2ep, es.locall2EPs) {
-        if (newlocall2eps.find(locall2ep) == newlocall2eps.end()) {
-            LocalL2Ep::remove(framework, locall2ep);
-        }
-    }
-    es.locall2EPs = newlocall2eps;
-    BOOST_FOREACH(const URI& locall3ep, es.locall3EPs) {
-        if (newlocall3eps.find(locall3ep) == newlocall3eps.end()) {
-            LocalL3Ep::remove(framework, locall3ep);
-        }
-    }
-    es.locall3EPs = newlocall3eps;
+    optional<shared_ptr<VMUniverse> > vmu =
+        VMUniverse::resolve(framework);
+    shared_ptr<VMEp> vme = vmu.get()
+        ->addGbpeVMEp(uuid);
+    mutator.commit();
 
     es.endpoint = make_shared<const Endpoint>(endpoint);
 
-    mutator.commit();
-    updateEndpointReg(uuid);
+    updateEndpointLocal(uuid);
     guard.unlock();
     notifyListeners(uuid);
 }
@@ -187,6 +169,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 void EndpointManager::removeEndpoint(const std::string& uuid) {
     using namespace modelgbp::epdr;
     using namespace modelgbp::epr;
+    using namespace modelgbp::gbpe;
 
     unique_lock<mutex> guard(ep_mutex);
     Mutator mutator(framework, "policyelement");
@@ -206,11 +189,225 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
         BOOST_FOREACH(const URI& l3ep, es.l3EPs) {
             L3Ep::remove(framework, l3ep);
         }
+        if (es.vmEP)
+            VMEp::remove(framework, es.vmEP.get());
+        if (es.egURI) {
+            group_ep_map_t::iterator it = group_ep_map.find(es.egURI.get());
+            if (it != group_ep_map.end()) {
+                group_ep_map.erase(es.egURI.get());
+            }
+        }
+        if (es.endpoint->getInterfaceName()) {
+            string_ep_map_t::iterator it =
+                iface_ep_map.find(es.endpoint->getInterfaceName().get());
+            if (it != iface_ep_map.end()) {
+                iface_ep_map.erase(es.endpoint->getInterfaceName().get());
+            }
+        }
+        if (es.endpoint->getEgMappingAlias()) {
+            string_ep_map_t::iterator it =
+                epgmapping_ep_map.find(es.endpoint->getEgMappingAlias().get());
+            if (it != epgmapping_ep_map.end()) {
+                epgmapping_ep_map.erase(es.endpoint->getEgMappingAlias().get());
+            }
+        }
+
         ep_map.erase(it);
     }
     mutator.commit();
     guard.unlock();
     notifyListeners(uuid);
+}
+
+optional<URI> EndpointManager::resolveEpgMapping(EndpointState& es) {
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::ascii;
+
+    const optional<string>& mappingAlias = es.endpoint->getEgMappingAlias();
+    if (!mappingAlias) return boost::none;
+    optional<shared_ptr<EpgMapping> > mapping =
+        EpgMapping::resolve(framework, mappingAlias.get());
+    if (!mapping) return boost::none;
+
+    vector<shared_ptr<AttributeMappingRule> > rules;
+    mapping.get()->resolveGbpeAttributeMappingRule(rules);
+
+    OrderComparator<shared_ptr<AttributeMappingRule> > ruleComp;
+    stable_sort(rules.begin(), rules.end(), ruleComp);
+
+    BOOST_FOREACH(shared_ptr<AttributeMappingRule>& rule, rules) {
+        optional<const string&> attrName = rule->getAttributeName();
+        optional<const string&> matchString = rule->getMatchString();
+        if (!attrName || !matchString) continue;
+        uint8_t type = rule->getMatchType(StringMatchTypeEnumT::CONST_EQUALS);
+        bool negated = 0 != rule->getNegated(0);
+
+        // Get value of attribute from endpoint index
+        string attrValue;
+        Endpoint::attr_map_t::const_iterator it =
+            es.endpoint->getAttributes().find(attrName.get());
+        if (it != es.endpoint->getAttributes().end())
+            attrValue = it->second;
+        else {
+            it = es.epAttrs.find(attrName.get());
+            if (it != es.epAttrs.end())
+                attrValue = it->second;
+        }
+
+        // apply the match
+        bool matches = false;
+        switch (type) {
+        case StringMatchTypeEnumT::CONST_CONTAINS:
+            matches = contains(attrValue, matchString.get());
+            break;
+        case StringMatchTypeEnumT::CONST_STARTSWITH:
+            matches = starts_with(attrValue, matchString.get());
+            break;
+        case StringMatchTypeEnumT::CONST_ENDSWITH:
+            matches = ends_with(attrValue, matchString.get());
+            break;
+        case StringMatchTypeEnumT::CONST_EQUALS:
+            matches = (attrValue == matchString.get());
+            break;
+        default:
+            // unknown match always fails
+            matches = negated;
+            break;
+        }
+        matches = (matches != negated);
+
+        if (matches) {
+            optional<shared_ptr<MappingRuleToGroupRSrc> > egSrc =
+                rule->resolveGbpeMappingRuleToGroupRSrc();
+            if (egSrc && egSrc.get()->isTargetSet())
+                return egSrc.get()->getTargetURI().get();
+        }
+    }
+
+    // No matching rule, use default mapping
+    optional<shared_ptr<EpgMappingToDefaultGroupRSrc> > egSrc =
+        mapping.get()->resolveGbpeEpgMappingToDefaultGroupRSrc();
+    if (egSrc && egSrc.get()->isTargetSet())
+        return egSrc.get()->getTargetURI().get();
+
+    return boost::none;
+}
+
+bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::epdr;
+
+    ep_map_t::iterator it = ep_map.find(uuid);
+    if (it == ep_map.end()) return false;
+    bool updated = false;
+
+    EndpointState& es = it->second;
+
+    // update endpoint group to endpoint mapping
+    const optional<URI>& oldEgURI = es.egURI;
+
+    // attempt to get endpoint group from a directly-configured group
+    optional<URI> egURI = es.endpoint->getEgURI();
+    if (!egURI) {
+        // fall back to computing endpoint group from epg mapping
+        egURI = resolveEpgMapping(es);
+    }
+    if (oldEgURI != egURI) {
+        if (oldEgURI) {
+            unordered_set<string>& eps = group_ep_map[oldEgURI.get()];
+            eps.erase(uuid);
+            if (eps.size() == 0)
+                group_ep_map.erase(oldEgURI.get());
+        }
+        if (egURI) {
+            group_ep_map[egURI.get()].insert(uuid);
+        }
+        es.egURI = egURI;
+        updated = true;
+    }
+
+    unordered_set<URI> newlocall3eps;
+    unordered_set<URI> newlocall2eps;
+
+    Mutator mutator(framework, "policyelement");
+
+    const optional<MAC>& mac = es.endpoint->getMAC();
+
+    if (mac) {
+        // Update LocalL2 objects in the MODB, which will trigger
+        // resolution of the endpoint group and/or epg mapping, if
+        // needed.
+        optional<shared_ptr<L2Discovered> > l2d =
+            L2Discovered::resolve(framework);
+        if (l2d) {
+            shared_ptr<LocalL2Ep> l2e = l2d.get()
+                ->addEpdrLocalL2Ep(uuid);
+            l2e->setMac(mac.get());
+            if (egURI) {
+                l2e->addEpdrEndPointToGroupRSrc()
+                    ->setTargetEpGroup(egURI.get());
+            } else {
+                optional<shared_ptr<EndPointToGroupRSrc> > ctx =
+                    l2e->resolveEpdrEndPointToGroupRSrc();
+                if (ctx)
+                    ctx.get()->remove();
+            }
+
+            const optional<string>& epgMapping =
+                es.endpoint->getEgMappingAlias();
+            if (epgMapping) {
+                l2e->addGbpeEpgMappingCtx()
+                    ->addGbpeEpgMappingCtxToEpgMappingRSrc()
+                    ->setTargetEpgMapping(epgMapping.get());
+                l2e->addGbpeEpgMappingCtx()
+                    ->addGbpeEpgMappingCtxToAttrSetRSrc()
+                    ->setTargetEpAttributeSet(uuid);
+            } else {
+                optional<shared_ptr<EpgMappingCtx> > ctx =
+                    l2e->resolveGbpeEpgMappingCtx();
+                if (ctx)
+                    ctx.get()->remove();
+            }
+
+            newlocall2eps.insert(l2e->getURI());
+        }
+
+        // Update LocalL3 objects in the MODB, which, though it won't
+        // cause any improved functionality, may cause overall
+        // happiness in the universe to increase.
+        optional<shared_ptr<L3Discovered> > l3d = 
+            L3Discovered::resolve(framework);
+        if (l3d) {
+            BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
+                shared_ptr<LocalL3Ep> l3e = l3d.get()
+                    ->addEpdrLocalL3Ep(uuid);
+                l3e->setIp(ip)
+                    .setMac(mac.get());
+                newlocall3eps.insert(l3e->getURI());
+            }
+        }
+    }
+
+    // remove any stale local EPs
+    BOOST_FOREACH(const URI& locall2ep, es.locall2EPs) {
+        if (newlocall2eps.find(locall2ep) == newlocall2eps.end()) {
+            LocalL2Ep::remove(framework, locall2ep);
+        }
+    }
+    es.locall2EPs = newlocall2eps;
+    BOOST_FOREACH(const URI& locall3ep, es.locall3EPs) {
+        if (newlocall3eps.find(locall3ep) == newlocall3eps.end()) {
+            LocalL3Ep::remove(framework, locall3ep);
+        }
+    }
+    es.locall3EPs = newlocall3eps;
+
+    mutator.commit();
+
+    updated |= updateEndpointReg(uuid);
+
+    return updated;
 }
 
 bool EndpointManager::updateEndpointReg(const std::string& uuid) {
@@ -221,7 +418,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     if (it == ep_map.end()) return false;
 
     EndpointState& es = it->second;
-    const optional<URI>& egURI = es.endpoint->getEgURI();
+    const optional<URI>& egURI = es.egURI;
     const optional<MAC>& mac = es.endpoint->getMAC();
     unordered_set<URI> newl3eps;
     unordered_set<URI> newl2eps;
@@ -314,7 +511,7 @@ void EndpointManager::getEndpointsForGroup(const URI& egURI,
 void EndpointManager::getEndpointsByIface(const std::string& ifaceName,
                                           /*out*/ unordered_set<string>& eps) {
     unique_lock<mutex> guard(ep_mutex);
-    iface_ep_map_t::const_iterator it = iface_ep_map.find(ifaceName);
+    string_ep_map_t::const_iterator it = iface_ep_map.find(ifaceName);
     if (it != iface_ep_map.end()) {
         eps.insert(it->second.begin(), it->second.end());
     }
@@ -345,6 +542,73 @@ void EndpointManager::updateEndpointCounters(const std::string& uuid,
     }
 
     mutator.commit();
+}
+
+EndpointManager::EPGMappingListener::EPGMappingListener(EndpointManager& epmanager_)
+    : epmanager(epmanager_) {}
+
+EndpointManager::EPGMappingListener::~EPGMappingListener() {}
+
+void EndpointManager::EPGMappingListener::objectUpdated(class_id_t classId,
+                                                        const URI& uri) {
+    using namespace modelgbp::gbpe;
+    unique_lock<mutex> guard(epmanager.ep_mutex);
+
+    if (classId == EpAttributeSet::CLASS_ID) {
+        optional<shared_ptr<EpAttributeSet> > attrSet =
+            EpAttributeSet::resolve(epmanager.framework, uri);
+        if (!attrSet) return;
+
+        optional<const std::string&> uuid = attrSet.get()->getUuid();
+        if (!uuid) return;
+
+        ep_map_t::iterator it = epmanager.ep_map.find(uuid.get());
+        if (it == epmanager.ep_map.end()) return;
+
+        EndpointState& es = it->second;
+        es.epAttrs.clear();
+
+        vector<shared_ptr<EpAttribute> > attrs;
+        attrSet.get()->resolveGbpeEpAttribute(attrs);
+        BOOST_FOREACH(shared_ptr<EpAttribute>& attr, attrs) {
+            optional<const std::string&> name = attr->getName();
+            optional<const std::string&> value = attr->getValue();
+
+            if (!name) continue;
+            if (value)
+                es.epAttrs[name.get()] = value.get();
+            else
+                es.epAttrs[name.get()] = "";
+        }
+
+        if (epmanager.updateEndpointLocal(uuid.get())) {
+            guard.unlock();
+            epmanager.notifyListeners(uuid.get());
+        }
+    } else if (classId == EpgMapping::CLASS_ID) {
+        optional<shared_ptr<EpgMapping> > epgMapping =
+            EpgMapping::resolve(epmanager.framework, uri);
+        if (!epgMapping) return;
+
+        optional<const std::string&> name = epgMapping.get()->getName();
+        if (!name) return;
+
+        string_ep_map_t::iterator it =
+            epmanager.epgmapping_ep_map.find(name.get());
+        if (it == epmanager.epgmapping_ep_map.end()) return;
+
+        unordered_set<string> notify;
+        BOOST_FOREACH(const std::string& uuid, it->second) {
+            if (epmanager.updateEndpointLocal(uuid)) {
+                notify.insert(uuid);
+            }
+        }
+
+        guard.unlock();
+        BOOST_FOREACH(const std::string& uuid, notify) {
+            epmanager.notifyListeners(uuid);
+        }
+    }
 }
 
 } /* namespace ovsagent */
