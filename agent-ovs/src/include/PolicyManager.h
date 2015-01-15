@@ -197,7 +197,7 @@ public:
     /**
      * Get all known endpoint groups.
      *
-     * @param set of URIs of endpoint groups found.
+     * @param epgURIs set of URIs of endpoint groups found.
      */
     void getGroups(/* out */ uri_set_t& epgURIs);
 
@@ -452,6 +452,14 @@ private:
  */
 template<typename T>
 struct OrderComparator {
+    /**
+     * Implement the comparison
+     *
+     * @param lhs the left side of the comparison
+     * @param rhs the right side of the comparison
+     * @return true if the left side is has a lower order than the
+     * right side
+     */
     bool operator()(const T& lhs, const T& rhs) {
         return lhs->getOrder(UINT32_MAX) < rhs->getOrder(UINT32_MAX);
     }

@@ -785,7 +785,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         WriteFlow(uuid, SEC_TABLE_ID, el);
     }
 
-    optional<URI> epgURI = endPoint.getEgURI();
+    optional<URI> epgURI = epMgr.getComputedEPG(uuid);
     if (!epgURI) {      // can't do much without EPG
         return;
     }

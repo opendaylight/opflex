@@ -43,9 +43,12 @@ public:
     static void chksum_accum(uint32_t& chksum, uint16_t* addr, size_t len);
     
     /**
-     * Finalize the computation of a checksum
+     * Finalize the computation of a checksum.  Does not change the
+     * intermediate state, so can be used to compute a partial
+     * checksum.
      *
      * @param chksum the value of the sum before finalization
+     * @return The final checksum value.
      */
     static uint16_t chksum_finalize(uint32_t chksum);
 
@@ -65,9 +68,10 @@ public:
      *
      * @param naFlags the flags to set in the NA
      * @param srcMac the source MAC
-     * @param targetMac the target MAC
+     * @param dstMac the target MAC
      * @param srcIp the source IP
      * @param dstIp the destination Ip
+     * @return a ofpbuf containing the message
      */
     static ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
                                           const uint8_t* srcMac,
@@ -75,6 +79,16 @@ public:
                                           const struct in6_addr* srcIp,
                                           const struct in6_addr* dstIp);
 
+    /**
+     * Compose an ICMP6 router advertisement ethernet frame
+     *
+     * @param srcMac the source MAC
+     * @param dstMac the dst MAC
+     * @param dstIp the destination Ip
+     * @param egUri the endpoint group associated with the request
+     * @param polMgr the policy manager
+     * @return a ofpbuf containing the message
+     */
     static ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
                                            const uint8_t* dstMac,
                                            const struct in6_addr* dstIp,

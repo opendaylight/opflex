@@ -70,6 +70,10 @@ public:
  */
 class SwitchConnection {
 public:
+    /**
+     * Construct a new switch connection to the given switch name
+     * @param swName the name of the OVS bridge to connect to
+     */
     SwitchConnection(const std::string& swName);
     virtual ~SwitchConnection();
 

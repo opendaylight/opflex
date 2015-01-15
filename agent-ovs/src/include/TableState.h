@@ -28,12 +28,32 @@ public:
     FlowEntry();
     ~FlowEntry();
 
+    /**
+     * Check whether the given flow entry is equal to this one
+     * @param rhs the entry to compare against
+     * @return true if the match entry is equal
+     */
     bool MatchEq(const FlowEntry *rhs);
+
+    /**
+     * Check whether the given action entry is equal to this one
+     * @param rhs the entry to compare against
+     * @return true if the action entry is equal
+     */
     bool ActionEq(const FlowEntry *rhs);
 
+    /**
+     * The flow entry
+     */
     ofputil_flow_stats *entry;
 };
+/**
+ * A shared pointer to a flow entry
+ */
 typedef boost::shared_ptr<FlowEntry>    FlowEntryPtr;
+/**
+ * A vector of flow entry pointers
+ */
 typedef std::vector<FlowEntryPtr>       FlowEntryList;
 
 /**
@@ -51,9 +71,33 @@ std::ostream& operator<<(std::ostream& os, const FlowEntryList& el);
  */
 class FlowEdit {
 public:
-    enum TYPE {add, mod, del};
+    /**
+     * The type of edit to make
+     */
+    enum TYPE {
+        /**
+         * Add new flows
+         */
+        add,
+        /**
+         * Modify existing flows
+         */
+        mod,
+        /**
+         * Delete flows
+         */
+        del
+    };
+
+    /**
+     * An edit entry is a flow entry pairs with the operation to
+     * perform
+     */
     typedef std::pair<TYPE, FlowEntryPtr> Entry;
 
+    /**
+     * The edits that need to be made
+     */
     std::vector<FlowEdit::Entry> edits;
 };
 
@@ -80,9 +124,18 @@ public:
         GroupMod();
         ~GroupMod();
 
+        /**
+         * The group mod
+         */
         ofputil_group_mod *mod;
     };
+    /**
+     * A group edit entry
+     */
     typedef boost::shared_ptr<GroupMod>     Entry;
+    /**
+     * A vector of group edits
+     */
     typedef std::vector<GroupEdit::Entry>   EntryList;
 
     /**
@@ -96,6 +149,9 @@ public:
     static bool GroupEq(const GroupEdit::Entry& lhs,
             const GroupEdit::Entry& rhs);
 
+    /**
+     * The group edits that need to be made
+     */
     GroupEdit::EntryList edits;
 };
 

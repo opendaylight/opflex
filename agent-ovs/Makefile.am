@@ -174,7 +174,7 @@ integration_test_LDADD = \
 
 check-integration: agent_ovs
 	$(top_builddir)/integration_test
-doc/html: $(model_include_HEADERS) doc/Doxyfile 
+doc/html: $(model_include_HEADERS) $(libagent_ovs_la_SOURCES) doc/Doxyfile 
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html
 

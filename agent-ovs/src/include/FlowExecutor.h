@@ -68,7 +68,7 @@ public:
      * Construct and send group-modification messages corresponding
      * to the group-edits specified, but does not wait the messages
      * to be acted upon.
-     * @param fe The group modifications
+     * @param ge The group modifications
      * @return false if any error occurs while sending messages,
      * true otherwise
      */

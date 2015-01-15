@@ -105,6 +105,14 @@ shared_ptr<const Endpoint> EndpointManager::getEndpoint(const string& uuid) {
     return shared_ptr<const Endpoint>();
 }
 
+optional<URI> EndpointManager::getComputedEPG(const std::string& uuid) {
+    unique_lock<mutex> guard(ep_mutex);
+    ep_map_t::const_iterator it = ep_map.find(uuid);
+    if (it != ep_map.end())
+        return it->second.egURI;
+    return boost::none;
+}
+
 void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;

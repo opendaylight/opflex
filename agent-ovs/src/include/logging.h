@@ -52,16 +52,27 @@ static const int FATAL   = LOG_CRIT;
 
 extern int logLevel;
 
-// Fall back to logging to standard out in a format that systemd can
-// understand
+/**
+ * Logger used as fallback when boost::log not available.  Log to
+ * standard out in a format that systemd can understand
+ */
 class Logger {
 public:
+    /**
+     * Destroy the logger and log the output
+     */
     ~Logger() {
         std::cout << buffer_.str() << std::endl;
     }
 
+    /**
+     * Get the ostream to write to
+     */
     std::ostream& stream() { return buffer_; }
 
+    /**
+     * The internal buffer for the logger
+     */
     std::ostringstream buffer_;
 
 };

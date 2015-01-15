@@ -1,3 +1,4 @@
+/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -43,19 +44,84 @@ public:
      */
     void Build(ofputil_bucket *dstBucket);
 
+    /**
+     * Load the given byte into the given register
+     * @param regId the register to load
+     * @param regValue the value to load
+     */
     void SetRegLoad8(mf_field_id regId, uint8_t regValue);
+    /**
+     * Load the given two bytes into the given register
+     * @param regId the register to load
+     * @param regValue the value to load
+     */
     void SetRegLoad16(mf_field_id regId, uint16_t regValue);
+    /**
+     * Load the given four bytes into the given register
+     * @param regId the register to load
+     * @param regValue the value to load
+     */
     void SetRegLoad(mf_field_id regId, uint32_t regValue);
+    /**
+     * Load the given 6 bytes into the given register
+     * @param regId the register to load
+     * @param macValue a pointer to an array of 6 bytes to load
+     */
     void SetRegLoad(mf_field_id regId, const uint8_t *macValue);
+    /**
+     * Copy the given source register into the given destination
+     * register
+     * @param srcRegId the source register
+     * @param dstRegId the destination register
+     */
     void SetRegMove(mf_field_id srcRegId, mf_field_id dstRegId);
+    /**
+     * Set the ethernet source and/or destination fields in the packet
+     * @param srcMac the source MAC to set, or NULL to not set a
+     * source MAC
+     * @param dstMac the dest MAC to set, or NULL to not set a dest
+     * MAC
+     */
     void SetEthSrcDst(const uint8_t *srcMac, const uint8_t *dstMac);
+    /**
+     * Decrement the TTL of an IP packet
+     */
     void SetDecNwTtl();
+    /**
+     * Go to the given flow table
+     * @param tableId the table ID of the flow table
+     */
     void SetGotoTable(uint8_t tableId);
+    /**
+     * Output the packet to the given port
+     * @param port the openflow port ID of the port
+     */
     void SetOutputToPort(uint32_t port);
+    /**
+     * Output the packet to the port contained in the given register
+     * @param srcRegId the register containing the openflow port to
+     * output to
+     */
     void SetOutputReg(mf_field_id srcRegId);
+    /**
+     * Output the packet to the given group table
+     * @param groupId the group table
+     */
     void SetGroup(uint32_t groupId);
+    /**
+     * Output the packet in a packet-out message to the controller
+     * @param max_len the number of bytes of the packet to include
+     */
     void SetController(uint16_t max_len = 128);
+    /**
+     * Push a VLAN tag onto the packet
+     */
     void SetPushVlan();
+    /**
+     * Use the connection tracking tables with the given zone and flags
+     * @param zone the connection tracking zone to use
+     * @param flags the flags to set (starting with "NX_CT_")
+     */
     void SetConntrack(uint16_t zone, uint16_t flags);
 
     /**

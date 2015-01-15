@@ -33,13 +33,18 @@ public:
     AgentLogHandler(opflex::logging::OFLogHandler::Level logLevel);
     virtual ~AgentLogHandler();
 
-    /* see OFLogHandler */
+    /**
+     * Implement opflex::logging::OFLogHandler::handleMessage
+     */
     virtual void handleMessage(const std::string& file,
                                const int line,
                                const std::string& function,
                                const opflex::logging::OFLogHandler::Level level,
                                const std::string& message);
 
+    /**
+     * Implement opflex::logging::OFLogHandler::setLevel
+     */
     void setLevel(opflex::logging::OFLogHandler::Level logLevel);
 };
 

@@ -45,7 +45,11 @@ public:
         : uuid(uuid_), promiscuousMode(false) {}
 
     /**
-     * Get the endpoint group URI associated with this endpoint.
+     * Get the endpoint group URI associated with this endpoint.  Note
+     * that this is just the URI as discovered locally.  If the
+     * endpoint group is assigned through an EPG mapping, then this
+     * field will not be set to the correct URI.  Instead, @see
+     * EndpointManager::getComputedEPG.
      *
      * @return the endpoint URI
      */
@@ -84,14 +88,14 @@ public:
      * Set the mapping alias for this endpoint.  The mapping alias can
      * be used to find the endpoint group mapping for the endpoint
      *
-     * @param mappingAlias the URI to set
+     * @param egMappingAlias name of the mapping alias
      */
     void setEgMappingAlias(const std::string& egMappingAlias) {
         this->egMappingAlias = egMappingAlias;
     }
 
     /**
-     * Unset the endpoint group URI
+     * Unset the eg mapping alias
      */
     void unsetEgMappingAlias() {
         egMappingAlias = boost::none;
@@ -199,7 +203,7 @@ public:
     /**
      * Set the promomiscuous mode flag to the value specified
      *
-     * @param promisciousMode the new value for the promiscuous mode
+     * @param promiscuousMode the new value for the promiscuous mode
      */
     void setPromiscuousMode(bool promiscuousMode) {
         this->promiscuousMode = promiscuousMode;

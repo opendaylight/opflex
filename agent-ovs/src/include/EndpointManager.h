@@ -86,6 +86,15 @@ public:
     boost::shared_ptr<const Endpoint> getEndpoint(const std::string& uuid);
 
     /**
+     * Get the effective default endpoint group as computed by
+     * endpoint group mapping
+     * @param uuid the UUID for the endpoint
+     * @return the default endpoint group, or boost::none if there is
+     * none
+     */
+    boost::optional<opflex::modb::URI> getComputedEPG(const std::string& uuid);
+
+    /**
      * Get the set of endpoints that exist for a given endpoint group
      * 
      * @param egURI the URI for the endpoint group

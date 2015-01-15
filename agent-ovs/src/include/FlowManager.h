@@ -1,3 +1,4 @@
+/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -39,6 +40,10 @@ class FlowManager : public EndpointListener,
                     public MessageHandler,
                     public PortStatusListener {
 public:
+    /**
+     * Construct a new flow manager for the agent
+     * @param agent the agent object
+     */
     FlowManager(Agent& agent);
     ~FlowManager() {}
 
@@ -52,10 +57,18 @@ public:
      */
     void Stop();
 
+    /**
+     * Set the flow executor to use
+     * @param e the flow executor
+     */
     void SetExecutor(FlowExecutor *e) {
         executor = e;
     }
 
+    /**
+     * Set the port mapper to use
+     * @param m the port mapper
+     */
     void SetPortMapper(PortMapper *m);
 
     /**
@@ -139,7 +152,15 @@ public:
         ENCAP_IVXLAN
     };
 
+    /**
+     * Set the encap type to use for packets sent over the network
+     * @param encapType the encap type
+     */
     void SetEncapType(EncapType encapType);
+    /**
+     * Set the openflow interface name for encapsulated packets
+     * @param encapIface the interface name
+     */
     void SetEncapIface(const std::string& encapIface);
 
     /**
@@ -156,16 +177,56 @@ public:
          */
         ENDPOINT_GROUP
     };
+
+    /**
+     * Set the flood scope
+     * @param floodScope the flood scope
+     */
     void SetFloodScope(FloodScope floodScope);
 
+    /**
+     * Set the remote IP to use for unicast tunnel traffic
+     * @param tunnelRemoteIp the remote tunnel IP
+     */
     void SetTunnelRemoteIp(const std::string& tunnelRemoteIp);
+
+    /**
+     * Enable or disable the virtual routing
+     *
+     * @param virtualRouterEnabled true to enable the router
+     */
     void SetVirtualRouter(bool virtualRouterEnabled);
+
+    /**
+     * Set the MAC address to use for the virtual router
+     * @param mac the MAC address formatted as a colon-separated
+     * string of 6 hex-encoded bytes.
+     */
     void SetVirtualRouterMac(const std::string& mac);
 
+    /**
+     * Set the flow ID cache directory
+     * @param flowIdCache the directory where flow ID entries will be
+     * cached
+     */
     void SetFlowIdCache(const std::string& flowIdCache);
 
+    /**
+     * Get the openflow port that maps to the configured tunnel
+     * interface
+     * @return the openflow port number
+     */
     uint32_t GetTunnelPort();
+
+    /**
+     * Get the configured tunnel destination as a parsed IP address
+     * @return the tunnel destination
+     */
     boost::asio::ip::address& GetTunnelDst() { return tunnelDst; }
+    /**
+     * Get the router MAC address as an array of 6 bytes
+     * @return the router MAC
+     */
     const uint8_t *GetRouterMacAddr() { return routerMac; }
 
     /**
@@ -179,25 +240,26 @@ public:
      */
     void SetSyncDelayOnConnect(long delayMsec);
 
-    /** Interface: EndpointListener */
+    /* Interface: EndpointListener */
     void endpointUpdated(const std::string& uuid);
 
-    /** Interface: PolicyListener */
+    /* Interface: PolicyListener */
     void egDomainUpdated(const opflex::modb::URI& egURI);
     void contractUpdated(const opflex::modb::URI& contractURI);
     void configUpdated(const opflex::modb::URI& configURI);
 
-    /** Interface: OnConnectListener */
+    /* Interface: OnConnectListener */
     void Connected(SwitchConnection *swConn);
 
-    /** Interface: PortStatusListener */
+    /* Interface: PortStatusListener */
     void portStatusUpdate(const std::string& portName, uint32_t portNo);
 
     /**
      * Get the VNIDs for the specified endpoint groups.
      *
      * @param egURIs URIs of endpoint groups to search for
-     * @egVnids VNIDs of the endpoint groups for those which have one
+     * @param egVnids VNIDs of the endpoint groups for those which
+     * have one
      */
     void GetGroupVnids(const boost::unordered_set<opflex::modb::URI>& egURIs,
             /* out */boost::unordered_set<uint32_t>& egVnids);

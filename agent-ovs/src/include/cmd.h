@@ -20,7 +20,7 @@ void daemonize();
  * Initialize logging
  *
  * @param level the log level to log at
- * @file log_file the file to log to, or empty for console
+ * @param log_file the file to log to, or empty for console
  */
 void initLogging(const std::string& level, const std::string& log_file);
 
