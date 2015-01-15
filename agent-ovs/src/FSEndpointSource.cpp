@@ -122,9 +122,11 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
     static const std::string EP_IP("ip");
     static const std::string EP_GROUP("endpoint-group");
     static const std::string POLICY_SPACE_NAME("policy-space-name");
+    static const std::string EG_MAPPING_ALIAS("eg-mapping-alias");
     static const std::string EP_GROUP_NAME("endpoint-group-name");
     static const std::string EP_IFACE_NAME("interface-name");
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
+    static const std::string EP_ATTRIBUTES("attributes");
 
     try {
         using boost::property_tree::ptree;
@@ -161,6 +163,12 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
                                .addElement(ps_name.get())
                                .addElement("GbpEpGroup")
                                .addElement(eg_name.get()).build());
+            } else {
+                optional<string> eg_mapping_alias =
+                    properties.get_optional<string>(EG_MAPPING_ALIAS);
+                if (eg_mapping_alias) {
+                    newep.setEgMappingAlias(eg_mapping_alias.get());
+                }
             }
         }
 
@@ -172,6 +180,13 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
             properties.get_optional<bool>(EP_PROMISCUOUS);
         if (promisc)
             newep.setPromiscuousMode(promisc.get());
+
+        optional<ptree&> attrs = properties.get_child_optional(EP_ATTRIBUTES);
+        if (attrs) {
+            BOOST_FOREACH(const ptree::value_type &v, attrs.get()) {
+                newep.addAttribute(v.first, v.second.data());
+            }
+        }
 
         knownEps[pathstr] = newep.getUUID();
         updateEndpoint(newep);

@@ -10,6 +10,7 @@
  */
 
 #include <opflex/ofcore/OFFramework.h>
+#include <opflex/modb/ObjectListener.h>
 #include <modelgbp/metadata/metadata.hpp>
 #include <boost/noncopyable.hpp>
 
@@ -189,6 +190,12 @@ private:
     void updateEndpoint(const Endpoint& endpoint);
 
     /**
+     * Update the local endpoint entries associated with an endpoint
+     * @return true if we should notify listeners
+     */
+    bool updateEndpointLocal(const std::string& uuid);
+
+    /**
      * Update the endpoint registry entries associated with an endpoint
      * @return true if we should notify listeners
      */
@@ -212,6 +219,19 @@ private:
         boost::shared_ptr<const Endpoint> endpoint;
         
         typedef boost::unordered_set<opflex::modb::URI> uri_set_t;
+
+        /**
+         * The EG URI for the endpoint as currently computed (may be
+         * different from the URI in the endpoint object)
+         */
+        boost::optional<opflex::modb::URI> egURI;
+
+        /**
+         * reference to the vmep object related to this endpoint that
+         * registers the VM to trigger attribute resolution
+         */
+        boost::optional<opflex::modb::URI> vmEP;
+
         // references to the modb epdr localL2 and locall3 objects
         // related to this endpoint that exist to cause policy
         // resolution
@@ -222,13 +242,26 @@ private:
         // this endpoint that will be reports to the endpoint registry
         uri_set_t l2EPs;
         uri_set_t l3EPs;
+
+        /*
+         * Attributes assigned to this endpoint by the endpoint
+         * registry.  Attributes in the endpoint object override these
+         * attributes.
+         */
+        Endpoint::attr_map_t epAttrs;
     };
+
+    /**
+     * Resolve the default endpoint group for an endpoint using its
+     * epg mapping, if present
+     */
+    boost::optional<opflex::modb::URI> resolveEpgMapping(EndpointState& es);
 
     typedef boost::unordered_map<std::string, EndpointState> ep_map_t;
     typedef boost::unordered_map<opflex::modb::URI, 
                                  boost::unordered_set<std::string> > group_ep_map_t;
     typedef boost::unordered_map<std::string, 
-                                 boost::unordered_set<std::string> > iface_ep_map_t;
+                                 boost::unordered_set<std::string> > string_ep_map_t;
 
     boost::mutex ep_mutex;
 
@@ -245,7 +278,13 @@ private:
     /**
      * Map endpoint interface names to a set of endpoint UUIDs
      */
-    iface_ep_map_t iface_ep_map;
+    string_ep_map_t iface_ep_map;
+
+    /**
+     * Map epgmapping objects to a set of endpoint UUIDs that use them
+     * for endpoint group mapping
+     */
+    string_ep_map_t epgmapping_ep_map;
 
     /**
      * The endpoint listeners that have been registered
@@ -255,6 +294,22 @@ private:
 
     void notifyListeners(const std::string& uuid);
 
+    /**
+     * Listener for changes related to endpoint group mapping
+     */
+    class EPGMappingListener : public opflex::modb::ObjectListener {
+    public:
+        EPGMappingListener(EndpointManager& epmanager);
+        virtual ~EPGMappingListener();
+
+        virtual void objectUpdated(opflex::modb::class_id_t class_id,
+                                    const opflex::modb::URI& uri);
+    private:
+        EndpointManager& epmanager;
+    };
+    EPGMappingListener epgMappingListener;
+
+    friend class EPGMappingListener;
     friend class EndpointSource;
 };
 

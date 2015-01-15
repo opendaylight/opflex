@@ -22,12 +22,19 @@ module[gbpe]
 
         # The default group to assign to if none of the other mapping 
         # rules applies
-        member[defaultGroup; type=epr/GroupContext]
+        dependency[defaultGroup;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
     }
 
     # Allow resolving the EpgMapping from a discovered network endpoint
     class[EpgMappingCtx;
-	  super=epr/LocalEp;
+          super=epr/LocalEp;
           concrete]
     {
         contained
@@ -41,6 +48,7 @@ module[gbpe]
                 component[prefix=epmap-context]
             }
         }
+
         dependency[epgMapping;
                    cardinality=single;
                    ]
@@ -49,67 +57,172 @@ module[gbpe]
                 cardinality=many;
                 ]
         }
+
+        dependency[attrSet;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbpe/EpAttributeSet;
+                cardinality=many;
+                ]
+        }
     }
 
-#    class[EpAttribute;
-#          super=policy/NamedDefinition;
-#          concrete]
-#    {
-#        contained
-#        {
-#            parent[class=gbpe/EpgMapping]
-#        }
-#        named
-#        {
-#            parent[class=*;]
-#            {
-#                component[member=uuid]
-#                component[member=name]
-#            }
-#        }
-#
-#        # The unique identifier for the endpoint to which this attribute 
-#        # applies.
-#        member[uuid; type=reference/UUID]
-#
-#        # The value of the attribute represented as a string
-#        member[value; type=ascii/String]
-#    }
-#
-#    class[NetIdMapping;
-#          super=policy/NamedDefinition;
-#          concrete]
-#    {
-#        contained
-#        {
-#            parent[class=gbpe/EpgMapping]
-#        }
-#        named
-#        {
-#            parent[class=*;]
-#            {
-#                component[member=name]
-#            }
-#        }
-#        member[group; type=epr/GroupContext]
-#        member[ip; type=address/IP]
-#        member[mac; type=address/MAC]
-#    }
-#
-#    class[AttributeMapping;
-#          super=policy/NamedDefinition;
-#          concrete]
-#    {
-#        contained
-#        {
-#            parent[class=gbpe/EpgMapping]
-#        }
-#        named
-#        {
-#            parent[class=*;]
-#            {
-#                component[member=name]
-#            }
-#        }
-#    }
+    class[MappingRule;
+          super=policy/NamedDefinition;
+          abstract]
+    {
+        contained
+        {
+            parent[class=gbpe/EpgMapping]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+
+        # order rules should be processed, smallest to highest
+        member[order; type=scalar/UInt32]
+
+        # Endpoint group to be used if this rule matches
+        dependency[group;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
+    }
+
+    # Map to an endpoint group in the datapath.  This is a
+    # late-binding rule that applies to traffic and not just to
+    # endpoint interfaces, so different traffic from the same endpoint
+    # can end up in different endpoint groups.  All fields in the rule
+    # must match.
+    class[DataPathMappingRule;
+          super=gbpe/MappingRule;
+          concrete]
+    {
+        # IPv4 or IPv6 address prefix
+        member[ipPrefix; type=address/IP]
+        # length of IP prefix
+        member[ipPrefixLen; type=scalar/UInt8]
+
+        # MAC address
+        member[mac; type=address/MAC]
+
+        # IP protocol field
+        member[prot; type=l3/IpProt]
+
+        # Source port range [from-to]
+        member[sFromPort; type=l4/Port]
+        member[sToPort; type=l4/Port]
+
+        # Destination port range [from-to]
+        member[dFromPort; type=l4/Port]
+        member[dToPort; type=l4/Port]
+    }
+
+    # Map an endpoint to an EPG using rules on attributes.  Attributes
+    # can include attributes provided by the endpoint repository in an
+    # EpAttributeSet or attributes that are known only locally by the
+    # policy element.
+    class[AttributeMappingRule;
+          super=gbpe/MappingRule;
+          concrete]
+    {
+        # The attribute to match against
+        member[attributeName; type=ascii/String]
+
+        # How to match the attribute
+        member[matchType; type=ascii/StringMatchType]
+
+        # nonzero if the match should be inverted
+        member[negated; type=scalar/UInt8]
+
+        # The string to match against
+        member[matchString; type=ascii/String]
+    }
+
+    # Universe containing virtual machine endpoints indexed by UUID
+    class[VMUniverse;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=vm;]
+            }
+        }
+    }
+
+    # VM end-point that is part of the vm universe
+    class[VMEp;
+          super=epr/ReportedEp;
+          concrete
+          ]
+    {
+        contained
+        {
+            parent[class=gbpe/VMUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # The unique identifier for the VM associated with any
+        # attributes that might be known by the registry
+        member[uuid; type=reference/UUID]
+    }
+
+    class[EpAttributeSet;
+          super=policy/Definition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbpe/VMUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # The unique identifier for the VM
+        member[uuid; type=reference/UUID]
+    }
+
+    class[EpAttribute;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbpe/EpAttributeSet]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+
+        # The value of the attribute represented as a string
+        member[value; type=ascii/String]
+    }
 }

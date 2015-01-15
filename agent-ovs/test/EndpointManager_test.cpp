@@ -10,15 +10,19 @@
  */
 
 #include <opflex/modb/ObjectListener.h>
+#include <modelgbp/ascii/StringMatchTypeEnumT.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem/fstream.hpp>
 
 #include "FSEndpointSource.h"
+#include "logging.h"
 
 #include "BaseFixture.h"
 
 namespace ovsagent {
 
+using std::string;
+using std::vector;
 using opflex::modb::ObjectListener;
 using opflex::modb::class_id_t;
 using opflex::modb::URI;
@@ -34,6 +38,8 @@ using namespace modelgbp;
 using namespace modelgbp::epdr;
 using namespace modelgbp::epr;
 using namespace modelgbp::gbp;
+using namespace modelgbp::gbpe;
+using namespace modelgbp::ascii;
 
 class MockEndpointSource : public EndpointSource {
 public:
@@ -56,50 +62,82 @@ public:
           bduri("/PolicyUniverse/PolicySpace/test/GbpBridgeDomain/bd/"),
           rduri("/PolicyUniverse/PolicySpace/test/GbpRoutingDomain/rd/") {
         Mutator mutator(framework, "policyreg");
-        shared_ptr<policy::Universe> universe = 
-            policy::Universe::resolve(framework).get();
+        universe = policy::Universe::resolve(framework).get();
         space = universe->addPolicySpace("test");
         mutator.commit();
 
-        LocalL2Ep::registerListener(framework, this);
-        LocalL3Ep::registerListener(framework, this);
+        EndPointToGroupRSrc::registerListener(framework, this);
+        EpgMappingCtx::registerListener(framework, this);
         BridgeDomain::registerListener(framework, this);
         EpGroup::registerListener(framework, this);
     }
 
     virtual ~EndpointFixture() {
-        LocalL2Ep::unregisterListener(framework, this);
-        LocalL3Ep::unregisterListener(framework, this);
+        EndPointToGroupRSrc::unregisterListener(framework, this);
+        EpgMappingCtx::unregisterListener(framework, this);
         BridgeDomain::unregisterListener(framework, this);
         EpGroup::unregisterListener(framework, this);
     }
 
     void addBd() {
-        shared_ptr<BridgeDomain> bd =
-            space->addGbpBridgeDomain("bd");
-        bd->addGbpBridgeDomainToNetworkRSrc()
-            ->setTargetRoutingDomain(rduri);
+        optional<shared_ptr<BridgeDomain> > bd =
+            space->resolveGbpBridgeDomain("bd");
+        if (!bd)
+            space->addGbpBridgeDomain("bd")
+                ->addGbpBridgeDomainToNetworkRSrc()
+                ->setTargetRoutingDomain(rduri);
     }
     void rmBd() {
         BridgeDomain::remove(framework, "test", "bd");
     }
 
     void addRd() {
-        shared_ptr<RoutingDomain> rd =
+        optional<shared_ptr<RoutingDomain> > rd =
+            space->resolveGbpRoutingDomain("rd");
+        if (!rd)
             space->addGbpRoutingDomain("rd");
     }
     void rmRd() {
         RoutingDomain::remove(framework, "test", "rd");
     }
 
-    void addEpg() {
-        shared_ptr<EpGroup> epg =
-            space->addGbpEpGroup("epg");
-        epg->addGbpEpGroupToNetworkRSrc()
-            ->setTargetBridgeDomain(bduri);
+    void addEpg(const std::string& name = "epg") {
+        optional<shared_ptr<EpGroup> > epg =
+            space->resolveGbpEpGroup(name);
+        if (!epg)
+            space->addGbpEpGroup(name)
+                ->addGbpEpGroupToNetworkRSrc()
+                ->setTargetBridgeDomain(bduri);
     }
-    void rmEpg() {
-        RoutingDomain::remove(framework, "test", "epg");
+    void rmEpg(const std::string& name = "epg") {
+        RoutingDomain::remove(framework, "test", name);
+    }
+
+    void addEpgMapping() {
+        optional<shared_ptr<EpgMapping> > mapping =
+            universe->resolveGbpeEpgMapping("testmapping");
+        if (!mapping)
+            universe->addGbpeEpgMapping("testmapping")
+                ->addGbpeEpgMappingToDefaultGroupRSrc()
+                ->setTargetEpGroup("test", "epg");
+    }
+    void rmEpgMapping() {
+        EpgMapping::remove(framework, "testmapping");
+    }
+
+    void addEpAttributeSet() {
+        optional<shared_ptr<EpAttributeSet> > attrSet =
+            VMUniverse::resolve(framework).get()
+            ->resolveGbpeEpAttributeSet("72ffb982-b2d5-4ae4-91ac-0dd61daf527a");
+        if (!attrSet) {
+            VMUniverse::resolve(framework).get()
+                ->addGbpeEpAttributeSet("72ffb982-b2d5-4ae4-91ac-0dd61daf527a")
+                ->addGbpeEpAttribute("registryattr")
+                ->setValue("attrvalue");
+        }
+    }
+    void rmEpAttributeSet() {
+        EpAttributeSet::remove(framework, "72ffb982-b2d5-4ae4-91ac-0dd61daf527a");
     }
 
     virtual void objectUpdated(class_id_t class_id,
@@ -110,19 +148,36 @@ public:
         Mutator mutator(framework, "policyreg");
             
         switch (class_id) {
-        case LocalL2Ep::CLASS_ID:
+        case EndPointToGroupRSrc::CLASS_ID:
             {
-                optional<shared_ptr<LocalL2Ep> > obj = 
-                    LocalL2Ep::resolve(framework, uri);
-                if (obj) addEpg();
-                else rmEpg();
+                optional<shared_ptr<EndPointToGroupRSrc> > obj =
+                    EndPointToGroupRSrc::resolve(framework, uri);
+                if (obj) {
+                    vector<string> elements;
+                    obj.get()->getTargetURI().get().getElements(elements);
+                    addEpg(elements.back());
+                } else
+                    rmEpg();
+            }
+            break;
+        case EpgMappingCtx::CLASS_ID:
+            {
+                optional<shared_ptr<EpgMappingCtx> > obj =
+                    EpgMappingCtx::resolve(framework, uri);
+                if (obj) {
+                    addEpgMapping();
+                    addEpAttributeSet();
+                } else {
+                    rmEpgMapping();
+                    rmEpAttributeSet();
+                }
             }
             break;
         case LocalL3Ep::CLASS_ID:
             break;
         case BridgeDomain::CLASS_ID:
             {
-                optional<shared_ptr<BridgeDomain> > obj = 
+                optional<shared_ptr<BridgeDomain> > obj =
                     BridgeDomain::resolve(framework, uri);
                 if (obj) addRd();
                 else rmRd();
@@ -130,7 +185,7 @@ public:
             break;
         case EpGroup::CLASS_ID:
             {
-                optional<shared_ptr<EpGroup> > obj = 
+                optional<shared_ptr<EpGroup> > obj =
                     EpGroup::resolve(framework, uri);
                 if (obj) addBd();
                 else rmBd();
@@ -141,6 +196,7 @@ public:
         mutator.commit();
     }
 
+    shared_ptr<policy::Universe> universe;
     shared_ptr<policy::Space> space;
     MockEndpointSource epSource;
     URI bduri;
@@ -169,6 +225,12 @@ bool hasEPREntry(OFFramework& framework, const URI& uri) {
     return T::resolve(framework, uri);
 }
 
+static int getEGSize(EndpointManager& epManager, URI& epgu) {
+    boost::unordered_set<std::string> epUuids;
+    epManager.getEndpointsForGroup(epgu, epUuids);
+    return epUuids.size();
+}
+
 BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     URI epgu = URI("/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/");
     Endpoint ep1("e82e883b-851d-4cc6-bedb-fb5e27530043");
@@ -178,7 +240,7 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     ep1.setInterfaceName("veth1");
     ep1.setEgURI(epgu);
     Endpoint ep2("72ffb982-b2d5-4ae4-91ac-0dd61daf527a");
-    ep2.setMAC(MAC("00:00:00:00:00:01"));
+    ep2.setMAC(MAC("00:00:00:00:00:02"));
     ep2.setInterfaceName("veth2");
     ep2.addIP("10.1.1.4");
     ep2.setEgURI(epgu);
@@ -188,10 +250,9 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
 
     boost::unordered_set<std::string> epUuids;
     agent.getEndpointManager().getEndpointsForGroup(epgu, epUuids);
-    BOOST_CHECK(epUuids.size() == 2);
+    BOOST_CHECK_EQUAL(2, epUuids.size());
     BOOST_CHECK(epUuids.find(ep1.getUUID()) != epUuids.end());
     BOOST_CHECK(epUuids.find(ep2.getUUID()) != epUuids.end());
-
 
     URI l2epr1 = URIBuilder()
         .addElement("EprL2Universe")
@@ -202,7 +263,7 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
         .addElement("EprL2Universe")
         .addElement("EprL2Ep")
         .addElement(bduri.toString())
-        .addElement(MAC("00:00:00:00:00:01")).build();
+        .addElement(MAC("00:00:00:00:00:02")).build();
     URI l3epr1_2 = URIBuilder()
         .addElement("EprL3Universe")
         .addElement("EprL3Ep")
@@ -212,13 +273,13 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
         .addElement("EprL3Universe")
         .addElement("EprL3Ep")
         .addElement(rduri.toString())
-        .addElement("10.1.1.2").build();
+        .addElement("10.1.1.3").build();
     URI l3epr2_4 = URIBuilder()
         .addElement("EprL3Universe")
         .addElement("EprL3Ep")
         .addElement(rduri.toString())
         .addElement("10.1.1.4").build();
-                    
+
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr1), 500);
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
 
@@ -226,6 +287,107 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr1_3), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_4), 500);
 
+}
+
+BOOST_FIXTURE_TEST_CASE( epgmapping, EndpointFixture ) {
+    URI epgu = URI("/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/");
+    URI epg2u = URI("/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg2/");
+    URI epg3u = URI("/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg3/");
+    Endpoint ep2("72ffb982-b2d5-4ae4-91ac-0dd61daf527a");
+    ep2.setMAC(MAC("00:00:00:00:00:02"));
+    ep2.setInterfaceName("veth2");
+    ep2.addIP("10.1.1.4");
+    ep2.setEgMappingAlias("testmapping");
+    ep2.addAttribute("localattr", "asddsa");
+
+    epSource.updateEndpoint(ep2);
+
+    WAIT_FOR(1 == getEGSize(agent.getEndpointManager(), epgu), 500);
+    boost::unordered_set<std::string> epUuids;
+    agent.getEndpointManager().getEndpointsForGroup(epgu, epUuids);
+    BOOST_CHECK(epUuids.find(ep2.getUUID()) != epUuids.end());
+
+    URI l2epr2 = URIBuilder()
+        .addElement("EprL2Universe")
+        .addElement("EprL2Ep")
+        .addElement(bduri.toString())
+        .addElement(MAC("00:00:00:00:00:02")).build();
+    URI l3epr2_4 = URIBuilder()
+        .addElement("EprL3Universe")
+        .addElement("EprL3Ep")
+        .addElement(rduri.toString())
+        .addElement("10.1.1.4").build();
+                    
+    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
+    WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_4), 500);
+
+    Mutator mutator(framework, "policyreg");
+    shared_ptr<EpgMapping> mapping =
+        universe->resolveGbpeEpgMapping("testmapping").get();
+    mapping->addGbpeAttributeMappingRule("rule1")
+        ->setOrder(10)
+        .setAttributeName("localattr")
+        .setMatchString("asd")
+        .setMatchType(StringMatchTypeEnumT::CONST_STARTSWITH)
+        .addGbpeMappingRuleToGroupRSrc()
+        ->setTargetEpGroup(epg2u);
+    mutator.commit();
+
+    WAIT_FOR(1 == getEGSize(agent.getEndpointManager(), epg2u), 500);
+    WAIT_FOR(0 == getEGSize(agent.getEndpointManager(), epgu), 500);
+
+    mapping = universe->resolveGbpeEpgMapping("testmapping").get();
+    mapping->addGbpeAttributeMappingRule("rule2")
+        ->setOrder(9)
+        .setAttributeName("registryattr")
+        .setMatchString("value")
+        .setMatchType(StringMatchTypeEnumT::CONST_ENDSWITH)
+        .addGbpeMappingRuleToGroupRSrc()
+        ->setTargetEpGroup(epg3u);
+    mutator.commit();
+
+    WAIT_FOR(1 == getEGSize(agent.getEndpointManager(), epg3u), 500);
+    WAIT_FOR(0 == getEGSize(agent.getEndpointManager(), epg2u), 500);
+    WAIT_FOR(0 == getEGSize(agent.getEndpointManager(), epgu), 500);
+
+    mapping = universe->resolveGbpeEpgMapping("testmapping").get();
+    mapping->addGbpeAttributeMappingRule("rule3")
+        ->setOrder(8)
+        .setAttributeName("registryattr")
+        .setMatchString("attrvalue")
+        .setMatchType(StringMatchTypeEnumT::CONST_EQUALS)
+        .addGbpeMappingRuleToGroupRSrc()
+        ->setTargetEpGroup(epg2u);
+    mutator.commit();
+
+    mapping = universe->resolveGbpeEpgMapping("testmapping").get();
+    mapping->addGbpeAttributeMappingRule("rule4")
+        ->setOrder(7)
+        .setAttributeName("localattr")
+        .setMatchString("sdds")
+        .setMatchType(StringMatchTypeEnumT::CONST_CONTAINS)
+        .addGbpeMappingRuleToGroupRSrc()
+        ->setTargetEpGroup(epg2u);
+    mutator.commit();
+
+    WAIT_FOR(0 == getEGSize(agent.getEndpointManager(), epg3u), 500);
+    WAIT_FOR(1 == getEGSize(agent.getEndpointManager(), epg2u), 500);
+    WAIT_FOR(0 == getEGSize(agent.getEndpointManager(), epgu), 500);
+
+    mapping = universe->resolveGbpeEpgMapping("testmapping").get();
+    mapping->addGbpeAttributeMappingRule("rule5")
+        ->setOrder(7)
+        .setAttributeName("nothing")
+        .setMatchString("lksdflkjsd")
+        .setMatchType(StringMatchTypeEnumT::CONST_EQUALS)
+        .setNegated(1)
+        .addGbpeMappingRuleToGroupRSrc()
+        ->setTargetEpGroup(epgu);
+    mutator.commit();
+
+    WAIT_FOR(0 == getEGSize(agent.getEndpointManager(), epg3u), 500);
+    WAIT_FOR(0 == getEGSize(agent.getEndpointManager(), epg2u), 500);
+    WAIT_FOR(1 == getEGSize(agent.getEndpointManager(), epgu), 500);
 }
 
 BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
@@ -237,7 +399,8 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
        << "\"mac\":\"10:ff:00:a3:01:00\","
        << "\"ip\":[\"10.0.0.1\",\"10.0.0.2\"],"
        << "\"interface-name\":\"veth0\","
-       << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\""
+       << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\","
+       << "\"attributes\":{\"attr1\":\"value1\"}"
        << "}" << std::endl;
     os.close();
 
@@ -278,7 +441,8 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
        << "\"mac\":\"10:ff:00:a3:01:01\","
        << "\"ip\":[\"10.0.0.3\"],"
        << "\"interface-name\":\"veth1\","
-       << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\""
+       << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\","
+       << "\"attributes\":{\"attr2\":\"value2\"}"
        << "}" << std::endl;
     os2.close();
     

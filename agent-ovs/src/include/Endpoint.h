@@ -12,6 +12,7 @@
 #include <string>
 
 #include <boost/unordered_set.hpp>
+#include <boost/unordered_map.hpp>
 #include <boost/optional.hpp>
 #include <opflex/modb/URI.h>
 #include <opflex/modb/MAC.h>
@@ -68,6 +69,32 @@ public:
      */
     void unsetEgURI() {
         egURI = boost::none;
+    }
+
+    /**
+     * Get the mapping alias for this endpoint
+     *
+     * @return the mapping alias
+     */
+    const boost::optional<std::string>& getEgMappingAlias() const {
+        return egMappingAlias;
+    }
+
+    /**
+     * Set the mapping alias for this endpoint.  The mapping alias can
+     * be used to find the endpoint group mapping for the endpoint
+     *
+     * @param mappingAlias the URI to set
+     */
+    void setEgMappingAlias(const std::string& egMappingAlias) {
+        this->egMappingAlias = egMappingAlias;
+    }
+
+    /**
+     * Unset the endpoint group URI
+     */
+    void unsetEgMappingAlias() {
+        egMappingAlias = boost::none;
     }
 
     /**
@@ -187,13 +214,46 @@ public:
         return promiscuousMode;
     }
 
+    /**
+     * Clear the attribute map
+     */
+    void clearAttributes() {
+        attributes.clear();
+    }
+
+    /**
+     * Add an attribute to the attribute map
+     *
+     * @param name the name of the attribute to set
+     * @param value the new value for the attribute
+     */
+    void addAttribute(const std::string& name, const std::string& value) {
+        attributes[name] = value;
+    }
+
+    /**
+     * A string to string mapping
+     */
+    typedef boost::unordered_map<std::string, std::string> attr_map_t;
+
+    /**
+     * Get a reference to a map of name/value attributes
+     *
+     * @return a map of name/value attribute pairs
+     */
+    const attr_map_t& getAttributes() const {
+        return attributes;
+    }
+
 private:
     std::string uuid;
     boost::optional<opflex::modb::MAC> mac;
     boost::unordered_set<std::string> ips;
+    boost::optional<std::string> egMappingAlias;
     boost::optional<opflex::modb::URI> egURI;
     boost::optional<std::string> interfaceName;
     bool promiscuousMode;
+    attr_map_t attributes;
 };
 
 /**

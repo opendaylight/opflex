@@ -33,4 +33,13 @@ module[ascii]
     # text name string
     type[Name; super=ascii/String]
     type[Description; super=ascii/String]
+
+    # String match types
+    type[StringMatchType; super=scalar/Enum8]
+    {
+        const[name=equals; value=0]
+        const[name=contains; value=1]
+        const[name=startswith; value=2]
+        const[name=endswith; value=3]
+    }
 }

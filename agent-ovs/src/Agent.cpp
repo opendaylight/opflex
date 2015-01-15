@@ -148,6 +148,7 @@ void Agent::start() {
     root->addEprL3Universe();
     root->addEpdrL2Discovered();
     root->addEpdrL3Discovered();
+    root->addGbpeVMUniverse();
     root->addObserverEpStatUniverse();
     mutator.commit();
 
