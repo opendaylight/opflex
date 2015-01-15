@@ -24,6 +24,7 @@
 #include "FlowReader.h"
 #include "FlowExecutor.h"
 #include "IdGenerator.h"
+#include "JsonCmdExecutor.h"
 
 namespace ovsagent {
 
@@ -78,6 +79,15 @@ public:
      */
     void SetFlowReader(FlowReader *r) {
         reader = r;
+    }
+
+    /**
+     * Set the object used for executing control commands against the
+     * openvswitch daemon.
+     * @param e The executor object
+     */
+    void setJsonCmdExecutor(JsonCmdExecutor *e) {
+        jsonCmdExecutor = e;
     }
 
     /**
@@ -454,6 +464,7 @@ private:
     FlowExecutor* executor;
     PortMapper *portMapper;
     FlowReader *reader;
+    JsonCmdExecutor *jsonCmdExecutor;
 
     FallbackMode fallbackMode;
     EncapType encapType;
@@ -537,6 +548,12 @@ private:
         void ReconcileGroups();
 
         /**
+         * Compare multicast subscription read from openvswitch daemon and make
+         * modifications to eliminate differences.
+         */
+        void reconcileMulticastList();
+
+        /**
          * Check if a group with given ID and endpoints is present
          * in the received groups, and update the given group-edits if the
          * group is not found or is different. If a group is found, it is
@@ -584,6 +601,42 @@ private:
     bool opflexPeerConnected;
 
     void initPlatformConfig();
+
+    /* Set of URIs of managed objects */
+    typedef boost::unordered_set<opflex::modb::URI> UriSet;
+    /* Map of multi-cast IP addresses to associated managed objects */
+    typedef boost::unordered_map<std::string, UriSet> MulticastMap;
+    MulticastMap mcastMap;
+
+    /**
+     * Associate or disassociate a managed object with a multicast IP, and
+     * update the multicast group subscription if necessary.
+     * @param mcastIp The multicast IP to associate with; if unset disassociates
+     * any previous association
+     * @param uri URI of the managed object to associate to
+     */
+    void updateMulticastList(const boost::optional<std::string>& mcastIp,
+                             const opflex::modb::URI& uri);
+
+    /**
+     * Remove all multicast IP associations for a managed object.
+     * @param uri URI of the managed object to disassociate
+     */
+    void removeFromMulticastList(const opflex::modb::URI& uri);
+
+    /**
+     * Get the currently configured multicast group subscriptions from the
+     * Openvswitch daemon.
+     * @param mcastIps Contains the groups subscribed to
+     */
+    void fetchMulticastSubscription(boost::unordered_set<std::string>& mcastIps);
+
+    /**
+     * Configure Openvswitch daemon to join or leave a multicast group.
+     * @param mcastIp IP address of the group to join or leave
+     * @params leave If true, leave the group, else join the group
+     */
+    void changeMulticastSubscription(const std::string& mcastIp, bool leave);
 };
 
 } // namespace ovsagent

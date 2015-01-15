@@ -12,6 +12,9 @@
 #include <cstring>
 #include <boost/system/error_code.hpp>
 #include <boost/foreach.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 #include <modelgbp/arp/OpcodeEnumT.hpp>
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
@@ -64,9 +67,9 @@ static const char * ID_NMSPC_CON = "contract";
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
-        reader(NULL), fallbackMode(FALLBACK_PROXY), encapType(ENCAP_NONE),
-        floodScope(FLOOD_DOMAIN), virtualRouterEnabled(true),
-        isSyncing(false), flowSyncer(*this),
+        reader(NULL), jsonCmdExecutor(NULL), fallbackMode(FALLBACK_PROXY),
+        encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN),
+        virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this),
         connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC), stopping(false),
         opflexPeerConnected(false) {
     memset(routerMac, 0, sizeof(routerMac));
@@ -975,6 +978,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     if (!polMgr.groupExists(epgURI)) {  // EPG removed
         WriteFlow(epgId, SRC_TABLE_ID, NULL);
         WriteFlow(epgId, POL_TABLE_ID, NULL);
+        updateMulticastList(boost::none, epgURI);
         return;
     }
 
@@ -1036,6 +1040,14 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     BOOST_FOREACH(const string& ep, epUuids) {
         endpointUpdated(ep);
     }
+
+    optional<string> mcastGrpIp;
+    optional<shared_ptr<FloodContext> > fdCtx =
+        polMgr.getFloodContextForGroup(epgURI);
+    if (fdCtx) {
+        mcastGrpIp = fdCtx.get()->getMulticastGroupIP();
+    }
+    updateMulticastList(mcastGrpIp, epgURI);
 }
 
 void
@@ -1182,6 +1194,8 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
             WriteGroupMod(e2);
         }
     } else {
+        /* Remove EP attachment to old floodgroup, if any */
+        RemoveEndpointFromFloodGroup(epUUID);
         floodGroupMap[fgrpURI][epUUID] = epPair;
         GroupEdit::Entry e =
             CreateGroupMod(OFPGC11_ADD, fgrpId, floodGroupMap[fgrpURI]);
@@ -1189,7 +1203,6 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
         GroupEdit::Entry e2 = CreateGroupMod(OFPGC11_ADD, getPromId(fgrpId),
                                              floodGroupMap[fgrpURI], true);
         WriteGroupMod(e2);
-
     }
 
     FlowEntryList entryList;
@@ -1342,8 +1355,10 @@ void FlowManager::initPlatformConfig() {
                 mcastTunDst = ip;
             }
         }
+        updateMulticastList(
+            ipStr ? optional<string>(ipStr.get()) : optional<string>(),
+            config.get()->getURI());
     }
-
 }
 
 void FlowManager::HandleConfigUpdate(const opflex::modb::URI& configURI) {
@@ -1452,6 +1467,8 @@ void FlowManager::HandlePortStatusUpdate(const string& portName,
                                          uint32_t portNo) {
     LOG(DEBUG) << "Port-status update for " << portName;
     if (portName == encapIface) {
+        initPlatformConfig();
+
         PolicyManager::uri_set_t epgURIs;
         agent.getPolicyManager().getGroups(epgURIs);
         BOOST_FOREACH (const URI& epg, epgURIs) {
@@ -1883,6 +1900,98 @@ void FlowManager::Handle(SwitchConnection *conn,
 
 }
 
+void FlowManager::updateMulticastList(const optional<string>& mcastIp,
+                                      const URI& uri) {
+    if ((encapType != ENCAP_VXLAN && encapType != ENCAP_IVXLAN) ||
+        GetTunnelPort() == OFPP_NONE ||
+        !mcastIp) {
+        removeFromMulticastList(uri);
+        return;
+    }
+
+    boost::system::error_code ec;
+    address ip(address::from_string(mcastIp.get(), ec));
+    if (ec || !ip.is_v4()) {
+        LOG(WARNING) << "Ignoring invalid/unsupported multicast "
+            "subscription IP: " << mcastIp.get();
+        return;
+    }
+    MulticastMap::iterator itr = mcastMap.find(mcastIp.get());
+    if (itr != mcastMap.end()) {
+        UriSet& uris = itr->second;
+        UriSet::iterator jtr = uris.find(uri);
+        if (jtr == uris.end()) {
+            removeFromMulticastList(uri);   // remove old association, if any
+            uris.insert(uri);
+        }
+    } else {
+        removeFromMulticastList(uri);   // remove old association, if any
+        mcastMap[mcastIp.get()].insert(uri);
+        if (!isSyncing) {
+            changeMulticastSubscription(mcastIp.get(), false);
+        }
+    }
+}
+
+void FlowManager::removeFromMulticastList(const URI& uri) {
+    BOOST_FOREACH (MulticastMap::value_type& kv, mcastMap) {
+        UriSet& uris = kv.second;
+        if (uris.erase(uri) > 0 && uris.empty()) {
+            if (!isSyncing) {
+                changeMulticastSubscription(kv.first, true);
+            }
+            mcastMap.erase(kv.first);
+            break;
+        }
+    }
+}
+
+void FlowManager::changeMulticastSubscription(const string& mcastIp,
+                                              bool leave) {
+    static const string cmdJoin("dpif/vxlan-mcast-join");
+    static const string cmdLeave("dpif/vxlan-mcast-leave");
+    if (!jsonCmdExecutor) {
+        return;
+    }
+
+    LOG(INFO) << (leave ? "Leav" : "Join") << "ing multicast group with "
+            "IP: " << mcastIp;
+    vector<string> params;
+    params.push_back(connection->getSwitchName());
+    params.push_back("4789");   // XXX will be replaced with encap iface name
+    params.push_back(mcastIp);
+
+    const string& cmd = leave ? cmdLeave : cmdJoin;
+    string res;
+    if (jsonCmdExecutor->execute(cmd, params, res) == false) {
+        LOG(ERROR) << "Error " << (leave ? "leav" : "join")
+            << "ing multicast group: " << mcastIp << ", error: " << res;
+    }
+}
+
+void FlowManager::fetchMulticastSubscription(unordered_set<string>& mcastIps) {
+    static const string cmdDump("dpif/vxlan-mcast-dump");
+    if (!jsonCmdExecutor) {
+        return;
+    }
+    vector<string> params;
+    params.push_back(connection->getSwitchName());
+    params.push_back("4789");   // XXX will be replaced with encap iface name
+    mcastIps.clear();
+
+    string res;
+    if (jsonCmdExecutor->execute(cmdDump, params, res) == false) {
+        LOG(ERROR) << "Error while fetching multicast subscriptions, "
+                "error: " << res;
+    } else {
+        algorithm::trim(res);
+        if (!res.empty()) {
+            algorithm::split(mcastIps, res, boost::is_any_of(" \t\n\r"),
+                             boost::token_compress_on);
+        }
+    }
+}
+
 FlowManager::FlowSyncer::FlowSyncer(FlowManager& fm) :
     flowManager(fm), syncInProgress(false), syncPending(false) {
 }
@@ -1971,6 +2080,7 @@ void FlowManager::FlowSyncer::CompleteSync() {
     assert(syncInProgress == true);
     ReconcileGroups();
     ReconcileFlows();
+    reconcileMulticastList();
     syncInProgress = false;
     flowManager.isSyncing = false;
     LOG(INFO) << "Sync complete, current mode changed to normal execution";
@@ -2053,6 +2163,21 @@ void FlowManager::FlowSyncer::ReconcileGroups() {
     }
     recvGroups.clear();
     groupsDone = false;
+}
+
+void FlowManager::FlowSyncer::reconcileMulticastList() {
+    unordered_set<string> mcastIps;
+    flowManager.fetchMulticastSubscription(mcastIps);
+    LOG(DEBUG) << "Currently subscribed to " << mcastIps.size()
+        << " multicast groups";
+    BOOST_FOREACH (const MulticastMap::value_type& kv, flowManager.mcastMap) {
+        if (mcastIps.erase(kv.first) == 0) {    // not subscribed
+            flowManager.changeMulticastSubscription(kv.first, false);
+        }
+    }
+    BOOST_FOREACH (const string& ip, mcastIps) {
+        flowManager.changeMulticastSubscription(ip, true);
+    }
 }
 
 } // namespace ovsagent

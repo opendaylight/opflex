@@ -150,6 +150,11 @@ public:
      */
     virtual ofp_version GetProtocolVersion();
 
+    /**
+     * Get the name of switch that this connection is for.
+     */
+    std::string getSwitchName();
+
     /** Interface: Boost thread */
     void operator()();
 

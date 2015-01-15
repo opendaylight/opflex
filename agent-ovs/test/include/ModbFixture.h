@@ -55,9 +55,11 @@ public:
     DummyEpSrc epSrc;
     shared_ptr<policy::Universe> universe;
     shared_ptr<policy::Space> space;
+    shared_ptr<Config> config;
     shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
     shared_ptr<EpGroup> epg0, epg1, epg2, epg3, epg4;
     shared_ptr<FloodDomain> fd0, fd1;
+    shared_ptr<FloodContext> fd0ctx;
     shared_ptr<RoutingDomain> rd0;
     shared_ptr<BridgeDomain> bd0;
     shared_ptr<Subnets> subnetsfd0, subnetsfd1, subnetsbd0, subnetsrd0;
@@ -82,7 +84,7 @@ protected:
         universe = policy::Universe::resolve(framework).get();
 
         Mutator mutator(framework, policyOwner);
-        shared_ptr<Config> config = universe->addPlatformConfig("default");
+        config = universe->addPlatformConfig("default");
         config->setMulticastGroupIP("224.1.1.1");
 
         space = universe->addPolicySpace("tenant0");
@@ -94,6 +96,9 @@ protected:
 
         fd0->addGbpFloodDomainToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
+        fd0ctx = fd0->addGbpeFloodContext();
+        fd0ctx->setMulticastGroupIP("224.5.1.1");
+
         fd1->addGbpFloodDomainToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
         bd0->addGbpBridgeDomainToNetworkRSrc()

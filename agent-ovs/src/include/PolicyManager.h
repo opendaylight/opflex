@@ -129,6 +129,17 @@ public:
     getFDForGroup(const opflex::modb::URI& eg);
 
     /**
+     * Get the flood context for the specified endpoint group if it
+     * exists
+     *
+     * @param eg the URI for the endpoint group
+     * @return the flood context or boost::none if the group or the
+     * domain is not found
+     */
+    boost::optional<boost::shared_ptr<modelgbp::gbpe::FloodContext> >
+    getFloodContextForGroup(const opflex::modb::URI& eg);
+
+    /**
      * A vector of Subnet objects
      */
     typedef std::vector<boost::shared_ptr<modelgbp::gbp::Subnet> > 
@@ -248,6 +259,7 @@ private:
         boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
         boost::optional<boost::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;
         boost::optional<boost::shared_ptr<modelgbp::gbp::FloodDomain> > floodDomain;
+        boost::optional<boost::shared_ptr<modelgbp::gbpe::FloodContext> > floodContext;
         typedef boost::unordered_map<opflex::modb::URI,
                                      boost::shared_ptr<modelgbp::gbp::Subnet> > subnet_map_t;
         subnet_map_t subnet_map;

@@ -54,6 +54,7 @@ void PolicyManager::start() {
 
     BridgeDomain::registerListener(framework, &domainListener);
     FloodDomain::registerListener(framework, &domainListener);
+    FloodContext::registerListener(framework, &domainListener);
     RoutingDomain::registerListener(framework, &domainListener);
     Subnets::registerListener(framework, &domainListener);
     EpGroup::registerListener(framework, &domainListener);
@@ -82,6 +83,7 @@ void PolicyManager::stop() {
     using namespace modelgbp::gbpe;
     BridgeDomain::unregisterListener(framework, &domainListener);
     FloodDomain::unregisterListener(framework, &domainListener);
+    FloodContext::unregisterListener(framework, &domainListener);
     RoutingDomain::unregisterListener(framework, &domainListener);
     Subnets::unregisterListener(framework, &domainListener);
     EpGroup::unregisterListener(framework, &domainListener);
@@ -146,6 +148,14 @@ PolicyManager::getFDForGroup(const opflex::modb::URI& eg) {
     group_map_t::iterator it = group_map.find(eg);
     if (it == group_map.end()) return boost::none;
     return it->second.floodDomain;
+}
+
+optional<shared_ptr<modelgbp::gbpe::FloodContext> >
+PolicyManager::getFloodContextForGroup(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    if (it == group_map.end()) return boost::none;
+    return it->second.floodContext;
 }
 
 void PolicyManager::getSubnetsForGroup(const opflex::modb::URI& eg,
@@ -229,6 +239,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     optional<shared_ptr<RoutingDomain> > newrd;
     optional<shared_ptr<BridgeDomain> > newbd;
     optional<shared_ptr<FloodDomain> > newfd;
+    optional<shared_ptr<FloodContext> > newfdctx;
     GroupState::subnet_map_t newsmap;
 
     optional<class_id_t> domainClass;
@@ -290,6 +301,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                         ndomainClass = dref.get()->getTargetClass();
                         ndomainURI = dref.get()->getTargetURI();
                     }
+                    newfdctx = newfd.get()->resolveGbpeFloodContext();
                 }
             }
             break;
@@ -315,12 +327,14 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
 
     bool updated = false;
     if (newfd != gs.floodDomain ||
+        newfdctx != gs.floodContext ||
         newbd != gs.bridgeDomain ||
         newrd != gs.routingDomain ||
         newsmap != gs.subnet_map)
         updated = true;
     
     gs.floodDomain = newfd;
+    gs.floodContext = newfdctx;
     gs.bridgeDomain = newbd;
     gs.routingDomain = newrd;
     gs.subnet_map = newsmap;

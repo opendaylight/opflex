@@ -235,6 +235,10 @@ SwitchConnection::GetProtocolVersion() {
     return ofProtoVersion;
 }
 
+string SwitchConnection::getSwitchName() {
+    return switchName;
+}
+
 void
 SwitchConnection::operator()() {
     Monitor();
