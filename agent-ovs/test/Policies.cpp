@@ -88,6 +88,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     
     fd1->addGbpFloodDomainToNetworkRSrc()
         ->setTargetBridgeDomain(bd->getURI());
+    fd1->addGbpeFloodContext()->setMulticastGroupIP("224.10.1.1");
     fd2->addGbpFloodDomainToNetworkRSrc()
         ->setTargetBridgeDomain(bd->getURI());
     bd->addGbpBridgeDomainToNetworkRSrc()

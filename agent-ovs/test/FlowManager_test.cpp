@@ -13,6 +13,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
+#include <boost/algorithm/string/trim.hpp>
 
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
 
@@ -72,6 +73,10 @@ public:
         return true;
     }
     bool Execute(const GroupEdit& groupEdits) {
+        if (ignoreGroupModCounter != 0) {
+            ignoreGroupModCounter -= groupEdits.edits.size();
+            return true;
+        }
         BOOST_FOREACH(const GroupEdit::Entry& ed, groupEdits.edits) {
             LOG(DEBUG) << "*** GroupMod " << ed;
             stringstream ss;
@@ -99,6 +104,7 @@ public:
         }
     }
     void ExpectGroup(FlowEdit::TYPE mod, const string& ge) {
+        ignoreGroupModCounter = 0;
         const char *modStr[] = {"ADD", "MOD", "DEL"};
         groupMods.push_back(CanonicalizeGroupEntryStr(
                 string(modStr[mod]) + "|" + ge));
@@ -107,8 +113,14 @@ public:
         ignoreFlowModCounter = count;
         mods.clear();
     }
+    void IgnoreGroupMods(int count = -1) {
+        ignoreGroupModCounter = count;
+        groupMods.clear();
+    }
     bool IsEmpty() { return mods.empty() && ignoreFlowModCounter <= 0; }
-    bool IsGroupEmpty() { return groupMods.empty(); }
+    bool IsGroupEmpty() {
+        return groupMods.empty() && ignoreGroupModCounter <= 0;
+    }
     void Clear() {
         mods.clear();
         groupMods.clear();
@@ -117,6 +129,7 @@ public:
     std::list<MOD> mods;
     std::list<string> groupMods;
     int ignoreFlowModCounter;
+    int ignoreGroupModCounter;
 };
 
 class MockPortMapper : public PortMapper {
@@ -173,6 +186,35 @@ public:
 
     FlowEntryList flows;
     GroupEdit::EntryList groups;
+};
+
+class MockJsonCmdExecutor : public JsonCmdExecutor {
+public:
+    bool execute(const std::string& command,
+                 const std::vector<std::string>& params,
+                 std::string& result) {
+        string cmd = command;
+        BOOST_FOREACH (const string& s, params) {
+            cmd.append(" ").append(s);
+        }
+        BOOST_CHECK_MESSAGE (!expectedCmd.empty(), "\nexp:\ngot: " << cmd);
+        if (!expectedCmd.empty()) {
+            string exp = expectedCmd.front().first;
+            string res = expectedCmd.front().second;
+            expectedCmd.pop_front();
+            BOOST_CHECK_MESSAGE(exp == cmd,
+                "\nexp: " << exp << "\ngot: " << cmd);
+            result = res;
+        }
+        return true;
+    }
+    void expect(const string& fullCmd, const string& res="") {
+        expectedCmd.push_back(pair<string, string>(fullCmd, res));
+        boost::algorithm::trim(expectedCmd.back().first);
+    }
+    bool empty() { return expectedCmd.empty(); }
+    void clear() { expectedCmd.clear(); }
+    list<pair<string, string> > expectedCmd;
 };
 
 BOOST_AUTO_TEST_SUITE(FlowManager_test)
@@ -235,12 +277,14 @@ public:
     void policyPortRangeTest();
     void connectTest();
     void portStatusTest();
+    void mcastTest();
 
     MockFlowExecutor exec;
     MockFlowReader reader;
     FlowManager flowManager;
     MockPortMapper portmapper;
     PolicyManager& policyMgr;
+    MockJsonCmdExecutor jsonCmdExecutor;
 
     string tunIf;
     vector<string> fe_fixed;
@@ -819,6 +863,63 @@ BOOST_FIXTURE_TEST_CASE(learn, VxlanFlowManagerFixture) {
         ++i;
     }
     BOOST_CHECK_EQUAL(3, i);
+}
+
+void FlowManagerFixture::mcastTest() {
+    exec.IgnoreFlowMods();
+    exec.IgnoreGroupMods();
+
+    MockSwitchConnection conn;
+    flowManager.registerConnection(&conn);
+    flowManager.setJsonCmdExecutor(&jsonCmdExecutor);
+    flowManager.SetFlowReader(&reader);
+
+    string prmBr = " " + conn.getSwitchName() + " 4789 ";
+    string mcast1 = config->getMulticastGroupIP().get();
+    string mcast2 = "224.1.1.2";
+    string mcast3 = fd0ctx->getMulticastGroupIP().get();
+    string mcast4 = "224.5.1.2";
+
+    jsonCmdExecutor.expect("dpif/vxlan-mcast-dump" + prmBr,
+                           " 224.10.1.10\n\n" + mcast1);
+    jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + "224.10.1.10");
+    flowManager.configUpdated(config->getURI());
+    setConnected();
+    WAIT_FOR(jsonCmdExecutor.empty(), 500);
+
+    jsonCmdExecutor.clear();
+    jsonCmdExecutor.expect("dpif/vxlan-mcast-join" + prmBr + mcast3);
+    flowManager.egDomainUpdated(epg2->getURI());
+    WAIT_FOR(jsonCmdExecutor.empty(), 500);
+
+    Mutator mutator(framework, policyOwner);
+    config->setMulticastGroupIP(mcast2);
+    fd0ctx->setMulticastGroupIP(mcast4);
+    mutator.commit();
+    WAIT_FOR_DO(fd0ctx->getMulticastGroupIP().get() == mcast4, 500,
+        fd0ctx = policyMgr.getFloodContextForGroup(epg2->getURI()).get());
+
+    jsonCmdExecutor.clear();
+    jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + mcast1);
+    jsonCmdExecutor.expect("dpif/vxlan-mcast-join" + prmBr + mcast2);
+    jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + mcast3);
+    jsonCmdExecutor.expect("dpif/vxlan-mcast-join" + prmBr + mcast4);
+    flowManager.configUpdated(config->getURI());
+    flowManager.egDomainUpdated(epg2->getURI());
+    WAIT_FOR(jsonCmdExecutor.empty(), 500);
+
+    fd0ctx->unsetMulticastGroupIP();
+    mutator.commit();
+    WAIT_FOR_DO(fd0ctx->isMulticastGroupIPSet() == false, 500,
+        fd0ctx = policyMgr.getFloodContextForGroup(epg2->getURI()).get());
+    jsonCmdExecutor.clear();
+    jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + mcast4);
+    flowManager.egDomainUpdated(epg2->getURI());
+    WAIT_FOR(jsonCmdExecutor.empty(), 500);
+}
+
+BOOST_FIXTURE_TEST_CASE(mcast_vxlan, VxlanFlowManagerFixture) {
+    mcastTest();
 }
 
 enum REG {

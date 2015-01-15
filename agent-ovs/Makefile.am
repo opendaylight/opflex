@@ -67,6 +67,7 @@ noinst_HEADERS = \
 	src/include/IdGenerator.h \
 	src/include/RangeMask.h \
 	src/include/Packets.h \
+	src/include/JsonCmdExecutor.h \
 	src/include/cmd.h \
 	src/include/logging.h
 
@@ -93,7 +94,8 @@ libagent_ovs_la_SOURCES = \
 	src/WorkQueue.cpp \
 	src/IdGenerator.cpp \
 	src/RangeMask.cpp \
-	src/Packets.cpp
+	src/Packets.cpp \
+	src/JsonCmdExecutor.cpp
 
 bin_PROGRAMS=agent_ovs
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' $(OVS_ADDL_CFLAGS)
@@ -124,6 +126,7 @@ agent_test_SOURCES = \
 	test/IdGenerator_test.cpp \
 	test/RangeMask_test.cpp \
 	test/Packets_test.cpp \
+	test/JsonCmdExecutor_test.cpp \
 	test/main.cpp
 agent_test_LDADD = \
 	libagent_ovs.la \

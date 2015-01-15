@@ -24,6 +24,7 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     flowManager.SetFlowReader(&flowReader);
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
+    flowManager.setJsonCmdExecutor(&jsonCmdExecutor);
 }
 
 StitchedModeRenderer::~StitchedModeRenderer() {
@@ -64,6 +65,7 @@ void StitchedModeRenderer::start() {
     portMapper.InstallListenersForConnection(connection);
     flowExecutor.InstallListenersForConnection(connection);
     flowReader.installListenersForConnection(connection);
+    jsonCmdExecutor.installListenersForConnection(connection);
     flowManager.registerConnection(connection);
     flowManager.registerModbListeners();
     connection->Connect(OFP13_VERSION);
@@ -86,6 +88,7 @@ void StitchedModeRenderer::stop() {
     connection->Disconnect();
     flowManager.unregisterModbListeners();
     flowManager.unregisterConnection(connection);
+    jsonCmdExecutor.uninstallListenersForConnection(connection);
     flowReader.uninstallListenersForConnection(connection);
     flowExecutor.UninstallListenersForConnection(connection);
     portMapper.UninstallListenersForConnection(connection);
