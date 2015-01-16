@@ -294,10 +294,15 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     return yajr::rpc::MessageFactory::getInboundMessage(*this, docIn_);
 }
 
-bool Peer::__checkInvariants() const {
+bool Peer::__checkInvariants()
+#ifndef NDEBUG
+    const
+#endif
+{
     return true;
 }
 
+#ifndef NDEBUG
 bool CommunicationPeer::__checkInvariants() const {
 
     if (status_ != kPS_ONLINE) {
@@ -331,6 +336,7 @@ bool PassivePeer::__checkInvariants() const {
 bool ListeningPeer::__checkInvariants() const {
     return internal::Peer::__checkInvariants();
 }
+#endif
 
 void CommunicationPeer::readBuffer(
         char * buffer,
