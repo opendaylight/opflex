@@ -132,7 +132,7 @@ class Peer : public SafeListBaseHook {
 
         void onPrepareLoop() __attribute__((no_instrument_function));
 
-        void destroy();
+        void destroy(bool now = false);
 
         struct RetryPeer {
             void operator()(Peer *peer)
@@ -193,6 +193,12 @@ class Peer : public SafeListBaseHook {
                 LOG(INFO) << peer << " destroy() because this communication thread is shutting down";
                 peer->destroy();
             }
+            PeerDisposer(bool now = false)
+                :
+                    now_(now)
+                {}
+          private:
+            bool const now_;
         };
 
         static void onPrepareLoop(uv_prepare_t *) __attribute__((no_instrument_function));
@@ -292,7 +298,7 @@ class Peer : public SafeListBaseHook {
 
     virtual void onDelete() {}
 
-    virtual void destroy() = 0;
+    virtual void destroy(bool now = false) = 0;
 
 #ifndef NDEBUG
     virtual
@@ -573,13 +579,25 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         (void) write();
     }
 
-    void onDisconnect() {
+    void onDisconnect(bool now = false) {
 
         LOG(DEBUG)
             << this
             << " connected_ = "
             << static_cast< bool >(connected_)
+            << " now = "
+            << now
         ;
+
+        if (connected_ || now) {
+            LOG(DEBUG)
+                << this
+                << " issuing close for tcp handle"
+            ;
+            if (!uv_is_closing((uv_handle_t*)&handle_)) {
+                uv_close((uv_handle_t*)&handle_, connected_? on_close : NULL);
+            }
+        }
 
         if (!connected_) {
             return;
@@ -591,9 +609,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
             stopKeepAlive();
         }
 
-        LOG(DEBUG) << this << " issuing close for keepAliveTimer and tcp handle";
-        uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
-        uv_close((uv_handle_t*)&handle_, on_close);
+        if (!uv_is_closing((uv_handle_t*)&keepAliveTimer_)) {
+            uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
+        }
+     // uv_close((uv_handle_t*)&handle_, on_close);
 
         unlink();
 
@@ -615,9 +634,9 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         }
     }
 
-    virtual void disconnect() {
+    virtual void disconnect(bool now = false) {
 
-        onDisconnect();
+        onDisconnect(now);
 
     }
 
@@ -629,7 +648,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         return uv_tcp_getsockname(&handle_, remoteAddress, len);
     }
 
-    virtual void destroy() {
+    virtual void destroy(bool now = false) {
         LOG(DEBUG) << this;
 
         assert(!destroying_);
@@ -645,7 +664,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
      // Peer::destroy();
         destroying_ = 1;
 
-        onDisconnect();
+        onDisconnect(now);
 
     }
 
@@ -782,8 +801,8 @@ class ActivePeer : public CommunicationPeer {
 
     virtual void retry();
 
-    virtual void destroy() {
-        CommunicationPeer::destroy();
+    virtual void destroy(bool now = false) {
+        CommunicationPeer::destroy(now);
         down();
     }
 
@@ -904,7 +923,7 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
     }
     virtual void retry();
 
-    virtual void destroy() {
+    virtual void destroy(bool now = false) {
         LOG(DEBUG) << this;
      // Peer::destroy();
 
@@ -922,7 +941,9 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
         down();
         if (connected_) {
             connected_ = 0;
-            uv_close((uv_handle_t*)&handle_, on_close);
+            if (!uv_is_closing((uv_handle_t*)&handle_)) {
+                uv_close((uv_handle_t*)&handle_, on_close);
+            }
         }
     }
 
