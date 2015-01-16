@@ -916,19 +916,6 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
         }
     }
 
-    if (keyFilePath) {
-        if (1 != SSL_CTX_use_certificate_chain_file(sslCtx, keyFilePath)) {
-            ++failure;
-
-            LOG(ERROR)
-                << "SSL_CTX_use_certificate_chain_file() failed to open certificate @ \""
-                << keyFilePath
-                << "\": "
-                << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
-            ;
-        }
-    }
-
     if (!failure) {
 
         Ctx * ctx = new (std::nothrow)Ctx(sslCtx, passphrase);
@@ -955,6 +942,17 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
                 SSL_CTX_set_default_passwd_cb(sslCtx, pwdCb);
                 SSL_CTX_set_default_passwd_cb_userdata(sslCtx, ctx); /* Important! */
 
+                if (1 != SSL_CTX_use_certificate_chain_file(sslCtx, keyFilePath)) {
+                    ++failure;
+
+                    LOG(ERROR)
+                        << "SSL_CTX_use_certificate_chain_file() failed to open certificate @ \""
+                        << keyFilePath
+                        << "\": "
+                        << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
+                    ;
+                }
+
                 if (1 != SSL_CTX_use_PrivateKey_file(sslCtx, keyFilePath, SSL_FILETYPE_PEM)) {
 
                     ++failure;
@@ -965,6 +963,10 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
                         << "\": "
                         << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
                     ;
+
+                }
+
+                if (failure) {
 
                     delete ctx;
                     ctx = NULL;
@@ -984,6 +986,7 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
 
         }
 
+        assert(!ctx);
         /* FALL-THROUGH */
     }
 
@@ -994,6 +997,7 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
     ;
 
     SSL_CTX_free(sslCtx);
+
     return NULL;
 }
 
