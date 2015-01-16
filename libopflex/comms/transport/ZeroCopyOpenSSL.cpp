@@ -16,30 +16,22 @@
 #include <openssl/err.h>
 #include <iovec-utils.hh>
 
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem.hpp>
-
-#include <boost/system/error_code.hpp>
-
 #include <algorithm>
 
 #include <sys/uio.h>
+#include <sys/stat.h>
 #include <cassert>
-
-#if BOOST_VERSION < 105000
-namespace boost { namespace filesystem {
-
-# ifndef BOOST_FILESYSTEM_NO_DEPRECATED
-    using filesystem3::complete;
-# endif
-
-}}
-#endif
 
 namespace {
 
     bool const SSL_ERROR = true;
+
+    char const * safe_strerror(int error_no) {
+        if ((error_no >= sys_nerr) || (error_no < 0)) {
+            return "Unknown error";
+        }
+        return sys_errlist[errno];
+    }
 
 }
 
@@ -851,58 +843,45 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
         char const * passphrase
    ) {
 
-    boost::system::error_code ec;
     bool isDir;
 
     if (caFileOrDirectory) {
-        boost::filesystem::path p(caFileOrDirectory);
 
-        if (!boost::filesystem::exists(p, ec)) {
+        struct stat s;
+        if (stat(caFileOrDirectory, &s)) {
+
             LOG(ERROR)
-                << "Path \""
-                << p
+                << "Error ["
+                << errno
+                << "] (\""
+                << safe_strerror(errno)
+                << "\") on path \""
+                << caFileOrDirectory
                 << "\" does not exist"
             ;
             return NULL;
+
         }
-        isDir = boost::filesystem::is_directory(p, ec);
-        if (ec.value()) {
-            LOG(ERROR)
-                << "Error while accessing \""
-                << p
-                << "\""
-#if 1
-                << ", error value "
-                << ec.value()
-                << " category "
-                << ec.category().name()
-#endif
-            ;
-            return NULL;
-        }
-        if (!isDir) {
-            isDir = !boost::filesystem::is_regular(p, ec);
-            if (ec.value()) {
-                LOG(ERROR)
-                    << "Error while accessing \""
-                    << p
-                    << "\""
-#if 1
-                    << ", error value "
-                    << ec.value()
-                    << " category "
-                    << ec.category().name()
-#endif
-                ;
-                return NULL;
-            }
-            if (isDir) {
+
+        if ((s.st_mode & S_IFDIR) && !(s.st_mode & S_IFREG)) {
+
+            isDir = true;
+
+        } else {
+
+            if (!(s.st_mode & S_IFDIR) && (s.st_mode & S_IFREG)) {
+
+                isDir = false;
+
+            } else {
+
                 LOG(ERROR)
                     << "Path \""
-                    << p
-                    << "\" is neither a directory nor a regular file"
+                    << caFileOrDirectory
+                    << "\" must be either a regular file or a directory"
                 ;
                 return NULL;
+
             }
         }
     }

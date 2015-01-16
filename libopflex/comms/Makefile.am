@@ -49,6 +49,10 @@ libcomms_la_CPPFLAGS  = $(AM_CPPFLAGS)
 
 libcomms_la_CXXFLAGS  = $(AM_CXXFLAGS)
 libcomms_la_CXXFLAGS += $(UV_CFLAGS)
+
+libcomms_la_CPPFLAGS += -DBOOST_EXCEPTION_DISABLE
+libcomms_la_CXXFLAGS += -fno-exceptions
+
 if TRACING_COMMS
   libcomms_la_CXXFLAGS += -finstrument-functions
 endif
@@ -90,6 +94,8 @@ librpcperfect_la_SOURCES += rpc/message/factory/inbounderror.cpp
 librpcperfect_la_CXXFLAGS  = $(libcomms_la_CXXFLAGS)
 librpcperfect_la_CXXFLAGS += $(OUR_CXXFLAGS_COMPILE_TIME_HASH)
 
+librpcperfect_la_CPPFLAGS  = $(libcomms_la_CPPFLAGS)
+
 if SEPARATE_COMMS
   libcomms_la_LIBADD += ../logging/liblogging.la
 endif
@@ -120,8 +126,6 @@ comms_test_LDFLAGS  = $(AM_LDFLAGS)
 comms_test_LDFLAGS += $(UV_LIBS)
 if HAVE_SSL
   comms_test_LDFLAGS += $(OPENSSL_LIBS)
-  comms_test_LDFLAGS += $(BOOST_FILESYSTEM_LIB)
-  comms_test_LDFLAGS += $(BOOST_SYSTEM_LIB)
 endif
 
 comms_test_LDADD  =
@@ -134,13 +138,8 @@ comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 if HAVE_SSL
   libcomms_la_SOURCES += transport/ZeroCopyOpenSSL.cpp
-  libcomms_la_LIBADD += $(BOOST_FILESYSTEM_LIB)
-  libcomms_la_LIBADD += $(BOOST_SYSTEM_LIB)
   libcomms_la_CPPFLAGS += -DYAJR_HAS_OPENSSL
   comms_test_CPPFLAGS += -DYAJR_HAS_OPENSSL
-else
-  libcomms_la_CPPFLAGS += -DBOOST_EXCEPTION_DISABLE
-  libcomms_la_CXXFLAGS += -fno-exceptions
 endif
 
 EXTRA_DIST=test/server.pem test/ca.pem
