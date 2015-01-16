@@ -163,7 +163,9 @@ void CommunicationPeer::timeout() {
         LOG(INFO) << this << " tearing down the connection upon timeout";
 
         /* close the connection and hope for the best */
-        uv_close((uv_handle_t*)&handle_, on_close);
+        if (!uv_is_closing((uv_handle_t*)&handle_)) {
+            uv_close((uv_handle_t*)&handle_, on_close);
+        }
 
         return;
     }

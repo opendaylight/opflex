@@ -357,7 +357,9 @@ class CommsFixture {
         reinterpret_cast< ::yajr::Listener * >(handle->data)->destroy();
 
         uv_timer_stop(handle);
-        uv_close((uv_handle_t *)handle, NULL);
+        if (!uv_is_closing((uv_handle_t*)handle)) {
+            uv_close((uv_handle_t *)handle, NULL);
+        }
 
     }
 
@@ -368,7 +370,9 @@ class CommsFixture {
         reinterpret_cast< ::yajr::Peer* >(handle->data)->destroy();
 
         uv_timer_stop(handle);
-        uv_close((uv_handle_t *)handle, NULL);
+        if (!uv_is_closing((uv_handle_t*)handle)) {
+            uv_close((uv_handle_t *)handle, NULL);
+        }
 
     }
 
@@ -1266,7 +1270,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_service,
 
 }
 
-BOOST_FIXTURE_TEST_CASE( SLOW_STABLE_test_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( SLOW_test_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1278,7 +1282,7 @@ BOOST_FIXTURE_TEST_CASE( SLOW_STABLE_test_non_routable_host, CommsFixture ) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( SLOW_STABLE_test_destroy_client_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( SLOW_test_destroy_client_for_non_routable_host_upon_connection_failure, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1290,13 +1294,98 @@ BOOST_FIXTURE_TEST_CASE( SLOW_STABLE_test_destroy_client_for_non_routable_host, 
 
 }
 
-BOOST_FIXTURE_TEST_CASE( SLOW_STABLE_test_disconnect_client_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( SLOW_test_disconnect_client_for_non_routable_host_upon_connection_failure, CommsFixture ) {
 
     LOG(DEBUG);
 
     ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65515", disconnectOnCallback);
 
     BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 90000);
+
+}
+
+void nothing_on_close(uv_handle_t * h) {
+}
+
+void destroy_cb(uv_timer_t * handle) {
+
+    ::yajr::comms::internal::CommunicationPeer * peer =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(
+                static_cast< ::yajr::Peer * >(handle->data)
+            )
+    ;
+    LOG(DEBUG)
+        << peer
+    ;
+
+    peer->destroy(true);
+
+    uv_timer_stop(handle);
+    if (!uv_is_closing((uv_handle_t*)handle)) {
+        LOG(DEBUG)
+            << peer
+            << " not yet closing, anticipating it"
+        ;
+        uv_close((uv_handle_t *)handle, nothing_on_close);
+    }
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_routable_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65516", destroyOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    uv_timer_t destroyTimer;
+    uv_timer_init(uv_default_loop(), &destroyTimer);
+    destroyTimer.data = p;
+    uv_timer_start(&destroyTimer, destroy_cb, 250, 0);
+    uv_unref((uv_handle_t*) &destroyTimer);
+
+    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), false, 90000);
+
+}
+
+void disconnect_cb(uv_timer_t * handle) {
+
+    ::yajr::comms::internal::CommunicationPeer * peer =
+        static_cast< ::yajr::comms::internal::CommunicationPeer * >(handle->data)
+    ;
+    LOG(DEBUG)
+        << peer
+    ;
+    peer->disconnect(true);
+
+    uv_timer_stop(handle);
+    if (!uv_is_closing((uv_handle_t*)handle)) {
+        LOG(DEBUG)
+            << peer
+            << " not yet closing, anticipating it"
+        ;
+        uv_close((uv_handle_t *)handle, nothing_on_close);
+    }
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_routable_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65515", disconnectOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    uv_timer_t disconnectTimer;
+    uv_timer_init(uv_default_loop(), &disconnectTimer);
+    disconnectTimer.data = 
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
+    uv_timer_start(&disconnectTimer, disconnect_cb, 250, 0);
+    uv_unref((uv_handle_t*) &disconnectTimer);
 
     loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 90000);
 

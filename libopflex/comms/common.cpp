@@ -135,7 +135,7 @@ void internal::Peer::LoopData::fini(uv_handle_t * h) {
     delete static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data);
 }
 
-void internal::Peer::LoopData::destroy() {
+void internal::Peer::LoopData::destroy(bool now) {
     LOG(INFO);
 
     assert(prepare_.data == this);
@@ -155,7 +155,7 @@ void internal::Peer::LoopData::destroy() {
 
     for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
         peers[Peer::LoopData::PeerState(i)]
-            .clear_and_dispose(PeerDisposer());
+            .clear_and_dispose(PeerDisposer(now));
 
     }
 }
@@ -183,8 +183,6 @@ namespace internal {
 void on_close(uv_handle_t * h) {
 
     CommunicationPeer * peer = Peer::get<CommunicationPeer>(h);
-
-    LOG(DEBUG) << peer;
 
     LOG(DEBUG) << peer << " down() for an on_close()";
     peer->down();

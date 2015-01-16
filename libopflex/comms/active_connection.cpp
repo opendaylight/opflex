@@ -154,7 +154,9 @@ void on_active_connection(uv_connect_t *req, int status) {
             peer->onError(rc);
 
             /* retry later */
-            uv_close((uv_handle_t*)&peer->handle_, NULL);
+            if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
+                uv_close((uv_handle_t*)&peer->handle_, NULL);
+            }
             retry_later(peer);
         }
         return;
@@ -222,7 +224,9 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     if ((rc = connect_to_next_address(peer))) {
         LOG(WARNING) << "connect_to_next_address: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        uv_close((uv_handle_t*)&peer->handle_, NULL);
+        if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
+            uv_close((uv_handle_t*)&peer->handle_, NULL);
+        }
         return retry_later(peer);
     }
 
@@ -350,7 +354,9 @@ void swap_stack_on_close(uv_handle_t * h) {
     if ((rc = connect_to_next_address(peer, false))) {
         LOG(WARNING) << "connect_to_next_address: [" << uv_err_name(rc) << "] " <<
             uv_strerror(rc);
-        uv_close((uv_handle_t*)&peer->handle_, NULL);
+        if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
+            uv_close((uv_handle_t*)&peer->handle_, NULL);
+        }
         return retry_later(peer);
     }
 
@@ -382,7 +388,9 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
                 case -EPROTOTYPE:
                 case -EINVAL:
                     LOG(INFO) << "destroying socket and retrying";
-                    uv_close((uv_handle_t*)&peer->handle_, swap_stack_on_close);
+                    if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
+                        uv_close((uv_handle_t*)&peer->handle_, swap_stack_on_close);
+                    }
             }
 
             return 0;

@@ -133,7 +133,9 @@ struct Peer {
      *
      * For passive peers, disconnect() and destroy() have the same effect.
      */
-    virtual void disconnect() = 0;
+    virtual void disconnect(
+            bool now = false          /**< [in] do not wait for a clean close */
+        ) = 0;
 
     /**
      * @brief perform an asynchronous delete
@@ -144,7 +146,9 @@ struct Peer {
      *
      * For passive peers, disconnect() and destroy() have the same effect.
      */
-    virtual void destroy() = 0;
+    virtual void destroy(
+            bool now = false          /**< [in] do not wait for a clean close */
+        ) = 0;
 
     /**
      * @brief retrieves the pointer to the opaque data associated with this peer
@@ -294,7 +298,9 @@ struct Listener {
      * Perform an asynchronous delete of this Listener, destroying it as soon as
      * no more callbacks are pending for it.
      */
-    virtual void destroy() = 0;
+    virtual void destroy(
+            bool now = false          /**< [in] do not wait for a clean close */
+        ) = 0;
 
   protected:
     Listener() {}
