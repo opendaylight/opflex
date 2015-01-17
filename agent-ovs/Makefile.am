@@ -41,7 +41,7 @@ libagent_ovs_la_LIBADD = \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS)
 
-libagent_ovs_la_SOURCES = \
+noinst_HEADERS = \
 	src/include/AgentLogHandler.h \
 	src/include/PolicyListener.h \
 	src/include/PolicyManager.h \
@@ -68,7 +68,9 @@ libagent_ovs_la_SOURCES = \
 	src/include/RangeMask.h \
 	src/include/Packets.h \
 	src/include/cmd.h \
-	src/include/logging.h \
+	src/include/logging.h
+
+libagent_ovs_la_SOURCES = \
 	src/AgentLogHandler.cpp \
 	src/PolicyManager.cpp \
 	src/Endpoint.cpp \
@@ -174,7 +176,7 @@ integration_test_LDADD = \
 
 check-integration: agent_ovs
 	$(top_builddir)/integration_test
-doc/html: $(model_include_HEADERS) $(libagent_ovs_la_SOURCES) doc/Doxyfile 
+doc/html: $(model_include_HEADERS) $(noinst_HEADERS) doc/Doxyfile
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html
 
