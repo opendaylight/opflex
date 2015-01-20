@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <sstream>
 #include <boost/system/error_code.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -68,7 +69,7 @@ static const char * ID_NMSPC_CON = "contract";
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
         reader(NULL), jsonCmdExecutor(NULL), fallbackMode(FALLBACK_PROXY),
-        encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN),
+        encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
         virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this),
         stopping(false), connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
         opflexPeerConnected(false) {
@@ -178,6 +179,12 @@ void FlowManager::SetTunnelRemoteIp(const string& tunnelRemoteIp) {
     } else {
         tunnelDst = tunDst;
     }
+}
+
+void FlowManager::setTunnelRemotePort(uint16_t tunnelRemotePort) {
+    ostringstream ss;
+    ss << tunnelRemotePort;
+    tunnelPortStr = ss.str();
 }
 
 void FlowManager::SetVirtualRouter(bool virtualRouterEnabled) {
@@ -1962,7 +1969,7 @@ void FlowManager::changeMulticastSubscription(const string& mcastIp,
             "IP: " << mcastIp;
     vector<string> params;
     params.push_back(connection->getSwitchName());
-    params.push_back("4789");   // XXX will be replaced with encap iface name
+    params.push_back(tunnelPortStr);   // XXX will be replaced with iface name
     params.push_back(mcastIp);
 
     const string& cmd = leave ? cmdLeave : cmdJoin;
@@ -1980,7 +1987,7 @@ void FlowManager::fetchMulticastSubscription(unordered_set<string>& mcastIps) {
     }
     vector<string> params;
     params.push_back(connection->getSwitchName());
-    params.push_back("4789");   // XXX will be replaced with encap iface name
+    params.push_back(tunnelPortStr);   // XXX will be replaced with iface name
     mcastIps.clear();
 
     string res;

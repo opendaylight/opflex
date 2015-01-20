@@ -75,6 +75,7 @@ private:
     FlowManager::EncapType encapType;
     std::string encapIface;
     std::string tunnelRemoteIp;
+    uint16_t tunnelRemotePort;
     std::string uplinkIface;
     uint16_t uplinkVlan;
     bool virtualRouter;
