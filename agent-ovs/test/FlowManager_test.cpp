@@ -873,8 +873,9 @@ void FlowManagerFixture::mcastTest() {
     flowManager.registerConnection(&conn);
     flowManager.setJsonCmdExecutor(&jsonCmdExecutor);
     flowManager.SetFlowReader(&reader);
+    flowManager.setTunnelRemotePort(8472);
 
-    string prmBr = " " + conn.getSwitchName() + " 4789 ";
+    string prmBr = " " + conn.getSwitchName() + " 8472 ";
     string mcast1 = config->getMulticastGroupIP().get();
     string mcast2 = "224.1.1.2";
     string mcast3 = fd0ctx->getMulticastGroupIP().get();

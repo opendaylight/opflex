@@ -201,6 +201,12 @@ public:
     void SetTunnelRemoteIp(const std::string& tunnelRemoteIp);
 
     /**
+     * Set the remote port to use for tunnel traffic
+     * @param tunnelRemotePort the remote tunnel port
+     */
+    void setTunnelRemotePort(uint16_t tunnelRemotePort);
+
+    /**
      * Enable or disable the virtual routing
      *
      * @param virtualRouterEnabled true to enable the router
@@ -471,6 +477,7 @@ private:
     std::string encapIface;
     FloodScope floodScope;
     boost::asio::ip::address tunnelDst;
+    std::string tunnelPortStr;
     boost::optional<boost::asio::ip::address> mcastTunDst;
     bool virtualRouterEnabled;
     uint8_t routerMac[6];
