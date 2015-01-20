@@ -166,6 +166,11 @@ ActionBuilder::SetPushVlan() {
 }
 
 void
+ActionBuilder::SetPopVlan() {
+    ofpact_put_STRIP_VLAN(&buf);
+}
+
+void
 ActionBuilder::SetConntrack(uint16_t zone, uint16_t flags) {
     ofpact_conntrack *ct = ofpact_put_CT(&buf);
     ct->flags = flags;

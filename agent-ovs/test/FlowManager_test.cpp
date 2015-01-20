@@ -983,7 +983,7 @@ public:
     Bldr& isTpDst(uint16_t p, uint16_t m) {
         rep(",tp_dst=", str(p, true) + "/" + str(m, true)); return *this;
     }
-    Bldr& isVlan(uint16_t v) { rep(",vlan_tci=", strpad(v), "/0x1fff"); return *this; }
+    Bldr& isVlan(uint16_t v) { rep(",dl_vlan=", str(v)); return *this; }
     Bldr& isNdTarget(const string& t) { rep(",nd_target=", t); return *this; }
     Bldr& connState(const string& s) { rep(",conn_state=" + s); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
@@ -1010,6 +1010,7 @@ public:
     Bldr& bktActions() { rep(",actions="); cntr = 1; return *this; }
     Bldr& outPort(uint32_t p) { rep("output:", str(p)); return *this; }
     Bldr& pushVlan() { rep("push_vlan:0x8100"); return *this; }
+    Bldr& popVlan() { rep("strip_vlan"); return *this; }
     Bldr& inport() { rep("IN_PORT"); return *this; }
     Bldr& controller(uint16_t len) { rep("CONTROLLER:", str(len)); return *this; }
 
@@ -1127,7 +1128,8 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     case FlowManager::ENCAP_VLAN:
         fe_epg0.push_back(Bldr().table(1).priority(150)
                           .in(tunPort).isVlan(epg0_vnid)
-                          .actions().load(SEPG, epg0_vnid).load(BD, 1)
+                          .actions().popVlan()
+                          .load(SEPG, epg0_vnid).load(BD, 1)
                           .load(FD, 0).load(RD, 1).go(2).done());
         break;
     case FlowManager::ENCAP_VXLAN:
@@ -1470,7 +1472,7 @@ FlowManagerFixture::createOnConnectEntries(FlowManager::EncapType encapType,
     match_set_in_port(&e1->entry->match, flowManager.GetTunnelPort());
     switch (encapType) {
     case FlowManager::ENCAP_VLAN:
-        match_set_vlan_vid(&e1->entry->match, htons(epg4_vnid));
+        match_set_dl_vlan(&e1->entry->match, htons(epg4_vnid));
         break;
     case FlowManager::ENCAP_VXLAN:
     case FlowManager::ENCAP_IVXLAN:
@@ -1479,6 +1481,8 @@ FlowManagerFixture::createOnConnectEntries(FlowManager::EncapType encapType,
         break;
     }
     ActionBuilder ab;
+    if (encapType == FlowManager::ENCAP_VLAN)
+        ab.SetPopVlan();
     ab.SetRegLoad(MFF_REG0, epg4_vnid);
     ab.SetRegLoad(MFF_REG4, uint32_t(0));
     ab.SetRegLoad(MFF_REG5, uint32_t(0));

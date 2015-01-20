@@ -118,6 +118,10 @@ public:
      */
     void SetPushVlan();
     /**
+     * Pop a VLAN tag from the packet
+     */
+    void SetPopVlan();
+    /**
      * Use the connection tracking tables with the given zone and flags
      * @param zone the connection tracking zone to use
      * @param flags the flags to set (starting with "NX_CT_")

@@ -70,7 +70,7 @@ FlowManager::FlowManager(ovsagent::Agent& ag) :
         reader(NULL), jsonCmdExecutor(NULL), fallbackMode(FALLBACK_PROXY),
         encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN),
         virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this),
-        connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC), stopping(false),
+        stopping(false), connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
         opflexPeerConnected(false) {
     memset(routerMac, 0, sizeof(routerMac));
     tunnelDst = address::from_string("127.0.0.1");
@@ -216,9 +216,12 @@ ovs_be64 FlowManager::GetNDCookie() {
 static void
 SetSourceAction(FlowEntry *fe, uint32_t epgId,
                 uint32_t bdId,  uint32_t fgrpId,  uint32_t l3Id,
-                uint8_t nextTable = FlowManager::DST_TABLE_ID)
+                uint8_t nextTable = FlowManager::DST_TABLE_ID,
+                FlowManager::EncapType encapType = FlowManager::ENCAP_NONE)
 {
     ActionBuilder ab;
+    if (encapType == FlowManager::ENCAP_VLAN)
+        ab.SetPopVlan();
     ab.SetRegLoad(MFF_REG0, epgId);
     ab.SetRegLoad(MFF_REG4, bdId);
     ab.SetRegLoad(MFF_REG5, fgrpId);
@@ -246,7 +249,7 @@ SetSourceMatchEpg(FlowEntry *fe, FlowManager::EncapType encapType,
     match_set_in_port(&fe->entry->match, tunPort);
     switch (encapType) {
     case FlowManager::ENCAP_VLAN:
-        match_set_vlan_vid(&fe->entry->match, htons(0xfff & epgId));
+        match_set_dl_vlan(&fe->entry->match, htons(0xfff & epgId));
         break;
     case FlowManager::ENCAP_VXLAN:
     case FlowManager::ENCAP_IVXLAN:
@@ -994,7 +997,8 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         // tunnel uplink
         FlowEntry *e0 = new FlowEntry();
         SetSourceMatchEpg(e0, encapType, 150, tunPort, epgVnid);
-        SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId);
+        SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId,
+                        FlowManager::DST_TABLE_ID, encapType);
         WriteFlow(epgId, SRC_TABLE_ID, e0);
     } else {
         WriteFlow(epgId, SRC_TABLE_ID, NULL);
