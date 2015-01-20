@@ -129,6 +129,19 @@ namespace internal {
 
 void on_active_connection(uv_connect_t *req, int status) {
 
+    if (status == UV_ECANCELED) {
+
+        /* the peer might have been deleted, so we have to avoid accessing any
+         * of its members */
+        LOG(DEBUG)
+            << "peer {"
+            << req->handle->data         // this is already a (void *)
+            << "}A[?] has had a connection attempt canceled"
+        ;
+
+        return;
+    }
+
     ActivePeer * peer = Peer::get(req);  // can't possibly crash yet
 
     LOG(DEBUG) << peer;

@@ -70,6 +70,11 @@ std::ostream& operator<< (std::ostream& os, Peer::LoopData const * lD) {
 CommunicationPeer * Peer::get(uv_write_t * r) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(r->data);
 
+    LOG(DEBUG)
+        << "peer {"
+        << reinterpret_cast<void *>(peer)
+        << "} is about to have its invariants checked"
+    ;
     peer->__checkInvariants();
 
     return peer;
@@ -78,15 +83,25 @@ CommunicationPeer * Peer::get(uv_write_t * r) {
 CommunicationPeer * Peer::get(uv_timer_t * h) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(h->data);
 
+    LOG(DEBUG)
+        << "peer {"
+        << reinterpret_cast<void *>(peer)
+        << "} is about to have its invariants checked"
+    ;
     peer->__checkInvariants();
 
     return peer;
 }
 
 ActivePeer * Peer::get(uv_connect_t * r) {
-    /* the following would also work */
+
     ActivePeer * peer = Peer::get<ActivePeer>(r->handle);
 
+    LOG(DEBUG)
+        << "peer {"
+        << reinterpret_cast<void *>(peer)
+        << "} is about to have its invariants checked"
+    ;
     peer->__checkInvariants();
 
     return peer;
@@ -95,6 +110,11 @@ ActivePeer * Peer::get(uv_connect_t * r) {
 ActivePeer * Peer::get(uv_getaddrinfo_t * r) {
     ActivePeer * peer = static_cast<ActivePeer *>(r->data);
 
+    LOG(DEBUG)
+        << "peer {"
+        << reinterpret_cast<void *>(peer)
+        << "} is about to have its invariants checked"
+    ;
     peer->__checkInvariants();
 
     return peer;
@@ -299,6 +319,10 @@ bool Peer::__checkInvariants()
     const
 #endif
 {
+    LOG(DEBUG)
+        << this
+        << " true = true"
+    ;
     return true;
 }
 
@@ -306,6 +330,12 @@ bool Peer::__checkInvariants()
 bool CommunicationPeer::__checkInvariants() const {
 
     if (status_ != kPS_ONLINE) {
+        LOG(DEBUG)
+            << this
+            << " status = "
+            << static_cast< int >(status_)
+            << " just check for Peer's invariants"
+        ;
         return internal::Peer::__checkInvariants();
     }
 

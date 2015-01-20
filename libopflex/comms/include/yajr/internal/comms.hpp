@@ -215,6 +215,11 @@ class Peer : public SafeListBaseHook {
     static T * get(U * h) {
         T * peer = static_cast<T *>(h->data);
 
+        LOG(DEBUG)
+            << "peer {"
+            << reinterpret_cast<void *>(peer)
+            << "} is about to have its invariants checked"
+        ;
         assert(peer->__checkInvariants());
 
         return peer;
@@ -595,10 +600,45 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 << " issuing close for tcp handle"
             ;
             if (!uv_is_closing((uv_handle_t*)&handle_)) {
-                uv_close((uv_handle_t*)&handle_, connected_? on_close : NULL);
+                uv_close((uv_handle_t*)&handle_, on_close);
+             // uv_close((uv_handle_t*)&handle_, connected_? on_close : NULL);
             }
         }
 
+        if (connected_) {
+
+            connected_ = 0;
+
+            if (getKeepAliveInterval()) {
+                stopKeepAlive();
+            }
+
+            if (!uv_is_closing((uv_handle_t*)&keepAliveTimer_)) {
+                uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
+            }
+         // uv_close((uv_handle_t*)&handle_, on_close);
+
+            /* FIXME: might be called too many times? */
+            connectionHandler_(this, data_, ::yajr::StateChange::DISCONNECT, 0);
+
+        }
+
+        unlink();
+
+        if (destroying_) {
+            return;
+        }
+
+        if (!passive_) {
+            LOG(DEBUG) << this << " active => retry queue";
+            /* we should attempt to reconnect later */
+            insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
+        } else {
+            LOG(DEBUG) << this << " passive => eventually drop";
+            /* whoever it was, hopefully will reconnect again */
+            insert(internal::Peer::LoopData::PENDING_DELETE);
+        }
+#ifdef OLD_VERSION
         if (!connected_) {
             return;
         }
@@ -632,6 +672,8 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
             /* whoever it was, hopefully will reconnect again */
             insert(internal::Peer::LoopData::PENDING_DELETE);
         }
+#endif
+
     }
 
     virtual void disconnect(bool now = false) {
@@ -650,16 +692,6 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     virtual void destroy(bool now = false) {
         LOG(DEBUG) << this;
-
-        assert(!destroying_);
-        if(destroying_) {
-            LOG(WARNING)
-                << this
-                << " Double destroy() detected"
-            ;
-
-            return;
-        }
 
      // Peer::destroy();
         destroying_ = 1;
@@ -802,7 +834,19 @@ class ActivePeer : public CommunicationPeer {
     virtual void retry();
 
     virtual void destroy(bool now = false) {
+
+        bool alreadyBeingDestroyed = destroying_;
+
         CommunicationPeer::destroy(now);
+
+        if (alreadyBeingDestroyed) {
+            LOG(DEBUG)
+                << this
+                << " multiple destroy()s detected"
+            ;
+            return;
+        }
+
         down();
     }
 
