@@ -87,6 +87,8 @@ class CommsFixture {
 #ifdef YAJR_HAS_OPENSSL
         ZeroCopyOpenSSL::initOpenSSL(false); // false because we don't use multiple threads
 #endif
+
+        eventCounter = 0;
     }
 
     struct PeerDisposer {
@@ -131,6 +133,8 @@ class CommsFixture {
     static range_t required_transient_peers;
     static pc required_post_conditions;
     static bool expect_timeout;
+    static size_t eventCounter;
+    static size_t required_event_counter;
 
     static std::pair<size_t, size_t> count_peers() {
 
@@ -194,8 +198,28 @@ class CommsFixture {
             dbgLog << " pending_delete: " << m;
         }
 
-        dbgLog << " TOTAL TRANSIENT: " << transient_peers << "\0";
-        dbgLog << " TOTAL FINAL: " << final_peers << "\0";
+        dbgLog
+            << " TOTAL TRANSIENT: "
+            << transient_peers
+            << " / "
+            << required_transient_peers.first
+            << "-"
+            << required_transient_peers.second
+            << "\0"
+        ;
+        dbgLog
+            << " TOTAL FINAL: "
+            << final_peers
+            << " / "
+            << required_final_peers.first
+            << "-"
+            << required_final_peers.second
+            << "\0"
+        ;
+        dbgLog
+            << " EVENTS: "
+            << eventCounter
+        ;
 
         newDbgLog = dbgLog.str();
 
@@ -315,6 +339,8 @@ class CommsFixture {
 
         /* at LEAST # required final peers must be in final state */
         if (
+                (eventCounter < required_event_counter)
+            ||
                 (count_peers().first < required_final_peers.first)
             ||
                 (count_peers().first > required_final_peers.second)
@@ -381,7 +407,8 @@ class CommsFixture {
             pc post_conditions,
             range_t transient_peers = range_t(0, 0),
             bool should_timeout = false,
-            unsigned int timeout = DEFAULT_COMMSTEST_TIMEOUT
+            unsigned int timeout = DEFAULT_COMMSTEST_TIMEOUT,
+            size_t num_events = 0
             ) {
 
         LOG(DEBUG);
@@ -389,6 +416,7 @@ class CommsFixture {
         required_final_peers = final_peers;
         required_transient_peers = transient_peers;
         required_post_conditions = post_conditions;
+        required_event_counter = num_events;
         expect_timeout = should_timeout;
 
         internal::Peer::LoopData::getLoopData(loop_)->up();
@@ -403,12 +431,18 @@ class CommsFixture {
 
     }
 
+    static void     disconnect_cb(uv_timer_t * handle);
+    static void disconnect_now_cb(uv_timer_t * handle);
+    static void        destroy_cb(uv_timer_t * handle);
+    static void    destroy_now_cb(uv_timer_t * handle);
 };
 
 range_t CommsFixture::required_final_peers;
 range_t CommsFixture::required_transient_peers;
+size_t CommsFixture::required_event_counter;
 CommsFixture::pc CommsFixture::required_post_conditions;
 bool CommsFixture::expect_timeout;
+size_t CommsFixture::eventCounter;
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_initialization, CommsFixture ) {
 
@@ -1309,27 +1343,24 @@ BOOST_FIXTURE_TEST_CASE( SLOW_test_disconnect_client_for_non_routable_host_upon_
 void nothing_on_close(uv_handle_t * h) {
 }
 
-void destroy_cb(uv_timer_t * handle) {
+void CommsFixture::destroy_now_cb(uv_timer_t * handle) {
+
+    ++eventCounter;
 
     ::yajr::comms::internal::CommunicationPeer * peer =
-        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(
-                static_cast< ::yajr::Peer * >(handle->data)
-            )
+        static_cast< ::yajr::comms::internal::CommunicationPeer * >(handle->data)
     ;
     LOG(DEBUG)
-        << peer
+        << "{"
+        << static_cast<void *>(peer)
+        << "} timer handle "
+        << handle
     ;
 
     peer->destroy(true);
 
     uv_timer_stop(handle);
-    if (!uv_is_closing((uv_handle_t*)handle)) {
-        LOG(DEBUG)
-            << peer
-            << " not yet closing, anticipating it"
-        ;
-        uv_close((uv_handle_t *)handle, nothing_on_close);
-    }
+    uv_close((uv_handle_t *)handle, nothing_on_close);
 
 }
 
@@ -1337,38 +1368,43 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_routable_host, Comms
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65516", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65514", destroyOnCallback);
 
     BOOST_CHECK_EQUAL(!p, 0);
 
     uv_timer_t destroyTimer;
+
+    LOG(DEBUG)
+        << "destroyTimer @"
+        << &destroyTimer
+    ;
+
     uv_timer_init(uv_default_loop(), &destroyTimer);
-    destroyTimer.data = p;
-    uv_timer_start(&destroyTimer, destroy_cb, 250, 0);
+    destroyTimer.data =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
+    uv_timer_start(&destroyTimer, destroy_now_cb, 250, 0);
     uv_unref((uv_handle_t*) &destroyTimer);
 
-    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), false, 90000);
+    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), false, 350, 1);
 
 }
 
-void disconnect_cb(uv_timer_t * handle) {
+void CommsFixture::disconnect_now_cb(uv_timer_t * handle) {
+
+    ++eventCounter;
 
     ::yajr::comms::internal::CommunicationPeer * peer =
         static_cast< ::yajr::comms::internal::CommunicationPeer * >(handle->data)
     ;
     LOG(DEBUG)
         << peer
+        << " timer handle "
+        << handle
     ;
     peer->disconnect(true);
 
     uv_timer_stop(handle);
-    if (!uv_is_closing((uv_handle_t*)handle)) {
-        LOG(DEBUG)
-            << peer
-            << " not yet closing, anticipating it"
-        ;
-        uv_close((uv_handle_t *)handle, nothing_on_close);
-    }
+    uv_close((uv_handle_t *)handle, nothing_on_close);
 
 }
 
@@ -1376,20 +1412,158 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_routable_host, Co
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65515", disconnectOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65513", disconnectOnCallback);
 
     BOOST_CHECK_EQUAL(!p, 0);
 
     uv_timer_t disconnectTimer;
+
+    LOG(DEBUG)
+        << "disconnectTimer @"
+        << &disconnectTimer
+    ;
+
     uv_timer_init(uv_default_loop(), &disconnectTimer);
-    disconnectTimer.data = 
+    disconnectTimer.data =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
+    uv_timer_start(&disconnectTimer, disconnect_now_cb, 250, 0);
+    uv_unref((uv_handle_t*) &disconnectTimer);
+
+    eventCounter = 0;
+    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 550, 1);
+
+}
+
+void CommsFixture::destroy_cb(uv_timer_t * handle) {
+
+    ++eventCounter;
+
+    ::yajr::comms::internal::CommunicationPeer * peer =
+        static_cast< ::yajr::comms::internal::CommunicationPeer * >(handle->data)
+    ;
+    LOG(DEBUG)
+        << peer
+        << " timer handle "
+        << handle
+    ;
+
+    peer->destroy();
+
+    uv_timer_stop(handle);
+    uv_close((uv_handle_t *)handle, nothing_on_close);
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_semigracefully_for_non_routable_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65512", destroyOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    uv_timer_t destroyTimer;
+
+    LOG(DEBUG)
+        << "destroyTimer @"
+        << &destroyTimer
+    ;
+
+    uv_timer_init(uv_default_loop(), &destroyTimer);
+    destroyTimer.data =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
+    uv_timer_start(&destroyTimer, destroy_cb, 250, 0);
+    uv_unref((uv_handle_t*) &destroyTimer);
+
+#if 0
+    uv_timer_t disconnectTimer;
+
+    LOG(DEBUG)
+        << "disconnectTimer @"
+        << &disconnectTimer
+    ;
+
+    uv_timer_init(uv_default_loop(), &disconnectTimer);
+    disconnectTimer.data =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
+    uv_timer_start(&disconnectTimer, destroy_cb, 250, 0);
+    uv_unref((uv_handle_t*) &disconnectTimer);
+#endif
+
+    uv_timer_t destroyNowTimer;
+
+    LOG(DEBUG)
+        << "destroyNowTimer @"
+        << &destroyNowTimer
+    ;
+
+    uv_timer_init(uv_default_loop(), &destroyNowTimer);
+    destroyNowTimer.data =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
+    uv_timer_start(&destroyNowTimer, destroy_now_cb, 251, 0);
+    uv_unref((uv_handle_t*) &destroyNowTimer);
+
+    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), false, 400, 2);
+
+}
+
+void CommsFixture::disconnect_cb(uv_timer_t * handle) {
+
+    ++eventCounter;
+
+    ::yajr::comms::internal::CommunicationPeer * peer =
+        static_cast< ::yajr::comms::internal::CommunicationPeer * >(handle->data)
+    ;
+    LOG(DEBUG)
+        << peer
+        << " timer handle "
+        << handle
+    ;
+    peer->disconnect();
+
+    uv_timer_stop(handle);
+    uv_close((uv_handle_t *)handle, nothing_on_close);
+
+}
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_semigracefully_for_non_routable_host, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.127", "65511", disconnectOnCallback);
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    uv_timer_t disconnectTimer;
+
+    LOG(DEBUG)
+        << "disconnectTimer @"
+        << &disconnectTimer
+    ;
+
+    uv_timer_init(uv_default_loop(), &disconnectTimer);
+    disconnectTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&disconnectTimer, disconnect_cb, 250, 0);
     uv_unref((uv_handle_t*) &disconnectTimer);
 
-    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 90000);
+    uv_timer_t disconnectNowTimer;
+
+    LOG(DEBUG)
+        << "disconnectNowTimer @"
+        << &disconnectNowTimer
+    ;
+
+    uv_timer_init(uv_default_loop(), &disconnectNowTimer);
+    disconnectNowTimer.data =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
+    uv_timer_start(&disconnectNowTimer, disconnect_now_cb, 251, 0);
+    uv_unref((uv_handle_t*) &disconnectNowTimer);
+
+    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 400, 2);
 
 }
+
 
 #ifdef YAJR_HAS_OPENSSL
 
