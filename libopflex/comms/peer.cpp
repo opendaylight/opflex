@@ -309,12 +309,21 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
         assert(!ssIn_.str().data());
     }
 
+    /* don't clean up ssIn_ yet. yes, it's technically a "dead" variable here,
+     * but we might need to inspect it from gdb to make our life easier when
+     * getInboundMessage() isn't happy :)
+     */
+    yajr::rpc::InboundMessage * ret =
+        yajr::rpc::MessageFactory::getInboundMessage(*this, docIn_);
+
+    assert(ret);
+
     /* wipe ssIn_ out */
     // std::stringstream().swap(ssIn_); // C++11 only
     ssIn_.~basic_stringstream();
     new ((void *) &ssIn_) std::stringstream();
 
-    return yajr::rpc::MessageFactory::getInboundMessage(*this, docIn_);
+    return ret;
 }
 
 bool Peer::__checkInvariants()
