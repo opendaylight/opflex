@@ -20,7 +20,6 @@
 
 #include <uv.h>
 
-#include <boost/intrusive/set.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/function.hpp>
