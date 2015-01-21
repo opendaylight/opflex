@@ -32,6 +32,43 @@
 namespace ovsagent {
 
 /**
+ * Class to represent information about a classifier rule.
+ */
+class PolicyClassifier {
+public:
+    /**
+     * Constructor that accepts direction and L24Classifier.
+     * @param dir The direction of the classifier rule
+     * @param c Details of the classifier rule
+     */
+    PolicyClassifier(const uint8_t dir,
+         const boost::shared_ptr<modelgbp::gbpe::L24Classifier>& c) :
+         direction(dir), l24Classifier(c) {
+    }
+
+    /**
+     * Get the direction of the classifier rule.
+     * @return the direction
+     */
+    uint8_t getDirection() const {
+        return direction;
+    }
+
+    /**
+     * Get the L24Classifier object for the classifier rule.
+     * @return the L24Classifier object.
+     */
+    const boost::shared_ptr<modelgbp::gbpe::L24Classifier>&
+    getL24Classifier() const {
+        return l24Classifier;
+    }
+
+private:
+    uint8_t direction;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
+};
+
+/**
  * The policy manager maintains various state and indices related
  * to policy.
  */
@@ -195,10 +232,9 @@ public:
     bool groupExists(const opflex::modb::URI& eg);
 
     /**
-     * List of L24Classifier objects.
+     * List of PolicyClassifier objects.
      */
-    typedef std::list<boost::shared_ptr<modelgbp::gbpe::L24Classifier> >
-        rule_list_t;
+    typedef std::list<boost::shared_ptr<PolicyClassifier> > rule_list_t;
 
     /**
      * Set of URIs.
@@ -231,7 +267,7 @@ public:
                              /* out */ uri_set_t& epgURIs);
 
     /**
-     * Get an ordered list of L24Classifier objects that comprise a contract.
+     * Get an ordered list of PolicyClassifier objects that comprise a contract.
      *
      * @param contractURI URI of contract to look for
      * @param rules List of classifier objects in descending order

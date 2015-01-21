@@ -9,11 +9,13 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <list>
 #include <boost/test/unit_test.hpp>
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
+#include <modelgbp/gbp/DirectionEnumT.hpp>
 
 #include "BaseFixture.h"
 #include "Policies.h"
@@ -26,6 +28,7 @@ using boost::unordered_set;
 using opflex::modb::Mutator;
 using opflex::modb::URI;
 
+using namespace std;
 using namespace modelgbp;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
@@ -74,25 +77,27 @@ public:
 
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
-                ->setOrder(15)
-                .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
+            ->setOrder(15).setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
-                ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
+            ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
-                ->setOrder(10)
-                .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+            ->setOrder(10).setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
-                ->setOrder(25)
-                .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
+            ->setOrder(25).setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule4")
-                ->setOrder(5)
-                .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
+            ->setOrder(5).setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
         con1->addGbpSubject("1_subject2")->addGbpRule("1_2_rule1")
-                ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
+            ->setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
 
         con2 = space->addGbpContract("contract2");
         con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
-              ->addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
+            ->setDirection(DirectionEnumT::CONST_OUT)
+            .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
 
         eg1 = space->addGbpEpGroup("group1");
         eg1->addGbpEpGroupToNetworkRSrc()
@@ -261,11 +266,13 @@ BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
 }
 
 static bool checkRules(const PolicyManager::rule_list_t& lhs,
-        const PolicyManager::rule_list_t& rhs) {
+        const list<shared_ptr<L24Classifier> >& rhs,
+        uint8_t dir) {
     PolicyManager::rule_list_t::const_iterator li = lhs.begin();
-    PolicyManager::rule_list_t::const_iterator ri = rhs.begin();
+    list<shared_ptr<L24Classifier> >::const_iterator ri = rhs.begin();
     while (li != lhs.end() && ri != rhs.end() &&
-           (*li)->getURI() == (*ri)->getURI()) {
+           (*li)->getL24Classifier()->getURI() == (*ri)->getURI() &&
+           (*li)->getDirection() == dir) {
         ++li;
         ++ri;
     }
@@ -284,10 +291,12 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
     BOOST_CHECK(
         checkRules(rules,
             list_of(classifier6)(classifier2)(classifier1)(classifier4)
-                (classifier5)(classifier3)) ||
+                (classifier5)(classifier3),
+            DirectionEnumT::CONST_IN) ||
         checkRules(rules,
             list_of(classifier3)(classifier6)(classifier2)(classifier1)(classifier4)
-                (classifier5)));
+                (classifier5),
+        DirectionEnumT::CONST_IN));
 
     /*
      *  remove classifier2 & subject2
@@ -308,9 +317,10 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
 
     rules.clear();
     WAIT_FOR_DO(rules.size() == 4, 500,
-            rules.clear(); pm.getContractRules(con1->getURI(), rules));
+        rules.clear(); pm.getContractRules(con1->getURI(), rules));
     BOOST_CHECK(checkRules(rules,
-            list_of(classifier6)(classifier4)(classifier1)(classifier5)));
+        list_of(classifier6)(classifier4)(classifier1)(classifier5),
+        DirectionEnumT::CONST_IN));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -38,9 +38,8 @@ module[gbp]
             }
         }
 
-	member[order; type=scalar/UInt32]
-	member[connectionTracking; type=gbp/ConnTrack]
-	member[direction; type=gbp/Direction]
+    member[order; type=scalar/UInt32]
+    member[connectionTracking; type=gbp/ConnTrack]
     }
 
 }

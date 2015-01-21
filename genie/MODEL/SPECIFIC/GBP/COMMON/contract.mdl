@@ -64,6 +64,7 @@ module[gbp]
         }
 
         member[order; type=scalar/UInt32]
+        member[direction; type=gbp/Direction]
     }
 
 }

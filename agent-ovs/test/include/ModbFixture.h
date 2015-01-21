@@ -203,36 +203,36 @@ protected:
     }
 
     void createPolicyObjects() {
-        /* no direction set*/
+        /* blank classifier */
         classifier0 = space->addGbpeL24Classifier("classifier0");
         classifier0->setOrder(10);
         /* allow bidirectional FCoE */
         classifier5 = space->addGbpeL24Classifier("classifier5");
-        classifier5->setOrder(20).setEtherT(l2::EtherTypeEnumT::CONST_FCOE)
-            .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL);
+        classifier5->setOrder(20).setEtherT(l2::EtherTypeEnumT::CONST_FCOE);
 
         /* allow TCP to dst port 80 cons->prov */
         classifier1 = space->addGbpeL24Classifier("classifier1");
-        classifier1->setOrder(100).setDirection(DirectionEnumT::CONST_IN)
-            .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
-            .setDFromPort(80)
+        classifier1->setEtherT(l2::EtherTypeEnumT::CONST_IPV4)
+            .setProt(6 /* TCP */).setDFromPort(80)
             .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE);
         /* allow ARP from prov->cons */
         classifier2 = space->addGbpeL24Classifier("classifier2");
-        classifier2->setOrder(200).setDirection(DirectionEnumT::CONST_OUT)
-            .setEtherT(l2::EtherTypeEnumT::CONST_ARP);
+        classifier2->setEtherT(l2::EtherTypeEnumT::CONST_ARP);
 
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
-            ->addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
-        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
-            ->addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+            ->setDirection(DirectionEnumT::CONST_IN).setOrder(100)
+            .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
+            ->setDirection(DirectionEnumT::CONST_OUT).setOrder(200)
+            .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
 
         con2 = space->addGbpContract("contract2");
         con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
             ->addGbpRuleToClassifierRSrc(classifier0->getURI().toString());
-        con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
-            ->addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
+        con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule2")
+            ->setDirection(DirectionEnumT::CONST_BIDIRECTIONAL).setOrder(20)
+            .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
 
         epg0->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         epg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
@@ -247,18 +247,19 @@ protected:
 
         /* classifiers with port ranges */
         classifier3 = space->addGbpeL24Classifier("classifier3");
-        classifier3->setOrder(10).setDirection(DirectionEnumT::CONST_IN)
+        classifier3->setOrder(10)
             .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
             .setDFromPort(80).setDToPort(85);
 
         classifier4 = space->addGbpeL24Classifier("classifier4");
-        classifier4->setOrder(20).setDirection(DirectionEnumT::CONST_IN)
+        classifier4->setOrder(20)
             .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
             .setSFromPort(66).setSToPort(69)
             .setDFromPort(94).setDToPort(95);
         con3 = space->addGbpContract("contract3");
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
-            ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
+            ->setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
             ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
         epg0->addGbpEpGroupToProvContractRSrc(con3->getURI().toString());
