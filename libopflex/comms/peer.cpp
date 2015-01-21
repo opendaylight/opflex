@@ -303,7 +303,10 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
         LOG(ERROR)
             << "Error: " << rapidjson::GetParseError_En(e)
             << " at offset " << o
+            << " of message: " << ssIn_.str()
         ;
+
+        assert(!ssIn_.str().data());
     }
 
     /* wipe ssIn_ out */
