@@ -59,7 +59,6 @@ AM_CONFIG_HEADER(config.h)
 AC_CONFIG_MACRO_DIR([m4])
 LT_INIT()
 
-m4_include([m4/check-ssl.m4])
 m4_include([m4/ax_boost_base.m4])
 m4_include([m4/ax_boost_unit_test_framework.m4])
 m4_include([m4/ax_check_compile_flags.m4])
@@ -133,12 +132,9 @@ dnl Boost dependencies
 AX_BOOST_BASE([1.49.0], [], AC_MSG_ERROR([Boost is required]))
 AX_BOOST_UNIT_TEST_FRAMEWORK
 
-dnl OpenSSL dependencies
-CHECK_SSL
-AM_CONDITIONAL(HAVE_SSL, [test x$found_ssl = 'xyes'])
-
-dnl libuv
+dnl Package-config dependencies
 PKG_CHECK_MODULES([UV], [libuv >= 0.11.0])
+PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.0])
 
 dnl rapidjson
 AC_CHECK_HEADER([rapidjson/rapidjson.h],

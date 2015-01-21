@@ -29,7 +29,7 @@ AM_CPPFLAGS += -I$(srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/logging/include
 AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp
-AM_CPPFLAGS += $(OPENSSL_CFLAGS)
+AM_CPPFLAGS += $(OPENSSL_CFLAGS) -DYAJR_HAS_OPENSSL
 
 AM_CXXFLAGS  =
 AM_CXXFLAGS += -O0
@@ -67,6 +67,7 @@ libcomms_la_SOURCES += active_connection.cpp
 libcomms_la_SOURCES += passive_listener.cpp
 libcomms_la_SOURCES += common.cpp
 libcomms_la_SOURCES += transport/PlainText.cpp
+libcomms_la_SOURCES += transport/ZeroCopyOpenSSL.cpp
 libcomms_la_SOURCES += rpc.cpp
 libcomms_la_SOURCES += peer.cpp
 
@@ -119,14 +120,13 @@ comms_test_CPPFLAGS  = $(AM_CPPFLAGS)
 comms_test_CPPFLAGS += -DBOOST_TEST_DYN_LINK
 comms_test_CPPFLAGS += -DSRCDIR="\"$(abs_srcdir)\""
 comms_test_CPPFLAGS += $(UV_CFLAGS)
+comms_test_CPPFLAGS += -DYAJR_HAS_OPENSSL
 
 comms_test_CXXFLAGS  = $(AM_CXXFLAGS)
 
 comms_test_LDFLAGS  = $(AM_LDFLAGS)
 comms_test_LDFLAGS += $(UV_LIBS)
-if HAVE_SSL
-  comms_test_LDFLAGS += $(OPENSSL_LIBS)
-endif
+comms_test_LDFLAGS += $(OPENSSL_LIBS)
 
 comms_test_LDADD  =
 comms_test_LDADD += libcomms.la
@@ -135,11 +135,5 @@ if TRACING_COMMS
   comms_test_LDADD += libcommstrace.la
 endif
 comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
-
-if HAVE_SSL
-  libcomms_la_SOURCES += transport/ZeroCopyOpenSSL.cpp
-  libcomms_la_CPPFLAGS += -DYAJR_HAS_OPENSSL
-  comms_test_CPPFLAGS += -DYAJR_HAS_OPENSSL
-endif
 
 EXTRA_DIST=test/server.pem test/ca.pem
