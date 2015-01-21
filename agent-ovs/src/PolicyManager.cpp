@@ -460,18 +460,25 @@ void PolicyManager::updateEPGContracts(const URI& egURI,
  * Check equality of L24Classifier objects.
  */
 static bool
-classifierEq(const shared_ptr<modelgbp::gbpe::L24Classifier>& lhs,
-             const shared_ptr<modelgbp::gbpe::L24Classifier>& rhs) {
-    if (lhs == rhs) {
+classifierEq(const shared_ptr<PolicyClassifier>& lhsObj,
+             const shared_ptr<PolicyClassifier>& rhsObj) {
+    using namespace modelgbp::gbpe;
+    if (lhsObj == rhsObj) {
         return true;
     }
-    return lhs.get() && rhs.get() &&
+    if (lhsObj.get() == NULL || rhsObj.get() == NULL) {
+        return false;
+    }
+    const shared_ptr<L24Classifier>& lhs = lhsObj->getL24Classifier();
+    const shared_ptr<L24Classifier>& rhs = rhsObj->getL24Classifier();
+
+    return lhsObj->getDirection() == rhsObj->getDirection() &&
+        lhs.get() && rhs.get() &&
         lhs->getURI() == rhs->getURI() &&
         lhs->getArpOpc() == rhs->getArpOpc() &&
         lhs->getConnectionTracking() == rhs->getConnectionTracking() &&
         lhs->getDFromPort() == rhs->getDFromPort() &&
         lhs->getDToPort() == rhs->getDToPort() &&
-        lhs->getDirection() == rhs->getDirection() &&
         lhs->getEtherT() == rhs->getEtherT() &&
         lhs->getProt() == rhs->getProt() &&
         lhs->getSFromPort() == rhs->getSFromPort() &&
@@ -503,6 +510,10 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
         stable_sort(rules.begin(), rules.end(), ruleComp);
 
         BOOST_FOREACH(shared_ptr<Rule>& rule, rules) {
+            if (!rule->isDirectionSet()) {
+                continue;       // ignore rules with no direction
+            }
+            uint8_t dir = rule->getDirection().get();
             vector<shared_ptr<L24Classifier> > classifiers;
             vector<shared_ptr<RuleToClassifierRSrc> > clsRel;
             rule->resolveGbpRuleToClassifierRSrc(clsRel);
@@ -518,8 +529,10 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
                 }
             }
             stable_sort(classifiers.begin(), classifiers.end(), classifierComp);
-            newRules.insert(newRules.end(), classifiers.begin(),
-                    classifiers.end());
+            BOOST_FOREACH (const shared_ptr<L24Classifier>& c, classifiers) {
+                newRules.push_back(
+                    shared_ptr<PolicyClassifier>(new PolicyClassifier(dir, c)));
+            }
         }
     }
     ContractState& cs = contractMap[contractURI];
@@ -534,8 +547,9 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
     bool updated = (li != cs.rules.end() || ri != newRules.end());
     if (updated) {
         cs.rules.swap(newRules);
-        BOOST_FOREACH(shared_ptr<L24Classifier>& c, cs.rules) {
-            LOG(DEBUG) << contractURI << " rule: " << c->getURI();
+        BOOST_FOREACH(shared_ptr<PolicyClassifier>& c, cs.rules) {
+            LOG(DEBUG) << contractURI << " rule: "
+                << c->getL24Classifier()->getURI();
         }
     }
     return updated;

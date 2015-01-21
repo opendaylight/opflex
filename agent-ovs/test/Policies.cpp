@@ -128,19 +128,16 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     // ARP
     classifier1 = space->addGbpeL24Classifier("classifier1");
-    classifier1->setOrder(100)
-        .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
+    classifier1->setOrder(102)
         .setEtherT(EtherTypeEnumT::CONST_ARP);
 
     // ICMP
     classifier2 = space->addGbpeL24Classifier("classifier2");
-    classifier2->setOrder(100)
-        .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
+    classifier2->setOrder(101)
         .setEtherT(EtherTypeEnumT::CONST_IPV4)
         .setProt(1);
     classifier3 = space->addGbpeL24Classifier("classifier3");
     classifier3->setOrder(100)
-        .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
         .setEtherT(EtherTypeEnumT::CONST_IPV6)
         .setProt(58);
 
@@ -150,13 +147,12 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setProt(6)
         .setDFromPort(80)
         .setDToPort(80)
-        .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE)
-        .setDirection(DirectionEnumT::CONST_IN);
+        .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE);
 
     // Basic ARP and ICMP
     con1 = space->addGbpContract("contract1");
     con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
-        ->setOrder(10)
+        ->setOrder(10).setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
         .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
     con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
         ->addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
@@ -166,7 +162,8 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     // HTTP to provider, reflexive
     con2 = space->addGbpContract("contract2");
     con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
-        ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
+        ->setDirection(DirectionEnumT::CONST_IN)
+        .addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
 
     eg1 = space->addGbpEpGroup("group1");
     eg1->addGbpEpGroupToNetworkRSrc()
