@@ -986,6 +986,7 @@ public:
     }
     Bldr& isVlan(uint16_t v) { rep(",dl_vlan=", str(v)); return *this; }
     Bldr& isNdTarget(const string& t) { rep(",nd_target=", t); return *this; }
+    Bldr& isEth(uint16_t t)  { rep(",dl_type=", str(t, true)); return *this; }
     Bldr& connState(const string& s) { rep(",conn_state=" + s); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& drop() { rep("drop"); return *this; }
@@ -1377,24 +1378,29 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     ge_epg2 = "group_id=2,type=all";
     ge_epg2_prom = "group_id=2147483650,type=all";
 
-    uint32_t epg2_vnid = policyMgr.getVnidForGroup(epg2->getURI()).get();
-    uint32_t epg3_vnid = policyMgr.getVnidForGroup(epg3->getURI()).get();
+    /* Contracts */
     uint16_t prio = FlowManager::MAX_POLICY_RULE_PRIORITY;
+    PolicyManager::uri_set_t ps, cs;
+    unordered_set<uint32_t> pvnids, cvnids;
 
     /* con2 */
     uint32_t con2_cookie = flowManager.GetId(con2->getClassId(),
-            con2->getURI());
-    fe_con2.push_back(Bldr().table(4).priority(prio).cookie(con2_cookie)
-            .reg(SEPG, epg3_vnid).reg(DEPG, epg2_vnid).actions().out(OUTPORT)
-            .done());
-    fe_con2.push_back(Bldr(fe_con2[0]).reg(SEPG, epg2_vnid)
-            .reg(DEPG, epg3_vnid).done());
+        con2->getURI());
+    policyMgr.getContractProviders(con2->getURI(), ps);
+    flowManager.GetGroupVnids(ps, pvnids);
+    BOOST_FOREACH (uint32_t pvnid, pvnids) {
+        BOOST_FOREACH (uint32_t cvnid, pvnids) {
+            fe_con2.push_back(Bldr().table(4).priority(prio).cookie(con2_cookie)
+                .reg(SEPG, cvnid).reg(DEPG, pvnid).isEth(0x8906)
+                .actions().out(OUTPORT).done());
+        }
+    }
+    ps.clear();
+    pvnids.clear();
 
     /* con1 */
-    PolicyManager::uri_set_t ps, cs;
     policyMgr.getContractProviders(con1->getURI(), ps);
     policyMgr.getContractConsumers(con1->getURI(), cs);
-    unordered_set<uint32_t> pvnids, cvnids;
     flowManager.GetGroupVnids(ps, pvnids);
     flowManager.GetGroupVnids(cs, cvnids);
     uint32_t con1_cookie = flowManager.GetId(con1->getClassId(),

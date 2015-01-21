@@ -1323,8 +1323,21 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
         BOOST_FOREACH(uint32_t cvnid, consVnids) {
             uint16_t prio = MAX_POLICY_RULE_PRIORITY;
             BOOST_FOREACH(shared_ptr<L24Classifier>& cls, rules) {
-                uint8_t dir =
-                        cls->getDirection(DirectionEnumT::CONST_BIDIRECTIONAL);
+                if (!cls->isDirectionSet()) {
+                    // disallow traffic if direction is unspecified
+                    continue;
+                }
+                uint8_t dir = cls->getDirection().get();
+                /*
+                 * Collapse bidirectional rules - if consumer 'cvnid' is also
+                 * a provider and provider 'pvnid' is also a consumer, then
+                 * add entry for cvnid to pvnid traffic only.
+                 */
+                if (dir == DirectionEnumT::CONST_BIDIRECTIONAL &&
+                    provVnids.find(cvnid) != provVnids.end() &&
+                    consVnids.find(pvnid) != consVnids.end()) {
+                    dir = DirectionEnumT::CONST_IN;
+                }
                 if (dir == DirectionEnumT::CONST_IN ||
                     dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
                     AddEntryForClassifier(cls.get(), prio, conCookie,

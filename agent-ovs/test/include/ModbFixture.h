@@ -71,6 +71,7 @@ public:
     shared_ptr<L24Classifier> classifier2;
     shared_ptr<L24Classifier> classifier3;
     shared_ptr<L24Classifier> classifier4;
+    shared_ptr<L24Classifier> classifier5;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
@@ -202,8 +203,13 @@ protected:
     }
 
     void createPolicyObjects() {
-        /* allow everything */
+        /* no direction set*/
         classifier0 = space->addGbpeL24Classifier("classifier0");
+        classifier0->setOrder(10);
+        /* allow bidirectional FCoE */
+        classifier5 = space->addGbpeL24Classifier("classifier5");
+        classifier5->setOrder(20).setEtherT(l2::EtherTypeEnumT::CONST_FCOE)
+            .setDirection(DirectionEnumT::CONST_BIDIRECTIONAL);
 
         /* allow TCP to dst port 80 cons->prov */
         classifier1 = space->addGbpeL24Classifier("classifier1");
@@ -225,6 +231,8 @@ protected:
         con2 = space->addGbpContract("contract2");
         con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
             ->addGbpRuleToClassifierRSrc(classifier0->getURI().toString());
+        con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
+            ->addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
 
         epg0->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         epg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
@@ -233,6 +241,8 @@ protected:
         epg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
 
         epg2->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
+        epg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
+        epg3->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
         epg3->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
 
         /* classifiers with port ranges */
