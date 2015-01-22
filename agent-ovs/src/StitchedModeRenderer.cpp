@@ -164,7 +164,7 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
 
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
     virtualRouterMac =
-        properties.get<std::string>(VIRTUAL_ROUTER_MAC, "88:f0:31:b5:12:b5");
+        properties.get<std::string>(VIRTUAL_ROUTER_MAC, "00:22:bd:f8:19:ff");
 
     flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR, "");
 }
