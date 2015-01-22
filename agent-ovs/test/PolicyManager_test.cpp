@@ -102,7 +102,8 @@ public:
         eg1 = space->addGbpEpGroup("group1");
         eg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsfd->getURI());
-        eg1->addGbpeInstContext()->setEncapId(1234);
+        eg1->addGbpeInstContext()->setEncapId(1234)
+            .setMulticastGroupIP("224.1.1.1");
         eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
 
@@ -193,6 +194,12 @@ BOOST_FIXTURE_TEST_CASE( group, PolicyFixture ) {
 
     optional<uint32_t> vnid = pm.getVnidForGroup(eg1->getURI());
     BOOST_CHECK(vnid.get() == 1234);
+
+    optional<string> mcastIp = pm.getMulticastIPForGroup(eg1->getURI());
+    BOOST_CHECK(mcastIp.get() == "224.1.1.1");
+
+    mcastIp = pm.getMulticastIPForGroup(eg2->getURI());
+    BOOST_CHECK(!mcastIp);
 
     Mutator mutator(framework, "policyreg");
     eg1->remove();

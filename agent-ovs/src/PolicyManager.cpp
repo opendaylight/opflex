@@ -57,6 +57,7 @@ void PolicyManager::start() {
     FloodContext::registerListener(framework, &domainListener);
     RoutingDomain::registerListener(framework, &domainListener);
     Subnets::registerListener(framework, &domainListener);
+    InstContext::registerListener(framework, &domainListener);
     EpGroup::registerListener(framework, &domainListener);
 
     EpGroup::registerListener(framework, &contractListener);
@@ -86,6 +87,7 @@ void PolicyManager::stop() {
     FloodContext::unregisterListener(framework, &domainListener);
     RoutingDomain::unregisterListener(framework, &domainListener);
     Subnets::unregisterListener(framework, &domainListener);
+    InstContext::unregisterListener(framework, &domainListener);
     EpGroup::unregisterListener(framework, &domainListener);
 
     EpGroup::unregisterListener(framework, &contractListener);
@@ -226,14 +228,14 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     }
     toRemove = false;
 
-    optional<shared_ptr<InstContext> > groupInstCtx;
-    groupInstCtx = epg.get()->resolveGbpeInstContext();
-    if (gs.vnid)
-        vnid_map.erase(gs.vnid.get());
-    if (groupInstCtx) {
-        gs.vnid = groupInstCtx.get()->getEncapId();
-        if (gs.vnid)
-            vnid_map.insert(std::make_pair(gs.vnid.get(), egURI));
+    optional<shared_ptr<InstContext> > newInstCtx =
+        epg.get()->resolveGbpeInstContext();
+    if (gs.instContext && gs.instContext.get()->getEncapId()) {
+        vnid_map.erase(gs.instContext.get()->getEncapId().get());
+    }
+    if (newInstCtx && newInstCtx.get()->getEncapId()) {
+        vnid_map.insert(
+            std::make_pair(newInstCtx.get()->getEncapId().get(), egURI));
     }
 
     optional<shared_ptr<RoutingDomain> > newrd;
@@ -326,13 +328,15 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     }
 
     bool updated = false;
-    if (newfd != gs.floodDomain ||
+    if (newInstCtx != gs.instContext ||
+        newfd != gs.floodDomain ||
         newfdctx != gs.floodContext ||
         newbd != gs.bridgeDomain ||
         newrd != gs.routingDomain ||
         newsmap != gs.subnet_map)
         updated = true;
     
+    gs.instContext = newInstCtx;
     gs.floodDomain = newfd;
     gs.floodContext = newfdctx;
     gs.bridgeDomain = newbd;
@@ -346,7 +350,10 @@ boost::optional<uint32_t>
 PolicyManager::getVnidForGroup(const opflex::modb::URI& eg) {
     lock_guard<mutex> guard(state_mutex);
     group_map_t::iterator it = group_map.find(eg);
-    return it != group_map.end() ? it->second.vnid : boost::none;
+    return it != group_map.end() && it->second.instContext &&
+           it->second.instContext.get()->getEncapId()
+           ? it->second.instContext.get()->getEncapId().get()
+           : optional<uint32_t>();
 }
 
 boost::optional<opflex::modb::URI>
@@ -354,6 +361,15 @@ PolicyManager::getGroupForVnid(uint32_t vnid) {
     lock_guard<mutex> guard(state_mutex);
     vnid_map_t::iterator it = vnid_map.find(vnid);
     return it != vnid_map.end() ? optional<URI>(it->second) : boost::none;
+}
+
+optional<string> PolicyManager::getMulticastIPForGroup(const URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instContext &&
+           it->second.instContext.get()->getMulticastGroupIP()
+           ? it->second.instContext.get()->getMulticastGroupIP().get()
+           : optional<string>();
 }
 
 bool PolicyManager::groupExists(const opflex::modb::URI& eg) {

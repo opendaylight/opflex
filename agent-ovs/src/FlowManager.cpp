@@ -1052,14 +1052,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         endpointUpdated(ep);
     }
 
-    optional<string> epgMcastIp;
-    if (epg) {
-        optional<shared_ptr<InstContext > > epgCtx =
-            epg.get()->resolveGbpeInstContext();
-        if (epgCtx) {
-            epgMcastIp = epgCtx.get()->getMulticastGroupIP();
-        }
-    }
+    optional<string> epgMcastIp = polMgr.getMulticastIPForGroup(epgURI);
     updateMulticastList(epgMcastIp, epgURI);
     optional<string> fdcMcastIp;
     optional<shared_ptr<FloodContext> > fdCtx =
