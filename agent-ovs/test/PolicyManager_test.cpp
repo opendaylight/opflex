@@ -232,6 +232,15 @@ BOOST_FIXTURE_TEST_CASE( group_contract, PolicyFixture ) {
 }
 
 BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+
+    /* Wait for things to settle down */
+    PolicyManager::uri_set_t egs;
+    WAIT_FOR_DO(egs.size() == 2, 500,
+        egs.clear(); pm.getContractProviders(con1->getURI(), egs));
+    WAIT_FOR_DO(egs.size() == 1, 500,
+        egs.clear(); pm.getContractConsumers(con1->getURI(), egs));
+
     /* remove eg1, interchange roles of eg2 and eg3 w.r.t con1 */
     Mutator mutator(framework, "policyreg");
 
@@ -246,23 +255,21 @@ BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
     eg1->remove();
     mutator.commit();
 
-    PolicyManager& pm = agent.getPolicyManager();
     WAIT_FOR(pm.groupExists(eg1->getURI()) == false, 500);
 
-    PolicyManager::uri_set_t egs;
-    WAIT_FOR_DO(egs.size() == 1, 500,
-            egs.clear(); pm.getContractProviders(con1->getURI(), egs));
-    BOOST_CHECK(checkContains(egs, eg2->getURI()));
+    WAIT_FOR_DO(egs.size() == 1 && checkContains(egs, eg2->getURI()),
+        500,
+        egs.clear(); pm.getContractProviders(con1->getURI(), egs));
 
     egs.clear();
-    WAIT_FOR_DO(egs.size() == 1, 500,
-            egs.clear(); pm.getContractConsumers(con1->getURI(), egs));
-    BOOST_CHECK(checkContains(egs, eg3->getURI()));
+    WAIT_FOR_DO(egs.size() == 1 && checkContains(egs, eg3->getURI()),
+        500,
+        egs.clear(); pm.getContractConsumers(con1->getURI(), egs));
 
     egs.clear();
     pm.getContractProviders(con2->getURI(), egs);
     WAIT_FOR_DO(egs.empty(), 500,
-            egs.clear(); pm.getContractProviders(con2->getURI(), egs));
+        egs.clear(); pm.getContractProviders(con2->getURI(), egs));
 }
 
 static bool checkRules(const PolicyManager::rule_list_t& lhs,
