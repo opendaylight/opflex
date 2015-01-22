@@ -90,8 +90,8 @@
         //         "virtual-router": true,
         //
         //         // Override MAC address for virtual router.  Default is 
-        //         // "88:f0:31:b5:12:b5"
-        //         "virtual-router-mac": "88:f0:31:b5:12:b5"
+        //         // "00:22:bd:f8:19:ff"
+        //         "virtual-router-mac": "00:22:bd:f8:19:ff"
         //     },
         //
         //     // Location to store cached IDs for managing flow state
