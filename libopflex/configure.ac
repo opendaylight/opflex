@@ -134,7 +134,7 @@ AX_BOOST_UNIT_TEST_FRAMEWORK
 
 dnl Package-config dependencies
 PKG_CHECK_MODULES([UV], [libuv >= 0.11.0])
-PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.0])
+PKG_CHECK_MODULES([OPENSSL], [openssl >= 0.9.8])
 
 dnl rapidjson
 AC_CHECK_HEADER([rapidjson/rapidjson.h],
