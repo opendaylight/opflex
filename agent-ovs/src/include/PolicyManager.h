@@ -224,6 +224,15 @@ public:
     boost::optional<opflex::modb::URI> getGroupForVnid(uint32_t vnid);
 
     /**
+     * Get the multicast IP group configured for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return Multicast IP for the group if any, boost::none otherwise
+     */
+    boost::optional<std::string>
+    getMulticastIPForGroup(const opflex::modb::URI& eg);
+
+    /**
      * Check if an endpoint group exists
      *
      * @param eg the URI for the endpoint group to check
@@ -291,7 +300,7 @@ private:
      * State and indices related to a given endpoint group
      */
     struct GroupState {
-        boost::optional<uint32_t> vnid;
+        boost::optional<boost::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
         boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
         boost::optional<boost::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;
         boost::optional<boost::shared_ptr<modelgbp::gbp::FloodDomain> > floodDomain;
