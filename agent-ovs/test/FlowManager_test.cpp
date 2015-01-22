@@ -876,9 +876,11 @@ void FlowManagerFixture::mcastTest() {
     flowManager.setTunnelRemotePort(8472);
 
     string prmBr = " " + conn.getSwitchName() + " 8472 ";
+
+    WAIT_FOR(config->isMulticastGroupIPSet(), 500);
     string mcast1 = config->getMulticastGroupIP().get();
     string mcast2 = "224.1.1.2";
-    string mcast3 = fd0ctx->getMulticastGroupIP().get();
+    string mcast3 = "224.5.1.1";
     string mcast4 = "224.5.1.2";
 
     jsonCmdExecutor.expect("dpif/vxlan-mcast-dump" + prmBr,
@@ -897,13 +899,12 @@ void FlowManagerFixture::mcastTest() {
     config->setMulticastGroupIP(mcast2);
     fd0ctx->setMulticastGroupIP(mcast4);
     mutator.commit();
-    WAIT_FOR_DO(fd0ctx->getMulticastGroupIP().get() == mcast4, 500,
+    WAIT_FOR_DO(fd0ctx->getMulticastGroupIP("") == mcast4, 500,
         fd0ctx = policyMgr.getFloodContextForGroup(epg2->getURI()).get());
 
     jsonCmdExecutor.clear();
     jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + mcast1);
     jsonCmdExecutor.expect("dpif/vxlan-mcast-join" + prmBr + mcast2);
-    jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + mcast3);
     jsonCmdExecutor.expect("dpif/vxlan-mcast-join" + prmBr + mcast4);
     flowManager.configUpdated(config->getURI());
     flowManager.egDomainUpdated(epg2->getURI());

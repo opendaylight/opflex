@@ -98,7 +98,6 @@ protected:
         fd0->addGbpFloodDomainToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
         fd0ctx = fd0->addGbpeFloodContext();
-        fd0ctx->setMulticastGroupIP("224.5.1.1");
 
         fd1->addGbpFloodDomainToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
@@ -147,7 +146,8 @@ protected:
         epg2 = space->addGbpEpGroup("epg2");
         epg2->addGbpEpGroupToNetworkRSrc()
             ->setTargetSubnets(subnetsfd0->getURI());
-        epg2->addGbpeInstContext()->setEncapId(0xD0A);
+        epg2->addGbpeInstContext()->setEncapId(0xD0A)
+            .setMulticastGroupIP("224.5.1.1");
 
         epg3 = space->addGbpEpGroup("epg3");
         epg3->addGbpEpGroupToNetworkRSrc()

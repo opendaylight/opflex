@@ -1052,13 +1052,24 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         endpointUpdated(ep);
     }
 
-    optional<string> mcastGrpIp;
+    optional<string> epgMcastIp;
+    if (epg) {
+        optional<shared_ptr<InstContext > > epgCtx =
+            epg.get()->resolveGbpeInstContext();
+        if (epgCtx) {
+            epgMcastIp = epgCtx.get()->getMulticastGroupIP();
+        }
+    }
+    updateMulticastList(epgMcastIp, epgURI);
+    optional<string> fdcMcastIp;
     optional<shared_ptr<FloodContext> > fdCtx =
         polMgr.getFloodContextForGroup(epgURI);
     if (fdCtx) {
-        mcastGrpIp = fdCtx.get()->getMulticastGroupIP();
+        // XXX this leaks subscriptions from FloodContexts that are not
+        // used by any EPG
+        fdcMcastIp = fdCtx.get()->getMulticastGroupIP();
+        updateMulticastList(fdcMcastIp, fdCtx.get()->getURI());
     }
-    updateMulticastList(mcastGrpIp, epgURI);
 }
 
 void
@@ -1935,7 +1946,7 @@ void FlowManager::updateMulticastList(const optional<string>& mcastIp,
 
     boost::system::error_code ec;
     address ip(address::from_string(mcastIp.get(), ec));
-    if (ec || !ip.is_v4()) {
+    if (ec || !ip.is_v4() || !ip.to_v4().is_multicast()) {
         LOG(WARNING) << "Ignoring invalid/unsupported multicast "
             "subscription IP: " << mcastIp.get();
         return;
