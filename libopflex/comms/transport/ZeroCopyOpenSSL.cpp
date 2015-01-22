@@ -837,54 +837,134 @@ std::string const ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString() {
     return ret;
 }
 
-ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
-        char const * caFileOrDirectory,
-        char const * keyFilePath,
+ZeroCopyOpenSSL::Ctx::Ctx(
+        SSL_CTX * c,
         char const * passphrase
-   ) {
+    )
+        :
+            sslCtx_(c),
+            passphrase_(passphrase?:"")
+        {};
 
+ZeroCopyOpenSSL::Ctx::~Ctx(){
+
+    SSL_CTX_free(sslCtx_);
+
+}
+
+size_t ZeroCopyOpenSSL::Ctx::addCaFileOrDirectory(
+        char const * caFileOrDirectory
+    ) {
+
+    size_t failure = 0;
     bool isDir;
 
-    if (caFileOrDirectory) {
+    struct stat s;
+    if (stat(caFileOrDirectory, &s)) {
 
-        struct stat s;
-        if (stat(caFileOrDirectory, &s)) {
+        LOG(ERROR)
+            << "Error ["
+            << errno
+            << "] (\""
+            << safe_strerror(errno)
+            << "\") on path \""
+            << caFileOrDirectory
+            << "\" does not exist"
+        ;
+        return ++failure;
 
-            LOG(ERROR)
-                << "Error ["
-                << errno
-                << "] (\""
-                << safe_strerror(errno)
-                << "\") on path \""
-                << caFileOrDirectory
-                << "\" does not exist"
-            ;
-            return NULL;
+    }
 
-        }
+    if ((s.st_mode & S_IFDIR) && !(s.st_mode & S_IFREG)) {
 
-        if ((s.st_mode & S_IFDIR) && !(s.st_mode & S_IFREG)) {
+        isDir = true;
 
-            isDir = true;
+    } else {
+
+        if (!(s.st_mode & S_IFDIR) && (s.st_mode & S_IFREG)) {
+
+            isDir = false;
 
         } else {
 
-            if (!(s.st_mode & S_IFDIR) && (s.st_mode & S_IFREG)) {
+            LOG(ERROR)
+                << "Path \""
+                << caFileOrDirectory
+                << "\" must be either a regular file or a directory"
+            ;
+            return ++failure;
 
-                isDir = false;
-
-            } else {
-
-                LOG(ERROR)
-                    << "Path \""
-                    << caFileOrDirectory
-                    << "\" must be either a regular file or a directory"
-                ;
-                return NULL;
-
-            }
         }
     }
+
+    if(1 != SSL_CTX_load_verify_locations(
+                    sslCtx_,
+                    isDir ? NULL : caFileOrDirectory,
+                    isDir ? caFileOrDirectory : NULL)) {
+        ++failure;
+
+        LOG(ERROR)
+            << "SSL_CTX_load_verify_locations() failed to open CA(s) @ \""
+            << caFileOrDirectory
+            << "\": "
+            << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
+        ;
+    }
+
+    return failure;
+
+}
+
+size_t ZeroCopyOpenSSL::Ctx::addCertificateFile(
+        char const * certificateChainFile
+    ) {
+
+    size_t failure = 0;
+
+    if (1 != SSL_CTX_use_certificate_chain_file(sslCtx_, certificateChainFile)) {
+        ++failure;
+
+        LOG(ERROR)
+            << "SSL_CTX_use_certificate_chain_file() failed to open certificate @ \""
+            << certificateChainFile
+            << "\": "
+            << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
+        ;
+    }
+
+    return failure;
+
+}
+
+size_t ZeroCopyOpenSSL::Ctx::addPrivateKeyFile(
+        char const * privateKeyFilePath
+    ) {
+
+    size_t failure = 0;
+
+    if (1 != SSL_CTX_use_PrivateKey_file(sslCtx_, privateKeyFilePath, SSL_FILETYPE_PEM)) {
+
+        ++failure;
+
+        LOG(ERROR)
+            << " SSL_CTX_use_PrivateKey_file() failed to open private key @ \""
+            << privateKeyFilePath
+            << "\": "
+            << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
+        ;
+
+    }
+
+    return failure;
+
+}
+
+
+ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
+        char const * caFileOrDirectory,
+        char const * keyAndCertFilePath,
+        char const * passphrase
+   ) {
 
     SSL_CTX * sslCtx = SSL_CTX_new(SSLv23_method());
 
@@ -900,25 +980,9 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
 
     size_t failure = 0;
 
-    if (caFileOrDirectory) {
-        if(1 != SSL_CTX_load_verify_locations(
-                        sslCtx,
-                        isDir ? NULL : caFileOrDirectory,
-                        isDir ? caFileOrDirectory : NULL)) {
-            ++failure;
-
-            LOG(ERROR)
-                << "SSL_CTX_load_verify_locations() failed to open CA(s) @ \""
-                << caFileOrDirectory
-                << "\": "
-                << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
-            ;
-        }
-    }
-
     if (!failure) {
 
-        Ctx * ctx = new (std::nothrow)Ctx(sslCtx, passphrase);
+        Ctx * ctx = new (std::nothrow) Ctx(sslCtx, passphrase);
 
         if (!ctx) {
 
@@ -929,51 +993,33 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
 
         } else {
 
-            if (keyFilePath) {
+            /* This needs to be done before invoking SSL_CTX_use_PrivateKey_file()
+             * and irrespectively of whether a passphrase was provided or not.
+             * Otherwise if the certificate has an encrypted private key and
+             * createCtx() was invoked without a passphrase, OpenSSL would always
+             * resort to asking for the passphrase from the standand input, hence
+             * blocking forever the progress of the current thread.
+             */
 
-                /* This needs to be done before invoking SSL_CTX_use_PrivateKey_file()
-                 * and irrespectively of whether a passphrase was provided or not.
-                 * Otherwise if the certificate has an encrypted private key and
-                 * createCtx() was invoked without a passphrase, OpenSSL would always
-                 * resort to asking for the passphrase from the standand input, hence
-                 * blocking forever the progress of the current thread.
-                 */
+            SSL_CTX_set_default_passwd_cb(sslCtx, pwdCb);
+            SSL_CTX_set_default_passwd_cb_userdata(sslCtx, ctx); /* Important! */
 
-                SSL_CTX_set_default_passwd_cb(sslCtx, pwdCb);
-                SSL_CTX_set_default_passwd_cb_userdata(sslCtx, ctx); /* Important! */
+            if (caFileOrDirectory) {
+                failure += ctx->addCaFileOrDirectory(caFileOrDirectory);
+            }
 
-                if (1 != SSL_CTX_use_certificate_chain_file(sslCtx, keyFilePath)) {
-                    ++failure;
+            if (keyAndCertFilePath) {
+                failure += ctx-> addPrivateKeyFile(keyAndCertFilePath);
+                failure += ctx->addCertificateFile(keyAndCertFilePath);
+            }
 
-                    LOG(ERROR)
-                        << "SSL_CTX_use_certificate_chain_file() failed to open certificate @ \""
-                        << keyFilePath
-                        << "\": "
-                        << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
-                    ;
-                }
+            if (failure) {
 
-                if (1 != SSL_CTX_use_PrivateKey_file(sslCtx, keyFilePath, SSL_FILETYPE_PEM)) {
-
-                    ++failure;
-
-                    LOG(ERROR)
-                        << " SSL_CTX_use_PrivateKey_file() failed to open private key @ \""
-                        << keyFilePath
-                        << "\": "
-                        << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
-                    ;
-
-                }
-
-                if (failure) {
-
-                    delete ctx;
-                    ctx = NULL;
-
-                }
+                delete ctx;
+                ctx = NULL;
 
             }
+
 
         }
 

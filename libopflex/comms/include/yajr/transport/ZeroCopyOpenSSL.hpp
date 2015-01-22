@@ -90,12 +90,12 @@ class ZeroCopyOpenSSL::Ctx {
      * @return the context that has been created, or NULL on failure.
      */
     static Ctx * createCtx(
-        char const * caFileOrDirectory,
+        char const * caFileOrDirectory = NULL,
         /**< [in] either the path to a single PEM file for the trusted root CA
          *        certificate or the path to a directory containing certificates
          *        for multiple trusted root CA's. Can be NULL for SSL servers.
          */
-        char const * keyFilePath,
+        char const * keyAndCertFilePath = NULL,
         /**< [in] the path to the PEM file for this peer, containing its
          *        certificate and its private key, possibly encrypted.
          *        Can be NULL for SSL clients, must be present for servers.
@@ -105,15 +105,49 @@ class ZeroCopyOpenSSL::Ctx {
          *        this peer's PEM file
          */
     );
+
+    /**
+     * @brief Adds a key file to a secure transport context
+     *
+     * @return 0 on success, or the number of errors upon failure
+     */
+    size_t addPrivateKeyFile(
+        char const * keyFilePath
+        /**< [in] the path to the PEM file for this peer's private key
+         */
+    );
+
+    /**
+     * @brief Adds a key file to a secure transport context
+     *
+     * @return 0 on success, or the number of errors upon failure
+     */
+    size_t addCertificateFile(
+        char const * certFilePath
+        /**< [in] the path to the PEM file for this peer's certificate
+         */
+    );
+
+
+    /**
+     * @brief Adds trusted root certificates to a secure transport context
+     *
+     * @return 0 on success, or the number of errors upon failure
+     */
+    size_t addCaFileOrDirectory(
+        char const * caFileOrDirectory
+        /**< [in] either the path to a single PEM file for the trusted root CA
+         *        certificate or the path to a directory containing certificates
+         *        for multiple trusted root CA's. Can be NULL for SSL servers.
+         */
+    );
+
     SSL_CTX * getSslCtx() const {
         return sslCtx_;
     }
+    ~Ctx();
   private:
-    Ctx(SSL_CTX * c, char const * passphrase)
-        :
-            sslCtx_(c),
-            passphrase_(passphrase?:"")
-        {};
+    Ctx(SSL_CTX * c, char const * passphrase);
     static int pwdCb(char *, int, int, void *);
     SSL_CTX * sslCtx_;
     std::string passphrase_;

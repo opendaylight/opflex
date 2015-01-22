@@ -290,8 +290,6 @@ struct Listener {
                  /**< [in] libuv loop selector for the accepted passive peers */
     );
 
-//    transport::Ctx 
-
     /**
      * @brief perform an asynchronous delete
      *
