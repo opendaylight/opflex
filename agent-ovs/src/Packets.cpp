@@ -89,7 +89,6 @@ ofpbuf* Packets::compose_icmp6_router_ad(const uint8_t* srcMac,
         return NULL;
 
     struct ofpbuf* b = NULL;
-    uint16_t* chksum_addr = NULL;
     uint16_t payloadLen = sizeof(struct nd_router_advert) +
         sizeof(struct nd_opt_hdr) + 6 +
         + (mtu == 0 ? 0 : sizeof(struct nd_opt_mtu)) +
@@ -214,7 +213,6 @@ ofpbuf* Packets::compose_icmp6_neigh_ad(uint32_t naFlags,
                                         const struct in6_addr* srcIp,
                                         const struct in6_addr* dstIp) {
     struct ofpbuf* b = NULL;
-    uint16_t* chksum_addr = NULL;
     struct eth_header* eth = NULL;
     struct ip6_hdr* ip6 = NULL;
     uint16_t* payload;

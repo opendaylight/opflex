@@ -29,6 +29,7 @@ using boost::unique_lock;
 using boost::lock_guard;
 using boost::mutex;
 using boost::shared_ptr;
+using boost::make_shared;
 using boost::optional;
 using boost::unordered_set;
 
@@ -476,8 +477,8 @@ void PolicyManager::updateEPGContracts(const URI& egURI,
  * Check equality of L24Classifier objects.
  */
 static bool
-classifierEq(const shared_ptr<PolicyClassifier>& lhsObj,
-             const shared_ptr<PolicyClassifier>& rhsObj) {
+ruleEq(const shared_ptr<PolicyRule>& lhsObj,
+       const shared_ptr<PolicyRule>& rhsObj) {
     using namespace modelgbp::gbpe;
     if (lhsObj == rhsObj) {
         return true;
@@ -489,6 +490,7 @@ classifierEq(const shared_ptr<PolicyClassifier>& lhsObj,
     const shared_ptr<L24Classifier>& rhs = rhsObj->getL24Classifier();
 
     return lhsObj->getDirection() == rhsObj->getDirection() &&
+        lhsObj->getAllow() == rhsObj->getAllow() &&
         lhs.get() && rhs.get() &&
         lhs->getURI() == rhs->getURI() &&
         lhs->getArpOpc() == rhs->getArpOpc() &&
@@ -535,7 +537,8 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
             rule->resolveGbpRuleToClassifierRSrc(clsRel);
 
             BOOST_FOREACH(shared_ptr<RuleToClassifierRSrc>& r, clsRel) {
-                if (!r->isTargetSet()) {
+                if (!r->isTargetSet() ||
+                    r->getTargetClass().get() != L24Classifier::CLASS_ID) {
                     continue;
                 }
                 optional<shared_ptr<L24Classifier> > cls =
@@ -545,9 +548,28 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
                 }
             }
             stable_sort(classifiers.begin(), classifiers.end(), classifierComp);
+
+            vector<shared_ptr<RuleToActionRSrc> > actRel;
+            rule->resolveGbpRuleToActionRSrc(actRel);
+            bool ruleAllow = true;
+            uint32_t minOrder = UINT32_MAX;
+            BOOST_FOREACH(shared_ptr<RuleToActionRSrc>& r, actRel) {
+                if (!r->isTargetSet() ||
+                    r->getTargetClass().get() != AllowDenyAction::CLASS_ID) {
+                    continue;
+                }
+                optional<shared_ptr<AllowDenyAction> > act =
+                    AllowDenyAction::resolve(framework, r->getTargetURI().get());
+                if (act) {
+                    if (act.get()->getOrder(UINT32_MAX-1) < minOrder) {
+                        minOrder = act.get()->getOrder(UINT32_MAX-1);
+                        ruleAllow = act.get()->getAllow(0) != 0;
+                    }
+                }
+            }
+
             BOOST_FOREACH (const shared_ptr<L24Classifier>& c, classifiers) {
-                newRules.push_back(
-                    shared_ptr<PolicyClassifier>(new PolicyClassifier(dir, c)));
+                newRules.push_back(make_shared<PolicyRule>(dir, c, ruleAllow));
             }
         }
     }
@@ -556,14 +578,14 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
     rule_list_t::const_iterator li = cs.rules.begin();
     rule_list_t::const_iterator ri = newRules.begin();
     while (li != cs.rules.end() && ri != newRules.end() &&
-           classifierEq(*li, *ri)) {
+           ruleEq(*li, *ri)) {
         ++li;
         ++ri;
     }
     bool updated = (li != cs.rules.end() || ri != newRules.end());
     if (updated) {
         cs.rules.swap(newRules);
-        BOOST_FOREACH(shared_ptr<PolicyClassifier>& c, cs.rules) {
+        BOOST_FOREACH(shared_ptr<PolicyRule>& c, cs.rules) {
             LOG(DEBUG) << contractURI << " rule: "
                 << c->getL24Classifier()->getURI();
         }

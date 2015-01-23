@@ -17,6 +17,7 @@
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 
+#include "logging.h"
 #include "BaseFixture.h"
 #include "Policies.h"
 
@@ -75,21 +76,34 @@ public:
         classifier5 = space->addGbpeL24Classifier("classifier5");
         classifier6 = space->addGbpeL24Classifier("classifier6");
 
+        action1 = space->addGbpAllowDenyAction("action1");
+        action1->setAllow(0).setOrder(5);
+        action2 = space->addGbpAllowDenyAction("action2");
+        action2->setAllow(1).setOrder(10);
+
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
             ->setOrder(15).setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
             ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
+
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
             ->setOrder(10).setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
             ->setOrder(25).setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
+            ->addGbpRuleToActionRSrc(action1->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
+            ->addGbpRuleToActionRSrc(action2->getURI().toString());
+
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule4")
             ->setOrder(5).setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
+
         con1->addGbpSubject("1_subject2")->addGbpRule("1_2_rule1")
             ->setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
@@ -144,6 +158,9 @@ public:
     shared_ptr<L24Classifier> classifier4;
     shared_ptr<L24Classifier> classifier5;
     shared_ptr<L24Classifier> classifier6;
+
+    shared_ptr<AllowDenyAction> action1;
+    shared_ptr<AllowDenyAction> action2;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
@@ -280,17 +297,38 @@ BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
 }
 
 static bool checkRules(const PolicyManager::rule_list_t& lhs,
-        const list<shared_ptr<L24Classifier> >& rhs,
-        uint8_t dir) {
+                       const list<shared_ptr<L24Classifier> >& rhs,
+                       const list<bool>& rhs_allow,
+                       uint8_t dir) {
     PolicyManager::rule_list_t::const_iterator li = lhs.begin();
     list<shared_ptr<L24Classifier> >::const_iterator ri = rhs.begin();
-    while (li != lhs.end() && ri != rhs.end() &&
-           (*li)->getL24Classifier()->getURI() == (*ri)->getURI() &&
-           (*li)->getDirection() == dir) {
+    list<bool>::const_iterator ai = rhs_allow.begin();
+    bool matches = true;
+    while (true) {
+        if (li == lhs.end() || ri == rhs.end() || ai == rhs_allow.end())
+            break;
+
+        if (!((*li)->getL24Classifier()->getURI() == (*ri)->getURI() &&
+              (*li)->getAllow() == *ai &&
+              (*li)->getDirection() == dir)) {
+            LOG(INFO) << "\nExpected:\n" 
+                       << (*ri)->getURI()
+                       << ", " << *ai
+                       << ", " << dir
+                       << "\nGot     :\n" 
+                       << (*li)->getL24Classifier()->getURI()
+                       << ", " << (*li)->getAllow()
+                       << ", " << (*li)->getDirection();
+            matches = false;
+        }
+
         ++li;
         ++ri;
+        ++ai;
     }
-    return li == lhs.end() && ri == rhs.end();
+
+    return matches && li == lhs.end() && 
+        ri == rhs.end() && ai == rhs_allow.end();
 }
 
 BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
@@ -304,13 +342,15 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
             rules.clear(); pm.getContractRules(con1->getURI(), rules));
     BOOST_CHECK(
         checkRules(rules,
-            list_of(classifier6)(classifier2)(classifier1)(classifier4)
-                (classifier5)(classifier3),
-            DirectionEnumT::CONST_IN) ||
+                   list_of(classifier6)(classifier2)(classifier1)(classifier4)
+                   (classifier5)(classifier3),
+                   list_of(true)(true)(true)(true)(false)(true),
+                   DirectionEnumT::CONST_IN) ||
         checkRules(rules,
-            list_of(classifier3)(classifier6)(classifier2)(classifier1)(classifier4)
-                (classifier5),
-        DirectionEnumT::CONST_IN));
+                   list_of(classifier3)(classifier6)(classifier2)(classifier1)
+                   (classifier4),
+                   list_of(true)(true)(true)(true)(true)(true),
+                   DirectionEnumT::CONST_IN));
 
     /*
      *  remove classifier2 & subject2
@@ -333,8 +373,10 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
     WAIT_FOR_DO(rules.size() == 4, 500,
         rules.clear(); pm.getContractRules(con1->getURI(), rules));
     BOOST_CHECK(checkRules(rules,
-        list_of(classifier6)(classifier4)(classifier1)(classifier5),
-        DirectionEnumT::CONST_IN));
+                           list_of(classifier6)(classifier4)
+                           (classifier1)(classifier5),
+                           list_of(true)(true)(true)(false),
+                           DirectionEnumT::CONST_IN));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

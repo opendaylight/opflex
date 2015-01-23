@@ -1,0 +1,30 @@
+module[gbp]
+{
+    class[Action;
+          super=gbp/AccessBehavioralGroup;
+          abstract]
+    {
+        contained
+        {
+            parent[class=policy/Space]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=action;
+                          member=name]
+            }
+        }
+
+        member[order; type=scalar/UInt32]
+    }
+
+    class[AllowDenyAction;
+          super=gbp/Action;
+          concrete]
+    {
+        # Set to nonzero to allow, or zero to deny
+        member[allow; type=scalar/UInt8]
+    }
+}

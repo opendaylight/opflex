@@ -32,18 +32,19 @@
 namespace ovsagent {
 
 /**
- * Class to represent information about a classifier rule.
+ * Class to represent information about a rule.
  */
-class PolicyClassifier {
+class PolicyRule {
 public:
     /**
      * Constructor that accepts direction and L24Classifier.
      * @param dir The direction of the classifier rule
      * @param c Details of the classifier rule
      */
-    PolicyClassifier(const uint8_t dir,
-         const boost::shared_ptr<modelgbp::gbpe::L24Classifier>& c) :
-         direction(dir), l24Classifier(c) {
+    PolicyRule(const uint8_t dir,
+               const boost::shared_ptr<modelgbp::gbpe::L24Classifier>& c,
+               bool allow_) :
+        direction(dir), l24Classifier(c), allow(allow_) {
     }
 
     /**
@@ -52,6 +53,10 @@ public:
      */
     uint8_t getDirection() const {
         return direction;
+    }
+
+    bool getAllow() const {
+        return allow;
     }
 
     /**
@@ -66,6 +71,7 @@ public:
 private:
     uint8_t direction;
     boost::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
+    bool allow;
 };
 
 /**
@@ -241,9 +247,9 @@ public:
     bool groupExists(const opflex::modb::URI& eg);
 
     /**
-     * List of PolicyClassifier objects.
+     * List of PolicyRule objects.
      */
-    typedef std::list<boost::shared_ptr<PolicyClassifier> > rule_list_t;
+    typedef std::list<boost::shared_ptr<PolicyRule> > rule_list_t;
 
     /**
      * Set of URIs.

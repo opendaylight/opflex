@@ -9,18 +9,6 @@ module[gbp]
         const[name=reflexive; value=1]
     }
 
-    type[Direction; super=scalar/Enum8]
-    {
-        # apply to traffic in both directions
-        const[name=bidirectional; value=0]
-
-        # apply to traffic from consumer to provider
-        const[name=in; value=1]
-
-        # apply to traffic from provider to consumer
-        const[name=out; value=2]
-    }
-
     class[Classifier;
           super=gbp/AccessBehavioralGroup;
           abstract]
@@ -38,8 +26,8 @@ module[gbp]
             }
         }
 
-    member[order; type=scalar/UInt32]
-    member[connectionTracking; type=gbp/ConnTrack]
+        member[order; type=scalar/UInt32]
+        member[connectionTracking; type=gbp/ConnTrack]
     }
 
 }
