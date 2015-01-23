@@ -1439,7 +1439,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
         fe_con3.push_back(Bldr().table(4).priority(prio)
             .cookie(con3_cookie).tcp()
             .reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
-            .isTpDst(mk.first, mk.second).actions().out(OUTPORT).done());
+            .isTpDst(mk.first, mk.second).actions().drop().done());
     }
     BOOST_FOREACH (const Mask& mks, ml_66_69) {
         BOOST_FOREACH (const Mask& mkd, ml_94_95) {

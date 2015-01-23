@@ -409,6 +409,7 @@ private:
      * to the provided list.
      *
      * @param classifier Classifier object to get matching rules from
+     * @param allow true if the traffic should be allowed, false otherwise
      * @param priority Priority of the entry created
      * @param cookie Cookie of the entry created
      * @param svnid VNID of the source endpoint group for the entry
@@ -416,9 +417,9 @@ private:
      * @param entries List to append entry to
      */
     void AddEntryForClassifier(modelgbp::gbpe::L24Classifier *classifier,
-            uint16_t priority, uint64_t cookie,
-            uint32_t& svnid, uint32_t& dvnid,
-            FlowEntryList& entries);
+                               bool allow, uint16_t priority, uint64_t cookie,
+                               uint32_t& svnid, uint32_t& dvnid,
+                               FlowEntryList& entries);
 
     static bool ParseIpv4Addr(const std::string& str, uint32_t *ip);
     static bool ParseIpv6Addr(const std::string& str, in6_addr *ip);

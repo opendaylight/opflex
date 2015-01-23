@@ -37,6 +37,18 @@ module[gbp]
         
     }
 
+    type[Direction; super=scalar/Enum8]
+    {
+        # apply to traffic in both directions
+        const[name=bidirectional; value=0]
+
+        # apply to traffic from consumer to provider
+        const[name=in; value=1]
+
+        # apply to traffic from provider to consumer
+        const[name=out; value=2]
+    }
+
     class[Rule;
           super=gbp/AccessBehavioralGroup;
           concrete]
@@ -46,6 +58,14 @@ module[gbp]
                    ]
         {
             to[class=gbp/Classifier;
+                cardinality=many;
+                ]
+        }
+        dependency[action;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/Action;
                 cardinality=many;
                 ]
         }

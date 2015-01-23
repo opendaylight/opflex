@@ -73,6 +73,8 @@ public:
     shared_ptr<L24Classifier> classifier4;
     shared_ptr<L24Classifier> classifier5;
 
+    shared_ptr<AllowDenyAction> action1;
+
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
     shared_ptr<Contract> con3;
@@ -203,6 +205,9 @@ protected:
     }
 
     void createPolicyObjects() {
+        // deny action
+        action1 = space->addGbpAllowDenyAction("action1");
+
         /* blank classifier */
         classifier0 = space->addGbpeL24Classifier("classifier0");
         classifier0->setOrder(10);
@@ -258,10 +263,18 @@ protected:
             .setDFromPort(94).setDToPort(95);
         con3 = space->addGbpContract("contract3");
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
-            ->setDirection(DirectionEnumT::CONST_IN)
-            .addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
+            ->setOrder(1)
+            .setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier3->getURI().toString())
+            ->setTargetL24Classifier(classifier3->getURI());
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
-            ->addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
+            ->addGbpRuleToActionRSrc(action1->getURI().toString())
+            ->setTargetAllowDenyAction(action1->getURI());
+        con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule2")
+            ->setOrder(2)
+            .setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier4->getURI().toString())
+            ->setTargetL24Classifier(classifier4->getURI());
         epg0->addGbpEpGroupToProvContractRSrc(con3->getURI().toString());
         epg1->addGbpEpGroupToConsContractRSrc(con3->getURI().toString());
 

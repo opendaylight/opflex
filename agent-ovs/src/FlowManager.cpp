@@ -1326,7 +1326,7 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
     BOOST_FOREACH(uint32_t pvnid, provVnids) {
         BOOST_FOREACH(uint32_t cvnid, consVnids) {
             uint16_t prio = MAX_POLICY_RULE_PRIORITY;
-            BOOST_FOREACH(shared_ptr<PolicyClassifier>& pc, rules) {
+            BOOST_FOREACH(shared_ptr<PolicyRule>& pc, rules) {
                 uint8_t dir = pc->getDirection();
                 const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
                 /*
@@ -1341,13 +1341,15 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
                 }
                 if (dir == DirectionEnumT::CONST_IN ||
                     dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
-                    AddEntryForClassifier(cls.get(), prio, conCookie,
-                            cvnid, pvnid, entryList);
+                    AddEntryForClassifier(cls.get(), pc->getAllow(),
+                                          prio, conCookie,
+                                          cvnid, pvnid, entryList);
                 }
                 if (dir == DirectionEnumT::CONST_OUT ||
                     dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
-                    AddEntryForClassifier(cls.get(), prio, conCookie,
-                            pvnid, cvnid, entryList);
+                    AddEntryForClassifier(cls.get(), pc->getAllow(),
+                                          prio, conCookie,
+                                          pvnid, cvnid, entryList);
                 }
                 --prio;
             }
@@ -1414,7 +1416,7 @@ static void SetEntryProtocol(FlowEntry *fe, L24Classifier *classifier) {
     }
 }
 
-void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
+void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
         uint16_t priority, uint64_t cookie, uint32_t& svnid, uint32_t& dvnid,
         FlowEntryList& entries) {
     ovs_be64 ckbe = htonll(cookie);
@@ -1446,16 +1448,18 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr,
             match_set_tp_src_masked(m, htons(sm.first), htons(sm.second));
             match_set_tp_dst_masked(m, htons(dm.first), htons(dm.second));
 
-            if (reflexive) {
-                SetPolicyActionConntrack(e0, ctZone, NX_CT_F_COMMIT, true);
-            } else {
-                SetPolicyActionAllow(e0);
+            if (allow) {
+                if (reflexive) {
+                    SetPolicyActionConntrack(e0, ctZone, NX_CT_F_COMMIT, true);
+                } else {
+                    SetPolicyActionAllow(e0);
+                }
             }
             entries.push_back(FlowEntryPtr(e0));
         }
     }
 
-    if (reflexive) {    /* add the flows for reverse direction */
+    if (reflexive && allow) {    /* add the flows for reverse direction */
         FlowEntry *e1 = new FlowEntry();
         e1->entry->cookie = ckbe;
         SetPolicyMatchEpgs(e1, priority, dvnid, svnid);
