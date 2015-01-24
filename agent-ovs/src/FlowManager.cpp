@@ -1000,12 +1000,28 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     }
 
     if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
+        // In flood mode we send all traffic from the uplink to the
+        // learning table.  Otherwise move to the destination mapper
+        // table as normal.  Note that policy is not enforced on
+        // traffic in the learning table.
+
+        uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
+        optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
+        if (epgFd) {
+            floodMode = epgFd.get()
+                ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+        }
+
+        uint8_t nextTable = FlowManager::DST_TABLE_ID;
+        if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD)
+            nextTable = FlowManager::LEARN_TABLE_ID;
+
         // Assign the source registers based on the VNID from the
         // tunnel uplink
         FlowEntry *e0 = new FlowEntry();
         SetSourceMatchEpg(e0, encapType, 150, tunPort, epgVnid);
         SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId,
-                        FlowManager::DST_TABLE_ID, encapType);
+                        nextTable, encapType);
         WriteFlow(epgId, SRC_TABLE_ID, e0);
     } else {
         WriteFlow(epgId, SRC_TABLE_ID, NULL);
@@ -1252,7 +1268,7 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
 
                 FlowEntry* learnEntry = new FlowEntry();
                 SetMatchFd(learnEntry, 101, fgrpId, false, LEARN_TABLE_ID,
-                           macAddr);
+                           macAddr, GetProactiveLearnEntryCookie());
                 ActionBuilder ab;
                 ab.SetOutputToPort(epPort);
                 ab.SetController();
