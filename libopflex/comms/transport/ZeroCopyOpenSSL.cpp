@@ -146,12 +146,26 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
                 << nread
                 << " bytes into buffer starting @"
                 << reinterpret_cast<void*>(buffer)
-                << " ["
+                << " ("
                 << std::string(buffer, nread)
-                << "]"
+                << ")"
             ;
             peer->readBuffer(buffer, nread, true);
             totalRead += nread;
+        } else {
+            LOG(DEBUG)
+                << peer
+                << " nread = "
+                << nread
+                << " RETRY="
+                << BIO_should_retry     (&e->bioSSL_)
+                << " R="
+                << BIO_should_read      (&e->bioSSL_)
+                << " W="
+                << BIO_should_write     (&e->bioSSL_)
+                << " S="
+                << BIO_should_io_special(&e->bioSSL_)
+            ;
         }
 
 #ifdef WE_COULD_ALWAYS_CHECK_FOR_PENDING_DATA
@@ -235,6 +249,20 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 
         if (nwrite > 0) {
             totalWrite += nwrite;
+        } else {
+            LOG(DEBUG)
+                << peer
+                << " nwrite = "
+                << nwrite
+                << " RETRY="
+                << BIO_should_retry     (&e->bioSSL_)
+                << " R="
+                << BIO_should_read      (&e->bioSSL_)
+                << " W="
+                << BIO_should_write     (&e->bioSSL_)
+                << " S="
+                << BIO_should_io_special(&e->bioSSL_)
+            ;
         }
 
         if (nwrite < tryWrite) {
