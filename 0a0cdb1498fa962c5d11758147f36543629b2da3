@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_0eb00242",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1462,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-01-24T00:00:04Z",
+      "side": 1,
+      "message": "seems strange that we\u0027ll add reflexive flows even when we are dropping packets in the forward direction",
+      "revId": "0a0cdb1498fa962c5d11758147f36543629b2da3",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_2eab7ed7",
+        "filename": "agent-ovs/src/include/PolicyManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-01-24T00:00:04Z",
+      "side": 1,
+      "message": "update doc",
+      "revId": "0a0cdb1498fa962c5d11758147f36543629b2da3",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_ceb9ba2f",
+        "filename": "agent-ovs/test/include/ModbFixture.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-01-24T00:00:04Z",
+      "side": 1,
+      "message": "is setTargetL24Classifier() necessary? addGbpRuleToClassifierRSrc() should do that automatically.",
+      "revId": "0a0cdb1498fa962c5d11758147f36543629b2da3",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
