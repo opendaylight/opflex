@@ -395,7 +395,7 @@ void CommunicationPeer::readBuffer(
 
     if (!canWriteJustPastTheEnd) {
 
-        lastByte[0] = buffer[nread];
+        lastByte[0] = buffer[nread-1];
 
         if (nread > 1) {  /* just as an optimization */
             buffer[nread-1] = '\0';
