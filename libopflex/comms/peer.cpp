@@ -134,6 +134,29 @@ class EchoGen {
             return false;
         }
 
+        if (!handler.String(
+                    "_01_qwertyuiopasdfghjklzxcvbnm"
+                    "_02_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    "_03_qwertyuiopasdfghjklzxcvbnm"
+                    "_04_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    "_05_qwertyuiopasdfghjklzxcvbnm"
+                    "_06_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    "_07_qwertyuiopasdfghjklzxcvbnm"
+                    "_08_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    "_09_qwertyuiopasdfghjklzxcvbnm"
+                    "_10_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    "_11_qwertyuiopasdfghjklzxcvbnm"
+                    "_12_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    "_13_qwertyuiopasdfghjklzxcvbnm"
+                    "_14_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    "_15_qwertyuiopasdfghjklzxcvbnm"
+                    "_16_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    "_17_qwertyuiopasdfghjklzxcvbnm"
+                    "_18_QWERTYUIOPASDFGHJKLZXCVBNM"
+                    )) {
+            return false;
+        }
+
         return handler.EndArray();
     }
 
@@ -284,9 +307,9 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
 
     LOG(DEBUG)
         << this
-        << " About to parse: \""
+        << " About to parse: ("
         << ssIn_.str()
-        << "\" from "
+        << ") from "
         << ssIn_.str().size()
         << " bytes at "
         << reinterpret_cast<void const *>(ssIn_.str().data())
@@ -303,7 +326,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
         LOG(ERROR)
             << "Error: " << rapidjson::GetParseError_En(e)
             << " at offset " << o
-            << " of message: " << ssIn_.str()
+            << " of message: (" << ssIn_.str() << ")"
         ;
 
         assert(!ssIn_.str().data());
@@ -385,6 +408,15 @@ void CommunicationPeer::readBuffer(
         size_t nread,
         bool canWriteJustPastTheEnd) const {
 
+    LOG(DEBUG)
+        << "nread "
+        << nread
+        << " @"
+        << static_cast< void *>(buffer)
+        << ", canWriteJustPastTheEnd = "
+        << canWriteJustPastTheEnd
+    ;
+
     assert(nread);
 
     if (!nread) {
@@ -415,6 +447,18 @@ void CommunicationPeer::readBuffer(
 void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
 
     size_t chunk_size;
+
+    LOG(DEBUG)
+        << "nread="
+        << nread
+        << " first "
+        << 1 + strlen(buffer)
+        << " bytes at @"
+        << static_cast< void const * >(buffer)
+        << ": ("
+        << buffer
+        << ")"
+    ;
 
     while (--nread > 0) {
         chunk_size = readChunk(buffer);
