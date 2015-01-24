@@ -1000,12 +1000,28 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     }
 
     if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
+        // In flood mode we send all traffic from the uplink to the
+        // learning table.  Otherwise move to the destination mapper
+        // table as normal.  Note that policy is not enforced on
+        // traffic in the learning table.
+
+        uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
+        optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
+        if (epgFd) {
+            floodMode = epgFd.get()
+                ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+        }
+
+        uint8_t nextTable = FlowManager::DST_TABLE_ID;
+        if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD)
+            nextTable = FlowManager::LEARN_TABLE_ID;
+
         // Assign the source registers based on the VNID from the
         // tunnel uplink
         FlowEntry *e0 = new FlowEntry();
         SetSourceMatchEpg(e0, encapType, 150, tunPort, epgVnid);
         SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId,
-                        FlowManager::DST_TABLE_ID, encapType);
+                        nextTable, encapType);
         WriteFlow(epgId, SRC_TABLE_ID, e0);
     } else {
         WriteFlow(epgId, SRC_TABLE_ID, NULL);
@@ -1252,8 +1268,9 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
 
                 FlowEntry* learnEntry = new FlowEntry();
                 SetMatchFd(learnEntry, 101, fgrpId, false, LEARN_TABLE_ID,
-                           macAddr);
+                           macAddr, GetProactiveLearnEntryCookie());
                 ActionBuilder ab;
+                ab.SetRegLoad(MFF_REG7, epPort);
                 ab.SetOutputToPort(epPort);
                 ab.SetController();
                 ab.Build(learnEntry->entry);
@@ -1707,7 +1724,10 @@ static bool writeLearnFlow(SwitchConnection *conn,
                            ofputil_protocol& proto,
                            struct ofputil_packet_in& pi,
                            struct flow& flow,
-                           bool stage2) {
+                           bool stage2,
+                           uint32_t tunPort,
+                           FlowManager::EncapType encapType,
+                           const address& tunDst) {
     bool dstKnown = (0 != pi.fmd.regs[7]);
     if (stage2 && !dstKnown) return false;
 
@@ -1732,11 +1752,15 @@ static bool writeLearnFlow(SwitchConnection *conn,
     // Set destination epg == source epg
     ab.SetRegLoad(MFF_REG2, pi.fmd.regs[0]);
     // Set the output register
-    ab.SetRegLoad(MFF_REG7, stage2 ? pi.fmd.regs[7] : pi.fmd.in_port);
+    uint32_t outport = stage2 ? pi.fmd.regs[7] : pi.fmd.in_port;
+    if (outport == tunPort)
+        SetActionTunnelMetadata(ab, encapType, tunDst);
+
+    ab.SetRegLoad(MFF_REG7, outport);
     if (stage2) {
         ab.SetGotoTable(FlowManager::POL_TABLE_ID);
     } else {
-        ab.SetOutputToPort(stage2 ? pi.fmd.regs[7] : pi.fmd.in_port);
+        ab.SetOutputToPort(outport);
         ab.SetController();
     }
     ab.Build(&fm);
@@ -1754,9 +1778,14 @@ static void handleLearnPktIn(SwitchConnection *conn,
                              struct ofputil_packet_in& pi,
                              ofputil_protocol& proto,
                              struct ofpbuf& pkt,
-                             struct flow& flow) {
-    writeLearnFlow(conn, proto, pi, flow, false);
-    if (writeLearnFlow(conn, proto, pi, flow, true))
+                             struct flow& flow,
+                             uint32_t tunPort,
+                             FlowManager::EncapType encapType,
+                             const address& tunDst) {
+    writeLearnFlow(conn, proto, pi, flow, false, 
+                   tunPort, encapType, tunDst);
+    if (writeLearnFlow(conn, proto, pi, flow, true, 
+                       tunPort, encapType, tunDst))
         return;
 
     {
@@ -1923,7 +1952,8 @@ void FlowManager::Handle(SwitchConnection *conn,
 
     if (pi.cookie == GetLearnEntryCookie() ||
         pi.cookie == GetProactiveLearnEntryCookie())
-        handleLearnPktIn(conn, pi, proto, pkt, flow);
+        handleLearnPktIn(conn, pi, proto, pkt, flow,
+                         GetTunnelPort(), encapType, GetTunnelDst());
     else if (pi.cookie == GetNDCookie())
         handleNDPktIn(agent, conn, pi, proto, pkt, flow, routerMac);
 
