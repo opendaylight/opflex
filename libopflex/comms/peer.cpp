@@ -427,24 +427,27 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
             << chunk_size
         ;
 
-        if(nread) {
+        if(!nread) {
 
-            LOG(DEBUG) << "got: " << chunk_size;
-
-            buffer += chunk_size;
-
-            boost::scoped_ptr<yajr::rpc::InboundMessage> msg(
-                    parseFrame()
-                );
-
-            if (!msg) {
-                LOG(ERROR) << "skipping inbound message";
-                continue;
-            }
-
-            msg->process();
+            break;
 
         }
+
+        LOG(DEBUG) << "got: " << chunk_size;
+
+        buffer += chunk_size;
+
+        boost::scoped_ptr<yajr::rpc::InboundMessage> msg(
+                parseFrame()
+            );
+
+        if (!msg) {
+            LOG(ERROR) << "skipping inbound message";
+            continue;
+        }
+
+        msg->process();
+
     }
 }
 
