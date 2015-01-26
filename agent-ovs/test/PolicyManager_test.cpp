@@ -348,8 +348,8 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
                    DirectionEnumT::CONST_IN) ||
         checkRules(rules,
                    list_of(classifier3)(classifier6)(classifier2)(classifier1)
-                   (classifier4),
-                   list_of(true)(true)(true)(true)(true)(true),
+                   (classifier4)(classifier5),
+                   list_of(true)(true)(true)(true)(true)(false),
                    DirectionEnumT::CONST_IN));
 
     /*
