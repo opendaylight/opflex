@@ -2007,8 +2007,8 @@ void FlowManager::removeFromMulticastList(const URI& uri) {
 
 void FlowManager::changeMulticastSubscription(const string& mcastIp,
                                               bool leave) {
-    static const string cmdJoin("dpif/vxlan-mcast-join");
-    static const string cmdLeave("dpif/vxlan-mcast-leave");
+    static const string cmdJoin("dpif/tnl/igmp-join");
+    static const string cmdLeave("dpif/tnl/igmp-leave");
     if (!jsonCmdExecutor) {
         return;
     }
@@ -2029,7 +2029,7 @@ void FlowManager::changeMulticastSubscription(const string& mcastIp,
 }
 
 void FlowManager::fetchMulticastSubscription(unordered_set<string>& mcastIps) {
-    static const string cmdDump("dpif/vxlan-mcast-dump");
+    static const string cmdDump("dpif/tnl/igmp-dump");
     if (!jsonCmdExecutor) {
         return;
     }
