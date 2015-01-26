@@ -2230,9 +2230,9 @@ void FlowManager::FlowSyncer::reconcileMulticastList() {
     LOG(DEBUG) << "Currently subscribed to " << mcastIps.size()
         << " multicast groups";
     BOOST_FOREACH (const MulticastMap::value_type& kv, flowManager.mcastMap) {
-        if (mcastIps.erase(kv.first) == 0) {    // not subscribed
-            flowManager.changeMulticastSubscription(kv.first, false);
-        }
+        /* Always resubscribe to ensure we join desired multicast groups */
+        flowManager.changeMulticastSubscription(kv.first, false);
+        mcastIps.erase(kv.first);
     }
     BOOST_FOREACH (const string& ip, mcastIps) {
         flowManager.changeMulticastSubscription(ip, true);

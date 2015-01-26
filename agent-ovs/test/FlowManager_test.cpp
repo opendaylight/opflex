@@ -885,6 +885,7 @@ void FlowManagerFixture::mcastTest() {
 
     jsonCmdExecutor.expect("dpif/tnl/igmp-dump" + prmBr,
                            " 224.10.1.10\n\n" + mcast1);
+    jsonCmdExecutor.expect("dpif/tnl/igmp-join" + prmBr + mcast1);
     jsonCmdExecutor.expect("dpif/tnl/igmp-leave" + prmBr + "224.10.1.10");
     flowManager.configUpdated(config->getURI());
     setConnected();
