@@ -883,15 +883,15 @@ void FlowManagerFixture::mcastTest() {
     string mcast3 = "224.5.1.1";
     string mcast4 = "224.5.1.2";
 
-    jsonCmdExecutor.expect("dpif/vxlan-mcast-dump" + prmBr,
+    jsonCmdExecutor.expect("dpif/tnl/igmp-dump" + prmBr,
                            " 224.10.1.10\n\n" + mcast1);
-    jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + "224.10.1.10");
+    jsonCmdExecutor.expect("dpif/tnl/igmp-leave" + prmBr + "224.10.1.10");
     flowManager.configUpdated(config->getURI());
     setConnected();
     WAIT_FOR(jsonCmdExecutor.empty(), 500);
 
     jsonCmdExecutor.clear();
-    jsonCmdExecutor.expect("dpif/vxlan-mcast-join" + prmBr + mcast3);
+    jsonCmdExecutor.expect("dpif/tnl/igmp-join" + prmBr + mcast3);
     flowManager.egDomainUpdated(epg2->getURI());
     WAIT_FOR(jsonCmdExecutor.empty(), 500);
 
@@ -903,9 +903,9 @@ void FlowManagerFixture::mcastTest() {
         fd0ctx = policyMgr.getFloodContextForGroup(epg2->getURI()).get());
 
     jsonCmdExecutor.clear();
-    jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + mcast1);
-    jsonCmdExecutor.expect("dpif/vxlan-mcast-join" + prmBr + mcast2);
-    jsonCmdExecutor.expect("dpif/vxlan-mcast-join" + prmBr + mcast4);
+    jsonCmdExecutor.expect("dpif/tnl/igmp-leave" + prmBr + mcast1);
+    jsonCmdExecutor.expect("dpif/tnl/igmp-join" + prmBr + mcast2);
+    jsonCmdExecutor.expect("dpif/tnl/igmp-join" + prmBr + mcast4);
     flowManager.configUpdated(config->getURI());
     flowManager.egDomainUpdated(epg2->getURI());
     WAIT_FOR(jsonCmdExecutor.empty(), 500);
@@ -915,7 +915,7 @@ void FlowManagerFixture::mcastTest() {
     WAIT_FOR_DO(fd0ctx->isMulticastGroupIPSet() == false, 500,
         fd0ctx = policyMgr.getFloodContextForGroup(epg2->getURI()).get());
     jsonCmdExecutor.clear();
-    jsonCmdExecutor.expect("dpif/vxlan-mcast-leave" + prmBr + mcast4);
+    jsonCmdExecutor.expect("dpif/tnl/igmp-leave" + prmBr + mcast4);
     flowManager.egDomainUpdated(epg2->getURI());
     WAIT_FOR(jsonCmdExecutor.empty(), 500);
 }
