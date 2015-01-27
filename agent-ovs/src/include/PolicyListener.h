@@ -10,6 +10,7 @@
  */
 
 #include <opflex/modb/URI.h>
+#include <opflex/modb/PropertyInfo.h>
 
 #pragma once
 #ifndef OVSAGENT_POLICYLISTENER_H
@@ -33,6 +34,12 @@ public:
      * been updated.
      */
     virtual void egDomainUpdated(const opflex::modb::URI& egURI) = 0;
+
+    /**
+     * Called when a forwarding domain object is updated.
+     */
+    virtual void domainUpdated(opflex::modb::class_id_t cid,
+                               const opflex::modb::URI& domURI) {}
 
     /**
      * Called when a policy contract is updated. These include changes to

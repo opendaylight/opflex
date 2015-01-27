@@ -261,6 +261,8 @@ public:
 
     /* Interface: PolicyListener */
     void egDomainUpdated(const opflex::modb::URI& egURI);
+    void domainUpdated(opflex::modb::class_id_t cid,
+                       const opflex::modb::URI& domURI);
     void contractUpdated(const opflex::modb::URI& contractURI);
     void configUpdated(const opflex::modb::URI& configURI);
 
@@ -349,6 +351,16 @@ private:
      * @param egURI URI of the changed endpoint group
      */
     void HandleEndpointGroupDomainUpdate(const opflex::modb::URI& egURI);
+
+    /**
+     * Handle changes to a forwarding domain; only deals with
+     * cleaning up flows etc when these objects are removed.
+     *
+     * @param cid Class of the forwarding domain
+     * @param domURI URI of the changed forwarding domain
+     */
+    void HandleDomainUpdate(opflex::modb::class_id_t cid,
+                            const opflex::modb::URI& domURI);
 
     /**
      * Compare and update flow/group tables due to changes in a contract

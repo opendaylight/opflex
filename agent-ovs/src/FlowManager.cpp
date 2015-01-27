@@ -627,9 +627,14 @@ void FlowManager::endpointUpdated(const std::string& uuid) {
 
 void FlowManager::egDomainUpdated(const opflex::modb::URI& egURI) {
     if (stopping) return;
-    PeerConnected();
     WorkItem w = bind(&FlowManager::HandleEndpointGroupDomainUpdate, this,
                       egURI);
+    workQ.enqueue(w);
+}
+
+void FlowManager::domainUpdated(class_id_t cid, const URI& domURI) {
+    if (stopping) return;
+    WorkItem w = bind(&FlowManager::HandleDomainUpdate, this, cid, domURI);
     workQ.enqueue(w);
 }
 
@@ -641,6 +646,7 @@ void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
 
 void FlowManager::configUpdated(const opflex::modb::URI& configURI) {
     if (stopping) return;
+    PeerConnected();
     WorkItem w = bind(&FlowManager::HandleConfigUpdate, this, configURI);
     workQ.enqueue(w);
 }
@@ -1047,7 +1053,6 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         UpdateGroupSubnets(epgURI, rdId);
 
         if (virtualRouterEnabled) {
-            // XXX this leaks flows for RDs that are not used by any EPG
             FlowEntry *e0 = new FlowEntry();
             SetDestMatchNd(e0, 20, NULL, rdId, FlowManager::GetNDCookie(),
                            ND_ROUTER_SOLICIT);
@@ -1074,8 +1079,6 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     optional<shared_ptr<FloodContext> > fdCtx =
         polMgr.getFloodContextForGroup(epgURI);
     if (fdCtx) {
-        // XXX this leaks subscriptions from FloodContexts that are not
-        // used by any EPG
         fdcMcastIp = fdCtx.get()->getMulticastGroupIP();
         updateMulticastList(fdcMcastIp, fdCtx.get()->getURI());
     }
@@ -1086,7 +1089,6 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
     PolicyManager::subnet_vector_t subnets;
     agent.getPolicyManager().getSubnetsForGroup(egURI, subnets);
 
-    // XXX this leaks subnet-related flows when no group is using a subnet
     BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
         FlowEntryList el;
 
@@ -1114,9 +1116,9 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
                 } else {
                     // Construct router IP address
                     address_v6::bytes_type rip;
-                    Packets::construct_auto_ip(address_v6::from_string("fe80::"), 
-                                               routerMac, 
-                                               (struct in6_addr*)rip.data()); 
+                    Packets::construct_auto_ip(address_v6::from_string("fe80::"),
+                                               routerMac,
+                                               (struct in6_addr*)rip.data());
                     routerIp = address_v6(rip);
                     hasRouterIp = true;
                 }
@@ -1129,7 +1131,7 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
                     el.push_back(FlowEntryPtr(e0));
                 } else {
                     FlowEntry *e0 = new FlowEntry();
-                    SetDestMatchNd(e0, 20, &routerIp, routingDomainId, 
+                    SetDestMatchNd(e0, 20, &routerIp, routingDomainId,
                                    FlowManager::GetNDCookie());
                     SetActionController(e0, 0xffff);
                     el.push_back(FlowEntryPtr(e0));
@@ -1137,6 +1139,43 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
             }
         }
         WriteFlow(sn->getURI().toString(), DST_TABLE_ID, el);
+    }
+}
+
+void
+FlowManager::HandleDomainUpdate(class_id_t cid, const URI& domURI) {
+    switch (cid) {
+    case RoutingDomain::CLASS_ID:
+        if (!RoutingDomain::resolve(agent.getFramework(), domURI)) {
+            LOG(INFO) << "Cleaning up for RD: " << domURI;
+            WriteFlow(domURI.toString(), DST_TABLE_ID, NULL);
+            idGen.erase(GetIdNamespace(RoutingDomain::CLASS_ID), domURI);
+        }
+        break;
+    case Subnet::CLASS_ID:
+        if (!Subnet::resolve(agent.getFramework(), domURI)) {
+            LOG(INFO) << "Cleaning up for Subnet: " << domURI;
+            WriteFlow(domURI.toString(), DST_TABLE_ID, NULL);
+        }
+        break;
+    case BridgeDomain::CLASS_ID:
+        if (!BridgeDomain::resolve(agent.getFramework(), domURI)) {
+            LOG(INFO) << "Cleaning up for BD: " << domURI;
+            idGen.erase(GetIdNamespace(cid), domURI);
+        }
+        break;
+    case FloodDomain::CLASS_ID:
+        if (!FloodDomain::resolve(agent.getFramework(), domURI)) {
+            LOG(INFO) << "Cleaning up for FD: " << domURI;
+            idGen.erase(GetIdNamespace(cid), domURI);
+        }
+        break;
+    case FloodContext::CLASS_ID:
+        if (!FloodContext::resolve(agent.getFramework(), domURI)) {
+            LOG(INFO) << "Cleaning up for FloodContext: " << domURI;
+            removeFromMulticastList(domURI);
+        }
+        break;
     }
 }
 

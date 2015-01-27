@@ -57,6 +57,10 @@ public:
         return direction;
     }
 
+    /**
+     * Whether matching traffic should be allowed or dropped
+     * @return true if traffic should be allowed, false otherwise
+     */
     bool getAllow() const {
         return allow;
     }
@@ -470,6 +474,16 @@ private:
      * updated
      */
     void notifyEPGDomain(const opflex::modb::URI& egURI);
+
+    /**
+     * Notify policy listeners about an update to a forwarding
+     * domain.
+     *
+     * @param domURI the URI of the domain object that has been
+     * updated
+     */
+    void notifyDomain(opflex::modb::class_id_t cid,
+                      const opflex::modb::URI& domURI);
 
     /**
      * Updates groupPolicyMap and contractMap according to the

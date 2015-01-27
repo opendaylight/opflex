@@ -58,6 +58,7 @@ void PolicyManager::start() {
     FloodContext::registerListener(framework, &domainListener);
     RoutingDomain::registerListener(framework, &domainListener);
     Subnets::registerListener(framework, &domainListener);
+    Subnet::registerListener(framework, &domainListener);
     InstContext::registerListener(framework, &domainListener);
     EpGroup::registerListener(framework, &domainListener);
 
@@ -88,6 +89,7 @@ void PolicyManager::stop() {
     FloodContext::unregisterListener(framework, &domainListener);
     RoutingDomain::unregisterListener(framework, &domainListener);
     Subnets::unregisterListener(framework, &domainListener);
+    Subnet::unregisterListener(framework, &domainListener);
     InstContext::unregisterListener(framework, &domainListener);
     EpGroup::unregisterListener(framework, &domainListener);
 
@@ -117,6 +119,13 @@ void PolicyManager::notifyEPGDomain(const URI& egURI) {
     lock_guard<mutex> guard(listener_mutex);
     BOOST_FOREACH(PolicyListener* listener, policyListeners) {
         listener->egDomainUpdated(egURI);
+    }
+}
+
+void PolicyManager::notifyDomain(class_id_t cid, const URI& domURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    BOOST_FOREACH(PolicyListener* listener, policyListeners) {
+        listener->domainUpdated(cid, domURI);
     }
 }
 
@@ -211,7 +220,6 @@ void PolicyManager::updateSubnetIndex(const opflex::modb::URI& subnetsUri) {
     BOOST_FOREACH(const shared_ptr<Subnet>& subnet, subnet_list) {
         subnet_ref_map[uri.get()].insert(subnet->getURI());
     }
-
 }
 
 bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
@@ -654,6 +662,9 @@ void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
     guard.unlock();
     BOOST_FOREACH(const URI& u, notify) {
         pmanager.notifyEPGDomain(u);
+    }
+    if (class_id != modelgbp::gbp::EpGroup::CLASS_ID) {
+        pmanager.notifyDomain(class_id, uri);
     }
 }
 

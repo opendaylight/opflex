@@ -378,6 +378,30 @@ void FlowManagerFixture::epgTest() {
     WAIT_FOR(exec.IsEmpty(), 500);
     BOOST_CHECK(exec.IsGroupEmpty());
 
+    LOG(INFO) << "epg: remove domain objects";
+    /* remove domain objects */
+    PolicyManager::subnet_vector_t subnets, subnets_copy;
+    policyMgr.getSubnetsForGroup(epg0->getURI(), subnets);
+    BOOST_CHECK(!subnets.empty());
+    subnets_copy = subnets;
+
+    rd0->remove();
+    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
+        sn->remove();
+    }
+    m1.commit();
+    WAIT_FOR(!policyMgr.getRDForGroup(epg0->getURI()), 500);
+    WAIT_FOR_DO(subnets.empty(), 500,
+        subnets.clear(); policyMgr.getSubnetsForGroup(epg0->getURI(), subnets));
+    exec.Clear();
+    exec.Expect(FlowEdit::del, fe_rd0);
+    exec.Expect(FlowEdit::del, fe_epg0_routers);
+    flowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
+    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets_copy) {
+        flowManager.domainUpdated(Subnet::CLASS_ID, sn->getURI());
+    }
+    WAIT_FOR(exec.IsEmpty(), 500);
+
     LOG(INFO) << "epg: remove";
     /* remove */
     Mutator m2(framework, policyOwner);
