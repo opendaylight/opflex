@@ -192,6 +192,8 @@ private:
         UPDATED,
         /** a local item that's been send to the server */
         IN_SYNC,
+        /** A remote item that does not get resolved */
+        REMOTE,
         /** an unresolved remote reference */
         UNRESOLVED,
         /** a remote reference with resolve request sent to server */

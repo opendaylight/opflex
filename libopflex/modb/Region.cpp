@@ -122,7 +122,7 @@ void Region::getChildren(class_id_t parent_class,
     ci.getChildren(parent_uri, parent_prop, output);
 }
 
-const std::pair<URI, prop_id_t>& Region::getParent(class_id_t child_class,
+std::pair<URI, prop_id_t> Region::getParent(class_id_t child_class,
                                                    const URI& child) {
     LockGuard guard(&region_mutex);
     ClassIndex& ci = class_map.at(child_class);

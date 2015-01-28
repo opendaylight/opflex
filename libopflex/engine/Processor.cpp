@@ -107,6 +107,7 @@ void Processor::addRef(obj_state_by_exp::iterator& it,
         } 
         uit->details->refcount += 1;
         LOG(DEBUG) << "Addref " << uit->uri.toString()
+                   << " (from " << it->uri.toString() << ")"
                    << " " << uit->details->refcount
                    << " state " << uit->details->state;
         
@@ -161,17 +162,19 @@ bool Processor::isOrphan(const item& item) {
         return false;
 
     try {
-        const std::pair<URI, prop_id_t>& parent =
+        std::pair<URI, prop_id_t> parent =
             client->getParent(item.details->class_id, item.uri);
 
         obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
         obj_state_by_uri::iterator uit = uri_index.find(parent.first);
         // parent missing
-        if (uit == uri_index.end()) return true;
+        if (uit == uri_index.end())
+            return true;
 
         // the parent is local, so there can be no remote parent with
         // a nonzero refcount
-        if (uit->details->local) return true;
+        if (uit->details->local)
+            return true;
 
         return isOrphan(*uit);
     } catch (std::out_of_range e) {
@@ -185,7 +188,7 @@ bool Processor::isOrphan(const item& item) {
 bool Processor::isParentSyncObject(const item& item) {
     try {
         const ClassInfo& ci = store->getPropClassInfo(item.details->class_id);
-        const std::pair<URI, prop_id_t>& parent =
+        std::pair<URI, prop_id_t> parent =
             client->getParent(item.details->class_id, item.uri);
         const ClassInfo& parent_ci = store->getPropClassInfo(parent.second);
         
@@ -264,13 +267,29 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
 // Process the item.  This is where we do most of the actual work of
 // syncing the managed object over opflex
 void Processor::processItem(obj_state_by_exp::iterator& it) {
-    ItemState newState = IN_SYNC;
     StoreClient::notif_t notifs;
 
     util::LockGuard guard(&item_mutex);
     ItemState curState = it->details->state;
     size_t curRefCount = it->details->refcount;
     bool local = it->details->local;
+
+    ItemState newState;
+
+    switch (curState) {
+    case NEW:
+    case UPDATED:
+        newState = IN_SYNC;
+        break;
+    case PENDING_DELETE:
+        if (local)
+            newState = IN_SYNC;
+        else
+            newState = REMOTE;
+    default:
+        newState = curState;
+        break;
+    }
 
     const ClassInfo& ci = store->getClassInfo(it->details->class_id);
     shared_ptr<const ObjectInstance> oi;
@@ -297,9 +316,11 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     if (oi && isOrphan(*it)) {
         switch (curState) {
         case NEW:
+        case REMOTE:
             {
                 // requeue new items so if there are any pending references
                 // we won't remove them right away
+                LOG(DEBUG) << "Queuing delete for orphan " << it->uri.toString();
                 newState = PENDING_DELETE;
                 obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
                 exp_index.modify(it,
@@ -358,13 +379,11 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     } 
 
     if (curRefCount > 0) {
-        if (resolveObj(ci.getType(), *it))
-            newState = RESOLVED;
+        resolveObj(ci.getType(), *it);
+        newState = RESOLVED;
 
         it->details->state = newState;
-    }
-
-    if (oi) {
+    } else if (oi) {
         if (declareObj(ci.getType(), *it))
             newState = IN_SYNC;
 
@@ -527,7 +546,7 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
     if (uit == uri_index.end()) {
         obj_state.insert(item(uri, class_id, 
                               nexp, LOCAL_REFRESH_RATE,
-                              NEW, remote == false));
+                              remote ? REMOTE : NEW, remote == false));
     } else if (uit->details->local) {
         uit->details->state = UPDATED;
         uri_index.modify(uit, change_expiration(nexp));
