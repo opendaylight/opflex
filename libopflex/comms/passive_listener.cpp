@@ -77,7 +77,8 @@
     return peer;
 }
 
-namespace yajr { namespace comms {
+namespace yajr {
+    namespace comms {
 
 using namespace yajr::comms::internal;
 
@@ -240,4 +241,6 @@ int ::yajr::comms::internal::ListeningPeer::setAddrFromIpAndPort(
 
 } /* yajr::comms::internal namespace */
 
-}} /* yajr::comms and yajr naMespaces */
+} /* yajr::comms namespace */
+} /* yajr namespace */
+

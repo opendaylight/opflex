@@ -8,11 +8,14 @@
 
 #include <yajr/rpc/methods.hpp>
 
-namespace yajr { namespace rpc {
+namespace yajr {
+    namespace rpc {
 
 template<>
 void InbReq<&yajr::rpc::method::unknown>::process() const {
 
 }
 
-}}
+}
+}
+

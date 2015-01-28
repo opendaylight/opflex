@@ -13,7 +13,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 
-namespace yajr { namespace rpc {
+namespace yajr {
+    namespace rpc {
 
 Message::PayloadKeys Message::kPayloadKey = {
     "params",
@@ -199,4 +200,6 @@ MethodName method::endpoint_unresolve("endpoint_unresolve");
 MethodName method::endpoint_update("endpoint_update");
 MethodName method::state_report("state_report");
 
-}}
+} /* yajr::rpc namespace */
+} /* yajr namespace */
+

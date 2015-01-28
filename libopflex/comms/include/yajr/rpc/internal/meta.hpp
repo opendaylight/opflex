@@ -15,7 +15,10 @@
 #include <boost/mpl/size_t.hpp>
 #include <boost/functional/hash/hash.hpp>
 
-namespace yajr { namespace rpc { namespace internal { namespace meta {
+namespace yajr {
+    namespace rpc {
+        namespace internal {
+            namespace meta {
 
 #pragma warning(push)
 /* disable addition overflow warning */
@@ -57,6 +60,10 @@ struct hash_cstring
     >::type
 {};
 
-}}}}
+} /* yajr::rpc::internal::meta namespace */
+} /* yajr::rpc::internal namespace */
+} /* yajr::rpc namespace */
+} /* yajr namespace */
 
 #endif /* _COMMS__INCLUDE__OPFLEX__RPC__INTERNAL__RPC_META_HPP */
+

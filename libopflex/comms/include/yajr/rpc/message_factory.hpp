@@ -13,8 +13,6 @@
 #include <yajr/rpc/send_handler.hpp>
 #include <yajr/internal/comms.hpp>
 
-#include <opflex/logging/internal/logging.hpp>
-
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
@@ -24,7 +22,9 @@ namespace yajr {
 
 class Peer;
 
-namespace rpc { class InboundMessage;
+namespace rpc {
+
+                class InboundMessage;
                 class InboundRequest;
                 class InboundResult;
                 class InboundError;
@@ -78,7 +78,7 @@ class MessageFactory {
 
 };
 
-
-}}
+} /* yajr::rpc namespace */
+} /* yajr namespace */
 
 #endif /* _COMMS__INCLUDE__OPFLEX__RPC__MESSAGE_FACTORY_HPP */

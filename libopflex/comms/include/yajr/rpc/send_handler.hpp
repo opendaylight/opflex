@@ -14,7 +14,8 @@
 
 #include <deque>
 
-namespace yajr { namespace internal {
+namespace yajr {
+    namespace internal {
 
 template <typename Encoding = rapidjson::UTF8<> >
 struct GenericStringQueue {
@@ -45,6 +46,8 @@ struct GenericStringQueue {
 //! String buffer with UTF8 encoding
 typedef GenericStringQueue<rapidjson::UTF8<> > StringQueue;
 
-}}
+} /* yajr::internal namespace */
+} /* yajr namespace */
 
 #endif /* _____COMMS__INCLUDE__OPFLEX__RPC__SEND_HANDLER_HPP */
+

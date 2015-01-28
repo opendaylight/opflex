@@ -29,7 +29,7 @@ namespace StateChange {
         TRANSPORT_FAILURE,
         DELETE,
     };
-};
+}
 
 /**
  * @brief A yajr communication peer.
@@ -305,6 +305,7 @@ struct Listener {
     ~Listener() {}
 };
 
-}
+} /* yajr namespace */
 
 #endif /* _INCLUDE__YAJR__YAJR_HPP */
+

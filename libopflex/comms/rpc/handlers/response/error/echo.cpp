@@ -8,7 +8,8 @@
 
 #include <yajr/rpc/methods.hpp>
 
-namespace yajr { namespace rpc {
+namespace yajr {
+    namespace rpc {
 
 template<>
 void InbErr<&yajr::rpc::method::echo>::process() const {
@@ -17,4 +18,6 @@ void InbErr<&yajr::rpc::method::echo>::process() const {
 
 }
 
-}}
+}
+}
+

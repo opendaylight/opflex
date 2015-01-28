@@ -64,7 +64,8 @@
     return peer;
 }
 
-namespace yajr { namespace comms {
+namespace yajr {
+    namespace comms {
 
 using namespace yajr::comms::internal;
 
@@ -432,5 +433,6 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
 }
 
 } /* yajr::comms::internal namespace */
+} /* yajr::comms namespace */
+} /* yajr namespace */
 
-}} /* yajr::comms and yajr namespaces */

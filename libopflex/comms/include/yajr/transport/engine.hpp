@@ -20,7 +20,11 @@
 
 namespace yajr {
 
-    namespace comms { namespace internal { class CommunicationPeer; } }
+    namespace comms {
+        namespace internal {
+            class CommunicationPeer;
+        }
+    }
 
     namespace transport {
 
@@ -104,6 +108,8 @@ TransportEngine< E >::~TransportEngine() {
     }
 }
 
-}}
+} /* yajr::transport namespace */
+} /* yajr namespace */
 
 #endif /* _____COMMS__INCLUDE__YAJR__TRANSPORT__ENGINE_HPP */
+
