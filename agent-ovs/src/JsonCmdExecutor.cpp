@@ -89,7 +89,7 @@ JsonCmdExecutor::createRequest(const string& command,
     json **jsonArgArr = NULL;
     if (!params.empty()) {
         jsonArgArr = (json **)malloc(params.size() * sizeof(json *));
-        for (int i = 0; i < params.size(); ++i) {
+        for (size_t i = 0; i < params.size(); ++i) {
             jsonArgArr[i] = json_string_create(params[i].c_str());
         }
     }

@@ -147,8 +147,8 @@ void FlowReader::decodeReply(ofpbuf *msg, FlowEntryList& recvFlows,
          */
         ofpact *act;
         OFPACT_FOR_EACH(act, entry->entry->ofpacts, entry->entry->ofpacts_len) {
-            switch (act->type) {
-            case OFPACT_OUTPUT_REG: case OFPACT_REG_MOVE:
+            if (act->type == OFPACT_OUTPUT_REG ||
+                act->type == OFPACT_REG_MOVE) {
                 act->raw = (uint8_t)(-1);
             }
         }

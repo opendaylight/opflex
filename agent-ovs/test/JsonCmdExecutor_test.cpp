@@ -114,7 +114,7 @@ int MockExecutorConnection::sendJsonMessage(jsonrpc_msg *msg) {
     } else {
         struct json_array *jarr = json_array(msg->params);
         BOOST_CHECK_EQUAL(jarr->n,  expectedParams.size());
-        for (int i = 0; i < jarr->n && i < expectedParams.size(); ++i) {
+        for (size_t i = 0; i < jarr->n && i < expectedParams.size(); ++i) {
             BOOST_CHECK_EQUAL(json_string(jarr->elems[i]), expectedParams[i]);
         }
     }

@@ -72,7 +72,6 @@ FlowExecutor::ExecuteInt(const T& fe) {
     ofpbuf *barrReq = ofputil_encode_barrier_request(
             swConn->GetProtocolVersion());
     ovs_be32 barrXid = ((ofp_header *)ofpbuf_data(barrReq))->xid;
-    assert(barrXid != -1);
 
     {
         mutex_guard lock(reqMtx);
