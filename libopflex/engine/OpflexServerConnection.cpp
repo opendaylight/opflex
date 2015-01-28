@@ -9,6 +9,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <openssl/err.h>
+
 #include "opflex/engine/internal/OpflexServerConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -114,6 +116,14 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
     case yajr::StateChange::DISCONNECT:
         LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
                    << "Disconnected";
+        break;
+    case yajr::StateChange::TRANSPORT_FAILURE:
+        {
+            char buf[120];
+            ERR_error_string_n(error, buf, sizeof(buf));
+            LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+                       << "SSL Connection error: " << buf;
+        }
         break;
     case yajr::StateChange::FAILURE:
         LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 

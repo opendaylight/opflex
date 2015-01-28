@@ -12,6 +12,7 @@
 #include <stdexcept>
 
 #include <boost/lexical_cast.hpp>
+#include <openssl/err.h>
 
 #include "opflex/engine/internal/OpflexClientConnection.h"
 #include "opflex/engine/internal/OpflexPool.h"
@@ -171,6 +172,20 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
         LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
                   << "Disconnected";
         if (!conn->closing)
+            conn->pool->updatePeerStatus(conn->hostname, conn->port,
+                                         PeerStatusListener::CONNECTING);
+        break;
+    case yajr::StateChange::TRANSPORT_FAILURE:
+        {
+            char buf[120];
+            ERR_error_string_n(error, buf, sizeof(buf));
+            LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+                       << "SSL Connection error: " << buf;
+        }
+        if (conn->closing)
+            conn->pool->updatePeerStatus(conn->hostname, conn->port,
+                                         PeerStatusListener::DISCONNECTED);
+        else
             conn->pool->updatePeerStatus(conn->hostname, conn->port,
                                          PeerStatusListener::CONNECTING);
         break;
