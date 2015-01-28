@@ -55,9 +55,8 @@ size_t hash_value(pair<class_id_t, URI> const& p);
 Processor::Processor(ObjectStore* store_)
     : AbstractObjectListener(store_),
       serializer(store_, this),
-      pool(*this),
-      proc_active(false),
-      processingDelay(DEFAULT_DELAY) {
+      pool(*this), processingDelay(DEFAULT_DELAY),
+      proc_active(false) {
     uv_mutex_init(&item_mutex);
 }
 
