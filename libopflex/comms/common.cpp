@@ -14,8 +14,6 @@
 
 #include <uv.h>
 
-namespace { void prepareAgainCB(uv_timer_t *) { LOG(DEBUG); } }
-
 int ::yajr::initLoop(uv_loop_t * loop) {
 
     if (!(loop->data = new (std::nothrow)
@@ -37,128 +35,10 @@ void ::yajr::finiLoop(uv_loop_t * loop) {
 }
 
 
-namespace yajr { namespace comms {
+namespace yajr {
+    namespace comms {
 
 using namespace yajr::comms::internal;
-
-void internal::Peer::LoopData::onPrepareLoop() {
-
-    if (destroying_ && !refCount_) {
-
-        CountHandle countHandle = { this, 0 };
-
-        uv_walk(prepare_.loop, walkAndCountHandlesCb, &countHandle);
-
-        if (countHandle.counter) {
-            LOG(INFO) << "Still waiting on " << countHandle.counter << " handles";
-
-            return;
-        }
-
-        LOG(INFO) << this << " Stopping and closing loop watcher";
-        uv_prepare_stop(&prepare_);
-        uv_close((uv_handle_t*)&prepare_, &fini);
-
-        assert(prepare_.data == this);
-
-        return;
-    }
-
-    uint64_t now = uv_now(prepare_.loop);
-
-    peers[TO_RESOLVE]
-        .clear_and_dispose(RetryPeer());
-
-    peers[TO_LISTEN]
-        .clear_and_dispose(RetryPeer());
-
-    if (now - lastRun_ < 750) {
-        goto prepared;
-    }
-
-    if (peers[RETRY_TO_CONNECT].begin() !=
-        peers[RETRY_TO_CONNECT].end()) {
-
-        LOG(INFO) << "retrying first RETRY_TO_CONNECT peer";
-
-        /* retry just the first active peer in the queue */
-        peers[RETRY_TO_CONNECT]
-            .erase_and_dispose(peers[RETRY_TO_CONNECT].begin(), RetryPeer());
-
-        LOG(DEBUG)
-            << " Stopping prepareAgain_ @"
-            << reinterpret_cast<void *>(&prepareAgain_)
-        ;
-
-        uv_timer_stop(&prepareAgain_);
-        /* if there are more, we will uv_timer_start() down below */
-    }
-
-    if (now - lastRun_ > 15000) {
-
-        LOG(INFO) << "retrying all RETRY_TO_LISTEN peers";
-
-        /* retry all listeners */
-        peers[RETRY_TO_LISTEN]
-            .clear_and_dispose(RetryPeer());
-    }
-
-    lastRun_ = now;
-
-prepared:
-    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG>, this);
-
-    if (peers[RETRY_TO_CONNECT].begin() !=
-        peers[RETRY_TO_CONNECT].end()) {
-        /* We need to make sure we unblock */
-
-        if (!uv_is_active((uv_handle_t *)&prepareAgain_)) {
-            LOG(DEBUG)
-                << " Starting prepareAgain_ @"
-                << reinterpret_cast<void *>(&prepareAgain_)
-            ;
-        } // else we are just pushing it out in time :)
-        uv_timer_start(&prepareAgain_, prepareAgainCB, 1250, 0);
-    }
-}
-
-void internal::Peer::LoopData::onPrepareLoop(uv_prepare_t * h) {
-
-    static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data)
-        ->onPrepareLoop();
-
-}
-
-void internal::Peer::LoopData::fini(uv_handle_t * h) {
-    LOG(INFO);
-
-    delete static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data);
-}
-
-void internal::Peer::LoopData::destroy(bool now) {
-    LOG(INFO);
-
-    assert(prepare_.data == this);
-
-    assert(!destroying_);
-    if (destroying_) {
-        LOG(WARNING)
-            << this
-            << " Double destroy() detected"
-        ;
-
-        return;
-    }
-
-    destroying_ = 1;
-    down();
-
-    for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
-        peers[Peer::LoopData::PeerState(i)]
-            .clear_and_dispose(PeerDisposer(now));
-
-    }
-}
 
 
 
@@ -212,7 +92,8 @@ void on_write(uv_write_t *req, int status) {
 
 } /* yajr::comms::internal namespace */
 
-}} /* yajr::comms and opflex namespaces */
+} /* yajr::comms namespace */
+} /* yajr namespace */
 
 #ifdef BOOST_NO_EXCEPTIONS
 
@@ -227,7 +108,7 @@ void throw_exception(std::exception const & e) {
     exit(127);
 }
 
-}
+} /* boost namespace */
 
 #endif
 

@@ -12,7 +12,8 @@
 
 namespace meta = yajr::rpc::internal::meta;
 
-namespace yajr { namespace rpc {
+namespace yajr {
+    namespace rpc {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmultichar"
@@ -32,4 +33,6 @@ MessageFactory::InboundRequest(
 
 #pragma GCC diagnostic pop
 
-}}
+}
+}
+

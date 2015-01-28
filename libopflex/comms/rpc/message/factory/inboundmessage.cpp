@@ -11,7 +11,11 @@
 
 namespace yajr {
 
-namespace comms { namespace internal { class CommunicationPeer; }}
+namespace comms {
+    namespace internal {
+        class CommunicationPeer;
+    }
+}
 
 namespace rpc {
 
@@ -105,4 +109,6 @@ MessageFactory::getInboundMessage(
 
 }
 
-}}
+}
+}
+

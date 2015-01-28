@@ -11,7 +11,8 @@
 
 namespace meta = yajr::rpc::internal::meta;
 
-namespace yajr { namespace rpc {
+namespace yajr {
+    namespace rpc {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmultichar"
@@ -28,5 +29,6 @@ MessageFactory::lookupMethod(char const * method) {
 
 #pragma GCC diagnostic pop
 
-}}
+} /* yajr::rpc namespace */
+} /* yajr namespace */
 

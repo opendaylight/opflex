@@ -16,6 +16,8 @@
 #include <yajr/rpc/rpc.hpp>
 #include <yajr/transport/PlainText.hpp>
 
+#include <opflex/logging/OFLogHandler.h>
+
 #include <rapidjson/document.h>
 #include <iovec-utils.hh>
 #include <uv.h>
@@ -33,7 +35,9 @@
 #  endif
 #endif
 
-namespace yajr { namespace comms { namespace internal {
+namespace yajr {
+    namespace comms {
+        namespace internal {
 
 using namespace yajr::comms;
 class ActivePeer;
@@ -134,40 +138,11 @@ class Peer : public SafeListBaseHook {
 
         void destroy(bool now = false);
 
-        struct RetryPeer {
-            void operator()(Peer *peer)
-            {
-                LOG(DEBUG) << peer << " retry";
-                peer->retry();
-            }
-        };
+        struct RetryPeer;
 
-        void up() {
-            LOG(DEBUG) << this
-                << " LoopRefCnt: " << refCount_ << " -> " << refCount_ + 1;
+        void up();
 
-            ++refCount_;
-        }
-
-        void down() {
-            LOG(DEBUG) << " Down() on Loop";
-            LOG(DEBUG) << this
-                << " LoopRefCnt: " << refCount_ << " -> " << refCount_ - 1;
-
-            assert(refCount_);
-
-            --refCount_;
-
-            if (destroying_ && !refCount_) {
-                LOG(INFO) << this << " walking uv_loop before stopping it";
-                uv_walk(prepare_.loop, walkAndDumpHandlesCb< ERROR >, this);
-
-                CloseHandle closeHandle = { this, NULL };
-
-                uv_walk(prepare_.loop, walkAndCloseHandlesCb, &closeHandle);
-
-            }
-        }
+        void down();
 
         void ensureResolvePending();
 
@@ -179,27 +154,9 @@ class Peer : public SafeListBaseHook {
       private:
         friend std::ostream& operator<< (std::ostream&, Peer::LoopData const *);
 
-        ~LoopData() {
-            LOG(DEBUG) << "Delete on Loop";
-            LOG(DEBUG) << this << " is being deleted";
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-            --counter;
-#endif
-        }
+        ~LoopData();
 
-        struct PeerDisposer {
-            void operator()(Peer *peer)
-            {
-                LOG(INFO) << peer << " destroy() because this communication thread is shutting down";
-                peer->destroy();
-            }
-            PeerDisposer(bool now = false)
-                :
-                    now_(now)
-                {}
-          private:
-            bool const now_;
-        };
+        struct PeerDisposer;
 
         static void onPrepareLoop(uv_prepare_t *) __attribute__((no_instrument_function));
         static void fini(uv_handle_t *);
@@ -212,18 +169,7 @@ class Peer : public SafeListBaseHook {
     };
 
     template <typename T, typename U>
-    static T * get(U * h) {
-        T * peer = static_cast<T *>(h->data);
-
-        LOG(DEBUG)
-            << "peer {"
-            << reinterpret_cast<void *>(peer)
-            << "} is about to have its invariants checked"
-        ;
-        assert(peer->__checkInvariants());
-
-        return peer;
-    }
+    static T * get(U * h);
 
     static CommunicationPeer * get(uv_write_t * r);
 
@@ -277,29 +223,9 @@ class Peer : public SafeListBaseHook {
 
     virtual void retry() = 0;
 
-    void up() {
+    void up();
 
-        LOG(DEBUG) << this
-            << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ + 1;
-
-        ++uvRefCnt_;
-    }
-
-    void down() {
-
-        LOG(DEBUG) << this 
-            << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ - 1;
-
-        if (--uvRefCnt_) {
-            return;
-        }
-
-        LOG(DEBUG) << "deleting " << this;
-
-        onDelete();
-
-        delete this;
-    }
+    void down();
 
     virtual void onDelete() {}
 
@@ -325,18 +251,9 @@ class Peer : public SafeListBaseHook {
         return handle_.loop;
     }
 
-    void insert(Peer::LoopData::PeerState peerState) {
-        LOG(DEBUG) << this << " is being inserted in " << peerState;
-        Peer::LoopData::getPeerList(getUvLoop(), peerState)->push_back(*this);
-    }
+    void insert(Peer::LoopData::PeerState peerState);
 
-    void unlink() {
-        LOG(DEBUG) << this << " manually unlinking";
-
-        SafeListBaseHook::unlink();
-
-        return;
-    }
+    void unlink();
 
     uv_tcp_t handle_;
     union {
@@ -491,35 +408,11 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     virtual void startKeepAlive(
             uint64_t begin    =  100,
             uint64_t repeat   = 1250,
-            uint64_t interval = 2500) {
+            uint64_t interval = 2500);
 
-        LOG(DEBUG) << this
-            << " interval=" << interval
-            << " begin=" << begin
-            << " repeat=" << repeat
-        ;
+    virtual void stopKeepAlive();
 
-        sendEchoReq();
-        bumpLastHeard();
-
-        keepAliveInterval_ = interval;
-        uv_timer_start(&keepAliveTimer_, on_timeout, begin, repeat);
-    }
-
-    virtual void stopKeepAlive() {
-        LOG(DEBUG) << this;
-     // assert(keepAliveInterval_ && uv_is_active((uv_handle_t *)&keepAliveTimer_));
-
-        uv_timer_stop(&keepAliveTimer_);
-        keepAliveInterval_ = 0;
-    }
-
-    static void on_timeout(uv_timer_t * timer) {
-        LOG(DEBUG);
-
-        get(timer)->timeout();
-
-    }
+    static void on_timeout(uv_timer_t * timer);
 
     void sendEchoReq();
     void timeout();
@@ -540,10 +433,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         return nextId_++;
     }
 
-    void bumpLastHeard() const {
-        LOG(DEBUG) << this << " " << lastHeard_ << " -> " << now();
-        lastHeard_ = now();
-    }
+    void bumpLastHeard() const;
 
     uint64_t getLastHeard() const {
         return lastHeard_;
@@ -569,112 +459,9 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 error);
     }
 
-    void onConnect() {
-        connected_ = 1;
-        keepAliveTimer_.data = this;
-        LOG(DEBUG) << this << " up() for a timer init";
-        up();
-        uv_timer_init(getUvLoop(), &keepAliveTimer_);
-        uv_unref((uv_handle_t*) &keepAliveTimer_);
+    void onConnect();
 
-        connectionHandler_(this, data_, ::yajr::StateChange::CONNECT, 0);
-
-        /* some transports, like for example SSL/TLS, need to start talking
-         * before there's anything to say */
-        (void) write();
-    }
-
-    void onDisconnect(bool now = false) {
-
-        LOG(DEBUG)
-            << this
-            << " connected_ = "
-            << static_cast< bool >(connected_)
-            << " now = "
-            << now
-        ;
-
-        if (connected_ || now) {
-            LOG(DEBUG)
-                << this
-                << " issuing close for tcp handle"
-            ;
-            if (!uv_is_closing((uv_handle_t*)&handle_)) {
-                uv_close((uv_handle_t*)&handle_, on_close);
-             // uv_close((uv_handle_t*)&handle_, connected_? on_close : NULL);
-            }
-        }
-
-        if (connected_) {
-
-            connected_ = 0;
-
-            if (getKeepAliveInterval()) {
-                stopKeepAlive();
-            }
-
-            if (!uv_is_closing((uv_handle_t*)&keepAliveTimer_)) {
-                uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
-            }
-         // uv_close((uv_handle_t*)&handle_, on_close);
-
-            /* FIXME: might be called too many times? */
-            connectionHandler_(this, data_, ::yajr::StateChange::DISCONNECT, 0);
-
-        }
-
-        unlink();
-
-        if (destroying_) {
-            return;
-        }
-
-        if (!passive_) {
-            LOG(DEBUG) << this << " active => retry queue";
-            /* we should attempt to reconnect later */
-            insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
-        } else {
-            LOG(DEBUG) << this << " passive => eventually drop";
-            /* whoever it was, hopefully will reconnect again */
-            insert(internal::Peer::LoopData::PENDING_DELETE);
-        }
-#ifdef OLD_VERSION
-        if (!connected_) {
-            return;
-        }
-
-        connected_ = 0;
-
-        if (getKeepAliveInterval()) {
-            stopKeepAlive();
-        }
-
-        if (!uv_is_closing((uv_handle_t*)&keepAliveTimer_)) {
-            uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
-        }
-     // uv_close((uv_handle_t*)&handle_, on_close);
-
-        unlink();
-
-        /* FIXME: might be called too many times? */
-        connectionHandler_(this, data_, ::yajr::StateChange::DISCONNECT, 0);
-
-        if (destroying_) {
-            return;
-        }
-
-        if (!passive_) {
-            LOG(DEBUG) << this << " active => retry queue";
-            /* we should attempt to reconnect later */
-            insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
-        } else {
-            LOG(DEBUG) << this << " passive => eventually drop";
-            /* whoever it was, hopefully will reconnect again */
-            insert(internal::Peer::LoopData::PENDING_DELETE);
-        }
-#endif
-
-    }
+    void onDisconnect(bool now = false);
 
     virtual void disconnect(bool now = false) {
 
@@ -690,15 +477,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         return uv_tcp_getsockname(&handle_, remoteAddress, len);
     }
 
-    virtual void destroy(bool now = false) {
-        LOG(DEBUG) << this;
-
-     // Peer::destroy();
-        destroying_ = 1;
-
-        onDisconnect(now);
-
-    }
+    virtual void destroy(bool now = false);
 
     uint64_t getKeepAliveInterval() const {
         return keepAliveInterval_;
@@ -716,31 +495,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         return writer_;
     }
 
-    int tcpInit() {
-
-        int rc;
-
-        if ((rc = uv_tcp_init(getUvLoop(), &handle_))) {
-            LOG(WARNING) << "uv_tcp_init: [" << uv_err_name(rc) << "] " <<
-                uv_strerror(rc);
-            return rc;
-        }
-
-     // LOG(DEBUG) << "{" << this << "}AP up() for a tcp init";
-     // up();
-
-        if ((rc = uv_tcp_keepalive(&handle_, 1, 60))) {
-            LOG(WARNING) << "uv_tcp_keepalive: [" << uv_err_name(rc) << "] " <<
-                uv_strerror(rc);
-        }
-
-        if ((rc = uv_tcp_nodelay(&handle_, 1))) {
-            LOG(WARNING) << "uv_tcp_nodelay: [" << uv_err_name(rc) << "] " <<
-                uv_strerror(rc);
-        }
-
-        return 0;
-    }
+    int tcpInit();
 
     static void dumpIov(
             std::stringstream & dbgLog,
@@ -833,22 +588,7 @@ class ActivePeer : public CommunicationPeer {
 
     virtual void retry();
 
-    virtual void destroy(bool now = false) {
-
-        bool alreadyBeingDestroyed = destroying_;
-
-        CommunicationPeer::destroy(now);
-
-        if (alreadyBeingDestroyed) {
-            LOG(DEBUG)
-                << this
-                << " multiple destroy()s detected"
-            ;
-            return;
-        }
-
-        down();
-    }
+    virtual void destroy(bool now = false);
 
 #ifndef NDEBUG
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
@@ -967,29 +707,7 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
     }
     virtual void retry();
 
-    virtual void destroy(bool now = false) {
-        LOG(DEBUG) << this;
-     // Peer::destroy();
-
-        assert(!destroying_);
-        if (destroying_) {
-            LOG(WARNING)
-                << this
-                << " Double destroy() detected"
-            ;
-
-            return;
-        }
-
-        destroying_ = 1;
-        down();
-        if (connected_) {
-            connected_ = 0;
-            if (!uv_is_closing((uv_handle_t*)&handle_)) {
-                uv_close((uv_handle_t*)&handle_, on_close);
-            }
-        }
-    }
+    virtual void destroy(bool now = false);
 
 #ifndef NDEBUG
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
@@ -1021,33 +739,34 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
     void * const data_;
 };
 
-template < ::opflex::logging::OFLogHandler::Level LOGGING_LEVEL >
-void internal::Peer::LoopData::walkAndDumpHandlesCb(uv_handle_t* h, void* loopData) {
+struct internal::Peer::LoopData::PeerDisposer {
 
-    char const * type;
+    void operator () (Peer *peer);
 
-    switch (h->type) {
-#define X(uc, lc)                               \
-        case UV_##uc: type = #lc;               \
-            break;
-      UV_HANDLE_TYPE_MAP(X)
-#undef X
-      default: type = "<unknown>";
-    }
+    PeerDisposer(bool now = false);
 
-    LOG(LOGGING_LEVEL)
-        << static_cast<Peer::LoopData const *>(loopData)
-        << " pending handle of type "
-        << type
-        << " @"
-        << reinterpret_cast<void const *>(h)
-        << " which is "
-        << (uv_is_closing(h) ? "" : "not ")
-        << "closing"
-        ;
+  private:
+    bool const now_;
+};
 
+struct internal::Peer::LoopData::RetryPeer {
+
+    void operator () (Peer *peer);
+
+};
+
+template <typename T, typename U>
+T * Peer::get(U * h) {
+    T * peer = static_cast<T *>(h->data);
+
+    assert(peer->__checkInvariants());
+
+    return peer;
 }
 
-}}}
+} // namespace internal
+} // namespace comms
+} // namespace yajr
 
 #endif /* _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP */
+

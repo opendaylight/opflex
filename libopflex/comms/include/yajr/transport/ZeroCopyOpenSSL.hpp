@@ -153,6 +153,8 @@ class ZeroCopyOpenSSL::Ctx {
     std::string passphrase_;
 };
 
-}}
+} /* yajr::transport namespace */
+} /* yajr namespace */
 
 #endif /* _____COMMS__INCLUDE__YAJR__TRANSPORT__ZEROCOPYOPENSSL_H */
+
