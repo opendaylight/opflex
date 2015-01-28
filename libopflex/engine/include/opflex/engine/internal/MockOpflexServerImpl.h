@@ -43,7 +43,7 @@ public:
     MockOpflexServerImpl(int port, uint8_t roles, 
                          test::MockOpflexServer::peer_vec_t peers,
                          const modb::ModelMetadata& md);
-    ~MockOpflexServerImpl();
+    virtual ~MockOpflexServerImpl();
 
     /**
      * Enable SSL for connections to opflex peers.  Call before start()
