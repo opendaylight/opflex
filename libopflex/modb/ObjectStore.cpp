@@ -9,6 +9,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+/* This must be included before anything else */
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
+
 #include <stdexcept>
 
 #include "opflex/modb/internal/ObjectStore.h"

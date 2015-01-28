@@ -6,6 +6,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+/* This must be included before anything else */
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
+
 #include <yajr/internal/comms.hpp>
 #include <yajr/transport/engine.hpp>
 
@@ -106,14 +112,16 @@ ActivePeer * Peer::get(uv_getaddrinfo_t * r) {
 }
 
 bool Peer::__checkInvariants()
-#ifndef NDEBUG
+#ifdef NDEBUG
+{
+#else
     const
-#endif
 {
     LOG(DEBUG)
         << this
         << " true = true"
     ;
+#endif
     return true;
 }
 

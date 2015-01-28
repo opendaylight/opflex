@@ -9,6 +9,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+/* This must be included before anything else */
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
+
 #include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/foreach.hpp>

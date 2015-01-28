@@ -6,6 +6,12 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+/* This must be included before anything else */
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
+
 #include <yajr/rpc/internal/json_stream_wrappers.hpp>
 #include <yajr/rpc/message_factory.inl.hpp>
 #include <yajr/internal/comms.hpp>
