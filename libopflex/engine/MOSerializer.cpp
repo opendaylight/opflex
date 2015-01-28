@@ -232,9 +232,9 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
             }
         }
         
+        bool remoteUpdated = false;
         if (client.putIfModified(ci.getId(), uri, oi)) {
-            if (listener)
-                listener->remoteObjectUpdated(ci.getId(), uri);
+            remoteUpdated = true;
             if (notifs)
                 client.queueNotification(ci.getId(), uri, *notifs);
         }
@@ -303,6 +303,8 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                             // this child isn't in the list of children
                             // set in the update
                             try {
+                                LOG(DEBUG) << "Removing missing child " << child
+                                           << " from updated parent " << uri;
                                 client.remove(it->second.getClassId(), child,
                                               true, notifs);
                                 if (notifs)
@@ -316,6 +318,13 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                 }
             }
         }
+
+        if (remoteUpdated) {
+            LOG(DEBUG) << "Updated object " << uri;
+            if (listener)
+                listener->remoteObjectUpdated(ci.getId(), uri);
+        }
+
     } catch (std::out_of_range e) {
         // ignore unknown class
         LOG(DEBUG) << "Could not deserialize object of unknown class " 

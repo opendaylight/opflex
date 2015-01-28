@@ -162,8 +162,8 @@ public:
      * @throws std::out_of_range of the child URI is not found or has
      * no parent
      */
-    const std::pair<URI, prop_id_t>& getParent(class_id_t child_class,
-                                               const URI& child);
+    std::pair<URI, prop_id_t> getParent(class_id_t child_class,
+                                        const URI& child);
 
     /**
      * Get the children of the parent URI and property and put the
@@ -195,17 +195,6 @@ public:
     void removeChildren(class_id_t class_id,
                         const URI& uri,
                         notif_t* notifs);
-
-    /**
-     * Get the parent for the given child URI.
-     *
-     * @param child the URI of the child object
-     * @return a (URI, prop_id_t) pair which is the URI of the parent
-     * and the property that represents the relation.
-     * @throws std::out_of_range of the child URI is not found or has
-     * no parent
-     */
-    const std::pair<URI, prop_id_t>& getParent(const URI& child);
 
     /**
      * Queue notifications for dispatch to the given URI and its

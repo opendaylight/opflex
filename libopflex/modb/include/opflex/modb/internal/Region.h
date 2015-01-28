@@ -191,8 +191,8 @@ public:
      * @throws std::out_of_range of the child URI is not found or has
      * no parent
      */
-    const std::pair<URI, prop_id_t>& getParent(class_id_t child_class,
-                                               const URI& child);
+    std::pair<URI, prop_id_t> getParent(class_id_t child_class,
+                                        const URI& child);
 
 private:
     /**
