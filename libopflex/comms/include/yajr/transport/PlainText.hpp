@@ -14,7 +14,8 @@
 
 #include <assert.h>
 
-namespace yajr { namespace transport {
+namespace yajr {
+    namespace transport {
 
 class PlainText : public Transport::Engine {
   public:
@@ -32,6 +33,8 @@ template< >
 inline TransportEngine< PlainText >::~TransportEngine() {
 }
 
-}}
+} /* yajr::transport namespace */
+} /* yajr namespace */
 
 #endif /* _____COMMS__INCLUDE__YAJR__TRANSPORT__PLAINTEXT_HPP */
+

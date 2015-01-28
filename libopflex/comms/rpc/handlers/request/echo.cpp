@@ -8,7 +8,8 @@
 
 #include <yajr/rpc/methods.hpp>
 
-namespace yajr { namespace rpc {
+namespace yajr {
+    namespace rpc {
 
 template<>
 void InbReq<&yajr::rpc::method::echo>::process() const {
@@ -23,4 +24,6 @@ void InbReq<&yajr::rpc::method::echo>::process() const {
 
 }
 
-}}
+} /* yajr::rpc namespace */
+} /* yajr namespace */
+

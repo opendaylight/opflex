@@ -13,8 +13,6 @@
 #include <yajr/rpc/send_handler.hpp>
 #include <yajr/yajr.hpp>
 
-#include <opflex/logging/internal/logging.hpp>
-
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
@@ -654,6 +652,8 @@ std::size_t hash_value(yajr::rpc::LocalId const & id);
 std::size_t hash_value(yajr::rpc::LocalIdentifier const & id);
 std::size_t hash_value(yajr::rpc::RemoteIdentifier const & id);
 
-}}
+} /* yajr::rpc namespace */
+} /* yajr namespace */
 
 #endif/*_____COMMS__INCLUDE__OPFLEX__RPC_HPP*/
+

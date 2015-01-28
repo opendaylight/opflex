@@ -14,7 +14,10 @@
 
 #include <rapidjson/rapidjson.h>
 
-namespace yajr { namespace comms { namespace internal { namespace wrapper {
+namespace yajr {
+    namespace comms {
+        namespace internal {
+            namespace wrapper {
 
 /* TODO: make an I/O wrapper, or resort to something else that
  * allows us to perform *in-situ* parsing... */
@@ -114,6 +117,10 @@ class OStreamWrapper {
     std::ostream& os_;
 };
 
-}}}}
+} /* yajr::comms::internal::wrapper namespace */
+} /* yajr::comms::internal namespace */
+} /* yajr::comms namespace */
+} /* yajr namespace */
 
 #endif /* _____COMMS__INCLUDE__OPFLEX__COMMS__INTERNAL__JSON_HPP */
+

@@ -18,7 +18,9 @@ extern "C" void __cyg_profile_func_enter(void *this_fn, void *call_site)
 extern "C" void __cyg_profile_func_exit(void *this_fn, void *call_site)
                                         __attribute__((no_instrument_function));
 
-namespace opflex { namespace logging {
+namespace opflex {
+    namespace logging {
+
     class Instruction;
 
 std::ostream& operator<< (std::ostream& os, Instruction * const func)
@@ -81,7 +83,8 @@ std::ostream& operator<< (std::ostream& os, Instruction * const func) {
     return os;
 }
 
-}}
+} /* opflex::logging namespace */
+} /* opflex namespace */
 
 extern "C" void __cyg_profile_func_enter(void *func, void *caller) {
     LOG(TRACE)
@@ -100,3 +103,4 @@ extern "C" void __cyg_profile_func_exit(void *func, void *caller) {
         << static_cast< opflex::logging::Instruction * >(caller)
     ;
 }
+

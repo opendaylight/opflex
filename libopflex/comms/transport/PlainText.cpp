@@ -15,7 +15,8 @@
 
 #include <iovec-utils.hh>
 
-namespace yajr { namespace transport {
+namespace yajr {
+    namespace transport {
 
 using namespace yajr::comms::internal;
 
@@ -142,4 +143,6 @@ TransportEngine< PlainText >::TransportEngine(PlainText * _ /* = NULL */)
         assert(!_);
     }
 
-}}
+} /* yajr::transport namespace */
+} /* yajr namespace */
+

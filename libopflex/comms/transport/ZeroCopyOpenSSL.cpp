@@ -67,7 +67,8 @@ IF_SSL_ERROR(...)                                                 \
           ___firstErr = 0                                                       \
         )
 
-namespace yajr { namespace transport {
+namespace yajr {
+    namespace transport {
 
 using namespace yajr::comms::internal;
 
@@ -1111,4 +1112,6 @@ bool ZeroCopyOpenSSL::attachTransport(
     return true;
 }
 
-}}
+} /* yajr::transport namespace */
+} /* yajr namespace */
+

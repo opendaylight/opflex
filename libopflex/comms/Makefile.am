@@ -70,6 +70,11 @@ libcomms_la_SOURCES += transport/PlainText.cpp
 libcomms_la_SOURCES += transport/ZeroCopyOpenSSL.cpp
 libcomms_la_SOURCES += rpc.cpp
 libcomms_la_SOURCES += peer.cpp
+libcomms_la_SOURCES += ActivePeer.cpp
+libcomms_la_SOURCES += CommunicationPeer.cpp
+libcomms_la_SOURCES += ListeningPeer.cpp
+libcomms_la_SOURCES += PassivePeer.cpp
+libcomms_la_SOURCES += loopdata.cpp
 
 # inbound REQUESTs
 libcomms_la_SOURCES += rpc/handlers/request/echo.cpp

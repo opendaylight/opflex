@@ -4,7 +4,8 @@
 
 #include <yajr/rpc/methods.hpp>
 
-namespace yajr { namespace rpc {
+namespace yajr {
+    namespace rpc {
 
 using namespace yajr::rpc::method;
 
@@ -23,6 +24,8 @@ OutReq<M> * yajr::rpc::MessageFactory::newReq(
     return newReq;
 }
 
-}}
+} /* yajr::rpc namespace */
+} /* yajr namespace */
 
 #endif /* _____COMMS__INCLUDE__OPFLEX__RPC__MESSAGE_FACTORY_INL_HPP */
+
