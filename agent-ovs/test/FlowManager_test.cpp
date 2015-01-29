@@ -269,6 +269,7 @@ public:
 
 
     void epgTest();
+    void arpModeTest();
     void localEpTest();
     void remoteEpTest();
     void fdTest();
@@ -363,20 +364,7 @@ void FlowManagerFixture::epgTest() {
     WAIT_FOR(exec.IsEmpty(), 500);
     BOOST_CHECK(exec.IsGroupEmpty());
 
-    LOG(INFO) << "epg: change arp mode";
-    /* change arp mode */
-    fd0->setArpMode(AddressResModeEnumT::CONST_FLOOD)
-        .setNeighborDiscMode(AddressResModeEnumT::CONST_FLOOD);
-    m1.commit();
-    WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()).get()
-             ->getArpMode(AddressResModeEnumT::CONST_UNICAST) 
-             == AddressResModeEnumT::CONST_FLOOD, 500);
-
-    exec.Clear();
-    exec.Expect(FlowEdit::del, fe_arpopt);
-    flowManager.egDomainUpdated(epg0->getURI());
-    WAIT_FOR(exec.IsEmpty(), 500);
-    BOOST_CHECK(exec.IsGroupEmpty());
+    /* Don't add tests here that reference ep2 */
 
     LOG(INFO) << "epg: remove domain objects";
     /* remove domain objects */
@@ -421,6 +409,45 @@ BOOST_FIXTURE_TEST_CASE(epg_vxlan, VxlanFlowManagerFixture) {
 
 BOOST_FIXTURE_TEST_CASE(epg_vlan, VlanFlowManagerFixture) {
     epgTest();
+}
+
+void FlowManagerFixture::arpModeTest() {
+    setConnected();
+
+    /* setup entries for epg0 connected to fd0 */
+    exec.IgnoreFlowMods(fe_fixed.size() + fe_fallback.size() +
+        fe_epg0.size() + fe_rd0.size() + fe_ep0.size() + fe_ep2.size() +
+        fe_epg0_routers.size() + fe_ep0_fd0_2.size());
+    exec.IgnoreGroupMods();
+    Mutator m1(framework, policyOwner);
+    epg0->addGbpEpGroupToNetworkRSrc()
+        ->setTargetSubnets(subnetsfd0->getURI());
+    m1.commit();
+    WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
+    flowManager.egDomainUpdated(epg0->getURI());
+    WAIT_FOR(exec.IsEmpty(), 500);
+
+    /* change arp mode to flood */
+    fd0->setArpMode(AddressResModeEnumT::CONST_FLOOD)
+        .setNeighborDiscMode(AddressResModeEnumT::CONST_FLOOD);
+    m1.commit();
+    WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()).get()
+             ->getArpMode(AddressResModeEnumT::CONST_UNICAST)
+             == AddressResModeEnumT::CONST_FLOOD, 500);
+
+    exec.Clear();
+    exec.Expect(FlowEdit::del, fe_arpopt);
+    flowManager.egDomainUpdated(epg0->getURI());
+    WAIT_FOR(exec.IsEmpty(), 500);
+    BOOST_CHECK(exec.IsGroupEmpty());
+}
+
+BOOST_FIXTURE_TEST_CASE(arpmode_vxlan, VxlanFlowManagerFixture) {
+    arpModeTest();
+}
+
+BOOST_FIXTURE_TEST_CASE(arpmode_vlan, VlanFlowManagerFixture) {
+    arpModeTest();
 }
 
 void FlowManagerFixture::localEpTest() {
@@ -720,18 +747,17 @@ void FlowManagerFixture::portStatusTest() {
 
     /* delete all groups except epg0, then update tunnel port */
     exec.IgnoreFlowMods();
-    vector<shared_ptr<EpGroup> > epgs;
-    space->resolveGbpEpGroup(epgs);
+    PolicyManager::uri_set_t epgURIs;
+    policyMgr.getGroups(epgURIs);
+    epgURIs.erase(epg0->getURI());
     Mutator m2(framework, policyOwner);
-    BOOST_FOREACH (shared_ptr<EpGroup>& eg, epgs) {
-        if (eg->getURI() != epg0->getURI()) {
-            eg->remove();
-        }
+    BOOST_FOREACH (const URI& u, epgURIs) {
+        EpGroup::resolve(agent.getFramework(), u).get()->remove();
     }
     m2.commit();
-    epgs.clear();
-    WAIT_FOR_DO(epgs.size() == 1, 500,
-                epgs.clear(); space->resolveGbpEpGroup(epgs));
+    epgURIs.clear();
+    WAIT_FOR_DO(epgURIs.size() == 1, 500,
+                epgURIs.clear(); policyMgr.getGroups(epgURIs));
 
     exec.Clear();
     exec.Expect(FlowEdit::add, fe_fixed_tun_new);
