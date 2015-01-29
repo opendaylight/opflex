@@ -1365,22 +1365,28 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
     polMgr.getContractProviders(contractURI, provURIs);
     polMgr.getContractConsumers(contractURI, consURIs);
 
-    unordered_set<uint32_t> provVnids;
-    unordered_set<uint32_t> consVnids;
-    GetGroupVnids(provURIs, provVnids);
-    GetGroupVnids(consURIs, consVnids);
+    typedef unordered_map<uint32_t, uint32_t> IdMap;
+    IdMap provIds;
+    IdMap consIds;
+    getEpgVnidAndRdId(provURIs, provIds);
+    getEpgVnidAndRdId(consURIs, consIds);
 
     PolicyManager::rule_list_t rules;
     polMgr.getContractRules(contractURI, rules);
 
     LOG(INFO) << "Update for contract " << contractURI
-            << ", #prov=" << provVnids.size()
-            << ", #cons=" << consVnids.size()
+            << ", #prov=" << provIds.size()
+            << ", #cons=" << consIds.size()
             << ", #rules=" << rules.size();
 
     FlowEntryList entryList;
-    BOOST_FOREACH(uint32_t pvnid, provVnids) {
-        BOOST_FOREACH(uint32_t cvnid, consVnids) {
+
+    BOOST_FOREACH(const IdMap::value_type& pid, provIds) {
+        const uint32_t& pvnid = pid.first;
+        const uint32_t& prdid = pid.second;
+        BOOST_FOREACH(const IdMap::value_type& cid, consIds) {
+            const uint32_t& cvnid = cid.first;
+            const uint32_t& crdid = cid.second;
             uint16_t prio = MAX_POLICY_RULE_PRIORITY;
             BOOST_FOREACH(shared_ptr<PolicyRule>& pc, rules) {
                 uint8_t dir = pc->getDirection();
@@ -1391,21 +1397,21 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
                  * add entry for cvnid to pvnid traffic only.
                  */
                 if (dir == DirectionEnumT::CONST_BIDIRECTIONAL &&
-                    provVnids.find(cvnid) != provVnids.end() &&
-                    consVnids.find(pvnid) != consVnids.end()) {
+                    provIds.find(cvnid) != provIds.end() &&
+                    consIds.find(pvnid) != consIds.end()) {
                     dir = DirectionEnumT::CONST_IN;
                 }
                 if (dir == DirectionEnumT::CONST_IN ||
                     dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
                     AddEntryForClassifier(cls.get(), pc->getAllow(),
                                           prio, conCookie,
-                                          cvnid, pvnid, entryList);
+                                          cvnid, pvnid, crdid, entryList);
                 }
                 if (dir == DirectionEnumT::CONST_OUT ||
                     dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
                     AddEntryForClassifier(cls.get(), pc->getAllow(),
                                           prio, conCookie,
-                                          pvnid, cvnid, entryList);
+                                          pvnid, cvnid, prdid, entryList);
                 }
                 --prio;
             }
@@ -1473,13 +1479,15 @@ static void SetEntryProtocol(FlowEntry *fe, L24Classifier *classifier) {
 }
 
 void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
-        uint16_t priority, uint64_t cookie, uint32_t& svnid, uint32_t& dvnid,
-        FlowEntryList& entries) {
+                                        uint16_t priority, uint64_t cookie,
+                                        uint32_t svnid, uint32_t dvnid,
+                                        uint32_t srdid,
+                                        FlowEntryList& entries) {
     ovs_be64 ckbe = htonll(cookie);
     bool reflexive =
         clsfr->isConnectionTrackingSet() &&
         clsfr->getConnectionTracking().get() == ConnTrackEnumT::CONST_REFLEXIVE;
-    uint16_t ctZone = (uint16_t)(svnid & 0xffff);
+    uint16_t ctZone = (uint16_t)(srdid & 0xffff);
     MaskList srcPorts;
     MaskList dstPorts;
     RangeMask::getMasks(clsfr->getSFromPort(), clsfr->getSToPort(), srcPorts);
@@ -1623,13 +1631,15 @@ FlowManager::WriteGroupMod(const GroupEdit::Entry& e) {
     return success;
 }
 
-void FlowManager::GetGroupVnids(const unordered_set<URI>& egURIs,
-    /* out */unordered_set<uint32_t>& egVnids) {
+void FlowManager::getEpgVnidAndRdId(const unordered_set<URI>& egURIs,
+    /* out */unordered_map<uint32_t, uint32_t>& egids) {
     PolicyManager& pm = agent.getPolicyManager();
     BOOST_FOREACH(const URI& u, egURIs) {
         optional<uint32_t> vnid = pm.getVnidForGroup(u);
         if (vnid) {
-            egVnids.insert(vnid.get());
+            optional<shared_ptr<RoutingDomain> > rd = pm.getRDForGroup(u);
+            egids[vnid.get()] =
+                rd ? GetId(RoutingDomain::CLASS_ID, rd.get()->getURI()) : 0;
         }
     }
 }

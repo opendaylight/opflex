@@ -1407,17 +1407,18 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     /* Contracts */
     uint16_t prio = FlowManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
-    unordered_set<uint32_t> pvnids, cvnids;
+    unordered_map<uint32_t, uint32_t> pvnids, cvnids;
+    typedef unordered_map<uint32_t, uint32_t>::value_type IdKeyValue;
 
     /* con2 */
     uint32_t con2_cookie = flowManager.GetId(con2->getClassId(),
         con2->getURI());
     policyMgr.getContractProviders(con2->getURI(), ps);
-    flowManager.GetGroupVnids(ps, pvnids);
-    BOOST_FOREACH (uint32_t pvnid, pvnids) {
-        BOOST_FOREACH (uint32_t cvnid, pvnids) {
+    flowManager.getEpgVnidAndRdId(ps, pvnids);
+    BOOST_FOREACH (const IdKeyValue& pvnid, pvnids) {
+        BOOST_FOREACH (const IdKeyValue& cvnid, pvnids) {
             fe_con2.push_back(Bldr().table(4).priority(prio).cookie(con2_cookie)
-                .reg(SEPG, cvnid).reg(DEPG, pvnid).isEth(0x8906)
+                .reg(SEPG, cvnid.first).reg(DEPG, pvnid.first).isEth(0x8906)
                 .actions().out(OUTPORT).done());
         }
     }
@@ -1427,13 +1428,15 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     /* con1 */
     policyMgr.getContractProviders(con1->getURI(), ps);
     policyMgr.getContractConsumers(con1->getURI(), cs);
-    flowManager.GetGroupVnids(ps, pvnids);
-    flowManager.GetGroupVnids(cs, cvnids);
+    flowManager.getEpgVnidAndRdId(ps, pvnids);
+    flowManager.getEpgVnidAndRdId(cs, cvnids);
     uint32_t con1_cookie = flowManager.GetId(con1->getClassId(),
             con1->getURI());
-    BOOST_FOREACH(uint32_t pvnid, pvnids) {
-        BOOST_FOREACH(uint32_t cvnid, cvnids) {
-            uint16_t ctzone = (uint16_t)cvnid;
+    BOOST_FOREACH(const IdKeyValue& pid, pvnids) {
+        uint32_t pvnid = pid.first;
+        BOOST_FOREACH(const IdKeyValue& cid, cvnids) {
+            uint32_t cvnid = cid.first;
+            uint16_t ctzone = 1;
             fe_con1.push_back(Bldr().table(4).priority(prio)
                     .cookie(con1_cookie).tcp()
                     .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)

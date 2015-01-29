@@ -273,14 +273,16 @@ public:
     void portStatusUpdate(const std::string& portName, uint32_t portNo);
 
     /**
-     * Get the VNIDs for the specified endpoint groups.
+     * Get the VNID and routing-domain ID for the specified endpoint groups.
      *
      * @param egURIs URIs of endpoint groups to search for
-     * @param egVnids VNIDs of the endpoint groups for those which
-     * have one
+     * @param egids Map of VNIDs-to-RoutingDomainID  of the endpoint
+     * groups which have a VNID. Routing-domain ID is set to 0 if the group
+     * is not part of a routing-domain
      */
-    void GetGroupVnids(const boost::unordered_set<opflex::modb::URI>& egURIs,
-            /* out */boost::unordered_set<uint32_t>& egVnids);
+    void getEpgVnidAndRdId(
+        const boost::unordered_set<opflex::modb::URI>& egURIs,
+        /* out */boost::unordered_map<uint32_t, uint32_t>& egids);
 
     /**
      * Get or generate a unique ID for a given object for use with flows.
@@ -426,11 +428,12 @@ private:
      * @param cookie Cookie of the entry created
      * @param svnid VNID of the source endpoint group for the entry
      * @param dvnid VNID of the destination endpoint group for the entry
+     * @param srdid RoutingDomain ID of the source endpoint group
      * @param entries List to append entry to
      */
     void AddEntryForClassifier(modelgbp::gbpe::L24Classifier *classifier,
                                bool allow, uint16_t priority, uint64_t cookie,
-                               uint32_t& svnid, uint32_t& dvnid,
+                               uint32_t svnid, uint32_t dvnid, uint32_t srdid,
                                FlowEntryList& entries);
 
     static bool ParseIpv4Addr(const std::string& str, uint32_t *ip);
