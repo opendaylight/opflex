@@ -24,8 +24,8 @@ AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp
 
 noinst_LTLIBRARIES = libengine.la
 
-libengine_la_CXXFLAGS = $(UV_CFLAGS)
-libengine_la_LIBADD = $(UV_LIBS)
+libengine_la_CXXFLAGS = $(UV_CFLAGS) $(OPENSSL_CFLAGS)
+libengine_la_LIBADD = $(UV_LIBS) $(OPENSSL_LIBS)
 libengine_la_SOURCES = \
 	include/opflex/engine/internal/MOSerializer.h \
 	include/opflex/engine/internal/AbstractObjectListener.h \
