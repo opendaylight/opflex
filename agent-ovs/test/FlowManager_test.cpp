@@ -720,18 +720,17 @@ void FlowManagerFixture::portStatusTest() {
 
     /* delete all groups except epg0, then update tunnel port */
     exec.IgnoreFlowMods();
-    vector<shared_ptr<EpGroup> > epgs;
-    space->resolveGbpEpGroup(epgs);
+    PolicyManager::uri_set_t epgURIs;
+    policyMgr.getGroups(epgURIs);
+    epgURIs.erase(epg0->getURI());
     Mutator m2(framework, policyOwner);
-    BOOST_FOREACH (shared_ptr<EpGroup>& eg, epgs) {
-        if (eg->getURI() != epg0->getURI()) {
-            eg->remove();
-        }
+    BOOST_FOREACH (const URI& u, epgURIs) {
+        EpGroup::resolve(agent.getFramework(), u).get()->remove();
     }
     m2.commit();
-    epgs.clear();
-    WAIT_FOR_DO(epgs.size() == 1, 500,
-                epgs.clear(); space->resolveGbpEpGroup(epgs));
+    epgURIs.clear();
+    WAIT_FOR_DO(epgURIs.size() == 1, 500,
+                epgURIs.clear(); policyMgr.getGroups(epgURIs));
 
     exec.Clear();
     exec.Expect(FlowEdit::add, fe_fixed_tun_new);
