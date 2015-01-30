@@ -180,6 +180,8 @@ private:
     typedef std::pair<uv_write_t*, const rapidjson::StringBuffer*> write_t;
     typedef std::list<write_t> write_list_t;
     write_list_t write_list;
+#else
+    uint64_t requestId;
 #endif
 
     typedef std::list<OpflexMessage*> write_queue_t;

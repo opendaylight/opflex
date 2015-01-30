@@ -48,6 +48,8 @@ OpflexConnection::OpflexConnection(HandlerFactory& handlerFactory)
     : handler(handlerFactory.newHandler(this)) 
 #ifdef SIMPLE_RPC
     ,buffer(new std::stringstream()) 
+#else
+    ,requestId(1)
 #endif
 {
     uv_mutex_init(&queue_mutex);
@@ -337,7 +339,7 @@ void OpflexConnection::doWrite(OpflexMessage* message) {
             yajr::rpc::MethodName method(message->getMethod().c_str());
             OutboundRequest outm(wrapper,
                                  &method,
-                                 0,
+                                 requestId++,
                                  getPeer());
             outm.send();
         }
