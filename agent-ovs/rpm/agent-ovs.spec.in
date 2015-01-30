@@ -101,7 +101,7 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
 
 %files
 %{_bindir}/agent_ovs
-%config %{_sysconfdir}/opflex-agent-ovs/opflex-agent-ovs.conf
+%config(noreplace) %{_sysconfdir}/opflex-agent-ovs/opflex-agent-ovs.conf
 %{_unitdir}/agent-ovs.service
 %dir %{_localstatedir}/lib/opflex-agent-ovs/endpoints
 %dir %{_localstatedir}/lib/opflex-agent-ovs/ids

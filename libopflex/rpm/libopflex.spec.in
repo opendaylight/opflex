@@ -25,6 +25,8 @@ BuildRequires: libuv-devel
 BuildRequires: boost-devel
 BuildRequires: boost-test
 BuildRequires: rapidjson-devel >= 0.12
+BuildRequires: doxygen
+BuildRequires: pkgconfig
 
 %description
 The OpFlex project seeks to provide reference implementations of the
