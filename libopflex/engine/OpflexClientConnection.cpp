@@ -95,16 +95,14 @@ void OpflexClientConnection::connect() {
 
 void OpflexClientConnection::disconnect() {
     if (!active) return;
-    active = false;
 
     LOG(DEBUG) << "[" << getRemotePeer() << "] " 
-               << "Disconnected";
+               << "Disconnecting";
     handler->disconnected();
     OpflexConnection::disconnect();
 
-    closing = true;
-
 #ifdef SIMPLE_RPC
+    active = false;
     uv_read_stop((uv_stream_t*)&socket);
     uv_close((uv_handle_t*)&socket, on_conn_closed);
 #else
@@ -113,18 +111,24 @@ void OpflexClientConnection::disconnect() {
 }
 
 void OpflexClientConnection::close() {
+    if (closing) return;
+
+    LOG(DEBUG) << "[" << getRemotePeer() << "] " 
+               << "Closing";
+
+    closing = true;
     pool->updatePeerStatus(hostname, port, PeerStatusListener::CLOSING);
 #ifdef SIMPLE_RPC
     retry = false;
-#endif
     if (active) {
         disconnect();
-    }
-#ifdef SIMPLE_RPC
-    else if (!closing) {
+    } else if (!closing) {
         pool->connectionClosed(this);
     }
 #else
+    active = false;
+    handler->disconnected();
+    OpflexConnection::disconnect();
     peer->destroy();
 #endif
 }
