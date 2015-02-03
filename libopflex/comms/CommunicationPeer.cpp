@@ -55,14 +55,14 @@ void CommunicationPeer::stopKeepAlive() {
 }
 
 void CommunicationPeer::on_timeout(uv_timer_t * timer) {
-    LOG(DEBUG);
+    LOG(DEBUG4);
 
     get(timer)->timeout();
 
 }
 
 void CommunicationPeer::bumpLastHeard() const {
-    LOG(DEBUG) << this << " " << lastHeard_ << " -> " << now();
+    LOG(DEBUG4) << this << " " << lastHeard_ << " -> " << now();
     lastHeard_ = now();
 }
 
@@ -82,7 +82,7 @@ void CommunicationPeer::onConnect() {
 }
 
 void CommunicationPeer::onDisconnect(bool now) {
-    LOG(DEBUG)
+    LOG(DEBUG4)
         << this
         << " connected_ = "
         << static_cast< bool >(connected_)
@@ -213,7 +213,7 @@ void CommunicationPeer::readBuffer(
         size_t nread,
         bool canWriteJustPastTheEnd) const {
 
-    LOG(DEBUG)
+    LOG(DEBUG4)
         << "nread "
         << nread
         << " @"
@@ -253,7 +253,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
 
     size_t chunk_size;
 
-    LOG(DEBUG)
+    LOG(DEBUG4)
         << "nread="
         << nread
         << " first "
@@ -269,7 +269,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
         chunk_size = readChunk(buffer);
         nread -= chunk_size++;
 
-        LOG(DEBUG)
+        LOG(DEBUG4)
             << "nread="
             << nread
             << " chunk_size="
@@ -282,7 +282,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
 
         }
 
-        LOG(DEBUG) << "got: " << chunk_size;
+        LOG(DEBUG4) << "got: " << chunk_size;
 
         buffer += chunk_size;
 
@@ -355,7 +355,7 @@ void CommunicationPeer::logDeque() const {
 
 void CommunicationPeer::onWrite() {
 
-    LOG(DEBUG)
+    LOG(DEBUG4)
         << this
         << " Write completed for "
         << pendingBytes_
@@ -374,7 +374,7 @@ int CommunicationPeer::write() const {
 
     if (pendingBytes_) {
 
-        LOG(DEBUG)
+        LOG(DEBUG4)
             << this
             << "Waiting for "
             << pendingBytes_
@@ -389,7 +389,7 @@ int CommunicationPeer::write() const {
 
 int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
 
-    LOG(DEBUG)
+    LOG(DEBUG4)
         << this
         << " IOVEC of size "
         << iov.size()
@@ -716,7 +716,7 @@ void CommunicationPeer::timeout() {
 
     uint64_t rtt = now() - lastHeard_;
 
-    LOG(INFO) << this
+    LOG(DEBUG) << this
         << " refcnt: " << uvRefCnt_
         << " lastHeard_: " << lastHeard_
         << " now(): " << now()
@@ -733,7 +733,7 @@ void CommunicationPeer::timeout() {
 
     if (rtt <= (keepAliveInterval_ >> 2) ) {
 
-        LOG(DEBUG) << this << " still waiting";
+        LOG(DEBUG2) << this << " still waiting";
 
         return;
 
@@ -759,7 +759,7 @@ void CommunicationPeer::timeout() {
 
 int comms::internal::CommunicationPeer::choke() const {
 
-    LOG(DEBUG)
+    LOG(DEBUG4)
         << this
     ;
 
@@ -800,7 +800,7 @@ int comms::internal::CommunicationPeer::choke() const {
 
 int comms::internal::CommunicationPeer::unchoke() const {
 
-    LOG(DEBUG)
+    LOG(DEBUG4)
         << this
     ;
 
@@ -843,7 +843,7 @@ int comms::internal::CommunicationPeer::unchoke() const {
 
 yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() const {
 
-    LOG(DEBUG)
+    LOG(DEBUG4)
         << this
         << " About to parse: ("
         << ssIn_.str()
@@ -891,7 +891,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
 bool CommunicationPeer::__checkInvariants() const {
 
     if (status_ != kPS_ONLINE) {
-        LOG(DEBUG)
+        LOG(DEBUG4)
             << this
             << " status = "
             << static_cast< int >(status_)
@@ -901,7 +901,7 @@ bool CommunicationPeer::__checkInvariants() const {
     }
 
     if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
-        LOG(DEBUG) << this
+        LOG(DEBUG2) << this
             << " keepAliveInterval_ = " << keepAliveInterval_
             << " keepAliveTimer_ = " << (
             uv_is_active((uv_handle_t *)&keepAliveTimer_) ? "" : "in")

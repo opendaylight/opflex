@@ -62,14 +62,34 @@ private:
 } /* namespace opflex */
 
 /**
- * Counter-productive macro for trace log level
+ * Convenience macro for debug log level
  */
 #define TRACE opflex::logging::OFLogHandler::TRACE
 
 /**
- * Convenience macro for debug log level
+ * Convenience macro for debug log level 1
  */
-#define DEBUG opflex::logging::OFLogHandler::DEBUG
+#define DEBUG1 opflex::logging::OFLogHandler::DEBUG1
+
+/**
+ * Alias for DEBUG1
+ */
+#define DEBUG DEBUG1
+
+/**
+ * Convenience macro for debug log level 2
+ */
+#define DEBUG2 opflex::logging::OFLogHandler::DEBUG2
+
+/**
+ * Convenience macro for debug log level 3
+ */
+#define DEBUG3 opflex::logging::OFLogHandler::DEBUG3
+
+/**
+ * Convenience macro for debug log level 4
+ */
+#define DEBUG4 opflex::logging::OFLogHandler::DEBUG4
 
 /**
  * Convenience macro for info log level

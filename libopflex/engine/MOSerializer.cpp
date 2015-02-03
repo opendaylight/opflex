@@ -326,7 +326,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
         }
 
         if (remoteUpdated) {
-            LOG(DEBUG) << "Updated object " << uri;
+            LOG(DEBUG2) << "Updated object " << uri;
             if (listener)
                 listener->remoteObjectUpdated(ci.getId(), uri);
         }
