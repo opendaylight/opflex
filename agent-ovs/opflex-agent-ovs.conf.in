@@ -6,8 +6,8 @@
 
     // Configuration related to the OpFlex protocol
     "opflex": {
-        // The globally unique policy domain for this agent.
-        "domain": "c7820284-fa76-44d5-948c-9de464f1c047",
+        // The policy domain for this agent.
+        "domain": "openstack",
 
         // The unique name in the policy domain for this agent.
         "name": "example-agent",
@@ -68,10 +68,10 @@
         //             // the encapsulated traffic.  This should be an
         //             // anycast IP address understood by the upstream
         //             // stiched-mode fabric.
-        //             "remote-ip": "10.0.0.32"
+        //             "remote-ip": "10.0.0.32",
         //
         //             // UDP port number of the encapsulated traffic.
-        //             // "remote-port": 4789
+        //             "remote-port": 8472
         //         }
         //
         //         // Encapsulate traffic with a locally-significant VLAN
@@ -85,13 +85,39 @@
         //
         //     // Configure forwarding policy
         //     "forwarding": {
-        //         // Enable virtual distributed router.  Set to true
-        //         // to enable or false to disable.  Default true.
-        //         "virtual-router": true,
+        //         // Configure the virtual distributed router
+        //         "virtual-router": {
+        //             // Enable virtual distributed router.  Set to true
+        //             // to enable or false to disable.  Default true.
+        //             "enabled": true,
         //
-        //         // Override MAC address for virtual router.  Default is 
-        //         // "00:22:bd:f8:19:ff"
-        //         "virtual-router-mac": "00:22:bd:f8:19:ff"
+        //             // Override MAC address for virtual router.
+        //             // Default is "00:22:bd:f8:19:ff"
+        //             "mac": "00:22:bd:f8:19:ff",
+        //
+        //             // Configure IPv6-related settings for the virtual
+        //             // router
+        //             "ipv6" : {
+        //                 // Send router advertisement messages in
+        //                 // response to router solicitation requests as
+        //                 // well as unsolicited advertisements.  This
+        //                 // is not required in stitched mode since the
+        //                 // hardware router will send them.
+        //                 "router-advertisement": false
+        //             }
+        //         },
+        //
+        //         // Configure virtual distributed DHCP server
+        //         "virtual-dhcp": {
+        //             // Enable virtual distributed DHCP server.  Set to
+        //             // true to enable or false to disable.  Default
+        //             // true.
+        //             "enabled": true,
+        //
+        //             // Override MAC address for virtual dhcp server.
+        //             // Default is "00:22:bd:f8:19:ff"
+        //             "mac": "00:22:bd:f8:19:ff"
+        //         }
         //     },
         //
         //     // Location to store cached IDs for managing flow state

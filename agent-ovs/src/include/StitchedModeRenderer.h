@@ -80,6 +80,9 @@ private:
     uint16_t uplinkVlan;
     bool virtualRouter;
     std::string virtualRouterMac;
+    bool routerAdv;
+    bool virtualDHCP;
+    std::string virtualDHCPMac;
     std::string flowIdCache;
 
     bool started;

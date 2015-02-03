@@ -21,7 +21,7 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_), flowManager(agent_), connection(NULL),
       statsManager(&agent_, portMapper), tunnelEpManager(&agent_),
       tunnelRemotePort(0), uplinkVlan(0),
-      virtualRouter(true), started(false) {
+      virtualRouter(true), routerAdv(true), started(false) {
     flowManager.SetFlowReader(&flowReader);
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
@@ -61,8 +61,8 @@ void StitchedModeRenderer::start() {
         assert(tunnelRemotePort != 0);
         flowManager.setTunnelRemotePort(tunnelRemotePort);
     }
-    flowManager.SetVirtualRouter(virtualRouter);
-    flowManager.SetVirtualRouterMac(virtualRouterMac);
+    flowManager.SetVirtualRouter(virtualRouter, routerAdv, virtualRouterMac);
+    flowManager.SetVirtualDHCP(virtualDHCP, virtualDHCPMac);
     flowManager.SetFlowIdCache(flowIdCache);
 
     connection = new SwitchConnection(ovsBridgeName);
@@ -122,8 +122,13 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string REMOTE_IP("remote-ip");
     static const std::string REMOTE_PORT("remote-port");
 
-    static const std::string VIRTUAL_ROUTER("forwarding.virtual-router");
-    static const std::string VIRTUAL_ROUTER_MAC("forwarding.virtual-router-mac");
+    static const std::string VIRTUAL_ROUTER("forwarding.virtual-router.enabled");
+    static const std::string VIRTUAL_ROUTER_MAC("forwarding.virtual-router.mac");
+
+    static const std::string VIRTUAL_ROUTER_RA("forwarding.virtual-router.ipv6.router-advertisement");
+
+    static const std::string VIRTUAL_DHCP("forwarding.virtual-dhcp.enabled");
+    static const std::string VIRTUAL_DHCP_MAC("forwarding.virtual-dhcp.mac");
 
     static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
 
@@ -165,6 +170,10 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
     virtualRouterMac =
         properties.get<std::string>(VIRTUAL_ROUTER_MAC, "00:22:bd:f8:19:ff");
+    routerAdv = properties.get<bool>(VIRTUAL_ROUTER_RA, true);
+    virtualDHCP = properties.get<bool>(VIRTUAL_DHCP, true);
+    virtualDHCPMac =
+        properties.get<std::string>(VIRTUAL_DHCP_MAC, "00:22:bd:f8:19:ff");
 
     flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR, "");
 }

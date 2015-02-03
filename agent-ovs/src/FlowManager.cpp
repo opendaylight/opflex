@@ -17,6 +17,8 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/algorithm/string/split.hpp>
 
+#include <netinet/icmp6.h>
+
 #include <modelgbp/arp/OpcodeEnumT.hpp>
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
@@ -32,8 +34,8 @@
 #include "SwitchConnection.h"
 #include "FlowManager.h"
 #include "TableState.h"
-#include "ActionBuilder.h"
 #include "RangeMask.h"
+#include "PacketInHandler.h"
 #include "Packets.h"
 
 using namespace std;
@@ -70,10 +72,12 @@ FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
         reader(NULL), jsonCmdExecutor(NULL), fallbackMode(FALLBACK_PROXY),
         encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
-        virtualRouterEnabled(true), isSyncing(false), flowSyncer(*this),
+        virtualRouterEnabled(true), routerAdv(true),
+        isSyncing(false), flowSyncer(*this), pktInHandler(agent, *this),
         stopping(false), connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
         opflexPeerConnected(false) {
     memset(routerMac, 0, sizeof(routerMac));
+    memset(dhcpMac, 0, sizeof(dhcpMac));
     tunnelDst = address::from_string("127.0.0.1");
     portMapper = NULL;
 }
@@ -120,13 +124,13 @@ void FlowManager::Stop()
 void FlowManager::registerConnection(SwitchConnection *conn) {
     this->connection = conn;
     conn->RegisterOnConnectListener(this);
-    conn->RegisterMessageHandler(OFPTYPE_PACKET_IN, this);
+    conn->RegisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
 }
 
 void FlowManager::unregisterConnection(SwitchConnection *conn) {
     this->connection = NULL;
     conn->UnregisterOnConnectListener(this);
-    conn->UnregisterMessageHandler(OFPTYPE_PACKET_IN, this);
+    conn->UnregisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
 }
 
 void FlowManager::registerModbListeners() {
@@ -187,15 +191,25 @@ void FlowManager::setTunnelRemotePort(uint16_t tunnelRemotePort) {
     tunnelPortStr = ss.str();
 }
 
-void FlowManager::SetVirtualRouter(bool virtualRouterEnabled) {
+void FlowManager::SetVirtualRouter(bool virtualRouterEnabled,
+                                   bool routerAdv,
+                                   const string& virtualRouterMac) {
     this->virtualRouterEnabled = virtualRouterEnabled;
-}
-
-void FlowManager::SetVirtualRouterMac(const string& virtualRouterMac) {
+    this->routerAdv = routerAdv;
     try {
         MAC(virtualRouterMac).toUIntArray(routerMac);
     } catch (std::invalid_argument) {
         LOG(ERROR) << "Invalid virtual router MAC: " << virtualRouterMac;
+    }
+}
+
+void FlowManager::SetVirtualDHCP(bool dhcpEnabled,
+                                 const string& mac) {
+    this->virtualDHCPEnabled = dhcpEnabled;
+    try {
+        MAC(mac).toUIntArray(dhcpMac);
+    } catch (std::invalid_argument) {
+        LOG(ERROR) << "Invalid virtual DHCP server MAC: " << mac;
     }
 }
 
@@ -217,6 +231,10 @@ ovs_be64 FlowManager::GetLearnEntryCookie() {
 
 ovs_be64 FlowManager::GetNDCookie() {
     return htonll((uint64_t)1 << 63 | 3);
+}
+
+ovs_be64 FlowManager::GetDHCPCookie(bool v4) {
+    return htonll((uint64_t)1 << 63 | (v4 ? 4 : 5));
 }
 
 /** Source table helper functions */
@@ -354,9 +372,9 @@ SetMatchFd(FlowEntry *fe, uint16_t prio, uint32_t fgrpId, bool broadcast,
         match_set_dl_dst(m, dstMac);
 }
 
-static void
-SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type, 
-                        const address& tunDst) {
+void FlowManager::SetActionTunnelMetadata(ActionBuilder& ab,
+                                          FlowManager::EncapType type,
+                                          const address& tunDst) {
     switch (type) {
     case FlowManager::ENCAP_VLAN:
         ab.SetPushVlan();
@@ -386,7 +404,7 @@ SetDestActionEpMac(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
     if (!isLocal) {
-        SetActionTunnelMetadata(ab, type, tunDst);
+        FlowManager::SetActionTunnelMetadata(ab, type, tunDst);
     }
     ab.SetGotoTable(FlowManager::POL_TABLE_ID);
 
@@ -402,7 +420,7 @@ SetDestActionEp(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
     if (!isLocal) {
-        SetActionTunnelMetadata(ab, type, tunDst);
+        FlowManager::SetActionTunnelMetadata(ab, type, tunDst);
     }
     ab.SetEthSrcDst(specialMac, dstMac);
     ab.SetDecNwTtl();
@@ -419,7 +437,7 @@ SetDestActionEpArp(FlowEntry *fe, FlowManager::EncapType type, bool isLocal,
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
     if (!isLocal) {
-        SetActionTunnelMetadata(ab, type, tunDst);
+        FlowManager::SetActionTunnelMetadata(ab, type, tunDst);
     }
     ab.SetEthSrcDst(NULL, dstMac);
     ab.SetGotoTable(FlowManager::POL_TABLE_ID);
@@ -454,7 +472,7 @@ static void
 SetDestActionOutputToTunnel(FlowEntry *fe, FlowManager::EncapType type,
                             const address& tunDst, uint32_t tunPort) {
     ActionBuilder ab;
-    SetActionTunnelMetadata(ab, type, tunDst);
+    FlowManager::SetActionTunnelMetadata(ab, type, tunDst);
     ab.SetOutputToPort(tunPort);
     ab.Build(fe->entry);
 }
@@ -467,8 +485,11 @@ SetActionGotoLearn(FlowEntry *fe) {
 }
 
 static void
-SetActionController(FlowEntry *fe, uint16_t max_len = 128) {
+SetActionController(FlowEntry *fe, uint32_t epgId = 0,
+                    uint16_t max_len = 128) {
     ActionBuilder ab;
+    if (epgId != 0)
+        ab.SetRegLoad(MFF_REG0, epgId);
     ab.SetController(max_len);
     ab.Build(fe->entry);
 }
@@ -597,9 +618,12 @@ SetSecurityMatchRouterSolit(FlowEntry *fe, uint16_t prio) {
 }
 
 static void
-SetSecurityMatchEpDHCP(FlowEntry *fe, uint16_t prio, bool v4) {
-    fe->entry->table_id = FlowManager::SEC_TABLE_ID;
+SetMatchDHCP(FlowEntry *fe, uint8_t tableId, uint16_t prio, bool v4,
+             uint64_t cookie = 0) {
+    fe->entry->table_id = tableId;
     fe->entry->priority = prio;
+    if (cookie != 0)
+        fe->entry->cookie = cookie;
     match_set_nw_proto(&fe->entry->match, 17);
     if (v4) {
         match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
@@ -852,6 +876,46 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             src.push_back(FlowEntryPtr(e1));
         }
 
+        if (virtualDHCPEnabled && hasMac) {
+            const std::vector<Endpoint::DHCPConfig> dhcpConfig =
+                endPoint.getDhcpConfig();
+
+            bool hasDHCPv4 = false;
+#if 0
+            bool hasDHCPv6 = false;
+#endif
+
+            BOOST_FOREACH(const Endpoint::DHCPConfig c, dhcpConfig) {
+                if (!c.getPrefixLen()) continue;
+                optional<string> dhcpIp = c.getIpAddress();
+                if (!dhcpIp) continue;
+                address dhcpAddr = address::from_string(dhcpIp.get(), ec);
+                if (ec) continue;
+
+                if (dhcpAddr.is_v4() && !hasDHCPv4) {
+                    FlowEntry* dhcp = new FlowEntry();
+                    SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
+                    SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, true,
+                                 GetDHCPCookie(true));
+                    SetActionController(dhcp, epgVnid, 0xffff);
+                    src.push_back(FlowEntryPtr(dhcp));
+                    hasDHCPv4 = true;
+                }
+#if 0
+                else if (dhcpAddr.is_v6() && !hasDHCPv6) {
+                    // TODO DHCPv6 not yet implemented
+                    FlowEntry* dhcp = new FlowEntry();
+                    SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
+                    SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, false,
+                                 GetDHCPCookie(false));
+                    SetActionController(dhcp, epgVnid, 0xffff);
+                    src.push_back(FlowEntryPtr(dhcp));
+                    hasDHCPv6 = true;
+                }
+#endif
+            }
+        }
+
         WriteFlow(uuid, SRC_TABLE_ID, src);
     }
 
@@ -947,14 +1011,14 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
 
         // Allow DHCP requests but not replies
         FlowEntry *allowDHCP = new FlowEntry();
-        SetSecurityMatchEpDHCP(allowDHCP, 27, true);
+        SetMatchDHCP(allowDHCP, FlowManager::SEC_TABLE_ID, 27, true);
         SetSecurityActionAllow(allowDHCP);
         fixedFlows.push_back(FlowEntryPtr(allowDHCP));
 
         // Allow IPv6 autoconfiguration (DHCP & router solicitiation)
         // requests but not replies
         FlowEntry *allowDHCPv6 = new FlowEntry();
-        SetSecurityMatchEpDHCP(allowDHCPv6, 27, false);
+        SetMatchDHCP(allowDHCPv6, FlowManager::SEC_TABLE_ID, 27, false);
         SetSecurityActionAllow(allowDHCPv6);
         fixedFlows.push_back(FlowEntryPtr(allowDHCPv6));
 
@@ -1052,11 +1116,11 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     if (rdId != 0) {
         UpdateGroupSubnets(epgURI, rdId);
 
-        if (virtualRouterEnabled) {
+        if (virtualRouterEnabled && routerAdv) {
             FlowEntry *e0 = new FlowEntry();
             SetDestMatchNd(e0, 20, NULL, rdId, FlowManager::GetNDCookie(),
                            ND_ROUTER_SOLICIT);
-            SetActionController(e0, 0xffff);
+            SetActionController(e0, 0, 0xffff);
             WriteFlow(rdURI.get().toString(), DST_TABLE_ID, e0);
 
             if (!isSyncing) {
@@ -1116,7 +1180,7 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
                 } else {
                     // Construct router IP address
                     address_v6::bytes_type rip;
-                    Packets::construct_auto_ip(address_v6::from_string("fe80::"),
+                    packets::construct_auto_ip(address_v6::from_string("fe80::"),
                                                routerMac,
                                                (struct in6_addr*)rip.data());
                     routerIp = address_v6(rip);
@@ -1133,7 +1197,7 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
                     FlowEntry *e0 = new FlowEntry();
                     SetDestMatchNd(e0, 20, &routerIp, routingDomainId,
                                    FlowManager::GetNDCookie());
-                    SetActionController(e0, 0xffff);
+                    SetActionController(e0, 0, 0xffff);
                     el.push_back(FlowEntryPtr(e0));
                 }
             }
@@ -1225,7 +1289,7 @@ FlowManager::CreateGroupMod(uint16_t type, uint32_t groupId,
     return entry;
 }
 
-static uint32_t getPromId(uint32_t fgrpId) {
+uint32_t FlowManager::getPromId(uint32_t fgrpId) {
     return ((1<<31) | fgrpId);
 }
 
@@ -1672,7 +1736,7 @@ void FlowManager::OnConnectTimer(const system::error_code& ec) {
 void FlowManager::OnAdvertTimer(const system::error_code& ec) {
     if (ec)
         return;
-    if (!virtualRouterEnabled)
+    if (!virtualRouterEnabled || !routerAdv)
         return;
     if (!connection)
         return;
@@ -1706,7 +1770,7 @@ void FlowManager::OnAdvertTimer(const system::error_code& ec) {
             if (out_ports.size() == 0) continue;
 
             address_v6::bytes_type bytes = ALL_NODES_IP.to_bytes();
-            struct ofpbuf* b = Packets::compose_icmp6_router_ad(routerMac,
+            struct ofpbuf* b = packets::compose_icmp6_router_ad(routerMac,
                                                                 MAC_ADDR_IPV6MULTICAST,
                                                                 (struct in6_addr*)bytes.data(),
                                                                 epg, polMgr);
@@ -1767,245 +1831,6 @@ const char * FlowManager::GetIdNamespace(class_id_t cid) {
 
 uint32_t FlowManager::GetId(class_id_t cid, const URI& uri) {
     return idGen.getId(GetIdNamespace(cid), uri);
-}
-
-static bool writeLearnFlow(SwitchConnection *conn, 
-                           ofputil_protocol& proto,
-                           struct ofputil_packet_in& pi,
-                           struct flow& flow,
-                           bool stage2,
-                           uint32_t tunPort,
-                           FlowManager::EncapType encapType,
-                           const address& tunDst) {
-    bool dstKnown = (0 != pi.fmd.regs[7]);
-    if (stage2 && !dstKnown) return false;
-
-    struct ofputil_flow_mod fm;
-    memset(&fm, 0, sizeof(fm));
-    fm.buffer_id = UINT32_MAX;
-    fm.table_id = FlowManager::LEARN_TABLE_ID;
-    fm.priority = stage2 ? 150 : 100;
-    fm.idle_timeout = 300;
-    fm.command = OFPFC_ADD;
-    fm.new_cookie = FlowManager::GetLearnEntryCookie();
-
-    match_set_reg(&fm.match, 5 /* REG5 */, pi.fmd.regs[5]);
-    if (stage2) {
-        match_set_dl_dst(&fm.match, flow.dl_dst);
-        match_set_dl_src(&fm.match, flow.dl_src);
-    } else {
-        match_set_dl_dst(&fm.match, flow.dl_src);
-    }
-
-    ActionBuilder ab;
-    // Set destination epg == source epg
-    ab.SetRegLoad(MFF_REG2, pi.fmd.regs[0]);
-    // Set the output register
-    uint32_t outport = stage2 ? pi.fmd.regs[7] : pi.fmd.in_port;
-    if (outport == tunPort)
-        SetActionTunnelMetadata(ab, encapType, tunDst);
-
-    ab.SetRegLoad(MFF_REG7, outport);
-    if (stage2) {
-        ab.SetGotoTable(FlowManager::POL_TABLE_ID);
-    } else {
-        ab.SetOutputToPort(outport);
-        ab.SetController();
-    }
-    ab.Build(&fm);
-
-    struct ofpbuf * message = ofputil_encode_flow_mod(&fm, proto);
-    int error = conn->SendMessage(message);
-    free(fm.ofpacts);
-    if (error) {
-        LOG(ERROR) << "Could not write flow mod: " << ovs_strerror(error);
-    }
-    return true;
-}
-
-static void handleLearnPktIn(SwitchConnection *conn,
-                             struct ofputil_packet_in& pi,
-                             ofputil_protocol& proto,
-                             struct ofpbuf& pkt,
-                             struct flow& flow,
-                             uint32_t tunPort,
-                             FlowManager::EncapType encapType,
-                             const address& tunDst) {
-    writeLearnFlow(conn, proto, pi, flow, false, 
-                   tunPort, encapType, tunDst);
-    if (writeLearnFlow(conn, proto, pi, flow, true, 
-                       tunPort, encapType, tunDst))
-        return;
-
-    {
-        // install a forward flow to flood to the promiscuous ports in
-        // the flood domain until we learn the correct reverse path
-        struct ofputil_flow_mod fm;
-        memset(&fm, 0, sizeof(fm));
-        fm.buffer_id = pi.buffer_id;
-        fm.table_id = FlowManager::LEARN_TABLE_ID;
-        fm.priority = 50;
-        fm.idle_timeout = 5;
-        fm.hard_timeout = 60;
-        fm.command = OFPFC_ADD;
-        fm.new_cookie = FlowManager::GetLearnEntryCookie();
-
-        match_set_in_port(&fm.match, pi.fmd.in_port);
-        match_set_reg(&fm.match, 5 /* REG5 */, pi.fmd.regs[5]);
-        match_set_dl_src(&fm.match, flow.dl_src);
-
-        ActionBuilder ab;
-        ab.SetGroup(getPromId(pi.fmd.regs[5]));
-        ab.Build(&fm);
-
-        struct ofpbuf* message = ofputil_encode_flow_mod(&fm, proto);
-        int error = conn->SendMessage(message);
-        free(fm.ofpacts);
-        if (error) {
-            LOG(ERROR) << "Could not write flow mod: " << ovs_strerror(error);
-        }
-    }
-
-    if (pi.buffer_id == UINT32_MAX) {
-        // Send packet out if needed
-        struct ofputil_packet_out po;
-        po.buffer_id = UINT32_MAX;
-        po.packet = ofpbuf_data(&pkt);
-        po.packet_len = ofpbuf_size(&pkt);
-        po.in_port = pi.fmd.in_port;
-
-        ActionBuilder ab;
-        ab.SetGroup(getPromId(pi.fmd.regs[5]));
-        ab.Build(&po);
-
-        struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
-        int error = conn->SendMessage(message);
-        free(po.ofpacts);
-        if (error) {
-            LOG(ERROR) << "Could not write packet-out: " << ovs_strerror(error);
-        }
-    }
-}
-
-static void handleNDPktIn(Agent& agent,
-                          SwitchConnection *conn,
-                          struct ofputil_packet_in& pi,
-                          ofputil_protocol& proto,
-                          struct ofpbuf& pkt,
-                          struct flow& flow,
-                          const uint8_t* virtualRouterMac) {
-    uint32_t epgId = (uint32_t)pi.fmd.regs[0];
-    PolicyManager& polMgr = agent.getPolicyManager();
-    optional<URI> egUri = polMgr.getGroupForVnid(epgId);
-    if (!egUri)
-        return;
-
-    if (flow.dl_type != htons(ETH_TYPE_IPV6) ||
-        flow.nw_proto != 58 /* ICMPv6 */)
-        return;
-
-    size_t l4_size = ofpbuf_l4_size(&pkt);
-    if (l4_size < sizeof(struct icmp6_hdr))
-        return;
-    struct icmp6_hdr* icmp = (struct icmp6_hdr*) ofpbuf_l4(&pkt);
-    if (icmp->icmp6_code != 0)
-        return;
-
-    struct ofpbuf* b = NULL;
-
-    if (icmp->icmp6_type == ND_NEIGHBOR_SOLICIT) {
-        /* Neighbor solicitation */
-        struct nd_neighbor_solicit* neigh_sol = 
-            (struct nd_neighbor_solicit*) ofpbuf_l4(&pkt);
-        if (l4_size < sizeof(*neigh_sol))
-            return;
-
-        // we only get neighbor solicitation packets for our router
-        // IP, so we just always reply with our router MAC to the
-        // requested IP.
-        b = Packets::compose_icmp6_neigh_ad(ND_NA_FLAG_ROUTER | 
-                                            ND_NA_FLAG_SOLICITED | 
-                                            ND_NA_FLAG_OVERRIDE,
-                                            virtualRouterMac,
-                                            flow.dl_src,
-                                            &neigh_sol->nd_ns_target,
-                                            &flow.ipv6_src);
-
-    } else if (icmp->icmp6_type == ND_ROUTER_SOLICIT) {
-        /* Router solicitation */
-        struct nd_router_solicit* router_sol = 
-            (struct nd_router_solicit*) ofpbuf_l4(&pkt);
-        if (l4_size < sizeof(*router_sol))
-            return;
-
-        b = Packets::compose_icmp6_router_ad(virtualRouterMac,
-                                             flow.dl_src,
-                                             &flow.ipv6_src,
-                                             egUri.get(),
-                                             polMgr);
-    }
-
-    if (b) {
-        // send reply as packet-out
-        struct ofputil_packet_out po;
-        po.buffer_id = UINT32_MAX;
-        po.packet = ofpbuf_data(b);
-        po.packet_len = ofpbuf_size(b);
-        po.in_port = pi.fmd.in_port;
-        
-        ActionBuilder ab;
-        ab.SetOutputToPort(OFPP_IN_PORT);
-        ab.Build(&po);
-    
-        struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
-        int error = conn->SendMessage(message);
-        free(po.ofpacts);
-        if (error) {
-            LOG(ERROR) << "Could not write packet-out: " << ovs_strerror(error);
-        }
-        
-        ofpbuf_delete(b);
-    }
-}
-
-/**
- * Perform MAC learning for flood domains that require flooding for
- * unknown unicast traffic.  Note that this will only manage the
- * reactive flows associated with MAC learning; there are static flows
- * to enabling MAC learning elsewhere.
- */
-void FlowManager::Handle(SwitchConnection *conn, 
-                         ofptype msgType, ofpbuf *msg) {
-    assert(msgType == OFPTYPE_PACKET_IN);
-
-    const struct ofp_header *oh = (ofp_header *)ofpbuf_data(msg);
-    struct ofputil_packet_in pi;
-
-    enum ofperr err = ofputil_decode_packet_in(&pi, oh);
-    if (err) {
-        LOG(ERROR) << "Failed to decode packet-in: " << ovs_strerror(err);
-        return;
-    }
-
-    if (pi.reason != OFPR_ACTION)
-        return;
-
-    struct ofpbuf pkt;
-    struct flow flow;
-    ofpbuf_use_const(&pkt, pi.packet, pi.packet_len);
-    flow_extract(&pkt, NULL, &flow);
-
-    ofputil_protocol proto = 
-        ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
-    assert(ofputil_protocol_is_valid(proto));
-
-    if (pi.cookie == GetLearnEntryCookie() ||
-        pi.cookie == GetProactiveLearnEntryCookie())
-        handleLearnPktIn(conn, pi, proto, pkt, flow,
-                         GetTunnelPort(), encapType, GetTunnelDst());
-    else if (pi.cookie == GetNDCookie())
-        handleNDPktIn(agent, conn, pi, proto, pkt, flow, routerMac);
-
 }
 
 void FlowManager::updateMulticastList(const optional<string>& mcastIp,

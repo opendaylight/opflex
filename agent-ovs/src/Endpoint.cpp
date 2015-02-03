@@ -40,6 +40,9 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
     const boost::optional<std::string>& iface = ep.getInterfaceName();
     if (iface)
         os << ",iface=" << iface.get();
+    const std::vector<Endpoint::DHCPConfig>& dhcpConfig = ep.getDhcpConfig();
+    if (dhcpConfig.size() > 0)
+        os << ",#dhcpConfig=" << dhcpConfig.size();
 
     return os;
 }

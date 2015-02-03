@@ -23,6 +23,7 @@
 #include "FlowExecutor.h"
 
 #include "ModbFixture.h"
+#include "MockSwitchConnection.h"
 #include "TableState.h"
 #include "ActionBuilder.h"
 #include "RangeMask.h"
@@ -140,31 +141,6 @@ public:
     boost::unordered_map<string, uint32_t> ports;
 };
 
-class MockSwitchConnection : public SwitchConnection {
-public:
-    MockSwitchConnection() : SwitchConnection("mockBridge") {
-    }
-    virtual ~MockSwitchConnection() {
-        clear();
-    }
-
-    void clear() {
-        BOOST_FOREACH(ofpbuf* msg, sentMsgs) {
-            ofpbuf_delete(msg);
-        }
-        sentMsgs.clear();
-    }
-
-    ofp_version GetProtocolVersion() { return OFP13_VERSION; }
-
-    int SendMessage(ofpbuf *msg) {
-        sentMsgs.push_back(msg);
-        return 0;
-    }
-
-    std::vector<ofpbuf*> sentMsgs;
-};
-
 class MockFlowReader : public FlowReader {
 public:
     MockFlowReader() {}
@@ -231,7 +207,7 @@ public:
         flowManager.SetEncapIface(tunIf);
         flowManager.SetTunnelRemoteIp("10.11.12.13");
         flowManager.SetSyncDelayOnConnect(0);
-        flowManager.SetVirtualRouterMac("aa:bb:cc:dd:ee:ff");
+        flowManager.SetVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
 
         portmapper.ports[ep0->getInterfaceName().get()] = 80;
         portmapper.ports[tunIf] = 2048;
@@ -787,132 +763,6 @@ BOOST_FIXTURE_TEST_CASE(portstatus_vxlan, VxlanFlowManagerFixture) {
 
 BOOST_FIXTURE_TEST_CASE(portstatus_vlan, VlanFlowManagerFixture) {
     portStatusTest();
-}
-
-BOOST_FIXTURE_TEST_CASE(learn, VxlanFlowManagerFixture) {
-    MockSwitchConnection conn;
-    char packet_buf[512];
-    ofputil_packet_in pin1, pin2;
-    memset(packet_buf, 0xdeadbeef, sizeof(packet_buf));
-    memset(&pin1, 0, sizeof(pin1));
-    memset(&pin2, 0, sizeof(pin2));
-    ofputil_protocol proto = 
-        ofputil_protocol_from_ofp_version(conn.GetProtocolVersion());
-
-    // initialize just the first part of the ethernet header
-    char mac1[6] = {0xa, 0xb, 0xc, 0xd, 0xe, 0xf};
-    char mac2[6] = {0xf, 0xe, 0xd, 0xc, 0xb, 0xa};
-    memcpy(packet_buf, mac1, sizeof(mac1));
-    memcpy(packet_buf + sizeof(mac1), mac2, sizeof(mac2));
-
-    // stage 1 
-    pin1.reason = OFPR_ACTION;
-    pin1.cookie = FlowManager::GetLearnEntryCookie();
-    pin1.packet = &packet_buf;
-    pin1.packet_len = sizeof(packet_buf);
-    pin1.total_len = sizeof(packet_buf);
-    pin1.buffer_id = UINT32_MAX;
-    pin1.table_id = 3;
-    pin1.fmd.in_port = 42;
-    pin1.fmd.regs[0] = 5;
-    pin1.fmd.regs[5] = 10;
-    
-    ofpbuf* b = ofputil_encode_packet_in(&pin1,
-                                          OFPUTIL_P_OF10_NXM,
-                                          NXPIF_NXM);
-    flowManager.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    ofpbuf_delete(b);
-
-    BOOST_CHECK(conn.sentMsgs.size() == 3);
-    uint64_t ofpacts_stub1[1024 / 8];
-    uint64_t ofpacts_stub2[1024 / 8];
-    uint64_t ofpacts_stub3[1024 / 8];
-    struct ofpbuf ofpacts1, ofpacts2, ofpacts3;
-    struct ofputil_flow_mod fm1, fm2;
-    struct ofputil_packet_out po;
-
-    ofpbuf_use_stub(&ofpacts1, ofpacts_stub1, sizeof ofpacts_stub1);
-    ofpbuf_use_stub(&ofpacts2, ofpacts_stub2, sizeof ofpacts_stub2);
-    ofpbuf_use_stub(&ofpacts3, ofpacts_stub3, sizeof ofpacts_stub3);
-    ofputil_decode_flow_mod(&fm1, (ofp_header*)ofpbuf_data(conn.sentMsgs[0]),
-                            proto, &ofpacts1, u16_to_ofp(64), 8);
-    ofputil_decode_flow_mod(&fm2, (ofp_header*)ofpbuf_data(conn.sentMsgs[1]),
-                            proto, &ofpacts2, u16_to_ofp(64), 8);
-    ofputil_decode_packet_out(&po, (ofp_header*)ofpbuf_data(conn.sentMsgs[2]),
-                              &ofpacts3);
-
-    BOOST_CHECK(0 == memcmp(fm1.match.flow.dl_dst, mac2, sizeof(mac2)));
-    BOOST_CHECK_EQUAL(10, fm1.match.flow.regs[5]);
-    BOOST_CHECK_EQUAL(FlowManager::GetLearnEntryCookie(), fm1.new_cookie);
-    struct ofpact* a;
-    int i;
-    i = 0;
-    OFPACT_FOR_EACH (a, fm1.ofpacts, fm1.ofpacts_len) {
-        if (i == 0) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
-        if (i == 1) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
-        if (i == 2) BOOST_CHECK_EQUAL(OFPACT_OUTPUT, a->type);
-        if (i == 3) BOOST_CHECK_EQUAL(OFPACT_CONTROLLER, a->type);
-        ++i;
-    }
-    BOOST_CHECK_EQUAL(4, i);
-
-    BOOST_CHECK(0 == memcmp(fm2.match.flow.dl_src, mac2, sizeof(mac2)));
-    BOOST_CHECK_EQUAL(42, ofp_to_u16(fm2.match.flow.in_port.ofp_port));
-    i = 0;
-    OFPACT_FOR_EACH (a, fm2.ofpacts, fm2.ofpacts_len) {
-        if (i == 0) BOOST_CHECK_EQUAL(OFPACT_GROUP, a->type);
-        ++i;
-    }
-    BOOST_CHECK_EQUAL(1, i);
-
-    BOOST_CHECK_EQUAL(sizeof(packet_buf), po.packet_len);
-    BOOST_CHECK(0 == memcmp(po.packet, packet_buf, sizeof(packet_buf)));
-    i = 0;
-    OFPACT_FOR_EACH (a, po.ofpacts, po.ofpacts_len) {
-        if (i == 0) BOOST_CHECK_EQUAL(OFPACT_GROUP, a->type);
-        ++i;
-    }
-    BOOST_CHECK_EQUAL(1, i);
-    
-    conn.clear();
-
-    // stage2
-    pin1.reason = OFPR_ACTION;
-    pin1.packet = &packet_buf;
-    pin1.packet_len = 512;
-    pin1.total_len = 512;
-    pin1.buffer_id = UINT32_MAX;
-    pin1.table_id = 3;
-    pin1.fmd.in_port = 24;
-    pin1.fmd.regs[0] = 5;
-    pin1.fmd.regs[5] = 10;
-    pin1.fmd.regs[7] = 42;
-
-    b = ofputil_encode_packet_in(&pin1,
-                                 OFPUTIL_P_OF10_NXM,
-                                 NXPIF_NXM);
-    flowManager.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    ofpbuf_delete(b);
-
-    BOOST_CHECK(conn.sentMsgs.size() == 2);
-    ofputil_decode_flow_mod(&fm1, (ofp_header *)ofpbuf_data(conn.sentMsgs[0]),
-                            proto, &ofpacts1, u16_to_ofp(64), 8);
-    ofputil_decode_flow_mod(&fm2, (ofp_header *)ofpbuf_data(conn.sentMsgs[1]),
-                            proto, &ofpacts2, u16_to_ofp(64), 8);
-    BOOST_CHECK(0 == memcmp(fm1.match.flow.dl_dst, mac2, sizeof(mac2)));
-    BOOST_CHECK_EQUAL(10, fm1.match.flow.regs[5]);
-
-    BOOST_CHECK(0 == memcmp(fm2.match.flow.dl_dst, mac1, sizeof(mac1)));
-    BOOST_CHECK(0 == memcmp(fm2.match.flow.dl_src, mac2, sizeof(mac2)));
-    BOOST_CHECK_EQUAL(10, fm2.match.flow.regs[5]);
-    i = 0;
-    OFPACT_FOR_EACH (a, fm2.ofpacts, fm2.ofpacts_len) {
-        if (i == 0) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
-        if (i == 1) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
-        if (i == 2) BOOST_CHECK_EQUAL(OFPACT_GOTO_TABLE, a->type);
-        ++i;
-    }
-    BOOST_CHECK_EQUAL(3, i);
 }
 
 void FlowManagerFixture::mcastTest() {

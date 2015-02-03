@@ -6,6 +6,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <netinet/ip.h>
+
 #include <boost/system/error_code.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/foreach.hpp>
@@ -13,16 +15,22 @@
 #include <modelgbp/gbp/AutoconfigEnumT.hpp>
 
 #include "Packets.h"
+#include "dhcp.h"
+#include "udp.h"
+#include "logging.h"
 
 namespace ovsagent {
+namespace packets {
 
 using std::string;
+using std::vector;
 using boost::shared_ptr;
 using boost::optional;
 using boost::asio::ip::address;
+using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
 
-void Packets::chksum_accum(uint32_t& chksum, uint16_t* addr, size_t len) {
+void chksum_accum(uint32_t& chksum, uint16_t* addr, size_t len) {
     while (len > 1)  {
         chksum += *addr++;
         len -= 2;
@@ -31,15 +39,15 @@ void Packets::chksum_accum(uint32_t& chksum, uint16_t* addr, size_t len) {
         chksum += *(uint8_t*)addr;
 }
 
-uint16_t Packets::chksum_finalize(uint32_t chksum) {
+uint16_t chksum_finalize(uint32_t chksum) {
     while (chksum>>16)
         chksum = (chksum & 0xffff) + (chksum >> 16);
     return ~chksum;
 }
 
-void Packets::construct_auto_ip(boost::asio::ip::address_v6 prefix,
-                                const uint8_t* srcMac,
-                                /* out */ struct in6_addr* dstAddr) {
+void construct_auto_ip(boost::asio::ip::address_v6 prefix,
+                       const uint8_t* srcMac,
+                       /* out */ struct in6_addr* dstAddr) {
     address_v6::bytes_type prefixb = prefix.to_bytes();
     memset(dstAddr, 0, sizeof(struct in6_addr));
     memcpy((char*)dstAddr, prefixb.data(), 8);
@@ -58,11 +66,11 @@ struct nd_opt_def_route_info {
     uint32_t nd_opt_ri_lifetime;
 };
 
-ofpbuf* Packets::compose_icmp6_router_ad(const uint8_t* srcMac,
-                                         const uint8_t* dstMac,
-                                         const struct in6_addr* dstIp,
-                                         const opflex::modb::URI& egUri,
-                                         PolicyManager& polMgr) {
+ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
+                                const uint8_t* dstMac,
+                                const struct in6_addr* dstIp,
+                                const opflex::modb::URI& egUri,
+                                PolicyManager& polMgr) {
     using namespace modelgbp::gbp;
 
     optional<shared_ptr<RoutingDomain> > rd = polMgr.getRDForGroup(egUri);
@@ -207,11 +215,11 @@ ofpbuf* Packets::compose_icmp6_router_ad(const uint8_t* srcMac,
     return b;
 }
 
-ofpbuf* Packets::compose_icmp6_neigh_ad(uint32_t naFlags,
-                                        const uint8_t* srcMac,
-                                        const uint8_t* dstMac,
-                                        const struct in6_addr* srcIp,
-                                        const struct in6_addr* dstIp) {
+ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
+                               const uint8_t* srcMac,
+                               const uint8_t* dstMac,
+                               const struct in6_addr* srcIp,
+                               const struct in6_addr* dstIp) {
     struct ofpbuf* b = NULL;
     struct eth_header* eth = NULL;
     struct ip6_hdr* ip6 = NULL;
@@ -232,10 +240,8 @@ ofpbuf* Packets::compose_icmp6_neigh_ad(uint32_t naFlags,
         ofpbuf_push_zeros(b, sizeof(struct nd_opt_hdr) + 6);
     neigh_ad = (struct nd_neighbor_advert*)
         ofpbuf_push_zeros(b, sizeof(struct nd_neighbor_advert));
-    ip6 = (struct ip6_hdr*)
-        ofpbuf_push_zeros(b, sizeof(struct ip6_hdr));
-    eth = (struct eth_header*)
-        ofpbuf_push_zeros(b, sizeof(struct eth_header));
+    ip6 = (struct ip6_hdr*) ofpbuf_push_zeros(b, sizeof(struct ip6_hdr));
+    eth = (struct eth_header*) ofpbuf_push_zeros(b, sizeof(struct eth_header));
     
     payload = (uint16_t*)neigh_ad;
     payloadLen = sizeof(struct nd_neighbor_advert) +
@@ -279,5 +285,265 @@ ofpbuf* Packets::compose_icmp6_neigh_ad(uint32_t naFlags,
     return b;
 }
 
+static const uint32_t LINK_LOCAL_DHCP = 0xa9fe2020;
+static const size_t MAX_IP = 32;
+static const size_t MAX_ROUTE = 16;
 
+class Routev4 {
+public:
+    Routev4(address_v4 dest_, uint8_t prefixLen_, address_v4 nextHop_)
+        : dest(dest_), prefixLen(prefixLen_), nextHop(nextHop_) {}
+    address_v4 dest;
+    uint8_t prefixLen;
+    address_v4 nextHop;
+};
+
+ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
+                             uint32_t xid,
+                             const uint8_t* srcMac,
+                             const uint8_t* clientMac,
+                             uint32_t clientIp,
+                             uint8_t prefixLen,
+                             const vector<string>& routers,
+                             const vector<string>& dnsServers,
+                             const optional<string>& domain,
+                             const vector<static_route_t>& staticRoutes) {
+    using namespace dhcp;
+    using namespace udp;
+
+    // note that this does a lot of unaligned reads/writes.  Don't try
+    // to run on ARM or Sparc I guess
+
+    struct ofpbuf* b = NULL;
+    struct eth_header* eth = NULL;
+    struct iphdr* ip = NULL;
+    struct udp_hdr* udp = NULL;
+    struct dhcp_hdr* dhcp = NULL;
+    struct dhcp_option_hdr* message_type_opt = NULL;
+    struct dhcp_option_hdr* subnet_mask = NULL;
+    struct dhcp_option_hdr* routers_opt = NULL;
+    struct dhcp_option_hdr* dns = NULL;
+    struct dhcp_option_hdr* domain_opt = NULL;
+    struct dhcp_option_hdr* lease_time = NULL;
+    struct dhcp_option_hdr* server_identifier = NULL;
+    struct dhcp_option_hdr* static_routes = NULL;
+    struct dhcp_option_hdr_base* end = NULL;
+
+    boost::system::error_code ec;
+
+    // Compute size of reply and options
+    size_t router_len = 0;
+    size_t dns_len = 0;
+    size_t domain_len = 0;
+    size_t static_route_len = 0;
+
+    vector<address_v4> routerIps;
+    BOOST_FOREACH(const string& ipstr, routers) {
+        address ip = address::from_string(ipstr, ec);
+        if (ec || !ip.is_v4()) continue;
+        routerIps.push_back(ip.to_v4());
+        if (routerIps.size() >= MAX_IP) break;
+    }
+    if (routerIps.size() > 0) 
+        router_len = 2 + 4*routerIps.size();
+
+    vector<address_v4> dnsIps;
+    BOOST_FOREACH(const string& ipstr, dnsServers) {
+        address ip = address::from_string(ipstr, ec);
+        if (ec || !ip.is_v4()) continue;
+        dnsIps.push_back(ip.to_v4());
+        if (dnsIps.size() > MAX_IP) break;
+    }
+    if (dnsIps.size() >= 0) 
+        dns_len = 2 + 4*dnsIps.size();
+
+    if (domain && domain.get().size() <= 255)
+        domain_len = 2 + domain.get().size();
+
+    vector<Routev4> routes;
+    BOOST_FOREACH(const static_route_t& route, staticRoutes) {
+        address dst = address::from_string(route.dest, ec);
+        if (ec || !dst.is_v4()) continue;
+        address nextHop = address::from_string(route.nextHop, ec);
+        if (ec || !nextHop.is_v4()) continue;
+        uint8_t prefix = route.prefixLen;
+        if (prefix > 32) prefix = 32;
+
+        static_route_len += (prefix / 8) + (prefix % 8 != 0) + 5;
+        routes.push_back(Routev4(dst.to_v4(), prefix, nextHop.to_v4()));
+        if (routes.size() >= MAX_ROUTE) break;
+    }
+    if (static_route_len > 0) static_route_len += 2;
+
+    size_t payloadLen = 
+        sizeof(struct dhcp_hdr) +
+        DHCP_OPTION_MESSAGE_TYPE_LEN + 2 +
+        DHCP_OPTION_IP_LEN + 2 + /* subnet mask */
+        router_len +
+        dns_len +
+        domain_len +
+        DHCP_OPTION_LEASE_TIME_LEN + 2 + 
+        DHCP_OPTION_IP_LEN + 2 + /* server identifier */
+        static_route_len +
+        1 /* end */;
+
+    // allocate the DHCP reply
+    size_t len = sizeof(struct eth_header) + 
+        sizeof(struct iphdr) +
+        sizeof(struct udp_hdr) +
+        payloadLen;
+    b = ofpbuf_new(len);
+    ofpbuf_clear(b);
+    ofpbuf_reserve(b, len);
+    end = (struct dhcp_option_hdr_base*)
+        ofpbuf_push_zeros(b, 1);
+    if (static_route_len > 0)
+        static_routes = 
+            (struct dhcp_option_hdr*) ofpbuf_push_zeros(b, static_route_len);
+    server_identifier = (struct dhcp_option_hdr*)
+        ofpbuf_push_zeros(b, DHCP_OPTION_IP_LEN + 2);
+    lease_time = (struct dhcp_option_hdr*)
+        ofpbuf_push_zeros(b, DHCP_OPTION_LEASE_TIME_LEN + 2);
+    if (domain_len > 0)
+        domain_opt = (struct dhcp_option_hdr*) ofpbuf_push_zeros(b, domain_len);
+    if (dns_len > 0)
+        dns = (struct dhcp_option_hdr*) ofpbuf_push_zeros(b, dns_len);
+    if (router_len > 0)
+        routers_opt =
+            (struct dhcp_option_hdr*) ofpbuf_push_zeros(b, router_len);
+    subnet_mask = (struct dhcp_option_hdr*)
+        ofpbuf_push_zeros(b, DHCP_OPTION_IP_LEN + 2);
+    message_type_opt = (struct dhcp_option_hdr*)
+        ofpbuf_push_zeros(b, DHCP_OPTION_MESSAGE_TYPE_LEN + 2);
+    dhcp = (struct dhcp_hdr*) ofpbuf_push_zeros(b, sizeof(struct dhcp_hdr));
+    udp = (struct udp_hdr*) ofpbuf_push_zeros(b, sizeof(struct udp_hdr));
+    ip = (struct iphdr*) ofpbuf_push_zeros(b, sizeof(struct iphdr));
+    eth = (struct eth_header*) ofpbuf_push_zeros(b, sizeof(struct eth_header));
+
+    // initialize ethernet header
+    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
+    memset(eth->eth_dst, 0xff, ETH_ADDR_LEN);
+    eth->eth_type = htons(ETH_TYPE_IP);
+
+    // initialize IPv4 header
+    ip->version = 4;
+    ip->ihl = sizeof(struct iphdr)/4;
+    ip->tot_len = htons(payloadLen + 
+                        sizeof(struct iphdr) + 
+                        sizeof(struct udp_hdr));
+    ip->ttl = 64;
+    ip->protocol = 17;
+
+    ip->saddr = htonl(LINK_LOCAL_DHCP);
+    ip->daddr = 0xffffffff;
+
+    // compute IP header checksum
+    uint32_t chksum = 0;
+    chksum_accum(chksum, (uint16_t*)ip, sizeof(struct iphdr));
+    ip->check = chksum_finalize(chksum);
+
+    // initialize UDP header
+    udp->src = htons(67);
+    udp->dst = htons(68);
+    udp->len = htons(payloadLen + sizeof(struct udp_hdr));
+
+    // initialize DHCP header
+    dhcp->op = 2;
+    dhcp->htype = 1;
+    dhcp->hlen = 6;
+    dhcp->xid = xid;
+    dhcp->yiaddr = htonl(clientIp);
+    dhcp->siaddr = htonl(LINK_LOCAL_DHCP);
+    memcpy(dhcp->chaddr, clientMac, ETH_ADDR_LEN);
+    dhcp->cookie[0] = 99;
+    dhcp->cookie[1] = 130;
+    dhcp->cookie[2] = 83;
+    dhcp->cookie[3] = 99;
+
+    // initialize DHCP options
+    message_type_opt->code = DHCP_OPTION_MESSAGE_TYPE;
+    message_type_opt->len = DHCP_OPTION_MESSAGE_TYPE_LEN;
+    ((char*)message_type_opt)[2] = message_type;
+
+    subnet_mask->code = DHCP_OPTION_SUBNET_MASK;
+    subnet_mask->len = DHCP_OPTION_IP_LEN;
+    if (prefixLen > 32) prefixLen = 32;
+    *((uint32_t*)((char*)subnet_mask + 2)) =
+        htonl(0xffffffff << (32-prefixLen));
+
+    if (router_len > 0) {
+        routers_opt->code = DHCP_OPTION_ROUTER;
+        routers_opt->len = 4 * routerIps.size();
+        uint32_t* ipptr =
+            (uint32_t*)((char*)routers_opt + 2);
+        BOOST_FOREACH(const address_v4& ip, routerIps) {
+            *ipptr = htonl(ip.to_ulong());
+            ipptr += 1;
+        }
+    }
+
+    if (dns_len > 0) {
+        dns->code = DHCP_OPTION_DNS;
+        dns->len = 4 * dnsIps.size();
+        uint32_t* ipptr =
+            (uint32_t*)((char*)dns + 2);
+        BOOST_FOREACH(const address_v4& ip, dnsIps) {
+            *ipptr = htonl(ip.to_ulong());
+            ipptr += 1;
+        }
+    }
+
+    if (domain_len > 0) {
+        domain_opt->code = DHCP_OPTION_DOMAIN_NAME;
+        domain_opt->len = domain.get().size();
+        memcpy(((char*)domain_opt + 2), domain.get().c_str(),
+               domain.get().size());
+    }
+
+    lease_time->code = DHCP_OPTION_LEASE_TIME;
+    lease_time->len = DHCP_OPTION_LEASE_TIME_LEN;
+    *((uint32_t*)((char*)lease_time + 2)) = htonl(86400);
+
+    server_identifier->code = DHCP_OPTION_SERVER_IDENTIFIER;
+    server_identifier->len = DHCP_OPTION_IP_LEN;
+    *((uint32_t*)((char*)server_identifier + 2)) = htonl(LINK_LOCAL_DHCP);
+
+    if (static_route_len > 0) {
+        static_routes->code = DHCP_OPTION_CLASSLESS_STATIC_ROUTE;
+        static_routes->len = static_route_len - 2;
+        char* cur = (char*)static_routes + 2;
+        BOOST_FOREACH(const Routev4& route, routes) {
+            uint8_t octets = (route.prefixLen / 8) + (route.prefixLen % 8 != 0);
+            uint32_t dest = htonl(route.dest.to_ulong());
+            uint32_t nexthop = htonl(route.nextHop.to_ulong());
+            *cur++ = route.prefixLen;
+            for (uint8_t i = 0; i < octets; i++) {
+                *cur++ = ((char*)&dest)[i];
+            }
+            *((uint32_t*)cur) = nexthop;
+        }
+    }
+
+    end->code = DHCP_OPTION_END;
+
+    // compute UDP checksum
+    chksum = 0;
+    // pseudoheader
+    chksum_accum(chksum, (uint16_t*)&ip->saddr, 4);
+    chksum_accum(chksum, (uint16_t*)&ip->daddr, 4);
+    struct {uint8_t zero; uint8_t proto;} proto;
+    proto.zero = 0;
+    proto.proto = ip->protocol;
+    chksum_accum(chksum, (uint16_t*)&proto, 2);
+    chksum_accum(chksum, (uint16_t*)&udp->len, 2);
+    // payload
+    chksum_accum(chksum, (uint16_t*)udp, 
+                 payloadLen + sizeof(struct udp_hdr));
+    udp->chksum = chksum_finalize(chksum);
+
+    return b;
 }
+
+
+} /* namespace packets */
+} /* namespace ovsagent */

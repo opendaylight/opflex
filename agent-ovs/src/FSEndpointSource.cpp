@@ -43,6 +43,7 @@ using boost::optional;
 namespace fs = boost::filesystem;
 using std::string;
 using std::runtime_error;
+using std::pair;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 
@@ -128,6 +129,17 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
     static const std::string EP_ATTRIBUTES("attributes");
 
+    static const std::string DHCP("dhcp");
+    static const std::string DHCP_IP("ip");
+    static const std::string DHCP_PREFIX_LEN("prefix-len");
+    static const std::string DHCP_ROUTERS("routers");
+    static const std::string DHCP_DNS_SERVERS("dns-servers");
+    static const std::string DHCP_DOMAIN("domain");
+    static const std::string DHCP_STATIC_ROUTES("static-routes");
+    static const std::string DHCP_STATIC_ROUTE_DEST("dest");
+    static const std::string DHCP_STATIC_ROUTE_DEST_PREFIX("dest-prefix");
+    static const std::string DHCP_STATIC_ROUTE_NEXTHOP("next-hop");
+
     try {
         using boost::property_tree::ptree;
         Endpoint newep;
@@ -181,10 +193,66 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
         if (promisc)
             newep.setPromiscuousMode(promisc.get());
 
-        optional<ptree&> attrs = properties.get_child_optional(EP_ATTRIBUTES);
+        optional<ptree&> attrs =
+            properties.get_child_optional(EP_ATTRIBUTES);
         if (attrs) {
             BOOST_FOREACH(const ptree::value_type &v, attrs.get()) {
                 newep.addAttribute(v.first, v.second.data());
+            }
+        }
+
+        optional<ptree&> dhcp = properties.get_child_optional(DHCP);
+        if (dhcp) {
+            BOOST_FOREACH(const ptree::value_type &v, dhcp.get()) {
+                Endpoint::DHCPConfig c;
+                optional<string> ip = v.second.get_optional<string>(DHCP_IP);
+                if (ip)
+                    c.setIpAddress(ip.get());
+
+                optional<uint8_t> prefix =
+                    v.second.get_optional<uint8_t>(DHCP_PREFIX_LEN);
+                if (prefix)
+                    c.setPrefixLen(prefix.get());
+
+                optional<const ptree&> routers =
+                    v.second.get_child_optional(DHCP_ROUTERS);
+                if (routers) {
+                    BOOST_FOREACH(const ptree::value_type &u, routers.get())
+                        c.addRouter(u.second.data());
+                }
+
+                optional<const ptree&> dns =
+                    v.second.get_child_optional(DHCP_DNS_SERVERS);
+                if (dns) {
+                    BOOST_FOREACH(const ptree::value_type &u, dns.get())
+                        c.addDnsServer(u.second.data());
+                }
+
+                optional<string> domain =
+                    v.second.get_optional<string>(DHCP_DOMAIN);
+                if (domain)
+                    c.setDomain(domain.get());
+
+                optional<const ptree&> staticRoutes = 
+                    v.second.get_child_optional(DHCP_STATIC_ROUTES);
+                if (staticRoutes) {
+                    BOOST_FOREACH(const ptree::value_type &u,
+                                  staticRoutes.get()) {
+                        optional<string> dst = u.second.get_optional<string>
+                            (DHCP_STATIC_ROUTE_DEST);
+                        uint8_t dstPrefix = 
+                            u.second.get<uint8_t>
+                            (DHCP_STATIC_ROUTE_DEST_PREFIX, 32);
+                        optional<string> nextHop = u.second.get_optional<string>
+                            (DHCP_STATIC_ROUTE_NEXTHOP);
+                        if (dst && nextHop)
+                            c.addStaticRoute(dst.get(),
+                                             dstPrefix,
+                                             nextHop.get());
+                    }
+                }
+
+                newep.addDhcpConfig(c);
             }
         }
 
@@ -214,6 +282,7 @@ void FSEndpointSource::deleteEndpoint(fs::path filePath) {
                       << it->second 
                       << " at " << filePath;
             removeEndpoint(it->second);
+            knownEps.erase(it);
         }
     } catch (const std::exception& ex) {
         LOG(ERROR) << "Could not delete endpoint for "

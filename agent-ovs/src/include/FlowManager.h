@@ -25,6 +25,8 @@
 #include "FlowExecutor.h"
 #include "IdGenerator.h"
 #include "JsonCmdExecutor.h"
+#include "ActionBuilder.h"
+#include "PacketInHandler.h"
 
 namespace ovsagent {
 
@@ -38,7 +40,6 @@ namespace ovsagent {
 class FlowManager : public EndpointListener,
                     public PolicyListener,
                     public OnConnectListener,
-                    public MessageHandler,
                     public PortStatusListener {
 public:
     /**
@@ -167,6 +168,13 @@ public:
      * @param encapType the encap type
      */
     void SetEncapType(EncapType encapType);
+
+    /**
+     * Get the encap type to use for packets sent over the network
+     * @return the encap type
+     */
+    EncapType GetEncapType() { return encapType; }
+
     /**
      * Set the openflow interface name for encapsulated packets
      * @param encapIface the interface name
@@ -210,15 +218,23 @@ public:
      * Enable or disable the virtual routing
      *
      * @param virtualRouterEnabled true to enable the router
+     * @param routerAdv true to enable IPv6 router advertisements
+     * @param mac the MAC address to use as the router MAC formatted
+     * as a colon-separated string of 6 hex-encoded bytes.
      */
-    void SetVirtualRouter(bool virtualRouterEnabled);
+    void SetVirtualRouter(bool virtualRouterEnabled,
+                          bool routerAdv,
+                          const std::string& mac);
 
     /**
-     * Set the MAC address to use for the virtual router
-     * @param mac the MAC address formatted as a colon-separated
-     * string of 6 hex-encoded bytes.
+     * Enable or disable the virtual DHCP server
+     *
+     * @param dhcpEnabled true to enable the server
+     * @param mac the MAC address to use as the dhcp MAC formatted as
+     * a colon-separated string of 6 hex-encoded bytes.
      */
-    void SetVirtualRouterMac(const std::string& mac);
+    void SetVirtualDHCP(bool dhcpEnabled,
+                        const std::string& mac);
 
     /**
      * Set the flow ID cache directory
@@ -244,6 +260,12 @@ public:
      * @return the router MAC
      */
     const uint8_t *GetRouterMacAddr() { return routerMac; }
+
+    /**
+     * Get the DHCP MAC address as an array of 6 bytes
+     * @return the DHCP MAC
+     */
+    const uint8_t *GetDHCPMacAddr() { return routerMac; }
 
     /**
      * Set the delay after which flow-manager will attempt to reconcile
@@ -309,7 +331,7 @@ public:
     static ovs_be64 GetProactiveLearnEntryCookie();
 
     /**
-     * Get the cookie used for cookies that direct neighbor discovery
+     * Get the cookie used for flows that direct neighbor discovery
      * packets to the controller
      *
      * @return flow-cookie for ND packets
@@ -317,13 +339,34 @@ public:
     static ovs_be64 GetNDCookie();
 
     /**
+     * Get the cookie used for flows that direct DHCP packets to the
+     * controller
+     *
+     * @param v4 true for dhcpv4, false for v6
+     * @return flow-cookie for DHCPv4 packets
+     */
+    static ovs_be64 GetDHCPCookie(bool v4 = true);
+
+    /**
+     * Set fill in tunnel metadata in an action builder
+     * @param ab the action builder
+     * @param type the encap type
+     * @param tunDst the tunnel destination
+     */
+    static void
+    SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type, 
+                            const boost::asio::ip::address& tunDst);
+
+    /**
+     * Get the promiscuous-mode ID equivalent for a flood domain ID
+     * @param fgrpId the flood domain Id
+     */
+    static uint32_t getPromId(uint32_t fgrpId);
+
+    /**
      * Maximum flow priority of the entries in policy table.
      */
     static const uint16_t MAX_POLICY_RULE_PRIORITY;
-
-    // see: MessageHandler
-    void Handle(SwitchConnection *swConn,
-                ofptype type, ofpbuf *msg);
 
     /**
      * Indicate that the agent is connected to its Opflex peer.
@@ -497,6 +540,9 @@ private:
     boost::optional<boost::asio::ip::address> mcastTunDst;
     bool virtualRouterEnabled;
     uint8_t routerMac[6];
+    bool routerAdv;
+    bool virtualDHCPEnabled;
+    uint8_t dhcpMac[6];
     TableState flowTables[NUM_FLOW_TABLES];
     std::string flowIdCache;
 
@@ -604,6 +650,8 @@ private:
     friend class FlowSyncer;
 
     FlowSyncer flowSyncer;
+
+    PacketInHandler pktInHandler;
 
     volatile bool stopping;
 

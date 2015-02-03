@@ -12,7 +12,7 @@
 
 #include "Packets.h"
 
-using ovsagent::Packets;
+using namespace ovsagent::packets;
 
 BOOST_AUTO_TEST_SUITE(Packets_test)
 
@@ -28,13 +28,13 @@ BOOST_AUTO_TEST_CASE(chksum) {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1};
 
     uint32_t chksum = 0;
-    Packets::chksum_accum(chksum, (uint16_t*)(packet+14+8), 32);
+    chksum_accum(chksum, (uint16_t*)(packet+14+8), 32);
     uint32_t plen = htonl(24);
-    Packets::chksum_accum(chksum, (uint16_t*)&plen, 4);
+    chksum_accum(chksum, (uint16_t*)&plen, 4);
     uint16_t nxthdr = htons(58);
-    Packets::chksum_accum(chksum, (uint16_t*)&nxthdr, 2);
-    Packets::chksum_accum(chksum, (uint16_t*)(packet+14+40), 24);
-    uint16_t result = htons(Packets::chksum_finalize(chksum));
+    chksum_accum(chksum, (uint16_t*)&nxthdr, 2);
+    chksum_accum(chksum, (uint16_t*)(packet+14+40), 24);
+    uint16_t result = htons(chksum_finalize(chksum));
 
     BOOST_CHECK_EQUAL(0x0ae0, result);
 }

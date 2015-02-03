@@ -76,7 +76,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         policy::Universe::resolve(framework).get();
 
     Mutator mutator(framework, "policyreg");
-    universe->addPlatformConfig("c7820284-fa76-44d5-948c-9de464f1c047")
+    universe->addPlatformConfig("openstack")
         ->setMulticastGroupIP("224.1.1.1");
 
     space = universe->addPolicySpace("test");
