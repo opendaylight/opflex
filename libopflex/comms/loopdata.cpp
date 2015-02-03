@@ -49,12 +49,12 @@ void internal::Peer::LoopData::onPrepareLoop() {
         uv_walk(prepare_.loop, walkAndCountHandlesCb, &countHandle);
 
         if (countHandle.counter) {
-            LOG(INFO) << "Still waiting on " << countHandle.counter << " handles";
+            LOG(DEBUG) << "Still waiting on " << countHandle.counter << " handles";
 
             return;
         }
 
-        LOG(INFO) << this << " Stopping and closing loop watcher";
+        LOG(DEBUG) << this << " Stopping and closing loop watcher";
         uv_prepare_stop(&prepare_);
         uv_close((uv_handle_t*)&prepare_, &fini);
 
@@ -78,7 +78,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
     if (peers[RETRY_TO_CONNECT].begin() !=
         peers[RETRY_TO_CONNECT].end()) {
 
-        LOG(INFO) << "retrying first RETRY_TO_CONNECT peer";
+        LOG(DEBUG) << "retrying first RETRY_TO_CONNECT peer";
 
         /* retry just the first active peer in the queue */
         peers[RETRY_TO_CONNECT]
@@ -105,7 +105,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
     lastRun_ = now;
 
 prepared:
-    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG>, this);
+    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG3>, this);
 
     if (peers[RETRY_TO_CONNECT].begin() !=
         peers[RETRY_TO_CONNECT].end()) {
@@ -129,13 +129,13 @@ void internal::Peer::LoopData::onPrepareLoop(uv_prepare_t * h) {
 }
 
 void internal::Peer::LoopData::fini(uv_handle_t * h) {
-    LOG(INFO);
+    LOG(DEBUG);
 
     delete static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data);
 }
 
 void internal::Peer::LoopData::destroy(bool now) {
-    LOG(INFO);
+    LOG(DEBUG);
 
     assert(prepare_.data == this);
 
@@ -230,7 +230,7 @@ void internal::Peer::LoopData::walkAndCountHandlesCb(
       default: type = "<unknown>";
     }
 
-    LOG(INFO)
+    LOG(DEBUG)
         << countHandle->loopData
         << " still waiting on pending handle of type "
         << type
@@ -253,15 +253,15 @@ void Peer::LoopData::RetryPeer::operator () (Peer *peer)
 }
 
 void Peer::LoopData::up() {
-    LOG(DEBUG) << this
+    LOG(DEBUG3) << this
         << " LoopRefCnt: " << refCount_ << " -> " << refCount_ + 1;
 
     ++refCount_;
 }
 
 void Peer::LoopData::down() {
-    LOG(DEBUG) << " Down() on Loop";
-    LOG(DEBUG) << this
+    LOG(DEBUG3) << " Down() on Loop";
+    LOG(DEBUG3) << this
         << " LoopRefCnt: " << refCount_ << " -> " << refCount_ - 1;
 
     assert(refCount_);
@@ -269,8 +269,8 @@ void Peer::LoopData::down() {
     --refCount_;
 
     if (destroying_ && !refCount_) {
-        LOG(INFO) << this << " walking uv_loop before stopping it";
-        uv_walk(prepare_.loop, walkAndDumpHandlesCb< ERROR >, this);
+        LOG(DEBUG2) << this << " walking uv_loop before stopping it";
+        uv_walk(prepare_.loop, walkAndDumpHandlesCb< DEBUG2 >, this);
 
         CloseHandle closeHandle = { this, NULL };
 
@@ -280,8 +280,8 @@ void Peer::LoopData::down() {
 }
 
 Peer::LoopData::~LoopData() {
-    LOG(DEBUG) << "Delete on Loop";
-    LOG(DEBUG) << this << " is being deleted";
+    LOG(DEBUG3) << "Delete on Loop";
+    LOG(DEBUG3) << this << " is being deleted";
 #ifdef COMMS_DEBUG_OBJECT_COUNT
     --counter;
 #endif
@@ -300,7 +300,7 @@ Peer::LoopData::PeerDisposer::PeerDisposer(bool now)
 
 void Peer::up() {
 
-    LOG(DEBUG) << this
+    LOG(DEBUG3) << this
         << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ + 1;
 
     ++uvRefCnt_;

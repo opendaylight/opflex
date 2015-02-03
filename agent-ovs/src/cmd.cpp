@@ -113,7 +113,28 @@ void setLoggingLevel(const std::string& levelstr) {
 #endif
 
     if (levelstr == "debug") {
-        level = OFLogHandler::DEBUG;
+        level = OFLogHandler::DEBUG1;
+#ifdef USE_BOOST_LOG
+        blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
+    } else if (levelstr == "debug2") {
+        level = OFLogHandler::DEBUG2;
+#ifdef USE_BOOST_LOG
+        blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
+    } else if (levelstr == "debug3") {
+        level = OFLogHandler::DEBUG3;
+#ifdef USE_BOOST_LOG
+        blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
+    } else if (levelstr == "debug4") {
+        level = OFLogHandler::DEBUG3;
 #ifdef USE_BOOST_LOG
         blevel = boost::log::trivial::debug;
 #else
