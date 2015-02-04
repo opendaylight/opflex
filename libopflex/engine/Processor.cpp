@@ -212,6 +212,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
                            bool checkTime) {
     uint64_t curTime = now(&proc_loop);
     if (checkTime && 
+        (i.details->resolve_time != 0) &&
         (curTime < (i.details->resolve_time + LOCAL_REFRESH_RATE/2)))
         return false;
     i.details->resolve_time = curTime;

@@ -95,7 +95,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
 
     if (now - lastRun_ > 15000) {
 
-        LOG(INFO) << "retrying all RETRY_TO_LISTEN peers";
+        LOG(DEBUG) << "retrying all RETRY_TO_LISTEN peers";
 
         /* retry all listeners */
         peers[RETRY_TO_LISTEN]
