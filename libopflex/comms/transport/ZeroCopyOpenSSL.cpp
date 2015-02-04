@@ -98,7 +98,7 @@ struct Cb< ZeroCopyOpenSSL >::StaticHelpers {
 ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
         CommunicationPeer const * peer) {
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     /* we have to process the decrypted data, if any is available */
 
@@ -118,7 +118,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
          * bound */
         tryRead = std::min<size_t>(pending, 24576);
 
-        LOG(DEBUG4)
+        LOG(DEBUG)
             << peer
             << " has "
             << pending
@@ -147,7 +147,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 #endif
 
         if (nread > 0) {
-            LOG(DEBUG4)
+            LOG(DEBUG)
                 << peer
                 << " just decrypted "
                 << nread
@@ -160,7 +160,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
             peer->readBuffer(buffer, nread, true);
             totalRead += nread;
         } else {
-            LOG(DEBUG4)
+            LOG(DEBUG)
                 << peer
                 << " nread = "
                 << nread
@@ -177,7 +177,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 
 #ifdef WE_COULD_ALWAYS_CHECK_FOR_PENDING_DATA
         if (nread < tryRead) {
-            LOG(DEBUG4)
+            LOG(DEBUG)
                 << peer
                 << " Expected to decrypt "
                 << tryRead
@@ -200,7 +200,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
         const_cast<CommunicationPeer *>(peer)->onDisconnect();
     }
 
-    LOG(DEBUG4)
+    LOG(DEBUG)
         << peer
         << " Returning: "
         << (totalRead ?: nread)
@@ -213,7 +213,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
         CommunicationPeer const * peer) {
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     assert(!peer->pendingBytes_);
     if (peer->pendingBytes_) {
@@ -222,7 +222,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 
     /* we have to encrypt the plaintext data, if any is available */
     if (!peer->s_.deque_.size()) {
-        LOG(DEBUG4)
+        LOG(DEBUG)
             << peer
             << " has no data to send"
         ;
@@ -257,7 +257,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
         if (nwrite > 0) {
             totalWrite += nwrite;
         } else {
-            LOG(DEBUG4)
+            LOG(DEBUG)
                 << peer
                 << " nwrite = "
                 << nwrite
@@ -294,7 +294,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
             peer->s_.deque_.begin() + totalWrite
     );
 
-    LOG(DEBUG4)
+    LOG(DEBUG)
         << peer
         << " Returning: "
         << (totalWrite ?: nwrite)
@@ -307,7 +307,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
         CommunicationPeer const * peer) {
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     if (peer->pendingBytes_) {
         LOG(WARNING)
@@ -328,7 +328,7 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
             &e->bioExternal_,
             (char**)&buf.iov_base);
 
-    LOG(DEBUG4)
+    LOG(DEBUG)
         << peer
         << ": "
         << nread
@@ -336,7 +336,7 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
     ;
 
     if (nread <= 0) {
-        LOG(DEBUG4)
+        LOG(DEBUG)
             << peer
             << " nread = "
             << nread
@@ -365,7 +365,7 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
 template<>
 int Cb< ZeroCopyOpenSSL >::send_cb(CommunicationPeer const * peer) {
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     assert(!peer->pendingBytes_);
 
@@ -377,7 +377,7 @@ int Cb< ZeroCopyOpenSSL >::send_cb(CommunicationPeer const * peer) {
 template<>
 void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     ZeroCopyOpenSSL * e = peer
         ->getEngine<ZeroCopyOpenSSL>();
@@ -443,7 +443,7 @@ void Cb< ZeroCopyOpenSSL >::alloc_cb(
 
     CommunicationPeer * peer = comms::internal::Peer::get<CommunicationPeer>(h);
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     ZeroCopyOpenSSL * e = peer->getEngine<ZeroCopyOpenSSL>();
 
@@ -484,11 +484,11 @@ void Cb< ZeroCopyOpenSSL >::on_read(
 
     CommunicationPeer * peer = comms::internal::Peer::get<CommunicationPeer>(h);
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     if (nread < 0) {
 
-        LOG(DEBUG4)
+        LOG(DEBUG)
             << "nread = "
             << nread
             << " ["
@@ -503,7 +503,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
 
     if (nread > 0) {
 
-        LOG(DEBUG4)
+        LOG(DEBUG)
             << peer
             << " read "
             << nread
@@ -564,7 +564,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
             Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(peer);
 
         if (decrypted <= 0) {
-            LOG(DEBUG4)
+            LOG(DEBUG)
                 << peer
                 << " decrypted = "
                 << decrypted
@@ -582,7 +582,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
 
                 if (peer->pendingBytes_) {
 
-                    LOG(DEBUG4)
+                    LOG(DEBUG)
                         << peer
                         << " Retried to send and emitted "
                         << peer->pendingBytes_
@@ -599,7 +599,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
                     (void) Cb< ZeroCopyOpenSSL >::StaticHelpers::
                         tryToSend(peer);
 
-                    LOG(DEBUG4)
+                    LOG(DEBUG)
                         << peer
                         << " Found no handshake data,"
                            " but found actual payload and sent "
@@ -659,7 +659,7 @@ void ZeroCopyOpenSSL::lockingCallback(
 
 int ZeroCopyOpenSSL::initOpenSSL(bool forMultipleThreads) {
 
-    LOG(DEBUG);
+    LOG(INFO);
 
     assert(!rwlock);
 
@@ -704,7 +704,7 @@ int ZeroCopyOpenSSL::initOpenSSL(bool forMultipleThreads) {
 
 void ZeroCopyOpenSSL::finiOpenSSL() {
 
-    LOG(DEBUG);
+    LOG(INFO);
 
     if (rwlock) {
 
@@ -787,7 +787,7 @@ ZeroCopyOpenSSL::~ZeroCopyOpenSSL() {
 
 void ZeroCopyOpenSSL::infoCallback(SSL const *, int where, int ret) {
 
-    LOG(DEBUG2)
+    LOG(DEBUG)
         << " ret = "
         << ret
         << " where = "

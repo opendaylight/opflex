@@ -34,7 +34,7 @@ int ::yajr::initLoop(uv_loop_t * loop) {
 }
 
 void ::yajr::finiLoop(uv_loop_t * loop) {
-    LOG(DEBUG);
+    LOG(INFO);
 
     static_cast< ::yajr::comms::internal::Peer::LoopData *>(loop->data)->destroy();
 
@@ -80,7 +80,7 @@ void on_close(uv_handle_t * h) {
 
 void on_write(uv_write_t *req, int status) {
 
-    LOG(DEBUG4);
+    LOG(DEBUG);
 
     if (status == UV_ECANCELED || status == UV_ECONNRESET) {
         LOG(INFO) << "[" << uv_err_name(status) << "] " << uv_strerror(status);

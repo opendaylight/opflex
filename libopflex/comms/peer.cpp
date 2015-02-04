@@ -61,7 +61,7 @@ std::ostream& operator << (
 CommunicationPeer * Peer::get(uv_write_t * r) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(r->data);
 
-    LOG(DEBUG3)
+    LOG(DEBUG)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -74,7 +74,7 @@ CommunicationPeer * Peer::get(uv_write_t * r) {
 CommunicationPeer * Peer::get(uv_timer_t * h) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(h->data);
 
-    LOG(DEBUG3)
+    LOG(DEBUG)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -88,7 +88,7 @@ ActivePeer * Peer::get(uv_connect_t * r) {
 
     ActivePeer * peer = Peer::get<ActivePeer>(r->handle);
 
-    LOG(DEBUG3)
+    LOG(DEBUG)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -101,7 +101,7 @@ ActivePeer * Peer::get(uv_connect_t * r) {
 ActivePeer * Peer::get(uv_getaddrinfo_t * r) {
     ActivePeer * peer = static_cast<ActivePeer *>(r->data);
 
-    LOG(DEBUG3)
+    LOG(DEBUG)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -117,7 +117,7 @@ bool Peer::__checkInvariants()
 #else
     const
 {
-    LOG(DEBUG3)
+    LOG(DEBUG)
         << this
         << " true = true"
     ;
@@ -127,14 +127,14 @@ bool Peer::__checkInvariants()
 
 void Peer::down() {
 
-    LOG(DEBUG3) << this 
+    LOG(DEBUG) << this 
         << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ - 1;
 
     if (--uvRefCnt_) {
         return;
     }
 
-    LOG(DEBUG2) << "deleting " << this;
+    LOG(DEBUG) << "deleting " << this;
 
     onDelete();
 
@@ -142,13 +142,13 @@ void Peer::down() {
 }
 
 void Peer::insert(Peer::LoopData::PeerState peerState) {
-    LOG(DEBUG2) << this << " is being inserted in " << peerState;
+    LOG(DEBUG) << this << " is being inserted in " << peerState;
 
     Peer::LoopData::getPeerList(getUvLoop(), peerState)->push_back(*this);
 }
 
 void Peer::unlink() {
-    LOG(DEBUG3) << this << " manually unlinking";
+    LOG(DEBUG) << this << " manually unlinking";
 
     SafeListBaseHook::unlink();
 

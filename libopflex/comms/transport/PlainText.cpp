@@ -35,14 +35,14 @@ TransportEngine< PlainText > & PlainText::getPlainTextTransport() {
 template<>
 int Cb< PlainText >::send_cb(CommunicationPeer const * peer) {
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     assert(!peer->pendingBytes_);
     peer->pendingBytes_ = peer->s_.deque_.size();
 
     if (!peer->pendingBytes_) {
         /* great success! */
-        LOG(DEBUG2) << "Nothing left to be sent!";
+        LOG(DEBUG) << "Nothing left to be sent!";
 
         return 0;
     }
@@ -61,7 +61,7 @@ int Cb< PlainText >::send_cb(CommunicationPeer const * peer) {
 template<>
 void Cb< PlainText >::on_sent(CommunicationPeer const * peer) {
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     peer->s_.deque_.erase(
             peer->s_.deque_.begin(),
@@ -80,7 +80,7 @@ void Cb< PlainText >::alloc_cb(
     /* this is really up to us, looks like libuv always suggests 64kB anyway */
     size_t bufsize = (size > 4096) ? size : 4096;
 
-    LOG(DEBUG4)
+    LOG(DEBUG)
         << comms::internal::Peer::get<CommunicationPeer>(_)
         << " suggested size = "
         << size
@@ -101,7 +101,7 @@ void Cb< PlainText >::on_read(
 
     CommunicationPeer * peer = comms::internal::Peer::get<CommunicationPeer>(h);
 
-    LOG(DEBUG4) << peer;
+    LOG(DEBUG) << peer;
 
     if (nread < 0) {
 
@@ -120,7 +120,7 @@ void Cb< PlainText >::on_read(
 
     if (nread > 0) {
 
-        LOG(DEBUG4)
+        LOG(DEBUG)
             << peer
             << " read "
             << nread

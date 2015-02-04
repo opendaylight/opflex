@@ -30,7 +30,7 @@ MessageFactory::InboundRequest(
         rapidjson::Value const & params,
         char const * method,
         rapidjson::Value const & id) {
-    LOG(DEBUG4);
+    LOG(DEBUG);
 #undef  PERFECT_RET_VAL
 #define PERFECT_RET_VAL(method) \
     new (std::nothrow) InbReq<&method>(peer, params, id)
