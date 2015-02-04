@@ -71,6 +71,16 @@ void internal::Peer::LoopData::onPrepareLoop() {
     peers[TO_LISTEN]
         .clear_and_dispose(RetryPeer());
 
+#ifndef NDEBUG
+    for (size_t state = 0; state < TOTAL_STATES; ++state) {
+        for (Peer::List::const_iterator peer = peers[state].cbegin();
+                peer != peers[state].cend();
+                ++peer) {
+            peer->__checkInvariants();
+        }
+    }
+#endif
+
     if (now - lastRun_ < 750) {
         goto prepared;
     }
