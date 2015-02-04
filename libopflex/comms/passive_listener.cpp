@@ -130,7 +130,7 @@ void ::yajr::comms::internal::ListeningPeer::retry() {
 
     insert(internal::Peer::LoopData::LISTENING);
 
-    LOG(DEBUG2) << "listening!";
+    LOG(DEBUG) << "listening!";
 
     connected_ = 1;
 
@@ -162,7 +162,7 @@ namespace internal {
 void on_passive_connection(uv_stream_t * server_handle, int status)
 {
 
-    LOG(DEBUG4);
+    LOG(DEBUG);
 
     assert(status == 0);
     ListeningPeer * listener = Peer::get<ListeningPeer>(server_handle);
@@ -218,7 +218,7 @@ int ::yajr::comms::internal::ListeningPeer::setAddrFromIpAndPort(
         const std::string& ip_address,
         uint16_t port) {
 
-    LOG(DEBUG4);
+    LOG(DEBUG);
 
 #ifndef NDEBUG
     /* make Valgrind happy */
