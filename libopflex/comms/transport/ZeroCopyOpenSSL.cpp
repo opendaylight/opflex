@@ -234,7 +234,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 
     ssize_t totalWrite = 0;
     ssize_t nwrite = 0;
-    size_t tryWrite;
+    ssize_t tryWrite;
 
     std::vector<iovec> iovIn =
         more::get_iovec(
@@ -255,12 +255,29 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
                 tryWrite);
 
         if (nwrite > 0) {
+
             totalWrite += nwrite;
-        } else {
+
             LOG(DEBUG)
                 << peer
                 << " nwrite = "
                 << nwrite
+                << " tryWrite = "
+                << tryWrite
+                << " totalWrite = "
+                << totalWrite
+            ;
+
+        } else {
+
+            LOG(DEBUG)
+                << peer
+                << " nwrite = "
+                << nwrite
+                << " tryWrite = "
+                << tryWrite
+                << " totalWrite = "
+                << totalWrite
                 << " RETRY="
                 << BIO_should_retry     (&e->bioSSL_)
                 << " R="
@@ -270,6 +287,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
                 << " S="
                 << BIO_should_io_special(&e->bioSSL_)
             ;
+
         }
 
         if (nwrite < tryWrite) {
