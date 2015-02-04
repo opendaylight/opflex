@@ -66,29 +66,36 @@ BOOST_GLOBAL_FIXTURE( CommsTests );
 typedef std::pair<size_t, size_t> range_t;
 
 class CommsFixture {
+  public:
+    static uv_loop_t * current_loop;
+    static uv_loop_t * loopSelector(void *);
   private:
     uv_prepare_t prepare_;
     uv_timer_t timer_;
-    uv_loop_t * loop_;
+    uv_loop_t loop_;
 
   protected:
-    CommsFixture() : loop_(uv_default_loop()) {
+    CommsFixture() {
+
+        CommsFixture::current_loop = &loop_;
+
+        uv_loop_init(CommsFixture::current_loop);
 
         LOG(INFO) << "\n\n\n\n\n\n\n\n";
 
         prepare_.data = timer_.data = this;
 
-        int rc = ::yajr::initLoop(loop_);
+        int rc = ::yajr::initLoop(CommsFixture::current_loop);
 
         BOOST_CHECK(!rc);
 
         for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
-            BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+            BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                         internal::Peer::LoopData::PeerState(i))
                     ->size(), 0);
         }
 
-        internal::Peer::LoopData::getLoopData(loop_)->up();
+        internal::Peer::LoopData::getLoopData(CommsFixture::current_loop)->up();
 
 #ifdef YAJR_HAS_OPENSSL
         ZeroCopyOpenSSL::initOpenSSL(false); // false because we don't use multiple threads
@@ -123,11 +130,13 @@ class CommsFixture {
         ZeroCopyOpenSSL::finiOpenSSL();
 #endif
 
-        ::yajr::finiLoop(uv_default_loop());
+        ::yajr::finiLoop(CommsFixture::current_loop);
 
     }
 
     ~CommsFixture() {
+
+        uv_loop_close(CommsFixture::current_loop);
 
         LOG(INFO) << "\n\n\n\n\n\n\n\n";
 
@@ -152,52 +161,52 @@ class CommsFixture {
 
         size_t m;
         if((m=internal::Peer::LoopData::getPeerList(
-                    uv_default_loop(),
+                    CommsFixture::current_loop,
                     internal::Peer::LoopData::ONLINE)->size())) {
             final_peers += m;
             dbgLog << " online: " << m;
         }
         if((m=internal::Peer::LoopData::getPeerList(
-                    uv_default_loop(),
+                    CommsFixture::current_loop,
                     internal::Peer::LoopData::LISTENING)->size())) {
             final_peers += m;
             dbgLog << " listening: " << m;
         }
 
         if((m=internal::Peer::LoopData::getPeerList(
-                    uv_default_loop(),
+                    CommsFixture::current_loop,
                     internal::Peer::LoopData::TO_RESOLVE)->size())) {
             transient_peers += m;
             dbgLog << " to_resolve: " << m;
         }
         if((m=internal::Peer::LoopData::getPeerList(
-                    uv_default_loop(),
+                    CommsFixture::current_loop,
                     internal::Peer::LoopData::TO_LISTEN)->size())) {
             transient_peers += m;
             dbgLog << " to_listen: " << m;
         }
 
         if((m=internal::Peer::LoopData::getPeerList(
-                    uv_default_loop(),
+                    CommsFixture::current_loop,
                     internal::Peer::LoopData::RETRY_TO_CONNECT)->size())) {
             final_peers += m;
             dbgLog << " retry-connecting: " << m;
         }
         if((m=internal::Peer::LoopData::getPeerList(
-                    uv_default_loop(),
+                    CommsFixture::current_loop,
                     internal::Peer::LoopData::RETRY_TO_LISTEN)->size())) {
             final_peers += m;
             dbgLog << " retry-listening: " << m;
         }
         if((m=internal::Peer::LoopData::getPeerList(
-                    uv_default_loop(),
+                    CommsFixture::current_loop,
                     internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)->size())) {
             /* this is not a "final" state, from a test's perspective */
             transient_peers += m;
             dbgLog << " attempting: " << m;
         }
         if((m=internal::Peer::LoopData::getPeerList(
-                    uv_default_loop(),
+                    CommsFixture::current_loop,
                     internal::Peer::LoopData::PENDING_DELETE)->size())) {
             /* this is not a "final" state, from a test's perspective */
             transient_peers += m;
@@ -254,7 +263,7 @@ class CommsFixture {
         LOG(DEBUG) << "no peers left";
 
         uv_idle_stop(handle);
-        uv_stop(uv_default_loop());
+        uv_stop(CommsFixture::current_loop);
 
     }
 #endif
@@ -267,8 +276,9 @@ class CommsFixture {
 
 #if 1
         for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
-            internal::Peer::List * pL = internal::Peer::LoopData::getPeerList(uv_default_loop(),
-                        internal::Peer::LoopData::PeerState(i));
+            internal::Peer::List * pL = internal::Peer::LoopData::getPeerList(
+                    CommsFixture::current_loop,
+                    internal::Peer::LoopData::PeerState(i));
 
             dbgLog << "\n";
 
@@ -310,8 +320,9 @@ class CommsFixture {
         /* check all easily reachable peers' invariants */
 #if 1
         for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
-            internal::Peer::List * pL = internal::Peer::LoopData::getPeerList(uv_default_loop(),
-                        internal::Peer::LoopData::PeerState(i));
+            internal::Peer::List * pL = internal::Peer::LoopData::getPeerList(
+                    CommsFixture::current_loop,
+                    internal::Peer::LoopData::PeerState(i));
 
             dbgLog << "\n";
 
@@ -425,15 +436,15 @@ class CommsFixture {
         required_event_counter = num_events;
         expect_timeout = should_timeout;
 
-        internal::Peer::LoopData::getLoopData(loop_)->up();
-        uv_prepare_init(uv_default_loop(), &prepare_);
+        internal::Peer::LoopData::getLoopData(CommsFixture::current_loop)->up();
+        uv_prepare_init(CommsFixture::current_loop, &prepare_);
         uv_prepare_start(&prepare_, check_peer_db_cb);
 
-        uv_timer_init(uv_default_loop(), &timer_);
+        uv_timer_init(CommsFixture::current_loop, &timer_);
         uv_timer_start(&timer_, timeout_cb, timeout, 0);
         uv_unref((uv_handle_t*) &timer_);
 
-        uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+        uv_run(CommsFixture::current_loop, UV_RUN_DEFAULT);
 
     }
 
@@ -449,6 +460,10 @@ size_t CommsFixture::required_event_counter;
 CommsFixture::pc CommsFixture::required_post_conditions;
 bool CommsFixture::expect_timeout;
 size_t CommsFixture::eventCounter;
+uv_loop_t * CommsFixture::current_loop = NULL;
+uv_loop_t * CommsFixture::loopSelector(void *) {
+    return current_loop;
+}
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_initialization, CommsFixture ) {
 
@@ -463,32 +478,32 @@ void pc_successful_connect(void) {
     LOG(DEBUG);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
 
     /* non-empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ONLINE)
             ->size(), 2);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::LISTENING)
             ->size(), 1);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_RESOLVE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::PENDING_DELETE)
             ->size(), 0);
 
@@ -604,11 +619,17 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv4, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65535, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65535, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65535", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65535", doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -620,11 +641,17 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv6, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("::1", 65534, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "::1", 65534, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65534", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65534", doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -637,32 +664,32 @@ static void pc_non_existent(void) {
     LOG(DEBUG);
 
     /* non-empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ONLINE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::LISTENING)
             ->size(), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_RESOLVE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::PENDING_DELETE)
             ->size(), 0);
 
@@ -672,7 +699,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_host, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("non_existent_host.", "65533", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "non_existent_host.", "65533", doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -684,7 +714,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_service, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.1", "65533", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "127.0.0.1", "65533", doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -696,11 +729,17 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_keepalive, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65532, startPingingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65532, startPingingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.1", "65532", startPingingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "127.0.0.1", "65532", startPingingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -713,30 +752,30 @@ void pc_no_peers(void) {
     LOG(DEBUG);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ONLINE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::LISTENING)
             ->size(), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_RESOLVE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::PENDING_DELETE)
             ->size(), 0);
 
@@ -746,7 +785,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_listener_early, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65531, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65531, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!l, 0);
 
@@ -760,7 +802,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_listener_late, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65531, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65531, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!l, 0);
 
@@ -768,7 +813,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_listener_late, CommsFixture ) {
 
     destroy_timer.data = l;
 
-    uv_timer_init(uv_default_loop(), &destroy_timer);
+    uv_timer_init(CommsFixture::current_loop, &destroy_timer);
     uv_timer_start(&destroy_timer, destroy_listener_cb, 200, 0);
     uv_unref((uv_handle_t*) &destroy_timer);
 
@@ -780,7 +825,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_early, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65530", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65530", doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -795,32 +843,32 @@ void pc_listening_peer(void) {
     LOG(DEBUG);
 
     /* one listener */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::LISTENING)
             ->size(), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ONLINE)
             ->size(), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_RESOLVE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::PENDING_DELETE)
             ->size(), 0);
 
@@ -830,11 +878,17 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_late, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65529, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65529, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65529", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65529", doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -842,7 +896,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_late, CommsFixture ) {
 
     destroy_timer.data = p;
 
-    uv_timer_init(uv_default_loop(), &destroy_timer);
+    uv_timer_init(CommsFixture::current_loop, &destroy_timer);
     uv_timer_start(&destroy_timer, destroy_peer_cb, 200, 0);
     uv_unref((uv_handle_t*) &destroy_timer);
 
@@ -1035,7 +1089,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_before_connect, CommsFixture
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65528", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65528", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1048,32 +1105,32 @@ void pc_retrying_client(void) {
     LOG(DEBUG);
 
     /* one listener */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ONLINE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::LISTENING)
             ->size(), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_RESOLVE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::PENDING_DELETE)
             ->size(), 0);
 
@@ -1083,7 +1140,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_before_connect, CommsFixt
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65527", disconnectOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65527", disconnectOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1095,11 +1155,17 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_after_connect, CommsFixture 
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65526, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65526, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65526", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65526", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1112,32 +1178,32 @@ void pc_retrying_peers(void) {
     LOG(DEBUG);
 
     /* one listener */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 1);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::LISTENING)
             ->size(), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ONLINE)
             ->size(), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_RESOLVE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::PENDING_DELETE)
             ->size(), 0);
 
@@ -1147,11 +1213,17 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_after_connect, CommsFixtu
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65525, doNothingOnConnect);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65525, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65525", disconnectOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65525", disconnectOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1163,10 +1235,16 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_server_after_connect, CommsFixture 
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65524, destroyOnCallback);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65524, destroyOnCallback,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65524", destroyOnDisconnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65524", destroyOnDisconnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1178,10 +1256,16 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_server_after_connect, CommsFixtu
 
     LOG(DEBUG);
 
-    ::yajr::Listener * l = ::yajr::Listener::create("127.0.0.1", 65523, disconnectOnCallback);
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65523, disconnectOnCallback,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
     BOOST_CHECK_EQUAL(!l, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65523", destroyOnDisconnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65523", destroyOnDisconnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1325,32 +1409,32 @@ void pc_no_server_and_client_gives_up(void) {
     LOG(DEBUG);
 
     /* no listener */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::LISTENING)
             ->size(), 0);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::RETRY_TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::ONLINE)
             ->size(), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_RESOLVE)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::TO_LISTEN)
             ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(uv_default_loop(),
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                 internal::Peer::LoopData::PENDING_DELETE)
             ->size(), 0);
 
@@ -1360,10 +1444,16 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_client_retry_more_than_once, CommsFixture )
 
     LOG(DEBUG);
 
-    flakyListener = ::yajr::Listener::create("127.0.0.1", 65522, disconnectAndStopListeningOnCallback);
+    flakyListener = ::yajr::Listener::create(
+            "127.0.0.1", 65522, disconnectAndStopListeningOnCallback,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
     BOOST_CHECK_EQUAL(!flakyListener, 0);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65522", countdownAttemptsOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65522", countdownAttemptsOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1375,7 +1465,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_existent_host, Comms
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("non_existent_host.", "65521", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "non_existent_host.", "65521", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1387,7 +1480,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_existent_service, Co
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("127.0.0.1", "65520", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "127.0.0.1", "65520", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1399,7 +1495,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_host, Co
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65519", disconnectOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65519", disconnectOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1411,7 +1510,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_service,
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("localhost", "65518", disconnectOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "localhost", "65518", disconnectOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1423,7 +1525,10 @@ BOOST_FIXTURE_TEST_CASE( SLOW_test_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65517", doNothingOnConnect);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65517", doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1435,7 +1540,10 @@ BOOST_FIXTURE_TEST_CASE( SLOW_test_destroy_client_for_non_routable_host_upon_con
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65516", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65516", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1447,7 +1555,10 @@ BOOST_FIXTURE_TEST_CASE( SLOW_test_disconnect_client_for_non_routable_host_upon_
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65515", disconnectOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65515", disconnectOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1483,7 +1594,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_routable_host, Comms
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65514", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65514", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1494,7 +1608,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_routable_host, Comms
         << &destroyTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &destroyTimer);
+    uv_timer_init(CommsFixture::current_loop, &destroyTimer);
     destroyTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&destroyTimer, destroy_now_cb, 250, 0);
@@ -1527,7 +1641,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_routable_host, Co
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65513", disconnectOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65513", disconnectOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1538,7 +1655,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_routable_host, Co
         << &disconnectTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &disconnectTimer);
+    uv_timer_init(CommsFixture::current_loop, &disconnectTimer);
     disconnectTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&disconnectTimer, disconnect_now_cb, 250, 0);
@@ -1573,7 +1690,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_semigracefully_for_non_routa
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65512", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65512", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1584,7 +1704,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_semigracefully_for_non_routa
         << &destroyTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &destroyTimer);
+    uv_timer_init(CommsFixture::current_loop, &destroyTimer);
     destroyTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&destroyTimer, destroy_cb, 250, 0);
@@ -1597,7 +1717,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_semigracefully_for_non_routa
         << &destroyNowTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &destroyNowTimer);
+    uv_timer_init(CommsFixture::current_loop, &destroyNowTimer);
     destroyNowTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&destroyNowTimer, destroy_now_cb, 251, 0);
@@ -1630,7 +1750,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_semigracefully_for_non_ro
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65511", disconnectOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65511", disconnectOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1641,7 +1764,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_semigracefully_for_non_ro
         << &disconnectTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &disconnectTimer);
+    uv_timer_init(CommsFixture::current_loop, &disconnectTimer);
     disconnectTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&disconnectTimer, disconnect_cb, 250, 0);
@@ -1654,7 +1777,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_semigracefully_for_non_ro
         << &disconnectNowTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &disconnectNowTimer);
+    uv_timer_init(CommsFixture::current_loop, &disconnectNowTimer);
     disconnectNowTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&disconnectNowTimer, disconnect_now_cb, 251, 0);
@@ -1668,7 +1791,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_then_disconnect_client_semigraceful
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65512", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65512", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1679,7 +1805,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_then_disconnect_client_semigraceful
         << &destroyTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &destroyTimer);
+    uv_timer_init(CommsFixture::current_loop, &destroyTimer);
     destroyTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&destroyTimer, destroy_cb, 250, 0);
@@ -1692,7 +1818,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_then_disconnect_client_semigraceful
         << &disconnectNowTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &disconnectNowTimer);
+    uv_timer_init(CommsFixture::current_loop, &disconnectNowTimer);
     disconnectNowTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&disconnectNowTimer, disconnect_now_cb, 251, 0);
@@ -1706,7 +1832,10 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_then_destroy_client_semigraceful
 
     LOG(DEBUG);
 
-    ::yajr::Peer * p = ::yajr::Peer::create("255.255.255.254", "65512", destroyOnCallback);
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            "255.255.255.254", "65512", destroyOnCallback,
+            NULL, CommsFixture::loopSelector
+    );
 
     BOOST_CHECK_EQUAL(!p, 0);
 
@@ -1717,7 +1846,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_then_destroy_client_semigraceful
         << &disconnectTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &disconnectTimer);
+    uv_timer_init(CommsFixture::current_loop, &disconnectTimer);
     disconnectTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&disconnectTimer, disconnect_cb, 250, 0);
@@ -1730,7 +1859,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_then_destroy_client_semigraceful
         << &destroyNowTimer
     ;
 
-    uv_timer_init(uv_default_loop(), &destroyNowTimer);
+    uv_timer_init(CommsFixture::current_loop, &destroyNowTimer);
     destroyNowTimer.data =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >(p);
     uv_timer_start(&destroyNowTimer, destroy_now_cb, 251, 0);
@@ -1828,7 +1957,8 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_no_message_on_SSL, CommsFixture ) {
             65514,
             attachPassiveSslTransportOnConnect,
             passthroughAccept,
-            serverCtx
+            serverCtx,
+            CommsFixture::current_loop, CommsFixture::loopSelector
     );
 
     BOOST_CHECK_EQUAL(!l, 0);
@@ -1836,7 +1966,8 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_no_message_on_SSL, CommsFixture ) {
     ::yajr::Peer * p = ::yajr::Peer::create(
             "127.0.0.1",
             "65514",
-            doNothingOnConnect
+            doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
     );
 
     BOOST_CHECK_EQUAL(!p, 0);
@@ -1938,7 +2069,8 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_single_message_on_SSL, CommsFixture ) {
             65514,
             attachPassiveSslTransportOnConnect,
             passthroughAccept,
-            serverCtx
+            serverCtx,
+            CommsFixture::current_loop, CommsFixture::loopSelector
     );
 
     BOOST_CHECK_EQUAL(!l, 0);
@@ -1946,7 +2078,8 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_single_message_on_SSL, CommsFixture ) {
     ::yajr::Peer * p = ::yajr::Peer::create(
             "127.0.0.1",
             "65514",
-            singlePingOnConnect
+            singlePingOnConnect,
+            NULL, CommsFixture::loopSelector
     );
 
     BOOST_CHECK_EQUAL(!p, 0);
@@ -1997,7 +2130,8 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_keepalive_on_SSL, CommsFixture ) {
             65513,
             attachPassiveSslTransportOnConnect,
             passthroughAccept,
-            serverCtx
+            serverCtx,
+            CommsFixture::current_loop, CommsFixture::loopSelector
     );
 
     BOOST_CHECK_EQUAL(!l, 0);
@@ -2005,7 +2139,8 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_keepalive_on_SSL, CommsFixture ) {
     ::yajr::Peer * p = ::yajr::Peer::create(
             "127.0.0.1",
             "65513",
-            startPingingOnConnect
+            startPingingOnConnect,
+            NULL, CommsFixture::loopSelector
     );
 
     BOOST_CHECK_EQUAL(!p, 0);
