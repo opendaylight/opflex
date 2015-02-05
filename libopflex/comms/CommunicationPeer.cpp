@@ -331,12 +331,12 @@ void CommunicationPeer::dumpIov(std::stringstream & dbgLog, std::vector<iovec> c
     }
 }
 
-#ifdef    NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
-// Not thread-safe. Build only as needed for ad-hoc debugging builds.
+#ifndef NDEBUG
 void CommunicationPeer::logDeque() const {
-    static std::string oldDbgLog;
+
+# if 0
+
     std::stringstream dbgLog;
-    std::string newDbgLog;
 
     dbgLog
         << "\n IOV "
@@ -358,15 +358,12 @@ void CommunicationPeer::logDeque() const {
                 s_.deque_.begin(),
                 s_.deque_.end()));
 
-    newDbgLog = dbgLog.str();
+    LOG(DEBUG) << dbgLog.str();
 
-    if (oldDbgLog != newDbgLog) {
-        oldDbgLog = newDbgLog;
+# endif
 
-        LOG(DEBUG) << newDbgLog;
-    }
 }
-#endif // NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
+#endif // NDEBUG
 
 void CommunicationPeer::onWrite() {
 
@@ -652,30 +649,116 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
 #ifndef NDEBUG
 bool CommunicationPeer::__checkInvariants() const {
 
-    if (status_ != kPS_ONLINE) {
+    bool result = true;
+
+    if (!!connected_ != !!(status_ == kPS_ONLINE)) {
+        LOG(ERROR)
+            << this
+            << " has incongruent state: connected_ = "
+            << static_cast< bool >(connected_)
+            << " status_ = "
+            << static_cast< int >(status_)
+        ;
+
+        /* TODO: clean up status book-keeping */
+     // result = false;
+    }
+
+    std::vector<iovec> iov =
+        more::get_iovec(s_.deque_.begin(), s_.deque_.end());
+
+    ssize_t delta = s_.deque_.size();
+
+ // if (status_ != kPS_ONLINE) {
+    if (connected_) {
+
+        if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
+            LOG(ERROR) << this
+                << " keepAliveInterval_ = " << keepAliveInterval_
+                << " keepAliveTimer_ = " << (
+                uv_is_active((uv_handle_t *)&keepAliveTimer_) ? "" : "in")
+                << "active"
+            ;
+
+            result = false;
+        }
+
+    } else {
+
         LOG(DEBUG)
             << this
             << " status = "
             << static_cast< int >(status_)
             << " just check for Peer's invariants"
         ;
-        return internal::Peer::__checkInvariants();
+
+        if (iov.size()) {
+            LOG(ERROR)
+                << this
+                << " is not online, and iov.size() = "
+                << iov.size()
+            ;
+
+            result = false;
+        }
+
+        if (delta) {
+            LOG(ERROR)
+                << this
+                << " is not online, and egress queue size() = "
+                << delta
+            ;
+        }
+
+        if (iov.size() || delta) {
+            logDeque();
+        }
+
     }
 
-    if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
-        LOG(DEBUG) << this
-            << " keepAliveInterval_ = " << keepAliveInterval_
-            << " keepAliveTimer_ = " << (
-            uv_is_active((uv_handle_t *)&keepAliveTimer_) ? "" : "in")
-            << "active"
+    for (size_t i = 0; i < iov.size(); ++i) {
+
+        LOG(DEBUG)
+            << this
+            << " iov #"
+            << i
+            << " iov_len "
+            << iov[i].iov_len
+        ;
+
+        delta -= iov[i].iov_len;
+
+    }
+
+    if (delta) {
+
+        LOG(ERROR)
+            << this
+            << " egress queue corrupt, iov.size() = "
+            << iov.size()
+            << " delta = "
+            << delta
+        ;
+
+        result = false;
+
+        logDeque();
+
+    } else {
+        LOG(DEBUG)
+            << this
+            << " egress queue consistent, deque size() = "
+            << s_.deque_.size()
+            << " iov.size() = "
+            << iov.size()
         ;
     }
-    return
-        (!!keepAliveInterval_ == !!uv_is_active((uv_handle_t *)&keepAliveTimer_))
 
-        &&
+    if (!internal::Peer::__checkInvariants()) {
+        result = false;
+    }
 
-        internal::Peer::__checkInvariants();
+    return result;
 }
 
 char const EchoGen::canary[] =

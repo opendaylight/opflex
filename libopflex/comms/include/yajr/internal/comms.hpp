@@ -507,10 +507,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
             std::vector<iovec> const & iov
     );
 
-#ifdef    NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
-// Not thread-safe. Build only as needed for ad-hoc debugging builds.
+#ifndef NDEBUG
+    // Don't even ship it in final builds
     void logDeque() const;
-#endif // NEED_DESPERATE_CPU_BOGGING_AND_THREAD_UNSAFE_DEBUGGING
+#endif
 
     yajr::transport::Transport::Engine * getTransportData() {
         return transport_.data_;
@@ -551,6 +551,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     mutable uint64_t lastHeard_;
 
     ::yajr::transport::Transport transport_;
+
 };
 
 class ActivePeer : public CommunicationPeer {
