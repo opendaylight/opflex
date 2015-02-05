@@ -27,6 +27,7 @@ void InbRes<&yajr::rpc::method::echo>::process() const {
 
     rapidjson::Value const & payload = getPayload();
 
+#ifndef NDEBUG
     for(size_t i = 1; i <= yajr::comms::internal::EchoGen::kNcanaries; ++i) {
         LOG(DEBUG)
             << "About to check canary number "
@@ -48,6 +49,7 @@ void InbRes<&yajr::rpc::method::echo>::process() const {
             assert(0);
         }
     }
+#endif
 
 }
 
