@@ -66,7 +66,7 @@ CommunicationPeer * Peer::get(uv_write_t * r) {
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
     ;
-    peer->__checkInvariants();
+    assert(peer->__checkInvariants());
 
     return peer;
 }
@@ -79,7 +79,7 @@ CommunicationPeer * Peer::get(uv_timer_t * h) {
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
     ;
-    peer->__checkInvariants();
+    assert(peer->__checkInvariants());
 
     return peer;
 }
@@ -93,7 +93,7 @@ ActivePeer * Peer::get(uv_connect_t * r) {
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
     ;
-    peer->__checkInvariants();
+    assert(peer->__checkInvariants());
 
     return peer;
 }
@@ -106,7 +106,7 @@ ActivePeer * Peer::get(uv_getaddrinfo_t * r) {
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
     ;
-    peer->__checkInvariants();
+    assert(peer->__checkInvariants());
 
     return peer;
 }
@@ -119,7 +119,7 @@ bool Peer::__checkInvariants()
 {
     LOG(DEBUG)
         << this
-        << " true = true"
+        << " ALWAYS = true"
     ;
 #endif
     return true;

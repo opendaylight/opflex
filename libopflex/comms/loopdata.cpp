@@ -76,7 +76,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
         for (Peer::List::const_iterator peer = peers[state].cbegin();
                 peer != peers[state].cend();
                 ++peer) {
-            peer->__checkInvariants();
+            assert(peer->__checkInvariants());
         }
     }
 #endif
