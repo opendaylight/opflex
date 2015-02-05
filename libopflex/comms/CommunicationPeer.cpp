@@ -142,10 +142,12 @@ void CommunicationPeer::onDisconnect(bool now) {
         LOG(DEBUG) << this << " active => retry queue";
         /* we should attempt to reconnect later */
         insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
+        status_ = kPS_DISCONNECTED;
     } else {
         LOG(DEBUG) << this << " passive => eventually drop";
         /* whoever it was, hopefully will reconnect again */
         insert(internal::Peer::LoopData::PENDING_DELETE);
+        status_ = kPS_PENDING_DELETE;
     }
 #ifdef OLD_VERSION
     if (!connected_) {

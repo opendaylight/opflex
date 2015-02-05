@@ -191,14 +191,17 @@ class Peer : public SafeListBaseHook {
     enum PeerStatus {
         kPS_ONLINE            = 0,  /* <--- don't touch these! */
         kPS_LISTENING         = 0,  /* <--- don't touch these! */
-        kPS_RESOLVING,
-        kPS_RESOLVED,
-        kPS_CONNECTING,
+        kPS_UNINITIALIZED     = 1,
+        kPS_DISCONNECTED      = 2,
+        kPS_RESOLVING         = 3,
+        kPS_RESOLVED          = 4,
+        kPS_CONNECTING        = 5,
 
-        kPS_UNINITIALIZED,
-        kPS_FAILED_TO_RESOLVE,
-        kPS_FAILED_BINDING,
-        kPS_FAILED_LISTENING,
+        kPS_FAILED_TO_RESOLVE = 6,
+        kPS_FAILED_BINDING    = 6,
+        kPS_FAILED_LISTENING  = 6,
+
+        kPS_PENDING_DELETE    = 7,
     };
     explicit Peer(bool passive,
          ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL,
