@@ -165,6 +165,9 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     if (count > 1) {
         LOG(WARNING) << "Multiple encapsulation types specified for "
                      << "stitched-mode renderer";
+    } else if (count == 0) {
+        LOG(WARNING) 
+            << "No encapsulation types specified; only local traffic will work";
     }
 
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
@@ -176,6 +179,8 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
         properties.get<std::string>(VIRTUAL_DHCP_MAC, "00:22:bd:f8:19:ff");
 
     flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR, "");
+    if (flowIdCache == "")
+        LOG(WARNING) << "No flow ID cache directory specified";
 }
 
 } /* namespace ovsagent */

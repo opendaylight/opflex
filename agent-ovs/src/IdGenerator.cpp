@@ -131,7 +131,7 @@ void IdGenerator::initNamespace(const std::string& nmspc) {
         UriLenType len;
         if (file.read((char *)&id, sizeof(id)).eof() ||
             file.read((char *)&len, sizeof(len)).eof()) {
-            LOG(INFO) << "Got EOF, loaded " << idmap.ids.size()
+            LOG(DEBUG) << "Got EOF, loaded " << idmap.ids.size()
                 << " entries from " << fname << "; last used id="
                 << idmap.lastUsedId;
             break;
