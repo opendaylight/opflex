@@ -68,6 +68,11 @@ void CommunicationPeer::bumpLastHeard() const {
 
 void CommunicationPeer::onConnect() {
     connected_ = 1;
+    status_ = internal::Peer::kPS_ONLINE;
+
+    /* start with a NULL byte */
+    delimitFrame();
+
     keepAliveTimer_.data = this;
     LOG(DEBUG) << this << " up() for a timer init";
     up();
@@ -613,6 +618,12 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     ;
 
     bumpLastHeard();
+
+    /* empty frames are legal too */
+    if (!ssIn_.str().size()) {
+        return NULL;
+    }
+
     yajr::comms::internal::wrapper::IStreamWrapper is(ssIn_);
 
     docIn_.ParseStream(is);
