@@ -138,8 +138,6 @@ class Peer : public SafeListBaseHook {
 
         void destroy(bool now = false);
 
-        struct RetryPeer;
-
         void up();
 
         void down();
@@ -156,7 +154,11 @@ class Peer : public SafeListBaseHook {
 
         ~LoopData();
 
+        struct RetryPeer;
+
         struct PeerDisposer;
+
+        struct PeerDeleter;
 
         static void onPrepareLoop(uv_prepare_t *) __attribute__((no_instrument_function));
         static void fini(uv_handle_t *);
@@ -751,6 +753,12 @@ struct internal::Peer::LoopData::PeerDisposer {
 };
 
 struct internal::Peer::LoopData::RetryPeer {
+
+    void operator () (Peer *peer);
+
+};
+
+struct internal::Peer::LoopData::PeerDeleter {
 
     void operator () (Peer *peer);
 
