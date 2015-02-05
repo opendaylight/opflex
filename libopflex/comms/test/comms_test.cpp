@@ -576,7 +576,7 @@ void StartPingingOnConnect(
                 << "starting keep-alive, as we just had a connection on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
             ;
-            p->startKeepAlive(50, 100, 200);
+            p->startKeepAlive(50, 100, 2000);
             break;
         case ::yajr::StateChange::DISCONNECT:
             LOG(DEBUG)

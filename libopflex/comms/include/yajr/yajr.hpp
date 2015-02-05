@@ -202,7 +202,7 @@ struct Peer {
     virtual void startKeepAlive(
             uint64_t                begin             = 100,
             uint64_t                repeat            = 1250,
-            uint64_t                interval          = 2500
+            uint64_t                interval          = 9000
     ) = 0;
 
     /**
