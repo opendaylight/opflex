@@ -103,6 +103,15 @@ void CommunicationPeer::onDisconnect(bool now) {
 
     if (connected_) {
 
+        /* wipe ssIn_ out */
+        // std::stringstream().swap(ssIn_); // C++11 only
+        ssIn_.~basic_stringstream();
+        new ((void *) &ssIn_) std::stringstream();
+
+        /* wipe deque out and reset pendingBytes_ */
+        s_.deque_.clear();
+        pendingBytes_ = 0;
+
         connected_ = 0;
 
         if (getKeepAliveInterval()) {
@@ -122,6 +131,10 @@ void CommunicationPeer::onDisconnect(bool now) {
     unlink();
 
     if (destroying_) {
+        LOG(DEBUG)
+            << this
+            << " already destroying"
+        ;
         return;
     }
 
