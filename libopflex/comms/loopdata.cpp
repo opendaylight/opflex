@@ -252,6 +252,15 @@ void Peer::LoopData::RetryPeer::operator () (Peer *peer)
     peer->retry();
 }
 
+void Peer::LoopData::PeerDeleter::operator () (Peer *peer)
+{
+    LOG(DEBUG) << peer << " deleting abruptedly";
+
+    assert(!"peers should never get deleted this way");
+
+    delete peer;
+}
+
 void Peer::LoopData::up() {
     LOG(DEBUG) << this
         << " LoopRefCnt: " << refCount_ << " -> " << refCount_ + 1;
@@ -282,6 +291,14 @@ void Peer::LoopData::down() {
 Peer::LoopData::~LoopData() {
     LOG(DEBUG) << "Delete on Loop";
     LOG(DEBUG) << this << " is being deleted";
+
+    for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
+        assert(!peers[Peer::LoopData::PeerState(i)].size());
+        /* delete all peers for final builds */
+        peers[Peer::LoopData::PeerState(i)]
+            .clear_and_dispose(PeerDeleter());
+    }
+
 #ifdef COMMS_DEBUG_OBJECT_COUNT
     --counter;
 #endif
