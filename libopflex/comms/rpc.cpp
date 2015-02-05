@@ -81,10 +81,19 @@ void OutboundMessage::send() {
             "to a proper communication peer "
             "before outbound messages are sent");
 
+    assert(cP->__checkInvariants());
+
     Accept(cP->getWriter());
 
+    assert(cP->__checkInvariants());
+
     cP->delimitFrame();
+
+    assert(cP->__checkInvariants());
+
     cP->write();
+
+    assert(cP->__checkInvariants());
 
 }
 
