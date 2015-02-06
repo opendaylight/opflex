@@ -887,42 +887,24 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         }
 
         if (virtualDHCPEnabled && hasMac) {
-            const std::vector<Endpoint::DHCPConfig> dhcpConfig =
-                endPoint.getDhcpConfig();
+            optional<Endpoint::DHCPv4Config> v4c = endPoint.getDHCPv4Config();
+            optional<Endpoint::DHCPv6Config> v6c = endPoint.getDHCPv6Config();
 
-            bool hasDHCPv4 = false;
-#if 0
-            bool hasDHCPv6 = false;
-#endif
-
-            BOOST_FOREACH(const Endpoint::DHCPConfig c, dhcpConfig) {
-                if (!c.getPrefixLen()) continue;
-                optional<string> dhcpIp = c.getIpAddress();
-                if (!dhcpIp) continue;
-                address dhcpAddr = address::from_string(dhcpIp.get(), ec);
-                if (ec) continue;
-
-                if (dhcpAddr.is_v4() && !hasDHCPv4) {
-                    FlowEntry* dhcp = new FlowEntry();
-                    SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
-                    SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, true,
-                                 GetDHCPCookie(true));
-                    SetActionController(dhcp, epgVnid, 0xffff);
-                    src.push_back(FlowEntryPtr(dhcp));
-                    hasDHCPv4 = true;
-                }
-#if 0
-                else if (dhcpAddr.is_v6() && !hasDHCPv6) {
-                    // TODO DHCPv6 not yet implemented
-                    FlowEntry* dhcp = new FlowEntry();
-                    SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
-                    SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, false,
-                                 GetDHCPCookie(false));
-                    SetActionController(dhcp, epgVnid, 0xffff);
-                    src.push_back(FlowEntryPtr(dhcp));
-                    hasDHCPv6 = true;
-                }
-#endif
+            if (v4c) {
+                FlowEntry* dhcp = new FlowEntry();
+                SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
+                SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, true,
+                             GetDHCPCookie(true));
+                SetActionController(dhcp, epgVnid, 0xffff);
+                src.push_back(FlowEntryPtr(dhcp));
+            }
+            if (v6c) {
+                FlowEntry* dhcp = new FlowEntry();
+                SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
+                SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, false,
+                             GetDHCPCookie(false));
+                SetActionController(dhcp, epgVnid, 0xffff);
+                src.push_back(FlowEntryPtr(dhcp));
             }
         }
 

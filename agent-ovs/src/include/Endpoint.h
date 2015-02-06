@@ -252,10 +252,43 @@ public:
     }
 
     /**
-     * Represent a configuration to be passed to the endpoint through
-     * the virtual distributed DHCP server.
+     * Base class for DHCP configuration
      */
     class DHCPConfig {
+    public:
+        /**
+         * Clear the list of dns servers
+         */
+        void clearDnsServers() {
+            dnsServers.clear();
+        }
+
+        /**
+         * Add a DNS server to be returned to the endpoint using DHCP
+         *
+         * @param dnsServerIp the IP address for the dns server
+         */
+        void addDnsServer(const std::string& dnsServerIp) {
+            dnsServers.push_back(dnsServerIp);
+        }
+
+        /**
+         * Get the list of DNS servers for this dhcp config
+         *
+         * @return a vector of DNS server IP addresses
+         */
+        const std::vector<std::string>& getDnsServers() const {
+            return dnsServers;
+        }
+    private:
+        std::vector<std::string> dnsServers;
+    };
+
+    /**
+     * Represent a configuration to be passed to the endpoint through
+     * the virtual distributed DHCPv4 server.
+     */
+    class DHCPv4Config : public DHCPConfig {
     public:
         /**
          * Get the IP address to return for DHCP requests from this
@@ -321,31 +354,6 @@ public:
          */
         const std::vector<std::string>& getRouters() const {
             return routers;
-        }
-
-        /**
-         * Clear the list of dns servers
-         */
-        void clearDnsServers() {
-            dnsServers.clear();
-        }
-
-        /**
-         * Add a DNS server to be returned to the endpoint using DHCP
-         *
-         * @param dnsServerIp the IP address for the dns server
-         */
-        void addDnsServer(const std::string& dnsServerIp) {
-            dnsServers.push_back(dnsServerIp);
-        }
-
-        /**
-         * Get the list of DNS servers for this dhcp config
-         *
-         * @return a vector of DNS server IP addresses
-         */
-        const std::vector<std::string>& getDnsServers() const {
-            return dnsServers;
         }
 
         /**
@@ -433,34 +441,80 @@ public:
         boost::optional<std::string> ipAddress;
         boost::optional<uint8_t> prefixLen;
         std::vector<std::string> routers;
-        std::vector<std::string> dnsServers;
         boost::optional<std::string> domain;
         std::vector<static_route_t> staticRoutes;
     };
 
     /**
-     * Clear the list of dhcp configurationsa
+     * Represent a configuration to be passed to the endpoint through
+     * the virtual distributed DHCPv6 server.
      */
-    void clearDhcpConfig() {
-        dhcpConfig.clear();
-    }
+    class DHCPv6Config : public DHCPConfig {
+    public:
+        /**
+         * Clear the DNS search list
+         */
+        void clearSearchList() {
+            searchList.clear();
+        }
+
+        /**
+         * Add a DNS search list entry to be returned to the endpoint
+         * using DHCP
+         *
+         * @param searchListEntry the IP address for the dns server
+         */
+        void addSearchListEntry(const std::string& searchListEntry) {
+            searchList.push_back(searchListEntry);
+        }
+
+        /**
+         * Get the list of search domains
+         *
+         * @return a vector of hostnames
+         */
+        const std::vector<std::string>& getSearchList() const {
+            return searchList;
+        }
+
+    private:
+        std::vector<std::string> searchList;
+    };
 
     /**
-     * Add a DHCP configuration object.
+     * Add a DHCPv4 configuration object.
      *
      * @param dhcpConfig the DHCP config to add
      */
-    void addDhcpConfig(const DHCPConfig& dhcpConfig) {
-        this->dhcpConfig.push_back(dhcpConfig);
+    void setDHCPv4Config(const DHCPv4Config& dhcpConfig) {
+        this->dhcpv4Config = dhcpConfig;
     }
 
     /**
-     * Get the list of DHCP configuration objects
+     * Get the DHCPv4 configuration
      *
-     * @return a vector of DHCP config objects
+     * @return the DHCPv4Config object
      */
-    const std::vector<DHCPConfig>& getDhcpConfig() const {
-        return dhcpConfig;
+    const boost::optional<DHCPv4Config>& getDHCPv4Config() const {
+        return dhcpv4Config;
+    }
+
+    /**
+     * Add a DHCPv6 configuration object.
+     *
+     * @param dhcpConfig the DHCP config to add
+     */
+    void setDHCPv6Config(const DHCPv6Config& dhcpConfig) {
+        this->dhcpv6Config = dhcpConfig;
+    }
+
+    /**
+     * Get the DHCPv6 configuration
+     *
+     * @return the DHCPv6Config object
+     */
+    const boost::optional<DHCPv6Config>& getDHCPv6Config() const {
+        return dhcpv6Config;
     }
 
 private:
@@ -472,7 +526,8 @@ private:
     boost::optional<std::string> interfaceName;
     bool promiscuousMode;
     attr_map_t attributes;
-    std::vector<DHCPConfig> dhcpConfig;
+    boost::optional<DHCPv4Config> dhcpv4Config;
+    boost::optional<DHCPv6Config> dhcpv6Config;
 };
 
 /**

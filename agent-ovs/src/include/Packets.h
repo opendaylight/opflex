@@ -95,7 +95,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
 /**
  * A convenience typedef for static routes
  */
-typedef Endpoint::DHCPConfig::static_route_t static_route_t;
+typedef Endpoint::DHCPv4Config::static_route_t static_route_t;
 
 /**
  * Compose a DHCPv4 offer, ACK, or NACK
@@ -109,7 +109,7 @@ typedef Endpoint::DHCPConfig::static_route_t static_route_t;
  * mask
  * @param routers the list of routers to return to the client
  * @param dnsServers the list of DNS servers to return to the client
- * @param dnsSearchPath the DNS search path to return to the client
+ * @param domain The domain to return to the client
  * @param staticRoutes classless static routes to return to the client
  */
 ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
@@ -122,8 +122,37 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              const std::vector<std::string>& dnsServers,
                              const boost::optional<std::string>& domain,
                              const std::vector<static_route_t>& staticRoutes);
-                             
 
+/**
+ * Compose a DHCPv6 Advertise or Reply message
+ *
+ * @param message_type the message type to send
+ * @param xid the transaction ID for the message
+ * @param srcMac the MAC address for the DHCP server
+ * @param clientMac the MAC address for the requesting client
+ * @param dstIp the destination IP for the reply
+ * @param client_id the client ID to include in the reply
+ * @param client_id_len the length of the client ID
+ * @param iaid the IA ID for the identity association
+ * @param ips the list of IP addresses to return to the client
+ * @param dnsServers the list of DNS servers to return to the client
+ * @param searchList the DNS search path to return to the client
+ * @param temporary true if the client requested a temporary address
+ * @param rapid true if this is a rapid commit reply
+ */                             
+ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
+                             const uint8_t* xid,
+                             const uint8_t* srcMac,
+                             const uint8_t* clientMac,
+                             const struct in6_addr* dstIp,
+                             uint8_t* client_id,
+                             uint16_t client_id_len,
+                             uint8_t* iaid,
+                             const std::vector<boost::asio::ip::address_v6>& ips,
+                             const std::vector<std::string>& dnsServers,
+                             const std::vector<std::string>& searchList,
+                             bool temporary,
+                             bool rapid);
 
 } /* namespace packets */
 } /* namespace ovsagent */

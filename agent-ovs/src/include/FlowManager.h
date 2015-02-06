@@ -265,7 +265,7 @@ public:
      * Get the DHCP MAC address as an array of 6 bytes
      * @return the DHCP MAC
      */
-    const uint8_t *GetDHCPMacAddr() { return routerMac; }
+    const uint8_t *GetDHCPMacAddr() { return dhcpMac; }
 
     /**
      * Set the delay after which flow-manager will attempt to reconcile

@@ -14,6 +14,7 @@
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
+#include <modelgbp/gbp/AutoconfigEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "Policies.h"
@@ -53,6 +54,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<Subnets> subnetsfd2;
     shared_ptr<Subnet> subnetsfd1_1;
     shared_ptr<Subnet> subnetsfd1_2;
+    shared_ptr<Subnet> subnetsfd1_3;
     shared_ptr<Subnet> subnetsfd2_1;
     shared_ptr<Subnet> subnetsfd2_2;
     shared_ptr<Subnets> subnetsbd;
@@ -85,6 +87,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     fd2->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
     bd = space->addGbpBridgeDomain("bd");
     rd = space->addGbpRoutingDomain("rd");
+    rd->setIpv6Autoconfig(AutoconfigEnumT::CONST_DHCP);
     
     fd1->addGbpFloodDomainToNetworkRSrc()
         ->setTargetBridgeDomain(bd->getURI());
@@ -101,6 +104,11 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setVirtualRouterIp("10.0.0.128");
     subnetsfd1_2 = subnetsfd1->addGbpSubnet("subnetsfd1_2");
     subnetsfd1_2->setAddress("fd8f:69d8:c12c:ca62::")
+        .setIpv6AdvAutonomousFlag(0)
+        .setPrefixLen(64);
+    subnetsfd1_3 = subnetsfd1->addGbpSubnet("subnetsfd1_3");
+    subnetsfd1_3->setAddress("fd8f:69d8:c12c:ca63::")
+        .setIpv6AdvAutonomousFlag(0)
         .setPrefixLen(64);
     subnetsfd1->addGbpSubnetsToNetworkRSrc()
         ->setTargetFloodDomain(fd1->getURI());
