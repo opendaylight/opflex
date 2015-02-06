@@ -35,7 +35,7 @@ module[gbp]
 
         # Set how IPv6 hosts should be configured (through DHCP or
         # statelessly)
-        member[ipv6Autoconfig; type=scalar/UInt8]
+        member[ipv6Autoconfig; type=gbp/Autoconfig]
     }
 
     class[Subnet;
