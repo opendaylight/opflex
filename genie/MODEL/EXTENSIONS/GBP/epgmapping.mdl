@@ -103,29 +103,19 @@ module[gbpe]
     # endpoint interfaces, so different traffic from the same endpoint
     # can end up in different endpoint groups.  All fields in the rule
     # must match.
-    class[DataPathMappingRule;
-          super=gbpe/MappingRule;
-          concrete]
-    {
-        # IPv4 or IPv6 address prefix
-        member[ipPrefix; type=address/IP]
-        # length of IP prefix
-        member[ipPrefixLen; type=scalar/UInt8]
-
-        # MAC address
-        member[mac; type=address/MAC]
-
-        # IP protocol field
-        member[prot; type=l3/IpProt]
-
-        # Source port range [from-to]
-        member[sFromPort; type=l4/Port]
-        member[sToPort; type=l4/Port]
-
-        # Destination port range [from-to]
-        member[dFromPort; type=l4/Port]
-        member[dToPort; type=l4/Port]
-    }
+    #
+    # class[DataPathMappingRule;
+    #       super=gbpe/MappingRule;
+    #       concrete]
+    # {
+    #     # IPv4 or IPv6 address prefix
+    #     member[ipPrefix; type=address/IP]
+    #     # length of IP prefix
+    #     member[ipPrefixLen; type=scalar/UInt8]
+    # 
+    #     # MAC address
+    #     member[mac; type=address/MAC]
+    # }
 
     # Map an endpoint to an EPG using rules on attributes.  Attributes
     # can include attributes provided by the endpoint repository in an
