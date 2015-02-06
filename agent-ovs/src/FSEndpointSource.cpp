@@ -129,12 +129,14 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
     static const std::string EP_ATTRIBUTES("attributes");
 
-    static const std::string DHCP("dhcp");
+    static const std::string DHCP4("dhcp4");
+    static const std::string DHCP6("dhcp6");
     static const std::string DHCP_IP("ip");
     static const std::string DHCP_PREFIX_LEN("prefix-len");
     static const std::string DHCP_ROUTERS("routers");
     static const std::string DHCP_DNS_SERVERS("dns-servers");
     static const std::string DHCP_DOMAIN("domain");
+    static const std::string DHCP_SEARCH_LIST("search-list");
     static const std::string DHCP_STATIC_ROUTES("static-routes");
     static const std::string DHCP_STATIC_ROUTE_DEST("dest");
     static const std::string DHCP_STATIC_ROUTE_DEST_PREFIX("dest-prefix");
@@ -201,59 +203,80 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
             }
         }
 
-        optional<ptree&> dhcp = properties.get_child_optional(DHCP);
-        if (dhcp) {
-            BOOST_FOREACH(const ptree::value_type &v, dhcp.get()) {
-                Endpoint::DHCPConfig c;
-                optional<string> ip = v.second.get_optional<string>(DHCP_IP);
-                if (ip)
-                    c.setIpAddress(ip.get());
+        optional<ptree&> dhcp4 = properties.get_child_optional(DHCP4);
+        if (dhcp4) {
+            Endpoint::DHCPv4Config c;
 
-                optional<uint8_t> prefix =
-                    v.second.get_optional<uint8_t>(DHCP_PREFIX_LEN);
-                if (prefix)
-                    c.setPrefixLen(prefix.get());
+            optional<string> ip =
+                dhcp4.get().get_optional<string>(DHCP_IP);
+            if (ip)
+                c.setIpAddress(ip.get());
 
-                optional<const ptree&> routers =
-                    v.second.get_child_optional(DHCP_ROUTERS);
-                if (routers) {
-                    BOOST_FOREACH(const ptree::value_type &u, routers.get())
-                        c.addRouter(u.second.data());
-                }
+            optional<uint8_t> prefix =
+                dhcp4.get().get_optional<uint8_t>(DHCP_PREFIX_LEN);
+            if (prefix)
+                c.setPrefixLen(prefix.get());
 
-                optional<const ptree&> dns =
-                    v.second.get_child_optional(DHCP_DNS_SERVERS);
-                if (dns) {
-                    BOOST_FOREACH(const ptree::value_type &u, dns.get())
-                        c.addDnsServer(u.second.data());
-                }
+            optional<ptree&> routers =
+                dhcp4.get().get_child_optional(DHCP_ROUTERS);
+            if (routers) {
+                BOOST_FOREACH(const ptree::value_type &u, routers.get())
+                    c.addRouter(u.second.data());
+            }
 
-                optional<string> domain =
-                    v.second.get_optional<string>(DHCP_DOMAIN);
-                if (domain)
-                    c.setDomain(domain.get());
+            optional<ptree&> dns =
+                dhcp4.get().get_child_optional(DHCP_DNS_SERVERS);
+            if (dns) {
+                BOOST_FOREACH(const ptree::value_type &u, dns.get())
+                    c.addDnsServer(u.second.data());
+            }
 
-                optional<const ptree&> staticRoutes = 
-                    v.second.get_child_optional(DHCP_STATIC_ROUTES);
-                if (staticRoutes) {
-                    BOOST_FOREACH(const ptree::value_type &u,
-                                  staticRoutes.get()) {
-                        optional<string> dst = u.second.get_optional<string>
-                            (DHCP_STATIC_ROUTE_DEST);
-                        uint8_t dstPrefix = 
-                            u.second.get<uint8_t>
-                            (DHCP_STATIC_ROUTE_DEST_PREFIX, 32);
-                        optional<string> nextHop = u.second.get_optional<string>
-                            (DHCP_STATIC_ROUTE_NEXTHOP);
-                        if (dst && nextHop)
+            optional<string> domain =
+                dhcp4.get().get_optional<string>(DHCP_DOMAIN);
+            if (domain)
+                c.setDomain(domain.get());
+
+            optional<ptree&> staticRoutes =
+                dhcp4.get().get_child_optional(DHCP_STATIC_ROUTES);
+            if (staticRoutes) {
+                BOOST_FOREACH(const ptree::value_type &u,
+                              staticRoutes.get()) {
+                    optional<string> dst = u.second.get_optional<string>
+                        (DHCP_STATIC_ROUTE_DEST);
+                    uint8_t dstPrefix =
+                        u.second.get<uint8_t>
+                        (DHCP_STATIC_ROUTE_DEST_PREFIX, 32);
+                    optional<string> nextHop = u.second.get_optional<string>
+                        (DHCP_STATIC_ROUTE_NEXTHOP);
+                    if (dst && nextHop)
                             c.addStaticRoute(dst.get(),
                                              dstPrefix,
                                              nextHop.get());
-                    }
                 }
-
-                newep.addDhcpConfig(c);
             }
+
+            newep.setDHCPv4Config(c);
+        }
+
+        optional<ptree&> dhcp6 = properties.get_child_optional(DHCP6);
+        if (dhcp6) {
+            Endpoint::DHCPv6Config c;
+
+            optional<ptree&> searchPath =
+                dhcp6.get().get_child_optional(DHCP_SEARCH_LIST);
+            if (searchPath) {
+                BOOST_FOREACH(const ptree::value_type &u, searchPath.get())
+                    c.addSearchListEntry(u.second.data());
+            }
+
+            optional<ptree&> dns =
+                dhcp6.get().get_child_optional(DHCP_DNS_SERVERS);
+            if (dns) {
+                BOOST_FOREACH(const ptree::value_type &u, dns.get())
+                    c.addDnsServer(u.second.data());
+            }
+
+            newep.setDHCPv6Config(c);
         }
 
         knownEps[pathstr] = newep.getUUID();

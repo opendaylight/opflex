@@ -21,6 +21,7 @@
 #include "FlowManager.h"
 
 using std::string;
+using std::vector;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
 using boost::asio::ip::address_v4;
@@ -290,6 +291,19 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
     using namespace dhcp;
     using namespace udp;
 
+    const optional<Endpoint::DHCPv4Config>& v4c = ep->getDHCPv4Config();
+    if (!v4c) return;
+
+    const optional<string>& dhcpIpStr = v4c.get().getIpAddress();
+    if (!dhcpIpStr) return;
+
+    boost::system::error_code ec;
+    address_v4 dhcpIp = address_v4::from_string(dhcpIpStr.get(), ec);
+    if (ec) {
+        LOG(INFO) << "bad ip " << dhcpIpStr.get() << " " << ec.message();
+        return;
+    }
+
     size_t l4_size = ofpbuf_l4_size(&pkt);
     if (l4_size < (sizeof(struct udp_hdr) + sizeof(struct dhcp_hdr) + 1))
         return;
@@ -305,15 +319,15 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
         return;
 
     uint8_t message_type = 0;
-    address requested_ip;
+    address_v4 requested_ip;
 
     char* cur = (char*)dhcp_pkt + sizeof(struct dhcp_hdr);
     size_t remaining = l4_size - sizeof(struct dhcp_hdr);
     while (remaining > 0) {
         struct dhcp_option_hdr* hdr = (struct dhcp_option_hdr*)cur;
-        if (hdr->code == DHCP_OPTION_END)
+        if (hdr->code == option::END)
             break;
-        if (hdr->code == DHCP_OPTION_PAD) {
+        if (hdr->code == option::PAD) {
             cur += 1;
             remaining -= 1;
             continue;
@@ -322,10 +336,10 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
         if (remaining <= ((size_t)hdr->len + 2))
             break;
         switch (hdr->code) {
-        case DHCP_OPTION_MESSAGE_TYPE:
+        case option::MESSAGE_TYPE:
             message_type = ((uint8_t*)cur)[2];
             break;
-        case DHCP_OPTION_REQUESTED_IP:
+        case option::REQUESTED_IP:
             requested_ip = address_v4(ntohl(*((uint32_t*)((uint8_t*)cur + 2))));
         }
 
@@ -333,59 +347,43 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
         remaining -= hdr->len + 2;
     }
 
-    if (message_type != DHCP_MESSAGE_TYPE_DISCOVER &&
-        message_type != DHCP_MESSAGE_TYPE_REQUEST)
-        return;
-
     struct ofpbuf* b = NULL;
-    boost::system::error_code ec;
     MAC srcMac(flow.dl_src);
 
-    BOOST_FOREACH(const Endpoint::DHCPConfig& dhcpConfig,
-                  ep->getDhcpConfig()) {
-        optional<string> dhcpIpStr = dhcpConfig.getIpAddress();
-        if (!dhcpIpStr) continue;
-        address dhcpIp = address::from_string(dhcpIpStr.get(), ec);
-        if (ec) continue;
-        if (dhcpIp.is_v6()) continue;
+    uint8_t prefixLen = v4c.get().getPrefixLen().get_value_or(32);
+    uint8_t reply_type = message_type::NAK;
 
-        uint8_t prefixLen = dhcpConfig.getPrefixLen().get_value_or(32);
-
-        uint8_t reply_type = DHCP_MESSAGE_TYPE_NAK;
-
-        switch(message_type) {
-        case DHCP_MESSAGE_TYPE_REQUEST:
-            if (requested_ip == dhcpIp) {
-                LOG(DEBUG) << "Handling DHCP REQUEST for IP "
-                           << requested_ip << " from " << srcMac;
-                reply_type = DHCP_MESSAGE_TYPE_ACK;
-            } else {
-                LOG(WARNING) << "Rejecting DHCP REQUEST for IP "
-                             << requested_ip << " from " << srcMac;
-            }
-
-            break;
-        case DHCP_MESSAGE_TYPE_DISCOVER:
-            LOG(DEBUG) << "Handling DHCP DISCOVER" << " from " << srcMac;
-            reply_type = DHCP_MESSAGE_TYPE_OFFER;
-        default:
-            break;
+    switch(message_type) {
+    case message_type::REQUEST:
+        if (requested_ip == dhcpIp) {
+            LOG(DEBUG) << "Handling DHCP REQUEST for IP "
+                       << requested_ip << " from " << srcMac;
+            reply_type = message_type::ACK;
+        } else {
+            LOG(WARNING) << "Rejecting DHCP REQUEST for IP "
+                         << requested_ip << " from " << srcMac;
         }
-
-        b = packets::compose_dhcpv4_reply(reply_type,
-                                          dhcp_pkt->xid,
-                                          virtualDhcpMac,
-                                          flow.dl_src,
-                                          dhcpIp.to_v4().to_ulong(),
-                                          prefixLen,
-                                          dhcpConfig.getRouters(),
-                                          dhcpConfig.getDnsServers(),
-                                          dhcpConfig.getDomain(),
-                                          dhcpConfig.getStaticRoutes());
-
-        // Only one IP address can come from DHCPv4
         break;
+    case message_type::DISCOVER:
+        LOG(DEBUG) << "Handling DHCP DISCOVER from " << srcMac;
+        reply_type = message_type::OFFER;
+        break;
+    default:
+        LOG(DEBUG) << "Ignoring unexpected DHCP message of type "
+                   << message_type << " from " << srcMac;
+        return;
     }
+
+    b = packets::compose_dhcpv4_reply(reply_type,
+                                      dhcp_pkt->xid,
+                                      virtualDhcpMac,
+                                      flow.dl_src,
+                                      dhcpIp.to_ulong(),
+                                      prefixLen,
+                                      v4c.get().getRouters(),
+                                      v4c.get().getDnsServers(),
+                                      v4c.get().getDomain(),
+                                      v4c.get().getStaticRoutes());
 
     if (b)
         send_packet_out(conn, b, proto, pi.fmd.in_port);
@@ -399,8 +397,119 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
                               struct ofpbuf& pkt,
                               struct flow& flow,
                               const uint8_t* virtualDhcpMac) {
-    using namespace dhcp;
+    using namespace dhcp6;
+    using namespace udp;
 
+    const optional<Endpoint::DHCPv6Config>& v6c = ep->getDHCPv6Config();
+    if (!v6c) return;
+
+    const unordered_set<string>& addresses = ep->getIPs();
+
+    boost::system::error_code ec;
+    vector<address_v6> v6addresses;
+    BOOST_FOREACH(const string& addrStr, addresses) {
+        address_v6 addr_v6 = address_v6::from_string(addrStr, ec);
+        if (ec) continue;
+        v6addresses.push_back(addr_v6);
+    }
+
+    size_t l4_size = ofpbuf_l4_size(&pkt);
+    if (l4_size < (sizeof(struct udp_hdr) + sizeof(struct dhcp6_hdr) + 1))
+        return;
+    struct dhcp6_hdr* dhcp_pkt =
+        (struct dhcp6_hdr*) ((char*)ofpbuf_l4(&pkt) + sizeof(struct udp_hdr));
+
+    uint8_t message_type = dhcp_pkt->msg_type;
+    uint8_t* client_id = NULL;
+    uint16_t client_id_len = 0;
+    uint8_t* iaid = NULL;
+    bool temporary = false;
+    bool rapid_commit = false;
+
+    const size_t opt_hdr_len = sizeof(struct dhcp6_opt_hdr);
+
+    char* cur = (char*)dhcp_pkt + sizeof(struct dhcp6_hdr);
+    size_t remaining = l4_size - sizeof(struct dhcp6_hdr);
+    while (remaining >= opt_hdr_len) {
+        struct dhcp6_opt_hdr* hdr = (struct dhcp6_opt_hdr*)cur;
+        uint16_t opt_len = ntohs(hdr->option_len);
+        uint16_t opt_code = ntohs(hdr->option_code);
+
+        if (remaining <= ((size_t)opt_len + opt_hdr_len))
+            break;
+        switch (opt_code) {
+        case option::CLIENT_IDENTIFIER:
+            client_id = (uint8_t*)(cur + opt_hdr_len);
+            client_id_len = opt_len;
+            if (client_id_len > 32) return;
+            break;
+        case option::IA_TA:
+            temporary = true;
+            /* fall through */
+        case option::IA_NA:
+            {
+                // We only support one identity association
+                iaid = (uint8_t*)(cur + opt_hdr_len);
+            }
+            break;
+        case option::RAPID_COMMIT:
+            rapid_commit = true;
+            break;
+        }
+
+        cur += opt_len + opt_hdr_len;
+        remaining -= opt_len + opt_hdr_len;
+    }
+
+    struct ofpbuf* b = NULL;
+    uint8_t reply_type = message_type::REPLY;
+    MAC srcMac(flow.dl_src);
+
+    switch(message_type) {
+    case message_type::SOLICIT:
+        LOG(DEBUG) << "Handling DHCPv6 Solicit from " << srcMac;
+        if (rapid_commit)
+            reply_type = message_type::REPLY;
+        else
+            reply_type = message_type::ADVERTISE;
+        break;
+    case message_type::REQUEST:
+        LOG(DEBUG) << "Handling DHCPv6 Request from " << srcMac;
+        break;
+    case message_type::CONFIRM:
+        LOG(DEBUG) << "Handling DHCPv6 Confirm from " << srcMac;
+        break;
+    case message_type::RENEW:
+        LOG(DEBUG) << "Handling DHCPv6 Renew from " << srcMac;
+        break;
+    case message_type::REBIND:
+        LOG(DEBUG) << "Handling DHCPv6 Rebind from " << srcMac;
+        break;
+    case message_type::INFORMATION_REQUEST:
+        LOG(DEBUG) << "Handling DHCPv6 Information-request from " << srcMac;
+        break;
+    default:
+        LOG(DEBUG) << "Ignoring unexpected DHCPv6 message of type "
+                   << message_type << " from " << srcMac;
+        return;
+    }
+
+    b = packets::compose_dhcpv6_reply(reply_type,
+                                      dhcp_pkt->transaction_id,
+                                      virtualDhcpMac,
+                                      flow.dl_src,
+                                      &flow.ipv6_src,
+                                      client_id,
+                                      client_id_len,
+                                      iaid,
+                                      v6addresses,
+                                      v6c.get().getDnsServers(),
+                                      v6c.get().getSearchList(),
+                                      temporary,
+                                      rapid_commit);
+
+    if (b)
+        send_packet_out(conn, b, proto, pi.fmd.in_port);
 }
 
 
@@ -457,7 +566,6 @@ static void handleDHCPPktIn(bool v4,
                           pkt, flow, virtualDhcpMac);
 
 }
-
 
 /**
  * Dispatch packet-in messages to the appropriate handlers
