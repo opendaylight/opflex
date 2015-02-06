@@ -44,9 +44,12 @@ MessageFactory::InboundMessage(
 
     /* we don't accept any notifications */
     if (id.IsNull()) {
-        LOG(ERROR) << "Received frame with"
-                   << (doc.HasMember("id") ? " null" : "out")
-                   << " id. Dropping.";
+        LOG(ERROR)
+            << &peer
+            << " Received frame with"
+            << (doc.HasMember("id") ? " null" : "out")
+            << " id. Dropping."
+        ;
         return NULL;
     }
 
@@ -57,8 +60,10 @@ MessageFactory::InboundMessage(
         const rapidjson::Value& methodValue = doc["method"];
 
         if (!methodValue.IsString()) {
-            LOG(ERROR) <<
-                "Received request with non-string method. Dropping";
+            LOG(ERROR)
+                << &peer
+                << " Received request with non-string method. Dropping"
+            ;
             /* FIXME: TODO: send error back */
             assert(methodValue.IsString());
         }
@@ -106,7 +111,7 @@ MessageFactory::getInboundMessage(
         rapidjson::Document const & doc
         ) {
 
-    LOG(DEBUG);
+    VLOG(4);
 
     yajr::rpc::InboundMessage * msg =
         MessageFactory::InboundMessage(peer, doc);

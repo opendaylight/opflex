@@ -31,7 +31,7 @@ void ActivePeer::destroy(bool now) {
     CommunicationPeer::destroy(now);
 
     if (alreadyBeingDestroyed) {
-        LOG(DEBUG)
+        VLOG(1)
             << this
             << " multiple destroy()s detected"
         ;

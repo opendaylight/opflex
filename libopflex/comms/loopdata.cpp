@@ -22,7 +22,7 @@
 
 namespace {
 
-    void prepareAgainCB(uv_timer_t *) { LOG(DEBUG); }
+    void prepareAgainCB(uv_timer_t *) { VLOG(6); }
 
 }
 
@@ -49,12 +49,19 @@ void internal::Peer::LoopData::onPrepareLoop() {
         uv_walk(prepare_.loop, walkAndCountHandlesCb, &countHandle);
 
         if (countHandle.counter) {
-            LOG(INFO) << "Still waiting on " << countHandle.counter << " handles";
+            LOG(INFO)
+                << "Still waiting on "
+                << countHandle.counter
+                << " handles"
+            ;
 
             return;
         }
 
-        LOG(INFO) << this << " Stopping and closing loop watcher";
+        LOG(INFO)
+            << this
+            << " Stopping and closing loop watcher"
+        ;
         uv_prepare_stop(&prepare_);
         uv_close((uv_handle_t*)&prepare_, &fini);
 
@@ -88,13 +95,15 @@ void internal::Peer::LoopData::onPrepareLoop() {
     if (peers[RETRY_TO_CONNECT].begin() !=
         peers[RETRY_TO_CONNECT].end()) {
 
-        LOG(INFO) << "retrying first RETRY_TO_CONNECT peer";
+        LOG(INFO)
+            << "retrying first RETRY_TO_CONNECT peer"
+        ;
 
         /* retry just the first active peer in the queue */
         peers[RETRY_TO_CONNECT]
             .erase_and_dispose(peers[RETRY_TO_CONNECT].begin(), RetryPeer());
 
-        LOG(DEBUG)
+        VLOG(4)
             << " Stopping prepareAgain_ @"
             << reinterpret_cast<void *>(&prepareAgain_)
         ;
@@ -103,9 +112,13 @@ void internal::Peer::LoopData::onPrepareLoop() {
         /* if there are more, we will uv_timer_start() down below */
     }
 
-    if (now - lastRun_ > 15000) {
+    if ((now - lastRun_ > 15000) && peers[RETRY_TO_LISTEN].size()) {
 
-        LOG(DEBUG) << "retrying all RETRY_TO_LISTEN peers";
+        LOG(INFO)
+            << "retrying all "
+            << peers[RETRY_TO_LISTEN].size()
+            << "RETRY_TO_LISTEN peers"
+        ;
 
         /* retry all listeners */
         peers[RETRY_TO_LISTEN]
@@ -115,14 +128,14 @@ void internal::Peer::LoopData::onPrepareLoop() {
     lastRun_ = now;
 
 prepared:
-    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG>, this);
+    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG4>, this);
 
     if (peers[RETRY_TO_CONNECT].begin() !=
         peers[RETRY_TO_CONNECT].end()) {
         /* We need to make sure we unblock */
 
         if (!uv_is_active((uv_handle_t *)&prepareAgain_)) {
-            LOG(DEBUG)
+            VLOG(4)
                 << " Starting prepareAgain_ @"
                 << reinterpret_cast<void *>(&prepareAgain_)
             ;
@@ -169,9 +182,15 @@ void internal::Peer::LoopData::destroy(bool now) {
     }
 }
 
-std::ostream& operator<< (std::ostream& os, Peer::LoopData const * lD) {
-    return os << "{" << reinterpret_cast<void const *>(lD) << "}"
-        << "[" << lD->refCount_ << "]";
+std::ostream& operator << (std::ostream& os, Peer::LoopData const * lD) {
+    return os
+        << "{"
+        << reinterpret_cast<void const *>(lD)
+        << "}"
+        << "["
+        << lD->refCount_
+        << "]"
+    ;
 }
 
 void internal::Peer::LoopData::walkAndCloseHandlesCb(
@@ -258,13 +277,19 @@ void internal::Peer::LoopData::walkAndCountHandlesCb(
 
 void Peer::LoopData::RetryPeer::operator () (Peer *peer)
 {
-    LOG(DEBUG) << peer << " retry";
+    VLOG(1)
+        << peer
+        << " retry"
+    ;
     peer->retry();
 }
 
 void Peer::LoopData::PeerDeleter::operator () (Peer *peer)
 {
-    LOG(DEBUG) << peer << " deleting abruptedly";
+    VLOG(1)
+        << peer
+        << " deleting abruptedly"
+    ;
 
     assert(!"peers should never get deleted this way");
 
@@ -272,23 +297,38 @@ void Peer::LoopData::PeerDeleter::operator () (Peer *peer)
 }
 
 void Peer::LoopData::up() {
-    LOG(DEBUG) << this
-        << " LoopRefCnt: " << refCount_ << " -> " << refCount_ + 1;
+    VLOG(2)
+        << this
+        << " LoopRefCnt: "
+        << refCount_
+        << " -> "
+        << refCount_ + 1
+    ;
 
     ++refCount_;
 }
 
 void Peer::LoopData::down() {
-    LOG(DEBUG) << " Down() on Loop";
-    LOG(DEBUG) << this
-        << " LoopRefCnt: " << refCount_ << " -> " << refCount_ - 1;
+    VLOG(2)
+        << " Down() on Loop"
+    ;
+    VLOG(2)
+        << this
+        << " LoopRefCnt: "
+        <<       refCount_
+        << " -> "
+        <<       refCount_ - 1
+    ;
 
     assert(refCount_);
 
     --refCount_;
 
     if (destroying_ && !refCount_) {
-        LOG(INFO) << this << " walking uv_loop before stopping it";
+        LOG(INFO)
+            << this
+            << " walking uv_loop before stopping it"
+        ;
         uv_walk(prepare_.loop, walkAndDumpHandlesCb< ERROR >, this);
 
         CloseHandle closeHandle = { this, NULL };
@@ -299,8 +339,14 @@ void Peer::LoopData::down() {
 }
 
 Peer::LoopData::~LoopData() {
-    LOG(DEBUG) << "Delete on Loop";
-    LOG(DEBUG) << this << " is being deleted";
+
+    VLOG(1)
+        << "Delete on Loop"
+    ;
+    VLOG(1)
+        << this
+        << " is being deleted"
+    ;
 
     for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
         assert(!peers[Peer::LoopData::PeerState(i)].size());
@@ -316,7 +362,10 @@ Peer::LoopData::~LoopData() {
 
 void Peer::LoopData::PeerDisposer::operator () (Peer *peer)
 {
-    LOG(INFO) << peer << " destroy() because this communication thread is shutting down";
+    LOG(INFO)
+        << peer
+        << " destroy() because this communication thread is shutting down"
+    ;
     peer->destroy(now_);
 }
 
@@ -324,14 +373,6 @@ Peer::LoopData::PeerDisposer::PeerDisposer(bool now)
     :
         now_(now)
     {}
-
-void Peer::up() {
-
-    LOG(DEBUG) << this
-        << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ + 1;
-
-    ++uvRefCnt_;
-}
 
 } /* yajr::comms::internal namespace */
 } /* yajr::comms namespace */

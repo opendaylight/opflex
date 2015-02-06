@@ -51,7 +51,11 @@
         UvLoopSelector uvLoopSelector
     ) {
 
-    LOG(INFO) << host << ":" << service;
+    LOG(INFO)
+        << host
+        << ":"
+        << service
+    ;
 
     ::yajr::comms::internal::ActivePeer * peer;
     if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActivePeer(
@@ -60,11 +64,16 @@
                     connectionHandler,
                     data,
                     uvLoopSelector))) {
-        LOG(WARNING) << ": out of memory, dropping new peer on the floor";
+        LOG(WARNING)
+            << ": out of memory, dropping new peer on the floor"
+        ;
         return NULL;
     }
 
-    LOG(DEBUG) << peer << " queued up for resolution";
+    VLOG(1)
+        << peer
+        << " queued up for resolution"
+    ;
     peer->insert(::yajr::comms::internal::Peer::LoopData::TO_RESOLVE);
 
     return peer;
@@ -79,7 +88,10 @@ void ::yajr::comms::internal::ActivePeer::retry() {
 
     if (destroying_) {
 
-        LOG(INFO) << this << "Not retrying because of pending destroy";
+        LOG(INFO)
+            << this
+            << "Not retrying because of pending destroy"
+        ;
 
         return;
 
@@ -109,12 +121,18 @@ void ::yajr::comms::internal::ActivePeer::retry() {
                     getHostname(),
                     getService(),
                     &hints))) {
-        LOG(WARNING) << "uv_getaddrinfo: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
+        LOG(WARNING)
+            << "uv_getaddrinfo: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+        ;
         onError(rc);
         insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
     } else {
-        LOG(DEBUG) << this << " up() for a pending getaddrinfo()";
+        VLOG(1)
+            << this
+            << " up() for a pending getaddrinfo()";
         up();
         insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
     }
@@ -140,7 +158,7 @@ void on_active_connection(uv_connect_t *req, int status) {
 
         /* the peer might have been deleted, so we have to avoid accessing any
          * of its members */
-        LOG(DEBUG)
+        VLOG(1)
             << "peer {"
             << req->handle->data         // this is already a (void *)
             << "}A[?] has had a connection attempt canceled"
@@ -151,10 +169,14 @@ void on_active_connection(uv_connect_t *req, int status) {
 
     ActivePeer * peer = Peer::get(req);  // can't possibly crash yet
 
-    LOG(DEBUG) << peer;
+    VLOG(1)
+        << peer;
 
     if (peer->destroying_) {
-        LOG(INFO) << peer << " peer is being destroyed. down() it";
+        LOG(INFO)
+            << peer
+            << " peer is being destroyed. down() it"
+        ;
         peer->down();
         return;
     }
@@ -163,10 +185,16 @@ void on_active_connection(uv_connect_t *req, int status) {
 
     int rc;
     if (status < 0) {
-        LOG(WARNING) << "connect: [" << uv_err_name(status) <<
-            "] " << uv_strerror(status);
+        LOG(WARNING)
+            << "connect: ["
+            << uv_err_name(status)
+            << "] "
+            << uv_strerror(status)
+        ;
         if ((rc = connect_to_next_address(peer))) {
-            LOG(WARNING) << "connect: no more resolved addresses";
+            LOG(WARNING)
+                << "connect: no more resolved addresses"
+            ;
 
             /* since all attempts for all possible IP addresses have failed,
              * issue an error callback
@@ -206,7 +234,7 @@ void debug_resolution_entries(struct addrinfo const * ai);
 
 void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
-    LOG(DEBUG);
+    VLOG(2);
 
     ActivePeer * peer = Peer::get(req);
     assert(!peer->passive_);
@@ -215,14 +243,21 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     void retry_later(ActivePeer * peer);
 
     if (peer->destroying_) {
-        LOG(INFO) << peer << " peer is being destroyed. down() it";
+        LOG(INFO)
+            << peer
+            << " peer is being destroyed. down() it"
+        ;
         peer->down();
         return;
     }
 
     if (status < 0) {
-        LOG(WARNING) << "getaddrinfo callback error: [" << uv_err_name(status) <<
-            "] " << uv_strerror(status);
+        LOG(WARNING)
+            << "getaddrinfo callback error: ["
+            << uv_err_name(status)
+            << "] "
+            << uv_strerror(status)
+        ;
         peer->status_ = Peer::kPS_FAILED_TO_RESOLVE;
         uv_freeaddrinfo(resp);
 
@@ -235,15 +270,18 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
     int rc;
 
-    /* FIXME: pass the loop along */
     if ((rc = peer->tcpInit())) {
         return retry_later(peer);
     }
 
     peer->_.ai_next = peer->_.ai = resp;
     if ((rc = connect_to_next_address(peer))) {
-        LOG(WARNING) << "connect_to_next_address: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
+        LOG(WARNING)
+            << "connect_to_next_address: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+        ;
         if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
             uv_close((uv_handle_t*)&peer->handle_, NULL);
         }
@@ -252,7 +290,10 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
     peer->status_ = Peer::kPS_CONNECTING;
 
-    LOG(DEBUG) << peer << " waiting for connection completion";
+    VLOG(1)
+        << peer
+        << " waiting for connection completion"
+    ;
 
 }
 
@@ -270,7 +311,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
 void debug_address(struct addrinfo const * ai, size_t m = 0) {
 
-    if (!LOG_SHOULD_EMIT(DEBUG)) {
+    if (!VLOG_IS_ON(3)) {
         return;
     }
 
@@ -303,34 +344,30 @@ void debug_address(struct addrinfo const * ai, size_t m = 0) {
                        NI_NUMERICHOST | NI_NUMERICSERV
                       );
 
-    LOG(DEBUG)
-        << msg[m][0] << host
-        << msg[m][1] << service
-    ;
-    LOG(DEBUG)
-        << " ai_flags=" << ai->ai_flags
-    ;
-    LOG(DEBUG)
-        << " ai_family=" << ai->ai_family
-    ;
-    LOG(DEBUG)
-        << " ai_socktype=" << ai->ai_socktype
-    ;
-    LOG(DEBUG)
-        << " ai_protocol=" << ai->ai_protocol
-    ;
-    LOG(DEBUG)
-        << " ai_addrlen=" << ai->ai_addrlen
-    ;
-    LOG(DEBUG)
-        << " ai_canonname=" << (ai->ai_canonname ?: "")
+    VLOG(3)
+        << msg[m][0]
+        <<           host
+        << msg[m][1]
+        <<           service
+        <<   " ai_flags="
+        << ai->ai_flags
+        <<   " ai_family="
+        << ai->ai_family
+        <<   " ai_socktype="
+        << ai->ai_socktype
+        <<   " ai_protocol="
+        << ai->ai_protocol
+        <<   " ai_addrlen="
+        << ai->ai_addrlen
+        <<    " ai_canonname="
+        << (ai->ai_canonname ?: "")
     ;
 
 }
 
 void debug_resolution_entries(struct addrinfo const * ai) {
 
-    if (!LOG_SHOULD_EMIT(DEBUG)) {
+    if (!VLOG_IS_ON(3)) {
         return;
     }
 
@@ -342,12 +379,17 @@ void debug_resolution_entries(struct addrinfo const * ai) {
 
 void retry_later(ActivePeer * peer) {
 
-    LOG(DEBUG) << peer;
+    VLOG(1)
+        << peer
+    ;
 
     peer->unlink();
     peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
 
-    LOG(DEBUG) << peer << " down() for a retry_later()";
+    VLOG(1)
+        << peer
+        << " down() for a retry_later()"
+    ;
     peer->down();
 
     return;
@@ -357,7 +399,9 @@ void swap_stack_on_close(uv_handle_t * h) {
 
     ActivePeer * peer = Peer::get<ActivePeer>(h);  // can't possibly crash yet
 
-    LOG(DEBUG) << peer;
+    VLOG(1)
+        << peer
+    ;
 
  // LOG(DEBUG) << "{" << peer << "}A down() for a swap_stack_on_close()";
  // peer->down();
@@ -372,8 +416,12 @@ void swap_stack_on_close(uv_handle_t * h) {
     }
 
     if ((rc = connect_to_next_address(peer, false))) {
-        LOG(WARNING) << "connect_to_next_address: [" << uv_err_name(rc) << "] " <<
-            uv_strerror(rc);
+        LOG(WARNING)
+            << "connect_to_next_address: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+        ;
         if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
             uv_close((uv_handle_t*)&peer->handle_, NULL);
         }
@@ -384,7 +432,9 @@ void swap_stack_on_close(uv_handle_t * h) {
 
 int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
 
-    LOG(DEBUG) << peer;
+    VLOG(1)
+        << peer
+    ;
 
     struct addrinfo const * ai = peer->_.ai_next;
 
@@ -394,8 +444,12 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
 
     while (ai && (rc = uv_tcp_connect(&peer->connect_req_, &peer->handle_,
                 ai->ai_addr, on_active_connection))) {
-        LOG(ai ? INFO : WARNING) << "uv_tcp_connect: [" << uv_err_name(rc) <<
-            "] " << uv_strerror(rc);
+        LOG(ai ? INFO : WARNING)
+            << "uv_tcp_connect: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+        ;
 
         if (swap_stack) {
 
@@ -407,7 +461,9 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
                 case -EAFNOSUPPORT:
                 case -EPROTOTYPE:
                 case -EINVAL:
-                    LOG(INFO) << "destroying socket and retrying";
+                    LOG(INFO)
+                        << "destroying socket and retrying"
+                    ;
                     if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
                         uv_close((uv_handle_t*)&peer->handle_, swap_stack_on_close);
                     }
@@ -430,9 +486,15 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
     }
 
     if (rc) {
-        LOG(DEBUG) << "unable to issue a(nother) connect request";
+        VLOG(1)
+            << peer
+            << " unable to issue a(nother) connect request"
+        ;
     } else {
-        LOG(DEBUG) << "issued a connect request";
+        VLOG(1)
+            << peer
+            << " issued a connect request"
+        ;
     }
 
     return rc;

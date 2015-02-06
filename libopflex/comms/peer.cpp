@@ -34,11 +34,15 @@ std::ostream& operator << (
         ::yajr::comms::internal::Peer const * p
     ) {
     os
-        << "{" << reinterpret_cast<void const *>(p) << "}"
+        << "{"
+        << reinterpret_cast<void const *>(p)
+        << "}"
 #ifndef NDEBUG
         << p->peerType()
 #endif
-        << "[" << p->uvRefCnt_ << "];handle@"
+        << "["
+        << p->uvRefCnt_
+        << "];handle@"
         << reinterpret_cast<void const *>(&p->handle_);
     ;
 #ifndef NDEBUG
@@ -61,7 +65,7 @@ std::ostream& operator << (
 CommunicationPeer * Peer::get(uv_write_t * r) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(r->data);
 
-    LOG(DEBUG)
+    VLOG(5)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -74,7 +78,7 @@ CommunicationPeer * Peer::get(uv_write_t * r) {
 CommunicationPeer * Peer::get(uv_timer_t * h) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(h->data);
 
-    LOG(DEBUG)
+    VLOG(5)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -88,7 +92,7 @@ ActivePeer * Peer::get(uv_connect_t * r) {
 
     ActivePeer * peer = Peer::get<ActivePeer>(r->handle);
 
-    LOG(DEBUG)
+    VLOG(5)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -101,7 +105,7 @@ ActivePeer * Peer::get(uv_connect_t * r) {
 ActivePeer * Peer::get(uv_getaddrinfo_t * r) {
     ActivePeer * peer = static_cast<ActivePeer *>(r->data);
 
-    LOG(DEBUG)
+    VLOG(5)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -117,7 +121,7 @@ bool Peer::__checkInvariants()
 #else
     const
 {
-    LOG(DEBUG)
+    VLOG(5)
         << this
         << " ALWAYS = true"
     ;
@@ -125,16 +129,37 @@ bool Peer::__checkInvariants()
     return true;
 }
 
+void Peer::up() {
+
+    VLOG(2)
+        << this
+        << " refcnt: "
+        << uvRefCnt_
+        << " -> "
+        << uvRefCnt_ + 1
+    ;
+
+    ++uvRefCnt_;
+}
+
 void Peer::down() {
 
-    LOG(DEBUG) << this 
-        << " refcnt: " << uvRefCnt_ << " -> " << uvRefCnt_ - 1;
+    VLOG(2)
+        << this 
+        << " refcnt: "
+        << uvRefCnt_
+        << " -> "
+        << uvRefCnt_ - 1
+    ;
 
     if (--uvRefCnt_) {
         return;
     }
 
-    LOG(DEBUG) << "deleting " << this;
+    VLOG(1)
+        << "deleting "
+        << this
+    ;
 
     onDelete();
 
@@ -142,13 +167,20 @@ void Peer::down() {
 }
 
 void Peer::insert(Peer::LoopData::PeerState peerState) {
-    LOG(DEBUG) << this << " is being inserted in " << peerState;
+    VLOG(2)
+        << this
+        << " is being inserted in "
+        << peerState
+    ;
 
     Peer::LoopData::getPeerList(getUvLoop(), peerState)->push_back(*this);
 }
 
 void Peer::unlink() {
-    LOG(DEBUG) << this << " manually unlinking";
+    VLOG(2)
+        << this
+        << " manually unlinking"
+    ;
 
     SafeListBaseHook::unlink();
 

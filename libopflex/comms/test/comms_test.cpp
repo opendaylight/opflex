@@ -38,7 +38,9 @@ BOOST_AUTO_TEST_SUITE(asynchronous_sockets)
 struct CommsTests {
 
     CommsTests() {
-        LOG(INFO) << "global setup\n";
+        LOG(INFO)
+            << "global setup\n"
+        ;
 
         boost::unit_test::unit_test_log_t::instance()
             .set_threshold_level(::boost::unit_test::log_successful_tests);
@@ -47,7 +49,9 @@ struct CommsTests {
     }
 
     ~CommsTests() {
-        LOG(INFO) << "global teardown\n";
+        LOG(INFO)
+            << "global teardown\n"
+        ;
     }
 
     /* potentially subject to static initialization order fiasco */
@@ -81,7 +85,9 @@ class CommsFixture {
 
         uv_loop_init(CommsFixture::current_loop);
 
-        LOG(INFO) << "\n\n\n\n\n\n\n\n";
+        LOG(INFO)
+            << "\n\n\n\n\n\n\n\n"
+        ;
 
         prepare_.data = timer_.data = this;
 
@@ -104,21 +110,13 @@ class CommsFixture {
         eventCounter = 0;
     }
 
-    struct PeerDisposer {
-        void operator()(internal::Peer *peer)
-        {
-            LOG(DEBUG) << peer << " destroy() with intent of deleting";
-            peer->destroy();
-        }
-    };
-
     static void down_on_close(uv_handle_t * h) {
         internal::Peer::LoopData::getLoopData(h->loop)->down();
     }
 
     void cleanup() {
 
-        LOG(DEBUG);
+        VLOG(3);
 
         uv_timer_stop(&timer_);
         uv_prepare_stop(&prepare_);
@@ -138,7 +136,9 @@ class CommsFixture {
 
         uv_loop_close(CommsFixture::current_loop);
 
-        LOG(INFO) << "\n\n\n\n\n\n\n\n";
+        LOG(INFO)
+            << "\n\n\n\n\n\n\n\n"
+        ;
 
     }
 
@@ -164,53 +164,77 @@ class CommsFixture {
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::ONLINE)->size())) {
             final_peers += m;
-            dbgLog << " online: " << m;
+            dbgLog
+                << " online: "
+                << m
+            ;
         }
         if((m=internal::Peer::LoopData::getPeerList(
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::LISTENING)->size())) {
             final_peers += m;
-            dbgLog << " listening: " << m;
+            dbgLog
+                << " listening: "
+                << m
+            ;
         }
 
         if((m=internal::Peer::LoopData::getPeerList(
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::TO_RESOLVE)->size())) {
             transient_peers += m;
-            dbgLog << " to_resolve: " << m;
+            dbgLog
+                << " to_resolve: "
+                << m
+            ;
         }
         if((m=internal::Peer::LoopData::getPeerList(
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::TO_LISTEN)->size())) {
             transient_peers += m;
-            dbgLog << " to_listen: " << m;
+            dbgLog
+                << " to_listen: "
+                << m
+            ;
         }
 
         if((m=internal::Peer::LoopData::getPeerList(
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::RETRY_TO_CONNECT)->size())) {
             final_peers += m;
-            dbgLog << " retry-connecting: " << m;
+            dbgLog
+                << " retry-connecting: "
+                << m
+            ;
         }
         if((m=internal::Peer::LoopData::getPeerList(
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::RETRY_TO_LISTEN)->size())) {
             final_peers += m;
-            dbgLog << " retry-listening: " << m;
+            dbgLog
+                << " retry-listening: "
+                << m
+            ;
         }
         if((m=internal::Peer::LoopData::getPeerList(
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)->size())) {
             /* this is not a "final" state, from a test's perspective */
             transient_peers += m;
-            dbgLog << " attempting: " << m;
+            dbgLog
+                << " attempting: "
+                << m
+            ;
         }
         if((m=internal::Peer::LoopData::getPeerList(
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::PENDING_DELETE)->size())) {
             /* this is not a "final" state, from a test's perspective */
             transient_peers += m;
-            dbgLog << " pending_delete: " << m;
+            dbgLog
+                << " pending_delete: "
+                << m
+            ;
         }
 
         dbgLog
@@ -241,7 +265,9 @@ class CommsFixture {
         if (oldDbgLog != newDbgLog) {
             oldDbgLog = newDbgLog;
 
-            LOG(DEBUG) << newDbgLog;
+            VLOG(3)
+                << newDbgLog
+            ;
         }
 
         return std::make_pair(final_peers, transient_peers);
@@ -255,12 +281,17 @@ class CommsFixture {
 
         if (count) {
             if (old_count != count) {
-                LOG(DEBUG) << count << " peers left";
+                LOG(DEBUG)
+                    << count
+                    << " peers left"
+                ;
             }
             old_count = count;
             return;
         }
-        LOG(DEBUG) << "no peers left";
+        LOG(DEBUG)
+            << "no peers left"
+        ;
 
         uv_idle_stop(handle);
         uv_stop(CommsFixture::current_loop);
@@ -280,19 +311,30 @@ class CommsFixture {
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::PeerState(i));
 
-            dbgLog << "\n";
-
-            dbgLog << " pL #" << i << " @" << pL;
+            dbgLog
+                << "\n"
+            ;
 
             dbgLog
-                << "[" << static_cast<void*>(&*pL->begin())
-                << "->" << static_cast<void*>(&*pL->end()) << "]{"
+                << " pL #"
+                << i
+                << " @"
+                << pL
+            ;
+
+            dbgLog
+                << "["
+                << static_cast<void*>(&*pL->begin())
+                << "->"
+                << static_cast<void*>(&*pL->end())
+                << "]{"
                 << (
                         static_cast<char*>(static_cast<void*>(&*pL->end()))
                     -
                         static_cast<char*>(static_cast<void*>(&*pL->begin()))
                    )
-                << "}";
+                << "}"
+            ;
         }
 #endif
 
@@ -301,7 +343,9 @@ class CommsFixture {
         if (oldDbgLog != newDbgLog) {
             oldDbgLog = newDbgLog;
 
-            LOG(DEBUG) << newDbgLog;
+            VLOG(6)
+                << newDbgLog
+            ;
         }
 
     }
@@ -324,20 +368,37 @@ class CommsFixture {
                     CommsFixture::current_loop,
                     internal::Peer::LoopData::PeerState(i));
 
-            dbgLog << "\n";
-
-            dbgLog << " pL #" << i << " @" << pL;
+            dbgLog
+                << "\n"
+            ;
 
             dbgLog
-                << "[" << static_cast<void*>(&*pL->begin())
-                << "->" << static_cast<void*>(&*pL->end()) << "]("
-                << pL->size() << ")";
+                << " pL #"
+                << i
+                << " @"
+                << pL
+            ;
+
+            dbgLog
+                << "["
+                << static_cast<void*>(&*pL->begin())
+                << "->"
+                << static_cast<void*>(&*pL->end())
+                << "]("
+                << pL->size()
+                << ")"
+            ;
 
             for(internal::Peer::List::iterator it = pL->begin(); it != pL->end(); ++it) {
-                dbgLog << " peer " << &*it;
+                dbgLog
+                    << " peer "
+                    << &*it
+                ;
                 peerGood = it->__checkInvariants();
                 if (!peerGood) {
-                    dbgLog << " BAD!";
+                    dbgLog
+                        << " BAD!"
+                    ;
                     good = false;
                 }
             }
@@ -349,7 +410,9 @@ class CommsFixture {
         if (oldDbgLog != newDbgLog) {
             oldDbgLog = newDbgLog;
 
-            LOG(DEBUG) << newDbgLog;
+            VLOG(good ? 5 : 4)
+                << newDbgLog
+            ;
         }
 
         assert(good);
@@ -379,7 +442,7 @@ class CommsFixture {
 
     static void timeout_cb(uv_timer_t * handle) {
 
-        LOG(DEBUG);
+        VLOG(4);
 
         if (!expect_timeout) {
             BOOST_CHECK(!"the test has timed out");
@@ -395,7 +458,7 @@ class CommsFixture {
 
     static void destroy_listener_cb(uv_timer_t * handle) {
 
-        LOG(DEBUG);
+        VLOG(1);
 
         reinterpret_cast< ::yajr::Listener * >(handle->data)->destroy();
 
@@ -408,7 +471,7 @@ class CommsFixture {
 
     static void destroy_peer_cb(uv_timer_t * handle) {
 
-        LOG(DEBUG);
+        VLOG(1);
 
         reinterpret_cast< ::yajr::Peer* >(handle->data)->destroy();
 
@@ -428,7 +491,7 @@ class CommsFixture {
             size_t num_events = 0
             ) {
 
-        LOG(DEBUG);
+        VLOG(1);
 
         required_final_peers = final_peers;
         required_transient_peers = transient_peers;

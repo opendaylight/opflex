@@ -26,7 +26,9 @@ namespace yajr {
 
 MethodName const *
 MessageFactory::lookupMethod(char const * method) {
-    LOG(DEBUG) << method;
+    VLOG(6)
+        << method
+    ;
 #undef  PERFECT_RET_VAL
 #define PERFECT_RET_VAL(method) \
     &method

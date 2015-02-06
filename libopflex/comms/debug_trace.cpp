@@ -29,10 +29,10 @@ namespace opflex {
 
     class Instruction;
 
-std::ostream& operator<< (std::ostream& os, Instruction * const func)
+std::ostream& operator << (std::ostream& os, Instruction * const func)
                                         __attribute__((no_instrument_function));
 
-std::ostream& operator<< (std::ostream& os, Instruction * const func) {
+std::ostream& operator << (std::ostream& os, Instruction * const func) {
 
     /* not thread-safe, but for now we don't care */
     static size_t funcnamesize = 256;
@@ -71,17 +71,31 @@ std::ostream& operator<< (std::ostream& os, Instruction * const func) {
 					    funcname, &funcnamesize, &status);
 	    if (status == 0) {
             funcname = ret; // use possibly realloc()-ed string
-            os << *symbollist << ": " << funcname << "+" << begin_offset;
+            os
+                << *symbollist
+                << ": "
+                << funcname
+                << "+"
+                << begin_offset
+            ;
 	    } else {
             // demangling failed. Output function name as a C function with
             // no arguments.
-            os << *symbollist << ": " << begin_name << "+" << begin_offset;
+            os
+                << *symbollist
+                << ": "
+                << begin_name
+                << "+"
+                << begin_offset
+            ;
         }
 	}
 	else
 	{
 	    // couldn't parse the line? print the whole line.
-        os << *symbollist;
+        os
+            << *symbollist
+        ;
 	}
 
     free(symbollist);

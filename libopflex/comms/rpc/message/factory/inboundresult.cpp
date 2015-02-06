@@ -32,9 +32,11 @@ MessageFactory::InboundResult(
 
     char const * method = id[rapidjson::SizeType(0)].GetString();
 
-    LOG(DEBUG)
-        << " peer=" << &peer
-        << " method=" <<  method
+    VLOG(4)
+        << " peer="
+        <<  &peer
+        << " method="
+        <<   method
     ;
 
 #undef  PERFECT_RET_VAL

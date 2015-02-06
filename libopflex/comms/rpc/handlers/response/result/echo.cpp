@@ -23,13 +23,16 @@ namespace yajr {
 template<>
 void InbRes<&yajr::rpc::method::echo>::process() const {
 
-    LOG(INFO) << "Got echo reply at " << getReceived();
+    LOG(INFO)
+        << "Got echo reply at "
+        << getReceived()
+    ;
 
     rapidjson::Value const & payload = getPayload();
 
 #ifndef NDEBUG
     for(size_t i = 1; i <= yajr::comms::internal::EchoGen::kNcanaries; ++i) {
-        LOG(DEBUG)
+        VLOG(7)
             << "About to check canary number "
             << i
         ;

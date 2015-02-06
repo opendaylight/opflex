@@ -32,7 +32,9 @@ MessageFactory::InboundError(
 
     char const * method = id[rapidjson::SizeType(0)].GetString();
 
-    LOG(DEBUG) << method;
+    VLOG(3)
+        << method
+    ;
 
 #undef  PERFECT_RET_VAL
 #define PERFECT_RET_VAL(method) \

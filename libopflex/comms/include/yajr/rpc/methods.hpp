@@ -83,7 +83,9 @@ namespace yajr {
                 )
                 : InboundRequest(peer, params, id)
                 {
-                    LOG(DEBUG) << M->s;
+                    VLOG(3)
+                        << M->s
+                    ;
                 }
 
             virtual void process() const;
@@ -105,7 +107,9 @@ namespace yajr {
                 )
                 : InboundResult(peer, params, id)
                 {
-                    LOG(DEBUG) << M->s;
+                    VLOG(3)
+                        << M->s
+                    ;
                 }
 
             virtual void process() const;
@@ -124,7 +128,9 @@ namespace yajr {
                 )
                 : InboundError(peer, params, id)
                 {
-                    LOG(DEBUG) << M->s;
+                    VLOG(3)
+                        << M->s
+                    ;
                 }
 
             virtual void process() const;

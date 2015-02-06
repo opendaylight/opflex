@@ -25,7 +25,10 @@ namespace yajr {
 #endif
 
 void ListeningPeer::destroy(bool now) {
-    LOG(DEBUG) << this;
+
+    VLOG(1)
+        << this
+    ;
  // Peer::destroy();
 
     assert(!destroying_);
