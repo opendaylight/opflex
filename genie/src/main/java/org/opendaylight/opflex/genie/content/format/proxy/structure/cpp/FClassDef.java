@@ -151,6 +151,7 @@ public class FClassDef extends ItemFormatterTask
         out.println();
         out.println(aInIndent,getInclude("boost/optional.hpp", true));
         out.println(aInIndent,getInclude("boost/pointer_cast.hpp", true));
+        out.println(aInIndent,getInclude("boost/shared_ptr.hpp", true));
         out.println(aInIndent,getInclude("opflex/modb/URIBuilder.h", false));
         out.println(aInIndent, getInclude("opflex/modb/MO.h", false));
         /**
@@ -570,9 +571,9 @@ public class FClassDef extends ItemFormatterTask
                 "management information tree."));
         out.printHeaderComment(aInIdent,lComment);
 
-        out.println(aInIdent, "static " + lClassName + "* createRootElement()");
+        out.println(aInIdent, "static boost::shared_ptr<" + lClassName + "> createRootElement()");
         out.println(aInIdent,"{");
-        out.println(aInIdent + 1, "return new " + lClassName + "(opflex::modb::URI::ROOT, -1, opflex::modb::URI::ROOT, -1);");
+        out.println(aInIdent + 1, "return boost::shared_ptr<" + lClassName + ">(new " + lClassName + "(opflex::modb::URI::ROOT, -1, opflex::modb::URI::ROOT, -1));");
         out.println(aInIdent, "}");
         out.println();
     }
@@ -822,7 +823,7 @@ public class FClassDef extends ItemFormatterTask
         {
             lMethodName += lTargetClassName;
         }
-        out.println(aInIdent, aInFormattedChildClassName + "* " + lMethodName + "(");
+        out.println(aInIdent, "boost::shared_ptr<" + aInFormattedChildClassName + "> " + lMethodName + "(");
 
         boolean lIsFirst = true;
         MNameComponent lClassProp = null;
@@ -862,11 +863,11 @@ public class FClassDef extends ItemFormatterTask
         {
             out.println(aInIdent + 1, "opflex::modb::class_id_t " + getPropParamName(aInChildClass, lClassProp.getPropName()) + " = " + aInTargetClass.getGID().getId() + ";");
         }
-        out.println(aInIdent + 1, "opflex::modb::MO* mo = addChild(");
+        out.println(aInIdent + 1, "boost::shared_ptr<opflex::modb::MO> mo = addChild(");
         out.println(aInIdent + 2, toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
         out.println(aInIdent + 2, aInUriBuilder);
         out.println(aInIdent + 2, ");");
-        out.println(aInIdent + 1, aInFormattedChildClassName + "* result = boost::reinterpret_pointer_cast<" + aInFormattedChildClassName + ">(mo);");
+        out.println(aInIdent + 1, "boost::shared_ptr<" + aInFormattedChildClassName + "> result = boost::static_pointer_cast<" + aInFormattedChildClassName + ">(mo);");
         aInNcs = aInChildNr.getComponents();
         for (MNameComponent lNc : aInNcs)
         {
