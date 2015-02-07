@@ -21,6 +21,8 @@
 
 #include <rapidjson/error/en.h>
 
+#include <cctype>
+
 namespace yajr {
     namespace comms {
         namespace internal {
@@ -94,11 +96,16 @@ void CommunicationPeer::onConnect() {
     uv_timer_init(getUvLoop(), &keepAliveTimer_);
     uv_unref((uv_handle_t*) &keepAliveTimer_);
 
+    assert(__checkInvariants());
+
     connectionHandler_(this, data_, ::yajr::StateChange::CONNECT, 0);
+
+    assert(__checkInvariants());
 
     /* some transports, like for example SSL/TLS, need to start talking
      * before there's anything to say */
     (void) write();
+
 }
 
 void CommunicationPeer::onDisconnect(bool now) {
@@ -438,6 +445,8 @@ void CommunicationPeer::onWrite() {
 
 int CommunicationPeer::write() const {
 
+    assert(__checkInvariants());
+
     if (pendingBytes_) {
 
         VLOG(4)
@@ -449,7 +458,11 @@ int CommunicationPeer::write() const {
         return 0;
     }
 
-    return transport_.callbacks_->sendCb_(this);
+    int retVal = transport_.callbacks_->sendCb_(this);
+
+    assert(__checkInvariants());
+
+    return retVal;
 
 }
 
@@ -738,6 +751,25 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     return ret;
 }
 
+static bool isLegitPunct(int c) {
+
+    switch(c) {
+      case ':':
+      case '{':
+      case '[':
+      case ',':
+      case ']':
+      case '}':
+      case '_':
+      case '-':
+      case '"':
+        return true;
+      default:
+        return false;
+    }
+
+}
+
 #ifndef NDEBUG
 bool CommunicationPeer::__checkInvariants() const {
 
@@ -804,6 +836,8 @@ bool CommunicationPeer::__checkInvariants() const {
                 << " is not online, and egress queue size() = "
                 << delta
             ;
+
+            result = false;
         }
 
         if (iov.size() || delta) {
@@ -823,6 +857,57 @@ bool CommunicationPeer::__checkInvariants() const {
         ;
 
         delta -= iov[i].iov_len;
+
+        for (
+                char const * c = static_cast< char const * >(iov[i].iov_base),
+                     * const e = c + iov[i].iov_len
+            ;
+                c < e
+            ;
+                ++c
+            ) {
+
+            if (
+                    (!*c)                      // '\0' is OK
+                ||
+                    (
+                        (*c & 0xe0)            // ASCII from 1 to 31 are BAD
+                    &&
+                        (
+                            std::isalnum(*c)   // alphanumeric values are GOOD
+                        ||
+                            isLegitPunct(*c)    // {[","]} and similar are GOOD
+                        )
+                    )
+                ) {
+
+                continue;
+            }
+
+            LOG(ERROR)
+                << this
+                << " egress queue corrupt, after "
+                << s_.deque_.size() - delta - (e - c)
+                << " bytes, byte value: \""
+                << *c
+                << "\", hex value: "
+                << std::hex
+                << static_cast< unsigned int >(
+                        static_cast< unsigned char >(*c)
+                    )
+                << " DQ.size="
+                << s_.deque_.size()
+                << " currentDelta="
+                << delta
+                << " tailIOV="
+                << e - c
+                << " IOVlen="
+                << iov[i].iov_len
+            ;
+
+            result = false;
+
+        }
 
     }
 
