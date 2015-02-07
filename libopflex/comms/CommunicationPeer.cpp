@@ -754,18 +754,21 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
 static bool isLegitPunct(int c) {
 
     switch(c) {
-      case ':':
-      case '{':
-      case '[':
-      case ',':
-      case ']':
-      case '}':
-      case '_':
-      case '-':
-      case '"':
-      case '.':
-      case '/':
       case '\0':      // <-- redundant
+      case  ' ':
+      case  '"':
+      case  '%':
+      case  ',':
+      case  '-':
+      case  '.':
+      case  '/':
+      case  ':':
+      case  '[':
+      case  ']':
+      case  '_':
+      case  '{':
+      case  '|':
+      case  '}':
         return true;
       default:
         return false;
