@@ -486,7 +486,7 @@ SetActionGotoLearn(FlowEntry *fe) {
 
 static void
 SetActionController(FlowEntry *fe, uint32_t epgId = 0,
-                    uint16_t max_len = 128) {
+                    uint16_t max_len = 0xffff) {
     ActionBuilder ab;
     if (epgId != 0)
         ab.SetRegLoad(MFF_REG0, epgId);
@@ -1120,7 +1120,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
             FlowEntry *e0 = new FlowEntry();
             SetDestMatchNd(e0, 20, NULL, rdId, FlowManager::GetNDCookie(),
                            ND_ROUTER_SOLICIT);
-            SetActionController(e0, 0, 0xffff);
+            SetActionController(e0);
             WriteFlow(rdURI.get().toString(), DST_TABLE_ID, e0);
 
             if (!isSyncing) {
@@ -1197,7 +1197,7 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t routingDomainId) {
                     FlowEntry *e0 = new FlowEntry();
                     SetDestMatchNd(e0, 20, &routerIp, routingDomainId,
                                    FlowManager::GetNDCookie());
-                    SetActionController(e0, 0, 0xffff);
+                    SetActionController(e0);
                     el.push_back(FlowEntryPtr(e0));
                 }
             }
