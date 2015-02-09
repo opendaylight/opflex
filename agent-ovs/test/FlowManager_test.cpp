@@ -1030,7 +1030,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     uint32_t epg1_vnid = policyMgr.getVnidForGroup(epg1->getURI()).get();
     switch (encapType) {
     case FlowManager::ENCAP_VLAN:
-        fe_epg0.push_back(Bldr().table(1).priority(150)
+        fe_epg0.push_back(Bldr().table(1).priority(149)
                           .in(tunPort).isVlan(epg0_vnid)
                           .actions().popVlan()
                           .load(SEPG, epg0_vnid).load(BD, 1)
@@ -1039,7 +1039,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     case FlowManager::ENCAP_VXLAN:
     case FlowManager::ENCAP_IVXLAN:
     default:
-        fe_epg0.push_back(Bldr().table(1).priority(150).tunId(epg0_vnid)
+        fe_epg0.push_back(Bldr().table(1).priority(149).tunId(epg0_vnid)
                           .in(tunPort).actions().load(SEPG, epg0_vnid).load(BD, 1)
                           .load(FD, 0).load(RD, 1).go(2).done());
         break;
@@ -1380,7 +1380,7 @@ FlowManagerFixture::createOnConnectEntries(FlowManager::EncapType encapType,
     FlowEntryPtr e1(new FlowEntry());
     flows.push_back(e1);
     e1->entry->table_id = 1;
-    e1->entry->priority = 150;
+    e1->entry->priority = 149;
     match_set_in_port(&e1->entry->match, flowManager.GetTunnelPort());
     switch (encapType) {
     case FlowManager::ENCAP_VLAN:

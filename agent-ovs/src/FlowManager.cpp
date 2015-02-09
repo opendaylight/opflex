@@ -462,7 +462,7 @@ SetDestActionSubnetArp(FlowEntry *fe, const uint8_t *specialMac,
 }
 
 static void
-SetDestActionFdBroadcast(FlowEntry *fe, uint32_t fgrpId) {
+SetActionFdBroadcast(FlowEntry *fe, uint32_t fgrpId) {
     ActionBuilder ab;
     ab.SetGroup(fgrpId);
     ab.Build(fe->entry);
@@ -871,9 +871,19 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             // promiscuous we allow the traffic into the learning
             // table
             FlowEntry *e1 = new FlowEntry();
-            SetSourceMatchEp(e1, 139, ofPort, NULL);
+            SetSourceMatchEp(e1, 138, ofPort, NULL);
             SetSourceAction(e1, epgVnid, bdId, fgrpId, rdId, LEARN_TABLE_ID);
             src.push_back(FlowEntryPtr(e1));
+
+            // Multicast traffic from promiscuous ports is delivered
+            // normally
+            FlowEntry *e2 = new FlowEntry();
+            SetSourceMatchEp(e2, 139, ofPort, NULL);
+            match_set_dl_dst_masked(&e2->entry->match, 
+                                    MAC_ADDR_BROADCAST,
+                                    MAC_ADDR_MULTICAST);
+            SetSourceAction(e1, epgVnid, bdId, fgrpId, rdId);
+            src.push_back(FlowEntryPtr(e2));
         }
 
         if (virtualDHCPEnabled && hasMac) {
@@ -1069,11 +1079,12 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         return;
     }
 
+    FlowEntryList uplinkMatch;
     if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
         // In flood mode we send all traffic from the uplink to the
         // learning table.  Otherwise move to the destination mapper
-        // table as normal.  Note that policy is not enforced on
-        // traffic in the learning table.
+        // table as normal.  Multicast traffic still goes to the
+        // destination table, however.
 
         uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
         optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
@@ -1089,13 +1100,23 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         // Assign the source registers based on the VNID from the
         // tunnel uplink
         FlowEntry *e0 = new FlowEntry();
-        SetSourceMatchEpg(e0, encapType, 150, tunPort, epgVnid);
+        SetSourceMatchEpg(e0, encapType, 149, tunPort, epgVnid);
         SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId,
                         nextTable, encapType);
-        WriteFlow(epgId, SRC_TABLE_ID, e0);
-    } else {
-        WriteFlow(epgId, SRC_TABLE_ID, NULL);
+        uplinkMatch.push_back(FlowEntryPtr(e0));
+
+        if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+            FlowEntry *e1 = new FlowEntry();
+            SetSourceMatchEpg(e1, encapType, 150, tunPort, epgVnid);
+            match_set_dl_dst_masked(&e1->entry->match, 
+                                    MAC_ADDR_BROADCAST,
+                                    MAC_ADDR_MULTICAST);
+            SetSourceAction(e1, epgVnid, bdId, fgrpId, rdId,
+                            FlowManager::DST_TABLE_ID, encapType);
+            uplinkMatch.push_back(FlowEntryPtr(e1));
+        }
     }
+    WriteFlow(epgId, SRC_TABLE_ID, uplinkMatch);
 
     uint8_t intraGroup = IntraGroupPolicyEnumT::CONST_ALLOW;
     optional<shared_ptr<EpGroup> > epg = 
@@ -1339,13 +1360,14 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
         WriteGroupMod(e2);
     }
 
-    FlowEntryList entryList;
+    FlowEntryList grpDst;
     FlowEntryList epLearn;
+
     // deliver broadcast/multicast traffic to the group table
     FlowEntry *e0 = new FlowEntry();
     SetMatchFd(e0, 10, fgrpId, true, DST_TABLE_ID);
-    SetDestActionFdBroadcast(e0, fgrpId);
-    entryList.push_back(FlowEntryPtr(e0));
+    SetActionFdBroadcast(e0, fgrpId);
+    grpDst.push_back(FlowEntryPtr(e0));
 
     if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
         // go to the learning table on an unknown unicast
@@ -1353,7 +1375,7 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
         FlowEntry *unicastLearn = new FlowEntry();
         SetMatchFd(unicastLearn, 5, fgrpId, false, DST_TABLE_ID);
         SetActionGotoLearn(unicastLearn);
-        entryList.push_back(FlowEntryPtr(unicastLearn));
+        grpDst.push_back(FlowEntryPtr(unicastLearn));
 
         // Deliver unknown packets in the flood domain when
         // learning to the controller for reactive flow setup.
@@ -1381,7 +1403,7 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
             }
         }
     }
-    WriteFlow(fgrpStrId, DST_TABLE_ID, entryList);
+    WriteFlow(fgrpStrId, DST_TABLE_ID, grpDst);
     WriteFlow(epUUID, LEARN_TABLE_ID, epLearn);
 }
 
