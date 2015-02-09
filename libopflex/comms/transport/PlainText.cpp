@@ -35,7 +35,7 @@ TransportEngine< PlainText > & PlainText::getPlainTextTransport() {
 template<>
 int Cb< PlainText >::send_cb(CommunicationPeer const * peer) {
 
-    VLOG(4)
+    VLOG(5)
         << peer
     ;
 
@@ -107,7 +107,7 @@ void Cb< PlainText >::on_read(
 
     CommunicationPeer * peer = comms::internal::Peer::get<CommunicationPeer>(h);
 
-    VLOG(3)
+    VLOG(5)
         << peer
     ;
 
@@ -129,7 +129,7 @@ void Cb< PlainText >::on_read(
 
     if (nread > 0) {
 
-        VLOG(4)
+        VLOG(5)
             << peer
             << " nread "
             <<   nread
@@ -137,7 +137,11 @@ void Cb< PlainText >::on_read(
             << buf->len
         ;
 
-        peer->readBuffer(buf->base, nread, (buf->len > nread));
+        peer->readBuffer(
+                buf->base,
+                nread,
+                (buf->len > static_cast< size_t >(nread))
+        );
 
     }
 

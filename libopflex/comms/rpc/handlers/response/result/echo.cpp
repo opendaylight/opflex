@@ -23,7 +23,7 @@ namespace yajr {
 template<>
 void InbRes<&yajr::rpc::method::echo>::process() const {
 
-    LOG(INFO)
+    VLOG(6)
         << "Got echo reply at "
         << getReceived()
     ;

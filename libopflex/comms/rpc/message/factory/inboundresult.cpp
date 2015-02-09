@@ -32,7 +32,7 @@ MessageFactory::InboundResult(
 
     char const * method = id[rapidjson::SizeType(0)].GetString();
 
-    VLOG(4)
+    VLOG(5)
         << " peer="
         <<  &peer
         << " method="

@@ -20,7 +20,7 @@ namespace yajr {
 template<>
 void InbReq<&yajr::rpc::method::echo>::process() const {
 
-    VLOG(5);
+    VLOG(6);
 
     OutboundResult (
             this,

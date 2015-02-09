@@ -50,7 +50,7 @@ bool operator< (rapidjson::Value const & l, rapidjson::Value const & r) {
 
 bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
-    VLOG(3);
+    VLOG(5);
 
     return handler.StartObject()
 
@@ -70,7 +70,7 @@ bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
 void OutboundMessage::send() {
 
-    VLOG(3);
+    VLOG(5);
 
     ::yajr::comms::internal::CommunicationPeer const * cP =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer const * >
