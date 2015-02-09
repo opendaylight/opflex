@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 CATEGORY=${1:-STABLE}
 ulimit -c unlimited
