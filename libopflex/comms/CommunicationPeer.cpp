@@ -852,16 +852,46 @@ bool CommunicationPeer::__checkInvariants() const {
 
     }
 
+    std::stringstream iovec_dump;
     for (size_t i = 0; i < iov.size(); ++i) {
 
-        VLOG(6)
-            << this
-            << " iov #"
+        iovec_dump
+            << "("
             << i
-            << " iov_len "
+            << "@"
+            << std::hex
+            << iov[i].iov_base
+            << std::dec
+            << "+"
             << iov[i].iov_len
         ;
 
+        if (VLOG_IS_ON(7)) {
+            ssize_t len = iov[i].iov_len;
+            size_t offset = 0;
+            std::string temp((const char*)iov[i].iov_base, len);
+
+            do {
+                iovec_dump
+                    << "("
+                    << temp.c_str() + offset
+                    << ")"
+                    ;
+                offset += strlen(temp.c_str()) + 1;
+            } while (len > offset);
+
+            iovec_dump << ")";
+        }
+
+    }
+
+    // some sub-parts of this are only there at verbosity level 7 but we log at 6
+    VLOG(6)
+        << iovec_dump
+    ;
+
+    // loop again, because we want the above debug first, to be less confusing
+    for (size_t i = 0; i < iov.size(); ++i) {
         delta -= iov[i].iov_len;
 
         for (
