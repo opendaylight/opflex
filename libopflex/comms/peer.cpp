@@ -142,7 +142,7 @@ void Peer::up() {
     ++uvRefCnt_;
 }
 
-void Peer::down() {
+bool Peer::down() {
 
     VLOG(2)
         << this 
@@ -153,7 +153,7 @@ void Peer::down() {
     ;
 
     if (--uvRefCnt_) {
-        return;
+        return false;
     }
 
     VLOG(1)
@@ -164,6 +164,8 @@ void Peer::down() {
     onDelete();
 
     delete this;
+
+    return true;
 }
 
 void Peer::insert(Peer::LoopData::PeerState peerState) {

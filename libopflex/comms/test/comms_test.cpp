@@ -28,7 +28,7 @@
 
 #include <utility>
 
-#define DEFAULT_COMMSTEST_TIMEOUT 7200
+#define DEFAULT_COMMSTEST_TIMEOUT 6*7200
 
 using namespace yajr::comms;
 using namespace yajr::transport;
@@ -73,7 +73,7 @@ struct CommsTests {
 
 };
 
-opflex::logging::StdOutLogHandler CommsTests::commsTestLogger_(TRACE);
+opflex::logging::StdOutLogHandler CommsTests::commsTestLogger_(DEBUG2);
 
 BOOST_GLOBAL_FIXTURE( CommsTests );
 
@@ -112,7 +112,7 @@ class CommsFixture {
         for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
             BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
                         internal::Peer::LoopData::PeerState(i))
-                    ->size(), 0);
+                    ->size(), 0u);
         }
 
         internal::Peer::LoopData::getLoopData(CommsFixture::current_loop)->up();
