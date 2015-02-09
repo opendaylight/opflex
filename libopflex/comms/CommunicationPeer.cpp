@@ -822,7 +822,7 @@ bool CommunicationPeer::__checkInvariants() const {
             << " status = "
             << static_cast< int >(status_)
             << " connected_ = "
-            <<   connected_
+            << static_cast< int >(connected_)
             << " just check for Peer's invariants"
         ;
 
@@ -867,7 +867,7 @@ bool CommunicationPeer::__checkInvariants() const {
         ;
 
         if (VLOG_IS_ON(7)) {
-            ssize_t len = iov[i].iov_len;
+            size_t len = iov[i].iov_len;
             size_t offset = 0;
             std::string temp((const char*)iov[i].iov_base, len);
 
@@ -887,7 +887,7 @@ bool CommunicationPeer::__checkInvariants() const {
 
     // some sub-parts of this are only there at verbosity level 7 but we log at 6
     VLOG(6)
-        << iovec_dump
+        << iovec_dump.str()
     ;
 
     // loop again, because we want the above debug first, to be less confusing

@@ -137,7 +137,11 @@ void Cb< PlainText >::on_read(
             << buf->len
         ;
 
-        peer->readBuffer(buf->base, nread, (buf->len > nread));
+        peer->readBuffer(
+                buf->base,
+                nread,
+                (buf->len > static_cast< size_t >(nread))
+        );
 
     }
 

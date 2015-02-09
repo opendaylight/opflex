@@ -340,8 +340,8 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL,
         internal::Peer::PeerStatus status = kPS_UNINITIALIZED)
             :
-                internal::Peer(passive, uvLoopSelector, status),
                 ::yajr::Peer(),
+                internal::Peer(passive, uvLoopSelector, status),
                 connectionHandler_(connectionHandler),
                 data_(data),
                 writer_(s_),
@@ -682,11 +682,11 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
             uv_loop_t * listenerUvLoop = NULL,
             ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
         :
+            ::yajr::Listener(),
+            ::yajr::comms::internal::Peer(false, uvLoopSelector, kPS_UNINITIALIZED),
             connectionHandler_(connectionHandler),
             acceptHandler_(acceptHandler),
-            data_(data),
-            ::yajr::comms::internal::Peer(false, uvLoopSelector, kPS_UNINITIALIZED),
-            ::yajr::Listener()
+            data_(data)
         {
             handle_.loop = _.listener_.uvLoop_ = listenerUvLoop ? : uv_default_loop();
             getLoopData()->up();
