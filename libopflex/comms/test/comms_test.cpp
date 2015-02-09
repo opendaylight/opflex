@@ -23,6 +23,9 @@
 
 #include <opflex/logging/internal/logging.hpp>
 
+#include <openssl/crypto/stack/safestack.h>
+#include <openssl/crypto/crypto.h>
+
 #include <boost/test/unit_test_log.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -52,6 +55,20 @@ struct CommsTests {
         LOG(INFO)
             << "global teardown\n"
         ;
+
+        /* this is the reason number 1232342985473894512321837423rd why OpenSSL
+         * is a giant pile of ________
+         *
+         * you fill in the blank ;-)
+         */
+        sk_SSL_COMP_pop_free(
+                SSL_COMP_get_compression_methods(),
+                free_comp_methods
+        );
+    }
+
+    static void free_comp_methods(SSL_COMP * p) {
+        OPENSSL_free(p);
     }
 
     /* potentially subject to static initialization order fiasco */
