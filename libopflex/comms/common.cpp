@@ -67,24 +67,70 @@ using namespace yajr::comms::internal;
 
 namespace internal {
 
+char const * getUvHandleType(uv_handle_t * h) {
+
+    char const * type;
+
+    switch (h->type) {
+#define X(uc, lc)                               \
+        case UV_##uc: type = #lc;               \
+            break;
+      UV_HANDLE_TYPE_MAP(X)
+#undef X
+      default: type = "<unknown>";
+    }
+
+    return type;
+
+}
+
+char const * getUvHandleField(uv_handle_t * h, internal::Peer * peer) {
+
+    char const * hType = "???";
+
+    if (h == reinterpret_cast< uv_handle_t * >(&peer->keepAliveTimer_)) {
+        hType = "keepAliveTimer";
+    } else {
+        if (h == reinterpret_cast< uv_handle_t * >(&peer->handle_)) {
+            hType = "TCP";
+        }
+    }
+
+    return hType;
+
+}
+
 void on_close(uv_handle_t * h) {
+
+    if (!h) {
+        VLOG(ERROR)
+            << "NULL handle"
+        ;
+        return;
+    }
 
     CommunicationPeer * peer = Peer::get<CommunicationPeer>(h);
 
     VLOG(1)
         << peer
-        << " down() for an on_close()"
+        << " down() for an on_close("
+        << static_cast< void * >(h)
+        <<") "
+        << getUvHandleField(h, peer)
+        << " handle of type "
+        << getUvHandleType(h)
     ;
-    peer->down();
 
     peer->choked_ = 1;
+
+    peer->down();
 
     return;
 }
 
 void on_write(uv_write_t *req, int status) {
 
-    VLOG(3);
+    VLOG(5);
 
     if (status == UV_ECANCELED || status == UV_ECONNRESET) {
         LOG(INFO)

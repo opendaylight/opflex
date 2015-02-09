@@ -149,7 +149,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 #endif
 
         if (nread > 0) {
-            VLOG(5)
+            VLOG(6)
                 << peer
                 << " just decrypted "
                 << nread
@@ -215,7 +215,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
         CommunicationPeer const * peer) {
 
-    VLOG(4)
+    VLOG(5)
         << peer
     ;
 
@@ -278,7 +278,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 
         } else {
 
-            VLOG(2)
+            VLOG(3)
                 << peer
                 << " nwrite = "
                 << nwrite
@@ -333,7 +333,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
         CommunicationPeer const * peer) {
 
-    VLOG(4)
+    VLOG(5)
         << peer
     ;
 
@@ -356,7 +356,7 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
             &e->bioExternal_,
             (char**)&buf.iov_base);
 
-    VLOG(3)
+    VLOG(4)
         << peer
         << ": "
         << nread
@@ -393,7 +393,7 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
 template<>
 int Cb< ZeroCopyOpenSSL >::send_cb(CommunicationPeer const * peer) {
 
-    VLOG(4)
+    VLOG(5)
         << peer
     ;
 
@@ -455,7 +455,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
     assert(advancement == peer->pendingBytes_);
 
     if (giveUp) {
-        const_cast<CommunicationPeer *>(peer)->disconnect();
+        const_cast<CommunicationPeer *>(peer)->onDisconnect();
         return;
     }
 

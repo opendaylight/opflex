@@ -42,7 +42,11 @@ void ListeningPeer::destroy(bool now) {
     }
 
     destroying_ = 1;
-    down();
+
+    if (down()) {
+        return;
+    }
+
     if (connected_) {
         connected_ = 0;
         if (!uv_is_closing((uv_handle_t*)&handle_)) {

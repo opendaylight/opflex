@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/bin/bash -x
 
 CATEGORY=${1:-STABLE}
 ulimit -c unlimited
 
 # Timeout.
-declare -i timeout=${2:-60}
+declare -i timeout=${2:-120}
 # Interval between checks if the process is still alive.
 declare -i interval=${3:-5}
 # Delay between posting the SIGTERM signal and destroying the process by SIGKILL.
