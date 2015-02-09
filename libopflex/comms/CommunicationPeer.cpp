@@ -64,20 +64,23 @@ void CommunicationPeer::stopKeepAlive() {
 }
 
 void CommunicationPeer::on_timeout(uv_timer_t * timer) {
-    VLOG(2);
+    VLOG(6);
 
     get(timer)->timeout();
 }
 
 void CommunicationPeer::bumpLastHeard() const {
-    VLOG(3)
+
+    VLOG(5)
         << this
         << " "
         << lastHeard_
         << " -> "
         << now()
     ;
+
     lastHeard_ = now();
+
 }
 
 void CommunicationPeer::onConnect() {
@@ -109,6 +112,7 @@ void CommunicationPeer::onConnect() {
 }
 
 void CommunicationPeer::onDisconnect(bool now) {
+
     VLOG(1)
         << this
         << " connected_ = "
@@ -117,16 +121,16 @@ void CommunicationPeer::onDisconnect(bool now) {
         << now
     ;
 
-    if (connected_ || now) {
-        VLOG(2)
-            << this
-            << " issuing close for tcp handle"
-        ;
+ // if (connected_ || now) {
         if (!uv_is_closing((uv_handle_t*)&handle_)) {
+            VLOG(2)
+                << this
+                << " issuing close for tcp handle"
+            ;
             uv_close((uv_handle_t*)&handle_, on_close);
          // uv_close((uv_handle_t*)&handle_, connected_? on_close : NULL);
         }
-    }
+ // }
 
     if (connected_) {
 
@@ -281,7 +285,7 @@ void CommunicationPeer::readBuffer(
         size_t nread,
         bool canWriteJustPastTheEnd) const {
 
-    VLOG(3)
+    VLOG(6)
         << "nread "
         << nread
         << " @"
@@ -321,7 +325,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
 
     size_t chunk_size;
 
-    VLOG(3)
+    VLOG(6)
         << "nread="
         << nread
         << " first "
@@ -337,7 +341,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
         chunk_size = readChunk(buffer);
         nread -= chunk_size++;
 
-        VLOG(3)
+        VLOG(6)
             << "nread="
             << nread
             << " chunk_size="
@@ -350,7 +354,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
 
         }
 
-        VLOG(3)
+        VLOG(5)
             << "got: "
             << chunk_size
         ;
@@ -428,7 +432,7 @@ void CommunicationPeer::logDeque() const {
 
 void CommunicationPeer::onWrite() {
 
-    VLOG(4)
+    VLOG(5)
         << this
         << " Write completed for "
         << pendingBytes_
@@ -468,7 +472,7 @@ int CommunicationPeer::write() const {
 
 int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
 
-    VLOG(4)
+    VLOG(5)
         << this
         << " IOVEC of size "
         << iov.size()
@@ -490,7 +494,8 @@ int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
             << uv_strerror(rc)
         ;
         onError(rc);
-        /* FIXME: is this enough to handle the error? */
+        const_cast< CommunicationPeer * >(this)
+            ->onDisconnect();
     }
 
     return rc;
@@ -561,7 +566,7 @@ void CommunicationPeer::timeout() {
         return;
     }
 
-    if (rtt <= (keepAliveInterval_ >> 2) ) {
+    if (rtt <= (keepAliveInterval_ >> 3) ) {
 
         VLOG(5)
             << this
@@ -572,7 +577,7 @@ void CommunicationPeer::timeout() {
 
     }
 
-    if (rtt > (keepAliveInterval_ << 2) ) {
+    if (rtt > (keepAliveInterval_ << 3) ) {
 
         LOG(WARNING)
             << this
@@ -580,9 +585,10 @@ void CommunicationPeer::timeout() {
         ;
 
         /* close the connection and hope for the best */
-        if (!uv_is_closing((uv_handle_t*)&handle_)) {
-            uv_close((uv_handle_t*)&handle_, on_close);
-        }
+        onDisconnect();
+     // if (!uv_is_closing((uv_handle_t*)&handle_)) {
+     //     uv_close((uv_handle_t*)&handle_, on_close);
+     // }
 
         return;
     }
@@ -633,10 +639,8 @@ int comms::internal::CommunicationPeer::choke() const {
         /* FIXME: this might even not be a big issue if SSL is not involved */
 
         onError(rc);
-
-        if (!uv_is_closing((uv_handle_t*)&handle_)) {
-            uv_close((uv_handle_t*)&handle_, on_close);
-        }
+        const_cast< CommunicationPeer * >(this)
+            ->onDisconnect();
 
     } else {
 
@@ -680,10 +684,8 @@ int comms::internal::CommunicationPeer::unchoke() const {
         ;
 
         onError(rc);
-
-        if (!uv_is_closing((uv_handle_t*)&handle_)) {
-            uv_close((uv_handle_t*)&handle_, on_close);
-        }
+        const_cast< CommunicationPeer * >(this)
+            ->onDisconnect();
 
     } else {
 
@@ -697,7 +699,7 @@ int comms::internal::CommunicationPeer::unchoke() const {
 
 yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() const {
 
-    VLOG(3)
+    VLOG(6)
         << this
         << " About to parse: ("
         << ssIn_.str()
@@ -782,7 +784,7 @@ bool CommunicationPeer::__checkInvariants() const {
     bool result = true;
 
     if (!!connected_ != !!(status_ == kPS_ONLINE)) {
-        LOG(ERROR)
+        VLOG(7)  // should be an ERROR but we need to first clean things up
             << this
             << " has incongruent state: connected_ = "
             << static_cast< bool >(connected_)
@@ -794,6 +796,18 @@ bool CommunicationPeer::__checkInvariants() const {
      // result = false;
     }
 
+    if (handle_.data != this) {
+        LOG(ERROR)
+            << this
+            << " handle_.data = "
+            <<   handle_.data
+            << " should be "
+            << reinterpret_cast< void const * >(this)
+        ;
+
+        result = false;
+    }
+
     std::vector<iovec> iov =
         more::get_iovec(s_.deque_.begin(), s_.deque_.end());
 
@@ -801,6 +815,18 @@ bool CommunicationPeer::__checkInvariants() const {
 
  // if (status_ != kPS_ONLINE) {
     if (connected_) {
+
+        if (keepAliveTimer_.data != this) {
+            LOG(ERROR)
+                << this
+                << " keepAliveTimer_.data = "
+                <<   keepAliveTimer_.data
+                << " should be "
+                << reinterpret_cast< void const * >(this)
+            ;
+
+            result = false;
+        }
 
         if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
             LOG(ERROR)
@@ -817,12 +843,12 @@ bool CommunicationPeer::__checkInvariants() const {
 
     } else {
 
-        VLOG(4)
+        VLOG(5)
             << this
             << " status = "
             << static_cast< int >(status_)
             << " connected_ = "
-            <<   connected_
+            << static_cast< int >(connected_)
             << " just check for Peer's invariants"
         ;
 
@@ -867,7 +893,7 @@ bool CommunicationPeer::__checkInvariants() const {
         ;
 
         if (VLOG_IS_ON(7)) {
-            ssize_t len = iov[i].iov_len;
+            size_t len = iov[i].iov_len;
             size_t offset = 0;
             std::string temp((const char*)iov[i].iov_base, len);
 
@@ -887,7 +913,7 @@ bool CommunicationPeer::__checkInvariants() const {
 
     // some sub-parts of this are only there at verbosity level 7 but we log at 6
     VLOG(6)
-        << iovec_dump
+        << iovec_dump.str()
     ;
 
     // loop again, because we want the above debug first, to be less confusing
@@ -962,7 +988,7 @@ bool CommunicationPeer::__checkInvariants() const {
         logDeque();
 
     } else {
-        VLOG(5)
+        VLOG(6)
             << this
             << " egress queue consistent, deque size() = "
             << s_.deque_.size()

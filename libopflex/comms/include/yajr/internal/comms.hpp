@@ -35,6 +35,25 @@
 #  endif
 #endif
 
+#define uv_close(h, cb)                        \
+    do {                                       \
+        uv_handle_t * _h = h;                  \
+        uv_close_cb _cb = cb;                  \
+        VLOG(2)                                \
+            << "uv_close("                     \
+            << #h                              \
+            << "="                             \
+            << reinterpret_cast< void * >(_h)  \
+            << ", "                            \
+            << #cb                             \
+            << "="                             \
+            << reinterpret_cast< void * >(_cb) \
+            << ")"                             \
+        ;                                      \
+        uv_close(_h, _cb);                     \
+    } while(0)
+
+
 namespace yajr {
     namespace comms {
         namespace internal {
@@ -76,19 +95,27 @@ class Peer : public SafeListBaseHook {
 #endif
       public:
 
+#define VaS(YY, s) YY(s, #s)
+#define PEER_STATE_MAP(XX)               \
+          VaS(XX, ONLINE)                \
+          VaS(XX, LISTENING)             \
+          VaS(XX, TO_RESOLVE)            \
+          VaS(XX, TO_LISTEN)             \
+          VaS(XX, RETRY_TO_CONNECT)      \
+          VaS(XX, RETRY_TO_LISTEN)       \
+          VaS(XX, ATTEMPTING_TO_CONNECT) \
+          VaS(XX, PENDING_DELETE)
+
         typedef enum {
-          ONLINE,
-          LISTENING,
-          TO_RESOLVE,
-          TO_LISTEN,
-          RETRY_TO_CONNECT,
-          RETRY_TO_LISTEN,
-          ATTEMPTING_TO_CONNECT,
-          PENDING_DELETE,
+#define XX(v, _) v,
+          PEER_STATE_MAP(XX)
+#undef XX
 
           /* don't touch past here */
           TOTAL_STATES
         } PeerState;
+
+        static char const * getPSStr(PeerState s);
 
         struct CloseHandle {
             LoopData const * loopData;
@@ -168,6 +195,10 @@ class Peer : public SafeListBaseHook {
         uint64_t lastRun_;
         bool destroying_;
         uint64_t refCount_;
+
+#ifndef NDEBUG
+        static char const * const kPSStr[];
+#endif
     };
 
     template <typename T, typename U>
@@ -207,6 +238,11 @@ class Peer : public SafeListBaseHook {
          ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL,
          Peer::PeerStatus status = kPS_UNINITIALIZED)
             :
+#ifndef NDEBUG
+              /* make valgrind happy with early invocations of operator << () */
+              handle_(),
+              keepAliveTimer_(),
+#endif
               uvLoopSelector_(uvLoopSelector ? : &uvDefaultLoop),
               uvRefCnt_(1),
               connected_(0),
@@ -217,6 +253,8 @@ class Peer : public SafeListBaseHook {
               status_(status)
             {
                 handle_.data = this;
+                /* FIXME: this hack is filthy and unix-only */
+                handle_.flags = 0x02 /* UV_CLOSED */;
 #ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
 #endif
@@ -230,7 +268,7 @@ class Peer : public SafeListBaseHook {
 
     void up();
 
-    void down();
+    bool down();
 
     virtual void onDelete() {}
 
@@ -285,12 +323,7 @@ class Peer : public SafeListBaseHook {
 
   protected:
     /* don't leak memory! */
-    virtual ~Peer() {
-        getLoopData()->down();
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-        --counter;
-#endif
-    }
+    virtual ~Peer();
     static uv_loop_t * uvDefaultLoop(void *) {
         return uv_default_loop();
     }
@@ -340,8 +373,8 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL,
         internal::Peer::PeerStatus status = kPS_UNINITIALIZED)
             :
-                internal::Peer(passive, uvLoopSelector, status),
                 ::yajr::Peer(),
+                internal::Peer(passive, uvLoopSelector, status),
                 connectionHandler_(connectionHandler),
                 data_(data),
                 writer_(s_),
@@ -682,11 +715,11 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
             uv_loop_t * listenerUvLoop = NULL,
             ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
         :
+            ::yajr::Listener(),
+            ::yajr::comms::internal::Peer(false, uvLoopSelector, kPS_UNINITIALIZED),
             connectionHandler_(connectionHandler),
             acceptHandler_(acceptHandler),
-            data_(data),
-            ::yajr::comms::internal::Peer(false, uvLoopSelector, kPS_UNINITIALIZED),
-            ::yajr::Listener()
+            data_(data)
         {
             handle_.loop = _.listener_.uvLoop_ = listenerUvLoop ? : uv_default_loop();
             getLoopData()->up();
@@ -775,6 +808,11 @@ T * Peer::get(U * h) {
 
     return peer;
 }
+
+
+
+char const * getUvHandleType(uv_handle_t * h);
+char const * getUvHandleField(uv_handle_t * h, internal::Peer * peer);
 
 } // namespace internal
 } // namespace comms
