@@ -84,8 +84,8 @@ void CommunicationPeer::onConnect() {
     connected_ = 1;
     status_ = internal::Peer::kPS_ONLINE;
 
-    /* start with a NULL byte */
-    delimitFrame();
+ // /* start with a NULL byte */
+ // delimitFrame();
 
     keepAliveTimer_.data = this;
     VLOG(1)
