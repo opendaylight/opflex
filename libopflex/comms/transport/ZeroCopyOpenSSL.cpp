@@ -738,6 +738,8 @@ int ZeroCopyOpenSSL::initOpenSSL(bool forMultipleThreads) {
 
 }
 
+#include <openssl/conf.h>
+#include <openssl/engine.h>
 void ZeroCopyOpenSSL::finiOpenSSL() {
 
     LOG(INFO);
@@ -754,7 +756,13 @@ void ZeroCopyOpenSSL::finiOpenSSL() {
 
     }
 
+    CONF_modules_free();
+    ERR_remove_state(0);
+    ENGINE_cleanup();
+    CONF_modules_unload(1);
     ERR_free_strings();
+    EVP_cleanup();
+    CRYPTO_cleanup_all_ex_data();
 }
 
 ZeroCopyOpenSSL::ZeroCopyOpenSSL(ZeroCopyOpenSSL::Ctx * ctx, bool passive)
