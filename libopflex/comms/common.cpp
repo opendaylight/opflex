@@ -75,9 +75,10 @@ void on_close(uv_handle_t * h) {
         << peer
         << " down() for an on_close()"
     ;
-    peer->down();
 
     peer->choked_ = 1;
+
+    peer->down();
 
     return;
 }
