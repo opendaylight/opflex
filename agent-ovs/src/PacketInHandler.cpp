@@ -164,6 +164,7 @@ static void handleLearnPktIn(SwitchConnection *conn,
         po.in_port = pi.fmd.in_port;
 
         ActionBuilder ab;
+        ab.SetRegLoad(MFF_REG0, pi.fmd.regs[0]);
         ab.SetGroup(FlowManager::getPromId(pi.fmd.regs[5]));
         ab.Build(&po);
 
