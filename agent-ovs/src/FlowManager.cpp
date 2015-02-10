@@ -882,7 +882,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             match_set_dl_dst_masked(&e2->entry->match, 
                                     MAC_ADDR_BROADCAST,
                                     MAC_ADDR_MULTICAST);
-            SetSourceAction(e1, epgVnid, bdId, fgrpId, rdId);
+            SetSourceAction(e2, epgVnid, bdId, fgrpId, rdId);
             src.push_back(FlowEntryPtr(e2));
         }
 
