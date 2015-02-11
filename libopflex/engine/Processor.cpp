@@ -111,7 +111,7 @@ void Processor::addRef(obj_state_by_exp::iterator& it,
             uit = uri_index.find(up.second);
         } 
         uit->details->refcount += 1;
-        LOG(DEBUG) << "Addref " << uit->uri.toString()
+        LOG(DEBUG2) << "Addref " << uit->uri.toString()
                    << " (from " << it->uri.toString() << ")"
                    << " " << uit->details->refcount
                    << " state " << uit->details->state;
@@ -130,7 +130,7 @@ void Processor::removeRef(obj_state_by_exp::iterator& it,
         if (uit != uri_index.end()) {
             uit->details->refcount -= 1;
             if (uit->details->refcount <= 0) {
-                LOG(DEBUG) << "Refcount zero " << uit->uri.toString();
+                LOG(DEBUG2) << "Refcount zero " << uit->uri.toString();
                 uint64_t nexp = now(&proc_loop)+processingDelay;
                 uri_index.modify(uit, Processor::change_expiration(nexp));
             }
@@ -219,6 +219,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
     switch (type) {
     case ClassInfo::POLICY:
         {
+            LOG(DEBUG) << "Resolving policy " << i.uri;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             PolicyResolveReq* req = new PolicyResolveReq(this, refs);
@@ -228,6 +229,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
         break;
     case ClassInfo::REMOTE_ENDPOINT:
         {
+            LOG(DEBUG) << "Resolving remote endpoint " << i.uri;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             EndpointResolveReq* req = new EndpointResolveReq(this, refs);
@@ -247,6 +249,7 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
     switch (type) {
     case ClassInfo::LOCAL_ENDPOINT:
         if (isParentSyncObject(i)) {
+            LOG(DEBUG) << "Declaring local endpoint " << i.uri;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             EndpointDeclareReq* req = new EndpointDeclareReq(this, refs);
@@ -256,6 +259,7 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
         break;
     case ClassInfo::OBSERVABLE:
         if (isParentSyncObject(i)) {
+            LOG(DEBUG) << "Declaring local observable " << i.uri;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             StateReportReq* req = new StateReportReq(this, refs);
@@ -312,7 +316,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         }
     }
 
-    LOG(DEBUG) << "Processing " << (local ? "local" : "nonlocal")
+    LOG(DEBUG2) << "Processing " << (local ? "local" : "nonlocal")
                << " item " << it->uri.toString() 
                << " of class " << ci.getName()
                << " and type " << ci.getType()
@@ -326,7 +330,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             {
                 // requeue new items so if there are any pending references
                 // we won't remove them right away
-                LOG(DEBUG) << "Queuing delete for orphan " << it->uri.toString();
+                LOG(DEBUG2) << "Queuing delete for orphan " << it->uri.toString();
                 newState = PENDING_DELETE;
                 obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
                 exp_index.modify(it,
@@ -465,6 +469,11 @@ void Processor::proc_async_cb(uv_async_t* handle) {
     processor->doProcess();
 }
 
+void Processor::connect_async_cb(uv_async_t* handle) {
+    Processor* processor = (Processor*)handle->data;
+    processor->handleNewConnections();
+}
+
 static void register_listeners(void* processor, const modb::ClassInfo& ci) {
     Processor* p = (Processor*)processor;
     p->listen(ci.getId());
@@ -485,6 +494,7 @@ void Processor::cleanup_async_cb(uv_async_t* handle) {
     uv_timer_stop(&processor->proc_timer);
     uv_close((uv_handle_t*)&processor->proc_timer, NULL);
     uv_close((uv_handle_t*)&processor->proc_async, NULL);
+    uv_close((uv_handle_t*)&processor->connect_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
 }
 
@@ -503,6 +513,8 @@ void Processor::start() {
     uv_async_init(&proc_loop, &cleanup_async, cleanup_async_cb);
     proc_async.data = this;
     uv_async_init(&proc_loop, &proc_async, proc_async_cb);
+    connect_async.data = this;
+    uv_async_init(&proc_loop, &connect_async, connect_async_cb);
     proc_timer.data = this;
     uv_timer_start(&proc_timer, &timer_callback, 
                    processingDelay, processingDelay);
@@ -586,17 +598,21 @@ OpflexHandler* Processor::newHandler(OpflexConnection* conn) {
     return new OpflexPEHandler(conn, this);
 }
 
-void Processor::connectionReady(OpflexConnection* conn) {
+void Processor::handleNewConnections() {
     util::LockGuard guard(&item_mutex);
     BOOST_FOREACH(const item& i, obj_state) {
         const ClassInfo& ci = store->getClassInfo(i.details->class_id);
-        if (i.details->state == RESOLVED) {
-            resolveObj(ci.getType(), i, false);
-        }
         if (i.details->state == IN_SYNC) {
             declareObj(ci.getType(), i);
         }
+        if (i.details->state == RESOLVED) {
+            resolveObj(ci.getType(), i, false);
+        }
     }
+}
+
+void Processor::connectionReady(OpflexConnection* conn) {
+    uv_async_send(&connect_async);
 }
 
 } /* namespace engine */

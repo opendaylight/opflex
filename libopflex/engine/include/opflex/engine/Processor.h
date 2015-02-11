@@ -349,11 +349,13 @@ private:
     volatile bool proc_active;
     uv_async_t cleanup_async;
     uv_async_t proc_async;
+    uv_async_t connect_async;
     uv_timer_t proc_timer;
     static void proc_thread_func(void* processor);
     static void timer_callback(uv_timer_t* handle);
     static void cleanup_async_cb(uv_async_t *handle);
     static void proc_async_cb(uv_async_t *handle);
+    static void connect_async_cb(uv_async_t *handle);
 
     bool hasWork(/* out */ obj_state_by_exp::iterator& it);
     void addRef(obj_state_by_exp::iterator& it,
@@ -368,8 +370,10 @@ private:
     void doObjectUpdated(modb::class_id_t class_id, 
                          const modb::URI& uri,
                          bool remote);
-    bool resolveObj(modb::ClassInfo::class_type_t type, const item& it, bool checkTime = true);
+    bool resolveObj(modb::ClassInfo::class_type_t type, const item& it,
+                    bool checkTime = true);
     bool declareObj(modb::ClassInfo::class_type_t type, const item& it);
+    void handleNewConnections();
 
     friend class MOSerializer;
 };

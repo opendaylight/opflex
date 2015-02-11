@@ -1442,10 +1442,10 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
     PolicyManager::rule_list_t rules;
     polMgr.getContractRules(contractURI, rules);
 
-    LOG(INFO) << "Update for contract " << contractURI
-            << ", #prov=" << provIds.size()
-            << ", #cons=" << consIds.size()
-            << ", #rules=" << rules.size();
+    LOG(DEBUG) << "Update for contract " << contractURI
+               << ", #prov=" << provIds.size()
+               << ", #cons=" << consIds.size()
+               << ", #rules=" << rules.size();
 
     FlowEntryList entryList;
 
