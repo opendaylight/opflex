@@ -354,6 +354,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 req_.data = this;
                 handle_.loop = uvLoopSelector_(getData());
                 getLoopData()->up();
+#ifndef NDEBUG
+                // make valgrind happy with early invocations of operator << ()
+                (void) uv_tcp_init(handle_.loop, &handle_);
+#endif
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
@@ -775,6 +779,11 @@ T * Peer::get(U * h) {
 
     return peer;
 }
+
+
+
+char const * getUvHandleType(uv_handle_t * h);
+char const * getUvHandleField(uv_handle_t * h, internal::Peer * peer);
 
 } // namespace internal
 } // namespace comms
