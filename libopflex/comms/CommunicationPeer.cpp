@@ -64,7 +64,7 @@ void CommunicationPeer::stopKeepAlive() {
 }
 
 void CommunicationPeer::on_timeout(uv_timer_t * timer) {
-    VLOG(2);
+    VLOG(6);
 
     get(timer)->timeout();
 }
@@ -109,6 +109,7 @@ void CommunicationPeer::onConnect() {
 }
 
 void CommunicationPeer::onDisconnect(bool now) {
+
     VLOG(1)
         << this
         << " connected_ = "

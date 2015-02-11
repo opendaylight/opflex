@@ -201,17 +201,6 @@ void internal::Peer::LoopData::walkAndCloseHandlesCb(
             opaqueCloseHandle
         );
 
-    char const * type;
-
-    switch (h->type) {
-#define X(uc, lc)                               \
-        case UV_##uc: type = #lc;               \
-            break;
-      UV_HANDLE_TYPE_MAP(X)
-#undef X
-      default: type = "<unknown>";
-    }
-
     if (uv_is_closing(h) ||
             reinterpret_cast<uv_handle_t const *>(&closeHandle->loopData->prepare_)
             ==
@@ -222,7 +211,7 @@ void internal::Peer::LoopData::walkAndCloseHandlesCb(
     LOG(INFO)
         << closeHandle->loopData
         << " issuing uv_close() for handle of type "
-        << type
+        << getUvHandleType(h)
         << " @"
         << reinterpret_cast<void const *>(h);
 
@@ -248,21 +237,10 @@ void internal::Peer::LoopData::walkAndCountHandlesCb(
 
     ++countHandle->counter;
 
-    char const * type;
-
-    switch (h->type) {
-#define X(uc, lc)                               \
-        case UV_##uc: type = #lc;               \
-            break;
-      UV_HANDLE_TYPE_MAP(X)
-#undef X
-      default: type = "<unknown>";
-    }
-
     LOG(INFO)
         << countHandle->loopData
         << " still waiting on pending handle of type "
-        << type
+        << getUvHandleType(h)
         << " @"
         << reinterpret_cast<void const *>(h)
         << " which is "

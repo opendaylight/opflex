@@ -55,6 +55,8 @@ std::ostream& operator << (
             << "->|->"
             << cP->pendingBytes_
             << "|"
+            << cP->handle_.write_queue_size
+            << "->"
         ;
     }
 #endif

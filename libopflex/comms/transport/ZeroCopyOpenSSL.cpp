@@ -278,7 +278,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 
         } else {
 
-            VLOG(2)
+            VLOG(3)
                 << peer
                 << " nwrite = "
                 << nwrite
