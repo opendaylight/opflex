@@ -25,6 +25,7 @@
 #include <modelgbp/gbp/IntraGroupPolicyEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
+#include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
 
 #include "logging.h"
@@ -308,7 +309,7 @@ static inline void fill_in6_addr(struct in6_addr& addr, const address_v6& ip) {
 
 static void
 SetDestMatchEp(FlowEntry *fe, uint16_t prio, const uint8_t *specialMac,
-               const address& ip, uint32_t l3Id) {
+               const address& ip, uint32_t bdId, uint32_t l3Id) {
     fe->entry->table_id = FlowManager::DST_TABLE_ID;
     fe->entry->priority = prio;
     match_set_dl_dst(&fe->entry->match, specialMac);
@@ -322,6 +323,7 @@ SetDestMatchEp(FlowEntry *fe, uint16_t prio, const uint8_t *specialMac,
         match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
         match_set_ipv6_dst(&fe->entry->match, &addr);
     }
+    match_set_reg(&fe->entry->match, 4 /* REG6 */, bdId);
     match_set_reg(&fe->entry->match, 6 /* REG6 */, l3Id);
 }
 
@@ -759,6 +761,27 @@ FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
     return true;
 }
 
+static uint8_t getEffectiveRoutingMode(PolicyManager& polMgr,
+                                       const URI& egURI) {
+    optional<shared_ptr<FloodDomain> > fd = polMgr.getFDForGroup(egURI);
+    optional<shared_ptr<BridgeDomain> > bd = polMgr.getBDForGroup(egURI);
+
+    uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
+    if (fd)
+        floodMode = fd.get()
+            ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+
+    uint8_t routingMode = RoutingModeEnumT::CONST_ENABLED;
+    if (bd)
+        routingMode = bd.get()->getRoutingMode(RoutingModeEnumT::CONST_ENABLED);
+
+    // In learning mode, we can't handle routing at present
+    if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD)
+        routingMode = RoutingModeEnumT::CONST_DISABLED;
+
+    return routingMode;
+}
+
 void
 FlowManager::HandleEndpointUpdate(const string& uuid) {
 
@@ -771,6 +794,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         WriteFlow(uuid, SEC_TABLE_ID, NULL);
         WriteFlow(uuid, SRC_TABLE_ID, NULL);
         WriteFlow(uuid, DST_TABLE_ID, NULL);
+        WriteFlow(uuid, LEARN_TABLE_ID, NULL);
         RemoveEndpointFromFloodGroup(uuid);
         return;
     }
@@ -849,30 +873,53 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         return;
     }
 
-    /**
-     * Irrespective of flooding scope (epg vs. flood-domain), the
-     * properties of the flood-domain object decide how flooding is
-     * done.
-     */
-    optional<shared_ptr<FloodDomain> > fd = 
+    optional<shared_ptr<FloodDomain> > fd =
         agent.getPolicyManager().getFDForGroup(epgURI.get());
+
     uint8_t arpMode = AddressResModeEnumT::CONST_UNICAST;
-    if (fd && fd.get()->isArpModeSet()) {
-        arpMode = fd.get()->getArpMode().get();
-    }
     uint8_t ndMode = AddressResModeEnumT::CONST_UNICAST;
-    if (fd && fd.get()->isNeighborDiscModeSet()) {
-        ndMode = fd.get()->getNeighborDiscMode().get();
+    uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
+    if (fd) {
+        /**
+         * Irrespective of flooding scope (epg vs. flood-domain), the
+         * properties of the flood-domain object decide how flooding is
+         * done.
+         */
+
+        arpMode = fd.get()
+            ->getArpMode(AddressResModeEnumT::CONST_UNICAST);
+        ndMode = fd.get()
+            ->getNeighborDiscMode(AddressResModeEnumT::CONST_UNICAST);
+        floodMode = fd.get()
+            ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
     }
 
+    uint8_t routingMode =
+        getEffectiveRoutingMode(agent.getPolicyManager(), epgURI.get());
+
     /* Source Table flows; applicable only to local endpoints */
+    FlowEntryList src;
+    FlowEntryList epLearn;
+
     if (isLocalEp) {
-        FlowEntryList src;
         if (hasMac) {
             FlowEntry *e0 = new FlowEntry();
             SetSourceMatchEp(e0, 140, ofPort, macAddr);
             SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId);
             src.push_back(FlowEntryPtr(e0));
+
+            if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+                // Prepopulate a stage1 learning entry for known EPs
+                FlowEntry* learnEntry = new FlowEntry();
+                SetMatchFd(learnEntry, 101, fgrpId, false, LEARN_TABLE_ID,
+                           macAddr, GetProactiveLearnEntryCookie());
+                ActionBuilder ab;
+                ab.SetRegLoad(MFF_REG7, ofPort);
+                ab.SetOutputToPort(ofPort);
+                ab.SetController();
+                ab.Build(learnEntry->entry);
+                epLearn.push_back(FlowEntryPtr(learnEntry));
+            }
         }
 
         if (endPoint.isPromiscuousMode()) {
@@ -916,9 +963,9 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                 src.push_back(FlowEntryPtr(dhcp));
             }
         }
-
-        WriteFlow(uuid, SRC_TABLE_ID, src);
     }
+    WriteFlow(uuid, SRC_TABLE_ID, src);
+    WriteFlow(uuid, LEARN_TABLE_ID, epLearn);
 
     FlowEntryList elDst;
     uint32_t epPort = isLocalEp ? ofPort : GetTunnelPort();
@@ -933,12 +980,12 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
     if (rdId != 0 && epPort != OFPP_NONE) {
         BOOST_FOREACH (const address& ipAddr, ipAddresses) {
-            // XXX for remote EP, dl_dst needs to be the "next-hop" MAC
-            if (virtualRouterEnabled) {
+            if (virtualRouterEnabled &&
+                routingMode == RoutingModeEnumT::CONST_ENABLED) {
                 const uint8_t *dstMac = isLocalEp ?
                     (hasMac ? macAddr : NULL) : NULL;
                 FlowEntry *e0 = new FlowEntry();
-                SetDestMatchEp(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
+                SetDestMatchEp(e0, 15, GetRouterMacAddr(), ipAddr, bdId, rdId);
                 SetDestActionEp(e0, encapType, isLocalEp, epgVnid, epPort,
                                 GetTunnelDst(), GetRouterMacAddr(),
                                 dstMac);
@@ -1129,16 +1176,22 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         UpdateGroupSubnets(epgURI, rdId);
 
         if (virtualRouterEnabled && routerAdv) {
-            FlowEntry *e0 = new FlowEntry();
-            SetDestMatchNd(e0, 20, NULL, rdId, FlowManager::GetNDCookie(),
-                           ND_ROUTER_SOLICIT);
-            SetActionController(e0);
-            WriteFlow(rdURI.get().toString(), DST_TABLE_ID, e0);
+            uint8_t routingMode =
+                getEffectiveRoutingMode(agent.getPolicyManager(), epgURI);
 
-            if (!isSyncing) {
-                initialAdverts = 0;
-                advertTimer->expires_from_now(seconds(1));
-                advertTimer->async_wait(bind(&FlowManager::OnAdvertTimer, this, error));
+            if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
+                FlowEntry *e0 = new FlowEntry();
+                SetDestMatchNd(e0, 20, NULL, rdId, FlowManager::GetNDCookie(),
+                               ND_ROUTER_SOLICIT);
+                SetActionController(e0);
+                WriteFlow(rdURI.get().toString(), DST_TABLE_ID, e0);
+
+                if (!isSyncing) {
+                    initialAdverts = 0;
+                    advertTimer->expires_from_now(seconds(1));
+                    advertTimer->async_wait(bind(&FlowManager::OnAdvertTimer,
+                                                 this, error));
+                }
             }
         }
     }
@@ -1352,7 +1405,6 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
     }
 
     FlowEntryList grpDst;
-    FlowEntryList epLearn;
 
     // deliver broadcast/multicast traffic to the group table
     FlowEntry *e0 = new FlowEntry();
@@ -1375,27 +1427,8 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
                    NULL, GetProactiveLearnEntryCookie());
         SetActionController(fdContr);
         WriteFlow(fgrpStrId, LEARN_TABLE_ID, fdContr);
-
-        // Prepopulate a stage1 learning entry for known EPs
-        if (endPoint.getMAC() && endPoint.getInterfaceName()) {
-            if (epPort != OFPP_NONE) {
-                uint8_t macAddr[6];
-                endPoint.getMAC().get().toUIntArray(macAddr);
-
-                FlowEntry* learnEntry = new FlowEntry();
-                SetMatchFd(learnEntry, 101, fgrpId, false, LEARN_TABLE_ID,
-                           macAddr, GetProactiveLearnEntryCookie());
-                ActionBuilder ab;
-                ab.SetRegLoad(MFF_REG7, epPort);
-                ab.SetOutputToPort(epPort);
-                ab.SetController();
-                ab.Build(learnEntry->entry);
-                epLearn.push_back(FlowEntryPtr(learnEntry));
-            }
-        }
     }
     WriteFlow(fgrpStrId, DST_TABLE_ID, grpDst);
-    WriteFlow(epUUID, LEARN_TABLE_ID, epLearn);
 }
 
 void FlowManager::RemoveEndpointFromFloodGroup(const std::string& epUUID) {

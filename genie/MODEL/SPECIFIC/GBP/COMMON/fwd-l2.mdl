@@ -4,6 +4,16 @@ module[gbp]
           super=gbp/ForwardingBehavioralGroup;
           abstract]
 
+    type[RoutingMode; super=scalar/Enum8]
+    {
+        # Disable routing for flows originating in the bridge domain
+        const[name=disabled; value=0]
+
+        # Enable routing for flows originating in the bridge domain
+        # (default)
+        const[name=enabled; value=1]
+    }
+
     class[BridgeDomain;
           super=gbp/L2BehavioralGroup;
           concrete]
@@ -28,6 +38,8 @@ module[gbp]
                           member=name]
             }
         }
+
+        member[routingMode; type=gbp/RoutingMode]
     }
 
     # A mode for address resolution protocols such as ARP and IPv6
@@ -50,7 +62,8 @@ module[gbp]
         const[name=drop; value=0]
 
         # Flood packets addressed to unknown layer 2 addresses to all
-        # interfaces in the flood domain.
+        # interfaces in the flood domain, and perform traditional MAC
+        # learning in the flood domain.
         const[name=flood; value=1]
     }
 

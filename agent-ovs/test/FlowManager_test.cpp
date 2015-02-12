@@ -16,6 +16,7 @@
 #include <boost/algorithm/string/trim.hpp>
 
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
+#include <modelgbp/gbp/RoutingModeEnumT.hpp>
 
 #include "logging.h"
 #include "ovs.h"
@@ -274,10 +275,11 @@ public:
     vector<string> fe_fixed;
     vector<string> fe_fallback;
     vector<string> fe_epg0, fe_epg0_fd0, fe_epg0_routers;
-    vector<string> fe_ep0, fe_ep0_fd0_1, fe_ep0_fd0_2, fe_ep0_eg1;
-    vector<string> fe_ep0_eg0_1, fe_ep0_eg0_2;
+    vector<string> fe_ep0, fe_ep0_fd0_1, fe_ep0_fd0_2;
+    vector<string> fe_ep0_routeoff, fe_ep2_routeoff;
+    vector<vector<string> > fe_ep0_eg1, fe_ep0_eg0;
     vector<string> fe_ep0_port_1, fe_ep0_port_2, fe_ep0_port_3;
-    vector<string> fe_ep2, fe_ep2_eg1;
+    vector<string> fe_ep2, fe_ep2_eg1, fe_ep2_eg1_arp;
     vector<string> fe_con1, fe_con2, fe_con3;
     vector<string> fe_arpopt;
     vector<string> fe_fixed_tun_new, fe_fallback_tun_new;
@@ -326,6 +328,33 @@ void FlowManagerFixture::epgTest() {
     exec.Expect(FlowEdit::add, fe_rd0);
     exec.Expect(FlowEdit::add, fe_ep0);
     exec.Expect(FlowEdit::add, fe_ep2);
+    flowManager.egDomainUpdated(epg0->getURI());
+    WAIT_FOR(exec.IsEmpty(), 500);
+
+    LOG(INFO) << "Disabling routing";
+
+    /* Disable routing on bridge domain */
+    exec.Clear();
+    exec.Expect(FlowEdit::del, fe_ep0_routeoff);
+    exec.Expect(FlowEdit::del, fe_ep2_routeoff);
+
+    {
+        Mutator mutator(framework, policyOwner);
+        bd0->setRoutingMode(RoutingModeEnumT::CONST_DISABLED);
+        mutator.commit();
+    }
+    flowManager.egDomainUpdated(epg0->getURI());
+    WAIT_FOR(exec.IsEmpty(), 500);
+
+    /* Enable routing */
+    exec.Clear();
+    exec.Expect(FlowEdit::add, fe_ep0_routeoff);
+    exec.Expect(FlowEdit::add, fe_ep2_routeoff);
+    {
+        Mutator mutator(framework, policyOwner);
+        bd0->setRoutingMode(RoutingModeEnumT::CONST_ENABLED);
+        mutator.commit();
+    }
     flowManager.egDomainUpdated(epg0->getURI());
     WAIT_FOR(exec.IsEmpty(), 500);
 
@@ -447,8 +476,11 @@ void FlowManagerFixture::localEpTest() {
     ep0->setEgURI(epg1->getURI());
     epSrc.updateEndpoint(*ep0);
     exec.Clear();
-    exec.Expect(FlowEdit::mod, fe_ep0_eg1);
-    exec.Expect(FlowEdit::del, fe_ep0[10]);
+    for (size_t i = 0; i < fe_ep0_eg1.size() - 1; i++) {
+        exec.Expect(i % 2 == 0 ? FlowEdit::mod : FlowEdit::add,
+                    fe_ep0_eg1[i]);
+    }
+    exec.Expect(FlowEdit::del, *fe_ep0_eg1.rbegin());
     flowManager.endpointUpdated(ep0->getUUID());
     WAIT_FOR(exec.IsEmpty(), 500);
 
@@ -456,9 +488,11 @@ void FlowManagerFixture::localEpTest() {
     ep0->setEgURI(epg0->getURI());
     epSrc.updateEndpoint(*ep0);
     exec.Clear();
-    exec.Expect(FlowEdit::mod, fe_ep0_eg0_1);
-    exec.Expect(FlowEdit::add, fe_ep0[10]);
-    exec.Expect(FlowEdit::mod, fe_ep0_eg0_2);
+    for (size_t i = 0; i < fe_ep0_eg0.size() - 1; i++) {
+        exec.Expect(i % 2 == 0 ? FlowEdit::mod : FlowEdit::add,
+                    fe_ep0_eg0[i]);
+    }
+    exec.Expect(FlowEdit::del, *fe_ep0_eg0.rbegin());
     flowManager.endpointUpdated(ep0->getUUID());
     WAIT_FOR(exec.IsEmpty(), 500);
 
@@ -506,12 +540,16 @@ void FlowManagerFixture::remoteEpTest() {
     flowManager.endpointUpdated(ep2->getUUID());
     WAIT_FOR(exec.IsEmpty(), 500);
 
+    LOG(INFO) << "Changing endpoint group";
+
     /* endpoint group change */
     ep2->setEgURI(epg1->getURI());
     epSrc.updateEndpoint(*ep2);
     exec.Clear();
-    exec.Expect(FlowEdit::mod, fe_ep2_eg1);
+    exec.Expect(FlowEdit::add, fe_ep2_eg1);
+    exec.Expect(FlowEdit::mod, fe_ep2_eg1_arp);
     exec.Expect(FlowEdit::del, fe_ep2[0]);
+    exec.Expect(FlowEdit::del, fe_ep2[1]);
     flowManager.endpointUpdated(ep2->getUUID());
     WAIT_FOR(exec.IsEmpty(), 500);
 }
@@ -1145,7 +1183,8 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     BOOST_FOREACH(const string& ip, ep0ips) {
         address ipa = address::from_string(ip);
         if (ipa.is_v4()) {
-            fe_ep0.push_back(Bldr().table(2).priority(15).ip().reg(RD, 1)
+            fe_ep0.push_back(Bldr().table(2).priority(15).ip()
+                             .reg(BD, 1).reg(RD, 1)
                              .isEthDst(rmac).isIpDst(ip)
                              .actions().load(DEPG, epg0_vnid)
                              .load(OUTPORT, ep0_port).ethSrc(rmac)
@@ -1155,9 +1194,11 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                                  .actions().load(DEPG, epg0_vnid)
                                  .load(OUTPORT, ep0_port)
                                  .ethDst(ep0_mac).go(4).done());
+            fe_ep0_routeoff.push_back(*fe_ep0.rbegin());
             fe_ep0.push_back(*ep0_arpopt.rbegin());
         } else {
-            fe_ep0.push_back(Bldr().table(2).priority(15).ipv6().reg(RD, 1)
+            fe_ep0.push_back(Bldr().table(2).priority(15).ipv6()
+                             .reg(BD, 1).reg(RD, 1)
                              .isEthDst(rmac).isIpv6Dst(ip)
                              .actions().load(DEPG, epg0_vnid)
                              .load(OUTPORT, ep0_port).ethSrc(rmac)
@@ -1167,6 +1208,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                                  .isNdTarget(ip).actions().load(DEPG, epg0_vnid)
                                  .load(OUTPORT, ep0_port)
                                  .ethDst(ep0_mac).go(4).done());
+            fe_ep0_routeoff.push_back(*fe_ep0.rbegin());
             fe_ep0.push_back(*ep0_arpopt.rbegin());
         }
     }
@@ -1176,17 +1218,40 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     fe_ep0_fd0_2.push_back(Bldr().table(2).priority(10).reg(FD, 1)
             .isEthDst(mmac).actions().group(1).done());
 
-    /* ep0 when moved to new group epg1 */
-    fe_ep0_eg1.push_back(Bldr(fe_ep0[9]).load(SEPG, epg1_vnid)
-            .load(BD, 0).done());
-    for (size_t i = 11; i < fe_ep0.size(); ++i) {
-        fe_ep0_eg1.push_back(Bldr(fe_ep0[i]).load(DEPG, epg1_vnid).done());
+    /* ep0 when moved to new group epg1 (fe_ep0_eg1) or moved back to
+       old group (fe_ep0_eg0) */
+    fe_ep0_eg1.push_back(list_of(Bldr(fe_ep0[9])
+                                 .load(BD, 2).load(SEPG, epg1_vnid)
+                                 .done()));
+    fe_ep0_eg0.push_back(list_of(fe_ep0[9]));
+    fe_ep0_eg1.push_back(list_of
+                         (Bldr(fe_ep0[10]).reg(BD, 2)
+                          .load(DEPG, epg1_vnid).done())
+                         (Bldr(fe_ep0[11]).reg(BD, 2)
+                          .load(DEPG, epg1_vnid).done()));
+    fe_ep0_eg0.push_back(list_of(fe_ep0[10])(fe_ep0[11]));
+
+    for (size_t i = 12; i <= 18; i++) {
+        if (i % 2 == 0) {
+            fe_ep0_eg1.push_back(list_of(Bldr(fe_ep0[i])
+                                         .load(DEPG, epg1_vnid).done()));
+        } else {
+            fe_ep0_eg1.push_back(list_of(Bldr(fe_ep0[i]).reg(BD, 2)
+                                         .load(DEPG, epg1_vnid).done()));
+        }
+        fe_ep0_eg0.push_back(list_of(fe_ep0[i]));
     }
 
-    /* ep0 when moved back to old group epg0 */
-    fe_ep0_eg0_1.push_back(fe_ep0[9]);
-    for (size_t i = 11; i < fe_ep0.size(); ++i) {
-        fe_ep0_eg0_2.push_back(fe_ep0[i]);
+    fe_ep0_eg1.push_back(vector<string>());
+    fe_ep0_eg0.push_back(vector<string>());
+    for (size_t i = 10; i < fe_ep0.size(); i++) {
+        if (i == 12) continue;
+        if (i == 14) continue;
+        if (i == 16) continue;
+        if (i == 18) continue;
+        (*fe_ep0_eg1.rbegin()).push_back(fe_ep0[i]);
+        (*fe_ep0_eg0.rbegin()).push_back(Bldr(fe_ep0[i]).reg(BD, 2)
+                                         .load(DEPG, epg1_vnid).done());
     }
 
     /* ep0 on new port */
@@ -1217,11 +1282,12 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                          .actions().load(DEPG, epg0_vnid).load(OUTPORT, tunPort)
                          .pushVlan().move(SEPG12, VLAN).go(4)
                          .done());
-        fe_ep2.push_back(Bldr().table(2).priority(15).ip().reg(RD, 1)
+        fe_ep2.push_back(Bldr().table(2).priority(15).ip().reg(BD, 1).reg(RD, 1)
                          .isEthDst(rmac).isIpDst(ep2_ip0).actions()
                          .load(DEPG, epg0_vnid).load(OUTPORT, tunPort)
                          .pushVlan().move(SEPG12, VLAN)
                          .ethSrc(rmac).decTtl().go(4).done());
+        fe_ep2_routeoff.push_back(*fe_ep2.rbegin());
         break;
     case FlowManager::ENCAP_VXLAN:
     case FlowManager::ENCAP_IVXLAN:
@@ -1235,10 +1301,11 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                          .actions().load(DEPG, epg0_vnid).load(OUTPORT, tunPort)
                          .move(SEPG, TUNID).load(TUNDST, tunDst).go(4)
                          .done());
-        fe_ep2.push_back(Bldr().table(2).priority(15).ip().reg(RD, 1)
+        fe_ep2.push_back(Bldr().table(2).priority(15).ip().reg(BD, 1).reg(RD, 1)
                          .isEthDst(rmac).isIpDst(ep2_ip0).actions().load(DEPG, epg0_vnid)
                          .load(OUTPORT, tunPort).move(SEPG, TUNID).load(TUNDST, tunDst)
                          .ethSrc(rmac).decTtl().go(4).done());
+        fe_ep2_routeoff.push_back(*fe_ep2.rbegin());
         break;
     }
     fe_ep2.push_back(ep2_arpopt);
@@ -1253,8 +1320,9 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     fe_arpopt.push_back(ep2_arpopt);
 
     /* ep2 connected to new group epg1 */
-    fe_ep2_eg1.push_back(Bldr(fe_ep2[1]).load(DEPG, epg1_vnid).done());
-    fe_ep2_eg1.push_back(Bldr(fe_ep2[2]).load(DEPG, epg1_vnid).done());
+    fe_ep2_eg1.push_back(Bldr(fe_ep2[0]).reg(BD, 2).load(DEPG, epg1_vnid).done());
+    fe_ep2_eg1.push_back(Bldr(fe_ep2[1]).reg(BD, 2).load(DEPG, epg1_vnid).done());
+    fe_ep2_eg1_arp.push_back(Bldr(ep2_arpopt).load(DEPG, epg1_vnid).done());
 
     /* Group entries */
     string bktInit = ",bucket=";

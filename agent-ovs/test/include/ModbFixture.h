@@ -61,10 +61,10 @@ public:
     shared_ptr<FloodDomain> fd0, fd1;
     shared_ptr<FloodContext> fd0ctx;
     shared_ptr<RoutingDomain> rd0;
-    shared_ptr<BridgeDomain> bd0;
-    shared_ptr<Subnets> subnetsfd0, subnetsfd1, subnetsbd0, subnetsrd0;
+    shared_ptr<BridgeDomain> bd0, bd1;
+    shared_ptr<Subnets> subnetsfd0, subnetsfd1, subnetsbd0, subnetsbd1;
     shared_ptr<Subnet> subnetsfd0_1, subnetsfd0_2, subnetsfd1_1,
-        subnetsbd0_1, subnetsrd0_1;
+        subnetsbd0_1, subnetsbd1_1;
 
     shared_ptr<L24Classifier> classifier0;
     shared_ptr<L24Classifier> classifier1;
@@ -95,6 +95,7 @@ protected:
         fd1 = space->addGbpFloodDomain("fd1");
         fd1->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
         bd0 = space->addGbpBridgeDomain("bd0");
+        bd1 = space->addGbpBridgeDomain("bd1");
         rd0 = space->addGbpRoutingDomain("rd0");
 
         fd0->addGbpFloodDomainToNetworkRSrc()
@@ -104,6 +105,8 @@ protected:
         fd1->addGbpFloodDomainToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
         bd0->addGbpBridgeDomainToNetworkRSrc()
+            ->setTargetRoutingDomain(rd0->getURI());
+        bd1->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd0->getURI());
 
         subnetsfd0 = space->addGbpSubnets("subnetsfd0");
@@ -130,10 +133,10 @@ protected:
         subnetsbd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
 
-        subnetsrd0 = space->addGbpSubnets("subnetsrd0");
-        subnetsrd0_1 = subnetsrd0->addGbpSubnet("subnetsrd0_1");
-        subnetsrd0->addGbpSubnetsToNetworkRSrc()
-            ->setTargetRoutingDomain(rd0->getURI());
+        subnetsbd1 = space->addGbpSubnets("subnetsbd1");
+        subnetsbd1_1 = subnetsbd1->addGbpSubnet("subnetsbd1_1");
+        subnetsbd1->addGbpSubnetsToNetworkRSrc()
+            ->setTargetBridgeDomain(bd1->getURI());
 
         epg0 = space->addGbpEpGroup("epg0");
         epg0->addGbpEpGroupToNetworkRSrc()
@@ -142,7 +145,7 @@ protected:
 
         epg1 = space->addGbpEpGroup("epg1");
         epg1->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnets(subnetsrd0->getURI());
+            ->setTargetSubnets(subnetsbd1->getURI());
         epg1->addGbpeInstContext()->setEncapId(0xA0B);
 
         epg2 = space->addGbpEpGroup("epg2");
