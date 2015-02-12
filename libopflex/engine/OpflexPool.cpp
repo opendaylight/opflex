@@ -199,8 +199,11 @@ OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname,
     return NULL;
 }
 
-void OpflexPool::addPeer(const std::string& hostname, int port) {
+void OpflexPool::addPeer(const std::string& hostname, int port,
+                         bool configured) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+    if (configured)
+        configured_peers.insert(make_pair(hostname, port));
     doAddPeer(hostname, port);
     uv_async_send(&conn_async);
 }
@@ -209,10 +212,13 @@ void OpflexPool::doAddPeer(const std::string& hostname, int port) {
     if (!active) return;
     ConnData& cd = connections[make_pair(hostname, port)];
     if (cd.conn != NULL) {
-        LOG(ERROR) << "Connection for "
+        LOG(DEBUG) << "Connection for "
                    << hostname << ":" << port
                    << " already exists; not adding peer.";
     } else {
+        LOG(INFO) << "Adding peer "
+                  << hostname << ":" << port;
+
         OpflexClientConnection* conn = 
             new OpflexClientConnection(factory, this, hostname, port);
         cd.conn = conn;
@@ -363,10 +369,13 @@ void OpflexPool::sendToRole(OpflexMessage* message,
         
         size_t i = 0;
         OpflexMessage* m_copy = NULL;
+        std::vector<OpflexClientConnection*> ready;
         BOOST_FOREACH(OpflexClientConnection* conn, it->second.conns) {
             if (!conn->isReady()) continue;
-
-            if (i + 1 < conns.size()) {
+            ready.push_back(conn);
+        }
+        BOOST_FOREACH(OpflexClientConnection* conn, ready) {
+            if (i < (ready.size() - 1)) {
                 m_copy = message->clone();
             } else {
                 m_copy = message;
@@ -378,6 +387,35 @@ void OpflexPool::sendToRole(OpflexMessage* message,
     }
     // all allocated buffers should have been dispatched to
     // connections
+}
+
+void OpflexPool::validatePeerSet(const peer_name_set_t& peers) {
+    peer_name_set_t to_remove;
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+
+    BOOST_FOREACH(const conn_map_t::value_type& cv, connections) {
+        OpflexClientConnection* c = cv.second.conn;
+        peer_name_t peer_name = make_pair(c->getHostname(), c->getPort());
+        if (peers.find(peer_name) == peers.end() &&
+            configured_peers.find(peer_name) == configured_peers.end()) {
+            LOG(INFO) << "Removing stale peer connection: "
+                      << peer_name.first << ":" << peer_name.second;
+            c->close();
+        }
+    }
+}
+
+bool OpflexPool::isConfiguredPeer(const std::string& hostname, int port) {
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+    return configured_peers.find(make_pair(hostname, port)) !=
+        configured_peers.end();
+}
+
+void OpflexPool::addConfiguredPeers() {
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+    BOOST_FOREACH(const peer_name_t& peer_name, configured_peers) {
+        addPeer(peer_name.first, peer_name.second, false);
+    }
 }
 
 } /* namespace internal */

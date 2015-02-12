@@ -118,6 +118,7 @@ private:
     bool started;
     bool active;
     bool closing;
+    int failureCount;
 
 #ifdef SIMPLE_RPC
     static void connect_cb(uv_connect_t* req, int status);
@@ -137,6 +138,7 @@ protected:
     static void on_state_change(yajr::Peer* p, void* data, 
                                 yajr::StateChange::To stateChange,
                                 int error);
+    void connectionFailure();
 #endif
 
 };

@@ -110,8 +110,8 @@ public:
         return true;
     }
 
-    const string& code;
-    const string& message;
+    const string code;
+    const string message;
 };
 
 void OpflexHandler::sendErrorRes(const Value& id,

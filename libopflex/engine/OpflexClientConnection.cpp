@@ -43,7 +43,7 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
 #ifdef SIMPLE_RPC
       retry(true),
 #endif
-      started(false), active(false), closing(false) {
+      started(false), active(false), closing(false), failureCount(0) {
 
 }
 
@@ -147,6 +147,7 @@ void OpflexClientConnection::connect_cb(uv_connect_t* req, int status) {
                   << "New client connection";
         uv_read_start((uv_stream_t*)&conn->socket, alloc_cb, read_cb);
         conn->handler->connected();
+        conn->failureCount = 0;
     }
 }
 
@@ -176,6 +177,7 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
         conn->pool->updatePeerStatus(conn->hostname, conn->port,
                                      PeerStatusListener::CONNECTED);
         conn->handler->connected();
+        conn->failureCount = 0;
         break;
     case yajr::StateChange::DISCONNECT:
         LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
@@ -190,29 +192,36 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
             ERR_error_string_n(error, buf, sizeof(buf));
             LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                        << "SSL Connection error: " << buf;
+            conn->connectionFailure();
         }
-        if (conn->closing)
-            conn->pool->updatePeerStatus(conn->hostname, conn->port,
-                                         PeerStatusListener::DISCONNECTED);
-        else
-            conn->pool->updatePeerStatus(conn->hostname, conn->port,
-                                         PeerStatusListener::CONNECTING);
         break;
     case yajr::StateChange::FAILURE:
         LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
                    << "Connection error: " << uv_strerror(error);
-        if (conn->closing)
-            conn->pool->updatePeerStatus(conn->hostname, conn->port,
-                                         PeerStatusListener::DISCONNECTED);
-        else
-            conn->pool->updatePeerStatus(conn->hostname, conn->port,
-                                         PeerStatusListener::CONNECTING);
+        conn->connectionFailure();
         break;
     case yajr::StateChange::DELETE:
         LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
                   << "Connection closed";
         conn->getPool()->connectionClosed(conn);
         break;
+    }
+}
+
+void OpflexClientConnection::connectionFailure() {
+    if (closing) {
+        pool->updatePeerStatus(hostname, port,
+                               PeerStatusListener::DISCONNECTED);
+    } else if (failureCount >= 3 && !pool->isConfiguredPeer(hostname, port)) {
+        LOG(ERROR) << "[" << getRemotePeer() << "] "
+                   << "Giving up on bootstrapped peer after " << failureCount
+                   << " failures";
+        close();
+        pool->addConfiguredPeers();
+    } else {
+        failureCount += 1;
+        pool->updatePeerStatus(hostname, port,
+                               PeerStatusListener::CONNECTING);
     }
 }
 #endif

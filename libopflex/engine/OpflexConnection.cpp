@@ -371,7 +371,6 @@ void OpflexConnection::processWriteQueue() {
         write_queue.pop_front();
         doWrite(message.get());
     }
-
 }
 
 void OpflexConnection::sendMessage(OpflexMessage* message, bool sync) {

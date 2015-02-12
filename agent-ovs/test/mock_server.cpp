@@ -12,10 +12,12 @@
 #include <signal.h>
 
 #include <string>
+#include <vector>
 #include <iostream>
 
 #include <boost/program_options.hpp>
 #include <boost/assign/list_of.hpp>
+#include <boost/foreach.hpp>
 
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/metadata/metadata.hpp>
@@ -65,6 +67,8 @@ int main(int argc, char** argv) {
          "Enable SSL and use the private key specified")
         ("ssl_pass", po::value<string>()->default_value(""),
          "Use the specified password for the private key")
+        ("peer", po::value<std::vector<string> >(),
+         "A peer specified as hostname:port to return in identity response")
         ;
 
     bool daemon = false;
@@ -75,6 +79,7 @@ int main(int argc, char** argv) {
     std::string ssl_castore;
     std::string ssl_key;
     std::string ssl_pass;
+    std::vector<std::string> peers;
 
     po::variables_map vm;
     try {
@@ -97,6 +102,7 @@ int main(int argc, char** argv) {
         ssl_castore = vm["ssl_castore"].as<string>();
         ssl_key = vm["ssl_key"].as<string>();
         ssl_pass = vm["ssl_pass"].as<string>();
+        peers = vm["peer"].as<std::vector<string> >();
 
     } catch (po::unknown_option e) {
         std::cerr << e.what() << std::endl;
@@ -123,8 +129,13 @@ int main(int argc, char** argv) {
             return 0;
         }
 
-        MockOpflexServer server(8009, SERVER_ROLES, 
-                                list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
+        MockOpflexServer::peer_vec_t peer_vec;
+        BOOST_FOREACH(const std::string& pstr, peers)
+            peer_vec.push_back(make_pair(SERVER_ROLES, pstr));
+        if (peer_vec.size() == 0)
+            peer_vec.push_back(make_pair(SERVER_ROLES, LOCALHOST":8009"));
+
+        MockOpflexServer server(8009, SERVER_ROLES, peer_vec,
                                 modelgbp::getMetadata());
 
         if (policy_file != "") {

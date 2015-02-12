@@ -134,6 +134,8 @@ void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
 
     bool foundSelf = false;
 
+    OpflexPool::peer_name_set_t peer_set;
+
     if (payload.HasMember("peers")) {
         const Value& peers = payload["peers"];
         if (!peers.IsArray()) {
@@ -144,6 +146,7 @@ void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
         }
 
         Value::ConstValueIterator it;
+
         for (it = peers.Begin(); it != peers.End(); ++it) {
             if (!it->IsObject()) {
                 LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
@@ -166,11 +169,13 @@ void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
                 try {
                     port = boost::lexical_cast<int>( portstr );
                     if (pool.getPeer(host, port) == NULL)
-                        pool.addPeer(host, port);
+                        pool.addPeer(host, port, false);
                         
                     if (host == conn->getHostname() &&
                         port == conn->getPort())
                         foundSelf = true;
+
+                    peer_set.insert(make_pair(host, port));
                 } catch( boost::bad_lexical_cast const& ) {
                     LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
                                << "Invalid port in connectivity_info: " 
@@ -187,6 +192,8 @@ void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
             }
         }
     }
+
+    pool.validatePeerSet(peer_set);
 
     if (foundSelf) {
         uint8_t peerRoles = 0;

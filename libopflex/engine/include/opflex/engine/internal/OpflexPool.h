@@ -18,6 +18,7 @@
 #include <memory>
 
 #include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 #include <boost/noncopyable.hpp>
 #include <uv.h>
 
@@ -100,10 +101,12 @@ public:
      *
      * @param hostname the hostname or IP address to connect to
      * @param port the TCP port to connect on
+     * @param configured true if this peer was configured, false if it
+     * was added because of bootstrapping
      * @see opflex::ofcore::OFFramework::addPeer
      */
     void addPeer(const std::string& hostname,
-                 int port);
+                 int port, bool configured = true);
 
     /**
      * Add an OpFlex peer.
@@ -167,6 +170,41 @@ public:
      */
     int getRoleCount(ofcore::OFConstants::OpflexRole role);
 
+    /**
+     * Check whether the given port and hostname is in the set of
+     * configured peers (as opposed to peers learned through
+     * bootstrapping)
+     *
+     * @param hostname the hostname
+     * @param port the port number
+     * @return true if the hostname and port represent a configured
+     * peer
+     */
+    bool isConfiguredPeer(const std::string& hostname, int port);
+
+    /**
+     * A peer name.  Hostname, port number
+     */
+    typedef std::pair<std::string, int> peer_name_t;
+    /**
+     * A set of peer names
+     */
+    typedef boost::unordered_set<peer_name_t> peer_name_set_t;
+
+    /**
+     * Update the set of connections in the pool to include only
+     * configured peers and the peers that appear in the provided set
+     * of peer names.
+     *
+     * @param peerNames the set of peer names to validate against
+     */
+    void validatePeerSet(const peer_name_set_t& peers);
+
+    /**
+     * Add configured peers back into the connection pool
+     */
+    void addConfiguredPeers();
+
 private:
     HandlerFactory& factory;
 
@@ -186,7 +224,6 @@ private:
         uint8_t roles;
     };
 
-    typedef std::pair<std::string, int> peer_name_t;
     typedef boost::unordered_map<peer_name_t, ConnData> conn_map_t;
     typedef std::set<OpflexClientConnection*> conn_set_t;
 
@@ -198,6 +235,7 @@ private:
 
     typedef std::map<uint8_t, RoleData> role_map_t;
 
+    peer_name_set_t configured_peers;
     conn_map_t connections;
     role_map_t roles;
     bool active;
