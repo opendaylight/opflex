@@ -42,7 +42,11 @@ void FlowReader::uninstallListenersForConnection(SwitchConnection *conn) {
 }
 
 bool FlowReader::getFlows(uint8_t tableId, const FlowCb& cb) {
-    ofpbuf *req = createFlowRequest(tableId);
+    return getFlows(tableId, NULL, cb);
+}
+
+bool FlowReader::getFlows(uint8_t tableId, match* m, const FlowCb& cb) {
+    ofpbuf *req = createFlowRequest(tableId, m);
     return sendRequest<FlowCb, FlowCbMap>(req, cb, flowRequests);
 }
 
@@ -51,13 +55,17 @@ bool FlowReader::getGroups(const GroupCb& cb) {
     return sendRequest<GroupCb, GroupCbMap>(req, cb, groupRequests);
 }
 
-ofpbuf *FlowReader::createFlowRequest(uint8_t tableId) {
+ofpbuf *FlowReader::createFlowRequest(uint8_t tableId, match* m) {
     ofp_version ofVer = swConn->GetProtocolVersion();
     ofputil_protocol proto = ofputil_protocol_from_ofp_version(ofVer);
 
     ofputil_flow_stats_request fsr;
     fsr.aggregate = false;
-    match_init_catchall(&fsr.match);
+    if (m) {
+        memcpy(&fsr.match, m, sizeof(fsr.match));
+    } else {
+        match_init_catchall(&fsr.match);
+    }
     fsr.table_id = tableId;
     fsr.out_port = OFPP_ANY;
     fsr.out_group = OFPG11_ANY;
@@ -72,6 +80,7 @@ ofpbuf *FlowReader::createGroupRequest() {
                                              OFPG_ALL);
 }
 
+// XXX TODO need a way to time out requests
 template <typename U, typename V>
 bool FlowReader::sendRequest(ofpbuf *req, const U& cb, V& reqMap) {
     ovs_be32 reqXid = ((ofp_header *)ofpbuf_data(req))->xid;

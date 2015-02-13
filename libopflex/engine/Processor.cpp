@@ -259,7 +259,7 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
         break;
     case ClassInfo::OBSERVABLE:
         if (isParentSyncObject(i)) {
-            LOG(DEBUG) << "Declaring local observable " << i.uri;
+            LOG(DEBUG3) << "Declaring local observable " << i.uri;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
             StateReportReq* req = new StateReportReq(this, refs);

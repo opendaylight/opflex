@@ -79,7 +79,6 @@ FlowManager::FlowManager(ovsagent::Agent& ag) :
     memset(routerMac, 0, sizeof(routerMac));
     memset(dhcpMac, 0, sizeof(dhcpMac));
     tunnelDst = address::from_string("127.0.0.1");
-    portMapper = NULL;
 }
 
 void FlowManager::Start()
@@ -125,9 +124,11 @@ void FlowManager::registerConnection(SwitchConnection *conn) {
     this->connection = conn;
     conn->RegisterOnConnectListener(this);
     conn->RegisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
+    pktInHandler.registerConnection(conn);
 }
 
 void FlowManager::unregisterConnection(SwitchConnection *conn) {
+    pktInHandler.unregisterConnection();
     this->connection = NULL;
     conn->UnregisterOnConnectListener(this);
     conn->UnregisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
@@ -146,6 +147,12 @@ void FlowManager::unregisterModbListeners() {
 void FlowManager::SetPortMapper(PortMapper *m) {
     portMapper = m;
     portMapper->registerPortStatusListener(this);
+    pktInHandler.setPortMapper(m);
+}
+
+void FlowManager::SetFlowReader(FlowReader *r) {
+    reader = r;
+    pktInHandler.setFlowReader(r);
 }
 
 void FlowManager::SetFallbackMode(FallbackMode fallbackMode) {
@@ -681,11 +688,13 @@ void FlowManager::Connected(SwitchConnection *swConn) {
     workQ.enqueue(w);
 }
 
-void FlowManager::portStatusUpdate(const string& portName, uint32_t portNo) {
+void FlowManager::portStatusUpdate(const string& portName,
+                                   uint32_t portNo, bool fromDesc) {
     if (stopping) return;
     WorkItem w = bind(&FlowManager::HandlePortStatusUpdate, this,
                       portName, portNo);
     workQ.enqueue(w);
+    pktInHandler.portStatusUpdate(portName, portNo, fromDesc);
 }
 
 void FlowManager::PeerConnected() {
@@ -2031,12 +2040,12 @@ void FlowManager::FlowSyncer::CompleteSync() {
 }
 
 void FlowManager::FlowSyncer::ReconcileFlows() {
-    /* special handling for learning table - ignore entries learnt reactively */
+    /* special handling for learning table - reconcile using
+       PacketInHandler reactive reconciler */
     FlowEntryList learnFlows;
     recvFlows[FlowManager::LEARN_TABLE_ID].swap(learnFlows);
-    ovs_be64 learnCookie = FlowManager::GetLearnEntryCookie();
     BOOST_FOREACH (const FlowEntryPtr& fe, learnFlows) {
-        if (fe->entry->cookie != learnCookie) {
+        if (!flowManager.pktInHandler.reconcileReactiveFlow(fe)) {
             recvFlows[FlowManager::LEARN_TABLE_ID].push_back(fe);
         }
     }

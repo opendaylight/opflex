@@ -40,9 +40,10 @@ void PortMapper::unregisterPortStatusListener(PortStatusListener *l) {
     portStatusListeners.remove(l);
 }
 
-void PortMapper::notifyListeners(const string& portName, uint32_t portNo) {
+void PortMapper::notifyListeners(const string& portName, uint32_t portNo,
+                                 bool fromDesc) {
     BOOST_FOREACH (PortStatusListener *l, portStatusListeners) {
-        l->portStatusUpdate(portName, portNo);
+        l->portStatusUpdate(portName, portNo, fromDesc);
     }
 }
 
@@ -133,7 +134,7 @@ PortMapper::HandlePortDescReply(ofpbuf *msg) {
             tmprPortMap.clear();
         }
         BOOST_FOREACH (const PortMap::value_type& kv, portMap) {
-            notifyListeners(kv.first, kv.second.port_no);
+            notifyListeners(kv.first, kv.second.port_no, true);
         }
     }
 }
@@ -159,7 +160,8 @@ PortMapper::HandlePortStatus(ofpbuf *msg) {
             rportMap.erase(portStatus.desc.port_no);
         }
     }
-    notifyListeners(portStatus.desc.name, portStatus.desc.port_no);
+    notifyListeners(portStatus.desc.name, portStatus.desc.port_no,
+                    false);
 }
 
 uint32_t

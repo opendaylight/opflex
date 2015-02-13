@@ -29,9 +29,11 @@ public:
      *
      * @param portName Name of the port that changed
      * @param portNo Port number of the port that changed
+     * @param fromDesc true if the update is from a description reply
      */
-    virtual void portStatusUpdate(
-        const std::string& portName, uint32_t portNo) = 0;
+    virtual void portStatusUpdate(const std::string& portName,
+                                  uint32_t portNo,
+                                  bool fromDesc) = 0;
 };
 
 /**
@@ -109,8 +111,10 @@ private:
      *
      * @param portName Name of the port that changed
      * @param portNo Port number of the port that changed
+     * @param fromDesc true if the update is from a description reply
      */
-    void notifyListeners(const std::string& portName, uint32_t portNo);
+    void notifyListeners(const std::string& portName, uint32_t portNo,
+                         bool fromDesc);
 
     typedef boost::unordered_map<std::string, ofputil_phy_port> PortMap;
     typedef boost::unordered_map<uint32_t, std::string> RPortMap;

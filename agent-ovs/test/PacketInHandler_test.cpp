@@ -405,6 +405,7 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     BOOST_CHECK(0 == memcmp(fm1.match.flow.dl_dst, mac2, sizeof(mac2)));
     BOOST_CHECK_EQUAL(10, fm1.match.flow.regs[5]);
 
+    BOOST_CHECK_EQUAL(24, ofp_to_u16(fm2.match.flow.in_port.ofp_port));
     BOOST_CHECK(0 == memcmp(fm2.match.flow.dl_dst, mac1, sizeof(mac1)));
     BOOST_CHECK(0 == memcmp(fm2.match.flow.dl_src, mac2, sizeof(mac2)));
     BOOST_CHECK_EQUAL(10, fm2.match.flow.regs[5]);

@@ -61,6 +61,18 @@ public:
     virtual bool getFlows(uint8_t tableId, const FlowCb& cb);
 
     /**
+     * Get the flow-table entries for specified table.
+     *
+     * @param tableId ID of flow-table to read
+     * @param m a match to request for the flows
+     * @param cb Callback function to invoke when flow-entries are
+     * received
+     * @return true if request for getting flows was sent successfully
+     */
+    virtual bool getFlows(uint8_t tableId, match *m,
+                          const FlowCb& cb);
+
+    /**
      * Callback function to process a list of group-table entries.
      */
     typedef boost::function<void
@@ -83,9 +95,11 @@ private:
      * Create a request for reading all entries of specified table.
      *
      * @param tableId ID of flow-table to read
+     * @param m A match to request, or NULL to match all
+     * all
      * @return flow-table read request
      */
-    ofpbuf *createFlowRequest(uint8_t tableId);
+    ofpbuf *createFlowRequest(uint8_t tableId, match* m = NULL);
 
     /**
      * Create a request for reading all entries of group-table.

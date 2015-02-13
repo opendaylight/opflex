@@ -135,10 +135,15 @@ public:
 
 class MockPortMapper : public PortMapper {
 public:
-    uint32_t FindPort(const std::string& name) {
+    virtual uint32_t FindPort(const std::string& name) {
         return ports.find(name) != ports.end() ? ports[name] : OFPP_NONE;
     }
+    virtual const std::string& FindPort(uint32_t of_port_no) {
+        return RPortMap.at(of_port_no);
+    }
+
     boost::unordered_map<string, uint32_t> ports;
+    boost::unordered_map<uint32_t, std::string> RPortMap;
 };
 
 class MockFlowReader : public FlowReader {
@@ -210,7 +215,9 @@ public:
         flowManager.SetVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
 
         portmapper.ports[ep0->getInterfaceName().get()] = 80;
+        portmapper.RPortMap[80] = ep0->getInterfaceName().get();
         portmapper.ports[tunIf] = 2048;
+        portmapper.RPortMap[2048] = tunIf;
         tun_port_new = 4096;
 
         WAIT_FOR(policyMgr.groupExists(epg0->getURI()), 500);
@@ -276,6 +283,7 @@ public:
     vector<string> fe_fixed_tun_new, fe_fallback_tun_new;
     vector<string> fe_epg0_tun_new, fe_ep2_tun_new;
     vector<string> fe_rd0;
+    vector<string> fe_connect_learn;
     string fe_connect_1, fe_connect_2;
     string ge_fd0, ge_bkt_ep0, ge_bkt_ep2, ge_bkt_tun;
     string ge_fd0_prom;
@@ -468,7 +476,8 @@ void FlowManagerFixture::localEpTest() {
         exec.Expect(FlowEdit::del, fe_ep0[i]);
     }
     exec.Expect(FlowEdit::mod, fe_ep0_port_3);
-    flowManager.portStatusUpdate(ep0->getInterfaceName().get(), 180);
+    flowManager.portStatusUpdate(ep0->getInterfaceName().get(),
+                                 180, false);
     WAIT_FOR(exec.IsEmpty(), 500);
 
     /* remove endpoint */
@@ -574,7 +583,7 @@ void FlowManagerFixture::fdTest() {
     exec.ExpectGroup(FlowEdit::mod, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun_new);
     exec.ExpectGroup(FlowEdit::mod, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun_new);
     portmapper.ports[tunIf] = tun_port_new;
-    flowManager.portStatusUpdate(tunIf, tun_port_new);
+    flowManager.portStatusUpdate(tunIf, tun_port_new, false);
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 }
 
@@ -693,6 +702,7 @@ void FlowManagerFixture::connectTest() {
     exec.Expect(FlowEdit::del, fe_connect_1);
     exec.Expect(FlowEdit::add, fe_rd0);
     exec.Expect(FlowEdit::add, fe_fallback);
+    exec.Expect(FlowEdit::del, fe_connect_learn);
     exec.Expect(FlowEdit::mod, fe_connect_2);
     exec.ExpectGroup(FlowEdit::del, "group_id=10,type=all");
     flowManager.egDomainUpdated(epg4->getURI());
@@ -743,7 +753,7 @@ void FlowManagerFixture::portStatusTest() {
     exec.Expect(FlowEdit::del, fe_epg0[0]);
     exec.Expect(FlowEdit::mod, fe_ep2_tun_new);
     portmapper.ports[tunIf] = tun_port_new;
-    flowManager.portStatusUpdate(tunIf, tun_port_new);
+    flowManager.portStatusUpdate(tunIf, tun_port_new, false);
     WAIT_FOR(exec.IsEmpty(), 500);
 
     /* remove mapping for tunnel port */
@@ -753,7 +763,7 @@ void FlowManagerFixture::portStatusTest() {
     exec.Expect(FlowEdit::del, fe_epg0_tun_new);
     exec.Expect(FlowEdit::del, fe_ep2_tun_new);
     portmapper.ports.erase(tunIf);
-    flowManager.portStatusUpdate(tunIf, tun_port_new);
+    flowManager.portStatusUpdate(tunIf, tun_port_new, false);
     WAIT_FOR(exec.IsEmpty(), 500);
 }
 
@@ -1361,12 +1371,34 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
     uint32_t epg4_vnid = policyMgr.getVnidForGroup(epg4->getURI()).get();
     fe_connect_2 = Bldr().table(4).priority(100).reg(SEPG, epg4_vnid)
             .reg(DEPG, epg4_vnid).actions().out(OUTPORT).done();
+
+    fe_connect_learn
+        .push_back(Bldr().table(3).priority(150)
+                   .cookie(ntohll(FlowManager::GetLearnEntryCookie()))
+                   .isEthDst("de:ad:be:ef:01:02")
+                   .actions().load(OUTPORT, 999).controller(0xffff)
+                   .done());
+    fe_connect_learn
+        .push_back(Bldr().table(3).priority(150)
+                   .cookie(ntohll(FlowManager::GetLearnEntryCookie()))
+                   .isEthDst("de:ad:be:ef:01:02")
+                   .actions().load(OUTPORT, 80).controller(0xffff)
+                   .done());
+    fe_connect_learn
+        .push_back(Bldr().table(3).priority(150)
+                   .cookie(ntohll(FlowManager::GetLearnEntryCookie()))
+                   .isEthDst(ep0->getMAC().get().toString())
+                   .actions().load(OUTPORT, 999).controller(0xffff)
+                   .done());
+                                       
 }
 
 void
 FlowManagerFixture::createOnConnectEntries(FlowManager::EncapType encapType,
                                            FlowEntryList& flows,
                                            GroupEdit::EntryList& groups) {
+    uint8_t mac[6];
+
     flows.clear();
     groups.clear();
 
@@ -1409,10 +1441,57 @@ FlowManagerFixture::createOnConnectEntries(FlowManager::EncapType encapType,
     match_set_reg(&e2->entry->match, 0, epg4_vnid);
     match_set_reg(&e2->entry->match, 2, epg4_vnid);
 
+    // invalid learn entry with invalid mac and port
     FlowEntryPtr e3(new FlowEntry());
     flows.push_back(e3);
     e3->entry->table_id = 3;
+    e3->entry->priority = 150;
     e3->entry->cookie = FlowManager::GetLearnEntryCookie();
+    MAC("de:ad:be:ef:1:2").toUIntArray(mac);
+    match_set_dl_dst(&e3->entry->match, mac);
+    ActionBuilder ab3;
+    ab3.SetRegLoad(MFF_REG7, 999);
+    ab3.SetController();
+    ab3.Build(e3->entry);
+
+    // valid learn entry for ep0
+    FlowEntryPtr e4(new FlowEntry());
+    flows.push_back(e4);
+    e4->entry->table_id = 3;
+    e4->entry->priority = 150;
+    e4->entry->cookie = FlowManager::GetLearnEntryCookie();
+    ep0->getMAC().get().toUIntArray(mac);
+    match_set_dl_dst(&e4->entry->match, mac);
+    ActionBuilder ab4;
+    ab4.SetRegLoad(MFF_REG7, 80);
+    ab4.SetController();
+    ab4.Build(e4->entry);
+
+    // invalid learn entry with invalid mac and valid port
+    FlowEntryPtr e5(new FlowEntry());
+    flows.push_back(e5);
+    e5->entry->table_id = 3;
+    e5->entry->priority = 150;
+    e5->entry->cookie = FlowManager::GetLearnEntryCookie();
+    MAC("de:ad:be:ef:1:2").toUIntArray(mac);
+    match_set_dl_dst(&e5->entry->match, mac);
+    ActionBuilder ab5;
+    ab5.SetRegLoad(MFF_REG7, 80);
+    ab5.SetController();
+    ab5.Build(e5->entry);
+
+    // invalid learn entry with invalid port and valid mac
+    FlowEntryPtr e6(new FlowEntry());
+    flows.push_back(e6);
+    e6->entry->table_id = 3;
+    e6->entry->priority = 150;
+    e6->entry->cookie = FlowManager::GetLearnEntryCookie();
+    ep0->getMAC().get().toUIntArray(mac);
+    match_set_dl_dst(&e6->entry->match, mac);
+    ActionBuilder ab6;
+    ab6.SetRegLoad(MFF_REG7, 999);
+    ab6.SetController();
+    ab6.Build(e6->entry);
 
     GroupEdit::Entry entryIn(new GroupEdit::GroupMod());
     entryIn->mod->command = OFPGC11_ADD;

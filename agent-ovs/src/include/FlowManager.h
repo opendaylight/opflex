@@ -78,9 +78,7 @@ public:
      *
      * @param r The reader object
      */
-    void SetFlowReader(FlowReader *r) {
-        reader = r;
-    }
+    void SetFlowReader(FlowReader *r);
 
     /**
      * Set the object used for executing control commands against the
@@ -292,7 +290,8 @@ public:
     void Connected(SwitchConnection *swConn);
 
     /* Interface: PortStatusListener */
-    void portStatusUpdate(const std::string& portName, uint32_t portNo);
+    void portStatusUpdate(const std::string& portName, uint32_t portNo,
+                          bool fromDesc);
 
     /**
      * Get the VNID and routing-domain ID for the specified endpoint groups.

@@ -35,20 +35,25 @@ using modelgbp::gbp::Subnet;
 
 namespace ovsagent {
 
-PacketInHandler::PacketInHandler(Agent& agent_, FlowManager& flowManager_)
-    : agent(agent_), flowManager(flowManager_) {}
+PacketInHandler::PacketInHandler(Agent& agent_,
+                                 FlowManager& flowManager_)
+    : agent(agent_), flowManager(flowManager_),
+      portMapper(NULL), flowReader(NULL), switchConnection(NULL) {}
 
 
-static bool writeLearnFlow(SwitchConnection *conn, 
-                           ofputil_protocol& proto,
-                           struct ofputil_packet_in& pi,
-                           struct flow& flow,
-                           bool stage2,
-                           uint32_t tunPort,
-                           FlowManager::EncapType encapType,
-                           const address& tunDst) {
+bool PacketInHandler::writeLearnFlow(SwitchConnection *conn, 
+                                     ofputil_protocol& proto,
+                                     struct ofputil_packet_in& pi,
+                                     struct flow& flow,
+                                     bool stage2) {
+    uint32_t tunPort = flowManager.GetTunnelPort();
+    FlowManager::EncapType encapType = flowManager.GetEncapType();
+    const address& tunDst = flowManager.GetTunnelDst();
+
     bool dstKnown = (0 != pi.fmd.regs[7]);
     if (stage2 && !dstKnown) return false;
+
+    uint8_t* flowMac = NULL;
 
     struct ofputil_flow_mod fm;
     memset(&fm, 0, sizeof(fm));
@@ -61,9 +66,12 @@ static bool writeLearnFlow(SwitchConnection *conn,
 
     match_set_reg(&fm.match, 5 /* REG5 */, pi.fmd.regs[5]);
     if (stage2) {
+        match_set_in_port(&fm.match, pi.fmd.in_port);
+        flowMac = flow.dl_dst;
         match_set_dl_dst(&fm.match, flow.dl_dst);
         match_set_dl_src(&fm.match, flow.dl_src);
     } else {
+        flowMac = flow.dl_src;
         match_set_dl_dst(&fm.match, flow.dl_src);
     }
 
@@ -90,40 +98,149 @@ static bool writeLearnFlow(SwitchConnection *conn,
     if (error) {
         LOG(ERROR) << "Could not write flow mod: " << ovs_strerror(error);
     }
+
+    if (flowReader) {
+        FlowReader::FlowCb dstCb =
+            boost::bind(&PacketInHandler::dstFlowCb, this,
+                        _1, MAC(flowMac), outport, pi.fmd.regs[5]);
+        match fmatch;
+        memset(&fmatch, 0, sizeof(fmatch));
+        match_set_reg(&fmatch, 5 /* REG5 */, pi.fmd.regs[5]);
+        match_set_dl_dst(&fmatch, flowMac);
+
+        flowReader->getFlows(FlowManager::LEARN_TABLE_ID,
+                             &fmatch, dstCb);
+    }
+
     return true;
 }
 
+static uint32_t getOutputRegValue(const FlowEntryPtr& fe) {
+    struct ofpact* a;
+    OFPACT_FOR_EACH (a, fe->entry->ofpacts, fe->entry->ofpacts_len) {
+        if (a->type == OFPACT_SET_FIELD) {
+            struct ofpact_set_field* sf = ofpact_get_SET_FIELD(a);
+            const struct mf_field *mf = sf->field;
+            if (mf->id == MFF_REG7) {
+                return ntohl(sf->value.be32);
+                break;
+            }
+        }
+    }
+    return OFPP_NONE;
+}
 
-/**
- * Handle a packet-in for the learning table.  Perform MAC learning
- * for flood domains that require flooding for unknown unicast
- * traffic.  Note that this will only manage the reactive flows
- * associated with MAC learning; there are static flows to enabling
- * MAC learning elsewhere.  Any resulting flows or packet-out messages
- * are written directly to the connection.
- *
- * @param conn the openflow switch connection
- * @param pi the packet-in
- * @param proto an openflow proto object
- * @param pkt the packet from the packet-in
- * @param flow the parsed flow from the packet
- * @param tunPort the uplink tunnel port
- * @param encapType the type of encapsulation in use
- * @param tunDst the remote tunnel destination for encap types that
- * require it
- */
-static void handleLearnPktIn(SwitchConnection *conn,
-                             struct ofputil_packet_in& pi,
-                             ofputil_protocol& proto,
-                             struct ofpbuf& pkt,
-                             struct flow& flow,
-                             uint32_t tunPort,
-                             FlowManager::EncapType encapType,
-                             const address& tunDst) {
-    writeLearnFlow(conn, proto, pi, flow, false, 
-                   tunPort, encapType, tunDst);
-    if (writeLearnFlow(conn, proto, pi, flow, true, 
-                       tunPort, encapType, tunDst))
+static void removeLearnFlow(SwitchConnection* conn, const FlowEntryPtr& fe) {
+    ofputil_protocol proto =
+        ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
+    assert(ofputil_protocol_is_valid(proto));
+
+    struct ofputil_flow_mod fm;
+    memset(&fm, 0, sizeof(fm));
+    fm.table_id = FlowManager::LEARN_TABLE_ID;
+    fm.command = OFPFC_DELETE_STRICT;
+    fm.priority = fe->entry->priority;
+    fm.cookie = FlowManager::GetLearnEntryCookie();
+    memcpy(&fm.match, &fe->entry->match, sizeof(fe->entry->match));
+
+    fm.idle_timeout = fe->entry->idle_timeout;
+    fm.hard_timeout = fe->entry->hard_timeout;
+    fm.buffer_id = UINT32_MAX;
+    fm.out_port = OFPP_ANY;
+    fm.out_group = OFPG_ANY;
+    fm.flags = (ofputil_flow_mod_flags)0;
+    fm.delete_reason = OFPRR_DELETE;
+
+    struct ofpbuf * message = ofputil_encode_flow_mod(&fm, proto);
+    int error = conn->SendMessage(message);
+    if (error) {
+        LOG(ERROR) << "Could not delete flow mod: " << ovs_strerror(error);
+    }
+}
+
+void PacketInHandler::dstFlowCb(const FlowEntryList& flows,
+                                const MAC& dstMac, uint32_t outPort,
+                                uint32_t fgrpId) {
+    if (!switchConnection) return;
+    BOOST_FOREACH(const FlowEntryPtr& fe, flows) {
+        if (fe->entry->cookie == FlowManager::GetLearnEntryCookie()) {
+            uint32_t port = getOutputRegValue(fe);
+            uint32_t flowFgrpId = fe->entry->match.flow.regs[5];
+            MAC flowDstMac(fe->entry->match.flow.dl_dst);
+            if (flowFgrpId == fgrpId && flowDstMac == dstMac &&
+                port != outPort) {
+                LOG(DEBUG) << "Removing stale learn flow with dst "
+                           << flowDstMac
+                           << " on port " << port;
+                removeLearnFlow(switchConnection, fe);
+            }
+        }
+    }
+}
+
+void PacketInHandler::anyFlowCb(const FlowEntryList& flows) {
+    if (!switchConnection) return;
+    BOOST_FOREACH(const FlowEntryPtr& fe, flows) {
+        if (!reconcileReactiveFlow(fe)) {
+            removeLearnFlow(switchConnection, fe);
+        }
+    }
+}
+
+bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
+    EndpointManager& epMgr = agent.getEndpointManager();
+
+    if (!portMapper) return true;
+    if (fe->entry->cookie != FlowManager::GetLearnEntryCookie())
+        return true;
+
+    uint32_t port = getOutputRegValue(fe);
+    if (port == flowManager.GetTunnelPort())
+        return true;
+    
+    MAC dstMac(fe->entry->match.flow.dl_dst);
+    
+    try {
+        const string& portName = portMapper->FindPort(port);
+        unordered_set<string> eps;
+        epMgr.getEndpointsByIface(portName, eps);
+        BOOST_FOREACH(const string& uuid, eps) {
+            shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
+            if (!ep) continue;
+            if (ep->isPromiscuousMode()) return true;
+            
+            optional<MAC> mac = ep->getMAC();
+            if (!mac) continue;
+            if (mac == dstMac) return true;
+        }
+    } catch (std::out_of_range) {
+        // fall through
+    }
+    
+    LOG(DEBUG) << "Removing stale learn flow with dst " << dstMac
+               << " on port " << port;
+    return false;
+}
+
+void PacketInHandler::portStatusUpdate(const string& portName,
+                                       uint32_t portNo,
+                                       bool fromDesc) {
+    if (fromDesc) return;
+    if (flowReader && portMapper) {
+        FlowReader::FlowCb cb =
+            boost::bind(&PacketInHandler::anyFlowCb, this, _1);
+        flowReader->getFlows(FlowManager::LEARN_TABLE_ID, cb);
+    }
+}
+
+
+void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
+                                       struct ofputil_packet_in& pi,
+                                       ofputil_protocol& proto,
+                                       struct ofpbuf& pkt,
+                                       struct flow& flow) {
+    writeLearnFlow(conn, proto, pi, flow, false);
+    if (writeLearnFlow(conn, proto, pi, flow, true))
         return;
 
     {
@@ -598,10 +715,7 @@ void PacketInHandler::Handle(SwitchConnection *conn,
 
     if (pi.cookie == FlowManager::GetLearnEntryCookie() ||
         pi.cookie == FlowManager::GetProactiveLearnEntryCookie())
-        handleLearnPktIn(conn, pi, proto, pkt, flow,
-                         flowManager.GetTunnelPort(),
-                         flowManager.GetEncapType(),
-                         flowManager.GetTunnelDst());
+        handleLearnPktIn(conn, pi, proto, pkt, flow);
     else if (pi.cookie == FlowManager::GetNDCookie())
         handleNDPktIn(agent, conn, pi, proto, pkt,
                       flow, flowManager.GetRouterMacAddr());
