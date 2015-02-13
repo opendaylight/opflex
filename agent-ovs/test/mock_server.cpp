@@ -102,7 +102,8 @@ int main(int argc, char** argv) {
         ssl_castore = vm["ssl_castore"].as<string>();
         ssl_key = vm["ssl_key"].as<string>();
         ssl_pass = vm["ssl_pass"].as<string>();
-        peers = vm["peer"].as<std::vector<string> >();
+        if (vm.count("peer"))
+            peers = vm["peer"].as<std::vector<string> >();
 
     } catch (po::unknown_option e) {
         std::cerr << e.what() << std::endl;
