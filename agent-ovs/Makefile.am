@@ -194,7 +194,7 @@ clean-doc:
 clean-local: clean-doc
 	rm -f *.rpm
 
-EXTRA_DIST=rpm/agent-ovs.service opflex-agent-ovs.conf.in
+EXTRA_DIST=rpm/agent-ovs.service rpm/90-agent-ovs-sysctl.conf opflex-agent-ovs.conf.in
 
 CWD=`pwd`
 RPMFLAGS=--define "_topdir ${CWD}/rpm"

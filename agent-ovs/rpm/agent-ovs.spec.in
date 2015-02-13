@@ -34,6 +34,7 @@ BuildRequires: libmodelgbp-devel
 BuildRequires: boost-devel
 BuildRequires: boost-test
 BuildRequires: openvswitch-devel
+Requires(pre): shadow-utils
 Requires(post): systemd-units
 Requires(preun): systemd-units
 Requires(postun): systemd-units
@@ -55,8 +56,11 @@ make %{?_smp_mflags}
 %install
 %make_install
 install -p -D -m 0644 \
-        rpm/agent-ovs.service \
-        $RPM_BUILD_ROOT%{_unitdir}/agent-ovs.service
+    rpm/agent-ovs.service \
+    $RPM_BUILD_ROOT%{_unitdir}/agent-ovs.service
+install -p -D -m 0644 \
+    rpm/90-agent-ovs-sysctl.conf \
+    $RPM_BUILD_ROOT%{_sysctldir}/90-agent-ovs-sysctl.conf
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/endpoints
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
 
@@ -64,6 +68,9 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
 %if %{with check}
     make check
 %endif
+
+%pre
+getent group opflexep >/dev/null || groupadd -r opflexep
 
 %preun
 %if 0%{?systemd_preun:1}
@@ -76,8 +83,13 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
     fi
 %endif
 
-
 %post
+%if %{?sysctl_apply:1}%{!?sysctl_apply:0}
+    %sysctl_apply 90-agent-ovs-sysctl.conf
+%else
+    /sbin/sysctl -p %{_sysctldir}/90-agent-ovs-sysctl.conf >/dev/null 2>&1 || :
+%endif
+
 %if 0%{?systemd_post:1}
     %systemd_post %{name}.service
 %else
@@ -103,7 +115,8 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
 %{_bindir}/agent_ovs
 %config(noreplace) %{_sysconfdir}/opflex-agent-ovs/opflex-agent-ovs.conf
 %{_unitdir}/agent-ovs.service
-%dir %{_localstatedir}/lib/opflex-agent-ovs/endpoints
+%{_sysctldir}/90-agent-ovs-sysctl.conf
+%dir %attr(0755, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/endpoints
 %dir %{_localstatedir}/lib/opflex-agent-ovs/ids
 
 %changelog

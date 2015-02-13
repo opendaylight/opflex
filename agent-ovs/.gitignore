@@ -54,3 +54,4 @@ mock_server
 *.rpm
 *.spec
 *.tar.gz
+opflex-agent-ovs.conf
