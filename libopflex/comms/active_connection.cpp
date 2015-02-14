@@ -96,6 +96,18 @@ void ::yajr::comms::internal::ActivePeer::retry() {
         return;
 
     }
+    if (uvRefCnt_ != 1) {
+        LOG(INFO)
+            << this
+            << " has to wait for reference count to fall to 1 before retrying"
+        ;
+
+        insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
+
+        return;
+
+    }
+
 
     struct addrinfo const hints = (struct addrinfo){
         /* .ai_flags    = */ 0,
@@ -154,20 +166,21 @@ namespace internal {
 
 void on_active_connection(uv_connect_t *req, int status) {
 
+    ActivePeer * peer = Peer::get(req);  // can't possibly crash yet
+
     if (status == UV_ECANCELED) {
 
         /* the peer might have been deleted, so we have to avoid accessing any
          * of its members */
         VLOG(1)
-            << "peer {"
-            << req->handle->data         // this is already a (void *)
-            << "}A[?] has had a connection attempt canceled"
+            << peer
+            << " has had a connection attempt canceled"
         ;
+
+        peer->onError(status);
 
         return;
     }
-
-    ActivePeer * peer = Peer::get(req);  // can't possibly crash yet
 
     VLOG(1)
         << peer;
@@ -176,6 +189,7 @@ void on_active_connection(uv_connect_t *req, int status) {
         LOG(INFO)
             << peer
             << " peer is being destroyed. down() it"
+            << " NOT!"
         ;
         peer->down();
         return;
@@ -193,6 +207,7 @@ void on_active_connection(uv_connect_t *req, int status) {
         ;
         if ((rc = connect_to_next_address(peer))) {
             LOG(WARNING)
+                << peer
                 << "connect: no more resolved addresses"
             ;
 
@@ -201,10 +216,11 @@ void on_active_connection(uv_connect_t *req, int status) {
              */
             peer->onError(rc);
 
-            /* retry later */
             if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
-                uv_close((uv_handle_t*)&peer->handle_, NULL);
+                uv_close((uv_handle_t*)&peer->handle_, on_close);
             }
+
+            /* retry later */
             retry_later(peer);
         }
         return;
@@ -261,6 +277,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
         peer->status_ = Peer::kPS_FAILED_TO_RESOLVE;
         uv_freeaddrinfo(resp);
 
+        peer->down();
         return retry_later(peer);
     }
 
@@ -271,7 +288,10 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     int rc;
 
     if ((rc = peer->tcpInit())) {
+
+        peer->down();
         return retry_later(peer);
+
     }
 
     peer->_.ai_next = peer->_.ai = resp;
@@ -283,7 +303,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
             << uv_strerror(rc)
         ;
         if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
-            uv_close((uv_handle_t*)&peer->handle_, NULL);
+            uv_close((uv_handle_t*)&peer->handle_, on_close);
         }
         return retry_later(peer);
     }
@@ -344,7 +364,7 @@ void debug_address(struct addrinfo const * ai, size_t m = 0) {
                        NI_NUMERICHOST | NI_NUMERICSERV
                       );
 
-    VLOG(3)
+    VLOG(4)
         << msg[m][0]
         <<           host
         << msg[m][1]
@@ -379,6 +399,16 @@ void debug_resolution_entries(struct addrinfo const * ai) {
 
 void retry_later(ActivePeer * peer) {
 
+    if (peer->destroying_) {
+        LOG(INFO)
+            << peer
+            << " peer is being destroyed. not inserting in RETRY_TO_CONNECT"
+        ;
+
+        return;
+
+    }
+
     VLOG(1)
         << peer
     ;
@@ -386,11 +416,13 @@ void retry_later(ActivePeer * peer) {
     peer->unlink();
     peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
 
-    VLOG(1)
-        << peer
-        << " down() for a retry_later()"
-    ;
-    peer->down();
+ // VLOG(1)
+ //     << peer
+ //     << " down() for a retry_later()"
+ // ;
+
+    assert(peer->uvRefCnt_ > 0);
+ // peer->down();
 
     return;
 }
@@ -410,6 +442,7 @@ void swap_stack_on_close(uv_handle_t * h) {
     /* FIXME: pass the loop along */
     if ((rc = peer->tcpInit())) {
 
+        peer->down();
         retry_later(peer);
 
         return;
@@ -423,7 +456,7 @@ void swap_stack_on_close(uv_handle_t * h) {
             << uv_strerror(rc)
         ;
         if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
-            uv_close((uv_handle_t*)&peer->handle_, NULL);
+            uv_close((uv_handle_t*)&peer->handle_, on_close);
         }
         return retry_later(peer);
     }

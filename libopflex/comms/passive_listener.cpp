@@ -262,7 +262,7 @@ int ::yajr::comms::internal::ListeningPeer::setAddrFromIpAndPort(
     VLOG(4);
 
 #ifndef NDEBUG
-    /* make Valgrind happy */
+    /* make valgrind happy */
     listen_on_ = sockaddr_storage();
 #endif
 

@@ -35,7 +35,7 @@ TransportEngine< PlainText > & PlainText::getPlainTextTransport() {
 template<>
 int Cb< PlainText >::send_cb(CommunicationPeer const * peer) {
 
-    VLOG(4)
+    VLOG(5)
         << peer
     ;
 

@@ -43,7 +43,13 @@ std::ostream& operator << (
         << "["
         << p->uvRefCnt_
         << "];handle@"
-        << reinterpret_cast<void const *>(&p->handle_);
+        << reinterpret_cast<void const *>(&p->handle_)
+        << ";HD:"
+        << p->handle_.data
+        << "];timer@"
+        << reinterpret_cast<void const *>(&p->keepAliveTimer_)
+        << ";TD:"
+        << p->keepAliveTimer_.data
     ;
 #ifndef NDEBUG
     if ('L' != *p->peerType()) {
@@ -67,7 +73,7 @@ std::ostream& operator << (
 CommunicationPeer * Peer::get(uv_write_t * r) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(r->data);
 
-    VLOG(5)
+    VLOG(7)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -80,7 +86,7 @@ CommunicationPeer * Peer::get(uv_write_t * r) {
 CommunicationPeer * Peer::get(uv_timer_t * h) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(h->data);
 
-    VLOG(5)
+    VLOG(7)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -94,7 +100,7 @@ ActivePeer * Peer::get(uv_connect_t * r) {
 
     ActivePeer * peer = Peer::get<ActivePeer>(r->handle);
 
-    VLOG(5)
+    VLOG(7)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -107,7 +113,7 @@ ActivePeer * Peer::get(uv_connect_t * r) {
 ActivePeer * Peer::get(uv_getaddrinfo_t * r) {
     ActivePeer * peer = static_cast<ActivePeer *>(r->data);
 
-    VLOG(5)
+    VLOG(7)
         << "peer {"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
@@ -123,7 +129,7 @@ bool Peer::__checkInvariants()
 #else
     const
 {
-    VLOG(5)
+    VLOG(7)
         << this
         << " ALWAYS = true"
     ;
@@ -171,17 +177,23 @@ bool Peer::down() {
 }
 
 void Peer::insert(Peer::LoopData::PeerState peerState) {
-    VLOG(2)
+
+    VLOG(3)
         << this
         << " is being inserted in "
         << peerState
+        << " ("
+        << internal::Peer::LoopData::getPSStr(peerState)
+        << ")"
     ;
 
     Peer::LoopData::getPeerList(getUvLoop(), peerState)->push_back(*this);
+
 }
 
 void Peer::unlink() {
-    VLOG(2)
+
+    VLOG(4)
         << this
         << " manually unlinking"
     ;
@@ -189,7 +201,78 @@ void Peer::unlink() {
     SafeListBaseHook::unlink();
 
     return;
+
 }
+
+Peer::~Peer() {
+
+    VLOG(5)
+        << "{"
+        << static_cast< void * >(this)
+        << "}"
+        << " flags="
+        << std::hex
+        << handle_.flags
+        << " UV_CLOSING "
+        << (handle_.flags & 0x00001)
+        << " UV_CLOSED "
+        << (handle_.flags & 0x00002)
+        << " UV_STREAM_READING "
+        << (handle_.flags & 0x00004)
+        << " UV_STREAM_SHUTTING "
+        << (handle_.flags & 0x00008)
+        << " UV_STREAM_SHUT "
+        << (handle_.flags & 0x00010)
+        << " UV_STREAM_READABLE "
+        << (handle_.flags & 0x00020)
+        << " UV_STREAM_WRITABLE "
+        << (handle_.flags & 0x00040)
+        << " UV_STREAM_BLOCKING "
+        << (handle_.flags & 0x00080)
+        << " UV_STREAM_READ_PARTIAL "
+        << (handle_.flags & 0x00100)
+        << " UV_STREAM_READ_EOF "
+        << (handle_.flags & 0x00200)
+        << " UV_TCP_NODELAY "
+        << (handle_.flags & 0x00400)
+        << " UV_TCP_KEEPALIVE "
+        << (handle_.flags & 0x00800)
+        << " UV_TCP_SINGLE_ACCEPT "
+        << (handle_.flags & 0x01000)
+        << " UV_HANDLE_IPV6 "
+        << (handle_.flags & 0x10000)
+    ;
+    assert(!uvRefCnt_);
+    assert(!uv_is_active(reinterpret_cast< uv_handle_t * >(&handle_)));
+
+    getLoopData()->down();
+
+#ifdef COMMS_DEBUG_OBJECT_COUNT
+    --counter;
+#endif
+}
+
+char const * internal::Peer::LoopData::getPSStr(
+        internal::Peer::LoopData::PeerState s
+    ) {
+#ifndef NDEBUG
+    if (s >= TOTAL_STATES) {
+        return "<too_large>";
+    }
+
+    return kPSStr[s];
+#else
+    return "";
+#endif
+}
+
+#ifndef NDEBUG
+char const * const internal::Peer::LoopData::kPSStr[] = {
+#define XX(_, s) s,
+    PEER_STATE_MAP(XX)
+#undef XX
+};
+#endif
 
 } // namespace internal
 } // namespace comms

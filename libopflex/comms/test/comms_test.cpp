@@ -28,7 +28,7 @@
 
 #include <utility>
 
-#define DEFAULT_COMMSTEST_TIMEOUT 6*7200
+#define DEFAULT_COMMSTEST_TIMEOUT 7200
 
 using namespace yajr::comms;
 using namespace yajr::transport;
@@ -73,7 +73,7 @@ struct CommsTests {
 
 };
 
-opflex::logging::StdOutLogHandler CommsTests::commsTestLogger_(DEBUG2);
+opflex::logging::StdOutLogHandler CommsTests::commsTestLogger_(DEBUG5);
 
 BOOST_GLOBAL_FIXTURE( CommsTests );
 
@@ -162,7 +162,9 @@ class CommsFixture {
     static range_t required_transient_peers;
     static pc required_post_conditions;
     static bool expect_timeout;
+  public:
     static size_t eventCounter;
+  protected:
     static size_t required_event_counter;
 
     static std::pair<size_t, size_t> count_peers() {
@@ -424,7 +426,7 @@ class CommsFixture {
         if (oldDbgLog != newDbgLog) {
             oldDbgLog = newDbgLog;
 
-            VLOG(good ? 5 : 4)
+            VLOG(good ? 5 : 1)
                 << newDbgLog
             ;
         }
@@ -609,12 +611,14 @@ void DoNothingOnConnect (
             ;
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
             ;
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
@@ -662,12 +666,14 @@ void StartPingingOnConnect(
             ;
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
             ;
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -771,6 +777,44 @@ static void pc_non_existent(void) {
             ->size(), 0);
 
 }
+
+#if 0
+static void pc_non_existent(void) {
+
+    LOG(DEBUG);
+
+    /* non-empty */
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
+            ->size(), 1);
+
+    /* empty */
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING)
+            ->size(), 0);
+
+    /* no-transient guys */
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE)
+            ->size(), 0);
+
+}
+#endif
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_host, CommsFixture ) {
 
@@ -974,6 +1018,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_late, CommsFixture ) {
     destroy_timer.data = p;
 
     uv_timer_init(CommsFixture::current_loop, &destroy_timer);
+
     uv_timer_start(&destroy_timer, destroy_peer_cb, 200, 0);
     uv_unref((uv_handle_t*) &destroy_timer);
 
@@ -1010,6 +1055,7 @@ void DisconnectOnCallback (
             p->disconnect();
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
@@ -1021,6 +1067,7 @@ void DisconnectOnCallback (
             p->disconnect();
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -1069,6 +1116,7 @@ void DestroyOnCallback (
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
@@ -1080,6 +1128,7 @@ void DestroyOnCallback (
             p->destroy();
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -1128,6 +1177,7 @@ void DestroyOnDisconnect (
             p->destroy();
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
@@ -1138,6 +1188,7 @@ void DestroyOnDisconnect (
             ;
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -1388,6 +1439,7 @@ void DisconnectAndStopListeningOnCallback (
             p->disconnect();
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -1401,6 +1453,7 @@ void DisconnectAndStopListeningOnCallback (
             p->disconnect();
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -1447,6 +1500,7 @@ void CountdownAttemptsOnCallback (
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
@@ -1455,6 +1509,7 @@ void CountdownAttemptsOnCallback (
             }
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -1598,6 +1653,42 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_service,
 
 }
 
+static void pc_non_existent_slow_reattempt(void) {
+
+    LOG(DEBUG);
+
+    /* non-empty */
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
+            ->size(), 1);
+
+    /* empty */
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING)
+            ->size(), 0);
+
+    /* no-transient guys */
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN)
+            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE)
+            ->size(), 0);
+
+}
+
 BOOST_FIXTURE_TEST_CASE( SLOW_test_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
@@ -1609,7 +1700,7 @@ BOOST_FIXTURE_TEST_CASE( SLOW_test_non_routable_host, CommsFixture ) {
 
     BOOST_CHECK_EQUAL(!p, 0);
 
-    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 90000);
+    loop_until_final(range_t(0,0), pc_non_existent_slow_reattempt, range_t(1,1), false, 240000, 1);
 
 }
 
@@ -1624,7 +1715,7 @@ BOOST_FIXTURE_TEST_CASE( SLOW_test_destroy_client_for_non_routable_host_upon_con
 
     BOOST_CHECK_EQUAL(!p, 0);
 
-    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), false, 90000);
+    loop_until_final(range_t(0,0), pc_no_peers, range_t(0,0), false, 240000);
 
 }
 
@@ -1639,7 +1730,7 @@ BOOST_FIXTURE_TEST_CASE( SLOW_test_disconnect_client_for_non_routable_host_upon_
 
     BOOST_CHECK_EQUAL(!p, 0);
 
-    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 90000);
+    loop_until_final(range_t(1,1), pc_non_existent, range_t(0,0), false, 240000);
 
 }
 
@@ -1980,11 +2071,13 @@ void AttachPassiveSslTransportOnConnect(
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
@@ -2096,11 +2189,13 @@ void SinglePingOnConnect(
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p);
             break;
         case ::yajr::StateChange::TRANSPORT_FAILURE:
+            ++CommsFixture::eventCounter;
             LOG(DEBUG)
                 << "got a TRANSPORT_FAILURE notification on "
                 << dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(p)
