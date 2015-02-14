@@ -111,7 +111,7 @@ MessageFactory::getInboundMessage(
         rapidjson::Document const & doc
         ) {
 
-    VLOG(4);
+    VLOG(5);
 
     yajr::rpc::InboundMessage * msg =
         MessageFactory::InboundMessage(peer, doc);

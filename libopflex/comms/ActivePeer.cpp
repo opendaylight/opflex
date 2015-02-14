@@ -26,9 +26,15 @@ namespace yajr {
 
 void ActivePeer::destroy(bool now) {
 
+    VLOG(6)
+        << this
+    ;
+
     bool alreadyBeingDestroyed = destroying_;
 
-    CommunicationPeer::destroy(now);
+    if (!alreadyBeingDestroyed || now) {
+        CommunicationPeer::destroy(now);
+    }
 
     if (alreadyBeingDestroyed) {
         VLOG(1)
@@ -38,6 +44,10 @@ void ActivePeer::destroy(bool now) {
         return;
     }
 
+    VLOG(5)
+        << this
+        << " down() for destruction"
+    ;
     down();
 }
 

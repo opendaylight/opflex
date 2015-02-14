@@ -83,7 +83,7 @@ namespace yajr {
                 )
                 : InboundRequest(peer, params, id)
                 {
-                    VLOG(3)
+                    VLOG(5)
                         << M->s
                     ;
                 }
@@ -107,7 +107,7 @@ namespace yajr {
                 )
                 : InboundResult(peer, params, id)
                 {
-                    VLOG(3)
+                    VLOG(5)
                         << M->s
                     ;
                 }

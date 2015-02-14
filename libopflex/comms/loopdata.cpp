@@ -128,7 +128,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
     lastRun_ = now;
 
 prepared:
-    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG4>, this);
+    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG6>, this);
 
     if (peers[RETRY_TO_CONNECT].begin() !=
         peers[RETRY_TO_CONNECT].end()) {
@@ -287,11 +287,10 @@ void Peer::LoopData::up() {
 }
 
 void Peer::LoopData::down() {
-    VLOG(2)
-        << " Down() on Loop"
-    ;
-    VLOG(2)
+
+    VLOG(3)
         << this
+        << " Down() on Loop"
         << " LoopRefCnt: "
         <<       refCount_
         << " -> "

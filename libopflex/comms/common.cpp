@@ -102,6 +102,13 @@ char const * getUvHandleField(uv_handle_t * h, internal::Peer * peer) {
 
 void on_close(uv_handle_t * h) {
 
+    if (!h) {
+        VLOG(ERROR)
+            << "NULL handle"
+        ;
+        return;
+    }
+
     CommunicationPeer * peer = Peer::get<CommunicationPeer>(h);
 
     VLOG(1)
@@ -123,7 +130,7 @@ void on_close(uv_handle_t * h) {
 
 void on_write(uv_write_t *req, int status) {
 
-    VLOG(3);
+    VLOG(5);
 
     if (status == UV_ECANCELED || status == UV_ECONNRESET) {
         LOG(INFO)
