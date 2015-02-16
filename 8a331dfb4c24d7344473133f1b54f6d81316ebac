@@ -1,0 +1,170 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_91b15849",
+        "filename": "libopflex/cwrapper/offramework.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-16T19:07:23Z",
+      "side": 1,
+      "message": "No need to declare these here",
+      "range": {
+        "startLine": 112,
+        "startChar": 9,
+        "endLine": 112,
+        "endChar": 15
+      },
+      "revId": "8a331dfb4c24d7344473133f1b54f6d81316ebac",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_51b7503a",
+        "filename": "libopflex/cwrapper/offramework.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-16T19:07:23Z",
+      "side": 1,
+      "message": "Change to:\nstd::string n(name);\n\nto avoid the extra assignment.\n\nYou can also just pass the const char* into setOpflexIdentity and rely on the implicit one-argument string constructor to give you a temporary std::string.",
+      "range": {
+        "startLine": 122,
+        "startChar": 0,
+        "endLine": 122,
+        "endChar": 30
+      },
+      "revId": "8a331dfb4c24d7344473133f1b54f6d81316ebac",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_71b4cc34",
+        "filename": "libopflex/cwrapper/offramework.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-16T19:07:23Z",
+      "side": 1,
+      "message": "Same as above; can avoid an extra assignment by declaring below.",
+      "revId": "8a331dfb4c24d7344473133f1b54f6d81316ebac",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_b1957488",
+        "filename": "libopflex/cwrapper/offramework.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-16T19:07:23Z",
+      "side": 1,
+      "message": "Please move to new file peerstatuslistener.cpp",
+      "revId": "8a331dfb4c24d7344473133f1b54f6d81316ebac",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_919878c1",
+        "filename": "libopflex/cwrapper/offramework.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-16T19:07:23Z",
+      "side": 1,
+      "message": "extra whitespace",
+      "range": {
+        "startLine": 295,
+        "startChar": 22,
+        "endLine": 295,
+        "endChar": 24
+      },
+      "revId": "8a331dfb4c24d7344473133f1b54f6d81316ebac",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_31a3a402",
+        "filename": "libopflex/include/opflex/c/offramework_c.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-16T19:07:23Z",
+      "side": 1,
+      "message": "Move these to separate file along with peerstatuslistener (see below)",
+      "revId": "8a331dfb4c24d7344473133f1b54f6d81316ebac",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_119ea8b9",
+        "filename": "libopflex/include/opflex/c/offramework_c.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-16T19:07:23Z",
+      "side": 1,
+      "message": "CPeerStatusListener is an implementation detail; should not reference the implementation from this comment.",
+      "range": {
+        "startLine": 202,
+        "startChar": 31,
+        "endLine": 202,
+        "endChar": 50
+      },
+      "revId": "8a331dfb4c24d7344473133f1b54f6d81316ebac",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_715dac14",
+        "filename": "libopflex/include/opflex/c/offramework_c.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-16T19:07:23Z",
+      "side": 1,
+      "message": "In the C++ code, this object is not a subtype of OFFramework so this should be moved to its own file to mirror the organization of the C++ code.",
+      "range": {
+        "startLine": 213,
+        "startChar": 13,
+        "endLine": 213,
+        "endChar": 51
+      },
+      "revId": "8a331dfb4c24d7344473133f1b54f6d81316ebac",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
