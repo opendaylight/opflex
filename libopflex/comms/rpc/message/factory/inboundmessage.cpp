@@ -50,12 +50,13 @@ MessageFactory::InboundMessage(
             << (doc.HasMember("id") ? " null" : "out")
             << " id. Dropping."
         ;
+
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(&peer)
+            ->onError(UV_EPROTO);
+
         return NULL;
     }
 
-    /* FIXME: TODO: add proper error handling to validation and
-     * make sure to signal the error to the peer whenever possible
-     */
     if (doc.HasMember("method")) {
         const rapidjson::Value& methodValue = doc["method"];
 
@@ -64,8 +65,13 @@ MessageFactory::InboundMessage(
                 << &peer
                 << " Received request with non-string method. Dropping"
             ;
-            /* FIXME: TODO: send error back */
+
+            dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(&peer)
+                ->onError(UV_EPROTO);
+
             assert(methodValue.IsString());
+
+            return NULL;
         }
 
         const char * method = methodValue.GetString();
@@ -83,6 +89,10 @@ MessageFactory::InboundMessage(
     assert(id.IsArray());
     assert(id[rapidjson::SizeType(0)].IsString());
     if (!id.IsArray() || !id[rapidjson::SizeType(0)].IsString()) {
+
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(&peer)
+            ->onError(UV_EPROTO);
+
         return NULL;
     }
 
@@ -96,10 +106,19 @@ MessageFactory::InboundMessage(
         const rapidjson::Value & error = doc["error"];
         assert(error.IsObject());
 
+        if (!error.IsObject()) {
+
+            dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(&peer)
+                ->onError(UV_EPROTO);
+
+            return NULL;
+        }
+
         return MessageFactory::InboundError(peer, error, id);
     }
 
-    /* FIXME: what should we do? */
+    dynamic_cast< ::yajr::comms::internal::CommunicationPeer *>(&peer)
+        ->onError(UV_EPROTO);
     assert(0);
 
     return NULL;
