@@ -83,9 +83,11 @@ bool OutboundMessage::send() {
 
     unsigned char connected = cP->connected_;
 
-    assert(connected);
-
     if (!connected) {
+        cP->onError(UV_ENOTCONN);
+
+        assert(connected);
+
         return false;
     }
 
