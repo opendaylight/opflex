@@ -86,7 +86,7 @@ bool OutboundMessage::send() {
     if (!connected) {
         cP->onError(UV_ENOTCONN);
 
-        assert(connected);
+     // assert(connected);
 
         return false;
     }
