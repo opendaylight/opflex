@@ -77,9 +77,9 @@ private:
 #define DEBUG1 opflex::logging::OFLogHandler::DEBUG1
 
 /**
- * Alias for DEBUG1
+ * Alias for DEBUG0
  */
-#define DEBUG DEBUG1
+#define DEBUG DEBUG0
 
 /**
  * Convenience macro for debug log level 2

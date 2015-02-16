@@ -38,10 +38,14 @@ void AgentLogHandler::handleMessage(const std::string& file,
     severity_level blevel;
     switch (level) {
     case OFLogHandler::TRACE:
+    case OFLogHandler::DEBUG7:
+    case OFLogHandler::DEBUG6:
+    case OFLogHandler::DEBUG5:
     case OFLogHandler::DEBUG4:
     case OFLogHandler::DEBUG3:
     case OFLogHandler::DEBUG2:
     case OFLogHandler::DEBUG1:
+    case OFLogHandler::DEBUG0:
         blevel = ovsagent::DEBUG;
         break;
     case OFLogHandler::INFO:
@@ -66,10 +70,14 @@ void AgentLogHandler::handleMessage(const std::string& file,
     int slevel;
     switch (level) {
     case OFLogHandler::TRACE:
+    case OFLogHandler::DEBUG7:
+    case OFLogHandler::DEBUG6:
+    case OFLogHandler::DEBUG5:
     case OFLogHandler::DEBUG4:
     case OFLogHandler::DEBUG3:
     case OFLogHandler::DEBUG2:
     case OFLogHandler::DEBUG1:
+    case OFLogHandler::DEBUG0:
         slevel = LOG_DEBUG;
         break;
     case OFLogHandler::INFO:

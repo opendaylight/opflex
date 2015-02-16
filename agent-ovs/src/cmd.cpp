@@ -9,6 +9,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <algorithm>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -105,14 +107,25 @@ void initLogging(const std::string& levelstr,
     vlog_set_levels(NULL, VLF_ANY_DESTINATION, VLL_OFF);
 }
 
-void setLoggingLevel(const std::string& levelstr) {
+void setLoggingLevel(const std::string& newLevelstr) {
     OFLogHandler::Level level = OFLogHandler::INFO;
+
+    std::string levelstr = newLevelstr;
+    std::transform(levelstr.begin(), levelstr.end(),
+                   levelstr.begin(), ::tolower);
 
 #ifdef USE_BOOST_LOG
     severity_level blevel = INFO;
 #endif
 
-    if (levelstr == "debug" || levelstr == "debug1") {
+    if (levelstr == "debug" || levelstr == "debug0") {
+        level = OFLogHandler::DEBUG0;
+#ifdef USE_BOOST_LOG
+        blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
+    } else if (levelstr == "debug1") {
         level = OFLogHandler::DEBUG1;
 #ifdef USE_BOOST_LOG
         blevel = boost::log::trivial::debug;
@@ -134,7 +147,35 @@ void setLoggingLevel(const std::string& levelstr) {
         logLevel = DEBUG;
 #endif
     } else if (levelstr == "debug4") {
-        level = OFLogHandler::DEBUG3;
+        level = OFLogHandler::DEBUG4;
+#ifdef USE_BOOST_LOG
+        blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
+    } else if (levelstr == "debug5") {
+        level = OFLogHandler::DEBUG5;
+#ifdef USE_BOOST_LOG
+        blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
+    } else if (levelstr == "debug6") {
+        level = OFLogHandler::DEBUG6;
+#ifdef USE_BOOST_LOG
+        blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
+    } else if (levelstr == "debug7") {
+        level = OFLogHandler::DEBUG7;
+#ifdef USE_BOOST_LOG
+        blevel = boost::log::trivial::debug;
+#else
+        logLevel = DEBUG;
+#endif
+    } else if (levelstr == "trace") {
+        level = OFLogHandler::TRACE;
 #ifdef USE_BOOST_LOG
         blevel = boost::log::trivial::debug;
 #else
