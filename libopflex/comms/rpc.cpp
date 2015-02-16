@@ -68,7 +68,7 @@ bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
 }
 
-void OutboundMessage::send() {
+bool OutboundMessage::send() {
 
     VLOG(5);
 
@@ -80,6 +80,14 @@ void OutboundMessage::send() {
             "peer needs to be set "
             "to a proper communication peer "
             "before outbound messages are sent");
+
+    unsigned char connected = cP->connected_;
+
+    assert(connected);
+
+    if (!connected) {
+        return false;
+    }
 
     assert(cP->__checkInvariants());
 
@@ -95,9 +103,11 @@ void OutboundMessage::send() {
 
     assert(cP->__checkInvariants());
 
+    return true;
+
 }
 
-void OutboundRequest::send(
+bool OutboundRequest::send(
         ::yajr::Peer const & peer
     ) {
 
@@ -105,7 +115,7 @@ void OutboundRequest::send(
 
     setPeer(&peer);
 
-    send();
+    return send();
 }
 
 InboundResponse::InboundResponse(

@@ -249,7 +249,7 @@ class OutboundMessage : public Message, virtual public Identifier {
     /**
      * Send this message now!
      */
-    void send();
+    bool send();
 
     /**
      * @brief Constructor needed by derived classes
@@ -510,7 +510,7 @@ class OutboundRequest : public OutboundMessage,
      * Send this message now!
      */
     using OutboundMessage::send;
-    void send(::yajr::Peer const & peer);
+    bool send(::yajr::Peer const & peer);
 
   protected:
     /**
