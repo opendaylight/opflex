@@ -1758,7 +1758,7 @@ void CommsFixture::destroy_now_cb(uv_timer_t * handle) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( UNSTABLE_test_destroy_client_for_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1805,7 +1805,7 @@ void CommsFixture::disconnect_now_cb(uv_timer_t * handle) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( UNSTABLE_test_disconnect_client_for_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1854,7 +1854,7 @@ void CommsFixture::destroy_cb(uv_timer_t * handle) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_semigracefully_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( UNSTABLE_test_destroy_client_semigracefully_for_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1914,7 +1914,7 @@ void CommsFixture::disconnect_cb(uv_timer_t * handle) {
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_semigracefully_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( UNSTABLE_test_disconnect_client_semigracefully_for_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1955,7 +1955,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_semigracefully_for_non_ro
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_then_disconnect_client_semigracefully_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( UNSTABLE_test_destroy_then_disconnect_client_semigracefully_for_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
@@ -1996,7 +1996,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_then_disconnect_client_semigraceful
 
 }
 
-BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_then_destroy_client_semigracefully_for_non_routable_host, CommsFixture ) {
+BOOST_FIXTURE_TEST_CASE( UNSTABLE_test_disconnect_then_destroy_client_semigracefully_for_non_routable_host, CommsFixture ) {
 
     LOG(DEBUG);
 
