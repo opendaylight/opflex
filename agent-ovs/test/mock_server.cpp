@@ -28,6 +28,7 @@
 #include "logging.h"
 #include "cmd.h"
 #include "Policies.h"
+#include <signal.h>
 
 using std::string;
 using std::make_pair;
@@ -48,6 +49,7 @@ void sighandler(int sig) {
 #define LOCALHOST "127.0.0.1"
 
 int main(int argc, char** argv) {
+    signal(SIGPIPE, SIG_IGN);
     // Parse command line options
     po::options_description desc("Allowed options");
     desc.add_options()

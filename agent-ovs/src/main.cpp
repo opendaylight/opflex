@@ -22,6 +22,7 @@
 #include "Agent.h"
 #include "logging.h"
 #include "cmd.h"
+#include <signal.h>
 
 using std::string;
 using opflex::ofcore::OFFramework;
@@ -35,6 +36,8 @@ void sighandler(int sig) {
 #define DEFAULT_CONF SYSCONFDIR"/opflex-agent-ovs/opflex-agent-ovs.conf"
 
 int main(int argc, char** argv) {
+    signal(SIGPIPE, SIG_IGN);
+
     // Parse command line options
     po::options_description desc("Allowed options");
     desc.add_options()
