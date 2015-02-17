@@ -920,6 +920,7 @@ bool CommunicationPeer::__checkInvariants() const {
     for (size_t i = 0; i < iov.size(); ++i) {
         delta -= iov[i].iov_len;
 
+        size_t show_corrupt = 5;
         for (
                 char const * c = static_cast< char const * >(iov[i].iov_base),
                      * const e = c + iov[i].iov_len
@@ -968,6 +969,10 @@ bool CommunicationPeer::__checkInvariants() const {
             ;
 
             result = false;
+
+            if (!--show_corrupt) {
+                break;
+            }
 
         }
 

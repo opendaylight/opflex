@@ -48,10 +48,10 @@ class GeneratorFromValue {
 
 class Identifier {
   public:
-    virtual bool emitId(yajr::rpc::SendHandler & h) = 0;
+    virtual bool emitId(yajr::rpc::SendHandler & h) const = 0;
   protected:
-    virtual char const * requestMethod() = 0;
-    virtual MethodName * getMethodName() = 0;
+    virtual char const * requestMethod() const = 0;
+    virtual MethodName * getMethodName() const = 0;
 };
 
 struct LocalId {
@@ -71,31 +71,17 @@ class LocalIdentifier : virtual public Identifier, private LocalId {
             LocalId(methodName, id)
         {}
 
-    bool emitId(yajr::rpc::SendHandler & h) {
-
-        if (!h.StartArray())
-            return false;
-
-        if (!h.String(requestMethod())) {
-            return false;
-        }
-
-        if (!h.Uint64(id_)) {
-            return false;
-        }
-
-        return h.EndArray();
-    }
+    bool emitId(yajr::rpc::SendHandler & h) const;
 
     LocalId const getLocalId() const {
         return LocalId(methodName_, id_);
     }
 
   protected:
-    char const * requestMethod() {
+    char const * requestMethod() const {
         return methodName_->s;
     }
-    MethodName * getMethodName() {
+    MethodName * getMethodName() const {
         return methodName_;
     }
 };
@@ -103,17 +89,16 @@ class LocalIdentifier : virtual public Identifier, private LocalId {
 class RemoteIdentifier : virtual public Identifier {
   public:
     RemoteIdentifier(rapidjson::Value const & id) : id_(id) {}
-    bool emitId(yajr::rpc::SendHandler & h) {
-        return id_.Accept(h);
-    }
+    bool emitId(yajr::rpc::SendHandler & h) const;
+
     rapidjson::Value const & getRemoteId() const {
         return id_;
     }
   protected:
-    char const * requestMethod() {
+    char const * requestMethod() const {
         return NULL;
     }
-    MethodName * getMethodName() {
+    MethodName * getMethodName() const {
         return NULL;
     }
   private:

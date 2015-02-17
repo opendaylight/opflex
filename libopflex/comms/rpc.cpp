@@ -48,23 +48,118 @@ bool operator< (rapidjson::Value const & l, rapidjson::Value const & r) {
     return (lh < rh);
 }
 
+static ::yajr::comms::internal::CommunicationPeer const * latestCp = NULL;
+
+bool LocalIdentifier::emitId(yajr::rpc::SendHandler & h) const {
+
+    VLOG(4);
+
+    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
+
+    assert(cP->__checkInvariants());
+
+    if (!h.StartArray()) {
+
+        assert(cP->__checkInvariants());
+
+        return false;
+    }
+
+    assert(cP->__checkInvariants());
+
+    if (!h.String(requestMethod())) {
+
+        assert(cP->__checkInvariants());
+
+        return false;
+    }
+
+    assert(cP->__checkInvariants());
+
+    if (!h.Uint64(id_)) {
+
+        assert(cP->__checkInvariants());
+
+        return false;
+    }
+
+    assert(cP->__checkInvariants());
+
+    if (!h.EndArray()) {
+
+        assert(cP->__checkInvariants());
+
+        return false;
+    }
+
+    assert(cP->__checkInvariants());
+
+    return true;
+
+}
+
+bool RemoteIdentifier::emitId(yajr::rpc::SendHandler & h) const {
+
+    VLOG(4);
+
+    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
+
+    assert(cP->__checkInvariants());
+
+    bool ok = id_.Accept(h);
+
+    assert(cP->__checkInvariants());
+
+    return ok;
+}
+
 bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
     VLOG(5);
 
-    return handler.StartObject()
+    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
 
-        && handler.String("id")
-        && emitId(handler)
+    assert(cP->__checkInvariants());
+    if (!handler.StartObject()) {
+        assert(cP->__checkInvariants());
+        return false;
+    }
 
-        && emitMethod(handler)
+    assert(cP->__checkInvariants());
+    if (!handler.String("id")) {
+        assert(cP->__checkInvariants());
+        return false;
+    }
 
-        && handler.String(getPayloadKey())
-        && payloadGenerator_(handler)
+    assert(cP->__checkInvariants());
+    if (!emitId(handler)) {
+        assert(cP->__checkInvariants());
+        return false;
+    }
+    assert(cP->__checkInvariants());
+    if (!emitMethod(handler)) {
+        assert(cP->__checkInvariants());
+        return false;
+    }
 
-        && handler.EndObject()
+    assert(cP->__checkInvariants());
+    if (!handler.String(getPayloadKey())) {
+        assert(cP->__checkInvariants());
+        return false;
+    }
+    assert(cP->__checkInvariants());
+    if (!payloadGenerator_(handler)) {
+        assert(cP->__checkInvariants());
+        return false;
+    }
 
-    ;
+    assert(cP->__checkInvariants());
+    if (!handler.EndObject()) {
+        assert(cP->__checkInvariants());
+        return false;
+    }
+
+    return true;
 
 }
 
@@ -93,7 +188,17 @@ bool OutboundMessage::send() {
 
     assert(cP->__checkInvariants());
 
-    Accept(cP->getWriter());
+    latestCp = cP;
+    bool ok = Accept(cP->getWriter());
+
+    if (!ok) {
+        LOG(ERROR)
+            << cP
+            << " problem Accept()ing a message"
+        ;
+
+        assert(ok);
+    }
 
     assert(cP->__checkInvariants());
 
