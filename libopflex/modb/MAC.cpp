@@ -25,6 +25,7 @@
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/string/split.hpp>
 
+#include <sstream>
 #include "opflex/modb/MAC.h"
 
 namespace opflex {

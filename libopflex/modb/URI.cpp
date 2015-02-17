@@ -22,6 +22,7 @@
 #include <boost/algorithm/string/split.hpp>
 
 #include "opflex/modb/URI.h"
+#include <sstream>
 
 namespace opflex {
 namespace modb {
