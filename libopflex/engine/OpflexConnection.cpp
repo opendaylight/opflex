@@ -51,6 +51,7 @@ OpflexConnection::OpflexConnection(HandlerFactory& handlerFactory)
 #else
     ,requestId(1)
 #endif
+    ,connGeneration(0)
 {
     uv_mutex_init(&queue_mutex);
     connect();
@@ -83,8 +84,9 @@ void OpflexConnection::connect() {}
 
 void OpflexConnection::cleanup() {
     util::LockGuard guard(&queue_mutex);
+    connGeneration += 1;
     while (write_queue.size() > 0) {
-        delete write_queue.front();
+        delete write_queue.front().first;
         write_queue.pop_front();
     }
 }
@@ -367,7 +369,14 @@ void OpflexConnection::doWrite(OpflexMessage* message) {
 void OpflexConnection::processWriteQueue() {
     util::LockGuard guard(&queue_mutex);
     while (write_queue.size() > 0) {
-        scoped_ptr<OpflexMessage> message(write_queue.front());
+        const write_queue_item_t& qi = write_queue.front();
+        // Avoid writing messages from a previous reconnect attempt
+        if (qi.second < connGeneration) {
+            LOG(DEBUG) << "Ignoring " << qi.first->getMethod()
+                       << " of type " << qi.first->getType();
+            continue;
+        }
+        scoped_ptr<OpflexMessage> message(qi.first);
         write_queue.pop_front();
         doWrite(message.get());
     }
@@ -379,7 +388,7 @@ void OpflexConnection::sendMessage(OpflexMessage* message, bool sync) {
         doWrite(message);
     } else {
         util::LockGuard guard(&queue_mutex);
-        write_queue.push_back(message);
+        write_queue.push_back(std::make_pair(message, connGeneration));
     }
     messagesReady();
 }

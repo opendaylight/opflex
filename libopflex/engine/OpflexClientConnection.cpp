@@ -98,11 +98,10 @@ void OpflexClientConnection::disconnect() {
 
     LOG(DEBUG) << "[" << getRemotePeer() << "] " 
                << "Disconnecting";
-    handler->disconnected();
-    OpflexConnection::disconnect();
-
 #ifdef SIMPLE_RPC
     active = false;
+    handler->disconnected();
+    OpflexConnection::disconnect();
     uv_read_stop((uv_stream_t*)&socket);
     uv_close((uv_handle_t*)&socket, on_conn_closed);
 #else
@@ -171,6 +170,7 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
     case yajr::StateChange::CONNECT:
         LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
                   << "New client connection";
+        conn->active = true;
         if (conn->pool->clientCtx.get())
             ZeroCopyOpenSSL::attachTransport(p, conn->pool->clientCtx.get());
 
@@ -182,6 +182,10 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
     case yajr::StateChange::DISCONNECT:
         LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
                   << "Disconnected";
+        conn->active = false;
+        conn->handler->disconnected();
+        conn->cleanup();
+
         if (!conn->closing)
             conn->pool->updatePeerStatus(conn->hostname, conn->port,
                                          PeerStatusListener::CONNECTING);
@@ -209,10 +213,10 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
 }
 
 void OpflexClientConnection::connectionFailure() {
-    if (closing) {
-        pool->updatePeerStatus(hostname, port,
-                               PeerStatusListener::DISCONNECTED);
-    } else if (failureCount >= 3 && !pool->isConfiguredPeer(hostname, port)) {
+    if (!closing)
+        disconnect();
+    if (!closing && failureCount >= 3 &&
+        !pool->isConfiguredPeer(hostname, port)) {
         LOG(ERROR) << "[" << getRemotePeer() << "] "
                    << "Giving up on bootstrapped peer after " << failureCount
                    << " failures";
@@ -220,8 +224,6 @@ void OpflexClientConnection::connectionFailure() {
         pool->addConfiguredPeers();
     } else {
         failureCount += 1;
-        pool->updatePeerStatus(hostname, port,
-                               PeerStatusListener::CONNECTING);
     }
 }
 #endif
