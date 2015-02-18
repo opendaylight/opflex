@@ -16,6 +16,7 @@
 
 
 #include <new>
+#include <string>
 
 #include "opflex/ofcore/OFFramework.h"
 #include "opflex/c/offramework_c.h"
@@ -101,6 +102,31 @@ ofstatus offramework_set_model(offramework_p framework,
     return status;
 }
 
+ofstatus offramework_set_opflex_identity(offramework_p framework,
+                                         const char* name,
+                                         const char* domain) {
+    ofstatus status = OF_ESUCCESS;
+    OFFramework* f = NULL;
+
+    try {
+        if (framework == NULL || name == NULL || domain == NULL) {
+            status = OF_EINVALID_ARG;
+            goto done;
+        }
+
+        f = (OFFramework*)framework;
+        std::string n(name), d(domain);
+        f->setOpflexIdentity(n, d);
+
+    } catch (...) {
+        status = OF_EFAILED;
+        goto done;
+    }
+
+ done:
+    return status;
+}
+
 ofstatus offramework_start(offramework_p framework) {
     ofstatus status = OF_ESUCCESS;
     OFFramework* f = NULL;
@@ -135,6 +161,30 @@ ofstatus offramework_stop(offramework_p framework) {
 
         f = (OFFramework*)framework;
         f->stop();
+
+    } catch (...) {
+        status = OF_EFAILED;
+        goto done;
+    }
+
+ done:
+    return status;
+}
+
+ofstatus offramework_add_peer(offramework_p framework,
+                              const char* hostname, int port) {
+    ofstatus status = OF_ESUCCESS;
+    OFFramework* f = NULL;
+
+    try {
+        if (framework == NULL || hostname == NULL) {
+            status = OF_EINVALID_ARG;
+            goto done;
+        }
+
+        f = (OFFramework*)framework;
+        std::string h(hostname);
+        f->addPeer(h, port);
 
     } catch (...) {
         status = OF_EFAILED;

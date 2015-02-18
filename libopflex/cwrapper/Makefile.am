@@ -22,4 +22,5 @@ libcwrapper_la_SOURCES = \
 	ofobjectlistener.cpp \
 	ofuri.cpp \
 	ofmutator.cpp \
-	offramework.cpp 
+	offramework.cpp \
+	ofpeerstatuslistener.cpp

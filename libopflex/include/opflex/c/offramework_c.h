@@ -53,7 +53,9 @@ typedef ofobj_p ofmetadata_p;
  */
 typedef ofobj_p offramework_p;
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
     /**
      * Create a new OF framework instance.  You must eventually call
@@ -86,6 +88,20 @@ extern "C" {
                                    ofmetadata_p metadata);
 
     /**
+     * Set the opflex identity information for this framework
+     * instance.
+     *
+     * @param framework the framework
+     * @param name the unique name for this opflex component within
+     * the policy domain
+     * @param domain the globally unique name for this policy domain
+     * @return a status code
+     */
+    ofstatus offramework_set_opflex_identity(offramework_p framework,
+                                             const char* name,
+                                             const char* domain);
+
+    /**
      * Start the framework.  This will start all the framework threads
      * and attempt to connect to configured OpFlex peers.
      *
@@ -102,7 +118,30 @@ extern "C" {
      */
     ofstatus offramework_stop(offramework_p framework);
 
+    /**
+     * Add an OpFlex peer. If the framework is started, this will
+     * immediately initiate a new connection asynchronously.
+     *
+     * When connecting to the peer, that peer may provide an
+     * additional list of peers to connect to, which will be
+     * automatically added as peers. If the peer does not include
+     * itself in the list, then the framework will disconnect from
+     * that peer and add the peers in the list. In this way, it is
+     * possible to automatically bootstrap the correct set of peers
+     * using a known hostname or IP address or a known, fixed anycast
+     * IP address.
+     *
+     * @param framework the framework
+     * @param hostname the hostname or IP address to connect to
+     * @param port the TCP port to connect on
+     * @return a status code
+     */
+    ofstatus offramework_add_peer(offramework_p framework,
+                                  const char* hostname, int port);
+
+#ifdef __cplusplus
 } /* extern "C" */
+#endif
 
 /** @} offramework */
 /** @} ccore */
