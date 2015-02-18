@@ -16,6 +16,24 @@
       "revId": "fe9e3447fae6be46529ac98a5b5a826844758004",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_6d49485f",
+        "filename": "libopflex/modb/URI.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 2184
+      },
+      "writtenOn": "2015-02-18T23:15:36Z",
+      "side": 1,
+      "message": "Oh, it\u0027s just typically I do the opposite, and so do most people in order to catch issues in header files. See for example: http://stackoverflow.com/questions/2762568/c-c-include-file-order-best-practices and http://blog.knatten.org/2010/07/01/the-order-of-include-directives-matter/",
+      "parentUuid": "7a96c907_dc3934d8",
+      "revId": "fe9e3447fae6be46529ac98a5b5a826844758004",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
