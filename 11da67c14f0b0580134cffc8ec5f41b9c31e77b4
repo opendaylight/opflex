@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_f2fc5774",
+        "filename": "libopflex/include/opflex/c/ofpeerstatuslistener_c.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-18T20:20:48Z",
+      "side": 1,
+      "message": "Need to fix documentation here.  Should do a defgroup for cofpeerstatuslistener and add class-level documentation.  These constants can all fall under that group.\n\nSee the example for ofobjectlistener.\n\nTry checking out what the generated documentation looks like when you do a make (under doc/html/index.html)",
+      "revId": "11da67c14f0b0580134cffc8ec5f41b9c31e77b4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_72f04791",
+        "filename": "libopflex/include/opflex/c/ofpeerstatuslistener_c.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-18T20:20:48Z",
+      "side": 1,
+      "message": "While you\u0027re fixing other documentation would be good to clean up formatting and copyedit for these other comments.  If you\u0027re not sure what to do I can reformat after merging your patch though.",
+      "revId": "11da67c14f0b0580134cffc8ec5f41b9c31e77b4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_1202236f",
+        "filename": "libopflex/include/opflex/c/ofpeerstatuslistener_c.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-18T20:20:48Z",
+      "side": 1,
+      "message": "Should be ofpeerstatuslistener_create\n\nThis is effectively the constructor for the ofpeerstatuslistener \"class\".  All methods are named with classname_methodname(classptr, ...)",
+      "revId": "11da67c14f0b0580134cffc8ec5f41b9c31e77b4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_b2fa4f73",
+        "filename": "libopflex/include/opflex/c/ofpeerstatuslistener_c.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-18T20:20:48Z",
+      "side": 1,
+      "message": "This function needs to move to offramework.",
+      "revId": "11da67c14f0b0580134cffc8ec5f41b9c31e77b4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_d2f7db89",
+        "filename": "libopflex/include/opflex/c/ofpeerstatuslistener_c.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-02-18T20:20:48Z",
+      "side": 1,
+      "message": "should be ofpeerstatuslistener_destroy",
+      "revId": "11da67c14f0b0580134cffc8ec5f41b9c31e77b4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
