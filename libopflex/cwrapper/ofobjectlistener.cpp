@@ -28,7 +28,7 @@ public:
 
     virtual ~CObjectListener() {}
 
-  virtual void objectUpdated(opflex::modb::class_id_t class_id, const URI& uri) {
+    virtual void objectUpdated(opflex::modb::class_id_t class_id, const URI& uri) {
         callback(user_data, class_id, (ofuri_p*)&uri);
     }
 

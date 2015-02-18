@@ -57,6 +57,7 @@ c_include_HEADERS = \
 	include/opflex/c/ofuri_c.h \
 	include/opflex/c/ofloghandler_c.h \
 	include/opflex/c/ofobjectlistener_c.h \
+	include/opflex/c/ofpeerstatuslistener_c.h \
 	include/opflex/c/ofmutator_c.h \
 	include/opflex/c/offramework_c.h
 

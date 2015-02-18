@@ -67,7 +67,7 @@ extern "C" {
     /**
      * Destroy an object listener, and zero the pointer.  You must
      * ensure that the listener has been unregistered from all
-     * listening before destroying it.
+     * listeners before destroying it.
      *
      * @param listener a pointer to memory containing the object pointer.
      * @return a status code
