@@ -247,7 +247,8 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
     std::vector<iovec> iovIn =
         more::get_iovec(
                 peer->s_.deque_.begin(),
-                peer->s_.deque_.end()
+                peer->s_.deque_.end(),
+                std::forward_iterator_tag()
         );
 
     std::vector<iovec>::iterator iovInIt;

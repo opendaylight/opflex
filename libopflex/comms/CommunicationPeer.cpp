@@ -411,7 +411,8 @@ void CommunicationPeer::logDeque() const {
         dumpIov(dbgLog,
             more::get_iovec(
                 s_.deque_.begin(),
-                s_.deque_.begin() + pendingBytes_
+                s_.deque_.begin() + pendingBytes_,
+                std::forward_iterator_tag()
             )
         );
     }
@@ -421,7 +422,8 @@ void CommunicationPeer::logDeque() const {
     ;
     dumpIov(dbgLog, more::get_iovec(
                 s_.deque_.begin(),
-                s_.deque_.end()));
+                s_.deque_.end(),
+                std::forward_iterator_tag()));
 
     VLOG(7)
         << dbgLog.str()
@@ -809,7 +811,9 @@ bool CommunicationPeer::__checkInvariants() const {
     }
 
     std::vector<iovec> iov =
-        more::get_iovec(s_.deque_.begin(), s_.deque_.end());
+        more::get_iovec(s_.deque_.begin(),
+                s_.deque_.end(),
+                std::forward_iterator_tag());
 
     ssize_t delta = s_.deque_.size();
 
