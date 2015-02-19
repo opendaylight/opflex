@@ -18,9 +18,11 @@
 #include <boost/algorithm/string/split.hpp>
 
 #include <netinet/icmp6.h>
+#include <netinet/tcp.h>
 
 #include <modelgbp/arp/OpcodeEnumT.hpp>
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
+#include <modelgbp/l4/TcpFlagsEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/IntraGroupPolicyEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
@@ -1588,11 +1590,24 @@ static void SetEntryProtocol(FlowEntry *fe, L24Classifier *classifier) {
     }
 }
 
+static void SetEntryTcpFlags(FlowEntry *fe, uint32_t tcpFlags) {
+    using namespace modelgbp::l4;
+    ovs_be16 flags = 0;
+    if (tcpFlags & TcpFlagsEnumT::CONST_ACK) flags |= TH_ACK;
+    if (tcpFlags & TcpFlagsEnumT::CONST_RST) flags |= TH_RST;
+    if (tcpFlags & TcpFlagsEnumT::CONST_SYN) flags |= TH_SYN;
+    if (tcpFlags & TcpFlagsEnumT::CONST_FIN) flags |= TH_FIN;
+    match_set_tcp_flags_masked(&fe->entry->match,
+                               htons(flags), htons(flags));
+}
+
 void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
                                         uint16_t priority, uint64_t cookie,
                                         uint32_t svnid, uint32_t dvnid,
                                         uint32_t srdid,
                                         FlowEntryList& entries) {
+    using namespace modelgbp::l4;
+
     ovs_be64 ckbe = htonll(cookie);
     bool reflexive =
         clsfr->isConnectionTrackingSet() &&
@@ -1611,25 +1626,39 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
         dstPorts.push_back(Mask(0x0, 0x0));
     }
 
+    vector<uint32_t> tcpFlagsVec;
+    uint32_t tcpFlags = clsfr->getTcpFlags(TcpFlagsEnumT::CONST_UNSPECIFIED);
+    if (tcpFlags & TcpFlagsEnumT::CONST_ESTABLISHED) {
+        tcpFlagsVec.push_back(0 + TcpFlagsEnumT::CONST_ACK);
+        tcpFlagsVec.push_back(0 + TcpFlagsEnumT::CONST_RST);
+    } else {
+        tcpFlagsVec.push_back(tcpFlags);
+    }
+
     BOOST_FOREACH (const Mask& sm, srcPorts) {
         BOOST_FOREACH(const Mask& dm, dstPorts) {
-            FlowEntry *e0 = new FlowEntry();
-            e0->entry->cookie = ckbe;
+            BOOST_FOREACH(uint32_t flagMask, tcpFlagsVec) {
+                FlowEntry *e0 = new FlowEntry();
+                e0->entry->cookie = ckbe;
 
-            SetPolicyMatchEpgs(e0, priority, svnid, dvnid);
-            SetEntryProtocol(e0, clsfr);
-            match *m = &(e0->entry->match);
-            match_set_tp_src_masked(m, htons(sm.first), htons(sm.second));
-            match_set_tp_dst_masked(m, htons(dm.first), htons(dm.second));
+                SetPolicyMatchEpgs(e0, priority, svnid, dvnid);
+                SetEntryProtocol(e0, clsfr);
+                if (tcpFlags != TcpFlagsEnumT::CONST_UNSPECIFIED)
+                    SetEntryTcpFlags(e0, flagMask);
+                match *m = &(e0->entry->match);
+                match_set_tp_src_masked(m, htons(sm.first), htons(sm.second));
+                match_set_tp_dst_masked(m, htons(dm.first), htons(dm.second));
 
-            if (allow) {
-                if (reflexive) {
-                    SetPolicyActionConntrack(e0, ctZone, NX_CT_F_COMMIT, true);
-                } else {
-                    SetPolicyActionAllow(e0);
+                if (allow) {
+                    if (reflexive) {
+                        SetPolicyActionConntrack(e0, ctZone,
+                                                 NX_CT_F_COMMIT, true);
+                    } else {
+                        SetPolicyActionAllow(e0);
+                    }
                 }
+                entries.push_back(FlowEntryPtr(e0));
             }
-            entries.push_back(FlowEntryPtr(e0));
         }
     }
 

@@ -937,6 +937,7 @@ public:
     Bldr& isVlan(uint16_t v) { rep(",dl_vlan=", str(v)); return *this; }
     Bldr& isNdTarget(const string& t) { rep(",nd_target=", t); return *this; }
     Bldr& isEth(uint16_t t)  { rep(",dl_type=", str(t, true)); return *this; }
+    Bldr& isTcpFlags(const string& s)  { rep(",tcp_flags=", s); return *this; }
     Bldr& connState(const string& s) { rep(",conn_state=" + s); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& drop() { rep("drop"); return *this; }
@@ -1391,6 +1392,7 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
         BOOST_FOREACH(const IdKeyValue& cid, cvnids) {
             uint32_t cvnid = cid.first;
             uint16_t ctzone = 1;
+            /* classifer 1  */
             fe_con1.push_back(Bldr().table(4).priority(prio)
                     .cookie(con1_cookie).tcp()
                     .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
@@ -1404,10 +1406,25 @@ FlowManagerFixture::createEntriesForObjects(FlowManager::EncapType encapType) {
                     .cookie(con1_cookie).connState("-new+est+trk").tcp()
                     .reg(SEPG, pvnid).reg(DEPG, cvnid)
                     .actions().out(OUTPORT).done());
+            /* classifer 2  */
             fe_con1.push_back(Bldr().table(4).priority(prio-1)
                     .cookie(con1_cookie).arp()
                     .reg(SEPG, pvnid).reg(DEPG, cvnid)
                     .actions().out(OUTPORT).done());
+            /* classifier 6 */
+            fe_con1.push_back(Bldr().table(4).priority(prio-2)
+                    .cookie(con1_cookie).tcp()
+                    .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(22)
+                    .isTcpFlags("+syn+ack").actions().out(OUTPORT).done());
+            /* classifier 7 */
+            fe_con1.push_back(Bldr().table(4).priority(prio-3)
+                    .cookie(con1_cookie).tcp()
+                    .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(21)
+                    .isTcpFlags("+ack").actions().out(OUTPORT).done());
+            fe_con1.push_back(Bldr().table(4).priority(prio-3)
+                    .cookie(con1_cookie).tcp()
+                    .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(21)
+                    .isTcpFlags("+rst").actions().out(OUTPORT).done());
         }
     }
 
