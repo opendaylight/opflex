@@ -2,4 +2,18 @@ module[l4]
 {
     type[Port; super=scalar/UInt16]
     type[TcpFlags; super=scalar/Bitmask32]
+    {
+        # TCP flag unspecified
+        const[name=unspecified; value=0x00]
+        # TCP SYN flag
+        const[name=SYN; value=0x01]
+        # TCP ACK flag
+        const[name=ACK; value=0x02]
+        # TCP FIN flag
+        const[name=FIN; value=0x04]
+        # TCP RST flag
+        const[name=RST; value=0x08]
+        # Meta-flag matches against RST or ACK
+        const[name=established; value=0x10]
+    }
 }
