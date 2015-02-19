@@ -241,8 +241,6 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
         bool remoteUpdated = false;
         if (client.putIfModified(ci.getId(), uri, oi)) {
             remoteUpdated = true;
-            if (notifs)
-                client.queueNotification(ci.getId(), uri, *notifs);
         }
         if (mo.HasMember("parent_uri") && mo.HasMember("parent_subject")) {
             const Value& pname = mo["parent_uri"];
@@ -313,8 +311,10 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                                            << " from updated parent " << uri;
                                 client.remove(it->second.getClassId(), child,
                                               true, notifs);
-                                if (notifs)
+                                if (notifs) {
                                     (*notifs)[child] = it->second.getClassId();
+                                    remoteUpdated = true;
+                                }
                             } catch (std::out_of_range e) {
                                 // most likely already removed by
                                 // another thread
@@ -327,6 +327,8 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
 
         if (remoteUpdated) {
             LOG(DEBUG2) << "Updated object " << uri;
+            if (notifs)
+                client.queueNotification(ci.getId(), uri, *notifs);
             if (listener)
                 listener->remoteObjectUpdated(ci.getId(), uri);
         }

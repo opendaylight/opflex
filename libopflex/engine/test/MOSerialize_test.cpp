@@ -242,14 +242,24 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
     sysClient.getChildren(2, uri, 3, 2, children);
     BOOST_CHECK_EQUAL(1, children.size());
     BOOST_CHECK_EQUAL(uri3.toString(), children.at(0).toString());
+    children.clear();
 
-    // parent not changed so no notif item should appear
-    BOOST_CHECK(notifs.find(uri) == notifs.end());
+    // Notify parent that child removed
+    BOOST_CHECK(notifs.find(uri) != notifs.end());
     // child changed
     BOOST_CHECK(notifs.find(uri2) != notifs.end());
     // child not changed
     BOOST_CHECK(notifs.find(uri3) == notifs.end());
     notifs.clear();
+
+    // Don't change anything
+    for (SizeType i = 0; i < policy3.Size(); ++i) {
+        serializer.deserialize(policy3[i], sysClient, true, &notifs);
+    }
+    sysClient.getChildren(2, uri, 3, 2, children);
+    BOOST_CHECK_EQUAL(1, children.size());
+    BOOST_CHECK_EQUAL(uri3.toString(), children.at(0).toString());
+    BOOST_CHECK_EQUAL(0, notifs.size());
 }
 
 BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
