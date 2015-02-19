@@ -45,7 +45,4 @@ fi
 RET_VAL=$?
 kill -9 ${BG_WATCHER} &> /dev/null
 
-# FIXME: try to parse core pattern
-find . -name '*core*' -type f -exec echo Found possible core file: '{}' \;
-
 exit ${RET_VAL}

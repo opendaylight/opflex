@@ -32,17 +32,6 @@ AM_CPPFLAGS += -I$(top_srcdir)/logging/include
 AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp
 AM_CPPFLAGS += $(OPENSSL_CFLAGS) -DYAJR_HAS_OPENSSL
 
-AM_CXXFLAGS  =
-AM_CXXFLAGS += -O0
-AM_CXXFLAGS += -ggdb3
-#AM_CXXFLAGS += -fsanitize=address
-##AM_CXXFLAGS += -fsanitize=undefined
-# AM_CXXFLAGS += -Werror
-AM_CXXFLAGS += -Wno-deprecated
-AM_CXXFLAGS += -Wno-deprecated-declarations
-# AM_CXXFLAGS += $(OUR_CXXFLAGS_UNSUPPORTED_FRIEND)
-# AM_CXXFLAGS += $(OUR_CXXFLAGS_ERROR_UNSUPPORTED_FRIEND)
-
 libcommstrace_la_SOURCES  =
 libcommstrace_la_SOURCES += debug_trace.cpp
 
