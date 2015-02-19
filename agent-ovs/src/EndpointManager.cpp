@@ -197,6 +197,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
         BOOST_FOREACH(const URI& l3ep, es.l3EPs) {
             L3Ep::remove(framework, l3ep);
         }
+        EpCounter::remove(framework, uuid);
         if (es.vmEP)
             VMEp::remove(framework, es.vmEP.get());
         if (es.egURI) {
