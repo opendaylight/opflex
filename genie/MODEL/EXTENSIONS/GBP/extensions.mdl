@@ -80,6 +80,8 @@ module[gbpe]
         # Destination port range [from-to]
         member[dFromPort; type=l4/Port]
         member[dToPort; type=l4/Port]
+
+        member[tcpFlags; type=l4/TcpFlags]
     }
 
     # A set of counters for a network endpoint

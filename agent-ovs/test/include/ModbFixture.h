@@ -14,6 +14,7 @@
 #include <boost/shared_ptr.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
+#include <modelgbp/l4/TcpFlagsEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
@@ -72,6 +73,8 @@ public:
     shared_ptr<L24Classifier> classifier3;
     shared_ptr<L24Classifier> classifier4;
     shared_ptr<L24Classifier> classifier5;
+    shared_ptr<L24Classifier> classifier6;
+    shared_ptr<L24Classifier> classifier7;
 
     shared_ptr<AllowDenyAction> action1;
 
@@ -227,6 +230,21 @@ protected:
         classifier2 = space->addGbpeL24Classifier("classifier2");
         classifier2->setEtherT(l2::EtherTypeEnumT::CONST_ARP);
 
+        /* allow SSH from port 22 with ACK+SYN */
+        classifier6 = space->addGbpeL24Classifier("classifier6");
+        classifier6->setEtherT(l2::EtherTypeEnumT::CONST_IPV4)
+            .setProt(6 /* TCP */)
+            .setSFromPort(22)
+            .setTcpFlags(l4::TcpFlagsEnumT::CONST_ACK |
+                         l4::TcpFlagsEnumT::CONST_SYN);
+
+        /* allow SSH from port 22 with ACK+SYN */
+        classifier7 = space->addGbpeL24Classifier("classifier7");
+        classifier7->setEtherT(l2::EtherTypeEnumT::CONST_IPV4)
+            .setProt(6 /* TCP */)
+            .setSFromPort(21)
+            .setTcpFlags(l4::TcpFlagsEnumT::CONST_ESTABLISHED);
+
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
             ->setDirection(DirectionEnumT::CONST_IN).setOrder(100)
@@ -234,6 +252,12 @@ protected:
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule2")
             ->setDirection(DirectionEnumT::CONST_OUT).setOrder(200)
             .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
+            ->setDirection(DirectionEnumT::CONST_IN).setOrder(300)
+            .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
+        con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule4")
+            ->setDirection(DirectionEnumT::CONST_IN).setOrder(400)
+            .addGbpRuleToClassifierRSrc(classifier7->getURI().toString());
 
         con2 = space->addGbpContract("contract2");
         con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule1")
@@ -280,7 +304,6 @@ protected:
             ->setTargetL24Classifier(classifier4->getURI());
         epg0->addGbpEpGroupToProvContractRSrc(con3->getURI().toString());
         epg1->addGbpEpGroupToConsContractRSrc(con3->getURI().toString());
-
     }
 };
 
