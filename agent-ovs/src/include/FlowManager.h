@@ -27,6 +27,7 @@
 #include "JsonCmdExecutor.h"
 #include "ActionBuilder.h"
 #include "PacketInHandler.h"
+#include "AdvertManager.h"
 
 namespace ovsagent {
 
@@ -90,7 +91,7 @@ public:
     }
 
     /**
-     * Register the given connection with the learning switch. Installs
+     * Register the given connection with the flow manager. Installs
      * all the necessary listeners on the connection.
      *
      * @param connection the connection to use for learning
@@ -235,6 +236,14 @@ public:
                         const std::string& mac);
 
     /**
+     * Enable or disable endpoint advertisements
+     *
+     * @param endpointAdv true to enable periodic endpoint
+     * advertisements
+     */
+    void SetEndpointAdv(bool endpointAdv);
+
+    /**
      * Set the flow ID cache directory
      * @param flowIdCache the directory where flow ID entries will be
      * cached
@@ -373,6 +382,14 @@ public:
      * of unit-testing.
      */
     void PeerConnected();
+
+    /**
+     * Enqueue a task to be executed asynchronously on the flow
+     * manager's task queue
+     *
+     * @param w the work item to enqueue
+     */
+    void QueueFlowTask(const WorkItem& w);
 
     /**
      * Indices of tables managed by the flow-manager.
@@ -651,6 +668,7 @@ private:
     FlowSyncer flowSyncer;
 
     PacketInHandler pktInHandler;
+    AdvertManager advertManager;
 
     volatile bool stopping;
 
@@ -660,13 +678,6 @@ private:
     void OnConnectTimer(const boost::system::error_code& ec);
     boost::scoped_ptr<boost::asio::deadline_timer> connectTimer;
     long connectDelayMs;
-
-    /**
-     * Timer callback for router advertisements
-     */
-    void OnAdvertTimer(const boost::system::error_code& ec);
-    boost::scoped_ptr<boost::asio::deadline_timer> advertTimer;
-    volatile int initialAdverts;
 
     bool opflexPeerConnected;
 

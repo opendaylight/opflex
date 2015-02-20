@@ -50,17 +50,8 @@ using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
 using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;
-using boost::posix_time::seconds;
 
 namespace ovsagent {
-
-static const uint8_t MAC_ADDR_BROADCAST[6] =
-    {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-static const uint8_t MAC_ADDR_MULTICAST[6] =
-    {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const uint8_t MAC_ADDR_IPV6MULTICAST[6] =
-    {0x33, 0x33, 0x00, 0x00, 0x00, 0x01};
-static const address_v6 ALL_NODES_IP(address_v6::from_string("ff02::1"));
 
 const uint16_t FlowManager::MAX_POLICY_RULE_PRIORITY = 8192;     // arbitrary
 const long DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC = 5000;
@@ -74,9 +65,10 @@ FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
         reader(NULL), jsonCmdExecutor(NULL), fallbackMode(FALLBACK_PROXY),
         encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
-        virtualRouterEnabled(true), routerAdv(true),
+        virtualRouterEnabled(false), routerAdv(false),
         isSyncing(false), flowSyncer(*this), pktInHandler(agent, *this),
-        stopping(false), connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
+        advertManager(agent, *this), stopping(false),
+        connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
         opflexPeerConnected(false) {
     memset(routerMac, 0, sizeof(routerMac));
     memset(dhcpMac, 0, sizeof(dhcpMac));
@@ -85,10 +77,6 @@ FlowManager::FlowManager(ovsagent::Agent& ag) :
 
 void FlowManager::Start()
 {
-    initialAdverts = 0;
-    advertTimer.reset(new deadline_timer(agent.getAgentIOService(),
-                                         seconds(3)));
-
     /*
      * Start out in syncing mode to avoid writing to the flow tables; we'll
      * update cached state only.
@@ -110,11 +98,9 @@ void FlowManager::Start()
 void FlowManager::Stop()
 {
     stopping = true;
+    advertManager.stop();
     if (connectTimer) {
         connectTimer->cancel();
-    }
-    if (advertTimer) {
-        advertTimer->cancel();
     }
     if (portMapper) {
         portMapper->unregisterPortStatusListener(this);
@@ -127,9 +113,11 @@ void FlowManager::registerConnection(SwitchConnection *conn) {
     conn->RegisterOnConnectListener(this);
     conn->RegisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
     pktInHandler.registerConnection(conn);
+    advertManager.registerConnection(conn);
 }
 
 void FlowManager::unregisterConnection(SwitchConnection *conn) {
+    advertManager.unregisterConnection();
     pktInHandler.unregisterConnection();
     this->connection = NULL;
     conn->UnregisterOnConnectListener(this);
@@ -150,6 +138,7 @@ void FlowManager::SetPortMapper(PortMapper *m) {
     portMapper = m;
     portMapper->registerPortStatusListener(this);
     pktInHandler.setPortMapper(m);
+    advertManager.setPortMapper(m);
 }
 
 void FlowManager::SetFlowReader(FlowReader *r) {
@@ -210,6 +199,7 @@ void FlowManager::SetVirtualRouter(bool virtualRouterEnabled,
     } catch (std::invalid_argument) {
         LOG(ERROR) << "Invalid virtual router MAC: " << virtualRouterMac;
     }
+    advertManager.enableRouterAdv(virtualRouterEnabled && routerAdv);
 }
 
 void FlowManager::SetVirtualDHCP(bool dhcpEnabled,
@@ -220,6 +210,10 @@ void FlowManager::SetVirtualDHCP(bool dhcpEnabled,
     } catch (std::invalid_argument) {
         LOG(ERROR) << "Invalid virtual DHCP server MAC: " << mac;
     }
+}
+
+void FlowManager::SetEndpointAdv(bool endpointAdv) {
+    advertManager.enableEndpointAdv(endpointAdv);
 }
 
 void FlowManager::SetSyncDelayOnConnect(long delay) {
@@ -336,7 +330,7 @@ SetDestMatchArp(FlowEntry *fe, uint16_t prio, const address& ip,
     match *m = &fe->entry->match;
     match_set_dl_type(m, htons(ETH_TYPE_ARP));
     match_set_nw_proto(m, ARP_OP_REQUEST);
-    match_set_dl_dst(m, MAC_ADDR_BROADCAST);
+    match_set_dl_dst(m, packets::MAC_ADDR_BROADCAST);
     match_set_nw_dst(m, htonl(ip.to_v4().to_ulong()));
     match_set_reg(m, 6 /* REG6 */, l3Id);
 }
@@ -357,7 +351,8 @@ SetDestMatchNd(FlowEntry *fe, uint16_t prio, const address* ip,
     match_set_tp_dst(&fe->entry->match, 0);
     match_set_reg(&fe->entry->match, 6 /* REG6 */, l3Id);
     match_set_dl_dst_masked(&fe->entry->match, 
-                            MAC_ADDR_MULTICAST, MAC_ADDR_MULTICAST);
+                            packets::MAC_ADDR_MULTICAST,
+                            packets::MAC_ADDR_MULTICAST);
 
     if (ip) {
         struct in6_addr addr;
@@ -377,7 +372,9 @@ SetMatchFd(FlowEntry *fe, uint16_t prio, uint32_t fgrpId, bool broadcast,
     match *m = &fe->entry->match;
     match_set_reg(&fe->entry->match, 5 /* REG5 */, fgrpId);
     if (broadcast)
-        match_set_dl_dst_masked(m, MAC_ADDR_MULTICAST, MAC_ADDR_MULTICAST);
+        match_set_dl_dst_masked(m,
+                                packets::MAC_ADDR_MULTICAST,
+                                packets::MAC_ADDR_MULTICAST);
     if (dstMac)
         match_set_dl_dst(m, dstMac);
 }
@@ -653,8 +650,13 @@ SetSecurityActionAllow(FlowEntry *fe) {
     ab.Build(fe->entry);
 }
 
+void FlowManager::QueueFlowTask(const WorkItem& w) {
+    workQ.enqueue(w);
+}
+
 void FlowManager::endpointUpdated(const std::string& uuid) {
     if (stopping) return;
+    advertManager.scheduleEndpointAdv(uuid);
     WorkItem w = bind(&FlowManager::HandleEndpointUpdate, this, uuid);
     workQ.enqueue(w);
 }
@@ -937,8 +939,8 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             FlowEntry *e2 = new FlowEntry();
             SetSourceMatchEp(e2, 139, ofPort, NULL);
             match_set_dl_dst_masked(&e2->entry->match, 
-                                    MAC_ADDR_BROADCAST,
-                                    MAC_ADDR_MULTICAST);
+                                    packets::MAC_ADDR_BROADCAST,
+                                    packets::MAC_ADDR_MULTICAST);
             SetSourceAction(e2, epgVnid, bdId, fgrpId, rdId);
             src.push_back(FlowEntryPtr(e2));
         }
@@ -1148,8 +1150,8 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
             FlowEntry *e1 = new FlowEntry();
             SetSourceMatchEpg(e1, encapType, 150, tunPort, epgVnid);
             match_set_dl_dst_masked(&e1->entry->match, 
-                                    MAC_ADDR_BROADCAST,
-                                    MAC_ADDR_MULTICAST);
+                                    packets::MAC_ADDR_BROADCAST,
+                                    packets::MAC_ADDR_MULTICAST);
             SetSourceAction(e1, epgVnid, bdId, fgrpId, rdId,
                             FlowManager::DST_TABLE_ID, encapType);
             uplinkMatch.push_back(FlowEntryPtr(e1));
@@ -1187,12 +1189,8 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
                 SetActionController(e0);
                 WriteFlow(rdURI.get().toString(), DST_TABLE_ID, e0);
 
-                if (!isSyncing) {
-                    initialAdverts = 0;
-                    advertTimer->expires_from_now(seconds(1));
-                    advertTimer->async_wait(bind(&FlowManager::OnAdvertTimer,
-                                                 this, error));
-                }
+                if (!isSyncing)
+                    advertManager.scheduleInitialRouterAdv();
             }
         }
     }
@@ -1807,89 +1805,6 @@ void FlowManager::OnConnectTimer(const system::error_code& ec) {
         flowSyncer.Sync();
 }
 
-void FlowManager::OnAdvertTimer(const system::error_code& ec) {
-    if (ec)
-        return;
-    if (!virtualRouterEnabled || !routerAdv)
-        return;
-    if (!connection)
-        return;
-
-    int nextInterval = 16;
-
-    if (connection->IsConnected()) {
-        EndpointManager& epMgr = agent.getEndpointManager();
-        PolicyManager& polMgr = agent.getPolicyManager();
-
-        int minInterval = 200;
-        PolicyManager::uri_set_t epgURIs;
-        polMgr.getGroups(epgURIs);
-
-        BOOST_FOREACH(const URI& epg, epgURIs) {
-            unordered_set<string> eps;
-            unordered_set<uint32_t> out_ports;
-            epMgr.getEndpointsForGroup(epg, eps);
-            BOOST_FOREACH(const string& uuid, eps) {
-                shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
-                if (!ep) continue;
-
-                const boost::optional<std::string>& iface = ep->getInterfaceName();
-                if (!iface) continue;
-
-                uint32_t port = portMapper->FindPort(iface.get());
-                if (port != OFPP_NONE)
-                    out_ports.insert(port);
-            }
-
-            if (out_ports.size() == 0) continue;
-
-            address_v6::bytes_type bytes = ALL_NODES_IP.to_bytes();
-            struct ofpbuf* b = packets::compose_icmp6_router_ad(routerMac,
-                                                                MAC_ADDR_IPV6MULTICAST,
-                                                                (struct in6_addr*)bytes.data(),
-                                                                epg, polMgr);
-            if (b == NULL) continue;
-
-            struct ofputil_packet_out po;
-            po.buffer_id = UINT32_MAX;
-            po.packet = ofpbuf_data(b);
-            po.packet_len = ofpbuf_size(b);
-            po.in_port = OFPP_CONTROLLER;
-
-            ActionBuilder ab;
-            BOOST_FOREACH(uint32_t p, out_ports) {
-                ab.SetOutputToPort(p);
-            }
-            ab.Build(&po);
-
-            ofputil_protocol proto = 
-                ofputil_protocol_from_ofp_version(connection->GetProtocolVersion());
-            assert(ofputil_protocol_is_valid(proto));
-            struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
-            int error = connection->SendMessage(message);
-            free(po.ofpacts);
-            if (error) {
-                LOG(ERROR) << "Could not write packet-out: " << ovs_strerror(error);
-            } else {
-                LOG(DEBUG) << "Sent router advertisement for " << epg;
-            }
-            ofpbuf_delete(b);
-        }
-
-        if (initialAdverts >= 3)
-            nextInterval = minInterval;
-        else 
-            initialAdverts += 1;
-    } else {
-        initialAdverts = 0;
-    }
-
-    if (!stopping) {
-        advertTimer->expires_from_now(seconds(nextInterval));
-        advertTimer->async_wait(bind(&FlowManager::OnAdvertTimer, this, error));
-    }
-}
-
 const char * FlowManager::GetIdNamespace(class_id_t cid) {
     const char *nmspc = NULL;
     switch (cid) {
@@ -2097,7 +2012,7 @@ void FlowManager::FlowSyncer::CompleteSync() {
         flowManager.workQ.enqueue(w);
     }
 
-    flowManager.OnAdvertTimer(boost::system::error_code());
+    flowManager.advertManager.start();
 }
 
 void FlowManager::FlowSyncer::ReconcileFlows() {

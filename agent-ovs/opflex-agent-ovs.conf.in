@@ -117,6 +117,12 @@
         //             // Override MAC address for virtual dhcp server.
         //             // Default is "00:22:bd:f8:19:ff"
         //             "mac": "00:22:bd:f8:19:ff"
+        //         },
+        //
+        //         "endpoint-advertisements": {
+        //             // Enable generation of periodic ARP/NDP
+        //             // advertisements for endpoints.  Default true.
+        //             "enabled": "true"
         //         }
         //     },
         //

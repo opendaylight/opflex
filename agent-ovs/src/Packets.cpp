@@ -20,9 +20,17 @@
 #include "dhcp.h"
 #include "udp.h"
 #include "logging.h"
+#include "arp.h"
 
 namespace ovsagent {
 namespace packets {
+
+const uint8_t MAC_ADDR_BROADCAST[6] =
+    {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+const uint8_t MAC_ADDR_MULTICAST[6] =
+    {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+const uint8_t MAC_ADDR_IPV6MULTICAST[6] =
+    {0x33, 0x33, 0x00, 0x00, 0x00, 0x01};
 
 using std::string;
 using std::stringbuf;
@@ -90,7 +98,6 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
         optional<const string&> networkAddrStr = sn->getAddress();
         if (!networkAddrStr) continue;
-        
         boost::system::error_code ec;
         address networkAddr = address::from_string(networkAddrStr.get(), ec);
         if (ec) continue;
@@ -820,6 +827,64 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
 
     return b;
 }
+
+ofpbuf* compose_arp(uint16_t op,
+                    const uint8_t* srcMac,
+                    const uint8_t* dstMac,
+                    const uint8_t* sha,
+                    const uint8_t* tha,
+                    uint32_t spa,
+                    uint32_t tpa) {
+    using namespace arp;
+
+    struct ofpbuf* b = NULL;
+    struct eth_header* eth = NULL;
+    struct arp_hdr* arp = NULL;
+    uint8_t* shaptr = NULL;
+    uint8_t* thaptr = NULL;
+    uint32_t* spaptr = NULL;
+    uint32_t* tpaptr = NULL;
+
+    size_t len = 
+        sizeof(eth_header) + sizeof(arp_hdr) + 
+        2 * ETH_ADDR_LEN + 2 * 4;
+    b = ofpbuf_new(len);
+    ofpbuf_clear(b);
+    ofpbuf_reserve(b, len);
+    char* buf = (char*)ofpbuf_push_zeros(b, len);
+    eth = (struct eth_header*)buf;
+    buf += sizeof(struct eth_header);
+    arp = (struct arp_hdr*)buf;
+    buf += sizeof(struct arp_hdr);
+    shaptr = (uint8_t*)buf;
+    buf += ETH_ADDR_LEN;
+    spaptr = (uint32_t*)buf;
+    buf += 4;
+    thaptr = (uint8_t*)buf;
+    buf += ETH_ADDR_LEN;
+    tpaptr = (uint32_t*)buf;
+    buf += 4;
+
+    // initialize ethernet header
+    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
+    memcpy(eth->eth_dst, dstMac, ETH_ADDR_LEN);
+    eth->eth_type = htons(ETH_TYPE_ARP);
+
+    // initialize the ARP packet
+    arp->htype = htons(1);
+    arp->ptype = htons(0x800);
+    arp->hlen = ETH_ADDR_LEN;
+    arp->plen = 4;
+    arp->op = htons(op);
+
+    memcpy(shaptr, sha, ETH_ADDR_LEN);
+    memcpy(thaptr, tha, ETH_ADDR_LEN);
+    *spaptr = htonl(spa);
+    *tpaptr = htonl(tpa);
+
+    return b;
+}
+
 
 } /* namespace packets */
 } /* namespace ovsagent */

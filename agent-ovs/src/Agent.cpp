@@ -28,6 +28,10 @@ using opflex::ofcore::OFFramework;
 using boost::shared_ptr;
 using boost::property_tree::ptree;
 using boost::optional;
+using boost::asio::io_service;
+using boost::bind;
+using boost::ref;
+using boost::thread;
 using std::make_pair;
 
 Agent::Agent(OFFramework& framework_) 
@@ -167,7 +171,7 @@ void Agent::start() {
         r->start();
     }
 
-    io_service_thread = new boost::thread(boost::ref(*this));
+    io_service_thread = new thread(bind(&io_service::run, ref(agent_io)));
 
     BOOST_FOREACH(const host_t& h, opflexPeers)
         framework.addPeer(h.first, h.second);
@@ -196,10 +200,6 @@ void Agent::stop() {
     }
 
     started = false;
-}
-
-void Agent::operator()() {
-    agent_io.run();
 }
 
 } /* namespace ovsagent */

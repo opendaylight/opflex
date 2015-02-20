@@ -96,11 +96,6 @@ public:
      */
     boost::asio::io_service& getAgentIOService() { return agent_io; }
 
-    /**
-     * IO Service polling function
-     */
-    void operator()();
-
 private:
     opflex::ofcore::OFFramework& framework;
     PolicyManager policyManager;

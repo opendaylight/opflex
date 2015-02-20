@@ -130,6 +130,8 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string VIRTUAL_DHCP("forwarding.virtual-dhcp.enabled");
     static const std::string VIRTUAL_DHCP_MAC("forwarding.virtual-dhcp.mac");
 
+    static const std::string ENDPOINT_ADV("forwarding.endpoint-advertisements.enabled");
+
     static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
 
     ovsBridgeName = properties.get<std::string>(OVS_BRIDGE_NAME, "");
@@ -177,6 +179,7 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     virtualDHCP = properties.get<bool>(VIRTUAL_DHCP, true);
     virtualDHCPMac =
         properties.get<std::string>(VIRTUAL_DHCP_MAC, "00:22:bd:f8:19:ff");
+    endpointAdv = properties.get<bool>(ENDPOINT_ADV, true);
 
     flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR, "");
     if (flowIdCache == "")
