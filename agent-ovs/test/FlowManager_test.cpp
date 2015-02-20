@@ -25,6 +25,7 @@
 
 #include "ModbFixture.h"
 #include "MockSwitchConnection.h"
+#include "MockPortMapper.h"
 #include "TableState.h"
 #include "ActionBuilder.h"
 #include "RangeMask.h"
@@ -132,19 +133,6 @@ public:
     std::list<string> groupMods;
     int ignoreFlowModCounter;
     int ignoreGroupModCounter;
-};
-
-class MockPortMapper : public PortMapper {
-public:
-    virtual uint32_t FindPort(const std::string& name) {
-        return ports.find(name) != ports.end() ? ports[name] : OFPP_NONE;
-    }
-    virtual const std::string& FindPort(uint32_t of_port_no) {
-        return RPortMap.at(of_port_no);
-    }
-
-    boost::unordered_map<string, uint32_t> ports;
-    boost::unordered_map<uint32_t, std::string> RPortMap;
 };
 
 class MockFlowReader : public FlowReader {

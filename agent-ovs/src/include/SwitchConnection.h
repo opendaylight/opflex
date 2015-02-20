@@ -93,7 +93,7 @@ public:
     /**
      * Returns true if connected to the daemon and the switch.
      */
-    bool IsConnected();
+    virtual bool IsConnected();
 
     /**
      * Register handler for on-connect events.

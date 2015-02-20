@@ -120,7 +120,6 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 
     unique_lock<mutex> guard(ep_mutex);
     const string& uuid = endpoint.getUUID();
-
     EndpointState& es = ep_map[uuid];
 
     // update interface name to endpoint mapping
@@ -322,6 +321,7 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
         // fall back to computing endpoint group from epg mapping
         egURI = resolveEpgMapping(es);
     }
+
     if (oldEgURI != egURI) {
         if (oldEgURI) {
             unordered_set<string>& eps = group_ep_map[oldEgURI.get()];

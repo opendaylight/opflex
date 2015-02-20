@@ -32,6 +32,7 @@ m4_include([m4/ax_boost_filesystem.m4])
 m4_include([m4/ax_boost_log.m4])
 m4_include([m4/ax_boost_log_setup.m4])
 m4_include([m4/ax_boost_asio.m4])
+m4_include([m4/ax_boost_random.m4])
 
 dnl ---------------------------------------------------------------
 dnl Configure options
@@ -69,6 +70,10 @@ AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone'])
 AC_STDC_HEADERS
 
 AX_BOOST_BASE([1.53.0], [], AC_MSG_ERROR([Boost is required]))
+AX_BOOST_RANDOM
+if test "x$ax_cv_boost_random" != xyes; then
+   AC_MSG_ERROR([Boost::Random library is required])
+fi
 AX_BOOST_PROGRAM_OPTIONS
 if test "x$ax_cv_boost_program_options" != xyes; then
    AC_MSG_ERROR([Boost::Program_Options library is required])
