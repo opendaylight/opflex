@@ -24,6 +24,8 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/random_device.hpp>
 
 #include "Agent.h"
 #include "TunnelEpManager.h"
@@ -40,6 +42,8 @@ using boost::unique_lock;
 using boost::mutex;
 using boost::uuids::to_string;
 using boost::uuids::random_generator;
+using boost::random::random_device;
+using boost::random::mt19937;
 using boost::asio::deadline_timer;
 using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;
@@ -50,14 +54,9 @@ TunnelEpManager::TunnelEpManager(Agent* agent_, long timer_interval_)
     : agent(agent_), 
       agent_io(agent_->getAgentIOService()), 
       timer_interval(timer_interval_), stopping(false), uplinkVlan(0) {
-
-    boost::uuids::uuid tuuid;
-    std::ifstream rndfile("/dev/urandom", std::ifstream::binary);
-    if (!rndfile.is_open() ||
-        !rndfile.read((char *)&tuuid, tuuid.size()).good()) {
-        tuuid = random_generator()();       // use boost RNG as fallback
-    }
-    tunnelEpUUID = to_string(tuuid);
+    random_device rng;
+    mt19937 urng(rng);
+    tunnelEpUUID = to_string(random_generator(urng)());
 }
 
 TunnelEpManager::~TunnelEpManager() {

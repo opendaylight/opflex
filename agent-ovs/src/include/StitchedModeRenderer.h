@@ -81,6 +81,7 @@ private:
     bool virtualRouter;
     std::string virtualRouterMac;
     bool routerAdv;
+    bool endpointAdv;
     bool virtualDHCP;
     std::string virtualDHCPMac;
     std::string flowIdCache;

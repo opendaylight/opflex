@@ -38,6 +38,7 @@ libagent_ovs_la_LIBADD = \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_THREAD_LIB) \
 	$(BOOST_ASIO_LIB) \
+	$(BOOST_RANDOM_LIB) \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS)
 
@@ -69,8 +70,10 @@ noinst_HEADERS = \
 	src/include/Packets.h \
 	src/include/PacketInHandler.h \
 	src/include/JsonCmdExecutor.h \
+	src/include/AdvertManager.h \
 	src/include/udp.h \
 	src/include/dhcp.h \
+	src/include/arp.h \
 	src/include/cmd.h \
 	src/include/logging.h
 
@@ -99,7 +102,8 @@ libagent_ovs_la_SOURCES = \
 	src/RangeMask.cpp \
 	src/Packets.cpp \
 	src/PacketInHandler.cpp \
-	src/JsonCmdExecutor.cpp
+	src/JsonCmdExecutor.cpp \
+	src/AdvertManager.cpp
 
 bin_PROGRAMS=agent_ovs
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' $(OVS_ADDL_CFLAGS)
@@ -123,10 +127,12 @@ agent_test_SOURCES = \
 	test/include/BaseFixture.h \
 	test/include/ModbFixture.h \
 	test/include/MockSwitchConnection.h \
+	test/include/MockPortMapper.h \
 	test/PolicyManager_test.cpp \
 	test/EndpointManager_test.cpp \
 	test/FlowManager_test.cpp \
 	test/PacketInHandler_test.cpp \
+	test/AdvertManager_test.cpp \
 	test/PortMapper_test.cpp \
 	test/FlowExecutor_test.cpp \
 	test/IdGenerator_test.cpp \

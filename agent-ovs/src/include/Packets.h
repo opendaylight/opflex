@@ -28,6 +28,21 @@ namespace ovsagent {
 namespace packets {
 
 /**
+ * The ethernet broadcast MAC
+ */
+extern const uint8_t MAC_ADDR_BROADCAST[6];
+
+/**
+ * Mask for ethernet multicast MACs
+ */
+extern const uint8_t MAC_ADDR_MULTICAST[6];
+
+/**
+ * MAC address for IPv6 multicast packets
+ */
+extern const uint8_t MAC_ADDR_IPV6MULTICAST[6];
+
+/**
  * Compute an internet checksum over the specified data.  chksum
  * should be first initialized to zero, then chksum_accum called for
  * each block of data, and finally call chksum_finalize to get the
@@ -153,6 +168,25 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
                              const std::vector<std::string>& searchList,
                              bool temporary,
                              bool rapid);
+
+/**
+ * Compose an ARP packet
+ *
+ * @param op the opcode
+ * @param srcMac the source MAC for the ethernet header
+ * @param dstMac the destination MAC for the ethernet header
+ * @param sha the source hardware address
+ * @param tha the target hardware address
+ * @param spa the source protocol address
+ * @param tpa the target protocol address
+ */
+ofpbuf* compose_arp(uint16_t op,
+                    const uint8_t* srcMac,
+                    const uint8_t* dstMac,
+                    const uint8_t* sha,
+                    const uint8_t* tha,
+                    uint32_t spa,
+                    uint32_t tpa);
 
 } /* namespace packets */
 } /* namespace ovsagent */

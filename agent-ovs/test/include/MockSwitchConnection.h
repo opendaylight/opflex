@@ -17,26 +17,30 @@
  */
 class MockSwitchConnection : public SwitchConnection {
 public:
-    MockSwitchConnection() : SwitchConnection("mockBridge") {
+    MockSwitchConnection()
+        : SwitchConnection("mockBridge"), connected(false) {
     }
     virtual ~MockSwitchConnection() {
         clear();
     }
 
-    void clear() {
+    virtual void clear() {
         BOOST_FOREACH(ofpbuf* msg, sentMsgs) {
             ofpbuf_delete(msg);
         }
         sentMsgs.clear();
     }
 
-    ofp_version GetProtocolVersion() { return OFP13_VERSION; }
+    virtual ofp_version GetProtocolVersion() { return OFP13_VERSION; }
 
-    int SendMessage(ofpbuf *msg) {
+    virtual int SendMessage(ofpbuf *msg) {
         sentMsgs.push_back(msg);
         return 0;
     }
 
+    virtual bool IsConnected() { return connected; }
+
+    bool connected;
     std::vector<ofpbuf*> sentMsgs;
 };
 
