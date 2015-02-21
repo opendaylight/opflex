@@ -80,9 +80,7 @@ public:
         BOOST_FOREACH(const URI& epg, epgURIs) {
             unordered_set<string> eps;
             epMgr.getEndpointsForGroup(epg, eps);
-            BOOST_FOREACH(const string& uuid, eps) {
-                i += 1;
-            }
+            i += eps.size();
         }
         return i;
     }
