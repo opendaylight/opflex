@@ -32,6 +32,7 @@ using boost::posix_time::milliseconds;
 using boost::posix_time::seconds;
 using boost::unique_lock;
 using boost::mutex;
+using boost::optional;
 using opflex::modb::URI;
 
 namespace ovsagent {
@@ -108,7 +109,8 @@ void AdvertManager::scheduleEndpointAdv(const std::string& uuid) {
 static int send_packet_out(FlowManager& flowManager,
                            SwitchConnection* conn,
                            ofpbuf* b,
-                           unordered_set<uint32_t>& out_ports) {
+                           unordered_set<uint32_t>& out_ports,
+                           uint32_t vnid = 0) {
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
     po.packet = ofpbuf_data(b);
@@ -117,9 +119,11 @@ static int send_packet_out(FlowManager& flowManager,
 
     uint32_t tunPort = flowManager.GetTunnelPort();
     ActionBuilder ab;
+    ab.SetRegLoad(MFF_REG0, vnid);
     if (out_ports.find(tunPort) != out_ports.end())
         FlowManager::SetActionTunnelMetadata(ab, flowManager.GetEncapType(),
                                              flowManager.GetTunnelDst());
+
     BOOST_FOREACH(uint32_t p, out_ports) {
         ab.SetOutputToPort(p);
     }
@@ -220,9 +224,16 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
     out_ports.insert(tunPort);
 
     EndpointManager& epMgr = agent.getEndpointManager();
+    PolicyManager& polMgr = agent.getPolicyManager();
+
     shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
     if (!ep) return;
     if (!ep->getMAC()) return;
+
+    optional<URI> epgURI = epMgr.getComputedEPG(uuid);
+    if (!epgURI) return;
+    optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI.get());
+    if (!epgVnid) return;
 
     uint8_t epMac[6];
     ep->getMAC().get().toUIntArray(epMac);
@@ -255,7 +266,7 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
         if (b == NULL) continue;
 
         int error = send_packet_out(flowManager, switchConnection,
-                                    b, out_ports);
+                                    b, out_ports, epgVnid.get());
         if (error) {
             LOG(ERROR) << "Could not write packet-out: "
                        << ovs_strerror(error);
@@ -298,7 +309,7 @@ void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
     }
 
     if (!stopping) {
-        allEndpointAdvTimer->expires_from_now(seconds(/*1500 + gen()*/ 10));
+        allEndpointAdvTimer->expires_from_now(seconds(1500 + gen()));
         allEndpointAdvTimer->async_wait(bind(&AdvertManager::onAllEndpointAdvTimer,
                                           this, error));
     }
