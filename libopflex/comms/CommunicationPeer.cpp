@@ -515,6 +515,7 @@ bool EchoGen::operator () (rpc::SendHandler & handler) {
     }
 
 #ifndef NDEBUG
+#  ifdef YAJR_CANARY
     for(size_t i = 0; i < kNcanaries; ++i) {
         if (!handler.String(canary)) {
             LOG(ERROR)
@@ -524,6 +525,7 @@ bool EchoGen::operator () (rpc::SendHandler & handler) {
             return false;
         }
     }
+#  endif
 #endif
 
     return handler.EndArray();
@@ -603,10 +605,12 @@ void CommunicationPeer::timeout() {
 
     sendEchoReq();
 #ifndef NDEBUG
+#  ifdef YAJR_CANARY
     /* generate even more traffic */
     sendEchoReq();
     sendEchoReq();
     sendEchoReq();
+#  endif
 #endif
 
 }
