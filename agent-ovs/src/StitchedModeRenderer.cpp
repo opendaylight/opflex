@@ -64,6 +64,7 @@ void StitchedModeRenderer::start() {
     flowManager.SetVirtualRouter(virtualRouter, routerAdv, virtualRouterMac);
     flowManager.SetVirtualDHCP(virtualDHCP, virtualDHCPMac);
     flowManager.SetFlowIdCache(flowIdCache);
+    flowManager.SetEndpointAdv(endpointAdv);
 
     connection = new SwitchConnection(ovsBridgeName);
     portMapper.InstallListenersForConnection(connection);
