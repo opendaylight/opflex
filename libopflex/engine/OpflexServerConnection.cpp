@@ -114,6 +114,7 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
             ZeroCopyOpenSSL::Ctx* serverCtx = conn->listener->serverCtx.get();
             if (serverCtx)
                 ZeroCopyOpenSSL::attachTransport(p, serverCtx);
+            p->startKeepAlive();
 
             conn->handler->connected();
         }
