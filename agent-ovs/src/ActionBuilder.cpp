@@ -16,7 +16,7 @@ extern const struct mf_field mf_fields[MFF_N_IDS];
 
 namespace ovsagent {
 
-ActionBuilder::ActionBuilder() {
+ActionBuilder::ActionBuilder() : flowHasVlan(false) {
     ofpbuf_init(&buf, 64);
 }
 
@@ -108,12 +108,14 @@ ActionBuilder::SetEthSrcDst(const uint8_t *srcMac, const uint8_t *dstMac) {
         sf->field = &mf_fields[MFF_ETH_SRC];
         memcpy(&(sf->value.mac), srcMac, ETH_ADDR_LEN);
         memset(&(sf->mask.mac), 0xff, ETH_ADDR_LEN);
+        sf->flow_has_vlan = flowHasVlan;
     }
     if (dstMac) {
         struct ofpact_set_field *sf = ofpact_put_SET_FIELD(&buf);
         sf->field = &mf_fields[MFF_ETH_DST];
         memcpy(&(sf->value.mac), dstMac, ETH_ADDR_LEN);
         memset(&(sf->mask.mac), 0xff, ETH_ADDR_LEN);
+        sf->flow_has_vlan = flowHasVlan;
     }
 }
 
@@ -142,6 +144,7 @@ ActionBuilder::SetOutputToPort(uint32_t port) {
 void
 ActionBuilder::SetOutputReg(mf_field_id srcRegId) {
     struct ofpact_output_reg *outputReg = ofpact_put_OUTPUT_REG(&buf);
+    outputReg->max_len = UINT16_MAX;
     assert(outputReg->ofpact.raw == (uint8_t)(-1));
     InitSubField(&outputReg->src, srcRegId);
 }
@@ -154,20 +157,22 @@ ActionBuilder::SetGroup(uint32_t groupId) {
 
 void
 ActionBuilder::SetController(uint16_t max_len) {
-    struct ofpact_controller *contr = ofpact_put_CONTROLLER(&buf);
+    struct ofpact_output *contr = ofpact_put_OUTPUT(&buf);
+    contr->port = OFPP_CONTROLLER;
     contr->max_len = max_len;
-    contr->controller_id = 0;
-    contr->reason = OFPR_ACTION;
 }
 
 void
 ActionBuilder::SetPushVlan() {
     ofpact_put_PUSH_VLAN(&buf);
+    flowHasVlan = true;
 }
 
 void
 ActionBuilder::SetPopVlan() {
-    ofpact_put_STRIP_VLAN(&buf);
+    /* ugly hack to avoid the fact that there's no way in the API to
+       make a pop vlan action */
+    ofpact_put_STRIP_VLAN(&buf)->ofpact.raw = 8;
 }
 
 void

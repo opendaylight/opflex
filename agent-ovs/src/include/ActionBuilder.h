@@ -139,6 +139,7 @@ public:
     static ofpact * GetActionsFromBuffer(ofpbuf *buf, size_t& actsLen);
 private:
     struct ofpbuf buf;
+    bool flowHasVlan;
 };
 
 } // namespace ovsagent

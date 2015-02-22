@@ -213,7 +213,8 @@ void TableState::DiffEntry(const string& objId,
     vector<bool> keep(oldEntries.size(), false);
     CalculateAddMod(oldEntries, newEntries, keep, diffs);
     CalculateDel(oldEntries, keep, diffs);
-    LOG(DEBUG) << diffs.edits.size() << " diff(s), objId=" << objId << diffs;
+    if (diffs.edits.size() > 0)
+        LOG(DEBUG) << diffs.edits.size() << " diff(s), objId=" << objId << diffs;
 }
 
 void TableState::DiffSnapshot(const FlowEntryList& oldEntries,
@@ -225,7 +226,6 @@ void TableState::DiffSnapshot(const FlowEntryList& oldEntries,
         CalculateAddMod(oldEntries, newEntries, keep, diffs);
     }
     CalculateDel(oldEntries, keep, diffs);
-    LOG(DEBUG) << "Snapshot has " << diffs.edits.size() << " diff(s)" << diffs;
 }
 
 void

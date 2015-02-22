@@ -41,21 +41,33 @@ public:
 
 // wait for a condition to become true because of an event in another
 // thread. Executes 'stmt' after each wait iteration.
-#define WAIT_FOR_DO(condition, count, stmt)                    \
-    {                                                          \
-        int _c = 0;                                            \
-        while (_c < count) {                                   \
-           if (condition) break;                               \
-           _c += 1;                                            \
-           usleep(1000);                                       \
-           stmt;                                               \
-        }                                                      \
-        BOOST_CHECK((condition));                              \
+#define WAIT_FOR_DO_ONFAIL(condition, count, stmt, onfail) \
+    {                                                      \
+        int _c = 0;                                        \
+        while (_c < count) {                               \
+            if (condition) break;                          \
+            _c += 1;                                       \
+            usleep(1000);                                  \
+            stmt;                                          \
+        }                                                  \
+        BOOST_CHECK((condition));                          \
+        if (!(condition))                                  \
+            onfail;                                        \
     }
+
+// wait for a condition to become true because of an event in another
+// thread. Executes 'stmt' after each wait iteration.
+#define WAIT_FOR_DO(condition, count, stmt) \
+    WAIT_FOR_DO_ONFAIL(condition, count, stmt, ;)
 
 // wait for a condition to become true because of an event in another
 // thread
 #define WAIT_FOR(condition, count)  WAIT_FOR_DO(condition, count, ;)
+
+// wait for a condition to become true because of an event in another
+// thread. Executes stmt 
+#define WAIT_FOR_ONFAIL(condition, count) \
+    WAIT_FOR_DO_ONFAIL(condition, count, ;, onfail)
 
 } /* namespace ovsagent */
 
