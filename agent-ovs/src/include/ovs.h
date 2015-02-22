@@ -40,6 +40,7 @@ extern "C" {
 #include <openvswitch/lib/json.h>
 #include <openvswitch/lib/jsonrpc.h>
 #include <openvswitch/lib/stream.h>
+#include "openvswitch/lib/ofp-parse.h"
 
 #ifdef __cplusplus
 }

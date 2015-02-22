@@ -392,10 +392,21 @@ public:
     void QueueFlowTask(const WorkItem& w);
 
     /**
+     * Compare the state of a give table against the provided
+     * snapshot.
+     *
+     * @param tableId the table to compare against
+     * @param el the list of flows to compare against
+     * @param diffs returns the differences between the entries
+     */
+    void DiffTableState(int tableId, const FlowEntryList& el,
+                        /* out */ FlowEdit& diffs);
+
+    /**
      * Indices of tables managed by the flow-manager.
      */
-    enum { SEC_TABLE_ID, SRC_TABLE_ID, DST_TABLE_ID, LEARN_TABLE_ID,
-           POL_TABLE_ID, NUM_FLOW_TABLES };
+    enum { SEC_TABLE_ID, SRC_TABLE_ID, BRIDGE_TABLE_ID, ROUTE_TABLE_ID,
+           LEARN_TABLE_ID, POL_TABLE_ID, NUM_FLOW_TABLES };
 
 private:
     /**
@@ -456,10 +467,11 @@ private:
     void HandlePortStatusUpdate(const std::string& portName, uint32_t portNo);
 
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
-            boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId, uint32_t& bdId,
+            boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId, 
+            boost::optional<opflex::modb::URI>& bdURI, uint32_t& bdId,
             boost::optional<opflex::modb::URI>& fdURI, uint32_t& fdId);
     void UpdateGroupSubnets(const opflex::modb::URI& egUri,
-            uint32_t routingDomainId);
+                            uint32_t bdId, uint32_t rdId);
     bool WriteFlow(const std::string& objId, int tableId,
             FlowEntryList& el);
     bool WriteFlow(const std::string& objId, int tableId, FlowEntry *e);

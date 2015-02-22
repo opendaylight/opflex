@@ -361,7 +361,7 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
         if (i == 0) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
         if (i == 1) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
         if (i == 2) BOOST_CHECK_EQUAL(OFPACT_OUTPUT, a->type);
-        if (i == 3) BOOST_CHECK_EQUAL(OFPACT_CONTROLLER, a->type);
+        if (i == 3) BOOST_CHECK_EQUAL(OFPACT_OUTPUT, a->type);
         ++i;
     }
     BOOST_CHECK_EQUAL(4, i);

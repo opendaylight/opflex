@@ -1,3 +1,4 @@
+/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -23,7 +24,7 @@ namespace ovsagent {
 /**
  * Class representing an entry in a flow table.
  */
-class FlowEntry {
+class FlowEntry : private boost::noncopyable {
 public:
     FlowEntry();
     ~FlowEntry();

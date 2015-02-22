@@ -50,6 +50,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<FloodDomain> fd2;
     shared_ptr<RoutingDomain> rd;
     shared_ptr<BridgeDomain> bd;
+    shared_ptr<BridgeDomain> bd2;
     shared_ptr<Subnets> subnetsfd1;
     shared_ptr<Subnets> subnetsfd2;
     shared_ptr<Subnet> subnetsfd1_1;
@@ -84,8 +85,9 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     space = universe->addPolicySpace("test");
     fd1 = space->addGbpFloodDomain("fd");
     fd2 = space->addGbpFloodDomain("fd2");
-    fd2->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
+    //fd2->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
     bd = space->addGbpBridgeDomain("bd");
+    bd2 = space->addGbpBridgeDomain("bd2");
     rd = space->addGbpRoutingDomain("rd");
     rd->setIpv6Autoconfig(AutoconfigEnumT::CONST_DHCP);
     
@@ -93,8 +95,10 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->setTargetBridgeDomain(bd->getURI());
     fd1->addGbpeFloodContext()->setMulticastGroupIP("224.10.1.1");
     fd2->addGbpFloodDomainToNetworkRSrc()
-        ->setTargetBridgeDomain(bd->getURI());
+        ->setTargetBridgeDomain(bd2->getURI());
     bd->addGbpBridgeDomainToNetworkRSrc()
+        ->setTargetRoutingDomain(rd->getURI());
+    bd2->addGbpBridgeDomainToNetworkRSrc()
         ->setTargetRoutingDomain(rd->getURI());
     
     subnetsfd1 = space->addGbpSubnets("subnetsfd1");
