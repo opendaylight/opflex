@@ -309,7 +309,7 @@ void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
     }
 
     if (!stopping) {
-        allEndpointAdvTimer->expires_from_now(seconds(1500 + gen()));
+        allEndpointAdvTimer->expires_from_now(seconds(600 + gen()));
         allEndpointAdvTimer->async_wait(bind(&AdvertManager::onAllEndpointAdvTimer,
                                           this, error));
     }
