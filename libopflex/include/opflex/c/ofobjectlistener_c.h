@@ -47,7 +47,10 @@ typedef ofobj_p ofobjectlistener_p;
  */
 typedef void (*ofnotify_p)(void* user_data, class_id_t class_id, ofuri_p uri);
 
+#ifdef __cplusplus
 extern "C" {
+#endif
+
     /**
      * Create a new object listener.  You must eventually call
      * @ref ofobjectlistener_destroy() on the returned object.
@@ -74,7 +77,9 @@ extern "C" {
      */
     ofstatus ofobjectlistener_destroy(/* out */ ofobjectlistener_p* listener);
 
+#ifdef __cplusplus
 } /* extern "C" */
+#endif
 
 /** @} cofobjectlistener */
 /** @} cmodb */
