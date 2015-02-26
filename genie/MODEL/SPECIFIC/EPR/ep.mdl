@@ -73,6 +73,12 @@ module[epr]
         # L2 context for the end-point
         member[context; type=epr/L2Context]
 
+        # Optional name for the end-point
+        member[interfaceName; type=ascii/Name]
+
+        # Optional name of the VM/container owning the end-point
+        member[vmName; type=ascii/Name]
+
         contained
         {
             parent[class=epr/L2Universe]
