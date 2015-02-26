@@ -39,7 +39,9 @@
  */
 typedef ofobj_p ofuri_p;
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
     /**
      * Get a C-style string representation of the URI.  The result is
@@ -61,7 +63,9 @@ extern "C" {
      */
     ofstatus ofuri_hash(ofuri_p uri, /* out */ size_t* hash_value);
 
+#ifdef __cplusplus
 } /* extern "C" */
+#endif
 
 /** @} curi */
 /** @} cmodb */
