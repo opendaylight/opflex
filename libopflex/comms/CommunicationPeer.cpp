@@ -994,7 +994,14 @@ bool CommunicationPeer::__checkInvariants() const {
             << iov.size()
             << " delta = "
             << delta
+            << " queue size = "
+            << s_.deque_.size()
         ;
+        if (!VLOG_IS_ON(6)) {
+            LOG(ERROR)
+                << iovec_dump.str()
+            ;
+        }
 
         result = false;
 
