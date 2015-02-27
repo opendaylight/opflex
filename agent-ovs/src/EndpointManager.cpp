@@ -37,6 +37,8 @@ using boost::algorithm::starts_with;
 using boost::algorithm::ends_with;
 using boost::algorithm::contains;
 
+static const string VM_NAME_ATTR("vm-name");
+
 EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
                                  PolicyManager& policyManager_)
     : framework(framework_), policyManager(policyManager_),
@@ -453,6 +455,12 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
                          mac.get());
         l2e->setGroup(egURI->toString());
         l2e->setUuid(uuid);
+        if (es.endpoint->getInterfaceName())
+            l2e->setInterfaceName(es.endpoint->getInterfaceName().get());
+        const Endpoint::attr_map_t& attr_map = es.endpoint->getAttributes();
+        Endpoint::attr_map_t::const_iterator vi = attr_map.find("vm-name");
+        if (vi != attr_map.end())
+            l2e->setVmName(vi->second);
         newl2eps.insert(l2e->getURI());
     }
 
