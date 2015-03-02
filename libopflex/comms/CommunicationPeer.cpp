@@ -755,35 +755,14 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     return ret;
 }
 
-static bool isLegitPunct(int c) {
-
-    switch(c) {
-      case '\0':      // <-- redundant
-      case  ' ':
-      case  '"':
-      case  '%':
-      case  ',':
-      case  '-':
-      case  '.':
-      case  '/':
-      case  ':':
-      case  '[':
-      case  ']':
-      case  '_':
-      case  '{':
-      case  '|':
-      case  '}':
-        return true;
-      default:
-        return false;
-    }
-
-}
-
 #ifndef NDEBUG
 bool CommunicationPeer::__checkInvariants() const {
 
     bool result = true;
+
+    if (!internal::Peer::__checkInvariants()) {
+        result = false;
+    }
 
     if (!!connected_ != !!(status_ == kPS_ONLINE)) {
         VLOG(7)  // should be an ERROR but we need to first clean things up
@@ -1003,11 +982,9 @@ bool CommunicationPeer::__checkInvariants() const {
             << s_.deque_.size()
             << " iov.size() = "
             << iov.size()
+            << " "
+            << dbgLog
         ;
-    }
-
-    if (!internal::Peer::__checkInvariants()) {
-        result = false;
     }
 
     return result;
