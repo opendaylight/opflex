@@ -48,51 +48,56 @@ bool operator< (rapidjson::Value const & l, rapidjson::Value const & r) {
     return (lh < rh);
 }
 
+#if THREAD_LOCAL_DEBUGS_READY
+// TODO: make thread-local
 static ::yajr::comms::internal::CommunicationPeer const * latestCp = NULL;
+#  define __t_assert(arg) assert(arg)
+#else
+#  define __t_assert(arg) do{} while(0)
+#endif
 
 bool LocalIdentifier::emitId(yajr::rpc::SendHandler & h) const {
 
     VLOG(4);
 
-    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
 
     if (!h.StartArray()) {
 
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
 
         return false;
     }
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
 
     if (!h.String(requestMethod())) {
 
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
 
         return false;
     }
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
 
     if (!h.Uint64(id_)) {
 
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
 
         return false;
     }
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
 
     if (!h.EndArray()) {
 
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
 
         return false;
     }
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
 
     return true;
 
@@ -102,13 +107,12 @@ bool RemoteIdentifier::emitId(yajr::rpc::SendHandler & h) const {
 
     VLOG(4);
 
-    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
 
     bool ok = id_.Accept(h);
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
 
     return ok;
 }
@@ -117,45 +121,45 @@ bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
     VLOG(5);
 
-    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
+
     if (!handler.StartObject()) {
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
         return false;
     }
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
     if (!handler.String("id")) {
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
         return false;
     }
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
     if (!emitId(handler)) {
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
         return false;
     }
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
     if (!emitMethod(handler)) {
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
         return false;
     }
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
     if (!handler.String(getPayloadKey())) {
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
         return false;
     }
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
     if (!payloadGenerator_(handler)) {
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
         return false;
     }
 
-    assert(cP->__checkInvariants());
+    __t_assert(latestCp->__checkInvariants());
     if (!handler.EndObject()) {
-        assert(cP->__checkInvariants());
+        __t_assert(latestCp->__checkInvariants());
         return false;
     }
 
@@ -176,6 +180,8 @@ bool OutboundMessage::send() {
             "to a proper communication peer "
             "before outbound messages are sent");
 
+    VLOG(5) << cP;
+
     unsigned char connected = cP->connected_;
 
     if (!connected) {
@@ -188,7 +194,9 @@ bool OutboundMessage::send() {
 
     assert(cP->__checkInvariants());
 
+#if THREAD_LOCAL_DEBUGS_READY
     latestCp = cP;
+#endif
     bool ok = Accept(cP->getWriter());
 
     if (!ok) {
