@@ -785,6 +785,10 @@ bool CommunicationPeer::__checkInvariants() const {
 
     bool result = true;
 
+    if (!internal::Peer::__checkInvariants()) {
+        result = false;
+    }
+
     if (!!connected_ != !!(status_ == kPS_ONLINE)) {
         VLOG(7)  // should be an ERROR but we need to first clean things up
             << this
@@ -1004,10 +1008,6 @@ bool CommunicationPeer::__checkInvariants() const {
             << " iov.size() = "
             << iov.size()
         ;
-    }
-
-    if (!internal::Peer::__checkInvariants()) {
-        result = false;
     }
 
     return result;
