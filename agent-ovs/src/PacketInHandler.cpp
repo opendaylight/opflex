@@ -181,7 +181,8 @@ void PacketInHandler::dstFlowCb(const FlowEntryList& flows,
 void PacketInHandler::anyFlowCb(const FlowEntryList& flows) {
     if (!switchConnection) return;
     BOOST_FOREACH(const FlowEntryPtr& fe, flows) {
-        if (!reconcileReactiveFlow(fe)) {
+        if (fe->entry->cookie == FlowManager::GetLearnEntryCookie() &&
+            !reconcileReactiveFlow(fe)) {
             removeLearnFlow(switchConnection, fe);
         }
     }
@@ -192,7 +193,7 @@ bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
 
     if (!portMapper) return true;
     if (fe->entry->cookie != FlowManager::GetLearnEntryCookie())
-        return true;
+        return false;   // non-reactive entries must be reconciled
 
     uint32_t port = getOutputRegValue(fe);
     if (port == flowManager.GetTunnelPort())

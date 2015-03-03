@@ -66,8 +66,8 @@ public:
      * state.
      * 
      * @param fe the flow entry to reconcile
-     * @return true if the flow should be kept, false if the flow is
-     * not reactive or should be deleted
+     * @return true if the flow should be ignored during reconcilation (and
+     * therefore left as is), false if it must be compared with expected flows
      */
     bool reconcileReactiveFlow(const FlowEntryPtr& fe);
 

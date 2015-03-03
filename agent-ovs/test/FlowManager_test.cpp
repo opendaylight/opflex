@@ -956,9 +956,6 @@ void FlowManagerFixture::portStatusTest() {
     portmapper.ports[tunIf] = tun_port_new;
     flowManager.portStatusUpdate(tunIf, tun_port_new, false);
 
-    portmapper.ports[tunIf] = tun_port_new;
-    flowManager.portStatusUpdate(tunIf, tun_port_new, false);
-
     clearExpFlowTables();
     initExpStatic();
     initExpEpg(epg0);
@@ -1694,6 +1691,13 @@ FlowManagerFixture::createOnConnectEntries(FlowManager::EncapType encapType,
     ab6.SetController();
     ab6.Build(e6->entry);
 
+    // spurious entry in learn table, should be deleted
+    FlowEntryPtr e7(new FlowEntry());
+    flows.push_back(e7);
+    e7->entry->table_id = 4;
+    e7->entry->priority = 8192;
+    e7->entry->cookie = htonll(0xabcd);
+
     GroupEdit::Entry entryIn(new GroupEdit::GroupMod());
     entryIn->mod->command = OFPGC11_ADD;
     entryIn->mod->group_id = 10;
@@ -1723,6 +1727,9 @@ FlowManagerFixture::createOnConnectEntries(FlowManager::EncapType encapType,
                    .isEthDst(ep0->getMAC().get().toString())
                    .actions().load(OUTPORT, 999).controller(0xffff)
                    .done());
+    fe_connect_learn
+        .push_back(Bldr().table(4).priority(8192).cookie(0xabcd)
+                   .actions().drop().done());
 
 }
 
