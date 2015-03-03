@@ -2053,8 +2053,8 @@ void FlowManager::FlowSyncer::ReconcileFlows() {
     FlowEdit diffs[FlowManager::NUM_FLOW_TABLES];
     for (int i = 0; i < FlowManager::NUM_FLOW_TABLES; ++i) {
         flowManager.flowTables[i].DiffSnapshot(recvFlows[i], diffs[i]);
-        LOG(DEBUG) << "Snapshot has " << diffs[i].edits.size()
-                   << " diff(s)" << diffs;
+        LOG(DEBUG) << "Table=" << i << ", snapshot has "
+                   << diffs[i].edits.size() << " diff(s)" << diffs[i];
     }
 
     for (int i = 0; i < FlowManager::NUM_FLOW_TABLES; ++i) {
