@@ -192,7 +192,7 @@ bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
 
     if (!portMapper) return true;
     if (fe->entry->cookie != FlowManager::GetLearnEntryCookie())
-        return true;
+        return false;   // non-reactive entries must be reconciled
 
     uint32_t port = getOutputRegValue(fe);
     if (port == flowManager.GetTunnelPort())
