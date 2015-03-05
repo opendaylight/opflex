@@ -128,7 +128,7 @@ public:
     PolicyResolveRes(const rapidjson::Value& id,
                      MockOpflexServerImpl& server_,
                      const std::vector<modb::reference_t>& mos_)
-        : OpflexMessage("policy_update", RESPONSE, &id),
+        : OpflexMessage("policy_resolve", RESPONSE, &id),
           server(server_),
           mos(mos_) {}
 
@@ -178,7 +178,7 @@ public:
     EndpointResolveRes(const rapidjson::Value& id,
                      MockOpflexServerImpl& server_,
                      const std::vector<modb::reference_t>& mos_)
-        : OpflexMessage("endpoint_update", RESPONSE, &id),
+        : OpflexMessage("endpoint_resolve", RESPONSE, &id),
           server(server_),
           mos(mos_) {}
 

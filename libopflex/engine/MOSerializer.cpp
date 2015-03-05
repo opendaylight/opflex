@@ -14,12 +14,21 @@
 #  include <config.h>
 #endif
 
+#include <cstdio>
+#include <sstream>
 
 #include <boost/make_shared.hpp>
+#include <boost/utility.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/foreach.hpp>
+#include <rapidjson/document.h>
+#include <rapidjson/filewritestream.h>
+#include <rapidjson/filereadstream.h>
+#include <rapidjson/prettywriter.h>
 
 #include "opflex/engine/internal/MOSerializer.h"
+#include "opflex/modb/internal/ObjectStore.h"
+#include "opflex/modb/internal/Region.h"
 
 namespace opflex {
 namespace engine {
@@ -32,11 +41,14 @@ using modb::PropertyInfo;
 using modb::URI;
 using modb::MAC;
 using modb::mointernal::ObjectInstance;
+using modb::mointernal::StoreClient;
+using modb::Region;
 using rapidjson::Value;
 using rapidjson::Document;
 using rapidjson::SizeType;
 using boost::shared_ptr;
 using boost::make_shared;
+using boost::next;
 using std::vector;
 using std::string;
 using boost::unordered_set;
@@ -339,6 +351,241 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                    << classv.GetString();
     }
 }
+
+static void getRoots(ObjectStore* store, Region::obj_set_t& roots) {
+    unordered_set<string> owners;
+    store->getOwners(owners);
+    BOOST_FOREACH(const string& owner, owners) {
+        try {
+            Region* r = store->getRegion(owner);
+            r->getRoots(roots);
+        } catch (std::out_of_range e) { }
+    }
+}
+
+void MOSerializer::dumpMODB(FILE* pfile) {
+    Region::obj_set_t roots;
+    getRoots(store, roots);
+
+    char buffer[1024];
+    rapidjson::FileWriteStream ws(pfile, buffer, sizeof(buffer));
+    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(ws);
+    writer.StartArray();
+    StoreClient& client = store->getReadOnlyStoreClient();
+    BOOST_FOREACH(Region::obj_set_t::value_type r, roots) {
+        try {
+            serialize(r.first, r.second, client, writer, true);
+        } catch (std::out_of_range e) { }
+    }
+    writer.EndArray();
+    fwrite("\n", 1, 1, pfile);
+}
+
+void MOSerializer::dumpMODB(const std::string& file) {
+    FILE* pfile = fopen(file.c_str(), "w");
+    if (pfile == NULL) {
+        LOG(ERROR) << "Could not open MODB file " 
+                   << file << " for writing";
+        return;
+    }
+    dumpMODB(pfile);
+    LOG(INFO) << "Wrote MODB to " << file;
+}
+
+size_t MOSerializer::readMOs(FILE* pfile, StoreClient& client) {
+    char buffer[1024];
+    rapidjson::FileReadStream f(pfile, buffer, sizeof(buffer));
+    rapidjson::Document d;
+    d.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(f);
+    if (!d.IsArray()) {
+        LOG(ERROR) << "Malformed policy file: not an array";
+        return 0;
+    }
+    rapidjson::Value::ConstValueIterator moit;
+    size_t i = 0;
+    for (moit = d.Begin(); moit != d.End(); ++ moit) {
+        const rapidjson::Value& mo = *moit;
+        deserialize(mo, client, true, NULL);
+        i += 1;
+    }
+    return i;
+}
+
+#define FORMAT_PROP(gfunc, type, output)                                \
+    {                                                                   \
+        std::ostringstream str;                                         \
+        if (pit->second.getCardinality() == modb::PropertyInfo::SCALAR) { \
+            type pvalue(oi->get##gfunc(pit->first));                    \
+            str << output;                                              \
+        } else {                                                        \
+            size_t len = oi->get##gfunc##Size(pit->first);              \
+            bool first = true;                                          \
+            str << '[';                                                 \
+            for (size_t i = 0; i < len; ++i) {                          \
+                type pvalue(oi->get##gfunc(pit->first, i));             \
+                if (!first) {                                           \
+                    str << ", ";                                        \
+                    first = false;                                      \
+                }                                                       \
+                str << output;                                          \
+            }                                                           \
+            str << ']';                                                 \
+        }                                                               \
+        dispProps[pit->second.getName()] = str.str();                   \
+    }
+
+static std::string getRefSubj(const modb::ObjectStore& store,
+                              const modb::reference_t& ref) {
+    try {
+        const modb::ClassInfo& ref_class = 
+            store.getClassInfo(ref.first);
+        return ref_class.getName();
+    } catch (std::out_of_range e) {
+        return "UNKNOWN:" + ref.first;
+    }
+}
+
+static std::string getEnumVal(const modb::PropertyInfo& pinfo, uint64_t v) {
+    const modb::EnumInfo& ei = pinfo.getEnumInfo();
+    try {
+        return ei.getNameById(v);
+    } catch (std::out_of_range e) {
+        return "UNKNOWN: " + v;
+    }
+}
+
+void MOSerializer::displayObject(std::ostream& ostream,
+                                 modb::class_id_t class_id,
+                                 const modb::URI& uri,
+                                 bool tree, bool root,
+                                 bool includeProps,
+                                 bool last, const std::string& prefix) {
+    StoreClient& client = store->getReadOnlyStoreClient();
+    const modb::ClassInfo& ci = store->getClassInfo(class_id);
+    const boost::shared_ptr<const modb::mointernal::ObjectInstance> 
+        oi(client.get(class_id, uri));
+    std::map<modb::class_id_t, std::vector<modb::URI> > children;
+
+    ostream << prefix;
+    if (tree) {
+        if (last && !root)
+            ostream << "`-";
+        else
+            ostream << '-';
+        if (root)
+            ostream << '-';
+        ostream << "* ";
+    }
+    ostream << ci.getName() << "," << uri << " " << std::endl;
+
+    typedef std::map<std::string, std::string> dmap;
+    dmap dispProps;
+    size_t maxPropName = 0;
+
+    const modb::ClassInfo::property_map_t& pmap = ci.getProperties();
+    modb::ClassInfo::property_map_t::const_iterator pit;
+    for (pit = pmap.begin(); pit != pmap.end(); ++pit) {
+        if (pit->second.getType() != modb::PropertyInfo::COMPOSITE &&
+            !oi->isSet(pit->first, pit->second.getType(),
+                       pit->second.getCardinality()))
+            continue;
+
+        if (pit->second.getType() != modb::PropertyInfo::COMPOSITE &&
+            pit->second.getName().size() > maxPropName)
+            maxPropName = pit->second.getName().size();
+
+        switch (pit->second.getType()) {
+        case modb::PropertyInfo::STRING:
+            FORMAT_PROP(String, std::string, pvalue)
+            break;
+        case modb::PropertyInfo::S64:
+            FORMAT_PROP(Int64, int64_t, pvalue)
+            break;
+        case modb::PropertyInfo::U64:
+            FORMAT_PROP(UInt64, uint64_t, pvalue)
+            break;
+        case modb::PropertyInfo::MAC:
+            FORMAT_PROP(MAC, modb::MAC, pvalue)
+            break;
+        case modb::PropertyInfo::ENUM8:
+        case modb::PropertyInfo::ENUM16:
+        case modb::PropertyInfo::ENUM32:
+        case modb::PropertyInfo::ENUM64:
+            FORMAT_PROP(UInt64, uint64_t,
+                        pvalue
+                        << " (" << getEnumVal(pit->second, pvalue) << ")");
+            break;
+        case modb::PropertyInfo::REFERENCE:
+            FORMAT_PROP(Reference, modb::reference_t,
+                        getRefSubj(*store, pvalue) << "," << pvalue.second);
+            break;
+        case modb::PropertyInfo::COMPOSITE:
+            client.getChildren(class_id, uri, pit->first,
+                               pit->second.getClassId(), 
+                               children[pit->second.getClassId()]);
+            break;
+        }
+    }
+
+    bool hasChildren = false;
+    std::map<modb::class_id_t,
+             std::vector<modb::URI> >::iterator clsit;
+    std::vector<modb::URI>::const_iterator cit;
+    for (clsit = children.begin(); clsit != children.end(); ++clsit) {
+        if (clsit->second.size() == 0)
+            children.erase(clsit);
+        else
+            hasChildren = true;
+    }
+
+    if (includeProps && dispProps.size() > 0) {
+        string pprefix = prefix;
+        if (tree) {
+            if (last)
+                pprefix = pprefix + " ";
+            if (!hasChildren)
+                pprefix = pprefix + "    ";
+            else
+                pprefix = pprefix + " |  ";
+        }
+        ostream << pprefix << "{" << std::endl;
+        BOOST_FOREACH(dmap::value_type v, dispProps) {
+            ostream << pprefix << "  ";
+            ostream.width(maxPropName);
+            ostream << std::left << v.first << " : " << v.second << std::endl;
+        }
+        ostream << pprefix << "}" << std::endl;
+    }
+
+    for (clsit = children.begin(); clsit != children.end(); ++clsit) {
+        bool lclass = next(clsit) == children.end();
+        for (cit = clsit->second.begin(); 
+             cit != clsit->second.end(); ++cit) {
+
+            bool islast = lclass && (next(cit) == clsit->second.end());
+            string nprefix = prefix;
+            if (tree)
+                nprefix = prefix + (last ? " " : "") + (islast ? " " : " |");
+            displayObject(ostream, clsit->first, *cit,
+                          tree, false, includeProps, islast, nprefix);
+        }
+    }
+}
+
+void MOSerializer::displayMODB(std::ostream& ostream,
+                               bool tree, bool includeProps) {
+    Region::obj_set_t roots;
+    getRoots(store, roots);
+
+    BOOST_FOREACH(Region::obj_set_t::value_type r, roots) {
+        try {
+            displayObject(ostream, r.first, r.second,
+                          tree, true, includeProps,
+                          true, "");
+        } catch (std::out_of_range e) { }
+    }
+}
+
 
 } /* namespace internal */
 } /* namespace engine */
