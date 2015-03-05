@@ -18,7 +18,7 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 	-I$(top_srcdir)/util/include \
 	-I$(top_srcdir)/logging/include \
 	-I$(top_srcdir)/engine/include \
-	-I$(top_srcdir)/3rdparty/rapidjson/include \
+	-I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp \
 	-I$(top_srcdir)/comms/include \
 	-I$(top_srcdir)/comms
 

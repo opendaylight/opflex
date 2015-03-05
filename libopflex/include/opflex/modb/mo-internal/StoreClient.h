@@ -17,6 +17,7 @@
 #include <boost/unordered_map.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/unordered_set.hpp>
 
 #include "opflex/modb/URI.h"
 #include "opflex/modb/mo-internal/ObjectInstance.h"
@@ -207,8 +208,20 @@ public:
     /**
      * Deliver the notifications to the object store notification
      * queue.
+     *
+     * @param notifs the notifications to deliver
      */
     void deliverNotifications(const notif_t& notifs);
+
+    /**
+     * Get a set of all objects with the given class ID
+     *
+     * @param class_id the class_id to look up
+     * @param output An unordered set that will get the output
+     * @throws std::out_of_range if the class is not found
+     */
+    void getObjectsForClass(class_id_t class_id,
+                            /* out */ boost::unordered_set<URI>& output);
 
 private:
 

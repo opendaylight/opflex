@@ -276,6 +276,42 @@ public:
                      /* out */
                      modb::mointernal::StoreClient::notif_t* notifs = NULL);
 
+    /**
+     * Dump the managed object database to the file specified as a
+     * JSON blob.
+     * 
+     * @param file the file to write to.
+     */
+    void dumpMODB(const std::string& file);
+
+    /**
+     * Dump the managed object database to the file specified as a
+     * JSON blob.
+     * 
+     * @param file the file to write to.
+     */
+    void dumpMODB(FILE* file);
+    
+    /**
+     * Read managed objects from the given file into the MODB
+     *
+     * @param file the file containing the managed objects
+     * @param client the store client to use
+     * @param return the number of managed objects read
+     */
+    size_t readMOs(FILE* file,
+                   modb::mointernal::StoreClient& client);
+
+    /**
+     * Display the managed object database in a human-readable format
+     *
+     * @param ostream the output stream to write to
+     * @param tree display in a nested tree format
+     * @param includeProps include the properties of the objects
+     */
+    void displayMODB(std::ostream& ostream,
+                     bool tree = true, bool includeProps = false);
+        
 private:
     modb::ObjectStore* store;
     Listener* listener;
@@ -352,6 +388,15 @@ private:
                           const rapidjson::Value& v,
                           modb::mointernal::ObjectInstance& oi,
                           bool scalar);
+
+    /**
+     * Display a particular object
+     */
+    void displayObject(std::ostream& ostream,
+                       modb::class_id_t class_id,
+                       const modb::URI& uri,
+                       bool tree, bool root, bool includeProps,
+                       bool last, const std::string& prefix);
 
 };
 

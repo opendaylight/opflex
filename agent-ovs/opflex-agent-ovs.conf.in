@@ -32,6 +32,17 @@
             // authority public certificates, or a file containing a
             // specific CA certificate.
             "ca-store": "/etc/ssl/certs/"
+        },
+
+        "inspector": {
+            // Enable the MODB inspector service, which allows
+            // inspecting the state of the managed object database.
+	    // Default: enabled
+            "enabled": true,
+
+            // Listen on the specified socket for the inspector
+	    // Default DEFAULT_INSPECTOR_SOCKET
+            "socket-name": "DEFAULT_INSPECTOR_SOCKET"
         }
     },
 

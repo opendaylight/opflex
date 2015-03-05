@@ -179,22 +179,12 @@ public:
      */
     Region* getRegion(class_id_t class_id);
 
-    
     /**
-     * Get the model name for the active model
-     * @return the string model name
+     * Get all the region owners that exist in the MODB
+     *
+     * @param output a set to receive the owners
      */
-    const std::string& getModelName() const {
-        return model_name;
-    }
-
-    /**
-     * Get the model version string for the active model
-     * @return the string model version
-     */
-    const std::string& getModelVersion() const {
-        return model_version;
-    }
+    void getOwners(/* out */ boost::unordered_set<std::string>& output);
 
 private:
     struct ClassContext {
@@ -207,16 +197,6 @@ private:
     typedef boost::unordered_map<class_id_t, ClassContext> class_map_t;
     typedef boost::unordered_map<std::string, ClassInfo*> class_name_map_t;
     typedef boost::unordered_map<prop_id_t, ClassInfo*> prop_map_t;
-
-    /**
-     * The model name
-     */
-    std::string model_name;
-
-    /**
-     * The model version
-     */
-    std::string model_version;
 
     /**
      * Lookup region by owner

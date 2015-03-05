@@ -107,6 +107,7 @@ public:
         handler.String(code.c_str());
         handler.String("message");
         handler.String(message.c_str());
+        handler.EndObject();
         return true;
     }
 

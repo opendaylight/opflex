@@ -119,7 +119,7 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
         }
         break;
     case yajr::StateChange::DISCONNECT:
-        LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+        LOG(DEBUG) << "[" << conn->getRemotePeer() << "] " 
                    << "Disconnected";
         break;
     case yajr::StateChange::TRANSPORT_FAILURE:

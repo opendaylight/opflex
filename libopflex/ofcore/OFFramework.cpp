@@ -14,19 +14,17 @@
 #  include <config.h>
 #endif
 
-
 #include <cstdio>
 
 #include "config.h"
 
 #include <boost/assign.hpp>
-#include <rapidjson/document.h>
-#include <rapidjson/filewritestream.h>
-#include <rapidjson/prettywriter.h>
+#include <boost/foreach.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include "opflex/ofcore/OFFramework.h"
 #include "opflex/engine/Processor.h"
-#include "opflex/modb/internal/ObjectStore.h"
+#include "opflex/engine/Inspector.h"
 #include "opflex/logging/internal/logging.hpp"
 
 namespace opflex {
@@ -34,14 +32,18 @@ namespace ofcore {
 
 using namespace boost::assign;
 using engine::internal::MOSerializer;
+using boost::scoped_ptr;
+using std::string;
 
 class OFFramework::OFFrameworkImpl {
 public:
-    OFFrameworkImpl() : processor(&db), started(false) { } 
+    OFFrameworkImpl()
+        : processor(&db), started(false) { } 
     ~OFFrameworkImpl() {}
 
     modb::ObjectStore db;
     engine::Processor processor;
+    scoped_ptr<engine::Inspector> inspector;
     uv_key_t mutator_key;
     bool started;
 };
@@ -76,9 +78,15 @@ void OFFramework::start() {
     pimpl->started = true;
     pimpl->db.start();
     pimpl->processor.start();
+    if (pimpl->inspector)
+        pimpl->inspector->start();
 }
 
 void OFFramework::stop() {
+    if (pimpl->inspector) {
+        pimpl->inspector->stop();
+        pimpl->inspector.reset();
+    }
     if (pimpl->started) {
         LOG(DEBUG) << "Stopping OpFlex Framework";
         
@@ -88,26 +96,14 @@ void OFFramework::stop() {
     pimpl->started = false;
 }
 
-void OFFramework::dumpMODB(modb::class_id_t root_class_id,
-                           const std::string& file) {
+void OFFramework::dumpMODB(const std::string& file) {
     MOSerializer& serializer = pimpl->processor.getSerializer();
-    char buffer[1024];
-    FILE* pfile = fopen(file.c_str(), "w");
-    if (pfile == NULL) {
-        LOG(ERROR) << "Could not open MODB file " 
-                   << file << " for writing";
-        return;
-    }
-    rapidjson::FileWriteStream ws(pfile, buffer, sizeof(buffer));
-    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(ws);
-    writer.StartArray();
-    serializer.serialize(root_class_id,
-                         modb::URI::ROOT,
-                         pimpl->db.getReadOnlyStoreClient(),
-                         writer,
-                         true);
-    writer.EndArray();
-    LOG(INFO) << "Wrote MODB to " << file;
+    serializer.dumpMODB(file);
+}
+
+void OFFramework::dumpMODB(FILE* file) {
+    MOSerializer& serializer = pimpl->processor.getSerializer();
+    serializer.dumpMODB(file);
 }
 
 void OFFramework::setOpflexIdentity(const std::string& name,
@@ -118,6 +114,11 @@ void OFFramework::setOpflexIdentity(const std::string& name,
 void OFFramework::enableSSL(const std::string& caStorePath,
                             bool verifyPeers) {
     pimpl->processor.enableSSL(caStorePath, verifyPeers);
+}
+
+void OFFramework::enableInspector(const std::string& socketName) {
+    pimpl->inspector.reset(new engine::Inspector(&pimpl->db));
+    pimpl->inspector->setSocketName(socketName);
 }
 
 void OFFramework::addPeer(const std::string& hostname,

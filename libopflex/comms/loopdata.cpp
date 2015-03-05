@@ -306,7 +306,7 @@ void Peer::LoopData::down() {
             << this
             << " walking uv_loop before stopping it"
         ;
-        uv_walk(prepare_.loop, walkAndDumpHandlesCb< ERROR >, this);
+        uv_walk(prepare_.loop, walkAndDumpHandlesCb< DEBUG >, this);
 
         CloseHandle closeHandle = { this, NULL };
 

@@ -755,6 +755,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     return ret;
 }
 
+#ifndef NDEBUG
 static bool isLegitPunct(int c) {
 
     switch(c) {
@@ -780,7 +781,6 @@ static bool isLegitPunct(int c) {
 
 }
 
-#ifndef NDEBUG
 bool CommunicationPeer::__checkInvariants() const {
 
     bool result = true;

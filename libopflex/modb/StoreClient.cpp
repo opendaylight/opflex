@@ -190,6 +190,12 @@ StoreClient::getParent(class_id_t child_class,
     return r->getParent(child_class, child);
 }
 
+void StoreClient::getObjectsForClass(class_id_t class_id,
+                                     /* out */ boost::unordered_set<URI>& output) {
+    Region* r = store->getRegion(class_id);
+    return r->getObjectsForClass(class_id, output);
+}
+
 } /* namespace mointernal */
 } /* namespace modb */
 } /* namespace opflex */
