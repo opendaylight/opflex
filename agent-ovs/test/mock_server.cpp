@@ -125,8 +125,7 @@ int main(int argc, char** argv) {
             Policies::writeBasicInit(mframework);
             Policies::writeTestPolicy(mframework);
             
-            mframework.dumpMODB(modelgbp::dmtree::Root::CLASS_ID,
-                                sample_file);
+            mframework.dumpMODB(sample_file);
             
             mframework.stop();
             return 0;

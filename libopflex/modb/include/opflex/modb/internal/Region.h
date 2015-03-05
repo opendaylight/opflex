@@ -194,6 +194,29 @@ public:
     std::pair<URI, prop_id_t> getParent(class_id_t child_class,
                                         const URI& child);
 
+    /**
+     * A set of URI/class_id pairs
+     */
+    typedef boost::unordered_set<std::pair<class_id_t, URI> > obj_set_t;
+
+    /**
+     * Get the current set of "roots" in the region, which are objects
+     * in the database that have no parent.
+     *
+     * @param An unordered set that will get the output
+     */
+    void getRoots(/* out */ obj_set_t& output);
+
+    /**
+     * Get a set of all objects with the given class ID
+     *
+     * @param class_id the class_id to look up
+     * @param An unordered set that will get the output
+     * @throws std::out_of_range if the class is not found
+     */
+    void getObjectsForClass(class_id_t class_id,
+                            /* out */ boost::unordered_set<URI>& output);
+
 private:
     /**
      * The store client associated with this region
@@ -210,12 +233,13 @@ private:
      */
     uv_mutex_t region_mutex;
 
-    typedef boost::unordered_map<int, ClassIndex> class_map_t;
+    typedef boost::unordered_map<class_id_t, ClassIndex> class_map_t;
     typedef boost::unordered_map<URI,
                                  boost::shared_ptr<const mointernal::ObjectInstance> > uri_map_t;
 
     class_map_t class_map;
     uri_map_t uri_map;
+    obj_set_t roots;
 };
 
 } /* namespace modb */

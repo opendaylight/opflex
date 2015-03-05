@@ -49,6 +49,8 @@ Agent::~Agent() {
     renderers.clear();
 }
 
+#define DEF_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-inspect.sock"
+
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string LOG_LEVEL("log.level");
     // A list of filesystem paths that we should check for endpoint
@@ -59,6 +61,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_SSL_CA_STORE("opflex.ssl.ca-store");
     static const std::string HOSTNAME("hostname");
     static const std::string PORT("port");
+    static const std::string OPFLEX_INSPECTOR("opflex.inspector.enabled");
+    static const std::string OPFLEX_INSPECTOR_SOCK("opflex.inspector.socket-name");
 
     static const std::string OPFLEX_NAME("opflex.name");
     static const std::string OPFLEX_DOMAIN("opflex.domain");
@@ -93,6 +97,12 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
                                     opflexDomain.get());
         policyManager.setOpflexDomain(opflexDomain.get());
     }
+
+    bool enableInspector = properties.get<bool>(OPFLEX_INSPECTOR, true);
+    std::string inspectorSock =
+        properties.get<std::string>(OPFLEX_INSPECTOR, DEF_SOCKET);
+    if (enableInspector)
+        framework.enableInspector(inspectorSock);
 
     optional<const ptree&> peers = 
         properties.get_child_optional(OPFLEX_PEERS);
