@@ -158,7 +158,6 @@ private:
     void messagesReady();
     uv_loop_t* getLoop() { return &server_loop; }
     void connectionClosed(OpflexServerConnection* conn);
-    void doConnectionClosed(OpflexServerConnection* conn);
 
 #ifdef SIMPLE_RPC
     static void on_new_connection(uv_stream_t *server, int status);

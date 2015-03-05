@@ -200,14 +200,10 @@ void* OpflexListener::on_new_connection(yajr::Listener* ylistener,
 }
 #endif
 
-void OpflexListener::doConnectionClosed(OpflexServerConnection* conn) {
-    conns.erase(conn);
-    delete conn;
-}
-
 void OpflexListener::connectionClosed(OpflexServerConnection* conn) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
-    doConnectionClosed(conn);
+    conns.erase(conn);
+    delete conn;
     guard.release();
     if (!active)
         uv_async_send(&cleanup_async);
