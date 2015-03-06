@@ -406,8 +406,7 @@ void FlowManager::SetActionTunnelMetadata(ActionBuilder& ab,
 }
 
 static void
-SetDestActionEpMac(FlowEntry *fe, FlowManager::EncapType type, 
-                   uint32_t epgId, uint32_t port, const address& tunDst) {
+SetDestActionEpMac(FlowEntry *fe, uint32_t epgId, uint32_t port) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
@@ -417,10 +416,8 @@ SetDestActionEpMac(FlowEntry *fe, FlowManager::EncapType type,
 }
 
 static void
-SetDestActionEp(FlowEntry *fe, FlowManager::EncapType type,  
-                uint32_t epgId, uint32_t port,
-                const address& tunDst, const uint8_t *specialMac, 
-                const uint8_t *dstMac) {
+SetDestActionEp(FlowEntry *fe, uint32_t epgId, uint32_t port,
+                const uint8_t *specialMac, const uint8_t *dstMac) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
@@ -432,8 +429,7 @@ SetDestActionEp(FlowEntry *fe, FlowManager::EncapType type,
 }
 
 static void
-SetDestActionEpArp(FlowEntry *fe, FlowManager::EncapType type, 
-                   uint32_t epgId, uint32_t port, const address& tunDst, 
+SetDestActionEpArp(FlowEntry *fe, uint32_t epgId, uint32_t port,
                    const uint8_t *dstMac) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
@@ -968,8 +964,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
     if (bdId != 0 && hasMac && ofPort != OFPP_NONE) {
         FlowEntry *e0 = new FlowEntry();
         SetDestMatchEpMac(e0, 10, macAddr, bdId);
-        SetDestActionEpMac(e0, encapType, epgVnid, ofPort,
-                           GetTunnelDst());
+        SetDestActionEpMac(e0, epgVnid, ofPort);
         elBridgeDst.push_back(FlowEntryPtr(e0));
     }
 
@@ -979,8 +974,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                 hasMac) {
                 FlowEntry *e0 = new FlowEntry();
                 SetDestMatchEp(e0, 15, GetRouterMacAddr(), ipAddr, rdId);
-                SetDestActionEp(e0, encapType, epgVnid, ofPort,
-                                GetTunnelDst(), GetRouterMacAddr(),
+                SetDestActionEp(e0, epgVnid, ofPort, GetRouterMacAddr(),
                                 macAddr);
                 elRouteDst.push_back(FlowEntryPtr(e0));
             }
@@ -990,8 +984,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                 SetDestMatchArp(e1, 20, ipAddr, bdId, rdId);
                 if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
                     // ARP optimization: broadcast -> unicast
-                    SetDestActionEpArp(e1, encapType, epgVnid,
-                                       ofPort, GetTunnelDst(), 
+                    SetDestActionEpArp(e1, epgVnid, ofPort,
                                        hasMac ? macAddr : NULL);
                 }
                 // else drop the ARP packet
@@ -1003,8 +996,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                 SetDestMatchNd(e1, 20, &ipAddr, bdId, rdId);
                 if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
                     // neighbor discovery optimization: broadcast -> unicast
-                    SetDestActionEpArp(e1, encapType, epgVnid,
-                                       ofPort, GetTunnelDst(), 
+                    SetDestActionEpArp(e1, epgVnid, ofPort,
                                        hasMac ? macAddr : NULL);
                 }
                 // else drop the ND packet
