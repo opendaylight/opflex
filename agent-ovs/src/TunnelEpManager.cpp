@@ -53,7 +53,8 @@ using boost::system::error_code;
 TunnelEpManager::TunnelEpManager(Agent* agent_, long timer_interval_)
     : agent(agent_), 
       agent_io(agent_->getAgentIOService()), 
-      timer_interval(timer_interval_), stopping(false), uplinkVlan(0) {
+      timer_interval(timer_interval_), stopping(false), uplinkVlan(0),
+      terminationIpIsV4(false) {
     random_device rng;
     mt19937 urng(rng);
     tunnelEpUUID = to_string(random_generator(urng)());
@@ -123,6 +124,36 @@ static string getInterfaceMac(const string& iface) {
         return "";
     }
 }
+
+static string getInterfaceAddressV4(const string& iface) {
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    if (sock == -1) {
+        int err = errno;
+        LOG(ERROR) << "Socket creation failed when getting IPv4 address of "
+             << iface << ", error: " << strerror(err);
+        return "";
+    }
+
+    ifreq ifReq;
+    strncpy(ifReq.ifr_name, iface.c_str(), sizeof(ifReq.ifr_name));
+    if (ioctl(sock, SIOCGIFADDR, &ifReq) != -1) {
+        close(sock);
+        char host[NI_MAXHOST];
+        int s = getnameinfo(&ifReq.ifr_addr, sizeof(struct sockaddr_in),
+                            host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+        if (s != 0) {
+            LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(s);
+            return "";
+        }
+        return host;
+    } else {
+        int err = errno;
+        close(sock);
+        LOG(ERROR) << "ioctl to get IPv4 address failed for " << iface
+            << ", error: " << strerror(err);
+        return "";
+    }
+}
 #endif
 
 void TunnelEpManager::on_timer(const error_code& ec) {
@@ -135,67 +166,90 @@ void TunnelEpManager::on_timer(const error_code& ec) {
     string bestAddress;
     string bestIface;
     string bestMac;
+    bool bestAddrIsV4 = false;
 
 #ifdef HAVE_IFADDRS_H
     // This is linux-specific.  Other plaforms will require their own
     // platform-specific interface enumeration.
-    struct ifaddrs *ifaddr, *ifa;
-    int family, s, n;
-    char host[NI_MAXHOST];
 
-    if (getifaddrs(&ifaddr) == -1) {
-        perror("getifaddrs");
-        exit(EXIT_FAILURE);
+    /*
+     * If uplink interface was specified and it resolved to an IPv4 address
+     * in the previous iteration, re-fetch the address for that interface
+     * using ioctl(). Otherwise use getifaddrs() to iterate over all
+     * interfaces. This check tries to avoid getifaddrs() in the common case
+     * because getifaddrs() can expensive if there are many endpoints
+     * (and hence interfaces). The ioctl() doesn't work for IPv6 addresses,
+     * so one can't avoid getifaddrs() with IPv6 only.
+     */
+    if (!uplinkIface.empty() && terminationIpIsV4) {
+        bestAddress = getInterfaceAddressV4(uplinkIface);
+        if (!bestAddress.empty()) {
+            bestIface = uplinkIface;
+            bestAddrIsV4 = true;
+        }
     }
 
-    for (ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
-        if (ifa->ifa_addr == NULL)
-            continue;
+    if (bestAddress.empty()) {
+        struct ifaddrs *ifaddr, *ifa;
+        int family, s, n;
+        char host[NI_MAXHOST];
 
-        family = ifa->ifa_addr->sa_family;
+        if (getifaddrs(&ifaddr) == -1) {
+            perror("getifaddrs");
+            exit(EXIT_FAILURE);
+        }
 
-        // If the user specified an interface, only use that interface
-        if (uplinkIface != "" && uplinkIface != ifa->ifa_name)
-            continue;
-
-        // Need an IPv4 or IPv6 address on a non-loopback up interface
-        if (family != AF_INET && family != AF_INET6)
-            continue;
-        if (ifa->ifa_flags & IFF_LOOPBACK)
-            continue;
-        if (!(ifa->ifa_flags & IFF_UP))
-            continue;
-
-        if (family == AF_INET || family == AF_INET6) {
-            s = getnameinfo(ifa->ifa_addr,
-                            (family == AF_INET) ? sizeof(struct sockaddr_in) :
-                            sizeof(struct sockaddr_in6),
-                            host, NI_MAXHOST,
-                            NULL, 0, NI_NUMERICHOST);
-            if (s != 0) {
-                LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(s);
+        for (ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
+            if (ifa->ifa_addr == NULL)
                 continue;
-            }
-            bestAddress = host;
-            // remove address scope if present
-            size_t scope = bestAddress.find_first_of('%');
-            if (scope != string::npos) {
-                bestAddress.erase(scope);
-            }
 
-            bestIface = ifa->ifa_name;
-            if (family == AF_INET) {
-                // prefer ipv4 address, if present
-                break;
+            family = ifa->ifa_addr->sa_family;
+
+            // If the user specified an interface, only use that interface
+            if (uplinkIface != "" && uplinkIface != ifa->ifa_name)
+                continue;
+
+            // Need an IPv4 or IPv6 address on a non-loopback up interface
+            if (family != AF_INET && family != AF_INET6)
+                continue;
+            if (ifa->ifa_flags & IFF_LOOPBACK)
+                continue;
+            if (!(ifa->ifa_flags & IFF_UP))
+                continue;
+
+            if (family == AF_INET || family == AF_INET6) {
+                s = getnameinfo(ifa->ifa_addr,
+                                (family == AF_INET) ? sizeof(struct sockaddr_in) :
+                                sizeof(struct sockaddr_in6),
+                                host, NI_MAXHOST,
+                                NULL, 0, NI_NUMERICHOST);
+                if (s != 0) {
+                    LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(s);
+                    continue;
+                }
+                bestAddress = host;
+                // remove address scope if present
+                size_t scope = bestAddress.find_first_of('%');
+                if (scope != string::npos) {
+                    bestAddress.erase(scope);
+                }
+
+                bestIface = ifa->ifa_name;
+                bestAddrIsV4 = (family == AF_INET);
+                if (family == AF_INET) {
+                    // prefer ipv4 address, if present
+                    break;
+                }
             }
         }
+        freeifaddrs(ifaddr);
     }
 
     if (!bestAddress.empty()) {
         bestMac = getInterfaceMac(bestIface);
     }
+    terminationIpIsV4 = bestAddrIsV4;
 
-    freeifaddrs(ifaddr);
 #endif
 
     if ((!bestAddress.empty() && bestAddress != terminationIp) ||

@@ -137,6 +137,13 @@ private:
      * system.
      */
     std::string terminationMac;
+
+    /**
+     * Whether discovered tunnel termination IP is IPv4 address. A value of
+     * false indicates IPv6 or unknown address family.
+     */
+    bool terminationIpIsV4;
+
     boost::mutex termip_mutex;
 
     /**
