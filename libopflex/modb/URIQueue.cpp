@@ -14,7 +14,7 @@
 #  include <config.h>
 #endif
 
-
+#include <boost/foreach.hpp>
 #include "opflex/modb/internal/URIQueue.h"
 
 #include "LockGuard.h"
@@ -38,26 +38,28 @@ URIQueue::~URIQueue() {
 // listen on the item queue and dispatch events where required
 void URIQueue::proc_thread_func(void* queue_) {
     URIQueue* queue = (URIQueue*)queue_;
-    URIQueue::item d;
 
     while (queue->proc_shouldRun) {
+        item_queue_t toProcess;
         {
             util::LockGuard guard(&queue->item_mutex);
             while (queue->item_queue.size() == 0 && queue->proc_shouldRun)
                 uv_cond_wait(&queue->item_cond, &queue->item_mutex);
             if (!queue->proc_shouldRun) return;
-            
-            // dequeue and process
-            d = queue->item_queue.front();
-            queue->item_queue.pop_front();
+
+            toProcess.swap(queue->item_queue);
         }
-        try {
-            queue->processor->processItem(d.uri, d.data);
-        } catch (const std::exception& ex) {
-            LOG(ERROR) << "Exception while processing notification queue: " <<
-                ex.what();
-        } catch (...) {
-            LOG(ERROR) << "Unknown error while processing notification queue";
+
+        BOOST_FOREACH (const URIQueue::item& d, toProcess) {
+            if (!queue->proc_shouldRun) return;
+            try {
+                queue->processor->processItem(d.uri, d.data);
+            } catch (const std::exception& ex) {
+                LOG(ERROR) << "Exception while processing notification queue: " <<
+                    ex.what();
+            } catch (...) {
+                LOG(ERROR) << "Unknown error while processing notification queue";
+            }
         }
     }
 }
