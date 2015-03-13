@@ -89,6 +89,19 @@ public:
                                                 const URI& uri) const;
 
     /**
+     * Get the object instance associated with the given class ID and
+     * URI.
+     *
+     * @param class_id the class ID for the object being retrieved
+     * @param uri the URI for the object instance
+     * @param oi if object is found, a shared ptr to an object instance that
+     * must not be modified.
+     * @return true if object with specified class ID and URI is present
+     */
+    bool get(class_id_t class_id, const URI& uri,
+             /*out*/ boost::shared_ptr<const ObjectInstance>& oi) const;
+
+    /**
      * A map to store queued notifications
      */
     typedef boost::unordered_map<URI, class_id_t> notif_t;
@@ -164,6 +177,19 @@ public:
      */
     std::pair<URI, prop_id_t> getParent(class_id_t child_class,
                                         const URI& child);
+
+    /**
+     * Get the parent for the given child URI.
+     *
+     * @param child_class the class of the child object
+     * @param child the URI of the child object
+     * @param parent if parent is found, a (URI, prop_id_t) pair which
+     * is the URI of the parent and the property that represents the relation.
+     * @return true if the child object and its parent were found,
+     * false otherwise.
+     */
+    bool getParent(class_id_t child_class, const URI& child,
+                   /* out */ std::pair<URI, prop_id_t>& parent);
 
     /**
      * Get the children of the parent URI and property and put the

@@ -47,6 +47,17 @@ shared_ptr<const ObjectInstance> Region::get(const URI& uri) {
     return uri_map.at(uri);
 }
 
+bool Region::get(const URI& uri,
+                 /*out*/ shared_ptr<const ObjectInstance>& oi) {
+    LockGuard guard(&region_mutex);
+    uri_map_t::const_iterator itr = uri_map.find(uri);
+    if (itr != uri_map.end()) {
+        oi = itr->second;
+        return true;
+    }
+    return false;
+}
+
 void Region::put(class_id_t class_id, const URI& uri, 
                  const shared_ptr<const ObjectInstance>& oi) {
     LockGuard guard(&region_mutex);
@@ -133,6 +144,14 @@ std::pair<URI, prop_id_t> Region::getParent(class_id_t child_class,
     LockGuard guard(&region_mutex);
     ClassIndex& ci = class_map.at(child_class);
     return ci.getParent(child);
+}
+
+bool Region::getParent(class_id_t child_class, const URI& child,
+                       /* out */ std::pair<URI, prop_id_t>& parent) {
+    LockGuard guard(&region_mutex);
+    class_map_t::const_iterator citr = class_map.find(child_class);
+    return citr != class_map.end() ? citr->second.getParent(child, parent)
+                                   : false;
 }
 
 } /* namespace modb */

@@ -113,6 +113,17 @@ public:
      */
     const std::pair<URI, prop_id_t>& getParent(const URI& child) const;
 
+    /**
+     * Get the parent for the given child URI.
+     *
+     * @param child the URI of the child object
+     * @param parent if parent is found, a (URI, prop_id_t) pair which
+     * is the URI of the parent and the property that represents the relation.
+     * @return true if parent is found, false otherwise
+     */
+    bool getParent(const URI& child,
+                   /* out */ std::pair<URI, prop_id_t>& parent) const;
+
 private:
     typedef boost::unordered_set<URI> uri_set_t;
     typedef boost::unordered_map<prop_id_t, uri_set_t> prop_uri_map_t;

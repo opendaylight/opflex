@@ -230,21 +230,22 @@ public:
         writer.EndArray();
         
         try {
-            std::pair<modb::URI, modb::prop_id_t> parent = 
-                client.getParent(class_id, uri);
-            const modb::ClassInfo& parent_class = 
-                store->getPropClassInfo(parent.second);
-            const modb::PropertyInfo& parent_prop = 
-                parent_class.getProperty(parent.second);
+            std::pair<modb::URI, modb::prop_id_t> parent(modb::URI::ROOT, 0);
+            if (client.getParent(class_id, uri, parent)) {
+                const modb::ClassInfo& parent_class =
+                    store->getPropClassInfo(parent.second);
+                const modb::PropertyInfo& parent_prop =
+                    parent_class.getProperty(parent.second);
 
-            writer.String("parent_subject");
-            writer.String(parent_class.getName().c_str());
-            writer.String("parent_uri");
-            writer.String(parent.first.toString().c_str());
-            writer.String("parent_relation");
-            writer.String(parent_prop.getName().c_str());
-        } catch (std::out_of_range e) {
-            // no parent
+                writer.String("parent_subject");
+                writer.String(parent_class.getName().c_str());
+                writer.String("parent_uri");
+                writer.String(parent.first.toString().c_str());
+                writer.String("parent_relation");
+                writer.String(parent_prop.getName().c_str());
+            }
+        } catch (const std::out_of_range& e) {
+            // some parent info not found
         }
 
         writer.EndObject();

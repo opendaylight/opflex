@@ -77,6 +77,17 @@ public:
     boost::shared_ptr<const mointernal::ObjectInstance> get(const URI& uri);
 
     /**
+     * Get the object instance associated with the specified URI
+     *
+     * @param uri the URI to look up
+     * @param if object is found, a shared ptr to an object instance that
+     * must not be modified.
+     * @return true if object is found.
+     */
+    bool get(const URI& uri,
+             /*out*/ boost::shared_ptr<const mointernal::ObjectInstance>& oi);
+
+    /**
      * Set the specified URI to the provided object instance,
      * replacing any existing value
      *
@@ -194,6 +205,18 @@ public:
     std::pair<URI, prop_id_t> getParent(class_id_t child_class,
                                         const URI& child);
 
+    /**
+     * Get the parent for the given child URI.
+     *
+     * @param child_class the class of the child object
+     * @param child the URI of the child object
+     * @param parent if parent is found, a (URI, prop_id_t) pair which
+     * is the URI of the parent and the property that represents the relation.
+     * @return true if the child object and its parent were found,
+     * false otherwise.
+     */
+    bool getParent(class_id_t child_class, const URI& child,
+                   /* out */ std::pair<URI, prop_id_t>& parent);
 private:
     /**
      * The store client associated with this region

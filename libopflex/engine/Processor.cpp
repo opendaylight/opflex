@@ -167,24 +167,23 @@ bool Processor::isOrphan(const item& item) {
         return false;
 
     try {
-        std::pair<URI, prop_id_t> parent =
-            client->getParent(item.details->class_id, item.uri);
+        std::pair<URI, prop_id_t> parent(URI::ROOT, 0);
+        if (client->getParent(item.details->class_id, item.uri, parent)) {
+            obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
+            obj_state_by_uri::iterator uit = uri_index.find(parent.first);
+            // parent missing
+            if (uit == uri_index.end())
+                return true;
 
-        obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
-        obj_state_by_uri::iterator uit = uri_index.find(parent.first);
-        // parent missing
-        if (uit == uri_index.end())
-            return true;
+            // the parent is local, so there can be no remote parent with
+            // a nonzero refcount
+            if (uit->details->local)
+                return true;
 
-        // the parent is local, so there can be no remote parent with
-        // a nonzero refcount
-        if (uit->details->local)
-            return true;
-
-        return isOrphan(*uit);
-    } catch (std::out_of_range e) {
-        return true;
-    }
+            return isOrphan(*uit);
+        }
+    } catch (const std::out_of_range& e) {}
+    return true;
 }
 
 // Check if an object is the highest-rank ancestor for objects that
@@ -192,20 +191,20 @@ bool Processor::isOrphan(const item& item) {
 // since those will get synced when we sync the parent.
 bool Processor::isParentSyncObject(const item& item) {
     try {
-        const ClassInfo& ci = store->getPropClassInfo(item.details->class_id);
-        std::pair<URI, prop_id_t> parent =
-            client->getParent(item.details->class_id, item.uri);
-        const ClassInfo& parent_ci = store->getPropClassInfo(parent.second);
-        
-        // The parent object will be synchronized
-        if (ci.getType() == parent_ci.getType()) return false;
+        const ClassInfo& ci = store->getClassInfo(item.details->class_id);
+        std::pair<URI, prop_id_t> parent(URI::ROOT, 0);
+        if (client->getParent(item.details->class_id, item.uri, parent)) {
+            const ClassInfo& parent_ci = store->getPropClassInfo(parent.second);
 
-        return true;
-    } catch (std::out_of_range e) {
-        // possibly an unrooted object; sync anyway since it won't be
-        // garbage-collected
-        return true;
-    }
+            // The parent object will be synchronized
+            if (ci.getType() == parent_ci.getType()) return false;
+
+            return true;
+        }
+    } catch (const std::out_of_range& e) {}
+    // possibly an unrooted object; sync anyway since it won't be
+    // garbage-collected
+    return true;
 }
 
 bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
@@ -303,9 +302,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
 
     const ClassInfo& ci = store->getClassInfo(it->details->class_id);
     shared_ptr<const ObjectInstance> oi;
-    try {
-        oi = client->get(it->details->class_id, it->uri);
-    } catch (std::out_of_range e) {
+    if (!client->get(it->details->class_id, it->uri, oi)) {
         // item removed
         switch (curState) {
         case UNRESOLVED:

@@ -115,11 +115,10 @@ shared_ptr<ObjectInstance>& Mutator::modify(class_id_t class_id,
     obj_map_t::iterator it = pimpl->obj_map.find(uri);
     if (it != pimpl->obj_map.end()) return it->second;
     shared_ptr<ObjectInstance> copy;
-    try {
-        // check for existing object
-        copy = make_shared<ObjectInstance>(*pimpl->client.get(class_id,
-                                                              uri).get());
-    } catch (std::out_of_range e) {
+    shared_ptr<const ObjectInstance> oi;
+    if (pimpl->client.get(class_id, uri, oi)) {
+        copy = make_shared<ObjectInstance>(*oi.get());
+    } else {
         // create new object
         copy = make_shared<ObjectInstance>(class_id);
     }

@@ -110,5 +110,15 @@ const std::pair<URI, prop_id_t>& ClassIndex::getParent(const URI& child) const {
     return parent_map.at(child);
 }
 
+bool ClassIndex::getParent(const URI& child,
+                           /* out */ std::pair<URI, prop_id_t>& parent) const {
+    uri_prop_map_t::const_iterator itr = parent_map.find(child);
+    if (itr != parent_map.end()) {
+        parent = itr->second;
+        return true;
+    }
+    return false;
+}
+
 } /* namespace modb */
 } /* namespace opflex */
