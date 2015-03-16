@@ -116,7 +116,7 @@ getent group opflexep >/dev/null || groupadd -r opflexep
 %config(noreplace) %{_sysconfdir}/opflex-agent-ovs/opflex-agent-ovs.conf
 %{_unitdir}/agent-ovs.service
 %{_sysctldir}/90-agent-ovs-sysctl.conf
-%dir %attr(0755, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/endpoints
+%dir %attr(0775, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/endpoints
 %dir %{_localstatedir}/lib/opflex-agent-ovs/ids
 
 %changelog
