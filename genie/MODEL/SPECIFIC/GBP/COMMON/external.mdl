@@ -1,0 +1,95 @@
+module[gbp]
+{
+    # An external domain that is reachable through L3.  This enables
+    # traffic to "escape" the layer 3 context and access either
+    # another layer 3 context or outside networks.  Crossing the L3
+    # boundary may require address translation.
+    class[L3ExternalDomain;
+          super=gbp/L3BehavioralGroup;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbp/RoutingDomain]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ext-domain; member=name]
+            }
+        }
+    }
+
+    # An external network that can provide or consume contracts
+    class[L3ExternalNetwork;
+          super=gbp/L3BehavioralGroup;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbp/L3ExternalDomain]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ext-net; member=name]
+            }
+        }
+
+        # Contracts provided by this network
+        dependency[provContract;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/Contract;
+                cardinality=many;
+              ]
+        }
+        # Contracts consumed by this network
+        dependency[consContract;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/Contract;
+                cardinality=many;
+                ]
+        }
+
+        # An endpoint group in a different routing domain that contain
+        # the translated endpoint mapped into the other address space
+        # using network address translation.
+        #
+        # Endpoints with an assigned floating IP in the given endpoint
+        # group will be mapped to that IP address using DNAT, while
+        # endpoints without an existing floating IP will use an
+        # available SNAT address pool.
+        dependency[natEPGroup;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
+    }
+
+    # A subnet associated with an external network
+    class[ExternalSubnet;
+          super=gbp/BaseSubnet;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbp/L3ExternalNetwork]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ext-subnet; member=name]
+            }
+        }
+    }
+}
