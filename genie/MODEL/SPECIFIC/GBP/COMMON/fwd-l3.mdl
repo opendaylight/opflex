@@ -38,16 +38,21 @@ module[gbp]
         member[ipv6Autoconfig; type=gbp/Autoconfig]
     }
 
-    class[Subnet;
+    class[BaseSubnet;
           super=gbp/BehavioralGroup;
-          concrete]
+          abstract]
     {
         # The network address
         member[address; type=address/IP]
 
         # prefix length for the subnet
         member[prefixLen; type=scalar/UInt8]
+    }
 
+    class[Subnet;
+          super=gbp/BaseSubnet;
+          concrete]
+    {
         # the IP address to use for a virtual gateway router for the
         # subnet, if desired.  Can be either IPv4 or IPv6.
         member[virtualRouterIp; type=address/IP]
@@ -104,6 +109,27 @@ module[gbp]
             parent[class=*;]
             {
                 component[member=name]
+            }
+        }
+    }
+
+    # A calculated set of supernetworks that collectively cover all
+    # internal subnets in the routing domain.  Addresses not covered
+    # by any supernet can be assumed to be external and would be
+    # routed using an L3ExternalDomain
+    class[Supernet;
+          super=gbp/BaseSubnet;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbp/RoutingDomain]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=rd-supernet; member=name]
             }
         }
     }
