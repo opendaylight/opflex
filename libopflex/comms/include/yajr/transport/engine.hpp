@@ -32,23 +32,28 @@ class Transport {
 
   public:
 
+    struct Engine {};
+
     struct Callbacks {
         uv_alloc_cb allocCb_;
         uv_read_cb  onRead_;
         int (*sendCb_)(comms::internal::CommunicationPeer const *);
         void (*onSent_)(comms::internal::CommunicationPeer const *);
+        void (*deleteCb_)(Transport::Engine *);
     };
-
-    struct Engine {};
 
     Transport(Callbacks * callbacks, Engine * data)
         : callbacks_(callbacks), data_(data) {}
+
+    ~Transport() {
+        callbacks_->deleteCb_(data_);
+    }
 
     template< class E >
     E * getEngine() const {
 
         BOOST_STATIC_ASSERT_MSG(
-                (boost::is_base_of<Engine, E>::value),
+                (boost::is_base_of<Transport::Engine, E>::value),
                 "engine type must be a descendant of Transport::Engine"
                 );
 
@@ -56,7 +61,7 @@ class Transport {
     }
 
     Callbacks const * callbacks_;
-    Engine * data_;
+    Transport::Engine * data_;
 
 };
 
@@ -66,6 +71,7 @@ struct Cb {
     static void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf);
     static int send_cb(comms::internal::CommunicationPeer const *);
     static void on_sent(comms::internal::CommunicationPeer const *);
+    static void __on_delete(Transport::Engine *);
 
     static Transport::Callbacks kCb;
 
@@ -78,7 +84,22 @@ Transport::Callbacks Cb< E >::kCb = {
     &Cb< E >::on_read,
     &Cb< E >::send_cb,
     &Cb< E >::on_sent,
+    &Cb< E >::__on_delete,
 };
+
+template< class E >
+void Cb< E >::__on_delete(Transport::Engine * data) {
+
+    BOOST_STATIC_ASSERT_MSG(
+            (boost::is_base_of<Transport::Engine, E>::value),
+            "engine type must be a descendant of Transport::Engine"
+            );
+
+    if (!data) {
+        return;
+    }
+    delete static_cast< E * >(data);
+}
 
 template< class E >
 class TransportEngine : public Transport {
@@ -96,16 +117,13 @@ TransportEngine< E >::TransportEngine(E * e)
         )
     {
         BOOST_STATIC_ASSERT_MSG(
-                (boost::is_base_of<Engine, E>::value),
+                (boost::is_base_of<Transport::Engine, E>::value),
                 "engine type must be a descendant of Transport::Engine"
                 );
     }
 
 template< class E >
 TransportEngine< E >::~TransportEngine() {
-    if (data_) {
-        delete static_cast< E * >(data_);
-    }
 }
 
 } /* yajr::transport namespace */

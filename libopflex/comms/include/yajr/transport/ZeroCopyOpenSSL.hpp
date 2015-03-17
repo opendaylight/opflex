@@ -68,9 +68,9 @@ struct ZeroCopyOpenSSL : public Transport::Engine {
 
     ~ZeroCopyOpenSSL();
     /* will restrict access to the following later */
-    BIO  bioInternal_;
-    BIO  bioExternal_;
-    BIO  bioSSL_;
+    BIO * bioInternal_;
+    BIO * bioExternal_;
+    BIO * bioSSL_;
     char * lastOutBuf_;
     static std::string const dumpOpenSslErrorStackAsString();
   private:

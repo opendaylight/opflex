@@ -114,7 +114,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
     ssize_t nread = 0;
     ssize_t totalRead = 0;
 
-    while ((pending = BIO_ctrl_pending(&e->bioSSL_))) {
+    while ((pending = BIO_ctrl_pending(e->bioSSL_))) {
 
         /* we use the stack for a fast buffer allocation, hence must set an upper
          * bound */
@@ -131,7 +131,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 
         char buffer[tryRead + 1];
         nread = BIO_read(
-                &e->bioSSL_,
+                e->bioSSL_,
                 &buffer,
                 tryRead);
 } // <--- just to make vim's %-match happy :)
@@ -142,7 +142,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
     ssize_t totalRead = 0;
 
     while(0 < (nread = BIO_read(
-                    &e->bioSSL_,
+                    e->bioSSL_,
                     buffer,
                     tryRead))) {
 #  undef tryRead
@@ -167,13 +167,13 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
                 << " nread = "
                 << nread
                 << " RETRY="
-                << BIO_should_retry     (&e->bioSSL_)
+                << BIO_should_retry     (e->bioSSL_)
                 << " R="
-                << BIO_should_read      (&e->bioSSL_)
+                << BIO_should_read      (e->bioSSL_)
                 << " W="
-                << BIO_should_write     (&e->bioSSL_)
+                << BIO_should_write     (e->bioSSL_)
                 << " S="
-                << BIO_should_io_special(&e->bioSSL_)
+                << BIO_should_io_special(e->bioSSL_)
             ;
         }
 
@@ -259,7 +259,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
         assert(tryWrite);
 
         nwrite = BIO_write(
-                &e->bioSSL_,
+                e->bioSSL_,
                 iovInIt->iov_base,
                 tryWrite);
 
@@ -288,13 +288,13 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
                 << " totalWrite = "
                 << totalWrite
                 << " RETRY="
-                << BIO_should_retry     (&e->bioSSL_)
+                << BIO_should_retry     (e->bioSSL_)
                 << " R="
-                << BIO_should_read      (&e->bioSSL_)
+                << BIO_should_read      (e->bioSSL_)
                 << " W="
-                << BIO_should_write     (&e->bioSSL_)
+                << BIO_should_write     (e->bioSSL_)
                 << " S="
-                << BIO_should_io_special(&e->bioSSL_)
+                << BIO_should_io_special(e->bioSSL_)
             ;
 
         }
@@ -354,7 +354,7 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
     ZeroCopyOpenSSL * e = peer->getEngine<ZeroCopyOpenSSL>();
 
     ssize_t nread = BIO_nread0(
-            &e->bioExternal_,
+            e->bioExternal_,
             (char**)&buf.iov_base);
 
     VLOG(4)
@@ -370,13 +370,13 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
             << " nread = "
             << nread
             << " RETRY="
-            << BIO_should_retry     (&e->bioExternal_)
+            << BIO_should_retry     (e->bioExternal_)
             << " R="
-            << BIO_should_read      (&e->bioExternal_)
+            << BIO_should_read      (e->bioExternal_)
             << " W="
-            << BIO_should_write     (&e->bioExternal_)
+            << BIO_should_write     (e->bioExternal_)
             << " S="
-            << BIO_should_io_special(&e->bioExternal_)
+            << BIO_should_io_special(e->bioExternal_)
         ;
      // if (BIO_should_retry()) {
      // }
@@ -418,7 +418,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
     char * whereTheReadShouldHaveStarted = NULL;
 
     ssize_t advancement = BIO_nread(
-            &e->bioExternal_,
+            e->bioExternal_,
             (char**)&whereTheReadShouldHaveStarted,
             peer->pendingBytes_);
 
@@ -483,7 +483,7 @@ void Cb< ZeroCopyOpenSSL >::alloc_cb(
     ZeroCopyOpenSSL * e = peer->getEngine<ZeroCopyOpenSSL>();
 
     ssize_t avail = BIO_nwrite0(
-            &e->bioExternal_,
+            e->bioExternal_,
             &buf->base);
 
     assert(avail >= 0);
@@ -555,7 +555,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
 
         /* we have to finally tell openSSL we have inserted this data */
         ssize_t advancement = BIO_nwrite(
-                &e->bioExternal_,
+                e->bioExternal_,
                 &whereTheWriteShouldHaveStarted,
                 nread);
 
@@ -606,15 +606,15 @@ void Cb< ZeroCopyOpenSSL >::on_read(
                 << " decrypted = "
                 << decrypted
                 << " RETRY="
-                << BIO_should_retry     (&e->bioSSL_)
+                << BIO_should_retry     (e->bioSSL_)
                 << " R="
-                << BIO_should_read      (&e->bioSSL_)
+                << BIO_should_read      (e->bioSSL_)
                 << " W="
-                << BIO_should_write     (&e->bioSSL_)
+                << BIO_should_write     (e->bioSSL_)
                 << " S="
-                << BIO_should_io_special(&e->bioSSL_)
+                << BIO_should_io_special(e->bioSSL_)
             ;
-            if (BIO_should_retry(&e->bioSSL_) && !peer->pendingBytes_) {
+            if (BIO_should_retry(e->bioSSL_) && !peer->pendingBytes_) {
                 (void) Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(peer);
 
                 if (peer->pendingBytes_) {
@@ -767,22 +767,27 @@ void ZeroCopyOpenSSL::finiOpenSSL() {
 }
 
 ZeroCopyOpenSSL::ZeroCopyOpenSSL(ZeroCopyOpenSSL::Ctx * ctx, bool passive)
-    : ssl_(NULL), ready_(false)
+    :
+        bioInternal_(BIO_new(BIO_s_bio())),
+        bioExternal_(BIO_new(BIO_s_bio())),
+        bioSSL_(BIO_new(BIO_f_ssl())),
+        ssl_(NULL),
+        ready_(false)
     {
 
-    BIO_set               (&bioInternal_, BIO_s_bio())         &&
-    BIO_set_write_buf_size(&bioInternal_, 24576)               &&
+                           bioInternal_                       &&
+    BIO_set_write_buf_size(bioInternal_, 24576)               &&
 
-    BIO_set               (&bioExternal_, BIO_s_bio())         &&
-    BIO_set_write_buf_size(&bioExternal_, 24576)               &&
+                           bioExternal_                       &&
+    BIO_set_write_buf_size(bioExternal_, 24576)               &&
 
-    BIO_make_bio_pair     (&bioInternal_, &bioExternal_)       &&
+    BIO_make_bio_pair     (bioInternal_, bioExternal_)        &&
 
-    BIO_set               (&bioSSL_, BIO_f_ssl())              &&
+                           bioSSL_                            &&
 
-    (ssl_               = SSL_new(ctx->getSslCtx()))           &&
+    (ssl_               = SSL_new(ctx->getSslCtx()))          &&
 
-    BIO_set_ssl           (&bioSSL_, ssl_, BIO_CLOSE)          &&
+    BIO_set_ssl           (bioSSL_, ssl_, BIO_CLOSE)          &&
 
     (ready_             = true);
 
@@ -791,12 +796,11 @@ ZeroCopyOpenSSL::ZeroCopyOpenSSL(ZeroCopyOpenSSL::Ctx * ctx, bool passive)
             << "Fatal failure: "
             << ZeroCopyOpenSSL::dumpOpenSslErrorStackAsString()
         ;
-        if (ssl_) {
-            SSL_free(ssl_);
-        }
+        this->~ZeroCopyOpenSSL();
+        return;
     }
 
-    SSL_set_bio           (ssl_, &bioInternal_, &bioInternal_);
+    SSL_set_bio           (ssl_, bioInternal_, bioInternal_);
 
     SSL_set_mode(ssl_, SSL_MODE_AUTO_RETRY);
     SSL_set_mode(ssl_, SSL_MODE_ENABLE_PARTIAL_WRITE);
@@ -821,13 +825,21 @@ ZeroCopyOpenSSL::ZeroCopyOpenSSL(ZeroCopyOpenSSL::Ctx * ctx, bool passive)
      * I am testing against. But to err on the safe side, I'd call them both.
      * Like I said, they have no other side effect than triggering the handshake.
      */
-    BIO_read (&bioSSL_, reinterpret_cast< void * >(1), 0);
-    BIO_write(&bioSSL_, reinterpret_cast< void * >(1), 0);
+    BIO_read (bioSSL_, reinterpret_cast< void * >(1), 0);
+    BIO_write(bioSSL_, reinterpret_cast< void * >(1), 0);
 
 }
 
 ZeroCopyOpenSSL::~ZeroCopyOpenSSL() {
-    SSL_free(ssl_);
+
+    if (bioSSL_) {
+        BIO_free_all(bioSSL_);
+    }
+
+    if (bioExternal_) {
+        BIO_free_all(bioExternal_);
+    }
+
 }
 
 void ZeroCopyOpenSSL::infoCallback(SSL const *, int where, int ret) {
@@ -927,6 +939,9 @@ ZeroCopyOpenSSL::Ctx::Ctx(
         {};
 
 ZeroCopyOpenSSL::Ctx::~Ctx(){
+    if (!sslCtx_) {
+        return;
+    }
 
     SSL_CTX_free(sslCtx_);
 
