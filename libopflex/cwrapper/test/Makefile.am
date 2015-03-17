@@ -26,6 +26,7 @@ cwrapper_test_SOURCES = \
 	main.cpp \
 	cwrapper_test.cpp
 
+cwrapper_test_CXXFLAGS = $(UV_CFLAGS)
 cwrapper_test_LDADD = ../libcwrapper.la \
 	../../ofcore/libcore.la \
 	../../engine/libengine.la \
