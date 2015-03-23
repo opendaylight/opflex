@@ -10,10 +10,6 @@
 #
 # Install the yajr headers
 
-codes_headers =
-codes_headers += ../../3rdparty/codes/trunk/codes.cpp/iovec-utils.hh
-codes_headers += ../../3rdparty/codes/trunk/codes.cpp/mtp.hh
-
 comms_headers =
 comms_headers += yajr/internal/comms.hpp
 comms_headers += yajr/yajr.hpp
@@ -35,10 +31,9 @@ if SEPARATE_COMMS
   nobase_include_HEADERS = $(comms_headers)
 
   codes_includedir = $(includedir)
-  codes_include_HEADERS = $(codes_headers)
 endif
 
-EXTRA_DIST = $(comms_headers) $(codes_headers)
+EXTRA_DIST = $(comms_headers)
 
 uninstall-local: 
 	@$(NORMAL_UNINSTALL)

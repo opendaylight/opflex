@@ -13,9 +13,13 @@
 #include <rapidjson/rapidjson.h>
 
 #include <deque>
+#include <opflex/logging/internal/logging.hpp>
 
 namespace yajr {
     namespace internal {
+
+bool __checkInvariants(void const *);
+bool isLegitPunct(int c);
 
 template <typename Encoding = rapidjson::UTF8<> >
 struct GenericStringQueue {
@@ -24,6 +28,19 @@ struct GenericStringQueue {
 
     void Put(Ch c) {
         deque_.push_back(c);
+        assert(::yajr::internal::isLegitPunct(c));
+#ifdef PERFORM_CRAZY_BYTE_BY_BYTE_INVARIANT_CHECK
+        assert(__checkInvariants(cP_));
+#endif
+        if(deque_.back()!=c){
+            LOG(ERROR)
+                << "inserted char already changed: \""
+                << c
+                << "\"->\""
+                << deque_.back()
+                << "\""
+            ;
+        }
     }
 
     void Flush() {}
@@ -41,6 +58,9 @@ struct GenericStringQueue {
     }
 
     std::deque<Ch> deque_;
+#ifndef NDEBUG
+    void const * cP_;
+#endif
 };
 
 //! String buffer with UTF8 encoding

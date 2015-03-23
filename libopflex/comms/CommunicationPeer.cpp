@@ -23,8 +23,84 @@
 #include <cctype>
 
 namespace yajr {
+    namespace internal {
+        bool __checkInvariants(void const * cP) {
+            return static_cast< comms::internal::CommunicationPeer const * >(cP)
+                ->__checkInvariants();
+        }
+
+        bool isLegitPunct(int c) {
+
+            switch(c) {
+                case '\0':
+                case  ' ':
+                case  '"':
+                case  '%':
+                case  ',':
+                case  '-':
+                case  '.':
+                case  '/':
+                case  ':':
+                case  '[':
+                case  ']':
+                case  '_':
+                case  '{':
+                case  '|':
+                case  '}':
+                    return true;
+                default:
+                    return (
+                        (c & 0xe0)             // ASCII from 1 to 31 are BAD
+                    &&
+                        std::isalnum(c)        // alphanumeric values are GOOD
+                    );
+            }
+
+        }
+    }
     namespace comms {
         namespace internal {
+
+template <typename Iterator>
+std::vector<iovec> get_iovec(Iterator from, Iterator to) {
+
+    std::vector<iovec> iov;
+
+    typedef typename std::iterator_traits<Iterator>::value_type value_type;
+
+    value_type const * base = &*from, * addr = base;
+
+    while (from != to) {
+
+        ++addr;
+        ++from;
+
+        if (
+                ((addr) != &*from)
+              ||
+                (from == to)
+           ) {
+            iovec i = {
+                const_cast< void * >(static_cast< void const * >(base)),
+                const_cast< char * >(static_cast< char const * >(addr))
+                    -
+                const_cast< char  * >(static_cast< char const * >(base))
+            };
+            iov.push_back(i);
+            addr = base = &*from;
+        }
+
+    }
+            iovec i = {
+                const_cast< void * >(static_cast< void const * >(base)),
+                const_cast< char * >(static_cast< char const * >(addr))
+                    -
+                const_cast< char  * >(static_cast< char const * >(base))
+            };
+            if (i.iov_len) iov.push_back(i);
+
+    return iov;
+}
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT
 ::boost::atomic<size_t> CommunicationPeer::counter(0);
@@ -85,9 +161,6 @@ void CommunicationPeer::bumpLastHeard() const {
 void CommunicationPeer::onConnect() {
     connected_ = 1;
     status_ = internal::Peer::kPS_ONLINE;
-
- // /* start with a NULL byte */
- // delimitFrame();
 
     keepAliveTimer_.data = this;
     VLOG(1)
@@ -377,6 +450,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
 }
 
 void CommunicationPeer::dumpIov(std::stringstream & dbgLog, std::vector<iovec> const & iov) {
+    dbgLog << "DUMP_IOV\n";
     for (size_t i=0; i < iov.size(); ++i) {
         iovec const & j = iov[i];
         dbgLog
@@ -393,8 +467,52 @@ void CommunicationPeer::dumpIov(std::stringstream & dbgLog, std::vector<iovec> c
     }
 }
 
+
+std::ostream& operator << (
+        std::ostream& os,
+        std::vector<iovec> const & iov) {
+
+    os << "INLINE_DUMP\n";
+
+    for (size_t i = 0; i < iov.size(); ++i) {
+
+        os
+            << "("
+            << i
+            << "@"
+            << std::hex
+            << iov[i].iov_base
+            << std::dec
+            << "+"
+            << iov[i].iov_len
+        ;
+
+        if (VLOG_IS_ON(7)) {
+            size_t len = iov[i].iov_len;
+            size_t offset = 0;
+            std::string temp((const char*)iov[i].iov_base, len);
+
+            do {
+                os
+                    << "("
+                    << temp.c_str() + offset
+                    << ")"
+                    ;
+                offset += strlen(temp.c_str()) + 1;
+            } while (len > offset);
+        }
+
+        os << ")";
+
+    }
+}
+
 #ifndef NDEBUG
 void CommunicationPeer::logDeque() const {
+
+    if (!VLOG_IS_ON(7)) {
+        return;
+    }
 
     std::stringstream dbgLog;
 
@@ -408,21 +526,22 @@ void CommunicationPeer::logDeque() const {
             << "\n IOV Pending:"
         ;
         dumpIov(dbgLog,
-            more::get_iovec(
-                s_.deque_.begin(),
-                s_.deque_.begin() + pendingBytes_,
-                std::forward_iterator_tag()
-            )
-        );
+                get_iovec(
+                    s_.deque_.begin(),
+                    s_.deque_.begin() + pendingBytes_
+                    )
+               );
     }
 
     dbgLog
         << "\n IOV Full:"
     ;
-    dumpIov(dbgLog, more::get_iovec(
+    dumpIov(dbgLog,
+            get_iovec(
                 s_.deque_.begin(),
-                s_.deque_.end(),
-                std::forward_iterator_tag()));
+                s_.deque_.end()
+                )
+           );
 
     VLOG(7)
         << dbgLog.str()
@@ -754,31 +873,6 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     return ret;
 }
 
-static bool isLegitPunct(int c) {
-
-    switch(c) {
-      case '\0':      // <-- redundant
-      case  ' ':
-      case  '"':
-      case  '%':
-      case  ',':
-      case  '-':
-      case  '.':
-      case  '/':
-      case  ':':
-      case  '[':
-      case  ']':
-      case  '_':
-      case  '{':
-      case  '|':
-      case  '}':
-        return true;
-      default:
-        return false;
-    }
-
-}
-
 #ifndef NDEBUG
 bool CommunicationPeer::__checkInvariants() const {
 
@@ -813,12 +907,35 @@ bool CommunicationPeer::__checkInvariants() const {
         result = false;
     }
 
-    std::vector<iovec> iov =
-        more::get_iovec(s_.deque_.begin(),
-                s_.deque_.end(),
-                std::forward_iterator_tag());
+    ssize_t s1 = s_.deque_.size();
+    std::vector<iovec> iov = get_iovec(s_.deque_.begin(), s_.deque_.end());
+    ssize_t s2 = s_.deque_.size();
+
+    if (s1 != s2) {
+        LOG(ERROR)
+            << this
+            << " s1="
+            << s1
+            << " s2="
+            << s2
+        ;
+    }
 
     ssize_t delta = s_.deque_.size();
+    if (delta != s2) {
+        LOG(ERROR)
+            << this
+            << " s1="
+            << s1
+            << " s2="
+            << s2
+            << " delta="
+            << delta
+        ;
+    }
+    assert(delta == s2);
+    assert(delta == s1);
+    assert(s2 == s1);
 
  // if (status_ != kPS_ONLINE) {
     if (connected_) {
@@ -885,43 +1002,13 @@ bool CommunicationPeer::__checkInvariants() const {
 
     }
 
-    std::stringstream iovec_dump;
-    for (size_t i = 0; i < iov.size(); ++i) {
-
-        iovec_dump
-            << "("
-            << i
-            << "@"
-            << std::hex
-            << iov[i].iov_base
-            << std::dec
-            << "+"
-            << iov[i].iov_len
+    if (VLOG_IS_ON(6)) {
+        // some sub-parts of this are only there at verbosity level 7 but we log at 6
+        VLOG(6)
+            << iov
         ;
 
-        if (VLOG_IS_ON(7)) {
-            size_t len = iov[i].iov_len;
-            size_t offset = 0;
-            std::string temp((const char*)iov[i].iov_base, len);
-
-            do {
-                iovec_dump
-                    << "("
-                    << temp.c_str() + offset
-                    << ")"
-                    ;
-                offset += strlen(temp.c_str()) + 1;
-            } while (len > offset);
-
-            iovec_dump << ")";
-        }
-
     }
-
-    // some sub-parts of this are only there at verbosity level 7 but we log at 6
-    VLOG(6)
-        << iovec_dump.str()
-    ;
 
     // loop again, because we want the above debug first, to be less confusing
     for (size_t i = 0; i < iov.size(); ++i) {
@@ -935,21 +1022,9 @@ bool CommunicationPeer::__checkInvariants() const {
                 c < e
             ;
                 ++c
-            ) {
+        ) {
 
-            if (
-                    (!*c)                      // '\0' is OK
-                ||
-                    (
-                        (*c & 0xe0)            // ASCII from 1 to 31 are BAD
-                    &&
-                        (
-                            std::isalnum(*c)   // alphanumeric values are GOOD
-                        ||
-                            isLegitPunct(*c)    // {[","]} and similar are GOOD
-                        )
-                    )
-                ) {
+            if (::yajr::internal::isLegitPunct(*c)) {
 
                 continue;
             }
@@ -998,7 +1073,8 @@ bool CommunicationPeer::__checkInvariants() const {
         ;
         if (!VLOG_IS_ON(6)) {
             LOG(ERROR)
-                << iovec_dump.str()
+                << "IOVECs: "
+                << iov
             ;
         }
 

@@ -19,7 +19,6 @@
 #include <opflex/logging/OFLogHandler.h>
 
 #include <rapidjson/document.h>
-#include <iovec-utils.hh>
 #include <uv.h>
 
 #include <boost/intrusive/list.hpp>
@@ -57,6 +56,9 @@
 namespace yajr {
     namespace comms {
         namespace internal {
+
+template <typename Iterator>
+std::vector<iovec> get_iovec(Iterator from, Iterator to);
 
 using namespace yajr::comms;
 class ActivePeer;
@@ -397,6 +399,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 req_.data = this;
                 handle_.loop = uvLoopSelector_(getData());
                 getLoopData()->up();
+#ifndef NDEBUG
+                s_.cP_ = this;
+#endif
+ 
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
@@ -435,6 +441,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     bool delimitFrame() const {
         s_.Put('\0');
+        assert(__checkInvariants());
 
         return true;
     }
@@ -539,7 +546,9 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     };
 
     ::yajr::rpc::SendHandler & getWriter() const {
+        assert(__checkInvariants());
         writer_.Reset(s_);
+        assert(__checkInvariants());
         return writer_;
     }
 

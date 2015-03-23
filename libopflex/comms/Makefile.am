@@ -29,7 +29,6 @@ AM_CPPFLAGS += -I$(top_builddir)
 AM_CPPFLAGS += -I$(srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/logging/include
-AM_CPPFLAGS += -I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp
 AM_CPPFLAGS += $(OPENSSL_CFLAGS) -DYAJR_HAS_OPENSSL
 
 libcommstrace_la_SOURCES  =

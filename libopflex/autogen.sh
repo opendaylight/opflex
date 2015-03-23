@@ -20,6 +20,3 @@ do
 done
 
 autoreconf -fis
-
-cd ..
-git submodule update --init --recursive

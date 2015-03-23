@@ -15,7 +15,6 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/comms/include \
 	-I$(top_srcdir)/engine/include \
 	-I$(top_srcdir)/modb/include \
-	-I$(top_srcdir)/3rdparty/codes/trunk/codes.cpp \
 	-I$(top_srcdir)/logging/include \
 	-I$(top_srcdir)/util/include \
 	-I$(top_srcdir)/modb/test

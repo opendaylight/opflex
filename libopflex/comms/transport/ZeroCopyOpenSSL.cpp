@@ -20,7 +20,6 @@
 
 #include <uv.h>
 #include <openssl/err.h>
-#include <iovec-utils.hh>
 
 #include <algorithm>
 
@@ -245,10 +244,9 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
     ssize_t tryWrite;
 
     std::vector<iovec> iovIn =
-        more::get_iovec(
+        ::yajr::comms::internal::get_iovec(
                 peer->s_.deque_.begin(),
-                peer->s_.deque_.end(),
-                std::forward_iterator_tag()
+                peer->s_.deque_.end()
         );
 
     std::vector<iovec>::iterator iovInIt;
