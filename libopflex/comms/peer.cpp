@@ -11,11 +11,14 @@
 #  include <config.h>
 #endif
 
-
 #include <yajr/internal/comms.hpp>
 #include <yajr/transport/engine.hpp>
 
 #include <yajr/internal/walkAndDumpHandlesCb.hpp>
+
+#ifndef NDEBUG
+# include <unistd.h>
+#endif
 
 namespace yajr {
     namespace comms {
@@ -34,6 +37,9 @@ std::ostream& operator << (
         ::yajr::comms::internal::Peer const * p
     ) {
     os
+#ifndef NDEBUG
+        << getpid()
+#endif
         << "{"
         << reinterpret_cast<void const *>(p)
         << "}"
@@ -65,6 +71,21 @@ std::ostream& operator << (
             << "->"
         ;
     }
+    os
+        << " PIDs"
+    ;
+    for (std::vector<Peer::PidSequence>::iterator it = p->pidSeq_.begin()
+            ;
+        it != p->pidSeq_.end()
+            ;
+        ++it) {
+        os
+            << ":"
+            << it->count
+            << "x"
+            << it->pid
+        ;
+    }
 #endif
 
     return os;
@@ -87,7 +108,10 @@ CommunicationPeer * Peer::get(uv_timer_t * h) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(h->data);
 
     VLOG(7)
-        << "peer {"
+#ifndef NDEBUG
+        << getpid()
+#endif
+        << "{"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
     ;
@@ -101,7 +125,10 @@ ActivePeer * Peer::get(uv_connect_t * r) {
     ActivePeer * peer = Peer::get<ActivePeer>(r->handle);
 
     VLOG(7)
-        << "peer {"
+#ifndef NDEBUG
+        << getpid()
+#endif
+        << "{"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
     ;
@@ -114,7 +141,10 @@ ActivePeer * Peer::get(uv_getaddrinfo_t * r) {
     ActivePeer * peer = static_cast<ActivePeer *>(r->data);
 
     VLOG(7)
-        << "peer {"
+#ifndef NDEBUG
+        << getpid()
+#endif
+        << "{"
         << reinterpret_cast<void *>(peer)
         << "} is about to have its invariants checked"
     ;
@@ -131,8 +161,8 @@ bool Peer::__checkInvariants()
 {
     VLOG(7)
         << this
-        << " ALWAYS = true"
     ;
+    appendPID();
 #endif
     return true;
 }
@@ -272,6 +302,16 @@ char const * const internal::Peer::LoopData::kPSStr[] = {
     PEER_STATE_MAP(XX)
 #undef XX
 };
+
+void Peer::appendPID() const {
+    pid_t pid = getpid();
+
+    if (!pidSeq_.size() || pidSeq_.back().pid != pid) {
+        pidSeq_.push_back((PidSequence){pid, 1});
+    } else {
+        ++pidSeq_.back().count;
+    }
+}
 #endif
 
 } // namespace internal

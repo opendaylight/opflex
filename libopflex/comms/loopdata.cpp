@@ -20,6 +20,10 @@
 
 #include <uv.h>
 
+#ifndef NDEBUG
+# include <unistd.h>
+#endif
+
 namespace {
 
     void prepareAgainCB(uv_timer_t *) { VLOG(6); }
@@ -184,6 +188,9 @@ void internal::Peer::LoopData::destroy(bool now) {
 
 std::ostream& operator << (std::ostream& os, Peer::LoopData const * lD) {
     return os
+#ifndef NDEBUG
+        << getpid()
+#endif
         << "{"
         << reinterpret_cast<void const *>(lD)
         << "}"

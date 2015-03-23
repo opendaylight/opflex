@@ -332,6 +332,16 @@ class Peer : public SafeListBaseHook {
         return Peer::LoopData::getLoopData(getUvLoop());
     }
     friend std::ostream& operator<< (std::ostream&, Peer const *);
+
+#ifndef NDEBUG
+    struct PidSequence {
+        pid_t pid;
+        size_t count;
+    };
+
+    mutable std::vector<PidSequence> pidSeq_;
+    void appendPID() const;
+#endif
 };
 
 class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
