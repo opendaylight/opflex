@@ -1,0 +1,37 @@
+Source: libopflex
+Priority: optional
+Maintainer: OpFlex Developers <opflex-dev@lists.opendaylight.org>
+Build-Depends:
+ debhelper (>= 8.0.0), autotools-dev, libuv-dev,
+ libboost-dev, libboost-test-dev, doxygen, pkgconf, rapidjson-dev
+Standards-Version: 3.9.4
+Section: libs
+Homepage: https://wiki.opendaylight.org/view/OpFlex:Main
+
+Package: libopflex-dev
+Section: libdevel
+Architecture: any
+Depends: libopflex (= ${binary:Version})
+Description: Development libraries for libopflex
+ Development libraries for libopflex
+
+Package: libopflex
+Section: libs
+Architecture: any
+Depends: libuv (>= 1.0), ${shlibs:Depends}, ${misc:Depends}
+Description: A framework for developing opflex-based policy agents
+ The OpFlex project seeks to provide reference implementations of the
+ OpFlex protocol, which is a protocol for implementing a distributed
+ control system based on a declarative policy model.
+
+Package: libopflex-dbg
+Section: debug
+Architecture: any
+Priority: extra
+Depends: libopflex (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for libopflex package
+ The OpFlex project seeks to provide reference implementations of the
+ OpFlex protocol, which is a protocol for implementing a distributed
+ control system based on a declarative policy model.
+ .
+ This package contains the debugging symbols for libopflex.

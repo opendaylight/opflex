@@ -22,6 +22,9 @@ SUBDIRS += ofcore
 SUBDIRS += cwrapper
 SUBDIRS += .
 
+EXTRA_DIST =
+EXTRA_DIST += debian
+
 modb_includedir = $(includedir)/opflex/modb
 modb_include_HEADERS = \
 	include/opflex/modb/ClassInfo.h \
@@ -105,7 +108,7 @@ clean-doc:
 clean-doc-internal:
 	rm -rf doc/html-internal
 clean-local: clean-doc clean-doc-internal
-	rm -f *.rpm
+	rm -f *.rpm *.deb
 
 CWD=`pwd`
 RPMFLAGS=--define "_topdir ${CWD}/rpm"
@@ -119,3 +122,16 @@ rpm: dist rpm/${PACKAGE}.spec
 	cp rpm/RPMS/${ARCH}/*.rpm .
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
+
+# Set env var DEB_BUILD_OPTIONS="parallel=<#cores>" to speed up package builds
+DEB_PKG_DIR=deb
+deb: dist
+	- rm -rf  $(DEB_PKG_DIR)
+	mkdir -p $(DEB_PKG_DIR)
+	cp $(SOURCE_FILE) $(DEB_PKG_DIR)/
+	tar -C $(DEB_PKG_DIR)/ -xf $(DEB_PKG_DIR)/$(SOURCE_FILE)
+	mv $(DEB_PKG_DIR)/$(SOURCE_FILE) $(DEB_PKG_DIR)/$(PACKAGE)_$(VERSION).orig.tar.gz
+	cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; \
+		dpkg-buildpackage -d -us -uc -rfakeroot
+	cp $(DEB_PKG_DIR)/*.deb .
+	rm -rf $(DEB_PKG_DIR)
