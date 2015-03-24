@@ -1,0 +1,7 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: libopflex
+Source: https://wiki.opendaylight.org/view/OpFlex:Main
+
+Files: *
+Copyright: Copyright 2015 Cisco Systems, Inc.
+License: Eclipse Public License v1.0
