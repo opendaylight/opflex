@@ -68,6 +68,10 @@ public class FAutomakeDef
         out.println(ainIndent, "ACLOCAL_AMFLAGS = -I m4");
         out.println();
 
+        out.println(ainIndent, "EXTRA_DIST =");
+        out.println(ainIndent, "EXTRA_DIST += debian");
+        out.println();
+
         /*
         policy_includedir = $(includedir)/gbpmodel/policy
         policy_include_HEADERS = \
@@ -139,7 +143,7 @@ public class FAutomakeDef
         out.println(ainIndent,"clean-doc:");
         out.println(ainIndent + 1,"rm -rf doc/html doc/latex");
         out.println(ainIndent,"clean-local: clean-doc");
-        out.println(ainIndent + 1,"rm -f *.rpm");
+        out.println(ainIndent + 1,"rm -f *.rpm *.deb");
         out.println();
 
         out.println(ainIndent,"CWD=`pwd`");
@@ -154,7 +158,18 @@ public class FAutomakeDef
         out.println(ainIndent + 1,"cp rpm/RPMS/${ARCH}/*.rpm .");
         out.println(ainIndent + 1,"cp rpm/SRPMS/*.rpm .");
         out.println(ainIndent + 1,"rm -rf ${RPMDIRS}");
+        out.println();
 
-        
+        out.println(ainIndent, "# Set env var DEB_BUILD_OPTIONS=\"parallel=<#cores>\" to speed up package builds");
+        out.println(ainIndent, "DEB_PKG_DIR=deb");
+        out.println(ainIndent, "deb: dist");
+        out.println(ainIndent + 1, "- rm -rf  $(DEB_PKG_DIR)");
+        out.println(ainIndent + 1, "mkdir -p $(DEB_PKG_DIR)");
+        out.println(ainIndent + 1, "cp $(SOURCE_FILE) $(DEB_PKG_DIR)/");
+        out.println(ainIndent + 1, "tar -C $(DEB_PKG_DIR)/ -xf $(DEB_PKG_DIR)/$(SOURCE_FILE)");
+        out.println(ainIndent + 1, "mv $(DEB_PKG_DIR)/$(SOURCE_FILE) $(DEB_PKG_DIR)/$(PACKAGE)_$(VERSION).orig.tar.gz");
+        out.println(ainIndent + 1, "cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; dpkg-buildpackage -d -us -uc -rfakeroot");
+        out.println(ainIndent + 1, "cp $(DEB_PKG_DIR)/*.deb .");
+        out.println(ainIndent + 1, "rm -rf $(DEB_PKG_DIR)");
     }
 }

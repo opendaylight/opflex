@@ -61,47 +61,6 @@ namespace yajr {
     namespace comms {
         namespace internal {
 
-template <typename Iterator>
-std::vector<iovec> get_iovec(Iterator from, Iterator to) {
-
-    std::vector<iovec> iov;
-
-    typedef typename std::iterator_traits<Iterator>::value_type value_type;
-
-    value_type const * base = &*from, * addr = base;
-
-    while (from != to) {
-
-        ++addr;
-        ++from;
-
-        if (
-                ((addr) != &*from)
-              ||
-                (from == to)
-           ) {
-            iovec i = {
-                const_cast< void * >(static_cast< void const * >(base)),
-                const_cast< char * >(static_cast< char const * >(addr))
-                    -
-                const_cast< char  * >(static_cast< char const * >(base))
-            };
-            iov.push_back(i);
-            addr = base = &*from;
-        }
-
-    }
-            iovec i = {
-                const_cast< void * >(static_cast< void const * >(base)),
-                const_cast< char * >(static_cast< char const * >(addr))
-                    -
-                const_cast< char  * >(static_cast< char const * >(base))
-            };
-            if (i.iov_len) iov.push_back(i);
-
-    return iov;
-}
-
 #ifdef COMMS_DEBUG_OBJECT_COUNT
 ::boost::atomic<size_t> CommunicationPeer::counter(0);
 #endif

@@ -1,0 +1,5 @@
+usr/include/opflex/*
+usr/lib/lib*.a
+usr/lib/lib*.la
+usr/lib/pkgconfig/*
+usr/share/doc/libopflex usr/share/doc/
