@@ -58,7 +58,45 @@ namespace yajr {
         namespace internal {
 
 template <typename Iterator>
-std::vector<iovec> get_iovec(Iterator from, Iterator to);
+std::vector<iovec> get_iovec(Iterator from, Iterator to) {
+
+    std::vector<iovec> iov;
+
+    typedef typename std::iterator_traits<Iterator>::value_type value_type;
+
+    value_type const * base = &*from, * addr = base;
+
+    while (from != to) {
+
+        ++addr;
+        ++from;
+
+        if (
+                ((addr) != &*from)
+              ||
+                (from == to)
+           ) {
+            iovec i = {
+                const_cast< void * >(static_cast< void const * >(base)),
+                const_cast< char * >(static_cast< char const * >(addr))
+                    -
+                const_cast< char  * >(static_cast< char const * >(base))
+            };
+            iov.push_back(i);
+            addr = base = &*from;
+        }
+
+    }
+            iovec i = {
+                const_cast< void * >(static_cast< void const * >(base)),
+                const_cast< char * >(static_cast< char const * >(addr))
+                    -
+                const_cast< char  * >(static_cast< char const * >(base))
+            };
+            if (i.iov_len) iov.push_back(i);
+
+    return iov;
+}
 
 using namespace yajr::comms;
 class ActivePeer;

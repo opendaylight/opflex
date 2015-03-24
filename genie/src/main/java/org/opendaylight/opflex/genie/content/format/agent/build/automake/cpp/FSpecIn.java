@@ -62,7 +62,7 @@ public class FSpecIn
         out.println(FORMAT.replaceAll("_MODULE_NAME_", lModuleName).replaceAll("_LIB_NAME_", lLibName));
     }
     
-    public static final String FORMAT = 
+    private static final String FORMAT =
             "Name: _LIB_NAME_\n"
             + "Epoch:   1\n"
             + "Version: @VERSION@\n"
@@ -82,7 +82,7 @@ public class FSpecIn
             + "Generated Opflex model definition\n"
             + "\n"
             + "%package devel\n"
-            + "Summary: Development libraries for libopflex\n"
+            + "Summary: Development libraries for %{name}\n"
             + "Group: Development/Libraries\n"
             + "Requires: %{name} = %{epoch}:%{version}-%{release}\n"
             + "Requires: pkgconfig\n"
