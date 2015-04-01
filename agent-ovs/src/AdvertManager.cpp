@@ -217,6 +217,48 @@ void AdvertManager::onRouterAdvTimer(const boost::system::error_code& ec) {
     }
 }
 
+static void doSendEpAdv(FlowManager& flowManager,
+                        SwitchConnection* switchConnection,
+                        const string& ip, const uint8_t* epMac,
+                        const uint8_t* routerMac, uint32_t epgVnid,
+                        unordered_set<uint32_t>& out_ports) {
+    boost::system::error_code ec;
+    address addr = address::from_string(ip, ec);
+    if (ec) {
+        LOG(ERROR) << "Invalid IP address: " << ip
+                   << ": " << ec.message();
+        return;
+    }
+    ofpbuf* b = NULL;
+
+    if (addr.is_v4()) {
+        uint32_t addrv = addr.to_v4().to_ulong();
+        // unicast gratuitous arp reply to router mac
+        b = packets::compose_arp(arp::op::REPLY,
+                                 epMac,
+                                 routerMac,
+                                 epMac,
+                                 routerMac,
+                                 addrv, addrv);
+    } else {
+        address_v6::bytes_type bytes = addr.to_v6().to_bytes();
+        struct in6_addr* addrv = (struct in6_addr*)bytes.data();
+        // unicast gratuitous neighbor advertisement to router mac
+        b = packets::compose_icmp6_neigh_ad(0,
+                                            epMac,
+                                            routerMac,
+                                            addrv, addrv);
+    }
+    if (b == NULL) return;
+
+    int error = send_packet_out(flowManager, switchConnection,
+                                b, out_ports, epgVnid);
+    if (error) {
+        LOG(ERROR) << "Could not write packet-out: "
+                   << ovs_strerror(error);
+    }
+}
+
 void AdvertManager::sendEndpointAdvs(const string& uuid) {
     uint32_t tunPort = flowManager.GetTunnelPort();
     if (tunPort == OFPP_NONE) return;
@@ -240,40 +282,30 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
     const uint8_t* routerMac = flowManager.GetRouterMacAddr();
 
     BOOST_FOREACH(const string& ip, ep->getIPs()) {
-        boost::system::error_code ec;
-        address addr = address::from_string(ip, ec);
-        if (ec) continue;
-        ofpbuf* b = NULL;
+        LOG(DEBUG) << "Sending endpoint advertisement for "
+                   << ep->getMAC().get() << " " << ip;
 
-        if (addr.is_v4()) {
-            uint32_t addrv = addr.to_v4().to_ulong();
-            // unicast gratuitous arp reply to router mac
-            b = packets::compose_arp(arp::op::REPLY,
-                                     epMac,
-                                     routerMac,
-                                     epMac,
-                                     packets::MAC_ADDR_BROADCAST,
-                                     addrv, addrv);
-        } else {
-            address_v6::bytes_type bytes = addr.to_v6().to_bytes();
-            struct in6_addr* addrv = (struct in6_addr*)bytes.data();
-            // unicast gratuitous neighbor advertisement to router mac
-            b = packets::compose_icmp6_neigh_ad(0,
-                                                epMac,
-                                                routerMac,
-                                                addrv, addrv);
-        }
-        if (b == NULL) continue;
+        doSendEpAdv(flowManager, switchConnection,
+                    ip, epMac, routerMac, epgVnid.get(),
+                    out_ports);
 
-        int error = send_packet_out(flowManager, switchConnection,
-                                    b, out_ports, epgVnid.get());
-        if (error) {
-            LOG(ERROR) << "Could not write packet-out: "
-                       << ovs_strerror(error);
-        } else {
-            LOG(DEBUG) << "Sent endpoint advertisement for "
-                       << ep->getMAC().get() << " " << addr;
-        }
+    }
+
+    BOOST_FOREACH (const Endpoint::FloatingIP& fip,
+                   ep->getFloatingIPs()) {
+        if (!fip.getIP() || !fip.getMappedIP() || !fip.getEgURI())
+            continue;
+
+        optional<uint32_t> fipVnid =
+            polMgr.getVnidForGroup(fip.getEgURI().get());
+        if (!fipVnid) continue;
+
+        LOG(DEBUG) << "Sending endpoint advertisement for "
+                   << ep->getMAC().get() << " " << fip.getIP().get();
+
+        doSendEpAdv(flowManager, switchConnection,
+                    fip.getIP().get(), epMac,
+                    routerMac, fipVnid.get(), out_ports);
     }
 }
 

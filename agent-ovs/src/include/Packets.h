@@ -76,6 +76,19 @@ void construct_auto_ip(boost::asio::ip::address_v6 prefix,
                        /* out */ struct in6_addr* dstAddr);
 
 /**
+ * Compute the mask for an IPv6 subnet
+ *
+ * @param netAddr the network address for the subnet
+ * @param prefixLen the prefix length
+ * @param mask return the computed mask
+ * @param addr return the masked network address
+ */
+void compute_ipv6_subnet(boost::asio::ip::address_v6 netAddr,
+                         uint8_t prefixLen,
+                         /* out */ struct in6_addr* mask,
+                         /* out */ struct in6_addr* addr);
+
+/**
  * Compose an ICMP6 neighbor advertisement ethernet frame
  *
  * @param naFlags the flags to set in the NA

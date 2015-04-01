@@ -10,6 +10,8 @@
 #ifndef OVSAGENT_ACTIONBUILDER_H_
 #define OVSAGENT_ACTIONBUILDER_H_
 
+#include <boost/asio/ip/address.hpp>
+
 #include "ovs.h"
 
 struct ofputil_flow_stats;
@@ -63,6 +65,12 @@ public:
      */
     void SetRegLoad(mf_field_id regId, uint32_t regValue);
     /**
+     * Load the given four bytes into the given register
+     * @param regId the register to load
+     * @param regValue the value to load
+     */
+    void SetRegLoad64(mf_field_id regId, uint64_t regValue);
+    /**
      * Load the given 6 bytes into the given register
      * @param regId the register to load
      * @param macValue a pointer to an array of 6 bytes to load
@@ -76,6 +84,12 @@ public:
      */
     void SetRegMove(mf_field_id srcRegId, mf_field_id dstRegId);
     /**
+     * Write to the metadata field
+     * @param metadata the metadata to write
+     * @param mask the mask for the metadata
+     */
+    void SetWriteMetadata(uint64_t metadata, uint64_t mask);
+    /**
      * Set the ethernet source and/or destination fields in the packet
      * @param srcMac the source MAC to set, or NULL to not set a
      * source MAC
@@ -83,6 +97,16 @@ public:
      * MAC
      */
     void SetEthSrcDst(const uint8_t *srcMac, const uint8_t *dstMac);
+    /**
+     * Set the IP source field in the packet
+     * @param srcIp The source IP field to set
+     */
+    void SetIpSrc(const boost::asio::ip::address& srcIp);
+    /**
+     * Set the IP dest field in the packet
+     * @param dstIp The dest IP field to set
+     */
+    void SetIpDst(const boost::asio::ip::address& dstIp);
     /**
      * Decrement the TTL of an IP packet
      */
@@ -92,6 +116,13 @@ public:
      * @param tableId the table ID of the flow table
      */
     void SetGotoTable(uint8_t tableId);
+    /**
+     * Resubmit to the given port and table
+     *
+     * @param inPort the input port for the resubmitted packet
+     * @param tableId the table to submit to
+     */
+    void SetResubmit(uint32_t inPort, uint8_t tableId);
     /**
      * Output the packet to the given port
      * @param port the openflow port ID of the port

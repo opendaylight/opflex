@@ -142,6 +142,9 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
     static const std::string DHCP_STATIC_ROUTE_DEST_PREFIX("dest-prefix");
     static const std::string DHCP_STATIC_ROUTE_NEXTHOP("next-hop");
 
+    static const std::string FLOATING_IP("floating-ip");
+    static const std::string MAPPED_IP("mapped-ip");
+
     try {
         using boost::property_tree::ptree;
         Endpoint newep;
@@ -277,6 +280,50 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
             }
 
             newep.setDHCPv6Config(c);
+        }
+
+        optional<ptree&> fips =
+            properties.get_child_optional(FLOATING_IP);
+        if (fips) {
+            BOOST_FOREACH(const ptree::value_type &v, fips.get()) {
+                optional<string> fuuid =
+                    v.second.get_optional<string>(EP_UUID);
+                if (!fuuid) continue;
+
+                Endpoint::FloatingIP fip(fuuid.get());
+
+                optional<string> ip =
+                    v.second.get_optional<string>(EP_IP);
+                if (ip)
+                    fip.setIP(ip.get());
+
+                optional<string> mappedIp =
+                    v.second.get_optional<string>(MAPPED_IP);
+                if (mappedIp)
+                    fip.setMappedIP(mappedIp.get());
+
+                optional<string> feg =
+                    v.second.get_optional<string>(EP_GROUP);
+                if (feg) {
+                    fip.setEgURI(URI(feg.get()));
+                } else {
+                    optional<string> feg_name =
+                        v.second.get_optional<string>(EP_GROUP_NAME);
+                    optional<string> fps_name =
+                        v.second.get_optional<string>(POLICY_SPACE_NAME);
+                    if (feg_name && fps_name) {
+                        fip.setEgURI(opflex::modb::URIBuilder()
+                                     .addElement("PolicyUniverse")
+                                     .addElement("PolicySpace")
+                                     .addElement(fps_name.get())
+                                     .addElement("GbpEpGroup")
+                                     .addElement(feg_name.get()).build());
+                    }
+                }
+
+                if (fip.getIP() && fip.getMappedIP() && fip.getEgURI())
+                    newep.addFloatingIP(fip);
+            }
         }
 
         knownEps[pathstr] = newep.getUUID();

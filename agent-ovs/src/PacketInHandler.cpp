@@ -359,6 +359,14 @@ static void handleNDPktIn(Agent& agent,
 
     struct ofpbuf* b = NULL;
 
+    const uint8_t* mac = virtualRouterMac;
+    bool router = true;
+    uint64_t metadata = ntohll(pi.fmd.metadata);
+    if (((uint8_t*)&metadata)[7] == 1) {
+        mac = (uint8_t*)&metadata;
+        router = mac[6] == 1;
+    }
+
     if (icmp->icmp6_type == ND_NEIGHBOR_SOLICIT) {
         /* Neighbor solicitation */
         struct nd_neighbor_solicit* neigh_sol = 
@@ -367,14 +375,14 @@ static void handleNDPktIn(Agent& agent,
             return;
 
         LOG(DEBUG) << "Handling ICMPv6 neighbor solicitation";
+        uint32_t flags = ND_NA_FLAG_SOLICITED | ND_NA_FLAG_OVERRIDE;
+        if (router) flags |= ND_NA_FLAG_ROUTER;
 
         // we only get neighbor solicitation packets for our router
         // IP, so we just always reply with our router MAC to the
         // requested IP.
-        b = packets::compose_icmp6_neigh_ad(ND_NA_FLAG_ROUTER | 
-                                            ND_NA_FLAG_SOLICITED | 
-                                            ND_NA_FLAG_OVERRIDE,
-                                            virtualRouterMac,
+        b = packets::compose_icmp6_neigh_ad(flags,
+                                            mac,
                                             flow.dl_src,
                                             &neigh_sol->nd_ns_target,
                                             &flow.ipv6_src);
@@ -388,7 +396,7 @@ static void handleNDPktIn(Agent& agent,
 
         LOG(DEBUG) << "Handling ICMPv6 router solicitation";
 
-        b = packets::compose_icmp6_router_ad(virtualRouterMac,
+        b = packets::compose_icmp6_router_ad(mac,
                                              flow.dl_src,
                                              &flow.ipv6_src,
                                              egUri.get(),
@@ -633,8 +641,8 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
 
 
 /**
- * Handle a packet-in for DHCP messages messages.  The
- * reply is written as a packet-out to the connection
+ * Handle a packet-in for DHCP messages.  The reply is written as a
+ * packet-out to the connection
  *
  * @param v4 true if this is a DHCPv4 message, or false for DHCPv6
  * @param agent the agent object

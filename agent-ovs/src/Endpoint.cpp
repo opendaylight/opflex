@@ -30,6 +30,18 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
         os << ip;
     }
     os << "]";
+    if (ep.getFloatingIPs().size() > 0) {
+        os << ",floatingIps=[";
+
+        first = true;
+        BOOST_FOREACH(const Endpoint::FloatingIP& fip, ep.getFloatingIPs()) {
+            if (!fip.getIP() || !fip.getMappedIP()) continue;
+            if (first) first = false;
+            else os << ",";
+            os << fip.getIP().get() << "->" << fip.getMappedIP().get();
+        }
+        os << "]";
+    }
 
     const boost::optional<opflex::modb::URI>& u = ep.getEgURI();
     if (u)
@@ -46,6 +58,30 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
         os << ",dhcpv6";
 
     return os;
+}
+
+size_t hash_value(Endpoint::FloatingIP const& ip) {
+    size_t v = 0;
+    if (ip.getIP())
+        boost::hash_combine(v, ip.getIP().get());
+    if (ip.getEgURI())
+        boost::hash_combine(v, ip.getEgURI().get());
+    return v;
+}
+
+void Endpoint::addFloatingIP(const FloatingIP& floatingIp) {
+    floatingIps.insert(floatingIp);
+}
+
+bool operator==(const Endpoint::FloatingIP& lhs,
+                const Endpoint::FloatingIP& rhs) {
+    return lhs.getIP() == rhs.getIP() &&
+        lhs.getEgURI() == rhs.getEgURI();
+}
+
+bool operator!=(const Endpoint::FloatingIP& lhs,
+                const Endpoint::FloatingIP& rhs) {
+    return !(lhs==rhs);
 }
 
 } /* namespace ovsagent */
