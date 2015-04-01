@@ -210,14 +210,14 @@ module[gbpe]
             }
         }
 
-        # The the UUID for the tunnel endpoint associated with this
+        # The UUID for the tunnel endpoint associated with this
         # pool. In an encap mode without tunnel endpoints this should
         # be unset.
-        member[TunnelEpUuid; type=reference/UUID]
+        member[tunnelEpUuid; type=reference/UUID]
 
         # The endpoint group associated with this pool.  Mapped
         # addresses will be registered as endpoints in this endpoint
         # group.
-        member[NatEpGroup; type=reference/URI]
+        member[natEpGroup; type=reference/URI]
     }
 }

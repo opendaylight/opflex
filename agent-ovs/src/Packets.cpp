@@ -72,6 +72,26 @@ void construct_auto_ip(boost::asio::ip::address_v6 prefix,
     memcpy(((char*)dstAddr) + 13, srcMac+3, 3);
 }
 
+void compute_ipv6_subnet(boost::asio::ip::address_v6 netAddr,
+                         uint8_t prefixLen,
+                         /* out */ struct in6_addr* mask,
+                         /* out */ struct in6_addr* addr) {
+    std::memcpy(addr, netAddr.to_bytes().data(), sizeof(struct in6_addr));
+    
+    if (prefixLen == 0) {
+        memset(mask, 0, sizeof(struct in6_addr));
+    } else if (prefixLen <= 64) {
+        ((uint64_t*)mask)[0] = htonll(~((uint64_t)0) << (64 - prefixLen));
+        ((uint64_t*)mask)[1] = 0;
+    } else {
+        ((uint64_t*)mask)[0] = ~((uint64_t)0);
+        ((uint64_t*)mask)[1] = htonll(~((uint64_t)0) << (128 - prefixLen));
+    }
+    ((uint64_t*)addr)[0] &= ((uint64_t*)mask)[0];
+    ((uint64_t*)addr)[1] &= ((uint64_t*)mask)[1];
+
+}
+
 struct nd_opt_def_route_info {
     uint8_t  nd_opt_ri_type;
     uint8_t  nd_opt_ri_len;
