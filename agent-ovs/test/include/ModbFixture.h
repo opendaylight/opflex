@@ -65,7 +65,7 @@ public:
     shared_ptr<BridgeDomain> bd0, bd1;
     shared_ptr<Subnets> subnetsfd0, subnetsfd1, subnetsbd0, subnetsbd1;
     shared_ptr<Subnet> subnetsfd0_1, subnetsfd0_2, subnetsfd1_1,
-        subnetsbd0_1, subnetsbd1_1;
+        subnetsbd0_1, subnetsbd1_1, subnet;
 
     shared_ptr<L24Classifier> classifier0;
     shared_ptr<L24Classifier> classifier1;
@@ -112,7 +112,7 @@ protected:
         bd1->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd0->getURI());
 
-        subnetsfd0 = space->addGbpSubnets("subnetsfd0");
+        subnetsfd0 = rd0->addGbpSubnets("subnetsfd0");
         subnetsfd0_1 = subnetsfd0->addGbpSubnet("subnetsfd0_1");
         subnetsfd0_1->setAddress("10.20.44.0")
             .setPrefixLen(24)
@@ -123,7 +123,7 @@ protected:
         subnetsfd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd0->getURI());
 
-        subnetsfd1 = space->addGbpSubnets("subnetsfd1");
+        subnetsfd1 = rd0->addGbpSubnets("subnetsfd1");
         subnetsfd1_1 = subnetsfd0->addGbpSubnet("subnetsfd1_1");
         subnetsfd1_1->setAddress("10.20.45.0")
             .setPrefixLen(24)
@@ -131,12 +131,12 @@ protected:
         subnetsfd1->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd1->getURI());
 
-        subnetsbd0 = space->addGbpSubnets("subnetsbd0");
+        subnetsbd0 = rd0->addGbpSubnets("subnetsbd0");
         subnetsbd0_1 = subnetsbd0->addGbpSubnet("subnetsbd0_1");
         subnetsbd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
 
-        subnetsbd1 = space->addGbpSubnets("subnetsbd1");
+        subnetsbd1 = rd0->addGbpSubnets("subnetsbd1");
         subnetsbd1_1 = subnetsbd1->addGbpSubnet("subnetsbd1_1");
         subnetsbd1->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd1->getURI());
@@ -166,8 +166,6 @@ protected:
         epg4->addGbpeInstContext()->setEncapId(0xE0E);
         epg4->addGbpEpGroupToNetworkRSrc()
             ->setTargetRoutingDomain(rd0->getURI());
-
-        createPolicyObjects();
 
         mutator.commit();
 
@@ -211,6 +209,8 @@ protected:
     }
 
     void createPolicyObjects() {
+        Mutator mutator(framework, policyOwner);
+
         // deny action
         action1 = space->addGbpAllowDenyAction("action1");
 
@@ -304,6 +304,8 @@ protected:
             ->setTargetL24Classifier(classifier4->getURI());
         epg0->addGbpEpGroupToProvContractRSrc(con3->getURI().toString());
         epg1->addGbpEpGroupToConsContractRSrc(con3->getURI().toString());
+
+        mutator.commit();
     }
 };
 

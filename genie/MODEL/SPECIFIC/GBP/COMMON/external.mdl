@@ -5,7 +5,7 @@ module[gbp]
     # another layer 3 context or outside networks.  Crossing the L3
     # boundary may require address translation.
     class[L3ExternalDomain;
-          super=gbp/L3BehavioralGroup;
+          super=gbp/BehavioralGroup;
           concrete]
     {
         contained
@@ -23,7 +23,7 @@ module[gbp]
 
     # An external network that can provide or consume contracts
     class[L3ExternalNetwork;
-          super=gbp/L3BehavioralGroup;
+          super=gbp/BehavioralGroup;
           concrete]
     {
         contained

@@ -79,26 +79,26 @@ public:
         EpGroup::unregisterListener(framework, this);
     }
 
-    void addBd() {
+    void addBd(const std::string& name) {
         optional<shared_ptr<BridgeDomain> > bd =
-            space->resolveGbpBridgeDomain("bd");
+            space->resolveGbpBridgeDomain(name);
         if (!bd)
-            space->addGbpBridgeDomain("bd")
+            space->addGbpBridgeDomain(name)
                 ->addGbpBridgeDomainToNetworkRSrc()
                 ->setTargetRoutingDomain(rduri);
     }
-    void rmBd() {
-        BridgeDomain::remove(framework, "test", "bd");
+    void rmBd(const std::string& name) {
+        BridgeDomain::remove(framework, "test", name);
     }
 
-    void addRd() {
+    void addRd(const std::string& name) {
         optional<shared_ptr<RoutingDomain> > rd =
-            space->resolveGbpRoutingDomain("rd");
+            space->resolveGbpRoutingDomain(name);
         if (!rd)
-            space->addGbpRoutingDomain("rd");
+            space->addGbpRoutingDomain(name);
     }
-    void rmRd() {
-        RoutingDomain::remove(framework, "test", "rd");
+    void rmRd(const std::string& name) {
+        RoutingDomain::remove(framework, "test", name);
     }
 
     void addEpg(const std::string& name = "epg") {
@@ -179,16 +179,16 @@ public:
             {
                 optional<shared_ptr<BridgeDomain> > obj =
                     BridgeDomain::resolve(framework, uri);
-                if (obj) addRd();
-                else rmRd();
+                if (obj) addRd("rd");
+                else rmRd("rd");
             }
             break;
         case EpGroup::CLASS_ID:
             {
                 optional<shared_ptr<EpGroup> > obj =
                     EpGroup::resolve(framework, uri);
-                if (obj) addBd();
-                else rmBd();
+                if (obj) addBd("bd");
+                else rmBd("bd");
             }
         default:
             break;
@@ -245,6 +245,13 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     ep2.addIP("10.1.1.4");
     ep2.setEgURI(epgu);
 
+    URI epgnat = URI("/PolicyUniverse/PolicySpace/test/GbpEpGroup/nat-epg/");
+    Endpoint::FloatingIP fip("91c5b217-d244-432c-922d-533c6c036ab3");
+    fip.setMappedIP("10.1.1.4");
+    fip.setIP("5.5.5.5");
+    fip.setEgURI(epgnat);
+    ep2.addFloatingIP(fip);
+
     epSource.updateEndpoint(ep1);
     epSource.updateEndpoint(ep2);
 
@@ -264,6 +271,11 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
         .addElement("EprL2Ep")
         .addElement(bduri.toString())
         .addElement(MAC("00:00:00:00:00:02")).build();
+    URI l2epr2_fip = URIBuilder()
+        .addElement("EprL2Universe")
+        .addElement("EprL2Ep")
+        .addElement(bduri.toString())
+        .addElement(MAC("00:00:00:00:00:02")).build();
     URI l3epr1_2 = URIBuilder()
         .addElement("EprL3Universe")
         .addElement("EprL3Ep")
@@ -279,14 +291,20 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
         .addElement("EprL3Ep")
         .addElement(rduri.toString())
         .addElement("10.1.1.4").build();
+    URI l3epr2_fip = URIBuilder()
+        .addElement("EprL3Universe")
+        .addElement("EprL3Ep")
+        .addElement(rduri.toString())
+        .addElement("5.5.5.5").build();
 
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr1), 500);
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
+    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2_fip), 500);
 
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr1_2), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr1_3), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_4), 500);
-
+    WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_fip), 500);
 }
 
 BOOST_FIXTURE_TEST_CASE( epgmapping, EndpointFixture ) {

@@ -33,7 +33,7 @@ public:
      * Called when the forwarding domains for an endpoint group have
      * been updated.
      */
-    virtual void egDomainUpdated(const opflex::modb::URI& egURI) = 0;
+    virtual void egDomainUpdated(const opflex::modb::URI& egURI) {};
 
     /**
      * Called when a forwarding domain object is updated.
