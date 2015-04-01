@@ -13,6 +13,8 @@
 #include <opflex/modb/ObjectListener.h>
 #include <modelgbp/metadata/metadata.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/random/random_device.hpp>
+#include <boost/random/mersenne_twister.hpp>
 
 #include "Endpoint.h"
 #include "EndpointListener.h"
@@ -96,13 +98,24 @@ public:
 
     /**
      * Get the set of endpoints that exist for a given endpoint group
-     * 
+     *
      * @param egURI the URI for the endpoint group
      * @param eps a set that will be filled with the UUIDs of matching
      * endpoints.
      */
     void getEndpointsForGroup(const opflex::modb::URI& egURI,
                               /* out */ boost::unordered_set<std::string>& eps);
+
+    /**
+     * Get the set of endpoints with floating IP addresses mapped to
+     * the given endpoint group
+     *
+     * @param egURI the URI for the endpoint group for the floating IP addresses
+     * @param eps a set that will be filled with the UUIDs of matching
+     * endpoints.
+     */
+    void getEndpointsForFIPGroup(const opflex::modb::URI& egURI,
+                                 /* out */ boost::unordered_set<std::string>& eps);
 
     /**
      * Get the endpoints that are on a particular interface
@@ -236,6 +249,12 @@ private:
         boost::optional<opflex::modb::URI> egURI;
 
         /**
+         * The set of endpoint groups referenced by endpoint floating
+         * IPs
+         */
+        uri_set_t floatingIpGroups;
+
+        /**
          * reference to the vmep object related to this endpoint that
          * registers the VM to trigger attribute resolution
          */
@@ -283,6 +302,11 @@ private:
      * Map endpoint group URI to a set of endpoint UUIDs
      */
     group_ep_map_t group_ep_map;
+
+    /**
+     * Map floating IP group URIs to a set of endpoint UUIDs
+     */
+    group_ep_map_t fip_group_ep_map;
 
     /**
      * Map endpoint interface names to a set of endpoint UUIDs

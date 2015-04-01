@@ -78,6 +78,7 @@ void EndpointManager::stop() {
     unique_lock<mutex> guard(ep_mutex);
     ep_map.clear();
     group_ep_map.clear();
+    fip_group_ep_map.clear();
     iface_ep_map.clear();
     epgmapping_ep_map.clear();
 }
@@ -204,7 +205,13 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
         if (es.egURI) {
             group_ep_map_t::iterator it = group_ep_map.find(es.egURI.get());
             if (it != group_ep_map.end()) {
-                group_ep_map.erase(es.egURI.get());
+                group_ep_map.erase(it);
+            }
+        }
+        BOOST_FOREACH(const URI& fipGrp, es.floatingIpGroups) {
+            group_ep_map_t::iterator it = fip_group_ep_map.find(fipGrp);
+            if (it != fip_group_ep_map.end()) {
+                fip_group_ep_map.erase(it);
             }
         }
         if (es.endpoint->getInterfaceName()) {
@@ -340,6 +347,7 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
 
     unordered_set<URI> newlocall3eps;
     unordered_set<URI> newlocall2eps;
+    unordered_set<URI> newfipgroups;
 
     Mutator mutator(framework, "policyelement");
 
@@ -382,6 +390,23 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
             }
 
             newlocall2eps.insert(l2e->getURI());
+
+            // Update LocalL2 objects in the MODB corresponding to
+            // floating IP endpoints
+            BOOST_FOREACH(const Endpoint::FloatingIP& fip,
+                          es.endpoint->getFloatingIPs()) {
+                if (!fip.getIP() || !fip.getMappedIP() || !fip.getEgURI())
+                    continue;
+
+                newfipgroups.insert(fip.getEgURI().get());
+
+                shared_ptr<LocalL2Ep> fl2e = l2d.get()
+                    ->addEpdrLocalL2Ep(fip.getUUID());
+                fl2e->setMac(mac.get());
+                fl2e->addEpdrEndPointToGroupRSrc()
+                    ->setTargetEpGroup(fip.getEgURI().get());
+                newlocall2eps.insert(fl2e->getURI());
+            }
         }
 
         // Update LocalL3 objects in the MODB, which, though it won't
@@ -414,11 +439,50 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
     }
     es.locall3EPs = newlocall3eps;
 
+    // Update floating IP group map
+    BOOST_FOREACH(const URI& fipGrp, newfipgroups) {
+        fip_group_ep_map[fipGrp].insert(uuid);
+    }
+    BOOST_FOREACH(const URI& fipGrp, es.floatingIpGroups) {
+        if (newfipgroups.find(fipGrp) == newfipgroups.end()) {
+            unordered_set<string>& eps = fip_group_ep_map[fipGrp];
+            eps.erase(uuid);
+            if (eps.size() == 0)
+                fip_group_ep_map.erase(fipGrp);
+        }
+    }
+    es.floatingIpGroups = newfipgroups;
+
     mutator.commit();
 
     updated |= updateEndpointReg(uuid);
 
     return updated;
+}
+
+static shared_ptr<modelgbp::epr::L2Ep>
+populateL2E(shared_ptr<modelgbp::epr::L2Universe> l2u,
+            shared_ptr<const Endpoint>& ep,
+            const std::string& uuid,
+            shared_ptr<modelgbp::gbp::BridgeDomain>& bd,
+            const URI& egURI) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::epr;
+
+    shared_ptr<L2Ep> l2e =
+        l2u->addEprL2Ep(bd.get()->getURI().toString(),
+                        ep->getMAC().get());
+    l2e->setUuid(uuid);
+    l2e->setGroup(egURI.toString());
+
+    if (ep->getInterfaceName())
+        l2e->setInterfaceName(ep->getInterfaceName().get());
+    const Endpoint::attr_map_t& attr_map = ep->getAttributes();
+    Endpoint::attr_map_t::const_iterator vi = attr_map.find("vm-name");
+    if (vi != attr_map.end())
+        l2e->setVmName(vi->second);
+
+    return l2e;
 }
 
 bool EndpointManager::updateEndpointReg(const std::string& uuid) {
@@ -450,18 +514,28 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     if (l2u && bd && mac) {
         // If the bridge domain is known, we can register the l2
         // endpoint
-        shared_ptr<L2Ep> l2e = l2u.get()
-            ->addEprL2Ep(bd.get()->getURI().toString(),
-                         mac.get());
-        l2e->setGroup(egURI->toString());
-        l2e->setUuid(uuid);
-        if (es.endpoint->getInterfaceName())
-            l2e->setInterfaceName(es.endpoint->getInterfaceName().get());
-        const Endpoint::attr_map_t& attr_map = es.endpoint->getAttributes();
-        Endpoint::attr_map_t::const_iterator vi = attr_map.find("vm-name");
-        if (vi != attr_map.end())
-            l2e->setVmName(vi->second);
-        newl2eps.insert(l2e->getURI());
+        {
+            shared_ptr<L2Ep> l2e =
+                populateL2E(l2u.get(), es.endpoint, uuid,
+                            bd.get(), egURI.get());
+
+            newl2eps.insert(l2e->getURI());
+        }
+
+        BOOST_FOREACH(const Endpoint::FloatingIP& fip,
+                      es.endpoint->getFloatingIPs()) {
+            if (!fip.getIP() || !fip.getMappedIP() || !fip.getEgURI())
+                continue;
+
+            optional<shared_ptr<BridgeDomain> > fbd =
+                policyManager.getBDForGroup(fip.getEgURI().get());
+            if (!fbd) continue;
+
+            shared_ptr<L2Ep> fl2e =
+                populateL2E(l2u.get(), es.endpoint, fip.getUUID(), fbd.get(),
+                            fip.getEgURI().get());
+            newl2eps.insert(fl2e->getURI());
+        }
     }
 
     optional<shared_ptr<L3Universe> > l3u = 
@@ -476,6 +550,24 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
             l3e->setGroup(egURI->toString());
             l3e->setUuid(uuid);
             newl3eps.insert(l3e->getURI());
+        }
+
+        BOOST_FOREACH(const Endpoint::FloatingIP& fip,
+                      es.endpoint->getFloatingIPs()) {
+            if (!fip.getIP() || !fip.getMappedIP() || !fip.getEgURI())
+                continue;
+
+            optional<shared_ptr<RoutingDomain> > frd =
+                policyManager.getRDForGroup(fip.getEgURI().get());
+            if (!frd) continue;
+
+            shared_ptr<L3Ep> fl3e = l3u.get()
+                ->addEprL3Ep(frd.get()->getURI().toString(),
+                             fip.getIP().get());
+            fl3e->setMac(mac.get());
+            fl3e->setGroup(fip.getEgURI().get().toString());
+            fl3e->setUuid(fip.getUUID());
+            newl3eps.insert(fl3e->getURI());
         }
     }
 
@@ -501,13 +593,20 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
     unordered_set<string> notify;
     unique_lock<mutex> guard(ep_mutex);
 
-    group_ep_map_t::const_iterator it =
-        group_ep_map.find(egURI);
-    if (it == group_ep_map.end()) return;
+    group_ep_map_t::const_iterator it = group_ep_map.find(egURI);
+    if (it != group_ep_map.end()) {
+        BOOST_FOREACH(const std::string& uuid, it->second) {
+            if (updateEndpointReg(uuid))
+                notify.insert(uuid);
+        }
+    }
 
-    BOOST_FOREACH(const std::string& uuid, it->second) {
-        if (updateEndpointReg(uuid))
-            notify.insert(uuid);
+    it = fip_group_ep_map.find(egURI);
+    if (it != fip_group_ep_map.end()) {
+        BOOST_FOREACH(const std::string& uuid, it->second) {
+            if (updateEndpointReg(uuid))
+                notify.insert(uuid);
+        }
     }
     guard.unlock();
 
@@ -521,6 +620,15 @@ void EndpointManager::getEndpointsForGroup(const URI& egURI,
     unique_lock<mutex> guard(ep_mutex);
     group_ep_map_t::const_iterator it = group_ep_map.find(egURI);
     if (it != group_ep_map.end()) {
+        eps.insert(it->second.begin(), it->second.end());
+    }
+}
+
+void EndpointManager::getEndpointsForFIPGroup(const URI& egURI,
+                                              /*out*/ unordered_set<string>& eps) {
+    unique_lock<mutex> guard(ep_mutex);
+    group_ep_map_t::const_iterator it = fip_group_ep_map.find(egURI);
+    if (it != fip_group_ep_map.end()) {
         eps.insert(it->second.begin(), it->second.end());
     }
 }

@@ -17,6 +17,7 @@
 #include <boost/unordered_set.hpp>
 #include <boost/thread.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/asio/ip/address.hpp>
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/modb/ObjectListener.h>
 #include <modelgbp/metadata/metadata.hpp>
@@ -156,6 +157,17 @@ public:
     getRDForGroup(const opflex::modb::URI& eg);
 
     /**
+     * Get the routing domain for the specified l3 external network if
+     * it exists
+     *
+     * @param eg the URI for the endpoint group
+     * @return the routing domain or boost::none if the group or the
+     * domain is not found
+     */
+    boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> >
+    getRDForL3ExtNet(const opflex::modb::URI& l3n);
+
+    /**
      * Get the bridge domain for the specified endpoint group if it
      * exists
      *
@@ -207,6 +219,19 @@ public:
                             /* out */ subnet_vector_t& subnets);
 
     /**
+     * Find the appropriate subnet for a given EP IP address given its
+     * endpoint group.
+     *
+     * @param eg the endpoint group URI
+     * @param ip the IP address for the endpoint to search for
+     * @return the subnet if its found, or boost::none if there is
+     * none found
+     */
+    boost::optional<boost::shared_ptr<modelgbp::gbp::Subnet> >
+    findSubnetForEp(const opflex::modb::URI& eg,
+                    const boost::asio::ip::address& ip);
+
+    /**
      * Get the subnet URIs for subnets that directly reference the
      * given network domain URI
      *
@@ -234,6 +259,27 @@ public:
      * boost::none otherwise
      */
     boost::optional<opflex::modb::URI> getGroupForVnid(uint32_t vnid);
+
+    /**
+     * Get the virtual-network identifier (vnid) associated with the
+     * specified L3 external network
+     *
+     * @param l3net the URI for the L3ExternalNetwork
+     * @return vnid of the network if network is found and its vnid is set,
+     * boost::none otherwise
+     */
+    boost::optional<uint32_t> getVnidForL3ExtNet(const opflex::modb::URI& l3net);
+
+    /**
+     * Get the NAT EPG mapping for the given L3 external network if it
+     * exists.
+     *
+     * @param l3net the URI for the L3ExternalNetwork
+     * @return the NAT EPG or boost::none if the l3 external network
+     * or ep group isn't found
+     */
+    boost::optional<boost::shared_ptr<modelgbp::gbp::EpGroup> >
+    getNatEPGforL3ExtNet(const opflex::modb::URI& l3net);
 
     /**
      * Get the multicast IP group configured for an endpoint group.
@@ -270,6 +316,13 @@ public:
     void getGroups(/* out */ uri_set_t& epgURIs);
 
     /**
+     * Get all known routing domains.
+     *
+     * @param epgURIs set of URIs of routing domains found.
+     */
+    void getRoutingDomains(/* out */ uri_set_t& rdURIs);
+
+    /**
      * Get all endpoint groups that provide a contract.
      *
      * @param contractURI URI of contract to look for
@@ -285,7 +338,16 @@ public:
      * @param epgURIs set of EPG URIs that consume the contract
      */
     void getContractConsumers(const opflex::modb::URI& contractURI,
-                             /* out */ uri_set_t& epgURIs);
+                              /* out */ uri_set_t& epgURIs);
+
+    /**
+     * Get the contracts consumed or provided by a group
+     * @param egURI the group URI to look fo
+     * @param contractURIs set of contract URIs that are consumed or
+     * provided by the group
+     */
+    void getContractsForGroup(const opflex::modb::URI& egURI,
+                              /* out */ uri_set_t& contractURIs);
 
     /**
      * Get an ordered list of PolicyClassifier objects that comprise a contract.
@@ -309,7 +371,7 @@ private:
     std::string opflexDomain;
 
     /**
-     * State and indices related to a given endpoint group
+     * State and indices related to a given group
      */
     struct GroupState {
         boost::optional<boost::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
@@ -329,11 +391,23 @@ private:
         subnet_vector_t childSubnets;
     };
 
+    struct L3NetworkState {
+        boost::optional<boost::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
+        boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
+        boost::optional<opflex::modb::URI > natEpg;
+    };
+
+    struct RoutingDomainState {
+        boost::unordered_set<opflex::modb::URI> extNets;
+    };
+
     typedef boost::unordered_map<opflex::modb::URI, GroupState> group_map_t;
     typedef boost::unordered_map<opflex::modb::URI,
                                  boost::unordered_set<opflex::modb::URI> > uri_ref_map_t;
     typedef boost::unordered_map<uint32_t, opflex::modb::URI> vnid_map_t;
     typedef boost::unordered_map<opflex::modb::URI, SubnetsCacheEntry> subnet_index_t;
+    typedef boost::unordered_map<opflex::modb::URI, RoutingDomainState> rd_map_t;
+    typedef boost::unordered_map<opflex::modb::URI, L3NetworkState> l3n_map_t;
 
     /**
      * A map from EPG URI to its state
@@ -355,6 +429,16 @@ private:
      * refer to it
      */
     uri_ref_map_t subnet_ref_map;
+
+    /**
+     * A map from routing domain URI to its state
+     */
+    rd_map_t rd_map;
+
+    /**
+     * A map from l3 network URI to its state
+     */
+    l3n_map_t l3n_map;
 
     boost::mutex state_mutex;
 
@@ -390,7 +474,7 @@ private:
         group_contract_map_t;
 
     /**
-     * Map of EPG URI to contracts it is related to.
+     * Map of EPG or network URI to contracts it is related to.
      */
     group_contract_map_t groupContractMap;
 
@@ -476,6 +560,17 @@ private:
     void notifyEPGDomain(const opflex::modb::URI& egURI);
 
     /**
+     * Update the L3 network cache information for all L3 networks
+     * associated with the given routing domain URI
+     *
+     * @param rdURI the URI of the routing domain containing the L3
+     * networks
+     * @param contractsToNotify contracts that need to be updated
+     */
+    void updateL3Nets(const opflex::modb::URI& rdURI,
+                      uri_set_t& contractsToNotify);
+
+    /**
      * Notify policy listeners about an update to a forwarding
      * domain.
      *
@@ -487,16 +582,18 @@ private:
 
     /**
      * Updates groupPolicyMap and contractMap according to the
-     * contracts provided and consumed by an endpoint group.
-     * If provider/consumer relationship of the group w.r.t. a
-     * contract has changed, adds it to 'updatedContracts'.
+     * contracts provided and consumed by an endpoint group or
+     * network.  If provider/consumer relationship of the group
+     * w.r.t. a contract has changed, adds it to 'updatedContracts'.
      *
-     * @param egURI the URI of the endpoint group to update
+     * @param groupType the class ID for the contract consumer/provier
+     * @param groupURI the URI of the endpoint group to update
      * @param updatedContracts Contracts whose relationship with
      * the group has changed
      */
-    void updateEPGContracts(const opflex::modb::URI& egURI,
-            uri_set_t& updatedContracts);
+    void updateGroupContracts(opflex::modb::class_id_t groupType,
+                              const opflex::modb::URI& groupURI,
+                              uri_set_t& updatedContracts);
 
     /**
      * Update the classifier rules associated with a contract.

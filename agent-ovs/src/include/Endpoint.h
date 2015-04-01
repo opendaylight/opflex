@@ -53,7 +53,7 @@ public:
      * field will not be set to the correct URI.  Instead, @see
      * EndpointManager::getComputedEPG.
      *
-     * @return the endpoint URI
+     * @return the endpoint group URI
      */
     const boost::optional<opflex::modb::URI>& getEgURI() const {
         return egURI;
@@ -517,6 +517,144 @@ public:
         return dhcpv6Config;
     }
 
+    /**
+     * Floating IP address
+     */
+    class FloatingIP {
+    public:
+        /**
+         * Construct a new floating IP
+         *
+         * @param uuid a unique ID for this floating IP address
+         */
+        FloatingIP(const std::string& uuid_) : uuid(uuid_) { }
+
+        /**
+         * Get the UUID for this floating IP
+         * @return the unique ID for the floating IP
+         */
+        const std::string& getUUID() const {
+            return uuid;
+        }
+
+        /**
+         * Set the UUID for the floating IP
+         *
+         * @param uuid the unique ID for the floating IP
+         */
+        void setUUID(const std::string& uuid) {
+            this->uuid = uuid;
+        }
+
+        /**
+         * Get the IP address for this floating IP
+         *
+         * @return the IP address
+         */
+        const boost::optional<std::string>& getIP() const {
+            return ip;
+        }
+
+        /**
+         * Set the IP address for the floating IP
+         *
+         * @param ip the IP address
+         */
+        void setIP(const std::string& ip) {
+            this->ip = ip;
+        }
+
+        /**
+         * Unset the IP address for the floating IP
+         */
+        void unsetIP() {
+            ip = boost::none;
+        }
+
+        /**
+         * Get the "real" IP address to which this floating IP is mapped
+         *
+         * @return the mapped IP address
+         */
+        const boost::optional<std::string>& getMappedIP() const {
+            return mappedIp;
+        }
+
+        /**
+         * Set the "real" IP address to which this floating IP is mapped
+         *
+         * @param mappedIp the mapped IP address
+         */
+        void setMappedIP(const std::string& mappedIp) {
+            this->mappedIp = mappedIp;
+        }
+
+        /**
+         * Unset the mapped IP address for the floating IP
+         */
+        void unsetMappedIP() {
+            mappedIp = boost::none;
+        }
+
+        /**
+         * Get the endpoint group associated with this floating IP.
+         * This is the endpoint group into which the floating IP
+         * address will be mapped.
+         *
+         * @return the endpoint group URI
+         */
+        const boost::optional<opflex::modb::URI>& getEgURI() const {
+            return egURI;
+        }
+
+        /**
+         * Set the endpoint group associated with this floating IP.
+         * This is the endpoint group into which the floating IP
+         * address will be mapped.
+         *
+         * @param egURI the URI to set
+         */
+        void setEgURI(const opflex::modb::URI& egURI) {
+            this->egURI = egURI;
+        }
+
+        /**
+         * Unset the endpoint group URI
+         */
+        void unsetEgURI() {
+            egURI = boost::none;
+        }
+
+    private:
+        std::string uuid;
+        boost::optional<std::string> ip;
+        boost::optional<std::string> mappedIp;
+        boost::optional<opflex::modb::URI> egURI;
+    };
+
+    /**
+     * Clear the list of floating IPs
+     */
+    void clearFloatingIPs() {
+        floatingIps.clear();
+    }
+
+    /**
+     * Add a floating IP to the endpoint
+     *
+     * @param floatingIp the floating IP object
+     */
+    void addFloatingIP(const FloatingIP& floatingIp);
+
+    /**
+     * Get the set of floating IPs for the endpoint
+     *
+     * @return a set of floating IP objects
+     */
+    const boost::unordered_set<FloatingIP>& getFloatingIPs() const {
+        return floatingIps;
+    }
+
 private:
     std::string uuid;
     boost::optional<opflex::modb::MAC> mac;
@@ -528,12 +666,29 @@ private:
     attr_map_t attributes;
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
+    boost::unordered_set<FloatingIP> floatingIps;
 };
 
 /**
  * Print an endpoint to an ostream
  */
 std::ostream & operator<<(std::ostream &os, const Endpoint& ep);
+
+/**
+ * Compute a hash value for a floating IP
+ */
+size_t hash_value(Endpoint::FloatingIP const& ip);
+
+/**
+ * Check for floating IP equality.
+ */
+bool operator==(const Endpoint::FloatingIP& lhs,
+                const Endpoint::FloatingIP& rhs);
+/**
+ * Check for floating IP inequality.
+ */
+bool operator!=(const Endpoint::FloatingIP& lhs,
+                const Endpoint::FloatingIP& rhs);
 
 } /* namespace ovsagent */
 

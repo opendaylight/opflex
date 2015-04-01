@@ -52,18 +52,18 @@ public:
         bd->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
     
-        subnetsfd = space->addGbpSubnets("subnetsfd");
+        subnetsfd = rd->addGbpSubnets("subnetsfd");
         subnetsfd1 = subnetsfd->addGbpSubnet("subnetsfd1");
         subnetsfd2 = subnetsfd->addGbpSubnet("subnetsfd2");
         subnetsfd->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd->getURI());
     
-        subnetsbd = space->addGbpSubnets("subnetsbd");
+        subnetsbd = rd->addGbpSubnets("subnetsbd");
         subnetsbd1 = subnetsbd->addGbpSubnet("subnetsbd1");
         subnetsbd->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd->getURI());
     
-        subnetsrd = space->addGbpSubnets("subnetsrd");
+        subnetsrd = rd->addGbpSubnets("subnetsrd");
         subnetsrd1 = subnetsrd->addGbpSubnet("subnetsrd1");
         subnetsrd->addGbpSubnetsToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
