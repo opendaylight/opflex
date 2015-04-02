@@ -198,7 +198,7 @@ doc: doc/html
 clean-doc:
 	rm -rf doc/html doc/latex
 clean-local: clean-doc
-	rm -f *.rpm
+	rm -f *.rpm *.deb
 
 EXTRA_DIST=rpm/agent-ovs.service rpm/90-agent-ovs-sysctl.conf opflex-agent-ovs.conf.in
 
@@ -214,3 +214,18 @@ rpm: dist rpm/${PACKAGE}.spec
 	cp rpm/RPMS/${ARCH}/*.rpm .
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
+
+EXTRA_DIST += debian
+
+# Set env var DEB_BUILD_OPTIONS="parallel=<#cores>" to speed up package builds
+DEB_PKG_DIR=deb
+deb: dist
+	- rm -rf  $(DEB_PKG_DIR)
+	mkdir -p $(DEB_PKG_DIR)
+	cp $(SOURCE_FILE) $(DEB_PKG_DIR)/
+	tar -C $(DEB_PKG_DIR)/ -xf $(DEB_PKG_DIR)/$(SOURCE_FILE)
+	mv $(DEB_PKG_DIR)/$(SOURCE_FILE) $(DEB_PKG_DIR)/$(PACKAGE)_$(VERSION).orig.tar.gz
+	cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; \
+		dpkg-buildpackage -d -us -uc -rfakeroot -b
+	cp $(DEB_PKG_DIR)/*.deb .
+	rm -rf $(DEB_PKG_DIR)
