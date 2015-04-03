@@ -422,6 +422,35 @@ public:
         handleError(payload, "State Report");
     }
 
+    /**
+     * Handle an Opflex "custom" request for vendor extensions
+     *
+     * @param id the ID of the remote message
+     * @param payload the payload of the message
+     */
+    virtual void handleCustomReq(const rapidjson::Value& id,
+                                 const rapidjson::Value& payload) {
+        handleUnsupportedReq(id, "Custom Request");
+    }
+
+    /**
+     * Handle an Opflex "custom" response for vendor extensions
+     *
+     * @param payload the payload of the message
+     */
+    virtual void handleCustomRes(const rapidjson::Value& payload) {
+        handleUnexpected("Custom Response");
+    }
+
+    /**
+     * Handle an Opflex "custom" error response for vendor extensions
+     *
+     * @param payload the payload of the message
+     */
+    virtual void handleCustomErr(const rapidjson::Value& payload) {
+        handleError(payload, "Custom");
+    }
+
     // ***************
     // Utility methods
     // ***************

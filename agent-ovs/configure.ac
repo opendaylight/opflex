@@ -29,6 +29,7 @@ m4_include([m4/ax_boost_thread.m4])
 m4_include([m4/ax_boost_system.m4])
 m4_include([m4/ax_boost_date_time.m4])
 m4_include([m4/ax_boost_filesystem.m4])
+m4_include([m4/ax_boost_iostreams.m4])
 m4_include([m4/ax_boost_asio.m4])
 m4_include([m4/ax_boost_random.m4])
 
@@ -95,6 +96,10 @@ fi
 AX_BOOST_FILESYSTEM
 if test "x$ax_cv_boost_filesystem" != xyes; then
    AC_MSG_ERROR([Boost::Filesystem library is required])
+fi
+AX_BOOST_IOSTREAMS
+if test "x$ax_cv_boost_iostreams" != xyes; then
+   AC_MSG_ERROR([Boost::IOStreams library is required])
 fi
 AX_BOOST_ASIO
 if test "x$ax_cv_boost_asio" != xyes; then

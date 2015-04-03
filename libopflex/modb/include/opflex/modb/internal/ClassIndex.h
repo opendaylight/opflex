@@ -84,14 +84,6 @@ public:
                   const URI& child);
 
     /**
-     * Clear all children for the given parent and property
-     *
-     * @param parent the URI of the parent object
-     * @param parent_prop The property ID of the parent property
-     */
-    void clearChildren(const URI& parent, prop_id_t parent_prop);
-
-    /**
      * Get the children of the parent URI and property and put the
      * result into the supplied vector.
      *
@@ -123,6 +115,21 @@ public:
      */
     bool getParent(const URI& child,
                    /* out */ std::pair<URI, prop_id_t>& parent) const;
+
+    /*
+     * Check if the given URI has a parent
+     *
+     * @param child the URI of the child object
+     * @return true if the child URI has a parent
+     */
+    bool hasParent(const URI& child) const;
+
+    /**
+     * Get all URIs for the class
+     *
+     * @param output an unordered_set to receive the output
+     */
+    void getAll(boost::unordered_set<URI>& output) const;
 
 private:
     typedef boost::unordered_set<URI> uri_set_t;

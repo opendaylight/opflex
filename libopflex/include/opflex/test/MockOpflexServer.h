@@ -116,7 +116,7 @@ public:
     /**
      * Get the roles that this server was configured with
      * 
-     * @param a bitmask containing the server roles
+     * @return a bitmask containing the server roles
      */
     uint8_t getRoles() const;
 
