@@ -50,6 +50,21 @@ public:
                    int port,
                    const std::string& name,
                    const std::string& domain);
+
+    /**
+     * Create a new opflex listener for the given UNIX domain socket
+     * path.
+     *
+     * @param handlerFactory a factory that can allocate a handler for
+     * the spawned OpflexServerConnection objects
+     * @param socketName The path to the UNIX domain socket
+     * @param name the opflex name for the server
+     * @param domain the opflex domain for the server
+     */
+    OpflexListener(HandlerFactory& handlerFactory,
+                   const std::string& socketName,
+                   const std::string& name,
+                   const std::string& domain);
     ~OpflexListener();
 
     /**
@@ -125,7 +140,7 @@ public:
 private:
     HandlerFactory& handlerFactory;
 
-    std::string hostname;
+    std::string socketName;
     int port;
 
     std::auto_ptr<yajr::transport::ZeroCopyOpenSSL::Ctx> serverCtx;
@@ -158,7 +173,6 @@ private:
     void messagesReady();
     uv_loop_t* getLoop() { return &server_loop; }
     void connectionClosed(OpflexServerConnection* conn);
-    void doConnectionClosed(OpflexServerConnection* conn);
 
 #ifdef SIMPLE_RPC
     static void on_new_connection(uv_stream_t *server, int status);

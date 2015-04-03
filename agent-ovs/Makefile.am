@@ -18,7 +18,9 @@ OVS_ADDL_CFLAGS = \
 	-fpermissive
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
-	-I$(top_srcdir)/src/include
+	-I$(top_srcdir)/src/include \
+	-DLOCALSTATEDIR='"$(localstatedir)"'
+
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 noinst_LTLIBRARIES = libagent_ovs.la
@@ -103,12 +105,20 @@ libagent_ovs_la_SOURCES = \
 	src/JsonCmdExecutor.cpp \
 	src/AdvertManager.cpp
 
-bin_PROGRAMS=agent_ovs
+bin_PROGRAMS=agent_ovs gbp_inspect
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' $(OVS_ADDL_CFLAGS)
 agent_ovs_SOURCES = \
 	src/main.cpp
 agent_ovs_LDADD = \
 	libagent_ovs.la \
+	$(BOOST_PROGRAM_OPTIONS_LIB)
+
+gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
+gbp_inspect_SOURCES = \
+	src/gbp_inspect.cpp
+gbp_inspect_LDADD = \
+	libagent_ovs.la \
+	$(BOOST_IOSTREAMS_LIB) \
 	$(BOOST_PROGRAM_OPTIONS_LIB)
 
 TESTS = agent_test
@@ -160,9 +170,11 @@ agentconf_DATA = opflex-agent-ovs.conf
 
 flowidcachedir=${localstatedir}/lib/opflex-agent-ovs/ids
 defwatchdir=${localstatedir}/lib/opflex-agent-ovs/endpoints
+inspectsock=${localstatedir}/run/opflex-agent-ovs-inspect.sock
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defwatchdir}|" \
 	    -e "s|DEFAULT_FLOWID_CACHE_DIR|${flowidcachedir}|" \
+	    -e "s|DEFAULT_INSPECTOR_SOCKET|${inspectsock}|" \
 	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
 
 if HAVE_DOXYGEN

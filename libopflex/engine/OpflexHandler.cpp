@@ -107,6 +107,7 @@ public:
         handler.String(code.c_str());
         handler.String("message");
         handler.String(message.c_str());
+        handler.EndObject();
         return true;
     }
 
@@ -274,15 +275,15 @@ void InbErr<&yajr::rpc::method::state_report>::process() const {
 
 template<>
 void InbReq<&yajr::rpc::method::custom>::process() const {
-    HANDLE_REQ(StateReportReq);
+    HANDLE_REQ(CustomReq);
 }
 template<>
 void InbRes<&yajr::rpc::method::custom>::process() const {
-    HANDLE_RES(StateReportRes);
+    HANDLE_RES(CustomRes);
 }
 template<>
 void InbErr<&yajr::rpc::method::custom>::process() const {
-    HANDLE_RES(StateReportErr);
+    HANDLE_RES(CustomErr);
 }
 
 } /* namespace rpc */

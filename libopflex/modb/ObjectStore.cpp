@@ -14,8 +14,9 @@
 #  include <config.h>
 #endif
 
-
 #include <stdexcept>
+
+#include <boost/foreach.hpp>
 
 #include "opflex/modb/internal/ObjectStore.h"
 #include "LockGuard.h"
@@ -24,6 +25,7 @@ namespace opflex {
 namespace modb {
 
 using mointernal::StoreClient;
+using boost::unordered_set;
 
 ObjectStore::ObjectStore() 
     : systemClient(this, NULL), readOnlyClient(this, NULL, true),
@@ -100,6 +102,12 @@ Region* ObjectStore::getRegion(const std::string& owner) {
 
 Region* ObjectStore::getRegion(class_id_t class_id) {
     return class_map.at(class_id).region;
+}
+
+void ObjectStore::getOwners(/* out */ unordered_set<std::string>& output) {
+    BOOST_FOREACH(const region_owner_map_t::value_type v, region_owner_map) {
+        output.insert(v.first);
+    }
 }
 
 StoreClient& ObjectStore::getReadOnlyStoreClient() {

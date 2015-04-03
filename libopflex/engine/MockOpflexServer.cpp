@@ -14,12 +14,9 @@
 #  include <config.h>
 #endif
 
-
 #include <cstdio>
 
 #include <boost/foreach.hpp>
-#include <rapidjson/document.h>
-#include <rapidjson/filereadstream.h>
 
 #include "opflex/test/MockOpflexServer.h"
 #include "opflex/engine/internal/OpflexMessage.h"
@@ -114,22 +111,8 @@ void MockOpflexServerImpl::readPolicy(const std::string& file) {
         return;
     }
 
-    char buffer[1024];
-    rapidjson::FileReadStream f(pfile, buffer, sizeof(buffer));
-    rapidjson::Document d;
-    d.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(f);
-    if (!d.IsArray()) {
-        LOG(ERROR) << "Malformed policy file: not an array";
-        return;
-    }
-    rapidjson::Value::ConstValueIterator moit;
-    int i = 0;
-    for (moit = d.Begin(); moit != d.End(); ++ moit) {
-        const rapidjson::Value& mo = *moit;
-        serializer.deserialize(mo, *getSystemClient(), true, NULL);
-        i += 1;
-    }
-    LOG(INFO) << "Read " << i 
+    size_t objs = serializer.readMOs(pfile, *getSystemClient());
+    LOG(INFO) << "Read " << objs
               << " managed objects from policy file \"" << file << "\"";
 }
 

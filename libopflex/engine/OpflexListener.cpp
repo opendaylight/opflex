@@ -49,6 +49,16 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
     uv_key_create(&conn_mutex_key);
 }
 
+OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
+                               const std::string& socketName_,
+                               const std::string& name_,
+                               const std::string& domain_)
+    : handlerFactory(handlerFactory_), socketName(socketName_),
+      port(-1), name(name_), domain(domain_), active(true) {
+    uv_mutex_init(&conn_mutex);
+    uv_key_create(&conn_mutex_key);
+}
+
 OpflexListener::~OpflexListener() {
     uv_key_delete(&conn_mutex_key);
     uv_mutex_destroy(&conn_mutex);
@@ -134,12 +144,23 @@ void OpflexListener::listen() {
 #else
     yajr::initLoop(&server_loop);
 
-    listener = yajr::Listener::create("0.0.0.0", port, 
-                                      OpflexServerConnection::on_state_change,
-                                      on_new_connection,
-                                      this,
-                                      &server_loop,
-                                      OpflexServerConnection::loop_selector);
+    if (port < 0) {
+        listener =
+            yajr::Listener::create(socketName, 
+                                   OpflexServerConnection::on_state_change,
+                                   on_new_connection,
+                                   this,
+                                   &server_loop,
+                                   OpflexServerConnection::loop_selector);
+    } else {
+        listener =
+            yajr::Listener::create("0.0.0.0", port,
+                                   OpflexServerConnection::on_state_change,
+                                   on_new_connection,
+                                   this,
+                                   &server_loop,
+                                   OpflexServerConnection::loop_selector);
+    }
                                       
 #endif
     rc = uv_thread_create(&server_thread, server_thread_func, this);
@@ -200,14 +221,10 @@ void* OpflexListener::on_new_connection(yajr::Listener* ylistener,
 }
 #endif
 
-void OpflexListener::doConnectionClosed(OpflexServerConnection* conn) {
-    conns.erase(conn);
-    delete conn;
-}
-
 void OpflexListener::connectionClosed(OpflexServerConnection* conn) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
-    doConnectionClosed(conn);
+    conns.erase(conn);
+    delete conn;
     guard.release();
     if (!active)
         uv_async_send(&cleanup_async);

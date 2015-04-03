@@ -74,25 +74,6 @@ bool ClassIndex::delChild(const URI& parent, prop_id_t parent_prop,
     }
 }
 
-void ClassIndex::clearChildren(const URI& parent, prop_id_t parent_prop) {
-    try {
-        prop_uri_map_t& pmap = child_map.at(parent);
-        uri_set_t& uset = pmap.at(parent_prop);
-        uri_set_t::iterator it;
-
-        for (it = uset.begin(); it != uset.end(); ++it) {
-            try {
-                parent_map.erase(*it);
-            } catch (std::out_of_range) { }
-        }
-        pmap.erase(parent_prop);
-        if (pmap.size() == 0)
-            child_map.erase(parent);
-    } catch (std::out_of_range) {
-        return;
-    }
-}
-
 void ClassIndex::getChildren(const URI& parent, prop_id_t parent_prop,
                              std::vector<URI>& output) const {
     try {
@@ -118,6 +99,14 @@ bool ClassIndex::getParent(const URI& child,
         return true;
     }
     return false;
+}
+
+bool ClassIndex::hasParent(const URI& child) const {
+    return parent_map.find(child) != parent_map.end();
+}
+
+void ClassIndex::getAll(uri_set_t& output) const {
+    output.insert(instance_map.begin(), instance_map.end());
 }
 
 } /* namespace modb */

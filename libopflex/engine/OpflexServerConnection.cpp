@@ -15,6 +15,7 @@
 #endif
 
 #include <openssl/err.h>
+#include <sys/un.h>
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
@@ -60,20 +61,24 @@ OpflexServerConnection::~OpflexServerConnection() {
 
 void OpflexServerConnection::setRemotePeer(int rc, struct sockaddr_storage& name) {
     if (rc < 0) {
-        LOG(ERROR) << "New connection but could not get remote peer IP address"
-                   << uv_strerror(rc);
+        LOG(ERROR) << "New connection but could not get "
+                   << "remote peer IP address" << uv_strerror(rc);
         return;
     } 
 
-    char addrbuffer[INET6_ADDRSTRLEN];
-    inet_ntop(name.ss_family, 
-              name.ss_family == AF_INET
-              ? (void *) &(((struct sockaddr_in*)&name)->sin_addr)
-              : (void *) &(((struct sockaddr_in6*)&name)->sin6_addr),
-              addrbuffer, INET6_ADDRSTRLEN);
-    remote_peer = addrbuffer;
+    if (name.ss_family == AF_UNIX) {
+        remote_peer = ((struct sockaddr_un*)&name)->sun_path;
+    } else {
+        char addrbuffer[INET6_ADDRSTRLEN];
+        inet_ntop(name.ss_family,
+                  name.ss_family == AF_INET
+                  ? (void *) &(((struct sockaddr_in*)&name)->sin_addr)
+                  : (void *) &(((struct sockaddr_in6*)&name)->sin6_addr),
+                  addrbuffer, INET6_ADDRSTRLEN);
+        remote_peer = addrbuffer;
+    }
 
-    LOG(INFO) << "[" << getRemotePeer() << "] " 
+    LOG(INFO) << "[" << getRemotePeer() << "] "
               << "New server connection";
 }
 
@@ -119,7 +124,7 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
         }
         break;
     case yajr::StateChange::DISCONNECT:
-        LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+        LOG(DEBUG) << "[" << conn->getRemotePeer() << "] "
                    << "Disconnected";
         break;
     case yajr::StateChange::TRANSPORT_FAILURE:
