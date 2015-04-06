@@ -136,6 +136,8 @@ public class FDebPkg
         + "Package: _LIB_NAME_-dev\n"
         + "Section: libdevel\n"
         + "Architecture: any\n"
+        + "Multi-Arch: same\n"
+        + "Pre-Depends: ${misc:Pre-Depends}\n"
         + "Depends: _LIB_NAME_ (= ${binary:Version})\n"
         + "Description: Development libraries for _LIB_NAME_\n"
         + " Development libraries for _LIB_NAME_\n"
@@ -179,16 +181,18 @@ public class FDebPkg
         + "# Uncomment this to turn on verbose mode.\n"
         + "#export DH_VERBOSE=1\n"
         + "\n"
+        + "DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)\n"
+        + "\n"
         + "%:\n"
         +"\tdh $@ --parallel --with autotools-dev\n"
         + "\n"
         + "#override_dh_auto_test:\n"
         + "\n"
         + "override_dh_auto_configure:\n"
-        + "\t./configure --disable-assert\n"
+        + "\t./configure --prefix=/usr --libdir=\\$${prefix}/lib/$(DEB_HOST_MULTIARCH) --disable-assert\n"
         + "\n"
         + "override_dh_auto_install:\n"
-        + "\t$(MAKE) DESTDIR=$(CURDIR)/debian/tmp prefix=/usr install\n"
+        + "\t$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install\n"
         + "\n"
         + "override_dh_shlibdeps:\n"
         + "\tdh_shlibdeps -- --ignore-missing-info\n"
@@ -198,9 +202,9 @@ public class FDebPkg
     private static final String TEMPLATE_FORMAT = "3.0 (quilt)\n";
     private static final String TEMPLATE_DEV_INSTALL =
         "usr/include/*\n"
-        + "usr/lib/lib*.a\n"
-        + "usr/lib/lib*.la\n"
-        + "usr/lib/pkgconfig/*\n"
+        + "usr/lib/*/lib*.a\n"
+        + "usr/lib/*/lib*.la\n"
+        + "usr/lib/*/pkgconfig/*\n"
         + "usr/share/doc/_LIB_NAME_/* usr/share/doc/_MODULE_NAME_/\n";
-    private static final String TEMPLATE_INSTALL = "usr/lib/lib*.so*\n";
+    private static final String TEMPLATE_INSTALL = "usr/lib/*/lib*.so*\n";
 }

@@ -18,6 +18,8 @@ Description: Development libraries for libopflex
 Package: libopflex
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: libuv (>= 1.0), ${shlibs:Depends}, ${misc:Depends}
 Description: A framework for developing opflex-based policy agents
  The OpFlex project seeks to provide reference implementations of the

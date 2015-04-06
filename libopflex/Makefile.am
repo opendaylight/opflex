@@ -132,6 +132,6 @@ deb: dist
 	tar -C $(DEB_PKG_DIR)/ -xf $(DEB_PKG_DIR)/$(SOURCE_FILE)
 	mv $(DEB_PKG_DIR)/$(SOURCE_FILE) $(DEB_PKG_DIR)/$(PACKAGE)_$(VERSION).orig.tar.gz
 	cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; \
-		dpkg-buildpackage -d -us -uc -rfakeroot
+		dpkg-buildpackage -d -us -uc -rfakeroot -b
 	cp $(DEB_PKG_DIR)/*.deb .
 	rm -rf $(DEB_PKG_DIR)
