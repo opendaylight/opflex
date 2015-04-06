@@ -48,6 +48,7 @@ m4/lt*.m4
 doc/Doxyfile
 doc/html
 doc/latex
+doc/doxygen_*.db
 agent_ovs
 agent_test
 mock_server
