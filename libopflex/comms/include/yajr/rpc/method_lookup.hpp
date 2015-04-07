@@ -98,6 +98,12 @@
           return PERFECT_RET_VAL(yajr::rpc::method::state_report);
           break;
 
+      case meta::hash_string<boost::mpl::string<'cust',
+                                                 'om'
+                                                > >::value:
+          return PERFECT_RET_VAL(yajr::rpc::method::custom);
+          break;
+
       default:
           return PERFECT_RET_VAL(yajr::rpc::method::unknown);
     }
