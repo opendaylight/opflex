@@ -272,5 +272,18 @@ void InbErr<&yajr::rpc::method::state_report>::process() const {
     HANDLE_RES(StateReportErr);
 }
 
+template<>
+void InbReq<&yajr::rpc::method::custom>::process() const {
+    HANDLE_REQ(StateReportReq);
+}
+template<>
+void InbRes<&yajr::rpc::method::custom>::process() const {
+    HANDLE_RES(StateReportRes);
+}
+template<>
+void InbErr<&yajr::rpc::method::custom>::process() const {
+    HANDLE_RES(StateReportErr);
+}
+
 } /* namespace rpc */
 } /* namespace yajr */

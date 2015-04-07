@@ -1,0 +1,11 @@
+send_identity
+policy_resolve
+policy_unresolve
+policy_update
+endpoint_declare
+endpoint_undeclare
+endpoint_resolve
+endpoint_unresolve
+endpoint_update
+state_report
+custom
