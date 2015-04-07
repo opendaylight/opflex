@@ -72,12 +72,12 @@ libcomms_la_SOURCES += rpc/handlers/request/echo.cpp
 libcomms_la_SOURCES += rpc/handlers/request/unknown.cpp
 
 # inbound ERROR RESPONSEs
-libcomms_la_SOURCES += rpc/handlers/response/error/echo.cpp
-libcomms_la_SOURCES += rpc/handlers/response/error/unknown.cpp
+libcomms_la_SOURCES += rpc/handlers/error_response/echo.cpp
+libcomms_la_SOURCES += rpc/handlers/error_response/unknown.cpp
 
 # inbound SUCCESS RESPONSEs
-libcomms_la_SOURCES += rpc/handlers/response/result/echo.cpp
-libcomms_la_SOURCES += rpc/handlers/response/result/unknown.cpp
+libcomms_la_SOURCES += rpc/handlers/result_response/echo.cpp
+libcomms_la_SOURCES += rpc/handlers/result_response/unknown.cpp
 
 # message factory
 libcomms_la_SOURCES     += rpc/message/factory/inboundmessage.cpp
@@ -110,7 +110,40 @@ dist_noinst_SCRIPTS += test/ca.pem
 comms_test_SOURCES  =
 comms_test_SOURCES += test/main.cpp
 comms_test_SOURCES += test/comms_test.cpp
-comms_test_SOURCES += test/handlers.cpp
+
+comms_test_SOURCES += test/handlers/error_response/custom.cpp
+comms_test_SOURCES += test/handlers/error_response/endpoint_declare.cpp
+comms_test_SOURCES += test/handlers/error_response/endpoint_resolve.cpp
+comms_test_SOURCES += test/handlers/error_response/endpoint_undeclare.cpp
+comms_test_SOURCES += test/handlers/error_response/endpoint_unresolve.cpp
+comms_test_SOURCES += test/handlers/error_response/endpoint_update.cpp
+comms_test_SOURCES += test/handlers/error_response/policy_resolve.cpp
+comms_test_SOURCES += test/handlers/error_response/policy_unresolve.cpp
+comms_test_SOURCES += test/handlers/error_response/policy_update.cpp
+comms_test_SOURCES += test/handlers/error_response/send_identity.cpp
+comms_test_SOURCES += test/handlers/error_response/state_report.cpp
+comms_test_SOURCES += test/handlers/request/custom.cpp
+comms_test_SOURCES += test/handlers/request/endpoint_declare.cpp
+comms_test_SOURCES += test/handlers/request/endpoint_resolve.cpp
+comms_test_SOURCES += test/handlers/request/endpoint_undeclare.cpp
+comms_test_SOURCES += test/handlers/request/endpoint_unresolve.cpp
+comms_test_SOURCES += test/handlers/request/endpoint_update.cpp
+comms_test_SOURCES += test/handlers/request/policy_resolve.cpp
+comms_test_SOURCES += test/handlers/request/policy_unresolve.cpp
+comms_test_SOURCES += test/handlers/request/policy_update.cpp
+comms_test_SOURCES += test/handlers/request/send_identity.cpp
+comms_test_SOURCES += test/handlers/request/state_report.cpp
+comms_test_SOURCES += test/handlers/result_response/custom.cpp
+comms_test_SOURCES += test/handlers/result_response/endpoint_declare.cpp
+comms_test_SOURCES += test/handlers/result_response/endpoint_resolve.cpp
+comms_test_SOURCES += test/handlers/result_response/endpoint_undeclare.cpp
+comms_test_SOURCES += test/handlers/result_response/endpoint_unresolve.cpp
+comms_test_SOURCES += test/handlers/result_response/endpoint_update.cpp
+comms_test_SOURCES += test/handlers/result_response/policy_resolve.cpp
+comms_test_SOURCES += test/handlers/result_response/policy_unresolve.cpp
+comms_test_SOURCES += test/handlers/result_response/policy_update.cpp
+comms_test_SOURCES += test/handlers/result_response/send_identity.cpp
+comms_test_SOURCES += test/handlers/result_response/state_report.cpp
 
 comms_test_CPPFLAGS  = $(AM_CPPFLAGS)
 comms_test_CPPFLAGS += -DBOOST_TEST_DYN_LINK
