@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Macros for logging
+ * Definition of logging macros and utility functions.
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -15,54 +15,85 @@
 
 #include <string>
 #include <iostream>
-
-#include "config.h"
-#if defined(HAVE_BOOST_LOG) && defined(HAVE_BOOST_LOG_SETUP) \
-    && !defined(NO_BOOST_LOG)
-#define USE_BOOST_LOG
-#endif
-
-#ifdef USE_BOOST_LOG
-#include <boost/log/trivial.hpp>
-#include <boost/log/sources/logger.hpp>
-#include <boost/log/sources/global_logger_storage.hpp>
-#else
 #include <sstream>
-#include <syslog.h>
-#endif
+#include <boost/assert.hpp>
 
 namespace ovsagent {
 
-#ifdef USE_BOOST_LOG
-static const boost::log::trivial::severity_level DEBUG   = boost::log::trivial::debug;
-static const boost::log::trivial::severity_level INFO    = boost::log::trivial::info;
-static const boost::log::trivial::severity_level WARNING = boost::log::trivial::warning;
-static const boost::log::trivial::severity_level ERROR   = boost::log::trivial::error;
-static const boost::log::trivial::severity_level FATAL   = boost::log::trivial::fatal;
+/**
+ * Supported log levels
+ */
+enum LogLevel { FATAL, ERROR, WARNING, INFO, DEBUG };
 
-#define LOG(lvl) BOOST_LOG_STREAM_WITH_PARAMS(::boost::log::trivial::logger::get(),\
-                                              (::boost::log::keywords::severity = lvl))\
-    << "[" << __FILE__ << ":" << __LINE__ << ":" << __FUNCTION__ << "] "
-#else
-static const int DEBUG   = LOG_DEBUG;
-static const int INFO    = LOG_INFO;
-static const int WARNING = LOG_WARNING;
-static const int ERROR   = LOG_ERR;
-static const int FATAL   = LOG_CRIT;
-
-extern int logLevel;
+extern LogLevel logLevel;
 
 /**
- * Logger used as fallback when boost::log not available.  Log to
- * standard out in a format that systemd can understand
+ * Abstract base class for log destination such as console, file etc.
+ */
+class LogSink {
+public:
+    /**
+     * Write a log message to the log destination alongwith information about
+     * its origin (source file, line number etc).
+     *
+     * @param level The log level of the message
+     * @param filename Name of source file that generated the message
+     * @param lineno Line number in source file that generated the message
+     * @param functionName Name of function that generated the message
+     * @param message The log message to write
+     */
+    virtual
+    void write(LogLevel level, const char *filename, int lineno,
+               const char *functionName, const std::string& message) = 0;
+};
+
+/**
+ * Initialize logging
+ *
+ * @param level the log level to log at
+ * @param toSyslog if true, log messages are written to syslog; parameter
+ * "log_file" is ignored in that case
+ * @param log_file the file to log to, or empty for console
+ */
+void initLogging(const std::string& level, bool toSyslog,
+                 const std::string& log_file);
+
+/**
+ * Change the logging level of the agent.
+ *
+ * @param level the log level to log at. If this is not a valid string,
+ * logging level is set to the default level.
+ */
+void setLoggingLevel(const std::string& level);
+
+/**
+ * Get the currently configure log destination. The return pointer is never
+ * NULL.
+ */
+LogSink * getLogSink();
+
+/**
+ * Logger used to construct and write a log message to the current log
+ * destination.
  */
 class Logger {
 public:
     /**
+     * Constructor that expects information about the origin of log message.
+     * @param l The log level of the message
+     * @param f Name of source file of the message
+     * @param no Line number in source file of the message
+     * @param fn Name of function enclosing the message
+     */
+    Logger(LogLevel l, const char *f, int no, const char *fn) :
+        level(l), filename(f), lineNumber(no), functionName(fn) {}
+
+    /**
      * Destroy the logger and log the output
      */
     ~Logger() {
-        std::cout << buffer_.str() << std::endl;
+        getLogSink()->write(level, filename, lineNumber, functionName,
+                            buffer_.str());
     }
 
     /**
@@ -70,19 +101,39 @@ public:
      */
     std::ostream& stream() { return buffer_; }
 
+private:
     /**
      * The internal buffer for the logger
      */
     std::ostringstream buffer_;
-
+    /**
+     * The log level of the message
+     */
+    LogLevel level;
+    /**
+     * Name of source file of the message
+     */
+    const char *filename;
+    /**
+     * Line number in source file of the message
+     */
+    int lineNumber;
+    /**
+     * Name of function enclosing the message
+     */
+    const char *functionName;
 };
-#define LOG(lvl)                                                        \
-    if (lvl <= logLevel)                                                \
-        ovsagent::Logger().stream() << "<" << lvl << "> "               \
-                         << "[" << __FILE__ << ":" << __LINE__          \
-                         << ":" << __FUNCTION__ << "] "
-#endif
 
+#define LOG(lvl)                                                        \
+    assert(ovsagent::FATAL <= lvl && lvl <= ovsagent::DEBUG);           \
+    if (lvl <= ovsagent::logLevel)                                      \
+        ovsagent::Logger(lvl, __FILE__, __LINE__, __FUNCTION__).stream()
+
+#define LOG1(lvl, filename, lineNo, functionName, message)              \
+    assert(ovsagent::FATAL <= lvl && lvl <= ovsagent::DEBUG);           \
+    if (lvl <= ovsagent::logLevel)                                      \
+        ovsagent::getLogSink()->write(lvl, filename, lineNo,            \
+                                      functionName, message);
 } /* namespace ovsagent */
 
 #endif /* AGENT_LOGGING_H */

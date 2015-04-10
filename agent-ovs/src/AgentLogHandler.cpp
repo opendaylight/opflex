@@ -18,10 +18,6 @@ namespace ovsagent {
 
 using opflex::logging::OFLogHandler;
 
-#ifdef USE_BOOST_LOG
-using boost::log::trivial::severity_level;
-#endif
-
 AgentLogHandler::AgentLogHandler(Level logLevel): OFLogHandler(logLevel) { }
 AgentLogHandler::~AgentLogHandler() { }
 
@@ -34,8 +30,7 @@ void AgentLogHandler::handleMessage(const std::string& file,
                                    const std::string& function,
                                    const Level level,
                                    const std::string& message) {
-#ifdef USE_BOOST_LOG
-    severity_level blevel;
+    ovsagent::LogLevel agentLevel = ovsagent::INFO;
     switch (level) {
     case OFLogHandler::TRACE:
     case OFLogHandler::DEBUG7:
@@ -46,60 +41,23 @@ void AgentLogHandler::handleMessage(const std::string& file,
     case OFLogHandler::DEBUG2:
     case OFLogHandler::DEBUG1:
     case OFLogHandler::DEBUG0:
-        blevel = ovsagent::DEBUG;
+        agentLevel = ovsagent::DEBUG;
         break;
     case OFLogHandler::INFO:
-        blevel = ovsagent::INFO;
+        agentLevel = ovsagent::INFO;
         break;
     case OFLogHandler::WARNING:
-        blevel = ovsagent::WARNING;
+        agentLevel = ovsagent::WARNING;
         break;
     case OFLogHandler::ERROR:
-        blevel = ovsagent::ERROR;
+        agentLevel = ovsagent::ERROR;
         break;
     default:
     case OFLogHandler::FATAL:
-        blevel = ovsagent::FATAL;
+        agentLevel = ovsagent::FATAL;
         break;
     }
-
-    BOOST_LOG_STREAM_WITH_PARAMS(::boost::log::trivial::logger::get(),  \
-                                 (::boost::log::keywords::severity = blevel)) \
-        << "[" << file << ":" << line << ":" << function << "] " << message;
-#else
-    int slevel;
-    switch (level) {
-    case OFLogHandler::TRACE:
-    case OFLogHandler::DEBUG7:
-    case OFLogHandler::DEBUG6:
-    case OFLogHandler::DEBUG5:
-    case OFLogHandler::DEBUG4:
-    case OFLogHandler::DEBUG3:
-    case OFLogHandler::DEBUG2:
-    case OFLogHandler::DEBUG1:
-    case OFLogHandler::DEBUG0:
-        slevel = LOG_DEBUG;
-        break;
-    case OFLogHandler::INFO:
-        slevel = LOG_INFO;
-        break;
-    case OFLogHandler::WARNING:
-        slevel = LOG_WARNING;
-        break;
-    case OFLogHandler::ERROR:
-        slevel = LOG_ERR;
-        break;
-    default:
-    case OFLogHandler::FATAL:
-        slevel = LOG_CRIT;
-        break;
-    }
-
-    std::cout << "<" << slevel << "> "
-              << "[" << file << ":" << line << ":" << function << "] "
-              << message << std::endl;
-
-#endif
+    LOG1(agentLevel, file.c_str(), line, function.c_str(), message);
 }
 
 } /* namespace ovsagent */

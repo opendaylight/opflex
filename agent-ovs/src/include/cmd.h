@@ -16,20 +16,4 @@ namespace ovsagent {
  */
 void daemonize();
 
-/**
- * Initialize logging
- *
- * @param level the log level to log at
- * @param log_file the file to log to, or empty for console
- */
-void initLogging(const std::string& level, const std::string& log_file);
-
-/**
- * Change the logging level of the agent.
- *
- * @param level the log level to log at. If this is not a valid string,
- * logging level is set to the default level.
- */
-void setLoggingLevel(const std::string& level);
-
 } /* namespace ovsagent */

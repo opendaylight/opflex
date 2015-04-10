@@ -13,5 +13,4 @@ pre-start script
     test -e /etc/opflex-agent-ovs/opflex-agent-ovs.conf || { stop; exit 0; }
 end script
 
-# XXX should send logs to syslog
-exec /usr/bin/agent_ovs --log=/var/log/agent_ovs.log
+exec /usr/bin/agent_ovs --syslog

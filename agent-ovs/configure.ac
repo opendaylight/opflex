@@ -29,8 +29,6 @@ m4_include([m4/ax_boost_thread.m4])
 m4_include([m4/ax_boost_system.m4])
 m4_include([m4/ax_boost_date_time.m4])
 m4_include([m4/ax_boost_filesystem.m4])
-m4_include([m4/ax_boost_log.m4])
-m4_include([m4/ax_boost_log_setup.m4])
 m4_include([m4/ax_boost_asio.m4])
 m4_include([m4/ax_boost_random.m4])
 
@@ -102,8 +100,6 @@ AX_BOOST_ASIO
 if test "x$ax_cv_boost_asio" != xyes; then
    AC_MSG_ERROR([Boost::ASIO library is required])
 fi
-AX_BOOST_LOG
-AX_BOOST_LOG_SETUP
 
 PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])

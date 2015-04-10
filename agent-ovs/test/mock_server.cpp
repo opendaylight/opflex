@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
     if (daemon)
         daemonize();
 
-    initLogging(level_str, log_file);
+    initLogging(level_str, false /*syslog*/, log_file);
 
     try {
         if (sample_file != "") {

@@ -45,17 +45,17 @@ int main(int argc, char** argv) {
         ("config,c",
          po::value<string>()->default_value(DEFAULT_CONF), 
          "Read configuration from the specified file")
-#ifdef USE_BOOST_LOG
         ("log", po::value<string>()->default_value(""), 
          "Log to the specified file (default standard out)")
-#endif
         ("level", po::value<string>()->default_value("info"),
          "Use the specified log level (default info). "
          "Overridden by log level in configuration file")
+        ("syslog", "Log to syslog instead of file or standard out"),
         ("daemon", "Run the agent as a daemon")
         ;
     
     bool daemon = false;
+    bool logToSyslog = false;
     std::string log_file;
     std::string level_str;
 
@@ -73,11 +73,11 @@ int main(int argc, char** argv) {
         if (vm.count("daemon")) {
             daemon = true;
         }
-#ifdef USE_BOOST_LOG
         log_file = vm["log"].as<string>();
-#endif
         level_str = vm["level"].as<string>();
-
+        if (vm.count("syslog")) {
+            logToSyslog = true;
+        }
     } catch (po::unknown_option e) {
         std::cerr << e.what() << std::endl;
         return 1;
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     if (daemon)
         daemonize();
 
-    initLogging(level_str, log_file);
+    initLogging(level_str, logToSyslog, log_file);
 
     try {
         // Initialize agent and configuration

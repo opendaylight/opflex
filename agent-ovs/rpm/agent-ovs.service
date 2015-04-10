@@ -4,7 +4,7 @@ After=openvswitch.service
 Requires=openvswitch.service
 
 [Service]
-ExecStart=/usr/bin/agent_ovs
+ExecStart=/usr/bin/agent_ovs --syslog
 Restart=always
 
 [Install]

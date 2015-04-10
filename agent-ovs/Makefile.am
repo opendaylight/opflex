@@ -18,8 +18,7 @@ OVS_ADDL_CFLAGS = \
 	-fpermissive
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
-	-I$(top_srcdir)/src/include \
-	-DBOOST_LOG_DYN_LINK
+	-I$(top_srcdir)/src/include
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 noinst_LTLIBRARIES = libagent_ovs.la
@@ -32,8 +31,6 @@ libagent_ovs_la_CXXFLAGS = \
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
-	$(BOOST_LOG_LIB) \
-	$(BOOST_LOG_SETUP_LIB) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_THREAD_LIB) \
@@ -96,6 +93,7 @@ libagent_ovs_la_SOURCES = \
 	src/PortMapper.cpp \
 	src/StatsManager.cpp \
 	src/cmd.cpp \
+	src/logging.cpp \
 	src/Agent.cpp \
 	src/WorkQueue.cpp \
 	src/IdGenerator.cpp \
