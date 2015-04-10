@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
         ("level", po::value<string>()->default_value("info"),
          "Use the specified log level (default info). "
          "Overridden by log level in configuration file")
-        ("syslog", "Log to syslog instead of file or standard out"),
+        ("syslog", "Log to syslog instead of file or standard out")
         ("daemon", "Run the agent as a daemon")
         ;
     
