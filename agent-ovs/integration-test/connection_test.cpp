@@ -9,6 +9,7 @@
  */
 
 #include <boost/test/unit_test.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 #include "logging.h"
 
 #include "ovs.h"
@@ -187,12 +188,15 @@ BOOST_FIXTURE_TEST_CASE(reconnect, ConnectionFixture) {
     WAIT_FOR(conn.IsConnected(), 10);
     BOOST_CHECK(cl1.counter == 2);
 
-    /* Break connection, and make sure we can disconnect */
+    /* Break connection, and make sure we can disconnect quickly */
     RemoveSwitch(testSwitchName);
     WAIT_FOR(!conn.IsConnected(), 5);
+    using namespace boost::posix_time;
+    ptime start(microsec_clock::local_time());
     conn.Disconnect();
-
-    AddSwitch(testSwitchName);
+    ptime end(microsec_clock::local_time());
+    BOOST_CHECK((end - start).total_seconds() < 3);
+    LOG(DEBUG) << "Disconnected after losing connection to switch";
 }
 
 BOOST_AUTO_TEST_SUITE_END()

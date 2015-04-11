@@ -25,7 +25,7 @@ using namespace boost;
 
 typedef lock_guard<mutex> mutex_guard;
 
-const int LOST_CONN_BACKOFF_SEC = 5;
+const int LOST_CONN_BACKOFF_MSEC = 5000;
 
 #define OVS_VSWITCH_DAEMON  "ovs-vswitchd"
 
@@ -277,8 +277,12 @@ SwitchConnection::Monitor() {
         }
         bool oldConnLost = connLost;
         while (connLost && !isDisconnecting) {
-            sleep(LOST_CONN_BACKOFF_SEC);
-            connLost = (doConnectOF() != 0 || doConnectJson() != 0);
+            WatchPollEvent();
+            poll_timer_wait(LOST_CONN_BACKOFF_MSEC);
+            poll_block();   // block till timer expires or disconnect is requested
+            if (!isDisconnecting) {
+                connLost = (doConnectOF() != 0 || doConnectJson() != 0);
+            }
         }
         if (isDisconnecting) {
             return;
