@@ -752,6 +752,33 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv6, CommsFixture ) {
 
 }
 
+
+BOOST_FIXTURE_TEST_CASE( STABLE_test_pipe, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    static const char * domainSocket = "/tmp/comms_test_test_pipe.sock";
+
+    unlink(domainSocket);
+
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            domainSocket, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
+
+    BOOST_CHECK_EQUAL(!l, 0);
+
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            domainSocket, doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(3,3), pc_successful_connect);
+
+}
+
 static void pc_non_existent(void) {
 
     LOG(DEBUG);

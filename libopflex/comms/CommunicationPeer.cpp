@@ -153,13 +153,13 @@ void CommunicationPeer::onDisconnect(bool now) {
     ;
 
  // if (connected_ || now) {
-        if (!uv_is_closing((uv_handle_t*)&handle_)) {
+        if (!uv_is_closing((uv_handle_t*)getHandle())) {
             VLOG(2)
                 << this
                 << " issuing close for tcp handle"
             ;
-            uv_close((uv_handle_t*)&handle_, on_close);
-         // uv_close((uv_handle_t*)&handle_, connected_? on_close : NULL);
+            uv_close((uv_handle_t*)getHandle(), on_close);
+         // uv_close((uv_handle_t*)getHandle(), connected_? on_close : NULL);
         }
  // }
 
@@ -183,7 +183,7 @@ void CommunicationPeer::onDisconnect(bool now) {
         if (!uv_is_closing((uv_handle_t*)&keepAliveTimer_)) {
             uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
         }
-     // uv_close((uv_handle_t*)&handle_, on_close);
+     // uv_close((uv_handle_t*)getHandle(), on_close);
 
         /* FIXME: might be called too many times? */
         connectionHandler_(this, data_, ::yajr::StateChange::DISCONNECT, 0);
@@ -231,7 +231,7 @@ void CommunicationPeer::onDisconnect(bool now) {
     if (!uv_is_closing((uv_handle_t*)&keepAliveTimer_)) {
         uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
     }
- // uv_close((uv_handle_t*)&handle_, on_close);
+ // uv_close((uv_handle_t*)getHandle(), on_close);
 
     unlink();
 
@@ -276,7 +276,7 @@ int CommunicationPeer::tcpInit() {
 
     int rc;
 
-    if ((rc = uv_tcp_init(getUvLoop(), &handle_))) {
+    if ((rc = uv_tcp_init(getUvLoop(), reinterpret_cast<uv_tcp_t *>(getHandle())))) {
         LOG(WARNING)
             << "uv_tcp_init: ["
             << uv_err_name(rc)
@@ -289,7 +289,7 @@ int CommunicationPeer::tcpInit() {
  // LOG(DEBUG) << "{" << this << "}AP up() for a tcp init";
  // up();
 
-    if ((rc = uv_tcp_keepalive(&handle_, 1, 60))) {
+    if ((rc = uv_tcp_keepalive(reinterpret_cast<uv_tcp_t *>(getHandle()), 1, 60))) {
         LOG(WARNING)
             << "uv_tcp_keepalive: ["
             << uv_err_name(rc)
@@ -298,7 +298,7 @@ int CommunicationPeer::tcpInit() {
         ;
     }
 
-    if ((rc = uv_tcp_nodelay(&handle_, 1))) {
+    if ((rc = uv_tcp_nodelay(reinterpret_cast<uv_tcp_t *>(getHandle()), 1))) {
         LOG(WARNING)
             << "uv_tcp_nodelay: ["
             << uv_err_name(rc)
@@ -561,7 +561,7 @@ int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
     int rc;
     if ((rc = uv_write(
                     &write_req_,
-                    (uv_stream_t*) &handle_,
+                    (uv_stream_t*) getHandle(),
                     (uv_buf_t*)&iov[0],
                     iov.size(),
                     on_write))) {
@@ -632,8 +632,8 @@ void CommunicationPeer::timeout() {
         <<   rtt
         << " keepAliveInterval_: "
         <<   keepAliveInterval_
-        <<                          " handle_.flags: "
-        << reinterpret_cast< void * >(handle_.flags)
+        <<                          " getHandle()->flags: "
+        << reinterpret_cast< void * >(getHandle()->flags)
     ;
 
     if (uvRefCnt_ == 1) {
@@ -665,8 +665,8 @@ void CommunicationPeer::timeout() {
 
         /* close the connection and hope for the best */
         onDisconnect();
-     // if (!uv_is_closing((uv_handle_t*)&handle_)) {
-     //     uv_close((uv_handle_t*)&handle_, on_close);
+     // if (!uv_is_closing((uv_handle_t*)getHandle())) {
+     //     uv_close((uv_handle_t*)getHandle(), on_close);
      // }
 
         return;
@@ -706,7 +706,7 @@ int comms::internal::CommunicationPeer::choke() const {
 
     int rc;
 
-    if ((rc = uv_read_stop((uv_stream_t*) &handle_))) {
+    if ((rc = uv_read_stop((uv_stream_t*) getHandle()))) {
 
         LOG(WARNING)
             << "uv_read_stop: ["
@@ -750,7 +750,7 @@ int comms::internal::CommunicationPeer::unchoke() const {
     int rc;
 
     if ((rc = uv_read_start(
-                    (uv_stream_t*) &handle_,
+                    (uv_stream_t*) getHandle(),
                     transport_.callbacks_->allocCb_,
                     transport_.callbacks_->onRead_)
     )) {
@@ -854,11 +854,11 @@ bool CommunicationPeer::__checkInvariants() const {
      // result = false;
     }
 
-    if (handle_.data != this) {
+    if (getHandle()->data != this) {
         LOG(ERROR)
             << this
-            << " handle_.data = "
-            <<   handle_.data
+            << " getHandle()->data = "
+            <<   getHandle()->data
             << " should be "
             << reinterpret_cast< void const * >(this)
         ;

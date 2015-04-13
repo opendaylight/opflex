@@ -100,6 +100,7 @@ std::vector<iovec> get_iovec(Iterator from, Iterator to) {
 
 using namespace yajr::comms;
 class ActivePeer;
+class ActiveTcpPeer;
 class CommunicationPeer;
 
 /* we pick the storage class specifier here, and omit it at the definitions */
@@ -108,7 +109,7 @@ void on_close(uv_handle_t * h);
 void on_write(uv_write_t *req, int status);
 void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf);
 void on_passive_connection(uv_stream_t * server_handle, int status);
-int connect_to_next_address(ActivePeer * peer, bool swap_stack = true);
+int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack = true);
 void on_active_connection(uv_connect_t *req, int status);
 void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp);
 int addr_from_ip_and_port(const char * ip_address, uint16_t port,
@@ -250,7 +251,7 @@ class Peer : public SafeListBaseHook {
 
     static ActivePeer * get(uv_connect_t * r);
 
-    static ActivePeer * get(uv_getaddrinfo_t * r);
+    static ActiveTcpPeer * get(uv_getaddrinfo_t * r);
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT
     static size_t getCounter() {
@@ -292,9 +293,9 @@ class Peer : public SafeListBaseHook {
               ___________(0),
               status_(status)
             {
-                handle_.data = this;
+                getHandle()->data = this;
                 /* FIXME: this hack is filthy and unix-only */
-                handle_.flags = 0x02 /* UV_CLOSED */;
+                getHandle()->flags = 0x02 /* UV_CLOSED */;
 #ifdef COMMS_DEBUG_OBJECT_COUNT
                 ++counter;
 #endif
@@ -331,14 +332,27 @@ class Peer : public SafeListBaseHook {
      * @return the uv_loop_t * for this peer
      */
     uv_loop_t * getUvLoop() const {
-        return handle_.loop;
+        return getHandle()->loop;
     }
 
     void insert(Peer::LoopData::PeerState peerState);
 
     void unlink();
 
-    uv_tcp_t handle_;
+    union {
+        uv_handle_t     handle_;
+        uv_tcp_t    tcp_handle_;
+        uv_pipe_t  pipe_handle_;
+    };
+
+    uv_handle_t * getHandle() {
+        return &handle_;
+    }
+
+    uv_handle_t const * getHandle() const {
+        return &handle_;
+    }
+
     union {
         union {
             struct {
@@ -435,7 +449,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 transport_(transport::PlainText::getPlainTextTransport())
             {
                 req_.data = this;
-                handle_.loop = uvLoopSelector_(getData());
+                getHandle()->loop = uvLoopSelector_(getData());
                 getLoopData()->up();
 #ifndef NDEBUG
                 s_.cP_ = this;
@@ -496,6 +510,12 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     virtual void onDelete() {
         connectionHandler_(dynamic_cast<yajr::Peer *>(this), data_, ::yajr::StateChange::DELETE, 0);
+    }
+
+    virtual size_t getPendingBytes() const {
+        /* will only need to be overridden for UDP sockets */
+        return reinterpret_cast<uv_stream_t const *>(getHandle())
+            ->write_queue_size;
     }
 
     virtual void startKeepAlive(
@@ -563,11 +583,17 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     }
 
     virtual int getPeerName(struct sockaddr* remoteAddress, int* len) const {
-        return uv_tcp_getpeername(&handle_, remoteAddress, len);
+        return uv_tcp_getpeername(
+                reinterpret_cast<uv_tcp_t const *>(getHandle()),
+                remoteAddress,
+                len);
     }
 
     virtual int getSockName(struct sockaddr* remoteAddress, int* len) const {
-        return uv_tcp_getsockname(&handle_, remoteAddress, len);
+        return uv_tcp_getsockname(
+                reinterpret_cast<uv_tcp_t const *>(getHandle()),
+                remoteAddress,
+                len);
     }
 
     virtual void destroy(bool now = false);
@@ -650,8 +676,6 @@ class ActivePeer : public CommunicationPeer {
 #endif
   public:
     explicit ActivePeer(
-            std::string const & hostname,
-            std::string const & service,
             ::yajr::Peer::StateChangeCb connectionHandler,
             void * data,
             ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
@@ -661,9 +685,7 @@ class ActivePeer : public CommunicationPeer {
                     connectionHandler,
                     data,
                     uvLoopSelector,
-                    kPS_RESOLVING),
-            hostname_(hostname),
-            service_(service)
+                    kPS_RESOLVING)
         {
 #ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
@@ -682,13 +704,49 @@ class ActivePeer : public CommunicationPeer {
     }
 #endif
 
-    virtual void retry();
+    virtual void onFailedConnect() = 0;
+
+    virtual void retry() = 0;
 
     virtual void destroy(bool now = false);
 
 #ifndef NDEBUG
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
+
+  protected:
+    /* don't leak memory! */
+    virtual ~ActivePeer() {
+#ifdef COMMS_DEBUG_OBJECT_COUNT
+        --counter;
+#endif
+    }
+};
+
+class ActiveTcpPeer : public ActivePeer {
+#ifdef COMMS_DEBUG_OBJECT_COUNT
+    static ::boost::atomic<size_t> counter;
+#endif
+  public:
+    explicit ActiveTcpPeer(
+            std::string const & hostname,
+            std::string const & service,
+            ::yajr::Peer::StateChangeCb connectionHandler,
+            void * data,
+            ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
+        :
+            ActivePeer(
+                    connectionHandler,
+                    data,
+                    uvLoopSelector),
+            hostname_(hostname),
+            service_(service)
+        {
+#ifdef COMMS_DEBUG_OBJECT_COUNT
+            ++counter;
+#endif
+        }
+    virtual void onFailedConnect();
 
     char const * getHostname() const {
         return hostname_.c_str();
@@ -698,15 +756,49 @@ class ActivePeer : public CommunicationPeer {
         return service_.c_str();
     }
 
+    virtual void retry();
   protected:
     /* don't leak memory! */
-    virtual ~ActivePeer() {
+    virtual ~ActiveTcpPeer() {
 #ifdef COMMS_DEBUG_OBJECT_COUNT
         --counter;
 #endif
     }
     std::string const hostname_;
     std::string const service_;
+};
+
+class ActiveUnixPeer : public ActivePeer {
+#ifdef COMMS_DEBUG_OBJECT_COUNT
+    static ::boost::atomic<size_t> counter;
+#endif
+  public:
+    explicit ActiveUnixPeer(
+            std::string const & socketName,
+            ::yajr::Peer::StateChangeCb connectionHandler,
+            void * data,
+            ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
+        :
+            ActivePeer(
+                    connectionHandler,
+                    data,
+                    uvLoopSelector),
+            socketName_(socketName)
+        {
+#ifdef COMMS_DEBUG_OBJECT_COUNT
+            ++counter;
+#endif
+        }
+    virtual void onFailedConnect();
+    virtual void retry();
+  protected:
+    /* don't leak memory! */
+    virtual ~ActiveUnixPeer() {
+#ifdef COMMS_DEBUG_OBJECT_COUNT
+        --counter;
+#endif
+    }
+    std::string const socketName_;
 };
 
 class PassivePeer : public CommunicationPeer {
@@ -778,12 +870,14 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
             acceptHandler_(acceptHandler),
             data_(data)
         {
-            handle_.loop = _.listener_.uvLoop_ = listenerUvLoop ? : uv_default_loop();
+            getHandle()->loop = _.listener_.uvLoop_ = listenerUvLoop ? : uv_default_loop();
             getLoopData()->up();
 #ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
 #endif
         }
+
+    virtual PassivePeer * getNewPassive() = 0;
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT
     static size_t getCounter() {
@@ -801,7 +895,7 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
             acceptHandler_(this, data_, error);
         }
     }
-    virtual void retry();
+    virtual void retry() = 0;
 
     virtual void destroy(bool now = false);
 
@@ -825,14 +919,66 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
         return uvLoopSelector_;
     }
 
-    int setAddrFromIpAndPort(const std::string& ip_address, uint16_t port);
-
   private:
-    struct sockaddr_storage listen_on_;
 
     ::yajr::Peer::StateChangeCb const connectionHandler_;
     ::yajr::Listener::AcceptCb const acceptHandler_;
     void * const data_;
+};
+
+class ListeningTcpPeer : public ListeningPeer {
+  public:
+    virtual void retry();
+    int setAddrFromIpAndPort(const std::string& ip_address, uint16_t port);
+
+    explicit ListeningTcpPeer(
+            ::yajr::Peer::StateChangeCb connectionHandler,
+            ::yajr::Listener::AcceptCb acceptHandler,
+            void * data,
+            uv_loop_t * listenerUvLoop = NULL,
+            ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
+        :
+          ListeningPeer(
+                  connectionHandler,
+                  acceptHandler,
+                  data,
+                  listenerUvLoop,
+                  uvLoopSelector
+          ) {}
+
+    virtual PassivePeer * getNewPassive();
+
+  private:
+    struct sockaddr_storage listen_on_;
+
+};
+
+class ListeningUnixPeer : public ListeningPeer {
+  public:
+    virtual void retry();
+
+    explicit ListeningUnixPeer(
+            std::string const & socketName,
+            ::yajr::Peer::StateChangeCb connectionHandler,
+            ::yajr::Listener::AcceptCb acceptHandler,
+            void * data,
+            uv_loop_t * listenerUvLoop = NULL,
+            ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
+        :
+          ListeningPeer(
+                  connectionHandler,
+                  acceptHandler,
+                  data,
+                  listenerUvLoop,
+                  uvLoopSelector
+          ),
+          socketName_(socketName)
+        {}
+
+    virtual PassivePeer * getNewPassive();
+
+  private:
+    std::string const socketName_;
 };
 
 struct internal::Peer::LoopData::PeerDisposer {

@@ -76,10 +76,10 @@ void internal::Peer::LoopData::onPrepareLoop() {
 
     uint64_t now = uv_now(prepare_.loop);
 
-    peers[TO_RESOLVE]
+    peers[TO_LISTEN]
         .clear_and_dispose(RetryPeer());
 
-    peers[TO_LISTEN]
+    peers[TO_RESOLVE]
         .clear_and_dispose(RetryPeer());
 
 #ifndef NDEBUG

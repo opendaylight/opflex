@@ -60,8 +60,8 @@
         << port
     ;
 
-    ::yajr::comms::internal::ListeningPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ListeningPeer(
+    ::yajr::comms::internal::ListeningTcpPeer * peer;
+    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ListeningTcpPeer(
             connectionHandler,
             acceptHandler,
             data,
@@ -96,12 +96,48 @@
     return peer;
 }
 
+::yajr::Listener * ::yajr::Listener::create(
+        const std::string& socketName,
+        ::yajr::Peer::StateChangeCb connectionHandler,
+        ::yajr::Listener::AcceptCb acceptHandler,
+        void * data,
+        uv_loop_t * listenerUvLoop,
+        ::yajr::Peer::UvLoopSelector uvLoopSelector
+    ) {
+
+    VLOG(1)
+        << socketName
+    ;
+
+    ::yajr::comms::internal::ListeningUnixPeer * peer;
+    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ListeningUnixPeer(
+            socketName,
+            connectionHandler,
+            acceptHandler,
+            data,
+            listenerUvLoop,
+            uvLoopSelector))) {
+        LOG(WARNING)
+            << "out of memory, unable to create listener"
+        ;
+        return NULL;
+    }
+
+    VLOG(1)
+        << peer
+        << " queued up for listening"
+    ;
+    peer->insert(::yajr::comms::internal::Peer::LoopData::TO_LISTEN);
+
+    return peer;
+}
+
 namespace yajr {
     namespace comms {
 
 using namespace yajr::comms::internal;
 
-void ::yajr::comms::internal::ListeningPeer::retry() {
+void ::yajr::comms::internal::ListeningTcpPeer::retry() {
 
     if (destroying_) {
 
@@ -116,7 +152,8 @@ void ::yajr::comms::internal::ListeningPeer::retry() {
 
     int rc;
 
-    if ((rc = uv_tcp_init(_.listener_.uvLoop_, &handle_))) {
+    if ((rc = uv_tcp_init(_.listener_.uvLoop_,
+                    reinterpret_cast<uv_tcp_t *>(getHandle())))) {
         LOG(WARNING)
             << "uv_tcp_init: ["
             << uv_err_name(rc)
@@ -132,7 +169,7 @@ void ::yajr::comms::internal::ListeningPeer::retry() {
     ;
     up();
 
-    if ((rc = uv_tcp_bind(&handle_,
+    if ((rc = uv_tcp_bind(reinterpret_cast<uv_tcp_t *>(getHandle()),
                 (struct sockaddr *) &listen_on_,
                 0))) {
         LOG(WARNING)
@@ -145,7 +182,7 @@ void ::yajr::comms::internal::ListeningPeer::retry() {
         goto failed_after_init;
     }
 
-    if ((rc = uv_listen((uv_stream_t*) &handle_, 1024,
+    if ((rc = uv_listen((uv_stream_t*) getHandle(), 1024,
                 on_passive_connection))) {
         LOG(WARNING)
             << "uv_tcp_listen: ["
@@ -173,7 +210,90 @@ failed_after_init:
     VLOG(1)
         << "closing tcp handle because of immediate failure after init"
     ;
-    uv_close((uv_handle_t*) &handle_, on_close);
+    uv_close((uv_handle_t*) getHandle(), on_close);
+
+failed_tcp_init:
+    insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
+
+    onError(rc);
+}
+
+void ::yajr::comms::internal::ListeningUnixPeer::retry() {
+
+    if (destroying_) {
+
+        LOG(INFO)
+            << this
+            << "Not retrying because of pending destroy"
+        ;
+
+        return;
+
+    }
+
+    int rc;
+    if ((rc = uv_pipe_init(
+                    getUvLoop(),
+                    reinterpret_cast<uv_pipe_t *>(getHandle()),
+                    0))) {
+        LOG(WARNING)
+            << "uv_pipe_init: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+            ;
+        onError(rc);
+        insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
+        return;
+    }
+
+    VLOG(1)
+        << this
+        << " up() for listening domain socket init"
+    ;
+    up();
+
+    if ((rc = uv_pipe_bind(reinterpret_cast<uv_pipe_t *>(getHandle()),
+                    socketName_.c_str()))) {
+        LOG(WARNING)
+            << "uv_pipe_bind: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+        ;
+        status_ = Peer::kPS_FAILED_BINDING;
+        goto failed_after_init;
+    }
+
+    if ((rc = uv_listen((uv_stream_t*) getHandle(), 1024,
+                on_passive_connection))) {
+        LOG(WARNING)
+            << "uv_listen: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+        ;
+        status_ = Peer::kPS_FAILED_LISTENING;
+        goto failed_after_init;
+    }
+
+    status_ = Peer::kPS_LISTENING;
+
+    insert(internal::Peer::LoopData::LISTENING);
+
+    VLOG(1)
+        << "listening!"
+    ;
+
+    connected_ = 1;
+
+    return;
+
+failed_after_init:
+    VLOG(1)
+        << "closing pipe handle because of immediate failure after init"
+    ;
+    uv_close((uv_handle_t*) getHandle(), on_close);
 
 failed_tcp_init:
     insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
@@ -199,29 +319,33 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
 
     VLOG(3);
 
-    assert(status == 0);
     ListeningPeer * listener = Peer::get<ListeningPeer>(server_handle);
+
+    if (status) {
+        LOG(ERROR)
+            << listener
+            << "on_passive_connection: ["
+            << uv_err_name(status)
+            << "] "
+            << uv_strerror(status)
+        ;
+
+        /* there could also be legitimate reasons for this, but we still have to
+         * encounter them
+         */
+        assert(0);
+
+        return;
+    }
+
     PassivePeer *peer;
 
-    if (!(peer = new (std::nothrow) PassivePeer(
-                    listener->getConnectionHandler(),
-                    listener->getConnectionHandlerData(),
-                    listener->getUvLoopSelector()
-                    ))) {
-        LOG(WARNING)
-            << "out of memory, dropping new peer on the floor"
-        ;
+    if (!(peer = listener->getNewPassive())){
         return;
     }
 
     int rc;
-    if ((rc = peer->tcpInit())) {
-        peer->onError(rc);
-        peer->down();  // this is invoked with an intent to delete!
-        return;
-    }
-
-    if ((rc = uv_accept(server_handle, (uv_stream_t*) &peer->handle_))) {
+    if ((rc = uv_accept(server_handle, (uv_stream_t*) peer->getHandle()))) {
         VLOG(1)
             << "uv_accept: ["
             << uv_err_name(rc)
@@ -229,7 +353,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
             << uv_strerror(rc)
         ;
         peer->onError(rc);
-        uv_close((uv_handle_t*)&peer->handle_, on_close);
+        uv_close((uv_handle_t*) peer->getHandle(), on_close);
         return;
     }
 
@@ -244,6 +368,67 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
 
 }
 
+::yajr::comms::internal::PassivePeer *
+::yajr::comms::internal::ListeningTcpPeer::getNewPassive() {
+
+    ::yajr::comms::internal::PassivePeer * peer;
+    if (!(peer = new (std::nothrow) PassivePeer(
+                    getConnectionHandler(),
+                    getConnectionHandlerData(),
+                    getUvLoopSelector()
+                    ))) {
+        LOG(WARNING)
+            << "out of memory, dropping new peer on the floor"
+        ;
+        return NULL;
+    }
+
+    int rc;
+    if ((rc = peer->tcpInit())) {
+        peer->onError(rc);
+        peer->down();  // this is invoked with an intent to delete!
+        return NULL;
+    }
+
+    return peer;
+
+}
+
+::yajr::comms::internal::PassivePeer *
+::yajr::comms::internal::ListeningUnixPeer::getNewPassive() {
+
+    ::yajr::comms::internal::PassivePeer * peer;
+    if (!(peer = new (std::nothrow) PassivePeer(
+                    getConnectionHandler(),
+                    getConnectionHandlerData(),
+                    getUvLoopSelector()
+                    ))) {
+        LOG(WARNING)
+            << "out of memory, dropping new peer on the floor"
+        ;
+        return NULL;
+    }
+
+    int rc;
+    if ((rc = uv_pipe_init(
+                    getUvLoop(),
+                    reinterpret_cast<uv_pipe_t *>(peer->getHandle()),
+                    0))) {
+        LOG(WARNING)
+            << "uv_pipe_init: ["
+            << uv_err_name(rc)
+            << "] "
+            << uv_strerror(rc)
+            ;
+        peer->onError(rc);
+        peer->down();  // this is invoked with an intent to delete!
+        return NULL;
+    }
+
+    return peer;
+
+}
+
 
 
 /*
@@ -255,7 +440,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
                          |___/
 */
 
-int ::yajr::comms::internal::ListeningPeer::setAddrFromIpAndPort(
+int ::yajr::comms::internal::ListeningTcpPeer::setAddrFromIpAndPort(
         const std::string& ip_address,
         uint16_t port) {
 
