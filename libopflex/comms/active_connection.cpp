@@ -57,8 +57,8 @@
         << service
     ;
 
-    ::yajr::comms::internal::ActivePeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActivePeer(
+    ::yajr::comms::internal::ActiveTcpPeer * peer;
+    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActiveTcpPeer(
                     host,
                     service,
                     connectionHandler,
@@ -79,77 +79,39 @@
     return peer;
 }
 
+::yajr::Peer * ::yajr::Peer::create(
+        std::string const & socketName,
+        ::yajr::Peer::StateChangeCb connectionHandler,
+        void * data,
+        UvLoopSelector uvLoopSelector
+   ) {
+
+    ::yajr::comms::internal::ActiveUnixPeer * peer;
+    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActiveUnixPeer(
+                    socketName,
+                    connectionHandler,
+                    data,
+                    uvLoopSelector))) {
+        LOG(WARNING)
+            << ": out of memory, dropping new peer on the floor"
+        ;
+        return NULL;
+    }
+
+    VLOG(1)
+        << peer
+        << " queued up for connect"
+    ;
+    peer->insert(::yajr::comms::internal::Peer::LoopData::TO_RESOLVE);
+
+    return peer;
+}
+
+
 namespace yajr {
     namespace comms {
 
 using namespace yajr::comms::internal;
-
-void ::yajr::comms::internal::ActivePeer::retry() {
-
-    if (destroying_) {
-
-        LOG(INFO)
-            << this
-            << "Not retrying because of pending destroy"
-        ;
-
-        return;
-
-    }
-    if (uvRefCnt_ != 1) {
-        LOG(INFO)
-            << this
-            << " has to wait for reference count to fall to 1 before retrying"
-        ;
-
-        insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
-
-        return;
-
-    }
-
-
-    struct addrinfo const hints = (struct addrinfo){
-        /* .ai_flags    = */ 0,
-        /* .ai_family   = */ AF_UNSPEC,
-        /* .ai_socktype = */ SOCK_STREAM,
-        /* .ai_protocol = */ IPPROTO_TCP,
-    };
-
-    /* potentially switch uv loop if some rebalancing is needed */
-    uv_loop_t * newLoop = uvLoopSelector_(getData());
-
-    if (newLoop != handle_.loop) {
-        getLoopData()->down();
-        handle_.loop = newLoop;
-        getLoopData()->up();
-    }
-
-    int rc;
-    if ((rc = uv_getaddrinfo(
-                    getUvLoop(),
-                    &dns_req_,
-                    on_resolved,
-                    getHostname(),
-                    getService(),
-                    &hints))) {
-        LOG(WARNING)
-            << "uv_getaddrinfo: ["
-            << uv_err_name(rc)
-            << "] "
-            << uv_strerror(rc)
-        ;
-        onError(rc);
-        insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
-    } else {
-        VLOG(1)
-            << this
-            << " up() for a pending getaddrinfo()";
-        up();
-        insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
-    }
-
-}
 
 
 
@@ -205,24 +167,7 @@ void on_active_connection(uv_connect_t *req, int status) {
             << "] "
             << uv_strerror(status)
         ;
-        if ((rc = connect_to_next_address(peer))) {
-            LOG(WARNING)
-                << peer
-                << "connect: no more resolved addresses"
-            ;
-
-            /* since all attempts for all possible IP addresses have failed,
-             * issue an error callback
-             */
-            peer->onError(rc);
-
-            if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
-                uv_close((uv_handle_t*)&peer->handle_, on_close);
-            }
-
-            /* retry later */
-            retry_later(peer);
-        }
+        peer->onFailedConnect();
         return;
     }
 
@@ -252,7 +197,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
     VLOG(2);
 
-    ActivePeer * peer = Peer::get(req);
+    ActiveTcpPeer * peer = Peer::get(req);
     assert(!peer->passive_);
     assert(peer->peerType()[0]=='A');
 
@@ -302,8 +247,8 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
             << "] "
             << uv_strerror(rc)
         ;
-        if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
-            uv_close((uv_handle_t*)&peer->handle_, on_close);
+        if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
+            uv_close((uv_handle_t*)peer->getHandle(), on_close);
         }
         return retry_later(peer);
     }
@@ -429,7 +374,7 @@ void retry_later(ActivePeer * peer) {
 
 void swap_stack_on_close(uv_handle_t * h) {
 
-    ActivePeer * peer = Peer::get<ActivePeer>(h);  // can't possibly crash yet
+    ActiveTcpPeer * peer = Peer::get<ActiveTcpPeer>(h);  // can't possibly crash yet
 
     VLOG(1)
         << peer
@@ -455,15 +400,15 @@ void swap_stack_on_close(uv_handle_t * h) {
             << "] "
             << uv_strerror(rc)
         ;
-        if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
-            uv_close((uv_handle_t*)&peer->handle_, on_close);
+        if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
+            uv_close((uv_handle_t*)peer->getHandle(), on_close);
         }
         return retry_later(peer);
     }
 
 }
 
-int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
+int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
 
     VLOG(1)
         << peer
@@ -475,8 +420,11 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
 
     int rc = UV_EAI_FAIL;
 
-    while (ai && (rc = uv_tcp_connect(&peer->connect_req_, &peer->handle_,
-                ai->ai_addr, on_active_connection))) {
+    while (ai && (rc = uv_tcp_connect(
+                    &peer->connect_req_,
+                    reinterpret_cast<uv_tcp_t *>(peer->getHandle()),
+                    ai->ai_addr,
+                    on_active_connection))) {
         LOG(ai ? INFO : WARNING)
             << "uv_tcp_connect: ["
             << uv_err_name(rc)
@@ -497,8 +445,8 @@ int connect_to_next_address(ActivePeer * peer, bool swap_stack) {
                     LOG(INFO)
                         << "destroying socket and retrying"
                     ;
-                    if (!uv_is_closing((uv_handle_t*)&peer->handle_)) {
-                        uv_close((uv_handle_t*)&peer->handle_, swap_stack_on_close);
+                    if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
+                        uv_close((uv_handle_t*)peer->getHandle(), swap_stack_on_close);
                     }
             }
 

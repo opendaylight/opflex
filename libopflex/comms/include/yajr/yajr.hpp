@@ -86,7 +86,7 @@ struct Peer {
     );
 
     /**
-     * @brief Factory for an active yajr communication Peer.
+     * @brief Factory for an active yajr TCP communication Peer.
      *
      * This static class method creates a communication Peer and connects it
      * to the desired \p host and \p service at the very next opportunity.
@@ -117,6 +117,23 @@ struct Peer {
                                          /**< [in] the hostname to connect to */
             std::string const     & service,
                                                /**< [in] service name or port */
+            StateChangeCb           connectionHandler,
+                                              /**< [in] state change callback */
+            void                  * data              = NULL,
+                                                      /**< [in] callback data */
+            UvLoopSelector          uvLoopSelector    = NULL
+                                     /**< [in] uv_loop selector for this Peer */
+    );
+
+    /**
+     * @brief Factory for an active yajr Unix Domain Socket communication Peer.
+     *
+     * @return a pointer to the Peer created
+     * @see create
+     **/
+    static Peer * create(
+            std::string const     & socketName,
+                                /**< [in] UNIX Socket/pipe name to connect to */
             StateChangeCb           connectionHandler,
                                               /**< [in] state change callback */
             void                  * data              = NULL,
@@ -278,6 +295,27 @@ struct Listener {
                 /**< [in] the ip address to bind to, or "0.0.0.0" to bind all */
         uint16_t                     port,
                                                 /**< [in] the port to bind to */
+        Peer::StateChangeCb          connectionHandler,
+               /**< [in] state change callback for the accepted passive peers */
+        AcceptCb                     acceptHandler     = NULL,
+                                  /**< [in] accept callback for this listener */
+        void                       * data              = NULL,
+                              /**< [in] callback data for the accept callback */
+        uv_loop_t                  * listenerUvLoop    = NULL,
+                                       /**< [in] libuv loop for this Listener */
+        Peer::UvLoopSelector         uvLoopSelector    = NULL
+                 /**< [in] libuv loop selector for the accepted passive peers */
+    );
+
+    /**
+     * @brief Factory for passive yajr Unix Domain Socket communication Listener.
+     *
+     * @return a pointer to the Peer created
+     * @see create
+     **/
+    static Listener * create(
+        std::string const     & socketName,
+                                   /**< [in] UNIX Socket/pipe name to bind to */
         Peer::StateChangeCb          connectionHandler,
                /**< [in] state change callback for the accepted passive peers */
         AcceptCb                     acceptHandler     = NULL,

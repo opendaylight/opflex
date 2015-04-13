@@ -91,7 +91,7 @@ char const * getUvHandleField(uv_handle_t * h, internal::Peer * peer) {
     if (h == reinterpret_cast< uv_handle_t * >(&peer->keepAliveTimer_)) {
         hType = "keepAliveTimer";
     } else {
-        if (h == reinterpret_cast< uv_handle_t * >(&peer->handle_)) {
+        if (h == reinterpret_cast< uv_handle_t * >(peer->getHandle())) {
             hType = "TCP";
         }
     }
