@@ -206,7 +206,7 @@ public class Node
                                 "unsupported node property/qualifier encountered",
                                 "no property \"" + lPropName + "\" defined: " + lProc +
                                 "; ALL NODEL PROPS: " + nvps +
-                                "; ALOOWED: " + lProc.getPropNames() +
+                                "; ALLOWED: " + lProc.getPropNames() +
                                 "; THIS JAVACLASS: " + this.getClass() +
                                 "; PROCESSOR JAVA CLASS: " + lProc.getClass());
                     }

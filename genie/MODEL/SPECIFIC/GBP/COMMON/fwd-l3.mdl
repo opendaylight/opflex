@@ -100,6 +100,14 @@ module[gbp]
                cardinality=many;
                ]
         }
+        dependency[epGroup;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+               cardinality=many;
+               ]
+        }
         contained
         {
             parent[class=gbp/RoutingDomain]
