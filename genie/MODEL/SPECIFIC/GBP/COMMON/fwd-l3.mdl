@@ -33,6 +33,16 @@ module[gbp]
             }
         }
 
+        # References to subnets that are internal to this routing domain.
+        dependency[intSubnets;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/Subnets;
+               cardinality=many;
+               ]
+        }
+
         # Set how IPv6 hosts should be configured (through DHCP or
         # statelessly)
         member[ipv6Autoconfig; type=gbp/Autoconfig]
@@ -102,7 +112,7 @@ module[gbp]
         }
         contained
         {
-            parent[class=gbp/RoutingDomain]
+            parent[class=policy/Space]
         }
         named
         {

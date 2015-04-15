@@ -112,7 +112,7 @@ protected:
         bd1->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd0->getURI());
 
-        subnetsfd0 = rd0->addGbpSubnets("subnetsfd0");
+        subnetsfd0 = space->addGbpSubnets("subnetsfd0");
         subnetsfd0_1 = subnetsfd0->addGbpSubnet("subnetsfd0_1");
         subnetsfd0_1->setAddress("10.20.44.0")
             .setPrefixLen(24)
@@ -122,24 +122,28 @@ protected:
             .setPrefixLen(32);
         subnetsfd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd0->getURI());
+        rd0->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd0->getURI().toString());
 
-        subnetsfd1 = rd0->addGbpSubnets("subnetsfd1");
+        subnetsfd1 = space->addGbpSubnets("subnetsfd1");
         subnetsfd1_1 = subnetsfd0->addGbpSubnet("subnetsfd1_1");
         subnetsfd1_1->setAddress("10.20.45.0")
             .setPrefixLen(24)
             .setVirtualRouterIp("10.20.45.1");
         subnetsfd1->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd1->getURI());
+        rd0->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd1->getURI().toString());
 
-        subnetsbd0 = rd0->addGbpSubnets("subnetsbd0");
+        subnetsbd0 = space->addGbpSubnets("subnetsbd0");
         subnetsbd0_1 = subnetsbd0->addGbpSubnet("subnetsbd0_1");
         subnetsbd0->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd0->getURI());
+        rd0->addGbpRoutingDomainToIntSubnetsRSrc(subnetsbd0->getURI().toString());
 
-        subnetsbd1 = rd0->addGbpSubnets("subnetsbd1");
+        subnetsbd1 = space->addGbpSubnets("subnetsbd1");
         subnetsbd1_1 = subnetsbd1->addGbpSubnet("subnetsbd1_1");
         subnetsbd1->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd1->getURI());
+        rd0->addGbpRoutingDomainToIntSubnetsRSrc(subnetsbd1->getURI().toString());
 
         epg0 = space->addGbpEpGroup("epg0");
         epg0->addGbpEpGroupToNetworkRSrc()

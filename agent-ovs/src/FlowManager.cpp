@@ -1552,11 +1552,18 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
     // routing to endpoints that are local to this vswitch, so the
     // action is to output to the uplink tunnel.  Match using
     // longest-prefix.
-    vector<shared_ptr<Subnets> > subnets_list;
-    rd.get()->resolveGbpSubnets(subnets_list);
-    BOOST_FOREACH(shared_ptr<Subnets>& subnets_obj, subnets_list) {
+    vector<shared_ptr<RoutingDomainToIntSubnetsRSrc> > subnets_list;
+    rd.get()->resolveGbpRoutingDomainToIntSubnetsRSrc(subnets_list);
+    BOOST_FOREACH(shared_ptr<RoutingDomainToIntSubnetsRSrc>& subnets_ref,
+                  subnets_list) {
+        optional<URI> subnets_uri = subnets_ref->getTargetURI();
+        if (!subnets_uri) continue;
+        optional<shared_ptr<Subnets> > subnets_obj =
+            Subnets::resolve(agent.getFramework(), subnets_uri.get());
+        if (!subnets_obj) continue;
+        
         vector<shared_ptr<Subnet> > subnets;
-        subnets_obj->resolveGbpSubnet(subnets);
+        subnets_obj.get()->resolveGbpSubnet(subnets);
 
         BOOST_FOREACH(shared_ptr<Subnet>& subnet, subnets) {
             if (!subnet->isAddressSet() || !subnet->isPrefixLenSet())

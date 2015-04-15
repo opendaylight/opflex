@@ -52,21 +52,24 @@ public:
         bd->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
     
-        subnetsfd = rd->addGbpSubnets("subnetsfd");
+        subnetsfd = space->addGbpSubnets("subnetsfd");
         subnetsfd1 = subnetsfd->addGbpSubnet("subnetsfd1");
         subnetsfd2 = subnetsfd->addGbpSubnet("subnetsfd2");
         subnetsfd->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd->getURI());
+        rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd->getURI().toString());
     
-        subnetsbd = rd->addGbpSubnets("subnetsbd");
+        subnetsbd = space->addGbpSubnets("subnetsbd");
         subnetsbd1 = subnetsbd->addGbpSubnet("subnetsbd1");
         subnetsbd->addGbpSubnetsToNetworkRSrc()
             ->setTargetBridgeDomain(bd->getURI());
+        rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsbd->getURI().toString());
     
-        subnetsrd = rd->addGbpSubnets("subnetsrd");
+        subnetsrd = space->addGbpSubnets("subnetsrd");
         subnetsrd1 = subnetsrd->addGbpSubnet("subnetsrd1");
         subnetsrd->addGbpSubnetsToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
+        rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsrd->getURI().toString());
 
         classifier1 = space->addGbpeL24Classifier("classifier1");
         classifier1->setOrder(100);

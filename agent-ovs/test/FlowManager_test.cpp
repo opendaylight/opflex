@@ -1110,7 +1110,7 @@ BOOST_FIXTURE_TEST_CASE(floatingIp, VxlanFlowManagerFixture) {
         bd_ext->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd_ext->getURI());
 
-        subnets_ext = rd_ext->addGbpSubnets("subnets_ext");
+        subnets_ext = common->addGbpSubnets("subnets_ext");
         subnets_ext->addGbpSubnetsToNetworkRSrc()
             ->setTargetFloodDomain(fd_ext->getURI());
         subnets_ext->addGbpSubnet("subnet_ext4")
@@ -1119,6 +1119,8 @@ BOOST_FIXTURE_TEST_CASE(floatingIp, VxlanFlowManagerFixture) {
         subnets_ext->addGbpSubnet("subnet_ext6")
             ->setAddress("fdf1:9f86:d1af:6cc9::")
             .setPrefixLen(64);
+        rd_ext->addGbpRoutingDomainToIntSubnetsRSrc(subnets_ext->
+                                                    getURI().toString());
 
         eg_nat = common->addGbpEpGroup("nat-epg");
         eg_nat->addGbpeInstContext()->setEncapId(0x4242);

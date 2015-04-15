@@ -119,7 +119,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     bd_ext->addGbpBridgeDomainToNetworkRSrc()
         ->setTargetRoutingDomain(rd_ext->getURI());
     
-    subnetsfd1 = rd->addGbpSubnets("subnetsfd1");
+    subnetsfd1 = space->addGbpSubnets("subnetsfd1");
     subnetsfd1_1 = subnetsfd1->addGbpSubnet("subnetsfd1_1");
     subnetsfd1_1->setAddress("10.0.0.0")
         .setPrefixLen(24)
@@ -134,8 +134,9 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setPrefixLen(64);
     subnetsfd1->addGbpSubnetsToNetworkRSrc()
         ->setTargetFloodDomain(fd1->getURI());
+    rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd1->getURI().toString());
 
-    subnetsfd2 = rd->addGbpSubnets("subnetsfd2");
+    subnetsfd2 = space->addGbpSubnets("subnetsfd2");
     subnetsfd2_1 = subnetsfd2->addGbpSubnet("subnetsfd2_1");
     subnetsfd2_1->setAddress("10.0.1.0")
         .setPrefixLen(24)
@@ -145,18 +146,21 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setPrefixLen(64);
     subnetsfd2->addGbpSubnetsToNetworkRSrc()
         ->setTargetFloodDomain(fd2->getURI());
+    rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd2->getURI().toString());
     
-    subnetsbd = rd->addGbpSubnets("subnetsbd");
+    subnetsbd = space->addGbpSubnets("subnetsbd");
     subnetsbd1 = subnetsbd->addGbpSubnet("subnetsbd1");
     subnetsbd->addGbpSubnetsToNetworkRSrc()
         ->setTargetBridgeDomain(bd->getURI());
+    rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsbd1->getURI().toString());
     
-    subnetsrd = rd->addGbpSubnets("subnetsrd");
+    subnetsrd = space->addGbpSubnets("subnetsrd");
     subnetsrd1 = subnetsrd->addGbpSubnet("subnetsrd1");
     subnetsrd->addGbpSubnetsToNetworkRSrc()
         ->setTargetRoutingDomain(rd->getURI());
+    rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsrd->getURI().toString());
 
-    subnets_ext = rd_ext->addGbpSubnets("subnets_ext");
+    subnets_ext = common->addGbpSubnets("subnets_ext");
     subnets_ext->addGbpSubnetsToNetworkRSrc()
         ->setTargetFloodDomain(fd_ext->getURI());
     subnets_ext->addGbpSubnet("subnet_ext4")
@@ -165,6 +169,8 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     subnets_ext->addGbpSubnet("subnet_ext6")
         ->setAddress("fdf1:9f86:d1af:6cc9::")
         .setPrefixLen(64);
+    rd_ext->addGbpRoutingDomainToIntSubnetsRSrc(subnets_ext->
+                                                getURI().toString());
 
     // ARP
     classifier1 = space->addGbpeL24Classifier("classifier1");
