@@ -16,6 +16,8 @@
 
 #include <opflex/logging/internal/logging.hpp>
 
+#include <sys/un.h>
+
 /*
                          ____               _
                         |  _ \ __ _ ___ ___(_)_   _____
@@ -394,11 +396,43 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
 
 }
 
+class PassiveUnixPeer : public PassivePeer {
+public:
+    explicit PassiveUnixPeer(
+            ::yajr::Peer::StateChangeCb connectionHandler,
+            void * data,
+            ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL)
+        :
+            PassivePeer(connectionHandler,
+                        data,
+                        uvLoopSelector)
+        { }
+
+    virtual int getPeerName(struct sockaddr* remoteAddress, int* len) const {
+        *len = sizeof(struct sockaddr_un);
+
+        remoteAddress->sa_family = AF_UNIX;
+        struct sockaddr_un* addr = (struct sockaddr_un*)remoteAddress;
+        size_t size = sizeof(addr->sun_path);
+        memset(addr->sun_path, 0, sizeof(addr->sun_path));
+        int rc =
+            uv_pipe_getsockname(reinterpret_cast<uv_pipe_t const *>(getHandle()),
+                                addr->sun_path,
+                                &size);
+        addr->sun_path[sizeof(addr->sun_path)-1] = '\0';
+        return rc;
+    }
+
+    virtual int getSockName(struct sockaddr* remoteAddress, int* len) const {
+        return getPeerName(remoteAddress, len);
+    }
+};
+
 ::yajr::comms::internal::PassivePeer *
 ::yajr::comms::internal::ListeningUnixPeer::getNewPassive() {
 
     ::yajr::comms::internal::PassivePeer * peer;
-    if (!(peer = new (std::nothrow) PassivePeer(
+    if (!(peer = new (std::nothrow) PassiveUnixPeer(
                     getConnectionHandler(),
                     getConnectionHandlerData(),
                     getUvLoopSelector()
