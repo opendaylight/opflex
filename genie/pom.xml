@@ -57,11 +57,11 @@
         <artifactId>maven-jar-plugin</artifactId>
         <version>2.6</version>
         <configuration>
-	      <archive>
+          <archive>
             <manifest>
               <mainClass>org.opendaylight.opflex.genie.Genie</mainClass>
             </manifest>
-	      </archive>
+          </archive>
         </configuration>
       </plugin>
     </plugins>
