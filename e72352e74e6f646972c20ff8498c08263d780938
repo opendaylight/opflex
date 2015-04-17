@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3aa0d159_740c3e95",
+        "filename": "agent-ovs/rpm/agent-ovs.spec.in",
+        "patchSetId": 2
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-04-17T20:53:27Z",
+      "side": 1,
+      "message": "you\u0027ll need to add a similar line to debian/agent-ovs.install",
+      "revId": "e72352e74e6f646972c20ff8498c08263d780938",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
