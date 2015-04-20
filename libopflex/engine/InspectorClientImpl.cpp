@@ -18,6 +18,7 @@
 
 #include <boost/foreach.hpp>
 #include <boost/optional.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/engine/internal/InspectorClientHandler.h"
@@ -43,6 +44,7 @@ using std::string;
 using std::pair;
 using std::make_pair;
 using boost::optional;
+using boost::scoped_ptr;
 using opflex::modb::ObjectStore;
 using opflex::modb::PropertyInfo;
 using opflex::modb::ClassInfo;
@@ -86,7 +88,7 @@ void InspectorClientImpl::execute() {
 
 void InspectorClientImpl::executeCommands() {
     while (commands.size() > 0) {
-        Cmd* command = commands.front();
+        scoped_ptr<Cmd> command(commands.front());
         commands.pop_front();
         pendingRequests += command->execute(*this);
     }
