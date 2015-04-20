@@ -74,6 +74,8 @@ public class FConfigureAC
                                         + "            [sdk_bversion=${withval}],\n"
                                         + "            [sdk_bversion='private'])\n"
                                         + "AC_SUBST(SDK_BVERSION, [${sdk_bversion}])\n"
+                                        + "# allow to create final builds with assert()s disabled\n"
+                                        + "AC_HEADER_ASSERT\n"
                                         + "# ---------------------------------------------------------------\n"
                                         + "# Environment introspection\n" + "\n" + "# check for compiler\n"
                                         + "AC_PROG_CC\n" + "AC_PROG_CXX\n" + "AC_PROG_INSTALL\n" + "AM_PROG_AS\n"

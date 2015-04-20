@@ -181,15 +181,13 @@ public class FDebPkg
         + "# Uncomment this to turn on verbose mode.\n"
         + "#export DH_VERBOSE=1\n"
         + "\n"
-        + "DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)\n"
-        + "\n"
         + "%:\n"
         +"\tdh $@ --parallel --with autotools-dev\n"
         + "\n"
         + "#override_dh_auto_test:\n"
         + "\n"
         + "override_dh_auto_configure:\n"
-        + "\t./configure --prefix=/usr --libdir=\\$${prefix}/lib/$(DEB_HOST_MULTIARCH) --disable-assert\n"
+        + "\tdh_auto_configure -- --disable-assert\n"
         + "\n"
         + "override_dh_auto_install:\n"
         + "\t$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install\n"
@@ -198,7 +196,10 @@ public class FDebPkg
         + "\tdh_shlibdeps -- --ignore-missing-info\n"
         + "\n"
         + "override_dh_strip:\n"
-        + "\tdh_strip --dbg-package=_LIB_NAME_-dbg";
+        + "\tdh_strip --dbg-package=_LIB_NAME_-dbg"
+        + "\n"
+        + "override_dh_gencontrol:\n"
+        + "\tdh_gencontrol -- -v$(VERSION_WITH_BUILD)";
     private static final String TEMPLATE_FORMAT = "3.0 (quilt)\n";
     private static final String TEMPLATE_DEV_INSTALL =
         "usr/include/*\n"

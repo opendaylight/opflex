@@ -1,3 +1,4 @@
 usr/bin/agent_ovs
+usr/bin/gbp_inspect
 etc/opflex-agent-ovs/opflex-agent-ovs.conf
 

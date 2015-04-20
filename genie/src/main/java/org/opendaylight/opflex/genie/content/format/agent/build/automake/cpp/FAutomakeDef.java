@@ -168,7 +168,9 @@ public class FAutomakeDef
         out.println(ainIndent + 1, "cp $(SOURCE_FILE) $(DEB_PKG_DIR)/");
         out.println(ainIndent + 1, "tar -C $(DEB_PKG_DIR)/ -xf $(DEB_PKG_DIR)/$(SOURCE_FILE)");
         out.println(ainIndent + 1, "mv $(DEB_PKG_DIR)/$(SOURCE_FILE) $(DEB_PKG_DIR)/$(PACKAGE)_$(VERSION).orig.tar.gz");
-        out.println(ainIndent + 1, "cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; dpkg-buildpackage -d -us -uc -rfakeroot -b");
+        out.println(ainIndent + 1, "cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; " +
+                                   "VERSION_WITH_BUILD=$(VERSION)-$(SDK_BVERSION) " +
+                                   "dpkg-buildpackage -d -us -uc -rfakeroot -b");
         out.println(ainIndent + 1, "cp $(DEB_PKG_DIR)/*.deb .");
         out.println(ainIndent + 1, "rm -rf $(DEB_PKG_DIR)");
     }

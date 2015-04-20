@@ -12,7 +12,7 @@ PACKAGE=agent-ovs
 #override_dh_auto_test:
 
 override_dh_auto_configure:
-	./configure --disable-assert --prefix=/usr --sysconfdir=/etc --localstatedir=/var
+	dh_auto_configure -- --disable-assert
 
 override_dh_auto_install:
 	$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
@@ -23,3 +23,6 @@ override_dh_shlibdeps:
 override_dh_strip:
 	dh_strip --dbg-package=$(PACKAGE)-dbg
 
+
+override_dh_gencontrol:
+	dh_gencontrol -- -v$(VERSION_WITH_BUILD)

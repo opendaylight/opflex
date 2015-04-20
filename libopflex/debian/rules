@@ -4,15 +4,13 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
-
 %:
 	dh $@ --parallel --with autotools-dev
 
 override_dh_auto_test:
 
 override_dh_auto_configure:
-	./configure --prefix=/usr --libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH) --disable-assert
+	dh_auto_configure -- --disable-assert
 
 override_dh_auto_install:
 	$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
@@ -22,3 +20,6 @@ override_dh_shlibdeps:
 
 override_dh_strip:
 	dh_strip --dbg-package=libopflex-dbg
+
+override_dh_gencontrol:
+	dh_gencontrol -- -v$(VERSION_WITH_BUILD)
