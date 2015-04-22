@@ -116,7 +116,10 @@ public class Formatter
                              String[] aInComment,
                              BlockFormatDirective aInFormatDirs)
     {
-        printComment(aInIndent, Arrays.asList(aInComment), aInFormatDirs);
+        if (null != aInFormatDirs)
+        {
+            printComment(aInIndent, Arrays.asList(aInComment), aInFormatDirs);
+        }
     }
 
     public void printComment(
@@ -278,12 +281,6 @@ public class Formatter
     public void println()
     {
         formattedFile.println();
-    }
-
-    public void indentln(int aInIndentDepth)
-    {
-        indent(aInIndentDepth);
-        println();
     }
 
     public void println(boolean aInValue)

@@ -29,6 +29,13 @@ module[address]
 
             constants[defined-in=hex]
         }
+
+        language[java;
+                 syntax=String]
+        {
+            constraints[]
+            constants[defined-in=hex]
+        }
     }
 
     primitive[IP]
@@ -50,6 +57,13 @@ module[address]
         {
             constraints[]
 
+            constants[defined-in=dec]
+        }
+
+        language[java;
+                 syntax=String]
+        {
+            constraints[]
             constants[defined-in=dec]
         }
     }

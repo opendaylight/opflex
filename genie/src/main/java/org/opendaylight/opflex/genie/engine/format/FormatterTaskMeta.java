@@ -384,7 +384,7 @@ public class FormatterTaskMeta
         }
         catch (Throwable lE)
         {
-            Severity.DEATH.report(toString(), "process", "failed to constract", lE);
+            Severity.DEATH.report(toString(), "process", "failed to construct", lE);
         }
     }
 
