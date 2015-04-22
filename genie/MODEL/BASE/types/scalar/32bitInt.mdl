@@ -24,6 +24,17 @@ module[scalar]
         language[c;
                  like=scalar/SInt32/cpp]
 
+        language[java;
+                 syntax=long]
+        {
+            constraints[default=0;
+                        min=-2147483647;
+                        max=2147483647;
+                        size=4;
+                        ]
+
+            constants[defined-in=dec]
+        }
     }
 
     # 32-bit unsigned integer
@@ -47,6 +58,18 @@ module[scalar]
 
         language[c;
                  like=scalar/UInt32/cpp]
+
+        language[java;
+                 syntax=long]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=4294967295;
+                        size=4;
+                        ]
+
+            constants[defined-in=dec]
+        }
     }
 
     # signed 32 bit double word
