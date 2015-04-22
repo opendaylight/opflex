@@ -21,6 +21,18 @@ module[scalar]
 
         language[c;
                  like=scalar/SInt8/cpp]
+
+        language[java;
+                 syntax=byte]
+        {
+            constraints[default=0;
+                        min=-127;
+                        max=127;
+                        size=1;
+                        ]
+
+            constants[defined-in=dec;]
+        }
     }
 
     # 8-bit unsigned integer
@@ -43,6 +55,18 @@ module[scalar]
 
         language[c;
                  like=scalar/UInt8/cpp]
+
+        language[java;
+                 syntax=short]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=255;
+                        size=1;
+                        ]
+
+            constants[defined-in=dec;]
+        }
     }
 
     type[SByte;super=scalar/SInt8]
