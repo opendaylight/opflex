@@ -21,6 +21,17 @@ module[scalar]
         language[c;
                  like=scalar/SInt16/cpp]
 
+        language[java;
+                 syntax=int]
+        {
+            constraints[default=0;
+                        min=-32768;
+                        max=32767;
+                        size=2;
+                        ]
+
+            constants[defined-in=dec]
+        }
     }
 
     # 16-bit signed integer
@@ -44,6 +55,17 @@ module[scalar]
         language[c;
                  like=scalar/UInt16/cpp]
 
+        language[java;
+                 syntax=int]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=65535;
+                        size=2;
+                        ]
+
+            constants[defined-in=dec]
+        }
     }
 
     # signed 16 bit word

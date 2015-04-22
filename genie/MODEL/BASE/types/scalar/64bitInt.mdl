@@ -24,6 +24,18 @@ module[scalar]
         language[c;
                  like=scalar/SInt64/cpp]
 
+        language[java;
+                 syntax=long]
+        {
+            constraints[default=0;
+                        min=-9223372036854775807;
+                        max=9223372036854775807;
+                        size=8;
+                        ]
+
+            constants[defined-in=dec]
+        }
+
     }
 
     # 64-bit unsigned integer
@@ -48,5 +60,16 @@ module[scalar]
         language[c;
                  like=scalar/UInt64/cpp]
 
+        language[java;
+                 syntax=java.math.BigInteger]
+        {
+            constraints[default=0;
+                        min=0;
+                        max=18446744073709551615;
+                        size=8;
+                        ]
+
+            constants[defined-in=dec]
+        }
     }
 }

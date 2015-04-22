@@ -20,6 +20,13 @@ module[ascii]
 
         language[c;
                  like=ascii/Char/cpp]
+
+        language[java;
+                 syntax=char]
+        {
+            constraints[default='']
+            constants[defined-in=ascii]
+        }
     }
 
     # 8 bit ascii text character
@@ -36,5 +43,11 @@ module[ascii]
         }
         language[c;
                  like=ascii/TextChar/cpp]
+
+        language[java;
+                 syntax=char]
+        {
+            constraints[default='']
+        }
     }
 }

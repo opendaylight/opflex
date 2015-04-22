@@ -28,6 +28,16 @@ module[ascii]
 
             constants[defined-in=ascii]
         }
+
+        language[java;
+                 syntax=String]
+        {
+            constraints[default="";
+                        size=128;
+                        ]
+
+            constants[defined-in=ascii]
+        }
     }
 
     # text name string
