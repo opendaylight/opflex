@@ -125,12 +125,10 @@ private:
 };
 
 #define LOG(lvl)                                                        \
-    assert(ovsagent::FATAL <= lvl && lvl <= ovsagent::DEBUG);           \
     if (lvl <= ovsagent::logLevel)                                      \
         ovsagent::Logger(lvl, __FILE__, __LINE__, __FUNCTION__).stream()
 
 #define LOG1(lvl, filename, lineNo, functionName, message)              \
-    assert(ovsagent::FATAL <= lvl && lvl <= ovsagent::DEBUG);           \
     if (lvl <= ovsagent::logLevel)                                      \
         ovsagent::getLogSink()->write(lvl, filename, lineNo,            \
                                       functionName, message);
