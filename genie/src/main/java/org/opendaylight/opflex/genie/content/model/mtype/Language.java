@@ -9,6 +9,7 @@ public enum Language
 {
     C("c"),
     CPP("cpp"),
+    JAVA("java")
     ;
     private Language(String aIn)
     {

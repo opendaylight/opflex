@@ -47,5 +47,12 @@ module[reference]
 
             constants[defined-in=dec]
         }
+
+        language[java;
+                 syntax=String]
+        {
+            constraints[]
+            constants[defined-in=dec]
+        }
     }
 }
