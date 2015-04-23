@@ -24,8 +24,18 @@ namespace yajr {
 ::boost::atomic<size_t> ActiveUnixPeer::counter(0);
 #endif
 
-void ::yajr::comms::internal::ActiveUnixPeer::onFailedConnect() {
-    /* only override to make sure we do nothing */
+void ::yajr::comms::internal::ActiveUnixPeer::onFailedConnect(int rc) {
+
+    void retry_later(ActivePeer * peer);
+
+    onError(rc);
+
+    if (!uv_is_closing((uv_handle_t*)this->getHandle())) {
+        uv_close((uv_handle_t*)this->getHandle(), on_close);
+    }
+
+    /* retry later */
+    retry_later(this);
 }
 
 void ::yajr::comms::internal::ActiveUnixPeer::retry() {
@@ -82,6 +92,8 @@ void ::yajr::comms::internal::ActiveUnixPeer::retry() {
                     reinterpret_cast<uv_pipe_t *>(getHandle()),
                     socketName_.c_str(),
                     on_active_connection);
+    /* workaround for libuv synchronous uv_pipe_connect() failures bug */
+    getLoopData()->kickLibuv();
 
     up();
     status_ = Peer::kPS_CONNECTING;

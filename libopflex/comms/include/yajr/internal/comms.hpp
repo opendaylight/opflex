@@ -182,6 +182,7 @@ class Peer : public SafeListBaseHook {
             prepare_.data = this;
             uv_timer_init(loop, &prepareAgain_);
             prepareAgain_.data = this;
+            uv_async_init(loop, &kickLibuv_, NULL);
         }
 
 #ifdef COMMS_DEBUG_OBJECT_COUNT 
@@ -212,6 +213,11 @@ class Peer : public SafeListBaseHook {
 
         void ensureResolvePending();
 
+        void kickLibuv() {
+            /* workaround for libuv syncronous uv_pipe_connect() failures bug */
+            uv_async_send(&kickLibuv_);
+        }
+
         template < ::opflex::logging::OFLogHandler::Level LOGGING_LEVEL >
         static void walkAndDumpHandlesCb(uv_handle_t* handle, void* _) __attribute__((no_instrument_function));
         static void walkAndCloseHandlesCb(uv_handle_t* handle, void* closeHandles) __attribute__((no_instrument_function));
@@ -232,6 +238,7 @@ class Peer : public SafeListBaseHook {
         static void fini(uv_handle_t *);
 
         uv_prepare_t prepare_;
+        uv_async_t kickLibuv_;
         uv_timer_t prepareAgain_;
         uint64_t lastRun_;
         bool destroying_;
@@ -704,7 +711,7 @@ class ActivePeer : public CommunicationPeer {
     }
 #endif
 
-    virtual void onFailedConnect() = 0;
+    virtual void onFailedConnect(int rc) = 0;
 
     virtual void retry() = 0;
 
@@ -746,7 +753,7 @@ class ActiveTcpPeer : public ActivePeer {
             ++counter;
 #endif
         }
-    virtual void onFailedConnect();
+    virtual void onFailedConnect(int rc);
 
     char const * getHostname() const {
         return hostname_.c_str();
@@ -790,7 +797,7 @@ class ActiveUnixPeer : public ActivePeer {
             ++counter;
 #endif
         }
-    virtual void onFailedConnect();
+    virtual void onFailedConnect(int rc);
     virtual void retry();
   protected:
     /* don't leak memory! */

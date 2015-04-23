@@ -883,6 +883,25 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_service, CommsFixture ) {
 
 }
 
+BOOST_FIXTURE_TEST_CASE( STABLE_test_pipe_no_server, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    static const char * domainSocket = "/tmp/comms_test_test_pipe_no_server.sock";
+
+    unlink(domainSocket);
+
+    ::yajr::Peer * p = ::yajr::Peer::create(
+            domainSocket, doNothingOnConnect,
+            NULL, CommsFixture::loopSelector
+    );
+
+    BOOST_CHECK_EQUAL(!p, 0);
+
+    loop_until_final(range_t(1,1), pc_non_existent);
+
+}
+
 BOOST_FIXTURE_TEST_CASE( STABLE_test_keepalive, CommsFixture ) {
 
     LOG(DEBUG);

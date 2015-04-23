@@ -167,7 +167,7 @@ void on_active_connection(uv_connect_t *req, int status) {
             << "] "
             << uv_strerror(status)
         ;
-        peer->onFailedConnect();
+        peer->onFailedConnect(rc);
         return;
     }
 

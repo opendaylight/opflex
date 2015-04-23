@@ -91,11 +91,10 @@ void ::yajr::comms::internal::ActiveTcpPeer::retry() {
 
 }
 
-void ActiveTcpPeer::onFailedConnect() {
+void ActiveTcpPeer::onFailedConnect(int rc) {
 
     extern void retry_later(ActivePeer * peer);
 
-    int rc;
     if ((rc = connect_to_next_address(this))) {
         LOG(WARNING)
             << this
