@@ -52,7 +52,7 @@ public:
         }                                                  \
         BOOST_CHECK((condition));                          \
         if (!(condition))                                  \
-            onfail;                                        \
+            {onfail;}                                      \
     }
 
 // wait for a condition to become true because of an event in another

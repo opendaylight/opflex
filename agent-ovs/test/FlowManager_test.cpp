@@ -350,8 +350,8 @@ public:
                    uint32_t fdId = 0, uint32_t bdId = 1, uint32_t rdId = 1,
                    bool arpOn = true);
 
-    /** Initialize flows related to floating IP */
-    void initExpFloatingIp(bool natEpgMap = true);
+    /** Initialize flows related to IP address mapping */
+    void initExpIpMapping(bool natEpgMap = true, bool nextHop = false);
 
     /** Initialize contract 1 flows */
     void initExpCon1();
@@ -1086,7 +1086,7 @@ BOOST_FIXTURE_TEST_CASE(mcast, VxlanFlowManagerFixture) {
     WAIT_FOR(jsonCmdExecutor.empty(), 500);
 }
 
-BOOST_FIXTURE_TEST_CASE(floatingIp, VxlanFlowManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanFlowManagerFixture) {
     setConnected();
     flowManager.egDomainUpdated(epg0->getURI());
 
@@ -1139,16 +1139,16 @@ BOOST_FIXTURE_TEST_CASE(floatingIp, VxlanFlowManagerFixture) {
         mutator.commit();
     }
 
-    Endpoint::FloatingIP fip4("91c5b217-d244-432c-922d-533c6c036ab3");
-    fip4.setMappedIP("10.20.44.2");
-    fip4.setIP("5.5.5.5");
-    fip4.setEgURI(eg_nat->getURI());
-    ep0->addFloatingIP(fip4);
-    Endpoint::FloatingIP fip6("c54b8503-1f14-4529-a0b3-cf704e1dfeb7");
-    fip6.setMappedIP("2001:db8::2");
-    fip6.setIP("fdf1:9f86:d1af:6cc9::5");
-    fip6.setEgURI(eg_nat->getURI());
-    ep0->addFloatingIP(fip6);
+    Endpoint::IPAddressMapping ipm4("91c5b217-d244-432c-922d-533c6c036ab3");
+    ipm4.setMappedIP("10.20.44.2");
+    ipm4.setFloatingIP("5.5.5.5");
+    ipm4.setEgURI(eg_nat->getURI());
+    ep0->addIPAddressMapping(ipm4);
+    Endpoint::IPAddressMapping ipm6("c54b8503-1f14-4529-a0b3-cf704e1dfeb7");
+    ipm6.setMappedIP("2001:db8::2");
+    ipm6.setFloatingIP("fdf1:9f86:d1af:6cc9::5");
+    ipm6.setEgURI(eg_nat->getURI());
+    ep0->addIPAddressMapping(ipm6);
     epSrc.updateEndpoint(*ep0);
 
     WAIT_FOR(policyMgr.getBDForGroup(eg_nat->getURI()) != boost::none, 500);
@@ -1172,7 +1172,7 @@ BOOST_FIXTURE_TEST_CASE(floatingIp, VxlanFlowManagerFixture) {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpFloatingIp(false);
+    initExpIpMapping(false);
     initSubnets(sns, 2, 2);
     WAIT_FOR_TABLES("create", 500);
 
@@ -1195,14 +1195,45 @@ BOOST_FIXTURE_TEST_CASE(floatingIp, VxlanFlowManagerFixture) {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpFloatingIp(true);
+    initExpIpMapping(true);
     initSubnets(sns, 2, 2);
     WAIT_FOR_TABLES("natmapping", 500);
+
+    // Add next hop for mapping
+    portmapper.ports["nexthop"] = 42;
+    portmapper.RPortMap[42] = "nexthop";
+    ep0->clearIPAddressMappings();
+    ipm4.setNextHopIf("nexthop");
+    ipm4.setNextHopMAC(MAC("42:00:42:42:42:42"));
+    ep0->addIPAddressMapping(ipm4);
+    ipm6.setNextHopIf("nexthop");
+    ipm6.setNextHopMAC(MAC("42:00:42:42:42:42"));
+    ep0->addIPAddressMapping(ipm6);
+    epSrc.updateEndpoint(*ep0);
+
+    unordered_set<string> eps;
+    agent.getEndpointManager().getEndpointsByIpmNextHopIf("nexthop", eps);
+    BOOST_CHECK_EQUAL(1, eps.size());
+    flowManager.endpointUpdated(ep0->getUUID());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpEpg(eg_nat, 1, 2, 2);
+    initExpBd();
+    initExpBd(2, 1, 2);
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    initExpIpMapping(true, true);
+    initSubnets(sns, 2, 2);
+    WAIT_FOR_TABLES("nexthop", 500);
 }
 
 enum REG {
     SEPG, SEPG12, DEPG, BD, FD, RD, OUTPORT, TUNID, TUNDST, VLAN, 
-    ETHSRC, ETHDST, ARPOP, ARPSHA, ARPTHA, ARPSPA, ARPTPA, METADATA
+    ETHSRC, ETHDST, ARPOP, ARPSHA, ARPTHA, ARPSPA, ARPTPA, METADATA,
+    PKT_MARK
 };
 enum TABLE {
     SEC = 0, SRC = 1, BR  = 2, RT  = 3, NAT = 4, LRN = 5,
@@ -1214,10 +1245,10 @@ string rstr[] = {
     "NXM_NX_TUN_IPV4_DST[]", "OXM_OF_VLAN_VID[]", 
     "NXM_OF_ETH_SRC[]", "NXM_OF_ETH_DST[]", "NXM_OF_ARP_OP[]", 
     "NXM_NX_ARP_SHA[]", "NXM_NX_ARP_THA[]", "NXM_OF_ARP_SPA[]", "NXM_OF_ARP_TPA[]",
-    "OXM_OF_METADATA[]"
+    "OXM_OF_METADATA[]", "NXM_NX_PKT_MARK[]"
 };
 string rstr1[] = { "reg0", "reg0", "reg2", "reg4", "reg5", "reg6", "reg7", 
-                   "", "", "", "", "", "", "" ,"", "", "", ""};
+                   "", "", "", "", "", "", "" ,"", "", "", "", ""};
 
 /**
  * Helper class to build string representation of a flow entry.
@@ -1272,6 +1303,7 @@ public:
     Bldr& isTcpFlags(const string& s)  { rep(",tcp_flags=", s); return *this; }
     Bldr& connState(const string& s) { rep(",conn_state=" + s); return *this; }
     Bldr& isMdAct(uint8_t a) { rep(",metadata=", str(a, true), "/0xff"); return *this; }
+    Bldr& isPktMark(uint32_t m) { rep(",pkt_mark=", str(m, true)); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& drop() { rep("drop"); return *this; }
     Bldr& load64(REG r, uint64_t v) {
@@ -1764,8 +1796,8 @@ void FlowManagerFixture::initExpCon3() {
     }
 }
 
-// Initialize flows related to floating IP
-void FlowManagerFixture::initExpFloatingIp(bool natEpgMap) {
+// Initialize flows related to IP address mapping/NAT
+void FlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
     uint8_t rmacArr[6];
     memcpy(rmacArr, flowManager.GetRouterMacAddr(), sizeof(rmacArr));
     string rmac(MAC(rmacArr).toString());
@@ -1850,18 +1882,51 @@ void FlowManagerFixture::initExpFloatingIp(bool natEpgMap) {
     ADDF(Bldr().table(NAT).priority(174).ip().reg(RD, 1)
          .isIpSrc("5.0.0.0/8").actions().load(SEPG, 0xabcd).go(POL).done());
 
-    ADDF(Bldr().table(OUT).priority(10).ipv6()
-         .reg(RD, 1).reg(OUTPORT, 0x4242).isMdAct(2).isIpv6Src("2001:db8::2")
-         .actions().ethSrc(epmac).ethDst(rmac)
-         .ipv6Src("fdf1:9f86:d1af:6cc9::5").decTtl()
-         .load(SEPG, 0x4242).load(BD, 2).load(FD, 1).load(RD, 2)
-         .load(OUTPORT, 0).load(METADATA, 0).resubmit(2).done());
-    ADDF(Bldr().table(OUT).priority(10).ip()
-         .reg(RD, 1).reg(OUTPORT, 0x4242).isMdAct(2).isIpSrc("10.20.44.2")
-         .actions().ethSrc(epmac).ethDst(rmac)
-         .ipSrc("5.5.5.5").decTtl()
-         .load(SEPG, 0x4242).load(BD, 2).load(FD, 1).load(RD, 2)
-         .load(OUTPORT, 0).load(METADATA, 0).resubmit(2).done());
+    if (nextHop) {
+        ADDF(Bldr().table(SRC).priority(201).ip().in(42)
+             .isEthSrc("42:00:42:42:42:42").isIpDst("5.5.5.5")
+             .actions().ethSrc(rmac).ethDst(epmac).ipDst("10.20.44.2").decTtl()
+             .load(DEPG, 0xa0a).load(BD, 1).load(FD, 0).load(RD, 1)
+             .load(OUTPORT, 0x50).go(NAT).done());
+        ADDF(Bldr().table(SRC).priority(200).isPktMark(1).ip().in(42)
+             .isEthSrc("42:00:42:42:42:42").isIpDst("10.20.44.2")
+             .actions().ethSrc(rmac)
+             .load(DEPG, 0xa0a).load(BD, 1).load(FD, 0).load(RD, 1)
+             .load(OUTPORT, 0x50).go(NAT).done());
+        ADDF(Bldr().table(SRC).priority(201).ipv6().in(42)
+             .isEthSrc("42:00:42:42:42:42").isIpv6Dst("fdf1:9f86:d1af:6cc9::5")
+             .actions().ethSrc(rmac).ethDst(epmac).ipv6Dst("2001:db8::2").decTtl()
+             .load(DEPG, 0xa0a).load(BD, 1).load(FD, 0).load(RD, 1)
+             .load(OUTPORT, 0x50).go(NAT).done());
+        ADDF(Bldr().table(SRC).priority(200).isPktMark(1).ipv6().in(42)
+             .isEthSrc("42:00:42:42:42:42").isIpv6Dst("2001:db8::2")
+             .actions().ethSrc(rmac)
+             .load(DEPG, 0xa0a).load(BD, 1).load(FD, 0).load(RD, 1)
+             .load(OUTPORT, 0x50).go(NAT).done());
+        ADDF(Bldr().table(OUT).priority(10).ipv6()
+             .reg(RD, 1).reg(OUTPORT, 0x4242).isMdAct(2).isIpv6Src("2001:db8::2")
+             .actions().ethSrc(epmac).ethDst("42:00:42:42:42:42")
+             .ipv6Src("fdf1:9f86:d1af:6cc9::5").decTtl()
+             .load(PKT_MARK, 1).outPort(42).done());
+        ADDF(Bldr().table(OUT).priority(10).ip()
+             .reg(RD, 1).reg(OUTPORT, 0x4242).isMdAct(2).isIpSrc("10.20.44.2")
+             .actions().ethSrc(epmac).ethDst("42:00:42:42:42:42")
+             .ipSrc("5.5.5.5").decTtl()
+             .load(PKT_MARK, 1).outPort(42).done());
+    } else {
+        ADDF(Bldr().table(OUT).priority(10).ipv6()
+             .reg(RD, 1).reg(OUTPORT, 0x4242).isMdAct(2).isIpv6Src("2001:db8::2")
+             .actions().ethSrc(epmac).ethDst(rmac)
+             .ipv6Src("fdf1:9f86:d1af:6cc9::5").decTtl()
+             .load(SEPG, 0x4242).load(BD, 2).load(FD, 1).load(RD, 2)
+             .load(OUTPORT, 0).load(METADATA, 0).resubmit(2).done());
+        ADDF(Bldr().table(OUT).priority(10).ip()
+             .reg(RD, 1).reg(OUTPORT, 0x4242).isMdAct(2).isIpSrc("10.20.44.2")
+             .actions().ethSrc(epmac).ethDst(rmac)
+             .ipSrc("5.5.5.5").decTtl()
+             .load(SEPG, 0x4242).load(BD, 2).load(FD, 1).load(RD, 2)
+             .load(OUTPORT, 0).load(METADATA, 0).resubmit(2).done());
+    }
 }
 
 /**

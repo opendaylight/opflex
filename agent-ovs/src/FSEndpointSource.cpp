@@ -142,8 +142,11 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
     static const std::string DHCP_STATIC_ROUTE_DEST_PREFIX("dest-prefix");
     static const std::string DHCP_STATIC_ROUTE_NEXTHOP("next-hop");
 
-    static const std::string FLOATING_IP("floating-ip");
-    static const std::string MAPPED_IP("mapped-ip");
+    static const std::string IP_ADDRESS_MAPPING("ip-address-mapping");
+    static const std::string IPM_MAPPED_IP("mapped-ip");
+    static const std::string IPM_FLOATING_IP("floating-ip");
+    static const std::string IPM_NEXTHOP_IF("next-hop-if");
+    static const std::string IPM_NEXTHOP_MAC("next-hop-mac");
 
     try {
         using boost::property_tree::ptree;
@@ -282,37 +285,37 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
             newep.setDHCPv6Config(c);
         }
 
-        optional<ptree&> fips =
-            properties.get_child_optional(FLOATING_IP);
-        if (fips) {
-            BOOST_FOREACH(const ptree::value_type &v, fips.get()) {
+        optional<ptree&> ipms =
+            properties.get_child_optional(IP_ADDRESS_MAPPING);
+        if (ipms) {
+            BOOST_FOREACH(const ptree::value_type &v, ipms.get()) {
                 optional<string> fuuid =
                     v.second.get_optional<string>(EP_UUID);
                 if (!fuuid) continue;
 
-                Endpoint::FloatingIP fip(fuuid.get());
+                Endpoint::IPAddressMapping ipm(fuuid.get());
 
-                optional<string> ip =
-                    v.second.get_optional<string>(EP_IP);
-                if (ip)
-                    fip.setIP(ip.get());
+                optional<string> floatingIp =
+                    v.second.get_optional<string>(IPM_FLOATING_IP);
+                if (floatingIp)
+                    ipm.setFloatingIP(floatingIp.get());
 
                 optional<string> mappedIp =
-                    v.second.get_optional<string>(MAPPED_IP);
+                    v.second.get_optional<string>(IPM_MAPPED_IP);
                 if (mappedIp)
-                    fip.setMappedIP(mappedIp.get());
+                    ipm.setMappedIP(mappedIp.get());
 
                 optional<string> feg =
                     v.second.get_optional<string>(EP_GROUP);
                 if (feg) {
-                    fip.setEgURI(URI(feg.get()));
+                    ipm.setEgURI(URI(feg.get()));
                 } else {
                     optional<string> feg_name =
                         v.second.get_optional<string>(EP_GROUP_NAME);
                     optional<string> fps_name =
                         v.second.get_optional<string>(POLICY_SPACE_NAME);
                     if (feg_name && fps_name) {
-                        fip.setEgURI(opflex::modb::URIBuilder()
+                        ipm.setEgURI(opflex::modb::URIBuilder()
                                      .addElement("PolicyUniverse")
                                      .addElement("PolicySpace")
                                      .addElement(fps_name.get())
@@ -321,8 +324,19 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
                     }
                 }
 
-                if (fip.getIP() && fip.getMappedIP() && fip.getEgURI())
-                    newep.addFloatingIP(fip);
+                optional<string> nextHopIf =
+                    v.second.get_optional<string>(IPM_NEXTHOP_IF);
+                if (nextHopIf)
+                    ipm.setNextHopIf(nextHopIf.get());
+
+                optional<string> nextHopMac =
+                    v.second.get_optional<string>(IPM_NEXTHOP_MAC);
+                if (nextHopMac) {
+                    ipm.setNextHopMAC(MAC(nextHopMac.get()));
+                }
+
+                if (ipm.getMappedIP())
+                    newep.addIPAddressMapping(ipm);
             }
         }
 

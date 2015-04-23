@@ -165,7 +165,8 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->setTargetFloodDomain(fd_ext->getURI());
     subnets_ext->addGbpSubnet("subnet_ext4")
         ->setAddress("5.5.5.0")
-        .setPrefixLen(24);
+        .setPrefixLen(24)
+        .setVirtualRouterIp("5.5.5.128");
     subnets_ext->addGbpSubnet("subnet_ext6")
         ->setAddress("fdf1:9f86:d1af:6cc9::")
         .setPrefixLen(64);

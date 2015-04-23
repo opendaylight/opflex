@@ -291,21 +291,24 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
 
     }
 
-    BOOST_FOREACH (const Endpoint::FloatingIP& fip,
-                   ep->getFloatingIPs()) {
-        if (!fip.getIP() || !fip.getMappedIP() || !fip.getEgURI())
+    BOOST_FOREACH (const Endpoint::IPAddressMapping& ipm,
+                   ep->getIPAddressMappings()) {
+        if (!ipm.getFloatingIP() || !ipm.getMappedIP() || !ipm.getEgURI())
+            continue;
+        // don't advertise endpoints if there's a next hop
+        if (ipm.getNextHopIf())
             continue;
 
-        optional<uint32_t> fipVnid =
-            polMgr.getVnidForGroup(fip.getEgURI().get());
-        if (!fipVnid) continue;
+        optional<uint32_t> ipmVnid =
+            polMgr.getVnidForGroup(ipm.getEgURI().get());
+        if (!ipmVnid) continue;
 
         LOG(DEBUG) << "Sending endpoint advertisement for "
-                   << ep->getMAC().get() << " " << fip.getIP().get();
+                   << ep->getMAC().get() << " " << ipm.getFloatingIP().get();
 
         doSendEpAdv(flowManager, switchConnection,
-                    fip.getIP().get(), epMac,
-                    routerMac, fipVnid.get(), out_ports);
+                    ipm.getFloatingIP().get(), epMac,
+                    routerMac, ipmVnid.get(), out_ports);
     }
 }
 

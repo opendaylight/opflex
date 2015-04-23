@@ -246,11 +246,11 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     ep2.setEgURI(epgu);
 
     URI epgnat = URI("/PolicyUniverse/PolicySpace/test/GbpEpGroup/nat-epg/");
-    Endpoint::FloatingIP fip("91c5b217-d244-432c-922d-533c6c036ab3");
-    fip.setMappedIP("10.1.1.4");
-    fip.setIP("5.5.5.5");
-    fip.setEgURI(epgnat);
-    ep2.addFloatingIP(fip);
+    Endpoint::IPAddressMapping ipm("91c5b217-d244-432c-922d-533c6c036ab3");
+    ipm.setMappedIP("10.1.1.4");
+    ipm.setFloatingIP("5.5.5.5");
+    ipm.setEgURI(epgnat);
+    ep2.addIPAddressMapping(ipm);
 
     epSource.updateEndpoint(ep1);
     epSource.updateEndpoint(ep2);
@@ -271,7 +271,7 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
         .addElement("EprL2Ep")
         .addElement(bduri.toString())
         .addElement(MAC("00:00:00:00:00:02")).build();
-    URI l2epr2_fip = URIBuilder()
+    URI l2epr2_ipm = URIBuilder()
         .addElement("EprL2Universe")
         .addElement("EprL2Ep")
         .addElement(bduri.toString())
@@ -291,7 +291,7 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
         .addElement("EprL3Ep")
         .addElement(rduri.toString())
         .addElement("10.1.1.4").build();
-    URI l3epr2_fip = URIBuilder()
+    URI l3epr2_ipm = URIBuilder()
         .addElement("EprL3Universe")
         .addElement("EprL3Ep")
         .addElement(rduri.toString())
@@ -299,12 +299,12 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
 
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr1), 500);
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
-    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2_fip), 500);
+    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2_ipm), 500);
 
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr1_2), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr1_3), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_4), 500);
-    WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_fip), 500);
+    WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_ipm), 500);
 }
 
 BOOST_FIXTURE_TEST_CASE( epgmapping, EndpointFixture ) {

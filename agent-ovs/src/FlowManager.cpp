@@ -316,22 +316,33 @@ static inline void fill_in6_addr(struct in6_addr& addr, const address_v6& ip) {
 }
 
 static void
+AddMatchIp(FlowEntry *fe, const address& ip, bool src = false) {
+    if (ip.is_v4()) {
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
+        if (src)
+            match_set_nw_src(&fe->entry->match, htonl(ip.to_v4().to_ulong()));
+        else
+            match_set_nw_dst(&fe->entry->match, htonl(ip.to_v4().to_ulong()));
+    } else {
+        struct in6_addr addr;
+        fill_in6_addr(addr, ip.to_v6());
+
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+        if (src)
+            match_set_ipv6_src(&fe->entry->match, &addr);
+        else
+            match_set_ipv6_dst(&fe->entry->match, &addr);
+    }
+}
+
+static void
 SetDestMatchEp(FlowEntry *fe, uint16_t prio, const uint8_t *mac,
                const address& ip, uint32_t l3Id) {
     fe->entry->table_id = FlowManager::ROUTE_TABLE_ID;
     fe->entry->priority = prio;
     if (mac)
         match_set_dl_dst(&fe->entry->match, mac);
-    if (ip.is_v4()) {
-        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
-        match_set_nw_dst(&fe->entry->match, htonl(ip.to_v4().to_ulong()));
-    } else {
-        struct in6_addr addr;
-        fill_in6_addr(addr, ip.to_v6());
-
-        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
-        match_set_ipv6_dst(&fe->entry->match, &addr);
-    }
+    AddMatchIp(fe, ip);
     match_set_reg(&fe->entry->match, 6 /* REG6 */, l3Id);
 }
 
@@ -515,6 +526,40 @@ SetDestActionArpReply(FlowEntry *fe, const uint8_t *mac, const address& ip,
         FlowManager::SetActionTunnelMetadata(ab, type, *tunDst);
     ab.SetOutputToPort(outPort);
 
+    ab.Build(fe->entry);
+}
+
+static void
+AddActionRevNatDest(ActionBuilder& ab, uint32_t epgVnid, uint32_t bdId,
+                    uint32_t fgrpId, uint32_t rdId, uint32_t ofPort) {
+    ab.SetRegLoad(MFF_REG2, epgVnid);
+    ab.SetRegLoad(MFF_REG4, bdId);
+    ab.SetRegLoad(MFF_REG5, fgrpId);
+    ab.SetRegLoad(MFF_REG6, rdId);
+    ab.SetRegLoad(MFF_REG7, ofPort);
+    ab.SetGotoTable(FlowManager::NAT_IN_TABLE_ID);
+}
+
+static void
+SetActionRevNatDest(FlowEntry *fe, uint32_t epgVnid, uint32_t bdId,
+                    uint32_t fgrpId, uint32_t rdId, uint32_t ofPort,
+                    const uint8_t* routerMac) {
+    ActionBuilder ab;
+    ab.SetEthSrcDst(routerMac, NULL);
+    AddActionRevNatDest(ab, epgVnid, bdId, fgrpId, rdId, ofPort);
+    ab.Build(fe->entry);
+}
+
+static void
+SetActionRevDNatDest(FlowEntry *fe, uint32_t epgVnid, uint32_t bdId,
+                     uint32_t fgrpId, uint32_t rdId, uint32_t ofPort,
+                     const uint8_t* routerMac, const uint8_t* macAddr,
+                     address& mappedIp) {
+    ActionBuilder ab;
+    ab.SetEthSrcDst(routerMac, macAddr);
+    ab.SetIpDst(mappedIp);
+    ab.SetDecNwTtl();
+    AddActionRevNatDest(ab, epgVnid, bdId, fgrpId, rdId, ofPort);
     ab.Build(fe->entry);
 }
 
@@ -841,6 +886,155 @@ static uint8_t getEffectiveRoutingMode(PolicyManager& polMgr,
     return routingMode;
 }
 
+static void computeIpmFlows(FlowManager& flowMgr,
+                            FlowEntryList& elSrc, FlowEntryList& elBridgeDst,
+                            FlowEntryList& elRouteDst,FlowEntryList& elOutput,
+                            const uint8_t* macAddr, uint32_t ofPort,
+                            uint32_t epgVnid, uint32_t rdId,
+                            uint32_t bdId, uint32_t fgrpId,
+                            uint32_t fepgVnid, uint32_t frdId,
+                            uint32_t fbdId, uint32_t ffdId,
+                            address& mappedIp, address& floatingIp,
+                            uint32_t nextHopPort, const uint8_t* nextHopMac) {
+    const uint8_t* effNextHopMac =
+        nextHopMac ? nextHopMac : flowMgr.GetRouterMacAddr();
+
+    if (!floatingIp.is_unspecified()) {
+        {
+            // floating IP destination within the same EPG
+            // Set up reverse DNAT
+            FlowEntry* ipmRoute = new FlowEntry();
+            SetDestMatchEp(ipmRoute, 452, NULL, floatingIp, frdId);
+            match_set_reg(&ipmRoute->entry->match, 0 /* REG0 */, fepgVnid);
+            SetActionRevDNatDest(ipmRoute, epgVnid, bdId,
+                                 fgrpId, rdId, ofPort,
+                                 flowMgr.GetRouterMacAddr(),
+                                 macAddr, mappedIp);
+
+            elRouteDst.push_back(FlowEntryPtr(ipmRoute));
+        }
+        {
+            // Floating IP destination across EPGs
+            // Apply policy for source EPG -> floating IP EPG
+            // then resubmit with source EPG set to floating
+            // IP EPG
+
+            FlowEntry* ipmResub = new FlowEntry();
+            SetDestMatchEp(ipmResub, 450, NULL, floatingIp, frdId);
+            ActionBuilder ab;
+            ab.SetRegLoad(MFF_REG2, fepgVnid);
+            ab.SetRegLoad(MFF_REG7, fepgVnid);
+            ab.SetWriteMetadata(METADATA_RESUBMIT_DST,
+                                METADATA_OUT_MASK);
+            ab.SetGotoTable(FlowManager::POL_TABLE_ID);
+            ab.Build(ipmResub->entry);
+
+            elRouteDst.push_back(FlowEntryPtr(ipmResub));
+        }
+        // Reply to discovery requests for the floating IP
+        // address
+        if (floatingIp.is_v4()) {
+            uint32_t tunPort = flowMgr.GetTunnelPort();
+            if (tunPort != OFPP_NONE &&
+                flowMgr.GetEncapType() != FlowManager::ENCAP_NONE) {
+                FlowEntry* ipmArpTun = new FlowEntry();
+                SetDestMatchArp(ipmArpTun, 21, floatingIp,
+                                fbdId, frdId);
+                match_set_in_port(&ipmArpTun->entry->match, tunPort);
+                SetDestActionArpReply(ipmArpTun, macAddr, floatingIp,
+                                      OFPP_IN_PORT, flowMgr.GetEncapType(),
+                                      &flowMgr.GetTunnelDst());
+                elBridgeDst.push_back(FlowEntryPtr(ipmArpTun));
+            }
+            {
+                FlowEntry* ipmArp = new FlowEntry();
+                SetDestMatchArp(ipmArp, 20, floatingIp, fbdId, frdId);
+                SetDestActionArpReply(ipmArp, macAddr, floatingIp);
+                elBridgeDst.push_back(FlowEntryPtr(ipmArp));
+            }
+        } else {
+            FlowEntry* ipmND = new FlowEntry();
+            // pass MAC address in flow metadata
+            uint64_t metadata = 0;
+            memcpy(&metadata, macAddr, 6);
+            ((uint8_t*)&metadata)[7] = 1;
+            SetDestMatchNd(ipmND, 20, &floatingIp, fbdId, frdId,
+                           FlowManager::GetNDCookie());
+            SetActionController(ipmND, fepgVnid, 0xffff, metadata);
+            elBridgeDst.push_back(FlowEntryPtr(ipmND));
+        }
+    }
+    {
+        // Apply NAT action in output table
+        FlowEntry* ipmNatOut = new FlowEntry();
+        ipmNatOut->entry->table_id = FlowManager::OUT_TABLE_ID;
+        ipmNatOut->entry->priority = 10;
+        match_set_metadata_masked(&ipmNatOut->entry->match,
+                                  htonll(METADATA_NAT_OUT),
+                                  htonll(METADATA_OUT_MASK));
+        match_set_reg(&ipmNatOut->entry->match, 6 /* REG6 */, rdId);
+        match_set_reg(&ipmNatOut->entry->match, 7 /* REG7 */, fepgVnid);
+        AddMatchIp(ipmNatOut, mappedIp, true);
+
+        ActionBuilder ab;
+        ab.SetEthSrcDst(macAddr, effNextHopMac);
+        if (!floatingIp.is_unspecified()) {
+            ab.SetIpSrc(floatingIp);
+        }
+        ab.SetDecNwTtl();
+
+        if (nextHopPort == OFPP_NONE) {
+            ab.SetRegLoad(MFF_REG0, fepgVnid);
+            ab.SetRegLoad(MFF_REG4, fbdId);
+            ab.SetRegLoad(MFF_REG5, ffdId);
+            ab.SetRegLoad(MFF_REG6, frdId);
+            ab.SetRegLoad(MFF_REG7, (uint32_t)0);
+            ab.SetRegLoad64(MFF_METADATA, 0);
+            ab.SetResubmit(OFPP_IN_PORT, FlowManager::BRIDGE_TABLE_ID);
+        } else {
+            ab.SetRegLoad(MFF_PKT_MARK, rdId);
+            ab.SetOutputToPort(nextHopPort);
+        }
+        ab.Build(ipmNatOut->entry);
+
+        elOutput.push_back(FlowEntryPtr(ipmNatOut));
+    }
+
+    // Handle traffic returning from a next hop interface
+    if (nextHopPort != OFPP_NONE) {
+        if (!floatingIp.is_unspecified()) {
+            // reverse traffic from next hop interface where we
+            // delivered with a DNAT to a floating IP.  We assume that
+            // the destination IP is unique for a given next hop
+            // interface.
+            FlowEntry* ipmNextHopRev = new FlowEntry();
+            SetSourceMatchEp(ipmNextHopRev, 201,
+                             nextHopPort, effNextHopMac);
+            AddMatchIp(ipmNextHopRev, floatingIp);
+            SetActionRevDNatDest(ipmNextHopRev, epgVnid, bdId,
+                                 fgrpId, rdId, ofPort,
+                                 flowMgr.GetRouterMacAddr(),
+                                 macAddr, mappedIp);
+            elSrc.push_back(FlowEntryPtr(ipmNextHopRev));
+        }
+        {
+            // Reverse traffic from next hop interface where we
+            // delivered with an SKB mark.  The SKB mark must be set
+            // to the routing domain for the mapped destination IP
+            // address
+            FlowEntry* ipmNextHopRevMark = new FlowEntry();
+            SetSourceMatchEp(ipmNextHopRevMark, 200,
+                             nextHopPort, effNextHopMac);
+            match_set_pkt_mark(&ipmNextHopRevMark->entry->match, rdId);
+            AddMatchIp(ipmNextHopRevMark, mappedIp);
+            SetActionRevNatDest(ipmNextHopRevMark, epgVnid, bdId,
+                                fgrpId, rdId, ofPort,
+                                nextHopMac ? flowMgr.GetRouterMacAddr() : NULL);
+            elSrc.push_back(FlowEntryPtr(ipmNextHopRevMark));
+        }
+    }
+}
+
 void
 FlowManager::HandleEndpointUpdate(const string& uuid) {
 
@@ -951,16 +1145,19 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
     }
 
-    /* Source Table flows; applicable only to local endpoints */
-    FlowEntryList src;
-    FlowEntryList epLearn;
+    FlowEntryList elSrc;
+    FlowEntryList elEpLearn;
+    FlowEntryList elBridgeDst;
+    FlowEntryList elRouteDst;
+    FlowEntryList elOutput;
 
+    /* Source Table flows; applicable only to local endpoints */
     if (ofPort != OFPP_NONE) {
         if (hasMac) {
             FlowEntry *e0 = new FlowEntry();
             SetSourceMatchEp(e0, 140, ofPort, macAddr);
             SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId);
-            src.push_back(FlowEntryPtr(e0));
+            elSrc.push_back(FlowEntryPtr(e0));
 
             if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
                 // Prepopulate a stage1 learning entry for known EPs
@@ -972,7 +1169,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                 ab.SetOutputToPort(ofPort);
                 ab.SetController();
                 ab.Build(learnEntry->entry);
-                epLearn.push_back(FlowEntryPtr(learnEntry));
+                elEpLearn.push_back(FlowEntryPtr(learnEntry));
             }
         }
 
@@ -983,7 +1180,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             FlowEntry *e1 = new FlowEntry();
             SetSourceMatchEp(e1, 138, ofPort, NULL);
             SetSourceAction(e1, epgVnid, bdId, fgrpId, rdId, LEARN_TABLE_ID);
-            src.push_back(FlowEntryPtr(e1));
+            elSrc.push_back(FlowEntryPtr(e1));
 
             // Multicast traffic from promiscuous ports is delivered
             // normally
@@ -993,7 +1190,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                                     packets::MAC_ADDR_BROADCAST,
                                     packets::MAC_ADDR_MULTICAST);
             SetSourceAction(e2, epgVnid, bdId, fgrpId, rdId);
-            src.push_back(FlowEntryPtr(e2));
+            elSrc.push_back(FlowEntryPtr(e2));
         }
 
         if (virtualDHCPEnabled && hasMac) {
@@ -1006,7 +1203,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                 SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, true,
                              GetDHCPCookie(true));
                 SetActionController(dhcp, epgVnid, 0xffff);
-                src.push_back(FlowEntryPtr(dhcp));
+                elSrc.push_back(FlowEntryPtr(dhcp));
             }
             if (v6c) {
                 FlowEntry* dhcp = new FlowEntry();
@@ -1014,17 +1211,12 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                 SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, false,
                              GetDHCPCookie(false));
                 SetActionController(dhcp, epgVnid, 0xffff);
-                src.push_back(FlowEntryPtr(dhcp));
+                elSrc.push_back(FlowEntryPtr(dhcp));
             }
         }
     }
-    WriteFlow(uuid, SRC_TABLE_ID, src);
-    WriteFlow(uuid, LEARN_TABLE_ID, epLearn);
 
-    FlowEntryList elBridgeDst;
-    FlowEntryList elRouteDst;
-    FlowEntryList elOutput;
-
+    /* Bridge, route, and output flows */
     if (bdId != 0 && hasMac && ofPort != OFPP_NONE) {
         FlowEntry *e0 = new FlowEntry();
         SetDestMatchEpMac(e0, 10, macAddr, bdId);
@@ -1069,138 +1261,55 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         }
 
         if (virtualRouterEnabled && hasMac) {
-            // Floating IP addresses
-            BOOST_FOREACH (const Endpoint::FloatingIP& fip,
-                           endPoint.getFloatingIPs()) {
-                if (!fip.getIP() || !fip.getMappedIP() || !fip.getEgURI())
+            // IP address mappings
+            BOOST_FOREACH (const Endpoint::IPAddressMapping& ipm,
+                           endPoint.getIPAddressMappings()) {
+                if (!ipm.getMappedIP() || !ipm.getEgURI())
                     continue;
 
-                address floatingIp = address::from_string(fip.getIP().get(), ec);
-                if (ec) continue;
                 address mappedIp =
-                    address::from_string(fip.getMappedIP().get(), ec);
+                    address::from_string(ipm.getMappedIP().get(), ec);
                 if (ec) continue;
 
-                if (floatingIp.is_v4() != mappedIp.is_v4()) continue;
+                address floatingIp;
+                if (ipm.getFloatingIP()) {
+                    floatingIp =
+                        address::from_string(ipm.getFloatingIP().get(), ec);
+                    if (ec) continue;
+                    if (floatingIp.is_v4() != mappedIp.is_v4()) continue;
+                }
 
                 uint32_t fepgVnid, frdId, fbdId, ffdId;
                 optional<URI> ffdURI, fbdURI, frdURI;
-                if (!GetGroupForwardingInfo(fip.getEgURI().get(), fepgVnid, frdURI,
-                                            frdId, fbdURI, fbdId, ffdURI, ffdId))
+                if (!GetGroupForwardingInfo(ipm.getEgURI().get(), fepgVnid,
+                                            frdURI, frdId, fbdURI, fbdId,
+                                            ffdURI, ffdId))
                     continue;
 
-                {
-                    // floating IP destination within the same EPG
-                    // Set up reverse DNAT
-                    FlowEntry *fipRoute = new FlowEntry();
-                    SetDestMatchEp(fipRoute, 452, NULL, floatingIp, frdId);
-                    match_set_reg(&fipRoute->entry->match, 0 /* REG0 */, fepgVnid);
-                    ActionBuilder ab;
-                    ab.SetEthSrcDst(GetRouterMacAddr(), macAddr);
-                    ab.SetIpDst(mappedIp);
-                    ab.SetDecNwTtl();
-
-                    ab.SetRegLoad(MFF_REG2, epgVnid);
-                    ab.SetRegLoad(MFF_REG4, bdId);
-                    ab.SetRegLoad(MFF_REG5, fgrpId);
-                    ab.SetRegLoad(MFF_REG6, rdId);
-                    ab.SetRegLoad(MFF_REG7, ofPort);
-                    ab.SetGotoTable(NAT_IN_TABLE_ID);
-                    ab.Build(fipRoute->entry);
-
-                    elRouteDst.push_back(FlowEntryPtr(fipRoute));
+                uint32_t nextHop = OFPP_NONE;
+                if (ipm.getNextHopIf() && portMapper) {
+                    nextHop = portMapper->FindPort(ipm.getNextHopIf().get());
+                    if (nextHop == OFPP_NONE) continue;
                 }
-                {
-                    // Floating IP destination across EPGs
-                    // Apply policy for source EPG -> floating IP EPG
-                    // then resubmit with source EPG set to floating
-                    // IP EPG
-
-                    FlowEntry *fipResub = new FlowEntry();
-                    SetDestMatchEp(fipResub, 450, NULL, floatingIp, frdId);
-                    ActionBuilder ab;
-                    ab.SetRegLoad(MFF_REG2, fepgVnid);
-                    ab.SetRegLoad(MFF_REG7, fepgVnid);
-                    ab.SetWriteMetadata(METADATA_RESUBMIT_DST,
-                                        METADATA_OUT_MASK);
-                    ab.SetGotoTable(POL_TABLE_ID);
-                    ab.Build(fipResub->entry);
-
-                    elRouteDst.push_back(FlowEntryPtr(fipResub));
+                uint8_t nextHopMac[6];
+                const uint8_t* nextHopMacp = NULL;
+                if (ipm.getNextHopMAC()) {
+                    ipm.getNextHopMAC().get().toUIntArray(nextHopMac);
+                    nextHopMacp = nextHopMac;
                 }
-                // Reply to discovery requests for the floating IP
-                // address
-                if (floatingIp.is_v4()) {
-                    uint32_t tunPort = GetTunnelPort();
-                    if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
-                        FlowEntry *fipArpTun = new FlowEntry();
-                        SetDestMatchArp(fipArpTun, 21, floatingIp,
-                                        fbdId, frdId);
-                        match_set_in_port(&fipArpTun->entry->match, tunPort);
-                        SetDestActionArpReply(fipArpTun, macAddr, floatingIp,
-                                              OFPP_IN_PORT, encapType,
-                                              &GetTunnelDst());
-                        elBridgeDst.push_back(FlowEntryPtr(fipArpTun));
-                    }
-                    {
-                        FlowEntry *fipArp = new FlowEntry();
-                        SetDestMatchArp(fipArp, 20, floatingIp, fbdId, frdId);
-                        SetDestActionArpReply(fipArp, macAddr, floatingIp);
-                        elBridgeDst.push_back(FlowEntryPtr(fipArp));
-                    }
-                } else {
-                    FlowEntry *fipNS = new FlowEntry();
-                    // pass MAC address in flow metadata
-                    uint64_t metadata = 0;
-                    memcpy(&metadata, macAddr, 6);
-                    ((uint8_t*)&metadata)[7] = 1;
-                    SetDestMatchNd(fipNS, 20, &floatingIp, fbdId, frdId,
-                                   FlowManager::GetNDCookie());
-                    SetActionController(fipNS, fepgVnid, 0xffff, metadata);
-                    elBridgeDst.push_back(FlowEntryPtr(fipNS));
-                }
-                {
-                    FlowEntry *fipNatOut = new FlowEntry();
-                    fipNatOut->entry->table_id = FlowManager::OUT_TABLE_ID;
-                    fipNatOut->entry->priority = 10;
-                    match_set_metadata_masked(&fipNatOut->entry->match,
-                                              htonll(METADATA_NAT_OUT),
-                                              htonll(METADATA_OUT_MASK));
-                    match_set_reg(&fipNatOut->entry->match, 6 /* REG6 */, rdId);
-                    match_set_reg(&fipNatOut->entry->match, 7 /* REG7 */, fepgVnid);
-                    if (mappedIp.is_v4()) {
-                        match_set_dl_type(&fipNatOut->entry->match,
-                                          htons(ETH_TYPE_IP));
-                        match_set_nw_src(&fipNatOut->entry->match,
-                                         htonl(mappedIp.to_v4().to_ulong()));
-                    } else {
-                        struct in6_addr addr;
-                        fill_in6_addr(addr, mappedIp.to_v6());
 
-                        match_set_dl_type(&fipNatOut->entry->match,
-                                          htons(ETH_TYPE_IPV6));
-                        match_set_ipv6_src(&fipNatOut->entry->match, &addr);
-                    }
-
-                    ActionBuilder ab;
-                    ab.SetEthSrcDst(macAddr, GetRouterMacAddr());
-                    ab.SetIpSrc(floatingIp);
-                    ab.SetDecNwTtl();
-
-                    ab.SetRegLoad(MFF_REG0, fepgVnid);
-                    ab.SetRegLoad(MFF_REG4, fbdId);
-                    ab.SetRegLoad(MFF_REG5, ffdId);
-                    ab.SetRegLoad(MFF_REG6, frdId);
-                    ab.SetRegLoad(MFF_REG7, (uint32_t)0);
-                    ab.SetRegLoad64(MFF_METADATA, 0);
-                    ab.SetResubmit(OFPP_IN_PORT, BRIDGE_TABLE_ID);
-                    ab.Build(fipNatOut->entry);
-
-                    elOutput.push_back(FlowEntryPtr(fipNatOut));
-                }
+                computeIpmFlows(*this, elSrc, elBridgeDst, elRouteDst,
+                                elOutput, macAddr, ofPort,
+                                epgVnid, rdId, bdId, fgrpId,
+                                fepgVnid, frdId, fbdId, ffdId,
+                                mappedIp, floatingIp, nextHop,
+                                nextHopMacp);
             }
         }
     }
+
+    WriteFlow(uuid, SRC_TABLE_ID, elSrc);
+    WriteFlow(uuid, LEARN_TABLE_ID, elEpLearn);
     WriteFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
     WriteFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
     WriteFlow(uuid, OUT_TABLE_ID, elOutput);
@@ -1447,7 +1556,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
 
     unordered_set<string> epUuids;
     agent.getEndpointManager().getEndpointsForGroup(epgURI, epUuids);
-    agent.getEndpointManager().getEndpointsForFIPGroup(epgURI, epUuids);
+    agent.getEndpointManager().getEndpointsForIPMGroup(epgURI, epUuids);
     BOOST_FOREACH(const string& ep, epUuids) {
         endpointUpdated(ep);
     }
@@ -2106,6 +2215,8 @@ void FlowManager::HandlePortStatusUpdate(const string& portName,
     } else {
         unordered_set<string> epUUIDs;
         agent.getEndpointManager().getEndpointsByIface(portName, epUUIDs);
+        agent.getEndpointManager().getEndpointsByIpmNextHopIf(portName,
+                                                              epUUIDs);
         BOOST_FOREACH (const string& ep, epUUIDs) {
             HandleEndpointUpdate(ep);
         }
