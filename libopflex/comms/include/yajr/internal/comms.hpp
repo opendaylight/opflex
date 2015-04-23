@@ -785,6 +785,7 @@ class ActiveUnixPeer : public ActivePeer {
                     uvLoopSelector),
             socketName_(socketName)
         {
+            _.ai = NULL;
 #ifdef COMMS_DEBUG_OBJECT_COUNT
             ++counter;
 #endif
