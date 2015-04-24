@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
         ("help,h", "Print this help message")
         ("log", po::value<string>()->default_value(""),
          "Log to the specified file (default standard out)")
-        ("level", po::value<string>()->default_value("error"),
+        ("level", po::value<string>()->default_value("warning"),
          "Use the specified log level (default info)")
         ("syslog", "Log to syslog instead of file or standard out")
         ("socket", po::value<string>()->default_value(DEF_SOCKET),
