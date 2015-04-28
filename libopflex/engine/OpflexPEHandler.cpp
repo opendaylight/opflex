@@ -38,6 +38,7 @@ namespace internal {
 using std::vector;
 using std::string;
 using std::pair;
+using boost::optional;
 using modb::class_id_t;
 using modb::reference_t;
 using modb::URI;
@@ -49,11 +50,12 @@ using ofcore::OFConstants;
 
 class SendIdentityReq : public OpflexMessage {
 public:
-    SendIdentityReq(const std::string& name_,
-                    const std::string& domain_,
+    SendIdentityReq(const string& name_,
+                    const string& domain_,
+                    const optional<string>& location_,
                     const uint8_t roles_)
         : OpflexMessage("send_identity", REQUEST),
-          name(name_), domain(domain_), roles(roles_) {}
+          name(name_), domain(domain_), location(location_), roles(roles_) {}
 
 #ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
@@ -79,6 +81,10 @@ public:
         writer.String(name.c_str());
         writer.String("domain");
         writer.String(domain.c_str());
+        if (location) {
+            writer.String("my_location");
+            writer.String(location.get().c_str());
+        }
         writer.String("my_role");
         writer.StartArray();
         if (roles & OFConstants::POLICY_ELEMENT)
@@ -97,8 +103,9 @@ public:
     }
 
 private:
-    std::string name;
-    std::string domain;
+    string name;
+    string domain;
+    optional<string> location;
     uint8_t roles;
 };
 
@@ -109,6 +116,7 @@ void OpflexPEHandler::connected() {
     SendIdentityReq* req = 
         new SendIdentityReq(pool.getName(),
                             pool.getDomain(),
+                            pool.getLocation(),
                             OFConstants::POLICY_ELEMENT);
     getConnection()->sendMessage(req, true);
 }
@@ -135,6 +143,12 @@ void OpflexPEHandler::handleSendIdentityRes(const Value& payload) {
     bool foundSelf = false;
 
     OpflexPool::peer_name_set_t peer_set;
+
+    if (payload.HasMember("your_location")) {
+        const Value& ylocation = payload["your_location"];
+        if (ylocation.IsString())
+            pool.setLocation(ylocation.GetString());
+    }
 
     if (payload.HasMember("peers")) {
         const Value& peers = payload["peers"];
