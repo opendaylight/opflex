@@ -111,6 +111,12 @@ void OFFramework::setOpflexIdentity(const std::string& name,
     pimpl->processor.setOpflexIdentity(name, domain);
 }
 
+void OFFramework::setOpflexIdentity(const std::string& name,
+                                    const std::string& domain,
+                                    const std::string& location) {
+    pimpl->processor.setOpflexIdentity(name, domain, location);
+}
+
 void OFFramework::enableSSL(const std::string& caStorePath,
                             bool verifyPeers) {
     pimpl->processor.enableSSL(caStorePath, verifyPeers);

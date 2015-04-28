@@ -46,6 +46,16 @@ OpflexPool::~OpflexPool() {
     uv_mutex_destroy(&conn_mutex);
 }
 
+boost::optional<std::string> OpflexPool::getLocation() {
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+    return location;
+}
+
+void OpflexPool::setLocation(const std::string& location) {
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+    this->location = location;
+}
+
 void OpflexPool::enableSSL(const std::string& caStorePath,
                            bool verifyPeers) {
 #ifndef SIMPLE_RPC
@@ -141,6 +151,14 @@ void OpflexPool::setOpflexIdentity(const std::string& name,
                                    const std::string& domain) {
     this->name = name;
     this->domain = domain;
+}
+
+void OpflexPool::setOpflexIdentity(const std::string& name,
+                                   const std::string& domain,
+                                   const std::string& location) {
+    this->name = name;
+    this->domain = domain;
+    this->location = location;
 }
 
 void

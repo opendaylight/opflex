@@ -576,6 +576,12 @@ void Processor::setOpflexIdentity(const std::string& name,
     pool.setOpflexIdentity(name, domain);
 }
 
+void Processor::setOpflexIdentity(const std::string& name,
+                                  const std::string& domain,
+                                  const std::string& location) {
+    pool.setOpflexIdentity(name, domain, location);
+}
+
 void Processor::enableSSL(const std::string& caStorePath,
                           bool verifyPeers) {
     pool.enableSSL(caStorePath, verifyPeers);
