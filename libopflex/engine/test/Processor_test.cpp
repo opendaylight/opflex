@@ -240,6 +240,9 @@ void BasePFixture::testBootstrap(bool ssl) {
     BOOST_CHECK_EQUAL(PeerStatusListener::READY, peerStatus.statusMap[8010]);
     BOOST_CHECK_EQUAL(PeerStatusListener::HEALTHY, peerStatus.latestHealth);
 
+    BOOST_CHECK_EQUAL(std::string("location_string"),
+                      processor.getPool().getLocation());
+
     anycastServer.stop();
     peer1.stop();
     peer2.stop();

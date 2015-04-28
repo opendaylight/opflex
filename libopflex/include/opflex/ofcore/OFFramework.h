@@ -689,6 +689,19 @@ public:
                            const std::string& domain);
 
     /**
+     * Set the opflex identity information for this framework
+     * instance.
+     *
+     * @param name the unique name for this opflex component within
+     * the policy domain
+     * @param domain the globally unique name for this policy domain
+     * @param location the location string for this policy element.
+     */
+    void setOpflexIdentity(const std::string& name,
+                           const std::string& domain,
+                           const std::string& location);
+
+    /**
      * Start the framework.  This will start all the framework threads
      * and attempt to connect to configured OpFlex peers.
      */

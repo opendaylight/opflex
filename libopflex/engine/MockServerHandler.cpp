@@ -18,6 +18,7 @@
 #include <sstream>
 
 #include <boost/foreach.hpp>
+#include <boost/optional.hpp>
 
 #include "opflex/logging/internal/logging.hpp"
 #include "opflex/engine/internal/OpflexMessage.h"
@@ -28,6 +29,7 @@ namespace opflex {
 namespace engine {
 namespace internal {
 
+using boost::optional;
 using rapidjson::Value;
 using rapidjson::Writer;
 using modb::mointernal::StoreClient;
@@ -54,11 +56,12 @@ public:
     SendIdentityRes(const rapidjson::Value& id,
                     const std::string& name_,
                     const std::string& domain_,
+                    const optional<std::string>& your_location_,
                     const uint8_t roles_,
                     test::MockOpflexServer::peer_vec_t peers_)
         : OpflexMessage("send_identity", RESPONSE, &id),
-          name(name_), domain(domain_), roles(roles_), 
-          peers(peers_) {}
+          name(name_), domain(domain_), your_location(your_location_),
+          roles(roles_), peers(peers_) {}
 
 #ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
@@ -81,6 +84,10 @@ public:
         writer.String(name.c_str());
         writer.String("domain");
         writer.String(domain.c_str());
+        if (your_location) {
+            writer.String("your_location");
+            writer.String(your_location.get().c_str());
+        }
         writer.String("my_role");
         writer.StartArray();
         if (roles & OFConstants::POLICY_ELEMENT)
@@ -119,6 +126,7 @@ public:
 private:
     std::string name;
     std::string domain;
+    optional<std::string> your_location;
     uint8_t roles;
     test::MockOpflexServer::peer_vec_t peers;
 };
@@ -229,7 +237,8 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
     std::stringstream sb;
     sb << "127.0.0.1:" << server->getPort();
     SendIdentityRes* res = 
-        new SendIdentityRes(id, sb.str(), "testdomain", 
+        new SendIdentityRes(id, sb.str(), "testdomain",
+                            std::string("location_string"),
                             server->getRoles(), 
                             server->getPeers());
     getConnection()->sendMessage(res, true);
