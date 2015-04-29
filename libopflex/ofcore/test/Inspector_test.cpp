@@ -46,7 +46,6 @@ class InspectorFixture : public BaseFixture {
 public:
     InspectorFixture()
         : BaseFixture(), inspector(&db), client(SOCK_NAME, md) {
-        std::remove(SOCK_NAME.c_str());
         inspector.setSocketName(SOCK_NAME);
         inspector.start();
     }

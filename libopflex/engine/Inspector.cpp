@@ -14,6 +14,8 @@
 #  include <config.h>
 #endif
 
+#include <cstdio>
+
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/engine/internal/InspectorServerHandler.h"
 #include "opflex/engine/Inspector.h"
@@ -43,6 +45,7 @@ void Inspector::setSocketName(const std::string& name) {
 
 void Inspector::start() {
     LOG(INFO) << "Starting inspector on \"" << name << "\"";
+    std::remove(name.c_str());
     listener.reset(new OpflexListener(*this, name, "inspector", "inspector"));
     listener->listen();
 }
