@@ -184,6 +184,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
         VMUniverse::resolve(framework);
     shared_ptr<VMEp> vme = vmu.get()
         ->addGbpeVMEp(uuid);
+    es.vmEP = vme->getURI();
     mutator.commit();
 
     es.endpoint = make_shared<const Endpoint>(endpoint);
