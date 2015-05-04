@@ -91,25 +91,9 @@ module[gbp]
     }
 
     class[Subnets;
-          super=gbp/L3BehavioralGroup;
+          super=gbp/BehavioralGroup;
           concrete]
     {
-        dependency[network;
-                   cardinality=single;
-                   ]
-        {
-            to[class=gbp/BridgeDomain;
-               cardinality=many;
-               ]
-
-            to[class=gbp/FloodDomain;
-               cardinality=many;
-               ]
-
-            to[class=gbp/RoutingDomain;
-               cardinality=many;
-               ]
-        }
         contained
         {
             parent[class=policy/Space]

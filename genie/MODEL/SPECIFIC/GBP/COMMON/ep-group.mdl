@@ -42,6 +42,14 @@ module[gbp]
                 ]
         }
 
+        dependency[subnets;
+                   cardinality=single;]
+        {
+            to[class=gbp/Subnets;
+               cardinality=many;
+               ]
+        }
+
         contained
         {
             parent[class=policy/Space]

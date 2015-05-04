@@ -232,16 +232,6 @@ public:
                     const boost::asio::ip::address& ip);
 
     /**
-     * Get the subnet URIs for subnets that directly reference the
-     * given network domain URI
-     *
-     * @param domainUri a URI referencing a network domain
-     * @param uris the set of URIs that reference the domain
-     */
-    void getSubnetsForDomain(const opflex::modb::URI& domainUri,
-                             /* out */ boost::unordered_set<opflex::modb::URI>& uris);
-
-    /**
      * Get the virtual-network identifier (vnid) associated with the
      * specified endpoint group.
      *
@@ -269,17 +259,6 @@ public:
      * boost::none otherwise
      */
     boost::optional<uint32_t> getVnidForL3ExtNet(const opflex::modb::URI& l3net);
-
-    /**
-     * Get the NAT EPG mapping for the given L3 external network if it
-     * exists.
-     *
-     * @param l3net the URI for the L3ExternalNetwork
-     * @return the NAT EPG or boost::none if the l3 external network
-     * or ep group isn't found
-     */
-    boost::optional<boost::shared_ptr<modelgbp::gbp::EpGroup> >
-    getNatEPGforL3ExtNet(const opflex::modb::URI& l3net);
 
     /**
      * Get the multicast IP group configured for an endpoint group.
@@ -384,17 +363,9 @@ private:
         subnet_map_t subnet_map;
     };
 
-    struct SubnetsCacheEntry {
-        SubnetsCacheEntry() : refUri(opflex::modb::URI::ROOT) {}
-
-        opflex::modb::URI refUri;
-        subnet_vector_t childSubnets;
-    };
-
     struct L3NetworkState {
         boost::optional<boost::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
         boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
-        boost::optional<opflex::modb::URI > natEpg;
     };
 
     struct RoutingDomainState {
@@ -405,7 +376,6 @@ private:
     typedef boost::unordered_map<opflex::modb::URI,
                                  boost::unordered_set<opflex::modb::URI> > uri_ref_map_t;
     typedef boost::unordered_map<uint32_t, opflex::modb::URI> vnid_map_t;
-    typedef boost::unordered_map<opflex::modb::URI, SubnetsCacheEntry> subnet_index_t;
     typedef boost::unordered_map<opflex::modb::URI, RoutingDomainState> rd_map_t;
     typedef boost::unordered_map<opflex::modb::URI, L3NetworkState> l3n_map_t;
 
@@ -418,11 +388,6 @@ private:
      * A map from EPG vnid to EPG URI
      */
     vnid_map_t vnid_map;
-
-    /**
-     * A cache of subnets to subnet child objects
-     */
-    subnet_index_t subnet_index; 
 
     /**
      * A map from a forwarding domain URI to a set of subnets that
@@ -533,12 +498,6 @@ private:
      */
     std::list<PolicyListener*> policyListeners;
     boost::mutex listener_mutex;
-
-    /**
-     * Update the subnet URI map.  You must hold a state lock to call
-     * this function.
-     */
-    void updateSubnetIndex(const opflex::modb::URI& subnetsUri);
 
     /**
      * Update the EPG domain cache information for the specified EPG

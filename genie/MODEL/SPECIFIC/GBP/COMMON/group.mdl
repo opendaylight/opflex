@@ -10,6 +10,15 @@ module[gbp]
           super=gbp/BehavioralGroup;
           abstract;
           ]
+    {
+        dependency[subnets;
+                   cardinality=single;]
+        {
+            to[class=gbp/Subnets;
+               cardinality=many;
+               ]
+        }
+    }
 
     class[AccessBehavioralGroup;
           super=gbp/BehavioralGroup;

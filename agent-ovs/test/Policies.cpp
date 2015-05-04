@@ -132,8 +132,8 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     subnetsfd1_3->setAddress("fd8f:69d8:c12c:ca63::")
         .setIpv6AdvAutonomousFlag(0)
         .setPrefixLen(64);
-    subnetsfd1->addGbpSubnetsToNetworkRSrc()
-        ->setTargetFloodDomain(fd1->getURI());
+    fd1->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+        ->setTargetSubnets(subnetsfd1->getURI());
     rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd1->getURI().toString());
 
     subnetsfd2 = space->addGbpSubnets("subnetsfd2");
@@ -144,25 +144,23 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     subnetsfd2_2 = subnetsfd2->addGbpSubnet("subnetsfd2_2");
     subnetsfd2_2->setAddress("fd8c:ad36:ceb3:601f::")
         .setPrefixLen(64);
-    subnetsfd2->addGbpSubnetsToNetworkRSrc()
-        ->setTargetFloodDomain(fd2->getURI());
+    fd2->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+        ->setTargetSubnets(subnetsfd2->getURI());
     rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd2->getURI().toString());
     
     subnetsbd = space->addGbpSubnets("subnetsbd");
     subnetsbd1 = subnetsbd->addGbpSubnet("subnetsbd1");
-    subnetsbd->addGbpSubnetsToNetworkRSrc()
-        ->setTargetBridgeDomain(bd->getURI());
+    bd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+        ->setTargetSubnets(subnetsbd->getURI());
     rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsbd1->getURI().toString());
     
     subnetsrd = space->addGbpSubnets("subnetsrd");
     subnetsrd1 = subnetsrd->addGbpSubnet("subnetsrd1");
-    subnetsrd->addGbpSubnetsToNetworkRSrc()
-        ->setTargetRoutingDomain(rd->getURI());
+    rd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+        ->setTargetSubnets(subnetsrd->getURI());
     rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsrd->getURI().toString());
 
     subnets_ext = common->addGbpSubnets("subnets_ext");
-    subnets_ext->addGbpSubnetsToNetworkRSrc()
-        ->setTargetFloodDomain(fd_ext->getURI());
     subnets_ext->addGbpSubnet("subnet_ext4")
         ->setAddress("5.5.5.0")
         .setPrefixLen(24)
@@ -172,6 +170,8 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setPrefixLen(64);
     rd_ext->addGbpRoutingDomainToIntSubnetsRSrc(subnets_ext->
                                                 getURI().toString());
+    rd_ext->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+        ->setTargetSubnets(subnets_ext->getURI());
 
     // ARP
     classifier1 = space->addGbpeL24Classifier("classifier1");
@@ -214,7 +214,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     eg1 = space->addGbpEpGroup("group1");
     eg1->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnets(subnetsfd1->getURI());
+        ->setTargetFloodDomain(fd1->getURI());
     eg1->addGbpeInstContext()->setEncapId(0x1234);
     eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg1->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
@@ -222,7 +222,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     eg2 = space->addGbpEpGroup("group2");
     eg2->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnets(subnetsfd1->getURI());
+        ->setTargetFloodDomain(fd1->getURI());
     eg2->addGbpeInstContext()->setEncapId(0x3000);
     eg2->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
@@ -232,13 +232,13 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
     eg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
     eg3->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnets(subnetsfd2->getURI());
+        ->setTargetFloodDomain(fd2->getURI());
     eg3->addGbpeInstContext()->setEncapId(0x3456);
 
     eg_nat = common->addGbpEpGroup("nat-epg");
     eg_nat->addGbpeInstContext()->setEncapId(0x4242);
     eg_nat->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnets(subnets_ext->getURI());
+        ->setTargetFloodDomain(fd_ext->getURI());
 
     l3ext = rd->addGbpL3ExternalDomain("ext");
     l3ext_net = l3ext->addGbpL3ExternalNetwork("outside");
