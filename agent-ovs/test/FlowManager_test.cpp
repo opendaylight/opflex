@@ -437,7 +437,7 @@ void FlowManagerFixture::epgTest() {
     /* forwarding object change */
     Mutator m1(framework, policyOwner);
     epg0->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnets(subnetsfd0->getURI());
+        ->setTargetFloodDomain(fd0->getURI());
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
     PolicyManager::subnet_vector_t sns;
@@ -590,7 +590,7 @@ void FlowManagerFixture::arpModeTest() {
 
     Mutator m1(framework, policyOwner);
     epg0->addGbpEpGroupToNetworkRSrc()
-        ->setTargetSubnets(subnetsfd0->getURI());
+        ->setTargetFloodDomain(fd0->getURI());
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
     PolicyManager::subnet_vector_t sns;
@@ -714,7 +714,7 @@ void FlowManagerFixture::fdTest() {
     /* Set FD & update EP0 */
     Mutator m1(framework, policyOwner);
     epg0->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnets(subnetsfd0->getURI());
+            ->setTargetFloodDomain(fd0->getURI());
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
 
@@ -812,7 +812,7 @@ void FlowManagerFixture::groupFloodTest() {
     epSrc.updateEndpoint(*ep2);
     Mutator m1(framework, policyOwner);
     epg0->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnets(subnetsfd0->getURI());
+            ->setTargetFloodDomain(fd0->getURI());
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
     WAIT_FOR(policyMgr.getFDForGroup(epg2->getURI()) != boost::none, 500);
@@ -1111,21 +1111,21 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanFlowManagerFixture) {
             ->setTargetRoutingDomain(rd_ext->getURI());
 
         subnets_ext = common->addGbpSubnets("subnets_ext");
-        subnets_ext->addGbpSubnetsToNetworkRSrc()
-            ->setTargetFloodDomain(fd_ext->getURI());
         subnets_ext->addGbpSubnet("subnet_ext4")
             ->setAddress("5.5.5.0")
             .setPrefixLen(24);
         subnets_ext->addGbpSubnet("subnet_ext6")
             ->setAddress("fdf1:9f86:d1af:6cc9::")
             .setPrefixLen(64);
+        bd_ext->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+            ->setTargetSubnets(subnets_ext->getURI());
         rd_ext->addGbpRoutingDomainToIntSubnetsRSrc(subnets_ext->
                                                     getURI().toString());
 
         eg_nat = common->addGbpEpGroup("nat-epg");
         eg_nat->addGbpeInstContext()->setEncapId(0x4242);
         eg_nat->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnets(subnets_ext->getURI());
+            ->setTargetFloodDomain(fd_ext->getURI());
 
         l3ext = rd0->addGbpL3ExternalDomain("ext");
         l3ext_net = l3ext->addGbpL3ExternalNetwork("outside");

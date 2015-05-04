@@ -52,23 +52,26 @@ public:
         bd->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
     
+        subnetseg2 = space->addGbpSubnets("subnetseg2");
+        subnetseg2_1 = subnetseg2->addGbpSubnet("subnetseg2_1");
+
         subnetsfd = space->addGbpSubnets("subnetsfd");
         subnetsfd1 = subnetsfd->addGbpSubnet("subnetsfd1");
         subnetsfd2 = subnetsfd->addGbpSubnet("subnetsfd2");
-        subnetsfd->addGbpSubnetsToNetworkRSrc()
-            ->setTargetFloodDomain(fd->getURI());
+        fd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+            ->setTargetSubnets(subnetsfd->getURI());
         rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd->getURI().toString());
     
         subnetsbd = space->addGbpSubnets("subnetsbd");
         subnetsbd1 = subnetsbd->addGbpSubnet("subnetsbd1");
-        subnetsbd->addGbpSubnetsToNetworkRSrc()
-            ->setTargetBridgeDomain(bd->getURI());
+        bd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+            ->setTargetSubnets(subnetsbd->getURI());
         rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsbd->getURI().toString());
     
         subnetsrd = space->addGbpSubnets("subnetsrd");
         subnetsrd1 = subnetsrd->addGbpSubnet("subnetsrd1");
-        subnetsrd->addGbpSubnetsToNetworkRSrc()
-            ->setTargetRoutingDomain(rd->getURI());
+        rd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+            ->setTargetSubnets(subnetsrd->getURI());
         rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsrd->getURI().toString());
 
         classifier1 = space->addGbpeL24Classifier("classifier1");
@@ -118,7 +121,7 @@ public:
 
         eg1 = space->addGbpEpGroup("group1");
         eg1->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnets(subnetsfd->getURI());
+            ->setTargetFloodDomain(fd->getURI());
         eg1->addGbpeInstContext()->setEncapId(1234)
             .setMulticastGroupIP("224.1.1.1");
         eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
@@ -128,6 +131,8 @@ public:
         eg2->addGbpeInstContext()->setEncapId(5678);
         eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
         eg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
+        eg2->addGbpEpGroupToSubnetsRSrc()
+            ->setTargetSubnets(subnetseg2->getURI());
 
         eg3 = space->addGbpEpGroup("group3");
         eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
@@ -143,6 +148,8 @@ public:
     shared_ptr<FloodDomain> fd;
     shared_ptr<RoutingDomain> rd;
     shared_ptr<BridgeDomain> bd;
+    shared_ptr<Subnets> subnetseg2;
+    shared_ptr<Subnet> subnetseg2_1;
     shared_ptr<Subnets> subnetsfd;
     shared_ptr<Subnet> subnetsfd1;
     shared_ptr<Subnet> subnetsfd2;
@@ -172,23 +179,30 @@ public:
 BOOST_AUTO_TEST_SUITE(PolicyManager_test)
 
 static bool hasUriRef(PolicyManager& policyManager,
-                      const URI& domainUri,
+                      const URI& egUri,
                       const URI& subnetUri) {
-    unordered_set<URI> uris;
-    policyManager.getSubnetsForDomain(domainUri, uris);
-    return (uris.find(subnetUri) != uris.end());
+    PolicyManager::subnet_vector_t sv;
+    policyManager.getSubnetsForGroup(egUri, sv);
+    BOOST_FOREACH(shared_ptr<Subnet> sn, sv) {
+        if (sn->getURI() == subnetUri)
+            return true;
+    }
+    return false;
 }
 
 BOOST_FIXTURE_TEST_CASE( subnet, PolicyFixture ) {
-
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), fd->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
                        subnetsfd1->getURI()), 500);
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), fd->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
                        subnetsfd2->getURI()), 500);
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), bd->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
                        subnetsbd1->getURI()), 500);
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), rd->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
                        subnetsrd1->getURI()), 500);
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg2->getURI(), 
+                       subnetseg2_1->getURI()), 500);
+    BOOST_CHECK(!hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
+                           subnetseg2_1->getURI()));
 }
 
 static bool checkFd(PolicyManager& policyManager, 

@@ -147,15 +147,6 @@ void PolicyManager::notifyConfig(const URI& configURI) {
     }
 }
 
-void PolicyManager::getSubnetsForDomain(const URI& domainUri,
-                                        /* out */ unordered_set<URI>& uris) {
-    lock_guard<mutex> guard(state_mutex);
-    uri_ref_map_t::const_iterator it = subnet_ref_map.find(domainUri);
-    if (it != subnet_ref_map.end()) {
-        uris.insert(it->second.begin(), it->second.end());
-    }
-}
-
 optional<shared_ptr<modelgbp::gbp::RoutingDomain> >
 PolicyManager::getRDForGroup(const opflex::modb::URI& eg) {
     lock_guard<mutex> guard(state_mutex);
@@ -256,47 +247,6 @@ PolicyManager::findSubnetForEp(const opflex::modb::URI& eg,
     return boost::none;
 }
 
-void PolicyManager::updateSubnetIndex(const opflex::modb::URI& subnetsUri) {
-    using namespace modelgbp;
-    using namespace modelgbp::gbp;
-
-    subnet_index_t::iterator oldit = subnet_index.find(subnetsUri);
-    if (oldit != subnet_index.end()) {
-        const opflex::modb::URI& refUri = oldit->second.refUri;
-        BOOST_FOREACH(const shared_ptr<Subnet>& snet, oldit->second.childSubnets) {
-            uri_ref_map_t::iterator rit = subnet_ref_map.find(refUri);
-            if (rit != subnet_ref_map.end()) {
-                unordered_set<opflex::modb::URI>& refmap = rit->second;
-                refmap.erase(snet->getURI());
-                if (refmap.size() == 0)
-                    subnet_ref_map.erase(rit);
-            }
-        }
-        subnet_index.erase(oldit);
-    }
-
-    optional<shared_ptr<Subnets> > subnets = 
-        Subnets::resolve(framework, subnetsUri);
-    if (!subnets) return;
-
-    optional<shared_ptr<SubnetsToNetworkRSrc> > ref = 
-        subnets.get()->resolveGbpSubnetsToNetworkRSrc();
-    if (!ref) return;
-    optional<URI> uri = ref.get()->getTargetURI();
-    if (!uri) return;
-    
-    vector<shared_ptr<Subnet> > subnet_list;
-    subnets.get()->resolveGbpSubnet(subnet_list);
-    
-    SubnetsCacheEntry& ce = subnet_index[subnetsUri];
-    ce.refUri = uri.get();
-    ce.childSubnets = subnet_list;
-
-    BOOST_FOREACH(const shared_ptr<Subnet>& subnet, subnet_list) {
-        subnet_ref_map[uri.get()].insert(subnet->getURI());
-    }
-}
-
 bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     using namespace modelgbp;
     using namespace modelgbp::gbp;
@@ -337,31 +287,39 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
         domainURI = ref.get()->getTargetURI();
     }
 
-    // walk up the chain of domains
+    // Update the subnet map for the group with the subnets directly
+    // referenced by the group.
+    optional<shared_ptr<EpGroupToSubnetsRSrc> > egSns =
+        epg.get()->resolveGbpEpGroupToSubnetsRSrc();
+    if (egSns && egSns.get()->isTargetSet()) {
+        optional<shared_ptr<Subnets> > sns =
+            Subnets::resolve(framework,
+                             egSns.get()->getTargetURI().get());
+        if (sns) {
+            vector<shared_ptr<Subnet> > csns;
+            sns.get()->resolveGbpSubnet(csns);
+            BOOST_FOREACH(shared_ptr<Subnet>& csn, csns)
+                newsmap[csn->getURI()] = csn;
+        }
+    }
+
+    // walk up the chain of forwarding domains
     while (domainURI && domainClass) {
         URI du = domainURI.get();
         optional<class_id_t> ndomainClass;
         optional<URI> ndomainURI;
 
-        // Update the subnet map with all the subnets that reference
-        // this domain
-        uri_ref_map_t::const_iterator it =
-            subnet_ref_map.find(du);
-        if (it != subnet_ref_map.end()) {
-            BOOST_FOREACH(const URI& ru, it->second) {
-                optional<shared_ptr<Subnet> > subnet = 
-                    Subnet::resolve(framework, ru);
-                if (subnet)
-                    newsmap[ru] = subnet.get();
-            }
-        }
-
+        optional<shared_ptr<ForwardingBehavioralGroupToSubnetsRSrc> > fwdSns;
         switch (domainClass.get()) {
         case RoutingDomain::CLASS_ID:
             {
                 newrd = RoutingDomain::resolve(framework, du);
                 ndomainClass = boost::none;
                 ndomainURI = boost::none;
+                if (newrd) {
+                    fwdSns = newrd.get()->
+                        resolveGbpForwardingBehavioralGroupToSubnetsRSrc();
+                }
             }
             break;
         case BridgeDomain::CLASS_ID:
@@ -374,6 +332,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                         ndomainClass = dref.get()->getTargetClass();
                         ndomainURI = dref.get()->getTargetURI();
                     }
+                    fwdSns = newbd.get()->
+                        resolveGbpForwardingBehavioralGroupToSubnetsRSrc();
                 }
             }
             break;
@@ -388,25 +348,27 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                         ndomainURI = dref.get()->getTargetURI();
                     }
                     newfdctx = newfd.get()->resolveGbpeFloodContext();
-                }
-            }
-            break;
-        case Subnets::CLASS_ID:
-            {
-                optional<shared_ptr<Subnets> > subnets =
-                    Subnets::resolve(framework, du);
-                if (subnets) {
-                    optional<shared_ptr<SubnetsToNetworkRSrc> > dref = 
-                        subnets.get()->resolveGbpSubnetsToNetworkRSrc();
-                    if (dref) {
-                        ndomainClass = dref.get()->getTargetClass();
-                        ndomainURI = dref.get()->getTargetURI();
-                    }
+                    fwdSns = newfd.get()->
+                        resolveGbpForwardingBehavioralGroupToSubnetsRSrc();
                 }
             }
             break;
         }
-        
+
+        // Update the subnet map for the group with all the subnets it
+        // could access.
+        if (fwdSns && fwdSns.get()->isTargetSet()) {
+            optional<shared_ptr<Subnets> > sns =
+                Subnets::resolve(framework,
+                                 fwdSns.get()->getTargetURI().get());
+            if (sns) {
+                vector<shared_ptr<Subnet> > csns;
+                sns.get()->resolveGbpSubnet(csns);
+                BOOST_FOREACH(shared_ptr<Subnet>& csn, csns)
+                    newsmap[csn->getURI()] = csn;
+            }
+        }
+
         domainClass = ndomainClass;
         domainURI = ndomainURI;
     }
@@ -789,12 +751,6 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
             L3NetworkState& l3s = l3n_map[net->getURI()];
             l3s.routingDomain = rd;
             l3s.instContext = net->resolveGbpeInstContext();
-            optional<shared_ptr<L3ExternalNetworkToNatEPGroupRSrc> > natref =
-                net->resolveGbpL3ExternalNetworkToNatEPGroupRSrc();
-            if (natref)
-                l3s.natEpg = natref.get()->getTargetURI();
-            else
-                l3s.natEpg = boost::none;
             updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                  net->getURI(), contractsToNotify);
         }
@@ -833,8 +789,6 @@ void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
         pmanager.group_map[uri];
     } else if (class_id == modelgbp::gbp::RoutingDomain::CLASS_ID) {
         pmanager.updateL3Nets(uri, notifyContracts);
-    } else if (class_id == modelgbp::gbp::Subnets::CLASS_ID) {
-        pmanager.updateSubnetIndex(uri);
     }
     for (PolicyManager::group_map_t::iterator itr = pmanager.group_map.begin();
          itr != pmanager.group_map.end(); ) {

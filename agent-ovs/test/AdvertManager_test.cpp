@@ -54,7 +54,7 @@ public:
 
         Mutator mutator(framework, policyOwner);
         epg0->addGbpEpGroupToNetworkRSrc()
-            ->setTargetSubnets(subnetsfd0->getURI());
+            ->setTargetFloodDomain(fd0->getURI());
         mutator.commit();
 
         WAIT_FOR(agent.getPolicyManager().getRDForGroup(epg0->getURI()), 1000);
