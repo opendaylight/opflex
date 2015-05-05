@@ -111,10 +111,10 @@ void Processor::addRef(obj_state_by_exp::iterator& it,
             uit = uri_index.find(up.second);
         } 
         uit->details->refcount += 1;
-        LOG(DEBUG2) << "Addref " << uit->uri.toString()
-                   << " (from " << it->uri.toString() << ")"
-                   << " " << uit->details->refcount
-                   << " state " << uit->details->state;
+        LOG(DEBUG2) << "addref " << uit->uri.toString()
+                    << " (from " << it->uri.toString() << ")"
+                    << " " << uit->details->refcount
+                    << " state " << uit->details->state;
         
         it->details->urirefs.insert(up);
     }
@@ -129,8 +129,11 @@ void Processor::removeRef(obj_state_by_exp::iterator& it,
         obj_state_by_uri::iterator uit = uri_index.find(up.second);
         if (uit != uri_index.end()) {
             uit->details->refcount -= 1;
+            LOG(DEBUG2) << "removeref " << uit->uri.toString()
+                        << " (from " << it->uri.toString() << ")"
+                        << " " << uit->details->refcount
+                        << " state " << uit->details->state;
             if (uit->details->refcount <= 0) {
-                LOG(DEBUG2) << "Refcount zero " << uit->uri.toString();
                 uint64_t nexp = now(&proc_loop)+processingDelay;
                 uri_index.modify(uit, Processor::change_expiration(nexp));
             }
