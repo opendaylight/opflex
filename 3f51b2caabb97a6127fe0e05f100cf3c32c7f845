@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3aa0d159_c589a527",
+        "filename": "libopflex/include/opflex/logging/InMemoryLogHandler.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-05-05T21:21:41Z",
+      "side": 1,
+      "message": "copy/paste issue",
+      "revId": "3f51b2caabb97a6127fe0e05f100cf3c32c7f845",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3aa0d159_259ba973",
+        "filename": "libopflex/logging/Makefile.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-05-05T21:21:41Z",
+      "side": 1,
+      "message": "Don\u0027t reformat the makefiles please",
+      "revId": "3f51b2caabb97a6127fe0e05f100cf3c32c7f845",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3aa0d159_05a0ed9d",
+        "filename": "libopflex/util/include/InlineLockGuard.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-05-05T21:21:41Z",
+      "side": 1,
+      "message": "Why does this exist and how is it different from the existing LockGuard class in the same directory?",
+      "revId": "3f51b2caabb97a6127fe0e05f100cf3c32c7f845",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
