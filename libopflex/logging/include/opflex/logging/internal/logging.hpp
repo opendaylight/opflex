@@ -10,51 +10,24 @@
 #ifndef _INCLUDE__OPFLEX__LOGGING_HPP
 #define _INCLUDE__OPFLEX__LOGGING_HPP
 
-#include <sstream>
-#include <iostream>
-
-#include "opflex/logging/OFLogHandler.h"
+#include <opflex/logging/OFLogHandler.h>
 
 namespace opflex {
 namespace logging {
 namespace internal {
 
-/**
- * A simple logging interface used to process log messages internally
- */
-class Logger {
+struct LogEntry {
   public:
+    LoggingTag tag;
+    char message[];
+};
 
-    /**
-     * Get the output buffer to write to
-     */
-    std::ostream & stream()
-        __attribute__((no_instrument_function));
-
-    /**
-     * Construct a new logger to handle a specific message
-     *
-     * @param level the log level 
-     * @param file the file that is generating the log
-     * @param line the line number
-     * @param function the function that is generating the log
-     */
-    Logger(OFLogHandler::Level const level,
-           char const * file,
-           int const line,
-           char const * function)
-        __attribute__((no_instrument_function));
-
-    ~Logger()
-        __attribute__((no_instrument_function));
-
-private:
+struct LoggingTag {
+  public:
     OFLogHandler::Level const level_;
     char const * file_;
     int const line_;
     char const * function_;
-
-    std::ostringstream buffer_;
 };
 
 } /* namespace internal */
@@ -147,11 +120,11 @@ private:
  */
 #define LOG(level)                                                      \
     if(LOG_SHOULD_EMIT(level))                                          \
-        opflex::logging::internal::Logger(level,                        \
-                                          __FILE__,                     \
-                                          __LINE__,                     \
-                                          __FUNCTION__)                 \
-            .stream()                                                   \
+        opflex::logging::Logger(level,                                  \
+                                __FILE__,                               \
+                                __LINE__,                               \
+                                __FUNCTION__)                           \
+            .ostream()                                                  \
 
 /* quick and dirty compatibility with glog's verbose logging */
 #define VLOG_TO_LEVEL(integer) \

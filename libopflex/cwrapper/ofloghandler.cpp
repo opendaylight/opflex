@@ -15,104 +15,46 @@
 #endif
 
 
-#include "opflex/logging/OFLogHandler.h"
-#include "opflex/c/ofloghandler_c.h"
+#include <opflex/logging/OFLogHandler.h>
+#include <opflex/c/ofloghandler_c.h>
 
-using opflex::logging::OFLogHandler;
-
-static int getLevel(OFLogHandler::Level level) {
-    switch (level) {
-    case OFLogHandler::FATAL:
-        return LOG_FATAL;
-        break;
-    case OFLogHandler::ERROR:
-        return LOG_ERROR;
-        break;
-    case OFLogHandler::WARNING:
-        return LOG_WARNING;
-        break;
-    case OFLogHandler::INFO:
-        return LOG_INFO;
-        break;
-    case OFLogHandler::DEBUG1:
-        return LOG_DEBUG1;
-        break;
-    case OFLogHandler::DEBUG2:
-        return LOG_DEBUG2;
-        break;
-    case OFLogHandler::DEBUG3:
-        return LOG_DEBUG3;
-        break;
-    case OFLogHandler::DEBUG4:
-        return LOG_DEBUG4;
-        break;
-    case OFLogHandler::TRACE:
-    default:
-        return LOG_TRACE;
-        break;
-    }
-}
-
-static OFLogHandler::Level getLevel(int level) {
-    switch (level) {
-    case LOG_INFO:
-        return OFLogHandler::INFO;
-        break;
-    case LOG_WARNING:
-        return OFLogHandler::WARNING;
-        break;
-    case LOG_ERROR:
-        return OFLogHandler::ERROR;
-        break;
-    case LOG_FATAL:
-        return OFLogHandler::FATAL;
-        break;
-    case LOG_DEBUG1:
-        return OFLogHandler::DEBUG1;
-        break;
-    case LOG_DEBUG2:
-        return OFLogHandler::DEBUG2;
-        break;
-    case LOG_DEBUG3:
-        return OFLogHandler::DEBUG3;
-        break;
-    case LOG_DEBUG4:
-        return OFLogHandler::DEBUG4;
-        break;
-    case LOG_TRACE:
-    default:
-        return OFLogHandler::TRACE;
-        break;
-    }
-}
-
+namespace opflex {
+namespace logging {
 
 class COFLogHandler : public OFLogHandler {
 public:
-    COFLogHandler(Level level, loghandler_p callback_)
-        : OFLogHandler(DEBUG1), callback(callback_) {}
+    COFLogHandler(Level level, loghandler_p callback)
+        : OFLogHandler(level), callback_(callback) {}
 
     virtual ~COFLogHandler() {}
 
-    virtual void handleMessage(const std::string& file,
-                               const int line,
-                               const std::string& function,
-                               const Level level,
-                               const std::string& message) {
-        callback(file.c_str(), line, function.c_str(),
-                 getLevel(level), message.c_str());
+    virtual void handleMessage(Logger const & logger) {
+        callback_(
+                logger.file_,
+                logger.line_,
+                logger.function_,
+                logger.level_,
+                logger.message().c_str()
+                );
     }
 
-    loghandler_p callback;
+    void setCallback(loghandler_p callback) {
+        callback_ = callback;
+    }
+
+    loghandler_p callback_;
 };
 
-static COFLogHandler logHandler(OFLogHandler::NO_LOGGING, NULL);
+static COFLogHandler logHandler(opflex::logging::OFLogHandler::Level(OFLogHandler::NO_LOGGING), NULL);
+
+}}
 
 ofstatus ofloghandler_register(int level, loghandler_p callback) {
     if (callback == NULL)
         return OF_EINVALID_ARG;
 
-    logHandler = COFLogHandler(getLevel(level), callback);
-    OFLogHandler::registerHandler(logHandler);
+    opflex::logging::logHandler.setCallback(callback);
+    opflex::logging::logHandler.setLevel(opflex::logging::OFLogHandler::Level(level));
+    opflex::logging::OFLogHandler::registerHandler(opflex::logging::logHandler);
     return OF_ESUCCESS;
 }
