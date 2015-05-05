@@ -13,13 +13,15 @@
 noinst_LTLIBRARIES  =
 noinst_LTLIBRARIES += liblogging.la
 
-AM_CPPFLAGS = \
-	-I$(srcdir)/include \
-	-I$(top_srcdir)/include
+AM_CPPFLAGS  =
+AM_CPPFLAGS += -I$(srcdir)/include
+AM_CPPFLAGS += -I$(top_srcdir)/util/include
+AM_CPPFLAGS += -I$(top_srcdir)/include
 
-liblogging_la_SOURCES = \
-	include/opflex/logging/internal/logging.hpp \
-	OFLogHandler.cpp \
-	StdOutLogHandler.cpp \
-	logging.cpp
-
+liblogging_la_SOURCES  =
+liblogging_la_SOURCES += include/opflex/logging/internal/logging.hpp
+liblogging_la_SOURCES += OFLogHandler.cpp
+liblogging_la_SOURCES += StdOutLogHandler.cpp
+liblogging_la_SOURCES += ChainedLogHandler.cpp
+liblogging_la_SOURCES += InMemoryLogHandler.cpp
+liblogging_la_SOURCES += logging.cpp

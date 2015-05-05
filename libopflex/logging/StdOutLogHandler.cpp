@@ -17,7 +17,7 @@
 
 #include <iostream>
 
-#include "opflex/logging/StdOutLogHandler.h"
+#include <opflex/logging/StdOutLogHandler.h>
 
 namespace opflex {
 namespace logging {
@@ -25,15 +25,25 @@ namespace logging {
 StdOutLogHandler::StdOutLogHandler(Level logLevel_): OFLogHandler(logLevel_) { }
 StdOutLogHandler::~StdOutLogHandler() { }
 
-void StdOutLogHandler::handleMessage(const std::string& file,
-                                     const int line,
-                                     const std::string& function,
-                                     const Level level,
-                                     const std::string& message) {
-    if (level < logLevel_) return;
+void StdOutLogHandler::handleMessage(
+        Logger const & logger) {
 
-    std::cout << file << ":" << line << ":" << function <<
-        "[" << level <<"] " << message << std::endl;
+    if (logger.level_ < logLevel_) {
+        return;
+    }
+
+    std::cout
+        << logger.file_
+        << ":"
+        << logger.line_
+        << ":"
+        << logger.function_
+        << "["
+        << logger.level_
+        << "] "
+        << logger.message()
+        << std::endl
+    ;
 }
 
 } /* namespace logging */

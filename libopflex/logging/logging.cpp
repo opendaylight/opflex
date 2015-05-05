@@ -19,32 +19,19 @@ using opflex::logging::OFLogHandler;
 
 namespace opflex {
 namespace logging {
-namespace internal {
-
-std::ostream & Logger::stream()
-{
-    return buffer_;
-}
 
 Logger::Logger(OFLogHandler::Level const level,
            char const * file,
            int const line,
            char const * function)
         :
-            level_(level),
-            file_(file),
-            line_(line),
-            function_(function)
+            LoggingTag(level, file, line, function),
+            buffer_()
         {}
 
 Logger::~Logger() {
-    OFLogHandler::getHandler()->handleMessage(file_,
-                                              line_,
-                                              function_,
-                                              level_,
-                                              buffer_.str());
+    OFLogHandler::getHandler()->handleMessage(*this);
 }
 
-} /* namespace internal */
 } /* namespace logging */
 } /* namespace opflex */

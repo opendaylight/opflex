@@ -36,11 +36,7 @@ public:
     /**
      * Implement opflex::logging::OFLogHandler::handleMessage
      */
-    virtual void handleMessage(const std::string& file,
-                               const int line,
-                               const std::string& function,
-                               const opflex::logging::OFLogHandler::Level level,
-                               const std::string& message);
+    virtual void handleMessage(Logger const & logger);
 
     /**
      * Implement opflex::logging::OFLogHandler::setLevel

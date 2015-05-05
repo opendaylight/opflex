@@ -31,8 +31,8 @@ void OFLogHandler::registerHandler(OFLogHandler& handler) {
 }
 
 OFLogHandler* OFLogHandler::getHandler() {
-    static StdOutLogHandler defaultHandler(INFO);
     if (activeHandler) return activeHandler;
+    static StdOutLogHandler defaultHandler(INFO);
     return &defaultHandler;
 }
 

@@ -16,9 +16,12 @@
 #define OPFLEX_LOGGING_OFLOGHANDLER_H
 
 #include <string>
+#include <sstream>
+#include <iostream>
+
 
 namespace opflex {
-namespace logging {
+  namespace logging {
 
 /**
  * \addtogroup cpp
@@ -31,6 +34,7 @@ namespace logging {
  * @{
  */
 
+class Logger;
 
 /**
  * Interface for a log message handler for the OpFlex framework.  You
@@ -91,18 +95,9 @@ public:
      * synchronously from the thread that is doing the logging and is
      * unsynchronized.
      *
-     * @param file the file that performs the logging
-     * @param line the line number for the log message
-     * @param function the name of the function that's performing the
-     * logging
-     * @param level the log level of the log message
-     * @param message the formatted message to log
+     * @param log message to be processed
      */
-    virtual void handleMessage(const std::string& file,
-                               const int line,
-                               const std::string& function,
-                               const Level level,
-                               const std::string& message) = 0;
+    virtual void handleMessage(const Logger& logger) = 0;
 
     /**
      * Check whether we should attempt to log at the given log level.
@@ -132,12 +127,88 @@ public:
     static OFLogHandler* getHandler()
         __attribute__((no_instrument_function));
 
-protected:
+    void setLevel(Level logLevel) {
+        logLevel_ = logLevel;
+    }
+
+    Level getLevel() {
+        return logLevel_;
+    }
+
+  protected:
     /**
      * The log level for this logger.
      */
     Level logLevel_;
 };
+
+struct LoggingTag {
+  public:
+    LoggingTag(
+            OFLogHandler::Level level,
+            char const * file,
+            int line,
+            char const * function
+        ) :
+            level_(level),
+            file_(file),
+            line_(line),
+            function_(function)
+        {}
+    OFLogHandler::Level level_;
+    char const * file_;
+    int line_;
+    char const * function_;
+};
+
+/**
+ * A simple logging interface used to process log messages internally
+ */
+class Logger : public LoggingTag {
+
+  public:
+
+    /**
+     * Get the output buffer to write to
+     */
+    inline std::ostream & ostream()
+        __attribute__((no_instrument_function));
+
+    /**
+     * Get the output buffer to write to
+     */
+    inline std::string const message() const
+        __attribute__((no_instrument_function));
+
+    /**
+     * Construct a new logger to handle a specific message
+     *
+     * @param level the log level 
+     * @param file the file that is generating the log
+     * @param line the line number
+     * @param function the function that is generating the log
+     */
+    Logger(OFLogHandler::Level const level,
+           char const * file,
+           int const line,
+           char const * function)
+        __attribute__((no_instrument_function));
+
+    ~Logger()
+        __attribute__((no_instrument_function));
+
+private:
+
+    std::ostringstream buffer_;
+};
+
+inline std::ostream & Logger::ostream() {
+    return buffer_;
+}
+
+inline std::string const Logger::message() const {
+    return buffer_.str();
+}
 
 /* @} logging */
 /* @} cpp */

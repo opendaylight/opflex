@@ -25,13 +25,14 @@ void AgentLogHandler::setLevel(Level logLevel) {
     logLevel_ = logLevel;
 }
 
-void AgentLogHandler::handleMessage(const std::string& file,
+void AgentLogHandler::handleMessage(Logger const & logger) {
+    file,
                                    const int line,
                                    const std::string& function,
                                    const Level level,
                                    const std::string& message) {
     ovsagent::LogLevel agentLevel = ovsagent::INFO;
-    switch (level) {
+    switch (logger.level_) {
     case OFLogHandler::TRACE:
     case OFLogHandler::DEBUG7:
     case OFLogHandler::DEBUG6:
@@ -57,7 +58,13 @@ void AgentLogHandler::handleMessage(const std::string& file,
         agentLevel = ovsagent::FATAL;
         break;
     }
-    LOG1(agentLevel, file.c_str(), line, function.c_str(), message);
+    LOG1(
+            agentLevel,
+            logger.file_.c_str(),
+            logger.line_,
+            logger.function_.c_str(),
+            logger.message()
+        );
 }
 
 } /* namespace ovsagent */
