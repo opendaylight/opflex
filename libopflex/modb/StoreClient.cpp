@@ -114,7 +114,7 @@ void StoreClient::removeChildren(class_id_t class_id, const URI& uri,
                 // unlink the parent/child
                 delChild(class_id, uri, prop_id, prop_class, *cit);
                 // remove the child object
-                remove(prop_class, *cit, true);
+                remove(prop_class, *cit, true, notifs);
                 if (notifs)
                     (*notifs)[*cit] = prop_class;
             }
