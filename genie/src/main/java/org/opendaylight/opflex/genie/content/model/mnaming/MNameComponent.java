@@ -11,7 +11,7 @@ import org.opendaylight.opflex.modlan.utils.Strings;
  * Created by midvorki on 9/27/14.
  *
  * Name component is a component of specific name rule that is comprised of two prefix and naming property:
- * <prefix>-</property-name>
+ * &lt;prefix&gt;-&lt;/property-name&gt;
  * Both prefix and naming prperty are optional. Prefix can be used in LN/RN or LRI formation
  */
 public class MNameComponent extends Item

@@ -470,7 +470,7 @@ public class MClass
      * Gets a set of classes that contain this class
      * @param aInIncludeSuperclasses indication of whether to include superclasses in this search
      * @param aInIsResolveToConcrete indication of whether to resolve found classes to concrete subclasses
-     * @returncollection of containing classes
+     * @return collection of containing classes
      */
     public Collection<MClass> getContainedByClasses(boolean aInIncludeSuperclasses, boolean aInIsResolveToConcrete)
     {

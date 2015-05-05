@@ -17,7 +17,7 @@ import org.opendaylight.opflex.genie.engine.model.*;
  * contained on the managed information tree by the parent class. In addition containment rule holds directives on
  * lifecycle control as well as directive affecting relative naming.
  *
- * CAT[mcont:mcontained]->MContained->MParent
+ * CAT[mcont:mcontained]-&gt;MContained-&gt;MParent
  *
  * Containment relationships can't be instantiated via direct construction, use MContained.addRule(...) method.
  */

@@ -14,7 +14,7 @@ import org.opendaylight.opflex.modlan.utils.Strings;
  *
  * Parses type nodes
  *
- * module<name> <\br></\br>
+ * module&lt;name&gt;<br>
  */
 public class PTypeNode
         extends ParseNode

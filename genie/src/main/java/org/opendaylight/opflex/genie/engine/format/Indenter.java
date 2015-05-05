@@ -18,7 +18,7 @@ import org.opendaylight.opflex.modlan.utils.Strings;
  *                true // starts with empty ("") <br>
  *                ) ; <br>
  * <br>
- *        for (int i = 0; i < 10; i++) <br>
+ *        for (int i = 0; i &lt; 10; i++) <br>
  *        { <br>
  *            System.out.println(i + ": \"" + lTbl.getIndent(i) + "\""); <br>
  *        } <br>

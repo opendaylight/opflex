@@ -6,13 +6,13 @@ import org.opendaylight.opflex.modlan.utils.Strings;
  * Created by midvorki on 7/24/14.
  *
  * Specifies name formation rule for generated file
- * <*projectpath*>/ralativepath/modulepath/[fileprefix][*FILENAME*][filesuffix][.filextension]
+ * &lt;*projectpath*&gt;/ralativepath/modulepath/[fileprefix][*FILENAME*][filesuffix][.filextension]
  */
 public class FileNameRule
 {
     /**
      * Constructor
-     * <*projectpath*>/ralativepath/modulepath/[fileprefix][*FILENAME*][filesuffix][.filextension]
+     * &lt;*projectpath*&gt;/ralativepath/modulepath/[fileprefix][*FILENAME*][filesuffix][.filextension]
      */
     public FileNameRule(
             final String aInRelativePath,
