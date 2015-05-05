@@ -1,7 +1,7 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file StdOutLogHandler.h
- * @brief Interface definition file for StdOutLogHandler
+ * @file ChainedHandler.h
+ * @brief Interface definition file for ChainedHandler
  */
 /*
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
@@ -11,10 +11,11 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef OPFLEX_LOGGING_STDOUTLOGHANDLER_H
-#define OPFLEX_LOGGING_STDOUTLOGHANDLER_H
+#pragma once
+#ifndef _____INCLUDE__OPFLEX__LOGGING__CHAINEDHANDLER_HPP
+#define _____INCLUDE__OPFLEX__LOGGING__CHAINEDHANDLER_HPP
 
-#include "opflex/logging/OFLogHandler.h"
+#include <opflex/logging/OFLogHandler.h>
 
 namespace opflex {
 namespace logging {
@@ -22,25 +23,31 @@ namespace logging {
 /**
  * An @ref OFLogHandler that simply logs to standard output.
  */
-class StdOutLogHandler : public OFLogHandler {
-public:
+class ChainedLogHandler : public OFLogHandler {
+  public:
     /**
      * Allocate a log handler that will log any messages with equal or
      * greater severity than the specified log level.
      * 
      * @param logLevel the minimum log level
      */
-    StdOutLogHandler(Level logLevel)
+    ChainedLogHandler(
+            OFLogHandler * current,
+            OFLogHandler * next = NULL)
         __attribute__((no_instrument_function));
-    virtual ~StdOutLogHandler()
+    virtual ~ChainedLogHandler()
         __attribute__((no_instrument_function));
 
     /* see OFLogHandler */
-    virtual void handleMessage(Logger const & logger)
+    virtual void handleMessage(const Logger& logger)
         __attribute__((no_instrument_function));
+  private:
+    OFLogHandler * current_;
+    OFLogHandler * next_;
+
 };
 
 } /* namespace logging */
 } /* namespace opflex */
 
-#endif /* OPFLEX_LOGGING_STDOUTLOGHANDLER_H */
+#endif /* _____INCLUDE__OPFLEX__LOGGING__CHAINEDHANDLER_HPP */
