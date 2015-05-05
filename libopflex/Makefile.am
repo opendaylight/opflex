@@ -52,9 +52,10 @@ test_includedir = $(includedir)/opflex/test
 test_include_HEADERS = \
 	include/opflex/test/MockOpflexServer.h 
 logging_includedir = $(includedir)/opflex/logging
-logging_include_HEADERS = \
-	include/opflex/logging/OFLogHandler.h \
-	include/opflex/logging/StdOutLogHandler.h
+logging_include_HEADERS  =
+logging_include_HEADERS += include/opflex/logging/OFLogHandler.h
+logging_include_HEADERS += include/opflex/logging/ChainedLogHandler.hpp
+logging_include_HEADERS += include/opflex/logging/StdOutLogHandler.h
 c_includedir = $(includedir)/opflex/c
 c_include_HEADERS = \
 	include/opflex/c/ofcore_c.h \

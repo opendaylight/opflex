@@ -22,6 +22,8 @@
 
 #include <opflex/logging/OFLogHandler.h>
 #include <opflex/logging/StdOutLogHandler.h>
+#include <opflex/logging/InMemoryLogHandler.hpp>
+#include <opflex/logging/ChainedLogHandler.hpp>
 
 #include <opflex/logging/internal/logging.hpp>
 
@@ -50,7 +52,7 @@ struct CommsTests {
         boost::unit_test::unit_test_log_t::instance()
             .set_threshold_level(::boost::unit_test::log_successful_tests);
 
-        opflex::logging::OFLogHandler::registerHandler(commsTestLogger_);
+        opflex::logging::OFLogHandler::registerHandler(commsTestStdOutLogger_);
     }
 
     ~CommsTests() {
@@ -74,11 +76,17 @@ struct CommsTests {
     }
 
     /* potentially subject to static initialization order fiasco */
-    static opflex::logging::StdOutLogHandler commsTestLogger_;
+    static opflex::logging::StdOutLogHandler commsTestStdOutLogger_;
+    static opflex::logging::InMemoryLogHandler commsTestInMemoryLogger_;
+    static opflex::logging::ChainedLogHandler commsTestChainedLogger_;
 
 };
 
-opflex::logging::StdOutLogHandler CommsTests::commsTestLogger_(DEBUG5);
+char __CoreLogBuffer[256*1024];
+
+opflex::logging::StdOutLogHandler CommsTests::commsTestStdOutLogger_(DEBUG5);
+opflex::logging::InMemoryLogHandler CommsTests::commsTestInMemoryLogger_(WARNING, __CoreLogBuffer, sizeof(__CoreLogBuffer));
+opflex::logging::ChainedLogHandler CommsTests::commsTestChainedLogger_(&commsTestInMemoryLogger_,&commsTestStdOutLogger_);
 
 BOOST_GLOBAL_FIXTURE( CommsTests );
 
