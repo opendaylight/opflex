@@ -84,6 +84,14 @@ public:
     MessageType getType() const { return type; }
 
     /**
+     * Get a transaction ID for a request.  If nonzero, allocate a
+     * transaction ID using a counter
+     *
+     * @return the transaction ID for the request
+     */
+    virtual uint64_t getReqXid() { return 0; }
+
+    /**
      * Get the ID for this message.  Must only be called on a response
      * or error.
      * @return the ID for the message

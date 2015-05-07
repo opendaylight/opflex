@@ -80,7 +80,8 @@ void InspectorClientHandler::handlePolicyQueryRes(const Value& payload) {
     checkDone();
 }
 
-void InspectorClientHandler::handleCustomRes(const Value& payload) {
+void InspectorClientHandler::handleCustomRes(uint64_t reqId,
+                                             const Value& payload) {
     if (!payload.HasMember("method") || !payload.HasMember("result"))
         return;
     
@@ -93,9 +94,10 @@ void InspectorClientHandler::handleCustomRes(const Value& payload) {
         handlePolicyQueryRes(result);
 }
 
-void InspectorClientHandler::handleError(const Value& payload,
+void InspectorClientHandler::handleError(uint64_t reqId,
+                                         const Value& payload,
                                          const string& type) {
-    OpflexHandler::handleError(payload, type);
+    OpflexHandler::handleError(reqId, payload, type);
     client->pendingRequests -= 1;
     checkDone();
 }

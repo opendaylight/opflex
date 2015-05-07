@@ -37,16 +37,18 @@ public:
      * that references the specified processor instance
      */
     ProcessorMessage(const std::string& method, MessageType type,
-                     Processor* processor_)
+                     uint64_t xid_, Processor* processor_)
         : OpflexMessage(method, type), 
-          processor(processor_) {}
+          processor(processor_), xid(xid_) {}
     virtual ~ProcessorMessage() {};
+    virtual uint64_t getReqXid() { return xid; }
 
 protected:
     /**
      * The processor instance to use for this message
      */
     Processor* processor;
+    uint64_t xid;
 };
 
 /**
@@ -58,11 +60,12 @@ public:
      * Construct a new policy request for the given list of references
      *
      * @param processor the processor for the request
+     * @param xid the request ID
      * @param policies_ the policies that should be requested
      */
-    PolicyResolveReq(Processor* processor,
+    PolicyResolveReq(Processor* processor, uint64_t xid,
                      const std::vector<modb::reference_t>& policies_)
-        : ProcessorMessage("policy_resolve", REQUEST, processor), 
+        : ProcessorMessage("policy_resolve", REQUEST, xid, processor),
           policies(policies_) {}
 
 #ifndef SIMPLE_RPC
@@ -119,11 +122,12 @@ public:
      * Construct a new policy unresolve for the given list of references
      *
      * @param processor the processor for the request
+     * @param xid the request ID
      * @param policies_ the policies that should be unresolved
      */
-    PolicyUnresolveReq(Processor* processor,
+    PolicyUnresolveReq(Processor* processor, uint64_t xid,
                        const std::vector<modb::reference_t>& policies_)
-        : ProcessorMessage("policy_unresolve", REQUEST, processor), 
+        : ProcessorMessage("policy_unresolve", REQUEST, xid, processor),
           policies(policies_) {}
 
 #ifndef SIMPLE_RPC
@@ -179,11 +183,12 @@ public:
      * references
      *
      * @param processor the processor for the request
+     * @param xid the request ID
      * @param endpoints_ the endpoints that should be requested
      */
-    EndpointResolveReq(Processor* processor,
+    EndpointResolveReq(Processor* processor, uint64_t xid,
                      const std::vector<modb::reference_t>& endpoints_)
-        : ProcessorMessage("endpoint_resolve", REQUEST, processor), 
+        : ProcessorMessage("endpoint_resolve", REQUEST, xid, processor),
           endpoints(endpoints_) {}
 
 #ifndef SIMPLE_RPC
@@ -241,11 +246,12 @@ public:
      * of references
      *
      * @param processor the processor for the request
+     * @param xid the request ID
      * @param endpoints_ the endpoints that should be unresolved
      */
-    EndpointUnresolveReq(Processor* processor,
+    EndpointUnresolveReq(Processor* processor, uint64_t xid,
                        const std::vector<modb::reference_t>& endpoints_)
-        : ProcessorMessage("endpoint_unresolve", REQUEST, processor), 
+        : ProcessorMessage("endpoint_unresolve", REQUEST, xid, processor),
           endpoints(endpoints_) {}
 
 #ifndef SIMPLE_RPC
@@ -301,12 +307,13 @@ public:
      * endpoint references.
      *
      * @param processor the processor for the request
+     * @param xid the request ID
      * @param endpoints_ the endpoints that should be included in the
      * message
      */
-    EndpointDeclareReq(Processor* processor,
+    EndpointDeclareReq(Processor* processor, uint64_t xid,
                        const std::vector<modb::reference_t>& endpoints_)
-        : ProcessorMessage("endpoint_declare", REQUEST, processor), 
+        : ProcessorMessage("endpoint_declare", REQUEST, xid, processor),
           endpoints(endpoints_) {}
 
 #ifndef SIMPLE_RPC
@@ -370,11 +377,12 @@ public:
      * endpoint references.
      *
      * @param processor the processor for the request
+     * @param xid the request ID
      * @param endpoints_ the endpoints that should be undeclared
      */
-    EndpointUndeclareReq(Processor* processor,
+    EndpointUndeclareReq(Processor* processor, uint64_t xid,
                          const std::vector<modb::reference_t>& endpoints_)
-        : ProcessorMessage("endpoint_undeclare", REQUEST, processor), 
+        : ProcessorMessage("endpoint_undeclare", REQUEST, xid, processor),
           endpoints(endpoints_) {}
     
 #ifndef SIMPLE_RPC
@@ -432,12 +440,13 @@ public:
      * observable references
      *
      * @param processor the processor for the request
+     * @param xid the request ID
      * @param observables_ the observables that should be included in
      * the message
      */
-    StateReportReq(Processor* processor,
+    StateReportReq(Processor* processor, uint64_t xid,
                    const std::vector<modb::reference_t>& observables_)
-        : ProcessorMessage("state_report", REQUEST, processor), 
+        : ProcessorMessage("state_report", REQUEST, xid, processor),
           observables(observables_) {}
 
 #ifndef SIMPLE_RPC

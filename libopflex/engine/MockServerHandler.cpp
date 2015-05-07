@@ -249,6 +249,7 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                                                const Value& payload) {
     LOG(DEBUG) << "Got policy_resolve req";
 
+    bool found = true;
     Value::ConstValueIterator it;
     std::vector<modb::reference_t> mos;
     for (it = payload.Begin(); it != payload.End(); ++it) {
@@ -288,6 +289,9 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             modb::reference_t mo(ci.getId(), puri);
+
+            if (resolutions.find(mo) == resolutions.end())
+                found = false;
             resolutions.insert(mo);
             mos.push_back(mo);
         } catch (std::out_of_range e) {
@@ -296,6 +300,11 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                          subjectv.GetString());
             return;
         }
+    }
+
+    if (flakyMode && !found) {
+        LOG(INFO) << "Flaking out";
+        return;
     }
 
     PolicyResolveRes* res = 
@@ -398,6 +407,21 @@ void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
         for (ep_it = endpoint.Begin(); ep_it != endpoint.End(); ++ep_it) {
             const Value& mo = *ep_it;
             serializer.deserialize(mo, client, true, &notifs);
+        }
+    }
+    if (flakyMode) {
+        bool shouldFlake = false;
+        BOOST_FOREACH(StoreClient::notif_t::value_type v, notifs) {
+            modb::reference_t r(v.second, v.first);
+            if (declarations.find(r) == declarations.end()) {
+                client.remove(v.second, v.first, false, NULL);
+                declarations.insert(r);
+                shouldFlake = true;
+            }
+        }
+        if (shouldFlake) {
+            LOG(INFO) << "Flaking out";
+            return;
         }
     }
     client.deliverNotifications(notifs);
@@ -573,7 +597,8 @@ void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-void MockServerHandler::handleEPUpdateRes(const rapidjson::Value& payload) {
+void MockServerHandler::handleEPUpdateRes(uint64_t reqId,
+                                          const rapidjson::Value& payload) {
     // nothing to do
 }
 

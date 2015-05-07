@@ -58,7 +58,8 @@ void OpflexHandler::handleUnsupportedReq(const rapidjson::Value& id,
     sendErrorRes(id, "EUNSUPPORTED", "Unsupported request");
 }
 
-void OpflexHandler::handleError(const rapidjson::Value& payload,
+void OpflexHandler::handleError(uint64_t reqId,
+                                const rapidjson::Value& payload,
                                 const string& type) {
     string code;
     string message;
@@ -72,7 +73,8 @@ void OpflexHandler::handleError(const rapidjson::Value& payload,
         if (v.IsString())
             message = v.GetString();
     }
-    LOG(ERROR) << "Remote peer returned error with message (" << type
+    LOG(ERROR) << "Remote peer returned error with message ("
+               << reqId << "," << type
                << "): " << code << ": " << message;
 }
 
@@ -141,7 +143,7 @@ namespace rpc {
     ->getHandler()->handle##name(getRemoteId(), getPayload())
 #define HANDLE_RES(name) \
     ((opflex::engine::internal::OpflexConnection*)getPeer()->getData())\
-    ->getHandler()->handle##name(getPayload())
+    ->getHandler()->handle##name(getLocalId().id_, getPayload())
 
 template<>
 void InbReq<&yajr::rpc::method::send_identity>::process() const {

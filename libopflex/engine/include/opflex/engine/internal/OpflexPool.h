@@ -163,9 +163,11 @@ public:
 
     /**
      * Set the roles for the specified connection
+     *
+     * @param conn the connection to change the roles for
+     * @param roles the new roles bitmask
      */
-    void setRoles(OpflexClientConnection* conn,
-                  uint8_t roles);
+    void setRoles(OpflexClientConnection* conn, uint8_t roles);
 
     /**
      * Get the primary connection for the given role.  This will be
@@ -185,10 +187,11 @@ public:
      * @param role the role to which the message should be sent
      * @param sync if true then this is being called from the libuv
      * thread
+     * @return the number of ready connections to which we sent the message
      */
-    void sendToRole(OpflexMessage* message, 
-                    ofcore::OFConstants::OpflexRole role,
-                    bool sync = false);
+    size_t sendToRole(OpflexMessage* message, 
+                      ofcore::OFConstants::OpflexRole role,
+                      bool sync = false);
 
     /**
      * Get the number of connections in a particular role

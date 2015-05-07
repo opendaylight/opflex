@@ -19,7 +19,9 @@
 #include <uv.h>
 #include <limits>
 
+#include <boost/tuple/tuple.hpp>
 #include <boost/foreach.hpp>
+#include <boost/unordered_set.hpp>
 #include "opflex/engine/internal/OpflexPEHandler.h"
 #include "opflex/engine/internal/ProcessorMessage.h"
 #include "opflex/engine/Processor.h"
@@ -30,6 +32,7 @@ namespace opflex {
 namespace engine {
 
 using boost::shared_ptr;
+using boost::unordered_set;
 using std::vector;
 using std::pair;
 using std::make_pair;
@@ -48,14 +51,18 @@ using ofcore::OFConstants;
 using namespace internal;
 
 static const uint64_t LOCAL_REFRESH_RATE = 1000*60*30;
-static const uint64_t DEFAULT_DELAY = 250;
+static const uint64_t DEFAULT_PROC_DELAY = 250;
+static const uint64_t DEFAULT_RETRY_DELAY = 1000*10;
+static const uint64_t FIRST_XID = (uint64_t)1 << 63;
 
 size_t hash_value(pair<class_id_t, URI> const& p);
 
 Processor::Processor(ObjectStore* store_)
     : AbstractObjectListener(store_),
       serializer(store_, this),
-      pool(*this), processingDelay(DEFAULT_DELAY),
+      pool(*this), nextXid(FIRST_XID),
+      processingDelay(DEFAULT_PROC_DELAY),
+      retryDelay(DEFAULT_RETRY_DELAY),
       proc_active(false) {
     uv_mutex_init(&item_mutex);
 }
@@ -77,6 +84,13 @@ void Processor::change_expiration::operator()(Processor::item& i) {
     i.expiration = new_exp;
 }
 
+Processor::change_last_xid::change_last_xid(uint64_t new_last_xid_)
+    : new_last_xid(new_last_xid_) {}
+
+void Processor::change_last_xid::operator()(Processor::item& i) {
+    i.last_xid = new_last_xid;
+}
+
 // check whether the object state index has work for us
 bool Processor::hasWork(/* out */ obj_state_by_exp::iterator& it) {
     if (obj_state.size() == 0) return false;
@@ -84,17 +98,6 @@ bool Processor::hasWork(/* out */ obj_state_by_exp::iterator& it) {
     it = exp_index.begin();
     if (it->expiration == 0 || now(&proc_loop) >= it->expiration) return true;
     return false;
-}
-
-// update the expiration timer for the item according to the refresh
-// rate.
-void Processor::updateItemExpiration(obj_state_by_exp::iterator& it) {
-    uint64_t newexp = std::numeric_limits<uint64_t>::max();
-    if (it->details->refresh_rate > 0) {
-        newexp = now(&proc_loop) + it->details->refresh_rate;
-    }
-    obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
-    exp_index.modify(it, Processor::change_expiration(newexp));
 }
 
 // add a reference if it doesn't already exist
@@ -210,32 +213,56 @@ bool Processor::isParentSyncObject(const item& item) {
     return true;
 }
 
+void Processor::sendToRole(const item& i, uint64_t& newexp,
+                           OpflexMessage* req,
+                           ofcore::OFConstants::OpflexRole role) {
+    uint64_t xid = req->getReqXid();
+    size_t pending = pool.sendToRole(req, role);
+    i.details->pending_reqs = pending;
+
+    obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
+    obj_state_by_uri::iterator uit = uri_index.find(i.uri);
+    uri_index.modify(uit, change_last_xid(xid));
+
+    if (pending > 0)
+        newexp = now(&proc_loop) + retryDelay;
+}
+
 bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
-                           bool checkTime) {
+                           uint64_t& newexp, bool checkTime) {
     uint64_t curTime = now(&proc_loop);
-    if (checkTime && 
-        (i.details->resolve_time != 0) &&
-        (curTime < (i.details->resolve_time + LOCAL_REFRESH_RATE/2)))
+    bool shouldRefresh =
+        (i.details->resolve_time == 0) ||
+        (curTime > (i.details->resolve_time + i.details->refresh_rate/2));
+    bool shouldRetry =
+        (i.details->pending_reqs != 0) &&
+        (curTime > (i.details->resolve_time + retryDelay/2));
+
+    if (checkTime && !shouldRefresh && !shouldRetry)
         return false;
-    i.details->resolve_time = curTime;
+
     switch (type) {
     case ClassInfo::POLICY:
         {
             LOG(DEBUG) << "Resolving policy " << i.uri;
+            i.details->resolve_time = curTime;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
-            PolicyResolveReq* req = new PolicyResolveReq(this, refs);
-            pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
+            PolicyResolveReq* req =
+                new PolicyResolveReq(this, nextXid++, refs);
+            sendToRole(i, newexp, req, OFConstants::POLICY_REPOSITORY);
             return true;
         }
         break;
     case ClassInfo::REMOTE_ENDPOINT:
         {
             LOG(DEBUG) << "Resolving remote endpoint " << i.uri;
+            i.details->resolve_time = curTime;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
-            EndpointResolveReq* req = new EndpointResolveReq(this, refs);
-            pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
+            EndpointResolveReq* req =
+                new EndpointResolveReq(this, nextXid++, refs);
+            sendToRole(i, newexp, req, OFConstants::ENDPOINT_REGISTRY);
             return true;
         }
         break;
@@ -244,28 +271,32 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
         return false;
         break;
     }
-
 }
 
-bool Processor::declareObj(ClassInfo::class_type_t type, const item& i) {
+bool Processor::declareObj(ClassInfo::class_type_t type, const item& i,
+                           uint64_t& newexp) {
+    uint64_t curTime = now(&proc_loop);
     switch (type) {
     case ClassInfo::LOCAL_ENDPOINT:
         if (isParentSyncObject(i)) {
             LOG(DEBUG) << "Declaring local endpoint " << i.uri;
+            i.details->resolve_time = curTime;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
-            EndpointDeclareReq* req = new EndpointDeclareReq(this, refs);
-            pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
+            EndpointDeclareReq* req =
+                new EndpointDeclareReq(this, nextXid++, refs);
+            sendToRole(i, newexp, req, OFConstants::ENDPOINT_REGISTRY);
         }
         return true;
         break;
     case ClassInfo::OBSERVABLE:
         if (isParentSyncObject(i)) {
             LOG(DEBUG3) << "Declaring local observable " << i.uri;
+            i.details->resolve_time = curTime;
             vector<reference_t> refs;
             refs.push_back(make_pair(i.details->class_id, i.uri));
-            StateReportReq* req = new StateReportReq(this, refs);
-            pool.sendToRole(req, OFConstants::OBSERVER);
+            StateReportReq* req = new StateReportReq(this, nextXid++, refs);
+            sendToRole(i, newexp, req, OFConstants::OBSERVER);
         }
         return true;
         break;
@@ -285,6 +316,15 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     ItemState curState = it->details->state;
     size_t curRefCount = it->details->refcount;
     bool local = it->details->local;
+
+    obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
+    uint64_t newexp = std::numeric_limits<uint64_t>::max();
+    if (it->details->refresh_rate > 0) {
+        if (it->details->pending_reqs > 0)
+            newexp = now(&proc_loop) + retryDelay;
+        else
+            newexp = now(&proc_loop) + it->details->refresh_rate;
+    }
 
     ItemState newState;
 
@@ -389,12 +429,12 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     } 
 
     if (curRefCount > 0) {
-        resolveObj(ci.getType(), *it);
+        resolveObj(ci.getType(), *it, newexp);
         newState = RESOLVED;
 
         it->details->state = newState;
     } else if (oi) {
-        if (declareObj(ci.getType(), *it))
+        if (declareObj(ci.getType(), *it, newexp))
             newState = IN_SYNC;
 
         it->details->state = newState;
@@ -411,7 +451,8 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 if (it->details->resolve_time > 0) {
                     vector<reference_t> refs;
                     refs.push_back(make_pair(it->details->class_id, it->uri));
-                    PolicyUnresolveReq* req = new PolicyUnresolveReq(this, refs);
+                    PolicyUnresolveReq* req =
+                        new PolicyUnresolveReq(this, nextXid++, refs);
                     pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
                 }
                 break;
@@ -420,7 +461,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                     vector<reference_t> refs;
                     refs.push_back(make_pair(it->details->class_id, it->uri));
                     EndpointUnresolveReq* req = 
-                        new EndpointUnresolveReq(this, refs);
+                        new EndpointUnresolveReq(this, nextXid++, refs);
                     pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
                 }
                 break;
@@ -429,7 +470,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                     vector<reference_t> refs;
                     refs.push_back(make_pair(it->details->class_id, it->uri));
                     EndpointUndeclareReq* req = 
-                        new EndpointUndeclareReq(this, refs);
+                        new EndpointUndeclareReq(this, nextXid++, refs);
                     pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
                 }
                 break;
@@ -438,10 +479,12 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 break;
             }
 
-            obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
             exp_index.erase(it);
         }
     }
+
+    if (newState != DELETED)
+        exp_index.modify(it, Processor::change_expiration(newexp));
 
     guard.release();
 
@@ -454,11 +497,8 @@ void Processor::doProcess() {
     while (proc_active) {
         {
             util::LockGuard guard(&item_mutex);
-            if (hasWork(it)) {
-                updateItemExpiration(it);
-            } else {
+            if (!hasWork(it))
                 break;
-            }
         }
         processItem(it);
     }
@@ -607,18 +647,49 @@ OpflexHandler* Processor::newHandler(OpflexConnection* conn) {
 void Processor::handleNewConnections() {
     util::LockGuard guard(&item_mutex);
     BOOST_FOREACH(const item& i, obj_state) {
+        uint64_t newexp = 0;
         const ClassInfo& ci = store->getClassInfo(i.details->class_id);
         if (i.details->state == IN_SYNC) {
-            declareObj(ci.getType(), i);
+            declareObj(ci.getType(), i, newexp);
         }
         if (i.details->state == RESOLVED) {
-            resolveObj(ci.getType(), i, false);
+            resolveObj(ci.getType(), i, newexp, false);
         }
     }
 }
 
 void Processor::connectionReady(OpflexConnection* conn) {
     uv_async_send(&connect_async);
+}
+
+void Processor::responseReceived(uint64_t reqId) {
+    util::LockGuard guard(&item_mutex);
+    obj_state_by_xid& xid_index = obj_state.get<xid_tag>();
+    obj_state_by_xid::iterator xi0,xi1;
+    boost::tuples::tie(xi0,xi1)=xid_index.equal_range(reqId);
+
+    unordered_set<URI> items;
+    while (xi0 != xi1) {
+        items.insert(xi0->uri);
+        xi0++;
+    }
+
+    obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
+
+    BOOST_FOREACH(const URI& uri, items) {
+        obj_state_by_uri::iterator uit = uri_index.find(uri);
+        if (uit == uri_index.end()) continue;
+
+        if (uit->details->pending_reqs > 0)
+            uit->details->pending_reqs -= 1;
+
+        if (uit->details->pending_reqs == 0) {
+            // All peers responded to the message
+            uri_index.modify(uit,
+                             change_expiration(uit->details->resolve_time +
+                                               uit->details->refresh_rate));
+        }
+    }
 }
 
 } /* namespace engine */

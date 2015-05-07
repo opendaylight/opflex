@@ -160,7 +160,12 @@ public:
     /**
      * Set the processing delay for unit tests
      */
-    void setDelay(uint64_t delay) { processingDelay = delay; }
+    void setProcDelay(uint64_t delay) { processingDelay = delay; }
+
+    /**
+     * Set the message retry delay for unit tests
+     */
+    void setRetryDelay(uint64_t delay) { retryDelay = delay; }
 
     // See HandlerFactory::newHandler
     virtual 
@@ -178,6 +183,14 @@ public:
      */
     void connectionReady(internal::OpflexConnection* conn);
 
+    /**
+     * Called when a response to a message sent from the processor is
+     * received
+     *
+     * @param reqId the ID of the request
+     */
+    void responseReceived(uint64_t reqId);
+
 private:
     /**
      * The system store client
@@ -193,6 +206,11 @@ private:
      * The pool of Opflex connections
      */
     internal::OpflexPool pool;
+
+    /**
+     * Request ID counter
+     */
+    uint64_t nextXid;
 
     /**
      * The status of items in the MODB with respect to the opflex
@@ -256,6 +274,12 @@ private:
          * The last time a resolve request was made for the item
          */
         uint64_t resolve_time;
+
+        /**
+         * The number of pending requests associated with the
+         * transaction ID
+         */
+        size_t pending_reqs;
     };
 
     /**
@@ -264,13 +288,14 @@ private:
     class item {
     public:
         item() : uri(""), expiration(0), details(NULL) {}
-        item(const item& i) : uri(i.uri), expiration(i.expiration) {
+        item(const item& i) : uri(i.uri), expiration(i.expiration),
+                              last_xid(i.last_xid) {
             details = new item_details(*i.details);
         }
         item(const modb::URI& uri_, modb::class_id_t class_id_,
              uint64_t expiration_, int64_t refresh_rate_,
              ItemState state_, bool local_)
-            : uri(uri_), expiration(expiration_) {
+            : uri(uri_), expiration(expiration_), last_xid(0) {
             details = new item_details();
             details->class_id = class_id_;
             details->refresh_rate = refresh_rate_;
@@ -302,6 +327,11 @@ private:
         uint64_t expiration;
 
         /**
+         * The last Opflex request transaction ID related to this item
+         */
+        uint64_t last_xid;
+
+        /**
          * Detailed item information
          */
         item_details* details;
@@ -311,6 +341,8 @@ private:
     struct expiration_tag{};
     // tag for expiration index
     struct uri_tag{};
+    // tag for xid index
+    struct xid_tag{};
 
     typedef boost::multi_index::multi_index_container<
         item,
@@ -320,6 +352,11 @@ private:
                 boost::multi_index::member<item, 
                                            modb::URI, 
                                            &item::uri> > ,
+            boost::multi_index::hashed_non_unique<
+                boost::multi_index::tag<xid_tag>,
+                boost::multi_index::member<item, 
+                                           uint64_t, 
+                                           &item::last_xid> > ,
             boost::multi_index::ordered_non_unique<
                 boost::multi_index::tag<expiration_tag>,
                 boost::multi_index::member<item, 
@@ -330,6 +367,7 @@ private:
 
     typedef object_state_t::index<expiration_tag>::type obj_state_by_exp;
     typedef object_state_t::index<uri_tag>::type obj_state_by_uri;
+    typedef object_state_t::index<xid_tag>::type obj_state_by_xid;
 
     /**
      * Functor for updating the expiration in the object state index
@@ -337,10 +375,23 @@ private:
     class change_expiration {
     public:
         change_expiration(uint64_t new_exp);
-        
+
         void operator()(Processor::item& i);
     private:
         uint64_t new_exp;
+    };
+
+    /**
+     * Functor for updating the transaction ID in the object state
+     * index
+     */
+    class change_last_xid {
+    public:
+        change_last_xid(uint64_t new_last_xid);
+
+        void operator()(Processor::item& i);
+    private:
+        uint64_t new_last_xid;
     };
 
     /**
@@ -353,6 +404,11 @@ private:
      * Processing delay to allow batching updates
      */
     uint64_t processingDelay;
+
+    /**
+     * Amount of time to wait before retrying message sends
+     */
+    uint64_t retryDelay;
 
     /**
      * Processing thread
@@ -376,16 +432,19 @@ private:
     void removeRef(obj_state_by_exp::iterator& it,
                    const modb::reference_t& up);
     void processItem(obj_state_by_exp::iterator& it);
-    void updateItemExpiration(obj_state_by_exp::iterator& it);
     bool isOrphan(const item& item);
     bool isParentSyncObject(const item& item);
     void doProcess();
     void doObjectUpdated(modb::class_id_t class_id, 
                          const modb::URI& uri,
                          bool remote);
+    void sendToRole(const item& it, uint64_t& newexp,
+                    internal::OpflexMessage* req,
+                    ofcore::OFConstants::OpflexRole role);
     bool resolveObj(modb::ClassInfo::class_type_t type, const item& it,
-                    bool checkTime = true);
-    bool declareObj(modb::ClassInfo::class_type_t type, const item& it);
+                    uint64_t& newexp, bool checkTime = true);
+    bool declareObj(modb::ClassInfo::class_type_t type, const item& it,
+                    uint64_t& newexp);
     void handleNewConnections();
 
     friend class MOSerializer;

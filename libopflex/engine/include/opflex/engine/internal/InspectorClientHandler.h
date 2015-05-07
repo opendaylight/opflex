@@ -57,8 +57,10 @@ public:
     virtual void disconnected();
     virtual void ready();
 
-    virtual void handleCustomRes(const rapidjson::Value& payload);
-    virtual void handleError(const rapidjson::Value& payload,
+    virtual void handleCustomRes(uint64_t reqId,
+                                 const rapidjson::Value& payload);
+    virtual void handleError(uint64_t reqId,
+                             const rapidjson::Value& payload,
                              const std::string& type);
 
 private:

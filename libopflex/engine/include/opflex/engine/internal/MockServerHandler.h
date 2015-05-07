@@ -40,7 +40,7 @@ public:
      * connection
      */
     MockServerHandler(OpflexConnection* conn, MockOpflexServerImpl* server_) 
-        : OpflexHandler(conn), server(server_) {}
+        : OpflexHandler(conn), server(server_), flakyMode(false) {}
 
     /**
      * Destroy the handler
@@ -56,6 +56,14 @@ public:
      * Check whether there are any active resolutions
      */
     bool hasResolutions() { return resolutions.size() > 0; }
+
+    /**
+     * Enable or disable flaky mode.  When enabled, drop the first
+     * attempt to resolve anything.
+     *
+     * @param flakyMode true to enable flaky mode
+     */
+    void setFlaky(bool flakyMode) { this->flakyMode = flakyMode; }
 
     // *************
     // OpflexHandler
@@ -78,13 +86,16 @@ public:
                                     const rapidjson::Value& payload);
     virtual void handleEPUnresolveReq(const rapidjson::Value& id,
                                       const rapidjson::Value& payload);
-    virtual void handleEPUpdateRes(const rapidjson::Value& payload);
+    virtual void handleEPUpdateRes(uint64_t reqId,
+                                   const rapidjson::Value& payload);
     virtual void handleStateReportReq(const rapidjson::Value& id,
                                       const rapidjson::Value& payload);
 
 protected:
     MockOpflexServerImpl* server;
     boost::unordered_set<modb::reference_t> resolutions;
+    boost::unordered_set<modb::reference_t> declarations;
+    bool flakyMode;
 };
 
 } /* namespace internal */
