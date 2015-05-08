@@ -7,7 +7,11 @@
  */
 package org.opendaylight.opflex.modb;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /*
  * Instances of this class should not be accessed from multiple threads concurrently

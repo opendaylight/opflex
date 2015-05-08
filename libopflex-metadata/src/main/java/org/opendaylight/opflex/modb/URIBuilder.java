@@ -52,11 +52,11 @@ public class URIBuilder {
 
     private String escape(String input) {
         StringBuilder result = new StringBuilder();
-        for (byte b : input.getBytes(UTF8_CHARSET)) {
-            if (Character.isLetterOrDigit(b) || b == '-' || b == '_' || b == '.' || b == '~') {
-                result.append((char)b);
+        for (byte b1 : input.getBytes(UTF8_CHARSET)) {
+            if (Character.isLetterOrDigit(b1) || b1 == '-' || b1 == '_' || b1 == '.' || b1 == '~') {
+                result.append((char)b1);
             } else {
-                result.append('%').append(String.format("%02x", (int) b));
+                result.append('%').append(String.format("%02x", (int) b1));
             }
         }
         return result.toString();

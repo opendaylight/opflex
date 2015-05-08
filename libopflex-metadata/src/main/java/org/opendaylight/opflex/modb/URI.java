@@ -18,10 +18,14 @@ public class URI {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        return uri.equals(((URI) o).uri);
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        return uri.equals(((URI) obj).uri);
     }
 
     @Override
