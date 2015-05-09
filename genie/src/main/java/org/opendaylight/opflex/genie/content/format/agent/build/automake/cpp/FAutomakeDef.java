@@ -158,6 +158,12 @@ public class FAutomakeDef
         out.println(ainIndent + 1,"cp rpm/RPMS/${ARCH}/*.rpm .");
         out.println(ainIndent + 1,"cp rpm/SRPMS/*.rpm .");
         out.println(ainIndent + 1,"rm -rf ${RPMDIRS}");
+        out.println(ainIndent,"srpm: dist rpm/${PACKAGE}.spec");
+        out.println(ainIndent + 1,"mkdir -p ${RPMDIRS}");
+        out.println(ainIndent + 1,"cp ${SOURCE_FILE} rpm/SOURCES/");
+        out.println(ainIndent + 1,"rpmbuild ${RPMFLAGS} -bs rpm/${PACKAGE}.spec");
+        out.println(ainIndent + 1,"cp rpm/SRPMS/*.rpm .");
+        out.println(ainIndent + 1,"rm -rf ${RPMDIRS}");
         out.println();
 
         out.println(ainIndent, "# Set env var DEB_BUILD_OPTIONS=\"parallel=<#cores>\" to speed up package builds");
