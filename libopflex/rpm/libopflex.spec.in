@@ -6,12 +6,14 @@
 # and is available at http://www.eclipse.org/legal/epl-v10.html
 #
 
+%{!?packageversion:%define packageversion @VERSION@}
+%{!?buildversion:%define buildversion @SDK_BVERSION@}
 %global _hardened_build 1
 
 Name: libopflex
 Epoch:   1
-Version: @VERSION@
-Release: @SDK_BVERSION@%{?dist}
+Version: %{packageversion}
+Release: %{buildversion}%{?dist}
 Summary: A framework for developing opflex-based policy agents
 
 Group: Development/Libraries
@@ -21,12 +23,16 @@ URL: https://wiki.opendaylight.org/view/OpFlex:Main
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 Source: %{name}-%{version}.tar.gz
 Requires: libuv >= 1.0
+Requires: openssl >= 1.0.1
 BuildRequires: libuv-devel
+BuildRequires: openssl-devel
 BuildRequires: boost-devel
 BuildRequires: boost-test
-BuildRequires: rapidjson-devel >= 0.12
+BuildRequires: rapidjson-devel >= 1.0
 BuildRequires: doxygen
 BuildRequires: pkgconfig
+
+%bcond_without check
 
 %description
 The OpFlex project seeks to provide reference implementations of the
@@ -38,6 +44,8 @@ Summary: Development libraries for libopflex
 Group: Development/Libraries
 Requires: %{name} = %{epoch}:%{version}-%{release}
 Requires: pkgconfig
+Requires: openssl-devel >= 1.0.1
+Requires: libuv-devel >= 1.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Provides: libopflex-static = %{version}-%{release}
@@ -56,15 +64,19 @@ make %{?_smp_mflags}
 %make_install
 
 %check
-# make check
+%if %{with check}
+    make check
+%endif
 
 %post -p /sbin/ldconfig
 %postun -p /sbin/ldconfig
 
 %files
+%defattr(-,root,root)
 %{_libdir}/%{name}.so.*
 
 %files devel
+%defattr(-,root,root)
 %{_libdir}/%{name}.so
 %{_libdir}/%{name}.la
 %{_libdir}/%{name}.a

@@ -123,6 +123,12 @@ rpm: dist rpm/${PACKAGE}.spec
 	cp rpm/RPMS/${ARCH}/*.rpm .
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
+srpm: dist rpm/${PACKAGE}.spec
+	mkdir -p ${RPMDIRS}
+	cp ${SOURCE_FILE} rpm/SOURCES/
+	rpmbuild ${RPMFLAGS} -bs rpm/${PACKAGE}.spec
+	cp rpm/SRPMS/*.rpm .
+	rm -rf ${RPMDIRS}
 
 # Set env var DEB_BUILD_OPTIONS="parallel=<#cores>" to speed up package builds
 DEB_PKG_DIR=deb

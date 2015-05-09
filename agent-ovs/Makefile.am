@@ -224,6 +224,12 @@ rpm: dist rpm/${PACKAGE}.spec
 	cp rpm/RPMS/${ARCH}/*.rpm .
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
+srpm: dist rpm/${PACKAGE}.spec
+	mkdir -p ${RPMDIRS}
+	cp ${SOURCE_FILE} rpm/SOURCES/
+	rpmbuild ${RPMFLAGS} -bs rpm/${PACKAGE}.spec
+	cp rpm/SRPMS/*.rpm .
+	rm -rf ${RPMDIRS}
 
 EXTRA_DIST += debian
 
