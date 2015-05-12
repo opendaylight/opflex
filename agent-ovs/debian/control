@@ -11,7 +11,7 @@ Homepage: https://wiki.opendaylight.org/view/OpFlex:Main
 Package: agent-ovs
 Architecture: any
 Depends:
- libopflex (>= 0.1.0), libmodelgbp (>= 1.0.0), openvswitch-lib,
+ libopflex (>= ${binary:Version}), libmodelgbp (>= ${binary:Version}), openvswitch-lib,
  ${shlibs:Depends}, ${misc:Depends}
 Description: Agent for integrating group-based policy with Open vSwitch
  The Opflex agent runs alongside the management plane of a network

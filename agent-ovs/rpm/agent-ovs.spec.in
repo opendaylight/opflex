@@ -22,8 +22,8 @@ URL: https://wiki.opendaylight.org/view/OpFlex:Main
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 Source: %{name}-%{version}.tar.gz
-Requires: libopflex >= 0.1.0
-Requires: libmodelgbp >= 1.0.0
+Requires: libopflex >= %{version}
+Requires: libmodelgbp >= %{version}
 Requires: boost >= 1.53
 Requires: boost-program-options
 Requires: boost-system

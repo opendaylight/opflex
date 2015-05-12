@@ -145,7 +145,7 @@ public class FDebPkg
         + "Package: _LIB_NAME_\n"
         + "Section: libs\n"
         + "Architecture: any\n"
-        + "Depends: libopflex (>= 0.1.0), ${shlibs:Depends}, ${misc:Depends}\n"
+        + "Depends: libopflex (>= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}\n"
         + "Description: Generated _MODULE_NAME_ model for use with libopflex\n"
         + " Generated Opflex model definition\n"
         + "\n"

@@ -12,7 +12,7 @@
 # ---------------------------------------------------------------
 # Initialization
 
-AC_INIT([agent-ovs], [1.0.0])
+AC_INIT([agent-ovs], [1.1.0])
 AC_SUBST(MODULE_NAME, ["Group-based Policy Agent for OVS"])
 
 # initialize automake and libtool
@@ -106,8 +106,8 @@ if test "x$ax_cv_boost_asio" != xyes; then
    AC_MSG_ERROR([Boost::ASIO library is required])
 fi
 
-PKG_CHECK_MODULES([libopflex], [libopflex >= 0.1.0])
-PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 0.1.0])
+PKG_CHECK_MODULES([libopflex], [libopflex >= 1.1.0])
+PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.1.0])
 
 # check for libopenvswitch
 PKG_CHECK_MODULES([libofproto], [libofproto >= 2.3.90])
