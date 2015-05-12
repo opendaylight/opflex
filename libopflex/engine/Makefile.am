@@ -21,7 +21,8 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 
 noinst_LTLIBRARIES = libengine.la
 
-libengine_la_CXXFLAGS = $(UV_CFLAGS) $(OPENSSL_CFLAGS)
+libengine_la_CXXFLAGS = $(UV_CFLAGS) $(OPENSSL_CFLAGS) $(RAPIDJSON_CFLAGS)
+
 libengine_la_LIBADD = $(UV_LIBS) $(OPENSSL_LIBS)
 libengine_la_SOURCES = \
 	include/opflex/engine/internal/MOSerializer.h \

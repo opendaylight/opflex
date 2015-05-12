@@ -27,7 +27,7 @@ engine_test_SOURCES = \
 	MOSerialize_test.cpp \
 	Processor_test.cpp \
 	OpflexPool_test.cpp
-engine_test_CXXFLAGS = $(UV_CFLAGS)
+engine_test_CXXFLAGS = $(UV_CFLAGS) $(RAPIDJSON_CFLAGS)
 engine_test_LDADD = \
 	../libengine.la \
 	../../util/libutil.la \

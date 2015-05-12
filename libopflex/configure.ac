@@ -135,10 +135,7 @@ AX_BOOST_UNIT_TEST_FRAMEWORK
 dnl Package-config dependencies
 PKG_CHECK_MODULES([UV], [libuv >= 0.11.0])
 PKG_CHECK_MODULES([OPENSSL], [openssl >= 0.9.8])
-
-dnl rapidjson
-AC_CHECK_HEADER([rapidjson/rapidjson.h],
-                [], AC_MSG_ERROR([RapidJson is required]))
+PKG_CHECK_MODULES([RAPIDJSON], [RapidJSON >= 1.0])
 
 dnl Older versions of autoconf don't define docdir
 if test x$docdir = x; then

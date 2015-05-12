@@ -40,6 +40,7 @@ libcomms_la_CPPFLAGS  = $(AM_CPPFLAGS)
 
 libcomms_la_CXXFLAGS  = $(AM_CXXFLAGS)
 libcomms_la_CXXFLAGS += $(UV_CFLAGS)
+libcomms_la_CXXFLAGS += $(RAPIDJSON_CFLAGS)
 
 libcomms_la_CPPFLAGS += -DBOOST_EXCEPTION_DISABLE
 libcomms_la_CXXFLAGS += -fno-exceptions
@@ -151,6 +152,7 @@ comms_test_CPPFLAGS  = $(AM_CPPFLAGS)
 comms_test_CPPFLAGS += -DBOOST_TEST_DYN_LINK
 comms_test_CPPFLAGS += -DSRCDIR="\"$(abs_srcdir)\""
 comms_test_CPPFLAGS += $(UV_CFLAGS)
+comms_test_CPPFLAGS += $(RAPIDJSON_CFLAGS)
 comms_test_CPPFLAGS += -DYAJR_HAS_OPENSSL
 comms_test_CPPFLAGS += $(OPENSSL_CFLAGS)
 
