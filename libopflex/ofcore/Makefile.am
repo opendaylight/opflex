@@ -23,7 +23,7 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 
 noinst_LTLIBRARIES = libcore.la
 
-libcore_la_CXXFLAGS = $(UV_CFLAGS)
+libcore_la_CXXFLAGS = $(UV_CFLAGS) $(RAPIDJSON_CFLAGS)
 libcore_la_LIBADD = $(UV_LIBS)
 libcore_la_SOURCES = \
 	OFFramework.cpp \
