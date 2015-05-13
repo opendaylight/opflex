@@ -797,6 +797,8 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
 
     yajr::comms::internal::wrapper::IStreamWrapper is(ssIn_);
 
+    docIn_.GetAllocator().Clear();
+
     docIn_.ParseStream(is);
     if (docIn_.HasParseError()) {
         rapidjson::ParseErrorCode e = docIn_.GetParseError();
