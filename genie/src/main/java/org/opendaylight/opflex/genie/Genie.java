@@ -20,7 +20,7 @@ public class Genie
     {
         // trigger the processing
         new Processor(
-                4,
+                1,
                 //lMetaPaths,
                 //lPrePaths,
                 ParseRegistry.init(),

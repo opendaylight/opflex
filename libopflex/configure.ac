@@ -145,14 +145,11 @@ fi
 dnl ---------------------------------------------------------------
 dnl Build constants
 
-AC_DEFINE_UNQUOTED(SDK_PVERSION, [sdk_pversion], [Major version])
-AC_DEFINE_UNQUOTED(SDK_SVERSION, [sdk_sversion], [Minor version])
-AC_DEFINE_UNQUOTED(SDK_IVERSION, [sdk_iversion], [Incremental version])
-AC_DEFINE_UNQUOTED(SDK_BVERSION, ["${sdk_bversion}"])
-AC_DEFINE_UNQUOTED(SDK_BVERSION, [${sdk_bversion}], [Build version])
-AC_DEFINE_UNQUOTED(SDK_FULL_VERSION, ["sdk_pversion.sdk_sversion.sdk_iversion-${sdk_bversion}"], 
-                                     [Full version])
+AC_SUBST(SDK_PVERSION, [sdk_pversion])
+AC_SUBST(SDK_SVERSION, [sdk_sversion])
+AC_SUBST(SDK_IVERSION, [sdk_iversion])
 AC_SUBST(SDK_BVERSION, [${sdk_bversion}])
+AC_SUBST(SDK_FULL_VERSION, ["sdk_pversion.sdk_sversion.sdk_iversion-${sdk_bversion}"])
 
 dnl ---------------------------------------------------------------
 dnl Output

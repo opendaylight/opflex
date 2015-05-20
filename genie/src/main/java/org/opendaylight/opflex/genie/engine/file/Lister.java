@@ -4,6 +4,7 @@ import java.io.File;
 import java.net.URI;
 import java.util.Collection;
 import java.util.TreeMap;
+import java.util.Arrays;
 
 import org.opendaylight.opflex.modlan.report.Severity;
 
@@ -33,7 +34,9 @@ public class Lister
             if (aInFile.isDirectory())
             {
                 //Severity.INFO.report(aInFile.toURI().toString(), "model file search", "", "exploring.");
-                for (File lThisF : aInFile.listFiles())
+                File[] lFiles = aInFile.listFiles();
+                Arrays.sort(lFiles);
+                for (File lThisF : lFiles)
                 {
                     explore(lThisF, aInSuffix);
                 }

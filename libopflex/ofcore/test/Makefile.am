@@ -18,7 +18,13 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/modb/include \
 	-I$(top_srcdir)/engine/include \
 	-I$(top_srcdir)/logging/include \
-	-I$(top_srcdir)/modb/test 
+	-I$(top_srcdir)/modb/test \
+	-DSDK_PVERSION='@SDK_PVERSION@' \
+	-DSDK_SVERSION='@SDK_SVERSION@' \
+	-DSDK_IVERSION='@SDK_IVERSION@' \
+	-DSDK_BVERSION='"@SDK_BVERSION@"' \
+	-DSDK_FULL_VERSION='"@SDK_FULL_VERSION@"'
+
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 TESTS = core_test
