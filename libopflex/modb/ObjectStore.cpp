@@ -18,8 +18,8 @@
 
 #include <boost/foreach.hpp>
 
-#include "opflex/modb/internal/ObjectStore.h"
-#include "LockGuard.h"
+#include <opflex/modb/internal/ObjectStore.h>
+#include <LockGuard.hpp>
 
 namespace opflex {
 namespace modb {

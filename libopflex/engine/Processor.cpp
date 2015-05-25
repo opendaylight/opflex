@@ -14,19 +14,23 @@
 #  include <config.h>
 #endif
 
+#include <opflex/engine/internal/OpflexPEHandler.h>
+#include <opflex/engine/internal/ProcessorMessage.h>
+#include <opflex/engine/Processor.h>
 
-#include <time.h>
-#include <uv.h>
-#include <limits>
+#include <LockGuard.hpp>
+
+#include <opflex/logging/internal/logging.hpp>
 
 #include <boost/tuple/tuple.hpp>
 #include <boost/foreach.hpp>
 #include <boost/unordered_set.hpp>
-#include "opflex/engine/internal/OpflexPEHandler.h"
-#include "opflex/engine/internal/ProcessorMessage.h"
-#include "opflex/engine/Processor.h"
-#include "LockGuard.h"
-#include "opflex/logging/internal/logging.hpp"
+
+#include <uv.h>
+
+#include <limits>
+
+#include <time.h>
 
 namespace opflex {
 namespace engine {

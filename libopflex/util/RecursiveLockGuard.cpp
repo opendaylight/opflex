@@ -15,7 +15,7 @@
 #endif
 
 
-#include "RecursiveLockGuard.h"
+#include <RecursiveLockGuard.h>
 
 namespace opflex {
 namespace util {

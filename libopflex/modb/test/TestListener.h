@@ -16,7 +16,7 @@
 #include <boost/unordered_set.hpp>
 
 #include "opflex/modb/ObjectListener.h"
-#include "LockGuard.h"
+#include <LockGuard.hpp>
 
 namespace opflex {
 namespace modb {

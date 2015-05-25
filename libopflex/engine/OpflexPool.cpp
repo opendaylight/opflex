@@ -14,14 +14,16 @@
 #  include <config.h>
 #endif
 
+#include <opflex/engine/internal/OpflexPool.h>
+#include <opflex/engine/internal/OpflexMessage.h>
 
-#include <memory>
+#include <RecursiveLockGuard.h>
+
+#include <opflex/logging/internal/logging.hpp>
+
 #include <boost/foreach.hpp>
 
-#include "opflex/engine/internal/OpflexPool.h"
-#include "opflex/engine/internal/OpflexMessage.h"
-#include "opflex/logging/internal/logging.hpp"
-#include "RecursiveLockGuard.h"
+#include <memory>
 
 namespace opflex {
 namespace engine {

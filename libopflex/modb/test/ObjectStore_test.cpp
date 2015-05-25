@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 #include "opflex/modb/internal/ObjectStore.h"
-#include "LockGuard.h"
+#include <LockGuard.hpp>
 #include "BaseFixture.h"
 #include "TestListener.h"
 

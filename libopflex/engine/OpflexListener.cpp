@@ -14,20 +14,22 @@
 #  include <config.h>
 #endif
 
+#include <opflex/engine/internal/OpflexListener.h>
+#include <opflex/engine/internal/OpflexPool.h>
 
-#include <stdexcept>
+#include <opflex/logging/internal/logging.hpp>
+
+#include <RecursiveLockGuard.h>
+
+#ifndef SIMPLE_RPC
+# include <yajr/internal/comms.hpp>
+#endif
 
 #include <boost/foreach.hpp>
 #include <boost/scoped_ptr.hpp>
 
-#include "opflex/engine/internal/OpflexListener.h"
-#include "opflex/engine/internal/OpflexPool.h"
-#include "opflex/logging/internal/logging.hpp"
-#include "RecursiveLockGuard.h"
+#include <stdexcept>
 
-#ifndef SIMPLE_RPC
-#include <yajr/internal/comms.hpp>
-#endif
 
 namespace opflex {
 namespace engine {

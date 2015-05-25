@@ -18,7 +18,7 @@
 
 #include "opflex/modb/internal/Region.h"
 #include "opflex/modb/internal/ObjectStore.h"
-#include "LockGuard.h"
+#include <LockGuard.hpp>
 
 namespace opflex {
 namespace modb {

@@ -18,7 +18,6 @@ noinst_LTLIBRARIES = libutil.la
 libutil_la_CXXFLAGS = $(UV_CFLAGS)
 libutil_la_LIBADD = $(UV_LIBS)
 libutil_la_SOURCES = \
-	include/LockGuard.h \
+	include/LockGuard.hpp \
 	include/RecursiveLockGuard.h \
-	LockGuard.cpp \
 	RecursiveLockGuard.cpp

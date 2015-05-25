@@ -17,7 +17,7 @@
 #include <boost/foreach.hpp>
 #include "opflex/modb/internal/URIQueue.h"
 
-#include "LockGuard.h"
+#include <LockGuard.hpp>
 #include "opflex/logging/internal/logging.hpp"
 
 namespace opflex {

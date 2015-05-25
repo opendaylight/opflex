@@ -14,21 +14,23 @@
 #  include <config.h>
 #endif
 
-
-#include <boost/scoped_ptr.hpp>
-
-#include "opflex/engine/internal/OpflexConnection.h"
-#include "opflex/engine/internal/OpflexHandler.h"
-#include "opflex/engine/internal/OpflexMessage.h"
-#include "opflex/logging/internal/logging.hpp"
-#include "LockGuard.h"
+#include <opflex/engine/internal/OpflexConnection.h>
+#include <opflex/engine/internal/OpflexHandler.h>
+#include <opflex/engine/internal/OpflexMessage.h>
 
 #ifndef SIMPLE_RPC
-#include "yajr/transport/ZeroCopyOpenSSL.hpp"
-#include "yajr/rpc/message_factory.hpp"    
+
+# include <yajr/transport/ZeroCopyOpenSSL.hpp>
+# include <yajr/rpc/message_factory.hpp>
 
 static uv_once_t ssl_once = UV_ONCE_INIT;
 #endif
+
+#include <LockGuard.hpp>
+
+#include <opflex/logging/internal/logging.hpp>
+
+#include <boost/scoped_ptr.hpp>
 
 namespace opflex {
 namespace engine {
