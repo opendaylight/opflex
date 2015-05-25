@@ -36,11 +36,7 @@ public:
         __attribute__((no_instrument_function));
 
     /* see OFLogHandler */
-    virtual void handleMessage(const std::string& file,
-                               const int line,
-                               const std::string& function,
-                               const Level level,
-                               const std::string& message)
+    virtual void handleMessage(Logger const & logger)
         __attribute__((no_instrument_function));
 };
 
