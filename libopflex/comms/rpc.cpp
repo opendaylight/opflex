@@ -353,6 +353,7 @@ MethodName method::endpoint_unresolve("endpoint_unresolve");
 MethodName method::endpoint_update("endpoint_update");
 MethodName method::state_report("state_report");
 MethodName method::custom("custom");
+MethodName method::get_debug_logs("get_debug_logs");
 
 } /* yajr::rpc namespace */
 } /* yajr namespace */

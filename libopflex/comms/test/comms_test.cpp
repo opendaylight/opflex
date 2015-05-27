@@ -83,6 +83,7 @@ struct CommsTests {
 };
 
 char __CoreLogBuffer[256*1024];
+opflex::logging::InMemoryLogHandler const & iMLH = CommsTests::commsTestInMemoryLogger_;
 
 opflex::logging::StdOutLogHandler CommsTests::commsTestStdOutLogger_(DEBUG5);
 opflex::logging::InMemoryLogHandler CommsTests::commsTestInMemoryLogger_(WARNING, __CoreLogBuffer, sizeof(__CoreLogBuffer));
@@ -2513,6 +2514,21 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_several_SSL_peers, CommsFixture ) {
 
 }
 #endif
+
+BOOST_FIXTURE_TEST_CASE( MANUAL_test_listen_forever, CommsFixture ) {
+
+    LOG(DEBUG);
+
+    ::yajr::Listener * l = ::yajr::Listener::create(
+            "127.0.0.1", 65432, doNothingOnConnect,
+            NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
+    );
+
+    BOOST_CHECK_EQUAL(!l, 0);
+
+    loop_until_final(range_t(4,4), pc_successful_connect, range_t(0,0), true, 999999); // 4 is to cause a timeout
+
+}
 
 
 BOOST_AUTO_TEST_SUITE_END()
