@@ -104,7 +104,11 @@ endif
 
 TESTS                =
 TESTS               += test/stable_tests.sh
-noinst_PROGRAMS      = comms_test
+if MAKE_ALL_TESTS
+    noinst_PROGRAMS  = comms_test
+else
+    check_PROGRAMS   = comms_test
+endif
 dist_noinst_SCRIPTS  =
 dist_noinst_SCRIPTS += test/stable_tests.sh
 dist_noinst_SCRIPTS += test/server.pem

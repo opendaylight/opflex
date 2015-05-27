@@ -88,6 +88,12 @@ AC_ARG_ENABLE(comms-trace,
                              [Trace all function calls within opflex communications library]))
 AM_CONDITIONAL(TRACING_COMMS, [test x$enable_comms_trace = 'xyes'])
 
+dnl Create an option to build unit tests only with make check
+AC_ARG_ENABLE(tests-make-all,
+              AC_HELP_STRING([--disable-tests-make-all],
+                             [Disable building tests with make all]))
+AM_CONDITIONAL(MAKE_ALL_TESTS, [test x$enable_tests_make_all != 'xno'])
+
 dnl ---------------------------------------------------------------
 dnl Environment introspection
 

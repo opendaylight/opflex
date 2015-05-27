@@ -33,4 +33,8 @@ modb_test_LDADD = ../libmodb.la \
 	$(UV_LIBS) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
-noinst_PROGRAMS = $(TESTS)
+if MAKE_ALL_TESTS
+    noinst_PROGRAMS = $(TESTS)
+else
+    check_PROGRAMS = $(TESTS)
+endif

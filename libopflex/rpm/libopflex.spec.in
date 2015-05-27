@@ -57,7 +57,7 @@ Development libraries for libopflex
 %setup -q
 
 %build
-%configure --disable-assert
+%configure --disable-assert --disable-tests-make-all
 make %{?_smp_mflags}
 
 %install
