@@ -12,12 +12,12 @@
      */
     switch (boost::hash_range(method, method + strlen(method))) {
 
-      case meta::hash_string< boost::mpl::string<'echo'
+      case meta::hash_string< boost::mpl::string< 'echo'
                                                  > >::value:
           return PERFECT_RET_VAL(yajr::rpc::method::echo);
           break;
 
-      case meta::hash_string< boost::mpl::string<'send',
+      case meta::hash_string< boost::mpl::string< 'send',
                                                   '_ide',
                                                   'ntit',
                                                   'y'
@@ -25,7 +25,7 @@
           return PERFECT_RET_VAL(yajr::rpc::method::send_identity);
           break;
 
-      case meta::hash_string<boost::mpl::string<'poli',
+      case meta::hash_string<boost::mpl::string< 'poli',
                                                  'cy_r',
                                                  'esol',
                                                  've'
@@ -33,7 +33,7 @@
           return PERFECT_RET_VAL(yajr::rpc::method::policy_resolve);
           break;
 
-      case meta::hash_string<boost::mpl::string<'poli',
+      case meta::hash_string<boost::mpl::string< 'poli',
                                                  'cy_u',
                                                  'nres',
                                                  'olve'
@@ -41,7 +41,7 @@
           return PERFECT_RET_VAL(yajr::rpc::method::policy_unresolve);
           break;
 
-      case meta::hash_string<boost::mpl::string<'poli',
+      case meta::hash_string<boost::mpl::string< 'poli',
                                                  'cy_u',
                                                  'pdat',
                                                  'e'
@@ -49,7 +49,7 @@
           return PERFECT_RET_VAL(yajr::rpc::method::policy_update);
           break;
 
-      case meta::hash_string<boost::mpl::string<'endp',
+      case meta::hash_string<boost::mpl::string< 'endp',
                                                  'oint',
                                                  '_dec',
                                                  'lare'
@@ -57,7 +57,7 @@
           return PERFECT_RET_VAL(yajr::rpc::method::endpoint_declare);
           break;
 
-      case meta::hash_string<boost::mpl::string<'endp',
+      case meta::hash_string<boost::mpl::string< 'endp',
                                                  'oint',
                                                  '_und',
                                                  'ecla',
@@ -66,7 +66,7 @@
           return PERFECT_RET_VAL(yajr::rpc::method::endpoint_undeclare);
           break;
 
-      case meta::hash_string<boost::mpl::string<'endp',
+      case meta::hash_string<boost::mpl::string< 'endp',
                                                  'oint',
                                                  '_res',
                                                  'olve'
@@ -74,7 +74,7 @@
           return PERFECT_RET_VAL(yajr::rpc::method::endpoint_resolve);
           break;
 
-      case meta::hash_string<boost::mpl::string<'endp',
+      case meta::hash_string<boost::mpl::string< 'endp',
                                                  'oint',
                                                  '_unr',
                                                  'esol',
@@ -83,7 +83,7 @@
           return PERFECT_RET_VAL(yajr::rpc::method::endpoint_unresolve);
           break;
 
-      case meta::hash_string<boost::mpl::string<'endp',
+      case meta::hash_string<boost::mpl::string< 'endp',
                                                  'oint',
                                                  '_upd',
                                                  'ate'
@@ -91,17 +91,25 @@
           return PERFECT_RET_VAL(yajr::rpc::method::endpoint_update);
           break;
 
-      case meta::hash_string<boost::mpl::string<'stat',
+      case meta::hash_string<boost::mpl::string< 'stat',
                                                  'e_re',
                                                  'port'
                                                 > >::value:
           return PERFECT_RET_VAL(yajr::rpc::method::state_report);
           break;
 
-      case meta::hash_string<boost::mpl::string<'cust',
+      case meta::hash_string<boost::mpl::string< 'cust',
                                                  'om'
                                                 > >::value:
           return PERFECT_RET_VAL(yajr::rpc::method::custom);
+          break;
+
+      case meta::hash_string<boost::mpl::string< 'get_',
+                                                 'debu',
+                                                 'g_lo',
+                                                 'gs'
+                                                > >::value:
+          return PERFECT_RET_VAL(yajr::rpc::method::get_debug_logs);
           break;
 
       default:

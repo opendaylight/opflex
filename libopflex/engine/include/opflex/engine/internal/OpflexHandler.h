@@ -495,6 +495,40 @@ public:
         handleError(reqId, payload, "Custom");
     }
 
+    /**
+     * Handle an Opflex Get Debug Logs request
+     *
+     * @param id the ID of the remote message
+     * @param payload the payload of the message
+     */
+    virtual void handleGetDebugLogsReq(const rapidjson::Value& id,
+                                      const rapidjson::Value& payload) {
+        handleUnsupportedReq(id, "Get Debug Logs Request");
+    }
+
+    /**
+     * Handle an Opflex Get Debug Logs response
+     *
+     * @param reqId the request ID from the response
+     * @param payload the payload of the message
+     */
+    virtual void handleGetDebugLogsRes(uint64_t reqId,
+                                      const rapidjson::Value& payload) {
+        handleUnexpected("Get Debug Logs Response");
+    }
+
+    /**
+     * Handle an Opflex Get Debug Logs error
+     *
+     * @param reqId the request ID from the response
+     * @param payload the payload of the message
+     */
+    virtual void handleGetDebugLogsErr(uint64_t reqId,
+                                      const rapidjson::Value& payload) {
+        handleError(reqId, payload, "Get Debug Logs");
+    }
+
+
     // ***************
     // Utility methods
     // ***************

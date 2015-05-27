@@ -31,6 +31,8 @@ namespace yajr {
 
         bool isLegitPunct(int c) {
 
+            return true; // comment out this line when hunting for corruptions
+
             switch(c) {
                 case '\0':
                 case  ' ':

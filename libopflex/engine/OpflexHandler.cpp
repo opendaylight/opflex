@@ -288,5 +288,18 @@ void InbErr<&yajr::rpc::method::custom>::process() const {
     HANDLE_RES(CustomErr);
 }
 
+template<>
+void InbReq<&yajr::rpc::method::get_debug_logs>::process() const {
+    HANDLE_REQ(GetDebugLogsReq);
+}
+template<>
+void InbRes<&yajr::rpc::method::get_debug_logs>::process() const {
+    HANDLE_RES(GetDebugLogsRes);
+}
+template<>
+void InbErr<&yajr::rpc::method::get_debug_logs>::process() const {
+    HANDLE_RES(GetDebugLogsErr);
+}
+
 } /* namespace rpc */
 } /* namespace yajr */
