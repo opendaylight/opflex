@@ -39,6 +39,7 @@ namespace yajr {
             extern MethodName endpoint_update;
             extern MethodName state_report;
             extern MethodName custom;
+            extern MethodName get_debug_logs;
 
         } /* yajr::rpc::method namespace */
 
