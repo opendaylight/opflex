@@ -303,6 +303,7 @@ private:
             details->refcount = 0;
             details->local = local_;
             details->resolve_time = 0;
+            details->pending_reqs = 0;
         }
         ~item() { if (details) delete details; }
         item& operator=( const item& rhs ) {

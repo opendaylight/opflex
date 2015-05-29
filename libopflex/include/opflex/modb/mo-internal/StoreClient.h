@@ -76,6 +76,18 @@ public:
                        const boost::shared_ptr<const ObjectInstance>& oi);
 
     /**
+     * Check whether an item exists in the store.  Note that it could
+     * be deleted between checking for presense and calling get().
+     *
+     * @param class_id the class ID for the object being retrieved
+     * @param uri the URI for the object instance
+     * @return true if the item is present in the store.
+     * @throws std::out_of_range if there is no such class ID
+     * registered
+     */
+    bool isPresent(class_id_t class_id, const URI& uri) const;
+
+    /**
      * Get the object instance associated with the given class ID and
      * URI.
      *

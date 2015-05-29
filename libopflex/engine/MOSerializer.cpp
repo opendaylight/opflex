@@ -268,23 +268,24 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                     const PropertyInfo& parent_prop = 
                         parent_class.getProperty(prel->GetString());
                     URI parent_uri(pname.GetString());
-                    boost::shared_ptr<const ObjectInstance> parentoi =
-                        client.get(parent_class.getId(), parent_uri);
-
-                    if (client.addChild(parent_class.getId(),
-                                        parent_uri,
-                                        parent_prop.getId(),
-                                        ci.getId(),
-                                        uri)) {
-                        if (notifs)
-                            client.queueNotification(parent_class.getId(),
-                                                     parent_uri,
-                                                     *notifs);
+                    if (client.isPresent(parent_class.getId(), parent_uri)) {
+                        if (client.addChild(parent_class.getId(),
+                                            parent_uri,
+                                            parent_prop.getId(),
+                                            ci.getId(),
+                                            uri)) {
+                            if (notifs)
+                                client.queueNotification(parent_class.getId(),
+                                                         parent_uri,
+                                                         *notifs);
+                        }
+                    } else {
+                        LOG(DEBUG2) << "No parent present for "
+                                    << uri.toString();
                     }
                 } catch (std::out_of_range e) {
-                    // no parent class, property, or object instance
-                    // found
-                    LOG(DEBUG) << "Could not resolve parent for " 
+                    // no parent class or property found
+                    LOG(ERROR) << "Invalid parent or property for "
                                << uri.toString();
                 }
             }

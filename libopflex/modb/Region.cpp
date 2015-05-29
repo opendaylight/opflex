@@ -44,6 +44,11 @@ void Region::addClass(const ClassInfo& class_info) {
     class_map[class_info.getId()];
 }
 
+bool Region::isPresent(const URI& uri) {
+    LockGuard guard(&region_mutex);
+    return uri_map.find(uri) != uri_map.end();
+}
+
 shared_ptr<const ObjectInstance> Region::get(const URI& uri) {
     LockGuard guard(&region_mutex);
     return uri_map.at(uri);

@@ -135,12 +135,7 @@ public:
 
 static bool itemPresent(StoreClient* client,
                         class_id_t class_id, const URI& uri) {
-    try {
-        client->get(class_id, uri);
-        return true;
-    } catch (std::out_of_range e) {
-        return false;
-    }
+    return client->isPresent(class_id, uri);
 }
 
 // Test garbage collection after removing references
@@ -350,6 +345,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare, ServerFixture ) {
     notifs.clear();
 
     WAIT_FOR(rclient->get(2, u2_1)->isSet(15, PropertyInfo::MAC), 1000);
+    BOOST_REQUIRE(rclient->get(2, u2_1)->isSet(15, PropertyInfo::MAC));
     BOOST_CHECK_EQUAL(mac, rclient->get(2, u2_1)->getMAC(15));
     
     // check delete
@@ -620,6 +616,7 @@ BOOST_FIXTURE_TEST_CASE( state_report, StateFixture ) {
     notifs.clear();
 
     WAIT_FOR(rclient->get(3, u3)->isSet(16, PropertyInfo::STRING), 1000);
+    BOOST_REQUIRE(rclient->get(3, u3)->isSet(16, PropertyInfo::STRING));
     BOOST_CHECK_EQUAL("update", rclient->get(3, u3)->getString(16));
 }
 

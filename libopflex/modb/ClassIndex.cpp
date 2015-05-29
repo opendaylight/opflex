@@ -56,34 +56,39 @@ bool ClassIndex::addChild(const URI& parent, prop_id_t parent_prop,
 
 bool ClassIndex::delChild(const URI& parent, prop_id_t parent_prop, 
                           const URI& child) {
-    try {
-        prop_uri_map_t& pmap = child_map.at(parent);
-        uri_set_t& uset = pmap.at(parent_prop);
-        bool removed = uset.erase(child);
-        if (uset.size() == 0) {
-            pmap.erase(parent_prop);
-            if (pmap.size() == 0)
-                child_map.erase(parent);
-        }
+    uri_prop_uri_map_t::iterator cit = child_map.find(parent);
+    if (cit == child_map.end()) return false;
+    prop_uri_map_t& pmap = cit->second;
 
-        parent_map.erase(child);
+    prop_uri_map_t::iterator pit = pmap.find(parent_prop);
+    if (pit == pmap.end()) return false;
+    uri_set_t& uset = pit->second;
 
-        return removed;
-    } catch (std::out_of_range) {
-        return false;
+    bool removed = uset.erase(child);
+    if (uset.size() == 0) {
+        pmap.erase(parent_prop);
+        if (pmap.size() == 0)
+            child_map.erase(parent);
     }
+
+    parent_map.erase(child);
+
+    return removed;
 }
 
 void ClassIndex::getChildren(const URI& parent, prop_id_t parent_prop,
                              std::vector<URI>& output) const {
-    try {
-        const uri_set_t& uset = child_map.at(parent).at(parent_prop);
-        uri_set_t::iterator it;
-        for (it = uset.begin(); it != uset.end(); ++it) {
-            output.push_back(*it);
-        }
-    } catch (std::out_of_range) {
-        return;
+    uri_prop_uri_map_t::const_iterator cit = child_map.find(parent);
+    if (cit == child_map.end()) return;
+    const prop_uri_map_t& pmap = cit->second;
+
+    prop_uri_map_t::const_iterator pit = pmap.find(parent_prop);
+    if (pit == pmap.end()) return;
+    const uri_set_t& uset = pit->second;
+
+    uri_set_t::iterator it;
+    for (it = uset.begin(); it != uset.end(); ++it) {
+        output.push_back(*it);
     }
 }
 

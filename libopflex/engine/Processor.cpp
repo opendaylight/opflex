@@ -608,6 +608,7 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
     } else if (uit->details->local) {
         uit->details->state = UPDATED;
         uri_index.modify(uit, change_expiration(nexp));
+        uri_index.modify(uit, change_last_xid(0));
     } else {
         uri_index.modify(uit, change_expiration(curtime));
     }

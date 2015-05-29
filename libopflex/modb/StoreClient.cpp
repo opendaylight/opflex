@@ -81,6 +81,11 @@ bool StoreClient::putIfModified(class_id_t class_id,
     return r->putIfModified(class_id, uri, oi);
 }
 
+bool StoreClient::isPresent(class_id_t class_id, const URI& uri) const {
+    Region* r = store->getRegion(class_id);
+    return r->isPresent(uri);
+}
+
 boost::shared_ptr<const ObjectInstance> StoreClient::get(class_id_t class_id,
                                                          const URI& uri) const {
     Region* r = store->getRegion(class_id);

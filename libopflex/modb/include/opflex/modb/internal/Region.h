@@ -67,6 +67,15 @@ public:
     void addClass(const ClassInfo& class_info);
 
     /**
+     * Check whether an item exists in the region.  Note that it could
+     * be deleted between checking for presense and calling get().
+     *
+     * @param uri the URI for the object instance
+     * @return true if the item is present in the store.
+     */
+    bool isPresent(const URI& uri);
+
+    /**
      * Get the object instance associated with the specified URI
      *
      * @param uri the URI to look up
