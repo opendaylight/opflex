@@ -591,7 +591,7 @@ bool EchoGen::operator () (rpc::SendHandler & handler) {
         return false;
     }
 
-#ifndef NDEBUG
+#if 0
     for(size_t i = 0; i < kNcanaries; ++i) {
         if (!handler.String(canary)) {
             LOG(ERROR)
@@ -679,7 +679,7 @@ void CommunicationPeer::timeout() {
     ;
 
     sendEchoReq();
-#ifndef NDEBUG
+#if 0
     /* generate even more traffic */
     sendEchoReq();
     sendEchoReq();
@@ -1056,6 +1056,7 @@ bool CommunicationPeer::__checkInvariants() const {
     return result;
 }
 
+#if 0
 char const EchoGen::canary[] =
                     "_01_qwertyuiopasdfghjklzxcvbnm"
                     "_02_QWERTYUIOPASDFGHJKLZXCVBNM"
@@ -1315,6 +1316,7 @@ char const EchoGen::canary[] =
                     "_16_QWERTYUIOPASDFGHJ"
 ;
 size_t const EchoGen::kNcanaries = 20;
+#endif
 #endif
 
 } // namespace internal
