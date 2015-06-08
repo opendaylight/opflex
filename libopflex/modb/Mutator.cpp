@@ -136,17 +136,18 @@ void Mutator::commit() {
     StoreClient::notif_t raw_notifs;
     StoreClient::notif_t notifs;
     BOOST_FOREACH(obj_map_t::value_type& objt, pimpl->obj_map) {
-        pimpl->client.put(objt.second->getClassId(), objt.first, 
-                          objt.second);
-        raw_notifs[objt.first] = objt.second->getClassId();
+        if (pimpl->client.putIfModified(objt.second->getClassId(),
+                                        objt.first,
+                                        objt.second))
+            raw_notifs[objt.first] = objt.second->getClassId();
 
     }
     BOOST_FOREACH(uri_prop_uri_map_t::value_type& upt, pimpl->added_children) {
         BOOST_FOREACH(prop_uri_map_t::value_type& pt, upt.second) {
             BOOST_FOREACH(const reference_t& ut, pt.second) {
-                raw_notifs[upt.first.second] = upt.first.first;
-                pimpl->client.addChild(ut.first, ut.second, pt.first,
-                                upt.first.first, upt.first.second);
+                if (pimpl->client.addChild(ut.first, ut.second, pt.first,
+                                           upt.first.first, upt.first.second))
+                    raw_notifs[upt.first.second] = upt.first.first;
 
             }
         }
@@ -157,8 +158,8 @@ void Mutator::commit() {
     }
 
     BOOST_FOREACH(const reference_t& rt, pimpl->removed_objects) {
-        pimpl->client.remove(rt.first, rt.second, false);
-        pimpl->client.queueNotification(rt.first, rt.second, notifs);
+        if (pimpl->client.remove(rt.first, rt.second, false))
+            pimpl->client.queueNotification(rt.first, rt.second, notifs);
     }
 
     pimpl->obj_map.clear();
