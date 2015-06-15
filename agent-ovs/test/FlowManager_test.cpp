@@ -348,7 +348,7 @@ public:
     void initExpEp(shared_ptr<Endpoint>& ep,
                    shared_ptr<EpGroup>& epg,
                    uint32_t fdId = 0, uint32_t bdId = 1, uint32_t rdId = 1,
-                   bool arpOn = true);
+                   bool arpOn = true, bool routeOn = true);
 
     /** Initialize flows related to IP address mapping */
     void initExpIpMapping(bool natEpgMap = true, bool nextHop = false);
@@ -550,8 +550,8 @@ void FlowManagerFixture::routeModeTest() {
     initExpStatic();
     initExpEpg(epg0);
     initExpBd(1, 0, 1, false);
-    initExpEp(ep0, epg0, 0, 1, 1);
-    initExpEp(ep2, epg0, 0, 1, 1);
+    initExpEp(ep0, epg0, 0, 1, 1, true, false);
+    initExpEp(ep2, epg0, 0, 1, 1, true, false);
     WAIT_FOR_TABLES("disable", 500);
 
     /* Enable routing */
@@ -1561,7 +1561,7 @@ void FlowManagerFixture::initExpRd(uint32_t rdId) {
 void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                                    shared_ptr<EpGroup>& epg,
                                    uint32_t fdId, uint32_t bdId, uint32_t rdId,
-                                   bool arpOn) {
+                                   bool arpOn, bool routeOn) {
     string mac = ep->getMAC().get().toString();
     uint32_t port = portmapper.FindPort(ep->getInterfaceName().get());
     const unordered_set<string>& ips = ep->getIPs();
@@ -1606,41 +1606,43 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
              .isEthDst(mac).actions().load(DEPG, vnid)
              .load(OUTPORT, port).go(POL).done());
 
-        BOOST_FOREACH(const string& ip, ips) {
-            address ipa = address::from_string(ip);
-            if (ipa.is_v4()) {
-                // route
-                ADDF(Bldr().table(RT).priority(500).ip()
-                     .reg(RD, rdId)
-                     .isEthDst(rmac).isIpDst(ip)
-                     .actions().load(DEPG, vnid)
-                     .load(OUTPORT, port).ethSrc(rmac)
-                     .ethDst(mac).decTtl().go(POL).done());
-                if (arpOn) {
-                    // arp optimization
-                    ADDF(Bldr().table(BR).priority(20).arp()
-                         .reg(BD, bdId).reg(RD, rdId)
-                         .isEthDst(bmac).isTpa(ip).isArpOp(1)
+        if (routeOn) {
+            BOOST_FOREACH(const string& ip, ips) {
+                address ipa = address::from_string(ip);
+                if (ipa.is_v4()) {
+                    // route
+                    ADDF(Bldr().table(RT).priority(500).ip()
+                         .reg(RD, rdId)
+                         .isEthDst(rmac).isIpDst(ip)
                          .actions().load(DEPG, vnid)
-                         .load(OUTPORT, port)
-                         .ethDst(mac).go(POL).done());
-                }
-            } else {
-                // route
-                ADDF(Bldr().table(RT).priority(500).ipv6()
-                     .reg(RD, rdId)
-                     .isEthDst(rmac).isIpv6Dst(ip)
-                     .actions().load(DEPG, vnid)
-                     .load(OUTPORT, port).ethSrc(rmac)
-                     .ethDst(mac).decTtl().go(POL).done());
-                if (arpOn) {
-                    // nd optimization
-                    ADDF(Bldr().table(BR).priority(20).icmp6()
-                         .reg(BD, bdId).reg(RD, rdId)
-                         .isEthDst(mmac).icmp_type(135).icmp_code(0)
-                         .isNdTarget(ip).actions().load(DEPG, vnid)
-                         .load(OUTPORT, port)
-                         .ethDst(mac).go(POL).done());
+                         .load(OUTPORT, port).ethSrc(rmac)
+                         .ethDst(mac).decTtl().go(POL).done());
+                    if (arpOn) {
+                        // arp optimization
+                        ADDF(Bldr().table(BR).priority(20).arp()
+                             .reg(BD, bdId).reg(RD, rdId)
+                             .isEthDst(bmac).isTpa(ip).isArpOp(1)
+                             .actions().load(DEPG, vnid)
+                             .load(OUTPORT, port)
+                             .ethDst(mac).go(POL).done());
+                    }
+                } else {
+                    // route
+                    ADDF(Bldr().table(RT).priority(500).ipv6()
+                         .reg(RD, rdId)
+                         .isEthDst(rmac).isIpv6Dst(ip)
+                         .actions().load(DEPG, vnid)
+                         .load(OUTPORT, port).ethSrc(rmac)
+                         .ethDst(mac).decTtl().go(POL).done());
+                    if (arpOn) {
+                        // nd optimization
+                        ADDF(Bldr().table(BR).priority(20).icmp6()
+                             .reg(BD, bdId).reg(RD, rdId)
+                             .isEthDst(mmac).icmp_type(135).icmp_code(0)
+                             .isNdTarget(ip).actions().load(DEPG, vnid)
+                             .load(OUTPORT, port)
+                             .ethDst(mac).go(POL).done());
+                    }
                 }
             }
         }

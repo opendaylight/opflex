@@ -1225,42 +1225,43 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
     }
 
     if (rdId != 0 && bdId != 0 && ofPort != OFPP_NONE) {
-        BOOST_FOREACH (const address& ipAddr, ipAddresses) {
-            if (virtualRouterEnabled &&
-                hasMac) {
-                FlowEntry *e0 = new FlowEntry();
-                SetDestMatchEp(e0, 500, GetRouterMacAddr(), ipAddr, rdId);
-                SetDestActionEp(e0, epgVnid, ofPort, GetRouterMacAddr(),
-                                macAddr);
-                elRouteDst.push_back(FlowEntryPtr(e0));
-            }
+        uint8_t routingMode =
+            getEffectiveRoutingMode(agent.getPolicyManager(), epgURI.get());
 
-            if (arpMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v4()) {
-                FlowEntry *e1 = new FlowEntry();
-                SetDestMatchArp(e1, 20, ipAddr, bdId, rdId);
-                if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
-                    // ARP optimization: broadcast -> unicast
-                    SetDestActionEpArp(e1, epgVnid, ofPort,
-                                       hasMac ? macAddr : NULL);
+        if (virtualRouterEnabled && hasMac &&
+            routingMode == RoutingModeEnumT::CONST_ENABLED) {
+            BOOST_FOREACH (const address& ipAddr, ipAddresses) {
+                {
+                    FlowEntry *e0 = new FlowEntry();
+                    SetDestMatchEp(e0, 500, GetRouterMacAddr(), ipAddr, rdId);
+                    SetDestActionEp(e0, epgVnid, ofPort, GetRouterMacAddr(),
+                                    macAddr);
+                    elRouteDst.push_back(FlowEntryPtr(e0));
                 }
-                // else drop the ARP packet
-                elBridgeDst.push_back(FlowEntryPtr(e1));
-            }
 
-            if (ndMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v6()) {
-                FlowEntry *e1 = new FlowEntry();
-                SetDestMatchNd(e1, 20, &ipAddr, bdId, rdId);
-                if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
-                    // neighbor discovery optimization: broadcast -> unicast
-                    SetDestActionEpArp(e1, epgVnid, ofPort,
-                                       hasMac ? macAddr : NULL);
+                if (arpMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v4()) {
+                    FlowEntry *e1 = new FlowEntry();
+                    SetDestMatchArp(e1, 20, ipAddr, bdId, rdId);
+                    if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
+                        // ARP optimization: broadcast -> unicast
+                        SetDestActionEpArp(e1, epgVnid, ofPort, macAddr);
+                    }
+                    // else drop the ARP packet
+                    elBridgeDst.push_back(FlowEntryPtr(e1));
                 }
-                // else drop the ND packet
-                elBridgeDst.push_back(FlowEntryPtr(e1));
-            }
-        }
 
-        if (virtualRouterEnabled && hasMac) {
+                if (ndMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v6()) {
+                    FlowEntry *e1 = new FlowEntry();
+                    SetDestMatchNd(e1, 20, &ipAddr, bdId, rdId);
+                    if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
+                        // neighbor discovery optimization: broadcast -> unicast
+                        SetDestActionEpArp(e1, epgVnid, ofPort, macAddr);
+                    }
+                    // else drop the ND packet
+                    elBridgeDst.push_back(FlowEntryPtr(e1));
+                }
+            }
+
             // IP address mappings
             BOOST_FOREACH (const Endpoint::IPAddressMapping& ipm,
                            endPoint.getIPAddressMappings()) {
@@ -1495,38 +1496,36 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         WriteFlow(epgId, POL_TABLE_ID, NULL);
     }
 
-    if (virtualRouterEnabled) {
-        if (rdId != 0 && bdId != 0) {
-            UpdateGroupSubnets(epgURI, bdId, rdId);
+    if (virtualRouterEnabled && rdId != 0 && bdId != 0) {
+        UpdateGroupSubnets(epgURI, bdId, rdId);
 
-            FlowEntryList bridgel;
-            uint8_t routingMode =
-                getEffectiveRoutingMode(agent.getPolicyManager(), epgURI);
+        FlowEntryList bridgel;
+        uint8_t routingMode =
+            getEffectiveRoutingMode(agent.getPolicyManager(), epgURI);
 
-            if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
-                FlowEntry *br = new FlowEntry();
-                br->entry->priority = 2;
-                br->entry->table_id = BRIDGE_TABLE_ID;
-                match_set_reg(&br->entry->match, 4 /* REG4 */, bdId);
-                ActionBuilder ab;
-                ab.SetGotoTable(ROUTE_TABLE_ID);
-                ab.Build(br->entry);
-                bridgel.push_back(FlowEntryPtr(br));
+        if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
+            FlowEntry *br = new FlowEntry();
+            br->entry->priority = 2;
+            br->entry->table_id = BRIDGE_TABLE_ID;
+            match_set_reg(&br->entry->match, 4 /* REG4 */, bdId);
+            ActionBuilder ab;
+            ab.SetGotoTable(ROUTE_TABLE_ID);
+            ab.Build(br->entry);
+            bridgel.push_back(FlowEntryPtr(br));
 
-                if (routerAdv) {
-                    FlowEntry *r = new FlowEntry();
-                    SetDestMatchNd(r, 20, NULL, bdId, rdId, 
-                                   FlowManager::GetNDCookie(),
-                                   ND_ROUTER_SOLICIT);
-                    SetActionController(r);
-                    bridgel.push_back(FlowEntryPtr(r));
+            if (routerAdv) {
+                FlowEntry *r = new FlowEntry();
+                SetDestMatchNd(r, 20, NULL, bdId, rdId, 
+                               FlowManager::GetNDCookie(),
+                               ND_ROUTER_SOLICIT);
+                SetActionController(r);
+                bridgel.push_back(FlowEntryPtr(r));
 
-                    if (!isSyncing)
-                        advertManager.scheduleInitialRouterAdv();
-                }
+                if (!isSyncing)
+                    advertManager.scheduleInitialRouterAdv();
             }
-            WriteFlow(bdURI.get().toString(), BRIDGE_TABLE_ID, bridgel);
         }
+        WriteFlow(bdURI.get().toString(), BRIDGE_TABLE_ID, bridgel);
     }
 
     FlowEntryList egOutFlows;
@@ -1589,7 +1588,7 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t bdId, uint32_t rdId) 
         optional<const string&> networkAddrStr = sn->getAddress();
         bool hasRouterIp = false;
         boost::system::error_code ec;
-        if (virtualRouterEnabled && networkAddrStr) {
+        if (networkAddrStr) {
             address networkAddr, routerIp;
             networkAddr = address::from_string(networkAddrStr.get(), ec);
             if (ec) {
