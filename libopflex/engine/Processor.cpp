@@ -53,6 +53,7 @@ using namespace internal;
 static const uint64_t LOCAL_REFRESH_RATE = 1000*60*30;
 static const uint64_t DEFAULT_PROC_DELAY = 250;
 static const uint64_t DEFAULT_RETRY_DELAY = 1000*10;
+static const uint64_t TOMBSTONE_DELAY = 1000*60*5;
 static const uint64_t FIRST_XID = (uint64_t)1 << 63;
 
 size_t hash_value(pair<class_id_t, URI> const& p);
@@ -77,7 +78,7 @@ inline uint64_t now(uv_loop_t* loop) {
     return uv_now(loop);
 }
 
-Processor::change_expiration::change_expiration(uint64_t new_exp_) 
+Processor::change_expiration::change_expiration(uint64_t new_exp_)
     : new_exp(new_exp_) {}
 
 void Processor::change_expiration::operator()(Processor::item& i) {
@@ -106,19 +107,25 @@ void Processor::addRef(obj_state_by_exp::iterator& it,
     if (it->details->urirefs.find(up) == it->details->urirefs.end()) {
         obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
         obj_state_by_uri::iterator uit = uri_index.find(up.second);
+        if (uit != uri_index.end() && uit->details->state == DELETED) {
+            // If there's a tombstone object in place, remove it and
+            // re-add a fresh one
+            uri_index.erase(uit);
+            uit = uri_index.end();
+        }
         if (uit == uri_index.end()) {
-            obj_state.insert(item(up.second, up.first, 
+            obj_state.insert(item(up.second, up.first,
                                   0, LOCAL_REFRESH_RATE,
                                   UNRESOLVED, false));
             // XXX - TODO create the resolver object as well
             uit = uri_index.find(up.second);
-        } 
+        }
         uit->details->refcount += 1;
         LOG(DEBUG2) << "addref " << uit->uri.toString()
                     << " (from " << it->uri.toString() << ")"
                     << " " << uit->details->refcount
                     << " state " << uit->details->state;
-        
+
         it->details->urirefs.insert(up);
     }
 }
@@ -338,6 +345,10 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             newState = IN_SYNC;
         else
             newState = REMOTE;
+    case DELETED:
+        LOG(DEBUG) << "Purging state for " << it->uri.toString();
+        exp_index.erase(it);
+        return;
     default:
         newState = curState;
         break;
@@ -357,7 +368,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     }
 
     LOG(DEBUG2) << "Processing " << (local ? "local" : "nonlocal")
-               << " item " << it->uri.toString() 
+               << " item " << it->uri.toString()
                << " of class " << ci.getName()
                << " and type " << ci.getType()
                << " in state " << curState;
@@ -385,7 +396,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 client->remove(it->details->class_id,
                                it->uri,
                                false, &notifs);
-                client->queueNotification(it->details->class_id, it->uri, 
+                client->queueNotification(it->details->class_id, it->uri,
                                           notifs);
                 oi.reset();
                 newState = DELETED;
@@ -399,12 +410,12 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     // needed.
     boost::unordered_set<reference_t> visited;
     if (oi && ci.getType() != ClassInfo::REVERSE_RELATIONSHIP) {
-        BOOST_FOREACH(const ClassInfo::property_map_t::value_type& p, 
+        BOOST_FOREACH(const ClassInfo::property_map_t::value_type& p,
                       ci.getProperties()) {
             if (p.second.getType() == PropertyInfo::REFERENCE) {
                 if (p.second.getCardinality() == PropertyInfo::SCALAR) {
                     if (oi->isSet(p.first,
-                                  PropertyInfo::REFERENCE, 
+                                  PropertyInfo::REFERENCE,
                                   PropertyInfo::SCALAR)) {
                         reference_t u = oi->getReference(p.first);
                         visited.insert(u);
@@ -426,65 +437,63 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         if (visited.find(up) == visited.end()) {
             removeRef(it, up);
         }
-    } 
+    }
 
     if (curRefCount > 0) {
         resolveObj(ci.getType(), *it, newexp);
         newState = RESOLVED;
-
-        it->details->state = newState;
     } else if (oi) {
         if (declareObj(ci.getType(), *it, newexp))
             newState = IN_SYNC;
-
-        it->details->state = newState;
     } else if (newState == DELETED) {
         client->removeChildren(it->details->class_id,
                                it->uri,
                                &notifs);
 
-        if (curRefCount <= 0) {
-            LOG(DEBUG) << "Purging state for " << it->uri.toString();
-
-            switch (ci.getType()) {
-            case ClassInfo::POLICY:
-                if (it->details->resolve_time > 0) {
-                    vector<reference_t> refs;
-                    refs.push_back(make_pair(it->details->class_id, it->uri));
-                    PolicyUnresolveReq* req =
-                        new PolicyUnresolveReq(this, nextXid++, refs);
-                    pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
-                }
-                break;
-            case ClassInfo::REMOTE_ENDPOINT:
-                if (it->details->resolve_time > 0) {
-                    vector<reference_t> refs;
-                    refs.push_back(make_pair(it->details->class_id, it->uri));
-                    EndpointUnresolveReq* req = 
-                        new EndpointUnresolveReq(this, nextXid++, refs);
-                    pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
-                }
-                break;
-            case ClassInfo::LOCAL_ENDPOINT:
-                {
-                    vector<reference_t> refs;
-                    refs.push_back(make_pair(it->details->class_id, it->uri));
-                    EndpointUndeclareReq* req = 
-                        new EndpointUndeclareReq(this, nextXid++, refs);
-                    pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
-                }
-                break;
-            default:
-                // do nothing
-                break;
+        switch (ci.getType()) {
+        case ClassInfo::POLICY:
+            if (it->details->resolve_time > 0) {
+                LOG(DEBUG) << "Unresolving " << it->uri.toString();
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id, it->uri));
+                PolicyUnresolveReq* req =
+                    new PolicyUnresolveReq(this, nextXid++, refs);
+                pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
             }
-
-            exp_index.erase(it);
+            break;
+        case ClassInfo::REMOTE_ENDPOINT:
+            if (it->details->resolve_time > 0) {
+                LOG(DEBUG) << "Unresolving " << it->uri.toString();
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id, it->uri));
+                EndpointUnresolveReq* req =
+                    new EndpointUnresolveReq(this, nextXid++, refs);
+                pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
+            }
+            break;
+        case ClassInfo::LOCAL_ENDPOINT:
+            {
+                LOG(DEBUG) << "Undeclaring " << it->uri.toString();
+                vector<reference_t> refs;
+                refs.push_back(make_pair(it->details->class_id, it->uri));
+                EndpointUndeclareReq* req =
+                    new EndpointUndeclareReq(this, nextXid++, refs);
+                pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
+            }
+            break;
+        default:
+            // do nothing
+            break;
         }
+
+        //LOG(DEBUG) << "Purging state for " << it->uri.toString();
+        //exp_index.erase(it);
+        LOG(DEBUG) << "Creating tombstone for " << it->uri.toString();
+        newexp = now(&proc_loop) + TOMBSTONE_DELAY;
     }
 
-    if (newState != DELETED)
-        exp_index.modify(it, Processor::change_expiration(newexp));
+    it->details->state = newState;
+    exp_index.modify(it, Processor::change_expiration(newexp));
 
     guard.release();
 
@@ -556,7 +565,7 @@ void Processor::start() {
     connect_async.data = this;
     uv_async_init(&proc_loop, &connect_async, connect_async_cb);
     proc_timer.data = this;
-    uv_timer_start(&proc_timer, &timer_callback, 
+    uv_timer_start(&proc_timer, &timer_callback,
                    processingDelay, processingDelay);
     uv_thread_create(&proc_thread, proc_thread_func, this);
 
@@ -565,7 +574,7 @@ void Processor::start() {
 
 void Processor::stop() {
     if (!proc_active) return;
-    
+
     LOG(DEBUG) << "Stopping OpFlex Processor";
     proc_active = false;
 
@@ -578,12 +587,12 @@ void Processor::stop() {
     pool.stop();
 }
 
-void Processor::objectUpdated(modb::class_id_t class_id, 
+void Processor::objectUpdated(modb::class_id_t class_id,
                               const modb::URI& uri) {
     doObjectUpdated(class_id, uri, false);
 }
 
-void Processor::remoteObjectUpdated(modb::class_id_t class_id, 
+void Processor::remoteObjectUpdated(modb::class_id_t class_id,
                                     const modb::URI& uri) {
     doObjectUpdated(class_id, uri, true);
 }
@@ -591,7 +600,7 @@ void Processor::remoteObjectUpdated(modb::class_id_t class_id,
 // if remote is true, then the object is coming from the server,
 // otherwise the object is coming from the listener, which could mean
 // either local or remote.
-void Processor::doObjectUpdated(modb::class_id_t class_id, 
+void Processor::doObjectUpdated(modb::class_id_t class_id,
                                 const modb::URI& uri,
                                 bool remote) {
     util::LockGuard guard(&item_mutex);
@@ -600,9 +609,16 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
 
     uint64_t curtime = now(&proc_loop);
     uint64_t nexp = 0;
+    if (uit != uri_index.end() && uit->details->state == DELETED) {
+        // If there's a tombstone object in place, remove it and
+        // re-add a fresh one with the "local" bit set correctly
+        remote = !uit->details->local;
+        uri_index.erase(uit);
+        uit = uri_index.end();
+    }
     if (!remote) nexp = curtime+processingDelay;
     if (uit == uri_index.end()) {
-        obj_state.insert(item(uri, class_id, 
+        obj_state.insert(item(uri, class_id,
                               nexp, LOCAL_REFRESH_RATE,
                               remote ? REMOTE : NEW, remote == false));
     } else if (uit->details->local) {
