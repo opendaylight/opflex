@@ -116,7 +116,7 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
 }
 
 static uint32_t getOutputRegValue(const FlowEntryPtr& fe) {
-    struct ofpact* a;
+    const struct ofpact* a;
     OFPACT_FOR_EACH (a, fe->entry->ofpacts, fe->entry->ofpacts_len) {
         if (a->type == OFPACT_SET_FIELD) {
             struct ofpact_set_field* sf = ofpact_get_SET_FIELD(a);

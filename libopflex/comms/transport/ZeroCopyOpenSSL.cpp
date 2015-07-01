@@ -363,7 +363,7 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
     ;
 
     if (nread <= 0) {
-        VLOG(2)
+        VLOG(4)
             << peer
             << " nread = "
             << nread

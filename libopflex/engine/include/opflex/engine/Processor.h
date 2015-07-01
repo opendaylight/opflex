@@ -122,7 +122,7 @@ public:
      * underlying object store.
      */
     void stop();
-    
+
     /**
      * Get the parent store
      */
@@ -139,11 +139,11 @@ public:
     modb::mointernal::StoreClient* getSystemClient() { return client; }
 
     // See AbstractObjectListener::objectUpdated
-    virtual void objectUpdated(modb::class_id_t class_id, 
+    virtual void objectUpdated(modb::class_id_t class_id,
                                const modb::URI& uri);
 
     // See MOSerializer::Listener::remoteObjectUpdated
-    virtual void remoteObjectUpdated(modb::class_id_t class_id, 
+    virtual void remoteObjectUpdated(modb::class_id_t class_id,
                                      const modb::URI& uri);
 
     /**
@@ -168,7 +168,7 @@ public:
     void setRetryDelay(uint64_t delay) { retryDelay = delay; }
 
     // See HandlerFactory::newHandler
-    virtual 
+    virtual
     internal::OpflexHandler* newHandler(internal::OpflexConnection* conn);
 
     /**
@@ -233,8 +233,7 @@ private:
             references it in the current queue.  This is used for
             newly-added items that are only orphaned transiently. */
         PENDING_DELETE,
-        /** An item that's actually deleted.  Items won't actually
-            appear in this state in the index. */
+        /** A deleted item tombstone. */
         DELETED
     };
 
@@ -253,7 +252,7 @@ private:
          * State of the managed object
          */
         ItemState state;
-        
+
         /**
          * The number of times the object has been referenced in the
          * system.
@@ -350,18 +349,18 @@ private:
         boost::multi_index::indexed_by<
             boost::multi_index::hashed_unique<
                 boost::multi_index::tag<uri_tag>,
-                boost::multi_index::member<item, 
-                                           modb::URI, 
+                boost::multi_index::member<item,
+                                           modb::URI,
                                            &item::uri> > ,
             boost::multi_index::hashed_non_unique<
                 boost::multi_index::tag<xid_tag>,
-                boost::multi_index::member<item, 
-                                           uint64_t, 
+                boost::multi_index::member<item,
+                                           uint64_t,
                                            &item::last_xid> > ,
             boost::multi_index::ordered_non_unique<
                 boost::multi_index::tag<expiration_tag>,
-                boost::multi_index::member<item, 
-                                           uint64_t, 
+                boost::multi_index::member<item,
+                                           uint64_t,
                                            &item::expiration> >
             >
         > object_state_t;
@@ -436,7 +435,7 @@ private:
     bool isOrphan(const item& item);
     bool isParentSyncObject(const item& item);
     void doProcess();
-    void doObjectUpdated(modb::class_id_t class_id, 
+    void doObjectUpdated(modb::class_id_t class_id,
                          const modb::URI& uri,
                          bool remote);
     void sendToRole(const item& it, uint64_t& newexp,
