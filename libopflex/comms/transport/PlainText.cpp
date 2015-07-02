@@ -42,7 +42,7 @@ int Cb< PlainText >::send_cb(CommunicationPeer const * peer) {
 
     if (!peer->pendingBytes_) {
         /* great success! */
-        VLOG(3)
+        VLOG(4)
             << "Nothing left to be sent!"
         ;
 
