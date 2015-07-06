@@ -446,6 +446,9 @@ private:
     bool declareObj(modb::ClassInfo::class_type_t type, const item& it,
                     uint64_t& newexp);
     void handleNewConnections();
+    void clearTombstone(obj_state_by_uri& uri_index,
+                        obj_state_by_uri::iterator& uit,
+                        bool* remote = NULL);
 
     friend class MOSerializer;
 };

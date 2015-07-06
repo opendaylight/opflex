@@ -101,18 +101,25 @@ bool Processor::hasWork(/* out */ obj_state_by_exp::iterator& it) {
     return false;
 }
 
+void Processor::clearTombstone(obj_state_by_uri& uri_index,
+                               obj_state_by_uri::iterator& uit,
+                               bool* remote) {
+    if (uit != uri_index.end() && uit->details->state == DELETED) {
+        // If there's a tombstone object in place, remove it and
+        // re-add a fresh one
+        if (remote) *remote = !uit->details->local;
+        uri_index.erase(uit);
+        uit = uri_index.end();
+    }
+}
+
 // add a reference if it doesn't already exist
 void Processor::addRef(obj_state_by_exp::iterator& it,
                        const reference_t& up) {
     if (it->details->urirefs.find(up) == it->details->urirefs.end()) {
         obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
         obj_state_by_uri::iterator uit = uri_index.find(up.second);
-        if (uit != uri_index.end() && uit->details->state == DELETED) {
-            // If there's a tombstone object in place, remove it and
-            // re-add a fresh one
-            uri_index.erase(uit);
-            uit = uri_index.end();
-        }
+        clearTombstone(uri_index, uit);
         if (uit == uri_index.end()) {
             obj_state.insert(item(up.second, up.first,
                                   0, LOCAL_REFRESH_RATE,
@@ -333,6 +340,13 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             newexp = now(&proc_loop) + it->details->refresh_rate;
     }
 
+    const ClassInfo& ci = store->getClassInfo(it->details->class_id);
+    LOG(DEBUG2) << "Processing " << (local ? "local" : "nonlocal")
+               << " item " << it->uri.toString()
+               << " of class " << ci.getName()
+               << " and type " << ci.getType()
+               << " in state " << curState;
+
     ItemState newState;
 
     switch (curState) {
@@ -345,6 +359,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             newState = IN_SYNC;
         else
             newState = REMOTE;
+        break;
     case DELETED:
         LOG(DEBUG) << "Purging state for " << it->uri.toString();
         exp_index.erase(it);
@@ -354,7 +369,6 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         break;
     }
 
-    const ClassInfo& ci = store->getClassInfo(it->details->class_id);
     shared_ptr<const ObjectInstance> oi;
     if (!client->get(it->details->class_id, it->uri, oi)) {
         // item removed
@@ -366,12 +380,6 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             break;
         }
     }
-
-    LOG(DEBUG2) << "Processing " << (local ? "local" : "nonlocal")
-               << " item " << it->uri.toString()
-               << " of class " << ci.getName()
-               << " and type " << ci.getType()
-               << " in state " << curState;
 
     // Check whether this item needs to be garbage collected
     if (oi && isOrphan(*it)) {
@@ -607,13 +615,7 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
 
     uint64_t curtime = now(&proc_loop);
     uint64_t nexp = 0;
-    if (uit != uri_index.end() && uit->details->state == DELETED) {
-        // If there's a tombstone object in place, remove it and
-        // re-add a fresh one with the "local" bit set correctly
-        remote = !uit->details->local;
-        uri_index.erase(uit);
-        uit = uri_index.end();
-    }
+    clearTombstone(uri_index, uit, &remote);
     if (!remote) nexp = curtime+processingDelay;
     if (uit == uri_index.end()) {
         obj_state.insert(item(uri, class_id,
