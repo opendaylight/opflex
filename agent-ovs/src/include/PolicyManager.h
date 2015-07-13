@@ -251,16 +251,6 @@ public:
     boost::optional<opflex::modb::URI> getGroupForVnid(uint32_t vnid);
 
     /**
-     * Get the virtual-network identifier (vnid) associated with the
-     * specified L3 external network
-     *
-     * @param l3net the URI for the L3ExternalNetwork
-     * @return vnid of the network if network is found and its vnid is set,
-     * boost::none otherwise
-     */
-    boost::optional<uint32_t> getVnidForL3ExtNet(const opflex::modb::URI& l3net);
-
-    /**
      * Get the multicast IP group configured for an endpoint group.
      *
      * @param eg the URI for the endpoint group
@@ -364,7 +354,6 @@ private:
     };
 
     struct L3NetworkState {
-        boost::optional<boost::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
         boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
     };
 

@@ -73,6 +73,7 @@ static const char * ID_NMSPC_FD  = "floodDomain";
 static const char * ID_NMSPC_BD  = "bridgeDomain";
 static const char * ID_NMSPC_RD  = "routingDomain";
 static const char * ID_NMSPC_CON = "contract";
+static const char * ID_NMSPC_EXTNET = "externalNetwork";
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
@@ -102,6 +103,7 @@ void FlowManager::Start()
     idGen.initNamespace(ID_NMSPC_BD);
     idGen.initNamespace(ID_NMSPC_RD);
     idGen.initNamespace(ID_NMSPC_CON);
+    idGen.initNamespace(ID_NMSPC_EXTNET);
 
     workQ.start();
 
@@ -1701,11 +1703,7 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
         extDom->resolveGbpL3ExternalNetwork(extNets);
 
         BOOST_FOREACH(shared_ptr<L3ExternalNetwork> net, extNets) {
-            optional<shared_ptr<InstContext> > instContext =
-                net->resolveGbpeInstContext();
-            if (!instContext || !instContext.get()->isEncapIdSet()) continue;
-
-            uint32_t netVnid = instContext.get()->getEncapId().get();
+            uint32_t netVnid = getExtNetVnid(net->getURI());
             vector<shared_ptr<ExternalSubnet> > extSubs;
             net->resolveGbpExternalSubnet(extSubs);
             optional<shared_ptr<L3ExternalNetworkToNatEPGroupRSrc> > natRef =
@@ -1801,6 +1799,12 @@ FlowManager::HandleDomainUpdate(class_id_t cid, const URI& domURI) {
         if (!FloodContext::resolve(agent.getFramework(), domURI)) {
             LOG(DEBUG) << "Cleaning up for FloodContext: " << domURI;
             removeFromMulticastList(domURI);
+        }
+        break;
+    case L3ExternalNetwork::CLASS_ID:
+        if (!L3ExternalNetwork::resolve(agent.getFramework(), domURI)) {
+            LOG(DEBUG) << "Cleaning up for L3ExtNet: " << domURI;
+            idGen.erase(GetIdNamespace(cid), domURI);
         }
         break;
     }
@@ -2290,9 +2294,9 @@ void FlowManager::getGroupVnidAndRdId(const unordered_set<URI>& uris,
         if (vnid) {
             rd = pm.getRDForGroup(u);
         } else {
-            vnid = pm.getVnidForL3ExtNet(u);
-            if (vnid) {
-                rd = pm.getRDForL3ExtNet(u);
+            rd = pm.getRDForL3ExtNet(u);
+            if (rd) {
+                vnid = getExtNetVnid(u);
             }
         }
         if (vnid && rd) {
@@ -2333,6 +2337,7 @@ const char * FlowManager::GetIdNamespace(class_id_t cid) {
     case BridgeDomain::CLASS_ID:    nmspc = ID_NMSPC_BD; break;
     case FloodDomain::CLASS_ID:     nmspc = ID_NMSPC_FD; break;
     case Contract::CLASS_ID:        nmspc = ID_NMSPC_CON; break;
+    case L3ExternalNetwork::CLASS_ID: nmspc = ID_NMSPC_EXTNET; break;
     default:
         assert(false);
     }
@@ -2341,6 +2346,12 @@ const char * FlowManager::GetIdNamespace(class_id_t cid) {
 
 uint32_t FlowManager::GetId(class_id_t cid, const URI& uri) {
     return idGen.getId(GetIdNamespace(cid), uri);
+}
+
+uint32_t FlowManager::getExtNetVnid(const opflex::modb::URI& uri) {
+    // External networks are assigned private VNIDs that have bit 31 (MSB)
+    // set to 1. This is fine because legal VNIDs are 24-bits or less.
+    return (GetId(L3ExternalNetwork::CLASS_ID, uri) | (1 << 31));
 }
 
 void FlowManager::updateMulticastList(const optional<string>& mcastIp,

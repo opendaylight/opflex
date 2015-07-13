@@ -648,6 +648,8 @@ private:
 
     bool isSyncing;
 
+    uint32_t getExtNetVnid(const opflex::modb::URI& uri);
+
     /**
      * Class to reconcile flow/group table state with cached memory state
      */

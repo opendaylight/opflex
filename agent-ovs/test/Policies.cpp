@@ -242,7 +242,6 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     l3ext = rd->addGbpL3ExternalDomain("ext");
     l3ext_net = l3ext->addGbpL3ExternalNetwork("outside");
-    l3ext_net->addGbpeInstContext()->setEncapId(0xabcd);
     l3ext_net
         ->addGbpL3ExternalNetworkToProvContractRSrc(con1->getURI().toString());
     l3ext_net->addGbpL3ExternalNetworkToNatEPGroupRSrc()

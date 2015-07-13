@@ -1129,7 +1129,6 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanFlowManagerFixture) {
 
         l3ext = rd0->addGbpL3ExternalDomain("ext");
         l3ext_net = l3ext->addGbpL3ExternalNetwork("outside");
-        l3ext_net->addGbpeInstContext()->setEncapId(0xabcd);
         l3ext_net->addGbpExternalSubnet("outside")
             ->setAddress("5.5.0.0")
             .setPrefixLen(8);
@@ -1862,11 +1861,11 @@ void FlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
     if (natEpgMap) {
         ADDF(Bldr().table(RT).priority(262).ipv6().reg(RD, 1)
              .isIpv6Dst("fdf1::/16")
-             .actions().load(DEPG, 0xabcd).load(OUTPORT, 0x4242)
+             .actions().load(DEPG, 0x80000001).load(OUTPORT, 0x4242)
              .mdAct(0x2).go(POL).done());
         ADDF(Bldr().table(RT).priority(174).ip().reg(RD, 1)
              .isIpDst("5.0.0.0/8")
-             .actions().load(DEPG, 0xabcd).load(OUTPORT, 0x4242)
+             .actions().load(DEPG, 0x80000001).load(OUTPORT, 0x4242)
              .mdAct(0x2).go(POL).done());
     } else {
         ADDF(Bldr().table(RT).priority(262).ipv6().reg(RD, 1)
@@ -1880,9 +1879,9 @@ void FlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
     }
 
     ADDF(Bldr().table(NAT).priority(262).ipv6().reg(RD, 1)
-         .isIpv6Src("fdf1::/16").actions().load(SEPG, 0xabcd).go(POL).done());
+         .isIpv6Src("fdf1::/16").actions().load(SEPG, 0x80000001).go(POL).done());
     ADDF(Bldr().table(NAT).priority(174).ip().reg(RD, 1)
-         .isIpSrc("5.0.0.0/8").actions().load(SEPG, 0xabcd).go(POL).done());
+         .isIpSrc("5.0.0.0/8").actions().load(SEPG, 0x80000001).go(POL).done());
 
     if (nextHop) {
         ADDF(Bldr().table(SRC).priority(201).ip().in(42)

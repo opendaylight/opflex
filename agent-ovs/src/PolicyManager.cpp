@@ -63,6 +63,7 @@ void PolicyManager::start() {
     Subnet::registerListener(framework, &domainListener);
     InstContext::registerListener(framework, &domainListener);
     EpGroup::registerListener(framework, &domainListener);
+    L3ExternalNetwork::registerListener(framework, &domainListener);
 
     EpGroup::registerListener(framework, &contractListener);
     RoutingDomain::registerListener(framework, &contractListener);
@@ -95,6 +96,7 @@ void PolicyManager::stop() {
     Subnet::unregisterListener(framework, &domainListener);
     InstContext::unregisterListener(framework, &domainListener);
     EpGroup::unregisterListener(framework, &domainListener);
+    L3ExternalNetwork::unregisterListener(framework, &domainListener);
 
     EpGroup::unregisterListener(framework, &contractListener);
     RoutingDomain::unregisterListener(framework, &contractListener);
@@ -397,16 +399,6 @@ PolicyManager::getVnidForGroup(const opflex::modb::URI& eg) {
     lock_guard<mutex> guard(state_mutex);
     group_map_t::iterator it = group_map.find(eg);
     return it != group_map.end() && it->second.instContext &&
-           it->second.instContext.get()->getEncapId()
-           ? it->second.instContext.get()->getEncapId().get()
-           : optional<uint32_t>();
-}
-
-boost::optional<uint32_t>
-PolicyManager::getVnidForL3ExtNet(const opflex::modb::URI& l3n) {
-    lock_guard<mutex> guard(state_mutex);
-    l3n_map_t::iterator it = l3n_map.find(l3n);
-    return it != l3n_map.end() && it->second.instContext &&
            it->second.instContext.get()->getEncapId()
            ? it->second.instContext.get()->getEncapId().get()
            : optional<uint32_t>();
@@ -750,7 +742,6 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
 
             L3NetworkState& l3s = l3n_map[net->getURI()];
             l3s.routingDomain = rd;
-            l3s.instContext = net->resolveGbpeInstContext();
             updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                  net->getURI(), contractsToNotify);
         }

@@ -23,7 +23,6 @@ module[gbpe]
             parent[class=gbp/EpGroup]
             parent[class=gbp/BridgeDomain]
             parent[class=gbp/RoutingDomain]
-            parent[class=gbp/L3ExternalNetwork]
         }
         named
         {
