@@ -626,6 +626,21 @@ void FlowManagerFixture::arpModeTest() {
     initExpEp(ep2, epg0, 1, 1, 1, false);
     initSubnets(sns);
     WAIT_FOR_TABLES("disable", 500);
+
+    /* set discovery proxy mode on for ep0 */
+    ep0->setDiscoveryProxyMode(true);
+    epSrc.updateEndpoint(*ep0);
+    flowManager.endpointUpdated(ep0->getUUID());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0, 1);
+    initExpFd(1);
+    initExpBd(1, 1, 1, true);
+    initExpEp(ep0, epg0, 1, 1, 1, false);
+    initExpEp(ep2, epg0, 1, 1, 1, false);
+    initSubnets(sns);
+    WAIT_FOR_TABLES("discoveryproxy", 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(arpmode_vxlan, VxlanFlowManagerFixture) {
@@ -1565,6 +1580,9 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
     uint32_t port = portmapper.FindPort(ep->getInterfaceName().get());
     const unordered_set<string>& ips = ep->getIPs();
     uint32_t vnid = policyMgr.getVnidForGroup(epg->getURI()).get();
+    uint32_t tunPort = flowManager.GetTunnelPort();
+    address tunDstAddr = flowManager.GetTunnelDst();
+    uint32_t tunDst = tunDstAddr.to_v4().to_ulong();
 
     string bmac("ff:ff:ff:ff:ff:ff");
     uint8_t rmacArr[6];
@@ -1616,7 +1634,30 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                          .actions().load(DEPG, vnid)
                          .load(OUTPORT, port).ethSrc(rmac)
                          .ethDst(mac).decTtl().go(POL).done());
-                    if (arpOn) {
+                    if (ep->isDiscoveryProxyMode()) {
+                        // proxy arp
+                        ADDF(Bldr().table(BR).priority(20).arp()
+                             .reg(BD, bdId).reg(RD, rdId)
+                             .isEthDst(bmac).isTpa(ipa.to_string())
+                             .isArpOp(1)
+                             .actions().move(ETHSRC, ETHDST)
+                             .load(ETHSRC, "0x8000").load(ARPOP, 2)
+                             .move(ARPSHA, ARPTHA).load(ARPSHA, "0x8000")
+                             .move(ARPSPA, ARPTPA).load(ARPSPA,
+                                                        ipa.to_v4().to_ulong())
+                             .inport().done());
+                        ADDF(Bldr().table(BR).priority(21).arp()
+                             .reg(BD, bdId).reg(RD, rdId).in(tunPort)
+                             .isEthDst(bmac).isTpa(ipa.to_string())
+                             .isArpOp(1)
+                             .actions().move(ETHSRC, ETHDST)
+                             .load(ETHSRC, "0x8000").load(ARPOP, 2)
+                             .move(ARPSHA, ARPTHA).load(ARPSHA, "0x8000")
+                             .move(ARPSPA, ARPTPA).load(ARPSPA,
+                                                        ipa.to_v4().to_ulong())
+                             .move(SEPG, TUNID).load(TUNDST, tunDst)
+                             .inport().done());
+                    } else if (arpOn) {
                         // arp optimization
                         ADDF(Bldr().table(BR).priority(20).arp()
                              .reg(BD, bdId).reg(RD, rdId)
@@ -1633,7 +1674,17 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                          .actions().load(DEPG, vnid)
                          .load(OUTPORT, port).ethSrc(rmac)
                          .ethDst(mac).decTtl().go(POL).done());
-                    if (arpOn) {
+                    if (ep->isDiscoveryProxyMode()) {
+                        // proxy neighbor discovery
+                        ADDF(Bldr().cookie(htonll(FlowManager::GetNDCookie()))
+                             .table(BR).priority(20).icmp6()
+                             .reg(BD, bdId).reg(RD, rdId).isEthDst(mmac)
+                             .icmp_type(135).icmp_code(0)
+                             .isNdTarget(ipa.to_string())
+                             .actions().load(SEPG, vnid)
+                             .load64(METADATA, 0x100008000000000ll)
+                             .controller(65535).done());
+                    } if (arpOn) {
                         // nd optimization
                         ADDF(Bldr().table(BR).priority(20).icmp6()
                              .reg(BD, bdId).reg(RD, rdId)

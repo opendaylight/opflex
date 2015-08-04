@@ -34,7 +34,7 @@ public:
     /**
      * Default constructor for containers
      */
-    Endpoint() : promiscuousMode(false) {}
+    Endpoint() : promiscuousMode(false), discoveryProxyMode(false) {}
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that
@@ -43,8 +43,8 @@ public:
      *
      * @param uuid_ the unique ID for the endpoint.
      */
-    explicit Endpoint(const std::string& uuid_) 
-        : uuid(uuid_), promiscuousMode(false) {}
+    explicit Endpoint(const std::string& uuid_)
+        : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false) {}
 
     /**
      * Get the endpoint group URI associated with this endpoint.  Note
@@ -190,7 +190,7 @@ public:
      *
      * @param interfaceName the interface name to which the endpoint
      * is attached locally
-     */ 
+     */
     void setInterfaceName(const std::string& interfaceName) {
         this->interfaceName = interfaceName;
     }
@@ -218,6 +218,26 @@ public:
      */
     bool isPromiscuousMode() const {
         return promiscuousMode;
+    }
+
+    /**
+     * Set the discovery proxy mode flag.  If true, then the vswitch
+     * will respond to any ARP or neighbor discovery requests for all
+     * IP addresses configured for the endpoint
+     *
+     * @param promiscuousMode the new value for the promiscuous mode
+     */
+    void setDiscoveryProxyMode(bool discoveryProxyMode) {
+        this->discoveryProxyMode = discoveryProxyMode;
+    }
+
+    /**
+     * Get the value of the discovery proxy mode flag
+     *
+     * @return true if discovery proxy mode is on
+     */
+    bool isDiscoveryProxyMode() const {
+        return discoveryProxyMode;
     }
 
     /**
@@ -722,6 +742,7 @@ private:
     boost::optional<opflex::modb::URI> egURI;
     boost::optional<std::string> interfaceName;
     bool promiscuousMode;
+    bool discoveryProxyMode;
     attr_map_t attributes;
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
