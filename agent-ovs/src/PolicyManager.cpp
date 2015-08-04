@@ -108,7 +108,6 @@ void PolicyManager::stop() {
     lock_guard<mutex> guard(state_mutex);
     group_map.clear();
     vnid_map.clear();
-    subnet_ref_map.clear();
 }
 
 void PolicyManager::registerListener(PolicyListener* listener) {
@@ -256,7 +255,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
 
     GroupState& gs = group_map[egURI];
 
-    optional<shared_ptr<EpGroup> > epg = 
+    optional<shared_ptr<EpGroup> > epg =
         EpGroup::resolve(framework, egURI);
     if (!epg) {
         toRemove = true;
@@ -282,7 +281,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
 
     optional<class_id_t> domainClass;
     optional<URI> domainURI;
-    optional<shared_ptr<EpGroupToNetworkRSrc> > ref = 
+    optional<shared_ptr<EpGroupToNetworkRSrc> > ref =
         epg.get()->resolveGbpEpGroupToNetworkRSrc();
     if (ref) {
         domainClass = ref.get()->getTargetClass();
@@ -328,7 +327,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
             {
                 newbd = BridgeDomain::resolve(framework, du);
                 if (newbd) {
-                    optional<shared_ptr<BridgeDomainToNetworkRSrc> > dref = 
+                    optional<shared_ptr<BridgeDomainToNetworkRSrc> > dref =
                         newbd.get()->resolveGbpBridgeDomainToNetworkRSrc();
                     if (dref) {
                         ndomainClass = dref.get()->getTargetClass();
@@ -343,7 +342,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
             {
                 newfd = FloodDomain::resolve(framework, du);
                 if (newfd) {
-                    optional<shared_ptr<FloodDomainToNetworkRSrc> > dref = 
+                    optional<shared_ptr<FloodDomainToNetworkRSrc> > dref =
                         newfd.get()->resolveGbpFloodDomainToNetworkRSrc();
                     if (dref) {
                         ndomainClass = dref.get()->getTargetClass();
@@ -741,13 +740,50 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
             newNets.insert(net->getURI());
 
             L3NetworkState& l3s = l3n_map[net->getURI()];
+            if (l3s.routingDomain && l3s.natEpg) {
+                uri_ref_map_t::iterator it =
+                    nat_epg_l3_ext.find(l3s.natEpg.get());
+                if (it != nat_epg_l3_ext.end()) {
+                    it->second.erase(net->getURI());
+                    if (it->second.size() == 0)
+                        nat_epg_l3_ext.erase(it);
+                }
+            }
+
             l3s.routingDomain = rd;
+
+            optional<shared_ptr<L3ExternalNetworkToNatEPGroupRSrc> > natRef =
+                net->resolveGbpL3ExternalNetworkToNatEPGroupRSrc();
+            if (natRef) {
+                optional<URI> natEpg = natRef.get()->getTargetURI();
+                if (natEpg) {
+                    l3s.natEpg = natEpg.get();
+                    uri_set_t& s = nat_epg_l3_ext[l3s.natEpg.get()];
+                    s.insert(net->getURI());
+                }
+            } else {
+                l3s.natEpg = boost::none;
+            }
+
             updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                  net->getURI(), contractsToNotify);
         }
         BOOST_FOREACH(const URI& net, rds.extNets) {
             if (newNets.find(net) == newNets.end()) {
-                l3n_map.erase(net);
+                l3n_map_t::iterator lit = l3n_map.find(net);
+                if (lit != l3n_map.end()) {
+                    if (lit->second.natEpg) {
+                        uri_ref_map_t::iterator git =
+                            nat_epg_l3_ext.find(lit->second.natEpg.get());
+                        if (git != nat_epg_l3_ext.end()) {
+                            git->second.erase(net);
+                            if (git->second.size() == 0)
+                                nat_epg_l3_ext.erase(git);
+                        }
+                    }
+                }
+
+                l3n_map.erase(lit);
 
                 updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                      net, contractsToNotify);
@@ -816,6 +852,12 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
     uri_set_t contractsToNotify;
     if (classId == EpGroup::CLASS_ID) {
         pmanager.updateGroupContracts(classId, uri, contractsToNotify);
+        uri_ref_map_t::iterator it = pmanager.nat_epg_l3_ext.find(uri);
+        if (it != pmanager.nat_epg_l3_ext.end()) {
+            BOOST_FOREACH(const URI& rd, it->second) {
+                pmanager.notifyDomain(RoutingDomain::CLASS_ID, rd);
+            }
+        }
     } else if (classId == RoutingDomain::CLASS_ID) {
         pmanager.updateL3Nets(uri, contractsToNotify);
     } else {

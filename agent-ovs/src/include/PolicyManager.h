@@ -203,7 +203,7 @@ public:
     /**
      * A vector of Subnet objects
      */
-    typedef std::vector<boost::shared_ptr<modelgbp::gbp::Subnet> > 
+    typedef std::vector<boost::shared_ptr<modelgbp::gbp::Subnet> >
     subnet_vector_t;
 
     /**
@@ -355,6 +355,7 @@ private:
 
     struct L3NetworkState {
         boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
+        boost::optional<opflex::modb::URI> natEpg;
     };
 
     struct RoutingDomainState {
@@ -362,27 +363,20 @@ private:
     };
 
     typedef boost::unordered_map<opflex::modb::URI, GroupState> group_map_t;
-    typedef boost::unordered_map<opflex::modb::URI,
-                                 boost::unordered_set<opflex::modb::URI> > uri_ref_map_t;
     typedef boost::unordered_map<uint32_t, opflex::modb::URI> vnid_map_t;
     typedef boost::unordered_map<opflex::modb::URI, RoutingDomainState> rd_map_t;
     typedef boost::unordered_map<opflex::modb::URI, L3NetworkState> l3n_map_t;
+    typedef boost::unordered_map<opflex::modb::URI, uri_set_t> uri_ref_map_t;
 
     /**
      * A map from EPG URI to its state
-     */ 
+     */
     group_map_t group_map;
 
     /**
      * A map from EPG vnid to EPG URI
      */
     vnid_map_t vnid_map;
-
-    /**
-     * A map from a forwarding domain URI to a set of subnets that
-     * refer to it
-     */
-    uri_ref_map_t subnet_ref_map;
 
     /**
      * A map from routing domain URI to its state
@@ -393,6 +387,12 @@ private:
      * A map from l3 network URI to its state
      */
     l3n_map_t l3n_map;
+
+    /**
+     * A map from ep group URI to a set of l3 domains with l3 external
+     * networks that reference it as a nat EPG
+     */
+    uri_ref_map_t nat_epg_l3_ext;
 
     boost::mutex state_mutex;
 
