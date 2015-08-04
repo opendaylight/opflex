@@ -11,6 +11,7 @@
 
 #include <opflex/modb/ObjectListener.h>
 #include <modelgbp/ascii/StringMatchTypeEnumT.hpp>
+#include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem/fstream.hpp>
 
@@ -57,7 +58,7 @@ public:
 class EndpointFixture : public BaseFixture, public ObjectListener {
 public:
     EndpointFixture()
-        : BaseFixture(), 
+        : BaseFixture(),
           epSource(&agent.getEndpointManager()),
           bduri("/PolicyUniverse/PolicySpace/test/GbpBridgeDomain/bd/"),
           rduri("/PolicyUniverse/PolicySpace/test/GbpRoutingDomain/rd/") {
@@ -146,7 +147,7 @@ public:
         // writing the referenced object in response to any changes
 
         Mutator mutator(framework, "policyreg");
-            
+
         switch (class_id) {
         case EndPointToGroupRSrc::CLASS_ID:
             {
@@ -205,7 +206,7 @@ public:
 
 class FSEndpointFixture : public EndpointFixture {
 public:
-    FSEndpointFixture() 
+    FSEndpointFixture()
         : EndpointFixture(),
           temp(fs::temp_directory_path() / fs::unique_path()) {
         fs::create_directory(temp);
@@ -305,6 +306,18 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr1_3), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_4), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_ipm), 500);
+
+    Mutator mutator(framework, "policyreg");
+    optional<shared_ptr<BridgeDomain> > bd =
+        BridgeDomain::resolve(framework, bduri);
+    BOOST_REQUIRE(bd);
+    bd.get()->setRoutingMode(RoutingModeEnumT::CONST_DISABLED);
+    mutator.commit();
+
+    WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr1_2), 500);
+    WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr1_3), 500);
+    WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr2_4), 500);
+    WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr2_ipm), 500);
 }
 
 BOOST_FIXTURE_TEST_CASE( epgmapping, EndpointFixture ) {
@@ -335,7 +348,7 @@ BOOST_FIXTURE_TEST_CASE( epgmapping, EndpointFixture ) {
         .addElement("EprL3Ep")
         .addElement(rduri.toString())
         .addElement("10.1.1.4").build();
-                    
+
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr2_4), 500);
 
@@ -463,7 +476,7 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
        << "\"attributes\":{\"attr2\":\"value2\"}"
        << "}" << std::endl;
     os2.close();
-    
+
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
 
     // check for removing an endpoint

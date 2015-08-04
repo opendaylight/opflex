@@ -13,6 +13,7 @@
 
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/ascii/StringMatchTypeEnumT.hpp>
+#include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -439,7 +440,7 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
         // Update LocalL3 objects in the MODB, which, though it won't
         // cause any improved functionality, may cause overall
         // happiness in the universe to increase.
-        optional<shared_ptr<L3Discovered> > l3d = 
+        optional<shared_ptr<L3Discovered> > l3d =
             L3Discovered::resolve(framework);
         if (l3d) {
             BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
@@ -525,7 +526,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     unordered_set<URI> newl3eps;
     unordered_set<URI> newl2eps;
     optional<shared_ptr<RoutingDomain> > rd;
-    optional<shared_ptr<BridgeDomain> > bd; 
+    optional<shared_ptr<BridgeDomain> > bd;
 
     if (egURI) {
         // check whether the l2 and l3 routing contexts are already
@@ -536,7 +537,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
 
     Mutator mutator(framework, "policyelement");
 
-    optional<shared_ptr<L2Universe> > l2u = 
+    optional<shared_ptr<L2Universe> > l2u =
         L2Universe::resolve(framework);
     if (l2u && bd && mac) {
         // If the bridge domain is known, we can register the l2
@@ -568,39 +569,44 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
         }
     }
 
-    optional<shared_ptr<L3Universe> > l3u = 
+    optional<shared_ptr<L3Universe> > l3u =
         L3Universe::resolve(framework);
-    if (l3u && rd && mac) {
-        // If the routing domain is known, we can register the l3
-        // endpoints in the endpoint registry
-        BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
-            shared_ptr<L3Ep> l3e = l3u.get()
-                ->addEprL3Ep(rd.get()->getURI().toString(), ip);
-            l3e->setMac(mac.get());
-            l3e->setGroup(egURI->toString());
-            l3e->setUuid(uuid);
-            newl3eps.insert(l3e->getURI());
-        }
+    if (l3u && bd && rd && mac) {
+        uint8_t routingMode =
+            bd.get()->getRoutingMode(RoutingModeEnumT::CONST_ENABLED);
 
-        BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
-                      es.endpoint->getIPAddressMappings()) {
-            if (!ipm.getFloatingIP() || !ipm.getMappedIP() || !ipm.getEgURI())
-                continue;
-            // don't declare endpoints if there's a next hop
-            if (ipm.getNextHopIf())
-                continue;
+        if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
+            // If the routing domain is known, we can register the l3
+            // endpoints in the endpoint registry
+            BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
+                shared_ptr<L3Ep> l3e = l3u.get()
+                    ->addEprL3Ep(rd.get()->getURI().toString(), ip);
+                l3e->setMac(mac.get());
+                l3e->setGroup(egURI->toString());
+                l3e->setUuid(uuid);
+                newl3eps.insert(l3e->getURI());
+            }
 
-            optional<shared_ptr<RoutingDomain> > frd =
-                policyManager.getRDForGroup(ipm.getEgURI().get());
-            if (!frd) continue;
+            BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
+                          es.endpoint->getIPAddressMappings()) {
+                if (!ipm.getFloatingIP() || !ipm.getMappedIP() || !ipm.getEgURI())
+                    continue;
+                // don't declare endpoints if there's a next hop
+                if (ipm.getNextHopIf())
+                    continue;
 
-            shared_ptr<L3Ep> fl3e = l3u.get()
-                ->addEprL3Ep(frd.get()->getURI().toString(),
-                             ipm.getFloatingIP().get());
-            fl3e->setMac(mac.get());
-            fl3e->setGroup(ipm.getEgURI().get().toString());
-            fl3e->setUuid(ipm.getUUID());
-            newl3eps.insert(fl3e->getURI());
+                optional<shared_ptr<RoutingDomain> > frd =
+                    policyManager.getRDForGroup(ipm.getEgURI().get());
+                if (!frd) continue;
+
+                shared_ptr<L3Ep> fl3e = l3u.get()
+                    ->addEprL3Ep(frd.get()->getURI().toString(),
+                                 ipm.getFloatingIP().get());
+                fl3e->setMac(mac.get());
+                fl3e->setGroup(ipm.getEgURI().get().toString());
+                fl3e->setUuid(ipm.getUUID());
+                newl3eps.insert(fl3e->getURI());
+            }
         }
     }
 
@@ -690,7 +696,7 @@ void EndpointManager::updateEndpointCounters(const std::string& uuid,
     using namespace modelgbp::observer;
 
     Mutator mutator(framework, "policyelement");
-    optional<shared_ptr<EpStatUniverse> > su = 
+    optional<shared_ptr<EpStatUniverse> > su =
         EpStatUniverse::resolve(framework);
     if (su) {
         su.get()->addGbpeEpCounter(uuid)
