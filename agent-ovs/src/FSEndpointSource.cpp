@@ -48,7 +48,7 @@ using opflex::modb::URI;
 using opflex::modb::MAC;
 
 FSEndpointSource::FSEndpointSource(EndpointManager* manager_,
-                                   const std::string& endpointDir_) 
+                                   const std::string& endpointDir_)
     : EndpointSource(manager_), endpointDir(endpointDir_), eventFd(-1) {
     start();
 }
@@ -60,12 +60,12 @@ FSEndpointSource::~FSEndpointSource() {
 void FSEndpointSource::start() {
 #ifdef USE_INOTIFY
     if (!fs::exists(endpointDir)) {
-        throw runtime_error(string("Endpoint directory " ) + 
-                            endpointDir.string() + 
+        throw runtime_error(string("Endpoint directory " ) +
+                            endpointDir.string() +
                             string(" does not exist"));
     }
     if (!fs::is_directory(endpointDir)) {
-        throw runtime_error(string("Endpoint directory ") + 
+        throw runtime_error(string("Endpoint directory ") +
                             endpointDir.string() +
                             string(" is not a directory"));
     }
@@ -85,7 +85,7 @@ void FSEndpointSource::stop() {
     if (pollThread != NULL) {
         uint64_t u = 1;
         ssize_t s = write(eventFd, &u, sizeof(uint64_t));
-        if (s != sizeof(uint64_t)) 
+        if (s != sizeof(uint64_t))
             throw runtime_error(string("Could not signal polling thread: ") +
                                 strerror(errno));
 
@@ -127,6 +127,7 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
     static const std::string EP_GROUP_NAME("endpoint-group-name");
     static const std::string EP_IFACE_NAME("interface-name");
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
+    static const std::string EP_DISC_PROXY("discovery-proxy-mode");
     static const std::string EP_ATTRIBUTES("attributes");
 
     static const std::string DHCP4("dhcp4");
@@ -167,14 +168,14 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
                 newep.addIP(v.second.data());
         }
 
-        optional<string> eg = 
+        optional<string> eg =
             properties.get_optional<string>(EP_GROUP);
         if (eg) {
             newep.setEgURI(URI(eg.get()));
         } else {
-            optional<string> eg_name = 
+            optional<string> eg_name =
                 properties.get_optional<string>(EP_GROUP_NAME);
-            optional<string> ps_name = 
+            optional<string> ps_name =
                 properties.get_optional<string>(POLICY_SPACE_NAME);
             if (eg_name && ps_name) {
                 newep.setEgURI(opflex::modb::URIBuilder()
@@ -192,14 +193,18 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
             }
         }
 
-        optional<string> iface = 
+        optional<string> iface =
             properties.get_optional<string>(EP_IFACE_NAME);
         if (iface)
             newep.setInterfaceName(iface.get());
-        optional<bool> promisc = 
+        optional<bool> promisc =
             properties.get_optional<bool>(EP_PROMISCUOUS);
         if (promisc)
             newep.setPromiscuousMode(promisc.get());
+        optional<bool> discprox =
+            properties.get_optional<bool>(EP_DISC_PROXY);
+        if (discprox)
+            newep.setDiscoveryProxyMode(discprox.get());
 
         optional<ptree&> attrs =
             properties.get_child_optional(EP_ATTRIBUTES);
@@ -343,7 +348,7 @@ void FSEndpointSource::readEndpoint(fs::path filePath) {
         knownEps[pathstr] = newep.getUUID();
         updateEndpoint(newep);
 
-        LOG(INFO) << "Updated endpoint " << newep 
+        LOG(INFO) << "Updated endpoint " << newep
                   << " from " << filePath;
 
     } catch (const std::exception& ex) {
@@ -362,8 +367,8 @@ void FSEndpointSource::deleteEndpoint(fs::path filePath) {
         string pathstr = filePath.string();
         ep_map_t::iterator it = knownEps.find(pathstr);
         if (it != knownEps.end()) {
-            LOG(INFO) << "Removed endpoint " 
-                      << it->second 
+            LOG(INFO) << "Removed endpoint "
+                      << it->second
                       << " at " << filePath;
             removeEndpoint(it->second);
             knownEps.erase(it);
@@ -394,8 +399,8 @@ void FSEndpointSource::operator()() {
                    << strerror(errno);
         return;
     }
-    int wd = inotify_add_watch( fd, endpointDir.c_str(), 
-                                IN_CLOSE_WRITE | IN_DELETE | 
+    int wd = inotify_add_watch( fd, endpointDir.c_str(),
+                                IN_CLOSE_WRITE | IN_DELETE |
                                 IN_MOVED_TO| IN_MOVED_FROM);
     if (wd < 0) {
         LOG(ERROR) << "Could not add inotify watch for "
@@ -408,7 +413,7 @@ void FSEndpointSource::operator()() {
     // eventfd input
     fds[0].fd = eventFd;
     fds[0].events = POLLIN;
-    
+
     // inotify input
     fds[1].fd = fd;
     fds[1].events = POLLIN;
@@ -441,7 +446,7 @@ void FSEndpointSource::operator()() {
                     }
 
                     if (len < 0) break;
-                    
+
                     const struct inotify_event *event;
                     for (char* ptr = buf; ptr < buf + len;
                          ptr += sizeof(struct inotify_event) + event->len) {

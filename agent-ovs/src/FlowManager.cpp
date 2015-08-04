@@ -888,6 +888,43 @@ static uint8_t getEffectiveRoutingMode(PolicyManager& polMgr,
     return routingMode;
 }
 
+static void proxyDiscovery(FlowManager& flowMgr, FlowEntryList& elBridgeDst,
+                           const address& ipAddr,
+                           const uint8_t* macAddr,
+                           uint32_t epgVnid, uint32_t rdId,
+                           uint32_t bdId) {
+    if (ipAddr.is_v4()) {
+        uint32_t tunPort = flowMgr.GetTunnelPort();
+        if (tunPort != OFPP_NONE &&
+            flowMgr.GetEncapType() != FlowManager::ENCAP_NONE) {
+            FlowEntry* proxyArpTun = new FlowEntry();
+            SetDestMatchArp(proxyArpTun, 21, ipAddr,
+                            bdId, rdId);
+            match_set_in_port(&proxyArpTun->entry->match, tunPort);
+            SetDestActionArpReply(proxyArpTun, macAddr, ipAddr,
+                                  OFPP_IN_PORT, flowMgr.GetEncapType(),
+                                  &flowMgr.GetTunnelDst());
+            elBridgeDst.push_back(FlowEntryPtr(proxyArpTun));
+        }
+        {
+            FlowEntry* proxyArp = new FlowEntry();
+            SetDestMatchArp(proxyArp, 20, ipAddr, bdId, rdId);
+            SetDestActionArpReply(proxyArp, macAddr, ipAddr);
+            elBridgeDst.push_back(FlowEntryPtr(proxyArp));
+        }
+    } else {
+        FlowEntry* proxyND = new FlowEntry();
+        // pass MAC address in flow metadata
+        uint64_t metadata = 0;
+        memcpy(&metadata, macAddr, 6);
+        ((uint8_t*)&metadata)[7] = 1;
+        SetDestMatchNd(proxyND, 20, &ipAddr, bdId, rdId,
+                       FlowManager::GetNDCookie());
+        SetActionController(proxyND, epgVnid, 0xffff, metadata);
+        elBridgeDst.push_back(FlowEntryPtr(proxyND));
+    }
+}
+
 static void computeIpmFlows(FlowManager& flowMgr,
                             FlowEntryList& elSrc, FlowEntryList& elBridgeDst,
                             FlowEntryList& elRouteDst,FlowEntryList& elOutput,
@@ -935,36 +972,8 @@ static void computeIpmFlows(FlowManager& flowMgr,
         }
         // Reply to discovery requests for the floating IP
         // address
-        if (floatingIp.is_v4()) {
-            uint32_t tunPort = flowMgr.GetTunnelPort();
-            if (tunPort != OFPP_NONE &&
-                flowMgr.GetEncapType() != FlowManager::ENCAP_NONE) {
-                FlowEntry* ipmArpTun = new FlowEntry();
-                SetDestMatchArp(ipmArpTun, 21, floatingIp,
-                                fbdId, frdId);
-                match_set_in_port(&ipmArpTun->entry->match, tunPort);
-                SetDestActionArpReply(ipmArpTun, macAddr, floatingIp,
-                                      OFPP_IN_PORT, flowMgr.GetEncapType(),
-                                      &flowMgr.GetTunnelDst());
-                elBridgeDst.push_back(FlowEntryPtr(ipmArpTun));
-            }
-            {
-                FlowEntry* ipmArp = new FlowEntry();
-                SetDestMatchArp(ipmArp, 20, floatingIp, fbdId, frdId);
-                SetDestActionArpReply(ipmArp, macAddr, floatingIp);
-                elBridgeDst.push_back(FlowEntryPtr(ipmArp));
-            }
-        } else {
-            FlowEntry* ipmND = new FlowEntry();
-            // pass MAC address in flow metadata
-            uint64_t metadata = 0;
-            memcpy(&metadata, macAddr, 6);
-            ((uint8_t*)&metadata)[7] = 1;
-            SetDestMatchNd(ipmND, 20, &floatingIp, fbdId, frdId,
-                           FlowManager::GetNDCookie());
-            SetActionController(ipmND, fepgVnid, 0xffff, metadata);
-            elBridgeDst.push_back(FlowEntryPtr(ipmND));
-        }
+        proxyDiscovery(flowMgr, elBridgeDst, floatingIp, macAddr,
+                       fepgVnid, frdId, fbdId);
     }
     {
         // Apply NAT action in output table
@@ -1241,26 +1250,36 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                     elRouteDst.push_back(FlowEntryPtr(e0));
                 }
 
-                if (arpMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v4()) {
-                    FlowEntry *e1 = new FlowEntry();
-                    SetDestMatchArp(e1, 20, ipAddr, bdId, rdId);
-                    if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
-                        // ARP optimization: broadcast -> unicast
-                        SetDestActionEpArp(e1, epgVnid, ofPort, macAddr);
+                if (endPoint.isDiscoveryProxyMode()) {
+                    // Auto-reply to ARP and NDP requests for endpoint
+                    // IP addresses
+                    proxyDiscovery(*this, elBridgeDst, ipAddr,
+                                   macAddr, epgVnid, rdId, bdId);
+                } else {
+                    if (arpMode != AddressResModeEnumT::CONST_FLOOD &&
+                        ipAddr.is_v4()) {
+                        FlowEntry *e1 = new FlowEntry();
+                        SetDestMatchArp(e1, 20, ipAddr, bdId, rdId);
+                        if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
+                            // ARP optimization: broadcast -> unicast
+                            SetDestActionEpArp(e1, epgVnid, ofPort, macAddr);
+                        }
+                        // else drop the ARP packet
+                        elBridgeDst.push_back(FlowEntryPtr(e1));
                     }
-                    // else drop the ARP packet
-                    elBridgeDst.push_back(FlowEntryPtr(e1));
-                }
 
-                if (ndMode != AddressResModeEnumT::CONST_FLOOD && ipAddr.is_v6()) {
-                    FlowEntry *e1 = new FlowEntry();
-                    SetDestMatchNd(e1, 20, &ipAddr, bdId, rdId);
-                    if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
-                        // neighbor discovery optimization: broadcast -> unicast
-                        SetDestActionEpArp(e1, epgVnid, ofPort, macAddr);
+                    if (ndMode != AddressResModeEnumT::CONST_FLOOD &&
+                        ipAddr.is_v6()) {
+                        FlowEntry *e1 = new FlowEntry();
+                        SetDestMatchNd(e1, 20, &ipAddr, bdId, rdId);
+                        if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
+                            // neighbor discovery optimization:
+                            // broadcast -> unicast
+                            SetDestActionEpArp(e1, epgVnid, ofPort, macAddr);
+                        }
+                        // else drop the ND packet
+                        elBridgeDst.push_back(FlowEntryPtr(e1));
                     }
-                    // else drop the ND packet
-                    elBridgeDst.push_back(FlowEntryPtr(e1));
                 }
             }
 
