@@ -52,7 +52,7 @@ using namespace internal;
 
 static const uint64_t LOCAL_REFRESH_RATE = 1000*60*30;
 static const uint64_t DEFAULT_PROC_DELAY = 250;
-static const uint64_t DEFAULT_RETRY_DELAY = 1000*10;
+static const uint64_t DEFAULT_RETRY_DELAY = 1000*60*2;
 static const uint64_t TOMBSTONE_DELAY = 1000*60*5;
 static const uint64_t FIRST_XID = (uint64_t)1 << 63;
 
