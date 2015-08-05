@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a7ca5a3_12a39d9f",
+        "filename": "agent-ovs/src/include/Endpoint.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-08-05T18:08:39Z",
+      "side": 1,
+      "message": "Nit: name of parameter should be \u0027discoveryProxyMode\u0027",
+      "revId": "c9b40b2e94fdd3d2396cbbb1570216d01dd84cd2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a7ca5a3_729e9158",
+        "filename": "agent-ovs/test/FlowManager_test.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 1707,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-08-05T18:08:39Z",
+      "side": 1,
+      "message": "missing an \"else\" here?",
+      "revId": "c9b40b2e94fdd3d2396cbbb1570216d01dd84cd2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
