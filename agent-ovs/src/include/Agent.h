@@ -24,7 +24,8 @@
 #include <modelgbp/metadata/metadata.hpp>
 
 #include "EndpointManager.h"
-#include "EndpointSource.h"
+#include "ServiceManager.h"
+#include "FSWatcher.h"
 
 #pragma once
 #ifndef OVSAGENT_AGENT_H
@@ -33,6 +34,8 @@
 namespace ovsagent {
 
 class Renderer;
+class EndpointSource;
+class ServiceSource;
 
 /**
  * Master object for the OVS agent.  This class holds the state for
@@ -43,7 +46,7 @@ public:
     /**
      * Instantiate a new agent using the specified framework
      * instance.
-     * 
+     *
      * @param framework the framework instance to use
      */
     Agent(opflex::ofcore::OFFramework& framework);
@@ -55,7 +58,7 @@ public:
 
     /**
      * Configure the agent with the property tree specified
-     * 
+     *
      * @param properties the configuration properties to set for the
      * agent
      */
@@ -87,6 +90,11 @@ public:
     EndpointManager& getEndpointManager() { return endpointManager; }
 
     /**
+     * Get the service manager object for this agent
+     */
+    ServiceManager& getServiceManager() { return serviceManager; }
+
+    /**
      * Get the ASIO service for the agent for scheduling asynchronous
      * tasks in the io service thread.  You must schedule your async
      * tasks in your start() method and close them (possibly
@@ -100,9 +108,14 @@ private:
     opflex::ofcore::OFFramework& framework;
     PolicyManager policyManager;
     EndpointManager endpointManager;
+    ServiceManager serviceManager;
 
+    FSWatcher fsWatcher;
     std::set<std::string> endpointSourcePaths;
     std::set<EndpointSource*> endpointSources;
+
+    std::set<std::string> serviceSourcePaths;
+    std::set<ServiceSource*> serviceSources;
 
     std::list<Renderer*> renderers;
 

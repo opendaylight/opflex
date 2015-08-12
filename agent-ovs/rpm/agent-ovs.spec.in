@@ -66,6 +66,7 @@ install -p -D -m 0644 \
     rpm/90-agent-ovs-sysctl.conf \
     $RPM_BUILD_ROOT%{_sysctldir}/90-agent-ovs-sysctl.conf
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/endpoints
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/services
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
 
 %check
@@ -123,6 +124,7 @@ getent group opflexep >/dev/null || groupadd -r opflexep
 %{_unitdir}/agent-ovs.service
 %{_sysctldir}/90-agent-ovs-sysctl.conf
 %dir %attr(0775, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/endpoints
+%dir %attr(0775, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/services
 %dir %{_localstatedir}/lib/opflex-agent-ovs/ids
 
 %changelog

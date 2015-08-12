@@ -22,6 +22,7 @@
 
 #include "BaseFixture.h"
 #include "EndpointSource.h"
+#include "ServiceSource.h"
 #include "EndpointManager.h"
 
 using namespace std;
@@ -38,14 +39,19 @@ public:
     DummyEpSrc(EndpointManager *manager)
         : EndpointSource(manager) { }
     virtual ~DummyEpSrc() { }
-    virtual void start() { }
-    virtual void stop() { }
+};
+class DummyServiceSrc : public ServiceSource {
+public:
+    DummyServiceSrc(ServiceManager *manager)
+        : ServiceSource(manager) { }
+    virtual ~DummyServiceSrc() { }
 };
 
 class ModbFixture : public BaseFixture {
 public:
     ModbFixture() : BaseFixture(),
                     epSrc(&agent.getEndpointManager()),
+                    servSrc(&agent.getServiceManager()),
                     policyOwner("policyreg") {
         createObjects();
     }
@@ -54,6 +60,7 @@ public:
     }
 
     DummyEpSrc epSrc;
+    DummyServiceSrc servSrc;
     shared_ptr<policy::Universe> universe;
     shared_ptr<policy::Space> space;
     shared_ptr<Config> config;

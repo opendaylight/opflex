@@ -45,11 +45,17 @@ noinst_HEADERS = \
 	src/include/AgentLogHandler.h \
 	src/include/PolicyListener.h \
 	src/include/PolicyManager.h \
+	src/include/FSWatcher.h \
 	src/include/Endpoint.h \
 	src/include/EndpointListener.h \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \
 	src/include/FSEndpointSource.h \
+	src/include/AnycastService.h \
+	src/include/ServiceListener.h \
+	src/include/ServiceSource.h \
+	src/include/ServiceManager.h \
+	src/include/FSServiceSource.h \
 	src/include/Renderer.h \
 	src/include/StitchedModeRenderer.h \
 	src/include/TunnelEpManager.h \
@@ -79,10 +85,15 @@ noinst_HEADERS = \
 libagent_ovs_la_SOURCES = \
 	src/AgentLogHandler.cpp \
 	src/PolicyManager.cpp \
+	src/FSWatcher.cpp \
 	src/Endpoint.cpp \
 	src/EndpointManager.cpp \
 	src/EndpointSource.cpp \
 	src/FSEndpointSource.cpp \
+	src/AnycastService.cpp \
+	src/ServiceSource.cpp \
+	src/ServiceManager.cpp \
+	src/FSServiceSource.cpp \
 	src/Renderer.cpp \
 	src/StitchedModeRenderer.cpp \
 	src/TunnelEpManager.cpp \
@@ -169,10 +180,12 @@ agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
 
 flowidcachedir=${localstatedir}/lib/opflex-agent-ovs/ids
-defwatchdir=${localstatedir}/lib/opflex-agent-ovs/endpoints
+defepwatchdir=${localstatedir}/lib/opflex-agent-ovs/endpoints
+defservwatchdir=${localstatedir}/lib/opflex-agent-ovs/services
 inspectsock=${localstatedir}/run/opflex-agent-ovs-inspect.sock
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
-	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defwatchdir}|" \
+	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defepwatchdir}|" \
+	    -e "s|DEFAULT_FS_SERVICE_DIR|${defservwatchdir}|" \
 	    -e "s|DEFAULT_FLOWID_CACHE_DIR|${flowidcachedir}|" \
 	    -e "s|DEFAULT_INSPECTOR_SOCKET|${inspectsock}|" \
 	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
