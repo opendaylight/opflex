@@ -52,6 +52,13 @@
         "filesystem": ["DEFAULT_FS_ENDPOINT_DIR"]
     },
 
+    // Service sources provide metadata about services that can
+    // provide functionality for local endpoints
+    "service-sources": {
+        // Filesystem path to monitor for service information
+        "filesystem": ["DEFAULT_FS_SERVICE_DIR"]
+    },
+
     // Renderers enforce policy obtained via OpFlex.
     "renderers": {
         // Stitched-mode renderer for interoperating with a

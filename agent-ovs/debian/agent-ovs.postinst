@@ -22,6 +22,8 @@ case "$1" in
     configure)
         chgrp opflexep /var/lib/opflex-agent-ovs/endpoints
         chmod 0775 /var/lib/opflex-agent-ovs/endpoints
+        chgrp opflexep /var/lib/opflex-agent-ovs/services
+        chmod 0775 /var/lib/opflex-agent-ovs/services
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

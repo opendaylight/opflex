@@ -141,11 +141,13 @@ void FlowManager::unregisterConnection(SwitchConnection *conn) {
 
 void FlowManager::registerModbListeners() {
     agent.getEndpointManager().registerListener(this);
+    agent.getServiceManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
 }
 
 void FlowManager::unregisterModbListeners() {
     agent.getEndpointManager().unregisterListener(this);
+    agent.getServiceManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
 }
 
@@ -358,7 +360,8 @@ SetDestMatchArp(FlowEntry *fe, uint16_t prio, const address& ip,
     match_set_nw_proto(m, ARP_OP_REQUEST);
     match_set_dl_dst(m, packets::MAC_ADDR_BROADCAST);
     match_set_nw_dst(m, htonl(ip.to_v4().to_ulong()));
-    match_set_reg(m, 4 /* REG4 */, bdId);
+    if (bdId != 0)
+        match_set_reg(m, 4 /* REG4 */, bdId);
     match_set_reg(m, 6 /* REG6 */, l3Id);
 }
 
@@ -376,7 +379,8 @@ SetDestMatchNd(FlowEntry *fe, uint16_t prio, const address* ip,
     match_set_tp_src(&fe->entry->match, htons(type));
     // OVS uses tp_dst for ICMPV6_CODE
     match_set_tp_dst(&fe->entry->match, 0);
-    match_set_reg(&fe->entry->match, 4 /* REG4 */, bdId);
+    if (bdId != 0)
+        match_set_reg(&fe->entry->match, 4 /* REG4 */, bdId);
     match_set_reg(&fe->entry->match, 6 /* REG6 */, rdId);
     match_set_dl_dst_masked(&fe->entry->match, 
                             packets::MAC_ADDR_MULTICAST,
@@ -485,13 +489,14 @@ SetDestActionEpMac(FlowEntry *fe, uint32_t epgId, uint32_t port) {
 
 static void
 SetDestActionEp(FlowEntry *fe, uint32_t epgId, uint32_t port,
-                const uint8_t *specialMac, const uint8_t *dstMac) {
+                const uint8_t *specialMac, const uint8_t *dstMac,
+                uint8_t nextTable = FlowManager::POL_TABLE_ID) {
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG2, epgId);
     ab.SetRegLoad(MFF_REG7, port);
     ab.SetEthSrcDst(specialMac, dstMac);
     ab.SetDecNwTtl();
-    ab.SetGotoTable(FlowManager::POL_TABLE_ID);
+    ab.SetGotoTable(nextTable);
 
     ab.Build(fe->entry);
 }
@@ -633,7 +638,8 @@ SetSecurityMatchEpMac(FlowEntry *fe, uint16_t prio, uint32_t port,
         const uint8_t *epMac) {
     fe->entry->table_id = FlowManager::SEC_TABLE_ID;
     fe->entry->priority = prio;
-    match_set_in_port(&fe->entry->match, port);
+    if (port != OFPP_ANY)
+        match_set_in_port(&fe->entry->match, port);
     if (epMac)
         match_set_dl_src(&fe->entry->match, epMac);
 }
@@ -653,8 +659,10 @@ SetSecurityMatchEp(FlowEntry *fe, uint16_t prio, uint32_t port,
                    const uint8_t *epMac, const address& epIp) {
     fe->entry->table_id = FlowManager::SEC_TABLE_ID;
     fe->entry->priority = prio;
-    match_set_in_port(&fe->entry->match, port);
-    match_set_dl_src(&fe->entry->match, epMac);
+    if (port != OFPP_ANY)
+        match_set_in_port(&fe->entry->match, port);
+    if (epMac != NULL)
+        match_set_dl_src(&fe->entry->match, epMac);
     if (epIp.is_v4()) {
         match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
         match_set_nw_src(&fe->entry->match, htonl(epIp.to_v4().to_ulong()));
@@ -755,6 +763,12 @@ void FlowManager::endpointUpdated(const std::string& uuid) {
     if (stopping) return;
     advertManager.scheduleEndpointAdv(uuid);
     WorkItem w = bind(&FlowManager::HandleEndpointUpdate, this, uuid);
+    workQ.enqueue(w);
+}
+
+void FlowManager::anycastServiceUpdated(const std::string& uuid) {
+    if (stopping) return;
+    WorkItem w = bind(&FlowManager::HandleAnycastServiceUpdate, this, uuid);
     workQ.enqueue(w);
 }
 
@@ -1057,6 +1071,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         WriteFlow(uuid, BRIDGE_TABLE_ID, NULL);
         WriteFlow(uuid, ROUTE_TABLE_ID, NULL);
         WriteFlow(uuid, LEARN_TABLE_ID, NULL);
+        WriteFlow(uuid, SERVICE_MAP_TABLE_ID, NULL);
         RemoveEndpointFromFloodGroup(uuid);
         return;
     }
@@ -1157,6 +1172,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
     FlowEntryList elEpLearn;
     FlowEntryList elBridgeDst;
     FlowEntryList elRouteDst;
+    FlowEntryList elServiceMap;
     FlowEntryList elOutput;
 
     /* Source Table flows; applicable only to local endpoints */
@@ -1325,12 +1341,55 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                                 nextHopMacp);
             }
         }
+
+        // When traffic returns from a service interface, we have a
+        // special table to map the return traffic that bypasses
+        // normal network semantics and policy.  The service map table
+        // is reachable only for traffic originating from service
+        // interfaces.
+        if (hasMac) {
+            BOOST_FOREACH (const address& ipAddr, ipAddresses) {
+                {
+                    FlowEntry *serviceDest = new FlowEntry();
+                    SetDestMatchEp(serviceDest, 50, NULL, ipAddr, rdId);
+                    serviceDest->entry->table_id =
+                        FlowManager::SERVICE_MAP_TABLE_ID;
+                    ActionBuilder ab;
+                    ab.SetEthSrcDst(GetRouterMacAddr(), macAddr);
+                    ab.SetDecNwTtl();
+                    ab.SetOutputToPort(ofPort);
+                    ab.Build(serviceDest->entry);
+                    elServiceMap.push_back(FlowEntryPtr(serviceDest));
+                }
+                if (ipAddr.is_v4()) {
+                    FlowEntry *proxyArp = new FlowEntry();
+                    SetDestMatchArp(proxyArp, 51, ipAddr, 0, rdId);
+                    proxyArp->entry->table_id =
+                        FlowManager::SERVICE_MAP_TABLE_ID;
+                    SetDestActionArpReply(proxyArp, macAddr, ipAddr);
+                    elServiceMap.push_back(FlowEntryPtr(proxyArp));
+                } else {
+                    FlowEntry* proxyND = new FlowEntry();
+                    // pass MAC address in flow metadata
+                    uint64_t metadata = 0;
+                    memcpy(&metadata, macAddr, 6);
+                    ((uint8_t*)&metadata)[7] = 1;
+                    SetDestMatchNd(proxyND, 51, &ipAddr, 0, rdId,
+                                   FlowManager::GetNDCookie());
+                    proxyND->entry->table_id =
+                        FlowManager::SERVICE_MAP_TABLE_ID;
+                    SetActionController(proxyND, 0, 0xffff, metadata);
+                    elServiceMap.push_back(FlowEntryPtr(proxyND));
+                }
+            }
+        }
     }
 
     WriteFlow(uuid, SRC_TABLE_ID, elSrc);
     WriteFlow(uuid, LEARN_TABLE_ID, elEpLearn);
     WriteFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
     WriteFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
+    WriteFlow(uuid, SERVICE_MAP_TABLE_ID, elServiceMap);
     WriteFlow(uuid, OUT_TABLE_ID, elOutput);
 
     if (fgrpURI && ofPort != OFPP_NONE) {
@@ -1340,6 +1399,144 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
     } else {
         RemoveEndpointFromFloodGroup(uuid);
     }
+}
+
+void
+FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
+    LOG(DEBUG) << "Updating anycast service " << uuid;
+
+    ServiceManager& srvMgr = agent.getServiceManager();
+    shared_ptr<const AnycastService> asWrapper = srvMgr.getAnycastService(uuid);
+
+    if (!asWrapper) {
+        WriteFlow(uuid, SEC_TABLE_ID, NULL);
+        WriteFlow(uuid, BRIDGE_TABLE_ID, NULL);
+        WriteFlow(uuid, SERVICE_MAP_TABLE_ID, NULL);
+    }
+
+    const AnycastService& as = *asWrapper;
+
+    FlowEntryList secFlows;
+    FlowEntryList bridgeFlows;
+    FlowEntryList serviceMapFlows;
+
+    boost::system::error_code ec;
+
+    uint32_t ofPort = OFPP_NONE;
+    const optional<string>& ofPortName = as.getInterfaceName();
+    if (portMapper && ofPortName) {
+        ofPort = portMapper->FindPort(as.getInterfaceName().get());
+    }
+
+
+    optional<shared_ptr<RoutingDomain > > rd =
+        RoutingDomain::resolve(agent.getFramework(),
+                               as.getDomainURI().get());
+
+    if (ofPort != OFPP_NONE && as.getServiceMAC() && rd) {
+        uint8_t macAddr[6];
+        as.getServiceMAC().get().toUIntArray(macAddr);
+
+        uint32_t rdId =
+            GetId(RoutingDomain::CLASS_ID, as.getDomainURI().get());
+
+        // Traffic from the anycast service is intercepted in the
+        // security table and sent to the service map table, where it
+        // will be directly delivered to local endpoints or dropped
+        // otherwise.
+        {
+            FlowEntry *allowMac = new FlowEntry();
+            SetSecurityMatchEpMac(allowMac, 100, ofPort, macAddr);
+            SetSourceAction(allowMac, 0, 0, 0, rdId,
+                            FlowManager::SERVICE_MAP_TABLE_ID);
+            secFlows.push_back(FlowEntryPtr(allowMac));
+        }
+
+        BOOST_FOREACH(AnycastService::ServiceMapping sm,
+                      as.getServiceMappings()) {
+            if (!sm.getServiceIP())
+                continue;
+
+            address addr = address::from_string(sm.getServiceIP().get(), ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid service IP: "
+                             << sm.getServiceIP().get()
+                             << ": " << ec.message();
+                continue;
+            }
+
+            // Traffic sent to anycast services is intercepted in the
+            // bridge table, despite the fact that it is effectively
+            // performing a routing action, to allow it to work with flood
+            // domains configured to use mac learning.
+            {
+                FlowEntry *serviceDest = new FlowEntry();
+                SetDestMatchEp(serviceDest, 50, NULL, addr, rdId);
+                serviceDest->entry->table_id = FlowManager::BRIDGE_TABLE_ID;
+                ActionBuilder ab;
+                ab.SetEthSrcDst(GetRouterMacAddr(), macAddr);
+                ab.SetDecNwTtl();
+                ab.SetOutputToPort(ofPort);
+                ab.Build(serviceDest->entry);
+                bridgeFlows.push_back(FlowEntryPtr(serviceDest));
+            }
+            if (addr.is_v4()) {
+                FlowEntry *proxyArp = new FlowEntry();
+                SetDestMatchArp(proxyArp, 51, addr, 0, rdId);
+                SetDestActionArpReply(proxyArp, macAddr, addr);
+                bridgeFlows.push_back(FlowEntryPtr(proxyArp));
+            } else {
+                FlowEntry* proxyND = new FlowEntry();
+                // pass MAC address in flow metadata
+                uint64_t metadata = 0;
+                memcpy(&metadata, macAddr, 6);
+                ((uint8_t*)&metadata)[7] = 1;
+                SetDestMatchNd(proxyND, 51, &addr, 0, rdId,
+                               FlowManager::GetNDCookie());
+                SetActionController(proxyND, 0, 0xffff, metadata);
+                bridgeFlows.push_back(FlowEntryPtr(proxyND));
+            }
+
+            if (sm.getGatewayIP()) {
+                address gwAddr =
+                    address::from_string(sm.getGatewayIP().get(), ec);
+                if (ec) {
+                    LOG(WARNING) << "Invalid gateway IP: "
+                                 << sm.getGatewayIP().get()
+                                 << ": " << ec.message();
+                } else {
+                    if (gwAddr.is_v4()) {
+                        FlowEntry *gwArp = new FlowEntry();
+                        SetDestMatchArp(gwArp, 31, gwAddr, 0, rdId);
+                        match_set_dl_src(&gwArp->entry->match, macAddr);
+                        gwArp->entry->table_id =
+                            FlowManager::SERVICE_MAP_TABLE_ID;
+                        SetDestActionArpReply(gwArp, GetRouterMacAddr(),
+                                              gwAddr);
+                        serviceMapFlows.push_back(FlowEntryPtr(gwArp));
+                    } else {
+                        FlowEntry* gwND = new FlowEntry();
+                        // pass MAC address in flow metadata
+                        uint64_t metadata = 0;
+                        memcpy(&metadata, macAddr, 6);
+                        ((uint8_t*)&metadata)[7] = 1;
+                        ((uint8_t*)&metadata)[6] = 1;
+                        SetDestMatchNd(gwND, 31, &gwAddr, 0, rdId,
+                                       FlowManager::GetNDCookie());
+                        match_set_dl_src(&gwND->entry->match, macAddr);
+                        gwND->entry->table_id =
+                            FlowManager::SERVICE_MAP_TABLE_ID;
+                        SetActionController(gwND, 0, 0xffff, metadata);
+                        serviceMapFlows.push_back(FlowEntryPtr(gwND));
+                    }
+                }
+            }
+        }
+    }
+
+    WriteFlow(uuid, SEC_TABLE_ID, secFlows);
+    WriteFlow(uuid, BRIDGE_TABLE_ID, bridgeFlows);
+    WriteFlow(uuid, SERVICE_MAP_TABLE_ID, serviceMapFlows);
 }
 
 void
@@ -1784,6 +1981,11 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
     WriteFlow(rdURI.toString(), NAT_IN_TABLE_ID, rdNatFlows);
     WriteFlow(rdURI.toString(), ROUTE_TABLE_ID, rdRouteFlows);
 
+    unordered_set<string> uuids;
+    agent.getServiceManager().getAnycastServicesByDomain(rdURI, uuids);
+    BOOST_FOREACH (const string& uuid, uuids) {
+        HandleAnycastServiceUpdate(uuid);
+    }
 }
 
 void
@@ -2232,12 +2434,18 @@ void FlowManager::HandlePortStatusUpdate(const string& portName,
         /* Directly update the group-table */
         UpdateGroupTable();
     } else {
-        unordered_set<string> epUUIDs;
-        agent.getEndpointManager().getEndpointsByIface(portName, epUUIDs);
+        unordered_set<string> uuids;
+        agent.getEndpointManager().getEndpointsByIface(portName, uuids);
         agent.getEndpointManager().getEndpointsByIpmNextHopIf(portName,
-                                                              epUUIDs);
-        BOOST_FOREACH (const string& ep, epUUIDs) {
-            HandleEndpointUpdate(ep);
+                                                              uuids);
+        BOOST_FOREACH (const string& uuid, uuids) {
+            HandleEndpointUpdate(uuid);
+        }
+
+        uuids.clear();
+        agent.getServiceManager().getAnycastServicesByIface(portName, uuids);
+        BOOST_FOREACH (const string& uuid, uuids) {
+            HandleAnycastServiceUpdate(uuid);
         }
     }
 }

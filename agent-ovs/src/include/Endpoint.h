@@ -10,7 +10,6 @@
  */
 
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <boost/unordered_set.hpp>
@@ -547,7 +546,7 @@ public:
         /**
          * Construct a new address mapping
          *
-         * @param uuid a unique ID for this address mapping
+         * @param uuid_ a unique ID for this address mapping
          */
         IPAddressMapping(const std::string& uuid_) : uuid(uuid_) { }
 
@@ -580,7 +579,7 @@ public:
         /**
          * Set the IP address for the address mapping
          *
-         * @param ip the IP address
+         * @param floatingIp the IP address
          */
         void setFloatingIP(const std::string& floatingIp) {
             this->floatingIp = floatingIp;
@@ -661,7 +660,7 @@ public:
         /**
          * Set the next hop MAC address for the endpoint
          *
-         * @param mac the MAC address
+         * @param nextHopMac the MAC address
          */
         void setNextHopMAC(const opflex::modb::MAC& nextHopMac) {
             this->nextHopMac = nextHopMac;
@@ -722,7 +721,7 @@ public:
     /**
      * Add a address mapping to the endpoint
      *
-     * @param iPAddressMapping the address mapping object
+     * @param ipAddressMapping the address mapping object
      */
     void addIPAddressMapping(const IPAddressMapping& ipAddressMapping);
 

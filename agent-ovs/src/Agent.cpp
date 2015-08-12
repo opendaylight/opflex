@@ -17,6 +17,7 @@
 #include "cmd.h"
 #include "Agent.h"
 #include "FSEndpointSource.h"
+#include "FSServiceSource.h"
 #include "logging.h"
 #include "StitchedModeRenderer.h"
 
@@ -34,9 +35,9 @@ using boost::ref;
 using boost::thread;
 using std::make_pair;
 
-Agent::Agent(OFFramework& framework_) 
-    : framework(framework_), policyManager(framework), 
-      endpointManager(framework, policyManager), 
+Agent::Agent(OFFramework& framework_)
+    : framework(framework_), policyManager(framework),
+      endpointManager(framework, policyManager),
       io_service_thread(NULL), started(false) {
 
 }
@@ -56,6 +57,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     // A list of filesystem paths that we should check for endpoint
     // information
     static const std::string ENDPOINT_SOURCE_PATH("endpoint-sources.filesystem");
+    static const std::string SERVICE_SOURCE_PATH("service-sources.filesystem");
     static const std::string OPFLEX_PEERS("opflex.peers");
     static const std::string OPFLEX_SSL_MODE("opflex.ssl.mode");
     static const std::string OPFLEX_SSL_CA_STORE("opflex.ssl.ca-store");
@@ -75,7 +77,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         setLoggingLevel(logLvl.get());
     }
 
-    optional<const ptree&> endpointSource = 
+    optional<const ptree&> endpointSource =
         properties.get_child_optional(ENDPOINT_SOURCE_PATH);
 
     if (endpointSource) {
@@ -85,9 +87,19 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (endpointSourcePaths.size() == 0)
         LOG(ERROR) << "No endpoint sources found in configuration.";
 
-    optional<std::string> opflexName = 
+    optional<const ptree&> serviceSource =
+        properties.get_child_optional(SERVICE_SOURCE_PATH);
+
+    if (serviceSource) {
+        BOOST_FOREACH(const ptree::value_type &v, serviceSource.get())
+            serviceSourcePaths.insert(v.second.data());
+    }
+    if (serviceSourcePaths.size() == 0)
+        LOG(INFO) << "No service sources found in configuration.";
+
+    optional<std::string> opflexName =
         properties.get_optional<std::string>(OPFLEX_NAME);
-    optional<std::string> opflexDomain = 
+    optional<std::string> opflexDomain =
         properties.get_optional<std::string>(OPFLEX_DOMAIN);
 
     if (!opflexName || !opflexDomain) {
@@ -104,13 +116,13 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (enableInspector)
         framework.enableInspector(inspectorSock);
 
-    optional<const ptree&> peers = 
+    optional<const ptree&> peers =
         properties.get_child_optional(OPFLEX_PEERS);
     if (peers) {
         BOOST_FOREACH(const ptree::value_type &v, peers.get()) {
-            optional<std::string> h = 
+            optional<std::string> h =
                 v.second.get_optional<std::string>(HOSTNAME);
-            optional<int> p = 
+            optional<int> p =
                 v.second.get_optional<int>(PORT);
             if (h && p) {
                 opflexPeers.insert(make_pair(h.get(), p.get()));
@@ -135,7 +147,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
                                    StitchedModeRenderer::create);
 
     BOOST_FOREACH(rend_map_t::value_type& v, rend_map) {
-        optional<const ptree&> rtree = 
+        optional<const ptree&> rtree =
             properties.get_child_optional(v.first);
         if (rtree) {
             Renderer* r = v.second(*this);
@@ -156,7 +168,7 @@ void Agent::start() {
     framework.start();
 
     Mutator mutator(framework, "init");
-    shared_ptr<modelgbp::dmtree::Root> root = 
+    shared_ptr<modelgbp::dmtree::Root> root =
         modelgbp::dmtree::Root::createRootElement(framework);
     root->addPolicyUniverse();
     root->addRelatorUniverse();
@@ -172,16 +184,23 @@ void Agent::start() {
     policyManager.start();
     endpointManager.start();
 
-    BOOST_FOREACH(const std::string& path, endpointSourcePaths) {
-        EndpointSource* source = new FSEndpointSource(&endpointManager, path);
-        endpointSources.insert(source);
-    }
-
     BOOST_FOREACH(Renderer* r, renderers) {
         r->start();
     }
 
     io_service_thread = new thread(bind(&io_service::run, ref(agent_io)));
+
+    BOOST_FOREACH(const std::string& path, endpointSourcePaths) {
+        EndpointSource* source =
+            new FSEndpointSource(&endpointManager, fsWatcher, path);
+        endpointSources.insert(source);
+    }
+    BOOST_FOREACH(const std::string& path, serviceSourcePaths) {
+        ServiceSource* source =
+            new FSServiceSource(&serviceManager, fsWatcher, path);
+        serviceSources.insert(source);
+    }
+    fsWatcher.start();
 
     BOOST_FOREACH(const host_t& h, opflexPeers)
         framework.addPeer(h.first, h.second);
@@ -195,10 +214,16 @@ void Agent::stop() {
         r->stop();
     }
 
+    fsWatcher.stop();
     BOOST_FOREACH(EndpointSource* source, endpointSources) {
         delete source;
     }
     endpointSources.clear();
+
+    BOOST_FOREACH(ServiceSource* source, serviceSources) {
+        delete source;
+    }
+    serviceSources.clear();
 
     endpointManager.stop();
     policyManager.stop();

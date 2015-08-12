@@ -34,7 +34,7 @@ namespace ovsagent {
  * exposes events related to endpoint updates that are useful for
  * compiling policy into local system configuration.
  */
-class EndpointManager : public PolicyListener, 
+class EndpointManager : public PolicyListener,
                         private boost::noncopyable {
 public:
     /**
