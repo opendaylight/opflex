@@ -237,7 +237,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
             string_ep_map_t::iterator it =
                 iface_ep_map.find(es.endpoint->getInterfaceName().get());
             if (it != iface_ep_map.end()) {
-                iface_ep_map.erase(es.endpoint->getInterfaceName().get());
+                iface_ep_map.erase(it);
             }
         }
         BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,

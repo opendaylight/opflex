@@ -1,2 +1,3 @@
 var/lib/opflex-agent-ovs/endpoints
+var/lib/opflex-agent-ovs/services
 var/lib/opflex-agent-ovs/ids

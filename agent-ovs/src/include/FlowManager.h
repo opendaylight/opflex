@@ -39,6 +39,7 @@ namespace ovsagent {
  * modifications.
  */
 class FlowManager : public EndpointListener,
+                    public ServiceListener,
                     public PolicyListener,
                     public OnConnectListener,
                     public PortStatusListener {
@@ -286,21 +287,24 @@ public:
     void SetSyncDelayOnConnect(long delayMsec);
 
     /* Interface: EndpointListener */
-    void endpointUpdated(const std::string& uuid);
+    virtual void endpointUpdated(const std::string& uuid);
+
+    /* Interface: ServiceListener */
+    virtual void anycastServiceUpdated(const std::string& uuid);
 
     /* Interface: PolicyListener */
-    void egDomainUpdated(const opflex::modb::URI& egURI);
-    void domainUpdated(opflex::modb::class_id_t cid,
-                       const opflex::modb::URI& domURI);
-    void contractUpdated(const opflex::modb::URI& contractURI);
-    void configUpdated(const opflex::modb::URI& configURI);
+    virtual void egDomainUpdated(const opflex::modb::URI& egURI);
+    virtual void domainUpdated(opflex::modb::class_id_t cid,
+                               const opflex::modb::URI& domURI);
+    virtual void contractUpdated(const opflex::modb::URI& contractURI);
+    virtual void configUpdated(const opflex::modb::URI& configURI);
 
     /* Interface: OnConnectListener */
-    void Connected(SwitchConnection *swConn);
+    virtual void Connected(SwitchConnection *swConn);
 
     /* Interface: PortStatusListener */
-    void portStatusUpdate(const std::string& portName, uint32_t portNo,
-                          bool fromDesc);
+    virtual void portStatusUpdate(const std::string& portName, uint32_t portNo,
+                                  bool fromDesc);
 
     /**
      * Get the VNID and routing-domain ID for the specified endpoint
@@ -446,6 +450,11 @@ public:
          */
         LEARN_TABLE_ID,
         /**
+         * Map traffic returning from a service interface to the
+         * appropriate endpoint interface.
+         */
+        SERVICE_MAP_TABLE_ID,
+        /**
          * Allow policy for the flow based on the source and
          * destination groups and the contracts that are configured.
          */
@@ -468,6 +477,14 @@ private:
      * @param uuid UUID of the changed endpoint
      */
     void HandleEndpointUpdate(const std::string& uuid);
+
+    /**
+     * Compare and update flow/group tables due to changes in an
+     * anycast service.
+     *
+     * @param uuid UUID of the changed anycast service
+     */
+    void HandleAnycastServiceUpdate(const std::string& uuid);
 
     /**
      * Compare and update flow/group tables due to changes in an

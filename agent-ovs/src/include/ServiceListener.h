@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Include file for endpoint listener
+ * Include file for service listener
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -10,35 +10,35 @@
  */
 
 #pragma once
-#ifndef OVSAGENT_ENDPOINTLISTENER_H
-#define OVSAGENT_ENDPOINTLISTENER_H
+#ifndef OVSAGENT_SERVICELISTENER_H
+#define OVSAGENT_SERVICELISTENER_H
 
 namespace ovsagent {
 
 /**
  * An abstract interface for classes interested in updates related to
- * the endpoints
+ * the services
  */
-class EndpointListener {
+class ServiceListener {
 public:
     /**
-     * Instantiate a new endpoint listener
+     * Instantiate a new service listener
      */
-    EndpointListener() {};
+    ServiceListener() {};
 
     /**
-     * Destroy the endpoint listener and clean up all state
+     * Destroy the service listener and clean up all state
      */
-    virtual ~EndpointListener() {};
+    virtual ~ServiceListener() {};
 
     /**
-     * Called when an endpoint is added, updated, or removed.
+     * Called when an anycast service is added, updated, or removed.
      *
-     * @param uuid the UUID for the endpoint
+     * @param uuid the UUID for the service
      */
-    virtual void endpointUpdated(const std::string& uuid) = 0;
+    virtual void anycastServiceUpdated(const std::string& uuid) = 0;
 };
 
 } /* namespace ovsagent */
 
-#endif /* OVSAGENT_ENDPOINTMANAGER_H */
+#endif /* OVSAGENT_SERVICEMANAGER_H */

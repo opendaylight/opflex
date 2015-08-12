@@ -37,14 +37,14 @@ public:
      * Destroy the endpoint source and clean up all state
      */
     virtual ~EndpointSource();
-    
+
     /**
      * Add or update the specified endpoint in the endpoint manager.
-     * 
+     *
      * @param endpoint the endpoint to add/update
      */
     virtual void updateEndpoint(const Endpoint& endpoint);
-    
+
     /**
      * Remove an endpoint that no longer exists from the endpoint
      * manager
@@ -52,16 +52,6 @@ public:
      * @param uuid the endpoint that no longer exists
      */
     virtual void removeEndpoint(const std::string& uuid);
-
-    /**
-     * Start the endpoint source
-     */
-    virtual void start() = 0;
-
-    /**
-     * Stop the endpoint source
-     */
-    virtual void stop() = 0;
 
 protected:
     /**
