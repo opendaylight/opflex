@@ -160,7 +160,7 @@ public:
      * Get the routing domain for the specified l3 external network if
      * it exists
      *
-     * @param eg the URI for the endpoint group
+     * @param l3n the URI for the endpoint group
      * @return the routing domain or boost::none if the group or the
      * domain is not found
      */
@@ -287,7 +287,7 @@ public:
     /**
      * Get all known routing domains.
      *
-     * @param epgURIs set of URIs of routing domains found.
+     * @param rdURIs set of URIs of routing domains found.
      */
     void getRoutingDomains(/* out */ uri_set_t& rdURIs);
 

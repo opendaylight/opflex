@@ -435,8 +435,10 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
        << "}" << std::endl;
     os.close();
 
-    FSEndpointSource source(&agent.getEndpointManager(),
+    FSWatcher watcher;
+    FSEndpointSource source(&agent.getEndpointManager(), watcher,
                              temp.string());
+    watcher.start();
 
     URI l2epr = URIBuilder()
         .addElement("EprL2Universe")
@@ -483,6 +485,8 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
     fs::remove(path2);
 
     WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr2), 500);
+
+    watcher.stop();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

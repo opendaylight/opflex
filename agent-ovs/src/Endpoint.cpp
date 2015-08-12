@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation for FSEndpointSource class.
+ * Implementation for Endpoint class.
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *

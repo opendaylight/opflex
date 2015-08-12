@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Include file for filesystem endpoint source
+ * Include file for filesystem service source
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -15,35 +15,35 @@
 #include <boost/unordered_map.hpp>
 #include <boost/thread.hpp>
 
-#include "EndpointSource.h"
+#include "ServiceSource.h"
 #include "FSWatcher.h"
 
 #pragma once
-#ifndef OVSAGENT_FSENDPOINTSOURCE_H
-#define OVSAGENT_FSENDPOINTSOURCE_H
+#ifndef OVSAGENT_FSSERVICESOURCE_H
+#define OVSAGENT_FSSERVICESOURCE_H
 
 namespace ovsagent {
 
 /**
- * An endpoint source that gets information about endpoints from JSON
+ * An service source that gets information about services from JSON
  * files on the filesystem.  If supported, it will set an inotify
  * watch on the directory
  */
-class FSEndpointSource
-    : public EndpointSource, public FSWatcher::Watcher {
+class FSServiceSource
+    : public ServiceSource, public FSWatcher::Watcher {
 public:
     /**
-     * Instantiate a new endpoint source using the specified endpoint
+     * Instantiate a new service source using the specified service
      * manager.  It will set a watch on the given path.
      */
-    FSEndpointSource(EndpointManager* manager,
-                     FSWatcher& listener,
-                     const std::string& endpointDir);
+    FSServiceSource(ServiceManager* manager,
+                    FSWatcher& listener,
+                    const std::string& serviceDir);
 
     /**
-     * Destroy the endpoint source and clean up all state
+     * Destroy the service source and clean up all state
      */
-    virtual ~FSEndpointSource() {}
+    virtual ~FSServiceSource() {}
 
     // See Watcher
     virtual void updated(const boost::filesystem::path& filePath);
@@ -51,14 +51,14 @@ public:
     virtual void deleted(const boost::filesystem::path& filePath);
 
 private:
-    typedef boost::unordered_map<std::string, std::string> ep_map_t;
+    typedef boost::unordered_map<std::string, std::string> serv_map_t;
 
     /**
-     * EPs that are known to the filesystem watcher
+     * Services that are known to the filesystem watcher
      */
-    ep_map_t knownEps;
+    serv_map_t knownAnycastServs;
 };
 
 } /* namespace ovsagent */
 
-#endif /* OVSAGENT_FSENDPOINTSOURCE_H */
+#endif /* OVSAGENT_FSSERVICESOURCE_H */
