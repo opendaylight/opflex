@@ -46,6 +46,8 @@ module[gbp]
         # Set how IPv6 hosts should be configured (through DHCP or
         # statelessly)
         member[ipv6Autoconfig; type=gbp/Autoconfig]
+
+        member[globalName; type=ascii/String]
     }
 
     class[BaseSubnet;
