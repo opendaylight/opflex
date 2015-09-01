@@ -12,6 +12,7 @@ owner[init]
     class[relator/Universe]
     class[policy/Universe]
     class[epr/Universe]
+    class[dci/Universe]
     class[observer/Universe]
     module[dmtree]
     {
