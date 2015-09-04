@@ -1528,15 +1528,15 @@ void FlowManagerFixture::initExpRd(uint32_t rdId) {
     if (tunPort != OFPP_NONE) {
         switch (encapType) {
         case FlowManager::ENCAP_VLAN:
-            ADDF(Bldr().table(RT).priority(308)
+            ADDF(Bldr().table(RT).priority(324)
                  .ip().reg(RD, rdId).isIpDst("10.20.44.0/24")
                  .actions().pushVlan().move(SEPG12, VLAN)
                  .outPort(tunPort).done());
-            ADDF(Bldr().table(RT).priority(308)
+            ADDF(Bldr().table(RT).priority(324)
                  .ip().reg(RD, rdId).isIpDst("10.20.45.0/24")
                  .actions().pushVlan().move(SEPG12, VLAN)
                  .outPort(tunPort).done());
-            ADDF(Bldr().table(RT).priority(396)
+            ADDF(Bldr().table(RT).priority(332)
                  .ipv6().reg(RD, rdId).isIpv6Dst("2001:db8::/32")
                  .actions().pushVlan().move(SEPG12, VLAN)
                  .outPort(tunPort).done());
@@ -1544,28 +1544,28 @@ void FlowManagerFixture::initExpRd(uint32_t rdId) {
         case FlowManager::ENCAP_VXLAN:
         case FlowManager::ENCAP_IVXLAN:
         default:
-            ADDF(Bldr().table(RT).priority(308)
+            ADDF(Bldr().table(RT).priority(324)
                  .ip().reg(RD, rdId).isIpDst("10.20.44.0/24")
                  .actions().move(SEPG, TUNID).load(TUNDST, tunDst)
                  .outPort(tunPort).done());
-            ADDF(Bldr().table(RT).priority(308)
+            ADDF(Bldr().table(RT).priority(324)
                  .ip().reg(RD, rdId).isIpDst("10.20.45.0/24")
                  .actions().move(SEPG, TUNID).load(TUNDST, tunDst)
                  .outPort(tunPort).done());
-            ADDF(Bldr().table(RT).priority(396)
+            ADDF(Bldr().table(RT).priority(332)
                  .ipv6().reg(RD, rdId).isIpv6Dst("2001:db8::/32")
                  .actions().move(SEPG, TUNID).load(TUNDST, tunDst)
                  .outPort(tunPort).done());
             break;
         }
     } else {
-        ADDF(Bldr().table(RT).priority(308)
+        ADDF(Bldr().table(RT).priority(324)
              .ip().reg(RD, rdId).isIpDst("10.20.44.0/24")
              .actions().drop().done());
-        ADDF(Bldr().table(RT).priority(308)
+        ADDF(Bldr().table(RT).priority(324)
              .ip().reg(RD, rdId).isIpDst("10.20.45.0/24")
              .actions().drop().done());
-        ADDF(Bldr().table(RT).priority(396)
+        ADDF(Bldr().table(RT).priority(332)
              .ipv6().reg(RD, rdId).isIpv6Dst("2001:db8::/32")
              .actions().drop().done());
     }
@@ -1930,28 +1930,28 @@ void FlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
          .controller(65535).done());
 
     if (natEpgMap) {
-        ADDF(Bldr().table(RT).priority(262).ipv6().reg(RD, 1)
+        ADDF(Bldr().table(RT).priority(166).ipv6().reg(RD, 1)
              .isIpv6Dst("fdf1::/16")
              .actions().load(DEPG, 0x80000001).load(OUTPORT, 0x4242)
              .mdAct(0x2).go(POL).done());
-        ADDF(Bldr().table(RT).priority(174).ip().reg(RD, 1)
+        ADDF(Bldr().table(RT).priority(158).ip().reg(RD, 1)
              .isIpDst("5.0.0.0/8")
              .actions().load(DEPG, 0x80000001).load(OUTPORT, 0x4242)
              .mdAct(0x2).go(POL).done());
     } else {
-        ADDF(Bldr().table(RT).priority(262).ipv6().reg(RD, 1)
+        ADDF(Bldr().table(RT).priority(166).ipv6().reg(RD, 1)
              .isIpv6Dst("fdf1::/16")
              .actions().move(SEPG, TUNID).load(TUNDST, tunDst)
              .outPort(tunPort).done());
-        ADDF(Bldr().table(RT).priority(174).ip().reg(RD, 1)
+        ADDF(Bldr().table(RT).priority(158).ip().reg(RD, 1)
              .isIpDst("5.0.0.0/8")
              .actions().move(SEPG, TUNID).load(TUNDST, tunDst)
              .outPort(tunPort).done());
     }
 
-    ADDF(Bldr().table(NAT).priority(262).ipv6().reg(RD, 1)
+    ADDF(Bldr().table(NAT).priority(166).ipv6().reg(RD, 1)
          .isIpv6Src("fdf1::/16").actions().load(SEPG, 0x80000001).go(POL).done());
-    ADDF(Bldr().table(NAT).priority(174).ip().reg(RD, 1)
+    ADDF(Bldr().table(NAT).priority(158).ip().reg(RD, 1)
          .isIpSrc("5.0.0.0/8").actions().load(SEPG, 0x80000001).go(POL).done());
 
     if (nextHop) {
