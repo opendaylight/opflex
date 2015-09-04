@@ -438,15 +438,12 @@ SetMatchSubnet(FlowEntry *fe, uint32_t rdId,
                address& ip, uint8_t prefixLen, bool src) {
    fe->entry->table_id = tableId;
 
-   int prio = prioBase;
-   if (ip.is_v4()) {
-       if (prefixLen > 32) prefixLen = 32;
-       prio += 32 - prefixLen;
-   } else {
-       if (prefixLen > 128) prefixLen = 128;
-       prio += 128 - prefixLen;
+   if (ip.is_v4() && prefixLen > 32) {
+       prefixLen = 32;
+   } else if (prefixLen > 128) {
+       prefixLen = 128;
    }
-   fe->entry->priority = prio;
+   fe->entry->priority = prioBase + prefixLen;
    match_set_reg(&fe->entry->match, 6 /* REG6 */, rdId);
    AddMatchSubnet(fe, ip, prefixLen, src);
 }
