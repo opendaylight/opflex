@@ -37,7 +37,7 @@ using std::make_pair;
 
 Agent::Agent(OFFramework& framework_)
     : framework(framework_), policyManager(framework),
-      endpointManager(framework, policyManager),
+      endpointManager(framework, policyManager), notifServer(agent_io),
       io_service_thread(NULL), started(false) {
 
 }
@@ -50,7 +50,8 @@ Agent::~Agent() {
     renderers.clear();
 }
 
-#define DEF_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-inspect.sock"
+#define DEF_INSPECT_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-inspect.sock"
+#define DEF_NOTIF_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-notif.sock"
 
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string LOG_LEVEL("log.level");
@@ -65,6 +66,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string PORT("port");
     static const std::string OPFLEX_INSPECTOR("opflex.inspector.enabled");
     static const std::string OPFLEX_INSPECTOR_SOCK("opflex.inspector.socket-name");
+    static const std::string OPFLEX_NOTIF("opflex.notif.enabled");
+    static const std::string OPFLEX_NOTIF_SOCK("opflex.notif.socket-name");
 
     static const std::string OPFLEX_NAME("opflex.name");
     static const std::string OPFLEX_DOMAIN("opflex.domain");
@@ -112,9 +115,15 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
 
     bool enableInspector = properties.get<bool>(OPFLEX_INSPECTOR, true);
     std::string inspectorSock =
-        properties.get<std::string>(OPFLEX_INSPECTOR_SOCK, DEF_SOCKET);
+        properties.get<std::string>(OPFLEX_INSPECTOR_SOCK, DEF_INSPECT_SOCKET);
     if (enableInspector)
         framework.enableInspector(inspectorSock);
+
+    bool enableNotif = properties.get<bool>(OPFLEX_NOTIF, true);
+    std::string notifSock =
+        properties.get<std::string>(OPFLEX_NOTIF_SOCK, DEF_NOTIF_SOCKET);
+    if (enableNotif)
+        notifServer.setSocketName(notifSock);
 
     optional<const ptree&> peers =
         properties.get_child_optional(OPFLEX_PEERS);
@@ -183,6 +192,7 @@ void Agent::start() {
     // instantiate other components
     policyManager.start();
     endpointManager.start();
+    notifServer.start();
 
     BOOST_FOREACH(Renderer* r, renderers) {
         r->start();
@@ -225,6 +235,7 @@ void Agent::stop() {
     }
     serviceSources.clear();
 
+    notifServer.stop();
     endpointManager.stop();
     policyManager.stop();
     framework.stop();

@@ -29,7 +29,8 @@ libagent_ovs_la_CXXFLAGS = \
 	$(libmodelgbp_CFLAGS) \
 	$(OVS_ADDL_CFLAGS) \
 	$(libopenvswitch_CFLAGS) \
-	$(libofproto_CFLAGS)
+	$(libofproto_CFLAGS) \
+	$(rapidjson_CFLAGS)
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
@@ -38,6 +39,7 @@ libagent_ovs_la_LIBADD = \
 	$(BOOST_THREAD_LIB) \
 	$(BOOST_ASIO_LIB) \
 	$(BOOST_RANDOM_LIB) \
+	$(BOOST_CHRONO_LIB) \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS)
 
@@ -76,6 +78,8 @@ noinst_HEADERS = \
 	src/include/PacketInHandler.h \
 	src/include/JsonCmdExecutor.h \
 	src/include/AdvertManager.h \
+	src/include/KeyedRateLimiter.h \
+	src/include/NotifServer.h \
 	src/include/udp.h \
 	src/include/dhcp.h \
 	src/include/arp.h \
@@ -114,7 +118,8 @@ libagent_ovs_la_SOURCES = \
 	src/Packets.cpp \
 	src/PacketInHandler.cpp \
 	src/JsonCmdExecutor.cpp \
-	src/AdvertManager.cpp
+	src/AdvertManager.cpp \
+	src/NotifServer.cpp
 
 bin_PROGRAMS=agent_ovs gbp_inspect
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' $(OVS_ADDL_CFLAGS)
@@ -158,6 +163,8 @@ agent_test_SOURCES = \
 	test/RangeMask_test.cpp \
 	test/Packets_test.cpp \
 	test/JsonCmdExecutor_test.cpp \
+	test/KeyedRateLimiter_test.cpp \
+	test/NotifServer_test.cpp \
 	test/main.cpp
 agent_test_LDADD = \
 	libagent_ovs.la \
