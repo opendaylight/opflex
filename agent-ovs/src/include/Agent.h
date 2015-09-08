@@ -16,7 +16,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/thread.hpp>
-#include <boost/asio.hpp>
+#include <boost/asio/io_service.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/noncopyable.hpp>
@@ -25,6 +25,7 @@
 
 #include "EndpointManager.h"
 #include "ServiceManager.h"
+#include "NotifServer.h"
 #include "FSWatcher.h"
 
 #pragma once
@@ -95,6 +96,11 @@ public:
     ServiceManager& getServiceManager() { return serviceManager; }
 
     /**
+     * Get the notification server object for this agent
+     */
+    NotifServer& getNotifServer() { return notifServer; }
+
+    /**
      * Get the ASIO service for the agent for scheduling asynchronous
      * tasks in the io service thread.  You must schedule your async
      * tasks in your start() method and close them (possibly
@@ -105,10 +111,13 @@ public:
     boost::asio::io_service& getAgentIOService() { return agent_io; }
 
 private:
+    boost::asio::io_service agent_io;
+
     opflex::ofcore::OFFramework& framework;
     PolicyManager policyManager;
     EndpointManager endpointManager;
     ServiceManager serviceManager;
+    NotifServer notifServer;
 
     FSWatcher fsWatcher;
     std::set<std::string> endpointSourcePaths;
@@ -128,7 +137,6 @@ private:
      * Thread for asynchronous tasks
      */
     boost::thread* io_service_thread;
-    boost::asio::io_service agent_io;
 
     bool started;
 };

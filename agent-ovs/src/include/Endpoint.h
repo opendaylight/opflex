@@ -131,6 +131,40 @@ public:
     }
 
     /**
+     * A MAC/IP address pair representing a virtual IP that can be
+     * claimed by the endpoint by sending a gratuitous ARP.
+     */
+    typedef std::pair<opflex::modb::MAC, std::string> virt_ip_t;
+
+    /**
+     * Get the list of virtual IP addresses associated with this endpoint
+     *
+     * @return the list of virtual IP addresses
+     */
+    const boost::unordered_set<virt_ip_t>& getVirtualIPs() const {
+        return virtualIps;
+    }
+
+    /**
+     * Set the virtual IP addresses for this endpoint.  This will overwrite
+     * any existing virtual IP addresses
+     *
+     * @param virtualIps the virtual IP addresses
+     */
+    void setVirtualIPs(const boost::unordered_set<virt_ip_t>& virtualIps) {
+        this->virtualIps = virtualIps;
+    }
+
+    /**
+     * Add a virtual IP address to the list of IPs
+     *
+     * @param virtualIp the IP address to add
+     */
+    void addVirtualIP(const virt_ip_t& virtualIp) {
+        this->virtualIps.insert(virtualIp);
+    }
+
+    /**
      * Get the MAC address for this endpoint
      *
      * @return the MAC address
@@ -738,6 +772,7 @@ private:
     std::string uuid;
     boost::optional<opflex::modb::MAC> mac;
     boost::unordered_set<std::string> ips;
+    boost::unordered_set<virt_ip_t> virtualIps;
     boost::optional<std::string> egMappingAlias;
     boost::optional<opflex::modb::URI> egURI;
     boost::optional<std::string> interfaceName;

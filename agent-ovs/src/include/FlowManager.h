@@ -76,6 +76,12 @@ public:
     void SetPortMapper(PortMapper *m);
 
     /**
+     * Get the port mapper
+     * @return the port mapper
+     */
+    PortMapper* GetPortMapper() { return portMapper; }
+
+    /**
      * Set the object used for reading flows and groups from the switch.
      *
      * @param r The reader object
@@ -356,9 +362,18 @@ public:
      * controller
      *
      * @param v4 true for dhcpv4, false for v6
-     * @return flow-cookie for DHCPv4 packets
+     * @return flow-cookie for DHCP packets
      */
     static ovs_be64 GetDHCPCookie(bool v4 = true);
+
+    /**
+     * Get the cookie used for flows that direct virtual IP
+     * announcement packets to the controller
+     *
+     * @param v4 true for ARP, false for neighbor discovyer
+     * @return flow-cookie for VIP announcements
+     */
+    static ovs_be64 GetVIPCookie(bool v4 = true);
 
     /**
      * Set fill in tunnel metadata in an action builder
