@@ -671,7 +671,7 @@ static void handleDHCPPktIn(bool v4,
     optional<URI> egUri = polMgr.getGroupForVnid(epgId);
     if (!egUri)
         return;
-    
+
     unordered_set<string> eps;
     epMgr.getEndpointsForGroup(egUri.get(), eps);
     boost::system::error_code ec;
@@ -694,6 +694,73 @@ static void handleDHCPPktIn(bool v4,
     else
         handleDHCPv6PktIn(ep, flowManager, conn, pi, proto, pkt, flow);
 
+}
+
+static void handleVIPPktIn(bool v4,
+                           Agent& agent,
+                           FlowManager& flowManager,
+                           SwitchConnection *conn,
+                           struct ofputil_packet_in& pi,
+                           ofputil_protocol& proto,
+                           struct ofpbuf& pkt,
+                           struct flow& flow) {
+    EndpointManager& epMgr = agent.getEndpointManager();
+    NotifServer& notifServer = agent.getNotifServer();
+    MAC srcMac(flow.dl_src);
+    address srcIp;
+
+    if (v4) {
+        // ARP reply
+        if (flow.dl_type != htons(ETH_TYPE_ARP))
+            return;
+
+        srcIp = address_v4(ntohl(flow.nw_src));
+    } else {
+        // Neighbor advertisement
+        if (flow.dl_type != htons(ETH_TYPE_IPV6) ||
+            flow.nw_proto != 58 /* ICMPv6 */)
+            return;
+
+        address_v6::bytes_type bytes;
+        std::memcpy(bytes.data(), &flow.nd_target, bytes.size());
+        srcIp = address_v6(bytes);
+    }
+
+    try {
+        const std::string& iface =
+            flowManager.GetPortMapper()->FindPort(pi.fmd.in_port);
+
+        unordered_set<string> uuids;
+
+        unordered_set<string> try_uuids;
+        epMgr.getEndpointsByIface(iface, try_uuids);
+
+        boost::system::error_code ec;
+
+        BOOST_FOREACH(const string& epUuid, try_uuids) {
+            shared_ptr<const Endpoint> try_ep = epMgr.getEndpoint(epUuid);
+            if (!try_ep) continue;
+
+            BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
+                          try_ep->getVirtualIPs()) {
+                address addr = address::from_string(vip.second, ec);
+                if (ec) continue;
+                if (srcMac == vip.first && srcIp == addr) {
+                    uuids.insert(epUuid);
+                    break;
+                }
+            }
+        }
+
+        if (uuids.size() > 0) {
+            LOG(DEBUG) << "Virtual IP ownership advertised for ("
+                       << srcMac << ", " << srcIp << ")";
+            notifServer.dispatchVirtualIp(uuids, srcMac, srcIp.to_string());
+        }
+
+    } catch (std::out_of_range) {
+        // Ignore announcement coming from stale port
+    }
 }
 
 /**
@@ -733,6 +800,10 @@ void PacketInHandler::Handle(SwitchConnection *conn,
         handleDHCPPktIn(true, agent, flowManager, conn, pi, proto, pkt, flow);
     else if (pi.cookie == FlowManager::GetDHCPCookie(false))
         handleDHCPPktIn(false, agent, flowManager, conn, pi, proto, pkt, flow);
+    else if (pi.cookie == FlowManager::GetVIPCookie(true))
+        handleVIPPktIn(true, agent, flowManager, conn, pi, proto, pkt, flow);
+    else if (pi.cookie == FlowManager::GetVIPCookie(false))
+        handleVIPPktIn(false, agent, flowManager, conn, pi, proto, pkt, flow);
 }
 
 } /* namespace ovsagent */

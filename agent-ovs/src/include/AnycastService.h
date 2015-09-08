@@ -126,7 +126,7 @@ public:
     /**
      * Set the l3 domain URI to the URI specified.
      *
-     * @param domainName the domain uri to which the endpoint
+     * @param domainURI the domain uri to which the endpoint
      * is attached locally
      */
     void setDomainURI(const opflex::modb::URI& domainURI) {

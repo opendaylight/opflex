@@ -28,6 +28,7 @@ m4_include([m4/ax_boost_program_options.m4])
 m4_include([m4/ax_boost_thread.m4])
 m4_include([m4/ax_boost_system.m4])
 m4_include([m4/ax_boost_date_time.m4])
+m4_include([m4/ax_boost_chrono.m4])
 m4_include([m4/ax_boost_filesystem.m4])
 m4_include([m4/ax_boost_iostreams.m4])
 m4_include([m4/ax_boost_asio.m4])
@@ -89,6 +90,10 @@ AX_BOOST_DATE_TIME
 if test "x$ax_cv_boost_date_time" != xyes; then
    AC_MSG_ERROR([Boost::Date_Time library is required])
 fi
+AX_BOOST_CHRONO
+if test "x$ax_cv_boost_chrono" != xyes; then
+   AC_MSG_ERROR([Boost::Chrono library is required])
+fi
 AX_BOOST_THREAD
 if test "x$ax_cv_boost_thread" != xyes; then
    AC_MSG_ERROR([Boost::Thread library is required])
@@ -108,6 +113,7 @@ fi
 
 PKG_CHECK_MODULES([libopflex], [libopflex >= 1.1.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.1.0])
+PKG_CHECK_MODULES([rapidjson], [RapidJSON >= 1.0])
 
 # check for libopenvswitch
 PKG_CHECK_MODULES([libofproto], [libofproto >= 2.3.90])
