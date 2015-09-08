@@ -1,0 +1,338 @@
+/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
+/*
+ * Implementation for NotifServer class
+ *
+ * Copyright (c) 2015 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+#include "NotifServer.h"
+#include "logging.h"
+
+#include <boost/foreach.hpp>
+#include <boost/array.hpp>
+#include <boost/bind.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
+#include <boost/asio/placeholders.hpp>
+
+#define RAPIDJSON_ASSERT(x)
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/error/en.h>
+
+#include <cstdio>
+
+namespace ovsagent {
+
+namespace ba = boost::asio;
+using ba::local::stream_protocol;
+using boost::bind;
+using boost::shared_ptr;
+using rapidjson::Document;
+using rapidjson::StringBuffer;
+using rapidjson::Writer;
+using rapidjson::Value;
+
+NotifServer::NotifServer(ba::io_service& io_service_)
+    : io_service(io_service_), running(false) {
+
+}
+
+NotifServer::~NotifServer() {
+    stop();
+}
+
+void NotifServer::setSocketName(const std::string& name) {
+    notifSocketPath = name;
+}
+
+class NotifServer::session
+    : public boost::enable_shared_from_this<session> {
+public:
+    session(ba::io_service& io_service_, std::set<session_ptr>& sessions_)
+        : io_service(io_service_), socket(io_service),
+          sessions(sessions_) { }
+
+    stream_protocol::socket& get_socket() {
+        return socket;
+    }
+
+    void start() {
+        LOG(INFO) << "New notification connection";
+        sessions.insert(shared_from_this());
+        read();
+    }
+
+    void close() {
+        socket.close();
+        sessions.erase(shared_from_this());
+    }
+
+    void read() {
+        ba::async_read(socket,
+                       ba::buffer(&msg_len, 4),
+                       bind(&session::handle_size,
+                            shared_from_this(),
+                            ba::placeholders::error,
+                            ba::placeholders::bytes_transferred));
+    }
+
+    void handle_size(const boost::system::error_code& ec,
+                     size_t len) {
+        if (ec) {
+            if (ec != ba::error::operation_aborted) {
+                LOG(ERROR) << "Could not read from notif socket: "
+                           << ec.message();
+                close();
+            }
+            return;
+        }
+
+        msg_len = ntohl(msg_len);
+        if (msg_len > 1024) {
+            LOG(ERROR) << "Invalid message length: " << msg_len;
+            close();
+            return;
+        }
+
+        buffer.resize(msg_len+1);
+        // rapidjson requires null-terminated string for Document::Parse
+        buffer[msg_len] = '\0';
+        ba::async_read(socket,
+                       ba::buffer(buffer, msg_len),
+                       bind(&session::handle_body,
+                            shared_from_this(),
+                            ba::placeholders::error,
+                            ba::placeholders::bytes_transferred));
+    }
+
+    void handle_body(const boost::system::error_code& ec,
+                     size_t bytes_transferred) {
+        if (ec) {
+            if (ec != ba::error::operation_aborted) {
+                LOG(ERROR) << "Could not read from notif socket: "
+                           << ec.message();
+                close();
+            }
+            return;
+        }
+
+        Document request;
+        request.Parse(reinterpret_cast<const char*>(&buffer[0]));
+        if (request.HasParseError()) {
+            LOG(ERROR) << "Could not parse request at position "
+                       << request.GetErrorOffset() << ": "
+                       << rapidjson::GetParseError_En(request.GetParseError());
+            close();
+            return;
+        }
+
+        if (request.HasMember("method") && request["method"].IsString() &&
+            request.HasMember("params") && request["params"].IsObject()) {
+            const Value& m = request["method"];
+            const Value& p = request["params"];
+            if ("subscribe" == std::string(m.GetString())) {
+                if (p.HasMember("type") && p["type"].IsArray()) {
+                    const Value& types = p["type"];
+                    Value::ConstValueIterator t_it;
+                    for (t_it = types.Begin(); t_it != types.End(); ++t_it) {
+                        const Value& t = *t_it;
+                        if (t.IsString()) {
+                            subscriptions.insert(t.GetString());
+                            LOG(DEBUG) << "Subscribed to " << t.GetString();
+                        }
+                    }
+                }
+
+                if (request.HasMember("id")) {
+                    shared_ptr<StringBuffer> sb(new StringBuffer());
+                    Writer<StringBuffer> writer(*sb);
+                    writer.StartObject();
+                    writer.Key("result");
+                    writer.StartObject();
+                    writer.EndObject();
+                    writer.Key("id");
+                    request["id"].Accept(writer);
+                    writer.EndObject();
+
+                    write(sb);
+                }
+            }
+
+            read();
+        } else {
+            LOG(ERROR) << "Malformed request";
+            close();
+            return;
+        }
+    }
+
+    void handle_write(const boost::system::error_code& ec) {
+        if (ec) {
+            if (ec != ba::error::operation_aborted) {
+                LOG(ERROR) << "Could not write to notif socket: "
+                           << ec.message();
+                close();
+            }
+            return;
+        }
+    }
+
+    bool subscribed(const std::string& type) {
+        return subscriptions.find(type) != subscriptions.end();
+    }
+
+    void dispatch(shared_ptr<StringBuffer> message) {
+        io_service.dispatch(bind(&session::write,
+                                 shared_from_this(),
+                                 message));
+    }
+
+private:
+    ba::io_service& io_service;
+    stream_protocol::socket socket;
+    std::set<session_ptr>& sessions;
+
+    boost::unordered_set<std::string> subscriptions;
+    uint32_t msg_len;
+    std::vector<uint8_t> buffer;
+
+    class write_ctx {
+    public:
+        write_ctx(shared_ptr<StringBuffer> message_,
+                  session_ptr session_)
+            : message(message_), session(session_) {}
+
+        void handle_error(const boost::system::error_code& ec) {
+            if (ec != ba::error::operation_aborted) {
+                LOG(ERROR) << "Could not write to notif socket: "
+                           << ec.message();
+                session->close();
+            }
+        }
+        void operator()(const boost::system::error_code& ec,
+                        std::size_t bytes_transferred) {
+            if (ec) {
+                handle_error(ec);
+                return;
+            }
+        }
+
+        shared_ptr<StringBuffer> message;
+        session_ptr session;
+    };
+
+    void write(shared_ptr<StringBuffer> message) {
+        // write message length to first 4 bytes of message
+        *reinterpret_cast<uint32_t*>(const_cast<char*>(message->GetString())) =
+            htonl(message->GetSize() - 4);
+        ba::async_write(socket, ba::buffer(message->GetString(),
+                                           message->GetSize()),
+                        write_ctx(message, shared_from_this()));
+    }
+};
+
+void NotifServer::accept() {
+    session_ptr new_session(new session(io_service, sessions));
+    acceptor->async_accept(new_session->get_socket(),
+                           bind(&NotifServer::handle_accept,
+                                this, new_session, ba::placeholders::error));
+}
+
+void NotifServer::handle_accept(session_ptr new_session,
+                                const boost::system::error_code& ec) {
+    if (ec) {
+        if (ec != ba::error::operation_aborted) {
+            LOG(ERROR) << "Could not listen to UNIX socket "
+                       << notifSocketPath
+                       << ": " << ec.message();
+        }
+        if (running) {
+            new_session.reset();
+            accept();
+        }
+        return;
+    } else {
+        new_session->start();
+    }
+
+    new_session.reset();
+    accept();
+}
+
+void NotifServer::start() {
+    if (notifSocketPath.length() == 0) return;
+
+    running = true;
+    std::remove(notifSocketPath.c_str());
+    acceptor.reset(new stream_protocol
+                   ::acceptor(io_service,
+                              stream_protocol::endpoint(notifSocketPath)));
+    accept();
+}
+
+void NotifServer::do_stop() {
+    std::set<session_ptr> sess_cpy = sessions;
+    BOOST_FOREACH(const session_ptr& sp, sess_cpy) {
+        sp->close();
+    }
+}
+
+void NotifServer::stop() {
+    if (!running) return;
+    running = false;
+    if (acceptor)
+        acceptor->close();
+    io_service.dispatch(bind(&NotifServer::do_stop, this));
+}
+
+static void do_dispatch(shared_ptr<StringBuffer> buffer,
+                        const std::set<NotifServer::session_ptr>& sessions,
+                        const std::string& type) {
+    BOOST_FOREACH(const NotifServer::session_ptr& sp, sessions) {
+        if (!sp->subscribed(type)) continue;
+        sp->dispatch(buffer);
+    }
+}
+
+void NotifServer::dispatchVirtualIp(boost::unordered_set<std::string> uuids,
+                                    const opflex::modb::MAC& macAddr,
+                                    const std::string& ipAddr) {
+    std::string mstr = macAddr.toString();
+    if (!vipLimiter.event(mstr + "|" + ipAddr)) return;
+
+    shared_ptr<StringBuffer> sb(new StringBuffer());
+    // leave room to fill in message size later
+    sb->Put('\0');
+    sb->Put('\0');
+    sb->Put('\0');
+    sb->Put('\0');
+    Writer<StringBuffer> writer(*sb);
+    writer.StartObject();
+    writer.Key("method");
+    writer.String("virtual-ip");
+    writer.Key("params");
+    writer.StartObject();
+    writer.Key("uuid");
+    writer.StartArray();
+    BOOST_FOREACH(const std::string& uuid, uuids) {
+        writer.String(uuid.c_str());
+    }
+    writer.EndArray();
+    writer.Key("mac");
+    writer.String(mstr.c_str());
+    writer.Key("ip");
+    writer.String(ipAddr.c_str());
+    writer.EndObject();
+    writer.EndObject();
+
+    do_dispatch(sb, sessions, "virtual-ip");
+}
+
+} /* namespace ovsagent */

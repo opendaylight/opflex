@@ -165,7 +165,7 @@ static void addExpFlowEntry(FlowEntryList* tables, const string& flowMod) {
     ofp_print_flow_stats(&strBuf, e->entry);
     string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
     BOOST_CHECK(str == flowMod);
-    //LOG(INFO) << flowMod << std::endl << str;
+    //LOG(INFO) << std::endl << flowMod << std::endl << str;
     ds_destroy(&strBuf);
 }
 
@@ -368,6 +368,9 @@ public:
 
     /** Initialize service-scoped flow entries */
     void initExpService();
+
+    /** Initialize virtual IP flow entries */
+    void initExpVirtualIp();
 
     // Test drivers
     void epgTest();
@@ -1282,6 +1285,26 @@ BOOST_FIXTURE_TEST_CASE(service, VxlanFlowManagerFixture) {
     WAIT_FOR_TABLES("create", 500);
 }
 
+BOOST_FIXTURE_TEST_CASE(vip, VxlanFlowManagerFixture) {
+    setConnected();
+    flowManager.egDomainUpdated(epg0->getURI());
+    flowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
+
+    ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42.42.42.42"));
+    ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42::42"));
+    epSrc.updateEndpoint(*ep0);
+    flowManager.endpointUpdated(ep0->getUUID());
+
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    initExpVirtualIp();
+    WAIT_FOR_TABLES("create", 500);
+}
+
 enum REG {
     SEPG, SEPG12, DEPG, BD, FD, RD, OUTPORT, TUNID, TUNDST, VLAN,
     ETHSRC, ETHDST, ARPOP, ARPSHA, ARPTHA, ARPSPA, ARPTPA, METADATA,
@@ -1645,8 +1668,8 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                 ADDF(Bldr().table(SEC).priority(30).ipv6().in(port)
                      .isEthSrc(mac).isIpv6Src(ip).actions().go(SRC).done());
                 ADDF(Bldr().table(SEC).priority(40).icmp6().in(port)
-                     .isEthSrc(mac).isIpv6Src(ip)
-                     .icmp_type(136).icmp_code(0).actions().go(SRC).done());
+                     .isEthSrc(mac).icmp_type(136).icmp_code(0).isNdTarget(ip)
+                     .actions().go(SRC).done());
             }
         }
 
@@ -2147,6 +2170,19 @@ void FlowManagerFixture::initExpService() {
          .actions()
          .load64(METADATA, 0x1019616efda84edll)
          .controller(65535).done());
+}
+
+void FlowManagerFixture::initExpVirtualIp() {
+    uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
+    ADDF(Bldr().cookie(htonll(FlowManager::GetVIPCookie(true)))
+         .table(SEC).priority(39).arp().in(port)
+         .isEthSrc("42:42:42:42:42:42").isSpa("42.42.42.42")
+         .actions().controller(65535).go(SRC).done());
+    ADDF(Bldr().cookie(htonll(FlowManager::GetVIPCookie(false)))
+         .table(SEC).priority(39).icmp6().in(port)
+         .isEthSrc("42:42:42:42:42:42")
+         .icmp_type(136).icmp_code(0).isNdTarget("42::42")
+         .actions().controller(65535).go(SRC).done());
 }
 
 /**

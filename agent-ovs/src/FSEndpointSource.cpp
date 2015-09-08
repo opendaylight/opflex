@@ -32,6 +32,7 @@ using boost::optional;
 namespace fs = boost::filesystem;
 using std::string;
 using std::runtime_error;
+using std::make_pair;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 
@@ -55,6 +56,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EP_UUID("uuid");
     static const std::string EP_MAC("mac");
     static const std::string EP_IP("ip");
+    static const std::string EP_VIRTUAL_IP("virtual-ip");
     static const std::string EP_GROUP("endpoint-group");
     static const std::string POLICY_SPACE_NAME("policy-space-name");
     static const std::string EG_MAPPING_ALIAS("eg-mapping-alias");
@@ -100,6 +102,25 @@ void FSEndpointSource::updated(const fs::path& filePath) {
         if (ips) {
             BOOST_FOREACH(const ptree::value_type &v, ips.get())
                 newep.addIP(v.second.data());
+        }
+        optional<ptree&> virtualIps =
+            properties.get_child_optional(EP_VIRTUAL_IP);
+        if (virtualIps) {
+            BOOST_FOREACH(const ptree::value_type &v, virtualIps.get()) {
+                 optional<string> vmac =
+                     v.second.get_optional<string>(EP_MAC);
+                 optional<string> vip =
+                     v.second.get_optional<string>(EP_IP);
+                 if (vip) {
+                     if (vmac) {
+                         newep.addVirtualIP(make_pair(MAC(vmac.get()),
+                                                      vip.get()));
+                     } else if (mac) {
+                         newep.addVirtualIP(make_pair(MAC(mac.get()),
+                                                      vip.get()));
+                     }
+                 }
+            }
         }
 
         optional<string> eg =

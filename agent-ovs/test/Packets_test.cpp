@@ -1,5 +1,5 @@
 /*
- * Test suite for class FlowManager
+ * Test suite for class Packets functions
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
