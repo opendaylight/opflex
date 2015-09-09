@@ -17,6 +17,8 @@
 #include <boost/optional.hpp>
 #include <boost/unordered_map.hpp>
 
+#include <opflex/ofcore/PeerStatusListener.h>
+
 #include "Agent.h"
 #include "WorkQueue.h"
 #include "SwitchConnection.h"
@@ -42,7 +44,8 @@ class FlowManager : public EndpointListener,
                     public ServiceListener,
                     public PolicyListener,
                     public OnConnectListener,
-                    public PortStatusListener {
+                    public PortStatusListener,
+                    public opflex::ofcore::PeerStatusListener {
 public:
     /**
      * Construct a new flow manager for the agent
@@ -311,6 +314,11 @@ public:
     /* Interface: PortStatusListener */
     virtual void portStatusUpdate(const std::string& portName, uint32_t portNo,
                                   bool fromDesc);
+
+    /* Interface: PeerStatusListener */
+    virtual void peerStatusUpdated(const std::string& peerHostname,
+                                   int peerPort,
+                                   PeerStatus peerStatus);
 
     /**
      * Get the VNID and routing-domain ID for the specified endpoint

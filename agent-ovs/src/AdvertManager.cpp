@@ -41,7 +41,9 @@ static const address_v6 ALL_NODES_IP(address_v6::from_string("ff02::1"));
 
 AdvertManager::AdvertManager(Agent& agent_,
                              FlowManager& flowManager_)
-    : urng(rng), gen(urng, boost::random::uniform_int_distribution<>(0,600)),
+    : urng(rng),
+      all_ep_gen(urng, boost::random::uniform_int_distribution<>(600,1200)),
+      repeat_gen(urng, boost::random::uniform_int_distribution<>(3000,5000)),
       sendRouterAdv(false), sendEndpointAdv(false),
       agent(agent_), flowManager(flowManager_),
       portMapper(NULL), switchConnection(NULL),
@@ -85,24 +87,38 @@ void AdvertManager::scheduleInitialRouterAdv() {
     }
 }
 
-void AdvertManager::scheduleInitialEndpointAdv() {
+void AdvertManager::scheduleInitialEndpointAdv(uint64_t delay) {
     if (allEndpointAdvTimer) {
-        allEndpointAdvTimer->expires_from_now(milliseconds(250));
+        allEndpointAdvTimer->expires_from_now(milliseconds(delay));
         allEndpointAdvTimer->
             async_wait(bind(&AdvertManager::onAllEndpointAdvTimer,
                             this, error));
     }
 }
 
+void AdvertManager::doScheduleEpAdv(uint64_t time) {
+    endpointAdvTimer->expires_from_now(milliseconds(time));
+    endpointAdvTimer->
+        async_wait(bind(&AdvertManager::onEndpointAdvTimer,
+                        this, error));
+}
+
+void AdvertManager::scheduleEndpointAdv(const unordered_set<string>& uuids) {
+    if (endpointAdvTimer) {
+        unique_lock<mutex> guard(ep_mutex);
+        BOOST_FOREACH(const string& uuid, uuids)
+            pendingEps[uuid] = 5;
+
+        doScheduleEpAdv();
+    }
+}
+
 void AdvertManager::scheduleEndpointAdv(const std::string& uuid) {
     if (endpointAdvTimer) {
         unique_lock<mutex> guard(ep_mutex);
-        pendingEps.insert(uuid);
+        pendingEps[uuid] = 5;
 
-        endpointAdvTimer->expires_from_now(milliseconds(250));
-        endpointAdvTimer->
-            async_wait(bind(&AdvertManager::onEndpointAdvTimer,
-                            this, error));
+        doScheduleEpAdv();
     }
 }
 
@@ -344,7 +360,7 @@ void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
     }
 
     if (!stopping) {
-        allEndpointAdvTimer->expires_from_now(seconds(600 + gen()));
+        allEndpointAdvTimer->expires_from_now(seconds(all_ep_gen()));
         allEndpointAdvTimer->async_wait(bind(&AdvertManager::onAllEndpointAdvTimer,
                                           this, error));
     }
@@ -362,11 +378,20 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
 
     {
         unique_lock<mutex> guard(ep_mutex);
-        BOOST_FOREACH(const std::string& uuid, pendingEps) {
+        pending_ep_map_t::iterator it = pendingEps.begin();
+        while (it != pendingEps.end()) {
             flowManager.QueueFlowTask(bind(&AdvertManager::sendEndpointAdvs, this,
-                                           uuid));
+                                           it->first));
+            if (it->second <= 1) {
+                it = pendingEps.erase(it);
+            } else {
+                it->second -= 1;
+                it++;
+            }
         }
-        pendingEps.clear();
+
+        if (pendingEps.size() > 0)
+            doScheduleEpAdv(repeat_gen());
     }
 }
 

@@ -87,6 +87,8 @@ FlowManager::FlowManager(ovsagent::Agent& ag) :
     memset(routerMac, 0, sizeof(routerMac));
     memset(dhcpMac, 0, sizeof(dhcpMac));
     tunnelDst = address::from_string("127.0.0.1");
+
+    agent.getFramework().registerPeerStatusListener(this);
 }
 
 void FlowManager::Start()
@@ -815,6 +817,15 @@ void FlowManager::portStatusUpdate(const string& portName,
                       portName, portNo);
     workQ.enqueue(w);
     pktInHandler.portStatusUpdate(portName, portNo, fromDesc);
+}
+
+void FlowManager::peerStatusUpdated(const std::string& peerHostname,
+                                    int peerPort,
+                                    PeerStatus peerStatus) {
+    if (stopping || isSyncing) return;
+    if (peerStatus == PeerStatusListener::READY) {
+        advertManager.scheduleInitialEndpointAdv();
+    }
 }
 
 void FlowManager::PeerConnected() {
@@ -1803,6 +1814,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     agent.getEndpointManager().getEndpointsForGroup(epgURI, epUuids);
     agent.getEndpointManager().getEndpointsForIPMGroup(epgURI, epUuids);
     BOOST_FOREACH(const string& ep, epUuids) {
+        advertManager.scheduleEndpointAdv(ep);
         endpointUpdated(ep);
     }
 
