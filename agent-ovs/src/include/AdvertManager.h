@@ -89,8 +89,11 @@ public:
 
     /**
      * Schedule a round of initial endpoint advertisements
+     *
+     * @param delay number of milliseconds to delay before sending
+     * advertisements
      */
-    void scheduleInitialEndpointAdv();
+    void scheduleInitialEndpointAdv(uint64_t delay = 10000);
 
     /**
      * Schedule endpoint advertisements for a specific endpoint
@@ -99,11 +102,20 @@ public:
      */
     void scheduleEndpointAdv(const std::string& uuid);
 
+    /**
+     * Schedule endpoint advertisements for a set of endpoints
+     *
+     * @param uuids the uuids of the endpoints
+     */
+    void scheduleEndpointAdv(const boost::unordered_set<std::string>& uuids);
+
 private:
     boost::random::random_device rng;
     boost::random::mt19937 urng;
     boost::random::variate_generator<boost::random::mt19937&,
-                                     boost::random::uniform_int_distribution<> > gen;
+                                     boost::random::uniform_int_distribution<> > all_ep_gen;
+    boost::random::variate_generator<boost::random::mt19937&,
+                                     boost::random::uniform_int_distribution<> > repeat_gen;
 
     /**
      * Synchronously send router advertisements for all active virtual
@@ -139,10 +151,12 @@ private:
     bool sendEndpointAdv;
     void onEndpointAdvTimer(const boost::system::error_code& ec);
     void onAllEndpointAdvTimer(const boost::system::error_code& ec);
+    void doScheduleEpAdv(uint64_t time = 250);
     boost::scoped_ptr<boost::asio::deadline_timer> endpointAdvTimer;
     boost::scoped_ptr<boost::asio::deadline_timer> allEndpointAdvTimer;
     boost::mutex ep_mutex;
-    boost::unordered_set<std::string> pendingEps;
+    typedef boost::unordered_map<std::string, uint8_t> pending_ep_map_t;
+    pending_ep_map_t pendingEps;
 
     Agent& agent;
     FlowManager& flowManager;

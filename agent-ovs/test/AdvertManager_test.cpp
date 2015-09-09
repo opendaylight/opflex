@@ -74,7 +74,7 @@ public:
         size_t i = 0;
         EndpointManager& epMgr = agent.getEndpointManager();
         PolicyManager& polMgr = agent.getPolicyManager();
-        
+
         PolicyManager::uri_set_t epgURIs;
         polMgr.getGroups(epgURIs);
         BOOST_FOREACH(const URI& epg, epgURIs) {
@@ -118,6 +118,7 @@ public:
         : AdvertManagerFixture() {
         advertManager.enableEndpointAdv(true);
         start();
+        advertManager.scheduleInitialEndpointAdv(10);
     }
 
     ~EpAdvertFixture() {
@@ -147,7 +148,7 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
     uint64_t ofpacts_stub[1024 / 8];
     struct ofpbuf ofpact;
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
-    ofputil_decode_packet_out(&po, 
+    ofputil_decode_packet_out(&po,
                               (ofp_header*)ofpbuf_data(msg),
                               &ofpact);
     struct ofpbuf pkt;
@@ -158,13 +159,13 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
     uint16_t dl_type = ntohs(flow.dl_type);
 
     if (dl_type == ETH_TYPE_ARP) {
-        BOOST_REQUIRE_EQUAL(sizeof(struct eth_header) + 
-                            sizeof(struct arp_hdr) + 
+        BOOST_REQUIRE_EQUAL(sizeof(struct eth_header) +
+                            sizeof(struct arp_hdr) +
                             2 * ETH_ADDR_LEN + 2 * 4,
                             ofpbuf_size(&pkt));
-        uint32_t ip = 
-            ntohl(*(uint32_t*)((char*)ofpbuf_l2(&pkt) + 
-                               sizeof(struct eth_header) + 
+        uint32_t ip =
+            ntohl(*(uint32_t*)((char*)ofpbuf_l2(&pkt) +
+                               sizeof(struct eth_header) +
                                sizeof(struct arp_hdr) + ETH_ADDR_LEN));
         found.insert(address_v4(ip).to_string());
     } else if (dl_type == ETH_TYPE_IPV6) {
@@ -210,7 +211,7 @@ BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
         uint64_t ofpacts_stub[1024 / 8];
         struct ofpbuf ofpact;
         ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
-        ofputil_decode_packet_out(&po, 
+        ofputil_decode_packet_out(&po,
                                   (ofp_header*)ofpbuf_data(msg),
                                   &ofpact);
         struct ofpbuf pkt;
