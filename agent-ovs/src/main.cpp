@@ -18,6 +18,9 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/foreach.hpp>
 
 #include "Agent.h"
 #include "logging.h"
@@ -27,6 +30,8 @@
 using std::string;
 using opflex::ofcore::OFFramework;
 namespace po = boost::program_options;
+namespace fs = boost::filesystem;
+namespace pt = boost::property_tree;
 using namespace ovsagent;
 
 void sighandler(int sig) {
@@ -34,6 +39,14 @@ void sighandler(int sig) {
 }
 
 #define DEFAULT_CONF SYSCONFDIR"/opflex-agent-ovs/opflex-agent-ovs.conf"
+
+static void readConfig(Agent& agent, string configFile) {
+    pt::ptree properties;
+
+    LOG(INFO) << "Reading configuration from " << configFile;
+    pt::read_json(configFile, properties);
+    agent.setProperties(properties);
+}
 
 int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
@@ -43,9 +56,9 @@ int main(int argc, char** argv) {
     desc.add_options()
         ("help,h", "Print this help message")
         ("config,c",
-         po::value<string>()->default_value(DEFAULT_CONF), 
+         po::value<std::vector<string> >(),
          "Read configuration from the specified file")
-        ("log", po::value<string>()->default_value(""), 
+        ("log", po::value<string>()->default_value(""),
          "Log to the specified file (default standard out)")
         ("level", po::value<string>()->default_value("info"),
          "Use the specified log level (default info). "
@@ -53,7 +66,7 @@ int main(int argc, char** argv) {
         ("syslog", "Log to syslog instead of file or standard out")
         ("daemon", "Run the agent as a daemon")
         ;
-    
+
     bool daemon = false;
     bool logToSyslog = false;
     std::string log_file;
@@ -64,7 +77,7 @@ int main(int argc, char** argv) {
         po::store(po::command_line_parser(argc, argv).
                   options(desc).run(), vm);
         po::notify(vm);
-    
+
         if (vm.count("help")) {
             std::cout << "Usage: " << argv[0] << " [options]\n";
             std::cout << desc;
@@ -91,15 +104,39 @@ int main(int argc, char** argv) {
     try {
         // Initialize agent and configuration
         Agent agent(OFFramework::defaultInstance());
-        
-        using boost::property_tree::ptree;
-        ptree properties;
 
-        string configFile = vm["config"].as<string>();
-        LOG(INFO) << "Reading configuration from " << configFile;
-        read_json(configFile, properties);
-        agent.setProperties(properties);
-        
+        std::vector<string> configFiles;
+        if (vm.count("config"))
+            configFiles = vm["config"].as<std::vector<string> >();
+        else
+            configFiles.push_back(DEFAULT_CONF);
+
+        BOOST_FOREACH(const string& configFile, configFiles) {
+            if (fs::is_directory(configFile)) {
+                LOG(INFO) << "Reading configuration from config directory "
+                          << configFile;
+
+                fs::recursive_directory_iterator end;
+                std::set<string> files;
+                for (fs::recursive_directory_iterator it(configFile);
+                     it != end; ++it) {
+                    if (fs::is_regular_file(it->status())) {
+                        string fstr = it->path().string();
+                        if (boost::algorithm::ends_with(fstr, ".conf") &&
+                            !boost::algorithm::starts_with(fstr, ".")) {
+                            files.insert(fstr);
+                        }
+                    }
+                }
+                BOOST_FOREACH(const std::string& fstr, files) {
+                    readConfig(agent, fstr);
+                }
+            } else {
+                readConfig(agent, configFile);
+            }
+        }
+
+        agent.applyProperties();
         agent.start();
 
         // Pause the main thread until interrupted

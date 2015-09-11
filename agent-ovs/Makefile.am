@@ -190,11 +190,13 @@ flowidcachedir=${localstatedir}/lib/opflex-agent-ovs/ids
 defepwatchdir=${localstatedir}/lib/opflex-agent-ovs/endpoints
 defservwatchdir=${localstatedir}/lib/opflex-agent-ovs/services
 inspectsock=${localstatedir}/run/opflex-agent-ovs-inspect.sock
+cacertdir=${sysconfdir}/ssl/certs
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defepwatchdir}|" \
 	    -e "s|DEFAULT_FS_SERVICE_DIR|${defservwatchdir}|" \
 	    -e "s|DEFAULT_FLOWID_CACHE_DIR|${flowidcachedir}|" \
 	    -e "s|DEFAULT_INSPECTOR_SOCKET|${inspectsock}|" \
+	    -e "s|DEFAULT_CA_CERT_DIR|${cacertdir}|" \
 	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
 
 if HAVE_DOXYGEN

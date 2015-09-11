@@ -13,4 +13,6 @@ pre-start script
     test -e /etc/opflex-agent-ovs/opflex-agent-ovs.conf || { stop; exit 0; }
 end script
 
-exec /usr/bin/agent_ovs --syslog
+exec /usr/bin/agent_ovs --syslog \
+     -c /etc/opflex-agent-ovs/opflex-agent-ovs.conf \
+     -c /etc/opflex-agent-ovs/conf.d

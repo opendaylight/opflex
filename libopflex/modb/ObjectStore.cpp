@@ -149,7 +149,9 @@ void ObjectStore::registerListener(class_id_t class_id,
 void ObjectStore::unregisterListener(class_id_t class_id, 
                                      ObjectListener* listener) {
     util::LockGuard guard(&listener_mutex);
-    class_map.at(class_id).listeners.remove(listener);
+    class_map_t::iterator it = class_map.find(class_id);
+    if (it == class_map.end()) return;
+    it->second.listeners.remove(listener);
 }
 
 void ObjectStore::queueNotification(class_id_t class_id, const URI& uri) {

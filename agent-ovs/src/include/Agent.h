@@ -15,6 +15,7 @@
 #include <list>
 
 #include <boost/property_tree/ptree.hpp>
+#include <boost/optional.hpp>
 #include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/bind.hpp>
@@ -64,6 +65,14 @@ public:
      * agent
      */
     void setProperties(const boost::property_tree::ptree& properties);
+
+    /**
+     * Apply the properties set with setProperties to the agent
+     * configuration
+     *
+     * @throws std::runtime_error if the configuration is invalid
+     */
+    void applyProperties();
 
     /**
      * Start the agent
@@ -118,8 +127,16 @@ private:
     EndpointManager endpointManager;
     ServiceManager serviceManager;
     NotifServer notifServer;
-
     FSWatcher fsWatcher;
+
+    boost::optional<std::string> opflexName;
+    boost::optional<std::string> opflexDomain;
+
+    boost::optional<bool> enableInspector;
+    boost::optional<std::string> inspectorSock;
+    boost::optional<bool> enableNotif;
+    boost::optional<std::string> notifSock;
+
     std::set<std::string> endpointSourcePaths;
     std::set<EndpointSource*> endpointSources;
 
@@ -130,8 +147,8 @@ private:
 
     typedef std::pair<std::string, int> host_t;
     std::set<host_t> opflexPeers;
-    std::string sslMode;
-    std::string sslCaStore;
+    boost::optional<std::string> sslMode;
+    boost::optional<std::string> sslCaStore;
 
     /**
      * Thread for asynchronous tasks
