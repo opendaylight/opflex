@@ -51,7 +51,10 @@ void Inspector::start() {
 }
 
 void Inspector::stop() {
-    listener->disconnect();
+    if (listener) {
+        listener->disconnect();
+        listener.reset();
+    }
 }
 
 OpflexHandler* Inspector::newHandler(OpflexConnection* conn) {

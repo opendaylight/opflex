@@ -33,12 +33,12 @@ using yajr::transport::ZeroCopyOpenSSL;
 #endif
 
 OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
-    : OpflexConnection(listener_->handlerFactory), 
-      listener(listener_) {
+    : OpflexConnection(listener_->handlerFactory),
+      listener(listener_), peer(NULL) {
 #ifdef SIMPLE_RPC
     uv_tcp_init(&listener->server_loop, &tcp_handle);
     tcp_handle.data = this;
-    int rc = uv_accept((uv_stream_t*)&listener->bind_socket, 
+    int rc = uv_accept((uv_stream_t*)&listener->bind_socket,
                        (uv_stream_t*)&tcp_handle);
     if (rc < 0) {
         LOG(ERROR) << "Could not accept connection: "
@@ -64,7 +64,7 @@ void OpflexServerConnection::setRemotePeer(int rc, struct sockaddr_storage& name
         LOG(ERROR) << "New connection but could not get "
                    << "remote peer IP address" << uv_strerror(rc);
         return;
-    } 
+    }
 
     if (name.ss_family == AF_UNIX) {
         remote_peer = ((struct sockaddr_un*)&name)->sun_path;
@@ -92,7 +92,7 @@ const std::string& OpflexServerConnection::getDomain() {
 
 #ifdef SIMPLE_RPC
 void OpflexServerConnection::shutdown_cb(uv_shutdown_t* req, int status) {
-    OpflexServerConnection* conn = 
+    OpflexServerConnection* conn =
         (OpflexServerConnection*)req->handle->data;
     uv_close((uv_handle_t*)&conn->tcp_handle, OpflexListener::on_conn_closed);
 }
@@ -103,7 +103,7 @@ uv_loop_t* OpflexServerConnection::loop_selector(void * data) {
     return conn->getListener()->getLoop();
 }
 
-void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data, 
+void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
                                              yajr::StateChange::To stateChange,
                                              int error) {
     OpflexServerConnection* conn = (OpflexServerConnection*)data;
@@ -137,11 +137,11 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
         }
         break;
     case yajr::StateChange::FAILURE:
-        LOG(ERROR) << "[" << conn->getRemotePeer() << "] " 
+        LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                    << "Connection error: " << uv_strerror(error);
         break;
     case yajr::StateChange::DELETE:
-        LOG(INFO) << "[" << conn->getRemotePeer() << "] " 
+        LOG(INFO) << "[" << conn->getRemotePeer() << "] "
                   << "Connection closed";
         conn->getListener()->connectionClosed(conn);
         break;
@@ -159,7 +159,7 @@ void OpflexServerConnection::disconnect() {
     {
         int rc = uv_shutdown(&shutdown, (uv_stream_t*)&tcp_handle, shutdown_cb);
         if (rc < 0) {
-            LOG(ERROR) << "[" << getRemotePeer() << "] " 
+            LOG(ERROR) << "[" << getRemotePeer() << "] "
                        << "Could not shut down socket: " << uv_strerror(rc);
         }
     }

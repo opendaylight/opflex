@@ -1,10 +1,12 @@
 [Unit]
 Description=Opflex OVS Agent
 After=openvswitch.service
-Requires=openvswitch.service
+Wants=openvswitch.service
 
 [Service]
-ExecStart=/usr/bin/agent_ovs --syslog
+ExecStart=/usr/bin/agent_ovs --syslog \
+   -c /etc/opflex-agent-ovs/opflex-agent-ovs.conf \
+   -c /etc/opflex-agent-ovs/conf.d
 Restart=always
 
 [Install]

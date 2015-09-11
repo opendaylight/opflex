@@ -55,8 +55,6 @@ Agent::~Agent() {
 
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string LOG_LEVEL("log.level");
-    // A list of filesystem paths that we should check for endpoint
-    // information
     static const std::string ENDPOINT_SOURCE_PATH("endpoint-sources.filesystem");
     static const std::string SERVICE_SOURCE_PATH("service-sources.filesystem");
     static const std::string OPFLEX_PEERS("opflex.peers");
@@ -80,6 +78,28 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         setLoggingLevel(logLvl.get());
     }
 
+    boost::optional<std::string> ofName =
+        properties.get_optional<std::string>(OPFLEX_NAME);
+    if (ofName) opflexName = ofName;
+    boost::optional<std::string> ofDomain =
+        properties.get_optional<std::string>(OPFLEX_DOMAIN);
+    if (ofDomain) opflexDomain = ofDomain;
+    if (opflexDomain) LOG(INFO) << opflexDomain.get();
+
+    boost::optional<bool> enabInspector =
+        properties.get_optional<bool>(OPFLEX_INSPECTOR);
+    boost::optional<std::string> inspSocket =
+        properties.get_optional<std::string>(OPFLEX_INSPECTOR_SOCK);
+    if (enabInspector) enableInspector = enabInspector;
+    if (inspSocket) inspectorSock = inspSocket;
+
+    boost::optional<bool> enabNotif =
+        properties.get_optional<bool>(OPFLEX_NOTIF);
+    boost::optional<std::string> notSocket =
+        properties.get_optional<std::string>(OPFLEX_NOTIF_SOCK);
+    if (enabNotif) enableNotif = enabNotif;
+    if (notSocket) notifSock = notSocket;
+
     optional<const ptree&> endpointSource =
         properties.get_child_optional(ENDPOINT_SOURCE_PATH);
 
@@ -87,8 +107,6 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         BOOST_FOREACH(const ptree::value_type &v, endpointSource.get())
             endpointSourcePaths.insert(v.second.data());
     }
-    if (endpointSourcePaths.size() == 0)
-        LOG(ERROR) << "No endpoint sources found in configuration.";
 
     optional<const ptree&> serviceSource =
         properties.get_child_optional(SERVICE_SOURCE_PATH);
@@ -97,33 +115,6 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         BOOST_FOREACH(const ptree::value_type &v, serviceSource.get())
             serviceSourcePaths.insert(v.second.data());
     }
-    if (serviceSourcePaths.size() == 0)
-        LOG(INFO) << "No service sources found in configuration.";
-
-    optional<std::string> opflexName =
-        properties.get_optional<std::string>(OPFLEX_NAME);
-    optional<std::string> opflexDomain =
-        properties.get_optional<std::string>(OPFLEX_DOMAIN);
-
-    if (!opflexName || !opflexDomain) {
-        LOG(ERROR) << "Opflex name and domain must be set";
-    } else {
-        framework.setOpflexIdentity(opflexName.get(),
-                                    opflexDomain.get());
-        policyManager.setOpflexDomain(opflexDomain.get());
-    }
-
-    bool enableInspector = properties.get<bool>(OPFLEX_INSPECTOR, true);
-    std::string inspectorSock =
-        properties.get<std::string>(OPFLEX_INSPECTOR_SOCK, DEF_INSPECT_SOCKET);
-    if (enableInspector)
-        framework.enableInspector(inspectorSock);
-
-    bool enableNotif = properties.get<bool>(OPFLEX_NOTIF, true);
-    std::string notifSock =
-        properties.get<std::string>(OPFLEX_NOTIF_SOCK, DEF_NOTIF_SOCKET);
-    if (enableNotif)
-        notifServer.setSocketName(notifSock);
 
     optional<const ptree&> peers =
         properties.get_child_optional(OPFLEX_PEERS);
@@ -138,16 +129,11 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
             }
         }
     }
-    if (opflexPeers.size() == 0)
-        LOG(ERROR) << "No Opflex peers found in configuration";
 
-    sslMode = properties.get<std::string>(OPFLEX_SSL_MODE, "disabled");
-    sslCaStore = properties.get<std::string>(OPFLEX_SSL_CA_STORE,
-                                             "/etc/ssl/certs/");
-    if (sslMode != "disabled") {
-        bool verifyPeers = sslMode != "encrypted";
-        framework.enableSSL(sslCaStore, verifyPeers);
-    }
+    boost::optional<std::string> confSslMode =
+        properties.get_optional<std::string>(OPFLEX_SSL_MODE);
+    boost::optional<std::string> confsslCaStore =
+        properties.get_optional<std::string>(OPFLEX_SSL_CA_STORE);
 
     typedef Renderer* (*rend_create)(Agent&);
     typedef boost::unordered_map<std::string, rend_create> rend_map_t;
@@ -164,8 +150,41 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
             r->setProperties(rtree.get());
         }
     }
+}
+
+void Agent::applyProperties() {
+    if (!opflexName || !opflexDomain) {
+        LOG(ERROR) << "Opflex name and domain must be set";
+        throw std::runtime_error("Opflex name and domain must be set");
+    } else {
+        framework.setOpflexIdentity(opflexName.get(),
+                                    opflexDomain.get());
+        policyManager.setOpflexDomain(opflexDomain.get());
+    }
+
+    if (endpointSourcePaths.size() == 0)
+        LOG(ERROR) << "No endpoint sources found in configuration.";
+    if (serviceSourcePaths.size() == 0)
+        LOG(INFO) << "No service sources found in configuration.";
+    if (opflexPeers.size() == 0)
+        LOG(ERROR) << "No Opflex peers found in configuration";
     if (renderers.size() == 0)
         LOG(ERROR) << "No renderers configured; no policy will be applied";
+
+    if (!enableInspector || enableInspector.get()) {
+        if (!inspectorSock) inspectorSock = DEF_INSPECT_SOCKET;
+        framework.enableInspector(inspectorSock.get());
+    }
+    if (!enableNotif || enableNotif.get()) {
+        if (!notifSock) notifSock = DEF_NOTIF_SOCKET;
+        notifServer.setSocketName(notifSock.get());
+    }
+
+    if (sslMode && sslMode.get() != "disabled") {
+        if (!sslCaStore) sslCaStore = "/etc/ssl/certs/";
+        bool verifyPeers = sslMode.get() != "encrypted";
+        framework.enableSSL(sslCaStore.get(), verifyPeers);
+    }
 }
 
 void Agent::start() {

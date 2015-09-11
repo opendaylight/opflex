@@ -23,7 +23,7 @@
 
         "ssl": {
             // SSL mode.  Possible values:
-            // disabled: communicate without encryption
+            // disabled: communicate without encryption (default)
             // encrypted: encrypt but do not verify peers
             // secure: encrypt and verify peer certificates
             "mode": "encrypted",
@@ -31,7 +31,8 @@
             // The path to a directory containing trusted certificate
             // authority public certificates, or a file containing a
             // specific CA certificate.
-            "ca-store": "/etc/ssl/certs/"
+	    // Default: /etc/ssl/certs/
+            "ca-store": "DEFAULT_CA_CERT_DIR"
         },
 
         "inspector": {
@@ -43,6 +44,18 @@
             // Listen on the specified socket for the inspector
 	    // Default DEFAULT_INSPECTOR_SOCKET
             "socket-name": "DEFAULT_INSPECTOR_SOCKET"
+        },
+
+        "notif": {
+            // Enable the agent notification service, which sends
+            // notifications to interested listeners over a UNIX
+            // socket.
+	    // Default: enabled
+            "enabled": true,
+
+            // Listen on the specified socket for the inspector
+	    // Default DEFAULT_NOTIF_SOCKET
+            "socket-name": "DEFAULT_NOTIF_SOCKET"
         }
     },
 

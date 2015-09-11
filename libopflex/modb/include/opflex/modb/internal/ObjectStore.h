@@ -118,7 +118,6 @@ public:
      *
      * @param class_id the class ID 
      * @param listener the listener to unregister
-     * @throws std::out_of_range if there is no such class
      */
     void unregisterListener(class_id_t class_id, ObjectListener* listener);
 

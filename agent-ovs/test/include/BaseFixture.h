@@ -20,8 +20,6 @@
 
 namespace ovsagent {
 
-using opflex::ofcore::MockOFFramework;
-
 /**
  * A fixture that adds an object store
  */
@@ -35,7 +33,7 @@ public:
         agent.stop();
     }
 
-    MockOFFramework framework;
+    opflex::ofcore::MockOFFramework framework;
     Agent agent;
 };
 
@@ -65,7 +63,7 @@ public:
 #define WAIT_FOR(condition, count)  WAIT_FOR_DO(condition, count, ;)
 
 // wait for a condition to become true because of an event in another
-// thread. Executes stmt 
+// thread. Executes stmt
 #define WAIT_FOR_ONFAIL(condition, count) \
     WAIT_FOR_DO_ONFAIL(condition, count, ;, onfail)
 
