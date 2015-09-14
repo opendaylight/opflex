@@ -15,6 +15,7 @@ owner[init]
     class[dci/Universe]
     class[dci/Discoverer]
     class[dci/DciEp]
+    class[dci/DciEpToGroupRSrc]
     class[observer/Universe]
     module[dmtree]
     {
