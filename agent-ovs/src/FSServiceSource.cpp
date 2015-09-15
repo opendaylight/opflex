@@ -62,6 +62,7 @@ void FSServiceSource::updated(const fs::path& filePath) {
     static const std::string SERVICE_MAPPING("service-mapping");
     static const std::string SM_SERVICE_IP("service-ip");
     static const std::string SM_GATEWAY_IP("gateway-ip");
+    static const std::string SM_NEXT_HOP_IP("next-hop-ip");
 
     try {
         using boost::property_tree::ptree;
@@ -118,6 +119,11 @@ void FSServiceSource::updated(const fs::path& filePath) {
                     v.second.get_optional<string>(SM_GATEWAY_IP);
                 if (gatewayIp)
                     sm.setGatewayIP(gatewayIp.get());
+
+                optional<string> nextHopIp =
+                    v.second.get_optional<string>(SM_NEXT_HOP_IP);
+                if (nextHopIp)
+                    sm.setNextHopIP(nextHopIp.get());
 
                 newserv.addServiceMapping(sm);
             }

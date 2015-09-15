@@ -199,9 +199,37 @@ public:
             gatewayIp = boost::none;
         }
 
+        /**
+         * Get the next hop IP address for this service mapping.  When
+         * delivering to the service interface, rewrite the
+         * destination IP to the specified next hop IP address.
+         *
+         * @return the IP address
+         */
+        const boost::optional<std::string>& getNextHopIP() const {
+            return nextHopIp;
+        }
+
+        /**
+         * Set the next hop IP address for the service mapping
+         *
+         * @param nextHopIp the IP address
+         */
+        void setNextHopIP(const std::string& nextHopIp) {
+            this->nextHopIp = nextHopIp;
+        }
+
+        /**
+         * Unset the next hop IP address for the service mapping
+         */
+        void unsetNextHopIP() {
+            nextHopIp = boost::none;
+        }
+
     private:
         boost::optional<std::string> serviceIp;
         boost::optional<std::string> gatewayIp;
+        boost::optional<std::string> nextHopIp;
     };
 
     /**

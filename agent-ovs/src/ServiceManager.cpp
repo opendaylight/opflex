@@ -86,7 +86,6 @@ void ServiceManager::removeDomains(const AnycastService& service) {
 }
 
 void ServiceManager::updateAnycastService(const AnycastService& service) {
-    LOG(INFO) << service.getUUID();
     unique_lock<mutex> guard(serv_mutex);
     const string& uuid = service.getUUID();
     AnycastServiceState& as = aserv_map[uuid];

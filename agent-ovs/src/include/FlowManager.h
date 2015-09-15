@@ -476,7 +476,12 @@ public:
          * Map traffic returning from a service interface to the
          * appropriate endpoint interface.
          */
-        SERVICE_MAP_TABLE_ID,
+        SERVICE_MAP_SRC_TABLE_ID,
+        /**
+         * Map traffic returning from a service interface to the
+         * appropriate endpoint interface.
+         */
+        SERVICE_MAP_DST_TABLE_ID,
         /**
          * Allow policy for the flow based on the source and
          * destination groups and the contracts that are configured.
