@@ -35,6 +35,8 @@ std::ostream & operator<<(std::ostream &os, const AnycastService& s) {
                 os << sm.getServiceIP().get();
             else
                 os << "None";
+            if (sm.getNextHopIP())
+                os << "->" << sm.getNextHopIP().get();
         }
         os << "]";
     }
@@ -47,6 +49,10 @@ size_t hash_value(AnycastService::ServiceMapping const& m) {
     size_t v = 0;
     if (m.getServiceIP())
         boost::hash_combine(v, m.getServiceIP().get());
+    if (m.getGatewayIP())
+        boost::hash_combine(v, m.getGatewayIP().get());
+    if (m.getNextHopIP())
+        boost::hash_combine(v, m.getNextHopIP().get());
     return v;
 }
 
@@ -56,7 +62,9 @@ void AnycastService::addServiceMapping(const ServiceMapping& serviceMapping) {
 
 bool operator==(const AnycastService::ServiceMapping& lhs,
                 const AnycastService::ServiceMapping& rhs) {
-    return lhs.getServiceIP() == rhs.getServiceIP();
+    return (lhs.getServiceIP() == rhs.getServiceIP() &&
+            lhs.getGatewayIP() == rhs.getGatewayIP() &&
+            lhs.getNextHopIP() == rhs.getNextHopIP());
 }
 
 bool operator!=(const AnycastService::ServiceMapping& lhs,

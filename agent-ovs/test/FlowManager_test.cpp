@@ -367,7 +367,7 @@ public:
                      uint32_t bdId = 1, uint32_t rdId = 1);
 
     /** Initialize service-scoped flow entries */
-    void initExpService();
+    void initExpService(bool nextHop = false);
 
     /** Initialize virtual IP flow entries */
     void initExpVirtualIp();
@@ -1274,6 +1274,7 @@ BOOST_FIXTURE_TEST_CASE(service, VxlanFlowManagerFixture) {
     as.addServiceMapping(sm2);
 
     servSrc.updateAnycastService(as);
+    flowManager.anycastServiceUpdated(as.getUUID());
 
     initExpStatic();
     initExpEpg(epg0);
@@ -1283,6 +1284,25 @@ BOOST_FIXTURE_TEST_CASE(service, VxlanFlowManagerFixture) {
     initExpEp(ep2, epg0);
     initExpService();
     WAIT_FOR_TABLES("create", 500);
+
+    as.clearServiceMappings();
+    sm1.setNextHopIP("169.254.169.1");
+    as.addServiceMapping(sm1);
+    sm2.setNextHopIP("fe80::a9:fe:a9:1");
+    as.addServiceMapping(sm2);
+
+    servSrc.updateAnycastService(as);
+    flowManager.anycastServiceUpdated(as.getUUID());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    initExpService(true);
+    WAIT_FOR_TABLES("nexthop", 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(vip, VxlanFlowManagerFixture) {
@@ -1312,7 +1332,7 @@ enum REG {
 };
 enum TABLE {
     SEC = 0, SRC = 1, BR  = 2, RT  = 3, NAT = 4, LRN = 5,
-    SVC = 6, POL = 7, OUT = 8
+    SVS = 6, SVD = 7, POL = 8, OUT = 9
 };
 string rstr[] = {
     "NXM_NX_REG0[]", "NXM_NX_REG0[0..11]", "NXM_NX_REG2[]", "NXM_NX_REG4[]",
@@ -1795,12 +1815,12 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
         BOOST_FOREACH(const string& ip, ips) {
             address ipa = address::from_string(ip);
             if (ipa.is_v4()) {
-                ADDF(Bldr().table(SVC).priority(50).ip()
+                ADDF(Bldr().table(SVD).priority(50).ip()
                      .reg(RD, rdId).isIpDst(ip)
                      .actions()
                      .ethSrc(rmac).ethDst(mac)
                      .decTtl().outPort(port).done());
-                ADDF(Bldr().table(SVC).priority(51).arp()
+                ADDF(Bldr().table(SVD).priority(51).arp()
                      .reg(RD, rdId)
                      .isEthDst(bmac).isTpa(ipa.to_string())
                      .isArpOp(1)
@@ -1811,13 +1831,13 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                                                 ipa.to_v4().to_ulong())
                      .inport().done());
             } else {
-                ADDF(Bldr().table(SVC).priority(50).ipv6()
+                ADDF(Bldr().table(SVD).priority(50).ipv6()
                      .reg(RD, rdId).isIpv6Dst(ip)
                      .actions()
                      .ethSrc(rmac).ethDst(mac)
                      .decTtl().outPort(port).done());
                 ADDF(Bldr().cookie(htonll(FlowManager::GetNDCookie()))
-                     .table(SVC).priority(51).icmp6()
+                     .table(SVD).priority(51).icmp6()
                      .reg(RD, rdId).isEthDst(mmac)
                      .icmp_type(135).icmp_code(0)
                      .isNdTarget(ipa.to_string())
@@ -2111,7 +2131,7 @@ void FlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
     }
 }
 
-void FlowManagerFixture::initExpService() {
+void FlowManagerFixture::initExpService(bool nextHop) {
     string mac = "ed:84:da:ef:16:96";
     string bmac("ff:ff:ff:ff:ff:ff");
     uint8_t rmacArr[6];
@@ -2121,17 +2141,47 @@ void FlowManagerFixture::initExpService() {
 
     ADDF(Bldr().table(SEC).priority(100).in(17)
          .isEthSrc("ed:84:da:ef:16:96")
+         .actions().go(SVS).done());
+    ADDF(Bldr().table(SVS).priority(100).in(17)
+         .isEthSrc("ed:84:da:ef:16:96")
          .actions()
          .load(SEPG, 0).load(BD, 0).load(FD, 0)
-         .load(RD, 1).go(SVC).done());
-    ADDF(Bldr().table(BR).priority(50)
-         .ip().reg(RD, 1).isIpDst("169.254.169.254")
-         .actions()
-         .ethSrc(rmac).ethDst(mac).decTtl().outPort(17).done());
-    ADDF(Bldr().table(BR).priority(50)
-         .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
-         .actions()
-         .ethSrc(rmac).ethDst(mac).decTtl().outPort(17).done());
+         .load(RD, 1).go(SVD).done());
+    if (nextHop) {
+        ADDF(Bldr().table(BR).priority(50)
+             .ip().reg(RD, 1).isIpDst("169.254.169.254")
+             .actions()
+             .ethSrc(rmac).ethDst(mac)
+             .ipDst("169.254.169.1")
+             .decTtl().outPort(17).done());
+        ADDF(Bldr().table(BR).priority(50)
+             .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
+             .actions()
+             .ethSrc(rmac).ethDst(mac)
+             .ipv6Dst("fe80::a9:fe:a9:1")
+             .decTtl().outPort(17).done());
+
+        ADDF(Bldr().table(SVS).priority(150).ip().in(17)
+             .isEthSrc("ed:84:da:ef:16:96")
+             .isIpSrc("169.254.169.1")
+             .actions().load(RD, 1).ipSrc("169.254.169.254")
+             .go(SVD).done());
+        ADDF(Bldr().table(SVS).priority(150).ipv6().in(17)
+             .isEthSrc("ed:84:da:ef:16:96")
+             .isIpv6Src("fe80::a9:fe:a9:1")
+             .actions().load(RD, 1).ipv6Src("fe80::a9:fe:a9:fe")
+             .go(SVD).done());
+    } else {
+        ADDF(Bldr().table(BR).priority(50)
+             .ip().reg(RD, 1).isIpDst("169.254.169.254")
+             .actions()
+             .ethSrc(rmac).ethDst(mac)
+             .decTtl().outPort(17).done());
+        ADDF(Bldr().table(BR).priority(50)
+             .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
+             .actions()
+             .ethSrc(rmac).ethDst(mac).decTtl().outPort(17).done());
+    }
 
     ADDF(Bldr().table(BR).priority(51).arp()
          .reg(RD, 1)
@@ -2151,7 +2201,7 @@ void FlowManagerFixture::initExpService() {
          .load64(METADATA, 0x1009616efda84edll)
          .controller(65535).done());
 
-    ADDF(Bldr().table(SVC).priority(31).arp()
+    ADDF(Bldr().table(SVD).priority(31).arp()
          .reg(RD, 1)
          .isEthSrc("ed:84:da:ef:16:96")
          .isEthDst(bmac).isTpa("169.254.1.1")
@@ -2162,7 +2212,7 @@ void FlowManagerFixture::initExpService() {
          .move(ARPSPA, ARPTPA).load(ARPSPA, "0xa9fe0101")
          .inport().done());
     ADDF(Bldr().cookie(htonll(FlowManager::GetNDCookie()))
-         .table(SVC).priority(31).icmp6()
+         .table(SVD).priority(31).icmp6()
          .reg(RD, 1).isEthSrc("ed:84:da:ef:16:96")
          .isEthDst(mmac)
          .icmp_type(135).icmp_code(0)
