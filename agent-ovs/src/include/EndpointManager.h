@@ -127,7 +127,7 @@ public:
      */
     void getEndpointsByIface(const std::string& ifaceName,
                              /* out */ boost::unordered_set<std::string>& eps);
-    
+
     /**
      * Get the endpoints that have an IP mapping next hop interface as
      * the specified interface
@@ -252,7 +252,7 @@ private:
         EndpointState();
 
         boost::shared_ptr<const Endpoint> endpoint;
-        
+
         typedef boost::unordered_set<opflex::modb::URI> uri_set_t;
 
         /**
@@ -299,9 +299,9 @@ private:
     boost::optional<opflex::modb::URI> resolveEpgMapping(EndpointState& es);
 
     typedef boost::unordered_map<std::string, EndpointState> ep_map_t;
-    typedef boost::unordered_map<opflex::modb::URI, 
+    typedef boost::unordered_map<opflex::modb::URI,
                                  boost::unordered_set<std::string> > group_ep_map_t;
-    typedef boost::unordered_map<std::string, 
+    typedef boost::unordered_map<std::string,
                                  boost::unordered_set<std::string> > string_ep_map_t;
 
     boost::mutex ep_mutex;
