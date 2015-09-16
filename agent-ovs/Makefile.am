@@ -61,6 +61,7 @@ noinst_HEADERS = \
 	src/include/ExtraConfigListener.h \
 	src/include/ExtraConfigManager.h \
 	src/include/FSRDConfigSource.h \
+	src/include/RDConfig.h \
 	src/include/Renderer.h \
 	src/include/StitchedModeRenderer.h \
 	src/include/TunnelEpManager.h \
