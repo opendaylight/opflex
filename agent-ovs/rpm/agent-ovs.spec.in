@@ -38,6 +38,7 @@ BuildRequires: boost-test
 BuildRequires: openvswitch-devel
 BuildRequires: doxygen
 BuildRequires: systemd-units
+BuildRequires: rapidjson-devel >= 1.0
 Requires(pre): shadow-utils
 Requires(post): systemd-units
 Requires(preun): systemd-units
