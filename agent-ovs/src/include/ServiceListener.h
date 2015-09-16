@@ -41,4 +41,4 @@ public:
 
 } /* namespace ovsagent */
 
-#endif /* OVSAGENT_SERVICEMANAGER_H */
+#endif /* OVSAGENT_SERVICELISTENER_H */

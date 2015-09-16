@@ -55,7 +55,7 @@ void FSWatcher::addWatch(const std::string& watchDir, Watcher& watcher) {
     fs::path wp(watchDir);
     WatchState& ws = regWatches[wp];
     ws.watchPath = wp;
-    ws.watcher = &watcher;
+    ws.watchers.push_back(&watcher);
 }
 
 void FSWatcher::start() {
@@ -113,7 +113,9 @@ void FSWatcher::scanPath(const WatchState* ws,
         fs::directory_iterator end;
         for (fs::directory_iterator it(watchPath); it != end; ++it) {
             if (fs::is_regular_file(it->status())) {
-                ws->watcher->updated(it->path());
+                BOOST_FOREACH(Watcher* watcher, ws->watchers) {
+                    watcher->updated(it->path());
+                }
             }
         }
     }
@@ -191,12 +193,14 @@ void FSWatcher::operator()() {
 
                         if (event->len) {
                             const WatchState* ws = activeWatches.at(event->wd);
-                            if ((event->mask & IN_CLOSE_WRITE) ||
-                                (event->mask & IN_MOVED_TO)) {
-                                ws->watcher->updated(ws->watchPath / event->name);
-                            } else if ((event->mask & IN_DELETE) ||
-                                (event->mask & IN_MOVED_FROM)) {
-                                ws->watcher->deleted(ws->watchPath / event->name);
+                            BOOST_FOREACH(Watcher* watcher, ws->watchers) {
+                                if ((event->mask & IN_CLOSE_WRITE) ||
+                                    (event->mask & IN_MOVED_TO)) {
+                                    watcher->updated(ws->watchPath / event->name);
+                                } else if ((event->mask & IN_DELETE) ||
+                                           (event->mask & IN_MOVED_FROM)) {
+                                    watcher->deleted(ws->watchPath / event->name);
+                                }
                             }
                         }
                     }

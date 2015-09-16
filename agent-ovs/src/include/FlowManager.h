@@ -30,6 +30,7 @@
 #include "ActionBuilder.h"
 #include "PacketInHandler.h"
 #include "AdvertManager.h"
+#include "RDConfig.h"
 
 namespace ovsagent {
 
@@ -42,6 +43,7 @@ namespace ovsagent {
  */
 class FlowManager : public EndpointListener,
                     public ServiceListener,
+                    public ExtraConfigListener,
                     public PolicyListener,
                     public OnConnectListener,
                     public PortStatusListener,
@@ -301,6 +303,9 @@ public:
     /* Interface: ServiceListener */
     virtual void anycastServiceUpdated(const std::string& uuid);
 
+    /* Interface: ExtraConfigListener */
+    virtual void rdConfigUpdated(const opflex::modb::URI& rdURI);
+
     /* Interface: PolicyListener */
     virtual void egDomainUpdated(const opflex::modb::URI& egURI);
     virtual void domainUpdated(opflex::modb::class_id_t cid,
@@ -315,7 +320,13 @@ public:
     virtual void portStatusUpdate(const std::string& portName, uint32_t portNo,
                                   bool fromDesc);
 
-    /* Interface: PeerStatusListener */
+    /**
+     * Implementation for PeerStatusListener::peerStatusUpdated
+     *
+     * @param peerHostname the host name for the connection
+     * @param peerPort the port number for the connection
+     * @param peerStatus the new status for the connection
+     */
     virtual void peerStatusUpdated(const std::string& peerHostname,
                                    int peerPort,
                                    PeerStatus peerStatus);
@@ -390,7 +401,7 @@ public:
      * @param tunDst the tunnel destination
      */
     static void
-    SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type, 
+    SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type,
                             const boost::asio::ip::address& tunDst);
 
     /**

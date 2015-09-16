@@ -26,6 +26,7 @@
 
 #include "EndpointManager.h"
 #include "ServiceManager.h"
+#include "ExtraConfigManager.h"
 #include "NotifServer.h"
 #include "FSWatcher.h"
 
@@ -38,6 +39,7 @@ namespace ovsagent {
 class Renderer;
 class EndpointSource;
 class ServiceSource;
+class FSRDConfigSource;
 
 /**
  * Master object for the OVS agent.  This class holds the state for
@@ -105,6 +107,11 @@ public:
     ServiceManager& getServiceManager() { return serviceManager; }
 
     /**
+     * Get the extra config object for this agent
+     */
+    ExtraConfigManager& getExtraConfigManager() { return extraConfigManager; }
+
+    /**
      * Get the notification server object for this agent
      */
     NotifServer& getNotifServer() { return notifServer; }
@@ -126,6 +133,7 @@ private:
     PolicyManager policyManager;
     EndpointManager endpointManager;
     ServiceManager serviceManager;
+    ExtraConfigManager extraConfigManager;
     NotifServer notifServer;
     FSWatcher fsWatcher;
 
@@ -139,6 +147,7 @@ private:
 
     std::set<std::string> endpointSourcePaths;
     std::set<EndpointSource*> endpointSources;
+    std::set<FSRDConfigSource*> rdConfigSources;
 
     std::set<std::string> serviceSourcePaths;
     std::set<ServiceSource*> serviceSources;

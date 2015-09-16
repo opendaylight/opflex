@@ -58,6 +58,9 @@ noinst_HEADERS = \
 	src/include/ServiceSource.h \
 	src/include/ServiceManager.h \
 	src/include/FSServiceSource.h \
+	src/include/ExtraConfigListener.h \
+	src/include/ExtraConfigManager.h \
+	src/include/FSRDConfigSource.h \
 	src/include/Renderer.h \
 	src/include/StitchedModeRenderer.h \
 	src/include/TunnelEpManager.h \
@@ -98,6 +101,9 @@ libagent_ovs_la_SOURCES = \
 	src/ServiceSource.cpp \
 	src/ServiceManager.cpp \
 	src/FSServiceSource.cpp \
+	src/ExtraConfigManager.cpp \
+	src/RDConfig.cpp \
+	src/FSRDConfigSource.cpp \
 	src/Renderer.cpp \
 	src/StitchedModeRenderer.cpp \
 	src/TunnelEpManager.cpp \

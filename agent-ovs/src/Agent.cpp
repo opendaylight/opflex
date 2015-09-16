@@ -18,6 +18,7 @@
 #include "Agent.h"
 #include "FSEndpointSource.h"
 #include "FSServiceSource.h"
+#include "FSRDConfigSource.h"
 #include "logging.h"
 #include "StitchedModeRenderer.h"
 
@@ -84,7 +85,6 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     boost::optional<std::string> ofDomain =
         properties.get_optional<std::string>(OPFLEX_DOMAIN);
     if (ofDomain) opflexDomain = ofDomain;
-    if (opflexDomain) LOG(INFO) << opflexDomain.get();
 
     boost::optional<bool> enabInspector =
         properties.get_optional<bool>(OPFLEX_INSPECTOR);
@@ -220,9 +220,16 @@ void Agent::start() {
     io_service_thread = new thread(bind(&io_service::run, ref(agent_io)));
 
     BOOST_FOREACH(const std::string& path, endpointSourcePaths) {
-        EndpointSource* source =
-            new FSEndpointSource(&endpointManager, fsWatcher, path);
-        endpointSources.insert(source);
+        {
+            EndpointSource* source =
+                new FSEndpointSource(&endpointManager, fsWatcher, path);
+            endpointSources.insert(source);
+        }
+        {
+            FSRDConfigSource* source =
+                new FSRDConfigSource(&extraConfigManager, fsWatcher, path);
+            rdConfigSources.insert(source);
+        }
     }
     BOOST_FOREACH(const std::string& path, serviceSourcePaths) {
         ServiceSource* source =

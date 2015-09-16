@@ -72,7 +72,7 @@ public:
 
 private:
     struct WatchState : private boost::noncopyable {
-        Watcher* watcher;
+        std::vector<Watcher*> watchers;
         boost::filesystem::path watchPath;
     };
 

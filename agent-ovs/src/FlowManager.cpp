@@ -16,6 +16,7 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <netinet/icmp6.h>
 
@@ -144,12 +145,14 @@ void FlowManager::unregisterConnection(SwitchConnection *conn) {
 void FlowManager::registerModbListeners() {
     agent.getEndpointManager().registerListener(this);
     agent.getServiceManager().registerListener(this);
+    agent.getExtraConfigManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
 }
 
 void FlowManager::unregisterModbListeners() {
     agent.getEndpointManager().unregisterListener(this);
     agent.getServiceManager().unregisterListener(this);
+    agent.getExtraConfigManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
 }
 
@@ -776,6 +779,12 @@ void FlowManager::endpointUpdated(const std::string& uuid) {
 void FlowManager::anycastServiceUpdated(const std::string& uuid) {
     if (stopping) return;
     WorkItem w = bind(&FlowManager::HandleAnycastServiceUpdate, this, uuid);
+    workQ.enqueue(w);
+}
+
+void FlowManager::rdConfigUpdated(const opflex::modb::URI& rdURI) {
+    if (stopping) return;
+    WorkItem w = bind(&FlowManager::HandleRoutingDomainUpdate, this, rdURI);
     workQ.enqueue(w);
 }
 
@@ -1969,6 +1978,14 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t bdId, uint32_t rdId) 
     }
 }
 
+typedef std::pair<std::string, uint16_t> subnet_t;
+size_t hash_value(const subnet_t& subnet) {
+    size_t v = 0;
+    boost::hash_combine(v, subnet.first);
+    boost::hash_combine(v, subnet.second);
+    return v;
+}
+
 void
 FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
     optional<shared_ptr<RoutingDomain > > rd =
@@ -1994,6 +2011,9 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
     // routing to endpoints that are local to this vswitch, so the
     // action is to output to the uplink tunnel.  Match using
     // longest-prefix.
+
+    boost::unordered_set<subnet_t> intSubnets;
+
     vector<shared_ptr<RoutingDomainToIntSubnetsRSrc> > subnets_list;
     rd.get()->resolveGbpRoutingDomainToIntSubnetsRSrc(subnets_list);
     BOOST_FOREACH(shared_ptr<RoutingDomainToIntSubnetsRSrc>& subnets_ref,
@@ -2010,19 +2030,46 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
         BOOST_FOREACH(shared_ptr<Subnet>& subnet, subnets) {
             if (!subnet->isAddressSet() || !subnet->isPrefixLenSet())
                 continue;
-            address addr = address::from_string(subnet->getAddress().get(), ec);
-            if (ec) continue;
-
-            FlowEntry *snr = new FlowEntry();
-            SetMatchSubnet(snr, rdId, 300, ROUTE_TABLE_ID, addr,
-                           subnet->getPrefixLen(0), false);
-            if (fallbackMode == FALLBACK_PROXY && tunPort != OFPP_NONE &&
-                encapType != ENCAP_NONE) {
-                SetDestActionOutputToTunnel(snr, encapType,
-                                            GetTunnelDst(), tunPort);
-            }
-            rdRouteFlows.push_back(FlowEntryPtr(snr));
+            intSubnets.insert(make_pair(subnet->getAddress().get(),
+                                        subnet->getPrefixLen().get()));
         }
+    }
+    boost::shared_ptr<const RDConfig> rdConfig =
+        agent.getExtraConfigManager().getRDConfig(rdURI);
+    LOG(INFO) << rdURI << ": " << (bool)rdConfig;
+    if (rdConfig) {
+        BOOST_FOREACH(const std::string& cidrSn,
+                      rdConfig->getInternalSubnets()) {
+            LOG(INFO) << rdURI << ": " << cidrSn;
+            vector<string> comps;
+            algorithm::split(comps, cidrSn, boost::is_any_of("/"));
+            if (comps.size() == 2) {
+                try {
+                    uint8_t prefixLen =
+                        boost::lexical_cast<uint16_t>(comps[1]);
+                    intSubnets.insert(make_pair(comps[0], prefixLen));
+                } catch (const boost::bad_lexical_cast& e) {
+                    LOG(ERROR) << "Invalid CIDR subnet prefix length: "
+                               << comps[1] << ": " << e.what();
+                }
+            } else {
+                LOG(ERROR) << "Invalid CIDR subnet: " << cidrSn;
+            }
+        }
+    }
+    BOOST_FOREACH(const subnet_t& sn, intSubnets) {
+        address addr = address::from_string(sn.first, ec);
+        if (ec) continue;
+
+        FlowEntry *snr = new FlowEntry();
+        SetMatchSubnet(snr, rdId, 300, ROUTE_TABLE_ID, addr,
+                       sn.second, false);
+        if (fallbackMode == FALLBACK_PROXY && tunPort != OFPP_NONE &&
+            encapType != ENCAP_NONE) {
+            SetDestActionOutputToTunnel(snr, encapType,
+                                        GetTunnelDst(), tunPort);
+        }
+        rdRouteFlows.push_back(FlowEntryPtr(snr));
     }
 
     // If we miss the local endpoints and the internal subnets, check

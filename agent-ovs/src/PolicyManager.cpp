@@ -810,12 +810,9 @@ void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
     unique_lock<mutex> guard(pmanager.state_mutex);
 
     uri_set_t notifyGroups;
-    uri_set_t notifyContracts;
 
     if (class_id == modelgbp::gbp::EpGroup::CLASS_ID) {
         pmanager.group_map[uri];
-    } else if (class_id == modelgbp::gbp::RoutingDomain::CLASS_ID) {
-        pmanager.updateL3Nets(uri, notifyContracts);
     }
     for (PolicyManager::group_map_t::iterator itr = pmanager.group_map.begin();
          itr != pmanager.group_map.end(); ) {
@@ -828,9 +825,6 @@ void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
     guard.unlock();
     BOOST_FOREACH(const URI& u, notifyGroups) {
         pmanager.notifyEPGDomain(u);
-    }
-    BOOST_FOREACH(const URI& u, notifyContracts) {
-        pmanager.notifyContract(u);
     }
     if (class_id != modelgbp::gbp::EpGroup::CLASS_ID) {
         pmanager.notifyDomain(class_id, uri);
