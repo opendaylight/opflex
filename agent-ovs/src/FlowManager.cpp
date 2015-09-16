@@ -1811,15 +1811,35 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     WriteFlow(epgId, OUT_TABLE_ID, egOutFlows);
 
     unordered_set<string> epUuids;
-    agent.getEndpointManager().getEndpointsForGroup(epgURI, epUuids);
-    agent.getEndpointManager().getEndpointsForIPMGroup(epgURI, epUuids);
-    BOOST_FOREACH(const string& ep, epUuids) {
-        advertManager.scheduleEndpointAdv(ep);
-        endpointUpdated(ep);
+    EndpointManager& epMgr = agent.getEndpointManager();
+    epMgr.getEndpointsForIPMGroup(epgURI, epUuids);
+    boost::unordered_set<URI> ipmRds;
+    BOOST_FOREACH(const string& uuid, epUuids) {
+        boost::shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
+        if (!ep) continue;
+        const boost::optional<opflex::modb::URI>& egURI = ep->getEgURI();
+        if (!egURI) continue;
+        boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > rd =
+            polMgr.getRDForGroup(egURI.get());
+        if (rd)
+            ipmRds.insert(rd.get()->getURI());
+    }
+    BOOST_FOREACH(const URI& rdURI, ipmRds) {
+        // update routing domains that have references to the
+        // IP-mapping EPG to ensure external subnets are correctly
+        // mapped.
+        HandleRoutingDomainUpdate(rdURI);
+    }
+
+    // note this combines with the IPM group endpoints from above:
+    epMgr.getEndpointsForGroup(epgURI, epUuids);
+    BOOST_FOREACH(const string& uuid, epUuids) {
+        advertManager.scheduleEndpointAdv(uuid);
+        endpointUpdated(uuid);
     }
 
     PolicyManager::uri_set_t contractURIs;
-    agent.getPolicyManager().getContractsForGroup(epgURI, contractURIs);
+    polMgr.getContractsForGroup(epgURI, contractURIs);
     BOOST_FOREACH(const URI& contract, contractURIs) {
         contractUpdated(contract);
     }
