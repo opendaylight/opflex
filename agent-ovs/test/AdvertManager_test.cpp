@@ -150,12 +150,12 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
     struct ofpbuf ofpact;
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
-                              (ofp_header*)ofpbuf_data(msg),
+                              (ofp_header*)msg->data,
                               &ofpact);
-    struct ofpbuf pkt;
+    struct dp_packet pkt;
     struct flow flow;
-    ofpbuf_use_const(&pkt, po.packet, po.packet_len);
-    flow_extract(&pkt, NULL, &flow);
+    dp_packet_use_const(&pkt, po.packet, po.packet_len);
+    flow_extract(&pkt, &flow);
 
     uint16_t dl_type = ntohs(flow.dl_type);
 
@@ -163,22 +163,22 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
         BOOST_REQUIRE_EQUAL(sizeof(struct eth_header) +
                             sizeof(struct arp_hdr) +
                             2 * ETH_ADDR_LEN + 2 * 4,
-                            ofpbuf_size(&pkt));
+                            dp_packet_size(&pkt));
         uint32_t ip =
-            ntohl(*(uint32_t*)((char*)ofpbuf_l2(&pkt) +
+            ntohl(*(uint32_t*)((char*)dp_packet_l2(&pkt) +
                                sizeof(struct eth_header) +
                                sizeof(struct arp_hdr) + ETH_ADDR_LEN));
         found.insert(address_v4(ip).to_string());
     } else if (dl_type == ETH_TYPE_IPV6) {
-        size_t l4_size = ofpbuf_l4_size(&pkt);
+        size_t l4_size = dp_packet_l4_size(&pkt);
         BOOST_REQUIRE(l4_size > sizeof(struct icmp6_hdr));
-        struct ip6_hdr* ip6 = (struct ip6_hdr*) ofpbuf_l3(&pkt);
+        struct ip6_hdr* ip6 = (struct ip6_hdr*) dp_packet_l3(&pkt);
         address_v6::bytes_type bytes;
         memcpy(bytes.data(), &ip6->ip6_src, sizeof(struct in6_addr));
         found.insert(address_v6(bytes).to_string());
         BOOST_CHECK(0 == memcmp(&ip6->ip6_src, &ip6->ip6_dst,
                                 sizeof(struct in6_addr)));
-        struct icmp6_hdr* icmp = (struct icmp6_hdr*) ofpbuf_l4(&pkt);
+        struct icmp6_hdr* icmp = (struct icmp6_hdr*) dp_packet_l4(&pkt);
         BOOST_CHECK_EQUAL(ND_NEIGHBOR_ADVERT, icmp->icmp6_type);
     } else {
         LOG(ERROR) << "Incorrect dl_type: " << std::hex << dl_type;
@@ -213,22 +213,22 @@ BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
         struct ofpbuf ofpact;
         ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
         ofputil_decode_packet_out(&po,
-                                  (ofp_header*)ofpbuf_data(msg),
+                                  (ofp_header*)msg->data,
                                   &ofpact);
-        struct ofpbuf pkt;
+        struct dp_packet pkt;
         struct flow flow;
-        ofpbuf_use_const(&pkt, po.packet, po.packet_len);
-        flow_extract(&pkt, NULL, &flow);
+        dp_packet_use_const(&pkt, po.packet, po.packet_len);
+        flow_extract(&pkt, &flow);
 
         BOOST_REQUIRE_EQUAL(ETH_TYPE_IPV6, ntohs(flow.dl_type));
-        size_t l4_size = ofpbuf_l4_size(&pkt);
+        size_t l4_size = dp_packet_l4_size(&pkt);
         BOOST_REQUIRE(l4_size > sizeof(struct icmp6_hdr));
-        struct ip6_hdr* ip6 = (struct ip6_hdr*) ofpbuf_l3(&pkt);
+        struct ip6_hdr* ip6 = (struct ip6_hdr*) dp_packet_l3(&pkt);
         address_v6::bytes_type bytes;
         memcpy(bytes.data(), &ip6->ip6_src, sizeof(struct in6_addr));
         LOG(INFO) << address_v6(bytes).to_string();
         found.insert(address_v6(bytes).to_string());
-        struct icmp6_hdr* icmp = (struct icmp6_hdr*) ofpbuf_l4(&pkt);
+        struct icmp6_hdr* icmp = (struct icmp6_hdr*) dp_packet_l4(&pkt);
         BOOST_CHECK_EQUAL(ND_ROUTER_ADVERT, icmp->icmp6_type);
     }
 

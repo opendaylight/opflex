@@ -85,11 +85,11 @@ void StatsManager::on_timer(const error_code& ec) {
 }
 
 
-void StatsManager::Handle(SwitchConnection *conn, 
+void StatsManager::Handle(SwitchConnection *conn,
                           ofptype msgType, ofpbuf *msg) {
     assert(msgType == OFPTYPE_PORT_STATS_REPLY);
 
-    const struct ofp_header *oh = (ofp_header *)ofpbuf_data(msg);
+    const struct ofp_header *oh = (ofp_header *)msg->data;
     struct ofputil_port_stats ps;
     struct ofpbuf b;
 

@@ -129,8 +129,8 @@ static int send_packet_out(FlowManager& flowManager,
                            uint32_t vnid = 0) {
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
-    po.packet = ofpbuf_data(b);
-    po.packet_len = ofpbuf_size(b);
+    po.packet = b->data;
+    po.packet_len = b->size;
     po.in_port = OFPP_CONTROLLER;
 
     uint32_t tunPort = flowManager.GetTunnelPort();

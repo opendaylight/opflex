@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 int MockExecutorConnection::SendMessage(ofpbuf *msg) {
     uint16_t COMM[] = {OFPFC_ADD, OFPFC_MODIFY_STRICT, OFPFC_DELETE_STRICT};
-    ofp_header *msgHdr = (ofp_header *)ofpbuf_data(msg);
+    ofp_header *msgHdr = (ofp_header *)msg->data;
     ofptype type;
     ofptype_decode(&type, msgHdr);
     BOOST_CHECK(type == OFPTYPE_FLOW_MOD ||

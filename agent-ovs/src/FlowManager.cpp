@@ -81,6 +81,7 @@ FlowManager::FlowManager(ovsagent::Agent& ag) :
         reader(NULL), jsonCmdExecutor(NULL), fallbackMode(FALLBACK_PROXY),
         encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
         virtualRouterEnabled(false), routerAdv(false),
+        virtualDHCPEnabled(false),
         isSyncing(false), flowSyncer(*this), pktInHandler(agent, *this),
         advertManager(agent, *this), stopping(false),
         connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
@@ -2203,7 +2204,7 @@ FlowManager::HandleDomainUpdate(class_id_t cid, const URI& domURI) {
 static
 ofputil_bucket *CreateBucket(uint32_t bucketId) {
     ofputil_bucket *bkt = (ofputil_bucket *)malloc(sizeof(ofputil_bucket));
-    bkt->weight = 1;
+    bkt->weight = 0;
     bkt->bucket_id = bucketId;
     bkt->watch_port = OFPP_ANY;
     bkt->watch_group = OFPG11_ANY;
@@ -2498,9 +2499,11 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
     using namespace modelgbp::l4;
 
     ovs_be64 ckbe = htonll(cookie);
+#if 0
     bool reflexive =
         clsfr->isConnectionTrackingSet() &&
         clsfr->getConnectionTracking().get() == ConnTrackEnumT::CONST_REFLEXIVE;
+#endif
     uint16_t ctZone = (uint16_t)(srdid & 0xffff);
     MaskList srcPorts;
     MaskList dstPorts;
@@ -2539,18 +2542,22 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
                 match_set_tp_dst_masked(m, htons(dm.first), htons(dm.second));
 
                 if (allow) {
+#if 0
                     if (reflexive) {
                         SetPolicyActionConntrack(e0, ctZone,
                                                  NX_CT_F_COMMIT, true);
                     } else {
+#endif
                         SetPolicyActionAllow(e0);
+#if 0
                     }
+#endif
                 }
                 entries.push_back(FlowEntryPtr(e0));
             }
         }
     }
-
+#if 0
     if (reflexive && allow) {    /* add the flows for reverse direction */
         FlowEntry *e1 = new FlowEntry();
         e1->entry->cookie = ckbe;
@@ -2568,6 +2575,7 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
         SetPolicyActionAllow(e2);
         entries.push_back(FlowEntryPtr(e2));
     }
+#endif
 }
 
 void FlowManager::UpdateGroupTable() {

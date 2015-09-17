@@ -29,7 +29,7 @@ public:
     ofp_version GetProtocolVersion() { return OFP13_VERSION; }
 
     int SendMessage(ofpbuf *msg) {
-        ofp_header *hdr = (ofp_header *)ofpbuf_data(msg);
+        ofp_header *hdr = (ofp_header *)msg->data;
         ofptype typ;
         ofptype_decode(&typ, hdr);
         BOOST_CHECK(typ == OFPTYPE_PORT_DESC_STATS_REQUEST);
@@ -83,7 +83,7 @@ public:
 
     ofpbuf *MakeReplyMsg(size_t startIdx, size_t endIdx, bool more) {
         ovs_list replies;
-        ofpmp_init(&replies, (ofp_header *)ofpbuf_data(conn.lastSentMsg));
+        ofpmp_init(&replies, (ofp_header *)conn.lastSentMsg->data);
         for (size_t i = startIdx; i < endIdx && i < ports.size(); ++i) {
             ofputil_append_port_desc_stats_reply(&ports[i], &replies);
         }
@@ -94,7 +94,7 @@ public:
             list_remove(&reply->list_node);
 
             ofpmsg_update_length(reply);
-            ofp_header *replyHdr = (ofp_header *)ofpbuf_data(reply);
+            ofp_header *replyHdr = (ofp_header *)reply->data;
             ofptype typ;
             ofptype_decode(&typ, replyHdr);
             BOOST_CHECK(typ == OFPTYPE_PORT_DESC_STATS_REPLY);
@@ -115,7 +115,7 @@ public:
 
     void Received(PortMapper& pm, ofpbuf *msg) {
         ofptype t;
-        ofptype_decode(&t, (ofp_header *)ofpbuf_data(msg));
+        ofptype_decode(&t, (ofp_header *)msg->data);
         pm.Handle(&conn, t, msg);
         ofpbuf_delete(msg);
     }

@@ -328,7 +328,7 @@ SwitchConnection::receiveOFMessage() {
             return err;
         } else {
             ofptype type;
-            if (!ofptype_decode(&type, (ofp_header *)ofpbuf_data(recvMsg))) {
+            if (!ofptype_decode(&type, (ofp_header *)recvMsg->data)) {
                 HandlerMap::const_iterator itr = msgHandlers.find(type);
                 if (itr != msgHandlers.end()) {
                     BOOST_FOREACH(MessageHandler *h, itr->second) {
@@ -454,7 +454,7 @@ void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
         ofptype msgType, ofpbuf *msg) {
     LOG(DEBUG) << "Got ECHO request";
-    const ofp_header *rq = (const ofp_header *)ofpbuf_data(msg);
+    const ofp_header *rq = (const ofp_header *)msg->data;
     struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
     swConn->SendMessage(echoReplyMsg);
 }
@@ -462,7 +462,7 @@ SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
 void
 SwitchConnection::ErrorHandler::Handle(SwitchConnection *swConn,
         ofptype msgType, ofpbuf *msg) {
-    const struct ofp_header *oh = (ofp_header *)ofpbuf_data(msg);
+    const struct ofp_header *oh = (ofp_header *)msg->data;
     ofperr err = ofperr_decode_msg(oh, NULL);
     LOG(ERROR) << "Got error reply from switch ("
                << std::hex << oh->xid << "): "
