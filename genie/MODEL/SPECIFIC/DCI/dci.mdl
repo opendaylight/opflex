@@ -51,7 +51,7 @@ module[dci]
                    cardinality=single;
                    ]
         {
-            to[class=dci/Universe;
+            to[class=dci/Domain;
                 cardinality=single;
                 ]
         }
@@ -75,8 +75,7 @@ module[dci]
         {
             parent[class=*;]
             {
-                component[prefix=dci;
-                          member=name]
+                component[prefix=dci;]
             }
         }
         dependency[network;
