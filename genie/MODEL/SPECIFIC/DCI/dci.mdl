@@ -34,8 +34,7 @@ module[dci]
         }
     }
 
-    class[DciEp;
-          super=epr/LocalNetworkEp;
+    class[Ep;
           concrete
           ]
     {
@@ -47,7 +46,7 @@ module[dci]
             }
         }
 
-        dependency[group;
+        dependency[domain;
                    cardinality=single;
                    ]
         {
