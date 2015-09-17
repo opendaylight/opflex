@@ -83,7 +83,7 @@ ofpbuf *FlowReader::createGroupRequest() {
 // XXX TODO need a way to time out requests
 template <typename U, typename V>
 bool FlowReader::sendRequest(ofpbuf *req, const U& cb, V& reqMap) {
-    ovs_be32 reqXid = ((ofp_header *)ofpbuf_data(req))->xid;
+    ovs_be32 reqXid = ((ofp_header *)req->data)->xid;
     LOG(DEBUG) << "Sending flow/group read request xid=" << reqXid;
 
     {
@@ -112,7 +112,7 @@ void FlowReader::Handle(SwitchConnection *c, ofptype msgType, ofpbuf *msg) {
 
 template<typename T, typename U, typename V>
 void FlowReader::handleReply(ofptype msgType, ofpbuf *msg, V& reqMap) {
-    ofp_header *msgHdr = (ofp_header *)ofpbuf_data(msg);
+    ofp_header *msgHdr = (ofp_header *)msg->data;
     ovs_be32 recvXid = msgHdr->xid;
 
     U cb;
@@ -154,17 +154,17 @@ void FlowReader::decodeReply(ofpbuf *msg, FlowEntryList& recvFlows,
         /* HACK: override the "raw" field so that our comparisons work properly
          * XXX TODO See if ActionBuilder can construct actions with proper "raw" type
          */
-        ofpact *act;
+        const ofpact *act;
         OFPACT_FOR_EACH(act, entry->entry->ofpacts, entry->entry->ofpacts_len) {
             if (act->type == OFPACT_OUTPUT_REG ||
                 act->type == OFPACT_REG_MOVE) {
-                act->raw = (uint8_t)(-1);
+                ((ofpact*)act)->raw = (uint8_t)(-1);
             }
         }
 
         if (ret != 0) {
             if (ret == EOF) {
-                replyDone = !ofpmp_more((ofp_header*)msg->frame);
+                replyDone = !ofpmp_more((ofp_header*)msg->header);
             } else {
                 LOG(ERROR) << "Failed to decode flow stats reply: "
                     << ovs_strerror(ret);
@@ -180,13 +180,13 @@ void FlowReader::decodeReply(ofpbuf *msg, FlowEntryList& recvFlows,
 template<>
 void FlowReader::decodeReply(ofpbuf *msg, GroupEdit::EntryList& recv,
         bool& replyDone) {
-    ofp_version ver = (ofp_version)((ofp_header *)ofpbuf_data(msg))->version;
+    ofp_version ver = (ofp_version)((ofp_header *)msg->data)->version;
     while (true) {
         ofputil_group_desc gd;
         int ret = ofputil_decode_group_desc_reply(&gd, msg, ver);
         if (ret != 0) {
             if (ret == EOF) {
-                replyDone = !ofpmp_more((ofp_header*)msg->frame);
+                replyDone = !ofpmp_more((ofp_header*)msg->header);
             } else {
                 LOG(ERROR) << "Failed to decode group desc reply: "
                     << ovs_strerror(ret);

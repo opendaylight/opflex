@@ -116,8 +116,8 @@ PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.1.0])
 PKG_CHECK_MODULES([rapidjson], [RapidJSON >= 1.0])
 
 # check for libopenvswitch
-PKG_CHECK_MODULES([libofproto], [libofproto >= 2.3.90])
-PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.3.90])
+PKG_CHECK_MODULES([libofproto], [libofproto >= 2.4.1])
+PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.4.1])
 
 # inotify check
 AC_ARG_ENABLE(inotify, "Whether to use inotify for endpoint source")

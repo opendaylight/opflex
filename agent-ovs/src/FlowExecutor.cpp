@@ -71,7 +71,7 @@ FlowExecutor::ExecuteInt(const T& fe) {
     /* create the barrier request first to setup request-map */
     ofpbuf *barrReq = ofputil_encode_barrier_request(
             swConn->GetProtocolVersion());
-    ovs_be32 barrXid = ((ofp_header *)ofpbuf_data(barrReq))->xid;
+    ovs_be32 barrXid = ((ofp_header *)barrReq->data)->xid;
 
     {
         mutex_guard lock(reqMtx);
@@ -164,7 +164,7 @@ FlowExecutor::DoExecuteNoBlock(const T& fe,
 
     BOOST_FOREACH (const typename T::Entry& e, fe.edits) {
         ofpbuf *msg = EncodeMod<typename T::Entry>(e, ofVersion);
-        ovs_be32 xid = ((ofp_header *)ofpbuf_data(msg))->xid;
+        ovs_be32 xid = ((ofp_header *)msg->data)->xid;
         if (barrXid) {
             mutex_guard lock(reqMtx);
             requests[barrXid.get()].reqXids.insert(xid);
@@ -182,7 +182,7 @@ FlowExecutor::DoExecuteNoBlock(const T& fe,
 
 int
 FlowExecutor::WaitOnBarrier(ofpbuf *barrReq) {
-    ovs_be32 barrXid = ((ofp_header *)ofpbuf_data(barrReq))->xid;
+    ovs_be32 barrXid = ((ofp_header *)barrReq->data)->xid;
     LOG(DEBUG) << "Sending barrier request xid=" << barrXid;
     int err = swConn->SendMessage(barrReq);
     if (err) {
@@ -206,7 +206,7 @@ FlowExecutor::WaitOnBarrier(ofpbuf *barrReq) {
 
 void
 FlowExecutor::Handle(SwitchConnection *conn, ofptype msgType, ofpbuf *msg) {
-    ofp_header *msgHdr = (ofp_header *)ofpbuf_data(msg);
+    ofp_header *msgHdr = (ofp_header *)msg->data;
     ovs_be32 recvXid = msgHdr->xid;
 
     mutex_guard lock(reqMtx);

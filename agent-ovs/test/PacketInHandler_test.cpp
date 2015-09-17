@@ -17,6 +17,7 @@
 #include "FlowManager.h"
 #include "udp.h"
 #include "dhcp.h"
+#include "logging.h"
 
 class PacketInHandlerFixture : public ModbFixture {
 public:
@@ -298,6 +299,7 @@ static void init_packet_in(ofputil_packet_in& pin,
                            uint8_t table_id = 3,
                            uint32_t in_port = 42,
                            uint32_t dstReg = 0) {
+    memset(&pin, 0, sizeof(pin));
     pin.reason = OFPR_ACTION;
     pin.cookie = cookie;
     pin.packet = packet_buf;
@@ -305,10 +307,10 @@ static void init_packet_in(ofputil_packet_in& pin,
     pin.total_len = len;
     pin.buffer_id = UINT32_MAX;
     pin.table_id = table_id;
-    pin.fmd.in_port = in_port;
-    pin.fmd.regs[0] = 0xA0A;
-    pin.fmd.regs[5] = 10;
-    pin.fmd.regs[7] = dstReg;
+    match_set_in_port(&pin.flow_metadata, in_port);
+    match_set_reg(&pin.flow_metadata, 0, 0xA0A);
+    match_set_reg(&pin.flow_metadata, 5, 10);
+    match_set_reg(&pin.flow_metadata, 7, dstReg);
 }
 
 BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
@@ -344,11 +346,11 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     ofpbuf_use_stub(&ofpacts1, ofpacts_stub1, sizeof ofpacts_stub1);
     ofpbuf_use_stub(&ofpacts2, ofpacts_stub2, sizeof ofpacts_stub2);
     ofpbuf_use_stub(&ofpacts3, ofpacts_stub3, sizeof ofpacts_stub3);
-    ofputil_decode_flow_mod(&fm1, (ofp_header*)ofpbuf_data(conn.sentMsgs[0]),
+    ofputil_decode_flow_mod(&fm1, (ofp_header*)conn.sentMsgs[0]->data,
                             proto, &ofpacts1, u16_to_ofp(64), 8);
-    ofputil_decode_flow_mod(&fm2, (ofp_header*)ofpbuf_data(conn.sentMsgs[1]),
+    ofputil_decode_flow_mod(&fm2, (ofp_header*)conn.sentMsgs[1]->data,
                             proto, &ofpacts2, u16_to_ofp(64), 8);
-    ofputil_decode_packet_out(&po, (ofp_header*)ofpbuf_data(conn.sentMsgs[2]),
+    ofputil_decode_packet_out(&po, (ofp_header*)conn.sentMsgs[2]->data,
                               &ofpacts3);
 
     BOOST_CHECK(0 == memcmp(fm1.match.flow.dl_dst, mac2, sizeof(mac2)));
@@ -384,7 +386,7 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
         ++i;
     }
     BOOST_CHECK_EQUAL(2, i);
-    
+
     conn.clear();
 
     // stage2
@@ -398,9 +400,9 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     ofpbuf_delete(b);
 
     BOOST_CHECK(conn.sentMsgs.size() == 2);
-    ofputil_decode_flow_mod(&fm1, (ofp_header *)ofpbuf_data(conn.sentMsgs[0]),
+    ofputil_decode_flow_mod(&fm1, (ofp_header *)conn.sentMsgs[0]->data,
                             proto, &ofpacts1, u16_to_ofp(64), 8);
-    ofputil_decode_flow_mod(&fm2, (ofp_header *)ofpbuf_data(conn.sentMsgs[1]),
+    ofputil_decode_flow_mod(&fm2, (ofp_header *)conn.sentMsgs[1]->data,
                             proto, &ofpacts2, u16_to_ofp(64), 8);
     BOOST_CHECK(0 == memcmp(fm1.match.flow.dl_dst, mac2, sizeof(mac2)));
     BOOST_CHECK_EQUAL(10, fm1.match.flow.regs[5]);
@@ -427,20 +429,20 @@ static void verify_dhcpv4(ofpbuf* msg, uint8_t message_type) {
     uint64_t ofpacts_stub[1024 / 8];
     struct ofpbuf ofpact;
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
-    ofputil_decode_packet_out(&po, 
-                              (ofp_header*)ofpbuf_data(msg),
+    ofputil_decode_packet_out(&po,
+                              (ofp_header*)msg->data,
                               &ofpact);
-    struct ofpbuf pkt;
+    struct dp_packet pkt;
     struct flow flow;
-    ofpbuf_use_const(&pkt, po.packet, po.packet_len);
-    flow_extract(&pkt, NULL, &flow);
+    dp_packet_use_const(&pkt, po.packet, po.packet_len);
+    flow_extract(&pkt, &flow);
 
-    size_t l4_size = ofpbuf_l4_size(&pkt);
+    size_t l4_size = dp_packet_l4_size(&pkt);
     BOOST_REQUIRE(l4_size > (sizeof(struct udp_hdr) +
                              sizeof(struct dhcp_hdr) + 1));
 
     struct dhcp_hdr* dhcp_pkt =
-        (struct dhcp_hdr*) ((char*)ofpbuf_l4(&pkt) + sizeof(struct udp_hdr));
+        (struct dhcp_hdr*) ((char*)dp_packet_l4(&pkt) + sizeof(struct udp_hdr));
     BOOST_CHECK_EQUAL(2, dhcp_pkt->op);
     BOOST_CHECK_EQUAL(99, dhcp_pkt->cookie[0]);
     BOOST_CHECK_EQUAL(130, dhcp_pkt->cookie[1]);
@@ -448,7 +450,8 @@ static void verify_dhcpv4(ofpbuf* msg, uint8_t message_type) {
     BOOST_CHECK_EQUAL(99, dhcp_pkt->cookie[3]);
 
     char* cur = (char*)dhcp_pkt + sizeof(struct dhcp_hdr);
-    size_t remaining = l4_size - sizeof(struct dhcp_hdr);
+    size_t remaining =
+        l4_size - sizeof(struct dhcp_hdr) - sizeof(struct udp_hdr);
 
     unordered_set<uint8_t> foundOptions;
 
@@ -531,20 +534,20 @@ static void verify_dhcpv6(ofpbuf* msg, uint8_t message_type,
     uint64_t ofpacts_stub[1024 / 8];
     struct ofpbuf ofpact;
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
-    ofputil_decode_packet_out(&po, 
-                              (ofp_header*)ofpbuf_data(msg),
+    ofputil_decode_packet_out(&po,
+                              (ofp_header*)msg->data,
                               &ofpact);
-    struct ofpbuf pkt;
+    struct dp_packet pkt;
     struct flow flow;
-    ofpbuf_use_const(&pkt, po.packet, po.packet_len);
-    flow_extract(&pkt, NULL, &flow);
+    dp_packet_use_const(&pkt, po.packet, po.packet_len);
+    flow_extract(&pkt, &flow);
 
-    size_t l4_size = ofpbuf_l4_size(&pkt);
+    size_t l4_size = dp_packet_l4_size(&pkt);
     BOOST_REQUIRE(l4_size > (sizeof(struct udp_hdr) +
                              sizeof(struct dhcp6_hdr)));
 
     struct dhcp6_hdr* dhcp_pkt =
-        (struct dhcp6_hdr*) ((char*)ofpbuf_l4(&pkt) + sizeof(struct udp_hdr));
+        (struct dhcp6_hdr*)((char*)dp_packet_l4(&pkt) + sizeof(struct udp_hdr));
 
     BOOST_CHECK_EQUAL(message_type, dhcp_pkt->msg_type);
 
@@ -552,14 +555,15 @@ static void verify_dhcpv6(ofpbuf* msg, uint8_t message_type,
 
     const size_t opt_hdr_len = sizeof(struct dhcp6_opt_hdr);
     char* cur = (char*)dhcp_pkt + sizeof(struct dhcp6_hdr);
-    size_t remaining = l4_size - sizeof(struct dhcp6_hdr);
+    size_t remaining =
+        l4_size - sizeof(struct dhcp6_hdr) - sizeof(struct udp_hdr);
     while (remaining >= opt_hdr_len) {
         struct dhcp6_opt_hdr* hdr = (struct dhcp6_opt_hdr*)cur;
         uint16_t opt_len = ntohs(hdr->option_len);
         uint16_t opt_code = ntohs(hdr->option_code);
         foundOptions.insert(opt_code);
 
-        if (remaining <= ((size_t)opt_len + opt_hdr_len))
+        if (remaining < ((size_t)opt_len + opt_hdr_len))
             break;
         switch (opt_code) {
         case option::CLIENT_IDENTIFIER:

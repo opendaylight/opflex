@@ -1930,8 +1930,13 @@ void FlowManagerFixture::initExpCon1() {
             ADDF(Bldr().table(POL).priority(prio)
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
-                 .actions().conntrack("commit", ctzone).go(OUT)
+                 .actions()
+#if 0
+                 .conntrack("commit", ctzone)
+#endif
+                 .go(OUT)
                  .done());
+#if 0
             ADDF(Bldr().table(POL).priority(prio)
                  .cookie(con1_cookie).connState("-trk").tcp()
                  .reg(SEPG, pvnid).reg(DEPG, cvnid)
@@ -1940,6 +1945,7 @@ void FlowManagerFixture::initExpCon1() {
                  .cookie(con1_cookie).connState("-new+est+trk").tcp()
                  .reg(SEPG, pvnid).reg(DEPG, cvnid)
                  .actions().go(OUT).done());
+#endif
             /* classifier 2  */
             ADDF(Bldr().table(POL).priority(prio-1)
                  .cookie(con1_cookie).arp()

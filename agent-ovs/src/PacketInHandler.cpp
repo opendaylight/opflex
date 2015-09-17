@@ -41,7 +41,7 @@ PacketInHandler::PacketInHandler(Agent& agent_,
       portMapper(NULL), flowReader(NULL), switchConnection(NULL) {}
 
 
-bool PacketInHandler::writeLearnFlow(SwitchConnection *conn, 
+bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
                                      ofputil_protocol& proto,
                                      struct ofputil_packet_in& pi,
                                      struct flow& flow,
@@ -50,7 +50,7 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
     FlowManager::EncapType encapType = flowManager.GetEncapType();
     const address& tunDst = flowManager.GetTunnelDst();
 
-    bool dstKnown = (0 != pi.fmd.regs[7]);
+    bool dstKnown = (0 != pi.flow_metadata.flow.regs[7]);
     if (stage2 && !dstKnown) return false;
 
     uint8_t* flowMac = NULL;
@@ -64,9 +64,9 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
     fm.command = OFPFC_ADD;
     fm.new_cookie = FlowManager::GetLearnEntryCookie();
 
-    match_set_reg(&fm.match, 5 /* REG5 */, pi.fmd.regs[5]);
+    match_set_reg(&fm.match, 5 /* REG5 */, pi.flow_metadata.flow.regs[5]);
     if (stage2) {
-        match_set_in_port(&fm.match, pi.fmd.in_port);
+        match_set_in_port(&fm.match, pi.flow_metadata.flow.in_port.ofp_port);
         flowMac = flow.dl_dst;
         match_set_dl_dst(&fm.match, flow.dl_dst);
         match_set_dl_src(&fm.match, flow.dl_src);
@@ -77,9 +77,11 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
 
     ActionBuilder ab;
     // Set destination epg == source epg
-    ab.SetRegLoad(MFF_REG2, pi.fmd.regs[0]);
+    ab.SetRegLoad(MFF_REG2, pi.flow_metadata.flow.regs[0]);
     // Set the output register
-    uint32_t outport = stage2 ? pi.fmd.regs[7] : pi.fmd.in_port;
+    uint32_t outport = stage2
+        ? pi.flow_metadata.flow.regs[7]
+        : pi.flow_metadata.flow.in_port.ofp_port;
     if (outport == tunPort)
         FlowManager::SetActionTunnelMetadata(ab, encapType, tunDst);
 
@@ -102,10 +104,11 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
     if (flowReader) {
         FlowReader::FlowCb dstCb =
             boost::bind(&PacketInHandler::dstFlowCb, this,
-                        _1, MAC(flowMac), outport, pi.fmd.regs[5]);
+                        _1, MAC(flowMac), outport,
+                        pi.flow_metadata.flow.regs[5]);
         match fmatch;
         memset(&fmatch, 0, sizeof(fmatch));
-        match_set_reg(&fmatch, 5 /* REG5 */, pi.fmd.regs[5]);
+        match_set_reg(&fmatch, 5 /* REG5 */, pi.flow_metadata.flow.regs[5]);
         match_set_dl_dst(&fmatch, flowMac);
 
         flowReader->getFlows(FlowManager::LEARN_TABLE_ID,
@@ -198,9 +201,9 @@ bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
     uint32_t port = getOutputRegValue(fe);
     if (port == flowManager.GetTunnelPort())
         return true;
-    
+
     MAC dstMac(fe->entry->match.flow.dl_dst);
-    
+
     try {
         const string& portName = portMapper->FindPort(port);
         unordered_set<string> eps;
@@ -209,7 +212,7 @@ bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
             shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
             if (!ep) continue;
             if (ep->isPromiscuousMode()) return true;
-            
+
             optional<MAC> mac = ep->getMAC();
             if (!mac) continue;
             if (mac == dstMac) return true;
@@ -217,7 +220,7 @@ bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
     } catch (std::out_of_range) {
         // fall through
     }
-    
+
     LOG(DEBUG) << "Removing stale learn flow with dst " << dstMac
                << " on port " << port;
     return false;
@@ -238,7 +241,7 @@ void PacketInHandler::portStatusUpdate(const string& portName,
 void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
                                        struct ofputil_packet_in& pi,
                                        ofputil_protocol& proto,
-                                       struct ofpbuf& pkt,
+                                       struct dp_packet& pkt,
                                        struct flow& flow) {
     writeLearnFlow(conn, proto, pi, flow, false);
     if (writeLearnFlow(conn, proto, pi, flow, true))
@@ -257,12 +260,12 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
         fm.command = OFPFC_ADD;
         fm.new_cookie = FlowManager::GetLearnEntryCookie();
 
-        match_set_in_port(&fm.match, pi.fmd.in_port);
-        match_set_reg(&fm.match, 5 /* REG5 */, pi.fmd.regs[5]);
+        match_set_in_port(&fm.match, pi.flow_metadata.flow.in_port.ofp_port);
+        match_set_reg(&fm.match, 5 /* REG5 */, pi.flow_metadata.flow.regs[5]);
         match_set_dl_src(&fm.match, flow.dl_src);
 
         ActionBuilder ab;
-        ab.SetGroup(FlowManager::getPromId(pi.fmd.regs[5]));
+        ab.SetGroup(FlowManager::getPromId(pi.flow_metadata.flow.regs[5]));
         ab.Build(&fm);
 
         struct ofpbuf* message = ofputil_encode_flow_mod(&fm, proto);
@@ -277,13 +280,13 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
         // Send packet out if needed
         struct ofputil_packet_out po;
         po.buffer_id = UINT32_MAX;
-        po.packet = ofpbuf_data(&pkt);
-        po.packet_len = ofpbuf_size(&pkt);
-        po.in_port = pi.fmd.in_port;
+        po.packet = dp_packet_data(&pkt);
+        po.packet_len = dp_packet_size(&pkt);
+        po.in_port = pi.flow_metadata.flow.in_port.ofp_port;
 
         ActionBuilder ab;
-        ab.SetRegLoad(MFF_REG0, pi.fmd.regs[0]);
-        ab.SetGroup(FlowManager::getPromId(pi.fmd.regs[5]));
+        ab.SetRegLoad(MFF_REG0, pi.flow_metadata.flow.regs[0]);
+        ab.SetGroup(FlowManager::getPromId(pi.flow_metadata.flow.regs[5]));
         ab.Build(&po);
 
         struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
@@ -304,8 +307,8 @@ static void send_packet_out(FlowManager& flowManager,
     // send reply as packet-out
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
-    po.packet = ofpbuf_data(b);
-    po.packet_len = ofpbuf_size(b);
+    po.packet = b->data;
+    po.packet_len = b->size;
     po.in_port = in_port;
 
     uint32_t tunPort = flowManager.GetTunnelPort();
@@ -345,9 +348,9 @@ static void handleNDPktIn(Agent& agent,
                           SwitchConnection *conn,
                           struct ofputil_packet_in& pi,
                           ofputil_protocol& proto,
-                          struct ofpbuf& pkt,
+                          struct dp_packet& pkt,
                           struct flow& flow) {
-    uint32_t epgId = (uint32_t)pi.fmd.regs[0];
+    uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
     PolicyManager& polMgr = agent.getPolicyManager();
     optional<URI> egUri = polMgr.getGroupForVnid(epgId);
     if (!egUri)
@@ -357,10 +360,10 @@ static void handleNDPktIn(Agent& agent,
         flow.nw_proto != 58 /* ICMPv6 */)
         return;
 
-    size_t l4_size = ofpbuf_l4_size(&pkt);
+    size_t l4_size = dp_packet_l4_size(&pkt);
     if (l4_size < sizeof(struct icmp6_hdr))
         return;
-    struct icmp6_hdr* icmp = (struct icmp6_hdr*) ofpbuf_l4(&pkt);
+    struct icmp6_hdr* icmp = (struct icmp6_hdr*) dp_packet_l4(&pkt);
     if (icmp->icmp6_code != 0)
         return;
 
@@ -369,7 +372,7 @@ static void handleNDPktIn(Agent& agent,
     const uint8_t* mac = flowManager.GetRouterMacAddr();
     bool router = true;
     // Use the MAC address from the metadata if available
-    uint64_t metadata = ntohll(pi.fmd.metadata);
+    uint64_t metadata = ntohll(pi.flow_metadata.flow.metadata);
     if (((uint8_t*)&metadata)[7] == 1) {
         mac = (uint8_t*)&metadata;
         router = mac[6] == 1;
@@ -377,8 +380,8 @@ static void handleNDPktIn(Agent& agent,
 
     if (icmp->icmp6_type == ND_NEIGHBOR_SOLICIT) {
         /* Neighbor solicitation */
-        struct nd_neighbor_solicit* neigh_sol = 
-            (struct nd_neighbor_solicit*) ofpbuf_l4(&pkt);
+        struct nd_neighbor_solicit* neigh_sol =
+            (struct nd_neighbor_solicit*) dp_packet_l4(&pkt);
         if (l4_size < sizeof(*neigh_sol))
             return;
 
@@ -394,8 +397,8 @@ static void handleNDPktIn(Agent& agent,
 
     } else if (icmp->icmp6_type == ND_ROUTER_SOLICIT) {
         /* Router solicitation */
-        struct nd_router_solicit* router_sol = 
-            (struct nd_router_solicit*) ofpbuf_l4(&pkt);
+        struct nd_router_solicit* router_sol =
+            (struct nd_router_solicit*) dp_packet_l4(&pkt);
         if (l4_size < sizeof(*router_sol))
             return;
 
@@ -409,7 +412,8 @@ static void handleNDPktIn(Agent& agent,
     }
 
     if (b)
-        send_packet_out(flowManager, conn, b, proto, pi.fmd.in_port);
+        send_packet_out(flowManager, conn, b, proto,
+                        pi.flow_metadata.flow.in_port.ofp_port);
 }
 
 static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
@@ -417,7 +421,7 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
                               SwitchConnection *conn,
                               struct ofputil_packet_in& pi,
                               ofputil_protocol& proto,
-                              struct ofpbuf& pkt,
+                              struct dp_packet& pkt,
                               struct flow& flow) {
     using namespace dhcp;
     using namespace udp;
@@ -435,11 +439,11 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
         return;
     }
 
-    size_t l4_size = ofpbuf_l4_size(&pkt);
+    size_t l4_size = dp_packet_l4_size(&pkt);
     if (l4_size < (sizeof(struct udp_hdr) + sizeof(struct dhcp_hdr) + 1))
         return;
     struct dhcp_hdr* dhcp_pkt =
-        (struct dhcp_hdr*) ((char*)ofpbuf_l4(&pkt) + sizeof(struct udp_hdr));
+        (struct dhcp_hdr*) ((char*)dp_packet_l4(&pkt) + sizeof(struct udp_hdr));
     if (dhcp_pkt->op != 1 ||
         dhcp_pkt->htype != 1 ||
         dhcp_pkt->hlen != 6 ||
@@ -453,7 +457,8 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
     address_v4 requested_ip;
 
     char* cur = (char*)dhcp_pkt + sizeof(struct dhcp_hdr);
-    size_t remaining = l4_size - sizeof(struct dhcp_hdr);
+    size_t remaining =
+        l4_size - sizeof(struct udp_hdr) - sizeof(struct dhcp_hdr);
     while (remaining > 0) {
         struct dhcp_option_hdr* hdr = (struct dhcp_option_hdr*)cur;
         if (hdr->code == option::END)
@@ -517,7 +522,8 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
                                       v4c.get().getStaticRoutes());
 
     if (b)
-        send_packet_out(flowManager, conn, b, proto, pi.fmd.in_port);
+        send_packet_out(flowManager, conn, b, proto,
+                        pi.flow_metadata.flow.in_port.ofp_port);
 }
 
 static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
@@ -525,7 +531,7 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
                               SwitchConnection *conn,
                               struct ofputil_packet_in& pi,
                               ofputil_protocol& proto,
-                              struct ofpbuf& pkt,
+                              struct dp_packet& pkt,
                               struct flow& flow) {
     using namespace dhcp6;
     using namespace udp;
@@ -543,11 +549,11 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
         v6addresses.push_back(addr_v6);
     }
 
-    size_t l4_size = ofpbuf_l4_size(&pkt);
+    size_t l4_size = dp_packet_l4_size(&pkt);
     if (l4_size < (sizeof(struct udp_hdr) + sizeof(struct dhcp6_hdr) + 1))
         return;
     struct dhcp6_hdr* dhcp_pkt =
-        (struct dhcp6_hdr*) ((char*)ofpbuf_l4(&pkt) + sizeof(struct udp_hdr));
+        (struct dhcp6_hdr*)((char*)dp_packet_l4(&pkt) + sizeof(struct udp_hdr));
 
     uint8_t message_type = dhcp_pkt->msg_type;
     uint8_t* client_id = NULL;
@@ -559,13 +565,14 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
     const size_t opt_hdr_len = sizeof(struct dhcp6_opt_hdr);
 
     char* cur = (char*)dhcp_pkt + sizeof(struct dhcp6_hdr);
-    size_t remaining = l4_size - sizeof(struct dhcp6_hdr);
+    size_t remaining =
+        l4_size - sizeof(struct udp_hdr) - sizeof(struct dhcp6_hdr);
     while (remaining >= opt_hdr_len) {
         struct dhcp6_opt_hdr* hdr = (struct dhcp6_opt_hdr*)cur;
         uint16_t opt_len = ntohs(hdr->option_len);
         uint16_t opt_code = ntohs(hdr->option_code);
 
-        if (remaining <= ((size_t)opt_len + opt_hdr_len))
+        if (remaining < ((size_t)opt_len + opt_hdr_len))
             break;
         switch (opt_code) {
         case option::CLIENT_IDENTIFIER:
@@ -579,6 +586,7 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
         case option::IA_NA:
             {
                 // We only support one identity association
+                if (opt_len < 4) return;
                 iaid = (uint8_t*)(cur + opt_hdr_len);
             }
             break;
@@ -639,7 +647,8 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
                                       rapid_commit);
 
     if (b)
-        send_packet_out(flowManager, conn, b, proto, pi.fmd.in_port);
+        send_packet_out(flowManager, conn, b, proto,
+                        pi.flow_metadata.flow.in_port.ofp_port);
 }
 
 
@@ -663,9 +672,9 @@ static void handleDHCPPktIn(bool v4,
                             SwitchConnection *conn,
                             struct ofputil_packet_in& pi,
                             ofputil_protocol& proto,
-                            struct ofpbuf& pkt,
+                            struct dp_packet& pkt,
                             struct flow& flow) {
-    uint32_t epgId = (uint32_t)pi.fmd.regs[0];
+    uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
     PolicyManager& polMgr = agent.getPolicyManager();
     EndpointManager& epMgr = agent.getEndpointManager();
     optional<URI> egUri = polMgr.getGroupForVnid(epgId);
@@ -702,7 +711,7 @@ static void handleVIPPktIn(bool v4,
                            SwitchConnection *conn,
                            struct ofputil_packet_in& pi,
                            ofputil_protocol& proto,
-                           struct ofpbuf& pkt,
+                           struct dp_packet& pkt,
                            struct flow& flow) {
     EndpointManager& epMgr = agent.getEndpointManager();
     NotifServer& notifServer = agent.getNotifServer();
@@ -728,7 +737,8 @@ static void handleVIPPktIn(bool v4,
 
     try {
         const std::string& iface =
-            flowManager.GetPortMapper()->FindPort(pi.fmd.in_port);
+            flowManager.GetPortMapper()->
+            FindPort(pi.flow_metadata.flow.in_port.ofp_port);
 
         unordered_set<string> uuids;
 
@@ -770,7 +780,7 @@ void PacketInHandler::Handle(SwitchConnection *conn,
                              ofptype msgType, ofpbuf *msg) {
     assert(msgType == OFPTYPE_PACKET_IN);
 
-    const struct ofp_header *oh = (ofp_header *)ofpbuf_data(msg);
+    const struct ofp_header *oh = (ofp_header *)msg->data;
     struct ofputil_packet_in pi;
 
     enum ofperr err = ofputil_decode_packet_in(&pi, oh);
@@ -782,10 +792,10 @@ void PacketInHandler::Handle(SwitchConnection *conn,
     if (pi.reason != OFPR_ACTION)
         return;
 
-    struct ofpbuf pkt;
+    struct dp_packet pkt;
     struct flow flow;
-    ofpbuf_use_const(&pkt, pi.packet, pi.packet_len);
-    flow_extract(&pkt, NULL, &flow);
+    dp_packet_use_const(&pkt, pi.packet, pi.packet_len);
+    flow_extract(&pkt, &flow);
 
     ofputil_protocol proto =
         ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
@@ -807,4 +817,3 @@ void PacketInHandler::Handle(SwitchConnection *conn,
 }
 
 } /* namespace ovsagent */
-

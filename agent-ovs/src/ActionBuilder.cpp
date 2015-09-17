@@ -30,7 +30,7 @@ ActionBuilder::~ActionBuilder() {
 
 ofpact * ActionBuilder::GetActionsFromBuffer(ofpbuf *buf, size_t& actsLen) {
     ofpact_pad(buf);
-    actsLen = ofpbuf_size(buf);
+    actsLen = buf->size;
     return (ofpact*)ofpbuf_steal_data(buf);
 }
 
@@ -171,7 +171,7 @@ ActionBuilder::SetDecNwTtl() {
     struct ofpact_cnt_ids *ctlr = ofpact_put_DEC_TTL(&buf);
     uint16_t ctlrId = 0;
     ofpbuf_put(&buf, &ctlrId, sizeof(ctlrId));
-    ctlr = (ofpact_cnt_ids*)buf.frame;      // needed because of put() above
+    ctlr = (ofpact_cnt_ids*)buf.header;      // needed because of put() above
     ctlr->n_controllers = 1;
     ofpact_update_len(&buf, &ctlr->ofpact);
 }
@@ -231,9 +231,11 @@ ActionBuilder::SetPopVlan() {
 
 void
 ActionBuilder::SetConntrack(uint16_t zone, uint16_t flags) {
+#if 0
     ofpact_conntrack *ct = ofpact_put_CT(&buf);
     ct->flags = flags;
     ct->zone = zone;
+#endif
 }
 
 } // namespace ovsagent

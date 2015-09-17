@@ -69,7 +69,7 @@ PortMapper::Connected(SwitchConnection *conn) {
 
     portDescReq = ofputil_encode_port_desc_stats_request(
             conn->GetProtocolVersion(), OFPP_NONE);
-    reqId = ((ofp_header *)ofpbuf_data(portDescReq))->xid;
+    reqId = ((ofp_header *)portDescReq->data)->xid;
 
     int err = conn->SendMessage(portDescReq);
     if (err != 0) {
@@ -100,7 +100,7 @@ PortMapper::Handle(SwitchConnection *conn, ofptype msgType, ofpbuf *msg) {
 
 void
 PortMapper::HandlePortDescReply(ofpbuf *msg) {
-    ofp_header *msgHdr = (ofp_header *)ofpbuf_data(msg);
+    ofp_header *msgHdr = (ofp_header *)msg->data;
     ovs_be32 recvXid = msgHdr->xid;
     if (recvXid != lastDescReqXid) {
         return;     // don't care
@@ -141,7 +141,7 @@ PortMapper::HandlePortDescReply(ofpbuf *msg) {
 
 void
 PortMapper::HandlePortStatus(ofpbuf *msg) {
-    ofp_header *msgHdr = (ofp_header *)ofpbuf_data(msg);
+    ofp_header *msgHdr = (ofp_header *)msg->data;
     ofputil_port_status portStatus;
     ofperr err = ofputil_decode_port_status(msgHdr, &portStatus);
     if (err) {

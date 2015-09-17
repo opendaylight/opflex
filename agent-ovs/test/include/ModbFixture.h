@@ -236,7 +236,11 @@ protected:
         classifier1 = space->addGbpeL24Classifier("classifier1");
         classifier1->setEtherT(l2::EtherTypeEnumT::CONST_IPV4)
             .setProt(6 /* TCP */).setDFromPort(80)
-            .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE);
+#if 0
+            .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE)
+#endif
+            ;
+
         /* allow ARP from prov->cons */
         classifier2 = space->addGbpeL24Classifier("classifier2");
         classifier2->setEtherT(l2::EtherTypeEnumT::CONST_ARP);
