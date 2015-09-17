@@ -134,6 +134,10 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         properties.get_optional<std::string>(OPFLEX_SSL_MODE);
     boost::optional<std::string> confsslCaStore =
         properties.get_optional<std::string>(OPFLEX_SSL_CA_STORE);
+    if (confSslMode)
+        sslMode = confSslMode;
+    if (confsslCaStore)
+        sslCaStore = confsslCaStore;
 
     typedef Renderer* (*rend_create)(Agent&);
     typedef boost::unordered_map<std::string, rend_create> rend_map_t;
