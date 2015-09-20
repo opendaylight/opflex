@@ -66,6 +66,7 @@ void PolicyManager::start() {
     L3ExternalNetwork::registerListener(framework, &domainListener);
 
     EpGroup::registerListener(framework, &contractListener);
+    L3ExternalNetwork::registerListener(framework, &contractListener);
     RoutingDomain::registerListener(framework, &contractListener);
     Contract::registerListener(framework, &contractListener);
     Subject::registerListener(framework, &contractListener);
@@ -99,6 +100,7 @@ void PolicyManager::stop() {
     L3ExternalNetwork::unregisterListener(framework, &domainListener);
 
     EpGroup::unregisterListener(framework, &contractListener);
+    L3ExternalNetwork::unregisterListener(framework, &contractListener);
     RoutingDomain::unregisterListener(framework, &contractListener);
     Contract::unregisterListener(framework, &contractListener);
     Subject::unregisterListener(framework, &contractListener);
@@ -852,6 +854,8 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
                 pmanager.notifyDomain(RoutingDomain::CLASS_ID, rd);
             }
         }
+    } else if (classId == L3ExternalNetwork::CLASS_ID) {
+        pmanager.updateGroupContracts(classId, uri, contractsToNotify);
     } else if (classId == RoutingDomain::CLASS_ID) {
         pmanager.updateL3Nets(uri, contractsToNotify);
     } else {
