@@ -22,6 +22,15 @@ namespace ovsagent {
 typedef uint16_t UriLenType;
 const uint32_t MAX_ID_VALUE = (1 << 31);
 
+IdGenerator::IdGenerator() : cleanupInterval(duration(5*60*1000)) {
+
+}
+
+IdGenerator::IdGenerator(duration cleanupInterval_)
+    : cleanupInterval(cleanupInterval_) {
+
+}
+
 uint32_t IdGenerator::getId(const string& nmspc, const URI& uri) {
     NamespaceMap::iterator nitr = namespaces.find(nmspc);
     if (nitr == namespaces.end()) {
@@ -42,6 +51,11 @@ uint32_t IdGenerator::getId(const string& nmspc, const URI& uri) {
         persist(nmspc, idmap);
         return idmap.lastUsedId;
     }
+
+    IdMap::Uri2EIdMap::iterator eit = idmap.erasedIds.find(uri);
+    if (eit != idmap.erasedIds.end())
+        idmap.erasedIds.erase(eit);
+
     return it->second;
 }
 
@@ -52,8 +66,29 @@ void IdGenerator::erase(const string& nmspc, const URI& uri) {
     }
     // XXX Need a way to reclaim IDs not in use
     IdMap& idmap = nitr->second;
-    if (idmap.ids.erase(uri) > 0) {
-        persist(nmspc, idmap);
+    IdMap::Uri2EIdMap::const_iterator it = idmap.erasedIds.find(uri);
+    if (it == idmap.erasedIds.end()) {
+        idmap.erasedIds[uri] = boost::chrono::steady_clock::now();
+    }
+}
+
+void IdGenerator::cleanup() {
+    time_point now = boost::chrono::steady_clock::now();
+    BOOST_FOREACH(NamespaceMap::value_type& nmv, namespaces) {
+        bool changed = false;
+        BOOST_FOREACH(IdMap::Uri2EIdMap::value_type& uiv,
+                      nmv.second.erasedIds) {
+            if ((now - uiv.second) > cleanupInterval) {
+                if (nmv.second.ids.erase(uiv.first) > 0) {
+                    changed = true;
+
+                    LOG(DEBUG) << "Cleaned up ID " << uiv.first
+                               << " in namespace " << nmv.first;
+                }
+            }
+        }
+        changed = true;
+        persist(nmv.first, nmv.second);
     }
 }
 

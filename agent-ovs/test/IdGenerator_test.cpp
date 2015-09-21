@@ -10,6 +10,8 @@
 
 #include <cstdio>
 #include <boost/test/unit_test.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/thread.hpp>
 
 #include "IdGenerator.h"
 
@@ -39,14 +41,28 @@ BOOST_AUTO_TEST_CASE(get_erase) {
     }
 
     {
-        IdGenerator idgen1;
+        IdGenerator idgen1(boost::chrono::milliseconds(15));
         idgen1.setPersistLocation(dir);
         idgen1.initNamespace(nmspc);
         BOOST_CHECK(u1_id == idgen1.getId(nmspc, u1));
         BOOST_CHECK(u2_id == idgen1.getId(nmspc, u2));
 
+        // erase but resurrect before cleanup
         idgen1.erase(nmspc, u1);
         uint32_t u1_id_1 = idgen1.getId(nmspc, u1);
+        BOOST_CHECK(u1_id == u1_id_1);
+        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        idgen1.cleanup();
+
+        u1_id_1 = idgen1.getId(nmspc, u1);
+        BOOST_CHECK(u1_id == u1_id_1);
+
+        // erase and allow to die
+        idgen1.erase(nmspc, u1);
+        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        idgen1.cleanup();
+
+        u1_id_1 = idgen1.getId(nmspc, u1);
         BOOST_CHECK(u1_id_1 != 0);
         BOOST_CHECK(u1_id != u1_id_1);
 

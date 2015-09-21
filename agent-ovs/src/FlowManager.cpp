@@ -110,6 +110,11 @@ void FlowManager::Start()
 
     workQ.start();
 
+    idCleanupTimer.reset(new deadline_timer(agent.getAgentIOService()));
+    idCleanupTimer->expires_from_now(milliseconds(3*60*1000));
+    idCleanupTimer->async_wait(bind(&FlowManager::OnIdCleanupTimer,
+                                    this, error));
+
     initPlatformConfig();
 }
 
@@ -119,6 +124,9 @@ void FlowManager::Stop()
     advertManager.stop();
     if (connectTimer) {
         connectTimer->cancel();
+    }
+    if (idCleanupTimer) {
+        idCleanupTimer->cancel();
     }
     if (portMapper) {
         portMapper->unregisterPortStatusListener(this);
@@ -2716,6 +2724,16 @@ void FlowManager::OnConnectTimer(const system::error_code& ec) {
     connectTimer.reset();
     if (!ec)
         flowSyncer.Sync();
+}
+
+void FlowManager::OnIdCleanupTimer(const system::error_code& ec) {
+    if (ec) return;
+
+    idGen.cleanup();
+
+    idCleanupTimer->expires_from_now(milliseconds(3*60*1000));
+    idCleanupTimer->async_wait(bind(&FlowManager::OnIdCleanupTimer,
+                                    this, error));
 }
 
 const char * FlowManager::GetIdNamespace(class_id_t cid) {
