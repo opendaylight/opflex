@@ -45,7 +45,7 @@ public:
         conn.connected = true;
         advertManager.registerConnection(&conn);
         advertManager.setPortMapper(&portMapper);
-        advertManager.setIOService(&ioService);
+        advertManager.setIOService(&agent.getAgentIOService());
 
         portMapper.ports["br0_vxlan0"] = 2048;
         portMapper.RPortMap[2048] = "br0_vxlan0";
@@ -86,19 +86,21 @@ public:
     }
 
     void start() {
+        agent.getAgentIOService().reset();
         flowManager.Start();
         advertManager.start();
 
-        io_service_thread = new thread(bind(&io_service::run, ref(ioService)));
+        ioThread.reset(new thread(bind(&io_service::run,
+                                       ref(agent.getAgentIOService()))));
     }
 
     void stop() {
         flowManager.Stop();
         advertManager.stop();
 
-        if (io_service_thread) {
-            io_service_thread->join();
-            delete io_service_thread;
+        if (ioThread) {
+            ioThread->join();
+            ioThread.reset();
         }
     }
 
@@ -108,8 +110,7 @@ public:
     AdvertManager advertManager;
     ofputil_protocol proto;
 
-    boost::thread* io_service_thread;
-    boost::asio::io_service ioService;
+    boost::scoped_ptr<boost::thread> ioThread;
 };
 
 class EpAdvertFixture : public AdvertManagerFixture {

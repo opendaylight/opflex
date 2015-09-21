@@ -75,7 +75,6 @@ noinst_HEADERS = \
 	src/include/PortMapper.h \
 	src/include/StatsManager.h \
 	src/include/Agent.h \
-	src/include/WorkQueue.h \
 	src/include/IdGenerator.h \
 	src/include/RangeMask.h \
 	src/include/Packets.h \
@@ -119,7 +118,6 @@ libagent_ovs_la_SOURCES = \
 	src/cmd.cpp \
 	src/logging.cpp \
 	src/Agent.cpp \
-	src/WorkQueue.cpp \
 	src/IdGenerator.cpp \
 	src/RangeMask.cpp \
 	src/Packets.cpp \
