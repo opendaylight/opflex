@@ -108,7 +108,10 @@ void FlowManager::Start()
     idGen.initNamespace(ID_NMSPC_CON);
     idGen.initNamespace(ID_NMSPC_EXTNET);
 
-    workQ.start();
+    idCleanupTimer.reset(new deadline_timer(agent.getAgentIOService()));
+    idCleanupTimer->expires_from_now(milliseconds(3*60*1000));
+    idCleanupTimer->async_wait(bind(&FlowManager::OnIdCleanupTimer,
+                                    this, error));
 
     initPlatformConfig();
 }
@@ -120,10 +123,12 @@ void FlowManager::Stop()
     if (connectTimer) {
         connectTimer->cancel();
     }
+    if (idCleanupTimer) {
+        idCleanupTimer->cancel();
+    }
     if (portMapper) {
         portMapper->unregisterPortStatusListener(this);
     }
-    workQ.stop();
 }
 
 void FlowManager::registerConnection(SwitchConnection *conn) {
@@ -765,67 +770,67 @@ SetSecurityActionAllow(FlowEntry *fe,
     ab.Build(fe->entry);
 }
 
-void FlowManager::QueueFlowTask(const WorkItem& w) {
-    workQ.enqueue(w);
+void FlowManager::QueueFlowTask(const boost::function<void ()>& w) {
+    agent.getAgentIOService().dispatch(w);
 }
 
 void FlowManager::endpointUpdated(const std::string& uuid) {
     if (stopping) return;
     advertManager.scheduleEndpointAdv(uuid);
-    WorkItem w = bind(&FlowManager::HandleEndpointUpdate, this, uuid);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandleEndpointUpdate, this, uuid));
 }
 
 void FlowManager::anycastServiceUpdated(const std::string& uuid) {
     if (stopping) return;
-    WorkItem w = bind(&FlowManager::HandleAnycastServiceUpdate, this, uuid);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandleAnycastServiceUpdate, this, uuid));
 }
 
 void FlowManager::rdConfigUpdated(const opflex::modb::URI& rdURI) {
     if (stopping) return;
-    WorkItem w = bind(&FlowManager::HandleRoutingDomainUpdate, this, rdURI);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandleRoutingDomainUpdate, this, rdURI));
 }
 
 void FlowManager::egDomainUpdated(const opflex::modb::URI& egURI) {
     if (stopping) return;
-    WorkItem w = bind(&FlowManager::HandleEndpointGroupDomainUpdate, this,
-                      egURI);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandleEndpointGroupDomainUpdate,
+                       this, egURI));
 }
 
 void FlowManager::domainUpdated(class_id_t cid, const URI& domURI) {
     if (stopping) return;
-    WorkItem w = bind(&FlowManager::HandleDomainUpdate, this, cid, domURI);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandleDomainUpdate, this, cid, domURI));
 }
 
 void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
     if (stopping) return;
-    WorkItem w = bind(&FlowManager::HandleContractUpdate, this, contractURI);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandleContractUpdate, this, contractURI));
 }
 
 void FlowManager::configUpdated(const opflex::modb::URI& configURI) {
     if (stopping) return;
     PeerConnected();
-    WorkItem w = bind(&FlowManager::HandleConfigUpdate, this, configURI);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandleConfigUpdate, this, configURI));
 }
 
 void FlowManager::Connected(SwitchConnection *swConn) {
     if (stopping) return;
-    WorkItem w = bind(&FlowManager::HandleConnection, this, swConn);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandleConnection, this, swConn));
 }
 
 void FlowManager::portStatusUpdate(const string& portName,
                                    uint32_t portNo, bool fromDesc) {
     if (stopping) return;
-    WorkItem w = bind(&FlowManager::HandlePortStatusUpdate, this,
-                      portName, portNo);
-    workQ.enqueue(w);
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::HandlePortStatusUpdate, this,
+                       portName, portNo));
     pktInHandler.portStatusUpdate(portName, portNo, fromDesc);
 }
 
@@ -855,9 +860,9 @@ void FlowManager::PeerConnected() {
         // Pretend that we just got connected to the switch to schedule sync
         if (connection && connection->IsConnected()) {
 
-            WorkItem w = bind(&FlowManager::HandleConnection, this,
-                              connection);
-            workQ.enqueue(w);
+            agent.getAgentIOService()
+                .dispatch(bind(&FlowManager::HandleConnection, this,
+                               connection));
         }
     }
 }
@@ -2718,6 +2723,16 @@ void FlowManager::OnConnectTimer(const system::error_code& ec) {
         flowSyncer.Sync();
 }
 
+void FlowManager::OnIdCleanupTimer(const system::error_code& ec) {
+    if (ec) return;
+
+    idGen.cleanup();
+
+    idCleanupTimer->expires_from_now(milliseconds(3*60*1000));
+    idCleanupTimer->async_wait(bind(&FlowManager::OnIdCleanupTimer,
+                                    this, error));
+}
+
 const char * FlowManager::GetIdNamespace(class_id_t cid) {
     const char *nmspc = NULL;
     switch (cid) {
@@ -2913,8 +2928,8 @@ void FlowManager::FlowSyncer::CheckRecvDone() {
 
     if (allDone) {
         LOG(DEBUG) << "Got all group and flow tables, starting reconciliation";
-        WorkItem w = bind(&FlowManager::FlowSyncer::CompleteSync, this);
-        flowManager.workQ.enqueue(w);
+        flowManager.agent.getAgentIOService()
+            .dispatch(bind(&FlowManager::FlowSyncer::CompleteSync, this));
     }
 }
 
@@ -2928,8 +2943,8 @@ void FlowManager::FlowSyncer::CompleteSync() {
     LOG(INFO) << "Sync complete, current mode changed to normal execution";
 
     if (syncPending) {
-        WorkItem w = bind(&FlowManager::FlowSyncer::Sync, this);
-        flowManager.workQ.enqueue(w);
+        flowManager.agent.getAgentIOService()
+            .dispatch(bind(&FlowManager::FlowSyncer::Sync, this));
     }
 
     flowManager.advertManager.start();

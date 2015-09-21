@@ -20,7 +20,6 @@
 #include <opflex/ofcore/PeerStatusListener.h>
 
 #include "Agent.h"
-#include "WorkQueue.h"
 #include "SwitchConnection.h"
 #include "PortMapper.h"
 #include "FlowReader.h"
@@ -428,7 +427,7 @@ public:
      *
      * @param w the work item to enqueue
      */
-    void QueueFlowTask(const WorkItem& w);
+    void QueueFlowTask(const boost::function<void ()>& w);
 
     /**
      * Compare the state of a give table against the provided
@@ -697,8 +696,6 @@ private:
     typedef boost::unordered_map<opflex::modb::URI, Ep2PortMap> FloodGroupMap;
     FloodGroupMap floodGroupMap;
 
-    WorkQueue workQ;
-
     const char * GetIdNamespace(opflex::modb::class_id_t cid);
     IdGenerator idGen;
 
@@ -808,6 +805,12 @@ private:
     void OnConnectTimer(const boost::system::error_code& ec);
     boost::scoped_ptr<boost::asio::deadline_timer> connectTimer;
     long connectDelayMs;
+
+    /**
+     * Timer callback to clean up IDs that have been erased
+     */
+    void OnIdCleanupTimer(const boost::system::error_code& ec);
+    boost::scoped_ptr<boost::asio::deadline_timer> idCleanupTimer;
 
     bool opflexPeerConnected;
 

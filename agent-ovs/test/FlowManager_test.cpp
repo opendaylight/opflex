@@ -36,6 +36,10 @@ using namespace opflex::modb;
 using namespace modelgbp::gbp;
 using namespace ovsagent;
 using boost::asio::ip::address;
+using boost::bind;
+using boost::thread;
+using boost::ref;
+using boost::asio::io_service;
 
 typedef pair<FlowEdit::TYPE, string> MOD;
 
@@ -306,11 +310,17 @@ public:
         WAIT_FOR(policyMgr.groupExists(epg3->getURI()), 500);
         WAIT_FOR(policyMgr.getRDForGroup(epg3->getURI()) != boost::none, 500);
 
+        agent.getAgentIOService().reset();
         flowManager.Start();
+        ioThread.reset(new thread(bind(&io_service::run,
+                                       ref(agent.getAgentIOService()))));
     }
     virtual ~FlowManagerFixture() {
         flowManager.Stop();
+        ioThread->join();
+        ioThread.reset();
     }
+
     void setConnected() {
         flowManager.PeerConnected();    // pretend that opflex-peer is present
         flowManager.Connected(NULL);    // force flowManager out of sync-ing
@@ -403,6 +413,8 @@ public:
     uint32_t ep2_port;
     uint32_t ep4_port;
     uint32_t tun_port_new;
+
+    boost::scoped_ptr<boost::thread> ioThread;
 };
 
 class VxlanFlowManagerFixture : public FlowManagerFixture {
