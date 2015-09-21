@@ -809,6 +809,12 @@ private:
     boost::scoped_ptr<boost::asio::deadline_timer> connectTimer;
     long connectDelayMs;
 
+    /**
+     * Timer callback to clean up IDs that have been erased
+     */
+    void OnIdCleanupTimer(const boost::system::error_code& ec);
+    boost::scoped_ptr<boost::asio::deadline_timer> idCleanupTimer;
+
     bool opflexPeerConnected;
 
     void initPlatformConfig();

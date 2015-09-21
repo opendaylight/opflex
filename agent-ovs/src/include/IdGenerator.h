@@ -1,3 +1,4 @@
+/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
  * Definition of IdGenerator class
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
@@ -12,6 +13,8 @@
 
 #include <string>
 #include <boost/unordered_map.hpp>
+#include <boost/chrono/duration.hpp>
+#include <boost/chrono/system_clocks.hpp>
 
 #include "opflex/modb/URI.h"
 
@@ -23,6 +26,21 @@ namespace ovsagent {
  */
 class IdGenerator {
 public:
+    /**
+     * Initialize a new id generator using the default cleanup
+     * interval
+     **/
+    IdGenerator();
+
+    /**
+     * Initialize a new id generator using the specified cleanup
+     * interval
+     *
+     * @param cleanupInterval the amount of time to keep ids before
+     * purging them on cleanup
+     **/
+    IdGenerator(boost::chrono::milliseconds cleanupInterval);
+
     /**
      * Initialize an ID namespace for generating IDs. If an ID file for
      * for the namespace is found, loads the assignments from the file.
@@ -42,12 +60,18 @@ public:
     uint32_t getId(const std::string& nmspc, const opflex::modb::URI& uri);
 
     /**
-     * Remove the ID assignment for a given URI.
+     * Remove the ID assignment for a given URI, and move it to the
+     * erased list
      *
      * @param nmspc Namespace to remove from
      * @param uri URI to remove
      */
     void erase(const std::string& nmspc, const opflex::modb::URI& uri);
+
+    /**
+     * Purge erased entries that are sufficiently old
+     */
+    void cleanup();
 
     /**
      * Gets the name of the file used for persisting IDs.
@@ -65,7 +89,11 @@ public:
     void setPersistLocation(const std::string& dir) {
         persistDir = dir;
     }
+
 private:
+    typedef boost::chrono::steady_clock::time_point time_point;
+    typedef boost::chrono::milliseconds duration;
+
     /**
      * Keeps track of IDs assignments in a namespace.
      */
@@ -78,6 +106,9 @@ private:
         typedef boost::unordered_map<opflex::modb::URI, uint32_t> Uri2IdMap;
         Uri2IdMap ids;
         uint32_t lastUsedId;
+
+        typedef boost::unordered_map<opflex::modb::URI, time_point> Uri2EIdMap;
+        Uri2EIdMap erasedIds;
     };
 
     /**
@@ -94,6 +125,7 @@ private:
     typedef boost::unordered_map<std::string, IdMap> NamespaceMap;
     boost::unordered_map<std::string, IdMap> namespaces;
     std::string persistDir;
+    duration cleanupInterval;
 };
 
 } // ovsagent
