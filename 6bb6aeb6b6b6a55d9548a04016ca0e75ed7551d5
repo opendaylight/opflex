@@ -16,6 +16,24 @@
       "revId": "6bb6aeb6b6b6a55d9548a04016ca0e75ed7551d5",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a76adc5_bc05e015",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2732,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-09-22T18:20:46Z",
+      "side": 1,
+      "message": "Rescheduling the timer can\u0027t be a work item while cleanup has to be.  I\u0027m actually working on a patch to just move the work queue into the IO service queue to avoid this issue.",
+      "parentUuid": "1a76adc5_dc545c23",
+      "revId": "6bb6aeb6b6b6a55d9548a04016ca0e75ed7551d5",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
