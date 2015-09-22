@@ -2,6 +2,7 @@ module[dci]
 {
 
     class[Universe;
+          super=policy/NameResolvedDefinition;
           concrete;
           ]
     {
@@ -34,8 +35,7 @@ module[dci]
         }
     }
 
-    class[DciEp;
-          super=epr/LocalNetworkEp;
+    class[Ep;
           concrete
           ]
     {
@@ -47,11 +47,11 @@ module[dci]
             }
         }
 
-        dependency[group;
+        dependency[univ;
                    cardinality=single;
                    ]
         {
-            to[class=dci/Domain;
+            to[class=dci/Universe;
                 cardinality=single;
                 ]
         }
@@ -75,10 +75,11 @@ module[dci]
         {
             parent[class=*;]
             {
-                component[prefix=dci;]
+                component[prefix=dci;
+                          member=name]
             }
         }
-        dependency[network;
+        dependency[gbpRoutingDomain;
                    cardinality=single;
                    ]
         {
