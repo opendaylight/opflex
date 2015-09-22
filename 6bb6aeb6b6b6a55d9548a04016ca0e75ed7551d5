@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a76adc5_dc545c23",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2732,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-09-22T17:59:53Z",
+      "side": 1,
+      "message": "The cleanup() invocation and rescheduling the timer need to happen as a work item on the work queue to avoid any concurrent access issues with the IdGenerator because the IdGenerator is not thread-safe.",
+      "revId": "6bb6aeb6b6b6a55d9548a04016ca0e75ed7551d5",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
