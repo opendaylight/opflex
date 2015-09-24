@@ -76,19 +76,23 @@ void IdGenerator::cleanup() {
     time_point now = boost::chrono::steady_clock::now();
     BOOST_FOREACH(NamespaceMap::value_type& nmv, namespaces) {
         bool changed = false;
-        BOOST_FOREACH(IdMap::Uri2EIdMap::value_type& uiv,
-                      nmv.second.erasedIds) {
-            if ((now - uiv.second) > cleanupInterval) {
-                if (nmv.second.ids.erase(uiv.first) > 0) {
+        IdMap& map = nmv.second;
+        IdMap::Uri2EIdMap::iterator it = map.erasedIds.begin();
+        while (it != map.erasedIds.end()) {
+            if ((now - it->second) > cleanupInterval) {
+                if (map.ids.erase(it->first) > 0) {
                     changed = true;
 
-                    LOG(DEBUG) << "Cleaned up ID " << uiv.first
+                    LOG(DEBUG) << "Cleaned up ID " << it->first
                                << " in namespace " << nmv.first;
                 }
+                it = map.erasedIds.erase(it);
+                continue;
             }
+            it++;
         }
-        changed = true;
-        persist(nmv.first, nmv.second);
+        if (changed)
+            persist(nmv.first, nmv.second);
     }
 }
 
@@ -182,6 +186,37 @@ void IdGenerator::initNamespace(const std::string& nmspc) {
             << nmspc << ":" << id;
     }
     file.close();
+}
+
+void IdGenerator::collectGarbage(const std::string& ns,
+                                 garbage_cb_t cb) {
+    NamespaceMap::iterator nitr = namespaces.find(ns);
+    if (nitr == namespaces.end()) {
+        return;
+    }
+
+    IdMap& map = nitr->second;
+    uint32_t max_id = 0;
+
+    for (IdMap::Uri2IdMap::iterator uit = map.ids.begin();
+         uit != map.ids.end(); uit++) {
+        max_id = max(max_id, uit->second);
+        if (cb(ns, uit->first))
+            continue;
+
+        IdMap::Uri2EIdMap::const_iterator it = map.erasedIds.find(uit->first);
+        if (it == map.erasedIds.end()) {
+            map.erasedIds[uit->first] = boost::chrono::steady_clock::now();
+            LOG(DEBUG) << "Found garbage " << uit->first << " in " << ns;
+        }
+    }
+
+    // lastUsedId could still creep up indefinitely, which after an
+    // extremely long time could become a problem.  To be really
+    // bulletproof we'd need to maintain a free list to allow reuse of
+    // IDs.
+    LOG(DEBUG) << "Maximum ID for namespace " << ns << ": " << max_id;
+    map.lastUsedId = max_id;
 }
 
 } // namespace ovsagent

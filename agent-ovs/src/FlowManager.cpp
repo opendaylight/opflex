@@ -41,16 +41,28 @@
 #include "PacketInHandler.h"
 #include "Packets.h"
 
-using namespace std;
-using namespace boost;
-using namespace opflex::modb;
-using namespace modelgbp::gbp;
-using namespace modelgbp::gbpe;
+using std::string;
+using std::vector;
+using std::ostringstream;
+using boost::bind;
+using boost::algorithm::split;
+using boost::algorithm::trim;
+using boost::ref;
+using boost::optional;
+using boost::shared_ptr;
+using boost::unordered_set;
+using boost::unordered_map;
 using boost::asio::deadline_timer;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
 using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;
+using opflex::modb::URI;
+using opflex::modb::MAC;
+using opflex::modb::class_id_t;
+
+using namespace modelgbp::gbp;
+using namespace modelgbp::gbpe;
 
 namespace ovsagent {
 
@@ -70,11 +82,30 @@ const uint64_t METADATA_RESUBMIT_DST = 0x1;
 // set to the mapped NAT EPG
 const uint64_t METADATA_NAT_OUT = 0x2;
 
-static const char * ID_NMSPC_FD  = "floodDomain";
-static const char * ID_NMSPC_BD  = "bridgeDomain";
-static const char * ID_NMSPC_RD  = "routingDomain";
-static const char * ID_NMSPC_CON = "contract";
-static const char * ID_NMSPC_EXTNET = "externalNetwork";
+static const char* ID_NAMESPACES[] =
+    {"floodDomain", "bridgeDomain", "routingDomain",
+     "contract", "externalNetwork"};
+
+static const char * ID_NMSPC_FD     = ID_NAMESPACES[0];
+static const char * ID_NMSPC_BD     = ID_NAMESPACES[1];
+static const char * ID_NMSPC_RD     = ID_NAMESPACES[2];
+static const char * ID_NMSPC_CON    = ID_NAMESPACES[3];
+static const char * ID_NMSPC_EXTNET = ID_NAMESPACES[4];
+
+template <class MO>
+static bool idGarbageCb(opflex::ofcore::OFFramework& framework,
+                        const string& ns, const URI& uri) {
+    return MO::resolve(framework, uri);
+}
+
+static boost::function<bool(opflex::ofcore::OFFramework&,
+                            const string&,
+                            const URI&)> ID_NAMESPACE_CB[] =
+    {idGarbageCb<FloodDomain>,
+     idGarbageCb<BridgeDomain>,
+     idGarbageCb<RoutingDomain>,
+     idGarbageCb<Contract>,
+     idGarbageCb<L3ExternalNetwork>};
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
@@ -626,6 +657,7 @@ SetPolicyActionAllow(FlowEntry *fe) {
     ab.Build(fe->entry);
 }
 
+#if 0
 static void
 SetPolicyActionConntrack(FlowEntry *fe, uint16_t zone, uint16_t flags,
                          bool output) {
@@ -636,6 +668,7 @@ SetPolicyActionConntrack(FlowEntry *fe, uint16_t zone, uint16_t flags,
     }
     ab.Build(fe->entry);
 }
+#endif
 
 static void
 SetPolicyMatchGroup(FlowEntry *fe, uint16_t prio,
@@ -1471,6 +1504,7 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
         WriteFlow(uuid, BRIDGE_TABLE_ID, NULL);
         WriteFlow(uuid, SERVICE_MAP_SRC_TABLE_ID, NULL);
         WriteFlow(uuid, SERVICE_MAP_DST_TABLE_ID, NULL);
+        return;
     }
 
     const AnycastService& as = *asWrapper;
@@ -2046,7 +2080,7 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
         BOOST_FOREACH(const std::string& cidrSn,
                       rdConfig->getInternalSubnets()) {
             vector<string> comps;
-            algorithm::split(comps, cidrSn, boost::is_any_of("/"));
+            split(comps, cidrSn, boost::is_any_of("/"));
             if (comps.size() == 2) {
                 try {
                     uint8_t prefixLen =
@@ -2091,7 +2125,7 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
             net->resolveGbpExternalSubnet(extSubs);
             optional<shared_ptr<L3ExternalNetworkToNatEPGroupRSrc> > natRef =
                 net->resolveGbpL3ExternalNetworkToNatEPGroupRSrc();
-            optional<uint32_t> natEpgVnid;
+            optional<uint32_t> natEpgVnid = boost::none;
             if (natRef) {
                 optional<URI> natEpg = natRef.get()->getTargetURI();
                 if (natEpg)
@@ -2503,8 +2537,8 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
     bool reflexive =
         clsfr->isConnectionTrackingSet() &&
         clsfr->getConnectionTracking().get() == ConnTrackEnumT::CONST_REFLEXIVE;
-#endif
     uint16_t ctZone = (uint16_t)(srdid & 0xffff);
+#endif
     MaskList srcPorts;
     MaskList dstPorts;
     RangeMask::getMasks(clsfr->getSFromPort(), clsfr->getSToPort(), srcPorts);
@@ -2725,16 +2759,24 @@ void FlowManager::HandleConnection(SwitchConnection *swConn) {
     }
 }
 
-void FlowManager::OnConnectTimer(const system::error_code& ec) {
+void FlowManager::OnConnectTimer(const boost::system::error_code& ec) {
     connectTimer.reset();
     if (!ec)
         flowSyncer.Sync();
 }
 
-void FlowManager::OnIdCleanupTimer(const system::error_code& ec) {
+void FlowManager::OnIdCleanupTimer(const boost::system::error_code& ec) {
     if (ec) return;
 
     idGen.cleanup();
+    for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
+        string ns(ID_NAMESPACES[i]);
+        IdGenerator::garbage_cb_t gcb =
+            bind(ID_NAMESPACE_CB[i], ref(agent.getFramework()), _1, _2);
+        agent.getAgentIOService()
+            .dispatch(bind(&IdGenerator::collectGarbage, ref(idGen),
+                           ns, gcb));
+    }
 
     idCleanupTimer->expires_from_now(milliseconds(3*60*1000));
     idCleanupTimer->async_wait(bind(&FlowManager::OnIdCleanupTimer,
@@ -2849,10 +2891,10 @@ void FlowManager::fetchMulticastSubscription(unordered_set<string>& mcastIps) {
         LOG(ERROR) << "Error while fetching multicast subscriptions, "
                 "error: " << res;
     } else {
-        algorithm::trim(res);
+        trim(res);
         if (!res.empty()) {
-            algorithm::split(mcastIps, res, boost::is_any_of(" \t\n\r"),
-                             boost::token_compress_on);
+            split(mcastIps, res, boost::is_any_of(" \t\n\r"),
+                  boost::token_compress_on);
         }
     }
 }

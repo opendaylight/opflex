@@ -15,6 +15,7 @@
 #include <boost/unordered_map.hpp>
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
+#include <boost/function.hpp>
 
 #include "opflex/modb/URI.h"
 
@@ -24,7 +25,7 @@ namespace ovsagent {
  * Class to generate unique numeric IDs for URIs. Also supports
  * persisting the assignments so that they can restored upon restart.
  */
-class IdGenerator {
+class IdGenerator : private boost::noncopyable {
 public:
     /**
      * Initialize a new id generator using the default cleanup
@@ -90,6 +91,22 @@ public:
         persistDir = dir;
     }
 
+    /**
+     * The garbage collection callback.  Arguments are the namespace
+     * and the URI to check.  Returns true if the URI remains valid.
+     */
+    typedef boost::function<bool(const std::string&,
+                                 const opflex::modb::URI&)> garbage_cb_t;
+
+    /**
+     * Cleanup the URI map by verifying that each entry in the map for
+     * the given namespace is still a valid object
+     *
+     * @param ns the namespace to check
+     * @param cb the callback to call to verify the namespace
+     */
+    void collectGarbage(const std::string& ns, garbage_cb_t cb);
+
 private:
     typedef boost::chrono::steady_clock::time_point time_point;
     typedef boost::chrono::milliseconds duration;
@@ -97,7 +114,7 @@ private:
     /**
      * Keeps track of IDs assignments in a namespace.
      */
-    struct IdMap {
+    struct IdMap : private boost::noncopyable {
         IdMap() : lastUsedId(0) {}
 
         /**

@@ -20,6 +20,15 @@ using namespace boost;
 using namespace ovsagent;
 using namespace opflex::modb;
 
+static bool garbage_cb_false(const std::string& ns,
+                       const opflex::modb::URI& uri) {
+    return false;
+}
+static bool garbage_cb_true(const std::string& ns,
+                            const opflex::modb::URI& uri) {
+    return true;
+}
+
 BOOST_AUTO_TEST_SUITE(IdGenerator_test)
 
 BOOST_AUTO_TEST_CASE(get_erase) {
@@ -73,6 +82,36 @@ BOOST_AUTO_TEST_CASE(get_erase) {
         IdGenerator idgen2;
         BOOST_CHECK_EQUAL(idgen2.getId(nmspc, u1), 0);
     }
+}
+
+BOOST_AUTO_TEST_CASE(garbage) {
+    IdGenerator idgen(boost::chrono::milliseconds(15));
+    string nmspc("idtest");
+    URI u1("/uri/one");
+    URI u2("/uri/two");
+
+    idgen.initNamespace(nmspc);
+    uint32_t id1 = idgen.getId(nmspc, u1);
+    uint32_t id2 = idgen.getId(nmspc, u2);
+
+    idgen.collectGarbage(nmspc, garbage_cb_true);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+
+    BOOST_CHECK(id1 == idgen.getId(nmspc, u1));
+    BOOST_CHECK(id2 == idgen.getId(nmspc, u2));
+
+    idgen.collectGarbage(nmspc, garbage_cb_false);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+    // call again to reset lastUsedId
+    idgen.collectGarbage(nmspc, garbage_cb_false);
+
+    // note: reversed order to reassign IDs
+    BOOST_CHECK(id2 != idgen.getId(nmspc, u2));
+    BOOST_CHECK(id1 != idgen.getId(nmspc, u1));
+    BOOST_CHECK_EQUAL(id1, idgen.getId(nmspc, u2));
+    BOOST_CHECK_EQUAL(id2, idgen.getId(nmspc, u1));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
