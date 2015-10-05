@@ -127,7 +127,9 @@ libagent_ovs_la_SOURCES = \
 	src/NotifServer.cpp
 
 bin_PROGRAMS=agent_ovs gbp_inspect
-agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' $(OVS_ADDL_CFLAGS)
+agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
+	$(libopflex_CFLAGS) \
+	$(libmodelgbp_CFLAGS)
 agent_ovs_SOURCES = \
 	src/main.cpp
 agent_ovs_LDADD = \
@@ -195,12 +197,14 @@ flowidcachedir=${localstatedir}/lib/opflex-agent-ovs/ids
 defepwatchdir=${localstatedir}/lib/opflex-agent-ovs/endpoints
 defservwatchdir=${localstatedir}/lib/opflex-agent-ovs/services
 inspectsock=${localstatedir}/run/opflex-agent-ovs-inspect.sock
+notifsock=${localstatedir}/run/opflex-agent-ovs-notif.sock
 cacertdir=${sysconfdir}/ssl/certs
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defepwatchdir}|" \
 	    -e "s|DEFAULT_FS_SERVICE_DIR|${defservwatchdir}|" \
 	    -e "s|DEFAULT_FLOWID_CACHE_DIR|${flowidcachedir}|" \
 	    -e "s|DEFAULT_INSPECTOR_SOCKET|${inspectsock}|" \
+	    -e "s|DEFAULT_NOTIF_SOCKET|${notifsock}|" \
 	    -e "s|DEFAULT_CA_CERT_DIR|${cacertdir}|" \
 	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
 
