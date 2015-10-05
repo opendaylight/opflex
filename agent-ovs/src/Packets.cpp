@@ -121,7 +121,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
         boost::system::error_code ec;
         address networkAddr = address::from_string(networkAddrStr.get(), ec);
         if (ec) continue;
-        
+
         if (networkAddr.is_v6())
             ipv6Subnets.push_back(sn);
     }
@@ -135,7 +135,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
         + (mtu == 0 ? 0 : sizeof(struct nd_opt_mtu)) +
         sizeof(struct nd_opt_prefix_info) * ipv6Subnets.size() +
         sizeof(struct nd_opt_def_route_info);
-    size_t len = sizeof(struct eth_header) + 
+    size_t len = sizeof(struct eth_header) +
         sizeof(struct ip6_hdr) +
         payloadLen;
 
@@ -154,11 +154,11 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     BOOST_FOREACH(shared_ptr<Subnet>& sn, ipv6Subnets) {
         optional<const string&> networkAddrStr = sn->getAddress();
         if (!networkAddrStr) continue;
-        
+
         boost::system::error_code ec;
         address networkAddr = address::from_string(networkAddrStr.get(), ec);
         if (ec) continue;
-        
+
         if (!networkAddr.is_v6()) continue;
 
         struct nd_opt_prefix_info* prefix = (struct nd_opt_prefix_info*)
@@ -168,9 +168,9 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
         prefix->nd_opt_pi_len = 4;
         prefix->nd_opt_pi_prefix_len = sn->getPrefixLen(64);
         prefix->nd_opt_pi_flags_reserved = ND_OPT_PI_FLAG_ONLINK;
-        prefix->nd_opt_pi_valid_time = 
+        prefix->nd_opt_pi_valid_time =
             htonl(sn->getIpv6AdvValidLifetime(2592000));
-        prefix->nd_opt_pi_preferred_time = 
+        prefix->nd_opt_pi_preferred_time =
             htonl(sn->getIpv6AdvPreferredLifetime(604800));
 
         if (sn->getIpv6AdvAutonomousFlag(1))
@@ -188,7 +188,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
         opt_mtu->nd_opt_mtu_len = 1;
         opt_mtu->nd_opt_mtu_mtu = htonl(mtu);
     }
-    
+
     // source link-layer address option
     struct nd_opt_hdr* source_ll = (struct nd_opt_hdr*)
         ofpbuf_push_zeros(b, sizeof(struct nd_opt_hdr) + 6);
@@ -219,25 +219,25 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
     memcpy(eth->eth_dst, dstMac, ETH_ADDR_LEN);
     eth->eth_type = htons(ETH_TYPE_IPV6);
-    
+
     // Initialize IPv6 header
     ip6->ip6_vfc = 0x60;
     ip6->ip6_hlim = 255;
     ip6->ip6_nxt = 58;
     ip6->ip6_plen = htons(payloadLen);
-    
+
     // IPv6 link-local address made from the router MAC
-    construct_auto_ip(address_v6::from_string("fe80::"), srcMac, 
+    construct_auto_ip(address_v6::from_string("fe80::"), srcMac,
                       &ip6->ip6_src);
 
     memcpy(&ip6->ip6_dst, dstIp, sizeof(struct in6_addr));
-   
+
     // compute checksum
     uint32_t chksum = 0;
     // pseudoheader
-    chksum_accum(chksum, (uint16_t*)&ip6->ip6_src, 
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_src,
                  sizeof(struct in6_addr));
-    chksum_accum(chksum, (uint16_t*)&ip6->ip6_dst, 
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_dst,
                  sizeof(struct in6_addr));
     chksum_accum(chksum, (uint16_t*)&ip6->ip6_plen, 2);
     chksum += (uint16_t)htons(58);
@@ -261,8 +261,8 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
 
     struct nd_neighbor_advert* neigh_ad = NULL;
     struct nd_opt_hdr* target_ll = NULL;
-    
-    size_t len = sizeof(struct eth_header) + 
+
+    size_t len = sizeof(struct eth_header) +
         sizeof(struct ip6_hdr) +
         sizeof(struct nd_neighbor_advert) +
         sizeof(struct nd_opt_hdr) + 6;
@@ -278,7 +278,7 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     buf += sizeof(struct nd_neighbor_advert);
     target_ll = (struct nd_opt_hdr*)buf;
     buf += sizeof(struct nd_opt_hdr) + 6;
-    
+
     payload = (uint16_t*)neigh_ad;
     payloadLen = sizeof(struct nd_neighbor_advert) +
             sizeof(struct nd_opt_hdr) + 6;
@@ -287,7 +287,7 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
     memcpy(eth->eth_dst, dstMac, ETH_ADDR_LEN);
     eth->eth_type = htons(ETH_TYPE_IPV6);
-    
+
     // Initialize IPv6 header
     ip6->ip6_vfc = 0x60;
     ip6->ip6_hlim = 255;
@@ -295,7 +295,7 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     ip6->ip6_plen = htons(payloadLen);
     memcpy(&ip6->ip6_src, srcIp, sizeof(struct in6_addr));
     memcpy(&ip6->ip6_dst, dstIp, sizeof(struct in6_addr));
-    
+
     // fill in neighbor advertisement
     neigh_ad->nd_na_hdr.icmp6_type = ND_NEIGHBOR_ADVERT;
     neigh_ad->nd_na_hdr.icmp6_code = 0;
@@ -304,13 +304,13 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     target_ll->nd_opt_type = ND_OPT_TARGET_LINKADDR;
     target_ll->nd_opt_len = 1;
     memcpy(((char*)target_ll)+2, srcMac, ETH_ADDR_LEN);
-    
+
     // compute checksum
     uint32_t chksum = 0;
     // pseudoheader
-    chksum_accum(chksum, (uint16_t*)&ip6->ip6_src, 
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_src,
                  sizeof(struct in6_addr));
-    chksum_accum(chksum, (uint16_t*)&ip6->ip6_dst, 
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_dst,
                  sizeof(struct in6_addr));
     chksum_accum(chksum, (uint16_t*)&ip6->ip6_plen, 2);
     chksum += (uint16_t)htons(58);
@@ -380,7 +380,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         routerIps.push_back(ip);
         if (routerIps.size() >= MAX_IP) break;
     }
-    if (routerIps.size() > 0) 
+    if (routerIps.size() > 0)
         router_len = 2 + 4*routerIps.size();
 
     vector<address_v4> dnsIps;
@@ -390,7 +390,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         dnsIps.push_back(ip);
         if (dnsIps.size() >= MAX_IP) break;
     }
-    if (dnsIps.size() >= 0) 
+    if (dnsIps.size() >= 0)
         dns_len = 2 + 4*dnsIps.size();
 
     if (domain && domain.get().size() <= 255)
@@ -411,18 +411,18 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     }
     if (static_route_len > 0) static_route_len += 2;
 
-    size_t payloadLen = 
+    size_t payloadLen =
         sizeof(struct dhcp_hdr) +
         option::MESSAGE_TYPE_LEN + 2 +
         option::IP_LEN + 2 + /* subnet mask */
         router_len +
         dns_len +
         domain_len +
-        option::LEASE_TIME_LEN + 2 + 
+        option::LEASE_TIME_LEN + 2 +
         option::IP_LEN + 2 + /* server identifier */
         static_route_len +
         1 /* end */;
-    size_t len = sizeof(struct eth_header) + 
+    size_t len = sizeof(struct eth_header) +
         sizeof(struct iphdr) +
         sizeof(struct udp_hdr) +
         payloadLen;
@@ -475,8 +475,8 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     // initialize IPv4 header
     ip->version = 4;
     ip->ihl = sizeof(struct iphdr)/4;
-    ip->tot_len = htons(payloadLen + 
-                        sizeof(struct iphdr) + 
+    ip->tot_len = htons(payloadLen +
+                        sizeof(struct iphdr) +
                         sizeof(struct udp_hdr));
     ip->ttl = 64;
     ip->protocol = 17;
@@ -568,6 +568,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                 *cur++ = ((char*)&dest)[i];
             }
             *((uint32_t*)cur) = nexthop;
+            cur += 4;
         }
     }
 
@@ -584,7 +585,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     chksum_accum(chksum, (uint16_t*)&proto, 2);
     chksum_accum(chksum, (uint16_t*)&udp->len, 2);
     // payload
-    chksum_accum(chksum, (uint16_t*)udp, 
+    chksum_accum(chksum, (uint16_t*)udp,
                  payloadLen + sizeof(struct udp_hdr));
     udp->chksum = chksum_finalize(chksum);
 
@@ -638,7 +639,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         dnsIps.push_back(ip);
         if (dnsIps.size() >= MAX_IP) break;
     }
-    if (dnsIps.size() >= 0) 
+    if (dnsIps.size() >= 0)
         dns_len = opt_hdr_len + sizeof(struct in6_addr) * dnsIps.size();
 
     stringbuf domain_opt_buf;
@@ -676,7 +677,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         if (!temporary) ia_len += 8;
     }
 
-    size_t payloadLen = 
+    size_t payloadLen =
         sizeof(struct dhcp6_hdr) +
         opt_hdr_len + client_id_len + /* client id */
         opt_hdr_len + 10 + /* server id */
@@ -684,7 +685,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         domain_list_len +
         ia_len +
         (rapid ? opt_hdr_len : 0);
-    size_t len = sizeof(struct eth_header) + 
+    size_t len = sizeof(struct eth_header) +
         sizeof(struct ip6_hdr) +
         sizeof(struct udp_hdr) +
         payloadLen;
@@ -733,9 +734,9 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     ip6->ip6_hlim = 255;
     ip6->ip6_nxt = 17;
     ip6->ip6_plen = htons(payloadLen + sizeof(udp_hdr));
- 
+
     // IPv6 link-local address made from the DHCP MAC
-    construct_auto_ip(address_v6::from_string("fe80::"), srcMac, 
+    construct_auto_ip(address_v6::from_string("fe80::"), srcMac,
                       &ip6->ip6_src);
 
     memcpy(&ip6->ip6_dst, dstIp, sizeof(struct in6_addr));
@@ -830,9 +831,9 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     // compute checksum
     uint32_t chksum = 0;
     // pseudoheader
-    chksum_accum(chksum, (uint16_t*)&ip6->ip6_src, 
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_src,
                  sizeof(struct in6_addr));
-    chksum_accum(chksum, (uint16_t*)&ip6->ip6_dst, 
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_dst,
                  sizeof(struct in6_addr));
     uint32_t udpLen = htonl(payloadLen + sizeof(udp_hdr));
     chksum_accum(chksum, (uint16_t*)&udpLen, 4);
@@ -841,7 +842,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     nh.nh = ip6->ip6_nxt;
     chksum_accum(chksum, (uint16_t*)&nh, 4);
     // payload
-    chksum_accum(chksum, (uint16_t*)udp, 
+    chksum_accum(chksum, (uint16_t*)udp,
                  payloadLen + sizeof(struct udp_hdr));
     udp->chksum = chksum_finalize(chksum);
 
@@ -865,8 +866,8 @@ ofpbuf* compose_arp(uint16_t op,
     uint32_t* spaptr = NULL;
     uint32_t* tpaptr = NULL;
 
-    size_t len = 
-        sizeof(eth_header) + sizeof(arp_hdr) + 
+    size_t len =
+        sizeof(eth_header) + sizeof(arp_hdr) +
         2 * ETH_ADDR_LEN + 2 * 4;
     b = ofpbuf_new(len);
     ofpbuf_clear(b);

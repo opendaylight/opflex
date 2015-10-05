@@ -506,7 +506,7 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
         break;
     default:
         LOG(DEBUG) << "Ignoring unexpected DHCP message of type "
-                   << message_type << " from " << srcMac;
+                   << (uint16_t)message_type << " from " << srcMac;
         return;
     }
 
