@@ -13,6 +13,7 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <limits>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/thread.hpp>
@@ -585,7 +586,8 @@ struct OrderComparator {
      * right side
      */
     bool operator()(const T& lhs, const T& rhs) {
-        return lhs->getOrder(UINT32_MAX) < rhs->getOrder(UINT32_MAX);
+        return lhs->getOrder(std::numeric_limits<uint32_t>::max()) <
+            rhs->getOrder(std::numeric_limits<uint32_t>::max());
     }
 };
 
