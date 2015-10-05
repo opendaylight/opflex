@@ -334,6 +334,7 @@ public:
         const std::vector<std::string>& getDnsServers() const {
             return dnsServers;
         }
+
     private:
         std::vector<std::string> dnsServers;
     };
@@ -383,6 +384,26 @@ public:
          */
         void setPrefixLen(uint8_t prefixLen) {
             this->prefixLen = prefixLen;
+        }
+
+        /**
+         * Get the IP address to return as the server IP address in
+         * DHCP replies.
+         *
+         * @return the IP address
+         */
+        const boost::optional<std::string>& getServerIp() const {
+            return serverIp;
+        }
+
+        /**
+         * Get the IP address to return as the server IP address in
+         * DHCP replies.
+         *
+         * @param serverIp the IP address
+         */
+        void setServerIp(const std::string& serverIp) {
+            this->serverIp = serverIp;
         }
 
         /**
@@ -494,6 +515,7 @@ public:
     private:
         boost::optional<std::string> ipAddress;
         boost::optional<uint8_t> prefixLen;
+        boost::optional<std::string> serverIp;
         std::vector<std::string> routers;
         boost::optional<std::string> domain;
         std::vector<static_route_t> staticRoutes;

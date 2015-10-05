@@ -53,7 +53,7 @@ extern const uint8_t MAC_ADDR_IPV6MULTICAST[6];
  * @param len the length of the data
  */
 void chksum_accum(uint32_t& chksum, uint16_t* addr, size_t len);
-    
+
 /**
  * Finalize the computation of a checksum.  Does not change the
  * intermediate state, so can be used to compute a partial
@@ -135,6 +135,8 @@ typedef Endpoint::DHCPv4Config::static_route_t static_route_t;
  * @param clientIp the IP address to return to the client
  * @param prefixLen the length of the prefix for use in the subnet
  * mask
+ * @param serverIp the apparent IP address to use when sending the
+ * reply.  Defaults to a link-local IP 169.254.32.32
  * @param routers the list of routers to return to the client
  * @param dnsServers the list of DNS servers to return to the client
  * @param domain The domain to return to the client
@@ -146,6 +148,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              const uint8_t* clientMac,
                              uint32_t clientIp,
                              uint8_t prefixLen,
+                             const boost::optional<std::string>& serverIp,
                              const std::vector<std::string>& routers,
                              const std::vector<std::string>& dnsServers,
                              const boost::optional<std::string>& domain,
@@ -167,7 +170,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
  * @param searchList the DNS search path to return to the client
  * @param temporary true if the client requested a temporary address
  * @param rapid true if this is a rapid commit reply
- */                             
+ */
 ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
                              const uint8_t* xid,
                              const uint8_t* srcMac,

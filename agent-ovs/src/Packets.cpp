@@ -340,6 +340,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              const uint8_t* clientMac,
                              uint32_t clientIp,
                              uint8_t prefixLen,
+                             const optional<string>& serverIpStr,
                              const vector<string>& routers,
                              const vector<string>& dnsServers,
                              const optional<string>& domain,
@@ -481,7 +482,16 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     ip->ttl = 64;
     ip->protocol = 17;
 
-    ip->saddr = htonl(LINK_LOCAL_DHCP);
+    uint32_t serverIp = LINK_LOCAL_DHCP;
+    if (serverIpStr) {
+        address_v4 sip = address_v4::from_string(serverIpStr.get(), ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid DHCP server IP: " << serverIpStr.get();
+        } else  {
+            serverIp = sip.to_ulong();
+        }
+    }
+    ip->saddr = htonl(serverIp);
     ip->daddr = 0xffffffff;
 
     // compute IP header checksum
@@ -500,7 +510,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     dhcp->hlen = 6;
     dhcp->xid = xid;
     dhcp->yiaddr = htonl(clientIp);
-    dhcp->siaddr = htonl(LINK_LOCAL_DHCP);
+    dhcp->siaddr = htonl(serverIp);
     memcpy(dhcp->chaddr, clientMac, ETH_ADDR_LEN);
     dhcp->cookie[0] = 99;
     dhcp->cookie[1] = 130;
@@ -553,7 +563,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
 
     server_identifier->code = option::SERVER_IDENTIFIER;
     server_identifier->len = option::IP_LEN;
-    *((uint32_t*)((char*)server_identifier + 2)) = htonl(LINK_LOCAL_DHCP);
+    *((uint32_t*)((char*)server_identifier + 2)) = htonl(serverIp);
 
     if (static_route_len > 0) {
         static_routes->code = option::CLASSLESS_STATIC_ROUTE;

@@ -70,6 +70,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string DHCP6("dhcp6");
     static const std::string DHCP_IP("ip");
     static const std::string DHCP_PREFIX_LEN("prefix-len");
+    static const std::string DHCP_SERVER_IP("server-ip");
     static const std::string DHCP_ROUTERS("routers");
     static const std::string DHCP_DNS_SERVERS("dns-servers");
     static const std::string DHCP_DOMAIN("domain");
@@ -177,6 +178,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
                 dhcp4.get().get_optional<string>(DHCP_IP);
             if (ip)
                 c.setIpAddress(ip.get());
+
+            optional<string> serverIp =
+                dhcp4.get().get_optional<string>(DHCP_SERVER_IP);
+            if (serverIp)
+                c.setServerIp(serverIp.get());
 
             optional<uint8_t> prefix =
                 dhcp4.get().get_optional<uint8_t>(DHCP_PREFIX_LEN);
