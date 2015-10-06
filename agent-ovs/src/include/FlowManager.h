@@ -689,6 +689,9 @@ private:
     TableState flowTables[NUM_FLOW_TABLES];
     std::string flowIdCache;
 
+    boost::mutex queueMutex;
+    boost::unordered_set<std::string> queuedItems;
+
     /*
      * Map of flood-group URI to the endpoints associated with it.
      * The flood-group can either be a flood-domain or an endpoint-group

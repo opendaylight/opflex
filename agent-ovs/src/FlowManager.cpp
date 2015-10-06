@@ -57,6 +57,8 @@ using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
 using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;
+using boost::unique_lock;
+using boost::mutex;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::class_id_t;
@@ -810,6 +812,11 @@ void FlowManager::QueueFlowTask(const boost::function<void ()>& w) {
 
 void FlowManager::endpointUpdated(const std::string& uuid) {
     if (stopping) return;
+    {
+        unique_lock<mutex> guard(queueMutex);
+        if (!queuedItems.insert(uuid).second) return;
+    }
+
     advertManager.scheduleEndpointAdv(uuid);
     agent.getAgentIOService()
         .dispatch(bind(&FlowManager::HandleEndpointUpdate, this, uuid));
@@ -817,18 +824,27 @@ void FlowManager::endpointUpdated(const std::string& uuid) {
 
 void FlowManager::anycastServiceUpdated(const std::string& uuid) {
     if (stopping) return;
+    {
+        unique_lock<mutex> guard(queueMutex);
+        if (!queuedItems.insert(uuid).second) return;
+    }
+
     agent.getAgentIOService()
         .dispatch(bind(&FlowManager::HandleAnycastServiceUpdate, this, uuid));
 }
 
 void FlowManager::rdConfigUpdated(const opflex::modb::URI& rdURI) {
-    if (stopping) return;
-    agent.getAgentIOService()
-        .dispatch(bind(&FlowManager::HandleRoutingDomainUpdate, this, rdURI));
+    domainUpdated(RoutingDomain::CLASS_ID, rdURI);
 }
 
 void FlowManager::egDomainUpdated(const opflex::modb::URI& egURI) {
     if (stopping) return;
+
+    {
+        unique_lock<mutex> guard(queueMutex);
+        if (!queuedItems.insert(egURI.toString()).second) return;
+    }
+
     agent.getAgentIOService()
         .dispatch(bind(&FlowManager::HandleEndpointGroupDomainUpdate,
                        this, egURI));
@@ -836,12 +852,23 @@ void FlowManager::egDomainUpdated(const opflex::modb::URI& egURI) {
 
 void FlowManager::domainUpdated(class_id_t cid, const URI& domURI) {
     if (stopping) return;
+    {
+        unique_lock<mutex> guard(queueMutex);
+        if (!queuedItems.insert(domURI.toString()).second) return;
+    }
+
     agent.getAgentIOService()
         .dispatch(bind(&FlowManager::HandleDomainUpdate, this, cid, domURI));
 }
 
 void FlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
     if (stopping) return;
+
+    {
+        unique_lock<mutex> guard(queueMutex);
+        if (!queuedItems.insert(contractURI.toString()).second) return;
+    }
+
     agent.getAgentIOService()
         .dispatch(bind(&FlowManager::HandleContractUpdate, this, contractURI));
 }
@@ -1125,6 +1152,10 @@ void
 FlowManager::HandleEndpointUpdate(const string& uuid) {
 
     LOG(DEBUG) << "Updating endpoint " << uuid;
+    {
+        unique_lock<mutex> guard(queueMutex);
+        queuedItems.erase(uuid);
+    }
 
     EndpointManager& epMgr = agent.getEndpointManager();
     shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(uuid);
@@ -1495,6 +1526,10 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 void
 FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
     LOG(DEBUG) << "Updating anycast service " << uuid;
+    {
+        unique_lock<mutex> guard(queueMutex);
+        queuedItems.erase(uuid);
+    }
 
     ServiceManager& srvMgr = agent.getServiceManager();
     shared_ptr<const AnycastService> asWrapper = srvMgr.getAnycastService(uuid);
@@ -1689,6 +1724,10 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
 void
 FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     LOG(DEBUG) << "Updating endpoint-group " << epgURI;
+    {
+        unique_lock<mutex> guard(queueMutex);
+        queuedItems.erase(epgURI.toString());
+    }
 
     const string& epgId = epgURI.toString();
 
@@ -1933,7 +1972,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         // update routing domains that have references to the
         // IP-mapping EPG to ensure external subnets are correctly
         // mapped.
-        HandleRoutingDomainUpdate(rdURI);
+        rdConfigUpdated(rdURI);
     }
 
     // note this combines with the IPM group endpoints from above:
@@ -2194,6 +2233,11 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
 
 void
 FlowManager::HandleDomainUpdate(class_id_t cid, const URI& domURI) {
+    {
+        unique_lock<mutex> guard(queueMutex);
+        queuedItems.erase(domURI.toString());
+    }
+
     switch (cid) {
     case RoutingDomain::CLASS_ID:
         HandleRoutingDomainUpdate(domURI);
@@ -2386,6 +2430,10 @@ void FlowManager::RemoveEndpointFromFloodGroup(const std::string& epUUID) {
 
 void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
     LOG(DEBUG) << "Updating contract " << contractURI;
+    {
+        unique_lock<mutex> guard(queueMutex);
+        queuedItems.erase(contractURI.toString());
+    }
 
     const string& contractId = contractURI.toString();
     uint64_t conCookie = GetId(Contract::CLASS_ID, contractURI);
@@ -2635,12 +2683,12 @@ void FlowManager::HandlePortStatusUpdate(const string& portName,
         PolicyManager::uri_set_t epgURIs;
         agent.getPolicyManager().getGroups(epgURIs);
         BOOST_FOREACH (const URI& epg, epgURIs) {
-            HandleEndpointGroupDomainUpdate(epg);
+            egDomainUpdated(epg);
         }
         PolicyManager::uri_set_t rdURIs;
         agent.getPolicyManager().getRoutingDomains(rdURIs);
         BOOST_FOREACH (const URI& rd, rdURIs) {
-            HandleRoutingDomainUpdate(rd);
+            rdConfigUpdated(rd);
         }
         /* Directly update the group-table */
         UpdateGroupTable();
@@ -2650,13 +2698,13 @@ void FlowManager::HandlePortStatusUpdate(const string& portName,
         agent.getEndpointManager().getEndpointsByIpmNextHopIf(portName,
                                                               uuids);
         BOOST_FOREACH (const string& uuid, uuids) {
-            HandleEndpointUpdate(uuid);
+            endpointUpdated(uuid);
         }
 
         uuids.clear();
         agent.getServiceManager().getAnycastServicesByIface(portName, uuids);
         BOOST_FOREACH (const string& uuid, uuids) {
-            HandleAnycastServiceUpdate(uuid);
+            anycastServiceUpdated(uuid);
         }
     }
 }
