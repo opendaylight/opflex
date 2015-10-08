@@ -137,11 +137,11 @@ void JsonCmdExecutor::Connected(SwitchConnection *swConn) {
     reqCondVar.notify_all();
 }
 
-size_t JsonPtrHash::operator()(json * const obj) {
+size_t JsonPtrHash::operator()(json * const obj) const {
     return obj ? json_hash(obj, 0) : 0;
 }
 
-bool JsonPtrEquals::operator()(json * const lhs, json * const rhs) {
+bool JsonPtrEquals::operator()(json * const lhs, json * const rhs) const {
     if (lhs == rhs) {
         return true;
     }

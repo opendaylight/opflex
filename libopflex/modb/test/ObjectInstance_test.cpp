@@ -40,7 +40,7 @@ void checkScalar(shared_ptr<ObjectInstance> oi) {
 }
 
 BOOST_AUTO_TEST_CASE( scalar ) {
-    shared_ptr<ObjectInstance> oi = 
+    shared_ptr<ObjectInstance> oi =
         shared_ptr<ObjectInstance>(new ObjectInstance(1));
 
     oi->setUInt64(1, 0xdeadbeef);
@@ -53,31 +53,31 @@ BOOST_AUTO_TEST_CASE( scalar ) {
     checkScalar(oi);
 
     // check assignment
-    shared_ptr<ObjectInstance> oi2 = 
+    shared_ptr<ObjectInstance> oi2 =
         shared_ptr<ObjectInstance>(new ObjectInstance(1));
     *oi2 = *oi;
     checkScalar(oi);
     checkScalar(oi2);
 
-    BOOST_CHECK(*oi == *oi2); 
+    BOOST_CHECK(*oi == *oi2);
     oi2->setString(3, "notvalue");
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
     oi2->setString(3, "value");
-    BOOST_CHECK(*oi == *oi2); 
+    BOOST_CHECK(*oi == *oi2);
     oi2->setInt64(2, 128);
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
     oi2->setInt64(2, -42);
-    BOOST_CHECK(*oi == *oi2); 
+    BOOST_CHECK(*oi == *oi2);
     oi2->setUInt64(1, 0xff);
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
     oi2->setUInt64(1, 0xdeadbeef);
-    BOOST_CHECK(*oi == *oi2); 
+    BOOST_CHECK(*oi == *oi2);
 
     BOOST_CHECK(oi2->isSet(2, PropertyInfo::S64));
     oi2->unset(2, PropertyInfo::S64, PropertyInfo::SCALAR);
     BOOST_CHECK(!oi2->isSet(2, PropertyInfo::S64));
 
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
 }
 
 void checkVector(shared_ptr<ObjectInstance> oi) {
@@ -104,7 +104,7 @@ void checkVector(shared_ptr<ObjectInstance> oi) {
 }
 
 BOOST_AUTO_TEST_CASE( vector ) {
-    shared_ptr<ObjectInstance> oi = 
+    shared_ptr<ObjectInstance> oi =
         shared_ptr<ObjectInstance>(new ObjectInstance(1));
     oi->addUInt64(1, 5);
     oi->addUInt64(1, 6);
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE( vector ) {
     checkVector(oi);
 
     // check assignment
-    shared_ptr<ObjectInstance> oi2 = 
+    shared_ptr<ObjectInstance> oi2 =
         shared_ptr<ObjectInstance>(new ObjectInstance(1));
     *oi2 = *oi;
     checkVector(oi);
@@ -137,23 +137,23 @@ BOOST_AUTO_TEST_CASE( vector ) {
     oi->setString(1, stv);
     checkVector(oi);
 
-    BOOST_CHECK(*oi == *oi2); 
+    BOOST_CHECK(*oi == *oi2);
     oi2->addUInt64(1, 5);
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
     oi2->setUInt64(1, uv);
-    BOOST_CHECK(*oi == *oi2); 
+    BOOST_CHECK(*oi == *oi2);
     oi2->unset(1, PropertyInfo::S64, PropertyInfo::VECTOR);
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
     oi2->addInt64(1, 5);
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
     oi2->setInt64(1, sv);
-    BOOST_CHECK(*oi == *oi2); 
+    BOOST_CHECK(*oi == *oi2);
     oi2->unset(1, PropertyInfo::STRING, PropertyInfo::VECTOR);
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
     oi2->addString(1, "blah");
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
     oi2->setString(1, stv);
-    BOOST_CHECK(*oi == *oi2); 
+    BOOST_CHECK(*oi == *oi2);
 
     oi2->unset(1, PropertyInfo::U64, PropertyInfo::VECTOR);
     oi2->unset(1, PropertyInfo::S64, PropertyInfo::VECTOR);
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE( vector ) {
     BOOST_CHECK_EQUAL(0, oi2->getInt64Size(1));
     BOOST_CHECK_EQUAL(0, oi2->getStringSize(1));
 
-    BOOST_CHECK(*oi != *oi2); 
+    BOOST_CHECK(*oi != *oi2);
 
 }
 

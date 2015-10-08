@@ -32,7 +32,7 @@ struct JsonPtrHash {
      * @param obj Pointer to the JSON object
      * @return hash-value of the JSON object
      */
-    size_t operator()(json * const obj);
+    size_t operator()(json * const obj) const;
 };
 
 /**
@@ -46,7 +46,7 @@ struct JsonPtrEquals {
      * @param rhs the right side of the comparison
      * @return true if the objects are equal, false otherwise
      */
-    bool operator()(json * const lhs, json * const rhs);
+    bool operator()(json * const lhs, json * const rhs) const;
 };
 
 /**

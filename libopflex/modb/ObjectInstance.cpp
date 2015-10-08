@@ -59,13 +59,8 @@ normalize(PropertyInfo::property_type_t type) {
 ObjectInstance::Value::Value(const Value& val)
     : type(val.type), cardinality(val.cardinality) {
     if (cardinality == PropertyInfo::SCALAR) {
-        if (type == PropertyInfo::STRING) {
-            if (val.value.which() != 0)
-                value = new string(*get<string*>(val.value));
-        } else {
-            value = val.value;
-        }
-    } else if (cardinality == PropertyInfo::VECTOR && 
+        value = val.value;
+    } else if (cardinality == PropertyInfo::VECTOR &&
                val.value.which() != 0) {
         if (type == PropertyInfo::U64)
             value = new vector<uint64_t>(*get<vector<uint64_t>*>(val.value));
@@ -83,12 +78,8 @@ ObjectInstance::Value::~Value() {
 }
 
 void ObjectInstance::Value::clear() {
-    if (cardinality == PropertyInfo::SCALAR &&
-        type == PropertyInfo::STRING) {
-        if (value.which() != 0)
-            delete get<string*>(value);
-    } else if (cardinality == PropertyInfo::VECTOR && 
-               value.which() != 0) {
+    if (cardinality == PropertyInfo::VECTOR &&
+        value.which() != 0) {
         if (type == PropertyInfo::U64)
             delete get<vector<uint64_t>*>(value);
         else if (type == PropertyInfo::S64)
@@ -107,13 +98,8 @@ ObjectInstance::Value& ObjectInstance::Value::operator=(const Value& val) {
     cardinality = val.cardinality;
 
     if (cardinality == PropertyInfo::SCALAR) {
-        if (type == PropertyInfo::STRING) {
-            if (val.value.which() != 0)
-                value = new string(*get<string*>(val.value));
-        } else {
-            value = val.value;
-        }
-    } else if (cardinality == PropertyInfo::VECTOR && 
+        value = val.value;
+    } else if (cardinality == PropertyInfo::VECTOR &&
                val.value.which() != 0) {
         if (type == PropertyInfo::U64)
             value = new vector<uint64_t>(*get<vector<uint64_t>*>(val.value));
@@ -131,8 +117,8 @@ bool ObjectInstance::isSet(prop_id_t prop_id,
                            PropertyInfo::property_type_t type,
                            PropertyInfo::cardinality_t cardinality) const {
     type = normalize(type);
-    return prop_map.find(make_tuple(type, 
-                                    cardinality, 
+    return prop_map.find(make_tuple(type,
+                                    cardinality,
                                     prop_id)) != prop_map.end();
 }
 
@@ -140,7 +126,7 @@ bool ObjectInstance::unset(prop_id_t prop_id,
                            PropertyInfo::property_type_t type,
                            PropertyInfo::cardinality_t cardinality) {
     type = normalize(type);
-    prop_map_t::iterator it = 
+    prop_map_t::iterator it =
         prop_map.find(make_tuple(type, cardinality, prop_id));
     if (it == prop_map.end()) return false;
 
@@ -149,138 +135,138 @@ bool ObjectInstance::unset(prop_id_t prop_id,
 }
 
 uint64_t ObjectInstance::getUInt64(prop_id_t prop_id) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::U64, 
-                                            PropertyInfo::SCALAR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::U64,
+                                            PropertyInfo::SCALAR,
                                             prop_id));
     return get<uint64_t>(v.value);
 }
 
-uint64_t ObjectInstance::getUInt64(prop_id_t prop_id, 
+uint64_t ObjectInstance::getUInt64(prop_id_t prop_id,
                                    size_t index) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::U64, 
-                                            PropertyInfo::VECTOR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::U64,
+                                            PropertyInfo::VECTOR,
                                             prop_id));
     return get<vector<uint64_t>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getUInt64Size(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it = 
-        prop_map.find(make_tuple(PropertyInfo::U64, 
-                                 PropertyInfo::VECTOR, 
+    prop_map_t::const_iterator it =
+        prop_map.find(make_tuple(PropertyInfo::U64,
+                                 PropertyInfo::VECTOR,
                                  prop_id));
     if (it == prop_map.end()) return 0;
     return get<vector<uint64_t>*>(it->second.value)->size();
 }
 
 const MAC& ObjectInstance::getMAC(prop_id_t prop_id) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::MAC, 
-                                            PropertyInfo::SCALAR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::MAC,
+                                            PropertyInfo::SCALAR,
                                             prop_id));
     return get<MAC>(v.value);
 }
 
-const MAC& ObjectInstance::getMAC(prop_id_t prop_id, 
+const MAC& ObjectInstance::getMAC(prop_id_t prop_id,
                                    size_t index) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::MAC, 
-                                            PropertyInfo::VECTOR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::MAC,
+                                            PropertyInfo::VECTOR,
                                             prop_id));
     return get<vector<MAC>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getMACSize(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it = 
+    prop_map_t::const_iterator it =
         prop_map.find(make_tuple(PropertyInfo::MAC,
-                                 PropertyInfo::VECTOR, 
+                                 PropertyInfo::VECTOR,
                                  prop_id));
     if (it == prop_map.end()) return 0;
     return get<vector<MAC>*>(it->second.value)->size();
 }
 
 int64_t ObjectInstance::getInt64(prop_id_t prop_id) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::S64, 
-                                            PropertyInfo::SCALAR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::S64,
+                                            PropertyInfo::SCALAR,
                                             prop_id));
     return get<int64_t>(v.value);
 }
 
-int64_t ObjectInstance::getInt64(prop_id_t prop_id, 
+int64_t ObjectInstance::getInt64(prop_id_t prop_id,
                                  size_t index) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::S64, 
-                                            PropertyInfo::VECTOR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::S64,
+                                            PropertyInfo::VECTOR,
                                             prop_id));
     return get<vector<int64_t>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getInt64Size(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it = 
-        prop_map.find(make_tuple(PropertyInfo::S64, 
-                                 PropertyInfo::VECTOR, 
+    prop_map_t::const_iterator it =
+        prop_map.find(make_tuple(PropertyInfo::S64,
+                                 PropertyInfo::VECTOR,
                                  prop_id));
     if (it == prop_map.end()) return 0;
     return get<vector<int64_t>*>(it->second.value)->size();
 }
 
 const string& ObjectInstance::getString(prop_id_t prop_id) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::STRING, 
-                                            PropertyInfo::SCALAR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::STRING,
+                                            PropertyInfo::SCALAR,
                                             prop_id));
-    return *get<string*>(v.value);
+    return get<string>(v.value);
 }
 
-const string& ObjectInstance::getString(prop_id_t prop_id, 
+const string& ObjectInstance::getString(prop_id_t prop_id,
                                         size_t index) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::STRING, 
-                                            PropertyInfo::VECTOR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::STRING,
+                                            PropertyInfo::VECTOR,
                                             prop_id));
     return get<vector<string>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getStringSize(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it = 
-        prop_map.find(make_tuple(PropertyInfo::STRING, 
-                                 PropertyInfo::VECTOR, 
+    prop_map_t::const_iterator it =
+        prop_map.find(make_tuple(PropertyInfo::STRING,
+                                 PropertyInfo::VECTOR,
                                  prop_id));
     if (it == prop_map.end()) return 0;
     return get<vector<string>*>(it->second.value)->size();
 }
 
 reference_t ObjectInstance::getReference(prop_id_t prop_id) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::REFERENCE, 
-                                            PropertyInfo::SCALAR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::REFERENCE,
+                                            PropertyInfo::SCALAR,
                                             prop_id));
     return get<reference_t>(v.value);
 }
 
-reference_t ObjectInstance::getReference(prop_id_t prop_id, 
+reference_t ObjectInstance::getReference(prop_id_t prop_id,
                                          size_t index) const {
-    const Value& v = prop_map.at(make_tuple(PropertyInfo::REFERENCE, 
-                                            PropertyInfo::VECTOR, 
+    const Value& v = prop_map.at(make_tuple(PropertyInfo::REFERENCE,
+                                            PropertyInfo::VECTOR,
                                             prop_id));
     return get<vector<reference_t>*>(v.value)->at(index);
 }
 
 size_t ObjectInstance::getReferenceSize(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it = 
-        prop_map.find(make_tuple(PropertyInfo::REFERENCE, 
-                                 PropertyInfo::VECTOR, 
+    prop_map_t::const_iterator it =
+        prop_map.find(make_tuple(PropertyInfo::REFERENCE,
+                                 PropertyInfo::VECTOR,
                                  prop_id));
     if (it == prop_map.end()) return 0;
     return get<vector<reference_t>*>(it->second.value)->size();
 }
 
 void ObjectInstance::setUInt64(prop_id_t prop_id, uint64_t value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::U64, 
-                                   PropertyInfo::SCALAR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::U64,
+                                   PropertyInfo::SCALAR,
                                    prop_id)];
     v.type = PropertyInfo::U64;
     v.cardinality = PropertyInfo::SCALAR;
     v.value = value;
 }
 
-void ObjectInstance::setUInt64(prop_id_t prop_id, 
+void ObjectInstance::setUInt64(prop_id_t prop_id,
                                const vector<uint64_t>& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::U64, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::U64,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     v.type = PropertyInfo::U64;
     v.cardinality = PropertyInfo::VECTOR;
@@ -290,18 +276,18 @@ void ObjectInstance::setUInt64(prop_id_t prop_id,
 }
 
 void ObjectInstance::setMAC(prop_id_t prop_id, const MAC& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::MAC, 
-                                   PropertyInfo::SCALAR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::MAC,
+                                   PropertyInfo::SCALAR,
                                    prop_id)];
     v.type = PropertyInfo::MAC;
     v.cardinality = PropertyInfo::SCALAR;
     v.value = value;
 }
 
-void ObjectInstance::setMAC(prop_id_t prop_id, 
+void ObjectInstance::setMAC(prop_id_t prop_id,
                                const vector<MAC>& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::MAC, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::MAC,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     v.type = PropertyInfo::MAC;
     v.cardinality = PropertyInfo::VECTOR;
@@ -311,18 +297,18 @@ void ObjectInstance::setMAC(prop_id_t prop_id,
 }
 
 void ObjectInstance::setInt64(prop_id_t prop_id, int64_t value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::S64, 
-                                   PropertyInfo::SCALAR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::S64,
+                                   PropertyInfo::SCALAR,
                                    prop_id)];
     v.type = PropertyInfo::S64;
     v.cardinality = PropertyInfo::SCALAR;
     v.value = value;
 }
 
-void ObjectInstance::setInt64(prop_id_t prop_id, 
+void ObjectInstance::setInt64(prop_id_t prop_id,
                               const vector<int64_t>& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::S64, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::S64,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     v.type = PropertyInfo::S64;
     v.cardinality = PropertyInfo::VECTOR;
@@ -332,20 +318,18 @@ void ObjectInstance::setInt64(prop_id_t prop_id,
 }
 
 void ObjectInstance::setString(prop_id_t prop_id, const string& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::STRING, 
-                                   PropertyInfo::SCALAR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::STRING,
+                                   PropertyInfo::SCALAR,
                                    prop_id)];
     v.type = PropertyInfo::STRING;
     v.cardinality = PropertyInfo::SCALAR;
-    if (v.value.which() != 0)
-        delete get<string*>(v.value);
-    v.value = new string(value);
+    v.value = value;
 }
 
-void ObjectInstance::setString(prop_id_t prop_id, 
+void ObjectInstance::setString(prop_id_t prop_id,
                                const vector<string>& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::STRING, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::STRING,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     v.type = PropertyInfo::STRING;
     v.cardinality = PropertyInfo::VECTOR;
@@ -355,20 +339,20 @@ void ObjectInstance::setString(prop_id_t prop_id,
 }
 
 
-void ObjectInstance::setReference(prop_id_t prop_id, 
+void ObjectInstance::setReference(prop_id_t prop_id,
                                   class_id_t class_id, const URI& uri) {
-    Value& v = prop_map[make_tuple(PropertyInfo::REFERENCE, 
-                                   PropertyInfo::SCALAR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::REFERENCE,
+                                   PropertyInfo::SCALAR,
                                    prop_id)];
     v.type = PropertyInfo::REFERENCE;
     v.cardinality = PropertyInfo::SCALAR;
     v.value = make_pair(class_id, uri);
 }
 
-void ObjectInstance::setReference(prop_id_t prop_id, 
+void ObjectInstance::setReference(prop_id_t prop_id,
                                   const vector<reference_t>& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::REFERENCE, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::REFERENCE,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     v.type = PropertyInfo::REFERENCE;
     v.cardinality = PropertyInfo::VECTOR;
@@ -378,8 +362,8 @@ void ObjectInstance::setReference(prop_id_t prop_id,
 }
 
 void ObjectInstance::addUInt64(prop_id_t prop_id, uint64_t value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::U64, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::U64,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     vector<uint64_t>* val;
     if (v.value.which() == 0) {
@@ -393,8 +377,8 @@ void ObjectInstance::addUInt64(prop_id_t prop_id, uint64_t value) {
 }
 
 void ObjectInstance::addMAC(prop_id_t prop_id, const MAC& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::MAC, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::MAC,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     vector<MAC>* val;
     if (v.value.which() == 0) {
@@ -408,8 +392,8 @@ void ObjectInstance::addMAC(prop_id_t prop_id, const MAC& value) {
 }
 
 void ObjectInstance::addInt64(prop_id_t prop_id, int64_t value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::S64, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::S64,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     vector<int64_t>* val;
     if (v.value.which() == 0) {
@@ -423,8 +407,8 @@ void ObjectInstance::addInt64(prop_id_t prop_id, int64_t value) {
 }
 
 void ObjectInstance::addString(prop_id_t prop_id, const string& value) {
-    Value& v = prop_map[make_tuple(PropertyInfo::STRING, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::STRING,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     vector<string>* val;
     if (v.value.which() == 0) {
@@ -437,11 +421,11 @@ void ObjectInstance::addString(prop_id_t prop_id, const string& value) {
     val->push_back(value);
 }
 
-void ObjectInstance::addReference(prop_id_t prop_id, 
+void ObjectInstance::addReference(prop_id_t prop_id,
                                   class_id_t class_id,
                                   const URI& uri) {
-    Value& v = prop_map[make_tuple(PropertyInfo::REFERENCE, 
-                                   PropertyInfo::VECTOR, 
+    Value& v = prop_map[make_tuple(PropertyInfo::REFERENCE,
+                                   PropertyInfo::VECTOR,
                                    prop_id)];
     vector<reference_t>* val;
     if (v.value.which() == 0) {
@@ -455,7 +439,7 @@ void ObjectInstance::addReference(prop_id_t prop_id,
 }
 
 template <typename T>
-bool equal(const ObjectInstance::Value& lhs, 
+bool equal(const ObjectInstance::Value& lhs,
            const ObjectInstance::Value& rhs) {
     if (lhs.cardinality != rhs.cardinality) return false;
     switch (lhs.cardinality) {
@@ -463,38 +447,24 @@ bool equal(const ObjectInstance::Value& lhs,
         {
             const vector<T>& l = *get<vector<T>*>(lhs.value);
             const vector<T>& r = *get<vector<T>*>(rhs.value);
-            if (l != r) return false;
-            return true;
+            return (l == r);
         }
         break;
     case PropertyInfo::SCALAR:
         {
-            switch (lhs.type) {
-            case PropertyInfo::STRING:
-                {
-                    const T& l = *get<T*>(lhs.value);
-                    const T& r = *get<T*>(rhs.value);
-                    if (l != r) return false;
-                }
-                break;
-            default:
-                {
-                    const T& l = get<T>(lhs.value);
-                    const T& r = get<T>(rhs.value);
-                    if (l != r) return false;
-                }
-                break;
-            }
+            const T& l = get<T>(lhs.value);
+            const T& r = get<T>(rhs.value);
+            return (l == r);
         }
         break;
     }
-    return true;
+    return false;
 }
 
-bool operator==(const ObjectInstance::Value& lhs, 
+bool operator==(const ObjectInstance::Value& lhs,
                 const ObjectInstance::Value& rhs) {
     if (lhs.type != rhs.type) return false;
-    
+
     switch (lhs.type) {
     case PropertyInfo::ENUM8:
     case PropertyInfo::ENUM16:
@@ -519,7 +489,7 @@ bool operator==(const ObjectInstance::Value& lhs,
     return true;
 }
 
-bool operator!=(const ObjectInstance::Value& lhs, 
+bool operator!=(const ObjectInstance::Value& lhs,
                 const ObjectInstance::Value& rhs) {
     return !operator==(lhs,rhs);
 }
@@ -548,4 +518,3 @@ bool operator!=(const ObjectInstance& lhs, const ObjectInstance& rhs) {
 } /* namespace mointernal */
 } /* namespace modb */
 } /* namespace opflex */
-
