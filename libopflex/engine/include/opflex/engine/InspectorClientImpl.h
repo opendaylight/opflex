@@ -78,7 +78,8 @@ public:
     virtual size_t loadFromFile(FILE* file);
     virtual void prettyPrint(std::ostream& output,
                              bool tree = true,
-                             bool includeProps = true);
+                             bool includeProps = true,
+                             bool utf8 = true);
 
     // **************
     // HandlerFactory

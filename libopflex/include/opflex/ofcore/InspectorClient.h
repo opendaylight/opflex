@@ -116,10 +116,12 @@ public:
      * @param output the output stream to write to
      * @param tree print in a tree format
      * @param includeProps include the object properties
+     * @param utf8 output tree using UTF-8 box drawing
      */
     virtual void prettyPrint(std::ostream& output,
                              bool tree = true,
-                             bool includeProps = true) = 0;
+                             bool includeProps = true,
+                             bool utf8 = true) = 0;
 };
 
 /** @} ofcore */

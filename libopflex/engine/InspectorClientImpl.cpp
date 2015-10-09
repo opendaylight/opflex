@@ -191,8 +191,9 @@ size_t InspectorClientImpl::loadFromFile(FILE* file) {
 
 void InspectorClientImpl::prettyPrint(std::ostream& output,
                                       bool tree,
-                                      bool includeProps) {
-    serializer.displayMODB(output, tree, includeProps);
+                                      bool includeProps,
+                                      bool utf8) {
+    serializer.displayMODB(output, tree, includeProps, utf8);
 }
 
 void InspectorClientImpl::setFollowRefs(bool enabled) {

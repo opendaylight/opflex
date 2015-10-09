@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
         ("output,o", po::value<std::string>()->default_value(""),
          "Output the results to the specified file (default standard out)")
         ("type,t", po::value<std::string>()->default_value("tree"),
-         "Specify the output format: tree, list, or dump (default tree)")
+         "Specify the output format: tree, asciitree, list, or dump (default tree)")
         ("props,p", "Include object properties in output")
         ;
 
@@ -129,7 +129,8 @@ int main(int argc, char** argv) {
         LOG(ERROR) << "No queries specified";
         return 1;
     }
-    if (type != "tree" && type != "dump" && type != "list") {
+    if (type != "tree" && type != "asciitree" &&
+        type != "dump" && type != "list") {
         LOG(ERROR) << "Invalid output type: " << type;
         return 1;
     }
@@ -184,8 +185,10 @@ int main(int argc, char** argv) {
             client->dumpToFile(outf);
         else if (type == "list")
             client->prettyPrint(outs, false, props);
+        else if (type == "asciitree")
+            client->prettyPrint(outs, true, props, false);
         else
-            client->prettyPrint(outs, true, props);
+            client->prettyPrint(outs, true, props, true);
 
         fclose(outf);
 
