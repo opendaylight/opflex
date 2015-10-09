@@ -455,29 +455,25 @@ static std::string getEnumVal(const modb::PropertyInfo& pinfo, uint64_t v) {
     }
 }
 
+static const string BULLET("\xe2\xa6\x81");
+static const string HORIZ("\xe2\x94\x80");
+static const string VERT("\xe2\x94\x82");
+static const string DOWN_HORIZ("\xe2\x94\xac");
+static const string ARC_UP_RIGHT("\xe2\x95\xb0");
+static const string VERT_RIGHT("\xe2\x94\x9c");
+
 void MOSerializer::displayObject(std::ostream& ostream,
                                  modb::class_id_t class_id,
                                  const modb::URI& uri,
                                  bool tree, bool root,
                                  bool includeProps,
-                                 bool last, const std::string& prefix) {
+                                 bool last, const std::string& prefix,
+                                 bool utf8) {
     StoreClient& client = store->getReadOnlyStoreClient();
     const modb::ClassInfo& ci = store->getClassInfo(class_id);
     const boost::shared_ptr<const modb::mointernal::ObjectInstance>
         oi(client.get(class_id, uri));
     std::map<modb::class_id_t, std::vector<modb::URI> > children;
-
-    ostream << prefix;
-    if (tree) {
-        if (last && !root)
-            ostream << "`-";
-        else
-            ostream << '-';
-        if (root)
-            ostream << '-';
-        ostream << "* ";
-    }
-    ostream << ci.getName() << "," << uri << " " << std::endl;
 
     typedef std::map<std::string, std::string> dmap;
     dmap dispProps;
@@ -539,15 +535,48 @@ void MOSerializer::displayObject(std::ostream& ostream,
             hasChildren = true;
     }
 
+    ostream << prefix;
+    if (tree) {
+        if (root) {
+            ostream << (utf8 ? HORIZ : "-");
+            if (last)
+                ostream << (utf8 ? HORIZ : "-");
+            else
+                ostream << (utf8 ? DOWN_HORIZ : "-");
+        } else {
+            if (last)
+                ostream << (utf8 ? ARC_UP_RIGHT : "`");
+            else
+                ostream << (utf8 ? VERT_RIGHT : "|");
+            ostream << (utf8 ? HORIZ : "-");
+        }
+        if (hasChildren)
+            ostream << (utf8 ? DOWN_HORIZ : "-")
+                    << (utf8 ? BULLET : "*") << " ";
+        else
+            ostream << (utf8 ? HORIZ : "-")
+                    << (utf8 ? BULLET : "*") << " ";
+    }
+    ostream << ci.getName() << "," << uri << " " << std::endl;
+
     if (includeProps && dispProps.size() > 0) {
         string pprefix = prefix;
         if (tree) {
-            if (last)
-                pprefix = pprefix + " ";
-            if (!hasChildren)
-                pprefix = pprefix + "    ";
-            else
-                pprefix = pprefix + " |  ";
+            if (hasChildren) {
+                if (last)
+                    pprefix = pprefix + "  " +
+                        (utf8 ? VERT : "|") + "   ";
+                else
+                    pprefix = pprefix +
+                        (utf8 ? VERT : "|") + " " +
+                        (utf8 ? VERT : "|") + "   ";
+            } else {
+                if (last)
+                    pprefix = pprefix + "      ";
+                else
+                    pprefix = pprefix + (utf8 ? VERT : "|") + "     ";
+
+            }
         }
         ostream << pprefix << "{" << std::endl;
         BOOST_FOREACH(dmap::value_type v, dispProps) {
@@ -566,15 +595,15 @@ void MOSerializer::displayObject(std::ostream& ostream,
             bool islast = lclass && (next(cit) == clsit->second.end());
             string nprefix = prefix;
             if (tree)
-                nprefix = prefix + (last ? " " : "") + (islast ? " " : " |");
+                nprefix = prefix + (last ? "  " : (utf8 ? VERT : "|") + " ");
             displayObject(ostream, clsit->first, *cit,
-                          tree, false, includeProps, islast, nprefix);
+                          tree, false, includeProps, islast, nprefix, utf8);
         }
     }
 }
 
 void MOSerializer::displayMODB(std::ostream& ostream,
-                               bool tree, bool includeProps) {
+                               bool tree, bool includeProps, bool utf8) {
     Region::obj_set_t roots;
     getRoots(store, roots);
 
@@ -582,7 +611,7 @@ void MOSerializer::displayMODB(std::ostream& ostream,
         try {
             displayObject(ostream, r.first, r.second,
                           tree, true, includeProps,
-                          true, "");
+                          true, "", utf8);
         } catch (std::out_of_range e) { }
     }
 }

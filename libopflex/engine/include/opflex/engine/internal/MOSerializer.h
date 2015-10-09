@@ -48,7 +48,7 @@ public:
         /**
          * A managed object was just written to the store
          */
-        virtual void remoteObjectUpdated(modb::class_id_t class_id, 
+        virtual void remoteObjectUpdated(modb::class_id_t class_id,
                                          const modb::URI& uri) = 0;
     };
 
@@ -75,15 +75,15 @@ public:
                    T& writer,
                    bool recursive = true) {
         const modb::ClassInfo& ci = store->getClassInfo(class_id);
-        const boost::shared_ptr<const modb::mointernal::ObjectInstance> 
+        const boost::shared_ptr<const modb::mointernal::ObjectInstance>
             oi(client.get(class_id, uri));
         std::map<modb::class_id_t, std::vector<modb::URI> > children;
 
         writer.StartObject();
-        
+
         writer.String("subject");
         writer.String(ci.getName().c_str());
-        
+
         writer.String("uri");
         writer.String(uri.toString().c_str());
 
@@ -210,7 +210,7 @@ public:
                 break;
             case modb::PropertyInfo::COMPOSITE:
                 client.getChildren(class_id, uri, pit->first,
-                                   pit->second.getClassId(), 
+                                   pit->second.getClassId(),
                                    children[pit->second.getClassId()]);
                 break;
             }
@@ -228,7 +228,7 @@ public:
             }
         }
         writer.EndArray();
-        
+
         try {
             std::pair<modb::URI, modb::prop_id_t> parent(modb::URI::ROOT, 0);
             if (client.getParent(class_id, uri, parent)) {
@@ -251,7 +251,7 @@ public:
         writer.EndObject();
         if (recursive) {
             for (clsit = children.begin(); clsit != children.end(); ++clsit) {
-                for (cit = clsit->second.begin(); 
+                for (cit = clsit->second.begin();
                      cit != clsit->second.end(); ++cit) {
                     serialize(clsit->first, *cit, client, writer);
                 }
@@ -309,9 +309,11 @@ public:
      * @param ostream the output stream to write to
      * @param tree display in a nested tree format
      * @param includeProps include the properties of the objects
+     * @param utf8 use UTF-8 characters when drawing trees
      */
     void displayMODB(std::ostream& ostream,
-                     bool tree = true, bool includeProps = false);
+                     bool tree = true, bool includeProps = false,
+                     bool utf8 = true);
 
 private:
     modb::ObjectStore* store;
@@ -328,7 +330,7 @@ private:
                        T& writer,
                        modb::reference_t& ref) {
         try {
-            const modb::ClassInfo& ref_class = 
+            const modb::ClassInfo& ref_class =
                 store->getClassInfo(ref.first);
             writer.StartObject();
             writer.String("subject");
@@ -368,7 +370,7 @@ private:
 
     /**
      * Deserialize a reference
-     * 
+     *
      * @param client the store client
      * @param pinfo the property info for the reference
      * @param v the value containing the reference
@@ -397,7 +399,8 @@ private:
                        modb::class_id_t class_id,
                        const modb::URI& uri,
                        bool tree, bool root, bool includeProps,
-                       bool last, const std::string& prefix);
+                       bool last, const std::string& prefix,
+                       bool utf8);
 
 };
 
