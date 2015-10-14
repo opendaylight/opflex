@@ -62,6 +62,12 @@ module[epr]
 
         # endpoint group for the endpoint
         member[group; type=epr/GroupContext]
+
+        # value used by the endpoint registry to confirm the
+        # legitimacy of the endpoint
+        member[validator; type=ascii/Name]
+
+        member[validatorExt; type=ascii/Name]
     }
 
     # L2 end-point that is part of the L2 universe
