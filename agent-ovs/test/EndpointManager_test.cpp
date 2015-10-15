@@ -262,6 +262,14 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     BOOST_CHECK(epUuids.find(ep1.getUUID()) != epUuids.end());
     BOOST_CHECK(epUuids.find(ep2.getUUID()) != epUuids.end());
 
+    epSource.removeEndpoint(ep2.getUUID());
+    epUuids.clear();
+    agent.getEndpointManager().getEndpointsForGroup(epgu, epUuids);
+    BOOST_CHECK_EQUAL(1, epUuids.size());
+    BOOST_CHECK(epUuids.find(ep1.getUUID()) != epUuids.end());
+
+    epSource.updateEndpoint(ep2);
+
     URI l2epr1 = URIBuilder()
         .addElement("EprL2Universe")
         .addElement("EprL2Ep")

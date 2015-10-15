@@ -42,7 +42,7 @@ static const address_v6 ALL_NODES_IP(address_v6::from_string("ff02::1"));
 AdvertManager::AdvertManager(Agent& agent_,
                              FlowManager& flowManager_)
     : urng(rng),
-      all_ep_gen(urng, boost::random::uniform_int_distribution<>(600,1200)),
+      all_ep_gen(urng, boost::random::uniform_int_distribution<>(300,600)),
       repeat_gen(urng, boost::random::uniform_int_distribution<>(3000,5000)),
       sendRouterAdv(false), sendEndpointAdv(false),
       agent(agent_), flowManager(flowManager_),

@@ -224,13 +224,19 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
         if (es.egURI) {
             group_ep_map_t::iterator it = group_ep_map.find(es.egURI.get());
             if (it != group_ep_map.end()) {
-                group_ep_map.erase(it);
+                it->second.erase(uuid);
+                if (it->second.empty()) {
+                    group_ep_map.erase(it);
+                }
             }
         }
         BOOST_FOREACH(const URI& ipmGrp, es.ipMappingGroups) {
             group_ep_map_t::iterator it = ipm_group_ep_map.find(ipmGrp);
             if (it != ipm_group_ep_map.end()) {
-                ipm_group_ep_map.erase(it);
+                it->second.erase(uuid);
+                if (it->second.empty()) {
+                    ipm_group_ep_map.erase(it);
+                }
             }
         }
         if (es.endpoint->getInterfaceName()) {
