@@ -453,7 +453,6 @@ SwitchConnection::FireOnConnectListeners() {
 void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
         ofptype msgType, ofpbuf *msg) {
-    LOG(DEBUG) << "Got ECHO request";
     const ofp_header *rq = (const ofp_header *)msg->data;
     struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
     swConn->SendMessage(echoReplyMsg);

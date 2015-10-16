@@ -169,17 +169,21 @@ static void addExpFlowEntry(FlowEntryList* tables, const string& flowMod) {
     ofp_print_flow_stats(&strBuf, e->entry);
     string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
     BOOST_CHECK(str == flowMod);
-    //LOG(INFO) << std::endl << flowMod << std::endl << str;
     ds_destroy(&strBuf);
 }
 
 static void printAllDiffs(FlowEntryList* expected, FlowEdit* diffs) {
     for (int i = 0; i < FlowManager::NUM_FLOW_TABLES; i++) {
         if (diffs[i].edits.size() != 0) {
-            std::cerr << "== Expected state for table " << i << ": =="
-                      << expected[i] << std::endl;
-            std::cerr << " == Diffs from expected state to match result table "
-                      << i << ": =="  << diffs[i] << std::endl;
+            LOG(ERROR) << "== Expected state for table " << i << ": ==";
+            for (size_t j = 0; j < expected[i].size(); ++j) {
+                LOG(ERROR) << *(expected[i][j]);
+            }
+            LOG(ERROR) << " == Diffs from expected state to match result table "
+                      << i << ": ==";
+            for (size_t j = 0; j < diffs[i].edits.size(); ++j) {
+                LOG(ERROR) << diffs[i].edits[j];
+            }
         }
     }
 }

@@ -63,11 +63,6 @@ typedef std::vector<FlowEntryPtr>       FlowEntryList;
 std::ostream& operator<<(std::ostream& os, const FlowEntry& fe);
 
 /**
- * Print list of flow entries to an output stream.
- */
-std::ostream& operator<<(std::ostream& os, const FlowEntryList& el);
-
-/**
  * Class that represents a list of table changes.
  */
 class FlowEdit {
@@ -106,11 +101,6 @@ public:
  * Print a flow edit to an output stream.
  */
 std::ostream& operator<<(std::ostream& os, const FlowEdit::Entry& fe);
-
-/**
- * Print a list of flow edits to an output stream.
- */
-std::ostream& operator<<(std::ostream& os, const FlowEdit& fe);
 
 /**
  * Class that represents a list of group table changes.

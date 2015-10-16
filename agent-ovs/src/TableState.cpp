@@ -57,23 +57,9 @@ ostream & operator<<(ostream& os, const FlowEntry& fe) {
     return os;
 }
 
-ostream& operator<<(ostream& os, const FlowEntryList& el) {
-    for (size_t i = 0; i < el.size(); ++i) {
-        os << endl << *(el[i]);
-    }
-    return os;
-}
-
 ostream& operator<<(ostream& os, const FlowEdit::Entry& fe) {
     static const char *op[] = {"ADD", "MOD", "DEL"};
     os << op[fe.first] << "|" << *(fe.second);
-    return os;
-}
-
-ostream& operator<<(ostream& os, const FlowEdit& fe) {
-    BOOST_FOREACH(const FlowEdit::Entry& e, fe.edits) {
-        os << endl << e;
-    }
     return os;
 }
 
@@ -213,8 +199,12 @@ void TableState::DiffEntry(const string& objId,
     vector<bool> keep(oldEntries.size(), false);
     CalculateAddMod(oldEntries, newEntries, keep, diffs);
     CalculateDel(oldEntries, keep, diffs);
-    if (diffs.edits.size() > 0)
-        LOG(DEBUG) << diffs.edits.size() << " diff(s), objId=" << objId << diffs;
+    if (diffs.edits.size() > 0) {
+        LOG(DEBUG) << "ObjId=" << objId << ", #diffs = " << diffs.edits.size();
+        BOOST_FOREACH(const FlowEdit::Entry& e, diffs.edits) {
+            LOG(DEBUG) << e;
+        }
+    }
 }
 
 void TableState::DiffSnapshot(const FlowEntryList& oldEntries,

@@ -3063,7 +3063,10 @@ void FlowManager::FlowSyncer::ReconcileFlows() {
     for (int i = 0; i < FlowManager::NUM_FLOW_TABLES; ++i) {
         flowManager.flowTables[i].DiffSnapshot(recvFlows[i], diffs[i]);
         LOG(DEBUG) << "Table=" << i << ", snapshot has "
-                   << diffs[i].edits.size() << " diff(s)" << diffs[i];
+                   << diffs[i].edits.size() << " diff(s)";
+        BOOST_FOREACH(const FlowEdit::Entry& e, diffs[i].edits) {
+            LOG(DEBUG) << e;
+        }
     }
 
     for (int i = 0; i < FlowManager::NUM_FLOW_TABLES; ++i) {
