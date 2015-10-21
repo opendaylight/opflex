@@ -53,7 +53,7 @@ using std::vector;
 using std::string;
 using boost::unordered_set;
 
-MOSerializer::MOSerializer(ObjectStore* store_, Listener* listener_) 
+MOSerializer::MOSerializer(ObjectStore* store_, Listener* listener_)
     : store(store_), listener(listener_) {
 
 }
@@ -83,7 +83,7 @@ void MOSerializer::deserialize_ref(modb::mointernal::StoreClient& client,
         }
     } catch (std::out_of_range e) {
         // ignore unknown class
-        LOG(DEBUG) << "Could not deserialize reference of unknown class " 
+        LOG(DEBUG) << "Could not deserialize reference of unknown class "
                    << subject.GetString();
     }
 }
@@ -102,7 +102,7 @@ void MOSerializer::deserialize_enum(modb::mointernal::StoreClient& client,
         } else {
             oi.addUInt64(pinfo.getId(), val);
         }
-        
+
     } catch (std::out_of_range e) {
         LOG(WARNING) << "No value of type "
                      << ei.getName()
@@ -127,7 +127,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
     try {
         URI uri(uriv.GetString());
         const ClassInfo& ci = store->getClassInfo(classv.GetString());
-        shared_ptr<ObjectInstance> oi = 
+        shared_ptr<ObjectInstance> oi =
             make_shared<ObjectInstance>(ci.getId());
         if (mo.HasMember("properties")) {
             const Value& properties = mo["properties"];
@@ -145,7 +145,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                     const Value& pvalue = prop["data"];
 
                     try {
-                        const PropertyInfo& pinfo = 
+                        const PropertyInfo& pinfo =
                             ci.getProperty(pname.GetString());
                         switch (pinfo.getType()) {
                         case PropertyInfo::STRING:
@@ -235,21 +235,21 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                             break;
                         }
                     } catch (std::invalid_argument e) {
-                        LOG(DEBUG) << "Invalid property " 
-                                   << pname.GetString() 
-                                   << " in class " 
+                        LOG(DEBUG) << "Invalid property "
+                                   << pname.GetString()
+                                   << " in class "
                                    << ci.getName();
                     } catch (std::out_of_range e) {
-                        LOG(DEBUG) << "Unknown property " 
-                                   << pname.GetString() 
-                                   << " in class " 
+                        LOG(DEBUG) << "Unknown property "
+                                   << pname.GetString()
+                                   << " in class "
                                    << ci.getName();
                         // ignore property
                     }
                 }
             }
         }
-        
+
         bool remoteUpdated = false;
         if (client.putIfModified(ci.getId(), uri, oi)) {
             remoteUpdated = true;
@@ -263,9 +263,9 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
 
             if (pname.IsString() && psubj.IsString() && prel->IsString()) {
                 try {
-                    const ClassInfo& parent_class = 
+                    const ClassInfo& parent_class =
                         store->getClassInfo(psubj.GetString());
-                    const PropertyInfo& parent_prop = 
+                    const PropertyInfo& parent_prop =
                         parent_class.getProperty(prel->GetString());
                     URI parent_uri(pname.GetString());
                     if (client.isPresent(parent_class.getId(), parent_uri)) {
@@ -346,9 +346,13 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                 listener->remoteObjectUpdated(ci.getId(), uri);
         }
 
+    } catch (std::invalid_argument e) {
+        // ignore invalid URIs
+        LOG(DEBUG) << "Could not deserialize invalid of class "
+                   << classv.GetString();
     } catch (std::out_of_range e) {
         // ignore unknown class
-        LOG(DEBUG) << "Could not deserialize object of unknown class " 
+        LOG(DEBUG) << "Could not deserialize object of unknown class "
                    << classv.GetString();
     }
 }
