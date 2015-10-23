@@ -91,4 +91,8 @@ bool operator!=(const Endpoint::IPAddressMapping& lhs,
     return !(lhs==rhs);
 }
 
+void Endpoint::addAttestation(const Attestation& attest) {
+    attestations.push_back(attest);
+}
+
 } /* namespace ovsagent */

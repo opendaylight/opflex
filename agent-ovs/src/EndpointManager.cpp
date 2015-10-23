@@ -495,7 +495,7 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
 }
 
 static shared_ptr<modelgbp::epr::L2Ep>
-populateL2E(shared_ptr<modelgbp::epr::L2Universe> l2u,
+populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
             shared_ptr<const Endpoint>& ep,
             const std::string& uuid,
             shared_ptr<modelgbp::gbp::BridgeDomain>& bd,
@@ -516,7 +516,41 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe> l2u,
     if (vi != attr_map.end())
         l2e->setVmName(vi->second);
 
+    BOOST_FOREACH(const Endpoint::Attestation& a, ep->getAttestations()) {
+        if (!a.getValidator() || !a.getValidatorMac())
+            continue;
+        l2e->addGbpeAttestation(a.getName())
+            ->setValidator(a.getValidator().get())
+            .setValidatorMac(a.getValidatorMac().get());
+    }
+
     return l2e;
+}
+static shared_ptr<modelgbp::epr::L3Ep>
+populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
+            shared_ptr<const Endpoint>& ep,
+            const std::string& uuid,
+            shared_ptr<modelgbp::gbp::RoutingDomain>& rd,
+            const string& ip,
+            const URI& egURI) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::epr;
+
+    shared_ptr<L3Ep> l3e =
+        l3u.get()->addEprL3Ep(rd.get()->getURI().toString(), ip);
+    l3e->setMac(ep->getMAC().get())
+        .setGroup(egURI.toString())
+        .setUuid(uuid);
+
+    BOOST_FOREACH(const Endpoint::Attestation& a, ep->getAttestations()) {
+        if (!a.getValidator() || !a.getValidatorMac())
+            continue;
+        l3e->addGbpeAttestation(a.getName())
+            ->setValidator(a.getValidator().get())
+            .setValidatorMac(a.getValidatorMac().get());
+    }
+
+    return l3e;
 }
 
 bool EndpointManager::updateEndpointReg(const std::string& uuid) {
@@ -585,11 +619,9 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
             // If the routing domain is known, we can register the l3
             // endpoints in the endpoint registry
             BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
-                shared_ptr<L3Ep> l3e = l3u.get()
-                    ->addEprL3Ep(rd.get()->getURI().toString(), ip);
-                l3e->setMac(mac.get());
-                l3e->setGroup(egURI->toString());
-                l3e->setUuid(uuid);
+                shared_ptr<L3Ep> l3e =
+                    populateL3E(l3u.get(), es.endpoint, uuid,
+                                rd.get(), ip, egURI.get());
                 newl3eps.insert(l3e->getURI());
             }
 
@@ -605,12 +637,10 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
                     policyManager.getRDForGroup(ipm.getEgURI().get());
                 if (!frd) continue;
 
-                shared_ptr<L3Ep> fl3e = l3u.get()
-                    ->addEprL3Ep(frd.get()->getURI().toString(),
-                                 ipm.getFloatingIP().get());
-                fl3e->setMac(mac.get());
-                fl3e->setGroup(ipm.getEgURI().get().toString());
-                fl3e->setUuid(ipm.getUUID());
+                shared_ptr<L3Ep> fl3e =
+                    populateL3E(l3u.get(), es.endpoint, ipm.getUUID(),
+                                frd.get(), ipm.getFloatingIP().get(),
+                                ipm.getEgURI().get());
                 newl3eps.insert(fl3e->getURI());
             }
         }

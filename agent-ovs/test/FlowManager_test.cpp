@@ -1929,7 +1929,9 @@ void FlowManagerFixture::initExpCon1() {
         uint32_t pvnid = pid.first;
         BOOST_FOREACH(const IdKeyValue& cid, cvnids) {
             uint32_t cvnid = cid.first;
+#if 0
             uint16_t ctzone = 1;
+#endif
             /* classifer 1  */
             ADDF(Bldr().table(POL).priority(prio)
                  .cookie(con1_cookie).tcp()

@@ -9,7 +9,7 @@ module[gbpe]
     }
     type[EncapId; super=scalar/UInt32]
 
-    # represents a set of extensions that specify specific identifiers 
+    # represents a set of extensions that specify specific identifiers
     # used by the data plane of the wire
     class[InstContext;
           super=policy/Definition;
@@ -218,5 +218,35 @@ module[gbpe]
         # addresses will be registered as endpoints in this endpoint
         # group.
         member[natEpGroup; type=reference/URI]
+    }
+
+    # An attestation is a child object of an endpoint declaration that
+    # can be used by the endpoint registry to confirm the validity of
+    # a reported endpoint.
+    class[Attestation;
+          super=epr/EndPoint;
+          concrete]
+    {
+        contained
+        {
+            parent[class=epr/ReportedEp]
+        }
+        named
+        {
+            parent[class=*]
+            {
+                component[member=name]
+            }
+        }
+
+        # Name for the attestation unique to the parent object
+        member[name; type=naming/Name]
+
+        # value used by the endpoint registry to confirm the
+        # legitimacy of the endpoint
+        member[validator; type=ascii/String]
+
+        # Message authenticity code for the validator string
+        member[validatorMac; type=ascii/String]
     }
 }
