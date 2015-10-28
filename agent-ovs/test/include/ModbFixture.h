@@ -121,7 +121,7 @@ protected:
 
         subnetsfd0 = space->addGbpSubnets("subnetsfd0");
         subnetsfd0_1 = subnetsfd0->addGbpSubnet("subnetsfd0_1");
-        subnetsfd0_1->setAddress("10.20.44.0")
+        subnetsfd0_1->setAddress("10.20.44.1")
             .setPrefixLen(24)
             .setVirtualRouterIp("10.20.44.1");
         subnetsfd0_2 = subnetsfd0->addGbpSubnet("subnetsfd0_2");
