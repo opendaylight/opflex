@@ -2057,12 +2057,32 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t bdId, uint32_t rdId) 
     }
 }
 
-typedef std::pair<std::string, uint16_t> subnet_t;
-size_t hash_value(const subnet_t& subnet) {
-    size_t v = 0;
-    boost::hash_combine(v, subnet.first);
-    boost::hash_combine(v, subnet.second);
-    return v;
+static
+string getMaskedAddress(const std::string& addrStr, uint16_t prefixLen) {
+    boost::system::error_code ec;
+    string maskedIpStr;
+    address ip = address::from_string(addrStr, ec);
+    if (ec) {
+        LOG(ERROR) << "Invalid IP address: " << addrStr << ": "
+            << ec.message();
+        return maskedIpStr;
+    }
+    if (ip.is_v4()) {
+        uint32_t mask = (prefixLen != 0)
+            ? (~((uint32_t)0) << (32 - prefixLen))
+            : 0;
+        maskedIpStr =
+            boost::asio::ip::address_v4(ip.to_v4().to_ulong() & mask)
+                .to_string();
+    } else {
+       struct in6_addr mask;
+       struct in6_addr addr6;
+       packets::compute_ipv6_subnet(ip.to_v6(), prefixLen, &mask, &addr6);
+       boost::asio::ip::address_v6::bytes_type data;
+       std::memcpy(data.data(), &addr6, sizeof(addr6));
+       maskedIpStr = boost::asio::ip::address_v6(data).to_string();
+    }
+    return maskedIpStr;
 }
 
 void
@@ -2091,6 +2111,7 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
     // action is to output to the uplink tunnel.  Match using
     // longest-prefix.
 
+    typedef std::pair<std::string, uint16_t> subnet_t;
     boost::unordered_set<subnet_t> intSubnets;
 
     vector<shared_ptr<RoutingDomainToIntSubnetsRSrc> > subnets_list;
@@ -2109,8 +2130,12 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
         BOOST_FOREACH(shared_ptr<Subnet>& subnet, subnets) {
             if (!subnet->isAddressSet() || !subnet->isPrefixLenSet())
                 continue;
-            intSubnets.insert(make_pair(subnet->getAddress().get(),
-                                        subnet->getPrefixLen().get()));
+            string maskedAddr = getMaskedAddress(subnet->getAddress().get(),
+                                                 subnet->getPrefixLen().get());
+            if (!maskedAddr.empty()) {
+                intSubnets.insert(
+                    make_pair(maskedAddr, subnet->getPrefixLen().get()));
+            }
         }
     }
     boost::shared_ptr<const RDConfig> rdConfig =
@@ -2124,7 +2149,10 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
                 try {
                     uint8_t prefixLen =
                         boost::lexical_cast<uint16_t>(comps[1]);
-                    intSubnets.insert(make_pair(comps[0], prefixLen));
+                    string maskedAddr = getMaskedAddress(comps[0], prefixLen);
+                    if (!maskedAddr.empty()) {
+                        intSubnets.insert(make_pair(maskedAddr, prefixLen));
+                    }
                 } catch (const boost::bad_lexical_cast& e) {
                     LOG(ERROR) << "Invalid CIDR subnet prefix length: "
                                << comps[1] << ": " << e.what();
