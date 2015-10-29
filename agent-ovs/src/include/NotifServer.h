@@ -52,6 +52,27 @@ public:
     void setSocketName(const std::string& path);
 
     /**
+     * Set the owner to set for the socket after creating it
+     *
+     * @param owner the user name
+     */
+    void setSocketOwner(const std::string& owner);
+
+    /**
+     * Set the group to set for the socket after creating it
+     *
+     * @param group the group name
+     */
+    void setSocketGroup(const std::string& group);
+
+    /**
+     * Set the permissions to set for the socket after creating it
+     *
+     * @param perms the permissions as an octal mask
+     */
+    void setSocketPerms(const std::string& perms);
+
+    /**
      * Start the server
      */
     void start();
@@ -87,6 +108,9 @@ public:
 private:
     boost::asio::io_service& io_service;
     std::string notifSocketPath;
+    std::string notifSocketOwner;
+    std::string notifSocketGroup;
+    std::string notifSocketPerms;
     volatile bool running;
 
     std::set<session_ptr> sessions;

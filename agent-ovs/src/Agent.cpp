@@ -67,6 +67,9 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_INSPECTOR_SOCK("opflex.inspector.socket-name");
     static const std::string OPFLEX_NOTIF("opflex.notif.enabled");
     static const std::string OPFLEX_NOTIF_SOCK("opflex.notif.socket-name");
+    static const std::string OPFLEX_NOTIF_OWNER("opflex.notif.socket-owner");
+    static const std::string OPFLEX_NOTIF_GROUP("opflex.notif.socket-group");
+    static const std::string OPFLEX_NOTIF_PERMS("opflex.notif.socket-permissions");
 
     static const std::string OPFLEX_NAME("opflex.name");
     static const std::string OPFLEX_DOMAIN("opflex.domain");
@@ -97,8 +100,17 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         properties.get_optional<bool>(OPFLEX_NOTIF);
     boost::optional<std::string> notSocket =
         properties.get_optional<std::string>(OPFLEX_NOTIF_SOCK);
+    boost::optional<std::string> notOwner =
+        properties.get_optional<std::string>(OPFLEX_NOTIF_OWNER);
+    boost::optional<std::string> notGrp =
+        properties.get_optional<std::string>(OPFLEX_NOTIF_GROUP);
+    boost::optional<std::string> notPerms =
+        properties.get_optional<std::string>(OPFLEX_NOTIF_PERMS);
     if (enabNotif) enableNotif = enabNotif;
     if (notSocket) notifSock = notSocket;
+    if (notOwner) notifOwner = notOwner;
+    if (notGrp) notifGroup = notGrp;
+    if (notPerms) notifPerms = notPerms;
 
     optional<const ptree&> endpointSource =
         properties.get_child_optional(ENDPOINT_SOURCE_PATH);
@@ -182,6 +194,12 @@ void Agent::applyProperties() {
     if (!enableNotif || enableNotif.get()) {
         if (!notifSock) notifSock = DEF_NOTIF_SOCKET;
         notifServer.setSocketName(notifSock.get());
+        if (notifOwner)
+            notifServer.setSocketOwner(notifOwner.get());
+        if (notifGroup)
+            notifServer.setSocketGroup(notifGroup.get());
+        if (notifPerms)
+            notifServer.setSocketPerms(notifPerms.get());
     }
 
     if (sslMode && sslMode.get() != "disabled") {

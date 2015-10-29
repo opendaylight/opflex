@@ -2255,7 +2255,7 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
     unordered_set<string> uuids;
     agent.getServiceManager().getAnycastServicesByDomain(rdURI, uuids);
     BOOST_FOREACH (const string& uuid, uuids) {
-        HandleAnycastServiceUpdate(uuid);
+        anycastServiceUpdated(uuid);
     }
 }
 

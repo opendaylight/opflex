@@ -55,7 +55,22 @@
 
             // Listen on the specified socket for the inspector
 	    // Default DEFAULT_NOTIF_SOCKET
-            "socket-name": "DEFAULT_NOTIF_SOCKET"
+            "socket-name": "DEFAULT_NOTIF_SOCKET",
+
+            // Set the socket owner user after binding if the user
+            // exists
+	    // Default: do not set the owner
+	    // "socket-owner": "root",
+
+            // Set the socket group after binding if the group name
+            // exists
+	    // Default: do not set the group
+	    "socket-group": "opflexep",
+
+	    // Set the socket permissions after binding to the
+	    // specified octal permissions mask
+            // Default: do not set the permissions
+	    "socket-permissions": "077"
         }
     },
 

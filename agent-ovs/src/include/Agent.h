@@ -144,6 +144,9 @@ private:
     boost::optional<std::string> inspectorSock;
     boost::optional<bool> enableNotif;
     boost::optional<std::string> notifSock;
+    boost::optional<std::string> notifOwner;
+    boost::optional<std::string> notifGroup;
+    boost::optional<std::string> notifPerms;
 
     std::set<std::string> endpointSourcePaths;
     std::set<EndpointSource*> endpointSources;

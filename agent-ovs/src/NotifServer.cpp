@@ -19,6 +19,7 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/asio/placeholders.hpp>
+#include <boost/filesystem.hpp>
 
 #define RAPIDJSON_ASSERT(x)
 #include <rapidjson/document.h>
@@ -27,6 +28,11 @@
 #include <rapidjson/error/en.h>
 
 #include <cstdio>
+#include <sstream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <grp.h>
+#include <pwd.h>
 
 namespace ovsagent {
 
@@ -50,6 +56,18 @@ NotifServer::~NotifServer() {
 
 void NotifServer::setSocketName(const std::string& name) {
     notifSocketPath = name;
+}
+
+void NotifServer::setSocketOwner(const std::string& owner) {
+    notifSocketOwner = owner;
+}
+
+void NotifServer::setSocketGroup(const std::string& group) {
+    notifSocketGroup = group;
+}
+
+void NotifServer::setSocketPerms(const std::string& perms) {
+    notifSocketPerms = perms;
 }
 
 class NotifServer::session
@@ -271,9 +289,55 @@ void NotifServer::start() {
 
     running = true;
     std::remove(notifSocketPath.c_str());
-    acceptor.reset(new stream_protocol
-                   ::acceptor(io_service,
-                              stream_protocol::endpoint(notifSocketPath)));
+    stream_protocol::endpoint ep(notifSocketPath);
+    acceptor.reset(new stream_protocol::acceptor(io_service, ep));
+    if (boost::filesystem::exists(notifSocketPath)) {
+        size_t bufSize = sysconf(_SC_GETPW_R_SIZE_MAX);
+        if (bufSize == (size_t)-1)
+            bufSize = 16384;
+        std::vector<char> buffer(bufSize);
+
+        uid_t uid = 0;
+        gid_t gid = 0;
+        if (notifSocketOwner != "") {
+            struct passwd pwd;
+            struct passwd *result;
+            int s = getpwnam_r(notifSocketOwner.c_str(), &pwd,
+                               &buffer[0], bufSize, &result);
+            if (result == NULL) {
+                LOG(WARNING) << "Could not find user " << notifSocketOwner
+                             << ": " << s;
+            } else {
+                uid = pwd.pw_uid;
+            }
+        }
+        if (notifSocketGroup != "") {
+            struct group gr;
+            struct group *result;
+
+            int s = getgrnam_r(notifSocketGroup.c_str(), &gr,
+                               &buffer[0], bufSize, &result);
+            if (result == NULL) {
+                LOG(WARNING) << "Could not find group " << notifSocketGroup;
+            } else {
+                gid = gr.gr_gid;
+            }
+        }
+        if (uid != 0 || gid != 0) {
+            chown(notifSocketPath.c_str(),
+                  uid ? uid : geteuid(),
+                  gid ? gid : getegid());
+        }
+
+        if (notifSocketPerms != "") {
+            mode_t perms;
+            std::stringstream ss;
+            ss << std::oct << notifSocketPerms;
+            ss >> perms;
+
+            chmod(notifSocketPath.c_str(), perms);
+        }
+    }
     accept();
 }
 
