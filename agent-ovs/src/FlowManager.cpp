@@ -2097,6 +2097,7 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
         idGen.erase(GetIdNamespace(RoutingDomain::CLASS_ID), rdURI);
         return;
     }
+    LOG(DEBUG) << "Updating routing domain " << rdURI;
 
     FlowEntryList rdRouteFlows;
     FlowEntryList rdNatFlows;

@@ -26,6 +26,8 @@ namespace ovsagent {
 using boost::shared_ptr;
 using boost::optional;
 using boost::unordered_set;
+using boost::lock_guard;
+using boost::mutex;
 using opflex::modb::Mutator;
 using opflex::modb::URI;
 
@@ -43,6 +45,7 @@ public:
 
         Mutator mutator(framework, "policyreg");
         space = universe->addPolicySpace("test");
+        common = universe->addPolicySpace("common");
         fd = space->addGbpFloodDomain("fd");
         bd = space->addGbpBridgeDomain("bd");
         rd = space->addGbpRoutingDomain("rd");
@@ -137,6 +140,27 @@ public:
         eg3 = space->addGbpEpGroup("group3");
         eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
 
+        bd_ext = common->addGbpBridgeDomain("bd_ext");
+        rd_ext = common->addGbpRoutingDomain("rd_ext");
+        fd_ext = common->addGbpFloodDomain("fd_ext");
+
+        fd_ext->addGbpFloodDomainToNetworkRSrc()
+            ->setTargetBridgeDomain(bd_ext->getURI());
+        bd_ext->addGbpBridgeDomainToNetworkRSrc()
+            ->setTargetRoutingDomain(rd_ext->getURI());
+
+        eg_nat = common->addGbpEpGroup("nat-epg");
+        eg_nat->addGbpeInstContext()->setEncapId(0x4242);
+        eg_nat->addGbpEpGroupToNetworkRSrc()
+            ->setTargetFloodDomain(fd_ext->getURI());
+
+        l3ext = rd->addGbpL3ExternalDomain("ext");
+        l3ext_net = l3ext->addGbpL3ExternalNetwork("outside");
+        l3ext_net->addGbpL3ExternalNetworkToNatEPGroupRSrc()
+            ->setTargetEpGroup(eg_nat->getURI());
+        l3ext_net->addGbpExternalSubnet("outside")
+            ->setAddress("0.0.0.0")
+            .setPrefixLen(0);
         mutator.commit();
     }
 
@@ -145,9 +169,13 @@ public:
     }
 
     shared_ptr<policy::Space> space;
+    shared_ptr<policy::Space> common;
     shared_ptr<FloodDomain> fd;
+    shared_ptr<FloodDomain> fd_ext;
     shared_ptr<RoutingDomain> rd;
+    shared_ptr<RoutingDomain> rd_ext;
     shared_ptr<BridgeDomain> bd;
+    shared_ptr<BridgeDomain> bd_ext;
     shared_ptr<Subnets> subnetseg2;
     shared_ptr<Subnet> subnetseg2_1;
     shared_ptr<Subnets> subnetsfd;
@@ -157,10 +185,13 @@ public:
     shared_ptr<Subnet> subnetsbd1;
     shared_ptr<Subnets> subnetsrd;
     shared_ptr<Subnet> subnetsrd1;
+    shared_ptr<L3ExternalDomain> l3ext;
+    shared_ptr<L3ExternalNetwork> l3ext_net;
 
     shared_ptr<EpGroup> eg1;
     shared_ptr<EpGroup> eg2;
     shared_ptr<EpGroup> eg3;
+    shared_ptr<EpGroup> eg_nat;
 
     shared_ptr<L24Classifier> classifier1;
     shared_ptr<L24Classifier> classifier2;
@@ -174,6 +205,55 @@ public:
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
+};
+
+class MockListener : public PolicyListener {
+public:
+    MockListener(PolicyManager& pm_) : pm(pm_) {
+        pm.registerListener(this);
+    }
+
+    ~MockListener() {
+        pm.unregisterListener(this);
+    }
+
+    void egDomainUpdated(const opflex::modb::URI& egURI) {
+        onUpdate(egURI);
+    }
+
+    void domainUpdated(opflex::modb::class_id_t cid,
+                       const opflex::modb::URI& domURI) {
+        onUpdate(domURI);
+    }
+
+    void contractUpdated(const opflex::modb::URI& contractURI) {
+        onUpdate(contractURI);
+    }
+
+    void configUpdated(const opflex::modb::URI& configURI) {
+         onUpdate(configURI);
+    }
+
+    bool hasNotif(const URI& uri) {
+        lock_guard<mutex> guard(notifMutex);
+        return notifRcvd.find(uri) != notifRcvd.end();
+    }
+
+    bool clear() {
+        lock_guard<mutex> guard(notifMutex);
+        notifRcvd.clear();
+    }
+
+private:
+    void onUpdate(const URI& uri) {
+        LOG(INFO) << "NOTIF: " << uri;
+        lock_guard<mutex> guard(notifMutex);
+        notifRcvd.insert(uri);
+    }
+
+    PolicyManager& pm;
+    PolicyManager::uri_set_t notifRcvd;
+    mutex notifMutex;
 };
 
 BOOST_AUTO_TEST_SUITE(PolicyManager_test)
@@ -394,6 +474,34 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
                            (classifier1)(classifier5),
                            list_of(true)(true)(true)(false),
                            DirectionEnumT::CONST_IN));
+}
+
+BOOST_FIXTURE_TEST_CASE( nat_rd_update, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+
+    WAIT_FOR(pm.groupExists(eg_nat->getURI()), 500);
+    WAIT_FOR(pm.getFDForGroup(eg_nat->getURI()) != boost::none, 500);
+
+    MockListener lsnr(pm);
+    Mutator m0(framework, "policyreg");
+    shared_ptr<EpGroup> eg_sentinel = space->addGbpEpGroup("group-sentinel");
+    eg_sentinel->addGbpeInstContext()->setEncapId(1);
+    m0.commit();
+    WAIT_FOR(lsnr.hasNotif(eg_sentinel->getURI()), 500);
+
+    lsnr.clear();
+    Mutator m1(framework, "policyreg");
+    eg_nat->addGbpEpGroupToNetworkRSrc()
+        ->setTargetBridgeDomain(bd_ext->getURI());
+    m1.commit();
+    WAIT_FOR(pm.getFDForGroup(eg_nat->getURI()) == boost::none, 500);
+    WAIT_FOR(lsnr.hasNotif(rd->getURI()), 500);
+
+    lsnr.clear();
+    eg_nat->addGbpeInstContext()->setEncapId(0x22);
+    m1.commit();
+    WAIT_FOR(pm.getVnidForGroup(eg_nat->getURI()).get() == 0x22, 500);
+    WAIT_FOR(lsnr.hasNotif(rd->getURI()), 500);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
