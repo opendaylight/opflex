@@ -808,10 +808,11 @@ PolicyManager::DomainListener::~DomainListener() {}
 
 void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
                                                   const URI& uri) {
-
+    using namespace modelgbp::gbp;
     unique_lock<mutex> guard(pmanager.state_mutex);
 
     uri_set_t notifyGroups;
+    uri_set_t notifyRds;
 
     if (class_id == modelgbp::gbp::EpGroup::CLASS_ID) {
         pmanager.group_map[uri];
@@ -824,12 +825,30 @@ void PolicyManager::DomainListener::objectUpdated(class_id_t class_id,
         }
         itr = (toRemove ? pmanager.group_map.erase(itr) : ++itr);
     }
+    // Determine routing-domains that may be affected by changes to NAT EPG
+    BOOST_FOREACH(const URI& u, notifyGroups) {
+        uri_ref_map_t::iterator it = pmanager.nat_epg_l3_ext.find(u);
+        if (it != pmanager.nat_epg_l3_ext.end()) {
+            BOOST_FOREACH(const URI& extNet, it->second) {
+                l3n_map_t::iterator it2 = pmanager.l3n_map.find(extNet);
+                if (it2 != pmanager.l3n_map.end()) {
+                    notifyRds.insert(it2->second.routingDomain.get()->getURI());
+                }
+            }
+        }
+    }
+    notifyRds.erase(uri);   // Avoid updating twice
     guard.unlock();
+
     BOOST_FOREACH(const URI& u, notifyGroups) {
         pmanager.notifyEPGDomain(u);
     }
-    if (class_id != modelgbp::gbp::EpGroup::CLASS_ID) {
+    if (class_id != modelgbp::gbp::EpGroup::CLASS_ID &&
+        class_id != modelgbp::gbpe::InstContext::CLASS_ID) {
         pmanager.notifyDomain(class_id, uri);
+    }
+    BOOST_FOREACH(const URI& rd, notifyRds) {
+        pmanager.notifyDomain(RoutingDomain::CLASS_ID, rd);
     }
 }
 
@@ -848,12 +867,6 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
     uri_set_t contractsToNotify;
     if (classId == EpGroup::CLASS_ID) {
         pmanager.updateGroupContracts(classId, uri, contractsToNotify);
-        uri_ref_map_t::iterator it = pmanager.nat_epg_l3_ext.find(uri);
-        if (it != pmanager.nat_epg_l3_ext.end()) {
-            BOOST_FOREACH(const URI& rd, it->second) {
-                pmanager.notifyDomain(RoutingDomain::CLASS_ID, rd);
-            }
-        }
     } else if (classId == L3ExternalNetwork::CLASS_ID) {
         pmanager.updateGroupContracts(classId, uri, contractsToNotify);
     } else if (classId == RoutingDomain::CLASS_ID) {
