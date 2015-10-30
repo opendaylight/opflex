@@ -302,11 +302,10 @@ void NotifServer::start() {
         if (notifSocketOwner != "") {
             struct passwd pwd;
             struct passwd *result;
-            int s = getpwnam_r(notifSocketOwner.c_str(), &pwd,
-                               &buffer[0], bufSize, &result);
+            getpwnam_r(notifSocketOwner.c_str(), &pwd,
+                       &buffer[0], bufSize, &result);
             if (result == NULL) {
-                LOG(WARNING) << "Could not find user " << notifSocketOwner
-                             << ": " << s;
+                LOG(WARNING) << "Could not find user " << notifSocketOwner;
             } else {
                 uid = pwd.pw_uid;
             }
@@ -315,18 +314,13 @@ void NotifServer::start() {
             struct group gr;
             struct group *result;
 
-            int s = getgrnam_r(notifSocketGroup.c_str(), &gr,
-                               &buffer[0], bufSize, &result);
+            getgrnam_r(notifSocketGroup.c_str(), &gr,
+                       &buffer[0], bufSize, &result);
             if (result == NULL) {
                 LOG(WARNING) << "Could not find group " << notifSocketGroup;
             } else {
                 gid = gr.gr_gid;
             }
-        }
-        if (uid != 0 || gid != 0) {
-            chown(notifSocketPath.c_str(),
-                  uid ? uid : geteuid(),
-                  gid ? gid : getegid());
         }
 
         if (notifSocketPerms != "") {
@@ -336,6 +330,12 @@ void NotifServer::start() {
             ss >> perms;
 
             chmod(notifSocketPath.c_str(), perms);
+        }
+
+        if (uid != 0 || gid != 0) {
+            chown(notifSocketPath.c_str(),
+                   uid ? uid : geteuid(),
+                   gid ? gid : getegid());
         }
     }
     accept();
