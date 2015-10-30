@@ -70,7 +70,7 @@
 	    // Set the socket permissions after binding to the
 	    // specified octal permissions mask
             // Default: do not set the permissions
-	    "socket-permissions": "077"
+	    "socket-permissions": "770"
         }
     },
 
