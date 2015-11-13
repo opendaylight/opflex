@@ -2249,11 +2249,11 @@ void FlowManagerFixture::initExpService(bool nextHop) {
 void FlowManagerFixture::initExpVirtualIp() {
     uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
     ADDF(Bldr().cookie(htonll(FlowManager::GetVIPCookie(true)))
-         .table(SEC).priority(39).arp().in(port)
+         .table(SEC).priority(60).arp().in(port)
          .isEthSrc("42:42:42:42:42:42").isSpa("42.42.42.42")
          .actions().controller(65535).go(SRC).done());
     ADDF(Bldr().cookie(htonll(FlowManager::GetVIPCookie(false)))
-         .table(SEC).priority(39).icmp6().in(port)
+         .table(SEC).priority(60).icmp6().in(port)
          .isEthSrc("42:42:42:42:42:42")
          .icmp_type(136).icmp_code(0).isNdTarget("42::42")
          .actions().controller(65535).go(SRC).done());

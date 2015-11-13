@@ -1244,10 +1244,10 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
             FlowEntry *vf = new FlowEntry();
             if (addr.is_v4()) {
-                SetSecurityMatchEpArp(vf, 39, ofPort, vmac, &addr);
+                SetSecurityMatchEpArp(vf, 60, ofPort, vmac, &addr);
                 vf->entry->cookie = GetVIPCookie(true);
             } else {
-                SetSecurityMatchEpND(vf, 39, ofPort, vmac, &addr, false);
+                SetSecurityMatchEpND(vf, 60, ofPort, vmac, &addr, false);
                 vf->entry->cookie = GetVIPCookie(false);
             }
             ActionBuilder ab;
