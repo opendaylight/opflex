@@ -298,6 +298,7 @@ public:
         flowManager.SetTunnelRemoteIp("10.11.12.13");
         flowManager.SetSyncDelayOnConnect(0);
         flowManager.SetVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
+        flowManager.SetVirtualDHCP(true, "aa:bb:cc:dd:ee:ff");
 
         portmapper.ports[ep0->getInterfaceName().get()] = 80;
         portmapper.RPortMap[80] = ep0->getInterfaceName().get();
@@ -385,6 +386,9 @@ public:
 
     /** Initialize virtual IP flow entries */
     void initExpVirtualIp();
+
+    /** Initialize DHCP flow entries */
+    void initExpVirtualDhcp(bool virtIp);
 
     // Test drivers
     void epgTest();
@@ -1341,6 +1345,43 @@ BOOST_FIXTURE_TEST_CASE(vip, VxlanFlowManagerFixture) {
     WAIT_FOR_TABLES("create", 500);
 }
 
+BOOST_FIXTURE_TEST_CASE(virtDhcp, VxlanFlowManagerFixture) {
+    setConnected();
+    flowManager.egDomainUpdated(epg0->getURI());
+    flowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
+
+    Endpoint::DHCPv4Config v4;
+    Endpoint::DHCPv6Config v6;
+
+    ep0->setDHCPv4Config(v4);
+    ep0->setDHCPv6Config(v6);
+    epSrc.updateEndpoint(*ep0);
+    flowManager.endpointUpdated(ep0->getUUID());
+
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpVirtualDhcp(false);
+    WAIT_FOR_TABLES("create", 500);
+
+    ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42.42.42.42"));
+    ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42::42"));
+    epSrc.updateEndpoint(*ep0);
+    flowManager.endpointUpdated(ep0->getUUID());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpVirtualIp();
+    initExpVirtualDhcp(true);
+    WAIT_FOR_TABLES("virtip", 500);
+}
+
 enum REG {
     SEPG, SEPG12, DEPG, BD, FD, RD, OUTPORT, TUNID, TUNDST, VLAN,
     ETHSRC, ETHDST, ARPOP, ARPSHA, ARPTHA, ARPSPA, ARPTPA, METADATA,
@@ -2257,6 +2298,29 @@ void FlowManagerFixture::initExpVirtualIp() {
          .isEthSrc("42:42:42:42:42:42")
          .icmp_type(136).icmp_code(0).isNdTarget("42::42")
          .actions().controller(65535).go(SRC).done());
+}
+
+void FlowManagerFixture::initExpVirtualDhcp(bool virtIp) {
+
+    uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
+    ADDF(Bldr().cookie(htonll(FlowManager::GetDHCPCookie(true)))
+         .table(SRC).priority(150).udp().in(port)
+         .isEthSrc("00:00:00:00:80:00").isTpSrc(68).isTpDst(67)
+         .actions().load(SEPG, 0xa0a).controller(65535).done());
+    ADDF(Bldr().cookie(htonll(FlowManager::GetDHCPCookie(false)))
+         .table(SRC).priority(150).udp6().in(port)
+         .isEthSrc("00:00:00:00:80:00").isTpSrc(546).isTpDst(547)
+         .actions().load(SEPG, 0xa0a).controller(65535).done());
+    if (virtIp) {
+        ADDF(Bldr().cookie(htonll(FlowManager::GetDHCPCookie(true)))
+             .table(SRC).priority(150).udp().in(port)
+             .isEthSrc("42:42:42:42:42:42").isTpSrc(68).isTpDst(67)
+             .actions().load(SEPG, 0xa0a).controller(65535).done());
+        ADDF(Bldr().cookie(htonll(FlowManager::GetDHCPCookie(false)))
+             .table(SRC).priority(150).udp6().in(port)
+             .isEthSrc("42:42:42:42:42:42").isTpSrc(546).isTpDst(547)
+             .actions().load(SEPG, 0xa0a).controller(65535).done());
+    }
 }
 
 /**

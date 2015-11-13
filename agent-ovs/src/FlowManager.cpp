@@ -1148,6 +1148,17 @@ static void computeIpmFlows(FlowManager& flowMgr,
     }
 }
 
+static void virtualDHCP(FlowEntryList& elSrc, uint32_t ofPort,
+                        uint32_t epgVnid, uint8_t* macAddr, bool v4) {
+    FlowEntry* dhcp = new FlowEntry();
+    SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
+    SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, v4,
+                 FlowManager::GetDHCPCookie(v4));
+    SetActionController(dhcp, epgVnid, 0xffff);
+
+    elSrc.push_back(FlowEntryPtr(dhcp));
+}
+
 void
 FlowManager::HandleEndpointUpdate(const string& uuid) {
 
@@ -1343,21 +1354,23 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             optional<Endpoint::DHCPv4Config> v4c = endPoint.getDHCPv4Config();
             optional<Endpoint::DHCPv6Config> v6c = endPoint.getDHCPv6Config();
 
-            if (v4c) {
-                FlowEntry* dhcp = new FlowEntry();
-                SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
-                SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, true,
-                             GetDHCPCookie(true));
-                SetActionController(dhcp, epgVnid, 0xffff);
-                elSrc.push_back(FlowEntryPtr(dhcp));
-            }
-            if (v6c) {
-                FlowEntry* dhcp = new FlowEntry();
-                SetSourceMatchEp(dhcp, 150, ofPort, macAddr);
-                SetMatchDHCP(dhcp, FlowManager::SRC_TABLE_ID, 150, false,
-                             GetDHCPCookie(false));
-                SetActionController(dhcp, epgVnid, 0xffff);
-                elSrc.push_back(FlowEntryPtr(dhcp));
+            if (v4c)
+                virtualDHCP(elSrc, ofPort, epgVnid, macAddr, true);
+            if (v6c)
+                virtualDHCP(elSrc, ofPort, epgVnid, macAddr, false);
+
+            BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
+                          endPoint.getVirtualIPs()) {
+                if (endPoint.getMAC().get() == vip.first) continue;
+                address addr = address::from_string(vip.second, ec);
+                if (ec) continue;
+                uint8_t vmacAddr[6];
+                vip.first.toUIntArray(vmacAddr);
+
+                if (v4c && addr.is_v4())
+                    virtualDHCP(elSrc, ofPort, epgVnid, vmacAddr, true);
+                else if (v6c && addr.is_v6())
+                    virtualDHCP(elSrc, ofPort, epgVnid, vmacAddr, false);
             }
         }
     }

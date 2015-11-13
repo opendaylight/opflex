@@ -696,7 +696,18 @@ static void handleDHCPPktIn(bool v4,
             ep = try_ep;
             break;
         }
+        const boost::unordered_set<Endpoint::virt_ip_t>& virtIps =
+            try_ep->getVirtualIPs();
+
+        BOOST_FOREACH(const Endpoint::virt_ip_t& virt_ip, virtIps) {
+            if (virt_ip.first == srcMac) {
+                ep = try_ep;
+                goto ep_found;
+            }
+        }
     }
+
+ ep_found:
 
     if (!ep) return;
     if (v4)
