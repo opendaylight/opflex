@@ -25,7 +25,6 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     flowManager.SetFlowReader(&flowReader);
     flowManager.SetExecutor(&flowExecutor);
     flowManager.SetPortMapper(&portMapper);
-    flowManager.setJsonCmdExecutor(&jsonCmdExecutor);
 }
 
 StitchedModeRenderer::~StitchedModeRenderer() {
@@ -64,13 +63,13 @@ void StitchedModeRenderer::start() {
     flowManager.SetVirtualRouter(virtualRouter, routerAdv, virtualRouterMac);
     flowManager.SetVirtualDHCP(virtualDHCP, virtualDHCPMac);
     flowManager.SetFlowIdCache(flowIdCache);
+    flowManager.SetMulticastGroupFile(mcastGroupFile);
     flowManager.SetEndpointAdv(endpointAdv);
 
     connection = new SwitchConnection(ovsBridgeName);
     portMapper.InstallListenersForConnection(connection);
     flowExecutor.InstallListenersForConnection(connection);
     flowReader.installListenersForConnection(connection);
-    jsonCmdExecutor.installListenersForConnection(connection);
     flowManager.registerConnection(connection);
     flowManager.registerModbListeners();
     connection->Connect(OFP13_VERSION);
@@ -93,7 +92,6 @@ void StitchedModeRenderer::stop() {
     connection->Disconnect();
     flowManager.unregisterModbListeners();
     flowManager.unregisterConnection(connection);
-    jsonCmdExecutor.uninstallListenersForConnection(connection);
     flowReader.uninstallListenersForConnection(connection);
     flowExecutor.UninstallListenersForConnection(connection);
     portMapper.UninstallListenersForConnection(connection);
@@ -134,6 +132,7 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string ENDPOINT_ADV("forwarding.endpoint-advertisements.enabled");
 
     static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
+    static const std::string MCAST_GROUP_FILE("mcast-group-file");
 
     ovsBridgeName = properties.get<std::string>(OVS_BRIDGE_NAME, "");
 
@@ -185,6 +184,10 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR, "");
     if (flowIdCache == "")
         LOG(WARNING) << "No flow ID cache directory specified";
+
+    mcastGroupFile = properties.get<std::string>(MCAST_GROUP_FILE, "");
+    if (mcastGroupFile == "")
+        LOG(WARNING) << "No multicast group file specified";
 }
 
 } /* namespace ovsagent */

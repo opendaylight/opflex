@@ -25,7 +25,6 @@
 #include "Agent.h"
 #include "logging.h"
 #include "cmd.h"
-#include <signal.h>
 
 using std::string;
 using opflex::ofcore::OFFramework;
@@ -140,7 +139,7 @@ int main(int argc, char** argv) {
         agent.start();
 
         // Pause the main thread until interrupted
-        signal(SIGINT, sighandler);
+        signal(SIGINT | SIGTERM, sighandler);
         pause();
         agent.stop();
         return 0;

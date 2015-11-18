@@ -54,11 +54,11 @@ int main(int argc, char** argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help,h", "Print this help message")
-        ("log", po::value<string>()->default_value(""), 
+        ("log", po::value<string>()->default_value(""),
          "Log to the specified file (default standard out)")
-        ("level", po::value<string>()->default_value("info"), 
+        ("level", po::value<string>()->default_value("info"),
          "Use the specified log level (default info)")
-        ("sample", po::value<string>()->default_value(""), 
+        ("sample", po::value<string>()->default_value(""),
          "Output a sample policy to the given file then exit")
         ("daemon", "Run the mock server as a daemon")
         ("policy,p", po::value<string>()->default_value(""),
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         po::store(po::command_line_parser(argc, argv).
                   options(desc).run(), vm);
         po::notify(vm);
-    
+
         if (vm.count("help")) {
             std::cout << "Usage: " << argv[0] << " [options]\n";
             std::cout << desc;
@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
     if (daemon)
         daemonize();
 
-    initLogging(level_str, false /*syslog*/, log_file);
+    initLogging(level_str, false /*syslog*/, log_file, "mock-server");
 
     try {
         if (sample_file != "") {
@@ -124,9 +124,9 @@ int main(int argc, char** argv) {
             mframework.start();
             Policies::writeBasicInit(mframework);
             Policies::writeTestPolicy(mframework);
-            
+
             mframework.dumpMODB(sample_file);
-            
+
             mframework.stop();
             return 0;
         }
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
         }
 
         server.start();
-        signal(SIGINT, sighandler);
+        signal(SIGINT | SIGTERM, sighandler);
         pause();
         server.stop();
     } catch (const std::exception& e) {

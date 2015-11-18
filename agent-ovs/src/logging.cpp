@@ -97,8 +97,8 @@ const char * OStreamLogSink::LEVEL_STR_FATAL = "fatal";
  */
 class SyslogLogSink : public LogSink {
 public:
-    SyslogLogSink() {
-        openlog("agent-ovs", LOG_CONS | LOG_PID, LOG_DAEMON);
+    SyslogLogSink(const std::string& name) {
+        openlog(name.c_str(), LOG_CONS | LOG_PID, LOG_DAEMON);
     }
     ~SyslogLogSink() {
         closelog();
@@ -129,9 +129,10 @@ LogSink * getLogSink() {
 
 void initLogging(const std::string& levelstr,
                  bool toSyslog,
-                 const std::string& log_file) {
+                 const std::string& log_file,
+                 const std::string& syslog_name) {
     if (toSyslog) {
-        currentLogSink = new SyslogLogSink();
+        currentLogSink = new SyslogLogSink(syslog_name);
     } else if (!log_file.empty()) {
         currentLogSink = new OStreamLogSink(log_file);
     }

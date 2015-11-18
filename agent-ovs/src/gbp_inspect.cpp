@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    initLogging(level_str, log_to_syslog, log_file);
+    initLogging(level_str, log_to_syslog, log_file, "gbp-inspect");
 
     if (queries.size() == 0 && load_file == "") {
         LOG(ERROR) << "No queries specified";

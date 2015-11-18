@@ -17,6 +17,8 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #include <netinet/icmp6.h>
 
@@ -63,6 +65,7 @@ using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::class_id_t;
 
+namespace pt = boost::property_tree;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
 
@@ -111,7 +114,7 @@ static boost::function<bool(opflex::ofcore::OFFramework&,
 
 FlowManager::FlowManager(ovsagent::Agent& ag) :
         agent(ag), connection(NULL), executor(NULL), portMapper(NULL),
-        reader(NULL), jsonCmdExecutor(NULL), fallbackMode(FALLBACK_PROXY),
+        reader(NULL), fallbackMode(FALLBACK_PROXY),
         encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
         virtualRouterEnabled(false), routerAdv(false),
         virtualDHCPEnabled(false),
@@ -283,6 +286,10 @@ void FlowManager::SetSyncDelayOnConnect(long delay) {
 
 void FlowManager::SetFlowIdCache(const std::string& flowIdCache) {
     this->flowIdCache = flowIdCache;
+}
+
+void FlowManager::SetMulticastGroupFile(const std::string& mcastGroupFile) {
+    this->mcastGroupFile = mcastGroupFile;
 }
 
 ovs_be64 FlowManager::GetProactiveLearnEntryCookie() {
@@ -2306,7 +2313,8 @@ FlowManager::HandleDomainUpdate(class_id_t cid, const URI& domURI) {
     case FloodContext::CLASS_ID:
         if (!FloodContext::resolve(agent.getFramework(), domURI)) {
             LOG(DEBUG) << "Cleaning up for FloodContext: " << domURI;
-            removeFromMulticastList(domURI);
+            if (removeFromMulticastList(domURI))
+                multicastGroupsUpdated();
         }
         break;
     case L3ExternalNetwork::CLASS_ID:
@@ -2899,93 +2907,80 @@ uint32_t FlowManager::getExtNetVnid(const opflex::modb::URI& uri) {
 
 void FlowManager::updateMulticastList(const optional<string>& mcastIp,
                                       const URI& uri) {
+    bool update = false;
     if ((encapType != ENCAP_VXLAN && encapType != ENCAP_IVXLAN) ||
         GetTunnelPort() == OFPP_NONE ||
         !mcastIp) {
-        removeFromMulticastList(uri);
-        return;
+        update |= removeFromMulticastList(uri);
+
+    } else {
+        boost::system::error_code ec;
+        address ip(address::from_string(mcastIp.get(), ec));
+        if (ec || !ip.is_multicast()) {
+            LOG(WARNING) << "Ignoring invalid/unsupported multicast "
+                "subscription IP: " << mcastIp.get();
+            return;
+        }
+        MulticastMap::iterator itr = mcastMap.find(mcastIp.get());
+        if (itr != mcastMap.end()) {
+            UriSet& uris = itr->second;
+            UriSet::iterator jtr = uris.find(uri);
+            if (jtr == uris.end()) {
+                // remove old association, if any
+                update |= removeFromMulticastList(uri);
+                uris.insert(uri);
+            }
+        } else {
+            // remove old association, if any
+            update |= removeFromMulticastList(uri);
+            mcastMap[mcastIp.get()].insert(uri);
+            update |= !isSyncing;
+        }
     }
 
-    boost::system::error_code ec;
-    address ip(address::from_string(mcastIp.get(), ec));
-    if (ec || !ip.is_v4() || !ip.to_v4().is_multicast()) {
-        LOG(WARNING) << "Ignoring invalid/unsupported multicast "
-            "subscription IP: " << mcastIp.get();
-        return;
-    }
-    MulticastMap::iterator itr = mcastMap.find(mcastIp.get());
-    if (itr != mcastMap.end()) {
-        UriSet& uris = itr->second;
-        UriSet::iterator jtr = uris.find(uri);
-        if (jtr == uris.end()) {
-            removeFromMulticastList(uri);   // remove old association, if any
-            uris.insert(uri);
-        }
-    } else {
-        removeFromMulticastList(uri);   // remove old association, if any
-        mcastMap[mcastIp.get()].insert(uri);
-        if (!isSyncing) {
-            changeMulticastSubscription(mcastIp.get(), false);
-        }
-    }
+    if (update)
+        multicastGroupsUpdated();
 }
 
-void FlowManager::removeFromMulticastList(const URI& uri) {
+bool FlowManager::removeFromMulticastList(const URI& uri) {
     BOOST_FOREACH (MulticastMap::value_type& kv, mcastMap) {
         UriSet& uris = kv.second;
         if (uris.erase(uri) > 0 && uris.empty()) {
-            if (!isSyncing) {
-                changeMulticastSubscription(kv.first, true);
-            }
             mcastMap.erase(kv.first);
-            break;
+            return !isSyncing;
         }
     }
 }
 
-void FlowManager::changeMulticastSubscription(const string& mcastIp,
-                                              bool leave) {
-    static const string cmdJoin("dpif/tnl/igmp-join");
-    static const string cmdLeave("dpif/tnl/igmp-leave");
-    if (!jsonCmdExecutor) {
-        return;
-    }
+static const std::string MCAST_QUEUE_ITEM("mcast-groups");
 
-    LOG(INFO) << (leave ? "Leav" : "Join") << "ing multicast group with "
-            "IP: " << mcastIp;
-    vector<string> params;
-    params.push_back(connection->getSwitchName());
-    params.push_back(tunnelPortStr);   // XXX will be replaced with iface name
-    params.push_back(mcastIp);
-
-    const string& cmd = leave ? cmdLeave : cmdJoin;
-    string res;
-    if (jsonCmdExecutor->execute(cmd, params, res) == false) {
-        LOG(ERROR) << "Error " << (leave ? "leav" : "join")
-            << "ing multicast group: " << mcastIp << ", error: " << res;
+void FlowManager::multicastGroupsUpdated() {
+    {
+        unique_lock<mutex> guard(queueMutex);
+        if (!queuedItems.insert(MCAST_QUEUE_ITEM).second) return;
     }
+    agent.getAgentIOService()
+        .dispatch(bind(&FlowManager::writeMulticastGroups, this));
 }
 
-void FlowManager::fetchMulticastSubscription(unordered_set<string>& mcastIps) {
-    static const string cmdDump("dpif/tnl/igmp-dump");
-    if (!jsonCmdExecutor) {
-        return;
+void FlowManager::writeMulticastGroups() {
+    {
+        unique_lock<mutex> guard(queueMutex);
+        queuedItems.erase(MCAST_QUEUE_ITEM);
     }
-    vector<string> params;
-    params.push_back(connection->getSwitchName());
-    params.push_back(tunnelPortStr);   // XXX will be replaced with iface name
-    mcastIps.clear();
+    if (mcastGroupFile == "") return;
 
-    string res;
-    if (jsonCmdExecutor->execute(cmdDump, params, res) == false) {
-        LOG(ERROR) << "Error while fetching multicast subscriptions, "
-                "error: " << res;
-    } else {
-        trim(res);
-        if (!res.empty()) {
-            split(mcastIps, res, boost::is_any_of(" \t\n\r"),
-                  boost::token_compress_on);
-        }
+    pt::ptree tree;
+    pt::ptree groups;
+    BOOST_FOREACH (MulticastMap::value_type& kv, mcastMap)
+        groups.push_back(std::make_pair("", kv.first));
+    tree.add_child("multicast-groups", groups);
+
+    try {
+        pt::write_json(mcastGroupFile, tree);
+    } catch (pt::json_parser_error e) {
+        LOG(ERROR) << "Could not write multicast group file " << mcastGroupFile
+                   << ": " << e.what();
     }
 }
 
@@ -3077,7 +3072,7 @@ void FlowManager::FlowSyncer::CompleteSync() {
     assert(syncInProgress == true);
     ReconcileGroups();
     ReconcileFlows();
-    reconcileMulticastList();
+    flowManager.writeMulticastGroups();
     syncInProgress = false;
     flowManager.isSyncing = false;
     LOG(INFO) << "Sync complete, current mode changed to normal execution";
@@ -3165,21 +3160,6 @@ void FlowManager::FlowSyncer::ReconcileGroups() {
     }
     recvGroups.clear();
     groupsDone = false;
-}
-
-void FlowManager::FlowSyncer::reconcileMulticastList() {
-    unordered_set<string> mcastIps;
-    flowManager.fetchMulticastSubscription(mcastIps);
-    LOG(DEBUG) << "Currently subscribed to " << mcastIps.size()
-        << " multicast groups";
-    BOOST_FOREACH (const MulticastMap::value_type& kv, flowManager.mcastMap) {
-        /* Always resubscribe to ensure we join desired multicast groups */
-        flowManager.changeMulticastSubscription(kv.first, false);
-        mcastIps.erase(kv.first);
-    }
-    BOOST_FOREACH (const string& ip, mcastIps) {
-        flowManager.changeMulticastSubscription(ip, true);
-    }
 }
 
 } // namespace ovsagent
