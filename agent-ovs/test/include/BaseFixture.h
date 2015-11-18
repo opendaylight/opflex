@@ -14,6 +14,8 @@
 
 #include "Agent.h"
 
+#include <boost/filesystem/fstream.hpp>
+
 #pragma once
 #ifndef OVSAGENT_TEST_BASEFIXTURE_H
 #define OVSAGENT_TEST_BASEFIXTURE_H
@@ -35,6 +37,21 @@ public:
 
     opflex::ofcore::MockOFFramework framework;
     Agent agent;
+};
+
+class TempGuard {
+public:
+    TempGuard() :
+        temp_dir(boost::filesystem::temp_directory_path() /
+                 boost::filesystem::unique_path()) {
+        boost::filesystem::create_directory(temp_dir);
+    }
+
+    ~TempGuard() {
+        boost::filesystem::remove_all(temp_dir);
+    }
+
+    boost::filesystem::path temp_dir;
 };
 
 // wait for a condition to become true because of an event in another
@@ -63,8 +80,8 @@ public:
 #define WAIT_FOR(condition, count)  WAIT_FOR_DO(condition, count, ;)
 
 // wait for a condition to become true because of an event in another
-// thread. Executes stmt
-#define WAIT_FOR_ONFAIL(condition, count) \
+// thread. Executes onfail on failure
+#define WAIT_FOR_ONFAIL(condition, count, onfail)       \
     WAIT_FOR_DO_ONFAIL(condition, count, ;, onfail)
 
 } /* namespace ovsagent */

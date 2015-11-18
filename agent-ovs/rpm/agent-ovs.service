@@ -1,7 +1,7 @@
 [Unit]
 Description=Opflex OVS Agent
 After=openvswitch.service
-Wants=openvswitch.service
+Wants=openvswitch.service mcast-daemon.service
 
 [Service]
 ExecStart=/usr/bin/agent_ovs --syslog \

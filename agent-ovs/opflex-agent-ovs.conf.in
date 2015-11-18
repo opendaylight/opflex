@@ -173,7 +173,11 @@
         //     },
         //
         //     // Location to store cached IDs for managing flow state
-        //     "flowid-cache-dir": "DEFAULT_FLOWID_CACHE_DIR"
+        //     "flowid-cache-dir": "DEFAULT_FLOWID_CACHE_DIR",
+        //
+        //     // Location to write multicast groups for the mcast-daemon
+	//     // Default: do not write multicast groups to a file
+        //     "mcast-group-file": "DEFAULT_MCAST_GROUP_FILE"
         // }
     }
 }
