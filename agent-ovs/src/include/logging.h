@@ -54,9 +54,11 @@ public:
  * @param toSyslog if true, log messages are written to syslog; parameter
  * "log_file" is ignored in that case
  * @param log_file the file to log to, or empty for console
+ * @param syslog_name the name to use when logging to syslog
  */
 void initLogging(const std::string& level, bool toSyslog,
-                 const std::string& log_file);
+                 const std::string& log_file,
+                 const std::string& syslog_name = "agent-ovs");
 
 /**
  * Change the logging level of the agent.

@@ -79,10 +79,10 @@ noinst_HEADERS = \
 	src/include/RangeMask.h \
 	src/include/Packets.h \
 	src/include/PacketInHandler.h \
-	src/include/JsonCmdExecutor.h \
 	src/include/AdvertManager.h \
 	src/include/KeyedRateLimiter.h \
 	src/include/NotifServer.h \
+	src/include/MulticastListener.h \
 	src/include/udp.h \
 	src/include/dhcp.h \
 	src/include/arp.h \
@@ -122,11 +122,11 @@ libagent_ovs_la_SOURCES = \
 	src/RangeMask.cpp \
 	src/Packets.cpp \
 	src/PacketInHandler.cpp \
-	src/JsonCmdExecutor.cpp \
 	src/AdvertManager.cpp \
-	src/NotifServer.cpp
+	src/NotifServer.cpp \
+	src/MulticastListener.cpp
 
-bin_PROGRAMS=agent_ovs gbp_inspect
+bin_PROGRAMS=agent_ovs gbp_inspect mcast_daemon
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS)
@@ -142,6 +142,13 @@ gbp_inspect_SOURCES = \
 gbp_inspect_LDADD = \
 	libagent_ovs.la \
 	$(BOOST_IOSTREAMS_LIB) \
+	$(BOOST_PROGRAM_OPTIONS_LIB)
+
+mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
+mcast_daemon_SOURCES = \
+	src/mcast_daemon.cpp
+mcast_daemon_LDADD = \
+	libagent_ovs.la \
 	$(BOOST_PROGRAM_OPTIONS_LIB)
 
 TESTS = agent_test
@@ -169,7 +176,6 @@ agent_test_SOURCES = \
 	test/IdGenerator_test.cpp \
 	test/RangeMask_test.cpp \
 	test/Packets_test.cpp \
-	test/JsonCmdExecutor_test.cpp \
 	test/KeyedRateLimiter_test.cpp \
 	test/NotifServer_test.cpp \
 	test/main.cpp
@@ -196,6 +202,7 @@ agentconf_DATA = opflex-agent-ovs.conf
 flowidcachedir=${localstatedir}/lib/opflex-agent-ovs/ids
 defepwatchdir=${localstatedir}/lib/opflex-agent-ovs/endpoints
 defservwatchdir=${localstatedir}/lib/opflex-agent-ovs/services
+mcastgroupfile=${localstatedir}/lib/opflex-agent-ovs/mcast/opflex-groups.json
 inspectsock=${localstatedir}/run/opflex-agent-ovs-inspect.sock
 notifsock=${localstatedir}/run/opflex-agent-ovs-notif.sock
 cacertdir=${sysconfdir}/ssl/certs
@@ -203,6 +210,7 @@ opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defepwatchdir}|" \
 	    -e "s|DEFAULT_FS_SERVICE_DIR|${defservwatchdir}|" \
 	    -e "s|DEFAULT_FLOWID_CACHE_DIR|${flowidcachedir}|" \
+	    -e "s|DEFAULT_MCAST_GROUP_FILE|${mcastgroupfile}|" \
 	    -e "s|DEFAULT_INSPECTOR_SOCKET|${inspectsock}|" \
 	    -e "s|DEFAULT_NOTIF_SOCKET|${notifsock}|" \
 	    -e "s|DEFAULT_CA_CERT_DIR|${cacertdir}|" \

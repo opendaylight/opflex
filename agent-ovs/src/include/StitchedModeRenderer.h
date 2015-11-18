@@ -17,7 +17,6 @@
 #include "PortMapper.h"
 #include "StatsManager.h"
 #include "TunnelEpManager.h"
-#include "JsonCmdExecutor.h"
 
 #pragma once
 #ifndef OVSAGENT_STITCHEDMODERENDERER_H
@@ -35,7 +34,7 @@ class StitchedModeRenderer : public Renderer {
 public:
     /**
      * Instantiate a stitched-mode renderer
-     * 
+     *
      * @param agent the agent object
      */
     StitchedModeRenderer(Agent& agent);
@@ -44,7 +43,7 @@ public:
      * Destroy the renderer and clean up all state
      */
     virtual ~StitchedModeRenderer();
-    
+
     /**
      * Allocate a new renderer on the heap
      *
@@ -69,7 +68,6 @@ private:
     SwitchConnection* connection;
     StatsManager statsManager;
     TunnelEpManager tunnelEpManager;
-    JsonCmdExecutor jsonCmdExecutor;
 
     std::string ovsBridgeName;
     FlowManager::EncapType encapType;
@@ -85,6 +83,7 @@ private:
     bool virtualDHCP;
     std::string virtualDHCPMac;
     std::string flowIdCache;
+    std::string mcastGroupFile;
 
     bool started;
 };
