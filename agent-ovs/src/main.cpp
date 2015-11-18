@@ -25,7 +25,6 @@
 #include "Agent.h"
 #include "logging.h"
 #include "cmd.h"
-#include <signal.h>
 
 using std::string;
 using opflex::ofcore::OFFramework;

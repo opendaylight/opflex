@@ -83,6 +83,7 @@ noinst_HEADERS = \
 	src/include/AdvertManager.h \
 	src/include/KeyedRateLimiter.h \
 	src/include/NotifServer.h \
+	src/include/MulticastListener.h \
 	src/include/udp.h \
 	src/include/dhcp.h \
 	src/include/arp.h \
@@ -124,9 +125,10 @@ libagent_ovs_la_SOURCES = \
 	src/PacketInHandler.cpp \
 	src/JsonCmdExecutor.cpp \
 	src/AdvertManager.cpp \
-	src/NotifServer.cpp
+	src/NotifServer.cpp \
+	src/MulticastListener.cpp
 
-bin_PROGRAMS=agent_ovs gbp_inspect
+bin_PROGRAMS=agent_ovs gbp_inspect mcast_daemon
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS)
@@ -142,6 +144,13 @@ gbp_inspect_SOURCES = \
 gbp_inspect_LDADD = \
 	libagent_ovs.la \
 	$(BOOST_IOSTREAMS_LIB) \
+	$(BOOST_PROGRAM_OPTIONS_LIB)
+
+mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
+mcast_daemon_SOURCES = \
+	src/mcast_daemon.cpp
+mcast_daemon_LDADD = \
+	libagent_ovs.la \
 	$(BOOST_PROGRAM_OPTIONS_LIB)
 
 TESTS = agent_test
