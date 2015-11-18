@@ -25,7 +25,6 @@
 #include "FlowReader.h"
 #include "FlowExecutor.h"
 #include "IdGenerator.h"
-#include "JsonCmdExecutor.h"
 #include "ActionBuilder.h"
 #include "PacketInHandler.h"
 #include "AdvertManager.h"
@@ -91,15 +90,6 @@ public:
      * @param r The reader object
      */
     void SetFlowReader(FlowReader *r);
-
-    /**
-     * Set the object used for executing control commands against the
-     * openvswitch daemon.
-     * @param e The executor object
-     */
-    void setJsonCmdExecutor(JsonCmdExecutor *e) {
-        jsonCmdExecutor = e;
-    }
 
     /**
      * Register the given connection with the flow manager. Installs
@@ -260,6 +250,13 @@ public:
      * cached
      */
     void SetFlowIdCache(const std::string& flowIdCache);
+
+    /**
+     * Set the multicast group file
+     * @param mcastGroupFile The file where multicast group
+     * subscriptions will be written
+     */
+    void SetMulticastGroupFile(const std::string& mcastGroupFile);
 
     /**
      * Get the openflow port that maps to the configured tunnel
@@ -667,7 +664,6 @@ private:
     FlowExecutor* executor;
     PortMapper *portMapper;
     FlowReader *reader;
-    JsonCmdExecutor *jsonCmdExecutor;
 
     FallbackMode fallbackMode;
     EncapType encapType;
@@ -683,6 +679,7 @@ private:
     uint8_t dhcpMac[6];
     TableState flowTables[NUM_FLOW_TABLES];
     std::string flowIdCache;
+    std::string mcastGroupFile;
 
     boost::mutex queueMutex;
     boost::unordered_set<std::string> queuedItems;
@@ -758,12 +755,6 @@ private:
         void ReconcileGroups();
 
         /**
-         * Compare multicast subscription read from openvswitch daemon and make
-         * modifications to eliminate differences.
-         */
-        void reconcileMulticastList();
-
-        /**
          * Check if a group with given ID and endpoints is present
          * in the received groups, and update the given group-edits if the
          * group is not found or is different. If a group is found, it is
@@ -833,22 +824,19 @@ private:
     /**
      * Remove all multicast IP associations for a managed object.
      * @param uri URI of the managed object to disassociate
+     * @return true if an update should be queued
      */
-    void removeFromMulticastList(const opflex::modb::URI& uri);
+    bool removeFromMulticastList(const opflex::modb::URI& uri);
 
     /**
-     * Get the currently configured multicast group subscriptions from the
-     * Openvswitch daemon.
-     * @param mcastIps Contains the groups subscribed to
+     * Queue a write of the current multicast subscriptions
      */
-    void fetchMulticastSubscription(boost::unordered_set<std::string>& mcastIps);
+    void multicastGroupsUpdated();
 
     /**
-     * Configure Openvswitch daemon to join or leave a multicast group.
-     * @param mcastIp IP address of the group to join or leave
-     * @params leave If true, leave the group, else join the group
+     * Write out the current multicast subscriptions
      */
-    void changeMulticastSubscription(const std::string& mcastIp, bool leave);
+    void writeMulticastGroups();
 };
 
 } // namespace ovsagent

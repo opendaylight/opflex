@@ -14,6 +14,8 @@
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string/trim.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
@@ -35,6 +37,8 @@ using namespace boost::assign;
 using namespace opflex::modb;
 using namespace modelgbp::gbp;
 using namespace ovsagent;
+namespace fs = boost::filesystem;
+namespace pt = boost::property_tree;
 using boost::asio::ip::address;
 using boost::bind;
 using boost::thread;
@@ -254,35 +258,6 @@ public:
     GroupEdit::EntryList groups;
 };
 
-class MockJsonCmdExecutor : public JsonCmdExecutor {
-public:
-    bool execute(const std::string& command,
-                 const std::vector<std::string>& params,
-                 std::string& result) {
-        string cmd = command;
-        BOOST_FOREACH (const string& s, params) {
-            cmd.append(" ").append(s);
-        }
-        BOOST_CHECK_MESSAGE (!expectedCmd.empty(), "\nexp:\ngot: " << cmd);
-        if (!expectedCmd.empty()) {
-            string exp = expectedCmd.front().first;
-            string res = expectedCmd.front().second;
-            expectedCmd.pop_front();
-            BOOST_CHECK_MESSAGE(exp == cmd,
-                "\nexp: " << exp << "\ngot: " << cmd);
-            result = res;
-        }
-        return true;
-    }
-    void expect(const string& fullCmd, const string& res="") {
-        expectedCmd.push_back(pair<string, string>(fullCmd, res));
-        boost::algorithm::trim(expectedCmd.back().first);
-    }
-    bool empty() { return expectedCmd.empty(); }
-    void clear() { expectedCmd.clear(); }
-    list<pair<string, string> > expectedCmd;
-};
-
 BOOST_AUTO_TEST_SUITE(FlowManager_test)
 
 class FlowManagerFixture : public ModbFixture {
@@ -404,7 +379,6 @@ public:
     FlowManager flowManager;
     MockPortMapper portmapper;
     PolicyManager& policyMgr;
-    MockJsonCmdExecutor jsonCmdExecutor;
 
     string tunIf;
 
@@ -1058,12 +1032,33 @@ BOOST_FIXTURE_TEST_CASE(portstatus_vlan, VlanFlowManagerFixture) {
     portStatusTest();
 }
 
+static unordered_set<string> readMcast(const std::string& filePath) {
+    try {
+        unordered_set<string> ips;
+        pt::ptree properties;
+        pt::read_json(filePath, properties);
+        optional<pt::ptree&> groups =
+            properties.get_child_optional("multicast-groups");
+        if (groups) {
+            BOOST_FOREACH(const pt::ptree::value_type &v, groups.get())
+                ips.insert(v.second.data());
+        }
+        return ips;
+    } catch (pt::json_parser_error e) {
+        LOG(DEBUG) << "Could not parse: " << e.what();
+        return unordered_set<string>();
+    }
+}
+
 BOOST_FIXTURE_TEST_CASE(mcast, VxlanFlowManagerFixture) {
     exec.IgnoreGroupMods();
 
+    TempGuard tg;
+    fs::path temp = tg.temp_dir / "mcast.json";
+
     MockSwitchConnection conn;
+    flowManager.SetMulticastGroupFile(temp.string());
     flowManager.registerConnection(&conn);
-    flowManager.setJsonCmdExecutor(&jsonCmdExecutor);
     flowManager.SetFlowReader(&reader);
     flowManager.setTunnelRemotePort(8472);
 
@@ -1075,24 +1070,17 @@ BOOST_FIXTURE_TEST_CASE(mcast, VxlanFlowManagerFixture) {
     string mcast3 = "224.5.1.1";
     string mcast4 = "224.5.1.2";
 
-    jsonCmdExecutor.expect("dpif/tnl/igmp-dump" + prmBr,
-                           " 224.10.1.10\n\n" + mcast1);
-    jsonCmdExecutor.expect("dpif/tnl/igmp-join" + prmBr + mcast1);
-    jsonCmdExecutor.expect("dpif/tnl/igmp-leave" + prmBr + "224.10.1.10");
+    unordered_set<string> expected;
+    expected.insert(mcast1);
+
     flowManager.configUpdated(config->getURI());
     setConnected();
-    WAIT_FOR(jsonCmdExecutor.empty(), 500);
-
-    jsonCmdExecutor.clear();
-    jsonCmdExecutor.expect("dpif/tnl/igmp-join" + prmBr + mcast3);
-    flowManager.egDomainUpdated(epg2->getURI());
-    WAIT_FOR(jsonCmdExecutor.empty(), 500);
-
-
-    jsonCmdExecutor.clear();
-    jsonCmdExecutor.expect("dpif/tnl/igmp-leave" + prmBr + mcast1);
-    jsonCmdExecutor.expect("dpif/tnl/igmp-join" + prmBr + mcast2);
-
+#define CHECK_MCAST                                                \
+    WAIT_FOR_ONFAIL(readMcast(temp.string()) == expected, 500,     \
+            { BOOST_FOREACH(const std::string& ip,                 \
+                            readMcast(temp.string()))              \
+                    LOG(ERROR) << ip; })
+    CHECK_MCAST;
     {
         Mutator mutator(framework, policyOwner);
         config->setMulticastGroupIP(mcast2);
@@ -1101,10 +1089,12 @@ BOOST_FIXTURE_TEST_CASE(mcast, VxlanFlowManagerFixture) {
 
     flowManager.configUpdated(config->getURI());
     flowManager.egDomainUpdated(epg2->getURI());
-    WAIT_FOR(jsonCmdExecutor.empty(), 500);
+    expected.clear();
+    expected.insert(mcast2);
+    expected.insert(mcast3);
 
-    jsonCmdExecutor.clear();
-    jsonCmdExecutor.expect("dpif/tnl/igmp-join" + prmBr + mcast4);
+    CHECK_MCAST;
+
     {
         Mutator mutator(framework, policyOwner);
         fd0ctx->setMulticastGroupIP(mcast4);
@@ -1115,10 +1105,10 @@ BOOST_FIXTURE_TEST_CASE(mcast, VxlanFlowManagerFixture) {
 
     flowManager.configUpdated(config->getURI());
     flowManager.egDomainUpdated(epg2->getURI());
-    WAIT_FOR(jsonCmdExecutor.empty(), 500);
+    expected.insert(mcast4);
 
-    jsonCmdExecutor.clear();
-    jsonCmdExecutor.expect("dpif/tnl/igmp-leave" + prmBr + mcast4);
+    CHECK_MCAST;
+
     {
         Mutator mutator(framework, policyOwner);
         fd0ctx->unsetMulticastGroupIP();
@@ -1127,7 +1117,11 @@ BOOST_FIXTURE_TEST_CASE(mcast, VxlanFlowManagerFixture) {
     WAIT_FOR_DO(fd0ctx->isMulticastGroupIPSet() == false, 500,
         fd0ctx = policyMgr.getFloodContextForGroup(epg2->getURI()).get());
     flowManager.egDomainUpdated(epg2->getURI());
-    WAIT_FOR(jsonCmdExecutor.empty(), 500);
+
+    expected.erase(mcast4);
+
+    CHECK_MCAST;
+#undef CHECK_MCAST
 }
 
 BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanFlowManagerFixture) {

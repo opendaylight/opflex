@@ -1,4 +1,4 @@
 usr/bin/agent_ovs
 usr/bin/gbp_inspect
+usr/bin/mcast_daemon
 etc/opflex-agent-ovs/opflex-agent-ovs.conf
-
