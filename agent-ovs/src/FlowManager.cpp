@@ -1244,6 +1244,11 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
         BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
                       endPoint.getVirtualIPs()) {
+            // Don't write virtual IP entry if the endpoint already
+            // has an "active" IP address for this entry.
+            if (endPoint.getIPs().find(vip.second) != endPoint.getIPs().end())
+                continue;
+
             address addr = address::from_string(vip.second, ec);
             if (ec) {
                 LOG(WARNING) << "Invalid endpoint VIP: "

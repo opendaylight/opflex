@@ -1332,6 +1332,7 @@ BOOST_FIXTURE_TEST_CASE(vip, VxlanFlowManagerFixture) {
 
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42.42.42.42"));
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42::42"));
+    ep0->addVirtualIP(make_pair(MAC("00:00:00:00:80:00"), "10.20.44.3"));
     epSrc.updateEndpoint(*ep0);
     flowManager.endpointUpdated(ep0->getUUID());
 
