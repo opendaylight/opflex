@@ -504,6 +504,92 @@ BOOST_FIXTURE_TEST_CASE( nat_rd_update, PolicyFixture ) {
     WAIT_FOR(lsnr.hasNotif(rd->getURI()), 500);
 }
 
+BOOST_FIXTURE_TEST_CASE( group_unknown_contract, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    URI con_unk_uri("unknown-contract");
+
+    // Provide an unknown contract
+    Mutator m0(framework, "policyreg");
+    eg1->addGbpEpGroupToProvContractRSrc(con_unk_uri.toString());
+    m0.commit();
+    WAIT_FOR(pm.contractExists(con_unk_uri), 500);
+    PolicyManager::uri_set_t egs;
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractProviders(con_unk_uri, egs));
+
+    // Make sure unknown-contract remains despite changes to other contracts
+    shared_ptr<Contract> con3 = space->addGbpContract("contract3");
+    m0.commit();
+    WAIT_FOR(pm.contractExists(con3->getURI()) == true, 500);
+    BOOST_CHECK(pm.contractExists(con_unk_uri));
+    egs.clear();
+    pm.getContractProviders(con_unk_uri, egs);
+    BOOST_CHECK(egs.size() == 1);
+
+    // Ensure unknown contract is removed when provider is removed
+    eg1->addGbpEpGroupToProvContractRSrc(con_unk_uri.toString())
+        ->unsetTarget();
+    m0.commit();
+    WAIT_FOR(!pm.contractExists(con_unk_uri), 500);
+}
+
+BOOST_FIXTURE_TEST_CASE( group_contract_remove, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    WAIT_FOR(pm.contractExists(con2->getURI()), 500);
+
+    // Remove contract and references from groups
+    Mutator m0(framework, "policyreg");
+    con2->remove();
+    eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString())
+        ->unsetTarget();
+    eg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString())
+        ->unsetTarget();
+    m0.commit();
+    WAIT_FOR(!pm.contractExists(con2->getURI()), 500);
+}
+
+BOOST_FIXTURE_TEST_CASE( group_contract_remove_add, PolicyFixture ) {
+    // Remove contract, then add it back. Expect the providers/consumers to
+    // remain the same as prior to remove.
+    PolicyManager& pm = agent.getPolicyManager();
+    WAIT_FOR(pm.contractExists(con1->getURI()), 500);
+
+    PolicyManager::uri_set_t egs;
+    WAIT_FOR_DO(egs.size() == 2, 500,
+            egs.clear(); pm.getContractProviders(con1->getURI(), egs));
+
+    egs.clear();
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractConsumers(con1->getURI(), egs));
+
+    // Remove contract
+    PolicyManager::rule_list_t rules;
+    WAIT_FOR_DO(!rules.empty(), 500,
+        pm.getContractRules(con1->getURI(), rules));
+    Mutator m0(framework, "policyreg");
+    con1->addGbpSubject("1_subject2")->remove();
+    con1->addGbpSubject("1_subject1")->remove();
+    con1->remove();
+    m0.commit();
+    WAIT_FOR_DO(rules.empty(), 500,
+        rules.clear(); pm.getContractRules(con1->getURI(), rules));
+    BOOST_CHECK(pm.contractExists(con1->getURI()));
+
+    // Add contract back
+    con1 = space->addGbpContract("contract1");
+    m0.commit();
+
+    egs.clear();
+    WAIT_FOR_DO(egs.size() == 2, 500,
+            egs.clear(); pm.getContractProviders(con1->getURI(), egs));
+    egs.clear();
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractConsumers(con1->getURI(), egs));
+
+    pm.getContractRules(con1->getURI(), rules);
+    BOOST_CHECK(rules.size() == 0);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } /* namespace ovsagent */

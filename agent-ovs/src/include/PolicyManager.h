@@ -569,6 +569,16 @@ private:
      * @param configURI the URI of the updated platform config object
      */
     void notifyConfig(const opflex::modb::URI& configURI);
+
+    /**
+     * Remove index entry for a contract if it doesn't exist anymore
+     * and if it is not referenced by any group or external network.
+     * NOTE: Caller must hold lock state_mutex.
+     *
+     * @param contractURI the URI of the contract to check
+     * @return true if the contract entry was removed
+     */
+    bool removeContractIfRequired(const opflex::modb::URI& contractURI);
 };
 
 /**

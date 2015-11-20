@@ -438,6 +438,21 @@ void PolicyManager::getRoutingDomains(uri_set_t& rdURIs) {
     }
 }
 
+bool PolicyManager::removeContractIfRequired(const URI& contractURI) {
+    using namespace modelgbp::gbp;
+    contract_map_t::iterator itr = contractMap.find(contractURI);
+    optional<shared_ptr<Contract> > contract =
+        Contract::resolve(framework, contractURI);
+    if (!contract && itr != contractMap.end() &&
+            itr->second.providerGroups.empty() &&
+            itr->second.consumerGroups.empty()) {
+        LOG(DEBUG) << "Removing index for contract " << contractURI;
+        contractMap.erase(itr);
+        return true;
+    }
+    return false;
+}
+
 void PolicyManager::updateGroupContracts(class_id_t groupType,
                                          const URI& groupURI,
                                          uri_set_t& updatedContracts) {
@@ -535,10 +550,12 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
     BOOST_FOREACH(const URI& u, provRemoved) {
         contractMap[u].providerGroups.erase(groupURI);
         LOG(DEBUG) << u << ": prov remove: " << groupURI;
+        removeContractIfRequired(u);
     }
     BOOST_FOREACH(const URI& u, consRemoved) {
         contractMap[u].consumerGroups.erase(groupURI);
         LOG(DEBUG) << u << ": cons remove: " << groupURI;
+        removeContractIfRequired(u);
     }
 }
 
@@ -889,7 +906,14 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
              */
             if (notFound && itr->first == uri) {
                 contractsToNotify.insert(itr->first);
-                itr = pmanager.contractMap.erase(itr);
+                // if contract has providers/consumers, only clear the rules
+                if (itr->second.providerGroups.empty() &&
+                        itr->second.consumerGroups.empty()) {
+                    itr = pmanager.contractMap.erase(itr);
+                } else {
+                    itr->second.rules.clear();
+                    ++itr;
+                }
             } else {
                 ++itr;
             }

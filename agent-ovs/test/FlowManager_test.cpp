@@ -935,7 +935,10 @@ BOOST_FIXTURE_TEST_CASE(policy, VxlanFlowManagerFixture) {
     Mutator m2(framework, policyOwner);
     con2->remove();
     m2.commit();
-    WAIT_FOR(policyMgr.contractExists(con2->getURI()) == false, 500);
+    PolicyManager::rule_list_t rules;
+    policyMgr.getContractRules(con2->getURI(), rules);
+    WAIT_FOR_DO(rules.empty(), 500,
+        rules.clear(); policyMgr.getContractRules(con2->getURI(), rules));
     flowManager.contractUpdated(con2->getURI());
 
     clearExpFlowTables();

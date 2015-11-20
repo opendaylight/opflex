@@ -2483,8 +2483,6 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
     }
 
     const string& contractId = contractURI.toString();
-    uint64_t conCookie = GetId(Contract::CLASS_ID, contractURI);
-
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.contractExists(contractURI)) {  // Contract removed
         WriteFlow(contractId, POL_TABLE_ID, NULL);
@@ -2511,6 +2509,7 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
                << ", #rules=" << rules.size();
 
     FlowEntryList entryList;
+    uint64_t conCookie = GetId(Contract::CLASS_ID, contractURI);
 
     BOOST_FOREACH(const IdMap::value_type& pid, provIds) {
         const uint32_t& pvnid = pid.first;
