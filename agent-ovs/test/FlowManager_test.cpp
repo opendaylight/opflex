@@ -1393,7 +1393,7 @@ enum REG {
 };
 enum TABLE {
     SEC = 0, SRC = 1, BR  = 2, RT  = 3, NAT = 4, LRN = 5,
-    SVS = 6, SVD = 7, POL = 8, OUT = 9
+    SVD = 6, POL = 7, OUT = 8
 };
 string rstr[] = {
     "NXM_NX_REG0[]", "NXM_NX_REG0[0..11]", "NXM_NX_REG2[]", "NXM_NX_REG4[]",
@@ -2208,14 +2208,6 @@ void FlowManagerFixture::initExpService(bool nextHop) {
     string rmac = MAC(rmacArr).toString();
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
-    ADDF(Bldr().table(SEC).priority(100).in(17)
-         .isEthSrc("ed:84:da:ef:16:96")
-         .actions().go(SVS).done());
-    ADDF(Bldr().table(SVS).priority(100).in(17)
-         .isEthSrc("ed:84:da:ef:16:96")
-         .actions()
-         .load(SEPG, 0).load(BD, 0).load(FD, 0)
-         .load(RD, 1).go(SVD).done());
     if (nextHop) {
         ADDF(Bldr().table(BR).priority(50)
              .ip().reg(RD, 1).isIpDst("169.254.169.254")
@@ -2230,16 +2222,16 @@ void FlowManagerFixture::initExpService(bool nextHop) {
              .ipv6Dst("fe80::a9:fe:a9:1")
              .decTtl().outPort(17).done());
 
-        ADDF(Bldr().table(SVS).priority(150).ip().in(17)
+        ADDF(Bldr().table(SEC).priority(100).ip().in(17)
              .isEthSrc("ed:84:da:ef:16:96")
              .isIpSrc("169.254.169.1")
              .actions().load(RD, 1).ipSrc("169.254.169.254")
-             .go(SVD).done());
-        ADDF(Bldr().table(SVS).priority(150).ipv6().in(17)
+             .decTtl().go(SVD).done());
+        ADDF(Bldr().table(SEC).priority(100).ipv6().in(17)
              .isEthSrc("ed:84:da:ef:16:96")
              .isIpv6Src("fe80::a9:fe:a9:1")
              .actions().load(RD, 1).ipv6Src("fe80::a9:fe:a9:fe")
-             .go(SVD).done());
+             .decTtl().go(SVD).done());
     } else {
         ADDF(Bldr().table(BR).priority(50)
              .ip().reg(RD, 1).isIpDst("169.254.169.254")
@@ -2250,6 +2242,17 @@ void FlowManagerFixture::initExpService(bool nextHop) {
              .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
              .actions()
              .ethSrc(rmac).ethDst(mac).decTtl().outPort(17).done());
+
+        ADDF(Bldr().table(SEC).priority(100).ip().in(17)
+             .isEthSrc("ed:84:da:ef:16:96")
+             .isIpSrc("169.254.169.254")
+             .actions().load(RD, 1)
+             .go(SVD).done());
+        ADDF(Bldr().table(SEC).priority(100).ipv6().in(17)
+             .isEthSrc("ed:84:da:ef:16:96")
+             .isIpv6Src("fe80::a9:fe:a9:fe")
+             .actions().load(RD, 1)
+             .go(SVD).done());
     }
 
     ADDF(Bldr().table(BR).priority(51).arp()

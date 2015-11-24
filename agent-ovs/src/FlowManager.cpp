@@ -1555,7 +1555,6 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
     if (!asWrapper) {
         WriteFlow(uuid, SEC_TABLE_ID, NULL);
         WriteFlow(uuid, BRIDGE_TABLE_ID, NULL);
-        WriteFlow(uuid, SERVICE_MAP_SRC_TABLE_ID, NULL);
         WriteFlow(uuid, SERVICE_MAP_DST_TABLE_ID, NULL);
         return;
     }
@@ -1564,7 +1563,6 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
 
     FlowEntryList secFlows;
     FlowEntryList bridgeFlows;
-    FlowEntryList serviceMapSrcFlows;
     FlowEntryList serviceMapDstFlows;
 
     boost::system::error_code ec;
@@ -1585,31 +1583,6 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
 
         uint32_t rdId =
             GetId(RoutingDomain::CLASS_ID, as.getDomainURI().get());
-
-        // Traffic from the anycast service is intercepted in the
-        // security table and sent to the service map table, where it
-        // will be directly delivered to local endpoints or dropped
-        // otherwise.
-        {
-            FlowEntry *allowMac = new FlowEntry();
-            SetSecurityMatchEpMac(allowMac, 100, ofPort, macAddr);
-            SetSecurityActionAllow(allowMac, SERVICE_MAP_SRC_TABLE_ID);
-            secFlows.push_back(FlowEntryPtr(allowMac));
-        }
-
-        // Service map source table maps the source service traffic
-        // into a routing domain.  This lower-priority rule catches
-        // traffic with no "next hop" mapping.
-        {
-            FlowEntry *svcMac = new FlowEntry();
-            svcMac->entry->table_id = SERVICE_MAP_SRC_TABLE_ID;
-            svcMac->entry->priority = 100;
-            match_set_in_port(&svcMac->entry->match, ofPort);
-            match_set_dl_src(&svcMac->entry->match, macAddr);
-            SetSourceAction(svcMac, 0, 0, 0, rdId,
-                            FlowManager::SERVICE_MAP_DST_TABLE_ID);
-            serviceMapSrcFlows.push_back(FlowEntryPtr(svcMac));
-        }
 
         BOOST_FOREACH(AnycastService::ServiceMapping sm,
                       as.getServiceMappings()) {
@@ -1659,24 +1632,33 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
                 bridgeFlows.push_back(FlowEntryPtr(serviceDest));
             }
 
-            if (hasNextHop) {
-                // If there is a next hop mapping, this
-                // higher-priority service map source table reverse
-                // maps the return traffic from service interface
-                // using DNAT semantics
+            // Traffic sent from anycast services is intercepted in
+            // the security table to prevent normal processing
+            // semantics.
+            {
                 FlowEntry *svcIP = new FlowEntry();
-                svcIP->entry->table_id = SERVICE_MAP_SRC_TABLE_ID;
-                svcIP->entry->priority = 150;
+                svcIP->entry->table_id = SEC_TABLE_ID;
+                svcIP->entry->priority = 100;
                 match_set_in_port(&svcIP->entry->match, ofPort);
                 match_set_dl_src(&svcIP->entry->match, macAddr);
-                AddMatchIp(svcIP, nextHopAddr, true);
 
                 ActionBuilder ab;
                 ab.SetRegLoad(MFF_REG6, rdId);
-                ab.SetIpSrc(addr);
+
+                if (hasNextHop) {
+                    // If there is a next hop mapping, map the return
+                    // traffic from service interface using DNAT
+                    // semantics
+                    AddMatchIp(svcIP, nextHopAddr, true);
+                    ab.SetIpSrc(addr);
+                    ab.SetDecNwTtl();
+                } else {
+                    AddMatchIp(svcIP, addr, true);
+                }
+
                 ab.SetGotoTable(SERVICE_MAP_DST_TABLE_ID);
                 ab.Build(svcIP->entry);
-                serviceMapSrcFlows.push_back(FlowEntryPtr(svcIP));
+                secFlows.push_back(FlowEntryPtr(svcIP));
             }
 
             if (addr.is_v4()) {
@@ -1735,7 +1717,6 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
 
     WriteFlow(uuid, SEC_TABLE_ID, secFlows);
     WriteFlow(uuid, BRIDGE_TABLE_ID, bridgeFlows);
-    WriteFlow(uuid, SERVICE_MAP_SRC_TABLE_ID, serviceMapSrcFlows);
     WriteFlow(uuid, SERVICE_MAP_DST_TABLE_ID, serviceMapDstFlows);
 }
 
