@@ -119,12 +119,11 @@ int main(int argc, char** argv) {
     desc.add_options()
         ("help,h", "Print this help message")
         ("watch,d", po::value<string>()->default_value(""),
-         "Watch the specified director for multicast address files")
+         "Watch the specified directory for multicast address files")
         ("log", po::value<string>()->default_value(""),
          "Log to the specified file (default standard out)")
         ("level", po::value<string>()->default_value("info"),
-         "Use the specified log level (default info). "
-         "Overridden by log level in configuration file")
+         "Use the specified log level (default info).")
         ("syslog", "Log to syslog instead of file or standard out")
         ("daemon", "Run the multicast daemon as a daemon")
         ;
