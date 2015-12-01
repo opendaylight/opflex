@@ -2227,6 +2227,9 @@ void FlowManagerFixture::initExpService(bool nextHop) {
              .isIpSrc("169.254.169.1")
              .actions().load(RD, 1).ipSrc("169.254.169.254")
              .decTtl().go(SVD).done());
+        ADDF(Bldr().table(SEC).priority(100).arp().in(17)
+             .isEthSrc("ed:84:da:ef:16:96").isSpa("169.254.169.1")
+             .actions().load(RD, 1).go(SVD).done());
         ADDF(Bldr().table(SEC).priority(100).ipv6().in(17)
              .isEthSrc("ed:84:da:ef:16:96")
              .isIpv6Src("fe80::a9:fe:a9:1")
@@ -2248,6 +2251,9 @@ void FlowManagerFixture::initExpService(bool nextHop) {
              .isIpSrc("169.254.169.254")
              .actions().load(RD, 1)
              .go(SVD).done());
+        ADDF(Bldr().table(SEC).priority(100).arp().in(17)
+             .isEthSrc("ed:84:da:ef:16:96").isSpa("169.254.169.254")
+             .actions().load(RD, 1).go(SVD).done());
         ADDF(Bldr().table(SEC).priority(100).ipv6().in(17)
              .isEthSrc("ed:84:da:ef:16:96")
              .isIpv6Src("fe80::a9:fe:a9:fe")

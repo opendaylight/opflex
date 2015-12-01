@@ -1660,6 +1660,17 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
                 ab.Build(svcIP->entry);
                 secFlows.push_back(FlowEntryPtr(svcIP));
             }
+            if (addr.is_v4()) {
+                FlowEntry *svcARP = new FlowEntry();
+                SetSecurityMatchEpArp(svcARP, 100, ofPort, macAddr,
+                                      hasNextHop ? &nextHopAddr : &addr);
+
+                ActionBuilder ab;
+                ab.SetRegLoad(MFF_REG6, rdId);
+                ab.SetGotoTable(SERVICE_MAP_DST_TABLE_ID);
+                ab.Build(svcARP->entry);
+                secFlows.push_back(FlowEntryPtr(svcARP));
+            }
 
             if (addr.is_v4()) {
                 FlowEntry *proxyArp = new FlowEntry();
