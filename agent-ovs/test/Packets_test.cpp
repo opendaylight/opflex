@@ -13,6 +13,7 @@
 #include "Packets.h"
 
 using namespace ovsagent::packets;
+using boost::asio::ip::address_v6;
 
 BOOST_AUTO_TEST_SUITE(Packets_test)
 
@@ -37,6 +38,51 @@ BOOST_AUTO_TEST_CASE(chksum) {
     uint16_t result = htons(chksum_finalize(chksum));
 
     BOOST_CHECK_EQUAL(0x0ae0, result);
+}
+
+BOOST_AUTO_TEST_CASE(ipv6_subnet) {
+    struct in6_addr mask;
+    struct in6_addr addr;
+
+    compute_ipv6_subnet(address_v6::from_string("ad::da"), 128, &mask, &addr);
+
+    boost::asio::ip::address_v6::bytes_type data;
+    std::memcpy(data.data(), &mask, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address_v6(data),
+                      address_v6::from_string("ffff:ffff:ffff:ffff:"
+                                              "ffff:ffff:ffff:ffff"));
+
+    std::memcpy(data.data(), &addr, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address_v6(data),
+                      address_v6::from_string("ad::da"));
+
+    compute_ipv6_subnet(address_v6::from_string("ad::da"), 64, &mask, &addr);
+    std::memcpy(data.data(), &mask, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address_v6(data),
+                      address_v6::from_string("ffff:ffff:ffff:ffff::"));
+
+    std::memcpy(data.data(), &addr, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address_v6(data),
+                      address_v6::from_string("ad::"));
+
+    compute_ipv6_subnet(address_v6::from_string("ad00::da"), 1, &mask, &addr);
+    std::memcpy(data.data(), &mask, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address_v6(data),
+                      address_v6::from_string("8000::"));
+
+    std::memcpy(data.data(), &addr, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address_v6(data),
+                      address_v6::from_string("8000::"));
+
+    compute_ipv6_subnet(address_v6::from_string("ad::da"), 0, &mask, &addr);
+    std::memcpy(data.data(), &mask, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address_v6(data),
+                      address_v6::from_string("::"));
+
+    std::memcpy(data.data(), &addr, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address_v6(data),
+                      address_v6::from_string("::"));
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

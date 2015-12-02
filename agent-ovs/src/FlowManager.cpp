@@ -74,9 +74,9 @@ namespace ovsagent {
 const uint16_t FlowManager::MAX_POLICY_RULE_PRIORITY = 8192;     // arbitrary
 const long DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC = 5000;
 
-// the OUT_MASK specified 7 bits that indicate the action to take in
+// the OUT_MASK specifies 8 bits that indicate the action to take in
 // the output table.  If nothing is set, then the action is to output
-// to the point in REG7
+// to the interface in REG7
 const uint64_t METADATA_OUT_MASK = 0xff;
 
 // Resubmit to the first "dest" table with the source registers set to
@@ -86,6 +86,11 @@ const uint64_t METADATA_RESUBMIT_DST = 0x1;
 // Perform "outbound" NAT action and then resubmit with the source EPG
 // set to the mapped NAT EPG
 const uint64_t METADATA_NAT_OUT = 0x2;
+
+// Output to the interface in REG7 but intercept ICMP error replies
+// and overwrite the encapsulated error packet source address with
+// the (rewritten) destination address of the outer packet.
+const uint64_t METADATA_REV_NAT_OUT = 0x3;
 
 static const char* ID_NAMESPACES[] =
     {"floodDomain", "bridgeDomain", "routingDomain",
@@ -310,6 +315,10 @@ ovs_be64 FlowManager::GetDHCPCookie(bool v4) {
 
 ovs_be64 FlowManager::GetVIPCookie(bool v4) {
     return htonll((uint64_t)1 << 63 | (v4 ? 6 : 7));
+}
+
+ovs_be64 FlowManager::GetICMPErrorCookie(bool v4) {
+    return htonll((uint64_t)1 << 63 | (v4 ? 8 : 9));
 }
 
 /** Source table helper functions */
@@ -811,6 +820,27 @@ SetSecurityActionAllow(FlowEntry *fe,
     ActionBuilder ab;
     ab.SetGotoTable(nextTableId);
     ab.Build(fe->entry);
+}
+
+static void
+SetOutRevNatICMP(FlowEntry *fe, bool v4, uint8_t type) {
+    fe->entry->table_id = FlowManager::OUT_TABLE_ID;
+    fe->entry->priority = 10;
+    fe->entry->cookie = FlowManager::GetICMPErrorCookie(v4);
+    match_set_metadata_masked(&fe->entry->match,
+                              htonll(METADATA_REV_NAT_OUT),
+                              htonll(METADATA_OUT_MASK));
+
+    if (v4) {
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
+        match_set_nw_proto(&fe->entry->match, 1 /* ICMP */);
+        match_set_tp_src(&fe->entry->match, htons(type));
+    } else {
+        match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IPV6));
+        match_set_nw_proto(&fe->entry->match, 58 /* ICMP */);
+        match_set_tp_src(&fe->entry->match, htons(type));
+    }
+    SetActionController(fe);
 }
 
 void FlowManager::QueueFlowTask(const boost::function<void ()>& w) {
@@ -1839,6 +1869,57 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
 
             outFlows.push_back(FlowEntryPtr(outputReg));
         }
+        {
+            FlowEntry* revNatOutputReg = new FlowEntry();
+            revNatOutputReg->entry->table_id = OUT_TABLE_ID;
+            revNatOutputReg->entry->priority = 1;
+            match_set_metadata_masked(&revNatOutputReg->entry->match,
+                                      htonll(METADATA_REV_NAT_OUT),
+                                      htonll(METADATA_OUT_MASK));
+            ActionBuilder ab;
+            ab.SetOutputReg(MFF_REG7);
+            ab.Build(revNatOutputReg->entry);
+
+            outFlows.push_back(FlowEntryPtr(revNatOutputReg));
+        }
+        {
+            FlowEntry* revNatICMPUnreach = new FlowEntry();
+            SetOutRevNatICMP(revNatICMPUnreach, true, 3);
+            outFlows.push_back(FlowEntryPtr(revNatICMPUnreach));
+        }
+        {
+            FlowEntry* revNatICMPTimeExc = new FlowEntry();
+            SetOutRevNatICMP(revNatICMPTimeExc, true, 11);
+            outFlows.push_back(FlowEntryPtr(revNatICMPTimeExc));
+        }
+        {
+            FlowEntry* revNatICMPParam = new FlowEntry();
+            SetOutRevNatICMP(revNatICMPParam, true, 12);
+            outFlows.push_back(FlowEntryPtr(revNatICMPParam));
+        }
+
+        // Disable for now since even forward mapping doesn't work for
+        // ICMP6
+        //{
+        //    FlowEntry* revNatICMP6Unreach = new FlowEntry();
+        //    SetOutRevNatICMP(revNatICMP6Unreach, false, 1);
+        //    outFlows.push_back(FlowEntryPtr(revNatICMP6Unreach));
+        //}
+        //{
+        //    FlowEntry* revNatICMP6TooBig = new FlowEntry();
+        //    SetOutRevNatICMP(revNatICMP6TooBig, false, 2);
+        //    outFlows.push_back(FlowEntryPtr(revNatICMP6TooBig));
+        //}
+        //{
+        //    FlowEntry* revNatICMP6TimeExc = new FlowEntry();
+        //    SetOutRevNatICMP(revNatICMP6TimeExc, false, 3);
+        //    outFlows.push_back(FlowEntryPtr(revNatICMP6TimeExc));
+        //}
+        //{
+        //    FlowEntry* revNatICMPParam = new FlowEntry();
+        //    SetOutRevNatICMP(revNatICMPParam, false, 4);
+        //    outFlows.push_back(FlowEntryPtr(revNatICMPParam));
+        //}
 
         WriteFlow("static", OUT_TABLE_ID, outFlows);
     }
@@ -2259,6 +2340,12 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
                                    extsub->getPrefixLen(0), true);
                     ActionBuilder ab;
                     ab.SetRegLoad(MFF_REG0, netVnid);
+                    // We want to ensure that on the final delivery of
+                    // the packet we perform protocol-specific reverse
+                    // mapping.  This doesn't let us do hop-by-hop
+                    // translations however.
+                    ab.SetWriteMetadata(METADATA_REV_NAT_OUT,
+                                        METADATA_OUT_MASK);
                     ab.SetGotoTable(POL_TABLE_ID);
                     ab.Build(snn->entry);
                     rdNatFlows.push_back(FlowEntryPtr(snn));

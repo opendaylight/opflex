@@ -8,6 +8,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <linux/icmp.h>
+
 #include <boost/test/unit_test.hpp>
 #include <boost/foreach.hpp>
 
@@ -18,6 +20,8 @@
 #include "udp.h"
 #include "dhcp.h"
 #include "logging.h"
+
+using boost::asio::ip::address_v4;
 
 class PacketInHandlerFixture : public ModbFixture {
 public:
@@ -291,12 +295,20 @@ static const uint8_t opt6_search_list[] =
      0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x07,
      0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00};
 
+static const uint8_t pkt_icmp4_ttl_exc[] =
+    {0xfa, 0x16, 0x3e, 0x35, 0x19, 0x7f, 0x00, 0x22, 0xbd, 0xf8, 0x19, 0xff,
+     0x08, 0x00, 0x45, 0x00, 0x00, 0x38, 0xe0, 0x52, 0x00, 0x00, 0xfd, 0x01,
+     0xd6, 0x02, 0x02, 0x69, 0x02, 0x01, 0x01, 0x01, 0x02, 0x05, 0x0b, 0x00,
+     0xb6, 0xf7, 0x00, 0x00, 0x00, 0x00, 0x45, 0x00, 0x00, 0x3c, 0x52, 0xe0,
+     0x00, 0x00, 0x01, 0x11, 0x9a, 0x18, 0x67, 0x67, 0x01, 0x05, 0xac, 0x1c,
+     0xb8, 0x30, 0x8c, 0x98, 0x82, 0x9e, 0x00, 0x28, 0x2e, 0xa9};
+
 BOOST_AUTO_TEST_SUITE(PacketInHandler_test)
 
 static void init_packet_in(ofputil_packet_in& pin,
                            const void* packet_buf, size_t len,
                            uint64_t cookie = 0,
-                           uint8_t table_id = 3,
+                           uint8_t table_id = FlowManager::ROUTE_TABLE_ID,
                            uint32_t in_port = 42,
                            uint32_t dstReg = 0) {
     memset(&pin, 0, sizeof(pin));
@@ -614,6 +626,34 @@ static void verify_dhcpv6(ofpbuf* msg, uint8_t message_type,
 #undef CONTAINS
 }
 
+static void verify_icmpv4(ofpbuf* msg) {
+    struct ofputil_packet_out po;
+    uint64_t ofpacts_stub[1024 / 8];
+    struct ofpbuf ofpact;
+    ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
+    ofputil_decode_packet_out(&po,
+                              (ofp_header*)msg->data,
+                              &ofpact);
+    struct dp_packet pkt;
+    struct flow flow;
+    dp_packet_use_const(&pkt, po.packet, po.packet_len);
+    flow_extract(&pkt, &flow);
+
+    size_t l4_size = dp_packet_l4_size(&pkt);
+    BOOST_REQUIRE(l4_size >= (sizeof(struct icmphdr) +
+                              sizeof(struct iphdr)));
+
+    struct iphdr* outer_ip_pkt =
+        (struct iphdr*)((char*)dp_packet_l3(&pkt));
+    struct icmphdr* icmp_pkt =
+        (struct icmphdr*)((char*)dp_packet_l4(&pkt));
+    struct iphdr* ip_pkt =
+        (struct iphdr*)((char*)icmp_pkt + sizeof(icmphdr));
+
+    BOOST_CHECK_EQUAL(address_v4(ip_pkt->saddr),
+                      address_v4(outer_ip_pkt->daddr));
+}
+
 BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv4_discover, sizeof(pkt_dhcpv4_discover),
@@ -831,6 +871,23 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
 
     verify_dhcpv6(conn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
                   INFO);
+}
+
+BOOST_FIXTURE_TEST_CASE(icmpv4_error, PacketInHandlerFixture) {
+    ofputil_packet_in pin;
+    init_packet_in(pin, &pkt_icmp4_ttl_exc, sizeof(pkt_icmp4_ttl_exc),
+                   FlowManager::GetICMPErrorCookie(true),
+                   FlowManager::OUT_TABLE_ID, 42, 42);
+
+    ofpbuf* b = ofputil_encode_packet_in(&pin,
+                                          OFPUTIL_P_OF10_NXM,
+                                          NXPIF_NXM);
+
+    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    ofpbuf_delete(b);
+
+    verify_icmpv4(conn.sentMsgs[0]);
 }
 
 

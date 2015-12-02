@@ -9,6 +9,11 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <netinet/ip.h>
+#include <linux/icmp.h>
+#include <netinet/ip6.h>
+#include <netinet/icmp6.h>
+
 #include <boost/foreach.hpp>
 #include <boost/system/error_code.hpp>
 
@@ -785,6 +790,93 @@ static void handleVIPPktIn(bool v4,
     }
 }
 
+static void handleICMPErrPktIn(bool v4,
+                               Agent& agent,
+                               FlowManager& flowManager,
+                               SwitchConnection *conn,
+                               struct ofputil_packet_in& pi,
+                               ofputil_protocol& proto,
+                               struct dp_packet& pkt,
+                               struct flow& flow) {
+    struct ofpbuf* b = NULL;
+
+    if (v4) {
+        size_t l4_size = dp_packet_l4_size(&pkt);
+        if (l4_size < (sizeof(struct icmphdr) + sizeof(struct iphdr)))
+            return;
+
+        char* pkt_data = (char*)dp_packet_data(&pkt);
+        b = ofpbuf_clone_data(pkt_data, dp_packet_size(&pkt));
+        struct iphdr* outer =
+            (struct iphdr*)((char*)dp_packet_l3(&pkt));
+
+        size_t inner_offset = (char*)dp_packet_l4(&pkt)-pkt_data;
+        struct icmphdr* inner_icmp =
+            (struct icmphdr*)(ofpbuf_at_assert(b, inner_offset,
+                                               sizeof(icmphdr)));
+        struct iphdr* inner_ip =
+            (struct iphdr*)(ofpbuf_at_assert(b, inner_offset +
+                                             sizeof(struct icmphdr),
+                                             sizeof(iphdr)));
+        inner_ip->saddr = outer->daddr;
+
+        // compute checksum
+        inner_icmp->checksum = 0;
+        uint32_t chksum = 0;
+        packets::chksum_accum(chksum, (uint16_t*)inner_icmp, l4_size);
+        inner_icmp->checksum = packets::chksum_finalize(chksum);
+
+        LOG(DEBUG) << "Translating ICMPv4 error packet for "
+                   << boost::asio::ip::address_v4(htonl(inner_ip->saddr))
+                   << " on " << pi.flow_metadata.flow.regs[7];
+//    } else {
+//        size_t l4_size = dp_packet_l4_size(&pkt);
+//        if (l4_size < (sizeof(struct icmp6_hdr) + sizeof(struct ip6_hdr)))
+//            return;
+//
+//        struct ip6_hdr* outer =
+//            (struct ip6_hdr*)((char*)dp_packet_l3(&pkt));
+//        struct icmp6_hdr* icmp =
+//            (struct icmp6_hdr*)((char*)outer + sizeof(struct ip6_hdr));
+//        if (icmp->icmp6_type < 1 || icmp->icmp6_type > 4)
+//            return;
+//
+//        char* pkt_data = (char*)dp_packet_data(&pkt);
+//        b = ofpbuf_clone_data(pkt_data, dp_packet_size(&pkt));
+//
+//        size_t inner_offset =
+//            (char*)dp_packet_l4(&pkt)-pkt_data + sizeof(struct icmp6_hdr);
+//        struct ip6_hdr* inner =
+//            (struct ip6_hdr*)(ofpbuf_at_assert(b, inner_offset,
+//                                               sizeof(ip6_hdr)));
+//        struct icmp6_hdr* inner_icmp =
+//            (struct icmp6_hdr*)((char*)inner + sizeof(struct ip6_hdr));
+//
+//        memcpy(&inner->ip6_src, &outer->ip6_dst, sizeof(struct in6_addr));
+//
+//        // compute checksum
+//        inner_icmp->icmp6_cksum = 0;
+//        uint32_t chksum = 0;
+//        // pseudoheader
+//        packets::chksum_accum(chksum, (uint16_t*)&outer->ip6_src,
+//                              sizeof(struct in6_addr));
+//        packets::chksum_accum(chksum, (uint16_t*)&outer->ip6_dst,
+//                              sizeof(struct in6_addr));
+//        packets::chksum_accum(chksum, (uint16_t*)&outer->ip6_plen, 2);
+//        chksum += (uint16_t)htons(58);
+//        // payload
+//        packets::chksum_accum(chksum, (uint16_t*)inner_icmp, l4_size);
+//        inner_icmp->icmp6_cksum = packets::chksum_finalize(chksum);
+//
+//        LOG(DEBUG) << "Translating ICMPv6 error packet for port "
+//                   << pi.flow_metadata.flow.regs[7];
+    }
+
+    if (b)
+        send_packet_out(flowManager, conn, b, proto,
+                        pi.flow_metadata.flow.regs[7]);
+}
+
 /**
  * Dispatch packet-in messages to the appropriate handlers
  */
@@ -826,6 +918,12 @@ void PacketInHandler::Handle(SwitchConnection *conn,
         handleVIPPktIn(true, agent, flowManager, conn, pi, proto, pkt, flow);
     else if (pi.cookie == FlowManager::GetVIPCookie(false))
         handleVIPPktIn(false, agent, flowManager, conn, pi, proto, pkt, flow);
+    else if (pi.cookie == FlowManager::GetICMPErrorCookie(true))
+        handleICMPErrPktIn(true, agent, flowManager, conn,
+                           pi, proto, pkt, flow);
+    //else if (pi.cookie == FlowManager::GetICMPErrorCookie(false))
+    //    handleICMPErrPktIn(false, agent, flowManager, conn,
+    //                       pi, proto, pkt, flow);
 }
 
 } /* namespace ovsagent */

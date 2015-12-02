@@ -385,10 +385,19 @@ public:
      * Get the cookie used for flows that direct virtual IP
      * announcement packets to the controller
      *
-     * @param v4 true for ARP, false for neighbor discovyer
+     * @param v4 true for ARP, false for neighbor discovery
      * @return flow-cookie for VIP announcements
      */
     static ovs_be64 GetVIPCookie(bool v4 = true);
+
+    /**
+     * Get the cookie used for flows that direct ICMP error messages
+     * that require body translation to the controller
+     *
+     * @param v4 true for ICMPv4, false for ICMPv6
+     * @return flow-cookie for ICMP Errors
+     */
+    static ovs_be64 GetICMPErrorCookie(bool v4 = true);
 
     /**
      * Set fill in tunnel metadata in an action builder

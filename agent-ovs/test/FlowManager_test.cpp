@@ -1429,6 +1429,7 @@ public:
     Bldr& tcp() { rep(",tcp"); return *this; }
     Bldr& udp() { rep(",udp"); return *this; }
     Bldr& udp6() { rep(",udp6"); return *this; }
+    Bldr& icmp() { rep(",icmp"); return *this; }
     Bldr& icmp6() { rep(",icmp6"); return *this; }
     Bldr& icmp_type(uint8_t t) { rep(",icmp_type=", str(t)); return *this; }
     Bldr& icmp_code(uint8_t c) { rep(",icmp_code=", str(c)); return *this; }
@@ -1567,6 +1568,20 @@ void FlowManagerFixture::initExpStatic() {
          .actions().go(SRC).done());
     ADDF(Bldr().table(OUT).priority(1).isMdAct(0)
          .actions().out(OUTPORT).done());
+    ADDF(Bldr().table(OUT).priority(1).isMdAct(3)
+         .actions().out(OUTPORT).done());
+    ADDF(Bldr().table(OUT).priority(10)
+         .cookie(htonll(FlowManager::GetICMPErrorCookie(true)))
+         .icmp().isMdAct(3).icmp_type(3)
+         .actions().controller(65535).done());
+    ADDF(Bldr().table(OUT).priority(10)
+         .cookie(htonll(FlowManager::GetICMPErrorCookie(true)))
+         .icmp().isMdAct(3).icmp_type(11)
+         .actions().controller(65535).done());
+    ADDF(Bldr().table(OUT).priority(10)
+         .cookie(htonll(FlowManager::GetICMPErrorCookie(true)))
+         .icmp().isMdAct(3).icmp_type(12)
+         .actions().controller(65535).done());
 
     if (tunPort != OFPP_NONE)
         ADDF(Bldr().table(SEC).priority(50).in(tunPort)
@@ -2143,9 +2158,11 @@ void FlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
     }
 
     ADDF(Bldr().table(NAT).priority(166).ipv6().reg(RD, 1)
-         .isIpv6Src("fdf1::/16").actions().load(SEPG, 0x80000001).go(POL).done());
+         .isIpv6Src("fdf1::/16").actions()
+         .load(SEPG, 0x80000001).mdAct(0x3).go(POL).done());
     ADDF(Bldr().table(NAT).priority(158).ip().reg(RD, 1)
-         .isIpSrc("5.0.0.0/8").actions().load(SEPG, 0x80000001).go(POL).done());
+         .isIpSrc("5.0.0.0/8").actions()
+         .load(SEPG, 0x80000001).mdAct(0x3).go(POL).done());
 
     if (nextHop) {
         ADDF(Bldr().table(SRC).priority(201).ip().in(42)
