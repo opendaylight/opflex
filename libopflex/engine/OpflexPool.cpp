@@ -168,28 +168,26 @@ OpflexPool::registerPeerStatusListener(PeerStatusListener* listener) {
 
 void OpflexPool::updatePeerStatus(const std::string& hostname, int port,
                                   PeerStatusListener::PeerStatus status) {
-    PeerStatusListener::Health newHealth = PeerStatusListener::HEALTHY;
+    PeerStatusListener::Health newHealth = PeerStatusListener::DOWN;
     bool notifyHealth = false;
-    bool hasConnection = false;
+    bool hasReadyConnection = false;
+    bool hasDegradedConnection = false;
     {
         util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
         BOOST_FOREACH(conn_map_t::value_type& v, connections) {
-            hasConnection = true;
-            if (!v.second.conn->isReady()) {
-                switch (newHealth) {
-                case PeerStatusListener::HEALTHY:
-                    newHealth = PeerStatusListener::DEGRADED;
-                    break;
-                case PeerStatusListener::DEGRADED:
-                case PeerStatusListener::DOWN:
-                default:
-                    newHealth = PeerStatusListener::DOWN;
-                    break;
-                }
-            }
+            if (v.second.conn->isReady())
+                hasReadyConnection = true;
+            else
+                hasDegradedConnection = true;
+
         }
-        if (!hasConnection)
-            newHealth = PeerStatusListener::DOWN;
+
+        if (hasReadyConnection) {
+            newHealth = PeerStatusListener::HEALTHY;
+            if (hasDegradedConnection)
+                newHealth = PeerStatusListener::DEGRADED;
+        }
+
         if (newHealth != curHealth) {
             notifyHealth = true;
             curHealth = newHealth;
@@ -201,6 +199,11 @@ void OpflexPool::updatePeerStatus(const std::string& hostname, int port,
     }
 
     if (notifyHealth) {
+        LOG(DEBUG) << "Health updated to: "
+                   << ((newHealth == PeerStatusListener::HEALTHY)
+                       ? "HEALTHY"
+                       : ((newHealth == PeerStatusListener::DEGRADED)
+                          ? "DEGRADED" : "DOWN"));
         BOOST_FOREACH(PeerStatusListener* l, peerStatusListeners) {
             l->healthUpdated(newHealth);
         }

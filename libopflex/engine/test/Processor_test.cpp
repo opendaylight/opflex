@@ -64,6 +64,8 @@ BOOST_AUTO_TEST_SUITE(Processor_test)
 
 class TestPeerStatusListener : public PeerStatusListener {
 public:
+    TestPeerStatusListener() : latestHealth(PeerStatusListener::DOWN) {}
+
     void peerStatusUpdated(const std::string& peerHostname,
                            int peerPort,
                            PeerStatus peerStatus) {
@@ -73,7 +75,7 @@ public:
     void healthUpdated(Health health) {
         latestHealth = health;
     }
-    
+
     unordered_map<int, PeerStatus> statusMap;
     Health latestHealth;
 };
@@ -239,9 +241,15 @@ void BasePFixture::testBootstrap(bool ssl) {
     BOOST_CHECK_EQUAL(std::string("location_string"),
                       processor.getPool().getLocation().get());
 
-    anycastServer.stop();
     peer1.stop();
+    WAIT_FOR(peerStatus.latestHealth == PeerStatusListener::DEGRADED,
+             1000);
+
     peer2.stop();
+    WAIT_FOR(peerStatus.latestHealth == PeerStatusListener::DOWN,
+             1000);
+
+    anycastServer.stop();
 }
 
 BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
