@@ -437,6 +437,8 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
             switch (rc) {
                 case -ECONNABORTED:
                     /* your kernel hates you */
+                case -EHOSTUNREACH:
+                    /* or sometimes your userspace TCP/IP stack hates you */
                 case -EPROTONOSUPPORT:
                 case -EPFNOSUPPORT:
                 case -EAFNOSUPPORT:
