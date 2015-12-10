@@ -512,6 +512,24 @@ public:
             return staticRoutes;
         }
 
+        /**
+         * Get the interface MTU to set for this endpoint
+         *
+         * @return the interface MTU
+         */
+        const boost::optional<uint16_t> getInterfaceMtu() const {
+            return interfaceMtu;
+        }
+
+        /**
+         * Set the interface MTU to set for this endpoint
+         *
+         * @param interfaceMtu the interface MTU
+         */
+        void setInterfaceMtu(uint16_t interfaceMtu) {
+            this->interfaceMtu = interfaceMtu;
+        }
+
     private:
         boost::optional<std::string> ipAddress;
         boost::optional<uint8_t> prefixLen;
@@ -519,6 +537,7 @@ public:
         std::vector<std::string> routers;
         boost::optional<std::string> domain;
         std::vector<static_route_t> staticRoutes;
+        boost::optional<uint16_t> interfaceMtu;
     };
 
     /**
@@ -883,7 +902,7 @@ public:
     /**
      * Add a address mapping to the endpoint
      *
-     * @param ipAddressMapping the address mapping object
+     * @param attestation the address mapping object
      */
     void addAttestation(const Attestation& attestation);
 

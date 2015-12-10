@@ -45,6 +45,7 @@ public:
         c.addDnsServer("4.3.2.1");
         c.setDomain("example.com");
         c.addStaticRoute("169.254.169.254", 32, "4.3.2.1");
+        c.setInterfaceMtu(1234);
         ep0->setDHCPv4Config(c);
         epSrc.updateEndpoint(*ep0);
         WAIT_FOR(agent.getPolicyManager().getGroupForVnid(0xA0A), 500);
@@ -155,6 +156,9 @@ static const uint8_t opt_server_id[] =
 static const uint8_t opt_route[] =
     {ovsagent::dhcp::option::CLASSLESS_STATIC_ROUTE,
      9, 32, 169, 254, 169, 254, 4, 3, 2, 1};
+
+static const uint8_t opt_iface_mtu[] =
+    {ovsagent::dhcp::option::INTERFACE_MTU, 2, 0x4, 0xd2};
 
 static const uint8_t pkt_dhcpv6_solicit[] =
     {0x33, 0x33, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00,
@@ -513,6 +517,9 @@ static void verify_dhcpv4(ofpbuf* msg, uint8_t message_type) {
         case option::CLASSLESS_STATIC_ROUTE:
             BOOST_CHECK(0 == memcmp(opt_route, cur, sizeof(opt_route)));
             break;
+        case option::INTERFACE_MTU:
+            BOOST_CHECK(0 == memcmp(opt_iface_mtu, cur, sizeof(opt_iface_mtu)));
+            break;
         }
 
         cur += hdr->len + 2;
@@ -526,6 +533,7 @@ static void verify_dhcpv4(ofpbuf* msg, uint8_t message_type) {
     BOOST_CHECK(CONTAINS(foundOptions, option::LEASE_TIME));
     BOOST_CHECK(CONTAINS(foundOptions, option::SERVER_IDENTIFIER));
     BOOST_CHECK(CONTAINS(foundOptions, option::CLASSLESS_STATIC_ROUTE));
+    BOOST_CHECK(CONTAINS(foundOptions, option::INTERFACE_MTU));
 
 #undef CONTAINS
 }

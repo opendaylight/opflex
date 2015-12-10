@@ -145,6 +145,10 @@ const uint8_t DNS = 6;
  */
 const uint8_t DOMAIN_NAME = 15;
 /**
+ * Interface MTU option (code, len (2), 16-bit unsigned interger)
+ */
+const uint8_t INTERFACE_MTU = 26;
+/**
  * Requested IP option (code, len (4), 4 byte IP)
  */
 const uint8_t REQUESTED_IP = 50;

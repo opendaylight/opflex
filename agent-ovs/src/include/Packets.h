@@ -141,6 +141,7 @@ typedef Endpoint::DHCPv4Config::static_route_t static_route_t;
  * @param dnsServers the list of DNS servers to return to the client
  * @param domain The domain to return to the client
  * @param staticRoutes classless static routes to return to the client
+ * @param interfaceMtu value of interface MTU to return to the client
  */
 ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              uint32_t xid,
@@ -152,7 +153,8 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              const std::vector<std::string>& routers,
                              const std::vector<std::string>& dnsServers,
                              const boost::optional<std::string>& domain,
-                             const std::vector<static_route_t>& staticRoutes);
+                             const std::vector<static_route_t>& staticRoutes,
+                             const boost::optional<uint16_t>& interfaceMtu);
 
 /**
  * Compose a DHCPv6 Advertise or Reply message

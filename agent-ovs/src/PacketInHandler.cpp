@@ -525,7 +525,8 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
                                       v4c.get().getRouters(),
                                       v4c.get().getDnsServers(),
                                       v4c.get().getDomain(),
-                                      v4c.get().getStaticRoutes());
+                                      v4c.get().getStaticRoutes(),
+                                      v4c.get().getInterfaceMtu());
 
     if (b)
         send_packet_out(flowManager, conn, b, proto,

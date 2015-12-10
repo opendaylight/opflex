@@ -344,7 +344,8 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              const vector<string>& routers,
                              const vector<string>& dnsServers,
                              const optional<string>& domain,
-                             const vector<static_route_t>& staticRoutes) {
+                             const vector<static_route_t>& staticRoutes,
+                             const optional<uint16_t>& interfaceMtu) {
     using namespace dhcp;
     using namespace udp;
 
@@ -364,6 +365,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     struct dhcp_option_hdr* lease_time = NULL;
     struct dhcp_option_hdr* server_identifier = NULL;
     struct dhcp_option_hdr* static_routes = NULL;
+    struct dhcp_option_hdr* iface_mtu = NULL;
     struct dhcp_option_hdr_base* end = NULL;
 
     boost::system::error_code ec;
@@ -373,6 +375,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     size_t dns_len = 0;
     size_t domain_len = 0;
     size_t static_route_len = 0;
+    size_t iface_mtu_len = 0;
 
     vector<address_v4> routerIps;
     BOOST_FOREACH(const string& ipstr, routers) {
@@ -412,6 +415,9 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     }
     if (static_route_len > 0) static_route_len += 2;
 
+    if (interfaceMtu)
+        iface_mtu_len = 4;
+
     size_t payloadLen =
         sizeof(struct dhcp_hdr) +
         option::MESSAGE_TYPE_LEN + 2 +
@@ -422,6 +428,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         option::LEASE_TIME_LEN + 2 +
         option::IP_LEN + 2 + /* server identifier */
         static_route_len +
+        iface_mtu_len +
         1 /* end */;
     size_t len = sizeof(struct eth_header) +
         sizeof(struct iphdr) +
@@ -464,6 +471,10 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     if (static_route_len > 0) {
         static_routes = (struct dhcp_option_hdr*)buf;
         buf += static_route_len;
+    }
+    if (iface_mtu_len > 0) {
+        iface_mtu = (struct dhcp_option_hdr*)buf;
+        buf += iface_mtu_len;
     }
     end = (struct dhcp_option_hdr_base*)buf;
     buf += 1;
@@ -580,6 +591,12 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
             *((uint32_t*)cur) = nexthop;
             cur += 4;
         }
+    }
+
+    if (iface_mtu_len > 0) {
+        iface_mtu->code = option::INTERFACE_MTU;
+        iface_mtu->len = 2;
+        *((uint16_t*)((char*)iface_mtu + 2)) = htons(interfaceMtu.get());
     }
 
     end->code = option::END;

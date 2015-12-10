@@ -84,6 +84,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string DHCP_STATIC_ROUTE_DEST("dest");
     static const std::string DHCP_STATIC_ROUTE_DEST_PREFIX("dest-prefix");
     static const std::string DHCP_STATIC_ROUTE_NEXTHOP("next-hop");
+    static const std::string DHCP_INTERFACE_MTU("interface-mtu");
 
     static const std::string IP_ADDRESS_MAPPING("ip-address-mapping");
     static const std::string IPM_MAPPED_IP("mapped-ip");
@@ -231,6 +232,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
                                              nextHop.get());
                 }
             }
+
+            optional<uint16_t> interfaceMtu =
+                dhcp4.get().get_optional<uint16_t>(DHCP_INTERFACE_MTU);
+            if (interfaceMtu)
+                c.setInterfaceMtu(interfaceMtu.get());
 
             newep.setDHCPv4Config(c);
         }
