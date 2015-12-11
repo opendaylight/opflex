@@ -108,6 +108,11 @@ Renderer* StitchedModeRenderer::create(Agent& agent) {
     return new StitchedModeRenderer(agent);
 }
 
+#define DEF_FLOWID_CACHEDIR \
+    LOCALSTATEDIR"/lib/opflex-agent-ovs/ids"
+#define DEF_MCAST_GROUPFILE \
+    LOCALSTATEDIR"/lib/opflex-agent-ovs/mcast/opflex-groups.json"
+
 void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string OVS_BRIDGE_NAME("ovs-bridge-name");
 
@@ -168,24 +173,26 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
         LOG(WARNING) << "Multiple encapsulation types specified for "
                      << "stitched-mode renderer";
     } else if (count == 0) {
-        LOG(WARNING) 
+        LOG(WARNING)
             << "No encapsulation types specified; only local traffic will work";
     }
 
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
     virtualRouterMac =
         properties.get<std::string>(VIRTUAL_ROUTER_MAC, "00:22:bd:f8:19:ff");
-    routerAdv = properties.get<bool>(VIRTUAL_ROUTER_RA, true);
+    routerAdv = properties.get<bool>(VIRTUAL_ROUTER_RA, false);
     virtualDHCP = properties.get<bool>(VIRTUAL_DHCP, true);
     virtualDHCPMac =
         properties.get<std::string>(VIRTUAL_DHCP_MAC, "00:22:bd:f8:19:ff");
     endpointAdv = properties.get<bool>(ENDPOINT_ADV, true);
 
-    flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR, "");
+    flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR,
+                                              DEF_FLOWID_CACHEDIR);
     if (flowIdCache == "")
         LOG(WARNING) << "No flow ID cache directory specified";
 
-    mcastGroupFile = properties.get<std::string>(MCAST_GROUP_FILE, "");
+    mcastGroupFile = properties.get<std::string>(MCAST_GROUP_FILE,
+                                                 DEF_MCAST_GROUPFILE);
     if (mcastGroupFile == "")
         LOG(WARNING) << "No multicast group file specified";
 }
