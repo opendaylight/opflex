@@ -139,7 +139,8 @@ int main(int argc, char** argv) {
         agent.start();
 
         // Pause the main thread until interrupted
-        signal(SIGINT | SIGTERM, sighandler);
+        signal(SIGINT, sighandler);
+        signal(SIGTERM, sighandler);
         pause();
         agent.stop();
         return 0;

@@ -183,7 +183,8 @@ int main(int argc, char** argv) {
         watcher.start();
 
         // Pause the main thread until interrupted
-        signal(SIGINT | SIGTERM, sighandler);
+        signal(SIGINT, sighandler);
+        signal(SIGTERM, sighandler);
         pause();
         work.reset();
         watcher.stop();
