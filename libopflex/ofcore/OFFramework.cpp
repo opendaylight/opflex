@@ -89,7 +89,7 @@ void OFFramework::stop() {
     }
     if (pimpl->started) {
         LOG(DEBUG) << "Stopping OpFlex Framework";
-        
+
         pimpl->processor.stop();
         pimpl->db.stop();
     }
@@ -104,6 +104,14 @@ void OFFramework::dumpMODB(const std::string& file) {
 void OFFramework::dumpMODB(FILE* file) {
     MOSerializer& serializer = pimpl->processor.getSerializer();
     serializer.dumpMODB(file);
+}
+
+void OFFramework::prettyPrintMODB(std::ostream& output,
+                                  bool tree,
+                                  bool includeProps,
+                                  bool utf8) {
+    MOSerializer& serializer = pimpl->processor.getSerializer();
+    serializer.displayMODB(output, tree, includeProps, utf8);
 }
 
 void OFFramework::setOpflexIdentity(const std::string& name,
