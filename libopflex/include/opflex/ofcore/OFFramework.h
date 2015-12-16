@@ -723,10 +723,23 @@ public:
     /**
      * Dump the managed object database to the file specified as a
      * JSON blob.
-     * 
+     *
      * @param file the file to write to.
      */
     virtual void dumpMODB(FILE* file);
+
+    /**
+     * Pretty print the current MODB to the provided output stream.
+     *
+     * @param output the output stream to write to
+     * @param tree print in a tree format
+     * @param includeProps include the object properties
+     * @param utf8 output tree using UTF-8 box drawing
+     */
+    virtual void prettyPrintMODB(std::ostream& output,
+                                 bool tree = true,
+                                 bool includeProps = true,
+                                 bool utf8 = true);
 
     /**
      * Enable SSL for connections to opflex peers

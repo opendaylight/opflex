@@ -394,6 +394,7 @@ void MOSerializer::dumpMODB(const std::string& file) {
         return;
     }
     dumpMODB(pfile);
+    fclose(pfile);
     LOG(INFO) << "Wrote MODB to " << file;
 }
 
