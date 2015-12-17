@@ -79,6 +79,10 @@ const long DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC = 5000;
 // to the interface in REG7
 const uint64_t METADATA_OUT_MASK = 0xff;
 
+// "Policy applied" bit.  Bypass policy table because policy has
+// already been applied.
+const uint64_t METADATA_POLICY_APPLIED_MASK = 0x100;
+
 // Resubmit to the first "dest" table with the source registers set to
 // the corresponding values for the EPG in REG7
 const uint64_t METADATA_RESUBMIT_DST = 0x1;
@@ -326,7 +330,8 @@ static void
 SetSourceAction(FlowEntry *fe, uint32_t epgId,
                 uint32_t bdId,  uint32_t fgrpId,  uint32_t l3Id,
                 uint8_t nextTable = FlowManager::BRIDGE_TABLE_ID,
-                FlowManager::EncapType encapType = FlowManager::ENCAP_NONE)
+                FlowManager::EncapType encapType = FlowManager::ENCAP_NONE,
+                bool setPolicyApplied = false)
 {
     ActionBuilder ab;
     if (encapType == FlowManager::ENCAP_VLAN)
@@ -335,6 +340,10 @@ SetSourceAction(FlowEntry *fe, uint32_t epgId,
     ab.SetRegLoad(MFF_REG4, bdId);
     ab.SetRegLoad(MFF_REG5, fgrpId);
     ab.SetRegLoad(MFF_REG6, l3Id);
+    if (setPolicyApplied) {
+        ab.SetWriteMetadata(METADATA_POLICY_APPLIED_MASK,
+                            METADATA_POLICY_APPLIED_MASK);
+    }
     ab.SetGotoTable(nextTable);
 
     ab.Build(fe->entry);
@@ -1856,6 +1865,19 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         WriteFlow("static", ROUTE_TABLE_ID, unknownTunnelRt);
     }
     {
+        FlowEntryList policyFlows;
+        FlowEntry *policyApplied = new FlowEntry();
+        policyApplied->entry->table_id = POL_TABLE_ID;
+        policyApplied->entry->priority = 0xffff;
+        match_set_metadata_masked(&policyApplied->entry->match,
+                                  htonll(METADATA_POLICY_APPLIED_MASK),
+                                  htonll(METADATA_POLICY_APPLIED_MASK));
+        SetPolicyActionAllow(policyApplied);
+        policyFlows.push_back(FlowEntryPtr(policyApplied));
+
+        WriteFlow("static", POL_TABLE_ID, policyFlows);
+    }
+    {
         FlowEntryList outFlows;
         {
             FlowEntry* outputReg = new FlowEntry();
@@ -1963,7 +1985,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         FlowEntry *e0 = new FlowEntry();
         SetSourceMatchEpg(e0, encapType, 149, tunPort, epgVnid);
         SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId,
-                        nextTable, encapType);
+                        nextTable, encapType, true);
         uplinkMatch.push_back(FlowEntryPtr(e0));
 
         if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
@@ -1973,7 +1995,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
                                     packets::MAC_ADDR_BROADCAST,
                                     packets::MAC_ADDR_MULTICAST);
             SetSourceAction(e1, epgVnid, bdId, fgrpId, rdId,
-                            FlowManager::BRIDGE_TABLE_ID, encapType);
+                            FlowManager::BRIDGE_TABLE_ID, encapType, true);
             uplinkMatch.push_back(FlowEntryPtr(e1));
         }
     }

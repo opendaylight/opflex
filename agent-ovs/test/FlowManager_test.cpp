@@ -1454,6 +1454,7 @@ public:
     Bldr& isTcpFlags(const string& s)  { rep(",tcp_flags=", s); return *this; }
     Bldr& connState(const string& s) { rep(",conn_state=" + s); return *this; }
     Bldr& isMdAct(uint8_t a) { rep(",metadata=", str(a, true), "/0xff"); return *this; }
+    Bldr& isPolicyApplied() { rep(",metadata=0x100/0x100"); return *this; }
     Bldr& isPktMark(uint32_t m) { rep(",pkt_mark=", str(m, true)); return *this; }
     Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
     Bldr& drop() { rep("drop"); return *this; }
@@ -1490,6 +1491,7 @@ public:
     Bldr& inport() { rep("IN_PORT"); return *this; }
     Bldr& controller(uint16_t len) { rep("CONTROLLER:", str(len)); return *this; }
     Bldr& mdAct(uint8_t a) { rep("write_metadata:", str(a, true), "/0xff"); return *this; }
+    Bldr& polApplied() { rep("write_metadata:0x100/0x100"); return *this; }
     Bldr& resubmit(uint8_t t) { rep("resubmit(,", str(t), ")"); return *this; }
 
 private:
@@ -1566,6 +1568,8 @@ void FlowManagerFixture::initExpStatic() {
          .actions().go(SRC).done());
     ADDF(Bldr().table(SEC).priority(27).icmp6().icmp_type(133).icmp_code(0)
          .actions().go(SRC).done());
+    ADDF(Bldr().table(POL).priority(0xffff).isPolicyApplied()
+         .actions().go(OUT).done());
     ADDF(Bldr().table(OUT).priority(1).isMdAct(0)
          .actions().out(OUTPORT).done());
     ADDF(Bldr().table(OUT).priority(1).isMdAct(3)
@@ -1623,14 +1627,15 @@ void FlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
                  .in(tunPort).isVlan(vnid)
                  .actions().popVlan()
                  .load(SEPG, vnid).load(BD, bdId)
-                 .load(FD, fdId).load(RD, rdId).go(BR).done());
+                 .load(FD, fdId).load(RD, rdId)
+                 .polApplied().go(BR).done());
             break;
         case FlowManager::ENCAP_VXLAN:
         case FlowManager::ENCAP_IVXLAN:
         default:
             ADDF(Bldr().table(SRC).priority(149).tunId(vnid)
                  .in(tunPort).actions().load(SEPG, vnid).load(BD, bdId)
-                 .load(FD, fdId).load(RD, rdId).go(BR).done());
+                 .load(FD, fdId).load(RD, rdId).polApplied().go(BR).done());
             break;
         }
     }
@@ -2431,6 +2436,7 @@ FlowManagerFixture::createOnConnectEntries(FlowManager::EncapType encapType,
     ab.SetRegLoad(MFF_REG4, uint32_t(0));
     ab.SetRegLoad(MFF_REG5, uint32_t(0));
     ab.SetRegLoad(MFF_REG6, uint32_t(1));
+    ab.SetWriteMetadata(0x100, 0x100);
     ab.SetGotoTable(BR);
     ab.Build(e1->entry);
 
