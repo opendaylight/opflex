@@ -3034,6 +3034,7 @@ bool FlowManager::removeFromMulticastList(const URI& uri) {
             return !isSyncing;
         }
     }
+    return false;
 }
 
 static const std::string MCAST_QUEUE_ITEM("mcast-groups");

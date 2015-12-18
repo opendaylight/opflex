@@ -125,6 +125,7 @@ getent group opflexep >/dev/null || groupadd -r opflexep
 %files
 %defattr(-,root,root)
 %{_bindir}/agent_ovs
+%{_bindir}/mcast_daemon
 %{_bindir}/gbp_inspect
 %config(noreplace) %{_sysconfdir}/opflex-agent-ovs/opflex-agent-ovs.conf
 %dir %{_sysconfdir}/opflex-agent-ovs/conf.d
