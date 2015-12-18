@@ -394,7 +394,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         dnsIps.push_back(ip);
         if (dnsIps.size() >= MAX_IP) break;
     }
-    if (dnsIps.size() >= 0)
+    if (dnsIps.size() > 0)
         dns_len = 2 + 4*dnsIps.size();
 
     if (domain && domain.get().size() <= 255)
@@ -666,7 +666,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         dnsIps.push_back(ip);
         if (dnsIps.size() >= MAX_IP) break;
     }
-    if (dnsIps.size() >= 0)
+    if (dnsIps.size() > 0)
         dns_len = opt_hdr_len + sizeof(struct in6_addr) * dnsIps.size();
 
     stringbuf domain_opt_buf;
