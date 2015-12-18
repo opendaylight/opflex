@@ -13,6 +13,9 @@
 #include <boost/foreach.hpp>
 #include <opflex/modb/URIBuilder.h>
 
+#include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
+#include <modelgbp/gbp/RoutingModeEnumT.hpp>
+
 #include "logging.h"
 #include "PolicyManager.h"
 #include "Packets.h"
@@ -815,6 +818,28 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
         }
         rd_map.erase(rdURI);
     }
+}
+
+uint8_t PolicyManager::getEffectiveRoutingMode(const URI& egURI) {
+    using namespace modelgbp::gbp;
+
+    optional<shared_ptr<FloodDomain> > fd = getFDForGroup(egURI);
+    optional<shared_ptr<BridgeDomain> > bd = getBDForGroup(egURI);
+
+    uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
+    if (fd)
+        floodMode = fd.get()
+            ->getUnknownFloodMode(floodMode);
+
+    uint8_t routingMode = RoutingModeEnumT::CONST_ENABLED;
+    if (bd)
+        routingMode = bd.get()->getRoutingMode(routingMode);
+
+    // In learning mode, we can't handle routing at present
+    if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD)
+        routingMode = RoutingModeEnumT::CONST_DISABLED;
+
+    return routingMode;
 }
 
 PolicyManager::DomainListener::DomainListener(PolicyManager& pmanager_)

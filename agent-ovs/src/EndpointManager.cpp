@@ -613,7 +613,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
         L3Universe::resolve(framework);
     if (l3u && bd && rd && mac) {
         uint8_t routingMode =
-            bd.get()->getRoutingMode(RoutingModeEnumT::CONST_ENABLED);
+            policyManager.getEffectiveRoutingMode(egURI.get());
 
         if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
             // If the routing domain is known, we can register the l3
