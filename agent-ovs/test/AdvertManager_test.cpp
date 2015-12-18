@@ -15,6 +15,8 @@
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
 
+#include <modelgbp/gbp/RoutingModeEnumT.hpp>
+
 #include "AdvertManager.h"
 #include "ModbFixture.h"
 #include "MockSwitchConnection.h"
@@ -52,9 +54,13 @@ public:
         portMapper.ports[ep0->getInterfaceName().get()] = 80;
         portMapper.RPortMap[80] = ep0->getInterfaceName().get();
 
+        ep1->addIP("10.20.54.11");
+        epSrc.updateEndpoint(*ep1);
+
         Mutator mutator(framework, policyOwner);
         epg0->addGbpEpGroupToNetworkRSrc()
             ->setTargetFloodDomain(fd0->getURI());
+        bd1->setRoutingMode(modelgbp::gbp::RoutingModeEnumT::CONST_DISABLED);
         mutator.commit();
 
         WAIT_FOR(agent.getPolicyManager().getRDForGroup(epg0->getURI()), 1000);
@@ -187,19 +193,20 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
 }
 
 BOOST_FIXTURE_TEST_CASE(endpointAdvert, EpAdvertFixture) {
-    WAIT_FOR(conn.sentMsgs.size() == 7, 1000);
-    BOOST_CHECK_EQUAL(7, conn.sentMsgs.size());
+    WAIT_FOR(conn.sentMsgs.size() == 5, 1000);
+    BOOST_CHECK_EQUAL(5, conn.sentMsgs.size());
     unordered_set<string> found;
     BOOST_FOREACH(ofpbuf* msg, conn.sentMsgs) {
         verify_epadv(msg, found);
     }
-    BOOST_CHECK(CONTAINS(found, "10.20.45.31"));
-    BOOST_CHECK(CONTAINS(found, "10.20.45.32"));
+    BOOST_CHECK(!CONTAINS(found, "10.20.45.31")); // unknown flood
+    BOOST_CHECK(!CONTAINS(found, "10.20.45.32")); // unknown flood
     BOOST_CHECK(CONTAINS(found, "10.20.44.21"));
     BOOST_CHECK(CONTAINS(found, "10.20.44.3"));
     BOOST_CHECK(CONTAINS(found, "10.20.44.2"));
     BOOST_CHECK(CONTAINS(found, "2001:db8::2"));
     BOOST_CHECK(CONTAINS(found, "2001:db8::3"));
+    BOOST_CHECK(!CONTAINS(found, "10.20.54.11")); // routing disabled
 }
 
 BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {

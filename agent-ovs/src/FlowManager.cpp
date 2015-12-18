@@ -1015,27 +1015,6 @@ FlowManager::GetGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
     return true;
 }
 
-static uint8_t getEffectiveRoutingMode(PolicyManager& polMgr,
-                                       const URI& egURI) {
-    optional<shared_ptr<FloodDomain> > fd = polMgr.getFDForGroup(egURI);
-    optional<shared_ptr<BridgeDomain> > bd = polMgr.getBDForGroup(egURI);
-
-    uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
-    if (fd)
-        floodMode = fd.get()
-            ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
-
-    uint8_t routingMode = RoutingModeEnumT::CONST_ENABLED;
-    if (bd)
-        routingMode = bd.get()->getRoutingMode(RoutingModeEnumT::CONST_ENABLED);
-
-    // In learning mode, we can't handle routing at present
-    if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD)
-        routingMode = RoutingModeEnumT::CONST_DISABLED;
-
-    return routingMode;
-}
-
 static void proxyDiscovery(FlowManager& flowMgr, FlowEntryList& elBridgeDst,
                            const address& ipAddr,
                            const uint8_t* macAddr,
@@ -1436,7 +1415,7 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
     if (rdId != 0 && bdId != 0 && ofPort != OFPP_NONE) {
         uint8_t routingMode =
-            getEffectiveRoutingMode(agent.getPolicyManager(), epgURI.get());
+            agent.getPolicyManager().getEffectiveRoutingMode(epgURI.get());
 
         if (virtualRouterEnabled && hasMac &&
             routingMode == RoutingModeEnumT::CONST_ENABLED) {
@@ -2022,7 +2001,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
 
         FlowEntryList bridgel;
         uint8_t routingMode =
-            getEffectiveRoutingMode(agent.getPolicyManager(), epgURI);
+            agent.getPolicyManager().getEffectiveRoutingMode(epgURI);
 
         if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
             FlowEntry *br = new FlowEntry();

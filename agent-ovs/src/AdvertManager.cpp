@@ -13,6 +13,8 @@
 #include <boost/bind.hpp>
 #include <boost/system/error_code.hpp>
 
+#include <modelgbp/gbp/RoutingModeEnumT.hpp>
+
 #include "AdvertManager.h"
 #include "Packets.h"
 #include "ActionBuilder.h"
@@ -292,6 +294,10 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
     if (!epgURI) return;
     optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI.get());
     if (!epgVnid) return;
+    if (polMgr.getEffectiveRoutingMode(epgURI.get()) !=
+            modelgbp::gbp::RoutingModeEnumT::CONST_ENABLED) {
+        return;
+    }
 
     uint8_t epMac[6];
     ep->getMAC().get().toUIntArray(epMac);
@@ -337,6 +343,10 @@ void AdvertManager::sendAllEndpointAdvs() {
     PolicyManager::uri_set_t epgURIs;
     polMgr.getGroups(epgURIs);
     BOOST_FOREACH(const URI& epg, epgURIs) {
+        if (polMgr.getEffectiveRoutingMode(epg) !=
+                modelgbp::gbp::RoutingModeEnumT::CONST_ENABLED) {
+            continue;
+        }
         unordered_set<string> eps;
         epMgr.getEndpointsForGroup(epg, eps);
         BOOST_FOREACH(const string& uuid, eps) {

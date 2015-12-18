@@ -336,6 +336,15 @@ public:
      */
     bool contractExists(const opflex::modb::URI& contractURI);
 
+
+    /**
+     * Get the routing-mode applicable to endpoints in specified group.
+     *
+     * @param egURI endpoint group to get routing mode for
+     * @return a value from RoutingModeEnumT
+     */
+    uint8_t getEffectiveRoutingMode(const opflex::modb::URI& egURI);
+
 private:
     opflex::ofcore::OFFramework& framework;
     std::string opflexDomain;
