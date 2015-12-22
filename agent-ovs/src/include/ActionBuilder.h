@@ -152,12 +152,6 @@ public:
      * Pop a VLAN tag from the packet
      */
     void SetPopVlan();
-    /**
-     * Use the connection tracking tables with the given zone and flags
-     * @param zone the connection tracking zone to use
-     * @param flags the flags to set (starting with "NX_CT_")
-     */
-    void SetConntrack(uint16_t zone, uint16_t flags);
 
     /**
      * Extract and return an array of flow actions from a buffer used

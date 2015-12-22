@@ -684,19 +684,6 @@ SetPolicyActionAllow(FlowEntry *fe) {
     ab.Build(fe->entry);
 }
 
-#if 0
-static void
-SetPolicyActionConntrack(FlowEntry *fe, uint16_t zone, uint16_t flags,
-                         bool output) {
-    ActionBuilder ab;
-    ab.SetConntrack(zone, flags);
-    if (output) {
-        ab.SetGotoTable(FlowManager::OUT_TABLE_ID);
-    }
-    ab.Build(fe->entry);
-}
-#endif
-
 static void
 SetPolicyMatchGroup(FlowEntry *fe, uint16_t prio,
                     uint32_t svnid, uint32_t dvnid) {
@@ -1992,6 +1979,11 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         SetPolicyMatchGroup(e0, 100, epgVnid, epgVnid);
         SetPolicyActionAllow(e0);
         WriteFlow(epgId, POL_TABLE_ID, e0);
+    } else if (intraGroup == IntraGroupPolicyEnumT::CONST_DENY) {
+        FlowEntry *deny = new FlowEntry();
+        SetPolicyMatchGroup(deny, MAX_POLICY_RULE_PRIORITY + 100,
+                            epgVnid, epgVnid);
+        WriteFlow(epgId, POL_TABLE_ID, deny);
     } else {
         WriteFlow(epgId, POL_TABLE_ID, NULL);
     }
@@ -2605,6 +2597,7 @@ void FlowManager::HandleContractUpdate(const opflex::modb::URI& contractURI) {
         BOOST_FOREACH(const IdMap::value_type& cid, consIds) {
             const uint32_t& cvnid = cid.first;
             const uint32_t& crdid = cid.second;
+
             uint16_t prio = MAX_POLICY_RULE_PRIORITY;
             BOOST_FOREACH(shared_ptr<PolicyRule>& pc, rules) {
                 uint8_t dir = pc->getDirection();
@@ -2715,12 +2708,6 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
     using namespace modelgbp::l4;
 
     ovs_be64 ckbe = htonll(cookie);
-#if 0
-    bool reflexive =
-        clsfr->isConnectionTrackingSet() &&
-        clsfr->getConnectionTracking().get() == ConnTrackEnumT::CONST_REFLEXIVE;
-    uint16_t ctZone = (uint16_t)(srdid & 0xffff);
-#endif
     MaskList srcPorts;
     MaskList dstPorts;
     RangeMask::getMasks(clsfr->getSFromPort(), clsfr->getSToPort(), srcPorts);
@@ -2758,40 +2745,12 @@ void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
                 match_set_tp_dst_masked(m, htons(dm.first), htons(dm.second));
 
                 if (allow) {
-#if 0
-                    if (reflexive) {
-                        SetPolicyActionConntrack(e0, ctZone,
-                                                 NX_CT_F_COMMIT, true);
-                    } else {
-#endif
-                        SetPolicyActionAllow(e0);
-#if 0
-                    }
-#endif
+                    SetPolicyActionAllow(e0);
                 }
                 entries.push_back(FlowEntryPtr(e0));
             }
         }
     }
-#if 0
-    if (reflexive && allow) {    /* add the flows for reverse direction */
-        FlowEntry *e1 = new FlowEntry();
-        e1->entry->cookie = ckbe;
-        SetPolicyMatchGroup(e1, priority, dvnid, svnid);
-        SetEntryProtocol(e1, clsfr);
-        match_set_conn_state_masked(&e1->entry->match, 0x0, 0x80);
-        SetPolicyActionConntrack(e1, ctZone, NX_CT_F_RECIRC, false);
-        entries.push_back(FlowEntryPtr(e1));
-
-        FlowEntry *e2 = new FlowEntry();
-        e2->entry->cookie = ckbe;
-        SetPolicyMatchGroup(e2, priority, dvnid, svnid);
-        SetEntryProtocol(e2, clsfr);
-        match_set_conn_state_masked(&e2->entry->match, 0x82, 0x83);
-        SetPolicyActionAllow(e2);
-        entries.push_back(FlowEntryPtr(e2));
-    }
-#endif
 }
 
 void FlowManager::UpdateGroupTable() {
