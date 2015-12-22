@@ -229,15 +229,6 @@ ActionBuilder::SetPopVlan() {
     ofpact_put_STRIP_VLAN(&buf)->ofpact.raw = 8;
 }
 
-void
-ActionBuilder::SetConntrack(uint16_t zone, uint16_t flags) {
-#if 0
-    ofpact_conntrack *ct = ofpact_put_CT(&buf);
-    ct->flags = flags;
-    ct->zone = zone;
-#endif
-}
-
 } // namespace ovsagent
 
 
