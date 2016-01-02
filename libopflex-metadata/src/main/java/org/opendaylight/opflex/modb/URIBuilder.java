@@ -7,12 +7,11 @@
  */
 package org.opendaylight.opflex.modb;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public class URIBuilder {
 
     private final StringBuilder uri;
-    private static final Charset UTF8_CHARSET = Charset.forName("UTF-8");
 
     public URIBuilder() {
         this.uri = new StringBuilder("/");
@@ -52,7 +51,7 @@ public class URIBuilder {
 
     private String escape(String input) {
         StringBuilder result = new StringBuilder();
-        for (byte b1 : input.getBytes(UTF8_CHARSET)) {
+        for (byte b1 : input.getBytes(StandardCharsets.UTF_8)) {
             if (Character.isLetterOrDigit(b1) || b1 == '-' || b1 == '_' || b1 == '.' || b1 == '~') {
                 result.append((char)b1);
             } else {
