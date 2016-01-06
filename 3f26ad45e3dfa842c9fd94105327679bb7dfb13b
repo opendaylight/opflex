@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1aa4ed85_d2a3889c",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2551,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2016-01-06T23:57:11Z",
+      "side": 1,
+      "message": "Do we really want to deliver the broadcast packet to all OVS ports in the group? A VM in promiscuous mode will be able to see packets that are not intended for it, right?",
+      "revId": "3f26ad45e3dfa842c9fd94105327679bb7dfb13b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1aa4ed85_329d3c5a",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2552,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2016-01-06T23:57:11Z",
+      "side": 1,
+      "message": "Just so that I understand this correctly, outgoing broadcast packets from a VM in an isolated EPG will hit the fall-through rules in BRIDGE/ROUTE table and will be sent to the leaf. With vxlan encap, the UDP packet won\u0027t be using a multicast IP. Is that what the leaf expects?",
+      "revId": "3f26ad45e3dfa842c9fd94105327679bb7dfb13b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
