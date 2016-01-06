@@ -28,6 +28,7 @@
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/IntraGroupPolicyEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
+#include <modelgbp/gbp/BcastFloodModeEnumT.hpp>
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
@@ -1304,7 +1305,8 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
     uint8_t arpMode = AddressResModeEnumT::CONST_UNICAST;
     uint8_t ndMode = AddressResModeEnumT::CONST_UNICAST;
-    uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
+    uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
+    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
     if (fd) {
         // Irrespective of flooding scope (epg vs. flood-domain), the
         // properties of the flood-domain object decide how flooding
@@ -1314,8 +1316,10 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             ->getArpMode(AddressResModeEnumT::CONST_UNICAST);
         ndMode = fd.get()
             ->getNeighborDiscMode(AddressResModeEnumT::CONST_UNICAST);
-        floodMode = fd.get()
+        unkFloodMode = fd.get()
             ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+        bcastFloodMode = fd.get()
+            ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
     }
 
     FlowEntryList elSrc;
@@ -1333,7 +1337,8 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             SetSourceAction(e0, epgVnid, bdId, fgrpId, rdId);
             elSrc.push_back(FlowEntryPtr(e0));
 
-            if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+            if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL &&
+                unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
                 // Prepopulate a stage1 learning entry for known EPs
                 FlowEntry* learnEntry = new FlowEntry();
                 SetMatchFd(learnEntry, 101, fgrpId, false, LEARN_TABLE_ID,
@@ -1935,15 +1940,19 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         // table as normal.  Multicast traffic still goes to the
         // destination table, however.
 
-        uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
+        uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
+        uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
         optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
         if (epgFd) {
-            floodMode = epgFd.get()
+            unkFloodMode = epgFd.get()
                 ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+            bcastFloodMode = epgFd.get()
+                ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
         }
 
         uint8_t nextTable = FlowManager::BRIDGE_TABLE_ID;
-        if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD)
+        if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD &&
+            bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL)
             nextTable = FlowManager::LEARN_TABLE_ID;
 
         // Assign the source registers based on the VNID from the
@@ -1954,7 +1963,8 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
                         nextTable, encapType, true);
         uplinkMatch.push_back(FlowEntryPtr(e0));
 
-        if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+        if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD &&
+            bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL) {
             FlowEntry *e1 = new FlowEntry();
             SetSourceMatchEpg(e1, encapType, 150, tunPort, epgVnid);
             match_set_dl_dst_masked(&e1->entry->match,
@@ -2464,10 +2474,13 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
     string fgrpStrId = fgrpURI.toString();
     FloodGroupMap::iterator fgrpItr = floodGroupMap.find(fgrpURI);
 
-    uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
+    uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
+    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
     if (fd) {
-        floodMode =
+        unkFloodMode =
             fd.get()->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+        bcastFloodMode =
+            fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
     }
 
     if (fgrpItr != floodGroupMap.end()) {
@@ -2502,27 +2515,41 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
     FlowEntryList grpDst;
     FlowEntryList learnDst;
 
-    // deliver broadcast/multicast traffic to the group table
-    FlowEntry *e0 = new FlowEntry();
-    SetMatchFd(e0, 10, fgrpId, true, BRIDGE_TABLE_ID);
-    SetActionFdBroadcast(e0, fgrpId);
-    grpDst.push_back(FlowEntryPtr(e0));
+    if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL) {
+        // deliver broadcast/multicast traffic to the group table
+        FlowEntry *mcast = new FlowEntry();
+        SetMatchFd(mcast, 10, fgrpId, true, BRIDGE_TABLE_ID);
+        SetActionFdBroadcast(mcast, fgrpId);
+        grpDst.push_back(FlowEntryPtr(mcast));
 
-    if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
-        // go to the learning table on an unknown unicast
-        // destination in flood mode
-        FlowEntry *unicastLearn = new FlowEntry();
-        SetMatchFd(unicastLearn, 5, fgrpId, false, BRIDGE_TABLE_ID);
-        SetActionGotoLearn(unicastLearn);
-        grpDst.push_back(FlowEntryPtr(unicastLearn));
+        if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+            // go to the learning table on an unknown unicast
+            // destination in flood mode
+            FlowEntry *unicastLearn = new FlowEntry();
+            SetMatchFd(unicastLearn, 5, fgrpId, false, BRIDGE_TABLE_ID);
+            SetActionGotoLearn(unicastLearn);
+            grpDst.push_back(FlowEntryPtr(unicastLearn));
 
-        // Deliver unknown packets in the flood domain when
-        // learning to the controller for reactive flow setup.
-        FlowEntry *fdContr = new FlowEntry();
-        SetMatchFd(fdContr, 5, fgrpId, false, LEARN_TABLE_ID,
-                   NULL, GetProactiveLearnEntryCookie());
-        SetActionController(fdContr);
-        learnDst.push_back(FlowEntryPtr(fdContr));
+            // Deliver unknown packets in the flood domain when
+            // learning to the controller for reactive flow setup.
+            FlowEntry *fdContr = new FlowEntry();
+            SetMatchFd(fdContr, 5, fgrpId, false, LEARN_TABLE_ID,
+                       NULL, GetProactiveLearnEntryCookie());
+            SetActionController(fdContr);
+            learnDst.push_back(FlowEntryPtr(fdContr));
+        }
+    } else if (bcastFloodMode == BcastFloodModeEnumT::CONST_ISOLATED) {
+        // deliver broadcast/multicast traffic to the group table only
+        // if policy has already been applied (i.e. it comes from the
+        // tunnel uplink)
+        uint32_t tunPort = GetTunnelPort();
+        FlowEntry *mcast = new FlowEntry();
+        SetMatchFd(mcast, 10, fgrpId, true, BRIDGE_TABLE_ID);
+        match_set_metadata_masked(&mcast->entry->match,
+                                  htonll(METADATA_POLICY_APPLIED_MASK),
+                                  htonll(METADATA_POLICY_APPLIED_MASK));
+        SetActionFdBroadcast(mcast, fgrpId);
+        grpDst.push_back(FlowEntryPtr(mcast));
     }
     WriteFlow(fgrpStrId, BRIDGE_TABLE_ID, grpDst);
     WriteFlow(fgrpStrId, LEARN_TABLE_ID, learnDst);

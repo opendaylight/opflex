@@ -67,6 +67,15 @@ module[gbp]
         const[name=flood; value=1]
     }
 
+    type[BcastFloodMode; super=scalar/Enum8]
+    {
+        # Deliver broadcast packets normally
+        const[name=normal; value=0]
+
+        # Treat flood domain as isolated
+        const[name=isolated; value=1]
+    }
+
     class[FloodDomain;
           super=gbp/L2BehavioralGroup;
           concrete]
@@ -94,5 +103,6 @@ module[gbp]
         member[arpMode; type=gbp/AddressResMode]
         member[neighborDiscMode; type=gbp/AddressResMode]
         member[unknownFloodMode; type=gbp/UnknownFloodMode]
+        member[bcastFloodMode; type=gbp/BcastFloodMode]
     }
 }

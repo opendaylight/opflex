@@ -18,6 +18,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
+#include <modelgbp/gbp/BcastFloodModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 
 #include "logging.h"
@@ -172,7 +173,7 @@ static void addExpFlowEntry(FlowEntryList* tables, const string& flowMod) {
     ds_init(&strBuf);
     ofp_print_flow_stats(&strBuf, e->entry);
     string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
-    BOOST_CHECK(str == flowMod);
+    BOOST_CHECK_EQUAL(str, flowMod);
     ds_destroy(&strBuf);
 }
 
@@ -325,7 +326,7 @@ public:
                     uint32_t fdId = 0, uint32_t bdId = 1, uint32_t rdId = 1);
 
     /** Initialize flood domain-scoped flow entries */
-    void initExpFd(uint32_t fdId = 0);
+    void initExpFd(uint32_t fdId = 0, bool isolated = false);
 
     /** Initialize bridge domain-scoped flow entries */
     void initExpBd(uint32_t bdId = 1, uint32_t fdId = 0, uint32_t rdId = 1,
@@ -727,10 +728,12 @@ void FlowManagerFixture::fdTest() {
     WAIT_FOR_TABLES("create", 500);
 
     /* Set FD & update EP0 */
-    Mutator m1(framework, policyOwner);
-    epg0->addGbpEpGroupToNetworkRSrc()
+    {
+        Mutator m1(framework, policyOwner);
+        epg0->addGbpEpGroupToNetworkRSrc()
             ->setTargetFloodDomain(fd0->getURI());
-    m1.commit();
+        m1.commit();
+    }
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
 
     exec.Clear();
@@ -773,6 +776,22 @@ void FlowManagerFixture::fdTest() {
     initExpEp(ep0, epg0, 1, 1, 1);
     initExpEp(ep2, epg0, 1, 1, 1);
     WAIT_FOR_TABLES("removeport", 500);
+
+    /* Change flood domain to isolated */
+    {
+        Mutator m1(framework, policyOwner);
+        fd0->setBcastFloodMode(BcastFloodModeEnumT::CONST_ISOLATED);
+        m1.commit();
+    }
+    flowManager.endpointUpdated(ep0->getUUID());
+    flowManager.domainUpdated(FloodDomain::CLASS_ID, fd0->getURI());
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+
+    clearExpFlowTables();
+    initExpFd(1, true);
+    initExpEp(ep0, epg0, 1, 1, 1);
+    initExpEp(ep2, epg0, 1, 1, 1);
+    WAIT_FOR_TABLES("isolated", 500);
 
     /* remove ep0 */
     epSrc.removeEndpoint(ep0->getUUID());
@@ -1479,9 +1498,6 @@ public:
     Bldr& go(uint8_t t) { rep("goto_table:", str(t)); return *this; }
     Bldr& out(REG r) { rep("output:" + rstr[r]); return *this; }
     Bldr& decTtl() { rep("dec_ttl"); return *this; }
-    Bldr& conntrack(const string& f, uint16_t z) {
-        rep("ct(", f + ",zone=" + str(z), ")"); return *this;
-    }
     Bldr& group(uint32_t g) { rep("group:", str(g)); return *this; }
     Bldr& bktId(uint32_t b) { rep("bucket_id:", str(b)); return *this; }
     Bldr& bktActions() { rep(",actions="); cntr = 1; return *this; }
@@ -1648,12 +1664,18 @@ void FlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
 }
 
 // Initialize flood domain-scoped flow entries
-void FlowManagerFixture::initExpFd(uint32_t fdId) {
+void FlowManagerFixture::initExpFd(uint32_t fdId, bool isolated) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
-    if (fdId != 0)
-        ADDF(Bldr().table(BR).priority(10).reg(FD, fdId)
-             .isEthDst(mmac).actions().group(fdId).done());
+    if (fdId != 0) {
+        if (isolated) {
+            ADDF(Bldr().table(BR).priority(10).reg(FD, fdId).isPolicyApplied()
+                 .isEthDst(mmac).actions().group(fdId).done());
+        } else {
+            ADDF(Bldr().table(BR).priority(10).reg(FD, fdId)
+                 .isEthDst(mmac).actions().group(fdId).done());
+        }
+    }
 }
 
 // Initialize bridge domain-scoped flow entries
@@ -1988,29 +2010,13 @@ void FlowManagerFixture::initExpCon1() {
         uint32_t pvnid = pid.first;
         BOOST_FOREACH(const IdKeyValue& cid, cvnids) {
             uint32_t cvnid = cid.first;
-#if 0
-            uint16_t ctzone = 1;
-#endif
             /* classifer 1  */
             ADDF(Bldr().table(POL).priority(prio)
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
                  .actions()
-#if 0
-                 .conntrack("commit", ctzone)
-#endif
                  .go(OUT)
                  .done());
-#if 0
-            ADDF(Bldr().table(POL).priority(prio)
-                 .cookie(con1_cookie).connState("-trk").tcp()
-                 .reg(SEPG, pvnid).reg(DEPG, cvnid)
-                 .actions().conntrack("recirc", ctzone).done());
-            ADDF(Bldr().table(POL).priority(prio)
-                 .cookie(con1_cookie).connState("-new+est+trk").tcp()
-                 .reg(SEPG, pvnid).reg(DEPG, cvnid)
-                 .actions().go(OUT).done());
-#endif
             /* classifier 2  */
             ADDF(Bldr().table(POL).priority(prio-1)
                  .cookie(con1_cookie).arp()
