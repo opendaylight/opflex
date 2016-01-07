@@ -51,16 +51,22 @@ public class FConfigureAC
     {
         String lModuleName = Config.getProjName();
         String lLibName = Config.getLibName();
+        String lLibVersion = Config.getLibVersion();
+        String lLibtoolVersion = Config.getLibtoolVersion();
 
-        out.println(FORMAT.replaceAll("_MODULE_NAME_", lModuleName).replaceAll("_LIB_NAME_", lLibName));
+        out.println(FORMAT.replaceAll("_MODULE_NAME_", lModuleName)
+                    .replaceAll("_LIB_NAME_", lLibName)
+                    .replaceAll("_LIB_VERSION_", lLibVersion)
+                    .replaceAll("_LIBTOOL_VERSION_", lLibtoolVersion));
     }
 
     public static final String FORMAT = "#\n" + "# Process this file with autoconf to produce a configure script\n"
                                         + "#\n" + "# If you just want to start a build from source control, run\n"
                                         + "# autogen.sh first.\n" + "#\n" + "\n"
                                         + "# ---------------------------------------------------------------\n"
-                                        + "# Initialization\n" + "\n" + "AC_INIT([_LIB_NAME_], [1.1.0])\n"
-                                        + "AC_SUBST(MODEL_NAME, [\"_MODULE_NAME_ Generated OpFlex Model\"])\n" + "\n"
+                                        + "# Initialization\n" + "\n" + "AC_INIT([_LIB_NAME_], [_LIB_VERSION_])\n"
+                                        + "AC_SUBST(MODEL_NAME, [\"_MODULE_NAME_ Generated OpFlex Model\"])\n"
+                                        + "AC_SUBST(VERSION_INFO, [_LIBTOOL_VERSION_])\n" + "\n"
                                         + "# initialize automake and libtool\n" + "AM_INIT_AUTOMAKE([subdir-objects])\n"
                                         + "AM_CONFIG_HEADER(config.h)\n" + "LT_INIT()\n" + "AC_PROG_LIBTOOL\n"
                                         + "AC_CONFIG_MACRO_DIR([m4])\n" + "\n"

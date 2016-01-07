@@ -1,17 +1,11 @@
 package org.opendaylight.opflex.genie.engine.proc;
 
-import org.opendaylight.opflex.genie.engine.format.Header;
-import org.opendaylight.opflex.genie.engine.format.HeaderOption;
-import org.opendaylight.opflex.modlan.report.Severity;
-import org.opendaylight.opflex.modlan.utils.Strings;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.Set;
-import java.util.TreeSet;
+
+import org.opendaylight.opflex.genie.engine.format.Header;
+import org.opendaylight.opflex.genie.engine.format.HeaderOption;
+import org.opendaylight.opflex.modlan.utils.Strings;
 
 /**
  * Created by midvorki on 10/8/14.
@@ -22,6 +16,8 @@ public class Config
 
     public static String getProjName() { return projName; }
     public static String getLibName() { return libName; }
+    public static String getLibVersion() { return libVersion; }
+    public static String getLibtoolVersion() { return libtoolVersion; }
     public static String getHomePath() { return homePath; }
     public static String getWorkingPath() { return workingPath; }
     public static String getConfigPath() { return configPath; }
@@ -102,6 +98,12 @@ public class Config
         projName = aIn;
         libName = aIn.startsWith("lib") ? aIn : ("lib" + aIn);
     }
+    public static void setLibVersion(String libVersion) {
+		Config.libVersion = libVersion;
+	}
+	public static void setLibtoolVersion(String libtoolVersion) {
+		Config.libtoolVersion = libtoolVersion;
+	}
 
     public static void setHomePath(String aIn)
     {
@@ -205,7 +207,9 @@ public class Config
     }
 
     public static String projName = null;
-    public static String libName = null;
+	public static String libName = null;
+    public static String libVersion = null;
+    public static String libtoolVersion= null;
     public static String homePath = null;
     public static String workingPath = initWorkingPath();
     public static Collection<SearchPath> syntaxPath = new LinkedList<SearchPath>();
