@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1aa4ed85_92ad108b",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2551,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2016-01-07T00:03:47Z",
+      "side": 1,
+      "message": "That\u0027s the idea, yes.  The packet would come from the leaf only if it\u0027s supposed to be broadcast to the group; for example it comes from an endpoint in another group that is allowed to communicate with the isolated group.  I\u0027m not sure promiscuous mode matters here; this is a broadcast packet so everything in the group gets it even if it\u0027s not promiscuous.",
+      "parentUuid": "1aa4ed85_d2a3889c",
+      "revId": "3f26ad45e3dfa842c9fd94105327679bb7dfb13b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1aa4ed85_329d3c5a",
         "filename": "agent-ovs/src/FlowManager.cpp",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2016-01-06T23:57:11Z",
       "side": 1,
       "message": "Just so that I understand this correctly, outgoing broadcast packets from a VM in an isolated EPG will hit the fall-through rules in BRIDGE/ROUTE table and will be sent to the leaf. With vxlan encap, the UDP packet won\u0027t be using a multicast IP. Is that what the leaf expects?",
+      "revId": "3f26ad45e3dfa842c9fd94105327679bb7dfb13b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1aa4ed85_b2a84c78",
+        "filename": "agent-ovs/src/FlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2552,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2016-01-07T00:03:47Z",
+      "side": 1,
+      "message": "I\u0027m not entirely sure (we\u0027ll need to test).  I was vaguely hoping the behavior in this case would be slightly better than the alternative if there\u0027s an L2 network in between, since I don\u0027t want it hitting another hypervisor that subscribes to the group and then getting broadcast in there.  It\u0027s broken still if there\u0027s an L2 network in between but maybe broken in a slightly better way.",
+      "parentUuid": "1aa4ed85_329d3c5a",
       "revId": "3f26ad45e3dfa842c9fd94105327679bb7dfb13b",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
