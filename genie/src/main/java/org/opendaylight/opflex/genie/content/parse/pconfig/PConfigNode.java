@@ -23,7 +23,9 @@ public class PConfigNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        Config.setLibName(aInData.getNamedValue("libname", "genierated", true));
+        Config.setLibName(aInData.getNamedValue("libname", "generated", true));
+        Config.setLibVersion(aInData.getNamedValue("libversion", "1.0", true));
+        Config.setLibtoolVersion(aInData.getNamedValue("libtoolversion", "0:0:0", true));
         Config.setSyntaxRelPath(aInData.getNamedValue("syntax", null, true),aInData.getNamedValue("syntaxfiletype", ".meta", true));
         Config.setLoaderRelPath(aInData.getNamedValue("loader", null, true), aInData.getNamedValue("loaderfiletype", ".cfg", true));
         Config.setFormatterRelPath(aInData.getNamedValue("formatter", null, true), aInData.getNamedValue("formatterfiletype", ".cfg", true));
