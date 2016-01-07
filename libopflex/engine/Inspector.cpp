@@ -52,6 +52,7 @@ void Inspector::start() {
 
 void Inspector::stop() {
     if (listener) {
+        LOG(INFO) << "Shutting down inspector on \"" << name << "\"";
         listener->disconnect();
         listener.reset();
     }

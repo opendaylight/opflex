@@ -66,11 +66,9 @@ StringBuffer* OpflexMessage::serialize() {
     return sb;
 }
 
-#ifndef SIMPLE_RPC
 void GenericOpflexMessage::serializePayload(yajr::rpc::SendHandler& writer) {
     (*this)(writer);
 }
-#endif
 
 void GenericOpflexMessage::serializePayload(MessageWriter& writer) {
     (*this)(writer);

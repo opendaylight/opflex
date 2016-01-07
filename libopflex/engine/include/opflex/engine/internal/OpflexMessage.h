@@ -18,9 +18,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/document.h>
 
-#ifndef SIMPLE_RPC
-#include "yajr/rpc/message_factory.hpp"    
-#endif
+#include "yajr/rpc/message_factory.hpp"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXMESSAGE_H
@@ -59,7 +57,7 @@ public:
      */
     OpflexMessage(const std::string& method, MessageType type,
                   const rapidjson::Value* id = NULL);
- 
+
     /**
      * Destroy the message
      */
@@ -113,9 +111,7 @@ public:
      */
     virtual void serializePayload(MessageWriter& writer) = 0;
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) = 0;
-#endif
 
     /**
      * Operator to serialize a generic empty payload to any writer
@@ -168,7 +164,7 @@ public:
     GenericOpflexMessage(const std::string& method, MessageType type,
                          const rapidjson::Value* id = NULL)
         : OpflexMessage(method, type, id) {}
- 
+
     /**
      * Destroy the message
      */
@@ -183,9 +179,7 @@ public:
 
     virtual void serializePayload(MessageWriter& writer);
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer);
-#endif
 
 };
 

@@ -35,7 +35,7 @@ class MockClientConn : public OpflexClientConnection {
 public:
     MockClientConn(HandlerFactory& handlerFactory,
                    OpflexPool* pool,
-                   const std::string& hostname, 
+                   const std::string& hostname,
                    int port) :
         OpflexClientConnection(handlerFactory,
                                pool,
@@ -44,16 +44,10 @@ public:
 
     virtual void connect() {}
     virtual void disconnect() {
-#ifdef SIMPLE_RPC
-        uv_handle_t h;
-        h.data = this;
-        on_conn_closed(&h);
-#else
         on_state_change(NULL, this, yajr::StateChange::DELETE, 0);
-#endif
     }
     virtual bool isReady() { return ready; }
-    virtual std::string& getRemotePeer() { 
+    virtual std::string& getRemotePeer() {
         static std::string dummy("DUMMY");
         return dummy;
     }
@@ -78,18 +72,18 @@ public:
 BOOST_AUTO_TEST_SUITE(OpflexPool_test)
 
 BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
-    MockClientConn* c1 = new MockClientConn(handlerFactory, &pool, 
+    MockClientConn* c1 = new MockClientConn(handlerFactory, &pool,
                                             "1.2.3.4", 1234);
-    MockClientConn* c2 = new MockClientConn(handlerFactory, &pool, 
+    MockClientConn* c2 = new MockClientConn(handlerFactory, &pool,
                                             "1.2.3.4", 1235);
-    MockClientConn* c3 = new MockClientConn(handlerFactory, &pool, 
+    MockClientConn* c3 = new MockClientConn(handlerFactory, &pool,
                                             "1.2.3.4", 1236);
 
     pool.addPeer(c1);
     pool.addPeer(c2);
     pool.addPeer(c3);
 
-    pool.setRoles(c1, 
+    pool.setRoles(c1,
                   OFConstants::POLICY_REPOSITORY |
                   OFConstants::OBSERVER |
                   OFConstants::ENDPOINT_REGISTRY);
@@ -101,7 +95,7 @@ BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
     BOOST_CHECK_EQUAL(1, pool.getRoleCount(OFConstants::OBSERVER));
     BOOST_CHECK_EQUAL(1, pool.getRoleCount(OFConstants::ENDPOINT_REGISTRY));
 
-    pool.setRoles(c2, 
+    pool.setRoles(c2,
                   OFConstants::POLICY_REPOSITORY |
                   OFConstants::ENDPOINT_REGISTRY);
     BOOST_CHECK_EQUAL(c1, pool.getMasterForRole(OFConstants::OBSERVER));
@@ -112,7 +106,7 @@ BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
     BOOST_CHECK_EQUAL(2, pool.getRoleCount(OFConstants::ENDPOINT_REGISTRY));
 
     // fail to next master
-    OpflexClientConnection* m1 = 
+    OpflexClientConnection* m1 =
         pool.getMasterForRole(OFConstants::POLICY_REPOSITORY);
     BOOST_CHECK_EQUAL(m1, pool.getMasterForRole(OFConstants::ENDPOINT_REGISTRY));
     ((MockClientConn*)m1)->ready = false;
@@ -136,5 +130,3 @@ BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-

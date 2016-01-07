@@ -57,17 +57,15 @@ public:
         : OpflexMessage("send_identity", REQUEST),
           name(name_), domain(domain_), location(location_), roles(roles_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual SendIdentityReq* clone() { 
+    virtual SendIdentityReq* clone() {
         return new SendIdentityReq(*this);
     }
 
@@ -113,7 +111,7 @@ void OpflexPEHandler::connected() {
     setState(CONNECTED);
 
     OpflexPool& pool = getProcessor()->getPool();
-    SendIdentityReq* req = 
+    SendIdentityReq* req =
         new SendIdentityReq(pool.getName(),
                             pool.getDomain(),
                             pool.getLocation(),
@@ -129,7 +127,7 @@ void OpflexPEHandler::disconnected() {
 }
 
 void OpflexPEHandler::ready() {
-    LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] " 
+    LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] "
               << "Handshake succeeded";
 
     setState(READY);
@@ -155,7 +153,7 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
     if (payload.HasMember("peers")) {
         const Value& peers = payload["peers"];
         if (!peers.IsArray()) {
-            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
+            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
                        << "Malformed peers: must be array";
             conn->disconnect();
             return;
@@ -165,7 +163,7 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
 
         for (it = peers.Begin(); it != peers.End(); ++it) {
             if (!it->IsObject()) {
-                LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
+                LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
                            << "Malformed peers: must contain objects";
                 conn->disconnect();
                 return;
@@ -175,7 +173,7 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
             const Value& civ = (*it)["connectivity_info"];
             if (!civ.IsString())
                 continue;
-                
+
             string ci = civ.GetString();
             size_t p = ci.find_last_of(':');
             if (p != string::npos) {
@@ -186,22 +184,22 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
                     port = boost::lexical_cast<int>( portstr );
                     if (pool.getPeer(host, port) == NULL)
                         pool.addPeer(host, port, false);
-                        
+
                     if (host == conn->getHostname() &&
                         port == conn->getPort())
                         foundSelf = true;
 
                     peer_set.insert(make_pair(host, port));
                 } catch( boost::bad_lexical_cast const& ) {
-                    LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
-                               << "Invalid port in connectivity_info: " 
+                    LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                               << "Invalid port in connectivity_info: "
                                << portstr;
                     conn->disconnect();
                     return;
                 }
             } else {
-                LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
-                           << "Connectivity info could not be parsed: " 
+                LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                           << "Connectivity info could not be parsed: "
                            << ci;
                 conn->disconnect();
                 return;
@@ -237,7 +235,7 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
         pool.setRoles(conn, peerRoles);
         ready();
     } else {
-        LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] " 
+        LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] "
                   << "Current peer not found in peer list; closing";
         conn->close();
     }
@@ -259,7 +257,7 @@ void OpflexPEHandler::handlePolicyResolveRes(uint64_t reqId,
     if (payload.HasMember("policy")) {
         const Value& policy = payload["policy"];
         if (!policy.IsArray()) {
-            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
+            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
                        << "Malformed policy resolve response: policy must be array";
             conn->disconnect();
         }
@@ -282,7 +280,7 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
     Value::ConstValueIterator it;
     for (it = payload.Begin(); it != payload.End(); ++it) {
         if (!it->IsObject()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: payload array contains a nonobject");
             return;
         }
@@ -290,7 +288,7 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
         if (it->HasMember("replace")) {
             const Value& replace = (*it)["replace"];
             if (!replace.IsArray()) {
-                sendErrorRes(id, "ERROR", 
+                sendErrorRes(id, "ERROR",
                              "Malformed message: replace is not an array");
                 return;
             }
@@ -303,7 +301,7 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
         if (it->HasMember("merge_children")) {
             const Value& merge = (*it)["merge_children"];
             if (!merge.IsArray()) {
-                sendErrorRes(id, "ERROR", 
+                sendErrorRes(id, "ERROR",
                              "Malformed message: merge_children is not an array");
                 return;
             }
@@ -316,24 +314,24 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
         if (it->HasMember("delete")) {
             const Value& del = (*it)["delete"];
             if (!del.IsArray()) {
-                sendErrorRes(id, "ERROR", 
+                sendErrorRes(id, "ERROR",
                              "Malformed message: delete is not an array");
                 return;
             }
             Value::ConstValueIterator dit;
             for (dit = del.Begin(); dit != del.End(); ++dit) {
                 if (!dit->IsObject()) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: delete contains a non-object");
                     return;
                 }
                 if (!dit->HasMember("subject")) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: subject missing from delete");
                     return;
                 }
                 if (!dit->HasMember("uri")) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: uri missing from delete");
                     return;
                 }
@@ -341,25 +339,25 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
                 const Value& subjectv = (*dit)["subject"];
                 const Value& puriv = (*dit)["uri"];
                 if (!subjectv.IsString()) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: subject is not a string");
                     return;
                 }
                 if (!puriv.IsString()) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: uri is not a string");
                     return;
                 }
 
                 try {
-                    const modb::ClassInfo& ci = 
+                    const modb::ClassInfo& ci =
                         getProcessor()->getStore()->getClassInfo(subjectv.GetString());
                     modb::URI puri(puriv.GetString());
                     client->remove(ci.getId(), puri, false, &notifs);
                     client->queueNotification(ci.getId(), puri, notifs);
                 } catch (std::out_of_range e) {
-                    sendErrorRes(id, "ERROR", 
-                                 std::string("Unknown subject: ") + 
+                    sendErrorRes(id, "ERROR",
+                                 std::string("Unknown subject: ") +
                                  subjectv.GetString());
                     return;
                 }
@@ -393,7 +391,7 @@ void OpflexPEHandler::handleEPResolveRes(uint64_t reqId,
     if (payload.HasMember("endpoint")) {
         const Value& endpoint = payload["endpoint"];
         if (!endpoint.IsArray()) {
-            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] " 
+            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
                        << "Malformed endpoint resolve response: endpoint must be array";
             conn->disconnect();
         }
@@ -421,7 +419,7 @@ void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& id,
     Value::ConstValueIterator it;
     for (it = payload.Begin(); it != payload.End(); ++it) {
         if (!it->IsObject()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: payload array contains a nonobject");
             return;
         }
@@ -429,7 +427,7 @@ void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& id,
         if (it->HasMember("replace")) {
             const Value& replace = (*it)["replace"];
             if (!replace.IsArray()) {
-                sendErrorRes(id, "ERROR", 
+                sendErrorRes(id, "ERROR",
                              "Malformed message: replace is not an array");
                 return;
             }
@@ -442,24 +440,24 @@ void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& id,
         if (it->HasMember("delete")) {
             const Value& del = (*it)["delete"];
             if (!del.IsArray()) {
-                sendErrorRes(id, "ERROR", 
+                sendErrorRes(id, "ERROR",
                              "Malformed message: delete is not an array");
                 return;
             }
             Value::ConstValueIterator dit;
             for (dit = del.Begin(); dit != del.End(); ++dit) {
                 if (!dit->IsObject()) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: delete contains a non-object");
                     return;
                 }
                 if (!dit->HasMember("subject")) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: subject missing from delete");
                     return;
                 }
                 if (!dit->HasMember("uri")) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: uri missing from delete");
                     return;
                 }
@@ -467,25 +465,25 @@ void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& id,
                 const Value& subjectv = (*dit)["subject"];
                 const Value& puriv = (*dit)["uri"];
                 if (!subjectv.IsString()) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: subject is not a string");
                     return;
                 }
                 if (!puriv.IsString()) {
-                    sendErrorRes(id, "ERROR", 
+                    sendErrorRes(id, "ERROR",
                                  "Malformed message: uri is not a string");
                     return;
                 }
 
                 try {
-                    const modb::ClassInfo& ci = 
+                    const modb::ClassInfo& ci =
                         getProcessor()->getStore()->getClassInfo(subjectv.GetString());
                     modb::URI puri(puriv.GetString());
                     client->remove(ci.getId(), puri, false, &notifs);
                     client->queueNotification(ci.getId(), puri, notifs);
                 } catch (std::out_of_range e) {
-                    sendErrorRes(id, "ERROR", 
-                                 std::string("Unknown subject: ") + 
+                    sendErrorRes(id, "ERROR",
+                                 std::string("Unknown subject: ") +
                                  subjectv.GetString());
                     return;
                 }

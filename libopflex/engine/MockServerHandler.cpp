@@ -45,7 +45,7 @@ void MockServerHandler::disconnected() {
 }
 
 void MockServerHandler::ready() {
-    LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] " 
+    LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] "
               << "Handshake succeeded";
 
     setState(READY);
@@ -63,17 +63,15 @@ public:
           name(name_), domain(domain_), your_location(your_location_),
           roles(roles_), peers(peers_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual SendIdentityRes* clone() { 
+    virtual SendIdentityRes* clone() {
         return new SendIdentityRes(*this);
     }
 
@@ -140,17 +138,15 @@ public:
           server(server_),
           mos(mos_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual PolicyResolveRes* clone() { 
+    virtual PolicyResolveRes* clone() {
         return new PolicyResolveRes(*this);
     }
 
@@ -164,7 +160,7 @@ public:
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, mos) {
             try {
-                serializer.serialize(p.first, p.second, 
+                serializer.serialize(p.first, p.second,
                                      *client, writer,
                                      true);
             } catch (std::out_of_range e) {
@@ -190,17 +186,15 @@ public:
           server(server_),
           mos(mos_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual EndpointResolveRes* clone() { 
+    virtual EndpointResolveRes* clone() {
         return new EndpointResolveRes(*this);
     }
 
@@ -214,7 +208,7 @@ public:
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, mos) {
             try {
-                serializer.serialize(p.first, p.second, 
+                serializer.serialize(p.first, p.second,
                                      *client, writer,
                                      true);
             } catch (std::out_of_range e) {
@@ -236,10 +230,10 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
     LOG(DEBUG) << "Got send_identity req";
     std::stringstream sb;
     sb << "127.0.0.1:" << server->getPort();
-    SendIdentityRes* res = 
+    SendIdentityRes* res =
         new SendIdentityRes(id, sb.str(), "testdomain",
                             std::string("location_string"),
-                            server->getRoles(), 
+                            server->getRoles(),
                             server->getPeers());
     getConnection()->sendMessage(res, true);
     ready();
@@ -262,7 +256,7 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
             return;
         }
         if (it->HasMember("policy_ident")) {
-            sendErrorRes(id, "EUNSUPPORTED", 
+            sendErrorRes(id, "EUNSUPPORTED",
                          "Policy resolution by ident is not supported");
             return;
         }
@@ -274,18 +268,18 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
         const Value& subjectv = (*it)["subject"];
         const Value& puriv = (*it)["policy_uri"];
         if (!subjectv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: subject is not a string");
             return;
         }
         if (!puriv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: policy_uri is not a string");
             return;
         }
 
         try {
-            const modb::ClassInfo& ci = 
+            const modb::ClassInfo& ci =
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             modb::reference_t mo(ci.getId(), puri);
@@ -295,8 +289,8 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
             resolutions.insert(mo);
             mos.push_back(mo);
         } catch (std::out_of_range e) {
-            sendErrorRes(id, "ERROR", 
-                         std::string("Unknown subject: ") + 
+            sendErrorRes(id, "ERROR",
+                         std::string("Unknown subject: ") +
                          subjectv.GetString());
             return;
         }
@@ -307,7 +301,7 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
         return;
     }
 
-    PolicyResolveRes* res = 
+    PolicyResolveRes* res =
         new PolicyResolveRes(id, *server, mos);
     getConnection()->sendMessage(res, true);
 }
@@ -326,7 +320,7 @@ void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
             return;
         }
         if (it->HasMember("policy_ident")) {
-            sendErrorRes(id, "EUNSUPPORTED", 
+            sendErrorRes(id, "EUNSUPPORTED",
                          "Policy resolution by ident is not supported");
             return;
         }
@@ -338,30 +332,30 @@ void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
         const Value& subjectv = (*it)["subject"];
         const Value& puriv = (*it)["policy_uri"];
         if (!subjectv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: subject is not a string");
             return;
         }
         if (!puriv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: policy_uri is not a string");
             return;
         }
 
         try {
-            const modb::ClassInfo& ci = 
+            const modb::ClassInfo& ci =
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             resolutions.erase(std::make_pair(ci.getId(), puri));
         } catch (std::out_of_range e) {
-            sendErrorRes(id, "ERROR", 
-                         std::string("Unknown subject: ") + 
+            sendErrorRes(id, "ERROR",
+                         std::string("Unknown subject: ") +
                          subjectv.GetString());
             return;
         }
     }
 
-    OpflexMessage* res = 
+    OpflexMessage* res =
         new GenericOpflexMessage("policy_unresolve",
                                  OpflexMessage::RESPONSE, &id);
     getConnection()->sendMessage(res, true);
@@ -393,12 +387,12 @@ void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
         const Value& prr = (*it)["prr"];
 
         if (!endpoint.IsArray()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: endpoint is not an array");
             return;
         }
         if (!prr.IsInt()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: prr is not an integer");
             return;
         }
@@ -426,8 +420,8 @@ void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
     }
     client.deliverNotifications(notifs);
 
-    OpflexMessage* res = 
-        new GenericOpflexMessage("endpoint_declare", 
+    OpflexMessage* res =
+        new GenericOpflexMessage("endpoint_declare",
                                  OpflexMessage::RESPONSE, &id);
     getConnection()->sendMessage(res, true);
 }
@@ -455,7 +449,7 @@ void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
         const Value& subjectv = (*it)["subject"];
         const Value& euriv = (*it)["endpoint_uri"];
         if (!subjectv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: subject is not a string");
             return;
         }
@@ -465,14 +459,14 @@ void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
             return;
         }
         try {
-            const modb::ClassInfo& ci = 
+            const modb::ClassInfo& ci =
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI euri(euriv.GetString());
             client.remove(ci.getId(), euri, false, &notifs);
             client.queueNotification(ci.getId(), euri, notifs);
         } catch (std::out_of_range e) {
-            sendErrorRes(id, "ERROR", 
-                         std::string("Unknown subject: ") + 
+            sendErrorRes(id, "ERROR",
+                         std::string("Unknown subject: ") +
                          subjectv.GetString());
             return;
         }
@@ -480,8 +474,8 @@ void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
     }
     client.deliverNotifications(notifs);
 
-    OpflexMessage* res = 
-        new GenericOpflexMessage("endpoint_undeclare", 
+    OpflexMessage* res =
+        new GenericOpflexMessage("endpoint_undeclare",
                                  OpflexMessage::RESPONSE, &id);
     getConnection()->sendMessage(res, true);
 }
@@ -500,7 +494,7 @@ void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
             return;
         }
         if (it->HasMember("endpoint_ident")) {
-            sendErrorRes(id, "EUNSUPPORTED", 
+            sendErrorRes(id, "EUNSUPPORTED",
                          "Endpoint resolution by ident is not supported");
             return;
         }
@@ -512,32 +506,32 @@ void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
         const Value& subjectv = (*it)["subject"];
         const Value& puriv = (*it)["endpoint_uri"];
         if (!subjectv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: subject is not a string");
             return;
         }
         if (!puriv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: endpoint_uri is not a string");
             return;
         }
 
         try {
-            const modb::ClassInfo& ci = 
+            const modb::ClassInfo& ci =
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             modb::reference_t mo(ci.getId(), puri);
             resolutions.insert(mo);
             mos.push_back(mo);
         } catch (std::out_of_range e) {
-            sendErrorRes(id, "ERROR", 
-                         std::string("Unknown subject: ") + 
+            sendErrorRes(id, "ERROR",
+                         std::string("Unknown subject: ") +
                          subjectv.GetString());
             return;
         }
     }
 
-    EndpointResolveRes* res = 
+    EndpointResolveRes* res =
         new EndpointResolveRes(id, *server, mos);
     getConnection()->sendMessage(res, true);
 }
@@ -556,7 +550,7 @@ void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
             return;
         }
         if (it->HasMember("endpoint_ident")) {
-            sendErrorRes(id, "EUNSUPPORTED", 
+            sendErrorRes(id, "EUNSUPPORTED",
                          "Endpoint resolution by ident is not supported");
             return;
         }
@@ -568,31 +562,31 @@ void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
         const Value& subjectv = (*it)["subject"];
         const Value& puriv = (*it)["endpoint_uri"];
         if (!subjectv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: subject is not a string");
             return;
         }
         if (!puriv.IsString()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: endpoint_uri is not a string");
             return;
         }
 
         try {
-            const modb::ClassInfo& ci = 
+            const modb::ClassInfo& ci =
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             resolutions.erase(std::make_pair(ci.getId(), puri));
         } catch (std::out_of_range e) {
-            sendErrorRes(id, "ERROR", 
-                         std::string("Unknown subject: ") + 
+            sendErrorRes(id, "ERROR",
+                         std::string("Unknown subject: ") +
                          subjectv.GetString());
             return;
         }
     }
 
-    OpflexMessage* res = 
-        new GenericOpflexMessage("endpoint_unresolve", 
+    OpflexMessage* res =
+        new GenericOpflexMessage("endpoint_unresolve",
                                  OpflexMessage::RESPONSE, &id);
     getConnection()->sendMessage(res, true);
 }
@@ -623,7 +617,7 @@ void MockServerHandler::handleStateReportReq(const rapidjson::Value& id,
         const Value& observable = (*it)["observable"];
 
         if (!observable.IsArray()) {
-            sendErrorRes(id, "ERROR", 
+            sendErrorRes(id, "ERROR",
                          "Malformed message: observable is not an array");
             return;
         }
@@ -636,13 +630,13 @@ void MockServerHandler::handleStateReportReq(const rapidjson::Value& id,
     }
     client.deliverNotifications(notifs);
 
-    OpflexMessage* res = 
-        new GenericOpflexMessage("state_report", 
+    OpflexMessage* res =
+        new GenericOpflexMessage("state_report",
                                  OpflexMessage::RESPONSE, &id);
     getConnection()->sendMessage(res, true);
 }
 
-bool MockServerHandler::hasResolution(modb::class_id_t class_id, 
+bool MockServerHandler::hasResolution(modb::class_id_t class_id,
                                       const modb::URI& uri) {
     return resolutions.find(std::make_pair(class_id, uri)) != resolutions.end();
 }

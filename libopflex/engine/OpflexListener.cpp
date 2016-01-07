@@ -25,9 +25,7 @@
 #include "opflex/logging/internal/logging.hpp"
 #include "RecursiveLockGuard.h"
 
-#ifndef SIMPLE_RPC
 #include <yajr/internal/comms.hpp>
-#endif
 
 namespace opflex {
 namespace engine {
@@ -35,9 +33,7 @@ namespace internal {
 
 using std::string;
 using util::LockGuard;
-#ifndef SIMPLE_RPC
 using yajr::transport::ZeroCopyOpenSSL;
-#endif
 
 OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
                                int port_,
@@ -68,14 +64,12 @@ void OpflexListener::enableSSL(const std::string& caStorePath,
                                const std::string& serverKeyPath,
                                const std::string& serverKeyPass,
                                bool verifyPeers) {
-#ifndef SIMPLE_RPC
     OpflexConnection::initSSL();
     serverCtx.reset(ZeroCopyOpenSSL::Ctx::createCtx(caStorePath.c_str(),
                                                     serverKeyPath.c_str(),
                                                     serverKeyPass.c_str()));
     if (!serverCtx.get())
         throw std::runtime_error("Could not enable SSL");
-#endif
 }
 
 void OpflexListener::on_cleanup_async(uv_async_t* handle) {
@@ -91,14 +85,9 @@ void OpflexListener::on_cleanup_async(uv_async_t* handle) {
         if (listener->conns.size() != 0) return;
     }
 
-#ifdef SIMPLE_RPC
-    uv_close((uv_handle_t*)&listener->bind_socket, NULL);
-#endif
     uv_close((uv_handle_t*)&listener->writeq_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
-#ifndef SIMPLE_RPC
     yajr::finiLoop(&listener->server_loop);
-#endif
 }
 
 void OpflexListener::on_writeq_async(uv_async_t* handle) {
@@ -118,30 +107,6 @@ void OpflexListener::listen() {
     uv_async_init(&server_loop, &cleanup_async, on_cleanup_async);
     uv_async_init(&server_loop, &writeq_async, on_writeq_async);
 
-#ifdef SIMPLE_RPC
-
-    uv_tcp_init(&server_loop, &bind_socket);
-    server_loop.data = this;
-    bind_socket.data = this;
-
-    struct sockaddr_in bind_addr;
-    bind_addr.sin_family = AF_INET;
-    bind_addr.sin_addr.s_addr = INADDR_ANY;
-    bind_addr.sin_port = htons(port);
-
-    LOG(INFO) << "Binding to port " << port;
-    rc = uv_tcp_bind(&bind_socket, (struct sockaddr*)&bind_addr, 0);
-    if (rc) {
-        throw std::runtime_error(string("Could not bind to socket: ") +
-                                 uv_strerror(rc));
-    }
-
-    rc = uv_listen((uv_stream_t*)&bind_socket, 128, on_new_connection);
-    if (rc < 0) {
-        throw std::runtime_error(string("Could not listen for connections: ") +
-                                 uv_strerror(rc));
-    }
-#else
     yajr::initLoop(&server_loop);
 
     if (port < 0) {
@@ -162,7 +127,6 @@ void OpflexListener::listen() {
                                    OpflexServerConnection::loop_selector);
     }
 
-#endif
     rc = uv_thread_create(&server_thread, server_thread_func, this);
     if (rc < 0) {
         throw std::runtime_error(string("Could not create server thread: ") +
@@ -173,7 +137,6 @@ void OpflexListener::listen() {
 void OpflexListener::disconnect() {
     if (!active) return;
     active = false;
-    LOG(INFO) << "Shutting down Opflex listener";
 
     uv_async_send(&cleanup_async);
     uv_thread_join(&server_thread);
@@ -185,31 +148,12 @@ void OpflexListener::server_thread_func(void* listener_) {
     uv_run(&processor->server_loop, UV_RUN_DEFAULT);
 }
 
-#ifdef SIMPLE_RPC
-void OpflexListener::on_new_connection(uv_stream_t *server, int status) {
-    if (status < 0) {
-        LOG(ERROR) << "Error on new connection: "
-                   << uv_strerror(status);
-    }
-    OpflexListener* listener = (OpflexListener*)server->data;
-    if (!listener->active) return;
-
-    util::RecursiveLockGuard guard(&listener->conn_mutex,
-                                   &listener->conn_mutex_key);
-    OpflexServerConnection* conn = new OpflexServerConnection(listener);
-    listener->conns.insert(conn);
-}
-
-void OpflexListener::on_conn_closed(uv_handle_t *handle) {
-    OpflexServerConnection* conn = (OpflexServerConnection*)handle->data;
-    conn->getListener()->connectionClosed(conn);
-}
-#else
 void* OpflexListener::on_new_connection(yajr::Listener* ylistener,
                                         void* data, int error) {
     if (error < 0) {
         LOG(ERROR) << "Error on new connection: "
                    << uv_strerror(error);
+        return NULL;
     }
 
     OpflexListener* listener = (OpflexListener*)data;
@@ -219,7 +163,6 @@ void* OpflexListener::on_new_connection(yajr::Listener* ylistener,
     listener->conns.insert(conn);
     return conn;
 }
-#endif
 
 void OpflexListener::connectionClosed(OpflexServerConnection* conn) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
@@ -253,13 +196,9 @@ void OpflexListener::messagesReady() {
 }
 
 bool OpflexListener::isListening() {
-#ifdef SIMPLE_RPC
-    return true;
-#else
     using yajr::comms::internal::Peer;
     return Peer::LoopData::getPeerList(&server_loop,
                                        Peer::LoopData::LISTENING)->size() > 0;
-#endif
 }
 
 } /* namespace internal */

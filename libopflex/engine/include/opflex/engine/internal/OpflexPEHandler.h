@@ -38,7 +38,7 @@ public:
      * Construct a new opflex PE handler associated with the given
      * connection
      */
-    OpflexPEHandler(OpflexConnection* conn, Processor* processor_) 
+    OpflexPEHandler(OpflexConnection* conn, Processor* processor_)
         : OpflexHandler(conn), processor(processor_) {}
 
     /**

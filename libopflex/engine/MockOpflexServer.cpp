@@ -26,7 +26,7 @@
 namespace opflex {
 namespace test {
 
-MockOpflexServer::MockOpflexServer(int port, uint8_t roles, 
+MockOpflexServer::MockOpflexServer(int port, uint8_t roles,
                                    peer_vec_t peers,
                                    const modb::ModelMetadata& md)
     : pimpl(new engine::internal
@@ -40,7 +40,7 @@ void MockOpflexServer::enableSSL(const std::string& caStorePath,
                                  const std::string& serverKeyPath,
                                  const std::string& serverKeyPass,
                                  bool verifyPeers) {
-    pimpl->enableSSL(caStorePath, serverKeyPath, 
+    pimpl->enableSSL(caStorePath, serverKeyPath,
                      serverKeyPass, verifyPeers);
 }
 void MockOpflexServer::start() {
@@ -70,11 +70,11 @@ using rapidjson::Writer;
 using modb::mointernal::StoreClient;
 using test::MockOpflexServer;
 
-MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_, 
+MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
                                            MockOpflexServer::peer_vec_t peers_,
                                            const modb::ModelMetadata& md)
     : port(port_), roles(roles_), peers(peers_),
-      listener(*this, port_, "name", "domain"), 
+      listener(*this, port_, "name", "domain"),
       serializer(&db) {
     db.init(md);
     client = &db.getStoreClient("_SYSTEM_");
@@ -88,7 +88,7 @@ void MockOpflexServerImpl::enableSSL(const std::string& caStorePath,
                                      const std::string& serverKeyPath,
                                      const std::string& serverKeyPass,
                                      bool verifyPeers) {
-    listener.enableSSL(caStorePath, serverKeyPath, 
+    listener.enableSSL(caStorePath, serverKeyPath,
                        serverKeyPass, verifyPeers);
 }
 
@@ -128,15 +128,13 @@ public:
                     const std::vector<modb::reference_t>& del_)
         : OpflexMessage("policy_update", REQUEST),
           server(server_),
-          replace(replace_), 
+          replace(replace_),
           merge_children(merge_children_),
           del(del_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
@@ -157,7 +155,7 @@ public:
         writer.String("replace");
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, replace) {
-            serializer.serialize(p.first, p.second, 
+            serializer.serialize(p.first, p.second,
                                  *client, writer,
                                  true);
         }
@@ -166,7 +164,7 @@ public:
         writer.String("merge_children");
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, merge_children) {
-            serializer.serialize(p.first, p.second, 
+            serializer.serialize(p.first, p.second,
                                  *client, writer,
                                  false);
         }
@@ -175,7 +173,7 @@ public:
         writer.String("delete");
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, del) {
-            const modb::ClassInfo& ci = 
+            const modb::ClassInfo& ci =
                 server.getStore().getClassInfo(p.first);
             writer.StartObject();
             writer.String("subject");
@@ -201,7 +199,7 @@ protected:
 void MockOpflexServerImpl::policyUpdate(const std::vector<modb::reference_t>& replace,
                                     const std::vector<modb::reference_t>& merge_children,
                                     const std::vector<modb::reference_t>& del) {
-    PolicyUpdateReq* req = 
+    PolicyUpdateReq* req =
         new PolicyUpdateReq(*this, replace, merge_children, del);
     listener.sendToAll(req);
 }
@@ -213,14 +211,12 @@ public:
                     const std::vector<modb::reference_t>& del_)
         : OpflexMessage("endpoint_update", REQUEST),
           server(server_),
-          replace(replace_), 
+          replace(replace_),
           del(del_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
@@ -241,7 +237,7 @@ public:
         writer.String("replace");
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, replace) {
-            serializer.serialize(p.first, p.second, 
+            serializer.serialize(p.first, p.second,
                                  *client, writer,
                                  true);
         }
@@ -250,7 +246,7 @@ public:
         writer.String("delete");
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, del) {
-            const modb::ClassInfo& ci = 
+            const modb::ClassInfo& ci =
                 server.getStore().getClassInfo(p.first);
             writer.StartObject();
             writer.String("subject");

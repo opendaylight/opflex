@@ -28,31 +28,12 @@ namespace engine {
 namespace internal {
 
 using std::string;
-#ifndef SIMPLE_RPC
 using yajr::transport::ZeroCopyOpenSSL;
-#endif
 
 OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
     : OpflexConnection(listener_->handlerFactory),
       listener(listener_), peer(NULL) {
-#ifdef SIMPLE_RPC
-    uv_tcp_init(&listener->server_loop, &tcp_handle);
-    tcp_handle.data = this;
-    int rc = uv_accept((uv_stream_t*)&listener->bind_socket,
-                       (uv_stream_t*)&tcp_handle);
-    if (rc < 0) {
-        LOG(ERROR) << "Could not accept connection: "
-                   << uv_strerror(rc);
-    }
 
-    struct sockaddr_storage name;
-    int len = sizeof(name);
-    rc = uv_tcp_getpeername(&tcp_handle, (struct sockaddr*)&name, &len);
-    setRemotePeer(rc, name);
-
-    uv_read_start((uv_stream_t*)&tcp_handle, alloc_cb, read_cb);
-    handler->connected();
-#endif
 }
 
 OpflexServerConnection::~OpflexServerConnection() {
@@ -89,14 +70,6 @@ const std::string& OpflexServerConnection::getName() {
 const std::string& OpflexServerConnection::getDomain() {
     return listener->getDomain();
 }
-
-#ifdef SIMPLE_RPC
-void OpflexServerConnection::shutdown_cb(uv_shutdown_t* req, int status) {
-    OpflexServerConnection* conn =
-        (OpflexServerConnection*)req->handle->data;
-    uv_close((uv_handle_t*)&conn->tcp_handle, OpflexListener::on_conn_closed);
-}
-#else
 
 uv_loop_t* OpflexServerConnection::loop_selector(void * data) {
     OpflexServerConnection* conn = (OpflexServerConnection*)data;
@@ -148,32 +121,13 @@ void OpflexServerConnection::on_state_change(yajr::Peer * p, void * data,
     }
 }
 
-#endif
-
 void OpflexServerConnection::disconnect() {
     handler->disconnected();
     OpflexConnection::disconnect();
 
-#ifdef SIMPLE_RPC
-    uv_read_stop((uv_stream_t*)&tcp_handle);
-    {
-        int rc = uv_shutdown(&shutdown, (uv_stream_t*)&tcp_handle, shutdown_cb);
-        if (rc < 0) {
-            LOG(ERROR) << "[" << getRemotePeer() << "] "
-                       << "Could not shut down socket: " << uv_strerror(rc);
-        }
-    }
-#else
     if (peer)
         peer->destroy();
-#endif
 }
-
-#ifdef SIMPLE_RPC
-void OpflexServerConnection::write(const rapidjson::StringBuffer* buf) {
-    OpflexConnection::write((uv_stream_t*)&tcp_handle, buf);
-}
-#endif
 
 void OpflexServerConnection::messagesReady() {
     listener->messagesReady();

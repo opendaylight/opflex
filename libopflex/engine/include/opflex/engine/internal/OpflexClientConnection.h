@@ -40,7 +40,7 @@ public:
      */
     OpflexClientConnection(HandlerFactory& handlerFactory,
                            OpflexPool* pool,
-                           const std::string& hostname, 
+                           const std::string& hostname,
                            int port);
     virtual ~OpflexClientConnection();
 
@@ -56,7 +56,7 @@ public:
 
     /**
      * Close the connection
-     */ 
+     */
     virtual void close();
 
     /**
@@ -92,12 +92,7 @@ public:
 
     virtual const std::string& getRemotePeer() { return remote_peer; }
 
-#ifdef SIMPLE_RPC
-    virtual void write(const rapidjson::StringBuffer* buf);
-    bool shouldRetry() { return retry; }
-#else
     virtual yajr::Peer* getPeer() { return peer; }
-#endif
     virtual void messagesReady();
 
 private:
@@ -107,39 +102,26 @@ private:
     int port;
     std::string remote_peer;
 
-#ifdef SIMPLE_RPC
-    uv_tcp_t socket;
-    uv_connect_t connect_req;
-    uv_shutdown_t shutdown;
-    bool retry;
-#else
     yajr::Peer* peer;
-#endif
+
     bool started;
     bool active;
     bool closing;
+    bool ready;
     int failureCount;
 
-#ifdef SIMPLE_RPC
-    static void connect_cb(uv_connect_t* req, int status);
-#else
+    uv_timer_t handshake_timer;
+
     static uv_loop_t* loop_selector(void* data);
-#endif
+    static void on_handshake_timer(uv_timer_t* handle);
 
     virtual void notifyReady();
 
 protected:
-#ifdef SIMPLE_RPC
-    /**
-     * Handler for connection close
-     */
-    static void on_conn_closed(uv_handle_t *handle);
-#else
-    static void on_state_change(yajr::Peer* p, void* data, 
+    static void on_state_change(yajr::Peer* p, void* data,
                                 yajr::StateChange::To stateChange,
                                 int error);
     void connectionFailure();
-#endif
 
 };
 

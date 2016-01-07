@@ -83,16 +83,14 @@ public:
     ErrorRes(const Value& id,
              const string& code_,
              const string& message_)
-        : OpflexMessage("", ERROR_RESPONSE, &id), 
+        : OpflexMessage("", ERROR_RESPONSE, &id),
           code(code_), message(message_) {
 
     }
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);

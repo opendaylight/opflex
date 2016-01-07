@@ -84,6 +84,7 @@ void OFFramework::start() {
 
 void OFFramework::stop() {
     if (pimpl->inspector) {
+        LOG(DEBUG) << "Stopping OpFlex Inspector";
         pimpl->inspector->stop();
         pimpl->inspector.reset();
     }

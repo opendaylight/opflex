@@ -38,7 +38,7 @@ public:
      */
     ProcessorMessage(const std::string& method, MessageType type,
                      uint64_t xid_, Processor* processor_)
-        : OpflexMessage(method, type), 
+        : OpflexMessage(method, type),
           processor(processor_), xid(xid_) {}
     virtual ~ProcessorMessage() {};
     virtual uint64_t getReqXid() { return xid; }
@@ -68,11 +68,9 @@ public:
         : ProcessorMessage("policy_resolve", REQUEST, xid, processor),
           policies(policies_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
@@ -130,17 +128,15 @@ public:
         : ProcessorMessage("policy_unresolve", REQUEST, xid, processor),
           policies(policies_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual PolicyUnresolveReq* clone() { 
+    virtual PolicyUnresolveReq* clone() {
         return new PolicyUnresolveReq(*this);
     }
 
@@ -191,17 +187,15 @@ public:
         : ProcessorMessage("endpoint_resolve", REQUEST, xid, processor),
           endpoints(endpoints_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual EndpointResolveReq* clone() { 
+    virtual EndpointResolveReq* clone() {
         return new EndpointResolveReq(*this);
     }
 
@@ -254,17 +248,15 @@ public:
         : ProcessorMessage("endpoint_unresolve", REQUEST, xid, processor),
           endpoints(endpoints_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual EndpointUnresolveReq* clone() { 
+    virtual EndpointUnresolveReq* clone() {
         return new EndpointUnresolveReq(*this);
     }
 
@@ -316,17 +308,15 @@ public:
         : ProcessorMessage("endpoint_declare", REQUEST, xid, processor),
           endpoints(endpoints_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual EndpointDeclareReq* clone() { 
+    virtual EndpointDeclareReq* clone() {
         return new EndpointDeclareReq(*this);
     }
 
@@ -347,7 +337,7 @@ public:
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, endpoints) {
             try {
-                serializer.serialize(p.first, p.second, 
+                serializer.serialize(p.first, p.second,
                                      *client, writer,
                                      true);
             } catch (std::out_of_range e) {
@@ -384,18 +374,16 @@ public:
                          const std::vector<modb::reference_t>& endpoints_)
         : ProcessorMessage("endpoint_undeclare", REQUEST, xid, processor),
           endpoints(endpoints_) {}
-    
-#ifndef SIMPLE_RPC
+
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual EndpointUndeclareReq* clone() { 
+    virtual EndpointUndeclareReq* clone() {
         return new EndpointUndeclareReq(*this);
     }
 
@@ -449,17 +437,15 @@ public:
         : ProcessorMessage("state_report", REQUEST, xid, processor),
           observables(observables_) {}
 
-#ifndef SIMPLE_RPC
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-#endif
 
     virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
-    virtual StateReportReq* clone() { 
+    virtual StateReportReq* clone() {
         return new StateReportReq(*this);
     }
 
@@ -479,7 +465,7 @@ public:
         writer.String("observable");
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, observables) {
-            serializer.serialize(p.first, p.second, 
+            serializer.serialize(p.first, p.second,
                                  *client, writer,
                                  true);
         }

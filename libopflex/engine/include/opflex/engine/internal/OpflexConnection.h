@@ -22,9 +22,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <uv.h>
 
-#ifndef SIMPLE_RPC
 #include "yajr/yajr.hpp"
-#endif
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXCONNECTION_H
@@ -146,35 +144,10 @@ protected:
      */
     virtual void messagesReady() = 0;
 
-#ifdef SIMPLE_RPC
-    std::stringstream* buffer;
-    rapidjson::Document document;
-
-    /**
-     * Write an opflex message to the connection using the given
-     * string buffer, ownership of which will pass to the connection
-     */
-    void write(uv_stream_t* stream, const rapidjson::StringBuffer* buf);
-    /**
-     * Write the string buffer to the final write queue.  Must be
-     * called from the libuv thread
-     * @param buf the buffer to write
-     */
-    virtual void write(const rapidjson::StringBuffer* buf) = 0;
-    static void write_cb(uv_write_t* req, int status);
-    static void read_cb(uv_stream_t* stream, 
-                        ssize_t nread, 
-                        const uv_buf_t* buf);
-    static void alloc_cb(uv_handle_t* handle,
-                         size_t suggested_size,
-                         uv_buf_t* buf);
-    virtual void dispatch();
-#else
     /**
      * Get the peer for this connection
      */
     virtual yajr::Peer* getPeer() = 0;
-#endif
 
 protected:
     /**
@@ -183,13 +156,7 @@ protected:
     virtual void cleanup();
 
 private:
-#ifdef SIMPLE_RPC
-    typedef std::pair<uv_write_t*, const rapidjson::StringBuffer*> write_t;
-    typedef std::list<write_t> write_list_t;
-    write_list_t write_list;
-#else
     uint64_t requestId;
-#endif
 
     uint64_t connGeneration;
     typedef std::pair<OpflexMessage*, uint64_t> write_queue_item_t;

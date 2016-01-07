@@ -26,9 +26,7 @@
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/OpflexClientConnection.h"
 #include "opflex/ofcore/PeerStatusListener.h"
-#ifndef SIMPLE_RPC
 #include "yajr/transport/ZeroCopyOpenSSL.hpp"
-#endif
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXPOOL_H
@@ -42,7 +40,7 @@ class OpflexMessage;
 
 /**
  * A pool of OpFlex connections that will keep track of connection
- * state and assign a master 
+ * state and assign a master
  */
 class OpflexPool : private boost::noncopyable {
 public:
@@ -189,7 +187,7 @@ public:
      * thread
      * @return the number of ready connections to which we sent the message
      */
-    size_t sendToRole(OpflexMessage* message, 
+    size_t sendToRole(OpflexMessage* message,
                       ofcore::OFConstants::OpflexRole role,
                       bool sync = false);
 
@@ -278,7 +276,6 @@ private:
     uv_async_t conn_async;
     uv_async_t cleanup_async;
     uv_async_t writeq_async;
-    uv_timer_t timer;
 
     std::list<ofcore::PeerStatusListener*> peerStatusListeners;
     ofcore::PeerStatusListener::Health curHealth;
@@ -286,7 +283,7 @@ private:
     void doRemovePeer(const std::string& hostname, int port);
     void doAddPeer(const std::string& hostname, int port);
     void doSetRoles(ConnData& cd, uint8_t newroles);
-    void updateRole(ConnData& cd, uint8_t newroles, 
+    void updateRole(ConnData& cd, uint8_t newroles,
                     ofcore::OFConstants::OpflexRole role);
     void connectionClosed(OpflexClientConnection* conn);
     void doConnectionClosed(OpflexClientConnection* conn);
@@ -297,10 +294,6 @@ private:
     static void on_conn_async(uv_async_t *handle);
     static void on_cleanup_async(uv_async_t *handle);
     static void on_writeq_async(uv_async_t *handle);
-#ifdef SIMPLE_RPC
-    static void on_conn_closed(OpflexClientConnection* conn);
-    static void on_timer(uv_timer_t* timer);
-#endif
 
     void updatePeerStatus(const std::string& hostname, int port,
                           ofcore::PeerStatusListener::PeerStatus status);

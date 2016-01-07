@@ -18,9 +18,7 @@
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
 #include "opflex/engine/internal/OpflexMessage.h"
-#ifndef SIMPLE_RPC
 #include "yajr/transport/ZeroCopyOpenSSL.hpp"
-#endif
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXLISTENER_H
@@ -153,11 +151,7 @@ private:
     uv_loop_t server_loop;
     uv_thread_t server_thread;
 
-#ifdef SIMPLE_RPC
-    uv_tcp_t bind_socket;
-#else
     yajr::Listener* listener;
-#endif
 
     uv_mutex_t conn_mutex;
     uv_key_t conn_mutex_key;
@@ -174,13 +168,8 @@ private:
     uv_loop_t* getLoop() { return &server_loop; }
     void connectionClosed(OpflexServerConnection* conn);
 
-#ifdef SIMPLE_RPC
-    static void on_new_connection(uv_stream_t *server, int status);
-    static void on_conn_closed(uv_handle_t *handle);
-#else
-    static void* on_new_connection(yajr::Listener* listener, 
+    static void* on_new_connection(yajr::Listener* listener,
                                    void* data, int error);
-#endif
 
     friend class OpflexServerConnection;
 };

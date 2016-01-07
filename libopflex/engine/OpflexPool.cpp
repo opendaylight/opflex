@@ -31,9 +31,7 @@ using std::make_pair;
 using std::string;
 using ofcore::OFConstants;
 using ofcore::PeerStatusListener;
-#ifndef SIMPLE_RPC
 using yajr::transport::ZeroCopyOpenSSL;
-#endif
 
 OpflexPool::OpflexPool(HandlerFactory& factory_)
     : factory(factory_), active(false), curHealth(PeerStatusListener::DOWN) {
@@ -58,19 +56,17 @@ void OpflexPool::setLocation(const std::string& location) {
 
 void OpflexPool::enableSSL(const std::string& caStorePath,
                            bool verifyPeers) {
-#ifndef SIMPLE_RPC
     OpflexConnection::initSSL();
     clientCtx.reset(ZeroCopyOpenSSL::Ctx::createCtx(caStorePath.c_str(), NULL));
     if (!clientCtx.get())
         throw std::runtime_error("Could not enable SSL");
-#endif
 }
 
 
 void OpflexPool::on_conn_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
     if (pool->active) {
-        util::RecursiveLockGuard guard(&pool->conn_mutex, 
+        util::RecursiveLockGuard guard(&pool->conn_mutex,
                                        &pool->conn_mutex_key);
         BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
             v.second.conn->connect();
@@ -81,7 +77,7 @@ void OpflexPool::on_conn_async(uv_async_t* handle) {
 void OpflexPool::on_cleanup_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
     {
-        util::RecursiveLockGuard guard(&pool->conn_mutex, 
+        util::RecursiveLockGuard guard(&pool->conn_mutex,
                                        &pool->conn_mutex_key);
         conn_map_t conns(pool->connections);
         BOOST_FOREACH(conn_map_t::value_type& v, conns) {
@@ -94,17 +90,12 @@ void OpflexPool::on_cleanup_async(uv_async_t* handle) {
     uv_close((uv_handle_t*)&pool->writeq_async, NULL);
     uv_close((uv_handle_t*)&pool->conn_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
-#ifdef SIMPLE_RPC
-    uv_timer_stop(&pool->timer);
-    uv_close((uv_handle_t*)&pool->timer, NULL);
-#else
     yajr::finiLoop(&pool->client_loop);
-#endif
 }
 
 void OpflexPool::on_writeq_async(uv_async_t* handle) {
     OpflexPool* pool = (OpflexPool*)handle->data;
-    util::RecursiveLockGuard guard(&pool->conn_mutex, 
+    util::RecursiveLockGuard guard(&pool->conn_mutex,
                                    &pool->conn_mutex_key);
     BOOST_FOREACH(conn_map_t::value_type& v, pool->connections) {
         v.second.conn->processWriteQueue();
@@ -116,13 +107,7 @@ void OpflexPool::start() {
     active = true;
 
     uv_loop_init(&client_loop);
-#ifdef SIMPLE_RPC
-    timer.data = this;
-    uv_timer_init(&client_loop, &timer);
-    uv_timer_start(&timer, on_timer, 5000, 5000);
-#else
     yajr::initLoop(&client_loop);
-#endif
 
     conn_async.data = this;
     cleanup_async.data = this;
@@ -210,7 +195,7 @@ void OpflexPool::updatePeerStatus(const std::string& hostname, int port,
     }
 }
 
-OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname, 
+OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname,
                                             int port) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     conn_map_t::iterator it = connections.find(make_pair(hostname, port));
@@ -240,7 +225,7 @@ void OpflexPool::doAddPeer(const std::string& hostname, int port) {
         LOG(INFO) << "Adding peer "
                   << hostname << ":" << port;
 
-        OpflexClientConnection* conn = 
+        OpflexClientConnection* conn =
             new OpflexClientConnection(factory, this, hostname, port);
         cd.conn = conn;
     }
@@ -340,23 +325,6 @@ void OpflexPool::client_thread_func(void* pool_) {
     uv_run(&pool->client_loop, UV_RUN_DEFAULT);
 }
 
-#ifdef SIMPLE_RPC
-void OpflexPool::on_conn_closed(OpflexClientConnection* conn) {
-    std::string host = conn->getHostname();
-    int port = conn->getPort();
-    bool retry = conn->shouldRetry();
-    OpflexPool* pool = conn->getPool();
-    conn->getPool()->connectionClosed(conn);
-    if (retry && pool->active)
-        pool->doAddPeer(host, port);
-}
-
-void OpflexPool::on_timer(uv_timer_t* timer) {
-    OpflexPool* pool = (OpflexPool*)timer->data;
-    on_conn_async(&pool->conn_async);
-}
-#endif
-
 void OpflexPool::connectionClosed(OpflexClientConnection* conn) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
 
@@ -387,7 +355,7 @@ size_t OpflexPool::sendToRole(OpflexMessage* message,
     role_map_t::iterator it = roles.find(role);
     if (it == roles.end())
         return 0;
-        
+
     size_t i = 0;
     OpflexMessage* m_copy = NULL;
     std::vector<OpflexClientConnection*> ready;
