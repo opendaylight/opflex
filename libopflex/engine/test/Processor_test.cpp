@@ -232,11 +232,10 @@ void BasePFixture::testBootstrap(bool ssl) {
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8010), 1000);
     WAIT_FOR(processor.getPool().getPeer(LOCALHOST, 8011) == NULL, 1000);
-
-    BOOST_CHECK_EQUAL(PeerStatusListener::CLOSING, peerStatus.statusMap[8011]);
-    BOOST_CHECK_EQUAL(PeerStatusListener::READY, peerStatus.statusMap[8009]);
-    BOOST_CHECK_EQUAL(PeerStatusListener::READY, peerStatus.statusMap[8010]);
-    BOOST_CHECK_EQUAL(PeerStatusListener::HEALTHY, peerStatus.latestHealth);
+    WAIT_FOR(PeerStatusListener::READY == peerStatus.statusMap[8009], 1000);
+    WAIT_FOR(PeerStatusListener::READY == peerStatus.statusMap[8010], 1000);
+    WAIT_FOR(PeerStatusListener::CLOSING == peerStatus.statusMap[8011], 1000);
+    WAIT_FOR(PeerStatusListener::HEALTHY == peerStatus.latestHealth, 1000);
 
     BOOST_CHECK_EQUAL(std::string("location_string"),
                       processor.getPool().getLocation().get());

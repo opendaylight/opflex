@@ -11,11 +11,11 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include "opflex/engine/internal/OpflexConnection.h"
-
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXCLIENTCONNECTION_H
 #define OPFLEX_ENGINE_OPFLEXCLIENTCONNECTION_H
+
+#include "opflex/engine/internal/OpflexConnection.h"
 
 namespace opflex {
 namespace engine {
@@ -110,10 +110,11 @@ private:
     bool ready;
     int failureCount;
 
-    uv_timer_t handshake_timer;
+    uv_timer_t* handshake_timer;
 
     static uv_loop_t* loop_selector(void* data);
     static void on_handshake_timer(uv_timer_t* handle);
+    static void on_timer_close(uv_handle_t* handle);
 
     virtual void notifyReady();
 

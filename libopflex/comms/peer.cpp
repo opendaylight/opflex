@@ -53,9 +53,9 @@ std::ostream& operator << (
         << ";HD:"
         << p->getHandle()->data
         << "];timer@"
-        << reinterpret_cast<void const *>(&p->keepAliveTimer_)
-        << ";TD:"
-        << p->keepAliveTimer_.data
+//        << reinterpret_cast<void const *>(&p->keepAliveTimer_)
+//        << ";TD:"
+//        << p->keepAliveTimer_.data
     ;
 #ifndef NDEBUG
     if ('L' != *p->peerType()) {

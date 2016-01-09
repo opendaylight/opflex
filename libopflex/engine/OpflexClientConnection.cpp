@@ -40,13 +40,12 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
     : OpflexConnection(handlerFactory),
       pool(pool_), hostname(hostname_), port(port_),
       started(false), active(false), closing(false), ready(false),
-      failureCount(0) {
-    uv_timer_init(&pool->client_loop, &handshake_timer);
-    handshake_timer.data = this;
+      failureCount(0), handshake_timer(new uv_timer_t) {
+    uv_timer_init(&pool->client_loop, handshake_timer);
+    handshake_timer->data = this;
 }
 
 OpflexClientConnection::~OpflexClientConnection() {
-
 }
 
 const std::string& OpflexClientConnection::getName() {
@@ -59,7 +58,7 @@ const std::string& OpflexClientConnection::getDomain() {
 
 void OpflexClientConnection::notifyReady() {
     ready = true;
-    uv_timer_stop(&handshake_timer);
+    uv_timer_stop(handshake_timer);
     pool->updatePeerStatus(hostname, port, PeerStatusListener::READY);
 }
 
@@ -86,7 +85,7 @@ void OpflexClientConnection::disconnect() {
 
     LOG(DEBUG) << "[" << getRemotePeer() << "] "
                << "Disconnecting";
-    uv_timer_stop(&handshake_timer);
+    uv_timer_stop(handshake_timer);
     peer->disconnect();
 }
 
@@ -99,7 +98,9 @@ void OpflexClientConnection::close() {
     closing = true;
     pool->updatePeerStatus(hostname, port, PeerStatusListener::CLOSING);
     active = false;
-    uv_timer_stop(&handshake_timer);
+    uv_timer_stop(handshake_timer);
+    handshake_timer->data = NULL;
+    uv_close((uv_handle_t*)handshake_timer, on_timer_close);
     handler->disconnected();
     OpflexConnection::disconnect();
     peer->destroy();
@@ -112,9 +113,14 @@ uv_loop_t* OpflexClientConnection::loop_selector(void * data) {
 
 void OpflexClientConnection::on_handshake_timer(uv_timer_t* handle) {
     OpflexClientConnection* conn = (OpflexClientConnection*)handle->data;
+    if (conn == NULL) return;
     LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                << "Handshake timed out";
     conn->disconnect();
+}
+
+void OpflexClientConnection::on_timer_close(uv_handle_t* handle) {
+    delete handle;
 }
 
 void OpflexClientConnection::on_state_change(Peer * p, void * data,
@@ -127,8 +133,9 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
                   << "New client connection";
         conn->active = true;
         conn->ready = false;
-        uv_timer_stop(&conn->handshake_timer);
-        uv_timer_start(&conn->handshake_timer, on_handshake_timer, 5000, 0);
+        uv_timer_stop(conn->handshake_timer);
+        uv_timer_start(conn->handshake_timer,
+                       on_handshake_timer, 5000, 0);
 
         if (conn->pool->clientCtx.get())
             ZeroCopyOpenSSL::attachTransport(p, conn->pool->clientCtx.get());
@@ -143,7 +150,7 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
         LOG(INFO) << "[" << conn->getRemotePeer() << "] "
                   << "Disconnected";
 
-        uv_timer_stop(&conn->handshake_timer);
+        uv_timer_stop(conn->handshake_timer);
         conn->active = false;
         conn->ready = false;
         conn->handler->disconnected();
@@ -176,7 +183,7 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
 }
 
 void OpflexClientConnection::connectionFailure() {
-    uv_timer_stop(&handshake_timer);
+    uv_timer_stop(handshake_timer);
     ready = false;
     if (!closing)
         disconnect();
