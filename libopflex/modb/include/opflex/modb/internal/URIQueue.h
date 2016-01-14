@@ -22,6 +22,7 @@
 #include <uv.h>
 
 #include "opflex/modb/URI.h"
+#include "ThreadManager.h"
 
 namespace opflex {
 namespace modb {
@@ -29,7 +30,7 @@ namespace modb {
 /**
  * @brief A queue containing URIs that consolidates items and
  * processes them in order.
- * 
+ *
  * Adding a URI to the queue that is already in the queue may not
  * change the queue.  This ensures the queue length is bounded by the
  * number of unique URIs
@@ -46,6 +47,11 @@ public:
     class QProcessor {
     public:
         /**
+         * Get a name for the task associated with this queue
+         */
+        virtual const std::string& taskName() = 0;
+
+        /**
          * Process the item in the queue.  If this function blocks or
          * does any costly processing then it will stall processing of
          * the URI queue.
@@ -53,14 +59,14 @@ public:
          * @param uri the URI for the item
          * @param data the data associated with the item
          */
-        virtual void processItem(const URI& uri, 
+        virtual void processItem(const URI& uri,
                                  const boost::any& data) = 0;
     };
 
     /**
      * Construct a new URI queue
      */
-    URIQueue(QProcessor* processor);
+    URIQueue(QProcessor* processor, util::ThreadManager& threadManager);
 
     /**
      * Destroy the queue
@@ -84,21 +90,26 @@ public:
      * @param data a data item associated with the item
      */
     void queueItem(const URI& uri, const boost::any& data);
-    
+
 private:
     /**
      * The processor that will handle queue items
      */
     QProcessor* processor;
-    
+
+    /**
+     * Thread manager
+     */
+    util::ThreadManager& threadManager;
+
     /**
      * The data stored in a queue item
      */
     struct item {
         item() : uri("") {}
-        item(const URI& uri_, const boost::any& data_) 
+        item(const URI& uri_, const boost::any& data_)
             : uri(uri_), data(data_) { }
-        
+
         URI uri;
         boost::any data;
     };
@@ -108,8 +119,8 @@ private:
         boost::multi_index::indexed_by<
             boost::multi_index::sequenced<>,
             boost::multi_index::hashed_unique<
-                boost::multi_index::member<item, 
-                                           URI, 
+                boost::multi_index::member<item,
+                                           URI,
                                            &item::uri> >
             >
         > item_queue_t;
@@ -118,15 +129,18 @@ private:
      * A notification queue that will be have duplicates removed
      */
     item_queue_t item_queue;
+    uv_loop_t* item_loop;
     uv_mutex_t item_mutex;
-    uv_cond_t item_cond;
+    uv_async_t item_async;
+    uv_async_t cleanup_async;
 
     /**
      * Processing thread
      */
     uv_thread_t proc_thread;
     volatile bool proc_shouldRun;
-    static void proc_thread_func(void* queue);
+    static void proc_async_func(uv_async_t* handle);
+    static void cleanup_async_func(uv_async_t* handle);
 };
 
 } /* namespace modb */

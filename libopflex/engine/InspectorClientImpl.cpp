@@ -58,7 +58,8 @@ using internal::OpflexMessage;
 
 InspectorClientImpl::InspectorClientImpl(const std::string& name_,
                                          const modb::ModelMetadata& model)
-    : conn(*this, this, name_), serializer(&db, this), pendingRequests(0) {
+    : conn(*this, this, name_), db(threadManager),
+      serializer(&db, this), pendingRequests(0) {
     db.init(model);
     storeClient = &db.getStoreClient("_SYSTEM_");
 }

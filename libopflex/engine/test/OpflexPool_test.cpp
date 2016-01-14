@@ -57,7 +57,7 @@ public:
 
 class PoolFixture {
 public:
-    PoolFixture() : pool(handlerFactory) {
+    PoolFixture() : pool(handlerFactory, threadManager) {
         pool.start();
     }
 
@@ -65,6 +65,7 @@ public:
         pool.stop();
     }
 
+    opflex::util::ThreadManager threadManager;
     EmptyHandlerFactory handlerFactory;
     OpflexPool pool;
 };

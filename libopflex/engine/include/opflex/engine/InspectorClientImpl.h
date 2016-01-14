@@ -97,6 +97,7 @@ public:
 
 private:
     internal::InspectorClientConn conn;
+    util::ThreadManager threadManager;
     modb::ObjectStore db;
     internal::MOSerializer serializer;
     modb::mointernal::StoreClient* storeClient;

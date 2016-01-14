@@ -14,7 +14,6 @@
 #  include <config.h>
 #endif
 
-
 #include <memory>
 #include <boost/foreach.hpp>
 
@@ -33,8 +32,10 @@ using ofcore::OFConstants;
 using ofcore::PeerStatusListener;
 using yajr::transport::ZeroCopyOpenSSL;
 
-OpflexPool::OpflexPool(HandlerFactory& factory_)
-    : factory(factory_), active(false), curHealth(PeerStatusListener::DOWN) {
+OpflexPool::OpflexPool(HandlerFactory& factory_,
+                       util::ThreadManager& threadManager_)
+    : factory(factory_), threadManager(threadManager_),
+      active(false), curHealth(PeerStatusListener::DOWN) {
     uv_mutex_init(&conn_mutex);
     uv_key_create(&conn_mutex_key);
 }
@@ -90,7 +91,7 @@ void OpflexPool::on_cleanup_async(uv_async_t* handle) {
     uv_close((uv_handle_t*)&pool->writeq_async, NULL);
     uv_close((uv_handle_t*)&pool->conn_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
-    yajr::finiLoop(&pool->client_loop);
+    yajr::finiLoop(pool->client_loop);
 }
 
 void OpflexPool::on_writeq_async(uv_async_t* handle) {
@@ -106,21 +107,17 @@ void OpflexPool::start() {
     if (active) return;
     active = true;
 
-    uv_loop_init(&client_loop);
-    yajr::initLoop(&client_loop);
+    client_loop = threadManager.initTask("connection_pool");
+    yajr::initLoop(client_loop);
 
     conn_async.data = this;
     cleanup_async.data = this;
     writeq_async.data = this;
-    uv_async_init(&client_loop, &conn_async, on_conn_async);
-    uv_async_init(&client_loop, &cleanup_async, on_cleanup_async);
-    uv_async_init(&client_loop, &writeq_async, on_writeq_async);
+    uv_async_init(client_loop, &conn_async, on_conn_async);
+    uv_async_init(client_loop, &cleanup_async, on_cleanup_async);
+    uv_async_init(client_loop, &writeq_async, on_writeq_async);
 
-    int rc = uv_thread_create(&client_thread, client_thread_func, this);
-    if (rc < 0) {
-        throw std::runtime_error(string("Could not create client thread: ") +
-                                 uv_strerror(rc));
-    }
+    threadManager.startTask("connection_pool");
 }
 
 void OpflexPool::stop() {
@@ -128,8 +125,7 @@ void OpflexPool::stop() {
     active = false;
 
     uv_async_send(&cleanup_async);
-    uv_thread_join(&client_thread);
-    uv_loop_close(&client_loop);
+    threadManager.stopTask("connection_pool");
 }
 
 void OpflexPool::setOpflexIdentity(const std::string& name,
@@ -318,11 +314,6 @@ OpflexPool::getMasterForRole(OFConstants::OpflexRole role) {
         }
     }
     return NULL;
-}
-
-void OpflexPool::client_thread_func(void* pool_) {
-    OpflexPool* pool = (OpflexPool*)pool_;
-    uv_run(&pool->client_loop, UV_RUN_DEFAULT);
 }
 
 void OpflexPool::connectionClosed(OpflexClientConnection* conn) {

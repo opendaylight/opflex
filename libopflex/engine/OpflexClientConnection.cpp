@@ -67,7 +67,7 @@ void OpflexClientConnection::connect() {
     ready = false;
 
     handshake_timer = new uv_timer_t;
-    uv_timer_init(&pool->client_loop, handshake_timer);
+    uv_timer_init(pool->client_loop, handshake_timer);
     handshake_timer->data = this;
 
     pool->updatePeerStatus(hostname, port, PeerStatusListener::CONNECTING);

@@ -44,4 +44,13 @@ BOOST_AUTO_TEST_CASE( init ) {
     fw.stop();
 }
 
+BOOST_AUTO_TEST_CASE( init_adaptor ) {
+    using opflex::ofcore::OFFramework;
+
+    OFFramework& fw = OFFramework::defaultInstance();
+    opflex::ofcore::MainLoopAdaptor* adaptor = fw.startSync();
+    adaptor->runOnce();
+    fw.stop();
+}
+
 BOOST_AUTO_TEST_SUITE_END()

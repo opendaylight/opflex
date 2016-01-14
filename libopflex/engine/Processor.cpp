@@ -47,6 +47,7 @@ using modb::mointernal::StoreClient;
 using modb::mointernal::ObjectInstance;
 using modb::hash_value;
 using ofcore::OFConstants;
+using util::ThreadManager;
 
 using namespace internal;
 
@@ -55,13 +56,15 @@ static const uint64_t DEFAULT_PROC_DELAY = 250;
 static const uint64_t DEFAULT_RETRY_DELAY = 1000*60*2;
 static const uint64_t TOMBSTONE_DELAY = 1000*60*5;
 static const uint64_t FIRST_XID = (uint64_t)1 << 63;
+static const uint32_t MAX_PROCESS = 1024;
 
 size_t hash_value(pair<class_id_t, URI> const& p);
 
-Processor::Processor(ObjectStore* store_)
+Processor::Processor(ObjectStore* store_, ThreadManager& threadManager_)
     : AbstractObjectListener(store_),
       serializer(store_, this),
-      pool(*this), nextXid(FIRST_XID),
+      threadManager(threadManager_),
+      pool(*this, threadManager_), nextXid(FIRST_XID),
       processingDelay(DEFAULT_PROC_DELAY),
       retryDelay(DEFAULT_RETRY_DELAY),
       proc_active(false) {
@@ -97,7 +100,7 @@ bool Processor::hasWork(/* out */ obj_state_by_exp::iterator& it) {
     if (obj_state.size() == 0) return false;
     obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
     it = exp_index.begin();
-    if (it->expiration == 0 || now(&proc_loop) >= it->expiration) return true;
+    if (it->expiration == 0 || now(proc_loop) >= it->expiration) return true;
     return false;
 }
 
@@ -151,7 +154,7 @@ void Processor::removeRef(obj_state_by_exp::iterator& it,
                         << " " << uit->details->refcount
                         << " state " << uit->details->state;
             if (uit->details->refcount <= 0) {
-                uint64_t nexp = now(&proc_loop)+processingDelay;
+                uint64_t nexp = now(proc_loop)+processingDelay;
                 uri_index.modify(uit, Processor::change_expiration(nexp));
             }
         }
@@ -239,12 +242,12 @@ void Processor::sendToRole(const item& i, uint64_t& newexp,
     uri_index.modify(uit, change_last_xid(xid));
 
     if (pending > 0)
-        newexp = now(&proc_loop) + retryDelay;
+        newexp = now(proc_loop) + retryDelay;
 }
 
 bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
                            uint64_t& newexp, bool checkTime) {
-    uint64_t curTime = now(&proc_loop);
+    uint64_t curTime = now(proc_loop);
     bool shouldRefresh =
         (i.details->resolve_time == 0) ||
         (curTime > (i.details->resolve_time + i.details->refresh_rate/2));
@@ -289,7 +292,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
 
 bool Processor::declareObj(ClassInfo::class_type_t type, const item& i,
                            uint64_t& newexp) {
-    uint64_t curTime = now(&proc_loop);
+    uint64_t curTime = now(proc_loop);
     switch (type) {
     case ClassInfo::LOCAL_ENDPOINT:
         if (isParentSyncObject(i)) {
@@ -335,9 +338,9 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     uint64_t newexp = std::numeric_limits<uint64_t>::max();
     if (it->details->refresh_rate > 0) {
         if (it->details->pending_reqs > 0)
-            newexp = now(&proc_loop) + retryDelay;
+            newexp = now(proc_loop) + retryDelay;
         else
-            newexp = now(&proc_loop) + it->details->refresh_rate;
+            newexp = now(proc_loop) + it->details->refresh_rate;
     }
 
     const ClassInfo& ci = store->getClassInfo(it->details->class_id);
@@ -393,7 +396,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 newState = PENDING_DELETE;
                 obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
                 exp_index.modify(it,
-                                 change_expiration(now(&proc_loop)+
+                                 change_expiration(now(proc_loop)+
                                                    processingDelay));
                 break;
             }
@@ -495,7 +498,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         }
 
         LOG(DEBUG) << "Creating tombstone for " << it->uri.toString();
-        newexp = now(&proc_loop) + TOMBSTONE_DELAY;
+        newexp = now(proc_loop) + TOMBSTONE_DELAY;
     }
 
     it->details->state = newState;
@@ -509,6 +512,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
 
 void Processor::doProcess() {
     obj_state_by_exp::iterator it;
+    uint32_t proc_count = 0;
     while (proc_active) {
         {
             util::LockGuard guard(&item_mutex);
@@ -516,6 +520,11 @@ void Processor::doProcess() {
                 break;
         }
         processItem(it);
+        proc_count += 1;
+        if (proc_count >= MAX_PROCESS && proc_active) {
+            uv_async_send(&proc_async);
+            break;
+        }
     }
 }
 
@@ -532,11 +541,6 @@ void Processor::connect_async_cb(uv_async_t* handle) {
 static void register_listeners(void* processor, const modb::ClassInfo& ci) {
     Processor* p = (Processor*)processor;
     p->listen(ci.getId());
-}
-
-void Processor::proc_thread_func(void* processor_) {
-    Processor* processor = (Processor*)processor_;
-    uv_run(&processor->proc_loop, UV_RUN_DEFAULT);
 }
 
 void Processor::timer_callback(uv_timer_t* handle) {
@@ -562,18 +566,18 @@ void Processor::start() {
     client = &store->getStoreClient("_SYSTEM_");
     store->forEachClass(&register_listeners, this);
 
-    uv_loop_init(&proc_loop);
-    uv_timer_init(&proc_loop, &proc_timer);
+    proc_loop = threadManager.initTask("processor");
+    uv_timer_init(proc_loop, &proc_timer);
     cleanup_async.data = this;
-    uv_async_init(&proc_loop, &cleanup_async, cleanup_async_cb);
+    uv_async_init(proc_loop, &cleanup_async, cleanup_async_cb);
     proc_async.data = this;
-    uv_async_init(&proc_loop, &proc_async, proc_async_cb);
+    uv_async_init(proc_loop, &proc_async, proc_async_cb);
     connect_async.data = this;
-    uv_async_init(&proc_loop, &connect_async, connect_async_cb);
+    uv_async_init(proc_loop, &connect_async, connect_async_cb);
     proc_timer.data = this;
     uv_timer_start(&proc_timer, &timer_callback,
                    processingDelay, processingDelay);
-    uv_thread_create(&proc_thread, proc_thread_func, this);
+    threadManager.startTask("processor");
 
     pool.start();
 }
@@ -590,8 +594,7 @@ void Processor::stop() {
     unlisten();
 
     uv_async_send(&cleanup_async);
-    uv_thread_join(&proc_thread);
-    uv_loop_close(&proc_loop);
+    threadManager.stopTask("processor");
 
     pool.stop();
 }
@@ -618,7 +621,7 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
     obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
     obj_state_by_uri::iterator uit = uri_index.find(uri);
 
-    uint64_t curtime = now(&proc_loop);
+    uint64_t curtime = now(proc_loop);
     uint64_t nexp = 0;
     clearTombstone(uri_index, uit, &remote);
     if (!remote) nexp = curtime+processingDelay;

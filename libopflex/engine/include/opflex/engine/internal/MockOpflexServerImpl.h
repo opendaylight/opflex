@@ -40,7 +40,7 @@ public:
      * @param peers a list of peers to return in the opflex handshake
      * @param md the model metadata for the server
      */
-    MockOpflexServerImpl(int port, uint8_t roles, 
+    MockOpflexServerImpl(int port, uint8_t roles,
                          test::MockOpflexServer::peer_vec_t peers,
                          const modb::ModelMetadata& md);
     virtual ~MockOpflexServerImpl();
@@ -96,7 +96,7 @@ public:
 
     /**
      * Get the roles that this server was configured with
-     * 
+     *
      * @param a bitmask containing the server roles
      */
     uint8_t getRoles() { return roles; }
@@ -143,6 +143,7 @@ private:
 
     OpflexListener listener;
 
+    util::ThreadManager threadManager;
     modb::ObjectStore db;
     MOSerializer serializer;
     modb::mointernal::StoreClient* client;
@@ -153,4 +154,3 @@ private:
 } /* namespace opflex */
 
 #endif /* OPFLEX_ENGINE_MOCKOPFLEXSERVERIMPL_H */
-

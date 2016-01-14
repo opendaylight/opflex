@@ -59,7 +59,7 @@
  *   truth for the endpoints it discovers.  Policy elements can
  *   retrieve information about endpoints discovered by other policy
  *   elements by resolving endpoints from the endpoint repository.
- * 
+ *
  * - Third, there is the @em observable object.  An observable object
  *   represents some state related to the operational status or health
  *   of the policy element.  Observable objects will be reported to
@@ -80,7 +80,7 @@
  * generated managed object accessor classes.
  *
  * @subsection sideeffect Programming by Side Effect
- * 
+ *
  * When developing software on the OpFlex framework, you'll need to
  * think in a slightly different way.  Rather than calling an API
  * function that would perform some specific action, you'll need to
@@ -139,7 +139,7 @@
  * objects.
  *
  * @subsection threading Threading and Ownership
- * 
+ *
  * The OpFlex framework uses a somewhat unique threading model.  Each
  * managed object in the system belongs to a particular owner.  An \em
  * owner would typically be a single thread that is reponsible for all
@@ -165,13 +165,13 @@
  * specifics for each of the individual APIs.  If you only care about
  * either the C++ or the C wrapper API, you can simply skip the
  * sections that do not apply.
- * 
+ *
  * @subsection cppinit C++
  * The primary interface point into the framework is @ref
  * opflex::ofcore::OFFramework.  You can choose to instantiate your
  * own copy of the framework, or you can use the static default
  * instance.
- * 
+ *
  * Before you can use the framework, you must initialize it by
  * installing your model metadata.  The model metadata is accessible
  * through the generated model library.  In this case, it assumes your
@@ -197,7 +197,7 @@
  * OFFramework::defaultInstance()
  *     .setOpflexIdentity("[component name]", "[unique domain]");
  * @endcode
- * 
+ *
  * You can then start the framework simply by calling:
  * @code
  * OFFramework::defaultInstance().start();
@@ -232,7 +232,7 @@
  * @code
  * ofstatus ofobjname_func(in arguments, out arguments);
  * @endcode
- * 
+ *
  * The ofstatus is a one of the status codes defined in ofcore_c.h.
  * There are macros defined @ref OF_IS_SUCCESS and @ref OF_IS_FAILURE
  * that make checking the status easy, so you can use code such as:
@@ -302,9 +302,9 @@
  * @endcode
   *
  * @section data Working with Data in the Tree
- * 
+ *
  * @subsection read Reading from the Tree
- * 
+ *
  * You can access data in the managed tree using the generated
  * accessor classes.  The details of exactly which classes you'll use
  * will depend on the model you're using, but let's assume that we
@@ -371,7 +371,7 @@
  *    // handle missing object
  * }
  * @endcode
- * 
+ *
  * Now let's get a child node of the root in three different ways:
  * @code
  * // Get foo1 by constructing its URI from the root
@@ -397,11 +397,11 @@
  * @endcode
  *
  * @subsubsection cread C Wrapper
- * 
+ *
  * The C wrapper interface is not yet available.
- * 
+ *
  * @subsection write Writing to the Tree
- * 
+ *
  * Writing to the tree is nearly as easy as reading from it.  The key
  * concept to understand is the mutator object.  If you want to make
  * changes to the tree, you must allocate a mutator object.  The
@@ -418,14 +418,14 @@
  *
  * Once the changes are written into the store, you will need to call
  * the appropriate resolve function again to see the changes.
- * 
+ *
  * @subsubsection cppwrite C++
  *
  * Allocating a mutator is simple.  To create a mutator for the
  * default framework instance associated with the owner "owner1", just
  * allocate the mutator on the stack.  Be sure to call commit() before
  * it goes out of scope or you'll lose your changes.
- * 
+ *
  * @code
  * {
  *     opflex::modb::Mutator mutator("owner1");
@@ -469,13 +469,13 @@
  *     shared_ptr<simple::root> newroot(simple::root::createRootElement());
  *     shared_ptr<simple::root> newfoo(newroot->addFoo("test"));
  *     newfoo->setBaz(42);
- *     
+ *
  *     mutator.commit();
  * }
  * @endcode
  *
  * @subsubsection cwrite C Wrapper
- * 
+ *
  * The C wrapper interface is not yet available.
  *
  * @section notifs Update Notifications
@@ -484,7 +484,7 @@
  * your time is spend responding to changes in the managed object
  * database.  To get these notifications, you're going to need to
  * register some number of listeners.
- * 
+ *
  * You can register an object listener to see all changes related to a
  * particular class by calling a static function for that class.
  * You'll then get notifications whenever any object in that class is
@@ -510,7 +510,7 @@
  * class MyListener : public ObjectListener {
  * public:
  *     MyListener() { }
- * 
+ *
  *     virtual void objectUpdated(class_id_t class_id, const URI& uri) {
  *         // Your handler here
  *     }
@@ -545,19 +545,19 @@
  * }
  * @endcode
  *
- * Then, to register your handler, you must create an @ref cofobjectlistener 
+ * Then, to register your handler, you must create an @ref cofobjectlistener
  * that references your handler:
  * @code
  * ofobjectlistener_p listener = NULL;
  * ofstatus result = OF_ESUCCESS;
- * if (OF_IS_FAILED(result = ofobjectlistener_create(NULL, notify, 
+ * if (OF_IS_FAILED(result = ofobjectlistener_create(NULL, notify,
                                                      &listener))) {
  *     // handle error
  * }
  * @endcode
- * 
+ *
  * Then, you can register it to receive notifications.
- * 
+ *
  * The C interface for registering a listener is not yet available.
  *
  * You'll need to unregister the object listener before you destroy
@@ -566,7 +566,7 @@
  * // XXX TODO
  * ofobjectlistener_destroy(&listener);
  * @endcode
- * 
+ *
  */
 
 #pragma once
@@ -580,6 +580,7 @@
 
 #include "opflex/modb/Mutator.h"
 #include "opflex/ofcore/PeerStatusListener.h"
+#include "opflex/ofcore/MainLoopAdaptor.h"
 
 /**
  * @defgroup cpp C++ Interface
@@ -618,7 +619,7 @@ namespace ofcore {
 
 /**
  * @brief Main interface to the OpFlex framework.
- * 
+ *
  * This class manages configuration and lifecycle for the framework,
  * and provides the primary interface point into the framework.  You
  * can create your own instance, or rely on the static default
@@ -631,7 +632,7 @@ namespace ofcore {
  * OFFramework::defaultInstance().setModel(mymodel);
  * OFFramework::defaultInstance().start();
  * @endcode
- * You can shut down the framework by calling stop(): 
+ * You can shut down the framework by calling stop():
  * @code
  * OFFramework::defaultInstance().stop();
  * @endcode
@@ -711,6 +712,18 @@ public:
      * Cleanly stop the framework
      */
     virtual void stop();
+
+    /**
+     * Start the framework in synchronous mode using a main loop
+     * adaptor.  You will be responsible for calling
+     * MainLoopAdaptor::runOnce in each iteration of your main loop so
+     * libopflex can make progress.
+     *
+     * @return the MainLoopAdaptor you will need to call.  The memory
+     * is owned by the framework and the pointer will become invalid
+     * when stop() is called.
+     */
+    virtual MainLoopAdaptor* startSync();
 
     /**
      * Dump the managed object database to the file specified as a

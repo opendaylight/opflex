@@ -33,6 +33,8 @@
 #include "opflex/engine/internal/MOSerializer.h"
 #include "opflex/engine/internal/AbstractObjectListener.h"
 
+#include "ThreadManager.h"
+
 namespace opflex {
 namespace engine {
 
@@ -51,7 +53,8 @@ public:
      * Construct a processor associated with the given object store
      * @param store the modb::ObjectStore
      */
-    Processor(modb::ObjectStore* store);
+    Processor(modb::ObjectStore* store,
+              util::ThreadManager& threadManager);
 
     /**
      * Destroy the processor
@@ -201,6 +204,11 @@ private:
      * an MO serializer
      */
     internal::MOSerializer serializer;
+
+    /**
+     * Thread manager
+     */
+    util::ThreadManager& threadManager;
 
     /**
      * The pool of Opflex connections
@@ -413,14 +421,13 @@ private:
     /**
      * Processing thread
      */
-    uv_loop_t proc_loop;
-    uv_thread_t proc_thread;
+    uv_loop_t* proc_loop;
     volatile bool proc_active;
     uv_async_t cleanup_async;
     uv_async_t proc_async;
     uv_async_t connect_async;
     uv_timer_t proc_timer;
-    static void proc_thread_func(void* processor);
+
     static void timer_callback(uv_timer_t* handle);
     static void cleanup_async_cb(uv_async_t *handle);
     static void proc_async_cb(uv_async_t *handle);
