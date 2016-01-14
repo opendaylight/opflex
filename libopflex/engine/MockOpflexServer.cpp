@@ -75,7 +75,7 @@ MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
                                            const modb::ModelMetadata& md)
     : port(port_), roles(roles_), peers(peers_),
       listener(*this, port_, "name", "domain"),
-      serializer(&db) {
+      db(threadManager), serializer(&db) {
     db.init(md);
     client = &db.getStoreClient("_SYSTEM_");
 }

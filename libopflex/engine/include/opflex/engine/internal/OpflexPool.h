@@ -27,6 +27,7 @@
 #include "opflex/engine/internal/OpflexClientConnection.h"
 #include "opflex/ofcore/PeerStatusListener.h"
 #include "yajr/transport/ZeroCopyOpenSSL.hpp"
+#include "ThreadManager.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXPOOL_H
@@ -46,8 +47,11 @@ class OpflexPool : private boost::noncopyable {
 public:
     /**
      * Allocate a new opflex connection pool
+     * @param factory a factory for generating new connection handlers
+     * upon connection.
+     * @param threadManager thread manager
      */
-    OpflexPool(HandlerFactory& factory);
+    OpflexPool(HandlerFactory& factory, util::ThreadManager& threadManager);
     ~OpflexPool();
 
     /**
@@ -236,6 +240,7 @@ public:
 
 private:
     HandlerFactory& factory;
+    util::ThreadManager& threadManager;
 
     /** opflex unique name */
     std::string name;
@@ -271,8 +276,7 @@ private:
     role_map_t roles;
     bool active;
 
-    uv_loop_t client_loop;
-    uv_thread_t client_thread;
+    uv_loop_t* client_loop;
     uv_async_t conn_async;
     uv_async_t cleanup_async;
     uv_async_t writeq_async;
@@ -287,10 +291,9 @@ private:
                     ofcore::OFConstants::OpflexRole role);
     void connectionClosed(OpflexClientConnection* conn);
     void doConnectionClosed(OpflexClientConnection* conn);
-    uv_loop_t* getLoop() { return &client_loop; }
+    uv_loop_t* getLoop() { return client_loop; }
     void messagesReady();
 
-    static void client_thread_func(void* pool);
     static void on_conn_async(uv_async_t *handle);
     static void on_cleanup_async(uv_async_t *handle);
     static void on_writeq_async(uv_async_t *handle);
