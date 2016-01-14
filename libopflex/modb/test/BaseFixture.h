@@ -30,7 +30,7 @@ using namespace boost::assign;
 class BaseFixture : public MDFixture {
 public:
     BaseFixture()
-        : MDFixture() {
+        : MDFixture(), db(threadManager) {
         db.init(md);
         db.start();
         client1 = &db.getStoreClient("owner1");
@@ -41,6 +41,7 @@ public:
         db.stop();
     }
 
+    util::ThreadManager threadManager;
     ObjectStore db;
     mointernal::StoreClient* client1;
     mointernal::StoreClient* client2;
