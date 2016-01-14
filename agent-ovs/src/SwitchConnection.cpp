@@ -464,7 +464,7 @@ SwitchConnection::ErrorHandler::Handle(SwitchConnection *swConn,
     const struct ofp_header *oh = (ofp_header *)msg->data;
     ofperr err = ofperr_decode_msg(oh, NULL);
     LOG(ERROR) << "Got error reply from switch ("
-               << std::hex << oh->xid << "): "
+               << ntohl(oh->xid) << "): "
                << ofperr_get_name(err) << ": "
                << ofperr_get_description(err);
 }
