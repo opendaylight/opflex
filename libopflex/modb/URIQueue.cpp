@@ -23,30 +23,25 @@
 namespace opflex {
 namespace modb {
 
-URIQueue::URIQueue(QProcessor* processor_) 
-    : processor(processor_), proc_shouldRun(false) {
+URIQueue::URIQueue(QProcessor* processor_, util::ThreadManager& threadManager_)
+    : processor(processor_), threadManager(threadManager_),
+      proc_shouldRun(false) {
     uv_mutex_init(&item_mutex);
-    uv_cond_init(&item_cond);
 }
 
 URIQueue::~URIQueue() {
     stop();
-    uv_cond_destroy(&item_cond);
     uv_mutex_destroy(&item_mutex);
 }
 
 // listen on the item queue and dispatch events where required
-void URIQueue::proc_thread_func(void* queue_) {
-    URIQueue* queue = (URIQueue*)queue_;
+void URIQueue::proc_async_func(uv_async_t* handle) {
+    URIQueue* queue = static_cast<URIQueue*>(handle->data);
 
-    while (queue->proc_shouldRun) {
+    if (queue->proc_shouldRun) {
         item_queue_t toProcess;
         {
             util::LockGuard guard(&queue->item_mutex);
-            while (queue->item_queue.size() == 0 && queue->proc_shouldRun)
-                uv_cond_wait(&queue->item_cond, &queue->item_mutex);
-            if (!queue->proc_shouldRun) return;
-
             toProcess.swap(queue->item_queue);
         }
 
@@ -55,33 +50,37 @@ void URIQueue::proc_thread_func(void* queue_) {
             try {
                 queue->processor->processItem(d.uri, d.data);
             } catch (const std::exception& ex) {
-                LOG(ERROR) << "Exception while processing notification queue: " <<
-                    ex.what();
+                LOG(ERROR) << "Exception while processing notification queue: "
+                           << ex.what();
             } catch (...) {
-                LOG(ERROR) << "Unknown error while processing notification queue";
+                LOG(ERROR) << "Unknown error processing notification queue";
             }
         }
     }
 }
 
+void URIQueue::cleanup_async_func(uv_async_t* handle) {
+    URIQueue* queue = static_cast<URIQueue*>(handle->data);
+    uv_close((uv_handle_t*)&queue->item_async, NULL);
+    uv_close((uv_handle_t*)handle, NULL);
+}
+
 void URIQueue::start() {
     proc_shouldRun = true;
-    uv_thread_create(&proc_thread, proc_thread_func, this);
+    item_loop = threadManager.initTask(processor->taskName());
+    uv_async_init(item_loop, &item_async, proc_async_func);
+    uv_async_init(item_loop, &cleanup_async, cleanup_async_func);
+    item_async.data = this;
+    cleanup_async.data = this;
+
+    threadManager.startTask(processor->taskName());
 }
 
 void URIQueue::stop() {
     if (proc_shouldRun) {
         proc_shouldRun = false;
-        {
-            util::LockGuard guard(&item_mutex);
-            uv_cond_signal(&item_cond);
-        }
-        uv_thread_join(&proc_thread);
-
-        {
-            util::LockGuard guard(&item_mutex);
-            item_queue.clear();
-        }
+        uv_async_send(&cleanup_async);
+        threadManager.stopTask(processor->taskName());
     }
 }
 
@@ -89,7 +88,7 @@ void URIQueue::queueItem(const URI& uri, const boost::any& data) {
     {
         util::LockGuard guard(&item_mutex);
         item_queue.push_back(item(uri, data));
-        uv_cond_signal(&item_cond);
+        uv_async_send(&item_async);
     }
 }
 

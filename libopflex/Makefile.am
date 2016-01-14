@@ -46,6 +46,7 @@ core_includedir = $(includedir)/opflex/ofcore
 core_include_HEADERS = \
 	include/opflex/ofcore/OFFramework.h \
 	include/opflex/ofcore/PeerStatusListener.h \
+	include/opflex/ofcore/MainLoopAdaptor.h \
 	include/opflex/ofcore/InspectorClient.h \
 	include/opflex/ofcore/OFConstants.h 
 test_includedir = $(includedir)/opflex/test
