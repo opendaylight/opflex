@@ -239,7 +239,7 @@ public:
         return notifRcvd.find(uri) != notifRcvd.end();
     }
 
-    bool clear() {
+    void clear() {
         lock_guard<mutex> guard(notifMutex);
         notifRcvd.clear();
     }
