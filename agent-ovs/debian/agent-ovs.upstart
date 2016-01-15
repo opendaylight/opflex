@@ -1,6 +1,6 @@
 description "Opflex OVS Agent"
 
-start on (local-filesystems and openvswitch-switch)
+start on (local-filesystems)
 stop on runlevel [!2345]
 
 kill signal SIGINT
