@@ -65,7 +65,7 @@ private:
     ovsagent::FlowReader flowReader;
     PortMapper portMapper;
     FlowManager flowManager;
-    SwitchConnection* connection;
+    boost::scoped_ptr<SwitchConnection> connection;
     StatsManager statsManager;
     TunnelEpManager tunnelEpManager;
 
