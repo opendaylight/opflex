@@ -28,8 +28,7 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
 }
 
 StitchedModeRenderer::~StitchedModeRenderer() {
-    if (connection)
-        delete connection;
+
 }
 
 void StitchedModeRenderer::start() {
@@ -66,17 +65,17 @@ void StitchedModeRenderer::start() {
     flowManager.SetMulticastGroupFile(mcastGroupFile);
     flowManager.SetEndpointAdv(endpointAdv);
 
-    connection = new SwitchConnection(ovsBridgeName);
-    portMapper.InstallListenersForConnection(connection);
-    flowExecutor.InstallListenersForConnection(connection);
-    flowReader.installListenersForConnection(connection);
-    flowManager.registerConnection(connection);
+    connection.reset(new SwitchConnection(ovsBridgeName));
+    portMapper.InstallListenersForConnection(connection.get());
+    flowExecutor.InstallListenersForConnection(connection.get());
+    flowReader.installListenersForConnection(connection.get());
+    flowManager.registerConnection(connection.get());
     flowManager.registerModbListeners();
     connection->Connect(OFP13_VERSION);
 
     flowManager.Start();
 
-    statsManager.registerConnection(connection);
+    statsManager.registerConnection(connection.get());
     statsManager.start();
 }
 
@@ -91,12 +90,11 @@ void StitchedModeRenderer::stop() {
     flowManager.Stop();
     connection->Disconnect();
     flowManager.unregisterModbListeners();
-    flowManager.unregisterConnection(connection);
-    flowReader.uninstallListenersForConnection(connection);
-    flowExecutor.UninstallListenersForConnection(connection);
-    portMapper.UninstallListenersForConnection(connection);
-    delete connection;
-    connection = NULL;
+    flowManager.unregisterConnection(connection.get());
+    flowReader.uninstallListenersForConnection(connection.get());
+    flowExecutor.UninstallListenersForConnection(connection.get());
+    portMapper.UninstallListenersForConnection(connection.get());
+    connection.reset();
 
     if (encapType == FlowManager::ENCAP_VXLAN ||
         encapType == FlowManager::ENCAP_IVXLAN) {
