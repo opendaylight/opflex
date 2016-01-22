@@ -1950,6 +1950,7 @@ void FlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
                                      uint32_t bdId, uint32_t rdId) {
     string bmac("ff:ff:ff:ff:ff:ff");
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
+    uint32_t tunPort = flowManager.GetTunnelPort();
 
     /* Router entries when epg0 is connected to fd0
      */
@@ -1969,6 +1970,13 @@ void FlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
         if (rip.is_v6()) {
             ADDF(Bldr()
                  .cookie(htonll(FlowManager::GetNDCookie()))
+                 .table(BR).priority(22).icmp6()
+                 .reg(BD, bdId).reg(RD, rdId).in(tunPort)
+                 .isEthDst(mmac).icmp_type(135).icmp_code(0)
+                 .isNdTarget(rip.to_string())
+                 .actions().drop().done());
+            ADDF(Bldr()
+                 .cookie(htonll(FlowManager::GetNDCookie()))
                  .table(BR).priority(20).icmp6()
                  .reg(BD, bdId).reg(RD, rdId)
                  .isEthDst(mmac).icmp_type(135).icmp_code(0)
@@ -1976,6 +1984,10 @@ void FlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
                  .actions().controller(65535)
                  .done());
         } else {
+            ADDF(Bldr().table(BR).priority(22).arp()
+                 .reg(BD, bdId).reg(RD, rdId).in(tunPort)
+                 .isEthDst(bmac).isTpa(rip.to_string())
+                 .isArpOp(1).actions().drop().done());
             ADDF(Bldr().table(BR).priority(20).arp()
                  .reg(BD, bdId).reg(RD, rdId)
                  .isEthDst(bmac).isTpa(rip.to_string())

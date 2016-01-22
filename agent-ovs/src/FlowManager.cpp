@@ -2105,6 +2105,8 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t bdId, uint32_t rdId) 
     PolicyManager::subnet_vector_t subnets;
     agent.getPolicyManager().getSubnetsForGroup(egURI, subnets);
 
+    uint32_t tunPort = GetTunnelPort();
+
     BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
         FlowEntryList el;
 
@@ -2139,18 +2141,35 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t bdId, uint32_t rdId) 
                     hasRouterIp = true;
                 }
             }
+            // Reply to ARP requests for the router IP only from local
+            // endpoints.
             if (hasRouterIp) {
                 if (routerIp.is_v4()) {
-                    FlowEntry *e0 = new FlowEntry();
-                    SetDestMatchArp(e0, 20, routerIp, bdId, rdId);
-                    SetDestActionArpReply(e0, GetRouterMacAddr(), routerIp);
-                    el.push_back(FlowEntryPtr(e0));
+                    if (tunPort != OFPP_NONE) {
+                        FlowEntry *e0 = new FlowEntry();
+                        SetDestMatchArp(e0, 22, routerIp, bdId, rdId);
+                        match_set_in_port(&e0->entry->match, tunPort);
+                        el.push_back(FlowEntryPtr(e0));
+                    }
+
+                    FlowEntry *e1 = new FlowEntry();
+                    SetDestMatchArp(e1, 20, routerIp, bdId, rdId);
+                    SetDestActionArpReply(e1, GetRouterMacAddr(), routerIp);
+                    el.push_back(FlowEntryPtr(e1));
                 } else {
-                    FlowEntry *e0 = new FlowEntry();
-                    SetDestMatchNd(e0, 20, &routerIp, bdId, rdId,
+                    if (tunPort != OFPP_NONE) {
+                        FlowEntry *e0 = new FlowEntry();
+                        SetDestMatchNd(e0, 22, &routerIp, bdId, rdId,
+                                       FlowManager::GetNDCookie());
+                        match_set_in_port(&e0->entry->match, tunPort);
+                        el.push_back(FlowEntryPtr(e0));
+                    }
+
+                    FlowEntry *e1 = new FlowEntry();
+                    SetDestMatchNd(e1, 20, &routerIp, bdId, rdId,
                                    FlowManager::GetNDCookie());
-                    SetActionController(e0);
-                    el.push_back(FlowEntryPtr(e0));
+                    SetActionController(e1);
+                    el.push_back(FlowEntryPtr(e1));
                 }
             }
         }
