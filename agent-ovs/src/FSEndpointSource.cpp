@@ -56,6 +56,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EP_UUID("uuid");
     static const std::string EP_MAC("mac");
     static const std::string EP_IP("ip");
+    static const std::string EP_ANYCAST_RETURN_IP("anycast-return-ip");
     static const std::string EP_VIRTUAL_IP("virtual-ip");
     static const std::string EP_GROUP("endpoint-group");
     static const std::string POLICY_SPACE_NAME("policy-space-name");
@@ -109,6 +110,12 @@ void FSEndpointSource::updated(const fs::path& filePath) {
         if (ips) {
             BOOST_FOREACH(const ptree::value_type &v, ips.get())
                 newep.addIP(v.second.data());
+        }
+        optional<ptree&> anycastReturnIps =
+            properties.get_child_optional(EP_ANYCAST_RETURN_IP);
+        if (anycastReturnIps) {
+            BOOST_FOREACH(const ptree::value_type &v, anycastReturnIps.get())
+                newep.addAnycastReturnIP(v.second.data());
         }
         optional<ptree&> virtualIps =
             properties.get_child_optional(EP_VIRTUAL_IP);

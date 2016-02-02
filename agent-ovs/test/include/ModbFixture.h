@@ -188,6 +188,8 @@ protected:
         ep0->addIP("10.20.44.3");
         ep0->addIP("2001:db8::2");
         ep0->addIP("2001:db8::3");
+        ep0->addAnycastReturnIP("10.20.44.2");
+        ep0->addAnycastReturnIP("2001:db8::2");
         ep0->setEgURI(epg0->getURI());
         epSrc.updateEndpoint(*ep0);
 

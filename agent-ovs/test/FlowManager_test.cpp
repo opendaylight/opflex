@@ -1757,6 +1757,8 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
     string mac = ep->getMAC().get().toString();
     uint32_t port = portmapper.FindPort(ep->getInterfaceName().get());
     const unordered_set<string>& ips = ep->getIPs();
+    const unordered_set<string>* acastIps = &ep->getAnycastReturnIPs();
+    if (acastIps->size() == 0) acastIps = &ips;
     uint32_t vnid = policyMgr.getVnidForGroup(epg->getURI()).get();
     uint32_t tunPort = flowManager.GetTunnelPort();
     address tunDstAddr = flowManager.GetTunnelDst();
@@ -1909,7 +1911,7 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
         ep0->getMAC().get().toUIntArray((uint8_t*)&metadata);
         ((uint8_t*)&metadata)[7] = 1;
 
-        BOOST_FOREACH(const string& ip, ips) {
+        BOOST_FOREACH(const string& ip, *acastIps) {
             address ipa = address::from_string(ip);
             if (ipa.is_v4()) {
                 ADDF(Bldr().table(SVD).priority(50).ip()

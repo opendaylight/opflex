@@ -1505,7 +1505,22 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         // is reachable only for traffic originating from service
         // interfaces.
         if (hasMac) {
-            BOOST_FOREACH (const address& ipAddr, ipAddresses) {
+            std::vector<address> anycastReturnIps;
+            BOOST_FOREACH(const string& ipStr,
+                          endPoint.getAnycastReturnIPs()) {
+                address addr = address::from_string(ipStr, ec);
+                if (ec) {
+                    LOG(WARNING) << "Invalid anycast return IP: "
+                                 << ipStr << ": " << ec.message();
+                } else {
+                    anycastReturnIps.push_back(addr);
+                }
+            }
+            if (anycastReturnIps.size() == 0) {
+                anycastReturnIps = ipAddresses;
+            }
+
+            BOOST_FOREACH (const address& ipAddr, anycastReturnIps) {
                 {
                     FlowEntry *serviceDest = new FlowEntry();
                     SetDestMatchEp(serviceDest, 50, NULL, ipAddr, rdId);

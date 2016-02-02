@@ -131,6 +131,37 @@ public:
     }
 
     /**
+     * Get the list of IP addresses that are valid sources for anycast
+     * service addresses.
+     *
+     * @return the list of IP addresses
+     */
+    const boost::unordered_set<std::string>& getAnycastReturnIPs() const {
+        return anycastReturnIps;
+    }
+
+    /**
+     * Set the list of IP addresses that are valid sources for anycast
+     * service addresses.  This will overwrite any existing IP
+     * addresses
+     *
+     * @param ips the IP addresses
+     */
+    void setAnycastReturnIPs(const boost::unordered_set<std::string>& ips) {
+        this->anycastReturnIps = ips;
+    }
+
+    /**
+     * Add an IP address to the list of IPs that are valid sources for
+     * anycast service addresses.
+     *
+     * @param ip the IP address to add
+     */
+    void addAnycastReturnIP(const std::string& ip) {
+        this->anycastReturnIps.insert(ip);
+    }
+
+    /**
      * A MAC/IP address pair representing a virtual IP that can be
      * claimed by the endpoint by sending a gratuitous ARP.
      */
@@ -919,6 +950,7 @@ private:
     std::string uuid;
     boost::optional<opflex::modb::MAC> mac;
     boost::unordered_set<std::string> ips;
+    boost::unordered_set<std::string> anycastReturnIps;
     boost::unordered_set<virt_ip_t> virtualIps;
     boost::optional<std::string> egMappingAlias;
     boost::optional<opflex::modb::URI> egURI;
