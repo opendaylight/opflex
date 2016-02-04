@@ -783,9 +783,13 @@ void FlowManagerFixture::fdTest() {
         fd0->setBcastFloodMode(BcastFloodModeEnumT::CONST_ISOLATED);
         m1.commit();
     }
+    optional<shared_ptr<modelgbp::gbp::FloodDomain> > fdptr;
+    WAIT_FOR((fdptr = policyMgr.getFDForGroup(epg2->getURI()))
+             ? (fdptr.get()
+                ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL) ==
+                BcastFloodModeEnumT::CONST_ISOLATED) : false, 500);
     flowManager.endpointUpdated(ep0->getUUID());
     flowManager.domainUpdated(FloodDomain::CLASS_ID, fd0->getURI());
-    WAIT_FOR(exec.IsGroupEmpty(), 500);
 
     clearExpFlowTables();
     initExpFd(1, true);
