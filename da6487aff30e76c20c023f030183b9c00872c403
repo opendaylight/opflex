@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a3d3df0_33d624c6",
+        "filename": "libopflex/comms/active_connection.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2016-02-05T21:51:06Z",
+      "side": 1,
+      "message": "?",
+      "range": {
+        "startLine": 426,
+        "startChar": 20,
+        "endLine": 426,
+        "endChar": 22
+      },
+      "revId": "da6487aff30e76c20c023f030183b9c00872c403",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
