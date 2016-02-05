@@ -151,7 +151,6 @@ void on_active_connection(uv_connect_t *req, int status) {
         LOG(INFO)
             << peer
             << " peer is being destroyed. down() it"
-            << " NOT!"
         ;
         peer->down();
         return;
@@ -159,7 +158,6 @@ void on_active_connection(uv_connect_t *req, int status) {
 
     void retry_later(ActivePeer * peer);
 
-    int rc;
     if (status < 0) {
         LOG(WARNING)
             << "connect: ["
@@ -167,7 +165,7 @@ void on_active_connection(uv_connect_t *req, int status) {
             << "] "
             << uv_strerror(status)
         ;
-        peer->onFailedConnect(rc);
+        peer->onFailedConnect(status);
         return;
     }
 
@@ -417,6 +415,17 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
     struct addrinfo const * ai = peer->_.ai_next;
 
     debug_address(ai);
+
+    /* BAIL if destroying */
+    if (peer->destroying_) {
+
+        LOG(INFO)
+            << peer
+            << " peer is being destroyed. down() it"
+        ;
+        peer->down();
+        return UV_ECANCELED;
+    }
 
     int rc = UV_EAI_FAIL;
 
