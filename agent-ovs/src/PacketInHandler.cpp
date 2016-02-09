@@ -52,8 +52,6 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
                                      struct flow& flow,
                                      bool stage2) {
     uint32_t tunPort = flowManager.GetTunnelPort();
-    FlowManager::EncapType encapType = flowManager.GetEncapType();
-    const address& tunDst = flowManager.GetTunnelDst();
 
     bool dstKnown = (0 != pi.flow_metadata.flow.regs[7]);
     if (stage2 && !dstKnown) return false;
@@ -87,8 +85,10 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
     uint32_t outport = stage2
         ? pi.flow_metadata.flow.regs[7]
         : pi.flow_metadata.flow.in_port.ofp_port;
-    if (outport == tunPort)
-        FlowManager::SetActionTunnelMetadata(ab, encapType, tunDst);
+    if (outport == tunPort) {
+        ab.SetWriteMetadata(FlowManager::METADATA_TUNNEL_OUT,
+                            FlowManager::METADATA_OUT_MASK);
+    }
 
     ab.SetRegLoad(MFF_REG7, outport);
     if (stage2) {
@@ -248,9 +248,17 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
                                        ofputil_protocol& proto,
                                        struct dp_packet& pkt,
                                        struct flow& flow) {
+
     writeLearnFlow(conn, proto, pi, flow, false);
     if (writeLearnFlow(conn, proto, pi, flow, true))
         return;
+
+    uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
+    PolicyManager& polMgr = agent.getPolicyManager();
+    optional<URI> egUri = polMgr.getGroupForVnid(epgId);
+    const address tunDst = egUri
+        ? flowManager.getEPGTunnelDst(egUri.get())
+        : flowManager.GetTunnelDst();
 
     {
         // install a forward flow to flood to the promiscuous ports in
@@ -270,6 +278,7 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
         match_set_dl_src(&fm.match, flow.dl_src);
 
         ActionBuilder ab;
+        ab.SetRegLoad(MFF_REG7, tunDst.to_v4().to_ulong());
         ab.SetGroup(FlowManager::getPromId(pi.flow_metadata.flow.regs[5]));
         ab.Build(&fm);
 
@@ -291,6 +300,7 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
 
         ActionBuilder ab;
         ab.SetRegLoad(MFF_REG0, pi.flow_metadata.flow.regs[0]);
+        ab.SetRegLoad(MFF_REG7, tunDst.to_v4().to_ulong());
         ab.SetGroup(FlowManager::getPromId(pi.flow_metadata.flow.regs[5]));
         ab.Build(&po);
 
@@ -308,7 +318,8 @@ static void send_packet_out(FlowManager& flowManager,
                             struct ofpbuf* b,
                             ofputil_protocol& proto,
                             uint32_t in_port,
-                            uint32_t out_port = OFPP_IN_PORT) {
+                            uint32_t out_port = OFPP_IN_PORT,
+                            const URI& egURI = URI::ROOT) {
     // send reply as packet-out
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
@@ -319,9 +330,12 @@ static void send_packet_out(FlowManager& flowManager,
     uint32_t tunPort = flowManager.GetTunnelPort();
 
     ActionBuilder ab;
-    if (out_port == tunPort || (in_port == tunPort && out_port == OFPP_IN_PORT))
+    if (out_port == tunPort ||
+        (in_port == tunPort && out_port == OFPP_IN_PORT)) {
+        address tunDst = flowManager.getEPGTunnelDst(egURI);
         FlowManager::SetActionTunnelMetadata(ab, flowManager.GetEncapType(),
-                                             flowManager.GetTunnelDst());
+                                             tunDst);
+    }
     ab.SetOutputToPort(out_port);
     ab.Build(&po);
 
@@ -418,7 +432,8 @@ static void handleNDPktIn(Agent& agent,
 
     if (b)
         send_packet_out(flowManager, conn, b, proto,
-                        pi.flow_metadata.flow.in_port.ofp_port);
+                        pi.flow_metadata.flow.in_port.ofp_port,
+                        OFPP_IN_PORT, egUri.get());
 }
 
 static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
@@ -802,6 +817,9 @@ static void handleICMPErrPktIn(bool v4,
                                struct flow& flow) {
     struct ofpbuf* b = NULL;
 
+    uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
+    optional<URI> egUri = agent.getPolicyManager().getGroupForVnid(epgId);
+
     if (v4) {
         size_t l4_size = dp_packet_l4_size(&pkt);
         if (l4_size < (sizeof(struct icmphdr) + sizeof(struct iphdr)))
@@ -876,7 +894,8 @@ static void handleICMPErrPktIn(bool v4,
 
     if (b)
         send_packet_out(flowManager, conn, b, proto,
-                        pi.flow_metadata.flow.regs[7]);
+                        pi.flow_metadata.flow.regs[7],
+                        OFPP_IN_PORT, egUri ? egUri.get() : URI::ROOT);
 }
 
 /**
