@@ -250,6 +250,7 @@ void OpflexPEHandler::handleSendIdentityErr(uint64_t reqId,
 
 void OpflexPEHandler::handlePolicyResolveRes(uint64_t reqId,
                                              const Value& payload) {
+
     getProcessor()->responseReceived(reqId);
     StoreClient* client = getProcessor()->getSystemClient();
     MOSerializer& serializer = getProcessor()->getSerializer();

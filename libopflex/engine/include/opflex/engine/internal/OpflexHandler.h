@@ -98,11 +98,11 @@ public:
     /**
      * Check whether the current connection has the specified opflex
      * role.
-     * 
+     *
      * @param role the OpFlex role to check for
-     * @return true if the connection has the given role 
+     * @return true if the connection has the given role
      */
-    bool hasRemoteRole(ofcore::OFConstants::OpflexRole role) const { 
+    bool hasRemoteRole(ofcore::OFConstants::OpflexRole role) const {
         return (remoteRoles & role);
     }
 
@@ -521,7 +521,7 @@ public:
     /**
      * Handle an unsupported request by responding with an error with
      * a response code of EUNSUPPORTED
-     * 
+     *
      * @param id the ID of the remote message
      * @param type the type of message
      */
@@ -539,6 +539,28 @@ public:
     virtual void sendErrorRes(const rapidjson::Value& id,
                               const std::string& code,
                               const std::string& message);
+
+    /**
+     * Check that the connection is in ready state before handling the
+     * specified request.  If the connection is not ready, send an
+     * error response, disconnect the connection, and return false.
+     *
+     * @param id the ID for the request
+     * @param method the name of the request method
+     */
+    virtual bool requireReadyReq(const rapidjson::Value& id,
+                                 const std::string& method);
+
+    /**
+     * Check that the connection is in ready state before handling the
+     * specified response.  If the connection is not ready, disconnect
+     * the connection and return false.
+     *
+     * @param reqId the ID for the request
+     * @param method the name of the request method
+     */
+    virtual bool requireReadyRes(uint64_t reqId,
+                                 const std::string& method);
 
 protected:
     /**

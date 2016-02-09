@@ -54,7 +54,8 @@ void OpflexHandler::handleUnexpected(const string& type) {
 
 void OpflexHandler::handleUnsupportedReq(const rapidjson::Value& id,
                                          const string& type) {
-    LOG(WARNING) << "Ignoring unsupported request of type " << type;
+    LOG(WARNING) << "[" << getConnection()->getRemotePeer() << "] "
+                 << "Ignoring unsupported request of type " << type;
     sendErrorRes(id, "EUNSUPPORTED", "Unsupported request");
 }
 
@@ -73,7 +74,8 @@ void OpflexHandler::handleError(uint64_t reqId,
         if (v.IsString())
             message = v.GetString();
     }
-    LOG(ERROR) << "Remote peer returned error with message ("
+    LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+               << "Remote peer returned error with message ("
                << reqId << "," << type
                << "): " << code << ": " << message;
 }
@@ -126,6 +128,20 @@ void OpflexHandler::sendErrorRes(const Value& id,
     getConnection()->sendMessage(new ErrorRes(id, code, message), true);
 }
 
+bool OpflexHandler::requireReadyReq(const Value& id,
+                                    const std::string& method) {
+    if (isReady()) return true;
+
+    sendErrorRes(id, "ESTATE", "Unexpected request of type " + method);
+    handleUnexpected(method);
+}
+
+bool OpflexHandler::requireReadyRes(uint64_t reqId,
+                                    const std::string& method) {
+    if (isReady()) return true;
+    handleUnexpected(method);
+}
+
 } /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */
@@ -136,24 +152,35 @@ namespace rpc {
 // Following are definitions that forward the message handlers from
 // the opflex RPC library into our own handler
 
-#define HANDLE_REQ(name) \
+#define HANDLE_REQ_BASE(name) \
     ((opflex::engine::internal::OpflexConnection*)getPeer()->getData())\
     ->getHandler()->handle##name(getRemoteId(), getPayload())
-#define HANDLE_RES(name) \
+#define HANDLE_RES_BASE(name) \
     ((opflex::engine::internal::OpflexConnection*)getPeer()->getData())\
     ->getHandler()->handle##name(getLocalId().id_, getPayload())
 
+#define HANDLE_REQ(name)                                                \
+    if (((opflex::engine::internal::OpflexConnection*)getPeer()->getData()) \
+        ->getHandler()->requireReadyReq(getRemoteId(),                  \
+                                        std::string(#name)))            \
+        HANDLE_REQ_BASE(name)
+#define HANDLE_RES(name)                                                \
+    if (((opflex::engine::internal::OpflexConnection*)getPeer()->getData()) \
+        ->getHandler()->requireReadyRes(getLocalId().id_,               \
+                                        std::string(#name)))            \
+        HANDLE_RES_BASE(name)
+
 template<>
 void InbReq<&yajr::rpc::method::send_identity>::process() const {
-    HANDLE_REQ(SendIdentityReq);
+    HANDLE_REQ_BASE(SendIdentityReq);
 }
 template<>
 void InbRes<&yajr::rpc::method::send_identity>::process() const {
-    HANDLE_RES(SendIdentityRes);
+    HANDLE_RES_BASE(SendIdentityRes);
 }
 template<>
 void InbErr<&yajr::rpc::method::send_identity>::process() const {
-    HANDLE_RES(SendIdentityErr);
+    HANDLE_RES_BASE(SendIdentityErr);
 }
 
 template<>
@@ -275,15 +302,15 @@ void InbErr<&yajr::rpc::method::state_report>::process() const {
 
 template<>
 void InbReq<&yajr::rpc::method::custom>::process() const {
-    HANDLE_REQ(CustomReq);
+    HANDLE_REQ_BASE(CustomReq);
 }
 template<>
 void InbRes<&yajr::rpc::method::custom>::process() const {
-    HANDLE_RES(CustomRes);
+    HANDLE_RES_BASE(CustomRes);
 }
 template<>
 void InbErr<&yajr::rpc::method::custom>::process() const {
-    HANDLE_RES(CustomErr);
+    HANDLE_RES_BASE(CustomErr);
 }
 
 } /* namespace rpc */
