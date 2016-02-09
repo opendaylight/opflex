@@ -388,20 +388,22 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     BOOST_CHECK_EQUAL(42, ofp_to_u16(fm2.match.flow.in_port.ofp_port));
     i = 0;
     OFPACT_FOR_EACH (a, fm2.ofpacts, fm2.ofpacts_len) {
-        if (i == 0) BOOST_CHECK_EQUAL(OFPACT_GROUP, a->type);
+        if (i == 0) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
+        if (i == 1) BOOST_CHECK_EQUAL(OFPACT_GROUP, a->type);
         ++i;
     }
-    BOOST_CHECK_EQUAL(1, i);
+    BOOST_CHECK_EQUAL(2, i);
 
     BOOST_CHECK_EQUAL(sizeof(packet_buf), po.packet_len);
     BOOST_CHECK(0 == memcmp(po.packet, packet_buf, sizeof(packet_buf)));
     i = 0;
     OFPACT_FOR_EACH (a, po.ofpacts, po.ofpacts_len) {
         if (i == 0) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
-        if (i == 1) BOOST_CHECK_EQUAL(OFPACT_GROUP, a->type);
+        if (i == 1) BOOST_CHECK_EQUAL(OFPACT_SET_FIELD, a->type);
+        if (i == 2) BOOST_CHECK_EQUAL(OFPACT_GROUP, a->type);
         ++i;
     }
-    BOOST_CHECK_EQUAL(2, i);
+    BOOST_CHECK_EQUAL(3, i);
 
     conn.clear();
 
