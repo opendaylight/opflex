@@ -72,27 +72,15 @@ namespace ovsagent {
 const uint16_t FlowManager::MAX_POLICY_RULE_PRIORITY = 8192;     // arbitrary
 const long DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC = 5000;
 
-// the OUT_MASK specifies 8 bits that indicate the action to take in
-// the output table.  If nothing is set, then the action is to output
-// to the interface in REG7
-const uint64_t METADATA_OUT_MASK = 0xff;
+const uint64_t FlowManager::METADATA_POLICY_APPLIED_MASK = 0x100;
 
-// "Policy applied" bit.  Bypass policy table because policy has
-// already been applied.
-const uint64_t METADATA_POLICY_APPLIED_MASK = 0x100;
-
-// Resubmit to the first "dest" table with the source registers set to
-// the corresponding values for the EPG in REG7
-const uint64_t METADATA_RESUBMIT_DST = 0x1;
-
-// Perform "outbound" NAT action and then resubmit with the source EPG
-// set to the mapped NAT EPG
-const uint64_t METADATA_NAT_OUT = 0x2;
-
-// Output to the interface in REG7 but intercept ICMP error replies
-// and overwrite the encapsulated error packet source address with
-// the (rewritten) destination address of the outer packet.
-const uint64_t METADATA_REV_NAT_OUT = 0x3;
+// output table metadata actions
+const uint64_t FlowManager::METADATA_OUT_MASK = 0xff;
+const uint64_t FlowManager::METADATA_RESUBMIT_DST = 0x1;
+const uint64_t FlowManager::METADATA_NAT_OUT = 0x2;
+const uint64_t FlowManager::METADATA_REV_NAT_OUT = 0x3;
+const uint64_t FlowManager::METADATA_TUNNEL_OUT = 0x4;
+const uint64_t FlowManager::METADATA_FLOOD_OUT = 0x5;
 
 static const char* ID_NAMESPACES[] =
     {"floodDomain", "bridgeDomain", "routingDomain",
@@ -339,8 +327,8 @@ SetSourceAction(FlowEntry *fe, uint32_t epgId,
     ab.SetRegLoad(MFF_REG5, fgrpId);
     ab.SetRegLoad(MFF_REG6, l3Id);
     if (setPolicyApplied) {
-        ab.SetWriteMetadata(METADATA_POLICY_APPLIED_MASK,
-                            METADATA_POLICY_APPLIED_MASK);
+        ab.SetWriteMetadata(FlowManager::METADATA_POLICY_APPLIED_MASK,
+                            FlowManager::METADATA_POLICY_APPLIED_MASK);
     }
     ab.SetGotoTable(nextTable);
 
@@ -525,7 +513,7 @@ SetMatchSubnet(FlowEntry *fe, uint32_t rdId,
 
 void FlowManager::SetActionTunnelMetadata(ActionBuilder& ab,
                                           FlowManager::EncapType type,
-                                          const address& tunDst) {
+                                          const optional<address>& tunDst) {
     switch (type) {
     case FlowManager::ENCAP_VLAN:
         ab.SetPushVlan();
@@ -533,15 +521,18 @@ void FlowManager::SetActionTunnelMetadata(ActionBuilder& ab,
         break;
     case FlowManager::ENCAP_VXLAN:
         ab.SetRegMove(MFF_REG0, MFF_TUN_ID);
-        if (tunDst.is_v4()) {
-            ab.SetRegLoad(MFF_TUN_DST, tunDst.to_v4().to_ulong());
+        if (tunDst) {
+            if (tunDst->is_v4()) {
+                ab.SetRegLoad(MFF_TUN_DST, tunDst->to_v4().to_ulong());
+            } else {
+                // this should be unreachable
+                LOG(WARNING) << "Ipv6 tunnel destination unsupported";
+            }
         } else {
-            // this should be unreachable
-            LOG(WARNING) << "Ipv6 tunnel destination unsupported";
+            ab.SetRegMove(MFF_REG7, MFF_TUN_DST);
         }
         // fall through
     case FlowManager::ENCAP_IVXLAN:
-        // TODO: set additional ivxlan fields
         break;
     default:
         break;
@@ -588,7 +579,7 @@ static void
 SetDestActionArpReply(FlowEntry *fe, const uint8_t *mac, const address& ip,
                       uint32_t outPort = OFPP_IN_PORT,
                       FlowManager::EncapType type = FlowManager::ENCAP_NONE,
-                      const address* tunDst = NULL) {
+                      uint32_t replyEpg = 0) {
     ActionBuilder ab;
     ab.SetRegMove(MFF_ETH_SRC, MFF_ETH_DST);
     ab.SetRegLoad(MFF_ETH_SRC, mac);
@@ -597,9 +588,14 @@ SetDestActionArpReply(FlowEntry *fe, const uint8_t *mac, const address& ip,
     ab.SetRegLoad(MFF_ARP_SHA, mac);
     ab.SetRegMove(MFF_ARP_SPA, MFF_ARP_TPA);
     ab.SetRegLoad(MFF_ARP_SPA, ip.to_v4().to_ulong());
-    if (type != FlowManager::ENCAP_NONE)
-        FlowManager::SetActionTunnelMetadata(ab, type, *tunDst);
-    ab.SetOutputToPort(outPort);
+    if (type != FlowManager::ENCAP_NONE) {
+        ab.SetRegLoad(MFF_REG0, replyEpg);
+        ab.SetWriteMetadata(FlowManager::METADATA_TUNNEL_OUT,
+                            FlowManager::METADATA_OUT_MASK);
+        ab.SetGotoTable(FlowManager::OUT_TABLE_ID);
+    } else {
+        ab.SetOutputToPort(outPort);
+    }
 
     ab.Build(fe->entry);
 }
@@ -639,18 +635,20 @@ SetActionRevDNatDest(FlowEntry *fe, uint32_t epgVnid, uint32_t bdId,
 }
 
 static void
-SetActionFdBroadcast(FlowEntry *fe, uint32_t fgrpId) {
+SetActionEPGFdBroadcast(FlowEntry *fe) {
     ActionBuilder ab;
-    ab.SetGroup(fgrpId);
+    ab.SetWriteMetadata(FlowManager::METADATA_FLOOD_OUT,
+                        FlowManager::METADATA_OUT_MASK);
+    ab.SetGotoTable(FlowManager::OUT_TABLE_ID);
     ab.Build(fe->entry);
 }
 
 static void
-SetDestActionOutputToTunnel(FlowEntry *fe, FlowManager::EncapType type,
-                            const address& tunDst, uint32_t tunPort) {
+SetDestActionOutputToEPGTunnel(FlowEntry *fe) {
     ActionBuilder ab;
-    FlowManager::SetActionTunnelMetadata(ab, type, tunDst);
-    ab.SetOutputToPort(tunPort);
+    ab.SetWriteMetadata(FlowManager::METADATA_TUNNEL_OUT,
+                        FlowManager::METADATA_OUT_MASK);
+    ab.SetGotoTable(FlowManager::OUT_TABLE_ID);
     ab.Build(fe->entry);
 }
 
@@ -827,8 +825,8 @@ SetOutRevNatICMP(FlowEntry *fe, bool v4, uint8_t type) {
     fe->entry->priority = 10;
     fe->entry->cookie = FlowManager::GetICMPErrorCookie(v4);
     match_set_metadata_masked(&fe->entry->match,
-                              htonll(METADATA_REV_NAT_OUT),
-                              htonll(METADATA_OUT_MASK));
+                              htonll(FlowManager::METADATA_REV_NAT_OUT),
+                              htonll(FlowManager::METADATA_OUT_MASK));
 
     if (v4) {
         match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_IP));
@@ -840,6 +838,22 @@ SetOutRevNatICMP(FlowEntry *fe, bool v4, uint8_t type) {
         match_set_tp_src(&fe->entry->match, htons(type));
     }
     SetActionController(fe);
+}
+
+address FlowManager::getEPGTunnelDst(const URI& epgURI) {
+    optional<string> epgMcastIp =
+        agent.getPolicyManager().getMulticastIPForGroup(epgURI);
+    if (epgMcastIp) {
+        boost::system::error_code ec;
+        address ip = address::from_string(epgMcastIp.get(), ec);
+        if (ec || !ip.is_v4() || ! ip.is_multicast()) {
+            LOG(WARNING) << "Ignoring invalid/unsupported group multicast "
+                " IP: " << epgMcastIp.get();
+            return GetTunnelDst();
+        }
+        return ip;
+    } else
+        return GetTunnelDst();
 }
 
 void FlowManager::QueueFlowTask(const boost::function<void ()>& w) {
@@ -1020,7 +1034,7 @@ static void proxyDiscovery(FlowManager& flowMgr, FlowEntryList& elBridgeDst,
             match_set_in_port(&proxyArpTun->entry->match, tunPort);
             SetDestActionArpReply(proxyArpTun, macAddr, ipAddr,
                                   OFPP_IN_PORT, flowMgr.GetEncapType(),
-                                  &flowMgr.GetTunnelDst());
+                                  epgVnid);
             elBridgeDst.push_back(FlowEntryPtr(proxyArpTun));
         }
         {
@@ -1080,8 +1094,8 @@ static void computeIpmFlows(FlowManager& flowMgr,
             ActionBuilder ab;
             ab.SetRegLoad(MFF_REG2, fepgVnid);
             ab.SetRegLoad(MFF_REG7, fepgVnid);
-            ab.SetWriteMetadata(METADATA_RESUBMIT_DST,
-                                METADATA_OUT_MASK);
+            ab.SetWriteMetadata(FlowManager::METADATA_RESUBMIT_DST,
+                                FlowManager::METADATA_OUT_MASK);
             ab.SetGotoTable(FlowManager::POL_TABLE_ID);
             ab.Build(ipmResub->entry);
 
@@ -1098,8 +1112,8 @@ static void computeIpmFlows(FlowManager& flowMgr,
         ipmNatOut->entry->table_id = FlowManager::OUT_TABLE_ID;
         ipmNatOut->entry->priority = 10;
         match_set_metadata_masked(&ipmNatOut->entry->match,
-                                  htonll(METADATA_NAT_OUT),
-                                  htonll(METADATA_OUT_MASK));
+                                  htonll(FlowManager::METADATA_NAT_OUT),
+                                  htonll(FlowManager::METADATA_OUT_MASK));
         match_set_reg(&ipmNatOut->entry->match, 6 /* REG6 */, rdId);
         match_set_reg(&ipmNatOut->entry->match, 7 /* REG7 */, fepgVnid);
         AddMatchIp(ipmNatOut, mappedIp, true);
@@ -1856,15 +1870,13 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
             unknownTunnelBr = new FlowEntry();
             unknownTunnelBr->entry->priority = 1;
             unknownTunnelBr->entry->table_id = BRIDGE_TABLE_ID;
-            SetDestActionOutputToTunnel(unknownTunnelBr, encapType,
-                                        GetTunnelDst(), tunPort);
+            SetDestActionOutputToEPGTunnel(unknownTunnelBr);
 
             if (virtualRouterEnabled) {
                 unknownTunnelRt = new FlowEntry();
                 unknownTunnelRt->entry->priority = 1;
                 unknownTunnelRt->entry->table_id = ROUTE_TABLE_ID;
-                SetDestActionOutputToTunnel(unknownTunnelRt, encapType,
-                                            GetTunnelDst(), tunPort);
+                SetDestActionOutputToEPGTunnel(unknownTunnelRt);
             }
         }
         WriteFlow("static", BRIDGE_TABLE_ID, unknownTunnelBr);
@@ -2088,6 +2100,70 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
 
         egOutFlows.push_back(FlowEntryPtr(resubmitDst));
     }
+    if (encapType != ENCAP_NONE && tunPort != OFPP_NONE) {
+        address tunDst = getEPGTunnelDst(epgURI);
+        {
+            // Output table action to output to the tunnel appropriate for
+            // the source EPG
+            FlowEntry* tunnelOut = new FlowEntry();
+            tunnelOut->entry->table_id = OUT_TABLE_ID;
+            tunnelOut->entry->priority = 10;
+            match_set_reg(&tunnelOut->entry->match, 0 /* REG0 */, epgVnid);
+            match_set_metadata_masked(&tunnelOut->entry->match,
+                                      htonll(METADATA_TUNNEL_OUT),
+                                      htonll(METADATA_OUT_MASK));
+            ActionBuilder ab;
+            FlowManager::SetActionTunnelMetadata(ab, encapType, tunDst);
+            ab.SetOutputToPort(tunPort);
+            ab.Build(tunnelOut->entry);
+
+            egOutFlows.push_back(FlowEntryPtr(tunnelOut));
+        }
+        if (encapType != ENCAP_VLAN) {
+            // If destination is the router mac, override EPG tunnel
+            // and send to unicast tunnel
+            FlowEntry* tunnelOutRtr = new FlowEntry();
+            tunnelOutRtr->entry->table_id = OUT_TABLE_ID;
+            tunnelOutRtr->entry->priority = 11;
+            match_set_reg(&tunnelOutRtr->entry->match, 0 /* REG0 */, epgVnid);
+            match_set_dl_dst(&tunnelOutRtr->entry->match,
+                             GetRouterMacAddr());
+            match_set_metadata_masked(&tunnelOutRtr->entry->match,
+                                      htonll(METADATA_TUNNEL_OUT),
+                                      htonll(METADATA_OUT_MASK));
+            ActionBuilder ab;
+            FlowManager::SetActionTunnelMetadata(ab, encapType, GetTunnelDst());
+            ab.SetOutputToPort(tunPort);
+            ab.Build(tunnelOutRtr->entry);
+
+            egOutFlows.push_back(FlowEntryPtr(tunnelOutRtr));
+        }
+        {
+            // Output table action to output to the flood group appropriate
+            // for the source EPG.
+            FlowEntry* floodOut = new FlowEntry();
+            floodOut->entry->table_id = OUT_TABLE_ID;
+            floodOut->entry->priority = 10;
+            match_set_reg(&floodOut->entry->match, 0 /* REG0 */, epgVnid);
+            match_set_metadata_masked(&floodOut->entry->match,
+                                      htonll(METADATA_FLOOD_OUT),
+                                      htonll(METADATA_OUT_MASK));
+            ActionBuilder ab;
+            switch (encapType) {
+            case FlowManager::ENCAP_VLAN:
+                break;
+            case FlowManager::ENCAP_VXLAN:
+            case FlowManager::ENCAP_IVXLAN:
+            default:
+                ab.SetRegLoad(MFF_REG7, tunDst.to_v4().to_ulong());
+                break;
+            }
+            ab.SetGroup(fgrpId);
+            ab.Build(floodOut->entry);
+
+            egOutFlows.push_back(FlowEntryPtr(floodOut));
+        }
+    }
     WriteFlow(epgId, OUT_TABLE_ID, egOutFlows);
 
     unordered_set<string> epUuids;
@@ -2289,8 +2365,7 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
                        sn.second, false);
         if (fallbackMode == FALLBACK_PROXY && tunPort != OFPP_NONE &&
             encapType != ENCAP_NONE) {
-            SetDestActionOutputToTunnel(snr, encapType,
-                                        GetTunnelDst(), tunPort);
+            SetDestActionOutputToEPGTunnel(snr);
         }
         rdRouteFlows.push_back(FlowEntryPtr(snr));
     }
@@ -2347,8 +2422,7 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
                                tunPort != OFPP_NONE &&
                                encapType != ENCAP_NONE) {
                         // For other external networks, output to the tunnel
-                        SetDestActionOutputToTunnel(snr, encapType,
-                                                    GetTunnelDst(), tunPort);
+                        SetDestActionOutputToEPGTunnel(snr);
                     }
                     // else drop the packets
                     rdRouteFlows.push_back(FlowEntryPtr(snr));
@@ -2464,10 +2538,7 @@ FlowManager::CreateGroupMod(uint16_t type, uint32_t groupId,
         encapType != ENCAP_NONE) {
         ofputil_bucket *bkt = CreateBucket(tunPort);
         ActionBuilder ab;
-        address tunDst = GetTunnelDst();
-        if (mcastTunDst)
-            tunDst = mcastTunDst.get();
-        SetActionTunnelMetadata(ab, encapType, tunDst);
+        SetActionTunnelMetadata(ab, encapType);
         ab.SetOutputToPort(tunPort);
         ab.Build(bkt);
         list_push_back(&entry->mod->buckets, &bkt->list_node);
@@ -2535,7 +2606,7 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
         // deliver broadcast/multicast traffic to the group table
         FlowEntry *mcast = new FlowEntry();
         SetMatchFd(mcast, 10, fgrpId, true, BRIDGE_TABLE_ID);
-        SetActionFdBroadcast(mcast, fgrpId);
+        SetActionEPGFdBroadcast(mcast);
         grpDst.push_back(FlowEntryPtr(mcast));
 
         if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
@@ -2558,13 +2629,12 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
         // deliver broadcast/multicast traffic to the group table only
         // if policy has already been applied (i.e. it comes from the
         // tunnel uplink)
-        uint32_t tunPort = GetTunnelPort();
         FlowEntry *mcast = new FlowEntry();
         SetMatchFd(mcast, 10, fgrpId, true, BRIDGE_TABLE_ID);
         match_set_metadata_masked(&mcast->entry->match,
                                   htonll(METADATA_POLICY_APPLIED_MASK),
                                   htonll(METADATA_POLICY_APPLIED_MASK));
-        SetActionFdBroadcast(mcast, fgrpId);
+        SetActionEPGFdBroadcast(mcast);
         grpDst.push_back(FlowEntryPtr(mcast));
     }
     WriteFlow(fgrpStrId, BRIDGE_TABLE_ID, grpDst);
