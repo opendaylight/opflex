@@ -270,6 +270,14 @@ public:
      * @return the tunnel destination
      */
     boost::asio::ip::address& GetTunnelDst() { return tunnelDst; }
+
+    /**
+     * Get the multicast tunnel destination
+     * @return the tunnel destination
+     */
+    boost::asio::ip::address& GetMcastTunDst()
+    { return mcastTunDst ? mcastTunDst.get() : tunnelDst; }
+
     /**
      * Get the router MAC address as an array of 6 bytes
      * @return the router MAC
@@ -403,11 +411,13 @@ public:
      * Set fill in tunnel metadata in an action builder
      * @param ab the action builder
      * @param type the encap type
-     * @param tunDst the tunnel destination
+     * @param tunDst the tunnel destination, or boost::none to send to the
+     * tunnel dst in reg7.
      */
     static void
     SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type,
-                            const boost::asio::ip::address& tunDst);
+                            const boost::optional<boost::asio::ip::address>&
+                            tunDst = boost::none);
 
     /**
      * Get the promiscuous-mode ID equivalent for a flood domain ID
@@ -445,6 +455,13 @@ public:
      */
     void DiffTableState(int tableId, const FlowEntryList& el,
                         /* out */ FlowEdit& diffs);
+
+    /**
+     * Get the tunnel destination to use for the given endpoint group.
+     * @param epgURI the group URI
+     * @return the tunnel destination IP
+     */
+    boost::asio::ip::address getEPGTunnelDst(const opflex::modb::URI& epgURI);
 
     /**
      * Indices of tables managed by the flow-manager.
@@ -508,6 +525,49 @@ public:
          */
         NUM_FLOW_TABLES
     };
+
+    /**
+     * "Policy applied" bit.  Bypass policy table because policy has
+     * already been applied.
+     */
+    static const uint64_t METADATA_POLICY_APPLIED_MASK;
+
+    /**
+     * the OUT_MASK specifies 8 bits that indicate the action to take
+     * in the output table.  If nothing is set, then the action is to
+     * output to the interface in REG7
+     */
+    static const uint64_t METADATA_OUT_MASK;
+
+    /**
+     * Resubmit to the first "dest" table with the source registers
+     * set to the corresponding values for the EPG in REG7
+     */
+    static const uint64_t METADATA_RESUBMIT_DST;
+
+    /**
+     * Perform "outbound" NAT action and then resubmit with the source
+     * EPG set to the mapped NAT EPG
+     */
+    static const uint64_t METADATA_NAT_OUT;
+
+    /**
+     * Output to the interface in REG7 but intercept ICMP error
+     * replies and overwrite the encapsulated error packet source
+     * address with the (rewritten) destination address of the outer
+     * packet.
+     */
+    static const uint64_t METADATA_REV_NAT_OUT;
+
+    /**
+     * Output to the tunnel destination appropriate for the EPG
+     */
+    static const uint64_t METADATA_TUNNEL_OUT;
+
+    /**
+     * Output to the flood group appropriate for the EPG
+     */
+    static const uint64_t METADATA_FLOOD_OUT;
 
 private:
     /**
