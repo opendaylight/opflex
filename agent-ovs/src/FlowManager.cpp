@@ -15,8 +15,6 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/trim.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -48,7 +46,6 @@ using std::string;
 using std::vector;
 using std::ostringstream;
 using boost::bind;
-using boost::algorithm::split;
 using boost::algorithm::trim;
 using boost::ref;
 using boost::optional;
@@ -740,7 +737,8 @@ SetSecurityMatchEp(FlowEntry *fe, uint16_t prio, uint32_t port,
 
 static void
 SetSecurityMatchEpArp(FlowEntry *fe, uint16_t prio, uint32_t port,
-        const uint8_t *epMac, const address* epIp) {
+        const uint8_t *epMac, const address* epIp,
+        uint8_t prefixLen = 32) {
     fe->entry->table_id = FlowManager::SEC_TABLE_ID;
     fe->entry->priority = prio;
     if (port != OFPP_ANY)
@@ -749,13 +747,15 @@ SetSecurityMatchEpArp(FlowEntry *fe, uint16_t prio, uint32_t port,
         match_set_dl_src(&fe->entry->match, epMac);
     match_set_dl_type(&fe->entry->match, htons(ETH_TYPE_ARP));
     if (epIp != NULL)
-        match_set_nw_src(&fe->entry->match, htonl(epIp->to_v4().to_ulong()));
+        match_set_nw_src_masked(&fe->entry->match,
+                                htonl(epIp->to_v4().to_ulong()),
+                                htonl(packets::get_subnet_mask_v4(prefixLen)));
 }
 
 static void
 SetSecurityMatchEpND(FlowEntry *fe, uint16_t prio, uint32_t port,
                      const uint8_t *epMac, const address* epIp,
-                     bool routerAdv) {
+                     bool routerAdv, uint8_t prefixLen = 128) {
     fe->entry->table_id = FlowManager::SEC_TABLE_ID;
     fe->entry->priority = prio;
     if (port != OFPP_ANY)
@@ -772,8 +772,10 @@ SetSecurityMatchEpND(FlowEntry *fe, uint16_t prio, uint32_t port,
 
     if (epIp != NULL) {
         struct in6_addr addr;
+        struct in6_addr mask;
         fill_in6_addr(addr, epIp->to_v6());
-        match_set_nd_target(&fe->entry->match, &addr);
+        packets::get_subnet_mask_v6(prefixLen, &mask);
+        match_set_nd_target_masked(&fe->entry->match, &addr, &mask);
 
         // OVS uses tp_dst for ICMPV6_CODE
         match_set_tp_dst(&fe->entry->match, 0);
@@ -1257,26 +1259,40 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
 
         BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
                       endPoint.getVirtualIPs()) {
-            // Don't write virtual IP entry if the endpoint already
-            // has an "active" IP address for this entry.
-            if (endPoint.getIPs().find(vip.second) != endPoint.getIPs().end())
-                continue;
-
-            address addr = address::from_string(vip.second, ec);
-            if (ec) {
-                LOG(WARNING) << "Invalid endpoint VIP: "
-                             << vip.second << ": " << ec.message();
+            packets::cidr_t vip_cidr;
+            if (!packets::cidr_from_string(vip.second, vip_cidr)) {
+                LOG(WARNING) << "Invalid endpoint VIP (CIDR): " << vip.second;
                 continue;
             }
             uint8_t vmac[6];
             vip.first.toUIntArray(vmac);
 
+            // Handle ARP/ND from "active" virtual IPs normally, that is
+            // without generating a packet-in
+            BOOST_FOREACH(const address& ipAddr, ipAddresses) {
+                if (!packets::cidr_contains(vip_cidr, ipAddr)) {
+                    continue;
+                }
+                FlowEntry *active_vip = new FlowEntry();
+                if (ipAddr.is_v4()) {
+                    SetSecurityMatchEpArp(active_vip, 61, ofPort, vmac,
+                                          &ipAddr);
+                } else {
+                    SetSecurityMatchEpND(active_vip, 61, ofPort, vmac,
+                                         &ipAddr, false);
+                }
+                SetSecurityActionAllow(active_vip);
+                el.push_back(FlowEntryPtr(active_vip));
+            }
+
             FlowEntry *vf = new FlowEntry();
-            if (addr.is_v4()) {
-                SetSecurityMatchEpArp(vf, 60, ofPort, vmac, &addr);
+            if (vip_cidr.first.is_v4()) {
+                SetSecurityMatchEpArp(vf, 60, ofPort, vmac, &vip_cidr.first,
+                                      vip_cidr.second);
                 vf->entry->cookie = GetVIPCookie(true);
             } else {
-                SetSecurityMatchEpND(vf, 60, ofPort, vmac, &addr, false);
+                SetSecurityMatchEpND(vf, 60, ofPort, vmac, &vip_cidr.first,
+                                     false, vip_cidr.second);
                 vf->entry->cookie = GetVIPCookie(false);
             }
             ActionBuilder ab;
@@ -1384,7 +1400,11 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
                           endPoint.getVirtualIPs()) {
                 if (endPoint.getMAC().get() == vip.first) continue;
-                address addr = address::from_string(vip.second, ec);
+                packets::cidr_t vip_cidr;
+                if (!packets::cidr_from_string(vip.second, vip_cidr)) {
+                    continue;
+                }
+                address& addr = vip_cidr.first;
                 if (ec) continue;
                 uint8_t vmacAddr[6];
                 vip.first.toUIntArray(vmacAddr);
@@ -2192,34 +2212,6 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t bdId, uint32_t rdId) 
     }
 }
 
-static
-string getMaskedAddress(const std::string& addrStr, uint16_t prefixLen) {
-    boost::system::error_code ec;
-    string maskedIpStr;
-    address ip = address::from_string(addrStr, ec);
-    if (ec) {
-        LOG(ERROR) << "Invalid IP address: " << addrStr << ": "
-            << ec.message();
-        return maskedIpStr;
-    }
-    if (ip.is_v4()) {
-        uint32_t mask = (prefixLen != 0)
-            ? (~((uint32_t)0) << (32 - prefixLen))
-            : 0;
-        maskedIpStr =
-            boost::asio::ip::address_v4(ip.to_v4().to_ulong() & mask)
-                .to_string();
-    } else {
-       struct in6_addr mask;
-       struct in6_addr addr6;
-       packets::compute_ipv6_subnet(ip.to_v6(), prefixLen, &mask, &addr6);
-       boost::asio::ip::address_v6::bytes_type data;
-       std::memcpy(data.data(), &addr6, sizeof(addr6));
-       maskedIpStr = boost::asio::ip::address_v6(data).to_string();
-    }
-    return maskedIpStr;
-}
-
 void
 FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
     optional<shared_ptr<RoutingDomain > > rd =
@@ -2266,12 +2258,12 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
         BOOST_FOREACH(shared_ptr<Subnet>& subnet, subnets) {
             if (!subnet->isAddressSet() || !subnet->isPrefixLenSet())
                 continue;
-            string maskedAddr = getMaskedAddress(subnet->getAddress().get(),
-                                                 subnet->getPrefixLen().get());
-            if (!maskedAddr.empty()) {
-                intSubnets.insert(
-                    make_pair(maskedAddr, subnet->getPrefixLen().get()));
-            }
+            address addr = address::from_string(subnet->getAddress().get(),
+                                                ec);
+            if (ec) continue;
+            addr = packets::mask_address(addr, subnet->getPrefixLen().get());
+            intSubnets.insert(make_pair(addr.to_string(),
+                                        subnet->getPrefixLen().get()));
         }
     }
     boost::shared_ptr<const RDConfig> rdConfig =
@@ -2279,20 +2271,10 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
     if (rdConfig) {
         BOOST_FOREACH(const std::string& cidrSn,
                       rdConfig->getInternalSubnets()) {
-            vector<string> comps;
-            split(comps, cidrSn, boost::is_any_of("/"));
-            if (comps.size() == 2) {
-                try {
-                    uint8_t prefixLen =
-                        boost::lexical_cast<uint16_t>(comps[1]);
-                    string maskedAddr = getMaskedAddress(comps[0], prefixLen);
-                    if (!maskedAddr.empty()) {
-                        intSubnets.insert(make_pair(maskedAddr, prefixLen));
-                    }
-                } catch (const boost::bad_lexical_cast& e) {
-                    LOG(ERROR) << "Invalid CIDR subnet prefix length: "
-                               << comps[1] << ": " << e.what();
-                }
+            packets::cidr_t cidr;
+            if (packets::cidr_from_string(cidrSn, cidr)) {
+                intSubnets.insert(make_pair(cidr.first.to_string(),
+                                            cidr.second));
             } else {
                 LOG(ERROR) << "Invalid CIDR subnet: " << cidrSn;
             }

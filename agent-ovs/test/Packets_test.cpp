@@ -13,6 +13,7 @@
 #include "Packets.h"
 
 using namespace ovsagent::packets;
+using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
 
 BOOST_AUTO_TEST_SUITE(Packets_test)
@@ -83,6 +84,73 @@ BOOST_AUTO_TEST_CASE(ipv6_subnet) {
     BOOST_CHECK_EQUAL(address_v6(data),
                       address_v6::from_string("::"));
 
+}
+
+BOOST_AUTO_TEST_CASE(test_subnet_mask) {
+    struct in6_addr mask;
+
+    BOOST_CHECK_EQUAL(0, get_subnet_mask_v4(0));
+    BOOST_CHECK_EQUAL(0xffffffff, get_subnet_mask_v4(32));
+    BOOST_CHECK_EQUAL(0xffff0000, get_subnet_mask_v4(16));
+
+    boost::asio::ip::address_v6::bytes_type data;
+    get_subnet_mask_v6(0, &mask);
+    std::memcpy(data.data(), &mask, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address::from_string("::"), address_v6(data));
+
+    get_subnet_mask_v6(128, &mask);
+    std::memcpy(data.data(), &mask, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address::from_string("ffff:ffff:ffff:ffff:"
+                                           "ffff:ffff:ffff:ffff"),
+                      address_v6(data));
+
+    get_subnet_mask_v6(48, &mask);
+    std::memcpy(data.data(), &mask, sizeof(struct in6_addr));
+    BOOST_CHECK_EQUAL(address::from_string("ffff:ffff:ffff::"),
+                      address_v6(data));
+}
+
+BOOST_AUTO_TEST_CASE(test_mask_address) {
+    BOOST_CHECK_EQUAL(address::from_string("1.2.16.0"),
+                      mask_address(address::from_string("1.2.17.4"), 20));
+
+    BOOST_CHECK_EQUAL(address::from_string("1:2:3:4:5::"),
+                      mask_address(
+                          address::from_string("1:2:3:4:5:6:7::"), 80));
+}
+
+BOOST_AUTO_TEST_CASE(test_cidr) {
+    cidr_t cidr;
+
+    BOOST_CHECK(cidr_from_string("1.2.3.17", cidr));
+    BOOST_CHECK_EQUAL(address::from_string("1.2.3.17"), cidr.first);
+    BOOST_CHECK_EQUAL(32, cidr.second);
+
+    BOOST_CHECK(cidr_contains(cidr, address::from_string("1.2.3.17")));
+
+    BOOST_CHECK(cidr_from_string("1.2.3.15/29", cidr));
+    BOOST_CHECK_EQUAL(address::from_string("1.2.3.8"), cidr.first);
+    BOOST_CHECK_EQUAL(29, cidr.second);
+
+    BOOST_CHECK(cidr_contains(cidr, address::from_string("1.2.3.9")));
+    BOOST_CHECK(!cidr_contains(cidr, address::from_string("1.2.3.16")));
+
+    BOOST_CHECK(cidr_from_string("a:b:c:d:e:f::", cidr));
+    BOOST_CHECK_EQUAL(address::from_string("a:b:c:d:e:f::"), cidr.first);
+    BOOST_CHECK_EQUAL(128, cidr.second);
+
+    BOOST_CHECK(cidr_contains(cidr, address::from_string("a:b:c:d:e:f::")));
+
+    BOOST_CHECK(cidr_from_string("f:9:d:6:e::/64", cidr));
+    BOOST_CHECK_EQUAL(address::from_string("f:9:d:6::"), cidr.first);
+    BOOST_CHECK_EQUAL(64, cidr.second);
+
+    BOOST_CHECK(cidr_contains(cidr, address::from_string("f:9:d:6:e::3e")));
+    BOOST_CHECK(!cidr_contains(cidr, address::from_string("f:9:e:6::")));
+
+    BOOST_CHECK(!cidr_from_string("1.2.3.2000/29", cidr));
+    BOOST_CHECK(!cidr_from_string("a:b:c::/f", cidr));
+    BOOST_CHECK(!cidr_from_string("foo.bar", cidr));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -771,9 +771,10 @@ static void handleVIPPktIn(bool v4,
 
             BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
                           try_ep->getVirtualIPs()) {
-                address addr = address::from_string(vip.second, ec);
-                if (ec) continue;
-                if (srcMac == vip.first && srcIp == addr) {
+                packets::cidr_t cidr;
+                if (!packets::cidr_from_string(vip.second, cidr)) continue;
+                if (srcMac == vip.first &&
+                    packets::cidr_contains(cidr, srcIp)) {
                     uuids.insert(epUuid);
                     break;
                 }

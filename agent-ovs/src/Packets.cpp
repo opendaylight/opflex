@@ -14,6 +14,7 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/lexical_cast.hpp>
 #include <modelgbp/gbp/AutoconfigEnumT.hpp>
 
 #include "Packets.h"
@@ -77,16 +78,7 @@ void compute_ipv6_subnet(boost::asio::ip::address_v6 netAddr,
                          /* out */ struct in6_addr* mask,
                          /* out */ struct in6_addr* addr) {
     std::memcpy(addr, netAddr.to_bytes().data(), sizeof(struct in6_addr));
-
-    if (prefixLen == 0) {
-        memset(mask, 0, sizeof(struct in6_addr));
-    } else if (prefixLen <= 64) {
-        ((uint64_t*)mask)[0] = htonll(~((uint64_t)0) << (64 - prefixLen));
-        ((uint64_t*)mask)[1] = 0;
-    } else {
-        ((uint64_t*)mask)[0] = ~((uint64_t)0);
-        ((uint64_t*)mask)[1] = htonll(~((uint64_t)0) << (128 - prefixLen));
-    }
+    get_subnet_mask_v6(prefixLen, mask);
     ((uint64_t*)addr)[0] &= ((uint64_t*)mask)[0];
     ((uint64_t*)addr)[1] &= ((uint64_t*)mask)[1];
 
@@ -931,6 +923,70 @@ ofpbuf* compose_arp(uint16_t op,
     *tpaptr = htonl(tpa);
 
     return b;
+}
+
+uint32_t get_subnet_mask_v4(uint8_t prefixLen) {
+    return (prefixLen != 0)
+           ? (~((uint32_t)0) << (32 - prefixLen))
+           : 0;
+}
+
+void get_subnet_mask_v6(uint8_t prefixLen, in6_addr *mask) {
+    if (prefixLen == 0) {
+        memset(mask, 0, sizeof(struct in6_addr));
+    } else if (prefixLen <= 64) {
+        ((uint64_t*)mask)[0] = htonll(~((uint64_t)0) << (64 - prefixLen));
+        ((uint64_t*)mask)[1] = 0;
+    } else {
+        ((uint64_t*)mask)[0] = ~((uint64_t)0);
+        ((uint64_t*)mask)[1] = htonll(~((uint64_t)0) << (128 - prefixLen));
+    }
+}
+
+address mask_address(const address& addrIn, uint8_t prefixLen) {
+    if (addrIn.is_v4()) {
+        prefixLen = std::min<uint8_t>(prefixLen, 32);
+        uint32_t mask = get_subnet_mask_v4(prefixLen);
+        return address_v4(addrIn.to_v4().to_ulong() & mask);
+    }
+    struct in6_addr mask;
+    struct in6_addr addr6;
+    prefixLen = std::min<uint8_t>(prefixLen, 128);
+    compute_ipv6_subnet(addrIn.to_v6(), prefixLen, &mask, &addr6);
+    address_v6::bytes_type data;
+    std::memcpy(data.data(), &addr6, sizeof(addr6));
+    return address_v6(data);
+}
+
+bool cidr_from_string(const string& cidrStr, cidr_t& cidr) {
+    vector<string> parts;
+    uint8_t prefixLen = 32;
+
+    split(parts, cidrStr, boost::is_any_of("/"));
+    boost::system::error_code ec;
+    address baseIp = address::from_string(
+        parts.size() == 2 ? parts[0] : cidrStr, ec);
+    if (ec) {
+        return false;
+    }
+
+    if (parts.size() == 2) {
+        try {
+            prefixLen = boost::lexical_cast<uint16_t>(parts[1]);
+        } catch (const boost::bad_lexical_cast& ex) {
+            return false;
+        }
+        baseIp = mask_address(baseIp, prefixLen);
+    } else if (baseIp.is_v6()) {
+        prefixLen = 128;
+    }
+
+    cidr = std::make_pair(baseIp, prefixLen);
+    return true;
+}
+
+bool cidr_contains(const cidr_t& cidr, const address& addr) {
+    return (cidr.first == mask_address(addr, cidr.second));
 }
 
 

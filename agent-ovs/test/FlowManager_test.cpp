@@ -1351,7 +1351,9 @@ BOOST_FIXTURE_TEST_CASE(vip, VxlanFlowManagerFixture) {
     flowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
 
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42.42.42.42"));
+    ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:43"), "42.42.42.16/28"));
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42::42"));
+    ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:43"), "42::10/124"));
     ep0->addVirtualIP(make_pair(MAC("00:00:00:00:80:00"), "10.20.44.3"));
     epSrc.updateEndpoint(*ep0);
     flowManager.endpointUpdated(ep0->getUUID());
@@ -1388,7 +1390,10 @@ BOOST_FIXTURE_TEST_CASE(virtDhcp, VxlanFlowManagerFixture) {
     WAIT_FOR_TABLES("create", 500);
 
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42.42.42.42"));
+    ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:43"), "42.42.42.16/28"));
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42::42"));
+    ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:43"), "42::10/124"));
+    ep0->addVirtualIP(make_pair(MAC("00:00:00:00:80:00"), "10.20.44.3"));
     epSrc.updateEndpoint(*ep0);
     flowManager.endpointUpdated(ep0->getUUID());
 
@@ -2346,10 +2351,26 @@ void FlowManagerFixture::initExpVirtualIp() {
          .table(SEC).priority(60).arp().in(port)
          .isEthSrc("42:42:42:42:42:42").isSpa("42.42.42.42")
          .actions().controller(65535).go(SRC).done());
+    ADDF(Bldr().cookie(htonll(FlowManager::GetVIPCookie(true)))
+         .table(SEC).priority(60).arp().in(port)
+         .isEthSrc("42:42:42:42:42:43").isSpa("42.42.42.16/28")
+         .actions().controller(65535).go(SRC).done());
     ADDF(Bldr().cookie(htonll(FlowManager::GetVIPCookie(false)))
          .table(SEC).priority(60).icmp6().in(port)
          .isEthSrc("42:42:42:42:42:42")
          .icmp_type(136).icmp_code(0).isNdTarget("42::42")
+         .actions().controller(65535).go(SRC).done());
+    ADDF(Bldr().cookie(htonll(FlowManager::GetVIPCookie(false)))
+         .table(SEC).priority(60).icmp6().in(port)
+         .isEthSrc("42:42:42:42:42:43")
+         .icmp_type(136).icmp_code(0).isNdTarget("42::10/124")
+         .actions().controller(65535).go(SRC).done());
+    ADDF(Bldr().table(SEC).priority(61).arp().in(port)
+         .isEthSrc("00:00:00:00:80:00").isSpa("10.20.44.3")
+         .actions().go(SRC).done());
+    ADDF(Bldr().cookie(htonll(FlowManager::GetVIPCookie(true)))
+         .table(SEC).priority(60).arp().in(port)
+         .isEthSrc("00:00:00:00:80:00").isSpa("10.20.44.3")
          .actions().controller(65535).go(SRC).done());
 }
 
@@ -2369,9 +2390,17 @@ void FlowManagerFixture::initExpVirtualDhcp(bool virtIp) {
              .table(SRC).priority(150).udp().in(port)
              .isEthSrc("42:42:42:42:42:42").isTpSrc(68).isTpDst(67)
              .actions().load(SEPG, 0xa0a).controller(65535).done());
+        ADDF(Bldr().cookie(htonll(FlowManager::GetDHCPCookie(true)))
+             .table(SRC).priority(150).udp().in(port)
+             .isEthSrc("42:42:42:42:42:43").isTpSrc(68).isTpDst(67)
+             .actions().load(SEPG, 0xa0a).controller(65535).done());
         ADDF(Bldr().cookie(htonll(FlowManager::GetDHCPCookie(false)))
              .table(SRC).priority(150).udp6().in(port)
              .isEthSrc("42:42:42:42:42:42").isTpSrc(546).isTpDst(547)
+             .actions().load(SEPG, 0xa0a).controller(65535).done());
+        ADDF(Bldr().cookie(htonll(FlowManager::GetDHCPCookie(false)))
+             .table(SRC).priority(150).udp6().in(port)
+             .isEthSrc("42:42:42:42:42:43").isTpSrc(546).isTpDst(547)
              .actions().load(SEPG, 0xa0a).controller(65535).done());
     }
 }
