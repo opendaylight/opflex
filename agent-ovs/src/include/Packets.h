@@ -20,6 +20,8 @@
 
 #include <boost/asio/ip/address.hpp>
 
+#include <opflex/modb/MAC.h>
+
 #include "ovs.h"
 #include "PolicyManager.h"
 #include "Endpoint.h"
@@ -74,6 +76,35 @@ uint16_t chksum_finalize(uint32_t chksum);
 void construct_auto_ip(boost::asio::ip::address_v6 prefix,
                        const uint8_t* srcMac,
                        /* out */ struct in6_addr* dstAddr);
+
+/**
+ * For a subnet with prefix length 64, construct an IP address
+ * using the EUI-64 format in the lower 64 bits.
+ * @param prefix the prefix address
+ * @param srcMac the MAC address of the interface
+ * @return the ip address object
+ */
+boost::asio::ip::address_v6
+construct_auto_ip_addr(boost::asio::ip::address_v6 prefix,
+                       const uint8_t* srcMac);
+
+/**
+ * Construct a link-local IPv6 address for the given MAC
+ *
+ * @param srcMac the MAC address of the interface
+ * @return the ip address object
+ */
+boost::asio::ip::address_v6
+construct_link_local_ip_addr(const uint8_t* srcMac);
+
+/**
+ * Construct a link-local IPv6 address for the given MAC
+ *
+ * @param srcMac the MAC address of the interface
+ * @return the ip address object
+ */
+boost::asio::ip::address_v6
+construct_link_local_ip_addr(const opflex::modb::MAC& srcMac);
 
 /**
  * Compute the mask for an IPv6 subnet
@@ -231,6 +262,15 @@ void get_subnet_mask_v6(uint8_t prefixLen, in6_addr *mask);
  */
 boost::asio::ip::address mask_address(const boost::asio::ip::address& addrIn,
                                       uint8_t prefixLen);
+
+/**
+ * Check whether the given IP address is a link-local IPv4 address in
+ * 169.254/16 or a link-local IPv6 address in fe80::/8
+ *
+ * @param addr the address to check
+ * @return true if the address is link-local
+ */
+bool is_link_local(const boost::asio::ip::address& addr);
 
 /**
  * Convenience typedef to represent CIDRs.

@@ -18,6 +18,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "EndpointManager.h"
+#include "Packets.h"
 #include "logging.h"
 
 namespace ovsagent {
@@ -37,6 +38,8 @@ using boost::optional;
 using boost::algorithm::starts_with;
 using boost::algorithm::ends_with;
 using boost::algorithm::contains;
+using boost::asio::ip::address;
+using boost::asio::ip::address_v6;
 
 static const string VM_NAME_ATTR("vm-name");
 
@@ -116,6 +119,15 @@ optional<URI> EndpointManager::getComputedEPG(const std::string& uuid) {
     if (it != ep_map.end())
         return it->second.egURI;
     return boost::none;
+}
+
+static bool validateIp(const string& ip, bool allowLinkLocal = false) {
+    boost::system::error_code ec;
+    address addr = address::from_string(ip, ec);
+    if (ec) return false;
+    if (!allowLinkLocal && packets::is_link_local(addr))
+        return false;
+    return true;
 }
 
 void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
@@ -450,6 +462,7 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
             L3Discovered::resolve(framework);
         if (l3d) {
             BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
+                if (!validateIp(ip)) continue;
                 shared_ptr<LocalL3Ep> l3e = l3d.get()
                     ->addEpdrLocalL3Ep(uuid);
                 l3e->setIp(ip)
@@ -619,6 +632,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
             // If the routing domain is known, we can register the l3
             // endpoints in the endpoint registry
             BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
+                if (!validateIp(ip)) continue;
                 shared_ptr<L3Ep> l3e =
                     populateL3E(l3u.get(), es.endpoint, uuid,
                                 rd.get(), ip, egURI.get());

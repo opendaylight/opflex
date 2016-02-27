@@ -25,6 +25,7 @@
 #include "ovs.h"
 #include "FlowManager.h"
 #include "FlowExecutor.h"
+#include "Packets.h"
 
 #include "ModbFixture.h"
 #include "MockSwitchConnection.h"
@@ -615,6 +616,9 @@ void FlowManagerFixture::arpModeTest() {
     m1.commit();
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()).get()
              ->getArpMode(AddressResModeEnumT::CONST_UNICAST)
+             == AddressResModeEnumT::CONST_FLOOD, 500);
+    WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()).get()
+             ->getNeighborDiscMode(AddressResModeEnumT::CONST_UNICAST)
              == AddressResModeEnumT::CONST_FLOOD, 500);
     flowManager.egDomainUpdated(epg0->getURI());
 
@@ -1757,7 +1761,10 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                                    bool arpOn, bool routeOn) {
     string mac = ep->getMAC().get().toString();
     uint32_t port = portmapper.FindPort(ep->getInterfaceName().get());
-    const unordered_set<string>& ips = ep->getIPs();
+    unordered_set<string> ips(ep->getIPs());
+    string lladdr =
+        packets::construct_link_local_ip_addr(ep->getMAC().get()).to_string();
+    ips.insert(lladdr);
     const unordered_set<string>* acastIps = &ep->getAnycastReturnIPs();
     if (acastIps->size() == 0) acastIps = &ips;
     uint32_t vnid = policyMgr.getVnidForGroup(epg->getURI()).get();
@@ -1849,12 +1856,14 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                     }
                 } else {
                     // route
-                    ADDF(Bldr().table(RT).priority(500).ipv6()
-                         .reg(RD, rdId)
-                         .isEthDst(rmac).isIpv6Dst(ip)
-                         .actions().load(DEPG, vnid)
-                         .load(OUTPORT, port).ethSrc(rmac)
-                         .ethDst(mac).decTtl().go(POL).done());
+                    if (ip != lladdr) {
+                        ADDF(Bldr().table(RT).priority(500).ipv6()
+                             .reg(RD, rdId)
+                             .isEthDst(rmac).isIpv6Dst(ip)
+                             .actions().load(DEPG, vnid)
+                             .load(OUTPORT, port).ethSrc(rmac)
+                             .ethDst(mac).decTtl().go(POL).done());
+                    }
                     if (ep->isDiscoveryProxyMode()) {
                         // proxy neighbor discovery
                         ADDF(Bldr().cookie(htonll(FlowManager::GetNDCookie()))
@@ -1889,7 +1898,7 @@ void FlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
             (((uint64_t)macAddr[0]) << 40);
 
         uint64_t metadata = 0;
-        ep0->getMAC().get().toUIntArray((uint8_t*)&metadata);
+        ep->getMAC().get().toUIntArray((uint8_t*)&metadata);
         ((uint8_t*)&metadata)[7] = 1;
 
         BOOST_FOREACH(const string& ip, *acastIps) {

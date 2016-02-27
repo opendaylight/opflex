@@ -1229,6 +1229,12 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
             ipAddresses.push_back(addr);
         }
     }
+    if (hasMac) {
+        address_v6 linkLocalIp(packets::construct_link_local_ip_addr(macAddr));
+        if (endPoint.getIPs().find(linkLocalIp.to_string()) ==
+            endPoint.getIPs().end())
+            ipAddresses.push_back(linkLocalIp);
+    }
 
     uint32_t ofPort = OFPP_NONE;
     const optional<string>& ofPortName = endPoint.getInterfaceName();
@@ -1446,14 +1452,6 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
         if (virtualRouterEnabled && hasMac &&
             routingMode == RoutingModeEnumT::CONST_ENABLED) {
             BOOST_FOREACH (const address& ipAddr, ipAddresses) {
-                {
-                    FlowEntry *e0 = new FlowEntry();
-                    SetDestMatchEp(e0, 500, GetRouterMacAddr(), ipAddr, rdId);
-                    SetDestActionEp(e0, epgVnid, ofPort, GetRouterMacAddr(),
-                                    macAddr);
-                    elRouteDst.push_back(FlowEntryPtr(e0));
-                }
-
                 if (endPoint.isDiscoveryProxyMode()) {
                     // Auto-reply to ARP and NDP requests for endpoint
                     // IP addresses
@@ -1485,6 +1483,18 @@ FlowManager::HandleEndpointUpdate(const string& uuid) {
                         elBridgeDst.push_back(FlowEntryPtr(e1));
                     }
                 }
+
+                if (packets::is_link_local(ipAddr))
+                    continue;
+
+                {
+                    FlowEntry *e0 = new FlowEntry();
+                    SetDestMatchEp(e0, 500, GetRouterMacAddr(), ipAddr, rdId);
+                    SetDestActionEp(e0, epgVnid, ofPort, GetRouterMacAddr(),
+                                    macAddr);
+                    elRouteDst.push_back(FlowEntryPtr(e0));
+                }
+
             }
 
             // IP address mappings
@@ -2251,11 +2261,7 @@ FlowManager::UpdateGroupSubnets(const URI& egURI, uint32_t bdId, uint32_t rdId) 
                     }
                 } else {
                     // Construct router IP address
-                    address_v6::bytes_type rip;
-                    packets::construct_auto_ip(address_v6::from_string("fe80::"),
-                                               routerMac,
-                                               (struct in6_addr*)rip.data());
-                    routerIp = address_v6(rip);
+                    routerIp = packets::construct_link_local_ip_addr(routerMac);
                     hasRouterIp = true;
                 }
             }

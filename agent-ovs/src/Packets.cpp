@@ -73,6 +73,25 @@ void construct_auto_ip(boost::asio::ip::address_v6 prefix,
     memcpy(((char*)dstAddr) + 13, srcMac+3, 3);
 }
 
+address_v6 construct_auto_ip_addr(address_v6 prefix,
+                                  const uint8_t* srcMac) {
+    address_v6::bytes_type ip;
+    construct_auto_ip(prefix, srcMac, (struct in6_addr*)ip.data());
+    return address_v6(ip);
+}
+
+address_v6 construct_link_local_ip_addr(const uint8_t* srcMac) {
+    return construct_auto_ip_addr(address_v6::from_string("fe80::"),
+                                  srcMac);
+}
+
+address_v6 construct_link_local_ip_addr(const opflex::modb::MAC& srcMac) {
+    uint8_t bytes[6];
+    srcMac.toUIntArray(bytes);
+    return construct_auto_ip_addr(address_v6::from_string("fe80::"),
+                                  bytes);
+}
+
 void compute_ipv6_subnet(boost::asio::ip::address_v6 netAddr,
                          uint8_t prefixLen,
                          /* out */ struct in6_addr* mask,
@@ -956,6 +975,15 @@ address mask_address(const address& addrIn, uint8_t prefixLen) {
     address_v6::bytes_type data;
     std::memcpy(data.data(), &addr6, sizeof(addr6));
     return address_v6(data);
+}
+
+bool is_link_local(const boost::asio::ip::address& addr) {
+    if (addr.is_v6() && addr.to_v6().is_link_local())
+        return true;
+    if (addr.is_v4() &&
+        (mask_address(addr, 16) == address::from_string("169.254.0.0")))
+        return true;
+    return false;
 }
 
 bool cidr_from_string(const string& cidrStr, cidr_t& cidr) {

@@ -153,4 +153,17 @@ BOOST_AUTO_TEST_CASE(test_cidr) {
     BOOST_CHECK(!cidr_from_string("foo.bar", cidr));
 }
 
+BOOST_AUTO_TEST_CASE(test_link_local) {
+    using opflex::modb::MAC;
+    BOOST_CHECK_EQUAL(address_v6::from_string("fe80::500c:47ff:fe97:a6ab"),
+                      construct_link_local_ip_addr(MAC("52:0c:47:97:a6:ab")));
+    BOOST_CHECK_EQUAL(address_v6::from_string("fe80::200:ff:fe00:2"),
+                      construct_link_local_ip_addr(MAC("00:00:00:00:00:02")));
+    BOOST_CHECK_EQUAL(address_v6::from_string("fe80::200:ff:fe00:1"),
+                      construct_link_local_ip_addr(MAC("00:00:00:00:00:01")));
+    BOOST_CHECK_EQUAL(address_v6::from_string("fe80::200:ff:fe00:8000"),
+                      construct_link_local_ip_addr(MAC("00:00:00:00:80:00")));
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()
