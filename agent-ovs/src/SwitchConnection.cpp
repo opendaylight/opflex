@@ -452,15 +452,15 @@ SwitchConnection::FireOnConnectListeners() {
 
 void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
-        ofptype msgType, ofpbuf *msg) {
+                                             ofptype, ofpbuf *msg) {
     const ofp_header *rq = (const ofp_header *)msg->data;
     struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
     swConn->SendMessage(echoReplyMsg);
 }
 
 void
-SwitchConnection::ErrorHandler::Handle(SwitchConnection *swConn,
-        ofptype msgType, ofpbuf *msg) {
+SwitchConnection::ErrorHandler::Handle(SwitchConnection*, ofptype,
+                                       ofpbuf *msg) {
     const struct ofp_header *oh = (ofp_header *)msg->data;
     ofperr err = ofperr_decode_msg(oh, NULL);
     LOG(ERROR) << "Got error reply from switch ("

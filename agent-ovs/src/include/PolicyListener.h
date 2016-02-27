@@ -33,25 +33,25 @@ public:
      * Called when the forwarding domains for an endpoint group have
      * been updated.
      */
-    virtual void egDomainUpdated(const opflex::modb::URI& egURI) {};
+    virtual void egDomainUpdated(const opflex::modb::URI&) {};
 
     /**
      * Called when a forwarding domain object is updated.
      */
-    virtual void domainUpdated(opflex::modb::class_id_t cid,
-                               const opflex::modb::URI& domURI) {}
+    virtual void domainUpdated(opflex::modb::class_id_t,
+                               const opflex::modb::URI&) {}
 
     /**
      * Called when a policy contract is updated. These include changes to
      * the rules that comprise the contract as well as changes to the list
      * of provider/consumer endpoint groups for the contract.
      */
-    virtual void contractUpdated(const opflex::modb::URI& contractURI) {}
+    virtual void contractUpdated(const opflex::modb::URI&) {}
 
     /**
      * Called when the platform config object is updated
      */
-    virtual void configUpdated(const opflex::modb::URI& configURI) {}
+    virtual void configUpdated(const opflex::modb::URI&) {}
 };
 
 } /* namespace ovsagent */

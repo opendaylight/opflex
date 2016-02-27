@@ -330,7 +330,7 @@ public:
     void initExpFd(uint32_t fdId = 0, bool isolated = false);
 
     /** Initialize bridge domain-scoped flow entries */
-    void initExpBd(uint32_t bdId = 1, uint32_t fdId = 0, uint32_t rdId = 1,
+    void initExpBd(uint32_t bdId = 1, uint32_t rdId = 1,
                    bool routeOn = true);
 
     /** Initialize routing domain-scoped flow entries */
@@ -457,7 +457,7 @@ void FlowManagerFixture::epgTest() {
     initExpStatic();
     initExpEpg(epg0, 1);
     initExpFd(1);
-    initExpBd(1, 1, 1, true);
+    initExpBd(1, 1, true);
     initExpRd();
     initExpEp(ep0, epg0, 1, 1, 1);
     initExpEp(ep2, epg0, 1, 1, 1);
@@ -488,7 +488,7 @@ void FlowManagerFixture::epgTest() {
     initExpStatic();
     initExpEpg(epg0, 1);
     initExpFd(1);
-    initExpBd(1, 1, 1, true);
+    initExpBd(1, 1, true);
     initExpEp(ep0, epg0, 1, 1, 1);
     initExpEp(ep2, epg0, 1, 1, 1);
     WAIT_FOR_TABLES("remove domain", 500);
@@ -551,7 +551,7 @@ void FlowManagerFixture::routeModeTest() {
     clearExpFlowTables();
     initExpStatic();
     initExpEpg(epg0);
-    initExpBd(1, 0, 1, false);
+    initExpBd(1, 1, false);
     initExpEp(ep0, epg0, 0, 1, 1, true, false);
     initExpEp(ep2, epg0, 0, 1, 1, true, false);
     WAIT_FOR_TABLES("disable", 500);
@@ -604,7 +604,7 @@ void FlowManagerFixture::arpModeTest() {
     initExpStatic();
     initExpEpg(epg0, 1);
     initExpFd(1);
-    initExpBd(1, 1, 1, true);
+    initExpBd(1, 1, true);
     initExpEp(ep0, epg0, 1, 1, 1, true);
     initExpEp(ep2, epg0, 1, 1, 1, true);
     initSubnets(sns);
@@ -626,7 +626,7 @@ void FlowManagerFixture::arpModeTest() {
     initExpStatic();
     initExpEpg(epg0, 1);
     initExpFd(1);
-    initExpBd(1, 1, 1, true);
+    initExpBd(1, 1, true);
     initExpEp(ep0, epg0, 1, 1, 1, false);
     initExpEp(ep2, epg0, 1, 1, 1, false);
     initSubnets(sns);
@@ -641,7 +641,7 @@ void FlowManagerFixture::arpModeTest() {
     initExpStatic();
     initExpEpg(epg0, 1);
     initExpFd(1);
-    initExpBd(1, 1, 1, true);
+    initExpBd(1, 1, true);
     initExpEp(ep0, epg0, 1, 1, 1, false);
     initExpEp(ep2, epg0, 1, 1, 1, false);
     initSubnets(sns);
@@ -1232,7 +1232,7 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanFlowManagerFixture) {
     initExpEpg(epg0);
     initExpEpg(eg_nat, 1, 2, 2);
     initExpBd();
-    initExpBd(2, 1, 2);
+    initExpBd(2, 2);
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
@@ -1255,7 +1255,7 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanFlowManagerFixture) {
     initExpEpg(epg0);
     initExpEpg(eg_nat, 1, 2, 2);
     initExpBd();
-    initExpBd(2, 1, 2);
+    initExpBd(2, 2);
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
@@ -1285,7 +1285,7 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanFlowManagerFixture) {
     initExpEpg(epg0);
     initExpEpg(eg_nat, 1, 2, 2);
     initExpBd();
-    initExpBd(2, 1, 2);
+    initExpBd(2, 2);
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
@@ -1710,8 +1710,7 @@ void FlowManagerFixture::initExpFd(uint32_t fdId, bool isolated) {
 }
 
 // Initialize bridge domain-scoped flow entries
-void FlowManagerFixture::initExpBd(uint32_t bdId, uint32_t fdId,
-                                   uint32_t rdId, bool routeOn) {
+void FlowManagerFixture::initExpBd(uint32_t bdId, uint32_t rdId, bool routeOn) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
     if (routeOn) {

@@ -84,7 +84,7 @@ PortMapper::Connected(SwitchConnection *conn) {
 }
 
 void
-PortMapper::Handle(SwitchConnection *conn, ofptype msgType, ofpbuf *msg) {
+PortMapper::Handle(SwitchConnection*, ofptype msgType, ofpbuf *msg) {
     switch (msgType) {
     case OFPTYPE_PORT_DESC_STATS_REPLY:
         HandlePortDescReply(msg);

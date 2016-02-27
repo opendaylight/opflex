@@ -85,7 +85,7 @@ void StatsManager::on_timer(const error_code& ec) {
 }
 
 
-void StatsManager::Handle(SwitchConnection *conn,
+void StatsManager::Handle(SwitchConnection*,
                           ofptype msgType, ofpbuf *msg) {
     assert(msgType == OFPTYPE_PORT_STATS_REPLY);
 

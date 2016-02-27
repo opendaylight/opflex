@@ -124,12 +124,11 @@ private:
      * Process the reply message received for a read request
      * and invoke the callback registered for the request.
      *
-     * @param msgType Type of message received
      * @param msg The reply message
      * @param reqMap Map to track requests and callbacks
      */
     template<typename T, typename U, typename V>
-    void handleReply(ofptype msgType, ofpbuf *msg, V& reqMap);
+    void handleReply(ofpbuf *msg, V& reqMap);
 
     /**
      * Extract flow/group entries from the received message.

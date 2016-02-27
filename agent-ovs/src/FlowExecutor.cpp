@@ -205,7 +205,7 @@ FlowExecutor::WaitOnBarrier(ofpbuf *barrReq) {
 }
 
 void
-FlowExecutor::Handle(SwitchConnection *conn, ofptype msgType, ofpbuf *msg) {
+FlowExecutor::Handle(SwitchConnection *, ofptype msgType, ofpbuf *msg) {
     ofp_header *msgHdr = (ofp_header *)msg->data;
     ovs_be32 recvXid = msgHdr->xid;
 
@@ -239,7 +239,7 @@ FlowExecutor::Handle(SwitchConnection *conn, ofptype msgType, ofpbuf *msg) {
 }
 
 void
-FlowExecutor::Connected(SwitchConnection *swConn) {
+FlowExecutor::Connected(SwitchConnection*) {
     /* If connection was re-established, fail outstanding requests */
     mutex_guard lock(reqMtx);
     BOOST_FOREACH (RequestMap::value_type& kv, requests) {

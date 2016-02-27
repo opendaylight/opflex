@@ -44,8 +44,7 @@ public:
 
 class MockListener : public PortStatusListener {
 public:
-    void portStatusUpdate(const string& portName, uint32_t portNo,
-                          bool fromDesc) {
+    void portStatusUpdate(const string& portName, uint32_t portNo, bool) {
         lastPortName = portName;
         lastPortNo = portNo;
     }

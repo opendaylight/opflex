@@ -22,7 +22,7 @@ using namespace ovsagent;
 class EchoReplyHandler : public MessageHandler {
 public:
     EchoReplyHandler() : counter(0) {}
-    void Handle(SwitchConnection *conn, ofptype type, ofpbuf *msg) {
+    void Handle(SwitchConnection*, ofptype type, ofpbuf*) {
         BOOST_CHECK(type == OFPTYPE_ECHO_REPLY);
         ++counter;
     }
@@ -32,7 +32,7 @@ public:
 class SimpleConnectListener : public OnConnectListener {
 public:
     SimpleConnectListener() : counter(0) {}
-    void Connected(SwitchConnection *conn) {
+    void Connected(SwitchConnection*) {
         LOG(INFO) << "OnConnectListener - connected";
         ++counter;
     }
@@ -42,7 +42,7 @@ public:
 class LoggingJsonHandler : public JsonMessageHandler {
 public:
     LoggingJsonHandler() : counter(0) {}
-    void Handle(SwitchConnection *conn, jsonrpc_msg *msg) {
+    void Handle(SwitchConnection*, jsonrpc_msg *msg) {
         ++counter;
         BOOST_CHECK(msg->error == NULL);
         BOOST_CHECK(msg->result != NULL && msg->result->type == JSON_STRING);

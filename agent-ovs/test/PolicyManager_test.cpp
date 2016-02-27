@@ -221,7 +221,7 @@ public:
         onUpdate(egURI);
     }
 
-    void domainUpdated(opflex::modb::class_id_t cid,
+    void domainUpdated(opflex::modb::class_id_t,
                        const opflex::modb::URI& domURI) {
         onUpdate(domURI);
     }

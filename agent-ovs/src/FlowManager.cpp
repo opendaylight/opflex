@@ -94,7 +94,7 @@ static const char * ID_NMSPC_EXTNET = ID_NAMESPACES[4];
 
 template <class MO>
 static bool idGarbageCb(opflex::ofcore::OFFramework& framework,
-                        const string& ns, const URI& uri) {
+                        const string&, const URI& uri) {
     return MO::resolve(framework, uri);
 }
 
@@ -945,8 +945,7 @@ void FlowManager::portStatusUpdate(const string& portName,
     pktInHandler.portStatusUpdate(portName, portNo, fromDesc);
 }
 
-void FlowManager::peerStatusUpdated(const std::string& peerHostname,
-                                    int peerPort,
+void FlowManager::peerStatusUpdated(const std::string&, int,
                                     PeerStatus peerStatus) {
     if (stopping || isSyncing) return;
     if (peerStatus == PeerStatusListener::READY) {
@@ -2829,7 +2828,7 @@ static void SetEntryTcpFlags(FlowEntry *fe, uint32_t tcpFlags) {
 void FlowManager::AddEntryForClassifier(L24Classifier *clsfr, bool allow,
                                         uint16_t priority, uint64_t cookie,
                                         uint32_t svnid, uint32_t dvnid,
-                                        uint32_t srdid,
+                                        uint32_t,
                                         FlowEntryList& entries) {
     using namespace modelgbp::l4;
 
@@ -2894,7 +2893,7 @@ void FlowManager::UpdateGroupTable() {
 }
 
 void FlowManager::HandlePortStatusUpdate(const string& portName,
-                                         uint32_t portNo) {
+                                         uint32_t) {
     LOG(DEBUG) << "Port-status update for " << portName;
     if (portName == encapIface) {
         initPlatformConfig();
@@ -3007,7 +3006,7 @@ void FlowManager::getGroupVnidAndRdId(const unordered_set<URI>& uris,
     }
 }
 
-void FlowManager::HandleConnection(SwitchConnection *swConn) {
+void FlowManager::HandleConnection(SwitchConnection *) {
     if (opflexPeerConnected) {
         LOG(DEBUG) << "Handling new connection to switch";
     } else {

@@ -20,12 +20,10 @@ using namespace boost;
 using namespace ovsagent;
 using namespace opflex::modb;
 
-static bool garbage_cb_false(const std::string& ns,
-                       const opflex::modb::URI& uri) {
+static bool garbage_cb_false(const std::string&, const opflex::modb::URI&) {
     return false;
 }
-static bool garbage_cb_true(const std::string& ns,
-                            const opflex::modb::URI& uri) {
+static bool garbage_cb_true(const std::string&, const opflex::modb::URI&) {
     return true;
 }
 

@@ -101,8 +101,7 @@ public:
                             ba::placeholders::bytes_transferred));
     }
 
-    void handle_size(const boost::system::error_code& ec,
-                     size_t len) {
+    void handle_size(const boost::system::error_code& ec, size_t) {
         if (ec) {
             if (ec != ba::error::operation_aborted) {
                 LOG(ERROR) << "Could not read from notif socket: "
@@ -130,8 +129,7 @@ public:
                             ba::placeholders::bytes_transferred));
     }
 
-    void handle_body(const boost::system::error_code& ec,
-                     size_t bytes_transferred) {
+    void handle_body(const boost::system::error_code& ec, size_t) {
         if (ec) {
             if (ec != ba::error::operation_aborted) {
                 LOG(ERROR) << "Could not read from notif socket: "
@@ -234,8 +232,7 @@ private:
                 session->close();
             }
         }
-        void operator()(const boost::system::error_code& ec,
-                        std::size_t bytes_transferred) {
+        void operator()(const boost::system::error_code& ec, std::size_t) {
             if (ec) {
                 handle_error(ec);
                 return;

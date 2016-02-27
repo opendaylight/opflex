@@ -100,18 +100,17 @@ bool FlowReader::sendRequest(ofpbuf *req, const U& cb, V& reqMap) {
     return (err == 0);
 }
 
-void FlowReader::Handle(SwitchConnection *c, ofptype msgType, ofpbuf *msg) {
+void FlowReader::Handle(SwitchConnection*, ofptype msgType, ofpbuf *msg) {
     if (msgType == OFPTYPE_FLOW_STATS_REPLY) {
-        handleReply<FlowEntryList, FlowCb, FlowCbMap>(
-            msgType, msg, flowRequests);
+        handleReply<FlowEntryList, FlowCb, FlowCbMap>(msg, flowRequests);
     } else if (msgType == OFPTYPE_GROUP_DESC_STATS_REPLY) {
-        handleReply<GroupEdit::EntryList, GroupCb, GroupCbMap>(
-            msgType, msg, groupRequests);
+        handleReply<GroupEdit::EntryList, GroupCb, GroupCbMap>(msg,
+                                                               groupRequests);
     }
 }
 
 template<typename T, typename U, typename V>
-void FlowReader::handleReply(ofptype msgType, ofpbuf *msg, V& reqMap) {
+void FlowReader::handleReply(ofpbuf *msg, V& reqMap) {
     ofp_header *msgHdr = (ofp_header *)msg->data;
     ovs_be32 recvXid = msgHdr->xid;
 

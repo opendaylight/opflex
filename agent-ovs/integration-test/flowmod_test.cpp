@@ -88,7 +88,7 @@ public:
     }
 
     /** Interface: OnConnectListener */
-    void Connected(SwitchConnection *swConn) {
+    void Connected(SwitchConnection*) {
         connectDone = true;
     }
 

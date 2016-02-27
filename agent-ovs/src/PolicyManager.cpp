@@ -956,8 +956,7 @@ PolicyManager::ConfigListener::ConfigListener(PolicyManager& pmanager_)
 
 PolicyManager::ConfigListener::~ConfigListener() {}
 
-void PolicyManager::ConfigListener::objectUpdated(class_id_t classId,
-                                                  const URI& uri) {
+void PolicyManager::ConfigListener::objectUpdated(class_id_t, const URI& uri) {
     pmanager.notifyConfig(uri);
 }
 

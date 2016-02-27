@@ -231,8 +231,7 @@ bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
     return false;
 }
 
-void PacketInHandler::portStatusUpdate(const string& portName,
-                                       uint32_t portNo,
+void PacketInHandler::portStatusUpdate(const string&, uint32_t,
                                        bool fromDesc) {
     if (fromDesc) return;
     if (flowReader && portMapper) {
@@ -741,10 +740,7 @@ static void handleDHCPPktIn(bool v4,
 static void handleVIPPktIn(bool v4,
                            Agent& agent,
                            FlowManager& flowManager,
-                           SwitchConnection *conn,
                            struct ofputil_packet_in& pi,
-                           ofputil_protocol& proto,
-                           struct dp_packet& pkt,
                            struct flow& flow) {
     EndpointManager& epMgr = agent.getEndpointManager();
     NotifServer& notifServer = agent.getNotifServer();
@@ -813,8 +809,7 @@ static void handleICMPErrPktIn(bool v4,
                                SwitchConnection *conn,
                                struct ofputil_packet_in& pi,
                                ofputil_protocol& proto,
-                               struct dp_packet& pkt,
-                               struct flow& flow) {
+                               struct dp_packet& pkt) {
     struct ofpbuf* b = NULL;
 
     uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
@@ -936,15 +931,15 @@ void PacketInHandler::Handle(SwitchConnection *conn,
     else if (pi.cookie == FlowManager::GetDHCPCookie(false))
         handleDHCPPktIn(false, agent, flowManager, conn, pi, proto, pkt, flow);
     else if (pi.cookie == FlowManager::GetVIPCookie(true))
-        handleVIPPktIn(true, agent, flowManager, conn, pi, proto, pkt, flow);
+        handleVIPPktIn(true, agent, flowManager, pi, flow);
     else if (pi.cookie == FlowManager::GetVIPCookie(false))
-        handleVIPPktIn(false, agent, flowManager, conn, pi, proto, pkt, flow);
+        handleVIPPktIn(false, agent, flowManager, pi, flow);
     else if (pi.cookie == FlowManager::GetICMPErrorCookie(true))
         handleICMPErrPktIn(true, agent, flowManager, conn,
-                           pi, proto, pkt, flow);
+                           pi, proto, pkt);
     //else if (pi.cookie == FlowManager::GetICMPErrorCookie(false))
     //    handleICMPErrPktIn(false, agent, flowManager, conn,
-    //                       pi, proto, pkt, flow);
+    //                       pi, proto, pkt);
 }
 
 } /* namespace ovsagent */
