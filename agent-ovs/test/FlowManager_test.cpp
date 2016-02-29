@@ -1519,6 +1519,8 @@ public:
     Bldr& popVlan() { rep("pop_vlan"); return *this; }
     Bldr& inport() { rep("IN_PORT"); return *this; }
     Bldr& controller(uint16_t len) { rep("CONTROLLER:", str(len)); return *this; }
+    Bldr& meta(uint64_t a, uint64_t m) { rep("write_metadata:", str(a, true),
+                                             "/" + str(m, true)); return *this; }
     Bldr& mdAct(uint8_t a) { rep("write_metadata:", str(a, true), "/0xff"); return *this; }
     Bldr& polApplied() { rep("write_metadata:0x100/0x100"); return *this; }
     Bldr& resubmit(uint8_t t) { rep("resubmit(,", str(t), ")"); return *this; }
@@ -2173,11 +2175,15 @@ void FlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
     ADDF(Bldr().table(NAT).priority(166).ipv6().reg(RD, 1)
          .isIpv6Src("fdf1::/16").actions()
          .load(SEPG, 0x80000001)
-         .mdAct(FlowManager::METADATA_REV_NAT_OUT).go(POL).done());
+         .meta(FlowManager::METADATA_REV_NAT_OUT,
+               FlowManager::METADATA_OUT_MASK |
+               FlowManager::METADATA_POLICY_APPLIED_MASK).go(POL).done());
     ADDF(Bldr().table(NAT).priority(158).ip().reg(RD, 1)
          .isIpSrc("5.0.0.0/8").actions()
          .load(SEPG, 0x80000001)
-         .mdAct(FlowManager::METADATA_REV_NAT_OUT).go(POL).done());
+         .meta(FlowManager::METADATA_REV_NAT_OUT,
+               FlowManager::METADATA_OUT_MASK |
+               FlowManager::METADATA_POLICY_APPLIED_MASK).go(POL).done());
 
     if (nextHop) {
         ADDF(Bldr().table(SRC).priority(201).ip().in(42)

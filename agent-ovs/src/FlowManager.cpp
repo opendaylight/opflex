@@ -2449,8 +2449,13 @@ FlowManager::HandleRoutingDomainUpdate(const URI& rdURI) {
                     // the packet we perform protocol-specific reverse
                     // mapping.  This doesn't let us do hop-by-hop
                     // translations however.
+                    //
+                    // Also remove policy applied since we're changing
+                    // the effective EPG and need to apply policy
+                    // again.
                     ab.SetWriteMetadata(METADATA_REV_NAT_OUT,
-                                        METADATA_OUT_MASK);
+                                        METADATA_OUT_MASK |
+                                        METADATA_POLICY_APPLIED_MASK);
                     ab.SetGotoTable(POL_TABLE_ID);
                     ab.Build(snn->entry);
                     rdNatFlows.push_back(FlowEntryPtr(snn));
