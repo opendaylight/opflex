@@ -643,11 +643,14 @@ private:
     void HandlePortStatusUpdate(const std::string& portName, uint32_t portNo);
 
     bool GetGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
-            boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId, 
+            boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId,
             boost::optional<opflex::modb::URI>& bdURI, uint32_t& bdId,
             boost::optional<opflex::modb::URI>& fdURI, uint32_t& fdId);
     void UpdateGroupSubnets(const opflex::modb::URI& egUri,
                             uint32_t bdId, uint32_t rdId);
+    void UpdateEPGFlood(const opflex::modb::URI& epgURI,
+                        uint32_t epgVnid, uint32_t fgrpId,
+                        boost::asio::ip::address epgTunDst);
     bool WriteFlow(const std::string& objId, int tableId,
             FlowEntryList& el);
     bool WriteFlow(const std::string& objId, int tableId, FlowEntry *e);

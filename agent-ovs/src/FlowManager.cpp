@@ -635,8 +635,18 @@ SetActionRevDNatDest(FlowEntry *fe, uint32_t epgVnid, uint32_t bdId,
 }
 
 static void
-SetActionEPGFdBroadcast(FlowEntry *fe) {
+SetActionEPGFdBroadcast(FlowEntry *fe, FlowManager::EncapType encapType,
+                        address epgTunDst) {
     ActionBuilder ab;
+    switch (encapType) {
+    case FlowManager::ENCAP_VLAN:
+        break;
+    case FlowManager::ENCAP_VXLAN:
+    case FlowManager::ENCAP_IVXLAN:
+    default:
+        ab.SetRegLoad(MFF_REG7, epgTunDst.to_v4().to_ulong());
+        break;
+    }
     ab.SetWriteMetadata(FlowManager::METADATA_FLOOD_OUT,
                         FlowManager::METADATA_OUT_MASK);
     ab.SetGotoTable(FlowManager::OUT_TABLE_ID);
@@ -1807,6 +1817,36 @@ FlowManager::HandleAnycastServiceUpdate(const string& uuid) {
 }
 
 void
+FlowManager::UpdateEPGFlood(const URI& epgURI, uint32_t epgVnid,
+                            uint32_t fgrpId, address epgTunDst) {
+    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+    optional<shared_ptr<FloodDomain> > fd =
+        agent.getPolicyManager().getFDForGroup(epgURI);
+    if (fd) {
+        bcastFloodMode =
+            fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+    }
+
+    FlowEntryList grpDst;
+    {
+        // deliver broadcast/multicast traffic to the group table
+        FlowEntry *mcast = new FlowEntry();
+        SetMatchFd(mcast, 10, fgrpId, true, BRIDGE_TABLE_ID);
+        match_set_reg(&mcast->entry->match, 0 /* REG0 */, epgVnid);
+        if (bcastFloodMode == BcastFloodModeEnumT::CONST_ISOLATED) {
+            // In isolated mode deliver only if policy has already
+            // been applied (i.e. it comes from the tunnel uplink)
+            match_set_metadata_masked(&mcast->entry->match,
+                                      htonll(METADATA_POLICY_APPLIED_MASK),
+                                      htonll(METADATA_POLICY_APPLIED_MASK));
+        }
+        SetActionEPGFdBroadcast(mcast, GetEncapType(), epgTunDst);
+        grpDst.push_back(FlowEntryPtr(mcast));
+    }
+    WriteFlow(epgURI.toString(), BRIDGE_TABLE_ID, grpDst);
+}
+
+void
 FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     LOG(DEBUG) << "Updating endpoint-group " << epgURI;
     {
@@ -1817,6 +1857,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
     const string& epgId = epgURI.toString();
 
     uint32_t tunPort = GetTunnelPort();
+    address epgTunDst = getEPGTunnelDst(epgURI);
 
     {
         // write static port security flows that do not depend on any
@@ -1975,6 +2016,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         WriteFlow(epgId, SRC_TABLE_ID, NULL);
         WriteFlow(epgId, POL_TABLE_ID, NULL);
         WriteFlow(epgId, OUT_TABLE_ID, NULL);
+        WriteFlow(epgId, BRIDGE_TABLE_ID, NULL);
         updateMulticastList(boost::none, epgURI);
         return;
     }
@@ -2093,6 +2135,8 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         WriteFlow(bdURI.get().toString(), BRIDGE_TABLE_ID, bridgel);
     }
 
+    UpdateEPGFlood(epgURI, epgVnid, fgrpId, epgTunDst);
+
     FlowEntryList egOutFlows;
     {
         // Output table action to resubmit the flow to the bridge
@@ -2117,7 +2161,6 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
         egOutFlows.push_back(FlowEntryPtr(resubmitDst));
     }
     if (encapType != ENCAP_NONE && tunPort != OFPP_NONE) {
-        address tunDst = getEPGTunnelDst(epgURI);
         {
             // Output table action to output to the tunnel appropriate for
             // the source EPG
@@ -2129,7 +2172,7 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
                                       htonll(METADATA_TUNNEL_OUT),
                                       htonll(METADATA_OUT_MASK));
             ActionBuilder ab;
-            FlowManager::SetActionTunnelMetadata(ab, encapType, tunDst);
+            FlowManager::SetActionTunnelMetadata(ab, encapType, epgTunDst);
             ab.SetOutputToPort(tunPort);
             ab.Build(tunnelOut->entry);
 
@@ -2153,31 +2196,6 @@ FlowManager::HandleEndpointGroupDomainUpdate(const URI& epgURI) {
             ab.Build(tunnelOutRtr->entry);
 
             egOutFlows.push_back(FlowEntryPtr(tunnelOutRtr));
-        }
-        {
-            // Output table action to output to the flood group appropriate
-            // for the source EPG.
-            FlowEntry* floodOut = new FlowEntry();
-            floodOut->entry->table_id = OUT_TABLE_ID;
-            floodOut->entry->priority = 10;
-            match_set_reg(&floodOut->entry->match, 0 /* REG0 */, epgVnid);
-            match_set_metadata_masked(&floodOut->entry->match,
-                                      htonll(METADATA_FLOOD_OUT),
-                                      htonll(METADATA_OUT_MASK));
-            ActionBuilder ab;
-            switch (encapType) {
-            case FlowManager::ENCAP_VLAN:
-                break;
-            case FlowManager::ENCAP_VXLAN:
-            case FlowManager::ENCAP_IVXLAN:
-            default:
-                ab.SetRegLoad(MFF_REG7, tunDst.to_v4().to_ulong());
-                break;
-            }
-            ab.SetGroup(fgrpId);
-            ab.Build(floodOut->entry);
-
-            egOutFlows.push_back(FlowEntryPtr(floodOut));
         }
     }
     WriteFlow(epgId, OUT_TABLE_ID, egOutFlows);
@@ -2575,7 +2593,7 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
     const std::string& epUUID = endPoint.getUUID();
     std::pair<uint32_t, bool> epPair(epPort, isPromiscuous);
     uint32_t fgrpId = GetId(FloodDomain::CLASS_ID, fgrpURI);
-    string fgrpStrId = fgrpURI.toString();
+    string fgrpStrId = "fd:" + fgrpURI.toString();
     FloodGroupMap::iterator fgrpItr = floodGroupMap.find(fgrpURI);
 
     uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
@@ -2616,46 +2634,46 @@ FlowManager::UpdateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
         WriteGroupMod(e2);
     }
 
+    FlowEntryList fdOutput;
+    {
+        // Output table action to output to the flood group appropriate
+        // for the source EPG.
+        FlowEntry* floodOut = new FlowEntry();
+        floodOut->entry->table_id = OUT_TABLE_ID;
+        floodOut->entry->priority = 10;
+        match_set_reg(&floodOut->entry->match, 5 /* REG5 */, fgrpId);
+        match_set_metadata_masked(&floodOut->entry->match,
+                                  htonll(METADATA_FLOOD_OUT),
+                                  htonll(METADATA_OUT_MASK));
+        ActionBuilder ab;
+        ab.SetGroup(fgrpId);
+        ab.Build(floodOut->entry);
+        fdOutput.push_back(FlowEntryPtr(floodOut));
+    }
+    WriteFlow(fgrpStrId, OUT_TABLE_ID, fdOutput);
+
     FlowEntryList grpDst;
     FlowEntryList learnDst;
+    if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL &&
+        unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+        // go to the learning table on an unknown unicast
+        // destination in flood mode
+        FlowEntry *unicastLearn = new FlowEntry();
+        SetMatchFd(unicastLearn, 5, fgrpId, false, BRIDGE_TABLE_ID);
+        SetActionGotoLearn(unicastLearn);
+        grpDst.push_back(FlowEntryPtr(unicastLearn));
 
-    if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL) {
-        // deliver broadcast/multicast traffic to the group table
-        FlowEntry *mcast = new FlowEntry();
-        SetMatchFd(mcast, 10, fgrpId, true, BRIDGE_TABLE_ID);
-        SetActionEPGFdBroadcast(mcast);
-        grpDst.push_back(FlowEntryPtr(mcast));
-
-        if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
-            // go to the learning table on an unknown unicast
-            // destination in flood mode
-            FlowEntry *unicastLearn = new FlowEntry();
-            SetMatchFd(unicastLearn, 5, fgrpId, false, BRIDGE_TABLE_ID);
-            SetActionGotoLearn(unicastLearn);
-            grpDst.push_back(FlowEntryPtr(unicastLearn));
-
-            // Deliver unknown packets in the flood domain when
-            // learning to the controller for reactive flow setup.
-            FlowEntry *fdContr = new FlowEntry();
-            SetMatchFd(fdContr, 5, fgrpId, false, LEARN_TABLE_ID,
-                       NULL, GetProactiveLearnEntryCookie());
-            SetActionController(fdContr);
-            learnDst.push_back(FlowEntryPtr(fdContr));
-        }
-    } else if (bcastFloodMode == BcastFloodModeEnumT::CONST_ISOLATED) {
-        // deliver broadcast/multicast traffic to the group table only
-        // if policy has already been applied (i.e. it comes from the
-        // tunnel uplink)
-        FlowEntry *mcast = new FlowEntry();
-        SetMatchFd(mcast, 10, fgrpId, true, BRIDGE_TABLE_ID);
-        match_set_metadata_masked(&mcast->entry->match,
-                                  htonll(METADATA_POLICY_APPLIED_MASK),
-                                  htonll(METADATA_POLICY_APPLIED_MASK));
-        SetActionEPGFdBroadcast(mcast);
-        grpDst.push_back(FlowEntryPtr(mcast));
+        // Deliver unknown packets in the flood domain when
+        // learning to the controller for reactive flow setup.
+        FlowEntry *fdContr = new FlowEntry();
+        SetMatchFd(fdContr, 5, fgrpId, false, LEARN_TABLE_ID,
+                   NULL, GetProactiveLearnEntryCookie());
+        SetActionController(fdContr);
+        learnDst.push_back(FlowEntryPtr(fdContr));
     }
     WriteFlow(fgrpStrId, BRIDGE_TABLE_ID, grpDst);
     WriteFlow(fgrpStrId, LEARN_TABLE_ID, learnDst);
+
 }
 
 void FlowManager::RemoveEndpointFromFloodGroup(const std::string& epUUID) {
@@ -2675,8 +2693,10 @@ void FlowManager::RemoveEndpointFromFloodGroup(const std::string& epUUID) {
         GroupEdit::Entry e1 =
                 CreateGroupMod(type, getPromId(fgrpId), epMap, true);
         if (epMap.empty()) {
-            WriteFlow(fgrpURI.toString(), BRIDGE_TABLE_ID, NULL);
-            WriteFlow(fgrpURI.toString(), LEARN_TABLE_ID, NULL);
+            string fgrpStrId = "fd:" + fgrpURI.toString();
+            WriteFlow(fgrpStrId, OUT_TABLE_ID, NULL);
+            WriteFlow(fgrpStrId, BRIDGE_TABLE_ID, NULL);
+            WriteFlow(fgrpStrId, LEARN_TABLE_ID, NULL);
             floodGroupMap.erase(fgrpURI);
         }
         WriteGroupMod(e0);
