@@ -324,10 +324,11 @@ public:
 
     /** Initialize EPG-scoped flow entries */
     void initExpEpg(shared_ptr<EpGroup>& epg,
-                    uint32_t fdId = 0, uint32_t bdId = 1, uint32_t rdId = 1);
+                    uint32_t fdId = 0, uint32_t bdId = 1, uint32_t rdId = 1,
+                    bool isolated = false);
 
     /** Initialize flood domain-scoped flow entries */
-    void initExpFd(uint32_t fdId = 0, bool isolated = false);
+    void initExpFd(uint32_t fdId = 0);
 
     /** Initialize bridge domain-scoped flow entries */
     void initExpBd(uint32_t bdId = 1, uint32_t rdId = 1,
@@ -464,6 +465,27 @@ void FlowManagerFixture::epgTest() {
     initSubnets(sns);
     WAIT_FOR_TABLES("forwarding change", 500);
 
+    /* Change flood domain to isolated */
+    fd0->setBcastFloodMode(BcastFloodModeEnumT::CONST_ISOLATED);
+    m1.commit();
+    optional<shared_ptr<modelgbp::gbp::FloodDomain> > fdptr;
+    WAIT_FOR((fdptr = policyMgr.getFDForGroup(epg2->getURI()))
+             ? (fdptr.get()
+                ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL) ==
+                BcastFloodModeEnumT::CONST_ISOLATED) : false, 500);
+    flowManager.egDomainUpdated(epg0->getURI());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0, 1, 1, 1, true);
+    initExpFd(1);
+    initExpBd(1, 1, true);
+    initExpRd();
+    initExpEp(ep0, epg0, 1, 1, 1);
+    initExpEp(ep2, epg0, 1, 1, 1);
+    initSubnets(sns);
+    WAIT_FOR_TABLES("isolated", 500);
+
     /* remove domain objects */
     PolicyManager::subnet_vector_t subnets, subnets_copy;
     policyMgr.getSubnetsForGroup(epg0->getURI(), subnets);
@@ -486,7 +508,7 @@ void FlowManagerFixture::epgTest() {
 
     clearExpFlowTables();
     initExpStatic();
-    initExpEpg(epg0, 1);
+    initExpEpg(epg0, 1, 1, 1, true);
     initExpFd(1);
     initExpBd(1, 1, true);
     initExpEp(ep0, epg0, 1, 1, 1);
@@ -780,26 +802,6 @@ void FlowManagerFixture::fdTest() {
     initExpEp(ep0, epg0, 1, 1, 1);
     initExpEp(ep2, epg0, 1, 1, 1);
     WAIT_FOR_TABLES("removeport", 500);
-
-    /* Change flood domain to isolated */
-    {
-        Mutator m1(framework, policyOwner);
-        fd0->setBcastFloodMode(BcastFloodModeEnumT::CONST_ISOLATED);
-        m1.commit();
-    }
-    optional<shared_ptr<modelgbp::gbp::FloodDomain> > fdptr;
-    WAIT_FOR((fdptr = policyMgr.getFDForGroup(epg2->getURI()))
-             ? (fdptr.get()
-                ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL) ==
-                BcastFloodModeEnumT::CONST_ISOLATED) : false, 500);
-    flowManager.endpointUpdated(ep0->getUUID());
-    flowManager.domainUpdated(FloodDomain::CLASS_ID, fd0->getURI());
-
-    clearExpFlowTables();
-    initExpFd(1, true);
-    initExpEp(ep0, epg0, 1, 1, 1);
-    initExpEp(ep2, epg0, 1, 1, 1);
-    WAIT_FOR_TABLES("isolated", 500);
 
     /* remove ep0 */
     epSrc.removeEndpoint(ep0->getUUID());
@@ -1632,7 +1634,7 @@ void FlowManagerFixture::initExpStatic() {
 // Initialize EPG-scoped flow entries
 void FlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
                                     uint32_t fdId, uint32_t bdId,
-                                    uint32_t rdId) {
+                                    uint32_t rdId, bool isolated) {
     FlowManager::EncapType encapType = flowManager.GetEncapType();
     uint32_t tunPort = flowManager.GetTunnelPort();
     uint32_t vnid = policyMgr.getVnidForGroup(epg->getURI()).get();
@@ -1640,6 +1642,41 @@ void FlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
     uint8_t rmacArr[6];
     memcpy(rmacArr, flowManager.GetRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
+    string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
+
+    switch (encapType) {
+    case FlowManager::ENCAP_VLAN:
+        if (isolated) {
+            ADDF(Bldr().table(BR).priority(10)
+                 .reg(SEPG, vnid).reg(FD, fdId)
+                 .isPolicyApplied().isEthDst(mmac).actions()
+                 .mdAct(FlowManager::METADATA_FLOOD_OUT)
+                 .go(OUT).done());
+        } else {
+            ADDF(Bldr().table(BR).priority(10)
+                 .reg(SEPG, vnid).reg(FD, fdId).isEthDst(mmac).actions()
+                 .mdAct(FlowManager::METADATA_FLOOD_OUT)
+                 .go(OUT).done());
+        }
+        break;
+    case FlowManager::ENCAP_VXLAN:
+    case FlowManager::ENCAP_IVXLAN:
+    default:
+        if (isolated) {
+            ADDF(Bldr().table(BR).priority(10)
+                 .reg(SEPG, vnid).reg(FD, fdId)
+                 .isPolicyApplied().isEthDst(mmac).actions()
+                 .load(OUTPORT, mcast.to_v4().to_ulong())
+                 .mdAct(FlowManager::METADATA_FLOOD_OUT)
+                 .go(OUT).done());
+        } else {
+            ADDF(Bldr().table(BR).priority(10)
+                 .reg(SEPG, vnid).reg(FD, fdId).isEthDst(mmac).actions()
+                 .load(OUTPORT, mcast.to_v4().to_ulong())
+                 .mdAct(FlowManager::METADATA_FLOOD_OUT)
+                 .go(OUT).done());
+        }
+    }
 
     if (tunPort != OFPP_NONE) {
         switch (encapType) {
@@ -1654,9 +1691,6 @@ void FlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
                  .isMdAct(FlowManager::METADATA_TUNNEL_OUT)
                  .actions().pushVlan().move(SEPG12, VLAN)
                  .outPort(tunPort).done());
-            ADDF(Bldr().table(OUT).priority(10).reg(SEPG, vnid)
-                 .isMdAct(FlowManager::METADATA_FLOOD_OUT)
-                 .actions().group(fdId).done());
             break;
         case FlowManager::ENCAP_VXLAN:
         case FlowManager::ENCAP_IVXLAN:
@@ -1675,11 +1709,6 @@ void FlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
                  .actions().move(SEPG, TUNID)
                  .load(TUNDST, flowManager.GetTunnelDst().to_v4().to_ulong())
                  .outPort(tunPort).done());
-            ADDF(Bldr().table(OUT).priority(10).reg(SEPG, vnid)
-                 .isMdAct(FlowManager::METADATA_FLOOD_OUT)
-                 .actions()
-                 .load(OUTPORT, mcast.to_v4().to_ulong())
-                 .group(fdId).done());
             break;
         }
     }
@@ -1693,21 +1722,13 @@ void FlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
 }
 
 // Initialize flood domain-scoped flow entries
-void FlowManagerFixture::initExpFd(uint32_t fdId, bool isolated) {
+void FlowManagerFixture::initExpFd(uint32_t fdId) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
     if (fdId != 0) {
-        if (isolated) {
-            ADDF(Bldr().table(BR).priority(10).reg(FD, fdId).isPolicyApplied()
-                 .isEthDst(mmac).actions()
-                 .mdAct(FlowManager::METADATA_FLOOD_OUT)
-                 .go(OUT).done());
-        } else {
-            ADDF(Bldr().table(BR).priority(10).reg(FD, fdId)
-                 .isEthDst(mmac).actions()
-                 .mdAct(FlowManager::METADATA_FLOOD_OUT)
-                 .go(OUT).done());
-        }
+        ADDF(Bldr().table(OUT).priority(10).reg(FD, fdId)
+             .isMdAct(FlowManager::METADATA_FLOOD_OUT)
+             .actions().group(fdId).done());
     }
 }
 

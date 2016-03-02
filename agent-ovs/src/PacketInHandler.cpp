@@ -79,19 +79,19 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
     }
 
     ActionBuilder ab;
-    // Set destination epg == source epg
-    ab.SetRegLoad(MFF_REG2, pi.flow_metadata.flow.regs[0]);
     // Set the output register
     uint32_t outport = stage2
         ? pi.flow_metadata.flow.regs[7]
         : pi.flow_metadata.flow.in_port.ofp_port;
-    if (outport == tunPort) {
-        ab.SetWriteMetadata(FlowManager::METADATA_TUNNEL_OUT,
-                            FlowManager::METADATA_OUT_MASK);
-    }
 
+    // Set destination epg == source epg
+    ab.SetRegLoad(MFF_REG2, pi.flow_metadata.flow.regs[0]);
     ab.SetRegLoad(MFF_REG7, outport);
     if (stage2) {
+        if (outport == tunPort) {
+            ab.SetWriteMetadata(FlowManager::METADATA_TUNNEL_OUT,
+                                FlowManager::METADATA_OUT_MASK);
+        }
         ab.SetGotoTable(FlowManager::POL_TABLE_ID);
     } else {
         ab.SetOutputToPort(outport);
