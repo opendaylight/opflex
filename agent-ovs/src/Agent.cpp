@@ -278,6 +278,11 @@ void Agent::stop() {
     }
     endpointSources.clear();
 
+    BOOST_FOREACH(FSRDConfigSource* source, rdConfigSources) {
+        delete source;
+    }
+    rdConfigSources.clear();
+
     BOOST_FOREACH(ServiceSource* source, serviceSources) {
         delete source;
     }

@@ -41,7 +41,10 @@ public:
      * Constructor that accepts the output stream to write logs to.
      * @param outStream The stream to send messages to.
      */
-    OStreamLogSink(std::ostream& outStream) : out(&outStream) {}
+    OStreamLogSink(std::ostream& outStream) : out(&outStream) {
+        static const boost::posix_time::time_facet facet;
+        out->imbue(std::locale(out->getloc(), &facet));
+    }
 
     /**
      * Constructor that accepts the name of a file where log messages will be
@@ -97,8 +100,8 @@ const char * OStreamLogSink::LEVEL_STR_FATAL = "fatal";
  */
 class SyslogLogSink : public LogSink {
 public:
-    SyslogLogSink(const std::string& name) {
-        openlog(name.c_str(), LOG_CONS | LOG_PID, LOG_DAEMON);
+    SyslogLogSink(const std::string& name) : syslog_name(name) {
+        openlog(syslog_name.c_str(), LOG_CONS | LOG_PID, LOG_DAEMON);
     }
     ~SyslogLogSink() {
         closelog();
@@ -118,6 +121,9 @@ public:
                "[%s:%d:%s] %s",
                filename, lineno, functionName, message.c_str());
     }
+
+private:
+    std::string syslog_name;
 };
 
 static OStreamLogSink consoleLogSink(std::cout);
