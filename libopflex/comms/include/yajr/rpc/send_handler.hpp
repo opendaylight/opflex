@@ -13,8 +13,10 @@
 #include <rapidjson/rapidjson.h>
 
 #include <deque>
-#include <opflex/logging/internal/logging.hpp>
 
+#ifdef PERFORM_CRAZY_BYTE_BY_BYTE_INVARIANT_CHECK
+#include <opflex/logging/internal/logging.hpp>
+#endif
 namespace yajr {
     namespace internal {
 
@@ -31,7 +33,6 @@ struct GenericStringQueue {
         assert(::yajr::internal::isLegitPunct(c));
 #ifdef PERFORM_CRAZY_BYTE_BY_BYTE_INVARIANT_CHECK
         assert(__checkInvariants(cP_));
-#endif
         if(deque_.back()!=c){
             LOG(ERROR)
                 << "inserted char already changed: \""
@@ -41,6 +42,7 @@ struct GenericStringQueue {
                 << "\""
             ;
         }
+#endif
     }
 
     void Flush() {}
