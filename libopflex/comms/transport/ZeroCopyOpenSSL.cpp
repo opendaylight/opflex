@@ -1073,50 +1073,45 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
 
     size_t failure = 0;
 
-    if (!failure) {
+    Ctx * ctx = new (std::nothrow) Ctx(sslCtx, passphrase);
 
-        Ctx * ctx = new (std::nothrow) Ctx(sslCtx, passphrase);
+    if (!ctx) {
 
-        if (!ctx) {
+        ++failure;
+        LOG(ERROR)
+            << "Failed to create ZeroCopyOpenSSL::Ctx"
+        ;
 
-            ++failure;
-            LOG(ERROR)
-                << "Failed to create ZeroCopyOpenSSL::Ctx"
-            ;
+        SSL_CTX_free(sslCtx);
 
-        } else {
+    } else {
 
-            /* This needs to be done before invoking SSL_CTX_use_PrivateKey_file()
-             * and irrespectively of whether a passphrase was provided or not.
-             * Otherwise if the certificate has an encrypted private key and
-             * createCtx() was invoked without a passphrase, OpenSSL would always
-             * resort to asking for the passphrase from the standand input, hence
-             * blocking forever the progress of the current thread.
-             */
+        /* This needs to be done before invoking SSL_CTX_use_PrivateKey_file()
+         * and irrespectively of whether a passphrase was provided or not.
+         * Otherwise if the certificate has an encrypted private key and
+         * createCtx() was invoked without a passphrase, OpenSSL would always
+         * resort to asking for the passphrase from the standand input, hence
+         * blocking forever the progress of the current thread.
+         */
 
-            SSL_CTX_set_default_passwd_cb(sslCtx, pwdCb);
-            SSL_CTX_set_default_passwd_cb_userdata(sslCtx, ctx); /* Important! */
+        SSL_CTX_set_default_passwd_cb(sslCtx, pwdCb);
+        SSL_CTX_set_default_passwd_cb_userdata(sslCtx, ctx); /* Important! */
 
-            if (caFileOrDirectory) {
-                failure += ctx->addCaFileOrDirectory(caFileOrDirectory);
-            }
-
-            if (keyAndCertFilePath) {
-                failure += ctx-> addPrivateKeyFile(keyAndCertFilePath);
-                failure += ctx->addCertificateFile(keyAndCertFilePath);
-            }
-
-            if (failure) {
-
-                delete ctx;
-                ctx = NULL;
-
-            }
-
-
+        if (caFileOrDirectory) {
+            failure += ctx->addCaFileOrDirectory(caFileOrDirectory);
         }
 
-        if (!failure) {
+        if (keyAndCertFilePath) {
+            failure += ctx-> addPrivateKeyFile(keyAndCertFilePath);
+            failure += ctx->addCertificateFile(keyAndCertFilePath);
+        }
+
+        if (failure) {
+
+            delete ctx;
+            ctx = NULL;
+
+        } else {
 
             SSL_CTX_set_info_callback(sslCtx, infoCallback);
 
@@ -1125,17 +1120,16 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
 
         }
 
-        assert(!ctx);
-        /* FALL-THROUGH */
     }
+
+    assert(!ctx);
+    /* FALL-THROUGH */
 
     LOG(ERROR)
         << "Encountered "
         << failure
         << " failure(s)"
     ;
-
-    SSL_CTX_free(sslCtx);
 
     return NULL;
 }
