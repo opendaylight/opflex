@@ -80,7 +80,7 @@ module[dci]
             }
         }
         dependency[gbpRoutingDomain;
-                   cardinality=single;
+                   cardinality=many;
                    ]
         {
             to[class=gbp/RoutingDomain;
