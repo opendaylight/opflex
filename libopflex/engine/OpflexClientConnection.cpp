@@ -38,11 +38,9 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
                                                const string& hostname_,
                                                int port_)
     : OpflexConnection(handlerFactory),
-      pool(pool_), hostname(hostname_), port(port_),
+      pool(pool_), hostname(hostname_), port(port_), peer(NULL),
       started(false), active(false), closing(false), ready(false),
-      failureCount(0), handshake_timer(new uv_timer_t) {
-    uv_timer_init(&pool->client_loop, handshake_timer);
-    handshake_timer->data = this;
+      failureCount(0), handshake_timer(NULL) {
 }
 
 OpflexClientConnection::~OpflexClientConnection() {
@@ -68,6 +66,10 @@ void OpflexClientConnection::connect() {
     active = true;
     ready = false;
 
+    handshake_timer = new uv_timer_t;
+    uv_timer_init(&pool->client_loop, handshake_timer);
+    handshake_timer->data = this;
+
     pool->updatePeerStatus(hostname, port, PeerStatusListener::CONNECTING);
 
     std::stringstream rp;
@@ -85,7 +87,8 @@ void OpflexClientConnection::disconnect() {
 
     LOG(DEBUG) << "[" << getRemotePeer() << "] "
                << "Disconnecting";
-    uv_timer_stop(handshake_timer);
+    if (handshake_timer)
+        uv_timer_stop(handshake_timer);
     peer->disconnect();
 }
 
@@ -98,12 +101,15 @@ void OpflexClientConnection::close() {
     closing = true;
     pool->updatePeerStatus(hostname, port, PeerStatusListener::CLOSING);
     active = false;
-    uv_timer_stop(handshake_timer);
-    handshake_timer->data = NULL;
-    uv_close((uv_handle_t*)handshake_timer, on_timer_close);
+    if (handshake_timer) {
+        uv_timer_stop(handshake_timer);
+        handshake_timer->data = NULL;
+        uv_close((uv_handle_t*)handshake_timer, on_timer_close);
+    }
     handler->disconnected();
     OpflexConnection::disconnect();
-    peer->destroy();
+    if (peer)
+        peer->destroy();
 }
 
 uv_loop_t* OpflexClientConnection::loop_selector(void * data) {
