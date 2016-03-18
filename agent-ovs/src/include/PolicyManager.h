@@ -353,6 +353,7 @@ private:
      * State and indices related to a given group
      */
     struct GroupState {
+        boost::optional<boost::shared_ptr<modelgbp::gbp::EpGroup> > epGroup;
         boost::optional<boost::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
         boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
         boost::optional<boost::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;

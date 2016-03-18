@@ -378,7 +378,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     }
 
     bool updated = false;
-    if (newInstCtx != gs.instContext ||
+    if (epg != gs.epGroup ||
+        newInstCtx != gs.instContext ||
         newfd != gs.floodDomain ||
         newfdctx != gs.floodContext ||
         newbd != gs.bridgeDomain ||
@@ -386,6 +387,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
         newsmap != gs.subnet_map)
         updated = true;
 
+    gs.epGroup = epg;
     gs.instContext = newInstCtx;
     gs.floodDomain = newfd;
     gs.floodContext = newfdctx;
