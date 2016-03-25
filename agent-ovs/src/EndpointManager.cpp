@@ -512,7 +512,8 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
             shared_ptr<const Endpoint>& ep,
             const std::string& uuid,
             shared_ptr<modelgbp::gbp::BridgeDomain>& bd,
-            const URI& egURI) {
+            const URI& egURI,
+            const std::set<opflex::modb::URI>& secGroups) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::epr;
 
@@ -521,6 +522,10 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
                         ep->getMAC().get());
     l2e->setUuid(uuid);
     l2e->setGroup(egURI.toString());
+
+    BOOST_FOREACH(const opflex::modb::URI& secGroup, secGroups) {
+        l2e->addEprSecurityGroupContext(secGroup.toString());
+    }
 
     if (ep->getInterfaceName())
         l2e->setInterfaceName(ep->getInterfaceName().get());
@@ -545,7 +550,8 @@ populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
             const std::string& uuid,
             shared_ptr<modelgbp::gbp::RoutingDomain>& rd,
             const string& ip,
-            const URI& egURI) {
+            const URI& egURI,
+            const std::set<opflex::modb::URI>& secGroups) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::epr;
 
@@ -554,6 +560,10 @@ populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
     l3e->setMac(ep->getMAC().get())
         .setGroup(egURI.toString())
         .setUuid(uuid);
+
+    BOOST_FOREACH(const opflex::modb::URI& secGroup, secGroups) {
+        l3e->addEprSecurityGroupContext(secGroup.toString());
+    }
 
     BOOST_FOREACH(const Endpoint::Attestation& a, ep->getAttestations()) {
         if (!a.getValidator() || !a.getValidatorMac())
@@ -576,6 +586,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     EndpointState& es = it->second;
     const optional<URI>& egURI = es.egURI;
     const optional<MAC>& mac = es.endpoint->getMAC();
+    const std::set<opflex::modb::URI>& secGroups =
+        es.endpoint->getSecurityGroups();
     unordered_set<URI> newl3eps;
     unordered_set<URI> newl2eps;
     optional<shared_ptr<RoutingDomain> > rd;
@@ -598,7 +610,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
         {
             shared_ptr<L2Ep> l2e =
                 populateL2E(l2u.get(), es.endpoint, uuid,
-                            bd.get(), egURI.get());
+                            bd.get(), egURI.get(), secGroups);
 
             newl2eps.insert(l2e->getURI());
         }
@@ -617,7 +629,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
 
             shared_ptr<L2Ep> fl2e =
                 populateL2E(l2u.get(), es.endpoint, ipm.getUUID(), fbd.get(),
-                            ipm.getEgURI().get());
+                            ipm.getEgURI().get(),
+                            secGroups);
             newl2eps.insert(fl2e->getURI());
         }
     }
@@ -635,13 +648,15 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
                 if (!validateIp(ip)) continue;
                 shared_ptr<L3Ep> l3e =
                     populateL3E(l3u.get(), es.endpoint, uuid,
-                                rd.get(), ip, egURI.get());
+                                rd.get(), ip, egURI.get(),
+                                secGroups);
                 newl3eps.insert(l3e->getURI());
             }
 
             BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
                           es.endpoint->getIPAddressMappings()) {
-                if (!ipm.getFloatingIP() || !ipm.getMappedIP() || !ipm.getEgURI())
+                if (!ipm.getFloatingIP() || !ipm.getMappedIP() ||
+                    !ipm.getEgURI())
                     continue;
                 // don't declare endpoints if there's a next hop
                 if (ipm.getNextHopIf())
@@ -654,7 +669,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
                 shared_ptr<L3Ep> fl3e =
                     populateL3E(l3u.get(), es.endpoint, ipm.getUUID(),
                                 frd.get(), ipm.getFloatingIP().get(),
-                                ipm.getEgURI().get());
+                                ipm.getEgURI().get(),
+                                secGroups);
                 newl3eps.insert(fl3e->getURI());
             }
         }

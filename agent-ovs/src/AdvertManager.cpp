@@ -18,7 +18,7 @@
 #include "AdvertManager.h"
 #include "Packets.h"
 #include "ActionBuilder.h"
-#include "FlowManager.h"
+#include "IntFlowManager.h"
 #include "logging.h"
 #include "arp.h"
 
@@ -42,12 +42,12 @@ namespace ovsagent {
 static const address_v6 ALL_NODES_IP(address_v6::from_string("ff02::1"));
 
 AdvertManager::AdvertManager(Agent& agent_,
-                             FlowManager& flowManager_)
+                             IntFlowManager& intFlowManager_)
     : urng(rng),
       all_ep_gen(urng, boost::random::uniform_int_distribution<>(300,600)),
       repeat_gen(urng, boost::random::uniform_int_distribution<>(3000,5000)),
       sendRouterAdv(false), sendEndpointAdv(false),
-      agent(agent_), flowManager(flowManager_),
+      agent(agent_), intFlowManager(intFlowManager_),
       portMapper(NULL), switchConnection(NULL),
       ioService(&agent.getAgentIOService()),
       started(false), stopping(false) {
@@ -124,7 +124,7 @@ void AdvertManager::scheduleEndpointAdv(const std::string& uuid) {
     }
 }
 
-static int send_packet_out(FlowManager& flowManager,
+static int send_packet_out(IntFlowManager& intFlowManager,
                            SwitchConnection* conn,
                            ofpbuf* b,
                            unordered_set<uint32_t>& out_ports,
@@ -135,12 +135,13 @@ static int send_packet_out(FlowManager& flowManager,
     po.packet_len = b->size;
     po.in_port = OFPP_CONTROLLER;
 
-    uint32_t tunPort = flowManager.GetTunnelPort();
+    uint32_t tunPort = intFlowManager.GetTunnelPort();
     ActionBuilder ab;
     ab.SetRegLoad(MFF_REG0, vnid);
     if (out_ports.find(tunPort) != out_ports.end())
-        FlowManager::SetActionTunnelMetadata(ab, flowManager.GetEncapType(),
-                                             flowManager.GetTunnelDst());
+        IntFlowManager::SetActionTunnelMetadata(ab,
+                                                intFlowManager.GetEncapType(),
+                                                intFlowManager.GetTunnelDst());
 
     BOOST_FOREACH(uint32_t p, out_ports) {
         ab.SetOutputToPort(p);
@@ -187,13 +188,13 @@ void AdvertManager::sendRouterAdvs() {
 
         address_v6::bytes_type bytes = ALL_NODES_IP.to_bytes();
         struct ofpbuf* b =
-            packets::compose_icmp6_router_ad(flowManager.GetRouterMacAddr(),
+            packets::compose_icmp6_router_ad(intFlowManager.GetRouterMacAddr(),
                                              packets::MAC_ADDR_IPV6MULTICAST,
                                              (struct in6_addr*)bytes.data(),
                                              epg, polMgr);
         if (b == NULL) continue;
 
-        int error = send_packet_out(flowManager, switchConnection,
+        int error = send_packet_out(intFlowManager, switchConnection,
                                     b, out_ports);
         if (error) {
             LOG(ERROR) << "Could not write packet-out: "
@@ -217,7 +218,8 @@ void AdvertManager::onRouterAdvTimer(const boost::system::error_code& ec) {
     int nextInterval = 16;
 
     if (switchConnection->IsConnected()) {
-        flowManager.QueueFlowTask(bind(&AdvertManager::sendRouterAdvs, this));
+        agent.getAgentIOService().dispatch(bind(&AdvertManager::sendRouterAdvs,
+                                                this));
 
         if (initialRouterAdvs >= 3)
             nextInterval = 200;
@@ -235,7 +237,7 @@ void AdvertManager::onRouterAdvTimer(const boost::system::error_code& ec) {
     }
 }
 
-static void doSendEpAdv(FlowManager& flowManager,
+static void doSendEpAdv(IntFlowManager& intFlowManager,
                         SwitchConnection* switchConnection,
                         const string& ip, const uint8_t* epMac,
                         const uint8_t* routerMac, uint32_t epgVnid,
@@ -269,7 +271,7 @@ static void doSendEpAdv(FlowManager& flowManager,
     }
     if (b == NULL) return;
 
-    int error = send_packet_out(flowManager, switchConnection,
+    int error = send_packet_out(intFlowManager, switchConnection,
                                 b, out_ports, epgVnid);
     if (error) {
         LOG(ERROR) << "Could not write packet-out: "
@@ -278,7 +280,7 @@ static void doSendEpAdv(FlowManager& flowManager,
 }
 
 void AdvertManager::sendEndpointAdvs(const string& uuid) {
-    uint32_t tunPort = flowManager.GetTunnelPort();
+    uint32_t tunPort = intFlowManager.GetTunnelPort();
     if (tunPort == OFPP_NONE) return;
     unordered_set<uint32_t> out_ports;
     out_ports.insert(tunPort);
@@ -301,13 +303,13 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
 
     uint8_t epMac[6];
     ep->getMAC().get().toUIntArray(epMac);
-    const uint8_t* routerMac = flowManager.GetRouterMacAddr();
+    const uint8_t* routerMac = intFlowManager.GetRouterMacAddr();
 
     BOOST_FOREACH(const string& ip, ep->getIPs()) {
         LOG(DEBUG) << "Sending endpoint advertisement for "
                    << ep->getMAC().get() << " " << ip;
 
-        doSendEpAdv(flowManager, switchConnection,
+        doSendEpAdv(intFlowManager, switchConnection,
                     ip, epMac, routerMac, epgVnid.get(),
                     out_ports);
 
@@ -328,7 +330,7 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
         LOG(DEBUG) << "Sending endpoint advertisement for "
                    << ep->getMAC().get() << " " << ipm.getFloatingIP().get();
 
-        doSendEpAdv(flowManager, switchConnection,
+        doSendEpAdv(intFlowManager, switchConnection,
                     ipm.getFloatingIP().get(), epMac,
                     routerMac, ipmVnid.get(), out_ports);
     }
@@ -366,13 +368,15 @@ void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
         return;
 
     if (switchConnection->IsConnected()) {
-        flowManager.QueueFlowTask(bind(&AdvertManager::sendAllEndpointAdvs, this));
+        agent.getAgentIOService()
+            .dispatch(bind(&AdvertManager::sendAllEndpointAdvs, this));
     }
 
     if (!stopping) {
         allEndpointAdvTimer->expires_from_now(seconds(all_ep_gen()));
-        allEndpointAdvTimer->async_wait(bind(&AdvertManager::onAllEndpointAdvTimer,
-                                          this, error));
+        allEndpointAdvTimer->
+            async_wait(bind(&AdvertManager::onAllEndpointAdvTimer,
+                            this, error));
     }
 }
 
@@ -390,8 +394,9 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
         unique_lock<mutex> guard(ep_mutex);
         pending_ep_map_t::iterator it = pendingEps.begin();
         while (it != pendingEps.end()) {
-            flowManager.QueueFlowTask(bind(&AdvertManager::sendEndpointAdvs, this,
-                                           it->first));
+            agent.getAgentIOService()
+                .dispatch(bind(&AdvertManager::sendEndpointAdvs, this,
+                               it->first));
             if (it->second <= 1) {
                 it = pendingEps.erase(it);
             } else {
