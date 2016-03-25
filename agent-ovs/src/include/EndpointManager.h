@@ -107,6 +107,24 @@ public:
                               /* out */ boost::unordered_set<std::string>& eps);
 
     /**
+     * Get the set of endpoints that exist for a given set of security groups
+     *
+     * @param secGrps the set of security groups
+     * @param eps a set that will be filled with the UUIDs of matching
+     * endpoints.
+     */
+    void getEndpointsForSecGrps(const EndpointListener::uri_set_t& secGrps,
+                                /* out */ boost::unordered_set<std::string>& eps);
+
+    /**
+     * Check whether the given security group set contains any endpoints
+     *
+     * @param secGrps the security group set to check
+     * @return true if the security group contains no endpoints
+     */
+    bool secGrpSetEmpty(const EndpointListener::uri_set_t& secGrps);
+
+    /**
      * Get the set of endpoints with IP address mappings mapped to the
      * given endpoint group
      *
@@ -119,7 +137,7 @@ public:
                                  /* out */ boost::unordered_set<std::string>& eps);
 
     /**
-     * Get the endpoints that are on a particular interface
+     * Get the endpoints that are on a particular integration interface
      *
      * @param ifaceName the name of the interface
      * @param eps a set that will be filled with the UUIDs of matching
@@ -127,6 +145,26 @@ public:
      */
     void getEndpointsByIface(const std::string& ifaceName,
                              /* out */ boost::unordered_set<std::string>& eps);
+
+    /**
+     * Get the endpoints that are on a particular access interface
+     *
+     * @param ifaceName the name of the interface
+     * @param eps a set that will be filled with the UUIDs of matching
+     * endpoints.
+     */
+    void getEndpointsByAccessIface(const std::string& ifaceName,
+                                   /* out */ boost::unordered_set<std::string>& eps);
+
+    /**
+     * Get the endpoints that are on a particular access uplink interface
+     *
+     * @param ifaceName the name of the interface
+     * @param eps a set that will be filled with the UUIDs of matching
+     * endpoints.
+     */
+    void getEndpointsByAccessUplink(const std::string& ifaceName,
+                                    /* out */ boost::unordered_set<std::string>& eps);
 
     /**
      * Get the endpoints that have an IP mapping next hop interface as
@@ -253,7 +291,7 @@ private:
 
         boost::shared_ptr<const Endpoint> endpoint;
 
-        typedef boost::unordered_set<opflex::modb::URI> uri_set_t;
+        typedef boost::unordered_set<opflex::modb::URI> uri_uset_t;
 
         /**
          * The EG URI for the endpoint as currently computed (may be
@@ -265,7 +303,7 @@ private:
          * The set of endpoint groups referenced by endpoint IP
          * address mappings
          */
-        uri_set_t ipMappingGroups;
+        uri_uset_t ipMappingGroups;
 
         /**
          * reference to the vmep object related to this endpoint that
@@ -276,13 +314,13 @@ private:
         // references to the modb epdr localL2 and locall3 objects
         // related to this endpoint that exist to cause policy
         // resolution
-        uri_set_t locall2EPs;
-        uri_set_t locall3EPs;
+        uri_uset_t locall2EPs;
+        uri_uset_t locall3EPs;
 
         // references to the modb epr l2ep and l3ep objects related to
         // this endpoint that will be reports to the endpoint registry
-        uri_set_t l2EPs;
-        uri_set_t l3EPs;
+        uri_uset_t l2EPs;
+        uri_uset_t l3EPs;
 
         /*
          * Attributes assigned to this endpoint by the endpoint
@@ -299,10 +337,11 @@ private:
     boost::optional<opflex::modb::URI> resolveEpgMapping(EndpointState& es);
 
     typedef boost::unordered_map<std::string, EndpointState> ep_map_t;
-    typedef boost::unordered_map<opflex::modb::URI,
-                                 boost::unordered_set<std::string> > group_ep_map_t;
-    typedef boost::unordered_map<std::string,
-                                 boost::unordered_set<std::string> > string_ep_map_t;
+    typedef boost::unordered_set<std::string> str_uset_t;
+    typedef boost::unordered_map<opflex::modb::URI, str_uset_t> group_ep_map_t;
+    typedef boost::unordered_map<std::string, str_uset_t> string_ep_map_t;
+    typedef boost::unordered_map<EndpointListener::uri_set_t,
+                                 str_uset_t> secgrp_ep_map_t;
 
     boost::mutex ep_mutex;
 
@@ -317,6 +356,11 @@ private:
     group_ep_map_t group_ep_map;
 
     /**
+     * Map sets of security groups to a set of endpoint UUIDs
+     */
+    secgrp_ep_map_t secgrp_ep_map;
+
+    /**
      * Map IP address mapping group URIs to a set of endpoint UUIDs
      */
     group_ep_map_t ipm_group_ep_map;
@@ -325,6 +369,17 @@ private:
      * Map endpoint interface names to a set of endpoint UUIDs
      */
     string_ep_map_t iface_ep_map;
+
+    /**
+     * Map endpoint access interface names to a set of endpoint UUIDs
+     */
+    string_ep_map_t access_iface_ep_map;
+
+    /**
+     * Map endpoint access uplink interface names to a set of endpoint
+     * UUIDs
+     */
+    string_ep_map_t access_uplink_ep_map;
 
     /**
      * Map ip address mapping next hop interface names to a set of
@@ -345,6 +400,7 @@ private:
     boost::mutex listener_mutex;
 
     void notifyListeners(const std::string& uuid);
+    void notifyListeners(const EndpointListener::uri_set_t& secGroups);
 
     /**
      * Listener for changes related to endpoint group mapping

@@ -47,8 +47,7 @@ public:
     /**
      * Callback function to process a list of flow-table entries.
      */
-    typedef boost::function<void
-        (const FlowEntryList&, bool)> FlowCb;
+    typedef boost::function<void (const FlowEntryList&, bool)> FlowCb;
 
     /**
      * Get the flow-table entries for specified table.
@@ -75,8 +74,7 @@ public:
     /**
      * Callback function to process a list of group-table entries.
      */
-    typedef boost::function<void
-        (const GroupEdit::EntryList&, bool)> GroupCb;
+    typedef boost::function<void (const GroupEdit::EntryList&, bool)> GroupCb;
 
     /**
      * Get the group-table entries from switch.

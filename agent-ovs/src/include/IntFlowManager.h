@@ -1,34 +1,33 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
+ * Copyright (c) 2014-2016 Cisco Systems, Inc. and others.  All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#ifndef OVSAGENT_FLOWMANAGER_H_
-#define OVSAGENT_FLOWMANAGER_H_
+#ifndef OVSAGENT_INTFLOWMANAGER_H_
+#define OVSAGENT_INTFLOWMANAGER_H_
 
 #include <utility>
 
-#include <boost/asio.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <boost/asio/ip/address.hpp>
 #include <boost/optional.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/noncopyable.hpp>
 
 #include <opflex/ofcore/PeerStatusListener.h>
 
 #include "Agent.h"
-#include "SwitchConnection.h"
-#include "PortMapper.h"
-#include "FlowReader.h"
-#include "FlowExecutor.h"
+#include "SwitchManager.h"
 #include "IdGenerator.h"
 #include "ActionBuilder.h"
 #include "PacketInHandler.h"
 #include "AdvertManager.h"
 #include "RDConfig.h"
+#include "TaskQueue.h"
+#include "SwitchStateHandler.h"
 
 namespace ovsagent {
 
@@ -39,72 +38,30 @@ namespace ovsagent {
  * of flow modifications that represent the changes and apply these
  * modifications.
  */
-class FlowManager : public EndpointListener,
-                    public ServiceListener,
-                    public ExtraConfigListener,
-                    public PolicyListener,
-                    public OnConnectListener,
-                    public PortStatusListener,
-                    public opflex::ofcore::PeerStatusListener {
+class IntFlowManager : public SwitchStateHandler,
+                       public EndpointListener,
+                       public ServiceListener,
+                       public ExtraConfigListener,
+                       public PolicyListener,
+                       public PortStatusListener,
+                       public opflex::ofcore::PeerStatusListener,
+                       private boost::noncopyable {
 public:
     /**
      * Construct a new flow manager for the agent
      * @param agent the agent object
+     * @param switchManager the switch manager
+     * @param idGen the flow ID generator
      */
-    FlowManager(Agent& agent);
-    ~FlowManager() {}
+    IntFlowManager(Agent& agent,
+                   SwitchManager& switchManager,
+                   IdGenerator& idGen);
+    ~IntFlowManager() {}
 
     /**
      * Module start
      */
-    void Start();
-
-    /**
-     * Module stop
-     */
-    void Stop();
-
-    /**
-     * Set the flow executor to use
-     * @param e the flow executor
-     */
-    void SetExecutor(FlowExecutor *e) {
-        executor = e;
-    }
-
-    /**
-     * Set the port mapper to use
-     * @param m the port mapper
-     */
-    void SetPortMapper(PortMapper *m);
-
-    /**
-     * Get the port mapper
-     * @return the port mapper
-     */
-    PortMapper* GetPortMapper() { return portMapper; }
-
-    /**
-     * Set the object used for reading flows and groups from the switch.
-     *
-     * @param r The reader object
-     */
-    void SetFlowReader(FlowReader *r);
-
-    /**
-     * Register the given connection with the flow manager. Installs
-     * all the necessary listeners on the connection.
-     *
-     * @param connection the connection to use for learning
-     */
-    void registerConnection(SwitchConnection* connection);
-
-    /**
-     * Unregister the given connection.
-     *
-     * @param conn the connection to unregister
-     */
-    void unregisterConnection(SwitchConnection *conn);
+    void start();
 
     /**
      * Installs listeners for receiving updates to MODB state.
@@ -112,9 +69,9 @@ public:
     void registerModbListeners();
 
     /**
-     * Unregisters listeners that receive updates to MODB state.
+     * Module stop
      */
-    void unregisterModbListeners();
+    void stop();
 
     /**
      * How to behave on an unknown unicast destination when the flood
@@ -245,13 +202,6 @@ public:
     void SetEndpointAdv(bool endpointAdv);
 
     /**
-     * Set the flow ID cache directory
-     * @param flowIdCache the directory where flow ID entries will be
-     * cached
-     */
-    void SetFlowIdCache(const std::string& flowIdCache);
-
-    /**
      * Set the multicast group file
      * @param mcastGroupFile The file where multicast group
      * subscriptions will be written
@@ -290,16 +240,12 @@ public:
      */
     const uint8_t *GetDHCPMacAddr() { return dhcpMac; }
 
-    /**
-     * Set the delay after which flow-manager will attempt to reconcile
-     * cached memory state with the flow tables on the switch once connection
-     * is established to the switch. Applies only to the next time
-     * connection is established.
-     *
-     * @param delayMsec the delay in milliseconds, setting it to 0 will
-     * disable the delay
-     */
-    void SetSyncDelayOnConnect(long delayMsec);
+    /* Interface: SwitchStateHandler */
+    virtual std::vector<FlowEdit>
+    reconcileFlows(std::vector<TableState> flowTables,
+                   std::vector<FlowEntryList>& recvFlows);
+    virtual GroupEdit reconcileGroups(GroupMap& recvGroups);
+    virtual void completeSync();
 
     /* Interface: EndpointListener */
     virtual void endpointUpdated(const std::string& uuid);
@@ -317,12 +263,14 @@ public:
     virtual void contractUpdated(const opflex::modb::URI& contractURI);
     virtual void configUpdated(const opflex::modb::URI& configURI);
 
-    /* Interface: OnConnectListener */
-    virtual void Connected(SwitchConnection *swConn);
-
     /* Interface: PortStatusListener */
     virtual void portStatusUpdate(const std::string& portName, uint32_t portNo,
                                   bool fromDesc);
+
+    /**
+     * Run periodic cleanup tasks
+     */
+    void cleanup();
 
     /**
      * Implementation for PeerStatusListener::peerStatusUpdated
@@ -358,56 +306,6 @@ public:
     uint32_t GetId(opflex::modb::class_id_t cid, const opflex::modb::URI& uri);
 
     /**
-     * Get the cookie used for flow entries that are learned reactively.
-     *
-     * @return flow-cookie for learnt entries
-     */
-    static ovs_be64 GetLearnEntryCookie();
-
-    /**
-     * Get the cookie used for learn flow entries that are proactively
-     * installed
-     *
-     * @return flow-cookie for learnt entries
-     */
-    static ovs_be64 GetProactiveLearnEntryCookie();
-
-    /**
-     * Get the cookie used for flows that direct neighbor discovery
-     * packets to the controller
-     *
-     * @return flow-cookie for ND packets
-     */
-    static ovs_be64 GetNDCookie();
-
-    /**
-     * Get the cookie used for flows that direct DHCP packets to the
-     * controller
-     *
-     * @param v4 true for dhcpv4, false for v6
-     * @return flow-cookie for DHCP packets
-     */
-    static ovs_be64 GetDHCPCookie(bool v4 = true);
-
-    /**
-     * Get the cookie used for flows that direct virtual IP
-     * announcement packets to the controller
-     *
-     * @param v4 true for ARP, false for neighbor discovery
-     * @return flow-cookie for VIP announcements
-     */
-    static ovs_be64 GetVIPCookie(bool v4 = true);
-
-    /**
-     * Get the cookie used for flows that direct ICMP error messages
-     * that require body translation to the controller
-     *
-     * @param v4 true for ICMPv4, false for ICMPv6
-     * @return flow-cookie for ICMP Errors
-     */
-    static ovs_be64 GetICMPErrorCookie(bool v4 = true);
-
-    /**
      * Set fill in tunnel metadata in an action builder
      * @param ab the action builder
      * @param type the encap type
@@ -415,7 +313,7 @@ public:
      * tunnel dst in reg7.
      */
     static void
-    SetActionTunnelMetadata(ActionBuilder& ab, FlowManager::EncapType type,
+    SetActionTunnelMetadata(ActionBuilder& ab, IntFlowManager::EncapType type,
                             const boost::optional<boost::asio::ip::address>&
                             tunDst = boost::none);
 
@@ -431,32 +329,6 @@ public:
     static const uint16_t MAX_POLICY_RULE_PRIORITY;
 
     /**
-     * Indicate that the agent is connected to its Opflex peer.
-     * Note: This method should not be invoked directly except for purposes
-     * of unit-testing.
-     */
-    void PeerConnected();
-
-    /**
-     * Enqueue a task to be executed asynchronously on the flow
-     * manager's task queue
-     *
-     * @param w the work item to enqueue
-     */
-    void QueueFlowTask(const boost::function<void ()>& w);
-
-    /**
-     * Compare the state of a give table against the provided
-     * snapshot.
-     *
-     * @param tableId the table to compare against
-     * @param el the list of flows to compare against
-     * @param diffs returns the differences between the entries
-     */
-    void DiffTableState(int tableId, const FlowEntryList& el,
-                        /* out */ FlowEdit& diffs);
-
-    /**
      * Get the tunnel destination to use for the given endpoint group.
      * @param epgURI the group URI
      * @return the tunnel destination IP
@@ -464,7 +336,7 @@ public:
     boost::asio::ip::address getEPGTunnelDst(const opflex::modb::URI& epgURI);
 
     /**
-     * Indices of tables managed by the flow-manager.
+     * Indices of tables managed by the integration flow manager.
      */
     enum {
         /**
@@ -526,49 +398,6 @@ public:
         NUM_FLOW_TABLES
     };
 
-    /**
-     * "Policy applied" bit.  Bypass policy table because policy has
-     * already been applied.
-     */
-    static const uint64_t METADATA_POLICY_APPLIED_MASK;
-
-    /**
-     * the OUT_MASK specifies 8 bits that indicate the action to take
-     * in the output table.  If nothing is set, then the action is to
-     * output to the interface in REG7
-     */
-    static const uint64_t METADATA_OUT_MASK;
-
-    /**
-     * Resubmit to the first "dest" table with the source registers
-     * set to the corresponding values for the EPG in REG7
-     */
-    static const uint64_t METADATA_RESUBMIT_DST;
-
-    /**
-     * Perform "outbound" NAT action and then resubmit with the source
-     * EPG set to the mapped NAT EPG
-     */
-    static const uint64_t METADATA_NAT_OUT;
-
-    /**
-     * Output to the interface in REG7 but intercept ICMP error
-     * replies and overwrite the encapsulated error packet source
-     * address with the (rewritten) destination address of the outer
-     * packet.
-     */
-    static const uint64_t METADATA_REV_NAT_OUT;
-
-    /**
-     * Output to the tunnel destination appropriate for the EPG
-     */
-    static const uint64_t METADATA_TUNNEL_OUT;
-
-    /**
-     * Output to the flood group appropriate for the EPG
-     */
-    static const uint64_t METADATA_FLOOD_OUT;
-
 private:
     /**
      * Compare and update flow/group tables due to changes in an endpoint.
@@ -626,14 +455,6 @@ private:
     void HandleConfigUpdate(const opflex::modb::URI& configURI);
 
     /**
-     * Handle establishment of connection to a switch by reconciling
-     * cached memory state with switch state.
-     *
-     * @param sw Connection to the switch
-     */
-    void HandleConnection(SwitchConnection *sw);
-
-    /**
      * Handle changes to port-status by recomputing flows for endpoints
      * and endpoint groups.
      *
@@ -651,22 +472,11 @@ private:
     void UpdateEPGFlood(const opflex::modb::URI& epgURI,
                         uint32_t epgVnid, uint32_t fgrpId,
                         boost::asio::ip::address epgTunDst);
-    bool WriteFlow(const std::string& objId, int tableId,
-            FlowEntryList& el);
-    bool WriteFlow(const std::string& objId, int tableId, FlowEntry *e);
 
     /**
      * Update all current group table entries
      */
     void UpdateGroupTable();
-
-    /**
-     * Write a group-table change to the switch
-     *
-     * @param entry Change to the group-table entry
-     * @return true is successful, false otherwise
-     */
-    bool WriteGroupMod(const GroupEdit::Entry& entry);
 
     /**
      * Create flow entries for the classifier specified and append them
@@ -715,7 +525,8 @@ private:
     /*
      * Map of endpoint to the port it is using.
      */
-    typedef boost::unordered_map<std::string, std::pair<uint32_t, bool> > Ep2PortMap;
+    typedef boost::unordered_map<std::string,
+                                 std::pair<uint32_t, bool> > Ep2PortMap;
 
     /**
      * Construct a group-table modification.
@@ -731,11 +542,26 @@ private:
                                     const Ep2PortMap& ep2port,
                                     bool onlyPromiscuous = false);
 
+    /**
+     * Check if a group with given ID and endpoints is present
+     * in the received groups, and update the given group-edits if the
+     * group is not found or is different. If a group is found, it is
+     * removed from the set of received groups.
+     *
+     * @param recvGroups the group map to check
+     * @param groupId ID of the group to check
+     * @param epMap endpoints in the group to check
+     * @param prom if promiscuous mode endpoints only are to be considered
+     * @param ge Container to append the changes
+     */
+    void checkGroupEntry(GroupMap& recvGroups,
+                         uint32_t groupId, const Ep2PortMap& epMap,
+                         bool prom, GroupEdit& ge);
+
     Agent& agent;
-    SwitchConnection* connection;
-    FlowExecutor* executor;
-    PortMapper *portMapper;
-    FlowReader *reader;
+    SwitchManager& switchManager;
+    IdGenerator& idGen;
+    TaskQueue taskQueue;
 
     FallbackMode fallbackMode;
     EncapType encapType;
@@ -749,12 +575,8 @@ private:
     bool routerAdv;
     bool virtualDHCPEnabled;
     uint8_t dhcpMac[6];
-    TableState flowTables[NUM_FLOW_TABLES];
     std::string flowIdCache;
     std::string mcastGroupFile;
-
-    boost::mutex queueMutex;
-    boost::unordered_set<std::string> queuedItems;
 
     /*
      * Map of flood-group URI to the endpoints associated with it.
@@ -764,116 +586,15 @@ private:
     FloodGroupMap floodGroupMap;
 
     const char * GetIdNamespace(opflex::modb::class_id_t cid);
-    IdGenerator idGen;
 
     bool isSyncing;
 
     uint32_t getExtNetVnid(const opflex::modb::URI& uri);
 
-    /**
-     * Class to reconcile flow/group table state with cached memory state
-     */
-    class FlowSyncer {
-    public:
-        FlowSyncer(FlowManager& fm);
-
-        /**
-         * Reconcile flow/group table state with cached memory state
-         */
-        void Sync();
-    private:
-        /**
-         * Begin reconciliation by reading all the flows and groups from the
-         * switch.
-         */
-        void InitiateSync();
-
-        /**
-         * Compare flows/groups read from switch to determine the differences
-         * and make modification to eliminate those differences.
-         */
-        void CompleteSync();
-
-        /**
-         * Callback function provided to FlowReader to process received
-         * flow table entries.
-         */
-        void GotFlows(int tableNum, const FlowEntryList& flows,
-            bool done);
-
-        /**
-         * Callback function provided to FlowReader to process received
-         * group table entries.
-         */
-        void GotGroups(const GroupEdit::EntryList& groups,
-            bool done);
-
-        /**
-         * Determine if all flows/groups were received; starts reconciliation
-         * if so.
-         */
-        void CheckRecvDone();
-
-        /**
-         * Compare flows read from switch and make modification to eliminate
-         * differences.
-         */
-        void ReconcileFlows();
-
-        /**
-         * Compare flows read from switch and make modification to eliminate
-         * differences.
-         */
-        void ReconcileGroups();
-
-        /**
-         * Check if a group with given ID and endpoints is present
-         * in the received groups, and update the given group-edits if the
-         * group is not found or is different. If a group is found, it is
-         * removed from the set of received groups.
-         *
-         * @param groupId ID of the group to check
-         * @param epMap endpoints in the group to check
-         * @param prom if promiscuous mode endpoints only are to be considered
-         * @param ge Container to append the changes
-         */
-        void CheckGroupEntry(uint32_t groupId,
-                const Ep2PortMap& epMap, bool prom, GroupEdit& ge);
-
-        FlowManager& flowManager;
-        FlowEntryList recvFlows[FlowManager::NUM_FLOW_TABLES];
-        bool tableDone[FlowManager::NUM_FLOW_TABLES];
-
-        typedef boost::unordered_map<uint32_t, GroupEdit::Entry> GroupMap;
-        GroupMap recvGroups;
-        bool groupsDone;
-
-        bool syncInProgress;
-        bool syncPending;
-    };
-    friend class FlowSyncer;
-
-    FlowSyncer flowSyncer;
-
     PacketInHandler pktInHandler;
     AdvertManager advertManager;
 
     volatile bool stopping;
-
-    /**
-     * Timer callback that begins reconciliation.
-     */
-    void OnConnectTimer(const boost::system::error_code& ec);
-    boost::scoped_ptr<boost::asio::deadline_timer> connectTimer;
-    long connectDelayMs;
-
-    /**
-     * Timer callback to clean up IDs that have been erased
-     */
-    void OnIdCleanupTimer(const boost::system::error_code& ec);
-    boost::scoped_ptr<boost::asio::deadline_timer> idCleanupTimer;
-
-    bool opflexPeerConnected;
 
     void initPlatformConfig();
 
@@ -913,4 +634,4 @@ private:
 
 } // namespace ovsagent
 
-#endif // OVSAGENT_FLOWMANAGER_H_
+#endif // OVSAGENT_INTFLOWMANAGER_H_

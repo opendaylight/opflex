@@ -9,6 +9,7 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <set>
 #include <algorithm>
 
 #include <opflex/modb/Mutator.h>
@@ -24,6 +25,7 @@
 namespace ovsagent {
 
 using std::string;
+using std::set;
 using std::vector;
 using opflex::modb::class_id_t;
 using opflex::modb::URI;
@@ -40,6 +42,7 @@ using boost::algorithm::ends_with;
 using boost::algorithm::contains;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
+typedef EndpointListener::uri_set_t uri_set_t;
 
 static const string VM_NAME_ATTR("vm-name");
 
@@ -82,9 +85,12 @@ void EndpointManager::stop() {
     unique_lock<mutex> guard(ep_mutex);
     ep_map.clear();
     group_ep_map.clear();
+    secgrp_ep_map.clear();
     ipm_group_ep_map.clear();
     ipm_nexthop_if_ep_map.clear();
     iface_ep_map.clear();
+    access_iface_ep_map.clear();
+    access_uplink_ep_map.clear();
     epgmapping_ep_map.clear();
 }
 
@@ -102,6 +108,13 @@ void EndpointManager::notifyListeners(const std::string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
     BOOST_FOREACH(EndpointListener* listener, endpointListeners) {
         listener->endpointUpdated(uuid);
+    }
+}
+
+void EndpointManager::notifyListeners(const uri_set_t& secGroups) {
+    unique_lock<mutex> guard(listener_mutex);
+    BOOST_FOREACH(EndpointListener* listener, endpointListeners) {
+        listener->secGroupSetUpdated(secGroups);
     }
 }
 
@@ -130,6 +143,24 @@ static bool validateIp(const string& ip, bool allowLinkLocal = false) {
     return true;
 }
 
+template <typename T>
+static void updateEpMap(const optional<std::string>& oldVal,
+                        const optional<std::string>& val,
+                        T& val_map,
+                        const std::string& uuid) {
+    if (oldVal != val) {
+        if (oldVal) {
+            unordered_set<string>& eps = val_map[oldVal.get()];
+            eps.erase(uuid);
+            if (eps.empty())
+                val_map.erase(oldVal.get());
+        }
+        if (val) {
+            val_map[val.get()].insert(uuid);
+        }
+    }
+}
+
 void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;
@@ -139,20 +170,40 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     const string& uuid = endpoint.getUUID();
     EndpointState& es = ep_map[uuid];
 
+    // update security group mapping
+    const set<URI>& oldSecGroups = es.endpoint->getSecurityGroups();
+    const set<URI>& secGroups = endpoint.getSecurityGroups();
+    if (secGroups != oldSecGroups) {
+        secgrp_ep_map_t::iterator it = secgrp_ep_map.find(oldSecGroups);
+        if (it != secgrp_ep_map.end())
+            it->second.erase(uuid);
+
+        if (it->second.empty()) {
+            secgrp_ep_map.erase(it);
+            notifyListeners(oldSecGroups);
+        }
+    }
+    str_uset_t& ep_set = secgrp_ep_map[secGroups];
+    if (ep_set.find(uuid) == ep_set.end()) {
+        ep_set.insert(uuid);
+        notifyListeners(secGroups);
+    }
+
     // update interface name to endpoint mapping
     const optional<std::string>& oldIface = es.endpoint->getInterfaceName();
     const optional<std::string>& iface = endpoint.getInterfaceName();
-    if (oldIface != iface) {
-        if (oldIface) {
-            unordered_set<string>& eps = iface_ep_map[oldIface.get()];
-            eps.erase(uuid);
-            if (eps.size() == 0)
-                iface_ep_map.erase(oldIface.get());
-        }
-        if (iface) {
-            iface_ep_map[iface.get()].insert(uuid);
-        }
-    }
+    updateEpMap(oldIface, iface, iface_ep_map, uuid);
+
+    // update access interface name to endpoint mapping
+    const optional<std::string>& oldAccess = es.endpoint->getAccessInterface();
+    const optional<std::string>& access = endpoint.getAccessInterface();
+    updateEpMap(oldAccess, access, access_iface_ep_map, uuid);
+
+    // update access uplink interface name to endpoint mapping
+    const optional<std::string>& oldUplink =
+        es.endpoint->getAccessUplinkInterface();
+    const optional<std::string>& uplink = endpoint.getAccessUplinkInterface();
+    updateEpMap(oldUplink, uplink, access_uplink_ep_map, uuid);
 
     // Update IP Mapping next hop interface to endpoint mapping
     BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
@@ -161,7 +212,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
         unordered_set<string>& eps =
             ipm_nexthop_if_ep_map[ipm.getNextHopIf().get()];
         eps.erase(uuid);
-        if (eps.size() == 0)
+        if (eps.empty())
             ipm_nexthop_if_ep_map.erase(ipm.getNextHopIf().get());
     }
     BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
@@ -173,17 +224,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     // update epg mapping alias to endpoint mapping
     const optional<std::string>& oldEpgmap = es.endpoint->getEgMappingAlias();
     const optional<std::string>& epgmap = endpoint.getEgMappingAlias();
-    if (oldEpgmap != epgmap) {
-        if (oldEpgmap) {
-            unordered_set<string>& eps = epgmapping_ep_map[oldEpgmap.get()];
-            eps.erase(uuid);
-            if (eps.size() == 0)
-                epgmapping_ep_map.erase(oldEpgmap.get());
-        }
-        if (epgmap) {
-            epgmapping_ep_map[epgmap.get()].insert(uuid);
-        }
-    }
+    updateEpMap(oldEpgmap, epgmap, epgmapping_ep_map, uuid);
 
     // Update VMEp registration
     Mutator mutator(framework, "policyelement");
@@ -242,6 +283,19 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
                 }
             }
         }
+
+        {
+            const set<URI>& secGroups = es.endpoint->getSecurityGroups();
+            secgrp_ep_map_t::iterator sgit = secgrp_ep_map.find(secGroups);
+            if (sgit != secgrp_ep_map.end())
+                sgit->second.erase(uuid);
+
+            if (sgit->second.empty()) {
+                secgrp_ep_map.erase(sgit);
+                notifyListeners(secGroups);
+            }
+        }
+
         BOOST_FOREACH(const URI& ipmGrp, es.ipMappingGroups) {
             group_ep_map_t::iterator it = ipm_group_ep_map.find(ipmGrp);
             if (it != ipm_group_ep_map.end()) {
@@ -251,29 +305,26 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
                 }
             }
         }
-        if (es.endpoint->getInterfaceName()) {
-            string_ep_map_t::iterator it =
-                iface_ep_map.find(es.endpoint->getInterfaceName().get());
-            if (it != iface_ep_map.end()) {
-                iface_ep_map.erase(it);
-            }
-        }
+
+        updateEpMap(es.endpoint->getInterfaceName(), boost::none,
+                    iface_ep_map, uuid);
+        updateEpMap(es.endpoint->getAccessInterface(), boost::none,
+                    access_iface_ep_map, uuid);
+        updateEpMap(es.endpoint->getAccessUplinkInterface(), boost::none,
+                    access_uplink_ep_map, uuid);
+
         BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
                       es.endpoint->getIPAddressMappings()) {
             if (!ipm.getNextHopIf()) continue;
             unordered_set<string>& eps =
                 ipm_nexthop_if_ep_map[ipm.getNextHopIf().get()];
             eps.erase(uuid);
-            if (eps.size() == 0)
+            if (eps.empty())
                 ipm_nexthop_if_ep_map.erase(ipm.getNextHopIf().get());
         }
-        if (es.endpoint->getEgMappingAlias()) {
-            string_ep_map_t::iterator it =
-                epgmapping_ep_map.find(es.endpoint->getEgMappingAlias().get());
-            if (it != epgmapping_ep_map.end()) {
-                epgmapping_ep_map.erase(es.endpoint->getEgMappingAlias().get());
-            }
-        }
+
+        updateEpMap(es.endpoint->getEgMappingAlias(), boost::none,
+                    epgmapping_ep_map, uuid);
 
         ep_map.erase(it);
     }
@@ -381,7 +432,7 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
         if (oldEgURI) {
             unordered_set<string>& eps = group_ep_map[oldEgURI.get()];
             eps.erase(uuid);
-            if (eps.size() == 0)
+            if (eps.empty())
                 group_ep_map.erase(oldEgURI.get());
         }
         if (egURI) {
@@ -494,7 +545,7 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
         if (newipmgroups.find(ipmGrp) == newipmgroups.end()) {
             unordered_set<string>& eps = ipm_group_ep_map[ipmGrp];
             eps.erase(uuid);
-            if (eps.size() == 0)
+            if (eps.empty())
                 ipm_group_ep_map.erase(ipmGrp);
         }
     }
@@ -512,7 +563,8 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
             shared_ptr<const Endpoint>& ep,
             const std::string& uuid,
             shared_ptr<modelgbp::gbp::BridgeDomain>& bd,
-            const URI& egURI) {
+            const URI& egURI,
+            const std::set<opflex::modb::URI>& secGroups) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::epr;
 
@@ -521,6 +573,10 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
                         ep->getMAC().get());
     l2e->setUuid(uuid);
     l2e->setGroup(egURI.toString());
+
+    BOOST_FOREACH(const opflex::modb::URI& secGroup, secGroups) {
+        l2e->addEprSecurityGroupContext(secGroup.toString());
+    }
 
     if (ep->getInterfaceName())
         l2e->setInterfaceName(ep->getInterfaceName().get());
@@ -545,7 +601,8 @@ populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
             const std::string& uuid,
             shared_ptr<modelgbp::gbp::RoutingDomain>& rd,
             const string& ip,
-            const URI& egURI) {
+            const URI& egURI,
+            const std::set<opflex::modb::URI>& secGroups) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::epr;
 
@@ -554,6 +611,10 @@ populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
     l3e->setMac(ep->getMAC().get())
         .setGroup(egURI.toString())
         .setUuid(uuid);
+
+    BOOST_FOREACH(const opflex::modb::URI& secGroup, secGroups) {
+        l3e->addEprSecurityGroupContext(secGroup.toString());
+    }
 
     BOOST_FOREACH(const Endpoint::Attestation& a, ep->getAttestations()) {
         if (!a.getValidator() || !a.getValidatorMac())
@@ -576,6 +637,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     EndpointState& es = it->second;
     const optional<URI>& egURI = es.egURI;
     const optional<MAC>& mac = es.endpoint->getMAC();
+    const std::set<opflex::modb::URI>& secGroups =
+        es.endpoint->getSecurityGroups();
     unordered_set<URI> newl3eps;
     unordered_set<URI> newl2eps;
     optional<shared_ptr<RoutingDomain> > rd;
@@ -598,7 +661,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
         {
             shared_ptr<L2Ep> l2e =
                 populateL2E(l2u.get(), es.endpoint, uuid,
-                            bd.get(), egURI.get());
+                            bd.get(), egURI.get(), secGroups);
 
             newl2eps.insert(l2e->getURI());
         }
@@ -617,7 +680,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
 
             shared_ptr<L2Ep> fl2e =
                 populateL2E(l2u.get(), es.endpoint, ipm.getUUID(), fbd.get(),
-                            ipm.getEgURI().get());
+                            ipm.getEgURI().get(),
+                            secGroups);
             newl2eps.insert(fl2e->getURI());
         }
     }
@@ -635,13 +699,15 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
                 if (!validateIp(ip)) continue;
                 shared_ptr<L3Ep> l3e =
                     populateL3E(l3u.get(), es.endpoint, uuid,
-                                rd.get(), ip, egURI.get());
+                                rd.get(), ip, egURI.get(),
+                                secGroups);
                 newl3eps.insert(l3e->getURI());
             }
 
             BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
                           es.endpoint->getIPAddressMappings()) {
-                if (!ipm.getFloatingIP() || !ipm.getMappedIP() || !ipm.getEgURI())
+                if (!ipm.getFloatingIP() || !ipm.getMappedIP() ||
+                    !ipm.getEgURI())
                     continue;
                 // don't declare endpoints if there's a next hop
                 if (ipm.getNextHopIf())
@@ -654,7 +720,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
                 shared_ptr<L3Ep> fl3e =
                     populateL3E(l3u.get(), es.endpoint, ipm.getUUID(),
                                 frd.get(), ipm.getFloatingIP().get(),
-                                ipm.getEgURI().get());
+                                ipm.getEgURI().get(),
+                                secGroups);
                 newl3eps.insert(fl3e->getURI());
             }
         }
@@ -704,40 +771,60 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
     }
 }
 
+template <typename K, typename M>
+static void getEps(const K& key, const M& map,
+                   /* out */ unordered_set<string>& eps) {
+    typename M::const_iterator it = map.find(key);
+    if (it != map.end()) {
+        eps.insert(it->second.begin(), it->second.end());
+    }
+}
+
 void EndpointManager::getEndpointsForGroup(const URI& egURI,
                                            /*out*/ unordered_set<string>& eps) {
     unique_lock<mutex> guard(ep_mutex);
-    group_ep_map_t::const_iterator it = group_ep_map.find(egURI);
-    if (it != group_ep_map.end()) {
-        eps.insert(it->second.begin(), it->second.end());
-    }
+    getEps(egURI, group_ep_map, eps);
+}
+
+void EndpointManager::getEndpointsForSecGrps(const uri_set_t& secGrps,
+                                             unordered_set<std::string>& eps) {
+    unique_lock<mutex> guard(ep_mutex);
+    getEps(secGrps, secgrp_ep_map, eps);
+}
+
+bool EndpointManager::secGrpSetEmpty(const uri_set_t& secGrps) {
+    unique_lock<mutex> guard(ep_mutex);
+    return secgrp_ep_map.find(secGrps) == secgrp_ep_map.end();
 }
 
 void EndpointManager::getEndpointsForIPMGroup(const URI& egURI,
-                                              /*out*/ unordered_set<string>& eps) {
+                                              unordered_set<string>& eps) {
     unique_lock<mutex> guard(ep_mutex);
-    group_ep_map_t::const_iterator it = ipm_group_ep_map.find(egURI);
-    if (it != ipm_group_ep_map.end()) {
-        eps.insert(it->second.begin(), it->second.end());
-    }
+    getEps(egURI, ipm_group_ep_map, eps);
 }
 
 void EndpointManager::getEndpointsByIface(const std::string& ifaceName,
-                                          /*out*/ unordered_set<string>& eps) {
+                                          /* out */ str_uset_t& eps) {
     unique_lock<mutex> guard(ep_mutex);
-    string_ep_map_t::const_iterator it = iface_ep_map.find(ifaceName);
-    if (it != iface_ep_map.end()) {
-        eps.insert(it->second.begin(), it->second.end());
-    }
+    getEps(ifaceName, iface_ep_map, eps);
+}
+
+void EndpointManager::getEndpointsByAccessIface(const std::string& ifaceName,
+                                                /* out */ str_uset_t& eps) {
+    unique_lock<mutex> guard(ep_mutex);
+    getEps(ifaceName, access_iface_ep_map, eps);
+}
+
+void EndpointManager::getEndpointsByAccessUplink(const std::string& ifaceName,
+                                                 /* out */ str_uset_t& eps) {
+    unique_lock<mutex> guard(ep_mutex);
+    getEps(ifaceName, access_uplink_ep_map, eps);
 }
 
 void EndpointManager::getEndpointsByIpmNextHopIf(const std::string& ifaceName,
-                                                 /*out*/ unordered_set<string>& eps) {
+                                                 /* out */ str_uset_t& eps) {
     unique_lock<mutex> guard(ep_mutex);
-    string_ep_map_t::const_iterator it = ipm_nexthop_if_ep_map.find(ifaceName);
-    if (it != ipm_nexthop_if_ep_map.end()) {
-        eps.insert(it->second.begin(), it->second.end());
-    }
+    getEps(ifaceName, ipm_nexthop_if_ep_map, eps);
 }
 
 void EndpointManager::updateEndpointCounters(const std::string& uuid,

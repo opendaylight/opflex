@@ -67,11 +67,14 @@ noinst_HEADERS = \
 	src/include/TunnelEpManager.h \
 	src/include/FlowExecutor.h \
 	src/include/FlowReader.h \
-	src/include/FlowManager.h \
+	src/include/SwitchStateHandler.h \
+	src/include/IntFlowManager.h \
+	src/include/AccessFlowManager.h \
 	src/include/ovs.h \
 	src/include/TableState.h \
 	src/include/ActionBuilder.h \
 	src/include/SwitchConnection.h \
+	src/include/SwitchManager.h \
 	src/include/PortMapper.h \
 	src/include/StatsManager.h \
 	src/include/Agent.h \
@@ -83,6 +86,8 @@ noinst_HEADERS = \
 	src/include/KeyedRateLimiter.h \
 	src/include/NotifServer.h \
 	src/include/MulticastListener.h \
+	src/include/TaskQueue.h \
+	src/include/FlowUtils.h \
 	src/include/udp.h \
 	src/include/dhcp.h \
 	src/include/arp.h \
@@ -107,12 +112,15 @@ libagent_ovs_la_SOURCES = \
 	src/Renderer.cpp \
 	src/StitchedModeRenderer.cpp \
 	src/TunnelEpManager.cpp \
-	src/FlowManager.cpp \
+	src/SwitchStateHandler.cpp \
+	src/IntFlowManager.cpp \
+	src/AccessFlowManager.cpp \
 	src/TableState.cpp \
 	src/FlowExecutor.cpp \
 	src/FlowReader.cpp \
 	src/ActionBuilder.cpp \
 	src/SwitchConnection.cpp \
+	src/SwitchManager.cpp \
 	src/PortMapper.cpp \
 	src/StatsManager.cpp \
 	src/cmd.cpp \
@@ -124,7 +132,9 @@ libagent_ovs_la_SOURCES = \
 	src/PacketInHandler.cpp \
 	src/AdvertManager.cpp \
 	src/NotifServer.cpp \
-	src/MulticastListener.cpp
+	src/MulticastListener.cpp \
+	src/TaskQueue.cpp \
+	src/FlowUtils.cpp
 
 bin_PROGRAMS=agent_ovs gbp_inspect mcast_daemon
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
@@ -166,9 +176,16 @@ agent_test_SOURCES = \
 	test/include/ModbFixture.h \
 	test/include/MockSwitchConnection.h \
 	test/include/MockPortMapper.h \
+	test/include/MockFlowExecutor.h \
+	test/include/MockFlowReader.h \
+	test/include/MockSwitchManager.h \
+	test/include/FlowManagerFixture.h \
+	test/MockFlowExecutor.cpp \
+	test/FlowManagerFixture.cpp \
 	test/PolicyManager_test.cpp \
 	test/EndpointManager_test.cpp \
-	test/FlowManager_test.cpp \
+	test/IntFlowManager_test.cpp \
+	test/AccessFlowManager_test.cpp \
 	test/PacketInHandler_test.cpp \
 	test/AdvertManager_test.cpp \
 	test/PortMapper_test.cpp \
