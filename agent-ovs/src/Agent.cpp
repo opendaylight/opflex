@@ -239,24 +239,24 @@ void Agent::start() {
         r->start();
     }
 
-    io_service_thread = new thread(bind(&io_service::run, ref(agent_io)));
+    io_service_thread.reset(new thread(bind(&io_service::run, ref(agent_io))));
 
     BOOST_FOREACH(const std::string& path, endpointSourcePaths) {
         {
             EndpointSource* source =
                 new FSEndpointSource(&endpointManager, fsWatcher, path);
-            endpointSources.insert(source);
+            endpointSources.push_back(source);
         }
         {
             FSRDConfigSource* source =
                 new FSRDConfigSource(&extraConfigManager, fsWatcher, path);
-            rdConfigSources.insert(source);
+            rdConfigSources.push_back(source);
         }
     }
     BOOST_FOREACH(const std::string& path, serviceSourcePaths) {
         ServiceSource* source =
             new FSServiceSource(&serviceManager, fsWatcher, path);
-        serviceSources.insert(source);
+        serviceSources.push_back(source);
     }
     fsWatcher.start();
 
@@ -295,7 +295,7 @@ void Agent::stop() {
 
     if (io_service_thread) {
         io_service_thread->join();
-        delete io_service_thread;
+        io_service_thread.reset();
     }
 
     started = false;

@@ -33,7 +33,7 @@ using namespace modelgbp::l2;
 
 void Policies::writeBasicInit(opflex::ofcore::OFFramework& framework) {
     Mutator mutator(framework, "init");
-    shared_ptr<modelgbp::dmtree::Root> root = 
+    shared_ptr<modelgbp::dmtree::Root> root =
         modelgbp::dmtree::Root::createRootElement(framework);
     root->addPolicyUniverse();
     root->addRelatorUniverse();
@@ -83,7 +83,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
 
-    shared_ptr<policy::Universe> universe = 
+    shared_ptr<policy::Universe> universe =
         policy::Universe::resolve(framework).get();
 
     Mutator mutator(framework, "policyreg");
@@ -103,7 +103,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     bd_ext = common->addGbpBridgeDomain("bd_ext");
     rd_ext = common->addGbpRoutingDomain("rd_ext");
     fd_ext = common->addGbpFloodDomain("fd_ext");
-    
+
     fd1->addGbpFloodDomainToNetworkRSrc()
         ->setTargetBridgeDomain(bd->getURI());
     fd1->addGbpeFloodContext()->setMulticastGroupIP("224.10.1.1");
@@ -118,7 +118,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->setTargetBridgeDomain(bd_ext->getURI());
     bd_ext->addGbpBridgeDomainToNetworkRSrc()
         ->setTargetRoutingDomain(rd_ext->getURI());
-    
+
     subnetsfd1 = space->addGbpSubnets("subnetsfd1");
     subnetsfd1_1 = subnetsfd1->addGbpSubnet("subnetsfd1_1");
     subnetsfd1_1->setAddress("10.0.0.0")
@@ -147,13 +147,13 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     fd2->addGbpForwardingBehavioralGroupToSubnetsRSrc()
         ->setTargetSubnets(subnetsfd2->getURI());
     rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd2->getURI().toString());
-    
+
     subnetsbd = space->addGbpSubnets("subnetsbd");
     subnetsbd1 = subnetsbd->addGbpSubnet("subnetsbd1");
     bd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
         ->setTargetSubnets(subnetsbd->getURI());
     rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsbd1->getURI().toString());
-    
+
     subnetsrd = space->addGbpSubnets("subnetsrd");
     subnetsrd1 = subnetsrd->addGbpSubnet("subnetsrd1");
     rd->addGbpForwardingBehavioralGroupToSubnetsRSrc()

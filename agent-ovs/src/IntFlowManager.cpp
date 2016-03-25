@@ -1,0 +1,2459 @@
+/*
+ * Copyright (c) 2014-2016 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+#include <string>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <sstream>
+#include <boost/system/error_code.hpp>
+#include <boost/foreach.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/asio/placeholders.hpp>
+
+#include <netinet/icmp6.h>
+
+#include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/IntraGroupPolicyEnumT.hpp>
+#include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
+#include <modelgbp/gbp/BcastFloodModeEnumT.hpp>
+#include <modelgbp/gbp/AddressResModeEnumT.hpp>
+#include <modelgbp/gbp/RoutingModeEnumT.hpp>
+#include <modelgbp/gbp/ConnTrackEnumT.hpp>
+
+#include "logging.h"
+#include "Endpoint.h"
+#include "EndpointManager.h"
+#include "EndpointListener.h"
+#include "SwitchConnection.h"
+#include "IntFlowManager.h"
+#include "TableState.h"
+#include "PacketInHandler.h"
+#include "Packets.h"
+#include "FlowUtils.h"
+#include "FlowConstants.h"
+#include "FlowBuilder.h"
+
+using std::string;
+using std::vector;
+using std::ostringstream;
+using boost::bind;
+using boost::algorithm::trim;
+using boost::ref;
+using boost::optional;
+using boost::shared_ptr;
+using boost::unordered_set;
+using boost::unordered_map;
+using boost::asio::deadline_timer;
+using boost::asio::ip::address;
+using boost::asio::ip::address_v6;
+using boost::asio::placeholders::error;
+using boost::posix_time::milliseconds;
+using boost::unique_lock;
+using boost::mutex;
+using opflex::modb::URI;
+using opflex::modb::MAC;
+using opflex::modb::class_id_t;
+
+namespace pt = boost::property_tree;
+using namespace modelgbp::gbp;
+using namespace modelgbp::gbpe;
+
+namespace ovsagent {
+
+static const char* ID_NAMESPACES[] =
+    {"floodDomain", "bridgeDomain", "routingDomain",
+     "contract", "externalNetwork"};
+
+static const char* ID_NMSPC_FD     = ID_NAMESPACES[0];
+static const char* ID_NMSPC_BD     = ID_NAMESPACES[1];
+static const char* ID_NMSPC_RD     = ID_NAMESPACES[2];
+static const char* ID_NMSPC_CON    = ID_NAMESPACES[3];
+static const char* ID_NMSPC_EXTNET = ID_NAMESPACES[4];
+
+IntFlowManager::IntFlowManager(Agent& agent_,
+                               SwitchManager& switchManager_,
+                               IdGenerator& idGen_) :
+    agent(agent_), switchManager(switchManager_), idGen(idGen_),
+    taskQueue(agent.getAgentIOService()),
+    encapType(ENCAP_NONE),
+    floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
+    virtualRouterEnabled(false), routerAdv(false),
+    virtualDHCPEnabled(false),
+    pktInHandler(agent, *this),
+    advertManager(agent, *this), stopping(false) {
+    // set up flow tables
+    switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
+
+    memset(routerMac, 0, sizeof(routerMac));
+    memset(dhcpMac, 0, sizeof(dhcpMac));
+    tunnelDst = address::from_string("127.0.0.1");
+
+    agent.getFramework().registerPeerStatusListener(this);
+}
+
+void IntFlowManager::start() {
+    // set up port mapper
+    switchManager.getPortMapper().registerPortStatusListener(this);
+    pktInHandler.setPortMapper(&switchManager.getPortMapper());
+    advertManager.setPortMapper(&switchManager.getPortMapper());
+
+    // set up flow reader
+    pktInHandler.setFlowReader(&switchManager.getFlowReader());
+
+    // Register connection handlers
+    SwitchConnection* conn = switchManager.getConnection();
+    conn->RegisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
+    pktInHandler.registerConnection(conn);
+    advertManager.registerConnection(conn);
+
+    for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
+        idGen.initNamespace(ID_NAMESPACES[i]);
+    }
+
+    initPlatformConfig();
+    createStaticFlows();
+}
+
+void IntFlowManager::registerModbListeners() {
+    // Initialize policy listeners
+    agent.getEndpointManager().registerListener(this);
+    agent.getServiceManager().registerListener(this);
+    agent.getExtraConfigManager().registerListener(this);
+    agent.getPolicyManager().registerListener(this);
+}
+
+void IntFlowManager::stop() {
+    stopping = true;
+    SwitchConnection* conn = switchManager.getConnection();
+    conn->UnregisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
+
+    agent.getEndpointManager().unregisterListener(this);
+    agent.getServiceManager().unregisterListener(this);
+    agent.getExtraConfigManager().unregisterListener(this);
+    agent.getPolicyManager().unregisterListener(this);
+
+    advertManager.stop();
+    switchManager.getPortMapper().unregisterPortStatusListener(this);
+}
+
+void IntFlowManager::setEncapType(EncapType encapType) {
+    this->encapType = encapType;
+}
+
+void IntFlowManager::setEncapIface(const string& encapIf) {
+    if (encapIf.empty()) {
+        LOG(ERROR) << "Ignoring empty encapsulation interface name";
+        return;
+    }
+    encapIface = encapIf;
+}
+
+void IntFlowManager::setFloodScope(FloodScope fscope) {
+    floodScope = fscope;
+}
+
+uint32_t IntFlowManager::getTunnelPort() {
+    return switchManager.getPortMapper().FindPort(encapIface);
+}
+
+void IntFlowManager::setTunnel(const string& tunnelRemoteIp,
+                               uint16_t tunnelRemotePort) {
+    boost::system::error_code ec;
+    address tunDst = address::from_string(tunnelRemoteIp, ec);
+    if (ec) {
+        LOG(ERROR) << "Invalid tunnel destination IP: "
+                   << tunnelRemoteIp << ": " << ec.message();
+    } else if (tunDst.is_v6()) {
+        LOG(ERROR) << "IPv6 tunnel destinations are not supported";
+    } else {
+        tunnelDst = tunDst;
+    }
+
+    ostringstream ss;
+    ss << tunnelRemotePort;
+    tunnelPortStr = ss.str();
+}
+
+void IntFlowManager::setVirtualRouter(bool virtualRouterEnabled,
+                                      bool routerAdv,
+                                      const string& virtualRouterMac) {
+    this->virtualRouterEnabled = virtualRouterEnabled;
+    this->routerAdv = routerAdv;
+    try {
+        MAC(virtualRouterMac).toUIntArray(routerMac);
+    } catch (std::invalid_argument) {
+        LOG(ERROR) << "Invalid virtual router MAC: " << virtualRouterMac;
+    }
+    advertManager.enableRouterAdv(virtualRouterEnabled && routerAdv);
+}
+
+void IntFlowManager::setVirtualDHCP(bool dhcpEnabled,
+                                    const string& mac) {
+    this->virtualDHCPEnabled = dhcpEnabled;
+    try {
+        MAC(mac).toUIntArray(dhcpMac);
+    } catch (std::invalid_argument) {
+        LOG(ERROR) << "Invalid virtual DHCP server MAC: " << mac;
+    }
+}
+
+void IntFlowManager::setEndpointAdv(bool endpointAdv) {
+    advertManager.enableEndpointAdv(endpointAdv);
+}
+
+void IntFlowManager::setMulticastGroupFile(const std::string& mcastGroupFile) {
+    this->mcastGroupFile = mcastGroupFile;
+}
+
+address IntFlowManager::getEPGTunnelDst(const URI& epgURI) {
+    optional<string> epgMcastIp =
+        agent.getPolicyManager().getMulticastIPForGroup(epgURI);
+    if (epgMcastIp) {
+        boost::system::error_code ec;
+        address ip = address::from_string(epgMcastIp.get(), ec);
+        if (ec || !ip.is_v4() || ! ip.is_multicast()) {
+            LOG(WARNING) << "Ignoring invalid/unsupported group multicast "
+                " IP: " << epgMcastIp.get();
+            return getTunnelDst();
+        }
+        return ip;
+    } else
+        return getTunnelDst();
+}
+
+void IntFlowManager::endpointUpdated(const std::string& uuid) {
+    if (stopping) return;
+
+    advertManager.scheduleEndpointAdv(uuid);
+    taskQueue.dispatch(uuid,
+                       bind(&IntFlowManager::handleEndpointUpdate, this, uuid));
+}
+
+void IntFlowManager::anycastServiceUpdated(const std::string& uuid) {
+    if (stopping) return;
+
+    taskQueue.dispatch(uuid,
+                       bind(&IntFlowManager::handleAnycastServiceUpdate,
+                            this, uuid));
+}
+
+void IntFlowManager::rdConfigUpdated(const opflex::modb::URI& rdURI) {
+    domainUpdated(RoutingDomain::CLASS_ID, rdURI);
+}
+
+void IntFlowManager::egDomainUpdated(const opflex::modb::URI& egURI) {
+    if (stopping) return;
+
+    taskQueue.dispatch(egURI.toString(),
+                       bind(&IntFlowManager::handleEndpointGroupDomainUpdate,
+                            this, egURI));
+}
+
+void IntFlowManager::domainUpdated(class_id_t cid, const URI& domURI) {
+    if (stopping) return;
+
+    taskQueue.dispatch(domURI.toString(),
+                       bind(&IntFlowManager::handleDomainUpdate,
+                            this, cid, domURI));
+}
+
+void IntFlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
+    if (stopping) return;
+    taskQueue.dispatch(contractURI.toString(),
+                       bind(&IntFlowManager::handleContractUpdate,
+                            this, contractURI));
+}
+
+void IntFlowManager::configUpdated(const opflex::modb::URI& configURI) {
+    if (stopping) return;
+    switchManager.enableSync();
+    agent.getAgentIOService()
+        .dispatch(bind(&IntFlowManager::handleConfigUpdate, this, configURI));
+}
+
+void IntFlowManager::portStatusUpdate(const string& portName,
+                                      uint32_t portNo, bool fromDesc) {
+    if (stopping) return;
+    agent.getAgentIOService()
+        .dispatch(bind(&IntFlowManager::handlePortStatusUpdate, this,
+                       portName, portNo));
+    pktInHandler.portStatusUpdate(portName, portNo, fromDesc);
+}
+
+void IntFlowManager::peerStatusUpdated(const std::string&, int,
+                                       PeerStatus peerStatus) {
+    if (stopping || isSyncing) return;
+    if (peerStatus == PeerStatusListener::READY) {
+        advertManager.scheduleInitialEndpointAdv();
+    }
+}
+
+bool IntFlowManager::getGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
+                                            optional<URI>& rdURI,
+                                            uint32_t& rdId,
+                                            optional<URI>& bdURI,
+                                            uint32_t& bdId,
+                                            optional<URI>& fdURI,
+                                            uint32_t& fdId) {
+    PolicyManager& polMgr = agent.getPolicyManager();
+    optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI);
+    if (!epgVnid) {
+        return false;
+    }
+    vnid = epgVnid.get();
+
+    optional<shared_ptr<RoutingDomain> > epgRd = polMgr.getRDForGroup(epgURI);
+    optional<shared_ptr<BridgeDomain> > epgBd = polMgr.getBDForGroup(epgURI);
+    optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
+    if (!epgRd && !epgBd && !epgFd) {
+        return false;
+    }
+
+    bdId = 0;
+    if (epgBd) {
+        bdURI = epgBd.get()->getURI();
+        bdId = getId(BridgeDomain::CLASS_ID, bdURI.get());
+    }
+    fdId = 0;
+    if (epgFd) {    // FD present -> flooding is desired
+        if (floodScope == ENDPOINT_GROUP) {
+            fdURI = epgURI;
+        } else  {
+            fdURI = epgFd.get()->getURI();
+        }
+        fdId = getId(FloodDomain::CLASS_ID, fdURI.get());
+    }
+    rdId = 0;
+    if (epgRd) {
+        rdURI = epgRd.get()->getURI();
+        rdId = getId(RoutingDomain::CLASS_ID, rdURI.get());
+    }
+    return true;
+}
+
+// Match helper functions
+static FlowBuilder& matchEpg(FlowBuilder& fb,
+                             IntFlowManager::EncapType encapType,
+                             uint32_t epgId) {
+    switch (encapType) {
+    case IntFlowManager::ENCAP_VLAN:
+        fb.vlan(0xfff & epgId);
+        break;
+    case IntFlowManager::ENCAP_VXLAN:
+    case IntFlowManager::ENCAP_IVXLAN:
+    default:
+        fb.tunId(epgId);
+        break;
+    }
+    return fb;
+}
+
+static FlowBuilder& matchDestDom(FlowBuilder& fb, uint32_t bdId, uint32_t l3Id) {
+    if (bdId != 0)
+        fb.reg(4, bdId);
+    fb.reg(6, l3Id);
+    return fb;
+}
+
+static FlowBuilder& matchDestArp(FlowBuilder& fb, const address& ip,
+                                 uint32_t bdId, uint32_t l3Id) {
+    fb.arpDst(ip)
+        .proto(ARP_OP_REQUEST)
+        .ethDst(packets::MAC_ADDR_BROADCAST);
+    return matchDestDom(fb, bdId, l3Id);
+}
+
+static FlowBuilder& matchDestNd(FlowBuilder& fb, const address* ip,
+                                uint32_t bdId, uint32_t rdId,
+                                uint8_t type = ND_NEIGHBOR_SOLICIT) {
+    matchDestDom(fb, bdId, rdId)
+        .ethType(ETH_TYPE_IPV6)
+        .proto(58)
+        .tpSrc(type)
+        .tpDst(0)
+        .ethDst(packets::MAC_ADDR_MULTICAST, packets::MAC_ADDR_MULTICAST);
+
+    if (ip) {
+        fb.ndTarget(type, *ip);
+    }
+    return fb;
+}
+
+static FlowBuilder& matchFd(FlowBuilder& fb,
+                            uint32_t fgrpId, bool broadcast,
+                            uint8_t* dstMac = NULL) {
+    fb.reg(5, fgrpId);
+    if (dstMac)
+        fb.ethDst(dstMac);
+    else if (broadcast)
+        fb.ethDst(packets::MAC_ADDR_MULTICAST, packets::MAC_ADDR_MULTICAST);
+    return fb;
+}
+
+static FlowBuilder& matchSubnet(FlowBuilder& fb, uint32_t rdId,
+                                uint16_t prioBase,
+                                address& ip, uint8_t prefixLen, bool src) {
+    fb.priority(prioBase + prefixLen)
+        .reg(6, rdId);
+    if (src) fb.ipSrc(ip, prefixLen);
+    else fb.ipDst(ip, prefixLen);
+    return fb;
+}
+
+static FlowBuilder& matchDhcpReq(FlowBuilder& fb, bool v4) {
+    fb.proto(17);
+    if (v4) {
+        fb.ethType(ETH_TYPE_IP);
+        fb.tpSrc(68);
+        fb.tpDst(67);
+    } else {
+        fb.ethType(ETH_TYPE_IPV6);
+        fb.tpSrc(546);
+        fb.tpDst(547);
+    }
+    return fb;
+}
+
+// Action helper functions
+static FlowBuilder& actionSource(FlowBuilder& fb, uint32_t epgId, uint32_t bdId,
+                                 uint32_t fgrpId,  uint32_t l3Id,
+                                 uint8_t nextTable
+                                 = IntFlowManager::BRIDGE_TABLE_ID,
+                                 IntFlowManager::EncapType encapType
+                                 = IntFlowManager::ENCAP_NONE,
+                                 bool setPolicyApplied = false)
+{
+    if (encapType == IntFlowManager::ENCAP_VLAN) {
+        fb.action().popVlan();
+    }
+
+    fb.action()
+        .reg(MFF_REG0, epgId)
+        .reg(MFF_REG4, bdId)
+        .reg(MFF_REG5, fgrpId)
+        .reg(MFF_REG6, l3Id);
+    if (setPolicyApplied) {
+        fb.action().metadata(flow::meta::POLICY_APPLIED,
+                             flow::meta::POLICY_APPLIED);
+    }
+    fb.action().go(nextTable);
+    return fb;
+}
+
+void IntFlowManager::actionTunnelMetadata(ActionBuilder& ab,
+                                          IntFlowManager::EncapType type,
+                                          const optional<address>& tunDst) {
+    switch (type) {
+    case IntFlowManager::ENCAP_VLAN:
+        ab.pushVlan();
+        ab.regMove(MFF_REG0, MFF_VLAN_VID);
+        break;
+    case IntFlowManager::ENCAP_VXLAN:
+        ab.regMove(MFF_REG0, MFF_TUN_ID);
+        if (tunDst) {
+            if (tunDst->is_v4()) {
+                ab.reg(MFF_TUN_DST, tunDst->to_v4().to_ulong());
+            } else {
+                // this should be unreachable
+                LOG(WARNING) << "Ipv6 tunnel destination unsupported";
+            }
+        } else {
+            ab.regMove(MFF_REG7, MFF_TUN_DST);
+        }
+        // fall through
+    case IntFlowManager::ENCAP_IVXLAN:
+        break;
+    default:
+        break;
+    }
+}
+
+static FlowBuilder& actionDestEpArp(FlowBuilder& fb,
+                                    uint32_t epgId, uint32_t port,
+                                    const uint8_t* dstMac) {
+    fb.action().reg(MFF_REG2, epgId)
+        .reg(MFF_REG7, port)
+        .ethDst(dstMac)
+        .go(IntFlowManager::POL_TABLE_ID);
+    return fb;
+}
+
+static FlowBuilder& actionArpReply(FlowBuilder& fb, const uint8_t *mac,
+                                   const address& ip,
+                                   uint32_t outPort = OFPP_IN_PORT,
+                                   IntFlowManager::EncapType type
+                                   = IntFlowManager::ENCAP_NONE,
+                                   uint32_t replyEpg = 0) {
+    fb.action()
+        .regMove(MFF_ETH_SRC, MFF_ETH_DST)
+        .reg(MFF_ETH_SRC, mac)
+        .reg16(MFF_ARP_OP, ARP_OP_REPLY)
+        .regMove(MFF_ARP_SHA, MFF_ARP_THA)
+        .reg(MFF_ARP_SHA, mac)
+        .regMove(MFF_ARP_SPA, MFF_ARP_TPA)
+        .reg(MFF_ARP_SPA, ip.to_v4().to_ulong());
+    if (type != IntFlowManager::ENCAP_NONE) {
+        fb.action().reg(MFF_REG0, replyEpg)
+            .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK)
+            .go(IntFlowManager::OUT_TABLE_ID);
+    } else {
+        fb.action().output(outPort);
+    }
+    return fb;
+}
+
+static FlowBuilder& actionRevNatDest(FlowBuilder& fb, uint32_t epgVnid,
+                                     uint32_t bdId, uint32_t fgrpId,
+                                     uint32_t rdId, uint32_t ofPort) {
+    fb.action()
+        .reg(MFF_REG2, epgVnid)
+        .reg(MFF_REG4, bdId)
+        .reg(MFF_REG5, fgrpId)
+        .reg(MFF_REG6, rdId)
+        .reg(MFF_REG7, ofPort)
+        .go(IntFlowManager::NAT_IN_TABLE_ID);
+    return fb;
+}
+
+static FlowBuilder& actionOutputToEPGTunnel(FlowBuilder& fb) {
+    fb.action()
+        .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK)
+        .go(IntFlowManager::OUT_TABLE_ID);
+    return fb;
+}
+
+static FlowBuilder& actionController(FlowBuilder& fb, uint32_t epgId = 0,
+                                     uint64_t metadata = 0) {
+    if (epgId != 0)
+        fb.action().reg(MFF_REG0, epgId);
+    if (metadata)
+        fb.action().reg64(MFF_METADATA, metadata);
+    fb.action().controller();
+    return fb;
+}
+
+static FlowBuilder& actionSecAllow(FlowBuilder& fb) {
+    fb.action().go(IntFlowManager::SRC_TABLE_ID);
+    return fb;
+}
+
+static void revNatICMPFlows(FlowEntryList& el, bool v4, uint8_t type) {
+    FlowBuilder fb;
+    fb.priority(10)
+        .cookie(v4 ? flow::cookie::ICMP_ERROR_V4 : flow::cookie::ICMP_ERROR_V6)
+        .metadata(flow::meta::out::REV_NAT, flow::meta::out::MASK)
+        .action().controller();
+
+    if (v4) {
+        fb.ethType(ETH_TYPE_IP).proto(1 /* ICMP */).tpSrc(type);
+    } else {
+        fb.ethType(ETH_TYPE_IPV6).proto(58 /* ICMP */).tpSrc(type);
+    }
+    return fb.build(el);
+}
+
+// Flow creation helpers
+static void flowsProxyDiscovery(IntFlowManager& flowMgr,
+                                FlowEntryList& el,
+                                uint16_t priority,
+                                const address& ipAddr,
+                                const uint8_t* macAddr,
+                                uint32_t epgVnid, uint32_t rdId,
+                                uint32_t bdId,
+                                bool router = false,
+                                const uint8_t* matchSourceMac = NULL) {
+    if (ipAddr.is_v4()) {
+        uint32_t tunPort = flowMgr.getTunnelPort();
+        if (epgVnid != 0 &&
+            tunPort != OFPP_NONE &&
+            flowMgr.getEncapType() != IntFlowManager::ENCAP_NONE) {
+            FlowBuilder proxyArpTun;
+            if (matchSourceMac)
+                proxyArpTun.ethSrc(matchSourceMac);
+            matchDestArp(proxyArpTun.priority(priority+1).inPort(tunPort),
+                         ipAddr, bdId, rdId);
+            actionArpReply(proxyArpTun, macAddr, ipAddr,
+                           OFPP_IN_PORT, flowMgr.getEncapType(),
+                           epgVnid)
+                .build(el);
+        }
+        {
+            FlowBuilder proxyArp;
+            if (matchSourceMac)
+                proxyArp.ethSrc(matchSourceMac);
+            matchDestArp(proxyArp.priority(priority), ipAddr, bdId, rdId);
+            actionArpReply(proxyArp, macAddr, ipAddr)
+                .build(el);
+        }
+    } else {
+        // pass MAC address in flow metadata
+        uint64_t metadata = 0;
+        memcpy(&metadata, macAddr, 6);
+        ((uint8_t*)&metadata)[7] = 1;
+        if (router)
+            ((uint8_t*)&metadata)[6] = 1;
+
+        FlowBuilder proxyND;
+        if (matchSourceMac)
+            proxyND.ethSrc(matchSourceMac);
+        matchDestNd(proxyND.priority(priority).cookie(flow::cookie::NEIGH_DISC),
+                    &ipAddr, bdId, rdId);
+        actionController(proxyND, epgVnid, metadata);
+        proxyND.build(el);
+    }
+}
+
+static void flowsIpm(IntFlowManager& flowMgr,
+                     FlowEntryList& elSrc, FlowEntryList& elBridgeDst,
+                     FlowEntryList& elRouteDst,FlowEntryList& elOutput,
+                     const uint8_t* macAddr, uint32_t ofPort,
+                     uint32_t epgVnid, uint32_t rdId,
+                     uint32_t bdId, uint32_t fgrpId,
+                     uint32_t fepgVnid, uint32_t frdId,
+                     uint32_t fbdId, uint32_t ffdId,
+                     address& mappedIp, address& floatingIp,
+                     uint32_t nextHopPort, const uint8_t* nextHopMac) {
+    const uint8_t* effNextHopMac =
+        nextHopMac ? nextHopMac : flowMgr.getRouterMacAddr();
+
+    if (!floatingIp.is_unspecified()) {
+        {
+            // floating IP destination within the same EPG
+            // Set up reverse DNAT
+            FlowBuilder ipmRoute;
+            matchDestDom(ipmRoute.priority(452)
+                         .ipDst(floatingIp).reg(0, fepgVnid),
+                         0, frdId)
+                .action()
+                .ethSrc(flowMgr.getRouterMacAddr()).ethDst(macAddr)
+                .ipDst(mappedIp).decTtl();
+            actionRevNatDest(ipmRoute, epgVnid, bdId,
+                             fgrpId, rdId, ofPort);
+            ipmRoute.build(elRouteDst);
+        }
+        {
+            // Floating IP destination across EPGs
+            // Apply policy for source EPG -> floating IP EPG
+            // then resubmit with source EPG set to floating
+            // IP EPG
+            FlowBuilder ipmResub;
+            matchDestDom(ipmResub.priority(450).ipDst(floatingIp),
+                         0, frdId);
+            ipmResub.action()
+                .reg(MFF_REG2, fepgVnid)
+                .reg(MFF_REG7, fepgVnid)
+                .metadata(flow::meta::out::RESUBMIT_DST,
+                          flow::meta::out::MASK)
+                .go(IntFlowManager::POL_TABLE_ID);
+            ipmResub.build(elRouteDst);
+        }
+        // Reply to discovery requests for the floating IP
+        // address
+        flowsProxyDiscovery(flowMgr, elBridgeDst, 20, floatingIp, macAddr,
+                            fepgVnid, frdId, fbdId);
+    }
+    {
+        // Apply NAT action in output table
+        FlowBuilder ipmNatOut;
+        ipmNatOut.priority(10)
+            .metadata(flow::meta::out::NAT, flow::meta::out::MASK)
+            .reg(6, rdId)
+            .reg(7, fepgVnid)
+            .ipSrc(mappedIp);
+        ActionBuilder& ab = ipmNatOut.action();
+        ab.ethSrc(macAddr).ethDst(effNextHopMac);
+        if (!floatingIp.is_unspecified()) {
+            ab.ipSrc(floatingIp);
+        }
+        ab.decTtl();
+
+        if (nextHopPort == OFPP_NONE) {
+            ab.reg(MFF_REG0, fepgVnid);
+            ab.reg(MFF_REG4, fbdId);
+            ab.reg(MFF_REG5, ffdId);
+            ab.reg(MFF_REG6, frdId);
+            ab.reg(MFF_REG7, (uint32_t)0);
+            ab.reg64(MFF_METADATA, 0);
+            ab.resubmit(OFPP_IN_PORT, IntFlowManager::BRIDGE_TABLE_ID);
+        } else {
+            ab.reg(MFF_PKT_MARK, rdId);
+            ab.output(nextHopPort);
+        }
+        ipmNatOut.build(elOutput);
+    }
+
+    // Handle traffic returning from a next hop interface
+    if (nextHopPort != OFPP_NONE) {
+        if (!floatingIp.is_unspecified()) {
+            // reverse traffic from next hop interface where we
+            // delivered with a DNAT to a floating IP.  We assume that
+            // the destination IP is unique for a given next hop
+            // interface.
+            FlowBuilder ipmNextHopRev;
+            ipmNextHopRev.priority(201).inPort(nextHopPort)
+                .ethSrc(effNextHopMac).ipDst(floatingIp)
+                .action()
+                .ethSrc(flowMgr.getRouterMacAddr()).ethDst(macAddr)
+                .ipDst(mappedIp).decTtl();
+
+            actionRevNatDest(ipmNextHopRev, epgVnid, bdId,
+                             fgrpId, rdId, ofPort);
+            ipmNextHopRev.build(elSrc);
+        }
+        {
+            // Reverse traffic from next hop interface where we
+            // delivered with an SKB mark.  The SKB mark must be set
+            // to the routing domain for the mapped destination IP
+            // address
+            FlowBuilder ipmNextHopRevMark;
+            ipmNextHopRevMark.priority(200).inPort(nextHopPort)
+                .ethSrc(effNextHopMac).mark(rdId).ipDst(mappedIp);
+            if (nextHopMac)
+                ipmNextHopRevMark.action().ethSrc(flowMgr.getRouterMacAddr());
+            actionRevNatDest(ipmNextHopRevMark, epgVnid, bdId,
+                             fgrpId, rdId, ofPort);
+            ipmNextHopRevMark.build(elSrc);
+        }
+    }
+}
+
+static void flowsVirtualDhcp(FlowEntryList& elSrc, uint32_t ofPort,
+                             uint32_t epgVnid, uint8_t* macAddr, bool v4) {
+    FlowBuilder fb;
+    matchDhcpReq(fb, v4);
+    actionController(fb, epgVnid);
+    fb.priority(150)
+        .cookie(v4 ? flow::cookie::DHCP_V4 : flow::cookie::DHCP_V6)
+        .inPort(ofPort)
+        .ethSrc(macAddr)
+        .build(elSrc);
+}
+
+void IntFlowManager::handleEndpointUpdate(const string& uuid) {
+
+    LOG(DEBUG) << "Updating endpoint " << uuid;
+
+    EndpointManager& epMgr = agent.getEndpointManager();
+    shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(uuid);
+
+    if (!epWrapper) {   // EP removed
+        switchManager.writeFlow(uuid, SEC_TABLE_ID, NULL);
+        switchManager.writeFlow(uuid, SRC_TABLE_ID, NULL);
+        switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, NULL);
+        switchManager.writeFlow(uuid, ROUTE_TABLE_ID, NULL);
+        switchManager.writeFlow(uuid, LEARN_TABLE_ID, NULL);
+        switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, NULL);
+        removeEndpointFromFloodGroup(uuid);
+        return;
+    }
+    const Endpoint& endPoint = *epWrapper.get();
+    uint8_t macAddr[6];
+    bool hasMac = endPoint.getMAC() != boost::none;
+    if (hasMac)
+        endPoint.getMAC().get().toUIntArray(macAddr);
+
+    /* check and parse the IP-addresses */
+    boost::system::error_code ec;
+
+    std::vector<address> ipAddresses;
+    BOOST_FOREACH(const string& ipStr, endPoint.getIPs()) {
+        address addr = address::from_string(ipStr, ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid endpoint IP: "
+                         << ipStr << ": " << ec.message();
+        } else {
+            ipAddresses.push_back(addr);
+        }
+    }
+    if (hasMac) {
+        address_v6 linkLocalIp(packets::construct_link_local_ip_addr(macAddr));
+        if (endPoint.getIPs().find(linkLocalIp.to_string()) ==
+            endPoint.getIPs().end())
+            ipAddresses.push_back(linkLocalIp);
+    }
+
+    uint32_t ofPort = OFPP_NONE;
+    const optional<string>& ofPortName = endPoint.getInterfaceName();
+    if (ofPortName) {
+        ofPort = switchManager.getPortMapper().FindPort(ofPortName.get());
+    }
+
+    /* Port security flows */
+    FlowEntryList el;
+    if (ofPort != OFPP_NONE) {
+        if (endPoint.isPromiscuousMode()) {
+            // allow all packets from port
+            actionSecAllow(FlowBuilder().priority(50).inPort(ofPort))
+                .build(el);
+        } else if (hasMac) {
+            // allow L2 packets from port with EP MAC address
+            actionSecAllow(FlowBuilder().priority(20)
+                           .inPort(ofPort).ethSrc(macAddr))
+                .build(el);
+
+            BOOST_FOREACH(const address& ipAddr, ipAddresses) {
+                // Allow IPv4/IPv6 packets from port with EP IP address
+                actionSecAllow(FlowBuilder().priority(30)
+                               .inPort(ofPort).ethSrc(macAddr)
+                               .ipSrc(ipAddr))
+                    .build(el);
+
+                if (ipAddr.is_v4()) {
+                    // Allow ARP with correct source address
+                    actionSecAllow(FlowBuilder().priority(40)
+                                   .inPort(ofPort).ethSrc(macAddr)
+                                   .arpSrc(ipAddr))
+                        .build(el);
+                } else {
+                    // Allow neighbor advertisements with correct
+                    // source address
+                    actionSecAllow(FlowBuilder().priority(40)
+                                   .inPort(ofPort).ethSrc(macAddr)
+                                   .ndTarget(ND_NEIGHBOR_ADVERT, ipAddr))
+                        .build(el);
+                }
+            }
+        }
+
+        BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
+                      endPoint.getVirtualIPs()) {
+            packets::cidr_t vip_cidr;
+            if (!packets::cidr_from_string(vip.second, vip_cidr)) {
+                LOG(WARNING) << "Invalid endpoint VIP (CIDR): " << vip.second;
+                continue;
+            }
+            uint8_t vmac[6];
+            vip.first.toUIntArray(vmac);
+
+            // Handle ARP/ND from "active" virtual IPs normally, that is
+            // without generating a packet-in
+            BOOST_FOREACH(const address& ipAddr, ipAddresses) {
+                if (!packets::cidr_contains(vip_cidr, ipAddr)) {
+                    continue;
+                }
+                FlowBuilder active_vip;
+                active_vip.priority(61).inPort(ofPort).ethSrc(vmac);
+                if (ipAddr.is_v4()) {
+                    active_vip.arpSrc(ipAddr);
+                } else {
+                    active_vip.ndTarget(ND_NEIGHBOR_ADVERT, ipAddr);
+                }
+                actionSecAllow(active_vip).build(el);
+            }
+
+            FlowBuilder vf;
+            vf.priority(60).inPort(ofPort).ethSrc(vmac);
+
+            if (vip_cidr.first.is_v4()) {
+                vf.cookie(flow::cookie::VIRTUAL_IP_V4)
+                    .arpSrc(vip_cidr.first, vip_cidr.second);
+            } else {
+                vf.cookie(flow::cookie::VIRTUAL_IP_V6)
+                    .ndTarget(ND_NEIGHBOR_ADVERT,
+                              vip_cidr.first, vip_cidr.second);
+            }
+            vf.action().controller().go(SRC_TABLE_ID)
+                .parent().build(el);
+        }
+    }
+    switchManager.writeFlow(uuid, SEC_TABLE_ID, el);
+
+    optional<URI> epgURI = epMgr.getComputedEPG(uuid);
+    if (!epgURI) {      // can't do much without EPG
+        return;
+    }
+
+    uint32_t epgVnid, rdId, bdId, fgrpId;
+    optional<URI> fgrpURI, bdURI, rdURI;
+    if (!getGroupForwardingInfo(epgURI.get(), epgVnid, rdURI,
+                                rdId, bdURI, bdId, fgrpURI, fgrpId)) {
+        return;
+    }
+
+    optional<shared_ptr<FloodDomain> > fd =
+        agent.getPolicyManager().getFDForGroup(epgURI.get());
+
+    uint8_t arpMode = AddressResModeEnumT::CONST_UNICAST;
+    uint8_t ndMode = AddressResModeEnumT::CONST_UNICAST;
+    uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
+    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+    if (fd) {
+        // Irrespective of flooding scope (epg vs. flood-domain), the
+        // properties of the flood-domain object decide how flooding
+        // is done.
+
+        arpMode = fd.get()
+            ->getArpMode(AddressResModeEnumT::CONST_UNICAST);
+        ndMode = fd.get()
+            ->getNeighborDiscMode(AddressResModeEnumT::CONST_UNICAST);
+        unkFloodMode = fd.get()
+            ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+        bcastFloodMode = fd.get()
+            ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+    }
+
+    FlowEntryList elSrc;
+    FlowEntryList elEpLearn;
+    FlowEntryList elBridgeDst;
+    FlowEntryList elRouteDst;
+    FlowEntryList elServiceMap;
+    FlowEntryList elOutput;
+
+    /* Source Table flows; applicable only to local endpoints */
+    if (ofPort != OFPP_NONE) {
+        if (hasMac) {
+            actionSource(FlowBuilder().priority(140)
+                         .inPort(ofPort).ethSrc(macAddr),
+                         epgVnid, bdId, fgrpId, rdId)
+                .build(elSrc);
+
+            if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL &&
+                unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+                // Prepopulate a stage1 learning entry for known EPs
+                matchFd(FlowBuilder().priority(101)
+                        .cookie(flow::cookie::PROACTIVE_LEARN),
+                        fgrpId, true, macAddr)
+                    .action()
+                    .reg(MFF_REG7, ofPort)
+                    .output(ofPort)
+                    .controller()
+                    .parent().build(elEpLearn);
+            }
+        }
+
+        if (endPoint.isPromiscuousMode()) {
+            // if the source is unknown, but the interface is
+            // promiscuous we allow the traffic into the learning
+            // table
+            actionSource(FlowBuilder().priority(138).inPort(ofPort),
+                         epgVnid, bdId, fgrpId, rdId)
+                .build(elSrc);
+
+            // Multicast traffic from promiscuous ports is delivered
+            // normally
+            actionSource(FlowBuilder().priority(139).inPort(ofPort)
+                         .ethDst(packets::MAC_ADDR_BROADCAST,
+                                 packets::MAC_ADDR_MULTICAST),
+                         epgVnid, bdId, fgrpId, rdId)
+                .build(elSrc);
+        }
+
+        if (virtualDHCPEnabled && hasMac) {
+            optional<Endpoint::DHCPv4Config> v4c = endPoint.getDHCPv4Config();
+            optional<Endpoint::DHCPv6Config> v6c = endPoint.getDHCPv6Config();
+
+            if (v4c)
+                flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, true);
+            if (v6c)
+                flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, false);
+
+            BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
+                          endPoint.getVirtualIPs()) {
+                if (endPoint.getMAC().get() == vip.first) continue;
+                packets::cidr_t vip_cidr;
+                if (!packets::cidr_from_string(vip.second, vip_cidr)) {
+                    continue;
+                }
+                address& addr = vip_cidr.first;
+                if (ec) continue;
+                uint8_t vmacAddr[6];
+                vip.first.toUIntArray(vmacAddr);
+
+                if (v4c && addr.is_v4())
+                    flowsVirtualDhcp(elSrc, ofPort, epgVnid, vmacAddr, true);
+                else if (v6c && addr.is_v6())
+                    flowsVirtualDhcp(elSrc, ofPort, epgVnid, vmacAddr, false);
+            }
+        }
+    }
+
+    /* Bridge, route, and output flows */
+    if (bdId != 0 && hasMac && ofPort != OFPP_NONE) {
+        FlowBuilder().priority(10).ethDst(macAddr).reg(4, bdId)
+            .action()
+            .reg(MFF_REG2, epgVnid)
+            .reg(MFF_REG7, ofPort)
+            .go(POL_TABLE_ID)
+            .parent().build(elBridgeDst);
+    }
+
+    if (rdId != 0 && bdId != 0 && ofPort != OFPP_NONE) {
+        uint8_t routingMode =
+            agent.getPolicyManager().getEffectiveRoutingMode(epgURI.get());
+
+        if (virtualRouterEnabled && hasMac &&
+            routingMode == RoutingModeEnumT::CONST_ENABLED) {
+            BOOST_FOREACH (const address& ipAddr, ipAddresses) {
+                if (endPoint.isDiscoveryProxyMode()) {
+                    // Auto-reply to ARP and NDP requests for endpoint
+                    // IP addresses
+                    flowsProxyDiscovery(*this, elBridgeDst, 20, ipAddr,
+                                        macAddr, epgVnid, rdId, bdId);
+                } else {
+                    if (arpMode != AddressResModeEnumT::CONST_FLOOD &&
+                        ipAddr.is_v4()) {
+                        FlowBuilder e1;
+                        matchDestArp(e1, ipAddr, bdId, rdId);
+                        if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
+                            // ARP optimization: broadcast -> unicast
+                            actionDestEpArp(e1, epgVnid, ofPort, macAddr);
+                        }
+                        // else drop the ARP packet
+                        e1.priority(20)
+                            .build(elBridgeDst);
+                    }
+
+                    if (ndMode != AddressResModeEnumT::CONST_FLOOD &&
+                        ipAddr.is_v6()) {
+                        FlowBuilder e1;
+                        matchDestNd(e1, &ipAddr, bdId, rdId);
+                        if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
+                            // neighbor discovery optimization:
+                            // broadcast -> unicast
+                            actionDestEpArp(e1, epgVnid, ofPort, macAddr);
+                        }
+                        // else drop the ND packet
+                        e1.priority(20)
+                            .build(elBridgeDst);
+                    }
+                }
+
+                if (packets::is_link_local(ipAddr))
+                    continue;
+
+                {
+                    FlowBuilder e0;
+                    matchDestDom(e0, 0, rdId);
+                    e0.priority(500)
+                        .ethDst(getRouterMacAddr())
+                        .ipDst(ipAddr)
+                        .action()
+                        .reg(MFF_REG2, epgVnid)
+                        .reg(MFF_REG7, ofPort)
+                        .ethSrc(getRouterMacAddr())
+                        .ethDst(macAddr)
+                        .decTtl()
+                        .go(POL_TABLE_ID)
+                        .parent().build(elRouteDst);
+                }
+
+            }
+
+            // IP address mappings
+            BOOST_FOREACH (const Endpoint::IPAddressMapping& ipm,
+                           endPoint.getIPAddressMappings()) {
+                if (!ipm.getMappedIP() || !ipm.getEgURI())
+                    continue;
+
+                address mappedIp =
+                    address::from_string(ipm.getMappedIP().get(), ec);
+                if (ec) continue;
+
+                address floatingIp;
+                if (ipm.getFloatingIP()) {
+                    floatingIp =
+                        address::from_string(ipm.getFloatingIP().get(), ec);
+                    if (ec) continue;
+                    if (floatingIp.is_v4() != mappedIp.is_v4()) continue;
+                }
+
+                uint32_t fepgVnid, frdId, fbdId, ffdId;
+                optional<URI> ffdURI, fbdURI, frdURI;
+                if (!getGroupForwardingInfo(ipm.getEgURI().get(), fepgVnid,
+                                            frdURI, frdId, fbdURI, fbdId,
+                                            ffdURI, ffdId))
+                    continue;
+
+                uint32_t nextHop = OFPP_NONE;
+                if (ipm.getNextHopIf()) {
+                    nextHop = switchManager.getPortMapper()
+                        .FindPort(ipm.getNextHopIf().get());
+                    if (nextHop == OFPP_NONE) continue;
+                }
+                uint8_t nextHopMac[6];
+                const uint8_t* nextHopMacp = NULL;
+                if (ipm.getNextHopMAC()) {
+                    ipm.getNextHopMAC().get().toUIntArray(nextHopMac);
+                    nextHopMacp = nextHopMac;
+                }
+
+                flowsIpm(*this, elSrc, elBridgeDst, elRouteDst,
+                         elOutput, macAddr, ofPort,
+                         epgVnid, rdId, bdId, fgrpId,
+                         fepgVnid, frdId, fbdId, ffdId,
+                         mappedIp, floatingIp, nextHop,
+                         nextHopMacp);
+            }
+        }
+
+        // When traffic returns from a service interface, we have a
+        // special table to map the return traffic that bypasses
+        // normal network semantics and policy.  The service map table
+        // is reachable only for traffic originating from service
+        // interfaces.
+        if (hasMac) {
+            std::vector<address> anycastReturnIps;
+            BOOST_FOREACH(const string& ipStr,
+                          endPoint.getAnycastReturnIPs()) {
+                address addr = address::from_string(ipStr, ec);
+                if (ec) {
+                    LOG(WARNING) << "Invalid anycast return IP: "
+                                 << ipStr << ": " << ec.message();
+                } else {
+                    anycastReturnIps.push_back(addr);
+                }
+            }
+            if (anycastReturnIps.size() == 0) {
+                anycastReturnIps = ipAddresses;
+            }
+
+            BOOST_FOREACH (const address& ipAddr, anycastReturnIps) {
+                {
+                    // Deliver packets sent to service address
+                    FlowBuilder serviceDest;
+                    matchDestDom(serviceDest, 0, rdId);
+                    serviceDest
+                        .priority(50)
+                        .ipDst(ipAddr)
+                        .action()
+                        .ethSrc(getRouterMacAddr()).ethDst(macAddr)
+                        .decTtl()
+                        .output(ofPort)
+                        .parent().build(elServiceMap);
+                }
+                flowsProxyDiscovery(*this, elServiceMap,
+                                    51, ipAddr, macAddr, 0, rdId, 0);
+            }
+        }
+    }
+
+    switchManager.writeFlow(uuid, SRC_TABLE_ID, elSrc);
+    switchManager.writeFlow(uuid, LEARN_TABLE_ID, elEpLearn);
+    switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
+    switchManager.writeFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
+    switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, elServiceMap);
+    switchManager.writeFlow(uuid, OUT_TABLE_ID, elOutput);
+
+    if (fgrpURI && ofPort != OFPP_NONE) {
+        updateEndpointFloodGroup(fgrpURI.get(), endPoint, ofPort,
+                                 endPoint.isPromiscuousMode(),
+                                 fd);
+    } else {
+        removeEndpointFromFloodGroup(uuid);
+    }
+}
+
+void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
+    LOG(DEBUG) << "Updating anycast service " << uuid;
+
+    ServiceManager& srvMgr = agent.getServiceManager();
+    shared_ptr<const AnycastService> asWrapper = srvMgr.getAnycastService(uuid);
+
+    if (!asWrapper) {
+        switchManager.writeFlow(uuid, SEC_TABLE_ID, NULL);
+        switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, NULL);
+        switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, NULL);
+        return;
+    }
+
+    const AnycastService& as = *asWrapper;
+
+    FlowEntryList secFlows;
+    FlowEntryList bridgeFlows;
+    FlowEntryList serviceMapDstFlows;
+
+    boost::system::error_code ec;
+
+    uint32_t ofPort = OFPP_NONE;
+    const optional<string>& ofPortName = as.getInterfaceName();
+    if (ofPortName) {
+        ofPort = switchManager.getPortMapper()
+            .FindPort(as.getInterfaceName().get());
+    }
+
+    optional<shared_ptr<RoutingDomain > > rd =
+        RoutingDomain::resolve(agent.getFramework(),
+                               as.getDomainURI().get());
+
+    if (ofPort != OFPP_NONE && as.getServiceMAC() && rd) {
+        uint8_t macAddr[6];
+        as.getServiceMAC().get().toUIntArray(macAddr);
+
+        uint32_t rdId =
+            getId(RoutingDomain::CLASS_ID, as.getDomainURI().get());
+
+        BOOST_FOREACH(AnycastService::ServiceMapping sm,
+                      as.getServiceMappings()) {
+            if (!sm.getServiceIP())
+                continue;
+
+            address addr = address::from_string(sm.getServiceIP().get(), ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid service IP: "
+                             << sm.getServiceIP().get()
+                             << ": " << ec.message();
+                continue;
+            }
+            address nextHopAddr;
+            bool hasNextHop = false;
+            if (sm.getNextHopIP()) {
+                nextHopAddr =
+                    address::from_string(sm.getNextHopIP().get(), ec);
+                if (ec) {
+                    LOG(WARNING) << "Invalid service next hop IP: "
+                                 << sm.getNextHopIP().get()
+                                 << ": " << ec.message();
+                } else {
+                    hasNextHop = true;
+                }
+            }
+
+            // Traffic sent to anycast services is intercepted in the
+            // bridge table, despite the fact that it is effectively
+            // performing a routing action, to allow it to work with flood
+            // domains configured to use mac learning.
+            {
+                FlowBuilder serviceDest;
+                matchDestDom(serviceDest, 0, rdId);
+                serviceDest
+                    .priority(50)
+                    .ipDst(addr)
+                    .action()
+                    .ethSrc(getRouterMacAddr())
+                    .ethDst(macAddr);
+                if (hasNextHop) {
+                    // map traffic to service interface to the next
+                    // hop IP using DNAT semantics
+                    serviceDest.action().ipDst(nextHopAddr);
+                }
+                serviceDest.action()
+                   .decTtl()
+                    .output(ofPort);
+                serviceDest.build(bridgeFlows);
+            }
+
+            // Traffic sent from anycast services is intercepted in
+            // the security table to prevent normal processing
+            // semantics.
+            {
+                FlowBuilder svcIp;
+                svcIp.priority(100)
+                    .inPort(ofPort)
+                    .ethSrc(macAddr)
+                    .action()
+                    .reg(MFF_REG6, rdId);
+
+                if (hasNextHop) {
+                    // If there is a next hop mapping, map the return
+                    // traffic from service interface using DNAT
+                    // semantics
+                    svcIp.ipSrc(nextHopAddr)
+                        .action()
+                        .ipSrc(addr)
+                        .decTtl();
+                } else {
+                    svcIp.ipSrc(addr);
+                }
+
+                svcIp.action()
+                    .go(SERVICE_MAP_DST_TABLE_ID);
+                svcIp.build(secFlows);
+            }
+            if (addr.is_v4()) {
+                FlowBuilder().priority(100)
+                    .inPort(ofPort)
+                    .ethSrc(macAddr)
+                    .arpSrc(hasNextHop ? nextHopAddr : addr)
+                    .action()
+                    .reg(MFF_REG6, rdId)
+                    .go(SERVICE_MAP_DST_TABLE_ID)
+                    .parent().build(secFlows);
+            }
+            flowsProxyDiscovery(*this, bridgeFlows,
+                                51, addr, macAddr, 0, rdId, 0);
+
+            if (sm.getGatewayIP()) {
+                address gwAddr =
+                    address::from_string(sm.getGatewayIP().get(), ec);
+                if (ec) {
+                    LOG(WARNING) << "Invalid service gateway IP: "
+                                 << sm.getGatewayIP().get()
+                                 << ": " << ec.message();
+                } else {
+                    flowsProxyDiscovery(*this, serviceMapDstFlows, 31,
+                                        gwAddr, getRouterMacAddr(), 0, rdId, 0,
+                                        true, macAddr);
+                }
+            }
+        }
+    }
+
+    switchManager.writeFlow(uuid, SEC_TABLE_ID, secFlows);
+    switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, bridgeFlows);
+    switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, serviceMapDstFlows);
+}
+
+void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
+                                    uint32_t fgrpId, address epgTunDst) {
+    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+    optional<shared_ptr<FloodDomain> > fd =
+        agent.getPolicyManager().getFDForGroup(epgURI);
+    if (fd) {
+        bcastFloodMode =
+            fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+    }
+
+    FlowEntryList grpDst;
+    {
+        // deliver broadcast/multicast traffic to the group table
+        FlowBuilder mcast;
+        matchFd(mcast, fgrpId, true);
+        mcast.priority(10)
+            .reg(0, epgVnid);
+        if (bcastFloodMode == BcastFloodModeEnumT::CONST_ISOLATED) {
+            // In isolated mode deliver only if policy has already
+            // been applied (i.e. it comes from the tunnel uplink)
+            mcast.metadata(flow::meta::POLICY_APPLIED,
+                           flow::meta::POLICY_APPLIED);
+        }
+        switch (getEncapType()) {
+        case ENCAP_VLAN:
+            break;
+        case ENCAP_VXLAN:
+        case ENCAP_IVXLAN:
+        default:
+            mcast.action().reg(MFF_REG7, epgTunDst.to_v4().to_ulong());
+            break;
+        }
+        mcast.action()
+            .metadata(flow::meta::out::FLOOD, flow::meta::out::MASK)
+            .go(IntFlowManager::OUT_TABLE_ID);
+        mcast.build(grpDst);
+    }
+    switchManager.writeFlow(epgURI.toString(), BRIDGE_TABLE_ID, grpDst);
+}
+
+void IntFlowManager::createStaticFlows() {
+    uint32_t tunPort = getTunnelPort();
+
+    LOG(DEBUG) << "Writing static flows";
+
+    {
+        // static port security flows
+        FlowEntryList portSec;
+        {
+            // Drop IP traffic that doesn't have the correct source
+            // address
+            FlowBuilder().priority(25).ethType(ETH_TYPE_ARP).build(portSec);
+            FlowBuilder().priority(25).ethType(ETH_TYPE_IP).build(portSec);
+            FlowBuilder().priority(25).ethType(ETH_TYPE_IPV6).build(portSec);
+        }
+        {
+            // Allow DHCP requests but not replies
+            actionSecAllow(matchDhcpReq(FlowBuilder().priority(27), true))
+                .build(portSec);
+        }
+        {
+            // Allow IPv6 autoconfiguration (DHCP & router solicitiation)
+            // requests but not replies
+            actionSecAllow(matchDhcpReq(FlowBuilder().priority(27), false))
+                .build(portSec);
+            actionSecAllow(FlowBuilder().priority(27)
+                           .ethType(ETH_TYPE_IPV6)
+                           .proto(58)
+                           .tpSrc(ND_ROUTER_SOLICIT)
+                           .tpDst(0))
+                .build(portSec);
+        }
+        if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
+            // allow all traffic from the tunnel uplink through the port
+            // security table
+            actionSecAllow(FlowBuilder().priority(50).inPort(tunPort))
+                .build(portSec);
+        }
+        switchManager.writeFlow("static", SEC_TABLE_ID, portSec);
+    }
+    {
+        // Block flows from the uplink when not allowed by
+        // higher-priority per-EPG rules to allow them.
+        FlowBuilder policyApplied;
+        policyApplied.priority(flowutils::MAX_POLICY_RULE_PRIORITY + 50)
+            .metadata(flow::meta::POLICY_APPLIED, flow::meta::POLICY_APPLIED);
+        switchManager.writeFlow("static", POL_TABLE_ID, policyApplied);
+    }
+    {
+        FlowEntryList unknownTunnelBr;
+        FlowEntryList unknownTunnelRt;
+        if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
+            // Output to the tunnel interface, bypassing policy
+            // note that if the flood domain is set to flood unknown, then
+            // there will be a higher-priority rule installed for that
+            // flood domain.
+            actionOutputToEPGTunnel(FlowBuilder().priority(1))
+                .build(unknownTunnelBr);
+
+            if (virtualRouterEnabled) {
+                actionOutputToEPGTunnel(FlowBuilder().priority(1))
+                    .build(unknownTunnelRt);
+            }
+        }
+        switchManager.writeFlow("static", BRIDGE_TABLE_ID, unknownTunnelBr);
+        switchManager.writeFlow("static", ROUTE_TABLE_ID, unknownTunnelRt);
+    }
+    {
+        FlowEntryList outFlows;
+        outFlows.push_back(flowutils::default_out_flow());
+        {
+            FlowBuilder().priority(1)
+                .metadata(flow::meta::out::REV_NAT,
+                          flow::meta::out::MASK)
+                .action().outputReg(MFF_REG7)
+                .parent().build(outFlows);
+        }
+        {
+            // send reverse NAT ICMP error packets to controller
+            revNatICMPFlows(outFlows, true, 3 ); // unreachable
+            revNatICMPFlows(outFlows, true, 11); // time exceeded
+            revNatICMPFlows(outFlows, true, 12); // param
+        }
+
+        switchManager.writeFlow("static", OUT_TABLE_ID, outFlows);
+    }
+}
+
+void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
+    LOG(DEBUG) << "Updating endpoint-group " << epgURI;
+
+    const string& epgId = epgURI.toString();
+
+    uint32_t tunPort = getTunnelPort();
+    address epgTunDst = getEPGTunnelDst(epgURI);
+
+    PolicyManager& polMgr = agent.getPolicyManager();
+    if (!polMgr.groupExists(epgURI)) {  // EPG removed
+        switchManager.writeFlow(epgId, SRC_TABLE_ID, NULL);
+        switchManager.writeFlow(epgId, POL_TABLE_ID, NULL);
+        switchManager.writeFlow(epgId, OUT_TABLE_ID, NULL);
+        switchManager.writeFlow(epgId, BRIDGE_TABLE_ID, NULL);
+        updateMulticastList(boost::none, epgURI);
+        return;
+    }
+
+    uint32_t epgVnid, rdId, bdId, fgrpId;
+    optional<URI> fgrpURI, bdURI, rdURI;
+    if (!getGroupForwardingInfo(epgURI, epgVnid, rdURI, rdId,
+                                bdURI, bdId, fgrpURI, fgrpId)) {
+        return;
+    }
+
+    FlowEntryList uplinkMatch;
+    if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
+        // In flood mode we send all traffic from the uplink to the
+        // learning table.  Otherwise move to the destination mapper
+        // table as normal.  Multicast traffic still goes to the
+        // destination table, however.
+
+        uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
+        uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+        optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
+        if (epgFd) {
+            unkFloodMode = epgFd.get()
+                ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+            bcastFloodMode = epgFd.get()
+                ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+        }
+
+        uint8_t nextTable = IntFlowManager::BRIDGE_TABLE_ID;
+        if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD &&
+            bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL)
+            nextTable = IntFlowManager::LEARN_TABLE_ID;
+
+        // Assign the source registers based on the VNID from the
+        // tunnel uplink
+        actionSource(matchEpg(FlowBuilder().priority(149).inPort(tunPort),
+                              encapType, epgVnid),
+                     epgVnid, bdId, fgrpId, rdId,
+                     nextTable, encapType, true)
+            .build(uplinkMatch);
+
+        if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD &&
+            bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL) {
+            actionSource(matchEpg(FlowBuilder().priority(150).inPort(tunPort),
+                                  encapType, epgVnid),
+                         epgVnid, bdId, fgrpId, rdId,
+                         IntFlowManager::BRIDGE_TABLE_ID, encapType, true)
+                .build(uplinkMatch);
+        }
+    }
+    switchManager.writeFlow(epgId, SRC_TABLE_ID, uplinkMatch);
+
+    {
+        uint8_t intraGroup = IntraGroupPolicyEnumT::CONST_ALLOW;
+        optional<shared_ptr<EpGroup> > epg =
+            EpGroup::resolve(agent.getFramework(), epgURI);
+        if (epg && epg.get()->isIntraGroupPolicySet()) {
+            intraGroup = epg.get()->getIntraGroupPolicy().get();
+        }
+
+        FlowBuilder intraGroupFlow;
+        uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY + 100;
+        switch (intraGroup) {
+        case IntraGroupPolicyEnumT::CONST_DENY:
+            prio = flowutils::MAX_POLICY_RULE_PRIORITY + 200;
+            break;
+        case IntraGroupPolicyEnumT::CONST_REQUIRE_CONTRACT:
+            // Only automatically allow intra-EPG traffic if its come
+            // from the uplink and therefore already had policy
+            // applied.
+            intraGroupFlow.metadata(flow::meta::POLICY_APPLIED,
+                                    flow::meta::POLICY_APPLIED);
+            /* fall through */
+        case IntraGroupPolicyEnumT::CONST_ALLOW:
+        default:
+            intraGroupFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+            break;
+        }
+        flowutils::match_group(intraGroupFlow, prio, epgVnid, epgVnid);
+        switchManager.writeFlow(epgId, POL_TABLE_ID, intraGroupFlow);
+    }
+
+    if (virtualRouterEnabled && rdId != 0 && bdId != 0) {
+        updateGroupSubnets(epgURI, bdId, rdId);
+
+        FlowEntryList bridgel;
+        uint8_t routingMode =
+            agent.getPolicyManager().getEffectiveRoutingMode(epgURI);
+
+        if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
+            FlowBuilder().priority(2)
+                .reg(4, bdId)
+                .action()
+                .go(ROUTE_TABLE_ID)
+                .parent().build(bridgel);
+
+            if (routerAdv) {
+                FlowBuilder r;
+                matchDestNd(r, NULL, bdId, rdId, ND_ROUTER_SOLICIT);
+                r.priority(20).cookie(flow::cookie::NEIGH_DISC);
+                r.action().controller();
+                r.build(bridgel);
+
+                if (!isSyncing)
+                    advertManager.scheduleInitialRouterAdv();
+            }
+        }
+        switchManager.writeFlow(bdURI.get().toString(),
+                                BRIDGE_TABLE_ID, bridgel);
+    }
+
+    updateEPGFlood(epgURI, epgVnid, fgrpId, epgTunDst);
+
+    FlowEntryList egOutFlows;
+    {
+        // Output table action to resubmit the flow to the bridge
+        // table with source registers set to the current EPG
+        FlowBuilder().priority(10)
+            .reg(7, epgVnid)
+            .metadata(flow::meta::out::RESUBMIT_DST, flow::meta::out::MASK)
+            .action()
+            .reg(MFF_REG0, epgVnid)
+            .reg(MFF_REG4, bdId)
+            .reg(MFF_REG5, fgrpId)
+            .reg(MFF_REG6, rdId)
+            .reg(MFF_REG7, (uint32_t)0)
+            .reg64(MFF_METADATA, 0)
+            .resubmit(OFPP_IN_PORT, BRIDGE_TABLE_ID)
+            .parent().build(egOutFlows);
+    }
+    if (encapType != ENCAP_NONE && tunPort != OFPP_NONE) {
+        {
+            // Output table action to output to the tunnel appropriate for
+            // the source EPG
+            FlowBuilder tunnelOut;
+            tunnelOut.priority(10)
+                .reg(0, epgVnid)
+                .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
+            actionTunnelMetadata(tunnelOut.action(), encapType, epgTunDst);
+            tunnelOut.action().output(tunPort);
+            tunnelOut.build(egOutFlows);
+        }
+        if (encapType != ENCAP_VLAN) {
+            // If destination is the router mac, override EPG tunnel
+            // and send to unicast tunnel
+            FlowBuilder tunnelOutRtr;
+            tunnelOutRtr.priority(11)
+                .reg(0, epgVnid)
+                .ethDst(getRouterMacAddr())
+                .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
+            actionTunnelMetadata(tunnelOutRtr.action(),
+                                 encapType, getTunnelDst());
+            tunnelOutRtr.action().output(tunPort);
+            tunnelOutRtr.build(egOutFlows);
+        }
+    }
+    switchManager.writeFlow(epgId, OUT_TABLE_ID, egOutFlows);
+
+    unordered_set<string> epUuids;
+    EndpointManager& epMgr = agent.getEndpointManager();
+    epMgr.getEndpointsForIPMGroup(epgURI, epUuids);
+    boost::unordered_set<URI> ipmRds;
+    BOOST_FOREACH(const string& uuid, epUuids) {
+        boost::shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
+        if (!ep) continue;
+        const boost::optional<opflex::modb::URI>& egURI = ep->getEgURI();
+        if (!egURI) continue;
+        boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > rd =
+            polMgr.getRDForGroup(egURI.get());
+        if (rd)
+            ipmRds.insert(rd.get()->getURI());
+    }
+    BOOST_FOREACH(const URI& rdURI, ipmRds) {
+        // update routing domains that have references to the
+        // IP-mapping EPG to ensure external subnets are correctly
+        // mapped.
+        rdConfigUpdated(rdURI);
+    }
+
+    // note this combines with the IPM group endpoints from above:
+    epMgr.getEndpointsForGroup(epgURI, epUuids);
+    BOOST_FOREACH(const string& uuid, epUuids) {
+        advertManager.scheduleEndpointAdv(uuid);
+        endpointUpdated(uuid);
+    }
+
+    PolicyManager::uri_set_t contractURIs;
+    polMgr.getContractsForGroup(epgURI, contractURIs);
+    BOOST_FOREACH(const URI& contract, contractURIs) {
+        contractUpdated(contract);
+    }
+
+    optional<string> epgMcastIp = polMgr.getMulticastIPForGroup(epgURI);
+    updateMulticastList(epgMcastIp, epgURI);
+    optional<string> fdcMcastIp;
+    optional<shared_ptr<FloodContext> > fdCtx =
+        polMgr.getFloodContextForGroup(epgURI);
+    if (fdCtx) {
+        fdcMcastIp = fdCtx.get()->getMulticastGroupIP();
+        updateMulticastList(fdcMcastIp, fdCtx.get()->getURI());
+    }
+}
+
+void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
+                                        uint32_t rdId) {
+    PolicyManager::subnet_vector_t subnets;
+    agent.getPolicyManager().getSubnetsForGroup(egURI, subnets);
+
+    uint32_t tunPort = getTunnelPort();
+
+    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
+        FlowEntryList el;
+
+        optional<const string&> networkAddrStr = sn->getAddress();
+        bool hasRouterIp = false;
+        boost::system::error_code ec;
+        if (networkAddrStr) {
+            address networkAddr, routerIp;
+            networkAddr = address::from_string(networkAddrStr.get(), ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid network address for subnet: "
+                             << networkAddrStr << ": " << ec.message();
+            } else {
+                if (networkAddr.is_v4()) {
+                    optional<const string&> routerIpStr =
+                        sn->getVirtualRouterIp();
+                    if (routerIpStr) {
+                        routerIp = address::from_string(routerIpStr.get(), ec);
+                        if (ec) {
+                            LOG(WARNING) << "Invalid router IP: "
+                                         << routerIpStr << ": " << ec.message();
+                        } else {
+                            hasRouterIp = true;
+                        }
+                    }
+                } else {
+                    // Construct router IP address
+                    routerIp = packets::construct_link_local_ip_addr(routerMac);
+                    hasRouterIp = true;
+                }
+            }
+            // Reply to ARP requests for the router IP only from local
+            // endpoints.
+            if (hasRouterIp) {
+                if (routerIp.is_v4()) {
+                    if (tunPort != OFPP_NONE) {
+                        FlowBuilder e0;
+                        e0.priority(22).inPort(tunPort);
+                        matchDestArp(e0, routerIp, bdId, rdId);
+                        e0.build(el);
+                    }
+
+                    FlowBuilder e1;
+                    e1.priority(20);
+                    matchDestArp(e1, routerIp, bdId, rdId);
+                    actionArpReply(e1, getRouterMacAddr(), routerIp);
+                    e1.build(el);
+                } else {
+                    if (tunPort != OFPP_NONE) {
+                        FlowBuilder e0;
+                        e0.priority(22)
+                            .inPort(tunPort).cookie(flow::cookie::NEIGH_DISC);
+                        matchDestNd(e0, &routerIp, bdId, rdId);
+                        e0.build(el);
+                    }
+
+                    FlowBuilder e1;
+                    e1.priority(20).cookie(flow::cookie::NEIGH_DISC);
+                    matchDestNd(e1, &routerIp, bdId, rdId);
+                    e1.action().controller();
+                    e1.build(el);
+                }
+            }
+        }
+        switchManager.writeFlow(sn->getURI().toString(), BRIDGE_TABLE_ID, el);
+    }
+}
+
+void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
+    optional<shared_ptr<RoutingDomain > > rd =
+        RoutingDomain::resolve(agent.getFramework(), rdURI);
+
+    if (!rd) {
+        LOG(DEBUG) << "Cleaning up for RD: " << rdURI;
+        switchManager.writeFlow(rdURI.toString(), NAT_IN_TABLE_ID, NULL);
+        switchManager.writeFlow(rdURI.toString(), ROUTE_TABLE_ID, NULL);
+        idGen.erase(getIdNamespace(RoutingDomain::CLASS_ID), rdURI.toString());
+        return;
+    }
+    LOG(DEBUG) << "Updating routing domain " << rdURI;
+
+    FlowEntryList rdRouteFlows;
+    FlowEntryList rdNatFlows;
+    boost::system::error_code ec;
+    uint32_t tunPort = getTunnelPort();
+    uint32_t rdId = getId(RoutingDomain::CLASS_ID, rdURI);
+
+    // For subnets internal to a routing domain, we want to perform
+    // ordinary routing without mapping to external network.  These
+    // rules are lower priority than the rules that will handle
+    // routing to endpoints that are local to this vswitch, so the
+    // action is to output to the uplink tunnel.  Match using
+    // longest-prefix.
+
+    typedef std::pair<std::string, uint16_t> subnet_t;
+    boost::unordered_set<subnet_t> intSubnets;
+
+    vector<shared_ptr<RoutingDomainToIntSubnetsRSrc> > subnets_list;
+    rd.get()->resolveGbpRoutingDomainToIntSubnetsRSrc(subnets_list);
+    BOOST_FOREACH(shared_ptr<RoutingDomainToIntSubnetsRSrc>& subnets_ref,
+                  subnets_list) {
+        optional<URI> subnets_uri = subnets_ref->getTargetURI();
+        if (!subnets_uri) continue;
+        optional<shared_ptr<Subnets> > subnets_obj =
+            Subnets::resolve(agent.getFramework(), subnets_uri.get());
+        if (!subnets_obj) continue;
+
+        vector<shared_ptr<Subnet> > subnets;
+        subnets_obj.get()->resolveGbpSubnet(subnets);
+
+        BOOST_FOREACH(shared_ptr<Subnet>& subnet, subnets) {
+            if (!subnet->isAddressSet() || !subnet->isPrefixLenSet())
+                continue;
+            address addr = address::from_string(subnet->getAddress().get(),
+                                                ec);
+            if (ec) continue;
+            addr = packets::mask_address(addr, subnet->getPrefixLen().get());
+            intSubnets.insert(make_pair(addr.to_string(),
+                                        subnet->getPrefixLen().get()));
+        }
+    }
+    boost::shared_ptr<const RDConfig> rdConfig =
+        agent.getExtraConfigManager().getRDConfig(rdURI);
+    if (rdConfig) {
+        BOOST_FOREACH(const std::string& cidrSn,
+                      rdConfig->getInternalSubnets()) {
+            packets::cidr_t cidr;
+            if (packets::cidr_from_string(cidrSn, cidr)) {
+                intSubnets.insert(make_pair(cidr.first.to_string(),
+                                            cidr.second));
+            } else {
+                LOG(ERROR) << "Invalid CIDR subnet: " << cidrSn;
+            }
+        }
+    }
+    BOOST_FOREACH(const subnet_t& sn, intSubnets) {
+        address addr = address::from_string(sn.first, ec);
+        if (ec) continue;
+
+        FlowBuilder snr;
+        matchSubnet(snr, rdId, 300, addr, sn.second, false);
+        if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
+            actionOutputToEPGTunnel(snr);
+        }
+        snr.build(rdRouteFlows);
+    }
+
+    // If we miss the local endpoints and the internal subnets, check
+    // each of the external layer 3 networks.  Match using
+    // longest-prefix.
+    vector<shared_ptr<L3ExternalDomain> > extDoms;
+    rd.get()->resolveGbpL3ExternalDomain(extDoms);
+    BOOST_FOREACH(shared_ptr<L3ExternalDomain>& extDom, extDoms) {
+        vector<shared_ptr<L3ExternalNetwork> > extNets;
+        extDom->resolveGbpL3ExternalNetwork(extNets);
+
+        BOOST_FOREACH(shared_ptr<L3ExternalNetwork> net, extNets) {
+            uint32_t netVnid = getExtNetVnid(net->getURI());
+            vector<shared_ptr<ExternalSubnet> > extSubs;
+            net->resolveGbpExternalSubnet(extSubs);
+            optional<shared_ptr<L3ExternalNetworkToNatEPGroupRSrc> > natRef =
+                net->resolveGbpL3ExternalNetworkToNatEPGroupRSrc();
+            optional<uint32_t> natEpgVnid = boost::none;
+            if (natRef) {
+                optional<URI> natEpg = natRef.get()->getTargetURI();
+                if (natEpg)
+                    natEpgVnid =
+                        agent.getPolicyManager().getVnidForGroup(natEpg.get());
+            }
+
+            BOOST_FOREACH(shared_ptr<ExternalSubnet> extsub, extSubs) {
+                if (!extsub->isAddressSet() || !extsub->isPrefixLenSet())
+                    continue;
+                address addr =
+                    address::from_string(extsub->getAddress().get(), ec);
+                if (ec) continue;
+
+                {
+                    FlowBuilder snr;
+                    matchSubnet(snr, rdId, 150, addr,
+                                extsub->getPrefixLen(0), false);
+
+                    if (natRef) {
+                        // For external networks mapped to a NAT EPG,
+                        // set the next hop action to NAT_OUT
+                        if (natEpgVnid) {
+                            snr.action()
+                                .reg(MFF_REG2, netVnid)
+                                .reg(MFF_REG7, natEpgVnid.get())
+                                .metadata(flow::meta::out::NAT,
+                                          flow::meta::out::MASK)
+                                .go(POL_TABLE_ID);
+                        }
+                        // else drop until resolved
+                    } else if (tunPort != OFPP_NONE &&
+                               encapType != ENCAP_NONE) {
+                        // For other external networks, output to the tunnel
+                        actionOutputToEPGTunnel(snr);
+                    }
+                    // else drop the packets
+                    snr.build(rdRouteFlows);
+                }
+                {
+                    FlowBuilder snn;
+                    matchSubnet(snn, rdId, 150, addr,
+                                extsub->getPrefixLen(0), true);
+                    snn.action()
+                        .reg(MFF_REG0, netVnid)
+                        // We want to ensure that on the final
+                        // delivery of the packet we perform
+                        // protocol-specific reverse mapping.  This
+                        // doesn't let us do hop-by-hop translations
+                        // however.
+                        //
+                        // Also remove policy applied since we're
+                        // changing the effective EPG and need to
+                        // apply policy again.
+                        .metadata(flow::meta::out::REV_NAT,
+                                  flow::meta::out::MASK |
+                                  flow::meta::POLICY_APPLIED)
+                        .go(POL_TABLE_ID)
+                        .parent().build(rdNatFlows);
+                }
+            }
+        }
+    }
+
+    switchManager.writeFlow(rdURI.toString(), NAT_IN_TABLE_ID, rdNatFlows);
+    switchManager.writeFlow(rdURI.toString(), ROUTE_TABLE_ID, rdRouteFlows);
+
+    unordered_set<string> uuids;
+    agent.getServiceManager().getAnycastServicesByDomain(rdURI, uuids);
+    BOOST_FOREACH (const string& uuid, uuids) {
+        anycastServiceUpdated(uuid);
+    }
+}
+
+void
+IntFlowManager::handleDomainUpdate(class_id_t cid, const URI& domURI) {
+
+    switch (cid) {
+    case RoutingDomain::CLASS_ID:
+        handleRoutingDomainUpdate(domURI);
+        break;
+    case Subnet::CLASS_ID:
+        if (!Subnet::resolve(agent.getFramework(), domURI)) {
+            LOG(DEBUG) << "Cleaning up for Subnet: " << domURI;
+            switchManager.writeFlow(domURI.toString(), BRIDGE_TABLE_ID, NULL);
+        }
+        break;
+    case BridgeDomain::CLASS_ID:
+        if (!BridgeDomain::resolve(agent.getFramework(), domURI)) {
+            LOG(DEBUG) << "Cleaning up for BD: " << domURI;
+            switchManager.writeFlow(domURI.toString(), BRIDGE_TABLE_ID, NULL);
+            idGen.erase(getIdNamespace(cid), domURI.toString());
+        }
+        break;
+    case FloodDomain::CLASS_ID:
+        if (!FloodDomain::resolve(agent.getFramework(), domURI)) {
+            LOG(DEBUG) << "Cleaning up for FD: " << domURI;
+            idGen.erase(getIdNamespace(cid), domURI.toString());
+        }
+        break;
+    case FloodContext::CLASS_ID:
+        if (!FloodContext::resolve(agent.getFramework(), domURI)) {
+            LOG(DEBUG) << "Cleaning up for FloodContext: " << domURI;
+            if (removeFromMulticastList(domURI))
+                multicastGroupsUpdated();
+        }
+        break;
+    case L3ExternalNetwork::CLASS_ID:
+        if (!L3ExternalNetwork::resolve(agent.getFramework(), domURI)) {
+            LOG(DEBUG) << "Cleaning up for L3ExtNet: " << domURI;
+            idGen.erase(getIdNamespace(cid), domURI.toString());
+        }
+        break;
+    }
+}
+
+/**
+ * Construct a bucket object with the specified bucket ID.
+ */
+static
+ofputil_bucket *createBucket(uint32_t bucketId) {
+    ofputil_bucket *bkt = (ofputil_bucket *)malloc(sizeof(ofputil_bucket));
+    bkt->weight = 0;
+    bkt->bucket_id = bucketId;
+    bkt->watch_port = OFPP_ANY;
+    bkt->watch_group = OFPG11_ANY;
+    return bkt;
+}
+
+GroupEdit::Entry
+IntFlowManager::createGroupMod(uint16_t type, uint32_t groupId,
+                            const Ep2PortMap& ep2port, bool onlyPromiscuous) {
+    GroupEdit::Entry entry(new GroupEdit::GroupMod());
+    entry->mod->command = type;
+    entry->mod->group_id = groupId;
+
+    BOOST_FOREACH(const Ep2PortMap::value_type& kv, ep2port) {
+        if (onlyPromiscuous && !kv.second.second)
+            continue;
+
+        ofputil_bucket *bkt = createBucket(kv.second.first);
+        ActionBuilder ab;
+        ab.output(kv.second.first)
+            .build(bkt);
+        list_push_back(&entry->mod->buckets, &bkt->list_node);
+    }
+    uint32_t tunPort = getTunnelPort();
+    if (type != OFPGC11_DELETE && tunPort != OFPP_NONE &&
+        encapType != ENCAP_NONE) {
+        ofputil_bucket *bkt = createBucket(tunPort);
+        ActionBuilder ab;
+        actionTunnelMetadata(ab, encapType);
+        ab.output(tunPort)
+            .build(bkt);
+        list_push_back(&entry->mod->buckets, &bkt->list_node);
+    }
+    return entry;
+}
+
+uint32_t IntFlowManager::getPromId(uint32_t fgrpId) {
+    return ((1<<31) | fgrpId);
+}
+
+void
+IntFlowManager::updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
+                                      const Endpoint& endPoint, uint32_t epPort,
+                                      bool isPromiscuous,
+                                      optional<shared_ptr<FloodDomain> >& fd) {
+    const std::string& epUUID = endPoint.getUUID();
+    std::pair<uint32_t, bool> epPair(epPort, isPromiscuous);
+    uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
+    string fgrpStrId = "fd:" + fgrpURI.toString();
+    FloodGroupMap::iterator fgrpItr = floodGroupMap.find(fgrpURI);
+
+    uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
+    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+    if (fd) {
+        unkFloodMode =
+            fd.get()->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+        bcastFloodMode =
+            fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+    }
+
+    if (fgrpItr != floodGroupMap.end()) {
+        Ep2PortMap& epMap = fgrpItr->second;
+        Ep2PortMap::iterator epItr = epMap.find(epUUID);
+
+        if (epItr == epMap.end()) {
+            /* EP not attached to this flood-group, check and remove
+             * if it was attached to a different one */
+            removeEndpointFromFloodGroup(epUUID);
+        }
+        if (epItr == epMap.end() || epItr->second != epPair) {
+            epMap[epUUID] = epPair;
+            GroupEdit::Entry e = createGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
+            switchManager.writeGroupMod(e);
+            GroupEdit::Entry e2 =
+                createGroupMod(OFPGC11_MODIFY, getPromId(fgrpId), epMap, true);
+            switchManager.writeGroupMod(e2);
+        }
+    } else {
+        /* Remove EP attachment to old floodgroup, if any */
+        removeEndpointFromFloodGroup(epUUID);
+        floodGroupMap[fgrpURI][epUUID] = epPair;
+        GroupEdit::Entry e =
+            createGroupMod(OFPGC11_ADD, fgrpId, floodGroupMap[fgrpURI]);
+        switchManager.writeGroupMod(e);
+        GroupEdit::Entry e2 = createGroupMod(OFPGC11_ADD, getPromId(fgrpId),
+                                             floodGroupMap[fgrpURI], true);
+        switchManager.writeGroupMod(e2);
+    }
+
+    FlowEntryList fdOutput;
+    {
+        // Output table action to output to the flood group appropriate
+        // for the source EPG.
+        FlowBuilder().priority(10).reg(5, fgrpId)
+            .metadata(flow::meta::out::FLOOD, flow::meta::out::MASK)
+            .action()
+            .group(fgrpId)
+            .parent().build(fdOutput);
+    }
+    switchManager.writeFlow(fgrpStrId, OUT_TABLE_ID, fdOutput);
+
+    FlowEntryList grpDst;
+    FlowEntryList learnDst;
+    if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL &&
+        unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+        // go to the learning table on an unknown unicast
+        // destination in flood mode
+        matchFd(FlowBuilder().priority(5), fgrpId, false)
+            .action()
+            .go(IntFlowManager::LEARN_TABLE_ID)
+            .parent().build(grpDst);
+
+        // Deliver unknown packets in the flood domain when
+        // learning to the controller for reactive flow setup.
+        matchFd(FlowBuilder().priority(5).cookie(flow::cookie::PROACTIVE_LEARN),
+                fgrpId, false)
+            .action().controller()
+            .parent().build(learnDst);
+    }
+    switchManager.writeFlow(fgrpStrId, BRIDGE_TABLE_ID, grpDst);
+    switchManager.writeFlow(fgrpStrId, LEARN_TABLE_ID, learnDst);
+}
+
+void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
+    for (FloodGroupMap::iterator itr = floodGroupMap.begin();
+         itr != floodGroupMap.end();
+         ++itr) {
+        const URI& fgrpURI = itr->first;
+        Ep2PortMap& epMap = itr->second;
+        if (epMap.erase(epUUID) == 0) {
+            continue;
+        }
+        uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
+        uint16_t type = epMap.empty() ?
+                OFPGC11_DELETE : OFPGC11_MODIFY;
+        GroupEdit::Entry e0 =
+                createGroupMod(type, fgrpId, epMap);
+        GroupEdit::Entry e1 =
+                createGroupMod(type, getPromId(fgrpId), epMap, true);
+        if (epMap.empty()) {
+            string fgrpStrId = "fd:" + fgrpURI.toString();
+            switchManager.writeFlow(fgrpStrId, OUT_TABLE_ID, NULL);
+            switchManager.writeFlow(fgrpStrId, BRIDGE_TABLE_ID, NULL);
+            switchManager.writeFlow(fgrpStrId, LEARN_TABLE_ID, NULL);
+            floodGroupMap.erase(fgrpURI);
+        }
+        switchManager.writeGroupMod(e0);
+        switchManager.writeGroupMod(e1);
+        break;
+    }
+}
+
+void
+IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
+    LOG(DEBUG) << "Updating contract " << contractURI;
+
+    const string& contractId = contractURI.toString();
+    PolicyManager& polMgr = agent.getPolicyManager();
+    if (!polMgr.contractExists(contractURI)) {  // Contract removed
+        switchManager.writeFlow(contractId, POL_TABLE_ID, NULL);
+        idGen.erase(getIdNamespace(Contract::CLASS_ID), contractURI.toString());
+        return;
+    }
+    PolicyManager::uri_set_t provURIs;
+    PolicyManager::uri_set_t consURIs;
+    polMgr.getContractProviders(contractURI, provURIs);
+    polMgr.getContractConsumers(contractURI, consURIs);
+
+    typedef unordered_map<uint32_t, uint32_t> IdMap;
+    IdMap provIds;
+    IdMap consIds;
+    getGroupVnidAndRdId(provURIs, provIds);
+    getGroupVnidAndRdId(consURIs, consIds);
+
+    PolicyManager::rule_list_t rules;
+    polMgr.getContractRules(contractURI, rules);
+
+    LOG(DEBUG) << "Update for contract " << contractURI
+               << ", #prov=" << provIds.size()
+               << ", #cons=" << consIds.size()
+               << ", #rules=" << rules.size();
+
+    FlowEntryList entryList;
+    uint64_t conCookie = getId(Contract::CLASS_ID, contractURI);
+
+    BOOST_FOREACH(const IdMap::value_type& pid, provIds) {
+        const uint32_t& pvnid = pid.first;
+        BOOST_FOREACH(const IdMap::value_type& cid, consIds) {
+            const uint32_t& cvnid = cid.first;
+
+            uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
+            BOOST_FOREACH(shared_ptr<PolicyRule>& pc, rules) {
+                uint8_t dir = pc->getDirection();
+                const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
+                /*
+                 * Collapse bidirectional rules - if consumer 'cvnid' is also
+                 * a provider and provider 'pvnid' is also a consumer, then
+                 * add entry for cvnid to pvnid traffic only.
+                 */
+                if (dir == DirectionEnumT::CONST_BIDIRECTIONAL &&
+                    provIds.find(cvnid) != provIds.end() &&
+                    consIds.find(pvnid) != consIds.end()) {
+                    dir = DirectionEnumT::CONST_IN;
+                }
+                if (dir == DirectionEnumT::CONST_IN ||
+                    dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
+                    flowutils::add_classifier_entries(cls.get(),
+                                                      pc->getAllow(),
+                                                      OUT_TABLE_ID,
+                                                      prio, conCookie,
+                                                      cvnid, pvnid,
+                                                      entryList);
+                }
+                if (dir == DirectionEnumT::CONST_OUT ||
+                    dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
+                    flowutils::add_classifier_entries(cls.get(),
+                                                      pc->getAllow(),
+                                                      OUT_TABLE_ID,
+                                                      prio, conCookie,
+                                                      pvnid, cvnid,
+                                                      entryList);
+                }
+                --prio;
+            }
+        }
+    }
+    switchManager.writeFlow(contractId, POL_TABLE_ID, entryList);
+}
+
+void IntFlowManager::initPlatformConfig() {
+
+    using namespace modelgbp::platform;
+
+    optional<shared_ptr<Config> > config =
+        Config::resolve(agent.getFramework(),
+                        agent.getPolicyManager().getOpflexDomain());
+    mcastTunDst = boost::none;
+    if (config) {
+        optional<const string&> ipStr =
+            config.get()->getMulticastGroupIP();
+        if (ipStr) {
+            boost::system::error_code ec;
+            address ip(address::from_string(ipStr.get(), ec));
+            if (ec) {
+                LOG(ERROR) << "Invalid multicast tunnel destination: "
+                           << ipStr.get() << ": " << ec.message();
+            } else if (!ip.is_v4()) {
+                LOG(ERROR) << "Multicast tunnel destination must be IPv4: "
+                           << ipStr.get();
+            } else {
+                mcastTunDst = ip;
+            }
+        }
+        updateMulticastList(
+            ipStr ? optional<string>(ipStr.get()) : optional<string>(),
+            config.get()->getURI());
+    }
+}
+
+void IntFlowManager::handleConfigUpdate(const opflex::modb::URI& configURI) {
+    LOG(DEBUG) << "Updating platform config " << configURI;
+    initPlatformConfig();
+
+    /* Directly update the group-table */
+    updateGroupTable();
+}
+
+void IntFlowManager::updateGroupTable() {
+    BOOST_FOREACH (FloodGroupMap::value_type& kv, floodGroupMap) {
+        const URI& fgrpURI = kv.first;
+        uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
+        Ep2PortMap& epMap = kv.second;
+
+        GroupEdit::Entry e1 = createGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
+        switchManager.writeGroupMod(e1);
+        GroupEdit::Entry e2 = createGroupMod(OFPGC11_MODIFY,
+                                             getPromId(fgrpId), epMap, true);
+        switchManager.writeGroupMod(e2);
+    }
+}
+
+void IntFlowManager::handlePortStatusUpdate(const string& portName,
+                                            uint32_t) {
+    LOG(DEBUG) << "Port-status update for " << portName;
+    if (portName == encapIface) {
+        initPlatformConfig();
+        createStaticFlows();
+
+        PolicyManager::uri_set_t epgURIs;
+        agent.getPolicyManager().getGroups(epgURIs);
+        BOOST_FOREACH (const URI& epg, epgURIs) {
+            egDomainUpdated(epg);
+        }
+        PolicyManager::uri_set_t rdURIs;
+        agent.getPolicyManager().getRoutingDomains(rdURIs);
+        BOOST_FOREACH (const URI& rd, rdURIs) {
+            rdConfigUpdated(rd);
+        }
+        /* Directly update the group-table */
+        updateGroupTable();
+    } else {
+        unordered_set<string> uuids;
+        agent.getEndpointManager().getEndpointsByIface(portName, uuids);
+        agent.getEndpointManager().getEndpointsByIpmNextHopIf(portName,
+                                                              uuids);
+        BOOST_FOREACH (const string& uuid, uuids) {
+            endpointUpdated(uuid);
+        }
+
+        uuids.clear();
+        agent.getServiceManager().getAnycastServicesByIface(portName, uuids);
+        BOOST_FOREACH (const string& uuid, uuids) {
+            anycastServiceUpdated(uuid);
+        }
+    }
+}
+
+void IntFlowManager::getGroupVnidAndRdId(const unordered_set<URI>& uris,
+    /* out */unordered_map<uint32_t, uint32_t>& ids) {
+    PolicyManager& pm = agent.getPolicyManager();
+    BOOST_FOREACH(const URI& u, uris) {
+        optional<uint32_t> vnid = pm.getVnidForGroup(u);
+        optional<shared_ptr<RoutingDomain> > rd;
+        if (vnid) {
+            rd = pm.getRDForGroup(u);
+        } else {
+            rd = pm.getRDForL3ExtNet(u);
+            if (rd) {
+                vnid = getExtNetVnid(u);
+            }
+        }
+        if (vnid && rd) {
+            ids[vnid.get()] = getId(RoutingDomain::CLASS_ID,
+                                    rd.get()->getURI());
+        }
+    }
+}
+
+static const boost::function<bool(opflex::ofcore::OFFramework&,
+                            const string&,
+                            const string&)> ID_NAMESPACE_CB[] =
+    {IdGenerator::uriIdGarbageCb<FloodDomain>,
+     IdGenerator::uriIdGarbageCb<BridgeDomain>,
+     IdGenerator::uriIdGarbageCb<RoutingDomain>,
+     IdGenerator::uriIdGarbageCb<Contract>,
+     IdGenerator::uriIdGarbageCb<L3ExternalNetwork>};
+
+void IntFlowManager::cleanup() {
+    for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
+        string ns(ID_NAMESPACES[i]);
+        IdGenerator::garbage_cb_t gcb =
+            bind(ID_NAMESPACE_CB[i], ref(agent.getFramework()), _1, _2);
+        agent.getAgentIOService()
+            .dispatch(bind(&IdGenerator::collectGarbage, ref(idGen),
+                           ns, gcb));
+    }
+}
+
+const char * IntFlowManager::getIdNamespace(class_id_t cid) {
+    const char *nmspc = NULL;
+    switch (cid) {
+    case RoutingDomain::CLASS_ID:   nmspc = ID_NMSPC_RD; break;
+    case BridgeDomain::CLASS_ID:    nmspc = ID_NMSPC_BD; break;
+    case FloodDomain::CLASS_ID:     nmspc = ID_NMSPC_FD; break;
+    case Contract::CLASS_ID:        nmspc = ID_NMSPC_CON; break;
+    case L3ExternalNetwork::CLASS_ID: nmspc = ID_NMSPC_EXTNET; break;
+    default:
+        assert(false);
+    }
+    return nmspc;
+}
+
+uint32_t IntFlowManager::getId(class_id_t cid, const URI& uri) {
+    return idGen.getId(getIdNamespace(cid), uri.toString());
+}
+
+uint32_t IntFlowManager::getExtNetVnid(const opflex::modb::URI& uri) {
+    // External networks are assigned private VNIDs that have bit 31 (MSB)
+    // set to 1. This is fine because legal VNIDs are 24-bits or less.
+    return (getId(L3ExternalNetwork::CLASS_ID, uri) | (1 << 31));
+}
+
+void IntFlowManager::updateMulticastList(const optional<string>& mcastIp,
+                                      const URI& uri) {
+    bool update = false;
+    if ((encapType != ENCAP_VXLAN && encapType != ENCAP_IVXLAN) ||
+        getTunnelPort() == OFPP_NONE ||
+        !mcastIp) {
+        update |= removeFromMulticastList(uri);
+
+    } else {
+        boost::system::error_code ec;
+        address ip(address::from_string(mcastIp.get(), ec));
+        if (ec || !ip.is_multicast()) {
+            LOG(WARNING) << "Ignoring invalid/unsupported multicast "
+                "subscription IP: " << mcastIp.get();
+            return;
+        }
+        MulticastMap::iterator itr = mcastMap.find(mcastIp.get());
+        if (itr != mcastMap.end()) {
+            UriSet& uris = itr->second;
+            UriSet::iterator jtr = uris.find(uri);
+            if (jtr == uris.end()) {
+                // remove old association, if any
+                update |= removeFromMulticastList(uri);
+                uris.insert(uri);
+            }
+        } else {
+            // remove old association, if any
+            update |= removeFromMulticastList(uri);
+            mcastMap[mcastIp.get()].insert(uri);
+            update |= !isSyncing;
+        }
+    }
+
+    if (update)
+        multicastGroupsUpdated();
+}
+
+bool IntFlowManager::removeFromMulticastList(const URI& uri) {
+    BOOST_FOREACH (MulticastMap::value_type& kv, mcastMap) {
+        UriSet& uris = kv.second;
+        if (uris.erase(uri) > 0 && uris.empty()) {
+            mcastMap.erase(kv.first);
+            return !isSyncing;
+        }
+    }
+    return false;
+}
+
+static const std::string MCAST_QUEUE_ITEM("mcast-groups");
+
+void IntFlowManager::multicastGroupsUpdated() {
+    taskQueue.dispatch(MCAST_QUEUE_ITEM,
+                       bind(&IntFlowManager::writeMulticastGroups, this));
+}
+
+void IntFlowManager::writeMulticastGroups() {
+    if (mcastGroupFile == "") return;
+
+    pt::ptree tree;
+    pt::ptree groups;
+    BOOST_FOREACH (MulticastMap::value_type& kv, mcastMap)
+        groups.push_back(std::make_pair("", kv.first));
+    tree.add_child("multicast-groups", groups);
+
+    try {
+        pt::write_json(mcastGroupFile, tree);
+    } catch (pt::json_parser_error e) {
+        LOG(ERROR) << "Could not write multicast group file " << mcastGroupFile
+                   << ": " << e.what();
+    }
+}
+
+std::vector<FlowEdit>
+IntFlowManager::reconcileFlows(std::vector<TableState> flowTables,
+                               std::vector<FlowEntryList>& recvFlows) {
+    // special handling for learning table - reconcile using
+    // PacketInHandler reactive reconciler
+    FlowEntryList learnFlows;
+    recvFlows[IntFlowManager::LEARN_TABLE_ID].swap(learnFlows);
+    BOOST_FOREACH (const FlowEntryPtr& fe, learnFlows) {
+        if (!pktInHandler.reconcileReactiveFlow(fe)) {
+            recvFlows[IntFlowManager::LEARN_TABLE_ID].push_back(fe);
+        }
+    }
+
+    return SwitchStateHandler::reconcileFlows(flowTables, recvFlows);
+}
+
+void IntFlowManager::checkGroupEntry(GroupMap& recvGroups,
+                                     uint32_t groupId,
+                                     const Ep2PortMap& epMap,
+                                     bool prom, GroupEdit& ge) {
+    GroupMap::iterator itr;
+    itr = recvGroups.find(groupId);
+    uint16_t comm = OFPGC11_ADD;
+    GroupEdit::Entry recv;
+    if (itr != recvGroups.end()) {
+        comm = OFPGC11_MODIFY;
+        recv = itr->second;
+    }
+    GroupEdit::Entry e0 = createGroupMod(comm, groupId, epMap, prom);
+    if (!GroupEdit::GroupEq(e0, recv)) {
+        ge.edits.push_back(e0);
+    }
+    if (itr != recvGroups.end()) {
+        recvGroups.erase(itr);
+    }
+}
+
+GroupEdit IntFlowManager::reconcileGroups(GroupMap& recvGroups) {
+    GroupEdit ge;
+    BOOST_FOREACH (FloodGroupMap::value_type& kv, floodGroupMap) {
+        const URI& fgrpURI = kv.first;
+        Ep2PortMap& epMap = kv.second;
+
+        uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
+        checkGroupEntry(recvGroups, fgrpId, epMap, false, ge);
+
+        uint32_t promFdId = getPromId(fgrpId);
+        checkGroupEntry(recvGroups, promFdId, epMap, true, ge);
+    }
+    Ep2PortMap tmp;
+    BOOST_FOREACH (const GroupMap::value_type& kv, recvGroups) {
+        GroupEdit::Entry e0 = createGroupMod(OFPGC11_DELETE, kv.first, tmp);
+        ge.edits.push_back(e0);
+    }
+    return ge;
+}
+
+void IntFlowManager::completeSync() {
+    writeMulticastGroups();
+    advertManager.start();
+}
+
+} // namespace ovsagent

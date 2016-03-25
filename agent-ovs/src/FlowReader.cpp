@@ -146,7 +146,7 @@ void FlowReader::decodeReply(ofpbuf *msg, FlowEntryList& recvFlows,
         ofpbuf_init(&actsBuf, 32);
         int ret = ofputil_decode_flow_stats_reply(entry->entry, msg, false,
                 &actsBuf);
-        entry->entry->ofpacts = ActionBuilder::GetActionsFromBuffer(&actsBuf,
+        entry->entry->ofpacts = ActionBuilder::getActionsFromBuffer(&actsBuf,
                 entry->entry->ofpacts_len);
         ofpbuf_uninit(&actsBuf);
 

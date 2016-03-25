@@ -151,8 +151,8 @@ void addBucket(uint32_t bucketId, GroupEdit::Entry& entry) {
     bkt->watch_group = OFPG11_ANY;
 
     ActionBuilder ab;
-    ab.SetOutputToPort(bucketId);
-    ab.Build(bkt);
+    ab.output(bucketId);
+    ab.build(bkt);
     list_push_back(&entry->mod->buckets, &bkt->list_node);
 }
 
@@ -221,20 +221,20 @@ void FlowModFixture::createTestFlows() {
     match_set_dl_type(&e0.entry->match, htons(ETH_TYPE_IP));
     match_set_nw_dst(&e0.entry->match, 0x01020304);
     ActionBuilder ab0;
-    ab0.SetRegLoad(MFF_REG0, 100);
+    ab0.reg(MFF_REG0, 100);
     uint8_t mac[6] = {0xab, 0xcd, 0xef, 0xef, 0xcd, 0xab};
-    ab0.SetEthSrcDst(mac, NULL);
-    ab0.SetOutputReg(MFF_REG7);
-    ab0.SetController();
-    ab0.Build(e0.entry);
+    ab0.ethSrc(mac);
+    ab0.outputReg(MFF_REG7);
+    ab0.controller();
+    ab0.build(e0.entry);
 
     testFlows.push_back(FlowEntryPtr(new FlowEntry()));
     FlowEntry& e1 = *(testFlows.back());
     memcpy(e1.entry, e0.entry, sizeof(*e0.entry));
     ActionBuilder ab1;
-    ab1.SetRegMove(MFF_REG0, MFF_TUN_ID);
-    ab1.SetGotoTable(10);
-    ab1.Build(e1.entry);
+    ab1.regMove(MFF_REG0, MFF_TUN_ID);
+    ab1.go(10);
+    ab1.build(e1.entry);
 }
 
 void FlowModFixture::compareFlows(const FlowEntry& lhs,
