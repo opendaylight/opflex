@@ -169,11 +169,13 @@ FlowExecutor::DoExecuteNoBlock(const T& fe,
             mutex_guard lock(reqMtx);
             requests[barrXid.get()].reqXids.insert(xid);
         }
-        LOG(DEBUG) << "Executing xid=" << ntohl(xid) << ", " << e;
+        LOG(DEBUG) << "[" << swConn->getSwitchName() << "] "
+                   << "Executing xid=" << ntohl(xid) << ", " << e;
         int error = swConn->SendMessage(msg);
         if (error) {
-            LOG(ERROR) << "Error sending flow mod message: "
-                    << ovs_strerror(error);
+            LOG(ERROR) << "[" << swConn->getSwitchName() << "] "
+                       << "Error sending flow mod message: "
+                       << ovs_strerror(error);
             return error;
         }
     }
@@ -183,11 +185,13 @@ FlowExecutor::DoExecuteNoBlock(const T& fe,
 int
 FlowExecutor::WaitOnBarrier(ofpbuf *barrReq) {
     ovs_be32 barrXid = ((ofp_header *)barrReq->data)->xid;
-    LOG(DEBUG) << "Sending barrier request xid=" << barrXid;
+    LOG(DEBUG) << "[" << swConn->getSwitchName() << "] "
+               << "Sending barrier request xid=" << barrXid;
     int err = swConn->SendMessage(barrReq);
     if (err) {
-        LOG(ERROR) << "Error sending barrier request: "
-                << ovs_strerror(err);
+        LOG(ERROR) << "[" << swConn->getSwitchName() << "] "
+                   << "Error sending barrier request: "
+                   << ovs_strerror(err);
         mutex_guard lock(reqMtx);
         requests.erase(barrXid);
         return err;
@@ -233,7 +237,8 @@ FlowExecutor::Handle(SwitchConnection *, ofptype msgType, ofpbuf *msg) {
         }
         break;
     default:
-        LOG(ERROR) << "Unexpected message of type " << msgType;
+        LOG(ERROR) << "[" << swConn->getSwitchName() << "] "
+                   << "Unexpected message of type " << msgType;
         break;
     }
 }

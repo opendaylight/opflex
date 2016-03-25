@@ -12,10 +12,11 @@
 #include <set>
 #include <utility>
 #include <string>
-#include <list>
+#include <vector>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/bind.hpp>
@@ -149,13 +150,13 @@ private:
     boost::optional<std::string> notifPerms;
 
     std::set<std::string> endpointSourcePaths;
-    std::set<EndpointSource*> endpointSources;
-    std::set<FSRDConfigSource*> rdConfigSources;
+    std::vector<EndpointSource*> endpointSources;
+    std::vector<FSRDConfigSource*> rdConfigSources;
 
     std::set<std::string> serviceSourcePaths;
-    std::set<ServiceSource*> serviceSources;
+    std::vector<ServiceSource*> serviceSources;
 
-    std::list<Renderer*> renderers;
+    std::vector<Renderer*> renderers;
 
     typedef std::pair<std::string, int> host_t;
     std::set<host_t> opflexPeers;
@@ -165,7 +166,7 @@ private:
     /**
      * Thread for asynchronous tasks
      */
-    boost::thread* io_service_thread;
+    boost::scoped_ptr<boost::thread> io_service_thread;
 
     bool started;
 };

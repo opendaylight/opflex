@@ -13,6 +13,10 @@
 #ifndef OVSAGENT_ENDPOINTLISTENER_H
 #define OVSAGENT_ENDPOINTLISTENER_H
 
+#include <opflex/modb/URI.h>
+
+#include <string>
+
 namespace ovsagent {
 
 /**
@@ -37,6 +41,19 @@ public:
      * @param uuid the UUID for the endpoint
      */
     virtual void endpointUpdated(const std::string& uuid) = 0;
+
+    /**
+     * A set of URIs
+     */
+    typedef std::set<opflex::modb::URI> uri_set_t;
+
+    /**
+     * Called when a set of security groups is added or removed
+     *
+     * @param secGroups the set of security groups that has been
+     * modified
+     */
+    virtual void secGroupSetUpdated(const uri_set_t& secGroups) {}
 };
 
 } /* namespace ovsagent */

@@ -42,11 +42,17 @@ public:
                                const opflex::modb::URI&) {}
 
     /**
-     * Called when a policy contract is updated. These include changes to
-     * the rules that comprise the contract as well as changes to the list
-     * of provider/consumer endpoint groups for the contract.
+     * Called when a policy contract is updated. These include changes
+     * to the rules that compose the contract as well as changes to
+     * the list of provider/consumer endpoint groups for the contract.
      */
     virtual void contractUpdated(const opflex::modb::URI&) {}
+
+    /**
+     * Called when a security group is updated, including changes to
+     * the rules that compose the security group.
+     */
+    virtual void secGroupUpdated(const opflex::modb::URI&) {}
 
     /**
      * Called when the platform config object is updated

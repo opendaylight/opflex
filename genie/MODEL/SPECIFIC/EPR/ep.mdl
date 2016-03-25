@@ -64,6 +64,26 @@ module[epr]
         member[group; type=epr/GroupContext]
     }
 
+    class[SecurityGroupContext;
+          super=gbp/BehavioralGroup;
+          concrete]
+    {
+        contained
+        {
+            parent[class=epr/ReportedNetworkEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=secGroup]
+            }
+        }
+
+        # security group for the endpoint
+        member[secGroup; type=epr/GroupContext]
+    }
+
     # L2 end-point that is part of the L2 universe
     class[L2Ep;
           super=epr/ReportedNetworkEp;

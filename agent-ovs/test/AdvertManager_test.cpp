@@ -19,33 +19,42 @@
 
 #include "AdvertManager.h"
 #include "ModbFixture.h"
-#include "MockSwitchConnection.h"
-#include "MockPortMapper.h"
-#include "FlowManager.h"
+#include "MockSwitchManager.h"
+#include "IntFlowManager.h"
 #include "arp.h"
 #include "logging.h"
 
+using std::string;
 using boost::asio::io_service;
 using boost::bind;
 using boost::ref;
 using boost::thread;
 using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
+using boost::unordered_set;
+using namespace ovsagent;
+using opflex::modb::Mutator;
 
 #define CONTAINS(x, y) (x.find(y) != x.end())
 
 class AdvertManagerFixture : public ModbFixture {
 public:
     AdvertManagerFixture()
-        : ModbFixture(), flowManager(agent),
-          advertManager(agent, flowManager),
-          proto(ofputil_protocol_from_ofp_version(conn.GetProtocolVersion())) {
-        flowManager.SetPortMapper(&portMapper);
-        flowManager.SetEncapIface("br0_vxlan0");
-        flowManager.SetEncapType(FlowManager::ENCAP_VXLAN);
-        flowManager.SetTunnelRemoteIp("10.11.12.13");
-        conn.connected = true;
-        advertManager.registerConnection(&conn);
+        : ModbFixture(),
+          switchManager(agent, flowExecutor, flowReader, portMapper),
+          intFlowManager(agent, switchManager, idGen),
+          advertManager(agent, intFlowManager) {
+        createObjects();
+        switchManager.start("br-int");
+        conn =
+            static_cast<MockSwitchConnection*>(switchManager.getConnection());
+        proto = ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
+
+        intFlowManager.setEncapIface("br0_vxlan0");
+        intFlowManager.setEncapType(IntFlowManager::ENCAP_VXLAN);
+        intFlowManager.setTunnel("10.11.12.13", 4789);
+        conn->connected = true;
+        advertManager.registerConnection(conn);
         advertManager.setPortMapper(&portMapper);
         advertManager.setIOService(&agent.getAgentIOService());
 
@@ -70,7 +79,7 @@ public:
         BOOST_CHECK_EQUAL(5, countEps());
     }
 
-    int countSns(const URI& uri) {
+    int countSns(const opflex::modb::URI& uri) {
         PolicyManager::subnet_vector_t subnets;
         agent.getPolicyManager().getSubnetsForGroup(uri, subnets);
         return subnets.size();
@@ -83,7 +92,7 @@ public:
 
         PolicyManager::uri_set_t epgURIs;
         polMgr.getGroups(epgURIs);
-        BOOST_FOREACH(const URI& epg, epgURIs) {
+        BOOST_FOREACH(const opflex::modb::URI& epg, epgURIs) {
             unordered_set<string> eps;
             epMgr.getEndpointsForGroup(epg, eps);
             i += eps.size();
@@ -93,7 +102,7 @@ public:
 
     void start() {
         agent.getAgentIOService().reset();
-        flowManager.Start();
+        intFlowManager.start();
         advertManager.start();
 
         ioThread.reset(new thread(bind(&io_service::run,
@@ -101,7 +110,7 @@ public:
     }
 
     void stop() {
-        flowManager.Stop();
+        intFlowManager.stop();
         advertManager.stop();
 
         if (ioThread) {
@@ -110,9 +119,13 @@ public:
         }
     }
 
-    MockSwitchConnection conn;
+    IdGenerator idGen;
+    MockFlowReader flowReader;
+    MockFlowExecutor flowExecutor;
     MockPortMapper portMapper;
-    FlowManager flowManager;
+    MockSwitchManager switchManager;
+    MockSwitchConnection* conn;
+    IntFlowManager intFlowManager;
     AdvertManager advertManager;
     ofputil_protocol proto;
 
@@ -193,10 +206,10 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
 }
 
 BOOST_FIXTURE_TEST_CASE(endpointAdvert, EpAdvertFixture) {
-    WAIT_FOR(conn.sentMsgs.size() == 5, 1000);
-    BOOST_CHECK_EQUAL(5, conn.sentMsgs.size());
+    WAIT_FOR(conn->sentMsgs.size() == 5, 1000);
+    BOOST_CHECK_EQUAL(5, conn->sentMsgs.size());
     unordered_set<string> found;
-    BOOST_FOREACH(ofpbuf* msg, conn.sentMsgs) {
+    BOOST_FOREACH(ofpbuf* msg, conn->sentMsgs) {
         verify_epadv(msg, found);
     }
     BOOST_CHECK(!CONTAINS(found, "10.20.45.31")); // unknown flood
@@ -210,11 +223,11 @@ BOOST_FIXTURE_TEST_CASE(endpointAdvert, EpAdvertFixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
-    WAIT_FOR(conn.sentMsgs.size() == 1, 1000);
-    BOOST_CHECK_EQUAL(1, conn.sentMsgs.size());
+    WAIT_FOR(conn->sentMsgs.size() == 1, 1000);
+    BOOST_CHECK_EQUAL(1, conn->sentMsgs.size());
 
     unordered_set<string> found;
-    BOOST_FOREACH(ofpbuf* msg, conn.sentMsgs) {
+    BOOST_FOREACH(ofpbuf* msg, conn->sentMsgs) {
         struct ofputil_packet_out po;
         uint64_t ofpacts_stub[1024 / 8];
         struct ofpbuf ofpact;

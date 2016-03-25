@@ -24,7 +24,7 @@
 
 namespace ovsagent {
 
-class FlowManager;
+class IntFlowManager;
 
 /**
  * Handler for packet-in messages arriving from the switch
@@ -36,7 +36,7 @@ public:
     /**
      * Construct a PacketInHandler
      */
-    PacketInHandler(Agent& agent, FlowManager& flowManager);
+    PacketInHandler(Agent& agent, IntFlowManager& intFlowManager);
 
     /**
      * Set the port mapper to use
@@ -55,11 +55,6 @@ public:
      * @param c the switch connection
      */
     void registerConnection(SwitchConnection* c) { switchConnection = c; }
-
-    /**
-     * Unset the switch connection
-     */
-    void unregisterConnection() { switchConnection = NULL; }
 
     /**
      * Reconcile the provided reactive flow against the current system
@@ -117,7 +112,7 @@ private:
     void anyFlowCb(const FlowEntryList& flows);
 
     Agent& agent;
-    FlowManager& flowManager;
+    IntFlowManager& intFlowManager;
     PortMapper* portMapper;
     FlowReader* flowReader;
     SwitchConnection* switchConnection;

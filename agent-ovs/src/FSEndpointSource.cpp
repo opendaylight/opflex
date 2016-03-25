@@ -62,7 +62,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string POLICY_SPACE_NAME("policy-space-name");
     static const std::string EG_MAPPING_ALIAS("eg-mapping-alias");
     static const std::string EP_GROUP_NAME("endpoint-group-name");
+    static const std::string EP_SEC_GROUP("security-group");
+    static const std::string EP_SEC_GROUP_NAME("security-group-name");
     static const std::string EP_IFACE_NAME("interface-name");
+    static const std::string EP_ACCESS_IFACE("access-interface");
+    static const std::string EP_ACCESS_UPLINK_IFACE("access-uplink-interface");
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
     static const std::string EP_DISC_PROXY("discovery-proxy-mode");
     static const std::string EP_ATTRIBUTES("attributes");
@@ -139,13 +143,13 @@ void FSEndpointSource::updated(const fs::path& filePath) {
 
         optional<string> eg =
             properties.get_optional<string>(EP_GROUP);
+        optional<string> ps_name =
+            properties.get_optional<string>(POLICY_SPACE_NAME);
         if (eg) {
             newep.setEgURI(URI(eg.get()));
         } else {
             optional<string> eg_name =
                 properties.get_optional<string>(EP_GROUP_NAME);
-            optional<string> ps_name =
-                properties.get_optional<string>(POLICY_SPACE_NAME);
             if (eg_name && ps_name) {
                 newep.setEgURI(opflex::modb::URIBuilder()
                                .addElement("PolicyUniverse")
@@ -162,10 +166,39 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             }
         }
 
+        optional<ptree&> secGrps =
+            properties.get_child_optional(EP_SEC_GROUP);
+        if (secGrps) {
+            BOOST_FOREACH(const ptree::value_type &v, secGrps.get()) {
+                newep.addSecurityGroup(URI(v.second.data()));
+            }
+        }
+        optional<ptree&> secGrpNames =
+            properties.get_child_optional(EP_SEC_GROUP_NAME);
+        if (secGrpNames && ps_name) {
+            BOOST_FOREACH(const ptree::value_type &v, secGrpNames.get()) {
+                newep.addSecurityGroup(opflex::modb::URIBuilder()
+                                       .addElement("PolicyUniverse")
+                                       .addElement("PolicySpace")
+                                       .addElement(ps_name.get())
+                                       .addElement("GbpSecGroup")
+                                       .addElement(v.second.data())
+                                       .build());
+            }
+        }
+
         optional<string> iface =
             properties.get_optional<string>(EP_IFACE_NAME);
         if (iface)
             newep.setInterfaceName(iface.get());
+        optional<string> accessIface =
+            properties.get_optional<string>(EP_ACCESS_IFACE);
+        if (accessIface)
+            newep.setAccessInterface(accessIface.get());
+        optional<string> accessUplinkIface =
+            properties.get_optional<string>(EP_ACCESS_UPLINK_IFACE);
+        if (accessUplinkIface)
+            newep.setAccessUplinkInterface(accessUplinkIface.get());
         optional<bool> promisc =
             properties.get_optional<bool>(EP_PROMISCUOUS);
         if (promisc)
