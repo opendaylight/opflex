@@ -103,6 +103,34 @@ public:
     }
 
     /**
+     * Get the set of security group labels for this endpoint
+     *
+     * @return the list of security group labels
+     */
+    const std::set<opflex::modb::URI>& getSecurityGroups() const {
+        return securityGroups;
+    }
+
+    /**
+     * Set the security group labels for this endpoint.  This will
+     * overwrite any existing labels
+     *
+     * @param securityGroups the set of security labels
+     */
+    void setSecurityGroups(const std::set<opflex::modb::URI>& securityGroups) {
+        this->securityGroups = securityGroups;
+    }
+
+    /**
+     * Add a security group label for this endpoint
+     *
+     * @param securityGroup the URI for the security group to add
+     */
+    void addSecurityGroup(const opflex::modb::URI& securityGroup) {
+        this->securityGroups.insert(securityGroup);
+    }
+
+    /**
      * Get the list of IP addresses associated with this endpoint
      *
      * @return the list of IP addresses
@@ -954,6 +982,7 @@ private:
     boost::unordered_set<virt_ip_t> virtualIps;
     boost::optional<std::string> egMappingAlias;
     boost::optional<opflex::modb::URI> egURI;
+    std::set<opflex::modb::URI> securityGroups;
     boost::optional<std::string> interfaceName;
     bool promiscuousMode;
     bool discoveryProxyMode;
