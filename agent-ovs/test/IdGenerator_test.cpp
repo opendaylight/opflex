@@ -18,12 +18,11 @@
 using namespace std;
 using namespace boost;
 using namespace ovsagent;
-using namespace opflex::modb;
 
-static bool garbage_cb_false(const std::string&, const opflex::modb::URI&) {
+static bool garbage_cb_false(const std::string&, const std::string&) {
     return false;
 }
-static bool garbage_cb_true(const std::string&, const opflex::modb::URI&) {
+static bool garbage_cb_true(const std::string&, const std::string&) {
     return true;
 }
 
@@ -32,8 +31,8 @@ BOOST_AUTO_TEST_SUITE(IdGenerator_test)
 BOOST_AUTO_TEST_CASE(get_erase) {
     string dir(".");
     string nmspc("idtest");
-    URI u1("/uri/one");
-    URI u2("/uri/two");
+    string u1("/uri/one");
+    string u2("/uri/two");
     uint32_t u1_id, u2_id;
 
     {
@@ -85,8 +84,8 @@ BOOST_AUTO_TEST_CASE(get_erase) {
 BOOST_AUTO_TEST_CASE(garbage) {
     IdGenerator idgen(boost::chrono::milliseconds(15));
     string nmspc("idtest");
-    URI u1("/uri/one");
-    URI u2("/uri/two");
+    string u1("/uri/one");
+    string u2("/uri/two");
 
     idgen.initNamespace(nmspc);
     uint32_t id1 = idgen.getId(nmspc, u1);

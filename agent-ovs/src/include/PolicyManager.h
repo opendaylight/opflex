@@ -9,11 +9,17 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#pragma once
+#ifndef OVSAGENT_POLICYMANAGER_H
+#define OVSAGENT_POLICYMANAGER_H
+
 #include <string>
 #include <vector>
 #include <list>
 #include <set>
 #include <limits>
+#include <utility>
+
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/thread.hpp>
@@ -26,10 +32,7 @@
 #include <modelgbp/gbpe/L24Classifier.hpp>
 
 #include "PolicyListener.h"
-
-#pragma once
-#ifndef OVSAGENT_POLICYMANAGER_H
-#define OVSAGENT_POLICYMANAGER_H
+#include "FlowUtils.h"
 
 namespace ovsagent {
 
@@ -41,14 +44,17 @@ public:
     /**
      * Constructor that accepts direction and L24Classifier.
      * @param dir The direction of the classifier rule
-     * @param c Details of the classifier rule
+     * @param c Details of the classifier rule.  Must not be NULL.
      * @param allow_ true if the traffic should be allowed; false
      * otherwise
+     * @param remoteSubnets_ remote subnets to which this rule applies
      */
     PolicyRule(const uint8_t dir,
                const boost::shared_ptr<modelgbp::gbpe::L24Classifier>& c,
-               bool allow_) :
-        direction(dir), l24Classifier(c), allow(allow_) {
+               bool allow_,
+               const flowutils::subnets_t& remoteSubnets_) :
+        direction(dir), l24Classifier(c), allow(allow_),
+        remoteSubnets(remoteSubnets_) {
     }
 
     /**
@@ -68,6 +74,14 @@ public:
     }
 
     /**
+     * Get remote subnets for this rule
+     * @return the set of remote subnets
+     */
+    const flowutils::subnets_t& getRemoteSubnets() const {
+        return remoteSubnets;
+    }
+
+    /**
      * Get the L24Classifier object for the classifier rule.
      * @return the L24Classifier object.
      */
@@ -80,7 +94,25 @@ private:
     uint8_t direction;
     boost::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
     bool allow;
+    flowutils::subnets_t remoteSubnets;
+
+    friend bool operator==(const PolicyRule& lhs, const PolicyRule& rhs);
 };
+
+/**
+ * PolicyRule stream insertion
+ */
+std::ostream& operator<<(std::ostream &os, const PolicyRule& rule);
+
+/**
+ * Check for PolicyRule equality.
+ */
+bool operator==(const PolicyRule& lhs, const PolicyRule& rhs);
+
+/**
+ * Check for PolicyRule inequality.
+ */
+bool operator!=(const PolicyRule& lhs, const PolicyRule& rhs);
 
 /**
  * The policy manager maintains various state and indices related
@@ -91,8 +123,9 @@ public:
     /**
      * Instantiate a new policy manager using the specified framework
      * instance.
+     * @param framework the opflex framework
      */
-    PolicyManager(opflex::ofcore::OFFramework& framework_);
+    PolicyManager(opflex::ofcore::OFFramework& framework);
 
     /**
      * Destroy the policy manager and clean up all state
@@ -320,7 +353,8 @@ public:
                               /* out */ uri_set_t& contractURIs);
 
     /**
-     * Get an ordered list of PolicyClassifier objects that comprise a contract.
+     * Get an ordered list of PolicyRule objects that compose a
+     * contract.
      *
      * @param contractURI URI of contract to look for
      * @param rules List of classifier objects in descending order
@@ -336,6 +370,16 @@ public:
      */
     bool contractExists(const opflex::modb::URI& contractURI);
 
+    /**
+     * Get an ordered list of PolicyRule objects that compose a
+     * security group.
+     *
+     * @param secGroupURI URI of contract to look for
+     * @param rules List of classifier objects in descending order
+     */
+    void getSecGroupRules(const opflex::modb::URI& secGroupURI,
+                          /* out */ rule_list_t& rules);
+
 
     /**
      * Get the routing-mode applicable to endpoints in specified group.
@@ -345,6 +389,15 @@ public:
      */
     uint8_t getEffectiveRoutingMode(const opflex::modb::URI& egURI);
 
+    /**
+     * Resolve all subnets referenced by the URI
+     * @param framework the OFFramework
+     * @param uri the URI of a modelgbp::gbp::Subnets object
+     * @param subnets a result set for the output
+     */
+    static void resolveSubnets(opflex::ofcore::OFFramework& framework,
+                               const boost::optional<opflex::modb::URI>& uri,
+                               /* out */ flowutils::subnets_t& subnets);
 private:
     opflex::ofcore::OFFramework& framework;
     std::string opflexDomain;
@@ -459,6 +512,13 @@ private:
      */
     contract_map_t contractMap;
 
+    typedef boost::unordered_map<opflex::modb::URI, rule_list_t> secgrp_map_t;
+
+    /**
+     * Map of security group URI to its rules
+     */
+    secgrp_map_t secGrpMap;
+
     /**
      * Listener for changes related to policy objects.
      */
@@ -475,6 +535,23 @@ private:
     ContractListener contractListener;
 
     friend class ContractListener;
+
+    /**
+     * Listener for changes related to policy objects.
+     */
+    class SecGroupListener : public opflex::modb::ObjectListener {
+    public:
+        SecGroupListener(PolicyManager& pmanager);
+        virtual ~SecGroupListener();
+
+        virtual void objectUpdated(opflex::modb::class_id_t class_id,
+                                    const opflex::modb::URI& uri);
+    private:
+        PolicyManager& pmanager;
+    };
+    SecGroupListener secGroupListener;
+
+    friend class SecGroupListener;
 
     /**
      * Listener for changes related to plaform config.
@@ -564,6 +641,9 @@ private:
     bool updateContractRules(const opflex::modb::URI& contractURI,
             bool& notFound);
 
+    bool updateSecGrpRules(const opflex::modb::URI& secGrpURI,
+                           bool& notFound);
+
     /**
      * Notify policy listeners about an update to a contract.
      *
@@ -571,6 +651,14 @@ private:
      * updated
      */
     void notifyContract(const opflex::modb::URI& contractURI);
+
+    /**
+     * Notify policy listeners about an update to a security group.
+     *
+     * @param secGroupURI the URI of the security group that has been
+     * updated
+     */
+    void notifySecGroup(const opflex::modb::URI& secGroupURI);
 
     /**
      * Notify policy listeners about an update to the platform
