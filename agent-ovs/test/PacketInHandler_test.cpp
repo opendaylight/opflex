@@ -15,24 +15,31 @@
 
 #include "PacketInHandler.h"
 #include "ModbFixture.h"
-#include "MockSwitchConnection.h"
-#include "FlowManager.h"
+#include "MockSwitchManager.h"
+#include "IntFlowManager.h"
+#include "FlowConstants.h"
 #include "udp.h"
 #include "dhcp.h"
 #include "logging.h"
 
 using boost::asio::ip::address_v4;
+using boost::unordered_set;
+using namespace ovsagent;
 
 class PacketInHandlerFixture : public ModbFixture {
 public:
     PacketInHandlerFixture()
-        : ModbFixture(), flowManager(agent),
-          pktInHandler(agent, flowManager),
+        : ModbFixture(),
+          switchManager(agent, flowExecutor, flowReader, portMapper),
+          intFlowManager(agent, switchManager, idGen),
+          pktInHandler(agent, intFlowManager),
           proto(ofputil_protocol_from_ofp_version(conn.GetProtocolVersion())) {
-        flowManager.SetEncapIface("br0_vxlan0");
-        flowManager.SetTunnelRemoteIp("10.11.12.13");
-        flowManager.SetVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
-        flowManager.SetVirtualDHCP(true, "00:22:bd:f8:19:ff");
+        createObjects();
+
+        intFlowManager.setEncapIface("br0_vxlan0");
+        intFlowManager.setTunnel("10.11.12.13", 4789);
+        intFlowManager.setVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
+        intFlowManager.setVirtualDHCP(true, "00:22:bd:f8:19:ff");
     }
 
     void setDhcpv4Config() {
@@ -62,8 +69,13 @@ public:
         WAIT_FOR(agent.getPolicyManager().getGroupForVnid(0xA0A), 500);
     }
 
+    IdGenerator idGen;
     MockSwitchConnection conn;
-    FlowManager flowManager;
+    MockFlowReader flowReader;
+    MockFlowExecutor flowExecutor;
+    MockPortMapper portMapper;
+    MockSwitchManager switchManager;
+    IntFlowManager intFlowManager;
     PacketInHandler pktInHandler;
     ofputil_protocol proto;
 };
@@ -312,7 +324,7 @@ BOOST_AUTO_TEST_SUITE(PacketInHandler_test)
 static void init_packet_in(ofputil_packet_in& pin,
                            const void* packet_buf, size_t len,
                            uint64_t cookie = 0,
-                           uint8_t table_id = FlowManager::ROUTE_TABLE_ID,
+                           uint8_t table_id = IntFlowManager::ROUTE_TABLE_ID,
                            uint32_t in_port = 42,
                            uint32_t dstReg = 0) {
     memset(&pin, 0, sizeof(pin));
@@ -343,7 +355,7 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
 
     // stage 1
     init_packet_in(pin1, &packet_buf, sizeof(packet_buf),
-                   FlowManager::GetProactiveLearnEntryCookie());
+                   flow::cookie::PROACTIVE_LEARN);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin1,
                                           OFPUTIL_P_OF10_NXM,
@@ -371,7 +383,7 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
 
     BOOST_CHECK(0 == memcmp(fm1.match.flow.dl_dst, mac2, sizeof(mac2)));
     BOOST_CHECK_EQUAL(10, fm1.match.flow.regs[5]);
-    BOOST_CHECK_EQUAL(FlowManager::GetLearnEntryCookie(), fm1.new_cookie);
+    BOOST_CHECK_EQUAL(flow::cookie::LEARN, fm1.new_cookie);
     struct ofpact* a;
     int i;
     i = 0;
@@ -409,7 +421,7 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
 
     // stage2
     init_packet_in(pin1, &packet_buf, sizeof(packet_buf),
-                   FlowManager::GetLearnEntryCookie(), 3, 24, 42);
+                   flow::cookie::LEARN, 3, 24, 42);
 
     b = ofputil_encode_packet_in(&pin1,
                                  OFPUTIL_P_OF10_NXM,
@@ -667,7 +679,7 @@ static void verify_icmpv4(ofpbuf* msg) {
 BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv4_discover, sizeof(pkt_dhcpv4_discover),
-                   FlowManager::GetDHCPCookie(true));
+                   flow::cookie::DHCP_V4);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -683,7 +695,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_discover, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv4_discover, sizeof(pkt_dhcpv4_discover),
-                   FlowManager::GetDHCPCookie(true));
+                   flow::cookie::DHCP_V4);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -701,7 +713,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv4_request, sizeof(pkt_dhcpv4_request),
-                   FlowManager::GetDHCPCookie(true));
+                   flow::cookie::DHCP_V4);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -725,7 +737,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, buf, sizeof(pkt_dhcpv4_request),
-                   FlowManager::GetDHCPCookie(true));
+                   flow::cookie::DHCP_V4);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -742,7 +754,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
 BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit, sizeof(pkt_dhcpv6_solicit),
-                   FlowManager::GetDHCPCookie(false));
+                   flow::cookie::DHCP_V6);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -758,7 +770,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit, sizeof(pkt_dhcpv6_solicit),
-                   FlowManager::GetDHCPCookie(false));
+                   flow::cookie::DHCP_V6);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -777,7 +789,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit_rapid,
                    sizeof(pkt_dhcpv6_solicit_rapid),
-                   FlowManager::GetDHCPCookie(false));
+                   flow::cookie::DHCP_V6);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -796,7 +808,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv6_request, sizeof(pkt_dhcpv6_request),
-                   FlowManager::GetDHCPCookie(false));
+                   flow::cookie::DHCP_V6);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -814,7 +826,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv6_request_tmp, sizeof(pkt_dhcpv6_request_tmp),
-                   FlowManager::GetDHCPCookie(false));
+                   flow::cookie::DHCP_V6);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -833,7 +845,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_confirm, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv6_confirm, sizeof(pkt_dhcpv6_confirm),
-                   FlowManager::GetDHCPCookie(false));
+                   flow::cookie::DHCP_V6);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -851,7 +863,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv6_renew, sizeof(pkt_dhcpv6_renew),
-                   FlowManager::GetDHCPCookie(false));
+                   flow::cookie::DHCP_V6);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -869,7 +881,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
 
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_dhcpv6_info_req, sizeof(pkt_dhcpv6_info_req),
-                   FlowManager::GetDHCPCookie(false));
+                   flow::cookie::DHCP_V6);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -886,8 +898,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
 BOOST_FIXTURE_TEST_CASE(icmpv4_error, PacketInHandlerFixture) {
     ofputil_packet_in pin;
     init_packet_in(pin, &pkt_icmp4_ttl_exc, sizeof(pkt_icmp4_ttl_exc),
-                   FlowManager::GetICMPErrorCookie(true),
-                   FlowManager::OUT_TABLE_ID, 42, 42);
+                   flow::cookie::ICMP_ERROR_V4,
+                   IntFlowManager::OUT_TABLE_ID, 42, 42);
 
     ofpbuf* b = ofputil_encode_packet_in(&pin,
                                           OFPUTIL_P_OF10_NXM,
@@ -899,6 +911,5 @@ BOOST_FIXTURE_TEST_CASE(icmpv4_error, PacketInHandlerFixture) {
 
     verify_icmpv4(conn.sentMsgs[0]);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

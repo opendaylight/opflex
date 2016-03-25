@@ -16,7 +16,7 @@
 #include "ovs.h"
 #include "SwitchConnection.h"
 #include "FlowExecutor.h"
-#include "ActionBuilder.h"
+#include "FlowBuilder.h"
 
 using namespace std;
 using namespace boost;
@@ -117,7 +117,7 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
         int err = ofputil_decode_flow_mod(&fm, msgHdr,
                 ofputil_protocol_from_ofp_version(GetProtocolVersion()),
                 &ofpacts, OFPP_MAX, 255);
-        fm.ofpacts = ActionBuilder::GetActionsFromBuffer(&ofpacts,
+        fm.ofpacts = ActionBuilder::getActionsFromBuffer(&ofpacts,
                 fm.ofpacts_len);
         ofpbuf_uninit(&ofpacts);
         BOOST_CHECK_EQUAL(err, 0);
@@ -167,26 +167,23 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
 }
 
 void FlowExecutorFixture::createTestFlows() {
-    flows.push_back(FlowEntryPtr(new FlowEntry()));
-    FlowEntry& e0 = *(flows.back());
-    e0.entry->table_id = 0;
-    e0.entry->priority = 100;
-    e0.entry->cookie = 0xabcd;
-    match_set_reg(&e0.entry->match, 3, 42);
-    match_set_dl_type(&e0.entry->match, htons(ETH_TYPE_IP));
-    match_set_nw_dst(&e0.entry->match, 0x01020304);
-    ActionBuilder ab0;
-    ab0.SetRegLoad(MFF_REG0, 100);
-    ab0.SetOutputToPort(OFPP_IN_PORT);
-    ab0.Build(e0.entry);
+    FlowBuilder e0;
+    e0.priority(100)
+        .cookie(0xabcd)
+        .reg(3, 42)
+        .ipDst(boost::asio::ip::address::from_string("1.2.3.4"))
+        .action()
+        .reg(MFF_REG0, 100)
+        .output(OFPP_IN_PORT);
+    flows.push_back(e0.build());
 
-    flows.push_back(FlowEntryPtr(new FlowEntry()));
-    FlowEntry& e1 = *(flows.back());
-    e1.entry->table_id = 5;
-    e1.entry->priority = 50;
-    match_set_in_port(&e1.entry->match, 2168);
-    ActionBuilder ab1;
-    ab1.SetGotoTable(10);
-    ab1.Build(e1.entry);
+    FlowBuilder e1;
+    e1.priority(50)
+        .inPort(2168)
+        .action().go(10);
+    flows.push_back(e1.build());
+
+    flows[0]->entry->table_id = 0;
+    flows[1]->entry->table_id = 5;
 }
 

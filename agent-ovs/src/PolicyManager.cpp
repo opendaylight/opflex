@@ -41,7 +41,7 @@ using boost::asio::ip::address;
 PolicyManager::PolicyManager(OFFramework& framework_)
     : framework(framework_), opflexDomain("default"),
       domainListener(*this), contractListener(*this),
-      configListener(*this) {
+      secGroupListener(*this), configListener(*this) {
 
 }
 
@@ -74,6 +74,11 @@ void PolicyManager::start() {
     Subject::registerListener(framework, &contractListener);
     Rule::registerListener(framework, &contractListener);
     L24Classifier::registerListener(framework, &contractListener);
+
+    SecGroup::registerListener(framework, &secGroupListener);
+    SecGroupSubject::registerListener(framework, &secGroupListener);
+    SecGroupRule::registerListener(framework, &secGroupListener);
+    L24Classifier::registerListener(framework, &secGroupListener);
 
     // resolve platform config
     Mutator mutator(framework, "init");
@@ -108,6 +113,11 @@ void PolicyManager::stop() {
     Rule::unregisterListener(framework, &contractListener);
     L24Classifier::unregisterListener(framework, &contractListener);
 
+    SecGroup::unregisterListener(framework, &secGroupListener);
+    SecGroupSubject::unregisterListener(framework, &secGroupListener);
+    SecGroupRule::unregisterListener(framework, &secGroupListener);
+    L24Classifier::unregisterListener(framework, &secGroupListener);
+
     lock_guard<mutex> guard(state_mutex);
     group_map.clear();
     vnid_map.clear();
@@ -141,6 +151,13 @@ void PolicyManager::notifyContract(const URI& contractURI) {
     lock_guard<mutex> guard(listener_mutex);
     BOOST_FOREACH(PolicyListener *listener, policyListeners) {
         listener->contractUpdated(contractURI);
+    }
+}
+
+void PolicyManager::notifySecGroup(const URI& secGroupURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    BOOST_FOREACH(PolicyListener *listener, policyListeners) {
+        listener->secGroupUpdated(secGroupURI);
     }
 }
 
@@ -594,28 +611,56 @@ ruleEq(const shared_ptr<PolicyRule>& lhsObj,
         lhs->getSToPort() == rhs->getSToPort();
 }
 
-bool PolicyManager::updateContractRules(const URI& contractURI,
-        bool& notFound) {
-    using namespace modelgbp::gbp;
-    using namespace modelgbp::gbpe;
+template <typename Parent, typename Child>
+void resolveChildren(shared_ptr<Parent>& parent,
+                     /* out */ vector<shared_ptr<Child> > &children) { }
+template <>
+void resolveChildren(shared_ptr<modelgbp::gbp::Subject>& subject,
+                     vector<shared_ptr<modelgbp::gbp::Rule> > &rules) {
+    subject->resolveGbpRule(rules);
+}
+template <>
+void resolveChildren(shared_ptr<modelgbp::gbp::SecGroupSubject>& subject,
+                     vector<shared_ptr<modelgbp::gbp::SecGroupRule> > &rules) {
+    subject->resolveGbpSecGroupRule(rules);
+}
+template <>
+void resolveChildren(shared_ptr<modelgbp::gbp::Contract>& contract,
+                     vector<shared_ptr<modelgbp::gbp::Subject> > &subjects) {
+    contract->resolveGbpSubject(subjects);
+}
+template <>
+void resolveChildren(shared_ptr<modelgbp::gbp::SecGroup>& secgroup,
+                     vector<shared_ptr<modelgbp::gbp::SecGroupSubject> > &subjects) {
+    secgroup->resolveGbpSecGroupSubject(subjects);
+}
 
-    optional<shared_ptr<Contract> > contract =
-            Contract::resolve(framework, contractURI);
-    if (!contract) {
+template <typename Parent, typename Subject, typename Rule>
+static bool updatePolicyRules(OFFramework& framework,
+                              const URI& parentURI, bool& notFound,
+                              PolicyManager::rule_list_t& oldRules) {
+    using modelgbp::gbpe::L24Classifier;
+    using modelgbp::gbp::RuleToClassifierRSrc;
+    using modelgbp::gbp::RuleToActionRSrc;
+    using modelgbp::gbp::AllowDenyAction;
+
+    optional<shared_ptr<Parent> > parent =
+            Parent::resolve(framework, parentURI);
+    if (!parent) {
         notFound = true;
         return false;
     }
     notFound = false;
 
-    /* get all classifiers for this contract as an ordered-list */
-    rule_list_t newRules;
+    /* get all classifiers for this parent as an ordered-list */
+    PolicyManager::rule_list_t newRules;
     OrderComparator<shared_ptr<Rule> > ruleComp;
     OrderComparator<shared_ptr<L24Classifier> > classifierComp;
     vector<shared_ptr<Subject> > subjects;
-    contract.get()->resolveGbpSubject(subjects);
+    resolveChildren(parent.get(), subjects);
     BOOST_FOREACH(shared_ptr<Subject>& sub, subjects) {
         vector<shared_ptr<Rule> > rules;
-        sub->resolveGbpRule(rules);
+        resolveChildren(sub, rules);
         stable_sort(rules.begin(), rules.end(), ruleComp);
 
         BOOST_FOREACH(shared_ptr<Rule>& rule, rules) {
@@ -664,24 +709,36 @@ bool PolicyManager::updateContractRules(const URI& contractURI,
             }
         }
     }
-    ContractState& cs = contractMap[contractURI];
-
-    rule_list_t::const_iterator li = cs.rules.begin();
-    rule_list_t::const_iterator ri = newRules.begin();
-    while (li != cs.rules.end() && ri != newRules.end() &&
+    PolicyManager::rule_list_t::const_iterator li = oldRules.begin();
+    PolicyManager::rule_list_t::const_iterator ri = newRules.begin();
+    while (li != oldRules.end() && ri != newRules.end() &&
            ruleEq(*li, *ri)) {
         ++li;
         ++ri;
     }
-    bool updated = (li != cs.rules.end() || ri != newRules.end());
+    bool updated = (li != oldRules.end() || ri != newRules.end());
     if (updated) {
-        cs.rules.swap(newRules);
-        BOOST_FOREACH(shared_ptr<PolicyRule>& c, cs.rules) {
-            LOG(DEBUG) << contractURI << " rule: "
+        oldRules.swap(newRules);
+        BOOST_FOREACH(shared_ptr<PolicyRule>& c, oldRules) {
+            LOG(DEBUG) << parentURI << " rule: "
                 << c->getL24Classifier()->getURI();
         }
     }
     return updated;
+}
+
+bool PolicyManager::updateSecGrpRules(const URI& secGrpURI, bool& notFound) {
+    using namespace modelgbp::gbp;
+    return updatePolicyRules<SecGroup, SecGroupSubject,
+                             SecGroupRule>(framework, secGrpURI,
+                                           notFound, secGrpMap[secGrpURI]);
+}
+
+bool PolicyManager::updateContractRules(const URI& contrURI, bool& notFound) {
+    using namespace modelgbp::gbp;
+    ContractState& cs = contractMap[contrURI];
+    return updatePolicyRules<Contract, Subject, Rule>(framework, contrURI,
+                                                      notFound, cs.rules);
 }
 
 void PolicyManager::getContractProviders(const URI& contractURI,
@@ -734,6 +791,15 @@ void PolicyManager::getContractRules(const URI& contractURI,
     if (it != contractMap.end()) {
         rules.insert(rules.end(), it->second.rules.begin(),
                 it->second.rules.end());
+    }
+}
+
+void PolicyManager::getSecGroupRules(const URI& secGroupURI,
+                                     /* out */ rule_list_t& rules) {
+    lock_guard<mutex> guard(state_mutex);
+    secgrp_map_t::const_iterator it = secGrpMap.find(secGroupURI);
+    if (it != secGrpMap.end()) {
+        rules.insert(rules.end(), it->second.begin(), it->second.end());
     }
 }
 
@@ -950,6 +1016,40 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
 
     BOOST_FOREACH(const URI& u, contractsToNotify) {
         pmanager.notifyContract(u);
+    }
+}
+
+PolicyManager::SecGroupListener::SecGroupListener(PolicyManager& pmanager_)
+    : pmanager(pmanager_) {}
+
+PolicyManager::SecGroupListener::~SecGroupListener() {}
+
+void PolicyManager::SecGroupListener::objectUpdated(class_id_t classId,
+                                                    const URI& uri) {
+    LOG(DEBUG) << "SecGroupListener update for URI " << uri;
+    unique_lock<mutex> guard(pmanager.state_mutex);
+    uri_set_t toNotify;
+    if (classId == modelgbp::gbp::SecGroup::CLASS_ID) {
+        pmanager.secGrpMap[uri];
+    }
+    PolicyManager::secgrp_map_t::iterator it = pmanager.secGrpMap.begin();
+    while (it != pmanager.secGrpMap.end()) {
+        bool notfound = false;
+        if (pmanager.updateSecGrpRules(it->first, notfound)) {
+            toNotify.insert(it->first);
+        }
+        if (notfound) {
+            toNotify.insert(it->first);
+            it = pmanager.secGrpMap.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    guard.unlock();
+
+    BOOST_FOREACH(const URI& u, toNotify) {
+        pmanager.notifySecGroup(u);
     }
 }
 
