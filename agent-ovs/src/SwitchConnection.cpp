@@ -444,7 +444,11 @@ SwitchConnection::FireOnConnectListeners() {
         pif->format = htonl(NXPIF_NXM);
         SendMessage(b2);
     }
+    notifyConnectListeners();
+}
 
+void
+SwitchConnection::notifyConnectListeners() {
     BOOST_FOREACH(OnConnectListener *l, onConnectListeners) {
         l->Connected(this);
     }

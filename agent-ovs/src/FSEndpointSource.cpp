@@ -63,6 +63,8 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EG_MAPPING_ALIAS("eg-mapping-alias");
     static const std::string EP_GROUP_NAME("endpoint-group-name");
     static const std::string EP_IFACE_NAME("interface-name");
+    static const std::string EP_ACCESS_IFACE("access-interface");
+    static const std::string EP_ACCESS_UPLINK_IFACE("access-uplink-interface");
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
     static const std::string EP_DISC_PROXY("discovery-proxy-mode");
     static const std::string EP_ATTRIBUTES("attributes");
@@ -166,6 +168,14 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             properties.get_optional<string>(EP_IFACE_NAME);
         if (iface)
             newep.setInterfaceName(iface.get());
+        optional<string> accessIface =
+            properties.get_optional<string>(EP_ACCESS_IFACE);
+        if (accessIface)
+            newep.setAccessInterface(accessIface.get());
+        optional<string> accessUplinkIface =
+            properties.get_optional<string>(EP_ACCESS_UPLINK_IFACE);
+        if (accessUplinkIface)
+            newep.setAccessUplinkInterface(accessUplinkIface.get());
         optional<bool> promisc =
             properties.get_optional<bool>(EP_PROMISCUOUS);
         if (promisc)

@@ -103,6 +103,34 @@ public:
     }
 
     /**
+     * Get the set of security group labels for this endpoint
+     *
+     * @return the list of security group labels
+     */
+    const std::set<opflex::modb::URI>& getSecurityGroups() const {
+        return securityGroups;
+    }
+
+    /**
+     * Set the security group labels for this endpoint.  This will
+     * overwrite any existing labels
+     *
+     * @param securityGroups the set of security labels
+     */
+    void setSecurityGroups(const std::set<opflex::modb::URI>& securityGroups) {
+        this->securityGroups = securityGroups;
+    }
+
+    /**
+     * Add a security group label for this endpoint
+     *
+     * @param securityGroup the URI for the security group to add
+     */
+    void addSecurityGroup(const opflex::modb::URI& securityGroup) {
+        this->securityGroups.insert(securityGroup);
+    }
+
+    /**
      * Get the list of IP addresses associated with this endpoint
      *
      * @return the list of IP addresses
@@ -239,8 +267,8 @@ public:
 
     /**
      * The name of the local interface to which this endpoint is
-     * attached.  If the endpoint is remote or unattached, this will
-     * be boost::none.
+     * attached on the integration bridge.  If the endpoint is remote
+     * or unattached, this will be boost::none.
      *
      * @return the interface name or boost::none if no interface name
      * is set.
@@ -250,7 +278,8 @@ public:
     }
 
     /**
-     * Set the local interface name to the string specified.
+     * Set the integration bridge interface name to the string
+     * specified.
      *
      * @param interfaceName the interface name to which the endpoint
      * is attached locally
@@ -260,10 +289,66 @@ public:
     }
 
     /**
-     * Unset the local interface name
+     * Unset the integration bridge interface name
      */
     void unsetInterfaceName() {
         interfaceName = boost::none;
+    }
+
+    /**
+     * The name of the local interface to which this endpoint is
+     * attached on the access bridge.
+     *
+     * @return the interface name or boost::none if no interface name
+     * is set.
+     */
+    const boost::optional<std::string>& getAccessInterface() const {
+        return accessInterface;
+    }
+
+    /**
+     * Set the access interface name to the string specified.
+     *
+     * @param accessInterface the interface name to which the endpoint
+     * is attached locally
+     */
+    void setAccessInterface(const std::string& accessInterface) {
+        this->accessInterface = accessInterface;
+    }
+
+    /**
+     * Unset the access interface name
+     */
+    void unsetAccessInterface() {
+        accessInterface = boost::none;
+    }
+
+    /**
+     * The name of the interface on the access bridge that should be
+     * used for uplinking to the integration bridge.
+     *
+     * @return the interface name or boost::none if no interface name
+     * is set.
+     */
+    const boost::optional<std::string>& getAccessUplinkInterface() const {
+        return accessUplinkInterface;
+    }
+
+    /**
+     * Set the access uplink interface name to the string specified.
+     *
+     * @param accessUplinkInterface the interface name to which the endpoint
+     * is attached locally
+     */
+    void setAccessUplinkInterface(const std::string& accessUplinkInterface) {
+        this->accessUplinkInterface = accessUplinkInterface;
+    }
+
+    /**
+     * Unset the access uplink interface name
+     */
+    void unsetAccessUplinkInterface() {
+        accessUplinkInterface = boost::none;
     }
 
     /**
@@ -954,7 +1039,10 @@ private:
     boost::unordered_set<virt_ip_t> virtualIps;
     boost::optional<std::string> egMappingAlias;
     boost::optional<opflex::modb::URI> egURI;
+    std::set<opflex::modb::URI> securityGroups;
     boost::optional<std::string> interfaceName;
+    boost::optional<std::string> accessInterface;
+    boost::optional<std::string> accessUplinkInterface;
     bool promiscuousMode;
     bool discoveryProxyMode;
     attr_map_t attributes;

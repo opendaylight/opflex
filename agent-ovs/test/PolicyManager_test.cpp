@@ -40,7 +40,7 @@ using namespace boost::assign;
 class PolicyFixture : public BaseFixture {
 public:
     PolicyFixture() {
-        shared_ptr<policy::Universe> universe = 
+        shared_ptr<policy::Universe> universe =
             policy::Universe::resolve(framework).get();
 
         Mutator mutator(framework, "policyreg");
@@ -49,12 +49,12 @@ public:
         fd = space->addGbpFloodDomain("fd");
         bd = space->addGbpBridgeDomain("bd");
         rd = space->addGbpRoutingDomain("rd");
-    
+
         fd->addGbpFloodDomainToNetworkRSrc()
             ->setTargetBridgeDomain(bd->getURI());
         bd->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
-    
+
         subnetseg2 = space->addGbpSubnets("subnetseg2");
         subnetseg2_1 = subnetseg2->addGbpSubnet("subnetseg2_1");
 
@@ -64,13 +64,13 @@ public:
         fd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
             ->setTargetSubnets(subnetsfd->getURI());
         rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd->getURI().toString());
-    
+
         subnetsbd = space->addGbpSubnets("subnetsbd");
         subnetsbd1 = subnetsbd->addGbpSubnet("subnetsbd1");
         bd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
             ->setTargetSubnets(subnetsbd->getURI());
         rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsbd->getURI().toString());
-    
+
         subnetsrd = space->addGbpSubnets("subnetsrd");
         subnetsrd1 = subnetsrd->addGbpSubnet("subnetsrd1");
         rd->addGbpForwardingBehavioralGroupToSubnetsRSrc()
@@ -271,24 +271,24 @@ static bool hasUriRef(PolicyManager& policyManager,
 }
 
 BOOST_FIXTURE_TEST_CASE( subnet, PolicyFixture ) {
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(),
                        subnetsfd1->getURI()), 500);
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(),
                        subnetsfd2->getURI()), 500);
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(),
                        subnetsbd1->getURI()), 500);
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg1->getURI(),
                        subnetsrd1->getURI()), 500);
-    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg2->getURI(), 
+    WAIT_FOR(hasUriRef(agent.getPolicyManager(), eg2->getURI(),
                        subnetseg2_1->getURI()), 500);
-    BOOST_CHECK(!hasUriRef(agent.getPolicyManager(), eg1->getURI(), 
+    BOOST_CHECK(!hasUriRef(agent.getPolicyManager(), eg1->getURI(),
                            subnetseg2_1->getURI()));
 }
 
-static bool checkFd(PolicyManager& policyManager, 
+static bool checkFd(PolicyManager& policyManager,
                     const URI& egURI,
                     const URI& domainURI) {
-    optional<shared_ptr<FloodDomain> > rfd = 
+    optional<shared_ptr<FloodDomain> > rfd =
         policyManager.getFDForGroup(egURI);
     if (!rfd) return false;
     URI u = rfd.get()->getURI();
@@ -408,11 +408,11 @@ static bool checkRules(const PolicyManager::rule_list_t& lhs,
         if (!((*li)->getL24Classifier()->getURI() == (*ri)->getURI() &&
               (*li)->getAllow() == *ai &&
               (*li)->getDirection() == dir)) {
-            LOG(INFO) << "\nExpected:\n" 
+            LOG(INFO) << "\nExpected:\n"
                        << (*ri)->getURI()
                        << ", " << *ai
                        << ", " << dir
-                       << "\nGot     :\n" 
+                       << "\nGot     :\n"
                        << (*li)->getL24Classifier()->getURI()
                        << ", " << (*li)->getAllow()
                        << ", " << (*li)->getDirection();
@@ -424,7 +424,7 @@ static bool checkRules(const PolicyManager::rule_list_t& lhs,
         ++ai;
     }
 
-    return matches && li == lhs.end() && 
+    return matches && li == lhs.end() &&
         ri == rhs.end() && ai == rhs_allow.end();
 }
 

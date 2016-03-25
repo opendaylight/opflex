@@ -25,14 +25,7 @@
 #include "ServiceSource.h"
 #include "EndpointManager.h"
 
-using namespace std;
-using namespace boost;
-using namespace ovsagent;
-using namespace modelgbp;
-using namespace modelgbp::gbp;
-using namespace modelgbp::gbpe;
-using namespace modelgbp::platform;
-using namespace opflex::modb;
+namespace ovsagent {
 
 class DummyEpSrc : public EndpointSource {
 public:
@@ -53,7 +46,10 @@ public:
                     epSrc(&agent.getEndpointManager()),
                     servSrc(&agent.getServiceManager()),
                     policyOwner("policyreg") {
-        createObjects();
+        universe = modelgbp::policy::Universe::resolve(framework).get();
+        opflex::modb::Mutator mutator(framework, policyOwner);
+        space = universe->addPolicySpace("tenant0");
+        mutator.commit();
     }
 
     virtual ~ModbFixture() {
@@ -61,46 +57,49 @@ public:
 
     DummyEpSrc epSrc;
     DummyServiceSrc servSrc;
-    shared_ptr<policy::Universe> universe;
-    shared_ptr<policy::Space> space;
-    shared_ptr<Config> config;
-    shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
-    shared_ptr<EpGroup> epg0, epg1, epg2, epg3, epg4;
-    shared_ptr<FloodDomain> fd0, fd1;
-    shared_ptr<FloodContext> fd0ctx;
-    shared_ptr<RoutingDomain> rd0;
-    shared_ptr<BridgeDomain> bd0, bd1;
-    shared_ptr<Subnets> subnetsfd0, subnetsfd1, subnetsbd0, subnetsbd1;
-    shared_ptr<Subnet> subnetsfd0_1, subnetsfd0_2, subnetsfd1_1,
-        subnetsbd0_1, subnetsbd1_1, subnet;
+    boost::shared_ptr<modelgbp::policy::Universe> universe;
+    boost::shared_ptr<modelgbp::policy::Space> space;
+    boost::shared_ptr<modelgbp::platform::Config> config;
+    boost::shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
+    boost::shared_ptr<modelgbp::gbp::EpGroup> epg0, epg1, epg2, epg3, epg4;
+    boost::shared_ptr<modelgbp::gbp::FloodDomain> fd0, fd1;
+    boost::shared_ptr<modelgbp::gbpe::FloodContext> fd0ctx;
+    boost::shared_ptr<modelgbp::gbp::RoutingDomain> rd0;
+    boost::shared_ptr<modelgbp::gbp::BridgeDomain> bd0, bd1;
+    boost::shared_ptr<modelgbp::gbp::Subnets> subnetsfd0, subnetsfd1,
+        subnetsbd0, subnetsbd1;
+    boost::shared_ptr<modelgbp::gbp::Subnet> subnetsfd0_1, subnetsfd0_2,
+        subnetsfd1_1, subnetsbd0_1, subnetsbd1_1, subnet;
 
-    shared_ptr<L24Classifier> classifier0;
-    shared_ptr<L24Classifier> classifier1;
-    shared_ptr<L24Classifier> classifier2;
-    shared_ptr<L24Classifier> classifier3;
-    shared_ptr<L24Classifier> classifier4;
-    shared_ptr<L24Classifier> classifier5;
-    shared_ptr<L24Classifier> classifier6;
-    shared_ptr<L24Classifier> classifier7;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier0;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier1;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier2;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier3;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier4;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier5;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier6;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier7;
 
-    shared_ptr<AllowDenyAction> action1;
+    boost::shared_ptr<modelgbp::gbp::AllowDenyAction> action1;
 
-    shared_ptr<Contract> con1;
-    shared_ptr<Contract> con2;
-    shared_ptr<Contract> con3;
-    string policyOwner;
+    boost::shared_ptr<modelgbp::gbp::Contract> con1;
+    boost::shared_ptr<modelgbp::gbp::Contract> con2;
+    boost::shared_ptr<modelgbp::gbp::Contract> con3;
+    std::string policyOwner;
 
 protected:
 
     void createObjects() {
-        /* create EPGs and forwarding objects */
-        universe = policy::Universe::resolve(framework).get();
+        using opflex::modb::Mutator;
+        using namespace modelgbp;
+        using namespace modelgbp::gbp;
+        using namespace modelgbp::gbpe;
 
+        /* create EPGs and forwarding objects */
         Mutator mutator(framework, policyOwner);
         config = universe->addPlatformConfig("default");
         config->setMulticastGroupIP("224.1.1.1");
 
-        space = universe->addPolicySpace("tenant0");
         fd0 = space->addGbpFloodDomain("fd0");
         fd1 = space->addGbpFloodDomain("fd1");
         fd1->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
@@ -222,6 +221,11 @@ protected:
     }
 
     void createPolicyObjects() {
+        using opflex::modb::Mutator;
+        using namespace modelgbp;
+        using namespace modelgbp::gbp;
+        using namespace modelgbp::gbpe;
+
         Mutator mutator(framework, policyOwner);
 
         // deny action
@@ -237,11 +241,7 @@ protected:
         /* allow TCP to dst port 80 cons->prov */
         classifier1 = space->addGbpeL24Classifier("classifier1");
         classifier1->setEtherT(l2::EtherTypeEnumT::CONST_IPV4)
-            .setProt(6 /* TCP */).setDFromPort(80)
-#if 0
-            .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE)
-#endif
-            ;
+            .setProt(6 /* TCP */).setDFromPort(80);
 
         /* allow ARP from prov->cons */
         classifier2 = space->addGbpeL24Classifier("classifier2");
@@ -325,5 +325,7 @@ protected:
         mutator.commit();
     }
 };
+
+} // namespace ovsagent
 
 #endif /* OVSAGENT_TEST_MODBFIXTURE_H_ */
