@@ -18,6 +18,7 @@
 #include <boost/unordered_map.hpp>
 
 struct ofputil_flow_stats;
+struct ofputil_group_mod;
 
 namespace ovsagent {
 

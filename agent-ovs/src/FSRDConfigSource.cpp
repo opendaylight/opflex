@@ -24,8 +24,8 @@
 #include <opflex/modb/URIBuilder.h>
 
 #include "FSRDConfigSource.h"
+#include "ExtraConfigManager.h"
 #include "RDConfig.h"
-#include "FlowManager.h"
 #include "logging.h"
 
 namespace ovsagent {
