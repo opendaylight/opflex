@@ -12,6 +12,8 @@
 
 #include "PortMapper.h"
 
+namespace ovsagent {
+
 /**
  * Mock port mapper object useful for tests
  */
@@ -24,8 +26,10 @@ public:
         return RPortMap.at(of_port_no);
     }
 
-    boost::unordered_map<string, uint32_t> ports;
+    boost::unordered_map<std::string, uint32_t> ports;
     boost::unordered_map<uint32_t, std::string> RPortMap;
 };
+
+} // namespace ovsagent
 
 #endif /* OVSAGENT_TEST_MOCKPORTMAPPER_H_ */
