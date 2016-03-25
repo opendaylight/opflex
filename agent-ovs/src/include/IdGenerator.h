@@ -17,12 +17,10 @@
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/function.hpp>
 
-#include "opflex/modb/URI.h"
-
 namespace ovsagent {
 
 /**
- * Class to generate unique numeric IDs for URIs. Also supports
+ * Class to generate unique numeric IDs for strings. Also supports
  * persisting the assignments so that they can restored upon restart.
  */
 class IdGenerator : private boost::noncopyable {
@@ -51,23 +49,23 @@ public:
     void initNamespace(const std::string& nmspc);
 
     /**
-     * Get a unique ID for the given URI in the given namespace.
+     * Get a unique ID for the given string in the given namespace.
      *
      * @param nmspc Namespace to get an ID from
-     * @param uri URI to get an ID for
+     * @param str string to get an ID for
      * @return 0 if arguments are invalid, -1 if no more IDs can be
-     * generated (for example due to overflow), else ID for the URI
+     * generated (for example due to overflow), else ID for the string
      */
-    uint32_t getId(const std::string& nmspc, const opflex::modb::URI& uri);
+    uint32_t getId(const std::string& nmspc, const std::string& str);
 
     /**
-     * Remove the ID assignment for a given URI, and move it to the
+     * Remove the ID assignment for a given string, and move it to the
      * erased list
      *
      * @param nmspc Namespace to remove from
-     * @param uri URI to remove
+     * @param str string to remove
      */
-    void erase(const std::string& nmspc, const opflex::modb::URI& uri);
+    void erase(const std::string& nmspc, const std::string& str);
 
     /**
      * Purge erased entries that are sufficiently old
@@ -93,14 +91,15 @@ public:
 
     /**
      * The garbage collection callback.  Arguments are the namespace
-     * and the URI to check.  Returns true if the URI remains valid.
+     * and the string to check.  Returns true if the string remains
+     * valid.
      */
     typedef boost::function<bool(const std::string&,
-                                 const opflex::modb::URI&)> garbage_cb_t;
+                                 const std::string&)> garbage_cb_t;
 
     /**
-     * Cleanup the URI map by verifying that each entry in the map for
-     * the given namespace is still a valid object
+     * Cleanup the string map by verifying that each entry in the map
+     * for the given namespace is still a valid object
      *
      * @param ns the namespace to check
      * @param cb the callback to call to verify the namespace
@@ -118,14 +117,14 @@ private:
         IdMap() : lastUsedId(0) {}
 
         /**
-         * Map of URIs to the IDs assigned to them.
+         * Map of strings to the IDs assigned to them.
          */
-        typedef boost::unordered_map<opflex::modb::URI, uint32_t> Uri2IdMap;
-        Uri2IdMap ids;
+        typedef boost::unordered_map<std::string, uint32_t> Str2IdMap;
+        Str2IdMap ids;
         uint32_t lastUsedId;
 
-        typedef boost::unordered_map<opflex::modb::URI, time_point> Uri2EIdMap;
-        Uri2EIdMap erasedIds;
+        typedef boost::unordered_map<std::string, time_point> Str2EIdMap;
+        Str2EIdMap erasedIds;
     };
 
     /**

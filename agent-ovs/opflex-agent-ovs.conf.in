@@ -93,7 +93,13 @@
         // hardware fabric such as ACI
         // EXAMPLE:
         // "stitched-mode": {
-        //     "ovs-bridge-name": "br0",
+        //     // "Integration" bridge used to enforce contracts and forward
+        //     // packets
+        //     "int-bridge-name": "br-int",
+        //
+        //     // "Access" bridge used to enforce access control and enforce
+        //     // security groups.
+        //     "access-bridge-name": "br-access",
         //
         //     // Set encapsulation type.  Must set either vxlan or vlan.
         //     "encap": {
@@ -176,7 +182,7 @@
         //     "flowid-cache-dir": "DEFAULT_FLOWID_CACHE_DIR",
         //
         //     // Location to write multicast groups for the mcast-daemon
-	//     // Default: do not write multicast groups to a file
+        //     // Default: do not write multicast groups to a file
         //     "mcast-group-file": "DEFAULT_MCAST_GROUP_FILE"
         // }
     }

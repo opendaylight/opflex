@@ -1,6 +1,6 @@
 module[epdr]
 {
-    # abstraction of locally discovered en-point
+    # abstraction of locally discovered endpoint
     class[EndPoint;
           super=epr/LocalNetworkEp;
           abstract
@@ -19,6 +19,15 @@ module[epdr]
                    ]
         {
             to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
+
+        dependency[group;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/SecGroup;
                 cardinality=many;
                 ]
         }

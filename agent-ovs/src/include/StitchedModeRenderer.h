@@ -2,7 +2,7 @@
 /*
  * Include file for StitchedModeRenderer
  *
- * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
+ * Copyright (c) 2014-2016 Cisco Systems, Inc. and others.  All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
@@ -11,7 +11,8 @@
 
 #include "Renderer.h"
 #include "SwitchConnection.h"
-#include "FlowManager.h"
+#include "IntFlowManager.h"
+#include "AccessFlowManager.h"
 #include "FlowReader.h"
 #include "FlowExecutor.h"
 #include "PortMapper.h"
@@ -61,16 +62,26 @@ public:
     virtual void stop();
 
 private:
-    FlowExecutor flowExecutor;
-    ovsagent::FlowReader flowReader;
-    PortMapper portMapper;
-    FlowManager flowManager;
-    boost::scoped_ptr<SwitchConnection> connection;
+    IdGenerator idGen;
+
+    FlowExecutor intFlowExecutor;
+    FlowReader intFlowReader;
+    PortMapper intPortMapper;
+    SwitchManager intSwitchManager;
+    IntFlowManager intFlowManager;
+
+    FlowExecutor accessFlowExecutor;
+    FlowReader accessFlowReader;
+    PortMapper accessPortMapper;
+    SwitchManager accessSwitchManager;
+    AccessFlowManager accessFlowManager;
+
     StatsManager statsManager;
     TunnelEpManager tunnelEpManager;
 
-    std::string ovsBridgeName;
-    FlowManager::EncapType encapType;
+    std::string intBridgeName;
+    std::string accessBridgeName;
+    IntFlowManager::EncapType encapType;
     std::string encapIface;
     std::string tunnelRemoteIp;
     uint16_t tunnelRemotePort;
@@ -86,6 +97,12 @@ private:
     std::string mcastGroupFile;
 
     bool started;
+
+    /**
+     * Timer callback to clean up IDs that have been erased
+     */
+    void onCleanupTimer(const boost::system::error_code& ec);
+    boost::scoped_ptr<boost::asio::deadline_timer> cleanupTimer;
 };
 
 } /* namespace ovsagent */

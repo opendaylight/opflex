@@ -25,7 +25,7 @@
 
 namespace ovsagent {
 
-class FlowManager;
+class IntFlowManager;
 
 /**
  * Class that handles generating all unsolicited advertisements with
@@ -37,7 +37,7 @@ public:
     /**
      * Construct a AdvertManager
      */
-    AdvertManager(Agent& agent, FlowManager& flowManager);
+    AdvertManager(Agent& agent, IntFlowManager& intFlowManager);
 
     /**
      * Set the port mapper to use
@@ -56,11 +56,6 @@ public:
      * @param c the switch connection
      */
     void registerConnection(SwitchConnection* c) { switchConnection = c; }
-
-    /**
-     * Unset the switch connection
-     */
-    void unregisterConnection() { switchConnection = NULL; }
 
     /**
      * Enable router advertisements
@@ -112,10 +107,11 @@ public:
 private:
     boost::random::random_device rng;
     boost::random::mt19937 urng;
+    typedef boost::random::uniform_int_distribution<> uniform_int;
     boost::random::variate_generator<boost::random::mt19937&,
-                                     boost::random::uniform_int_distribution<> > all_ep_gen;
+                                     uniform_int> all_ep_gen;
     boost::random::variate_generator<boost::random::mt19937&,
-                                     boost::random::uniform_int_distribution<> > repeat_gen;
+                                     uniform_int> repeat_gen;
 
     /**
      * Synchronously send router advertisements for all active virtual
@@ -159,7 +155,7 @@ private:
     pending_ep_map_t pendingEps;
 
     Agent& agent;
-    FlowManager& flowManager;
+    IntFlowManager& intFlowManager;
     PortMapper* portMapper;
     SwitchConnection* switchConnection;
     boost::asio::io_service* ioService;

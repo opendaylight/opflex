@@ -12,19 +12,28 @@
 #include "StitchedModeRenderer.h"
 #include "logging.h"
 
+#include <boost/asio/placeholders.hpp>
+
 namespace ovsagent {
 
 using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
+using boost::asio::deadline_timer;
+using boost::asio::placeholders::error;
+
+static const boost::posix_time::milliseconds CLEANUP_INTERVAL(3*60*1000);
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
-    : Renderer(agent_), flowManager(agent_), connection(NULL),
-      statsManager(&agent_, portMapper), tunnelEpManager(&agent_),
-      tunnelRemotePort(0), uplinkVlan(0),
+    : Renderer(agent_),
+      intSwitchManager(agent_, intFlowExecutor, intFlowReader, intPortMapper),
+      intFlowManager(agent_, intSwitchManager, idGen),
+      accessSwitchManager(agent_, accessFlowExecutor,
+                          accessFlowReader, accessPortMapper),
+      accessFlowManager(agent_, accessSwitchManager, idGen),
+      statsManager(&agent_, intSwitchManager.getPortMapper()),
+      tunnelEpManager(&agent_), tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true), started(false) {
-    flowManager.SetFlowReader(&flowReader);
-    flowManager.SetExecutor(&flowExecutor);
-    flowManager.SetPortMapper(&portMapper);
+
 }
 
 StitchedModeRenderer::~StitchedModeRenderer() {
@@ -34,49 +43,62 @@ StitchedModeRenderer::~StitchedModeRenderer() {
 void StitchedModeRenderer::start() {
     if (started) return;
 
-    if (ovsBridgeName == "") {
-        LOG(ERROR) << "OVS Bridge name not set";
+    if (intBridgeName == "") {
+        LOG(ERROR) << "OVS integration bridge name not set";
+        return;
+    }
+    if (accessBridgeName == "") {
+        LOG(ERROR) << "OVS access bridge name not set";
         return;
     }
 
     started = true;
-    LOG(INFO) << "Starting stitched-mode renderer on " << ovsBridgeName;
+    LOG(INFO) << "Starting stitched-mode renderer using"
+              << " integration bridge " << intBridgeName
+              << " and access bridge " << accessBridgeName;
 
-    if (encapType == FlowManager::ENCAP_VXLAN ||
-        encapType == FlowManager::ENCAP_IVXLAN) {
+    if (encapType == IntFlowManager::ENCAP_VXLAN ||
+        encapType == IntFlowManager::ENCAP_IVXLAN) {
         tunnelEpManager.setUplinkIface(uplinkIface);
         tunnelEpManager.setUplinkVlan(uplinkVlan);
         tunnelEpManager.start();
     }
 
-    flowManager.SetFallbackMode(FlowManager::FALLBACK_PROXY);
-    flowManager.SetEncapType(encapType);
-    flowManager.SetEncapIface(encapIface);
-    flowManager.SetFloodScope(FlowManager::ENDPOINT_GROUP);
-    if (encapType == FlowManager::ENCAP_VXLAN ||
-        encapType == FlowManager::ENCAP_IVXLAN) {
-        flowManager.SetTunnelRemoteIp(tunnelRemoteIp);
+    if (!flowIdCache.empty())
+        idGen.setPersistLocation(flowIdCache);
+
+    intFlowManager.SetFallbackMode(IntFlowManager::FALLBACK_PROXY);
+    intFlowManager.SetEncapType(encapType);
+    intFlowManager.SetEncapIface(encapIface);
+    intFlowManager.SetFloodScope(IntFlowManager::ENDPOINT_GROUP);
+    if (encapType == IntFlowManager::ENCAP_VXLAN ||
+        encapType == IntFlowManager::ENCAP_IVXLAN) {
+        intFlowManager.SetTunnelRemoteIp(tunnelRemoteIp);
         assert(tunnelRemotePort != 0);
-        flowManager.setTunnelRemotePort(tunnelRemotePort);
+        intFlowManager.setTunnelRemotePort(tunnelRemotePort);
     }
-    flowManager.SetVirtualRouter(virtualRouter, routerAdv, virtualRouterMac);
-    flowManager.SetVirtualDHCP(virtualDHCP, virtualDHCPMac);
-    flowManager.SetFlowIdCache(flowIdCache);
-    flowManager.SetMulticastGroupFile(mcastGroupFile);
-    flowManager.SetEndpointAdv(endpointAdv);
+    intFlowManager.SetVirtualRouter(virtualRouter, routerAdv, virtualRouterMac);
+    intFlowManager.SetVirtualDHCP(virtualDHCP, virtualDHCPMac);
+    intFlowManager.SetMulticastGroupFile(mcastGroupFile);
+    intFlowManager.SetEndpointAdv(endpointAdv);
 
-    connection.reset(new SwitchConnection(ovsBridgeName));
-    portMapper.InstallListenersForConnection(connection.get());
-    flowExecutor.InstallListenersForConnection(connection.get());
-    flowReader.installListenersForConnection(connection.get());
-    flowManager.registerConnection(connection.get());
-    flowManager.registerModbListeners();
-    connection->Connect(OFP13_VERSION);
+    intSwitchManager.registerStateHandler(&intFlowManager);
+    intSwitchManager.start(intBridgeName);
+    accessSwitchManager.registerStateHandler(&accessFlowManager);
+    accessSwitchManager.start(accessBridgeName);
+    intFlowManager.start();
+    intFlowManager.registerModbListeners();
+    accessFlowManager.start();
+    intSwitchManager.connect();
+    accessSwitchManager.connect();
 
-    flowManager.Start();
-
-    statsManager.registerConnection(connection.get());
+    statsManager.registerConnection(intSwitchManager.getConnection());
     statsManager.start();
+
+    cleanupTimer.reset(new deadline_timer(getAgent().getAgentIOService()));
+    cleanupTimer->expires_from_now(CLEANUP_INTERVAL);
+    cleanupTimer->async_wait(bind(&StitchedModeRenderer::onCleanupTimer,
+                                  this, error));
 }
 
 void StitchedModeRenderer::stop() {
@@ -85,19 +107,20 @@ void StitchedModeRenderer::stop() {
 
     LOG(DEBUG) << "Stopping stitched-mode renderer";
 
+    if (cleanupTimer) {
+        cleanupTimer->cancel();
+    }
+
     statsManager.stop();
 
-    flowManager.Stop();
-    connection->Disconnect();
-    flowManager.unregisterModbListeners();
-    flowManager.unregisterConnection(connection.get());
-    flowReader.uninstallListenersForConnection(connection.get());
-    flowExecutor.UninstallListenersForConnection(connection.get());
-    portMapper.UninstallListenersForConnection(connection.get());
-    connection.reset();
+    intFlowManager.stop();
+    accessFlowManager.stop();
 
-    if (encapType == FlowManager::ENCAP_VXLAN ||
-        encapType == FlowManager::ENCAP_IVXLAN) {
+    intSwitchManager.stop();
+    accessSwitchManager.stop();
+
+    if (encapType == IntFlowManager::ENCAP_VXLAN ||
+        encapType == IntFlowManager::ENCAP_IVXLAN) {
         tunnelEpManager.stop();
     }
 }
@@ -113,6 +136,8 @@ Renderer* StitchedModeRenderer::create(Agent& agent) {
 
 void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string OVS_BRIDGE_NAME("ovs-bridge-name");
+    static const std::string INT_BRIDGE_NAME("int-bridge-name");
+    static const std::string ACCESS_BRIDGE_NAME("access-bridge-name");
 
     static const std::string ENCAP_VXLAN("encap.vxlan");
     static const std::string ENCAP_IVXLAN("encap.ivxlan");
@@ -124,20 +149,29 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string REMOTE_IP("remote-ip");
     static const std::string REMOTE_PORT("remote-port");
 
-    static const std::string VIRTUAL_ROUTER("forwarding.virtual-router.enabled");
-    static const std::string VIRTUAL_ROUTER_MAC("forwarding.virtual-router.mac");
+    static const std::string VIRTUAL_ROUTER("forwarding"
+                                            ".virtual-router.enabled");
+    static const std::string VIRTUAL_ROUTER_MAC("forwarding"
+                                                ".virtual-router.mac");
 
-    static const std::string VIRTUAL_ROUTER_RA("forwarding.virtual-router.ipv6.router-advertisement");
+    static const std::string VIRTUAL_ROUTER_RA("forwarding.virtual-router"
+                                               ".ipv6.router-advertisement");
 
     static const std::string VIRTUAL_DHCP("forwarding.virtual-dhcp.enabled");
     static const std::string VIRTUAL_DHCP_MAC("forwarding.virtual-dhcp.mac");
 
-    static const std::string ENDPOINT_ADV("forwarding.endpoint-advertisements.enabled");
+    static const std::string ENDPOINT_ADV("forwarding.endpoint-advertisements"
+                                          ".enabled");
 
     static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
     static const std::string MCAST_GROUP_FILE("mcast-group-file");
 
-    ovsBridgeName = properties.get<std::string>(OVS_BRIDGE_NAME, "");
+    intBridgeName =
+        properties.get<std::string>(OVS_BRIDGE_NAME, "br-int");
+    intBridgeName =
+        properties.get<std::string>(INT_BRIDGE_NAME, intBridgeName);
+    accessBridgeName =
+        properties.get<std::string>(ACCESS_BRIDGE_NAME, "br-access");
 
     boost::optional<const ptree&> ivxlan =
         properties.get_child_optional(ENCAP_IVXLAN);
@@ -146,19 +180,19 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     boost::optional<const ptree&> vlan =
         properties.get_child_optional(ENCAP_VLAN);
 
-    encapType = FlowManager::ENCAP_NONE;
+    encapType = IntFlowManager::ENCAP_NONE;
     int count = 0;
     if (ivxlan) {
         LOG(ERROR) << "Encapsulation type ivxlan unsupported";
         count += 1;
     }
     if (vlan) {
-        encapType = FlowManager::ENCAP_VLAN;
+        encapType = IntFlowManager::ENCAP_VLAN;
         encapIface = vlan.get().get<std::string>(ENCAP_IFACE, "");
         count += 1;
     }
     if (vxlan) {
-        encapType = FlowManager::ENCAP_VXLAN;
+        encapType = IntFlowManager::ENCAP_VXLAN;
         encapIface = vxlan.get().get<std::string>(ENCAP_IFACE, "");
         uplinkIface = vxlan.get().get<std::string>(UPLINK_IFACE, "");
         uplinkVlan = vxlan.get().get<uint16_t>(UPLINK_VLAN, 0);
@@ -193,6 +227,20 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
                                                  DEF_MCAST_GROUPFILE);
     if (mcastGroupFile == "")
         LOG(WARNING) << "No multicast group file specified";
+}
+
+void StitchedModeRenderer::onCleanupTimer(const boost::system::error_code& ec) {
+    if (ec) return;
+
+    idGen.cleanup();
+    intFlowManager.cleanup();
+    accessFlowManager.cleanup();
+
+    if (started) {
+        cleanupTimer->expires_from_now(CLEANUP_INTERVAL);
+        cleanupTimer->async_wait(bind(&StitchedModeRenderer::onCleanupTimer,
+                                      this, error));
+    }
 }
 
 } /* namespace ovsagent */
