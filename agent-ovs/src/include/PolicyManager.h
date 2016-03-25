@@ -91,8 +91,9 @@ public:
     /**
      * Instantiate a new policy manager using the specified framework
      * instance.
+     * @param framework the opflex framework
      */
-    PolicyManager(opflex::ofcore::OFFramework& framework_);
+    PolicyManager(opflex::ofcore::OFFramework& framework);
 
     /**
      * Destroy the policy manager and clean up all state
@@ -320,7 +321,8 @@ public:
                               /* out */ uri_set_t& contractURIs);
 
     /**
-     * Get an ordered list of PolicyClassifier objects that comprise a contract.
+     * Get an ordered list of PolicyRule objects that compose a
+     * contract.
      *
      * @param contractURI URI of contract to look for
      * @param rules List of classifier objects in descending order
@@ -335,6 +337,16 @@ public:
      * @return true if contract is found, false otherwise
      */
     bool contractExists(const opflex::modb::URI& contractURI);
+
+    /**
+     * Get an ordered list of PolicyRule objects that compose a
+     * security group.
+     *
+     * @param secGroupURI URI of contract to look for
+     * @param rules List of classifier objects in descending order
+     */
+    void getSecGroupRules(const opflex::modb::URI& secGroupURI,
+                          /* out */ rule_list_t& rules);
 
 
     /**
@@ -459,6 +471,13 @@ private:
      */
     contract_map_t contractMap;
 
+    typedef boost::unordered_map<opflex::modb::URI, rule_list_t> secgrp_map_t;
+
+    /**
+     * Map of security group URI to its rules
+     */
+    secgrp_map_t secGrpMap;
+
     /**
      * Listener for changes related to policy objects.
      */
@@ -475,6 +494,23 @@ private:
     ContractListener contractListener;
 
     friend class ContractListener;
+
+    /**
+     * Listener for changes related to policy objects.
+     */
+    class SecGroupListener : public opflex::modb::ObjectListener {
+    public:
+        SecGroupListener(PolicyManager& pmanager);
+        virtual ~SecGroupListener();
+
+        virtual void objectUpdated(opflex::modb::class_id_t class_id,
+                                    const opflex::modb::URI& uri);
+    private:
+        PolicyManager& pmanager;
+    };
+    SecGroupListener secGroupListener;
+
+    friend class SecGroupListener;
 
     /**
      * Listener for changes related to plaform config.
@@ -564,6 +600,9 @@ private:
     bool updateContractRules(const opflex::modb::URI& contractURI,
             bool& notFound);
 
+    bool updateSecGrpRules(const opflex::modb::URI& secGrpURI,
+                           bool& notFound);
+
     /**
      * Notify policy listeners about an update to a contract.
      *
@@ -571,6 +610,14 @@ private:
      * updated
      */
     void notifyContract(const opflex::modb::URI& contractURI);
+
+    /**
+     * Notify policy listeners about an update to a security group.
+     *
+     * @param secGroupURI the URI of the security group that has been
+     * updated
+     */
+    void notifySecGroup(const opflex::modb::URI& secGroupURI);
 
     /**
      * Notify policy listeners about an update to the platform

@@ -15,6 +15,7 @@
 #include "Agent.h"
 
 #include <boost/filesystem/fstream.hpp>
+#include <boost/test/unit_test.hpp>
 
 #pragma once
 #ifndef OVSAGENT_TEST_BASEFIXTURE_H
