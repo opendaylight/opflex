@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a494da4_644afb84",
+        "filename": "agent-ovs/src/FSEndpointSource.cpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2016-04-12T20:19:52Z",
+      "side": 1,
+      "message": "So the security-group has to be in the same policy-space (tenant) as the EPG? I think there wil be cases where the security-group is in the \u0027common\u0027 tenant, but the EPG is not.",
+      "revId": "4b1b1057686a0d84f815aa13f5e9b73115f5e15b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a494da4_a43b63ea",
+        "filename": "agent-ovs/src/FlowUtils.cpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2016-04-12T20:19:52Z",
+      "side": 1,
+      "message": "this function doesn\u0027t do anything?",
+      "revId": "4b1b1057686a0d84f815aa13f5e9b73115f5e15b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
