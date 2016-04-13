@@ -1,6 +1,11 @@
 {
     // Logging configuration
     // "log": {
+    //     // Set the log level.
+    //     // Possible values in descending order of verbosity:
+    //     // "debug7"-"debug0", "debug" (synonym for "debug0"),
+    //     // "info", "warning", "error", "fatal"
+    //     // Default: "info"
     //     "level": "info"
     // },
 
@@ -31,18 +36,18 @@
             // The path to a directory containing trusted certificate
             // authority public certificates, or a file containing a
             // specific CA certificate.
-            // Default: /etc/ssl/certs/
+            // Default: "DEFAULT_CA_CERT_DIR"
             "ca-store": "DEFAULT_CA_CERT_DIR"
         },
 
         "inspector": {
             // Enable the MODB inspector service, which allows
             // inspecting the state of the managed object database.
-            // Default: enabled
+            // Default: true
             "enabled": true,
 
             // Listen on the specified socket for the inspector
-            // Default DEFAULT_INSPECTOR_SOCKET
+            // Default: "DEFAULT_INSPECTOR_SOCKET"
             "socket-name": "DEFAULT_INSPECTOR_SOCKET"
         },
 
@@ -50,11 +55,11 @@
             // Enable the agent notification service, which sends
             // notifications to interested listeners over a UNIX
             // socket.
-            // Default: enabled
+            // Default: true
             "enabled": true,
 
             // Listen on the specified socket for the inspector
-            // Default DEFAULT_NOTIF_SOCKET
+            // Default: "DEFAULT_NOTIF_SOCKET"
             "socket-name": "DEFAULT_NOTIF_SOCKET",
 
             // Set the socket owner user after binding if the user
@@ -77,6 +82,7 @@
     // Endpoint sources provide metadata about local endpoints
     "endpoint-sources": {
         // Filesystem path to monitor for endpoint information
+        // Default: no endpoint sources
         "filesystem": ["DEFAULT_FS_ENDPOINT_DIR"]
     },
 
@@ -84,10 +90,12 @@
     // provide functionality for local endpoints
     "service-sources": {
         // Filesystem path to monitor for service information
+        // Default: no service sources
         "filesystem": ["DEFAULT_FS_SERVICE_DIR"]
     },
 
     // Renderers enforce policy obtained via OpFlex.
+    // Default: no renderers
     "renderers": {
         // Stitched-mode renderer for interoperating with a
         // hardware fabric such as ACI
@@ -140,11 +148,12 @@
         //         // Configure the virtual distributed router
         //         "virtual-router": {
         //             // Enable virtual distributed router.  Set to true
-        //             // to enable or false to disable.  Default true.
+        //             // to enable or false to disable.
+        //             // Default: true.
         //             "enabled": true,
         //
         //             // Override MAC address for virtual router.
-        //             // Default is "00:22:bd:f8:19:ff"
+        //             // Default: "00:22:bd:f8:19:ff"
         //             "mac": "00:22:bd:f8:19:ff",
         //
         //             // Configure IPv6-related settings for the virtual
@@ -162,27 +171,29 @@
         //         // Configure virtual distributed DHCP server
         //         "virtual-dhcp": {
         //             // Enable virtual distributed DHCP server.  Set to
-        //             // true to enable or false to disable.  Default
-        //             // true.
+        //             // true to enable or false to disable.
+        //             // Default: true
         //             "enabled": true,
         //
         //             // Override MAC address for virtual dhcp server.
-        //             // Default is "00:22:bd:f8:19:ff"
+        //             // Default: "00:22:bd:f8:19:ff"
         //             "mac": "00:22:bd:f8:19:ff"
         //         },
         //
         //         "endpoint-advertisements": {
         //             // Enable generation of periodic ARP/NDP
-        //             // advertisements for endpoints.  Default true.
+        //             // advertisements for endpoints.
+        //             // Default: true.
         //             "enabled": "true"
         //         }
         //     },
         //
         //     // Location to store cached IDs for managing flow state
+        //     // Default: "DEFAULT_FLOWID_CACHE_DIR"
         //     "flowid-cache-dir": "DEFAULT_FLOWID_CACHE_DIR",
         //
         //     // Location to write multicast groups for the mcast-daemon
-        //     // Default: do not write multicast groups to a file
+        //     // Default: "DEFAULT_MCAST_GROUP_FILE"
         //     "mcast-group-file": "DEFAULT_MCAST_GROUP_FILE"
         // }
     }
