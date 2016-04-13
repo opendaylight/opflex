@@ -92,6 +92,7 @@ void add_classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
                             uint8_t nextTable, uint16_t priority,
                             uint64_t cookie, uint32_t svnid, uint32_t dvnid,
                             /* out */ FlowEntryList& entries);
+
 } // namespace flowutils
 } // namespace ovsagent
 

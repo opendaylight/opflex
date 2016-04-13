@@ -243,11 +243,6 @@ public:
                                   bool fromDesc);
 
     /**
-     * Run periodic cleanup tasks
-     */
-    void cleanup();
-
-    /**
      * Implementation for PeerStatusListener::peerStatusUpdated
      *
      * @param peerHostname the host name for the connection
@@ -270,15 +265,6 @@ public:
     void getGroupVnidAndRdId(
         const boost::unordered_set<opflex::modb::URI>& uris,
         /* out */boost::unordered_map<uint32_t, uint32_t>& ids);
-
-    /**
-     * Get or generate a unique ID for a given object for use with flows.
-     *
-     * @param cid Class ID of the object
-     * @param uri URI of the object
-     * @return A unique ID for the object
-     */
-    uint32_t getId(opflex::modb::class_id_t cid, const opflex::modb::URI& uri);
 
     /**
      * Set fill in tunnel metadata in an action builder
@@ -538,8 +524,6 @@ private:
      */
     typedef boost::unordered_map<opflex::modb::URI, Ep2PortMap> FloodGroupMap;
     FloodGroupMap floodGroupMap;
-
-    const char * getIdNamespace(opflex::modb::class_id_t cid);
 
     bool isSyncing;
 

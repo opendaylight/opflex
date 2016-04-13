@@ -30,7 +30,7 @@ class PacketInHandlerFixture : public ModbFixture {
 public:
     PacketInHandlerFixture()
         : ModbFixture(),
-          switchManager(agent, flowExecutor, flowReader, portMapper),
+          switchManager(agent, flowExecutor, flowReader, portMapper, idGen),
           intFlowManager(agent, switchManager, idGen),
           pktInHandler(agent, intFlowManager),
           proto(ofputil_protocol_from_ofp_version(conn.GetProtocolVersion())) {

@@ -43,11 +43,13 @@ public:
      * @param flowExecutor the flow executor to use
      * @param flowReader the flow reader to use
      * @param portMapper the port mapper to use
+     * @param idGen the ID generator to use
      */
     SwitchManager(Agent& agent,
                   FlowExecutor& flowExecutor,
                   FlowReader& flowReader,
-                  PortMapper& portMapper);
+                  PortMapper& portMapper,
+                  IdGenerator& idGen);
 
     /**
      * Start the switch manager and initiate the connection to the
@@ -122,6 +124,18 @@ public:
     FlowReader& getFlowReader() { return flowReader; }
 
     /**
+     * Write the given flow list to the flow table, while
+     * automatically setting a flow cookie for the object ID.
+     *
+     * @param ns A namespace for objId
+     * @param objId the ID for the object associated with the flow
+     * @param tableId the tableId for the flow table
+     * @param el the list of flows to write
+     */
+    bool writeFlow(const std::string& ns, const std::string& objId,
+                   int tableId, FlowEntryList& el);
+
+    /**
      * Write the given flow list to the flow table
      *
      * @param objId the ID for the object associated with the flow
@@ -129,6 +143,18 @@ public:
      * @param el the list of flows to write
      */
     bool writeFlow(const std::string& objId, int tableId, FlowEntryList& el);
+
+    /**
+     * Write the given flow entry to the flow table, while
+     * automatically setting a flow cookie for the object ID.
+     *
+     * @param ns A namespace for objId
+     * @param objId the ID for the object associated with the flow
+     * @param tableId the tableId for the flow table
+     * @param fb a flow builder to use to build and write the flow
+     */
+    bool writeFlow(const std::string& ns, const std::string& objId,
+                   int tableId, FlowBuilder& fb);
 
     /**
      * Write the given flow entry to the flow table
@@ -140,13 +166,16 @@ public:
     bool writeFlow(const std::string& objId, int tableId, FlowBuilder& fb);
 
     /**
-     * Write the given flow entry to the flow table
+     * Write the given flow entry to the flow table, while
+     * automatically setting a flow cookie for the object ID.
      *
+     * @param ns A namespace for objId
      * @param objId the ID for the object associated with the flow
      * @param tableId the tableId for the flow table
      * @param e the list of flows to write
      */
-    bool writeFlow(const std::string& objId, int tableId, FlowEntry* e);
+    bool writeFlow(const std::string& ns, const std::string& objId,
+                   int tableId, FlowEntryPtr e);
 
     /**
      * Write the given flow entry to the flow table
@@ -164,6 +193,14 @@ public:
      * @return true is successful, false otherwise
      */
     bool writeGroupMod(const GroupEdit::Entry& entry);
+
+    /**
+     * Clear the flows in the table with the specified object ID
+     *
+     * @param objId the ID for the object associated with the flow
+     * @param tableId the tableId for the flow table
+     */
+    bool clearFlows(const std::string& objId, int tableId);
 
     /**
      * Compare the state of a give table against the provided
@@ -224,6 +261,7 @@ private:
     FlowExecutor& flowExecutor;
     FlowReader& flowReader;
     PortMapper& portMapper;
+    IdGenerator& idGen;
     SwitchStateHandler* stateHandler;
 
     // table state

@@ -11,13 +11,14 @@
 #ifndef OVSAGENT_IDGENERATOR_H_
 #define OVSAGENT_IDGENERATOR_H_
 
+#include <opflex/modb/URI.h>
+
 #include <string>
 #include <boost/unordered_map.hpp>
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/function.hpp>
-
-#include <opflex/ofcore/OFFramework.h>
+#include <boost/thread/mutex.hpp>
 
 namespace ovsagent {
 
@@ -59,6 +60,16 @@ public:
      * generated (for example due to overflow), else ID for the string
      */
     uint32_t getId(const std::string& nmspc, const std::string& str);
+
+    /**
+     * Get a unique ID for the given URI in the given namespace.
+     *
+     * @param nmspc Namespace to get an ID from
+     * @param uri URI to get an ID for
+     * @return 0 if arguments are invalid, -1 if no more IDs can be
+     * generated (for example due to overflow), else ID for the string
+     */
+    uint32_t getId(const std::string& nmspc, const opflex::modb::URI& uri);
 
     /**
      * Remove the ID assignment for a given string, and move it to the
@@ -108,18 +119,6 @@ public:
      */
     void collectGarbage(const std::string& ns, garbage_cb_t cb);
 
-    /**
-     * A ready-made callback for IDs formed from a managed object URI
-     * @param framework the framework object
-     * @param ns the namespace from collectGarbage
-     * @param str the string from collectGarbage
-     */
-    template <class MO>
-    static bool uriIdGarbageCb(opflex::ofcore::OFFramework& framework,
-                               const std::string& ns, const std::string& str) {
-        return MO::resolve(framework, opflex::modb::URI(str));
-    }
-
 private:
     typedef boost::chrono::steady_clock::time_point time_point;
     typedef boost::chrono::milliseconds duration;
@@ -148,6 +147,8 @@ private:
      * @param idmap Assignments to save
      */
     void persist(const std::string& nmspc, IdMap& idmap);
+
+    boost::mutex id_mutex;
 
     /**
      * Map of ID namespaces to the assignment within that namespace.

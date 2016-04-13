@@ -67,11 +67,6 @@ public:
                                   uint32_t portNo, bool fromDesc);
 
     /**
-     * Run periodic cleanup tasks
-     */
-    void cleanup();
-
-    /**
      * Indices of tables managed by the access flow manager.
      */
     enum {

@@ -24,11 +24,10 @@ const long DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC = 5000;
 SwitchManager::SwitchManager(Agent& agent_,
                              FlowExecutor& flowExecutor_,
                              FlowReader& flowReader_,
-                             PortMapper& portMapper_)
-    : agent(agent_),
-      flowExecutor(flowExecutor_),
-      flowReader(flowReader_),
-      portMapper(portMapper_), stateHandler(NULL),
+                             PortMapper& portMapper_,
+                             IdGenerator& idGen_)
+    : agent(agent_), flowExecutor(flowExecutor_), flowReader(flowReader_),
+      portMapper(portMapper_), idGen(idGen_), stateHandler(NULL),
       connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
       stopping(false), syncEnabled(false), syncing(false),
       syncInProgress(false), syncPending(false) {
@@ -137,6 +136,18 @@ void SwitchManager::onConnectTimer(const boost::system::error_code& ec) {
         initiateSync();
 }
 
+bool SwitchManager::writeFlow(const std::string& ns, const std::string& objId,
+                              int tableId, FlowEntryList& el) {
+    assert(tableId >= 0 &&
+           static_cast<size_t>(tableId) < flowTables.size());
+    uint64_t cookie = htonll(idGen.getId(ns, objId) & 0xffffffffll);
+    BOOST_FOREACH(FlowEntryPtr& fe, el) {
+        fe->entry->cookie =
+            ((fe->entry->cookie & htonll(~(uint64_t)0 << 32)) | cookie);
+    }
+    return writeFlow(objId, tableId, el);
+}
+
 bool SwitchManager::writeFlow(const std::string& objId, int tableId,
                               FlowEntryList& el) {
     assert(tableId >= 0 &&
@@ -165,6 +176,14 @@ bool SwitchManager::writeFlow(const std::string& objId, int tableId,
     return success;
 }
 
+bool SwitchManager::writeFlow(const std::string& ns, const std::string& objId,
+                              int tableId, FlowEntryPtr el) {
+    FlowEntryList tmpEl;
+    if (el)
+        tmpEl.push_back(el);
+    return writeFlow(ns, objId, tableId, tmpEl);
+}
+
 bool SwitchManager::writeFlow(const std::string& objId,
                               int tableId, FlowEntryPtr el) {
     FlowEntryList tmpEl;
@@ -173,14 +192,19 @@ bool SwitchManager::writeFlow(const std::string& objId,
     return writeFlow(objId, tableId, tmpEl);
 }
 
+bool SwitchManager::writeFlow(const std::string& ns, const std::string& objId,
+                              int tableId, FlowBuilder& fb) {
+    return writeFlow(ns, objId, tableId, fb.build());
+}
+
 bool SwitchManager::writeFlow(const std::string& objId,
                               int tableId, FlowBuilder& fb) {
     return writeFlow(objId, tableId, fb.build());
 }
 
-bool SwitchManager::writeFlow(const std::string& objId,
-                              int tableId, FlowEntry* el) {
-    return writeFlow(objId, tableId, FlowEntryPtr(el));
+bool SwitchManager::clearFlows(const std::string& objId, int tableId) {
+    FlowEntryList el;
+    return writeFlow(objId, tableId, el);
 }
 
 bool SwitchManager::writeGroupMod(const GroupEdit::Entry& e) {

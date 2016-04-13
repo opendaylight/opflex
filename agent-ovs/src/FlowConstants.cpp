@@ -14,7 +14,7 @@ namespace flow {
 
 namespace cookie {
 
-#define DEF_COOKIE(val) htonll((uint64_t)1 << 63 | val)
+#define DEF_COOKIE(val) htonll((uint64_t)1 << 63 | (uint64_t)val << 32)
 const uint64_t PROACTIVE_LEARN = DEF_COOKIE(1);
 const uint64_t LEARN           = DEF_COOKIE(2);
 const uint64_t NEIGH_DISC      = DEF_COOKIE(3);
@@ -43,6 +43,30 @@ const uint64_t FLOOD = 0x5;
 
 } // namespace out
 } // namespace metadata
+
+namespace id {
+
+// Note that if you add to this, you must also add cleanup routine in
+// StitchedModeRender
+const std::string NAMESPACES[] =
+    {"endpointGroup", "floodDomain", "bridgeDomain", "routingDomain",
+     "contract", "externalNetwork", "subnet", "secGroup", "secGroupSet",
+     "endpoint", "anycastService"};
+const size_t NUM_NAMESPACES = sizeof(NAMESPACES)/sizeof(std::string);
+
+const std::string EPG          = NAMESPACES[0];
+const std::string FD           = NAMESPACES[1];
+const std::string BD           = NAMESPACES[2];
+const std::string RD           = NAMESPACES[3];
+const std::string CONTRACT     = NAMESPACES[4];
+const std::string EXTNET       = NAMESPACES[5];
+const std::string SUBNET       = NAMESPACES[6];
+const std::string SECGROUP     = NAMESPACES[7];
+const std::string SECGROUP_SET = NAMESPACES[8];
+const std::string ENDPOINT     = NAMESPACES[9];
+const std::string SERVICE      = NAMESPACES[10];
+
+} // namespace id
 
 } // namespace flow
 } // namespace ovsagent

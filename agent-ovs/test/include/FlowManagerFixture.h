@@ -14,6 +14,7 @@
 #include "SwitchManager.h"
 #include "MockSwitchManager.h"
 #include "TableState.h"
+#include "FlowConstants.h"
 #include "logging.h"
 
 #include <boost/foreach.hpp>
@@ -27,7 +28,7 @@ namespace ovsagent {
 class FlowManagerFixture : public ModbFixture {
 public:
     FlowManagerFixture()
-        : switchManager(agent, exec, reader, portmapper) {
+        : switchManager(agent, exec, reader, portmapper, idGen) {
         switchManager.setSyncDelayOnConnect(0);
     }
     virtual ~FlowManagerFixture() {
@@ -38,6 +39,11 @@ public:
         using boost::ref;
         using boost::bind;
         using boost::thread;
+
+        for (size_t i = 0; i < flow::id::NUM_NAMESPACES; i++) {
+            idGen.initNamespace(flow::id::NAMESPACES[i]);
+        }
+
         agent.getAgentIOService().reset();
         ioWork.reset(new io_service::work(agent.getAgentIOService()));
         ioThread.reset(new thread(bind(&io_service::run,

@@ -8,8 +8,11 @@
  */
 
 #include <fstream>
+
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
+#include <boost/thread/lock_guard.hpp>
+
 #include "IdGenerator.h"
 #include "logging.h"
 
@@ -18,6 +21,8 @@ namespace ovsagent {
 using std::string;
 typedef uint16_t UriLenType;
 const uint32_t MAX_ID_VALUE = (1 << 31);
+using boost::lock_guard;
+using boost::mutex;
 
 IdGenerator::IdGenerator() : cleanupInterval(duration(5*60*1000)) {
 
@@ -28,7 +33,12 @@ IdGenerator::IdGenerator(duration cleanupInterval_)
 
 }
 
+uint32_t IdGenerator::getId(const string& nmspc, const opflex::modb::URI& uri) {
+    return getId(nmspc, uri.toString());
+}
+
 uint32_t IdGenerator::getId(const string& nmspc, const string& str) {
+    lock_guard<mutex> guard(id_mutex);
     NamespaceMap::iterator nitr = namespaces.find(nmspc);
     if (nitr == namespaces.end()) {
         LOG(ERROR) << "ID requested for unknown namespace: " << nmspc;
@@ -57,6 +67,7 @@ uint32_t IdGenerator::getId(const string& nmspc, const string& str) {
 }
 
 void IdGenerator::erase(const string& nmspc, const string& str) {
+    lock_guard<mutex> guard(id_mutex);
     NamespaceMap::iterator nitr = namespaces.find(nmspc);
     if (nitr == namespaces.end()) {
         return;
@@ -70,6 +81,7 @@ void IdGenerator::erase(const string& nmspc, const string& str) {
 }
 
 void IdGenerator::cleanup() {
+    lock_guard<mutex> guard(id_mutex);
     time_point now = boost::chrono::steady_clock::now();
     BOOST_FOREACH(NamespaceMap::value_type& nmv, namespaces) {
         bool changed = false;
@@ -187,6 +199,7 @@ void IdGenerator::initNamespace(const std::string& nmspc) {
 
 void IdGenerator::collectGarbage(const std::string& ns,
                                  garbage_cb_t cb) {
+    lock_guard<mutex> guard(id_mutex);
     NamespaceMap::iterator nitr = namespaces.find(ns);
     if (nitr == namespaces.end()) {
         return;

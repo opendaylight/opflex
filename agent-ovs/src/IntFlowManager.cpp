@@ -69,16 +69,6 @@ using namespace modelgbp::gbpe;
 
 namespace ovsagent {
 
-static const char* ID_NAMESPACES[] =
-    {"floodDomain", "bridgeDomain", "routingDomain",
-     "contract", "externalNetwork"};
-
-static const char* ID_NMSPC_FD     = ID_NAMESPACES[0];
-static const char* ID_NMSPC_BD     = ID_NAMESPACES[1];
-static const char* ID_NMSPC_RD     = ID_NAMESPACES[2];
-static const char* ID_NMSPC_CON    = ID_NAMESPACES[3];
-static const char* ID_NMSPC_EXTNET = ID_NAMESPACES[4];
-
 IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,
                                IdGenerator& idGen_) :
@@ -114,10 +104,6 @@ void IntFlowManager::start() {
     conn->RegisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
     pktInHandler.registerConnection(conn);
     advertManager.registerConnection(conn);
-
-    for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
-        idGen.initNamespace(ID_NAMESPACES[i]);
-    }
 
     initPlatformConfig();
     createStaticFlows();
@@ -321,7 +307,7 @@ bool IntFlowManager::getGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
     bdId = 0;
     if (epgBd) {
         bdURI = epgBd.get()->getURI();
-        bdId = getId(BridgeDomain::CLASS_ID, bdURI.get());
+        bdId = idGen.getId(flow::id::BD, bdURI.get());
     }
     fdId = 0;
     if (epgFd) {    // FD present -> flooding is desired
@@ -330,12 +316,12 @@ bool IntFlowManager::getGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
         } else  {
             fdURI = epgFd.get()->getURI();
         }
-        fdId = getId(FloodDomain::CLASS_ID, fdURI.get());
+        fdId = idGen.getId(flow::id::FD, fdURI.get());
     }
     rdId = 0;
     if (epgRd) {
         rdURI = epgRd.get()->getURI();
-        rdId = getId(RoutingDomain::CLASS_ID, rdURI.get());
+        rdId = idGen.getId(flow::id::RD, rdURI.get());
     }
     return true;
 }
@@ -746,12 +732,12 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(uuid);
 
     if (!epWrapper) {   // EP removed
-        switchManager.writeFlow(uuid, SEC_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, SRC_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, ROUTE_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, LEARN_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, NULL);
+        switchManager.clearFlows(uuid, SEC_TABLE_ID);
+        switchManager.clearFlows(uuid, SRC_TABLE_ID);
+        switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
+        switchManager.clearFlows(uuid, ROUTE_TABLE_ID);
+        switchManager.clearFlows(uuid, LEARN_TABLE_ID);
+        switchManager.clearFlows(uuid, SERVICE_MAP_DST_TABLE_ID);
         removeEndpointFromFloodGroup(uuid);
         return;
     }
@@ -865,7 +851,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                 .parent().build(el);
         }
     }
-    switchManager.writeFlow(uuid, SEC_TABLE_ID, el);
+    switchManager.writeFlow(flow::id::ENDPOINT, uuid, SEC_TABLE_ID, el);
 
     optional<URI> epgURI = epMgr.getComputedEPG(uuid);
     if (!epgURI) {      // can't do much without EPG
@@ -1136,12 +1122,18 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         }
     }
 
-    switchManager.writeFlow(uuid, SRC_TABLE_ID, elSrc);
-    switchManager.writeFlow(uuid, LEARN_TABLE_ID, elEpLearn);
-    switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
-    switchManager.writeFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
-    switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, elServiceMap);
-    switchManager.writeFlow(uuid, OUT_TABLE_ID, elOutput);
+    switchManager.writeFlow(flow::id::ENDPOINT, uuid,
+                            SRC_TABLE_ID, elSrc);
+    switchManager.writeFlow(flow::id::ENDPOINT, uuid,
+                            LEARN_TABLE_ID, elEpLearn);
+    switchManager.writeFlow(flow::id::ENDPOINT, uuid,
+                            BRIDGE_TABLE_ID, elBridgeDst);
+    switchManager.writeFlow(flow::id::ENDPOINT, uuid,
+                            ROUTE_TABLE_ID, elRouteDst);
+    switchManager.writeFlow(flow::id::ENDPOINT, uuid,
+                            SERVICE_MAP_DST_TABLE_ID, elServiceMap);
+    switchManager.writeFlow(flow::id::ENDPOINT, uuid,
+                            OUT_TABLE_ID, elOutput);
 
     if (fgrpURI && ofPort != OFPP_NONE) {
         updateEndpointFloodGroup(fgrpURI.get(), endPoint, ofPort,
@@ -1159,9 +1151,9 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
     shared_ptr<const AnycastService> asWrapper = srvMgr.getAnycastService(uuid);
 
     if (!asWrapper) {
-        switchManager.writeFlow(uuid, SEC_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, NULL);
+        switchManager.clearFlows(uuid, SEC_TABLE_ID);
+        switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
+        switchManager.clearFlows(uuid, SERVICE_MAP_DST_TABLE_ID);
         return;
     }
 
@@ -1188,8 +1180,7 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
         uint8_t macAddr[6];
         as.getServiceMAC().get().toUIntArray(macAddr);
 
-        uint32_t rdId =
-            getId(RoutingDomain::CLASS_ID, as.getDomainURI().get());
+        uint32_t rdId = idGen.getId(flow::id::RD, as.getDomainURI().get());
 
         BOOST_FOREACH(AnycastService::ServiceMapping sm,
                       as.getServiceMappings()) {
@@ -1297,49 +1288,11 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
         }
     }
 
-    switchManager.writeFlow(uuid, SEC_TABLE_ID, secFlows);
-    switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, bridgeFlows);
-    switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, serviceMapDstFlows);
-}
-
-void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
-                                    uint32_t fgrpId, address epgTunDst) {
-    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
-    optional<shared_ptr<FloodDomain> > fd =
-        agent.getPolicyManager().getFDForGroup(epgURI);
-    if (fd) {
-        bcastFloodMode =
-            fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
-    }
-
-    FlowEntryList grpDst;
-    {
-        // deliver broadcast/multicast traffic to the group table
-        FlowBuilder mcast;
-        matchFd(mcast, fgrpId, true);
-        mcast.priority(10)
-            .reg(0, epgVnid);
-        if (bcastFloodMode == BcastFloodModeEnumT::CONST_ISOLATED) {
-            // In isolated mode deliver only if policy has already
-            // been applied (i.e. it comes from the tunnel uplink)
-            mcast.metadata(flow::meta::POLICY_APPLIED,
-                           flow::meta::POLICY_APPLIED);
-        }
-        switch (getEncapType()) {
-        case ENCAP_VLAN:
-            break;
-        case ENCAP_VXLAN:
-        case ENCAP_IVXLAN:
-        default:
-            mcast.action().reg(MFF_REG7, epgTunDst.to_v4().to_ulong());
-            break;
-        }
-        mcast.action()
-            .metadata(flow::meta::out::FLOOD, flow::meta::out::MASK)
-            .go(IntFlowManager::OUT_TABLE_ID);
-        mcast.build(grpDst);
-    }
-    switchManager.writeFlow(epgURI.toString(), BRIDGE_TABLE_ID, grpDst);
+    switchManager.writeFlow(flow::id::SERVICE, uuid, SEC_TABLE_ID, secFlows);
+    switchManager.writeFlow(flow::id::SERVICE, uuid,
+                            BRIDGE_TABLE_ID, bridgeFlows);
+    switchManager.writeFlow(flow::id::SERVICE, uuid,
+                            SERVICE_MAP_DST_TABLE_ID, serviceMapDstFlows);
 }
 
 void IntFlowManager::createStaticFlows() {
@@ -1430,6 +1383,47 @@ void IntFlowManager::createStaticFlows() {
     }
 }
 
+void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
+                                    uint32_t fgrpId, address epgTunDst) {
+    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+    optional<shared_ptr<FloodDomain> > fd =
+        agent.getPolicyManager().getFDForGroup(epgURI);
+    if (fd) {
+        bcastFloodMode =
+            fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+    }
+
+    FlowEntryList grpDst;
+    {
+        // deliver broadcast/multicast traffic to the group table
+        FlowBuilder mcast;
+        matchFd(mcast, fgrpId, true);
+        mcast.priority(10)
+            .reg(0, epgVnid);
+        if (bcastFloodMode == BcastFloodModeEnumT::CONST_ISOLATED) {
+            // In isolated mode deliver only if policy has already
+            // been applied (i.e. it comes from the tunnel uplink)
+            mcast.metadata(flow::meta::POLICY_APPLIED,
+                           flow::meta::POLICY_APPLIED);
+        }
+        switch (getEncapType()) {
+        case ENCAP_VLAN:
+            break;
+        case ENCAP_VXLAN:
+        case ENCAP_IVXLAN:
+        default:
+            mcast.action().reg(MFF_REG7, epgTunDst.to_v4().to_ulong());
+            break;
+        }
+        mcast.action()
+            .metadata(flow::meta::out::FLOOD, flow::meta::out::MASK)
+            .go(IntFlowManager::OUT_TABLE_ID);
+        mcast.build(grpDst);
+    }
+    switchManager.writeFlow(flow::id::EPG, epgURI.toString(),
+                            BRIDGE_TABLE_ID, grpDst);
+}
+
 void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
     LOG(DEBUG) << "Updating endpoint-group " << epgURI;
 
@@ -1440,10 +1434,10 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
 
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.groupExists(epgURI)) {  // EPG removed
-        switchManager.writeFlow(epgId, SRC_TABLE_ID, NULL);
-        switchManager.writeFlow(epgId, POL_TABLE_ID, NULL);
-        switchManager.writeFlow(epgId, OUT_TABLE_ID, NULL);
-        switchManager.writeFlow(epgId, BRIDGE_TABLE_ID, NULL);
+        switchManager.clearFlows(epgId, SRC_TABLE_ID);
+        switchManager.clearFlows(epgId, POL_TABLE_ID);
+        switchManager.clearFlows(epgId, OUT_TABLE_ID);
+        switchManager.clearFlows(epgId, BRIDGE_TABLE_ID);
         updateMulticastList(boost::none, epgURI);
         return;
     }
@@ -1494,7 +1488,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
                 .build(uplinkMatch);
         }
     }
-    switchManager.writeFlow(epgId, SRC_TABLE_ID, uplinkMatch);
+    switchManager.writeFlow(flow::id::EPG, epgId, SRC_TABLE_ID, uplinkMatch);
 
     {
         uint8_t intraGroup = IntraGroupPolicyEnumT::CONST_ALLOW;
@@ -1523,7 +1517,8 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             break;
         }
         flowutils::match_group(intraGroupFlow, prio, epgVnid, epgVnid);
-        switchManager.writeFlow(epgId, POL_TABLE_ID, intraGroupFlow);
+        switchManager.writeFlow(flow::id::EPG, epgId,
+                                POL_TABLE_ID, intraGroupFlow);
     }
 
     if (virtualRouterEnabled && rdId != 0 && bdId != 0) {
@@ -1551,7 +1546,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
                     advertManager.scheduleInitialRouterAdv();
             }
         }
-        switchManager.writeFlow(bdURI.get().toString(),
+        switchManager.writeFlow(flow::id::BD, bdURI.get().toString(),
                                 BRIDGE_TABLE_ID, bridgel);
     }
 
@@ -1600,7 +1595,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             tunnelOutRtr.build(egOutFlows);
         }
     }
-    switchManager.writeFlow(epgId, OUT_TABLE_ID, egOutFlows);
+    switchManager.writeFlow(flow::id::EPG, epgId, OUT_TABLE_ID, egOutFlows);
 
     unordered_set<string> epUuids;
     EndpointManager& epMgr = agent.getEndpointManager();
@@ -1718,7 +1713,8 @@ void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
                 }
             }
         }
-        switchManager.writeFlow(sn->getURI().toString(), BRIDGE_TABLE_ID, el);
+        switchManager.writeFlow(flow::id::SUBNET, sn->getURI().toString(),
+                                BRIDGE_TABLE_ID, el);
     }
 }
 
@@ -1728,9 +1724,9 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
 
     if (!rd) {
         LOG(DEBUG) << "Cleaning up for RD: " << rdURI;
-        switchManager.writeFlow(rdURI.toString(), NAT_IN_TABLE_ID, NULL);
-        switchManager.writeFlow(rdURI.toString(), ROUTE_TABLE_ID, NULL);
-        idGen.erase(getIdNamespace(RoutingDomain::CLASS_ID), rdURI.toString());
+        switchManager.clearFlows(rdURI.toString(), NAT_IN_TABLE_ID);
+        switchManager.clearFlows(rdURI.toString(), ROUTE_TABLE_ID);
+        idGen.erase(flow::id::RD, rdURI.toString());
         return;
     }
     LOG(DEBUG) << "Updating routing domain " << rdURI;
@@ -1739,7 +1735,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     FlowEntryList rdNatFlows;
     boost::system::error_code ec;
     uint32_t tunPort = getTunnelPort();
-    uint32_t rdId = getId(RoutingDomain::CLASS_ID, rdURI);
+    uint32_t rdId = idGen.getId(flow::id::RD, rdURI);
 
     // For subnets internal to a routing domain, we want to perform
     // ordinary routing without mapping to external network.  These
@@ -1864,8 +1860,10 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
         }
     }
 
-    switchManager.writeFlow(rdURI.toString(), NAT_IN_TABLE_ID, rdNatFlows);
-    switchManager.writeFlow(rdURI.toString(), ROUTE_TABLE_ID, rdRouteFlows);
+    switchManager.writeFlow(flow::id::RD, rdURI.toString(),
+                            NAT_IN_TABLE_ID, rdNatFlows);
+    switchManager.writeFlow(flow::id::RD, rdURI.toString(),
+                            ROUTE_TABLE_ID, rdRouteFlows);
 
     unordered_set<string> uuids;
     agent.getServiceManager().getAnycastServicesByDomain(rdURI, uuids);
@@ -1884,20 +1882,20 @@ IntFlowManager::handleDomainUpdate(class_id_t cid, const URI& domURI) {
     case Subnet::CLASS_ID:
         if (!Subnet::resolve(agent.getFramework(), domURI)) {
             LOG(DEBUG) << "Cleaning up for Subnet: " << domURI;
-            switchManager.writeFlow(domURI.toString(), BRIDGE_TABLE_ID, NULL);
+            switchManager.clearFlows(domURI.toString(), BRIDGE_TABLE_ID);
         }
         break;
     case BridgeDomain::CLASS_ID:
         if (!BridgeDomain::resolve(agent.getFramework(), domURI)) {
             LOG(DEBUG) << "Cleaning up for BD: " << domURI;
-            switchManager.writeFlow(domURI.toString(), BRIDGE_TABLE_ID, NULL);
-            idGen.erase(getIdNamespace(cid), domURI.toString());
+            switchManager.clearFlows(domURI.toString(), BRIDGE_TABLE_ID);
+            idGen.erase(flow::id::BD, domURI.toString());
         }
         break;
     case FloodDomain::CLASS_ID:
         if (!FloodDomain::resolve(agent.getFramework(), domURI)) {
             LOG(DEBUG) << "Cleaning up for FD: " << domURI;
-            idGen.erase(getIdNamespace(cid), domURI.toString());
+            idGen.erase(flow::id::FD, domURI.toString());
         }
         break;
     case FloodContext::CLASS_ID:
@@ -1910,7 +1908,7 @@ IntFlowManager::handleDomainUpdate(class_id_t cid, const URI& domURI) {
     case L3ExternalNetwork::CLASS_ID:
         if (!L3ExternalNetwork::resolve(agent.getFramework(), domURI)) {
             LOG(DEBUG) << "Cleaning up for L3ExtNet: " << domURI;
-            idGen.erase(getIdNamespace(cid), domURI.toString());
+            idGen.erase(flow::id::EXTNET, domURI.toString());
         }
         break;
     }
@@ -1970,7 +1968,7 @@ IntFlowManager::updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
                                       optional<shared_ptr<FloodDomain> >& fd) {
     const std::string& epUUID = endPoint.getUUID();
     std::pair<uint32_t, bool> epPair(epPort, isPromiscuous);
-    uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
+    uint32_t fgrpId = idGen.getId(flow::id::FD, fgrpURI);
     string fgrpStrId = "fd:" + fgrpURI.toString();
     FloodGroupMap::iterator fgrpItr = floodGroupMap.find(fgrpURI);
 
@@ -2016,7 +2014,7 @@ IntFlowManager::updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
     {
         // Output table action to output to the flood group appropriate
         // for the source EPG.
-        FlowBuilder().priority(10).reg(5, fgrpId)
+        FlowBuilder().cookie(htonll(fgrpId)).priority(10).reg(5, fgrpId)
             .metadata(flow::meta::out::FLOOD, flow::meta::out::MASK)
             .action()
             .group(fgrpId)
@@ -2042,8 +2040,8 @@ IntFlowManager::updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
             .action().controller()
             .parent().build(learnDst);
     }
-    switchManager.writeFlow(fgrpStrId, BRIDGE_TABLE_ID, grpDst);
-    switchManager.writeFlow(fgrpStrId, LEARN_TABLE_ID, learnDst);
+    switchManager.writeFlow(flow::id::FD, fgrpStrId, BRIDGE_TABLE_ID, grpDst);
+    switchManager.writeFlow(flow::id::FD, fgrpStrId, LEARN_TABLE_ID, learnDst);
 }
 
 void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
@@ -2055,7 +2053,7 @@ void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
         if (epMap.erase(epUUID) == 0) {
             continue;
         }
-        uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
+        uint32_t fgrpId = idGen.getId(flow::id::FD, fgrpURI);
         uint16_t type = epMap.empty() ?
                 OFPGC11_DELETE : OFPGC11_MODIFY;
         GroupEdit::Entry e0 =
@@ -2064,9 +2062,9 @@ void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
                 createGroupMod(type, getPromId(fgrpId), epMap, true);
         if (epMap.empty()) {
             string fgrpStrId = "fd:" + fgrpURI.toString();
-            switchManager.writeFlow(fgrpStrId, OUT_TABLE_ID, NULL);
-            switchManager.writeFlow(fgrpStrId, BRIDGE_TABLE_ID, NULL);
-            switchManager.writeFlow(fgrpStrId, LEARN_TABLE_ID, NULL);
+            switchManager.clearFlows(fgrpStrId, OUT_TABLE_ID);
+            switchManager.clearFlows(fgrpStrId, BRIDGE_TABLE_ID);
+            switchManager.clearFlows(fgrpStrId, LEARN_TABLE_ID);
             floodGroupMap.erase(fgrpURI);
         }
         switchManager.writeGroupMod(e0);
@@ -2082,8 +2080,8 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
     const string& contractId = contractURI.toString();
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.contractExists(contractURI)) {  // Contract removed
-        switchManager.writeFlow(contractId, POL_TABLE_ID, NULL);
-        idGen.erase(getIdNamespace(Contract::CLASS_ID), contractURI.toString());
+        switchManager.clearFlows(contractId, POL_TABLE_ID);
+        idGen.erase(flow::id::CONTRACT, contractURI.toString());
         return;
     }
     PolicyManager::uri_set_t provURIs;
@@ -2106,7 +2104,7 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                << ", #rules=" << rules.size();
 
     FlowEntryList entryList;
-    uint64_t conCookie = getId(Contract::CLASS_ID, contractURI);
+    uint64_t conCookie = idGen.getId(flow::id::CONTRACT, contractURI);
 
     BOOST_FOREACH(const IdMap::value_type& pid, provIds) {
         const uint32_t& pvnid = pid.first;
@@ -2197,7 +2195,7 @@ void IntFlowManager::handleConfigUpdate(const opflex::modb::URI& configURI) {
 void IntFlowManager::updateGroupTable() {
     BOOST_FOREACH (FloodGroupMap::value_type& kv, floodGroupMap) {
         const URI& fgrpURI = kv.first;
-        uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
+        uint32_t fgrpId = idGen.getId(flow::id::FD, fgrpURI);
         Ep2PortMap& epMap = kv.second;
 
         GroupEdit::Entry e1 = createGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
@@ -2259,54 +2257,15 @@ void IntFlowManager::getGroupVnidAndRdId(const unordered_set<URI>& uris,
             }
         }
         if (vnid && rd) {
-            ids[vnid.get()] = getId(RoutingDomain::CLASS_ID,
-                                    rd.get()->getURI());
+            ids[vnid.get()] = idGen.getId(flow::id::RD, rd.get()->getURI());
         }
     }
-}
-
-static const boost::function<bool(opflex::ofcore::OFFramework&,
-                                  const string&,
-                                  const string&)> ID_NAMESPACE_CB[] =
-    {IdGenerator::uriIdGarbageCb<FloodDomain>,
-     IdGenerator::uriIdGarbageCb<BridgeDomain>,
-     IdGenerator::uriIdGarbageCb<RoutingDomain>,
-     IdGenerator::uriIdGarbageCb<Contract>,
-     IdGenerator::uriIdGarbageCb<L3ExternalNetwork>};
-
-void IntFlowManager::cleanup() {
-    for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
-        string ns(ID_NAMESPACES[i]);
-        IdGenerator::garbage_cb_t gcb =
-            bind(ID_NAMESPACE_CB[i], ref(agent.getFramework()), _1, _2);
-        agent.getAgentIOService()
-            .dispatch(bind(&IdGenerator::collectGarbage, ref(idGen),
-                           ns, gcb));
-    }
-}
-
-const char * IntFlowManager::getIdNamespace(class_id_t cid) {
-    const char *nmspc = NULL;
-    switch (cid) {
-    case RoutingDomain::CLASS_ID:   nmspc = ID_NMSPC_RD; break;
-    case BridgeDomain::CLASS_ID:    nmspc = ID_NMSPC_BD; break;
-    case FloodDomain::CLASS_ID:     nmspc = ID_NMSPC_FD; break;
-    case Contract::CLASS_ID:        nmspc = ID_NMSPC_CON; break;
-    case L3ExternalNetwork::CLASS_ID: nmspc = ID_NMSPC_EXTNET; break;
-    default:
-        assert(false);
-    }
-    return nmspc;
-}
-
-uint32_t IntFlowManager::getId(class_id_t cid, const URI& uri) {
-    return idGen.getId(getIdNamespace(cid), uri.toString());
 }
 
 uint32_t IntFlowManager::getExtNetVnid(const opflex::modb::URI& uri) {
     // External networks are assigned private VNIDs that have bit 31 (MSB)
     // set to 1. This is fine because legal VNIDs are 24-bits or less.
-    return (getId(L3ExternalNetwork::CLASS_ID, uri) | (1 << 31));
+    return idGen.getId(flow::id::EXTNET, uri) | (1 << 31);
 }
 
 void IntFlowManager::updateMulticastList(const optional<string>& mcastIp,
@@ -2424,7 +2383,7 @@ GroupEdit IntFlowManager::reconcileGroups(GroupMap& recvGroups) {
         const URI& fgrpURI = kv.first;
         Ep2PortMap& epMap = kv.second;
 
-        uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
+        uint32_t fgrpId = idGen.getId(flow::id::FD, fgrpURI);
         checkGroupEntry(recvGroups, fgrpId, epMap, false, ge);
 
         uint32_t promFdId = getPromId(fgrpId);

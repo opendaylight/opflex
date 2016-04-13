@@ -26,8 +26,9 @@ public:
     MockSwitchManager(Agent& agent,
                       FlowExecutor& flowExecutor,
                       FlowReader& flowReader,
-                      PortMapper& portMapper) :
-        SwitchManager(agent, flowExecutor, flowReader, portMapper) {}
+                      PortMapper& portMapper,
+                      IdGenerator& idGen) :
+        SwitchManager(agent, flowExecutor, flowReader, portMapper, idGen) {}
 
     virtual void start(const std::string& swName) {
         connection.reset(new MockSwitchConnection());

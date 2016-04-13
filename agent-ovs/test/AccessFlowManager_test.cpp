@@ -265,23 +265,25 @@ void AccessFlowManagerFixture::initExpStatic() {
 void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
     uint32_t access = portmapper.FindPort(ep->getAccessInterface().get());
     uint32_t uplink = portmapper.FindPort(ep->getAccessUplinkInterface().get());
+    uint32_t epId = idGen.getId(flow::id::ENDPOINT, ep->getUUID());
 
     if (access != OFPP_NONE && uplink != OFPP_NONE) {
-        ADDF(Bldr().table(GRP).priority(100).in(access)
+        ADDF(Bldr().table(GRP).cookie(epId).priority(100).in(access)
              .actions().load(SEPG, 1).load(OUTPORT, uplink).go(OUT_POL).done());
-        ADDF(Bldr().table(GRP).priority(100).in(uplink)
+        ADDF(Bldr().table(GRP).cookie(epId).priority(100).in(uplink)
              .actions().load(SEPG, 1).load(OUTPORT, access).go(IN_POL).done());
     }
 }
 
 void AccessFlowManagerFixture::initExpSecGrpSet1() {
-    uint32_t setId = idGen.getId("secGroupSet", secGrp1->getURI().toString());
+    uint32_t setId = idGen.getId(flow::id::SECGROUP_SET,
+                                 secGrp1->getURI().toString());
     initExpSecGrp1(flowutils::MAX_POLICY_RULE_PRIORITY, setId, 0);
 }
 
 void AccessFlowManagerFixture::initExpSecGrpSet12(bool second,
                                                   int remoteAddress) {
-    uint32_t setId = idGen.getId("secGroupSet",
+    uint32_t setId = idGen.getId(flow::id::SECGROUP_SET,
                                  secGrp1->getURI().toString() +
                                  ",/PolicyUniverse/PolicySpace/tenant0"
                                  "/GbpSecGroup/secgrp2/");
@@ -294,7 +296,8 @@ void AccessFlowManagerFixture::initExpSecGrpSet12(bool second,
 uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint16_t prio,
                                                   uint32_t setId,
                                                   int remoteAddress) {
-    uint32_t grpId = idGen.getId("secGroup", secGrp1->getURI().toString());
+    uint32_t grpId = idGen.getId(flow::id::SECGROUP,
+                                 secGrp1->getURI().toString());
 
     /* classifer 1  */
     if (remoteAddress) {
@@ -352,7 +355,8 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint16_t prio,
 
 uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint16_t prio,
                                                   uint32_t setId) {
-    uint32_t grpId = idGen.getId("secGroup", secGrp2->getURI().toString());
+    uint32_t grpId = idGen.getId(flow::id::SECGROUP,
+                                 secGrp2->getURI().toString());
     ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
     ADDF(Bldr().table(OUT_POL).priority(prio).cookie(grpId)
