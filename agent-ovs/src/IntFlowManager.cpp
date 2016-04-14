@@ -2335,8 +2335,8 @@ void IntFlowManager::writeMulticastGroups() {
     try {
         pt::write_json(mcastGroupFile, tree);
     } catch (pt::json_parser_error e) {
-        LOG(ERROR) << "Could not write multicast group file " << mcastGroupFile
-                   << ": " << e.what();
+        LOG(ERROR) << "Could not write multicast group file "
+                   << e.what();
     }
 }
 
