@@ -292,7 +292,11 @@ srpm: dist rpm/${PACKAGE}.spec
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
 
-EXTRA_DIST += debian
+EXTRA_DIST += debian/agent-ovs.dirs debian/agent-ovs.install \
+	debian/agent-ovs.postinst debian/agent-ovs.preinst \
+	debian/agent-ovs.upstart debian/mcast-daemon.conf \
+	debian/changelog debian/compat debian/conffiles debian/control \
+	debian/copyright debian/rules debian/source/format
 
 # Set env var DEB_BUILD_OPTIONS="parallel=<#cores>" to speed up package builds
 DEB_PKG_DIR=deb

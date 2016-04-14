@@ -130,6 +130,10 @@ srpm: dist rpm/${PACKAGE}.spec
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
 
+EXTRA_DIST += debian/libopflex.install debian/libopflex-dev.install \
+	debian/changelog debian/compat debian/control \
+	debian/copyright debian/rules debian/source/format
+
 # Set env var DEB_BUILD_OPTIONS="parallel=<#cores>" to speed up package builds
 DEB_PKG_DIR=deb
 deb: dist
