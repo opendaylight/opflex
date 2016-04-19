@@ -921,27 +921,25 @@ void PacketInHandler::Handle(SwitchConnection *conn,
         ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
     assert(ofputil_protocol_is_valid(proto));
 
-    uint64_t cookie = pi.cookie & htonll(~(uint64_t)0 << 32);
-
-    if (cookie == flow::cookie::LEARN ||
-        cookie == flow::cookie::PROACTIVE_LEARN)
+    if (pi.cookie == flow::cookie::LEARN ||
+        pi.cookie == flow::cookie::PROACTIVE_LEARN)
         handleLearnPktIn(conn, pi, proto, pkt, flow);
-    else if (cookie == flow::cookie::NEIGH_DISC)
+    else if (pi.cookie == flow::cookie::NEIGH_DISC)
         handleNDPktIn(agent, intFlowManager, conn, pi, proto, pkt, flow);
-    else if (cookie == flow::cookie::DHCP_V4)
+    else if (pi.cookie == flow::cookie::DHCP_V4)
         handleDHCPPktIn(true, agent, intFlowManager,
                         conn, pi, proto, pkt, flow);
-    else if (cookie == flow::cookie::DHCP_V6)
+    else if (pi.cookie == flow::cookie::DHCP_V6)
         handleDHCPPktIn(false, agent, intFlowManager,
                         conn, pi, proto, pkt, flow);
-    else if (cookie == flow::cookie::VIRTUAL_IP_V4)
+    else if (pi.cookie == flow::cookie::VIRTUAL_IP_V4)
         handleVIPPktIn(true, agent, *portMapper, pi, flow);
-    else if (cookie == flow::cookie::VIRTUAL_IP_V6)
+    else if (pi.cookie == flow::cookie::VIRTUAL_IP_V6)
         handleVIPPktIn(false, agent, *portMapper, pi, flow);
-    else if (cookie == flow::cookie::ICMP_ERROR_V4)
+    else if (pi.cookie == flow::cookie::ICMP_ERROR_V4)
         handleICMPErrPktIn(true, agent, intFlowManager, conn,
                            pi, proto, pkt);
-    //else if (cookie == flow::cookie::ICMP_ERROR_V6)
+    //else if (pi.cookie == flow::cookie::ICMP_ERROR_V6)
     //    handleICMPErrPktIn(false, agent, intFlowManager, conn,
     //                       pi, proto, pkt);
 }

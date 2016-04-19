@@ -13,9 +13,6 @@
 #define OVSAGENT_FLOWCONSTANTS_H
 
 #include <stdint.h>
-#include <stddef.h>
-
-#include <string>
 
 namespace ovsagent {
 namespace flow {
@@ -125,75 +122,6 @@ extern const uint64_t FLOOD;
 
 } // namespace out
 } // namespace meta
-
-namespace id {
-
-/**
- * Array containing all ID namespaces
- */
-extern const std::string NAMESPACES[];
-
-/**
- * Total number of ID namespaces
- */
-extern const size_t NUM_NAMESPACES;
-
-/**
- * ID namespace for endpoint groups
- */
-extern const std::string EPG;
-
-/**
- * ID namespace for flood domains
- */
-extern const std::string FD;
-
-/**
- * ID namespace for bridge domains
- */
-extern const std::string BD;
-
-/**
- * ID namespace for routing domains
- */
-extern const std::string RD;
-
-/**
- * ID namespace for contracts
- */
-extern const std::string CONTRACT;
-
-/**
- * ID namespace for external networks
- */
-extern const std::string EXTNET;
-
-/**
- * ID namespace for subnets
- */
-extern const std::string SUBNET;
-
-/**
- * ID namespace for security groups
- */
-extern const std::string SECGROUP;
-
-/**
- * ID namespace for security group sets
- */
-extern const std::string SECGROUP_SET;
-
-/**
- * ID namespace for endpoints
- */
-extern const std::string ENDPOINT;
-
-/**
- * ID namespace for anycast services
- */
-extern const std::string SERVICE;
-
-} // namespace id
 
 } // namespace flow
 } // namespace ovsagent

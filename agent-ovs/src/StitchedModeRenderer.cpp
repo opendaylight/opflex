@@ -10,36 +10,25 @@
  */
 
 #include "StitchedModeRenderer.h"
-#include "FlowConstants.h"
 #include "logging.h"
 
 #include <boost/asio/placeholders.hpp>
-#include <boost/algorithm/string/find_iterator.hpp>
-#include <boost/algorithm/string/finder.hpp>
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/range/sub_range.hpp>
 
 namespace ovsagent {
 
-using std::string;
 using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
 using boost::asio::deadline_timer;
 using boost::asio::placeholders::error;
-using boost::algorithm::make_split_iterator;
-using boost::algorithm::token_finder;
-using boost::algorithm::is_any_of;
-using boost::copy_range;
 
 static const boost::posix_time::milliseconds CLEANUP_INTERVAL(3*60*1000);
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_),
-      intSwitchManager(agent_, intFlowExecutor,
-                       intFlowReader, intPortMapper, idGen),
+      intSwitchManager(agent_, intFlowExecutor, intFlowReader, intPortMapper),
       intFlowManager(agent_, intSwitchManager, idGen),
       accessSwitchManager(agent_, accessFlowExecutor,
-                          accessFlowReader, accessPortMapper, idGen),
+                          accessFlowReader, accessPortMapper),
       accessFlowManager(agent_, accessSwitchManager, idGen),
       statsManager(&agent_, intSwitchManager.getPortMapper()),
       tunnelEpManager(&agent_), tunnelRemotePort(0), uplinkVlan(0),
@@ -77,10 +66,6 @@ void StitchedModeRenderer::start() {
 
     if (!flowIdCache.empty())
         idGen.setPersistLocation(flowIdCache);
-
-    for (size_t i = 0; i < flow::id::NUM_NAMESPACES; i++) {
-        idGen.initNamespace(flow::id::NAMESPACES[i]);
-    }
 
     intFlowManager.setEncapType(encapType);
     intFlowManager.setEncapIface(encapIface);
@@ -242,89 +227,12 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
         LOG(WARNING) << "No multicast group file specified";
 }
 
-template <class MO>
-static bool uriIdGarbageCb(opflex::ofcore::OFFramework& framework,
-                           const std::string&, const std::string& str) {
-    return MO::resolve(framework, opflex::modb::URI(str));
-}
-
-typedef boost::function<bool(opflex::ofcore::OFFramework&,
-                             const string&,
-                             const string&)> uri_garbage_cb_t;
-static const uri_garbage_cb_t ID_NAMESPACE_CB[] =
-    {uriIdGarbageCb<modelgbp::gbp::EpGroup>,
-     uriIdGarbageCb<modelgbp::gbp::FloodDomain>,
-     uriIdGarbageCb<modelgbp::gbp::BridgeDomain>,
-     uriIdGarbageCb<modelgbp::gbp::RoutingDomain>,
-     uriIdGarbageCb<modelgbp::gbp::Contract>,
-     uriIdGarbageCb<modelgbp::gbp::L3ExternalNetwork>,
-     uriIdGarbageCb<modelgbp::gbp::Subnet>,
-     uriIdGarbageCb<modelgbp::gbp::SecGroup>};
-static const size_t NUM_ID_NAMESPACE_CB =
-    (sizeof(ID_NAMESPACE_CB)/sizeof(uri_garbage_cb_t));
-
-static bool secGrpSetIdGarbageCb(EndpointManager& endpointManager,
-                                 const string&, const string& str) {
-    EndpointListener::uri_set_t secGrps;
-
-    typedef boost::algorithm::split_iterator<string::const_iterator> ssi;
-    ssi it = make_split_iterator(str, token_finder(is_any_of(",")));
-
-    for(; it != ssi(); ++it) {
-        string uri(copy_range<string>(*it));
-        if (!uri.empty())
-            secGrps.insert(opflex::modb::URI(uri));
-    }
-
-    if (secGrps.empty()) return true;
-    return !endpointManager.secGrpSetEmpty(secGrps);
-}
-
-static bool endpointGarbageCb(EndpointManager& endpointManager,
-                              const string&, const string& uuid) {
-    return endpointManager.getEndpoint(uuid);
-}
-
-static bool serviceGarbageCb(ServiceManager& serviceManager,
-                             const string&, const string& uuid) {
-    return serviceManager.getAnycastService(uuid);
-}
-
 void StitchedModeRenderer::onCleanupTimer(const boost::system::error_code& ec) {
     if (ec) return;
 
     idGen.cleanup();
-    // Clean up URI-based ID namespaces
-    for (size_t i = 0; i < NUM_ID_NAMESPACE_CB; i++) {
-        string ns(flow::id::NAMESPACES[i]);
-        IdGenerator::garbage_cb_t gcb =
-            boost::bind(ID_NAMESPACE_CB[i], boost::ref(getFramework()), _1, _2);
-        getAgent().getAgentIOService()
-            .dispatch(boost::bind(&IdGenerator::collectGarbage,
-                                  boost::ref(idGen), ns, gcb));
-    }
-    // Clean up security group sets
-    {
-        IdGenerator::garbage_cb_t gcb =
-            boost::bind(secGrpSetIdGarbageCb,
-                        boost::ref(getEndpointManager()), _1, _2);
-        idGen.collectGarbage(flow::id::SECGROUP_SET, gcb);
-    }
-    // Clean up endpoints
-    {
-        IdGenerator::garbage_cb_t gcb =
-            boost::bind(endpointGarbageCb,
-                        boost::ref(getEndpointManager()), _1, _2);
-        idGen.collectGarbage(flow::id::ENDPOINT, gcb);
-    }
-
-    // Clean up anycast services
-    {
-        IdGenerator::garbage_cb_t gcb =
-            boost::bind(serviceGarbageCb,
-                        boost::ref(getAgent().getServiceManager()), _1, _2);
-        idGen.collectGarbage(flow::id::SERVICE, gcb);
-    }
+    intFlowManager.cleanup();
+    accessFlowManager.cleanup();
 
     if (started) {
         cleanupTimer->expires_from_now(CLEANUP_INTERVAL);

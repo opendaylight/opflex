@@ -41,7 +41,7 @@ class AdvertManagerFixture : public ModbFixture {
 public:
     AdvertManagerFixture()
         : ModbFixture(),
-          switchManager(agent, flowExecutor, flowReader, portMapper, idGen),
+          switchManager(agent, flowExecutor, flowReader, portMapper),
           intFlowManager(agent, switchManager, idGen),
           advertManager(agent, intFlowManager) {
         createObjects();
