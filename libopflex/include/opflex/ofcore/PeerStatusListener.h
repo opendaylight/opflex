@@ -30,6 +30,11 @@ namespace ofcore {
 class PeerStatusListener {
 public:
     /**
+     * Destroy the peer status listener
+     */
+    virtual ~PeerStatusListener() {}
+
+    /**
      * The status of a particular peer, which will be sent in the peer
      * status update callback.
      */
