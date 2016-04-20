@@ -134,12 +134,14 @@ bool OpflexHandler::requireReadyReq(const Value& id,
 
     sendErrorRes(id, "ESTATE", "Unexpected request of type " + method);
     handleUnexpected(method);
+    return false;
 }
 
 bool OpflexHandler::requireReadyRes(uint64_t reqId,
                                     const std::string& method) {
     if (isReady()) return true;
     handleUnexpected(method);
+    return false;
 }
 
 } /* namespace internal */

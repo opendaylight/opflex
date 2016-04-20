@@ -464,6 +464,7 @@ std::ostream& operator << (
         os << ")";
 
     }
+    return os;
 }
 
 #ifndef NDEBUG
