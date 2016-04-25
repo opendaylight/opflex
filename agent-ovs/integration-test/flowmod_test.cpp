@@ -145,7 +145,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
 static
 void addBucket(uint32_t bucketId, GroupEdit::Entry& entry) {
     ofputil_bucket *bkt = (ofputil_bucket *)malloc(sizeof(ofputil_bucket));
-    bkt->weight = 1;
+    bkt->weight = 0;
     bkt->bucket_id = bucketId;
     bkt->watch_port = OFPP_ANY;
     bkt->watch_group = OFPG11_ANY;
@@ -186,7 +186,7 @@ BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
 
     GroupEdit::EntryList gl;
     rdr.GetGroups(gl);
-    BOOST_CHECK(gl.size() == 2);
+    BOOST_REQUIRE(gl.size() == 2);
     BOOST_CHECK(GroupEdit::groupEq(gl[0], entryIn1));
     BOOST_CHECK(GroupEdit::groupEq(gl[1], entryIn2));
 
@@ -195,17 +195,19 @@ BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     BOOST_CHECK(fexec.Execute(gedit));
     gl.clear();
     rdr.GetGroups(gl);
-    BOOST_CHECK(gl.size() == 2);
+    BOOST_REQUIRE(gl.size() == 2);
     BOOST_CHECK(GroupEdit::groupEq(gl[0], entryIn1_1));
     BOOST_CHECK(GroupEdit::groupEq(gl[1], entryIn2));
 
     gedit.edits.clear();
-    entryIn1->mod->command = OFPGC11_DELETE;
-    gedit.edits.push_back(entryIn1);
+    GroupEdit::Entry entryDel(new GroupEdit::GroupMod());
+    entryDel->mod->command = OFPGC11_DELETE;
+    entryDel->mod->group_id = 0;
+    gedit.edits.push_back(entryDel);
     BOOST_CHECK(fexec.Execute(gedit));
     gl.clear();
     rdr.GetGroups(gl);
-    BOOST_CHECK(gl.size() == 1);
+    BOOST_REQUIRE(gl.size() == 1);
     BOOST_CHECK(GroupEdit::groupEq(gl[0], entryIn2));
 }
 
