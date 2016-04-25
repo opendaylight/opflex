@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <vector>
+#include <utility>
 #include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/unordered_map.hpp>
@@ -35,14 +36,14 @@ public:
      * @param rhs the entry to compare against
      * @return true if the match entry is equal
      */
-    bool MatchEq(const FlowEntry *rhs);
+    bool matchEq(const FlowEntry *rhs);
 
     /**
      * Check whether the given action entry is equal to this one
      * @param rhs the entry to compare against
      * @return true if the action entry is equal
      */
-    bool ActionEq(const FlowEntry *rhs);
+    bool actionEq(const FlowEntry *rhs);
 
     /**
      * The flow entry
@@ -71,37 +72,50 @@ public:
     /**
      * The type of edit to make
      */
-    enum TYPE {
+    enum type {
         /**
          * Add new flows
          */
-        add,
+        ADD,
         /**
          * Modify existing flows
          */
-        mod,
+        MOD,
         /**
          * Delete flows
          */
-        del
+        DEL
     };
 
     /**
      * An edit entry is a flow entry pairs with the operation to
      * perform
      */
-    typedef std::pair<TYPE, FlowEntryPtr> Entry;
+    typedef std::pair<type, FlowEntryPtr> Entry;
 
     /**
      * The edits that need to be made
      */
     std::vector<FlowEdit::Entry> edits;
+
+    /**
+     * Add a new edit
+     * @param t the type of the edit
+     * @param fe the flow entry associated with the edit
+     */
+    void add(type t, FlowEntryPtr fe);
+
 };
 
 /**
  * Print a flow edit to an output stream.
  */
 std::ostream& operator<<(std::ostream& os, const FlowEdit::Entry& fe);
+
+/**
+ * Compare two flow edit entries
+ */
+bool operator<(const FlowEdit::Entry& f1, const FlowEdit::Entry& f2);
 
 /**
  * Class that represents a list of group table changes.
@@ -138,7 +152,7 @@ public:
      * @param rhs The other group to compare
      * @return true if groups are equal
      */
-    static bool GroupEq(const GroupEdit::Entry& lhs,
+    static bool groupEq(const GroupEdit::Entry& lhs,
             const GroupEdit::Entry& rhs);
 
     /**
@@ -157,19 +171,20 @@ std::ostream& operator<<(std::ostream& os, const GroupEdit::Entry& ge);
  */
 class TableState {
 public:
-    TableState() {}
+    TableState();
+    /**
+     * Copy constructor
+     * @param ts the object to copy from
+     */
+    TableState(const TableState& ts);
+    ~TableState();
 
     /**
      * Update cached entry-list corresponding to given object-id
      */
-    void Update(const std::string& objId, FlowEntryList& el);
-
-    /**
-     * Compute the differences between existing and provided table-entries set
-     * for given object-id.
-     */
-    void DiffEntry(const std::string& objId, const FlowEntryList& newEntries,
-            FlowEdit& diffs) const;
+    void apply(const std::string& objId,
+               FlowEntryList& el,
+               /* out */ FlowEdit& diffs);
 
     /**
      * Compute the differences between provided table-entries and all the
@@ -178,37 +193,13 @@ public:
      * @param oldEntries the entries to compare against
      * @param diffs the differences between provided entries and the table
      */
-    void DiffSnapshot(const FlowEntryList& oldEntries, FlowEdit& diffs) const;
+    void diffSnapshot(const FlowEntryList& oldEntries, FlowEdit& diffs) const;
+
 private:
-    /**
-     * Compute flow-entries additions and modification between old and new
-     * entries.
-     *
-     * @param oldEntries The old entries
-     * @param newEntries The new entries
-     * @param visited Boolean vector corresponding to old entries that is set
-     * to true if the corresponding entry is also present in the new entries
-     * @param diffs the differences between old and new entries
-     */
-    static void CalculateAddMod(const FlowEntryList& oldEntries,
-        const FlowEntryList& newEntries,
-        std::vector<bool>& visited,
-        FlowEdit& diffs);
+    class TableStateImpl;
+    TableStateImpl* pimpl;
+    friend class TableStateImpl;
 
-    /**
-     * Compute which old entries need to be deleted.
-     *
-     * @param oldEntries The old entries
-     * @param visited Boolean vector corresponding to old entries that should be
-     * set to true if the corresponding entry should not be deleted
-     * @param diffs Container to hold the deletions
-     */
-    static void CalculateDel(const FlowEntryList& oldEntries,
-        std::vector<bool>& visited,
-        FlowEdit& diffs);
-
-    typedef boost::unordered_map<std::string, FlowEntryList> EntryMap;
-    EntryMap entryMap;
 };
 
 } // namespace ovsagent

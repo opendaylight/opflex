@@ -15,6 +15,8 @@
 #include "ActionBuilder.h"
 #include "ovs.h"
 
+#include <opflex/modb/MAC.h>
+
 #include <boost/asio/ip/address.hpp>
 #include <boost/scoped_ptr.hpp>
 
@@ -43,6 +45,13 @@ public:
      * Get the action builder to set up the action
      */
     ActionBuilder& action();
+
+    /**
+     * Set the table ID for the flow entry
+     * @param tableId the tableId to set
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& table(uint8_t tableId);
 
     /**
      * Set the priority for the flow entry
@@ -80,6 +89,26 @@ public:
      * @return this flow builder for chaining
      */
     FlowBuilder& ethDst(const uint8_t mac[6], const uint8_t mask[6] = NULL);
+
+    /**
+     * Add a match against ethernet source
+     * @param mac the mac to match
+     * @param mask a mask or NULL to match exactly
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& ethSrc(const opflex::modb::MAC& mac,
+                        const opflex::modb::MAC& mask =
+                        opflex::modb::MAC("ff:ff:ff:ff:ff:ff"));
+
+    /**
+     * Add a match against ethernet destination
+     * @param mac the mac to match
+     * @param mask a mask or NULL to match exactly
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& ethDst(const opflex::modb::MAC& mac,
+                        const opflex::modb::MAC& mask =
+                        opflex::modb::MAC("ff:ff:ff:ff:ff:ff"));
 
     /**
      * Add a match against IP source.  Also sets appropriate ethertype

@@ -30,17 +30,17 @@ public:
 
     virtual bool Execute(const FlowEdit& flowEdits);
     virtual bool Execute(const GroupEdit& groupEdits);
-    virtual void Expect(FlowEdit::TYPE mod, const std::string& fe);
-    virtual void Expect(FlowEdit::TYPE mod, const std::vector<std::string>& fe);
-    virtual void ExpectGroup(FlowEdit::TYPE mod, const std::string& ge);
+    virtual void Expect(FlowEdit::type mod, const std::string& fe);
+    virtual void Expect(FlowEdit::type mod, const std::vector<std::string>& fe);
+    virtual void ExpectGroup(FlowEdit::type mod, const std::string& ge);
     virtual void IgnoreFlowMods();
     virtual void IgnoreGroupMods();
     virtual bool IsEmpty();
     virtual bool IsGroupEmpty();
     virtual void Clear();
 
-    typedef std::pair<FlowEdit::TYPE, std::string> MOD;
-    std::list<MOD> flowMods;
+    typedef std::pair<FlowEdit::type, std::string> mod_t;
+    std::list<mod_t> flowMods;
     std::list<std::string> groupMods;
     bool ignoreFlowMods;
     boost::unordered_set<int> ignoredFlowMods;

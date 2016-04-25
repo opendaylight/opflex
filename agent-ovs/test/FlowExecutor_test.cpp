@@ -70,16 +70,16 @@ BOOST_AUTO_TEST_SUITE(FlowExecutor_test)
 
 BOOST_FIXTURE_TEST_CASE(multiedit, FlowExecutorFixture) {
     FlowEdit fe;
-    assign::push_back(fe.edits)(FlowEdit::add, flows[0])
-            (FlowEdit::mod, flows[1])(FlowEdit::del, flows[0]);
+    assign::push_back(fe.edits)(FlowEdit::ADD, flows[0])
+            (FlowEdit::MOD, flows[1])(FlowEdit::DEL, flows[0]);
     conn.Expect(fe);
     BOOST_CHECK(fexec.Execute(fe));
 }
 
 BOOST_FIXTURE_TEST_CASE(noblock, FlowExecutorFixture) {
     FlowEdit fe;
-    assign::push_back(fe.edits)(FlowEdit::add, flows[0])
-            (FlowEdit::mod, flows[1]);
+    assign::push_back(fe.edits)(FlowEdit::ADD, flows[0])
+            (FlowEdit::MOD, flows[1]);
     conn.Expect(fe);
     BOOST_CHECK(fexec.ExecuteNoBlock(fe));
     BOOST_CHECK(conn.expectedEdits.edits.empty());
@@ -87,7 +87,7 @@ BOOST_FIXTURE_TEST_CASE(noblock, FlowExecutorFixture) {
 
 BOOST_FIXTURE_TEST_CASE(moderror, FlowExecutorFixture) {
     FlowEdit fe;
-    assign::push_back(fe.edits)(FlowEdit::mod, flows[0]);
+    assign::push_back(fe.edits)(FlowEdit::MOD, flows[0]);
     conn.Expect(fe);
     conn.ReplyWithError(OFPERR_OFPFMFC_TABLE_FULL);
     BOOST_CHECK(fexec.Execute(fe) == false);
@@ -95,7 +95,7 @@ BOOST_FIXTURE_TEST_CASE(moderror, FlowExecutorFixture) {
 
 BOOST_FIXTURE_TEST_CASE(reconnect, FlowExecutorFixture) {
     FlowEdit fe;
-    assign::push_back(fe.edits)(FlowEdit::mod, flows[0]);
+    assign::push_back(fe.edits)(FlowEdit::MOD, flows[0]);
     conn.Expect(fe);
     conn.reconnectReply = true;
     BOOST_CHECK(fexec.Execute(fe) == false);

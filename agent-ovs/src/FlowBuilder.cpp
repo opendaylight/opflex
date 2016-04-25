@@ -35,6 +35,11 @@ void FlowBuilder::build(FlowEntryList& list) {
     list.push_back(build());
 }
 
+FlowBuilder& FlowBuilder::table(uint8_t tableId) {
+    entry_->entry->table_id = tableId;
+    return *this;
+}
+
 FlowBuilder& FlowBuilder::priority(uint16_t prio) {
     entry_->entry->priority = prio;
     return *this;
@@ -64,6 +69,24 @@ FlowBuilder& FlowBuilder::ethDst(const uint8_t mac[6], const uint8_t mask[6]) {
     else
         match_set_dl_dst(match(), mac);
     return *this;
+}
+
+FlowBuilder& FlowBuilder::ethSrc(const opflex::modb::MAC& mac,
+                                 const opflex::modb::MAC& mask) {
+    uint8_t macarr[6];
+    uint8_t maskarr[6];
+    mac.toUIntArray(macarr);
+    mask.toUIntArray(maskarr);
+    return ethSrc(macarr, maskarr);
+}
+
+FlowBuilder& FlowBuilder::ethDst(const opflex::modb::MAC& mac,
+                                 const opflex::modb::MAC& mask) {
+    uint8_t macarr[6];
+    uint8_t maskarr[6];
+    mac.toUIntArray(macarr);
+    mask.toUIntArray(maskarr);
+    return ethDst(macarr, maskarr);
 }
 
 static inline void fill_in6_addr(struct in6_addr& addr,

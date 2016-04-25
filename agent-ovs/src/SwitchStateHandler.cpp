@@ -19,7 +19,7 @@ SwitchStateHandler::reconcileFlows(std::vector<TableState> flowTables,
                                    std::vector<FlowEntryList>& recvFlows) {
     std::vector<FlowEdit> diffs(flowTables.size());
     for (size_t i = 0; i < flowTables.size(); ++i) {
-        flowTables[i].DiffSnapshot(recvFlows[i], diffs[i]);
+        flowTables[i].diffSnapshot(recvFlows[i], diffs[i]);
         LOG(DEBUG) << "Table=" << i << ", snapshot has "
                    << diffs[i].edits.size() << " diff(s)";
         BOOST_FOREACH(const FlowEdit::Entry& e, diffs[i].edits) {

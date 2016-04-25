@@ -605,6 +605,7 @@ std::ostream & operator<<(std::ostream &os, const PolicyRule& rule) {
     os << "PolicyRule[classifier="
        << rule.getL24Classifier()->getURI()
        << ",allow=" << rule.getAllow()
+       << ",prio=" << rule.getPriority()
        << ",direction=";
 
     switch (rule.getDirection()) {
@@ -723,6 +724,8 @@ static bool updatePolicyRules(OFFramework& framework,
         resolveChildren(sub, rules);
         stable_sort(rules.begin(), rules.end(), ruleComp);
 
+        uint16_t rulePrio = flowutils::MAX_POLICY_RULE_PRIORITY;
+
         BOOST_FOREACH(shared_ptr<Rule>& rule, rules) {
             if (!rule->isDirectionSet()) {
                 continue;       // ignore rules with no direction
@@ -766,10 +769,17 @@ static bool updatePolicyRules(OFFramework& framework,
                 }
             }
 
+            uint16_t clsPrio = 0;
             BOOST_FOREACH (const shared_ptr<L24Classifier>& c, classifiers) {
-                newRules.push_back(make_shared<PolicyRule>(dir, c, ruleAllow,
+                newRules.push_back(make_shared<PolicyRule>(dir,
+                                                           rulePrio - clsPrio,
+                                                           c, ruleAllow,
                                                            remoteSubnets));
+                if (clsPrio < 127)
+                    clsPrio += 1;
             }
+            if (rulePrio > 128)
+                rulePrio -= 128;
         }
     }
     PolicyManager::rule_list_t::const_iterator li = oldRules.begin();

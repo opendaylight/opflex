@@ -34,6 +34,7 @@
 #include "FlowConstants.h"
 #include "FlowUtils.h"
 #include "FlowManagerFixture.h"
+#include "FlowBuilder.h"
 
 using namespace std;
 using namespace boost::assign;
@@ -227,8 +228,8 @@ void IntFlowManagerFixture::epgTest() {
     intFlowManager.egDomainUpdated(epg0->getURI());
 
     exec.Clear();
-    exec.ExpectGroup(FlowEdit::add, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
-    exec.ExpectGroup(FlowEdit::add, ge_fd0_prom + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_fd0_prom + ge_bkt_tun);
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 
     clearExpFlowTables();
@@ -547,8 +548,8 @@ void IntFlowManagerFixture::fdTest() {
     WAIT_FOR(policyMgr.getFDForGroup(epg0->getURI()) != boost::none, 500);
 
     exec.Clear();
-    exec.ExpectGroup(FlowEdit::add, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
-    exec.ExpectGroup(FlowEdit::add, ge_fd0_prom + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_fd0_prom + ge_bkt_tun);
 
     intFlowManager.endpointUpdated(ep0->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
@@ -562,9 +563,9 @@ void IntFlowManagerFixture::fdTest() {
 
     /* update EP2 */
     exec.Clear();
-    exec.ExpectGroup(FlowEdit::mod, ge_fd0 + ge_bkt_ep0 + ge_bkt_ep2
+    exec.ExpectGroup(FlowEdit::MOD, ge_fd0 + ge_bkt_ep0 + ge_bkt_ep2
             + ge_bkt_tun);
-    exec.ExpectGroup(FlowEdit::mod, ge_fd0_prom + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::MOD, ge_fd0_prom + ge_bkt_tun);
     intFlowManager.endpointUpdated(ep2->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 
@@ -578,8 +579,8 @@ void IntFlowManagerFixture::fdTest() {
     /* remove port-mapping for ep2 */
     portmapper.ports.erase(ep2->getInterfaceName().get());
     exec.Clear();
-    exec.ExpectGroup(FlowEdit::mod, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
-    exec.ExpectGroup(FlowEdit::mod, ge_fd0_prom + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::MOD, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::MOD, ge_fd0_prom + ge_bkt_tun);
     intFlowManager.endpointUpdated(ep2->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 
@@ -593,8 +594,8 @@ void IntFlowManagerFixture::fdTest() {
     /* remove ep0 */
     epSrc.removeEndpoint(ep0->getUUID());
     exec.Clear();
-    exec.ExpectGroup(FlowEdit::del, ge_fd0);
-    exec.ExpectGroup(FlowEdit::del, ge_fd0_prom);
+    exec.ExpectGroup(FlowEdit::DEL, ge_fd0);
+    exec.ExpectGroup(FlowEdit::DEL, ge_fd0_prom);
     intFlowManager.endpointUpdated(ep0->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 
@@ -604,14 +605,14 @@ void IntFlowManagerFixture::fdTest() {
 
     /* check promiscous flood */
     WAIT_FOR(policyMgr.getFDForGroup(epg2->getURI()) != boost::none, 500);
-    exec.ExpectGroup(FlowEdit::add, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun);
-    exec.ExpectGroup(FlowEdit::add, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun);
     intFlowManager.endpointUpdated(ep4->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 
     /* group changes on tunnel port change */
-    exec.ExpectGroup(FlowEdit::mod, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun_new);
-    exec.ExpectGroup(FlowEdit::mod, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun_new);
+    exec.ExpectGroup(FlowEdit::MOD, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun_new);
+    exec.ExpectGroup(FlowEdit::MOD, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun_new);
     portmapper.ports[tunIf] = tun_port_new;
     intFlowManager.portStatusUpdate(tunIf, tun_port_new, false);
     WAIT_FOR(exec.IsGroupEmpty(), 500);
@@ -651,10 +652,10 @@ void IntFlowManagerFixture::groupFloodTest() {
     WAIT_FOR(policyMgr.getFDForGroup(epg2->getURI()) != boost::none, 500);
 
     exec.Clear();
-    //exec.Expect(FlowEdit::mod, fe_ep0_fd0_1);
-    //exec.Expect(FlowEdit::add, fe_ep0_fd0_2);
-    exec.ExpectGroup(FlowEdit::add, ge_epg0 + ge_bkt_ep0 + ge_bkt_tun);
-    exec.ExpectGroup(FlowEdit::add, ge_epg0_prom + ge_bkt_tun);
+    //exec.Expect(FlowEdit::MOD, fe_ep0_fd0_1);
+    //exec.Expect(FlowEdit::ADD, fe_ep0_fd0_2);
+    exec.ExpectGroup(FlowEdit::ADD, ge_epg0 + ge_bkt_ep0 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_epg0_prom + ge_bkt_tun);
     intFlowManager.endpointUpdated(ep0->getUUID());
 
     WAIT_FOR(exec.IsGroupEmpty(), 500);
@@ -667,8 +668,8 @@ void IntFlowManagerFixture::groupFloodTest() {
     WAIT_FOR_TABLES("ep0", 500);
 
     exec.Clear();
-    exec.ExpectGroup(FlowEdit::add, ge_epg2 + ge_bkt_ep2 + ge_bkt_tun);
-    exec.ExpectGroup(FlowEdit::add, ge_epg2_prom + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_epg2 + ge_bkt_ep2 + ge_bkt_tun);
+    exec.ExpectGroup(FlowEdit::ADD, ge_epg2_prom + ge_bkt_tun);
     intFlowManager.endpointUpdated(ep2->getUUID());
 
     WAIT_FOR(exec.IsGroupEmpty(), 500);
@@ -684,8 +685,8 @@ void IntFlowManagerFixture::groupFloodTest() {
     /* remove ep0 */
     epSrc.removeEndpoint(ep0->getUUID());
     exec.Clear();
-    exec.ExpectGroup(FlowEdit::del, ge_epg0);
-    exec.ExpectGroup(FlowEdit::del, ge_epg0_prom);
+    exec.ExpectGroup(FlowEdit::DEL, ge_epg0);
+    exec.ExpectGroup(FlowEdit::DEL, ge_epg0_prom);
     intFlowManager.endpointUpdated(ep0->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 
@@ -763,11 +764,11 @@ BOOST_FIXTURE_TEST_CASE(policy_portrange, VxlanIntFlowManagerFixture) {
 }
 
 void IntFlowManagerFixture::connectTest() {
-    exec.ignoredFlowMods.insert(FlowEdit::add);
-    exec.Expect(FlowEdit::del, fe_connect_1);
-    exec.Expect(FlowEdit::del, fe_connect_learn);
-    exec.Expect(FlowEdit::mod, fe_connect_2);
-    exec.ExpectGroup(FlowEdit::del, "group_id=10,type=all");
+    exec.ignoredFlowMods.insert(FlowEdit::ADD);
+    exec.Expect(FlowEdit::DEL, fe_connect_1);
+    exec.Expect(FlowEdit::DEL, fe_connect_learn);
+    exec.Expect(FlowEdit::MOD, fe_connect_2);
+    exec.ExpectGroup(FlowEdit::DEL, "group_id=10,type=all");
     intFlowManager.egDomainUpdated(epg4->getURI());
     setConnected();
 
@@ -1676,21 +1677,21 @@ void IntFlowManagerFixture::initExpCon1() {
                  .go(OUT)
                  .done());
             /* classifier 2  */
-            ADDF(Bldr().table(POL).priority(prio-1)
+            ADDF(Bldr().table(POL).priority(prio-128)
                  .cookie(con1_cookie).arp()
                  .reg(SEPG, pvnid).reg(DEPG, cvnid)
                  .actions().go(OUT).done());
             /* classifier 6 */
-            ADDF(Bldr().table(POL).priority(prio-2)
+            ADDF(Bldr().table(POL).priority(prio-256)
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(22)
                  .isTcpFlags("+syn+ack").actions().go(OUT).done());
             /* classifier 7 */
-            ADDF(Bldr().table(POL).priority(prio-3)
+            ADDF(Bldr().table(POL).priority(prio-384)
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(21)
                  .isTcpFlags("+ack").actions().go(OUT).done());
-            ADDF(Bldr().table(POL).priority(prio-3)
+            ADDF(Bldr().table(POL).priority(prio-384)
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(21)
                  .isTcpFlags("+rst").actions().go(OUT).done());
@@ -1736,7 +1737,7 @@ void IntFlowManagerFixture::initExpCon3() {
     }
     BOOST_FOREACH (const Mask& mks, ml_66_69) {
         BOOST_FOREACH (const Mask& mkd, ml_94_95) {
-            ADDF(Bldr().table(POL).priority(prio-1)
+            ADDF(Bldr().table(POL).priority(prio-128)
                  .cookie(con3_cookie).tcp()
                  .reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
                  .isTpSrc(mks.first, mks.second).isTpDst(mkd.first, mkd.second)
@@ -2100,109 +2101,70 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
                        FlowEntryList& flows,
                        GroupEdit::EntryList& groups) {
     // Create a pre-existing table as read from a switch
-    uint8_t mac[6];
-
     flows.clear();
     groups.clear();
 
     uint32_t epg4_vnid = policyMgr.getVnidForGroup(epg4->getURI()).get();
 
-    FlowEntryPtr e0(new FlowEntry());
-    flows.push_back(e0);
-    e0->entry->table_id = SEC;
-    e0->entry->cookie = htonll(0xabcd);
+    FlowBuilder().table(SEC).cookie(htonll(0xabcd)).build(flows);
 
-    FlowEntryPtr e1(new FlowEntry());
-    flows.push_back(e1);
-    e1->entry->table_id = SRC;
-    e1->entry->priority = 149;
-    match_set_in_port(&e1->entry->match, intFlowManager.getTunnelPort());
+    FlowBuilder e1;
+    e1.table(SRC).priority(149).inPort(intFlowManager.getTunnelPort());
     switch (encapType) {
     case IntFlowManager::ENCAP_VLAN:
-        match_set_dl_vlan(&e1->entry->match, htons(epg4_vnid));
+        e1.vlan(epg4_vnid);
         break;
     case IntFlowManager::ENCAP_VXLAN:
     case IntFlowManager::ENCAP_IVXLAN:
     default:
-        match_set_tun_id(&e1->entry->match, htonll(epg4_vnid));
+        e1.tunId(epg4_vnid);
         break;
     }
-    ActionBuilder ab;
     if (encapType == IntFlowManager::ENCAP_VLAN)
-        ab.popVlan();
-    ab.reg(MFF_REG0, epg4_vnid);
-    ab.reg(MFF_REG4, uint32_t(0));
-    ab.reg(MFF_REG5, uint32_t(0));
-    ab.reg(MFF_REG6, uint32_t(1));
-    ab.metadata(0x100, 0x100);
-    ab.go(BR);
-    ab.build(e1->entry);
+        e1.action().popVlan();
 
-    FlowEntryPtr e2(new FlowEntry());
-    flows.push_back(e2);
-    e2->entry->table_id = POL;
-    e2->entry->priority = 8292;
-    match_set_reg(&e2->entry->match, 0, epg4_vnid);
-    match_set_reg(&e2->entry->match, 2, epg4_vnid);
+    e1.action()
+        .reg(MFF_REG0, epg4_vnid)
+        .reg(MFF_REG4, uint32_t(0))
+        .reg(MFF_REG5, uint32_t(0))
+        .reg(MFF_REG6, uint32_t(1))
+        .metadata(0x100, 0x100)
+        .go(BR);
+    e1.build(flows);
+
+    FlowBuilder().table(POL).priority(8292)
+        .reg(0, epg4_vnid).reg(2, epg4_vnid).build(flows);
 
     // invalid learn entry with invalid mac and port
-    FlowEntryPtr e3(new FlowEntry());
-    flows.push_back(e3);
-    e3->entry->table_id = LRN;
-    e3->entry->priority = 150;
-    e3->entry->cookie = flow::cookie::LEARN;
-    MAC("de:ad:be:ef:1:2").toUIntArray(mac);
-    match_set_dl_dst(&e3->entry->match, mac);
-    ActionBuilder ab3;
-    ab3.reg(MFF_REG7, 999);
-    ab3.controller();
-    ab3.build(e3->entry);
+    FlowBuilder().table(LRN).priority(150)
+        .cookie(flow::cookie::LEARN)
+        .ethDst(MAC("de:ad:be:ef:1:2"))
+        .action().reg(MFF_REG7, 999)
+        .controller().parent().build(flows);
 
     // valid learn entry for ep0
-    FlowEntryPtr e4(new FlowEntry());
-    flows.push_back(e4);
-    e4->entry->table_id = LRN;
-    e4->entry->priority = 150;
-    e4->entry->cookie = flow::cookie::LEARN;
-    ep0->getMAC().get().toUIntArray(mac);
-    match_set_dl_dst(&e4->entry->match, mac);
-    ActionBuilder ab4;
-    ab4.reg(MFF_REG7, 80);
-    ab4.controller();
-    ab4.build(e4->entry);
+    FlowBuilder().table(LRN).priority(150)
+        .cookie(flow::cookie::LEARN)
+        .ethDst(ep0->getMAC().get())
+        .action().reg(MFF_REG7, 80)
+        .controller().parent().build(flows);
 
     // invalid learn entry with invalid mac and valid port
-    FlowEntryPtr e5(new FlowEntry());
-    flows.push_back(e5);
-    e5->entry->table_id = LRN;
-    e5->entry->priority = 150;
-    e5->entry->cookie = flow::cookie::LEARN;
-    MAC("de:ad:be:ef:1:2").toUIntArray(mac);
-    match_set_dl_dst(&e5->entry->match, mac);
-    ActionBuilder ab5;
-    ab5.reg(MFF_REG7, 80);
-    ab5.controller();
-    ab5.build(e5->entry);
+    FlowBuilder().table(LRN).priority(150)
+        .cookie(flow::cookie::LEARN)
+        .ethDst(MAC("de:ad:be:ef:1:3"))
+        .action().reg(MFF_REG7, 80)
+        .controller().parent().build(flows);
 
     // invalid learn entry with invalid port and valid mac
-    FlowEntryPtr e6(new FlowEntry());
-    flows.push_back(e6);
-    e6->entry->table_id = LRN;
-    e6->entry->priority = 150;
-    e6->entry->cookie = flow::cookie::LEARN;
-    ep0->getMAC().get().toUIntArray(mac);
-    match_set_dl_dst(&e6->entry->match, mac);
-    ActionBuilder ab6;
-    ab6.reg(MFF_REG7, 999);
-    ab6.controller();
-    ab6.build(e6->entry);
+    FlowBuilder().table(LRN).priority(150)
+        .cookie(flow::cookie::LEARN)
+        .ethDst(ep1->getMAC().get())
+        .action().reg(MFF_REG7, 999)
+        .controller().parent().build(flows);
 
     // spurious entry in learn table, should be deleted
-    FlowEntryPtr e7(new FlowEntry());
-    flows.push_back(e7);
-    e7->entry->table_id = LRN;
-    e7->entry->priority = 8192;
-    e7->entry->cookie = htonll(0xabcd);
+    FlowBuilder().table(LRN).priority(8192).cookie(htonll(0xabcd)).build(flows);
 
     GroupEdit::Entry entryIn(new GroupEdit::GroupMod());
     entryIn->mod->command = OFPGC11_ADD;
@@ -2216,26 +2178,26 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
             .reg(DEPG, epg4_vnid).actions().go(OUT).done();
 
     fe_connect_learn
-        .push_back(Bldr().table(LRN).priority(150)
-                   .cookie(ntohll(flow::cookie::LEARN))
-                   .isEthDst("de:ad:be:ef:01:02")
-                   .actions().load(OUTPORT, 999).controller(0xffff)
-                   .done());
-    fe_connect_learn
-        .push_back(Bldr().table(LRN).priority(150)
-                   .cookie(ntohll(flow::cookie::LEARN))
-                   .isEthDst("de:ad:be:ef:01:02")
-                   .actions().load(OUTPORT, 80).controller(0xffff)
-                   .done());
-    fe_connect_learn
-        .push_back(Bldr().table(LRN).priority(150)
-                   .cookie(ntohll(flow::cookie::LEARN))
-                   .isEthDst(ep0->getMAC().get().toString())
-                   .actions().load(OUTPORT, 999).controller(0xffff)
-                   .done());
-    fe_connect_learn
         .push_back(Bldr().table(LRN).priority(8192).cookie(0xabcd)
                    .actions().drop().done());
+    fe_connect_learn
+        .push_back(Bldr().table(LRN).priority(150)
+                   .cookie(ntohll(flow::cookie::LEARN))
+                   .isEthDst(ep1->getMAC().get().toString())
+                   .actions().load(OUTPORT, 999).controller(0xffff)
+                   .done());
+    fe_connect_learn
+        .push_back(Bldr().table(LRN).priority(150)
+                   .cookie(ntohll(flow::cookie::LEARN))
+                   .isEthDst("de:ad:be:ef:01:02")
+                   .actions().load(OUTPORT, 999).controller(0xffff)
+                   .done());
+    fe_connect_learn
+        .push_back(Bldr().table(LRN).priority(150)
+                   .cookie(ntohll(flow::cookie::LEARN))
+                   .isEthDst("de:ad:be:ef:01:03")
+                   .actions().load(OUTPORT, 80).controller(0xffff)
+                   .done());
 
 }
 

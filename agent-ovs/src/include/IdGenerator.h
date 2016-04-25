@@ -16,6 +16,7 @@
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/function.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include <opflex/ofcore/OFFramework.h>
 
@@ -148,6 +149,8 @@ private:
      * @param idmap Assignments to save
      */
     void persist(const std::string& nmspc, IdMap& idmap);
+
+    boost::mutex id_mutex;
 
     /**
      * Map of ID namespaces to the assignment within that namespace.

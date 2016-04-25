@@ -115,13 +115,15 @@ void SwitchManager::handleConnection(SwitchConnection *sw) {
         LOG(DEBUG) << "[" << connection->getSwitchName() << "] "
                    << "Handling new connection to switch";
     } else {
-        LOG(DEBUG) << "Opflex sync not yet enabled, ignoring new "
+        LOG(DEBUG) << "[" << connection->getSwitchName() << "] "
+                   << "Opflex sync not yet enabled, ignoring new "
             "connection to switch";
         return;
     }
 
     if (connectTimer) {
-        LOG(DEBUG) << "Sync state with switch will begin in "
+        LOG(DEBUG) << "[" << connection->getSwitchName() << "] "
+                   << "Sync state with switch will begin in "
                    << connectTimer->expires_from_now();
         connectTimer->async_wait(bind(&SwitchManager::onConnectTimer,
                                       this, error));
@@ -139,6 +141,8 @@ void SwitchManager::onConnectTimer(const boost::system::error_code& ec) {
 
 bool SwitchManager::writeFlow(const std::string& objId, int tableId,
                               FlowEntryList& el) {
+    bool success = true;
+
     assert(tableId >= 0 &&
            static_cast<size_t>(tableId) < flowTables.size());
     BOOST_FOREACH(FlowEntryPtr& fe, el)
@@ -146,22 +150,19 @@ bool SwitchManager::writeFlow(const std::string& objId, int tableId,
     TableState& tab = flowTables[tableId];
 
     FlowEdit diffs;
-    bool success = true;
-    /*
-     * If a sync is in progress, don't write to the flow tables while we are
-     * reading and reconciling with the current flows.
-     */
+    tab.apply(objId, el, diffs);
     if (!syncing) {
-        tab.DiffEntry(objId, el, diffs);
-        success = flowExecutor.Execute(diffs);
-    }
-    if (success) {
-        tab.Update(objId, el);
-    } else {
-        LOG(ERROR) << "[" << connection->getSwitchName() << "] "
-                   << "Writing flows for " << objId << " failed";
+        // If a sync is in progress, don't write to the flow tables
+        // while we are reading and reconciling with the current
+        // flows.
+        if (!(success = flowExecutor.Execute(diffs))) {
+            LOG(ERROR) << "[" << connection->getSwitchName() << "] "
+                       << "Writing flows for " << objId << " failed";
+
+        }
     }
     el.clear();
+
     return success;
 }
 
@@ -178,9 +179,9 @@ bool SwitchManager::writeFlow(const std::string& objId,
     return writeFlow(objId, tableId, fb.build());
 }
 
-bool SwitchManager::writeFlow(const std::string& objId,
-                              int tableId, FlowEntry* el) {
-    return writeFlow(objId, tableId, FlowEntryPtr(el));
+bool SwitchManager::clearFlows(const std::string& objId, int tableId) {
+    FlowEntryList empty;
+    return writeFlow(objId, tableId, empty);
 }
 
 bool SwitchManager::writeGroupMod(const GroupEdit::Entry& e) {
@@ -194,7 +195,8 @@ bool SwitchManager::writeGroupMod(const GroupEdit::Entry& e) {
     ge.edits.push_back(e);
     bool success = flowExecutor.Execute(ge);
     if (!success) {
-        LOG(ERROR) << "Group mod failed for group-id=" << e->mod->group_id;
+        LOG(ERROR) << "[" << connection->getSwitchName() << "] "
+                   << "Group mod failed for group-id=" << e->mod->group_id;
     }
     return success;
 }
@@ -202,7 +204,7 @@ bool SwitchManager::writeGroupMod(const GroupEdit::Entry& e) {
 void SwitchManager::diffTableState(int tableId, const FlowEntryList& el,
                                    /* out */ FlowEdit& diffs) {
     const TableState& tab = flowTables[tableId];
-    tab.DiffSnapshot(el, diffs);
+    tab.diffSnapshot(el, diffs);
 }
 
 void SwitchManager::initiateSync() {

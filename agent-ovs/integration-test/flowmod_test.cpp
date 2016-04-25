@@ -114,7 +114,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     FlowEntryList flows;
 
     /* add */
-    assign::push_back(fe.edits)(FlowEdit::add, testFlows[0]);
+    assign::push_back(fe.edits)(FlowEdit::ADD, testFlows[0]);
     BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
@@ -124,7 +124,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
 
     /* modify */
     fe.edits.clear();
-    assign::push_back(fe.edits)(FlowEdit::mod, testFlows[1]);
+    assign::push_back(fe.edits)(FlowEdit::MOD, testFlows[1]);
     BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
@@ -134,7 +134,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
 
     /* delete */
     fe.edits.clear();
-    assign::push_back(fe.edits)(FlowEdit::del, testFlows[1]);
+    assign::push_back(fe.edits)(FlowEdit::DEL, testFlows[1]);
     BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
@@ -171,13 +171,13 @@ BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     entryIn1_1->mod->command = OFPGC11_MODIFY;
     entryIn1_1->mod->group_id = 0;
     addBucket(10, entryIn1_1);
-    BOOST_CHECK(!GroupEdit::GroupEq(entryIn1, entryIn1_1));
+    BOOST_CHECK(!GroupEdit::groupEq(entryIn1, entryIn1_1));
 
     GroupEdit::Entry entryIn2(new GroupEdit::GroupMod());
     entryIn2->mod->command = OFPGC11_ADD;
     entryIn2->mod->group_id = 1;
     addBucket(15, entryIn2);
-    BOOST_CHECK(!GroupEdit::GroupEq(entryIn1, entryIn2));
+    BOOST_CHECK(!GroupEdit::groupEq(entryIn1, entryIn2));
 
     GroupEdit gedit;
     gedit.edits.push_back(entryIn1);
@@ -187,8 +187,8 @@ BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     GroupEdit::EntryList gl;
     rdr.GetGroups(gl);
     BOOST_CHECK(gl.size() == 2);
-    BOOST_CHECK(GroupEdit::GroupEq(gl[0], entryIn1));
-    BOOST_CHECK(GroupEdit::GroupEq(gl[1], entryIn2));
+    BOOST_CHECK(GroupEdit::groupEq(gl[0], entryIn1));
+    BOOST_CHECK(GroupEdit::groupEq(gl[1], entryIn2));
 
     gedit.edits.clear();
     gedit.edits.push_back(entryIn1_1);
@@ -196,8 +196,8 @@ BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     gl.clear();
     rdr.GetGroups(gl);
     BOOST_CHECK(gl.size() == 2);
-    BOOST_CHECK(GroupEdit::GroupEq(gl[0], entryIn1_1));
-    BOOST_CHECK(GroupEdit::GroupEq(gl[1], entryIn2));
+    BOOST_CHECK(GroupEdit::groupEq(gl[0], entryIn1_1));
+    BOOST_CHECK(GroupEdit::groupEq(gl[1], entryIn2));
 
     gedit.edits.clear();
     entryIn1->mod->command = OFPGC11_DELETE;
@@ -206,7 +206,7 @@ BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     gl.clear();
     rdr.GetGroups(gl);
     BOOST_CHECK(gl.size() == 1);
-    BOOST_CHECK(GroupEdit::GroupEq(gl[0], entryIn2));
+    BOOST_CHECK(GroupEdit::groupEq(gl[0], entryIn2));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

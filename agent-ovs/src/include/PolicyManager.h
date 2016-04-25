@@ -44,16 +44,18 @@ public:
     /**
      * Constructor that accepts direction and L24Classifier.
      * @param dir The direction of the classifier rule
+     * @param prio_ the priority for the rule
      * @param c Details of the classifier rule.  Must not be NULL.
      * @param allow_ true if the traffic should be allowed; false
      * otherwise
      * @param remoteSubnets_ remote subnets to which this rule applies
      */
     PolicyRule(const uint8_t dir,
+               const uint16_t prio_,
                const boost::shared_ptr<modelgbp::gbpe::L24Classifier>& c,
                bool allow_,
                const flowutils::subnets_t& remoteSubnets_) :
-        direction(dir), l24Classifier(c), allow(allow_),
+        direction(dir), prio(prio_), l24Classifier(c), allow(allow_),
         remoteSubnets(remoteSubnets_) {
     }
 
@@ -63,6 +65,14 @@ public:
      */
     uint8_t getDirection() const {
         return direction;
+    }
+
+    /**
+     * Get the priority of the classifier rule.
+     * @return the priority
+     */
+    uint16_t getPriority() const {
+        return prio;
     }
 
     /**
@@ -92,6 +102,7 @@ public:
 
 private:
     uint8_t direction;
+    uint16_t prio;
     boost::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
     bool allow;
     flowutils::subnets_t remoteSubnets;

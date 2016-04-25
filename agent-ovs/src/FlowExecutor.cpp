@@ -111,26 +111,26 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     ofputil_protocol proto = ofputil_protocol_from_ofp_version(ofVersion);
     assert(ofputil_protocol_is_valid(proto));
 
-    FlowEdit::TYPE mod = edit.first;
+    FlowEdit::type mod = edit.first;
     ofputil_flow_stats& flow = *(edit.second->entry);
 
     ofputil_flow_mod flowMod;
     memset(&flowMod, 0, sizeof(flowMod));
     flowMod.table_id = flow.table_id;
     flowMod.priority = flow.priority;
-    if (mod != FlowEdit::add) {
+    if (mod != FlowEdit::ADD) {
         flowMod.cookie = flow.cookie;
         flowMod.cookie_mask = ~htonll(0);
     }
-    flowMod.new_cookie = mod == FlowEdit::mod ? OVS_BE64_MAX :
-            (mod == FlowEdit::add ? flow.cookie : htonll(0));
+    flowMod.new_cookie = mod == FlowEdit::MOD ? OVS_BE64_MAX :
+            (mod == FlowEdit::ADD ? flow.cookie : htonll(0));
     memcpy(&flowMod.match, &flow.match, sizeof(flow.match));
-    if (mod != FlowEdit::del) {
+    if (mod != FlowEdit::DEL) {
         flowMod.ofpacts_len = flow.ofpacts_len;
         flowMod.ofpacts = (ofpact*)flow.ofpacts;
     }
-    flowMod.command = mod == FlowEdit::add ? OFPFC_ADD :
-            (mod == FlowEdit::mod ? OFPFC_MODIFY_STRICT : OFPFC_DELETE_STRICT);
+    flowMod.command = mod == FlowEdit::ADD ? OFPFC_ADD :
+            (mod == FlowEdit::MOD ? OFPFC_MODIFY_STRICT : OFPFC_DELETE_STRICT);
     /* fill out defaults */
     flowMod.modify_cookie = false;
     flowMod.idle_timeout = OFP_FLOW_PERMANENT;

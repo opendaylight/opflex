@@ -140,13 +140,12 @@ public:
     bool writeFlow(const std::string& objId, int tableId, FlowBuilder& fb);
 
     /**
-     * Write the given flow entry to the flow table
+     * Clear the flow entries for the given object ID.
      *
      * @param objId the ID for the object associated with the flow
      * @param tableId the tableId for the flow table
-     * @param e the list of flows to write
      */
-    bool writeFlow(const std::string& objId, int tableId, FlowEntry* e);
+    bool clearFlows(const std::string& objId, int tableId);
 
     /**
      * Write the given flow entry to the flow table

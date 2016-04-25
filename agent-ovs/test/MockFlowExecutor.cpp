@@ -13,6 +13,7 @@
 #include <boost/foreach.hpp>
 
 #include <sstream>
+#include <algorithm>
 
 namespace ovsagent {
 
@@ -44,6 +45,8 @@ MockFlowExecutor::MockFlowExecutor()
 bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
     if (ignoreFlowMods) return true;
 
+    std::sort(flowEdits.edits.begin(), flowEdits.edits.end());
+
     const char *modStr[] = {"ADD", "MOD", "DEL"};
     struct ds strBuf;
     ds_init(&strBuf);
@@ -57,7 +60,7 @@ bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
 
         BOOST_CHECK_MESSAGE(!flowMods.empty(), "\nexp:\ngot: " << ed);
         if (!flowMods.empty()) {
-            MOD exp = flowMods.front();
+            mod_t exp = flowMods.front();
             flowMods.pop_front();
             BOOST_CHECK_MESSAGE(exp.first == ed.first,
                                 "\nexp: " << modStr[exp.first] <<
@@ -92,16 +95,16 @@ bool MockFlowExecutor::Execute(const GroupEdit& groupEdits) {
     }
     return true;
 }
-void MockFlowExecutor::Expect(FlowEdit::TYPE mod, const string& fe) {
+void MockFlowExecutor::Expect(FlowEdit::type mod, const string& fe) {
     ignoreFlowMods = false;
-    flowMods.push_back(MOD(mod, fe));
+    flowMods.push_back(mod_t(mod, fe));
 }
-void MockFlowExecutor::Expect(FlowEdit::TYPE mod, const vector<string>& fe) {
+void MockFlowExecutor::Expect(FlowEdit::type mod, const vector<string>& fe) {
     ignoreFlowMods = false;
     BOOST_FOREACH(const string& s, fe)
-        flowMods.push_back(MOD(mod, s));
+        flowMods.push_back(mod_t(mod, s));
 }
-void MockFlowExecutor::ExpectGroup(FlowEdit::TYPE mod, const string& ge) {
+void MockFlowExecutor::ExpectGroup(FlowEdit::type mod, const string& ge) {
     ignoreGroupMods = false;
     const char *modStr[] = {"ADD", "MOD", "DEL"};
     groupMods.push_back(canonicalizeGroupEntryStr(string(modStr[mod]) + "|" +

@@ -56,8 +56,8 @@ public:
     void initExpEp(shared_ptr<Endpoint>& ep);
 
     /** Initialize security group flow entries */
-    uint16_t initExpSecGrp1(uint16_t prio, uint32_t setId, int remoteAddress);
-    uint16_t initExpSecGrp2(uint16_t prio, uint32_t setId);
+    uint16_t initExpSecGrp1(uint32_t setId, int remoteAddress);
+    uint16_t initExpSecGrp2(uint32_t setId);
     void initExpSecGrpSet1();
     void initExpSecGrpSet12(bool second = true, int remoteAddress = 0);
 
@@ -276,7 +276,7 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
 
 void AccessFlowManagerFixture::initExpSecGrpSet1() {
     uint32_t setId = idGen.getId("secGroupSet", secGrp1->getURI().toString());
-    initExpSecGrp1(flowutils::MAX_POLICY_RULE_PRIORITY, setId, 0);
+    initExpSecGrp1(setId, 0);
 }
 
 void AccessFlowManagerFixture::initExpSecGrpSet12(bool second,
@@ -285,16 +285,15 @@ void AccessFlowManagerFixture::initExpSecGrpSet12(bool second,
                                  secGrp1->getURI().toString() +
                                  ",/PolicyUniverse/PolicySpace/tenant0"
                                  "/GbpSecGroup/secgrp2/");
-    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
-    prio = prio - initExpSecGrp1(prio, setId, remoteAddress);
+    initExpSecGrp1(setId, remoteAddress);
     if (second)
-        prio = prio - initExpSecGrp2(prio, setId);
+        initExpSecGrp2(setId);
 }
 
-uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint16_t prio,
-                                                  uint32_t setId,
+uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
                                                   int remoteAddress) {
     uint32_t grpId = idGen.getId("secGroup", secGrp1->getURI().toString());
+    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
 
     /* classifer 1  */
     if (remoteAddress) {
@@ -311,48 +310,48 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint16_t prio,
     }
     /* classifer 8  */
     if (remoteAddress) {
-        ADDF(Bldr().table(IN_POL).priority(prio-1).cookie(grpId)
+        ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(grpId)
              .tcp6().reg(SEPG, setId).isIpv6Src("fd80::/32").isTpDst(80)
              .actions().go(OUT).done());
         if (remoteAddress > 1)
-            ADDF(Bldr().table(IN_POL).priority(prio-1).cookie(grpId)
+            ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(grpId)
                  .tcp6().reg(SEPG, setId).isIpv6Src("fd34:9c39:1374:358c::/64")
                  .isTpDst(80).actions().go(OUT).done());
     } else {
-        ADDF(Bldr().table(IN_POL).priority(prio-1).cookie(grpId)
+        ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(grpId)
              .tcp6().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     }
     /* classifier 2  */
     if (remoteAddress) {
-        ADDF(Bldr().table(OUT_POL).priority(prio-2).cookie(grpId)
+        ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(grpId)
              .arp().reg(SEPG, setId).isTpa("192.168.0.0/16").actions()
              .go(OUT).done());
         if (remoteAddress > 1)
-            ADDF(Bldr().table(OUT_POL).priority(prio-2).cookie(grpId)
+            ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(grpId)
                  .arp().reg(SEPG, setId).isTpa("10.0.0.0/8").actions()
                  .go(OUT).done());
     } else {
-        ADDF(Bldr().table(OUT_POL).priority(prio-2).cookie(grpId)
+        ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(grpId)
              .arp().reg(SEPG, setId).actions().go(OUT).done());
     }
     /* classifier 6 */
-    ADDF(Bldr().table(IN_POL).priority(prio-3).cookie(grpId)
+    ADDF(Bldr().table(IN_POL).priority(prio-384).cookie(grpId)
          .tcp().reg(SEPG, setId).isTpSrc(22)
          .isTcpFlags("+syn+ack").actions().go(OUT).done());
     /* classifier 7 */
-    ADDF(Bldr().table(IN_POL).priority(prio-4).cookie(grpId)
+    ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(grpId)
          .tcp().reg(SEPG, setId).isTpSrc(21)
          .isTcpFlags("+ack").actions().go(OUT).done());
-    ADDF(Bldr().table(IN_POL).priority(prio-4).cookie(grpId)
+    ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(grpId)
          .tcp().reg(SEPG, setId).isTpSrc(21)
          .isTcpFlags("+rst").actions().go(OUT).done());
 
-    return 5;
+    return 512;
 }
 
-uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint16_t prio,
-                                                  uint32_t setId) {
+uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
     uint32_t grpId = idGen.getId("secGroup", secGrp2->getURI().toString());
+    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
     ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
     ADDF(Bldr().table(OUT_POL).priority(prio).cookie(grpId)

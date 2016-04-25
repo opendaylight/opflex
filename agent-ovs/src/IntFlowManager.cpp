@@ -746,12 +746,12 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(uuid);
 
     if (!epWrapper) {   // EP removed
-        switchManager.writeFlow(uuid, SEC_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, SRC_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, ROUTE_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, LEARN_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, NULL);
+        switchManager.clearFlows(uuid, SEC_TABLE_ID);
+        switchManager.clearFlows(uuid, SRC_TABLE_ID);
+        switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
+        switchManager.clearFlows(uuid, ROUTE_TABLE_ID);
+        switchManager.clearFlows(uuid, LEARN_TABLE_ID);
+        switchManager.clearFlows(uuid, SERVICE_MAP_DST_TABLE_ID);
         removeEndpointFromFloodGroup(uuid);
         return;
     }
@@ -1159,9 +1159,9 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
     shared_ptr<const AnycastService> asWrapper = srvMgr.getAnycastService(uuid);
 
     if (!asWrapper) {
-        switchManager.writeFlow(uuid, SEC_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, NULL);
-        switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, NULL);
+        switchManager.clearFlows(uuid, SEC_TABLE_ID);
+        switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
+        switchManager.clearFlows(uuid, SERVICE_MAP_DST_TABLE_ID);
         return;
     }
 
@@ -1440,10 +1440,10 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
 
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.groupExists(epgURI)) {  // EPG removed
-        switchManager.writeFlow(epgId, SRC_TABLE_ID, NULL);
-        switchManager.writeFlow(epgId, POL_TABLE_ID, NULL);
-        switchManager.writeFlow(epgId, OUT_TABLE_ID, NULL);
-        switchManager.writeFlow(epgId, BRIDGE_TABLE_ID, NULL);
+        switchManager.clearFlows(epgId, SRC_TABLE_ID);
+        switchManager.clearFlows(epgId, POL_TABLE_ID);
+        switchManager.clearFlows(epgId, OUT_TABLE_ID);
+        switchManager.clearFlows(epgId, BRIDGE_TABLE_ID);
         updateMulticastList(boost::none, epgURI);
         return;
     }
@@ -1728,8 +1728,8 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
 
     if (!rd) {
         LOG(DEBUG) << "Cleaning up for RD: " << rdURI;
-        switchManager.writeFlow(rdURI.toString(), NAT_IN_TABLE_ID, NULL);
-        switchManager.writeFlow(rdURI.toString(), ROUTE_TABLE_ID, NULL);
+        switchManager.clearFlows(rdURI.toString(), NAT_IN_TABLE_ID);
+        switchManager.clearFlows(rdURI.toString(), ROUTE_TABLE_ID);
         idGen.erase(getIdNamespace(RoutingDomain::CLASS_ID), rdURI.toString());
         return;
     }
@@ -1884,13 +1884,13 @@ IntFlowManager::handleDomainUpdate(class_id_t cid, const URI& domURI) {
     case Subnet::CLASS_ID:
         if (!Subnet::resolve(agent.getFramework(), domURI)) {
             LOG(DEBUG) << "Cleaning up for Subnet: " << domURI;
-            switchManager.writeFlow(domURI.toString(), BRIDGE_TABLE_ID, NULL);
+            switchManager.clearFlows(domURI.toString(), BRIDGE_TABLE_ID);
         }
         break;
     case BridgeDomain::CLASS_ID:
         if (!BridgeDomain::resolve(agent.getFramework(), domURI)) {
             LOG(DEBUG) << "Cleaning up for BD: " << domURI;
-            switchManager.writeFlow(domURI.toString(), BRIDGE_TABLE_ID, NULL);
+            switchManager.clearFlows(domURI.toString(), BRIDGE_TABLE_ID);
             idGen.erase(getIdNamespace(cid), domURI.toString());
         }
         break;
@@ -2064,9 +2064,9 @@ void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
                 createGroupMod(type, getPromId(fgrpId), epMap, true);
         if (epMap.empty()) {
             string fgrpStrId = "fd:" + fgrpURI.toString();
-            switchManager.writeFlow(fgrpStrId, OUT_TABLE_ID, NULL);
-            switchManager.writeFlow(fgrpStrId, BRIDGE_TABLE_ID, NULL);
-            switchManager.writeFlow(fgrpStrId, LEARN_TABLE_ID, NULL);
+            switchManager.clearFlows(fgrpStrId, OUT_TABLE_ID);
+            switchManager.clearFlows(fgrpStrId, BRIDGE_TABLE_ID);
+            switchManager.clearFlows(fgrpStrId, LEARN_TABLE_ID);
             floodGroupMap.erase(fgrpURI);
         }
         switchManager.writeGroupMod(e0);
@@ -2082,7 +2082,7 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
     const string& contractId = contractURI.toString();
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.contractExists(contractURI)) {  // Contract removed
-        switchManager.writeFlow(contractId, POL_TABLE_ID, NULL);
+        switchManager.clearFlows(contractId, POL_TABLE_ID);
         idGen.erase(getIdNamespace(Contract::CLASS_ID), contractURI.toString());
         return;
     }
@@ -2113,7 +2113,6 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
         BOOST_FOREACH(const IdMap::value_type& cid, consIds) {
             const uint32_t& cvnid = cid.first;
 
-            uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
             BOOST_FOREACH(shared_ptr<PolicyRule>& pc, rules) {
                 uint8_t dir = pc->getDirection();
                 const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
@@ -2134,7 +2133,8 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                                                       boost::none,
                                                       boost::none,
                                                       OUT_TABLE_ID,
-                                                      prio, conCookie,
+                                                      pc->getPriority(),
+                                                      conCookie,
                                                       cvnid, pvnid,
                                                       entryList);
                 }
@@ -2145,11 +2145,11 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                                                       boost::none,
                                                       boost::none,
                                                       OUT_TABLE_ID,
-                                                      prio, conCookie,
+                                                      pc->getPriority(),
+                                                      conCookie,
                                                       pvnid, cvnid,
                                                       entryList);
                 }
-                --prio;
             }
         }
     }
@@ -2410,7 +2410,7 @@ void IntFlowManager::checkGroupEntry(GroupMap& recvGroups,
         recv = itr->second;
     }
     GroupEdit::Entry e0 = createGroupMod(comm, groupId, epMap, prom);
-    if (!GroupEdit::GroupEq(e0, recv)) {
+    if (!GroupEdit::groupEq(e0, recv)) {
         ge.edits.push_back(e0);
     }
     if (itr != recvGroups.end()) {

@@ -155,7 +155,7 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
     shared_ptr<const Endpoint> ep =
         agent.getEndpointManager().getEndpoint(uuid);
     if (!ep) {
-        switchManager.writeFlow(uuid, GROUP_MAP_TABLE_ID, NULL);
+        switchManager.clearFlows(uuid, GROUP_MAP_TABLE_ID);
         return;
     }
 
@@ -206,8 +206,8 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
     LOG(DEBUG) << "Updating security group set \"" << secGrpsIdStr << "\"";
 
     if (agent.getEndpointManager().secGrpSetEmpty(secGrps)) {
-        switchManager.writeFlow(secGrpsIdStr, SEC_GROUP_IN_TABLE_ID, NULL);
-        switchManager.writeFlow(secGrpsIdStr, SEC_GROUP_OUT_TABLE_ID, NULL);
+        switchManager.clearFlows(secGrpsIdStr, SEC_GROUP_IN_TABLE_ID);
+        switchManager.clearFlows(secGrpsIdStr, SEC_GROUP_OUT_TABLE_ID);
         return;
     }
 
@@ -216,7 +216,6 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
     FlowEntryList secGrpIn;
     FlowEntryList secGrpOut;
 
-    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
     BOOST_FOREACH(const opflex::modb::URI& secGrp, secGrps) {
         PolicyManager::rule_list_t rules;
         uint64_t secGrpCookie =
@@ -238,7 +237,8 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   remoteSubs,
                                                   boost::none,
                                                   OUT_TABLE_ID,
-                                                  prio, secGrpCookie,
+                                                  pc->getPriority(),
+                                                  secGrpCookie,
                                                   secGrpSetId, 0,
                                                   secGrpIn);
             }
@@ -249,11 +249,11 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   boost::none,
                                                   remoteSubs,
                                                   OUT_TABLE_ID,
-                                                  prio, secGrpCookie,
+                                                  pc->getPriority(),
+                                                  secGrpCookie,
                                                   secGrpSetId, 0,
                                                   secGrpOut);
             }
-            --prio;
         }
     }
 

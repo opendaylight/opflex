@@ -64,8 +64,8 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EG_MAPPING_ALIAS("eg-mapping-alias");
     static const std::string EP_GROUP_NAME("endpoint-group-name");
     static const std::string EP_SEC_GROUP("security-group");
-    static const std::string EP_SEC_GROUP_NAME("security-group-name");
-    static const std::string SEC_GROUP_POLICY_SPACE("sec-group-policy-space");
+    static const std::string SEC_GROUP_POLICY_SPACE("policy-space");
+    static const std::string SEC_GROUP_NAME("name");
     static const std::string EP_IFACE_NAME("interface-name");
     static const std::string EP_ACCESS_IFACE("access-interface");
     static const std::string EP_ACCESS_UPLINK_IFACE("access-uplink-interface");
@@ -174,22 +174,19 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             properties.get_child_optional(EP_SEC_GROUP);
         if (secGrps) {
             BOOST_FOREACH(const ptree::value_type &v, secGrps.get()) {
-                newep.addSecurityGroup(URI(v.second.data()));
-            }
-        }
-        optional<ptree&> secGrpNames =
-            properties.get_child_optional(EP_SEC_GROUP_NAME);
-        optional<string> secGrpPS =
-            properties.get_optional<string>(SEC_GROUP_POLICY_SPACE);
-        if (secGrpNames && secGrpPS) {
-            BOOST_FOREACH(const ptree::value_type &v, secGrpNames.get()) {
-                newep.addSecurityGroup(opflex::modb::URIBuilder()
-                                       .addElement("PolicyUniverse")
-                                       .addElement("PolicySpace")
-                                       .addElement(secGrpPS.get())
-                                       .addElement("GbpSecGroup")
-                                       .addElement(v.second.data())
-                                       .build());
+                optional<string> secGrpPS =
+                    v.second.get_optional<string>(SEC_GROUP_POLICY_SPACE);
+                optional<string> secGrpName =
+                    v.second.get_optional<string>(SEC_GROUP_NAME);
+                if (secGrpName && secGrpPS) {
+                    newep.addSecurityGroup(opflex::modb::URIBuilder()
+                                           .addElement("PolicyUniverse")
+                                           .addElement("PolicySpace")
+                                           .addElement(secGrpPS.get())
+                                           .addElement("GbpSecGroup")
+                                           .addElement(secGrpName.get())
+                                           .build());
+                }
             }
         }
 

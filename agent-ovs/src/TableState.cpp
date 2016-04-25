@@ -7,15 +7,21 @@
  */
 
 #include <boost/foreach.hpp>
+#include <boost/functional/hash.hpp>
+#include <boost/unordered_set.hpp>
+#include <boost/optional.hpp>
 
-#include "logging.h"
-#include "ovs.h"
 #include "TableState.h"
+#include "logging.h"
+
+#include "ovs.h"
 
 namespace ovsagent {
 
-using namespace std;
-using namespace boost;
+using std::ostream;
+using std::vector;
+using std::make_pair;
+using boost::optional;
 
 /** FlowEntry **/
 
@@ -31,19 +37,19 @@ FlowEntry::~FlowEntry() {
 }
 
 bool
-FlowEntry::MatchEq(const FlowEntry *rhs) {
+FlowEntry::matchEq(const FlowEntry *rhs) {
     const ofputil_flow_stats *feRhs = rhs->entry;
     return entry != NULL && feRhs != NULL &&
             (entry->table_id == feRhs->table_id) &&
             (entry->priority == feRhs->priority) &&
-            (entry->cookie == feRhs->cookie) &&
             match_equal(&entry->match, &feRhs->match);
 }
 
 bool
-FlowEntry::ActionEq(const FlowEntry *rhs) {
+FlowEntry::actionEq(const FlowEntry *rhs) {
     const ofputil_flow_stats *feRhs = rhs->entry;
     return entry != NULL && feRhs != NULL &&
+            (entry->cookie == feRhs->cookie) &&
             ofpacts_equal(entry->ofpacts, entry->ofpacts_len,
                           feRhs->ofpacts, feRhs->ofpacts_len);
 }
@@ -61,6 +67,19 @@ ostream& operator<<(ostream& os, const FlowEdit::Entry& fe) {
     static const char *op[] = {"ADD", "MOD", "DEL"};
     os << op[fe.first] << "|" << *(fe.second);
     return os;
+}
+
+/** FlowEdit **/
+void FlowEdit::add(type t, FlowEntryPtr fe) {
+    edits.push_back(std::make_pair(t, fe));
+}
+
+bool operator<(const FlowEdit::Entry& f1, const FlowEdit::Entry& f2) {
+    if (f1.first < f2.first) return true;
+    if (f1.first > f2.first) return false;
+    int r = std::memcmp(&f1.second->entry->match, &f2.second->entry->match,
+                        sizeof(struct match));
+    return r < 0;
 }
 
 /** GroupEdit **/
@@ -82,7 +101,7 @@ GroupEdit::GroupMod::~GroupMod() {
     mod = NULL;
 }
 
-bool GroupEdit::GroupEq(const GroupEdit::Entry& lhs,
+bool GroupEdit::groupEq(const GroupEdit::Entry& lhs,
                         const GroupEdit::Entry& rhs) {
     if (lhs == rhs) {
         return true;
@@ -149,88 +168,198 @@ ostream & operator<<(ostream& os, const GroupEdit::Entry& ge) {
 
 /** TableState **/
 
-void TableState::CalculateAddMod(const FlowEntryList& oldEntries,
-                                 const FlowEntryList& newEntries,
-                                 std::vector<bool>& visited,
-                                 FlowEdit& diffs) {
-    assert(oldEntries.size() == visited.size());
+struct match_key_t {
+    uint16_t prio;
+    struct match match;
+};
 
-    for(size_t j = 0; j < newEntries.size(); ++j) {
-        const FlowEntryPtr& newFe = newEntries[j];
-        bool found = false;
+typedef std::vector<FlowEntryPtr> flow_vec_t;
+typedef std::pair<std::string, FlowEntryPtr> obj_id_flow_t;
+typedef std::vector<obj_id_flow_t> obj_id_flow_vec_t;
+typedef boost::unordered_map<match_key_t, obj_id_flow_vec_t> match_obj_map_t;
+typedef boost::unordered_map<match_key_t, flow_vec_t> match_map_t;
+typedef boost::unordered_map<std::string, match_map_t> entry_map_t;
 
-        for (size_t i = 0; i < visited.size(); ++i) {
-            const FlowEntryPtr& currFe = oldEntries[i];
-            if (currFe->MatchEq(newFe.get())) {
-                visited[i] = true;
-                found = true;
-                if (!currFe->ActionEq(newFe.get())) {
-                    diffs.edits.push_back(
-                            FlowEdit::Entry(FlowEdit::mod, newFe));
-                }
-                break;
+size_t hash_value(match_key_t const& match_key) {
+    size_t hashv = match_hash(&match_key.match, 0);
+    boost::hash_combine(hashv, match_key.prio);
+    return hashv;
+}
+bool operator==(const match_key_t& lhs, const match_key_t& rhs) {
+    return lhs.prio == rhs.prio && match_equal(&lhs.match, &rhs.match);
+}
+bool operator!=(const match_key_t& lhs, const match_key_t& rhs) {
+    return !(lhs == rhs);
+}
+
+class TableState::TableStateImpl {
+public:
+    entry_map_t entry_map;
+    match_obj_map_t match_obj_map;
+};
+
+TableState::TableState() : pimpl(new TableStateImpl()) { }
+
+TableState::TableState(const TableState& ts)
+    : pimpl(new TableStateImpl(*ts.pimpl)) { }
+
+TableState::~TableState() {
+    delete pimpl;
+}
+
+void TableState::diffSnapshot(const FlowEntryList& oldEntries,
+                              FlowEdit& diffs) const {
+    typedef std::pair<bool, FlowEntryPtr> visited_fe_t;
+    typedef boost::unordered_map<match_key_t, visited_fe_t> old_entry_map_t;
+
+    diffs.edits.clear();
+
+    old_entry_map_t old_entries;
+    BOOST_FOREACH(const FlowEntryPtr& fe, oldEntries) {
+        match_key_t key;
+        key.prio = fe->entry->priority;
+        key.match = fe->entry->match;
+        old_entries[key] = make_pair(false, fe);
+    }
+
+    // Add/mod any matches in the object map
+    BOOST_FOREACH(match_obj_map_t::value_type& e, pimpl->match_obj_map) {
+        old_entry_map_t::iterator it = old_entries.find(e.first);
+        if (it == old_entries.end()) {
+            diffs.add(FlowEdit::ADD, e.second.front().second);
+        } else {
+            it->second.first = true;
+            FlowEntryPtr& olde = it->second.second;
+            FlowEntryPtr& newe = e.second.front().second;
+            if (!newe->actionEq(olde.get())) {
+                diffs.add(FlowEdit::MOD, newe);
             }
         }
-        if (!found) {
-            diffs.edits.push_back(FlowEdit::Entry(FlowEdit::add, newFe));
-        }
+    }
+
+    // Remove unvisited entries from the old entry list
+    BOOST_FOREACH(old_entry_map_t::value_type& e, old_entries) {
+        if (e.second.first) continue;
+        diffs.add(FlowEdit::DEL, e.second.second);
     }
 }
 
-void TableState::CalculateDel(const FlowEntryList& oldEntries,
-                              std::vector<bool>& visited,
-                              FlowEdit& diffs) {
-    assert(oldEntries.size() == visited.size());
-    for (size_t i = 0; i < visited.size(); ++i) {
-        if (visited[i] == false) {
-            diffs.edits.push_back(
-                    FlowEdit::Entry(FlowEdit::del, oldEntries[i]));
+void TableState::apply(const std::string& objId,
+                       FlowEntryList& newEntries,
+                       /* out */ FlowEdit& diffs) {
+    diffs.edits.clear();
+
+    match_map_t new_entries;
+    BOOST_FOREACH(const FlowEntryPtr& fe, newEntries) {
+        match_key_t key;
+        key.prio = fe->entry->priority;
+        key.match = fe->entry->match;
+        new_entries[key].push_back(fe);
+    }
+
+    // load new entries
+    BOOST_FOREACH(match_map_t::value_type& e, new_entries) {
+        // check if there's an overlapping match already in the table
+        match_obj_map_t::iterator oit = pimpl->match_obj_map.find(e.first);
+
+        if (oit != pimpl->match_obj_map.end()) {
+            // there is an existing entry
+            if (oit->second.front().first == objId) {
+                // it's for the same object ID.  Replace it.
+                FlowEntryPtr& tomod = e.second.back();
+                if (!oit->second.front().second->actionEq(tomod.get())) {
+                    oit->second.front().second = tomod;
+                    diffs.add(FlowEdit::MOD, tomod);
+                }
+            } else {
+                LOG(WARNING) << "Duplicate match for "
+                             << objId << " (conflicts with "
+                             << oit->second.front().first << "): "
+                             << *e.second.back();
+                // There are entries from other objects already there.
+                // just add/update it in the queue but don't generate
+                // diff
+                obj_id_flow_vec_t::iterator fvit = oit->second.begin()+1;
+                bool found = false;
+                while (fvit != oit->second.end()) {
+                    if (fvit->first == objId) {
+                        *fvit = make_pair(objId, e.second.back());
+                        found = true;
+                        break;
+                    }
+                    ++fvit;
+                }
+                if (!found)
+                    oit->second.push_back(make_pair(objId, e.second.back()));
+            }
+        } else {
+            // there is no existing entry.  Add a new one
+            pimpl->match_obj_map[e.first].push_back(make_pair(objId,
+                                                              e.second.back()));
+            diffs.add(FlowEdit::ADD, e.second.back());
         }
     }
-}
 
-void TableState::DiffEntry(const string& objId,
-        const FlowEntryList& newEntries,
-        FlowEdit& diffs) const {
-    EntryMap::const_iterator itr = entryMap.find(objId);
-    const FlowEntryList& oldEntries =
-            (itr != entryMap.end() ? itr->second : FlowEntryList());
+    // check for deleted entries
+    entry_map_t::iterator itr = pimpl->entry_map.find(objId);
+    if (itr != pimpl->entry_map.end()) {
+        BOOST_FOREACH(match_map_t::value_type& e, itr->second) {
+            match_map_t::iterator mit = new_entries.find(e.first);
+            if (mit == new_entries.end()) {
+                match_obj_map_t::iterator oit =
+                    pimpl->match_obj_map.find(e.first);
+                if (oit != pimpl->match_obj_map.end()) {
+                    if (oit->second.front().first == objId) {
+                        // this object is the one in the flow table,
+                        // so remove it
+                        FlowEntryPtr& todel = oit->second.front().second;
 
-    vector<bool> keep(oldEntries.size(), false);
-    CalculateAddMod(oldEntries, newEntries, keep, diffs);
-    CalculateDel(oldEntries, keep, diffs);
+                        if (oit->second.size() == 1) {
+                            // No conflicted entries queued
+                            diffs.add(FlowEdit::DEL, todel);
+                            pimpl->match_obj_map.erase(oit);
+                        } else {
+                            // Need to add the next entry back to the
+                            // table now that the first instance is
+                            // removed
+                            FlowEntryPtr& tomod = oit->second[1].second;
+                            if (!todel->actionEq(tomod.get()))
+                                diffs.add(FlowEdit::MOD, tomod);
+                            oit->second.erase(oit->second.begin());
+                        }
+                    } else {
+                        // This object is queued behind another
+                        // object.  Just remove it without generating
+                        // diff.
+                        obj_id_flow_vec_t::iterator fvit = oit->second.begin()+1;
+                        while (fvit != oit->second.end()) {
+                            if (fvit->first == objId)
+                                fvit = oit->second.erase(fvit);
+                            else
+                                ++fvit;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if (diffs.edits.size() > 0) {
         LOG(DEBUG) << "ObjId=" << objId << ", #diffs = " << diffs.edits.size();
         BOOST_FOREACH(const FlowEdit::Entry& e, diffs.edits) {
             LOG(DEBUG) << e;
         }
     }
-}
-
-void TableState::DiffSnapshot(const FlowEntryList& oldEntries,
-                              FlowEdit& diffs) const {
-    vector<bool> keep(oldEntries.size(), false);
-
-    BOOST_FOREACH(const EntryMap::value_type& kv, entryMap) {
-        const FlowEntryList& newEntries = kv.second;
-        CalculateAddMod(oldEntries, newEntries, keep, diffs);
-    }
-    CalculateDel(oldEntries, keep, diffs);
-}
-
-void
-TableState::Update(const string& objId, FlowEntryList& newEntries) {
-    EntryMap::iterator itr = entryMap.find(objId);
 
     /* newEntries.empty() => delete */
-    if (newEntries.empty() && itr != entryMap.end()) {
-        itr->second.swap(newEntries);
-        entryMap.erase(itr);
+    if (new_entries.empty() && itr != pimpl->entry_map.end()) {
+        itr->second.swap(new_entries);
+        pimpl->entry_map.erase(itr);
     } else {
-        if (itr == entryMap.end()) {
-            entryMap[objId].swap(newEntries);
+        if (itr == pimpl->entry_map.end()) {
+            pimpl->entry_map[objId].swap(new_entries);
         } else {
-            itr->second.swap(newEntries);
+            itr->second.swap(new_entries);
         }
     }
 }
