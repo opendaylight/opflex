@@ -582,7 +582,10 @@ void Processor::stop() {
     if (!proc_active) return;
 
     LOG(DEBUG) << "Stopping OpFlex Processor";
-    proc_active = false;
+    {
+        util::LockGuard guard(&item_mutex);
+        proc_active = false;
+    }
 
     unlisten();
 
@@ -610,6 +613,8 @@ void Processor::doObjectUpdated(modb::class_id_t class_id,
                                 const modb::URI& uri,
                                 bool remote) {
     util::LockGuard guard(&item_mutex);
+    if (!proc_active) return;
+
     obj_state_by_uri& uri_index = obj_state.get<uri_tag>();
     obj_state_by_uri::iterator uit = uri_index.find(uri);
 
