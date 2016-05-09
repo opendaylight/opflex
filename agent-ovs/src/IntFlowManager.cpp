@@ -215,6 +215,10 @@ void IntFlowManager::setMulticastGroupFile(const std::string& mcastGroupFile) {
 }
 
 address IntFlowManager::getEPGTunnelDst(const URI& epgURI) {
+    if (encapType != IntFlowManager::ENCAP_VXLAN &&
+        encapType != IntFlowManager::ENCAP_IVXLAN)
+        return address();
+
     optional<string> epgMcastIp =
         agent.getPolicyManager().getMulticastIPForGroup(epgURI);
     if (epgMcastIp) {
