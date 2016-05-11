@@ -324,6 +324,31 @@ public:
     }
 
     /**
+     * VLAN trunk tag for use on the access interface
+     *
+     * @return the vlan tag or boost::none if no vlan tag is set
+     */
+    const boost::optional<uint16_t>& getAccessIfaceVlan() const {
+        return accessIfaceVlan;
+    }
+
+    /**
+     * Set the VLAN trunk tag for use on the access interface
+     *
+     * @param accessIfaceVlan the vlan tag
+     */
+    void setAccessIfaceVlan(uint16_t accessIfaceVlan) {
+        this->accessIfaceVlan = accessIfaceVlan;
+    }
+
+    /**
+     * Unset the access interface vlan trunk tag.
+     */
+    void unsetAccessIfaceVlan() {
+        accessIfaceVlan = boost::none;
+    }
+
+    /**
      * The name of the interface on the access bridge that should be
      * used for uplinking to the integration bridge.
      *
@@ -1042,6 +1067,7 @@ private:
     std::set<opflex::modb::URI> securityGroups;
     boost::optional<std::string> interfaceName;
     boost::optional<std::string> accessInterface;
+    boost::optional<uint16_t> accessIfaceVlan;
     boost::optional<std::string> accessUplinkInterface;
     bool promiscuousMode;
     bool discoveryProxyMode;

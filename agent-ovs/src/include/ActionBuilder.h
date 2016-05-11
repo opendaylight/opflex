@@ -208,6 +208,13 @@ public:
     ActionBuilder& pushVlan();
 
     /**
+     * Set the VLAN tag
+     * @param vlan the vlan tag to set
+     * @return this action builder for chaining
+     */
+    ActionBuilder& setVlanVid(uint16_t vlan);
+
+    /**
      * Pop a VLAN tag from the packet
      * @return this action builder for chaining
      */

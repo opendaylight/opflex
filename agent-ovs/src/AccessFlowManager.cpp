@@ -138,18 +138,6 @@ void AccessFlowManager::createStaticFlows() {
                             flowEmptySecGroup(emptySecGrpSetId));
 }
 
-static void flowsEp(FlowEntryList& el,
-                    uint32_t inPort, uint32_t nextHop,
-                    uint32_t secGrpSetId, uint8_t nextTable) {
-    FlowBuilder f;
-    f.priority(100).inPort(inPort)
-        .action()
-        .reg(MFF_REG0, secGrpSetId)
-        .reg(MFF_REG7, nextHop)
-        .go(nextTable);
-    return f.build(el);
-}
-
 void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
     LOG(DEBUG) << "Updating endpoint " << uuid;
     shared_ptr<const Endpoint> ep =
@@ -174,10 +162,33 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
 
     FlowEntryList el;
     if (accessPort != OFPP_NONE && uplinkPort != OFPP_NONE) {
-        flowsEp(el, accessPort, uplinkPort,
-                secGrpSetId, SEC_GROUP_OUT_TABLE_ID);
-        flowsEp(el, uplinkPort, accessPort,
-                secGrpSetId, SEC_GROUP_IN_TABLE_ID);
+        {
+            FlowBuilder in;
+            in.priority(100).inPort(accessPort);
+            if (ep->getAccessIfaceVlan()) {
+                in.vlan(ep->getAccessIfaceVlan().get());
+                in.action().popVlan();
+            }
+            in.action()
+                .reg(MFF_REG0, secGrpSetId)
+                .reg(MFF_REG7, uplinkPort)
+                .go(SEC_GROUP_OUT_TABLE_ID);
+            in.build(el);
+        }
+        {
+            FlowBuilder out;
+            out.priority(100).inPort(uplinkPort)
+                .action()
+                .reg(MFF_REG0, secGrpSetId)
+                .reg(MFF_REG7, accessPort);
+            if (ep->getAccessIfaceVlan()) {
+                out.action()
+                    .pushVlan()
+                    .setVlanVid(ep->getAccessIfaceVlan().get());
+            }
+            out.action().go(SEC_GROUP_IN_TABLE_ID);
+            out.build(el);
+        }
     }
     switchManager.writeFlow(uuid, GROUP_MAP_TABLE_ID, el);
 }

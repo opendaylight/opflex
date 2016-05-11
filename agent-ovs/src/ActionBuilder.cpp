@@ -232,6 +232,14 @@ ActionBuilder& ActionBuilder::pushVlan() {
     return *this;
 }
 
+ActionBuilder& ActionBuilder::setVlanVid(uint16_t vlan) {
+    ofpact_vlan_vid* act = ofpact_put_SET_VLAN_VID(&buf);
+    act->vlan_vid = (0xfff & vlan);
+    act->push_vlan_if_needed = 0;
+    act->flow_has_vlan = true;
+    return *this;
+}
+
 ActionBuilder& ActionBuilder::popVlan() {
     /* ugly hack to avoid the fact that there's no way in the API to
        make a pop vlan action */

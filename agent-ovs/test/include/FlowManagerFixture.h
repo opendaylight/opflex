@@ -212,6 +212,7 @@ public:
     Bldr& outPort(uint32_t p) { rep("output:", str(p)); return *this; }
     Bldr& pushVlan() { rep("push_vlan:0x8100"); return *this; }
     Bldr& popVlan() { rep("pop_vlan"); return *this; }
+    Bldr& setVlan(uint16_t v) { rep("set_vlan_vid:", str(v)); return *this; }
     Bldr& inport() { rep("IN_PORT"); return *this; }
     Bldr& controller(uint16_t len) {
         rep("CONTROLLER:", str(len)); return *this;

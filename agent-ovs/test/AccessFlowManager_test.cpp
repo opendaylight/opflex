@@ -127,6 +127,15 @@ BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
     initExpEp(ep0);
     initExpEp(ep2);
     WAIT_FOR_TABLES("portmap-added", 500);
+
+    ep0->setAccessIfaceVlan(223);
+    epSrc.updateEndpoint(*ep0);
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEp(ep0);
+    initExpEp(ep2);
+    WAIT_FOR_TABLES("access-vlan-added", 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
@@ -266,7 +275,18 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
     uint32_t access = portmapper.FindPort(ep->getAccessInterface().get());
     uint32_t uplink = portmapper.FindPort(ep->getAccessUplinkInterface().get());
 
-    if (access != OFPP_NONE && uplink != OFPP_NONE) {
+    if (access == OFPP_NONE || uplink == OFPP_NONE) return;
+
+    if (ep->getAccessIfaceVlan()) {
+        ADDF(Bldr().table(GRP).priority(100).in(access)
+             .isVlan(ep->getAccessIfaceVlan().get())
+             .actions()
+             .popVlan().load(SEPG, 1).load(OUTPORT, uplink).go(OUT_POL).done());
+        ADDF(Bldr().table(GRP).priority(100).in(uplink)
+             .actions().load(SEPG, 1).load(OUTPORT, access)
+             .pushVlan().setVlan(ep->getAccessIfaceVlan().get())
+             .go(IN_POL).done());
+    } else {
         ADDF(Bldr().table(GRP).priority(100).in(access)
              .actions().load(SEPG, 1).load(OUTPORT, uplink).go(OUT_POL).done());
         ADDF(Bldr().table(GRP).priority(100).in(uplink)

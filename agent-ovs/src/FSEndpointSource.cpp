@@ -68,6 +68,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string SEC_GROUP_NAME("name");
     static const std::string EP_IFACE_NAME("interface-name");
     static const std::string EP_ACCESS_IFACE("access-interface");
+    static const std::string EP_ACCESS_IFACE_VLAN("access-interface-vlan");
     static const std::string EP_ACCESS_UPLINK_IFACE("access-uplink-interface");
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
     static const std::string EP_DISC_PROXY("discovery-proxy-mode");
@@ -198,6 +199,10 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             properties.get_optional<string>(EP_ACCESS_IFACE);
         if (accessIface)
             newep.setAccessInterface(accessIface.get());
+        optional<uint16_t> accessIfaceVlan =
+            properties.get_optional<uint16_t>(EP_ACCESS_IFACE_VLAN);
+        if (accessIfaceVlan)
+            newep.setAccessIfaceVlan(accessIfaceVlan.get());
         optional<string> accessUplinkIface =
             properties.get_optional<string>(EP_ACCESS_UPLINK_IFACE);
         if (accessUplinkIface)
