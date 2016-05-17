@@ -304,7 +304,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                 }
             }
 
-            const ClassInfo::property_map_t props = ci.getProperties();
+            const ClassInfo::property_map_t& props = ci.getProperties();
             ClassInfo::property_map_t::const_iterator it;
             for (it = props.begin(); it != props.end(); ++it) {
                 if (it->second.getType() == PropertyInfo::COMPOSITE) {
