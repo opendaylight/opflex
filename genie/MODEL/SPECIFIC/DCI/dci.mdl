@@ -141,7 +141,9 @@ module[dci]
         }
         member[targetAf; type=dci/AddressFamily]
         member[type; type=dci/TargetType]
-        member[rtAS; type=scalar/UInt16]
+        member[rtAS; type=scalar/UInt32]
+        member[rtIP; type=address/IP]
         member[rtNN; type=scalar/UInt32]
+
     }
 }
