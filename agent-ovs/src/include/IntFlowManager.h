@@ -444,7 +444,8 @@ private:
             boost::optional<opflex::modb::URI>& bdURI, uint32_t& bdId,
             boost::optional<opflex::modb::URI>& fdURI, uint32_t& fdId);
     void updateGroupSubnets(const opflex::modb::URI& egUri,
-                            uint32_t bdId, uint32_t rdId);
+                            uint32_t bdId, uint32_t rdId,
+                            FlowEntryList& bridgel);
     void updateEPGFlood(const opflex::modb::URI& epgURI,
                         uint32_t epgVnid, uint32_t fgrpId,
                         boost::asio::ip::address epgTunDst);

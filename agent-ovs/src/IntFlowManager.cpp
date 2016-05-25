@@ -371,8 +371,7 @@ static FlowBuilder& matchDestDom(FlowBuilder& fb, uint32_t bdId, uint32_t l3Id) 
 static FlowBuilder& matchDestArp(FlowBuilder& fb, const address& ip,
                                  uint32_t bdId, uint32_t l3Id) {
     fb.arpDst(ip)
-        .proto(ARP_OP_REQUEST)
-        .ethDst(packets::MAC_ADDR_BROADCAST);
+        .proto(ARP_OP_REQUEST);
     return matchDestDom(fb, bdId, l3Id);
 }
 
@@ -383,8 +382,7 @@ static FlowBuilder& matchDestNd(FlowBuilder& fb, const address* ip,
         .ethType(ETH_TYPE_IPV6)
         .proto(58)
         .tpSrc(type)
-        .tpDst(0)
-        .ethDst(packets::MAC_ADDR_MULTICAST, packets::MAC_ADDR_MULTICAST);
+        .tpDst(0);
 
     if (ip) {
         fb.ndTarget(type, *ip);
@@ -1531,13 +1529,13 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
     }
 
     if (virtualRouterEnabled && rdId != 0 && bdId != 0) {
-        updateGroupSubnets(epgURI, bdId, rdId);
-
         FlowEntryList bridgel;
         uint8_t routingMode =
             agent.getPolicyManager().getEffectiveRoutingMode(epgURI);
 
         if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
+            updateGroupSubnets(epgURI, bdId, rdId, bridgel);
+
             FlowBuilder().priority(2)
                 .reg(4, bdId)
                 .action()
@@ -1652,20 +1650,19 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
 }
 
 void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
-                                        uint32_t rdId) {
+                                        uint32_t rdId, FlowEntryList& bridgel) {
     PolicyManager::subnet_vector_t subnets;
     agent.getPolicyManager().getSubnetsForGroup(egURI, subnets);
 
     uint32_t tunPort = getTunnelPort();
 
-    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
-        FlowEntryList el;
+    std::set<address> routerIps;
 
+    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
         optional<const string&> networkAddrStr = sn->getAddress();
-        bool hasRouterIp = false;
         boost::system::error_code ec;
         if (networkAddrStr) {
-            address networkAddr, routerIp;
+            address networkAddr;
             networkAddr = address::from_string(networkAddrStr.get(), ec);
             if (ec) {
                 LOG(WARNING) << "Invalid network address for subnet: "
@@ -1675,54 +1672,56 @@ void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
                     optional<const string&> routerIpStr =
                         sn->getVirtualRouterIp();
                     if (routerIpStr) {
-                        routerIp = address::from_string(routerIpStr.get(), ec);
+                        address routerIp =
+                            address::from_string(routerIpStr.get(), ec);
                         if (ec) {
                             LOG(WARNING) << "Invalid router IP: "
                                          << routerIpStr << ": " << ec.message();
                         } else {
-                            hasRouterIp = true;
+                            routerIps.insert(routerIp);
                         }
                     }
                 } else {
                     // Construct router IP address
-                    routerIp = packets::construct_link_local_ip_addr(routerMac);
-                    hasRouterIp = true;
-                }
-            }
-            // Reply to ARP requests for the router IP only from local
-            // endpoints.
-            if (hasRouterIp) {
-                if (routerIp.is_v4()) {
-                    if (tunPort != OFPP_NONE) {
-                        FlowBuilder e0;
-                        e0.priority(22).inPort(tunPort);
-                        matchDestArp(e0, routerIp, bdId, rdId);
-                        e0.build(el);
-                    }
-
-                    FlowBuilder e1;
-                    e1.priority(20);
-                    matchDestArp(e1, routerIp, bdId, rdId);
-                    actionArpReply(e1, getRouterMacAddr(), routerIp);
-                    e1.build(el);
-                } else {
-                    if (tunPort != OFPP_NONE) {
-                        FlowBuilder e0;
-                        e0.priority(22)
-                            .inPort(tunPort).cookie(flow::cookie::NEIGH_DISC);
-                        matchDestNd(e0, &routerIp, bdId, rdId);
-                        e0.build(el);
-                    }
-
-                    FlowBuilder e1;
-                    e1.priority(20).cookie(flow::cookie::NEIGH_DISC);
-                    matchDestNd(e1, &routerIp, bdId, rdId);
-                    e1.action().controller();
-                    e1.build(el);
+                    address routerIp =
+                        packets::construct_link_local_ip_addr(routerMac);
+                    routerIps.insert(routerIp);
                 }
             }
         }
-        switchManager.writeFlow(sn->getURI().toString(), BRIDGE_TABLE_ID, el);
+    }
+
+    BOOST_FOREACH(const address& routerIp, routerIps) {
+        // Reply to ARP requests for the router IP only from local
+        // endpoints.
+        if (routerIp.is_v4()) {
+            if (tunPort != OFPP_NONE) {
+                FlowBuilder e0;
+                e0.priority(22).inPort(tunPort);
+                matchDestArp(e0, routerIp, bdId, rdId);
+                e0.build(bridgel);
+            }
+
+            FlowBuilder e1;
+            e1.priority(20);
+            matchDestArp(e1, routerIp, bdId, rdId);
+            actionArpReply(e1, getRouterMacAddr(), routerIp);
+            e1.build(bridgel);
+        } else {
+            if (tunPort != OFPP_NONE) {
+                FlowBuilder e0;
+                e0.priority(22)
+                    .inPort(tunPort).cookie(flow::cookie::NEIGH_DISC);
+                matchDestNd(e0, &routerIp, bdId, rdId);
+                e0.build(bridgel);
+            }
+
+            FlowBuilder e1;
+            e1.priority(20).cookie(flow::cookie::NEIGH_DISC);
+            matchDestNd(e1, &routerIp, bdId, rdId);
+            e1.action().controller();
+            e1.build(bridgel);
+        }
     }
 }
 
@@ -1884,12 +1883,6 @@ IntFlowManager::handleDomainUpdate(class_id_t cid, const URI& domURI) {
     switch (cid) {
     case RoutingDomain::CLASS_ID:
         handleRoutingDomainUpdate(domURI);
-        break;
-    case Subnet::CLASS_ID:
-        if (!Subnet::resolve(agent.getFramework(), domURI)) {
-            LOG(DEBUG) << "Cleaning up for Subnet: " << domURI;
-            switchManager.clearFlows(domURI.toString(), BRIDGE_TABLE_ID);
-        }
         break;
     case BridgeDomain::CLASS_ID:
         if (!BridgeDomain::resolve(agent.getFramework(), domURI)) {
