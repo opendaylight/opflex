@@ -53,11 +53,13 @@ void SwitchManager::connect() {
 
 void SwitchManager::stop() {
     stopping = true;
-    flowReader.uninstallListenersForConnection(connection.get());
-    flowExecutor.UninstallListenersForConnection(connection.get());
-    portMapper.UninstallListenersForConnection(connection.get());
 
-    connection->UnregisterOnConnectListener(this);
+    if (connection) {
+        flowReader.uninstallListenersForConnection(connection.get());
+        flowExecutor.UninstallListenersForConnection(connection.get());
+        portMapper.UninstallListenersForConnection(connection.get());
+        connection->UnregisterOnConnectListener(this);
+    }
 
     if (connectTimer) {
         connectTimer->cancel();

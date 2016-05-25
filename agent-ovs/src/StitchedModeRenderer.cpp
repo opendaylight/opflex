@@ -47,15 +47,12 @@ void StitchedModeRenderer::start() {
         LOG(ERROR) << "OVS integration bridge name not set";
         return;
     }
-    if (accessBridgeName == "") {
-        LOG(ERROR) << "OVS access bridge name not set";
-        return;
-    }
 
     started = true;
     LOG(INFO) << "Starting stitched-mode renderer using"
               << " integration bridge " << intBridgeName
-              << " and access bridge " << accessBridgeName;
+              << " and access bridge "
+              << (accessBridgeName == "" ? "[none]" : "");
 
     if (encapType == IntFlowManager::ENCAP_VXLAN ||
         encapType == IntFlowManager::ENCAP_IVXLAN) {
@@ -82,13 +79,19 @@ void StitchedModeRenderer::start() {
 
     intSwitchManager.registerStateHandler(&intFlowManager);
     intSwitchManager.start(intBridgeName);
-    accessSwitchManager.registerStateHandler(&accessFlowManager);
-    accessSwitchManager.start(accessBridgeName);
+    if (accessBridgeName != "") {
+        accessSwitchManager.registerStateHandler(&accessFlowManager);
+        accessSwitchManager.start(accessBridgeName);
+    }
     intFlowManager.start();
     intFlowManager.registerModbListeners();
-    accessFlowManager.start();
+    if (accessBridgeName != "") {
+        accessFlowManager.start();
+    }
     intSwitchManager.connect();
-    accessSwitchManager.connect();
+    if (accessBridgeName != "") {
+        accessSwitchManager.connect();
+    }
 
     statsManager.registerConnection(intSwitchManager.getConnection());
     statsManager.start();
@@ -169,7 +172,7 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     intBridgeName =
         properties.get<std::string>(INT_BRIDGE_NAME, intBridgeName);
     accessBridgeName =
-        properties.get<std::string>(ACCESS_BRIDGE_NAME, "br-access");
+        properties.get<std::string>(ACCESS_BRIDGE_NAME, "");
 
     boost::optional<const ptree&> ivxlan =
         properties.get_child_optional(ENCAP_IVXLAN);
