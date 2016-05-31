@@ -27,7 +27,7 @@ using boost::system::error_code;
 StatsManager::StatsManager(Agent* agent_, PortMapper& portMapper_,
                            long timer_interval_)
     : agent(agent_), portMapper(portMapper_),
-      agent_io(agent_->getAgentIOService()), 
+      agent_io(agent_->getAgentIOService()),
       timer_interval(timer_interval_), stopping(false) {
 
 }
@@ -54,7 +54,9 @@ void StatsManager::stop() {
     LOG(DEBUG) << "Stopping stats manager";
     stopping = true;
 
-    connection->UnregisterMessageHandler(OFPTYPE_PORT_STATS_REPLY, this);
+    if (connection) {
+        connection->UnregisterMessageHandler(OFPTYPE_PORT_STATS_REPLY, this);
+    }
 
     if (timer) {
         timer->cancel();
@@ -69,7 +71,7 @@ void StatsManager::on_timer(const error_code& ec) {
     }
 
     // send port stats request
-    struct ofpbuf *portStatsReq = 
+    struct ofpbuf *portStatsReq =
         ofputil_encode_dump_ports_request(connection->GetProtocolVersion(),
                                           OFPP_ANY);
     int err = connection->SendMessage(portStatsReq);
