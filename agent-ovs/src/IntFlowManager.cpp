@@ -491,9 +491,8 @@ static FlowBuilder& actionDestEpArp(FlowBuilder& fb,
     return fb;
 }
 
-static FlowBuilder& actionOutputToEPGTunnel(FlowBuilder& fb, uint32_t outPort) {
+static FlowBuilder& actionOutputToEPGTunnel(FlowBuilder& fb) {
     fb.action()
-        .reg(MFF_REG7, outPort)
         .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK)
         .go(IntFlowManager::OUT_TABLE_ID);
     return fb;
@@ -501,7 +500,6 @@ static FlowBuilder& actionOutputToEPGTunnel(FlowBuilder& fb, uint32_t outPort) {
 
 static FlowBuilder& actionArpReply(FlowBuilder& fb, const uint8_t *mac,
                                    const address& ip,
-                                   uint32_t outPort = OFPP_IN_PORT,
                                    IntFlowManager::EncapType type
                                    = IntFlowManager::ENCAP_NONE,
                                    uint32_t replyEpg = 0) {
@@ -513,12 +511,16 @@ static FlowBuilder& actionArpReply(FlowBuilder& fb, const uint8_t *mac,
         .reg(MFF_ARP_SHA, mac)
         .regMove(MFF_ARP_SPA, MFF_ARP_TPA)
         .reg(MFF_ARP_SPA, ip.to_v4().to_ulong());
-    if (type != IntFlowManager::ENCAP_NONE) {
-        fb.action().reg(MFF_REG0, replyEpg);
-        actionOutputToEPGTunnel(fb, outPort);
-    } else {
-        fb.action().output(outPort);
+    switch (type) {
+    case IntFlowManager::ENCAP_VXLAN:
+    case IntFlowManager::ENCAP_IVXLAN:
+        fb.action()
+            .regMove(MFF_TUN_SRC, MFF_TUN_DST);
+        break;
+    default:
+        break;
     }
+    fb.action().output(OFPP_IN_PORT);
     return fb;
 }
 
@@ -586,7 +588,7 @@ static void flowsProxyDiscovery(IntFlowManager& flowMgr,
             matchDestArp(proxyArpTun.priority(priority+1).inPort(tunPort),
                          ipAddr, bdId, rdId);
             actionArpReply(proxyArpTun, macAddr, ipAddr,
-                           OFPP_IN_PORT, flowMgr.getEncapType(),
+                           flowMgr.getEncapType(),
                            epgVnid)
                 .build(el);
         }
@@ -1402,11 +1404,11 @@ void IntFlowManager::createStaticFlows() {
             // note that if the flood domain is set to flood unknown, then
             // there will be a higher-priority rule installed for that
             // flood domain.
-            actionOutputToEPGTunnel(FlowBuilder().priority(1), tunPort)
+            actionOutputToEPGTunnel(FlowBuilder().priority(1))
                 .build(unknownTunnelBr);
 
             if (virtualRouterEnabled) {
-                actionOutputToEPGTunnel(FlowBuilder().priority(1), tunPort)
+                actionOutputToEPGTunnel(FlowBuilder().priority(1))
                     .build(unknownTunnelRt);
             }
         }
@@ -1587,7 +1589,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
                 .reg(0, epgVnid)
                 .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
             actionTunnelMetadata(tunnelOut.action(), encapType, epgTunDst);
-            tunnelOut.action().outputReg(MFF_REG7);
+            tunnelOut.action().output(tunPort);
             tunnelOut.build(egOutFlows);
         }
         if (encapType != ENCAP_VLAN) {
@@ -1600,7 +1602,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
                 .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
             actionTunnelMetadata(tunnelOutRtr.action(),
                                  encapType, getTunnelDst());
-            tunnelOutRtr.action().outputReg(MFF_REG7);
+            tunnelOutRtr.action().output(tunPort);
             tunnelOutRtr.build(egOutFlows);
         }
     }
@@ -1783,7 +1785,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
         FlowBuilder snr;
         matchSubnet(snr, rdId, 300, addr, sn.second, false);
         if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
-            actionOutputToEPGTunnel(snr, tunPort);
+            actionOutputToEPGTunnel(snr);
         }
         snr.build(rdRouteFlows);
     }
@@ -1838,7 +1840,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
                     } else if (tunPort != OFPP_NONE &&
                                encapType != ENCAP_NONE) {
                         // For other external networks, output to the tunnel
-                        actionOutputToEPGTunnel(snr, tunPort);
+                        actionOutputToEPGTunnel(snr);
                     }
                     // else drop the packets
                     snr.build(rdRouteFlows);

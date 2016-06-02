@@ -90,7 +90,7 @@ public:
     ActionBuilder& reg(mf_field_id regId, uint32_t regValue);
 
     /**
-     * Load the given four bytes into the given register
+     * Load the given eight bytes into the given register
      * @param regId the register to load
      * @param regValue the value to load
      * @return this action builder for chaining
