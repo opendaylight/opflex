@@ -296,11 +296,12 @@ srpm: dist rpm/${PACKAGE}.spec
 EXTRA_DIST += debian/agent-ovs.dirs debian/agent-ovs.install \
 	debian/agent-ovs.postinst debian/agent-ovs.preinst \
 	debian/agent-ovs.upstart debian/mcast-daemon.conf \
+	debian/agent-ovs.service debian/mcast-daemon.service \
 	debian/changelog debian/compat debian/conffiles debian/control \
 	debian/copyright debian/rules debian/source/format
 
 # Set env var DEB_BUILD_OPTIONS="parallel=<#cores>" to speed up package builds
-DEB_PKG_DIR=deb
+DEB_PKG_DIR=deb-pkg-build
 deb: dist
 	- rm -rf  $(DEB_PKG_DIR)
 	mkdir -p $(DEB_PKG_DIR)
@@ -308,7 +309,15 @@ deb: dist
 	tar -C $(DEB_PKG_DIR)/ -xf $(DEB_PKG_DIR)/$(SOURCE_FILE)
 	mv $(DEB_PKG_DIR)/$(SOURCE_FILE) $(DEB_PKG_DIR)/$(PACKAGE)_$(VERSION).orig.tar.gz
 	cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; \
-		VERSION_WITH_BUILD=$(VERSION)-$(BVERSION) \
-		dpkg-buildpackage -d -us -uc -rfakeroot -b
+		dpkg-buildpackage -us -uc -rfakeroot -b
 	cp $(DEB_PKG_DIR)/*.deb .
 	rm -rf $(DEB_PKG_DIR)
+
+dsc: dist
+	- rm -rf  $(DEB_PKG_DIR)
+	mkdir -p $(DEB_PKG_DIR)
+	cp $(SOURCE_FILE) $(DEB_PKG_DIR)/
+	tar -C $(DEB_PKG_DIR)/ -xf $(DEB_PKG_DIR)/$(SOURCE_FILE)
+	mv $(DEB_PKG_DIR)/$(SOURCE_FILE) $(DEB_PKG_DIR)/$(PACKAGE)_$(VERSION).orig.tar.gz
+	cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; \
+		dpkg-buildpackage -d -us -uc -rfakeroot -S

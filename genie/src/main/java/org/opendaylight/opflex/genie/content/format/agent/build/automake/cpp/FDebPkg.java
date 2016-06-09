@@ -48,13 +48,13 @@ public class FDebPkg
             lLibName = "compat";
         } else if (ext.equals(".changelog")) {
             ext = "";
-            lLibName = "changelog";
+            lLibName = "changelog.in";
         } else if (ext.equals(".copyright")) {
             ext = "";
             lLibName = "copyright";
         } else if (ext.equals(".rules")) {
             ext = "";
-            lLibName = "rules";
+            lLibName = "rules.in";
         } else if (ext.equals(".source_format")) {
             ext = "";
             lLibName = "format";
@@ -159,7 +159,7 @@ public class FDebPkg
         + " .\n"
         + " This package contains the debugging symbols for _LIB_NAME_.";
     private static final String TEMPLATE_CHANGELOG =
-        "_LIB_NAME_ (1.0.0-1) unstable; urgency=low\n"
+        "_LIB_NAME_ (@PACKAGE_VERSION@-@SDK_BVERSION@) unstable; urgency=low\n"
         + "\n"
         + "  * Initial release\n"
         + "\n"
@@ -187,7 +187,7 @@ public class FDebPkg
         + "#override_dh_auto_test:\n"
         + "\n"
         + "override_dh_auto_configure:\n"
-        + "\tdh_auto_configure -- --disable-assert\n"
+        + "\tdh_auto_configure -- --disable-assert --with-buildversion=@SDK_BVERSION@\n"
         + "\n"
         + "override_dh_auto_install:\n"
         + "\t$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install\n"
@@ -196,10 +196,7 @@ public class FDebPkg
         + "\tdh_shlibdeps -- --ignore-missing-info\n"
         + "\n"
         + "override_dh_strip:\n"
-        + "\tdh_strip --dbg-package=_LIB_NAME_-dbg"
-        + "\n"
-        + "override_dh_gencontrol:\n"
-        + "\tdh_gencontrol -- -v$(VERSION_WITH_BUILD)";
+        + "\tdh_strip --dbg-package=_LIB_NAME_-dbg";
     private static final String TEMPLATE_FORMAT = "3.0 (quilt)\n";
     private static final String TEMPLATE_DEV_INSTALL =
         "usr/include/*\n"

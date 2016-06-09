@@ -162,6 +162,7 @@ dnl Output
 
 AC_CONFIG_FILES([              \
         Makefile               \
+	debian/changelog       \
         util/Makefile          \
         logging/Makefile       \
         comms/Makefile         \
@@ -179,6 +180,7 @@ AC_CONFIG_FILES([              \
         doc/Doxyfile-internal  \
         rpm/libopflex.spec
 ])
+AC_CONFIG_FILES([debian/rules], [chmod +x debian/rules])
 
 AC_CONFIG_LINKS([
                  comms/test/server.pem:comms/test/server.pem
