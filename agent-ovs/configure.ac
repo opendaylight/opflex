@@ -153,8 +153,10 @@ fi
 
 AC_CONFIG_FILES([\
 	Makefile \
+	debian/changelog \
 	doc/Doxyfile \
 	rpm/agent-ovs.spec])
+AC_CONFIG_FILES([debian/rules], [chmod +x debian/rules])
 AC_OUTPUT
 
 AC_MSG_NOTICE([

@@ -7,12 +7,10 @@
 PACKAGE=agent-ovs
 
 %:
-	dh $@ --parallel --with autotools-dev
-
-#override_dh_auto_test:
+	dh $@ --parallel --with autotools-dev,systemd
 
 override_dh_auto_configure:
-	dh_auto_configure -- --disable-assert
+	dh_auto_configure -- --disable-assert --with-buildversion=@BVERSION@
 
 override_dh_auto_install:
 	$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
@@ -23,6 +21,8 @@ override_dh_shlibdeps:
 override_dh_strip:
 	dh_strip --dbg-package=$(PACKAGE)-dbg
 
+override_dh_installinit:
+	dh_installinit -R
+	dh_systemd_enable -pagent-ovs --name=mcast-daemon mcast-daemon.service
+	dh_installinit -pagent-ovs --name=mcast-daemon
 
-override_dh_gencontrol:
-	dh_gencontrol -- -v$(VERSION_WITH_BUILD)

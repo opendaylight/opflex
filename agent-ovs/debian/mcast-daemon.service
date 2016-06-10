@@ -1,0 +1,9 @@
+[Unit]
+Description=Opflex Multicast Listener Daemon
+
+[Service]
+ExecStart=/usr/bin/mcast_daemon --syslog
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
