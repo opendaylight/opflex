@@ -26,7 +26,7 @@ using boost::system::error_code;
 
 StatsManager::StatsManager(Agent* agent_, PortMapper& portMapper_,
                            long timer_interval_)
-    : agent(agent_), portMapper(portMapper_),
+    : agent(agent_), portMapper(portMapper_), connection(NULL),
       agent_io(agent_->getAgentIOService()),
       timer_interval(timer_interval_), stopping(false) {
 
