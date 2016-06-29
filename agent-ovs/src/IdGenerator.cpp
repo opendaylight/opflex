@@ -126,7 +126,12 @@ void IdGenerator::persist(const std::string& nmspc, IdMap& idmap) {
     BOOST_FOREACH (const IdMap::Str2IdMap::value_type& kv, idmap.ids) {
         const uint32_t& id = kv.second;
         const string& str = kv.first;
-        size_t len = str.size();
+        if (str.size() > UINT16_MAX) {
+            LOG(ERROR) << "ID string length exceeds maximum";
+            continue;
+        }
+        uint16_t len = str.size();
+
         if (file.write((const char *)&id, sizeof(id)).fail() ||
             file.write((const char *)&len, sizeof(len)).fail() ||
             file.write(str.c_str(), len).fail()) {
@@ -172,7 +177,7 @@ void IdGenerator::initNamespace(const std::string& nmspc) {
     }
     while (!file.fail()) {
         uint32_t id;
-        size_t len;
+        uint16_t len;
         if (file.read((char *)&id, sizeof(id)).eof() ||
             file.read((char *)&len, sizeof(len)).eof()) {
             LOG(DEBUG) << "Got EOF, loaded " << idmap.ids.size()
