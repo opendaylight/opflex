@@ -512,6 +512,11 @@ static FlowBuilder& actionArpReply(FlowBuilder& fb, const uint8_t *mac,
         .regMove(MFF_ARP_SPA, MFF_ARP_TPA)
         .reg(MFF_ARP_SPA, ip.to_v4().to_ulong());
     switch (type) {
+    case IntFlowManager::ENCAP_VLAN:
+        fb.action()
+            .pushVlan()
+            .regMove(MFF_REG0, MFF_VLAN_VID);
+        break;
     case IntFlowManager::ENCAP_VXLAN:
     case IntFlowManager::ENCAP_IVXLAN:
         fb.action()
