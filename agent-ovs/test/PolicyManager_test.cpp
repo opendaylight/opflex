@@ -487,7 +487,7 @@ BOOST_FIXTURE_TEST_CASE( nat_rd_update, PolicyFixture ) {
     shared_ptr<EpGroup> eg_sentinel = space->addGbpEpGroup("group-sentinel");
     eg_sentinel->addGbpeInstContext()->setEncapId(1);
     m0.commit();
-    WAIT_FOR(lsnr.hasNotif(eg_sentinel->getURI()), 500);
+    WAIT_FOR(lsnr.hasNotif(eg_sentinel->getURI()), 1500);
 
     lsnr.clear();
     Mutator m1(framework, "policyreg");
@@ -495,13 +495,13 @@ BOOST_FIXTURE_TEST_CASE( nat_rd_update, PolicyFixture ) {
         ->setTargetBridgeDomain(bd_ext->getURI());
     m1.commit();
     WAIT_FOR(pm.getFDForGroup(eg_nat->getURI()) == boost::none, 500);
-    WAIT_FOR(lsnr.hasNotif(rd->getURI()), 500);
+    WAIT_FOR(lsnr.hasNotif(rd->getURI()), 1500);
 
     lsnr.clear();
     eg_nat->addGbpeInstContext()->setEncapId(0x22);
     m1.commit();
     WAIT_FOR(pm.getVnidForGroup(eg_nat->getURI()).get() == 0x22, 500);
-    WAIT_FOR(lsnr.hasNotif(rd->getURI()), 500);
+    WAIT_FOR(lsnr.hasNotif(rd->getURI()), 1500);
 }
 
 BOOST_FIXTURE_TEST_CASE( group_unknown_contract, PolicyFixture ) {
