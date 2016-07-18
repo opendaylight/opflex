@@ -55,7 +55,8 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
     uint32_t tunPort = intFlowManager.getTunnelPort();
 
     bool dstKnown = (0 != pi.flow_metadata.flow.regs[7]);
-    if (stage2 && !dstKnown) return false;
+    bool broadcast = (flow.dl_dst[0] & 0x01) != 0;
+    if (stage2 && (!dstKnown || broadcast)) return false;
 
     uint8_t* flowMac = NULL;
 
@@ -79,11 +80,12 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
         match_set_dl_dst(&fm.match, flow.dl_src);
     }
 
-    ActionBuilder ab;
     // Set the output register
     uint32_t outport = stage2
         ? pi.flow_metadata.flow.regs[7]
         : pi.flow_metadata.flow.in_port.ofp_port;
+
+    ActionBuilder ab;
 
     // Set destination epg == source epg
     ab.reg(MFF_REG2, pi.flow_metadata.flow.regs[0]);
@@ -106,7 +108,7 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
         LOG(ERROR) << "Could not write flow mod: " << ovs_strerror(error);
     }
 
-    if (flowReader) {
+    if (flowReader && !stage2) {
         FlowReader::FlowCb dstCb =
             boost::bind(&PacketInHandler::dstFlowCb, this,
                         _1, MAC(flowMac), outport,
@@ -114,7 +116,7 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
         match fmatch;
         memset(&fmatch, 0, sizeof(fmatch));
         match_set_reg(&fmatch, 5 /* REG5 */, pi.flow_metadata.flow.regs[5]);
-        match_set_dl_dst(&fmatch, flowMac);
+        match_set_dl_dst(&fmatch, flow.dl_src);
 
         flowReader->getFlows(IntFlowManager::LEARN_TABLE_ID,
                              &fmatch, dstCb);
@@ -247,7 +249,6 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
                                        ofputil_protocol& proto,
                                        struct dp_packet& pkt,
                                        struct flow& flow) {
-
     writeLearnFlow(conn, proto, pi, flow, false);
     if (writeLearnFlow(conn, proto, pi, flow, true))
         return;
@@ -259,6 +260,10 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
         ? intFlowManager.getEPGTunnelDst(egUri.get())
         : intFlowManager.getTunnelDst();
 
+    bool broadcast = (flow.dl_dst[0] & 0x01) != 0;
+    uint32_t groupId = broadcast
+        ? pi.flow_metadata.flow.regs[5]
+        : IntFlowManager::getPromId(pi.flow_metadata.flow.regs[5]);
     {
         // install a forward flow to flood to the promiscuous ports in
         // the flood domain until we learn the correct reverse path
@@ -278,7 +283,7 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
 
         ActionBuilder ab;
         ab.reg(MFF_REG7, tunDst.to_v4().to_ulong());
-        ab.group(IntFlowManager::getPromId(pi.flow_metadata.flow.regs[5]));
+        ab.group(groupId);
         ab.build(&fm);
 
         struct ofpbuf* message = ofputil_encode_flow_mod(&fm, proto);
@@ -300,7 +305,7 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
         ActionBuilder ab;
         ab.reg(MFF_REG0, pi.flow_metadata.flow.regs[0]);
         ab.reg(MFF_REG7, tunDst.to_v4().to_ulong());
-        ab.group(IntFlowManager::getPromId(pi.flow_metadata.flow.regs[5]));
+        ab.group(groupId);
         ab.build(&po);
 
         struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
@@ -438,6 +443,7 @@ static void handleNDPktIn(Agent& agent,
 
 static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
                               IntFlowManager& intFlowManager,
+                              PortMapper* portMapper,
                               SwitchConnection *conn,
                               struct ofputil_packet_in& pi,
                               ofputil_protocol& proto,
@@ -474,7 +480,7 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
         return;
 
     uint8_t message_type = 0;
-    address_v4 requested_ip;
+    address_v4 requested_ip = address_v4(ntohl(dhcp_pkt->ciaddr));
 
     char* cur = (char*)dhcp_pkt + sizeof(struct dhcp_hdr);
     size_t remaining =
@@ -516,8 +522,17 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
                        << requested_ip << " from " << srcMac;
             reply_type = message_type::ACK;
         } else {
+            string iface = "[unknown]";
+            try {
+                if (portMapper)
+                    iface =
+                        portMapper->FindPort(pi.flow_metadata.flow
+                                             .in_port.ofp_port);
+            } catch (std::out_of_range) {}
+
             LOG(WARNING) << "Rejecting DHCP REQUEST for IP "
-                         << requested_ip << " from " << srcMac;
+                         << requested_ip << " from " << srcMac
+                         << " on interface \"" << iface << "\"";
         }
         break;
     case message_type::DISCOVER:
@@ -691,6 +706,7 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
 static void handleDHCPPktIn(bool v4,
                             Agent& agent,
                             IntFlowManager& intFlowManager,
+                            PortMapper* portMapper,
                             SwitchConnection *conn,
                             struct ofputil_packet_in& pi,
                             ofputil_protocol& proto,
@@ -732,7 +748,8 @@ static void handleDHCPPktIn(bool v4,
 
     if (!ep) return;
     if (v4)
-        handleDHCPv4PktIn(ep, intFlowManager, conn, pi, proto, pkt, flow);
+        handleDHCPv4PktIn(ep, intFlowManager, portMapper,
+                          conn, pi, proto, pkt, flow);
     else
         handleDHCPv6PktIn(ep, intFlowManager, conn, pi, proto, pkt, flow);
 
@@ -927,10 +944,10 @@ void PacketInHandler::Handle(SwitchConnection *conn,
     else if (pi.cookie == flow::cookie::NEIGH_DISC)
         handleNDPktIn(agent, intFlowManager, conn, pi, proto, pkt, flow);
     else if (pi.cookie == flow::cookie::DHCP_V4)
-        handleDHCPPktIn(true, agent, intFlowManager,
+        handleDHCPPktIn(true, agent, intFlowManager, portMapper,
                         conn, pi, proto, pkt, flow);
     else if (pi.cookie == flow::cookie::DHCP_V6)
-        handleDHCPPktIn(false, agent, intFlowManager,
+        handleDHCPPktIn(false, agent, intFlowManager, portMapper,
                         conn, pi, proto, pkt, flow);
     else if (pi.cookie == flow::cookie::VIRTUAL_IP_V4)
         handleVIPPktIn(true, agent, *portMapper, pi, flow);

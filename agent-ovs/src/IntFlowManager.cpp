@@ -948,14 +948,6 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             actionSource(FlowBuilder().priority(138).inPort(ofPort),
                          epgVnid, bdId, fgrpId, rdId)
                 .build(elSrc);
-
-            // Multicast traffic from promiscuous ports is delivered
-            // normally
-            actionSource(FlowBuilder().priority(139).inPort(ofPort)
-                         .ethDst(packets::MAC_ADDR_BROADCAST,
-                                 packets::MAC_ADDR_MULTICAST),
-                         epgVnid, bdId, fgrpId, rdId)
-                .build(elSrc);
         }
 
         if (virtualDHCPEnabled && hasMac) {
@@ -1470,8 +1462,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
     if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
         // In flood mode we send all traffic from the uplink to the
         // learning table.  Otherwise move to the destination mapper
-        // table as normal.  Multicast traffic still goes to the
-        // destination table, however.
+        // table as normal.
 
         uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
         uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
@@ -1495,15 +1486,6 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
                      epgVnid, bdId, fgrpId, rdId,
                      nextTable, encapType, true)
             .build(uplinkMatch);
-
-        if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD &&
-            bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL) {
-            actionSource(matchEpg(FlowBuilder().priority(150).inPort(tunPort),
-                                  encapType, epgVnid),
-                         epgVnid, bdId, fgrpId, rdId,
-                         IntFlowManager::BRIDGE_TABLE_ID, encapType, true)
-                .build(uplinkMatch);
-        }
     }
     switchManager.writeFlow(epgId, SRC_TABLE_ID, uplinkMatch);
 

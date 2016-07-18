@@ -330,9 +330,9 @@ void NotifServer::start() {
         }
 
         if (uid != 0 || gid != 0) {
-            chown(notifSocketPath.c_str(),
-                   uid ? uid : geteuid(),
-                   gid ? gid : getegid());
+            (void)chown(notifSocketPath.c_str(),
+                        uid ? uid : geteuid(),
+                        gid ? gid : getegid());
         }
     }
     accept();
