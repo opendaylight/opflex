@@ -389,6 +389,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             }
         }
 
+        ep_map_t::const_iterator it = knownEps.find(pathstr);
+        if (it != knownEps.end()) {
+            if (newep.getUUID() != it->second)
+                deleted(filePath);
+        }
         knownEps[pathstr] = newep.getUUID();
         updateEndpoint(newep);
 

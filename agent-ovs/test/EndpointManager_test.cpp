@@ -222,8 +222,13 @@ public:
 BOOST_AUTO_TEST_SUITE(EndpointManager_test)
 
 template<typename T>
-bool hasEPREntry(OFFramework& framework, const URI& uri) {
-    return T::resolve(framework, uri);
+bool hasEPREntry(OFFramework& framework, const URI& uri,
+                 const boost::optional<std::string>& uuid = boost::none) {
+    boost::optional<boost::shared_ptr<T> > entry =
+        T::resolve(framework, uri);
+    if (!entry) return false;
+    if (uuid) return (entry.get()->getUuid("") == uuid);
+    return true;
 }
 
 static int getEGSize(EndpointManager& epManager, URI& epgu) {
@@ -432,7 +437,8 @@ BOOST_FIXTURE_TEST_CASE( epgmapping, EndpointFixture ) {
 BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
 
     // check already existing
-    fs::ofstream os(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c754.ep");
+    fs::path path1(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c754.ep");
+    fs::ofstream os(path1);
     os << "{"
        << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c754\","
        << "\"mac\":\"10:ff:00:a3:01:00\","
@@ -493,6 +499,31 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
     fs::remove(path2);
 
     WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr2), 500);
+
+    // check for overwriting existing file with new ep
+    fs::ofstream os3(path1);
+    std::string uuid3("83f18f0b-80f7-46e2-b06c-4d9487b0c756");
+    os3 << "{"
+        << "\"uuid\":\"" << uuid3 << "\","
+        << "\"mac\":\"10:ff:00:a3:01:02\","
+        << "\"ip\":[\"10.0.0.4\"],"
+        << "\"interface-name\":\"veth0\","
+        << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\","
+        << "\"attributes\":{\"attr1\":\"value1\"}"
+        << "}" << std::endl;
+    os3.close();
+
+    WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr_1), 500);
+    WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr_2), 500);
+    WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr), 500);
+
+    URI l2epr3 = URIBuilder()
+        .addElement("EprL2Universe")
+        .addElement("EprL2Ep")
+        .addElement(bduri.toString())
+        .addElement(MAC("10:ff:00:a3:01:02")).build();
+
+    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr3, uuid3), 500);
 
     watcher.stop();
 }

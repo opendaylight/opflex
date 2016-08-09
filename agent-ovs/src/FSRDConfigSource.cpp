@@ -101,6 +101,11 @@ void FSRDConfigSource::updated(const fs::path& filePath) {
             }
         }
 
+        rdc_map_t::const_iterator it = knownDomainConfigs.find(pathstr);
+        if (it != knownDomainConfigs.end()) {
+            if (domainURI.get() != it->second)
+                deleted(filePath);
+        }
         knownDomainConfigs.insert(make_pair(pathstr, domainURI.get()));
         manager->updateRDConfig(newrd);
 
