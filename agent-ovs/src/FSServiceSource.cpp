@@ -129,6 +129,11 @@ void FSServiceSource::updated(const fs::path& filePath) {
             }
         }
 
+        serv_map_t::const_iterator it = knownAnycastServs.find(pathstr);
+        if (it != knownAnycastServs.end()) {
+            if (newserv.getUUID() != it->second)
+                deleted(filePath);
+        }
         knownAnycastServs[pathstr] = newserv.getUUID();
         updateAnycastService(newserv);
 
