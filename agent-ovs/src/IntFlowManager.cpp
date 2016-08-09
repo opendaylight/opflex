@@ -226,7 +226,7 @@ address IntFlowManager::getEPGTunnelDst(const URI& epgURI) {
         address ip = address::from_string(epgMcastIp.get(), ec);
         if (ec || !ip.is_v4() || ! ip.is_multicast()) {
             LOG(WARNING) << "Ignoring invalid/unsupported group multicast "
-                " IP: " << epgMcastIp.get();
+                "IP: " << epgMcastIp.get();
             return getTunnelDst();
         }
         return ip;
@@ -763,6 +763,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         switchManager.clearFlows(uuid, ROUTE_TABLE_ID);
         switchManager.clearFlows(uuid, LEARN_TABLE_ID);
         switchManager.clearFlows(uuid, SERVICE_MAP_DST_TABLE_ID);
+        switchManager.clearFlows(uuid, OUT_TABLE_ID);
         removeEndpointFromFloodGroup(uuid);
         return;
     }
