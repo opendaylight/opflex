@@ -169,12 +169,11 @@ public:
                         const std::string& mac);
 
     /**
-     * Enable or disable endpoint advertisements
+     * Enable or disable endpoint advertisements and set the mode
      *
-     * @param endpointAdv true to enable periodic endpoint
-     * advertisements
+     * @param mode the endpoint advertisement mode
      */
-    void setEndpointAdv(bool endpointAdv);
+    void setEndpointAdv(AdvertManager::EndpointAdvMode mode);
 
     /**
      * Set the multicast group file

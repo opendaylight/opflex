@@ -974,7 +974,8 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanIntFlowManagerFixture) {
             .setPrefixLen(24);
         subnets_ext->addGbpSubnet("subnet_ext6")
             ->setAddress("fdf1:9f86:d1af:6cc9::")
-            .setPrefixLen(64);
+            .setPrefixLen(64)
+            .setVirtualRouterIp("fdf1:9f86:d1af:6cc9::1");
         bd_ext->addGbpForwardingBehavioralGroupToSubnetsRSrc()
             ->setTargetSubnets(subnets_ext->getURI());
         rd_ext->addGbpRoutingDomainToIntSubnetsRSrc(subnets_ext->

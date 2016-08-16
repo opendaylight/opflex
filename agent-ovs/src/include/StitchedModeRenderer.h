@@ -90,7 +90,7 @@ private:
     bool virtualRouter;
     std::string virtualRouterMac;
     bool routerAdv;
-    bool endpointAdv;
+    AdvertManager::EndpointAdvMode endpointAdvMode;
     bool virtualDHCP;
     std::string virtualDHCPMac;
     std::string flowIdCache;

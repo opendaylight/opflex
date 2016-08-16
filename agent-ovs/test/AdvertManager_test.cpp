@@ -23,6 +23,7 @@
 #include "IntFlowManager.h"
 #include "arp.h"
 #include "logging.h"
+#include "Packets.h"
 
 using std::string;
 using boost::asio::io_service;
@@ -53,6 +54,8 @@ public:
         intFlowManager.setEncapIface("br0_vxlan0");
         intFlowManager.setEncapType(IntFlowManager::ENCAP_VXLAN);
         intFlowManager.setTunnel("10.11.12.13", 4789);
+        intFlowManager.setVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
+
         conn->connected = true;
         advertManager.registerConnection(conn);
         advertManager.setPortMapper(&portMapper);
@@ -119,6 +122,8 @@ public:
         }
     }
 
+    void testEpAdvert(AdvertManager::EndpointAdvMode mode);
+
     IdGenerator idGen;
     MockFlowReader flowReader;
     MockFlowExecutor flowExecutor;
@@ -132,16 +137,44 @@ public:
     boost::scoped_ptr<boost::thread> ioThread;
 };
 
-class EpAdvertFixture : public AdvertManagerFixture {
+class EpAdvertFixtureGU : public AdvertManagerFixture {
 public:
-    EpAdvertFixture()
+    EpAdvertFixtureGU()
         : AdvertManagerFixture() {
-        advertManager.enableEndpointAdv(true);
+        advertManager.enableEndpointAdv(AdvertManager::EPADV_GRATUITOUS_UNICAST);
         start();
         advertManager.scheduleInitialEndpointAdv(10);
     }
 
-    ~EpAdvertFixture() {
+    ~EpAdvertFixtureGU() {
+        stop();
+    }
+};
+
+class EpAdvertFixtureGB : public AdvertManagerFixture {
+public:
+    EpAdvertFixtureGB()
+        : AdvertManagerFixture() {
+        advertManager.enableEndpointAdv(AdvertManager::EPADV_GRATUITOUS_BROADCAST);
+        start();
+        advertManager.scheduleInitialEndpointAdv(10);
+    }
+
+    ~EpAdvertFixtureGB() {
+        stop();
+    }
+};
+
+class EpAdvertFixtureRR : public AdvertManagerFixture {
+public:
+    EpAdvertFixtureRR()
+        : AdvertManagerFixture() {
+        advertManager.enableEndpointAdv(AdvertManager::EPADV_ROUTER_REQUEST);
+        start();
+        advertManager.scheduleInitialEndpointAdv(10);
+    }
+
+    ~EpAdvertFixtureRR() {
         stop();
     }
 };
@@ -159,9 +192,8 @@ public:
     }
 };
 
-BOOST_AUTO_TEST_SUITE(AdvertManager_test)
-
-static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
+static void verify_epadv(ofpbuf* msg, unordered_set<string>& found,
+                         AdvertManager::EndpointAdvMode mode) {
     using namespace arp;
 
     struct ofputil_packet_out po;
@@ -178,6 +210,20 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
 
     uint16_t dl_type = ntohs(flow.dl_type);
 
+    if (mode == AdvertManager::EPADV_GRATUITOUS_BROADCAST) {
+        if (dl_type == ETH_TYPE_ARP) {
+            BOOST_CHECK(0 == memcmp(flow.dl_dst,
+                                    packets::MAC_ADDR_BROADCAST, 6));
+        } else {
+            BOOST_CHECK(0 == memcmp(flow.dl_dst,
+                                    packets::MAC_ADDR_IPV6MULTICAST, 6));
+        }
+    } else {
+        opflex::modb::MAC routerMac("aa:bb:cc:dd:ee:ff");
+        opflex::modb::MAC dstMac(flow.dl_dst);
+        BOOST_CHECK_EQUAL(routerMac, dstMac);
+    }
+
     if (dl_type == ETH_TYPE_ARP) {
         BOOST_REQUIRE_EQUAL(sizeof(struct eth_header) +
                             sizeof(struct arp_hdr) +
@@ -188,29 +234,42 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found) {
                                sizeof(struct eth_header) +
                                sizeof(struct arp_hdr) + ETH_ADDR_LEN));
         found.insert(address_v4(ip).to_string());
+
+        if (mode != AdvertManager::EPADV_ROUTER_REQUEST) {
+            BOOST_CHECK_EQUAL(flow.nw_src, flow.nw_dst);
+        }
     } else if (dl_type == ETH_TYPE_IPV6) {
         size_t l4_size = dp_packet_l4_size(&pkt);
         BOOST_REQUIRE(l4_size > sizeof(struct icmp6_hdr));
         struct ip6_hdr* ip6 = (struct ip6_hdr*) dp_packet_l3(&pkt);
         address_v6::bytes_type bytes;
         memcpy(bytes.data(), &ip6->ip6_src, sizeof(struct in6_addr));
-        found.insert(address_v6(bytes).to_string());
-        BOOST_CHECK(0 == memcmp(&ip6->ip6_src, &ip6->ip6_dst,
-                                sizeof(struct in6_addr)));
+        address_v6 srcIp(bytes);
+        memcpy(bytes.data(), &ip6->ip6_dst, sizeof(struct in6_addr));
+        address_v6 dstIp(bytes);
+
+        found.insert(srcIp.to_string());
         struct icmp6_hdr* icmp = (struct icmp6_hdr*) dp_packet_l4(&pkt);
-        BOOST_CHECK_EQUAL(ND_NEIGHBOR_ADVERT, icmp->icmp6_type);
+
+        if (mode == AdvertManager::EPADV_ROUTER_REQUEST) {
+            BOOST_CHECK_EQUAL(ND_NEIGHBOR_SOLICIT, icmp->icmp6_type);
+            BOOST_CHECK(srcIp != dstIp);
+        } else {
+            BOOST_CHECK_EQUAL(ND_NEIGHBOR_ADVERT, icmp->icmp6_type);
+            BOOST_CHECK_EQUAL(dstIp, address_v6::from_string("ff02::1"));
+        }
     } else {
         LOG(ERROR) << "Incorrect dl_type: " << std::hex << dl_type;
         BOOST_FAIL("Incorrect dl_type");
     }
 }
 
-BOOST_FIXTURE_TEST_CASE(endpointAdvert, EpAdvertFixture) {
+void AdvertManagerFixture::testEpAdvert(AdvertManager::EndpointAdvMode mode) {
     WAIT_FOR(conn->sentMsgs.size() == 5, 1000);
     BOOST_CHECK_EQUAL(5, conn->sentMsgs.size());
     unordered_set<string> found;
     BOOST_FOREACH(ofpbuf* msg, conn->sentMsgs) {
-        verify_epadv(msg, found);
+        verify_epadv(msg, found, mode);
     }
     BOOST_CHECK(!CONTAINS(found, "10.20.45.31")); // unknown flood
     BOOST_CHECK(!CONTAINS(found, "10.20.45.32")); // unknown flood
@@ -220,6 +279,20 @@ BOOST_FIXTURE_TEST_CASE(endpointAdvert, EpAdvertFixture) {
     BOOST_CHECK(CONTAINS(found, "2001:db8::2"));
     BOOST_CHECK(CONTAINS(found, "2001:db8::3"));
     BOOST_CHECK(!CONTAINS(found, "10.20.54.11")); // routing disabled
+}
+
+BOOST_AUTO_TEST_SUITE(AdvertManager_test)
+
+BOOST_FIXTURE_TEST_CASE(endpointAdvertGU, EpAdvertFixtureGU) {
+    testEpAdvert(AdvertManager::EPADV_GRATUITOUS_UNICAST);
+}
+
+BOOST_FIXTURE_TEST_CASE(endpointAdvertRR, EpAdvertFixtureRR) {
+    testEpAdvert(AdvertManager::EPADV_ROUTER_REQUEST);
+}
+
+BOOST_FIXTURE_TEST_CASE(endpointAdvertGB, EpAdvertFixtureGB) {
+    testEpAdvert(AdvertManager::EPADV_GRATUITOUS_BROADCAST);
 }
 
 BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
@@ -252,7 +325,7 @@ BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
         BOOST_CHECK_EQUAL(ND_ROUTER_ADVERT, icmp->icmp6_type);
     }
 
-    BOOST_CHECK(CONTAINS(found, "fe80::200:ff:fe00:0"));
+    BOOST_CHECK(CONTAINS(found, "fe80::a8bb:ccff:fedd:eeff"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

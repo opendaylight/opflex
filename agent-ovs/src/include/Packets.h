@@ -45,6 +45,11 @@ extern const uint8_t MAC_ADDR_MULTICAST[6];
 extern const uint8_t MAC_ADDR_IPV6MULTICAST[6];
 
 /**
+ * Zero MAC address
+ */
+extern const uint8_t MAC_ADDR_ZERO[6];
+
+/**
  * Compute an internet checksum over the specified data.  chksum
  * should be first initialized to zero, then chksum_accum called for
  * each block of data, and finally call chksum_finalize to get the
@@ -107,6 +112,16 @@ boost::asio::ip::address_v6
 construct_link_local_ip_addr(const opflex::modb::MAC& srcMac);
 
 /**
+ * Construct the solicited-node multicast address for the given IP
+ * address
+ *
+ * @param ip the IP address to use
+ * @return the solicited-node multicast address corresponding to the IP
+ */
+boost::asio::ip::address_v6
+construct_solicited_node_ip(const boost::asio::ip::address_v6& ip);
+
+/**
  * Compute the mask for an IPv6 subnet
  *
  * @param netAddr the network address for the subnet
@@ -134,6 +149,23 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
                                const uint8_t* dstMac,
                                const struct in6_addr* srcIp,
                                const struct in6_addr* dstIp);
+
+/**
+ * Compose an ICMP6 neighbor solicitation ethernet frame
+ *
+ * @param srcMac the source MAC
+ * @param dstMac the target MAC
+ * @param srcIp the source IP
+ * @param dstIp the destination IP.  Should be the solicited node IP
+ * address for the target IP
+ * @param targetIp The target IP for the solicitation
+ * @return a ofpbuf containing the message
+ */
+ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
+                                  const uint8_t* dstMac,
+                                  const struct in6_addr* srcIp,
+                                  const struct in6_addr* dstIp,
+                                  const struct in6_addr* targetIp);
 
 /**
  * Compose an ICMP6 router advertisement ethernet frame

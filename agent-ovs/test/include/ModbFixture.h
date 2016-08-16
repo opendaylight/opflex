@@ -126,7 +126,8 @@ protected:
             .setVirtualRouterIp("10.20.44.1");
         subnetsfd0_2 = subnetsfd0->addGbpSubnet("subnetsfd0_2");
         subnetsfd0_2->setAddress("2001:db8::")
-            .setPrefixLen(32);
+            .setPrefixLen(32)
+            .setVirtualRouterIp("2001:db8::1");
         fd0->addGbpForwardingBehavioralGroupToSubnetsRSrc()
             ->setTargetSubnets(subnetsfd0->getURI());
         rd0->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd0->getURI().toString());

@@ -75,7 +75,7 @@ void StitchedModeRenderer::start() {
     intFlowManager.setVirtualRouter(virtualRouter, routerAdv, virtualRouterMac);
     intFlowManager.setVirtualDHCP(virtualDHCP, virtualDHCPMac);
     intFlowManager.setMulticastGroupFile(mcastGroupFile);
-    intFlowManager.setEndpointAdv(endpointAdv);
+    intFlowManager.setEndpointAdv(endpointAdvMode);
 
     intSwitchManager.registerStateHandler(&intFlowManager);
     intSwitchManager.start(intBridgeName);
@@ -161,8 +161,10 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string VIRTUAL_DHCP("forwarding.virtual-dhcp.enabled");
     static const std::string VIRTUAL_DHCP_MAC("forwarding.virtual-dhcp.mac");
 
-    static const std::string ENDPOINT_ADV("forwarding.endpoint-advertisements"
-                                          ".enabled");
+    static const std::string ENDPOINT_ADV("forwarding."
+                                          "endpoint-advertisements.enabled");
+    static const std::string ENDPOINT_ADV_MODE("forwarding."
+                                               "endpoint-advertisements.mode");
 
     static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
     static const std::string MCAST_GROUP_FILE("mcast-group-file");
@@ -217,7 +219,21 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     virtualDHCP = properties.get<bool>(VIRTUAL_DHCP, true);
     virtualDHCPMac =
         properties.get<std::string>(VIRTUAL_DHCP_MAC, "00:22:bd:f8:19:ff");
-    endpointAdv = properties.get<bool>(ENDPOINT_ADV, true);
+
+    if (properties.get<bool>(ENDPOINT_ADV, true) == false) {
+        endpointAdvMode = AdvertManager::EPADV_DISABLED;
+    } else {
+        std::string epAdvStr =
+            properties.get<std::string>(ENDPOINT_ADV_MODE,
+                                        "gratuitous-broadcast");
+        if (epAdvStr == "gratuitous-unicast") {
+            endpointAdvMode = AdvertManager::EPADV_GRATUITOUS_UNICAST;
+        } else if (epAdvStr == "router-request") {
+            endpointAdvMode = AdvertManager::EPADV_ROUTER_REQUEST;
+        } else {
+            endpointAdvMode = AdvertManager::EPADV_GRATUITOUS_BROADCAST;
+        }
+    }
 
     flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR,
                                               DEF_FLOWID_CACHEDIR);

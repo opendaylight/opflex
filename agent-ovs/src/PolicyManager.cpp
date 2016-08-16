@@ -982,6 +982,23 @@ uint8_t PolicyManager::getEffectiveRoutingMode(const URI& egURI) {
     return routingMode;
 }
 
+boost::optional<address>
+PolicyManager::getRouterIpForSubnet(modelgbp::gbp::Subnet& subnet) {
+    optional<const string&> routerIpStr = subnet.getVirtualRouterIp();
+    if (routerIpStr) {
+        boost::system::error_code ec;
+        address routerIp = address::from_string(routerIpStr.get(), ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid router IP for subnet "
+                         << subnet.getURI() << ": "
+                         << routerIpStr.get() << ": " << ec.message();
+        } else {
+            return routerIp;
+        }
+    }
+    return boost::none;
+}
+
 PolicyManager::DomainListener::DomainListener(PolicyManager& pmanager_)
     : pmanager(pmanager_) {}
 PolicyManager::DomainListener::~DomainListener() {}

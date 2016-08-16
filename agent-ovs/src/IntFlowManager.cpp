@@ -206,8 +206,9 @@ void IntFlowManager::setVirtualDHCP(bool dhcpEnabled,
     }
 }
 
-void IntFlowManager::setEndpointAdv(bool endpointAdv) {
-    advertManager.enableEndpointAdv(endpointAdv);
+void IntFlowManager::setEndpointAdv(AdvertManager::EndpointAdvMode mode) {
+    if (mode != AdvertManager::EPADV_DISABLED)
+        advertManager.enableEndpointAdv(mode);
 }
 
 void IntFlowManager::setMulticastGroupFile(const std::string& mcastGroupFile) {
@@ -1651,65 +1652,41 @@ void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
     BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
         FlowEntryList el;
 
-        optional<const string&> networkAddrStr = sn->getAddress();
-        bool hasRouterIp = false;
-        boost::system::error_code ec;
-        if (networkAddrStr) {
-            address networkAddr, routerIp;
-            networkAddr = address::from_string(networkAddrStr.get(), ec);
-            if (ec) {
-                LOG(WARNING) << "Invalid network address for subnet: "
-                             << networkAddrStr << ": " << ec.message();
+        optional<address> routerIp =
+            PolicyManager::getRouterIpForSubnet(*sn);
+
+        // Reply to ARP/ND requests for the router IP only from local
+        // endpoints.
+        if (routerIp) {
+            if (routerIp.get().is_v4()) {
+                if (tunPort != OFPP_NONE) {
+                    FlowBuilder e0;
+                    e0.priority(22).inPort(tunPort);
+                    matchDestArp(e0, routerIp.get(), bdId, rdId);
+                    e0.build(el);
+                }
+
+                FlowBuilder e1;
+                e1.priority(20);
+                matchDestArp(e1, routerIp.get(), bdId, rdId);
+                actionArpReply(e1, getRouterMacAddr(), routerIp.get());
+                e1.build(el);
             } else {
-                if (networkAddr.is_v4()) {
-                    optional<const string&> routerIpStr =
-                        sn->getVirtualRouterIp();
-                    if (routerIpStr) {
-                        routerIp = address::from_string(routerIpStr.get(), ec);
-                        if (ec) {
-                            LOG(WARNING) << "Invalid router IP: "
-                                         << routerIpStr << ": " << ec.message();
-                        } else {
-                            hasRouterIp = true;
-                        }
-                    }
-                } else {
-                    // Construct router IP address
-                    routerIp = packets::construct_link_local_ip_addr(routerMac);
-                    hasRouterIp = true;
+                address lladdr =
+                    packets::construct_link_local_ip_addr(routerMac);
+                if (tunPort != OFPP_NONE) {
+                    FlowBuilder e0;
+                    e0.priority(22)
+                        .inPort(tunPort).cookie(flow::cookie::NEIGH_DISC);
+                    matchDestNd(e0, &lladdr, bdId, rdId);
+                    e0.build(el);
                 }
-            }
-            // Reply to ARP requests for the router IP only from local
-            // endpoints.
-            if (hasRouterIp) {
-                if (routerIp.is_v4()) {
-                    if (tunPort != OFPP_NONE) {
-                        FlowBuilder e0;
-                        e0.priority(22).inPort(tunPort);
-                        matchDestArp(e0, routerIp, bdId, rdId);
-                        e0.build(el);
-                    }
 
-                    FlowBuilder e1;
-                    e1.priority(20);
-                    matchDestArp(e1, routerIp, bdId, rdId);
-                    actionArpReply(e1, getRouterMacAddr(), routerIp);
-                    e1.build(el);
-                } else {
-                    if (tunPort != OFPP_NONE) {
-                        FlowBuilder e0;
-                        e0.priority(22)
-                            .inPort(tunPort).cookie(flow::cookie::NEIGH_DISC);
-                        matchDestNd(e0, &routerIp, bdId, rdId);
-                        e0.build(el);
-                    }
-
-                    FlowBuilder e1;
-                    e1.priority(20).cookie(flow::cookie::NEIGH_DISC);
-                    matchDestNd(e1, &routerIp, bdId, rdId);
-                    e1.action().controller();
-                    e1.build(el);
-                }
+                FlowBuilder e1;
+                e1.priority(20).cookie(flow::cookie::NEIGH_DISC);
+                matchDestNd(e1, &lladdr, bdId, rdId);
+                e1.action().controller();
+                e1.build(el);
             }
         }
         switchManager.writeFlow(sn->getURI().toString(), BRIDGE_TABLE_ID, el);
