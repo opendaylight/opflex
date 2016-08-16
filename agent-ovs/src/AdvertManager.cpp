@@ -48,7 +48,7 @@ AdvertManager::AdvertManager(Agent& agent_,
     : urng(rng),
       all_ep_gen(urng, boost::random::uniform_int_distribution<>(300,600)),
       repeat_gen(urng, boost::random::uniform_int_distribution<>(3000,5000)),
-      sendRouterAdv(false), sendEndpointAdv(false),
+      sendRouterAdv(false), sendEndpointAdv(EPADV_DISABLED),
       agent(agent_), intFlowManager(intFlowManager_),
       portMapper(NULL), switchConnection(NULL),
       ioService(&agent.getAgentIOService()),
@@ -64,7 +64,7 @@ void AdvertManager::start() {
         routerAdvTimer.reset(new deadline_timer(*ioService));
         scheduleInitialRouterAdv();
     }
-    if (sendEndpointAdv) {
+    if (sendEndpointAdv != EPADV_DISABLED) {
         allEndpointAdvTimer.reset(new deadline_timer(*ioService));
         endpointAdvTimer.reset(new deadline_timer(*ioService));
         scheduleInitialEndpointAdv();
@@ -130,7 +130,8 @@ static int send_packet_out(IntFlowManager& intFlowManager,
                            SwitchConnection* conn,
                            ofpbuf* b,
                            unordered_set<uint32_t>& out_ports,
-                           uint32_t vnid = 0) {
+                           uint32_t vnid = 0,
+                           const URI& egURI = URI::ROOT) {
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
     po.packet = b->data;
@@ -140,10 +141,12 @@ static int send_packet_out(IntFlowManager& intFlowManager,
     uint32_t tunPort = intFlowManager.getTunnelPort();
     ActionBuilder ab;
     ab.reg(MFF_REG0, vnid);
-    if (out_ports.find(tunPort) != out_ports.end())
+    if (out_ports.find(tunPort) != out_ports.end()) {
+        address tunDst = intFlowManager.getEPGTunnelDst(egURI);
         IntFlowManager::actionTunnelMetadata(ab,
                                              intFlowManager.getEncapType(),
-                                             intFlowManager.getTunnelDst());
+                                             tunDst);
+    }
 
     BOOST_FOREACH(uint32_t p, out_ports) {
         ab.output(p);
@@ -240,10 +243,13 @@ void AdvertManager::onRouterAdvTimer(const boost::system::error_code& ec) {
 }
 
 static void doSendEpAdv(IntFlowManager& intFlowManager,
+                        PolicyManager& policyManager,
                         SwitchConnection* switchConnection,
                         const string& ip, const uint8_t* epMac,
-                        const uint8_t* routerMac, uint32_t epgVnid,
-                        unordered_set<uint32_t>& out_ports) {
+                        const uint8_t* routerMac,
+                        const URI& egURI, uint32_t epgVnid,
+                        unordered_set<uint32_t>& out_ports,
+                        AdvertManager::EndpointAdvMode mode) {
     boost::system::error_code ec;
     address addr = address::from_string(ip, ec);
     if (ec) {
@@ -253,28 +259,61 @@ static void doSendEpAdv(IntFlowManager& intFlowManager,
     }
     ofpbuf* b = NULL;
 
+    boost::optional<address> routerIp;
+    if (mode == AdvertManager::EPADV_ROUTER_REQUEST) {
+        boost::optional<boost::shared_ptr<modelgbp::gbp::Subnet> > ipSubnet =
+            policyManager.findSubnetForEp(egURI, addr);
+        if (ipSubnet)
+            routerIp =
+                PolicyManager::getRouterIpForSubnet(*ipSubnet.get(), routerMac);
+
+        if (!routerIp) {
+            // fall back to gratuitous unicast if we have no gateway
+            mode = AdvertManager::EPADV_GRATUITOUS_UNICAST;
+        }
+    }
+
+    const uint8_t* dstMac =
+        (mode == AdvertManager::EPADV_GRATUITOUS_BROADCAST)
+        ? packets::MAC_ADDR_BROADCAST : routerMac;
+
     if (addr.is_v4()) {
         uint32_t addrv = addr.to_v4().to_ulong();
-        // unicast gratuitous arp reply to router mac
-        b = packets::compose_arp(arp::op::REPLY,
-                                 epMac,
-                                 routerMac,
-                                 epMac,
-                                 routerMac,
-                                 addrv, addrv);
+        if (mode == AdvertManager::EPADV_ROUTER_REQUEST) {
+            // unicast spoofed ARP request for subnet gateway router
+            uint32_t routerIpv = routerIp.get().to_v4().to_ulong();
+            b = packets::compose_arp(arp::op::REQUEST,
+                                     epMac, dstMac,
+                                     epMac, packets::MAC_ADDR_ZERO,
+                                     addrv, routerIpv);
+        } else {
+            // unicast gratuitous arp reply to router mac
+            b = packets::compose_arp(arp::op::REQUEST,
+                                     epMac, dstMac,
+                                     epMac, packets::MAC_ADDR_BROADCAST,
+                                     addrv, addrv);
+        }
     } else {
         address_v6::bytes_type bytes = addr.to_v6().to_bytes();
         struct in6_addr* addrv = (struct in6_addr*)bytes.data();
-        // unicast gratuitous neighbor advertisement to router mac
-        b = packets::compose_icmp6_neigh_ad(0,
-                                            epMac,
-                                            routerMac,
-                                            addrv, addrv);
+        if (mode == AdvertManager::EPADV_ROUTER_REQUEST) {
+            // unicast spoofed neighbor solicitation for subnet
+            // gateway router
+            address_v6::bytes_type bytes = addr.to_v6().to_bytes();
+            struct in6_addr* routerv = (struct in6_addr*)bytes.data();
+            b = packets::compose_icmp6_neigh_solit(epMac, dstMac,
+                                                   addrv, routerv);
+        } else {
+            // unicast gratuitous neighbor advertisement to router mac
+            b = packets::compose_icmp6_neigh_ad(0,
+                                                epMac, dstMac,
+                                                addrv, addrv);
+        }
     }
     if (b == NULL) return;
 
     int error = send_packet_out(intFlowManager, switchConnection,
-                                b, out_ports, epgVnid);
+                                b, out_ports, epgVnid, egURI);
     if (error) {
         LOG(ERROR) << "Could not write packet-out: "
                    << ovs_strerror(error);
@@ -311,9 +350,9 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
         LOG(DEBUG) << "Sending endpoint advertisement for "
                    << ep->getMAC().get() << " " << ip;
 
-        doSendEpAdv(intFlowManager, switchConnection,
-                    ip, epMac, routerMac, epgVnid.get(),
-                    out_ports);
+        doSendEpAdv(intFlowManager, polMgr, switchConnection,
+                    ip, epMac, routerMac, epgURI.get(), epgVnid.get(),
+                    out_ports, sendEndpointAdv);
 
     }
 
@@ -332,9 +371,10 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
         LOG(DEBUG) << "Sending endpoint advertisement for "
                    << ep->getMAC().get() << " " << ipm.getFloatingIP().get();
 
-        doSendEpAdv(intFlowManager, switchConnection,
+        doSendEpAdv(intFlowManager, polMgr, switchConnection,
                     ipm.getFloatingIP().get(), epMac,
-                    routerMac, ipmVnid.get(), out_ports);
+                    routerMac, ipm.getEgURI().get(),
+                    ipmVnid.get(), out_ports, sendEndpointAdv);
     }
 }
 
@@ -362,7 +402,7 @@ void AdvertManager::sendAllEndpointAdvs() {
 void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
     if (ec)
         return;
-    if (!sendEndpointAdv)
+    if (sendEndpointAdv == EPADV_DISABLED)
         return;
     if (!switchConnection)
         return;
@@ -385,7 +425,7 @@ void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
 void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
     if (ec)
         return;
-    if (!sendEndpointAdv)
+    if (sendEndpointAdv == EPADV_DISABLED)
         return;
     if (!switchConnection)
         return;

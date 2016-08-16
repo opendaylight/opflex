@@ -32,6 +32,8 @@ const uint8_t MAC_ADDR_MULTICAST[6] =
     {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
 const uint8_t MAC_ADDR_IPV6MULTICAST[6] =
     {0x33, 0x33, 0x00, 0x00, 0x00, 0x01};
+const uint8_t MAC_ADDR_ZERO[6] =
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 using std::string;
 using std::stringbuf;
@@ -328,6 +330,78 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     // payload
     chksum_accum(chksum, payload, payloadLen);
     neigh_ad->nd_na_hdr.icmp6_cksum = chksum_finalize(chksum);
+
+    return b;
+}
+
+ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
+                                  const uint8_t* dstMac,
+                                  const struct in6_addr* srcIp,
+                                  const struct in6_addr* dstIp) {
+    struct ofpbuf* b = NULL;
+    struct eth_header* eth = NULL;
+    struct ip6_hdr* ip6 = NULL;
+    uint16_t* payload;
+    uint16_t payloadLen = 0;
+
+    struct nd_neighbor_solicit* neigh_sol = NULL;
+    struct nd_opt_hdr* source_ll = NULL;
+
+    size_t len = sizeof(struct eth_header) +
+        sizeof(struct ip6_hdr) +
+        sizeof(struct nd_neighbor_solicit) +
+        sizeof(struct nd_opt_hdr) + 6;
+    b = ofpbuf_new(len);
+    ofpbuf_clear(b);
+    ofpbuf_reserve(b, len);
+    char* buf = (char*)ofpbuf_push_zeros(b, len);
+    eth = (struct eth_header*)buf;
+    buf += sizeof(struct eth_header);
+    ip6 = (struct ip6_hdr*)buf;
+    buf += sizeof(struct ip6_hdr);
+    neigh_sol = (struct nd_neighbor_solicit*)buf;
+    buf += sizeof(struct nd_neighbor_solicit);
+    source_ll = (struct nd_opt_hdr*)buf;
+    buf += sizeof(struct nd_opt_hdr) + 6;
+
+    payload = (uint16_t*)neigh_sol;
+    payloadLen = sizeof(struct nd_neighbor_solicit) +
+            sizeof(struct nd_opt_hdr) + 6;
+
+    // initialize ethernet header
+    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
+    memcpy(eth->eth_dst, dstMac, ETH_ADDR_LEN);
+    eth->eth_type = htons(ETH_TYPE_IPV6);
+
+    // Initialize IPv6 header
+    ip6->ip6_vfc = 0x60;
+    ip6->ip6_hlim = 255;
+    ip6->ip6_nxt = 58;
+    ip6->ip6_plen = htons(payloadLen);
+    memcpy(&ip6->ip6_src, srcIp, sizeof(struct in6_addr));
+    memcpy(&ip6->ip6_dst, dstIp, sizeof(struct in6_addr));
+
+    // fill in neighbor solicitation
+    neigh_sol->nd_ns_hdr.icmp6_type = ND_NEIGHBOR_SOLICIT;
+    neigh_sol->nd_ns_hdr.icmp6_code = 0;
+    neigh_sol->nd_ns_reserved = 0;
+    memcpy(&neigh_sol->nd_ns_target, dstIp, sizeof(struct in6_addr));
+    source_ll->nd_opt_type = ND_OPT_SOURCE_LINKADDR;
+    source_ll->nd_opt_len = 1;
+    memcpy(((char*)source_ll)+2, srcMac, ETH_ADDR_LEN);
+
+    // compute checksum
+    uint32_t chksum = 0;
+    // pseudoheader
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_src,
+                 sizeof(struct in6_addr));
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_dst,
+                 sizeof(struct in6_addr));
+    chksum_accum(chksum, (uint16_t*)&ip6->ip6_plen, 2);
+    chksum += (uint16_t)htons(58);
+    // payload
+    chksum_accum(chksum, payload, payloadLen);
+    neigh_sol->nd_ns_hdr.icmp6_cksum = chksum_finalize(chksum);
 
     return b;
 }

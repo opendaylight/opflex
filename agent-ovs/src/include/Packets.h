@@ -45,6 +45,11 @@ extern const uint8_t MAC_ADDR_MULTICAST[6];
 extern const uint8_t MAC_ADDR_IPV6MULTICAST[6];
 
 /**
+ * Zero MAC address
+ */
+extern const uint8_t MAC_ADDR_ZERO[6];
+
+/**
  * Compute an internet checksum over the specified data.  chksum
  * should be first initialized to zero, then chksum_accum called for
  * each block of data, and finally call chksum_finalize to get the
@@ -134,6 +139,20 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
                                const uint8_t* dstMac,
                                const struct in6_addr* srcIp,
                                const struct in6_addr* dstIp);
+
+/**
+ * Compose an ICMP6 neighbor solicitation ethernet frame
+ *
+ * @param srcMac the source MAC
+ * @param dstMac the target MAC
+ * @param srcIp the source IP
+ * @param dstIp the destination Ip
+ * @return a ofpbuf containing the message
+ */
+ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
+                                  const uint8_t* dstMac,
+                                  const struct in6_addr* srcIp,
+                                  const struct in6_addr* dstIp);
 
 /**
  * Compose an ICMP6 router advertisement ethernet frame

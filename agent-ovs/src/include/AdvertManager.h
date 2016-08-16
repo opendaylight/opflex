@@ -63,9 +63,33 @@ public:
     void enableRouterAdv(bool enabled) { sendRouterAdv = enabled; }
 
     /**
+     * Modes for sending endpoint advertisements
+     */
+    enum EndpointAdvMode {
+        /**
+         * Disable sending endpoint advertisements
+         */
+        EPADV_DISABLED,
+        /**
+         * Send gratuitous endpoint advertisements as unicast packets
+         * to the router mac.
+         */
+        EPADV_GRATUITOUS_UNICAST,
+        /**
+         * Broadcast gratuitous endpoint advertisements.
+         */
+        EPADV_GRATUITOUS_BROADCAST,
+        /**
+         * Unicast a spoofed request/solicitation for the subnet's
+         * gateway router.
+         */
+        EPADV_ROUTER_REQUEST
+    };
+
+    /**
      * Enable gratuitous endpoint advertisements
      */
-    void enableEndpointAdv(bool enabled) { sendEndpointAdv = enabled; }
+    void enableEndpointAdv(EndpointAdvMode mode) { sendEndpointAdv = mode; }
 
     /**
      * Module start
@@ -144,7 +168,7 @@ private:
     /**
      * Timer callback for gratuitious endpoint advertisements
      */
-    bool sendEndpointAdv;
+    EndpointAdvMode sendEndpointAdv;
     void onEndpointAdvTimer(const boost::system::error_code& ec);
     void onAllEndpointAdvTimer(const boost::system::error_code& ec);
     void doScheduleEpAdv(uint64_t time = 250);
