@@ -181,10 +181,18 @@
         //         },
         //
         //         "endpoint-advertisements": {
-        //             // Enable generation of periodic ARP/NDP
-        //             // advertisements for endpoints.
-        //             // Default: true.
-        //             "enabled": "true"
+        //             // Set mode for generation of periodic ARP/NDP
+        //             // advertisements for endpoints.  Possible values:
+        //             // disabled: Do not send advertisements
+        //             // gratuitous-unicast: Send gratuitous endpoint
+        //             //   advertisements as unicast packets to the router
+        //             //   mac.
+        //             // gratuitous-broadcast: Send gratuitous endpoint
+        //             //   advertisements as broadcast packets.
+        //             // router-request: Unicast a spoofed request/solicitation
+        //             //   for the subnet's gateway router.
+        //             // Default: router-request.
+        //             "mode": "router-request"
         //         }
         //     },
         //

@@ -982,6 +982,42 @@ uint8_t PolicyManager::getEffectiveRoutingMode(const URI& egURI) {
     return routingMode;
 }
 
+boost::optional<address>
+PolicyManager::getRouterIpForSubnet(modelgbp::gbp::Subnet& subnet,
+                                    const uint8_t* routerMac) {
+    if (!subnet.isAddressSet()) return boost::none;
+    const string& networkAddrStr = subnet.getAddress().get();
+
+    address networkAddr, routerIp;
+    boost::system::error_code ec;
+    networkAddr = address::from_string(networkAddrStr, ec);
+    if (ec) {
+        LOG(WARNING) << "Invalid network address for subnet "
+                     << subnet.getURI() << ": "
+                     << networkAddrStr << ": " << ec.message();
+        return boost::none;
+    }
+
+    if (networkAddr.is_v4()) {
+        optional<const string&> routerIpStr =
+            subnet.getVirtualRouterIp();
+        if (routerIpStr) {
+            routerIp = address::from_string(routerIpStr.get(), ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid router IP for subnet "
+                             << subnet.getURI() << ": "
+                             << routerIpStr.get() << ": " << ec.message();
+            } else {
+                return routerIp;
+            }
+        }
+    } else {
+        routerIp = packets::construct_link_local_ip_addr(routerMac);
+        return routerIp;
+    }
+    return boost::none;
+}
+
 PolicyManager::DomainListener::DomainListener(PolicyManager& pmanager_)
     : pmanager(pmanager_) {}
 PolicyManager::DomainListener::~DomainListener() {}

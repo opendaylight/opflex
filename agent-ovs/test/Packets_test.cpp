@@ -166,4 +166,15 @@ BOOST_AUTO_TEST_CASE(test_link_local) {
 
 }
 
+BOOST_AUTO_TEST_CASE(test_solicited_node) {
+#define a6 address_v6::from_string
+#define cni construct_solicited_node_ip
+    BOOST_CHECK_EQUAL(a6("ff02::1:ff28:9c5a"),
+                      cni(a6("fe80::2aa:ff:fe28:9c5a")));
+    BOOST_CHECK_EQUAL(a6("ff02::1:ff00:3"),
+                      cni(a6("fd2a:c2c1:d59e:bcde::3")));
+#undef a6
+#undef cni
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -409,6 +409,17 @@ public:
     static void resolveSubnets(opflex::ofcore::OFFramework& framework,
                                const boost::optional<opflex::modb::URI>& uri,
                                /* out */ flowutils::subnets_t& subnets);
+
+    /**
+     * Get an appropriate router IP for the given subnet
+     * @param subnet the subnet
+     * @param routerMac the MAC address for the router for IPv6 subnets
+     * @return a router IP for the subnet, or boost::none
+     */
+    static boost::optional<boost::asio::ip::address>
+    getRouterIpForSubnet(modelgbp::gbp::Subnet& subnet,
+                         const uint8_t* routerMac);
+
 private:
     opflex::ofcore::OFFramework& framework;
     std::string opflexDomain;
