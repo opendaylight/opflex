@@ -7,14 +7,14 @@
  */
 
 #include "FlowConstants.h"
-#include "ovs.h"
+#include "ovs-shim.h"
 
 namespace ovsagent {
 namespace flow {
 
 namespace cookie {
 
-#define DEF_COOKIE(val) htonll((uint64_t)1 << 63 | val)
+#define DEF_COOKIE(val) ovs_htonll((uint64_t)1 << 63 | val)
 const uint64_t PROACTIVE_LEARN = DEF_COOKIE(1);
 const uint64_t LEARN           = DEF_COOKIE(2);
 const uint64_t NEIGH_DISC      = DEF_COOKIE(3);

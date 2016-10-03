@@ -48,7 +48,7 @@ public:
     /**
      * The flow entry
      */
-    ofputil_flow_stats *entry;
+    struct ofputil_flow_stats* entry;
 };
 /**
  * A shared pointer to a flow entry
@@ -133,7 +133,7 @@ public:
         /**
          * The group mod
          */
-        ofputil_group_mod *mod;
+        struct ofputil_group_mod* mod;
     };
     /**
      * A group edit entry

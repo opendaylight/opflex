@@ -10,10 +10,15 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "ovs.h"
 #include "SwitchConnection.h"
 #include "PortMapper.h"
 #include "logging.h"
+#include "ovs-ofputil.h"
+
+extern "C" {
+#include <openvswitch/ofp-msgs.h>
+#include <openvswitch/list.h>
+}
 
 using namespace std;
 using namespace ovsagent;
@@ -26,7 +31,7 @@ public:
         ofpbuf_delete(lastSentMsg);
     }
 
-    ofp_version GetProtocolVersion() { return OFP13_VERSION; }
+    int GetProtocolVersion() { return OFP13_VERSION; }
 
     int SendMessage(ofpbuf *msg) {
         ofp_header *hdr = (ofp_header *)msg->data;
@@ -40,6 +45,15 @@ public:
     }
 
     ofpbuf *lastSentMsg;
+};
+
+// for some reason this type has been moved out of OVS headers
+struct ofp11_stats_msg {
+    struct ofp_header header;
+    ovs_be16 type;              /* One of the OFPST_* constants. */
+    ovs_be16 flags;             /* OFPSF_REQ_* flags (none yet defined). */
+    uint8_t pad[4];
+    /* Followed by the body of the request. */
 };
 
 class MockListener : public PortStatusListener {
@@ -73,9 +87,7 @@ public:
     }
 
     void SetReplyFlags(ofp_header *reply, uint16_t flags) {
-        if ((ofp_version)reply->version == OFP10_VERSION) {
-            ((struct ofp10_stats_msg *) reply)->flags = htons(flags);
-        } else {
+        if ((ofp_version)reply->version > OFP10_VERSION) {
             ((struct ofp11_stats_msg *) reply)->flags = htons(flags);
         }
     }
@@ -86,11 +98,11 @@ public:
         for (size_t i = startIdx; i < endIdx && i < ports.size(); ++i) {
             ofputil_append_port_desc_stats_reply(&ports[i], &replies);
         }
-        assert(list_size(&replies) == 1);
+        assert(ovs_list_size(&replies) == 1);
 
         ofpbuf *reply;
         LIST_FOR_EACH (reply, list_node, &replies) {
-            list_remove(&reply->list_node);
+            ovs_list_remove(&reply->list_node);
 
             ofpmsg_update_length(reply);
             ofp_header *replyHdr = (ofp_header *)reply->data;
@@ -108,8 +120,9 @@ public:
 
     ofpbuf *MakePortStatusMsg(int portIdx, ofp_port_reason reas) {
         ofputil_port_status ps = {reas, ports[portIdx]};
-        return ofputil_encode_port_status(&ps,
-                ofputil_protocol_from_ofp_version(conn.GetProtocolVersion()));
+        return ofputil_encode_port_status
+            (&ps, ofputil_protocol_from_ofp_version
+             ((ofp_version)conn.GetProtocolVersion()));
     }
 
     void Received(PortMapper& pm, ofpbuf *msg) {

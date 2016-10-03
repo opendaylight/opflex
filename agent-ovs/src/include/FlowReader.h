@@ -15,9 +15,10 @@
 #include <boost/unordered_map.hpp>
 #include <boost/thread/mutex.hpp>
 
-#include "ovs.h"
 #include "TableState.h"
 #include "SwitchConnection.h"
+
+struct match;
 
 namespace ovsagent {
 
@@ -68,7 +69,7 @@ public:
      * received
      * @return true if request for getting flows was sent successfully
      */
-    virtual bool getFlows(uint8_t tableId, match *m,
+    virtual bool getFlows(uint8_t tableId, struct match *m,
                           const FlowCb& cb);
 
     /**
@@ -86,7 +87,7 @@ public:
     virtual bool getGroups(const GroupCb& cb);
 
     /* Interface: MessageHandler */
-    void Handle(SwitchConnection *c, ofptype msgType, ofpbuf *msg);
+    void Handle(SwitchConnection *c, int msgType, ofpbuf *msg);
 
 private:
     /**
@@ -97,7 +98,7 @@ private:
      * all
      * @return flow-table read request
      */
-    ofpbuf *createFlowRequest(uint8_t tableId, match* m = NULL);
+    ofpbuf *createFlowRequest(uint8_t tableId, struct match* m = NULL);
 
     /**
      * Create a request for reading all entries of group-table.
@@ -143,9 +144,9 @@ private:
 
     boost::mutex reqMtx;
 
-    typedef boost::unordered_map<ovs_be32, FlowCb> FlowCbMap;
+    typedef boost::unordered_map<uint32_t, FlowCb> FlowCbMap;
     FlowCbMap flowRequests;
-    typedef boost::unordered_map<ovs_be32, GroupCb> GroupCbMap;
+    typedef boost::unordered_map<uint32_t, GroupCb> GroupCbMap;
     GroupCbMap groupRequests;
 };
 

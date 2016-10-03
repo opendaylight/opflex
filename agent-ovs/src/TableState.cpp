@@ -13,8 +13,15 @@
 
 #include "TableState.h"
 #include "logging.h"
+#include "ovs-shim.h"
+#include "ovs-ofputil.h"
 
-#include "ovs.h"
+#include <openvswitch/ofp-print.h>
+#include <openvswitch/list.h>
+
+extern "C" {
+#include <openvswitch/dynamic-string.h>
+}
 
 namespace ovsagent {
 
@@ -40,9 +47,9 @@ bool
 FlowEntry::matchEq(const FlowEntry *rhs) {
     const ofputil_flow_stats *feRhs = rhs->entry;
     return entry != NULL && feRhs != NULL &&
-            (entry->table_id == feRhs->table_id) &&
-            (entry->priority == feRhs->priority) &&
-            match_equal(&entry->match, &feRhs->match);
+        (entry->table_id == feRhs->table_id) &&
+        (entry->priority == feRhs->priority) &&
+        match_equal(&entry->match, &feRhs->match);
 }
 
 bool
@@ -50,16 +57,14 @@ FlowEntry::actionEq(const FlowEntry *rhs) {
     const ofputil_flow_stats *feRhs = rhs->entry;
     return entry != NULL && feRhs != NULL &&
             (entry->cookie == feRhs->cookie) &&
-            ofpacts_equal(entry->ofpacts, entry->ofpacts_len,
-                          feRhs->ofpacts, feRhs->ofpacts_len);
+            action_equal(entry->ofpacts, entry->ofpacts_len,
+                         feRhs->ofpacts, feRhs->ofpacts_len);
 }
 
 ostream & operator<<(ostream& os, const FlowEntry& fe) {
-    ds strBuf;
-    ds_init(&strBuf);
-    ofp_print_flow_stats(&strBuf, fe.entry);
-    os << (const char*)(ds_cstr(&strBuf) + 1); // trim space
-    ds_destroy(&strBuf);
+    DsP str;
+    ofp_print_flow_stats(str.get(), fe.entry);
+    os << (const char*)(ds_cstr(str.get()) + 1); // trim space
     return os;
 }
 
@@ -90,7 +95,7 @@ GroupEdit::GroupMod::GroupMod() {
     mod->type = OFPGT11_ALL;
     mod->group_id = 0;
     mod->command_bucket_id = OFPG15_BUCKET_ALL;
-    list_init(&mod->buckets);
+    ovs_list_init(&mod->buckets);
 }
 
 GroupEdit::GroupMod::~GroupMod() {
@@ -109,36 +114,7 @@ bool GroupEdit::groupEq(const GroupEdit::Entry& lhs,
     if (lhs == NULL || rhs == NULL) {
         return false;
     }
-    ofputil_group_mod& lgm = *(lhs->mod);
-    ofputil_group_mod& rgm = *(rhs->mod);
-    if (lgm.group_id == rgm.group_id &&
-        lgm.type == rgm.type) {
-        bool lempty = list_is_empty(&lgm.buckets);
-        bool rempty = list_is_empty(&rgm.buckets);
-        if (lempty && rempty) {
-            return true;
-        }
-        if (lempty || rempty) {
-            return false;
-        }
-        ofputil_bucket *lhead = (ofputil_bucket *)&lgm.buckets;
-        ofputil_bucket *rhead = (ofputil_bucket *)&rgm.buckets;
-        ofputil_bucket *lbkt = ofputil_bucket_list_front(&lgm.buckets);
-        ofputil_bucket *rbkt = ofputil_bucket_list_front(&rgm.buckets);
-        while (lbkt != lhead && rbkt != rhead) {
-            /* Buckets IDs are not compared because they are assigned by the
-             * switch prior to OpenFlow 1.5
-             */
-            if (!ofpacts_equal(lbkt->ofpacts, lbkt->ofpacts_len,
-                               rbkt->ofpacts, rbkt->ofpacts_len)) {
-                return false;
-            }
-            lbkt = ofputil_bucket_list_front(&lbkt->list_node);
-            rbkt = ofputil_bucket_list_front(&rbkt->list_node);
-        }
-        return (lbkt == lhead && rbkt == rhead);
-    }
-    return false;
+    return group_mod_equal(lhs->mod, rhs->mod);
 }
 
 ostream & operator<<(ostream& os, const GroupEdit::Entry& ge) {
@@ -157,11 +133,9 @@ ostream & operator<<(ostream& os, const GroupEdit::Entry& ge) {
     ofputil_bucket *bkt;
     LIST_FOR_EACH (bkt, list_node, &mod.buckets) {
         os << ",bucket=bucket_id:" << bkt->bucket_id << ",actions=";
-        ds strBuf;
-        ds_init(&strBuf);
-        ofpacts_format(bkt->ofpacts, bkt->ofpacts_len, &strBuf);
-        os << ds_cstr(&strBuf);
-        ds_destroy(&strBuf);
+        DsP str;
+        format_action(bkt->ofpacts, bkt->ofpacts_len, str.get());
+        os << ds_cstr(str.get());
     }
     return os;
 }

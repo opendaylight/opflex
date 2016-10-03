@@ -42,6 +42,12 @@
 #include "FlowConstants.h"
 #include "FlowBuilder.h"
 
+#include "arp.h"
+#include "eth.h"
+#include "ovs-ofputil.h"
+
+#include <openvswitch/list.h>
+
 using std::string;
 using std::vector;
 using std::ostringstream;
@@ -372,7 +378,7 @@ static FlowBuilder& matchDestDom(FlowBuilder& fb, uint32_t bdId, uint32_t l3Id) 
 static FlowBuilder& matchDestArp(FlowBuilder& fb, const address& ip,
                                  uint32_t bdId, uint32_t l3Id) {
     fb.arpDst(ip)
-        .proto(ARP_OP_REQUEST)
+        .proto(arp::op::REQUEST)
         .ethDst(packets::MAC_ADDR_BROADCAST);
     return matchDestDom(fb, bdId, l3Id);
 }
@@ -381,7 +387,7 @@ static FlowBuilder& matchDestNd(FlowBuilder& fb, const address* ip,
                                 uint32_t bdId, uint32_t rdId,
                                 uint8_t type = ND_NEIGHBOR_SOLICIT) {
     matchDestDom(fb, bdId, rdId)
-        .ethType(ETH_TYPE_IPV6)
+        .ethType(eth::type::IPV6)
         .proto(58)
         .tpSrc(type)
         .tpDst(0)
@@ -417,11 +423,11 @@ static FlowBuilder& matchSubnet(FlowBuilder& fb, uint32_t rdId,
 static FlowBuilder& matchDhcpReq(FlowBuilder& fb, bool v4) {
     fb.proto(17);
     if (v4) {
-        fb.ethType(ETH_TYPE_IP);
+        fb.ethType(eth::type::IP);
         fb.tpSrc(68);
         fb.tpDst(67);
     } else {
-        fb.ethType(ETH_TYPE_IPV6);
+        fb.ethType(eth::type::IPV6);
         fb.tpSrc(546);
         fb.tpDst(547);
     }
@@ -507,7 +513,7 @@ static FlowBuilder& actionArpReply(FlowBuilder& fb, const uint8_t *mac,
     fb.action()
         .regMove(MFF_ETH_SRC, MFF_ETH_DST)
         .reg(MFF_ETH_SRC, mac)
-        .reg16(MFF_ARP_OP, ARP_OP_REPLY)
+        .reg16(MFF_ARP_OP, arp::op::REPLY)
         .regMove(MFF_ARP_SHA, MFF_ARP_THA)
         .reg(MFF_ARP_SHA, mac)
         .regMove(MFF_ARP_SPA, MFF_ARP_TPA)
@@ -566,9 +572,9 @@ static void revNatICMPFlows(FlowEntryList& el, bool v4, uint8_t type) {
         .action().controller();
 
     if (v4) {
-        fb.ethType(ETH_TYPE_IP).proto(1 /* ICMP */).tpSrc(type);
+        fb.ethType(eth::type::IP).proto(1 /* ICMP */).tpSrc(type);
     } else {
-        fb.ethType(ETH_TYPE_IPV6).proto(58 /* ICMP */).tpSrc(type);
+        fb.ethType(eth::type::IPV6).proto(58 /* ICMP */).tpSrc(type);
     }
     return fb.build(el);
 }
@@ -1358,9 +1364,9 @@ void IntFlowManager::createStaticFlows() {
         {
             // Drop IP traffic that doesn't have the correct source
             // address
-            FlowBuilder().priority(25).ethType(ETH_TYPE_ARP).build(portSec);
-            FlowBuilder().priority(25).ethType(ETH_TYPE_IP).build(portSec);
-            FlowBuilder().priority(25).ethType(ETH_TYPE_IPV6).build(portSec);
+            FlowBuilder().priority(25).ethType(eth::type::ARP).build(portSec);
+            FlowBuilder().priority(25).ethType(eth::type::IP).build(portSec);
+            FlowBuilder().priority(25).ethType(eth::type::IPV6).build(portSec);
         }
         {
             // Allow DHCP requests but not replies
@@ -1373,7 +1379,7 @@ void IntFlowManager::createStaticFlows() {
             actionSecAllow(matchDhcpReq(FlowBuilder().priority(27), false))
                 .build(portSec);
             actionSecAllow(FlowBuilder().priority(27)
-                           .ethType(ETH_TYPE_IPV6)
+                           .ethType(eth::type::IPV6)
                            .proto(58)
                            .tpSrc(ND_ROUTER_SOLICIT)
                            .tpDst(0))
@@ -1896,7 +1902,7 @@ ofputil_bucket *createBucket(uint32_t bucketId) {
     bkt->weight = 0;
     bkt->bucket_id = bucketId;
     bkt->watch_port = OFPP_ANY;
-    bkt->watch_group = OFPG11_ANY;
+    bkt->watch_group = OFPG_ANY;
     return bkt;
 }
 
@@ -1915,7 +1921,7 @@ IntFlowManager::createGroupMod(uint16_t type, uint32_t groupId,
         ActionBuilder ab;
         ab.output(kv.second.first)
             .build(bkt);
-        list_push_back(&entry->mod->buckets, &bkt->list_node);
+        ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
     }
     uint32_t tunPort = getTunnelPort();
     if (type != OFPGC11_DELETE && tunPort != OFPP_NONE &&
@@ -1925,7 +1931,7 @@ IntFlowManager::createGroupMod(uint16_t type, uint32_t groupId,
         actionTunnelMetadata(ab, encapType);
         ab.output(tunPort)
             .build(bkt);
-        list_push_back(&entry->mod->buckets, &bkt->list_node);
+        ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
     }
     return entry;
 }

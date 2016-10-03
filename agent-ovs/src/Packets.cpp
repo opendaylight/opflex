@@ -22,6 +22,9 @@
 #include "udp.h"
 #include "logging.h"
 #include "arp.h"
+#include "eth.h"
+#include "ovs-shim.h"
+#include "ovs-ofpbuf.h"
 
 namespace ovsagent {
 namespace packets {
@@ -156,7 +159,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
         + (mtu == 0 ? 0 : sizeof(struct nd_opt_mtu)) +
         sizeof(struct nd_opt_prefix_info) * ipv6Subnets.size() +
         sizeof(struct nd_opt_def_route_info);
-    size_t len = sizeof(struct eth_header) +
+    size_t len = sizeof(eth::eth_header) +
         sizeof(struct ip6_hdr) +
         payloadLen;
 
@@ -215,7 +218,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
         ofpbuf_push_zeros(b, sizeof(struct nd_opt_hdr) + 6);
     source_ll->nd_opt_type = ND_OPT_SOURCE_LINKADDR;
     source_ll->nd_opt_len = 1;
-    memcpy(((char*)source_ll)+2, srcMac, ETH_ADDR_LEN);
+    memcpy(((char*)source_ll)+2, srcMac, eth::ADDR_LEN);
 
     // fill in router advertisement
     struct nd_router_advert* router_ad = (struct nd_router_advert*)
@@ -233,13 +236,13 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
 
     struct ip6_hdr* ip6 = (struct ip6_hdr*)
         ofpbuf_push_zeros(b, sizeof(struct ip6_hdr));
-    struct eth_header* eth = (struct eth_header*)
-        ofpbuf_push_zeros(b, sizeof(struct eth_header));
+    eth::eth_header* eth = (eth::eth_header*)
+        ofpbuf_push_zeros(b, sizeof(eth::eth_header));
 
     // initialize ethernet header
-    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
-    memcpy(eth->eth_dst, dstMac, ETH_ADDR_LEN);
-    eth->eth_type = htons(ETH_TYPE_IPV6);
+    memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
+    memcpy(eth->eth_dst, dstMac, eth::ADDR_LEN);
+    eth->eth_type = htons(eth::type::IPV6);
 
     // Initialize IPv6 header
     ip6->ip6_vfc = 0x60;
@@ -275,7 +278,7 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
                                const struct in6_addr* srcIp,
                                const struct in6_addr* dstIp) {
     struct ofpbuf* b = NULL;
-    struct eth_header* eth = NULL;
+    eth::eth_header* eth = NULL;
     struct ip6_hdr* ip6 = NULL;
     uint16_t* payload;
     uint16_t payloadLen = 0;
@@ -283,7 +286,7 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     struct nd_neighbor_advert* neigh_ad = NULL;
     struct nd_opt_hdr* target_ll = NULL;
 
-    size_t len = sizeof(struct eth_header) +
+    size_t len = sizeof(eth::eth_header) +
         sizeof(struct ip6_hdr) +
         sizeof(struct nd_neighbor_advert) +
         sizeof(struct nd_opt_hdr) + 6;
@@ -291,8 +294,8 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     ofpbuf_clear(b);
     ofpbuf_reserve(b, len);
     char* buf = (char*)ofpbuf_push_zeros(b, len);
-    eth = (struct eth_header*)buf;
-    buf += sizeof(struct eth_header);
+    eth = (eth::eth_header*)buf;
+    buf += sizeof(eth::eth_header);
     ip6 = (struct ip6_hdr*)buf;
     buf += sizeof(struct ip6_hdr);
     neigh_ad = (struct nd_neighbor_advert*)buf;
@@ -305,9 +308,9 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
             sizeof(struct nd_opt_hdr) + 6;
 
     // initialize ethernet header
-    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
-    memcpy(eth->eth_dst, dstMac, ETH_ADDR_LEN);
-    eth->eth_type = htons(ETH_TYPE_IPV6);
+    memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
+    memcpy(eth->eth_dst, dstMac, eth::ADDR_LEN);
+    eth->eth_type = htons(eth::type::IPV6);
 
     // Initialize IPv6 header
     ip6->ip6_vfc = 0x60;
@@ -324,7 +327,7 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     memcpy(&neigh_ad->nd_na_target, srcIp, sizeof(struct in6_addr));
     target_ll->nd_opt_type = ND_OPT_TARGET_LINKADDR;
     target_ll->nd_opt_len = 1;
-    memcpy(((char*)target_ll)+2, srcMac, ETH_ADDR_LEN);
+    memcpy(((char*)target_ll)+2, srcMac, eth::ADDR_LEN);
 
     // compute checksum
     uint32_t chksum = 0;
@@ -348,7 +351,7 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
                                   const struct in6_addr* dstIp,
                                   const struct in6_addr* targetIp) {
     struct ofpbuf* b = NULL;
-    struct eth_header* eth = NULL;
+    eth::eth_header* eth = NULL;
     struct ip6_hdr* ip6 = NULL;
     uint16_t* payload;
     uint16_t payloadLen = 0;
@@ -356,7 +359,7 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
     struct nd_neighbor_solicit* neigh_sol = NULL;
     struct nd_opt_hdr* source_ll = NULL;
 
-    size_t len = sizeof(struct eth_header) +
+    size_t len = sizeof(eth::eth_header) +
         sizeof(struct ip6_hdr) +
         sizeof(struct nd_neighbor_solicit) +
         sizeof(struct nd_opt_hdr) + 6;
@@ -364,8 +367,8 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
     ofpbuf_clear(b);
     ofpbuf_reserve(b, len);
     char* buf = (char*)ofpbuf_push_zeros(b, len);
-    eth = (struct eth_header*)buf;
-    buf += sizeof(struct eth_header);
+    eth = (eth::eth_header*)buf;
+    buf += sizeof(eth::eth_header);
     ip6 = (struct ip6_hdr*)buf;
     buf += sizeof(struct ip6_hdr);
     neigh_sol = (struct nd_neighbor_solicit*)buf;
@@ -378,9 +381,9 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
             sizeof(struct nd_opt_hdr) + 6;
 
     // initialize ethernet header
-    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
-    memcpy(eth->eth_dst, dstMac, ETH_ADDR_LEN);
-    eth->eth_type = htons(ETH_TYPE_IPV6);
+    memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
+    memcpy(eth->eth_dst, dstMac, eth::ADDR_LEN);
+    eth->eth_type = htons(eth::type::IPV6);
 
     // Initialize IPv6 header
     ip6->ip6_vfc = 0x60;
@@ -397,7 +400,7 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
     memcpy(&neigh_sol->nd_ns_target, targetIp, sizeof(struct in6_addr));
     source_ll->nd_opt_type = ND_OPT_SOURCE_LINKADDR;
     source_ll->nd_opt_len = 1;
-    memcpy(((char*)source_ll)+2, srcMac, ETH_ADDR_LEN);
+    memcpy(((char*)source_ll)+2, srcMac, eth::ADDR_LEN);
 
     // compute checksum
     uint32_t chksum = 0;
@@ -447,7 +450,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     // to run on ARM or Sparc I guess
 
     struct ofpbuf* b = NULL;
-    struct eth_header* eth = NULL;
+    eth::eth_header* eth = NULL;
     struct iphdr* ip = NULL;
     struct udp_hdr* udp = NULL;
     struct dhcp_hdr* dhcp = NULL;
@@ -524,7 +527,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         static_route_len +
         iface_mtu_len +
         1 /* end */;
-    size_t len = sizeof(struct eth_header) +
+    size_t len = sizeof(eth::eth_header) +
         sizeof(struct iphdr) +
         sizeof(struct udp_hdr) +
         payloadLen;
@@ -534,8 +537,8 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     ofpbuf_clear(b);
     ofpbuf_reserve(b, len);
     char* buf =  (char*)ofpbuf_push_zeros(b, len);
-    eth = (struct eth_header*)buf;
-    buf += sizeof(struct eth_header);
+    eth = (eth::eth_header*)buf;
+    buf += sizeof(eth::eth_header);
     ip = (struct iphdr*)buf;
     buf += sizeof(struct iphdr);
     udp = (struct udp_hdr*)buf;
@@ -574,9 +577,9 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     buf += 1;
 
     // initialize ethernet header
-    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
-    memset(eth->eth_dst, 0xff, ETH_ADDR_LEN);
-    eth->eth_type = htons(ETH_TYPE_IP);
+    memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
+    memset(eth->eth_dst, 0xff, eth::ADDR_LEN);
+    eth->eth_type = htons(eth::type::IP);
 
     // initialize IPv4 header
     ip->version = 4;
@@ -616,7 +619,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     dhcp->xid = xid;
     dhcp->yiaddr = htonl(clientIp);
     dhcp->siaddr = htonl(serverIp);
-    memcpy(dhcp->chaddr, clientMac, ETH_ADDR_LEN);
+    memcpy(dhcp->chaddr, clientMac, eth::ADDR_LEN);
     dhcp->cookie[0] = 99;
     dhcp->cookie[1] = 130;
     dhcp->cookie[2] = 83;
@@ -733,7 +736,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     // to run on ARM or Sparc I guess
 
     struct ofpbuf* b = NULL;
-    struct eth_header* eth = NULL;
+    eth::eth_header* eth = NULL;
     struct ip6_hdr* ip6 = NULL;
     struct udp_hdr* udp = NULL;
     struct dhcp6_hdr* dhcp = NULL;
@@ -806,7 +809,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         domain_list_len +
         ia_len +
         (rapid ? opt_hdr_len : 0);
-    size_t len = sizeof(struct eth_header) +
+    size_t len = sizeof(eth::eth_header) +
         sizeof(struct ip6_hdr) +
         sizeof(struct udp_hdr) +
         payloadLen;
@@ -816,8 +819,8 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     ofpbuf_clear(b);
     ofpbuf_reserve(b, len);
     char* buf = (char*)ofpbuf_push_zeros(b, len);
-    eth = (struct eth_header*)buf;
-    buf += sizeof(struct eth_header);
+    eth = (eth::eth_header*)buf;
+    buf += sizeof(eth::eth_header);
     ip6 = (struct ip6_hdr*)buf;
     buf += sizeof(struct ip6_hdr);
     udp = (struct udp_hdr*)buf;
@@ -846,9 +849,9 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     }
 
     // initialize ethernet header
-    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
-    memcpy(eth->eth_dst, clientMac, ETH_ADDR_LEN);
-    eth->eth_type = htons(ETH_TYPE_IPV6);
+    memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
+    memcpy(eth->eth_dst, clientMac, eth::ADDR_LEN);
+    eth->eth_type = htons(eth::type::IPV6);
 
     // Initialize IPv6 header
     ip6->ip6_vfc = 0x60;
@@ -879,7 +882,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     uint16_t* hw_type = duid_type + 1;
     *hw_type = htons(1 /* ethernet */);
     uint8_t* lladdr = (uint8_t*)(hw_type + 1);
-    memcpy(lladdr, srcMac, ETH_ADDR_LEN);
+    memcpy(lladdr, srcMac, eth::ADDR_LEN);
 
     // Client ID
     client_id_opt->option_code = htons(option::CLIENT_IDENTIFIER);
@@ -980,7 +983,7 @@ ofpbuf* compose_arp(uint16_t op,
     using namespace arp;
 
     struct ofpbuf* b = NULL;
-    struct eth_header* eth = NULL;
+    eth::eth_header* eth = NULL;
     struct arp_hdr* arp = NULL;
     uint8_t* shaptr = NULL;
     uint8_t* thaptr = NULL;
@@ -988,39 +991,39 @@ ofpbuf* compose_arp(uint16_t op,
     uint32_t* tpaptr = NULL;
 
     size_t len =
-        sizeof(eth_header) + sizeof(arp_hdr) +
-        2 * ETH_ADDR_LEN + 2 * 4;
+        sizeof(eth::eth_header) + sizeof(arp_hdr) +
+        2 * eth::ADDR_LEN + 2 * 4;
     b = ofpbuf_new(len);
     ofpbuf_clear(b);
     ofpbuf_reserve(b, len);
     char* buf = (char*)ofpbuf_push_zeros(b, len);
-    eth = (struct eth_header*)buf;
-    buf += sizeof(struct eth_header);
+    eth = (eth::eth_header*)buf;
+    buf += sizeof(eth::eth_header);
     arp = (struct arp_hdr*)buf;
     buf += sizeof(struct arp_hdr);
     shaptr = (uint8_t*)buf;
-    buf += ETH_ADDR_LEN;
+    buf += eth::ADDR_LEN;
     spaptr = (uint32_t*)buf;
     buf += 4;
     thaptr = (uint8_t*)buf;
-    buf += ETH_ADDR_LEN;
+    buf += eth::ADDR_LEN;
     tpaptr = (uint32_t*)buf;
     buf += 4;
 
     // initialize ethernet header
-    memcpy(eth->eth_src, srcMac, ETH_ADDR_LEN);
-    memcpy(eth->eth_dst, dstMac, ETH_ADDR_LEN);
-    eth->eth_type = htons(ETH_TYPE_ARP);
+    memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
+    memcpy(eth->eth_dst, dstMac, eth::ADDR_LEN);
+    eth->eth_type = htons(eth::type::ARP);
 
     // initialize the ARP packet
     arp->htype = htons(1);
     arp->ptype = htons(0x800);
-    arp->hlen = ETH_ADDR_LEN;
+    arp->hlen = eth::ADDR_LEN;
     arp->plen = 4;
     arp->op = htons(op);
 
-    memcpy(shaptr, sha, ETH_ADDR_LEN);
-    memcpy(thaptr, tha, ETH_ADDR_LEN);
+    memcpy(shaptr, sha, eth::ADDR_LEN);
+    memcpy(thaptr, tha, eth::ADDR_LEN);
     *spaptr = htonl(spa);
     *tpaptr = htonl(tpa);
 
@@ -1037,11 +1040,11 @@ void get_subnet_mask_v6(uint8_t prefixLen, in6_addr *mask) {
     if (prefixLen == 0) {
         memset(mask, 0, sizeof(struct in6_addr));
     } else if (prefixLen <= 64) {
-        ((uint64_t*)mask)[0] = htonll(~((uint64_t)0) << (64 - prefixLen));
+        ((uint64_t*)mask)[0] = ovs_htonll(~((uint64_t)0) << (64 - prefixLen));
         ((uint64_t*)mask)[1] = 0;
     } else {
         ((uint64_t*)mask)[0] = ~((uint64_t)0);
-        ((uint64_t*)mask)[1] = htonll(~((uint64_t)0) << (128 - prefixLen));
+        ((uint64_t*)mask)[1] = ovs_htonll(~((uint64_t)0) << (128 - prefixLen));
     }
 }
 

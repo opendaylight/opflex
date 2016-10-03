@@ -10,7 +10,8 @@
 #include "FlowUtils.h"
 #include "RangeMask.h"
 #include "FlowBuilder.h"
-#include "ovs.h"
+#include "eth.h"
+#include "ovs-shim.h"
 
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
 #include <modelgbp/l4/TcpFlagsEnumT.hpp>
@@ -83,7 +84,7 @@ static uint16_t match_protocol(FlowBuilder& f, L24Classifier& classifier) {
 
 static void match_tcp_flags(FlowBuilder& f, uint32_t tcpFlags) {
     using modelgbp::l4::TcpFlagsEnumT;
-    ovs_be16 flags = 0;
+    uint16_t flags = 0;
     if (tcpFlags & TcpFlagsEnumT::CONST_FIN) flags |= 0x01;
     if (tcpFlags & TcpFlagsEnumT::CONST_SYN) flags |= 0x02;
     if (tcpFlags & TcpFlagsEnumT::CONST_RST) flags |= 0x04;
@@ -112,9 +113,9 @@ typedef boost::function<void(FlowBuilder*,
 static bool applyRemoteSub(FlowBuilder& fb, FlowBuilderFunc func,
                            boost::asio::ip::address addr,
                            uint8_t prefixLen, uint16_t ethType) {
-    if (addr.is_v4() && ethType != ETH_TYPE_ARP && ethType != ETH_TYPE_IP)
+    if (addr.is_v4() && ethType != eth::type::ARP && ethType != eth::type::IP)
         return false;
-    if (addr.is_v6() && ethType != ETH_TYPE_IPV6)
+    if (addr.is_v6() && ethType != eth::type::IPV6)
         return false;
 
     func(&fb, addr, prefixLen);
@@ -139,7 +140,7 @@ void add_classifier_entries(L24Classifier& clsfr, bool allow,
                             /* out */ FlowEntryList& entries) {
     using modelgbp::l4::TcpFlagsEnumT;
 
-    ovs_be64 ckbe = htonll(cookie);
+    ovs_be64 ckbe = ovs_htonll(cookie);
     MaskList srcPorts;
     MaskList dstPorts;
     RangeMask::getMasks(clsfr.getSFromPort(), clsfr.getSToPort(), srcPorts);

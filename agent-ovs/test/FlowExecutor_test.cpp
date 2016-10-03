@@ -13,10 +13,13 @@
 #include <boost/assign/list_inserter.hpp>
 
 #include "logging.h"
-#include "ovs.h"
+
 #include "SwitchConnection.h"
 #include "FlowExecutor.h"
 #include "FlowBuilder.h"
+
+#include "ovs-shim.h"
+#include "ovs-ofputil.h"
 
 using namespace std;
 using namespace boost;
@@ -30,7 +33,7 @@ public:
     ~MockExecutorConnection() {
     }
 
-    ofp_version GetProtocolVersion() { return OFP13_VERSION; }
+    int GetProtocolVersion() { return OFP13_VERSION; }
     int SendMessage(ofpbuf *msg);
 
     void Expect(const FlowEdit& fe) {
@@ -114,8 +117,9 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
         ofputil_flow_mod fm;
         ofpbuf ofpacts;
         ofpbuf_init(&ofpacts, 64);
-        int err = ofputil_decode_flow_mod(&fm, msgHdr,
-                ofputil_protocol_from_ofp_version(GetProtocolVersion()),
+        int err = ofputil_decode_flow_mod
+            (&fm, msgHdr, ofputil_protocol_from_ofp_version
+             ((ofp_version)GetProtocolVersion()),
                 &ofpacts, OFPP_MAX, 255);
         fm.ofpacts = ActionBuilder::getActionsFromBuffer(&ofpacts,
                 fm.ofpacts_len);
@@ -133,13 +137,13 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
         BOOST_CHECK(ee.cookie ==
                 (fm.command == OFPFC_ADD ? fm.new_cookie : fm.cookie));
         BOOST_CHECK(fm.cookie_mask ==
-                (fm.command == OFPFC_ADD ? htonll(0) : ~htonll(0)));
+                    (fm.command == OFPFC_ADD ? 0 : ~((uint64_t)0)));
         BOOST_CHECK(match_equal(&ee.match, &fm.match));
         if (fm.command == OFPFC_DELETE_STRICT) {
             BOOST_CHECK_EQUAL(fm.ofpacts_len, 0);
         } else {
-            BOOST_CHECK(ofpacts_equal(ee.ofpacts, ee.ofpacts_len,
-                                      fm.ofpacts, fm.ofpacts_len));
+            BOOST_CHECK(action_equal(ee.ofpacts, ee.ofpacts_len,
+                                     fm.ofpacts, fm.ofpacts_len));
         }
         free((void *)fm.ofpacts);
     } else if (type == OFPTYPE_BARRIER_REQUEST) {
@@ -150,11 +154,11 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
              executor->Connected(this);
              return 0;
          }
-         ofpbuf *barrRep = ofpraw_alloc_reply(OFPRAW_OFPT11_BARRIER_REPLY,
-                 msgHdr, 0);
+         struct ofpbuf *barrRep =
+             ofpraw_alloc_reply(OFPRAW_OFPT11_BARRIER_REPLY, msgHdr, 0);
          if (errReply != 0) {
              msgHdr->xid = lastXid;
-             ofpbuf *reply = ofperr_encode_reply(errReply, msgHdr);
+             struct ofpbuf *reply = ofperr_encode_reply(errReply, msgHdr);
              executor->Handle(this, OFPTYPE_ERROR, reply);
              ofpbuf_delete(reply);
          }

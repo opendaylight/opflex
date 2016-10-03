@@ -66,7 +66,7 @@ public:
     void stop();
 
     // see: MessageHandler
-    void Handle(SwitchConnection *swConn, ofptype type, ofpbuf *msg);
+    void Handle(SwitchConnection *swConn, int type, ofpbuf *msg);
 
 private:
     Agent* agent;

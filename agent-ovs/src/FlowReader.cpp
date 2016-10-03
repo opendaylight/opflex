@@ -13,9 +13,16 @@
 #include <boost/thread/mutex.hpp>
 
 #include "logging.h"
-#include "ovs.h"
 #include "FlowReader.h"
 #include "ActionBuilder.h"
+#include "ovs-shim.h"
+#include "ovs-ofputil.h"
+
+#include <openvswitch/list.h>
+#include <lib/util.h>
+extern "C" {
+#include <openvswitch/ofp-msgs.h>
+}
 
 using namespace std;
 using namespace boost;
@@ -56,7 +63,7 @@ bool FlowReader::getGroups(const GroupCb& cb) {
 }
 
 ofpbuf *FlowReader::createFlowRequest(uint8_t tableId, match* m) {
-    ofp_version ofVer = swConn->GetProtocolVersion();
+    ofp_version ofVer = (ofp_version)swConn->GetProtocolVersion();
     ofputil_protocol proto = ofputil_protocol_from_ofp_version(ofVer);
 
     ofputil_flow_stats_request fsr;
@@ -68,16 +75,16 @@ ofpbuf *FlowReader::createFlowRequest(uint8_t tableId, match* m) {
     }
     fsr.table_id = tableId;
     fsr.out_port = OFPP_ANY;
-    fsr.out_group = OFPG11_ANY;
-    fsr.cookie = fsr.cookie_mask = htonll(0);
+    fsr.out_group = OFPG_ANY;
+    fsr.cookie = fsr.cookie_mask = (uint64_t)0;
 
     ofpbuf *req = ofputil_encode_flow_stats_request(&fsr, proto);
     return req;
 }
 
 ofpbuf *FlowReader::createGroupRequest() {
-    return ofputil_encode_group_desc_request(swConn->GetProtocolVersion(),
-                                             OFPG_ALL);
+    return ofputil_encode_group_desc_request
+        ((ofp_version)swConn->GetProtocolVersion(), OFPG_ALL);
 }
 
 // XXX TODO need a way to time out requests
@@ -100,7 +107,7 @@ bool FlowReader::sendRequest(ofpbuf *req, const U& cb, V& reqMap) {
     return (err == 0);
 }
 
-void FlowReader::Handle(SwitchConnection*, ofptype msgType, ofpbuf *msg) {
+void FlowReader::Handle(SwitchConnection*, int msgType, ofpbuf *msg) {
     if (msgType == OFPTYPE_FLOW_STATS_REPLY) {
         handleReply<FlowEntryList, FlowCb, FlowCbMap>(msg, flowRequests);
     } else if (msgType == OFPTYPE_GROUP_DESC_STATS_REPLY) {
@@ -150,16 +157,11 @@ void FlowReader::decodeReply(ofpbuf *msg, FlowEntryList& recvFlows,
                 entry->entry->ofpacts_len);
         ofpbuf_uninit(&actsBuf);
 
-        /* HACK: override the "raw" field so that our comparisons work properly
-         * XXX TODO See if ActionBuilder can construct actions with proper "raw" type
+        /* HACK: override the "raw" field so that our comparisons work
+         * properly XXX TODO See if ActionBuilder can construct
+         * actions with proper "raw" type
          */
-        const ofpact *act;
-        OFPACT_FOR_EACH(act, entry->entry->ofpacts, entry->entry->ofpacts_len) {
-            if (act->type == OFPACT_OUTPUT_REG ||
-                act->type == OFPACT_REG_MOVE) {
-                ((ofpact*)act)->raw = (uint8_t)(-1);
-            }
-        }
+        override_raw_actions(entry->entry->ofpacts, entry->entry->ofpacts_len);
 
         if (ret != 0) {
             if (ret == EOF) {
@@ -197,7 +199,7 @@ void FlowReader::decodeReply(ofpbuf *msg, GroupEdit::EntryList& recv,
         GroupEdit::Entry entry(new GroupEdit::GroupMod());
         entry->mod->group_id = gd.group_id;
         entry->mod->type = gd.type;
-        list_move(&entry->mod->buckets, &gd.buckets);
+        ovs_list_move(&entry->mod->buckets, &gd.buckets);
         recv.push_back(entry);
 
         LOG(DEBUG) << "Got group: " << entry;

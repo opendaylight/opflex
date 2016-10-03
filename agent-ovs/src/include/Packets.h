@@ -22,9 +22,10 @@
 
 #include <opflex/modb/MAC.h>
 
-#include "ovs.h"
 #include "PolicyManager.h"
 #include "Endpoint.h"
+
+struct ofpbuf;
 
 namespace ovsagent {
 namespace packets {

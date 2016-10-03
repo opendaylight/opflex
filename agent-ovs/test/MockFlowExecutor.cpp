@@ -15,6 +15,12 @@
 #include <sstream>
 #include <algorithm>
 
+#include "ovs-shim.h"
+extern "C" {
+#include <openvswitch/dynamic-string.h>
+#include <openvswitch/ofp-print.h>
+}
+
 namespace ovsagent {
 
 using std::string;
@@ -48,15 +54,14 @@ bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
     std::sort(flowEdits.edits.begin(), flowEdits.edits.end());
 
     const char *modStr[] = {"ADD", "MOD", "DEL"};
-    struct ds strBuf;
-    ds_init(&strBuf);
+    DsP strBuf;
 
     BOOST_FOREACH(const FlowEdit::Entry& ed, flowEdits.edits) {
         if (ignoredFlowMods.find(ed.first) != ignoredFlowMods.end())
             continue;
 
-        ofp_print_flow_stats(&strBuf, ed.second->entry);
-        string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
+        ofp_print_flow_stats(strBuf.get(), ed.second->entry);
+        string str = (const char*)(ds_cstr(strBuf.get())+1); // trim space
 
         BOOST_CHECK_MESSAGE(!flowMods.empty(), "\nexp:\ngot: " << ed);
         if (!flowMods.empty()) {
@@ -70,9 +75,8 @@ bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
                                 << exp.second <<
                                 "\ngot: " << ed);
         }
-        ds_clear(&strBuf);
+        ds_clear(strBuf.get());
     }
-    ds_destroy(&strBuf);
 
     return true;
 }

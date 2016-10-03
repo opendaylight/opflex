@@ -13,7 +13,6 @@
 
 #include "TableState.h"
 #include "ActionBuilder.h"
-#include "ovs.h"
 
 #include <opflex/modb/MAC.h>
 
@@ -248,7 +247,7 @@ private:
     FlowEntryPtr entry_;
     uint16_t ethType_;
 
-    struct match* match() { return &entry_->entry->match; }
+    struct match* match();
 };
 
 } // namespace ovsagent

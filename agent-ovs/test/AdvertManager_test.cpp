@@ -22,8 +22,16 @@
 #include "MockSwitchManager.h"
 #include "IntFlowManager.h"
 #include "arp.h"
+#include "eth.h"
 #include "logging.h"
 #include "Packets.h"
+#include "ovs-shim.h"
+
+// OVS lib
+#include <lib/util.h>
+extern "C" {
+#include <openvswitch/flow.h>
+}
 
 using std::string;
 using boost::asio::io_service;
@@ -49,7 +57,8 @@ public:
         switchManager.start("br-int");
         conn =
             static_cast<MockSwitchConnection*>(switchManager.getConnection());
-        proto = ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
+        proto = ofputil_protocol_from_ofp_version
+            ((ofp_version)conn->GetProtocolVersion());
 
         intFlowManager.setEncapIface("br0_vxlan0");
         intFlowManager.setEncapType(IntFlowManager::ENCAP_VXLAN);
@@ -203,45 +212,46 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found,
     ofputil_decode_packet_out(&po,
                               (ofp_header*)msg->data,
                               &ofpact);
-    struct dp_packet pkt;
+
+    DpPacketP pkt;
     struct flow flow;
-    dp_packet_use_const(&pkt, po.packet, po.packet_len);
-    flow_extract(&pkt, &flow);
+    dp_packet_use_const(pkt.get(), po.packet, po.packet_len);
+    flow_extract(pkt.get(), &flow);
 
     uint16_t dl_type = ntohs(flow.dl_type);
 
     if (mode == AdvertManager::EPADV_GRATUITOUS_BROADCAST) {
-        if (dl_type == ETH_TYPE_ARP) {
-            BOOST_CHECK(0 == memcmp(flow.dl_dst,
+        if (dl_type == eth::type::ARP) {
+            BOOST_CHECK(0 == memcmp(flow.dl_dst.ea,
                                     packets::MAC_ADDR_BROADCAST, 6));
         } else {
-            BOOST_CHECK(0 == memcmp(flow.dl_dst,
+            BOOST_CHECK(0 == memcmp(flow.dl_dst.ea,
                                     packets::MAC_ADDR_IPV6MULTICAST, 6));
         }
     } else {
         opflex::modb::MAC routerMac("aa:bb:cc:dd:ee:ff");
-        opflex::modb::MAC dstMac(flow.dl_dst);
+        opflex::modb::MAC dstMac(flow.dl_dst.ea);
         BOOST_CHECK_EQUAL(routerMac, dstMac);
     }
 
-    if (dl_type == ETH_TYPE_ARP) {
-        BOOST_REQUIRE_EQUAL(sizeof(struct eth_header) +
+    if (dl_type == eth::type::ARP) {
+        BOOST_REQUIRE_EQUAL(sizeof(struct eth::eth_header) +
                             sizeof(struct arp_hdr) +
-                            2 * ETH_ADDR_LEN + 2 * 4,
-                            dp_packet_size(&pkt));
+                            2 * eth::ADDR_LEN + 2 * 4,
+                            dpp_size(pkt.get()));
         uint32_t ip =
-            ntohl(*(uint32_t*)((char*)dp_packet_l2(&pkt) +
-                               sizeof(struct eth_header) +
-                               sizeof(struct arp_hdr) + ETH_ADDR_LEN));
+            ntohl(*(uint32_t*)((char*)dpp_l2(pkt.get()) +
+                               sizeof(struct eth::eth_header) +
+                               sizeof(struct arp_hdr) + eth::ADDR_LEN));
         found.insert(address_v4(ip).to_string());
 
         if (mode != AdvertManager::EPADV_ROUTER_REQUEST) {
             BOOST_CHECK_EQUAL(flow.nw_src, flow.nw_dst);
         }
-    } else if (dl_type == ETH_TYPE_IPV6) {
-        size_t l4_size = dp_packet_l4_size(&pkt);
+    } else if (dl_type == eth::type::IPV6) {
+        size_t l4_size = dpp_l4_size(pkt.get());
         BOOST_REQUIRE(l4_size > sizeof(struct icmp6_hdr));
-        struct ip6_hdr* ip6 = (struct ip6_hdr*) dp_packet_l3(&pkt);
+        struct ip6_hdr* ip6 = (struct ip6_hdr*) dpp_l3(pkt.get());
         address_v6::bytes_type bytes;
         memcpy(bytes.data(), &ip6->ip6_src, sizeof(struct in6_addr));
         address_v6 srcIp(bytes);
@@ -249,7 +259,7 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found,
         address_v6 dstIp(bytes);
 
         found.insert(srcIp.to_string());
-        struct icmp6_hdr* icmp = (struct icmp6_hdr*) dp_packet_l4(&pkt);
+        struct icmp6_hdr* icmp = (struct icmp6_hdr*) dpp_l4(pkt.get());
 
         if (mode == AdvertManager::EPADV_ROUTER_REQUEST) {
             BOOST_CHECK_EQUAL(ND_NEIGHBOR_SOLICIT, icmp->icmp6_type);
@@ -308,20 +318,20 @@ BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
         ofputil_decode_packet_out(&po,
                                   (ofp_header*)msg->data,
                                   &ofpact);
-        struct dp_packet pkt;
+        DpPacketP pkt;
         struct flow flow;
-        dp_packet_use_const(&pkt, po.packet, po.packet_len);
-        flow_extract(&pkt, &flow);
+        dp_packet_use_const(pkt.get(), po.packet, po.packet_len);
+        flow_extract(pkt.get(), &flow);
 
-        BOOST_REQUIRE_EQUAL(ETH_TYPE_IPV6, ntohs(flow.dl_type));
-        size_t l4_size = dp_packet_l4_size(&pkt);
+        BOOST_REQUIRE_EQUAL(eth::type::IPV6, ntohs(flow.dl_type));
+        size_t l4_size = dpp_l4_size(pkt.get());
         BOOST_REQUIRE(l4_size > sizeof(struct icmp6_hdr));
-        struct ip6_hdr* ip6 = (struct ip6_hdr*) dp_packet_l3(&pkt);
+        struct ip6_hdr* ip6 = (struct ip6_hdr*) dpp_l3(pkt.get());
         address_v6::bytes_type bytes;
         memcpy(bytes.data(), &ip6->ip6_src, sizeof(struct in6_addr));
         LOG(INFO) << address_v6(bytes).to_string();
         found.insert(address_v6(bytes).to_string());
-        struct icmp6_hdr* icmp = (struct icmp6_hdr*) dp_packet_l4(&pkt);
+        struct icmp6_hdr* icmp = (struct icmp6_hdr*) dpp_l4(pkt.get());
         BOOST_CHECK_EQUAL(ND_ROUTER_ADVERT, icmp->icmp6_type);
     }
 

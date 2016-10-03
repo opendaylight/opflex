@@ -14,9 +14,16 @@
 #include <boost/asio/ip/address.hpp>
 #include <boost/optional.hpp>
 
-#include "ovs.h"
+extern "C" {
+#include <openvswitch/meta-flow.h>
+}
 
 struct ofputil_flow_stats;
+struct ofputil_flow_mod;
+struct ofputil_bucket;
+struct ofputil_packet_out;
+struct ofpbuf;
+struct ofpact;
 
 namespace ovsagent {
 
@@ -231,7 +238,7 @@ public:
     static ofpact* getActionsFromBuffer(ofpbuf *buf, size_t& actsLen);
 
 private:
-    struct ofpbuf buf;
+    struct ofpbuf* buf;
     bool flowHasVlan;
     boost::optional<FlowBuilder&> fb;
 };
