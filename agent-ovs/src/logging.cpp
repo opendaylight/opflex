@@ -19,9 +19,10 @@
 
 #include <opflex/logging/OFLogHandler.h>
 
-#include "ovs.h"
 #include "logging.h"
 #include "AgentLogHandler.h"
+
+#include <openvswitch/vlog.h>
 
 using opflex::logging::OFLogHandler;
 

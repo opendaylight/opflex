@@ -11,8 +11,16 @@
 #include <boost/thread/lock_types.hpp>
 
 #include "logging.h"
-#include "ovs.h"
 #include "FlowExecutor.h"
+
+#include "ovs-shim.h"
+#include "ovs-ofputil.h"
+
+// OVS lib
+#include <lib/util.h>
+extern "C" {
+#include <openvswitch/ofp-msgs.h>
+}
 
 using namespace std;
 using namespace boost;
@@ -70,7 +78,7 @@ FlowExecutor::ExecuteInt(const T& fe) {
     }
     /* create the barrier request first to setup request-map */
     ofpbuf *barrReq = ofputil_encode_barrier_request(
-            swConn->GetProtocolVersion());
+        (ofp_version)swConn->GetProtocolVersion());
     ovs_be32 barrXid = ((ofp_header *)barrReq->data)->xid;
 
     {
@@ -100,15 +108,16 @@ FlowExecutor::ExecuteIntNoBlock(const T& fe) {
 template<>
 ofpbuf *
 FlowExecutor::EncodeMod<GroupEdit::Entry>(const GroupEdit::Entry& edit,
-        ofp_version ofVersion) {
-    return ofputil_encode_group_mod(ofVersion, edit->mod);
+                                          int ofVersion) {
+    return ofputil_encode_group_mod((ofp_version)ofVersion, edit->mod);
 }
 
 template<>
 ofpbuf *
 FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
-        ofp_version ofVersion) {
-    ofputil_protocol proto = ofputil_protocol_from_ofp_version(ofVersion);
+                                         int ofVersion) {
+    ofputil_protocol proto =
+        ofputil_protocol_from_ofp_version((ofp_version)ofVersion);
     assert(ofputil_protocol_is_valid(proto));
 
     FlowEdit::type mod = edit.first;
@@ -120,10 +129,10 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     flowMod.priority = flow.priority;
     if (mod != FlowEdit::ADD) {
         flowMod.cookie = flow.cookie;
-        flowMod.cookie_mask = ~htonll(0);
+        flowMod.cookie_mask = ~((uint64_t)0);
     }
     flowMod.new_cookie = mod == FlowEdit::MOD ? OVS_BE64_MAX :
-            (mod == FlowEdit::ADD ? flow.cookie : htonll(0));
+            (mod == FlowEdit::ADD ? flow.cookie : 0);
     memcpy(&flowMod.match, &flow.match, sizeof(flow.match));
     if (mod != FlowEdit::DEL) {
         flowMod.ofpacts_len = flow.ofpacts_len;
@@ -139,20 +148,19 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     flowMod.out_port = OFPP_NONE;
     flowMod.out_group = OFPG_ANY;
     flowMod.flags = (ofputil_flow_mod_flags)0;
-    flowMod.delete_reason = OFPRR_DELETE;
 
     return ofputil_encode_flow_mod(&flowMod, proto);
 }
 
 ofpbuf *
 FlowExecutor::EncodeFlowMod(const FlowEdit::Entry& edit,
-        ofp_version ofVersion) {
+                            int ofVersion) {
     return EncodeMod<FlowEdit::Entry>(edit, ofVersion);
 }
 
 ofpbuf *
 FlowExecutor::EncodeGroupMod(const GroupEdit::Entry& edit,
-        ofp_version ofVersion) {
+                             int ofVersion) {
     return EncodeMod<GroupEdit::Entry>(edit, ofVersion);
 }
 
@@ -160,7 +168,7 @@ template<typename T>
 int
 FlowExecutor::DoExecuteNoBlock(const T& fe,
         const boost::optional<ovs_be32>& barrXid) {
-    ofp_version ofVersion = swConn->GetProtocolVersion();
+    ofp_version ofVersion = (ofp_version)swConn->GetProtocolVersion();
 
     BOOST_FOREACH (const typename T::Entry& e, fe.edits) {
         ofpbuf *msg = EncodeMod<typename T::Entry>(e, ofVersion);
@@ -209,7 +217,7 @@ FlowExecutor::WaitOnBarrier(ofpbuf *barrReq) {
 }
 
 void
-FlowExecutor::Handle(SwitchConnection *, ofptype msgType, ofpbuf *msg) {
+FlowExecutor::Handle(SwitchConnection *, int msgType, ofpbuf *msg) {
     ofp_header *msgHdr = (ofp_header *)msg->data;
     ovs_be32 recvXid = msgHdr->xid;
 

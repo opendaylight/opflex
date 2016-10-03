@@ -30,12 +30,11 @@ Requires: boost-system
 Requires: boost-date-time
 Requires: boost-thread
 Requires: boost-filesystem
-Requires: openvswitch-lib >= 2.4.1
 BuildRequires: libopflex-devel
 BuildRequires: libmodelgbp-devel
 BuildRequires: boost-devel
 BuildRequires: boost-test
-BuildRequires: openvswitch-devel >= 2.4.1
+BuildRequires: openvswitch-devel >= 2.6.0
 BuildRequires: doxygen
 BuildRequires: systemd-units
 BuildRequires: rapidjson-devel >= 1.0

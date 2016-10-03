@@ -12,9 +12,15 @@
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include "logging.h"
 
-#include "ovs.h"
 #include "SwitchConnection.h"
 #include "ConnectionFixture.h"
+
+#include "ovs-ofputil.h"
+
+extern "C" {
+#include <openvswitch/json.h>
+#include <lib/jsonrpc.h>
+}
 
 using namespace std;
 using namespace ovsagent;
@@ -22,7 +28,7 @@ using namespace ovsagent;
 class EchoReplyHandler : public MessageHandler {
 public:
     EchoReplyHandler() : counter(0) {}
-    void Handle(SwitchConnection*, ofptype type, ofpbuf*) {
+    void Handle(SwitchConnection*, int type, ofpbuf*) {
         BOOST_CHECK(type == OFPTYPE_ECHO_REPLY);
         ++counter;
     }
@@ -42,7 +48,7 @@ public:
 class LoggingJsonHandler : public JsonMessageHandler {
 public:
     LoggingJsonHandler() : counter(0) {}
-    void Handle(SwitchConnection*, jsonrpc_msg *msg) {
+    void Handle(SwitchConnection*, struct jsonrpc_msg *msg) {
         ++counter;
         BOOST_CHECK(msg->error == NULL);
         BOOST_CHECK(msg->result != NULL && msg->result->type == JSON_STRING);

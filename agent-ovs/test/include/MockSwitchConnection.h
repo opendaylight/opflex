@@ -11,6 +11,7 @@
 #define OVSAGENT_TEST_MOCKSWITCHCONNECTION_H_
 
 #include "SwitchConnection.h"
+#include "ovs-ofputil.h"
 
 namespace ovsagent {
 
@@ -33,13 +34,13 @@ public:
         sentMsgs.clear();
     }
 
-    virtual int Connect(ofp_version protoVer) {
+    virtual int Connect(int protoVer) {
         connected = true;
         notifyConnectListeners();
         return 0;
     }
 
-    virtual ofp_version GetProtocolVersion() { return OFP13_VERSION; }
+    virtual int GetProtocolVersion() { return OFP13_VERSION; }
 
     virtual int SendMessage(ofpbuf *msg) {
         sentMsgs.push_back(msg);

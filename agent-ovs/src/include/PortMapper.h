@@ -15,7 +15,9 @@
 #include <boost/thread/mutex.hpp>
 
 #include "SwitchConnection.h"
-#include "ovs.h"
+#include "ovs-shim.h"
+
+struct ofpbuf;
 
 namespace ovsagent {
 
@@ -87,7 +89,7 @@ public:
     void UninstallListenersForConnection(SwitchConnection *conn);
 
     /** Interface: MessageHandler */
-    void Handle(SwitchConnection *swConn, ofptype type, ofpbuf *msg);
+    void Handle(SwitchConnection *swConn, int type, ofpbuf *msg);
 
     /** Interface: OnConnectListener */
     void Connected(SwitchConnection *swConn);
@@ -116,14 +118,14 @@ private:
     void notifyListeners(const std::string& portName, uint32_t portNo,
                          bool fromDesc);
 
-    typedef boost::unordered_map<std::string, ofputil_phy_port> PortMap;
+    typedef boost::unordered_map<std::string, PhyPortP> PortMap;
     typedef boost::unordered_map<uint32_t, std::string> RPortMap;
     PortMap portMap;
     RPortMap rportMap;
     PortMap tmpPortMap;
     RPortMap tmprPortMap;
 
-    ovs_be32 lastDescReqXid;
+    uint32_t lastDescReqXid;
 
     typedef std::list<PortStatusListener *>  PortStatusList;
     PortStatusList portStatusListeners;

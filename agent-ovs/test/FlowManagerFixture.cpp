@@ -8,6 +8,13 @@
 
 #include "FlowManagerFixture.h"
 
+#include "ovs-ofputil.h"
+
+extern "C" {
+#include <openvswitch/ofp-parse.h>
+#include <openvswitch/ofp-print.h>
+}
+
 namespace ovsagent {
 
 using std::string;
@@ -36,12 +43,10 @@ void addExpFlowEntry(std::vector<FlowEntryList>& tables,
     e->entry->flags = fm.flags;
     tables[fm.table_id].push_back(e);
 
-    struct ds strBuf;
-    ds_init(&strBuf);
-    ofp_print_flow_stats(&strBuf, e->entry);
-    string str = (const char*)(ds_cstr(&strBuf)+1); // trim space
+    DsP strBuf;
+    ofp_print_flow_stats(strBuf.get(), e->entry);
+    string str = (const char*)(ds_cstr(strBuf.get())+1); // trim space
     BOOST_CHECK_EQUAL(str, flowMod);
-    ds_destroy(&strBuf);
 }
 
 void printAllDiffs(std::vector<FlowEntryList>& expected,

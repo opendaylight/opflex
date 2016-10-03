@@ -22,6 +22,10 @@
 #include "TableState.h"
 #include "Agent.h"
 
+struct dp_packet;
+struct flow;
+struct ofputil_packet_in;
+
 namespace ovsagent {
 
 class IntFlowManager;
@@ -70,7 +74,7 @@ public:
     // MessageHandler
     // **************
 
-    virtual void Handle(SwitchConnection *swConn, ofptype msgType,
+    virtual void Handle(SwitchConnection *swConn, int msgType,
                         ofpbuf *msg);
 
     // ******************
@@ -91,17 +95,19 @@ private:
      *
      * @param conn the openflow switch connection
      * @param pi the packet-in
-     * @param proto an openflow proto object
+     * @param pi_buffer_id the buffer ID associated with the packet-in
+     * @param proto an openflow proto version
      * @param pkt the packet from the packet-in
      * @param flow the parsed flow from the packet
      */
     void handleLearnPktIn(SwitchConnection *conn,
                           struct ofputil_packet_in& pi,
-                          ofputil_protocol& proto,
-                          struct dp_packet& pkt,
+                          uint32_t pi_buffer_id,
+                          int proto,
+                          const struct dp_packet* pkt,
                           struct flow& flow);
     bool writeLearnFlow(SwitchConnection *conn,
-                        ofputil_protocol& proto,
+                        int proto,
                         struct ofputil_packet_in& pi,
                         struct flow& flow,
                         bool stage2);

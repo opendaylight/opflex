@@ -22,7 +22,6 @@
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 
 #include "logging.h"
-#include "ovs.h"
 #include "IntFlowManager.h"
 #include "FlowExecutor.h"
 #include "Packets.h"
@@ -35,6 +34,7 @@
 #include "FlowUtils.h"
 #include "FlowManagerFixture.h"
 #include "FlowBuilder.h"
+#include "ovs-shim.h"
 
 using namespace std;
 using namespace boost::assign;
@@ -1235,15 +1235,15 @@ void IntFlowManagerFixture::initExpStatic() {
          .isMdAct(flow::meta::out::REV_NAT)
          .actions().out(OUTPORT).done());
     ADDF(Bldr().table(OUT).priority(10)
-         .cookie(ntohll(flow::cookie::ICMP_ERROR_V4))
+         .cookie(ovs_ntohll(flow::cookie::ICMP_ERROR_V4))
          .icmp().isMdAct(flow::meta::out::REV_NAT).icmp_type(3)
          .actions().controller(65535).done());
     ADDF(Bldr().table(OUT).priority(10)
-         .cookie(ntohll(flow::cookie::ICMP_ERROR_V4))
+         .cookie(ovs_ntohll(flow::cookie::ICMP_ERROR_V4))
          .icmp().isMdAct(flow::meta::out::REV_NAT).icmp_type(11)
          .actions().controller(65535).done());
     ADDF(Bldr().table(OUT).priority(10)
-         .cookie(ntohll(flow::cookie::ICMP_ERROR_V4))
+         .cookie(ovs_ntohll(flow::cookie::ICMP_ERROR_V4))
          .icmp().isMdAct(flow::meta::out::REV_NAT).icmp_type(12)
          .actions().controller(65535).done());
 
@@ -1371,7 +1371,7 @@ void IntFlowManagerFixture::initExpBd(uint32_t bdId, uint32_t rdId,
              .actions().go(RT).done());
 
         /* router solicitation */
-        ADDF(Bldr().cookie(ntohll(flow::cookie::NEIGH_DISC))
+        ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
              .table(BR).priority(20).icmp6().reg(BD, bdId).reg(RD, rdId)
              .isEthDst(mmac).icmp_type(133).icmp_code(0)
              .actions().controller(65535)
@@ -1542,7 +1542,7 @@ void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                     if (ep->isDiscoveryProxyMode()) {
                         // proxy neighbor discovery
                         ADDF(Bldr()
-                             .cookie(ntohll(flow::cookie::NEIGH_DISC))
+                             .cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
                              .table(BR).priority(20).icmp6()
                              .reg(BD, bdId).reg(RD, rdId).isEthDst(mmac)
                              .icmp_type(135).icmp_code(0)
@@ -1601,7 +1601,7 @@ void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
                      .actions()
                      .ethSrc(rmac).ethDst(mac)
                      .decTtl().outPort(port).done());
-                ADDF(Bldr().cookie(ntohll(flow::cookie::NEIGH_DISC))
+                ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
                      .table(SVD).priority(51).icmp6()
                      .reg(RD, rdId).isEthDst(mmac)
                      .icmp_type(135).icmp_code(0)
@@ -1637,14 +1637,14 @@ void IntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
 
         if (rip.is_v6()) {
             ADDF(Bldr()
-                 .cookie(ntohll(flow::cookie::NEIGH_DISC))
+                 .cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
                  .table(BR).priority(22).icmp6()
                  .reg(BD, bdId).reg(RD, rdId).in(tunPort)
                  .isEthDst(mmac).icmp_type(135).icmp_code(0)
                  .isNdTarget(rip.to_string())
                  .actions().drop().done());
             ADDF(Bldr()
-                 .cookie(ntohll(flow::cookie::NEIGH_DISC))
+                 .cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
                  .table(BR).priority(20).icmp6()
                  .reg(BD, bdId).reg(RD, rdId)
                  .isEthDst(mmac).icmp_type(135).icmp_code(0)
@@ -1821,7 +1821,7 @@ void IntFlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
          .actions().load(DEPG, 0x4242).load(OUTPORT, 0x4242)
          .mdAct(flow::meta::out::RESUBMIT_DST)
          .go(POL).done());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::NEIGH_DISC))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
          .table(BR).priority(20).icmp6()
          .reg(BD, 2).reg(RD, 2).isEthDst(mmac).icmp_type(135).icmp_code(0)
          .isNdTarget("fdf1:9f86:d1af:6cc9::5")
@@ -1983,7 +1983,7 @@ void IntFlowManagerFixture::initExpService(bool nextHop) {
          .move(ARPSHA, ARPTHA).load(ARPSHA, "0xed84daef1696")
          .move(ARPSPA, ARPTPA).load(ARPSPA, "0xa9fea9fe")
          .inport().done());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::NEIGH_DISC))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
          .table(BR).priority(51).icmp6()
          .reg(RD, 1).isEthDst(mmac)
          .icmp_type(135).icmp_code(0)
@@ -2002,7 +2002,7 @@ void IntFlowManagerFixture::initExpService(bool nextHop) {
          .move(ARPSHA, ARPTHA).load(ARPSHA, "0xaabbccddeeff")
          .move(ARPSPA, ARPTPA).load(ARPSPA, "0xa9fe0101")
          .inport().done());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::NEIGH_DISC))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
          .table(SVD).priority(31).icmp6()
          .reg(RD, 1).isEthSrc("ed:84:da:ef:16:96")
          .isEthDst(mmac)
@@ -2015,20 +2015,20 @@ void IntFlowManagerFixture::initExpService(bool nextHop) {
 
 void IntFlowManagerFixture::initExpVirtualIp() {
     uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::VIRTUAL_IP_V4))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::VIRTUAL_IP_V4))
          .table(SEC).priority(60).arp().in(port)
          .isEthSrc("42:42:42:42:42:42").isSpa("42.42.42.42")
          .actions().controller(65535).go(SRC).done());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::VIRTUAL_IP_V4))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::VIRTUAL_IP_V4))
          .table(SEC).priority(60).arp().in(port)
          .isEthSrc("42:42:42:42:42:43").isSpa("42.42.42.16/28")
          .actions().controller(65535).go(SRC).done());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::VIRTUAL_IP_V6))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::VIRTUAL_IP_V6))
          .table(SEC).priority(60).icmp6().in(port)
          .isEthSrc("42:42:42:42:42:42")
          .icmp_type(136).icmp_code(0).isNdTarget("42::42")
          .actions().controller(65535).go(SRC).done());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::VIRTUAL_IP_V6))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::VIRTUAL_IP_V6))
          .table(SEC).priority(60).icmp6().in(port)
          .isEthSrc("42:42:42:42:42:43")
          .icmp_type(136).icmp_code(0).isNdTarget("42::10/124")
@@ -2036,7 +2036,7 @@ void IntFlowManagerFixture::initExpVirtualIp() {
     ADDF(Bldr().table(SEC).priority(61).arp().in(port)
          .isEthSrc("00:00:00:00:80:00").isSpa("10.20.44.3")
          .actions().go(SRC).done());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::VIRTUAL_IP_V4))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::VIRTUAL_IP_V4))
          .table(SEC).priority(60).arp().in(port)
          .isEthSrc("00:00:00:00:80:00").isSpa("10.20.44.3")
          .actions().controller(65535).go(SRC).done());
@@ -2045,28 +2045,28 @@ void IntFlowManagerFixture::initExpVirtualIp() {
 void IntFlowManagerFixture::initExpVirtualDhcp(bool virtIp) {
 
     uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::DHCP_V4))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
          .table(SRC).priority(150).udp().in(port)
          .isEthSrc("00:00:00:00:80:00").isTpSrc(68).isTpDst(67)
          .actions().load(SEPG, 0xa0a).controller(65535).done());
-    ADDF(Bldr().cookie(ntohll(flow::cookie::DHCP_V6))
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))
          .table(SRC).priority(150).udp6().in(port)
          .isEthSrc("00:00:00:00:80:00").isTpSrc(546).isTpDst(547)
          .actions().load(SEPG, 0xa0a).controller(65535).done());
     if (virtIp) {
-        ADDF(Bldr().cookie(ntohll(flow::cookie::DHCP_V4))
+        ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
              .table(SRC).priority(150).udp().in(port)
              .isEthSrc("42:42:42:42:42:42").isTpSrc(68).isTpDst(67)
              .actions().load(SEPG, 0xa0a).controller(65535).done());
-        ADDF(Bldr().cookie(ntohll(flow::cookie::DHCP_V4))
+        ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
              .table(SRC).priority(150).udp().in(port)
              .isEthSrc("42:42:42:42:42:43").isTpSrc(68).isTpDst(67)
              .actions().load(SEPG, 0xa0a).controller(65535).done());
-        ADDF(Bldr().cookie(ntohll(flow::cookie::DHCP_V6))
+        ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))
              .table(SRC).priority(150).udp6().in(port)
              .isEthSrc("42:42:42:42:42:42").isTpSrc(546).isTpDst(547)
              .actions().load(SEPG, 0xa0a).controller(65535).done());
-        ADDF(Bldr().cookie(ntohll(flow::cookie::DHCP_V6))
+        ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))
              .table(SRC).priority(150).udp6().in(port)
              .isEthSrc("42:42:42:42:42:43").isTpSrc(546).isTpDst(547)
              .actions().load(SEPG, 0xa0a).controller(65535).done());
@@ -2126,7 +2126,7 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
 
     uint32_t epg4_vnid = policyMgr.getVnidForGroup(epg4->getURI()).get();
 
-    FlowBuilder().table(SEC).cookie(htonll(0xabcd)).build(flows);
+    FlowBuilder().table(SEC).cookie(ovs_htonll(0xabcd)).build(flows);
 
     FlowBuilder e1;
     e1.table(SRC).priority(149).inPort(intFlowManager.getTunnelPort());
@@ -2184,7 +2184,8 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
         .controller().parent().build(flows);
 
     // spurious entry in learn table, should be deleted
-    FlowBuilder().table(LRN).priority(8192).cookie(htonll(0xabcd)).build(flows);
+    FlowBuilder().table(LRN).priority(8192)
+        .cookie(ovs_htonll(0xabcd)).build(flows);
 
     GroupEdit::Entry entryIn(new GroupEdit::GroupMod());
     entryIn->mod->command = OFPGC11_ADD;
@@ -2202,19 +2203,19 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
                    .actions().drop().done());
     fe_connect_learn
         .push_back(Bldr().table(LRN).priority(150)
-                   .cookie(ntohll(flow::cookie::LEARN))
+                   .cookie(ovs_ntohll(flow::cookie::LEARN))
                    .isEthDst(ep1->getMAC().get().toString())
                    .actions().load(OUTPORT, 999).controller(0xffff)
                    .done());
     fe_connect_learn
         .push_back(Bldr().table(LRN).priority(150)
-                   .cookie(ntohll(flow::cookie::LEARN))
+                   .cookie(ovs_ntohll(flow::cookie::LEARN))
                    .isEthDst("de:ad:be:ef:01:02")
                    .actions().load(OUTPORT, 999).controller(0xffff)
                    .done());
     fe_connect_learn
         .push_back(Bldr().table(LRN).priority(150)
-                   .cookie(ntohll(flow::cookie::LEARN))
+                   .cookie(ovs_ntohll(flow::cookie::LEARN))
                    .isEthDst("de:ad:be:ef:01:03")
                    .actions().load(OUTPORT, 80).controller(0xffff)
                    .done());

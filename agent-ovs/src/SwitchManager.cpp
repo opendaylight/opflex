@@ -12,6 +12,8 @@
 #include "FlowBuilder.h"
 #include "logging.h"
 
+#include "ovs-ofputil.h"
+
 namespace ovsagent {
 
 using boost::bind;

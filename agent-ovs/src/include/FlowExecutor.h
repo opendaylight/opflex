@@ -15,7 +15,6 @@
 #include <boost/thread/condition_variable.hpp>
 #include <boost/optional.hpp>
 
-#include "ovs.h"
 #include "SwitchConnection.h"
 #include "TableState.h"
 
@@ -87,7 +86,7 @@ public:
     void UninstallListenersForConnection(SwitchConnection *conn);
 
     /** Interface: MessageHandler */
-    void Handle(SwitchConnection *conn, ofptype msgType, ofpbuf *msg);
+    void Handle(SwitchConnection *conn, int msgType, ofpbuf *msg);
 
     /** Interface: OnConnectListener */
     void Connected(SwitchConnection *swConn);
@@ -99,7 +98,7 @@ public:
      * @return flow-modification message
      */
     static ofpbuf *EncodeFlowMod(const FlowEdit::Entry& edit,
-            ofp_version ofVersion);
+                                 int ofVersion);
 
     /**
      * Construct a group-modification message for the specified group-edit.
@@ -108,7 +107,7 @@ public:
      * @return group-modification message
      */
     static ofpbuf *EncodeGroupMod(const GroupEdit::Entry& edit,
-            ofp_version ofVersion);
+                                  int ofVersion);
 private:
     /**
      * Internal helper function to execute blocking flow/group-edits.
@@ -139,7 +138,7 @@ private:
      */
     template<typename T>
     int DoExecuteNoBlock(const T& fe,
-            const boost::optional<ovs_be32>& barrXid);
+            const boost::optional<uint32_t>& barrXid);
 
     /**
      * Internal helper function to construct an OpenFlow message from
@@ -151,7 +150,7 @@ private:
      */
     template<typename T>
     static
-    ofpbuf *EncodeMod(const T& edit, ofp_version ofVersion);
+    ofpbuf *EncodeMod(const T& edit, int ofVersion);
 
     /**
      * Send the barrier request specified and wait for a reply.
@@ -171,12 +170,12 @@ private:
     struct RequestState {
         RequestState() : status(0), done(false) {}
 
-        boost::unordered_set<ovs_be32> reqXids;
+        boost::unordered_set<uint32_t> reqXids;
         int status;
         bool done;
     };
     /* Map of barrier request IDs to RequestState */
-    typedef boost::unordered_map<ovs_be32, RequestState> RequestMap;
+    typedef boost::unordered_map<uint32_t, RequestState> RequestMap;
     RequestMap requests;
 
     boost::mutex reqMtx;

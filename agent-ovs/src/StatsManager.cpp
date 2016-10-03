@@ -14,7 +14,13 @@
 #include "logging.h"
 #include "StatsManager.h"
 #include "Agent.h"
-#include "ovs.h"
+
+#include "ovs-ofputil.h"
+
+#include <lib/util.h>
+extern "C" {
+#include <openvswitch/ofp-msgs.h>
+}
 
 namespace ovsagent {
 
@@ -71,9 +77,8 @@ void StatsManager::on_timer(const error_code& ec) {
     }
 
     // send port stats request
-    struct ofpbuf *portStatsReq =
-        ofputil_encode_dump_ports_request(connection->GetProtocolVersion(),
-                                          OFPP_ANY);
+    struct ofpbuf *portStatsReq = ofputil_encode_dump_ports_request(
+        (ofp_version)connection->GetProtocolVersion(), OFPP_ANY);
     int err = connection->SendMessage(portStatsReq);
     if (err != 0) {
         LOG(ERROR) << "Failed to send port statistics request: "
@@ -88,7 +93,7 @@ void StatsManager::on_timer(const error_code& ec) {
 
 
 void StatsManager::Handle(SwitchConnection*,
-                          ofptype msgType, ofpbuf *msg) {
+                          int msgType, ofpbuf *msg) {
     assert(msgType == OFPTYPE_PORT_STATS_REPLY);
 
     const struct ofp_header *oh = (ofp_header *)msg->data;

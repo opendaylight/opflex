@@ -24,6 +24,9 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 noinst_LTLIBRARIES = libagent_ovs.la
+libagent_ovs_la_CFLAGS = \
+	$(libopenvswitch_CFLAGS) \
+	$(libofproto_CFLAGS)
 libagent_ovs_la_CXXFLAGS = \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS) \
@@ -34,14 +37,14 @@ libagent_ovs_la_CXXFLAGS = \
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
+	$(libopenvswitch_LIBS) \
+	$(libofproto_LIBS) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_THREAD_LIB) \
 	$(BOOST_ASIO_LIB) \
 	$(BOOST_RANDOM_LIB) \
-	$(BOOST_CHRONO_LIB) \
-	$(libopenvswitch_LIBS) \
-	$(libofproto_LIBS)
+	$(BOOST_CHRONO_LIB)
 
 noinst_HEADERS = \
 	src/include/AgentLogHandler.h \
@@ -70,7 +73,7 @@ noinst_HEADERS = \
 	src/include/SwitchStateHandler.h \
 	src/include/IntFlowManager.h \
 	src/include/AccessFlowManager.h \
-	src/include/ovs.h \
+	src/include/ovs-shim.h \
 	src/include/TableState.h \
 	src/include/ActionBuilder.h \
 	src/include/FlowBuilder.h \
@@ -93,6 +96,7 @@ noinst_HEADERS = \
 	src/include/udp.h \
 	src/include/dhcp.h \
 	src/include/arp.h \
+	src/include/eth.h \
 	src/include/cmd.h \
 	src/include/logging.h
 
@@ -138,7 +142,8 @@ libagent_ovs_la_SOURCES = \
 	src/MulticastListener.cpp \
 	src/TaskQueue.cpp \
 	src/FlowUtils.cpp \
-	src/FlowConstants.cpp
+	src/FlowConstants.cpp \
+	src/ovs-shim.c
 
 bin_PROGRAMS=agent_ovs gbp_inspect mcast_daemon
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
@@ -147,27 +152,30 @@ agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
 agent_ovs_SOURCES = \
 	src/main.cpp
 agent_ovs_LDADD = \
-	libagent_ovs.la \
-	$(BOOST_PROGRAM_OPTIONS_LIB)
+	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	libagent_ovs.la
 
 gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
 gbp_inspect_SOURCES = \
 	src/gbp_inspect.cpp
 gbp_inspect_LDADD = \
-	libagent_ovs.la \
 	$(BOOST_IOSTREAMS_LIB) \
-	$(BOOST_PROGRAM_OPTIONS_LIB)
+	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	libagent_ovs.la
 
 mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
 mcast_daemon_SOURCES = \
 	src/mcast_daemon.cpp
 mcast_daemon_LDADD = \
-	libagent_ovs.la \
-	$(BOOST_PROGRAM_OPTIONS_LIB)
+	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	libagent_ovs.la
 
 TESTS = agent_test
 noinst_PROGRAMS = $(TESTS) mock_server integration_test
 
+agent_test_CFLAGS = \
+	$(libopenvswitch_CFLAGS) \
+	$(libofproto_CFLAGS)
 agent_test_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) \
@@ -191,6 +199,7 @@ agent_test_SOURCES = \
 	test/IntFlowManager_test.cpp \
 	test/AccessFlowManager_test.cpp \
 	test/PacketInHandler_test.cpp \
+	test/PacketInHandler_test_shim.c \
 	test/AdvertManager_test.cpp \
 	test/PortMapper_test.cpp \
 	test/FlowExecutor_test.cpp \
@@ -202,10 +211,8 @@ agent_test_SOURCES = \
 	test/TableState_test.cpp \
 	test/main.cpp
 agent_test_LDADD = \
-	libagent_ovs.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	$(libopenvswitch_LIBS) \
-	$(libofproto_LIBS)
+	libagent_ovs.la
 
 mock_server_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
@@ -215,8 +222,8 @@ mock_server_SOURCES = \
 	test/Policies.cpp \
 	test/mock_server.cpp
 mock_server_LDADD = \
-	libagent_ovs.la \
-	$(BOOST_PROGRAM_OPTIONS_LIB)
+	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	libagent_ovs.la
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
@@ -245,7 +252,7 @@ endif
 
 integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/integration-test/include \
-	$(OVS_ADDL_CFLAGS)  \
+	$(OVS_ADDL_CFLAGS) \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
 integration_test_SOURCES = \
@@ -255,10 +262,8 @@ integration_test_SOURCES = \
 	integration-test/flowmod_test.cpp
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 integration_test_LDADD = \
-	libagent_ovs.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	$(libopenvswitch_LIBS) \
-	$(libofproto_LIBS)
+	libagent_ovs.la
 
 check-integration: agent_ovs
 	$(top_builddir)/integration_test

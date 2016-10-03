@@ -14,11 +14,17 @@
 #include <boost/bind.hpp>
 #include "logging.h"
 
-#include "ovs.h"
 #include "ConnectionFixture.h"
 #include "FlowReader.h"
 #include "FlowExecutor.h"
 #include "ActionBuilder.h"
+#include "eth.h"
+#include "ovs-shim.h"
+#include "ovs-ofputil.h"
+
+extern "C" {
+#include <openvswitch/list.h>
+}
 
 using namespace std;
 using namespace boost;
@@ -148,12 +154,12 @@ void addBucket(uint32_t bucketId, GroupEdit::Entry& entry) {
     bkt->weight = 0;
     bkt->bucket_id = bucketId;
     bkt->watch_port = OFPP_ANY;
-    bkt->watch_group = OFPG11_ANY;
+    bkt->watch_group = OFPG_ANY;
 
     ActionBuilder ab;
     ab.output(bucketId);
     ab.build(bkt);
-    list_push_back(&entry->mod->buckets, &bkt->list_node);
+    ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
 }
 
 BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
@@ -220,7 +226,7 @@ void FlowModFixture::createTestFlows() {
     e0.entry->priority = 100;
     e0.entry->cookie = 0xabcd;
     match_set_reg(&e0.entry->match, 3, 42);
-    match_set_dl_type(&e0.entry->match, htons(ETH_TYPE_IP));
+    match_set_dl_type(&e0.entry->match, htons(eth::type::IP));
     match_set_nw_dst(&e0.entry->match, 0x01020304);
     ActionBuilder ab0;
     ab0.reg(MFF_REG0, 100);
@@ -247,8 +253,8 @@ void FlowModFixture::compareFlows(const FlowEntry& lhs,
     BOOST_CHECK(le.priority == re.priority);
     BOOST_CHECK(le.cookie == re.cookie);
     BOOST_CHECK(match_equal(&le.match, &re.match));
-    BOOST_CHECK(ofpacts_equal(le.ofpacts, le.ofpacts_len,
-                              re.ofpacts, re.ofpacts_len));
+    BOOST_CHECK(action_equal(le.ofpacts, le.ofpacts_len,
+                             re.ofpacts, re.ofpacts_len));
 }
 
 void FlowModFixture::removeDefaultFlows(FlowEntryList& newFlows) {

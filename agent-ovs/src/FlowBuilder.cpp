@@ -8,6 +8,10 @@
 
 #include "FlowBuilder.h"
 #include "Packets.h"
+#include "eth.h"
+
+#include "ovs-shim.h"
+#include "ovs-ofputil.h"
 
 namespace ovsagent {
 
@@ -35,6 +39,10 @@ void FlowBuilder::build(FlowEntryList& list) {
     list.push_back(build());
 }
 
+struct match* FlowBuilder::match() {
+    return &entry_->entry->match;
+}
+
 FlowBuilder& FlowBuilder::table(uint8_t tableId) {
     entry_->entry->table_id = tableId;
     return *this;
@@ -57,17 +65,17 @@ FlowBuilder& FlowBuilder::inPort(uint32_t port) {
 
 FlowBuilder& FlowBuilder::ethSrc(const uint8_t mac[6], const uint8_t mask[6]) {
     if (mask)
-        match_set_dl_src_masked(match(), mac, mask);
+        match_set_dl_src_masked(match(), *(eth_addr*)mac, *(eth_addr*)mask);
     else
-        match_set_dl_src(match(), mac);
+        match_set_dl_src(match(), *(eth_addr*)mac);
     return *this;
 }
 
 FlowBuilder& FlowBuilder::ethDst(const uint8_t mac[6], const uint8_t mask[6]) {
     if (mask)
-        match_set_dl_dst_masked(match(), mac, mask);
+        match_set_dl_dst_masked(match(), *(eth_addr*)mac, *(eth_addr*)mask);
     else
-        match_set_dl_dst(match(), mac);
+        match_set_dl_dst(match(), *(eth_addr*)mac);
     return *this;
 }
 
@@ -102,10 +110,10 @@ static void addMatchSubnet(struct match* match,
    if (ip.is_v4()) {
        switch (ethType) {
        case 0:
-           ethType = ETH_TYPE_IP;
+           ethType = eth::type::IP;
            /* fall through */
-       case ETH_TYPE_IP:
-       case ETH_TYPE_ARP:
+       case eth::type::IP:
+       case eth::type::ARP:
            break;
        default:
            return;
@@ -124,9 +132,9 @@ static void addMatchSubnet(struct match* match,
    } else {
        switch (ethType) {
        case 0:
-           ethType = ETH_TYPE_IPV6;
+           ethType = eth::type::IPV6;
            /* fall through */
-       case ETH_TYPE_IPV6:
+       case eth::type::IPV6:
            break;
        default:
            return;
@@ -159,14 +167,14 @@ FlowBuilder& FlowBuilder::ipDst(const boost::asio::ip::address& ip,
 
 FlowBuilder& FlowBuilder::arpSrc(const boost::asio::ip::address& ip,
                                  uint8_t prefixLen) {
-    ethType(ETH_TYPE_ARP);
+    ethType(eth::type::ARP);
     addMatchSubnet(match(), ip, prefixLen, true, ethType_);
     return *this;
 }
 
 FlowBuilder& FlowBuilder::arpDst(const boost::asio::ip::address& ip,
                                  uint8_t prefixLen) {
-    ethType(ETH_TYPE_ARP);
+    ethType(eth::type::ARP);
     addMatchSubnet(match(), ip, prefixLen, false, ethType_);
     return *this;
 }
@@ -174,7 +182,7 @@ FlowBuilder& FlowBuilder::arpDst(const boost::asio::ip::address& ip,
 FlowBuilder& FlowBuilder::ndTarget(uint16_t type,
                                    const boost::asio::ip::address& ip,
                                    uint8_t prefixLen, uint16_t code) {
-    ethType(ETH_TYPE_IPV6).proto(58 /* ICMPv6 */)
+    ethType(eth::type::IPV6).proto(58 /* ICMPv6 */)
         .tpSrc(type)  // OVS uses tp_src for ICMPV6_TYPE
         .tpDst(code); // OVS uses tp_dst for ICMPV6_CODE
 
@@ -221,7 +229,7 @@ FlowBuilder& FlowBuilder::vlan(uint16_t vlan) {
 }
 
 FlowBuilder& FlowBuilder::tunId(uint64_t tunId) {
-    match_set_tun_id(match(), htonll(tunId));
+    match_set_tun_id(match(), ovs_htonll(tunId));
     return *this;
 }
 
@@ -231,7 +239,7 @@ FlowBuilder& FlowBuilder::reg(uint8_t reg, uint32_t value) {
 }
 
 FlowBuilder& FlowBuilder::metadata(uint64_t value, uint64_t mask) {
-    match_set_metadata_masked(match(), htonll(value), htonll(mask));
+    match_set_metadata_masked(match(), ovs_htonll(value), ovs_htonll(mask));
     return *this;
 }
 

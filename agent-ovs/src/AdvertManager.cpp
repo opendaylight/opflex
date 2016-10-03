@@ -23,6 +23,10 @@
 #include "IntFlowManager.h"
 #include "logging.h"
 #include "arp.h"
+#include "ovs-ofputil.h"
+
+// OVS lib
+#include <lib/util.h>
 
 using std::string;
 using boost::bind;
@@ -153,8 +157,8 @@ static int send_packet_out(IntFlowManager& intFlowManager,
     }
     ab.build(&po);
 
-    ofputil_protocol proto =
-        ofputil_protocol_from_ofp_version(conn->GetProtocolVersion());
+    ofputil_protocol proto = ofputil_protocol_from_ofp_version
+        ((ofp_version)conn->GetProtocolVersion());
     assert(ofputil_protocol_is_valid(proto));
     struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
     int error = conn->SendMessage(message);

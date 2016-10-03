@@ -15,7 +15,11 @@
 #include <boost/unordered_map.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
-#include "ovs.h"
+
+struct vconn;
+struct jsonrpc;
+struct jsonrpc_msg;
+struct ofpbuf;
 
 namespace ovsagent {
 
@@ -32,8 +36,8 @@ public:
      * @param msgType Type of the received message
      * @param msg The received message
      */
-    virtual void Handle(SwitchConnection *swConn, ofptype msgType,
-            ofpbuf *msg) = 0;
+    virtual void Handle(SwitchConnection *swConn, int msgType,
+                        struct ofpbuf *msg) = 0;
 };
 
 /**
@@ -84,7 +88,7 @@ public:
      * @param protoVer Version of OpenFlow protocol to use
      * @return 0 on success, openvswitch error code on failure
      */
-    virtual int Connect(ofp_version protoVer);
+    virtual int Connect(int protoVer);
 
     /**
      * Disconnect from daemon and switch.
@@ -113,14 +117,14 @@ public:
      * @param msgType OpenFlow message type to register for
      * @param handler Handler to register
      */
-    void RegisterMessageHandler(ofptype msgType, MessageHandler *handler);
+    void RegisterMessageHandler(int msgType, MessageHandler *handler);
 
     /**
      * Unregister a previously registered handler for OpenFlow message.
      * @param msgType OpenFlow message type to unregister for
      * @param handler Handler to unregister
      */
-    void UnregisterMessageHandler(ofptype msgType, MessageHandler *handler);
+    void UnregisterMessageHandler(int msgType, MessageHandler *handler);
 
     /**
      * Register handler for JSON messages.
@@ -138,7 +142,7 @@ public:
      * Send an OpenFlow message to the switch.
      * @return 0 on success, openvswitch error code on failure
      */
-    virtual int SendMessage(ofpbuf *msg);
+    virtual int SendMessage(struct ofpbuf *msg);
 
     /**
      * Send a JSON message to the daemon.
@@ -149,7 +153,7 @@ public:
     /**
      * Returns the OpenFlow protocol version being used by the connection.
      */
-    virtual ofp_version GetProtocolVersion();
+    virtual int GetProtocolVersion();
 
     /**
      * Get the name of switch that this connection is for.
@@ -233,7 +237,7 @@ protected:
 private:
     std::string switchName;
     vconn *ofConn;
-    ofp_version ofProtoVersion;
+    int ofProtoVersion;
     jsonrpc *jsonConn;
 
     bool isDisconnecting;
@@ -242,7 +246,7 @@ private:
     boost::mutex connMtx;
 
     typedef std::list<MessageHandler *>     HandlerList;
-    typedef boost::unordered_map<ofptype, HandlerList> HandlerMap;
+    typedef boost::unordered_map<int, HandlerList> HandlerMap;
     HandlerMap msgHandlers;
 
     typedef std::list<JsonMessageHandler *>  JsonHandlerList;
@@ -259,7 +263,7 @@ private:
      * Needed to keep the connection to switch alive.
      */
     class EchoRequestHandler : public MessageHandler {
-        void Handle(SwitchConnection *swConn, ofptype type, ofpbuf *msg);
+        void Handle(SwitchConnection *swConn, int type, struct ofpbuf *msg);
     };
 
     EchoRequestHandler echoReqHandler;
@@ -268,7 +272,7 @@ private:
      * @brief Handle errors from the switch by logging.
      */
     class ErrorHandler : public MessageHandler {
-        void Handle(SwitchConnection *swConn, ofptype type, ofpbuf *msg);
+        void Handle(SwitchConnection *swConn, int type, struct ofpbuf *msg);
     };
 
     ErrorHandler errorHandler;

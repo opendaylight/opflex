@@ -16,9 +16,21 @@
 #include <boost/foreach.hpp>
 #include <boost/scope_exit.hpp>
 
-#include "ovs.h"
 #include "SwitchConnection.h"
 #include "logging.h"
+
+#include "ovs-ofputil.h"
+
+extern "C" {
+#include <lib/util.h>
+#include <lib/dirs.h>
+#include <lib/socket-util.h>
+#include <lib/stream.h>
+#include <lib/poll-loop.h>
+#include <lib/jsonrpc.h>
+#include <openvswitch/vconn.h>
+#include <openvswitch/ofp-msgs.h>
+}
 
 using namespace std;
 using namespace boost;
@@ -62,8 +74,7 @@ SwitchConnection::UnregisterOnConnectListener(OnConnectListener *l) {
 }
 
 void
-SwitchConnection::RegisterMessageHandler(ofptype msgType,
-        MessageHandler *handler)
+SwitchConnection::RegisterMessageHandler(int msgType, MessageHandler *handler)
 {
     if (handler) {
         mutex_guard lock(connMtx);
@@ -72,7 +83,7 @@ SwitchConnection::RegisterMessageHandler(ofptype msgType,
 }
 
 void
-SwitchConnection::UnregisterMessageHandler(ofptype msgType,
+SwitchConnection::UnregisterMessageHandler(int msgType,
         MessageHandler *handler)
 {
     mutex_guard lock(connMtx);
@@ -98,7 +109,7 @@ void SwitchConnection::unregisterJsonMessageHandler(
 }
 
 int
-SwitchConnection::Connect(ofp_version protoVer) {
+SwitchConnection::Connect(int protoVer) {
     if (ofConn != NULL && jsonConn != NULL) {    // connection already created
         return true;
     }
@@ -136,7 +147,7 @@ SwitchConnection::doConnectOF() {
     }
 
     /* Verify we have the correct protocol version */
-    ofp_version connVersion = (ofp_version)vconn_get_version(newConn);
+    int connVersion = vconn_get_version(newConn);
     if (connVersion != ofProtoVersion) {
         LOG(WARNING) << "Remote supports version " << connVersion <<
                 ", wanted " << ofProtoVersion;
@@ -230,7 +241,7 @@ SwitchConnection::IsConnectedLocked() {
            jsonConn != NULL && jsonrpc_get_status(jsonConn) == 0;
 }
 
-ofp_version
+int
 SwitchConnection::GetProtocolVersion() {
     return ofProtoVersion;
 }
@@ -441,7 +452,7 @@ SwitchConnection::FireOnConnectListeners() {
         b2 = ofpraw_alloc(OFPRAW_NXT_SET_PACKET_IN_FORMAT,
                           GetProtocolVersion(), sizeof *pif);
         pif = (nx_set_packet_in_format*)ofpbuf_put_zeros(b2, sizeof *pif);
-        pif->format = htonl(NXPIF_NXM);
+        pif->format = htonl(NXPIF_NXT_PACKET_IN);
         SendMessage(b2);
     }
     notifyConnectListeners();
@@ -456,14 +467,14 @@ SwitchConnection::notifyConnectListeners() {
 
 void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
-                                             ofptype, ofpbuf *msg) {
+                                             int, ofpbuf *msg) {
     const ofp_header *rq = (const ofp_header *)msg->data;
     struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
     swConn->SendMessage(echoReplyMsg);
 }
 
 void
-SwitchConnection::ErrorHandler::Handle(SwitchConnection*, ofptype,
+SwitchConnection::ErrorHandler::Handle(SwitchConnection*, int,
                                        ofpbuf *msg) {
     const struct ofp_header *oh = (ofp_header *)msg->data;
     ofperr err = ofperr_decode_msg(oh, NULL);
