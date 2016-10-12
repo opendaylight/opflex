@@ -12,6 +12,7 @@
 #define OVSAGENT_IDGENERATOR_H_
 
 #include <string>
+#include <set>
 #include <boost/unordered_map.hpp>
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
@@ -48,8 +49,9 @@ public:
      * for the namespace is found, loads the assignments from the file.
      *
      * @param nmspc ID namespace to initialize
+     * @param maxId the maximum ID allowed for the namespace
      */
-    void initNamespace(const std::string& nmspc);
+    void initNamespace(const std::string& nmspc, uint32_t maxId = (1 << 31));
 
     /**
      * Get a unique ID for the given string in the given namespace.
@@ -69,6 +71,21 @@ public:
      * @param str string to remove
      */
     void erase(const std::string& nmspc, const std::string& str);
+
+    /**
+     * Get the number of IDs remaining for a namespace
+     * @param nmspc the namespace to check
+     * @return the number of remaining IDs
+     */
+    uint32_t getRemainingIds(const std::string& nmspc);
+
+    /**
+     * Get the number of sparse ranges for a namespace.  This is only
+     * useful for testing purposes.
+     * @param nmspc the namespace to chec
+     * @return the number of remaining free ranges
+     */
+    uint32_t getFreeRangeCount(const std::string& nmspc);
 
     /**
      * Purge erased entries that are sufficiently old
@@ -125,18 +142,29 @@ private:
     typedef boost::chrono::steady_clock::time_point time_point;
     typedef boost::chrono::milliseconds duration;
 
+    struct id_range {
+        id_range(uint32_t start_, uint32_t end_) :
+            start(start_), end(end_) { }
+
+        uint32_t start;
+        uint32_t end;
+    };
+
+    friend bool operator<(const id_range& lhs, const id_range& rhs);
+    friend bool operator==(const id_range& lhs, const id_range& rhs);
+    friend bool operator!=(const id_range& lhs, const id_range& rhs);
+
     /**
      * Keeps track of IDs assignments in a namespace.
      */
     struct IdMap : private boost::noncopyable {
-        IdMap() : lastUsedId(0) {}
-
         /**
          * Map of strings to the IDs assigned to them.
          */
         typedef boost::unordered_map<std::string, uint32_t> Str2IdMap;
         Str2IdMap ids;
-        uint32_t lastUsedId;
+
+        std::set<id_range> freeIds;
 
         typedef boost::unordered_map<std::string, time_point> Str2EIdMap;
         Str2EIdMap erasedIds;
@@ -149,6 +177,7 @@ private:
      * @param idmap Assignments to save
      */
     void persist(const std::string& nmspc, IdMap& idmap);
+    uint32_t getRemainingIdsLocked(const std::string& nmspc);
 
     boost::mutex id_mutex;
 
@@ -160,6 +189,7 @@ private:
     std::string persistDir;
     duration cleanupInterval;
 };
+
 
 } // ovsagent
 

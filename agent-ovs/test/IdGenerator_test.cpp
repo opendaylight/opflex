@@ -9,6 +9,7 @@
  */
 
 #include <cstdio>
+#include <sstream>
 #include <boost/test/unit_test.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread.hpp>
@@ -70,45 +71,220 @@ BOOST_AUTO_TEST_CASE(get_erase) {
 
         u1_id_1 = idgen1.getId(nmspc, u1);
         BOOST_CHECK(u1_id_1 != 0);
-        BOOST_CHECK(u1_id != u1_id_1);
 
         remove(idgen1.getNamespaceFile(nmspc).c_str());
     }
 
     {
         IdGenerator idgen2;
-        BOOST_CHECK_EQUAL(idgen2.getId(nmspc, u1), 0);
+        BOOST_CHECK_EQUAL(idgen2.getId(nmspc, u1), -1);
     }
 }
 
 BOOST_AUTO_TEST_CASE(garbage) {
     IdGenerator idgen(boost::chrono::milliseconds(15));
     string nmspc("idtest");
-    string u1("/uri/one");
-    string u2("/uri/two");
+    const string u1("/uri/one");
+    const string u2("/uri/two");
 
-    idgen.initNamespace(nmspc);
-    uint32_t id1 = idgen.getId(nmspc, u1);
-    uint32_t id2 = idgen.getId(nmspc, u2);
+    idgen.initNamespace(nmspc, 15);
+    BOOST_CHECK_EQUAL(1, idgen.getId(nmspc, u1));
+    BOOST_CHECK_EQUAL(2, idgen.getId(nmspc, u2));
 
     idgen.collectGarbage(nmspc, garbage_cb_true);
     boost::this_thread::sleep(boost::posix_time::milliseconds(20));
     idgen.cleanup();
 
-    BOOST_CHECK(id1 == idgen.getId(nmspc, u1));
-    BOOST_CHECK(id2 == idgen.getId(nmspc, u2));
+    BOOST_CHECK_EQUAL(1, idgen.getId(nmspc, u1));
+    BOOST_CHECK_EQUAL(2, idgen.getId(nmspc, u2));
+    BOOST_CHECK_EQUAL(13, idgen.getRemainingIds(nmspc));
 
     idgen.collectGarbage(nmspc, garbage_cb_false);
     boost::this_thread::sleep(boost::posix_time::milliseconds(20));
     idgen.cleanup();
-    // call again to reset lastUsedId
-    idgen.collectGarbage(nmspc, garbage_cb_false);
 
-    // note: reversed order to reassign IDs
-    BOOST_CHECK(id2 != idgen.getId(nmspc, u2));
-    BOOST_CHECK(id1 != idgen.getId(nmspc, u1));
-    BOOST_CHECK_EQUAL(id1, idgen.getId(nmspc, u2));
-    BOOST_CHECK_EQUAL(id2, idgen.getId(nmspc, u1));
+    BOOST_CHECK_EQUAL(15, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(1, idgen.getId(nmspc, u2));
+    BOOST_CHECK_EQUAL(2, idgen.getId(nmspc, u1));
+}
+
+BOOST_AUTO_TEST_CASE(free_range) {
+    IdGenerator idgen(boost::chrono::milliseconds(15));
+    string nmspc("idtest");
+    idgen.initNamespace(nmspc, 20);
+
+    vector<string> uris;
+    for (int i = 1; i <= 20; i++) {
+        std::stringstream s;
+        s << "/uri/" << i;
+        uris.push_back(s.str());
+    }
+
+    BOOST_CHECK_EQUAL(20, idgen.getRemainingIds(nmspc));
+    for (int i = 0; i < 20; i++) {
+        BOOST_CHECK_EQUAL(1, idgen.getFreeRangeCount(nmspc));
+        BOOST_CHECK_EQUAL(i+1, idgen.getId(nmspc, uris[i]));
+    }
+    BOOST_CHECK_EQUAL(0, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(0, idgen.getFreeRangeCount(nmspc));
+
+    // add free to empty range
+    idgen.erase(nmspc, uris[10]);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+    BOOST_CHECK_EQUAL(1, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(1, idgen.getFreeRangeCount(nmspc));
+
+    // add isolated at start and end
+    idgen.erase(nmspc, uris[6]);
+    idgen.erase(nmspc, uris[14]);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+    BOOST_CHECK_EQUAL(3, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
+
+    // merge to range above and below
+    idgen.erase(nmspc, uris[7]);
+    idgen.erase(nmspc, uris[13]);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+    BOOST_CHECK_EQUAL(5, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
+
+    // merge to center range
+    idgen.erase(nmspc, uris[9]);
+    idgen.erase(nmspc, uris[11]);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+    BOOST_CHECK_EQUAL(7, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
+
+    // merge all ranges into one range
+    idgen.erase(nmspc, uris[8]);
+    idgen.erase(nmspc, uris[12]);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+    BOOST_CHECK_EQUAL(9, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(1, idgen.getFreeRangeCount(nmspc));
+
+    // add to beginning and end
+    idgen.erase(nmspc, uris[0]);
+    idgen.erase(nmspc, uris[19]);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+    BOOST_CHECK_EQUAL(11, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
+
+    // add isolated between ranges
+    idgen.erase(nmspc, uris[3]);
+    idgen.erase(nmspc, uris[17]);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    idgen.cleanup();
+    BOOST_CHECK_EQUAL(13, idgen.getRemainingIds(nmspc));
+    BOOST_CHECK_EQUAL(5, idgen.getFreeRangeCount(nmspc));
+}
+
+BOOST_AUTO_TEST_CASE(persist_range) {
+    string dir(".");
+    string nmspc("idtest");
+
+    vector<string> uris;
+    for (int i = 1; i <= 20; i++) {
+        std::stringstream s;
+        s << "/uri/" << i;
+        uris.push_back(s.str());
+    }
+
+    {
+        IdGenerator idgen(boost::chrono::milliseconds(15));
+        idgen.setPersistLocation(dir);
+        remove(idgen.getNamespaceFile(nmspc).c_str());
+        idgen.initNamespace(nmspc, 20);
+
+        BOOST_CHECK_EQUAL(20, idgen.getRemainingIds(nmspc));
+        for (int i = 0; i < 20; i++) {
+            BOOST_CHECK_EQUAL(1, idgen.getFreeRangeCount(nmspc));
+            BOOST_CHECK_EQUAL(i+1, idgen.getId(nmspc, uris[i]));
+        }
+        BOOST_CHECK_EQUAL(0, idgen.getRemainingIds(nmspc));
+        BOOST_CHECK_EQUAL(0, idgen.getFreeRangeCount(nmspc));
+    }
+
+    {
+        IdGenerator idgen(boost::chrono::milliseconds(15));
+        idgen.setPersistLocation(dir);
+        idgen.initNamespace(nmspc, 20);
+        BOOST_CHECK_EQUAL(0, idgen.getRemainingIds(nmspc));
+        BOOST_CHECK_EQUAL(0, idgen.getFreeRangeCount(nmspc));
+
+        idgen.erase(nmspc, uris[10]);
+        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        idgen.cleanup();
+    }
+
+    {
+        IdGenerator idgen(boost::chrono::milliseconds(15));
+        idgen.setPersistLocation(dir);
+        idgen.initNamespace(nmspc, 20);
+        BOOST_CHECK_EQUAL(1, idgen.getRemainingIds(nmspc));
+        BOOST_CHECK_EQUAL(1, idgen.getFreeRangeCount(nmspc));
+
+        idgen.erase(nmspc, uris[5]);
+        idgen.erase(nmspc, uris[15]);
+        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        idgen.cleanup();
+    }
+
+    {
+        IdGenerator idgen(boost::chrono::milliseconds(15));
+        idgen.setPersistLocation(dir);
+        idgen.initNamespace(nmspc, 20);
+        BOOST_CHECK_EQUAL(3, idgen.getRemainingIds(nmspc));
+        BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
+
+        idgen.erase(nmspc, uris[4]);
+        idgen.erase(nmspc, uris[9]);
+        idgen.erase(nmspc, uris[11]);
+        idgen.erase(nmspc, uris[14]);
+        idgen.erase(nmspc, uris[16]);
+        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        idgen.cleanup();
+    }
+
+    {
+        IdGenerator idgen(boost::chrono::milliseconds(15));
+        idgen.setPersistLocation(dir);
+        idgen.initNamespace(nmspc, 20);
+        BOOST_CHECK_EQUAL(8, idgen.getRemainingIds(nmspc));
+        BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
+
+        for (int i = 0; i < 20; i++) {
+            idgen.erase(nmspc, uris[i]);
+        }
+        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        idgen.cleanup();
+
+        for (int i = 0; i < 20; i++) {
+            idgen.getId(nmspc, uris[i]);
+        }
+        for (int i = 0; i < 10; i++) {
+            idgen.erase(nmspc, uris[i]);
+        }
+        for (int i = 11; i < 20; i++) {
+            idgen.erase(nmspc, uris[i]);
+        }
+        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        idgen.cleanup();
+    }
+
+    {
+        IdGenerator idgen(boost::chrono::milliseconds(15));
+        idgen.setPersistLocation(dir);
+        idgen.initNamespace(nmspc, 20);
+        BOOST_CHECK_EQUAL(19, idgen.getRemainingIds(nmspc));
+        BOOST_CHECK_EQUAL(2, idgen.getFreeRangeCount(nmspc));
+    }
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
