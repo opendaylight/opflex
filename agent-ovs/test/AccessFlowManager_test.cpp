@@ -11,6 +11,7 @@
 #include "BaseFixture.h"
 #include "FlowManagerFixture.h"
 #include "AccessFlowManager.h"
+#include "CtZoneManager.h"
 #include "FlowConstants.h"
 #include "FlowUtils.h"
 
@@ -42,6 +43,7 @@ public:
         expTables.resize(AccessFlowManager::NUM_FLOW_TABLES);
         switchManager.registerStateHandler(&accessFlowManager);
         start();
+        accessFlowManager.enableConnTrack(1, 65534, false);
         accessFlowManager.start();
     }
     virtual ~AccessFlowManagerFixture() {
@@ -200,6 +202,10 @@ BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
             ->addGbpSecGroupRule("2_1_rule2")
             ->setDirection(DirectionEnumT::CONST_BIDIRECTIONAL).setOrder(20)
             .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
+        secGrp2->addGbpSecGroupSubject("2_subject1")
+            ->addGbpSecGroupRule("2_1_rule3")
+            ->setDirection(DirectionEnumT::CONST_OUT).setOrder(30)
+            .addGbpRuleToClassifierRSrc(classifier9->getURI().toString());
         mutator.commit();
     }
 
@@ -274,6 +280,7 @@ void AccessFlowManagerFixture::initExpStatic() {
 void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
     uint32_t access = portmapper.FindPort(ep->getAccessInterface().get());
     uint32_t uplink = portmapper.FindPort(ep->getAccessUplinkInterface().get());
+    uint32_t zoneId = idGen.getId("endpoint", ep->getUUID());
 
     if (access == OFPP_NONE || uplink == OFPP_NONE) return;
 
@@ -281,16 +288,19 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
         ADDF(Bldr().table(GRP).priority(100).in(access)
              .isVlan(ep->getAccessIfaceVlan().get())
              .actions()
-             .popVlan().load(SEPG, 1).load(OUTPORT, uplink).go(OUT_POL).done());
+             .popVlan().load(RD, zoneId).load(SEPG, 1)
+             .load(OUTPORT, uplink).go(OUT_POL).done());
         ADDF(Bldr().table(GRP).priority(100).in(uplink)
-             .actions().load(SEPG, 1).load(OUTPORT, access)
+             .actions().load(RD, zoneId).load(SEPG, 1).load(OUTPORT, access)
              .pushVlan().setVlan(ep->getAccessIfaceVlan().get())
              .go(IN_POL).done());
     } else {
         ADDF(Bldr().table(GRP).priority(100).in(access)
-             .actions().load(SEPG, 1).load(OUTPORT, uplink).go(OUT_POL).done());
+             .actions().load(RD, zoneId).load(SEPG, 1)
+             .load(OUTPORT, uplink).go(OUT_POL).done());
         ADDF(Bldr().table(GRP).priority(100).in(uplink)
-             .actions().load(SEPG, 1).load(OUTPORT, access).go(IN_POL).done());
+             .actions().load(RD, zoneId).load(SEPG, 1)
+             .load(OUTPORT, access).go(IN_POL).done());
     }
 }
 
@@ -372,10 +382,24 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
 uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
     uint32_t grpId = idGen.getId("secGroup", secGrp2->getURI().toString());
     uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
+    /* classifier 5 */
     ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
     ADDF(Bldr().table(OUT_POL).priority(prio).cookie(grpId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
+
+    /* classifier 9 */
+    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
+         .ctState("-new+est+trk").tcp().reg(SEPG, setId)
+         .actions().go(OUT).done());
+    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
+         .ctState("-trk").tcp().reg(SEPG, setId)
+         .actions().ct("table=0,zone=NXM_NX_REG6[0..15]").done());
+    ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(grpId)
+         .tcp().reg(SEPG, setId).isTpDst(22)
+         .actions().ct("commit,zone=NXM_NX_REG6[0..15]")
+         .go(OUT).done());
+
     return 1;
 }
 

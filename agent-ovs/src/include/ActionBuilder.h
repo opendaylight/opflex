@@ -13,6 +13,7 @@
 
 #include <boost/asio/ip/address.hpp>
 #include <boost/optional.hpp>
+#include <boost/noncopyable.hpp>
 
 extern "C" {
 #include <openvswitch/meta-flow.h>
@@ -32,7 +33,7 @@ class FlowBuilder;
 /**
  * Class to help construct the actions part of a table entry incrementally.
  */
-class ActionBuilder {
+class ActionBuilder : boost::noncopyable {
 public:
     /**
      * Construct an action builder with a parent flow builder
@@ -120,6 +121,21 @@ public:
      * @return this action builder for chaining
      */
     ActionBuilder& regMove(mf_field_id srcRegId, mf_field_id dstRegId);
+
+    /**
+     * Copy the given source register into the given destination
+     * register
+     * @param srcRegId the source register
+     * @param dstRegId the destination register
+     * @param sourceOffset the offset in bits for the source
+     * @param destOffset the offset in bits for the dest
+     * @param nBits the number of bits to copy, or zero to copy the
+     * whole field
+     * @return this action builder for chaining
+     */
+    ActionBuilder& regMove(mf_field_id srcRegId, mf_field_id dstRegId,
+                           uint8_t sourceOffset, uint8_t destOffset,
+                           uint8_t nBits);
 
     /**
      * Write to the metadata field
@@ -226,6 +242,33 @@ public:
      * @return this action builder for chaining
      */
     ActionBuilder& popVlan();
+
+    /**
+     * Flas for conn track action
+     */
+    enum ConnTrackFlags {
+        /**
+         * The connection entry is moved from the unconfirmed to
+         * confirmed list in the tracker.
+         */
+        CT_COMMIT = 1 << 0
+    };
+
+    /**
+     * Set conntrack action
+     *
+     * @param flags conntrack flags for conntrack action
+     * @param zoneSrc if zoneImm not set, use zone from the specified field
+     * @param zoneImm if set, connection tracking zone to use
+     * @param recircTable the table to recirculate the packet to, or
+     * 0xff to not recirculate
+     * @param alg the algorithm ID for connection tracking helpers
+     */
+    ActionBuilder& conntrack(uint16_t flags = 0,
+                             mf_field_id zoneSrc = static_cast<mf_field_id>(0),
+                             uint16_t zoneImm = 0,
+                             uint8_t recircTable = 0xff,
+                             uint16_t alg = 0);
 
     /**
      * Extract and return an array of flow actions from a buffer used

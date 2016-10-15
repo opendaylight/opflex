@@ -17,6 +17,7 @@
 #include <boost/range/sub_range.hpp>
 
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/ConnTrackEnumT.hpp>
 
 #include <string>
 #include <vector>
@@ -42,11 +43,14 @@ static const char* ID_NAMESPACES[] =
 static const char* ID_NMSPC_SECGROUP     = ID_NAMESPACES[0];
 static const char* ID_NMSPC_SECGROUP_SET = ID_NAMESPACES[1];
 
+static const std::string ID_NMSPC_ENDPOINT("endpoint");
+
 AccessFlowManager::AccessFlowManager(Agent& agent_,
                                      SwitchManager& switchManager_,
                                      IdGenerator& idGen_)
     : agent(agent_), switchManager(switchManager_), idGen(idGen_),
-      taskQueue(agent.getAgentIOService()), stopping(false) {
+      ctZoneManager(idGen_), taskQueue(agent.getAgentIOService()),
+      conntrackEnabled(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
 }
@@ -62,7 +66,17 @@ static string getSecGrpSetId(const uri_set_t& secGrps) {
    return ss.str();
 }
 
+void AccessFlowManager::enableConnTrack(uint16_t minId, uint16_t maxId,
+                                        bool useNetLink) {
+    conntrackEnabled = true;
+    ctZoneManager.setCtZoneRange(minId, maxId);
+    ctZoneManager.enableNetLink(useNetLink);
+}
+
 void AccessFlowManager::start() {
+    if (conntrackEnabled)
+        ctZoneManager.init(ID_NMSPC_ENDPOINT);
+
     switchManager.getPortMapper().registerPortStatusListener(this);
     agent.getEndpointManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
@@ -144,6 +158,8 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
         agent.getEndpointManager().getEndpoint(uuid);
     if (!ep) {
         switchManager.clearFlows(uuid, GROUP_MAP_TABLE_ID);
+        if (conntrackEnabled)
+            ctZoneManager.erase(uuid);
         return;
     }
 
@@ -159,6 +175,13 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
 
     uint32_t secGrpSetId = idGen.getId(ID_NMSPC_SECGROUP_SET,
                                        getSecGrpSetId(ep->getSecurityGroups()));
+    uint16_t zoneId = -1;
+    if (conntrackEnabled) {
+        zoneId = ctZoneManager.getId(uuid);
+        if (zoneId == static_cast<uint16_t>(-1))
+            LOG(ERROR) << "Could not allocate connection tracking zone for "
+                       << uuid;
+    }
 
     FlowEntryList el;
     if (accessPort != OFPP_NONE && uplinkPort != OFPP_NONE) {
@@ -169,6 +192,10 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
                 in.vlan(ep->getAccessIfaceVlan().get());
                 in.action().popVlan();
             }
+            if (zoneId != static_cast<uint16_t>(-1))
+                in.action()
+                    .reg(MFF_REG6, zoneId);
+
             in.action()
                 .reg(MFF_REG0, secGrpSetId)
                 .reg(MFF_REG7, uplinkPort)
@@ -177,6 +204,10 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
         }
         {
             FlowBuilder out;
+            if (zoneId != static_cast<uint16_t>(-1))
+                out.action()
+                    .reg(MFF_REG6, zoneId);
+
             out.priority(100).inPort(uplinkPort)
                 .action()
                 .reg(MFF_REG0, secGrpSetId)
@@ -213,6 +244,11 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                               const string& secGrpsIdStr) {
     using modelgbp::gbpe::L24Classifier;
     using modelgbp::gbp::DirectionEnumT;
+    using modelgbp::gbp::ConnTrackEnumT;
+    using flowutils::CA_REFLEX_REV_ALLOW;
+    using flowutils::CA_REFLEX_REV;
+    using flowutils::CA_REFLEX_FWD;
+    using flowutils::CA_ALLOW;
 
     LOG(DEBUG) << "Updating security group set \"" << secGrpsIdStr << "\"";
 
@@ -241,10 +277,19 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
             if (!pc->getRemoteSubnets().empty())
                 remoteSubs = pc->getRemoteSubnets();
 
+            flowutils::ClassAction act = flowutils::CA_DENY;
+            if (pc->getAllow()) {
+                if (cls->getConnectionTracking(ConnTrackEnumT::CONST_NORMAL) ==
+                    ConnTrackEnumT::CONST_REFLEXIVE) {
+                    act = CA_REFLEX_FWD;
+                } else {
+                    act = CA_ALLOW;
+                }
+            }
+
             if (dir == DirectionEnumT::CONST_BIDIRECTIONAL ||
                 dir == DirectionEnumT::CONST_IN) {
-                flowutils::add_classifier_entries(*cls,
-                                                  pc->getAllow(),
+                flowutils::add_classifier_entries(*cls, act,
                                                   remoteSubs,
                                                   boost::none,
                                                   OUT_TABLE_ID,
@@ -252,11 +297,29 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   secGrpCookie,
                                                   secGrpSetId, 0,
                                                   secGrpIn);
+                if (act == CA_REFLEX_FWD) {
+                    // add reverse entries for reflexive classifier
+                    flowutils::add_classifier_entries(*cls, CA_REFLEX_REV,
+                                                      boost::none,
+                                                      remoteSubs,
+                                                      GROUP_MAP_TABLE_ID,
+                                                      pc->getPriority(),
+                                                      secGrpCookie,
+                                                      secGrpSetId, 0,
+                                                      secGrpOut);
+                    flowutils::add_classifier_entries(*cls, CA_REFLEX_REV_ALLOW,
+                                                      boost::none,
+                                                      remoteSubs,
+                                                      OUT_TABLE_ID,
+                                                      pc->getPriority(),
+                                                      secGrpCookie,
+                                                      secGrpSetId, 0,
+                                                      secGrpOut);
+                }
             }
             if (dir == DirectionEnumT::CONST_BIDIRECTIONAL ||
                 dir == DirectionEnumT::CONST_OUT) {
-                flowutils::add_classifier_entries(*cls,
-                                                  pc->getAllow(),
+                flowutils::add_classifier_entries(*cls, act,
                                                   boost::none,
                                                   remoteSubs,
                                                   OUT_TABLE_ID,
@@ -264,6 +327,25 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   secGrpCookie,
                                                   secGrpSetId, 0,
                                                   secGrpOut);
+                if (act == CA_REFLEX_FWD) {
+                    // add reverse entries for reflexive classifier
+                    flowutils::add_classifier_entries(*cls, CA_REFLEX_REV,
+                                                      remoteSubs,
+                                                      boost::none,
+                                                      GROUP_MAP_TABLE_ID,
+                                                      pc->getPriority(),
+                                                      secGrpCookie,
+                                                      secGrpSetId, 0,
+                                                      secGrpIn);
+                    flowutils::add_classifier_entries(*cls, CA_REFLEX_REV_ALLOW,
+                                                      remoteSubs,
+                                                      boost::none,
+                                                      OUT_TABLE_ID,
+                                                      pc->getPriority(),
+                                                      secGrpCookie,
+                                                      secGrpSetId, 0,
+                                                      secGrpIn);
+                }
             }
         }
     }

@@ -32,8 +32,10 @@ ActionBuilder::ActionBuilder()
 }
 
 ActionBuilder::~ActionBuilder() {
-    ofpbuf_uninit(buf);
-    delete buf;
+    if (buf) {
+        ofpbuf_uninit(buf);
+        delete buf;
+    }
 }
 
 ofpact * ActionBuilder::getActionsFromBuffer(ofpbuf *buf, size_t& actsLen) {
@@ -108,7 +110,16 @@ ActionBuilder& ActionBuilder::reg(mf_field_id regId, const uint8_t *macValue) {
 
 ActionBuilder& ActionBuilder::regMove(mf_field_id srcRegId,
                                       mf_field_id dstRegId) {
-    act_reg_move(buf, srcRegId, dstRegId);
+    regMove(srcRegId, dstRegId, 0, 0, 0);
+    return *this;
+}
+
+ActionBuilder& ActionBuilder::regMove(mf_field_id srcRegId,
+                                      mf_field_id dstRegId,
+                                      uint8_t sourceOffset,
+                                      uint8_t destOffset,
+                                      uint8_t nBits) {
+    act_reg_move(buf, srcRegId, dstRegId, sourceOffset, destOffset, nBits);
     return *this;
 }
 
@@ -193,6 +204,15 @@ ActionBuilder& ActionBuilder::setVlanVid(uint16_t vlan) {
 
 ActionBuilder& ActionBuilder::popVlan() {
     act_pop_vlan(buf);
+    return *this;
+}
+
+ActionBuilder& ActionBuilder::conntrack(uint16_t flags,
+                                        mf_field_id zoneSrc,
+                                        uint16_t zoneImm,
+                                        uint8_t recircTable,
+                                        uint16_t alg) {
+    act_conntrack(buf, flags, zoneImm, zoneSrc, recircTable, alg);
     return *this;
 }
 

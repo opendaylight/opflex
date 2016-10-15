@@ -132,7 +132,7 @@ static flow_func make_flow_functor(const subnet_t& ss, FlowBuilderFunc func) {
     return boost::bind(applyRemoteSub, _1, func, addr, ss.second, _2);
 }
 
-void add_classifier_entries(L24Classifier& clsfr, bool allow,
+void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
                             boost::optional<const subnets_t&> sourceSub,
                             boost::optional<const subnets_t&> destSub,
                             uint8_t nextTable, uint16_t priority,
@@ -178,19 +178,60 @@ void add_classifier_entries(L24Classifier& clsfr, bool allow,
                         FlowBuilder f;
                         f.cookie(ckbe);
 
+                        switch (act) {
+                        case flowutils::CA_REFLEX_REV:
+                            f.conntrackState(0, FlowBuilder::CT_STATE_TRACKED);
+                            break;
+                        case flowutils::CA_REFLEX_REV_ALLOW:
+                            f.conntrackState(FlowBuilder::CT_STATE_TRACKED |
+                                             FlowBuilder::CT_STATE_ESTABLISHED,
+                                             FlowBuilder::CT_STATE_TRACKED |
+                                             FlowBuilder::CT_STATE_ESTABLISHED |
+                                             FlowBuilder::CT_STATE_NEW);
+                            break;
+                        default:
+                            // nothing
+                            break;
+                        }
+
                         flowutils::match_group(f, priority, svnid, dvnid);
                         uint16_t etht = match_protocol(f, clsfr);
-                        if (tcpFlags != TcpFlagsEnumT::CONST_UNSPECIFIED)
-                            match_tcp_flags(f, flagMask);
 
-                        if (src_func && !src_func(f, etht)) continue;
-                        if (dst_func && !dst_func(f, etht)) continue;
+                        switch (act) {
+                        case flowutils::CA_DENY:
+                        case flowutils::CA_ALLOW:
+                        case flowutils::CA_REFLEX_FWD:
+                            if (tcpFlags != TcpFlagsEnumT::CONST_UNSPECIFIED)
+                                match_tcp_flags(f, flagMask);
 
-                        f.tpSrc(sm.first, sm.second)
-                            .tpDst(dm.first, dm.second);
+                            if (src_func && !src_func(f, etht)) continue;
+                            if (dst_func && !dst_func(f, etht)) continue;
 
-                        if (allow) {
+                            f.tpSrc(sm.first, sm.second)
+                                .tpDst(dm.first, dm.second);
+                            break;
+                        default:
+                            // nothing
+                            break;
+                        }
+
+                        switch (act) {
+                        case flowutils::CA_REFLEX_REV:
+                            f.action().conntrack(0, MFF_REG6, 0, nextTable);
+                            break;
+                        case flowutils::CA_REFLEX_FWD:
+                            f.action().conntrack(ActionBuilder::CT_COMMIT,
+                                                 MFF_REG6);
+
+                            // fall through
+                        case flowutils::CA_REFLEX_REV_ALLOW:
+                        case flowutils::CA_ALLOW:
                             f.action().go(nextTable);
+                            break;
+                        case flowutils::CA_DENY:
+                        default:
+                            // nothing
+                            break;
                         }
                         entries.push_back(f.build());
                     }

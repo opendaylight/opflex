@@ -95,6 +95,9 @@ private:
     std::string virtualDHCPMac;
     std::string flowIdCache;
     std::string mcastGroupFile;
+    bool connTrack;
+    uint16_t ctZoneRangeStart;
+    uint16_t ctZoneRangeEnd;
 
     bool started;
 

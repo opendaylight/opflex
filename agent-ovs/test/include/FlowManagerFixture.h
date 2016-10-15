@@ -169,8 +169,8 @@ public:
     Bldr& isTcpFlags(const std::string& s)  {
         rep(",tcp_flags=", s); return *this;
     }
-    Bldr& connState(const std::string& s) {
-        rep(",conn_state=" + s); return *this;
+    Bldr& ctState(const std::string& s) {
+        rep(",ct_state=" + s); return *this;
     }
     Bldr& isMdAct(uint8_t a) {
         rep(",metadata=", str(a, true), "/0xff"); return *this;
@@ -223,6 +223,9 @@ public:
     }
     Bldr& mdAct(uint8_t a) {
         rep("write_metadata:", str(a, true), "/0xff"); return *this;
+    }
+    Bldr& ct(const std::string& s) {
+        rep("ct(", s, ")"); return *this;
     }
     Bldr& polApplied() { rep("write_metadata:0x100/0x100"); return *this; }
     Bldr& resubmit(uint8_t t) { rep("resubmit(,", str(t), ")"); return *this; }

@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(garbage) {
     const string u1("/uri/one");
     const string u2("/uri/two");
 
-    idgen.initNamespace(nmspc, 15);
+    idgen.initNamespace(nmspc, 1, 15);
     BOOST_CHECK_EQUAL(1, idgen.getId(nmspc, u1));
     BOOST_CHECK_EQUAL(2, idgen.getId(nmspc, u2));
 
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(garbage) {
 BOOST_AUTO_TEST_CASE(free_range) {
     IdGenerator idgen(boost::chrono::milliseconds(15));
     string nmspc("idtest");
-    idgen.initNamespace(nmspc, 20);
+    idgen.initNamespace(nmspc, 1, 20);
 
     vector<string> uris;
     for (int i = 1; i <= 20; i++) {
@@ -199,7 +199,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
         IdGenerator idgen(boost::chrono::milliseconds(15));
         idgen.setPersistLocation(dir);
         remove(idgen.getNamespaceFile(nmspc).c_str());
-        idgen.initNamespace(nmspc, 20);
+        idgen.initNamespace(nmspc, 1, 20);
 
         BOOST_CHECK_EQUAL(20, idgen.getRemainingIds(nmspc));
         for (int i = 0; i < 20; i++) {
@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
     {
         IdGenerator idgen(boost::chrono::milliseconds(15));
         idgen.setPersistLocation(dir);
-        idgen.initNamespace(nmspc, 20);
+        idgen.initNamespace(nmspc, 1, 20);
         BOOST_CHECK_EQUAL(0, idgen.getRemainingIds(nmspc));
         BOOST_CHECK_EQUAL(0, idgen.getFreeRangeCount(nmspc));
 
@@ -225,7 +225,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
     {
         IdGenerator idgen(boost::chrono::milliseconds(15));
         idgen.setPersistLocation(dir);
-        idgen.initNamespace(nmspc, 20);
+        idgen.initNamespace(nmspc, 1, 20);
         BOOST_CHECK_EQUAL(1, idgen.getRemainingIds(nmspc));
         BOOST_CHECK_EQUAL(1, idgen.getFreeRangeCount(nmspc));
 
@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
     {
         IdGenerator idgen(boost::chrono::milliseconds(15));
         idgen.setPersistLocation(dir);
-        idgen.initNamespace(nmspc, 20);
+        idgen.initNamespace(nmspc, 1, 20);
         BOOST_CHECK_EQUAL(3, idgen.getRemainingIds(nmspc));
         BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
 
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
     {
         IdGenerator idgen(boost::chrono::milliseconds(15));
         idgen.setPersistLocation(dir);
-        idgen.initNamespace(nmspc, 20);
+        idgen.initNamespace(nmspc, 1, 20);
         BOOST_CHECK_EQUAL(8, idgen.getRemainingIds(nmspc));
         BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
 
@@ -280,7 +280,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
     {
         IdGenerator idgen(boost::chrono::milliseconds(15));
         idgen.setPersistLocation(dir);
-        idgen.initNamespace(nmspc, 20);
+        idgen.initNamespace(nmspc, 1, 20);
         BOOST_CHECK_EQUAL(19, idgen.getRemainingIds(nmspc));
         BOOST_CHECK_EQUAL(2, idgen.getFreeRangeCount(nmspc));
     }

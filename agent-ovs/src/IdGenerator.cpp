@@ -34,6 +34,17 @@ IdGenerator::IdGenerator(duration cleanupInterval_)
 
 }
 
+void IdGenerator::setAllocHook(const std::string& nmspc,
+                               alloc_hook_t& allocHook) {
+    lock_guard<mutex> guard(id_mutex);
+    NamespaceMap::iterator nitr = namespaces.find(nmspc);
+    if (nitr == namespaces.end()) {
+        LOG(ERROR) << "Cannot set hook for uninitialized namespace: " << nmspc;
+    }
+
+    nitr->second.allocHook = allocHook;
+}
+
 uint32_t IdGenerator::getId(const string& nmspc, const string& str) {
     lock_guard<mutex> guard(id_mutex);
     NamespaceMap::iterator nitr = namespaces.find(nmspc);
@@ -55,6 +66,12 @@ uint32_t IdGenerator::getId(const string& nmspc, const string& str) {
         }
         id_range start = *idmap.freeIds.begin();
         uint32_t newId = idmap.ids[str] = start.start;
+        if (idmap.allocHook) {
+            if (!idmap.allocHook.get()(str, newId)) {
+                LOG(ERROR) << "ID allocation canceled by allocation hook";
+                return -1;
+            }
+        }
         idmap.freeIds.erase(start);
         if (start.start < start.end)
             idmap.freeIds.insert(id_range(start.start + 1, start.end));
@@ -227,11 +244,12 @@ void IdGenerator::persist(const std::string& nmspc, IdMap& idmap) {
     LOG(DEBUG) << "Wrote " << idmap.ids.size() << " entries to file " << fname;
 }
 
-void IdGenerator::initNamespace(const std::string& nmspc, uint32_t maxId) {
+void IdGenerator::initNamespace(const std::string& nmspc,
+                                uint32_t minId, uint32_t maxId) {
     lock_guard<mutex> guard(id_mutex);
     IdMap& idmap = namespaces[nmspc];
     idmap.ids.clear();
-    idmap.freeIds.insert(id_range(1, maxId));
+    idmap.freeIds.insert(id_range(minId, maxId));
 
     if (persistDir.empty()) {
         return;
@@ -277,6 +295,10 @@ void IdGenerator::initNamespace(const std::string& nmspc, uint32_t maxId) {
         }
         if (usedIds.find(id) != usedIds.end()) {
             LOG(WARNING) << "ID file corrupt: " << id << " seen more than once";
+        } else if (id > maxId) {
+            LOG(WARNING) << "ID file corrupt: " << id << " above maximum";
+        } else if (id < minId) {
+            LOG(WARNING) << "ID file corrupt: " << id << " below minimum";
         } else {
             idmap.ids[*str] = id;
         }
@@ -286,7 +308,7 @@ void IdGenerator::initNamespace(const std::string& nmspc, uint32_t maxId) {
     }
     file.close();
 
-    uint32_t cur = 1;
+    uint32_t cur = minId;
     uint32_t id = 0;
     idmap.freeIds.clear();
     BOOST_FOREACH(id, usedIds) {
@@ -339,4 +361,3 @@ bool operator!=(const IdGenerator::id_range& lhs,
 }
 
 } // namespace ovsagent
-
