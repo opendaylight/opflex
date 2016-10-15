@@ -80,6 +80,7 @@ public:
     boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier6;
     boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier7;
     boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier8;
+    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier9;
 
     boost::shared_ptr<modelgbp::gbp::AllowDenyAction> action1;
 
@@ -236,6 +237,7 @@ protected:
         /* blank classifier */
         classifier0 = space->addGbpeL24Classifier("classifier0");
         classifier0->setOrder(10);
+
         /* allow bidirectional FCoE */
         classifier5 = space->addGbpeL24Classifier("classifier5");
         classifier5->setOrder(20).setEtherT(l2::EtherTypeEnumT::CONST_FCOE);
@@ -262,12 +264,20 @@ protected:
             .setTcpFlags(l4::TcpFlagsEnumT::CONST_ACK |
                          l4::TcpFlagsEnumT::CONST_SYN);
 
-        /* allow SSH from port 22 with ACK+SYN */
+        /* allow SSH from port 22 with EST */
         classifier7 = space->addGbpeL24Classifier("classifier7");
         classifier7->setEtherT(l2::EtherTypeEnumT::CONST_IPV4)
             .setProt(6 /* TCP */)
             .setSFromPort(21)
             .setTcpFlags(l4::TcpFlagsEnumT::CONST_ESTABLISHED);
+
+        /* Allow 22 reflexive */
+        classifier9 = space->addGbpeL24Classifier("classifier9");
+        classifier9->setOrder(10)
+            .setEtherT(l2::EtherTypeEnumT::CONST_IPV4)
+            .setProt(6 /* TCP */)
+            .setDFromPort(22)
+            .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE);
 
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")

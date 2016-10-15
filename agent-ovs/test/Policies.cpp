@@ -79,12 +79,15 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<L24Classifier> classifier2;
     shared_ptr<L24Classifier> classifier3;
     shared_ptr<L24Classifier> classifier4;
+    shared_ptr<L24Classifier> classifier5;
+    shared_ptr<L24Classifier> classifier6;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
 
     shared_ptr<SecGroup> secGrp1;
     shared_ptr<SecGroup> secGrp2;
+    shared_ptr<SecGroup> secGrp3;
 
     shared_ptr<policy::Universe> universe =
         policy::Universe::resolve(framework).get();
@@ -191,13 +194,25 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         .setEtherT(EtherTypeEnumT::CONST_IPV6)
         .setProt(58);
 
-    // HTTP
+    // HTTP, reflexive
     classifier4 = space->addGbpeL24Classifier("classifier4");
     classifier4->setEtherT(EtherTypeEnumT::CONST_IPV4)
         .setProt(6)
         .setDFromPort(80)
         .setDToPort(80)
         .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE);
+
+    // TCP, reflexive
+    classifier5 = space->addGbpeL24Classifier("classifier5");
+    classifier5->setEtherT(EtherTypeEnumT::CONST_IPV4)
+        .setProt(6)
+        .setConnectionTracking(ConnTrackEnumT::CONST_REFLEXIVE);
+
+    // HTTP, not reflexive
+    classifier6 = space->addGbpeL24Classifier("classifier6");
+    classifier6->setEtherT(EtherTypeEnumT::CONST_IPV4)
+        .setProt(6)
+        .setDFromPort(80);
 
     // Basic ARP and ICMP
     con1 = space->addGbpContract("contract1");
@@ -269,12 +284,23 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->addGbpSecGroupRule("1_1_rule1")
         ->addGbpRuleToClassifierRSrc(classifier3->getURI().toString());
 
-    // HTTP to provider, reflexive
+    // HTTP out, reflexive
     secGrp2 = space->addGbpSecGroup("secGrp2");
     secGrp2->addGbpSecGroupSubject("2_subject1")
         ->addGbpSecGroupRule("2_1_rule1")
-        ->setDirection(DirectionEnumT::CONST_IN)
+        ->setDirection(DirectionEnumT::CONST_OUT)
         .addGbpRuleToClassifierRSrc(classifier4->getURI().toString());
+
+    // TCP out reflexive, and HTTP in
+    secGrp3 = space->addGbpSecGroup("secGrp3");
+    secGrp3->addGbpSecGroupSubject("3_subject1")
+        ->addGbpSecGroupRule("3_1_rule1")
+        ->setDirection(DirectionEnumT::CONST_OUT)
+        .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
+    secGrp3->addGbpSecGroupSubject("3_subject2")
+        ->addGbpSecGroupRule("3_2_rule1")
+        ->setDirection(DirectionEnumT::CONST_IN)
+        .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
 
     mutator.commit();
 }

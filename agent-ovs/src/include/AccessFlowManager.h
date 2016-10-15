@@ -20,6 +20,7 @@
 #include "SwitchManager.h"
 #include "TaskQueue.h"
 #include "SwitchStateHandler.h"
+#include "CtZoneManager.h"
 
 namespace ovsagent {
 
@@ -43,6 +44,17 @@ public:
     AccessFlowManager(Agent& agent,
                       SwitchManager& switchManager,
                       IdGenerator& idGen);
+
+    /**
+     * Enable connection tracking support
+     *
+     * @param minId the minimum ID to use for connection tracking
+     * @param maxId the maximum ID to use for connection tracking
+     * @param useNetLink if true, manage zones in the kernel using
+     * netlink.  Otherwise just allocate the zones and don't manage
+     * their state.
+     */
+    void enableConnTrack(uint16_t minId, uint16_t maxId, bool useNetLink);
 
     /**
      * Start the access flow manager
@@ -111,8 +123,10 @@ private:
     Agent& agent;
     SwitchManager& switchManager;
     IdGenerator& idGen;
+    CtZoneManager ctZoneManager;
     TaskQueue taskQueue;
 
+    bool conntrackEnabled;
     bool stopping;
 };
 

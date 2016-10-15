@@ -13,6 +13,7 @@
 #include "logging.h"
 
 #include <boost/asio/placeholders.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 namespace ovsagent {
 
@@ -86,6 +87,10 @@ void StitchedModeRenderer::start() {
     intFlowManager.start();
     intFlowManager.registerModbListeners();
     if (accessBridgeName != "") {
+        if (connTrack) {
+            accessFlowManager.enableConnTrack(ctZoneRangeStart, ctZoneRangeEnd,
+                                              true);
+        }
         accessFlowManager.start();
     }
     intSwitchManager.connect();
@@ -169,6 +174,15 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
     static const std::string MCAST_GROUP_FILE("mcast-group-file");
 
+    static const std::string CONN_TRACK("forwarding.connection-tracking."
+                                        "enabled");
+    static const std::string CONN_TRACK_RANGE_START("forwarding."
+                                                    "connection-tracking."
+                                                    "zone-range.start");
+    static const std::string CONN_TRACK_RANGE_END("forwarding."
+                                                  "connection-tracking."
+                                                  "zone-range.end");
+
     intBridgeName =
         properties.get<std::string>(OVS_BRIDGE_NAME, "br-int");
     intBridgeName =
@@ -234,6 +248,10 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
             endpointAdvMode = AdvertManager::EPADV_GRATUITOUS_BROADCAST;
         }
     }
+
+    connTrack = properties.get<bool>(CONN_TRACK, true);
+    ctZoneRangeStart = properties.get<uint16_t>(CONN_TRACK_RANGE_START, 1);
+    ctZoneRangeEnd = properties.get<uint16_t>(CONN_TRACK_RANGE_END, 65534);
 
     flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR,
                                               DEF_FLOWID_CACHEDIR);

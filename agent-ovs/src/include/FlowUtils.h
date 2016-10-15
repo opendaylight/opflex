@@ -23,6 +23,7 @@
 namespace ovsagent {
 
 class FlowBuilder;
+class ActionBuilder;
 
 namespace flowutils {
 
@@ -70,11 +71,39 @@ FlowEntryPtr default_out_flow();
 extern const uint16_t MAX_POLICY_RULE_PRIORITY;
 
 /**
+ * Actions to take for classifier entries in add_classifier_entries
+ */
+enum ClassAction {
+    /**
+     * Drop the flow
+     */
+    CA_DENY,
+    /**
+     * Allow the flow by going to nextTable
+     */
+    CA_ALLOW,
+    /**
+     * Allow the flow by going to nextTable and committing a
+     * connection tracking flow
+     */
+    CA_REFLEX_FWD,
+    /**
+     * Match against empty conntrack state and send to conntrack table,
+     * recirculating the flow to nextTable
+     */
+    CA_REFLEX_REV,
+    /**
+     * Match against established conntrack state and go to nextTable
+     */
+    CA_REFLEX_REV_ALLOW,
+};
+
+/**
  * Create flow entries for the classifier specified and append them
  * to the provided list.
  *
  * @param classifier Classifier object to get matching rules from
- * @param allow true if the traffic should be allowed, false otherwise
+ * @param act an action to take for the flows
  * @param sourceSub A set of source networks to which the rule should apply
  * @param destSub A set of dest networks to which the rule should apply
  * @param nextTable the table to send to if the traffic is allowed
@@ -84,14 +113,15 @@ extern const uint16_t MAX_POLICY_RULE_PRIORITY;
  * @param dvnid VNID of the destination endpoint group for the entry
  * @param entries List to append entry to
  */
-
 void add_classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
-                            bool allow,
+                            ClassAction act,
                             boost::optional<const subnets_t&> sourceSub,
                             boost::optional<const subnets_t&> destSub,
                             uint8_t nextTable, uint16_t priority,
                             uint64_t cookie, uint32_t svnid, uint32_t dvnid,
-                            /* out */ FlowEntryList& entries);
+                            /* out */ FlowEntryList& entries,
+                            boost::optional<ActionBuilder&> ctSaveAct
+                            = boost::none);
 } // namespace flowutils
 } // namespace ovsagent
 

@@ -76,7 +76,9 @@ extern "C" {
      * Move a register
      */
     void act_reg_move(struct ofpbuf* buf,
-                      int srcRegId, int dstRegId);
+                      int srcRegId, int dstRegId,
+                      uint8_t sourceOffset, uint8_t destOffset,
+                      uint8_t nBits);
 
     /**
      * Set metadata
@@ -165,6 +167,17 @@ extern "C" {
      * pop vlan
      */
     void act_pop_vlan(struct ofpbuf* buf);
+
+    /**
+     * conntrack
+     */
+    void act_conntrack(struct ofpbuf* buf,
+                       uint16_t flags,
+                       uint16_t zoneImm,
+                       int zoneSrc,
+                       uint8_t recircTable,
+                       uint16_t alg,
+                       struct ofpbuf* nested);
 
     /**
      * Get the value of the output reg action

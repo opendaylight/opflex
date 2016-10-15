@@ -242,6 +242,46 @@ public:
      */
     FlowBuilder& mark(uint32_t value, uint32_t mask = ~0l);
 
+    /**
+     * Connection tracking state flags
+     */
+    enum CtState {
+        /**
+         * This is the beginning of a new connection.
+         */
+        CT_STATE_NEW         = 0x01,
+        /**
+         * This is part of an already existing connection.
+         */
+        CT_STATE_ESTABLISHED = 0x02,
+        /**
+         * This is a separate connection that is related to an
+         * existing connection.
+         */
+        CT_STATE_RELATED     = 0x04,
+        /**
+         * This flow is in the reply direction, ie it did not initiate
+         * the connection.
+         */
+        CT_STATE_REPLY       = 0x08,
+        /**
+         * This flow could not be associated with a connection.
+         */
+        CT_STATE_INVALID     = 0x10,
+        /**
+         * Connection tracking has occurred.
+         */
+        CT_STATE_TRACKED     = 0x20,
+    };
+
+    /**
+     * Match against the connection tracking state for the packet
+     * @param ctState the value of the connection tracking state
+     * @param mask the mask for the match
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& conntrackState(uint32_t ctState, uint32_t mask = ~0l);
+
 private:
     boost::scoped_ptr<ActionBuilder> action_;
     FlowEntryPtr entry_;

@@ -248,4 +248,9 @@ FlowBuilder& FlowBuilder::mark(uint32_t value, uint32_t mask) {
     return *this;
 }
 
+FlowBuilder& FlowBuilder::conntrackState(uint32_t ctState, uint32_t mask) {
+    match_set_ct_state_masked(match(), ctState, mask);
+    return *this;
+}
+
 } // namespace ovsagent

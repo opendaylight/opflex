@@ -2098,6 +2098,10 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                  * a provider and provider 'pvnid' is also a consumer, then
                  * add entry for cvnid to pvnid traffic only.
                  */
+                flowutils::ClassAction act = flowutils::CA_DENY;
+                if (pc->getAllow())
+                    act = flowutils::CA_ALLOW;
+
                 if (dir == DirectionEnumT::CONST_BIDIRECTIONAL &&
                     provIds.find(cvnid) != provIds.end() &&
                     consIds.find(pvnid) != consIds.end()) {
@@ -2105,8 +2109,7 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                 }
                 if (dir == DirectionEnumT::CONST_IN ||
                     dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
-                    flowutils::add_classifier_entries(*cls,
-                                                      pc->getAllow(),
+                    flowutils::add_classifier_entries(*cls, act,
                                                       boost::none,
                                                       boost::none,
                                                       OUT_TABLE_ID,
@@ -2117,8 +2120,7 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                 }
                 if (dir == DirectionEnumT::CONST_OUT ||
                     dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
-                    flowutils::add_classifier_entries(*cls,
-                                                      pc->getAllow(),
+                    flowutils::add_classifier_entries(*cls, act,
                                                       boost::none,
                                                       boost::none,
                                                       OUT_TABLE_ID,

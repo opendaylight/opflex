@@ -59,7 +59,6 @@ AM_PROG_AS
 AC_LANG([C])
 AC_LANG([C++])
 
-
 # check for doxygen
 AC_CHECK_PROGS(DOXYGEN,doxygen,none)
 AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone']) 
@@ -112,13 +111,16 @@ if test "x$ax_cv_boost_asio" != xyes; then
    AC_MSG_ERROR([Boost::ASIO library is required])
 fi
 
-PKG_CHECK_MODULES([libopflex], [libopflex >= 1.3.0])
-PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.3.0])
+PKG_CHECK_MODULES([libopflex], [libopflex >= 1.4.0])
+PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.4.0])
 PKG_CHECK_MODULES([rapidjson], [RapidJSON >= 1.0])
 
 # check for libopenvswitch
 PKG_CHECK_MODULES([libofproto], [libofproto >= 2.6.0])
 PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.6.0])
+
+# check for libnl-nf
+PKG_CHECK_MODULES([libnl_nf], [libnl-nf-3.0 >= 3.2.21])
 
 # inotify check
 AC_ARG_ENABLE(inotify, "Whether to use inotify for endpoint source")

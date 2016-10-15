@@ -18,6 +18,7 @@
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/function.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/optional.hpp>
 
 #include <opflex/ofcore/OFFramework.h>
 
@@ -49,9 +50,12 @@ public:
      * for the namespace is found, loads the assignments from the file.
      *
      * @param nmspc ID namespace to initialize
+     * @param minId the minimum ID allowed for the namespace
      * @param maxId the maximum ID allowed for the namespace
      */
-    void initNamespace(const std::string& nmspc, uint32_t maxId = (1 << 31));
+    void initNamespace(const std::string& nmspc,
+                       uint32_t minId = 1,
+                       uint32_t maxId = (1 << 31));
 
     /**
      * Get a unique ID for the given string in the given namespace.
@@ -91,6 +95,22 @@ public:
      * Purge erased entries that are sufficiently old
      */
     void cleanup();
+
+    /**
+     * Function that can be registered as a hook for allocation of an
+     * ID.  A false return value indicates allocation should be
+     * canceled.
+     */
+    typedef boost::function<bool(const std::string&, uint32_t)> alloc_hook_t;
+
+    /**
+     * Set an allocation callback hook called when a new ID is
+     * allocated
+     *
+     * @param nmspc the namespace to register the hook for
+     * @param allocHook the callback to register
+     */
+    void setAllocHook(const std::string& nmspc, alloc_hook_t& allocHook);
 
     /**
      * Gets the name of the file used for persisting IDs.
@@ -168,6 +188,8 @@ private:
 
         typedef boost::unordered_map<std::string, time_point> Str2EIdMap;
         Str2EIdMap erasedIds;
+
+        boost::optional<alloc_hook_t> allocHook;
     };
 
     /**

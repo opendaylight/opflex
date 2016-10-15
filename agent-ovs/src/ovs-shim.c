@@ -77,21 +77,30 @@ void override_raw_actions(const struct ofpact* acts, size_t len) {
     }
 }
 
-static void initSubField(struct mf_subfield *sf, enum mf_field_id id) {
+static void initSubFieldExt(struct mf_subfield *sf, enum mf_field_id id,
+                            uint8_t start, uint8_t nBits) {
     const struct mf_field *field = mf_from_id(id);
     sf->field = field;
-    sf->ofs = 0;                   /* start position */
-    sf->n_bits = field->n_bits;    /* number of bits */
+    sf->ofs = start;
+    if (nBits)
+        sf->n_bits = nBits;
+    else
+        sf->n_bits = field->n_bits;
+}
+
+static void initSubField(struct mf_subfield *sf, enum mf_field_id id) {
+    initSubFieldExt(sf, id, 0, 0);
 }
 
 inline int min(int a, int b) { return a < b ? a : b; }
 
 void act_reg_move(struct ofpbuf* buf,
-                  int srcRegId,
-                  int dstRegId) {
+                  int srcRegId, int dstRegId,
+                  uint8_t sourceOffset, uint8_t destOffset,
+                  uint8_t nBits) {
     struct ofpact_reg_move *move = ofpact_put_REG_MOVE(buf);
-    initSubField(&move->src, srcRegId);
-    initSubField(&move->dst, dstRegId);
+    initSubFieldExt(&move->src, srcRegId, sourceOffset, nBits);
+    initSubFieldExt(&move->dst, dstRegId, destOffset, nBits);
 
     int bitsToMove = min(move->src.n_bits, move->dst.n_bits);
     move->src.n_bits = bitsToMove;
@@ -205,6 +214,30 @@ void act_pop_vlan(struct ofpbuf* buf) {
     /* ugly hack to avoid the fact that there's no way in the API to
        make a pop vlan action */
     ofpact_put_STRIP_VLAN(buf)->ofpact.raw = 8;
+}
+
+void act_conntrack(struct ofpbuf* buf,
+                   uint16_t flags,
+                   uint16_t zoneImm,
+                   int zoneSrc,
+                   uint8_t recircTable,
+                   uint16_t alg,
+                   struct ofpbuf* nested) {
+    struct ofpact_conntrack* act = ofpact_put_CT(buf);
+    act->flags = flags;
+    act->zone_imm = zoneImm;
+    if (zoneSrc) {
+        const struct mf_field *field = mf_from_id(zoneSrc);
+        act->zone_src.field = field;
+        act->zone_src.ofs = 0;
+        act->zone_src.n_bits = 16;
+    }
+    act->alg = alg;
+    act->recirc_table = recircTable;
+    if (nested) {
+        ofpbuf_put(buf, nested->data, nested->size);
+        act->ofpact.len += nested->size;
+    }
 }
 
 uint32_t get_output_reg_value(const struct ofpact* ofpacts,

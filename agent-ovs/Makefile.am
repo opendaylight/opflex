@@ -33,12 +33,14 @@ libagent_ovs_la_CXXFLAGS = \
 	$(OVS_ADDL_CFLAGS) \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS) \
+	$(libnl_nf_CFLAGS) \
 	$(rapidjson_CFLAGS)
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS) \
+	$(libnl_nf_LIBS) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_THREAD_LIB) \
@@ -83,6 +85,7 @@ noinst_HEADERS = \
 	src/include/StatsManager.h \
 	src/include/Agent.h \
 	src/include/IdGenerator.h \
+	src/include/CtZoneManager.h \
 	src/include/RangeMask.h \
 	src/include/Packets.h \
 	src/include/PacketInHandler.h \
@@ -134,6 +137,7 @@ libagent_ovs_la_SOURCES = \
 	src/logging.cpp \
 	src/Agent.cpp \
 	src/IdGenerator.cpp \
+	src/CtZoneManager.cpp \
 	src/RangeMask.cpp \
 	src/Packets.cpp \
 	src/PacketInHandler.cpp \
@@ -259,7 +263,8 @@ integration_test_SOURCES = \
 	integration-test/include/ConnectionFixture.h \
 	integration-test/main.cpp \
 	integration-test/connection_test.cpp \
-	integration-test/flowmod_test.cpp
+	integration-test/flowmod_test.cpp \
+	integration-test/ctzone_test.cpp
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 integration_test_LDADD = \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
