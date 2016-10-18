@@ -78,9 +78,9 @@ std::vector<iovec> get_iovec(Iterator from, Iterator to) {
            ) {
             iovec i = {
                 const_cast< void * >(static_cast< void const * >(base)),
-                const_cast< char * >(static_cast< char const * >(addr))
-                    -
-                const_cast< char  * >(static_cast< char const * >(base))
+                static_cast<size_t>(static_cast< char const * >(addr)
+                                    -
+                                    static_cast< char const * >(base))
             };
             iov.push_back(i);
             addr = base = &*from;
@@ -89,9 +89,9 @@ std::vector<iovec> get_iovec(Iterator from, Iterator to) {
     }
             iovec i = {
                 const_cast< void * >(static_cast< void const * >(base)),
-                const_cast< char * >(static_cast< char const * >(addr))
-                    -
-                const_cast< char  * >(static_cast< char const * >(base))
+                static_cast<size_t>(static_cast< char const * >(addr)
+                                    -
+                                    static_cast< char const * >(base))
             };
             if (i.iov_len) iov.push_back(i);
 

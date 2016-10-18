@@ -18,6 +18,7 @@
 #include <boost/noncopyable.hpp>
 
 #include <vector>
+#include <unordered_map>
 
 namespace ovsagent {
 
@@ -52,7 +53,7 @@ public:
     /**
      * A map from a group table ID to an associated group edit
      */
-    typedef boost::unordered_map<uint32_t, GroupEdit::Entry> GroupMap;
+    typedef std::unordered_map<uint32_t, GroupEdit::Entry> GroupMap;
 
     /**
      * Compare group tables read from switch and make modification to

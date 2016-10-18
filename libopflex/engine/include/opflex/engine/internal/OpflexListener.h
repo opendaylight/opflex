@@ -24,6 +24,10 @@
 #ifndef OPFLEX_ENGINE_OPFLEXLISTENER_H
 #define OPFLEX_ENGINE_OPFLEXLISTENER_H
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 namespace opflex {
 namespace engine {
 namespace internal {
@@ -141,7 +145,11 @@ private:
     std::string socketName;
     int port;
 
+#ifdef HAVE_CXX11
+    std::unique_ptr<yajr::transport::ZeroCopyOpenSSL::Ctx> serverCtx;
+#else
     std::auto_ptr<yajr::transport::ZeroCopyOpenSSL::Ctx> serverCtx;
+#endif
 
     std::string name;
     std::string domain;

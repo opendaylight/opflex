@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
          "Use the specified log level (default warning)")
         ("syslog", "Log to syslog instead of file or standard out")
         ("socket", po::value<string>()->default_value(DEF_SOCKET),
-         "Connect to the specified UNIX domain socket (default "DEF_SOCKET")")
+         "Connect to the specified UNIX domain socket (default " DEF_SOCKET ")")
         ("query,q", po::value<std::vector<string> >(),
          "Query for a specific object with subjectname,uri or all objects "
          "of a specific type with subjectname")

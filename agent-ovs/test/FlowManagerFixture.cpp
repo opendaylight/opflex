@@ -88,7 +88,7 @@ void diffTables(Agent& agent,
                 volatile int* fail) {
     *fail = 512;
     agent.getAgentIOService().dispatch(bind(doDiffTables, &switchManager,
-                                            ref(expected), diffs, fail));
+                                            boost::ref(expected), diffs, fail));
     WAIT_FOR(*fail != 512, 1000);
 }
 

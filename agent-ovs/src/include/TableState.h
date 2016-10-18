@@ -14,9 +14,8 @@
 #include <stdlib.h>
 #include <vector>
 #include <utility>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/noncopyable.hpp>
-#include <boost/unordered_map.hpp>
 
 struct ofputil_flow_stats;
 struct ofputil_group_mod;
@@ -53,7 +52,7 @@ public:
 /**
  * A shared pointer to a flow entry
  */
-typedef boost::shared_ptr<FlowEntry>    FlowEntryPtr;
+typedef std::shared_ptr<FlowEntry>    FlowEntryPtr;
 /**
  * A vector of flow entry pointers
  */
@@ -138,7 +137,7 @@ public:
     /**
      * A group edit entry
      */
-    typedef boost::shared_ptr<GroupMod>     Entry;
+    typedef std::shared_ptr<GroupMod>     Entry;
     /**
      * A vector of group edits
      */

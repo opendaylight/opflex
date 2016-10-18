@@ -303,7 +303,7 @@ void IdGenerator::initNamespace(const std::string& nmspc,
             idmap.ids[*str] = id;
         }
         usedIds.insert(id);
-        LOG(DEBUG) << "Loaded str: " << str << ", "
+        LOG(DEBUG) << "Loaded str: " << *str << ", "
                    << nmspc << ":" << id;
     }
     file.close();
