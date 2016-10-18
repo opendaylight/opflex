@@ -33,6 +33,7 @@ m4_include([m4/ax_boost_filesystem.m4])
 m4_include([m4/ax_boost_iostreams.m4])
 m4_include([m4/ax_boost_asio.m4])
 m4_include([m4/ax_boost_random.m4])
+m4_include([m4/ax_cxx_compile_stdcxx.m4])
 
 dnl ---------------------------------------------------------------
 dnl Configure options
@@ -58,6 +59,7 @@ AC_PROG_INSTALL
 AM_PROG_AS
 AC_LANG([C])
 AC_LANG([C++])
+AX_CXX_COMPILE_STDCXX([11], [ext], [mandatory])
 
 # check for doxygen
 AC_CHECK_PROGS(DOXYGEN,doxygen,none)

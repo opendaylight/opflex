@@ -155,7 +155,7 @@ public:
     template <class MO>
     static bool uriIdGarbageCb(opflex::ofcore::OFFramework& framework,
                                const std::string& ns, const std::string& str) {
-        return MO::resolve(framework, opflex::modb::URI(str));
+        return (bool)MO::resolve(framework, opflex::modb::URI(str));
     }
 
 private:

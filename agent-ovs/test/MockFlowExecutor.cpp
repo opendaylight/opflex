@@ -51,12 +51,13 @@ MockFlowExecutor::MockFlowExecutor()
 bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
     if (ignoreFlowMods) return true;
 
-    std::sort(flowEdits.edits.begin(), flowEdits.edits.end());
+    FlowEdit editCopy = flowEdits;
+    std::sort(editCopy.edits.begin(), editCopy.edits.end());
 
     const char *modStr[] = {"ADD", "MOD", "DEL"};
     DsP strBuf;
 
-    BOOST_FOREACH(const FlowEdit::Entry& ed, flowEdits.edits) {
+    BOOST_FOREACH(const FlowEdit::Entry& ed, editCopy.edits) {
         if (ignoredFlowMods.find(ed.first) != ignoredFlowMods.end())
             continue;
 

@@ -36,13 +36,15 @@
 #include "FlowBuilder.h"
 #include "ovs-shim.h"
 
-using namespace std;
 using namespace boost::assign;
 using namespace opflex::modb;
 using namespace modelgbp::gbp;
 using namespace ovsagent;
 namespace fs = boost::filesystem;
 namespace pt = boost::property_tree;
+using std::vector;
+using std::string;
+using std::make_pair;
 using boost::asio::ip::address;
 using boost::bind;
 using boost::thread;

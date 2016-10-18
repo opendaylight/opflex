@@ -1643,7 +1643,8 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
     optional<shared_ptr<FloodContext> > fdCtx =
         polMgr.getFloodContextForGroup(epgURI);
     if (fdCtx) {
-        fdcMcastIp = fdCtx.get()->getMulticastGroupIP();
+        if (fdCtx.get()->getMulticastGroupIP())
+            fdcMcastIp = fdCtx.get()->getMulticastGroupIP().get();
         updateMulticastList(fdcMcastIp, fdCtx.get()->getURI());
     }
 }
@@ -2349,7 +2350,7 @@ void IntFlowManager::writeMulticastGroups() {
     pt::ptree tree;
     pt::ptree groups;
     BOOST_FOREACH (MulticastMap::value_type& kv, mcastMap)
-        groups.push_back(std::make_pair("", kv.first));
+        groups.push_back(std::make_pair("", pt::ptree(kv.first)));
     tree.add_child("multicast-groups", groups);
 
     try {

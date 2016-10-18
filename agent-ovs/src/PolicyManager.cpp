@@ -771,7 +771,8 @@ static bool updatePolicyRules(OFFramework& framework,
 
             uint16_t clsPrio = 0;
             BOOST_FOREACH (const shared_ptr<L24Classifier>& c, classifiers) {
-                newRules.push_back(make_shared<PolicyRule>(dir,
+                newRules.push_back(boost::
+                                   make_shared<PolicyRule>(dir,
                                                            rulePrio - clsPrio,
                                                            c, ruleAllow,
                                                            remoteSubnets));

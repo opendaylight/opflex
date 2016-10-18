@@ -62,6 +62,7 @@ LT_INIT()
 m4_include([m4/ax_boost_base.m4])
 m4_include([m4/ax_boost_unit_test_framework.m4])
 m4_include([m4/ax_check_compile_flags.m4])
+m4_include([m4/ax_cxx_compile_stdcxx.m4])
 
 dnl ---------------------------------------------------------------
 dnl Configure options
@@ -103,6 +104,7 @@ AC_PROG_CXX
 AC_PROG_INSTALL
 AM_PROG_AS
 AC_LANG([C++])
+AX_CXX_COMPILE_STDCXX([11], [noext], [optional])
 
 dnl check for compiler flags
 AX_CHECK_COMPILE_FLAG([-Wno-multichar],

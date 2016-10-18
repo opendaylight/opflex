@@ -148,8 +148,8 @@ extern "C" {
      * register to listen to opflex peer connection status and health
      * @param framework the framework
      * @param obj The peer status listener object created with @ref
-     * ofpeerstatuslistener_cr eate.
-     * @return a status code 
+     * ofpeerstatuslistener_create.
+     * @return a status code
      */
     ofstatus offramework_register_peerstatuslistener(offramework_p framework,
                                                      ofpeerstatuslistener_p obj);

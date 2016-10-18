@@ -6,9 +6,10 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <unordered_map>
+
 #include <boost/foreach.hpp>
 #include <boost/functional/hash.hpp>
-#include <boost/unordered_set.hpp>
 #include <boost/optional.hpp>
 
 #include "TableState.h"
@@ -22,6 +23,28 @@
 extern "C" {
 #include <openvswitch/dynamic-string.h>
 }
+
+
+namespace ovsagent {
+
+struct match_key_t {
+    uint16_t prio;
+    struct match match;
+};
+
+} /* namespace ovsagent */
+
+namespace std {
+
+template<> struct hash<ovsagent::match_key_t> {
+    size_t operator()(const ovsagent::match_key_t& match_key) const noexcept {
+        size_t hashv = match_hash(&match_key.match, 0);
+        boost::hash_combine(hashv, match_key.prio);
+        return hashv;
+    }
+};
+
+} /* namespace std */
 
 namespace ovsagent {
 
@@ -142,23 +165,13 @@ ostream & operator<<(ostream& os, const GroupEdit::Entry& ge) {
 
 /** TableState **/
 
-struct match_key_t {
-    uint16_t prio;
-    struct match match;
-};
-
 typedef std::vector<FlowEntryPtr> flow_vec_t;
 typedef std::pair<std::string, FlowEntryPtr> obj_id_flow_t;
 typedef std::vector<obj_id_flow_t> obj_id_flow_vec_t;
-typedef boost::unordered_map<match_key_t, obj_id_flow_vec_t> match_obj_map_t;
-typedef boost::unordered_map<match_key_t, flow_vec_t> match_map_t;
-typedef boost::unordered_map<std::string, match_map_t> entry_map_t;
+typedef std::unordered_map<match_key_t, obj_id_flow_vec_t> match_obj_map_t;
+typedef std::unordered_map<match_key_t, flow_vec_t> match_map_t;
+typedef std::unordered_map<std::string, match_map_t> entry_map_t;
 
-size_t hash_value(match_key_t const& match_key) {
-    size_t hashv = match_hash(&match_key.match, 0);
-    boost::hash_combine(hashv, match_key.prio);
-    return hashv;
-}
 bool operator==(const match_key_t& lhs, const match_key_t& rhs) {
     return lhs.prio == rhs.prio && match_equal(&lhs.match, &rhs.match);
 }
@@ -184,7 +197,7 @@ TableState::~TableState() {
 void TableState::diffSnapshot(const FlowEntryList& oldEntries,
                               FlowEdit& diffs) const {
     typedef std::pair<bool, FlowEntryPtr> visited_fe_t;
-    typedef boost::unordered_map<match_key_t, visited_fe_t> old_entry_map_t;
+    typedef std::unordered_map<match_key_t, visited_fe_t> old_entry_map_t;
 
     diffs.edits.clear();
 

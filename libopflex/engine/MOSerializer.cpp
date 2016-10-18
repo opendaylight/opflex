@@ -48,7 +48,6 @@ using rapidjson::Document;
 using rapidjson::SizeType;
 using boost::shared_ptr;
 using boost::make_shared;
-using boost::next;
 using std::vector;
 using std::string;
 using boost::unordered_set;
@@ -593,11 +592,11 @@ void MOSerializer::displayObject(std::ostream& ostream,
     }
 
     for (clsit = children.begin(); clsit != children.end(); ++clsit) {
-        bool lclass = next(clsit) == children.end();
+        bool lclass = boost::next(clsit) == children.end();
         for (cit = clsit->second.begin();
              cit != clsit->second.end(); ++cit) {
 
-            bool islast = lclass && (next(cit) == clsit->second.end());
+            bool islast = lclass && (boost::next(cit) == clsit->second.end());
             string nprefix = prefix;
             if (tree)
                 nprefix = prefix + (last ? "  " : (utf8 ? VERT : "|") + " ");
