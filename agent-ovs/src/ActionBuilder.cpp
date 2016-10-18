@@ -10,6 +10,7 @@
 #include <boost/assert.hpp>
 
 #include "ActionBuilder.h"
+#include "FlowBuilder.h"
 #include "ovs-shim.h"
 #include "ovs-ofputil.h"
 

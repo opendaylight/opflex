@@ -330,9 +330,15 @@ void NotifServer::start() {
         }
 
         if (uid != 0 || gid != 0) {
-            (void)chown(notifSocketPath.c_str(),
-                        uid ? uid : geteuid(),
-                        gid ? gid : getegid());
+            if (chown(notifSocketPath.c_str(),
+                      uid ? uid : geteuid(),
+                      gid ? gid : getegid())) {
+                char buf[256];
+                strerror_r(errno, buf, sizeof(buf));
+                LOG(WARNING) << "Could not change ownership for "
+                             << notifSocketPath << ": "
+                             << buf;
+            }
         }
     }
     accept();
