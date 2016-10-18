@@ -76,6 +76,8 @@ noinst_HEADERS = \
 	src/include/IntFlowManager.h \
 	src/include/AccessFlowManager.h \
 	src/include/ovs-shim.h \
+	src/include/ovs-ofputil.h \
+	src/include/ovs-ofpbuf.h \
 	src/include/TableState.h \
 	src/include/ActionBuilder.h \
 	src/include/FlowBuilder.h \

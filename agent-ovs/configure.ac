@@ -120,7 +120,7 @@ PKG_CHECK_MODULES([libofproto], [libofproto >= 2.6.0])
 PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.6.0])
 
 # check for libnl-nf
-PKG_CHECK_MODULES([libnl_nf], [libnl-nf-3.0 >= 3.2.21],
+PKG_CHECK_MODULES([libnl_nf], [libnl-nf-3.0 >= 3.2.27],
    [AC_DEFINE([HAVE_LIBNL], [1], [Use libnl])],
    AC_MSG_WARN([libnl-nf not found]))
 

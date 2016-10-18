@@ -34,10 +34,11 @@ BuildRequires: libopflex-devel
 BuildRequires: libmodelgbp-devel
 BuildRequires: boost-devel
 BuildRequires: boost-test
-BuildRequires: openvswitch-devel >= 2.6.0
+BuildRequires: noiro-openvswitch-devel >= 2.6.0
 BuildRequires: doxygen
 BuildRequires: systemd-units
 BuildRequires: rapidjson-devel >= 1.0
+BuildRequires: libnl3-devel >= 3.2.27
 Requires(pre): shadow-utils
 Requires(post): systemd-units
 Requires(preun): systemd-units
@@ -54,7 +55,7 @@ policy semantics on the network traffic.
 %setup -q
 
 %build
-%configure --disable-assert
+%configure --disable-assert --disable-shared
 make %{?_smp_mflags}
 
 %install
