@@ -249,29 +249,29 @@ public:
         /**
          * This is the beginning of a new connection.
          */
-        CT_STATE_NEW         = 0x01,
+        CT_NEW         = 0x01,
         /**
          * This is part of an already existing connection.
          */
-        CT_STATE_ESTABLISHED = 0x02,
+        CT_ESTABLISHED = 0x02,
         /**
          * This is a separate connection that is related to an
          * existing connection.
          */
-        CT_STATE_RELATED     = 0x04,
+        CT_RELATED     = 0x04,
         /**
          * This flow is in the reply direction, ie it did not initiate
          * the connection.
          */
-        CT_STATE_REPLY       = 0x08,
+        CT_REPLY       = 0x08,
         /**
          * This flow could not be associated with a connection.
          */
-        CT_STATE_INVALID     = 0x10,
+        CT_INVALID     = 0x10,
         /**
          * Connection tracking has occurred.
          */
-        CT_STATE_TRACKED     = 0x20,
+        CT_TRACKED     = 0x20,
     };
 
     /**

@@ -180,14 +180,15 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
 
                         switch (act) {
                         case flowutils::CA_REFLEX_REV:
-                            f.conntrackState(0, FlowBuilder::CT_STATE_TRACKED);
+                            f.conntrackState(0, FlowBuilder::CT_TRACKED);
                             break;
                         case flowutils::CA_REFLEX_REV_ALLOW:
-                            f.conntrackState(FlowBuilder::CT_STATE_TRACKED |
-                                             FlowBuilder::CT_STATE_ESTABLISHED,
-                                             FlowBuilder::CT_STATE_TRACKED |
-                                             FlowBuilder::CT_STATE_ESTABLISHED |
-                                             FlowBuilder::CT_STATE_NEW);
+                            f.conntrackState(FlowBuilder::CT_TRACKED |
+                                             FlowBuilder::CT_ESTABLISHED,
+                                             FlowBuilder::CT_TRACKED |
+                                             FlowBuilder::CT_ESTABLISHED |
+                                             FlowBuilder::CT_INVALID |
+                                             FlowBuilder::CT_NEW);
                             break;
                         default:
                             // nothing

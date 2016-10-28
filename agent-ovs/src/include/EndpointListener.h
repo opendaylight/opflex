@@ -58,4 +58,19 @@ public:
 
 } /* namespace ovsagent */
 
+namespace std {
+/**
+ * Template specialization for std::hash<ovsagent::EndpointListener::uri_set_t>
+ */
+template<> struct hash<ovsagent::EndpointListener::uri_set_t> {
+    /**
+     * Hash the ovsagent::EndpointListener::uri_set_t
+     */
+    std::size_t operator()(const ovsagent::EndpointListener::uri_set_t& u) const {
+        return boost::hash_value(u);
+    }
+};
+} /* namespace std */
+
+
 #endif /* OVSAGENT_ENDPOINTMANAGER_H */

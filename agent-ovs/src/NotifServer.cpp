@@ -334,10 +334,10 @@ void NotifServer::start() {
                       uid ? uid : geteuid(),
                       gid ? gid : getegid())) {
                 char buf[256];
-                strerror_r(errno, buf, sizeof(buf));
-                LOG(WARNING) << "Could not change ownership for "
-                             << notifSocketPath << ": "
-                             << buf;
+                if (!strerror_r(errno, buf, sizeof(buf)))
+                    LOG(WARNING) << "Could not change ownership for "
+                                 << notifSocketPath << ": "
+                                 << buf;
             }
         }
     }
