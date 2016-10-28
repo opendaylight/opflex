@@ -318,6 +318,12 @@ public:
          */
         SRC_TABLE_ID,
         /**
+         * For traffic returning from load-balanced service IP
+         * addresses, restore the source address to the service
+         * address
+         */
+        SERVICE_REV_TABLE_ID,
+        /**
          * For flows that can be forwarded by bridging, maps the
          * destination L2 address to an endpoint group and next hop
          * interface and sets this mapping into registers for use by
@@ -325,6 +331,11 @@ public:
          * the agent or switch, such as ARP and NDP.
          */
         BRIDGE_TABLE_ID,
+        /**
+         * For load-balanced service IPs, map from a bucket ID to the
+         * appropriate destination IP address.
+         */
+        SERVICE_NEXTHOP_TABLE_ID,
         /**
          * For flows that require routing, maps the destination L3
          * address to an endpoint group or external network and next
@@ -350,7 +361,7 @@ public:
          * Map traffic returning from a service interface to the
          * appropriate endpoint interface.
          */
-        SERVICE_MAP_DST_TABLE_ID,
+        SERVICE_DST_TABLE_ID,
         /**
          * Allow policy for the flow based on the source and
          * destination groups and the contracts that are configured.

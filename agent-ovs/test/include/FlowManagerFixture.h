@@ -197,6 +197,12 @@ public:
     Bldr& ipDst(const std::string& s) {
         rep("mod_nw_dst:", s); return *this;
     }
+    Bldr& tpSrc(uint16_t p) {
+        rep("mod_tp_src:", str(p)); return *this;
+    }
+    Bldr& tpDst(uint16_t p) {
+        rep("mod_tp_dst:", str(p)); return *this;
+    }
     Bldr& ipv6Src(const std::string& s) {
         rep("set_field:", s, "->ipv6_src"); return *this;
     }
@@ -224,8 +230,9 @@ public:
     Bldr& mdAct(uint8_t a) {
         rep("write_metadata:", str(a, true), "/0xff"); return *this;
     }
-    Bldr& ct(const std::string& s) {
-        rep("ct(", s, ")"); return *this;
+    Bldr& ct(const std::string& s) { rep("ct(", s, ")"); return *this; }
+    Bldr& multipath(const std::string& s) {
+        rep("multipath(", s, ")"); return *this;
     }
     Bldr& polApplied() { rep("write_metadata:0x100/0x100"); return *this; }
     Bldr& resubmit(uint8_t t) { rep("resubmit(,", str(t), ")"); return *this; }

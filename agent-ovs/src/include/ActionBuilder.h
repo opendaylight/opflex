@@ -17,6 +17,7 @@
 
 extern "C" {
 #include <openvswitch/meta-flow.h>
+#include <openflow/nicira-ext.h>
 }
 
 struct ofputil_flow_stats;
@@ -180,6 +181,18 @@ public:
     ActionBuilder& decTtl();
 
     /**
+     * Set the L4 source port number
+     * @return this action builder for chaining
+     */
+    ActionBuilder& l4Src(uint16_t port, uint8_t proto);
+
+    /**
+     * Set the L4 destination port number
+     * @return this action builder for chaining
+     */
+    ActionBuilder& l4Dst(uint16_t port, uint8_t proto);
+
+    /**
      * Go to the given flow table
      * @param tableId the table ID of the flow table
      * @return this action builder for chaining
@@ -269,6 +282,81 @@ public:
                              uint16_t zoneImm = 0,
                              uint8_t recircTable = 0xff,
                              uint16_t alg = 0);
+
+    /**
+     * Algorithm for multipath action
+     */
+    enum MultipathAlgo {
+        /** link = hash(flow) % n_links.
+         *
+         * Redistributes all traffic when n_links changes.  O(1)
+         * performance.  See RFC 2992.
+         *
+         * Use UINT16_MAX for max_link to get a raw hash value. */
+        NX_MP_ALG_MODULO_N = 0,
+
+        /** link = hash(flow) / (MAX_HASH / n_links).
+         *
+         * Redistributes between one-quarter and one-half of traffic
+         * when n_links changes.  O(1) performance.  See RFC 2992.
+         */
+        NX_MP_ALG_HASH_THRESHOLD = 1,
+
+        /** Highest Random Weight.
+         *
+         * for i in [0,n_links):
+         *   weights[i] = hash(flow, i)
+         * link = { i such that weights[i] >= weights[j] for all j != i }
+         *
+         * Redistributes 1/n_links of traffic when n_links changes.
+         * O(n_links) performance.  If n_links is greater than a
+         * threshold (currently 64, but subject to change), Open
+         * vSwitch will substitute another algorithm automatically.
+         * See RFC 2992.
+         */
+        NX_MP_ALG_HRW = 2,
+
+        /** Iterative Hash.
+         *
+         * i = 0
+         * repeat:
+         *     i = i + 1
+         *     link = hash(flow, i) % arg
+         * while link > max_link
+         *
+         * Redistributes 1/n_links of traffic when n_links changes.  O(1)
+         * performance when arg/max_link is bounded by a constant.
+         *
+         * Redistributes all traffic when arg changes.
+         *
+         * arg must be greater than max_link and for best performance
+         * should be no more than approximately max_link * 2.  If arg
+         * is outside the acceptable range, Open vSwitch will
+         * automatically substitute the least power of 2 greater than
+         * max_link.
+         *
+         * This algorithm is specific to Open vSwitch.
+         */
+        NX_MP_ALG_ITER_HASH = 3
+    };
+
+    /**
+     * Multipath action
+     *
+     * @param fields the fields to apply the hash to
+     * @param basis the basis parameter for the hash
+     * @param algorithm the algorithm to apply for load balancing
+     * @param arg an algorithm-specific parameter
+     * @param maxLink the maximum index for "output links"
+     * @param dst the destination register where the selected link
+     * number is stored
+     */
+    ActionBuilder& multipath(enum nx_hash_fields fields,
+                             uint16_t basis,
+                             MultipathAlgo algorithm,
+                             uint16_t maxLink,
+                             uint32_t arg,
+                             mf_field_id dst);
 
     /**
      * Extract and return an array of flow actions from a buffer used

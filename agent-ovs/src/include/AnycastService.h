@@ -11,8 +11,9 @@
 
 #include <string>
 #include <utility>
+#include <unordered_set>
+#include <set>
 
-#include <boost/unordered_set.hpp>
 #include <boost/optional.hpp>
 #include <opflex/modb/URI.h>
 #include <opflex/modb/MAC.h>
@@ -173,6 +174,58 @@ public:
         }
 
         /**
+         * Get the protocol (either tcp or udp) for the service.  If
+         * unset all traffic to/from the service IP will match
+         *
+         * @return the protocol
+         */
+        const boost::optional<std::string>& getServiceProto() const {
+            return serviceProto;
+        }
+
+        /**
+         * Set the service protocol
+         *
+         * @param serviceProto the service protocol
+         */
+        void setServiceProto(const std::string& serviceProto) {
+            this->serviceProto = serviceProto;
+        }
+
+        /**
+         * Unset the service protocol for the service mapping
+         */
+        void unsetServiceProto() {
+            serviceProto = boost::none;
+        }
+
+        /**
+         * Port number on which the service will be accessed.  If
+         * unspecified all traffic to/from the service IP will match
+         *
+         * @return the service port number
+         */
+        const boost::optional<uint16_t>& getServicePort() const {
+            return servicePort;
+        }
+
+        /**
+         * Set the service port for the service mapping
+         *
+         * @param servicePort the service port number
+         */
+        void setServicePort(uint16_t servicePort) {
+            this->servicePort = servicePort;
+        }
+
+        /**
+         * Unset the service port
+         */
+        void unsetServicePort() {
+            servicePort = boost::none;
+        }
+
+        /**
          * Get the gateway IP address for this service mapping.  This
          * won't act as a "real" gateway but will reply to ARP or
          * neighbor discovery requests for the IP address specified.
@@ -200,37 +253,85 @@ public:
         }
 
         /**
-         * Get the next hop IP address for this service mapping.  When
-         * delivering to the service interface, rewrite the
-         * destination IP to the specified next hop IP address.
+         * Get the next hop IP addresses for this service mapping.
+         * When delivering to the service interface, rewrite the
+         * destination IP to the specified next hop IP address.  If
+         * there are multiple addreses, load balance across them
          *
          * @return the IP address
          */
-        const boost::optional<std::string>& getNextHopIP() const {
-            return nextHopIp;
+        const std::set<std::string>& getNextHopIPs() const {
+            return nextHopIps;
         }
 
         /**
-         * Set the next hop IP address for the service mapping
+         * Set the next hop IP addresses for the service mapping
+         *
+         * @param nextHopIps the IP addresses
+         */
+        void setNextHopIPs(const std::set<std::string>& nextHopIps) {
+            this->nextHopIps = nextHopIps;
+        }
+
+        /**
+         * Add a next hop IP address for the service mapping
          *
          * @param nextHopIp the IP address
          */
-        void setNextHopIP(const std::string& nextHopIp) {
-            this->nextHopIp = nextHopIp;
+        void addNextHopIP(const std::string& nextHopIp) {
+            this->nextHopIps.insert(nextHopIp);
         }
 
         /**
-         * Unset the next hop IP address for the service mapping
+         * Port number when the service traffic is delivered to the
+         * service endpoint.  If unspecified the next hop port is the
+         * same as the service port
+         *
+         * @return the next hop port number
          */
-        void unsetNextHopIP() {
-            nextHopIp = boost::none;
+        const boost::optional<uint16_t>& getNextHopPort() const {
+            return nextHopPort;
+        }
+
+        /**
+         * Set the next hop port for the service mapping
+         *
+         * @param nextHopPort the next hop port number
+         */
+        void setNextHopPort(uint16_t nextHopPort) {
+            this->nextHopPort = nextHopPort;
+        }
+
+        /**
+         * Unset the next hop port
+         */
+        void unsetNextHopPort() {
+            nextHopPort = boost::none;
         }
 
     private:
         boost::optional<std::string> serviceIp;
+        boost::optional<std::string> serviceProto;
+        boost::optional<uint16_t> servicePort;
         boost::optional<std::string> gatewayIp;
-        boost::optional<std::string> nextHopIp;
+        std::set<std::string> nextHopIps;
+        boost::optional<uint16_t> nextHopPort;
     };
+
+    /**
+     * Functor for storing a ServiceMapping as hash key
+     */
+    struct ServiceMappingHash {
+        /**
+         * Hash the service mapping
+         */
+        size_t operator()(const ServiceMapping& m) const noexcept;
+    };
+
+    /**
+     * A set of service mapping hash objects
+     */
+    typedef std::unordered_set<ServiceMapping, ServiceMappingHash> sm_set;
 
     /**
      * Clear the list of service mappings
@@ -251,7 +352,7 @@ public:
      *
      * @return a set of service mapping objects
      */
-    const boost::unordered_set<ServiceMapping>& getServiceMappings() const {
+    const sm_set& getServiceMappings() const {
         return serviceMappings;
     }
 
@@ -260,18 +361,13 @@ private:
     boost::optional<opflex::modb::URI> domainURI;
     boost::optional<std::string> interfaceName;
     boost::optional<opflex::modb::MAC> serviceMac;
-    boost::unordered_set<ServiceMapping> serviceMappings;
+    sm_set serviceMappings;
 };
 
 /**
  * Print an to an ostream
  */
 std::ostream & operator<<(std::ostream &os, const AnycastService& ep);
-
-/**
- * Compute a hash value for a service mapping
- */
-size_t hash_value(AnycastService::ServiceMapping const& m);
 
 /**
  * Check for service mapping equality.
