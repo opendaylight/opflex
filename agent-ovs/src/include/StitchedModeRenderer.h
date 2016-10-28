@@ -63,6 +63,7 @@ public:
 
 private:
     IdGenerator idGen;
+    CtZoneManager ctZoneManager;
 
     FlowExecutor intFlowExecutor;
     FlowReader intFlowReader;

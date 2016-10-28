@@ -110,7 +110,7 @@ bool operator!=(const URI& lhs, const URI& rhs);
 bool operator<(const URI& lhs, const URI& rhs);
 /**
  * Compute a hash value for the URI, making URI suitable as a key in
- * an unordered_map
+ * a boost::unordered_map
  */
 size_t hash_value(URI const& uri);
 
@@ -119,5 +119,22 @@ size_t hash_value(URI const& uri);
 
 } /* namespace modb */
 } /* namespace opflex */
+
+#if __cplusplus > 199711L
+
+namespace std {
+/**
+ * Template specialization for std::hash<opflex::modb::URI>, making
+ * URI suitable as a key in a std::unordered_map
+ */
+template<> struct hash<opflex::modb::URI> {
+    /**
+     * Hash the opflex::modb::URI
+     */
+    std::size_t operator()(const opflex::modb::URI& u) const;
+};
+} /* namespace std */
+
+#endif
 
 #endif /* MODB_URI_H */

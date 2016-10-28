@@ -14,7 +14,7 @@
 
 namespace ovsagent {
 
-EndpointSource::EndpointSource(EndpointManager* manager_) 
+EndpointSource::EndpointSource(EndpointManager* manager_)
     : manager(manager_) {}
 
 EndpointSource::~EndpointSource() {}

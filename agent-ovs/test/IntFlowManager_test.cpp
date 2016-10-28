@@ -61,7 +61,7 @@ class IntFlowManagerFixture : public FlowManagerFixture {
 public:
     IntFlowManagerFixture()
         : FlowManagerFixture(),
-          intFlowManager(agent, switchManager, idGen),
+          intFlowManager(agent, switchManager, idGen, ctZoneManager),
           policyMgr(agent.getPolicyManager()),
           ep2_port(11), ep4_port(22) {
         createObjects();
@@ -89,6 +89,7 @@ public:
         WAIT_FOR(policyMgr.getRDForGroup(epg3->getURI()) != boost::none, 500);
 
         switchManager.registerStateHandler(&intFlowManager);
+        intFlowManager.enableConnTrack();
         start();
     }
     virtual ~IntFlowManagerFixture() {
@@ -144,8 +145,12 @@ public:
     void initSubnets(PolicyManager::subnet_vector_t sns,
                      uint32_t bdId = 1, uint32_t rdId = 1);
 
-    /** Initialize service-scoped flow entries */
-    void initExpService(bool nextHop = false);
+    /** Initialize service-scoped flow entries for local services */
+    void initExpLocalService(int nextHop = 0);
+
+    /** Initialize service-scoped flow entries for load balanced
+        remote services */
+    void initExpLBRemoteService(bool conntrack = false);
 
     /** Initialize virtual IP flow entries */
     void initExpVirtualIp();
@@ -1090,7 +1095,7 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("nexthop", 500);
 }
 
-BOOST_FIXTURE_TEST_CASE(service, VxlanIntFlowManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(localService, VxlanIntFlowManagerFixture) {
     setConnected();
     intFlowManager.egDomainUpdated(epg0->getURI());
     intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
@@ -1122,13 +1127,13 @@ BOOST_FIXTURE_TEST_CASE(service, VxlanIntFlowManagerFixture) {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpService();
+    initExpLocalService();
     WAIT_FOR_TABLES("create", 500);
 
     as.clearServiceMappings();
-    sm1.setNextHopIP("169.254.169.1");
+    sm1.addNextHopIP("169.254.169.1");
     as.addServiceMapping(sm1);
-    sm2.setNextHopIP("fe80::a9:fe:a9:1");
+    sm2.addNextHopIP("fe80::a9:fe:a9:1");
     as.addServiceMapping(sm2);
 
     servSrc.updateAnycastService(as);
@@ -1141,8 +1146,92 @@ BOOST_FIXTURE_TEST_CASE(service, VxlanIntFlowManagerFixture) {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpService(true);
+    initExpLocalService(1);
     WAIT_FOR_TABLES("nexthop", 500);
+
+    as.clearServiceMappings();
+    sm1.addNextHopIP("169.254.169.2");
+    as.addServiceMapping(sm1);
+    sm2.addNextHopIP("fe80::a9:fe:a9:2");
+    as.addServiceMapping(sm2);
+
+    servSrc.updateAnycastService(as);
+    intFlowManager.anycastServiceUpdated(as.getUUID());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    initExpLocalService(2);
+    WAIT_FOR_TABLES("nexthop lb", 500);
+}
+
+BOOST_FIXTURE_TEST_CASE(loadBalancedService, VxlanIntFlowManagerFixture) {
+    setConnected();
+    intFlowManager.egDomainUpdated(epg0->getURI());
+    intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
+
+    AnycastService as;
+    as.setUUID("ed84daef-1696-4b98-8c80-6b22d85f4dc2");
+    as.setDomainURI(URI(rd0->getURI()));
+
+    AnycastService::ServiceMapping sm1;
+    sm1.setServiceIP("169.254.169.254");
+    sm1.setServiceProto("udp");
+    sm1.addNextHopIP("169.254.169.1");
+    sm1.addNextHopIP("169.254.169.2");
+    sm1.setServicePort(53);
+    sm1.setNextHopPort(5353);
+    as.addServiceMapping(sm1);
+
+    AnycastService::ServiceMapping sm2;
+    sm2.setServiceIP("fe80::a9:fe:a9:fe");
+    sm2.setServiceProto("tcp");
+    sm2.addNextHopIP("fe80::a9:fe:a9:1");
+    sm2.addNextHopIP("fe80::a9:fe:a9:2");
+    sm2.setServicePort(80);
+    as.addServiceMapping(sm2);
+
+    as.clearServiceMappings();
+    sm1.addNextHopIP("169.254.169.2");
+    as.addServiceMapping(sm1);
+    sm2.addNextHopIP("fe80::a9:fe:a9:2");
+    as.addServiceMapping(sm2);
+
+    servSrc.updateAnycastService(as);
+    intFlowManager.anycastServiceUpdated(as.getUUID());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    initExpLBRemoteService();
+    WAIT_FOR_TABLES("create", 500);
+
+    as.clearServiceMappings();
+    sm1.setConntrackMode(true);
+    as.addServiceMapping(sm1);
+    sm2.setConntrackMode(true);
+    as.addServiceMapping(sm2);
+
+    servSrc.updateAnycastService(as);
+    intFlowManager.anycastServiceUpdated(as.getUUID());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    initExpLBRemoteService(true);
+    WAIT_FOR_TABLES("conntrack", 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(vip, VxlanIntFlowManagerFixture) {
@@ -1210,8 +1299,7 @@ BOOST_FIXTURE_TEST_CASE(virtDhcp, VxlanIntFlowManagerFixture) {
 
 #define ADDF(flow) addExpFlowEntry(expTables, flow)
 enum TABLE {
-    SEC = 0, SRC = 1, BR  = 2, RT  = 3, NAT = 4, LRN = 5,
-    SVD = 6, POL = 7, OUT = 8,
+    SEC, SRC, SVR, BR, SVH, RT, NAT, LRN, SVD, POL, OUT
 };
 
 void IntFlowManagerFixture::initExpStatic() {
@@ -1229,6 +1317,7 @@ void IntFlowManagerFixture::initExpStatic() {
          .actions().go(SRC).done());
     ADDF(Bldr().table(SEC).priority(27).icmp6().icmp_type(133).icmp_code(0)
          .actions().go(SRC).done());
+    ADDF(Bldr().table(SVR).priority(1).actions().go(BR).done());
     ADDF(Bldr().table(POL).priority(8242).isPolicyApplied()
          .actions().drop().done());
     ADDF(Bldr().table(OUT).priority(1).isMdAct(0)
@@ -1316,7 +1405,7 @@ void IntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
                  .actions().popVlan()
                  .load(SEPG, vnid).load(BD, bdId)
                  .load(FD, fdId).load(RD, rdId)
-                 .polApplied().go(BR).done());
+                 .polApplied().go(SVR).done());
             ADDF(Bldr().table(OUT).priority(10).reg(SEPG, vnid)
                  .isMdAct(flow::meta::out::TUNNEL)
                  .actions().pushVlan().move(SEPG12, VLAN)
@@ -1327,7 +1416,7 @@ void IntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
         default:
             ADDF(Bldr().table(SRC).priority(149).tunId(vnid)
                  .in(tunPort).actions().load(SEPG, vnid).load(BD, bdId)
-                 .load(FD, fdId).load(RD, rdId).polApplied().go(BR).done());
+                 .load(FD, fdId).load(RD, rdId).polApplied().go(SVR).done());
             ADDF(Bldr().table(OUT).priority(10).reg(SEPG, vnid)
                  .isMdAct(flow::meta::out::TUNNEL)
                  .actions().move(SEPG, TUNID)
@@ -1457,7 +1546,7 @@ void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
 
         ADDF(Bldr().table(SRC).priority(140).in(port)
              .isEthSrc(mac).actions().load(SEPG, vnid).load(BD, bdId)
-             .load(FD, fdId).load(RD, rdId).go(BR).done());
+             .load(FD, fdId).load(RD, rdId).go(SVR).done());
     }
 
     // dest rules
@@ -1904,18 +1993,18 @@ void IntFlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
              .actions().ethSrc(epmac).ethDst(rmac)
              .ipv6Src("fdf1:9f86:d1af:6cc9::5").decTtl()
              .load(SEPG, 0x4242).load(BD, 2).load(FD, 1).load(RD, 2)
-             .load(OUTPORT, 0).load(METADATA, 0).resubmit(2).done());
+             .load(OUTPORT, 0).load(METADATA, 0).resubmit(BR).done());
         ADDF(Bldr().table(OUT).priority(10).ip()
              .reg(RD, 1).reg(OUTPORT, 0x4242)
              .isMdAct(flow::meta::out::NAT).isIpSrc("10.20.44.2")
              .actions().ethSrc(epmac).ethDst(rmac)
              .ipSrc("5.5.5.5").decTtl()
              .load(SEPG, 0x4242).load(BD, 2).load(FD, 1).load(RD, 2)
-             .load(OUTPORT, 0).load(METADATA, 0).resubmit(2).done());
+             .load(OUTPORT, 0).load(METADATA, 0).resubmit(BR).done());
     }
 }
 
-void IntFlowManagerFixture::initExpService(bool nextHop) {
+void IntFlowManagerFixture::initExpLocalService(int nextHop) {
     string mac = "ed:84:da:ef:16:96";
     string bmac("ff:ff:ff:ff:ff:ff");
     uint8_t rmacArr[6];
@@ -1924,16 +2013,32 @@ void IntFlowManagerFixture::initExpService(bool nextHop) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
     if (nextHop) {
+        std::stringstream mss;
+        mss << "symmetric_l3l4+udp,1024,iter_hash,"
+            << nextHop << ",32,NXM_NX_REG7[]";
         ADDF(Bldr().table(BR).priority(50)
              .ip().reg(RD, 1).isIpDst("169.254.169.254")
              .actions()
              .ethSrc(rmac).ethDst(mac)
-             .ipDst("169.254.169.1")
-             .decTtl().outPort(17).done());
+             .multipath(mss.str())
+             .go(SVH).done());
         ADDF(Bldr().table(BR).priority(50)
              .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
              .actions()
              .ethSrc(rmac).ethDst(mac)
+             .multipath(mss.str())
+             .go(SVH).done());
+
+        ADDF(Bldr().table(SVH).priority(99)
+             .ip().reg(RD, 1)
+             .isIpDst("169.254.169.254")
+             .actions()
+             .ipDst("169.254.169.1")
+             .decTtl().outPort(17).done());
+        ADDF(Bldr().table(SVH).priority(99)
+             .ipv6().reg(RD, 1)
+             .isIpv6Dst("fe80::a9:fe:a9:fe")
+             .actions()
              .ipv6Dst("fe80::a9:fe:a9:1")
              .decTtl().outPort(17).done());
 
@@ -1950,6 +2055,35 @@ void IntFlowManagerFixture::initExpService(bool nextHop) {
              .isIpv6Src("fe80::a9:fe:a9:1")
              .actions().load(RD, 1).ipv6Src("fe80::a9:fe:a9:fe")
              .decTtl().go(SVD).done());
+
+        if (nextHop >= 2) {
+            ADDF(Bldr().table(SVH).priority(100)
+                 .ip().reg(RD, 1).reg(OUTPORT, 1)
+                 .isIpDst("169.254.169.254")
+                 .actions()
+                 .ipDst("169.254.169.2")
+                 .decTtl().outPort(17).done());
+            ADDF(Bldr().table(SVH).priority(100)
+                 .ipv6().reg(RD, 1).reg(OUTPORT, 1)
+                 .isIpv6Dst("fe80::a9:fe:a9:fe")
+                 .actions()
+                 .ipv6Dst("fe80::a9:fe:a9:2")
+                 .decTtl().outPort(17).done());
+
+            ADDF(Bldr().table(SEC).priority(100).ip().in(17)
+                 .isEthSrc("ed:84:da:ef:16:96")
+                 .isIpSrc("169.254.169.2")
+                 .actions().load(RD, 1).ipSrc("169.254.169.254")
+                 .decTtl().go(SVD).done());
+            ADDF(Bldr().table(SEC).priority(100).arp().in(17)
+                 .isEthSrc("ed:84:da:ef:16:96").isSpa("169.254.169.2")
+                 .actions().load(RD, 1).go(SVD).done());
+            ADDF(Bldr().table(SEC).priority(100).ipv6().in(17)
+                 .isEthSrc("ed:84:da:ef:16:96")
+                 .isIpv6Src("fe80::a9:fe:a9:2")
+                 .actions().load(RD, 1).ipv6Src("fe80::a9:fe:a9:fe")
+                 .decTtl().go(SVD).done());
+        }
     } else {
         ADDF(Bldr().table(BR).priority(50)
              .ip().reg(RD, 1).isIpDst("169.254.169.254")
@@ -2013,6 +2147,158 @@ void IntFlowManagerFixture::initExpService(bool nextHop) {
          .actions()
          .load64(METADATA, 0x101ffeeddccbbaall)
          .controller(65535).done());
+}
+
+void IntFlowManagerFixture::initExpLBRemoteService(bool conntrack) {
+    string bmac("ff:ff:ff:ff:ff:ff");
+    uint8_t rmacArr[6];
+    memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
+    string rmac = MAC(rmacArr).toString();
+
+    ADDF(Bldr().table(BR).priority(50)
+         .udp().reg(RD, 1)
+         .isIpDst("169.254.169.254").isTpDst(53)
+         .actions()
+         .ethSrc(rmac).ethDst(rmac)
+         .multipath("symmetric_l3l4+udp,1024,iter_hash,2,32,NXM_NX_REG7[]")
+         .go(SVH).done());
+    ADDF(Bldr().table(BR).priority(50)
+         .tcp6().reg(RD, 1)
+         .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
+         .actions()
+         .ethSrc(rmac).ethDst(rmac)
+         .multipath("symmetric_l3l4+udp,1024,iter_hash,2,32,NXM_NX_REG7[]")
+         .go(SVH).done());
+
+    if (conntrack) {
+        ADDF(Bldr().table(SVH).priority(99)
+             .udp().reg(RD, 1)
+             .isIpDst("169.254.169.254").isTpDst(53)
+             .actions()
+             .tpDst(5353).ipDst("169.254.169.1")
+             .decTtl().ct("commit,zone=1").go(RT).done());
+        ADDF(Bldr().table(SVH).priority(100)
+             .udp().reg(RD, 1).reg(OUTPORT, 1)
+             .isIpDst("169.254.169.254").isTpDst(53)
+             .actions()
+             .tpDst(5353).ipDst("169.254.169.2")
+             .decTtl().ct("commit,zone=1").go(RT).done());
+        ADDF(Bldr().table(SVH).priority(99)
+             .tcp6().reg(RD, 1)
+             .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
+             .actions()
+             .ipv6Dst("fe80::a9:fe:a9:1")
+             .decTtl().ct("commit,zone=1").go(RT).done());
+        ADDF(Bldr().table(SVH).priority(100)
+             .tcp6().reg(RD, 1).reg(OUTPORT, 1)
+             .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
+             .actions()
+             .ipv6Dst("fe80::a9:fe:a9:2")
+             .decTtl().ct("commit,zone=1").go(RT).done());
+    } else {
+        ADDF(Bldr().table(SVH).priority(99)
+             .udp().reg(RD, 1)
+             .isIpDst("169.254.169.254").isTpDst(53)
+             .actions()
+             .tpDst(5353).ipDst("169.254.169.1")
+             .decTtl().go(RT).done());
+        ADDF(Bldr().table(SVH).priority(100)
+             .udp().reg(RD, 1).reg(OUTPORT, 1)
+             .isIpDst("169.254.169.254").isTpDst(53)
+             .actions()
+             .tpDst(5353).ipDst("169.254.169.2")
+             .decTtl().go(RT).done());
+        ADDF(Bldr().table(SVH).priority(99)
+             .tcp6().reg(RD, 1)
+             .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
+             .actions()
+             .ipv6Dst("fe80::a9:fe:a9:1")
+             .decTtl().go(RT).done());
+        ADDF(Bldr().table(SVH).priority(100)
+             .tcp6().reg(RD, 1).reg(OUTPORT, 1)
+             .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
+             .actions()
+             .ipv6Dst("fe80::a9:fe:a9:2")
+             .decTtl().go(RT).done());
+    }
+
+    if (conntrack) {
+        ADDF(Bldr().table(SVR).priority(100)
+             .ctState("-trk").udp().reg(RD, 1)
+             .isIpSrc("169.254.169.1").isTpSrc(5353)
+             .actions()
+             .tpSrc(53).ethSrc(rmac).ipSrc("169.254.169.254")
+             .decTtl().ct("table=1,zone=1").done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .ctState("-trk").udp().reg(RD, 1)
+             .isIpSrc("169.254.169.2").isTpSrc(5353)
+             .actions()
+             .tpSrc(53).ethSrc(rmac).ipSrc("169.254.169.254")
+             .decTtl().ct("table=1,zone=1").done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .ctState("-trk").tcp6().reg(RD, 1)
+             .isIpv6Src("fe80::a9:fe:a9:1").isTpSrc(80)
+             .actions()
+             .ethSrc(rmac).ipv6Src("fe80::a9:fe:a9:fe")
+             .decTtl().ct("table=1,zone=1").done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .ctState("-trk").tcp6().reg(RD, 1)
+             .isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
+             .actions()
+             .ethSrc(rmac).ipv6Src("fe80::a9:fe:a9:fe")
+             .decTtl().ct("table=1,zone=1").done());
+
+        ADDF(Bldr().table(SVR).priority(100)
+             .ctState("-new+est-inv+trk").udp().reg(RD, 1)
+             .isIpSrc("169.254.169.1").isTpSrc(5353)
+             .actions()
+             .tpSrc(53).ethSrc(rmac).ipSrc("169.254.169.254")
+             .decTtl().go(BR).done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .ctState("-new+est-inv+trk").udp().reg(RD, 1)
+             .isIpSrc("169.254.169.2").isTpSrc(5353)
+             .actions()
+             .tpSrc(53).ethSrc(rmac).ipSrc("169.254.169.254")
+             .decTtl().go(BR).done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .ctState("-new+est-inv+trk").tcp6().reg(RD, 1)
+             .isIpv6Src("fe80::a9:fe:a9:1").isTpSrc(80)
+             .actions()
+             .ethSrc(rmac).ipv6Src("fe80::a9:fe:a9:fe")
+             .decTtl().go(BR).done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .ctState("-new+est-inv+trk").tcp6().reg(RD, 1)
+             .isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
+             .actions()
+             .ethSrc(rmac).ipv6Src("fe80::a9:fe:a9:fe")
+             .decTtl().go(BR).done());
+    } else {
+        ADDF(Bldr().table(SVR).priority(100)
+             .udp().reg(RD, 1)
+             .isIpSrc("169.254.169.1").isTpSrc(5353)
+             .actions()
+             .tpSrc(53).ethSrc(rmac).ipSrc("169.254.169.254")
+             .decTtl().go(BR).done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .udp().reg(RD, 1)
+             .isIpSrc("169.254.169.2").isTpSrc(5353)
+             .actions()
+             .tpSrc(53).ethSrc(rmac).ipSrc("169.254.169.254")
+             .decTtl().go(BR).done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .tcp6().reg(RD, 1)
+             .isIpv6Src("fe80::a9:fe:a9:1").isTpSrc(80)
+             .actions()
+             .ethSrc(rmac).ipv6Src("fe80::a9:fe:a9:fe")
+             .decTtl().go(BR).done());
+        ADDF(Bldr().table(SVR).priority(100)
+             .tcp6().reg(RD, 1)
+             .isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
+             .actions()
+             .ethSrc(rmac).ipv6Src("fe80::a9:fe:a9:fe")
+             .decTtl().go(BR).done());
+
+    }
 }
 
 void IntFlowManagerFixture::initExpVirtualIp() {
@@ -2151,7 +2437,7 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
         .reg(MFF_REG5, uint32_t(0))
         .reg(MFF_REG6, uint32_t(1))
         .metadata(0x100, 0x100)
-        .go(BR);
+        .go(SVR);
     e1.build(flows);
 
     FlowBuilder().table(POL).priority(8292)

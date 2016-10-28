@@ -40,21 +40,17 @@ public:
      * @param agent the associated agent
      * @param switchManager the switch manager for the access bridge
      * @param idGen the flow ID generator
+     * @param ctZoneManager the conntrack zone manager
      */
     AccessFlowManager(Agent& agent,
                       SwitchManager& switchManager,
-                      IdGenerator& idGen);
+                      IdGenerator& idGen,
+                      CtZoneManager& ctZoneManager);
 
     /**
      * Enable connection tracking support
-     *
-     * @param minId the minimum ID to use for connection tracking
-     * @param maxId the maximum ID to use for connection tracking
-     * @param useNetLink if true, manage zones in the kernel using
-     * netlink.  Otherwise just allocate the zones and don't manage
-     * their state.
      */
-    void enableConnTrack(uint16_t minId, uint16_t maxId, bool useNetLink);
+    void enableConnTrack();
 
     /**
      * Start the access flow manager
@@ -123,7 +119,7 @@ private:
     Agent& agent;
     SwitchManager& switchManager;
     IdGenerator& idGen;
-    CtZoneManager ctZoneManager;
+    CtZoneManager& ctZoneManager;
     TaskQueue taskQueue;
 
     bool conntrackEnabled;

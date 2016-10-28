@@ -43,13 +43,12 @@ static const char* ID_NAMESPACES[] =
 static const char* ID_NMSPC_SECGROUP     = ID_NAMESPACES[0];
 static const char* ID_NMSPC_SECGROUP_SET = ID_NAMESPACES[1];
 
-static const std::string ID_NMSPC_ENDPOINT("endpoint");
-
 AccessFlowManager::AccessFlowManager(Agent& agent_,
                                      SwitchManager& switchManager_,
-                                     IdGenerator& idGen_)
+                                     IdGenerator& idGen_,
+                                     CtZoneManager& ctZoneManager_)
     : agent(agent_), switchManager(switchManager_), idGen(idGen_),
-      ctZoneManager(idGen_), taskQueue(agent.getAgentIOService()),
+      ctZoneManager(ctZoneManager_), taskQueue(agent.getAgentIOService()),
       conntrackEnabled(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
@@ -66,17 +65,11 @@ static string getSecGrpSetId(const uri_set_t& secGrps) {
    return ss.str();
 }
 
-void AccessFlowManager::enableConnTrack(uint16_t minId, uint16_t maxId,
-                                        bool useNetLink) {
+void AccessFlowManager::enableConnTrack() {
     conntrackEnabled = true;
-    ctZoneManager.setCtZoneRange(minId, maxId);
-    ctZoneManager.enableNetLink(useNetLink);
 }
 
 void AccessFlowManager::start() {
-    if (conntrackEnabled)
-        ctZoneManager.init(ID_NMSPC_ENDPOINT);
-
     switchManager.getPortMapper().registerPortStatusListener(this);
     agent.getEndpointManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);

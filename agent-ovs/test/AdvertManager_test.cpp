@@ -49,9 +49,9 @@ using opflex::modb::Mutator;
 class AdvertManagerFixture : public ModbFixture {
 public:
     AdvertManagerFixture()
-        : ModbFixture(),
+        : ModbFixture(), ctZoneManager(idGen),
           switchManager(agent, flowExecutor, flowReader, portMapper),
-          intFlowManager(agent, switchManager, idGen),
+          intFlowManager(agent, switchManager, idGen, ctZoneManager),
           advertManager(agent, intFlowManager) {
         createObjects();
         switchManager.start("br-int");
@@ -134,6 +134,7 @@ public:
     void testEpAdvert(AdvertManager::EndpointAdvMode mode);
 
     IdGenerator idGen;
+    CtZoneManager ctZoneManager;
     MockFlowReader flowReader;
     MockFlowExecutor flowExecutor;
     MockPortMapper portMapper;

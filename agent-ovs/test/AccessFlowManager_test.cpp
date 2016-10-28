@@ -39,11 +39,11 @@ using opflex::modb::Mutator;
 class AccessFlowManagerFixture : public FlowManagerFixture {
 public:
     AccessFlowManagerFixture()
-        : accessFlowManager(agent, switchManager, idGen) {
+        : accessFlowManager(agent, switchManager, idGen, ctZoneManager) {
         expTables.resize(AccessFlowManager::NUM_FLOW_TABLES);
         switchManager.registerStateHandler(&accessFlowManager);
         start();
-        accessFlowManager.enableConnTrack(1, 65534, false);
+        accessFlowManager.enableConnTrack();
         accessFlowManager.start();
     }
     virtual ~AccessFlowManagerFixture() {
@@ -280,7 +280,7 @@ void AccessFlowManagerFixture::initExpStatic() {
 void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
     uint32_t access = portmapper.FindPort(ep->getAccessInterface().get());
     uint32_t uplink = portmapper.FindPort(ep->getAccessUplinkInterface().get());
-    uint32_t zoneId = idGen.getId("endpoint", ep->getUUID());
+    uint32_t zoneId = idGen.getId("conntrack", ep->getUUID());
 
     if (access == OFPP_NONE || uplink == OFPP_NONE) return;
 
@@ -390,7 +390,7 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
 
     /* classifier 9 */
     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
-         .ctState("-new+est+trk").tcp().reg(SEPG, setId)
+         .ctState("-new+est-inv+trk").tcp().reg(SEPG, setId)
          .actions().go(OUT).done());
     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
          .ctState("-trk").tcp().reg(SEPG, setId)

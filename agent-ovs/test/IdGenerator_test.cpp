@@ -283,6 +283,8 @@ BOOST_AUTO_TEST_CASE(persist_range) {
         idgen.initNamespace(nmspc, 1, 20);
         BOOST_CHECK_EQUAL(19, idgen.getRemainingIds(nmspc));
         BOOST_CHECK_EQUAL(2, idgen.getFreeRangeCount(nmspc));
+
+        remove(idgen.getNamespaceFile(nmspc).c_str());
     }
 
 }
