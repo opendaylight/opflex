@@ -119,6 +119,16 @@ extern "C" {
     void act_ip_dst_v6(struct ofpbuf* buf, uint8_t* addr);
 
     /**
+     * set l4 source port
+     */
+    void act_l4_src(struct ofpbuf* buf, uint16_t port, uint8_t proto);
+
+    /**
+     * set l4 destination port
+     */
+    void act_l4_dst(struct ofpbuf* buf, uint16_t port, uint8_t proto);
+
+    /**
      * dec ttl
      */
     void act_decttl(struct ofpbuf* buf);
@@ -177,6 +187,17 @@ extern "C" {
                        int zoneSrc,
                        uint8_t recircTable,
                        uint16_t alg);
+
+    /**
+     * multipath
+     */
+    void act_multipath(struct ofpbuf* buf,
+                       int fields,
+                       uint16_t basis,
+                       int algorithm,
+                       uint16_t maxLink,
+                       uint32_t arg,
+                       int dst);
 
     /**
      * Get the value of the output reg action

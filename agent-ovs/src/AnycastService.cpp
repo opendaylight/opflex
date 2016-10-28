@@ -9,13 +9,15 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/foreach.hpp>
-
 #include "AnycastService.h"
+
+#include <boost/algorithm/string/join.hpp>
 
 namespace ovsagent {
 
 std::ostream & operator<<(std::ostream &os, const AnycastService& s) {
+    using boost::algorithm::join;
+
     os << "AnycastService["
        << "uuid=" << s.getUUID();
 
@@ -27,16 +29,27 @@ std::ostream & operator<<(std::ostream &os, const AnycastService& s) {
     if (s.getServiceMappings().size() > 0) {
         bool first = true;
         os << ",serviceMappings=[";
-        BOOST_FOREACH(const AnycastService::ServiceMapping& sm,
-                      s.getServiceMappings()) {
+        for (const auto& sm : s.getServiceMappings()) {
             if (first) first = false;
             else os << ",";
+
+            if (sm.getServiceProto())
+                os << sm.getServiceProto().get() << "://";
+
             if (sm.getServiceIP())
                 os << sm.getServiceIP().get();
             else
                 os << "None";
-            if (sm.getNextHopIP())
-                os << "->" << sm.getNextHopIP().get();
+
+            if (sm.getServicePort())
+                os << ":" << sm.getServicePort().get();
+
+            if (!sm.getNextHopIPs().empty()) {
+                os << "->[" << join(sm.getNextHopIPs(), ",") << "]";
+            }
+
+            if (sm.getNextHopPort())
+                os << ":" << sm.getNextHopPort().get();
         }
         os << "]";
     }
@@ -45,14 +58,16 @@ std::ostream & operator<<(std::ostream &os, const AnycastService& s) {
     return os;
 }
 
-size_t hash_value(AnycastService::ServiceMapping const& m) {
+size_t AnycastService::ServiceMappingHash::
+operator()(const AnycastService::ServiceMapping& m) const noexcept {
     size_t v = 0;
     if (m.getServiceIP())
         boost::hash_combine(v, m.getServiceIP().get());
     if (m.getGatewayIP())
         boost::hash_combine(v, m.getGatewayIP().get());
-    if (m.getNextHopIP())
-        boost::hash_combine(v, m.getNextHopIP().get());
+    for (const auto& ip : m.getNextHopIPs()) {
+        boost::hash_combine(v, ip);
+    }
     return v;
 }
 
@@ -64,7 +79,7 @@ bool operator==(const AnycastService::ServiceMapping& lhs,
                 const AnycastService::ServiceMapping& rhs) {
     return (lhs.getServiceIP() == rhs.getServiceIP() &&
             lhs.getGatewayIP() == rhs.getGatewayIP() &&
-            lhs.getNextHopIP() == rhs.getNextHopIP());
+            lhs.getNextHopIPs() == rhs.getNextHopIPs());
 }
 
 bool operator!=(const AnycastService::ServiceMapping& lhs,
