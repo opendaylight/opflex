@@ -18,11 +18,11 @@
 namespace ovsagent {
 
 using std::string;
+using std::unordered_set;
 using boost::unique_lock;
 using boost::mutex;
 using boost::shared_ptr;
 using boost::optional;
-using boost::unordered_set;
 using boost::make_shared;
 
 ServiceManager::ServiceManager() {
@@ -60,7 +60,7 @@ void ServiceManager::removeIfaces(const AnycastService& service) {
         string_serv_map_t::iterator it =
             iface_aserv_map.find(service.getInterfaceName().get());
         if (it != iface_aserv_map.end()) {
-            boost::unordered_set<std::string> servs = it->second;
+            unordered_set<std::string> servs = it->second;
             servs.erase(service.getUUID());
 
             if (servs.size() == 0) {
@@ -75,7 +75,7 @@ void ServiceManager::removeDomains(const AnycastService& service) {
         uri_serv_map_t::iterator it =
             domain_aserv_map.find(service.getDomainURI().get());
         if (it != domain_aserv_map.end()) {
-            boost::unordered_set<std::string> servs = it->second;
+            unordered_set<std::string> servs = it->second;
             servs.erase(service.getUUID());
 
             if (servs.size() == 0) {

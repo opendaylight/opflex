@@ -22,15 +22,16 @@ using boost::property_tree::ptree;
 using boost::asio::deadline_timer;
 using boost::asio::placeholders::error;
 
+static const std::string ID_NMSPC_CONNTRACK("conntrack");
 static const boost::posix_time::milliseconds CLEANUP_INTERVAL(3*60*1000);
 
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
-    : Renderer(agent_),
+    : Renderer(agent_), ctZoneManager(idGen),
       intSwitchManager(agent_, intFlowExecutor, intFlowReader, intPortMapper),
-      intFlowManager(agent_, intSwitchManager, idGen),
+      intFlowManager(agent_, intSwitchManager, idGen, ctZoneManager),
       accessSwitchManager(agent_, accessFlowExecutor,
                           accessFlowReader, accessPortMapper),
-      accessFlowManager(agent_, accessSwitchManager, idGen),
+      accessFlowManager(agent_, accessSwitchManager, idGen, ctZoneManager),
       statsManager(&agent_, intSwitchManager.getPortMapper()),
       tunnelEpManager(&agent_), tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true), started(false) {
@@ -65,6 +66,12 @@ void StitchedModeRenderer::start() {
     if (!flowIdCache.empty())
         idGen.setPersistLocation(flowIdCache);
 
+    if (connTrack) {
+        ctZoneManager.setCtZoneRange(ctZoneRangeStart, ctZoneRangeEnd);
+        ctZoneManager.enableNetLink(true);
+        ctZoneManager.init(ID_NMSPC_CONNTRACK);
+    }
+
     intFlowManager.setEncapType(encapType);
     intFlowManager.setEncapIface(encapIface);
     intFlowManager.setFloodScope(IntFlowManager::ENDPOINT_GROUP);
@@ -87,10 +94,9 @@ void StitchedModeRenderer::start() {
     intFlowManager.start();
     intFlowManager.registerModbListeners();
     if (accessBridgeName != "") {
-        if (connTrack) {
-            accessFlowManager.enableConnTrack(ctZoneRangeStart, ctZoneRangeEnd,
-                                              true);
-        }
+        if (connTrack)
+            accessFlowManager.enableConnTrack();
+
         accessFlowManager.start();
     }
     intSwitchManager.connect();
@@ -264,12 +270,33 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
         LOG(WARNING) << "No multicast group file specified";
 }
 
+static bool connTrackIdGarbageCb(EndpointManager& endpointManager,
+                                 opflex::ofcore::OFFramework& framework,
+                                 const std::string& nmspc,
+                                 const std::string& str) {
+    if (str.size() == 0) return false;
+    if (str[0] == '/') {
+        // a URI means a routing domain (in IntFlowManager)
+        return IdGenerator::uriIdGarbageCb
+            <modelgbp::gbp::RoutingDomain>(framework, nmspc, str);
+    } else {
+        // a UUID means an endpoint UUID (in AccessFlowManager)
+        return (bool)endpointManager.getEndpoint(str);
+    }
+}
+
 void StitchedModeRenderer::onCleanupTimer(const boost::system::error_code& ec) {
     if (ec) return;
 
     idGen.cleanup();
     intFlowManager.cleanup();
     accessFlowManager.cleanup();
+
+    IdGenerator::garbage_cb_t gcb =
+        boost::bind(connTrackIdGarbageCb,
+                    boost::ref(getEndpointManager()),
+                    boost::ref(getFramework()), _1, _2);
+    idGen.collectGarbage(ID_NMSPC_CONNTRACK, gcb);
 
     if (started) {
         cleanupTimer->expires_from_now(CLEANUP_INTERVAL);

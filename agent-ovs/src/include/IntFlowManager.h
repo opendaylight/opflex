@@ -28,6 +28,7 @@
 #include "RDConfig.h"
 #include "TaskQueue.h"
 #include "SwitchStateHandler.h"
+#include "CtZoneManager.h"
 
 namespace ovsagent {
 
@@ -52,10 +53,12 @@ public:
      * @param agent the agent object
      * @param switchManager the switch manager
      * @param idGen the flow ID generator
+     * @param ctZoneManager the conntrack zone manager
      */
     IntFlowManager(Agent& agent,
                    SwitchManager& switchManager,
-                   IdGenerator& idGen);
+                   IdGenerator& idGen,
+                   CtZoneManager& ctZoneManager);
     ~IntFlowManager() {}
 
     /**
@@ -145,6 +148,11 @@ public:
      */
     void setTunnel(const std::string& tunnelRemoteIp,
                    uint16_t tunnelRemotePort);
+
+    /**
+     * Enable connection tracking support
+     */
+    void enableConnTrack();
 
     /**
      * Enable or disable the virtual routing
@@ -318,6 +326,12 @@ public:
          */
         SRC_TABLE_ID,
         /**
+         * For traffic returning from load-balanced service IP
+         * addresses, restore the source address to the service
+         * address
+         */
+        SERVICE_REV_TABLE_ID,
+        /**
          * For flows that can be forwarded by bridging, maps the
          * destination L2 address to an endpoint group and next hop
          * interface and sets this mapping into registers for use by
@@ -325,6 +339,11 @@ public:
          * the agent or switch, such as ARP and NDP.
          */
         BRIDGE_TABLE_ID,
+        /**
+         * For load-balanced service IPs, map from a bucket ID to the
+         * appropriate destination IP address.
+         */
+        SERVICE_NEXTHOP_TABLE_ID,
         /**
          * For flows that require routing, maps the destination L3
          * address to an endpoint group or external network and next
@@ -350,7 +369,7 @@ public:
          * Map traffic returning from a service interface to the
          * appropriate endpoint interface.
          */
-        SERVICE_MAP_DST_TABLE_ID,
+        SERVICE_DST_TABLE_ID,
         /**
          * Allow policy for the flow based on the source and
          * destination groups and the contracts that are configured.
@@ -515,6 +534,7 @@ private:
     Agent& agent;
     SwitchManager& switchManager;
     IdGenerator& idGen;
+    CtZoneManager& ctZoneManager;
     TaskQueue taskQueue;
 
     EncapType encapType;
@@ -527,6 +547,7 @@ private:
     uint8_t routerMac[6];
     bool routerAdv;
     bool virtualDHCPEnabled;
+    bool conntrackEnabled;
     uint8_t dhcpMac[6];
     std::string flowIdCache;
     std::string mcastGroupFile;

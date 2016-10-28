@@ -141,3 +141,10 @@ size_t hash_value(URI const& uri) {
 
 } /* namespace modb */
 } /* namespace opflex */
+
+namespace std {
+std::size_t
+hash<opflex::modb::URI>::operator()(const opflex::modb::URI& u) const {
+    return opflex::modb::hash_value(u);
+}
+} /* namespace std */

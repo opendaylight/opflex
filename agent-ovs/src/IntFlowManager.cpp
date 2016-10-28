@@ -79,19 +79,19 @@ static const char* ID_NAMESPACES[] =
     {"floodDomain", "bridgeDomain", "routingDomain",
      "contract", "externalNetwork"};
 
-static const char* ID_NMSPC_FD     = ID_NAMESPACES[0];
-static const char* ID_NMSPC_BD     = ID_NAMESPACES[1];
-static const char* ID_NMSPC_RD     = ID_NAMESPACES[2];
-static const char* ID_NMSPC_CON    = ID_NAMESPACES[3];
-static const char* ID_NMSPC_EXTNET = ID_NAMESPACES[4];
+static const char* ID_NMSPC_FD      = ID_NAMESPACES[0];
+static const char* ID_NMSPC_BD      = ID_NAMESPACES[1];
+static const char* ID_NMSPC_RD      = ID_NAMESPACES[2];
+static const char* ID_NMSPC_CON     = ID_NAMESPACES[3];
+static const char* ID_NMSPC_EXTNET  = ID_NAMESPACES[4];
 
 IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,
-                               IdGenerator& idGen_) :
+                               IdGenerator& idGen_,
+                               CtZoneManager& ctZoneManager_) :
     agent(agent_), switchManager(switchManager_), idGen(idGen_),
-    taskQueue(agent.getAgentIOService()),
-    encapType(ENCAP_NONE),
-    floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
+    ctZoneManager(ctZoneManager_), taskQueue(agent.getAgentIOService()),
+    encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
     virtualRouterEnabled(false), routerAdv(false),
     virtualDHCPEnabled(false),
     pktInHandler(agent, *this),
@@ -219,6 +219,10 @@ void IntFlowManager::setEndpointAdv(AdvertManager::EndpointAdvMode mode) {
 
 void IntFlowManager::setMulticastGroupFile(const std::string& mcastGroupFile) {
     this->mcastGroupFile = mcastGroupFile;
+}
+
+void IntFlowManager::enableConnTrack() {
+    conntrackEnabled = true;
 }
 
 address IntFlowManager::getEPGTunnelDst(const URI& epgURI) {
@@ -438,7 +442,7 @@ static FlowBuilder& matchDhcpReq(FlowBuilder& fb, bool v4) {
 static FlowBuilder& actionSource(FlowBuilder& fb, uint32_t epgId, uint32_t bdId,
                                  uint32_t fgrpId,  uint32_t l3Id,
                                  uint8_t nextTable
-                                 = IntFlowManager::BRIDGE_TABLE_ID,
+                                 = IntFlowManager::SERVICE_REV_TABLE_ID,
                                  IntFlowManager::EncapType encapType
                                  = IntFlowManager::ENCAP_NONE,
                                  bool setPolicyApplied = false)
@@ -756,6 +760,32 @@ static void flowsVirtualDhcp(FlowEntryList& elSrc, uint32_t ofPort,
         .build(elSrc);
 }
 
+static void matchActionServiceProto(FlowBuilder& flow, uint8_t proto,
+                                    const AnycastService::ServiceMapping& sm,
+                                    bool forward, bool applyAction) {
+    if (!proto) return;
+    flow.proto(proto);
+
+    if (!sm.getServicePort()) return;
+
+    uint16_t s_port = sm.getServicePort().get();
+    uint16_t nh_port = s_port;
+    if (sm.getNextHopPort())
+        nh_port = sm.getNextHopPort().get();
+
+    if (nh_port == s_port) applyAction = false;
+
+    if (forward) {
+        flow.tpDst(s_port);
+        if (applyAction)
+            flow.action().l4Dst(nh_port, proto);
+    } else {
+        flow.tpSrc(nh_port);
+        if (applyAction)
+            flow.action().l4Src(s_port, proto);
+    }
+}
+
 void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
     LOG(DEBUG) << "Updating endpoint " << uuid;
@@ -769,7 +799,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
         switchManager.clearFlows(uuid, ROUTE_TABLE_ID);
         switchManager.clearFlows(uuid, LEARN_TABLE_ID);
-        switchManager.clearFlows(uuid, SERVICE_MAP_DST_TABLE_ID);
+        switchManager.clearFlows(uuid, SERVICE_DST_TABLE_ID);
         switchManager.clearFlows(uuid, OUT_TABLE_ID);
         removeEndpointFromFloodGroup(uuid);
         return;
@@ -1151,7 +1181,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     switchManager.writeFlow(uuid, LEARN_TABLE_ID, elEpLearn);
     switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
     switchManager.writeFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
-    switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, elServiceMap);
+    switchManager.writeFlow(uuid, SERVICE_DST_TABLE_ID, elServiceMap);
     switchManager.writeFlow(uuid, OUT_TABLE_ID, elOutput);
 
     if (fgrpURI && ofPort != OFPP_NONE) {
@@ -1169,10 +1199,12 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
     ServiceManager& srvMgr = agent.getServiceManager();
     shared_ptr<const AnycastService> asWrapper = srvMgr.getAnycastService(uuid);
 
-    if (!asWrapper) {
+    if (!asWrapper || !asWrapper->getDomainURI()) {
         switchManager.clearFlows(uuid, SEC_TABLE_ID);
         switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
-        switchManager.clearFlows(uuid, SERVICE_MAP_DST_TABLE_ID);
+        switchManager.clearFlows(uuid, SERVICE_REV_TABLE_ID);
+        switchManager.clearFlows(uuid, SERVICE_DST_TABLE_ID);
+        switchManager.clearFlows(uuid, SERVICE_NEXTHOP_TABLE_ID);
         return;
     }
 
@@ -1180,7 +1212,9 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
 
     FlowEntryList secFlows;
     FlowEntryList bridgeFlows;
-    FlowEntryList serviceMapDstFlows;
+    FlowEntryList serviceRevFlows;
+    FlowEntryList serviceDstFlows;
+    FlowEntryList serviceNextHopFlows;
 
     boost::system::error_code ec;
 
@@ -1195,37 +1229,57 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
         RoutingDomain::resolve(agent.getFramework(),
                                as.getDomainURI().get());
 
-    if (ofPort != OFPP_NONE && as.getServiceMAC() && rd) {
-        uint8_t macAddr[6];
-        as.getServiceMAC().get().toUIntArray(macAddr);
+    if (rd) {
+        uint8_t smacAddr[6];
+        const uint8_t* macAddr = smacAddr;
+        if (as.getServiceMAC()) {
+            as.getServiceMAC().get().toUIntArray(smacAddr);
+        } else {
+            macAddr = getRouterMacAddr();
+        }
 
-        uint32_t rdId =
-            getId(RoutingDomain::CLASS_ID, as.getDomainURI().get());
+        uint32_t rdId = getId(RoutingDomain::CLASS_ID, as.getDomainURI().get());
 
-        BOOST_FOREACH(AnycastService::ServiceMapping sm,
-                      as.getServiceMappings()) {
+        for (auto const& sm : as.getServiceMappings()) {
             if (!sm.getServiceIP())
                 continue;
 
-            address addr = address::from_string(sm.getServiceIP().get(), ec);
+            uint16_t zoneId = -1;
+            if (conntrackEnabled && sm.isConntrackMode()) {
+                zoneId = ctZoneManager.getId(as.getDomainURI()->toString());
+                if (zoneId == static_cast<uint16_t>(-1))
+                    LOG(ERROR) << "Could not allocate connection tracking"
+                               << " zone for "
+                               << as.getDomainURI().get();
+            }
+
+            address serviceAddr =
+                address::from_string(sm.getServiceIP().get(), ec);
             if (ec) {
                 LOG(WARNING) << "Invalid service IP: "
                              << sm.getServiceIP().get()
                              << ": " << ec.message();
                 continue;
             }
-            address nextHopAddr;
-            bool hasNextHop = false;
-            if (sm.getNextHopIP()) {
-                nextHopAddr =
-                    address::from_string(sm.getNextHopIP().get(), ec);
+
+            vector<address> nextHopAddrs;
+            for (const string& ipstr : sm.getNextHopIPs()) {
+                auto nextHopAddr = address::from_string(ipstr, ec);
                 if (ec) {
                     LOG(WARNING) << "Invalid service next hop IP: "
-                                 << sm.getNextHopIP().get()
-                                 << ": " << ec.message();
+                                 << ipstr << ": " << ec.message();
                 } else {
-                    hasNextHop = true;
+                    nextHopAddrs.push_back(nextHopAddr);
                 }
+            }
+
+            uint8_t proto = 0;
+            if (sm.getServiceProto()) {
+                string protoStr = sm.getServiceProto().get();
+                if ("udp" == protoStr)
+                    proto = 17;
+                else
+                    proto = 6;
             }
 
             // Traffic sent to anycast services is intercepted in the
@@ -1235,74 +1289,170 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
             {
                 FlowBuilder serviceDest;
                 matchDestDom(serviceDest, 0, rdId);
+                matchActionServiceProto(serviceDest, proto, sm, true, false);
+
                 serviceDest
                     .priority(50)
-                    .ipDst(addr)
+                    .ipDst(serviceAddr)
                     .action()
                     .ethSrc(getRouterMacAddr())
                     .ethDst(macAddr);
-                if (hasNextHop) {
+
+                if (!nextHopAddrs.empty()) {
                     // map traffic to service interface to the next
-                    // hop IP using DNAT semantics
-                    serviceDest.action().ipDst(nextHopAddr);
+                    // hop IPs using DNAT semantics
+                    serviceDest.action()
+                        .multipath(NX_HASH_FIELDS_SYMMETRIC_L3L4_UDP,
+                                   1024,
+                                   ActionBuilder::NX_MP_ALG_ITER_HASH,
+                                   static_cast<uint16_t>(nextHopAddrs.size()-1),
+                                   32, MFF_REG7)
+                        .go(SERVICE_NEXTHOP_TABLE_ID);
+                } else if (ofPort != OFPP_NONE) {
+                    serviceDest.action().decTtl().output(ofPort);
                 }
-                serviceDest.action()
-                   .decTtl()
-                    .output(ofPort);
+
                 serviceDest.build(bridgeFlows);
             }
 
-            // Traffic sent from anycast services is intercepted in
-            // the security table to prevent normal processing
-            // semantics.
-            {
-                FlowBuilder svcIp;
-                svcIp.priority(100)
-                    .inPort(ofPort)
-                    .ethSrc(macAddr)
-                    .action()
-                    .reg(MFF_REG6, rdId);
+            uint16_t link = 0;
+            for (const address& nextHopAddr : nextHopAddrs) {
+                {
+                    FlowBuilder ipMap;
+                    matchDestDom(ipMap, 0, rdId);
+                    matchActionServiceProto(ipMap, proto, sm, true, true);
+                    ipMap.ipDst(serviceAddr);
 
-                if (hasNextHop) {
-                    // If there is a next hop mapping, map the return
-                    // traffic from service interface using DNAT
-                    // semantics
-                    svcIp.ipSrc(nextHopAddr)
-                        .action()
-                        .ipSrc(addr)
+                    // use the first address as a "default" so that
+                    // there is no transient case where there is no
+                    // match while flows are updated.
+                    if (link == 0) {
+                        ipMap.priority(99);
+                    } else {
+                        ipMap.priority(100)
+                            .reg(7, link);
+                    }
+                    ipMap.action().ipDst(nextHopAddr)
                         .decTtl();
-                } else {
-                    svcIp.ipSrc(addr);
+
+                    if (ofPort == OFPP_NONE) {
+                        if (zoneId != static_cast<uint16_t>(-1))
+                            ipMap.action()
+                                .conntrack(ActionBuilder::CT_COMMIT,
+                                           static_cast<mf_field_id>(0),
+                                           zoneId);
+
+                        ipMap.action().go(ROUTE_TABLE_ID);
+                    } else {
+                        ipMap.action().output(ofPort);
+                    }
+
+                    ipMap.build(serviceNextHopFlows);
+                }
+                if (ofPort == OFPP_NONE) {
+                    // For services with no service interface reverse
+                    // traffic is handled with normal policy semantics
+                    if (zoneId != static_cast<uint16_t>(-1)) {
+                        FlowBuilder ipRevMapCt;
+                        matchDestDom(ipRevMapCt, 0, rdId);
+                        matchActionServiceProto(ipRevMapCt, proto, sm,
+                                                false, false);
+                        ipRevMapCt.conntrackState(0, FlowBuilder::CT_TRACKED);
+                        ipRevMapCt.priority(100)
+                            .ipSrc(nextHopAddr)
+                            .action().conntrack(0, static_cast<mf_field_id>(0),
+                                                zoneId, SRC_TABLE_ID);
+                        ipRevMapCt.build(serviceRevFlows);
+                    }
+                    {
+                        FlowBuilder ipRevMap;
+                        matchDestDom(ipRevMap, 0, rdId);
+                        matchActionServiceProto(ipRevMap, proto, sm,
+                                                false, true);
+
+                        ipRevMap.priority(100)
+                            .ipSrc(nextHopAddr)
+                            .action()
+                            .ethSrc(getRouterMacAddr())
+                            .ipSrc(serviceAddr)
+                            .decTtl();
+                        if (zoneId != static_cast<uint16_t>(-1)) {
+                            ipRevMap
+                                .conntrackState(FlowBuilder::CT_TRACKED |
+                                                FlowBuilder::CT_ESTABLISHED,
+                                                FlowBuilder::CT_TRACKED |
+                                                FlowBuilder::CT_ESTABLISHED |
+                                                FlowBuilder::CT_INVALID |
+                                                FlowBuilder::CT_NEW);
+                        }
+                        ipRevMap.action().go(BRIDGE_TABLE_ID);
+                        ipRevMap.build(serviceRevFlows);
+                    }
                 }
 
-                svcIp.action()
-                    .go(SERVICE_MAP_DST_TABLE_ID);
-                svcIp.build(secFlows);
+                link += 1;
             }
-            if (addr.is_v4()) {
-                FlowBuilder().priority(100)
-                    .inPort(ofPort)
-                    .ethSrc(macAddr)
-                    .arpSrc(hasNextHop ? nextHopAddr : addr)
-                    .action()
-                    .reg(MFF_REG6, rdId)
-                    .go(SERVICE_MAP_DST_TABLE_ID)
-                    .parent().build(secFlows);
-            }
-            flowsProxyDiscovery(*this, bridgeFlows,
-                                51, addr, macAddr, 0, rdId, 0);
 
-            if (sm.getGatewayIP()) {
-                address gwAddr =
-                    address::from_string(sm.getGatewayIP().get(), ec);
-                if (ec) {
-                    LOG(WARNING) << "Invalid service gateway IP: "
-                                 << sm.getGatewayIP().get()
-                                 << ": " << ec.message();
-                } else {
-                    flowsProxyDiscovery(*this, serviceMapDstFlows, 31,
-                                        gwAddr, getRouterMacAddr(), 0, rdId, 0,
-                                        true, macAddr);
+            if (ofPort != OFPP_NONE) {
+                // For services with a service interface, traffic sent
+                // from the interface is intercepted in the security
+                // table to prevent normal processing semantics, since
+                // there is no otherwise way to specify to allow the
+                // traffic.
+                if (nextHopAddrs.empty())
+                    nextHopAddrs.emplace_back();
+
+                for (const address& nextHopAddr : nextHopAddrs) {
+                    FlowBuilder svcIp;
+                    svcIp.priority(100)
+                        .inPort(ofPort)
+                        .ethSrc(macAddr)
+                        .action()
+                        .reg(MFF_REG6, rdId);
+
+                    if (nextHopAddr != address()) {
+                        // If there is a next hop mapping, map the return
+                        // traffic from service interface using DNAT
+                        // semantics
+                        svcIp.ipSrc(nextHopAddr)
+                            .action()
+                            .ipSrc(serviceAddr)
+                            .decTtl();
+                    } else {
+                        svcIp.ipSrc(serviceAddr);
+                    }
+
+                    svcIp.action()
+                        .go(SERVICE_DST_TABLE_ID);
+                    svcIp.build(secFlows);
+
+                    if (serviceAddr.is_v4()) {
+                        FlowBuilder().priority(100)
+                            .inPort(ofPort)
+                            .ethSrc(macAddr)
+                            .arpSrc(nextHopAddr != address()
+                                    ? nextHopAddr : serviceAddr)
+                            .action()
+                            .reg(MFF_REG6, rdId)
+                            .go(SERVICE_DST_TABLE_ID)
+                            .parent().build(secFlows);
+                    }
+                    flowsProxyDiscovery(*this, bridgeFlows,
+                                        51, serviceAddr, macAddr, 0, rdId, 0);
+
+                    if (sm.getGatewayIP()) {
+                        address gwAddr =
+                            address::from_string(sm.getGatewayIP().get(), ec);
+                        if (ec) {
+                            LOG(WARNING) << "Invalid service gateway IP: "
+                                         << sm.getGatewayIP().get()
+                                         << ": " << ec.message();
+                        } else {
+                            flowsProxyDiscovery(*this, serviceDstFlows, 31,
+                                                gwAddr, getRouterMacAddr(), 0,
+                                                rdId, 0, true, macAddr);
+                        }
+                    }
                 }
             }
         }
@@ -1310,7 +1460,10 @@ void IntFlowManager::handleAnycastServiceUpdate(const string& uuid) {
 
     switchManager.writeFlow(uuid, SEC_TABLE_ID, secFlows);
     switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, bridgeFlows);
-    switchManager.writeFlow(uuid, SERVICE_MAP_DST_TABLE_ID, serviceMapDstFlows);
+    switchManager.writeFlow(uuid, SERVICE_REV_TABLE_ID, serviceRevFlows);
+    switchManager.writeFlow(uuid, SERVICE_NEXTHOP_TABLE_ID,
+                            serviceNextHopFlows);
+    switchManager.writeFlow(uuid, SERVICE_DST_TABLE_ID, serviceDstFlows);
 }
 
 void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
@@ -1392,6 +1545,13 @@ void IntFlowManager::createStaticFlows() {
                 .build(portSec);
         }
         switchManager.writeFlow("static", SEC_TABLE_ID, portSec);
+    }
+    {
+        // For non-service flows, proceed to the bridge table
+        FlowBuilder nonServiceFlow;
+        nonServiceFlow.priority(1).action().go(BRIDGE_TABLE_ID);
+        switchManager.writeFlow("static", SERVICE_REV_TABLE_ID,
+                                nonServiceFlow);
     }
     {
         // Block flows from the uplink when not allowed by
@@ -1482,7 +1642,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
                 ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
         }
 
-        uint8_t nextTable = IntFlowManager::BRIDGE_TABLE_ID;
+        uint8_t nextTable = IntFlowManager::SERVICE_REV_TABLE_ID;
         if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD &&
             bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL)
             nextTable = IntFlowManager::LEARN_TABLE_ID;
@@ -1709,6 +1869,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
         switchManager.clearFlows(rdURI.toString(), NAT_IN_TABLE_ID);
         switchManager.clearFlows(rdURI.toString(), ROUTE_TABLE_ID);
         idGen.erase(getIdNamespace(RoutingDomain::CLASS_ID), rdURI.toString());
+        ctZoneManager.erase(rdURI.toString());
         return;
     }
     LOG(DEBUG) << "Updating routing domain " << rdURI;
@@ -1845,9 +2006,9 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     switchManager.writeFlow(rdURI.toString(), NAT_IN_TABLE_ID, rdNatFlows);
     switchManager.writeFlow(rdURI.toString(), ROUTE_TABLE_ID, rdRouteFlows);
 
-    unordered_set<string> uuids;
+    std::unordered_set<string> uuids;
     agent.getServiceManager().getAnycastServicesByDomain(rdURI, uuids);
-    BOOST_FOREACH (const string& uuid, uuids) {
+    for (const string& uuid : uuids) {
         anycastServiceUpdated(uuid);
     }
 }
@@ -2208,18 +2369,22 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
         /* Directly update the group-table */
         updateGroupTable();
     } else {
-        unordered_set<string> uuids;
-        agent.getEndpointManager().getEndpointsByIface(portName, uuids);
-        agent.getEndpointManager().getEndpointsByIpmNextHopIf(portName,
-                                                              uuids);
-        BOOST_FOREACH (const string& uuid, uuids) {
-            endpointUpdated(uuid);
+        {
+            unordered_set<string> uuids;
+            agent.getEndpointManager().getEndpointsByIface(portName, uuids);
+            agent.getEndpointManager().getEndpointsByIpmNextHopIf(portName,
+                                                                  uuids);
+            for (const string& uuid : uuids) {
+                endpointUpdated(uuid);
+            }
         }
-
-        uuids.clear();
-        agent.getServiceManager().getAnycastServicesByIface(portName, uuids);
-        BOOST_FOREACH (const string& uuid, uuids) {
-            anycastServiceUpdated(uuid);
+        {
+            std::unordered_set<string> uuids;
+            agent.getServiceManager()
+                .getAnycastServicesByIface(portName, uuids);
+            for (const string& uuid : uuids) {
+                anycastServiceUpdated(uuid);
+            }
         }
     }
 }
@@ -2245,9 +2410,11 @@ void IntFlowManager::getGroupVnidAndRdId(const unordered_set<URI>& uris,
     }
 }
 
-static const boost::function<bool(opflex::ofcore::OFFramework&,
-                                  const string&,
-                                  const string&)> ID_NAMESPACE_CB[] =
+typedef boost::function<bool(opflex::ofcore::OFFramework&,
+                             const string&,
+                             const string&)> IdCb;
+
+static const IdCb ID_NAMESPACE_CB[] =
     {IdGenerator::uriIdGarbageCb<FloodDomain>,
      IdGenerator::uriIdGarbageCb<BridgeDomain>,
      IdGenerator::uriIdGarbageCb<RoutingDomain>,
@@ -2255,7 +2422,7 @@ static const boost::function<bool(opflex::ofcore::OFFramework&,
      IdGenerator::uriIdGarbageCb<L3ExternalNetwork>};
 
 void IntFlowManager::cleanup() {
-    for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
+    for (size_t i = 0; i < sizeof(ID_NAMESPACE_CB)/sizeof(IdCb); i++) {
         string ns(ID_NAMESPACES[i]);
         IdGenerator::garbage_cb_t gcb =
             bind(ID_NAMESPACE_CB[i], ref(agent.getFramework()), _1, _2);
