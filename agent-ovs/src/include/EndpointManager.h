@@ -9,20 +9,21 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#pragma once
+#ifndef OVSAGENT_ENDPOINTMANAGER_H
+#define OVSAGENT_ENDPOINTMANAGER_H
+
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/modb/ObjectListener.h>
 #include <modelgbp/metadata/metadata.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/random/random_device.hpp>
 #include <boost/random/mersenne_twister.hpp>
+#include <boost/unordered_set.hpp>
 
 #include "Endpoint.h"
 #include "EndpointListener.h"
 #include "PolicyManager.h"
-
-#pragma once
-#ifndef OVSAGENT_ENDPOINTMANAGER_H
-#define OVSAGENT_ENDPOINTMANAGER_H
 
 namespace ovsagent {
 

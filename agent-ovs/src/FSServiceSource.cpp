@@ -17,7 +17,6 @@
 #include <stdexcept>
 #include <sstream>
 
-#include <boost/foreach.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -61,8 +60,13 @@ void FSServiceSource::updated(const fs::path& filePath) {
 
     static const std::string SERVICE_MAPPING("service-mapping");
     static const std::string SM_SERVICE_IP("service-ip");
+    static const std::string SM_SERVICE_PROTO("service-proto");
+    static const std::string SM_SERVICE_PORT("service-port");
     static const std::string SM_GATEWAY_IP("gateway-ip");
     static const std::string SM_NEXT_HOP_IP("next-hop-ip");
+    static const std::string SM_NEXT_HOP_IPS("next-hop-ips");
+    static const std::string SM_NEXT_HOP_PORT("next-hop-port");
+    static const std::string SM_CONNTRACK("conntrack-enabled");
 
     try {
         using boost::property_tree::ptree;
@@ -107,13 +111,23 @@ void FSServiceSource::updated(const fs::path& filePath) {
         optional<ptree&> sms =
             properties.get_child_optional(SERVICE_MAPPING);
         if (sms) {
-            BOOST_FOREACH(const ptree::value_type &v, sms.get()) {
+            for (const ptree::value_type &v : sms.get()) {
                 AnycastService::ServiceMapping sm;
 
                 optional<string> serviceIp =
                     v.second.get_optional<string>(SM_SERVICE_IP);
                 if (serviceIp)
                     sm.setServiceIP(serviceIp.get());
+
+                optional<string> serviceProto =
+                    v.second.get_optional<string>(SM_SERVICE_PROTO);
+                if (serviceProto)
+                    sm.setServiceProto(serviceProto.get());
+
+                optional<uint16_t> servicePort =
+                    v.second.get_optional<uint16_t>(SM_SERVICE_PORT);
+                if (servicePort)
+                    sm.setServicePort(servicePort.get());
 
                 optional<string> gatewayIp =
                     v.second.get_optional<string>(SM_GATEWAY_IP);
@@ -123,7 +137,25 @@ void FSServiceSource::updated(const fs::path& filePath) {
                 optional<string> nextHopIp =
                     v.second.get_optional<string>(SM_NEXT_HOP_IP);
                 if (nextHopIp)
-                    sm.setNextHopIP(nextHopIp.get());
+                    sm.addNextHopIP(nextHopIp.get());
+
+                optional<const ptree&> nhips =
+                    v.second.get_child_optional(SM_NEXT_HOP_IPS);
+                if (nhips) {
+                    for (auto& nhip : nhips.get()) {
+                        sm.addNextHopIP(nhip.second.data());
+                    }
+                }
+
+                optional<uint16_t> nextHopPort =
+                    v.second.get_optional<uint16_t>(SM_NEXT_HOP_PORT);
+                if (nextHopPort)
+                    sm.setNextHopPort(nextHopPort.get());
+
+                optional<bool> conntrack =
+                    v.second.get_optional<bool>(SM_CONNTRACK);
+                if (conntrack)
+                    sm.setConntrackMode(conntrack.get());
 
                 newserv.addServiceMapping(sm);
             }

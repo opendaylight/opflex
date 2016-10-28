@@ -157,6 +157,16 @@ ActionBuilder& ActionBuilder::ipDst(const address& dstIp) {
     return *this;
 }
 
+ActionBuilder& ActionBuilder::l4Src(uint16_t port, uint8_t proto) {
+    act_l4_src(buf, port, proto);
+    return *this;
+}
+
+ActionBuilder& ActionBuilder::l4Dst(uint16_t port, uint8_t proto) {
+    act_l4_dst(buf, port, proto);
+    return *this;
+}
+
 ActionBuilder& ActionBuilder::decTtl() {
     act_decttl(buf);
     return *this;
@@ -214,6 +224,16 @@ ActionBuilder& ActionBuilder::conntrack(uint16_t flags,
                                         uint8_t recircTable,
                                         uint16_t alg) {
     act_conntrack(buf, flags, zoneImm, zoneSrc, recircTable, alg);
+    return *this;
+}
+
+ActionBuilder& ActionBuilder::multipath(enum nx_hash_fields fields,
+                                        uint16_t basis,
+                                        MultipathAlgo algorithm,
+                                        uint16_t maxLink,
+                                        uint32_t arg,
+                                        mf_field_id dst) {
+    act_multipath(buf, fields, basis, algorithm, maxLink, arg, dst);
     return *this;
 }
 

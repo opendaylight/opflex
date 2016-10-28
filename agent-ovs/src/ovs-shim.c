@@ -155,6 +155,18 @@ void act_ip_dst_v6(struct ofpbuf* buf, uint8_t* addr) {
     ofpact_put_set_field(buf, mf_from_id(MFF_IPV6_DST), addr, mask);
 }
 
+void act_l4_src(struct ofpbuf* buf, uint16_t port, uint8_t proto) {
+    struct ofpact_l4_port* act = ofpact_put_SET_L4_SRC_PORT(buf);
+    act->port = port;
+    act->flow_ip_proto = proto;
+}
+
+void act_l4_dst(struct ofpbuf* buf, uint16_t port, uint8_t proto) {
+    struct ofpact_l4_port* act = ofpact_put_SET_L4_DST_PORT(buf);
+    act->port = port;
+    act->flow_ip_proto = proto;
+}
+
 void act_decttl(struct ofpbuf* buf) {
     struct ofpact_cnt_ids *ctlr = ofpact_put_DEC_TTL(buf);
     uint16_t ctlrId = 0;
@@ -233,6 +245,22 @@ void act_conntrack(struct ofpbuf* buf,
     }
     act->alg = alg;
     act->recirc_table = recircTable;
+}
+
+void act_multipath(struct ofpbuf* buf,
+                   int fields,
+                   uint16_t basis,
+                   int algorithm,
+                   uint16_t maxLink,
+                   uint32_t arg,
+                   int dst) {
+    struct ofpact_multipath* act = ofpact_put_MULTIPATH(buf);
+    act->fields = fields;
+    act->basis = basis;
+    act->algorithm = algorithm;
+    act->max_link = maxLink;
+    act->arg = arg;
+    initSubField(&act->dst, dst);
 }
 
 uint32_t get_output_reg_value(const struct ofpact* ofpacts,

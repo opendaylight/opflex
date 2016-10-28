@@ -63,4 +63,4 @@ public:
 } /* namespace ofcore */
 } /* namespace opflex */
 
-#endif /* OPFLEX_CORE_OFFRAMEWORK_H */
+#endif /* OPFLEX_CORE_CONSTANTS_H */

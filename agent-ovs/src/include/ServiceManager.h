@@ -9,8 +9,10 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <unordered_set>
+#include <unordered_map>
+
 #include <boost/noncopyable.hpp>
-#include <boost/unordered_map.hpp>
 #include <boost/thread/mutex.hpp>
 #include <opflex/modb/URI.h>
 
@@ -70,7 +72,7 @@ public:
      * matching services.
      */
     void getAnycastServicesByIface(const std::string& ifaceName,
-                                   /* out */ boost::unordered_set<std::string>& servs);
+                                   /* out */ std::unordered_set<std::string>& servs);
 
     /**
      * Get the anycast services associated with a particular routing
@@ -81,7 +83,7 @@ public:
      * matching services.
      */
     void getAnycastServicesByDomain(const opflex::modb::URI& domain,
-                                    /* out */ boost::unordered_set<std::string>& servs);
+                                    /* out */ std::unordered_set<std::string>& servs);
 
 private:
     /**
@@ -103,11 +105,11 @@ private:
         boost::shared_ptr<const AnycastService> service;
     };
 
-    typedef boost::unordered_map<std::string, AnycastServiceState> aserv_map_t;
-    typedef boost::unordered_map<std::string,
-                                 boost::unordered_set<std::string> > string_serv_map_t;
-    typedef boost::unordered_map<opflex::modb::URI,
-                                 boost::unordered_set<std::string> > uri_serv_map_t;
+    typedef std::unordered_map<std::string, AnycastServiceState> aserv_map_t;
+    typedef std::unordered_map<std::string,
+                               std::unordered_set<std::string> > string_serv_map_t;
+    typedef std::unordered_map<opflex::modb::URI,
+                               std::unordered_set<std::string> > uri_serv_map_t;
 
     boost::mutex serv_mutex;
 
