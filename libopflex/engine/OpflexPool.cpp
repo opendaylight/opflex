@@ -56,11 +56,18 @@ void OpflexPool::setLocation(const std::string& location) {
 }
 
 void OpflexPool::enableSSL(const std::string& caStorePath,
+                           char const * keyAndCertFilePath,
+                           char const * passphrase,
                            bool verifyPeers) {
     OpflexConnection::initSSL();
-    clientCtx.reset(ZeroCopyOpenSSL::Ctx::createCtx(caStorePath.c_str(), NULL));
+    clientCtx.reset(ZeroCopyOpenSSL::Ctx::createCtx(caStorePath.c_str(),
+                keyAndCertFilePath,
+                passphrase));
     if (!clientCtx.get())
         throw std::runtime_error("Could not enable SSL");
+
+    if (verifyPeers)
+        clientCtx.get()->setVerify();
 }
 
 
