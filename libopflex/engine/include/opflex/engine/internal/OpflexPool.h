@@ -124,7 +124,26 @@ public:
      * @param verifyPeers set to true to verify that peer certificates
      * properly chain to a trusted root
      */
-    void enableSSL(const std::string& caStorePath, bool verifyPeers = true);
+    void enableSSL(const std::string& caStorePath,
+                   bool verifyPeers = true);
+
+    /**
+     * Enable SSL for connections to opflex peers
+     *
+     * @param caStorePath the filesystem path to a directory
+     * containing CA certificates, or to a file containing a specific
+     * CA certificate.
+     * @param keyAndCertFilePath the path to the PEM file for this peer,
+     * containing its certificate and its private key, possibly encrypted.
+     * @param passphrase the passphrase to be used to decrypt the private
+     * key within this peer's PEM file
+     * @param verifyPeers set to true to verify that peer certificates
+     * properly chain to a trusted root
+     */
+    void enableSSL(const std::string& caStorePath,
+                   const std::string& keyAndCertFilePath,
+                   const std::string& passphrase,
+                   bool verifyPeers = true);
 
     /**
      * Add an OpFlex peer.

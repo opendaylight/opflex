@@ -70,6 +70,9 @@ void OpflexListener::enableSSL(const std::string& caStorePath,
                                                     serverKeyPass.c_str()));
     if (!serverCtx.get())
         throw std::runtime_error("Could not enable SSL");
+
+    if (verifyPeers)
+        serverCtx.get()->setVerify();
 }
 
 void OpflexListener::on_cleanup_async(uv_async_t* handle) {
