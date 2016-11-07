@@ -113,7 +113,9 @@ public:
 class SSLFixture : public BasePFixture {
 public:
     SSLFixture() {
-        processor.enableSSL(SRCDIR"/comms/test/ca.pem", true);
+        processor.enableSSL(SRCDIR"/comms/test/ca.pem",
+                            SRCDIR"/comms/test/server.pem",
+                            "password123", true);
         processor.start();
     }
 };
