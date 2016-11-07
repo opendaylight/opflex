@@ -1115,6 +1115,12 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
 
             SSL_CTX_set_info_callback(sslCtx, infoCallback);
 
+            /* just ask for a certificate from the peer anyway */
+            (void) SSL_CTX_set_verify(
+                    sslCtx,
+                    SSL_VERIFY_PEER,
+                    NULL);
+
             /* GREAT SUCCESS! */
             return ctx;
 
@@ -1132,6 +1138,26 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
     ;
 
     return NULL;
+}
+
+void ZeroCopyOpenSSL::Ctx::setVerify(
+        int (*verify_callback)(int, X509_STORE_CTX *)) {
+
+    (void) SSL_CTX_set_verify(
+            sslCtx_,
+            SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+            verify_callback);
+
+}
+
+void ZeroCopyOpenSSL::Ctx::setNoVerify(
+        int (*verify_callback)(int, X509_STORE_CTX *)) {
+
+    (void) SSL_CTX_set_verify(
+            sslCtx_,
+            SSL_VERIFY_PEER,
+            verify_callback);
+
 }
 
 bool ZeroCopyOpenSSL::attachTransport(

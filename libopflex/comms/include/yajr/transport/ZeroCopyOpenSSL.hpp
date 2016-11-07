@@ -142,6 +142,25 @@ class ZeroCopyOpenSSL::Ctx {
          */
     );
 
+    /**
+     * @brief Require successful verification of peer's certificate.
+     */
+    void setVerify(
+        int (*verify_callback)(int, X509_STORE_CTX *) = NULL
+        /**< [in] a verification callback to verify the other peer's certificate
+         */
+    );
+
+    /**
+     * @brief Do not require successful verification of peer's certificate.
+     */
+    void setNoVerify(
+        int (*verify_callback)(int, X509_STORE_CTX *) = NULL
+        /**< [in] a verification callback to verify the other peer's certificate
+         */
+    );
+
+
     SSL_CTX * getSslCtx() const {
         return sslCtx_;
     }

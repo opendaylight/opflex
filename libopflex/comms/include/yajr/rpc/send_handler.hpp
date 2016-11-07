@@ -12,6 +12,8 @@
 
 #include <rapidjson/rapidjson.h>
 
+#include <rapidjson/encodings.h>
+
 #include <deque>
 
 #ifdef PERFORM_CRAZY_BYTE_BY_BYTE_INVARIANT_CHECK
