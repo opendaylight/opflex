@@ -117,6 +117,30 @@
     },
     {
       "key": {
+        "uuid": "3a65312a_93f2cf98",
+        "filename": "libopflex/include/opflex/ofcore/OFFramework.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 773,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2016-11-07T22:28:41Z",
+      "side": 1,
+      "message": "Yea I think const std::string\u0026 would be preferred here.  This change also breaks the API which we shouldn\u0027t do without a good reasons.  So we\u0027d probably want to add an overload rather than changing this signature.\n\nAlso, why are we passing these arguments into this function?  Does this mean we\u0027re presenting a client cert to the server?  There\u0027s four possible states here: verify server cert or not, and present client cert or not.",
+      "parentUuid": "3a65312a_d3dd6716",
+      "range": {
+        "startLine": 772,
+        "startChar": 0,
+        "endLine": 773,
+        "endChar": 58
+      },
+      "revId": "353c3a5b712064e7fefe84c1e013b5bb0d6646b7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a65312a_b3e26bd3",
         "filename": "libopflex/ofcore/OFFramework.cpp",
         "patchSetId": 1
