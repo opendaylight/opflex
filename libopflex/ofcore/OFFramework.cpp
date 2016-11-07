@@ -138,7 +138,18 @@ void OFFramework::setOpflexIdentity(const std::string& name,
 
 void OFFramework::enableSSL(const std::string& caStorePath,
                             bool verifyPeers) {
-    pimpl->processor.enableSSL(caStorePath, verifyPeers);
+    pimpl->processor.enableSSL(caStorePath,
+                               verifyPeers);
+}
+
+void OFFramework::enableSSL(const std::string& caStorePath,
+			    const std::string& keyAndCertFilePath,
+			    const std::string& passphrase,
+                            bool verifyPeers) {
+    pimpl->processor.enableSSL(caStorePath,
+                               keyAndCertFilePath,
+                               passphrase,
+                               verifyPeers);
 }
 
 void OFFramework::enableInspector(const std::string& socketName) {
