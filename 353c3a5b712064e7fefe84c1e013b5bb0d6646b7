@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a65312a_53caf74f",
+        "filename": "libopflex/engine/OpflexPool.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 2184
+      },
+      "writtenOn": "2016-11-07T21:31:38Z",
+      "side": 1,
+      "message": "let me know if you don\u0027t like plain ASCIIZ pointers",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 51
+      },
+      "revId": "353c3a5b712064e7fefe84c1e013b5bb0d6646b7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a65312a_33c77b47",
+        "filename": "libopflex/engine/Processor.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 655,
+      "author": {
+        "id": 2184
+      },
+      "writtenOn": "2016-11-07T21:31:38Z",
+      "side": 1,
+      "message": "let me know if you don\u0027t like plain ASCIIZ pointers",
+      "range": {
+        "startLine": 654,
+        "startChar": 0,
+        "endLine": 655,
+        "endChar": 50
+      },
+      "revId": "353c3a5b712064e7fefe84c1e013b5bb0d6646b7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a65312a_93c48f41",
+        "filename": "libopflex/engine/include/opflex/engine/Processor.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 2184
+      },
+      "writtenOn": "2016-11-07T21:31:38Z",
+      "side": 1,
+      "message": "let me know if you don\u0027t like plain ASCIIZ pointers",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 105,
+        "endChar": 50
+      },
+      "revId": "353c3a5b712064e7fefe84c1e013b5bb0d6646b7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a65312a_73c1f32d",
+        "filename": "libopflex/engine/include/opflex/engine/internal/OpflexPool.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 2184
+      },
+      "writtenOn": "2016-11-07T21:31:38Z",
+      "side": 1,
+      "message": "let me know if you don\u0027t like plain ASCIIZ pointers",
+      "range": {
+        "startLine": 133,
+        "startChar": 0,
+        "endLine": 134,
+        "endChar": 50
+      },
+      "revId": "353c3a5b712064e7fefe84c1e013b5bb0d6646b7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a65312a_d3dd6716",
+        "filename": "libopflex/include/opflex/ofcore/OFFramework.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 773,
+      "author": {
+        "id": 2184
+      },
+      "writtenOn": "2016-11-07T21:31:38Z",
+      "side": 1,
+      "message": "let me know if you don\u0027t like plain ASCIIZ pointers",
+      "range": {
+        "startLine": 772,
+        "startChar": 0,
+        "endLine": 773,
+        "endChar": 58
+      },
+      "revId": "353c3a5b712064e7fefe84c1e013b5bb0d6646b7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a65312a_b3e26bd3",
+        "filename": "libopflex/ofcore/OFFramework.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 2184
+      },
+      "writtenOn": "2016-11-07T21:31:38Z",
+      "side": 1,
+      "message": "let me know if you don\u0027t like plain ASCIIZ pointers",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 141,
+        "endChar": 52
+      },
+      "revId": "353c3a5b712064e7fefe84c1e013b5bb0d6646b7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
