@@ -6,17 +6,20 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/asio/placeholders.hpp>
-
 #include "SwitchManager.h"
 #include "FlowBuilder.h"
 #include "logging.h"
+
+#include <boost/asio/placeholders.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "ovs-ofputil.h"
 
 namespace ovsagent {
 
-using boost::bind;
+using std::bind;
+using std::placeholders::_1;
+using std::placeholders::_2;
 using boost::asio::deadline_timer;
 using boost::posix_time::milliseconds;
 using boost::asio::placeholders::error;
@@ -149,7 +152,7 @@ bool SwitchManager::writeFlow(const std::string& objId, int tableId,
 
     assert(tableId >= 0 &&
            static_cast<size_t>(tableId) < flowTables.size());
-    BOOST_FOREACH(FlowEntryPtr& fe, el)
+    for (FlowEntryPtr& fe : el)
         fe->entry->table_id = tableId;
     TableState& tab = flowTables[tableId];
 
@@ -234,7 +237,7 @@ void SwitchManager::initiateSync() {
 
 void SwitchManager::gotGroups(const GroupEdit::EntryList& groups,
     bool done) {
-    BOOST_FOREACH (const GroupEdit::Entry& e, groups) {
+    for (const GroupEdit::Entry& e : groups) {
         recvGroups[e->mod->group_id] = e;
     }
     groupsDone = done;

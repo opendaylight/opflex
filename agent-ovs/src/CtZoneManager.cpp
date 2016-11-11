@@ -16,8 +16,6 @@
 #include <netlink/netfilter/nfnl.h>
 #endif /* HAVE_LIBNL */
 
-#include <boost/bind.hpp>
-
 namespace ovsagent {
 
 CtZoneManager::CtZoneManager(IdGenerator& gen_)
@@ -67,12 +65,15 @@ void CtZoneManager::enableNetLink(bool useNetLink_) {
 }
 
 void CtZoneManager::init(const std::string& nmspc_) {
+    using std::placeholders::_1;
+    using std::placeholders::_2;
+
     nmspc = nmspc_;
     gen.initNamespace(nmspc, minId, maxId);
     if (useNetLink) {
 #ifdef HAVE_LIBNL
         IdGenerator::alloc_hook_t
-            hook(boost::bind(&CtZoneManager::ctZoneAllocHook, this, _1, _2));
+            hook(std::bind(&CtZoneManager::ctZoneAllocHook, this, _1, _2));
         gen.setAllocHook(nmspc, hook);
 
         int r = nfnl_connect(nlSock.sock);

@@ -13,15 +13,12 @@
 #define MODB_TEST_TESTLISTENER_H
 
 #include <uv.h>
-#include <boost/unordered_set.hpp>
 
 #include "opflex/modb/ObjectListener.h"
 #include "LockGuard.h"
 
 namespace opflex {
 namespace modb {
-
-using boost::unordered_set;
 
 class TestListener : public ObjectListener {
 public:
@@ -39,7 +36,7 @@ public:
     }
 
     uv_mutex_t mutex;
-    unordered_set<URI> notifs;
+    OF_UNORDERED_SET<URI> notifs;
 };
 
 // wait for a condition to become true because of an event in another

@@ -14,7 +14,6 @@
 #  include <config.h>
 #endif
 
-
 #include <stdexcept>
 
 #include "opflex/modb/mo-internal/MO.h"
@@ -24,20 +23,19 @@ namespace opflex {
 namespace modb {
 namespace mointernal {
 
-using boost::shared_ptr;
 using ofcore::OFFramework;
 
 class MO::MOImpl {
 public:
     MOImpl(OFFramework& framework_,
-           class_id_t class_id_, 
-           const URI& uri_, 
-           const shared_ptr<const ObjectInstance>& oi_)
+           class_id_t class_id_,
+           const URI& uri_,
+           const OF_SHARED_PTR<const ObjectInstance>& oi_)
         : framework(framework_),
           class_id(class_id_), uri(uri_), oi(oi_){ }
-    MOImpl(class_id_t class_id_, 
-           const URI& uri_, 
-           const shared_ptr<const ObjectInstance>& oi_) 
+    MOImpl(class_id_t class_id_,
+           const URI& uri_,
+           const OF_SHARED_PTR<const ObjectInstance>& oi_)
         : framework(OFFramework::defaultInstance()),
           class_id(class_id_), uri(uri_), oi(oi_) { }
 
@@ -50,7 +48,7 @@ public:
 
     /**
      * The unique class ID for this object.
-     * 
+     *
      * @see MO::getClassId()
      */
     modb::class_id_t class_id;
@@ -63,22 +61,22 @@ public:
     /**
      * Object instance for this managed object
      */
-    boost::shared_ptr<const modb::mointernal::ObjectInstance> oi;
+    OF_SHARED_PTR<const modb::mointernal::ObjectInstance> oi;
 
     friend bool operator==(const MO& lhs, const MO& rhs);
 };
 
 MO::MO(OFFramework& framework,
-       class_id_t class_id, 
-       const URI& uri, 
-       const shared_ptr<const ObjectInstance>& oi) 
+       class_id_t class_id,
+       const URI& uri,
+       const OF_SHARED_PTR<const ObjectInstance>& oi)
     : pimpl(new MOImpl(framework, class_id, uri, oi)) {
 
 }
 
-MO::MO(class_id_t class_id, 
-       const URI& uri, 
-       const shared_ptr<const ObjectInstance>& oi) 
+MO::MO(class_id_t class_id,
+       const URI& uri,
+       const OF_SHARED_PTR<const ObjectInstance>& oi)
     : pimpl(new MOImpl(class_id, uri, oi)) {
 
 }
@@ -107,9 +105,9 @@ StoreClient& MO::getStoreClient(OFFramework& framework) {
     return framework.getStore().getReadOnlyStoreClient();
 }
 
-shared_ptr<const ObjectInstance> MO::resolveOI(OFFramework& framework, 
-                                               class_id_t class_id, 
-                                               const URI& uri) {
+OF_SHARED_PTR<const ObjectInstance> MO::resolveOI(OFFramework& framework,
+                                                  class_id_t class_id,
+                                                  const URI& uri) {
     return MO::getStoreClient(framework).get(class_id, uri);
 }
 

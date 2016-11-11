@@ -14,9 +14,6 @@
 #ifndef MODB_CLASSINDEX_H
 #define MODB_CLASSINDEX_H
 
-#include <boost/shared_ptr.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
 #include <utility>
 
 #include "opflex/modb/URI.h"
@@ -28,7 +25,7 @@ namespace modb {
 /**
  * @brief A class index represents state for instances of a given class in
  * the managed object database.
- * 
+ *
  * Note that because any given class can belong to only one region,
  * and a region has only one owner, access to this index can have at
  * most one writer, but can have multiple concurrent readers.
@@ -55,7 +52,7 @@ public:
      * Delete an instance.  Note that this must not be called before
      * all parent/child links have been removed to this instance, both
      * in the current and other regions.
-     * 
+     *
      * @param uri the URI of the instance to delete
      */
     void delInstance(const URI& uri);
@@ -129,13 +126,13 @@ public:
      *
      * @param output an unordered_set to receive the output
      */
-    void getAll(boost::unordered_set<URI>& output) const;
+    void getAll(OF_UNORDERED_SET<URI>& output) const;
 
 private:
-    typedef boost::unordered_set<URI> uri_set_t;
-    typedef boost::unordered_map<prop_id_t, uri_set_t> prop_uri_map_t;
-    typedef boost::unordered_map<URI, prop_uri_map_t> uri_prop_uri_map_t;
-    typedef boost::unordered_map<URI, std::pair<URI, prop_id_t> > uri_prop_map_t;
+    typedef OF_UNORDERED_SET<URI> uri_set_t;
+    typedef OF_UNORDERED_MAP<prop_id_t, uri_set_t> prop_uri_map_t;
+    typedef OF_UNORDERED_MAP<URI, prop_uri_map_t> uri_prop_uri_map_t;
+    typedef OF_UNORDERED_MAP<URI, std::pair<URI, prop_id_t> > uri_prop_map_t;
 
     /**
      * The child map allows us to look up all the children of this
@@ -152,7 +149,7 @@ private:
      * The instance map gives us a list of all managed objects of this
      * class index's type.
      */
-    boost::unordered_set<URI> instance_map;
+    OF_UNORDERED_SET<URI> instance_map;
 
     void doDelCMap(const URI& parent, prop_id_t parent_prop,
                    const URI& child);

@@ -18,19 +18,16 @@
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/SecGroup.hpp>
 
-#include <boost/shared_ptr.hpp>
-
+#include <memory>
 #include <vector>
 
 BOOST_AUTO_TEST_SUITE(AccessFlowManager_test)
 
 using std::vector;
 using std::string;
-using boost::shared_ptr;
-using boost::thread;
+using std::shared_ptr;
+using std::thread;
 using boost::asio::io_service;
-using boost::ref;
-using boost::bind;
 using namespace ovsagent;
 using namespace modelgbp::gbp;
 using modelgbp::gbpe::L24Classifier;

@@ -29,9 +29,6 @@ using namespace opflex::modb;
 using std::out_of_range;
 using std::invalid_argument;
 using std::vector;
-using boost::shared_ptr;
-using boost::unordered_set;
-using boost::unordered_map;
 using mointernal::ObjectInstance;
 
 BOOST_AUTO_TEST_SUITE(ObjectStore_test)
@@ -44,7 +41,7 @@ BOOST_FIXTURE_TEST_CASE( metadata_init, BaseFixture ) {
     BOOST_CHECK_EQUAL(md.getClasses()[0].getProperties().size(), 7);
     BOOST_CHECK_EQUAL("prop1", md.getClasses()[0].getProperty("prop1").getName());
     BOOST_CHECK_EQUAL("prop2", md.getClasses()[0].getProperty("prop2").getName());
-    BOOST_CHECK_EQUAL(PropertyInfo::COMPOSITE, 
+    BOOST_CHECK_EQUAL(PropertyInfo::COMPOSITE,
                       md.getClasses()[0].getProperties().at(3).getType());
 
     // Check class map
@@ -53,7 +50,7 @@ BOOST_FIXTURE_TEST_CASE( metadata_init, BaseFixture ) {
     BOOST_CHECK_THROW(db.getClassInfo(0), out_of_range);
 
     // Check region owner
-    BOOST_CHECK(&db.getStoreClient("owner2") != 
+    BOOST_CHECK(&db.getStoreClient("owner2") !=
                 &db.getStoreClient("owner1"));
     BOOST_CHECK_THROW(db.getStoreClient("notanowner"), out_of_range);
 
@@ -67,8 +64,8 @@ BOOST_FIXTURE_TEST_CASE( metadata_init, BaseFixture ) {
 }
 
 BOOST_FIXTURE_TEST_CASE( region, BaseFixture ) {
-    shared_ptr<ObjectInstance> oi = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(1));
+    OF_SHARED_PTR<ObjectInstance> oi =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(1));
     oi->setUInt64(1, 42);
     oi->addString(2, "val1");
     oi->addString(2, "val2");
@@ -77,11 +74,11 @@ BOOST_FIXTURE_TEST_CASE( region, BaseFixture ) {
     client1->put(1, uri, oi);
     BOOST_CHECK_THROW(client2->put(1, uri, oi), invalid_argument);
 
-    shared_ptr<const ObjectInstance> oi2 = client1->get(1, uri);
+    OF_SHARED_PTR<const ObjectInstance> oi2 = client1->get(1, uri);
     BOOST_CHECK_EQUAL(42, oi2->getUInt64(1));
 
-    shared_ptr<ObjectInstance> oi3 =
-        shared_ptr<ObjectInstance>(new ObjectInstance(*oi2));
+    OF_SHARED_PTR<ObjectInstance> oi3 =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(*oi2));
     oi3->addString(2, "val3");
     client1->put(1, uri, oi3);
 
@@ -95,20 +92,20 @@ BOOST_FIXTURE_TEST_CASE( region, BaseFixture ) {
 }
 
 BOOST_FIXTURE_TEST_CASE( tree, BaseFixture ) {
-    unordered_map<URI, class_id_t> notifs;
+    OF_UNORDERED_MAP<URI, class_id_t> notifs;
 
     TestListener listener;
     db.registerListener(1, &listener);
     db.registerListener(2, &listener);
 
-    shared_ptr<ObjectInstance> oi1 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(1));
-    shared_ptr<ObjectInstance> oi2 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(2));
-    shared_ptr<ObjectInstance> oi3 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(3));
-    shared_ptr<ObjectInstance> oi4 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(2));
+    OF_SHARED_PTR<ObjectInstance> oi1 =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(1));
+    OF_SHARED_PTR<ObjectInstance> oi2 =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(2));
+    OF_SHARED_PTR<ObjectInstance> oi3 =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(3));
+    OF_SHARED_PTR<ObjectInstance> oi4 =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(2));
 
     URI uri1("/");
     URI uri2("/prop3/42");
@@ -129,7 +126,7 @@ BOOST_FIXTURE_TEST_CASE( tree, BaseFixture ) {
     client2->addChild(2, uri2, 5, 3, uri3);
     client1->deliverNotifications(notifs);
 
-    // we have registered for class 1 and 2, should have gotten 
+    // we have registered for class 1 and 2, should have gotten
     // notified for 1,2,4
     WAIT_FOR(listener.contains(uri1), 500);
     WAIT_FOR(listener.contains(uri2), 500);

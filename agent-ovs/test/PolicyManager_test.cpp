@@ -11,7 +11,6 @@
 
 #include <list>
 #include <boost/test/unit_test.hpp>
-#include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
@@ -23,11 +22,11 @@
 
 namespace ovsagent {
 
-using boost::shared_ptr;
+using std::shared_ptr;
+using std::unordered_set;
+using std::lock_guard;
+using std::mutex;
 using boost::optional;
-using boost::unordered_set;
-using boost::lock_guard;
-using boost::mutex;
 using opflex::modb::Mutator;
 using opflex::modb::URI;
 
@@ -263,7 +262,7 @@ static bool hasUriRef(PolicyManager& policyManager,
                       const URI& subnetUri) {
     PolicyManager::subnet_vector_t sv;
     policyManager.getSubnetsForGroup(egUri, sv);
-    BOOST_FOREACH(shared_ptr<Subnet> sn, sv) {
+    for (shared_ptr<Subnet> sn : sv) {
         if (sn->getURI() == subnetUri)
             return true;
     }

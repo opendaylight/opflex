@@ -6,12 +6,10 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/foreach.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_types.hpp>
-
 #include "logging.h"
 #include "FlowExecutor.h"
+
+#include <mutex>
 
 #include "ovs-shim.h"
 #include "ovs-ofputil.h"
@@ -22,10 +20,7 @@ extern "C" {
 #include <openvswitch/ofp-msgs.h>
 }
 
-using namespace std;
-using namespace boost;
-
-typedef unique_lock<mutex> mutex_guard;
+typedef std::unique_lock<std::mutex> mutex_guard;
 
 namespace ovsagent {
 
@@ -170,7 +165,7 @@ FlowExecutor::DoExecuteNoBlock(const T& fe,
         const boost::optional<ovs_be32>& barrXid) {
     ofp_version ofVersion = (ofp_version)swConn->GetProtocolVersion();
 
-    BOOST_FOREACH (const typename T::Entry& e, fe.edits) {
+    for (const typename T::Entry& e : fe.edits) {
         ofpbuf *msg = EncodeMod<typename T::Entry>(e, ofVersion);
         ovs_be32 xid = ((ofp_header *)msg->data)->xid;
         if (barrXid) {
@@ -225,7 +220,7 @@ FlowExecutor::Handle(SwitchConnection *, int msgType, ofpbuf *msg) {
 
     switch (msgType) {
     case OFPTYPE_ERROR:
-        BOOST_FOREACH (RequestMap::value_type& kv, requests) {
+        for (RequestMap::value_type& kv : requests) {
             RequestState& req = kv.second;
             if (req.reqXids.find(recvXid) != req.reqXids.end()) {
                 ofperr err = ofperr_decode_msg(msgHdr, NULL);
@@ -255,7 +250,7 @@ void
 FlowExecutor::Connected(SwitchConnection*) {
     /* If connection was re-established, fail outstanding requests */
     mutex_guard lock(reqMtx);
-    BOOST_FOREACH (RequestMap::value_type& kv, requests) {
+    for (RequestMap::value_type& kv : requests) {
         RequestState& req = kv.second;
         req.status = ENOTCONN;
         req.done = true;

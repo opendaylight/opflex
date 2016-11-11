@@ -12,11 +12,10 @@
 
 #include "FlowExecutor.h"
 
-#include <boost/unordered_set.hpp>
-
 #include <string>
 #include <vector>
 #include <utility>
+#include <unordered_set>
 
 namespace ovsagent {
 
@@ -43,7 +42,7 @@ public:
     std::list<mod_t> flowMods;
     std::list<std::string> groupMods;
     bool ignoreFlowMods;
-    boost::unordered_set<int> ignoredFlowMods;
+    std::unordered_set<int> ignoredFlowMods;
     bool ignoreGroupMods;
 };
 

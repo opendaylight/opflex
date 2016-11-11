@@ -8,15 +8,16 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#pragma once
 #ifndef OVSAGENT_FLOWREADER_H_
 #define OVSAGENT_FLOWREADER_H_
 
-#include <boost/function.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/thread/mutex.hpp>
-
 #include "TableState.h"
 #include "SwitchConnection.h"
+
+#include <unordered_map>
+#include <mutex>
+#include <functional>
 
 struct match;
 
@@ -48,7 +49,7 @@ public:
     /**
      * Callback function to process a list of flow-table entries.
      */
-    typedef boost::function<void (const FlowEntryList&, bool)> FlowCb;
+    typedef std::function<void (const FlowEntryList&, bool)> FlowCb;
 
     /**
      * Get the flow-table entries for specified table.
@@ -75,7 +76,7 @@ public:
     /**
      * Callback function to process a list of group-table entries.
      */
-    typedef boost::function<void (const GroupEdit::EntryList&, bool)> GroupCb;
+    typedef std::function<void (const GroupEdit::EntryList&, bool)> GroupCb;
 
     /**
      * Get the group-table entries from switch.
@@ -142,11 +143,11 @@ private:
 
     SwitchConnection *swConn;
 
-    boost::mutex reqMtx;
+    std::mutex reqMtx;
 
-    typedef boost::unordered_map<uint32_t, FlowCb> FlowCbMap;
+    typedef std::unordered_map<uint32_t, FlowCb> FlowCbMap;
     FlowCbMap flowRequests;
-    typedef boost::unordered_map<uint32_t, GroupCb> GroupCbMap;
+    typedef std::unordered_map<uint32_t, GroupCb> GroupCbMap;
     GroupCbMap groupRequests;
 };
 

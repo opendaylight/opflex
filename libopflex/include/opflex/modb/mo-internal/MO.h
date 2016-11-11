@@ -16,15 +16,14 @@
 
 #include <string>
 
-#include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 
 #include "opflex/ofcore/OFFramework.h"
 #include "opflex/modb/ObjectListener.h"
 #include "opflex/modb/mo-internal/StoreClient.h"
+#include "opflex/ofcore/OFTypes.h"
 
 namespace opflex {
 namespace modb {
@@ -66,7 +65,7 @@ public:
     /**
      * Get the URI associated with this managed object.  The URI shows
      * the location of the managed object in the tree.
-     * 
+     *
      * @return the URI for the object
      */
     const URI& getURI() const;
@@ -74,38 +73,38 @@ public:
 protected:
     /**
      * Construct an MO
-     * 
+     *
      * @param class_id the class ID for the object
      * @param uri the URI for the object
      * @param oi the object instance for this object
      */
-    MO(class_id_t class_id, 
-       const URI& uri, 
-       const boost::shared_ptr<const ObjectInstance>& oi);
+    MO(class_id_t class_id,
+       const URI& uri,
+       const OF_SHARED_PTR<const ObjectInstance>& oi);
 
     /**
      * Construct an MO associated with a non-default framework instance
-     * 
+     *
      * @param framework the framework instance
      * @param class_id the class ID for the object
      * @param uri the URI for the object
      * @param oi the object instance for this object
      */
     MO(ofcore::OFFramework& framework,
-       class_id_t class_id, 
-       const URI& uri, 
-       const boost::shared_ptr<const ObjectInstance>& oi);
+       class_id_t class_id,
+       const URI& uri,
+       const OF_SHARED_PTR<const ObjectInstance>& oi);
 
     /**
      * Get the framework instance associated with this managed object
-     * 
+     *
      * @return the framework instance
      */
     ofcore::OFFramework& getFramework() const;
 
     /**
      * Get the raw object instance associated with this managed object
-     * 
+     *
      * @return the raw object instance
      */
     const ObjectInstance& getObjectInstance() const;
@@ -121,9 +120,9 @@ protected:
      * @throws std::out_of_range if the provided URI does not exist
      * locally
      */
-    static boost::shared_ptr<const ObjectInstance> 
-    resolveOI(ofcore::OFFramework& framework, 
-              class_id_t class_id, 
+    static OF_SHARED_PTR<const ObjectInstance>
+    resolveOI(ofcore::OFFramework& framework,
+              class_id_t class_id,
               const URI& uri);
 
     /**
@@ -163,13 +162,13 @@ protected:
      * boost::none if the object does not exist
      */
     template <class T> static
-    boost::optional<boost::shared_ptr<T> > 
-    resolve(ofcore::OFFramework& framework, 
-            class_id_t class_id, 
+    boost::optional<OF_SHARED_PTR<T> >
+    resolve(ofcore::OFFramework& framework,
+            class_id_t class_id,
             const URI& uri) {
         try {
-            return boost::make_shared<T>(boost::ref(framework), uri,
-                                         resolveOI(framework, class_id, uri));
+            return OF_MAKE_SHARED<T>(framework, uri,
+                                     resolveOI(framework, class_id, uri));
         } catch (std::out_of_range e) {
             return boost::none;
         }
@@ -180,19 +179,19 @@ protected:
      * managed object wrapper classes.
      */
     template <class T> static
-    void resolveChildren(ofcore::OFFramework& framework, 
-                         class_id_t parent_class, 
+    void resolveChildren(ofcore::OFFramework& framework,
+                         class_id_t parent_class,
                          const URI& parent_uri,
-                         prop_id_t parent_prop, 
-                         class_id_t child_class, 
-                         /* out */ std::vector<boost::shared_ptr<T> >& out) {
+                         prop_id_t parent_prop,
+                         class_id_t child_class,
+                         /* out */ std::vector<OF_SHARED_PTR<T> >& out) {
         std::vector<URI> childURIs;
         MO::getStoreClient(framework)
             .getChildren(parent_class, parent_uri, parent_prop,
                          child_class, childURIs);
         std::vector<URI>::const_iterator it;
         for (it = childURIs.begin(); it != childURIs.end(); ++it) {
-            boost::optional<boost::shared_ptr<T> > child =
+            boost::optional<OF_SHARED_PTR<T> > child =
                 resolve<T>(framework, child_class, *it);
             if (child) out.push_back(child.get());
         }
@@ -203,35 +202,35 @@ protected:
      * instantiate the correct wrapper class
      */
     template <class T>
-    boost::shared_ptr<T> addChild(class_id_t parent_class, 
-                                  const URI& parent_uri,
-                                  prop_id_t parent_prop, 
-                                  class_id_t child_class,
-                                  const URI& child_uri) {
-        return boost::make_shared<T>(boost::ref(getFramework()),
-                                     child_uri,
-                                     getTLMutator().addChild(parent_class,
-                                                             parent_uri,
-                                                             parent_prop,
-                                                             child_class,
-                                                             child_uri));
+    OF_SHARED_PTR<T> addChild(class_id_t parent_class,
+                              const URI& parent_uri,
+                              prop_id_t parent_prop,
+                              class_id_t child_class,
+                              const URI& child_uri) {
+        return OF_MAKE_SHARED<T>(boost::ref(getFramework()),
+                                 child_uri,
+                                 getTLMutator().addChild(parent_class,
+                                                         parent_uri,
+                                                         parent_prop,
+                                                         child_class,
+                                                         child_uri));
     }
 
     /**
      * Add a root element of the given type to the framework
      */
     template <class T>
-    static boost::shared_ptr<T>
+    static OF_SHARED_PTR<T>
     createRootElement(ofcore::OFFramework& framework,
                       class_id_t class_id) {
-        return boost::make_shared<T>(boost::ref(framework),
-                                     URI::ROOT,
-                                     framework.getTLMutator()
-                                     .modify(class_id, URI::ROOT));
+        return OF_MAKE_SHARED<T>(boost::ref(framework),
+                                 URI::ROOT,
+                                 framework.getTLMutator()
+                                 .modify(class_id, URI::ROOT));
     }
 
     /**
-     * Remove the specified node 
+     * Remove the specified node
      */
     static void remove(ofcore::OFFramework& framework,
                        class_id_t class_id,

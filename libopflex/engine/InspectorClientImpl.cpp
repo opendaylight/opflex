@@ -222,7 +222,7 @@ void InspectorClientImpl::remoteObjectUpdated(modb::class_id_t class_id,
 
     try {
         StoreClient& client = db.getReadOnlyStoreClient();
-        boost::shared_ptr<const ObjectInstance> oi = client.get(class_id, uri);
+        OF_SHARED_PTR<const ObjectInstance> oi = client.get(class_id, uri);
         const ClassInfo& ci = db.getClassInfo(class_id);
         BOOST_FOREACH(const ClassInfo::property_map_t::value_type& p,
                       ci.getProperties()) {

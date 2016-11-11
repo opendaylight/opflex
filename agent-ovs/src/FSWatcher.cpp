@@ -26,10 +26,10 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#include <boost/foreach.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+
 #include <opflex/modb/URIBuilder.h>
 
 #include "FSWatcher.h"
@@ -37,18 +37,22 @@
 
 namespace ovsagent {
 
-using boost::thread;
-using boost::scoped_array;
-using boost::optional;
-namespace fs = boost::filesystem;
+using std::thread;
 using std::string;
 using std::runtime_error;
 using std::pair;
+using boost::optional;
+namespace fs = boost::filesystem;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 
-FSWatcher::FSWatcher() : pollThread(NULL), eventFd(-1) {
+FSWatcher::FSWatcher() : eventFd(-1) {
 
+}
+
+size_t FSWatcher::PathHash::
+operator()(const boost::filesystem::path& p) const noexcept {
+    return boost::filesystem::hash_value(p);
 }
 
 void FSWatcher::addWatch(const std::string& watchDir, Watcher& watcher) {
@@ -60,7 +64,7 @@ void FSWatcher::addWatch(const std::string& watchDir, Watcher& watcher) {
 
 void FSWatcher::start() {
 #ifdef USE_INOTIFY
-    BOOST_FOREACH(const path_map_t::value_type& w, regWatches) {
+    for (const path_map_t::value_type& w : regWatches) {
         if (!fs::exists(w.first)) {
             throw runtime_error(string("Filesystem watch directory " ) +
                                 w.first.string() +
@@ -79,7 +83,7 @@ void FSWatcher::start() {
                             strerror(errno));
     }
 
-    pollThread = new thread(boost::ref(*this));
+    pollThread.reset(new thread(std::ref(*this)));
 #endif /* USE_INOTIFY */
 }
 
@@ -93,8 +97,7 @@ void FSWatcher::stop() {
                                 strerror(errno));
 
         pollThread->join();
-        delete pollThread;
-        pollThread = NULL;
+        pollThread.reset();
 
         close(eventFd);
         eventFd = -1;
@@ -113,7 +116,7 @@ void FSWatcher::scanPath(const WatchState* ws,
         fs::directory_iterator end;
         for (fs::directory_iterator it(watchPath); it != end; ++it) {
             if (fs::is_regular_file(it->status())) {
-                BOOST_FOREACH(Watcher* watcher, ws->watchers) {
+                for (Watcher* watcher : ws->watchers) {
                     watcher->updated(it->path());
                 }
             }
@@ -135,7 +138,7 @@ void FSWatcher::operator()() {
                    << strerror(errno);
         return;
     }
-    BOOST_FOREACH(const path_map_t::value_type& w, regWatches) {
+    for (const path_map_t::value_type& w : regWatches) {
         int wd = inotify_add_watch( fd, w.first.c_str(),
                                     IN_CLOSE_WRITE | IN_DELETE |
                                     IN_MOVED_TO| IN_MOVED_FROM);
@@ -193,7 +196,7 @@ void FSWatcher::operator()() {
 
                         if (event->len) {
                             const WatchState* ws = activeWatches.at(event->wd);
-                            BOOST_FOREACH(Watcher* watcher, ws->watchers) {
+                            for (Watcher* watcher : ws->watchers) {
                                 if ((event->mask & IN_CLOSE_WRITE) ||
                                     (event->mask & IN_MOVED_TO)) {
                                     watcher->updated(ws->watchPath / event->name);

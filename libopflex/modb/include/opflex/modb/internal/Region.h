@@ -14,8 +14,6 @@
 #ifndef MODB_REGION_H
 #define MODB_REGION_H
 
-#include <boost/shared_ptr.hpp>
-#include <boost/unordered_map.hpp>
 #include <string>
 #include <uv.h>
 
@@ -54,7 +52,7 @@ public:
 
     /**
      * Get the owner associated with this region
-     * 
+     *
      * @return the owner string
      */
     const std::string& getOwner() const { return owner; }
@@ -83,7 +81,7 @@ public:
      * modified.
      * @throws std::out_of_range if no such element is present.
      */
-    boost::shared_ptr<const mointernal::ObjectInstance> get(const URI& uri);
+    OF_SHARED_PTR<const mointernal::ObjectInstance> get(const URI& uri);
 
     /**
      * Get the object instance associated with the specified URI
@@ -94,7 +92,7 @@ public:
      * @return true if object is found.
      */
     bool get(const URI& uri,
-             /*out*/ boost::shared_ptr<const mointernal::ObjectInstance>& oi);
+             /*out*/ OF_SHARED_PTR<const mointernal::ObjectInstance>& oi);
 
     /**
      * Set the specified URI to the provided object instance,
@@ -104,8 +102,8 @@ public:
      * @param uri the URI for the object instance
      * @param oi the object instance to set
      */
-    void put(class_id_t class_id, const URI& uri, 
-             const boost::shared_ptr<const mointernal::ObjectInstance>& oi);
+    void put(class_id_t class_id, const URI& uri,
+             const OF_SHARED_PTR<const mointernal::ObjectInstance>& oi);
 
     /**
      * Set the specified URI to the provided object instance if it has
@@ -120,8 +118,9 @@ public:
      * registered
      */
     bool putIfModified(class_id_t class_id,
-                       const URI& uri, 
-                       const boost::shared_ptr<const mointernal::ObjectInstance>& oi);
+                       const URI& uri,
+                       const OF_SHARED_PTR<const mointernal
+                       ::ObjectInstance>& oi);
 
     /**
      * Remove the given URI from the region
@@ -146,7 +145,7 @@ public:
      * registered
      */
     bool addChild(class_id_t parent_class,
-                  const URI& parent_uri, 
+                  const URI& parent_uri,
                   prop_id_t parent_prop,
                   class_id_t child_class,
                   const URI& child_uri);
@@ -165,21 +164,21 @@ public:
      * registered
      */
     bool delChild(class_id_t parent_class,
-                  const URI& parent_uri, 
+                  const URI& parent_uri,
                   prop_id_t parent_prop,
                   class_id_t child_class,
                   const URI& child_uri);
 
     /**
      * Clear all children for a parent property of a particular type
-     * 
+     *
      * @param parent_class the class ID of the parent
      * @param parent_uri the URI of the parent object
      * @param parent_prop the property ID in the parent object
      * @param child_class the class ID of the children
      */
     void clearChildren(class_id_t parent_class,
-                       const URI& parent_uri, 
+                       const URI& parent_uri,
                        prop_id_t parent_prop,
                        class_id_t child_class);
 
@@ -196,7 +195,7 @@ public:
      * registered
      */
     void getChildren(class_id_t parent_class,
-                     const URI& parent_uri, 
+                     const URI& parent_uri,
                      prop_id_t parent_prop,
                      class_id_t child_class,
                      /* out */ std::vector<URI>& output);
@@ -230,7 +229,7 @@ public:
     /*
      * A set of URI/class_id pairs
      */
-    typedef boost::unordered_set<std::pair<class_id_t, URI> > obj_set_t;
+    typedef OF_UNORDERED_SET<reference_t> obj_set_t;
 
     /**
      * Get the current set of "roots" in the region, which are objects
@@ -248,7 +247,7 @@ public:
      * @throws std::out_of_range if the class is not found
      */
     void getObjectsForClass(class_id_t class_id,
-                            /* out */ boost::unordered_set<URI>& output);
+                            /* out */ OF_UNORDERED_SET<URI>& output);
 
 private:
     /**
@@ -266,9 +265,9 @@ private:
      */
     uv_mutex_t region_mutex;
 
-    typedef boost::unordered_map<class_id_t, ClassIndex> class_map_t;
-    typedef boost::unordered_map<URI,
-                                 boost::shared_ptr<const mointernal::ObjectInstance> > uri_map_t;
+    typedef OF_UNORDERED_MAP<class_id_t, ClassIndex> class_map_t;
+    typedef OF_UNORDERED_MAP <URI,
+                              OF_SHARED_PTR<const mointernal::ObjectInstance> > uri_map_t;
 
     class_map_t class_map;
     uri_map_t uri_map;

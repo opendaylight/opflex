@@ -10,8 +10,6 @@
 #include "SwitchManager.h"
 #include "logging.h"
 
-#include <boost/foreach.hpp>
-
 namespace ovsagent {
 
 std::vector<FlowEdit>
@@ -22,7 +20,7 @@ SwitchStateHandler::reconcileFlows(std::vector<TableState> flowTables,
         flowTables[i].diffSnapshot(recvFlows[i], diffs[i]);
         LOG(DEBUG) << "Table=" << i << ", snapshot has "
                    << diffs[i].edits.size() << " diff(s)";
-        BOOST_FOREACH(const FlowEdit::Entry& e, diffs[i].edits) {
+        for (const FlowEdit::Entry& e : diffs[i].edits) {
             LOG(DEBUG) << e;
         }
     }

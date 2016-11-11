@@ -17,6 +17,7 @@
 
 namespace ovsagent {
 
+using std::bind;
 using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
 using boost::asio::deadline_timer;
@@ -293,9 +294,9 @@ void StitchedModeRenderer::onCleanupTimer(const boost::system::error_code& ec) {
     accessFlowManager.cleanup();
 
     IdGenerator::garbage_cb_t gcb =
-        boost::bind(connTrackIdGarbageCb,
-                    boost::ref(getEndpointManager()),
-                    boost::ref(getFramework()), _1, _2);
+        bind(connTrackIdGarbageCb,
+             std::ref(getEndpointManager()),
+             std::ref(getFramework()), _1, _2);
     idGen.collectGarbage(ID_NMSPC_CONNTRACK, gcb);
 
     if (started) {

@@ -43,10 +43,7 @@ libagent_ovs_la_LIBADD = \
 	$(libnl_nf_LIBS) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
-	$(BOOST_THREAD_LIB) \
-	$(BOOST_ASIO_LIB) \
-	$(BOOST_RANDOM_LIB) \
-	$(BOOST_CHRONO_LIB)
+	$(BOOST_ASIO_LIB)
 
 noinst_HEADERS = \
 	src/include/AgentLogHandler.h \

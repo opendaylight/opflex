@@ -12,10 +12,6 @@
 #include "NotifServer.h"
 #include "logging.h"
 
-#include <boost/foreach.hpp>
-#include <boost/array.hpp>
-#include <boost/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/asio/placeholders.hpp>
@@ -29,6 +25,7 @@
 
 #include <cstdio>
 #include <sstream>
+#include <functional>
 #include <unistd.h>
 #include <sys/types.h>
 #include <grp.h>
@@ -38,8 +35,8 @@ namespace ovsagent {
 
 namespace ba = boost::asio;
 using ba::local::stream_protocol;
-using boost::bind;
-using boost::shared_ptr;
+using std::bind;
+using std::shared_ptr;
 using rapidjson::Document;
 using rapidjson::StringBuffer;
 using rapidjson::Writer;
@@ -71,7 +68,7 @@ void NotifServer::setSocketPerms(const std::string& perms) {
 }
 
 class NotifServer::session
-    : public boost::enable_shared_from_this<session> {
+    : public std::enable_shared_from_this<session> {
 public:
     session(ba::io_service& io_service_, std::set<session_ptr>& sessions_)
         : io_service(io_service_), socket(io_service),
@@ -93,12 +90,13 @@ public:
     }
 
     void read() {
+        shared_ptr<session> s(shared_from_this());
         ba::async_read(socket,
                        ba::buffer(&msg_len, 4),
-                       bind(&session::handle_size,
-                            shared_from_this(),
-                            ba::placeholders::error,
-                            ba::placeholders::bytes_transferred));
+                       [s](const boost::system::error_code& ec,
+                                 size_t b) {
+                           s->handle_size(ec, b);
+                       });
     }
 
     void handle_size(const boost::system::error_code& ec, size_t) {
@@ -121,12 +119,13 @@ public:
         buffer.resize(msg_len+1);
         // rapidjson requires null-terminated string for Document::Parse
         buffer[msg_len] = '\0';
+
+        shared_ptr<session> s(shared_from_this());
         ba::async_read(socket,
                        ba::buffer(buffer, msg_len),
-                       bind(&session::handle_body,
-                            shared_from_this(),
-                            ba::placeholders::error,
-                            ba::placeholders::bytes_transferred));
+                       [s](const boost::system::error_code& ec, size_t b) {
+                           s->handle_body(ec, b);
+                       });
     }
 
     void handle_body(const boost::system::error_code& ec, size_t) {
@@ -205,9 +204,8 @@ public:
     }
 
     void dispatch(shared_ptr<StringBuffer> message) {
-        io_service.dispatch(bind(&session::write,
-                                 shared_from_this(),
-                                 message));
+        shared_ptr<session> s(shared_from_this());
+        io_service.dispatch([s, message]() { s->write(message); });
     }
 
 private:
@@ -215,7 +213,7 @@ private:
     stream_protocol::socket socket;
     std::set<session_ptr>& sessions;
 
-    boost::unordered_set<std::string> subscriptions;
+    std::unordered_set<std::string> subscriptions;
     uint32_t msg_len;
     std::vector<uint8_t> buffer;
 
@@ -255,9 +253,11 @@ private:
 
 void NotifServer::accept() {
     session_ptr new_session(new session(io_service, sessions));
-    acceptor->async_accept(new_session->get_socket(),
-                           bind(&NotifServer::handle_accept,
-                                this, new_session, ba::placeholders::error));
+    acceptor->
+        async_accept(new_session->get_socket(),
+                     [this, new_session](const boost::system::error_code& ec) {
+                         handle_accept(new_session, ec);
+                     });
 }
 
 void NotifServer::handle_accept(session_ptr new_session,
@@ -346,7 +346,7 @@ void NotifServer::start() {
 
 void NotifServer::do_stop() {
     std::set<session_ptr> sess_cpy = sessions;
-    BOOST_FOREACH(const session_ptr& sp, sess_cpy) {
+    for (const session_ptr& sp : sess_cpy) {
         sp->close();
     }
 }
@@ -362,13 +362,13 @@ void NotifServer::stop() {
 static void do_dispatch(shared_ptr<StringBuffer> buffer,
                         const std::set<NotifServer::session_ptr>& sessions,
                         const std::string& type) {
-    BOOST_FOREACH(const NotifServer::session_ptr& sp, sessions) {
+    for (const NotifServer::session_ptr& sp : sessions) {
         if (!sp->subscribed(type)) continue;
         sp->dispatch(buffer);
     }
 }
 
-void NotifServer::dispatchVirtualIp(boost::unordered_set<std::string> uuids,
+void NotifServer::dispatchVirtualIp(std::unordered_set<std::string> uuids,
                                     const opflex::modb::MAC& macAddr,
                                     const std::string& ipAddr) {
     std::string mstr = macAddr.toString();
@@ -388,7 +388,7 @@ void NotifServer::dispatchVirtualIp(boost::unordered_set<std::string> uuids,
     writer.StartObject();
     writer.Key("uuid");
     writer.StartArray();
-    BOOST_FOREACH(const std::string& uuid, uuids) {
+    for (const std::string& uuid : uuids) {
         writer.String(uuid.c_str());
     }
     writer.EndArray();

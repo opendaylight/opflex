@@ -10,7 +10,6 @@
  */
 
 #include <boost/asio.hpp>
-#include <boost/scoped_ptr.hpp>
 
 #include "SwitchConnection.h"
 #include "EndpointManager.h"
@@ -38,7 +37,7 @@ public:
      * @param portMapper the openflow port mapper to use
      * @param timer_interval the interval for the stats timer in milliseconds
      */
-    StatsManager(Agent* agent, 
+    StatsManager(Agent* agent,
                  PortMapper& portMapper,
                  long timer_interval = 30000);
 
@@ -74,7 +73,7 @@ private:
     SwitchConnection* connection;
     boost::asio::io_service& agent_io;
     long timer_interval;
-    boost::scoped_ptr<boost::asio::deadline_timer> timer;
+    std::unique_ptr<boost::asio::deadline_timer> timer;
 
     void on_timer(const boost::system::error_code& ec);
 

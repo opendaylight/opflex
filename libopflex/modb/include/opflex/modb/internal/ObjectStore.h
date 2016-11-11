@@ -15,7 +15,6 @@
 #define MODB_OBJECTSTORE_H
 
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
 #include <list>
 #include <uv.h>
 
@@ -183,7 +182,7 @@ public:
      *
      * @param output a set to receive the owners
      */
-    void getOwners(/* out */ boost::unordered_set<std::string>& output);
+    void getOwners(/* out */ OF_UNORDERED_SET<std::string>& output);
 
 private:
     struct ClassContext {
@@ -192,10 +191,10 @@ private:
         Region* region;
     };
 
-    typedef boost::unordered_map<std::string, Region*> region_owner_map_t;
-    typedef boost::unordered_map<class_id_t, ClassContext> class_map_t;
-    typedef boost::unordered_map<std::string, ClassInfo*> class_name_map_t;
-    typedef boost::unordered_map<prop_id_t, ClassInfo*> prop_map_t;
+    typedef OF_UNORDERED_MAP<std::string, Region*> region_owner_map_t;
+    typedef OF_UNORDERED_MAP<class_id_t, ClassContext> class_map_t;
+    typedef OF_UNORDERED_MAP<std::string, ClassInfo*> class_name_map_t;
+    typedef OF_UNORDERED_MAP<prop_id_t, ClassInfo*> prop_map_t;
 
     /**
      * Lookup region by owner

@@ -9,16 +9,17 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <string>
-#include <utility>
-
-#include <boost/unordered_set.hpp>
-#include <boost/optional.hpp>
-#include <opflex/modb/URI.h>
-
 #pragma once
 #ifndef OVSAGENT_RDCONFIG_H
 #define OVSAGENT_RDCONFIG_H
+
+#include <opflex/modb/URI.h>
+
+#include <boost/optional.hpp>
+
+#include <string>
+#include <utility>
+#include <unordered_set>
 
 namespace ovsagent {
 
@@ -82,13 +83,13 @@ public:
      *
      * @return a set of internal subnets in CIDR notation
      */
-    const boost::unordered_set<std::string>& getInternalSubnets() const {
+    const std::unordered_set<std::string>& getInternalSubnets() const {
         return internalSubnets;
     }
 
 private:
     opflex::modb::URI domainURI;
-    boost::unordered_set<std::string> internalSubnets;
+    std::unordered_set<std::string> internalSubnets;
 };
 
 /**

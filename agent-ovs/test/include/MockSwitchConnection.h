@@ -28,7 +28,7 @@ public:
     }
 
     virtual void clear() {
-        BOOST_FOREACH(ofpbuf* msg, sentMsgs) {
+        for (ofpbuf* msg : sentMsgs) {
             ofpbuf_delete(msg);
         }
         sentMsgs.clear();

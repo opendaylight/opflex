@@ -12,8 +12,8 @@
 #include <iomanip>
 #include <arpa/inet.h>
 
-#include <boost/foreach.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/functional/hash.hpp>
 
 #include "Endpoint.h"
 
@@ -30,8 +30,8 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
     if (ep.getIPAddressMappings().size() > 0) {
         os << ",ipAddressMappings=[";
 
-        BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
-                      ep.getIPAddressMappings()) {
+        for(const Endpoint::IPAddressMapping& ipm :
+                ep.getIPAddressMappings()) {
             if (!ipm.getMappedIP()) continue;
             if (first) first = false;
             else os << ",";
@@ -57,7 +57,7 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
     if (!ep.getSecurityGroups().empty()) {
         os << ",secGroups=[";
         first = true;
-        BOOST_FOREACH(const opflex::modb::URI& sg, ep.getSecurityGroups()) {
+        for (const opflex::modb::URI& sg : ep.getSecurityGroups()) {
             if (first) first = false;
             else os << ",";
             os << sg.toString();
@@ -86,9 +86,15 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
     return os;
 }
 
-size_t hash_value(Endpoint::IPAddressMapping const& ip) {
+size_t Endpoint::VirtIpTHash::
+operator()(const Endpoint::virt_ip_t& m) const noexcept {
+    return boost::hash_value(m);
+}
+
+size_t Endpoint::IPAddressMappingHash::
+operator()(const Endpoint::IPAddressMapping& m) const noexcept {
     size_t v = 0;
-    boost::hash_combine(v, ip.getUUID());
+    boost::hash_combine(v, m.getUUID());
     return v;
 }
 

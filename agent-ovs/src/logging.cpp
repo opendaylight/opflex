@@ -9,20 +9,18 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <syslog.h>
-
-#include <algorithm>
-#include <fstream>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
-
-#include <opflex/logging/OFLogHandler.h>
-
 #include "logging.h"
 #include "AgentLogHandler.h"
 
+#include <opflex/logging/OFLogHandler.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <openvswitch/vlog.h>
+
+#include <algorithm>
+#include <fstream>
+#include <mutex>
+
+#include <syslog.h>
 
 using opflex::logging::OFLogHandler;
 
@@ -73,7 +71,7 @@ public:
         case ERROR:   levelStr = LEVEL_STR_ERROR; break;
         case FATAL:   levelStr = LEVEL_STR_FATAL; break;
         }
-        boost::lock_guard<boost::mutex> lock(logMtx);
+        std::lock_guard<std::mutex> lock(logMtx);
         (*out) << "[" << boost::posix_time::microsec_clock::local_time()
             << "] [" << levelStr << "] [" << filename << ":" << lineno << ":"
             << functionName << "] " << message << std::endl;
@@ -82,7 +80,7 @@ public:
 private:
     std::fstream fileStream;
     std::ostream *out;
-    boost::mutex logMtx;
+    std::mutex logMtx;
     static const char * LEVEL_STR_DEBUG;
     static const char * LEVEL_STR_INFO;
     static const char * LEVEL_STR_WARNING;

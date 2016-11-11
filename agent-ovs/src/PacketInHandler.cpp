@@ -14,7 +14,6 @@
 #include <netinet/ip6.h>
 #include <netinet/icmp6.h>
 
-#include <boost/foreach.hpp>
 #include <boost/system/error_code.hpp>
 
 #include "PacketInHandler.h"
@@ -34,12 +33,14 @@
 
 using std::string;
 using std::vector;
+using std::unordered_map;
+using std::unordered_set;
+using std::shared_ptr;
+using std::placeholders::_1;
+using std::placeholders::_2;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
 using boost::asio::ip::address_v4;
-using boost::unordered_map;
-using boost::unordered_set;
-using boost::shared_ptr;
 using boost::optional;
 using opflex::modb::MAC;
 using opflex::modb::URI;
@@ -117,9 +118,9 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
 
     if (flowReader && !stage2) {
         FlowReader::FlowCb dstCb =
-            boost::bind(&PacketInHandler::dstFlowCb, this,
-                        _1, MAC(flowMac), outport,
-                        pi.flow_metadata.flow.regs[5]);
+            std::bind(&PacketInHandler::dstFlowCb, this,
+                      _1, MAC(flowMac), outport,
+                      pi.flow_metadata.flow.regs[5]);
         match fmatch;
         memset(&fmatch, 0, sizeof(fmatch));
         match_set_reg(&fmatch, 5 /* REG5 */, pi.flow_metadata.flow.regs[5]);
@@ -167,7 +168,7 @@ void PacketInHandler::dstFlowCb(const FlowEntryList& flows,
                                 const MAC& dstMac, uint32_t outPort,
                                 uint32_t fgrpId) {
     if (!switchConnection) return;
-    BOOST_FOREACH(const FlowEntryPtr& fe, flows) {
+    for (const FlowEntryPtr& fe : flows) {
         if (fe->entry->cookie == flow::cookie::LEARN) {
             uint32_t port = getOutputRegValue(fe);
             uint32_t flowFgrpId = fe->entry->match.flow.regs[5];
@@ -185,7 +186,7 @@ void PacketInHandler::dstFlowCb(const FlowEntryList& flows,
 
 void PacketInHandler::anyFlowCb(const FlowEntryList& flows) {
     if (!switchConnection) return;
-    BOOST_FOREACH(const FlowEntryPtr& fe, flows) {
+    for (const FlowEntryPtr& fe : flows) {
         if (fe->entry->cookie == flow::cookie::LEARN &&
             !reconcileReactiveFlow(fe)) {
             removeLearnFlow(switchConnection, fe);
@@ -210,7 +211,7 @@ bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
         const string& portName = portMapper->FindPort(port);
         unordered_set<string> eps;
         epMgr.getEndpointsByIface(portName, eps);
-        BOOST_FOREACH(const string& uuid, eps) {
+        for (const string& uuid : eps) {
             shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
             if (!ep) continue;
             if (ep->isPromiscuousMode()) return true;
@@ -233,7 +234,7 @@ void PacketInHandler::portStatusUpdate(const string&, uint32_t,
     if (fromDesc) return;
     if (flowReader && portMapper) {
         FlowReader::FlowCb cb =
-            boost::bind(&PacketInHandler::anyFlowCb, this, _1);
+            std::bind(&PacketInHandler::anyFlowCb, this, _1);
         flowReader->getFlows(IntFlowManager::LEARN_TABLE_ID, cb);
     }
 }
@@ -578,7 +579,7 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
 
     boost::system::error_code ec;
     vector<address_v6> v6addresses;
-    BOOST_FOREACH(const string& addrStr, addresses) {
+    for (const string& addrStr : addresses) {
         address_v6 addr_v6 = address_v6::from_string(addrStr, ec);
         if (ec) continue;
         v6addresses.push_back(addr_v6);
@@ -723,7 +724,7 @@ static void handleDHCPPktIn(bool v4,
 
     MAC srcMac(flow.dl_src.ea);
     shared_ptr<const Endpoint> ep;
-    BOOST_FOREACH(const string& epUuid, eps) {
+    for (const string& epUuid : eps) {
         shared_ptr<const Endpoint> try_ep = epMgr.getEndpoint(epUuid);
         if (!try_ep) continue;
         const optional<MAC>& epMac = try_ep->getMAC();
@@ -731,10 +732,10 @@ static void handleDHCPPktIn(bool v4,
             ep = try_ep;
             break;
         }
-        const boost::unordered_set<Endpoint::virt_ip_t>& virtIps =
+        const Endpoint::virt_ip_set& virtIps =
             try_ep->getVirtualIPs();
 
-        BOOST_FOREACH(const Endpoint::virt_ip_t& virt_ip, virtIps) {
+        for (const Endpoint::virt_ip_t& virt_ip : virtIps) {
             if (virt_ip.first == srcMac) {
                 ep = try_ep;
                 goto ep_found;
@@ -791,12 +792,11 @@ static void handleVIPPktIn(bool v4,
 
         boost::system::error_code ec;
 
-        BOOST_FOREACH(const string& epUuid, try_uuids) {
+        for (const string& epUuid : try_uuids) {
             shared_ptr<const Endpoint> try_ep = epMgr.getEndpoint(epUuid);
             if (!try_ep) continue;
 
-            BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
-                          try_ep->getVirtualIPs()) {
+            for (const Endpoint::virt_ip_t& vip : try_ep->getVirtualIPs()) {
                 packets::cidr_t cidr;
                 if (!packets::cidr_from_string(vip.second, cidr)) continue;
                 if (srcMac == vip.first &&
