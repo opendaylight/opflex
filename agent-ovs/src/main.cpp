@@ -9,22 +9,21 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <signal.h>
-#include <string.h>
-
-#include <string>
-#include <iostream>
+#include "Agent.h"
+#include "logging.h"
+#include "cmd.h"
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/foreach.hpp>
 
-#include "Agent.h"
-#include "logging.h"
-#include "cmd.h"
+#include <string>
+#include <iostream>
+
+#include <signal.h>
+#include <string.h>
 
 using std::string;
 using opflex::ofcore::OFFramework;
@@ -110,7 +109,7 @@ int main(int argc, char** argv) {
         else
             configFiles.push_back(DEFAULT_CONF);
 
-        BOOST_FOREACH(const string& configFile, configFiles) {
+        for (const string& configFile : configFiles) {
             if (fs::is_directory(configFile)) {
                 LOG(INFO) << "Reading configuration from config directory "
                           << configFile;
@@ -127,7 +126,7 @@ int main(int argc, char** argv) {
                         }
                     }
                 }
-                BOOST_FOREACH(const std::string& fstr, files) {
+                for (const std::string& fstr : files) {
                     readConfig(agent, fstr);
                 }
             } else {

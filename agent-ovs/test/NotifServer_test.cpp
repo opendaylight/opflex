@@ -13,7 +13,6 @@
 #include "logging.h"
 
 #include <boost/test/unit_test.hpp>
-#include <boost/thread.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 
@@ -31,7 +30,6 @@ namespace ovsagent {
 
 namespace ba = boost::asio;
 using ba::local::stream_protocol;
-using boost::bind;
 using rapidjson::StringBuffer;
 using rapidjson::Writer;
 using rapidjson::PrettyWriter;
@@ -47,8 +45,7 @@ public:
         std::remove(SOCK_NAME.c_str());
         notif.setSocketName(SOCK_NAME);
         notif.start();
-        io_service_thread =
-            new boost::thread(bind(&ba::io_service::run, boost::ref(io)));
+        io_service_thread.reset(new std::thread([this]() { io.run(); }));
     }
 
     ~NotifFixture() {
@@ -56,14 +53,14 @@ public:
 
         if (io_service_thread) {
             io_service_thread->join();
-            delete io_service_thread;
+            io_service_thread.reset();
         }
         std::remove(SOCK_NAME.c_str());
     }
 
     ba::io_service io;
     NotifServer notif;
-    boost::thread* io_service_thread;
+    std::unique_ptr<std::thread> io_service_thread;
 };
 
 void readMessage(stream_protocol::socket& s, Document& result) {
@@ -120,7 +117,7 @@ BOOST_FIXTURE_TEST_CASE(subscribe, NotifFixture) {
     //}
 
     {
-        boost::unordered_set<std::string> uuids;
+        std::unordered_set<std::string> uuids;
         uuids.insert("4412dcd2-0cd0-4741-99d1-d8b3946e1fa9");
         uuids.insert("1cc9483a-8d7a-48d5-9c23-862401691e01");
         notif.dispatchVirtualIp(uuids,

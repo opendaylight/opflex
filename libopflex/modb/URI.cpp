@@ -18,8 +18,10 @@
 #include <cctype>
 #include <cstdlib>
 
-#include <boost/make_shared.hpp>
 #include <boost/algorithm/string/split.hpp>
+#if __cplusplus <= 199711L
+#include <boost/make_shared.hpp>
+#endif
 
 #include "opflex/modb/URI.h"
 
@@ -38,14 +40,15 @@ using boost::copy_range;
 
 const URI URI::ROOT("/");
 
-URI::URI(const boost::shared_ptr<const std::string>& uri_)
+URI::URI(const OF_SHARED_PTR<const std::string>& uri_)
     : uri(uri_) {
     hashv = 0;
     boost::hash_combine(hashv, *uri);
 }
 
 URI::URI(const std::string& uri_) {
-    uri = boost::make_shared<const std::string>(uri_);
+    uri = OF_MAKE_SHARED<const std::string>(uri_);
+
     hashv = 0;
     boost::hash_combine(hashv, uri_);
 }

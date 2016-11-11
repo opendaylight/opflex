@@ -20,9 +20,6 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/unordered_map.hpp>
 #include <rapidjson/stringbuffer.h>
 
 #include "opflex/modb/internal/ObjectStore.h"
@@ -44,9 +41,6 @@ using namespace opflex::logging;
 using namespace rapidjson;
 
 using boost::assign::list_of;
-using boost::shared_ptr;
-using boost::make_shared;
-using boost::unordered_map;
 using mointernal::ObjectInstance;
 using std::out_of_range;
 using std::make_pair;
@@ -78,7 +72,7 @@ public:
         latestHealth = health;
     }
 
-    unordered_map<int, PeerStatus> statusMap;
+    OF_UNORDERED_MAP<int, PeerStatus> statusMap;
     Health latestHealth;
 };
 
@@ -162,13 +156,13 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     URI c4u("/class4/test/");
     URI c5u("/class5/test/");
     URI c6u("/class4/test/class6/test2/");
-    shared_ptr<ObjectInstance> oi5 = make_shared<ObjectInstance>(5);
+    OF_SHARED_PTR<ObjectInstance> oi5 = OF_MAKE_SHARED<ObjectInstance>(5);
     oi5->setString(10, "test");
     oi5->addReference(11, 4, c4u);
 
-    shared_ptr<ObjectInstance> oi4 = make_shared<ObjectInstance>(4);
+    OF_SHARED_PTR<ObjectInstance> oi4 = OF_MAKE_SHARED<ObjectInstance>(4);
     oi4->setString(9, "test");
-    shared_ptr<ObjectInstance> oi6 = make_shared<ObjectInstance>(6);
+    OF_SHARED_PTR<ObjectInstance> oi6 = OF_MAKE_SHARED<ObjectInstance>(6);
     oi6->setString(13, "test2");
 
     client2->put(5, c5u, oi5);
@@ -289,17 +283,17 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare, ServerFixture ) {
     StoreClient::notif_t notifs;
 
     URI u1("/");
-    shared_ptr<ObjectInstance> oi1 = make_shared<ObjectInstance>(1);
+    OF_SHARED_PTR<ObjectInstance> oi1 = OF_MAKE_SHARED<ObjectInstance>(1);
     client1->put(1, u1, oi1);
 
     // check add
     URI u2_1("/class2/42/");
-    shared_ptr<ObjectInstance> oi2_1 = make_shared<ObjectInstance>(2);
+    OF_SHARED_PTR<ObjectInstance> oi2_1 = OF_MAKE_SHARED<ObjectInstance>(2);
     oi2_1->setInt64(4, 42);
     client1->put(2, u2_1, oi2_1);
 
     URI u2_2("/class2/43/");
-    shared_ptr<ObjectInstance> oi2_2 = make_shared<ObjectInstance>(2);
+    OF_SHARED_PTR<ObjectInstance> oi2_2 = OF_MAKE_SHARED<ObjectInstance>(2);
     oi2_2->setInt64(4, 43);
     client1->put(2, u2_2, oi2_2);
 
@@ -312,7 +306,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare, ServerFixture ) {
     StoreClient* rclient = mockServer.getSystemClient();
     WAIT_FOR(itemPresent(rclient, 2, u2_1), 1000);
     WAIT_FOR(itemPresent(rclient, 2, u2_2), 1000);
-    shared_ptr<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
+    OF_SHARED_PTR<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
     BOOST_CHECK_EQUAL(43, roi2_2->getInt64(4));
 
     // check update
@@ -348,17 +342,17 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare_flaky, ServerFixture ) {
     StoreClient::notif_t notifs;
 
     URI u1("/");
-    shared_ptr<ObjectInstance> oi1 = make_shared<ObjectInstance>(1);
+    OF_SHARED_PTR<ObjectInstance> oi1 = OF_MAKE_SHARED<ObjectInstance>(1);
     client1->put(1, u1, oi1);
 
     // check add
     URI u2_1("/class2/42/");
-    shared_ptr<ObjectInstance> oi2_1 = make_shared<ObjectInstance>(2);
+    OF_SHARED_PTR<ObjectInstance> oi2_1 = OF_MAKE_SHARED<ObjectInstance>(2);
     oi2_1->setInt64(4, 42);
     client1->put(2, u2_1, oi2_1);
 
     URI u2_2("/class2/43/");
-    shared_ptr<ObjectInstance> oi2_2 = make_shared<ObjectInstance>(2);
+    OF_SHARED_PTR<ObjectInstance> oi2_2 = OF_MAKE_SHARED<ObjectInstance>(2);
     oi2_2->setInt64(4, 43);
     client1->put(2, u2_2, oi2_2);
 
@@ -371,7 +365,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare_flaky, ServerFixture ) {
     StoreClient* rclient = mockServer.getSystemClient();
     WAIT_FOR(itemPresent(rclient, 2, u2_1), 1000);
     WAIT_FOR(itemPresent(rclient, 2, u2_2), 1000);
-    shared_ptr<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
+    OF_SHARED_PTR<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
     BOOST_CHECK_EQUAL(43, roi2_2->getInt64(4));
 }
 
@@ -391,17 +385,17 @@ BOOST_FIXTURE_TEST_CASE( main_loop_adaptor, SyncFixture ) {
     StoreClient::notif_t notifs;
 
     URI u1("/");
-    shared_ptr<ObjectInstance> oi1 = make_shared<ObjectInstance>(1);
+    OF_SHARED_PTR<ObjectInstance> oi1 = OF_MAKE_SHARED<ObjectInstance>(1);
     client1->put(1, u1, oi1);
 
     // check add
     URI u2_1("/class2/42/");
-    shared_ptr<ObjectInstance> oi2_1 = make_shared<ObjectInstance>(2);
+    OF_SHARED_PTR<ObjectInstance> oi2_1 = OF_MAKE_SHARED<ObjectInstance>(2);
     oi2_1->setInt64(4, 42);
     client1->put(2, u2_1, oi2_1);
 
     URI u2_2("/class2/43/");
-    shared_ptr<ObjectInstance> oi2_2 = make_shared<ObjectInstance>(2);
+    OF_SHARED_PTR<ObjectInstance> oi2_2 = OF_MAKE_SHARED<ObjectInstance>(2);
     oi2_2->setInt64(4, 43);
     client1->put(2, u2_2, oi2_2);
 
@@ -414,7 +408,7 @@ BOOST_FIXTURE_TEST_CASE( main_loop_adaptor, SyncFixture ) {
     StoreClient* rclient = mockServer.getSystemClient();
     WAIT_FOR_DO(itemPresent(rclient, 2, u2_1), 1000, adaptor->runOnce());
     WAIT_FOR_DO(itemPresent(rclient, 2, u2_2), 1000, adaptor->runOnce());
-    shared_ptr<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
+    OF_SHARED_PTR<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
     BOOST_CHECK_EQUAL(43, roi2_2->getInt64(4));
 
     // check update
@@ -460,10 +454,10 @@ public:
 
     void setup() {
         rclient = mockServer.getSystemClient();
-        root = make_shared<ObjectInstance>(1);
-        oi4 = make_shared<ObjectInstance>(4);
-        oi5 = make_shared<ObjectInstance>(5);
-        oi6 = make_shared<ObjectInstance>(6);
+        root = OF_MAKE_SHARED<ObjectInstance>(1);
+        oi4 = OF_MAKE_SHARED<ObjectInstance>(4);
+        oi5 = OF_MAKE_SHARED<ObjectInstance>(5);
+        oi6 = OF_MAKE_SHARED<ObjectInstance>(6);
 
         // set up the server-side store
         oi4->setString(9, "test");
@@ -490,10 +484,10 @@ public:
     URI c5u;
     URI c6u;
     StoreClient* rclient;
-    shared_ptr<ObjectInstance> root;
-    shared_ptr<ObjectInstance> oi4;
-    shared_ptr<ObjectInstance> oi5;
-    shared_ptr<ObjectInstance> oi6;
+    OF_SHARED_PTR<ObjectInstance> root;
+    OF_SHARED_PTR<ObjectInstance> oi4;
+    OF_SHARED_PTR<ObjectInstance> oi5;
+    OF_SHARED_PTR<ObjectInstance> oi6;
 };
 
 // test policy_resolve, policy_unresolve, policy_update
@@ -613,9 +607,9 @@ public:
 
     void setup() {
         rclient = mockServer.getSystemClient();
-        oi1 = make_shared<ObjectInstance>(1);
-        oi2 = make_shared<ObjectInstance>(2);
-        oi3 = make_shared<ObjectInstance>(3);
+        oi1 = OF_MAKE_SHARED<ObjectInstance>(1);
+        oi2 = OF_MAKE_SHARED<ObjectInstance>(2);
+        oi3 = OF_MAKE_SHARED<ObjectInstance>(3);
 
         client1->put(1, u1, oi1);
 
@@ -640,9 +634,9 @@ public:
     URI u2;
     URI u3;
     StoreClient* rclient;
-    shared_ptr<ObjectInstance> oi1;
-    shared_ptr<ObjectInstance> oi2;
-    shared_ptr<ObjectInstance> oi3;
+    OF_SHARED_PTR<ObjectInstance> oi1;
+    OF_SHARED_PTR<ObjectInstance> oi2;
+    OF_SHARED_PTR<ObjectInstance> oi3;
 };
 
 // test state_report
@@ -692,9 +686,9 @@ public:
     void setup() {
         // set up the server-side store
         rclient = mockServer.getSystemClient();
-        root = make_shared<ObjectInstance>(1);
-        oi8 = make_shared<ObjectInstance>(8);
-        oi10 = make_shared<ObjectInstance>(10);
+        root = OF_MAKE_SHARED<ObjectInstance>(1);
+        oi8 = OF_MAKE_SHARED<ObjectInstance>(8);
+        oi10 = OF_MAKE_SHARED<ObjectInstance>(10);
         oi8->setString(17, "test");
         oi10->setString(21, "test2");
 
@@ -705,7 +699,7 @@ public:
         rclient->addChild(8, c8u, 20, 10, c10u);
 
         // create a local reference to the remote policy object
-        oi9 = make_shared<ObjectInstance>(9);
+        oi9 = OF_MAKE_SHARED<ObjectInstance>(9);
         oi9->setString(18, "test");
         oi9->setReference(19, 8, c8u);
         client2->put(9, c9u, oi9);
@@ -721,10 +715,10 @@ public:
     URI c9u;
     URI c10u;
     StoreClient* rclient;
-    shared_ptr<ObjectInstance> root;
-    shared_ptr<ObjectInstance> oi8;
-    shared_ptr<ObjectInstance> oi9;
-    shared_ptr<ObjectInstance> oi10;
+    OF_SHARED_PTR<ObjectInstance> root;
+    OF_SHARED_PTR<ObjectInstance> oi8;
+    OF_SHARED_PTR<ObjectInstance> oi9;
+    OF_SHARED_PTR<ObjectInstance> oi10;
 };
 
 // test endpoint_resolve, endpoint_unresolve, endpoint_update

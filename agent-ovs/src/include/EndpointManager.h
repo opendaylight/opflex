@@ -13,17 +13,20 @@
 #ifndef OVSAGENT_ENDPOINTMANAGER_H
 #define OVSAGENT_ENDPOINTMANAGER_H
 
+#include "Endpoint.h"
+#include "EndpointListener.h"
+#include "PolicyManager.h"
+
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/modb/ObjectListener.h>
 #include <modelgbp/metadata/metadata.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/random/random_device.hpp>
 #include <boost/random/mersenne_twister.hpp>
-#include <boost/unordered_set.hpp>
 
-#include "Endpoint.h"
-#include "EndpointListener.h"
-#include "PolicyManager.h"
+#include <unordered_set>
+#include <memory>
+#include <mutex>
 
 namespace ovsagent {
 
@@ -86,7 +89,7 @@ public:
      * @return the endpoint object containing the detailed endpoint
      * information, or a NULL pointer if there is no such endpoint
      */
-    boost::shared_ptr<const Endpoint> getEndpoint(const std::string& uuid);
+    std::shared_ptr<const Endpoint> getEndpoint(const std::string& uuid);
 
     /**
      * Get the effective default endpoint group as computed by
@@ -105,7 +108,7 @@ public:
      * endpoints.
      */
     void getEndpointsForGroup(const opflex::modb::URI& egURI,
-                              /* out */ boost::unordered_set<std::string>& eps);
+                              /* out */ std::unordered_set<std::string>& eps);
 
     /**
      * Get the set of endpoints that exist for a given set of security groups
@@ -115,7 +118,7 @@ public:
      * endpoints.
      */
     void getEndpointsForSecGrps(const EndpointListener::uri_set_t& secGrps,
-                                /* out */ boost::unordered_set<std::string>& eps);
+                                /* out */ std::unordered_set<std::string>& eps);
 
     /**
      * Check whether the given security group set contains any endpoints
@@ -132,7 +135,7 @@ public:
      * @param result a result set to hold the results
      */
     void getSecGrpSetsForSecGrp(const opflex::modb::URI& secGrp,
-                                /* out */ boost::unordered_set<EndpointListener
+                                /* out */ std::unordered_set<EndpointListener
                                 ::uri_set_t>& result);
 
     /**
@@ -145,7 +148,7 @@ public:
      * endpoints.
      */
     void getEndpointsForIPMGroup(const opflex::modb::URI& egURI,
-                                 /* out */ boost::unordered_set<std::string>& eps);
+                                 /* out */ std::unordered_set<std::string>& eps);
 
     /**
      * Get the endpoints that are on a particular integration interface
@@ -155,7 +158,7 @@ public:
      * endpoints.
      */
     void getEndpointsByIface(const std::string& ifaceName,
-                             /* out */ boost::unordered_set<std::string>& eps);
+                             /* out */ std::unordered_set<std::string>& eps);
 
     /**
      * Get the endpoints that are on a particular access interface
@@ -165,7 +168,7 @@ public:
      * endpoints.
      */
     void getEndpointsByAccessIface(const std::string& ifaceName,
-                                   /* out */ boost::unordered_set<std::string>& eps);
+                                   /* out */ std::unordered_set<std::string>& eps);
 
     /**
      * Get the endpoints that are on a particular access uplink interface
@@ -175,7 +178,7 @@ public:
      * endpoints.
      */
     void getEndpointsByAccessUplink(const std::string& ifaceName,
-                                    /* out */ boost::unordered_set<std::string>& eps);
+                                    /* out */ std::unordered_set<std::string>& eps);
 
     /**
      * Get the endpoints that have an IP mapping next hop interface as
@@ -187,7 +190,7 @@ public:
      */
     void getEndpointsByIpmNextHopIf(const std::string& ifaceName,
                                     /* out */
-                                    boost::unordered_set<std::string>& eps);
+                                    std::unordered_set<std::string>& eps);
 
     /**
      * Counter values for endpoint stats
@@ -300,9 +303,9 @@ private:
     public:
         EndpointState();
 
-        boost::shared_ptr<const Endpoint> endpoint;
+        std::shared_ptr<const Endpoint> endpoint;
 
-        typedef boost::unordered_set<opflex::modb::URI> uri_uset_t;
+        typedef std::unordered_set<opflex::modb::URI> uri_uset_t;
 
         /**
          * The EG URI for the endpoint as currently computed (may be
@@ -347,14 +350,14 @@ private:
      */
     boost::optional<opflex::modb::URI> resolveEpgMapping(EndpointState& es);
 
-    typedef boost::unordered_map<std::string, EndpointState> ep_map_t;
-    typedef boost::unordered_set<std::string> str_uset_t;
-    typedef boost::unordered_map<opflex::modb::URI, str_uset_t> group_ep_map_t;
-    typedef boost::unordered_map<std::string, str_uset_t> string_ep_map_t;
-    typedef boost::unordered_map<EndpointListener::uri_set_t,
-                                 str_uset_t> secgrp_ep_map_t;
+    typedef std::unordered_map<std::string, EndpointState> ep_map_t;
+    typedef std::unordered_set<std::string> str_uset_t;
+    typedef std::unordered_map<opflex::modb::URI, str_uset_t> group_ep_map_t;
+    typedef std::unordered_map<std::string, str_uset_t> string_ep_map_t;
+    typedef std::unordered_map<EndpointListener::uri_set_t,
+                               str_uset_t> secgrp_ep_map_t;
 
-    boost::mutex ep_mutex;
+    std::mutex ep_mutex;
 
     /**
      * Map endpoint UUID to endpoint state object
@@ -408,7 +411,7 @@ private:
      * The endpoint listeners that have been registered
      */
     std::list<EndpointListener*> endpointListeners;
-    boost::mutex listener_mutex;
+    std::mutex listener_mutex;
 
     void notifyListeners(const std::string& uuid);
     void notifyListeners(const EndpointListener::uri_set_t& secGroups);
@@ -422,7 +425,7 @@ private:
         virtual ~EPGMappingListener();
 
         virtual void objectUpdated(opflex::modb::class_id_t class_id,
-                                    const opflex::modb::URI& uri);
+                                   const opflex::modb::URI& uri);
     private:
         EndpointManager& epmanager;
     };

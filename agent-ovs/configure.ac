@@ -25,14 +25,11 @@ AC_CONFIG_MACRO_DIR([m4])
 m4_include([m4/ax_boost_base.m4])
 m4_include([m4/ax_boost_unit_test_framework.m4])
 m4_include([m4/ax_boost_program_options.m4])
-m4_include([m4/ax_boost_thread.m4])
 m4_include([m4/ax_boost_system.m4])
 m4_include([m4/ax_boost_date_time.m4])
-m4_include([m4/ax_boost_chrono.m4])
 m4_include([m4/ax_boost_filesystem.m4])
 m4_include([m4/ax_boost_iostreams.m4])
 m4_include([m4/ax_boost_asio.m4])
-m4_include([m4/ax_boost_random.m4])
 m4_include([m4/ax_cxx_compile_stdcxx.m4])
 
 dnl ---------------------------------------------------------------
@@ -72,10 +69,6 @@ AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone'])
 AC_STDC_HEADERS
 
 AX_BOOST_BASE([1.53.0], [], AC_MSG_ERROR([Boost is required]))
-AX_BOOST_RANDOM
-if test "x$ax_cv_boost_random" != xyes; then
-   AC_MSG_ERROR([Boost::Random library is required])
-fi
 AX_BOOST_PROGRAM_OPTIONS
 if test "x$ax_cv_boost_program_options" != xyes; then
    AC_MSG_ERROR([Boost::Program_Options library is required])
@@ -91,14 +84,6 @@ fi
 AX_BOOST_DATE_TIME
 if test "x$ax_cv_boost_date_time" != xyes; then
    AC_MSG_ERROR([Boost::Date_Time library is required])
-fi
-AX_BOOST_CHRONO
-if test "x$ax_cv_boost_chrono" != xyes; then
-   AC_MSG_ERROR([Boost::Chrono library is required])
-fi
-AX_BOOST_THREAD
-if test "x$ax_cv_boost_thread" != xyes; then
-   AC_MSG_ERROR([Boost::Thread library is required])
 fi
 AX_BOOST_FILESYSTEM
 if test "x$ax_cv_boost_filesystem" != xyes; then

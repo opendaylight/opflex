@@ -24,6 +24,7 @@ namespace ovsagent {
 
 using std::string;
 using std::vector;
+using std::shared_ptr;
 using opflex::modb::ObjectListener;
 using opflex::modb::class_id_t;
 using opflex::modb::URI;
@@ -32,7 +33,6 @@ using opflex::modb::URIBuilder;
 using opflex::modb::Mutator;
 using opflex::ofcore::OFFramework;
 using boost::optional;
-using boost::shared_ptr;
 
 namespace fs = boost::filesystem;
 using namespace modelgbp;
@@ -224,7 +224,7 @@ BOOST_AUTO_TEST_SUITE(EndpointManager_test)
 template<typename T>
 bool hasEPREntry(OFFramework& framework, const URI& uri,
                  const boost::optional<std::string>& uuid = boost::none) {
-    boost::optional<boost::shared_ptr<T> > entry =
+    boost::optional<std::shared_ptr<T> > entry =
         T::resolve(framework, uri);
     if (!entry) return false;
     if (uuid) return (entry.get()->getUuid("") == uuid);
@@ -232,7 +232,7 @@ bool hasEPREntry(OFFramework& framework, const URI& uri,
 }
 
 static int getEGSize(EndpointManager& epManager, URI& epgu) {
-    boost::unordered_set<std::string> epUuids;
+    std::unordered_set<std::string> epUuids;
     epManager.getEndpointsForGroup(epgu, epUuids);
     return epUuids.size();
 }
@@ -261,7 +261,7 @@ BOOST_FIXTURE_TEST_CASE( basic, EndpointFixture ) {
     epSource.updateEndpoint(ep1);
     epSource.updateEndpoint(ep2);
 
-    boost::unordered_set<std::string> epUuids;
+    std::unordered_set<std::string> epUuids;
     agent.getEndpointManager().getEndpointsForGroup(epgu, epUuids);
     BOOST_CHECK_EQUAL(2, epUuids.size());
     BOOST_CHECK(epUuids.find(ep1.getUUID()) != epUuids.end());
@@ -347,7 +347,7 @@ BOOST_FIXTURE_TEST_CASE( epgmapping, EndpointFixture ) {
     epSource.updateEndpoint(ep2);
 
     WAIT_FOR(1 == getEGSize(agent.getEndpointManager(), epgu), 500);
-    boost::unordered_set<std::string> epUuids;
+    std::unordered_set<std::string> epUuids;
     agent.getEndpointManager().getEndpointsForGroup(epgu, epUuids);
     BOOST_CHECK(epUuids.find(ep2.getUUID()) != epUuids.end());
 

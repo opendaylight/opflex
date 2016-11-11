@@ -9,8 +9,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/foreach.hpp>
-
 #include "RDConfig.h"
 
 namespace ovsagent {
@@ -22,8 +20,7 @@ std::ostream & operator<<(std::ostream &os, const RDConfig& s) {
     if (s.getInternalSubnets().size() > 0) {
         bool first = true;
         os << ",internalSubnets=[";
-        BOOST_FOREACH(const std::string& sn,
-                      s.getInternalSubnets()) {
+        for (const std::string& sn : s.getInternalSubnets()) {
             if (first) first = false;
             else os << ",";
             os << sn;

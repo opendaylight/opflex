@@ -17,7 +17,6 @@
 #include <stdexcept>
 #include <sstream>
 
-#include <boost/foreach.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -96,7 +95,7 @@ void FSRDConfigSource::updated(const fs::path& filePath) {
         optional<ptree&> sns =
             properties.get_child_optional(RD_INTERNAL_SUBNETS);
         if (sns) {
-            BOOST_FOREACH(const ptree::value_type &v, sns.get()) {
+            for (const ptree::value_type &v : sns.get()) {
                 newrd.addInternalSubnet(v.second.data());
             }
         }

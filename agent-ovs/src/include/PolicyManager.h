@@ -13,16 +13,9 @@
 #ifndef OVSAGENT_POLICYMANAGER_H
 #define OVSAGENT_POLICYMANAGER_H
 
-#include <string>
-#include <vector>
-#include <list>
-#include <set>
-#include <limits>
-#include <utility>
+#include "PolicyListener.h"
+#include "FlowUtils.h"
 
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
-#include <boost/thread.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <opflex/ofcore/OFFramework.h>
@@ -31,8 +24,15 @@
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/gbpe/L24Classifier.hpp>
 
-#include "PolicyListener.h"
-#include "FlowUtils.h"
+#include <string>
+#include <vector>
+#include <list>
+#include <set>
+#include <limits>
+#include <utility>
+#include <unordered_map>
+#include <unordered_set>
+#include <mutex>
 
 namespace ovsagent {
 
@@ -52,7 +52,7 @@ public:
      */
     PolicyRule(const uint8_t dir,
                const uint16_t prio_,
-               const boost::shared_ptr<modelgbp::gbpe::L24Classifier>& c,
+               const std::shared_ptr<modelgbp::gbpe::L24Classifier>& c,
                bool allow_,
                const flowutils::subnets_t& remoteSubnets_) :
         direction(dir), prio(prio_), l24Classifier(c), allow(allow_),
@@ -95,7 +95,7 @@ public:
      * Get the L24Classifier object for the classifier rule.
      * @return the L24Classifier object.
      */
-    const boost::shared_ptr<modelgbp::gbpe::L24Classifier>&
+    const std::shared_ptr<modelgbp::gbpe::L24Classifier>&
     getL24Classifier() const {
         return l24Classifier;
     }
@@ -103,7 +103,7 @@ public:
 private:
     uint8_t direction;
     uint16_t prio;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
     bool allow;
     flowutils::subnets_t remoteSubnets;
 
@@ -198,7 +198,7 @@ public:
      * @return the routing domain or boost::none if the group or the
      * domain is not found
      */
-    boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> >
+    boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> >
     getRDForGroup(const opflex::modb::URI& eg);
 
     /**
@@ -209,7 +209,7 @@ public:
      * @return the routing domain or boost::none if the group or the
      * domain is not found
      */
-    boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> >
+    boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> >
     getRDForL3ExtNet(const opflex::modb::URI& l3n);
 
     /**
@@ -220,7 +220,7 @@ public:
      * @return the bridge domain or boost::none if the group or the
      * domain is not found
      */
-    boost::optional<boost::shared_ptr<modelgbp::gbp::BridgeDomain> >
+    boost::optional<std::shared_ptr<modelgbp::gbp::BridgeDomain> >
     getBDForGroup(const opflex::modb::URI& eg);
 
     /**
@@ -231,7 +231,7 @@ public:
      * @return the flood domain or boost::none if the group or the
      * domain is not found
      */
-    boost::optional<boost::shared_ptr<modelgbp::gbp::FloodDomain> >
+    boost::optional<std::shared_ptr<modelgbp::gbp::FloodDomain> >
     getFDForGroup(const opflex::modb::URI& eg);
 
     /**
@@ -242,13 +242,13 @@ public:
      * @return the flood context or boost::none if the group or the
      * domain is not found
      */
-    boost::optional<boost::shared_ptr<modelgbp::gbpe::FloodContext> >
+    boost::optional<std::shared_ptr<modelgbp::gbpe::FloodContext> >
     getFloodContextForGroup(const opflex::modb::URI& eg);
 
     /**
      * A vector of Subnet objects
      */
-    typedef std::vector<boost::shared_ptr<modelgbp::gbp::Subnet> >
+    typedef std::vector<std::shared_ptr<modelgbp::gbp::Subnet> >
     subnet_vector_t;
 
     /**
@@ -272,7 +272,7 @@ public:
      * @return the subnet if its found, or boost::none if there is
      * none found
      */
-    boost::optional<boost::shared_ptr<modelgbp::gbp::Subnet> >
+    boost::optional<std::shared_ptr<modelgbp::gbp::Subnet> >
     findSubnetForEp(const opflex::modb::URI& eg,
                     const boost::asio::ip::address& ip);
 
@@ -315,12 +315,12 @@ public:
     /**
      * List of PolicyRule objects.
      */
-    typedef std::list<boost::shared_ptr<PolicyRule> > rule_list_t;
+    typedef std::list<std::shared_ptr<PolicyRule> > rule_list_t;
 
     /**
      * Set of URIs.
      */
-    typedef boost::unordered_set<opflex::modb::URI> uri_set_t;
+    typedef std::unordered_set<opflex::modb::URI> uri_set_t;
 
     /**
      * Get all known endpoint groups.
@@ -426,31 +426,31 @@ private:
      * State and indices related to a given group
      */
     struct GroupState {
-        boost::optional<boost::shared_ptr<modelgbp::gbp::EpGroup> > epGroup;
-        boost::optional<boost::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
-        boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
-        boost::optional<boost::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;
-        boost::optional<boost::shared_ptr<modelgbp::gbp::FloodDomain> > floodDomain;
-        boost::optional<boost::shared_ptr<modelgbp::gbpe::FloodContext> > floodContext;
-        typedef boost::unordered_map<opflex::modb::URI,
-                                     boost::shared_ptr<modelgbp::gbp::Subnet> > subnet_map_t;
+        boost::optional<std::shared_ptr<modelgbp::gbp::EpGroup> > epGroup;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
+        boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
+        boost::optional<std::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;
+        boost::optional<std::shared_ptr<modelgbp::gbp::FloodDomain> > floodDomain;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::FloodContext> > floodContext;
+        typedef std::unordered_map<opflex::modb::URI,
+                                     std::shared_ptr<modelgbp::gbp::Subnet> > subnet_map_t;
         subnet_map_t subnet_map;
     };
 
     struct L3NetworkState {
-        boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
+        boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
         boost::optional<opflex::modb::URI> natEpg;
     };
 
     struct RoutingDomainState {
-        boost::unordered_set<opflex::modb::URI> extNets;
+        std::unordered_set<opflex::modb::URI> extNets;
     };
 
-    typedef boost::unordered_map<opflex::modb::URI, GroupState> group_map_t;
-    typedef boost::unordered_map<uint32_t, opflex::modb::URI> vnid_map_t;
-    typedef boost::unordered_map<opflex::modb::URI, RoutingDomainState> rd_map_t;
-    typedef boost::unordered_map<opflex::modb::URI, L3NetworkState> l3n_map_t;
-    typedef boost::unordered_map<opflex::modb::URI, uri_set_t> uri_ref_map_t;
+    typedef std::unordered_map<opflex::modb::URI, GroupState> group_map_t;
+    typedef std::unordered_map<uint32_t, opflex::modb::URI> vnid_map_t;
+    typedef std::unordered_map<opflex::modb::URI, RoutingDomainState> rd_map_t;
+    typedef std::unordered_map<opflex::modb::URI, L3NetworkState> l3n_map_t;
+    typedef std::unordered_map<opflex::modb::URI, uri_set_t> uri_ref_map_t;
 
     /**
      * A map from EPG URI to its state
@@ -478,7 +478,7 @@ private:
      */
     uri_ref_map_t nat_epg_l3_ext;
 
-    boost::mutex state_mutex;
+    std::mutex state_mutex;
 
     // Listen to changes related to forwarding domains
     class DomainListener : public opflex::modb::ObjectListener {
@@ -508,7 +508,7 @@ private:
         uri_sorted_set_t contractsProvided;
         uri_sorted_set_t contractsConsumed;
     };
-    typedef boost::unordered_map<opflex::modb::URI, GroupContractState>
+    typedef std::unordered_map<opflex::modb::URI, GroupContractState>
         group_contract_map_t;
 
     /**
@@ -524,7 +524,7 @@ private:
         uri_set_t consumerGroups;
         rule_list_t rules;
     };
-    typedef boost::unordered_map<opflex::modb::URI, ContractState>
+    typedef std::unordered_map<opflex::modb::URI, ContractState>
         contract_map_t;
 
     /**
@@ -532,7 +532,7 @@ private:
      */
     contract_map_t contractMap;
 
-    typedef boost::unordered_map<opflex::modb::URI, rule_list_t> secgrp_map_t;
+    typedef std::unordered_map<opflex::modb::URI, rule_list_t> secgrp_map_t;
 
     /**
      * Map of security group URI to its rules
@@ -594,7 +594,7 @@ private:
      * The policy listeners that have been registered
      */
     std::list<PolicyListener*> policyListeners;
-    boost::mutex listener_mutex;
+    std::mutex listener_mutex;
 
     /**
      * Update the EPG domain cache information for the specified EPG

@@ -9,9 +9,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/foreach.hpp>
-#include <boost/make_shared.hpp>
-
 #include "ServiceManager.h"
 #include "logging.h"
 
@@ -19,11 +16,11 @@ namespace ovsagent {
 
 using std::string;
 using std::unordered_set;
-using boost::unique_lock;
-using boost::mutex;
-using boost::shared_ptr;
+using std::shared_ptr;
+using std::make_shared;
+using std::unique_lock;
+using std::mutex;
 using boost::optional;
-using boost::make_shared;
 
 ServiceManager::ServiceManager() {
 
@@ -41,7 +38,7 @@ void ServiceManager::unregisterListener(ServiceListener* listener) {
 
 void ServiceManager::notifyListeners(const std::string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
-    BOOST_FOREACH(ServiceListener* listener, serviceListeners) {
+    for (ServiceListener* listener : serviceListeners) {
         listener->anycastServiceUpdated(uuid);
     }
 }

@@ -13,9 +13,10 @@
 #ifndef OVSAGENT_NOTIF_SERVER_H
 #define OVSAGENT_NOTIF_SERVER_H
 
-#include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/unordered_set.hpp>
+#include <memory>
+#include <unordered_set>
+#include <set>
+
 #include <boost/noncopyable.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
@@ -91,7 +92,7 @@ public:
      * @param macAddr the MAC address seen in the advertisement
      * @param ipAddr the IP address seen in the advertisement
      */
-    void dispatchVirtualIp(boost::unordered_set<std::string> uuids,
+    void dispatchVirtualIp(std::unordered_set<std::string> uuids,
                            const opflex::modb::MAC& macAddr,
                            const std::string& ipAddr);
 
@@ -103,7 +104,7 @@ public:
     /**
      * An internal session object pointer
      */
-    typedef boost::shared_ptr<session> session_ptr;
+    typedef std::shared_ptr<session> session_ptr;
 
 private:
     boost::asio::io_service& io_service;
@@ -115,7 +116,7 @@ private:
 
     std::set<session_ptr> sessions;
 
-    boost::scoped_ptr<boost::asio::local::stream_protocol::acceptor> acceptor;
+    std::unique_ptr<boost::asio::local::stream_protocol::acceptor> acceptor;
 
     KeyedRateLimiter<std::string, 3, 5000> vipLimiter;
 

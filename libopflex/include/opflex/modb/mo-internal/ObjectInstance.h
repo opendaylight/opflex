@@ -18,12 +18,12 @@
 #include <utility>
 #include <boost/tuple/tuple_comparison.hpp>
 #include <boost/cstdint.hpp>
-#include <boost/unordered_map.hpp>
 #include <boost/variant.hpp>
 
 #include "opflex/modb/PropertyInfo.h"
 #include "opflex/modb/URI.h"
 #include "opflex/modb/MAC.h"
+#include "opflex/ofcore/OFTypes.h"
 
 namespace opflex {
 namespace modb {
@@ -45,6 +45,51 @@ typedef std::pair<class_id_t, URI> reference_t;
  * as a key in an unordered_map
  */
 size_t hash_value(prop_key_t const& key);
+
+/**
+ * Compute a hash value for the reference_t, making it suitable as a
+ * key in a boost::unordered_map
+ */
+size_t hash_value(reference_t const& key);
+
+} /* namespace modb */
+} /* namespace opflex */
+
+#if __cplusplus > 199711L
+
+namespace std {
+/**
+ * Template specialization for std::hash<opflex::modb::prop_key_t>, making
+ * prop_key_t suitable as a key in a std::unordered_map
+ */
+template<> struct hash<opflex::modb::prop_key_t> {
+    /**
+     * Hash the opflex::modb::prop_key_t
+     */
+    std::size_t operator()(const opflex::modb::prop_key_t& u) const {
+        return opflex::modb::hash_value(u);
+    }
+};
+
+/**
+ * Template specialization for std::hash<opflex::modb::reference_t>, making
+ * it suitable as a key in a std::unordered_map
+ */
+template<> struct hash<opflex::modb::reference_t> {
+    /**
+     * Hash the opflex::modb::reference_t
+     */
+    std::size_t operator()(const opflex::modb::reference_t& p) const {
+        return opflex::modb::hash_value(p);
+    }
+};
+
+} /* namespace std */
+
+#endif
+
+namespace opflex {
+namespace modb {
 
 namespace mointernal {
 
@@ -420,7 +465,7 @@ private:
         void clear();
     };
 
-    typedef boost::unordered_map<prop_key_t, Value> prop_map_t;
+    typedef OF_UNORDERED_MAP<prop_key_t, Value> prop_map_t;
     prop_map_t prop_map;
 
     friend bool operator==(const ObjectInstance& lhs,

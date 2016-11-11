@@ -10,7 +10,6 @@
 #include "logging.h"
 
 #include <boost/test/unit_test.hpp>
-#include <boost/foreach.hpp>
 
 #include <sstream>
 #include <algorithm>
@@ -39,7 +38,7 @@ static string canonicalizeGroupEntryStr(const string& entryStr) {
         sort(tokens.begin()+1, tokens.end());
     }
     string out;
-    BOOST_FOREACH(const string& s, tokens) {
+    for (const string& s : tokens) {
         out.append(s);
     }
     return out;
@@ -57,7 +56,7 @@ bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
     const char *modStr[] = {"ADD", "MOD", "DEL"};
     DsP strBuf;
 
-    BOOST_FOREACH(const FlowEdit::Entry& ed, editCopy.edits) {
+    for (const FlowEdit::Entry& ed : editCopy.edits) {
         if (ignoredFlowMods.find(ed.first) != ignoredFlowMods.end())
             continue;
 
@@ -84,7 +83,7 @@ bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
 bool MockFlowExecutor::Execute(const GroupEdit& groupEdits) {
     if (ignoreGroupMods) return true;
 
-    BOOST_FOREACH(const GroupEdit::Entry& ed, groupEdits.edits) {
+    for (const GroupEdit::Entry& ed : groupEdits.edits) {
         LOG(DEBUG) << "*** GroupMod " << ed;
         std::stringstream ss;
         ss << ed;
@@ -106,7 +105,7 @@ void MockFlowExecutor::Expect(FlowEdit::type mod, const string& fe) {
 }
 void MockFlowExecutor::Expect(FlowEdit::type mod, const vector<string>& fe) {
     ignoreFlowMods = false;
-    BOOST_FOREACH(const string& s, fe)
+    for (const string& s : fe)
         flowMods.push_back(mod_t(mod, s));
 }
 void MockFlowExecutor::ExpectGroup(FlowEdit::type mod, const string& ge) {

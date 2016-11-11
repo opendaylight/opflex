@@ -12,7 +12,9 @@
 #include "logging.h"
 
 #include <boost/test/unit_test.hpp>
-#include <boost/thread/thread.hpp>
+
+#include <thread>
+#include <chrono>
 
 namespace ovsagent {
 
@@ -22,12 +24,12 @@ BOOST_AUTO_TEST_CASE(limit) {
     KeyedRateLimiter<std::string, 5, 10> l;
     BOOST_CHECK(l.event("test"));
     BOOST_CHECK_EQUAL(false, l.event("test"));
-    boost::this_thread::sleep(boost::posix_time::milliseconds(30));
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
     BOOST_CHECK_EQUAL(false, l.event("test"));
-    boost::this_thread::sleep(boost::posix_time::milliseconds(30));
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
     BOOST_CHECK(l.event("test"));
 
-    boost::this_thread::sleep(boost::posix_time::milliseconds(55));
+    std::this_thread::sleep_for(std::chrono::milliseconds(55));
     BOOST_CHECK(l.event("test"));
 }
 

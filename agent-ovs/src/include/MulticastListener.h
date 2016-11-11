@@ -13,8 +13,9 @@
 #ifndef OVSAGENT_MULTICAST_LISTENER_H
 #define OVSAGENT_MULTICAST_LISTENER_H
 
-#include <boost/shared_ptr.hpp>
-#include <boost/unordered_set.hpp>
+#include <memory>
+#include <unordered_set>
+
 #include <boost/noncopyable.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/udp.hpp>
@@ -47,13 +48,13 @@ public:
     /**
      * Make the subscriptions match the given set
      */
-    void sync(boost::shared_ptr<boost::unordered_set<std::string> >& addrs);
+    void sync(const std::shared_ptr<std::unordered_set<std::string> >& addrs);
 
 private:
     boost::asio::io_service& io_service;
     boost::asio::ip::udp::socket socket_v4;
     boost::asio::ip::udp::socket socket_v6;
-    boost::unordered_set<std::string> addresses;
+    std::unordered_set<std::string> addresses;
     volatile bool running;
 
     void join(std::string mcast_address);

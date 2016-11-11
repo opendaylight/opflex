@@ -9,7 +9,7 @@
 #include "TaskQueue.h"
 #include "logging.h"
 
-#include <boost/bind.hpp>
+#include <functional>
 
 namespace ovsagent {
 
@@ -19,9 +19,9 @@ TaskQueue::TaskQueue(boost::asio::io_service& io_service_)
 }
 
 void TaskQueue::run_task(const std::string& taskId,
-                         const boost::function<void ()>& task) {
+                         const std::function<void ()>& task) {
     {
-        boost::unique_lock<boost::mutex> guard(queueMutex);
+        std::unique_lock<std::mutex> guard(queueMutex);
         queuedItems.erase(taskId);
     }
     try {
@@ -35,12 +35,12 @@ void TaskQueue::run_task(const std::string& taskId,
 }
 
 void TaskQueue::dispatch(const std::string& taskId,
-                         const boost::function<void ()>& task) {
+                         const std::function<void ()>& task) {
     {
-        boost::unique_lock<boost::mutex> guard(queueMutex);
+        std::unique_lock<std::mutex> guard(queueMutex);
         if (!queuedItems.insert(taskId).second) return;
     }
-    io_service.dispatch(boost::bind(&TaskQueue::run_task, this, taskId, task));
+    io_service.dispatch(std::bind(&TaskQueue::run_task, this, taskId, task));
 }
 
 } // namespace ovsagent

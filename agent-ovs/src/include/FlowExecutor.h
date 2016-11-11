@@ -9,14 +9,15 @@
 #ifndef OVSAGENT_FLOWEXECUTOR_H_
 #define OVSAGENT_FLOWEXECUTOR_H_
 
-#include <boost/unordered_set.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
-#include <boost/optional.hpp>
-
 #include "SwitchConnection.h"
 #include "TableState.h"
+
+#include <boost/optional.hpp>
+
+#include <unordered_set>
+#include <unordered_map>
+#include <mutex>
+#include <condition_variable>
 
 namespace ovsagent {
 
@@ -170,16 +171,16 @@ private:
     struct RequestState {
         RequestState() : status(0), done(false) {}
 
-        boost::unordered_set<uint32_t> reqXids;
+        std::unordered_set<uint32_t> reqXids;
         int status;
         bool done;
     };
     /* Map of barrier request IDs to RequestState */
-    typedef boost::unordered_map<uint32_t, RequestState> RequestMap;
+    typedef std::unordered_map<uint32_t, RequestState> RequestMap;
     RequestMap requests;
 
-    boost::mutex reqMtx;
-    boost::condition_variable reqCondVar;
+    std::mutex reqMtx;
+    std::condition_variable reqCondVar;
 };
 
 } // namespace ovsagent

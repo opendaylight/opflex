@@ -13,7 +13,6 @@
 
 #include <string>
 
-#include <boost/unordered_set.hpp>
 #include <rapidjson/document.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -39,7 +38,7 @@ public:
      * Construct a new opflex PE handler associated with the given
      * connection
      */
-    MockServerHandler(OpflexConnection* conn, MockOpflexServerImpl* server_) 
+    MockServerHandler(OpflexConnection* conn, MockOpflexServerImpl* server_)
         : OpflexHandler(conn), server(server_), flakyMode(false) {}
 
     /**
@@ -93,8 +92,8 @@ public:
 
 protected:
     MockOpflexServerImpl* server;
-    boost::unordered_set<modb::reference_t> resolutions;
-    boost::unordered_set<modb::reference_t> declarations;
+    OF_UNORDERED_SET<modb::reference_t> resolutions;
+    OF_UNORDERED_SET<modb::reference_t> declarations;
     bool flakyMode;
 };
 

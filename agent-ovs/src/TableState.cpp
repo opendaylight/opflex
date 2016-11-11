@@ -8,7 +8,6 @@
 
 #include <unordered_map>
 
-#include <boost/foreach.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/optional.hpp>
 
@@ -202,7 +201,7 @@ void TableState::diffSnapshot(const FlowEntryList& oldEntries,
     diffs.edits.clear();
 
     old_entry_map_t old_entries;
-    BOOST_FOREACH(const FlowEntryPtr& fe, oldEntries) {
+    for (const FlowEntryPtr& fe : oldEntries) {
         match_key_t key;
         key.prio = fe->entry->priority;
         key.match = fe->entry->match;
@@ -210,7 +209,7 @@ void TableState::diffSnapshot(const FlowEntryList& oldEntries,
     }
 
     // Add/mod any matches in the object map
-    BOOST_FOREACH(match_obj_map_t::value_type& e, pimpl->match_obj_map) {
+    for (match_obj_map_t::value_type& e : pimpl->match_obj_map) {
         old_entry_map_t::iterator it = old_entries.find(e.first);
         if (it == old_entries.end()) {
             diffs.add(FlowEdit::ADD, e.second.front().second);
@@ -225,7 +224,7 @@ void TableState::diffSnapshot(const FlowEntryList& oldEntries,
     }
 
     // Remove unvisited entries from the old entry list
-    BOOST_FOREACH(old_entry_map_t::value_type& e, old_entries) {
+    for (old_entry_map_t::value_type& e : old_entries) {
         if (e.second.first) continue;
         diffs.add(FlowEdit::DEL, e.second.second);
     }
@@ -237,7 +236,7 @@ void TableState::apply(const std::string& objId,
     diffs.edits.clear();
 
     match_map_t new_entries;
-    BOOST_FOREACH(const FlowEntryPtr& fe, newEntries) {
+    for (const FlowEntryPtr& fe : newEntries) {
         match_key_t key;
         key.prio = fe->entry->priority;
         key.match = fe->entry->match;
@@ -245,7 +244,7 @@ void TableState::apply(const std::string& objId,
     }
 
     // load new entries
-    BOOST_FOREACH(match_map_t::value_type& e, new_entries) {
+    for (match_map_t::value_type& e : new_entries) {
         // check if there's an overlapping match already in the table
         match_obj_map_t::iterator oit = pimpl->match_obj_map.find(e.first);
 
@@ -290,7 +289,7 @@ void TableState::apply(const std::string& objId,
     // check for deleted entries
     entry_map_t::iterator itr = pimpl->entry_map.find(objId);
     if (itr != pimpl->entry_map.end()) {
-        BOOST_FOREACH(match_map_t::value_type& e, itr->second) {
+        for (match_map_t::value_type& e : itr->second) {
             match_map_t::iterator mit = new_entries.find(e.first);
             if (mit == new_entries.end()) {
                 match_obj_map_t::iterator oit =
@@ -333,7 +332,7 @@ void TableState::apply(const std::string& objId,
 
     if (diffs.edits.size() > 0) {
         LOG(DEBUG) << "ObjId=" << objId << ", #diffs = " << diffs.edits.size();
-        BOOST_FOREACH(const FlowEdit::Entry& e, diffs.edits) {
+        for (const FlowEdit::Entry& e : diffs.edits) {
             LOG(DEBUG) << e;
         }
     }

@@ -9,13 +9,14 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <opflex/ofcore/OFFramework.h>
-#include <boost/noncopyable.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/asio.hpp>
-#include <boost/scoped_ptr.hpp>
-
 #include "EndpointListener.h"
+
+#include <opflex/ofcore/OFFramework.h>
+
+#include <boost/noncopyable.hpp>
+#include <boost/asio.hpp>
+
+#include <mutex>
 
 #pragma once
 #ifndef OVSAGENT_TUNNELEPMANAGER_H
@@ -60,7 +61,7 @@ public:
      *
      * @param uplinkIface the interface name to use
      */
-    void setUplinkIface(const std::string& uplinkIface) { 
+    void setUplinkIface(const std::string& uplinkIface) {
         this->uplinkIface = uplinkIface;
     }
 
@@ -69,7 +70,7 @@ public:
      *
      * @param uplinkVlan the vlan tag used on the uplink interface
      */
-    void setUplinkVlan(uint16_t uplinkVlan) { 
+    void setUplinkVlan(uint16_t uplinkVlan) {
         this->uplinkVlan = uplinkVlan;
     }
 
@@ -105,7 +106,7 @@ private:
     Agent* agent;
     boost::asio::io_service& agent_io;
     long timer_interval;
-    boost::scoped_ptr<boost::asio::deadline_timer> timer;
+    std::unique_ptr<boost::asio::deadline_timer> timer;
 
     void on_timer(const boost::system::error_code& ec);
 
@@ -144,13 +145,13 @@ private:
      */
     bool terminationIpIsV4;
 
-    boost::mutex termip_mutex;
+    std::mutex termip_mutex;
 
     /**
      * The endpoint listeners that have been registered
      */
     std::list<EndpointListener*> tunnelEpListeners;
-    boost::mutex listener_mutex;
+    std::mutex listener_mutex;
 
     void notifyListeners(const std::string& uuid);
 

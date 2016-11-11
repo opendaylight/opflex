@@ -11,7 +11,11 @@
 #ifndef OVSAGENT_TEST_MODBFIXTURE_H_
 #define OVSAGENT_TEST_MODBFIXTURE_H_
 
-#include <boost/shared_ptr.hpp>
+#include "BaseFixture.h"
+#include "EndpointSource.h"
+#include "ServiceSource.h"
+#include "EndpointManager.h"
+
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/l2/EtherTypeEnumT.hpp>
 #include <modelgbp/l4/TcpFlagsEnumT.hpp>
@@ -20,10 +24,7 @@
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
 #include <opflex/modb/Mutator.h>
 
-#include "BaseFixture.h"
-#include "EndpointSource.h"
-#include "ServiceSource.h"
-#include "EndpointManager.h"
+#include <memory>
 
 namespace ovsagent {
 
@@ -57,36 +58,36 @@ public:
 
     DummyEpSrc epSrc;
     DummyServiceSrc servSrc;
-    boost::shared_ptr<modelgbp::policy::Universe> universe;
-    boost::shared_ptr<modelgbp::policy::Space> space;
-    boost::shared_ptr<modelgbp::platform::Config> config;
-    boost::shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
-    boost::shared_ptr<modelgbp::gbp::EpGroup> epg0, epg1, epg2, epg3, epg4;
-    boost::shared_ptr<modelgbp::gbp::FloodDomain> fd0, fd1;
-    boost::shared_ptr<modelgbp::gbpe::FloodContext> fd0ctx;
-    boost::shared_ptr<modelgbp::gbp::RoutingDomain> rd0;
-    boost::shared_ptr<modelgbp::gbp::BridgeDomain> bd0, bd1;
-    boost::shared_ptr<modelgbp::gbp::Subnets> subnetsfd0, subnetsfd1,
+    std::shared_ptr<modelgbp::policy::Universe> universe;
+    std::shared_ptr<modelgbp::policy::Space> space;
+    std::shared_ptr<modelgbp::platform::Config> config;
+    std::shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
+    std::shared_ptr<modelgbp::gbp::EpGroup> epg0, epg1, epg2, epg3, epg4;
+    std::shared_ptr<modelgbp::gbp::FloodDomain> fd0, fd1;
+    std::shared_ptr<modelgbp::gbpe::FloodContext> fd0ctx;
+    std::shared_ptr<modelgbp::gbp::RoutingDomain> rd0;
+    std::shared_ptr<modelgbp::gbp::BridgeDomain> bd0, bd1;
+    std::shared_ptr<modelgbp::gbp::Subnets> subnetsfd0, subnetsfd1,
         subnetsbd0, subnetsbd1;
-    boost::shared_ptr<modelgbp::gbp::Subnet> subnetsfd0_1, subnetsfd0_2,
+    std::shared_ptr<modelgbp::gbp::Subnet> subnetsfd0_1, subnetsfd0_2,
         subnetsfd1_1, subnetsbd0_1, subnetsbd1_1, subnet;
 
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier0;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier1;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier2;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier3;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier4;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier5;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier6;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier7;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier8;
-    boost::shared_ptr<modelgbp::gbpe::L24Classifier> classifier9;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier0;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier1;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier2;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier3;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier4;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier5;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier6;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier7;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier8;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier9;
 
-    boost::shared_ptr<modelgbp::gbp::AllowDenyAction> action1;
+    std::shared_ptr<modelgbp::gbp::AllowDenyAction> action1;
 
-    boost::shared_ptr<modelgbp::gbp::Contract> con1;
-    boost::shared_ptr<modelgbp::gbp::Contract> con2;
-    boost::shared_ptr<modelgbp::gbp::Contract> con3;
+    std::shared_ptr<modelgbp::gbp::Contract> con1;
+    std::shared_ptr<modelgbp::gbp::Contract> con2;
+    std::shared_ptr<modelgbp::gbp::Contract> con3;
     std::string policyOwner;
 
 protected:

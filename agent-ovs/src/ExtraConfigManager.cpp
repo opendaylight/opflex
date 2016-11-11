@@ -9,21 +9,20 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/foreach.hpp>
-#include <boost/make_shared.hpp>
-
 #include "ExtraConfigManager.h"
 #include "logging.h"
+
+#include <memory>
 
 namespace ovsagent {
 
 using std::string;
-using boost::unique_lock;
-using boost::mutex;
-using boost::shared_ptr;
+using std::unique_lock;
+using std::mutex;
 using boost::optional;
-using boost::unordered_set;
-using boost::make_shared;
+using std::shared_ptr;
+using std::unordered_set;
+using std::make_shared;
 
 ExtraConfigManager::ExtraConfigManager() {
 
@@ -41,7 +40,7 @@ void ExtraConfigManager::unregisterListener(ExtraConfigListener* listener) {
 
 void ExtraConfigManager::notifyListeners(const opflex::modb::URI& domainURI) {
     unique_lock<mutex> guard(listener_mutex);
-    BOOST_FOREACH(ExtraConfigListener* listener, extraConfigListeners) {
+    for (ExtraConfigListener* listener : extraConfigListeners) {
         listener->rdConfigUpdated(domainURI);
     }
 }

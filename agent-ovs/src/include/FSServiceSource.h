@@ -9,18 +9,17 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <string>
-
-#include <boost/filesystem.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/thread.hpp>
+#pragma once
+#ifndef OVSAGENT_FSSERVICESOURCE_H
+#define OVSAGENT_FSSERVICESOURCE_H
 
 #include "ServiceSource.h"
 #include "FSWatcher.h"
 
-#pragma once
-#ifndef OVSAGENT_FSSERVICESOURCE_H
-#define OVSAGENT_FSSERVICESOURCE_H
+#include <boost/filesystem.hpp>
+
+#include <string>
+#include <unordered_map>
 
 namespace ovsagent {
 
@@ -51,7 +50,7 @@ public:
     virtual void deleted(const boost::filesystem::path& filePath);
 
 private:
-    typedef boost::unordered_map<std::string, std::string> serv_map_t;
+    typedef std::unordered_map<std::string, std::string> serv_map_t;
 
     /**
      * Services that are known to the filesystem watcher

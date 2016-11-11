@@ -17,11 +17,10 @@
 #include "CtZoneManager.h"
 #include "logging.h"
 
-#include <boost/foreach.hpp>
-#include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
 
 #include <vector>
+#include <thread>
 
 namespace ovsagent {
 
@@ -38,13 +37,11 @@ public:
 
     virtual void start() {
         using boost::asio::io_service;
-        using boost::ref;
-        using boost::bind;
-        using boost::thread;
+        using std::thread;
         agent.getAgentIOService().reset();
-        ioWork.reset(new io_service::work(agent.getAgentIOService()));
-        ioThread.reset(new thread(bind(&io_service::run,
-                                       ref(agent.getAgentIOService()))));
+        io_service& io = agent.getAgentIOService();
+        ioWork.reset(new io_service::work(io));
+        ioThread.reset(new thread([&io] { io.run(); }));
         switchManager.start("placeholder");
     }
 
@@ -61,7 +58,7 @@ public:
     }
 
     virtual void clearExpFlowTables() {
-        BOOST_FOREACH(FlowEntryList& fel, expTables)
+        for (FlowEntryList& fel : expTables)
             fel.clear();
     }
 
@@ -74,8 +71,8 @@ public:
 
     std::vector<FlowEntryList> expTables;
 
-    boost::scoped_ptr<boost::thread> ioThread;
-    boost::scoped_ptr<boost::asio::io_service::work> ioWork;
+    std::unique_ptr<std::thread> ioThread;
+    std::unique_ptr<boost::asio::io_service::work> ioWork;
 };
 
 void addExpFlowEntry(std::vector<FlowEntryList>& tables,

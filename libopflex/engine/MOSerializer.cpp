@@ -17,9 +17,7 @@
 #include <cstdio>
 #include <sstream>
 
-#include <boost/make_shared.hpp>
 #include <boost/utility.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/foreach.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/filewritestream.h>
@@ -46,11 +44,8 @@ using modb::Region;
 using rapidjson::Value;
 using rapidjson::Document;
 using rapidjson::SizeType;
-using boost::shared_ptr;
-using boost::make_shared;
 using std::vector;
 using std::string;
-using boost::unordered_set;
 
 MOSerializer::MOSerializer(ObjectStore* store_, Listener* listener_)
     : store(store_), listener(listener_) {
@@ -126,8 +121,8 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
     try {
         URI uri(uriv.GetString());
         const ClassInfo& ci = store->getClassInfo(classv.GetString());
-        shared_ptr<ObjectInstance> oi =
-            make_shared<ObjectInstance>(ci.getId());
+        OF_SHARED_PTR<ObjectInstance> oi =
+            OF_MAKE_SHARED<ObjectInstance>(ci.getId());
         if (mo.HasMember("properties")) {
             const Value& properties = mo["properties"];
             if (properties.IsArray()) {
@@ -291,7 +286,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
         }
 
         if (replaceChildren) {
-            unordered_set<string> children;
+            OF_UNORDERED_SET<string> children;
             if (mo.HasMember("children")) {
                 const Value& cvs = mo["children"];
                 if (cvs.IsArray()) {
@@ -357,7 +352,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
 }
 
 static void getRoots(ObjectStore* store, Region::obj_set_t& roots) {
-    unordered_set<string> owners;
+    OF_UNORDERED_SET<string> owners;
     store->getOwners(owners);
     BOOST_FOREACH(const string& owner, owners) {
         try {
@@ -475,7 +470,7 @@ void MOSerializer::displayObject(std::ostream& ostream,
                                  bool utf8) {
     StoreClient& client = store->getReadOnlyStoreClient();
     const modb::ClassInfo& ci = store->getClassInfo(class_id);
-    const boost::shared_ptr<const modb::mointernal::ObjectInstance>
+    const OF_SHARED_PTR<const modb::mointernal::ObjectInstance>
         oi(client.get(class_id, uri));
     std::map<modb::class_id_t, std::vector<modb::URI> > children;
 

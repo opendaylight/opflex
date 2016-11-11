@@ -9,18 +9,19 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <string>
-#include <vector>
-
-#include <boost/unordered_set.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/optional.hpp>
-#include <opflex/modb/URI.h>
-#include <opflex/modb/MAC.h>
-
 #pragma once
 #ifndef OVSAGENT_ENDPOINT_H
 #define OVSAGENT_ENDPOINT_H
+
+#include <opflex/modb/URI.h>
+#include <opflex/modb/MAC.h>
+
+#include <boost/optional.hpp>
+
+#include <string>
+#include <vector>
+#include <unordered_set>
+#include <unordered_map>
 
 namespace ovsagent {
 
@@ -135,7 +136,7 @@ public:
      *
      * @return the list of IP addresses
      */
-    const boost::unordered_set<std::string>& getIPs() const {
+    const std::unordered_set<std::string>& getIPs() const {
         return ips;
     }
 
@@ -145,7 +146,7 @@ public:
      *
      * @param ips the IP addresses
      */
-    void setIPs(const boost::unordered_set<std::string>& ips) {
+    void setIPs(const std::unordered_set<std::string>& ips) {
         this->ips = ips;
     }
 
@@ -164,7 +165,7 @@ public:
      *
      * @return the list of IP addresses
      */
-    const boost::unordered_set<std::string>& getAnycastReturnIPs() const {
+    const std::unordered_set<std::string>& getAnycastReturnIPs() const {
         return anycastReturnIps;
     }
 
@@ -175,7 +176,7 @@ public:
      *
      * @param ips the IP addresses
      */
-    void setAnycastReturnIPs(const boost::unordered_set<std::string>& ips) {
+    void setAnycastReturnIPs(const std::unordered_set<std::string>& ips) {
         this->anycastReturnIps = ips;
     }
 
@@ -196,11 +197,26 @@ public:
     typedef std::pair<opflex::modb::MAC, std::string> virt_ip_t;
 
     /**
+     * Functor for storing an virt_ip_t as hash key
+     */
+    struct VirtIpTHash {
+        /**
+         * Hash the virt_ip_t
+         */
+        size_t operator()(const virt_ip_t& m) const noexcept;
+    };
+
+    /**
+     * A set of virt_ip_t
+     */
+    typedef std::unordered_set<virt_ip_t, VirtIpTHash> virt_ip_set;
+
+    /**
      * Get the list of virtual IP addresses associated with this endpoint
      *
      * @return the list of virtual IP addresses
      */
-    const boost::unordered_set<virt_ip_t>& getVirtualIPs() const {
+    const virt_ip_set& getVirtualIPs() const {
         return virtualIps;
     }
 
@@ -210,7 +226,7 @@ public:
      *
      * @param virtualIps the virtual IP addresses
      */
-    void setVirtualIPs(const boost::unordered_set<virt_ip_t>& virtualIps) {
+    void setVirtualIPs(const virt_ip_set& virtualIps) {
         this->virtualIps = virtualIps;
     }
 
@@ -435,7 +451,7 @@ public:
     /**
      * A string to string mapping
      */
-    typedef boost::unordered_map<std::string, std::string> attr_map_t;
+    typedef std::unordered_map<std::string, std::string> attr_map_t;
 
     /**
      * Get a reference to a map of name/value attributes
@@ -928,6 +944,21 @@ public:
     };
 
     /**
+     * Functor for storing an IPAddressMapping as hash key
+     */
+    struct IPAddressMappingHash {
+        /**
+         * Hash the address mapping
+         */
+        size_t operator()(const IPAddressMapping& m) const noexcept;
+    };
+
+    /**
+     * A set of address mapping hash objects
+     */
+    typedef std::unordered_set<IPAddressMapping, IPAddressMappingHash> ipam_set;
+
+    /**
      * Clear the list of address mappings
      */
     void clearIPAddressMappings() {
@@ -946,7 +977,7 @@ public:
      *
      * @return a set of address mapping objects
      */
-    const boost::unordered_set<IPAddressMapping>& getIPAddressMappings() const {
+    const ipam_set& getIPAddressMappings() const {
         return ipAddressMappings;
     }
 
@@ -1059,9 +1090,9 @@ public:
 private:
     std::string uuid;
     boost::optional<opflex::modb::MAC> mac;
-    boost::unordered_set<std::string> ips;
-    boost::unordered_set<std::string> anycastReturnIps;
-    boost::unordered_set<virt_ip_t> virtualIps;
+    std::unordered_set<std::string> ips;
+    std::unordered_set<std::string> anycastReturnIps;
+    virt_ip_set virtualIps;
     boost::optional<std::string> egMappingAlias;
     boost::optional<opflex::modb::URI> egURI;
     std::set<opflex::modb::URI> securityGroups;
@@ -1074,7 +1105,7 @@ private:
     attr_map_t attributes;
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
-    boost::unordered_set<IPAddressMapping> ipAddressMappings;
+    ipam_set ipAddressMappings;
     std::vector<Attestation> attestations;
 };
 

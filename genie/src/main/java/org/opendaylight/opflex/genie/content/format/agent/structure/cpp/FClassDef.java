@@ -729,7 +729,7 @@ public class FClassDef extends ItemFormatterTask
             "@see opflex::modb::Mutator"));
         out.printHeaderComment(aInIdent,lComment);
 
-        out.println(aInIdent, "static boost::shared_ptr<" + lClassName + "> createRootElement(opflex::ofcore::OFFramework& framework)");
+        out.println(aInIdent, "static OF_SHARED_PTR<" + lClassName + "> createRootElement(opflex::ofcore::OFFramework& framework)");
         out.println(aInIdent,"{");
             out.println(aInIdent + 1, "return opflex::modb::mointernal::MO::createRootElement<" + lClassName + ">(framework, CLASS_ID);");
         out.println(aInIdent, "}");
@@ -744,7 +744,7 @@ public class FClassDef extends ItemFormatterTask
             "@see opflex::modb::Mutator"));
         out.printHeaderComment(aInIdent,lComment);
 
-        out.println(aInIdent, "static boost::shared_ptr<" + lClassName + "> createRootElement()");
+        out.println(aInIdent, "static OF_SHARED_PTR<" + lClassName + "> createRootElement()");
         out.println(aInIdent,"{");
         out.println(aInIdent + 1, "return createRootElement(opflex::ofcore::OFFramework::defaultInstance());;");
         out.println(aInIdent, "}");
@@ -778,7 +778,7 @@ public class FClassDef extends ItemFormatterTask
              "does not exist."};
         out.printHeaderComment(aInIdent,lComment);
 
-        out.println(aInIdent, "static boost::optional<boost::shared_ptr<" + lFullyQualifiedClassName + "> > resolve(");
+        out.println(aInIdent, "static boost::optional<OF_SHARED_PTR<" + lFullyQualifiedClassName + "> > resolve(");
         out.println(aInIdent + 1, "opflex::ofcore::OFFramework& framework,");
         out.println(aInIdent + 1, "const opflex::modb::URI& uri)");
         out.println(aInIdent, "{");
@@ -797,7 +797,7 @@ public class FClassDef extends ItemFormatterTask
              "@return a shared pointer to the object or boost::none if it",
              "does not exist."};
         out.printHeaderComment(aInIdent,lComment2);
-        out.println(aInIdent, "static boost::optional<boost::shared_ptr<" + lFullyQualifiedClassName + "> > resolve(");
+        out.println(aInIdent, "static boost::optional<OF_SHARED_PTR<" + lFullyQualifiedClassName + "> > resolve(");
         out.println(aInIdent + 1, "const opflex::modb::URI& uri)");
         out.println(aInIdent, "{");
         out.println(aInIdent + 1, "return opflex::modb::mointernal::MO::resolve<" + lFullyQualifiedClassName + ">(opflex::ofcore::OFFramework::defaultInstance(), CLASS_ID, uri);");
@@ -1274,7 +1274,7 @@ public class FClassDef extends ItemFormatterTask
         comment.add("does not exist.");
         out.printHeaderComment(aInIdent,comment);
 
-        out.println(aInIdent,"static boost::optional<boost::shared_ptr<" + getClassName(aInClass,true)+ "> > " + lMethodName + "(");
+        out.println(aInIdent,"static boost::optional<OF_SHARED_PTR<" + getClassName(aInClass,true)+ "> > " + lMethodName + "(");
             out.print(aInIdent + 1, "opflex::ofcore::OFFramework& framework");
             for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
             {
@@ -1312,7 +1312,7 @@ public class FClassDef extends ItemFormatterTask
         comment.add("does not exist.");
         out.printHeaderComment(aInIdent,comment);
         out.println(aInIdent,
-                    "static boost::optional<boost::shared_ptr<" + getClassName(aInClass, true) + "> > " + lMethodName + "(");
+                    "static boost::optional<OF_SHARED_PTR<" + getClassName(aInClass, true) + "> > " + lMethodName + "(");
         boolean lIsFirst = true;
         for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
         {
@@ -1382,7 +1382,7 @@ public class FClassDef extends ItemFormatterTask
         {
             lMethodName += lTargetClassName;
         }
-        out.println(aInIdent, "boost::shared_ptr<" +  aInFormattedChildClassName + "> " + lMethodName + "(");
+        out.println(aInIdent, "OF_SHARED_PTR<" +  aInFormattedChildClassName + "> " + lMethodName + "(");
 
         boolean lIsFirst = true;
         MNameComponent lClassProp = null;
@@ -1422,7 +1422,7 @@ public class FClassDef extends ItemFormatterTask
             {
                 out.println(aInIdent + 1, "opflex::modb::class_id_t " + getPropParamName(aInChildClass, lClassProp.getPropName()) + " = " + aInTargetClass.getGID().getId() + ";");
             }
-            out.println(aInIdent + 1, "boost::shared_ptr<" + aInFormattedChildClassName + "> result = addChild<" + aInFormattedChildClassName+ ">(");
+            out.println(aInIdent + 1, "OF_SHARED_PTR<" + aInFormattedChildClassName + "> result = addChild<" + aInFormattedChildClassName+ ">(");
                 out.println(aInIdent + 2, "CLASS_ID, getURI(), " + toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
                 out.println(aInIdent + 2, aInUriBuilder);
                 out.println(aInIdent + 2, ");");
@@ -1486,7 +1486,7 @@ public class FClassDef extends ItemFormatterTask
             lMethodName += lTargetClassName;
         }
 
-        out.println(aInIdent, "boost::optional<boost::shared_ptr<" +  aInFormattedChildClassName + "> > " + lMethodName + "(");
+        out.println(aInIdent, "boost::optional<OF_SHARED_PTR<" +  aInFormattedChildClassName + "> > " + lMethodName + "(");
 
         boolean lIsFirst = true;
         MNameComponent lClassProp = null;
@@ -1594,7 +1594,7 @@ public class FClassDef extends ItemFormatterTask
                     "objects."));
                 out.printHeaderComment(aInIdent,comment);
 
-                out.println(aInIdent,"void resolve" + lConcatenatedChildClassName + "(/* out */ std::vector<boost::shared_ptr<" + lFormattedChildClassName+ "> >& out)");
+                out.println(aInIdent,"void resolve" + lConcatenatedChildClassName + "(/* out */ std::vector<OF_SHARED_PTR<" + lFormattedChildClassName+ "> >& out)");
                 out.println(aInIdent,"{");
                 out.println(aInIdent + 1, "opflex::modb::mointernal::MO::resolveChildren<" + lFormattedChildClassName + ">(");
                 out.println(aInIdent + 2, "getFramework(), CLASS_ID, getURI(), " + toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ", out);");
@@ -1686,7 +1686,7 @@ public class FClassDef extends ItemFormatterTask
             out.println(aInIdent, aInClass.getLID().getName() + "(");
             out.println(aInIdent + 1, "opflex::ofcore::OFFramework& framework,");
             out.println(aInIdent + 1, "const opflex::modb::URI& uri,");
-            out.println(aInIdent + 1, "const boost::shared_ptr<const opflex::modb::mointernal::ObjectInstance>& oi)");
+            out.println(aInIdent + 1, "const OF_SHARED_PTR<const opflex::modb::mointernal::ObjectInstance>& oi)");
             /**if (aInClass.hasSuperclass())
             {
                 MClass lSuperclass = aInClass.getSuperclass();
@@ -1705,7 +1705,7 @@ public class FClassDef extends ItemFormatterTask
                 out.println(aInIdent + 1, "opflex::ofcore::OFFramework& framework,");
                 out.println(aInIdent + 1, "opflex::modb::ClassId classId,");
                 out.println(aInIdent + 1, "const opflex::modb::URI& uri,");
-                out.println(aInIdent + 1, "const boost::shared_ptr<const opflex::modb::mointernal::ObjectInstance>& oi)");
+                out.println(aInIdent + 1, "const OF_SHARED_PTR<const opflex::modb::mointernal::ObjectInstance>& oi)");
                 if (aInClass.hasSuperclass())
                 {
                     MClass lSuperclass = aInClass.getSuperclass();

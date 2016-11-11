@@ -17,15 +17,15 @@
 #include <set>
 #include <memory>
 
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
+#include <boost/functional/hash.hpp>
 #include <uv.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/OpflexClientConnection.h"
 #include "opflex/ofcore/PeerStatusListener.h"
+#include "opflex/ofcore/OFTypes.h"
 #include "yajr/transport/ZeroCopyOpenSSL.hpp"
 #include "ThreadManager.h"
 
@@ -35,6 +35,26 @@
 
 #if HAVE_CONFIG_H
 #  include <config.h>
+#endif
+
+#if __cplusplus > 199711L
+
+namespace std {
+/**
+ * Template specialization for std::hash<OpflexPool::peer_name_t>, making
+ * prop_key_t suitable as a key in a std::unordered_map
+ */
+template<> struct hash<std::pair<std::string, int>> {
+    /**
+     * Hash the peer_name_t
+     */
+    std::size_t operator()(const std::pair<std::string, int>& u) const {
+        return boost::hash_value(u);
+    }
+};
+
+} /* namespace std */
+
 #endif
 
 namespace opflex {
@@ -245,7 +265,7 @@ public:
     /**
      * A set of peer names
      */
-    typedef boost::unordered_set<peer_name_t> peer_name_set_t;
+    typedef OF_UNORDERED_SET<peer_name_t> peer_name_set_t;
 
     /**
      * Update the set of connections in the pool to include only
@@ -287,7 +307,7 @@ private:
         uint8_t roles;
     };
 
-    typedef boost::unordered_map<peer_name_t, ConnData> conn_map_t;
+    typedef OF_UNORDERED_MAP<peer_name_t, ConnData> conn_map_t;
     typedef std::set<OpflexClientConnection*> conn_set_t;
 
     class RoleData {

@@ -16,7 +16,6 @@
 
 
 #include <boost/test/unit_test.hpp>
-#include <boost/make_shared.hpp>
 
 #include "opflex/engine/internal/MOSerializer.h"
 
@@ -29,8 +28,6 @@ using namespace opflex::modb::mointernal;
 using namespace opflex::logging;
 using namespace rapidjson;
 
-using boost::shared_ptr;
-using boost::make_shared;
 using mointernal::ObjectInstance;
 using std::out_of_range;
 using std::string;
@@ -43,23 +40,23 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
 
-    shared_ptr<ObjectInstance> oi = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(1));
+    OF_SHARED_PTR<ObjectInstance> oi =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(1));
     oi->setUInt64(1, 42);
     oi->addString(2, "test1");
     oi->addString(2, "test2");
     URI uri("/");
     client1->put(1, uri, oi);
 
-    shared_ptr<ObjectInstance> oi2 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(2));
+    OF_SHARED_PTR<ObjectInstance> oi2 =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(2));
     oi2->setInt64(4, -42);
     URI uri2("/class2/-42");
     client1->put(2, uri2, oi2);
     client1->addChild(1, uri, 3, 2, uri2);
 
-    shared_ptr<ObjectInstance> oi3 = 
-        shared_ptr<ObjectInstance>(new ObjectInstance(2));
+    OF_SHARED_PTR<ObjectInstance> oi3 =
+        OF_SHARED_PTR<ObjectInstance>(new ObjectInstance(2));
     oi3->setInt64(4, -84);
     URI uri3("/class2/-84");
     client1->put(2, uri3, oi3);
@@ -78,7 +75,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     writer.String("prr");
     writer.Uint(3600);
     writer.EndObject();
-    
+
     writer.String("id");
     writer.Uint(42);
     writer.EndObject();
@@ -96,7 +93,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     const Value& policy = result["policy"];
     BOOST_CHECK(policy.IsArray());
     BOOST_CHECK_EQUAL(3, policy.Size());
-    
+
     const Value& mo1 = policy[SizeType(0)];
     BOOST_CHECK_EQUAL("class1", const_cast<char *>(mo1["subject"].GetString()));
     BOOST_CHECK_EQUAL("/", const_cast<char *>(mo1["uri"].GetString()));
@@ -133,7 +130,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
 BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
     StoreClient::notif_t notifs;
 
-    static const char buffer[] = 
+    static const char buffer[] =
         "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st1\",\"test2\"]},{\"name\":\"prop1\",\"data\":42}],\"chi"
@@ -157,12 +154,12 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
     for (SizeType i = 0; i < policy.Size(); ++i) {
         serializer.deserialize(policy[i], sysClient, false, &notifs);
     }
-    
+
     URI uri("/");
     URI uri2("/class2/-42");
     URI uri3("/class2/-84");
-    shared_ptr<const ObjectInstance> oi = sysClient.get(1, uri);
-    shared_ptr<const ObjectInstance> oi2 = sysClient.get(2, uri2);
+    OF_SHARED_PTR<const ObjectInstance> oi = sysClient.get(1, uri);
+    OF_SHARED_PTR<const ObjectInstance> oi2 = sysClient.get(2, uri2);
 
     BOOST_CHECK_EQUAL(42, oi->getUInt64(1));
     BOOST_CHECK_EQUAL(2, oi->getStringSize(2));
@@ -185,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
     notifs.clear();
 
     // remove both children
-    static const char buffer2[] = 
+    static const char buffer2[] =
         "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st3\",\"test4\"]},{\"name\":\"prop1\",\"data\":84}],\"chi"
@@ -226,7 +223,7 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
     notifs.clear();
 
     // remove only one child
-    static const char buffer3[] = 
+    static const char buffer3[] =
         "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st1\",\"test2\"]},{\"name\":\"prop1\",\"data\":42}],\"chi"
@@ -274,12 +271,12 @@ BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
     URI c6u("/class4/test/class6/test2/");
     URI c7u("/class4/test/class7/0");
 
-    shared_ptr<ObjectInstance> oi1 = make_shared<ObjectInstance>(1);
-    shared_ptr<ObjectInstance> oi2 = make_shared<ObjectInstance>(2);
-    shared_ptr<ObjectInstance> oi4 = make_shared<ObjectInstance>(4);
-    shared_ptr<ObjectInstance> oi5 = make_shared<ObjectInstance>(5);
-    shared_ptr<ObjectInstance> oi6 = make_shared<ObjectInstance>(6);
-    shared_ptr<ObjectInstance> oi7 = make_shared<ObjectInstance>(7);
+    OF_SHARED_PTR<ObjectInstance> oi1 = OF_MAKE_SHARED<ObjectInstance>(1);
+    OF_SHARED_PTR<ObjectInstance> oi2 = OF_MAKE_SHARED<ObjectInstance>(2);
+    OF_SHARED_PTR<ObjectInstance> oi4 = OF_MAKE_SHARED<ObjectInstance>(4);
+    OF_SHARED_PTR<ObjectInstance> oi5 = OF_MAKE_SHARED<ObjectInstance>(5);
+    OF_SHARED_PTR<ObjectInstance> oi6 = OF_MAKE_SHARED<ObjectInstance>(6);
+    OF_SHARED_PTR<ObjectInstance> oi7 = OF_MAKE_SHARED<ObjectInstance>(7);
 
     oi2->setInt64(4, 32);
     oi2->setMAC(15, MAC("aa:bb:cc:dd:ee:ff"));
@@ -324,7 +321,7 @@ BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
     }
     BOOST_CHECK_EQUAL("test", sysClient.get(4, c4u)->getString(9));
     BOOST_CHECK_EQUAL("test", sysClient.get(5, c5u)->getString(10));
-    BOOST_CHECK(make_pair((class_id_t)4ul, c4u) == 
+    BOOST_CHECK(make_pair((class_id_t)4ul, c4u) ==
                 sysClient.get(5, c5u)->getReference(11, 0));
     BOOST_CHECK_EQUAL("test2", sysClient.get(6, c6u)->getString(13));
     BOOST_CHECK_EQUAL(0, sysClient.get(7, c7u)->getUInt64(14));
