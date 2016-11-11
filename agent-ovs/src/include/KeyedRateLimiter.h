@@ -14,14 +14,13 @@
 #define OVSAGENT_KEYED_RATE_LIMITER_H
 
 #include <boost/noncopyable.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
-#include <boost/foreach.hpp>
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
-#include <boost/unordered_set.hpp>
 
 #include <string>
+#include <unordered_set>
+#include <mutex>
+#include <vector>
 
 namespace ovsagent {
 
@@ -54,7 +53,7 @@ public:
      * Clear the rate limiter and reset its state to the initial state
      */
     void clear() {
-        boost::lock_guard<boost::mutex> guard(mtx);
+        std::lock_guard<std::mutex> guard(mtx);
         do_clear();
     }
 
@@ -69,7 +68,7 @@ public:
     bool event(K key) {
         time_point now = boost::chrono::steady_clock::now();
 
-        boost::lock_guard<boost::mutex> guard(mtx);
+        std::lock_guard<std::mutex> guard(mtx);
 
         duration increment(BUCKET_TIME);
         if (curBucketStart + increment * NBUCKETS < now) {
@@ -87,7 +86,7 @@ public:
         }
 
         // check if any buckets in the window have the key
-        BOOST_FOREACH(key_set& ks, buckets) {
+        for (key_set& ks : buckets) {
             if (ks.find(key) != ks.end())
                 return false;
         }
@@ -99,15 +98,15 @@ public:
 private:
     typedef boost::chrono::steady_clock::time_point time_point;
     typedef boost::chrono::milliseconds duration;
-    typedef boost::unordered_set<K> key_set;
+    typedef std::unordered_set<K> key_set;
 
-    boost::mutex mtx;
+    std::mutex mtx;
     std::vector<key_set> buckets;
     size_t curBucket;
     time_point curBucketStart;
 
     void do_clear() {
-        BOOST_FOREACH(key_set& ks, buckets)
+        for (key_set& ks : buckets)
             ks.clear();
         curBucket = 0;
         curBucketStart = boost::chrono::steady_clock::now();

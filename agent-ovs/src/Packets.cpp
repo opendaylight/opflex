@@ -41,7 +41,7 @@ const uint8_t MAC_ADDR_ZERO[6] =
 using std::string;
 using std::stringbuf;
 using std::vector;
-using boost::shared_ptr;
+using std::shared_ptr;
 using boost::optional;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v4;
@@ -139,7 +139,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     PolicyManager::subnet_vector_t subnets;
     PolicyManager::subnet_vector_t ipv6Subnets;
     polMgr.getSubnetsForGroup(egUri, subnets);
-    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
+    for (shared_ptr<Subnet>& sn : subnets) {
         optional<const string&> networkAddrStr = sn->getAddress();
         if (!networkAddrStr) continue;
         boost::system::error_code ec;
@@ -175,7 +175,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     defroute->nd_opt_ri_lifetime = 0xffffffff;
 
     // prefix information
-    BOOST_FOREACH(shared_ptr<Subnet>& sn, ipv6Subnets) {
+    for (shared_ptr<Subnet>& sn : ipv6Subnets) {
         optional<const string&> networkAddrStr = sn->getAddress();
         if (!networkAddrStr) continue;
 
@@ -475,7 +475,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     size_t iface_mtu_len = 0;
 
     vector<address_v4> routerIps;
-    BOOST_FOREACH(const string& ipstr, routers) {
+    for (const string& ipstr : routers) {
         address_v4 ip = address_v4::from_string(ipstr, ec);
         if (ec) continue;
         routerIps.push_back(ip);
@@ -485,7 +485,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         router_len = 2 + 4*routerIps.size();
 
     vector<address_v4> dnsIps;
-    BOOST_FOREACH(const string& ipstr, dnsServers) {
+    for (const string& ipstr : dnsServers) {
         address_v4 ip = address_v4::from_string(ipstr, ec);
         if (ec) continue;
         dnsIps.push_back(ip);
@@ -498,7 +498,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         domain_len = 2 + domain.get().size();
 
     vector<Routev4> routes;
-    BOOST_FOREACH(const static_route_t& route, staticRoutes) {
+    for (const static_route_t& route : staticRoutes) {
         address_v4 dst = address_v4::from_string(route.dest, ec);
         if (ec) continue;
         address_v4 nextHop = address_v4::from_string(route.nextHop, ec);
@@ -641,7 +641,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         routers_opt->len = 4 * routerIps.size();
         uint32_t* ipptr =
             (uint32_t*)((char*)routers_opt + 2);
-        BOOST_FOREACH(const address_v4& ip, routerIps) {
+        for (const address_v4& ip : routerIps) {
             *ipptr = htonl(ip.to_ulong());
             ipptr += 1;
         }
@@ -652,7 +652,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         dns->len = 4 * dnsIps.size();
         uint32_t* ipptr =
             (uint32_t*)((char*)dns + 2);
-        BOOST_FOREACH(const address_v4& ip, dnsIps) {
+        for (const address_v4& ip : dnsIps) {
             *ipptr = htonl(ip.to_ulong());
             ipptr += 1;
         }
@@ -677,7 +677,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         static_routes->code = option::CLASSLESS_STATIC_ROUTE;
         static_routes->len = static_route_len - 2;
         char* cur = (char*)static_routes + 2;
-        BOOST_FOREACH(const Routev4& route, routes) {
+        for (const Routev4& route : routes) {
             uint8_t octets = (route.prefixLen / 8) + (route.prefixLen % 8 != 0);
             uint32_t dest = htonl(route.dest.to_ulong());
             uint32_t nexthop = htonl(route.nextHop.to_ulong());
@@ -757,7 +757,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     const size_t opt_hdr_len = sizeof(struct dhcp6_opt_hdr);
 
     vector<address_v6> dnsIps;
-    BOOST_FOREACH(const string& ipstr, dnsServers) {
+    for (const string& ipstr : dnsServers) {
         address_v6 ip = address_v6::from_string(ipstr, ec);
         if (ec) continue;
         dnsIps.push_back(ip);
@@ -768,7 +768,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
 
     stringbuf domain_opt_buf;
     size_t domain_opt_len = 0;
-    BOOST_FOREACH(const string& domain, searchList) {
+    for (const string& domain : searchList) {
         if (domain.size() > 255) continue;
         if (domain_opt_len > 512) break;
 
@@ -776,7 +776,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         split(dchunks, domain, is_any_of("."), token_compress_on);
 
         bool validdomain = true;
-        BOOST_FOREACH(const string& dchunk, dchunks) {
+        for (const string& dchunk : dchunks) {
             if (dchunk.size() > 63) {
                 validdomain = false;
                 break;
@@ -784,7 +784,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         }
         if (!validdomain || dchunks.size() == 0) continue;
 
-        BOOST_FOREACH(const string& dchunk, dchunks) {
+        for (const string& dchunk : dchunks) {
             domain_opt_buf.sputc((uint8_t)dchunk.size());
             domain_opt_buf.sputn(dchunk.c_str(), dchunk.size());
             domain_opt_len += dchunk.size() + 1;
@@ -906,7 +906,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
             *t1 = htonl(3600);
             *t2 = htonl(5400);
         }
-        BOOST_FOREACH(const address_v6& ip, ips) {
+        for (const address_v6& ip : ips) {
             size_t iaaddr_len = 24;
             iaaddr->option_code = htons(option::IAADDR);
             iaaddr->option_len = htons(iaaddr_len);
@@ -931,7 +931,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         dns->option_len = htons(sizeof(struct in6_addr) * dnsIps.size());
         struct in6_addr* ipptr =
             (struct in6_addr*)((char*)dns + opt_hdr_len);
-        BOOST_FOREACH(const address_v6& ip, dnsIps) {
+        for (const address_v6& ip : dnsIps) {
             address_v6::bytes_type bytes = ip.to_bytes();
             std::memcpy(ipptr, bytes.data(), bytes.size());
             ipptr += 1;

@@ -12,7 +12,6 @@
 #include <cstring>
 #include <sstream>
 #include <boost/system/error_code.hpp>
-#include <boost/foreach.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -51,20 +50,20 @@
 using std::string;
 using std::vector;
 using std::ostringstream;
+using std::shared_ptr;
+using std::unordered_set;
+using std::unordered_map;
 using boost::bind;
 using boost::algorithm::trim;
 using boost::ref;
 using boost::optional;
-using boost::shared_ptr;
-using boost::unordered_set;
-using boost::unordered_map;
 using boost::asio::deadline_timer;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
 using boost::asio::placeholders::error;
-using boost::posix_time::milliseconds;
-using boost::unique_lock;
-using boost::mutex;
+using std::chrono::milliseconds;
+using std::unique_lock;
+using std::mutex;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::class_id_t;
@@ -814,7 +813,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     boost::system::error_code ec;
 
     std::vector<address> ipAddresses;
-    BOOST_FOREACH(const string& ipStr, endPoint.getIPs()) {
+    for (const string& ipStr : endPoint.getIPs()) {
         address addr = address::from_string(ipStr, ec);
         if (ec) {
             LOG(WARNING) << "Invalid endpoint IP: "
@@ -849,7 +848,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                            .inPort(ofPort).ethSrc(macAddr))
                 .build(el);
 
-            BOOST_FOREACH(const address& ipAddr, ipAddresses) {
+            for (const address& ipAddr : ipAddresses) {
                 // Allow IPv4/IPv6 packets from port with EP IP address
                 actionSecAllow(FlowBuilder().priority(30)
                                .inPort(ofPort).ethSrc(macAddr)
@@ -873,8 +872,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             }
         }
 
-        BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
-                      endPoint.getVirtualIPs()) {
+        for (const Endpoint::virt_ip_t& vip : endPoint.getVirtualIPs()) {
             packets::cidr_t vip_cidr;
             if (!packets::cidr_from_string(vip.second, vip_cidr)) {
                 LOG(WARNING) << "Invalid endpoint VIP (CIDR): " << vip.second;
@@ -885,7 +883,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
             // Handle ARP/ND from "active" virtual IPs normally, that is
             // without generating a packet-in
-            BOOST_FOREACH(const address& ipAddr, ipAddresses) {
+            for (const address& ipAddr : ipAddresses) {
                 if (!packets::cidr_contains(vip_cidr, ipAddr)) {
                     continue;
                 }
@@ -997,7 +995,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             if (v6c)
                 flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, false);
 
-            BOOST_FOREACH(const Endpoint::virt_ip_t& vip,
+            for (const Endpoint::virt_ip_t& vip :
                           endPoint.getVirtualIPs()) {
                 if (endPoint.getMAC().get() == vip.first) continue;
                 packets::cidr_t vip_cidr;
@@ -1033,7 +1031,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
         if (virtualRouterEnabled && hasMac &&
             routingMode == RoutingModeEnumT::CONST_ENABLED) {
-            BOOST_FOREACH (const address& ipAddr, ipAddresses) {
+            for (const address& ipAddr : ipAddresses) {
                 if (endPoint.isDiscoveryProxyMode()) {
                     // Auto-reply to ARP and NDP requests for endpoint
                     // IP addresses
@@ -1090,8 +1088,8 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             }
 
             // IP address mappings
-            BOOST_FOREACH (const Endpoint::IPAddressMapping& ipm,
-                           endPoint.getIPAddressMappings()) {
+            for(const Endpoint::IPAddressMapping& ipm :
+                    endPoint.getIPAddressMappings()) {
                 if (!ipm.getMappedIP() || !ipm.getEgURI())
                     continue;
 
@@ -1143,8 +1141,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         // interfaces.
         if (hasMac) {
             std::vector<address> anycastReturnIps;
-            BOOST_FOREACH(const string& ipStr,
-                          endPoint.getAnycastReturnIPs()) {
+            for (const string& ipStr : endPoint.getAnycastReturnIPs()) {
                 address addr = address::from_string(ipStr, ec);
                 if (ec) {
                     LOG(WARNING) << "Invalid anycast return IP: "
@@ -1157,7 +1154,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                 anycastReturnIps = ipAddresses;
             }
 
-            BOOST_FOREACH (const address& ipAddr, anycastReturnIps) {
+            for (const address& ipAddr : anycastReturnIps) {
                 {
                     // Deliver packets sent to service address
                     FlowBuilder serviceDest;
@@ -1766,18 +1763,18 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
     unordered_set<string> epUuids;
     EndpointManager& epMgr = agent.getEndpointManager();
     epMgr.getEndpointsForIPMGroup(epgURI, epUuids);
-    boost::unordered_set<URI> ipmRds;
-    BOOST_FOREACH(const string& uuid, epUuids) {
-        boost::shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
+    std::unordered_set<URI> ipmRds;
+    for (const string& uuid : epUuids) {
+        std::shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
         if (!ep) continue;
         const boost::optional<opflex::modb::URI>& egURI = ep->getEgURI();
         if (!egURI) continue;
-        boost::optional<boost::shared_ptr<modelgbp::gbp::RoutingDomain> > rd =
+        boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> > rd =
             polMgr.getRDForGroup(egURI.get());
         if (rd)
             ipmRds.insert(rd.get()->getURI());
     }
-    BOOST_FOREACH(const URI& rdURI, ipmRds) {
+    for (const URI& rdURI : ipmRds) {
         // update routing domains that have references to the
         // IP-mapping EPG to ensure external subnets are correctly
         // mapped.
@@ -1786,14 +1783,14 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
 
     // note this combines with the IPM group endpoints from above:
     epMgr.getEndpointsForGroup(epgURI, epUuids);
-    BOOST_FOREACH(const string& uuid, epUuids) {
+    for (const string& uuid : epUuids) {
         advertManager.scheduleEndpointAdv(uuid);
         endpointUpdated(uuid);
     }
 
     PolicyManager::uri_set_t contractURIs;
     polMgr.getContractsForGroup(epgURI, contractURIs);
-    BOOST_FOREACH(const URI& contract, contractURIs) {
+    for (const URI& contract : contractURIs) {
         contractUpdated(contract);
     }
 
@@ -1816,7 +1813,7 @@ void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
 
     uint32_t tunPort = getTunnelPort();
 
-    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
+    for (shared_ptr<Subnet>& sn : subnets) {
         FlowEntryList el;
 
         optional<address> routerIp =
@@ -1891,17 +1888,17 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
 
     vector<shared_ptr<RoutingDomainToIntSubnetsRSrc> > subnets_list;
     rd.get()->resolveGbpRoutingDomainToIntSubnetsRSrc(subnets_list);
-    BOOST_FOREACH(shared_ptr<RoutingDomainToIntSubnetsRSrc>& subnets_ref,
-                  subnets_list) {
+    for (shared_ptr<RoutingDomainToIntSubnetsRSrc>& subnets_ref :
+             subnets_list) {
         optional<URI> subnets_uri = subnets_ref->getTargetURI();
         PolicyManager::resolveSubnets(agent.getFramework(),
                                       subnets_uri, intSubnets);
     }
-    boost::shared_ptr<const RDConfig> rdConfig =
+    std::shared_ptr<const RDConfig> rdConfig =
         agent.getExtraConfigManager().getRDConfig(rdURI);
     if (rdConfig) {
-        BOOST_FOREACH(const std::string& cidrSn,
-                      rdConfig->getInternalSubnets()) {
+        for (const std::string& cidrSn :
+                 rdConfig->getInternalSubnets()) {
             packets::cidr_t cidr;
             if (packets::cidr_from_string(cidrSn, cidr)) {
                 intSubnets.insert(make_pair(cidr.first.to_string(),
@@ -1911,7 +1908,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
             }
         }
     }
-    BOOST_FOREACH(const flowutils::subnet_t& sn, intSubnets) {
+    for (const flowutils::subnet_t& sn : intSubnets) {
         address addr = address::from_string(sn.first, ec);
         if (ec) continue;
 
@@ -1928,11 +1925,11 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     // longest-prefix.
     vector<shared_ptr<L3ExternalDomain> > extDoms;
     rd.get()->resolveGbpL3ExternalDomain(extDoms);
-    BOOST_FOREACH(shared_ptr<L3ExternalDomain>& extDom, extDoms) {
+    for (shared_ptr<L3ExternalDomain>& extDom : extDoms) {
         vector<shared_ptr<L3ExternalNetwork> > extNets;
         extDom->resolveGbpL3ExternalNetwork(extNets);
 
-        BOOST_FOREACH(shared_ptr<L3ExternalNetwork> net, extNets) {
+        for (shared_ptr<L3ExternalNetwork> net : extNets) {
             uint32_t netVnid = getExtNetVnid(net->getURI());
             vector<shared_ptr<ExternalSubnet> > extSubs;
             net->resolveGbpExternalSubnet(extSubs);
@@ -1946,7 +1943,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
                         agent.getPolicyManager().getVnidForGroup(natEpg.get());
             }
 
-            BOOST_FOREACH(shared_ptr<ExternalSubnet> extsub, extSubs) {
+            for (shared_ptr<ExternalSubnet> extsub : extSubs) {
                 if (!extsub->isAddressSet() || !extsub->isPrefixLenSet())
                     continue;
                 address addr =
@@ -2075,7 +2072,7 @@ IntFlowManager::createGroupMod(uint16_t type, uint32_t groupId,
     entry->mod->command = type;
     entry->mod->group_id = groupId;
 
-    BOOST_FOREACH(const Ep2PortMap::value_type& kv, ep2port) {
+    for (const Ep2PortMap::value_type& kv : ep2port) {
         if (onlyPromiscuous && !kv.second.second)
             continue;
 
@@ -2247,12 +2244,12 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
     FlowEntryList entryList;
     uint64_t conCookie = getId(Contract::CLASS_ID, contractURI);
 
-    BOOST_FOREACH(const IdMap::value_type& pid, provIds) {
+    for (const IdMap::value_type& pid : provIds) {
         const uint32_t& pvnid = pid.first;
-        BOOST_FOREACH(const IdMap::value_type& cid, consIds) {
+        for (const IdMap::value_type& cid : consIds) {
             const uint32_t& cvnid = cid.first;
 
-            BOOST_FOREACH(shared_ptr<PolicyRule>& pc, rules) {
+            for (shared_ptr<PolicyRule>& pc : rules) {
                 uint8_t dir = pc->getDirection();
                 const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
                 /*
@@ -2336,7 +2333,7 @@ void IntFlowManager::handleConfigUpdate(const opflex::modb::URI& configURI) {
 }
 
 void IntFlowManager::updateGroupTable() {
-    BOOST_FOREACH (FloodGroupMap::value_type& kv, floodGroupMap) {
+    for (FloodGroupMap::value_type& kv : floodGroupMap) {
         const URI& fgrpURI = kv.first;
         uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
         Ep2PortMap& epMap = kv.second;
@@ -2358,12 +2355,12 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
 
         PolicyManager::uri_set_t epgURIs;
         agent.getPolicyManager().getGroups(epgURIs);
-        BOOST_FOREACH (const URI& epg, epgURIs) {
+        for (const URI& epg : epgURIs) {
             egDomainUpdated(epg);
         }
         PolicyManager::uri_set_t rdURIs;
         agent.getPolicyManager().getRoutingDomains(rdURIs);
-        BOOST_FOREACH (const URI& rd, rdURIs) {
+        for (const URI& rd : rdURIs) {
             rdConfigUpdated(rd);
         }
         /* Directly update the group-table */
@@ -2379,7 +2376,7 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
             }
         }
         {
-            std::unordered_set<string> uuids;
+            unordered_set<string> uuids;
             agent.getServiceManager()
                 .getAnycastServicesByIface(portName, uuids);
             for (const string& uuid : uuids) {
@@ -2392,7 +2389,7 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
 void IntFlowManager::getGroupVnidAndRdId(const unordered_set<URI>& uris,
     /* out */unordered_map<uint32_t, uint32_t>& ids) {
     PolicyManager& pm = agent.getPolicyManager();
-    BOOST_FOREACH(const URI& u, uris) {
+    for (const URI& u : uris) {
         optional<uint32_t> vnid = pm.getVnidForGroup(u);
         optional<shared_ptr<RoutingDomain> > rd;
         if (vnid) {
@@ -2494,7 +2491,7 @@ void IntFlowManager::updateMulticastList(const optional<string>& mcastIp,
 }
 
 bool IntFlowManager::removeFromMulticastList(const URI& uri) {
-    BOOST_FOREACH (MulticastMap::value_type& kv, mcastMap) {
+    for (MulticastMap::value_type& kv : mcastMap) {
         UriSet& uris = kv.second;
         if (uris.erase(uri) > 0 && uris.empty()) {
             mcastMap.erase(kv.first);
@@ -2516,7 +2513,7 @@ void IntFlowManager::writeMulticastGroups() {
 
     pt::ptree tree;
     pt::ptree groups;
-    BOOST_FOREACH (MulticastMap::value_type& kv, mcastMap)
+    for (MulticastMap::value_type& kv : mcastMap)
         groups.push_back(std::make_pair("", pt::ptree(kv.first)));
     tree.add_child("multicast-groups", groups);
 
@@ -2535,7 +2532,7 @@ IntFlowManager::reconcileFlows(std::vector<TableState> flowTables,
     // PacketInHandler reactive reconciler
     FlowEntryList learnFlows;
     recvFlows[IntFlowManager::LEARN_TABLE_ID].swap(learnFlows);
-    BOOST_FOREACH (const FlowEntryPtr& fe, learnFlows) {
+    for (const FlowEntryPtr& fe : learnFlows) {
         if (!pktInHandler.reconcileReactiveFlow(fe)) {
             recvFlows[IntFlowManager::LEARN_TABLE_ID].push_back(fe);
         }
@@ -2567,7 +2564,7 @@ void IntFlowManager::checkGroupEntry(GroupMap& recvGroups,
 
 GroupEdit IntFlowManager::reconcileGroups(GroupMap& recvGroups) {
     GroupEdit ge;
-    BOOST_FOREACH (FloodGroupMap::value_type& kv, floodGroupMap) {
+    for (FloodGroupMap::value_type& kv : floodGroupMap) {
         const URI& fgrpURI = kv.first;
         Ep2PortMap& epMap = kv.second;
 
@@ -2578,7 +2575,7 @@ GroupEdit IntFlowManager::reconcileGroups(GroupMap& recvGroups) {
         checkGroupEntry(recvGroups, promFdId, epMap, true, ge);
     }
     Ep2PortMap tmp;
-    BOOST_FOREACH (const GroupMap::value_type& kv, recvGroups) {
+    for (const GroupMap::value_type& kv : recvGroups) {
         GroupEdit::Entry e0 = createGroupMod(OFPGC11_DELETE, kv.first, tmp);
         ge.edits.push_back(e0);
     }

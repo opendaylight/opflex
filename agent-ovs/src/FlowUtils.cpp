@@ -17,8 +17,8 @@
 #include <modelgbp/l4/TcpFlagsEnumT.hpp>
 #include <modelgbp/arp/OpcodeEnumT.hpp>
 
-#include <boost/foreach.hpp>
 #include <boost/function.hpp>
+#include <boost/functional/hash.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/bind.hpp>
 
@@ -37,7 +37,7 @@ std::ostream & operator<<(std::ostream &os, const subnet_t& subnet) {
 
 std::ostream & operator<<(std::ostream &os, const subnets_t& subnets) {
     bool first = true;
-    BOOST_FOREACH(subnet_t s, subnets) {
+    for (subnet_t s : subnets) {
         if (first) first = false;
         else os << ",";
         os << s;
@@ -166,15 +166,15 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
     subnets_t effSourceSub(compute_eff_sub(sourceSub));
     subnets_t effDestSub(compute_eff_sub(destSub));
 
-    BOOST_FOREACH (const subnet_t& ss, effSourceSub) {
+    for (const subnet_t& ss : effSourceSub) {
         flow_func src_func(make_flow_functor(ss, &FlowBuilder::ipSrc));
 
-        BOOST_FOREACH (const subnet_t& ds, effDestSub) {
-        flow_func dst_func(make_flow_functor(ds, &FlowBuilder::ipDst));
+        for (const subnet_t& ds : effDestSub) {
+            flow_func dst_func(make_flow_functor(ds, &FlowBuilder::ipDst));
 
-            BOOST_FOREACH (const Mask& sm, srcPorts) {
-                BOOST_FOREACH(const Mask& dm, dstPorts) {
-                    BOOST_FOREACH(uint32_t flagMask, tcpFlagsVec) {
+            for (const Mask& sm : srcPorts) {
+                for (const Mask& dm : dstPorts) {
+                    for (uint32_t flagMask : tcpFlagsVec) {
                         FlowBuilder f;
                         f.cookie(ckbe);
 
@@ -244,3 +244,10 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
 
 } // namespace flowutils
 } // namespace ovsagent
+
+namespace std {
+std::size_t hash<ovsagent::flowutils::subnet_t>::
+operator()(const ovsagent::flowutils::subnet_t& u) const {
+    return boost::hash_value(u);
+}
+} /* namespace std */

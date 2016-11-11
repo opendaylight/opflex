@@ -18,6 +18,7 @@
 
 #include "opflex/modb/URI.h"
 #include "opflex/modb/mo-internal/ObjectInstance.h"
+#include "opflex/ofcore/OFTypes.h"
 
 namespace opflex {
 
@@ -81,7 +82,7 @@ public:
      * Destroy the Mutator.  Any uncommitted changes will be lost.
      */
     ~Mutator();
-    
+
     /**
      * Commit the changes stored in the mutator to the object store.
      * If this method is not called, these changes will simply be
@@ -98,8 +99,8 @@ public:
      * @param class_id the class ID for the object
      * @param uri The URI for the object
      */
-    boost::shared_ptr<mointernal::ObjectInstance>& modify(class_id_t class_id,
-                                                          const URI& uri);
+    OF_SHARED_PTR<mointernal::ObjectInstance>& modify(class_id_t class_id,
+                                                      const URI& uri);
 
     /**
      * Delete the child object specified along with its link to its
@@ -123,12 +124,12 @@ public:
      * @param child_class the class ID of the child
      * @param child_uri the URI of the child
      */
-    boost::shared_ptr<mointernal
-                      ::ObjectInstance>& addChild(class_id_t parent_class,
-                                                  const URI& parent_uri, 
-                                                  prop_id_t parent_prop,
-                                                  class_id_t child_class,
-                                                  const URI& child_uri);
+    OF_SHARED_PTR<mointernal
+                  ::ObjectInstance>& addChild(class_id_t parent_class,
+                                              const URI& parent_uri,
+                                              prop_id_t parent_prop,
+                                              class_id_t child_class,
+                                              const URI& child_uri);
 
 private:
     class MutatorImpl;

@@ -115,19 +115,19 @@ void FSEndpointSource::updated(const fs::path& filePath) {
         }
         optional<ptree&> ips = properties.get_child_optional(EP_IP);
         if (ips) {
-            BOOST_FOREACH(const ptree::value_type &v, ips.get())
+            for (const ptree::value_type &v : ips.get())
                 newep.addIP(v.second.data());
         }
         optional<ptree&> anycastReturnIps =
             properties.get_child_optional(EP_ANYCAST_RETURN_IP);
         if (anycastReturnIps) {
-            BOOST_FOREACH(const ptree::value_type &v, anycastReturnIps.get())
+            for (const ptree::value_type &v : anycastReturnIps.get())
                 newep.addAnycastReturnIP(v.second.data());
         }
         optional<ptree&> virtualIps =
             properties.get_child_optional(EP_VIRTUAL_IP);
         if (virtualIps) {
-            BOOST_FOREACH(const ptree::value_type &v, virtualIps.get()) {
+            for (const ptree::value_type &v : virtualIps.get()) {
                  optional<string> vmac =
                      v.second.get_optional<string>(EP_MAC);
                  optional<string> vip =
@@ -174,7 +174,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
         optional<ptree&> secGrps =
             properties.get_child_optional(EP_SEC_GROUP);
         if (secGrps) {
-            BOOST_FOREACH(const ptree::value_type &v, secGrps.get()) {
+            for (const ptree::value_type &v : secGrps.get()) {
                 optional<string> secGrpPS =
                     v.second.get_optional<string>(SEC_GROUP_POLICY_SPACE);
                 optional<string> secGrpName =
@@ -219,7 +219,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
         optional<ptree&> attrs =
             properties.get_child_optional(EP_ATTRIBUTES);
         if (attrs) {
-            BOOST_FOREACH(const ptree::value_type &v, attrs.get()) {
+            for (const ptree::value_type &v : attrs.get()) {
                 newep.addAttribute(v.first, v.second.data());
             }
         }
@@ -246,14 +246,14 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             optional<ptree&> routers =
                 dhcp4.get().get_child_optional(DHCP_ROUTERS);
             if (routers) {
-                BOOST_FOREACH(const ptree::value_type &u, routers.get())
+                for (const ptree::value_type &u : routers.get())
                     c.addRouter(u.second.data());
             }
 
             optional<ptree&> dns =
                 dhcp4.get().get_child_optional(DHCP_DNS_SERVERS);
             if (dns) {
-                BOOST_FOREACH(const ptree::value_type &u, dns.get())
+                for (const ptree::value_type &u : dns.get())
                     c.addDnsServer(u.second.data());
             }
 
@@ -265,8 +265,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             optional<ptree&> staticRoutes =
                 dhcp4.get().get_child_optional(DHCP_STATIC_ROUTES);
             if (staticRoutes) {
-                BOOST_FOREACH(const ptree::value_type &u,
-                              staticRoutes.get()) {
+                for (const ptree::value_type &u : staticRoutes.get()) {
                     optional<string> dst = u.second.get_optional<string>
                         (DHCP_STATIC_ROUTE_DEST);
                     uint8_t dstPrefix =
@@ -296,14 +295,14 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             optional<ptree&> searchPath =
                 dhcp6.get().get_child_optional(DHCP_SEARCH_LIST);
             if (searchPath) {
-                BOOST_FOREACH(const ptree::value_type &u, searchPath.get())
+                for (const ptree::value_type &u : searchPath.get())
                     c.addSearchListEntry(u.second.data());
             }
 
             optional<ptree&> dns =
                 dhcp6.get().get_child_optional(DHCP_DNS_SERVERS);
             if (dns) {
-                BOOST_FOREACH(const ptree::value_type &u, dns.get())
+                for (const ptree::value_type &u : dns.get())
                     c.addDnsServer(u.second.data());
             }
 
@@ -313,7 +312,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
         optional<ptree&> ipms =
             properties.get_child_optional(IP_ADDRESS_MAPPING);
         if (ipms) {
-            BOOST_FOREACH(const ptree::value_type &v, ipms.get()) {
+            for (const ptree::value_type &v : ipms.get()) {
                 optional<string> fuuid =
                     v.second.get_optional<string>(EP_UUID);
                 if (!fuuid) continue;
@@ -368,7 +367,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
         optional<ptree&> attests =
             properties.get_child_optional(ATTESTATION);
         if (attests) {
-            BOOST_FOREACH(const ptree::value_type &v, attests.get()) {
+            for (const ptree::value_type &v : attests.get()) {
                 optional<string> name =
                     v.second.get_optional<string>(ATTEST_NAME);
                 if (!name) continue;

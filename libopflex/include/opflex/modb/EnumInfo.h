@@ -17,9 +17,8 @@
 #include <string>
 #include <vector>
 
-#include <boost/unordered_map.hpp>
-
 #include "opflex/modb/ConstInfo.h"
+#include "opflex/ofcore/OFTypes.h"
 
 namespace opflex {
 namespace modb {
@@ -96,8 +95,8 @@ private:
      */
     std::vector<ConstInfo> consts;
 
-    typedef boost::unordered_map<std::string, uint64_t> const_name_map_t;
-    typedef boost::unordered_map<uint64_t, std::string> const_value_map_t;
+    typedef OF_UNORDERED_MAP<std::string, uint64_t> const_name_map_t;
+    typedef OF_UNORDERED_MAP<uint64_t, std::string> const_value_map_t;
 
     const_name_map_t const_name_map;
     const_value_map_t const_value_map;

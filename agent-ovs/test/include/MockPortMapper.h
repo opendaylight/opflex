@@ -26,8 +26,8 @@ public:
         return RPortMap.at(of_port_no);
     }
 
-    boost::unordered_map<std::string, uint32_t> ports;
-    boost::unordered_map<uint32_t, std::string> RPortMap;
+    std::unordered_map<std::string, uint32_t> ports;
+    std::unordered_map<uint32_t, std::string> RPortMap;
 };
 
 } // namespace ovsagent

@@ -7,14 +7,14 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-
 #ifndef OVSAGENT_SWITCHCONNECTION_H_
 #define OVSAGENT_SWITCHCONNECTION_H_
 
 #include <queue>
-#include <boost/unordered_map.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <list>
+#include <unordered_map>
+#include <thread>
+#include <mutex>
 
 struct vconn;
 struct jsonrpc;
@@ -242,11 +242,11 @@ private:
 
     bool isDisconnecting;
 
-    boost::thread *connThread;
-    boost::mutex connMtx;
+    std::unique_ptr<std::thread> connThread;
+    std::mutex connMtx;
 
     typedef std::list<MessageHandler *>     HandlerList;
-    typedef boost::unordered_map<int, HandlerList> HandlerMap;
+    typedef std::unordered_map<int, HandlerList> HandlerMap;
     HandlerMap msgHandlers;
 
     typedef std::list<JsonMessageHandler *>  JsonHandlerList;

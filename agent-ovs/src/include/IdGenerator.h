@@ -11,16 +11,17 @@
 #ifndef OVSAGENT_IDGENERATOR_H_
 #define OVSAGENT_IDGENERATOR_H_
 
-#include <string>
-#include <set>
-#include <boost/unordered_map.hpp>
+#include <opflex/ofcore/OFFramework.h>
+
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/function.hpp>
-#include <boost/thread/mutex.hpp>
 #include <boost/optional.hpp>
 
-#include <opflex/ofcore/OFFramework.h>
+#include <string>
+#include <set>
+#include <unordered_map>
+#include <mutex>
 
 namespace ovsagent {
 
@@ -181,12 +182,12 @@ private:
         /**
          * Map of strings to the IDs assigned to them.
          */
-        typedef boost::unordered_map<std::string, uint32_t> Str2IdMap;
+        typedef std::unordered_map<std::string, uint32_t> Str2IdMap;
         Str2IdMap ids;
 
         std::set<id_range> freeIds;
 
-        typedef boost::unordered_map<std::string, time_point> Str2EIdMap;
+        typedef std::unordered_map<std::string, time_point> Str2EIdMap;
         Str2EIdMap erasedIds;
 
         boost::optional<alloc_hook_t> allocHook;
@@ -201,13 +202,13 @@ private:
     void persist(const std::string& nmspc, IdMap& idmap);
     uint32_t getRemainingIdsLocked(const std::string& nmspc);
 
-    boost::mutex id_mutex;
+    std::mutex id_mutex;
 
     /**
      * Map of ID namespaces to the assignment within that namespace.
      */
-    typedef boost::unordered_map<std::string, IdMap> NamespaceMap;
-    boost::unordered_map<std::string, IdMap> namespaces;
+    typedef std::unordered_map<std::string, IdMap> NamespaceMap;
+    std::unordered_map<std::string, IdMap> namespaces;
     std::string persistDir;
     duration cleanupInterval;
 };

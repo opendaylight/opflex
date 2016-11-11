@@ -9,18 +9,18 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <string>
-
-#include <boost/filesystem.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/thread.hpp>
-#include <boost/noncopyable.hpp>
-
-#include "EndpointSource.h"
-
 #pragma once
 #ifndef OVSAGENT_FSLISTENER_H
 #define OVSAGENT_FSLISTENER_H
+
+#include "EndpointSource.h"
+
+#include <boost/filesystem.hpp>
+#include <boost/noncopyable.hpp>
+
+#include <string>
+#include <unordered_map>
+#include <thread>
 
 namespace ovsagent {
 
@@ -76,7 +76,18 @@ private:
         boost::filesystem::path watchPath;
     };
 
-    typedef boost::unordered_map<boost::filesystem::path, WatchState> path_map_t;
+    /**
+     * Functor for storing a boost::filesystem::path as hash key
+     */
+    struct PathHash {
+        /**
+         * Hash the path
+         */
+        size_t operator()(const boost::filesystem::path& p) const noexcept;
+    };
+
+    typedef std::unordered_map<boost::filesystem::path,
+                               WatchState, PathHash> path_map_t;
 
     /**
      * paths to monitor.
@@ -86,12 +97,12 @@ private:
     /**
      * Active watches
      */
-    boost::unordered_map<int, const WatchState*> activeWatches;
+    std::unordered_map<int, const WatchState*> activeWatches;
 
     /**
      * Thread for polling filesystem events
      */
-    boost::thread* pollThread;
+    std::unique_ptr<std::thread> pollThread;
 
     /**
      * File descriptor for communicating with the polling thread

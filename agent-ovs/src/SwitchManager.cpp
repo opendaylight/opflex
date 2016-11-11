@@ -149,7 +149,7 @@ bool SwitchManager::writeFlow(const std::string& objId, int tableId,
 
     assert(tableId >= 0 &&
            static_cast<size_t>(tableId) < flowTables.size());
-    BOOST_FOREACH(FlowEntryPtr& fe, el)
+    for (FlowEntryPtr& fe : el)
         fe->entry->table_id = tableId;
     TableState& tab = flowTables[tableId];
 
@@ -234,7 +234,7 @@ void SwitchManager::initiateSync() {
 
 void SwitchManager::gotGroups(const GroupEdit::EntryList& groups,
     bool done) {
-    BOOST_FOREACH (const GroupEdit::Entry& e, groups) {
+    for (const GroupEdit::Entry& e : groups) {
         recvGroups[e->mod->group_id] = e;
     }
     groupsDone = done;

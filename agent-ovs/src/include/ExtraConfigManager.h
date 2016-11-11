@@ -9,17 +9,18 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/noncopyable.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/thread/mutex.hpp>
-#include <opflex/modb/URI.h>
+#pragma once
+#ifndef OVSAGENT_EXTRACONFIGMANAGER_H
+#define OVSAGENT_EXTRACONFIGMANAGER_H
 
 #include "ExtraConfigListener.h"
 #include "RDConfig.h"
 
-#pragma once
-#ifndef OVSAGENT_EXTRACONFIGMANAGER_H
-#define OVSAGENT_EXTRACONFIGMANAGER_H
+#include <boost/noncopyable.hpp>
+#include <opflex/modb/URI.h>
+
+#include <unordered_map>
+#include <mutex>
 
 namespace ovsagent {
 
@@ -59,7 +60,7 @@ public:
      * @return the object containing the detailed information, or a
      * NULL pointer if there is no such RD config
      */
-    boost::shared_ptr<const RDConfig>
+    std::shared_ptr<const RDConfig>
         getRDConfig(const opflex::modb::URI& domain);
 
 private:
@@ -79,12 +80,12 @@ private:
 
     class RDConfigState {
     public:
-        boost::shared_ptr<const RDConfig> rdConfig;
+        std::shared_ptr<const RDConfig> rdConfig;
     };
 
-    typedef boost::unordered_map<opflex::modb::URI, RDConfigState> rdc_map_t;
+    typedef std::unordered_map<opflex::modb::URI, RDConfigState> rdc_map_t;
 
-    boost::mutex ec_mutex;
+    std::mutex ec_mutex;
 
     /**
      * Map domain URIs to routing domain config
@@ -95,7 +96,7 @@ private:
      * The extraConfig listeners that have been registered
      */
     std::list<ExtraConfigListener*> extraConfigListeners;
-    boost::mutex listener_mutex;
+    std::mutex listener_mutex;
 
     void notifyListeners(const opflex::modb::URI& uuid);
 

@@ -10,15 +10,6 @@
 #ifndef OVSAGENT_INTFLOWMANAGER_H_
 #define OVSAGENT_INTFLOWMANAGER_H_
 
-#include <utility>
-
-#include <boost/asio/ip/address.hpp>
-#include <boost/optional.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/noncopyable.hpp>
-
-#include <opflex/ofcore/PeerStatusListener.h>
-
 #include "Agent.h"
 #include "SwitchManager.h"
 #include "IdGenerator.h"
@@ -29,6 +20,15 @@
 #include "TaskQueue.h"
 #include "SwitchStateHandler.h"
 #include "CtZoneManager.h"
+
+#include <opflex/ofcore/PeerStatusListener.h>
+
+#include <boost/asio/ip/address.hpp>
+#include <boost/optional.hpp>
+#include <boost/noncopyable.hpp>
+
+#include <utility>
+#include <unordered_map>
 
 namespace ovsagent {
 
@@ -275,8 +275,8 @@ public:
      * part of a routing-domain
      */
     void getGroupVnidAndRdId(
-        const boost::unordered_set<opflex::modb::URI>& uris,
-        /* out */boost::unordered_map<uint32_t, uint32_t>& ids);
+        const std::unordered_set<opflex::modb::URI>& uris,
+        /* out */std::unordered_map<uint32_t, uint32_t>& ids);
 
     /**
      * Get or generate a unique ID for a given object for use with flows.
@@ -485,7 +485,7 @@ private:
                                   const Endpoint& endPoint,
                                   uint32_t epPort,
                                   bool isPromiscuous,
-                                  boost::optional<boost::shared_ptr<
+                                  boost::optional<std::shared_ptr<
                                       modelgbp::gbp::FloodDomain> >& fd);
 
     /**
@@ -498,8 +498,8 @@ private:
     /*
      * Map of endpoint to the port it is using.
      */
-    typedef boost::unordered_map<std::string,
-                                 std::pair<uint32_t, bool> > Ep2PortMap;
+    typedef std::unordered_map<std::string,
+                               std::pair<uint32_t, bool> > Ep2PortMap;
 
     /**
      * Construct a group-table modification.
@@ -556,7 +556,7 @@ private:
      * Map of flood-group URI to the endpoints associated with it.
      * The flood-group can either be a flood-domain or an endpoint-group
      */
-    typedef boost::unordered_map<opflex::modb::URI, Ep2PortMap> FloodGroupMap;
+    typedef std::unordered_map<opflex::modb::URI, Ep2PortMap> FloodGroupMap;
     FloodGroupMap floodGroupMap;
 
     const char * getIdNamespace(opflex::modb::class_id_t cid);
@@ -573,9 +573,9 @@ private:
     void initPlatformConfig();
 
     /* Set of URIs of managed objects */
-    typedef boost::unordered_set<opflex::modb::URI> UriSet;
+    typedef std::unordered_set<opflex::modb::URI> UriSet;
     /* Map of multi-cast IP addresses to associated managed objects */
-    typedef boost::unordered_map<std::string, UriSet> MulticastMap;
+    typedef std::unordered_map<std::string, UriSet> MulticastMap;
     MulticastMap mcastMap;
 
     /**

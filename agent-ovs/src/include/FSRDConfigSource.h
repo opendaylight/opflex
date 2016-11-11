@@ -9,20 +9,19 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <string>
-
-#include <boost/filesystem.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/thread.hpp>
-
-#include <opflex/modb/URI.h>
+#pragma once
+#ifndef OVSAGENT_RDCONFIGSOURCE_H
+#define OVSAGENT_RDCONFIGSOURCE_H
 
 #include "ServiceSource.h"
 #include "FSWatcher.h"
 
-#pragma once
-#ifndef OVSAGENT_RDCONFIGSOURCE_H
-#define OVSAGENT_RDCONFIGSOURCE_H
+#include <opflex/modb/URI.h>
+
+#include <boost/filesystem.hpp>
+
+#include <unordered_map>
+#include <string>
 
 namespace ovsagent {
 
@@ -56,7 +55,7 @@ public:
 
 private:
     ExtraConfigManager* manager;
-    typedef boost::unordered_map<std::string, opflex::modb::URI> rdc_map_t;
+    typedef std::unordered_map<std::string, opflex::modb::URI> rdc_map_t;
 
     /**
      * Routing domain configs that are known to the filesystem watcher

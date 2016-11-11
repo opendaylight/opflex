@@ -24,6 +24,7 @@
 
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/functional/hash.hpp>
 
 #include "opflex/modb/MAC.h"
 

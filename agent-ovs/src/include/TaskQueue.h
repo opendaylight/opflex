@@ -11,12 +11,12 @@
 #ifndef OVSAGENT_TASK_QUEUE_H_
 #define OVSAGENT_TASK_QUEUE_H_
 
-#include <boost/unordered_set.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/function.hpp>
-#include <boost/thread/mutex.hpp>
 
+#include <unordered_set>
 #include <string>
+#include <mutex>
 
 namespace ovsagent {
 
@@ -50,8 +50,8 @@ private:
                   const boost::function<void ()>& task);
 
     boost::asio::io_service& io_service;
-    boost::mutex queueMutex;
-    boost::unordered_set<std::string> queuedItems;
+    std::mutex queueMutex;
+    std::unordered_set<std::string> queuedItems;
 };
 
 } // namespace ovsagent

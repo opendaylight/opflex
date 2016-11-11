@@ -9,35 +9,33 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <signal.h>
-#include <string.h>
-
-#include <string>
-#include <iostream>
-
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/thread.hpp>
-#include <boost/asio/io_service.hpp>
-#include <boost/bind.hpp>
-#include <boost/foreach.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/scoped_ptr.hpp>
-
 #include "MulticastListener.h"
 #include "FSWatcher.h"
 #include "logging.h"
 #include "cmd.h"
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
+#include <string>
+#include <iostream>
+#include <unordered_map>
+#include <memory>
+#include <thread>
+
+#include <signal.h>
+#include <string.h>
+
 using std::string;
 using boost::optional;
-using boost::shared_ptr;
-using boost::scoped_ptr;
-using boost::unordered_set;
-using boost::unordered_map;
+using std::shared_ptr;
+using std::unique_ptr;
+using std::unordered_set;
+using std::unordered_map;
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
 using namespace ovsagent;
@@ -77,12 +75,11 @@ private:
 
     void sync() {
         shared_ptr<unordered_set<string > > addrs(new unordered_set<string >());
-        BOOST_FOREACH(const file_addr_map_t::value_type faddr, addresses) {
+        for (const file_addr_map_t::value_type faddr : addresses) {
             addrs->insert(faddr.second.begin(), faddr.second.end());
         }
 
-        io.dispatch(boost::bind(&MulticastListener::sync, boost::ref(listener),
-                                addrs));
+        io.dispatch([this, addrs]() { listener.sync(addrs); });
     }
 
     void readConfig(const std::string& filePath) {
@@ -97,7 +94,7 @@ private:
             optional<pt::ptree&> groups =
                 properties.get_child_optional(MULTICAST_GROUPS);
             if (groups) {
-                BOOST_FOREACH(const pt::ptree::value_type &v, groups.get())
+                for (const pt::ptree::value_type &v : groups.get())
                     fileAddrs.insert(v.second.data());
             }
         } catch (pt::json_parser_error e) {
@@ -168,12 +165,11 @@ int main(int argc, char** argv) {
 
     try {
         boost::asio::io_service io;
-        scoped_ptr<boost::asio::io_service::work>
+        unique_ptr<boost::asio::io_service::work>
             work(new boost::asio::io_service::work(io));
         MulticastListener listener(io);
 
-        boost::thread(boost::bind(&boost::asio::io_service::run,
-                                  boost::ref(io)));
+        std::thread([&io]() { io.run(); });
 
         FSWatcher watcher;
         McastWatcher mwatcher(io, listener);

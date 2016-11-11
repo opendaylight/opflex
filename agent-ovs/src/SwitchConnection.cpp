@@ -6,18 +6,16 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include "SwitchConnection.h"
+#include "logging.h"
+
 #include <sys/eventfd.h>
 #include <string>
 #include <fstream>
-#include <boost/unordered_map.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
-#include <boost/foreach.hpp>
+
 #include <boost/scope_exit.hpp>
 
-#include "SwitchConnection.h"
-#include "logging.h"
+#include <unordered_map>
 
 #include "ovs-ofputil.h"
 
@@ -32,10 +30,7 @@ extern "C" {
 #include <openvswitch/ofp-msgs.h>
 }
 
-using namespace std;
-using namespace boost;
-
-typedef lock_guard<mutex> mutex_guard;
+typedef std::lock_guard<std::mutex> mutex_guard;
 
 const int LOST_CONN_BACKOFF_MSEC = 5000;
 
@@ -127,13 +122,13 @@ SwitchConnection::Connect(int protoVer) {
         }
     }
 
-    connThread = new boost::thread(boost::ref(*this));
+    connThread.reset(new std::thread(std::ref(*this)));
     return err;
 }
 
 int
 SwitchConnection::doConnectOF() {
-    string swPath;
+    std::string swPath;
     swPath.append("unix:").append(ovs_rundir()).append("/")
             .append(switchName).append(".mgmt");
 
@@ -175,18 +170,18 @@ int SwitchConnection::doConnectJson() {
      * Simplest way to figure out that name is to read the PID file that the daemon
      * creates.
      */
-    string pidFileName;
+    std:: string pidFileName;
     pidFileName.append(ovs_rundir()).append("/" OVS_VSWITCH_DAEMON ".pid");
-    string pidStr;
+    std:: string pidStr;
 
-    ifstream pidFile(pidFileName.c_str());
+    std::ifstream pidFile(pidFileName.c_str());
     getline(pidFile, pidStr);
     if (pidStr.empty()) {
         LOG(ERROR) << "Unable to read PID of " << OVS_VSWITCH_DAEMON
             << " from file " << pidFileName;
         return ENOTCONN;
     }
-    string sockName;
+    std::string sockName;
     sockName.append("unix:").append(ovs_rundir())
         .append("/" OVS_VSWITCH_DAEMON ".").append(pidStr).append(".ctl");
 
@@ -219,8 +214,7 @@ SwitchConnection::Disconnect() {
     isDisconnecting = true;
     if (connThread && SignalPollEvent()) {
         connThread->join();
-        delete connThread;
-        connThread = NULL;
+        connThread.reset();
     }
 
     mutex_guard lock(connMtx);
@@ -246,7 +240,7 @@ SwitchConnection::GetProtocolVersion() {
     return ofProtoVersion;
 }
 
-string SwitchConnection::getSwitchName() {
+std::string SwitchConnection::getSwitchName() {
     return switchName;
 }
 
@@ -342,7 +336,7 @@ SwitchConnection::receiveOFMessage() {
             if (!ofptype_decode(&type, (ofp_header *)recvMsg->data)) {
                 HandlerMap::const_iterator itr = msgHandlers.find(type);
                 if (itr != msgHandlers.end()) {
-                    BOOST_FOREACH(MessageHandler *h, itr->second) {
+                    for (MessageHandler *h : itr->second) {
                         h->Handle(this, type, recvMsg);
                     }
                 }
@@ -369,7 +363,7 @@ int SwitchConnection::receiveJsonMessage() {
             jsonrpc_msg_destroy(recvMsg);
             return EOF;
         } else {
-            BOOST_FOREACH(JsonMessageHandler *h, jsonMsgHandlers) {
+            for (JsonMessageHandler *h : jsonMsgHandlers) {
                 h->Handle(this, recvMsg);
             }
             jsonrpc_msg_destroy(recvMsg);
@@ -460,7 +454,7 @@ SwitchConnection::FireOnConnectListeners() {
 
 void
 SwitchConnection::notifyConnectListeners() {
-    BOOST_FOREACH(OnConnectListener *l, onConnectListeners) {
+    for (OnConnectListener *l : onConnectListeners) {
         l->Connected(this);
     }
 }

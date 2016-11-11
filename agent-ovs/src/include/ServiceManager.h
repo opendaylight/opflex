@@ -9,19 +9,19 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <unordered_set>
-#include <unordered_map>
-
-#include <boost/noncopyable.hpp>
-#include <boost/thread/mutex.hpp>
-#include <opflex/modb/URI.h>
+#pragma once
+#ifndef OVSAGENT_SERVICEMANAGER_H
+#define OVSAGENT_SERVICEMANAGER_H
 
 #include "AnycastService.h"
 #include "ServiceListener.h"
 
-#pragma once
-#ifndef OVSAGENT_SERVICEMANAGER_H
-#define OVSAGENT_SERVICEMANAGER_H
+#include <boost/noncopyable.hpp>
+#include <opflex/modb/URI.h>
+
+#include <unordered_set>
+#include <unordered_map>
+#include <mutex>
 
 namespace ovsagent {
 
@@ -61,7 +61,7 @@ public:
      * @return the object containing the detailed information, or a
      * NULL pointer if there is no such service
      */
-    boost::shared_ptr<const AnycastService>
+    std::shared_ptr<const AnycastService>
         getAnycastService(const std::string& uuid);
 
     /**
@@ -102,7 +102,7 @@ private:
 
     class AnycastServiceState {
     public:
-        boost::shared_ptr<const AnycastService> service;
+        std::shared_ptr<const AnycastService> service;
     };
 
     typedef std::unordered_map<std::string, AnycastServiceState> aserv_map_t;
@@ -111,7 +111,7 @@ private:
     typedef std::unordered_map<opflex::modb::URI,
                                std::unordered_set<std::string> > uri_serv_map_t;
 
-    boost::mutex serv_mutex;
+    std::mutex serv_mutex;
 
     /**
      * Map service UUID to anycast service state object
@@ -132,7 +132,7 @@ private:
      * The service listeners that have been registered
      */
     std::list<ServiceListener*> serviceListeners;
-    boost::mutex listener_mutex;
+    std::mutex listener_mutex;
 
     void notifyListeners(const std::string& uuid);
     void removeIfaces(const AnycastService& service);

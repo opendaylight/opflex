@@ -14,13 +14,11 @@
 #ifndef MODB_STORECLIENT_H
 #define MODB_STORECLIENT_H
 
-#include <boost/unordered_map.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/unordered_set.hpp>
 
 #include "opflex/modb/URI.h"
 #include "opflex/modb/mo-internal/ObjectInstance.h"
+#include "opflex/ofcore/OFTypes.h"
 
 namespace opflex {
 namespace modb {
@@ -56,8 +54,8 @@ public:
      * registered
      */
     void put(class_id_t class_id,
-             const URI& uri, 
-             const boost::shared_ptr<const ObjectInstance>& oi);
+             const URI& uri,
+             const OF_SHARED_PTR<const ObjectInstance>& oi);
 
     /**
      * Set the specified URI to the provided object instance if it has
@@ -72,8 +70,8 @@ public:
      * registered
      */
     bool putIfModified(class_id_t class_id,
-                       const URI& uri, 
-                       const boost::shared_ptr<const ObjectInstance>& oi);
+                       const URI& uri,
+                       const OF_SHARED_PTR<const ObjectInstance>& oi);
 
     /**
      * Check whether an item exists in the store.  Note that it could
@@ -98,8 +96,8 @@ public:
      * @throws std::out_of_range if no such element is present or
      * there is no such class ID registered
      */
-    boost::shared_ptr<const ObjectInstance> get(class_id_t class_id, 
-                                                const URI& uri) const;
+    OF_SHARED_PTR<const ObjectInstance> get(class_id_t class_id,
+                                            const URI& uri) const;
 
     /**
      * Get the object instance associated with the given class ID and
@@ -112,12 +110,12 @@ public:
      * @return true if object with specified class ID and URI is present
      */
     bool get(class_id_t class_id, const URI& uri,
-             /*out*/ boost::shared_ptr<const ObjectInstance>& oi) const;
+             /*out*/ OF_SHARED_PTR<const ObjectInstance>& oi) const;
 
     /**
      * A map to store queued notifications
      */
-    typedef boost::unordered_map<URI, class_id_t> notif_t;
+    typedef OF_UNORDERED_MAP<URI, class_id_t> notif_t;
 
     /**
      * Remove the specified URI, if present
@@ -135,7 +133,7 @@ public:
      * @throws std::out_of_range If no such class ID is registered
      */
     bool remove(class_id_t class_id, const URI& uri,
-                bool recursive, 
+                bool recursive,
                 /* out */ notif_t* notifs = NULL);
 
     /**
@@ -155,7 +153,7 @@ public:
      * prefix of the child URI
      */
     bool addChild(class_id_t parent_class,
-                  const URI& parent_uri, 
+                  const URI& parent_uri,
                   prop_id_t parent_prop,
                   class_id_t child_class,
                   const URI& child_uri);
@@ -173,7 +171,7 @@ public:
      * @throws std::out_of_range If no such class ID is registered
      */
     void delChild(class_id_t parent_class,
-                  const URI& parent_uri, 
+                  const URI& parent_uri,
                   prop_id_t parent_prop,
                   class_id_t child_class,
                   const URI& child_uri);
@@ -215,8 +213,8 @@ public:
      * @param output the output array that will get the output
      * @throws std::out_of_range If no such class ID is registered
      */
-    void getChildren(class_id_t parent_class, 
-                     const URI& parent_uri, 
+    void getChildren(class_id_t parent_class,
+                     const URI& parent_uri,
                      prop_id_t parent_prop,
                      class_id_t child_class,
                      /* out */ std::vector<URI>& output);
@@ -259,7 +257,7 @@ public:
      * @throws std::out_of_range if the class is not found
      */
     void getObjectsForClass(class_id_t class_id,
-                            /* out */ boost::unordered_set<URI>& output);
+                            /* out */ OF_UNORDERED_SET<URI>& output);
 
 private:
 

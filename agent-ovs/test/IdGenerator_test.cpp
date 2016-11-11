@@ -8,13 +8,14 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include "IdGenerator.h"
+
+#include <boost/test/unit_test.hpp>
+
 #include <cstdio>
 #include <sstream>
-#include <boost/test/unit_test.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/thread.hpp>
-
-#include "IdGenerator.h"
+#include <thread>
+#include <chrono>
 
 using namespace std;
 using namespace boost;
@@ -58,7 +59,7 @@ BOOST_AUTO_TEST_CASE(get_erase) {
         idgen1.erase(nmspc, u1);
         uint32_t u1_id_1 = idgen1.getId(nmspc, u1);
         BOOST_CHECK(u1_id == u1_id_1);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen1.cleanup();
 
         u1_id_1 = idgen1.getId(nmspc, u1);
@@ -66,7 +67,7 @@ BOOST_AUTO_TEST_CASE(get_erase) {
 
         // erase and allow to die
         idgen1.erase(nmspc, u1);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen1.cleanup();
 
         u1_id_1 = idgen1.getId(nmspc, u1);
@@ -92,7 +93,7 @@ BOOST_AUTO_TEST_CASE(garbage) {
     BOOST_CHECK_EQUAL(2, idgen.getId(nmspc, u2));
 
     idgen.collectGarbage(nmspc, garbage_cb_true);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
 
     BOOST_CHECK_EQUAL(1, idgen.getId(nmspc, u1));
@@ -100,7 +101,7 @@ BOOST_AUTO_TEST_CASE(garbage) {
     BOOST_CHECK_EQUAL(13, idgen.getRemainingIds(nmspc));
 
     idgen.collectGarbage(nmspc, garbage_cb_false);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
 
     BOOST_CHECK_EQUAL(15, idgen.getRemainingIds(nmspc));
@@ -130,7 +131,7 @@ BOOST_AUTO_TEST_CASE(free_range) {
 
     // add free to empty range
     idgen.erase(nmspc, uris[10]);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
     BOOST_CHECK_EQUAL(1, idgen.getRemainingIds(nmspc));
     BOOST_CHECK_EQUAL(1, idgen.getFreeRangeCount(nmspc));
@@ -138,7 +139,7 @@ BOOST_AUTO_TEST_CASE(free_range) {
     // add isolated at start and end
     idgen.erase(nmspc, uris[6]);
     idgen.erase(nmspc, uris[14]);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
     BOOST_CHECK_EQUAL(3, idgen.getRemainingIds(nmspc));
     BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
@@ -146,7 +147,7 @@ BOOST_AUTO_TEST_CASE(free_range) {
     // merge to range above and below
     idgen.erase(nmspc, uris[7]);
     idgen.erase(nmspc, uris[13]);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
     BOOST_CHECK_EQUAL(5, idgen.getRemainingIds(nmspc));
     BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
@@ -154,7 +155,7 @@ BOOST_AUTO_TEST_CASE(free_range) {
     // merge to center range
     idgen.erase(nmspc, uris[9]);
     idgen.erase(nmspc, uris[11]);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
     BOOST_CHECK_EQUAL(7, idgen.getRemainingIds(nmspc));
     BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
@@ -162,7 +163,7 @@ BOOST_AUTO_TEST_CASE(free_range) {
     // merge all ranges into one range
     idgen.erase(nmspc, uris[8]);
     idgen.erase(nmspc, uris[12]);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
     BOOST_CHECK_EQUAL(9, idgen.getRemainingIds(nmspc));
     BOOST_CHECK_EQUAL(1, idgen.getFreeRangeCount(nmspc));
@@ -170,7 +171,7 @@ BOOST_AUTO_TEST_CASE(free_range) {
     // add to beginning and end
     idgen.erase(nmspc, uris[0]);
     idgen.erase(nmspc, uris[19]);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
     BOOST_CHECK_EQUAL(11, idgen.getRemainingIds(nmspc));
     BOOST_CHECK_EQUAL(3, idgen.getFreeRangeCount(nmspc));
@@ -178,7 +179,7 @@ BOOST_AUTO_TEST_CASE(free_range) {
     // add isolated between ranges
     idgen.erase(nmspc, uris[3]);
     idgen.erase(nmspc, uris[17]);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     idgen.cleanup();
     BOOST_CHECK_EQUAL(13, idgen.getRemainingIds(nmspc));
     BOOST_CHECK_EQUAL(5, idgen.getFreeRangeCount(nmspc));
@@ -218,7 +219,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
         BOOST_CHECK_EQUAL(0, idgen.getFreeRangeCount(nmspc));
 
         idgen.erase(nmspc, uris[10]);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen.cleanup();
     }
 
@@ -231,7 +232,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
 
         idgen.erase(nmspc, uris[5]);
         idgen.erase(nmspc, uris[15]);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen.cleanup();
     }
 
@@ -247,7 +248,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
         idgen.erase(nmspc, uris[11]);
         idgen.erase(nmspc, uris[14]);
         idgen.erase(nmspc, uris[16]);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen.cleanup();
     }
 
@@ -261,7 +262,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
         for (int i = 0; i < 20; i++) {
             idgen.erase(nmspc, uris[i]);
         }
-        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen.cleanup();
 
         for (int i = 0; i < 20; i++) {
@@ -273,7 +274,7 @@ BOOST_AUTO_TEST_CASE(persist_range) {
         for (int i = 11; i < 20; i++) {
             idgen.erase(nmspc, uris[i]);
         }
-        boost::this_thread::sleep(boost::posix_time::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen.cleanup();
     }
 

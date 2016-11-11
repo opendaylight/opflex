@@ -8,15 +8,17 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#pragma once
 #ifndef OVSAGENT_FLOWREADER_H_
 #define OVSAGENT_FLOWREADER_H_
 
-#include <boost/function.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/thread/mutex.hpp>
-
 #include "TableState.h"
 #include "SwitchConnection.h"
+
+#include <boost/function.hpp>
+
+#include <unordered_map>
+#include <mutex>
 
 struct match;
 
@@ -142,11 +144,11 @@ private:
 
     SwitchConnection *swConn;
 
-    boost::mutex reqMtx;
+    std::mutex reqMtx;
 
-    typedef boost::unordered_map<uint32_t, FlowCb> FlowCbMap;
+    typedef std::unordered_map<uint32_t, FlowCb> FlowCbMap;
     FlowCbMap flowRequests;
-    typedef boost::unordered_map<uint32_t, GroupCb> GroupCbMap;
+    typedef std::unordered_map<uint32_t, GroupCb> GroupCbMap;
     GroupCbMap groupRequests;
 };
 

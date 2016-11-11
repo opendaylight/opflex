@@ -10,8 +10,6 @@
 
 #include <sstream>
 #include <boost/test/unit_test.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -45,15 +43,12 @@ namespace pt = boost::property_tree;
 using std::vector;
 using std::string;
 using std::make_pair;
+using std::shared_ptr;
+using std::unordered_set;
+using std::unordered_map;
 using boost::asio::ip::address;
-using boost::bind;
-using boost::thread;
-using boost::ref;
 using boost::asio::io_service;
-using boost::shared_ptr;
 using boost::optional;
-using boost::unordered_set;
-using boost::unordered_map;
 
 BOOST_AUTO_TEST_SUITE(IntFlowManager_test)
 
@@ -278,7 +273,7 @@ void IntFlowManagerFixture::epgTest() {
     subnets_copy = subnets;
 
     rd0->remove();
-    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets) {
+    for (shared_ptr<Subnet>& sn : subnets) {
         sn->remove();
     }
     m1.commit();
@@ -287,7 +282,7 @@ void IntFlowManagerFixture::epgTest() {
         subnets.clear(); policyMgr.getSubnetsForGroup(epg0->getURI(), subnets));
 
     intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
-    BOOST_FOREACH(shared_ptr<Subnet>& sn, subnets_copy) {
+    for (shared_ptr<Subnet>& sn : subnets_copy) {
         intFlowManager.domainUpdated(Subnet::CLASS_ID, sn->getURI());
     }
 
@@ -818,7 +813,7 @@ void IntFlowManagerFixture::portStatusTest() {
     policyMgr.getGroups(epgURIs);
     epgURIs.erase(epg0->getURI());
     Mutator m2(framework, policyOwner);
-    BOOST_FOREACH (const URI& u, epgURIs) {
+    for (const URI& u : epgURIs) {
         EpGroup::resolve(agent.getFramework(), u).get()->remove();
     }
     m2.commit();
@@ -826,7 +821,7 @@ void IntFlowManagerFixture::portStatusTest() {
     WAIT_FOR_DO(epgURIs.size() == 1, 500,
                 epgURIs.clear(); policyMgr.getGroups(epgURIs));
     portmapper.ports[tunIf] = tun_port_new;
-    BOOST_FOREACH (const URI& u, epgURIs) {
+    for (const URI& u : epgURIs) {
         intFlowManager.egDomainUpdated(u);
     }
     intFlowManager.portStatusUpdate(tunIf, tun_port_new, false);
@@ -870,7 +865,7 @@ static unordered_set<string> readMcast(const std::string& filePath) {
         optional<pt::ptree&> groups =
             properties.get_child_optional("multicast-groups");
         if (groups) {
-            BOOST_FOREACH(const pt::ptree::value_type &v, groups.get())
+            for (const pt::ptree::value_type &v : groups.get())
                 ips.insert(v.second.data());
         }
         return ips;
@@ -902,10 +897,9 @@ BOOST_FIXTURE_TEST_CASE(mcast, VxlanIntFlowManagerFixture) {
 
     intFlowManager.configUpdated(config->getURI());
     setConnected();
-#define CHECK_MCAST                                                \
-    WAIT_FOR_ONFAIL(readMcast(temp.string()) == expected, 500,     \
-            { BOOST_FOREACH(const std::string& ip,                 \
-                            readMcast(temp.string()))              \
+#define CHECK_MCAST                                                     \
+    WAIT_FOR_ONFAIL(readMcast(temp.string()) == expected, 500,          \
+            { for (const std::string& ip : readMcast(temp.string()))    \
                     LOG(ERROR) << ip; })
     CHECK_MCAST;
     {
@@ -1528,7 +1522,7 @@ void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
         ADDF(Bldr().table(SEC).priority(20).in(port).isEthSrc(mac)
              .actions().go(SRC).done());
 
-        BOOST_FOREACH(const string& ip, ips) {
+        for (const string& ip : ips) {
             address ipa = address::from_string(ip);
             if (ipa.is_v4()) {
                 ADDF(Bldr().table(SEC).priority(30).ip().in(port)
@@ -1557,7 +1551,7 @@ void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
              .load(OUTPORT, port).go(POL).done());
 
         if (routeOn) {
-            BOOST_FOREACH(const string& ip, ips) {
+            for (const string& ip : ips) {
                 address ipa = address::from_string(ip);
                 if (ipa.is_v4()) {
                     // route
@@ -1668,7 +1662,7 @@ void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
         ep->getMAC().get().toUIntArray((uint8_t*)&metadata);
         ((uint8_t*)&metadata)[7] = 1;
 
-        BOOST_FOREACH(const string& ip, *acastIps) {
+        for (const string& ip : *acastIps) {
             address ipa = address::from_string(ip);
             if (ipa.is_v4()) {
                 ADDF(Bldr().table(SVD).priority(50).ip()
@@ -1713,7 +1707,7 @@ void IntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
 
     /* Router entries when epg0 is connected to fd0
      */
-    BOOST_FOREACH (shared_ptr<Subnet>& sn, sns) {
+    for (shared_ptr<Subnet>& sn : sns) {
         if (!sn->isAddressSet()) {
             continue;
         }
@@ -1777,9 +1771,9 @@ void IntFlowManagerFixture::initExpCon1() {
     uint32_t con1_cookie =
         intFlowManager.getId(con1->getClassId(), con1->getURI());
 
-    BOOST_FOREACH(const IdKeyValue& pid, pvnids) {
+    for (const IdKeyValue& pid : pvnids) {
         uint32_t pvnid = pid.first;
-        BOOST_FOREACH(const IdKeyValue& cid, cvnids) {
+        for (const IdKeyValue& cid : cvnids) {
             uint32_t cvnid = cid.first;
             /* classifer 1  */
             ADDF(Bldr().table(POL).priority(prio)
@@ -1820,8 +1814,8 @@ void IntFlowManagerFixture::initExpCon2() {
 
     policyMgr.getContractProviders(con2->getURI(), ps);
     intFlowManager.getGroupVnidAndRdId(ps, pvnids);
-    BOOST_FOREACH (const IdKeyValue& pvnid, pvnids) {
-        BOOST_FOREACH (const IdKeyValue& cvnid, pvnids) {
+    for (const IdKeyValue& pvnid : pvnids) {
+        for (const IdKeyValue& cvnid : pvnids) {
             ADDF(Bldr().table(POL).priority(prio).cookie(con2_cookie)
                  .reg(SEPG, cvnid.first).reg(DEPG, pvnid.first).isEth(0x8906)
                  .actions().go(OUT).done());
@@ -1841,14 +1835,14 @@ void IntFlowManagerFixture::initExpCon3() {
     MaskList ml_80_85 = list_of<Mask>(0x0050, 0xfffc)(0x0054, 0xfffe);
     MaskList ml_66_69 = list_of<Mask>(0x0042, 0xfffe)(0x0044, 0xfffe);
     MaskList ml_94_95 = list_of<Mask>(0x005e, 0xfffe);
-    BOOST_FOREACH (const Mask& mk, ml_80_85) {
+    for (const Mask& mk : ml_80_85) {
         ADDF(Bldr().table(POL).priority(prio)
              .cookie(con3_cookie).tcp()
              .reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
              .isTpDst(mk.first, mk.second).actions().drop().done());
     }
-    BOOST_FOREACH (const Mask& mks, ml_66_69) {
-        BOOST_FOREACH (const Mask& mkd, ml_94_95) {
+    for (const Mask& mks : ml_66_69) {
+        for (const Mask& mkd : ml_94_95) {
             ADDF(Bldr().table(POL).priority(prio-128)
                  .cookie(con3_cookie).tcp()
                  .reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)

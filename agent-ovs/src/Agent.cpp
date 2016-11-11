@@ -9,8 +9,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/foreach.hpp>
-#include <boost/unordered_map.hpp>
 #include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 
@@ -22,30 +20,29 @@
 #include "logging.h"
 #include "StitchedModeRenderer.h"
 
+#include <unordered_map>
+
 namespace ovsagent {
 
+using std::thread;
+using std::make_pair;
 using opflex::modb::ModelMetadata;
 using opflex::modb::Mutator;
 using opflex::ofcore::OFFramework;
-using boost::shared_ptr;
 using boost::property_tree::ptree;
 using boost::optional;
 using boost::asio::io_service;
-using boost::bind;
-using boost::ref;
-using boost::thread;
-using std::make_pair;
 
 Agent::Agent(OFFramework& framework_)
     : framework(framework_), policyManager(framework),
       endpointManager(framework, policyManager), notifServer(agent_io),
-      io_service_thread(NULL), started(false) {
+      started(false) {
 
 }
 
 Agent::~Agent() {
     stop();
-    BOOST_FOREACH(Renderer* r, renderers) {
+    for (Renderer* r : renderers) {
         delete r;
     }
     renderers.clear();
@@ -116,7 +113,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         properties.get_child_optional(ENDPOINT_SOURCE_PATH);
 
     if (endpointSource) {
-        BOOST_FOREACH(const ptree::value_type &v, endpointSource.get())
+        for (const ptree::value_type &v : endpointSource.get())
             endpointSourcePaths.insert(v.second.data());
     }
 
@@ -124,14 +121,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         properties.get_child_optional(SERVICE_SOURCE_PATH);
 
     if (serviceSource) {
-        BOOST_FOREACH(const ptree::value_type &v, serviceSource.get())
+        for (const ptree::value_type &v : serviceSource.get())
             serviceSourcePaths.insert(v.second.data());
     }
 
     optional<const ptree&> peers =
         properties.get_child_optional(OPFLEX_PEERS);
     if (peers) {
-        BOOST_FOREACH(const ptree::value_type &v, peers.get()) {
+        for (const ptree::value_type &v : peers.get()) {
             optional<std::string> h =
                 v.second.get_optional<std::string>(HOSTNAME);
             optional<int> p =
@@ -152,12 +149,12 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         sslCaStore = confsslCaStore;
 
     typedef Renderer* (*rend_create)(Agent&);
-    typedef boost::unordered_map<std::string, rend_create> rend_map_t;
+    typedef std::unordered_map<std::string, rend_create> rend_map_t;
     static rend_map_t rend_map =
         boost::assign::map_list_of(RENDERERS_STITCHED_MODE,
                                    StitchedModeRenderer::create);
 
-    BOOST_FOREACH(rend_map_t::value_type& v, rend_map) {
+    for (rend_map_t::value_type& v : rend_map) {
         optional<const ptree&> rtree =
             properties.get_child_optional(v.first);
         if (rtree) {
@@ -218,7 +215,7 @@ void Agent::start() {
     framework.start();
 
     Mutator mutator(framework, "init");
-    shared_ptr<modelgbp::dmtree::Root> root =
+    std::shared_ptr<modelgbp::dmtree::Root> root =
         modelgbp::dmtree::Root::createRootElement(framework);
     root->addPolicyUniverse();
     root->addRelatorUniverse();
@@ -235,13 +232,13 @@ void Agent::start() {
     endpointManager.start();
     notifServer.start();
 
-    BOOST_FOREACH(Renderer* r, renderers) {
+    for (Renderer* r : renderers) {
         r->start();
     }
 
-    io_service_thread.reset(new thread(bind(&io_service::run, ref(agent_io))));
+    io_service_thread.reset(new thread([this]() { agent_io.run(); }));
 
-    BOOST_FOREACH(const std::string& path, endpointSourcePaths) {
+    for (const std::string& path : endpointSourcePaths) {
         {
             EndpointSource* source =
                 new FSEndpointSource(&endpointManager, fsWatcher, path);
@@ -253,14 +250,14 @@ void Agent::start() {
             rdConfigSources.push_back(source);
         }
     }
-    BOOST_FOREACH(const std::string& path, serviceSourcePaths) {
+    for (const std::string& path : serviceSourcePaths) {
         ServiceSource* source =
             new FSServiceSource(&serviceManager, fsWatcher, path);
         serviceSources.push_back(source);
     }
     fsWatcher.start();
 
-    BOOST_FOREACH(const host_t& h, opflexPeers)
+    for (const host_t& h : opflexPeers)
         framework.addPeer(h.first, h.second);
 }
 
@@ -268,22 +265,22 @@ void Agent::stop() {
     if (!started) return;
     LOG(INFO) << "Stopping OVS Agent";
 
-    BOOST_FOREACH(Renderer* r, renderers) {
+    for (Renderer* r : renderers) {
         r->stop();
     }
 
     fsWatcher.stop();
-    BOOST_FOREACH(EndpointSource* source, endpointSources) {
+    for (EndpointSource* source : endpointSources) {
         delete source;
     }
     endpointSources.clear();
 
-    BOOST_FOREACH(FSRDConfigSource* source, rdConfigSources) {
+    for (FSRDConfigSource* source : rdConfigSources) {
         delete source;
     }
     rdConfigSources.clear();
 
-    BOOST_FOREACH(ServiceSource* source, serviceSources) {
+    for (ServiceSource* source : serviceSources) {
         delete source;
     }
     serviceSources.clear();

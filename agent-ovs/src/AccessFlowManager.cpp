@@ -27,14 +27,14 @@ namespace ovsagent {
 
 using std::string;
 using std::vector;
+using std::unordered_set;
+using std::shared_ptr;
 using opflex::modb::URI;
 typedef EndpointListener::uri_set_t uri_set_t;
 using boost::algorithm::make_split_iterator;
 using boost::algorithm::token_finder;
 using boost::algorithm::is_any_of;
 using boost::copy_range;
-using boost::unordered_set;
-using boost::shared_ptr;
 using boost::optional;
 
 static const char* ID_NAMESPACES[] =
@@ -57,7 +57,7 @@ AccessFlowManager::AccessFlowManager(Agent& agent_,
 static string getSecGrpSetId(const uri_set_t& secGrps) {
    std::stringstream ss;
    bool notfirst = false;
-   BOOST_FOREACH(const URI& uri, secGrps) {
+   for (const URI& uri : secGrps) {
        if (notfirst) ss << ",";
        notfirst = true;
        ss << uri.toString();
@@ -222,14 +222,14 @@ void AccessFlowManager::handlePortStatusUpdate(const string& portName,
     unordered_set<std::string> eps;
     agent.getEndpointManager().getEndpointsByAccessIface(portName, eps);
     agent.getEndpointManager().getEndpointsByAccessUplink(portName, eps);
-    BOOST_FOREACH(const std::string& ep, eps)
+    for (const std::string& ep : eps)
         endpointUpdated(ep);
 }
 
 void AccessFlowManager::handleSecGrpUpdate(const opflex::modb::URI& uri) {
     unordered_set<uri_set_t> secGrpSets;
     agent.getEndpointManager().getSecGrpSetsForSecGrp(uri, secGrpSets);
-    BOOST_FOREACH(const uri_set_t& secGrpSet, secGrpSets)
+    for (const uri_set_t& secGrpSet : secGrpSets)
         secGroupSetUpdated(secGrpSet);
 }
 
@@ -256,13 +256,13 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
     FlowEntryList secGrpIn;
     FlowEntryList secGrpOut;
 
-    BOOST_FOREACH(const opflex::modb::URI& secGrp, secGrps) {
+    for (const opflex::modb::URI& secGrp : secGrps) {
         PolicyManager::rule_list_t rules;
         uint64_t secGrpCookie =
             idGen.getId(ID_NMSPC_SECGROUP, secGrp.toString());
         agent.getPolicyManager().getSecGroupRules(secGrp, rules);
 
-        BOOST_FOREACH(shared_ptr<PolicyRule>& pc, rules) {
+        for (shared_ptr<PolicyRule>& pc : rules) {
             uint8_t dir = pc->getDirection();
             const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
 

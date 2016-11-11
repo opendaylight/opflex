@@ -13,6 +13,8 @@
 #ifndef OVSAGENT_EXTRACONFIGLISTENER_H
 #define OVSAGENT_EXTRACONFIGLISTENER_H
 
+#include <opflex/modb/URI.h>
+
 namespace ovsagent {
 
 /**

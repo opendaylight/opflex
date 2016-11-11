@@ -9,7 +9,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/foreach.hpp>
 #include <boost/bind.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/asio/deadline_timer.hpp>
@@ -29,17 +28,17 @@
 #include <lib/util.h>
 
 using std::string;
+using std::shared_ptr;
+using std::unordered_set;
+using std::unique_lock;
+using std::mutex;
 using boost::bind;
-using boost::shared_ptr;
-using boost::unordered_set;
 using boost::asio::deadline_timer;
 using boost::asio::placeholders::error;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v6;
 using boost::posix_time::milliseconds;
 using boost::posix_time::seconds;
-using boost::unique_lock;
-using boost::mutex;
 using boost::optional;
 using opflex::modb::URI;
 
@@ -114,7 +113,7 @@ void AdvertManager::doScheduleEpAdv(uint64_t time) {
 void AdvertManager::scheduleEndpointAdv(const unordered_set<string>& uuids) {
     if (endpointAdvTimer) {
         unique_lock<mutex> guard(ep_mutex);
-        BOOST_FOREACH(const string& uuid, uuids)
+        for (const string& uuid : uuids)
             pendingEps[uuid] = 5;
 
         doScheduleEpAdv();
@@ -152,7 +151,7 @@ static int send_packet_out(IntFlowManager& intFlowManager,
                                              tunDst);
     }
 
-    BOOST_FOREACH(uint32_t p, out_ports) {
+    for (uint32_t p : out_ports) {
         ab.output(p);
     }
     ab.build(&po);
@@ -176,11 +175,11 @@ void AdvertManager::sendRouterAdvs() {
     PolicyManager::uri_set_t epgURIs;
     polMgr.getGroups(epgURIs);
 
-    BOOST_FOREACH(const URI& epg, epgURIs) {
+    for (const URI& epg : epgURIs) {
         unordered_set<string> eps;
         unordered_set<uint32_t> out_ports;
         epMgr.getEndpointsForGroup(epg, eps);
-        BOOST_FOREACH(const string& uuid, eps) {
+        for (const string& uuid : eps) {
             shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
             if (!ep) continue;
 
@@ -265,7 +264,7 @@ static void doSendEpAdv(IntFlowManager& intFlowManager,
 
     boost::optional<address> routerIp;
     if (mode == AdvertManager::EPADV_ROUTER_REQUEST) {
-        boost::optional<boost::shared_ptr<modelgbp::gbp::Subnet> > ipSubnet =
+        boost::optional<std::shared_ptr<modelgbp::gbp::Subnet> > ipSubnet =
             policyManager.findSubnetForEp(egURI, addr);
         if (ipSubnet)
             routerIp =
@@ -365,7 +364,7 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
     ep->getMAC().get().toUIntArray(epMac);
     const uint8_t* routerMac = intFlowManager.getRouterMacAddr();
 
-    BOOST_FOREACH(const string& ip, ep->getIPs()) {
+    for (const string& ip : ep->getIPs()) {
         LOG(DEBUG) << "Sending endpoint advertisement for "
                    << ep->getMAC().get() << " " << ip;
 
@@ -375,8 +374,7 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
 
     }
 
-    BOOST_FOREACH (const Endpoint::IPAddressMapping& ipm,
-                   ep->getIPAddressMappings()) {
+    for (const Endpoint::IPAddressMapping& ipm : ep->getIPAddressMappings()) {
         if (!ipm.getFloatingIP() || !ipm.getMappedIP() || !ipm.getEgURI())
             continue;
         // don't advertise endpoints if there's a next hop
@@ -405,14 +403,14 @@ void AdvertManager::sendAllEndpointAdvs() {
 
     PolicyManager::uri_set_t epgURIs;
     polMgr.getGroups(epgURIs);
-    BOOST_FOREACH(const URI& epg, epgURIs) {
+    for (const URI& epg : epgURIs) {
         if (polMgr.getEffectiveRoutingMode(epg) !=
                 modelgbp::gbp::RoutingModeEnumT::CONST_ENABLED) {
             continue;
         }
         unordered_set<string> eps;
         epMgr.getEndpointsForGroup(epg, eps);
-        BOOST_FOREACH(const string& uuid, eps) {
+        for (const string& uuid : eps) {
             sendEndpointAdvs(uuid);
         }
     }

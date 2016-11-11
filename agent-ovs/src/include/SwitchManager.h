@@ -20,10 +20,11 @@
 #include "IdGenerator.h"
 #include "SwitchStateHandler.h"
 
-#include <string>
-#include <boost/scoped_ptr.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/asio/deadline_timer.hpp>
+
+#include <string>
+#include <memory>
 
 namespace ovsagent {
 
@@ -179,7 +180,7 @@ protected:
     /**
      * Connection for this switch
      */
-    boost::scoped_ptr<SwitchConnection> connection;
+    std::unique_ptr<SwitchConnection> connection;
 
 private:
     /**
@@ -231,7 +232,7 @@ private:
     // connection state
     void handleConnection(SwitchConnection *sw);
     void onConnectTimer(const boost::system::error_code& ec);
-    boost::scoped_ptr<boost::asio::deadline_timer> connectTimer;
+    std::unique_ptr<boost::asio::deadline_timer> connectTimer;
     long connectDelayMs;
 
     // sync state

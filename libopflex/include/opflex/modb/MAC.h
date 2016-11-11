@@ -14,9 +14,6 @@
 #ifndef MODB_MAC_H
 #define MODB_MAC_H
 
-#include <boost/shared_ptr.hpp>
-#include <boost/any.hpp>
-#include <boost/functional/hash.hpp>
 #include <string>
 #include <vector>
 
@@ -111,7 +108,7 @@ bool operator==(const MAC& lhs, const MAC& rhs);
 bool operator!=(const MAC& lhs, const MAC& rhs);
 /**
  * Compute a hash value for the MAC, making MAC suitable as a key in
- * an unordered_map
+ * a boost::unordered_map
  */
 size_t hash_value(MAC const& mac);
 
@@ -120,5 +117,24 @@ size_t hash_value(MAC const& mac);
 
 } /* namespace modb */
 } /* namespace opflex */
+
+#if __cplusplus > 199711L
+
+namespace std {
+/**
+ * Template specialization for std::hash<opflex::modb::MAC>, making
+ * MAC suitable as a key in a std::unordered_map
+ */
+template<> struct hash<opflex::modb::MAC> {
+    /**
+     * Hash the opflex::modb::MAC
+     */
+    std::size_t operator()(const opflex::modb::MAC& m) const {
+        return opflex::modb::hash_value(m);
+    }
+};
+} /* namespace std */
+
+#endif
 
 #endif /* MODB_MAC_H */

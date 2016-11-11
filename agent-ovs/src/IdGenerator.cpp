@@ -10,18 +10,14 @@
 #include <fstream>
 #include <algorithm>
 
-#include <boost/scoped_ptr.hpp>
-#include <boost/foreach.hpp>
-#include <boost/thread/lock_guard.hpp>
-
 #include "IdGenerator.h"
 #include "logging.h"
 
 namespace ovsagent {
 
 using std::string;
-using boost::lock_guard;
-using boost::mutex;
+using std::lock_guard;
+using std::mutex;
 typedef uint16_t UriLenType;
 const uint32_t MAX_ID_VALUE = (1 << 31);
 
@@ -123,7 +119,7 @@ uint32_t IdGenerator::getRemainingIdsLocked(const std::string& nmspc) {
 
     IdMap& idmap = nitr->second;
     uint32_t remaining = 0;
-    BOOST_FOREACH(const id_range& r, idmap.freeIds) {
+    for (const id_range& r : idmap.freeIds) {
         remaining += r.end - r.start + 1;
     }
     return remaining;
@@ -132,7 +128,7 @@ uint32_t IdGenerator::getRemainingIdsLocked(const std::string& nmspc) {
 void IdGenerator::cleanup() {
     lock_guard<mutex> guard(id_mutex);
     time_point now = boost::chrono::steady_clock::now();
-    BOOST_FOREACH(NamespaceMap::value_type& nmv, namespaces) {
+    for (NamespaceMap::value_type& nmv : namespaces) {
         bool changed = false;
         IdMap& idmap = nmv.second;
         IdMap::Str2EIdMap::iterator it = idmap.erasedIds.begin();
@@ -224,7 +220,7 @@ void IdGenerator::persist(const std::string& nmspc, IdMap& idmap) {
         LOG(ERROR) << "Failed to write to file: " << fname;
         return;
     }
-    BOOST_FOREACH (const IdMap::Str2IdMap::value_type& kv, idmap.ids) {
+    for (const IdMap::Str2IdMap::value_type& kv : idmap.ids) {
         const uint32_t& id = kv.second;
         const string& str = kv.first;
         if (str.size() > UINT16_MAX) {
@@ -288,7 +284,7 @@ void IdGenerator::initNamespace(const std::string& nmspc,
             file.read((char *)&len, sizeof(len)).eof()) {
             break;
         }
-        boost::scoped_ptr<string> str(new string((size_t)len, '\0'));
+        std::unique_ptr<string> str(new string((size_t)len, '\0'));
         if (file.read((char *)str->data(), len).eof()) {
             LOG(DEBUG) << "Unexpected EOF while reading string";
             break;
@@ -309,9 +305,8 @@ void IdGenerator::initNamespace(const std::string& nmspc,
     file.close();
 
     uint32_t cur = minId;
-    uint32_t id = 0;
     idmap.freeIds.clear();
-    BOOST_FOREACH(id, usedIds) {
+    for (auto id : usedIds) {
         if (id > cur)
             idmap.freeIds.insert(id_range(cur, id - 1));
         cur = id + 1;

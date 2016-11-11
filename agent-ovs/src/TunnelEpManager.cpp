@@ -20,7 +20,6 @@
 #include <opflex/modb/Mutator.h>
 #include <opflex/modb/MAC.h>
 #include <modelgbp/gbpe/EncapTypeEnumT.hpp>
-#include <boost/foreach.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -34,12 +33,12 @@
 namespace ovsagent {
 
 using std::string;
+using std::shared_ptr;
+using std::unique_lock;
+using std::mutex;
 using opflex::modb::URI;
 using opflex::modb::Mutator;
 using boost::optional;
-using boost::shared_ptr;
-using boost::unique_lock;
-using boost::mutex;
 using boost::uuids::to_string;
 using boost::uuids::random_generator;
 using boost::random::random_device;
@@ -51,8 +50,8 @@ using boost::bind;
 using boost::system::error_code;
 
 TunnelEpManager::TunnelEpManager(Agent* agent_, long timer_interval_)
-    : agent(agent_), 
-      agent_io(agent_->getAgentIOService()), 
+    : agent(agent_),
+      agent_io(agent_->getAgentIOService()),
       timer_interval(timer_interval_), stopping(false), uplinkVlan(0),
       terminationIpIsV4(false) {
     random_device rng;
@@ -69,7 +68,7 @@ void TunnelEpManager::start() {
     stopping = false;
 
     Mutator mutator(agent->getFramework(), "init");
-    optional<shared_ptr<modelgbp::dmtree::Root> > root = 
+    optional<shared_ptr<modelgbp::dmtree::Root> > root =
         modelgbp::dmtree::Root::resolve(agent->getFramework(), URI::ROOT);
     if (root)
         root.get()->addGbpeTunnelEpUniverse();
@@ -95,7 +94,7 @@ void TunnelEpManager::stop() {
 
 const std::string& TunnelEpManager::getTerminationIp(const std::string& uuid) {
     unique_lock<mutex> guard(termip_mutex);
-    if (uuid != tunnelEpUUID || terminationIp == "") 
+    if (uuid != tunnelEpUUID || terminationIp == "")
         throw std::out_of_range("No such tunnel termination endpoint: " + uuid);
     return terminationIp;
 }
@@ -266,10 +265,10 @@ void TunnelEpManager::on_timer(const error_code& ec) {
 
         using namespace modelgbp::gbpe;
         Mutator mutator(agent->getFramework(), "policyelement");
-        optional<shared_ptr<TunnelEpUniverse> > tu = 
+        optional<shared_ptr<TunnelEpUniverse> > tu =
             TunnelEpUniverse::resolve(agent->getFramework());
         if (tu) {
-            shared_ptr<TunnelEp> tunnelEp = 
+            shared_ptr<TunnelEp> tunnelEp =
                 tu.get()->addGbpeTunnelEp(tunnelEpUUID);
             tunnelEp->setTerminatorIp(bestAddress)
                 .setMac(opflex::modb::MAC(bestMac));
@@ -302,7 +301,7 @@ void TunnelEpManager::unregisterListener(EndpointListener* listener) {
 
 void TunnelEpManager::notifyListeners(const std::string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
-    BOOST_FOREACH(EndpointListener* listener, tunnelEpListeners) {
+    for (EndpointListener* listener : tunnelEpListeners) {
         listener->endpointUpdated(uuid);
     }
 }

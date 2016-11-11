@@ -17,7 +17,6 @@
 
 #include <boost/program_options.hpp>
 #include <boost/assign/list_of.hpp>
-#include <boost/foreach.hpp>
 
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/metadata/metadata.hpp>
@@ -132,7 +131,7 @@ int main(int argc, char** argv) {
         }
 
         MockOpflexServer::peer_vec_t peer_vec;
-        BOOST_FOREACH(const std::string& pstr, peers)
+        for (const std::string& pstr : peers)
             peer_vec.push_back(make_pair(SERVER_ROLES, pstr));
         if (peer_vec.size() == 0)
             peer_vec.push_back(make_pair(SERVER_ROLES, LOCALHOST":8009"));

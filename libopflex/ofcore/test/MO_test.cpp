@@ -33,7 +33,6 @@ using namespace opflex;
 using namespace modb;
 using namespace ofcore;
 
-using boost::shared_ptr;
 using boost::optional;
 
 BOOST_FIXTURE_TEST_CASE( model, FrameworkFixture ) {
@@ -43,17 +42,17 @@ BOOST_FIXTURE_TEST_CASE( model, FrameworkFixture ) {
     testmodel::class2::registerListener(framework, &listener);
 
     Mutator mutator1(framework, "owner1");
-    shared_ptr<testmodel::class1> root =
+    OF_SHARED_PTR<testmodel::class1> root =
         testmodel::class1::createRootElement(framework);
     root->setProp1(42);
-    shared_ptr<testmodel::class2> c2 = root->addClass2(-42);
+    OF_SHARED_PTR<testmodel::class2> c2 = root->addClass2(-42);
     mutator1.commit();
 
     Mutator mutator2(framework, "owner2");
-    shared_ptr<testmodel::class3> c3 = c2->addClass3(17, "test");
+    OF_SHARED_PTR<testmodel::class3> c3 = c2->addClass3(17, "test");
 
-    shared_ptr<testmodel::class4> c4 = root->addClass4("class4name");
-    shared_ptr<testmodel::class5> c5 = root->addClass5("class5name");
+    OF_SHARED_PTR<testmodel::class4> c4 = root->addClass4("class4name");
+    OF_SHARED_PTR<testmodel::class5> c5 = root->addClass5("class5name");
     c5->addClass4Ref("class4name");
     mutator2.commit();
 
@@ -64,7 +63,7 @@ BOOST_FIXTURE_TEST_CASE( model, FrameworkFixture ) {
     WAIT_FOR(listener.contains(uri1), 500);
     WAIT_FOR(listener.contains(uri2), 500);
 
-    optional<shared_ptr<testmodel::class1> > r1 =
+    optional<OF_SHARED_PTR<testmodel::class1> > r1 =
         testmodel::class1::resolve(framework, URI("/wrong"));
     BOOST_CHECK(!r1);
     r1 = testmodel::class1::resolve(framework, uri1);
@@ -75,7 +74,7 @@ BOOST_FIXTURE_TEST_CASE( model, FrameworkFixture ) {
     BOOST_CHECK((bool)r1);
     BOOST_CHECK_EQUAL(42, r1.get()->getProp1().get());
 
-    optional<shared_ptr<testmodel::class2> > r2 =
+    optional<OF_SHARED_PTR<testmodel::class2> > r2 =
         testmodel::class2::resolve(framework, URI("/wrong"));
     BOOST_CHECK(!r2);
     r2 = testmodel::class2::resolve(framework, uri2);
@@ -88,12 +87,12 @@ BOOST_FIXTURE_TEST_CASE( model, FrameworkFixture ) {
     BOOST_CHECK(r2);
     BOOST_CHECK_EQUAL(-42, r2.get()->getProp4().get());
 
-    std::vector<boost::shared_ptr<testmodel::class2> > out2;
+    std::vector<OF_SHARED_PTR<testmodel::class2> > out2;
     r1->get()->resolveClass2(out2);
     BOOST_CHECK_EQUAL(1, out2.size());
     BOOST_CHECK_EQUAL(-42, out2[0]->getProp4().get());
 
-    optional<shared_ptr<testmodel::class3> > r3 =
+    optional<OF_SHARED_PTR<testmodel::class3> > r3 =
         testmodel::class3::resolve(framework, URI("/wrong"));
     r3 = testmodel::class3::resolve(framework, uri3);
     BOOST_CHECK(r3);
@@ -108,15 +107,15 @@ BOOST_FIXTURE_TEST_CASE( model, FrameworkFixture ) {
     BOOST_CHECK_EQUAL(17, r3.get()->getProp6().get());
     BOOST_CHECK_EQUAL("test", r3.get()->getProp7().get());
 
-    std::vector<boost::shared_ptr<testmodel::class3> > out3;
+    std::vector<OF_SHARED_PTR<testmodel::class3> > out3;
     r2->get()->resolveClass3(out3);
     BOOST_CHECK_EQUAL(1, out3.size());
     BOOST_CHECK_EQUAL(17, out3[0]->getProp6().get());
     BOOST_CHECK_EQUAL("test", out3[0]->getProp7().get());
 
-    optional<shared_ptr<testmodel::class4> > r4 =
+    optional<OF_SHARED_PTR<testmodel::class4> > r4 =
         r1.get()->resolveClass4("class4name");
-    optional<shared_ptr<testmodel::class5> > r5 =
+    optional<OF_SHARED_PTR<testmodel::class5> > r5 =
         r1.get()->resolveClass5("class5name");
     BOOST_CHECK(r4);
     BOOST_CHECK(r5);

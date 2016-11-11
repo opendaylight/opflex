@@ -86,7 +86,7 @@ void ClassIndex::getChildren(const URI& parent, prop_id_t parent_prop,
     if (pit == pmap.end()) return;
     const uri_set_t& uset = pit->second;
 
-    uri_set_t::iterator it;
+    uri_set_t::const_iterator it;
     for (it = uset.begin(); it != uset.end(); ++it) {
         output.push_back(*it);
     }

@@ -9,8 +9,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/foreach.hpp>
-
 #include "logging.h"
 #include "StatsManager.h"
 #include "Agent.h"
@@ -114,7 +112,7 @@ void StatsManager::Handle(SwitchConnection*,
         counters.rxDrop = ps.stats.rx_dropped;
 
         EndpointManager& epMgr = agent->getEndpointManager();
-        boost::unordered_set<std::string> endpoints;
+        std::unordered_set<std::string> endpoints;
         try {
             const std::string& portName = portMapper.FindPort(ps.port_no);
             epMgr.getEndpointsByIface(portName, endpoints);
@@ -122,7 +120,7 @@ void StatsManager::Handle(SwitchConnection*,
             // port not known yet
         }
 
-        BOOST_FOREACH(const std::string& uuid, endpoints) {
+        for (const std::string& uuid : endpoints) {
             epMgr.updateEndpointCounters(uuid, counters);
         }
     }

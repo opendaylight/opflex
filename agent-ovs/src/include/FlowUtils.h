@@ -21,10 +21,6 @@
 #include <stdint.h>
 
 namespace ovsagent {
-
-class FlowBuilder;
-class ActionBuilder;
-
 namespace flowutils {
 
 /**
@@ -32,10 +28,35 @@ namespace flowutils {
  */
 typedef std::pair<std::string, uint8_t> subnet_t;
 
+} // namespace flowutils
+} // namespace ovsagent
+
+namespace std {
+
+/**
+ * Template specialization for std::hash<subnet_t>, making
+ * it suitable as a key in a std::unordered_map
+ */
+template<> struct hash<ovsagent::flowutils::subnet_t> {
+    /**
+     * Hash the subnet_t
+     */
+    std::size_t operator()(const ovsagent::flowutils::subnet_t& u) const;
+};
+
+} /* namespace std */
+
+namespace ovsagent {
+
+class FlowBuilder;
+class ActionBuilder;
+
+namespace flowutils {
+
 /**
  * A set of subnets
  */
-typedef boost::unordered_set<subnet_t> subnets_t;
+typedef std::unordered_set<subnet_t> subnets_t;
 
 /**
  * subnet_t stream insertion

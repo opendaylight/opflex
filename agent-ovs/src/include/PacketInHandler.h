@@ -12,8 +12,6 @@
 #ifndef OVSAGENT_PACKETINHANDLER_H
 #define OVSAGENT_PACKETINHANDLER_H
 
-#include <boost/unordered_map.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 
 #include "SwitchConnection.h"
