@@ -18,10 +18,6 @@
 #include <utility>
 #include <stdexcept>
 
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
 #include <boost/foreach.hpp>
 
 #include "opflex/ofcore/OFFramework.h"
@@ -29,24 +25,22 @@
 #include "opflex/modb/mo-internal/StoreClient.h"
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/logging/internal/logging.hpp"
+#include "opflex/ofcore/OFTypes.h"
+#include "opflex/modb/internal/Region.h"
 
 namespace opflex {
 namespace modb {
 
-using boost::unordered_map;
-using boost::unordered_set;
-using boost::shared_ptr;
-using boost::make_shared;
 using std::pair;
 using std::make_pair;
 
 using mointernal::StoreClient;
 using mointernal::ObjectInstance;
 
-typedef unordered_set<reference_t > uri_set_t;
-typedef unordered_map<prop_id_t, uri_set_t> prop_uri_map_t;
-typedef unordered_map<reference_t, prop_uri_map_t> uri_prop_uri_map_t;
-typedef unordered_map<URI, shared_ptr<ObjectInstance> > obj_map_t;
+typedef OF_UNORDERED_SET<reference_t > uri_set_t;
+typedef OF_UNORDERED_MAP<prop_id_t, uri_set_t> prop_uri_map_t;
+typedef OF_UNORDERED_MAP<reference_t, prop_uri_map_t> uri_prop_uri_map_t;
+typedef OF_UNORDERED_MAP<URI, OF_SHARED_PTR<ObjectInstance> > obj_map_t;
 
 class Mutator::MutatorImpl {
 public:
@@ -63,32 +57,21 @@ public:
 
     // modified objects
     obj_map_t obj_map;
-    
+
     // removed objects
-    unordered_set<pair<class_id_t, URI> > removed_objects;
+    OF_UNORDERED_SET<pair<class_id_t, URI> > removed_objects;
 
     // added children
     uri_prop_uri_map_t added_children;
 };
 
-/**
- * Compute a hash value for a class_id/URI pair, making it suitable as
- * a key in an unordered_map
- */
-size_t hash_value(pair<class_id_t, URI> const& p) {
-    std::size_t seed = 0;
-    boost::hash_combine(seed, p.first);
-    boost::hash_combine(seed, p.second);
-    return seed;
-}
-
-Mutator::Mutator(const std::string& owner) 
+Mutator::Mutator(const std::string& owner)
     : pimpl(new MutatorImpl(owner)) {
     pimpl->framework.registerTLMutator(*this);
 }
 
-Mutator::Mutator(ofcore::OFFramework& framework, 
-                 const std::string& owner) 
+Mutator::Mutator(ofcore::OFFramework& framework,
+                 const std::string& owner)
     : pimpl(new MutatorImpl(framework, owner)) {
     pimpl->framework.registerTLMutator(*this);
 }
@@ -98,32 +81,32 @@ Mutator::~Mutator() {
     delete pimpl;
 }
 
-shared_ptr<ObjectInstance>& Mutator::addChild(class_id_t parent_class,
-                                              const URI& parent_uri, 
-                                              prop_id_t parent_prop,
-                                              class_id_t child_class,
-                                              const URI& child_uri) {
+OF_SHARED_PTR<ObjectInstance>& Mutator::addChild(class_id_t parent_class,
+                                                  const URI& parent_uri,
+                                                  prop_id_t parent_prop,
+                                                  class_id_t child_class,
+                                                  const URI& child_uri) {
     pimpl->added_children
         [make_pair(child_class,child_uri)]
         [parent_prop].insert(make_pair(parent_class,parent_uri));
     return modify(child_class, child_uri);
 }
 
-shared_ptr<ObjectInstance>& Mutator::modify(class_id_t class_id,
-                                            const URI& uri) {
+OF_SHARED_PTR<ObjectInstance>& Mutator::modify(class_id_t class_id,
+                                               const URI& uri) {
     // check for copy in mutator
     obj_map_t::iterator it = pimpl->obj_map.find(uri);
     if (it != pimpl->obj_map.end()) return it->second;
-    shared_ptr<ObjectInstance> copy;
-    shared_ptr<const ObjectInstance> oi;
+    OF_SHARED_PTR<ObjectInstance> copy;
+    OF_SHARED_PTR<const ObjectInstance> oi;
     if (pimpl->client.get(class_id, uri, oi)) {
-        copy = make_shared<ObjectInstance>(*oi.get());
+        copy = OF_MAKE_SHARED<ObjectInstance>(*oi.get());
     } else {
         // create new object
-        copy = make_shared<ObjectInstance>(class_id);
+        copy = OF_MAKE_SHARED<ObjectInstance>(class_id);
     }
 
-    pair<obj_map_t::iterator, bool> r = 
+    pair<obj_map_t::iterator, bool> r =
         pimpl->obj_map.insert(obj_map_t::value_type(uri, copy));
     return r.first->second;
 }

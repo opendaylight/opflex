@@ -12,16 +12,14 @@
 #ifndef OVSAGENT_ADVERTMANAGER_H
 #define OVSAGENT_ADVERTMANAGER_H
 
-#include <boost/noncopyable.hpp>
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
-#include <boost/random/random_device.hpp>
-#include <boost/random/variate_generator.hpp>
-#include <boost/scoped_ptr.hpp>
-
 #include "Agent.h"
 #include "PortMapper.h"
+
+#include <boost/noncopyable.hpp>
+#include <boost/asio/deadline_timer.hpp>
+
+#include <mutex>
+#include <random>
 
 namespace ovsagent {
 
@@ -126,16 +124,13 @@ public:
      *
      * @param uuids the uuids of the endpoints
      */
-    void scheduleEndpointAdv(const boost::unordered_set<std::string>& uuids);
+    void scheduleEndpointAdv(const std::unordered_set<std::string>& uuids);
 
 private:
-    boost::random::random_device rng;
-    boost::random::mt19937 urng;
-    typedef boost::random::uniform_int_distribution<> uniform_int;
-    boost::random::variate_generator<boost::random::mt19937&,
-                                     uniform_int> all_ep_gen;
-    boost::random::variate_generator<boost::random::mt19937&,
-                                     uniform_int> repeat_gen;
+    std::random_device rng;
+    std::mt19937 urng;
+    std::uniform_int_distribution<> all_ep_dis;
+    std::uniform_int_distribution<> repeat_dis;
 
     /**
      * Synchronously send router advertisements for all active virtual
@@ -148,7 +143,7 @@ private:
      */
     bool sendRouterAdv;
     void onRouterAdvTimer(const boost::system::error_code& ec);
-    boost::scoped_ptr<boost::asio::deadline_timer> routerAdvTimer;
+    std::unique_ptr<boost::asio::deadline_timer> routerAdvTimer;
     volatile int initialRouterAdvs;
 
     /**
@@ -172,10 +167,10 @@ private:
     void onEndpointAdvTimer(const boost::system::error_code& ec);
     void onAllEndpointAdvTimer(const boost::system::error_code& ec);
     void doScheduleEpAdv(uint64_t time = 250);
-    boost::scoped_ptr<boost::asio::deadline_timer> endpointAdvTimer;
-    boost::scoped_ptr<boost::asio::deadline_timer> allEndpointAdvTimer;
-    boost::mutex ep_mutex;
-    typedef boost::unordered_map<std::string, uint8_t> pending_ep_map_t;
+    std::unique_ptr<boost::asio::deadline_timer> endpointAdvTimer;
+    std::unique_ptr<boost::asio::deadline_timer> allEndpointAdvTimer;
+    std::mutex ep_mutex;
+    typedef std::unordered_map<std::string, uint8_t> pending_ep_map_t;
     pending_ep_map_t pendingEps;
 
     Agent& agent;

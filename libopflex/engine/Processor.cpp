@@ -21,7 +21,6 @@
 
 #include <boost/tuple/tuple.hpp>
 #include <boost/foreach.hpp>
-#include <boost/unordered_set.hpp>
 #include "opflex/engine/internal/OpflexPEHandler.h"
 #include "opflex/engine/internal/ProcessorMessage.h"
 #include "opflex/engine/Processor.h"
@@ -31,8 +30,6 @@
 namespace opflex {
 namespace engine {
 
-using boost::shared_ptr;
-using boost::unordered_set;
 using std::vector;
 using std::pair;
 using std::make_pair;
@@ -57,8 +54,6 @@ static const uint64_t DEFAULT_RETRY_DELAY = 1000*60*2;
 static const uint64_t TOMBSTONE_DELAY = 1000*60*5;
 static const uint64_t FIRST_XID = (uint64_t)1 << 63;
 static const uint32_t MAX_PROCESS = 1024;
-
-size_t hash_value(pair<class_id_t, URI> const& p);
 
 Processor::Processor(ObjectStore* store_, ThreadManager& threadManager_)
     : AbstractObjectListener(store_),
@@ -372,7 +367,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         break;
     }
 
-    shared_ptr<const ObjectInstance> oi;
+    OF_SHARED_PTR<const ObjectInstance> oi;
     if (!client->get(it->details->class_id, it->uri, oi)) {
         // item removed
         switch (curState) {
@@ -419,7 +414,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
     // check for references to other objects and update the reference
     // count.  Create a new state object or clear the object as
     // needed.
-    boost::unordered_set<reference_t> visited;
+    OF_UNORDERED_SET<reference_t> visited;
     if (oi && ci.getType() != ClassInfo::REVERSE_RELATIONSHIP) {
         BOOST_FOREACH(const ClassInfo::property_map_t::value_type& p,
                       ci.getProperties()) {
@@ -443,7 +438,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             }
         }
     }
-    boost::unordered_set<reference_t> existing(it->details->urirefs);
+    OF_UNORDERED_SET<reference_t> existing(it->details->urirefs);
     BOOST_FOREACH(const reference_t& up, existing) {
         if (visited.find(up) == visited.end()) {
             removeRef(it, up);
@@ -693,7 +688,7 @@ void Processor::responseReceived(uint64_t reqId) {
     obj_state_by_xid::iterator xi0,xi1;
     boost::tuples::tie(xi0,xi1)=xid_index.equal_range(reqId);
 
-    unordered_set<URI> items;
+    OF_UNORDERED_SET<URI> items;
     while (xi0 != xi1) {
         items.insert(xi0->uri);
         xi0++;

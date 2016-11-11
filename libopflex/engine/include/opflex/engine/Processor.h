@@ -22,7 +22,6 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
-#include <boost/unordered_set.hpp>
 #include <uv.h>
 
 #include "opflex/modb/internal/ObjectStore.h"
@@ -270,7 +269,7 @@ private:
         /**
          * Outgoing URI references
          */
-        boost::unordered_set<modb::reference_t> urirefs;
+        OF_UNORDERED_SET<modb::reference_t> urirefs;
 
         /**
          * Whether the item was written locally

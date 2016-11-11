@@ -9,7 +9,6 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <boost/foreach.hpp>
 #include <boost/asio/ip/address.hpp>
 
 #include <netinet/icmp6.h>
@@ -34,13 +33,10 @@ extern "C" {
 }
 
 using std::string;
+using std::unordered_set;
 using boost::asio::io_service;
-using boost::bind;
-using boost::ref;
-using boost::thread;
 using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
-using boost::unordered_set;
 using namespace ovsagent;
 using opflex::modb::Mutator;
 
@@ -104,7 +100,7 @@ public:
 
         PolicyManager::uri_set_t epgURIs;
         polMgr.getGroups(epgURIs);
-        BOOST_FOREACH(const opflex::modb::URI& epg, epgURIs) {
+        for (const opflex::modb::URI& epg : epgURIs) {
             unordered_set<string> eps;
             epMgr.getEndpointsForGroup(epg, eps);
             i += eps.size();
@@ -117,8 +113,8 @@ public:
         intFlowManager.start();
         advertManager.start();
 
-        ioThread.reset(new thread(bind(&io_service::run,
-                                       ref(agent.getAgentIOService()))));
+        io_service& io = agent.getAgentIOService();
+        ioThread.reset(new std::thread([&io]() { io.run(); }));
     }
 
     void stop() {
@@ -144,7 +140,7 @@ public:
     AdvertManager advertManager;
     ofputil_protocol proto;
 
-    boost::scoped_ptr<boost::thread> ioThread;
+    std::unique_ptr<std::thread> ioThread;
 };
 
 class EpAdvertFixtureGU : public AdvertManagerFixture {
@@ -279,7 +275,7 @@ void AdvertManagerFixture::testEpAdvert(AdvertManager::EndpointAdvMode mode) {
     WAIT_FOR(conn->sentMsgs.size() == 5, 1000);
     BOOST_CHECK_EQUAL(5, conn->sentMsgs.size());
     unordered_set<string> found;
-    BOOST_FOREACH(ofpbuf* msg, conn->sentMsgs) {
+    for (ofpbuf* msg : conn->sentMsgs) {
         verify_epadv(msg, found, mode);
     }
     BOOST_CHECK(!CONTAINS(found, "10.20.45.31")); // unknown flood
@@ -311,7 +307,7 @@ BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
     BOOST_CHECK_EQUAL(1, conn->sentMsgs.size());
 
     unordered_set<string> found;
-    BOOST_FOREACH(ofpbuf* msg, conn->sentMsgs) {
+    for (ofpbuf* msg : conn->sentMsgs) {
         struct ofputil_packet_out po;
         uint64_t ofpacts_stub[1024 / 8];
         struct ofpbuf ofpact;

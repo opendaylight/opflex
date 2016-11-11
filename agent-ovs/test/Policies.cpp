@@ -21,7 +21,7 @@
 
 namespace ovsagent {
 
-using boost::shared_ptr;
+using std::shared_ptr;
 using boost::optional;
 using opflex::modb::Mutator;
 using opflex::modb::URI;

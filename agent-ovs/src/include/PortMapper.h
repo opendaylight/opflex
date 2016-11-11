@@ -6,16 +6,15 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-
 #ifndef OVSAGENT_PORTMAPPER_H_
 #define OVSAGENT_PORTMAPPER_H_
 
-#include <string>
-#include <boost/unordered_map.hpp>
-#include <boost/thread/mutex.hpp>
-
 #include "SwitchConnection.h"
 #include "ovs-shim.h"
+
+#include <string>
+#include <unordered_map>
+#include <mutex>
 
 struct ofpbuf;
 
@@ -118,8 +117,8 @@ private:
     void notifyListeners(const std::string& portName, uint32_t portNo,
                          bool fromDesc);
 
-    typedef boost::unordered_map<std::string, PhyPortP> PortMap;
-    typedef boost::unordered_map<uint32_t, std::string> RPortMap;
+    typedef std::unordered_map<std::string, PhyPortP> PortMap;
+    typedef std::unordered_map<uint32_t, std::string> RPortMap;
     PortMap portMap;
     RPortMap rportMap;
     PortMap tmpPortMap;
@@ -130,7 +129,7 @@ private:
     typedef std::list<PortStatusListener *>  PortStatusList;
     PortStatusList portStatusListeners;
 
-    boost::mutex mapMtx;
+    std::mutex mapMtx;
 };
 
 } // namespace ovsagent

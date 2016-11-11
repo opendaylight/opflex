@@ -9,21 +9,9 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <set>
-#include <utility>
-#include <string>
-#include <vector>
-
-#include <boost/property_tree/ptree.hpp>
-#include <boost/optional.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
-#include <boost/asio/io_service.hpp>
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/noncopyable.hpp>
-#include <opflex/ofcore/OFFramework.h>
-#include <modelgbp/metadata/metadata.hpp>
+#pragma once
+#ifndef OVSAGENT_AGENT_H
+#define OVSAGENT_AGENT_H
 
 #include "EndpointManager.h"
 #include "ServiceManager.h"
@@ -31,9 +19,18 @@
 #include "NotifServer.h"
 #include "FSWatcher.h"
 
-#pragma once
-#ifndef OVSAGENT_AGENT_H
-#define OVSAGENT_AGENT_H
+#include <boost/property_tree/ptree.hpp>
+#include <boost/optional.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/noncopyable.hpp>
+#include <opflex/ofcore/OFFramework.h>
+#include <modelgbp/metadata/metadata.hpp>
+
+#include <set>
+#include <utility>
+#include <string>
+#include <vector>
+#include <thread>
 
 namespace ovsagent {
 
@@ -166,7 +163,7 @@ private:
     /**
      * Thread for asynchronous tasks
      */
-    boost::scoped_ptr<boost::thread> io_service_thread;
+    std::unique_ptr<std::thread> io_service_thread;
 
     bool started;
 };

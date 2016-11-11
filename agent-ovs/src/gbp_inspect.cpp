@@ -8,18 +8,10 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
-#include <unistd.h>
+
+#include "logging.h"
+#include "cmd.h"
 #include <signal.h>
-
-#include <string>
-#include <vector>
-#include <iostream>
-
-#include <boost/program_options.hpp>
-#include <boost/foreach.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/iostreams/device/file_descriptor.hpp>
-#include <boost/iostreams/stream.hpp>
 
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/metadata/metadata.hpp>
@@ -28,12 +20,20 @@
 #include <opflex/ofcore/OFConstants.h>
 #include <opflex/ofcore/InspectorClient.h>
 
-#include "logging.h"
-#include "cmd.h"
+#include <boost/program_options.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
+#include <boost/iostreams/stream.hpp>
+
+#include <string>
+#include <vector>
+#include <iostream>
+#include <memory>
+
+#include <unistd.h>
 #include <signal.h>
 
 using std::string;
-using boost::scoped_ptr;
+using std::unique_ptr;
 namespace po = boost::program_options;
 using opflex::ofcore::InspectorClient;
 using opflex::modb::URI;
@@ -136,13 +136,13 @@ int main(int argc, char** argv) {
     }
 
     try {
-        scoped_ptr<InspectorClient>
+        unique_ptr<InspectorClient>
             client(InspectorClient::newInstance(socket,
                                                 modelgbp::getMetadata()));
         client->setRecursive(recursive);
         client->setFollowRefs(followRefs);
 
-        BOOST_FOREACH(string query, queries) {
+        for (string query : queries) {
             size_t ci = query.find_first_of(",");
             if (ci == string::npos) {
                 client->addClassQuery(query);

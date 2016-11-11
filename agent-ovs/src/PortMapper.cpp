@@ -6,15 +6,11 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/unordered_map.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
-#include <boost/foreach.hpp>
-
 #include "PortMapper.h"
 #include "logging.h"
 
 #include "ovs-ofputil.h"
+
 
 // OVS lib
 #include <lib/util.h>
@@ -22,10 +18,7 @@ extern "C" {
 #include <openvswitch/ofp-msgs.h>
 }
 
-using namespace std;
-using namespace boost;
-
-typedef lock_guard<mutex> mutex_guard;
+typedef std::lock_guard<std::mutex> mutex_guard;
 
 namespace ovsagent {
 
@@ -47,9 +40,9 @@ void PortMapper::unregisterPortStatusListener(PortStatusListener *l) {
     portStatusListeners.remove(l);
 }
 
-void PortMapper::notifyListeners(const string& portName, uint32_t portNo,
+void PortMapper::notifyListeners(const std::string& portName, uint32_t portNo,
                                  bool fromDesc) {
-    BOOST_FOREACH (PortStatusListener *l, portStatusListeners) {
+    for (PortStatusListener *l : portStatusListeners) {
         l->portStatusUpdate(portName, portNo, fromDesc);
     }
 }
@@ -140,7 +133,7 @@ PortMapper::HandlePortDescReply(ofpbuf *msg) {
             rportMap.swap(tmprPortMap);
             tmprPortMap.clear();
         }
-        BOOST_FOREACH (const PortMap::value_type& kv, portMap) {
+        for (const PortMap::value_type& kv : portMap) {
             notifyListeners(kv.first, kv.second.get()->port_no, true);
         }
     }

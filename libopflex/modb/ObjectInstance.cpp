@@ -32,6 +32,13 @@ size_t hash_value(prop_key_t const& key) {
     return seed;
 }
 
+size_t hash_value(reference_t const& p) {
+    std::size_t seed = 0;
+    boost::hash_combine(seed, p.first);
+    boost::hash_combine(seed, p.second);
+    return seed;
+}
+
 namespace mointernal {
 
 using std::string;

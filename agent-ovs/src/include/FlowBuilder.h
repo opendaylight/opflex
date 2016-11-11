@@ -17,7 +17,6 @@
 #include <opflex/modb/MAC.h>
 
 #include <boost/asio/ip/address.hpp>
-#include <boost/scoped_ptr.hpp>
 
 namespace ovsagent {
 
@@ -283,7 +282,7 @@ public:
     FlowBuilder& conntrackState(uint32_t ctState, uint32_t mask = ~0l);
 
 private:
-    boost::scoped_ptr<ActionBuilder> action_;
+    std::unique_ptr<ActionBuilder> action_;
     FlowEntryPtr entry_;
     uint16_t ethType_;
 

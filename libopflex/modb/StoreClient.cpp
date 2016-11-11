@@ -68,15 +68,15 @@ void StoreClient::deliverNotifications(const notif_t& notifs) {
 }
 
 void StoreClient::put(class_id_t class_id,
-                      const URI& uri, 
-                      const boost::shared_ptr<const ObjectInstance>& oi) {
+                      const URI& uri,
+                      const OF_SHARED_PTR<const ObjectInstance>& oi) {
     Region* r = checkOwner(store, readOnly, region, class_id);
     r->put(class_id, uri, oi);
 }
 
 bool StoreClient::putIfModified(class_id_t class_id,
-                                const URI& uri, 
-                                const boost::shared_ptr<const ObjectInstance>& oi) {
+                                const URI& uri,
+                                const OF_SHARED_PTR<const ObjectInstance>& oi) {
     Region* r = checkOwner(store, readOnly, region, class_id);
     return r->putIfModified(class_id, uri, oi);
 }
@@ -86,14 +86,14 @@ bool StoreClient::isPresent(class_id_t class_id, const URI& uri) const {
     return r->isPresent(uri);
 }
 
-boost::shared_ptr<const ObjectInstance> StoreClient::get(class_id_t class_id,
-                                                         const URI& uri) const {
+OF_SHARED_PTR<const ObjectInstance> StoreClient::get(class_id_t class_id,
+                                                     const URI& uri) const {
     Region* r = store->getRegion(class_id);
     return r->get(uri);
 }
 
 bool StoreClient::get(class_id_t class_id, const URI& uri,
-                      /*out*/ boost::shared_ptr<const ObjectInstance>& oi) const {
+                      /*out*/ OF_SHARED_PTR<const ObjectInstance>& oi) const {
     Region *r;
     try {
         r = store->getRegion(class_id);
@@ -156,7 +156,7 @@ bool StoreClient::remove(class_id_t class_id, const URI& uri,
 }
 
 bool StoreClient::addChild(class_id_t parent_class,
-                           const URI& parent_uri, 
+                           const URI& parent_uri,
                            prop_id_t parent_prop,
                            class_id_t child_class,
                            const URI& child_uri) {
@@ -177,27 +177,27 @@ bool StoreClient::addChild(class_id_t parent_class,
     // add relationship to child's region.  Note that
     // it's OK if the child URI doesn't exist
     Region* r = checkOwner(store, readOnly, region, child_class);
-    return r->addChild(parent_class, parent_uri, parent_prop, 
+    return r->addChild(parent_class, parent_uri, parent_prop,
                        child_class, child_uri);
 }
 
 void StoreClient::delChild(class_id_t parent_class,
-                           const URI& parent_uri, 
+                           const URI& parent_uri,
                            prop_id_t parent_prop,
                            class_id_t child_class,
                            const URI& child_uri) {
     Region* r = checkOwner(store, readOnly, region, child_class);
-    r->delChild(parent_class, parent_uri, parent_prop, 
+    r->delChild(parent_class, parent_uri, parent_prop,
                 child_class, child_uri);
 }
 
 void StoreClient::getChildren(class_id_t parent_class,
-                              const URI& parent_uri, 
+                              const URI& parent_uri,
                               prop_id_t parent_prop,
                               class_id_t child_class,
                               std::vector<URI>& output) {
     Region* r = store->getRegion(child_class);
-    r->getChildren(parent_class, parent_uri, parent_prop, 
+    r->getChildren(parent_class, parent_uri, parent_prop,
                    child_class, output);
 }
 
@@ -220,7 +220,7 @@ bool StoreClient::getParent(class_id_t child_class, const URI& child,
 }
 
 void StoreClient::getObjectsForClass(class_id_t class_id,
-                                     /* out */ boost::unordered_set<URI>& output) {
+                                     /* out */ OF_UNORDERED_SET<URI>& output) {
     Region* r = store->getRegion(class_id);
     return r->getObjectsForClass(class_id, output);
 }

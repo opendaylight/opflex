@@ -354,7 +354,7 @@
  * instance, we can simply call:
  *
  * @code
- * using boost::shared_ptr;
+ * using std::shared_ptr;
  * using boost::optional;
  *
  * optional<shared_ptr<simple::root> > r(simple::root::resolve());

@@ -9,7 +9,6 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <boost/foreach.hpp>
 
 #include <cstring>
 #include <algorithm>
@@ -120,7 +119,7 @@ BOOST_FIXTURE_TEST_CASE(diff, TableStateFixture) {
     el.push_back(f3_1);
     state.diffSnapshot(el, diffs);
     std::sort(diffs.edits.begin(), diffs.edits.end());
-    BOOST_FOREACH(const FlowEdit::Entry& e, diffs.edits) {
+    for (const FlowEdit::Entry& e : diffs.edits) {
         LOG(DEBUG) << e;
     }
 

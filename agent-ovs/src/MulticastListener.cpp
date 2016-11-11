@@ -12,10 +12,6 @@
 #include "MulticastListener.h"
 #include "logging.h"
 
-#include <boost/foreach.hpp>
-#include <boost/array.hpp>
-#include <boost/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/asio/placeholders.hpp>
@@ -34,9 +30,9 @@
 namespace ovsagent {
 
 namespace ba = boost::asio;
-using boost::bind;
-using boost::shared_ptr;
-using boost::unordered_set;
+using std::bind;
+using std::shared_ptr;
+using std::unordered_set;
 using std::string;
 
 #define LISTEN_PORT 34242
@@ -118,8 +114,8 @@ void MulticastListener::leave(std::string mcast_address) {
         LOG(ERROR) << "Could not leave group " << addr << ": " << ec.message();
 }
 
-void MulticastListener::sync(shared_ptr<unordered_set<string> >& naddrs) {
-    boost::unordered_set<std::string>::iterator it = addresses.begin();
+void MulticastListener::sync(const shared_ptr<unordered_set<string> >& naddrs) {
+    unordered_set<std::string>::iterator it = addresses.begin();
     while (it != addresses.end()) {
         if (naddrs->find(*it) == naddrs->end()) {
             leave(*it);
@@ -128,7 +124,7 @@ void MulticastListener::sync(shared_ptr<unordered_set<string> >& naddrs) {
             ++it;
         }
     }
-    BOOST_FOREACH(const std::string& addr, *naddrs) {
+    for (const std::string& addr : *naddrs) {
         if (addresses.find(addr) == addresses.end()) {
             join(addr);
             addresses.insert(addr);

@@ -8,10 +8,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <boost/shared_ptr.hpp>
-#include <boost/foreach.hpp>
-#include <boost/thread/mutex.hpp>
-
 #include "logging.h"
 #include "FlowReader.h"
 #include "ActionBuilder.h"
@@ -24,10 +20,7 @@ extern "C" {
 #include <openvswitch/ofp-msgs.h>
 }
 
-using namespace std;
-using namespace boost;
-
-typedef lock_guard<mutex> mutex_guard;
+typedef std::lock_guard<std::mutex> mutex_guard;
 
 namespace ovsagent {
 

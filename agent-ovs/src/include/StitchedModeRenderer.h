@@ -106,7 +106,7 @@ private:
      * Timer callback to clean up IDs that have been erased
      */
     void onCleanupTimer(const boost::system::error_code& ec);
-    boost::scoped_ptr<boost::asio::deadline_timer> cleanupTimer;
+    std::unique_ptr<boost::asio::deadline_timer> cleanupTimer;
 };
 
 } /* namespace ovsagent */

@@ -15,7 +15,6 @@
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/ascii/StringMatchTypeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
-#include <boost/foreach.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "EndpointManager.h"
@@ -27,15 +26,15 @@ namespace ovsagent {
 using std::string;
 using std::set;
 using std::vector;
+using std::unordered_set;
+using std::shared_ptr;
+using std::make_shared;
+using std::unique_lock;
+using std::mutex;
 using opflex::modb::class_id_t;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::Mutator;
-using boost::unique_lock;
-using boost::mutex;
-using boost::unordered_set;
-using boost::shared_ptr;
-using boost::make_shared;
 using boost::optional;
 using boost::algorithm::starts_with;
 using boost::algorithm::ends_with;
@@ -106,14 +105,14 @@ void EndpointManager::unregisterListener(EndpointListener* listener) {
 
 void EndpointManager::notifyListeners(const std::string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
-    BOOST_FOREACH(EndpointListener* listener, endpointListeners) {
+    for (EndpointListener* listener : endpointListeners) {
         listener->endpointUpdated(uuid);
     }
 }
 
 void EndpointManager::notifyListeners(const uri_set_t& secGroups) {
     unique_lock<mutex> guard(listener_mutex);
-    BOOST_FOREACH(EndpointListener* listener, endpointListeners) {
+    for (EndpointListener* listener : endpointListeners) {
         listener->secGroupSetUpdated(secGroups);
     }
 }
@@ -207,8 +206,8 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     updateEpMap(oldUplink, uplink, access_uplink_ep_map, uuid);
 
     // Update IP Mapping next hop interface to endpoint mapping
-    BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
-                  es.endpoint->getIPAddressMappings()) {
+    for (const Endpoint::IPAddressMapping& ipm :
+             es.endpoint->getIPAddressMappings()) {
         if (!ipm.getNextHopIf()) continue;
         unordered_set<string>& eps =
             ipm_nexthop_if_ep_map[ipm.getNextHopIf().get()];
@@ -216,8 +215,8 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
         if (eps.empty())
             ipm_nexthop_if_ep_map.erase(ipm.getNextHopIf().get());
     }
-    BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
-                  endpoint.getIPAddressMappings()) {
+    for (const Endpoint::IPAddressMapping& ipm :
+             endpoint.getIPAddressMappings()) {
         if (!ipm.getNextHopIf()) continue;
         ipm_nexthop_if_ep_map[ipm.getNextHopIf().get()].insert(uuid);
     }
@@ -260,16 +259,16 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     if (it != ep_map.end()) {
         EndpointState& es = it->second;
         // remove any associated modb entries
-        BOOST_FOREACH(const URI& locall2ep, es.locall2EPs) {
+        for (const URI& locall2ep : es.locall2EPs) {
             LocalL2Ep::remove(framework, locall2ep);
         }
-        BOOST_FOREACH(const URI& locall3ep, es.locall3EPs) {
+        for (const URI& locall3ep : es.locall3EPs) {
             LocalL3Ep::remove(framework, locall3ep);
         }
-        BOOST_FOREACH(const URI& l2ep, es.l2EPs) {
+        for (const URI& l2ep : es.l2EPs) {
             L2Ep::remove(framework, l2ep);
         }
-        BOOST_FOREACH(const URI& l3ep, es.l3EPs) {
+        for (const URI& l3ep : es.l3EPs) {
             L3Ep::remove(framework, l3ep);
         }
         EpCounter::remove(framework, uuid);
@@ -297,7 +296,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
             }
         }
 
-        BOOST_FOREACH(const URI& ipmGrp, es.ipMappingGroups) {
+        for (const URI& ipmGrp : es.ipMappingGroups) {
             group_ep_map_t::iterator it = ipm_group_ep_map.find(ipmGrp);
             if (it != ipm_group_ep_map.end()) {
                 it->second.erase(uuid);
@@ -314,8 +313,8 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
         updateEpMap(es.endpoint->getAccessUplinkInterface(), boost::none,
                     access_uplink_ep_map, uuid);
 
-        BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
-                      es.endpoint->getIPAddressMappings()) {
+        for (const Endpoint::IPAddressMapping& ipm :
+                 es.endpoint->getIPAddressMappings()) {
             if (!ipm.getNextHopIf()) continue;
             unordered_set<string>& eps =
                 ipm_nexthop_if_ep_map[ipm.getNextHopIf().get()];
@@ -350,7 +349,7 @@ optional<URI> EndpointManager::resolveEpgMapping(EndpointState& es) {
     OrderComparator<shared_ptr<AttributeMappingRule> > ruleComp;
     stable_sort(rules.begin(), rules.end(), ruleComp);
 
-    BOOST_FOREACH(shared_ptr<AttributeMappingRule>& rule, rules) {
+    for (shared_ptr<AttributeMappingRule>& rule : rules) {
         optional<const string&> attrName = rule->getAttributeName();
         optional<const string&> matchString = rule->getMatchString();
         if (!attrName || !matchString) continue;
@@ -492,20 +491,20 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
             vector<shared_ptr<EndPointToSecGroupRSrc> > oldSecGrps;
             l2e->resolveEpdrEndPointToSecGroupRSrc(oldSecGrps);
             const set<URI>& secGrps = es.endpoint->getSecurityGroups();
-            BOOST_FOREACH(const shared_ptr<EndPointToSecGroupRSrc>& og,
-                          oldSecGrps) {
+            for (const shared_ptr<EndPointToSecGroupRSrc>& og :
+                     oldSecGrps) {
                 optional<URI> targ = og->getTargetURI();
                 if (!targ || secGrps.find(targ.get()) == secGrps.end())
                     og->remove();
             }
-            BOOST_FOREACH(const URI& sg, secGrps) {
+            for (const URI& sg : secGrps) {
                 l2e->addEpdrEndPointToSecGroupRSrc(sg.toString());
             }
 
             // Update LocalL2 objects in the MODB corresponding to
             // floating IP endpoints
-            BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
-                          es.endpoint->getIPAddressMappings()) {
+            for (const Endpoint::IPAddressMapping& ipm :
+                     es.endpoint->getIPAddressMappings()) {
                 if (!ipm.getMappedIP() || !ipm.getEgURI())
                     continue;
 
@@ -526,7 +525,7 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
         optional<shared_ptr<L3Discovered> > l3d =
             L3Discovered::resolve(framework);
         if (l3d) {
-            BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
+            for (const string& ip : es.endpoint->getIPs()) {
                 if (!validateIp(ip)) continue;
                 shared_ptr<LocalL3Ep> l3e = l3d.get()
                     ->addEpdrLocalL3Ep(uuid);
@@ -538,13 +537,13 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
     }
 
     // remove any stale local EPs
-    BOOST_FOREACH(const URI& locall2ep, es.locall2EPs) {
+    for (const URI& locall2ep : es.locall2EPs) {
         if (newlocall2eps.find(locall2ep) == newlocall2eps.end()) {
             LocalL2Ep::remove(framework, locall2ep);
         }
     }
     es.locall2EPs = newlocall2eps;
-    BOOST_FOREACH(const URI& locall3ep, es.locall3EPs) {
+    for (const URI& locall3ep : es.locall3EPs) {
         if (newlocall3eps.find(locall3ep) == newlocall3eps.end()) {
             LocalL3Ep::remove(framework, locall3ep);
         }
@@ -552,10 +551,10 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
     es.locall3EPs = newlocall3eps;
 
     // Update IP address mapping group map
-    BOOST_FOREACH(const URI& ipmGrp, newipmgroups) {
+    for (const URI& ipmGrp : newipmgroups) {
         ipm_group_ep_map[ipmGrp].insert(uuid);
     }
-    BOOST_FOREACH(const URI& ipmGrp, es.ipMappingGroups) {
+    for (const URI& ipmGrp : es.ipMappingGroups) {
         if (newipmgroups.find(ipmGrp) == newipmgroups.end()) {
             unordered_set<string>& eps = ipm_group_ep_map[ipmGrp];
             eps.erase(uuid);
@@ -588,7 +587,7 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
     l2e->setUuid(uuid);
     l2e->setGroup(egURI.toString());
 
-    BOOST_FOREACH(const opflex::modb::URI& secGroup, secGroups) {
+    for (const opflex::modb::URI& secGroup : secGroups) {
         l2e->addEprSecurityGroupContext(secGroup.toString());
     }
 
@@ -599,7 +598,7 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
     if (vi != attr_map.end())
         l2e->setVmName(vi->second);
 
-    BOOST_FOREACH(const Endpoint::Attestation& a, ep->getAttestations()) {
+    for (const Endpoint::Attestation& a : ep->getAttestations()) {
         if (!a.getValidator() || !a.getValidatorMac())
             continue;
         l2e->addGbpeAttestation(a.getName())
@@ -626,11 +625,11 @@ populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
         .setGroup(egURI.toString())
         .setUuid(uuid);
 
-    BOOST_FOREACH(const opflex::modb::URI& secGroup, secGroups) {
+    for (const opflex::modb::URI& secGroup : secGroups) {
         l3e->addEprSecurityGroupContext(secGroup.toString());
     }
 
-    BOOST_FOREACH(const Endpoint::Attestation& a, ep->getAttestations()) {
+    for (const Endpoint::Attestation& a : ep->getAttestations()) {
         if (!a.getValidator() || !a.getValidatorMac())
             continue;
         l3e->addGbpeAttestation(a.getName())
@@ -680,8 +679,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
             newl2eps.insert(l2e->getURI());
         }
 
-        BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
-                      es.endpoint->getIPAddressMappings()) {
+        for (const Endpoint::IPAddressMapping& ipm :
+                 es.endpoint->getIPAddressMappings()) {
             if (!ipm.getFloatingIP() || !ipm.getMappedIP() || !ipm.getEgURI())
                 continue;
             // don't declare endpoints if there's a next hop
@@ -709,7 +708,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
         if (routingMode == RoutingModeEnumT::CONST_ENABLED) {
             // If the routing domain is known, we can register the l3
             // endpoints in the endpoint registry
-            BOOST_FOREACH(const string& ip, es.endpoint->getIPs()) {
+            for (const string& ip : es.endpoint->getIPs()) {
                 if (!validateIp(ip)) continue;
                 shared_ptr<L3Ep> l3e =
                     populateL3E(l3u.get(), es.endpoint, uuid,
@@ -718,8 +717,8 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
                 newl3eps.insert(l3e->getURI());
             }
 
-            BOOST_FOREACH(const Endpoint::IPAddressMapping& ipm,
-                          es.endpoint->getIPAddressMappings()) {
+            for (const Endpoint::IPAddressMapping& ipm :
+                     es.endpoint->getIPAddressMappings()) {
                 if (!ipm.getFloatingIP() || !ipm.getMappedIP() ||
                     !ipm.getEgURI())
                     continue;
@@ -742,13 +741,13 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
     }
 
     // remove any stale endpoint registry objects
-    BOOST_FOREACH(const URI& l2ep, es.l2EPs) {
+    for (const URI& l2ep : es.l2EPs) {
         if (newl2eps.find(l2ep) == newl2eps.end()) {
             L2Ep::remove(framework, l2ep);
         }
     }
     es.l2EPs = newl2eps;
-    BOOST_FOREACH(const URI& l3ep, es.l3EPs) {
+    for (const URI& l3ep : es.l3EPs) {
         if (newl3eps.find(l3ep) == newl3eps.end()) {
             L3Ep::remove(framework, l3ep);
         }
@@ -765,7 +764,7 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
 
     group_ep_map_t::const_iterator it = group_ep_map.find(egURI);
     if (it != group_ep_map.end()) {
-        BOOST_FOREACH(const std::string& uuid, it->second) {
+        for (const std::string& uuid : it->second) {
             if (updateEndpointReg(uuid))
                 notify.insert(uuid);
         }
@@ -773,14 +772,14 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
 
     it = ipm_group_ep_map.find(egURI);
     if (it != ipm_group_ep_map.end()) {
-        BOOST_FOREACH(const std::string& uuid, it->second) {
+        for (const std::string& uuid : it->second) {
             if (updateEndpointReg(uuid))
                 notify.insert(uuid);
         }
     }
     guard.unlock();
 
-    BOOST_FOREACH(const std::string& uuid, notify) {
+    for (const std::string& uuid : notify) {
         notifyListeners(uuid);
     }
 }
@@ -815,7 +814,7 @@ void EndpointManager::
 getSecGrpSetsForSecGrp(const URI& secGrp,
                        /* out */ unordered_set<uri_set_t>& result) {
     unique_lock<mutex> guard(ep_mutex);
-    BOOST_FOREACH(const secgrp_ep_map_t::value_type& v, secgrp_ep_map) {
+    for (const secgrp_ep_map_t::value_type& v : secgrp_ep_map) {
         if (v.first.find(secGrp) != v.first.end())
             result.insert(v.first);
     }
@@ -904,7 +903,7 @@ void EndpointManager::EPGMappingListener::objectUpdated(class_id_t classId,
 
         vector<shared_ptr<EpAttribute> > attrs;
         attrSet.get()->resolveGbpeEpAttribute(attrs);
-        BOOST_FOREACH(shared_ptr<EpAttribute>& attr, attrs) {
+        for (shared_ptr<EpAttribute>& attr : attrs) {
             optional<const std::string&> name = attr->getName();
             optional<const std::string&> value = attr->getValue();
 
@@ -932,14 +931,14 @@ void EndpointManager::EPGMappingListener::objectUpdated(class_id_t classId,
         if (it == epmanager.epgmapping_ep_map.end()) return;
 
         unordered_set<string> notify;
-        BOOST_FOREACH(const std::string& uuid, it->second) {
+        for (const std::string& uuid : it->second) {
             if (epmanager.updateEndpointLocal(uuid)) {
                 notify.insert(uuid);
             }
         }
 
         guard.unlock();
-        BOOST_FOREACH(const std::string& uuid, notify) {
+        for (const std::string& uuid : notify) {
             epmanager.notifyListeners(uuid);
         }
     }

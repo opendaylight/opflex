@@ -11,16 +11,16 @@
 #ifndef OVSAGENT_IDGENERATOR_H_
 #define OVSAGENT_IDGENERATOR_H_
 
-#include <string>
-#include <set>
-#include <boost/unordered_map.hpp>
-#include <boost/chrono/duration.hpp>
-#include <boost/chrono/system_clocks.hpp>
-#include <boost/function.hpp>
-#include <boost/thread/mutex.hpp>
+#include <opflex/ofcore/OFFramework.h>
+
 #include <boost/optional.hpp>
 
-#include <opflex/ofcore/OFFramework.h>
+#include <string>
+#include <set>
+#include <unordered_map>
+#include <mutex>
+#include <chrono>
+#include <functional>
 
 namespace ovsagent {
 
@@ -43,7 +43,7 @@ public:
      * @param cleanupInterval the amount of time to keep ids before
      * purging them on cleanup
      **/
-    IdGenerator(boost::chrono::milliseconds cleanupInterval);
+    IdGenerator(std::chrono::milliseconds cleanupInterval);
 
     /**
      * Initialize an ID namespace for generating IDs. If an ID file for
@@ -101,7 +101,7 @@ public:
      * ID.  A false return value indicates allocation should be
      * canceled.
      */
-    typedef boost::function<bool(const std::string&, uint32_t)> alloc_hook_t;
+    typedef std::function<bool(const std::string&, uint32_t)> alloc_hook_t;
 
     /**
      * Set an allocation callback hook called when a new ID is
@@ -134,8 +134,8 @@ public:
      * and the string to check.  Returns true if the string remains
      * valid.
      */
-    typedef boost::function<bool(const std::string&,
-                                 const std::string&)> garbage_cb_t;
+    typedef std::function<bool(const std::string&,
+                               const std::string&)> garbage_cb_t;
 
     /**
      * Cleanup the string map by verifying that each entry in the map
@@ -159,8 +159,8 @@ public:
     }
 
 private:
-    typedef boost::chrono::steady_clock::time_point time_point;
-    typedef boost::chrono::milliseconds duration;
+    typedef std::chrono::steady_clock::time_point time_point;
+    typedef std::chrono::milliseconds duration;
 
     struct id_range {
         id_range(uint32_t start_, uint32_t end_) :
@@ -181,12 +181,12 @@ private:
         /**
          * Map of strings to the IDs assigned to them.
          */
-        typedef boost::unordered_map<std::string, uint32_t> Str2IdMap;
+        typedef std::unordered_map<std::string, uint32_t> Str2IdMap;
         Str2IdMap ids;
 
         std::set<id_range> freeIds;
 
-        typedef boost::unordered_map<std::string, time_point> Str2EIdMap;
+        typedef std::unordered_map<std::string, time_point> Str2EIdMap;
         Str2EIdMap erasedIds;
 
         boost::optional<alloc_hook_t> allocHook;
@@ -201,13 +201,13 @@ private:
     void persist(const std::string& nmspc, IdMap& idmap);
     uint32_t getRemainingIdsLocked(const std::string& nmspc);
 
-    boost::mutex id_mutex;
+    std::mutex id_mutex;
 
     /**
      * Map of ID namespaces to the assignment within that namespace.
      */
-    typedef boost::unordered_map<std::string, IdMap> NamespaceMap;
-    boost::unordered_map<std::string, IdMap> namespaces;
+    typedef std::unordered_map<std::string, IdMap> NamespaceMap;
+    std::unordered_map<std::string, IdMap> namespaces;
     std::string persistDir;
     duration cleanupInterval;
 };
