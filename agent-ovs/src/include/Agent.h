@@ -159,6 +159,8 @@ private:
     std::set<host_t> opflexPeers;
     boost::optional<std::string> sslMode;
     boost::optional<std::string> sslCaStore;
+    boost::optional<std::string> sslClientCert;
+    boost::optional<std::string> sslClientCertPass;
 
     /**
      * Thread for asynchronous tasks

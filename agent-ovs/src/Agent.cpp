@@ -58,6 +58,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_PEERS("opflex.peers");
     static const std::string OPFLEX_SSL_MODE("opflex.ssl.mode");
     static const std::string OPFLEX_SSL_CA_STORE("opflex.ssl.ca-store");
+    static const std::string OPFLEX_SSL_CERT_PATH("opflex.ssl.client-cert.path");
+    static const std::string OPFLEX_SSL_CERT_PASS("opflex.ssl.client-cert.password");
     static const std::string HOSTNAME("hostname");
     static const std::string PORT("port");
     static const std::string OPFLEX_INSPECTOR("opflex.inspector.enabled");
@@ -143,10 +145,18 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         properties.get_optional<std::string>(OPFLEX_SSL_MODE);
     boost::optional<std::string> confsslCaStore =
         properties.get_optional<std::string>(OPFLEX_SSL_CA_STORE);
+    boost::optional<std::string> confsslClientCert =
+        properties.get_optional<std::string>(OPFLEX_SSL_CERT_PATH);
+    boost::optional<std::string> confsslClientCertPass =
+        properties.get_optional<std::string>(OPFLEX_SSL_CERT_PASS);
     if (confSslMode)
         sslMode = confSslMode;
     if (confsslCaStore)
         sslCaStore = confsslCaStore;
+    if (confsslClientCert)
+        sslClientCert = confsslClientCert;
+    if (confsslClientCertPass)
+        sslClientCertPass = confsslClientCertPass;
 
     typedef Renderer* (*rend_create)(Agent&);
     typedef std::unordered_map<std::string, rend_create> rend_map_t;
@@ -202,7 +212,16 @@ void Agent::applyProperties() {
     if (sslMode && sslMode.get() != "disabled") {
         if (!sslCaStore) sslCaStore = "/etc/ssl/certs/";
         bool verifyPeers = sslMode.get() != "encrypted";
-        framework.enableSSL(sslCaStore.get(), verifyPeers);
+
+        if (sslClientCert) {
+            framework
+                .enableSSL(sslCaStore.get(),
+                           sslClientCert.get(),
+                           sslClientCertPass ? sslClientCertPass.get() : "",
+                           verifyPeers);
+        } else {
+            framework.enableSSL(sslCaStore.get(), verifyPeers);
+        }
     }
 }
 

@@ -779,10 +779,10 @@ public:
      * @param verifyPeers set to true to verify that peer certificates
      * properly chain to a trusted root
      */
-    void enableSSL(const std::string& caStorePath,
-                   const std::string& keyAndCertFilePath,
-                   const std::string& passphrase,
-                   bool verifyPeers = true);
+    virtual void enableSSL(const std::string& caStorePath,
+                           const std::string& keyAndCertFilePath,
+                           const std::string& passphrase,
+                           bool verifyPeers = true);
 
     /**
      * Enable the MODB inspector service.  The service will listen on

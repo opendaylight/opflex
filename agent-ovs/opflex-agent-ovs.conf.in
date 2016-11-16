@@ -38,6 +38,20 @@
             // specific CA certificate.
             // Default: "DEFAULT_CA_CERT_DIR"
             "ca-store": "DEFAULT_CA_CERT_DIR"
+
+            // Use a client certificate to authenticate to the server
+            // "path": specifies the path to the PEM file for this
+            // peer, containing its certificate and its private key,
+            // possibly encrypted.
+            // "password": specifies the password needed to decrypt the
+            // private key for the certificate
+            // Default: Do not use a client certificate
+            //
+            // EXAMPLE:
+            //, "client-cert" : {
+            //    "path": "DEFAULT_CLIENT_CERT_PATH",
+            //    "password": "password"
+            //}
         },
 
         "inspector": {

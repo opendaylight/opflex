@@ -238,6 +238,7 @@ mcastgroupfile=${localstatedir}/lib/opflex-agent-ovs/mcast/opflex-groups.json
 inspectsock=${localstatedir}/run/opflex-agent-ovs-inspect.sock
 notifsock=${localstatedir}/run/opflex-agent-ovs-notif.sock
 cacertdir=${sysconfdir}/ssl/certs
+clientcertpath=${agentconfdir}/opflex-agent-cert.pem
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defepwatchdir}|" \
 	    -e "s|DEFAULT_FS_SERVICE_DIR|${defservwatchdir}|" \
@@ -246,6 +247,7 @@ opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	    -e "s|DEFAULT_INSPECTOR_SOCKET|${inspectsock}|" \
 	    -e "s|DEFAULT_NOTIF_SOCKET|${notifsock}|" \
 	    -e "s|DEFAULT_CA_CERT_DIR|${cacertdir}|" \
+	    -e "s|DEFAULT_CLIENT_CERT_PATH|${clientcertpath}|" \
 	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
 
 if HAVE_DOXYGEN
