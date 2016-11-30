@@ -99,7 +99,6 @@ URIBuilder& URIBuilder::addElement(const string& elementValue) {
 
 URIBuilder& URIBuilder::addElement(const MAC& elementValue) {
     return addElement(elementValue.toString());
-    return *this;
 }
 
 URIBuilder& URIBuilder::addElement(const URI& elementValue) {
