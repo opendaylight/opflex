@@ -387,10 +387,10 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
 
     /* classifier 9 */
     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
-         .ctState("-new+est-inv+trk").tcp().reg(SEPG, setId)
+         .isCtState("-new+est-inv+trk").tcp().reg(SEPG, setId)
          .actions().go(OUT).done());
     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
-         .ctState("-trk").tcp().reg(SEPG, setId)
+         .isCtState("-trk").tcp().reg(SEPG, setId)
          .actions().ct("table=0,zone=NXM_NX_REG6[0..15]").done());
     ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(grpId)
          .tcp().reg(SEPG, setId).isTpDst(22)

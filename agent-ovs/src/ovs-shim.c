@@ -233,7 +233,9 @@ void act_conntrack(struct ofpbuf* buf,
                    uint16_t zoneImm,
                    int zoneSrc,
                    uint8_t recircTable,
-                   uint16_t alg) {
+                   uint16_t alg,
+                   struct ofpact* actions,
+                   size_t actsLen) {
     struct ofpact_conntrack* act = ofpact_put_CT(buf);
     act->flags = flags;
     act->zone_imm = zoneImm;
@@ -245,6 +247,11 @@ void act_conntrack(struct ofpbuf* buf,
     }
     act->alg = alg;
     act->recirc_table = recircTable;
+    if (actions) {
+        ofpbuf_put(buf, actions, actsLen);
+        act = (struct ofpact_conntrack*)buf->header;
+    }
+    ofpact_finish_CT(buf, &act);
 }
 
 void act_multipath(struct ofpbuf* buf,

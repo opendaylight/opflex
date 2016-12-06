@@ -39,20 +39,20 @@ void ServiceManager::unregisterListener(ServiceListener* listener) {
 void ServiceManager::notifyListeners(const std::string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
     for (ServiceListener* listener : serviceListeners) {
-        listener->anycastServiceUpdated(uuid);
+        listener->serviceUpdated(uuid);
     }
 }
 
-shared_ptr<const AnycastService>
-ServiceManager::getAnycastService(const string& uuid) {
+shared_ptr<const Service>
+ServiceManager::getService(const string& uuid) {
     unique_lock<mutex> guard(serv_mutex);
     aserv_map_t::const_iterator it = aserv_map.find(uuid);
     if (it != aserv_map.end())
         return it->second.service;
-    return shared_ptr<const AnycastService>();
+    return shared_ptr<const Service>();
 }
 
-void ServiceManager::removeIfaces(const AnycastService& service) {
+void ServiceManager::removeIfaces(const Service& service) {
     if (service.getInterfaceName()) {
         string_serv_map_t::iterator it =
             iface_aserv_map.find(service.getInterfaceName().get());
@@ -67,7 +67,7 @@ void ServiceManager::removeIfaces(const AnycastService& service) {
     }
 }
 
-void ServiceManager::removeDomains(const AnycastService& service) {
+void ServiceManager::removeDomains(const Service& service) {
     if (service.getDomainURI()) {
         uri_serv_map_t::iterator it =
             domain_aserv_map.find(service.getDomainURI().get());
@@ -82,10 +82,10 @@ void ServiceManager::removeDomains(const AnycastService& service) {
     }
 }
 
-void ServiceManager::updateAnycastService(const AnycastService& service) {
+void ServiceManager::updateService(const Service& service) {
     unique_lock<mutex> guard(serv_mutex);
     const string& uuid = service.getUUID();
-    AnycastServiceState& as = aserv_map[uuid];
+    ServiceState& as = aserv_map[uuid];
 
     // update interface name to service mapping
     if (as.service) {
@@ -99,18 +99,18 @@ void ServiceManager::updateAnycastService(const AnycastService& service) {
         domain_aserv_map[service.getDomainURI().get()].insert(uuid);
     }
 
-    as.service = make_shared<const AnycastService>(service);
+    as.service = make_shared<const Service>(service);
 
     guard.unlock();
     notifyListeners(uuid);
 }
 
-void ServiceManager::removeAnycastService(const std::string& uuid) {
+void ServiceManager::removeService(const std::string& uuid) {
     unique_lock<mutex> guard(serv_mutex);
     aserv_map_t::iterator it = aserv_map.find(uuid);
     if (it != aserv_map.end()) {
         // update interface name to service mapping
-        AnycastServiceState& as = it->second;
+        ServiceState& as = it->second;
         removeIfaces(*as.service);
         removeDomains(*as.service);
 
@@ -121,7 +121,7 @@ void ServiceManager::removeAnycastService(const std::string& uuid) {
     notifyListeners(uuid);
 }
 
-void ServiceManager::getAnycastServicesByIface(const std::string& ifaceName,
+void ServiceManager::getServicesByIface(const std::string& ifaceName,
                                                /*out*/ unordered_set<string>& servs) {
     unique_lock<mutex> guard(serv_mutex);
     string_serv_map_t::const_iterator it = iface_aserv_map.find(ifaceName);
@@ -130,7 +130,7 @@ void ServiceManager::getAnycastServicesByIface(const std::string& ifaceName,
     }
 }
 
-void ServiceManager::getAnycastServicesByDomain(const opflex::modb::URI& domain,
+void ServiceManager::getServicesByDomain(const opflex::modb::URI& domain,
                                                 /*out*/ unordered_set<string>& servs) {
     unique_lock<mutex> guard(serv_mutex);
     uri_serv_map_t::const_iterator it = domain_aserv_map.find(domain);

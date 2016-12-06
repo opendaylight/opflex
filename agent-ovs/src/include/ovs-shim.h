@@ -186,7 +186,9 @@ extern "C" {
                        uint16_t zoneImm,
                        int zoneSrc,
                        uint8_t recircTable,
-                       uint16_t alg);
+                       uint16_t alg,
+                       struct ofpact* actions,
+                       size_t actsLen);
 
     /**
      * multipath

@@ -250,33 +250,42 @@ void TableState::apply(const std::string& objId,
 
         if (oit != pimpl->match_obj_map.end()) {
             // there is an existing entry
+            FlowEntryPtr& tomod = e.second.back();
             if (oit->second.front().first == objId) {
                 // it's for the same object ID.  Replace it.
-                FlowEntryPtr& tomod = e.second.back();
                 if (!oit->second.front().second->actionEq(tomod.get())) {
                     oit->second.front().second = tomod;
                     diffs.add(FlowEdit::MOD, tomod);
                 }
             } else {
-                LOG(WARNING) << "Duplicate match for "
-                             << objId << " (conflicts with "
-                             << oit->second.front().first << "): "
-                             << *e.second.back();
                 // There are entries from other objects already there.
                 // just add/update it in the queue but don't generate
                 // diff
                 obj_id_flow_vec_t::iterator fvit = oit->second.begin()+1;
                 bool found = false;
+                bool actionEq = true;
                 while (fvit != oit->second.end()) {
                     if (fvit->first == objId) {
-                        *fvit = make_pair(objId, e.second.back());
+                        *fvit = make_pair(objId, tomod);
                         found = true;
                         break;
+                    } else if (!fvit->second->actionEq(tomod.get())) {
+                        actionEq = false;
                     }
                     ++fvit;
                 }
-                if (!found)
-                    oit->second.push_back(make_pair(objId, e.second.back()));
+                if (!found) {
+                    if (!actionEq) {
+                        // it's only a warning if there are duplicate
+                        // matches with different actions.
+                        LOG(WARNING) << "Duplicate match for "
+                                     << objId << " (conflicts with "
+                                     << oit->second.front().first << "): "
+                                     << *tomod;
+                    }
+
+                    oit->second.push_back(make_pair(objId, tomod));
+                }
             }
         } else {
             // there is no existing entry.  Add a new one
