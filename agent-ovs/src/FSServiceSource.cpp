@@ -42,21 +42,25 @@ FSServiceSource::FSServiceSource(ServiceManager* manager_,
     listener.addWatch(serviceDir, *this);
 }
 
-static bool isanycastservice(fs::path filePath) {
+static bool isservice(fs::path filePath) {
     string fstr = filePath.filename().string();
-    return (boost::algorithm::ends_with(fstr, ".as") &&
+    return ((boost::algorithm::ends_with(fstr, ".as") ||
+             boost::algorithm::ends_with(fstr, ".service")) &&
             !boost::algorithm::starts_with(fstr, "."));
 }
 
 void FSServiceSource::updated(const fs::path& filePath) {
-    if (!isanycastservice(filePath)) return;
+    if (!isservice(filePath)) return;
 
-    static const std::string AS_UUID("uuid");
-    static const std::string AS_SERVICE_MAC("service-mac");
-    static const std::string AS_INTERFACE_NAME("interface-name");
-    static const std::string AS_DOMAIN("domain");
-    static const std::string AS_DOMAIN_POLICY_SPACE("domain-policy-space");
-    static const std::string AS_DOMAIN_NAME("domain-name");
+    static const std::string UUID("uuid");
+    static const std::string SERVICE_MAC("service-mac");
+    static const std::string INTERFACE_NAME("interface-name");
+    static const std::string INTERFACE_VLAN("interface-vlan");
+    static const std::string INTERFACE_IP("interface-ip");
+    static const std::string SERVICE_MODE("service-mode");
+    static const std::string SERVICE_DOMAIN("domain");
+    static const std::string DOMAIN_POLICY_SPACE("domain-policy-space");
+    static const std::string DOMAIN_NAME("domain-name");
 
     static const std::string SERVICE_MAPPING("service-mapping");
     static const std::string SM_SERVICE_IP("service-ip");
@@ -70,34 +74,54 @@ void FSServiceSource::updated(const fs::path& filePath) {
 
     try {
         using boost::property_tree::ptree;
-        AnycastService newserv;
+        Service newserv;
         ptree properties;
 
         string pathstr = filePath.string();
 
         read_json(pathstr, properties);
-        newserv.setUUID(properties.get<string>(AS_UUID));
+        newserv.setUUID(properties.get<string>(UUID));
+
+        std::string serviceModeStr =
+            properties.get<std::string>(SERVICE_MODE,
+                                        "local-anycast");
+        if (serviceModeStr == "loadbalancer") {
+            newserv.setServiceMode(Service::LOADBALANCER);
+        } else {
+            newserv.setServiceMode(Service::LOCAL_ANYCAST);
+        }
 
         optional<string> serviceMac =
-            properties.get_optional<string>(AS_SERVICE_MAC);
+            properties.get_optional<string>(SERVICE_MAC);
         if (serviceMac) {
             newserv.setServiceMAC(MAC(serviceMac.get()));
         }
 
         optional<string> ifaceName =
-            properties.get_optional<string>(AS_INTERFACE_NAME);
+            properties.get_optional<string>(INTERFACE_NAME);
         if (ifaceName)
             newserv.setInterfaceName(ifaceName.get());
 
+        optional<uint16_t> ifaceVlan =
+            properties.get_optional<uint16_t>(INTERFACE_VLAN);
+        if (ifaceVlan)
+            newserv.setIfaceVlan(ifaceVlan.get());
+
+        optional<string> ifaceIp =
+            properties.get_optional<string>(INTERFACE_IP);
+        if (ifaceIp) {
+            newserv.setIfaceIP(ifaceIp.get());
+        }
+
         optional<string> domain =
-            properties.get_optional<string>(AS_DOMAIN);
+            properties.get_optional<string>(SERVICE_DOMAIN);
         if (domain) {
             newserv.setDomainURI(URI(domain.get()));
         } else {
             optional<string> domainName =
-                properties.get_optional<string>(AS_DOMAIN_NAME);
+                properties.get_optional<string>(DOMAIN_NAME);
             optional<string> domainPSpace =
-                properties.get_optional<string>(AS_DOMAIN_POLICY_SPACE);
+                properties.get_optional<string>(DOMAIN_POLICY_SPACE);
             if (domainName && domainPSpace) {
                 newserv.setDomainURI(opflex::modb::URIBuilder()
                                      .addElement("PolicyUniverse")
@@ -112,7 +136,7 @@ void FSServiceSource::updated(const fs::path& filePath) {
             properties.get_child_optional(SERVICE_MAPPING);
         if (sms) {
             for (const ptree::value_type &v : sms.get()) {
-                AnycastService::ServiceMapping sm;
+                Service::ServiceMapping sm;
 
                 optional<string> serviceIp =
                     v.second.get_optional<string>(SM_SERVICE_IP);
@@ -161,23 +185,23 @@ void FSServiceSource::updated(const fs::path& filePath) {
             }
         }
 
-        serv_map_t::const_iterator it = knownAnycastServs.find(pathstr);
-        if (it != knownAnycastServs.end()) {
+        serv_map_t::const_iterator it = knownServs.find(pathstr);
+        if (it != knownServs.end()) {
             if (newserv.getUUID() != it->second)
                 deleted(filePath);
         }
-        knownAnycastServs[pathstr] = newserv.getUUID();
-        updateAnycastService(newserv);
+        knownServs[pathstr] = newserv.getUUID();
+        updateService(newserv);
 
-        LOG(INFO) << "Updated anycast service " << newserv
+        LOG(INFO) << "Updated service " << newserv
                   << " from " << filePath;
 
     } catch (const std::exception& ex) {
-        LOG(ERROR) << "Could not load anycast service from: "
+        LOG(ERROR) << "Could not load service from: "
                    << filePath << ": "
                    << ex.what();
     } catch (...) {
-        LOG(ERROR) << "Unknown error while loading anycast service "
+        LOG(ERROR) << "Unknown error while loading service "
                    << "information from "
                    << filePath;
     }
@@ -186,13 +210,13 @@ void FSServiceSource::updated(const fs::path& filePath) {
 void FSServiceSource::deleted(const fs::path& filePath) {
     try {
         string pathstr = filePath.string();
-        serv_map_t::iterator it = knownAnycastServs.find(pathstr);
-        if (it != knownAnycastServs.end()) {
-            LOG(INFO) << "Removed anycast service "
+        serv_map_t::iterator it = knownServs.find(pathstr);
+        if (it != knownServs.end()) {
+            LOG(INFO) << "Removed service "
                       << it->second
                       << " at " << filePath;
-            removeAnycastService(it->second);
-            knownAnycastServs.erase(it);
+            removeService(it->second);
+            knownServs.erase(it);
         }
     } catch (const std::exception& ex) {
         LOG(ERROR) << "Could not delete service for "

@@ -177,6 +177,7 @@ public:
         rep(",metadata=", str(a, true), "/0xff"); return *this;
     }
     Bldr& isPolicyApplied() { rep(",metadata=0x100/0x100"); return *this; }
+    Bldr& isBypassPolicy() { rep(",metadata=0x200/0x200"); return *this; }
     Bldr& isPktMark(uint32_t m) {
         rep(",pkt_mark=", str(m, true)); return *this;
     }

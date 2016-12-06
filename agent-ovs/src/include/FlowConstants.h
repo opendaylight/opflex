@@ -76,10 +76,16 @@ extern const uint64_t ICMP_ERROR_V6;
 namespace meta {
 
 /**
- * "Policy applied" bit.  Bypass policy table because policy has
- * already been applied.
+ * "Policy applied" bit.  Indicates that policy has been applied
+ * already for this flow
  */
 extern const uint64_t POLICY_APPLIED;
+
+/**
+ * "Bypass policy" bit.  Set when the flow will go through normal
+ * forwarding pipeline but should bypass policy.
+ */
+extern const uint64_t BYPASS_POLICY;
 
 namespace out {
 

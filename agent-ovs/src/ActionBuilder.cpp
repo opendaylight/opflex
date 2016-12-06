@@ -218,11 +218,13 @@ ActionBuilder& ActionBuilder::popVlan() {
     return *this;
 }
 
-ActionBuilder& ActionBuilder::conntrack(uint16_t flags,
-                                        mf_field_id zoneSrc,
-                                        uint16_t zoneImm,
-                                        uint8_t recircTable,
-                                        uint16_t alg) {
+ActionBuilder&
+ActionBuilder::conntrack(uint16_t flags,
+                         mf_field_id zoneSrc,
+                         uint16_t zoneImm,
+                         uint8_t recircTable,
+                         uint16_t alg,
+                         boost::optional<ActionBuilder&> nestedActions) {
     act_conntrack(buf, flags, zoneImm, zoneSrc, recircTable, alg);
     return *this;
 }

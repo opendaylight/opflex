@@ -245,6 +245,7 @@ void act_conntrack(struct ofpbuf* buf,
     }
     act->alg = alg;
     act->recirc_table = recircTable;
+    ofpact_finish(buf, &act->ofpact);
 }
 
 void act_multipath(struct ofpbuf* buf,

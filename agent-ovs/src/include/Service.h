@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Include file for anycast service
+ * Include file for an anycast or load balanced service
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -19,27 +19,28 @@
 #include <opflex/modb/MAC.h>
 
 #pragma once
-#ifndef OVSAGENT_ANYCAST_SERVICE_H
-#define OVSAGENT_ANYCAST_SERVICE_H
+#ifndef OVSAGENT_SERVICE_H
+#define OVSAGENT_SERVICE_H
 
 namespace ovsagent {
 
 /**
- * A class for an anycast service hosted on the local system
+ * A class for an anycast or load balanced service hosted on the local
+ * system
  */
-class AnycastService {
+class Service {
 public:
     /**
      * Default constructor
      */
-    AnycastService() {}
+    Service() : serviceMode(LOCAL_ANYCAST) {}
 
     /**
-     * Construct a new AnycastService with the given uuid.
+     * Construct a new Service with the given uuid.
      *
      * @param uuid_ the unique ID for the service.
      */
-    explicit AnycastService(const std::string& uuid_)
+    explicit Service(const std::string& uuid_)
         : uuid(uuid_) {}
 
     /**
@@ -114,6 +115,58 @@ public:
     }
 
     /**
+     * VLAN trunk tag for use on the local interface
+     *
+     * @return the vlan tag or boost::none if no vlan tag is set
+     */
+    const boost::optional<uint16_t>& getIfaceVlan() const {
+        return ifaceVlan;
+    }
+
+    /**
+     * Set the VLAN trunk tag for use on the interface
+     *
+     * @param ifaceVlan the vlan tag
+     */
+    void setIfaceVlan(uint16_t ifaceVlan) {
+        this->ifaceVlan = ifaceVlan;
+    }
+
+    /**
+     * Unset the interface vlan trunk tag.
+     */
+    void unsetIfaceVlan() {
+        ifaceVlan = boost::none;
+    }
+
+    /**
+     * Get the IP address for the service interface.  ARP/ND requests
+     * for this IP on the service interface will be answered with the
+     * service MAC.
+     *
+     * @return the service interface IP address
+     */
+    const boost::optional<std::string>& getIfaceIP() const {
+        return ifaceIP;
+    }
+
+    /**
+     * Set the service interface IP address for the service
+     *
+     * @param ifaceIP the IP address
+     */
+    void setIfaceIP(const std::string& ifaceIP) {
+        this->ifaceIP = ifaceIP;
+    }
+
+    /**
+     * Unset the service Iface IP address for the service
+     */
+    void unsetIfaceIP() {
+        ifaceIP = boost::none;
+    }
+
+    /**
      * The URI of the layer 3 forwarding domain relevant for this
      * service mapping.
      *
@@ -139,6 +192,42 @@ public:
      */
     void unsetDomainURI() {
         domainURI = boost::none;
+    }
+
+    /**
+     * Modes for the service
+     */
+    enum ServiceMode {
+        /**
+         * Provide the service to only the local endpoints.  The
+         * service interface (if present) implements the service
+         */
+        LOCAL_ANYCAST,
+        /**
+         * Load balance a service across multiple endpoints, exposed
+         * via a virtual service IP.  If a service interface is
+         * present, then expose the service to remote endpoints using
+         * the service interface.
+         */
+        LOADBALANCER
+    };
+
+    /**
+     * Set the service mode
+     *
+     * @param serviceMode the new value for the service mode
+     */
+    void setServiceMode(ServiceMode serviceMode) {
+        this->serviceMode = serviceMode;
+    }
+
+    /**
+     * Get the service mode
+     *
+     * @return the service mode
+     */
+    ServiceMode getServiceMode() const {
+        return serviceMode;
     }
 
     /**
@@ -386,26 +475,29 @@ private:
     std::string uuid;
     boost::optional<opflex::modb::URI> domainURI;
     boost::optional<std::string> interfaceName;
+    boost::optional<uint16_t> ifaceVlan;
     boost::optional<opflex::modb::MAC> serviceMac;
+    boost::optional<std::string> ifaceIP;
+    ServiceMode serviceMode;
     sm_set serviceMappings;
 };
 
 /**
  * Print an to an ostream
  */
-std::ostream & operator<<(std::ostream &os, const AnycastService& ep);
+std::ostream & operator<<(std::ostream &os, const Service& ep);
 
 /**
  * Check for service mapping equality.
  */
-bool operator==(const AnycastService::ServiceMapping& lhs,
-                const AnycastService::ServiceMapping& rhs);
+bool operator==(const Service::ServiceMapping& lhs,
+                const Service::ServiceMapping& rhs);
 /**
  * Check for service mapping inequality.
  */
-bool operator!=(const AnycastService::ServiceMapping& lhs,
-                const AnycastService::ServiceMapping& rhs);
+bool operator!=(const Service::ServiceMapping& lhs,
+                const Service::ServiceMapping& rhs);
 
 } /* namespace ovsagent */
 
-#endif /* OVSAGENT_ANYCAST_SERVICE_H */
+#endif /* OVSAGENT_SERVICE_H */
