@@ -117,11 +117,14 @@ public:
      * @param tree print in a tree format
      * @param includeProps include the object properties
      * @param utf8 output tree using UTF-8 box drawing
+     * @param truncate truncate lines to the specified number of
+     * characters.  0 means do not truncate.
      */
     virtual void prettyPrint(std::ostream& output,
                              bool tree = true,
                              bool includeProps = true,
-                             bool utf8 = true) = 0;
+                             bool utf8 = true,
+                             size_t truncate = 0) = 0;
 };
 
 /** @} ofcore */

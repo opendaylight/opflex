@@ -193,8 +193,9 @@ size_t InspectorClientImpl::loadFromFile(FILE* file) {
 void InspectorClientImpl::prettyPrint(std::ostream& output,
                                       bool tree,
                                       bool includeProps,
-                                      bool utf8) {
-    serializer.displayMODB(output, tree, includeProps, utf8);
+                                      bool utf8,
+                                      size_t truncate) {
+    serializer.displayMODB(output, tree, includeProps, utf8, truncate);
 }
 
 void InspectorClientImpl::setFollowRefs(bool enabled) {

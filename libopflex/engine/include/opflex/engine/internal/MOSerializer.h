@@ -308,10 +308,12 @@ public:
      * @param tree display in a nested tree format
      * @param includeProps include the properties of the objects
      * @param utf8 use UTF-8 characters when drawing trees
+     * @param truncate truncate URIs to the specified number of bytes.
+     * 0 means do not truncate.
      */
     void displayMODB(std::ostream& ostream,
                      bool tree = true, bool includeProps = false,
-                     bool utf8 = true);
+                     bool utf8 = true, size_t truncate = 0);
 
 private:
     modb::ObjectStore* store;
@@ -398,7 +400,8 @@ private:
                        const modb::URI& uri,
                        bool tree, bool root, bool includeProps,
                        bool last, const std::string& prefix,
-                       bool utf8);
+                       size_t prefixCharCount,
+                       bool utf8, size_t truncate = 0);
 
 };
 

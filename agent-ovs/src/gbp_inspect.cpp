@@ -31,6 +31,7 @@
 
 #include <unistd.h>
 #include <signal.h>
+#include <sys/ioctl.h>
 
 using std::string;
 using std::unique_ptr;
@@ -50,6 +51,10 @@ void sighandler(int sig) {
 
 int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
+
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
     // Parse command line options
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -71,8 +76,11 @@ int main(int argc, char** argv) {
         ("output,o", po::value<std::string>()->default_value(""),
          "Output the results to the specified file (default standard out)")
         ("type,t", po::value<std::string>()->default_value("tree"),
-         "Specify the output format: tree, asciitree, list, or dump (default tree)")
+         "Specify the output format: tree, asciitree, list, or dump "
+         "(default tree)")
         ("props,p", "Include object properties in output")
+        ("width,w", po::value<int>()->default_value(w.ws_col - 1),
+         "Truncate output to the specified number of characters")
         ;
 
     bool log_to_syslog = false;
@@ -88,6 +96,7 @@ int main(int argc, char** argv) {
     bool props = false;
     bool recursive = false;
     bool followRefs = false;
+    int truncate = 0;
 
     po::variables_map vm;
     try {
@@ -118,10 +127,13 @@ int main(int argc, char** argv) {
         type = vm["type"].as<string>();
         if (vm.count("query"))
             queries = vm["query"].as<std::vector<string> >();
+        truncate = vm["width"].as<int>();
     } catch (po::unknown_option e) {
         std::cerr << e.what() << std::endl;
         return 1;
     }
+
+    if (truncate < 0) truncate = 0;
 
     initLogging(level_str, log_to_syslog, log_file, "gbp-inspect");
 
@@ -184,11 +196,11 @@ int main(int argc, char** argv) {
         if (type == "dump")
             client->dumpToFile(outf);
         else if (type == "list")
-            client->prettyPrint(outs, false, props);
+            client->prettyPrint(outs, false, props, true, truncate);
         else if (type == "asciitree")
-            client->prettyPrint(outs, true, props, false);
+            client->prettyPrint(outs, true, props, false, truncate);
         else
-            client->prettyPrint(outs, true, props, true);
+            client->prettyPrint(outs, true, props, true, truncate);
 
         fclose(outf);
 

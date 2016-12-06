@@ -79,7 +79,8 @@ public:
     virtual void prettyPrint(std::ostream& output,
                              bool tree = true,
                              bool includeProps = true,
-                             bool utf8 = true);
+                             bool utf8 = true,
+                             size_t truncate = 0);
 
     // **************
     // HandlerFactory

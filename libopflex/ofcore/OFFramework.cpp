@@ -120,9 +120,10 @@ void OFFramework::dumpMODB(FILE* file) {
 void OFFramework::prettyPrintMODB(std::ostream& output,
                                   bool tree,
                                   bool includeProps,
-                                  bool utf8) {
+                                  bool utf8,
+                                  size_t truncate) {
     MOSerializer& serializer = pimpl->processor.getSerializer();
-    serializer.displayMODB(output, tree, includeProps, utf8);
+    serializer.displayMODB(output, tree, includeProps, utf8, truncate);
 }
 
 void OFFramework::setOpflexIdentity(const std::string& name,

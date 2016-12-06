@@ -411,7 +411,7 @@ size_t MOSerializer::readMOs(FILE* pfile, StoreClient& client) {
     return i;
 }
 
-#define FORMAT_PROP(gfunc, type, output)                                \
+#define FORMAT_PROP(gfunc, type, prefixTrunc, output)                   \
     {                                                                   \
         std::ostringstream str;                                         \
         if (pit->second.getCardinality() == modb::PropertyInfo::SCALAR) { \
@@ -431,7 +431,8 @@ size_t MOSerializer::readMOs(FILE* pfile, StoreClient& client) {
             }                                                           \
             str << ']';                                                 \
         }                                                               \
-        dispProps[pit->second.getName()] = str.str();                   \
+        dispProps[pit->second.getName()] =                              \
+            std::make_pair<bool, std::string>(prefixTrunc, str.str());  \
     }
 
 static std::string getRefSubj(const modb::ObjectStore& store,
@@ -460,6 +461,7 @@ static const string VERT("\xe2\x94\x82");
 static const string DOWN_HORIZ("\xe2\x94\xac");
 static const string ARC_UP_RIGHT("\xe2\x95\xb0");
 static const string VERT_RIGHT("\xe2\x94\x9c");
+static const string ELLIPSIS("\xe2\x80\xa6");
 
 void MOSerializer::displayObject(std::ostream& ostream,
                                  modb::class_id_t class_id,
@@ -467,14 +469,15 @@ void MOSerializer::displayObject(std::ostream& ostream,
                                  bool tree, bool root,
                                  bool includeProps,
                                  bool last, const std::string& prefix,
-                                 bool utf8) {
+                                 size_t prefixCharCount,
+                                 bool utf8, size_t truncate) {
     StoreClient& client = store->getReadOnlyStoreClient();
     const modb::ClassInfo& ci = store->getClassInfo(class_id);
     const OF_SHARED_PTR<const modb::mointernal::ObjectInstance>
         oi(client.get(class_id, uri));
     std::map<modb::class_id_t, std::vector<modb::URI> > children;
 
-    typedef std::map<std::string, std::string> dmap;
+    typedef std::map<std::string, std::pair<bool, std::string> > dmap;
     dmap dispProps;
     size_t maxPropName = 0;
 
@@ -492,27 +495,27 @@ void MOSerializer::displayObject(std::ostream& ostream,
 
         switch (pit->second.getType()) {
         case modb::PropertyInfo::STRING:
-            FORMAT_PROP(String, std::string, pvalue)
+            FORMAT_PROP(String, std::string, false, pvalue)
             break;
         case modb::PropertyInfo::S64:
-            FORMAT_PROP(Int64, int64_t, pvalue)
+            FORMAT_PROP(Int64, int64_t, false, pvalue)
             break;
         case modb::PropertyInfo::U64:
-            FORMAT_PROP(UInt64, uint64_t, pvalue)
+            FORMAT_PROP(UInt64, uint64_t, false, pvalue)
             break;
         case modb::PropertyInfo::MAC:
-            FORMAT_PROP(MAC, modb::MAC, pvalue)
+            FORMAT_PROP(MAC, modb::MAC, false, pvalue)
             break;
         case modb::PropertyInfo::ENUM8:
         case modb::PropertyInfo::ENUM16:
         case modb::PropertyInfo::ENUM32:
         case modb::PropertyInfo::ENUM64:
-            FORMAT_PROP(UInt64, uint64_t,
+            FORMAT_PROP(UInt64, uint64_t, false,
                         pvalue
                         << " (" << getEnumVal(pit->second, pvalue) << ")");
             break;
         case modb::PropertyInfo::REFERENCE:
-            FORMAT_PROP(Reference, modb::reference_t,
+            FORMAT_PROP(Reference, modb::reference_t, true,
                         getRefSubj(*store, pvalue) << "," << pvalue.second);
             break;
         case modb::PropertyInfo::COMPOSITE:
@@ -534,7 +537,10 @@ void MOSerializer::displayObject(std::ostream& ostream,
             hasChildren = true;
     }
 
+    size_t lineLength = 0;
     ostream << prefix;
+    lineLength += prefixCharCount;
+
     if (tree) {
         if (root) {
             ostream << (utf8 ? HORIZ : "-");
@@ -542,6 +548,7 @@ void MOSerializer::displayObject(std::ostream& ostream,
                 ostream << (utf8 ? HORIZ : "-");
             else
                 ostream << (utf8 ? DOWN_HORIZ : "-");
+
         } else {
             if (last)
                 ostream << (utf8 ? ARC_UP_RIGHT : "`");
@@ -555,11 +562,39 @@ void MOSerializer::displayObject(std::ostream& ostream,
         else
             ostream << (utf8 ? HORIZ : "-")
                     << (utf8 ? BULLET : "*") << " ";
+
+        lineLength += 5;
     }
-    ostream << ci.getName() << "," << uri << " " << std::endl;
+
+    ostream << ci.getName() << ",";
+    lineLength += ci.getName().size() + 1;
+
+    if (truncate == 0) {
+        ostream << uri;
+    } else {
+        const string& uriStr = uri.toString();
+        size_t remaining = 0;
+        if (lineLength < truncate)
+            remaining = truncate - lineLength;
+
+        if (remaining > 0) {
+            if (uriStr.size() > remaining) {
+                if (utf8) ostream << ELLIPSIS;
+                else ostream << "_";
+
+                ostream << uriStr.substr(uriStr.size() - remaining + 1,
+                                         uriStr.size());
+            } else {
+                ostream << uriStr;
+            }
+        }
+    }
+    ostream << " " << std::endl;
 
     if (includeProps && dispProps.size() > 0) {
+        lineLength = 0;
         string pprefix = prefix;
+        lineLength += prefixCharCount;
         if (tree) {
             if (hasChildren) {
                 if (last)
@@ -576,12 +611,37 @@ void MOSerializer::displayObject(std::ostream& ostream,
                     pprefix = pprefix + (utf8 ? VERT : "|") + "     ";
 
             }
+            lineLength += 6;
         }
         ostream << pprefix << "{" << std::endl;
         BOOST_FOREACH(dmap::value_type v, dispProps) {
             ostream << pprefix << "  ";
             ostream.width(maxPropName);
-            ostream << std::left << v.first << " : " << v.second << std::endl;
+            ostream << std::left << v.first << " : ";
+            size_t plineLength = lineLength + maxPropName + 5;
+            size_t remaining = 0;
+            if (plineLength < truncate)
+                remaining = truncate - plineLength;
+
+            string& propv = v.second.second;
+            if (remaining > 0) {
+                if (propv.size() > remaining) {
+                    if (v.second.first) {
+                        if (utf8) ostream << ELLIPSIS;
+                        else ostream << "_";
+                        ostream << propv.substr(propv.size() - remaining + 1,
+                                                propv.size());
+                    } else {
+                        ostream << propv.substr(0, remaining - 1);
+                        if (utf8) ostream << ELLIPSIS;
+                        else ostream << "_";
+                    }
+                } else {
+                    ostream << propv;
+                }
+            }
+            ostream << std::endl;
+
         }
         ostream << pprefix << "}" << std::endl;
     }
@@ -593,16 +653,21 @@ void MOSerializer::displayObject(std::ostream& ostream,
 
             bool islast = lclass && (boost::next(cit) == clsit->second.end());
             string nprefix = prefix;
-            if (tree)
+            size_t nPrefixCharCount = prefixCharCount;
+            if (tree) {
                 nprefix = prefix + (last ? "  " : (utf8 ? VERT : "|") + " ");
+                nPrefixCharCount += 2;
+            }
             displayObject(ostream, clsit->first, *cit,
-                          tree, false, includeProps, islast, nprefix, utf8);
+                          tree, false, includeProps, islast, nprefix,
+                          nPrefixCharCount, utf8, truncate);
         }
     }
 }
 
 void MOSerializer::displayMODB(std::ostream& ostream,
-                               bool tree, bool includeProps, bool utf8) {
+                               bool tree, bool includeProps, bool utf8,
+                               size_t truncate) {
     Region::obj_set_t roots;
     getRoots(store, roots);
 
@@ -610,7 +675,7 @@ void MOSerializer::displayMODB(std::ostream& ostream,
         try {
             displayObject(ostream, r.first, r.second,
                           tree, true, includeProps,
-                          true, "", utf8);
+                          true, "", 0, utf8, truncate);
         } catch (std::out_of_range e) { }
     }
 }
