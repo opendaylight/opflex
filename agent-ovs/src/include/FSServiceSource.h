@@ -55,7 +55,7 @@ private:
     /**
      * Services that are known to the filesystem watcher
      */
-    serv_map_t knownAnycastServs;
+    serv_map_t knownServs;
 };
 
 } /* namespace ovsagent */

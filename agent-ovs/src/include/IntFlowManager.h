@@ -233,7 +233,7 @@ public:
     virtual void endpointUpdated(const std::string& uuid);
 
     /* Interface: ServiceListener */
-    virtual void anycastServiceUpdated(const std::string& uuid);
+    virtual void serviceUpdated(const std::string& uuid);
 
     /* Interface: ExtraConfigListener */
     virtual void rdConfigUpdated(const opflex::modb::URI& rdURI);
@@ -402,11 +402,11 @@ private:
 
     /**
      * Compare and update flow/group tables due to changes in an
-     * anycast service.
+     * service.
      *
-     * @param uuid UUID of the changed anycast service
+     * @param uuid UUID of the changed service
      */
-    void handleAnycastServiceUpdate(const std::string& uuid);
+    void handleServiceUpdate(const std::string& uuid);
 
     /**
      * Compare and update flow/group tables due to changes in an

@@ -9,7 +9,7 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include "AnycastService.h"
+#include "Service.h"
 
 #pragma once
 #ifndef OVSAGENT_SERVICESOURCE_H
@@ -43,7 +43,7 @@ public:
      *
      * @param service the service to add/update
      */
-    virtual void updateAnycastService(const AnycastService& service);
+    virtual void updateService(const Service& service);
 
     /**
      * Remove an service that no longer exists from the service
@@ -51,7 +51,7 @@ public:
      *
      * @param uuid the service that no longer exists
      */
-    virtual void removeAnycastService(const std::string& uuid);
+    virtual void removeService(const std::string& uuid);
 
 protected:
     /**

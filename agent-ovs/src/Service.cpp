@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation for AnycastService class.
+ * Implementation for Service class.
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -9,22 +9,34 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include "AnycastService.h"
+#include "Service.h"
 
 #include <boost/algorithm/string/join.hpp>
 
 namespace ovsagent {
 
-std::ostream & operator<<(std::ostream &os, const AnycastService& s) {
+std::ostream & operator<<(std::ostream &os, const Service& s) {
     using boost::algorithm::join;
 
-    os << "AnycastService["
+    os << "Service["
        << "uuid=" << s.getUUID();
+
+    if (s.getServiceMode() == Service::LOCAL_ANYCAST) {
+        os << ",local-anycast";
+    } else if (s.getServiceMode() == Service::LOADBALANCER) {
+        os << ",loadbalancer";
+    }
+    if (s.getDomainURI())
+        os << ",domain=" << s.getDomainURI().get();
 
     if (s.getInterfaceName())
         os << ",interface=" << s.getInterfaceName().get();
-    if (s.getDomainURI())
-        os << ",domain=" << s.getDomainURI().get();
+    if (s.getIfaceVlan())
+        os << ",vlan=" << s.getIfaceVlan().get();
+    if (s.getIfaceIP())
+        os << ",ip=" << s.getIfaceIP().get();
+    if (s.getServiceMAC())
+        os << ",mac=" << s.getServiceMAC().get();
 
     if (s.getServiceMappings().size() > 0) {
         bool first = true;
@@ -52,7 +64,7 @@ std::ostream & operator<<(std::ostream &os, const AnycastService& s) {
                 os << ":" << sm.getNextHopPort().get();
 
             if (sm.isConntrackMode())
-                os << ",conntrack";
+                os << " (conntrack)";
         }
 
         os << "]";
@@ -63,8 +75,8 @@ std::ostream & operator<<(std::ostream &os, const AnycastService& s) {
     return os;
 }
 
-size_t AnycastService::ServiceMappingHash::
-operator()(const AnycastService::ServiceMapping& m) const noexcept {
+size_t Service::ServiceMappingHash::
+operator()(const Service::ServiceMapping& m) const noexcept {
     size_t v = 0;
     if (m.getServiceIP())
         boost::hash_combine(v, m.getServiceIP().get());
@@ -83,12 +95,12 @@ operator()(const AnycastService::ServiceMapping& m) const noexcept {
     return v;
 }
 
-void AnycastService::addServiceMapping(const ServiceMapping& serviceMapping) {
+void Service::addServiceMapping(const ServiceMapping& serviceMapping) {
     serviceMappings.insert(serviceMapping);
 }
 
-bool operator==(const AnycastService::ServiceMapping& lhs,
-                const AnycastService::ServiceMapping& rhs) {
+bool operator==(const Service::ServiceMapping& lhs,
+                const Service::ServiceMapping& rhs) {
     return (lhs.getServiceIP() == rhs.getServiceIP() &&
             lhs.getServiceProto() == rhs.getServiceProto() &&
             lhs.getServicePort() == rhs.getServicePort() &&
@@ -98,8 +110,8 @@ bool operator==(const AnycastService::ServiceMapping& lhs,
             lhs.isConntrackMode() == rhs.isConntrackMode());
 }
 
-bool operator!=(const AnycastService::ServiceMapping& lhs,
-                const AnycastService::ServiceMapping& rhs) {
+bool operator!=(const Service::ServiceMapping& lhs,
+                const Service::ServiceMapping& rhs) {
     return !(lhs==rhs);
 }
 
