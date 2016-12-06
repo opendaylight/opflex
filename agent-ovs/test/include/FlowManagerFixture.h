@@ -170,13 +170,21 @@ public:
     Bldr& isTcpFlags(const std::string& s)  {
         rep(",tcp_flags=", s); return *this;
     }
-    Bldr& ctState(const std::string& s) {
+    Bldr& isCtState(const std::string& s) {
         rep(",ct_state=" + s); return *this;
+    }
+    Bldr& isCtMark(const std::string& s) {
+        rep(",ct_mark=" + s); return *this;
     }
     Bldr& isMdAct(uint8_t a) {
         rep(",metadata=", str(a, true), "/0xff"); return *this;
     }
     Bldr& isPolicyApplied() { rep(",metadata=0x100/0x100"); return *this; }
+    Bldr& isFromServiceIface(bool yes = true) {
+        rep((std::string(",metadata=") +
+             (yes ? "0x200" : "0") + "/0x200").c_str());
+        return *this;
+    }
     Bldr& isPktMark(uint32_t m) {
         rep(",pkt_mark=", str(m, true)); return *this;
     }

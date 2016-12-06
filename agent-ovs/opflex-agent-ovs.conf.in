@@ -205,7 +205,7 @@
         //             //   advertisements as broadcast packets.
         //             // router-request: Unicast a spoofed request/solicitation
         //             //   for the subnet's gateway router.
-        //             // Default: router-request.
+        //             // Default: gratuitous-broadcast.
         //             "mode": "gratuitous-broadcast"
         //         },
         //

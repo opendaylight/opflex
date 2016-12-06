@@ -31,6 +31,7 @@ const uint64_t ICMP_ERROR_V6   = DEF_COOKIE(9);
 namespace meta {
 
 const uint64_t POLICY_APPLIED = 0x100;
+const uint64_t FROM_SERVICE_INTERFACE = 0x200;
 
 namespace out {
 

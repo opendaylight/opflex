@@ -281,6 +281,22 @@ public:
      */
     FlowBuilder& conntrackState(uint32_t ctState, uint32_t mask = ~0l);
 
+    /**
+     * Match against the connection tracking mark
+     * @param ctMark the value of the connection tracking mark
+     * @param mask the mask for the match
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& ctMark(uint32_t ctMark, uint32_t mask = ~0l);
+
+    /**
+     * Match against the connection tracking label
+     * @param ctLabel the value of the connection tracking mark
+     * @param mask the mask for the match
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& ctLabel(ovs_u128 ctLabel, ovs_u128 mask);
+
 private:
     std::unique_ptr<ActionBuilder> action_;
     FlowEntryPtr entry_;

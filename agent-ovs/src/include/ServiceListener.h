@@ -32,11 +32,11 @@ public:
     virtual ~ServiceListener() {};
 
     /**
-     * Called when an anycast service is added, updated, or removed.
+     * Called when a service is added, updated, or removed.
      *
      * @param uuid the UUID for the service
      */
-    virtual void anycastServiceUpdated(const std::string& uuid) = 0;
+    virtual void serviceUpdated(const std::string& uuid) = 0;
 };
 
 } /* namespace ovsagent */

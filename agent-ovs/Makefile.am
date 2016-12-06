@@ -55,7 +55,7 @@ noinst_HEADERS = \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \
 	src/include/FSEndpointSource.h \
-	src/include/AnycastService.h \
+	src/include/Service.h \
 	src/include/ServiceListener.h \
 	src/include/ServiceSource.h \
 	src/include/ServiceManager.h \
@@ -110,7 +110,7 @@ libagent_ovs_la_SOURCES = \
 	src/EndpointManager.cpp \
 	src/EndpointSource.cpp \
 	src/FSEndpointSource.cpp \
-	src/AnycastService.cpp \
+	src/Service.cpp \
 	src/ServiceSource.cpp \
 	src/ServiceManager.cpp \
 	src/FSServiceSource.cpp \

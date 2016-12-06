@@ -218,12 +218,22 @@ ActionBuilder& ActionBuilder::popVlan() {
     return *this;
 }
 
-ActionBuilder& ActionBuilder::conntrack(uint16_t flags,
-                                        mf_field_id zoneSrc,
-                                        uint16_t zoneImm,
-                                        uint8_t recircTable,
-                                        uint16_t alg) {
-    act_conntrack(buf, flags, zoneImm, zoneSrc, recircTable, alg);
+ActionBuilder&
+ActionBuilder::conntrack(uint16_t flags,
+                         mf_field_id zoneSrc,
+                         uint16_t zoneImm,
+                         uint8_t recircTable,
+                         uint16_t alg,
+                         boost::optional<ActionBuilder&> nestedActions) {
+    struct ofpact* actions;
+    size_t actsLen = 0;
+    if (nestedActions) {
+        struct ofpbuf* b = nestedActions.get().buf;
+        actions = static_cast<struct ofpact*>(b->data);
+        actsLen = b->size;
+    }
+    act_conntrack(buf, flags, zoneImm, zoneSrc, recircTable, alg,
+                  actions, actsLen);
     return *this;
 }
 

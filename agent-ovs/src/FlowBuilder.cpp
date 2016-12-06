@@ -253,4 +253,14 @@ FlowBuilder& FlowBuilder::conntrackState(uint32_t ctState, uint32_t mask) {
     return *this;
 }
 
+FlowBuilder& FlowBuilder::ctMark(uint32_t ctMark, uint32_t mask) {
+    match_set_ct_mark_masked(match(), ctMark, mask);
+    return *this;
+}
+
+FlowBuilder& FlowBuilder::ctLabel(ovs_u128 ctLabel, ovs_u128 mask) {
+    match_set_ct_label_masked(match(), ctLabel, mask);
+    return *this;
+}
+
 } // namespace ovsagent
