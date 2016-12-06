@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Include file for anycast service manager
+ * Include file for service manager
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -13,7 +13,7 @@
 #ifndef OVSAGENT_SERVICEMANAGER_H
 #define OVSAGENT_SERVICEMANAGER_H
 
-#include "AnycastService.h"
+#include "Service.h"
 #include "ServiceListener.h"
 
 #include <boost/noncopyable.hpp>
@@ -26,17 +26,17 @@
 namespace ovsagent {
 
 /**
- * Manage anycast service endpoints
+ * Manage service endpoints
  */
 class ServiceManager : private boost::noncopyable {
 public:
     /**
-     * Instantiate a new anycast service manager
+     * Instantiate a new service manager
      */
     ServiceManager();
 
     /**
-     * Register a listener for anycast service change events
+     * Register a listener for service change events
      *
      * @param listener the listener functional object that should be
      * called when changes occur related to the class.  This memory is
@@ -55,34 +55,34 @@ public:
     void unregisterListener(ServiceListener* listener);
 
     /**
-     * Get the detailed information for an anycast service
+     * Get the detailed information for an service
      *
      * @param uuid the UUID for the service
      * @return the object containing the detailed information, or a
      * NULL pointer if there is no such service
      */
-    std::shared_ptr<const AnycastService>
-        getAnycastService(const std::string& uuid);
+    std::shared_ptr<const Service>
+        getService(const std::string& uuid);
 
     /**
-     * Get the anycast services that are on a particular interface
+     * Get the services that are on a particular interface
      *
      * @param ifaceName the name of the interface
      * @param servs a set that will be filled with the UUIDs of
      * matching services.
      */
-    void getAnycastServicesByIface(const std::string& ifaceName,
+    void getServicesByIface(const std::string& ifaceName,
                                    /* out */ std::unordered_set<std::string>& servs);
 
     /**
-     * Get the anycast services associated with a particular routing
+     * Get the services associated with a particular routing
      * domain
      *
      * @param domain the URI of the routing domain
      * @param servs a set that will be filled with the UUIDs of
      * matching services.
      */
-    void getAnycastServicesByDomain(const opflex::modb::URI& domain,
+    void getServicesByDomain(const opflex::modb::URI& domain,
                                     /* out */ std::unordered_set<std::string>& servs);
 
 private:
@@ -90,7 +90,7 @@ private:
      * Add or update the service state with new information about an
      * service.
      */
-    void updateAnycastService(const AnycastService& service);
+    void updateService(const Service& service);
 
     /**
      * Remove the service with the specified UUID from the service
@@ -98,14 +98,14 @@ private:
      *
      * @param uuid the UUID of the service that no longer exists
      */
-    void removeAnycastService(const std::string& uuid);
+    void removeService(const std::string& uuid);
 
-    class AnycastServiceState {
+    class ServiceState {
     public:
-        std::shared_ptr<const AnycastService> service;
+        std::shared_ptr<const Service> service;
     };
 
-    typedef std::unordered_map<std::string, AnycastServiceState> aserv_map_t;
+    typedef std::unordered_map<std::string, ServiceState> aserv_map_t;
     typedef std::unordered_map<std::string,
                                std::unordered_set<std::string> > string_serv_map_t;
     typedef std::unordered_map<opflex::modb::URI,
@@ -114,17 +114,17 @@ private:
     std::mutex serv_mutex;
 
     /**
-     * Map service UUID to anycast service state object
+     * Map service UUID to service state object
      */
     aserv_map_t aserv_map;
 
     /**
-     * Map interface names to a set of anycast service UUIDs
+     * Map interface names to a set of service UUIDs
      */
     string_serv_map_t iface_aserv_map;
 
     /**
-     * Map domain URIs to a set of anycast service UUIDs
+     * Map domain URIs to a set of service UUIDs
      */
     uri_serv_map_t domain_aserv_map;
 
@@ -135,8 +135,8 @@ private:
     std::mutex listener_mutex;
 
     void notifyListeners(const std::string& uuid);
-    void removeIfaces(const AnycastService& service);
-    void removeDomains(const AnycastService& service);
+    void removeIfaces(const Service& service);
+    void removeDomains(const Service& service);
 
     friend class ServiceSource;
 };

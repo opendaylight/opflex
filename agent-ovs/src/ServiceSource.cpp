@@ -19,12 +19,12 @@ ServiceSource::ServiceSource(ServiceManager* manager_)
 
 ServiceSource::~ServiceSource() {}
 
-void ServiceSource::updateAnycastService(const AnycastService& service) {
-    manager->updateAnycastService(service);
+void ServiceSource::updateService(const Service& service) {
+    manager->updateService(service);
 }
 
-void ServiceSource::removeAnycastService(const std::string& uuid) {
-    manager->removeAnycastService(uuid);
+void ServiceSource::removeService(const std::string& uuid) {
+    manager->removeService(uuid);
 }
 
 } /* namespace ovsagent */

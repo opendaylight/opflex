@@ -276,12 +276,17 @@ public:
      * @param recircTable the table to recirculate the packet to, or
      * 0xff to not recirculate
      * @param alg the algorithm ID for connection tracking helpers
+     * @param nestedActions nested actions to execute as part of the
+     * conntrack action.  These actions are allowed to set the ct_mark
+     * and ct_label fields.
      */
     ActionBuilder& conntrack(uint16_t flags = 0,
                              mf_field_id zoneSrc = static_cast<mf_field_id>(0),
                              uint16_t zoneImm = 0,
                              uint8_t recircTable = 0xff,
-                             uint16_t alg = 0);
+                             uint16_t alg = 0,
+                             boost::optional<ActionBuilder&> nestedActions
+                             = boost::none);
 
     /**
      * Algorithm for multipath action
