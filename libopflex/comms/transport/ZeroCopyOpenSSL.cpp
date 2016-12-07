@@ -1155,7 +1155,7 @@ void ZeroCopyOpenSSL::Ctx::setNoVerify(
 
     (void) SSL_CTX_set_verify(
             sslCtx_,
-            SSL_VERIFY_PEER,
+            SSL_VERIFY_NONE,
             verify_callback);
 
 }
