@@ -68,6 +68,8 @@ void OpflexPool::enableSSL(const std::string& caStorePath,
 
     if (verifyPeers)
         clientCtx.get()->setVerify();
+    else
+        clientCtx.get()->setNoVerify();
 }
 
 void OpflexPool::enableSSL(const std::string& caStorePath,
@@ -79,6 +81,8 @@ void OpflexPool::enableSSL(const std::string& caStorePath,
 
     if (verifyPeers)
         clientCtx.get()->setVerify();
+    else
+        clientCtx.get()->setNoVerify();
 }
 
 void OpflexPool::on_conn_async(uv_async_t* handle) {
