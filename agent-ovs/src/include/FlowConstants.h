@@ -87,6 +87,11 @@ extern const uint64_t POLICY_APPLIED;
  */
 extern const uint64_t FROM_SERVICE_INTERFACE;
 
+/**
+ * Indicates that a packet has been routed and is allowed to hairpin
+ */
+extern const uint64_t ROUTED;
+
 namespace out {
 
 /**

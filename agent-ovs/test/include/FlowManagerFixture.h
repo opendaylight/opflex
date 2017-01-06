@@ -185,6 +185,7 @@ public:
              (yes ? "0x200" : "0") + "/0x200").c_str());
         return *this;
     }
+    Bldr& isMd(const std::string& m) { rep(",metadata=", m); return *this; }
     Bldr& isPktMark(uint32_t m) {
         rep(",pkt_mark=", str(m, true)); return *this;
     }
