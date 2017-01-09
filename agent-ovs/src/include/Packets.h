@@ -206,6 +206,7 @@ typedef Endpoint::DHCPv4Config::static_route_t static_route_t;
  * @param domain The domain to return to the client
  * @param staticRoutes classless static routes to return to the client
  * @param interfaceMtu value of interface MTU to return to the client
+ * @param leaseTime the lease time to send to the client
  */
 ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              uint32_t xid,
@@ -218,7 +219,8 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              const std::vector<std::string>& dnsServers,
                              const boost::optional<std::string>& domain,
                              const std::vector<static_route_t>& staticRoutes,
-                             const boost::optional<uint16_t>& interfaceMtu);
+                             const boost::optional<uint16_t>& interfaceMtu,
+                             const boost::optional<uint32_t>& leaseTime);
 
 /**
  * Compose a DHCPv6 Advertise or Reply message
@@ -236,6 +238,11 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
  * @param searchList the DNS search path to return to the client
  * @param temporary true if the client requested a temporary address
  * @param rapid true if this is a rapid commit reply
+ * @param t1 the time before client should contact dhcp server to renew
+ * @param t2 the time before client should broadcast renewal attempt
+ * @param preferredLifetime The preferred lifetime for the IPv6
+ * addresses
+ * @param validLifetime the valid lifetime for the IPv6 addresses
  */
 ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
                              const uint8_t* xid,
@@ -249,7 +256,11 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
                              const std::vector<std::string>& dnsServers,
                              const std::vector<std::string>& searchList,
                              bool temporary,
-                             bool rapid);
+                             bool rapid,
+                             const boost::optional<uint32_t>& t1,
+                             const boost::optional<uint32_t>& t2,
+                             const boost::optional<uint32_t>& preferredLifetime,
+                             const boost::optional<uint32_t>& validLifetime);
 
 /**
  * Compose an ARP packet

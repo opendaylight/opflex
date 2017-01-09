@@ -687,6 +687,24 @@ public:
             this->interfaceMtu = interfaceMtu;
         }
 
+        /**
+         * Get the lease time for this endpoint
+         *
+         * @return the lease time
+         */
+        const boost::optional<uint32_t> getLeaseTime() const {
+            return leaseTime;
+        }
+
+        /**
+         * Set the DHCP lease time for this endpoint
+         *
+         * @param leaseTime the lease time
+         */
+        void setLeaseTime(uint32_t leaseTime) {
+            this->leaseTime = leaseTime;
+        }
+
     private:
         boost::optional<std::string> ipAddress;
         boost::optional<uint8_t> prefixLen;
@@ -695,6 +713,7 @@ public:
         boost::optional<std::string> domain;
         std::vector<static_route_t> staticRoutes;
         boost::optional<uint16_t> interfaceMtu;
+        boost::optional<uint32_t> leaseTime;
     };
 
     /**
@@ -729,8 +748,86 @@ public:
             return searchList;
         }
 
+        /**
+         * Get the t1 time (the time before client should contact dhcp
+         * server to renew)
+         *
+         * @return the t1 time
+         */
+        const boost::optional<uint32_t> getT1() const {
+            return t1;
+        }
+
+        /**
+         * Set the t1 time
+         *
+         * @param t1 the lease time
+         */
+        void setT1(uint32_t t1) {
+            this->t1 = t1;
+        }
+
+        /**
+         * Get the t2 time (the time before client should broadcast
+         * renewal attempt)
+         *
+         * @return the t2 time
+         */
+        const boost::optional<uint32_t> getT2() const {
+            return t2;
+        }
+
+        /**
+         * Set the t2 time
+         *
+         * @param t2 the t2 time
+         */
+        void setT2(uint32_t t2) {
+            this->t2 = t2;
+        }
+
+        /**
+         * Get the valid lifetime for the IPv6 address
+         *
+         * @return the valid lifetime
+         */
+        const boost::optional<uint32_t> getValidLifetime() const {
+            return validLifetime;
+        }
+
+        /**
+         * Set the valid lifetime
+         *
+         * @param validLifetime the valid lifetime
+         */
+        void setValidLifetime(uint32_t validLifetime) {
+            this->validLifetime = validLifetime;
+        }
+
+        /**
+         * Get the preferred lifetime for the IPv6 address
+         *
+         * @return the preferred lifetime
+         */
+        const boost::optional<uint32_t> getPreferredLifetime() const {
+            return preferredLifetime;
+        }
+
+        /**
+         * Set the preferred lifetime
+         *
+         * @param preferredLifetime the preferred lifetime
+         */
+        void setPreferredLifetime(uint32_t preferredLifetime) {
+            this->preferredLifetime = preferredLifetime;
+        }
+
     private:
         std::vector<std::string> searchList;
+        boost::optional<uint32_t> t1;
+        boost::optional<uint32_t> t2;
+        boost::optional<uint32_t> validLifetime;
+        boost::optional<uint32_t> preferredLifetime;
     };
 
     /**

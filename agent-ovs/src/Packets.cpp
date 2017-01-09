@@ -441,7 +441,8 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
                              const vector<string>& dnsServers,
                              const optional<string>& domain,
                              const vector<static_route_t>& staticRoutes,
-                             const optional<uint16_t>& interfaceMtu) {
+                             const optional<uint16_t>& interfaceMtu,
+                             const optional<uint32_t>& leaseTime) {
     using namespace dhcp;
     using namespace udp;
 
@@ -666,7 +667,8 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
 
     lease_time->code = option::LEASE_TIME;
     lease_time->len = option::LEASE_TIME_LEN;
-    *((uint32_t*)((char*)lease_time + 2)) = htonl(86400);
+    *((uint32_t*)((char*)lease_time + 2)) =
+        htonl(leaseTime ? leaseTime.get() : 86400);
 
     server_identifier->code = option::SERVER_IDENTIFIER;
     server_identifier->len = option::IP_LEN;
@@ -727,7 +729,11 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
                              const vector<string>& dnsServers,
                              const vector<string>& searchList,
                              bool temporary,
-                             bool rapid) {
+                             bool rapid,
+                             const boost::optional<uint32_t>& t1,
+                             const boost::optional<uint32_t>& t2,
+                             const boost::optional<uint32_t>& preferredLifetime,
+                             const boost::optional<uint32_t>& validLifetime) {
     using namespace dhcp6;
     using namespace udp;
 
@@ -900,10 +906,10 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
             iaaddr = (struct dhcp6_opt_hdr*)((char*)ia + opt_hdr_len + 4);
         } else {
             iaaddr = (struct dhcp6_opt_hdr*)((char*)ia + opt_hdr_len + 12);
-            uint32_t* t1 = ((uint32_t*)iaid_ptr + 1);
-            uint32_t* t2 = t1 + 1;
-            *t1 = htonl(3600);
-            *t2 = htonl(5400);
+            uint32_t* t1_p = ((uint32_t*)iaid_ptr + 1);
+            uint32_t* t2_p = t1_p + 1;
+            *t1_p = htonl(t1 ? t1.get() : 3600);
+            *t2_p = htonl(t2 ? t2.get() : 5400);
         }
         for (const address_v6& ip : ips) {
             size_t iaaddr_len = 24;
@@ -916,8 +922,8 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
             std::memcpy(addr, bytes.data(), bytes.size());
             uint32_t* pl = (uint32_t*)(addr + 1);
             uint32_t* vl = pl + 1;
-            *pl = htonl(7200);
-            *vl = htonl(7500);
+            *pl = htonl(preferredLifetime ? preferredLifetime.get() : 7200);
+            *vl = htonl(validLifetime ? validLifetime.get() : 7500);
 
             iaaddr =
                 (struct dhcp6_opt_hdr*)((char*)iaaddr + opt_hdr_len + iaaddr_len);

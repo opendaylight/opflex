@@ -92,6 +92,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string DHCP_STATIC_ROUTE_DEST_PREFIX("dest-prefix");
     static const std::string DHCP_STATIC_ROUTE_NEXTHOP("next-hop");
     static const std::string DHCP_INTERFACE_MTU("interface-mtu");
+    static const std::string DHCP_LEASE_TIME("lease-time");
+    static const std::string DHCP_T1("t1");
+    static const std::string DHCP_T2("t2");
+    static const std::string DHCP_PREFERRED_LIFETIME("preferred-lifetime");
+    static const std::string DHCP_VALID_LIFETIME("valid-lifetime");
 
     static const std::string IP_ADDRESS_MAPPING("ip-address-mapping");
     static const std::string IPM_MAPPED_IP("mapped-ip");
@@ -284,6 +289,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             if (interfaceMtu)
                 c.setInterfaceMtu(interfaceMtu.get());
 
+            optional<uint32_t> leaseTime =
+                dhcp4.get().get_optional<uint32_t>(DHCP_LEASE_TIME);
+            if (leaseTime)
+                c.setLeaseTime(leaseTime.get());
+
             newep.setDHCPv4Config(c);
         }
 
@@ -304,6 +314,26 @@ void FSEndpointSource::updated(const fs::path& filePath) {
                 for (const ptree::value_type &u : dns.get())
                     c.addDnsServer(u.second.data());
             }
+
+            optional<uint32_t> t1 =
+                dhcp6.get().get_optional<uint32_t>(DHCP_T1);
+            if (t1)
+                c.setT1(t1.get());
+
+            optional<uint32_t> t2 =
+                dhcp6.get().get_optional<uint32_t>(DHCP_T2);
+            if (t2)
+                c.setT2(t2.get());
+
+            optional<uint32_t> validLifetime =
+                dhcp6.get().get_optional<uint32_t>(DHCP_VALID_LIFETIME);
+            if (validLifetime)
+                c.setValidLifetime(validLifetime.get());
+
+            optional<uint32_t> preferredLifetime =
+                dhcp6.get().get_optional<uint32_t>(DHCP_PREFERRED_LIFETIME);
+            if (preferredLifetime)
+                c.setPreferredLifetime(preferredLifetime.get());
 
             newep.setDHCPv6Config(c);
         }
