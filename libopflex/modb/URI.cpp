@@ -145,9 +145,14 @@ size_t hash_value(URI const& uri) {
 } /* namespace modb */
 } /* namespace opflex */
 
+#if __cplusplus > 199711L
+
 namespace std {
 std::size_t
 hash<opflex::modb::URI>::operator()(const opflex::modb::URI& u) const {
     return opflex::modb::hash_value(u);
 }
+
+#endif
+
 } /* namespace std */
