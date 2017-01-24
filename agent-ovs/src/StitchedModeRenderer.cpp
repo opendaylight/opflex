@@ -35,7 +35,9 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
       accessFlowManager(agent_, accessSwitchManager, idGen, ctZoneManager),
       statsManager(&agent_, intSwitchManager.getPortMapper()),
       tunnelEpManager(&agent_), tunnelRemotePort(0), uplinkVlan(0),
-      virtualRouter(true), routerAdv(true), started(false) {
+      virtualRouter(true), routerAdv(true),
+      connTrack(true), ctZoneRangeStart(0), ctZoneRangeEnd(0),
+      started(false) {
 
 }
 
@@ -71,6 +73,9 @@ void StitchedModeRenderer::start() {
         ctZoneManager.setCtZoneRange(ctZoneRangeStart, ctZoneRangeEnd);
         ctZoneManager.enableNetLink(true);
         ctZoneManager.init(ID_NMSPC_CONNTRACK);
+
+        intFlowManager.enableConnTrack();
+        accessFlowManager.enableConnTrack();
     }
 
     intFlowManager.setEncapType(encapType);
@@ -95,9 +100,6 @@ void StitchedModeRenderer::start() {
     intFlowManager.start();
     intFlowManager.registerModbListeners();
     if (accessBridgeName != "") {
-        if (connTrack)
-            accessFlowManager.enableConnTrack();
-
         accessFlowManager.start();
     }
     intSwitchManager.connect();

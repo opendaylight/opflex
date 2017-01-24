@@ -71,7 +71,7 @@ public class FAutogenSH
                                         + "for LIBTOOLIZE in libtoolize glibtoolize nope; do\n"
                                         + "    $LIBTOOLIZE --version 2>&1 > /dev/null && break\n" + "done\n" + "\n"
                                         + "if [ \"x$LIBTOOLIZE\" = \"xnope\" ]; then\n" + "    echo\n"
-                                        + "    echo \"You must have libtool installed to compile rocksafe.\"\n"
+                                        + "    echo \"You must have libtool installed to compile this package.\"\n"
                                         + "    echo \"Download the appropriate package for your distribution,\"\n"
                                         + "    echo \"or get the source tarball at ftp://ftp.gnu.org/pub/gnu/\"\n"
                                         + "    exit 1\n" + "fi\n" + "\n" + "ACLOCALDIRS= \n"

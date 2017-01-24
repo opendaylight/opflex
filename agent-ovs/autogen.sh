@@ -19,7 +19,7 @@ done
 
 if [ "x$LIBTOOLIZE" = "xnope" ]; then
     echo
-    echo "You must have libtool installed to compile rocksafe."
+    echo "You must have libtool installed to compile this package."
     echo "Download the appropriate package for your distribution,"
     echo "or get the source tarball at ftp://ftp.gnu.org/pub/gnu/"
     exit 1

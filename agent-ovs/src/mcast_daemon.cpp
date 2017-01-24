@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <memory>
 #include <thread>
+#include <functional>
 
 #include <signal.h>
 #include <string.h>
@@ -169,7 +170,7 @@ int main(int argc, char** argv) {
             work(new boost::asio::io_service::work(io));
         MulticastListener listener(io);
 
-        std::thread([&io]() { io.run(); });
+        std::thread io_thread([&io]() { io.run(); });
 
         FSWatcher watcher;
         McastWatcher mwatcher(io, listener);
@@ -183,6 +184,7 @@ int main(int argc, char** argv) {
         signal(SIGTERM, sighandler);
         pause();
         work.reset();
+        io_thread.join();
         watcher.stop();
         listener.stop();
         return 0;
