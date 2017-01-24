@@ -93,7 +93,7 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     ctZoneManager(ctZoneManager_), taskQueue(agent.getAgentIOService()),
     encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
     virtualRouterEnabled(false), routerAdv(false),
-    virtualDHCPEnabled(false),
+    virtualDHCPEnabled(false), conntrackEnabled(false),
     pktInHandler(agent, *this),
     advertManager(agent, *this), stopping(false) {
     // set up flow tables
