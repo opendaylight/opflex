@@ -16,6 +16,7 @@
 #endif
 #include <fstream>
 #include <cerrno>
+#include <random>
 
 #include <opflex/modb/Mutator.h>
 #include <opflex/modb/MAC.h>
@@ -23,8 +24,6 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/random_device.hpp>
 
 #include "Agent.h"
 #include "TunnelEpManager.h"
