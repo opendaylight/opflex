@@ -196,7 +196,7 @@ public class MNode extends Item
             Class lParserClass = getParserClass();
             try
             {
-                ParseNode lParseNode = (ParseNode) lParserClass.getConstructors()[0].newInstance(getLID().getName());
+                ParseNode lParseNode = (ParseNode) lParserClass.getConstructor(String.class).newInstance(getLID().getName());
                 LinkedList<String> lAliases = new LinkedList<String>();
                 getAliases(lAliases);
                 if (!lAliases.isEmpty())
