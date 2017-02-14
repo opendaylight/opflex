@@ -530,11 +530,13 @@ void MOSerializer::displayObject(std::ostream& ostream,
     std::map<modb::class_id_t,
              std::vector<modb::URI> >::iterator clsit;
     std::vector<modb::URI>::const_iterator cit;
-    for (clsit = children.begin(); clsit != children.end(); ++clsit) {
+    for (clsit = children.begin(); clsit != children.end(); ) {
         if (clsit->second.size() == 0)
-            children.erase(clsit);
-        else
+            children.erase(clsit++);
+        else {
             hasChildren = true;
+            ++clsit;
+        }
     }
 
     size_t lineLength = 0;
