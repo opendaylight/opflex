@@ -92,7 +92,7 @@ static void initSubField(struct mf_subfield *sf, enum mf_field_id id) {
     initSubFieldExt(sf, id, 0, 0);
 }
 
-inline int min(int a, int b) { return a < b ? a : b; }
+static int min(int a, int b) { return a < b ? a : b; }
 
 void act_reg_move(struct ofpbuf* buf,
                   int srcRegId, int dstRegId,
