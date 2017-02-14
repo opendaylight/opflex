@@ -57,7 +57,7 @@ void StitchedModeRenderer::start() {
     LOG(INFO) << "Starting stitched-mode renderer using"
               << " integration bridge " << intBridgeName
               << " and access bridge "
-              << (accessBridgeName == "" ? "[none]" : "");
+              << (accessBridgeName == "" ? "[none]" : accessBridgeName);
 
     if (encapType == IntFlowManager::ENCAP_VXLAN ||
         encapType == IntFlowManager::ENCAP_IVXLAN) {
