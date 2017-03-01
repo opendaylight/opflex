@@ -210,6 +210,7 @@ agent_test_SOURCES = \
 	test/RangeMask_test.cpp \
 	test/Packets_test.cpp \
 	test/KeyedRateLimiter_test.cpp \
+	test/StatsManager_test.cpp \
 	test/NotifServer_test.cpp \
 	test/TableState_test.cpp \
 	test/main.cpp
@@ -219,7 +220,7 @@ agent_test_LDADD = \
 
 mock_server_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
-	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) 
+	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS)
 mock_server_SOURCES = \
 	test/include/Policies.h \
 	test/Policies.cpp \
