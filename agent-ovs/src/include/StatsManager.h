@@ -15,6 +15,10 @@
 #include "EndpointManager.h"
 #include "PortMapper.h"
 
+#include <string>
+#include <unordered_map>
+#include <mutex>
+
 #pragma once
 #ifndef OVSAGENT_STATSMANAGER_H
 #define OVSAGENT_STATSMANAGER_H
@@ -38,7 +42,8 @@ public:
      * @param timer_interval the interval for the stats timer in milliseconds
      */
     StatsManager(Agent* agent,
-                 PortMapper& portMapper,
+                 PortMapper& intPortMapper,
+                 PortMapper& accessPortMapper,
                  long timer_interval = 30000);
 
     /**
@@ -50,9 +55,12 @@ public:
      * Register the given connection with the stats manager.  This
      * connection will be queried for counters.
      *
-     * @param connection the connection to use for stats collection
+     * @param intConnection the connection to use for integration
+     * bridge stats collection
+     * @param accessConnection the connection to use for access bridge stats collection
      */
-    void registerConnection(SwitchConnection* connection);
+    void registerConnection(SwitchConnection* intConnection, SwitchConnection *accessConnection);
+
 
     /**
      * Start the stats manager
@@ -69,13 +77,30 @@ public:
 
 private:
     Agent* agent;
-    PortMapper& portMapper;
-    SwitchConnection* connection;
+    PortMapper& intPortMapper;
+    PortMapper& accessPortMapper;
+    SwitchConnection* intConnection;
+    SwitchConnection* accessConnection;
     boost::asio::io_service& agent_io;
     long timer_interval;
     std::unique_ptr<boost::asio::deadline_timer> timer;
 
+    /**
+     * Counters for endpoints.
+     */
+    struct IntfCounters {
+        EndpointManager::EpCounters intCounters;
+        EndpointManager::EpCounters accessCounters;
+    };
+    typedef std::unordered_map<std::string, IntfCounters> intf_counter_map_t;
+
+    intf_counter_map_t intfCounterMap;
+    std::mutex statMtx;
+
     void on_timer(const boost::system::error_code& ec);
+    void updateEndpointCounters(const std::string& uuid,
+                                SwitchConnection *swConn,
+                                EndpointManager::EpCounters counters);
 
     volatile bool stopping;
 };

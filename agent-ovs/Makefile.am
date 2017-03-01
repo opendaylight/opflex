@@ -210,6 +210,7 @@ agent_test_SOURCES = \
 	test/RangeMask_test.cpp \
 	test/Packets_test.cpp \
 	test/KeyedRateLimiter_test.cpp \
+	test/StatsManager_test.cpp \
 	test/NotifServer_test.cpp \
 	test/TableState_test.cpp \
 	test/main.cpp

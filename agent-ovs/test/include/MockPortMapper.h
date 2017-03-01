@@ -10,6 +10,7 @@
 #ifndef OVSAGENT_TEST_MOCKPORTMAPPER_H_
 #define OVSAGENT_TEST_MOCKPORTMAPPER_H_
 
+#include "ovs-ofputil.h"
 #include "PortMapper.h"
 
 namespace ovsagent {
