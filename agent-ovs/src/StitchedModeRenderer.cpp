@@ -107,7 +107,11 @@ void StitchedModeRenderer::start() {
         accessSwitchManager.connect();
     }
 
-    statsManager.registerConnection(intSwitchManager.getConnection());
+    if (accessBridgeName != "") {
+        statsManager.registerConnection(intSwitchManager.getConnection(), accessSwitchManager.getConnection());
+    } else {
+        statsManager.registerConnection(intSwitchManager.getConnection(), NULL);
+    }
     statsManager.start();
 
     cleanupTimer.reset(new deadline_timer(getAgent().getAgentIOService()));
