@@ -83,6 +83,9 @@ public:
         WAIT_FOR(policyMgr.groupExists(epg3->getURI()), 500);
         WAIT_FOR(policyMgr.getRDForGroup(epg3->getURI()) != boost::none, 500);
 
+        WAIT_FOR(policyMgr.groupExists(epg4->getURI()), 500);
+        WAIT_FOR(policyMgr.getRDForGroup(epg4->getURI()) != boost::none, 500);
+
         switchManager.registerStateHandler(&intFlowManager);
         intFlowManager.enableConnTrack();
         start();
