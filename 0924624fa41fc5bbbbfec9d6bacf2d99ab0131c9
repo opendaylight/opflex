@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fafc7978_c2a335fe",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-02T01:10:13Z",
+      "side": 1,
+      "message": "you added a numConnections int variable but didn\u0027t initialize it.  Though this is a pretty clunky way; I\u0027d just check for NULL SwitchConnection objects and remove numConnections",
+      "revId": "0924624fa41fc5bbbbfec9d6bacf2d99ab0131c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_e2ad99ea",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-02T01:10:13Z",
+      "side": 1,
+      "message": "accessConnection can be NULL",
+      "revId": "0924624fa41fc5bbbbfec9d6bacf2d99ab0131c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_6289a974",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-02T01:10:13Z",
+      "side": 1,
+      "message": "accessConnection can be NULL",
+      "revId": "0924624fa41fc5bbbbfec9d6bacf2d99ab0131c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_a25a7127",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-02T01:10:13Z",
+      "side": 1,
+      "message": "lots of incorrect indentation in here.  4 spaces, no tabs.",
+      "revId": "0924624fa41fc5bbbbfec9d6bacf2d99ab0131c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_4232a5f2",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-02T01:10:13Z",
+      "side": 1,
+      "message": "these can\u0027t be static variables.  Should be members of StatsManager.  Handle can be called concurrently from multiple switch managers, so need a mutex.\n\nAlso, you\u0027re going to have EpCounters for every endpoint here; you\u0027re incrementing one huge EpCounters that contains the combined counters for all counters?",
+      "revId": "0924624fa41fc5bbbbfec9d6bacf2d99ab0131c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_222fa189",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-02T01:10:13Z",
+      "side": 1,
+      "message": "int bridge isn\u0027t always called br-int; this is a config option.  Compare pointer to the connection that was registered",
+      "revId": "0924624fa41fc5bbbbfec9d6bacf2d99ab0131c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_02437d42",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-02T01:10:13Z",
+      "side": 1,
+      "message": "align conditions",
+      "revId": "0924624fa41fc5bbbbfec9d6bacf2d99ab0131c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
