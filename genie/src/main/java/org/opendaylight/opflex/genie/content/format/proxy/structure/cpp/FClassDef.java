@@ -151,7 +151,6 @@ public class FClassDef extends ItemFormatterTask
         out.println();
         out.println(aInIndent,getInclude("boost/optional.hpp", true));
         out.println(aInIndent,getInclude("boost/pointer_cast.hpp", true));
-        out.println(aInIndent,getInclude("opflex/ofcore/OFTypes.h", true));
         out.println(aInIndent,getInclude("opflex/modb/URIBuilder.h", false));
         out.println(aInIndent, getInclude("opflex/modb/MO.h", false));
         /**
