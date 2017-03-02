@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fafc7978_d492ccf4",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 7121
+      },
+      "writtenOn": "2017-03-02T19:23:43Z",
+      "side": 1,
+      "message": "need to check if accessConnection is null",
+      "range": {
+        "startLine": 57,
+        "startChar": 4,
+        "endLine": 57,
+        "endChar": 20
+      },
+      "revId": "10d5651e088b95cb46de7c6ab32dc3eaaf14e8d1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_b48d88d5",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 7121
+      },
+      "writtenOn": "2017-03-02T19:23:43Z",
+      "side": 1,
+      "message": "accessConnection could be null",
+      "range": {
+        "startLine": 98,
+        "startChar": 10,
+        "endLine": 98,
+        "endChar": 26
+      },
+      "revId": "10d5651e088b95cb46de7c6ab32dc3eaaf14e8d1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
