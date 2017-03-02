@@ -215,4 +215,40 @@ module[gbpe]
         # The value of the attribute represented as a string
         member[value; type=ascii/String]
     }
+
+    class[ReportedEpAttributeSet;
+          super=policy/Definition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=epr/ReportedNetworkEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+            }
+        }
+    }
+
+    class[ReportedEpAttribute;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbpe/ReportedEpAttributeSet]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+
+        # The value of the attribute represented as a string
+        member[value; type=ascii/String]
+    }
 }

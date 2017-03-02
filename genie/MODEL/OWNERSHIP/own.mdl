@@ -60,6 +60,8 @@ owner[policyelement]
     class[gbpe/EpgMappingCtx]
     class[gbpe/EpgMappingCtxToAttrSetRSrc]
     class[gbpe/EpgMappingCtxToEpgMappingRSrc]
+    class[gbpe/ReportedEpAttributeSet]
+    class[gbpe/ReportedEpAttribute]
     module[epr]
     {
         class[*]
