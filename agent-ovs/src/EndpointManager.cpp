@@ -31,6 +31,7 @@ using std::shared_ptr;
 using std::make_shared;
 using std::unique_lock;
 using std::mutex;
+using std::pair;
 using opflex::modb::class_id_t;
 using opflex::modb::URI;
 using opflex::modb::MAC;
@@ -579,6 +580,7 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
             const URI& egURI,
             const std::set<opflex::modb::URI>& secGroups) {
     using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
     using namespace modelgbp::epr;
 
     shared_ptr<L2Ep> l2e =
@@ -594,9 +596,15 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
     if (ep->getInterfaceName())
         l2e->setInterfaceName(ep->getInterfaceName().get());
     const Endpoint::attr_map_t& attr_map = ep->getAttributes();
-    Endpoint::attr_map_t::const_iterator vi = attr_map.find("vm-name");
-    if (vi != attr_map.end())
-        l2e->setVmName(vi->second);
+    shared_ptr<ReportedEpAttributeSet> epas = 
+        l2e->addGbpeReportedEpAttributeSet();
+    for (const pair<const string, string>& ap : attr_map) {
+        shared_ptr<ReportedEpAttribute> epa = epas->addGbpeReportedEpAttribute(ap.first);
+        epa->setName(ap.first);
+        epa->setValue(ap.second);
+        if (VM_NAME_ATTR == ap.first)
+            l2e->setVmName(ap.first);
+    }
 
     for (const Endpoint::Attestation& a : ep->getAttestations()) {
         if (!a.getValidator() || !a.getValidatorMac())
