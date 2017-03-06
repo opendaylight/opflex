@@ -1,0 +1,101 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fafc7978_b2f10797",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-06T19:04:58Z",
+      "side": 1,
+      "message": "You\u0027ve not really saved any typing by putting this here since you only have one use of it.  Though also you should not have this typedef in the global namespace but in the ovsagent namespace (2 lines down)\n\nThe rest of the code though just does using std::lock_guard and using std::mutex and then just does lock_guard\u003cmutex\u003e in place of use.",
+      "revId": "ef43befc086414fc463acdb19dca5c72f7bf05e1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_92d5e3e6",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-06T19:04:58Z",
+      "side": 1,
+      "message": "This will leak state if endpoints are deleted when there is state in the stats table.  Need to register as an endpoint listener and clean up when endpoints are removed.",
+      "revId": "ef43befc086414fc463acdb19dca5c72f7bf05e1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_b2daa714",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-06T19:04:58Z",
+      "side": 1,
+      "message": "This doesn\u0027t _quite_ work.  It\u0027s possible to get for example two int bridge updates before you get an access bridge update or vice versa.  This could happen if a bridge is down or even under normal circumstances just because of ordering.  So it\u0027s not enough to just check whether there is already stored state; need to also check that you have the update from the correct switch.",
+      "revId": "ef43befc086414fc463acdb19dca5c72f7bf05e1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_f2070f80",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-06T19:04:58Z",
+      "side": 1,
+      "message": "This should be getEndpointsByAccessIface",
+      "range": {
+        "startLine": 180,
+        "startChar": 21,
+        "endLine": 180,
+        "endChar": 40
+      },
+      "revId": "ef43befc086414fc463acdb19dca5c72f7bf05e1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_d2312b5b",
+        "filename": "agent-ovs/src/include/StatsManager.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-06T19:04:58Z",
+      "side": 1,
+      "message": "This is unused.",
+      "range": {
+        "startLine": 86,
+        "startChar": 8,
+        "endLine": 86,
+        "endChar": 22
+      },
+      "revId": "ef43befc086414fc463acdb19dca5c72f7bf05e1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
