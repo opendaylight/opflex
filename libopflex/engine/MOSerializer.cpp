@@ -626,8 +626,8 @@ void MOSerializer::displayObject(std::ostream& ostream,
                 remaining = truncate - plineLength;
 
             string& propv = v.second.second;
-            if (remaining > 0) {
-                if (propv.size() > remaining) {
+            if (truncate == 0 || remaining > 0) {
+                if (truncate != 0 && propv.size() > remaining) {
                     if (v.second.first) {
                         if (utf8) ostream << ELLIPSIS;
                         else ostream << "_";
