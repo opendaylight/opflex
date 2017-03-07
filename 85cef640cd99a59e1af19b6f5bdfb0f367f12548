@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fafc7978_9cbdf1da",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-07T17:40:24Z",
+      "side": 1,
+      "message": "This state is getting leaked if the map has an entry for the endpoint but the endpoint is removed.  Need to register as an endpoint listener by calling registerListener on the endpoint manager and cleaning this state when the endpoint is removed.",
+      "range": {
+        "startLine": 128,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 73
+      },
+      "revId": "85cef640cd99a59e1af19b6f5bdfb0f367f12548",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_5cf0a9c8",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-07T17:40:24Z",
+      "side": 1,
+      "message": "This counter could be zero even if the counter has been received.  An obvious case would be if the access bridge is dropping all packets then the int bridge counter will be zero.\n\nYou could just change the type of accessCounters and intCounters to boost::optional\u003cEndpointManager::EpCounter\u003e to make this check easy.",
+      "range": {
+        "startLine": 144,
+        "startChar": 52,
+        "endLine": 144,
+        "endChar": 88
+      },
+      "revId": "85cef640cd99a59e1af19b6f5bdfb0f367f12548",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
