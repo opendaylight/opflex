@@ -603,7 +603,7 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
         epa->setName(ap.first);
         epa->setValue(ap.second);
         if (VM_NAME_ATTR == ap.first)
-            l2e->setVmName(ap.first);
+            l2e->setVmName(ap.second);
     }
 
     for (const Endpoint::Attestation& a : ep->getAttestations()) {
