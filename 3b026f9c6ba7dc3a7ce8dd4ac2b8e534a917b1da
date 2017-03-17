@@ -1,0 +1,182 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fafc7978_97f10a98",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-17T22:24:17Z",
+      "side": 1,
+      "message": "wrap line here for 80 column limit",
+      "range": {
+        "startLine": 44,
+        "startChar": 70,
+        "endLine": 44,
+        "endChar": 71
+      },
+      "revId": "3b026f9c6ba7dc3a7ce8dd4ac2b8e534a917b1da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_573e822a",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-17T22:24:17Z",
+      "side": 1,
+      "message": "no space after ! please",
+      "range": {
+        "startLine": 52,
+        "startChar": 0,
+        "endLine": 52,
+        "endChar": 49
+      },
+      "revId": "3b026f9c6ba7dc3a7ce8dd4ac2b8e534a917b1da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_97e46aad",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-17T22:24:17Z",
+      "side": 1,
+      "message": "You can\u0027t blindly erase the state when the endpoint is updated.  Need to do:\n\n    if (!agent-\u003egetEndpointManager().getEndpoint(uuid)) {\n        std::lock_guard\u003cstd::mutex\u003e lock(statMtx);\n        intfCounterMap.erase(uuid);\n    }",
+      "range": {
+        "startLine": 88,
+        "startChar": 0,
+        "endLine": 88,
+        "endChar": 31
+      },
+      "revId": "3b026f9c6ba7dc3a7ce8dd4ac2b8e534a917b1da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_37501e5e",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-17T22:24:17Z",
+      "side": 1,
+      "message": "Should be EndpointManager::EpCounters\u0026",
+      "range": {
+        "startLine": 127,
+        "startChar": 43,
+        "endLine": 127,
+        "endChar": 70
+      },
+      "revId": "3b026f9c6ba7dc3a7ce8dd4ac2b8e534a917b1da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_d75f1274",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-17T22:24:17Z",
+      "side": 1,
+      "message": "This whole block of code can be simplified quite a bit.\n\nRather than doing the whole find operation and the if else, can just do (note that this will implicitly default construct the IntfCounters object):\n\n    IntfCounters\u0026 epCounters \u003d intfCounterMap[uuid]\n    if (accessConnection \u003d\u003d connection) {\n        epCounters.accessCounters \u003d counters\n    } else if (intConnection \u003d\u003d connection) {\n        epCounters.intCounters \u003d counters\n    }\n\n    if (epCounters.accessCounters \u0026\u0026 epCounters.intCounters) {\n       EndpointManager::EpCounters epCount \u003d epCounters.accessCounters.get()\n       epCount.txDrop +\u003d epCounters.intCounters-\u003etxDrop;\n       epCount.rxDrop +\u003d epCounters.intCounters-\u003erxDrop;\n    \n       epgr.updateEndpointCounters(uuid, epCount)\n    }\n\nThis replaces nearly the whole function with 1/3 the code.",
+      "revId": "3b026f9c6ba7dc3a7ce8dd4ac2b8e534a917b1da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_974d8ac7",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-17T22:24:17Z",
+      "side": 1,
+      "message": "remove extra spaces",
+      "range": {
+        "startLine": 186,
+        "startChar": 8,
+        "endLine": 186,
+        "endChar": 30
+      },
+      "revId": "3b026f9c6ba7dc3a7ce8dd4ac2b8e534a917b1da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_774aa6ad",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-17T22:24:17Z",
+      "side": 1,
+      "message": "This is not a good log message",
+      "range": {
+        "startLine": 218,
+        "startChar": 0,
+        "endLine": 218,
+        "endChar": 68
+      },
+      "revId": "3b026f9c6ba7dc3a7ce8dd4ac2b8e534a917b1da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_b7cb6e1d",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-17T22:24:17Z",
+      "side": 1,
+      "message": "extra space at start of line here.",
+      "range": {
+        "startLine": 222,
+        "startChar": 12,
+        "endLine": 222,
+        "endChar": 13
+      },
+      "revId": "3b026f9c6ba7dc3a7ce8dd4ac2b8e534a917b1da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
