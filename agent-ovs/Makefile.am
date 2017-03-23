@@ -82,6 +82,7 @@ noinst_HEADERS = \
 	src/include/SwitchManager.h \
 	src/include/PortMapper.h \
 	src/include/StatsManager.h \
+	src/include/PolicyStatsManager.h \
 	src/include/Agent.h \
 	src/include/IdGenerator.h \
 	src/include/CtZoneManager.h \
@@ -132,6 +133,7 @@ libagent_ovs_la_SOURCES = \
 	src/SwitchManager.cpp \
 	src/PortMapper.cpp \
 	src/StatsManager.cpp \
+	src/PolicyStatsManager.cpp \
 	src/cmd.cpp \
 	src/logging.cpp \
 	src/Agent.cpp \

@@ -97,16 +97,18 @@ void IdGenerator::updateReverseMap(const std::string& nmspc, uint32_t id,
         strmap.erase(id);
 }
 
-const std::string& IdGenerator::getId2String(const std::string& nmspc, uint32_t id) {
+boost::optional<std::string> IdGenerator::getId2String(const std::string& nmspc, uint32_t id) {
 
+    boost::optional<std::string>  str;
     Id2StrMap& strmap = namespaces_reversemap[nmspc];
     Id2StrMap::const_iterator itr = strmap.find(id);
 
     if (itr != strmap.end())
         return itr->second;
 
-    LOG(ERROR) << "Unable to map to string for Id :" << id << " in namespace = "
+    LOG(DEBUG) << "Unable to map to string for Id :" << id << " in namespace = "
                << nmspc;
+    return boost::none;
 }
 
 void IdGenerator::erase(const string& nmspc, const string& str) {

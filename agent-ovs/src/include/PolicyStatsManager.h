@@ -12,7 +12,9 @@
 
 #include <boost/asio.hpp>
 
+#include "Agent.h"
 #include "SwitchConnection.h"
+#include "IdGenerator.h"
 
 #include <string>
 #include <unordered_map>
@@ -39,9 +41,7 @@ public:
      * @param agent the agent associated with the stats manager
      * @param timer_interval the interval for the stats timer in milliseconds
      */
-    PolicyStatsManager(Agent* agent,
-                 SwitchManager& switchManager,
-                 IdGenerator& idGen,
+    PolicyStatsManager(Agent* agent, IdGenerator& idGen_,
                  long timer_interval = 30000);
 
     /**
@@ -74,7 +74,6 @@ public:
 
 private:
     Agent* agent;
-    SwitchManager& switchManager,
     SwitchConnection* intConnection;
     IdGenerator& idGen;
     boost::asio::io_service& agent_io;
@@ -82,11 +81,32 @@ private:
     std::unique_ptr<boost::asio::deadline_timer> timer;
 
 
-#if 0
     struct FlowMatchKey_t {
-        uint64_t cookie;
-        uint64_t reg0;
-        uint64_t reg2;
+        uint32_t cookie;
+        uint32_t reg0;
+        uint32_t reg2;
+        bool operator==(const FlowMatchKey_t &other) const {
+            return (cookie == other.cookie
+                 && reg0 == other.reg0
+                 && reg2 == other.reg2);
+        }
+    };
+
+    struct KeyHasher {
+
+        std::size_t operator()(const FlowMatchKey_t& k) const
+        {
+          using std::size_t;
+          using std::hash;
+
+          // Compute individual hash values for first,
+          // second and third and combine them using XOR
+          // and bit shifting:
+
+          return ((hash<int>()(k.cookie)
+               ^ (hash<int>()(k.reg0) << 1)) >> 1)
+               ^ (hash<int>()(k.reg2) << 1);
+        }
     };
     /**
      * Counters for L24Classifiers
@@ -102,20 +122,19 @@ private:
                of flow_state, delete the old entry and create a new one. 
          */
          uint8_t   flow_state; 
-         time_t    last_collection_time;
-         uint64_t  match_pkts;
-         uint64_t  match_bytes;
+         // time_t    last_collection_time;
+         boost::optional<uint64_t>  packet_count;
+         boost::optional<uint64_t>  byte_count;
     };
     /* map flow to Policy counters */ 
-    typedef std::unordered_map<FlowMatchKey_t, PolicyCounters_t> PolicyCounterMap_t;
+    typedef std::unordered_map<FlowMatchKey_t, PolicyCounters_t, KeyHasher> PolicyCounterMap_t;
 
-    void updatePolicyStatsCounters(const opflex::modb::URI& ruleURI,
-                                   const opflex::modb::URI& srcEpg,
-                                   const opflex::modb::URI& dstEpg,
-                                   PolicyCounters_t counters);
+    void updatePolicyStatsCounters(const std::string& ruleURI,
+                                   const std::string& srcEpg,
+                                   const std::string&  dstEpg,
+                                   PolicyCounters_t& counters);
 
-    PolicyCounterMap_t policyCounterMap;
-#endif
+    PolicyCounterMap_t policyCountersMap;
 
     std::mutex pstatMtx;
 

@@ -165,7 +165,7 @@ public:
      * @param id to get an str for
      * @return NULL if no string for given id found else reference of stored string.
      */
-    const std::string& getId2String(const std::string& nmspc, uint32_t id);
+    boost::optional<std::string> getId2String(const std::string& nmspc, uint32_t id);
 
 private:
     typedef std::chrono::steady_clock::time_point time_point;
