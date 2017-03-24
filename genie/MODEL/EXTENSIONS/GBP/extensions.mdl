@@ -249,4 +249,40 @@ module[gbpe]
         # Message authenticity code for the validator string
         member[validatorMac; type=ascii/String]
     }
-}
+
+
+    class[L24ClassifierCounter;
+          super=observer/Observable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=observer/PolicyStatUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=srcEpg]
+                component[member=dstEpg]
+                component[member=classifier]
+            }
+        }
+
+        # A unique identifer for the source endpointGroup.
+        member[classifier; type=reference/URI]
+
+        # A unique identifer for the source endpointGroup.
+        member[srcEpg; type=reference/URI]
+
+        # A unique identifer for the destination endpointGroup.
+        member[dstEpg; type=reference/URI]
+
+        # number of packets sent from src to dst matching classifier
+        member[packets; type=scalar/UInt64]
+
+        # number of bytes sent from src to dst matching classifier
+        member[bytes; type=scalar/UInt64]
+
+    }
