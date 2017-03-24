@@ -112,6 +112,18 @@ Bldr::Bldr(const string& init) : entry(init) {
     }
 }
 
+Bldr::Bldr(const string& init, uint32_t flag) : entry(init) {
+    cntr = 0;
+    if (entry.empty()) {
+        if (flag == SEND_FLOW_REM)
+            entry = "cookie=0x0, duration=0s, table=0, n_packets=0, "
+                "n_bytes=0, send_flow_rem idle_age=0, priority=0";
+        else
+            entry = "cookie=0x0, duration=0s, table=0, n_packets=0, "
+                "n_bytes=0, idle_age=0, priority=0";
+    }
+}
+
 Bldr& Bldr::reg(REG r, uint32_t v) {
     rep("," + rstr1[r] + "=", str(v, true));
     return *this;
