@@ -196,7 +196,7 @@ void PolicyStatsManager::Handle(SwitchConnection* connection,
                 oldCounters.byte_count = fentry->byte_count;
                 updatePolicyStatsCounters(srcEpgUri.get().toString(),
                                           dstEpgUri.get().toString(),
-                                          idStr,
+                                          idStr.get(),
                                           diffCounters);
             } else {
                 LOG(ERROR) << "srcEpgUri or dstEpgUri or idStr" <<

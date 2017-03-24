@@ -129,9 +129,9 @@ private:
     /* map flow to Policy counters */ 
     typedef std::unordered_map<FlowMatchKey_t, PolicyCounters_t, KeyHasher> PolicyCounterMap_t;
 
-    void updatePolicyStatsCounters(const std::string& ruleURI,
-                                   const std::string& srcEpg,
+    void updatePolicyStatsCounters(const std::string& srcEpg,
                                    const std::string&  dstEpg,
+                                   const std::string& ruleURI,
                                    PolicyCounters_t& counters);
 
     PolicyCounterMap_t policyCountersMap;
