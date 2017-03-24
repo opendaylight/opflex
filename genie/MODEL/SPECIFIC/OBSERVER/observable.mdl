@@ -11,4 +11,12 @@ module[observer]
     {
         member[uuid; type=reference/UUID]
     }
+
+    class[UriObservable;
+          super=observer/Observable;
+          abstract;
+          ]
+    {
+        member[uri; type=reference/URI]
+    }
 }
