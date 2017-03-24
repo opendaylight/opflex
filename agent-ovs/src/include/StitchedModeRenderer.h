@@ -17,6 +17,7 @@
 #include "FlowExecutor.h"
 #include "PortMapper.h"
 #include "StatsManager.h"
+#include "PolicyStatsManager.h"
 #include "TunnelEpManager.h"
 
 #pragma once
@@ -78,6 +79,7 @@ private:
     AccessFlowManager accessFlowManager;
 
     StatsManager statsManager;
+    PolicyStatsManager polStatsManager;
     TunnelEpManager tunnelEpManager;
 
     std::string intBridgeName;

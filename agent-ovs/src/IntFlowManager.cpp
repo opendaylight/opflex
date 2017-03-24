@@ -76,14 +76,15 @@ namespace ovsagent {
 
 static const char* ID_NAMESPACES[] =
     {"floodDomain", "bridgeDomain", "routingDomain",
-     "contract", "externalNetwork", "service"};
+     "contract", "externalNetwork", "service", "l24classifierRule"};
 
-static const char* ID_NMSPC_FD      = ID_NAMESPACES[0];
-static const char* ID_NMSPC_BD      = ID_NAMESPACES[1];
-static const char* ID_NMSPC_RD      = ID_NAMESPACES[2];
-static const char* ID_NMSPC_CON     = ID_NAMESPACES[3];
-static const char* ID_NMSPC_EXTNET  = ID_NAMESPACES[4];
-static const char* ID_NMSPC_SERVICE = ID_NAMESPACES[5];
+static const char* ID_NMSPC_FD            = ID_NAMESPACES[0];
+static const char* ID_NMSPC_BD            = ID_NAMESPACES[1];
+static const char* ID_NMSPC_RD            = ID_NAMESPACES[2];
+static const char* ID_NMSPC_CON           = ID_NAMESPACES[3];
+static const char* ID_NMSPC_EXTNET        = ID_NAMESPACES[4];
+static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[5];
+static const char* ID_NMSPC_L24CLASS_RULE = ID_NAMESPACES[6];
 
 IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,
@@ -2387,7 +2388,9 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                << ", #rules=" << rules.size();
 
     FlowEntryList entryList;
+#if 0
     uint64_t conCookie = getId(Contract::CLASS_ID, contractURI);
+#endif
 
     for (const IdMap::value_type& pid : provIds) {
         const uint32_t& pvnid = pid.first;
@@ -2397,6 +2400,13 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
             for (shared_ptr<PolicyRule>& pc : rules) {
                 uint8_t dir = pc->getDirection();
                 const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
+#if 1
+                const opflex::modb::URI& ruleURI = cls.get()->getURI();
+                uint64_t conCookie = getId(L24Classifier::CLASS_ID, ruleURI);
+                LOG(DEBUG) << "Rule URI = " << ruleURI << " conCookie = " <<
+                                conCookie;
+#endif
+
                 /*
                  * Collapse bidirectional rules - if consumer 'cvnid' is also
                  * a provider and provider 'pvnid' is also a consumer, then
@@ -2418,7 +2428,8 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                                                       boost::none,
                                                       OUT_TABLE_ID,
                                                       pc->getPriority(),
-                                                      conCookie,
+                                                      OFPUTIL_FF_SEND_FLOW_REM,
+                                                      conCookie, 
                                                       cvnid, pvnid,
                                                       entryList);
                 }
@@ -2429,6 +2440,7 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                                                       boost::none,
                                                       OUT_TABLE_ID,
                                                       pc->getPriority(),
+                                                      OFPUTIL_FF_SEND_FLOW_REM,
                                                       conCookie,
                                                       pvnid, cvnid,
                                                       entryList);
@@ -2561,7 +2573,8 @@ static const IdCb ID_NAMESPACE_CB[] =
      IdGenerator::uriIdGarbageCb<BridgeDomain>,
      IdGenerator::uriIdGarbageCb<RoutingDomain>,
      IdGenerator::uriIdGarbageCb<Contract>,
-     IdGenerator::uriIdGarbageCb<L3ExternalNetwork>};
+     IdGenerator::uriIdGarbageCb<L3ExternalNetwork>,
+     IdGenerator::uriIdGarbageCb<L24Classifier>};
 
 static bool serviceIdGarbageCb(ServiceManager& serviceManager,
                                const std::string& nmspc,
@@ -2594,6 +2607,7 @@ const char * IntFlowManager::getIdNamespace(class_id_t cid) {
     case FloodDomain::CLASS_ID:     nmspc = ID_NMSPC_FD; break;
     case Contract::CLASS_ID:        nmspc = ID_NMSPC_CON; break;
     case L3ExternalNetwork::CLASS_ID: nmspc = ID_NMSPC_EXTNET; break;
+    case L24Classifier::CLASS_ID: nmspc = ID_NMSPC_L24CLASS_RULE; break;
     default:
         assert(false);
     }

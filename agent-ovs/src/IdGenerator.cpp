@@ -75,10 +75,40 @@ uint32_t IdGenerator::getId(const string& nmspc, const string& str) {
         LOG(DEBUG) << "Assigned " << nmspc << ":" << newId
             << " to id: " << str;
         persist(nmspc, idmap);
+        // create a reverse mapping from string to ID
+        updateReverseMap(nmspc, newId, str, true);
         return newId;
     }
 
+    // create reverse mapping 
+    updateReverseMap(nmspc, it->second, str, true);
     return it->second;
+}
+
+void IdGenerator::updateReverseMap(const std::string& nmspc, uint32_t id,
+                                   const std::string& str, bool create) {
+
+    Id2StrMap& strmap = namespaces_reversemap[nmspc];
+    Id2StrMap::const_iterator itr = strmap.find(id);
+
+    if (create && (itr == strmap.end()))
+        strmap[id] = str;
+    else if (!create && (itr != strmap.end()))
+        strmap.erase(id);
+}
+
+boost::optional<std::string> IdGenerator::getId2String(const std::string& nmspc, uint32_t id) {
+
+    boost::optional<std::string>  str;
+    Id2StrMap& strmap = namespaces_reversemap[nmspc];
+    Id2StrMap::const_iterator itr = strmap.find(id);
+
+    if (itr != strmap.end())
+        return itr->second;
+
+    LOG(DEBUG) << "Unable to map to string for Id :" << id << " in namespace = "
+               << nmspc;
+    return boost::none;
 }
 
 void IdGenerator::erase(const string& nmspc, const string& str) {
@@ -93,6 +123,10 @@ void IdGenerator::erase(const string& nmspc, const string& str) {
     if (it == idmap.erasedIds.end()) {
         idmap.erasedIds[str] = std::chrono::steady_clock::now();
     }
+    // delete reverse mapping 
+    IdMap::Str2IdMap::const_iterator itr = idmap.ids.find(str);
+    if (itr != idmap.ids.end())
+        updateReverseMap(nmspc, itr->second, str, false);
 }
 
 uint32_t IdGenerator::getRemainingIds(const std::string& nmspc) {
