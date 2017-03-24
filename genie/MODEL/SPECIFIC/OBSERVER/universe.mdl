@@ -26,4 +26,19 @@ module[observer]
             }
         }
     }
+
+    # Universe containing Policy statistics
+    class[PolicyStatUniverse;
+          super=observer/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=epgStat;]
+            }
+        }
+    }
 }
