@@ -244,6 +244,7 @@ void Agent::start() {
     root->addEpdrL3Discovered();
     root->addGbpeVMUniverse();
     root->addObserverEpStatUniverse();
+    root->addObserverPolicyStatUniverse();
     mutator.commit();
 
     // instantiate other components
