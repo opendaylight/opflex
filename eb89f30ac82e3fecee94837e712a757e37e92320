@@ -1,0 +1,366 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fafc7978_bae2f52c",
+        "filename": "agent-ovs/src/IdGenerator.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "just update the map here rather than in a different member function.  If you move your data structure into idmap then it\u0027ll be much shorter too.",
+      "range": {
+        "startLine": 78,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 50
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_1ad18157",
+        "filename": "agent-ovs/src/IdGenerator.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "Don\u0027t delete here.  Clear this value when the forward map is cleared.  Note that here it is only storing it in erasedIds and not clearing the forward map.",
+      "range": {
+        "startLine": 126,
+        "startChar": 0,
+        "endLine": 129,
+        "endChar": 57
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_fad3dd5c",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "I think with your change we don\u0027t need the contract namespace, so can just remove it.",
+      "range": {
+        "startLine": 84,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 61
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_5acb09a5",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 2391,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "I\u0027ll assume the #ifs will be removed later and not comment on them.",
+      "range": {
+        "startLine": 2391,
+        "startChar": 0,
+        "endLine": 2391,
+        "endChar": 5
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_da5539c7",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "It looks like a lot of duplicate code from below.  Can this be factored out?\n\nI\u0027m not going to try to look at this code in much detail until it\u0027s tested :-)",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 125,
+        "endChar": 57
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_7a6d2d99",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "(note that the log will already include file:line info so no need to say you\u0027re in policy stats manager.  Also remember users can see these messages so make them nice :-)\n\nif (msgType \u003d\u003d OFPTYPE_FLOW_REMOVED) {\n    PolicyStatsManager::handleFlowRemoved(msg);    \n} else if (msgType \u003d\u003d OFPTYPE_FLOW_STATS_REPLY) {\n    PolicyStatsManager::handleFlowStatsReply(msg);    \n} else {\n    LOG(ERROR) \u003c\u003c \"Unexpected OpenFlow message type: \" \u003c\u003c msgType;\n}",
+      "range": {
+        "startLine": 278,
+        "startChar": 0,
+        "endLine": 288,
+        "endChar": 5
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_9ac45193",
+        "filename": "agent-ovs/src/include/IdGenerator.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "getStringForId would be more inline with the existing style",
+      "range": {
+        "startLine": 168,
+        "startChar": 33,
+        "endLine": 168,
+        "endChar": 45
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_7abfedfc",
+        "filename": "agent-ovs/src/include/IdGenerator.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "just add this to struct IdMap; this struct contains all the data for a given namespace.",
+      "range": {
+        "startLine": 222,
+        "startChar": 0,
+        "endLine": 229,
+        "endChar": 1
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_ba6795b6",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "Probably should call this IntPolicyStatsManager since this is for the integration bridge policy.",
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_dabed9fe",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "note you can have more than one flow with same combination of classifier cookie, src and dst EPG, since one classifier can create multiple flows.  Note that the priority+match for a given flow is unique, however.",
+      "range": {
+        "startLine": 87,
+        "startChar": 1,
+        "endLine": 87,
+        "endChar": 27
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_1a38619f",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "use enum not #define",
+      "range": {
+        "startLine": 118,
+        "startChar": 0,
+        "endLine": 119,
+        "endChar": 36
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_fa3abd96",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "delete trailing whitespace (will just comment once and not mention other instances)",
+      "range": {
+        "startLine": 120,
+        "startChar": 77,
+        "endLine": 120,
+        "endChar": 78
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_3a456517",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "You won\u0027t get a new cookie for a given classifier as long as it exists in the modb.",
+      "range": {
+        "startLine": 124,
+        "startChar": 0,
+        "endLine": 125,
+        "endChar": 73
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_5a42e910",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "For cleaning up state you can get notifications when EPGs or classifiers are removed from the managed object database, though of course you need to handle if the classifier is modified.",
+      "range": {
+        "startLine": 127,
+        "startChar": 0,
+        "endLine": 127,
+        "endChar": 31
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_3a80c545",
+        "filename": "agent-ovs/src/ovs-shim.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "This looks like an incorrect conflict resolve.  The version in master should be right here. Should be able to just revert.",
+      "range": {
+        "startLine": 95,
+        "startChar": 0,
+        "endLine": 99,
+        "endChar": 6
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fafc7978_1a06a1ce",
+        "filename": "genie/MODEL/SPECIFIC/OBSERVER/observable.mdl",
+        "patchSetId": 5
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-03-30T01:04:13Z",
+      "side": 1,
+      "message": "This is unused",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 5
+      },
+      "revId": "eb89f30ac82e3fecee94837e712a757e37e92320",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
