@@ -17,7 +17,10 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/trim.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/filter/line.hpp>
 
 #include <string>
 #include <iostream>
@@ -38,11 +41,39 @@ void sighandler(int sig) {
 
 #define DEFAULT_CONF SYSCONFDIR"/opflex-agent-ovs/opflex-agent-ovs.conf"
 
+class strip_comments : public boost::iostreams::line_filter {
+private:
+    std::string do_filter(const std::string& line) {
+        // for now we only support comments that begin the line
+        auto trimmed = line;
+        boost::trim(trimmed);
+        if (boost::starts_with(trimmed, "#") ||
+            boost::starts_with(trimmed, "//")) {
+            return std::string();
+        }
+        return line;
+    }
+};
+
 static void readConfig(Agent& agent, string configFile) {
     pt::ptree properties;
 
     LOG(INFO) << "Reading configuration from " << configFile;
-    pt::read_json(configFile, properties);
+
+    std::ifstream file(configFile, std::ios_base::in | std::ios_base::binary);
+    boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
+    strip_comments stripper;
+    inbuf.push(boost::ref(stripper));
+    inbuf.push(file);
+    std::istream instream(&inbuf);
+
+    try {
+        pt::read_json(instream, properties);
+    } catch (pt::json_parser_error& e) {
+        LOG(ERROR) << "Error parsing config file: " << configFile << "("
+                   << e.line() << "): " << e.message();
+        throw e;
+    }
     agent.setProperties(properties);
 }
 
@@ -143,6 +174,8 @@ int main(int argc, char** argv) {
         pause();
         agent.stop();
         return 0;
+    } catch (pt::json_parser_error& e) {
+        return 4;
     } catch (const std::exception& e) {
         LOG(ERROR) << "Fatal error: " << e.what();
         return 2;

@@ -42,9 +42,6 @@ Agent::Agent(OFFramework& framework_)
 
 Agent::~Agent() {
     stop();
-    for (Renderer* r : renderers) {
-        delete r;
-    }
     renderers.clear();
 }
 
@@ -168,8 +165,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         optional<const ptree&> rtree =
             properties.get_child_optional(v.first);
         if (rtree) {
-            Renderer* r = v.second(*this);
-            renderers.push_back(r);
+            auto it = renderers.find(v.first);
+            Renderer* r;
+            if (it == renderers.end()) {
+                r = v.second(*this);
+                renderers.emplace(v.first, r);
+            } else {
+                r = it->second.get();
+            }
             r->setProperties(rtree.get());
         }
     }
@@ -251,8 +254,8 @@ void Agent::start() {
     endpointManager.start();
     notifServer.start();
 
-    for (Renderer* r : renderers) {
-        r->start();
+    for (auto& r : renderers) {
+        r.second->start();
     }
 
     io_service_thread.reset(new thread([this]() { agent_io.run(); }));
@@ -261,18 +264,18 @@ void Agent::start() {
         {
             EndpointSource* source =
                 new FSEndpointSource(&endpointManager, fsWatcher, path);
-            endpointSources.push_back(source);
+            endpointSources.emplace_back(source);
         }
         {
             FSRDConfigSource* source =
                 new FSRDConfigSource(&extraConfigManager, fsWatcher, path);
-            rdConfigSources.push_back(source);
+            rdConfigSources.emplace_back(source);
         }
     }
     for (const std::string& path : serviceSourcePaths) {
         ServiceSource* source =
             new FSServiceSource(&serviceManager, fsWatcher, path);
-        serviceSources.push_back(source);
+        serviceSources.emplace_back(source);
     }
     fsWatcher.start();
 
@@ -284,25 +287,11 @@ void Agent::stop() {
     if (!started) return;
     LOG(INFO) << "Stopping OVS Agent";
 
-    for (Renderer* r : renderers) {
-        r->stop();
+    for (auto& r : renderers) {
+        r.second->stop();
     }
 
     fsWatcher.stop();
-    for (EndpointSource* source : endpointSources) {
-        delete source;
-    }
-    endpointSources.clear();
-
-    for (FSRDConfigSource* source : rdConfigSources) {
-        delete source;
-    }
-    rdConfigSources.clear();
-
-    for (ServiceSource* source : serviceSources) {
-        delete source;
-    }
-    serviceSources.clear();
 
     notifServer.stop();
     endpointManager.stop();
@@ -313,6 +302,10 @@ void Agent::stop() {
         io_service_thread->join();
         io_service_thread.reset();
     }
+
+    endpointSources.clear();
+    rdConfigSources.clear();
+    serviceSources.clear();
 
     started = false;
 }

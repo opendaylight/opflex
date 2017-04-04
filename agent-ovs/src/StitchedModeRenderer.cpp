@@ -53,6 +53,14 @@ void StitchedModeRenderer::start() {
         return;
     }
 
+    if (encapType == IntFlowManager::ENCAP_NONE)
+        LOG(WARNING)
+            << "No encapsulation type specified; only local traffic will work";
+    if (flowIdCache == "")
+        LOG(WARNING) << "No flow ID cache directory specified";
+    if (mcastGroupFile == "")
+        LOG(WARNING) << "No multicast group file specified";
+
     started = true;
     LOG(INFO) << "Starting stitched-mode renderer using"
               << " integration bridge " << intBridgeName
@@ -230,9 +238,6 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
     if (count > 1) {
         LOG(WARNING) << "Multiple encapsulation types specified for "
                      << "stitched-mode renderer";
-    } else if (count == 0) {
-        LOG(WARNING)
-            << "No encapsulation types specified; only local traffic will work";
     }
 
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
@@ -264,13 +269,9 @@ void StitchedModeRenderer::setProperties(const ptree& properties) {
 
     flowIdCache = properties.get<std::string>(FLOWID_CACHE_DIR,
                                               DEF_FLOWID_CACHEDIR);
-    if (flowIdCache == "")
-        LOG(WARNING) << "No flow ID cache directory specified";
 
     mcastGroupFile = properties.get<std::string>(MCAST_GROUP_FILE,
                                                  DEF_MCAST_GROUPFILE);
-    if (mcastGroupFile == "")
-        LOG(WARNING) << "No multicast group file specified";
 }
 
 static bool connTrackIdGarbageCb(EndpointManager& endpointManager,
