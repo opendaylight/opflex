@@ -30,6 +30,7 @@
 #include <utility>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <thread>
 
 namespace ovsagent {
@@ -147,13 +148,13 @@ private:
     boost::optional<std::string> notifPerms;
 
     std::set<std::string> endpointSourcePaths;
-    std::vector<EndpointSource*> endpointSources;
-    std::vector<FSRDConfigSource*> rdConfigSources;
+    std::vector<std::unique_ptr<EndpointSource>> endpointSources;
+    std::vector<std::unique_ptr<FSRDConfigSource>> rdConfigSources;
 
     std::set<std::string> serviceSourcePaths;
-    std::vector<ServiceSource*> serviceSources;
+    std::vector<std::unique_ptr<ServiceSource>> serviceSources;
 
-    std::vector<Renderer*> renderers;
+    std::unordered_map<std::string, std::unique_ptr<Renderer>> renderers;
 
     typedef std::pair<std::string, int> host_t;
     std::set<host_t> opflexPeers;
