@@ -217,9 +217,9 @@
         //             // Specify the range of zone IDs to use for connection
         //             // tracking.  Minimum is 1 and maximum is 65534.
         //             // Default: 1-65534
-        //             "zone-range" {
+        //             "zone-range": {
         //                 "start": 1,
-        //                 "end": 65534,
+        //                 "end": 65534
         //             }
         //         }
         //     },
