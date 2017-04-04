@@ -126,7 +126,7 @@ void OpflexClientConnection::on_handshake_timer(uv_timer_t* handle) {
 }
 
 void OpflexClientConnection::on_timer_close(uv_handle_t* handle) {
-    delete handle;
+    delete (uv_timer_t*)handle;
 }
 
 void OpflexClientConnection::on_state_change(Peer * p, void * data,
