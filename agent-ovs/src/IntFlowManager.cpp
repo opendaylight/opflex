@@ -95,7 +95,7 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     virtualRouterEnabled(false), routerAdv(false),
     virtualDHCPEnabled(false), conntrackEnabled(false),
     pktInHandler(agent, *this),
-    advertManager(agent, *this), stopping(false) {
+    advertManager(agent, *this), isSyncing(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
 

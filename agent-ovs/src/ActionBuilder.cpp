@@ -225,7 +225,7 @@ ActionBuilder::conntrack(uint16_t flags,
                          uint8_t recircTable,
                          uint16_t alg,
                          boost::optional<ActionBuilder&> nestedActions) {
-    struct ofpact* actions;
+    struct ofpact* actions = NULL;
     size_t actsLen = 0;
     if (nestedActions) {
         struct ofpbuf* b = nestedActions.get().buf;
