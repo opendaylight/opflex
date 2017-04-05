@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da01753e_a4b6af88",
+        "filename": "agent-ovs/test/StatsManager_test.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-04-05T00:57:00Z",
+      "side": 1,
+      "message": "sorry I meant just don\u0027t call this at all.  If it throws, the test will fail without the call. Just make your life easier (in the long run at least :-) )",
+      "range": {
+        "startLine": 163,
+        "startChar": 4,
+        "endLine": 163,
+        "endChar": 24
+      },
+      "revId": "926dfb3c1c8749123dd19235e525a4b19ce974ae",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da01753e_84bbab71",
+        "filename": "agent-ovs/test/StatsManager_test.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-04-05T00:57:00Z",
+      "side": 1,
+      "message": "BOOST_CHECK_EQUAL will give you nicer output if it fails, btw (an exception is if your type has no stream insertion operator)",
+      "range": {
+        "startLine": 203,
+        "startChar": 16,
+        "endLine": 203,
+        "endChar": 27
+      },
+      "revId": "926dfb3c1c8749123dd19235e525a4b19ce974ae",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
