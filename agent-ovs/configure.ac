@@ -12,7 +12,7 @@
 # ---------------------------------------------------------------
 # Initialization
 
-AC_INIT([agent-ovs], [1.4.0])
+AC_INIT([agent-ovs], [1.5.0])
 AC_SUBST(MODULE_NAME, ["Group-based Policy Agent for OVS"])
 
 # initialize automake and libtool
