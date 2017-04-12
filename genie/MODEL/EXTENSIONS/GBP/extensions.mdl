@@ -286,3 +286,31 @@ module[gbpe]
         member[bytes; type=scalar/UInt64]
 
     }
+
+    class[RoutingDomainDropCounter;
+          super=observer/Observable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=observer/PolicyStatUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=routingDomain]
+            }
+        }
+
+        # A unique identifer for the routingDomain
+        member[routingDomain; type=reference/URI]
+
+        # number of packets dropped for the routingDomain
+        member[packets; type=scalar/UInt64]
+
+        # number of bytes dropped for the routingDomain
+        member[bytes; type=scalar/UInt64]
+
+    }

@@ -425,6 +425,7 @@ static FlowBuilder& matchSubnet(FlowBuilder& fb, uint32_t rdId,
     return fb;
 }
 
+
 static FlowBuilder& matchDhcpReq(FlowBuilder& fb, bool v4) {
     fb.proto(17);
     if (v4) {
@@ -2011,6 +2012,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
         LOG(DEBUG) << "Cleaning up for RD: " << rdURI;
         switchManager.clearFlows(rdURI.toString(), NAT_IN_TABLE_ID);
         switchManager.clearFlows(rdURI.toString(), ROUTE_TABLE_ID);
+        switchManager.clearFlows(rdURI.toString(), POL_TABLE_ID);
         idGen.erase(getIdNamespace(RoutingDomain::CLASS_ID), rdURI.toString());
         ctZoneManager.erase(rdURI.toString());
         return;
@@ -2154,6 +2156,13 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     for (const string& uuid : uuids) {
         serviceUpdated(uuid);
     }
+
+    // create drop entry in POL_TABLE_ID for each routingDomain
+    // this entry is needed to count all dropped packets per
+    // routingDomain and summed up for all the routingDomain to
+    // calculate per tenant drop counter.
+    switchManager.writeFlow(rdURI.toString(), POL_TABLE_ID,
+             FlowBuilder().priority(1).reg(6, rdId));
 }
 
 void
@@ -2388,9 +2397,6 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                << ", #rules=" << rules.size();
 
     FlowEntryList entryList;
-#if 0
-    uint64_t conCookie = getId(Contract::CLASS_ID, contractURI);
-#endif
 
     for (const IdMap::value_type& pid : provIds) {
         const uint32_t& pvnid = pid.first;
@@ -2400,12 +2406,10 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
             for (shared_ptr<PolicyRule>& pc : rules) {
                 uint8_t dir = pc->getDirection();
                 const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
-#if 1
                 const opflex::modb::URI& ruleURI = cls.get()->getURI();
                 uint64_t conCookie = getId(L24Classifier::CLASS_ID, ruleURI);
                 LOG(DEBUG) << "Rule URI = " << ruleURI << " conCookie = " <<
                                 conCookie;
-#endif
 
                 /*
                  * Collapse bidirectional rules - if consumer 'cvnid' is also

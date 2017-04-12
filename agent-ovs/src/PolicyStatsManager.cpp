@@ -10,13 +10,13 @@
  */
 
 #include "logging.h"
-#include "PolicyStatsManager.h"
 #include "IntFlowManager.h"
 #include "IdGenerator.h"
 #include "Agent.h"
 
 #include "ovs-ofputil.h"
 #include <lib/util.h>
+#include "PolicyStatsManager.h"
 
 extern "C" {
 #include <openvswitch/ofp-msgs.h>
@@ -65,7 +65,7 @@ void PolicyStatsManager::registerConnection(SwitchConnection* intConnection) {
 }
 
 void PolicyStatsManager::start() {
-    LOG(DEBUG) << "Starting policy stats manager";
+    LOG(ERROR) << "Starting policy stats manager";
     stopping = false;
 
     intConnection->RegisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
@@ -122,6 +122,86 @@ void PolicyStatsManager::on_timer(const error_code& ec) {
     }
 }
 
+void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
+                         struct match* pflow_metadata,
+                         uint64_t flow_packet_count,
+                         uint64_t flow_byte_count,
+                         PolicyCounterMap_t& newCountersMap,
+                         bool flowRemoved) {
+                                
+    uint32_t srcEpgId = (uint32_t)pflow_metadata->flow.regs[0];
+    uint32_t dstEpgId = (uint32_t)pflow_metadata->flow.regs[2];
+    LOG(ERROR) << "Cookie: " <<  cookie
+                     << "  " << cookie << " reg0=" << srcEpgId <<
+                     " reg2=" << dstEpgId;
+    PolicyManager& polMgr = agent->getPolicyManager();
+    optional<URI> srcEpgUri = polMgr.getGroupForVnid(srcEpgId);
+    optional<URI> dstEpgUri = polMgr.getGroupForVnid(dstEpgId);
+    optional<std::string> idStr = idGen.getStringForId(
+                IntFlowManager::getIdNamespace(L24Classifier::CLASS_ID),
+                                               cookie);
+    FlowMatchKey_t flowMatchKey {
+        .cookie = cookie,
+        .reg0 = srcEpgId,
+        .reg2 = dstEpgId,
+    };
+
+    if (srcEpgUri && dstEpgUri && idStr) {
+
+        LOG(ERROR) << "Policy flow stat rule string: " <<
+                    idStr << " srcEpg:" << srcEpgUri.get() <<
+                    " dstEpg:" << dstEpgUri.get();
+        LOG(ERROR) << "Policy flow stats match packets: "
+                    << flow_packet_count << " match bytes:" <<
+                    flow_byte_count;
+
+        PolicyCounters_t&  newCounters =
+                                       newCountersMap[flowMatchKey];
+        uint64_t packet_count = 0;
+        uint64_t byte_count = 0;
+
+        // We get multiple flow stats entries for same
+        // cookie, reg0 and reg2 ie for each classifier
+        // multiple flow entries may get installed in OVS
+        // The newCountersMap is used for the purpose of
+        // additing counters of such flows that have same
+        // classifier.
+
+        if (newCounters.packet_count) {
+            // get existing packet_count and byte_count
+            packet_count = newCounters.packet_count.get();
+            byte_count = newCounters.byte_count.get();
+        }
+
+        // Add counters for new flow entry to existing
+        // packet_count and byte_count
+        newCounters.packet_count =
+                                 make_optional(true, flow_packet_count +
+                                 packet_count);
+        newCounters.byte_count =
+                                 make_optional(true, flow_byte_count +
+                                 byte_count);
+
+    } else {
+        LOG(ERROR) << "srcEpgUri or dstEpgUri or idStr" <<
+                    " mapping failed";
+        if (flowRemoved) {
+
+            // Policy manager may have removed the mappings before
+            // Policy Stats manager gets a chance to process flow
+            // remove message.
+            // Check if we already have stats for this flow
+            // classifier in policyCountersMap and if we do then delete it.
+
+            PolicyCounterMap_t:: iterator itr
+                    = policyCountersMap.find(flowMatchKey);
+            if (itr != newCountersMap.end()) {
+                policyCountersMap.erase(flowMatchKey);
+            }
+        }
+    }
+}
+
 void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg) {
 
     const struct ofp_header *oh = (ofp_header *)msg->data;
@@ -148,119 +228,22 @@ void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg) {
             if (fentry->table_id != IntFlowManager::POL_TABLE_ID) {
                 LOG(ERROR) << "Wrong table_id in flow remove msg(policy stats mgr): " <<
                     fentry->table_id;
-                return;
+                continue;
             }
 
-            struct match *pflow_metadata;
-            pflow_metadata = &(fentry->match);
-            uint32_t srcEpgId = (uint32_t)pflow_metadata->flow.regs[0];
-            uint32_t dstEpgId = (uint32_t)pflow_metadata->flow.regs[2];
-            uint32_t cookie = (uint32_t)ovs_ntohll(fentry->cookie);
-                    LOG(DEBUG) << "Cookie: " <<  fentry->cookie 
-                         << "  " << cookie << " reg0=" << srcEpgId <<
-                         " reg2=" << dstEpgId;
-            optional<URI> srcEpgUri = polMgr.getGroupForVnid(srcEpgId);
-            optional<URI> dstEpgUri = polMgr.getGroupForVnid(dstEpgId);
-            boost::optional<std::string> idStr = idGen.getId2String(
-            IntFlowManager::getIdNamespace(L24Classifier::CLASS_ID), cookie);
-            FlowMatchKey_t flowMatchKey;
-            flowMatchKey.cookie = cookie;
-            flowMatchKey.reg0 = srcEpgId;
-            flowMatchKey.reg2 = dstEpgId;
-    
-            if (srcEpgUri && dstEpgUri && idStr) {
-#if 0
-                LOG(DEBUG) << "FlowRemove:Policy flow stat rule string: " << 
-                    idStr << " srcEpg:" << srcEpgUri.get() <<
-                    " dstEpg:" << dstEpgUri.get();
-                LOG(DEBUG) << "FlowRemove:Policy flow stats match packets: "
-                    << fentry->packet_count << " match bytes:" <<
-                    fentry->byte_count;
-#endif
-    
-                uint64_t packet_count = 0;
-                uint64_t byte_count = 0;
-               
-                PolicyCounters_t&  newCounters = 
-                                           newCountersMap[flowMatchKey];
-                packet_count = 0;
-                byte_count = 0;
-    
-                // We get multiple flow stats entries for same
-                // cookie, reg0 and reg2 ie for each classifier
-                // multiple flow entries may get installed in OVS
-                // We add counters for flows that belong to one
-                // classifier.
-    
-                if (newCounters.packet_count) {
-                    // get existing packet_count and byte_count
-                    packet_count = newCounters.packet_count.get();
-                    byte_count = newCounters.byte_count.get();
-                }
-                // Add counters for new flow entry to existing
-                // packet_count and byte_count
-                newCounters.packet_count =
-                                     make_optional(true, fentry->packet_count + 
-                                     packet_count);
-                newCounters.byte_count =
-                                     make_optional(true, fentry->byte_count +
-                                     byte_count);
-    
-            } else {
-                LOG(DEBUG) << "handleFlowRemove:srcEpgUri or dstEpgUri or idStr" <<
-                    " mapping failed";
-                // Policy manager may have removed the mappings before
-                // Policy Stats manager gets a chance to process flow
-                // remove message.
-                // Check if we already have stats for this flow 
-                // classifier and if we do then delete it.
-                PolicyCounterMap_t:: iterator itr
-                    = policyCountersMap.find(flowMatchKey);
-                if (itr != newCountersMap.end()) {
-                    policyCountersMap.erase(flowMatchKey);
-                }
-                
-            }
+            PolicyStatsManager::updateNewFlowCounters(
+                                (uint32_t)ovs_ntohll(fentry->cookie),
+                                &(fentry->match),
+                                fentry->packet_count,
+                                fentry->byte_count,
+                                newCountersMap, true);
         }
     } while (true);
 
     // walk through newCountersMap to create new set of MOs
 
-    for (PolicyCounterMap_t:: iterator itr = newCountersMap.begin();
-         itr != newCountersMap.end();
-         itr++) {
-        const FlowMatchKey_t& flowKey = itr->first;
-        PolicyCounters_t&  newCounters = itr->second;
-        optional<URI> srcEpgUri = polMgr.getGroupForVnid(flowKey.reg0);
-        optional<URI> dstEpgUri = polMgr.getGroupForVnid(flowKey.reg2);
-        boost::optional<std::string> idStr = idGen.getId2String(
-                IntFlowManager::getIdNamespace(L24Classifier::CLASS_ID),
-                                               flowKey.cookie);
-        PolicyCounters_t&  oldCounters = 
-                                       policyCountersMap[flowKey];
-        PolicyCounters_t  diffCounters;
-        if (oldCounters.packet_count) {
-            diffCounters.packet_count = newCounters.packet_count.get() -
-                                       oldCounters.packet_count.get();
-            diffCounters.byte_count = newCounters.byte_count.get() -
-                                       oldCounters.byte_count.get();
-        } else {
-            diffCounters = newCounters;
-        }
+    updatePolicyStatsMap(newCountersMap);
 
-        // Store flow stats for the flow match key 
-        // in the policyCountersMap. 
-
-        oldCounters.packet_count = newCounters.packet_count;
-        oldCounters.byte_count = newCounters.byte_count;
-
-        // update the policy stats counter last time
-        if (diffCounters.packet_count.get() != 0)
-            updatePolicyStatsCounters(srcEpgUri.get().toString(),
-                                      dstEpgUri.get().toString(),
-                                      idStr.get(),
-                                      diffCounters);
-    }
     // erase the mapping from policyCountersMap for all
     // removed flows 
     for (PolicyCounterMap_t:: iterator iter = newCountersMap.begin();
@@ -273,19 +256,54 @@ void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg) {
     }
 }
 
+void PolicyStatsManager::handleDropStats(uint32_t rdId,
+                         boost::optional<std::string> idStr,
+                         struct ofputil_flow_stats* fentry) {
+
+    PolicyDropCounters_t    newCounters;
+    newCounters.packet_count = make_optional(true, fentry->packet_count);
+    newCounters.byte_count = make_optional(true, fentry->byte_count);
+    PolicyDropCounters_t&  oldCounters = policyDropCountersMap[rdId];
+    PolicyDropCounters_t  diffCounters;
+
+    LOG(ERROR) << "rdId: " << rdId << " packet count:" <<
+        fentry->packet_count;
+    if (oldCounters.packet_count) {
+        diffCounters.packet_count = newCounters.packet_count.get() -
+        oldCounters.packet_count.get();
+        diffCounters.byte_count = newCounters.byte_count.get() -
+        oldCounters.byte_count.get();
+    } else {
+        diffCounters = newCounters;
+    }
+
+    // Store flow stats for the routing domain
+    // in the policyDropCountersMap.
+
+    oldCounters.packet_count = newCounters.packet_count;
+    oldCounters.byte_count = newCounters.byte_count;
+
+    if (diffCounters.packet_count.get() != 0)
+        updatePolicyStatsDropCounters(idStr.get(),
+                                      diffCounters);
+}
+
 void PolicyStatsManager::Handle(SwitchConnection* connection,
                           int msgType, ofpbuf *msg) {
-    if (msgType != OFPTYPE_FLOW_STATS_REPLY) {
-        if (msgType != OFPTYPE_FLOW_REMOVED) {
-            LOG(ERROR) << "Wrong message type in policy stats mgr: " << msgType;
-            return;
-        }
-    }
-    //assert(msgType == OFPTYPE_FLOW_STATS_REPLY);
-    if (msgType == OFPTYPE_FLOW_REMOVED) {
+
+    if (msgType == OFPTYPE_FLOW_STATS_REPLY) {
+        LOG(ERROR) << "handleFlowStats";
+        PolicyStatsManager::handleFlowStats(msgType, msg);
+    } else if (msgType == OFPTYPE_FLOW_REMOVED) {
         PolicyStatsManager::handleFlowRemoved(msg);    
+    } else {
+        LOG(ERROR) << "Invalid message type: " << msgType;
         return;
     }
+
+}
+
+void PolicyStatsManager::handleFlowStats(int msgType, ofpbuf *msg) {
 
     struct ofputil_flow_stats* fentry, fstat;
     PolicyCounterMap_t newCountersMap;
@@ -293,12 +311,14 @@ void PolicyStatsManager::Handle(SwitchConnection* connection,
 
     fentry = &fstat;
     std::lock_guard<std::mutex> lock(pstatMtx);
+            LOG(ERROR) << "handle flow stats inside";
    
     do {
         ofpbuf actsBuf;
         ofpbuf_init(&actsBuf, 32);
         bzero(fentry, sizeof(struct ofputil_flow_stats));
 
+            LOG(ERROR) << "decode flow stats packets";
         int ret = ofputil_decode_flow_stats_reply(fentry, msg, false, &actsBuf);
 
         ofpbuf_uninit(&actsBuf);
@@ -308,82 +328,63 @@ void PolicyStatsManager::Handle(SwitchConnection* connection,
                 LOG(ERROR) << "Failed to decode flow stats reply: "
                     << ovs_strerror(ret);
             else
-                LOG(DEBUG) << "No more flow stats entries to decode ";
+                LOG(ERROR) << "No more flow stats entries to decode "
+                    << ovs_strerror(ret);
             break;
         } else {
             if (fentry->table_id != IntFlowManager::POL_TABLE_ID) {
-                LOG(ERROR) << "Wrong table_id in policy stats mgr: " <<
+                LOG(ERROR) << "Invalid table_id: " <<
                     fentry->table_id;
                 return;
             }
 
+            // Handle forward entries and drop entries separately
+            // Packet forward entries are per classifier
+            // Packet drop entries are per routingDomain
+
             struct match *pflow_metadata;
             pflow_metadata = &(fentry->match);
-            uint32_t srcEpgId = (uint32_t)pflow_metadata->flow.regs[0];
-            uint32_t dstEpgId = (uint32_t)pflow_metadata->flow.regs[2];
-            uint32_t cookie = (uint32_t)ovs_ntohll(fentry->cookie);
-                LOG(DEBUG) << "Cookie: " <<  fentry->cookie 
-                     << "  " << cookie << " reg0=" << srcEpgId <<
-                     " reg2=" << dstEpgId;
-            optional<URI> srcEpgUri = polMgr.getGroupForVnid(srcEpgId);
-            optional<URI> dstEpgUri = polMgr.getGroupForVnid(dstEpgId);
-            boost::optional<std::string> idStr = idGen.getId2String(
-                IntFlowManager::getIdNamespace(L24Classifier::CLASS_ID), cookie);
+            uint32_t rdId = (uint32_t)pflow_metadata->flow.regs[6];
+            boost::optional<std::string> idRdStr;
 
-            if (srcEpgUri && dstEpgUri && idStr) {
-                LOG(DEBUG) << "Policy flow stat rule string: " << 
-                    idStr << " srcEpg:" << srcEpgUri.get() <<
-                    " dstEpg:" << dstEpgUri.get();
-                LOG(DEBUG) << "Policy flow stats match packets: "
-                    << fentry->packet_count << " match bytes:" <<
-                    fentry->byte_count;
-
-                FlowMatchKey_t flowMatchKey;
-                flowMatchKey.cookie = cookie;
-                flowMatchKey.reg0 = srcEpgId;
-                flowMatchKey.reg2 = dstEpgId;
-                uint64_t packet_count = 0;
-                uint64_t byte_count = 0;
-           
-                PolicyCounters_t&  newCounters = 
-                                       newCountersMap[flowMatchKey];
-                packet_count = 0;
-                byte_count = 0;
-
-                // We get multiple flow stats entries for same
-                // cookie, reg0 and reg2 ie for each classifier
-                // multiple flow entries may get installed in OVS
-                // We add counters for flows that belong to one
-                // classifier.
-
-                if (newCounters.packet_count) {
-                    // get existing packet_count and byte_count
-                    packet_count = newCounters.packet_count.get();
-                    byte_count = newCounters.byte_count.get();
-                }
-                // Add counters for new flow entry to existing
-                // packet_count and byte_count
-                newCounters.packet_count =
-                                 make_optional(true, fentry->packet_count + 
-                                 packet_count);
-                newCounters.byte_count =
-                                 make_optional(true, fentry->byte_count +
-                                 byte_count);
-
-#if 0
-                updatePolicyStatsCounters(srcEpgUri.get().toString(),
-                                          dstEpgUri.get().toString(),
-                                          idStr.get(),
-                                          diffCounters);
-#endif
+            LOG(ERROR) << "process flow stats inside 2";
+            if (rdId)
+                idRdStr = idGen.getStringForId(
+                    IntFlowManager::getIdNamespace(RoutingDomain::CLASS_ID),
+                                                   rdId);
+            // Does flow stats entry qualify to be a drop entry?
+            // if yes, then process it and continue with next flow
+            // stats entry.
+            if (rdId && idRdStr && (fentry->priority == 1)) {
+                LOG(ERROR) << "process dropped stats";
+                handleDropStats(rdId, idRdStr, fentry);
             } else {
-                LOG(DEBUG) << "srcEpgUri or dstEpgUri or idStr" <<
-                    " mapping failed";
+
+                // Handle flow stats entries for packets that are matched
+                // and are forwarded
+
+                LOG(ERROR) << "updateNewFlowCounters";
+                updateNewFlowCounters((uint32_t)ovs_ntohll(fentry->cookie),
+                                    &(fentry->match),
+                                    fentry->packet_count,
+                                    fentry->byte_count,
+                                    newCountersMap, false);
             }
         }
     } while (true);
 
+    LOG(ERROR) << "updatePolicyStatsMap";
+    updatePolicyStatsMap(newCountersMap);
+
+}
+
+
+void PolicyStatsManager::updatePolicyStatsMap(
+                           PolicyCounterMap_t& newCountersMap) {
+
     // walk through newCountersMap to create new set of MOs
+
+    PolicyManager& polMgr = agent->getPolicyManager();
 
     for (PolicyCounterMap_t:: iterator itr = newCountersMap.begin();
          itr != newCountersMap.end();
@@ -392,7 +393,7 @@ void PolicyStatsManager::Handle(SwitchConnection* connection,
         PolicyCounters_t&  newCounters = itr->second;
         optional<URI> srcEpgUri = polMgr.getGroupForVnid(flowKey.reg0);
         optional<URI> dstEpgUri = polMgr.getGroupForVnid(flowKey.reg2);
-        boost::optional<std::string> idStr = idGen.getId2String(
+        boost::optional<std::string> idStr = idGen.getStringForId(
                 IntFlowManager::getIdNamespace(L24Classifier::CLASS_ID),
                                                flowKey.cookie);
         PolicyCounters_t&  oldCounters = 
@@ -413,7 +414,7 @@ void PolicyStatsManager::Handle(SwitchConnection* connection,
         oldCounters.packet_count = newCounters.packet_count;
         oldCounters.byte_count = newCounters.byte_count;
 
-        if (diffCounters.packet_count.get() != 0)
+        // if (diffCounters.packet_count.get() != 0)
             updatePolicyStatsCounters(srcEpgUri.get().toString(),
                                       dstEpgUri.get().toString(),
                                       idStr.get(),
@@ -429,7 +430,9 @@ void PolicyStatsManager::updatePolicyStatsCounters(const std::string& srcEpg,
     Mutator mutator(agent->getFramework(), "policyelement");
     optional<shared_ptr<PolicyStatUniverse> > su =
         PolicyStatUniverse::resolve(agent->getFramework());
+        LOG(ERROR) << "Inside updatePolicyStatsCounters";
     if (su) {
+        LOG(ERROR) << "addGbpeL24ClassifierCounter";
         su.get()->addGbpeL24ClassifierCounter(srcEpg, dstEpg, l24Classifier)
             ->setPackets(newVals.packet_count.get())
             .setBytes(newVals.byte_count.get());
@@ -437,4 +440,21 @@ void PolicyStatsManager::updatePolicyStatsCounters(const std::string& srcEpg,
 
     mutator.commit();
 }
+
+void PolicyStatsManager::updatePolicyStatsDropCounters(
+                             const std::string& rdStr,
+                             PolicyDropCounters_t& newVals) {
+
+    Mutator mutator(agent->getFramework(), "policyelement");
+    optional<shared_ptr<PolicyStatUniverse> > su =
+        PolicyStatUniverse::resolve(agent->getFramework());
+    if (su) {
+        su.get()->addGbpeRoutingDomainDropCounter(rdStr)
+            ->setPackets(newVals.packet_count.get())
+            .setBytes(newVals.byte_count.get());
+    }
+
+    mutator.commit();
+}
+
 } /* namespace ovsagent */

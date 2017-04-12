@@ -165,7 +165,7 @@ public:
      * @param id to get an str for
      * @return NULL if no string for given id found else reference of stored string.
      */
-    boost::optional<std::string> getId2String(const std::string& nmspc, uint32_t id);
+    boost::optional<std::string> getStringForId(const std::string& nmspc, uint32_t id);
 
 private:
     typedef std::chrono::steady_clock::time_point time_point;
@@ -198,6 +198,9 @@ private:
         typedef std::unordered_map<std::string, time_point> Str2EIdMap;
         Str2EIdMap erasedIds;
 
+        typedef std::unordered_map<uint32_t, std::string> Id2StrMap;
+        Id2StrMap  reverseMap;
+
         boost::optional<alloc_hook_t> allocHook;
     };
 
@@ -220,12 +223,6 @@ private:
     typedef std::unordered_map<std::string, IdMap> NamespaceMap;
     std::unordered_map<std::string, IdMap> namespaces;
 
-    typedef std::unordered_map<uint32_t, std::string> Id2StrMap;
-    /**
-     * Reverse Map of ID namespaces to the assignment within that namespace.
-     */
-    typedef std::unordered_map<std::string, Id2StrMap> NamespaceReverseMap_t;
-    NamespaceReverseMap_t  namespaces_reversemap;
     std::string persistDir;
     duration cleanupInterval;
 };

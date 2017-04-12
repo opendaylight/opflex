@@ -72,8 +72,6 @@ public:
     // see: MessageHandler
     void Handle(SwitchConnection *swConn, int type, ofpbuf *msg);
 
-    // see: Flow Remove MessageHandler
-    void handleFlowRemoved(ofpbuf *msg);
 
 private:
     Agent* agent;
@@ -138,6 +136,42 @@ private:
                                    PolicyCounters_t& counters);
 
     PolicyCounterMap_t policyCountersMap;
+
+    /**
+     * Drop Counters for Routing Domain
+     */
+    struct PolicyDropCounters_t {
+         boost::optional<uint64_t>  packet_count;
+         boost::optional<uint64_t>  byte_count;
+         boost::optional<std::string>    rdURI;
+    };
+
+    /* map Routing Domain Id to Policy Drop counters */
+
+    typedef std::unordered_map<uint32_t, PolicyDropCounters_t> PolicyDropCounterMap_t;
+
+    void updatePolicyStatsDropCounters(const std::string& rdURI,
+                                   PolicyDropCounters_t& counters);
+
+    void updateNewFlowCounters(uint32_t cookie,
+                             struct match* match,
+                             uint64_t packet_count,
+                             uint64_t byte_count,
+                             PolicyCounterMap_t& newCountersMap,
+                             bool flowRemoved);
+
+    void updatePolicyStatsMap(PolicyCounterMap_t& newCountersMap);
+
+    void handleFlowStats(int msgType, ofpbuf *msg);
+
+    void handleFlowRemoved(ofpbuf *msg);
+
+    void handleDropStats(uint32_t rdId,
+                         boost::optional<std::string> idRdStr,
+                         struct ofputil_flow_stats* fentry);
+
+
+    PolicyDropCounterMap_t policyDropCountersMap;
 
     std::mutex pstatMtx;
 
