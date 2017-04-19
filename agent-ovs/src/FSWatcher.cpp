@@ -46,7 +46,7 @@ namespace fs = boost::filesystem;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 
-FSWatcher::FSWatcher() : eventFd(-1) {
+FSWatcher::FSWatcher() : eventFd(-1), initialScan(true) {
 
 }
 
@@ -60,6 +60,10 @@ void FSWatcher::addWatch(const std::string& watchDir, Watcher& watcher) {
     WatchState& ws = regWatches[wp];
     ws.watchPath = wp;
     ws.watchers.push_back(&watcher);
+}
+
+void FSWatcher::setInitialScan(bool scan) {
+    this->initialScan = scan;
 }
 
 void FSWatcher::start() {
@@ -149,7 +153,8 @@ void FSWatcher::operator()() {
             goto cleanup;
         }
         activeWatches[wd] = &w.second;
-        scanPath(&w.second, w.first);
+        if (initialScan)
+            scanPath(&w.second, w.first);
     }
 
     nfds = 2;
