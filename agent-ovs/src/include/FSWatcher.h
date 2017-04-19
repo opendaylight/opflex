@@ -56,6 +56,12 @@ public:
     void addWatch(const std::string& watchDir, Watcher& watcher);
 
     /**
+     * Enable or disable an initial notification on update.  Default
+     * true.
+     */
+    void setInitialScan(bool scan);
+
+    /**
      * Start the listener on the currently registered set of watchers
      */
     void start();
@@ -108,6 +114,7 @@ private:
      * File descriptor for communicating with the polling thread
      */
     int eventFd;
+    bool initialScan;
 
     void scanPath(const WatchState* ws,
                   const boost::filesystem::path& watchPath);
