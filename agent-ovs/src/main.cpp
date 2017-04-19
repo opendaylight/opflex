@@ -24,20 +24,20 @@
 
 #include <string>
 #include <iostream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <signal.h>
 #include <string.h>
 
 using std::string;
-using opflex::ofcore::OFFramework;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 namespace pt = boost::property_tree;
 using namespace ovsagent;
 
-void sighandler(int sig) {
-    LOG(INFO) << "Got " << strsignal(sig) << " signal";
-}
+void sighandler(int sig) {}
 
 #define DEFAULT_CONF SYSCONFDIR"/opflex-agent-ovs/opflex-agent-ovs.conf"
 
@@ -76,6 +76,120 @@ static void readConfig(Agent& agent, string configFile) {
     agent.setProperties(properties);
 }
 
+bool isConfigFile(const fs::path& file) {
+    if (!fs::is_regular_file(file))
+        return false;
+
+    const string fstr = file.filename().string();
+    if (boost::algorithm::ends_with(fstr, ".conf") &&
+        !boost::algorithm::starts_with(fstr, ".")) {
+        return true;
+    }
+
+    return false;
+}
+
+class AgentLauncher : FSWatcher::Watcher {
+public:
+    AgentLauncher(bool watch_, std::vector<string>& configFiles_)
+        : watch(watch_), configFiles(configFiles_),
+          stopped(false), need_reload(false) {}
+
+    void run() {
+        try {
+            while (true) {
+                FSWatcher configWatcher;
+                opflex::ofcore::OFFramework framework;
+                Agent agent(framework);
+
+                std::unique_lock<std::mutex> lock(mutex);
+
+                configure(configWatcher, agent);
+                configWatcher.setInitialScan(false);
+                configWatcher.start();
+                agent.start();
+
+                cond.wait(lock, [this]{ return stopped || need_reload; });
+                agent.stop();
+
+                if (stopped) {
+                    return;
+                }
+                need_reload = false;
+                LOG(INFO) << "Reloading agent because of configuration update";
+            }
+        } catch (pt::json_parser_error& e) {
+            exit(4);
+        } catch (const std::exception& e) {
+            LOG(ERROR) << "Fatal error: " << e.what();
+            exit(2);
+        } catch (...) {
+            LOG(ERROR) << "Unknown fatal error";
+            exit(3);
+        }
+    }
+
+    virtual void updated(const boost::filesystem::path& filePath) {
+        if (!isConfigFile(filePath))
+            return;
+
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            need_reload = true;
+        }
+        cond.notify_all();
+    }
+
+    virtual void deleted(const boost::filesystem::path& filePath) {
+        updated(filePath);
+    }
+
+    void stop() {
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            stopped = true;
+        }
+        cond.notify_all();
+    }
+
+private:
+    bool watch;
+    std::vector<string>& configFiles;
+
+    bool stopped;
+    bool need_reload;
+    std::mutex mutex;
+    std::condition_variable cond;
+
+    void configure(FSWatcher& configWatcher, Agent& agent) {
+        for (const string& configFile : configFiles) {
+            if (fs::is_directory(configFile)) {
+                LOG(INFO) << "Reading configuration from config directory "
+                          << configFile;
+                if (watch) {
+                    configWatcher.addWatch(configFile, *this);
+                }
+
+                fs::directory_iterator end;
+                std::set<string> files;
+                for (fs::directory_iterator it(configFile);
+                     it != end; ++it) {
+                    if (isConfigFile(it->path())) {
+                        files.insert(it->path().string());
+                    }
+                }
+                for (const std::string& fstr : files) {
+                    readConfig(agent, fstr);
+                }
+            } else {
+                readConfig(agent, configFile);
+            }
+        }
+
+        agent.applyProperties();
+    }
+};
+
 int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
 
@@ -85,7 +199,8 @@ int main(int argc, char** argv) {
         ("help,h", "Print this help message")
         ("config,c",
          po::value<std::vector<string> >(),
-         "Read configuration from the specified file")
+         "Read configuration from the specified files or directories")
+        ("watch,w", "Watch configuration directories for changes")
         ("log", po::value<string>()->default_value(""),
          "Log to the specified file (default standard out)")
         ("level", po::value<string>()->default_value("info"),
@@ -96,6 +211,7 @@ int main(int argc, char** argv) {
         ;
 
     bool daemon = false;
+    bool watch = false;
     bool logToSyslog = false;
     std::string log_file;
     std::string level_str;
@@ -114,6 +230,9 @@ int main(int argc, char** argv) {
         if (vm.count("daemon")) {
             daemon = true;
         }
+        if (vm.count("watch")) {
+            watch = true;
+        }
         log_file = vm["log"].as<string>();
         level_str = vm["level"].as<string>();
         if (vm.count("syslog")) {
@@ -129,57 +248,25 @@ int main(int argc, char** argv) {
 
     initLogging(level_str, logToSyslog, log_file);
 
-    try {
-        // Initialize agent and configuration
-        Agent agent(OFFramework::defaultInstance());
+    // Initialize agent and configuration
+    std::vector<string> configFiles;
+    if (vm.count("config"))
+        configFiles = vm["config"].as<std::vector<string> >();
+    else
+        configFiles.push_back(DEFAULT_CONF);
 
-        std::vector<string> configFiles;
-        if (vm.count("config"))
-            configFiles = vm["config"].as<std::vector<string> >();
-        else
-            configFiles.push_back(DEFAULT_CONF);
+    AgentLauncher launcher(watch, configFiles);
+    std::thread agent_thread([&launcher]() { launcher.run(); });
 
-        for (const string& configFile : configFiles) {
-            if (fs::is_directory(configFile)) {
-                LOG(INFO) << "Reading configuration from config directory "
-                          << configFile;
+    // Pause the main thread until interrupted
+    signal(SIGINT, sighandler);
+    signal(SIGTERM, sighandler);
+    pause();
 
-                fs::recursive_directory_iterator end;
-                std::set<string> files;
-                for (fs::recursive_directory_iterator it(configFile);
-                     it != end; ++it) {
-                    if (fs::is_regular_file(it->status())) {
-                        string fstr = it->path().string();
-                        if (boost::algorithm::ends_with(fstr, ".conf") &&
-                            !boost::algorithm::starts_with(fstr, ".")) {
-                            files.insert(fstr);
-                        }
-                    }
-                }
-                for (const std::string& fstr : files) {
-                    readConfig(agent, fstr);
-                }
-            } else {
-                readConfig(agent, configFile);
-            }
-        }
+    LOG(INFO) << "Shutting down agent";
 
-        agent.applyProperties();
-        agent.start();
+    launcher.stop();
+    agent_thread.join();
 
-        // Pause the main thread until interrupted
-        signal(SIGINT, sighandler);
-        signal(SIGTERM, sighandler);
-        pause();
-        agent.stop();
-        return 0;
-    } catch (pt::json_parser_error& e) {
-        return 4;
-    } catch (const std::exception& e) {
-        LOG(ERROR) << "Fatal error: " << e.what();
-        return 2;
-    } catch (...) {
-        LOG(ERROR) << "Unknown fatal error";
-        return 3;
-    }
+    return 0;
 }
