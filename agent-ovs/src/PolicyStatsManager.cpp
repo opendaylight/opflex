@@ -65,7 +65,7 @@ void PolicyStatsManager::registerConnection(SwitchConnection* intConnection) {
 }
 
 void PolicyStatsManager::start() {
-    LOG(ERROR) << "Starting policy stats manager";
+    LOG(DEBUG) << "Starting policy stats manager";
     stopping = false;
 
     intConnection->RegisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
@@ -131,9 +131,14 @@ void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
                                 
     uint32_t srcEpgId = (uint32_t)pflow_metadata->flow.regs[0];
     uint32_t dstEpgId = (uint32_t)pflow_metadata->flow.regs[2];
+#if 0
     LOG(ERROR) << "Cookie: " <<  cookie
                      << "  " << cookie << " reg0=" << srcEpgId <<
                      " reg2=" << dstEpgId;
+    LOG(ERROR) << "Policy flow stats match packets: "
+                    << flow_packet_count << " match bytes:" <<
+                    flow_byte_count;
+#endif
     PolicyManager& polMgr = agent->getPolicyManager();
     optional<URI> srcEpgUri = polMgr.getGroupForVnid(srcEpgId);
     optional<URI> dstEpgUri = polMgr.getGroupForVnid(dstEpgId);
@@ -148,12 +153,14 @@ void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
 
     if (srcEpgUri && dstEpgUri && idStr) {
 
+#if 0
         LOG(ERROR) << "Policy flow stat rule string: " <<
                     idStr << " srcEpg:" << srcEpgUri.get() <<
                     " dstEpg:" << dstEpgUri.get();
         LOG(ERROR) << "Policy flow stats match packets: "
                     << flow_packet_count << " match bytes:" <<
                     flow_byte_count;
+#endif
 
         PolicyCounters_t&  newCounters =
                                        newCountersMap[flowMatchKey];
@@ -183,7 +190,8 @@ void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
                                  byte_count);
 
     } else {
-        LOG(ERROR) << "srcEpgUri or dstEpgUri or idStr" <<
+
+        LOG(DEBUG) << "srcEpgUri or dstEpgUri or idStr" <<
                     " mapping failed";
         if (flowRemoved) {
 
@@ -212,33 +220,31 @@ void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg) {
     fentry = &flow_removed;
     std::lock_guard<std::mutex> lock(pstatMtx);
    
-    do {
-        int ret;
-        bzero(fentry, sizeof(struct ofputil_flow_removed));
+    int ret;
+    bzero(fentry, sizeof(struct ofputil_flow_removed));
 
-        ret = ofputil_decode_flow_removed(fentry, oh);
-        if (ret != 0) {
-            if (ret != EOF)
-                LOG(ERROR) << "Failed to decode flow removed message: "
-                    << ovs_strerror(ret);
-            else
-                LOG(DEBUG) << "No more flow removed entries to decode ";
-            break;
-        } else {
-            if (fentry->table_id != IntFlowManager::POL_TABLE_ID) {
-                LOG(ERROR) << "Wrong table_id in flow remove msg(policy stats mgr): " <<
-                    fentry->table_id;
-                continue;
-            }
-
-            PolicyStatsManager::updateNewFlowCounters(
-                                (uint32_t)ovs_ntohll(fentry->cookie),
-                                &(fentry->match),
-                                fentry->packet_count,
-                                fentry->byte_count,
-                                newCountersMap, true);
+    ret = ofputil_decode_flow_removed(fentry, oh);
+    if (ret != 0) {
+        LOG(ERROR) << "Failed to decode flow removed message: "
+                << ovs_strerror(ret);
+        return;
+    } else {
+        if (fentry->table_id != IntFlowManager::POL_TABLE_ID) {
+            LOG(ERROR) << "Unexpected table_id = " << fentry->table_id <<
+                          " in flow remove msg: ";
+            return;
         }
-    } while (true);
+
+        LOG(ERROR) << "flow remove packet count = " << fentry->packet_count <<
+            "   flow remove byte count = " << fentry->byte_count;
+
+        PolicyStatsManager::updateNewFlowCounters(
+                            (uint32_t)ovs_ntohll(fentry->cookie),
+                            &(fentry->match),
+                            fentry->packet_count,
+                            fentry->byte_count,
+                            newCountersMap, true);
+    }
 
     // walk through newCountersMap to create new set of MOs
 
@@ -266,8 +272,6 @@ void PolicyStatsManager::handleDropStats(uint32_t rdId,
     PolicyDropCounters_t&  oldCounters = policyDropCountersMap[rdId];
     PolicyDropCounters_t  diffCounters;
 
-    LOG(ERROR) << "rdId: " << rdId << " packet count:" <<
-        fentry->packet_count;
     if (oldCounters.packet_count) {
         diffCounters.packet_count = newCounters.packet_count.get() -
         oldCounters.packet_count.get();
@@ -291,13 +295,16 @@ void PolicyStatsManager::handleDropStats(uint32_t rdId,
 void PolicyStatsManager::Handle(SwitchConnection* connection,
                           int msgType, ofpbuf *msg) {
 
+    if (msg == (ofpbuf *)NULL) {
+        LOG(ERROR) << "Unexpected null message";
+        return;
+    }
     if (msgType == OFPTYPE_FLOW_STATS_REPLY) {
-        LOG(ERROR) << "handleFlowStats";
         PolicyStatsManager::handleFlowStats(msgType, msg);
     } else if (msgType == OFPTYPE_FLOW_REMOVED) {
         PolicyStatsManager::handleFlowRemoved(msg);    
     } else {
-        LOG(ERROR) << "Invalid message type: " << msgType;
+        LOG(ERROR) << "Unexpected message type: " << msgType;
         return;
     }
 
@@ -311,14 +318,12 @@ void PolicyStatsManager::handleFlowStats(int msgType, ofpbuf *msg) {
 
     fentry = &fstat;
     std::lock_guard<std::mutex> lock(pstatMtx);
-            LOG(ERROR) << "handle flow stats inside";
    
     do {
         ofpbuf actsBuf;
-        ofpbuf_init(&actsBuf, 32);
+        ofpbuf_init(&actsBuf, 64);
         bzero(fentry, sizeof(struct ofputil_flow_stats));
-
-            LOG(ERROR) << "decode flow stats packets";
+        
         int ret = ofputil_decode_flow_stats_reply(fentry, msg, false, &actsBuf);
 
         ofpbuf_uninit(&actsBuf);
@@ -333,7 +338,7 @@ void PolicyStatsManager::handleFlowStats(int msgType, ofpbuf *msg) {
             break;
         } else {
             if (fentry->table_id != IntFlowManager::POL_TABLE_ID) {
-                LOG(ERROR) << "Invalid table_id: " <<
+                LOG(ERROR) << "Unexpected table_id: " <<
                     fentry->table_id;
                 return;
             }
@@ -347,7 +352,6 @@ void PolicyStatsManager::handleFlowStats(int msgType, ofpbuf *msg) {
             uint32_t rdId = (uint32_t)pflow_metadata->flow.regs[6];
             boost::optional<std::string> idRdStr;
 
-            LOG(ERROR) << "process flow stats inside 2";
             if (rdId)
                 idRdStr = idGen.getStringForId(
                     IntFlowManager::getIdNamespace(RoutingDomain::CLASS_ID),
@@ -356,14 +360,12 @@ void PolicyStatsManager::handleFlowStats(int msgType, ofpbuf *msg) {
             // if yes, then process it and continue with next flow
             // stats entry.
             if (rdId && idRdStr && (fentry->priority == 1)) {
-                LOG(ERROR) << "process dropped stats";
                 handleDropStats(rdId, idRdStr, fentry);
             } else {
 
                 // Handle flow stats entries for packets that are matched
                 // and are forwarded
 
-                LOG(ERROR) << "updateNewFlowCounters";
                 updateNewFlowCounters((uint32_t)ovs_ntohll(fentry->cookie),
                                     &(fentry->match),
                                     fentry->packet_count,
@@ -373,7 +375,6 @@ void PolicyStatsManager::handleFlowStats(int msgType, ofpbuf *msg) {
         }
     } while (true);
 
-    LOG(ERROR) << "updatePolicyStatsMap";
     updatePolicyStatsMap(newCountersMap);
 
 }
@@ -430,9 +431,7 @@ void PolicyStatsManager::updatePolicyStatsCounters(const std::string& srcEpg,
     Mutator mutator(agent->getFramework(), "policyelement");
     optional<shared_ptr<PolicyStatUniverse> > su =
         PolicyStatUniverse::resolve(agent->getFramework());
-        LOG(ERROR) << "Inside updatePolicyStatsCounters";
     if (su) {
-        LOG(ERROR) << "addGbpeL24ClassifierCounter";
         su.get()->addGbpeL24ClassifierCounter(srcEpg, dstEpg, l24Classifier)
             ->setPackets(newVals.packet_count.get())
             .setBytes(newVals.byte_count.get());

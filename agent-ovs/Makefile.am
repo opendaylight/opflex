@@ -200,6 +200,7 @@ agent_test_SOURCES = \
 	test/MockFlowExecutor.cpp \
 	test/FlowManagerFixture.cpp \
 	test/PolicyManager_test.cpp \
+	test/PolicyStatsManager_test.cpp \
 	test/EndpointManager_test.cpp \
 	test/IntFlowManager_test.cpp \
 	test/AccessFlowManager_test.cpp \

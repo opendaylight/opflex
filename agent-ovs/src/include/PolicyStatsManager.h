@@ -113,17 +113,6 @@ private:
      * Counters for L24Classifiers
      */
     struct PolicyCounters_t {
-#define  PSM_FLOW_CREATED          1
-#define  PSM_FLOW_TO_BE_DELETED    2
-         /* if we received flow deletion then mark flow_state "to be deleted" 
-            and remove it under any of the following condition.
-            1. After receiving last set of flow counter values from switch manager.
-            2. Dead timer interval expires (to account for OpenVswitchD died and came up)
-            3. A new flow entry with same Cookie is recreated then irrespective
-               of flow_state, delete the old entry and create a new one. 
-         */
-         uint8_t   flow_state; 
-         // time_t    last_collection_time;
          boost::optional<uint64_t>  packet_count;
          boost::optional<uint64_t>  byte_count;
     };
