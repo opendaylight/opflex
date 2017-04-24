@@ -104,6 +104,40 @@ public:
 private:
 };
 
+void StatsManagerFixture::verifyCounters(int *dummy_stats, int port_num) {
+    EndpointManager& epMgr = agent.getEndpointManager();
+    std::unordered_set<std::string> endpoints;
+    const std::string& intPortName = intPortMapper.FindPort(port_num);
+    epMgr.getEndpointsByIface(intPortName, endpoints);
+    optional<shared_ptr<EpStatUniverse> > su =
+                                EpStatUniverse::resolve(framework);
+    std::vector<OF_SHARED_PTR<modelgbp::gbpe::EpCounter> > epCounters;
+
+    for (const std::string& uuid : endpoints) { // assuming only one entry
+
+        if (su) {
+            optional<std::shared_ptr<modelgbp::gbpe::EpCounter> > myCounter =
+                        su.get()->resolveGbpeEpCounter(uuid);
+
+            if (myCounter) {
+                BOOST_CHECK_EQUAL(myCounter.get()->getRxPackets().get(),
+                       dummy_stats[0]);
+                BOOST_CHECK_EQUAL(myCounter.get()->getTxPackets().get(),
+                       dummy_stats[1]);
+                BOOST_CHECK_EQUAL(myCounter.get()->getRxBytes().get(),
+                       dummy_stats[2]);
+                BOOST_CHECK_EQUAL(myCounter.get()->getTxBytes().get(),
+                       dummy_stats[3]);
+                BOOST_CHECK_EQUAL(myCounter.get()->getRxDrop().get(),
+                       dummy_stats[4]);
+                BOOST_CHECK_EQUAL(myCounter.get()->getTxDrop().get(),
+                       dummy_stats[5]);
+            }
+            break;
+        }
+    }
+}
+
 BOOST_AUTO_TEST_SUITE(StatsManager_test)
 
 BOOST_FIXTURE_TEST_CASE(startAndStopBeforeInitialization, StatsManagerFixture) {
@@ -177,41 +211,6 @@ BOOST_FIXTURE_TEST_CASE(useIntConnectionAlone, StatsManagerFixture) {
     ofpbuf_delete(res_msg);
     verifyCounters(dummy_stats, port_num);
     statsManager.stop();
-}
-
-
-void StatsManagerFixture::verifyCounters(int *dummy_stats, int port_num) {
-    EndpointManager& epMgr = agent.getEndpointManager();
-    std::unordered_set<std::string> endpoints;
-    const std::string& intPortName = intPortMapper.FindPort(port_num);
-    epMgr.getEndpointsByIface(intPortName, endpoints);
-    optional<shared_ptr<EpStatUniverse> > su =
-                                EpStatUniverse::resolve(framework);
-    std::vector<OF_SHARED_PTR<modelgbp::gbpe::EpCounter> > epCounters;
-
-    for (const std::string& uuid : endpoints) { // assuming only one entry
-
-        if (su) {
-            optional<std::shared_ptr<modelgbp::gbpe::EpCounter> > myCounter =
-                        su.get()->resolveGbpeEpCounter(uuid);
-
-            if (myCounter) {
-                BOOST_CHECK_EQUAL(myCounter.get()->getRxPackets().get(),
-                       dummy_stats[0]);
-                BOOST_CHECK_EQUAL(myCounter.get()->getTxPackets().get(),
-                       dummy_stats[1]);
-                BOOST_CHECK_EQUAL(myCounter.get()->getRxBytes().get(),
-                       dummy_stats[2]);
-                BOOST_CHECK_EQUAL(myCounter.get()->getTxBytes().get(),
-                       dummy_stats[3]);
-                BOOST_CHECK_EQUAL(myCounter.get()->getRxDrop().get(),
-                       dummy_stats[4]);
-                BOOST_CHECK_EQUAL(myCounter.get()->getTxDrop().get(),
-                       dummy_stats[5]);
-            }
-            break;
-        }
-    }
 }
 
 BOOST_FIXTURE_TEST_CASE(useBothConnections, StatsManagerFixture) {
