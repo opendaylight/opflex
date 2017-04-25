@@ -93,7 +93,10 @@ class AgentLauncher : FSWatcher::Watcher {
 public:
     AgentLauncher(bool watch_, std::vector<string>& configFiles_)
         : watch(watch_), configFiles(configFiles_),
-          stopped(false), need_reload(false) {}
+          stopped(false), need_reload(false) {
+        // Force static initialization in main thread
+        modelgbp::getMetadata();
+    }
 
     void run() {
         try {
