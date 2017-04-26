@@ -77,14 +77,14 @@ namespace ovsagent {
 
 static const char* ID_NAMESPACES[] =
     {"floodDomain", "bridgeDomain", "routingDomain",
-     "contract", "externalNetwork", "service"};
+     "externalNetwork", "service", "l24classifierRule"};
 
-static const char* ID_NMSPC_FD      = ID_NAMESPACES[0];
-static const char* ID_NMSPC_BD      = ID_NAMESPACES[1];
-static const char* ID_NMSPC_RD      = ID_NAMESPACES[2];
-static const char* ID_NMSPC_CON     = ID_NAMESPACES[3];
-static const char* ID_NMSPC_EXTNET  = ID_NAMESPACES[4];
-static const char* ID_NMSPC_SERVICE = ID_NAMESPACES[5];
+static const char* ID_NMSPC_FD            = ID_NAMESPACES[0];
+static const char* ID_NMSPC_BD            = ID_NAMESPACES[1];
+static const char* ID_NMSPC_RD            = ID_NAMESPACES[2];
+static const char* ID_NMSPC_EXTNET        = ID_NAMESPACES[3];
+static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[4];
+static const char* ID_NMSPC_L24CLASS_RULE = ID_NAMESPACES[5];
 
 IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,
@@ -424,6 +424,7 @@ static FlowBuilder& matchSubnet(FlowBuilder& fb, uint32_t rdId,
     else fb.ipDst(ip, prefixLen);
     return fb;
 }
+
 
 static FlowBuilder& matchDhcpReq(FlowBuilder& fb, bool v4) {
     fb.proto(17);
@@ -2011,6 +2012,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
         LOG(DEBUG) << "Cleaning up for RD: " << rdURI;
         switchManager.clearFlows(rdURI.toString(), NAT_IN_TABLE_ID);
         switchManager.clearFlows(rdURI.toString(), ROUTE_TABLE_ID);
+        switchManager.clearFlows(rdURI.toString(), POL_TABLE_ID);
         idGen.erase(getIdNamespace(RoutingDomain::CLASS_ID), rdURI.toString());
         ctZoneManager.erase(rdURI.toString());
         return;
@@ -2154,6 +2156,13 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     for (const string& uuid : uuids) {
         serviceUpdated(uuid);
     }
+
+    // create drop entry in POL_TABLE_ID for each routingDomain
+    // this entry is needed to count all dropped packets per
+    // routingDomain and summed up for all the routingDomain to
+    // calculate per tenant drop counter.
+    switchManager.writeFlow(rdURI.toString(), POL_TABLE_ID,
+             FlowBuilder().priority(1).reg(6, rdId));
 }
 
 void
@@ -2357,15 +2366,16 @@ void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
     }
 }
 
-static void addContractRules(FlowEntryList& entryList,
+void IntFlowManager::addContractRules(FlowEntryList& entryList,
                              const uint32_t pvnid,
                              const uint32_t cvnid,
                              bool allowBidirectional,
-                             uint32_t cookie,
                              const PolicyManager::rule_list_t& rules) {
     for (const shared_ptr<PolicyRule>& pc : rules) {
         uint8_t dir = pc->getDirection();
         const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
+        const opflex::modb::URI& ruleURI = cls.get()->getURI();
+        uint64_t cookie = getId(L24Classifier::CLASS_ID, ruleURI);
         flowutils::ClassAction act = flowutils::CA_DENY;
         if (pc->getAllow())
             act = flowutils::CA_ALLOW;
@@ -2381,6 +2391,7 @@ static void addContractRules(FlowEntryList& entryList,
                                               boost::none,
                                               IntFlowManager::OUT_TABLE_ID,
                                               pc->getPriority(),
+                                              OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
                                               cvnid, pvnid,
                                               entryList);
@@ -2392,6 +2403,7 @@ static void addContractRules(FlowEntryList& entryList,
                                               boost::none,
                                               IntFlowManager::OUT_TABLE_ID,
                                               pc->getPriority(),
+                                              OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
                                               pvnid, cvnid,
                                               entryList);
@@ -2407,7 +2419,6 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
     PolicyManager& polMgr = agent.getPolicyManager();
     if (!polMgr.contractExists(contractURI)) {  // Contract removed
         switchManager.clearFlows(contractId, POL_TABLE_ID);
-        idGen.erase(getIdNamespace(Contract::CLASS_ID), contractURI.toString());
         return;
     }
     PolicyManager::uri_set_t provURIs;
@@ -2435,7 +2446,6 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
                << ", #rules=" << rules.size();
 
     FlowEntryList entryList;
-    uint64_t conCookie = getId(Contract::CLASS_ID, contractURI);
 
     for (const uint32_t& pvnid : provIds) {
         for (const uint32_t& cvnid : consIds) {
@@ -2454,12 +2464,11 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
 
             addContractRules(entryList, pvnid, cvnid,
                              allowBidirectional,
-                             conCookie,
                              rules);
         }
     }
     for (const uint32_t& ivnid : intraIds) {
-        addContractRules(entryList, ivnid, ivnid, false, conCookie, rules);
+        addContractRules(entryList, ivnid, ivnid, false, rules);
     }
 
     switchManager.writeFlow(contractId, POL_TABLE_ID, entryList);
@@ -2585,8 +2594,8 @@ static const IdCb ID_NAMESPACE_CB[] =
     {IdGenerator::uriIdGarbageCb<FloodDomain>,
      IdGenerator::uriIdGarbageCb<BridgeDomain>,
      IdGenerator::uriIdGarbageCb<RoutingDomain>,
-     IdGenerator::uriIdGarbageCb<Contract>,
-     IdGenerator::uriIdGarbageCb<L3ExternalNetwork>};
+     IdGenerator::uriIdGarbageCb<L3ExternalNetwork>,
+     IdGenerator::uriIdGarbageCb<L24Classifier>};
 
 static bool serviceIdGarbageCb(ServiceManager& serviceManager,
                                const std::string& nmspc,
@@ -2617,8 +2626,8 @@ const char * IntFlowManager::getIdNamespace(class_id_t cid) {
     case RoutingDomain::CLASS_ID:   nmspc = ID_NMSPC_RD; break;
     case BridgeDomain::CLASS_ID:    nmspc = ID_NMSPC_BD; break;
     case FloodDomain::CLASS_ID:     nmspc = ID_NMSPC_FD; break;
-    case Contract::CLASS_ID:        nmspc = ID_NMSPC_CON; break;
     case L3ExternalNetwork::CLASS_ID: nmspc = ID_NMSPC_EXTNET; break;
+    case L24Classifier::CLASS_ID: nmspc = ID_NMSPC_L24CLASS_RULE; break;
     default:
         assert(false);
     }

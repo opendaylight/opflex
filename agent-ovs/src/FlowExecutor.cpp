@@ -143,6 +143,8 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     flowMod.out_port = OFPP_NONE;
     flowMod.out_group = OFPG_ANY;
     flowMod.flags = (ofputil_flow_mod_flags)0;
+    if (flow.flags)
+        flowMod.flags = flow.flags;
 
     return ofputil_encode_flow_mod(&flowMod, proto);
 }
