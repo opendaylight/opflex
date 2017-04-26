@@ -94,7 +94,8 @@ void add_classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
                             boost::optional<const network::subnets_t&> sourceSub,
                             boost::optional<const network::subnets_t&> destSub,
                             uint8_t nextTable, uint16_t priority,
-                            uint64_t cookie, uint32_t svnid, uint32_t dvnid,
+                            uint32_t flags, uint64_t cookie,
+                            uint32_t svnid, uint32_t dvnid,
                             /* out */ FlowEntryList& entries);
 } // namespace flowutils
 } // namespace ovsagent
