@@ -37,8 +37,6 @@ namespace fs = boost::filesystem;
 namespace pt = boost::property_tree;
 using namespace ovsagent;
 
-void sighandler(int sig) {}
-
 #define DEFAULT_CONF SYSCONFDIR"/opflex-agent-ovs/opflex-agent-ovs.conf"
 
 class strip_comments : public boost::iostreams::line_filter {
@@ -95,7 +93,7 @@ public:
         : watch(watch_), configFiles(configFiles_),
           stopped(false), need_reload(false) {}
 
-    void run() {
+    int run() {
         try {
             while (true) {
                 FSWatcher configWatcher;
@@ -113,19 +111,19 @@ public:
                 agent.stop();
 
                 if (stopped) {
-                    return;
+                    return 0;
                 }
                 need_reload = false;
                 LOG(INFO) << "Reloading agent because of configuration update";
             }
         } catch (pt::json_parser_error& e) {
-            exit(4);
+            return 4;
         } catch (const std::exception& e) {
             LOG(ERROR) << "Fatal error: " << e.what();
-            exit(2);
+            return 2;
         } catch (...) {
             LOG(ERROR) << "Unknown fatal error";
-            exit(3);
+            return 3;
         }
     }
 
@@ -255,18 +253,26 @@ int main(int argc, char** argv) {
     else
         configFiles.push_back(DEFAULT_CONF);
 
+    sigset_t waitset;
+    sigemptyset(&waitset);
+    sigaddset(&waitset, SIGINT);
+    sigaddset(&waitset, SIGTERM);
+    sigprocmask(SIG_BLOCK, &waitset, NULL);
+
     AgentLauncher launcher(watch, configFiles);
-    std::thread agent_thread([&launcher]() { launcher.run(); });
+    std::thread signal_thread([&launcher, &waitset]() {
+            int sig;
+            int result = sigwait(&waitset, &sig);
+            if (result == 0) {
+                LOG(INFO) << "Got " << strsignal(sig) << " signal";
+            } else {
+                LOG(ERROR) << "Failed to wait for signals: " << errno;
+            }
+            launcher.stop();
+        });
 
-    // Pause the main thread until interrupted
-    signal(SIGINT, sighandler);
-    signal(SIGTERM, sighandler);
-    pause();
-
-    LOG(INFO) << "Shutting down agent";
-
-    launcher.stop();
-    agent_thread.join();
-
+    int rc = launcher.run();
+    if (rc) exit(rc);
+    signal_thread.join();
     return 0;
 }
