@@ -98,7 +98,7 @@ void AccessFlowManager::endpointUpdated(const string& uuid) {
 void AccessFlowManager::secGroupSetUpdated(const uri_set_t& secGrps) {
     if (stopping) return;
     const string id = getSecGrpSetId(secGrps);
-    taskQueue.dispatch(id,
+    taskQueue.dispatch("set:" + id,
                        std::bind(&AccessFlowManager::handleSecGrpSetUpdate,
                                  this, secGrps, id));
 }
@@ -110,7 +110,7 @@ void AccessFlowManager::configUpdated(const opflex::modb::URI& configURI) {
 
 void AccessFlowManager::secGroupUpdated(const opflex::modb::URI& uri) {
     if (stopping) return;
-    taskQueue.dispatch(uri.toString(),
+    taskQueue.dispatch("secgrp:" + uri.toString(),
                        std::bind(&AccessFlowManager::handleSecGrpUpdate,
                                    this, uri));
 }
