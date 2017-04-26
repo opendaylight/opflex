@@ -85,7 +85,8 @@ void PolicyManager::start() {
 
     // resolve platform config
     Mutator mutator(framework, "init");
-    optional<shared_ptr<dmtree::Root> > root(dmtree::Root::resolve(URI::ROOT));
+    optional<shared_ptr<dmtree::Root> >
+        root(dmtree::Root::resolve(framework, URI::ROOT));
     if (root)
         root.get()->addDomainConfig()
             ->addDomainConfigToConfigRSrc()
