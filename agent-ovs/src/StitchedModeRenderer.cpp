@@ -34,6 +34,7 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
                           accessFlowReader, accessPortMapper),
       accessFlowManager(agent_, accessSwitchManager, idGen, ctZoneManager),
       statsManager(&agent_, intSwitchManager.getPortMapper(), accessSwitchManager.getPortMapper()),
+      polStatsManager(&agent_, idGen, intSwitchManager),
       tunnelEpManager(&agent_), tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true),
       connTrack(true), ctZoneRangeStart(0), ctZoneRangeEnd(0),
@@ -121,6 +122,9 @@ void StitchedModeRenderer::start() {
         statsManager.registerConnection(intSwitchManager.getConnection(), NULL);
     }
     statsManager.start();
+
+    polStatsManager.registerConnection(intSwitchManager.getConnection());
+    polStatsManager.start();
 
     cleanupTimer.reset(new deadline_timer(getAgent().getAgentIOService()));
     cleanupTimer->expires_from_now(CLEANUP_INTERVAL);

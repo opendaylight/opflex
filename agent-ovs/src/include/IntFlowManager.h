@@ -222,6 +222,12 @@ public:
      */
     const uint8_t *getDHCPMacAddr() { return dhcpMac; }
 
+    /**
+     * Get the name space string
+     * @return the name space string
+     */
+    static const char * getIdNamespace(opflex::modb::class_id_t cid);
+
     /* Interface: SwitchStateHandler */
     virtual std::vector<FlowEdit>
     reconcileFlows(std::vector<TableState> flowTables,
@@ -557,8 +563,6 @@ private:
     typedef std::unordered_map<opflex::modb::URI, Ep2PortMap> FloodGroupMap;
     FloodGroupMap floodGroupMap;
 
-    const char * getIdNamespace(opflex::modb::class_id_t cid);
-
     bool isSyncing;
 
     uint32_t getExtNetVnid(const opflex::modb::URI& uri);
@@ -602,6 +606,14 @@ private:
      * Write out the current multicast subscriptions
      */
     void writeMulticastGroups();
+    /**
+     *
+     */
+    void addContractRules(FlowEntryList& entryList,
+                                 const uint32_t pvnid,
+                                 const uint32_t cvnid,
+                                 bool allowBidirectional,
+                                 const PolicyManager::rule_list_t& rules);
 };
 
 } // namespace ovsagent
