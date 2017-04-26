@@ -158,6 +158,15 @@ public:
         return (bool)MO::resolve(framework, opflex::modb::URI(str));
     }
 
+    /**
+     * Get the string for the given ID in the given namespace.
+     *
+     * @param nmspc Namespace to get an ID from
+     * @param id to get an str for
+     * @return NULL if no string for given id found else reference of stored string.
+     */
+    boost::optional<std::string> getStringForId(const std::string& nmspc, uint32_t id);
+
 private:
     typedef std::chrono::steady_clock::time_point time_point;
     typedef std::chrono::milliseconds duration;
@@ -189,6 +198,9 @@ private:
         typedef std::unordered_map<std::string, time_point> Str2EIdMap;
         Str2EIdMap erasedIds;
 
+        typedef std::unordered_map<uint32_t, std::string> Id2StrMap;
+        Id2StrMap  reverseMap;
+
         boost::optional<alloc_hook_t> allocHook;
     };
 
@@ -201,6 +213,8 @@ private:
     void persist(const std::string& nmspc, IdMap& idmap);
     uint32_t getRemainingIdsLocked(const std::string& nmspc);
 
+    void updateReverseMap(const std::string& nmspc, uint32_t id, const std::string& str, bool create);
+
     std::mutex id_mutex;
 
     /**
@@ -208,6 +222,7 @@ private:
      */
     typedef std::unordered_map<std::string, IdMap> NamespaceMap;
     std::unordered_map<std::string, IdMap> namespaces;
+
     std::string persistDir;
     duration cleanupInterval;
 };

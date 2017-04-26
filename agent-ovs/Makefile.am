@@ -82,6 +82,7 @@ noinst_HEADERS = \
 	src/include/SwitchManager.h \
 	src/include/PortMapper.h \
 	src/include/StatsManager.h \
+	src/include/PolicyStatsManager.h \
 	src/include/Agent.h \
 	src/include/IdGenerator.h \
 	src/include/CtZoneManager.h \
@@ -132,6 +133,7 @@ libagent_ovs_la_SOURCES = \
 	src/SwitchManager.cpp \
 	src/PortMapper.cpp \
 	src/StatsManager.cpp \
+	src/PolicyStatsManager.cpp \
 	src/cmd.cpp \
 	src/logging.cpp \
 	src/Agent.cpp \
@@ -198,6 +200,7 @@ agent_test_SOURCES = \
 	test/MockFlowExecutor.cpp \
 	test/FlowManagerFixture.cpp \
 	test/PolicyManager_test.cpp \
+	test/PolicyStatsManager_test.cpp \
 	test/EndpointManager_test.cpp \
 	test/IntFlowManager_test.cpp \
 	test/AccessFlowManager_test.cpp \
