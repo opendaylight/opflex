@@ -58,6 +58,11 @@ FlowBuilder& FlowBuilder::cookie(uint64_t cookie) {
     return *this;
 }
 
+FlowBuilder& FlowBuilder::flags(uint32_t flags) {
+    entry_->entry->flags = (enum ofputil_flow_mod_flags)flags;
+    return *this;
+}
+
 FlowBuilder& FlowBuilder::inPort(uint32_t port) {
     match_set_in_port(match(), port);
     return *this;

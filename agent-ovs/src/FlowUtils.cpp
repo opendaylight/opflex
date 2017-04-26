@@ -121,7 +121,8 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
                             boost::optional<const network::subnets_t&> sourceSub,
                             boost::optional<const network::subnets_t&> destSub,
                             uint8_t nextTable, uint16_t priority,
-                            uint64_t cookie, uint32_t svnid, uint32_t dvnid,
+                            uint32_t flags, uint64_t cookie,
+                            uint32_t svnid, uint32_t dvnid,
                             /* out */ FlowEntryList& entries) {
     using modelgbp::l4::TcpFlagsEnumT;
 
@@ -162,6 +163,7 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
                     for (uint32_t flagMask : tcpFlagsVec) {
                         FlowBuilder f;
                         f.cookie(ckbe);
+                        f.flags(flags);
 
                         switch (act) {
                         case flowutils::CA_REFLEX_REV:
