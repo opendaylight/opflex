@@ -110,12 +110,18 @@ enum REG {
     PKT_MARK
 };
 
+enum FLAG {
+    SEND_FLOW_REM=1, NO_PKT_COUNTS, NO_BYT_COUNTS, CHECK_OVERLAP,
+    RESET_COUNTS
+};
+
 /**
  * Helper class to build string representation of a flow entry.
  */
 class Bldr {
 public:
     Bldr(const std::string& init="");
+    Bldr(const std::string& init, uint32_t flag);
 
     std::string done() { cntr = 0; return entry; }
     Bldr& table(uint8_t t) { rep(", table=", str(t)); return *this; }
