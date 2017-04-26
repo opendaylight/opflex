@@ -66,6 +66,13 @@ public:
     FlowBuilder& cookie(uint64_t cookie);
 
     /**
+     * Set flag for the flow entry
+     * @param flags to set
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& flags(uint32_t flags);
+
+    /**
      * Add a match against the specified input port
      * @param port the port to match
      * @return this flow builder for chaining
