@@ -2356,6 +2356,53 @@ void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
     }
 }
 
+static void addContractRules(FlowEntryList& entryList,
+                             const uint32_t pvnid,
+                             const uint32_t cvnid,
+                             bool allowBidirectional,
+                             uint32_t cookie,
+                             const PolicyManager::rule_list_t& rules) {
+    for (const shared_ptr<PolicyRule>& pc : rules) {
+        uint8_t dir = pc->getDirection();
+        const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
+        /*
+         * Collapse bidirectional rules - if consumer 'cvnid' is also
+         * a provider and provider 'pvnid' is also a consumer, then
+         * add entry for cvnid to pvnid traffic only.
+         */
+        flowutils::ClassAction act = flowutils::CA_DENY;
+        if (pc->getAllow())
+            act = flowutils::CA_ALLOW;
+
+        if (dir == DirectionEnumT::CONST_BIDIRECTIONAL ||
+            !allowBidirectional) {
+            dir = DirectionEnumT::CONST_IN;
+        }
+        if (dir == DirectionEnumT::CONST_IN ||
+            dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
+            flowutils::add_classifier_entries(*cls, act,
+                                              boost::none,
+                                              boost::none,
+                                              IntFlowManager::OUT_TABLE_ID,
+                                              pc->getPriority(),
+                                              cookie,
+                                              cvnid, pvnid,
+                                              entryList);
+        }
+        if (dir == DirectionEnumT::CONST_OUT ||
+            dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
+            flowutils::add_classifier_entries(*cls, act,
+                                              boost::none,
+                                              boost::none,
+                                              IntFlowManager::OUT_TABLE_ID,
+                                              pc->getPriority(),
+                                              cookie,
+                                              pvnid, cvnid,
+                                              entryList);
+        }
+    }
+}
+
 void
 IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
     LOG(DEBUG) << "Updating contract " << contractURI;
@@ -2369,14 +2416,18 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
     }
     PolicyManager::uri_set_t provURIs;
     PolicyManager::uri_set_t consURIs;
+    PolicyManager::uri_set_t intraURIs;
     polMgr.getContractProviders(contractURI, provURIs);
     polMgr.getContractConsumers(contractURI, consURIs);
+    polMgr.getContractIntra(contractURI, intraURIs);
 
-    typedef unordered_map<uint32_t, uint32_t> IdMap;
-    IdMap provIds;
-    IdMap consIds;
-    getGroupVnidAndRdId(provURIs, provIds);
-    getGroupVnidAndRdId(consURIs, consIds);
+    typedef unordered_set<uint32_t> id_set_t;
+    id_set_t provIds;
+    id_set_t consIds;
+    id_set_t intraIds;
+    getGroupVnid(provURIs, provIds);
+    getGroupVnid(consURIs, consIds);
+    getGroupVnid(intraURIs, intraIds);
 
     PolicyManager::rule_list_t rules;
     polMgr.getContractRules(contractURI, rules);
@@ -2384,58 +2435,28 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
     LOG(DEBUG) << "Update for contract " << contractURI
                << ", #prov=" << provIds.size()
                << ", #cons=" << consIds.size()
+               << ", #intra=" << intraIds.size()
                << ", #rules=" << rules.size();
 
     FlowEntryList entryList;
     uint64_t conCookie = getId(Contract::CLASS_ID, contractURI);
 
-    for (const IdMap::value_type& pid : provIds) {
-        const uint32_t& pvnid = pid.first;
-        for (const IdMap::value_type& cid : consIds) {
-            const uint32_t& cvnid = cid.first;
+    for (const uint32_t& pvnid : provIds) {
+        for (const uint32_t& cvnid : consIds) {
+            if (pvnid == cvnid)
+                continue;
 
-            for (shared_ptr<PolicyRule>& pc : rules) {
-                uint8_t dir = pc->getDirection();
-                const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
-                /*
-                 * Collapse bidirectional rules - if consumer 'cvnid' is also
-                 * a provider and provider 'pvnid' is also a consumer, then
-                 * add entry for cvnid to pvnid traffic only.
-                 */
-                flowutils::ClassAction act = flowutils::CA_DENY;
-                if (pc->getAllow())
-                    act = flowutils::CA_ALLOW;
-
-                if (dir == DirectionEnumT::CONST_BIDIRECTIONAL &&
-                    provIds.find(cvnid) != provIds.end() &&
-                    consIds.find(pvnid) != consIds.end()) {
-                    dir = DirectionEnumT::CONST_IN;
-                }
-                if (dir == DirectionEnumT::CONST_IN ||
-                    dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
-                    flowutils::add_classifier_entries(*cls, act,
-                                                      boost::none,
-                                                      boost::none,
-                                                      OUT_TABLE_ID,
-                                                      pc->getPriority(),
-                                                      conCookie,
-                                                      cvnid, pvnid,
-                                                      entryList);
-                }
-                if (dir == DirectionEnumT::CONST_OUT ||
-                    dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
-                    flowutils::add_classifier_entries(*cls, act,
-                                                      boost::none,
-                                                      boost::none,
-                                                      OUT_TABLE_ID,
-                                                      pc->getPriority(),
-                                                      conCookie,
-                                                      pvnid, cvnid,
-                                                      entryList);
-                }
-            }
+            addContractRules(entryList, pvnid, cvnid,
+                             provIds.find(cvnid) == provIds.end() ||
+                             consIds.find(pvnid) == consIds.end(),
+                             conCookie,
+                             rules);
         }
     }
+    for (const uint32_t& ivnid : intraIds) {
+        addContractRules(entryList, ivnid, ivnid, false, conCookie, rules);
+    }
+
     switchManager.writeFlow(contractId, POL_TABLE_ID, entryList);
 }
 
@@ -2531,24 +2552,13 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
     }
 }
 
-void IntFlowManager::getGroupVnidAndRdId(const unordered_set<URI>& uris,
-    /* out */unordered_map<uint32_t, uint32_t>& ids) {
+void IntFlowManager::getGroupVnid(const unordered_set<URI>& uris,
+    /* out */unordered_set<uint32_t>& ids) {
     PolicyManager& pm = agent.getPolicyManager();
     for (const URI& u : uris) {
         optional<uint32_t> vnid = pm.getVnidForGroup(u);
-        optional<shared_ptr<RoutingDomain> > rd;
-        if (vnid) {
-            rd = pm.getRDForGroup(u);
-        } else {
-            rd = pm.getRDForL3ExtNet(u);
-            if (rd) {
-                vnid = getExtNetVnid(u);
-            }
-        }
-        if (vnid && rd) {
-            ids[vnid.get()] = getId(RoutingDomain::CLASS_ID,
-                                    rd.get()->getURI());
-        }
+        if (vnid)
+            ids.insert(vnid.get());
     }
 }
 

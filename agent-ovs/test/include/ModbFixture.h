@@ -307,10 +307,8 @@ protected:
         epg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
         epg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
 
-        epg2->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
-        epg2->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
-        epg3->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
-        epg3->addGbpEpGroupToConsContractRSrc(con2->getURI().toString());
+        epg2->addGbpEpGroupToIntraContractRSrc(con2->getURI().toString());
+        epg3->addGbpEpGroupToIntraContractRSrc(con2->getURI().toString());
 
         /* classifiers with port ranges */
         classifier3 = space->addGbpeL24Classifier("classifier3");

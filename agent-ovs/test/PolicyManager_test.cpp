@@ -121,6 +121,11 @@ public:
             ->setDirection(DirectionEnumT::CONST_OUT)
             .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
 
+        con3 = space->addGbpContract("contract3");
+        con3->addGbpSubject("3_subject1")->addGbpRule("2_1_rule1")
+            ->setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
+
         eg1 = space->addGbpEpGroup("group1");
         eg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetFloodDomain(fd->getURI());
@@ -128,6 +133,7 @@ public:
             .setMulticastGroupIP("224.1.1.1");
         eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
+        eg1->addGbpEpGroupToIntraContractRSrc(con3->getURI().toString());
 
         eg2 = space->addGbpEpGroup("group2");
         eg2->addGbpeInstContext()->setEncapId(5678);
@@ -204,6 +210,7 @@ public:
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
+    shared_ptr<Contract> con3;
 };
 
 class MockListener : public PolicyListener {
@@ -349,6 +356,11 @@ BOOST_FIXTURE_TEST_CASE( group_contract, PolicyFixture ) {
     WAIT_FOR_DO(egs.size() == 1, 500,
             egs.clear(); pm.getContractConsumers(con2->getURI(), egs));
     BOOST_CHECK(checkContains(egs, eg2->getURI()));
+
+    egs.clear();
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractIntra(con3->getURI(), egs));
+    BOOST_CHECK(checkContains(egs, eg1->getURI()));
 }
 
 BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
@@ -367,6 +379,8 @@ BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
     eg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString())
             ->unsetTarget();
     eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString())
+            ->unsetTarget();
+    eg1->addGbpEpGroupToIntraContractRSrc(con3->getURI().toString())
             ->unsetTarget();
 
     eg2->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
@@ -390,6 +404,11 @@ BOOST_FIXTURE_TEST_CASE( group_contract_update, PolicyFixture ) {
     pm.getContractProviders(con2->getURI(), egs);
     WAIT_FOR_DO(egs.empty(), 500,
         egs.clear(); pm.getContractProviders(con2->getURI(), egs));
+
+    egs.clear();
+    pm.getContractIntra(con3->getURI(), egs);
+    WAIT_FOR_DO(egs.empty(), 500,
+        egs.clear(); pm.getContractIntra(con3->getURI(), egs));
 }
 
 static bool checkRules(const PolicyManager::rule_list_t& lhs,

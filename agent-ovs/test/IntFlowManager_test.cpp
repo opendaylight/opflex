@@ -721,6 +721,9 @@ BOOST_FIXTURE_TEST_CASE(policy, VxlanIntFlowManagerFixture) {
     egs.clear();
     WAIT_FOR_DO(egs.size() == 2, 500, egs.clear();
                 policyMgr.getContractConsumers(con1->getURI(), egs));
+    egs.clear();
+    WAIT_FOR_DO(egs.size() == 2, 500, egs.clear();
+                policyMgr.getContractIntra(con2->getURI(), egs));
 
     /* add con2 */
     intFlowManager.contractUpdated(con2->getURI());
@@ -760,6 +763,9 @@ BOOST_FIXTURE_TEST_CASE(policy_portrange, VxlanIntFlowManagerFixture) {
     egs.clear();
     WAIT_FOR_DO(egs.size() == 1, 500, egs.clear();
                 policyMgr.getContractConsumers(con3->getURI(), egs));
+    PolicyManager::rule_list_t rules;
+    WAIT_FOR_DO(rules.size() == 2, 500, rules.clear();
+                policyMgr.getContractRules(con3->getURI(), rules));
 
     /* add con3 */
     intFlowManager.contractUpdated(con3->getURI());
@@ -1830,24 +1836,20 @@ void IntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
     }
 }
 
-typedef unordered_map<uint32_t, uint32_t>::value_type IdKeyValue;
-
 void IntFlowManagerFixture::initExpCon1() {
     uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
-    unordered_map<uint32_t, uint32_t> pvnids, cvnids;
+    unordered_set<uint32_t> pvnids, cvnids;
 
     policyMgr.getContractProviders(con1->getURI(), ps);
     policyMgr.getContractConsumers(con1->getURI(), cs);
-    intFlowManager.getGroupVnidAndRdId(ps, pvnids);
-    intFlowManager.getGroupVnidAndRdId(cs, cvnids);
+    intFlowManager.getGroupVnid(ps, pvnids);
+    intFlowManager.getGroupVnid(cs, cvnids);
     uint32_t con1_cookie =
         intFlowManager.getId(con1->getClassId(), con1->getURI());
 
-    for (const IdKeyValue& pid : pvnids) {
-        uint32_t pvnid = pid.first;
-        for (const IdKeyValue& cid : cvnids) {
-            uint32_t cvnid = cid.first;
+    for (const uint32_t& pvnid : pvnids) {
+        for (const uint32_t& cvnid : cvnids) {
             /* classifer 1  */
             ADDF(Bldr().table(POL).priority(prio)
                  .cookie(con1_cookie).tcp()
@@ -1881,18 +1883,16 @@ void IntFlowManagerFixture::initExpCon1() {
 void IntFlowManagerFixture::initExpCon2() {
     uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
-    unordered_map<uint32_t, uint32_t> pvnids, cvnids;
+    unordered_set<uint32_t> ivnids;
     uint32_t con2_cookie =
         intFlowManager.getId(con2->getClassId(), con2->getURI());
 
-    policyMgr.getContractProviders(con2->getURI(), ps);
-    intFlowManager.getGroupVnidAndRdId(ps, pvnids);
-    for (const IdKeyValue& pvnid : pvnids) {
-        for (const IdKeyValue& cvnid : pvnids) {
-            ADDF(Bldr().table(POL).priority(prio).cookie(con2_cookie)
-                 .reg(SEPG, cvnid.first).reg(DEPG, pvnid.first).isEth(0x8906)
-                 .actions().go(OUT).done());
-        }
+    policyMgr.getContractIntra(con2->getURI(), ps);
+    intFlowManager.getGroupVnid(ps, ivnids);
+    for (const uint32_t& ivnid : ivnids) {
+        ADDF(Bldr().table(POL).priority(prio).cookie(con2_cookie)
+             .reg(SEPG, ivnid).reg(DEPG, ivnid).isEth(0x8906)
+             .actions().go(OUT).done());
     }
 }
 
@@ -1901,7 +1901,6 @@ void IntFlowManagerFixture::initExpCon3() {
     uint32_t epg1_vnid = policyMgr.getVnidForGroup(epg1->getURI()).get();
     uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
-    unordered_map<uint32_t, uint32_t> pvnids, cvnids;
 
     uint32_t con3_cookie =
         intFlowManager.getId(con3->getClassId(), con3->getURI());
