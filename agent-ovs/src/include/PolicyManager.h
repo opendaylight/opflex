@@ -355,6 +355,15 @@ public:
                               /* out */ uri_set_t& epgURIs);
 
     /**
+     * Get all endpoint groups that have an intra-EPG contract
+     *
+     * @param contractURI URI of contract to look for
+     * @param epgURIs set of EPG URIs that consume the contract
+     */
+    void getContractIntra(const opflex::modb::URI& contractURI,
+                          /* out */ uri_set_t& epgURIs);
+
+    /**
      * Get the contracts consumed or provided by a group
      * @param egURI the group URI to look fo
      * @param contractURIs set of contract URIs that are consumed or
@@ -507,6 +516,7 @@ private:
     struct GroupContractState {
         uri_sorted_set_t contractsProvided;
         uri_sorted_set_t contractsConsumed;
+        uri_sorted_set_t contractsIntra;
     };
     typedef std::unordered_map<opflex::modb::URI, GroupContractState>
         group_contract_map_t;
@@ -522,6 +532,7 @@ private:
     struct ContractState {
         uri_set_t providerGroups;
         uri_set_t consumerGroups;
+        uri_set_t intraGroups;
         rule_list_t rules;
     };
     typedef std::unordered_map<opflex::modb::URI, ContractState>

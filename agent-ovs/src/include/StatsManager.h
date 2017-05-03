@@ -38,9 +38,12 @@ public:
     /**
      * Instantiate a new stats manager that will use the provided io
      * service for scheduling asynchronous tasks
+     *
      * @param agent the agent associated with the stats manager
-     * @param portMapper the openflow port mapper to use
-     * @param timer_interval the interval for the stats timer in milliseconds
+     * @param intPortMapper the integration bridge port mapper
+     * @param accessPortMapper the access bridge port mapper
+     * @param timer_interval the interval for the stats timer in
+     * milliseconds
      */
     StatsManager(Agent* agent,
                  PortMapper& intPortMapper,
@@ -65,9 +68,11 @@ public:
      *
      * @param intConnection the connection to use for integration
      * bridge stats collection
-     * @param accessConnection the connection to use for access bridge stats collection
+     * @param accessConnection the connection to use for access bridge
+     * stats collection
      */
-    void registerConnection(SwitchConnection* intConnection, SwitchConnection *accessConnection);
+    void registerConnection(SwitchConnection* intConnection,
+                            SwitchConnection *accessConnection);
 
 
     /**

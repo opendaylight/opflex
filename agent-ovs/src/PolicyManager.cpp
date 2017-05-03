@@ -295,8 +295,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
         vnid_map.erase(gs.instContext.get()->getEncapId().get());
     }
     if (newInstCtx && newInstCtx.get()->getEncapId()) {
-        vnid_map.insert(
-                        std::make_pair(newInstCtx.get()->getEncapId().get(), egURI));
+        vnid_map.insert(std::make_pair(newInstCtx.get()->getEncapId().get(),
+                                       egURI));
     }
 
     optional<shared_ptr<RoutingDomain> > newrd;
@@ -473,7 +473,8 @@ bool PolicyManager::removeContractIfRequired(const URI& contractURI) {
         Contract::resolve(framework, contractURI);
     if (!contract && itr != contractMap.end() &&
         itr->second.providerGroups.empty() &&
-        itr->second.consumerGroups.empty()) {
+        itr->second.consumerGroups.empty() &&
+        itr->second.intraGroups.empty()) {
         LOG(DEBUG) << "Removing index for contract " << contractURI;
         contractMap.erase(itr);
         return true;
@@ -489,9 +490,11 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
 
     uri_set_t provAdded, provRemoved;
     uri_set_t consAdded, consRemoved;
+    uri_set_t intraAdded, intraRemoved;
 
     uri_sorted_set_t newProvided;
     uri_sorted_set_t newConsumed;
+    uri_sorted_set_t newIntra;
 
     bool remove = true;
     if (groupType == EpGroup::CLASS_ID) {
@@ -503,6 +506,8 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
             epg.get()->resolveGbpEpGroupToProvContractRSrc(provRel);
             vector<shared_ptr<EpGroupToConsContractRSrc> > consRel;
             epg.get()->resolveGbpEpGroupToConsContractRSrc(consRel);
+            vector<shared_ptr<EpGroupToIntraContractRSrc> > intraRel;
+            epg.get()->resolveGbpEpGroupToIntraContractRSrc(intraRel);
 
             for (shared_ptr<EpGroupToProvContractRSrc>& rel : provRel) {
                 if (rel->isTargetSet()) {
@@ -512,6 +517,11 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
             for (shared_ptr<EpGroupToConsContractRSrc>& rel : consRel) {
                 if (rel->isTargetSet()) {
                     newConsumed.insert(rel->getTargetURI().get());
+                }
+            }
+            for (shared_ptr<EpGroupToIntraContractRSrc>& rel : intraRel) {
+                if (rel->isTargetSet()) {
+                    newIntra.insert(rel->getTargetURI().get());
                 }
             }
         }
@@ -544,6 +554,8 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
                            gcs.contractsProvided.end());
         consRemoved.insert(gcs.contractsConsumed.begin(),
                            gcs.contractsConsumed.end());
+        intraRemoved.insert(gcs.contractsIntra.begin(),
+                            gcs.contractsIntra.end());
         groupContractMap.erase(groupURI);
     } else {
 
@@ -555,16 +567,20 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
 
         CALC_DIFF(gcs.contractsProvided, newProvided, provAdded, provRemoved);
         CALC_DIFF(gcs.contractsConsumed, newConsumed, consAdded, consRemoved);
+        CALC_DIFF(gcs.contractsIntra, newIntra, intraAdded, intraRemoved);
 #undef CALC_DIFF
         gcs.contractsProvided.swap(newProvided);
         gcs.contractsConsumed.swap(newConsumed);
+        gcs.contractsIntra.swap(newIntra);
     }
 
-#define INSERT_ALL(dst, src)    dst.insert(src.begin(), src.end());
+#define INSERT_ALL(dst, src) dst.insert(src.begin(), src.end());
     INSERT_ALL(updatedContracts, provAdded);
     INSERT_ALL(updatedContracts, provRemoved);
     INSERT_ALL(updatedContracts, consAdded);
     INSERT_ALL(updatedContracts, consRemoved);
+    INSERT_ALL(updatedContracts, intraAdded);
+    INSERT_ALL(updatedContracts, intraRemoved);
 #undef INSERT_ALL
 
     for (const URI& u : provAdded) {
@@ -575,6 +591,10 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
         contractMap[u].consumerGroups.insert(groupURI);
         LOG(DEBUG) << u << ": cons add: " << groupURI;
     }
+    for (const URI& u : intraAdded) {
+        contractMap[u].intraGroups.insert(groupURI);
+        LOG(DEBUG) << u << ": intra add: " << groupURI;
+    }
     for (const URI& u : provRemoved) {
         contractMap[u].providerGroups.erase(groupURI);
         LOG(DEBUG) << u << ": prov remove: " << groupURI;
@@ -583,6 +603,11 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
     for (const URI& u : consRemoved) {
         contractMap[u].consumerGroups.erase(groupURI);
         LOG(DEBUG) << u << ": cons remove: " << groupURI;
+        removeContractIfRequired(u);
+    }
+    for (const URI& u : intraRemoved) {
+        contractMap[u].intraGroups.erase(groupURI);
+        LOG(DEBUG) << u << ": intra remove: " << groupURI;
         removeContractIfRequired(u);
     }
 }
@@ -834,6 +859,16 @@ void PolicyManager::getContractConsumers(const URI& contractURI,
     }
 }
 
+void PolicyManager::getContractIntra(const URI& contractURI,
+                                         /* out */ uri_set_t& epgURIs) {
+    lock_guard<mutex> guard(state_mutex);
+    contract_map_t::const_iterator it = contractMap.find(contractURI);
+    if (it != contractMap.end()) {
+        epgURIs.insert(it->second.intraGroups.begin(),
+                       it->second.intraGroups.end());
+    }
+}
+
 void PolicyManager::getContractsForGroup(const URI& eg,
                                          /* out */ uri_set_t& contractURIs) {
     using namespace modelgbp::gbp;
@@ -844,6 +879,8 @@ void PolicyManager::getContractsForGroup(const URI& eg,
     epg.get()->resolveGbpEpGroupToProvContractRSrc(provRel);
     vector<shared_ptr<EpGroupToConsContractRSrc> > consRel;
     epg.get()->resolveGbpEpGroupToConsContractRSrc(consRel);
+    vector<shared_ptr<EpGroupToIntraContractRSrc> > intraRel;
+    epg.get()->resolveGbpEpGroupToIntraContractRSrc(intraRel);
 
     for (shared_ptr<EpGroupToProvContractRSrc>& rel : provRel) {
         if (rel->isTargetSet()) {
@@ -851,6 +888,11 @@ void PolicyManager::getContractsForGroup(const URI& eg,
         }
     }
     for (shared_ptr<EpGroupToConsContractRSrc>& rel : consRel) {
+        if (rel->isTargetSet()) {
+            contractURIs.insert(rel->getTargetURI().get());
+        }
+    }
+    for (shared_ptr<EpGroupToIntraContractRSrc>& rel : intraRel) {
         if (rel->isTargetSet()) {
             contractURIs.insert(rel->getTargetURI().get());
         }
@@ -1091,7 +1133,8 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
                 contractsToNotify.insert(itr->first);
                 // if contract has providers/consumers, only clear the rules
                 if (itr->second.providerGroups.empty() &&
-                    itr->second.consumerGroups.empty()) {
+                    itr->second.consumerGroups.empty() &&
+                    itr->second.intraGroups.empty()) {
                     itr = pmanager.contractMap.erase(itr);
                 } else {
                     itr->second.rules.clear();

@@ -266,17 +266,15 @@ public:
                                    PeerStatus peerStatus);
 
     /**
-     * Get the VNID and routing-domain ID for the specified endpoint
-     * groups or L3 external networks
+     * Get the VNID for the specified endpoint groups or L3 external
+     * networks
      *
      * @param uris URIs of endpoint groups to search for
-     * @param ids Map of VNIDs-to-RoutingDomainID of the groups which
-     * have a VNID. Routing-domain ID is set to 0 if the group is not
-     * part of a routing-domain
+     * @param ids the corresponding set of vnids
      */
-    void getGroupVnidAndRdId(
+    void getGroupVnid(
         const std::unordered_set<opflex::modb::URI>& uris,
-        /* out */std::unordered_map<uint32_t, uint32_t>& ids);
+        /* out */std::unordered_set<uint32_t>& ids);
 
     /**
      * Get or generate a unique ID for a given object for use with flows.
