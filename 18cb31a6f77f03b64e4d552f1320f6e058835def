@@ -1,0 +1,625 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba068154_cba5bf05",
+        "filename": "agent-ovs/src/IdGenerator.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "remove log message",
+      "range": {
+        "startLine": 103,
+        "startChar": 1,
+        "endLine": 103,
+        "endChar": 76
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_6ba013f5",
+        "filename": "agent-ovs/src/IdGenerator.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "don\u0027t log here; this will always be a duplicate message.  Move the other log message below here and just log once.",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 219,
+        "endChar": 1
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_0bafc7e4",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "since you\u0027re removing the only use of the contract ID namespace we can remove it from here.",
+      "range": {
+        "startLine": 84,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 61
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_2bb60b3e",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 2377,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "This line is no longer needed",
+      "range": {
+        "startLine": 2377,
+        "startChar": 0,
+        "endLine": 2377,
+        "endChar": 80
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_abaafbd1",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 2412,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "remove extra log message",
+      "range": {
+        "startLine": 2411,
+        "startChar": 0,
+        "endLine": 2412,
+        "endChar": 42
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_ab815b4c",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 2579,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "this line is no longer needed",
+      "range": {
+        "startLine": 2579,
+        "startChar": 0,
+        "endLine": 2579,
+        "endChar": 43
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_8b829750",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 2612,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "This line is no longer needed",
+      "range": {
+        "startLine": 2612,
+        "startChar": 0,
+        "endLine": 2612,
+        "endChar": 64
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_ab5ddbeb",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "copyright date wrong",
+      "range": {
+        "startLine": 5,
+        "startChar": 17,
+        "endLine": 5,
+        "endChar": 21
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_ebe36303",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "This does not seem to consider the case where multiple flow entries are created for a single classifier.  This will happen for example if a range of ports is specified.  A given  classifier would generate several flows in this case, some of which would have a drop action (since we can only specify port numbers with masks, you need to do an qinclusion/exclusion procedure to hit the right set of ports).\n\nFor example for a in ModbFixture classifier4 creates flows like this:\n\nADD|cookie\u003d0x1, duration\u003d0s, table\u003d9, n_packets\u003d0, n_bytes\u003d0, idle_age\u003d0, priority\u003d8064,tcp,reg0\u003d0xa0b,reg2\u003d0xa0a,tp_src\u003d0x44/0xfffe,tp_dst\u003d0x5e/0xfffe actions\u003dgoto_table:10\nADD|cookie\u003d0x1, duration\u003d0s, table\u003d9, n_packets\u003d0, n_bytes\u003d0, idle_age\u003d0, priority\u003d8064,tcp,reg0\u003d0xa0b,reg2\u003d0xa0a,tp_src\u003d0x42/0xfffe,tp_dst\u003d0x5e/0xfffe actions\u003dgoto_table:10\nADD|cookie\u003d0x1, duration\u003d0s, table\u003d9, n_packets\u003d0, n_bytes\u003d0, idle_age\u003d0, priority\u003d8192,tcp,reg0\u003d0xa0b,reg2\u003d0xa0a,tp_dst\u003d0x54/0xfffe actions\u003ddrop\nADD|cookie\u003d0x1, duration\u003d0s, table\u003d9, n_packets\u003d0, n_bytes\u003d0, idle_age\u003d0, priority\u003d8192,tcp,reg0\u003d0xa0b,reg2\u003d0xa0a,tp_dst\u003d0x50/0xfffc actions\u003ddrop",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 125,
+        "endChar": 63
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_4b90af95",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "Fix whitespace here",
+      "range": {
+        "startLine": 131,
+        "startChar": 0,
+        "endLine": 131,
+        "endChar": 32
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_4b6c2f9d",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "Is this expected to be something that happens in the regular control flow?  Are we just always racing removal of the group information from policymanager?",
+      "range": {
+        "startLine": 194,
+        "startChar": 1,
+        "endLine": 195,
+        "endChar": 38
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_8be9f71c",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "fix whitespace",
+      "range": {
+        "startLine": 222,
+        "startChar": 0,
+        "endLine": 222,
+        "endChar": 3
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_cbf3ff08",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "fix whitespace",
+      "range": {
+        "startLine": 254,
+        "startChar": 20,
+        "endLine": 254,
+        "endChar": 21
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_6bee5324",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "fix whitespace",
+      "range": {
+        "startLine": 261,
+        "startChar": 0,
+        "endLine": 261,
+        "endChar": 7
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_0bdd0771",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "fix whitespace",
+      "range": {
+        "startLine": 305,
+        "startChar": 51,
+        "endLine": 305,
+        "endChar": 55
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_ebd9a384",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "fix whitespace",
+      "range": {
+        "startLine": 321,
+        "startChar": 0,
+        "endLine": 321,
+        "endChar": 3
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_2be44b3a",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "fix whitespace",
+      "range": {
+        "startLine": 326,
+        "startChar": 0,
+        "endLine": 326,
+        "endChar": 8
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_cbddbf44",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "should be continue?",
+      "range": {
+        "startLine": 343,
+        "startChar": 16,
+        "endLine": 343,
+        "endChar": 22
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_0bc4e790",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "indentation/whitespace (can just move following line up)",
+      "range": {
+        "startLine": 400,
+        "startChar": 40,
+        "endLine": 400,
+        "endChar": 41
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_ebc0837e",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 413,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "whitespace",
+      "range": {
+        "startLine": 412,
+        "startChar": 8,
+        "endLine": 413,
+        "endChar": 37
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_6bd5b342",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 419,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "indentation",
+      "range": {
+        "startLine": 419,
+        "startChar": 7,
+        "endLine": 419,
+        "endChar": 12
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_cb581ffd",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "copyright date wrong",
+      "range": {
+        "startLine": 5,
+        "startChar": 17,
+        "endLine": 5,
+        "endChar": 21
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_8b5e17e8",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "missing doc for param",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 63
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_cb413f0d",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "move implementation to cpp file.  Also, this can be done easily with boost::hash_combine.  See e.g. Service.cpp:78",
+      "range": {
+        "startLine": 100,
+        "startChar": 10,
+        "endLine": 109,
+        "endChar": 44
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_ab467b21",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "why two spaces?",
+      "range": {
+        "startLine": 116,
+        "startChar": 34,
+        "endLine": 116,
+        "endChar": 36
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_2b00cba9",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "We need some mechanism to ensure we\u0027re not leaking state here.  If for example OVS restarts we might not always get flow removal messages.",
+      "range": {
+        "startLine": 127,
+        "startChar": 0,
+        "endLine": 127,
+        "endChar": 41
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_0b4b472c",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-04T18:15:13Z",
+      "side": 1,
+      "message": "two spaces?",
+      "range": {
+        "startLine": 133,
+        "startChar": 34,
+        "endLine": 133,
+        "endChar": 36
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
