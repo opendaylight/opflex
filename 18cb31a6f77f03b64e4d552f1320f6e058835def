@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_36494ed1",
+        "filename": "agent-ovs/src/IdGenerator.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 7120
+      },
+      "writtenOn": "2017-05-05T20:10:23Z",
+      "side": 1,
+      "message": "Could you provide the line number where this log message needs to be moved?",
+      "parentUuid": "ba068154_6ba013f5",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 219,
+        "endChar": 1
+      },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_0bafc7e4",
         "filename": "agent-ovs/src/IntFlowManager.cpp",
         "patchSetId": 9
@@ -232,6 +256,23 @@
     },
     {
       "key": {
+        "uuid": "ba068154_7612b6b5",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 7120
+      },
+      "writtenOn": "2017-05-05T20:10:23Z",
+      "side": 1,
+      "message": "All the flow entries that have matching cookie, reg0 and reg2 are being summed up. Is there some other criterion that needs to be applied?",
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_4b6c2f9d",
         "filename": "agent-ovs/src/PolicyStatsManager.cpp",
         "patchSetId": 9
@@ -249,6 +290,23 @@
         "endLine": 195,
         "endChar": 38
       },
+      "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_b60c1e96",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 7120
+      },
+      "writtenOn": "2017-05-05T20:10:23Z",
+      "side": 1,
+      "message": "It seems like Policy Stats Manager need not convert into URI. We can change the L24ClassifierCounter MO definition to include reg0, reg2 and filter-id instead of URI for source EPG, destination EPG, classifier URI. Does that work?",
       "revId": "18cb31a6f77f03b64e4d552f1320f6e058835def",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
