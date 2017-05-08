@@ -37,6 +37,7 @@
 #include "TableState.h"
 #include "PacketInHandler.h"
 #include "Packets.h"
+#include "Network.h"
 #include "FlowUtils.h"
 #include "FlowConstants.h"
 #include "FlowBuilder.h"
@@ -842,7 +843,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         }
     }
     if (hasMac) {
-        address_v6 linkLocalIp(packets::construct_link_local_ip_addr(macAddr));
+        address_v6 linkLocalIp(network::construct_link_local_ip_addr(macAddr));
         if (endPoint.getIPs().find(linkLocalIp.to_string()) ==
             endPoint.getIPs().end())
             ipAddresses.push_back(linkLocalIp);
@@ -892,8 +893,8 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         }
 
         for (const Endpoint::virt_ip_t& vip : endPoint.getVirtualIPs()) {
-            packets::cidr_t vip_cidr;
-            if (!packets::cidr_from_string(vip.second, vip_cidr)) {
+            network::cidr_t vip_cidr;
+            if (!network::cidr_from_string(vip.second, vip_cidr)) {
                 LOG(WARNING) << "Invalid endpoint VIP (CIDR): " << vip.second;
                 continue;
             }
@@ -903,7 +904,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             // Handle ARP/ND from "active" virtual IPs normally, that is
             // without generating a packet-in
             for (const address& ipAddr : ipAddresses) {
-                if (!packets::cidr_contains(vip_cidr, ipAddr)) {
+                if (!network::cidr_contains(vip_cidr, ipAddr)) {
                     continue;
                 }
                 FlowBuilder active_vip;
@@ -1017,8 +1018,8 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             for (const Endpoint::virt_ip_t& vip :
                           endPoint.getVirtualIPs()) {
                 if (endPoint.getMAC().get() == vip.first) continue;
-                packets::cidr_t vip_cidr;
-                if (!packets::cidr_from_string(vip.second, vip_cidr)) {
+                network::cidr_t vip_cidr;
+                if (!network::cidr_from_string(vip.second, vip_cidr)) {
                     continue;
                 }
                 address& addr = vip_cidr.first;
@@ -1085,7 +1086,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                     }
                 }
 
-                if (packets::is_link_local(ipAddr))
+                if (network::is_link_local(ipAddr))
                     continue;
 
                 {
@@ -1689,7 +1690,7 @@ void IntFlowManager::createStaticFlows() {
         FlowEntryList policyStatic;
 
         // Bypass policy for flows that have the bypass policy bit set
-        FlowBuilder().priority(flowutils::MAX_POLICY_RULE_PRIORITY + 51)
+        FlowBuilder().priority(PolicyManager::MAX_POLICY_RULE_PRIORITY + 51)
             .metadata(flow::meta::FROM_SERVICE_INTERFACE,
                       flow::meta::FROM_SERVICE_INTERFACE)
             .action().go(IntFlowManager::OUT_TABLE_ID)
@@ -1697,7 +1698,7 @@ void IntFlowManager::createStaticFlows() {
 
         // Block flows from the uplink when not allowed by
         // higher-priority per-EPG rules to allow them.
-        FlowBuilder().priority(flowutils::MAX_POLICY_RULE_PRIORITY + 50)
+        FlowBuilder().priority(PolicyManager::MAX_POLICY_RULE_PRIORITY + 50)
             .metadata(flow::meta::POLICY_APPLIED, flow::meta::POLICY_APPLIED)
             .build(policyStatic);
 
@@ -1808,10 +1809,10 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
         }
 
         FlowBuilder intraGroupFlow;
-        uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY + 100;
+        uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY + 100;
         switch (intraGroup) {
         case IntraGroupPolicyEnumT::CONST_DENY:
-            prio = flowutils::MAX_POLICY_RULE_PRIORITY + 200;
+            prio = PolicyManager::MAX_POLICY_RULE_PRIORITY + 200;
             break;
         case IntraGroupPolicyEnumT::CONST_REQUIRE_CONTRACT:
             // Only automatically allow intra-EPG traffic if its come
@@ -1982,7 +1983,7 @@ void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
                 e1.build(el);
             } else {
                 address lladdr =
-                    packets::construct_link_local_ip_addr(routerMac);
+                    network::construct_link_local_ip_addr(routerMac);
                 if (tunPort != OFPP_NONE) {
                     FlowBuilder e0;
                     e0.priority(22)
@@ -2029,7 +2030,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     // action is to output to the uplink tunnel.  Match using
     // longest-prefix.
 
-    flowutils::subnets_t intSubnets;
+    network::subnets_t intSubnets;
 
     vector<shared_ptr<RoutingDomainToIntSubnetsRSrc> > subnets_list;
     rd.get()->resolveGbpRoutingDomainToIntSubnetsRSrc(subnets_list);
@@ -2044,8 +2045,8 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     if (rdConfig) {
         for (const std::string& cidrSn :
                  rdConfig->getInternalSubnets()) {
-            packets::cidr_t cidr;
-            if (packets::cidr_from_string(cidrSn, cidr)) {
+            network::cidr_t cidr;
+            if (network::cidr_from_string(cidrSn, cidr)) {
                 intSubnets.insert(make_pair(cidr.first.to_string(),
                                             cidr.second));
             } else {
@@ -2053,7 +2054,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
             }
         }
     }
-    for (const flowutils::subnet_t& sn : intSubnets) {
+    for (const network::subnet_t& sn : intSubnets) {
         address addr = address::from_string(sn.first, ec);
         if (ec) continue;
 
