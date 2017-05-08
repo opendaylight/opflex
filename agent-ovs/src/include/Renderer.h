@@ -30,7 +30,7 @@ class Renderer : private boost::noncopyable {
 public:
     /**
      * Instantiate a renderer
-     * 
+     *
      * @param agent the agent object
      */
     Renderer(Agent& agent);
@@ -43,7 +43,7 @@ public:
     /**
      * Configure the renderer with the property tree specified, which
      * will be a subtree in the base agent configuration
-     * 
+     *
      * @param properties the configuration properties to set for the
      * agent
      */

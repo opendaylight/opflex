@@ -268,9 +268,9 @@ void AccessFlowManagerFixture::initExpStatic() {
     ADDF(Bldr().table(OUT).priority(1).isMdAct(0)
          .actions().out(OUTPORT).done());
 
-    ADDF(Bldr().table(OUT_POL).priority(flowutils::MAX_POLICY_RULE_PRIORITY)
+    ADDF(Bldr().table(OUT_POL).priority(PolicyManager::MAX_POLICY_RULE_PRIORITY)
          .reg(SEPG, 1).actions().go(OUT).done());
-    ADDF(Bldr().table(IN_POL).priority(flowutils::MAX_POLICY_RULE_PRIORITY)
+    ADDF(Bldr().table(IN_POL).priority(PolicyManager::MAX_POLICY_RULE_PRIORITY)
          .reg(SEPG, 1).actions().go(OUT).done());
 }
 
@@ -320,7 +320,7 @@ void AccessFlowManagerFixture::initExpSecGrpSet12(bool second,
 uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
                                                   int remoteAddress) {
     uint32_t grpId = idGen.getId("secGroup", secGrp1->getURI().toString());
-    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
+    uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
 
     /* classifer 1  */
     if (remoteAddress) {
@@ -378,7 +378,7 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
 
 uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
     uint32_t grpId = idGen.getId("secGroup", secGrp2->getURI().toString());
-    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
+    uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     /* classifier 5 */
     ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());

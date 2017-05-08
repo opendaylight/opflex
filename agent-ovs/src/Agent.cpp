@@ -9,6 +9,10 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 
@@ -18,7 +22,11 @@
 #include "FSServiceSource.h"
 #include "FSRDConfigSource.h"
 #include "logging.h"
+
+#include "Renderer.h"
+#ifdef RENDERER_OVS
 #include "StitchedModeRenderer.h"
+#endif
 
 #include <unordered_map>
 
@@ -48,6 +56,10 @@ Agent::~Agent() {
 #define DEF_INSPECT_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-inspect.sock"
 #define DEF_NOTIF_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-notif.sock"
 
+Renderer* disabled_create(Agent& agent) {
+    return NULL;
+}
+
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string LOG_LEVEL("log.level");
     static const std::string ENDPOINT_SOURCE_PATH("endpoint-sources.filesystem");
@@ -71,6 +83,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_DOMAIN("opflex.domain");
 
     static const std::string RENDERERS_STITCHED_MODE("renderers.stitched-mode");
+    static const std::string RENDERERS_OPENVSWITCH("renderers.openvswitch");
 
     optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
@@ -158,8 +171,15 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     typedef Renderer* (*rend_create)(Agent&);
     typedef std::unordered_map<std::string, rend_create> rend_map_t;
     static rend_map_t rend_map =
-        boost::assign::map_list_of(RENDERERS_STITCHED_MODE,
-                                   StitchedModeRenderer::create);
+        boost::assign::map_list_of
+#ifdef RENDERER_OVS
+        (RENDERERS_STITCHED_MODE, StitchedModeRenderer::create)
+        (RENDERERS_OPENVSWITCH, StitchedModeRenderer::create)
+#else
+        (RENDERERS_STITCHED_MODE, disabled_create)
+        (RENDERERS_OPENVSWITCH, disabled_create)
+#endif
+        ;
 
     for (rend_map_t::value_type& v : rend_map) {
         optional<const ptree&> rtree =
@@ -170,6 +190,11 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
             if (it == renderers.end()) {
                 std::unique_ptr<Renderer> rp(v.second(*this));
                 r = rp.get();
+                if (r == NULL) {
+                    LOG(ERROR) << "Renderer type " << v.first
+                               << " is not enabled";
+                    continue;
+                }
                 renderers.emplace(v.first, std::move(rp));
             } else {
                 r = it->second.get();

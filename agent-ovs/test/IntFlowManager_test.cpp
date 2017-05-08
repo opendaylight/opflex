@@ -1569,7 +1569,7 @@ void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
     uint32_t port = portmapper.FindPort(ep->getInterfaceName().get());
     unordered_set<string> ips(ep->getIPs());
     string lladdr =
-        packets::construct_link_local_ip_addr(ep->getMAC().get()).to_string();
+        network::construct_link_local_ip_addr(ep->getMAC().get()).to_string();
     ips.insert(lladdr);
     const unordered_set<string>* acastIps = &ep->getAnycastReturnIPs();
     if (acastIps->size() == 0) acastIps = &ips;
@@ -1837,7 +1837,7 @@ void IntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
 }
 
 void IntFlowManagerFixture::initExpCon1() {
-    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
+    uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
     unordered_set<uint32_t> pvnids, cvnids;
 
@@ -1881,7 +1881,7 @@ void IntFlowManagerFixture::initExpCon1() {
 }
 
 void IntFlowManagerFixture::initExpCon2() {
-    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
+    uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
     unordered_set<uint32_t> ivnids;
     uint32_t con2_cookie =
@@ -1899,7 +1899,7 @@ void IntFlowManagerFixture::initExpCon2() {
 void IntFlowManagerFixture::initExpCon3() {
     uint32_t epg0_vnid = policyMgr.getVnidForGroup(epg0->getURI()).get();
     uint32_t epg1_vnid = policyMgr.getVnidForGroup(epg1->getURI()).get();
-    uint16_t prio = flowutils::MAX_POLICY_RULE_PRIORITY;
+    uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
 
     uint32_t con3_cookie =

@@ -37,7 +37,7 @@ dnl Configure options
 
 dnl Modify the release/build version
 AC_ARG_WITH(buildversion,
-            AC_HELP_STRING([--with-buildversion], 
+            AC_HELP_STRING([--with-buildversion],
                            [Version number of build]),
             [bversion=${withval}],
             [bversion='private'])
@@ -60,7 +60,17 @@ AX_CXX_COMPILE_STDCXX([11], [ext], [mandatory])
 
 # check for doxygen
 AC_CHECK_PROGS(DOXYGEN,doxygen,none)
-AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone']) 
+AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone'])
+
+# switch to enable OVS renderer support
+AC_ARG_ENABLE(renderer-ovs,
+              AC_HELP_STRING([--renderer-ovs],
+                             [Build the OVS renderer]))
+AM_CONDITIONAL([RENDERER_OVS], [test x$enable_renderer_ovs != 'xno'])
+AM_COND_IF([RENDERER_OVS],
+	   [AC_DEFINE([RENDERER_OVS], [1], [Build OVS renderer])
+	    AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
+	   [AC_MSG_NOTICE([Open vSwitch renderer is disabled])])
 
 # ---------------------------------------------------------------
 # Dependency checks
@@ -71,48 +81,50 @@ AC_STDC_HEADERS
 AX_BOOST_BASE([1.53.0], [], AC_MSG_ERROR([Boost is required]))
 AX_BOOST_PROGRAM_OPTIONS
 if test "x$ax_cv_boost_program_options" != xyes; then
-   AC_MSG_ERROR([Boost::Program_Options library is required])
+    AC_MSG_ERROR([Boost::Program_Options library is required])
 fi
 AX_BOOST_UNIT_TEST_FRAMEWORK
 if test "x$ax_cv_boost_unit_test_framework" != xyes; then
-   AC_MSG_ERROR([Boost::Test library is required])
+    AC_MSG_ERROR([Boost::Test library is required])
 fi
 AX_BOOST_SYSTEM
 if test "x$ax_cv_boost_system" != xyes; then
-   AC_MSG_ERROR([Boost::System library is required])
+    AC_MSG_ERROR([Boost::System library is required])
 fi
 AX_BOOST_DATE_TIME
 if test "x$ax_cv_boost_date_time" != xyes; then
-   AC_MSG_ERROR([Boost::Date_Time library is required])
+    AC_MSG_ERROR([Boost::Date_Time library is required])
 fi
 AX_BOOST_FILESYSTEM
 if test "x$ax_cv_boost_filesystem" != xyes; then
-   AC_MSG_ERROR([Boost::Filesystem library is required])
+    AC_MSG_ERROR([Boost::Filesystem library is required])
 fi
 AX_BOOST_IOSTREAMS
 if test "x$ax_cv_boost_iostreams" != xyes; then
-   AC_MSG_ERROR([Boost::IOStreams library is required])
+    AC_MSG_ERROR([Boost::IOStreams library is required])
 fi
 AX_BOOST_ASIO
 if test "x$ax_cv_boost_asio" != xyes; then
-   AC_MSG_ERROR([Boost::ASIO library is required])
+    AC_MSG_ERROR([Boost::ASIO library is required])
 fi
 
 PKG_CHECK_MODULES([libopflex], [libopflex >= 1.4.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.4.0])
 PKG_CHECK_MODULES([rapidjson], [RapidJSON >= 1.0])
 
-# check for libopenvswitch
-PKG_CHECK_MODULES([libofproto], [libofproto >= 2.6.0])
-PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.6.0])
+AM_COND_IF([RENDERER_OVS], [
+    # check for libopenvswitch
+    PKG_CHECK_MODULES([libofproto], [libofproto >= 2.6.0])
+    PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.6.0])
 
-# check for libnl-nf
-PKG_CHECK_MODULES([libnl_nf], [libnl-nf-3.0 >= 3.2.27],
-   [AC_DEFINE([HAVE_LIBNL], [1], [Use libnl])],
-   AC_MSG_WARN([libnl-nf not found]))
+    # check for libnl-nf
+    PKG_CHECK_MODULES([libnl_nf], [libnl-nf-3.0 >= 3.2.27],
+                      [AC_DEFINE([HAVE_LIBNL], [1], [Use libnl])],
+                      AC_MSG_WARN([libnl-nf not found]))
+])
 
 # inotify check
-AC_ARG_ENABLE(inotify, "Whether to use inotify for endpoint source")
+AC_ARG_ENABLE(inotify, "Whether to use inotify")
 if test x$enable_inotify = xno; then
     have_inotify=no;
 else
@@ -120,7 +132,7 @@ else
 fi
 
 # eventfd check
-AC_ARG_ENABLE(eventfd, "Whether to use eventfd for endpoint source")
+AC_ARG_ENABLE(eventfd, "Whether to use eventfd")
 if test x$enable_eventfd = xno; then
     have_eventfd=no;
 else

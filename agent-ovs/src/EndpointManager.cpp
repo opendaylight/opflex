@@ -18,7 +18,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "EndpointManager.h"
-#include "Packets.h"
+#include "Network.h"
 #include "logging.h"
 
 namespace ovsagent {
@@ -138,7 +138,7 @@ static bool validateIp(const string& ip, bool allowLinkLocal = false) {
     boost::system::error_code ec;
     address addr = address::from_string(ip, ec);
     if (ec) return false;
-    if (!allowLinkLocal && packets::is_link_local(addr))
+    if (!allowLinkLocal && network::is_link_local(addr))
         return false;
     return true;
 }
