@@ -95,6 +95,7 @@ noinst_HEADERS = \
 	src/include/TaskQueue.h \
 	src/include/FlowUtils.h \
 	src/include/FlowConstants.h \
+	src/include/Network.h \
 	src/include/udp.h \
 	src/include/dhcp.h \
 	src/include/arp.h \
@@ -118,8 +119,21 @@ libagent_ovs_la_SOURCES = \
 	src/RDConfig.cpp \
 	src/FSRDConfigSource.cpp \
 	src/Renderer.cpp \
-	src/StitchedModeRenderer.cpp \
 	src/TunnelEpManager.cpp \
+	src/cmd.cpp \
+	src/logging.cpp \
+	src/Agent.cpp \
+	src/IdGenerator.cpp \
+	src/CtZoneManager.cpp \
+	src/NotifServer.cpp \
+	src/MulticastListener.cpp \
+	src/TaskQueue.cpp \
+	src/Network.cpp \
+	src/FlowConstants.cpp
+
+if RENDERER_OVS
+  libagent_ovs_la_SOURCES += \
+	src/StitchedModeRenderer.cpp \
 	src/SwitchStateHandler.cpp \
 	src/IntFlowManager.cpp \
 	src/AccessFlowManager.cpp \
@@ -132,21 +146,13 @@ libagent_ovs_la_SOURCES = \
 	src/SwitchManager.cpp \
 	src/PortMapper.cpp \
 	src/StatsManager.cpp \
-	src/cmd.cpp \
-	src/logging.cpp \
-	src/Agent.cpp \
-	src/IdGenerator.cpp \
-	src/CtZoneManager.cpp \
 	src/RangeMask.cpp \
 	src/Packets.cpp \
 	src/PacketInHandler.cpp \
 	src/AdvertManager.cpp \
-	src/NotifServer.cpp \
-	src/MulticastListener.cpp \
-	src/TaskQueue.cpp \
 	src/FlowUtils.cpp \
-	src/FlowConstants.cpp \
 	src/ovs-shim.c
+endif
 
 bin_PROGRAMS=agent_ovs gbp_inspect mcast_daemon
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
@@ -186,6 +192,7 @@ agent_test_CXXFLAGS = \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS) \
 	-DBOOST_TEST_DYN_LINK
+
 agent_test_SOURCES = \
 	test/include/BaseFixture.h \
 	test/include/ModbFixture.h \
@@ -195,10 +202,18 @@ agent_test_SOURCES = \
 	test/include/MockFlowReader.h \
 	test/include/MockSwitchManager.h \
 	test/include/FlowManagerFixture.h \
-	test/MockFlowExecutor.cpp \
-	test/FlowManagerFixture.cpp \
 	test/PolicyManager_test.cpp \
 	test/EndpointManager_test.cpp \
+	test/IdGenerator_test.cpp \
+	test/KeyedRateLimiter_test.cpp \
+	test/NotifServer_test.cpp \
+	test/Network_test.cpp \
+	test/main.cpp
+
+if RENDERER_OVS
+  agent_test_SOURCES += \
+	test/MockFlowExecutor.cpp \
+	test/FlowManagerFixture.cpp \
 	test/IntFlowManager_test.cpp \
 	test/AccessFlowManager_test.cpp \
 	test/PacketInHandler_test.cpp \
@@ -206,14 +221,12 @@ agent_test_SOURCES = \
 	test/AdvertManager_test.cpp \
 	test/PortMapper_test.cpp \
 	test/FlowExecutor_test.cpp \
-	test/IdGenerator_test.cpp \
 	test/RangeMask_test.cpp \
 	test/Packets_test.cpp \
-	test/KeyedRateLimiter_test.cpp \
 	test/StatsManager_test.cpp \
-	test/NotifServer_test.cpp \
-	test/TableState_test.cpp \
-	test/main.cpp
+	test/TableState_test.cpp
+endif
+
 agent_test_LDADD = \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 	libagent_ovs.la
@@ -261,12 +274,18 @@ integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	$(OVS_ADDL_CFLAGS) \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
+
 integration_test_SOURCES = \
 	integration-test/include/ConnectionFixture.h \
 	integration-test/main.cpp \
-	integration-test/connection_test.cpp \
-	integration-test/flowmod_test.cpp \
 	integration-test/ctzone_test.cpp
+
+if RENDERER_OVS
+  integration_test_SOURCES += \
+	integration-test/connection_test.cpp \
+	integration-test/flowmod_test.cpp
+endif
+
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 integration_test_LDADD = \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \

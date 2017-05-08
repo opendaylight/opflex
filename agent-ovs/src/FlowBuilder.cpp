@@ -7,7 +7,7 @@
  */
 
 #include "FlowBuilder.h"
-#include "Packets.h"
+#include "Network.h"
 #include "eth.h"
 
 #include "ovs-shim.h"
@@ -143,7 +143,7 @@ static void addMatchSubnet(struct match* match,
        if (prefixLen > 128) prefixLen = 128;
        struct in6_addr mask;
        struct in6_addr addr;
-       packets::compute_ipv6_subnet(ip.to_v6(), prefixLen, &mask, &addr);
+       network::compute_ipv6_subnet(ip.to_v6(), prefixLen, &mask, &addr);
 
        match_set_dl_type(match, htons(ethType));
        if (src)
@@ -190,7 +190,7 @@ FlowBuilder& FlowBuilder::ndTarget(uint16_t type,
         struct in6_addr addr;
         struct in6_addr mask;
         fill_in6_addr(addr, ip.to_v6());
-        packets::get_subnet_mask_v6(prefixLen, &mask);
+        network::get_subnet_mask_v6(prefixLen, &mask);
         match_set_nd_target_masked(match(), &addr, &mask);
     }
 

@@ -304,7 +304,7 @@ static void doSendEpAdv(IntFlowManager& intFlowManager,
             // unicast spoofed neighbor solicitation for subnet
             // gateway router
             address_v6 routerSNIP =
-                packets::construct_solicited_node_ip(routerIp.get().to_v6());
+                network::construct_solicited_node_ip(routerIp.get().to_v6());
             address_v6::bytes_type dbytes = routerSNIP.to_bytes();
             struct in6_addr* dstv = (struct in6_addr*)dbytes.data();
 

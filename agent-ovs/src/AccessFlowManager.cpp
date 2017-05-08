@@ -126,7 +126,7 @@ void AccessFlowManager::portStatusUpdate(const string& portName,
 static FlowEntryPtr flowEmptySecGroup(uint32_t emptySecGrpSetId) {
     FlowBuilder noSecGrp;
     flowutils::match_group(noSecGrp,
-                           flowutils::MAX_POLICY_RULE_PRIORITY,
+                           PolicyManager::MAX_POLICY_RULE_PRIORITY,
                            emptySecGrpSetId, 0);
     noSecGrp.action().go(AccessFlowManager::OUT_TABLE_ID);
     return noSecGrp.build();
@@ -266,7 +266,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
             uint8_t dir = pc->getDirection();
             const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
 
-            boost::optional<const flowutils::subnets_t&> remoteSubs;
+            boost::optional<const network::subnets_t&> remoteSubs;
             if (!pc->getRemoteSubnets().empty())
                 remoteSubs = pc->getRemoteSubnets();
 

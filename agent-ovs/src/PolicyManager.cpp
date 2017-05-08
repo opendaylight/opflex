@@ -18,7 +18,6 @@
 
 #include "logging.h"
 #include "PolicyManager.h"
-#include "Packets.h"
 #include "FlowUtils.h"
 
 namespace ovsagent {
@@ -49,6 +48,8 @@ PolicyManager::PolicyManager(OFFramework& framework_)
 PolicyManager::~PolicyManager() {
 
 }
+
+const uint16_t PolicyManager::MAX_POLICY_RULE_PRIORITY = 8192;
 
 void PolicyManager::start() {
     LOG(DEBUG) << "Starting policy manager";
@@ -260,7 +261,7 @@ PolicyManager::findSubnetForEp(const opflex::modb::URI& eg,
             struct in6_addr net_addr;
             struct in6_addr ip_addr;
             memcpy(&ip_addr, ip.to_v6().to_bytes().data(), sizeof(ip_addr));
-            packets::compute_ipv6_subnet(netAddr.to_v6(), prefixLen,
+            network::compute_ipv6_subnet(netAddr.to_v6(), prefixLen,
                                          &mask, &net_addr);
 
             ((uint64_t*)&ip_addr)[0] &= ((uint64_t*)&mask)[0];
@@ -625,7 +626,7 @@ bool operator!=(const PolicyRule& lhs, const PolicyRule& rhs) {
 
 std::ostream & operator<<(std::ostream &os, const PolicyRule& rule) {
     using modelgbp::gbp::DirectionEnumT;
-    using flowutils::operator<<;
+    using network::operator<<;
 
     os << "PolicyRule[classifier="
        << rule.getL24Classifier()->getURI()
@@ -654,7 +655,7 @@ std::ostream & operator<<(std::ostream &os, const PolicyRule& rule) {
 
 void PolicyManager::resolveSubnets(OFFramework& framework,
                                    const optional<URI>& subnets_uri,
-                                   /* out */ flowutils::subnets_t& subnets_out) {
+                                   /* out */ network::subnets_t& subnets_out) {
     using modelgbp::gbp::Subnets;
     using modelgbp::gbp::Subnet;
 
@@ -673,7 +674,7 @@ void PolicyManager::resolveSubnets(OFFramework& framework,
             continue;
         address addr = address::from_string(subnet->getAddress().get(), ec);
         if (ec) continue;
-        addr = packets::mask_address(addr, subnet->getPrefixLen().get());
+        addr = network::mask_address(addr, subnet->getPrefixLen().get());
         subnets_out.insert(make_pair(addr.to_string(),
                                      subnet->getPrefixLen().get()));
     }
@@ -706,12 +707,12 @@ void resolveChildren(shared_ptr<modelgbp::gbp::SecGroup>& secgroup,
 template <typename Rule>
 void resolveRemoteSubnets(OFFramework& framework,
                           shared_ptr<Rule>& parent,
-                          /* out */ flowutils::subnets_t &remoteSubnets) {}
+                          /* out */ network::subnets_t &remoteSubnets) {}
 
 template <>
 void resolveRemoteSubnets(OFFramework& framework,
                           shared_ptr<modelgbp::gbp::SecGroupRule>& rule,
-                          /* out */ flowutils::subnets_t &remoteSubnets) {
+                          /* out */ network::subnets_t &remoteSubnets) {
     typedef modelgbp::gbp::SecGroupRuleToRemoteAddressRSrc RASrc;
     vector<shared_ptr<RASrc> > raSrcs;
     rule->resolveGbpSecGroupRuleToRemoteAddressRSrc(raSrcs);
@@ -749,14 +750,14 @@ static bool updatePolicyRules(OFFramework& framework,
         resolveChildren(sub, rules);
         stable_sort(rules.begin(), rules.end(), ruleComp);
 
-        uint16_t rulePrio = flowutils::MAX_POLICY_RULE_PRIORITY;
+        uint16_t rulePrio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
 
         for (shared_ptr<Rule>& rule : rules) {
             if (!rule->isDirectionSet()) {
                 continue;       // ignore rules with no direction
             }
             uint8_t dir = rule->getDirection().get();
-            flowutils::subnets_t remoteSubnets;
+            network::subnets_t remoteSubnets;
             resolveRemoteSubnets(framework, rule, remoteSubnets);
             vector<shared_ptr<L24Classifier> > classifiers;
             vector<shared_ptr<RuleToClassifierRSrc> > clsRel;

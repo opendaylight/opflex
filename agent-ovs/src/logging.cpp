@@ -9,12 +9,18 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "logging.h"
 #include "AgentLogHandler.h"
 
 #include <opflex/logging/OFLogHandler.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#ifdef RENDERER_OVS
 #include <openvswitch/vlog.h>
+#endif
 
 #include <algorithm>
 #include <fstream>
@@ -144,8 +150,10 @@ void initLogging(const std::string& levelstr,
     OFLogHandler::registerHandler(logHandler);
 
     setLoggingLevel(levelstr);
+#ifdef RENDERER_OVS
     /* No good way to redirect OVS logs to our logs, suppress them for now */
     vlog_set_levels(NULL, VLF_ANY_DESTINATION, VLL_OFF);
+#endif
 }
 
 void setLoggingLevel(const std::string& newLevelstr) {

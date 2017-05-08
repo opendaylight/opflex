@@ -14,7 +14,7 @@
 #define OVSAGENT_POLICYMANAGER_H
 
 #include "PolicyListener.h"
-#include "FlowUtils.h"
+#include "Network.h"
 
 #include <boost/noncopyable.hpp>
 #include <boost/asio/ip/address.hpp>
@@ -54,7 +54,7 @@ public:
                const uint16_t prio_,
                const std::shared_ptr<modelgbp::gbpe::L24Classifier>& c,
                bool allow_,
-               const flowutils::subnets_t& remoteSubnets_) :
+               const network::subnets_t& remoteSubnets_) :
         direction(dir), prio(prio_), l24Classifier(c), allow(allow_),
         remoteSubnets(remoteSubnets_) {
     }
@@ -87,7 +87,7 @@ public:
      * Get remote subnets for this rule
      * @return the set of remote subnets
      */
-    const flowutils::subnets_t& getRemoteSubnets() const {
+    const network::subnets_t& getRemoteSubnets() const {
         return remoteSubnets;
     }
 
@@ -105,7 +105,7 @@ private:
     uint16_t prio;
     std::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
     bool allow;
-    flowutils::subnets_t remoteSubnets;
+    network::subnets_t remoteSubnets;
 
     friend bool operator==(const PolicyRule& lhs, const PolicyRule& rhs);
 };
@@ -417,7 +417,7 @@ public:
      */
     static void resolveSubnets(opflex::ofcore::OFFramework& framework,
                                const boost::optional<opflex::modb::URI>& uri,
-                               /* out */ flowutils::subnets_t& subnets);
+                               /* out */ network::subnets_t& subnets);
 
     /**
      * Get an appropriate router IP for the given subnet
@@ -426,6 +426,11 @@ public:
      */
     static boost::optional<boost::asio::ip::address>
     getRouterIpForSubnet(modelgbp::gbp::Subnet& subnet);
+
+    /**
+     * Maximum flow priority of the entries in policy table.
+     */
+    static const uint16_t MAX_POLICY_RULE_PRIORITY;
 
 private:
     opflex::ofcore::OFFramework& framework;

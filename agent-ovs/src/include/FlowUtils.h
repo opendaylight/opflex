@@ -13,6 +13,7 @@
 #define OVSAGENT_FLOWUTILS_H
 
 #include "TableState.h"
+#include "Network.h"
 
 #include <modelgbp/gbpe/L24Classifier.hpp>
 
@@ -21,52 +22,11 @@
 #include <stdint.h>
 
 namespace ovsagent {
-namespace flowutils {
-
-/**
- * Type representing a subnet IP addres string and prefix length
- */
-typedef std::pair<std::string, uint8_t> subnet_t;
-
-} // namespace flowutils
-} // namespace ovsagent
-
-namespace std {
-
-/**
- * Template specialization for std::hash<subnet_t>, making
- * it suitable as a key in a std::unordered_map
- */
-template<> struct hash<ovsagent::flowutils::subnet_t> {
-    /**
-     * Hash the subnet_t
-     */
-    std::size_t operator()(const ovsagent::flowutils::subnet_t& u) const;
-};
-
-} /* namespace std */
-
-namespace ovsagent {
 
 class FlowBuilder;
 class ActionBuilder;
 
 namespace flowutils {
-
-/**
- * A set of subnets
- */
-typedef std::unordered_set<subnet_t> subnets_t;
-
-/**
- * subnet_t stream insertion
- */
-std::ostream& operator<<(std::ostream &os, const subnet_t& subnet);
-
-/**
- * subnets_t stream insertion
- */
-std::ostream& operator<<(std::ostream &os, const subnets_t& subnets);
 
 /**
  * Add a match against source/destination group ID in REG0 and REG2
@@ -85,11 +45,6 @@ void match_group(FlowBuilder& f, uint16_t prio, uint32_t svnid, uint32_t dvnid);
  * @return the new flow entry
  */
 FlowEntryPtr default_out_flow();
-
-/**
- * Maximum flow priority of the entries in policy table.
- */
-extern const uint16_t MAX_POLICY_RULE_PRIORITY;
 
 /**
  * Actions to take for classifier entries in add_classifier_entries
@@ -136,8 +91,8 @@ enum ClassAction {
  */
 void add_classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
                             ClassAction act,
-                            boost::optional<const subnets_t&> sourceSub,
-                            boost::optional<const subnets_t&> destSub,
+                            boost::optional<const network::subnets_t&> sourceSub,
+                            boost::optional<const network::subnets_t&> destSub,
                             uint8_t nextTable, uint16_t priority,
                             uint64_t cookie, uint32_t svnid, uint32_t dvnid,
                             /* out */ FlowEntryList& entries);

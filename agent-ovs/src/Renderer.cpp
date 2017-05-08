@@ -14,7 +14,7 @@
 namespace ovsagent {
 
 
-Renderer::Renderer(Agent& agent_) 
+Renderer::Renderer(Agent& agent_)
     : agent(agent_) {
 
 }
@@ -23,4 +23,3 @@ Renderer::~Renderer() {
 }
 
 } /* namespace ovsagent */
-

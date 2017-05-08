@@ -17,7 +17,6 @@
 #include <modelgbp/l4/TcpFlagsEnumT.hpp>
 #include <modelgbp/arp/OpcodeEnumT.hpp>
 
-#include <boost/functional/hash.hpp>
 #include <boost/asio/ip/address.hpp>
 
 #include <vector>
@@ -28,21 +27,6 @@ namespace flowutils {
 
 using std::vector;
 using modelgbp::gbpe::L24Classifier;
-
-std::ostream & operator<<(std::ostream &os, const subnet_t& subnet) {
-    os << subnet.first << "/" << (int)subnet.second;
-    return os;
-}
-
-std::ostream & operator<<(std::ostream &os, const subnets_t& subnets) {
-    bool first = true;
-    for (subnet_t s : subnets) {
-        if (first) first = false;
-        else os << ",";
-        os << s;
-    }
-    return os;
-}
 
 void match_group(FlowBuilder& f, uint16_t prio,
                  uint32_t svnid, uint32_t dvnid) {
@@ -91,12 +75,11 @@ static void match_tcp_flags(FlowBuilder& f, uint32_t tcpFlags) {
     f.tcpFlags(flags, flags);
 }
 
-const uint16_t MAX_POLICY_RULE_PRIORITY = 8192;     // arbitrary
+static network::subnets_t
+compute_eff_sub(boost::optional<const network::subnets_t&> sub) {
+    static const network::subnet_t ALL("", 0);
 
-static subnets_t compute_eff_sub(boost::optional<const subnets_t&> sub) {
-    static const subnet_t ALL("", 0);
-
-    subnets_t eff;
+    network::subnets_t eff;
     if (sub) {
         eff.insert(sub.get().begin(), sub.get().end());
     } else {
@@ -122,7 +105,7 @@ static bool applyRemoteSub(FlowBuilder& fb, FlowBuilderFunc func,
 }
 
 typedef std::function<bool(FlowBuilder&, uint16_t)> flow_func;
-static flow_func make_flow_functor(const subnet_t& ss, FlowBuilderFunc func) {
+static flow_func make_flow_functor(const network::subnet_t& ss, FlowBuilderFunc func) {
     using std::placeholders::_1;
     using std::placeholders::_2;
 
@@ -135,8 +118,8 @@ static flow_func make_flow_functor(const subnet_t& ss, FlowBuilderFunc func) {
 }
 
 void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
-                            boost::optional<const subnets_t&> sourceSub,
-                            boost::optional<const subnets_t&> destSub,
+                            boost::optional<const network::subnets_t&> sourceSub,
+                            boost::optional<const network::subnets_t&> destSub,
                             uint8_t nextTable, uint16_t priority,
                             uint64_t cookie, uint32_t svnid, uint32_t dvnid,
                             /* out */ FlowEntryList& entries) {
@@ -165,13 +148,13 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
         tcpFlagsVec.push_back(tcpFlags);
     }
 
-    subnets_t effSourceSub(compute_eff_sub(sourceSub));
-    subnets_t effDestSub(compute_eff_sub(destSub));
+    network::subnets_t effSourceSub(compute_eff_sub(sourceSub));
+    network::subnets_t effDestSub(compute_eff_sub(destSub));
 
-    for (const subnet_t& ss : effSourceSub) {
+    for (const network::subnet_t& ss : effSourceSub) {
         flow_func src_func(make_flow_functor(ss, &FlowBuilder::ipSrc));
 
-        for (const subnet_t& ds : effDestSub) {
+        for (const network::subnet_t& ds : effDestSub) {
             flow_func dst_func(make_flow_functor(ds, &FlowBuilder::ipDst));
 
             for (const Mask& sm : srcPorts) {
@@ -246,10 +229,3 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
 
 } // namespace flowutils
 } // namespace ovsagent
-
-namespace std {
-std::size_t hash<ovsagent::flowutils::subnet_t>::
-operator()(const ovsagent::flowutils::subnet_t& u) const {
-    return boost::hash_value(u);
-}
-} /* namespace std */

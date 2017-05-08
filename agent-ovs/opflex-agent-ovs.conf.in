@@ -111,10 +111,9 @@
     // Renderers enforce policy obtained via OpFlex.
     // Default: no renderers
     "renderers": {
-        // Stitched-mode renderer for interoperating with a
-        // hardware fabric such as ACI
+        // Open vSwitch renderer
         // EXAMPLE:
-        // "stitched-mode": {
+        // "openvswitch": {
         //     // "Integration" bridge used to enforce contracts and forward
         //     // packets
         //     "int-bridge-name": "br-int",
