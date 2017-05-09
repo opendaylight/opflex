@@ -23,11 +23,12 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
-noinst_LTLIBRARIES = libagent_ovs.la
-libagent_ovs_la_CFLAGS = \
+if RENDERER_OVS
+  noinst_LTLIBRARIES = libagent_ovs.la
+  libagent_ovs_la_CFLAGS = \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
-libagent_ovs_la_CXXFLAGS = \
+  libagent_ovs_la_CXXFLAGS = \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS) \
 	$(OVS_ADDL_CFLAGS) \
@@ -35,7 +36,7 @@ libagent_ovs_la_CXXFLAGS = \
 	$(libofproto_CFLAGS) \
 	$(libnl_nf_CFLAGS) \
 	$(rapidjson_CFLAGS)
-libagent_ovs_la_LIBADD = \
+  libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(libopenvswitch_LIBS) \
@@ -44,6 +45,43 @@ libagent_ovs_la_LIBADD = \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_ASIO_LIB)
+endif
+
+if RENDERER_VPP
+
+  OVS_ADDL_CFLAGS += \
+	-I/usr/include/vpp_plugins
+
+  AM_CPPFLAGS += \
+	-I/usr/include/vpp_plugins
+
+  noinst_LTLIBRARIES = libagent_ovs.la
+  libagent_ovs_la_CFLAGS = \
+        -I/usr/include/vpp_plugins \
+        -Wall
+
+  VPPCLIENT_LIBS = \
+	-lvppinfra \
+	-lvlibmemoryclient \
+	-lvlibapi \
+	-lsvm \
+	-lpthread -lm -lrt
+
+  libagent_ovs_la_CXXFLAGS = \
+	$(libopflex_CFLAGS) \
+	$(libmodelgbp_CFLAGS) \
+	$(OVS_ADDL_CFLAGS) \
+	$(libnl_nf_CFLAGS) \
+	$(rapidjson_CFLAGS)
+  libagent_ovs_la_LIBADD = \
+	$(libopflex_LIBS) \
+	$(libmodelgbp_LIBS) \
+	$(libnl_nf_LIBS) \
+	$(VPPCLIENT_LIBS) \
+	$(BOOST_SYSTEM_LIB) \
+	$(BOOST_FILESYSTEM_LIB) \
+	$(BOOST_ASIO_LIB)
+endif
 
 noinst_HEADERS = \
 	src/include/AgentLogHandler.h \
@@ -65,6 +103,7 @@ noinst_HEADERS = \
 	src/include/FSRDConfigSource.h \
 	src/include/RDConfig.h \
 	src/include/Renderer.h \
+	src/include/VppRenderer.h	\
 	src/include/StitchedModeRenderer.h \
 	src/include/TunnelEpManager.h \
 	src/include/FlowExecutor.h \
@@ -154,12 +193,18 @@ if RENDERER_OVS
 	src/ovs-shim.c
 endif
 
+if RENDERER_VPP
+  libagent_ovs_la_SOURCES += \
+	src/VppRenderer.cpp
+endif
+
 bin_PROGRAMS=agent_ovs gbp_inspect mcast_daemon
 agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS)
 agent_ovs_SOURCES = \
 	src/main.cpp
+
 agent_ovs_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
 	libagent_ovs.la
@@ -225,6 +270,11 @@ if RENDERER_OVS
 	test/Packets_test.cpp \
 	test/StatsManager_test.cpp \
 	test/TableState_test.cpp
+endif
+
+if RENDERER_VPP
+  agent_test_SOURCES += \
+	test/vpp_test.cpp
 endif
 
 agent_test_LDADD = \
