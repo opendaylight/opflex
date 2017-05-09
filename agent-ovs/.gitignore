@@ -44,6 +44,9 @@ m4/lt*.m4
 .settings
 .tags
 .tags_sorted_by_file
+GPATH
+GRTAGS
+GTAGS
 .dirstamp
 doc/Doxyfile
 doc/html
@@ -56,3 +59,6 @@ mock_server
 *.spec
 *.tar.gz
 opflex-agent-ovs.conf
+debian/
+gbp_inspect
+mcast_daemon
