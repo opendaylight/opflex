@@ -94,6 +94,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_757e1eb0",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 7120
+      },
+      "writtenOn": "2017-05-09T22:55:44Z",
+      "side": 1,
+      "message": "1.  Since flow reply stats handler i.e. same thread is incrementing generation id we don\u0027t need a atomic_uint64_t.\n\n2. How would we use one generation id for both MO types i.e. per classifier and per routing domain?",
+      "parentUuid": "ba068154_55e79a12",
+      "range": {
+        "startLine": 96,
+        "startChar": 0,
+        "endLine": 97,
+        "endChar": 23
+      },
+      "revId": "b663127673bb2982a29a475a7ca023c70ea36c74",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_f5e20e02",
         "filename": "agent-ovs/src/include/PolicyStatsManager.h",
         "patchSetId": 10
