@@ -230,6 +230,12 @@
         //     // Location to write multicast groups for the mcast-daemon
         //     // Default: "DEFAULT_MCAST_GROUP_FILE"
         //     "mcast-group-file": "DEFAULT_MCAST_GROUP_FILE"
+        // },
+        // VppRenderer
+        // "vpp" : {
+        //      "instance" : "opflex-vpp",
+        //      "api-path" : "/usr/share/vpp/api/"
         // }
+
     }
 }

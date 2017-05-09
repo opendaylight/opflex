@@ -72,6 +72,16 @@ AM_COND_IF([RENDERER_OVS],
             AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
            [AC_MSG_NOTICE([Open vSwitch renderer is disabled])])
 
+# switch to enable VPP renderer support
+AC_ARG_ENABLE(renderer-vpp,
+              AC_HELP_STRING([--renderer-vpp],
+                             [Build the VPP renderer]))
+AM_CONDITIONAL([RENDERER_VPP], [test x$enable_renderer_vpp == 'xyes'])
+AM_COND_IF([RENDERER_VPP],
+           [AC_DEFINE([RENDERER_VPP], [1], [Build VPP renderer])
+            AC_MSG_NOTICE([fd.io VPP renderer is enabled])],
+           [AC_MSG_NOTICE([fd.io VPP renderer is disabled])])
+
 # ---------------------------------------------------------------
 # Dependency checks
 
@@ -121,6 +131,14 @@ AM_COND_IF([RENDERER_OVS], [
     PKG_CHECK_MODULES([libnl_nf], [libnl-nf-3.0 >= 3.2.27],
                       [AC_DEFINE([HAVE_LIBNL], [1], [Use libnl])],
                       AC_MSG_WARN([libnl-nf not found]))
+])
+
+AM_COND_IF([RENDERER_VPP], [
+    AC_LANG_PUSH([C])
+    # Check for VPP libraries
+    AC_CHECK_LIB([vppinfra], [clib_calljmp], [],
+                 [AC_MSG_ERROR([vppinfra not found])])
+    AC_LANG_POP([C])
 ])
 
 # inotify check
