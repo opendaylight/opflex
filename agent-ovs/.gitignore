@@ -56,3 +56,6 @@ mock_server
 *.spec
 *.tar.gz
 opflex-agent-ovs.conf
+debian/
+gbp_inspect
+mcast_daemon
