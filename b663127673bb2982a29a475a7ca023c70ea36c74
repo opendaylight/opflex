@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba068154_f5b04ef6",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-09T20:59:05Z",
+      "side": 1,
+      "message": "can replace all this by just using std::atomic_uint64_t",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 49
+      },
+      "revId": "b663127673bb2982a29a475a7ca023c70ea36c74",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_d5a1caaa",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-09T20:59:05Z",
+      "side": 1,
+      "message": "This is not a correct way of using the uuid random_generator.  The default seeding uses a constant, so you\u0027ll get the same uuid every time.  See TunnelEpManager::TunnelEpManager for an example of how to do this correctly.",
+      "range": {
+        "startLine": 86,
+        "startChar": 0,
+        "endLine": 86,
+        "endChar": 80
+      },
+      "revId": "b663127673bb2982a29a475a7ca023c70ea36c74",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_95f102d0",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-09T20:59:05Z",
+      "side": 1,
+      "message": "can probably just store as a string to avoid header dependency",
+      "range": {
+        "startLine": 95,
+        "startChar": 0,
+        "endLine": 95,
+        "endChar": 33
+      },
+      "revId": "b663127673bb2982a29a475a7ca023c70ea36c74",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_55e79a12",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-09T20:59:05Z",
+      "side": 1,
+      "message": "only need one of these.  Also, why not use std::atomic_uint64_t?",
+      "range": {
+        "startLine": 96,
+        "startChar": 0,
+        "endLine": 97,
+        "endChar": 23
+      },
+      "revId": "b663127673bb2982a29a475a7ca023c70ea36c74",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_f5e20e02",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-09T20:59:05Z",
+      "side": 1,
+      "message": "move implementation from here to the .cpp file",
+      "range": {
+        "startLine": 115,
+        "startChar": 0,
+        "endLine": 123,
+        "endChar": 24
+      },
+      "revId": "b663127673bb2982a29a475a7ca023c70ea36c74",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
