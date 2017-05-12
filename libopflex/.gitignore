@@ -22,6 +22,8 @@ config.log
 config.status
 config.sub
 configure
+debian/changelog
+debian/rules
 depcomp
 *~
 errors.err
