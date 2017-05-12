@@ -76,7 +76,8 @@ AM_COND_IF([RENDERER_OVS],
 AC_ARG_ENABLE(renderer-vpp,
 AC_HELP_STRING([--renderer-vpp],
 [Build the VPP renderer]))
-AM_CONDITIONAL([RENDERER_VPP], [test x$enable_renderer_vpp != 'xno'])
+AM_CONDITIONAL([RENDERER_VPP], [test x$enable_renderer_vpp != 'xno' &&
+                               test x$enable_renderer_ovs == 'xno'])
 AM_COND_IF([RENDERER_VPP],
 [AC_DEFINE([RENDERER_VPP], [1], [Build VPP renderer])
 AC_MSG_NOTICE([fd.io VPP renderer is enabled])],
