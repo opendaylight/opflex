@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba068154_1e4b6788",
+        "filename": "agent-ovs/Makefile.am",
+        "patchSetId": 2
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-12T12:15:24Z",
+      "side": 1,
+      "message": "Aren\u0027t these OVS renderer specific ?",
+      "range": {
+        "startLine": 199,
+        "startChar": 0,
+        "endLine": 204,
+        "endChar": 36
+      },
+      "revId": "688c652070bdfc5961d3ce704fb7f463a870ac6e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
