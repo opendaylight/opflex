@@ -1,4 +1,0 @@
-/*
- * Vpp Renderer test file
- */
-
