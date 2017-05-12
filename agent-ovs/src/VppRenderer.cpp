@@ -14,44 +14,46 @@
 
 namespace ovsagent {
 
-using std::bind;
-using opflex::ofcore::OFFramework;
-using boost::property_tree::ptree;
-using boost::asio::placeholders::error;
+    using std::bind;
+    using opflex::ofcore::OFFramework;
+    using boost::property_tree::ptree;
+    using boost::asio::placeholders::error;
 
-VppRenderer::VppRenderer(Agent& agent_)
-    : Renderer(agent_), started(false) {
-	LOG(INFO) << "Vpp Renderer";
-}
+    VppRenderer::VppRenderer(Agent& agent_):
+        Renderer(agent_),
+        vppManager(agent_, idGen),
+        started(false) {
+        LOG(INFO) << "Vpp Renderer";
+    }
 
-VppRenderer::~VppRenderer() {
+    VppRenderer::~VppRenderer() {
 
-}
+    }
 
-void VppRenderer::start() {
-    if (started) return;
+    void VppRenderer::start() {
+        if (started) return;
+        vppManager.start(bridgeName);
+        vppManager.registerModbListeners();
+        LOG(INFO) << "Starting vpp renderer using";
+    }
 
-    started = true;
-    LOG(INFO) << "Starting vpp renderer using";
-}
+    void VppRenderer::stop() {
+        if (!started) return;
+        started = false;
+        LOG(DEBUG) << "Stopping vpp renderer";
 
-void VppRenderer::stop() {
-    if (!started) return;
-    started = false;
+        vppManager.stop();
+    }
 
-    LOG(INFO) << "Stopping vpp renderer";
-}
+    Renderer* VppRenderer::create(Agent& agent) {
+        return new VppRenderer(agent);
+    }
 
-Renderer* VppRenderer::create(Agent& agent) {
-    return new VppRenderer(agent);
-}
+    void VppRenderer::setProperties(const ptree& properties) {
+        static const std::string VPP_BRIDGE_NAME("opflex-vpp");
+        bridgeName = properties.get<std::string>(VPP_BRIDGE_NAME, "vpp");
 
-void VppRenderer::setProperties(const ptree& properties) {
-    static const std::string VPP_BRIDGE_NAME("vpp-bridge-name");
-    std::string bridgeName =
-	properties.get<std::string>(VPP_BRIDGE_NAME, "vpp");
-
-    LOG(INFO) << "Bridge Name " << bridgeName;
-}
+        LOG(INFO) << "Bridge Name " << bridgeName;
+    }
 
 }
