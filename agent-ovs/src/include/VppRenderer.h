@@ -12,6 +12,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <opflex/ofcore/OFFramework.h>
 #include "Renderer.h"
+#include "VppManager.h"
+#include "IdGenerator.h"
 
 #pragma once
 #ifndef OVSAGENT_VPP_RENDERER_H
@@ -66,7 +68,9 @@ public:
     virtual void stop();
 
 private:
-
+    IdGenerator idGen;
+    VppManager vppManager;
+    std::string bridgeName;
     bool started;
 };
 
