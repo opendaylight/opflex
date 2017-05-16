@@ -353,6 +353,11 @@ public:
      */
     auto disconnect() -> void;
 
+    /**
+     * Return status of API connection with VPP
+     *
+     * @return connection_status
+     */
     auto isConnected() -> bool;
 
     /**

@@ -95,46 +95,6 @@ namespace ovsagent {
   const std::string VppApi::TAG_UPLINK_PREFIX("uplink:");
   const std::string VppApi::TAG_L2IFACE_PREFIX("port:");
 
-  auto lockedWrite(char* msg, int size) -> int
-  {
-    std::lock_guard<std::mutex> lock(pneum_mutex);
-    return pneum_write(msg, size);
-  }
-
-  auto  lockedRead(char** reply, int* reply_len, int timeout ) -> int
-  {
-    std::lock_guard<std::mutex> lock(pneum_mutex);
-    return pneum_read (reply, reply_len, timeout);
-  }
-
-  auto lockedGetMsgTableSize() -> int
-  {
-    std::lock_guard<std::mutex> lock(pneum_mutex);
-    return pneum_msg_table_size();
-  }
-
-  auto lockedGetMsgIndex(string name) -> u16
-  {
-    std::lock_guard<std::mutex> lock(pneum_mutex);
-    return pneum_get_msg_index((unsigned char *) name.c_str());
-  }
-
-  auto lockedConnect(string name, pneum_callback_t cb) -> int
-  {
-    return pneum_connect( (char*) name.c_str(), NULL, cb, 32 /* rx queue length */);
-  }
-
-  auto lockedDisconnect() -> void
-  {
-    std::lock_guard<std::mutex> lock(pneum_mutex);
-    pneum_disconnect();
-  }
-
-  auto lockedGetClientIndex() -> u32
-  {
-    std::lock_guard<std::mutex> lock(pneum_mutex);
-    return pneum_client_index();
-  }
 
   auto VppApi::setName(string _name) -> void
   {
