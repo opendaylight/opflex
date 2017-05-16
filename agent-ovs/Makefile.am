@@ -126,6 +126,7 @@ noinst_HEADERS = \
 	src/include/SwitchStateHandler.h \
 	src/include/VppManager.h \
 	src/include/VppApi.h \
+	src/include/VppConnection.h \
 	src/include/pneum.h \
 	src/include/IntFlowManager.h \
 	src/include/AccessFlowManager.h \
@@ -216,6 +217,7 @@ if RENDERER_VPP
 	src/VppRenderer.cpp \
 	src/VppManager.cpp \
 	src/VppApi.cpp \
+	src/VppConnection.cpp \
 	src/pneum.c
 endif
 
@@ -299,6 +301,7 @@ VPP_TEST_SOURCES=
 if RENDERER_VPP
   VPP_TEST_SOURCES += \
     test/VppApi_test.cpp \
+	test/VppConnection_test.cpp \
 	test/VppManager_test.cpp
 endif
 
