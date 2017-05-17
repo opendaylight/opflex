@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba068154_97a9e6e1",
+        "filename": "agent-ovs/configure.ac",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7340
+      },
+      "writtenOn": "2017-05-17T11:44:22Z",
+      "side": 1,
+      "message": "Please rebase on the previous patch. It should not be here.",
+      "revId": "5eb91c4774848db6d92a40c3354104faa217d061",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_7783a256",
+        "filename": "agent-ovs/src/VppRenderer.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 7340
+      },
+      "writtenOn": "2017-05-17T11:44:22Z",
+      "side": 1,
+      "message": "Why do you remove the \"started \u003d true\"?\n\nIt should be set here.",
+      "range": {
+        "startLine": 33,
+        "startChar": 9,
+        "endLine": 33,
+        "endChar": 30
+      },
+      "revId": "5eb91c4774848db6d92a40c3354104faa217d061",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
