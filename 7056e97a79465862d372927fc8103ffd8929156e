@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba068154_6f03ca0d",
+        "filename": "agent-ovs/configure.ac",
+        "patchSetId": 8
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T16:59:21Z",
+      "side": 1,
+      "message": "these lines should be indented",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 78,
+        "endChar": 26
+      },
+      "revId": "7056e97a79465862d372927fc8103ffd8929156e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_dd070f1c",
+        "filename": "agent-ovs/configure.ac",
+        "patchSetId": 8
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T16:59:21Z",
+      "side": 1,
+      "message": "This should probably just be test x$enable_renderer_vpp !\u003d \u0027xyes\u0027 so it\u0027ll be disabled by default for now.  We need to get a vpp library dependency built into the ODL infra.  But in any case there\u0027s no reason why the VPP renderer should be mutually exclusive with the OVS renderer.",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 80,
+        "endChar": 41
+      },
+      "revId": "7056e97a79465862d372927fc8103ffd8929156e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_8f270eb6",
+        "filename": "agent-ovs/configure.ac",
+        "patchSetId": 8
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T16:59:21Z",
+      "side": 1,
+      "message": "Does the VPP library not install a pkg-config file?  It might be better actually to update VPP so that this is installed, since then you can do proper version checks, as well as more easily handle cases where vppinfra might be in a different path.",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 141,
+        "endChar": 54
+      },
+      "revId": "7056e97a79465862d372927fc8103ffd8929156e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
