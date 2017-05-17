@@ -214,6 +214,12 @@ void SwitchManager::diffTableState(int tableId, const FlowEntryList& el,
     tab.diffSnapshot(el, diffs);
 }
 
+void SwitchManager::forEachCookieMatch(int tableId,
+                                       TableState::cookie_callback_t& cb) {
+    const TableState& tab = flowTables[tableId];
+    tab.forEachCookieMatch(cb);
+}
+
 void SwitchManager::initiateSync() {
     if (syncInProgress) {
         LOG(DEBUG) << "[" << connection->getSwitchName() << "] "

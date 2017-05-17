@@ -176,6 +176,15 @@ public:
     void diffTableState(int tableId, const FlowEntryList& el,
                         /* out */ FlowEdit& diffs);
 
+    /**
+     * Call the callback synchronously for each unique cookie and flow
+     * table match in the flow table.
+     *
+     * @param tableId the table to check
+     * @param cb the callback to call
+     */
+    void forEachCookieMatch(int tableId, TableState::cookie_callback_t& cb);
+
 protected:
     /**
      * Connection for this switch
