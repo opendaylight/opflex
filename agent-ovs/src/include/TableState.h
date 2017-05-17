@@ -19,6 +19,7 @@
 
 struct ofputil_flow_stats;
 struct ofputil_group_mod;
+struct match;
 
 namespace ovsagent {
 
@@ -193,6 +194,22 @@ public:
      * @param diffs the differences between provided entries and the table
      */
     void diffSnapshot(const FlowEntryList& oldEntries, FlowEdit& diffs) const;
+
+    /**
+     * A callback that can be passed to forEachCookieMatch.
+     * Parameters are the cookie value, the match priority, and the
+     * match.
+     */
+    typedef std::function<void (uint64_t, uint16_t, const struct match&)>
+    cookie_callback_t;
+
+    /**
+     * Call the callback synchronously for each unique cookie and flow
+     * table match in the flow table.
+     *
+     * @param cb the callback to call
+     */
+    void forEachCookieMatch(cookie_callback_t& cb) const;
 
 private:
     class TableStateImpl;

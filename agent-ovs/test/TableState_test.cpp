@@ -9,15 +9,49 @@
  */
 
 #include <boost/test/unit_test.hpp>
+#include <boost/functional/hash.hpp>
 
 #include <cstring>
 #include <algorithm>
+#include <unordered_set>
 
 #include "TableState.h"
 #include "FlowBuilder.h"
 #include "logging.h"
 
+#include "ovs-shim.h"
+#include "ovs-ofputil.h"
+
 using namespace ovsagent;
+
+struct cookieMatch {
+    uint64_t cookie;
+    uint64_t prio;
+    struct match match;
+};
+
+namespace std {
+
+template<> struct hash<cookieMatch> {
+    size_t operator()(const cookieMatch& key) const noexcept {
+        size_t hashv = match_hash((struct match*)&key.match, 0);
+        boost::hash_combine(hashv, key.prio);
+        boost::hash_combine(hashv, key.cookie);
+        return hashv;
+    }
+};
+
+} /* namespace std */
+
+bool operator==(const cookieMatch& lhs, const cookieMatch& rhs) {
+    return lhs.prio == rhs.prio && lhs.cookie == rhs.cookie &&
+        match_equal(&lhs.match, &rhs.match);
+}
+bool operator!=(const cookieMatch& lhs, const cookieMatch& rhs) {
+    return !(lhs == rhs);
+}
+
+typedef std::unordered_set<cookieMatch> cookieMatchSet;
 
 BOOST_AUTO_TEST_SUITE(TableState_test)
 
@@ -32,7 +66,14 @@ public:
                .parent().build()),
           f2_1(FlowBuilder().priority(1).inPort(4).action().output(5)
                .parent().build()),
+          f2_2(FlowBuilder().priority(1).inPort(4).cookie(0x2)
+               .action().output(5).parent().build()),
+          f2_3(FlowBuilder().priority(1).inPort(4).cookie(0x3)
+               .action().output(5).parent().build()),
           f3_1(FlowBuilder().priority(10).inPort(5).cookie(0x1)
+               .action().output(6)
+               .parent().build()),
+          f3_2(FlowBuilder().priority(10).inPort(5).cookie(0x2)
                .action().output(6)
                .parent().build()) {}
 
@@ -43,7 +84,10 @@ public:
     FlowEntryPtr f1_1;
     FlowEntryPtr f1_2;
     FlowEntryPtr f2_1;
+    FlowEntryPtr f2_2;
+    FlowEntryPtr f2_3;
     FlowEntryPtr f3_1;
+    FlowEntryPtr f3_2;
 };
 
 BOOST_FIXTURE_TEST_CASE(apply, TableStateFixture) {
@@ -107,6 +151,72 @@ BOOST_FIXTURE_TEST_CASE(apply, TableStateFixture) {
     BOOST_CHECK_EQUAL(FlowEdit::ADD, diffs.edits[0].first);
     BOOST_CHECK(diffs.edits[0].second->matchEq(f3_1.get()));
     BOOST_CHECK(diffs.edits[0].second->actionEq(f3_1.get()));
+
+    cookieMatchSet expCSet1 {
+        {0x1, 10, f3_1->entry->match}
+    };
+    cookieMatchSet actual;
+    TableState::cookie_callback_t cb =
+        [&actual](uint64_t c,
+                  uint16_t p,
+                  const struct match& m) {
+        actual.insert({c, p, m});
+    };
+
+    state.forEachCookieMatch(cb);
+    BOOST_CHECK(expCSet1 == actual);
+
+    el.clear();
+    el.push_back(f3_2);
+    state.apply("conflict2", el, diffs);
+
+    cookieMatchSet expCSet2 {
+        {0x2, 10, f3_2->entry->match}
+    };
+    actual.clear();
+    state.forEachCookieMatch(cb);
+    BOOST_CHECK(expCSet2 == actual);
+
+    el.clear();
+    el.push_back(f2_2);
+    state.apply("test", el, diffs);
+
+    cookieMatchSet expCSet3 {
+        {0x2, 10, f3_2->entry->match},
+        {0x2, 1,  f2_2->entry->match},
+    };
+    actual.clear();
+    state.forEachCookieMatch(cb);
+    BOOST_CHECK(expCSet3 == actual);
+
+    el.clear();
+    state.apply("test", el, diffs);
+
+    actual.clear();
+    state.forEachCookieMatch(cb);
+    BOOST_CHECK(expCSet2 == actual);
+
+    el.clear();
+    el.push_back(f2_2);
+    state.apply("test", el, diffs);
+    el.clear();
+    el.push_back(f2_3);
+    state.apply("cookieconflict", el, diffs);
+
+    actual.clear();
+    state.forEachCookieMatch(cb);
+    BOOST_CHECK(expCSet3 == actual);
+
+    el.clear();
+    state.apply("test", el, diffs);
+    cookieMatchSet expCSet4 {
+        {0x2, 10, f3_2->entry->match},
+        {0x3, 1,  f2_2->entry->match},
+    };
+
+    actual.clear();
+    state.forEachCookieMatch(cb);
+    BOOST_CHECK(expCSet4 == actual);
 }
 
 BOOST_FIXTURE_TEST_CASE(diff, TableStateFixture) {

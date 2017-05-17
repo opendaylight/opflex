@@ -7,6 +7,7 @@
  */
 
 #include <unordered_map>
+#include <unordered_set>
 
 #include <boost/functional/hash.hpp>
 #include <boost/optional.hpp>
@@ -170,6 +171,8 @@ typedef std::vector<obj_id_flow_t> obj_id_flow_vec_t;
 typedef std::unordered_map<match_key_t, obj_id_flow_vec_t> match_obj_map_t;
 typedef std::unordered_map<match_key_t, flow_vec_t> match_map_t;
 typedef std::unordered_map<std::string, match_map_t> entry_map_t;
+typedef std::unordered_set<match_key_t> cookie_set_t;
+typedef std::unordered_map<uint64_t, cookie_set_t> cookie_map_t;
 
 bool operator==(const match_key_t& lhs, const match_key_t& rhs) {
     return lhs.prio == rhs.prio && match_equal(&lhs.match, &rhs.match);
@@ -182,6 +185,7 @@ class TableState::TableStateImpl {
 public:
     entry_map_t entry_map;
     match_obj_map_t match_obj_map;
+    cookie_map_t cookie_map;
 };
 
 TableState::TableState() : pimpl(new TableStateImpl()) { }
@@ -230,6 +234,34 @@ void TableState::diffSnapshot(const FlowEntryList& oldEntries,
     }
 }
 
+void TableState::forEachCookieMatch(cookie_callback_t& cb) const {
+    for (const auto& cookies : pimpl->cookie_map) {
+        for (const auto& match_key : cookies.second) {
+            cb(cookies.first, match_key.prio, match_key.match);
+        }
+    }
+}
+
+static void updateCookieMap(cookie_map_t& cookie_map,
+                            uint64_t oldCookie, uint64_t newCookie,
+                            const struct match_key_t& match) {
+    if (oldCookie == newCookie)
+        return;
+    if (oldCookie != 0) {
+        cookie_map_t::iterator it = cookie_map.find(oldCookie);
+        if (it != cookie_map.end()) {
+            it->second.erase(match);
+            if (it->second.size() == 0)
+                cookie_map.erase(it);
+        }
+    }
+
+    if (newCookie != 0) {
+        cookie_set_t& cset = cookie_map[newCookie];
+        cset.insert(match);
+    }
+}
+
 void TableState::apply(const std::string& objId,
                        FlowEntryList& newEntries,
                        /* out */ FlowEdit& diffs) {
@@ -253,6 +285,11 @@ void TableState::apply(const std::string& objId,
             FlowEntryPtr& tomod = e.second.back();
             if (oit->second.front().first == objId) {
                 // it's for the same object ID.  Replace it.
+                updateCookieMap(pimpl->cookie_map,
+                                oit->second.front().second->entry->cookie,
+                                tomod->entry->cookie,
+                                e.first);
+
                 if (!oit->second.front().second->actionEq(tomod.get())) {
                     oit->second.front().second = tomod;
                     diffs.add(FlowEdit::MOD, tomod);
@@ -289,9 +326,14 @@ void TableState::apply(const std::string& objId,
             }
         } else {
             // there is no existing entry.  Add a new one
-            pimpl->match_obj_map[e.first].push_back(make_pair(objId,
-                                                              e.second.back()));
-            diffs.add(FlowEdit::ADD, e.second.back());
+            FlowEntryPtr& toadd = e.second.back();
+
+            updateCookieMap(pimpl->cookie_map,
+                            0, toadd->entry->cookie,
+                            e.first);
+
+            pimpl->match_obj_map[e.first].push_back(make_pair(objId, toadd));
+            diffs.add(FlowEdit::ADD, toadd);
         }
     }
 
@@ -311,13 +353,24 @@ void TableState::apply(const std::string& objId,
 
                         if (oit->second.size() == 1) {
                             // No conflicted entries queued
+                            updateCookieMap(pimpl->cookie_map,
+                                            todel->entry->cookie, 0,
+                                            e.first);
+
                             diffs.add(FlowEdit::DEL, todel);
                             pimpl->match_obj_map.erase(oit);
                         } else {
                             // Need to add the next entry back to the
                             // table now that the first instance is
                             // removed
+                            FlowEntryPtr& old = oit->second[0].second;
                             FlowEntryPtr& tomod = oit->second[1].second;
+
+                            updateCookieMap(pimpl->cookie_map,
+                                            old->entry->cookie,
+                                            tomod->entry->cookie,
+                                            e.first);
+
                             if (!todel->actionEq(tomod.get()))
                                 diffs.add(FlowEdit::MOD, tomod);
                             oit->second.erase(oit->second.begin());
