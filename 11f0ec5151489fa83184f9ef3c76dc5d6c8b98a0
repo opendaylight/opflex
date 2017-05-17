@@ -1,0 +1,153 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba068154_cf42b60f",
+        "filename": "agent-ovs/Makefile.am",
+        "patchSetId": 9
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T17:21:47Z",
+      "side": 1,
+      "message": "we shouldn\u0027t assume a particular path for VPP includes.  In particular on the ODL infra this will be violated when we get that set up.  Best option is to use pkg-config in VPP but if we\u0027re desparate we can use variables to pass in VPP prefixes.",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 29
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_cf10f603",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T17:21:47Z",
+      "side": 1,
+      "message": "Is it impossible to include the vlib headers into a C++ file?  I assume this is modeled a bit on the ovs_shim library that exists for OVS, but this is only because the OVS headers have carefully sought out all features that are allowed in C99 but not C++11.  If you don\u0027t have this problem, it might be a lot easier to just but this code directly into the C++ implementation, and then you can take advantage of C++ features.",
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_af13f20b",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T17:21:47Z",
+      "side": 1,
+      "message": "there should be no global state in the agent.",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 25
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_4fe88610",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T17:21:47Z",
+      "side": 1,
+      "message": "there should be no global state in the agent.",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 63,
+        "endChar": 27
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_efaa1ad1",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T17:21:47Z",
+      "side": 1,
+      "message": "should be spaces not tabs and move brace up.  I\u0027ll only comment once for this issue and not in all places.",
+      "range": {
+        "startLine": 134,
+        "startChar": 0,
+        "endLine": 135,
+        "endChar": 31
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_6f862a67",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T17:21:47Z",
+      "side": 1,
+      "message": "ideally we\u0027d use std::mutex and std::condition_variable rather than directly using pthreads.",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 140,
+        "endChar": 39
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_2f5ee212",
+        "filename": "agent-ovs/test/VppApi_test.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-17T17:21:47Z",
+      "side": 1,
+      "message": "These are not actually unit tests as they seem to depend on an external VPP binary existing.  Tests such as this could be moved into the integration tests (which aren\u0027t run with the ODL jenkins build), but for unit tests we need to be able to run standalone without special environment setup.  For example you\u0027ll note that the existing tests all connect to a mock in-memory version of the opflex framework and the OVS sync interface that can be easily instantiated and torn down repeatedly for unit tests.\n\nIdeally, you\u0027d use a mock version of VppApi that would talk to some in-memory representation.",
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
