@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba068154_7dded940",
+        "filename": "agent-ovs/src/TableState.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 7120
+      },
+      "writtenOn": "2017-05-18T17:40:17Z",
+      "side": 1,
+      "message": "Is it the case where cookies don\u0027t change, but there is a change in the action and that\u0027s why new flow entry gets generated?",
+      "revId": "a702826700d9320d5744d72729baf85e2cabb519",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
