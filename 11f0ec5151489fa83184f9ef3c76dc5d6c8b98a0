@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_f907801b",
+        "filename": "agent-ovs/Makefile.am",
+        "patchSetId": 9
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "We are desperate :) Would it be acceptable to make this a configure variable? We can eventually move to something a little more clean in terms of parsing the VPP startup config, and if an alternate plugins location is not there, assume \"default\". VPP looks in one place for plugins, but to your point, it IS configurable.",
+      "parentUuid": "ba068154_cf42b60f",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 29
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_0f215e4d",
         "filename": "agent-ovs/src/include/VppApi.h",
         "patchSetId": 9
@@ -36,6 +60,30 @@
       "writtenOn": "2017-05-17T17:26:18Z",
       "side": 1,
       "message": "all these static variables should not be static",
+      "range": {
+        "startLine": 182,
+        "startChar": 4,
+        "endLine": 183,
+        "endChar": 25
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_94ea790d",
+        "filename": "agent-ovs/src/include/VppApi.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "Will fix",
+      "parentUuid": "ba068154_0f215e4d",
       "range": {
         "startLine": 182,
         "startChar": 4,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_d4f401f4",
+        "filename": "agent-ovs/src/include/VppApi.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "Agreed. Will fix.",
+      "parentUuid": "ba068154_cfde363f",
+      "range": {
+        "startLine": 208,
+        "startChar": 9,
+        "endLine": 210,
+        "endChar": 9
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_ef1b3a1a",
         "filename": "agent-ovs/src/include/VppApi.h",
         "patchSetId": 9
@@ -82,6 +154,30 @@
       "writtenOn": "2017-05-17T17:26:18Z",
       "side": 1,
       "message": "why are you writing it like this and not just saying\n\nvoid setName(string _name);\n\nAlso why does name have an underscore?",
+      "range": {
+        "startLine": 260,
+        "startChar": 0,
+        "endLine": 260,
+        "endChar": 39
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_7430b59e",
+        "filename": "agent-ovs/src/include/VppApi.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "Name needs to be fixed.\n\nAs for the rest, noted you spent a lot of time refactoring to C++11 so wanted to allow for the more generic form that also supports decltype. \n\nAll in all I don\u0027t really care. Want me to change it, I\u0027m happy to.",
+      "parentUuid": "ba068154_ef1b3a1a",
       "range": {
         "startLine": 260,
         "startChar": 0,
@@ -111,6 +207,24 @@
     },
     {
       "key": {
+        "uuid": "ba068154_f491459b",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "It\u0027s a little tricky. There\u0027s work underway to simplify what includes are actually exposed but I can definitely have a fiddle.",
+      "parentUuid": "ba068154_cf10f603",
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_af13f20b",
         "filename": "agent-ovs/src/pneum.c",
         "patchSetId": 9
@@ -122,6 +236,30 @@
       "writtenOn": "2017-05-17T17:21:47Z",
       "side": 1,
       "message": "there should be no global state in the agent.",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 25
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_54913198",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "This is historical. See similar reasoning above. Its layers of dependency so think of this like a stub interface impl. Its a null place holder for build. I\u0027m hoping we can eradicate this whole pneum-ness \"soon\" with a C++ language binding but as yet no ETA from the designated hitter on that one. \n\nAgain, let me have a fiddle.",
+      "parentUuid": "ba068154_af13f20b",
       "range": {
         "startLine": 44,
         "startChar": 0,
@@ -157,6 +295,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_b4721dab",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "If pneum was only included by a class implemented as a singleton would that assuage any concerns? \n\nI\u0027m not exactly sure how to avoid this other than whacking it into the pneum.h with \u0027extern \"C\"\u0027 and the __cplusplus ifdefs so its declared there and make it static in the wrapper class for its definition ?",
+      "parentUuid": "ba068154_4fe88610",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 63,
+        "endChar": 27
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_efaa1ad1",
         "filename": "agent-ovs/src/pneum.c",
         "patchSetId": 9
@@ -168,6 +330,30 @@
       "writtenOn": "2017-05-17T17:21:47Z",
       "side": 1,
       "message": "should be spaces not tabs and move brace up.  I\u0027ll only comment once for this issue and not in all places.",
+      "range": {
+        "startLine": 134,
+        "startChar": 0,
+        "endLine": 135,
+        "endChar": 31
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_f46305db",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "Ack.",
+      "parentUuid": "ba068154_efaa1ad1",
       "range": {
         "startLine": 134,
         "startChar": 0,
@@ -203,6 +389,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_345e2d13",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "Agreed, we shouldn\u0027t be using mixed metaphors, as Goldilocks may blow down the wrong little piggies house. Would it be acceptable if we keep this for now and look to remove this whole pneum nastiness in subsequent patches ?",
+      "parentUuid": "ba068154_6f862a67",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 140,
+        "endChar": 39
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_2f5ee212",
         "filename": "agent-ovs/test/VppApi_test.cpp",
         "patchSetId": 9
@@ -214,6 +424,24 @@
       "writtenOn": "2017-05-17T17:21:47Z",
       "side": 1,
       "message": "These are not actually unit tests as they seem to depend on an external VPP binary existing.  Tests such as this could be moved into the integration tests (which aren\u0027t run with the ODL jenkins build), but for unit tests we need to be able to run standalone without special environment setup.  For example you\u0027ll note that the existing tests all connect to a mock in-memory version of the opflex framework and the OVS sync interface that can be easily instantiated and torn down repeatedly for unit tests.\n\nIdeally, you\u0027d use a mock version of VppApi that would talk to some in-memory representation.",
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_9932b40e",
+        "filename": "agent-ovs/test/VppApi_test.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T14:27:52Z",
+      "side": 1,
+      "message": "Agreed. I\u0027m moving the shmem API parts to a new class and will Mock that so that \"VppApi\" is simply message construction, and the connection class is struct \"serdes\" and shoulder taps. \n\nThere\u0027s a lot of discussion underway on alternate ways to wrap the shmem connection within VPP that may or may not make master, but the hope is that VppApi actually gets a lot smaller via templatisation with a native C++ language binding in fd.io VPP",
+      "parentUuid": "ba068154_2f5ee212",
       "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
