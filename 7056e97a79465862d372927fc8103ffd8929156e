@@ -72,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_9af3c39e",
+        "filename": "agent-ovs/configure.ac",
+        "patchSetId": 8
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-18T16:19:45Z",
+      "side": 1,
+      "message": "So why not allow enabling both renderers?  That is, just make them independently selectable.  Note that the configuration still requires enabling specific renderers.\n\n./configure --disable-renderer-ovs --enable-renderer-vpp\n\nwould disable OVS and enable VPP.\n\nJust ./configure should probably enable OVS and disable VPP",
+      "parentUuid": "ba068154_83ed2528",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 80,
+        "endChar": 41
+      },
+      "revId": "7056e97a79465862d372927fc8103ffd8929156e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_8f270eb6",
         "filename": "agent-ovs/configure.ac",
         "patchSetId": 8
