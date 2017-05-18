@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_3a4bb788",
+        "filename": "agent-ovs/Makefile.am",
+        "patchSetId": 9
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-18T16:32:15Z",
+      "side": 1,
+      "message": "we\u0027ll have to I think.  We\u0027ll need to build the VPP library on the ODL infra with something equivalent to \n\n./configure --prefix\u003d/tmp/prefix\nmake\nDESTDIR\u003dprefix make install\ntar -czf vpp.tgz prefix\n\nTo generate a binary tarball for VPP as a dependency.  Then when we build we unpack this tarball and configure the agent with a PKG_CONFIG_PATH that includes the temp directory.",
+      "parentUuid": "ba068154_f907801b",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 29
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_0f215e4d",
         "filename": "agent-ovs/src/include/VppApi.h",
         "patchSetId": 9
@@ -190,6 +214,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_9a8463b2",
+        "filename": "agent-ovs/src/include/VppApi.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-18T16:32:15Z",
+      "side": 1,
+      "message": "decltype still works on ordinary function declarations as far as I know.  This syntax is mainly useful for certain specific template metaprogramming situations.  I don\u0027t know of any reason why you\u0027d want to declare your member functions like this.",
+      "parentUuid": "ba068154_7430b59e",
+      "range": {
+        "startLine": 260,
+        "startChar": 0,
+        "endLine": 260,
+        "endChar": 39
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_cf10f603",
         "filename": "agent-ovs/src/pneum.c",
         "patchSetId": 9
@@ -307,6 +355,30 @@
       "side": 1,
       "message": "If pneum was only included by a class implemented as a singleton would that assuage any concerns? \n\nI\u0027m not exactly sure how to avoid this other than whacking it into the pneum.h with \u0027extern \"C\"\u0027 and the __cplusplus ifdefs so its declared there and make it static in the wrapper class for its definition ?",
       "parentUuid": "ba068154_4fe88610",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 63,
+        "endChar": 27
+      },
+      "revId": "11f0ec5151489fa83184f9ef3c76dc5d6c8b98a0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_ba6de734",
+        "filename": "agent-ovs/src/pneum.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-18T16:32:15Z",
+      "side": 1,
+      "message": "Just move the variables into a class.  For example this can be a member of VppApi or a member of another class that is itself a member of VppApi.  Then when you instantiate a VppApi object in the VppRenderer you have the state for your VPP connection.\n\nThe analogous thing from the OVS world is SwitchConnection.",
+      "parentUuid": "ba068154_b4721dab",
       "range": {
         "startLine": 60,
         "startChar": 0,
