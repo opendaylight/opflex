@@ -116,6 +116,30 @@
       "revId": "7056e97a79465862d372927fc8103ffd8929156e",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_b97178e2",
+        "filename": "agent-ovs/configure.ac",
+        "patchSetId": 8
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-05-18T13:54:31Z",
+      "side": 1,
+      "message": "VPP does not install pkg-config. This patch is based on 17.04 which is already released. We can refactor to master later and investigate adding pkg-config support for 17.07",
+      "parentUuid": "ba068154_838c0537",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 141,
+        "endChar": 54
+      },
+      "revId": "7056e97a79465862d372927fc8103ffd8929156e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
