@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "ba068154_83ed2528",
+        "filename": "agent-ovs/configure.ac",
+        "patchSetId": 8
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 7340
+      },
+      "writtenOn": "2017-05-18T11:14:38Z",
+      "side": 1,
+      "message": "Both renderers will be enabled if we will not keep the same test flag between two renderers. That said, it will be possible to remove completely \"test x$enable_renderer_vpp !\u003d \u0027xno\u0027\" which is not useful here. But keep the enable_renderer_ovs.\n\n./configure                                                      (default behavior)  or\n./configure --enable_renderer_ovs\u003dyes\nenable OVS\ndisable VPP\n\n./configure --enable_renderer_ovs\u003dno\ndisable OVS\nenable VPP",
+      "parentUuid": "ba068154_dd070f1c",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 80,
+        "endChar": 41
+      },
+      "revId": "7056e97a79465862d372927fc8103ffd8929156e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba068154_8f270eb6",
         "filename": "agent-ovs/configure.ac",
         "patchSetId": 8
@@ -59,6 +83,30 @@
       "writtenOn": "2017-05-17T16:59:21Z",
       "side": 1,
       "message": "Does the VPP library not install a pkg-config file?  It might be better actually to update VPP so that this is installed, since then you can do proper version checks, as well as more easily handle cases where vppinfra might be in a different path.",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 141,
+        "endChar": 54
+      },
+      "revId": "7056e97a79465862d372927fc8103ffd8929156e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba068154_838c0537",
+        "filename": "agent-ovs/configure.ac",
+        "patchSetId": 8
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 7340
+      },
+      "writtenOn": "2017-05-18T11:14:38Z",
+      "side": 1,
+      "message": "I think so, VPP doesn\u0027t install .pc files.",
+      "parentUuid": "ba068154_8f270eb6",
       "range": {
         "startLine": 140,
         "startChar": 0,
