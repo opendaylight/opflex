@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3afa9182_2c12b3b4",
+        "filename": "agent-ovs/test/PolicyStatsManager_test.cpp",
+        "patchSetId": 15
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-28T17:57:25Z",
+      "side": 1,
+      "message": "this stuff should not be copied to here from IntFlowManager.",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 61
+      },
+      "revId": "354d7916a77e6d276a0e7309622c9b4af9ab44d6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_0c17f7a4",
+        "filename": "agent-ovs/test/PolicyStatsManager_test.cpp",
+        "patchSetId": 15
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-28T17:57:25Z",
+      "side": 1,
+      "message": "don\u0027t copy/paste this",
+      "range": {
+        "startLine": 170,
+        "startChar": 0,
+        "endLine": 182,
+        "endChar": 1
+      },
+      "revId": "354d7916a77e6d276a0e7309622c9b4af9ab44d6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
