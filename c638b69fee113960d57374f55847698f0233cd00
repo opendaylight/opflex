@@ -1,0 +1,435 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3afa9182_ac0fb82d",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "remove trailing whitespace (I\u0027ll just comment once for this issue.  Basically if you see red in the diff on gerrit remove it :-) )",
+      "range": {
+        "startLine": 125,
+        "startChar": 0,
+        "endLine": 125,
+        "endChar": 8
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_ec19c07a",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "extra debug message logged at error level (remove)",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 146,
+        "endChar": 6
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_4c4d7472",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "What is going on here?  How can this work?  Does your cb_func get called with a useful this pointer when you do this?  You should be using std::bind or a lambda to make this work.",
+      "range": {
+        "startLine": 157,
+        "startChar": 0,
+        "endLine": 158,
+        "endChar": 33
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_8c575c02",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "double asterisk is for doxygen documentation.  Just use // or /* for regular comments.  I\u0027ll just comment once.",
+      "range": {
+        "startLine": 172,
+        "startChar": 5,
+        "endLine": 172,
+        "endChar": 7
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_4c2614bc",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "why increment by 30000? Why not 1?",
+      "range": {
+        "startLine": 184,
+        "startChar": 35,
+        "endLine": 184,
+        "endChar": 40
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_2c2bc883",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "Is there some significance to 12 here?  What is the purpose of keeping old flow entries in here for an hour?  Shouldn\u0027t you remove them as soon as they go away?  You don\u0027t seem to be updating your flow index at all when a flow removed message comes in, so how would you handle the case where a flow is removed and then a new one added with the same match (this would reset the counters for the flow)",
+      "range": {
+        "startLine": 185,
+        "startChar": 0,
+        "endLine": 185,
+        "endChar": 55
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_ec8c2082",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "if you\u0027re just blindly calling .get an an optional something is probably going wrong.  You don\u0027t want to compare to zero you want to see if the value is set right?  Otherwise why are you using optional?\n\nNote that calling .get() on an optional that is not set will call abort()\n\nif (newFlowCounters.diff_packet_count) {\n\n}",
+      "range": {
+        "startLine": 192,
+        "startChar": 0,
+        "endLine": 192,
+        "endChar": 59
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_2cee2823",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "extra space",
+      "range": {
+        "startLine": 200,
+        "startChar": 29,
+        "endLine": 200,
+        "endChar": 30
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_6cf830e6",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "you set visited to false but nothing ever sets it to true again",
+      "range": {
+        "startLine": 235,
+        "startChar": 0,
+        "endLine": 235,
+        "endChar": 40
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_0c624cd8",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "C99 designated initializer syntax is not valid in C++11.  Use C++11 initializers or just use a constructor.  (We allow gnu extensions in compilation flags only because it shows up in OVS headers, but we still don\u0027t want to put this in the main code base)\n\nI\u0027ll comment only on one of these rather than on all.",
+      "range": {
+        "startLine": 251,
+        "startChar": 0,
+        "endLine": 255,
+        "endChar": 14
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_8cf3dc09",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "extra space",
+      "range": {
+        "startLine": 257,
+        "startChar": 29,
+        "endLine": 257,
+        "endChar": 30
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_cccde488",
+        "filename": "agent-ovs/src/PolicyStatsManager.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "spelling",
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_acc0587d",
+        "filename": "agent-ovs/src/include/IntFlowManager.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 567,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "?",
+      "range": {
+        "startLine": 565,
+        "startChar": 0,
+        "endLine": 567,
+        "endChar": 6
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_8ccabc9f",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "extra space",
+      "range": {
+        "startLine": 162,
+        "startChar": 54,
+        "endLine": 162,
+        "endChar": 55
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_0ce7ec41",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "indentation",
+      "range": {
+        "startLine": 181,
+        "startChar": 0,
+        "endLine": 181,
+        "endChar": 3
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_acd97885",
+        "filename": "agent-ovs/src/include/PolicyStatsManager.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 224,
+        "startChar": 0,
+        "endLine": 226,
+        "endChar": 6
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_4c3734b1",
+        "filename": "agent-ovs/test/PolicyStatsManager_test.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "Why is this copy/pasted from IntFlowManager?",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 61
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_2c3c6893",
+        "filename": "agent-ovs/test/PolicyStatsManager_test.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "Why is this copy/pasted from IntFlowManager?",
+      "range": {
+        "startLine": 187,
+        "startChar": 0,
+        "endLine": 199,
+        "endChar": 1
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_6c467025",
+        "filename": "agent-ovs/test/PolicyStatsManager_test.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-05-31T22:14:52Z",
+      "side": 1,
+      "message": "extra spaces",
+      "range": {
+        "startLine": 252,
+        "startChar": 15,
+        "endLine": 252,
+        "endChar": 16
+      },
+      "revId": "c638b69fee113960d57374f55847698f0233cd00",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
