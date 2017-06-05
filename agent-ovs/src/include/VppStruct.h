@@ -25,10 +25,11 @@ namespace ovsagent {
     u32 as_u32;
   } ip4_address;
 
-  struct ip6_address
+  typedef union
   {
+    u8 as_u8[16];
     u16 as_u16[8];
-  };
+  } ip6_address;
 
   struct ip46_address
   {

@@ -126,6 +126,7 @@ noinst_HEADERS = \
 	src/include/FlowReader.h \
 	src/include/SwitchStateHandler.h \
 	src/include/VppManager.h \
+        src/include/VppApiError.h \
 	src/include/VppApi.h \
 	src/include/IVppConnection.h \
 	src/include/VppConnection.h \
