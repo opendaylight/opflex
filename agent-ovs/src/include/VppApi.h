@@ -68,6 +68,18 @@ class VppApi  {
      */
     u32 clientIndex;
 
+    /**
+     * Bridge ID used to keep records
+     */
+    u32 nextBridge;
+
+    /**
+     * Internal state management
+     */
+    std::map< std::string, u32> intfIndexByName;
+    std::map< std::string, u32> bridgeIdByName;
+    std::map< std::string, std::string> bridgeNameByIntf;
+
     VppVersion version;
 
 public:
@@ -122,8 +134,99 @@ public:
      */
     bool checkVersion(std::vector<std::string> versions);
 
+    /**
+     * Address conversion utils
+     */
+    ip46_address boostToVppIp46 (boost::asio::ip::address addr);
+    ip4_address boostToVppIp4 (boost::asio::ip::address_v4 addr);
+    ip6_address boostToVppIp6 (boost::asio::ip::address_v6 addr);
+
+    /**
+     * Print Ip address
+     */
+    void printIpAddr(ip46_address ip_addr);
+
+    /**
+     * VppApi state management functions for maps
+     */
+
+    /**
+     * get/set/delete sw_if_index by name in map: intfIndexByName
+     */
+    std::pair<bool, u32> getIntfIndexByName (std::string name);
+    bool setIntfIndexByName (std::string name, int sw_if_index);
+    bool deleteIntfIndexByName (std::string name);
+
+    /**
+     * get/set/delete Vpp bridge id by bridge domain name in map: bridgeIdByName
+     */
+    std::pair<bool, u32> getBridgeIdByName (std::string name);
+    bool setBridgeIdByName (std::string name, int id);
+    bool deleteBridgeIdByName (std::string name);
+
+    /**
+     * get/set/delete Vpp bridge Name by interface in map: bridgeNameByIntf
+     */
+    std::pair<bool, std::string> getBridgeNameByIntf (std::string name);
+    bool setBridgeNameByIntf (std::string name, std::string intf);
+    bool deleteBridgeNameByIntf (std::string name);
+
+    /**
+     * Create simple bridge-domain with defaults.
+     */
+    int createBridge(std::string bridgeName);
+
+    /**
+     * Remove specified bridge domain
+     *
+     * @param bridgeName to be removed
+     */
+    int deleteBridge(std::string bridgeName);
+
+    /**
+     * Create AFPACKET interface from host veth name
+     */
+    int createAfPacketIntf(std::string name);
+
+    /**
+     * Remove specified AFPACKET interface
+     *
+     * @param name - interface name to be deleted
+     */
+    int deleteAfPacketIntf(std::string name);
+
+    /**
+     * Set interface flags - to bring the interface up or down
+     *
+     * @param name - interface name
+     * @param flags - interface state flags (up/down, promiscuous etc.)
+     */
+    int setIntfFlags(std::string name, int flags);
+
+    /**
+     * set/delete interface ip address
+     *
+     * @param name - interface name
+     * @param is_add - 1 to add, 0 to remove
+     * @param del_all - 1 to remove all the ip addresses assigned to
+     *                specified interface
+     * @param is_ipv6 - 1 if address is IPv6, otherwise 0
+     * @param ip_addr - ip address to set on given interface
+     * @param mask - subnet mask
+     */
+    int setIntfIpAddr(std::string name,
+                       u8 is_add,
+                       u8 del_all,
+                       u8 is_ipv6,
+                       ip46_address ip_addr,
+                       u8 mask);
+    /**
+     * set interface in bridge-domain
+     */
+    int setIntfL2Bridge(std::string bridgeName, std::string portName, u8 bviIntf);
 
     virtual VppConnection* getVppConnection();
+
 
 protected:
 

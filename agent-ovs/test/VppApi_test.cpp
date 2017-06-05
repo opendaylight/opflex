@@ -87,5 +87,103 @@ BOOST_FIXTURE_TEST_CASE(checkVersion1, VppInit) {
     vppApi.disconnect();
 }
 
+BOOST_FIXTURE_TEST_CASE(createBridge, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+    string name{"br1"};
+    BOOST_CHECK( vppApi.createBridge(name) == 0 );
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(deleteBridge, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+    string name{"br1"};
+    BOOST_CHECK( vppApi.createBridge(name) == 0 );
+    BOOST_CHECK( vppApi.deleteBridge(name) == 0 );
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(createAfPacketIntf, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+    std::string const name{"veth1-test"};
+
+    int rv = vppApi.createAfPacketIntf(name);
+    BOOST_CHECK(rv == 0);
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(deleteAfPacketIntf, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+    std::string const name{"veth1-test"};
+
+    BOOST_CHECK( vppApi.createAfPacketIntf(name) == 0);
+    BOOST_CHECK( vppApi.deleteAfPacketIntf(name) == 0);
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(setIntfIpAddr, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    u8 isAdd = 1;
+    u8 delAll = 0;
+    u8 isIpv6 = 0;
+    ip46_address address = vppApi.boostToVppIp46(
+               boost::asio::ip::address::from_string("192.168.10.10"));
+    u8 mask = 24;
+
+    string name{"veth1-test"};
+    //Test for non-existant port
+    BOOST_CHECK(vppApi.setIntfIpAddr(name, isAdd, delAll, isIpv6, address, mask) == -201);
+    if (vppApi.createAfPacketIntf(name) == 0) {
+        BOOST_CHECK(vppApi.setIntfIpAddr(name, isAdd, delAll, isIpv6, address, mask) == 0);
+    } else {
+        BOOST_TEST_MESSAGE("Failed to create afpacket interface required for test.");
+    }
+
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(setIntfFlags, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    u32 flags = 1;
+    string name{"veth1-test"};
+
+    //Test for non-existant port
+    BOOST_CHECK(vppApi.setIntfFlags(name, flags) == -2);
+    if (vppApi.createAfPacketIntf(name) == 0) {
+        BOOST_CHECK(vppApi.setIntfFlags(name, flags) == 0);
+    } else {
+        BOOST_TEST_MESSAGE("Failed to create afpacket interface required for test.");
+    }
+
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(setIntfL2Bridge, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    std::string const intf{"veth1-test"};
+    std::string const bridge{"b1-test"};
+
+    //Create Interface
+    BOOST_CHECK(vppApi.createAfPacketIntf(intf) == 0);
+
+    //Try to add to non-existant bridge
+    BOOST_CHECK(vppApi.setIntfL2Bridge(bridge, intf, 0) == -202);
+
+    //Create bridge
+    BOOST_CHECK(vppApi.createBridge(bridge) == 0);
+
+    //Try to add to existing bridge
+    BOOST_CHECK(vppApi.setIntfL2Bridge(bridge, intf, 0) == 0);
+    vppApi.disconnect();
+}
 
 BOOST_AUTO_TEST_SUITE_END()
