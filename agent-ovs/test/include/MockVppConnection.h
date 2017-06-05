@@ -15,6 +15,7 @@
 #define MOCKVPPCONNECTION_H
 
 #include <VppConnection.h>
+#include <VppApiError.h>
 
 // VPP client C code
 extern "C" {
