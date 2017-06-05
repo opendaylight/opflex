@@ -57,6 +57,10 @@ namespace ovsagent {
     int controlPingReplyID = 493; //TODO alagalah <- only until work out static. won't work on
     // other installs of VPP.
 
+    /*
+     * Will extend it using switch case
+     */
+
     rmp = (vl_api_control_ping_t *)msg;
     u16 msgId = ntohs (rmp->_vl_msg_id);
     u32 context = htonl (rmp->context);
@@ -95,11 +99,31 @@ namespace ovsagent {
     VppConnection::messageIds =
       boost::assign::list_of <VppConnection::messageIdsBiMap::relation>
       ((u16)1, "show_version")
-      ((u16)2, "show_version_reply");
+      ((u16)2, "show_version_reply")
+      ((u16)3, "bridge_domain_add_del")
+      ((u16)4, "bridge_domain_add_del_reply")
+      ((u16)5, "af_packet_create")
+      ((u16)6, "af_packet_create_reply")
+      ((u16)7, "sw_interface_set_l2_bridge")
+      ((u16)8, "sw_interface_set_l2_bridge_reply")
+      ((u16)9, "sw_interface_add_del_address")
+      ((u16)10, "sw_interface_add_del_address_reply")
+      ((u16)11, "sw_interface_set_flags")
+      ((u16)12, "sw_interface_set_flags_reply");
 
     VppConnection::messageCRCByName = {          \
       {"show_version", "12345678"},                                       \
-      {"show_version_reply", "12345678"}                                  \
+      {"show_version_reply", "12345678"},                                 \
+      {"bridge_domain_add_del", "12345678"},				  \
+      {"bridge_domain_add_del_reply", "12345678"},			  \
+      {"af_packet_create", "12345678"},					  \
+      {"af_packet_create_reply", "12345678"},				  \
+      {"sw_interface_set_l2_bridge", "12345678"},			  \
+      {"sw_interface_set_l2_bridge_reply", "12345678"},			  \
+      {"sw_interface_add_del_address", "12345678"},			  \
+      {"sw_interface_add_del_address_reply", "12345678"},		  \
+      {"sw_interface_set_flags", "12345678"},				  \
+      {"sw_interface_set_flags_reply", "12345678"}
     };
 
     return 0;
