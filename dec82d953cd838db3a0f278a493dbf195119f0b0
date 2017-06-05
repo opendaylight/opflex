@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3afa9182_39d8161d",
+        "filename": "agent-ovs/src/VppConnection.cpp",
+        "patchSetId": 14
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-05T18:06:46Z",
+      "side": 1,
+      "message": "move these to member variables in VppConnection or use pimpl pattern to keep the definition of message_response_t here.   Don\u0027t want static state here.",
+      "range": {
+        "startLine": 63,
+        "startChar": 1,
+        "endLine": 69,
+        "endChar": 67
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_7909fe94",
+        "filename": "agent-ovs/src/VppConnection.cpp",
+        "patchSetId": 14
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-05T18:06:46Z",
+      "side": 1,
+      "message": "This should probably be defined in the configuration file with a default of PREFIX/share/vpp/api (see many examples in existing config).\n\nThe C VPP API is probably expecting you to just have statically defined handlers, but such APIs (if they\u0027re well-designed) usually give you a user_data field you can use to map to the correct VppConnection instance.",
+      "range": {
+        "startLine": 144,
+        "startChar": 0,
+        "endLine": 144,
+        "endChar": 42
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_397496fc",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 14
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-05T18:06:46Z",
+      "side": 1,
+      "message": "just a note on platformConfig that may not be obvious.  For the OVS renderer we use this as a sentinel value to determine whether there exists any sort of OpFlex connection to the OpFlex proxy.  The eventual consistency nature of OpFlex means we can\u0027t really ever reach a point where we think we\u0027re fully-synced, so we instead watch for this platformConfig object to get synced down and then wait 5 seconds as a heuristic.  This avoids the situation where the agent starts up, has no state, and then nukes OVS because it hasn\u0027t synced with the proxy yet.",
+      "range": {
+        "startLine": 317,
+        "startChar": 21,
+        "endLine": 317,
+        "endChar": 39
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_d9fe326b",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 14
+      },
+      "lineNbr": 423,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-05T18:06:46Z",
+      "side": 1,
+      "message": "This stuff is probably pretty specific to the OVS renderer.  This is a trick to get around the fact that OVS gives us no way to subscribe to the correct multicast groups for VXLAN, so we work around it by having a daemon that runs and just subscribes to those groups.  Maybe you need the same trick in VPP but presumably VPP would have better ways to solve this.",
+      "range": {
+        "startLine": 408,
+        "startChar": 4,
+        "endLine": 423,
+        "endChar": 5
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_79e29ed6",
+        "filename": "agent-ovs/src/include/IVppConnection.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-05T18:06:46Z",
+      "side": 1,
+      "message": "On naming:  just VppConnection not IVppConnection.  It\u0027s a perfectly fine naming convention but just not the one used in this code base :-)\n\nYou can probably avoid needing any explicit interface defined though as it\u0027s quite likely MockVppConnection can derive directly from the real VppConnection object.",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 23
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_992b0aeb",
+        "filename": "agent-ovs/src/include/VppManager.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-05T18:06:46Z",
+      "side": 1,
+      "message": "You don\u0027t seem to be actually using this at all at the moment, but a quick note on IdGenerator:\n\nIt\u0027s intended to allow for persistent allocation of integer IDs associated with model URIs or other strings, useful when programming flow tables that might allow registers or cookies to be set.  The persistent part allows the agent to restart without having to change all the flows with new IDs (ideally the agent restarts and doesn\u0027t change anything with no disruption in the data path).\n\nYou\u0027ll need to initialize IdGenerator with setPersistLocation in your renderer config; choose a different default location for VppRenderer than for OvsRenderer.\n\nThe getPromId thing is something specific to the internal OVS implementation and you probably don\u0027t need it.",
+      "range": {
+        "startLine": 181,
+        "startChar": 0,
+        "endLine": 194,
+        "endChar": 47
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
