@@ -72,21 +72,20 @@ uint32_t IdGenerator::getId(const string& nmspc, const string& str) {
         if (start.start < start.end)
             idmap.freeIds.insert(id_range(start.start + 1, start.end));
 
+        idmap.reverseMap[newId] = str;
+
         LOG(DEBUG) << "Assigned " << nmspc << ":" << newId
             << " to id: " << str;
         persist(nmspc, idmap);
-        // create a reverse mapping from Id to string
-        idmap.reverseMap[newId] = str;
+
         return newId;
     }
 
-    // create a reverse mapping from Id to string
-    idmap.reverseMap[it->second] = str;
     return it->second;
 }
 
-boost::optional<std::string> IdGenerator::getStringForId(
-                                 const std::string& nmspc, uint32_t id) {
+boost::optional<std::string>
+IdGenerator::getStringForId(const std::string& nmspc, uint32_t id) {
 
     lock_guard<mutex> guard(id_mutex);
     NamespaceMap::iterator nitr = namespaces.find(nmspc);
@@ -103,8 +102,8 @@ boost::optional<std::string> IdGenerator::getStringForId(
         return itr->second;
     }
 
-    LOG(DEBUG) << "Unable to map to string for Id :" << id << " in namespace = "
-               << nmspc;
+    LOG(DEBUG) << "Unable to map to string for id:"
+               << id << " in namespace " << nmspc;
     return boost::none;
 }
 
@@ -205,16 +204,16 @@ void IdGenerator::cleanup() {
                     }
                     changed = true;
 
-                    idmap.ids.erase(iit);
-                    LOG(DEBUG) << "Cleaned up ID " << it->first
-                               << " in namespace " << nmv.first;
-
                     IdMap::Id2StrMap::iterator irmt =
-                                      idmap.reverseMap.find(iit->second);
+                        idmap.reverseMap.find(iit->second);
                     if (irmt != idmap.reverseMap.end()) {
                         idmap.reverseMap.erase(irmt);
                     }
 
+                    idmap.ids.erase(iit);
+
+                    LOG(DEBUG) << "Cleaned up ID " << it->first
+                               << " in namespace " << nmv.first;
                 }
                 it = idmap.erasedIds.erase(it);
                 continue;
@@ -330,6 +329,7 @@ void IdGenerator::initNamespace(const std::string& nmspc,
             LOG(WARNING) << "ID file corrupt: " << id << " below minimum";
         } else {
             idmap.ids[*str] = id;
+            idmap.reverseMap[id] = *str;
         }
         usedIds.insert(id);
         LOG(DEBUG) << "Loaded str: " << *str << ", "

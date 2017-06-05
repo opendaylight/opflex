@@ -33,7 +33,8 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
       accessSwitchManager(agent_, accessFlowExecutor,
                           accessFlowReader, accessPortMapper),
       accessFlowManager(agent_, accessSwitchManager, idGen, ctZoneManager),
-      statsManager(&agent_, intSwitchManager.getPortMapper(), accessSwitchManager.getPortMapper()),
+      statsManager(&agent_, intSwitchManager.getPortMapper(),
+                   accessSwitchManager.getPortMapper()),
       polStatsManager(&agent_, idGen, intSwitchManager),
       tunnelEpManager(&agent_), tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true),
@@ -117,7 +118,8 @@ void StitchedModeRenderer::start() {
     }
 
     if (accessBridgeName != "") {
-        statsManager.registerConnection(intSwitchManager.getConnection(), accessSwitchManager.getConnection());
+        statsManager.registerConnection(intSwitchManager.getConnection(),
+                                        accessSwitchManager.getConnection());
     } else {
         statsManager.registerConnection(intSwitchManager.getConnection(), NULL);
     }
