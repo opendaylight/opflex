@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include "logging.h"
+#include "VppApiError.h"
 #include "VppApi.h"
 #include "MockVppConnection.h"
 
@@ -87,5 +88,159 @@ BOOST_FIXTURE_TEST_CASE(checkVersion1, VppInit) {
     vppApi.disconnect();
 }
 
+BOOST_FIXTURE_TEST_CASE(createBridge, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+    string name{"br1"};
+    BOOST_CHECK( vppApi.createBridge(name) == 0 );
+    vppApi.disconnect();
+}
 
+BOOST_FIXTURE_TEST_CASE(deleteBridge, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+    string name{"br1"};
+    BOOST_CHECK( vppApi.createBridge(name) == 0 );
+    BOOST_CHECK( vppApi.deleteBridge(name) == 0 );
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(createAfPacketIntf, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+    std::string const name{"veth1-test"};
+
+    int rv = vppApi.createAfPacketIntf(name);
+    BOOST_CHECK(rv == 0);
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(deleteAfPacketIntf, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+    std::string const name{"veth1-test"};
+
+    BOOST_CHECK( vppApi.createAfPacketIntf(name) == 0);
+    BOOST_CHECK( vppApi.deleteAfPacketIntf(name) == 0);
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(setIntfIpAddr, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    u8 isAdd = 1;
+    u8 delAll = 0;
+    u8 isIpv6 = 0;
+    ip46_address address = vppApi.boostToVppIp46(
+               boost::asio::ip::address::from_string("192.168.10.10"));
+    u8 mask = 24;
+
+    string name{"veth1-test"};
+    //Test for non-existant port
+    BOOST_CHECK(vppApi.setIntfIpAddr(name, isAdd, delAll, isIpv6, address, mask) == NO_MATCHING_INTERFACE);
+    if (vppApi.createAfPacketIntf(name) == 0) {
+        BOOST_CHECK(vppApi.setIntfIpAddr(name, isAdd, delAll, isIpv6, address, mask) == 0);
+    } else {
+        BOOST_TEST_MESSAGE("Failed to create afpacket interface required for test.");
+    }
+
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(setIntfFlags, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    u8 flags = vppApi.intfFlags::Up;
+    string name{"veth1-test"};
+
+    //Test for non-existant port
+    BOOST_CHECK(vppApi.setIntfFlags(name, flags) == NO_MATCHING_INTERFACE);
+    if (vppApi.createAfPacketIntf(name) == 0) {
+        BOOST_CHECK(vppApi.setIntfFlags(name, flags) == 0);
+    } else {
+        BOOST_TEST_MESSAGE("Failed to create afpacket interface required for test.");
+    }
+
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(setIntfL2Bridge, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    std::string const intf{"veth1-test"};
+    std::string const bridge{"b1-test"};
+
+    //Create Interface
+    BOOST_CHECK(vppApi.createAfPacketIntf(intf) == 0);
+
+    //Try to add to non-existant bridge
+    BOOST_CHECK(vppApi.setIntfL2Bridge(bridge, intf, vppApi.bviFlags::NoBVI) == BD_NOT_MODIFIABLE);
+
+    //Create bridge
+    BOOST_CHECK(vppApi.createBridge(bridge) == 0);
+
+    //Try to add to existing bridge
+    BOOST_CHECK(vppApi.setIntfL2Bridge(bridge, intf, vppApi.bviFlags::NoBVI) == 0);
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(createLoopback, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    std::string const intf{"loop1"};
+    mac_addr_t macAddr;
+
+    macAddr[0] = 0xde; macAddr[1] = 0xad; macAddr[2] = 0xbe;
+    macAddr[3] = 0xef; macAddr[4] = 0xff; macAddr[5] = 0x01;
+
+    BOOST_CHECK(vppApi.getIntfIndexByName(intf).first == false);
+    //Create Interface
+    BOOST_CHECK(vppApi.createLoopback(intf, macAddr) == 0);
+    BOOST_CHECK(vppApi.getIntfIndexByName(intf).first == true);
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(createVxlan, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    std::string const vxlanIntfName{"vxlan-intf"};
+    u8 isAdd = 1;
+    u8 isIpv6 = 0;
+    ip46_address srcAddr, dstAddr;
+
+    srcAddr = vppApi.boostToVppIp46(
+               boost::asio::ip::address::from_string("192.168.10.10"));
+    dstAddr = vppApi.boostToVppIp46(
+               boost::asio::ip::address::from_string("192.168.10.20"));
+
+    u32 vni = 32000;
+
+    BOOST_CHECK(vppApi.getIntfIndexByName(vxlanIntfName).first == false);
+    //Create Interface
+    BOOST_CHECK(vppApi.createVxlan(vxlanIntfName, isAdd, isIpv6, srcAddr, dstAddr,
+                                   " ", 0, vni) == 0);
+    BOOST_CHECK(vppApi.getIntfIndexByName(vxlanIntfName).first == true);
+    vppApi.disconnect();
+}
+
+BOOST_FIXTURE_TEST_CASE(setIntfIpTable, VppInit) {
+    vppApi.connect(name);
+    BOOST_REQUIRE( vppApi.isConnected() == true );
+
+    std::string const intf{"veth1-test"};
+    u8 isIpv6 = 0;
+    u8 vrfId = 1;
+
+    //Create Interface
+    BOOST_CHECK(vppApi.createAfPacketIntf(intf) == 0);
+    BOOST_CHECK(vppApi.getIntfIndexByName(intf).first == true);
+    //Create Interface
+    BOOST_CHECK(vppApi.setIntfIpTable(intf, isIpv6, vrfId) == 0);
+    vppApi.disconnect();
+}
 BOOST_AUTO_TEST_SUITE_END()

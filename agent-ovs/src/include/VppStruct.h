@@ -1,8 +1,8 @@
 #ifndef VPPSTRUCT_H
 #define VPPSTRUCT_H
 
-#define MPLS_IETF_MAX_LABEL               0xfffff;
-#define MPLS_LABEL_INVALID (MPLS_IETF_MAX_LABEL+1);
+#define MPLS_IETF_MAX_LABEL               0xfffff
+#define MPLS_LABEL_INVALID (MPLS_IETF_MAX_LABEL+1)
 
 #include <VppTypes.h>
 
@@ -19,16 +19,19 @@ namespace ovsagent {
     std::string buildDirectory;
   };
 
+  typedef u8 mac_addr_t[6];
+
   typedef union
   {
     u8 as_u8[4];
     u32 as_u32;
   } ip4_address;
 
-  struct ip6_address
+  typedef union
   {
+    u8 as_u8[16];
     u16 as_u16[8];
-  };
+  } ip6_address;
 
   struct ip46_address
   {
@@ -48,7 +51,7 @@ namespace ovsagent {
     u8 is_drop;
     u8 is_unreach;
     u8 is_prohibit;
-    u8 is_ipv6; //TODO <- not needed really since ip46_address has this.
+    u8 is_ipv6;
     u8 is_local;
     u8 is_classify;
     u8 is_multipath;

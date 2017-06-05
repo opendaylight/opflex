@@ -27,6 +27,7 @@
 // End debugging includes
 
 #include "VppConnection.h"
+#include "VppApiError.h"
 
 using namespace std;
 
@@ -159,7 +160,7 @@ namespace ovsagent {
       string msg{};
       u16 msgId;
 
-      LOG(INFO) << "Reading VPP API definitions from " << fstr;
+      LOG(DEBUG) << "Reading VPP API definitions from " << fstr;
       pt::read_json(fstr, properties);
       for (pt::ptree::value_type &messages : properties.get_child("messages")) {
         for (pt::ptree::value_type &message : messages.second) {
@@ -248,7 +249,7 @@ namespace ovsagent {
   {
     if (!connected) {
       LOG(ERROR) << "not connected";
-      return -1;
+      return NOT_CONNECTED;
     }
 
     map_mutex.lock();
