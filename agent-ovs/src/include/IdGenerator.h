@@ -163,9 +163,11 @@ public:
      *
      * @param nmspc Namespace to get an ID from
      * @param id to get an str for
-     * @return NULL if no string for given id found else reference of stored string.
+     * @return The string associated with id, or boost::none if not
+     * found
      */
-    boost::optional<std::string> getStringForId(const std::string& nmspc, uint32_t id);
+    boost::optional<std::string> getStringForId(const std::string& nmspc,
+                                                uint32_t id);
 
 private:
     typedef std::chrono::steady_clock::time_point time_point;
@@ -212,8 +214,6 @@ private:
      */
     void persist(const std::string& nmspc, IdMap& idmap);
     uint32_t getRemainingIdsLocked(const std::string& nmspc);
-
-    void updateReverseMap(const std::string& nmspc, uint32_t id, const std::string& str, bool create);
 
     std::mutex id_mutex;
 

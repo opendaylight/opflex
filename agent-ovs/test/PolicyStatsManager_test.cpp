@@ -27,6 +27,7 @@
 #include "FlowConstants.h"
 #include "FlowUtils.h"
 #include "FlowManagerFixture.h"
+#include "FlowBuilder.h"
 
 #include "ovs-ofputil.h"
 
@@ -34,9 +35,6 @@ extern "C" {
 #include <openvswitch/ofp-parse.h>
 #include <openvswitch/ofp-print.h>
 }
-
-
-#include "FlowBuilder.h"
 
 using namespace boost::assign;
 using boost::optional;
@@ -47,7 +45,6 @@ using namespace modelgbp::gbpe;
 using modelgbp::observer::PolicyStatUniverse;
 using opflex::modb::class_id_t;
 
-
 namespace ovsagent {
 
 enum {
@@ -55,23 +52,16 @@ enum {
     TEST_CONN_TYPE_ACC,
 };
 
-
-static const char* ID_NAMESPACES[] =
-    {"floodDomain", "bridgeDomain", "routingDomain",
-     "externalNetwork", "service", "l24classifierRule"};
-
-static const char* ID_NMSPC_FD            = ID_NAMESPACES[0];
-static const char* ID_NMSPC_BD            = ID_NAMESPACES[1];
-static const char* ID_NMSPC_RD            = ID_NAMESPACES[2];
-static const char* ID_NMSPC_EXTNET        = ID_NAMESPACES[3];
-static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[4];
-static const char* ID_NMSPC_L24CLASS_RULE = ID_NAMESPACES[5];
-
+static const uint32_t PACKET_SIZE = 64;
+static const uint32_t INITIAL_PACKET_COUNT = 100;
+static const uint32_t FINAL_PACKET_COUNT = 299;
+static const uint32_t LAST_PACKET_COUNT = 379; // for removed flow entry
 
 class MockConnection : public SwitchConnection {
 public:
-    MockConnection(int conn_type) : SwitchConnection((conn_type==
-              TEST_CONN_TYPE_INT)? "int_conn": "acc_conn"), lastSentMsg(NULL) {
+    MockConnection(int conn_type) :
+        SwitchConnection((conn_type== TEST_CONN_TYPE_INT)
+                         ? "int_conn": "acc_conn"), lastSentMsg(NULL) {
         nType = conn_type;
         lastSentMsg = NULL;
     }
@@ -108,25 +98,20 @@ public:
                                   policyManager(agent.getPolicyManager()) {
         createObjects();
         createPolicyObjects();
-        for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
-            idGen.initNamespace(ID_NAMESPACES[i]);
-        }
+        idGen.initNamespace("l24classifierRule");
+        idGen.initNamespace("routingDomain");
         switchManager.setMaxFlowTables(10);
-
-
-      }
+    }
     virtual ~PolicyStatsManagerFixture() {}
-    void verifyFlowStats(
-                     std::shared_ptr<modelgbp::gbp::EpGroup> srcEpg,
-                     std::shared_ptr<modelgbp::gbp::EpGroup> dstEpg,
-                     std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier,
-                     uint32_t packet_count,
-                     uint32_t byte_count);
-    void verifyRoutingDomainDropStats(
-                         std::shared_ptr<modelgbp::gbp::RoutingDomain> rd,
+    void verifyFlowStats(shared_ptr<EpGroup> srcEpg,
+                         shared_ptr<EpGroup> dstEpg,
+                         shared_ptr<L24Classifier> classifier,
                          uint32_t packet_count,
                          uint32_t byte_count);
-    void intExpFlowClassifier3(FlowEntryList& entryList);
+    void verifyRoutingDomainDropStats(shared_ptr<RoutingDomain> rd,
+                                      uint32_t packet_count,
+                                      uint32_t byte_count);
+    void writeClassifierFlows(FlowEntryList& entryList);
 
     IdGenerator idGen;
     PolicyStatsManager policyStatsManager;
@@ -135,25 +120,26 @@ public:
 private:
 };
 
-
-void PolicyStatsManagerFixture::verifyFlowStats(
-                     std::shared_ptr<modelgbp::gbp::EpGroup> srcEpg,
-                     std::shared_ptr<modelgbp::gbp::EpGroup> dstEpg,
-                     std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier,
-                     uint32_t packet_count,
-                     uint32_t byte_count) {
+void PolicyStatsManagerFixture::
+verifyFlowStats(shared_ptr<EpGroup> srcEpg,
+                shared_ptr<EpGroup> dstEpg,
+                shared_ptr<L24Classifier> classifier,
+                uint32_t packet_count,
+                uint32_t byte_count) {
 
     optional<shared_ptr<PolicyStatUniverse> > su =
         PolicyStatUniverse::resolve(agent.getFramework());
 
-    optional<std::shared_ptr<modelgbp::gbpe::L24ClassifierCounter> > myCounter =
-                        su.get()->resolveGbpeL24ClassifierCounter(
-                                  boost::lexical_cast<std::string>(
-                                      policyStatsManager.getAgentUUID()),
-                                  policyStatsManager.getCurrClsfrGenId(),
-                                  srcEpg->getURI().toString(),
-                                  dstEpg->getURI().toString(),
-                                  classifier->getURI().toString());
+    auto uuid =
+        boost::lexical_cast<std::string>(policyStatsManager.getAgentUUID());
+    optional<shared_ptr<L24ClassifierCounter> > myCounter =
+        su.get()-> resolveGbpeL24ClassifierCounter(uuid,
+                                                   policyStatsManager
+                                                   .getCurrClsfrGenId(),
+                                                   srcEpg->getURI().toString(),
+                                                   dstEpg->getURI().toString(),
+                                                   classifier->getURI()
+                                                   .toString());
     if (myCounter) {
         BOOST_CHECK_EQUAL(myCounter.get()->getPackets().get(),
                           packet_count);
@@ -162,40 +148,26 @@ void PolicyStatsManagerFixture::verifyFlowStats(
     }
 }
 
-void PolicyStatsManagerFixture::verifyRoutingDomainDropStats(
-                     std::shared_ptr<modelgbp::gbp::RoutingDomain> rd,
-                     uint32_t packet_count,
-                     uint32_t byte_count) {
+void PolicyStatsManagerFixture::
+verifyRoutingDomainDropStats(shared_ptr<RoutingDomain> rd,
+                             uint32_t packet_count,
+                             uint32_t byte_count) {
 
     optional<shared_ptr<PolicyStatUniverse> > su =
         PolicyStatUniverse::resolve(agent.getFramework());
 
-    optional<std::shared_ptr<modelgbp::gbpe::RoutingDomainDropCounter> > myCounter =
-                        su.get()->resolveGbpeRoutingDomainDropCounter(
-                                  boost::lexical_cast<std::string>(
-                                      policyStatsManager.getAgentUUID()),
-                                  policyStatsManager.getCurrDropGenId(),
-                                  rd->getURI().toString());
+    auto uuid = boost::lexical_cast<string>(policyStatsManager.getAgentUUID());
+    optional<shared_ptr<RoutingDomainDropCounter> > myCounter =
+        su.get()->resolveGbpeRoutingDomainDropCounter(uuid,
+                                                      policyStatsManager
+                                                      .getCurrDropGenId(),
+                                                      rd->getURI().toString());
     if (myCounter) {
         BOOST_CHECK_EQUAL(myCounter.get()->getPackets().get(),
                           packet_count);
         BOOST_CHECK_EQUAL(myCounter.get()->getBytes().get(),
                           byte_count);
     }
-}
-
-const char * getIdNamespace(class_id_t cid) {
-    const char *nmspc = NULL;
-    switch (cid) {
-    case RoutingDomain::CLASS_ID:   nmspc = ID_NMSPC_RD; break;
-    case BridgeDomain::CLASS_ID:    nmspc = ID_NMSPC_BD; break;
-    case FloodDomain::CLASS_ID:     nmspc = ID_NMSPC_FD; break;
-    case L3ExternalNetwork::CLASS_ID: nmspc = ID_NMSPC_EXTNET; break;
-    case L24Classifier::CLASS_ID: nmspc = ID_NMSPC_L24CLASS_RULE; break;
-    default:
-        assert(false);
-    }
-    return nmspc;
 }
 
 struct ofpbuf *makeFlowStatReplyMessage(MockConnection *pConn,
@@ -211,8 +183,8 @@ struct ofpbuf *makeFlowStatReplyMessage(MockConnection *pConn,
     fsr.out_port = OFPP_ANY;
     fsr.out_group = OFPG_ANY;
     fsr.cookie = fsr.cookie_mask = (uint64_t)0;
-    enum ofputil_protocol proto = ofputil_protocol_from_ofp_version(
-                                     (ofp_version)OFP13_VERSION);
+    enum ofputil_protocol proto =
+        ofputil_protocol_from_ofp_version((ofp_version)OFP13_VERSION);
     struct ofpbuf *req_msg = ofputil_encode_flow_stats_request(&fsr, proto);
 
     struct ofp_header *req_hdr = (ofp_header *)req_msg->data;
@@ -241,22 +213,17 @@ struct ofpbuf *makeFlowStatReplyMessage(MockConnection *pConn,
         ofputil_append_flow_stats_reply(fs, &ovs_replies);
         reply = ofpbuf_from_list(ovs_list_back(&ovs_replies));
         ofpmsg_update_length(reply);
-        // set it to be OFPRAW_ type of openflow message by setting header to be
-        // null.
+        // set it to be OFPRAW_ type of openflow message by setting
+        // header to be null.
         reply->header = NULL;
         return reply;
     }
 
 }
 
-static uint32_t packet_size = 64;
-static uint32_t initial_packet_count = 100;
-static uint32_t final_packet_count = 299;
-static uint32_t last_packet_count = 379; // for removed flow entry
-
 struct ofpbuf *makeFlowStatReplyMessage_2(MockConnection *pConn,
-                                        uint32_t packet_count,
-                                        FlowEntryList& entryList) {
+                                          uint32_t packet_count,
+                                          FlowEntryList& entryList) {
 
     struct ofputil_flow_stats_request fsr;
     bzero(&fsr, sizeof(struct ofputil_flow_stats_request));
@@ -264,8 +231,8 @@ struct ofpbuf *makeFlowStatReplyMessage_2(MockConnection *pConn,
     fsr.out_port = OFPP_ANY;
     fsr.out_group = OFPG_ANY;
     fsr.cookie = fsr.cookie_mask = (uint64_t)0;
-    enum ofputil_protocol proto = ofputil_protocol_from_ofp_version(
-                                     (ofp_version)OFP13_VERSION);
+    enum ofputil_protocol proto =
+        ofputil_protocol_from_ofp_version((ofp_version)OFP13_VERSION);
     struct ofpbuf *req_msg = ofputil_encode_flow_stats_request(&fsr, proto);
 
     struct ofp_header *req_hdr = (ofp_header *)req_msg->data;
@@ -288,7 +255,7 @@ struct ofpbuf *makeFlowStatReplyMessage_2(MockConnection *pConn,
 #endif
         fs->cookie = fe->entry->cookie;
         fs->packet_count = packet_count;
-        fs->byte_count = packet_size * (fs->packet_count);
+        fs->byte_count = PACKET_SIZE * (fs->packet_count);
         fs->flags = fe->entry->flags;
         fs->match = fe->entry->match;
 
@@ -296,39 +263,11 @@ struct ofpbuf *makeFlowStatReplyMessage_2(MockConnection *pConn,
     }
     reply = ofpbuf_from_list(ovs_list_back(&ovs_replies));
     ofpmsg_update_length(reply);
-    // set it to be OFPRAW_ type of openflow message by setting header to be
-    // null.
+    // set it to be OFPRAW_ type of openflow message by setting header
+    // to be null.
     reply->header = NULL;
     return reply;
 }
-
-struct ofpbuf *makeFlowRemovedMessage(MockConnection *pConn,
-                                        uint32_t priority, uint32_t cookie,
-                                        uint32_t packet_count,
-                                        uint32_t byte_count,
-                                        uint32_t reg0, uint32_t reg2) {
-
-    struct ofpbuf *bufp;
-    struct ofputil_flow_removed fs;
-
-    bzero(&fs, sizeof(struct ofputil_flow_removed));
-    fs.table_id = IntFlowManager::POL_TABLE_ID;
-    fs.priority = priority,
-    fs.cookie = ovs_htonll((uint64_t)cookie);
-    fs.packet_count = packet_count;
-    fs.byte_count = byte_count;
-    // set match registers reg0, reg2
-    match_set_reg(&(fs.match), 0 /* REG0 */, reg0);
-    match_set_reg(&(fs.match), 2 /* REG2 */, reg2);
-
-    enum ofputil_protocol proto = ofputil_protocol_from_ofp_version(
-                                     (ofp_version)OFP13_VERSION);
-    bufp = ofputil_encode_flow_removed(&fs, proto);
-    ofpmsg_update_length(bufp);
-
-    return bufp;
-}
-
 
 struct ofpbuf *makeFlowRemovedMessage_2(MockConnection *pConn,
                                         uint32_t packet_count,
@@ -347,10 +286,10 @@ struct ofpbuf *makeFlowRemovedMessage_2(MockConnection *pConn,
         fs->priority = fe->entry->priority;
         fs->cookie = fe->entry->cookie;
         fs->packet_count = packet_count;
-        fs->byte_count = packet_size * (fs->packet_count);
+        fs->byte_count = PACKET_SIZE * (fs->packet_count);
         fs->match = fe->entry->match;
-        enum ofputil_protocol proto = ofputil_protocol_from_ofp_version(
-                                     (ofp_version)OFP13_VERSION);
+        enum ofputil_protocol proto =
+            ofputil_protocol_from_ofp_version((ofp_version)OFP13_VERSION);
         bufp = ofputil_encode_flow_removed(fs, proto);
         ofpmsg_update_length(bufp);
 
@@ -358,15 +297,18 @@ struct ofpbuf *makeFlowRemovedMessage_2(MockConnection *pConn,
     }
 }
 
-
-void PolicyStatsManagerFixture::intExpFlowClassifier3(FlowEntryList& entryList) {
+void PolicyStatsManagerFixture::
+writeClassifierFlows(FlowEntryList& entryList) {
+    WAIT_FOR(policyManager.getVnidForGroup(epg1->getURI()), 500);
+    WAIT_FOR(policyManager.getVnidForGroup(epg2->getURI()), 500);
 
     //FlowEntryList entryList;
     struct ofputil_flow_mod fm;
     enum ofputil_protocol prots;
     const string& classifier3Id = classifier3->getURI().toString();
-    uint32_t cookie = idGen.getId(getIdNamespace(L24Classifier::CLASS_ID),
-                        classifier3->getURI().toString());
+    uint32_t cookie =
+        idGen.getId(IntFlowManager::getIdNamespace(L24Classifier::CLASS_ID),
+                    classifier3->getURI().toString());
     uint32_t priority = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     uint32_t epg1_vnid = policyManager.getVnidForGroup(epg1->getURI()).get();
     uint32_t epg2_vnid = policyManager.getVnidForGroup(epg2->getURI()).get();
@@ -376,19 +318,20 @@ void PolicyStatsManagerFixture::intExpFlowClassifier3(FlowEntryList& entryList) 
     MaskList ml_94_95 = list_of<Mask>(0x005e, 0xfffe);
 
     for (const Mask& mk : ml_80_85) {
-        const string &flowMod = Bldr("", SEND_FLOW_REM).table(IntFlowManager::POL_TABLE_ID)
-             .priority(priority)
-             .cookie(cookie).tcp()
-             .reg(SEPG, epg1_vnid).reg(DEPG, epg2_vnid)
-             .isTpDst(mk.first, mk.second).actions().done();
-             //.isTpDst(mk.first, mk.second).actions().drop().done();
-         char* error =
-        parse_ofp_flow_mod_str(&fm, flowMod.c_str(), OFPFC_ADD, &prots);
+        const string &flowMod =
+            Bldr("", SEND_FLOW_REM).table(IntFlowManager::POL_TABLE_ID)
+            .priority(priority)
+            .cookie(cookie).tcp()
+            .reg(SEPG, epg1_vnid).reg(DEPG, epg2_vnid)
+            .isTpDst(mk.first, mk.second).actions().done();
+        //.isTpDst(mk.first, mk.second).actions().drop().done();
+        char* error =
+            parse_ofp_flow_mod_str(&fm, flowMod.c_str(), OFPFC_ADD, &prots);
         if (error) {
             LOG(ERROR) << "Could not parse: " << flowMod << ": " << error;
             return;
         }
-    //LOG(ERROR) << "intExpFlowClassifier3" << flowMod.c_str();
+        //LOG(ERROR) << "writeClassifierFlows" << flowMod.c_str();
         FlowEntryPtr e(new FlowEntry());
         e->entry->match = fm.match;
         e->entry->cookie = fm.new_cookie;
@@ -420,9 +363,9 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, PolicyStatsManagerFixture) {
     policyStatsManager.Handle(&integrationPortConn,
                               OFPTYPE_FLOW_STATS_REPLY, NULL);
 
-    // Add flows in switchManager
+    // add flows in switchManager
     FlowEntryList entryList;
-    PolicyStatsManagerFixture::intExpFlowClassifier3(entryList);
+    PolicyStatsManagerFixture::writeClassifierFlows(entryList);
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
@@ -432,24 +375,24 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, PolicyStatsManagerFixture) {
 
     // create first flow stats reply message
     struct ofpbuf *res_msg = makeFlowStatReplyMessage_2(&integrationPortConn,
-                                                        initial_packet_count,
+                                                        INITIAL_PACKET_COUNT,
                                                         entryList);
     LOG(DEBUG) << "1 makeFlowStatReplyMessage successful";
     BOOST_REQUIRE(res_msg!=0);
 
     // send first flow stats reply message
     policyStatsManager.Handle(&integrationPortConn,
-                          OFPTYPE_FLOW_STATS_REPLY, res_msg);
+                              OFPTYPE_FLOW_STATS_REPLY, res_msg);
     LOG(DEBUG) << "1 FlowStatsReplyMessage handling successful";
     ofpbuf_delete(res_msg);
 
     // create second flow stats reply message
     res_msg = makeFlowStatReplyMessage_2(&integrationPortConn,
-                                                        final_packet_count,
-                                                        entryList);
+                                         FINAL_PACKET_COUNT,
+                                         entryList);
     // send second flow stats reply message
     policyStatsManager.Handle(&integrationPortConn,
-                          OFPTYPE_FLOW_STATS_REPLY, res_msg);
+                              OFPTYPE_FLOW_STATS_REPLY, res_msg);
     ofpbuf_delete(res_msg);
 
     // Call on_timer function to process the stats collected
@@ -462,13 +405,13 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, PolicyStatsManagerFixture) {
 
     uint32_t num_flows = entryList.size();
     uint32_t exp_classifier_packet_count =
-        (final_packet_count - initial_packet_count) * num_flows;
+        (FINAL_PACKET_COUNT - INITIAL_PACKET_COUNT) * num_flows;
 
     // Verify per classifier/per epg pair packet and byte count
 
     verifyFlowStats(epg1, epg2, classifier3,
                     exp_classifier_packet_count,
-                    exp_classifier_packet_count * packet_size);
+                    exp_classifier_packet_count * PACKET_SIZE);
 
     LOG(DEBUG) << "FlowStatsReplyMessage verification successful";
 
@@ -481,8 +424,9 @@ BOOST_FIXTURE_TEST_CASE(testRdDropStats, PolicyStatsManagerFixture) {
     policyStatsManager.start();
 
     // get rdId
-    uint32_t rdId = idGen.getId(getIdNamespace(RoutingDomain::CLASS_ID),
-                                rd0->getURI().toString());
+    uint32_t rdId =
+        idGen.getId(IntFlowManager::getIdNamespace(RoutingDomain::CLASS_ID),
+                    rd0->getURI().toString());
     uint32_t priority = 1;
     uint32_t packet_count = 39;
     uint32_t byte_count = 6994;
@@ -495,7 +439,7 @@ BOOST_FIXTURE_TEST_CASE(testRdDropStats, PolicyStatsManagerFixture) {
     BOOST_REQUIRE(res_msg!=0);
 
     policyStatsManager.Handle(&integrationPortConn,
-                          OFPTYPE_FLOW_STATS_REPLY, res_msg);
+                              OFPTYPE_FLOW_STATS_REPLY, res_msg);
     ofpbuf_delete(res_msg);
     LOG(DEBUG) << "testRd:FlowStatsReplyMessage handling successful";
 
@@ -504,16 +448,14 @@ BOOST_FIXTURE_TEST_CASE(testRdDropStats, PolicyStatsManagerFixture) {
     policyStatsManager.stop();
 }
 
-
 BOOST_FIXTURE_TEST_CASE(testFlowRemoved, PolicyStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     policyStatsManager.registerConnection(&integrationPortConn);
     policyStatsManager.start();
 
-
     // Add flows in switchManager
     FlowEntryList entryList;
-    PolicyStatsManagerFixture::intExpFlowClassifier3(entryList);
+    PolicyStatsManagerFixture::writeClassifierFlows(entryList);
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
@@ -521,14 +463,13 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, PolicyStatsManagerFixture) {
     // switchManager.
     policyStatsManager.on_timer(ec);
 
-
     struct ofpbuf *res_msg = makeFlowRemovedMessage_2(&integrationPortConn,
-                                        last_packet_count,
-                                        entryList);
+                                                      LAST_PACKET_COUNT,
+                                                      entryList);
     BOOST_REQUIRE(res_msg!=0);
 
     policyStatsManager.Handle(&integrationPortConn,
-                               OFPTYPE_FLOW_REMOVED, res_msg);
+                              OFPTYPE_FLOW_REMOVED, res_msg);
     ofpbuf_delete(res_msg);
 
     // Call on_timer function to process the stats collected
@@ -540,16 +481,12 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, PolicyStatsManagerFixture) {
     // that we should have in Genie object
 
     uint32_t num_flows = entryList.size();
-    uint32_t exp_classifier_packet_count =
-        (last_packet_count - final_packet_count) * 1;
-    LOG(DEBUG) << "ExpClassPacketCount :" << exp_classifier_packet_count;
     verifyFlowStats(epg1, epg2, classifier3,
-                    exp_classifier_packet_count,
-                    exp_classifier_packet_count * packet_size);
+                    LAST_PACKET_COUNT,
+                    LAST_PACKET_COUNT * PACKET_SIZE);
     policyStatsManager.stop();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
 }
-

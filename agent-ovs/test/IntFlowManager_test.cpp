@@ -1862,7 +1862,8 @@ void IntFlowManagerFixture::initExpCon1() {
                  .done());
             /* classifier 2  */
             const opflex::modb::URI& ruleURI_2 = classifier2.get()->getURI();
-            con1_cookie = intFlowManager.getId(classifier2->getClassId(), ruleURI_2);
+            con1_cookie = intFlowManager.getId(classifier2->getClassId(),
+                                               ruleURI_2);
             ADDF(Bldr("", SEND_FLOW_REM).table(POL)
                  .priority(prio-128)
                  .cookie(con1_cookie).arp()
@@ -1870,7 +1871,8 @@ void IntFlowManagerFixture::initExpCon1() {
                  .actions().go(OUT).done());
             /* classifier 6 */
             const opflex::modb::URI& ruleURI_6 = classifier6.get()->getURI();
-            con1_cookie = intFlowManager.getId(classifier6->getClassId(), ruleURI_6);
+            con1_cookie = intFlowManager.getId(classifier6->getClassId(),
+                                               ruleURI_6);
             ADDF(Bldr("", SEND_FLOW_REM).table(POL)
                  .priority(prio-256)
                  .cookie(con1_cookie).tcp()
@@ -1878,7 +1880,8 @@ void IntFlowManagerFixture::initExpCon1() {
                  .isTcpFlags("+syn+ack").actions().go(OUT).done());
             /* classifier 7 */
             const opflex::modb::URI& ruleURI_7 = classifier7.get()->getURI();
-            con1_cookie = intFlowManager.getId(classifier7->getClassId(), ruleURI_7);
+            con1_cookie = intFlowManager.getId(classifier7->getClassId(),
+                                               ruleURI_7);
             ADDF(Bldr("", SEND_FLOW_REM).table(POL)
                  .priority(prio-384)
                  .cookie(con1_cookie).tcp()

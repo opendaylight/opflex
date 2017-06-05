@@ -105,7 +105,8 @@ static bool applyRemoteSub(FlowBuilder& fb, FlowBuilderFunc func,
 }
 
 typedef std::function<bool(FlowBuilder&, uint16_t)> flow_func;
-static flow_func make_flow_functor(const network::subnet_t& ss, FlowBuilderFunc func) {
+static flow_func make_flow_functor(const network::subnet_t& ss,
+                                   FlowBuilderFunc func) {
     using std::placeholders::_1;
     using std::placeholders::_2;
 

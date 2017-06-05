@@ -46,6 +46,8 @@ BOOST_AUTO_TEST_CASE(get_erase) {
         BOOST_CHECK(u1_id != 0);
         BOOST_CHECK(u2_id != 0);
         BOOST_CHECK(u1_id == idgen.getId(nmspc, u1));
+        BOOST_CHECK_EQUAL(u1, idgen.getStringForId(nmspc, u1_id).get());
+        BOOST_CHECK_EQUAL(u2, idgen.getStringForId(nmspc, u2_id).get());
     }
 
     {
@@ -59,17 +61,20 @@ BOOST_AUTO_TEST_CASE(get_erase) {
         idgen1.erase(nmspc, u1);
         uint32_t u1_id_1 = idgen1.getId(nmspc, u1);
         BOOST_CHECK(u1_id == u1_id_1);
+        BOOST_CHECK_EQUAL(u1, idgen1.getStringForId(nmspc, u1_id_1).get());
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen1.cleanup();
 
         u1_id_1 = idgen1.getId(nmspc, u1);
         BOOST_CHECK(u1_id == u1_id_1);
+        BOOST_CHECK_EQUAL(u1, idgen1.getStringForId(nmspc, u1_id_1).get());
 
         // erase and allow to die
         idgen1.erase(nmspc, u1);
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         idgen1.cleanup();
 
+        BOOST_CHECK(!idgen1.getStringForId(nmspc, u1_id_1));
         u1_id_1 = idgen1.getId(nmspc, u1);
         BOOST_CHECK(u1_id_1 != 0);
 
@@ -79,6 +84,7 @@ BOOST_AUTO_TEST_CASE(get_erase) {
     {
         IdGenerator idgen2;
         BOOST_CHECK_EQUAL(idgen2.getId(nmspc, u1), -1);
+        BOOST_CHECK(!idgen2.getStringForId(nmspc, -1));
     }
 }
 
@@ -217,6 +223,11 @@ BOOST_AUTO_TEST_CASE(persist_range) {
         idgen.initNamespace(nmspc, 1, 20);
         BOOST_CHECK_EQUAL(0, idgen.getRemainingIds(nmspc));
         BOOST_CHECK_EQUAL(0, idgen.getFreeRangeCount(nmspc));
+
+        for (int i = 0; i < 20; i++) {
+            BOOST_CHECK_EQUAL(uris[i], idgen.getStringForId(nmspc, i+1).get());
+            BOOST_CHECK_EQUAL(i+1, idgen.getId(nmspc, uris[i]));
+        }
 
         idgen.erase(nmspc, uris[10]);
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
