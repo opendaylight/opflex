@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3afa9182_e437feae",
+        "filename": "agent-ovs/src/VppConnection.cpp",
+        "patchSetId": 14
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T22:04:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3afa9182_39d8161d",
+      "range": {
+        "startLine": 63,
+        "startChar": 1,
+        "endLine": 69,
+        "endChar": 67
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3afa9182_7909fe94",
         "filename": "agent-ovs/src/VppConnection.cpp",
         "patchSetId": 14
@@ -36,6 +60,30 @@
       "writtenOn": "2017-06-05T18:06:46Z",
       "side": 1,
       "message": "This should probably be defined in the configuration file with a default of PREFIX/share/vpp/api (see many examples in existing config).\n\nThe C VPP API is probably expecting you to just have statically defined handlers, but such APIs (if they\u0027re well-designed) usually give you a user_data field you can use to map to the correct VppConnection instance.",
+      "range": {
+        "startLine": 144,
+        "startChar": 0,
+        "endLine": 144,
+        "endChar": 42
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_c43c8296",
+        "filename": "agent-ovs/src/VppConnection.cpp",
+        "patchSetId": 14
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T22:04:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3afa9182_7909fe94",
       "range": {
         "startLine": 144,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "3afa9182_a4be96fd",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 14
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T22:04:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3afa9182_397496fc",
+      "range": {
+        "startLine": 317,
+        "startChar": 21,
+        "endLine": 317,
+        "endChar": 39
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3afa9182_d9fe326b",
         "filename": "agent-ovs/src/VppManager.cpp",
         "patchSetId": 14
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "3afa9182_84bb9a0d",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 14
+      },
+      "lineNbr": 423,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T22:04:27Z",
+      "side": 1,
+      "message": "Would like to leave this as a stub please so once we start complete integration we have a place holder to ensure compliance. Make sense or just remove it completely ?",
+      "parentUuid": "3afa9182_d9fe326b",
+      "range": {
+        "startLine": 408,
+        "startChar": 4,
+        "endLine": 423,
+        "endChar": 5
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3afa9182_79e29ed6",
         "filename": "agent-ovs/src/include/IVppConnection.h",
         "patchSetId": 14
@@ -105,6 +201,30 @@
       "writtenOn": "2017-06-05T18:06:46Z",
       "side": 1,
       "message": "On naming:  just VppConnection not IVppConnection.  It\u0027s a perfectly fine naming convention but just not the one used in this code base :-)\n\nYou can probably avoid needing any explicit interface defined though as it\u0027s quite likely MockVppConnection can derive directly from the real VppConnection object.",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 23
+      },
+      "revId": "dec82d953cd838db3a0f278a493dbf195119f0b0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_2442a610",
+        "filename": "agent-ovs/src/include/IVppConnection.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T22:04:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3afa9182_79e29ed6",
       "range": {
         "startLine": 27,
         "startChar": 0,
