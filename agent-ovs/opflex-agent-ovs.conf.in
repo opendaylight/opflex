@@ -231,5 +231,34 @@
         //     // Default: "DEFAULT_MCAST_GROUP_FILE"
         //     "mcast-group-file": "DEFAULT_MCAST_GROUP_FILE"
         // }
+
+        // VPP Renderer
+        // Example:
+        // "vpp": {
+        //     "int-bridge-name": "vpp",
+        //     "access-bridge-name": "vpp",
+        //     "encap": {
+        //         "vxlan" : {
+        //             "encap-iface": "vpp_vxlan0",
+        //             // The name of the interface whose IP should be used
+        //             // as the source IP in encapsulated traffic.
+        //             "uplink-iface": "team0.4093",
+        //
+        //             // The vlan tag, if any, used on the uplink interface.
+        //             // Set to zero or omit if the uplink is untagged.
+        //             "uplink-vlan": 4093,
+        //
+        //             // The IP address used for the destination IP in
+        //             // the encapsulated traffic.  This should be an
+        //             // anycast IP address understood by the upstream
+        //             // stiched-mode fabric.
+        //             "remote-ip": "10.0.0.32",
+        //
+        //             // UDP port number of the encapsulated traffic.
+        //              "remote-port": 4789
+        //         }
+        //    }
+        //}
+
     }
 }
