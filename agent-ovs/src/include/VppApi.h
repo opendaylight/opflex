@@ -227,6 +227,21 @@ public:
 
     virtual VppConnection* getVppConnection();
 
+    /**
+     * Interface flags Up/Down
+     */
+    enum intfFlags {
+        Down = 0,
+        Up   = 1
+    };
+
+    /**
+     * BVI Interface
+     */
+    enum bviFlags {
+        NoBVI = 0,
+        BVI   = 1
+    };
 
 protected:
 

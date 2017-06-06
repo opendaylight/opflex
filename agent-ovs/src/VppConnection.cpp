@@ -159,7 +159,7 @@ namespace ovsagent {
       string msg{};
       u16 msgId;
 
-      LOG(INFO) << "Reading VPP API definitions from " << fstr;
+      LOG(DEBUG) << "Reading VPP API definitions from " << fstr;
       pt::read_json(fstr, properties);
       for (pt::ptree::value_type &messages : properties.get_child("messages")) {
         for (pt::ptree::value_type &message : messages.second) {

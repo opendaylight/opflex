@@ -41,7 +41,7 @@ namespace pt = boost::property_tree;
 namespace ovsagent {
 
   VppApi::VppApi(unique_ptr<VppConnection> conn) :
-    vppConn(move(conn)) {
+    vppConn(move(conn)), nextBridge(1) {
   }
 
   VppApi::~VppApi() {

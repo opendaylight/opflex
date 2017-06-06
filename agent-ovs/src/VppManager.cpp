@@ -255,10 +255,239 @@ namespace ovsagent {
         return true;
     }
 
-    void VppManager::handleEndpointUpdate(const string& uuid) {
+void VppManager::handleEndpointUpdate(const string& uuid) {
 
-        LOG(DEBUG) << "stub: Updating endpoint " << uuid;
+    LOG(DEBUG) << "stub: Updating endpoint " << uuid;
+
+    EndpointManager& epMgr = agent.getEndpointManager();
+    shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(uuid);
+
+    if (!epWrapper) {
+        /*
+         * TODO remove everything related to this endpoint
+         *
+         * Keith, Do you believe that we need to delete the
+         * interface from VPP here or we need to do it somewhere?
+         *
+         * Problem I see here is, we don't have reference to interface
+         * apart from UUID which I believe is not mapped to interface
+         * name or index in Vpp API class in vppAPI::intfIndexbyName.
+         */
+        // vppApi.deleteAfpacketIntf();
+        removeEndpointFromFloodGroup(uuid);
+        return;
     }
+
+    if (!vppApi.isConnected()) {
+        LOG(ERROR) << "VppApi is not connected";
+        return;
+    }
+
+    const Endpoint& endPoint = *epWrapper.get();
+    const optional<string>& vppInterfaceName = endPoint.getInterfaceName();
+    int rv;
+
+    if (vppApi.getIntfIndexByName(vppInterfaceName.get()).first == false) {
+        rv = vppApi.createAfPacketIntf(vppInterfaceName.get());
+        if (rv != 0) {
+            LOG(ERROR) << "VppApi did not create port: " << vppInterfaceName.get();
+            return;
+        }
+
+        rv = vppApi.setIntfFlags(vppInterfaceName.get(), vppApi.intfFlags::Up);
+        if (rv != 0) {
+            LOG(ERROR) << "VppApi did not set interface flags for port: " <<
+                           vppInterfaceName.get();
+            return;
+        }
+    }
+
+    uint8_t macAddr[6];
+    bool hasMac = endPoint.getMAC() != boost::none;
+    if (hasMac)
+        endPoint.getMAC().get().toUIntArray(macAddr);
+
+    /* check and parse the IP-addresses */
+    boost::system::error_code ec;
+
+    std::vector<address> ipAddresses;
+    for (const string& ipStr : endPoint.getIPs()) {
+        address addr = address::from_string(ipStr, ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid endpoint IP: "
+                         << ipStr << ": " << ec.message();
+        } else {
+            ipAddresses.push_back(addr);
+        }
+    }
+
+    if (hasMac) {
+        // I don't believe we need it in VPP
+        /* address_v6 linkLocalIp(packets::construct_link_local_ip_addr(macAddr));
+        if (endPoint.getIPs().find(linkLocalIp.to_string()) ==
+            endPoint.getIPs().end())
+            ipAddresses.push_back(linkLocalIp);
+        */
+    }
+
+    optional<URI> epgURI = epMgr.getComputedEPG(uuid);
+    if (!epgURI) {      // can't do much without EPG
+        return;
+    }
+
+    uint32_t epgVnid, rdId, bdId, fgrpId;
+    optional<URI> fgrpURI, bdURI, rdURI;
+    if (!getGroupForwardingInfo(epgURI.get(), epgVnid, rdURI,
+                            rdId, bdURI, bdId, fgrpURI, fgrpId)) {
+        return;
+    }
+
+    optional<shared_ptr<FloodDomain> > fd =
+        agent.getPolicyManager().getFDForGroup(epgURI.get());
+
+    uint8_t arpMode = AddressResModeEnumT::CONST_UNICAST;
+    uint8_t ndMode = AddressResModeEnumT::CONST_UNICAST;
+    uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
+    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+    if (fd) {
+        // alagalah Irrespective of flooding scope (epg vs. flood-domain), the
+        // properties of the flood-domain object decide how flooding
+        // is done.
+
+        arpMode = fd.get()
+            ->getArpMode(AddressResModeEnumT::CONST_UNICAST);
+        ndMode = fd.get()
+            ->getNeighborDiscMode(AddressResModeEnumT::CONST_UNICAST);
+        unkFloodMode = fd.get()
+            ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+        bcastFloodMode = fd.get()
+            ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+
+        if (vppApi.getBridgeIdByName(*fd.get()->getName()).first == false) {
+            rv = vppApi.createBridge(*fd.get()->getName());
+            if (rv != 0) {
+                LOG(ERROR) << "VppApi did not create bridge: " <<
+                    *fd.get()->getName() << " for port: " <<
+                     vppInterfaceName.get();
+                return;
+            }
+        }
+
+        if (vppApi.getBridgeNameByIntf(vppInterfaceName.get()).first == false) {
+            rv = vppApi.setIntfL2Bridge(*fd.get()->getName(),
+                     vppInterfaceName.get(), vppApi.bviFlags::NoBVI);
+            if (rv != 0) {
+                LOG(ERROR) << "VppApi did not set bridge: " << *fd.get()
+                    ->getName() << " for port: " << vppInterfaceName.get();
+                return;
+            }
+        }
+    }
+
+    if (rdId != 0 && bdId != 0 &&
+        vppApi.getBridgeNameByIntf(vppInterfaceName.get()).first) {
+        uint8_t routingMode =
+        agent.getPolicyManager().getEffectiveRoutingMode(epgURI.get());
+
+        if (virtualRouterEnabled && hasMac &&
+            routingMode == RoutingModeEnumT::CONST_ENABLED) {
+            for (const address& ipAddr : ipAddresses) {
+                if (endPoint.isDiscoveryProxyMode()) {
+                    /* Auto-reply to ARP and NDP requests for endpoint
+                     * IP addresses
+                     * TODO I believe that VPP handles it by default.
+                     * May need to check with keith.
+                     * if VPP will not handle it, we can think about
+                     * "set ip arp" or "set ip6 nd proxy"
+                     * flowsProxyDiscovery(*this, elBridgeDst, 20, ipAddr,
+                     */ 
+                } else {
+                    if (arpMode != AddressResModeEnumT::CONST_FLOOD &&
+                        ipAddr.is_v4()) {
+                        if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
+                        /*
+                         * TODO ARP optimization: broadcast -> unicast
+                         * vpp API: "set ip ARP"
+                         */
+                        } else {
+                        /*
+                         * Keith, how VPP will handle such arp requests which
+                         * do not have entries (using "set ip arp") in the VPP.
+                         */
+                         // drop the ARP packet
+                        }
+                    }
+                    if (ndMode != AddressResModeEnumT::CONST_FLOOD &&
+                        ipAddr.is_v6()) {
+                        if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
+                            /*
+                             * TODO neighbor discovery optimization:
+                             * broadcast -> unicast
+                             */
+                            // vpp API: "set ip6 neighbor"
+                            // actionDestEpArp(e1, epgVnid, swIfIndex, macAddr);
+                         } else {
+                            // else drop the ND packet
+                         }
+                    }
+                }
+            }
+
+            // IP address mappings
+            for (const Endpoint::IPAddressMapping& ipm :
+                endPoint.getIPAddressMappings()) {
+                if (!ipm.getMappedIP() || !ipm.getEgURI())
+                    continue;
+
+                address mappedIp =
+                   address::from_string(ipm.getMappedIP().get(), ec);
+                if (ec) continue;
+
+                address floatingIp;
+                if (ipm.getFloatingIP()) {
+                    floatingIp =
+                        address::from_string(ipm.getFloatingIP().get(), ec);
+                    if (ec) continue;
+                    if (floatingIp.is_v4() != mappedIp.is_v4()) continue;
+                }
+
+                uint32_t fepgVnid, frdId, fbdId, ffdId;
+                optional<URI> ffdURI, fbdURI, frdURI;
+                if (!getGroupForwardingInfo(ipm.getEgURI().get(), fepgVnid,
+                                            frdURI, frdId, fbdURI, fbdId,
+                                            ffdURI, ffdId))
+                    continue;
+
+                uint32_t nextHop;
+                if (ipm.getNextHopIf()) {
+                // nextHop = switchManager.getPortMapper()
+                //    .FindPort(ipm.getNextHopIf().get());
+                // if (nextHop == VppApi::VPP_SWIFINDEX_NONE) continue;
+                }
+                uint8_t nextHopMac[6];
+                const uint8_t* nextHopMacp = NULL;
+                if (ipm.getNextHopMAC()) {
+                    ipm.getNextHopMAC().get().toUIntArray(nextHopMac);
+                     nextHopMacp = nextHopMac;
+                }
+            /*
+             * Keith what is about IP address mapping?
+             * Why do we need it?
+             * How VPP does play a role there?
+             */
+            }
+        }
+    }
+
+    if (fgrpURI && vppApi.getIntfIndexByName(vppInterfaceName.get()).first) {
+        updateEndpointFloodGroup(fgrpURI.get(), endPoint,
+            vppApi.getIntfIndexByName(vppInterfaceName.get()).second,
+                                 endPoint.isPromiscuousMode(),
+                                 fd);
+    } else {
+        removeEndpointFromFloodGroup(uuid);
+    }
+}
 
     void VppManager::handleAnycastServiceUpdate(const string& uuid) {
         LOG(DEBUG) << "Updating anycast service " << uuid;
@@ -305,6 +534,10 @@ namespace ovsagent {
     }
 
     void VppManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
+        /*
+         * Remove the endpoint from the flood group (Bridge in VPP)
+         * Remove any configurations and flows from VPP
+         */
         LOG(DEBUG) << "Removing EP from FD " << epUUID;
     }
 
