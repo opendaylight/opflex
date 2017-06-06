@@ -819,7 +819,9 @@ void IntFlowManagerFixture::portStatusTest() {
 
     /* delete all groups except epg0, then update tunnel port */
     PolicyManager::uri_set_t epgURIs;
-    policyMgr.getGroups(epgURIs);
+    WAIT_FOR_DO(epgURIs.size() == 5, 500,
+                epgURIs.clear(); policyMgr.getGroups(epgURIs));
+
     epgURIs.erase(epg0->getURI());
     Mutator m2(framework, policyOwner);
     for (const URI& u : epgURIs) {
@@ -917,6 +919,7 @@ BOOST_FIXTURE_TEST_CASE(mcast, VxlanIntFlowManagerFixture) {
         mutator.commit();
     }
 
+    WAIT_FOR(policyMgr.getMulticastIPForGroup(epg2->getURI()), 500);
     intFlowManager.configUpdated(config->getURI());
     intFlowManager.egDomainUpdated(epg2->getURI());
     expected.clear();
