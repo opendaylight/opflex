@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3afa9182_734bd6b0",
+        "filename": "agent-ovs/src/VppApi.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T14:03:01Z",
+      "side": 1,
+      "message": "Please complete this impl.",
+      "range": {
+        "startLine": 193,
+        "startChar": 2,
+        "endLine": 193,
+        "endChar": 8
+      },
+      "revId": "ac747b01d9f530f411566dce4b392b76139e321d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_d3c72a11",
+        "filename": "agent-ovs/src/VppApi.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T14:03:01Z",
+      "side": 1,
+      "message": "where do we use this? Is this needed?",
+      "range": {
+        "startLine": 202,
+        "startChar": 15,
+        "endLine": 202,
+        "endChar": 26
+      },
+      "revId": "ac747b01d9f530f411566dce4b392b76139e321d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_b3cc1e37",
+        "filename": "agent-ovs/src/VppApi.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T14:03:01Z",
+      "side": 1,
+      "message": "Formatting, lets follow whatever convention is used elsewhere in the Opflex code. ie\nreturn_type\nfn_name (parms)\n{\n}",
+      "range": {
+        "startLine": 229,
+        "startChar": 2,
+        "endLine": 229,
+        "endChar": 23
+      },
+      "revId": "ac747b01d9f530f411566dce4b392b76139e321d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_53db3aed",
+        "filename": "agent-ovs/src/VppApi.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T14:03:01Z",
+      "side": 1,
+      "message": "We probably need a .h called VppApiErrors.h or some such so we can return a CONST \"BRIDGE_EXISTS\" or some such... maybe from existing VPP error header.",
+      "range": {
+        "startLine": 349,
+        "startChar": 0,
+        "endLine": 349,
+        "endChar": 62
+      },
+      "revId": "ac747b01d9f530f411566dce4b392b76139e321d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_33d82eef",
+        "filename": "agent-ovs/src/include/VppApi.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T14:03:01Z",
+      "side": 1,
+      "message": "Please make sure all doxygen tags are correct.",
+      "range": {
+        "startLine": 175,
+        "startChar": 0,
+        "endLine": 175,
+        "endChar": 49
+      },
+      "revId": "ac747b01d9f530f411566dce4b392b76139e321d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afa9182_934e42c0",
+        "filename": "agent-ovs/test/MockVppConnection.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-06T14:03:01Z",
+      "side": 1,
+      "message": "For the generic reply with retval and messageID you could use a case default fall through to instantiate the bulk of the retval etc, set message ID in another case and cast to the reply_t type.",
+      "range": {
+        "startLine": 61,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 39
+      },
+      "revId": "ac747b01d9f530f411566dce4b392b76139e321d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
