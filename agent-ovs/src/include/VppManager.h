@@ -67,6 +67,50 @@ public:
     void stop();
 
     /**
+     * Encap types supported by the flow manager
+     */
+    enum EncapType {
+        /**
+         * No encapsulation; traffic can be forwarded only on the
+         * local switch.
+         */
+        ENCAP_NONE,
+        /**
+         * Encapsulate using VLAN tags, with a (at least)
+         * locally-significant VLAN for each endpoint group.
+         */
+        ENCAP_VLAN,
+        /**
+         * Encapsulate using a VXLAN tunnel, with a VNID for each
+         * endpoint group.
+         */
+        ENCAP_VXLAN,
+        /**
+         * Encapsulate using an IVXLAN tunnel, with a VNID for each
+         * endpoint group and additional metadata in the tunnel header
+         */
+        ENCAP_IVXLAN
+    };
+
+    /**
+     * Set the encap type to use for packets sent over the network
+     * @param encapType the encap type
+     */
+    void setEncapType(EncapType encapType);
+
+    /**
+     * Get the encap type to use for packets sent over the network
+     * @return the encap type
+     */
+    EncapType getEncapType() { return encapType; }
+
+    /**
+     * Set the openflow interface name for encapsulated packets
+     * @param encapIface the interface name
+     */
+    void setEncapIface(const std::string& encapIface);
+
+    /**
      * Flooding scopes supported by the flow manager.
      */
     enum FloodScope {
@@ -86,6 +130,14 @@ public:
      * @param floodScope the flood scope
      */
     void setFloodScope(FloodScope floodScope);
+
+    /**
+     * Set the tunnel remote IP and port to use for tunnel traffic
+     * @param tunnelRemoteIp the remote tunnel IP
+     * @param tunnelRemotePort the remote tunnel port
+     */
+    void setTunnel(const std::string& tunnelRemoteIp,
+                   uint16_t tunnelRemotePort);
 
     /**
      * Enable connection tracking support
@@ -121,6 +173,18 @@ public:
      */
     void setMulticastGroupFile(const std::string& mcastGroupFile);
 
+    /**
+     * Get the interface index that maps to the configured tunnel
+     * interface
+     * @return the interface index
+     */
+    uint32_t getTunnelIntfIndex();
+
+    /**
+     * Get the configured tunnel destination as a parsed IP address
+     * @return the tunnel destination
+     */
+    boost::asio::ip::address& getTunnelDst() { return tunnelDst; }
 
     /**
      * Get the router MAC address as an array of 6 bytes
@@ -192,6 +256,13 @@ public:
      * @param fgrpId the flood domain Id
      */
     static uint32_t getPromId(uint32_t fgrpId);
+
+    /**
+     * Get the tunnel destination to use for the given endpoint group.
+     * @param epgURI the group URI
+     * @return the tunnel destination IP
+     */
+    boost::asio::ip::address getEPGTunnelDst(const opflex::modb::URI& epgURI);
 
 private:
     /**
@@ -299,7 +370,11 @@ private:
     IdGenerator& idGen;
     TaskQueue taskQueue;
 
+    EncapType encapType;
+    std::string encapIface;
     FloodScope floodScope;
+    boost::asio::ip::address tunnelDst;
+    std::string tunnelPortStr;
     bool virtualRouterEnabled;
     uint8_t routerMac[6];
     bool routerAdv;

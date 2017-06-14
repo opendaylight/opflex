@@ -243,6 +243,11 @@ public:
         BVI   = 1
     };
 
+    /**
+     * SWIFINDEX interface index is not set
+     */
+    const u32 VPP_SWIFINDEX_NONE = UINT32_MAX;
+
 protected:
 
     std::unique_ptr<VppConnection> vppConn;

@@ -191,9 +191,6 @@ class VppConnection : public IVppConnection  {
          * Return the API message ID based on message name
          */
         u16 getMsgIndex(std::string name);
-
-        static const u32 VPP_SWIFINDEX_NONE = UINT32_MAX;
-
     };
 
 } //namespace ovsagent
