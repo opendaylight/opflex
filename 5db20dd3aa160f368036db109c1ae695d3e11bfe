@@ -143,6 +143,30 @@
     },
     {
       "key": {
+        "uuid": "1af78d9a_15ca3d4f",
+        "filename": "agent-ovs/src/include/VppConnection.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-15T18:46:30Z",
+      "side": 1,
+      "message": "Typically any C API with a callback has a way for you to pass in a user_data void* that you can use to recover the correct context.  I guess it\u0027s possible the VPP API is just bad, though.  Does it really not support multiple connections?  Any mutable static variables will make life painful for testing.",
+      "parentUuid": "1af78d9a_7a656e44",
+      "range": {
+        "startLine": 78,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 39
+      },
+      "revId": "5db20dd3aa160f368036db109c1ae695d3e11bfe",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1af78d9a_97ed9a8e",
         "filename": "agent-ovs/src/include/VppManager.h",
         "patchSetId": 15
