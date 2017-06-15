@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "1af78d9a_5a4eb2c2",
+        "filename": "agent-ovs/opflex-agent-ovs.conf.in",
+        "patchSetId": 15
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-15T15:54:01Z",
+      "side": 1,
+      "message": "Will follow same pattern as in \"DEFAULT_FLOWID_CACHE_DIR\"",
+      "parentUuid": "1af78d9a_92d648c4",
+      "range": {
+        "startLine": 237,
+        "startChar": 0,
+        "endLine": 237,
+        "endChar": 50
+      },
+      "revId": "5db20dd3aa160f368036db109c1ae695d3e11bfe",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1af78d9a_77ee2e8d",
         "filename": "agent-ovs/src/include/VppConnection.h",
         "patchSetId": 15
@@ -36,6 +60,30 @@
       "writtenOn": "2017-06-14T18:39:35Z",
       "side": 1,
       "message": "These variables still have static scope.  They should just be regular member variables.",
+      "range": {
+        "startLine": 73,
+        "startChar": 1,
+        "endLine": 74,
+        "endChar": 80
+      },
+      "revId": "5db20dd3aa160f368036db109c1ae695d3e11bfe",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af78d9a_3ae2c69f",
+        "filename": "agent-ovs/src/include/VppConnection.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-15T15:54:01Z",
+      "side": 1,
+      "message": "Will fix",
+      "parentUuid": "1af78d9a_77ee2e8d",
       "range": {
         "startLine": 73,
         "startChar": 1,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "1af78d9a_7a656e44",
+        "filename": "agent-ovs/src/include/VppConnection.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-15T15:54:01Z",
+      "side": 1,
+      "message": "These are used in a static function. The static function is necessary to handle the callback from VPP.\n\nAre you suggesting we don\u0027t use a static function for callback?",
+      "parentUuid": "1af78d9a_57f33273",
+      "range": {
+        "startLine": 78,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 39
+      },
+      "revId": "5db20dd3aa160f368036db109c1ae695d3e11bfe",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1af78d9a_97ed9a8e",
         "filename": "agent-ovs/src/include/VppManager.h",
         "patchSetId": 15
@@ -82,6 +154,30 @@
       "writtenOn": "2017-06-14T18:39:35Z",
       "side": 1,
       "message": "dead code?",
+      "range": {
+        "startLine": 173,
+        "startChar": 1,
+        "endLine": 186,
+        "endChar": 47
+      },
+      "revId": "5db20dd3aa160f368036db109c1ae695d3e11bfe",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af78d9a_dae8e27e",
+        "filename": "agent-ovs/src/include/VppManager.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 1010
+      },
+      "writtenOn": "2017-06-15T15:54:01Z",
+      "side": 1,
+      "message": "Will fix.",
+      "parentUuid": "1af78d9a_97ed9a8e",
       "range": {
         "startLine": 173,
         "startChar": 1,
