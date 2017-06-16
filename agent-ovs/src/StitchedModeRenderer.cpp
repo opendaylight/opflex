@@ -35,7 +35,8 @@ StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
       accessFlowManager(agent_, accessSwitchManager, idGen, ctZoneManager),
       statsManager(&agent_, intSwitchManager.getPortMapper(),
                    accessSwitchManager.getPortMapper()),
-      polStatsManager(&agent_, idGen, intSwitchManager),
+      contractStatsManager(&agent_, idGen, intSwitchManager),
+      secGrpStatsManager(&agent_, idGen, accessSwitchManager),
       tunnelEpManager(&agent_), tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true),
       connTrack(true), ctZoneRangeStart(0), ctZoneRangeEnd(0),
@@ -116,7 +117,6 @@ void StitchedModeRenderer::start() {
     if (accessBridgeName != "") {
         accessSwitchManager.connect();
     }
-
     if (accessBridgeName != "") {
         statsManager.registerConnection(intSwitchManager.getConnection(),
                                         accessSwitchManager.getConnection());
@@ -124,10 +124,12 @@ void StitchedModeRenderer::start() {
         statsManager.registerConnection(intSwitchManager.getConnection(), NULL);
     }
     statsManager.start();
-
-    polStatsManager.registerConnection(intSwitchManager.getConnection());
-    polStatsManager.start();
-
+    contractStatsManager.registerConnection(intSwitchManager.getConnection());
+    contractStatsManager.start();
+    if (accessBridgeName != "") {
+      secGrpStatsManager.registerConnection(accessSwitchManager.getConnection());
+      secGrpStatsManager.start();
+    }
     cleanupTimer.reset(new deadline_timer(getAgent().getAgentIOService()));
     cleanupTimer->expires_from_now(CLEANUP_INTERVAL);
     cleanupTimer->async_wait(bind(&StitchedModeRenderer::onCleanupTimer,
