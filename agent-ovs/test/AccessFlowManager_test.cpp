@@ -28,6 +28,7 @@ using std::string;
 using std::shared_ptr;
 using std::thread;
 using boost::asio::io_service;
+using opflex::modb::URI;
 using namespace ovsagent;
 using namespace modelgbp::gbp;
 using modelgbp::gbpe::L24Classifier;
@@ -319,11 +320,15 @@ void AccessFlowManagerFixture::initExpSecGrpSet12(bool second,
 
 uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
                                                   int remoteAddress) {
-    uint32_t grpId = idGen.getId("secGroup", secGrp1->getURI().toString());
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
-
+    PolicyManager::rule_list_t rules;
+    agent.getPolicyManager().getSecGroupRules(secGrp1->getURI(), rules);
+    for (shared_ptr<PolicyRule>& pc : rules) {
+        const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
+        const URI& ruleURI = cls.get()->getURI();
+        uint32_t grpId = idGen.getId("l24classifierRule", ruleURI.toString());
     /* classifer 1  */
-    if (remoteAddress) {
+      if (remoteAddress) {
         ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
              .tcp().reg(SEPG, setId).isIpSrc("192.168.0.0/16").isTpDst(80)
              .actions().go(OUT).done());
@@ -372,31 +377,36 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
     ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(grpId)
          .tcp().reg(SEPG, setId).isTpSrc(21)
          .isTcpFlags("+rst").actions().go(OUT).done());
-
+    }
     return 512;
 }
 
 uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
-    uint32_t grpId = idGen.getId("secGroup", secGrp2->getURI().toString());
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
+    PolicyManager::rule_list_t rules;
+    agent.getPolicyManager().getSecGroupRules(secGrp2->getURI(), rules);
+    for (shared_ptr<PolicyRule>& pc : rules) {
+        const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
+        const URI& ruleURI = cls.get()->getURI();
+        uint32_t grpId = idGen.getId("l24classifierRule", ruleURI.toString());
     /* classifier 5 */
-    ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
+     ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
-    ADDF(Bldr().table(OUT_POL).priority(prio).cookie(grpId)
+     ADDF(Bldr().table(OUT_POL).priority(prio).cookie(grpId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
 
     /* classifier 9 */
-    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
+     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
          .isCtState("-new+est-inv+trk").tcp().reg(SEPG, setId)
          .actions().go(OUT).done());
-    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
+     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
          .isCtState("-trk").tcp().reg(SEPG, setId)
          .actions().ct("table=0,zone=NXM_NX_REG6[0..15]").done());
-    ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(grpId)
+     ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(grpId)
          .tcp().reg(SEPG, setId).isTpDst(22)
          .actions().ct("commit,zone=NXM_NX_REG6[0..15]")
          .go(OUT).done());
-
+    }
     return 1;
 }
 
