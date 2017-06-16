@@ -55,83 +55,30 @@ static const int MAX_AGE = 3;
 PolicyStatsManager::PolicyStatsManager(Agent* agent_, IdGenerator& idGen_,
                                        SwitchManager& switchManager_,
                                        long timer_interval_)
-    : agent(agent_), intConnection(NULL), idGen(idGen_),
-      switchManager(switchManager_),
-      agent_io(agent_->getAgentIOService()),
-      timer_interval(timer_interval_), stopping(false) {
-    std::random_device rng;
+    : BaseStatsManager(agent_,idGen_,switchManager_,timer_interval_) {
+      std::random_device rng;
     std::mt19937 urng(rng());
-    agentUUID = to_string(basic_random_generator<std::mt19937>(urng)());
+      agentUUID = to_string(basic_random_generator<std::mt19937>(urng)());
 }
 
 PolicyStatsManager::~PolicyStatsManager() {
 
 }
-
-void PolicyStatsManager::registerConnection(SwitchConnection* intConnection) {
-    this->intConnection = intConnection;
-}
-
 void PolicyStatsManager::start() {
     LOG(DEBUG) << "Starting policy stats manager";
-    stopping = false;
-
-    intConnection->RegisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
-    intConnection->RegisterMessageHandler(OFPTYPE_FLOW_REMOVED, this);
-
-    timer.reset(new deadline_timer(agent_io, milliseconds(timer_interval)));
+    BaseStatsManager::start();
     timer->async_wait(bind(&PolicyStatsManager::on_timer, this, error));
 }
 
 void PolicyStatsManager::stop() {
     LOG(DEBUG) << "Stopping policy stats manager";
-    stopping = true;
-
-    if (intConnection) {
-        intConnection->UnregisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
-        intConnection->UnregisterMessageHandler(OFPTYPE_FLOW_REMOVED, this);
-    }
-
-    if (timer) {
-        timer->cancel();
-    }
+    BaseStatsManager::stop();
 }
 
-void PolicyStatsManager::updateFlowEntryMap(uint64_t cookie, uint16_t priority,
+void PolicyStatsManager::updatePolicyFlowEntryMap(uint64_t cookie,
+                                             uint16_t priority,
                                             const struct match& match) {
-    FlowEntryMatchKey_t flowEntryKey((uint32_t)ovs_ntohll(cookie),
-                                     priority, match);
-
-    /* check if Policy Stats Manager has it in its oldFlowCounterMap */
-    FlowEntryCounterMap_t::iterator it =
-        oldFlowCounterMap.find(flowEntryKey);
-    if (it != oldFlowCounterMap.end()) {
-        return;
-    }
-
-    /* check if Policy Stats Manager has it in its newFlowCounterMap */
-    it = newFlowCounterMap.find(flowEntryKey);
-    if (it != newFlowCounterMap.end()) {
-        FlowCounters_t&  flowCounters = it->second;
-        flowCounters.age += 1;
-        return;
-    }
-
-    /* Add the flow entry to newmap */
-    FlowCounters_t&  flowCounters = newFlowCounterMap[flowEntryKey];
-    flowCounters.visited = false;
-    flowCounters.age = 0;
-    flowCounters.last_packet_count = make_optional(false, 0);
-    flowCounters.last_byte_count = make_optional(false, 0);
-    flowCounters.diff_packet_count = make_optional(false, 0);
-    flowCounters.diff_byte_count = make_optional(false, 0);
-#if 0
-    LOG(DEBUG) << "flow entry added to newFlowCounterMap: "
-               << "Cookie=" << (uint32_t)ovs_ntohll(cookie)
-               << " reg0=" << match.flow.regs[0]
-               << " reg2="<< match.flow.regs[2]
-               << " reg6=" << match.flow.regs[6];
-#endif
+    BaseStatsManager::updateFlowEntryMap(cookie, priority,0,match);
 }
 
 void PolicyStatsManager::on_timer(const error_code& ec) {
@@ -143,7 +90,7 @@ void PolicyStatsManager::on_timer(const error_code& ec) {
     }
 
     TableState::cookie_callback_t cb_func;
-    cb_func = std::bind(&PolicyStatsManager::updateFlowEntryMap, this,
+    cb_func = std::bind(&PolicyStatsManager::updatePolicyFlowEntryMap, this,
                         std::placeholders::_1,
                         std::placeholders::_2,
                         std::placeholders::_3);
@@ -155,153 +102,12 @@ void PolicyStatsManager::on_timer(const error_code& ec) {
                                      cb_func);
 
     PolicyCounterMap_t newClassCountersMap;
-
-    // Walk through all the old map entries that have
-    // been visited.
-    for (FlowEntryCounterMap_t:: iterator itr = oldFlowCounterMap.begin();
-         itr != oldFlowCounterMap.end();
-         itr++) {
-        const FlowEntryMatchKey_t& flowEntryKey = itr->first;
-        FlowCounters_t&  newFlowCounters = itr->second;
-        // Have we visited this flow entry yet
-        if (!newFlowCounters.visited) {
-            // increase age by polling interval
-            newFlowCounters.age += 1;
-            if (newFlowCounters.age >= MAX_AGE) {
-                LOG(DEBUG) << "Unvisited entry for last " << MAX_AGE
-                           << " polling intervals";
-            }
-            continue;
-        }
-
-        // Have we collected non-zero diffs for this flow entry
-        if (newFlowCounters.diff_packet_count) {
-
-            FlowMatchKey_t flowMatchKey(flowEntryKey.cookie,
-                                        flowEntryKey.match.flow.regs[0],
-                                        flowEntryKey.match.flow.regs[2]);
-
-            PolicyCounters_t&  newClassCounters =
-                newClassCountersMap[flowMatchKey];
-
-            // We get multiple flow stats entries for same
-            // cookie, reg0 and reg2 ie for each classifier
-            // multiple flow entries may get installed in OVS
-            // The newCountersMap is used for the purpose of
-            // additing counters of such flows that have same
-            // classifier, reg0 and reg2.
-
-            uint64_t packet_count = 0;
-            uint64_t byte_count = 0;
-            if (newClassCounters.packet_count) {
-                // get existing packet_count and byte_count
-                packet_count = newClassCounters.packet_count.get();
-                byte_count = newClassCounters.byte_count.get();
-            }
-
-            // Add counters for new flow entry to existing
-            // packet_count and byte_count
-            newClassCounters.packet_count =
-                make_optional(true,
-                              newFlowCounters.diff_packet_count.get() +
-                              packet_count);
-            newClassCounters.byte_count =
-                make_optional(true,
-                              newFlowCounters.diff_byte_count.get() +
-                              byte_count);
-            // reset the per flow entry diff counters to zero.
-            newFlowCounters.diff_packet_count = make_optional(true, 0);
-            newFlowCounters.diff_byte_count = make_optional(true, 0);
-            // set the age of this entry as zero as we have seen
-            // its counter increment last polling cycle.
-            newFlowCounters.age = 0;
-        }
-        // Set entry visited as false as we have consumed its diff
-        // counters.  When we visit this entry when handling a
-        // FLOW_STATS_REPLY corresponding to this entry, we mark this
-        // entry as visited again.
-        newFlowCounters.visited = false;
-    }
-
-
-    // Walk through all the removed flow map entries
-
-    for (FlowEntryCounterMap_t::iterator itt = removedFlowCounterMap.begin();
-         itt != removedFlowCounterMap.end();
-         itt++) {
-        const FlowEntryMatchKey_t& remFlowEntryKey = itt->first;
-        FlowCounters_t&  remFlowCounters = itt->second;
-
-        // Have we collected non-zero diffs for this removed flow entry
-        if (remFlowCounters.diff_packet_count) {
-
-            FlowMatchKey_t flowMatchKey(remFlowEntryKey.cookie,
-                                        remFlowEntryKey.match.flow.regs[0],
-                                        remFlowEntryKey.match.flow.regs[2]);
-
-            PolicyCounters_t& newClassCounters =
-                newClassCountersMap[flowMatchKey];
-
-            uint64_t packet_count = 0;
-            uint64_t byte_count = 0;
-            if (newClassCounters.packet_count) {
-                // get existing packet_count and byte_count
-                packet_count = newClassCounters.packet_count.get();
-                byte_count = newClassCounters.byte_count.get();
-            }
-
-            // Add counters for flow entry to be removed
-            newClassCounters.packet_count =
-                make_optional(true,
-                              remFlowCounters.diff_packet_count.get() +
-                              packet_count);
-            newClassCounters.byte_count =
-                make_optional(true,
-                              remFlowCounters.diff_byte_count.get() +
-                              byte_count);
-        }
-    }
-
-    // Delete all the entries from removedFlowCountersMap
-    // Since we have taken them into account in our calculations for
-    // per classifier/epg pair counters.
-
-    removedFlowCounterMap.clear();
-
-    // Walk through all the old map entries and remove those entries
-    // that have not been visited but age is equal to MAX_AGE times
-    // polling interval.
-
-    for (FlowEntryCounterMap_t::iterator itr = oldFlowCounterMap.begin();
-         itr != oldFlowCounterMap.end();) {
-        const FlowEntryMatchKey_t& flowEntryKey = itr->first;
-        FlowCounters_t&  flowCounters = itr->second;
-        // Have we visited this flow entry yet
-        if (!flowCounters.visited && (flowCounters.age >= MAX_AGE)) {
-            LOG(DEBUG) << "Erasing unused entry from oldFlowCounterMap";
-            itr = oldFlowCounterMap.erase(itr);
-        } else
-            itr++;
-    }
-
-    // Walk through all the new map entries and remove those entries
-    // that have age equal to MAX_AGE times polling interval.
-    for (FlowEntryCounterMap_t::iterator itr = newFlowCounterMap.begin();
-         itr != oldFlowCounterMap.end();) {
-        const FlowEntryMatchKey_t& flowEntryKey = itr->first;
-        FlowCounters_t&  flowCounters = itr->second;
-        // Have we visited this flow entry yet
-        if (flowCounters.age >= MAX_AGE) {
-            LOG(DEBUG) << "Erasing unused entry from newFlowCounterMap";
-            itr = newFlowCounterMap.erase(itr);
-        } else
-            itr++;
-    }
+    BaseStatsManager::on_timer(ec,0,newClassCountersMap);
 
     generatePolicyStatsObjects(newClassCountersMap);
 
     // send port stats request again
-    ofp_version ofVer = (ofp_version)intConnection->GetProtocolVersion();
+    ofp_version ofVer = (ofp_version)connection->GetProtocolVersion();
     ofputil_protocol proto = ofputil_protocol_from_ofp_version(ofVer);
 
     ofputil_flow_stats_request fsr;
@@ -316,7 +122,7 @@ void PolicyStatsManager::on_timer(const error_code& ec) {
     ofpbuf *req = ofputil_encode_flow_stats_request(&fsr, proto);
     ofpmsg_update_length(req);
 
-    int err = intConnection->SendMessage(req);
+    int err = connection->SendMessage(req);
     if (err != 0) {
         LOG(ERROR) << "Failed to send policy statistics request: "
                    << ovs_strerror(err);
@@ -325,119 +131,6 @@ void PolicyStatsManager::on_timer(const error_code& ec) {
     if (!stopping) {
         timer->expires_at(timer->expires_at() + milliseconds(timer_interval));
         timer->async_wait(bind(&PolicyStatsManager::on_timer, this, error));
-    }
-}
-
-void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
-                                               uint16_t priority,
-                                               struct match& match,
-                                               uint64_t flow_packet_count,
-                                               uint64_t flow_byte_count,
-                                               bool flowRemoved) {
-
-    FlowEntryMatchKey_t flowEntryKey(cookie, priority, match);
-
-    // look in existing oldFlowCounterMap
-    FlowEntryCounterMap_t::iterator it =
-        oldFlowCounterMap.find(flowEntryKey);
-    uint64_t packet_count = 0;
-    uint64_t byte_count = 0;
-    if (it != oldFlowCounterMap.end()) {
-        FlowCounters_t& oldFlowCounters = it->second;
-        /* compute diffs and mark the entry as visited */
-        packet_count = oldFlowCounters.last_packet_count.get();
-        byte_count = oldFlowCounters.last_byte_count.get();
-#if 0
-        if ((flow_packet_count - packet_count) > 0) {
-            LOG(DEBUG) << "FlowStat: entry found in oldFlowCounterMap";
-            LOG(DEBUG) << "Non zero diff packet count flow entry found";
-        }
-#endif
-        if ((flow_packet_count - packet_count) > 0) {
-            oldFlowCounters.diff_packet_count =
-                flow_packet_count - packet_count;
-            oldFlowCounters.diff_byte_count = flow_byte_count - byte_count;
-            oldFlowCounters.last_packet_count = flow_packet_count;
-            oldFlowCounters.last_byte_count = flow_byte_count;
-            oldFlowCounters.visited = true;
-        }
-        if (flowRemoved) {
-            // Move the entry to removedFlowCounterMap
-            FlowCounters_t & newFlowCounters =
-                removedFlowCounterMap[flowEntryKey];
-            newFlowCounters.diff_byte_count = oldFlowCounters.diff_byte_count;
-            newFlowCounters.diff_packet_count =
-                oldFlowCounters.diff_packet_count;
-#if 0
-            LOG(DEBUG) << "flowRemoved: packet count :"
-                       << newFlowCounters.diff_packet_count
-                       << " byte count: "
-                       << newFlowCounters.diff_byte_count;
-#endif
-            // Delete the entry from oldFlowCounterMap
-            oldFlowCounterMap.erase(flowEntryKey);
-        }
-    } else {
-        // Check if we this entry exists in newFlowCounterMap;
-        FlowEntryCounterMap_t::iterator it =
-            newFlowCounterMap.find(flowEntryKey);
-
-        if (it != newFlowCounterMap.end()) {
-
-            // the flow entry probably got removed even before Policy Stats
-            // manager could process its FLOW_STATS_REPLY
-
-            if (flowRemoved) {
-                FlowCounters_t & remFlowCounters =
-                    removedFlowCounterMap[flowEntryKey];
-                remFlowCounters.diff_byte_count =
-                    make_optional(true, flow_byte_count);
-                remFlowCounters.diff_packet_count =
-                    make_optional(true, flow_packet_count);
-                // remove the entry from newFlowCounterMap.
-                newFlowCounterMap.erase(flowEntryKey);
-            } else {
-                // Store the current counters as last counter value by
-                // adding the entry to oldFlowCounterMap and expect
-                // next FLOW_STATS_REPLY for it to compute delta and
-                // mark the entry as visited. If PolicyStats
-                // Manager(OVS agent) got restarted then we can't use
-                // the counters reported as is until delta is computed
-                // as entry may have existed long before it.
-
-                if (flow_packet_count != 0) {
-                    /* store the counters in oldFlowCounterMap for it and
-                     * remove from newFlowCounterMap as it is no more new
-                     */
-                    FlowCounters_t & newFlowCounters =
-                        oldFlowCounterMap[flowEntryKey];
-                    newFlowCounters.last_packet_count =
-                        make_optional(true, flow_packet_count);
-                    newFlowCounters.last_byte_count =
-                        make_optional(true, flow_byte_count);
-                    newFlowCounters.visited = false;
-                    newFlowCounters.age = 0;
-                    // remove the entry from newFlowCounterMap.
-#if 0
-                    LOG(DEBUG) << "Non-zero flow_packet_count"
-                               << " moving entry from newFlowCounterMap to"
-                               << " oldFlowCounterMap";
-#endif
-                    newFlowCounterMap.erase(flowEntryKey);
-                }
-            }
-        } else {
-            // This is the case when FLOW_REMOVE is received even
-            // before Policy Stats Manager knows about it.  This can
-            // potentially happen as we learn about flow entries
-            // periodically. The side affect is we lose a maximum of
-            // polling interval worth of counters for this classifier
-            // entry. We choose to ignore this case for now.
-            LOG(DEBUG) << "Received flow stats for an unknown flow: "
-                       << "Cookie : " << cookie << " Priority :" << priority
-                       << " reg 0 " << match.flow.regs[0] << " reg 2 "
-                       << match.flow.regs[2];
-        }
     }
 }
 
@@ -469,7 +162,7 @@ void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg) {
                               (fentry->match),
                               fentry->packet_count,
                               fentry->byte_count,
-                              true);
+                              0,true);
     }
 
 }
@@ -503,23 +196,6 @@ void PolicyStatsManager::handleDropStats(uint32_t rdId,
                                       diffCounters);
 }
 
-void PolicyStatsManager::Handle(SwitchConnection* connection,
-                                int msgType, ofpbuf *msg) {
-
-    if (msg == (ofpbuf *)NULL) {
-        LOG(ERROR) << "Unexpected null message";
-        return;
-    }
-    if (msgType == OFPTYPE_FLOW_STATS_REPLY) {
-        handleFlowStats(msgType, msg);
-    } else if (msgType == OFPTYPE_FLOW_REMOVED) {
-        handleFlowRemoved(msg);
-    } else {
-        LOG(ERROR) << "Unexpected message type: " << msgType;
-        return;
-    }
-
-}
 
 void PolicyStatsManager::handleFlowStats(int msgType, ofpbuf *msg) {
 
@@ -593,7 +269,7 @@ void PolicyStatsManager::handleFlowStats(int msgType, ofpbuf *msg) {
                                       (fentry->match),
                                       fentry->packet_count,
                                       fentry->byte_count,
-                                      false);
+                                      0,false);
             }
         }
     } while (true);
@@ -678,31 +354,6 @@ updatePolicyStatsDropCounters(const std::string& rdStr,
 
 
     mutator.commit();
-}
-
-size_t PolicyStatsManager::KeyHasher::
-operator()(const PolicyStatsManager::FlowMatchKey_t& k) const noexcept {
-    using boost::hash_value;
-    using boost::hash_combine;
-
-    std::size_t seed = 0;
-    hash_combine(seed, hash_value(k.cookie));
-    hash_combine(seed, hash_value(k.reg0));
-    hash_combine(seed, hash_value(k.reg2));
-
-    return (seed);
-}
-
-size_t PolicyStatsManager::FlowKeyHasher::
-operator()(const PolicyStatsManager::FlowEntryMatchKey_t& k) const noexcept {
-    using boost::hash_value;
-    using boost::hash_combine;
-
-    std::size_t hashv = match_hash(&k.match, 0);
-    hash_combine(hashv, hash_value(k.cookie));
-    hash_combine(hashv, hash_value(k.priority));
-
-    return (hashv);
 }
 
 } /* namespace ovsagent */

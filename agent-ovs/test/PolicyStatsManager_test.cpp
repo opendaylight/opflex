@@ -356,7 +356,7 @@ BOOST_AUTO_TEST_SUITE(PolicyStatsManager_test)
 
 BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, PolicyStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
-    policyStatsManager.registerConnection(&integrationPortConn);
+    policyStatsManager.BaseStatsManager::registerConnection(&integrationPortConn);
     policyStatsManager.start();
 
     policyStatsManager.Handle(NULL, OFPTYPE_FLOW_STATS_REPLY, NULL);
@@ -420,7 +420,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, PolicyStatsManagerFixture) {
 
 BOOST_FIXTURE_TEST_CASE(testRdDropStats, PolicyStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
-    policyStatsManager.registerConnection(&integrationPortConn);
+    policyStatsManager.BaseStatsManager::registerConnection(&integrationPortConn);
     policyStatsManager.start();
 
     // get rdId
@@ -450,7 +450,7 @@ BOOST_FIXTURE_TEST_CASE(testRdDropStats, PolicyStatsManagerFixture) {
 
 BOOST_FIXTURE_TEST_CASE(testFlowRemoved, PolicyStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
-    policyStatsManager.registerConnection(&integrationPortConn);
+    policyStatsManager.BaseStatsManager::registerConnection(&integrationPortConn);
     policyStatsManager.start();
 
     // Add flows in switchManager
