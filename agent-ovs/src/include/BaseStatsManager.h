@@ -26,19 +26,20 @@
 #include <mutex>
 
 #pragma once
-#ifndef OVSAGENT_POLICYSTATSMANAGER_H
-#define OVSAGENT_POLICYSTATSMANAGER_H
-
+#ifndef OVSAGENT_BASESTATSMANAGER_H
+#define OVSAGENT_BASESTATSMANAGER_H
+#define MAX_COUNTER_LIMIT 5
+#define MAX_DROP_COUNTER_LIMIT 1000
 namespace ovsagent {
 
 class Agent;
-
+class SwitchManager;
 /**
  * Periodically query an OpenFlow switch for policy counters and stats
  * and distribute them as needed to other components for reporting.
  */
-class PolicyStatsManager : private boost::noncopyable,
-                           public MessageHandler {
+class BaseStatsManager : private boost::noncopyable,
+                           public MessageHandler, public opflex::modb::ObjectListener {
 public:
     /**
      * Instantiate a new policy stats manager that will use the
@@ -46,20 +47,19 @@ public:
      * @param agent the agent associated with the Policy Stats Manager
      * @param idGen the ID generator
      * @param switchManager the switchManager associated with the
-     * Policy Stats Manager
+     * Base Stats Manager
      * @param idGen the flow ID generator
      * @param timer_interval the interval for the stats timer in
      * milliseconds
      */
-    PolicyStatsManager(Agent* agent, IdGenerator& idGen,
+    BaseStatsManager(Agent* agent, IdGenerator& idGen,
                        SwitchManager& switchManager,
                        long timer_interval = 30000);
 
     /**
-     * Destroy the policy stats manager and clean up all state
+     * Destroy the base stats manager and clean up all state
      */
-    ~PolicyStatsManager();
-
+    ~BaseStatsManager();
     /**
      * Register the given connection with the policy stats manager.
      * This connection will be queried for counters.
@@ -67,75 +67,42 @@ public:
      * @param intConnection the connection to use for integration
      * bridge policy stats collection
      */
-    void registerConnection(SwitchConnection* intConnection);
+    virtual void registerConnection(SwitchConnection* connection);
 
+    virtual void objectUpdated(opflex::modb::class_id_t class_id,
+        const opflex::modb::URI& uri) = 0;
     /**
      * Start the policy stats manager
      */
     void start();
-
+   /**
+     * Get the classifier counter generation ID
+     *
+     * @return the current classifier generation ID
+     */
+    virtual uint64_t getCurrClsfrGenId() const { return clsfrGenId; };
     /**
      * Stop the policy stats manager
      */
     void stop();
-
-    // see: MessageHandler
-    void Handle(SwitchConnection *swConn, int type, ofpbuf *msg);
-
     /**
      * Get and increment the classifier counter generation ID
      *
      * @return the current classifier generation ID
      */
-    uint64_t getNextClsfrGenId() { return ++clsfrGenId; };
-
-    /**
-     * Get the classifier counter generation ID
-     *
-     * @return the current classifier generation ID
-     */
-    uint64_t getCurrClsfrGenId() const { return clsfrGenId; };
-
-    /**
-     * Get and increment the drop counter generation ID
-     *
-     * @return the current drop counter generation ID
-     */
-    uint64_t getNextDropGenId() { return ++dropGenId; };
-
-    /**
-     * Get the drop counter generation ID
-     *
-     * @return the current drop counter generation ID
-     */
-    uint64_t getCurrDropGenId() const { return dropGenId; };
-
+    virtual uint64_t getNextClsfrGenId() { return ++clsfrGenId; };
     /**
      * Get the agent instance ID for this PolicyStatsManager instance.
      *
      * @return the generated UUID string
      */
-    const std::string& getAgentUUID() const { return agentUUID; };
+    virtual const std::string& getAgentUUID() const { return agentUUID; };
 
-    /**
-     * Timer interval handler.  For unit tests only.
-     */
-    void on_timer(const boost::system::error_code& ec);
 
-private:
-    Agent* agent;
-    SwitchManager& switchManager;
-    SwitchConnection* intConnection;
-    IdGenerator& idGen;
-    boost::asio::io_service& agent_io;
-    long timer_interval;
-    std::unique_ptr<boost::asio::deadline_timer> timer;
-    std::string agentUUID;
 
-    std::atomic<std::uint64_t> clsfrGenId;
-    std::atomic<std::uint64_t> dropGenId;
-
-    struct FlowMatchKey_t {
+    // see: MessageHandler
+    virtual void Handle(SwitchConnection *swConn, int type, ofpbuf *msg);
+      struct FlowMatchKey_t {
         uint32_t cookie;
         uint32_t reg0;
         uint32_t reg2;
@@ -188,6 +155,7 @@ private:
         boost::optional<uint64_t> last_byte_count;
     };
 
+
     /**
      * Counters for L24Classifiers
      */
@@ -198,26 +166,45 @@ private:
     /* map flow to Policy counters */
     typedef std::unordered_map<FlowMatchKey_t, PolicyCounters_t,
                                KeyHasher> PolicyCounterMap_t;
+    virtual void on_timer_base(const boost::system::error_code& ec,uint8_t table_id,
+        PolicyCounterMap_t& newClassCountersMap);
+    virtual void on_timer(const boost::system::error_code& ec) = 0;
+    virtual void updateFlowEntryMap(uint64_t cookie, uint16_t priority,
+                                            uint8_t table_id,const struct match& match);
+    virtual void updateNewFlowCounters(uint32_t cookie,
+                                               uint16_t priority,
+                                               struct match& match,
+                                               uint64_t flow_packet_count,
+                                               uint64_t flow_byte_count,
+                                               uint8_t table_id,
+                                               bool flowRemoved);
+    void sendRequest(uint32_t table_id);
+    virtual bool isTableIdFound(uint8_t table_id) = 0;
+    virtual void resolveCounterMaps(uint8_t table_id) = 0;
+    virtual void clearCounterObject(const std::string& key,uint8_t index) = 0;
+    virtual void clearOldCounters(const std::string& key,uint64_t nextId);
+        
 
-    void updatePolicyStatsCounters(const std::string& srcEpg,
-                                   const std::string& dstEpg,
-                                   const std::string& ruleURI,
-                                   PolicyCounters_t& counters);
-
-    /**
-     * Drop Counters for Routing Domain
-     */
-    struct PolicyDropCounters_t {
-        boost::optional<uint64_t> packet_count;
-        boost::optional<uint64_t> byte_count;
-        boost::optional<std::string> rdURI;
+    void removeAllCounterObjects(const std::string& key);
+    struct CircularBuffer {
+        std::vector<uint64_t> uidList;
+        uint64_t count;
+        CircularBuffer() {
+            count = 0;
+        }
     };
-
-    /* map Routing Domain Id to Policy Drop counters */
-
-    typedef std::unordered_map<uint32_t,
-                               PolicyDropCounters_t> PolicyDropCounterMap_t;
-
+protected:
+    std::unordered_map<std::string,CircularBuffer*> genIdList_;
+    std::unique_ptr<boost::asio::deadline_timer> timer;
+    std::mutex pstatMtx;
+    IdGenerator& idGen;
+    Agent* agent;
+    SwitchManager& switchManager;
+    SwitchConnection* connection;
+    boost::asio::io_service& agent_io;
+    long timer_interval;
+    std::string agentUUID;
+    std::atomic<std::uint64_t> clsfrGenId;
     struct FlowKeyHasher {
         /**
          * Hash for FlowEntryMatch Key
@@ -229,40 +216,35 @@ private:
     typedef std::unordered_map<FlowEntryMatchKey_t, FlowCounters_t,
                                FlowKeyHasher> FlowEntryCounterMap_t;
 
-    FlowEntryCounterMap_t oldFlowCounterMap;
-    FlowEntryCounterMap_t newFlowCounterMap;
-    FlowEntryCounterMap_t removedFlowCounterMap;
+    struct flowCounterState_t {
+        FlowEntryCounterMap_t oldFlowCounterMap;
+        FlowEntryCounterMap_t newFlowCounterMap;
+        FlowEntryCounterMap_t removedFlowCounterMap;
+    };
 
-    void updateFlowEntryMap(uint64_t cookie, uint16_t priority,
-                            const struct match& match);
+    FlowEntryCounterMap_t *oldFlowCounterMap;
+    FlowEntryCounterMap_t *newFlowCounterMap;
+    FlowEntryCounterMap_t *removedFlowCounterMap;
 
-    void generatePolicyStatsObjects(PolicyCounterMap_t& counters);
 
-    void updatePolicyStatsDropCounters(const std::string& rdURI,
-                                       PolicyDropCounters_t& counters);
-
-    void updateNewFlowCounters(uint32_t cookie,
-                               uint16_t priority,
-                               struct match& match,
-                               uint64_t packet_count,
-                               uint64_t byte_count,
-                               bool flowRemoved);
-
-    void handleFlowStats(int msgType, ofpbuf *msg);
-
-    void handleFlowRemoved(ofpbuf *msg);
-
-    void handleDropStats(uint32_t rdId,
+    virtual void handleFlowStats(int msgType,ofpbuf *msg);
+    virtual void handleFlowRemoved(ofpbuf *msg);
+    void generatePolicyStatsObjects(PolicyCounterMap_t *counters1,PolicyCounterMap_t *counters2 = NULL);
+    virtual void updatePolicyStatsCounters(const std::string& l24Classifier,
+                          PolicyCounters_t& newVals1,
+                          PolicyCounters_t& newVals2) = 0;
+   
+    virtual void handleDropStats(uint32_t rdId,
                          boost::optional<std::string> idRdStr,
-                         struct ofputil_flow_stats* fentry);
-
-    PolicyDropCounterMap_t policyDropCountersMap;
-
-    std::mutex pstatMtx;
-
+                         struct ofputil_flow_stats* fentry) = 0;
+    virtual void updatePolicyStatsCounters(const std::string& srcEpg,
+                                   const std::string& dstEpg,
+                                   const std::string& ruleURI,
+                                   PolicyCounters_t& counters) = 0;
     volatile bool stopping;
+
 };
 
 } /* namespace ovsagent */
 
-#endif /* OVSAGENT_POLICYSTATSMANAGER_H */
+#endif /* OVSAGENT_BASESTATSMANAGER_H */
