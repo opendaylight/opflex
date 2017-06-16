@@ -13,8 +13,8 @@
 #include "BaseStatsManager.h"
 
 #pragma once
-#ifndef OVSAGENT_POLICYSTATSMANAGER_H
-#define OVSAGENT_POLICYSTATSMANAGER_H
+#ifndef OVSAGENT_ACCSTATSMANAGER_H
+#define OVSAGENT_ACCSTATSMANAGER_H
 
 namespace ovsagent {
 
@@ -24,7 +24,7 @@ class Agent;
  * Periodically query an OpenFlow switch for policy counters and stats
  * and distribute them as needed to other components for reporting.
  */
-class PolicyStatsManager : public BaseStatsManager {
+class AccStatsManager : public BaseStatsManager {
 public:
     /**
      * Instantiate a new policy stats manager that will use the
@@ -37,14 +37,14 @@ public:
      * @param timer_interval the interval for the stats timer in
      * milliseconds
      */
-    PolicyStatsManager(Agent* agent, IdGenerator& idGen,
+    AccStatsManager(Agent* agent, IdGenerator& idGen,
                        SwitchManager& switchManager,
                        long timer_interval = 30000);
 
     /**
      * Destroy the policy stats manager and clean up all state
      */
-    ~PolicyStatsManager();
+    ~AccStatsManager();
 
     /**
      * Register the given connection with the policy stats manager.
@@ -53,7 +53,7 @@ public:
      * @param intConnection the connection to use for integration
      * bridge policy stats collection
      */
-    void registerConnection(SwitchConnection* intConnection);
+    void registerConnection(SwitchConnection* accConnection);
 
     /**
      * Start the policy stats manager
@@ -65,70 +65,32 @@ public:
      */
     void stop();
 
-    
-
     /**
-     * Get and increment the drop counter generation ID
+     * Get and increment the classifier counter generation ID
      *
-     * @return the current drop counter generation ID
+     * @return the current classifier generation ID
      */
-    uint64_t getNextDropGenId() { return ++dropGenId; };
-
     /**
-     * Get the drop counter generation ID
-     *
-     * @return the current drop counter generation ID
-     */
-    uint64_t getCurrDropGenId() const { return dropGenId; };
-
-        /**
      * Timer interval handler.  For unit tests only.
      */
     void on_timer(const boost::system::error_code& ec);
 
 private:
-    
-    std::atomic<std::uint64_t> dropGenId;
-    /**
-     * Drop Counters for Routing Domain
-     */
-    struct PolicyDropCounters_t {
-        boost::optional<uint64_t> packet_count;
-        boost::optional<uint64_t> byte_count;
-        boost::optional<std::string> rdURI;
-    };
-
-    /* map Routing Domain Id to Policy Drop counters */
-
-    typedef std::unordered_map<uint32_t,
-                               PolicyDropCounters_t> PolicyDropCounterMap_t;
-
-       void updateFlowEntryMap(uint64_t cookie, uint16_t priority,
+    void updateAccInFlowEntryMap(uint64_t cookie, uint16_t priority,
                             const struct match& match);
+    void updateAccOutFlowEntryMap(uint64_t cookie, uint16_t priority,
+                            const struct match& match);
+    void updatePolicyStatsCounters(const std::string& l24Classifier,
+                          PolicyCounters_t& newVals1,
+                          PolicyCounters_t& newVals2);
+    void generatePolicyStatsObjects(PolicyCounterMap_t& counters1,PolicyCounterMap_t& counters2);
 
-    void generatePolicyStatsObjects(PolicyCounterMap_t& counters);
-
-    void updatePolicyStatsDropCounters(const std::string& rdURI,
-                                       PolicyDropCounters_t& counters);
-
-    void updatePolicyStatsCounters(const std::string& srcEpg,
-                                   const std::string& dstEpg,
-                                   const std::string& ruleURI,
-                                   PolicyCounters_t& counters);
-    void updatePolicyFlowEntryMap(uint64_t cookie, uint16_t priority,
-                                            const struct match& match);
 
     void handleFlowStats(int msgType, ofpbuf *msg);
 
     void handleFlowRemoved(ofpbuf *msg);
-
-    void handleDropStats(uint32_t rdId,
-                         boost::optional<std::string> idRdStr,
-                         struct ofputil_flow_stats* fentry);
-
-    PolicyDropCounterMap_t policyDropCountersMap;
 };
 
 } /* namespace ovsagent */
 
-#endif /* OVSAGENT_POLICYSTATSMANAGER_H */
+#endif /* OVSAGENT_ACCSTATSMANAGER_H */

@@ -18,6 +18,7 @@
 #include "PortMapper.h"
 #include "StatsManager.h"
 #include "PolicyStatsManager.h"
+#include "AccStatsManager.h"
 #include "TunnelEpManager.h"
 
 #pragma once
@@ -80,6 +81,7 @@ private:
 
     StatsManager statsManager;
     PolicyStatsManager polStatsManager;
+    AccStatsManager accStatsManager;
     TunnelEpManager tunnelEpManager;
 
     std::string intBridgeName;

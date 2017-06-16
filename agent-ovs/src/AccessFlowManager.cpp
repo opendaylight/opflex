@@ -15,7 +15,7 @@
 #include <boost/algorithm/string/finder.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/range/sub_range.hpp>
-
+#include "ovs-ofputil.h"
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
 
@@ -38,7 +38,7 @@ using boost::copy_range;
 using boost::optional;
 
 static const char* ID_NAMESPACES[] =
-    {"secGroup", "secGroupSet"};
+    {"secGroup", "secGroupSet", "l24classifierRule"};
 
 static const char* ID_NMSPC_SECGROUP     = ID_NAMESPACES[0];
 static const char* ID_NMSPC_SECGROUP_SET = ID_NAMESPACES[1];
@@ -258,14 +258,13 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
 
     for (const opflex::modb::URI& secGrp : secGrps) {
         PolicyManager::rule_list_t rules;
-        uint64_t secGrpCookie =
-            idGen.getId(ID_NMSPC_SECGROUP, secGrp.toString());
         agent.getPolicyManager().getSecGroupRules(secGrp, rules);
 
         for (shared_ptr<PolicyRule>& pc : rules) {
             uint8_t dir = pc->getDirection();
             const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
-
+            const URI& ruleURI = cls.get()->getURI();
+            uint64_t secGrpCookie = idGen.getId("l24classifierRule", ruleURI.toString());
             boost::optional<const network::subnets_t&> remoteSubs;
             if (!pc->getRemoteSubnets().empty())
                 remoteSubs = pc->getRemoteSubnets();
@@ -286,7 +285,8 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   remoteSubs,
                                                   boost::none,
                                                   OUT_TABLE_ID,
-                                                  pc->getPriority(), 0,
+                                                  pc->getPriority(),
+                                                  OFPUTIL_FF_SEND_FLOW_REM,
                                                   secGrpCookie,
                                                   secGrpSetId, 0,
                                                   secGrpIn);
@@ -296,15 +296,17 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       boost::none,
                                                       remoteSubs,
                                                       GROUP_MAP_TABLE_ID,
-                                                      pc->getPriority(), 0,
-                                                      secGrpCookie,
+                                                      pc->getPriority(),
+                                                      OFPUTIL_FF_SEND_FLOW_REM,
+                                                      0,
                                                       secGrpSetId, 0,
                                                       secGrpOut);
                     flowutils::add_classifier_entries(*cls, CA_REFLEX_REV_ALLOW,
                                                       boost::none,
                                                       remoteSubs,
                                                       OUT_TABLE_ID,
-                                                      pc->getPriority(), 0,
+                                                      pc->getPriority(), 
+                                                      OFPUTIL_FF_SEND_FLOW_REM,
                                                       secGrpCookie,
                                                       secGrpSetId, 0,
                                                       secGrpOut);
@@ -316,7 +318,8 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   boost::none,
                                                   remoteSubs,
                                                   OUT_TABLE_ID,
-                                                  pc->getPriority(), 0,
+                                                  pc->getPriority(), 
+                                                  OFPUTIL_FF_SEND_FLOW_REM,
                                                   secGrpCookie,
                                                   secGrpSetId, 0,
                                                   secGrpOut);
@@ -326,15 +329,17 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       remoteSubs,
                                                       boost::none,
                                                       GROUP_MAP_TABLE_ID,
-                                                      pc->getPriority(), 0,
-                                                      secGrpCookie,
+                                                      pc->getPriority(), 
+                                                      OFPUTIL_FF_SEND_FLOW_REM,
+                                                      0,
                                                       secGrpSetId, 0,
                                                       secGrpIn);
                     flowutils::add_classifier_entries(*cls, CA_REFLEX_REV_ALLOW,
                                                       remoteSubs,
                                                       boost::none,
                                                       OUT_TABLE_ID,
-                                                      pc->getPriority(), 0,
+                                                      pc->getPriority(), 
+                                                      OFPUTIL_FF_SEND_FLOW_REM,
                                                       secGrpCookie,
                                                       secGrpSetId, 0,
                                                       secGrpIn);
