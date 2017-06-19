@@ -1,0 +1,136 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1af78d9a_d8f8e0e7",
+        "filename": "agent-ovs/src/AccStatsManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-19T20:31:06Z",
+      "side": 1,
+      "message": "limit lines to 80 characters.  Indent by aligning on parens",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 110
+      },
+      "revId": "2738ac59b7d4ba90674fc396e14be9456d70cceb",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af78d9a_38dda471",
+        "filename": "agent-ovs/src/AccStatsManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-19T20:31:06Z",
+      "side": 1,
+      "message": "use spaces not tabs.  Indent to 4 spaces.  Also remove trailing whitespace (red blocks that appear in gerrit diff view).  I\u0027ll just make one comment rather than comment on all the places where this is an issue.",
+      "range": {
+        "startLine": 171,
+        "startChar": 0,
+        "endLine": 172,
+        "endChar": 70
+      },
+      "revId": "2738ac59b7d4ba90674fc396e14be9456d70cceb",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af78d9a_f8f31c08",
+        "filename": "agent-ovs/src/include/AccStatsManager.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-19T20:31:06Z",
+      "side": 1,
+      "message": "were these supposed to be virtual functions?  You\u0027re using the odd convention of directly invoking the base class.  If you\u0027re trying to avoid virtual functions, then this base object could be a member object rather than a base class",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 55
+      },
+      "revId": "2738ac59b7d4ba90674fc396e14be9456d70cceb",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af78d9a_58e4f03a",
+        "filename": "agent-ovs/src/include/BaseStatsManager.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-19T20:31:06Z",
+      "side": 1,
+      "message": "This is pretty inelegant.  Since this state is all here anyway, why do we need to multiple child classes?  Just roll all the functionality into one class.\n\nHere\u0027s a perhaps more natural way to represent:\n\nstruct flowCounterState_t {\n    FlowEntryCounterMap_t oldFlowCounterMap;\n    FlowEntryCounterMap_t newFlowCounterMap;\n    FlowEntryCounterMap_t removedFlowCounterMap;\n}\n\nflowCounterState_t contractFlowState;\nflowCounterState_t secGroupInFlowState;\nflowCounterState_t secGroupOutFlowState;\n\nThen when you need to make a call that references the right map, you can pass in a flowCounterState_t\u0026 to the function to determine which to use, as in:\n\nvoid updateFlowCounterState(flowCounterState_t\u0026 flowState)\n\nthen call updateFlowCounterState(contractFlowState)",
+      "range": {
+        "startLine": 202,
+        "startChar": 0,
+        "endLine": 205,
+        "endChar": 51
+      },
+      "revId": "2738ac59b7d4ba90674fc396e14be9456d70cceb",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af78d9a_78e72c41",
+        "filename": "agent-ovs/test/AccStatsManager_test.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-19T20:31:06Z",
+      "side": 1,
+      "message": "This appears to be copy/pasted from the PolicyStatsManager test.  Can we avoid some duplication here?",
+      "revId": "2738ac59b7d4ba90674fc396e14be9456d70cceb",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af78d9a_b8d07454",
+        "filename": "agent-ovs/test/AccStatsManager_test.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-06-19T20:31:06Z",
+      "side": 1,
+      "message": "here you\u0027re only testing one set of flows.  We talked about needing to test the cases where classifiers are modified, so that between calls to your timer the set of flows for a classifier might change because flows are added or removed.\n\nThese unit tests (as well as the original PolicyStatsManager_test you\u0027ve copied from) tests the code only superficially and in the simplest case.",
+      "range": {
+        "startLine": 296,
+        "startChar": 0,
+        "endLine": 296,
+        "endChar": 82
+      },
+      "revId": "2738ac59b7d4ba90674fc396e14be9456d70cceb",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
