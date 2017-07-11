@@ -18,6 +18,7 @@
 #include <lib/util.h>
 extern "C" {
 #include <openvswitch/ofp-msgs.h>
+#include "stdint.h"
 }
 
 namespace ovsagent {
@@ -201,6 +202,19 @@ void StatsManager::Handle(SwitchConnection* connection,
         }
 
         for (const std::string& uuid : endpoints) {
+            if (counters.rxDrop || counters.txDrop)
+                LOG(DEBUG) << "Non-zero drop counters for port num: "
+                           << ps.port_no << " bridge name: " <<
+                            ((connection == intConnection) ?
+                            intConnection->getSwitchName() :
+                            accessConnection->getSwitchName()) <<
+                            " rxDrop: " << counters.rxDrop <<
+                            " txDrop: " << counters.txDrop;
+            // set value to 0 if counter is not supported by OVS
+            if (counters.rxDrop == UINT64_MAX)
+                counters.rxDrop = 0;
+            if (counters.txDrop == UINT64_MAX)
+                counters.txDrop = 0;
             updateEndpointCounters(uuid, connection, counters);
         }
     }
