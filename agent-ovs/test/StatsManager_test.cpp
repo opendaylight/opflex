@@ -9,6 +9,7 @@
  */
 
 #include <sstream>
+#include <limits>
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
 
@@ -67,7 +68,7 @@ public:
                     accessPortMapper, 10) {
         createObjects();
 
-        // set a couple of access bridge end-points in EP manager
+        // set a couple of end-points in EP manager
         ep0.reset(new Endpoint("0-0-0-0"));
         ep0->setAccessInterface("ep0-acc");
         ep1.reset(new Endpoint("0-0-0-1"));
@@ -77,25 +78,20 @@ public:
         accessPortMapper.RPortMap[1] = ep0->getAccessInterface().get();
         accessPortMapper.ports[ep1->getAccessInterface().get()] = 2;
         accessPortMapper.RPortMap[2] = ep1->getAccessInterface().get();
+
+        ep0->setInterfaceName("ep0-int");
+        ep1->setInterfaceName("ep1-int");
+        intPortMapper.ports[ep0->getInterfaceName().get()] = 1;
+        intPortMapper.RPortMap[1] = ep0->getInterfaceName().get();
+        intPortMapper.ports[ep1->getInterfaceName().get()] = 2;
+        intPortMapper.RPortMap[2] = ep1->getInterfaceName().get();
+
         epSrc.updateEndpoint(*ep0);
         epSrc.updateEndpoint(*ep1);
 
-        // set a couple of internal bridge end-points in EP manager
-        ep2.reset(new Endpoint("0-0-0-2"));
-        ep2->setInterfaceName("ep0-int");
-        ep3.reset(new Endpoint("0-0-0-3"));
-        ep3->setInterfaceName("ep1-int");
-
-        // add couple of ports to intPortMapper
-        intPortMapper.ports[ep2->getInterfaceName().get()] = 1;
-        intPortMapper.RPortMap[1] = ep2->getInterfaceName().get();
-        intPortMapper.ports[ep3->getInterfaceName().get()] = 2;
-        intPortMapper.RPortMap[2] = ep3->getInterfaceName().get();
-        epSrc.updateEndpoint(*ep2);
-        epSrc.updateEndpoint(*ep3);
       }
     virtual ~StatsManagerFixture() {}
-    void verifyCounters(int *dummy, int port_num);
+    void verifyCounters(uint64_t *dummy, int port_num);
 
     StatsManager statsManager;
     MockPortMapper intPortMapper;
@@ -104,7 +100,7 @@ public:
 private:
 };
 
-void StatsManagerFixture::verifyCounters(int *dummy_stats, int port_num) {
+void StatsManagerFixture::verifyCounters(uint64_t *dummy_stats, int port_num) {
     EndpointManager& epMgr = agent.getEndpointManager();
     std::unordered_set<std::string> endpoints;
     const std::string& intPortName = intPortMapper.FindPort(port_num);
@@ -154,7 +150,7 @@ BOOST_FIXTURE_TEST_CASE(registerWithoutIntConnection, StatsManagerFixture) {
 }
 
 struct ofpbuf *makeStatResponseMessage(MockConnection *pConn,
-                     int stats[], ofp_port_t port_num) {
+                     uint64_t stats[], ofp_port_t port_num) {
     struct ofpbuf *req_msg = ofputil_encode_dump_ports_request(
         (ofp_version)OFP13_VERSION, port_num);
 
@@ -168,7 +164,10 @@ struct ofpbuf *makeStatResponseMessage(MockConnection *pConn,
     ofpmp_init(&ovs_replies, req_hdr);
     ofpbuf_delete(req_msg);
     {
-        struct ofputil_port_stats ops = { .port_no = port_num };
+        //struct ofputil_port_stats ops = { .port_no = port_num };
+        struct ofputil_port_stats ops;
+        bzero(&ops, sizeof(struct ofputil_port_stats));
+        ops.port_no = port_num;
         ops.stats.rx_packets = stats[0];
         ops.stats.tx_packets = stats[1];
         ops.stats.rx_bytes   = stats[2];
@@ -199,7 +198,7 @@ BOOST_FIXTURE_TEST_CASE(useIntConnectionAlone, StatsManagerFixture) {
     statsManager.Handle(NULL, OFPTYPE_PORT_STATS_REPLY, NULL);
     statsManager.Handle(&integrationPortConn, OFPTYPE_PORT_STATS_REPLY, NULL);
 
-    int dummy_stats[6] = { 1, 2, 3, 4, 5, 6 };
+    uint64_t dummy_stats[6] = { 1, 2, 3, 4, 5, 6 };
 
     ofp_port_t port_num=1;
     struct ofpbuf *res_msg = makeStatResponseMessage(&integrationPortConn,
@@ -226,7 +225,7 @@ BOOST_FIXTURE_TEST_CASE(useBothConnections, StatsManagerFixture) {
     statsManager.start();
 
     ofp_port_t port_num = 1;
-    int dummy_stats_1[6] = { 1, 2, 3, 4, 5, 6 };
+    uint64_t dummy_stats_1[6] = { 1, 2, 3, 4, 5, 6 };
     struct ofpbuf *res_msg_1 = makeStatResponseMessage(&integrationPortConn,
                               dummy_stats_1, port_num);
     BOOST_REQUIRE(res_msg_1 != 0);
@@ -234,7 +233,7 @@ BOOST_FIXTURE_TEST_CASE(useBothConnections, StatsManagerFixture) {
                             res_msg_1);
     ofpbuf_delete(res_msg_1);
 
-    int dummy_stats_2[6] = { 10, 20, 30, 40, 50, 60 };
+    uint64_t dummy_stats_2[6] = { 10, 20, 30, 40, 50, 60 };
     struct ofpbuf *res_msg_2 = makeStatResponseMessage(&accessPortConn,
                               dummy_stats_2, port_num);
     BOOST_REQUIRE(res_msg_2 != 0);
@@ -243,6 +242,40 @@ BOOST_FIXTURE_TEST_CASE(useBothConnections, StatsManagerFixture) {
     // add drop counters of both the bridges before verifying them
     dummy_stats_2[4] += dummy_stats_1[4];
     dummy_stats_2[5] += dummy_stats_1[5];
+    verifyCounters(dummy_stats_2, port_num);
+    statsManager.stop();
+}
+
+BOOST_FIXTURE_TEST_CASE(testUnsupportedCounters, StatsManagerFixture) {
+
+    MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
+    MockConnection accessPortConn(TEST_CONN_TYPE_ACC);
+    statsManager.registerConnection(&integrationPortConn, &accessPortConn);
+
+    // see how it behaves if started and stopped.
+    statsManager.start();
+    statsManager.stop();
+
+    statsManager.start();
+
+    ofp_port_t port_num = 1;
+    uint64_t dummy_stats_1[6];
+    // set all counter values to unsupported counter values
+    for (int i = 0; i < 6; i++)
+        dummy_stats_1[i] = std::numeric_limits<uint64_t>::max();
+    struct ofpbuf *res_msg_1 = makeStatResponseMessage(&integrationPortConn,
+                              dummy_stats_1, port_num);
+    BOOST_REQUIRE(res_msg_1 != 0);
+    statsManager.Handle(&integrationPortConn, OFPTYPE_PORT_STATS_REPLY,
+                            res_msg_1);
+    ofpbuf_delete(res_msg_1);
+
+    uint64_t dummy_stats_2[6] = { 10, 20, 30, 40, 50, 60 };
+    struct ofpbuf *res_msg_2 = makeStatResponseMessage(&accessPortConn,
+                              dummy_stats_2, port_num);
+    BOOST_REQUIRE(res_msg_2 != 0);
+    statsManager.Handle(&accessPortConn, OFPTYPE_PORT_STATS_REPLY, res_msg_2);
+    ofpbuf_delete(res_msg_2);
     verifyCounters(dummy_stats_2, port_num);
     statsManager.stop();
 }

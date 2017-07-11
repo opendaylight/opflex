@@ -12,6 +12,7 @@
 #include "logging.h"
 #include "StatsManager.h"
 #include "Agent.h"
+#include <limits>
 
 #include "ovs-ofputil.h"
 
@@ -201,6 +202,28 @@ void StatsManager::Handle(SwitchConnection* connection,
         }
 
         for (const std::string& uuid : endpoints) {
+            if ((counters.rxDrop == std::numeric_limits<uint64_t>::max()) ||
+                (counters.txDrop == std::numeric_limits<uint64_t>::max()))
+                LOG(DEBUG) << "Unsupported drop counters for port num: "
+                           << ps.port_no << " bridge name: " <<
+                            ((connection == intConnection) ?
+                            intConnection->getSwitchName() :
+                            accessConnection->getSwitchName()) <<
+                            " rxDrop: " << counters.rxDrop <<
+                            " txDrop: " << counters.txDrop;
+            // set value to 0 if counter is not supported by OVS
+            if (counters.rxDrop == std::numeric_limits<uint64_t>::max())
+                counters.rxDrop = 0;
+            if (counters.txDrop == std::numeric_limits<uint64_t>::max())
+                counters.txDrop = 0;
+            if (counters.txPackets == std::numeric_limits<uint64_t>::max())
+                counters.txPackets = 0;
+            if (counters.rxPackets == std::numeric_limits<uint64_t>::max())
+                counters.rxPackets = 0;
+            if (counters.rxBytes == std::numeric_limits<uint64_t>::max())
+                counters.rxBytes = 0;
+            if (counters.txBytes == std::numeric_limits<uint64_t>::max())
+                counters.txBytes = 0;
             updateEndpointCounters(uuid, connection, counters);
         }
     }
