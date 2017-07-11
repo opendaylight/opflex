@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da2a55be_e83179a3",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T22:05:21Z",
+      "side": 1,
+      "message": "use std::limits here not the C header.\n\n#include \u003climits\u003e\n\nstd::numeric_limits\u003cuint64_t\u003e::max()",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 19
+      },
+      "revId": "42872e8ac08d4bf0fc66a8372a68eb161b5b1f97",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_4827e564",
+        "filename": "agent-ovs/src/StatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T22:05:21Z",
+      "side": 1,
+      "message": "need unit test.  Also need to check all counters not just drop.  Also this debug log message is way too verbose, need to remove it.  We can\u0027t be spewing huge numbers of these messages constantly.",
+      "range": {
+        "startLine": 214,
+        "startChar": 0,
+        "endLine": 217,
+        "endChar": 36
+      },
+      "revId": "42872e8ac08d4bf0fc66a8372a68eb161b5b1f97",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
