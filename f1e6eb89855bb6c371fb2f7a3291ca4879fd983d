@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da2a55be_68ac69ee",
+        "filename": "agent-ovs/src/ContractStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "80 chars",
+      "range": {
+        "startLine": 183,
+        "startChar": 0,
+        "endLine": 183,
+        "endChar": 122
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_c8b91530",
+        "filename": "agent-ovs/src/ContractStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "80 chars.  Weren\u0027t we going to simplify this code by doing the object listener?",
+      "range": {
+        "startLine": 238,
+        "startChar": 4,
+        "endLine": 272,
+        "endChar": 2
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_a8b6613b",
+        "filename": "agent-ovs/src/ContractStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "80 chars",
+      "range": {
+        "startLine": 277,
+        "startChar": 12,
+        "endLine": 289,
+        "endChar": 9
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_08832d57",
+        "filename": "agent-ovs/src/ContractStatsManager.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "80 chars",
+      "range": {
+        "startLine": 295,
+        "startChar": 0,
+        "endLine": 312,
+        "endChar": 5
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_8896fd92",
+        "filename": "agent-ovs/src/include/ContractStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "indentation",
+      "range": {
+        "startLine": 72,
+        "startChar": 0,
+        "endLine": 72,
+        "endChar": 11
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_2882714f",
+        "filename": "agent-ovs/src/include/ContractStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "public methods need docs",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 83,
+        "endChar": 53
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_487d256e",
+        "filename": "agent-ovs/src/include/ContractStatsManager.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "80 chars.  Do we really need these 4 separate maps?",
+      "range": {
+        "startLine": 85,
+        "startChar": 0,
+        "endLine": 88,
+        "endChar": 69
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_c862b5d7",
+        "filename": "agent-ovs/test/ContractStatsManager_test.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "remove trailing whitespace",
+      "range": {
+        "startLine": 249,
+        "startChar": 0,
+        "endLine": 254,
+        "endChar": 4
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_089ccdbf",
+        "filename": "agent-ovs/test/ContractStatsManager_test.cpp",
+        "patchSetId": 9
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-11T21:42:23Z",
+      "side": 1,
+      "message": "you\u0027re not actually testing anything here.  Need an assert.  Note that the WAIT_FOR macro used a lot in the code base might be useful to you.\n\nAlso the indentation is wrong here.",
+      "range": {
+        "startLine": 280,
+        "startChar": 1,
+        "endLine": 281,
+        "endChar": 1
+      },
+      "revId": "f1e6eb89855bb6c371fb2f7a3291ca4879fd983d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
