@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da2a55be_55c13d7f",
+        "filename": "agent-ovs/src/ContractStatsManager.cpp",
+        "patchSetId": 10
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-12T17:30:41Z",
+      "side": 1,
+      "message": "This member variable keyMap_: you store in but then never erase anything, so certainly that is leaking as this will grow without bound.  I think you likely have other similar issues with your other maps.",
+      "range": {
+        "startLine": 275,
+        "startChar": 21,
+        "endLine": 275,
+        "endChar": 28
+      },
+      "revId": "09dac362b2d1b41393dd401fc0c7612e527bb57e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_15d0654f",
+        "filename": "agent-ovs/src/include/BaseStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-12T17:30:41Z",
+      "side": 1,
+      "message": "trailing whitespace",
+      "range": {
+        "startLine": 186,
+        "startChar": 0,
+        "endLine": 186,
+        "endChar": 8
+      },
+      "revId": "09dac362b2d1b41393dd401fc0c7612e527bb57e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_d5d52d44",
+        "filename": "agent-ovs/src/include/BaseStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-12T17:30:41Z",
+      "side": 1,
+      "message": "std::vector already has a size() method.  Maybe just replace the struct with std::vector since it seems otherwise not needed.",
+      "range": {
+        "startLine": 191,
+        "startChar": 0,
+        "endLine": 191,
+        "endChar": 23
+      },
+      "revId": "09dac362b2d1b41393dd401fc0c7612e527bb57e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_35cbe9a6",
+        "filename": "agent-ovs/src/include/BaseStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-12T17:30:41Z",
+      "side": 1,
+      "message": "This destructor is not doing anything useful.",
+      "range": {
+        "startLine": 196,
+        "startChar": 0,
+        "endLine": 196,
+        "endChar": 28
+      },
+      "revId": "09dac362b2d1b41393dd401fc0c7612e527bb57e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2a55be_75c44192",
+        "filename": "agent-ovs/src/include/BaseStatsManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-07-12T17:30:41Z",
+      "side": 1,
+      "message": "I also notice that you\u0027re using a raw owning pointer CircularBuffer*.  This should probably be a std::unique_ptr rather than a raw pointer.  You should never use a raw owning pointer in modern C++; there is literally no time you should ever do this.  Note you can occasionally use raw pointers, but not owning pointers in the sense of a pointer where the memory needs to be freed by calling delete.  Owning pointers should always be wrapped in a smart pointer type such as unique_ptr (usually) or shared_ptr (when shared ownership is needed).",
+      "range": {
+        "startLine": 200,
+        "startChar": 35,
+        "endLine": 200,
+        "endChar": 49
+      },
+      "revId": "09dac362b2d1b41393dd401fc0c7612e527bb57e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
