@@ -79,15 +79,26 @@ bool
 FlowEntry::actionEq(const FlowEntry *rhs) {
     const ofputil_flow_stats *feRhs = rhs->entry;
     return entry != NULL && feRhs != NULL &&
-            (entry->cookie == feRhs->cookie) &&
             action_equal(entry->ofpacts, entry->ofpacts_len,
                          feRhs->ofpacts, feRhs->ofpacts_len);
 }
 
 ostream & operator<<(ostream& os, const FlowEntry& fe) {
+    os << *fe.entry;
+    return os;
+}
+
+ostream & operator<<(ostream& os, const struct ofputil_flow_stats& fs) {
     DsP str;
-    ofp_print_flow_stats(str.get(), fe.entry);
+    ofp_print_flow_stats(str.get(), (ofputil_flow_stats*)&fs);
     os << (const char*)(ds_cstr(str.get()) + 1); // trim space
+    return os;
+}
+
+ostream & operator<<(ostream& os, const match& m) {
+    DsP str;
+    match_format(&m, str.get(), OFP_DEFAULT_PRIORITY);
+    os << (const char*)(ds_cstr(str.get()));
     return os;
 }
 
@@ -237,7 +248,7 @@ void TableState::diffSnapshot(const FlowEntryList& oldEntries,
 void TableState::forEachCookieMatch(cookie_callback_t& cb) const {
     for (const auto& cookies : pimpl->cookie_map) {
         for (const auto& match_key : cookies.second) {
-            cb(cookies.first, match_key.prio, match_key.match);
+            cb(ovs_ntohll(cookies.first), match_key.prio, match_key.match);
         }
     }
 }

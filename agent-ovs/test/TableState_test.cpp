@@ -66,14 +66,14 @@ public:
                .parent().build()),
           f2_1(FlowBuilder().priority(1).inPort(4).action().output(5)
                .parent().build()),
-          f2_2(FlowBuilder().priority(1).inPort(4).cookie(0x2)
+          f2_2(FlowBuilder().priority(1).inPort(4).cookie(ovs_htonll(0x2))
                .action().output(5).parent().build()),
-          f2_3(FlowBuilder().priority(1).inPort(4).cookie(0x3)
+          f2_3(FlowBuilder().priority(1).inPort(4).cookie(ovs_htonll(0x3))
                .action().output(5).parent().build()),
-          f3_1(FlowBuilder().priority(10).inPort(5).cookie(0x1)
+          f3_1(FlowBuilder().priority(10).inPort(5).cookie(ovs_htonll(0x1))
                .action().output(6)
                .parent().build()),
-          f3_2(FlowBuilder().priority(10).inPort(5).cookie(0x2)
+          f3_2(FlowBuilder().priority(10).inPort(5).cookie(ovs_htonll(0x2))
                .action().output(6)
                .parent().build()) {}
 

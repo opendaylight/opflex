@@ -81,8 +81,8 @@ noinst_HEADERS = \
 	src/include/SwitchConnection.h \
 	src/include/SwitchManager.h \
 	src/include/PortMapper.h \
-	src/include/StatsManager.h \
-	src/include/BaseStatsManager.h \
+	src/include/InterfaceStatsManager.h \
+	src/include/PolicyStatsManager.h \
 	src/include/ContractStatsManager.h \
 	src/include/SecGrpStatsManager.h \
 	src/include/Agent.h \
@@ -148,8 +148,8 @@ if RENDERER_OVS
 	src/SwitchConnection.cpp \
 	src/SwitchManager.cpp \
 	src/PortMapper.cpp \
-	src/StatsManager.cpp \
-	src/BaseStatsManager.cpp \
+	src/PolicyStatsManager.cpp \
+	src/InterfaceStatsManager.cpp \
 	src/ContractStatsManager.cpp \
 	src/SecGrpStatsManager.cpp \
 	src/RangeMask.cpp \
@@ -208,9 +208,8 @@ agent_test_SOURCES = \
 	test/include/MockFlowReader.h \
 	test/include/MockSwitchManager.h \
 	test/include/FlowManagerFixture.h \
+	test/include/PolicyStatsManagerFixture.h \
 	test/PolicyManager_test.cpp \
-	test/ContractStatsManager_test.cpp \
-	test/SecGrpStatsManager_test.cpp \
 	test/EndpointManager_test.cpp \
 	test/IdGenerator_test.cpp \
 	test/KeyedRateLimiter_test.cpp \
@@ -231,7 +230,9 @@ if RENDERER_OVS
 	test/FlowExecutor_test.cpp \
 	test/RangeMask_test.cpp \
 	test/Packets_test.cpp \
-	test/StatsManager_test.cpp \
+	test/InterfaceStatsManager_test.cpp \
+	test/ContractStatsManager_test.cpp \
+	test/SecGrpStatsManager_test.cpp \
 	test/TableState_test.cpp
 endif
 

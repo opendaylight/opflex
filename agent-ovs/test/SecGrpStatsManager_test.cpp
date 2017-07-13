@@ -27,12 +27,12 @@
 #include "RangeMask.h"
 #include "FlowConstants.h"
 #include "FlowUtils.h"
-#include "FlowManagerFixture.h"
+#include "PolicyStatsManagerFixture.h"
 #include "FlowBuilder.h"
 
 #include "ovs-ofputil.h"
 #include <modelgbp/gbpe/L24Classifier.hpp>
-#include <modelgbp/gbpe/HPPClassifierCounter.hpp>
+#include <modelgbp/gbpe/SecGrpClassifierCounter.hpp>
 #include <modelgbp/observer/PolicyStatUniverse.hpp>
 
 #include <opflex/modb/Mutator.h>
@@ -60,10 +60,10 @@ namespace ovsagent {
 
 static const uint32_t LAST_PACKET_COUNT = 379; // for removed flow entry
 
-class SecGrpStatsManagerFixture : public FlowManagerFixture {
+class SecGrpStatsManagerFixture : public PolicyStatsManagerFixture {
 
 public:
-    SecGrpStatsManagerFixture() : FlowManagerFixture(),
+    SecGrpStatsManagerFixture() : PolicyStatsManagerFixture(),
                                   secGrpStatsManager(&agent, idGen,
                                                      switchManager, 10) {
         idGen.initNamespace("l24classifierRule");
@@ -75,8 +75,6 @@ public:
     }
     virtual ~SecGrpStatsManagerFixture() {}
     SecGrpStatsManager secGrpStatsManager;
-
-private:
 };
 
 BOOST_AUTO_TEST_SUITE(SecGrpStatsManager_test)
@@ -90,20 +88,30 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, SecGrpStatsManagerFixture) {
                               OFPTYPE_FLOW_STATS_REPLY, NULL);
     // testing one flow only
     testOneFlow(accPortConn,classifier1,
-            AccessFlowManager::SEC_GROUP_IN_TABLE_ID,1,&secGrpStatsManager);
+                AccessFlowManager::SEC_GROUP_IN_TABLE_ID,1,&secGrpStatsManager);
     // 2 entries in flow table now - testing second flow
     testOneFlow(accPortConn,classifier2,
-            AccessFlowManager::SEC_GROUP_IN_TABLE_ID,2,&secGrpStatsManager);
-    // changing flow table entry 
+                AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
+                2,
+                &secGrpStatsManager);
+    // changing flow table entry
     testOneFlow(accPortConn,classifier1,
-            AccessFlowManager::SEC_GROUP_IN_TABLE_ID,2,&secGrpStatsManager);
+                AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
+                2,
+                &secGrpStatsManager);
     // same 3 steps above for OUT table
     testOneFlow(accPortConn,classifier1,
-            AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,1,&secGrpStatsManager);
+                AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
+                1,
+                &secGrpStatsManager);
     testOneFlow(accPortConn,classifier2,
-            AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,2,&secGrpStatsManager);
+                AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
+                2,
+                &secGrpStatsManager);
     testOneFlow(accPortConn,classifier1,
-            AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,2,&secGrpStatsManager);
+                AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
+                2,
+                &secGrpStatsManager);
     secGrpStatsManager.stop();
 
 }
@@ -117,9 +125,15 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
 
     // Add flows in switchManager
     FlowEntryList entryList;
-    writeClassifierFlows(entryList,AccessFlowManager::SEC_GROUP_IN_TABLE_ID,1,classifier3);
+    writeClassifierFlows(entryList,
+                         AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
+                         1,
+                         classifier3);
     FlowEntryList entryList1;
-    writeClassifierFlows(entryList1,AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,1,classifier3);
+    writeClassifierFlows(entryList1,
+                         AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
+                         1,
+                         classifier3);
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
@@ -127,15 +141,18 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
     // switchManager.
     secGrpStatsManager.on_timer(ec);
 
-    struct ofpbuf *res_msg = makeFlowRemovedMessage_2(&accPortConn,
-                                                      LAST_PACKET_COUNT,
-                                                      AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
-                                                      entryList);
+    struct ofpbuf *res_msg =
+        makeFlowRemovedMessage_2(&accPortConn,
+                                 LAST_PACKET_COUNT,
+                                 AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
+                                 entryList);
     BOOST_REQUIRE(res_msg!=0);
 
     secGrpStatsManager.Handle(&accPortConn,
                               OFPTYPE_FLOW_REMOVED, res_msg);
     secGrpStatsManager.on_timer(ec);
+
+    ofpbuf_delete(res_msg);
     res_msg = makeFlowRemovedMessage_2(&accPortConn,
                                        LAST_PACKET_COUNT,
                                        AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
@@ -145,19 +162,21 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
     secGrpStatsManager.Handle(&accPortConn,
                               OFPTYPE_FLOW_REMOVED, res_msg);
     ofpbuf_delete(res_msg);
-    res_msg = makeFlowRemovedMessage_2(&accPortConn,
-                                       LAST_PACKET_COUNT,
-                                       AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
-                                       entryList1);
+    res_msg =
+        makeFlowRemovedMessage_2(&accPortConn,
+                                 LAST_PACKET_COUNT,
+                                 AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
+                                 entryList1);
     BOOST_REQUIRE(res_msg!=0);
 
     secGrpStatsManager.Handle(&accPortConn,
                               OFPTYPE_FLOW_REMOVED, res_msg);
     ofpbuf_delete(res_msg);
-    res_msg = makeFlowRemovedMessage_2(&accPortConn,
-                                       LAST_PACKET_COUNT,
-                                       AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
-                                       entryList1);
+    res_msg =
+        makeFlowRemovedMessage_2(&accPortConn,
+                                 LAST_PACKET_COUNT,
+                                 AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
+                                 entryList1);
     BOOST_REQUIRE(res_msg!=0);
 
     secGrpStatsManager.Handle(&accPortConn,
@@ -191,11 +210,13 @@ BOOST_FIXTURE_TEST_CASE(testCircularBuffer, SecGrpStatsManagerFixture) {
     secGrpStatsManager.start();
 
     // Add flows in switchManager
-    
-    testCircBuffer(accPortConn,classifier3,
-            AccessFlowManager::SEC_GROUP_IN_TABLE_ID,2,&secGrpStatsManager);
+
+    testCircBuffer(accPortConn,
+                   classifier3,
+                   AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
+                   2,
+                   &secGrpStatsManager);
     secGrpStatsManager.stop();
-    
 }
 
 BOOST_FIXTURE_TEST_CASE(testSecGrpDelete, SecGrpStatsManagerFixture) {
@@ -206,19 +227,20 @@ BOOST_FIXTURE_TEST_CASE(testSecGrpDelete, SecGrpStatsManagerFixture) {
                               OFPTYPE_FLOW_STATS_REPLY, NULL);
     // testing one flow only
     testOneFlow(accPortConn,classifier1,
-            AccessFlowManager::SEC_GROUP_IN_TABLE_ID,1,&secGrpStatsManager);
+                AccessFlowManager::SEC_GROUP_IN_TABLE_ID,1,&secGrpStatsManager);
     Mutator mutator(agent.getFramework(), "policyreg");
     modelgbp::gbp::SecGroup::remove(agent.getFramework(),"test","secgrp1");
     mutator.commit();
     optional<shared_ptr<PolicyStatUniverse> > su =
-          PolicyStatUniverse::resolve(agent.getFramework());
+        PolicyStatUniverse::resolve(agent.getFramework());
     auto uuid =
-            boost::lexical_cast<std::string>(secGrpStatsManager.getAgentUUID());
-    optional<shared_ptr<HPPClassifierCounter> > myCounter =
-            su.get()-> resolveGbpeHPPClassifierCounter(uuid,
-                                                   secGrpStatsManager.getCurrClsfrGenId(),
-                                                   classifier1->getURI()
-                                                   .toString());
+        boost::lexical_cast<std::string>(secGrpStatsManager.getAgentUUID());
+    optional<shared_ptr<SecGrpClassifierCounter> > myCounter =
+        su.get()->resolveGbpeSecGrpClassifierCounter(uuid,
+                                                     secGrpStatsManager
+                                                     .getCurrClsfrGenId(),
+                                                     classifier1->getURI()
+                                                     .toString());
     WAIT_FOR(!myCounter,500);
     secGrpStatsManager.stop();
 }

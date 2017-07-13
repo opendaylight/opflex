@@ -1,5 +1,5 @@
 /*
- * Test suite for class StatsManager.
+ * Test suite for class InterfaceStatsManager.
  *
  * Copyright (c) 2017 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -15,9 +15,10 @@
 
 #include "logging.h"
 #include "ModbFixture.h"
-#include "StatsManager.h"
+#include "InterfaceStatsManager.h"
 #include "MockPortMapper.h"
 #include "SwitchConnection.h"
+#include "PolicyStatsManagerFixture.h"
 
 using boost::optional;
 using std::shared_ptr;
@@ -25,46 +26,10 @@ using modelgbp::observer::EpStatUniverse;
 
 namespace ovsagent {
 
-enum {
-    TEST_CONN_TYPE_INT=0,
-    TEST_CONN_TYPE_ACC,
-};
-
-class MockConnection : public SwitchConnection {
-public:
-    MockConnection(int conn_type) : SwitchConnection((conn_type==
-              TEST_CONN_TYPE_INT)? "int_conn": "acc_conn"), lastSentMsg(NULL) {
-        nType = conn_type;
-        lastSentMsg = NULL;
-    }
-    ~MockConnection() {
-        if (lastSentMsg) ofpbuf_delete(lastSentMsg);
-    }
-    int SendMessage(struct ofpbuf *msg) {
-        switch(nType) {
-        case TEST_CONN_TYPE_ACC:
-        case TEST_CONN_TYPE_INT:
-        default:
-            BOOST_CHECK(msg != NULL);
-            ofp_header *hdr = (ofp_header *)msg->data;
-            ofptype typ;
-            ofptype_decode(&typ, hdr);
-            BOOST_CHECK(typ == OFPTYPE_PORT_STATS_REQUEST);
-            if (msg) ofpbuf_delete(msg);
-            break;
-        }
-        return 0;
-    }
-
-    ofpbuf *lastSentMsg;
-private:
-    int nType;
-};
-
-class StatsManagerFixture : public ModbFixture {
+class InterfaceStatsManagerFixture : public ModbFixture {
 
 public:
-    StatsManagerFixture() : statsManager(&agent, intPortMapper,
+    InterfaceStatsManagerFixture() : statsManager(&agent, intPortMapper,
                     accessPortMapper, 10) {
         createObjects();
 
@@ -90,17 +55,18 @@ public:
         epSrc.updateEndpoint(*ep1);
 
       }
-    virtual ~StatsManagerFixture() {}
+    virtual ~InterfaceStatsManagerFixture() {}
     void verifyCounters(uint64_t *dummy, int port_num);
 
-    StatsManager statsManager;
+    InterfaceStatsManager statsManager;
     MockPortMapper intPortMapper;
     MockPortMapper accessPortMapper;
 
 private:
 };
 
-void StatsManagerFixture::verifyCounters(uint64_t *dummy_stats, int port_num) {
+void InterfaceStatsManagerFixture::verifyCounters(uint64_t *dummy_stats,
+                                                  int port_num) {
     EndpointManager& epMgr = agent.getEndpointManager();
     std::unordered_set<std::string> endpoints;
     const std::string& intPortName = intPortMapper.FindPort(port_num);
@@ -134,15 +100,17 @@ void StatsManagerFixture::verifyCounters(uint64_t *dummy_stats, int port_num) {
     }
 }
 
-BOOST_AUTO_TEST_SUITE(StatsManager_test)
+BOOST_AUTO_TEST_SUITE(InterfaceStatsManager_test)
 
-BOOST_FIXTURE_TEST_CASE(startAndStopBeforeInitialization, StatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(startAndStopBeforeInitialization,
+                        InterfaceStatsManagerFixture) {
     statsManager.stop(); // let it throw exception if there is a problem
     statsManager.start();
     statsManager.stop();
 }
 
-BOOST_FIXTURE_TEST_CASE(registerWithoutIntConnection, StatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(registerWithoutIntConnection,
+                        InterfaceStatsManagerFixture) {
     statsManager.registerConnection(NULL,NULL);
 
     MockConnection accessPortConn(TEST_CONN_TYPE_ACC);
@@ -190,7 +158,7 @@ struct ofpbuf *makeStatResponseMessage(MockConnection *pConn,
 }
 
 
-BOOST_FIXTURE_TEST_CASE(useIntConnectionAlone, StatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(useIntConnectionAlone, InterfaceStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     statsManager.registerConnection(&integrationPortConn, NULL);
     statsManager.start();
@@ -212,7 +180,7 @@ BOOST_FIXTURE_TEST_CASE(useIntConnectionAlone, StatsManagerFixture) {
     statsManager.stop();
 }
 
-BOOST_FIXTURE_TEST_CASE(useBothConnections, StatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(useBothConnections, InterfaceStatsManagerFixture) {
 
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     MockConnection accessPortConn(TEST_CONN_TYPE_ACC);
@@ -246,7 +214,7 @@ BOOST_FIXTURE_TEST_CASE(useBothConnections, StatsManagerFixture) {
     statsManager.stop();
 }
 
-BOOST_FIXTURE_TEST_CASE(testUnsupportedCounters, StatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(testUnsupportedCounters, InterfaceStatsManagerFixture) {
 
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     MockConnection accessPortConn(TEST_CONN_TYPE_ACC);
