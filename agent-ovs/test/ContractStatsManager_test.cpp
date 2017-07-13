@@ -26,7 +26,7 @@
 #include "RangeMask.h"
 #include "FlowConstants.h"
 #include "FlowUtils.h"
-#include "FlowManagerFixture.h"
+#include "PolicyStatsManagerFixture.h"
 #include "FlowBuilder.h"
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/Contract.hpp>
@@ -49,18 +49,15 @@ using opflex::modb::Mutator;
 
 namespace ovsagent {
 
-
 static const uint32_t LAST_PACKET_COUNT = 379; // for removed flow entry
 
-
-
-class ContractStatsManagerFixture : public FlowManagerFixture {
+class ContractStatsManagerFixture : public PolicyStatsManagerFixture {
 
 public:
-    ContractStatsManagerFixture() : FlowManagerFixture(),
-                                  contractStatsManager(&agent, idGen,
-                                                     switchManager, 10),
-                                  policyManager(agent.getPolicyManager()) {
+    ContractStatsManagerFixture() : PolicyStatsManagerFixture(),
+                                    contractStatsManager(&agent, idGen,
+                                                         switchManager, 10),
+                                    policyManager(agent.getPolicyManager()) {
         createObjects();
         createPolicyObjects();
         idGen.initNamespace("l24classifierRule");
@@ -85,7 +82,8 @@ verifyRoutingDomainDropStats(shared_ptr<RoutingDomain> rd,
     optional<shared_ptr<PolicyStatUniverse> > su =
         PolicyStatUniverse::resolve(agent.getFramework());
 
-    auto uuid = boost::lexical_cast<string>(contractStatsManager.getAgentUUID());
+    auto uuid =
+        boost::lexical_cast<string>(contractStatsManager.getAgentUUID());
     optional<shared_ptr<RoutingDomainDropCounter> > myCounter =
         su.get()->resolveGbpeRoutingDomainDropCounter(uuid,
                                                       contractStatsManager
@@ -159,10 +157,15 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, ContractStatsManagerFixture) {
 
     contractStatsManager.Handle(NULL, OFPTYPE_FLOW_STATS_REPLY, NULL);
     contractStatsManager.Handle(&integrationPortConn,
-                              OFPTYPE_FLOW_STATS_REPLY, NULL);
+                                OFPTYPE_FLOW_STATS_REPLY, NULL);
 
     testOneFlow(integrationPortConn,classifier3,
-            IntFlowManager::POL_TABLE_ID,1,&contractStatsManager,epg1,epg2,&policyManager);
+                IntFlowManager::POL_TABLE_ID,
+                1,
+                &contractStatsManager,
+                epg1,
+                epg2,
+                &policyManager);
 
     contractStatsManager.stop();
 }
@@ -188,7 +191,7 @@ BOOST_FIXTURE_TEST_CASE(testRdDropStats, ContractStatsManagerFixture) {
     BOOST_REQUIRE(res_msg!=0);
 
     contractStatsManager.Handle(&integrationPortConn,
-                              OFPTYPE_FLOW_STATS_REPLY, res_msg);
+                                OFPTYPE_FLOW_STATS_REPLY, res_msg);
     ofpbuf_delete(res_msg);
     LOG(DEBUG) << "testRd:FlowStatsReplyMessage handling successful";
 
@@ -204,7 +207,13 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, ContractStatsManagerFixture) {
 
     // Add flows in switchManager
     FlowEntryList entryList;
-    writeClassifierFlows(entryList,IntFlowManager::POL_TABLE_ID,1,classifier3,epg1,epg2,&policyManager);
+    writeClassifierFlows(entryList,
+                         IntFlowManager::POL_TABLE_ID,
+                         1,
+                         classifier3,
+                         epg1,
+                         epg2,
+                         &policyManager);
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
@@ -212,14 +221,15 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, ContractStatsManagerFixture) {
     // switchManager.
     contractStatsManager.on_timer(ec);
 
-    struct ofpbuf *res_msg = makeFlowRemovedMessage_2(&integrationPortConn,
-                                                      LAST_PACKET_COUNT,
-                                                      IntFlowManager::POL_TABLE_ID,
-                                                      entryList);
+    struct ofpbuf *res_msg =
+        makeFlowRemovedMessage_2(&integrationPortConn,
+                                 LAST_PACKET_COUNT,
+                                 IntFlowManager::POL_TABLE_ID,
+                                 entryList);
     BOOST_REQUIRE(res_msg!=0);
 
     contractStatsManager.Handle(&integrationPortConn,
-                              OFPTYPE_FLOW_REMOVED, res_msg);
+                                OFPTYPE_FLOW_REMOVED, res_msg);
     ofpbuf_delete(res_msg);
 
     // Call on_timer function to process the stats collected
@@ -246,10 +256,10 @@ BOOST_FIXTURE_TEST_CASE(testCircularBuffer, ContractStatsManagerFixture) {
     contractStatsManager.start();
     // Add flows in switchManager
     testCircBuffer(intPortConn,classifier3,
-            IntFlowManager::POL_TABLE_ID,2,&contractStatsManager,
-            epg1,epg2,&policyManager);
+                   IntFlowManager::POL_TABLE_ID,2,&contractStatsManager,
+                   epg1,epg2,&policyManager);
     contractStatsManager.stop();
-    
+
 }
 
 BOOST_FIXTURE_TEST_CASE(testContractDelete, ContractStatsManagerFixture) {
@@ -258,17 +268,23 @@ BOOST_FIXTURE_TEST_CASE(testContractDelete, ContractStatsManagerFixture) {
     contractStatsManager.start();
 
     contractStatsManager.Handle(&integrationPortConn,
-                              OFPTYPE_FLOW_STATS_REPLY, NULL);
+                                OFPTYPE_FLOW_STATS_REPLY, NULL);
 
-    testOneFlow(integrationPortConn,classifier3,
-            IntFlowManager::POL_TABLE_ID,1,&contractStatsManager,epg1,epg2,&policyManager);
+    testOneFlow(integrationPortConn,
+                classifier3,
+                IntFlowManager::POL_TABLE_ID,
+                1,
+                &contractStatsManager,
+                epg1,
+                epg2,
+                &policyManager);
     Mutator mutator(agent.getFramework(), "policyreg");
     modelgbp::gbp::Contract::remove(agent.getFramework(),"tenant0","contract1");
     mutator.commit();
     optional<shared_ptr<PolicyStatUniverse> > su =
-          PolicyStatUniverse::resolve(agent.getFramework());
+        PolicyStatUniverse::resolve(agent.getFramework());
     auto uuid =
-            boost::lexical_cast<std::string>(contractStatsManager.getAgentUUID());
+        boost::lexical_cast<std::string>(contractStatsManager.getAgentUUID());
     optional<shared_ptr<L24ClassifierCounter> > myCounter =
         su.get()-> resolveGbpeL24ClassifierCounter(uuid,
                                                    contractStatsManager.

@@ -31,9 +31,9 @@ class Agent;
  * Periodically query an OpenFlow switch for counters and stats and
  * distribute them as needed to other components for reporting.
  */
-class StatsManager : private boost::noncopyable,
-                     public EndpointListener,
-                     public MessageHandler {
+class InterfaceStatsManager : private boost::noncopyable,
+                              public EndpointListener,
+                              public MessageHandler {
 public:
     /**
      * Instantiate a new stats manager that will use the provided io
@@ -45,15 +45,15 @@ public:
      * @param timer_interval the interval for the stats timer in
      * milliseconds
      */
-    StatsManager(Agent* agent,
-                 PortMapper& intPortMapper,
-                 PortMapper& accessPortMapper,
-                 long timer_interval = 30000);
+    InterfaceStatsManager(Agent* agent,
+                          PortMapper& intPortMapper,
+                          PortMapper& accessPortMapper,
+                          long timer_interval = 30000);
 
     /**
      * Destroy the stats manager and clean up all state
      */
-    ~StatsManager();
+    ~InterfaceStatsManager();
 
     /**
      * Call back for endpoint deletion detection.

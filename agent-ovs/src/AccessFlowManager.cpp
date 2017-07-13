@@ -264,7 +264,8 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
             uint8_t dir = pc->getDirection();
             const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
             const URI& ruleURI = cls.get()->getURI();
-            uint64_t secGrpCookie = idGen.getId("l24classifierRule", ruleURI.toString());
+            uint64_t secGrpCookie =
+                idGen.getId("l24classifierRule", ruleURI.toString());
             boost::optional<const network::subnets_t&> remoteSubs;
             if (!pc->getRemoteSubnets().empty())
                 remoteSubs = pc->getRemoteSubnets();

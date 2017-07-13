@@ -10,7 +10,7 @@
  */
 
 
-#include "BaseStatsManager.h"
+#include "PolicyStatsManager.h"
 
 #pragma once
 #ifndef OVSAGENT_ContractStatsManager_H
@@ -24,7 +24,7 @@ class Agent;
  * Periodically query an OpenFlow switch for policy counters and stats
  * and distribute them as needed to other components for reporting.
  */
-class ContractStatsManager : public BaseStatsManager {
+class ContractStatsManager : public PolicyStatsManager {
 public:
     /**
      * Instantiate a new policy stats manager that will use the
@@ -38,13 +38,13 @@ public:
      * milliseconds
      */
     ContractStatsManager(Agent* agent, IdGenerator& idGen,
-                       SwitchManager& switchManager,
-                       long timer_interval = 30000);
+                         SwitchManager& switchManager,
+                         long timer_interval = 30000);
 
     /**
      * Destroy the policy stats manager and clean up all state
      */
-    ~ContractStatsManager();
+    virtual ~ContractStatsManager();
 
     /**
      * Start the policy stats manager
@@ -55,6 +55,7 @@ public:
      * Stop the policy stats manager
      */
     void stop();
+
     /**
      * Get and increment the drop counter generation ID
      *
@@ -69,37 +70,40 @@ public:
      */
     uint64_t getCurrDropGenId() const { return dropGenId; };
 
-        /**
+    /**
      * Timer interval handler.  For unit tests only.
      */
-    void on_timer(const boost::system::error_code& ec);
-    /** Check to see if the Stats Manager Object can handle the table_id
-     * @return true or false
-     */
+    void on_timer(const boost::system::error_code& ec) override;
 
-    bool isTableIdFound(uint8_t table_id);
-    /** Assign base class counter map pointers to appropriate derived class objects based on table_id
+    /*
+     * Derived class API to delete indexth counter object
      */
-    void resolveCounterMaps(uint8_t table_id);
-    /* modb object listener for L24 classifier object
-     * If the object is deleted, delete all 
-     * the associated counter objects to prevent memory leak
-     * */
+    void clearCounterObject(const std::string& key,uint8_t index) override;
+
+    /** Interface: ObjectListener */
     void objectUpdated(opflex::modb::class_id_t class_id,
-        const opflex::modb::URI& uri);
+                       const opflex::modb::URI& uri) override;
 
-    /* Derived class API to delete indexth counter object
-     * */
-    void clearCounterObject(const std::string& key,uint8_t index);
+    /* Interface: MessageListener */
+    void Handle(SwitchConnection* connection,
+                int msgType, ofpbuf *msg) override;
+
+    void updatePolicyStatsCounters(const std::string& srcEpg,
+                                   const std::string& dstEpg,
+                                   const std::string& ruleURI,
+                                   PolicyCounters_t & counters) override;
+    void handleDropStats(struct ofputil_flow_stats* fentry) override;
 
 private:
-    std::unordered_map<int,std::tuple<
-        std::string,std::string,std::string> > counterObjectKeys_;
+    typedef std::tuple<std::string,std::string,std::string> counter_key_t;
+    std::unordered_map<int, counter_key_t> counterObjectKeys_;
 
-    std::unordered_map<std::string,std::unique_ptr<CircularBuffer> > dropCounterList_;
+    std::unordered_map<std::string,
+                       std::unique_ptr<CircularBuffer>> dropCounterList_;
 
     flowCounterState_t contractState;
     std::atomic<std::uint64_t> dropGenId;
+
     /**
      * Drop Counters for Routing Domain
      */
@@ -110,30 +114,14 @@ private:
     };
 
     /* map Routing Domain Id to Policy Drop counters */
-
     typedef std::unordered_map<uint32_t,
                                PolicyDropCounters_t> PolicyDropCounterMap_t;
-
-
+    PolicyDropCounterMap_t policyDropCountersMap;
 
     void updatePolicyStatsDropCounters(const std::string& rdURI,
                                        PolicyDropCounters_t& counters);
-
-    void updatePolicyStatsCounters(const std::string& srcEpg,
-                                   const std::string& dstEpg,
-                                   const std::string& ruleURI,
-                                   PolicyCounters_t& counters);
     void updatePolicyFlowEntryMap(uint64_t cookie, uint16_t priority,
-                                            const struct match& match);
-
-    void handleDropStats(uint32_t rdId,
-                         boost::optional<std::string> idRdStr,
-                         struct ofputil_flow_stats* fentry);
-    void updatePolicyStatsCounters(const std::string& l24Classifier,
-                          PolicyCounters_t& newVals1,
-                          PolicyCounters_t& newVals2) {
-    }
-    PolicyDropCounterMap_t policyDropCountersMap;
+                                  const struct match& match);
 };
 
 } /* namespace ovsagent */

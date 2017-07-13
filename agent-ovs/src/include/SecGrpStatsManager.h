@@ -10,7 +10,7 @@
  */
 
 
-#include "BaseStatsManager.h"
+#include "PolicyStatsManager.h"
 
 #pragma once
 #ifndef OVSAGENT_SecGrpStatsManager_H
@@ -24,7 +24,7 @@ class Agent;
  * Periodically query an OpenFlow switch for policy counters and stats
  * and distribute them as needed to other components for reporting.
  */
-class SecGrpStatsManager : public BaseStatsManager {
+class SecGrpStatsManager : public PolicyStatsManager {
 public:
     /**
      * Instantiate a new policy stats manager that will use the
@@ -44,7 +44,7 @@ public:
     /**
      * Destroy the policy stats manager and clean up all state
      */
-    ~SecGrpStatsManager();
+    virtual ~SecGrpStatsManager();
 
     /**
      * Start the policy stats manager
@@ -60,49 +60,30 @@ public:
      * Timer interval handler.  For unit tests only.
      */
     void on_timer(const boost::system::error_code& ec);
-    /** Check to see if the Stats Manager Object can handle the table_id
-     * @return true or false
+
+    /**
+     * Delete indexth counter object
+     *
+     * @param key the key of the object to remove
+     * @param index the index of the counter to remove
      */
-    bool isTableIdFound(uint8_t table_id);
-
-    /* Policy Listener call back to capture when 
-     * contract is created or deleted
-     * */
-    void resolveCounterMaps(uint8_t table_id);
-
-    /* modb object listener for L24 classifier object
-     * If the object is deleted, delete all 
-     * the associated counter objects to prevent memory leak
-     * */
-    void objectUpdated(opflex::modb::class_id_t class_id,
-        const opflex::modb::URI& uri);
-
-    /* Derived class API to delete indexth counter object
-     * */
     void clearCounterObject(const std::string& key,uint8_t index);
-    
+
+    /** Interface: ObjectListener */
+    void objectUpdated(opflex::modb::class_id_t class_id,
+                       const opflex::modb::URI& uri) override;
+
+    /* Interface: MessageListener */
+    void Handle(SwitchConnection* connection,
+                int msgType, ofpbuf *msg) override;
+
+    void updatePolicyStatsCounters(const std::string& l24Classifier,
+                                   PolicyCounters_t& newVals1,
+                                   PolicyCounters_t& newVals2) override;
 
 private:
     flowCounterState_t secGrpInState;
     flowCounterState_t secGrpOutState;
-    
-    void updateAccInFlowEntryMap(uint64_t cookie, uint16_t priority,
-                            const struct match& match);
-    void updateAccOutFlowEntryMap(uint64_t cookie, uint16_t priority,
-                            const struct match& match);
-    void updatePolicyStatsCounters(const std::string& l24Classifier,
-                          PolicyCounters_t& newVals1,
-                          PolicyCounters_t& newVals2);
-
-    void handleDropStats(uint32_t rdId,
-                         boost::optional<std::string> idRdStr,
-                         struct ofputil_flow_stats* fentry) {
-    }
-    void updatePolicyStatsCounters(const std::string& srcEpg,
-                                   const std::string& dstEpg,
-                                   const std::string& ruleURI,
-                                   PolicyCounters_t& counters) {
-    }
 };
 
 } /* namespace ovsagent */

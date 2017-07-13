@@ -77,7 +77,7 @@ namespace ovsagent {
 
 static const char* ID_NAMESPACES[] =
     {"floodDomain", "bridgeDomain", "routingDomain",
-     "externalNetwork", "service", "l24classifierRule"};
+     "externalNetwork", "l24classifierRule", "service"};
 
 static const char* ID_NMSPC_FD            = ID_NAMESPACES[0];
 static const char* ID_NMSPC_BD            = ID_NAMESPACES[1];
