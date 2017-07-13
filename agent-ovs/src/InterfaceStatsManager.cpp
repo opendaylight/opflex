@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation for StatsManager class.
+ * Implementation for InterfaceStatsManager class.
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -10,7 +10,7 @@
  */
 
 #include "logging.h"
-#include "StatsManager.h"
+#include "InterfaceStatsManager.h"
 #include "Agent.h"
 #include <limits>
 
@@ -29,8 +29,10 @@ using boost::posix_time::milliseconds;
 using std::bind;
 using boost::system::error_code;
 
-StatsManager::StatsManager(Agent* agent_, PortMapper& intPortMapper_,
-                           PortMapper& accessPortMapper_, long timer_interval_)
+InterfaceStatsManager::InterfaceStatsManager(Agent* agent_,
+                                             PortMapper& intPortMapper_,
+                                             PortMapper& accessPortMapper_,
+                                             long timer_interval_)
     : agent(agent_), intPortMapper(intPortMapper_),
       accessPortMapper(accessPortMapper_),
       intConnection(NULL), accessConnection(NULL),
@@ -38,16 +40,16 @@ StatsManager::StatsManager(Agent* agent_, PortMapper& intPortMapper_,
       timer_interval(timer_interval_), stopping(false) {
 }
 
-StatsManager::~StatsManager() {
+InterfaceStatsManager::~InterfaceStatsManager() {
 }
 
-void StatsManager::registerConnection(SwitchConnection* intConnection,
+void InterfaceStatsManager::registerConnection(SwitchConnection* intConnection,
                                  SwitchConnection *accessConnection ) {
     this->intConnection = intConnection;
     this->accessConnection = accessConnection;
 }
 
-void StatsManager::start() {
+void InterfaceStatsManager::start() {
     stopping = false;
 
     if (!intConnection) { //  accessConnection is optional
@@ -60,15 +62,16 @@ void StatsManager::start() {
     if (intConnection)
         intConnection->RegisterMessageHandler(OFPTYPE_PORT_STATS_REPLY, this);
     if (accessConnection) {
-        accessConnection->RegisterMessageHandler(OFPTYPE_PORT_STATS_REPLY, this);
+        accessConnection->RegisterMessageHandler(OFPTYPE_PORT_STATS_REPLY,
+                                                 this);
         agent->getEndpointManager().registerListener(this);
     }
 
     timer.reset(new deadline_timer(agent_io, milliseconds(timer_interval)));
-    timer->async_wait(bind(&StatsManager::on_timer, this, error));
+    timer->async_wait(bind(&InterfaceStatsManager::on_timer, this, error));
 }
 
-void StatsManager::stop() {
+void InterfaceStatsManager::stop() {
     LOG(DEBUG) << "Stopping stats manager";
     stopping = true;
 
@@ -86,14 +89,14 @@ void StatsManager::stop() {
     }
 }
 
-void StatsManager::endpointUpdated(const std::string& uuid) {
+void InterfaceStatsManager::endpointUpdated(const std::string& uuid) {
     if (!agent->getEndpointManager().getEndpoint(uuid)) {
         std::lock_guard<std::mutex> lock(statMtx);
         intfCounterMap.erase(uuid);
     }
 }
 
-void StatsManager::on_timer(const error_code& ec) {
+void InterfaceStatsManager::on_timer(const error_code& ec) {
     if (ec) {
         // shut down the timer when we get a cancellation
         timer.reset();
@@ -124,13 +127,14 @@ void StatsManager::on_timer(const error_code& ec) {
 
     if (!stopping) {
         timer->expires_at(timer->expires_at() + milliseconds(timer_interval));
-        timer->async_wait(bind(&StatsManager::on_timer, this, error));
+        timer->async_wait(bind(&InterfaceStatsManager::on_timer, this, error));
     }
 }
 
-void StatsManager::updateEndpointCounters(const std::string& uuid,
-                                  SwitchConnection * connection,
-                                  EndpointManager::EpCounters& counters) {
+void InterfaceStatsManager::
+updateEndpointCounters(const std::string& uuid,
+                       SwitchConnection * connection,
+                       EndpointManager::EpCounters& counters) {
     EndpointManager& epMgr = agent->getEndpointManager();
     if (!accessConnection) {
         epMgr.updateEndpointCounters(uuid, counters);
@@ -154,8 +158,9 @@ void StatsManager::updateEndpointCounters(const std::string& uuid,
         intfCounterMap.erase(uuid);
     }
 }
-void StatsManager::Handle(SwitchConnection* connection,
-                          int msgType, ofpbuf *msg) {
+
+void InterfaceStatsManager::Handle(SwitchConnection* connection,
+                                   int msgType, ofpbuf *msg) {
     assert(msgType == OFPTYPE_PORT_STATS_REPLY);
     if (!connection || !msg)
         return;
@@ -194,11 +199,12 @@ void StatsManager::Handle(SwitchConnection* connection,
                 epMgr.getEndpointsByAccessIface(accessPortName, endpoints);
             }
         } catch (std::out_of_range e) {
-            LOG(DEBUG) << "OpenFlow port on bridge " <<
-                            ((connection == intConnection) ?
-                            intConnection->getSwitchName() :
-                            accessConnection->getSwitchName()) << " not found: "
-                            << ps.port_no;
+            LOG(DEBUG) << "OpenFlow port on bridge "
+                       << ((connection == intConnection) ?
+                           intConnection->getSwitchName() :
+                           accessConnection->getSwitchName())
+                       << " not found: "
+                       << ps.port_no;
         }
 
         for (const std::string& uuid : endpoints) {
