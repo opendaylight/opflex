@@ -563,13 +563,12 @@ private:
     typedef std::unordered_map<opflex::modb::URI, Ep2PortMap> FloodGroupMap;
     FloodGroupMap floodGroupMap;
 
-    bool isSyncing;
-
     uint32_t getExtNetVnid(const opflex::modb::URI& uri);
 
     PacketInHandler pktInHandler;
     AdvertManager advertManager;
 
+    bool isSyncing;
     volatile bool stopping;
 
     void initPlatformConfig();
