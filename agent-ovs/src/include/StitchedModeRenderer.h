@@ -16,7 +16,7 @@
 #include "FlowReader.h"
 #include "FlowExecutor.h"
 #include "PortMapper.h"
-#include "StatsManager.h"
+#include "InterfaceStatsManager.h"
 #include "ContractStatsManager.h"
 #include "SecGrpStatsManager.h"
 #include "TunnelEpManager.h"
@@ -79,7 +79,7 @@ private:
     SwitchManager accessSwitchManager;
     AccessFlowManager accessFlowManager;
 
-    StatsManager statsManager;
+    InterfaceStatsManager interfaceStatsManager;
     ContractStatsManager contractStatsManager;
     SecGrpStatsManager secGrpStatsManager;
     TunnelEpManager tunnelEpManager;
