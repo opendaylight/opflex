@@ -53,16 +53,26 @@ public:
 /**
  * A shared pointer to a flow entry
  */
-typedef std::shared_ptr<FlowEntry>    FlowEntryPtr;
+typedef std::shared_ptr<FlowEntry> FlowEntryPtr;
 /**
  * A vector of flow entry pointers
  */
-typedef std::vector<FlowEntryPtr>       FlowEntryList;
+typedef std::vector<FlowEntryPtr> FlowEntryList;
 
 /**
  * Print flow entry to an output stream.
  */
 std::ostream& operator<<(std::ostream& os, const FlowEntry& fe);
+
+/**
+ * Print a flow stats to an output stream
+ */
+std::ostream& operator<<(std::ostream& os, const struct ofputil_flow_stats& fs);
+
+/**
+ * Print a match to an output stream
+ */
+std::ostream& operator<<(std::ostream& os, const struct match& m);
 
 /**
  * Class that represents a list of table changes.
