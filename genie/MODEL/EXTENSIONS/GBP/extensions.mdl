@@ -294,7 +294,8 @@ module[gbpe]
         member[bytes; type=scalar/UInt64]
 
     }
-    class[HPPClassifierCounter;
+
+    class[SecGrpClassifierCounter;
           super=observer/Observable;
           concrete;
           ]
@@ -318,25 +319,21 @@ module[gbpe]
 
         # A unique identifer for the counter incarnation
         member[genId; type=scalar/UInt64]
-       
-      # A unique identifer for the classifier.
+
+        # A unique identifer for the classifier.
         member[classifier; type=reference/URI]
 
         # number of packets sent from src to dst matching classifier (RX packets )
         member[rxpackets; type=scalar/UInt64]
 
-        # number of bytes sent from src to dst matching classifier (RX bytes) 
-        # These counters are collected from SEC_GROUP_OUT_TABLE_ID of open flow table
+        # number of bytes sent from src to dst matching classifier (RX bytes)
         member[rxbytes; type=scalar/UInt64]
-   
-      # number of packets sent from dst to src matching classifier (TX packets)
+
+        # number of packets sent from dst to src matching classifier (TX packets)
         member[txpackets; type=scalar/UInt64]
 
         # number of bytes sent from dst to src matching classifier (TX bytes)
-        # These counters are collected from SEC_GROUP_IN_TABLE_ID of open flow table
         member[txbytes; type=scalar/UInt64]
-   
-
     }
 
     class[RoutingDomainDropCounter;
