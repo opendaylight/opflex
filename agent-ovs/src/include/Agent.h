@@ -127,6 +127,7 @@ public:
 
 private:
     boost::asio::io_service agent_io;
+    std::unique_ptr<boost::asio::io_service::work> io_work;
 
     opflex::ofcore::OFFramework& framework;
     PolicyManager policyManager;

@@ -285,6 +285,7 @@ void Agent::start() {
         r.second->start();
     }
 
+    io_work.reset(new io_service::work(agent_io));
     io_service_thread.reset(new thread([this]() { agent_io.run(); }));
 
     for (const std::string& path : endpointSourcePaths) {
@@ -325,6 +326,9 @@ void Agent::stop() {
     policyManager.stop();
     framework.stop();
 
+    if (io_work) {
+        io_work.reset();
+    }
     if (io_service_thread) {
         io_service_thread->join();
         io_service_thread.reset();

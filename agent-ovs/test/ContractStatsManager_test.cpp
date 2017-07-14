@@ -64,7 +64,9 @@ public:
         idGen.initNamespace("routingDomain");
         switchManager.setMaxFlowTables(10);
     }
-    virtual ~ContractStatsManagerFixture() {}
+    virtual ~ContractStatsManagerFixture() {
+        stop();
+    }
     void verifyRoutingDomainDropStats(shared_ptr<RoutingDomain> rd,
                                       uint32_t packet_count,
                                       uint32_t byte_count);

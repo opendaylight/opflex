@@ -17,8 +17,6 @@
 #include "CtZoneManager.h"
 #include "logging.h"
 
-#include <boost/asio/io_service.hpp>
-
 #include <vector>
 #include <thread>
 
@@ -36,20 +34,12 @@ public:
     }
 
     virtual void start() {
-        using boost::asio::io_service;
-        using std::thread;
-        agent.getAgentIOService().reset();
-        io_service& io = agent.getAgentIOService();
-        ioWork.reset(new io_service::work(io));
-        ioThread.reset(new thread([&io] { io.run(); }));
         switchManager.start("placeholder");
     }
 
     virtual void stop() {
         switchManager.stop();
-        ioWork.reset();
-        ioThread->join();
-        ioThread.reset();
+        agent.stop();
     }
 
     void setConnected() {
@@ -70,9 +60,6 @@ public:
     MockSwitchManager switchManager;
 
     std::vector<FlowEntryList> expTables;
-
-    std::unique_ptr<std::thread> ioThread;
-    std::unique_ptr<boost::asio::io_service::work> ioWork;
 };
 
 void addExpFlowEntry(std::vector<FlowEntryList>& tables,

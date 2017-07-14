@@ -62,17 +62,18 @@ public:
         ofptype_decode(&typ, hdr);
         BOOST_CHECK(typ == OFPTYPE_FLOW_STATS_REQUEST);
         ofpbuf_delete(msg);
+        return 0;
     }
 };
 
 class PolicyStatsManagerFixture : public FlowManagerFixture {
 public:
-    virtual void verifyFlowStats(shared_ptr<L24Classifier> classifier,
-                                 uint32_t packet_count,
-                                 uint32_t byte_count,uint32_t table_id,
-                                 PolicyStatsManager *statsManager,
-                                 shared_ptr<EpGroup> srcEpg = NULL,
-                                 shared_ptr<EpGroup> dstEpg = NULL) {
+    void verifyFlowStats(shared_ptr<L24Classifier> classifier,
+                         uint32_t packet_count,
+                         uint32_t byte_count,uint32_t table_id,
+                         PolicyStatsManager *statsManager,
+                         shared_ptr<EpGroup> srcEpg = NULL,
+                         shared_ptr<EpGroup> dstEpg = NULL) {
         optional<shared_ptr<PolicyStatUniverse> > su =
             PolicyStatUniverse::resolve(agent.getFramework());
         if (srcEpg != NULL && dstEpg != NULL) {
@@ -196,6 +197,8 @@ public:
 
             return bufp;
         }
+
+        return NULL;
     }
 
     void writeClassifierFlows(FlowEntryList& entryList,
@@ -205,10 +208,6 @@ public:
                               shared_ptr<EpGroup> srcEpg = NULL,
                               shared_ptr<EpGroup> dstEpg = NULL,
                               PolicyManager *policyManager = NULL) {
-
-        //FlowEntryList entryList;
-        struct ofputil_flow_mod fm;
-        enum ofputil_protocol prots;
         uint32_t priority = PolicyManager::MAX_POLICY_RULE_PRIORITY;
         const string& classifierId = classifier->getURI().toString();
         uint32_t cookie =
