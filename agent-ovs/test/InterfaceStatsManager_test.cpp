@@ -55,7 +55,9 @@ public:
         epSrc.updateEndpoint(*ep1);
 
       }
-    virtual ~InterfaceStatsManagerFixture() {}
+    virtual ~InterfaceStatsManagerFixture() {
+        agent.stop();
+    }
     void verifyCounters(uint64_t *dummy, int port_num);
 
     InterfaceStatsManager statsManager;

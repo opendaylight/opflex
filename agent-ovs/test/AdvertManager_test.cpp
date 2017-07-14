@@ -34,7 +34,6 @@ extern "C" {
 
 using std::string;
 using std::unordered_set;
-using boost::asio::io_service;
 using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
 using namespace ovsagent;
@@ -109,22 +108,13 @@ public:
     }
 
     void start() {
-        agent.getAgentIOService().reset();
-        intFlowManager.start();
         advertManager.start();
-
-        io_service& io = agent.getAgentIOService();
-        ioThread.reset(new std::thread([&io]() { io.run(); }));
     }
 
     void stop() {
-        intFlowManager.stop();
         advertManager.stop();
-
-        if (ioThread) {
-            ioThread->join();
-            ioThread.reset();
-        }
+        switchManager.stop();
+        agent.stop();
     }
 
     void testEpAdvert(AdvertManager::EndpointAdvMode mode);
@@ -139,8 +129,6 @@ public:
     IntFlowManager intFlowManager;
     AdvertManager advertManager;
     ofputil_protocol proto;
-
-    std::unique_ptr<std::thread> ioThread;
 };
 
 class EpAdvertFixtureGU : public AdvertManagerFixture {
