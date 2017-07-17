@@ -83,8 +83,8 @@ static const char* ID_NMSPC_FD            = ID_NAMESPACES[0];
 static const char* ID_NMSPC_BD            = ID_NAMESPACES[1];
 static const char* ID_NMSPC_RD            = ID_NAMESPACES[2];
 static const char* ID_NMSPC_EXTNET        = ID_NAMESPACES[3];
-static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[4];
-static const char* ID_NMSPC_L24CLASS_RULE = ID_NAMESPACES[5];
+static const char* ID_NMSPC_L24CLASS_RULE = ID_NAMESPACES[4];
+static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[5];
 
 IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,

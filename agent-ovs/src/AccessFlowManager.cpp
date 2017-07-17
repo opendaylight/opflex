@@ -38,7 +38,7 @@ using boost::copy_range;
 using boost::optional;
 
 static const char* ID_NAMESPACES[] =
-    {"secGroup", "secGroupSet", "l24classifierRule"};
+    {"secGroup", "secGroupSet"};
 
 static const char* ID_NMSPC_SECGROUP     = ID_NAMESPACES[0];
 static const char* ID_NMSPC_SECGROUP_SET = ID_NAMESPACES[1];
