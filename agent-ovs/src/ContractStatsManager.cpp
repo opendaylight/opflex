@@ -191,7 +191,7 @@ updatePolicyStatsDropCounters(const std::string& rdStr,
     }
     if (dropCounterList_[rdStr]->uidList.size() == MAX_DROP_COUNTER_LIMIT) {
         RoutingDomainDropCounter::
-            remove(getAgentUUID(),
+            remove(agent->getFramework(),getAgentUUID(),
                    dropCounterList_[rdStr]->
                    uidList[dropCounterList_[rdStr]->count],
                    rdStr);
@@ -247,7 +247,7 @@ void ContractStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
             for (size_t i = 0; i < dropCounterList_[rdName]->uidList.size();
                  i++) {
                 RoutingDomainDropCounter::
-                    remove(getAgentUUID(),
+                    remove(agent->getFramework(),getAgentUUID(),
                            dropCounterList_[rdName]->
                            uidList[dropCounterList_[rdName]->count],
                            rdName);
