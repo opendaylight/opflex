@@ -390,9 +390,6 @@ void PolicyStatsManager::handleFlowStats(ofpbuf *msg, table_map_t tableMap) {
             if (ret != EOF) {
                 LOG(ERROR) << "Failed to decode flow stats reply: "
                            << ovs_strerror(ret);
-            } else {
-                LOG(ERROR) << "No more flow stats entries to decode "
-                           << ovs_strerror(ret);
             }
             break;
         } else {
