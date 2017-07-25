@@ -593,13 +593,16 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
         l2e->addEprSecurityGroupContext(secGroup.toString());
     }
 
-    if (ep->getInterfaceName())
+    if (ep->getAccessInterface())
+        l2e->setInterfaceName(ep->getAccessInterface().get());
+    else if (ep->getInterfaceName())
         l2e->setInterfaceName(ep->getInterfaceName().get());
     const Endpoint::attr_map_t& attr_map = ep->getAttributes();
     shared_ptr<ReportedEpAttributeSet> epas =
         l2e->addGbpeReportedEpAttributeSet();
     for (const pair<const string, string>& ap : attr_map) {
-        shared_ptr<ReportedEpAttribute> epa = epas->addGbpeReportedEpAttribute(ap.first);
+        shared_ptr<ReportedEpAttribute> epa =
+            epas->addGbpeReportedEpAttribute(ap.first);
         epa->setName(ap.first);
         epa->setValue(ap.second);
         if (VM_NAME_ATTR == ap.first)
