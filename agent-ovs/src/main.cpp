@@ -272,7 +272,6 @@ int main(int argc, char** argv) {
         });
 
     int rc = launcher.run();
-    if (rc) exit(rc);
-    signal_thread.join();
-    return 0;
+    LOG(INFO) << "Agent shutdown complete: " << rc;
+    exit(rc);
 }
