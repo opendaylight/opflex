@@ -337,17 +337,6 @@ void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
                     counterState.newFlowCounterMap.erase(flowEntryKey);
                 }
             }
-        } else {
-            // This is the case when FLOW_REMOVE is received even
-            // before Policy Stats Manager knows about it.  This can
-            // potentially happen as we learn about flow entries
-            // periodically. The side effect is we lose a maximum of
-            // polling interval worth of counters for this classifier
-            // entry. We choose to ignore this case for now.
-            LOG(DEBUG) << "Received flow stats for an unknown flow: "
-                       << "cookie=" << cookie
-                       << ", match=" << match
-                       << ", priority=" << priority;
         }
     }
 }
@@ -474,6 +463,10 @@ void PolicyStatsManager::sendRequest(uint32_t table_id) {
     }
 }
 
+static inline bool isExtNet(uint64_t reg) {
+    return (reg & (1 << 31));
+}
+
 void PolicyStatsManager::
 generatePolicyStatsObjects(PolicyCounterMap_t *newCountersMap1,
                            PolicyCounterMap_t *newCountersMap2) {
@@ -494,15 +487,20 @@ generatePolicyStatsObjects(PolicyCounterMap_t *newCountersMap1,
                 newCounters2 = it->second ;
             }
         } else {
+            if ((isExtNet(flowKey.reg0) || isExtNet(flowKey.reg2)))
+                // ignore contracts with external networks
+                continue;
+            }
+
             srcEpgUri = polMgr.getGroupForVnid(flowKey.reg0);
             dstEpgUri = polMgr.getGroupForVnid(flowKey.reg2);
             if (srcEpgUri == boost::none) {
-                LOG(ERROR) << "Reg0: " << flowKey.reg0
+                LOG(DEBUG) << "Reg0: " << flowKey.reg0
                            << " to EPG URI translation does not exist";
                 continue;
             }
             if (dstEpgUri == boost::none) {
-                LOG(ERROR) << "Reg2: " << flowKey.reg2
+                LOG(DEBUG) << "Reg2: " << flowKey.reg2
                            << " to EPG URI translation does not exist";
                 continue;
             }
@@ -512,7 +510,7 @@ generatePolicyStatsObjects(PolicyCounterMap_t *newCountersMap1,
                                  getIdNamespace(L24Classifier::CLASS_ID),
                                  flowKey.cookie);
         if (idStr == boost::none) {
-            LOG(ERROR) << "Cookie: " << flowKey.cookie
+            LOG(DEBUG) << "Cookie: " << flowKey.cookie
                        << " to Classifier URI translation does not exist";
             continue;
         }
