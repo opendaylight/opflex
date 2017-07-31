@@ -108,13 +108,16 @@ public:
                 agent.start();
 
                 cond.wait(lock, [this]{ return stopped || need_reload; });
+                if (!stopped && need_reload) {
+                    LOG(INFO) << "Reloading agent because of " <<
+                        "configuration update";
+                }
                 agent.stop();
 
                 if (stopped) {
                     return 0;
                 }
                 need_reload = false;
-                LOG(INFO) << "Reloading agent because of configuration update";
             }
         } catch (pt::json_parser_error& e) {
             return 4;

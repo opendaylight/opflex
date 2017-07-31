@@ -71,6 +71,7 @@ void SecGrpStatsManager::stop() {
 void SecGrpStatsManager::on_timer(const error_code& ec) {
     if (ec) {
         // shut down the timer when we get a cancellation
+        timer.reset();
         return;
     }
 
@@ -100,7 +101,7 @@ void SecGrpStatsManager::on_timer(const error_code& ec) {
 
     sendRequest(AccessFlowManager::SEC_GROUP_IN_TABLE_ID);
     sendRequest(AccessFlowManager::SEC_GROUP_OUT_TABLE_ID);
-    if (!stopping) {
+    if (!stopping && timer) {
         timer->expires_from_now(milliseconds(timer_interval));
         timer->async_wait(bind(&SecGrpStatsManager::on_timer, this, error));
     }

@@ -69,6 +69,7 @@ void ContractStatsManager::start() {
 
 void ContractStatsManager::stop() {
     LOG(DEBUG) << "Stopping policy stats manager";
+    stopping = true;
     EpGroup::unregisterListener(agent->getFramework(),this);
     RoutingDomain::unregisterListener(agent->getFramework(),this);
     PolicyStatsManager::stop();
@@ -77,6 +78,7 @@ void ContractStatsManager::stop() {
 void ContractStatsManager::on_timer(const error_code& ec) {
     if (ec) {
         // shut down the timer when we get a cancellation
+        timer.reset();
         return;
     }
 
@@ -98,7 +100,7 @@ void ContractStatsManager::on_timer(const error_code& ec) {
     generatePolicyStatsObjects(&newClassCountersMap);
 
     sendRequest(IntFlowManager::POL_TABLE_ID);
-    if (!stopping) {
+    if (!stopping && timer) {
         timer->expires_from_now(milliseconds(timer_interval));
         timer->async_wait(bind(&ContractStatsManager::on_timer, this, error));
     }
