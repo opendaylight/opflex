@@ -33,6 +33,8 @@ extern "C" {
 typedef std::lock_guard<std::mutex> mutex_guard;
 
 const int LOST_CONN_BACKOFF_MSEC = 5000;
+const std::chrono::seconds ECHO_INTERVAL(5);
+const std::chrono::seconds MAX_ECHO_INTERVAL(30);
 
 #define OVS_VSWITCH_DAEMON  "ovs-vswitchd"
 
@@ -47,6 +49,7 @@ SwitchConnection::SwitchConnection(const std::string& swName) :
     pollEventFd = eventfd(0, 0);
 
     RegisterMessageHandler(OFPTYPE_ECHO_REQUEST, &echoReqHandler);
+    RegisterMessageHandler(OFPTYPE_ECHO_REPLY, &echoRepHandler);
     RegisterMessageHandler(OFPTYPE_ERROR, &errorHandler);
 }
 
@@ -274,6 +277,11 @@ SwitchConnection::Monitor() {
         FireOnConnectListeners();
     }
     while (true) {
+        {
+            mutex_guard lock(connMtx);
+            lastEchoTime = std::chrono::steady_clock::now();
+        }
+
         if (connLost) {
             LOG(ERROR) << "Connection lost, trying to auto reconnect";
             mutex_guard lock(connMtx);
@@ -299,6 +307,8 @@ SwitchConnection::Monitor() {
         if (!connLost) {
             {
                 mutex_guard lock(connMtx);
+                poll_timer_wait(LOST_CONN_BACKOFF_MSEC);
+
                 vconn_run(ofConn);
                 vconn_run_wait(ofConn);
                 vconn_recv_wait(ofConn);
@@ -311,6 +321,24 @@ SwitchConnection::Monitor() {
         }
         connLost = (EOF == receiveOFMessage() ||
                     EOF == receiveJsonMessage());
+
+        if (!connLost) {
+            std::chrono::time_point<std::chrono::steady_clock> echoTime;
+            {
+                mutex_guard lock(connMtx);
+                echoTime = lastEchoTime;
+            }
+
+            auto diff = std::chrono::steady_clock::now() - echoTime;
+            if (diff >= MAX_ECHO_INTERVAL) {
+                LOG(ERROR) << "Timed out reading from switch socket";
+                connLost = true;
+            } else if (diff >= ECHO_INTERVAL) {
+                struct ofpbuf *msg =
+                    make_echo_request((ofp_version)GetProtocolVersion());
+                SendMessage(msg);
+            }
+        }
     }
     return;
 }
@@ -422,7 +450,7 @@ SwitchConnection::FireOnConnectListeners() {
         // Set controller role to MASTER
         ofpbuf *b0;
         ofp12_role_request *rr;
-        b0 = ofpraw_alloc(OFPRAW_OFPT12_ROLE_REQUEST, 
+        b0 = ofpraw_alloc(OFPRAW_OFPT12_ROLE_REQUEST,
                           GetProtocolVersion(), sizeof *rr);
         rr = (ofp12_role_request*)ofpbuf_put_zeros(b0, sizeof *rr);
         rr->role = htonl(OFPCR12_ROLE_MASTER);
@@ -465,6 +493,13 @@ SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
     const ofp_header *rq = (const ofp_header *)msg->data;
     struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
     swConn->SendMessage(echoReplyMsg);
+}
+
+void
+SwitchConnection::EchoReplyHandler::Handle(SwitchConnection *swConn,
+                                    int, ofpbuf *msg) {
+    mutex_guard lock(swConn->connMtx);
+    swConn->lastEchoTime = std::chrono::steady_clock::now();
 }
 
 void

@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <thread>
 #include <mutex>
+#include <chrono>
 
 struct vconn;
 struct jsonrpc;
@@ -256,6 +257,7 @@ private:
     OnConnectList onConnectListeners;
 
     int pollEventFd;
+    std::chrono::time_point<std::chrono::steady_clock> lastEchoTime;
 
 private:
     /**
@@ -267,6 +269,16 @@ private:
     };
 
     EchoRequestHandler echoReqHandler;
+
+    /**
+     * @brief Handle ECHO replies from switch
+     * Needed to keep the connection to switch alive.
+     */
+    class EchoReplyHandler : public MessageHandler {
+        void Handle(SwitchConnection *swConn, int type, struct ofpbuf *msg);
+    };
+
+    EchoReplyHandler echoRepHandler;
 
     /**
      * @brief Handle errors from the switch by logging.
