@@ -154,6 +154,7 @@ SwitchConnection::doConnectOF() {
             << " using protocol version " << ofProtoVersion;
     {
         mutex_guard lock(connMtx);
+        lastEchoTime = std::chrono::steady_clock::now();
         cleanupOFConn();
         ofConn = newConn;
         ofProtoVersion = connVersion;
@@ -276,12 +277,8 @@ SwitchConnection::Monitor() {
     if (!connLost) {
         FireOnConnectListeners();
     }
-    while (true) {
-        {
-            mutex_guard lock(connMtx);
-            lastEchoTime = std::chrono::steady_clock::now();
-        }
 
+    while (true) {
         if (connLost) {
             LOG(ERROR) << "Connection lost, trying to auto reconnect";
             mutex_guard lock(connMtx);
@@ -292,7 +289,7 @@ SwitchConnection::Monitor() {
         while (connLost && !isDisconnecting) {
             WatchPollEvent();
             poll_timer_wait(LOST_CONN_BACKOFF_MSEC);
-            poll_block();   // block till timer expires or disconnect is requested
+            poll_block(); // block till timer expires or disconnect is requested
             if (!isDisconnecting) {
                 connLost = (doConnectOF() != 0 || doConnectJson() != 0);
             }

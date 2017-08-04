@@ -90,6 +90,11 @@ public:
     /* Interface: MessageHandler */
     void Handle(SwitchConnection *c, int msgType, ofpbuf *msg);
 
+    /**
+     * Clear the state of the flow reader
+     */
+    void clear();
+
 private:
     /**
      * Create a request for reading all entries of specified table.

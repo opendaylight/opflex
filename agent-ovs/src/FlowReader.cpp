@@ -41,6 +41,12 @@ void FlowReader::uninstallListenersForConnection(SwitchConnection *conn) {
     conn->RegisterMessageHandler(OFPTYPE_GROUP_DESC_STATS_REPLY, this);
 }
 
+void FlowReader::clear() {
+    mutex_guard lock(reqMtx);
+    flowRequests.clear();
+    groupRequests.clear();
+}
+
 bool FlowReader::getFlows(uint8_t tableId, const FlowCb& cb) {
     return getFlows(tableId, NULL, cb);
 }

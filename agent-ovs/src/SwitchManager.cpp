@@ -118,6 +118,10 @@ void SwitchManager::Connected(SwitchConnection *swConn) {
 }
 
 void SwitchManager::handleConnection(SwitchConnection *sw) {
+    flowReader.clear();
+    syncInProgress = false;
+    syncPending = false;
+
     if (syncEnabled) {
         LOG(DEBUG) << "[" << connection->getSwitchName() << "] "
                    << "Handling new connection to switch";
