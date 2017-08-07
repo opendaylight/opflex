@@ -220,6 +220,32 @@ void IntFlowManagerFixture::epgTest() {
     initExpEp(ep2, epg0);
     WAIT_FOR_TABLES("create", 500);
 
+    /* no EPG */
+    ep0->setEgURI(opflex::modb::URI("/nothing"));
+    epSrc.updateEndpoint(*ep0);
+    intFlowManager.endpointUpdated(ep0->getUUID());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep2, epg0);
+    WAIT_FOR_TABLES("remove epg", 500);
+
+    /* restore EPG */
+    ep0->setEgURI(epg0->getURI());
+    epSrc.updateEndpoint(*ep0);
+    intFlowManager.endpointUpdated(ep0->getUUID());
+
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    WAIT_FOR_TABLES("restore epg", 500);
+
     /* forwarding object change */
     Mutator m1(framework, policyOwner);
     epg0->addGbpEpGroupToNetworkRSrc()
@@ -299,10 +325,6 @@ void IntFlowManagerFixture::epgTest() {
     WAIT_FOR_TABLES("remove domain", 500);
 
     /* remove */
-
-    // XXX TODO there seems to be bugs around removing the epg but not
-    // the endpoint with flows left behind
-
     epSrc.removeEndpoint(ep0->getUUID());
     epSrc.removeEndpoint(ep2->getUUID());
 
@@ -321,7 +343,7 @@ void IntFlowManagerFixture::epgTest() {
 
     clearExpFlowTables();
     initExpStatic();
-    WAIT_FOR_TABLES("remove epg", 500);
+    WAIT_FOR_TABLES("remove ep", 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(epg_vxlan, VxlanIntFlowManagerFixture) {
