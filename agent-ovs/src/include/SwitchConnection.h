@@ -18,8 +18,6 @@
 #include <chrono>
 
 struct vconn;
-struct jsonrpc;
-struct jsonrpc_msg;
 struct ofpbuf;
 
 namespace ovsagent {
@@ -42,19 +40,6 @@ public:
 };
 
 /**
- * @brief Abstract base-class for a JSON message handler.
- */
-class JsonMessageHandler {
-public:
-    /**
-     * Called after a message is received.
-     * @param swConn Connection where message was received
-     * @param msg The received message
-     */
-    virtual void Handle(SwitchConnection *swConn, jsonrpc_msg *msg) = 0;
-};
-
-/**
  * @brief Abstract base-class for handling on-connect events.
  */
 class OnConnectListener {
@@ -68,11 +53,11 @@ public:
 
 /**
  * @brief Class to handle communication with the OpenFlow switch.
- * Allows sending of OpenFlow/JSON-RPC messages and respond to received
+ * Allows sending of OpenFlow messages and respond to received
  * messages by registering message-handlers. If connection to the
- * switch is lost, tries to automatically reconnect till an
- * explicit disconnect is issued. OnConnect listeners are fired
- * each time a connection is established successfully.
+ * switch is lost, tries to automatically reconnect till an explicit
+ * disconnect is issued. OnConnect listeners are fired each time a
+ * connection is established successfully.
  */
 class SwitchConnection {
 public:
@@ -128,28 +113,10 @@ public:
     void UnregisterMessageHandler(int msgType, MessageHandler *handler);
 
     /**
-     * Register handler for JSON messages.
-     * @param handler Handler to register
-     */
-    void registerJsonMessageHandler(JsonMessageHandler *handler);
-
-    /**
-     * Unregister a previously registered handler for JSON messages.
-     * @param handler Handler to unregister
-     */
-    void unregisterJsonMessageHandler(JsonMessageHandler *handler);
-
-    /**
      * Send an OpenFlow message to the switch.
      * @return 0 on success, openvswitch error code on failure
      */
     virtual int SendMessage(struct ofpbuf *msg);
-
-    /**
-     * Send a JSON message to the daemon.
-     * @return 0 on success, openvswitch error code on failure
-     */
-    virtual int sendJsonMessage(jsonrpc_msg *msg);
 
     /**
      * Returns the OpenFlow protocol version being used by the connection.
@@ -171,20 +138,9 @@ public:
     int doConnectOF();
 
     /**
-     * Does actual work of establishing JSON RPC connection to OVS daemon.
-     * @return 0 on success, openvswitch error code on failure
-     */
-    int doConnectJson();
-
-    /**
      * Destroys and cleans up the OpenFlow connection if any.
      */
     void cleanupOFConn();
-
-    /**
-     * Destroys and cleans up the JSON RPC connection if any.
-     */
-    void cleanupJsonConn();
 
     /**
      * Main loop for receiving messages on the connection, monitoring
@@ -198,12 +154,6 @@ public:
      * @return 0 on success, openvswitch error code on failure
      */
     int receiveOFMessage();
-
-    /**
-     * Check if any JSON messages were received and handle them.
-     * @return 0 on success, openvswitch error code on failure
-     */
-    int receiveJsonMessage();
 
     /**
      * Make the poll-loop watch for activity on poll-event-FD.
@@ -239,7 +189,6 @@ private:
     std::string switchName;
     vconn *ofConn;
     int ofProtoVersion;
-    jsonrpc *jsonConn;
 
     bool isDisconnecting;
 
@@ -249,9 +198,6 @@ private:
     typedef std::list<MessageHandler *>     HandlerList;
     typedef std::unordered_map<int, HandlerList> HandlerMap;
     HandlerMap msgHandlers;
-
-    typedef std::list<JsonMessageHandler *>  JsonHandlerList;
-    JsonHandlerList jsonMsgHandlers;
 
     typedef std::list<OnConnectListener *>  OnConnectList;
     OnConnectList onConnectListeners;

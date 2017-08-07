@@ -17,11 +17,6 @@
 
 #include "ovs-ofputil.h"
 
-extern "C" {
-#include <openvswitch/json.h>
-#include <lib/jsonrpc.h>
-}
-
 using namespace std;
 using namespace ovsagent;
 
@@ -44,23 +39,6 @@ public:
     }
     int counter;
 };
-
-class LoggingJsonHandler : public JsonMessageHandler {
-public:
-    LoggingJsonHandler() : counter(0) {}
-    void Handle(SwitchConnection*, struct jsonrpc_msg *msg) {
-        ++counter;
-        BOOST_CHECK(msg->error == NULL);
-        BOOST_CHECK(msg->result != NULL && msg->result->type == JSON_STRING);
-
-        LOG(DEBUG) << "JsonHandler got -\n" << json_string(msg->result);
-    }
-    int counter;
-};
-
-static jsonrpc_msg* makeJsonVersionRequest() {
-    return jsonrpc_create_request("version", json_array_create(NULL, 0), NULL);
-}
 
 BOOST_AUTO_TEST_SUITE(connection_test)
 
@@ -155,27 +133,6 @@ BOOST_FIXTURE_TEST_CASE(sendrecv, ConnectionFixture) {
     /* Send when disconnected, expect error */
     ofpbuf *echoReq = make_echo_request(OFP13_VERSION);
     BOOST_CHECK(conn.SendMessage(echoReq) != 0);
-}
-
-BOOST_FIXTURE_TEST_CASE(sendrecv_json, ConnectionFixture) {
-    SwitchConnection conn(testSwitchName);
-
-    LoggingJsonHandler ljh;
-    conn.registerJsonMessageHandler(&ljh);
-
-    BOOST_CHECK(!conn.Connect(OFP13_VERSION));
-
-    const int numReq = 3;
-    for (int i = 0; i < numReq; ++i) {
-        jsonrpc_msg *msg = makeJsonVersionRequest();
-        BOOST_CHECK(conn.sendJsonMessage(msg) == 0);
-    }
-    WAIT_FOR(ljh.counter == numReq, 5);
-
-    conn.Disconnect();
-
-    /* Send when disconnected, expect error */
-    BOOST_CHECK(conn.sendJsonMessage(makeJsonVersionRequest()) != 0);
 }
 
 BOOST_FIXTURE_TEST_CASE(reconnect, ConnectionFixture) {

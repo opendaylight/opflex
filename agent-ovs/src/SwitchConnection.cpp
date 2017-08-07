@@ -25,7 +25,6 @@ extern "C" {
 #include <lib/socket-util.h>
 #include <lib/stream.h>
 #include <lib/poll-loop.h>
-#include <lib/jsonrpc.h>
 #include <openvswitch/vconn.h>
 #include <openvswitch/ofp-msgs.h>
 }
@@ -41,7 +40,7 @@ const std::chrono::seconds MAX_ECHO_INTERVAL(30);
 namespace ovsagent {
 
 SwitchConnection::SwitchConnection(const std::string& swName) :
-    switchName(swName), ofConn(NULL), jsonConn(NULL) {
+    switchName(swName), ofConn(NULL) {
     connThread = NULL;
     ofProtoVersion = OFP10_VERSION;
     isDisconnecting = false;
@@ -91,24 +90,9 @@ SwitchConnection::UnregisterMessageHandler(int msgType,
     }
 }
 
-void SwitchConnection::registerJsonMessageHandler(JsonMessageHandler *handler)
-{
-    if (handler) {
-        mutex_guard lock(connMtx);
-        jsonMsgHandlers.push_back(handler);
-    }
-}
-
-void SwitchConnection::unregisterJsonMessageHandler(
-    JsonMessageHandler *handler)
-{
-    mutex_guard lock(connMtx);
-    jsonMsgHandlers.remove(handler);
-}
-
 int
 SwitchConnection::Connect(int protoVer) {
-    if (ofConn != NULL && jsonConn != NULL) {    // connection already created
+    if (ofConn != NULL) {    // connection already created
         return true;
     }
 
@@ -117,14 +101,7 @@ SwitchConnection::Connect(int protoVer) {
     if (err != 0) {
         LOG(ERROR) << "Failed to connect to " << switchName << ": "
             << ovs_strerror(err);
-    } else {
-        err = doConnectJson();
-        if (err != 0) {
-            LOG(ERROR) << "Failed to connect to daemon: "
-                << ovs_strerror(err);
-        }
     }
-
     connThread.reset(new std::thread(std::ref(*this)));
     return err;
 }
@@ -169,50 +146,6 @@ void SwitchConnection::cleanupOFConn() {
     }
 }
 
-int SwitchConnection::doConnectJson() {
-    /* The OVS daemon listens to a UNIX domain socket that has its PID in the name.
-     * Simplest way to figure out that name is to read the PID file that the daemon
-     * creates.
-     */
-    std:: string pidFileName;
-    pidFileName.append(ovs_rundir()).append("/" OVS_VSWITCH_DAEMON ".pid");
-    std:: string pidStr;
-
-    std::ifstream pidFile(pidFileName.c_str());
-    getline(pidFile, pidStr);
-    if (pidStr.empty()) {
-        LOG(ERROR) << "Unable to read PID of " << OVS_VSWITCH_DAEMON
-            << " from file " << pidFileName;
-        return ENOTCONN;
-    }
-    std::string sockName;
-    sockName.append("unix:").append(ovs_rundir())
-        .append("/" OVS_VSWITCH_DAEMON ".").append(pidStr).append(".ctl");
-
-    stream *daemonStream;
-    int err = stream_open_block(
-        stream_open(sockName.c_str(), &daemonStream, DSCP_DEFAULT),
-        &daemonStream);
-
-    if (err != 0) {
-        LOG(ERROR) << "Failed to connect to socket " << pidFileName
-            << ", error: " << ovs_strerror(err);
-    } else {
-        LOG(INFO) << "Connected to Openvswitch daemon at " << sockName;
-        mutex_guard lock(connMtx);
-        cleanupJsonConn();
-        jsonConn = jsonrpc_open(daemonStream);
-    }
-    return err;
-}
-
-void SwitchConnection::cleanupJsonConn() {
-    if (jsonConn != NULL) {
-        jsonrpc_close(jsonConn);
-        jsonConn = NULL;
-    }
-}
-
 void
 SwitchConnection::Disconnect() {
     isDisconnecting = true;
@@ -223,7 +156,6 @@ SwitchConnection::Disconnect() {
 
     mutex_guard lock(connMtx);
     cleanupOFConn();
-    cleanupJsonConn();
     isDisconnecting = false;
 }
 
@@ -235,8 +167,7 @@ SwitchConnection::IsConnected() {
 
 bool
 SwitchConnection::IsConnectedLocked() {
-    return ofConn != NULL && vconn_get_status(ofConn) == 0 &&
-           jsonConn != NULL && jsonrpc_get_status(jsonConn) == 0;
+    return ofConn != NULL && vconn_get_status(ofConn) == 0;
 }
 
 int
@@ -283,7 +214,6 @@ SwitchConnection::Monitor() {
             LOG(ERROR) << "Connection lost, trying to auto reconnect";
             mutex_guard lock(connMtx);
             cleanupOFConn();
-            cleanupJsonConn();
         }
         bool oldConnLost = connLost;
         while (connLost && !isDisconnecting) {
@@ -291,7 +221,7 @@ SwitchConnection::Monitor() {
             poll_timer_wait(LOST_CONN_BACKOFF_MSEC);
             poll_block(); // block till timer expires or disconnect is requested
             if (!isDisconnecting) {
-                connLost = (doConnectOF() != 0 || doConnectJson() != 0);
+                connLost = (doConnectOF() != 0);
             }
         }
         if (isDisconnecting) {
@@ -309,15 +239,10 @@ SwitchConnection::Monitor() {
                 vconn_run(ofConn);
                 vconn_run_wait(ofConn);
                 vconn_recv_wait(ofConn);
-
-                jsonrpc_run(jsonConn);
-                jsonrpc_wait(jsonConn);
-                jsonrpc_recv_wait(jsonConn);
             }
             poll_block();
         }
-        connLost = (EOF == receiveOFMessage() ||
-                    EOF == receiveJsonMessage());
+        connLost = (EOF == receiveOFMessage());
 
         if (!connLost) {
             std::chrono::time_point<std::chrono::steady_clock> echoTime;
@@ -372,31 +297,6 @@ SwitchConnection::receiveOFMessage() {
     return 0;
 }
 
-int SwitchConnection::receiveJsonMessage() {
-    do {
-        int err;
-        jsonrpc_msg *recvMsg = NULL;
-        {
-            mutex_guard lock(connMtx);
-            err = jsonrpc_recv(jsonConn, &recvMsg);
-        }
-        if (err == EAGAIN) {
-            return 0;
-        } else if (err != 0) {
-            LOG(ERROR) << "Error while receiving JSON message: "
-                << ovs_strerror(err) << ", reseting connection";
-            jsonrpc_msg_destroy(recvMsg);
-            return EOF;
-        } else {
-            for (JsonMessageHandler *h : jsonMsgHandlers) {
-                h->Handle(this, recvMsg);
-            }
-            jsonrpc_msg_destroy(recvMsg);
-        }
-    } while (true);
-    return 0;
-}
-
 int
 SwitchConnection::SendMessage(ofpbuf *msg) {
     BOOST_SCOPE_EXIT((&msg)) {
@@ -421,24 +321,6 @@ SwitchConnection::SendMessage(ofpbuf *msg) {
             vconn_send_wait(ofConn);
         }
     }
-}
-
-int SwitchConnection::sendJsonMessage(jsonrpc_msg *msg) {
-    mutex_guard lock(connMtx);
-    if (!IsConnectedLocked()) {
-        jsonrpc_msg_destroy(msg);
-        return ENOTCONN;
-    }
-    int err = jsonrpc_send(jsonConn, msg);
-    if (err) {
-        LOG(ERROR) << "Error sending JSON message: " << ovs_strerror(err);
-        return err;
-    }
-    while (IsConnectedLocked() && jsonrpc_get_backlog(jsonConn) > 0) {
-        jsonrpc_run(jsonConn);
-        jsonrpc_wait(jsonConn);
-    }
-    return IsConnectedLocked() ? 0 : ENOTCONN;
 }
 
 void
