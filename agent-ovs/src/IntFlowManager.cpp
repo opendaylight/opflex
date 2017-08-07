@@ -768,6 +768,90 @@ static void flowsIpm(IntFlowManager& flowMgr,
     }
 }
 
+static void flowsEndpointPortSec(FlowEntryList& elPortSec,
+                                 const Endpoint& endPoint,
+                                 uint32_t ofPort,
+                                 bool hasMac,
+                                 uint8_t* macAddr,
+                                 const std::vector<address>& ipAddresses) {
+    if (ofPort == OFPP_NONE)
+        return;
+
+    if (endPoint.isPromiscuousMode()) {
+        // allow all packets from port
+        actionSecAllow(FlowBuilder().priority(50).inPort(ofPort))
+            .build(elPortSec);
+    } else if (hasMac) {
+        // allow L2 packets from port with EP MAC address
+        actionSecAllow(FlowBuilder().priority(20)
+                       .inPort(ofPort).ethSrc(macAddr))
+            .build(elPortSec);
+
+        for (const address& ipAddr : ipAddresses) {
+            // Allow IPv4/IPv6 packets from port with EP IP address
+            actionSecAllow(FlowBuilder().priority(30)
+                           .inPort(ofPort).ethSrc(macAddr)
+                           .ipSrc(ipAddr))
+                .build(elPortSec);
+
+            if (ipAddr.is_v4()) {
+                // Allow ARP with correct source address
+                actionSecAllow(FlowBuilder().priority(40)
+                               .inPort(ofPort).ethSrc(macAddr)
+                               .arpSrc(ipAddr))
+                    .build(elPortSec);
+            } else {
+                // Allow neighbor advertisements with correct
+                // source address
+                actionSecAllow(FlowBuilder().priority(40)
+                               .inPort(ofPort).ethSrc(macAddr)
+                               .ndTarget(ND_NEIGHBOR_ADVERT, ipAddr))
+                    .build(elPortSec);
+            }
+        }
+    }
+
+    for (const Endpoint::virt_ip_t& vip : endPoint.getVirtualIPs()) {
+        network::cidr_t vip_cidr;
+        if (!network::cidr_from_string(vip.second, vip_cidr)) {
+            LOG(WARNING) << "Invalid endpoint VIP (CIDR): " << vip.second;
+            continue;
+        }
+        uint8_t vmac[6];
+        vip.first.toUIntArray(vmac);
+
+        // Handle ARP/ND from "active" virtual IPs normally, that is
+        // without generating a packet-in
+        for (const address& ipAddr : ipAddresses) {
+            if (!network::cidr_contains(vip_cidr, ipAddr)) {
+                continue;
+            }
+            FlowBuilder active_vip;
+            active_vip.priority(61).inPort(ofPort).ethSrc(vmac);
+            if (ipAddr.is_v4()) {
+                active_vip.arpSrc(ipAddr);
+            } else {
+                active_vip.ndTarget(ND_NEIGHBOR_ADVERT, ipAddr);
+            }
+            actionSecAllow(active_vip).build(elPortSec);
+        }
+
+        FlowBuilder vf;
+        vf.priority(60).inPort(ofPort).ethSrc(vmac);
+
+        if (vip_cidr.first.is_v4()) {
+            vf.cookie(flow::cookie::VIRTUAL_IP_V4)
+                .arpSrc(vip_cidr.first, vip_cidr.second);
+        } else {
+            vf.cookie(flow::cookie::VIRTUAL_IP_V6)
+                .ndTarget(ND_NEIGHBOR_ADVERT,
+                          vip_cidr.first, vip_cidr.second);
+        }
+        vf.action().controller().go(IntFlowManager::SRC_TABLE_ID)
+            .parent().build(elPortSec);
+    }
+}
+
 static void flowsVirtualDhcp(FlowEntryList& elSrc, uint32_t ofPort,
                              uint32_t epgVnid, uint8_t* macAddr, bool v4) {
     FlowBuilder fb;
@@ -778,6 +862,89 @@ static void flowsVirtualDhcp(FlowEntryList& elSrc, uint32_t ofPort,
         .inPort(ofPort)
         .ethSrc(macAddr)
         .build(elSrc);
+}
+
+static void flowsEndpointDHCPSource(FlowEntryList& elSrc,
+                                    const Endpoint& endPoint,
+                                    uint32_t ofPort,
+                                    bool hasMac,
+                                    uint8_t* macAddr,
+                                    bool virtualDHCPEnabled,
+                                    uint32_t epgVnid) {
+    if (ofPort == OFPP_NONE)
+        return;
+
+    if (virtualDHCPEnabled && hasMac) {
+        optional<Endpoint::DHCPv4Config> v4c = endPoint.getDHCPv4Config();
+        optional<Endpoint::DHCPv6Config> v6c = endPoint.getDHCPv6Config();
+
+        if (v4c)
+            flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, true);
+        if (v6c)
+            flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, false);
+
+        for (const Endpoint::virt_ip_t& vip :
+                 endPoint.getVirtualIPs()) {
+            if (endPoint.getMAC().get() == vip.first) continue;
+            network::cidr_t vip_cidr;
+            if (!network::cidr_from_string(vip.second, vip_cidr)) {
+                continue;
+            }
+            address& addr = vip_cidr.first;
+            uint8_t vmacAddr[6];
+            vip.first.toUIntArray(vmacAddr);
+
+            if (v4c && addr.is_v4())
+                flowsVirtualDhcp(elSrc, ofPort, epgVnid, vmacAddr, true);
+            else if (v6c && addr.is_v6())
+                flowsVirtualDhcp(elSrc, ofPort, epgVnid, vmacAddr, false);
+        }
+    }
+}
+
+static void flowsEndpointSource(FlowEntryList& elSrc,
+                                FlowEntryList& elEpLearn,
+                                const Endpoint& endPoint,
+                                uint32_t ofPort,
+                                bool hasMac,
+                                uint8_t* macAddr,
+                                uint8_t unkFloodMode,
+                                uint8_t bcastFloodMode,
+                                uint32_t epgVnid,
+                                uint32_t bdId,
+                                uint32_t fgrpId,
+                                uint32_t rdId) {
+    if (ofPort == OFPP_NONE)
+        return;
+
+    if (hasMac) {
+        actionSource(FlowBuilder().priority(140)
+                     .inPort(ofPort).ethSrc(macAddr),
+                     epgVnid, bdId, fgrpId, rdId)
+            .build(elSrc);
+
+        if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL &&
+            unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
+            // Prepopulate a stage1 learning entry for known EPs
+            matchFd(FlowBuilder().priority(101)
+                    .cookie(flow::cookie::PROACTIVE_LEARN),
+                    fgrpId, true, macAddr)
+                .action()
+                .reg(MFF_REG7, ofPort)
+                .output(ofPort)
+                .controller()
+                .parent().build(elEpLearn);
+        }
+    }
+
+    if (endPoint.isPromiscuousMode()) {
+        // if the source is unknown, but the interface is
+        // promiscuous we allow the traffic into the learning
+        // table
+        actionSource(FlowBuilder().priority(138).inPort(ofPort),
+                     epgVnid, bdId, fgrpId, rdId)
+            .build(elSrc);
+    }
 }
 
 static void matchActionServiceProto(FlowBuilder& flow, uint8_t proto,
@@ -856,104 +1023,32 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         ofPort = switchManager.getPortMapper().FindPort(ofPortName.get());
     }
 
-    /* Port security flows */
-    FlowEntryList el;
-    if (ofPort != OFPP_NONE) {
-        if (endPoint.isPromiscuousMode()) {
-            // allow all packets from port
-            actionSecAllow(FlowBuilder().priority(50).inPort(ofPort))
-                .build(el);
-        } else if (hasMac) {
-            // allow L2 packets from port with EP MAC address
-            actionSecAllow(FlowBuilder().priority(20)
-                           .inPort(ofPort).ethSrc(macAddr))
-                .build(el);
-
-            for (const address& ipAddr : ipAddresses) {
-                // Allow IPv4/IPv6 packets from port with EP IP address
-                actionSecAllow(FlowBuilder().priority(30)
-                               .inPort(ofPort).ethSrc(macAddr)
-                               .ipSrc(ipAddr))
-                    .build(el);
-
-                if (ipAddr.is_v4()) {
-                    // Allow ARP with correct source address
-                    actionSecAllow(FlowBuilder().priority(40)
-                                   .inPort(ofPort).ethSrc(macAddr)
-                                   .arpSrc(ipAddr))
-                        .build(el);
-                } else {
-                    // Allow neighbor advertisements with correct
-                    // source address
-                    actionSecAllow(FlowBuilder().priority(40)
-                                   .inPort(ofPort).ethSrc(macAddr)
-                                   .ndTarget(ND_NEIGHBOR_ADVERT, ipAddr))
-                        .build(el);
-                }
-            }
-        }
-
-        for (const Endpoint::virt_ip_t& vip : endPoint.getVirtualIPs()) {
-            network::cidr_t vip_cidr;
-            if (!network::cidr_from_string(vip.second, vip_cidr)) {
-                LOG(WARNING) << "Invalid endpoint VIP (CIDR): " << vip.second;
-                continue;
-            }
-            uint8_t vmac[6];
-            vip.first.toUIntArray(vmac);
-
-            // Handle ARP/ND from "active" virtual IPs normally, that is
-            // without generating a packet-in
-            for (const address& ipAddr : ipAddresses) {
-                if (!network::cidr_contains(vip_cidr, ipAddr)) {
-                    continue;
-                }
-                FlowBuilder active_vip;
-                active_vip.priority(61).inPort(ofPort).ethSrc(vmac);
-                if (ipAddr.is_v4()) {
-                    active_vip.arpSrc(ipAddr);
-                } else {
-                    active_vip.ndTarget(ND_NEIGHBOR_ADVERT, ipAddr);
-                }
-                actionSecAllow(active_vip).build(el);
-            }
-
-            FlowBuilder vf;
-            vf.priority(60).inPort(ofPort).ethSrc(vmac);
-
-            if (vip_cidr.first.is_v4()) {
-                vf.cookie(flow::cookie::VIRTUAL_IP_V4)
-                    .arpSrc(vip_cidr.first, vip_cidr.second);
-            } else {
-                vf.cookie(flow::cookie::VIRTUAL_IP_V6)
-                    .ndTarget(ND_NEIGHBOR_ADVERT,
-                              vip_cidr.first, vip_cidr.second);
-            }
-            vf.action().controller().go(SRC_TABLE_ID)
-                .parent().build(el);
-        }
-    }
-    switchManager.writeFlow(uuid, SEC_TABLE_ID, el);
+    FlowEntryList elPortSec;
+    FlowEntryList elSrc;
+    FlowEntryList elEpLearn;
+    FlowEntryList elBridgeDst;
+    FlowEntryList elRouteDst;
+    FlowEntryList elServiceMap;
+    FlowEntryList elOutput;
 
     optional<URI> epgURI = epMgr.getComputedEPG(uuid);
-    if (!epgURI) {      // can't do much without EPG
-        return;
-    }
-
+    bool hasForwardingInfo = false;
     uint32_t epgVnid, rdId, bdId, fgrpId;
     optional<URI> fgrpURI, bdURI, rdURI;
-    if (!getGroupForwardingInfo(epgURI.get(), epgVnid, rdURI,
-                                rdId, bdURI, bdId, fgrpURI, fgrpId)) {
-        return;
-    }
-
-    optional<shared_ptr<FloodDomain> > fd =
-        agent.getPolicyManager().getFDForGroup(epgURI.get());
+    optional<shared_ptr<FloodDomain> > fd;
 
     uint8_t arpMode = AddressResModeEnumT::CONST_UNICAST;
     uint8_t ndMode = AddressResModeEnumT::CONST_UNICAST;
     uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
     uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+
+    if (epgURI && getGroupForwardingInfo(epgURI.get(), epgVnid, rdURI,
+                                         rdId, bdURI, bdId, fgrpURI, fgrpId)) {
+        hasForwardingInfo = true;
+    }
+
+    if (hasForwardingInfo)
+        fd = agent.getPolicyManager().getFDForGroup(epgURI.get());
     if (fd) {
         // Irrespective of flooding scope (epg vs. flood-domain), the
         // properties of the flood-domain object decide how flooding
@@ -969,253 +1064,200 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
     }
 
-    FlowEntryList elSrc;
-    FlowEntryList elEpLearn;
-    FlowEntryList elBridgeDst;
-    FlowEntryList elRouteDst;
-    FlowEntryList elServiceMap;
-    FlowEntryList elOutput;
+    if (hasForwardingInfo) {
+        /* Port security flows */
+        flowsEndpointPortSec(elPortSec, endPoint, ofPort,
+                             hasMac, macAddr, ipAddresses);
 
-    /* Source Table flows; applicable only to local endpoints */
-    if (ofPort != OFPP_NONE) {
-        if (hasMac) {
-            actionSource(FlowBuilder().priority(140)
-                         .inPort(ofPort).ethSrc(macAddr),
-                         epgVnid, bdId, fgrpId, rdId)
-                .build(elSrc);
+        /* Source Table flows; applicable only to local endpoints */
+        flowsEndpointSource(elSrc, elEpLearn, endPoint, ofPort,
+                            hasMac, macAddr, unkFloodMode, bcastFloodMode,
+                            epgVnid, bdId, fgrpId, rdId);
+        flowsEndpointDHCPSource(elSrc, endPoint, ofPort, hasMac, macAddr,
+                                virtualDHCPEnabled, epgVnid);
 
-            if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL &&
-                unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
-                // Prepopulate a stage1 learning entry for known EPs
-                matchFd(FlowBuilder().priority(101)
-                        .cookie(flow::cookie::PROACTIVE_LEARN),
-                        fgrpId, true, macAddr)
-                    .action()
-                    .reg(MFF_REG7, ofPort)
-                    .output(ofPort)
-                    .controller()
-                    .parent().build(elEpLearn);
-            }
-        }
-
-        if (endPoint.isPromiscuousMode()) {
-            // if the source is unknown, but the interface is
-            // promiscuous we allow the traffic into the learning
-            // table
-            actionSource(FlowBuilder().priority(138).inPort(ofPort),
-                         epgVnid, bdId, fgrpId, rdId)
-                .build(elSrc);
-        }
-
-        if (virtualDHCPEnabled && hasMac) {
-            optional<Endpoint::DHCPv4Config> v4c = endPoint.getDHCPv4Config();
-            optional<Endpoint::DHCPv6Config> v6c = endPoint.getDHCPv6Config();
-
-            if (v4c)
-                flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, true);
-            if (v6c)
-                flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, false);
-
-            for (const Endpoint::virt_ip_t& vip :
-                          endPoint.getVirtualIPs()) {
-                if (endPoint.getMAC().get() == vip.first) continue;
-                network::cidr_t vip_cidr;
-                if (!network::cidr_from_string(vip.second, vip_cidr)) {
-                    continue;
-                }
-                address& addr = vip_cidr.first;
-                if (ec) continue;
-                uint8_t vmacAddr[6];
-                vip.first.toUIntArray(vmacAddr);
-
-                if (v4c && addr.is_v4())
-                    flowsVirtualDhcp(elSrc, ofPort, epgVnid, vmacAddr, true);
-                else if (v6c && addr.is_v6())
-                    flowsVirtualDhcp(elSrc, ofPort, epgVnid, vmacAddr, false);
-            }
-        }
-    }
-
-    /* Bridge, route, and output flows */
-    if (bdId != 0 && hasMac && ofPort != OFPP_NONE) {
-        FlowBuilder().priority(10).ethDst(macAddr).reg(4, bdId)
-            .action()
-            .reg(MFF_REG2, epgVnid)
-            .reg(MFF_REG7, ofPort)
-            .go(POL_TABLE_ID)
-            .parent().build(elBridgeDst);
-    }
-
-    if (rdId != 0 && bdId != 0 && ofPort != OFPP_NONE) {
-        uint8_t routingMode =
-            agent.getPolicyManager().getEffectiveRoutingMode(epgURI.get());
-
-        if (virtualRouterEnabled && hasMac &&
-            routingMode == RoutingModeEnumT::CONST_ENABLED) {
-            for (const address& ipAddr : ipAddresses) {
-                if (endPoint.isDiscoveryProxyMode()) {
-                    // Auto-reply to ARP and NDP requests for endpoint
-                    // IP addresses
-                    flowsProxyDiscovery(*this, elBridgeDst, 20, ipAddr,
-                                        macAddr, epgVnid, rdId, bdId);
-                } else {
-                    if (arpMode != AddressResModeEnumT::CONST_FLOOD &&
-                        ipAddr.is_v4()) {
-                        FlowBuilder e1;
-                        matchDestArp(e1, ipAddr, bdId, rdId);
-                        if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
-                            // ARP optimization: broadcast -> unicast
-                            actionDestEpArp(e1, epgVnid, ofPort, macAddr);
-                        }
-                        // else drop the ARP packet
-                        e1.priority(20)
-                            .build(elBridgeDst);
-                    }
-
-                    if (ndMode != AddressResModeEnumT::CONST_FLOOD &&
-                        ipAddr.is_v6()) {
-                        FlowBuilder e1;
-                        matchDestNd(e1, &ipAddr, bdId, rdId);
-                        if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
-                            // neighbor discovery optimization:
-                            // broadcast -> unicast
-                            actionDestEpArp(e1, epgVnid, ofPort, macAddr);
-                        }
-                        // else drop the ND packet
-                        e1.priority(20)
-                            .build(elBridgeDst);
-                    }
-                }
-
-                if (network::is_link_local(ipAddr))
-                    continue;
-
-                {
-                    FlowBuilder e0;
-                    matchDestDom(e0, 0, rdId);
-                    e0.priority(500)
-                        .ethDst(getRouterMacAddr())
-                        .ipDst(ipAddr)
-                        .action()
-                        .reg(MFF_REG2, epgVnid)
-                        .reg(MFF_REG7, ofPort)
-                        .ethSrc(getRouterMacAddr())
-                        .ethDst(macAddr)
-                        .decTtl()
-                        .metadata(flow::meta::ROUTED, flow::meta::ROUTED)
-                        .go(POL_TABLE_ID)
-                        .parent().build(elRouteDst);
-                }
-
-            }
-
-            // IP address mappings
-            for(const Endpoint::IPAddressMapping& ipm :
-                    endPoint.getIPAddressMappings()) {
-                if (!ipm.getMappedIP() || !ipm.getEgURI())
-                    continue;
-
-                address mappedIp =
-                    address::from_string(ipm.getMappedIP().get(), ec);
-                if (ec) continue;
-
-                address floatingIp;
-                if (ipm.getFloatingIP()) {
-                    floatingIp =
-                        address::from_string(ipm.getFloatingIP().get(), ec);
-                    if (ec) continue;
-                    if (floatingIp.is_v4() != mappedIp.is_v4()) continue;
-                }
-
-                uint32_t fepgVnid, frdId, fbdId, ffdId;
-                optional<URI> ffdURI, fbdURI, frdURI;
-                if (!getGroupForwardingInfo(ipm.getEgURI().get(), fepgVnid,
-                                            frdURI, frdId, fbdURI, fbdId,
-                                            ffdURI, ffdId))
-                    continue;
-
-                uint32_t nextHop = OFPP_NONE;
-                if (ipm.getNextHopIf()) {
-                    nextHop = switchManager.getPortMapper()
-                        .FindPort(ipm.getNextHopIf().get());
-                    if (nextHop == OFPP_NONE) continue;
-                }
-                uint8_t nextHopMac[6];
-                const uint8_t* nextHopMacp = NULL;
-                if (ipm.getNextHopMAC()) {
-                    ipm.getNextHopMAC().get().toUIntArray(nextHopMac);
-                    nextHopMacp = nextHopMac;
-                }
-
-                flowsIpm(*this, elSrc, elBridgeDst, elRouteDst,
-                         elOutput, macAddr, ofPort,
-                         epgVnid, rdId, bdId, fgrpId,
-                         fepgVnid, frdId, fbdId, ffdId,
-                         mappedIp, floatingIp, nextHop,
-                         nextHopMacp);
-            }
-        }
-
-        // When traffic returns from a service interface, we have a
-        // special table to map the return traffic that bypasses
-        // normal network semantics and policy.  The service map table
-        // is reachable only for traffic originating from service
-        // interfaces.
-        if (hasMac) {
-            std::vector<address> anycastReturnIps;
-            for (const string& ipStr : endPoint.getAnycastReturnIPs()) {
-                address addr = address::from_string(ipStr, ec);
-                if (ec) {
-                    LOG(WARNING) << "Invalid anycast return IP: "
-                                 << ipStr << ": " << ec.message();
-                } else {
-                    anycastReturnIps.push_back(addr);
-                }
-            }
-            if (anycastReturnIps.size() == 0) {
-                anycastReturnIps = ipAddresses;
-            }
-
-            for (const address& ipAddr : anycastReturnIps) {
-                {
-                    // Deliver packets sent to service address
-                    FlowBuilder serviceDest;
-                    matchDestDom(serviceDest, 0, rdId);
-                    serviceDest
-                        .priority(50)
-                        .ipDst(ipAddr)
-                        .action()
-                        .ethSrc(getRouterMacAddr()).ethDst(macAddr)
-                        .decTtl()
-                        .output(ofPort)
-                        .parent().build(elServiceMap);
-                }
-                flowsProxyDiscovery(*this, elServiceMap,
-                                    51, ipAddr, macAddr, 0, rdId, 0);
-            }
-        }
-    }
-
-    if (ofPort != OFPP_NONE) {
-        // If a packet has a routing action applied, we'll allow it to
-        // hairpin for ordinary default output action or reverse NAT
-        // output
-        vector<uint64_t> metadata {
-            flow::meta::ROUTED,
-            flow::meta::ROUTED | flow::meta::out::REV_NAT
-        };
-        for (auto m : metadata) {
-            FlowBuilder()
-                .priority(2)
-                .inPort(ofPort)
-                .metadata(m, flow::meta::ROUTED | flow::meta::out::MASK)
-                .reg(7, ofPort)
+        /* Bridge, route, and output flows */
+        if (bdId != 0 && hasMac && ofPort != OFPP_NONE) {
+            FlowBuilder().priority(10).ethDst(macAddr).reg(4, bdId)
                 .action()
-                .output(OFPP_IN_PORT)
-                .parent().build(elOutput);
+                .reg(MFF_REG2, epgVnid)
+                .reg(MFF_REG7, ofPort)
+                .go(POL_TABLE_ID)
+                .parent().build(elBridgeDst);
+        }
+
+        if (rdId != 0 && bdId != 0 && ofPort != OFPP_NONE) {
+            uint8_t routingMode =
+                agent.getPolicyManager().getEffectiveRoutingMode(epgURI.get());
+
+            if (virtualRouterEnabled && hasMac &&
+                routingMode == RoutingModeEnumT::CONST_ENABLED) {
+                for (const address& ipAddr : ipAddresses) {
+                    if (endPoint.isDiscoveryProxyMode()) {
+                        // Auto-reply to ARP and NDP requests for endpoint
+                        // IP addresses
+                        flowsProxyDiscovery(*this, elBridgeDst, 20, ipAddr,
+                                            macAddr, epgVnid, rdId, bdId);
+                    } else {
+                        if (arpMode != AddressResModeEnumT::CONST_FLOOD &&
+                            ipAddr.is_v4()) {
+                            FlowBuilder e1;
+                            matchDestArp(e1, ipAddr, bdId, rdId);
+                            if (arpMode == AddressResModeEnumT::CONST_UNICAST) {
+                                // ARP optimization: broadcast -> unicast
+                                actionDestEpArp(e1, epgVnid, ofPort, macAddr);
+                            }
+                            // else drop the ARP packet
+                            e1.priority(20)
+                                .build(elBridgeDst);
+                        }
+
+                        if (ndMode != AddressResModeEnumT::CONST_FLOOD &&
+                            ipAddr.is_v6()) {
+                            FlowBuilder e1;
+                            matchDestNd(e1, &ipAddr, bdId, rdId);
+                            if (ndMode == AddressResModeEnumT::CONST_UNICAST) {
+                                // neighbor discovery optimization:
+                                // broadcast -> unicast
+                                actionDestEpArp(e1, epgVnid, ofPort, macAddr);
+                            }
+                            // else drop the ND packet
+                            e1.priority(20)
+                                .build(elBridgeDst);
+                        }
+                    }
+
+                    if (network::is_link_local(ipAddr))
+                        continue;
+
+                    {
+                        FlowBuilder e0;
+                        matchDestDom(e0, 0, rdId);
+                        e0.priority(500)
+                            .ethDst(getRouterMacAddr())
+                            .ipDst(ipAddr)
+                            .action()
+                            .reg(MFF_REG2, epgVnid)
+                            .reg(MFF_REG7, ofPort)
+                            .ethSrc(getRouterMacAddr())
+                            .ethDst(macAddr)
+                            .decTtl()
+                            .metadata(flow::meta::ROUTED, flow::meta::ROUTED)
+                            .go(POL_TABLE_ID)
+                            .parent().build(elRouteDst);
+                    }
+
+                }
+
+                // IP address mappings
+                for(const Endpoint::IPAddressMapping& ipm :
+                        endPoint.getIPAddressMappings()) {
+                    if (!ipm.getMappedIP() || !ipm.getEgURI())
+                        continue;
+
+                    address mappedIp =
+                        address::from_string(ipm.getMappedIP().get(), ec);
+                    if (ec) continue;
+
+                    address floatingIp;
+                    if (ipm.getFloatingIP()) {
+                        floatingIp =
+                            address::from_string(ipm.getFloatingIP().get(), ec);
+                        if (ec) continue;
+                        if (floatingIp.is_v4() != mappedIp.is_v4()) continue;
+                    }
+
+                    uint32_t fepgVnid, frdId, fbdId, ffdId;
+                    optional<URI> ffdURI, fbdURI, frdURI;
+                    if (!getGroupForwardingInfo(ipm.getEgURI().get(),
+                                                fepgVnid, frdURI, frdId,
+                                                fbdURI, fbdId, ffdURI, ffdId))
+                        continue;
+
+                    uint32_t nextHop = OFPP_NONE;
+                    if (ipm.getNextHopIf()) {
+                        nextHop = switchManager.getPortMapper()
+                            .FindPort(ipm.getNextHopIf().get());
+                        if (nextHop == OFPP_NONE) continue;
+                    }
+                    uint8_t nextHopMac[6];
+                    const uint8_t* nextHopMacp = NULL;
+                    if (ipm.getNextHopMAC()) {
+                        ipm.getNextHopMAC().get().toUIntArray(nextHopMac);
+                        nextHopMacp = nextHopMac;
+                    }
+
+                    flowsIpm(*this, elSrc, elBridgeDst, elRouteDst,
+                             elOutput, macAddr, ofPort,
+                             epgVnid, rdId, bdId, fgrpId,
+                             fepgVnid, frdId, fbdId, ffdId,
+                             mappedIp, floatingIp, nextHop,
+                             nextHopMacp);
+                }
+            }
+
+            // When traffic returns from a service interface, we have a
+            // special table to map the return traffic that bypasses
+            // normal network semantics and policy.  The service map table
+            // is reachable only for traffic originating from service
+            // interfaces.
+            if (hasMac) {
+                std::vector<address> anycastReturnIps;
+                for (const string& ipStr : endPoint.getAnycastReturnIPs()) {
+                    address addr = address::from_string(ipStr, ec);
+                    if (ec) {
+                        LOG(WARNING) << "Invalid anycast return IP: "
+                                     << ipStr << ": " << ec.message();
+                    } else {
+                        anycastReturnIps.push_back(addr);
+                    }
+                }
+                if (anycastReturnIps.size() == 0) {
+                    anycastReturnIps = ipAddresses;
+                }
+
+                for (const address& ipAddr : anycastReturnIps) {
+                    {
+                        // Deliver packets sent to service address
+                        FlowBuilder serviceDest;
+                        matchDestDom(serviceDest, 0, rdId);
+                        serviceDest
+                            .priority(50)
+                            .ipDst(ipAddr)
+                            .action()
+                            .ethSrc(getRouterMacAddr()).ethDst(macAddr)
+                            .decTtl()
+                            .output(ofPort)
+                            .parent().build(elServiceMap);
+                    }
+                    flowsProxyDiscovery(*this, elServiceMap,
+                                        51, ipAddr, macAddr, 0, rdId, 0);
+                }
+            }
+        }
+
+        if (ofPort != OFPP_NONE) {
+            // If a packet has a routing action applied, we'll allow it to
+            // hairpin for ordinary default output action or reverse NAT
+            // output
+            vector<uint64_t> metadata {
+                flow::meta::ROUTED,
+                    flow::meta::ROUTED | flow::meta::out::REV_NAT
+                    };
+            for (auto m : metadata) {
+                FlowBuilder()
+                    .priority(2)
+                    .inPort(ofPort)
+                    .metadata(m, flow::meta::ROUTED | flow::meta::out::MASK)
+                    .reg(7, ofPort)
+                    .action()
+                    .output(OFPP_IN_PORT)
+                    .parent().build(elOutput);
+            }
         }
     }
 
+    switchManager.writeFlow(uuid, SEC_TABLE_ID, elPortSec);
     switchManager.writeFlow(uuid, SRC_TABLE_ID, elSrc);
     switchManager.writeFlow(uuid, LEARN_TABLE_ID, elEpLearn);
     switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
