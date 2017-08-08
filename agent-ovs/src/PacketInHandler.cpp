@@ -442,9 +442,9 @@ static void handleNDPktIn(Agent& agent,
                         OFPP_IN_PORT, egUri.get());
 }
 
-static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
+static void handleDHCPv4PktIn(const shared_ptr<const Endpoint>& ep,
                               IntFlowManager& intFlowManager,
-                              PortMapper* portMapper,
+                              std::string iface,
                               SwitchConnection *conn,
                               struct ofputil_packet_in& pi,
                               ofputil_protocol& proto,
@@ -523,14 +523,6 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
                        << requested_ip << " from " << srcMac;
             reply_type = message_type::ACK;
         } else {
-            string iface = "[unknown]";
-            try {
-                if (portMapper)
-                    iface =
-                        portMapper->FindPort(pi.flow_metadata.flow
-                                             .in_port.ofp_port);
-            } catch (std::out_of_range) {}
-
             LOG(WARNING) << "Rejecting DHCP REQUEST for IP "
                          << requested_ip << " from " << srcMac
                          << " on interface \"" << iface << "\"";
@@ -565,7 +557,7 @@ static void handleDHCPv4PktIn(shared_ptr<const Endpoint>& ep,
                         pi.flow_metadata.flow.in_port.ofp_port);
 }
 
-static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
+static void handleDHCPv6PktIn(const shared_ptr<const Endpoint>& ep,
                               IntFlowManager& intFlowManager,
                               SwitchConnection *conn,
                               struct ofputil_packet_in& pi,
@@ -694,6 +686,28 @@ static void handleDHCPv6PktIn(shared_ptr<const Endpoint>& ep,
                         pi.flow_metadata.flow.in_port.ofp_port);
 }
 
+typedef std::function<bool (const Endpoint&)> ep_pred;
+typedef shared_ptr<const Endpoint> ep_ptr;
+/*
+ * Find EPs on an interface that match a predicate
+ */
+static unordered_set<ep_ptr> findEpsForIface(EndpointManager& epMgr,
+                                             std::string iface,
+                                             ep_pred pred) {
+    unordered_set<ep_ptr> eps;
+    unordered_set<string> try_uuids;
+    epMgr.getEndpointsByIface(iface, try_uuids);
+
+    for (const string& epUuid : try_uuids) {
+        ep_ptr try_ep = epMgr.getEndpoint(epUuid);
+        if (!try_ep) continue;
+        if (pred(*try_ep)) {
+            eps.insert(try_ep);
+        }
+    }
+
+    return eps;
+}
 
 /**
  * Handle a packet-in for DHCP messages.  The reply is written as a
@@ -718,46 +732,51 @@ static void handleDHCPPktIn(bool v4,
                             ofputil_protocol& proto,
                             struct dp_packet* pkt,
                             struct flow& flow) {
-    uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
-    PolicyManager& polMgr = agent.getPolicyManager();
+    if (!portMapper) return;
     EndpointManager& epMgr = agent.getEndpointManager();
-    optional<URI> egUri = polMgr.getGroupForVnid(epgId);
-    if (!egUri)
-        return;
-
-    unordered_set<string> eps;
-    epMgr.getEndpointsForGroup(egUri.get(), eps);
-    boost::system::error_code ec;
 
     MAC srcMac(flow.dl_src.ea);
-    shared_ptr<const Endpoint> ep;
-    for (const string& epUuid : eps) {
-        shared_ptr<const Endpoint> try_ep = epMgr.getEndpoint(epUuid);
-        if (!try_ep) continue;
-        const optional<MAC>& epMac = try_ep->getMAC();
-        if (epMac && srcMac == epMac.get()) {
-            ep = try_ep;
-            break;
-        }
-        const Endpoint::virt_ip_set& virtIps =
-            try_ep->getVirtualIPs();
 
-        for (const Endpoint::virt_ip_t& virt_ip : virtIps) {
-            if (virt_ip.first == srcMac) {
-                ep = try_ep;
-                goto ep_found;
-            }
-        }
+    string iface;
+    try {
+        iface = portMapper->FindPort(pi.flow_metadata.flow.in_port.ofp_port);
+    } catch (std::out_of_range) {
+        return;
     }
 
- ep_found:
+    unordered_set<ep_ptr> eps =
+        findEpsForIface(epMgr, iface,
+                       [&srcMac](const Endpoint& ep) {
+                           const optional<MAC>& epMac = ep.getMAC();
+                           if (epMac && srcMac == epMac.get()) {
+                               return true;
+                           }
+                           const Endpoint::virt_ip_set& virtIps =
+                               ep.getVirtualIPs();
 
-    if (!ep) return;
+                           for (const Endpoint::virt_ip_t& virt_ip : virtIps) {
+                               if (virt_ip.first == srcMac) {
+                                   return true;
+                               }
+                           }
+                           return false;
+                       });
+
+    if (eps.size() == 0) {
+        LOG(WARNING) << "No endpoint found for DHCP request from "
+                     << srcMac << " on " << iface;
+        return;
+    }
+    if (eps.size() > 1)
+        LOG(WARNING) << "Multiple possible endpoints for DHCP request from "
+                     << srcMac << " on " << iface;
+
     if (v4)
-        handleDHCPv4PktIn(ep, intFlowManager, portMapper,
+        handleDHCPv4PktIn(*eps.begin(), intFlowManager, iface,
                           conn, pi, proto, pkt, flow);
     else
-        handleDHCPv6PktIn(ep, intFlowManager, conn, pi, proto, pkt, flow);
+        handleDHCPv6PktIn(*eps.begin(), intFlowManager,
+                          conn, pi, proto, pkt, flow);
 
 }
 
@@ -788,40 +807,38 @@ static void handleVIPPktIn(bool v4,
         srcIp = address_v6(bytes);
     }
 
+    string iface;
     try {
-        const std::string& iface =
-            portMapper.FindPort(pi.flow_metadata.flow.in_port.ofp_port);
-
-        unordered_set<string> uuids;
-
-        unordered_set<string> try_uuids;
-        epMgr.getEndpointsByIface(iface, try_uuids);
-
-        boost::system::error_code ec;
-
-        for (const string& epUuid : try_uuids) {
-            shared_ptr<const Endpoint> try_ep = epMgr.getEndpoint(epUuid);
-            if (!try_ep) continue;
-
-            for (const Endpoint::virt_ip_t& vip : try_ep->getVirtualIPs()) {
-                network::cidr_t cidr;
-                if (!network::cidr_from_string(vip.second, cidr)) continue;
-                if (srcMac == vip.first &&
-                    network::cidr_contains(cidr, srcIp)) {
-                    uuids.insert(epUuid);
-                    break;
-                }
-            }
-        }
-
-        if (uuids.size() > 0) {
-            LOG(DEBUG) << "Virtual IP ownership advertised for ("
-                       << srcMac << ", " << srcIp << ")";
-            notifServer.dispatchVirtualIp(uuids, srcMac, srcIp.to_string());
-        }
-
+        iface = portMapper.FindPort(pi.flow_metadata.flow.in_port.ofp_port);
     } catch (std::out_of_range) {
-        // Ignore announcement coming from stale port
+        return;
+    }
+
+    unordered_set<ep_ptr> eps =
+        findEpsForIface(epMgr, iface,
+                        [&srcMac, &srcIp](const Endpoint& ep) {
+                            for (const Endpoint::virt_ip_t& vip :
+                                     ep.getVirtualIPs()) {
+                                network::cidr_t cidr;
+                                if (network::cidr_from_string(vip.second, cidr)
+                                    && srcMac == vip.first
+                                    && network::cidr_contains(cidr, srcIp)) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        });
+
+    unordered_set<string> uuids;
+    std::transform(eps.begin(), eps.end(), uuids.begin(),
+                   [](const ep_ptr& ep) {
+                       return ep->getUUID();
+                   });
+
+    if (uuids.size() > 0) {
+        LOG(DEBUG) << "Virtual IP ownership advertised for ("
+                   << srcMac << ", " << srcIp << ")";
+        notifServer.dispatchVirtualIp(uuids, srcMac, srcIp.to_string());
     }
 }
 

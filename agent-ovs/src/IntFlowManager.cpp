@@ -853,24 +853,23 @@ static void flowsEndpointPortSec(FlowEntryList& elPortSec,
 }
 
 static void flowsVirtualDhcp(FlowEntryList& elSrc, uint32_t ofPort,
-                             uint32_t epgVnid, uint8_t* macAddr, bool v4) {
+                             uint8_t* macAddr, bool v4) {
     FlowBuilder fb;
     matchDhcpReq(fb, v4);
-    actionController(fb, epgVnid);
-    fb.priority(150)
+    actionController(fb);
+    fb.priority(35)
         .cookie(v4 ? flow::cookie::DHCP_V4 : flow::cookie::DHCP_V6)
         .inPort(ofPort)
         .ethSrc(macAddr)
         .build(elSrc);
 }
 
-static void flowsEndpointDHCPSource(FlowEntryList& elSrc,
+static void flowsEndpointDHCPSource(FlowEntryList& elPortSec,
                                     const Endpoint& endPoint,
                                     uint32_t ofPort,
                                     bool hasMac,
                                     uint8_t* macAddr,
-                                    bool virtualDHCPEnabled,
-                                    uint32_t epgVnid) {
+                                    bool virtualDHCPEnabled) {
     if (ofPort == OFPP_NONE)
         return;
 
@@ -879,9 +878,9 @@ static void flowsEndpointDHCPSource(FlowEntryList& elSrc,
         optional<Endpoint::DHCPv6Config> v6c = endPoint.getDHCPv6Config();
 
         if (v4c)
-            flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, true);
+            flowsVirtualDhcp(elPortSec, ofPort, macAddr, true);
         if (v6c)
-            flowsVirtualDhcp(elSrc, ofPort, epgVnid, macAddr, false);
+            flowsVirtualDhcp(elPortSec, ofPort, macAddr, false);
 
         for (const Endpoint::virt_ip_t& vip :
                  endPoint.getVirtualIPs()) {
@@ -895,9 +894,9 @@ static void flowsEndpointDHCPSource(FlowEntryList& elSrc,
             vip.first.toUIntArray(vmacAddr);
 
             if (v4c && addr.is_v4())
-                flowsVirtualDhcp(elSrc, ofPort, epgVnid, vmacAddr, true);
+                flowsVirtualDhcp(elPortSec, ofPort, vmacAddr, true);
             else if (v6c && addr.is_v6())
-                flowsVirtualDhcp(elSrc, ofPort, epgVnid, vmacAddr, false);
+                flowsVirtualDhcp(elPortSec, ofPort, vmacAddr, false);
         }
     }
 }
@@ -1064,6 +1063,10 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
     }
 
+    // Virtual DHCP is allowed even without forwarding resolution
+    flowsEndpointDHCPSource(elPortSec, endPoint, ofPort, hasMac, macAddr,
+                            virtualDHCPEnabled);
+
     if (hasForwardingInfo) {
         /* Port security flows */
         flowsEndpointPortSec(elPortSec, endPoint, ofPort,
@@ -1073,8 +1076,6 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         flowsEndpointSource(elSrc, elEpLearn, endPoint, ofPort,
                             hasMac, macAddr, unkFloodMode, bcastFloodMode,
                             epgVnid, bdId, fgrpId, rdId);
-        flowsEndpointDHCPSource(elSrc, endPoint, ofPort, hasMac, macAddr,
-                                virtualDHCPEnabled, epgVnid);
 
         /* Bridge, route, and output flows */
         if (bdId != 0 && hasMac && ofPort != OFPP_NONE) {
