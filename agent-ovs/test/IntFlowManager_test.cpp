@@ -2567,30 +2567,30 @@ void IntFlowManagerFixture::initExpVirtualDhcp(bool virtIp) {
 
     uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
     ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
-         .table(SRC).priority(150).udp().in(port)
+         .table(SEC).priority(35).udp().in(port)
          .isEthSrc("00:00:00:00:80:00").isTpSrc(68).isTpDst(67)
-         .actions().load(SEPG, 0xa0a).controller(65535).done());
+         .actions().controller(65535).done());
     ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))
-         .table(SRC).priority(150).udp6().in(port)
+         .table(SEC).priority(35).udp6().in(port)
          .isEthSrc("00:00:00:00:80:00").isTpSrc(546).isTpDst(547)
-         .actions().load(SEPG, 0xa0a).controller(65535).done());
+         .actions().controller(65535).done());
     if (virtIp) {
         ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
-             .table(SRC).priority(150).udp().in(port)
+             .table(SEC).priority(35).udp().in(port)
              .isEthSrc("42:42:42:42:42:42").isTpSrc(68).isTpDst(67)
-             .actions().load(SEPG, 0xa0a).controller(65535).done());
+             .actions().controller(65535).done());
         ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
-             .table(SRC).priority(150).udp().in(port)
+             .table(SEC).priority(35).udp().in(port)
              .isEthSrc("42:42:42:42:42:43").isTpSrc(68).isTpDst(67)
-             .actions().load(SEPG, 0xa0a).controller(65535).done());
+             .actions().controller(65535).done());
         ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))
-             .table(SRC).priority(150).udp6().in(port)
+             .table(SEC).priority(35).udp6().in(port)
              .isEthSrc("42:42:42:42:42:42").isTpSrc(546).isTpDst(547)
-             .actions().load(SEPG, 0xa0a).controller(65535).done());
+             .actions().controller(65535).done());
         ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))
-             .table(SRC).priority(150).udp6().in(port)
+             .table(SEC).priority(35).udp6().in(port)
              .isEthSrc("42:42:42:42:42:43").isTpSrc(546).isTpDst(547)
-             .actions().load(SEPG, 0xa0a).controller(65535).done());
+             .actions().controller(65535).done());
     }
 }
 

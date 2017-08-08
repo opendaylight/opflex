@@ -44,6 +44,10 @@ public:
         intFlowManager.setTunnel("10.11.12.13", 4789);
         intFlowManager.setVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
         intFlowManager.setVirtualDHCP(true, "00:22:bd:f8:19:ff");
+
+        portMapper.ports[ep0->getInterfaceName().get()] = 80;
+        portMapper.RPortMap[80] = ep0->getInterfaceName().get();
+        pktInHandler.setPortMapper(&portMapper);
     }
 
     void setDhcpv4Config() {
@@ -678,7 +682,8 @@ static void verify_icmpv4(ofpbuf* msg) {
 BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv4_discover, sizeof(pkt_dhcpv4_discover),
-                   flow::cookie::DHCP_V4);
+                   flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -695,7 +700,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_discover, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv4_discover, sizeof(pkt_dhcpv4_discover),
-                   flow::cookie::DHCP_V4);
+                   flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -714,7 +720,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv4_request, sizeof(pkt_dhcpv4_request),
-                   flow::cookie::DHCP_V4);
+                   flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -739,7 +746,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, buf, sizeof(pkt_dhcpv4_request),
-                   flow::cookie::DHCP_V4);
+                   flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -757,7 +765,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
 BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit, sizeof(pkt_dhcpv6_solicit),
-                   flow::cookie::DHCP_V6);
+                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -774,7 +783,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit, sizeof(pkt_dhcpv6_solicit),
-                   flow::cookie::DHCP_V6);
+                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -794,7 +804,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit_rapid,
                    sizeof(pkt_dhcpv6_solicit_rapid),
-                   flow::cookie::DHCP_V6);
+                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -814,7 +825,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_request, sizeof(pkt_dhcpv6_request),
-                   flow::cookie::DHCP_V6);
+                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -833,7 +845,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_request_tmp, sizeof(pkt_dhcpv6_request_tmp),
-                   flow::cookie::DHCP_V6);
+                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -853,7 +866,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_confirm, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_confirm, sizeof(pkt_dhcpv6_confirm),
-                   flow::cookie::DHCP_V6);
+                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -872,7 +886,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_renew, sizeof(pkt_dhcpv6_renew),
-                   flow::cookie::DHCP_V6);
+                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
@@ -891,7 +906,8 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_info_req, sizeof(pkt_dhcpv6_info_req),
-                   flow::cookie::DHCP_V6);
+                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
