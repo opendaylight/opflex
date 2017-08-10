@@ -1403,6 +1403,11 @@ void IntFlowManagerFixture::initExpStatic() {
          .actions().drop().done());
     ADDF(Bldr().table(POL).priority(8243).isFromServiceIface()
          .actions().go(OUT).done());
+    ADDF(Bldr().table(POL).priority(10).arp().actions().go(OUT).done());
+    ADDF(Bldr().table(POL).priority(10).icmp6().icmp_type(135).icmp_code(0)
+         .actions().go(OUT).done());
+    ADDF(Bldr().table(POL).priority(10).icmp6().icmp_type(136).icmp_code(0)
+         .actions().go(OUT).done());
     ADDF(Bldr().table(OUT).priority(1).isMdAct(0)
          .actions().out(OUTPORT).done());
     ADDF(Bldr().table(OUT).priority(1)

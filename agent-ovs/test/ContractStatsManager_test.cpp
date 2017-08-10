@@ -242,7 +242,6 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, ContractStatsManagerFixture) {
     // calculate expected packet count and byte count
     // that we should have in Genie object
 
-    uint32_t num_flows = entryList.size();
     verifyFlowStats(classifier3,
                     LAST_PACKET_COUNT,
                     LAST_PACKET_COUNT * PACKET_SIZE,

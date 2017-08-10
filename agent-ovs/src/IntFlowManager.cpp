@@ -1746,6 +1746,27 @@ void IntFlowManager::createStaticFlows() {
             .metadata(flow::meta::POLICY_APPLIED, flow::meta::POLICY_APPLIED)
             .build(policyStatic);
 
+        // Implicitly allow ARP and neighbor discovery unless a rule
+        // blocks them.
+        FlowBuilder().priority(10)
+            .ethType(eth::type::ARP)
+            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .parent().build(policyStatic);
+        FlowBuilder().priority(10)
+            .ethType(eth::type::IPV6)
+            .proto(58)
+            .tpSrc(ND_NEIGHBOR_SOLICIT)
+            .tpDst(0)
+            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .parent().build(policyStatic);
+        FlowBuilder().priority(10)
+            .ethType(eth::type::IPV6)
+            .proto(58)
+            .tpSrc(ND_NEIGHBOR_ADVERT)
+            .tpDst(0)
+            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .parent().build(policyStatic);
+
         switchManager.writeFlow("static", POL_TABLE_ID, policyStatic);
     }
     {
