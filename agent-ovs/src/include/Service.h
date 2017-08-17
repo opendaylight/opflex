@@ -100,7 +100,7 @@ public:
     /**
      * Set the local interface name to the string specified.
      *
-     * @param interfaceName the interface name to which the endpoint
+     * @param interfaceName the interface name to which the service
      * is attached locally
      */
     void setInterfaceName(const std::string& interfaceName) {

@@ -126,6 +126,13 @@ public:
      */
     void scheduleEndpointAdv(const std::unordered_set<std::string>& uuids);
 
+    /**
+     * Schedule service advertisements for a specific service
+     *
+     * @param uuid the uuid of the service
+     */
+    void scheduleServiceAdv(const std::string& uuid);
+
 private:
     std::random_device rng;
     std::mt19937 urng;
@@ -161,6 +168,19 @@ private:
     void sendAllEndpointAdvs();
 
     /**
+     * Synchronously send service gratuitous advertisements for all
+     * active endpoints.
+     */
+    void sendAllServiceAdvs();
+
+    /**
+     * Synchronously send service advertisements for service endpoints
+     *
+     * @param uuid the UUID of the service
+     */
+    void sendServiceAdvs(const std::string& uuid);
+
+    /**
      * Timer callback for gratuitious endpoint advertisements
      */
     EndpointAdvMode sendEndpointAdv;
@@ -172,6 +192,7 @@ private:
     std::mutex ep_mutex;
     typedef std::unordered_map<std::string, uint8_t> pending_ep_map_t;
     pending_ep_map_t pendingEps;
+    pending_ep_map_t pendingServices;
 
     Agent& agent;
     IntFlowManager& intFlowManager;

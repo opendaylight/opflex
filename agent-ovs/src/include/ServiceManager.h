@@ -72,7 +72,7 @@ public:
      * matching services.
      */
     void getServicesByIface(const std::string& ifaceName,
-                                   /* out */ std::unordered_set<std::string>& servs);
+                            /* out */ std::unordered_set<std::string>& servs);
 
     /**
      * Get the services associated with a particular routing
@@ -83,7 +83,7 @@ public:
      * matching services.
      */
     void getServicesByDomain(const opflex::modb::URI& domain,
-                                    /* out */ std::unordered_set<std::string>& servs);
+                             /* out */ std::unordered_set<std::string>& servs);
 
 private:
     /**

@@ -49,6 +49,36 @@ public:
           intFlowManager(agent, switchManager, idGen, ctZoneManager),
           advertManager(agent, intFlowManager) {
         createObjects();
+        PolicyManager::uri_set_t rdURIs;
+        WAIT_FOR_DO(rdURIs.find(rd0->getURI()) != rdURIs.end(), 1000,
+                    agent.getPolicyManager().getRoutingDomains(rdURIs));
+
+        auto svc = [&](const string id,
+                       const opflex::modb::MAC& mac,
+                       const string& ip) -> Service {
+            Service s(id);
+            s.setDomainURI(rd0->getURI());
+            s.setServiceMode(Service::LOADBALANCER);
+            s.setInterfaceName("eth0");
+            s.setIfaceVlan(101);
+            s.setServiceMAC(mac);
+            s.setIfaceIP(ip);
+            return s;
+        };
+        servSrc.updateService(svc("1-0-0-1",
+                                  opflex::modb::MAC("00:10:10:10:10:10"),
+                                  "201.1.1.1"));
+        // intentional duplicate
+        servSrc.updateService(svc("1-0-0-2",
+                                  opflex::modb::MAC("00:10:10:10:10:10"),
+                                  "201.1.1.1"));
+        servSrc.updateService(svc("1-0-0-3",
+                                  opflex::modb::MAC("00:10:10:10:10:11"),
+                                  "201.1.1.2"));
+        servSrc.updateService(svc("1-0-0-4",
+                                  opflex::modb::MAC("00:10:10:10:10:12"),
+                                  "2002:db8::2"));
+
         switchManager.start("br-int");
         conn =
             static_cast<MockSwitchConnection*>(switchManager.getConnection());
@@ -69,6 +99,8 @@ public:
         portMapper.RPortMap[2048] = "br0_vxlan0";
         portMapper.ports[ep0->getInterfaceName().get()] = 80;
         portMapper.RPortMap[80] = ep0->getInterfaceName().get();
+        portMapper.ports["eth0"] = 42;
+        portMapper.RPortMap[42] = "eth0";
 
         ep1->addIP("10.20.54.11");
         epSrc.updateEndpoint(*ep1);
@@ -135,7 +167,8 @@ class EpAdvertFixtureGU : public AdvertManagerFixture {
 public:
     EpAdvertFixtureGU()
         : AdvertManagerFixture() {
-        advertManager.enableEndpointAdv(AdvertManager::EPADV_GRATUITOUS_UNICAST);
+        advertManager.
+            enableEndpointAdv(AdvertManager::EPADV_GRATUITOUS_UNICAST);
         start();
         advertManager.scheduleInitialEndpointAdv(10);
     }
@@ -149,7 +182,8 @@ class EpAdvertFixtureGB : public AdvertManagerFixture {
 public:
     EpAdvertFixtureGB()
         : AdvertManagerFixture() {
-        advertManager.enableEndpointAdv(AdvertManager::EPADV_GRATUITOUS_BROADCAST);
+        advertManager.
+            enableEndpointAdv(AdvertManager::EPADV_GRATUITOUS_BROADCAST);
         start();
         advertManager.scheduleInitialEndpointAdv(10);
     }
@@ -187,7 +221,8 @@ public:
 };
 
 static void verify_epadv(ofpbuf* msg, unordered_set<string>& found,
-                         AdvertManager::EndpointAdvMode mode) {
+                         AdvertManager::EndpointAdvMode mode,
+                         unordered_set<string>& fallback) {
     using namespace arp;
 
     struct ofputil_packet_out po;
@@ -244,9 +279,10 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found,
         address_v6 dstIp(bytes);
 
         found.insert(srcIp.to_string());
-        struct icmp6_hdr* icmp = (struct icmp6_hdr*) dpp_l4(pkt.get());
+        bool isFallback = fallback.find(srcIp.to_string()) != fallback.end();
 
-        if (mode == AdvertManager::EPADV_ROUTER_REQUEST) {
+        struct icmp6_hdr* icmp = (struct icmp6_hdr*) dpp_l4(pkt.get());
+        if (!isFallback && mode == AdvertManager::EPADV_ROUTER_REQUEST) {
             BOOST_CHECK_EQUAL(ND_NEIGHBOR_SOLICIT, icmp->icmp6_type);
             BOOST_CHECK(srcIp != dstIp);
         } else {
@@ -260,12 +296,16 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found,
 }
 
 void AdvertManagerFixture::testEpAdvert(AdvertManager::EndpointAdvMode mode) {
-    WAIT_FOR(conn->sentMsgs.size() == 5, 1000);
-    BOOST_CHECK_EQUAL(5, conn->sentMsgs.size());
+    WAIT_FOR(conn->sentMsgs.size() == 8, 1000);
+    BOOST_CHECK_EQUAL(8, conn->sentMsgs.size());
+    // allow fallback to grat broadcast for service IPs
+    unordered_set<string> fallback { "2002:db8::2" };
     unordered_set<string> found;
     for (ofpbuf* msg : conn->sentMsgs) {
-        verify_epadv(msg, found, mode);
+        verify_epadv(msg, found, mode, fallback);
     }
+
+    // endpoints
     BOOST_CHECK(!CONTAINS(found, "10.20.45.31")); // unknown flood
     BOOST_CHECK(!CONTAINS(found, "10.20.45.32")); // unknown flood
     BOOST_CHECK(CONTAINS(found, "10.20.44.21"));
@@ -274,6 +314,11 @@ void AdvertManagerFixture::testEpAdvert(AdvertManager::EndpointAdvMode mode) {
     BOOST_CHECK(CONTAINS(found, "2001:db8::2"));
     BOOST_CHECK(CONTAINS(found, "2001:db8::3"));
     BOOST_CHECK(!CONTAINS(found, "10.20.54.11")); // routing disabled
+
+    // services
+    BOOST_CHECK(CONTAINS(found, "201.1.1.1"));
+    BOOST_CHECK(CONTAINS(found, "201.1.1.2"));
+    BOOST_CHECK(CONTAINS(found, "2002:db8::2"));
 }
 
 BOOST_AUTO_TEST_SUITE(AdvertManager_test)

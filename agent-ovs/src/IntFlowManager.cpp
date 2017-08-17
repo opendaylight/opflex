@@ -257,6 +257,7 @@ void IntFlowManager::endpointUpdated(const std::string& uuid) {
 void IntFlowManager::serviceUpdated(const std::string& uuid) {
     if (stopping) return;
 
+    advertManager.scheduleServiceAdv(uuid);
     taskQueue.dispatch(uuid,
                        bind(&IntFlowManager::handleServiceUpdate,
                             this, uuid));

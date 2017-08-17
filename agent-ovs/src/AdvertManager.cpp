@@ -129,28 +129,33 @@ void AdvertManager::scheduleEndpointAdv(const std::string& uuid) {
     }
 }
 
-static int send_packet_out(IntFlowManager& intFlowManager,
-                           SwitchConnection* conn,
+void AdvertManager::scheduleServiceAdv(const std::string& uuid) {
+    if (endpointAdvTimer) {
+        unique_lock<mutex> guard(ep_mutex);
+        pendingServices[uuid] = 5;
+
+        doScheduleEpAdv();
+    }
+}
+
+static int send_packet_out(SwitchConnection* conn,
                            ofpbuf* b,
                            unordered_set<uint32_t>& out_ports,
+                           IntFlowManager::EncapType encapType =
+                           IntFlowManager::ENCAP_NONE,
                            uint32_t vnid = 0,
-                           const URI& egURI = URI::ROOT) {
+                           address tunDst = address()) {
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
     po.packet = b->data;
     po.packet_len = b->size;
     po.in_port = OFPP_CONTROLLER;
 
-    uint32_t tunPort = intFlowManager.getTunnelPort();
     ActionBuilder ab;
-    ab.reg(MFF_REG0, vnid);
-    if (out_ports.find(tunPort) != out_ports.end()) {
-        address tunDst = intFlowManager.getEPGTunnelDst(egURI);
-        IntFlowManager::actionTunnelMetadata(ab,
-                                             intFlowManager.getEncapType(),
-                                             tunDst);
+    if (encapType != IntFlowManager::ENCAP_NONE && vnid != 0) {
+        ab.reg(MFF_REG0, vnid);
+        IntFlowManager::actionTunnelMetadata(ab, encapType, tunDst);
     }
-
     for (uint32_t p : out_ports) {
         ab.output(p);
     }
@@ -202,8 +207,7 @@ void AdvertManager::sendRouterAdvs() {
                                              epg, polMgr);
         if (b == NULL) continue;
 
-        int error = send_packet_out(intFlowManager, switchConnection,
-                                    b, out_ports);
+        int error = send_packet_out(switchConnection, b, out_ports);
         if (error) {
             LOG(ERROR) << "Could not write packet-out: "
                        << ovs_strerror(error);
@@ -245,14 +249,15 @@ void AdvertManager::onRouterAdvTimer(const boost::system::error_code& ec) {
     }
 }
 
-static void doSendEpAdv(IntFlowManager& intFlowManager,
-                        PolicyManager& policyManager,
+static void doSendEpAdv(PolicyManager& policyManager,
                         SwitchConnection* switchConnection,
                         const string& ip, const uint8_t* epMac,
                         const uint8_t* routerMac,
                         const URI& egURI, uint32_t epgVnid,
                         unordered_set<uint32_t>& out_ports,
-                        AdvertManager::EndpointAdvMode mode) {
+                        AdvertManager::EndpointAdvMode mode,
+                        IntFlowManager::EncapType encapType,
+                        address tunDst) {
     boost::system::error_code ec;
     address addr = address::from_string(ip, ec);
     if (ec) {
@@ -267,8 +272,7 @@ static void doSendEpAdv(IntFlowManager& intFlowManager,
         boost::optional<std::shared_ptr<modelgbp::gbp::Subnet> > ipSubnet =
             policyManager.findSubnetForEp(egURI, addr);
         if (ipSubnet)
-            routerIp =
-                PolicyManager::getRouterIpForSubnet(*ipSubnet.get());
+            routerIp = PolicyManager::getRouterIpForSubnet(*ipSubnet.get());
 
         if (!routerIp) {
             // fall back to gratuitous unicast if we have no gateway
@@ -330,8 +334,8 @@ static void doSendEpAdv(IntFlowManager& intFlowManager,
     }
     if (b == NULL) return;
 
-    int error = send_packet_out(intFlowManager, switchConnection,
-                                b, out_ports, epgVnid, egURI);
+    int error = send_packet_out(switchConnection, b, out_ports,
+                                encapType, epgVnid, tunDst);
     if (error) {
         LOG(ERROR) << "Could not write packet-out: "
                    << ovs_strerror(error);
@@ -368,9 +372,11 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
         LOG(DEBUG) << "Sending endpoint advertisement for "
                    << ep->getMAC().get() << " " << ip;
 
-        doSendEpAdv(intFlowManager, polMgr, switchConnection,
+        doSendEpAdv(polMgr, switchConnection,
                     ip, epMac, routerMac, epgURI.get(), epgVnid.get(),
-                    out_ports, sendEndpointAdv);
+                    out_ports, sendEndpointAdv,
+                    intFlowManager.getEncapType(),
+                    intFlowManager.getEPGTunnelDst(epgURI.get()));
 
     }
 
@@ -388,10 +394,12 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
         LOG(DEBUG) << "Sending endpoint advertisement for "
                    << ep->getMAC().get() << " " << ipm.getFloatingIP().get();
 
-        doSendEpAdv(intFlowManager, polMgr, switchConnection,
+        doSendEpAdv(polMgr, switchConnection,
                     ipm.getFloatingIP().get(), epMac,
                     routerMac, ipm.getEgURI().get(),
-                    ipmVnid.get(), out_ports, sendEndpointAdv);
+                    ipmVnid.get(), out_ports, sendEndpointAdv,
+                    intFlowManager.getEncapType(),
+                    intFlowManager.getEPGTunnelDst(epgURI.get()));
     }
 }
 
@@ -416,6 +424,67 @@ void AdvertManager::sendAllEndpointAdvs() {
     }
 }
 
+struct ServiceAdvHash {
+    size_t operator()(const Service& s) const noexcept {
+        size_t v = 0;
+        if (s.getServiceMAC())
+            boost::hash_combine(v, s.getServiceMAC().get());
+        if (s.getInterfaceName())
+            boost::hash_combine(v, s.getInterfaceName().get());
+        if (s.getIfaceVlan())
+            boost::hash_combine(v, s.getIfaceVlan().get());
+        if (s.getIfaceIP())
+            boost::hash_combine(v, s.getIfaceIP().get());
+        return v;
+    }
+};
+
+struct ServiceAdvEqual {
+    bool operator() (const Service& s1, const Service& s2) const noexcept {
+        return (s1.getServiceMAC() == s2.getServiceMAC() &&
+                s1.getInterfaceName() == s2.getInterfaceName() &&
+                s1.getIfaceVlan() == s2.getIfaceVlan() &&
+                s1.getIfaceIP() == s2.getIfaceIP());
+    }
+};
+
+typedef std::unordered_set<Service, ServiceAdvHash, ServiceAdvEqual> adv_set_t;
+
+static bool shouldSendAdv(const Service& s) {
+    return ((s.getServiceMode() == Service::LOADBALANCER) &&
+            s.getServiceMAC() && s.getIfaceIP() &&
+            s.getInterfaceName());
+}
+
+void AdvertManager::sendAllServiceAdvs() {
+    LOG(DEBUG) << "Sending all service advertisements";
+
+    ServiceManager& svcMgr = agent.getServiceManager();
+    PolicyManager& polMgr = agent.getPolicyManager();
+
+    PolicyManager::uri_set_t rdURIs;
+    polMgr.getRoutingDomains(rdURIs);
+    for (const URI& rd : rdURIs) {
+        unordered_set<string> svcs;
+        svcMgr.getServicesByDomain(rd, svcs);
+
+        adv_set_t advs;
+
+        for (const string& uuid : svcs) {
+            shared_ptr<const Service> s = svcMgr.getService(uuid);
+            if (!s || !shouldSendAdv(*s)) {
+                continue;
+            }
+            if (advs.find(*s) != advs.end()) {
+                continue;
+            }
+            advs.insert(*s);
+
+            sendServiceAdvs(uuid);
+        }
+    }
+}
+
 void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
     if (ec)
         return;
@@ -429,6 +498,8 @@ void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
     if (switchConnection->IsConnected()) {
         agent.getAgentIOService()
             .dispatch(bind(&AdvertManager::sendAllEndpointAdvs, this));
+        agent.getAgentIOService()
+            .dispatch(bind(&AdvertManager::sendAllServiceAdvs, this));
     }
 
     if (!stopping) {
@@ -437,6 +508,42 @@ void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
             async_wait(bind(&AdvertManager::onAllEndpointAdvTimer,
                             this, error));
     }
+}
+
+void AdvertManager::sendServiceAdvs(const string& uuid) {
+    PolicyManager& polMgr = agent.getPolicyManager();
+    ServiceManager& svcMgr = agent.getServiceManager();
+
+    shared_ptr<const Service> svc = svcMgr.getService(uuid);
+
+    if (!svc || !shouldSendAdv(*svc)) return;
+
+    uint32_t port = portMapper->FindPort(svc->getInterfaceName().get());
+    if (port == OFPP_NONE)
+        return;
+
+    unordered_set<uint32_t> out_ports {port};
+
+    uint8_t svcMac[6];
+    svc->getServiceMAC().get().toUIntArray(svcMac);
+    const uint8_t* routerMac = intFlowManager.getRouterMacAddr();
+
+    uint8_t vnid = 0;
+    IntFlowManager::EncapType encapType = IntFlowManager::ENCAP_NONE;
+    if (svc->getIfaceVlan()) {
+        vnid = svc->getIfaceVlan().get();
+        encapType = IntFlowManager::ENCAP_VLAN;
+    }
+
+    LOG(DEBUG) << "Sending service advertisement for "
+               << svc->getServiceMAC().get() << " "
+               << svc->getIfaceIP().get() << " on "
+               << svc->getInterfaceName().get()
+               << " (vlan " << unsigned(vnid) << ")";
+
+    doSendEpAdv(polMgr, switchConnection, svc->getIfaceIP().get(),
+                svcMac, routerMac, URI::ROOT, vnid,
+                out_ports, sendEndpointAdv, encapType, address());
 }
 
 void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
@@ -449,13 +556,13 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
     if (!portMapper)
         return;
 
+    unique_lock<mutex> guard(ep_mutex);
     {
-        unique_lock<mutex> guard(ep_mutex);
-        pending_ep_map_t::iterator it = pendingEps.begin();
+        auto it = pendingEps.begin();
         while (it != pendingEps.end()) {
             agent.getAgentIOService()
-                .dispatch(bind(&AdvertManager::sendEndpointAdvs, this,
-                               it->first));
+                .dispatch(bind(&AdvertManager::sendEndpointAdvs,
+                               this, it->first));
             if (it->second <= 1) {
                 it = pendingEps.erase(it);
             } else {
@@ -463,10 +570,36 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
                 it++;
             }
         }
-
-        if (pendingEps.size() > 0)
-            doScheduleEpAdv(repeat_dis(urng));
     }
+    {
+        ServiceManager& svcMgr = agent.getServiceManager();
+        adv_set_t advs;
+        auto it = pendingServices.begin();
+        while (it != pendingServices.end()) {
+            shared_ptr<const Service> s = svcMgr.getService(it->first);
+            if (!s || !shouldSendAdv(*s)) {
+                it = pendingServices.erase(it);
+                continue;
+            }
+            if (advs.find(*s) != advs.end()) {
+                continue;
+            }
+            advs.insert(*s);
+
+            agent.getAgentIOService()
+                .dispatch(bind(&AdvertManager::sendServiceAdvs,
+                               this, it->first));
+            if (it->second <= 1) {
+                it = pendingServices.erase(it);
+            } else {
+                it->second -= 1;
+                it++;
+            }
+        }
+    }
+
+    if (pendingEps.size() > 0 || pendingServices.size() > 0)
+        doScheduleEpAdv(repeat_dis(urng));
 }
 
 } /* namespace ovsagent */
