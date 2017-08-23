@@ -1459,9 +1459,15 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                                                 false, false);
                         ipRevMapCt.conntrackState(0, FlowBuilder::CT_TRACKED);
                         ipRevMapCt.priority(100)
-                            .ipSrc(nextHopAddr)
-                            .action().conntrack(0, static_cast<mf_field_id>(0),
-                                                zoneId, SRC_TABLE_ID);
+                            .ipSrc(nextHopAddr);
+                        if (encapType == ENCAP_VLAN) {
+                            ipRevMapCt.action()
+                                .pushVlan()
+                                .regMove(MFF_REG0, MFF_VLAN_VID);
+                        }
+                        ipRevMapCt.action()
+                            .conntrack(0, static_cast<mf_field_id>(0),
+                                       zoneId, SRC_TABLE_ID);
                         ipRevMapCt.build(serviceRevFlows);
                     }
                     {
@@ -1592,12 +1598,12 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
             // we bypass regular policy semantics for these packets,
             // but use the regular forwarding pipeline.
 
-            IntFlowManager::EncapType encapType =
+            IntFlowManager::EncapType serviceEncapType =
                 IntFlowManager::ENCAP_NONE;
             uint32_t proxyVnid = 0;
             if (as.getIfaceVlan()) {
                 proxyVnid = as.getIfaceVlan().get();
-                encapType = IntFlowManager::ENCAP_VLAN;
+                serviceEncapType = IntFlowManager::ENCAP_VLAN;
             }
 
             FlowBuilder svcIface;
@@ -1630,7 +1636,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                     flowsProxyDiscovery(bridgeFlows,
                                         51, ifaceAddr, macAddr,
                                         proxyVnid, rdId, 0, false, NULL,
-                                        ofPort, encapType);
+                                        ofPort, serviceEncapType);
                 }
             }
         }
