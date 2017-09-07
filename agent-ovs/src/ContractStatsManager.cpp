@@ -89,15 +89,16 @@ void ContractStatsManager::on_timer(const error_code& ec) {
     };
 
     // Request Switch Manager to provide flow entries
+    {
+        std::lock_guard<std::mutex> lock(pstatMtx);
+        switchManager.forEachCookieMatch(IntFlowManager::POL_TABLE_ID,
+                                         cb_func);
 
-    std::lock_guard<std::mutex> lock(pstatMtx);
-    switchManager.forEachCookieMatch(IntFlowManager::POL_TABLE_ID,
-                                     cb_func);
+        PolicyCounterMap_t newClassCountersMap;
+        on_timer_base(ec, contractState, newClassCountersMap);
 
-    PolicyCounterMap_t newClassCountersMap;
-    on_timer_base(ec, contractState, newClassCountersMap);
-
-    generatePolicyStatsObjects(&newClassCountersMap);
+        generatePolicyStatsObjects(&newClassCountersMap);
+    }
 
     sendRequest(IntFlowManager::POL_TABLE_ID);
     if (!stopping && timer) {

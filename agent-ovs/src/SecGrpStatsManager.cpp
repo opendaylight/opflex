@@ -82,22 +82,27 @@ void SecGrpStatsManager::on_timer(const error_code& ec) {
     };
 
     // Request Switch Manager to provide flow entries
-    std::lock_guard<std::mutex> lock(pstatMtx);
-    switchManager.forEachCookieMatch(AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
-                                     cb_func);
+    {
+        std::lock_guard<std::mutex> lock(pstatMtx);
+        switchManager.
+            forEachCookieMatch(AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
+                               cb_func);
 
-    cb_func = [this](uint64_t cookie, uint16_t priority,
-                     const struct match& match) {
-        updateFlowEntryMap(secGrpOutState, cookie, priority, match);
-    };
-    switchManager.forEachCookieMatch(AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
-                                     cb_func);
+        cb_func = [this](uint64_t cookie, uint16_t priority,
+                         const struct match& match) {
+            updateFlowEntryMap(secGrpOutState, cookie, priority, match);
+        };
+        switchManager.
+            forEachCookieMatch(AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
+                               cb_func);
 
-    PolicyCounterMap_t newClassCountersMap1;
-    PolicyCounterMap_t newClassCountersMap2;
-    on_timer_base(ec, secGrpInState, newClassCountersMap1);
-    on_timer_base(ec, secGrpOutState, newClassCountersMap2);
-    generatePolicyStatsObjects(&newClassCountersMap1,&newClassCountersMap2);
+        PolicyCounterMap_t newClassCountersMap1;
+        PolicyCounterMap_t newClassCountersMap2;
+        on_timer_base(ec, secGrpInState, newClassCountersMap1);
+        on_timer_base(ec, secGrpOutState, newClassCountersMap2);
+        generatePolicyStatsObjects(&newClassCountersMap1,
+                                   &newClassCountersMap2);
+    }
 
     sendRequest(AccessFlowManager::SEC_GROUP_IN_TABLE_ID);
     sendRequest(AccessFlowManager::SEC_GROUP_OUT_TABLE_ID);
