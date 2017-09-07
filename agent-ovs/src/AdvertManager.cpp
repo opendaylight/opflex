@@ -561,8 +561,8 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
         auto it = pendingEps.begin();
         while (it != pendingEps.end()) {
             agent.getAgentIOService()
-                .dispatch(bind(&AdvertManager::sendEndpointAdvs,
-                               this, it->first));
+                .post(bind(&AdvertManager::sendEndpointAdvs,
+                           this, it->first));
             if (it->second <= 1) {
                 it = pendingEps.erase(it);
             } else {
@@ -582,13 +582,15 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
                 continue;
             }
             if (advs.find(*s) != advs.end()) {
+                it->second -= 1;
+                it++;
                 continue;
             }
             advs.insert(*s);
 
             agent.getAgentIOService()
-                .dispatch(bind(&AdvertManager::sendServiceAdvs,
-                               this, it->first));
+                .post(bind(&AdvertManager::sendServiceAdvs,
+                           this, it->first));
             if (it->second <= 1) {
                 it = pendingServices.erase(it);
             } else {
