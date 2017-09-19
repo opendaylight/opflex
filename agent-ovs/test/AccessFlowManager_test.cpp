@@ -65,6 +65,9 @@ public:
 
     shared_ptr<SecGroup> secGrp1;
     shared_ptr<SecGroup> secGrp2;
+
+    /* Initialize dhcp flow entries */
+    void initExpDhcpEp(shared_ptr<Endpoint>& ep);
 };
 
 BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
@@ -136,6 +139,18 @@ BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
     initExpEp(ep0);
     initExpEp(ep2);
     WAIT_FOR_TABLES("access-vlan-added", 500);
+
+    Endpoint::DHCPv4Config v4;
+    Endpoint::DHCPv6Config v6;
+    ep0->setAccessIfaceVlan(223);
+    ep0->setDHCPv4Config(v4);
+    ep0->setDHCPv6Config(v6);
+    epSrc.updateEndpoint(*ep0);
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpDhcpEp(ep0);
+    WAIT_FOR_TABLES("dhcp-configured", 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
@@ -273,6 +288,36 @@ void AccessFlowManagerFixture::initExpStatic() {
          .reg(SEPG, 1).actions().go(OUT).done());
     ADDF(Bldr().table(IN_POL).priority(PolicyManager::MAX_POLICY_RULE_PRIORITY)
          .reg(SEPG, 1).actions().go(OUT).done());
+}
+
+void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
+    uint32_t access = portmapper.FindPort(ep->getAccessInterface().get());
+    uint32_t uplink = portmapper.FindPort(ep->getAccessUplinkInterface().get());
+    uint32_t zoneId = idGen.getId("conntrack", ep->getUUID());
+
+    if (access == OFPP_NONE || uplink == OFPP_NONE) return;
+
+    initExpEp(ep);
+    if (ep->getDHCPv4Config()) {
+        ADDF(Bldr()
+         .table(GRP).priority(200).udp().in(access)
+         .isVlan(ep->getAccessIfaceVlan().get())
+         .isTpSrc(68).isTpDst(67)
+         .actions()
+         .popVlan()                          
+         .load(OUTPORT, uplink)
+         .go(OUT).done());
+    }
+    if (ep->getDHCPv6Config()) {
+        ADDF(Bldr()
+         .table(GRP).priority(200).udp6().in(access)
+         .isVlan(ep->getAccessIfaceVlan().get())
+         .isTpSrc(546).isTpDst(547)
+         .actions()
+         .popVlan()                               
+         .load(OUTPORT, uplink)         
+         .go(OUT).done());
+    }
 }
 
 void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
