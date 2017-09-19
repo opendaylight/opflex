@@ -230,5 +230,19 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
     }
 }
 
+FlowBuilder& match_dhcp_req(FlowBuilder& fb, bool v4) {
+    fb.proto(17);
+    if (v4) {
+        fb.ethType(eth::type::IP);
+        fb.tpSrc(68);
+        fb.tpDst(67);
+    } else {
+        fb.ethType(eth::type::IPV6);
+        fb.tpSrc(546);
+        fb.tpDst(547);
+    }
+    return fb;
+}
+
 } // namespace flowutils
 } // namespace ovsagent

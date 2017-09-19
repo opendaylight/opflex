@@ -132,6 +132,23 @@ static FlowEntryPtr flowEmptySecGroup(uint32_t emptySecGrpSetId) {
     return noSecGrp.build();
 }
 
+static void flowBypassDhcpRequest(FlowEntryList& el, bool v4, uint32_t inport,
+                                  uint32_t outport,
+                                  std::shared_ptr<const Endpoint>& ep ) {
+    FlowBuilder fb;
+    if (ep->getAccessIfaceVlan()) {
+        fb.vlan(ep->getAccessIfaceVlan().get());
+        fb.action().popVlan();
+    }
+
+    fb.priority(200).inPort(inport);
+    flowutils::match_dhcp_req(fb, v4);
+    fb.action()
+        .reg(MFF_REG7, outport)
+        .go(AccessFlowManager::OUT_TABLE_ID);
+    fb.build(el);
+}
+
 void AccessFlowManager::createStaticFlows() {
     LOG(DEBUG) << "Writing static flows";
     switchManager.writeFlow("static", OUT_TABLE_ID,
@@ -194,7 +211,21 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
                 .reg(MFF_REG7, uplinkPort)
                 .go(SEC_GROUP_OUT_TABLE_ID);
             in.build(el);
+
         }
+
+        /*
+         * Allow DHCP request to bypass the access bridge policy when
+         * virtual DHCP is enabled.
+         */
+        optional<Endpoint::DHCPv4Config> v4c = ep->getDHCPv4Config();
+        if (v4c)
+            flowBypassDhcpRequest(el, true, accessPort, uplinkPort, ep);
+
+        optional<Endpoint::DHCPv6Config> v6c = ep->getDHCPv6Config();
+        if(v6c)
+            flowBypassDhcpRequest(el, false, accessPort, uplinkPort, ep);
+
         {
             FlowBuilder out;
             if (zoneId != static_cast<uint16_t>(-1))
