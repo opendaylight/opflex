@@ -145,6 +145,39 @@ void AccessFlowManager::createStaticFlows() {
                             flowEmptySecGroup(emptySecGrpSetId));
 }
 
+/*
+ * Add a flow for the DHCP request packets to bypass the Access Bridge
+ *
+ * @param fb the flowbuilder
+ * @param v4 whether its a v4 request or v6 request
+ * @param inport the input port in the flow
+ * @param outport the output port in the flow
+ * @param Endpoint
+ *
+ */
+void bypass_dhcp_request(FlowBuilder& indhcp, bool v4, uint32_t inport,
+                                 uint32_t outport,
+                                 std::shared_ptr<const Endpoint> ep ) {
+    /*
+     * Need to create a flow entry for the DHCP request so that
+     * the request gets bypassed the access bridge
+     */
+    if (ep->getAccessIfaceVlan()) {
+        indhcp.vlan(ep->getAccessIfaceVlan().get());
+        indhcp.action().popVlan();
+    }
+
+    /*
+     * DHCP is configured, now we need to re-direct the
+     * DHCP req packet to OUT_TABLE_ID
+     */
+    indhcp.priority(200).inPort(inport);
+    flowutils::matchDhcpReq(indhcp, v4);
+    indhcp.action()
+        	.reg(MFF_REG7, outport)
+        	.go(AccessFlowManager::OUT_TABLE_ID);
+}
+
 void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
     LOG(DEBUG) << "Updating endpoint " << uuid;
     shared_ptr<const Endpoint> ep =
@@ -175,6 +208,8 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
             LOG(ERROR) << "Could not allocate connection tracking zone for "
                        << uuid;
     }
+    optional<Endpoint::DHCPv4Config> v4c = ep->getDHCPv4Config();
+    optional<Endpoint::DHCPv6Config> v6c = ep->getDHCPv6Config();
 
     FlowEntryList el;
     if (accessPort != OFPP_NONE && uplinkPort != OFPP_NONE) {
@@ -194,6 +229,19 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
                 .reg(MFF_REG7, uplinkPort)
                 .go(SEC_GROUP_OUT_TABLE_ID);
             in.build(el);
+
+        }
+        if (v4c) {
+            FlowBuilder indhcpv4;
+
+            bypass_dhcp_request(indhcpv4, true, accessPort, uplinkPort, ep);
+            indhcpv4.build(el);
+        }
+        if(v6c) {
+            FlowBuilder indhcpv6;
+
+            bypass_dhcp_request(indhcpv6, false, accessPort, uplinkPort, ep);
+            indhcpv6.build(el);
         }
         {
             FlowBuilder out;

@@ -426,21 +426,6 @@ static FlowBuilder& matchSubnet(FlowBuilder& fb, uint32_t rdId,
     return fb;
 }
 
-
-static FlowBuilder& matchDhcpReq(FlowBuilder& fb, bool v4) {
-    fb.proto(17);
-    if (v4) {
-        fb.ethType(eth::type::IP);
-        fb.tpSrc(68);
-        fb.tpDst(67);
-    } else {
-        fb.ethType(eth::type::IPV6);
-        fb.tpSrc(546);
-        fb.tpDst(547);
-    }
-    return fb;
-}
-
 // Action helper functions
 static FlowBuilder& actionSource(FlowBuilder& fb, uint32_t epgId, uint32_t bdId,
                                  uint32_t fgrpId,  uint32_t l3Id,
@@ -856,7 +841,7 @@ static void flowsEndpointPortSec(FlowEntryList& elPortSec,
 static void flowsVirtualDhcp(FlowEntryList& elSrc, uint32_t ofPort,
                              uint8_t* macAddr, bool v4) {
     FlowBuilder fb;
-    matchDhcpReq(fb, v4);
+    flowutils::matchDhcpReq(fb, v4);
     actionController(fb);
     fb.priority(35)
         .cookie(v4 ? flow::cookie::DHCP_V4 : flow::cookie::DHCP_V6)
@@ -1707,13 +1692,15 @@ void IntFlowManager::createStaticFlows() {
         }
         {
             // Allow DHCP requests but not replies
-            actionSecAllow(matchDhcpReq(FlowBuilder().priority(27), true))
+            actionSecAllow(flowutils::matchDhcpReq(FlowBuilder().priority(27),
+                								   true))
                 .build(portSec);
         }
         {
             // Allow IPv6 autoconfiguration (DHCP & router solicitiation)
             // requests but not replies
-            actionSecAllow(matchDhcpReq(FlowBuilder().priority(27), false))
+            actionSecAllow(flowutils::matchDhcpReq(FlowBuilder().priority(27),
+                								   false))
                 .build(portSec);
             actionSecAllow(FlowBuilder().priority(27)
                            .ethType(eth::type::IPV6)

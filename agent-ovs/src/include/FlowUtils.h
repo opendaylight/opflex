@@ -97,6 +97,16 @@ void add_classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
                             uint32_t flags, uint64_t cookie,
                             uint32_t svnid, uint32_t dvnid,
                             /* out */ FlowEntryList& entries);
+
+/*
+ * Add a match entry for the DHCP v4 and v6 request
+ *
+ * @param fb the flowbuilder
+ * @param v4 whether its a v4 or v6
+ *
+ * @return the flowbuilder
+ */
+FlowBuilder& matchDhcpReq(FlowBuilder& fb, bool v4);
 } // namespace flowutils
 } // namespace ovsagent
 
