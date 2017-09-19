@@ -146,7 +146,7 @@ void AccessFlowManager::createStaticFlows() {
 }
 
 void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
-    LOG(DEBUG) << "Updating endpoint " << uuid;
+    LOG(DEBUG) << "ABHI Updating endpoint " << uuid;
     shared_ptr<const Endpoint> ep =
         agent.getEndpointManager().getEndpoint(uuid);
     if (!ep) {
@@ -175,6 +175,9 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
             LOG(ERROR) << "Could not allocate connection tracking zone for "
                        << uuid;
     }
+    LOG(DEBUG) << "ABHI checking for v4 and v6 dhcp";
+    optional<Endpoint::DHCPv4Config> v4c = ep->getDHCPv4Config();
+    optional<Endpoint::DHCPv6Config> v6c = ep->getDHCPv6Config();
 
     FlowEntryList el;
     if (accessPort != OFPP_NONE && uplinkPort != OFPP_NONE) {
@@ -194,6 +197,57 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
                 .reg(MFF_REG7, uplinkPort)
                 .go(SEC_GROUP_OUT_TABLE_ID);
             in.build(el);
+
+        }
+        {
+            if (v4c) {
+                /*
+                 * Need to create a flow entry for the DHCP v4 request so that
+                 * the request gets bypassed the security table
+                 */
+                FlowBuilder indhcpv4;
+
+                if (ep->getAccessIfaceVlan()) {
+                    indhcpv4.vlan(ep->getAccessIfaceVlan().get());
+                    indhcpv4.action().popVlan();
+                }
+
+                /*
+                 * DHCP is configured, now we need to re-direct the
+                 * DHCPv4 req packet to OUT_TABLE_ID
+                 */
+                indhcpv4.priority(200).inPort(accessPort);
+                flowutils::matchDhcpReq(indhcpv4, true);
+                indhcpv4.action()
+                .reg(MFF_REG7, uplinkPort)
+                .go(OUT_TABLE_ID);
+                indhcpv4.build(el);
+            }
+        }
+        {
+            if(v6c) {
+                /*
+                 * Need to create a flow entry for the DHCP v6 request so that
+                 * the request gets bypassed the security table
+                 */
+                FlowBuilder indhcpv6;
+
+                if (ep->getAccessIfaceVlan()) {
+                    indhcpv6.vlan(ep->getAccessIfaceVlan().get());
+                    indhcpv6.action().popVlan();
+                }
+
+                 /*
+                 * DHCP is configured, now we need to re-direct the
+                 * DHCPv6 req packet to OUT_TABLE_ID
+                 */
+                indhcpv6.priority(200).inPort(accessPort);
+                flowutils::matchDhcpReq(indhcpv6, false);
+                indhcpv6.action()
+                .reg(MFF_REG7, uplinkPort)
+                .go(OUT_TABLE_ID);
+                indhcpv6.build(el);
+            }
         }
         {
             FlowBuilder out;
