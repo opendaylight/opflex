@@ -136,6 +136,17 @@ BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
     initExpEp(ep0);
     initExpEp(ep2);
     WAIT_FOR_TABLES("access-vlan-added", 500);
+
+    endpoint::dhcpv4config v4;
+    endpoint::dhcpv6config v6;
+    ep0->setDHCPv4Config(v4);
+    ep0->setDHCPv6Config(v6);
+    epSrc.updateEndpoint(*ep0);
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEp(ep0);
+    WAIT_FOR_TABLES("dhcp-configured", 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
@@ -292,6 +303,16 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
              .actions().load(RD, zoneId).load(SEPG, 1).load(OUTPORT, access)
              .pushVlan().setVlan(ep->getAccessIfaceVlan().get())
              .go(IN_POL).done());
+    } else if (ep->getDHCPv4Config()) {
+        ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
+         .table(SEC).priority(200).udp().in(access)
+         .isTpSrc(68).isTpDst(67)
+         .actions().controller(65535).done());
+   } else if (ep->getDHCPv6Config()) {
+        ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))
+         .table(SEC).priority(200).udp6().in(access)
+         .isTpSrc(546).isTpDst(547)
+         .actions().controller(65535).done());
     } else {
         ADDF(Bldr().table(GRP).priority(100).in(access)
              .actions().load(RD, zoneId).load(SEPG, 1)
