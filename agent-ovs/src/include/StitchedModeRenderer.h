@@ -20,6 +20,8 @@
 #include "ContractStatsManager.h"
 #include "SecGrpStatsManager.h"
 #include "TunnelEpManager.h"
+#include "PacketInHandler.h"
+#include "CtZoneManager.h"
 
 #pragma once
 #ifndef OVSAGENT_STITCHEDMODERENDERER_H
@@ -78,6 +80,8 @@ private:
     PortMapper accessPortMapper;
     SwitchManager accessSwitchManager;
     AccessFlowManager accessFlowManager;
+
+    PacketInHandler pktInHandler;
 
     InterfaceStatsManager interfaceStatsManager;
     ContractStatsManager contractStatsManager;

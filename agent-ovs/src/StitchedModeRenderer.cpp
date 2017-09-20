@@ -34,10 +34,12 @@ static const boost::posix_time::milliseconds CLEANUP_INTERVAL(3*60*1000);
 StitchedModeRenderer::StitchedModeRenderer(Agent& agent_)
     : Renderer(agent_), ctZoneManager(idGen),
       intSwitchManager(agent_, intFlowExecutor, intFlowReader, intPortMapper),
-      intFlowManager(agent_, intSwitchManager, idGen, ctZoneManager),
+      intFlowManager(agent_, intSwitchManager, idGen,
+                     ctZoneManager, pktInHandler),
       accessSwitchManager(agent_, accessFlowExecutor,
                           accessFlowReader, accessPortMapper),
       accessFlowManager(agent_, accessSwitchManager, idGen, ctZoneManager),
+      pktInHandler(agent_, intFlowManager),
       interfaceStatsManager(&agent_, intSwitchManager.getPortMapper(),
                             accessSwitchManager.getPortMapper()),
       contractStatsManager(&agent_, idGen, intSwitchManager),
@@ -118,24 +120,28 @@ void StitchedModeRenderer::start() {
     if (accessBridgeName != "") {
         accessFlowManager.start();
     }
-    intSwitchManager.connect();
-    if (accessBridgeName != "") {
-        accessSwitchManager.connect();
-    }
+
+    pktInHandler.registerConnection(intSwitchManager.getConnection(),
+                                    (accessBridgeName != "")
+                                    ? accessSwitchManager.getConnection()
+                                    : NULL);
+    pktInHandler.setPortMapper(&intSwitchManager.getPortMapper(),
+                               (accessBridgeName != "")
+                               ? &accessSwitchManager.getPortMapper()
+                               : NULL);
+    pktInHandler.setFlowReader(&intSwitchManager.getFlowReader());
+    pktInHandler.start();
 
     std::random_device rng;
     std::mt19937 urng(rng());
     std::string agentUUID =
         to_string(basic_random_generator<std::mt19937>(urng)());
 
-    if (accessBridgeName != "") {
-        interfaceStatsManager.
-            registerConnection(intSwitchManager.getConnection(),
-                               accessSwitchManager.getConnection());
-    } else {
-        interfaceStatsManager.
-            registerConnection(intSwitchManager.getConnection(), NULL);
-    }
+    interfaceStatsManager.
+        registerConnection(intSwitchManager.getConnection(),
+                           (accessBridgeName != "")
+                           ? accessSwitchManager.getConnection()
+                           : NULL);
     interfaceStatsManager.start();
     contractStatsManager.setAgentUUID(agentUUID);
     contractStatsManager.registerConnection(intSwitchManager.getConnection());
@@ -146,6 +152,12 @@ void StitchedModeRenderer::start() {
             registerConnection(accessSwitchManager.getConnection());
         secGrpStatsManager.start();
     }
+
+    intSwitchManager.connect();
+    if (accessBridgeName != "") {
+        accessSwitchManager.connect();
+    }
+
     cleanupTimer.reset(new deadline_timer(getAgent().getAgentIOService()));
     cleanupTimer->expires_from_now(CLEANUP_INTERVAL);
     cleanupTimer->async_wait(bind(&StitchedModeRenderer::onCleanupTimer,
@@ -165,6 +177,8 @@ void StitchedModeRenderer::stop() {
     interfaceStatsManager.stop();
     contractStatsManager.stop();
     secGrpStatsManager.stop();
+
+    pktInHandler.stop();
 
     intFlowManager.stop();
     accessFlowManager.stop();

@@ -56,7 +56,9 @@ class IntFlowManagerFixture : public FlowManagerFixture {
 public:
     IntFlowManagerFixture()
         : FlowManagerFixture(),
-          intFlowManager(agent, switchManager, idGen, ctZoneManager),
+          intFlowManager(agent, switchManager, idGen,
+                         ctZoneManager, pktInHandler),
+          pktInHandler(agent, intFlowManager),
           policyMgr(agent.getPolicyManager()),
           ep2_port(11), ep4_port(22) {
         createObjects();
@@ -88,6 +90,10 @@ public:
 
         switchManager.registerStateHandler(&intFlowManager);
         intFlowManager.enableConnTrack();
+
+        pktInHandler.registerConnection(switchManager.getConnection(), NULL);
+        pktInHandler.setPortMapper(&switchManager.getPortMapper(), NULL);
+        pktInHandler.setFlowReader(&switchManager.getFlowReader());
         start();
     }
     virtual ~IntFlowManagerFixture() {
@@ -166,6 +172,7 @@ public:
     void portStatusTest();
 
     IntFlowManager intFlowManager;
+    PacketInHandler pktInHandler;
     PolicyManager& policyMgr;
 
     string tunIf;

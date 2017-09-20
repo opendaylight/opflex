@@ -14,12 +14,10 @@
 #include "SwitchManager.h"
 #include "IdGenerator.h"
 #include "ActionBuilder.h"
-#include "PacketInHandler.h"
 #include "AdvertManager.h"
 #include "RDConfig.h"
 #include "TaskQueue.h"
 #include "SwitchStateHandler.h"
-#include "CtZoneManager.h"
 
 #include <opflex/ofcore/PeerStatusListener.h>
 
@@ -31,6 +29,9 @@
 #include <unordered_map>
 
 namespace ovsagent {
+
+class CtZoneManager;
+class PacketInHandler;
 
 /**
  * @brief Makes changes to OpenFlow tables to be in sync with state
@@ -54,11 +55,13 @@ public:
      * @param switchManager the switch manager
      * @param idGen the flow ID generator
      * @param ctZoneManager the conntrack zone manager
+     * @param pktInHandler the packet-in handler
      */
     IntFlowManager(Agent& agent,
                    SwitchManager& switchManager,
                    IdGenerator& idGen,
-                   CtZoneManager& ctZoneManager);
+                   CtZoneManager& ctZoneManager,
+                   PacketInHandler& pktInHandler);
     ~IntFlowManager() {}
 
     /**
@@ -539,6 +542,7 @@ private:
     SwitchManager& switchManager;
     IdGenerator& idGen;
     CtZoneManager& ctZoneManager;
+    PacketInHandler& pktInHandler;
     TaskQueue taskQueue;
 
     EncapType encapType;
@@ -565,7 +569,6 @@ private:
 
     uint32_t getExtNetVnid(const opflex::modb::URI& uri);
 
-    PacketInHandler pktInHandler;
     AdvertManager advertManager;
 
     bool isSyncing;

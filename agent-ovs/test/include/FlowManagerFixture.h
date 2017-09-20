@@ -15,6 +15,7 @@
 #include "MockSwitchManager.h"
 #include "TableState.h"
 #include "CtZoneManager.h"
+#include "PacketInHandler.h"
 #include "logging.h"
 
 #include <vector>

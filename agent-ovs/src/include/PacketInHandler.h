@@ -42,21 +42,25 @@ public:
 
     /**
      * Set the port mapper to use
-     * @param m the port mapper
+     * @param intMapper the integration bridge port mapper
+     * @param accessMapper the access bridge port mapper
      */
-    void setPortMapper(PortMapper* m) { portMapper = m; }
+    void setPortMapper(PortMapper* intMapper,
+                       PortMapper* accessMapper);
 
     /**
-     * Set the flow reader to use
+     * Set the integration bridge flow reader to use
      * @param r the flow reader
      */
-    void setFlowReader(FlowReader* r) { flowReader = r; }
+    void setFlowReader(FlowReader* r) { intFlowReader = r; }
 
     /**
-     * Set the switch connection to use
-     * @param c the switch connection
+     * Set the switch connections to use
+     * @param intConnection the integration bridge switch connection
+     * @param accessConnection the access bridge switch connection
      */
-    void registerConnection(SwitchConnection* c) { switchConnection = c; }
+    void registerConnection(SwitchConnection* intConnection,
+                            SwitchConnection* accessConnection);
 
     /**
      * Reconcile the provided reactive flow against the current system
@@ -67,6 +71,16 @@ public:
      * therefore left as is), false if it must be compared with expected flows
      */
     bool reconcileReactiveFlow(const FlowEntryPtr& fe);
+
+    /**
+     * Start the packet in handler
+     */
+    void start();
+
+    /**
+     * Stop the packet in handler
+     */
+    void stop();
 
     // **************
     // MessageHandler
@@ -117,9 +131,11 @@ private:
 
     Agent& agent;
     IntFlowManager& intFlowManager;
-    PortMapper* portMapper;
-    FlowReader* flowReader;
-    SwitchConnection* switchConnection;
+    PortMapper* intPortMapper;
+    PortMapper* accessPortMapper;
+    FlowReader* intFlowReader;
+    SwitchConnection* intSwConnection;
+    SwitchConnection* accSwConnection;
 };
 } /* namespace ovsagent */
 

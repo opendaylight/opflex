@@ -20,9 +20,10 @@
 #include "SwitchManager.h"
 #include "TaskQueue.h"
 #include "SwitchStateHandler.h"
-#include "CtZoneManager.h"
 
 namespace ovsagent {
+
+class CtZoneManager;
 
 /**
  * Manage the flow table state in the access bridge, which handles
