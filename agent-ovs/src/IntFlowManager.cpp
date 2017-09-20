@@ -36,6 +36,7 @@
 #include "IntFlowManager.h"
 #include "TableState.h"
 #include "PacketInHandler.h"
+#include "CtZoneManager.h"
 #include "Packets.h"
 #include "Network.h"
 #include "FlowUtils.h"
@@ -89,13 +90,14 @@ static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[5];
 IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,
                                IdGenerator& idGen_,
-                               CtZoneManager& ctZoneManager_) :
+                               CtZoneManager& ctZoneManager_,
+                               PacketInHandler& pktInHandler_) :
     agent(agent_), switchManager(switchManager_), idGen(idGen_),
-    ctZoneManager(ctZoneManager_), taskQueue(agent.getAgentIOService()),
-    encapType(ENCAP_NONE), floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
+    ctZoneManager(ctZoneManager_), pktInHandler(pktInHandler_),
+    taskQueue(agent.getAgentIOService()), encapType(ENCAP_NONE),
+    floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
     virtualRouterEnabled(false), routerAdv(false),
     virtualDHCPEnabled(false), conntrackEnabled(false),
-    pktInHandler(agent, *this),
     advertManager(agent, *this), isSyncing(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
@@ -110,16 +112,10 @@ IntFlowManager::IntFlowManager(Agent& agent_,
 void IntFlowManager::start() {
     // set up port mapper
     switchManager.getPortMapper().registerPortStatusListener(this);
-    pktInHandler.setPortMapper(&switchManager.getPortMapper());
     advertManager.setPortMapper(&switchManager.getPortMapper());
-
-    // set up flow reader
-    pktInHandler.setFlowReader(&switchManager.getFlowReader());
 
     // Register connection handlers
     SwitchConnection* conn = switchManager.getConnection();
-    conn->RegisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
-    pktInHandler.registerConnection(conn);
     advertManager.registerConnection(conn);
 
     for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
@@ -140,8 +136,6 @@ void IntFlowManager::registerModbListeners() {
 
 void IntFlowManager::stop() {
     stopping = true;
-    SwitchConnection* conn = switchManager.getConnection();
-    conn->UnregisterMessageHandler(OFPTYPE_PACKET_IN, &pktInHandler);
 
     agent.getEndpointManager().unregisterListener(this);
     agent.getServiceManager().unregisterListener(this);
@@ -303,7 +297,6 @@ void IntFlowManager::portStatusUpdate(const string& portName,
     agent.getAgentIOService()
         .dispatch(bind(&IntFlowManager::handlePortStatusUpdate, this,
                        portName, portNo));
-    pktInHandler.portStatusUpdate(portName, portNo, fromDesc);
 }
 
 void IntFlowManager::peerStatusUpdated(const std::string&, int,

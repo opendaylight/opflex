@@ -15,6 +15,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "CtZoneManager.h"
 #include "PacketInHandler.h"
 #include "ModbFixture.h"
 #include "MockSwitchManager.h"
@@ -25,6 +26,8 @@
 #include "logging.h"
 #include "ovs-shim.h"
 
+BOOST_AUTO_TEST_SUITE(PacketInHandler_test)
+
 using boost::asio::ip::address_v4;
 using std::unordered_set;
 using namespace ovsagent;
@@ -33,11 +36,12 @@ class PacketInHandlerFixture : public ModbFixture {
 public:
     PacketInHandlerFixture()
         : ModbFixture(), ctZoneManager(idGen),
-          switchManager(agent, flowExecutor, flowReader, portMapper),
-          intFlowManager(agent, switchManager, idGen, ctZoneManager),
+          switchManager(agent, flowExecutor, flowReader, intPortMapper),
+          intFlowManager(agent, switchManager, idGen,
+                         ctZoneManager, pktInHandler),
           pktInHandler(agent, intFlowManager),
           proto(ofputil_protocol_from_ofp_version
-                ((ofp_version)conn.GetProtocolVersion())) {
+                ((ofp_version)intConn.GetProtocolVersion())) {
         createObjects();
 
         intFlowManager.setEncapIface("br0_vxlan0");
@@ -45,9 +49,13 @@ public:
         intFlowManager.setVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
         intFlowManager.setVirtualDHCP(true, "00:22:bd:f8:19:ff");
 
-        portMapper.ports[ep0->getInterfaceName().get()] = 80;
-        portMapper.RPortMap[80] = ep0->getInterfaceName().get();
-        pktInHandler.setPortMapper(&portMapper);
+        intPortMapper.ports[ep0->getInterfaceName().get()] = 80;
+        intPortMapper.RPortMap[80] = ep0->getInterfaceName().get();
+        accPortMapper.ports["access"] = 500;
+        accPortMapper.RPortMap[500] = "access";
+        accPortMapper.ports["accessUplink"] = 501;
+        accPortMapper.RPortMap[501] = "accessUplink";
+        pktInHandler.setPortMapper(&intPortMapper, &accPortMapper);
     }
 
     void setDhcpv4Config() {
@@ -77,12 +85,17 @@ public:
         WAIT_FOR(agent.getPolicyManager().getGroupForVnid(0xA0A), 500);
     }
 
+    void testDhcpv4Discover(MockSwitchConnection& tconn);
+    void testIcmpv4Error(MockSwitchConnection& tconn);
+
     IdGenerator idGen;
     CtZoneManager ctZoneManager;
-    MockSwitchConnection conn;
+    MockSwitchConnection intConn;
+    MockSwitchConnection accConn;
     MockFlowReader flowReader;
     MockFlowExecutor flowExecutor;
-    MockPortMapper portMapper;
+    MockPortMapper intPortMapper;
+    MockPortMapper accPortMapper;
     MockSwitchManager switchManager;
     IntFlowManager intFlowManager;
     PacketInHandler pktInHandler;
@@ -328,8 +341,6 @@ static const uint8_t pkt_icmp4_ttl_exc[] =
      0x00, 0x00, 0x01, 0x11, 0x9a, 0x18, 0x67, 0x67, 0x01, 0x05, 0xac, 0x1c,
      0xb8, 0x30, 0x8c, 0x98, 0x82, 0x9e, 0x00, 0x28, 0x2e, 0xa9};
 
-BOOST_AUTO_TEST_SUITE(PacketInHandler_test)
-
 static void init_packet_in(ofputil_packet_in_private& pin,
                            const void* packet_buf, size_t len,
                            uint64_t cookie = 0,
@@ -375,10 +386,10 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
                                                  OFPUTIL_P_OF13_OXM,
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
     ofpbuf_delete(b);
 
-    BOOST_CHECK(conn.sentMsgs.size() == 3);
+    BOOST_CHECK(intConn.sentMsgs.size() == 3);
     uint64_t ofpacts_stub1[1024 / 8];
     uint64_t ofpacts_stub2[1024 / 8];
     uint64_t ofpacts_stub3[1024 / 8];
@@ -389,11 +400,11 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     ofpbuf_use_stub(&ofpacts1, ofpacts_stub1, sizeof ofpacts_stub1);
     ofpbuf_use_stub(&ofpacts2, ofpacts_stub2, sizeof ofpacts_stub2);
     ofpbuf_use_stub(&ofpacts3, ofpacts_stub3, sizeof ofpacts_stub3);
-    ofputil_decode_flow_mod(&fm1, (ofp_header*)conn.sentMsgs[0]->data,
+    ofputil_decode_flow_mod(&fm1, (ofp_header*)intConn.sentMsgs[0]->data,
                             proto, &ofpacts1, OFP_PORT_C(64), 8);
-    ofputil_decode_flow_mod(&fm2, (ofp_header*)conn.sentMsgs[1]->data,
+    ofputil_decode_flow_mod(&fm2, (ofp_header*)intConn.sentMsgs[1]->data,
                             proto, &ofpacts2, OFP_PORT_C(64), 8);
-    ofputil_decode_packet_out(&po, (ofp_header*)conn.sentMsgs[2]->data,
+    ofputil_decode_packet_out(&po, (ofp_header*)intConn.sentMsgs[2]->data,
                               &ofpacts3);
 
     BOOST_CHECK(0 == memcmp(fm1.match.flow.dl_dst.ea, mac2, sizeof(mac2)));
@@ -410,7 +421,7 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     BOOST_CHECK(0 == memcmp(po.packet, packet_buf, sizeof(packet_buf)));
     BOOST_CHECK_EQUAL(-1, check_action_learn3(po.ofpacts, po.ofpacts_len));
 
-    conn.clear();
+    intConn.clear();
 
     // stage2
     init_packet_in(pin1, &packet_buf, sizeof(packet_buf),
@@ -420,13 +431,13 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
                                          OFPUTIL_P_OF13_OXM,
                                          NXPIF_NXT_PACKET_IN,
                                          0xffff, NULL);
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
     ofpbuf_delete(b);
 
-    BOOST_CHECK(conn.sentMsgs.size() == 2);
-    ofputil_decode_flow_mod(&fm1, (ofp_header *)conn.sentMsgs[0]->data,
+    BOOST_CHECK(intConn.sentMsgs.size() == 2);
+    ofputil_decode_flow_mod(&fm1, (ofp_header *)intConn.sentMsgs[0]->data,
                             proto, &ofpacts1, OFP_PORT_C(64), 8);
-    ofputil_decode_flow_mod(&fm2, (ofp_header *)conn.sentMsgs[1]->data,
+    ofputil_decode_flow_mod(&fm2, (ofp_header *)intConn.sentMsgs[1]->data,
                             proto, &ofpacts2, OFP_PORT_C(64), 8);
     BOOST_CHECK(0 == memcmp(fm1.match.flow.dl_dst.ea, mac2, sizeof(mac2)));
     BOOST_CHECK_EQUAL(10, fm1.match.flow.regs[5]);
@@ -689,13 +700,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
                                                  OFPUTIL_P_OF13_OXM,
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
     ofpbuf_delete(b);
 
-    BOOST_CHECK_EQUAL(0, conn.sentMsgs.size());
+    BOOST_CHECK_EQUAL(0, intConn.sentMsgs.size());
 }
 
-BOOST_FIXTURE_TEST_CASE(dhcpv4_discover, PacketInHandlerFixture) {
+void PacketInHandlerFixture::testDhcpv4Discover(MockSwitchConnection& tconn) {
     setDhcpv4Config();
 
     ofputil_packet_in_private pin;
@@ -708,11 +719,23 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_discover, PacketInHandlerFixture) {
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_dhcpv4(conn.sentMsgs[0], ovsagent::dhcp::message_type::OFFER);
+    verify_dhcpv4(tconn.sentMsgs[0], ovsagent::dhcp::message_type::OFFER);
+}
+
+BOOST_FIXTURE_TEST_CASE(dhcpv4_discover_acc, PacketInHandlerFixture) {
+    ep0->setAccessInterface("access");
+    ep0->setAccessUplinkInterface("accessUplink");
+    pktInHandler.registerConnection(&intConn, &accConn);
+
+    testDhcpv4Discover(accConn);
+}
+
+BOOST_FIXTURE_TEST_CASE(dhcpv4_discover, PacketInHandlerFixture) {
+    testDhcpv4Discover(intConn);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv4_request, PacketInHandlerFixture) {
@@ -727,12 +750,12 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request, PacketInHandlerFixture) {
                                                  OFPUTIL_P_OF13_OXM,
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
     ofpbuf_delete(b);
 
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
 
-    verify_dhcpv4(conn.sentMsgs[0], ovsagent::dhcp::message_type::ACK);
+    verify_dhcpv4(intConn.sentMsgs[0], ovsagent::dhcp::message_type::ACK);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
@@ -753,13 +776,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
                                                  OFPUTIL_P_OF13_OXM,
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
     ofpbuf_delete(b);
     free(buf);
 
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
 
-    verify_dhcpv4(conn.sentMsgs[0], ovsagent::dhcp::message_type::NAK);
+    verify_dhcpv4(intConn.sentMsgs[0], ovsagent::dhcp::message_type::NAK);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
@@ -772,10 +795,10 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
                                                  OFPUTIL_P_OF13_OXM,
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
     ofpbuf_delete(b);
 
-    BOOST_CHECK_EQUAL(0, conn.sentMsgs.size());
+    BOOST_CHECK_EQUAL(0, intConn.sentMsgs.size());
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
@@ -791,11 +814,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_dhcpv6(conn.sentMsgs[0], ovsagent::dhcp6::message_type::ADVERTISE);
+    verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::ADVERTISE);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
@@ -812,11 +835,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_dhcpv6(conn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
+    verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
                   RAPID_PERM);
 }
 
@@ -833,11 +856,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request, PacketInHandlerFixture) {
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_dhcpv6(conn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
+    verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
@@ -853,11 +876,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_dhcpv6(conn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
+    verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
                   TEMP);
 }
 
@@ -874,11 +897,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_confirm, PacketInHandlerFixture) {
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_dhcpv6(conn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
+    verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
@@ -894,11 +917,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_dhcpv6(conn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
+    verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
@@ -914,30 +937,43 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_dhcpv6(conn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
+    verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
                   INFO);
 }
 
-BOOST_FIXTURE_TEST_CASE(icmpv4_error, PacketInHandlerFixture) {
+void PacketInHandlerFixture::testIcmpv4Error(MockSwitchConnection& tconn) {
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_icmp4_ttl_exc, sizeof(pkt_icmp4_ttl_exc),
                    flow::cookie::ICMP_ERROR_V4,
-                   IntFlowManager::OUT_TABLE_ID, 42, 42);
+                   IntFlowManager::OUT_TABLE_ID, 5, 80);
 
     ofpbuf* b = ofputil_encode_packet_in_private(&pin,
                                                  OFPUTIL_P_OF13_OXM,
                                                  NXPIF_NXT_PACKET_IN,
                                                  0xffff, NULL);
 
-    pktInHandler.Handle(&conn, OFPTYPE_PACKET_IN, b);
-    BOOST_REQUIRE_EQUAL(1, conn.sentMsgs.size());
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_icmpv4(conn.sentMsgs[0]);
+    verify_icmpv4(tconn.sentMsgs[0]);
+}
+
+BOOST_FIXTURE_TEST_CASE(icmpv4_error, PacketInHandlerFixture) {
+    testIcmpv4Error(intConn);
+}
+
+BOOST_FIXTURE_TEST_CASE(icmpv4_error_acc, PacketInHandlerFixture) {
+    ep0->setAccessInterface("access");
+    ep0->setAccessUplinkInterface("accessUplink");
+    epSrc.updateEndpoint(*ep0);
+    pktInHandler.registerConnection(&intConn, &accConn);
+
+    testIcmpv4Error(accConn);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
