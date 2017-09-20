@@ -20,6 +20,8 @@
 #include "ModbFixture.h"
 #include "MockSwitchManager.h"
 #include "IntFlowManager.h"
+#include "CtZoneManager.h"
+#include "PacketInHandler.h"
 #include "arp.h"
 #include "eth.h"
 #include "logging.h"
@@ -46,8 +48,10 @@ public:
     AdvertManagerFixture()
         : ModbFixture(), ctZoneManager(idGen),
           switchManager(agent, flowExecutor, flowReader, portMapper),
-          intFlowManager(agent, switchManager, idGen, ctZoneManager),
-          advertManager(agent, intFlowManager) {
+          intFlowManager(agent, switchManager, idGen,
+                         ctZoneManager, pktInHandler),
+          advertManager(agent, intFlowManager),
+          pktInHandler(agent, intFlowManager) {
         createObjects();
         PolicyManager::uri_set_t rdURIs;
         WAIT_FOR_DO(rdURIs.find(rd0->getURI()) != rdURIs.end(), 1000,
@@ -160,6 +164,7 @@ public:
     MockSwitchConnection* conn;
     IntFlowManager intFlowManager;
     AdvertManager advertManager;
+    PacketInHandler pktInHandler;
     ofputil_protocol proto;
 };
 
