@@ -169,6 +169,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     unique_lock<mutex> guard(ep_mutex);
     const string& uuid = endpoint.getUUID();
     EndpointState& es = ep_map[uuid];
+    uri_set_t notifySecGroups;
 
     // update security group mapping
     const set<URI>& oldSecGroups = es.endpoint->getSecurityGroups();
@@ -180,14 +181,15 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 
             if (it->second.empty()) {
                 secgrp_ep_map.erase(it);
-                notifyListeners(oldSecGroups);
+                notifySecGroups.
+                    insert(oldSecGroups.begin(), oldSecGroups.end());
             }
         }
     }
     str_uset_t& ep_set = secgrp_ep_map[secGroups];
     if (ep_set.find(uuid) == ep_set.end()) {
         ep_set.insert(uuid);
-        notifyListeners(secGroups);
+        notifySecGroups.insert(secGroups.begin(), secGroups.end());
     }
 
     // update interface name to endpoint mapping
@@ -247,6 +249,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     updateEndpointLocal(uuid);
     guard.unlock();
     notifyListeners(uuid);
+    notifyListeners(notifySecGroups);
 }
 
 void EndpointManager::removeEndpoint(const std::string& uuid) {
@@ -256,6 +259,8 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
 
     unique_lock<mutex> guard(ep_mutex);
     Mutator mutator(framework, "policyelement");
+    uri_set_t notifySecGroups;
+
     ep_map_t::iterator it = ep_map.find(uuid);
     if (it != ep_map.end()) {
         EndpointState& es = it->second;
@@ -293,7 +298,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
 
             if (sgit->second.empty()) {
                 secgrp_ep_map.erase(sgit);
-                notifyListeners(secGroups);
+                notifySecGroups.insert(secGroups.begin(), secGroups.end());
             }
         }
 
@@ -332,6 +337,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     mutator.commit();
     guard.unlock();
     notifyListeners(uuid);
+    notifyListeners(notifySecGroups);
 }
 
 optional<URI> EndpointManager::resolveEpgMapping(EndpointState& es) {
