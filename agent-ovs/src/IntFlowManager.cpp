@@ -1361,10 +1361,14 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                     .ethSrc(getRouterMacAddr());
 
                 if (!nextHopAddrs.empty()) {
-                    // map traffic to service interface to the next
-                    // hop IPs using DNAT semantics
+                    // map traffic to service to the next hop IPs
+                    // using DNAT semantics
+                    if (as.getServiceMode() == Service::LOCAL_ANYCAST) {
+                        serviceDest.action().ethDst(macAddr);
+                    } else {
+                        serviceDest.action().ethDst(getRouterMacAddr());
+                    }
                     serviceDest.action()
-                        .ethDst(getRouterMacAddr())
                         .multipath(NX_HASH_FIELDS_SYMMETRIC_L3L4_UDP,
                                    1024,
                                    ActionBuilder::NX_MP_ALG_ITER_HASH,

@@ -2157,13 +2157,13 @@ void IntFlowManagerFixture::initExpAnycastService(int nextHop) {
         ADDF(Bldr().table(BR).priority(50)
              .ip().reg(RD, 1).isIpDst("169.254.169.254")
              .actions()
-             .ethSrc(rmac).ethDst(rmac)
+             .ethSrc(rmac).ethDst(mac)
              .multipath(mss.str())
              .go(SVH).done());
         ADDF(Bldr().table(BR).priority(50)
              .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
              .actions()
-             .ethSrc(rmac).ethDst(rmac)
+             .ethSrc(rmac).ethDst(mac)
              .multipath(mss.str())
              .go(SVH).done());
 
