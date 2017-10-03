@@ -319,6 +319,29 @@ void Agent::stop() {
     if (!started) return;
     LOG(INFO) << "Stopping OVS Agent";
 
+    // Just in case the io_service gets blocked by some stray
+    // events that don't get cleared, abort the process after a
+    // timeout
+    std::mutex mutex;
+    std::condition_variable terminate;
+    bool terminated = false;
+
+    std::thread abort_timer([&mutex, &terminate, &terminated]() {
+            std::unique_lock<std::mutex> guard(mutex);
+            bool completed =
+                terminate.wait_until(guard,
+                                     std::chrono::steady_clock::now() +
+                                     std::chrono::seconds(10),
+                                     [&terminated]() {
+                                         return terminated;
+                                     });
+            if (!completed) {
+                LOG(ERROR) << "Failed to cleanly shut down Agent: "
+                           << "Aborting";
+                std::abort();
+            }
+        });
+
     for (auto& r : renderers) {
         r.second->stop();
     }
@@ -334,38 +357,7 @@ void Agent::stop() {
         io_work.reset();
     }
     if (io_service_thread) {
-        // Just in case the io_service gets blocked by some stray
-        // events that don't get cleared, abort the process after a
-        // timeout while joining the thread.
-        std::mutex mutex;
-        std::condition_variable terminate;
-        bool terminated = false;
-
-        std::thread abort_timer([&mutex, &terminate, &terminated]() {
-                std::unique_lock<std::mutex> guard(mutex);
-                bool completed =
-                    terminate.wait_until(guard,
-                                         std::chrono::steady_clock::now() +
-                                         std::chrono::seconds(10),
-                                         [&terminated]() {
-                                             return terminated;
-                                         });
-                if (!completed) {
-                    LOG(ERROR) << "Failed to cleanly shut down Agent: "
-                               << "Aborting";
-                    std::abort();
-                }
-            });
-
         io_service_thread->join();
-
-        {
-            std::unique_lock<std::mutex> guard;
-            terminated = true;
-        }
-        terminate.notify_all();
-        abort_timer.join();
-
         io_service_thread.reset();
     }
 
@@ -374,6 +366,13 @@ void Agent::stop() {
     serviceSources.clear();
 
     started = false;
+
+    {
+        std::unique_lock<std::mutex> guard;
+        terminated = true;
+    }
+    terminate.notify_all();
+    abort_timer.join();
 
     LOG(INFO) << "Agent stopped";
 }
