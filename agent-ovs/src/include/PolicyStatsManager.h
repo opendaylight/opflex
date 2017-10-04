@@ -50,7 +50,7 @@ public:
      */
     PolicyStatsManager(Agent* agent, IdGenerator& idGen,
                        SwitchManager& switchManager,
-                       long timer_interval = 30000);
+                       long timer_interval = 10000);
 
     /**
      * Destroy the base stats manager and clean up all state

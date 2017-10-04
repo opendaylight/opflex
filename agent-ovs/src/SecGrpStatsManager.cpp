@@ -45,7 +45,6 @@ using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;
 using std::bind;
 using boost::system::error_code;
-static const int MAX_AGE = 3;
 
 SecGrpStatsManager::SecGrpStatsManager(Agent* agent_, IdGenerator& idGen_,
                                        SwitchManager& switchManager_,
