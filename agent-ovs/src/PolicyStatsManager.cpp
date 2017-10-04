@@ -43,7 +43,7 @@ using boost::asio::deadline_timer;
 using boost::posix_time::milliseconds;
 using boost::system::error_code;
 
-static const int MAX_AGE = 3;
+static const int MAX_AGE = 9;
 
 PolicyStatsManager::PolicyStatsManager(Agent* agent_, IdGenerator& idGen_,
                                        SwitchManager& switchManager_,
