@@ -12,6 +12,9 @@ override_dh_auto_test:
 override_dh_auto_configure:
 	dh_auto_configure -- --disable-assert --with-buildversion=@SDK_BVERSION@
 
+override_dh_auto_test:
+        if ! make check; then find . -name test-suite.log -exec cat {} \; && false; fi
+
 override_dh_auto_install:
 	$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
 
