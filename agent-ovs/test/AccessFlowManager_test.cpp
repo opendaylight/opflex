@@ -40,6 +40,7 @@ public:
         : accessFlowManager(agent, switchManager, idGen, ctZoneManager) {
         expTables.resize(AccessFlowManager::NUM_FLOW_TABLES);
         switchManager.registerStateHandler(&accessFlowManager);
+        idGen.initNamespace("l24classifierRule");
         start();
         accessFlowManager.enableConnTrack();
         accessFlowManager.start();
@@ -196,6 +197,7 @@ BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
     initExpSecGrpSet1();
     WAIT_FOR_TABLES("one-secgrp", 500);
 
+    LOG(DEBUG) << "two-secgrp-nocon";
     ep0->addSecurityGroup(opflex::modb::URI("/PolicyUniverse/PolicySpace"
                                             "/tenant0/GbpSecGroup/secgrp2/"));
     epSrc.updateEndpoint(*ep0);
@@ -367,61 +369,70 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::rule_list_t rules;
     agent.getPolicyManager().getSecGroupRules(secGrp1->getURI(), rules);
-    for (shared_ptr<PolicyRule>& pc : rules) {
-        const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
-        const URI& ruleURI = cls.get()->getURI();
-        uint32_t grpId = idGen.getId("l24classifierRule", ruleURI.toString());
+    uint32_t ruleId;
+
     /* classifer 1  */
-      if (remoteAddress) {
-        ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
+    ruleId = idGen.getId("l24classifierRule",
+                         classifier1->getURI().toString());
+    if (remoteAddress) {
+        ADDF(Bldr().table(IN_POL).priority(prio).cookie(ruleId)
              .tcp().reg(SEPG, setId).isIpSrc("192.168.0.0/16").isTpDst(80)
              .actions().go(OUT).done());
         if (remoteAddress > 1)
-            ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
+            ADDF(Bldr().table(IN_POL).priority(prio).cookie(ruleId)
                  .tcp().reg(SEPG, setId).isIpSrc("10.0.0.0/8").isTpDst(80)
                  .actions().go(OUT).done());
     } else {
-        ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
+        ADDF(Bldr().table(IN_POL).priority(prio).cookie(ruleId)
              .tcp().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     }
     /* classifer 8  */
+    ruleId = idGen.getId("l24classifierRule",
+                         classifier8->getURI().toString());
     if (remoteAddress) {
-        ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(grpId)
+        ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(ruleId)
              .tcp6().reg(SEPG, setId).isIpv6Src("fd80::/32").isTpDst(80)
              .actions().go(OUT).done());
         if (remoteAddress > 1)
-            ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(grpId)
-                 .tcp6().reg(SEPG, setId).isIpv6Src("fd34:9c39:1374:358c::/64")
+            ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(ruleId)
+                 .tcp6().reg(SEPG, setId)
+                 .isIpv6Src("fd34:9c39:1374:358c::/64")
                  .isTpDst(80).actions().go(OUT).done());
     } else {
-        ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(grpId)
+        ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(ruleId)
              .tcp6().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     }
     /* classifier 2  */
+    ruleId = idGen.getId("l24classifierRule",
+                         classifier2->getURI().toString());
     if (remoteAddress) {
-        ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(grpId)
+        ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(ruleId)
              .arp().reg(SEPG, setId).isTpa("192.168.0.0/16").actions()
              .go(OUT).done());
         if (remoteAddress > 1)
-            ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(grpId)
+            ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(ruleId)
                  .arp().reg(SEPG, setId).isTpa("10.0.0.0/8").actions()
                  .go(OUT).done());
     } else {
-        ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(grpId)
+        ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(ruleId)
              .arp().reg(SEPG, setId).actions().go(OUT).done());
     }
     /* classifier 6 */
-    ADDF(Bldr().table(IN_POL).priority(prio-384).cookie(grpId)
+    ruleId = idGen.getId("l24classifierRule",
+                         classifier6->getURI().toString());
+    ADDF(Bldr().table(IN_POL).priority(prio-384).cookie(ruleId)
          .tcp().reg(SEPG, setId).isTpSrc(22)
          .isTcpFlags("+syn+ack").actions().go(OUT).done());
     /* classifier 7 */
-    ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(grpId)
+    ruleId = idGen.getId("l24classifierRule",
+                         classifier7->getURI().toString());
+    ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(ruleId)
          .tcp().reg(SEPG, setId).isTpSrc(21)
          .isTcpFlags("+ack").actions().go(OUT).done());
-    ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(grpId)
+    ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(ruleId)
          .tcp().reg(SEPG, setId).isTpSrc(21)
          .isTcpFlags("+rst").actions().go(OUT).done());
-    }
+
     return 512;
 }
 
@@ -429,28 +440,30 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::rule_list_t rules;
     agent.getPolicyManager().getSecGroupRules(secGrp2->getURI(), rules);
-    for (shared_ptr<PolicyRule>& pc : rules) {
-        const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
-        const URI& ruleURI = cls.get()->getURI();
-        uint32_t grpId = idGen.getId("l24classifierRule", ruleURI.toString());
+    uint32_t ruleId;
+
     /* classifier 5 */
-     ADDF(Bldr().table(IN_POL).priority(prio).cookie(grpId)
+    ruleId = idGen.getId("l24classifierRule",
+                         classifier5->getURI().toString());
+    ADDF(Bldr().table(IN_POL).priority(prio).cookie(ruleId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
-     ADDF(Bldr().table(OUT_POL).priority(prio).cookie(grpId)
+    ADDF(Bldr().table(OUT_POL).priority(prio).cookie(ruleId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
 
     /* classifier 9 */
-     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
+    ruleId = idGen.getId("l24classifierRule",
+                         classifier9->getURI().toString());
+    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("-new+est-inv+trk").tcp().reg(SEPG, setId)
          .actions().go(OUT).done());
-     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(grpId)
+    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("-trk").tcp().reg(SEPG, setId)
          .actions().ct("table=0,zone=NXM_NX_REG6[0..15]").done());
-     ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(grpId)
+    ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(ruleId)
          .tcp().reg(SEPG, setId).isTpDst(22)
          .actions().ct("commit,zone=NXM_NX_REG6[0..15]")
          .go(OUT).done());
-    }
+
     return 1;
 }
 

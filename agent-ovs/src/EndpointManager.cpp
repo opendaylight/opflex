@@ -169,7 +169,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     unique_lock<mutex> guard(ep_mutex);
     const string& uuid = endpoint.getUUID();
     EndpointState& es = ep_map[uuid];
-    uri_set_t notifySecGroups;
+    unordered_set<uri_set_t> notifySecGroupSets;
 
     // update security group mapping
     const set<URI>& oldSecGroups = es.endpoint->getSecurityGroups();
@@ -181,15 +181,14 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
 
             if (it->second.empty()) {
                 secgrp_ep_map.erase(it);
-                notifySecGroups.
-                    insert(oldSecGroups.begin(), oldSecGroups.end());
+                notifySecGroupSets.insert(oldSecGroups);
             }
         }
     }
     str_uset_t& ep_set = secgrp_ep_map[secGroups];
     if (ep_set.find(uuid) == ep_set.end()) {
         ep_set.insert(uuid);
-        notifySecGroups.insert(secGroups.begin(), secGroups.end());
+        notifySecGroupSets.insert(secGroups);
     }
 
     // update interface name to endpoint mapping
@@ -249,7 +248,9 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     updateEndpointLocal(uuid);
     guard.unlock();
     notifyListeners(uuid);
-    notifyListeners(notifySecGroups);
+    for (auto& s : notifySecGroupSets) {
+        notifyListeners(s);
+    }
 }
 
 void EndpointManager::removeEndpoint(const std::string& uuid) {
@@ -259,7 +260,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
 
     unique_lock<mutex> guard(ep_mutex);
     Mutator mutator(framework, "policyelement");
-    uri_set_t notifySecGroups;
+    unordered_set<uri_set_t> notifySecGroupSets;
 
     ep_map_t::iterator it = ep_map.find(uuid);
     if (it != ep_map.end()) {
@@ -298,7 +299,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
 
             if (sgit->second.empty()) {
                 secgrp_ep_map.erase(sgit);
-                notifySecGroups.insert(secGroups.begin(), secGroups.end());
+                notifySecGroupSets.insert(secGroups);
             }
         }
 
@@ -337,7 +338,9 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     mutator.commit();
     guard.unlock();
     notifyListeners(uuid);
-    notifyListeners(notifySecGroups);
+    for (auto& s : notifySecGroupSets) {
+        notifyListeners(s);
+    }
 }
 
 optional<URI> EndpointManager::resolveEpgMapping(EndpointState& es) {
