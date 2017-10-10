@@ -638,17 +638,27 @@ void IntFlowManagerFixture::fdTest() {
     WAIT_FOR_TABLES("removeep", 500);
 
     /* check promiscous flood */
-    WAIT_FOR(policyMgr.getFDForGroup(epg2->getURI()) != boost::none, 500);
+    WAIT_FOR(policyMgr.getFDForGroup(epg3->getURI()) != boost::none, 500);
+    exec.Clear();
     exec.ExpectGroup(FlowEdit::ADD, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun);
     exec.ExpectGroup(FlowEdit::ADD, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun);
     intFlowManager.endpointUpdated(ep4->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 
     /* group changes on tunnel port change */
+    exec.Clear();
     exec.ExpectGroup(FlowEdit::MOD, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun_new);
     exec.ExpectGroup(FlowEdit::MOD, ge_fd1_prom + ge_bkt_ep4 + ge_bkt_tun_new);
     portmapper.ports[tunIf] = tun_port_new;
     intFlowManager.portStatusUpdate(tunIf, tun_port_new, false);
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+
+    /* Clear second group */
+    epSrc.removeEndpoint(ep4->getUUID());
+    exec.Clear();
+    exec.ExpectGroup(FlowEdit::DEL, ge_fd1);
+    exec.ExpectGroup(FlowEdit::DEL, ge_fd1_prom);
+    intFlowManager.endpointUpdated(ep4->getUUID());
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 }
 
