@@ -15,6 +15,7 @@
 #include <vector>
 #include <utility>
 #include <memory>
+#include <functional>
 #include <boost/noncopyable.hpp>
 
 struct ofputil_flow_stats;
