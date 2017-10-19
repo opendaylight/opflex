@@ -82,6 +82,9 @@ module[gbpe]
         member[dToPort; type=l4/Port]
 
         member[tcpFlags; type=l4/TcpFlags]
+
+        member[icmpType; type=scalar/UInt8]
+        member[icmpCode; type=scalar/UInt16]
     }
 
     # A set of counters for a network endpoint
