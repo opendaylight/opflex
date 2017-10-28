@@ -20,6 +20,7 @@ BOOST_AUTO_TEST_SUITE(ctzone_test)
 class CtZoneFixture {
 public:
     CtZoneFixture() : zm(idGen) {
+        zm.enableNetLink(true);
         zm.init("test");
     }
 
@@ -33,10 +34,14 @@ connection state.  Can prepopulate conntrack zone 1 with:
 
 sudo conntrack -I --zone 1 --src 1.1.1.1 --dst 2.2.2.2 --protonum 6   \
     --sport 42 --dport 24 --state ESTABLISHED --timeout 1000
+sudo conntrack -I --zone 2 --src 1.1.1.1 --dst 2.2.2.2 --protonum 6   \
+    --sport 42 --dport 24 --state ESTABLISHED --timeout 1000
 
-Then run the test below as root.  Verify that it's been cleared with:
+Then run the test below as root.  Verify that zone 1 has been cleared with:
+ conntrack -L --zone 1
 
-sudo conntrack -L --zone 1
+And that zone 2 has NOT been cleared with:
+sudo conntrack -L --zone 2
 
 In this test we simply verify that the command succeeds and not that
 the connection in the zone are actually deleted.
