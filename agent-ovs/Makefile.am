@@ -33,14 +33,14 @@ libagent_ovs_la_CXXFLAGS = \
 	$(OVS_ADDL_CFLAGS) \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS) \
-	$(libnl_nf_CFLAGS) \
+	$(libnfct_CFLAGS) \
 	$(rapidjson_CFLAGS)
 libagent_ovs_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS) \
-	$(libnl_nf_LIBS) \
+	$(libnfct_LIBS) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_ASIO_LIB)

@@ -19,12 +19,6 @@
 #include <stdint.h>
 #include <boost/noncopyable.hpp>
 
-extern "C" {
-    struct nl_sock;
-    extern struct nl_sock* nl_socket_alloc(void);
-    extern void nl_socket_free(struct nl_sock *);
-}
-
 namespace ovsagent {
 
 class IdGenerator;
@@ -88,18 +82,6 @@ private:
 
     IdGenerator& gen;
     std::string nmspc;
-
-#ifdef HAVE_LIBNL
-    class SockP {
-    public:
-        SockP() : sock(nl_socket_alloc()) {}
-        ~SockP() { nl_socket_free(sock); }
-
-        struct nl_sock* sock;
-    };
-
-    SockP nlSock;
-#endif
 
     bool ctZoneAllocHook(const std::string&, uint32_t);
 };

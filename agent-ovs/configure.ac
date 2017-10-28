@@ -117,10 +117,10 @@ AM_COND_IF([RENDERER_OVS], [
     PKG_CHECK_MODULES([libofproto], [libofproto >= 2.6.0])
     PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.6.0])
 
-    # check for libnl-nf
-    PKG_CHECK_MODULES([libnl_nf], [libnl-nf-3.0 >= 3.2.27],
-                      [AC_DEFINE([HAVE_LIBNL], [1], [Use libnl])],
-                      AC_MSG_WARN([libnl-nf not found]))
+    # check for libnetfilter-conntrack
+    PKG_CHECK_MODULES([libnfct], [libnetfilter_conntrack >= 1.0.0],
+                      [AC_DEFINE([HAVE_LIBNFCT], [1], [Use libnfct])],
+                      AC_MSG_WARN([libnetfilter_conntrack not found]))
 ])
 
 # inotify check
