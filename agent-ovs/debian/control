@@ -6,7 +6,7 @@ Build-Depends:
  debhelper (>= 8.0.0), autotools-dev, libboost-all-dev (>= 1.53),
  libopflex-dev, libmodelgbp-dev, noiro-openvswitch-dev (>= 2.6.0),
  rapidjson-dev (>=1.0), pkgconf, dh-systemd, libssl-dev (>= 1.0),
- libnl-nf-3-dev (>= 3.2.27)
+ libnetfilter-conntrack-dev (>= 1.0)
 Standards-Version: 3.9.4
 Homepage: https://wiki.opendaylight.org/view/OpFlex:Main
 
