@@ -368,7 +368,7 @@ void Agent::stop() {
     started = false;
 
     {
-        std::unique_lock<std::mutex> guard;
+        std::lock_guard<std::mutex> guard(mutex);
         terminated = true;
     }
     terminate.notify_all();
