@@ -55,6 +55,7 @@ noinst_HEADERS = \
 	src/include/EndpointManager.h \
 	src/include/EndpointSource.h \
 	src/include/FSEndpointSource.h \
+	src/include/ModelEndpointSource.h \
 	src/include/Service.h \
 	src/include/ServiceListener.h \
 	src/include/ServiceSource.h \
@@ -114,6 +115,7 @@ libagent_ovs_la_SOURCES = \
 	src/EndpointManager.cpp \
 	src/EndpointSource.cpp \
 	src/FSEndpointSource.cpp \
+	src/ModelEndpointSource.cpp \
 	src/Service.cpp \
 	src/ServiceSource.cpp \
 	src/ServiceManager.cpp \
@@ -211,6 +213,7 @@ agent_test_SOURCES = \
 	test/include/PolicyStatsManagerFixture.h \
 	test/PolicyManager_test.cpp \
 	test/EndpointManager_test.cpp \
+	test/ModelEndpointSource_test.cpp \
 	test/IdGenerator_test.cpp \
 	test/KeyedRateLimiter_test.cpp \
 	test/NotifServer_test.cpp \
