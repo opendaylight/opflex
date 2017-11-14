@@ -12,6 +12,7 @@ owner[init]
     class[relator/Universe]
     class[policy/Universe]
     class[epr/Universe]
+    class[inv/Universe]
     class[dci/Discoverer]
     class[dci/Ep]
     class[dci/EpToUnivRSrc]
@@ -46,6 +47,10 @@ owner[policyreg]
         class[*]
     }
     module[dci]
+    {
+        class[*]
+    }
+    module[inv]
     {
         class[*]
     }

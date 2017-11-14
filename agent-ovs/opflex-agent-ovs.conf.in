@@ -97,7 +97,8 @@
     "endpoint-sources": {
         // Filesystem path to monitor for endpoint information
         // Default: no endpoint sources
-        "filesystem": ["DEFAULT_FS_ENDPOINT_DIR"]
+        "filesystem": ["DEFAULT_FS_ENDPOINT_DIR"],
+        "model-local": ["default"]
     },
 
     // Service sources provide metadata about services that can

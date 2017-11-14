@@ -148,7 +148,8 @@ private:
     boost::optional<std::string> notifGroup;
     boost::optional<std::string> notifPerms;
 
-    std::set<std::string> endpointSourcePaths;
+    std::set<std::string> endpointSourceFSPaths;
+    std::set<std::string> endpointSourceModelLocalNames;
     std::vector<std::unique_ptr<EndpointSource>> endpointSources;
     std::vector<std::unique_ptr<FSRDConfigSource>> rdConfigSources;
 

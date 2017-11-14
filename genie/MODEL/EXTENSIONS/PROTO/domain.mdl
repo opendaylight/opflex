@@ -14,6 +14,15 @@ module[domain]
                 ]
         }
 
+        dependency[endpointInventory;
+                   cardinality=many;
+                   ]
+        {
+            to[class=inv/LocalEndpointInventory;
+                cardinality=many;
+                ]
+        }
+
         named
         {
             parent[class=*;]

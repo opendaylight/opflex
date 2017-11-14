@@ -19,6 +19,7 @@
 #include "cmd.h"
 #include "Agent.h"
 #include "FSEndpointSource.h"
+#include "ModelEndpointSource.h"
 #include "FSServiceSource.h"
 #include "FSRDConfigSource.h"
 #include "logging.h"
@@ -66,7 +67,8 @@ Renderer* disabled_create(Agent& agent) {
 
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string LOG_LEVEL("log.level");
-    static const std::string ENDPOINT_SOURCE_PATH("endpoint-sources.filesystem");
+    static const std::string ENDPOINT_SOURCE_FSPATH("endpoint-sources.filesystem");
+    static const std::string ENDPOINT_SOURCE_MODEL_LOCAL("endpoint-sources.model-local");
     static const std::string SERVICE_SOURCE_PATH("service-sources.filesystem");
     static const std::string OPFLEX_PEERS("opflex.peers");
     static const std::string OPFLEX_SSL_MODE("opflex.ssl.mode");
@@ -125,12 +127,20 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (notGrp) notifGroup = notGrp;
     if (notPerms) notifPerms = notPerms;
 
-    optional<const ptree&> endpointSource =
-        properties.get_child_optional(ENDPOINT_SOURCE_PATH);
+    optional<const ptree&> fsEndpointSource =
+        properties.get_child_optional(ENDPOINT_SOURCE_FSPATH);
 
-    if (endpointSource) {
-        for (const ptree::value_type &v : endpointSource.get())
-            endpointSourcePaths.insert(v.second.data());
+    if (fsEndpointSource) {
+        for (const ptree::value_type &v : fsEndpointSource.get())
+            endpointSourceFSPaths.insert(v.second.data());
+    }
+
+    optional<const ptree&> modelLocalEndpointSource =
+        properties.get_child_optional(ENDPOINT_SOURCE_MODEL_LOCAL);
+
+    if (modelLocalEndpointSource) {
+        for (const ptree::value_type &v : modelLocalEndpointSource.get())
+            endpointSourceModelLocalNames.insert(v.second.data());
     }
 
     optional<const ptree&> serviceSource =
@@ -218,7 +228,8 @@ void Agent::applyProperties() {
         policyManager.setOpflexDomain(opflexDomain.get());
     }
 
-    if (endpointSourcePaths.size() == 0)
+    if (endpointSourceFSPaths.size() == 0 &&
+        endpointSourceModelLocalNames.size() == 0)
         LOG(ERROR) << "No endpoint sources found in configuration.";
     if (serviceSourcePaths.size() == 0)
         LOG(INFO) << "No service sources found in configuration.";
@@ -273,6 +284,7 @@ void Agent::start() {
     root->addRelatorUniverse();
     root->addEprL2Universe();
     root->addEprL3Universe();
+    root->addInvUniverse();
     root->addEpdrL2Discovered();
     root->addEpdrL3Discovered();
     root->addGbpeVMUniverse();
@@ -292,7 +304,7 @@ void Agent::start() {
     io_work.reset(new io_service::work(agent_io));
     io_service_thread.reset(new thread([this]() { agent_io.run(); }));
 
-    for (const std::string& path : endpointSourcePaths) {
+    for (const std::string& path : endpointSourceFSPaths) {
         {
             EndpointSource* source =
                 new FSEndpointSource(&endpointManager, fsWatcher, path);
@@ -303,6 +315,12 @@ void Agent::start() {
                 new FSRDConfigSource(&extraConfigManager, fsWatcher, path);
             rdConfigSources.emplace_back(source);
         }
+    }
+    if (endpointSourceModelLocalNames.size() > 0) {
+        EndpointSource* source =
+                new ModelEndpointSource(&endpointManager, framework,
+                                        endpointSourceModelLocalNames);
+        endpointSources.emplace_back(source);
     }
     for (const std::string& path : serviceSourcePaths) {
         ServiceSource* source =

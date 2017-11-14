@@ -1,0 +1,382 @@
+module[inv]
+{
+    # Universe containing inventory endpoints
+    class[Universe;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=inv;]
+            }
+        }
+    }
+
+    # Container for local endpoint inventory
+    class[LocalEndpointInventory;
+          super=policy/NamedDefinition;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/Universe]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+    }
+
+    # abstraction of inventory EP
+    class[InventoryEp;
+          super=epr/EndPoint;
+          abstract
+          ]
+    {
+
+    }
+
+    type[IfaceSecurity; super=scalar/Enum8]
+    {
+        # Normal mode for endpoint interfaces
+        const[name=NORMAL; value=0]
+
+        # Promiscuous mode for endpoint interfaces
+        const[name=PROMISCUOUS; value=1]
+    }
+
+    type[DiscoveryMode; super=scalar/Enum8]
+    {
+        # Allow endpoint to respond to ARP/NDP
+        const[name=NORMAL; value=0]
+
+        # Respond on behalf of endpoint to ARP/NDP
+        const[name=PROXY; value=1]
+    }
+
+    # an endpoint with network identifiers
+    class[LocalInventoryEp;
+          super=inv/InventoryEp;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/LocalEndpointInventory]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
+        # mac address of the end-point
+        member[mac; type=address/MAC]
+
+        # Endpoint group mapping alias can be used to find the
+        # endpoint group for the endpoint
+        member[egMappingAlias; type=ascii/String]
+
+        # Access VLAN for the endpoint
+        member[accessVlan; type=scalar/UInt16]
+
+        # Interface security mode for endpoint
+        member[ifaceSecurity; type=inv/IfaceSecurity]
+
+        # Mode for discovery protocols such as ARP/NDP
+        member[discoveryMode; type=inv/DiscoveryMode]
+
+        dependency[group;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
+
+        dependency[secGroup;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/SecGroup;
+                cardinality=many;
+                ]
+        }
+    }
+
+    class[Ip;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/LocalInventoryEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=ip]
+                component[member=type]
+            }
+        }
+
+        # An IP address
+        member[ip; type=address/IP]
+
+        # A type for this IP address
+        member[type; type=ascii/Name]
+
+        # A MAC associated with the IP address
+        member[mac; type=address/MAC]
+    }
+
+    class[IpMapping;
+          super=policy/NamedDefinition;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/LocalInventoryEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+
+        # The mapped IP address
+        member[mappedIp; type=address/IP]
+
+        # A floating IP associated with the mapped IP
+        member[floatingIp; type=address/IP]
+
+        # A type for this IP address
+        member[nextHopIf; type=ascii/Name]
+
+        # A MAC associated with the IP address
+        member[nextHopMac; type=address/MAC]
+
+        # The endpoint group associated with this address mapping
+        dependency[group;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
+    }
+
+    class[Interface;
+          super=policy/NamedDefinition;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/LocalInventoryEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+                component[member=type]
+            }
+        }
+
+        # A type for this interface
+        member[type; type=ascii/Name]
+    }
+
+    # Superclass DHCP config
+    class[DHCPConfig;
+          abstract;
+          ]
+    {
+    }
+
+    # Configuration for DHCPv4
+    class[DHCPv4Config;
+          super=inv/DHCPConfig;
+	  concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/LocalInventoryEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+            }
+        }
+
+        # The IP address
+        member[ip; type=address/IP]
+
+        # prefix length for the subnet
+        member[prefixLen; type=scalar/UInt8]
+
+        # The IP address to return as the server IP address
+        member[serverIp; type=address/IP]
+
+        # The domain name
+        member[domain; type=ascii/String]
+
+        # The interface MTU to set
+        member[interfaceMTU; type=scalar/UInt16]
+
+        # The lease time to return
+        member[leaseTime; type=scalar/UInt32]
+    }
+
+    class[DNSServer;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=inv/DHCPConfig]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+    }
+
+    class[Router;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=inv/DHCPv4Config]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+    }
+
+    class[StaticRoute;
+          super=policy/Definition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=inv/DHCPv4Config]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=dest]
+                component[member=prefixLen]
+                component[member=nextHop]
+            }
+        }
+    
+        # The route destination
+        member[dest; type=address/IP]
+    
+        # prefix length for the route
+        member[prefixLen; type=scalar/UInt8]
+    
+        # The next hop IP address
+        member[nextHop; type=address/IP]
+    }
+
+    # Configuration for DHCPv6
+    class[DHCPv6Config;
+          super=inv/DHCPConfig;
+	  concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/LocalInventoryEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+            }
+        }
+
+        # The DHCPv6 T1 time
+        member[t1; type=scalar/UInt32]
+
+        # The DHCPv6 T2 time
+        member[t2; type=scalar/UInt32]
+
+        # The DHCPv6 valid lifetime
+        member[validLifetime; type=scalar/UInt32]
+
+        # The DHCPv6 preferred lifetime
+        member[preferredLifetime; type=scalar/UInt32]
+    }
+
+    class[SearchListEntry;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=inv/DHCPv6Config]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+    }
+
+    class[Attribute;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=inv/LocalInventoryEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+
+        # The value of the attribute represented as a string
+        member[value; type=ascii/String]
+    }
+
+}
