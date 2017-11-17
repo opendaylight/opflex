@@ -1,0 +1,382 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a245df4_bf1f2fb6",
+        "filename": "agent-ovs/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "These linker flags should be set in the configure script.\n\nAlso Makefiles need to be indented with tabs, not spaces.",
+      "range": {
+        "startLine": 70,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 26
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_bfc72f63",
+        "filename": "agent-ovs/src/VppInspect.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "This introduces a new hidden dependency on libuv.  libopflex already depends on it, but you\u0027d still need to add a direct check in configure and a build dependency to rpm and deb packages.\n\nlibopflex depends only on c++03 and limited dependencies, but in agent we can use std::thread and boost::asio.  There\u0027s already a similar boost::asio socket in the notification socket, so this might be easier to work with.",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_3ffe9f6b",
+        "filename": "agent-ovs/src/VppInspect.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "you guys have this throughout the code but the agent source code uses braces on the previous line.  This is true for essentially all uses of braces, including namespaces, classes, functions, etc.",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_9fc22b51",
+        "filename": "agent-ovs/src/VppInterfaceStatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "This still has a bunch of OVS code in it from copy/paste.  Would not build if OVS library not installed.",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_1fae3b98",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "I guess we\u0027re still doing the global state thing?  You guys are big fans of global state.",
+      "range": {
+        "startLine": 154,
+        "startChar": 0,
+        "endLine": 154,
+        "endChar": 23
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_bf9e0f61",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1031,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "spaces",
+      "range": {
+        "startLine": 1031,
+        "startChar": 0,
+        "endLine": 1031,
+        "endChar": 27
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_3f821f00",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1096,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "I\u0027ll note that almost all real-world uses of security groups will require connection-tracking.",
+      "range": {
+        "startLine": 1096,
+        "startChar": 17,
+        "endLine": 1096,
+        "endChar": 37
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_ff8b671c",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1117,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "please limit line length",
+      "range": {
+        "startLine": 1116,
+        "startChar": 47,
+        "endLine": 1117,
+        "endChar": 125
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_1f859b06",
+        "filename": "agent-ovs/src/VppRenderer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "using what?  don\u0027t leave me in suspense!",
+      "range": {
+        "startLine": 39,
+        "startChar": 0,
+        "endLine": 39,
+        "endChar": 51
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_5f7a7324",
+        "filename": "agent-ovs/src/include/VppInspect.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "this should not be indented",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 5
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_bf756f33",
+        "filename": "agent-ovs/src/include/VppInterfaceStatsManager.hpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "This is copy/paste from OVS and won\u0027t build properly if OVS not enabled",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_9f706b41",
+        "filename": "agent-ovs/src/include/VppManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "spaces",
+      "range": {
+        "startLine": 201,
+        "startChar": 0,
+        "endLine": 201,
+        "endChar": 37
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_ff92474a",
+        "filename": "agent-ovs/src/include/VppUplink.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "should not be indented",
+      "range": {
+        "startLine": 22,
+        "startChar": 1,
+        "endLine": 23,
+        "endChar": 1
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_df95c333",
+        "filename": "agent-ovs/src/include/VppVirtualRouter.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "should not be indented",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 7
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_1fb3dbe9",
+        "filename": "agent-ovs/src/logging.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "spelling",
+      "range": {
+        "startLine": 147,
+        "startChar": 20,
+        "endLine": 147,
+        "endChar": 33
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_dfbca3bd",
+        "filename": "agent-ovs/src/logging.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "This is wrong.  You can\u0027t set the boost log to just log to the same file; you\u0027ll get log soup.  You need to configure the boost logger to send its output to a callback handler and then redirect the output into the agent logger.  Note fhow the OpFlex framework logging is redirected into the agent log, for example.",
+      "range": {
+        "startLine": 250,
+        "startChar": 0,
+        "endLine": 250,
+        "endChar": 36
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_dfe303d7",
+        "filename": "agent-ovs/test/VppInterfaceStatsManager_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "again this is copy/pasted code that can\u0027t work",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_1feabbab",
+        "filename": "agent-ovs/test/VppManager_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-17T18:55:46Z",
+      "side": 1,
+      "message": "the test coverage is a bit... suspect ... here.",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
