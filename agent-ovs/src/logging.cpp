@@ -21,6 +21,9 @@
 #ifdef RENDERER_OVS
 #include <openvswitch/vlog.h>
 #endif
+#ifdef RENDERER_VPP
+#include "VppLogHandler.h"
+#endif
 
 #include <algorithm>
 #include <fstream>
@@ -33,7 +36,9 @@ using opflex::logging::OFLogHandler;
 namespace ovsagent {
 
 AgentLogHandler logHandler(OFLogHandler::NO_LOGGING);
-
+#ifdef RENDERER_VPP
+VppLogHandler vppLogHandler;
+#endif
 LogLevel logLevel = DEBUG;
 
 /**
@@ -138,25 +143,7 @@ LogSink * getLogSink() {
     return currentLogSink;
 }
 
-void initLogging(const std::string& levelstr,
-                 bool toSyslog,
-                 const std::string& log_file,
-                 const std::string& syslog_name) {
-    if (toSyslog) {
-        currentLogSink = new SyslogLogSink(syslog_name);
-    } else if (!log_file.empty()) {
-        currentLogSink = new OStreamLogSink(log_file);
-    }
-    OFLogHandler::registerHandler(logHandler);
-
-    setLoggingLevel(levelstr);
-#ifdef RENDERER_OVS
-    /* No good way to redirect OVS logs to our logs, suppress them for now */
-    vlog_set_levels(NULL, VLF_ANY_DESTINATION, VLL_OFF);
-#endif
-}
-
-void setLoggingLevel(const std::string& newLevelstr) {
+OFLogHandler::Level lgoStrToLevel(const std::string& newLevelstr) {
     OFLogHandler::Level level = OFLogHandler::INFO;
 
     std::string levelstr = newLevelstr;
@@ -204,7 +191,72 @@ void setLoggingLevel(const std::string& newLevelstr) {
         logLevel = FATAL;
     }
 
+    return level;
+}
+
+#ifdef RENDERER_VPP
+VOM::log_level_t agentLevelToVom(OFLogHandler::Level level) {
+    switch (level)
+    {
+    case OFLogHandler::DEBUG0:
+    case OFLogHandler::DEBUG1:
+    case OFLogHandler::DEBUG2:
+    case OFLogHandler::DEBUG3:
+    case OFLogHandler::DEBUG4:
+    case OFLogHandler::DEBUG5:
+    case OFLogHandler::DEBUG6:
+    case OFLogHandler::DEBUG7:
+        return (VOM::log_level_t::DEBUG);
+    case OFLogHandler::TRACE:
+    case OFLogHandler::INFO:
+        return (VOM::log_level_t::INFO);
+    case OFLogHandler::WARNING:
+        return (VOM::log_level_t::WARNING);
+    case OFLogHandler::ERROR:
+        return (VOM::log_level_t::ERROR);
+    case OFLogHandler::FATAL:
+        return (VOM::log_level_t::CRITICAL);
+    }
+    return (VOM::log_level_t::INFO);
+}
+#endif
+
+void initLogging(const std::string& levelstr,
+                 bool toSyslog,
+                 const std::string& log_file,
+                 const std::string& syslog_name) {
+    OFLogHandler::Level level = lgoStrToLevel(levelstr);
+
+    if (toSyslog) {
+        currentLogSink = new SyslogLogSink(syslog_name);
+    } else if (!log_file.empty()) {
+        currentLogSink = new OStreamLogSink(log_file);
+    }
+    OFLogHandler::registerHandler(logHandler);
+
     logHandler.setLevel(level);
+#ifdef RENDERER_OVS
+    /* No good way to redirect OVS logs to our logs, suppress them for now */
+    vlog_set_levels(NULL, VLF_ANY_DESTINATION, VLL_OFF);
+#endif
+#ifdef RENDERER_VPP
+    /*
+     * Register the call back handler for VOM logging and set the level
+     * according to the agent's settings
+     */
+    VOM::logger().set(agentLevelToVom(level));
+    VOM::logger().set(&vppLogHandler);
+#endif
+}
+
+void setLoggingLevel(const std::string& newLevelstr) {
+    OFLogHandler::Level level = lgoStrToLevel(newLevelstr);
+#ifdef RENDERER_OVS
+    logHandler.setLevel(level);
+#endif
+#ifdef RENDERER_VPP
+    VOM::logger().set(agentLevelToVom(level));
+#endif
 }
 
 } /* namespace ovsagent */

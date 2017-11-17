@@ -72,6 +72,16 @@ AM_COND_IF([RENDERER_OVS],
             AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
            [AC_MSG_NOTICE([Open vSwitch renderer is disabled])])
 
+# switch to enable VPP renderer support
+AC_ARG_ENABLE(renderer-vpp,
+              AC_HELP_STRING([--renderer-vpp],
+                             [Build the VPP renderer]))
+AM_CONDITIONAL([RENDERER_VPP], [test x$enable_renderer_vpp == 'xyes'])
+AM_COND_IF([RENDERER_VPP],
+           [AC_DEFINE([RENDERER_VPP], [1], [Build VPP renderer])
+            AC_MSG_NOTICE([fd.io VPP renderer is enabled])],
+           [AC_MSG_NOTICE([fd.io VPP renderer is disabled])])
+
 # ---------------------------------------------------------------
 # Dependency checks
 
@@ -121,6 +131,22 @@ AM_COND_IF([RENDERER_OVS], [
     PKG_CHECK_MODULES([libnfct], [libnetfilter_conntrack >= 1.0.0],
                       [AC_DEFINE([HAVE_LIBNFCT], [1], [Use libnfct])],
                       AC_MSG_WARN([libnetfilter_conntrack not found]))
+])
+
+AM_COND_IF([RENDERER_VPP], [
+    AC_LANG_PUSH([C])
+    # Check for VPP libraries
+    AC_CHECK_LIB([svm], [svm_fifo_segment_create], [],
+                 [AC_MSG_ERROR([SVM not found])])
+    AC_CHECK_LIB([vppinfra], [clib_calljmp], [],
+                 [AC_MSG_ERROR([vppinfra not found])])
+    AC_CHECK_LIB([vapiclient], [vapi_connect], [],
+                 [AC_MSG_ERROR([vapiclient not found])])
+    AC_LANG_POP([C])
+    AC_LANG_CPLUSPLUS
+    AC_CHECK_LIB(boost_system, main)
+    AC_CHECK_LIB(vom, main)
+    PKG_CHECK_MODULES([libuv], [libuv >= 1.0])
 ])
 
 # inotify check
