@@ -28,6 +28,10 @@
 #include "StitchedModeRenderer.h"
 #endif
 
+#ifdef RENDERER_VPP
+#include "VppRenderer.h"
+#endif
+
 #include <unordered_map>
 #include <cstdlib>
 #include <mutex>
@@ -88,6 +92,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
 
     static const std::string RENDERERS_STITCHED_MODE("renderers.stitched-mode");
     static const std::string RENDERERS_OPENVSWITCH("renderers.openvswitch");
+
+    static const std::string RENDERERS_VPP("renderers.vpp");
 
     optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
@@ -182,6 +188,12 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
 #else
         (RENDERERS_STITCHED_MODE, disabled_create)
         (RENDERERS_OPENVSWITCH, disabled_create)
+#endif
+
+#ifdef RENDERER_VPP
+        (RENDERERS_VPP, VppRenderer::create)
+#else
+        (RENDERERS_VPP, disabled_create)
 #endif
         ;
 
