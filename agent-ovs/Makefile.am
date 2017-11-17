@@ -12,38 +12,91 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-OVS_ADDL_CFLAGS = \
+libagent_ovs_la_CFLAGS=
+libagent_ovs_la_CXXFLAGS=
+libagent_ovs_la_LIBADD=
+
+OVS_ADDL_CFLAGS =
+if RENDERER_OVS
+  OVS_ADDL_CFLAGS += \
 	-D__STDC_LIMIT_MACROS \
 	-D__STDC_CONSTANT_MACROS \
 	-fpermissive
+endif
+
+VPP_ADDL_CFLAGS =
+if RENDERER_VPP
+  VPP_ADDL_CFLAGS += \
+	-D__STDC_LIMIT_MACROS \
+	-D__STDC_CONSTANT_MACROS \
+	-I/usr/include/vpp_plugins \
+	-fpermissive
+endif
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 	-I$(top_srcdir)/src/include \
 	-DLOCALSTATEDIR='"$(localstatedir)"'
 
 AM_LDFLAGS = $(BOOST_LDFLAGS)
-
 noinst_LTLIBRARIES = libagent_ovs.la
-libagent_ovs_la_CFLAGS = \
+COMMON_SHARED_LIBS =
+
+if RENDERER_OVS
+  libagent_ovs_la_CFLAGS += \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
-libagent_ovs_la_CXXFLAGS = \
+  libagent_ovs_la_CXXFLAGS += \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS) \
 	$(OVS_ADDL_CFLAGS) \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS) \
-	$(libnfct_CFLAGS) \
+	$(libnl_nf_CFLAGS) \
 	$(rapidjson_CFLAGS)
-libagent_ovs_la_LIBADD = \
+
+  libagent_ovs_la_LIBADD += \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS) \
-	$(libnfct_LIBS) \
+	$(libnl_nf_LIBS) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_ASIO_LIB)
+endif
+
+if RENDERER_VPP
+  AM_CPPFLAGS += \
+	-I/usr/include/vpp_plugins
+
+  libagent_ovs_la_CFLAGS += \
+        -I/usr/include/vpp_plugins \
+        -Wall -Werror
+
+  COMMON_SHARED_LIBS += \
+	-lvom \
+	$(BOOST_SYSTEM_LIB)	\
+	-lvapiclient \
+	-lsvm \
+        -lpthread -lm -lrt
+
+  libagent_ovs_la_CXXFLAGS += \
+	$(libopflex_CFLAGS) \
+	$(libmodelgbp_CFLAGS) \
+	$(VPP_ADDL_CFLAGS) \
+	$(libnl_nf_CFLAGS) \
+	$(rapidjson_CFLAGS)
+
+  libagent_ovs_la_LIBADD += 	\
+	$(libopflex_LIBS) 	\
+	$(libmodelgbp_LIBS)	\
+	$(libnl_nf_LIBS)	\
+	-lboost_thread		\
+	$(BOOST_SYSTEM_LIB)	\
+	$(BOOST_FILESYSTEM_LIB)	\
+	$(BOOST_ASIO_LIB)	\
+	$(COMMON_SHARED_LIBS)
+endif
 
 noinst_HEADERS = \
 	src/include/AgentLogHandler.h \
@@ -65,11 +118,13 @@ noinst_HEADERS = \
 	src/include/FSRDConfigSource.h \
 	src/include/RDConfig.h \
 	src/include/Renderer.h \
+	src/include/VppRenderer.h \
 	src/include/StitchedModeRenderer.h \
 	src/include/TunnelEpManager.h \
 	src/include/FlowExecutor.h \
 	src/include/FlowReader.h \
 	src/include/SwitchStateHandler.h \
+	src/include/VppManager.h \
 	src/include/IntFlowManager.h \
 	src/include/AccessFlowManager.h \
 	src/include/ovs-shim.h \
@@ -122,20 +177,18 @@ libagent_ovs_la_SOURCES = \
 	src/RDConfig.cpp \
 	src/FSRDConfigSource.cpp \
 	src/Renderer.cpp \
-	src/TunnelEpManager.cpp \
 	src/cmd.cpp \
 	src/logging.cpp \
 	src/Agent.cpp \
 	src/IdGenerator.cpp \
-	src/CtZoneManager.cpp \
 	src/NotifServer.cpp \
 	src/MulticastListener.cpp \
 	src/TaskQueue.cpp \
-	src/Network.cpp \
-	src/FlowConstants.cpp
+	src/Network.cpp
 
 if RENDERER_OVS
   libagent_ovs_la_SOURCES += \
+	src/TunnelEpManager.cpp \
 	src/StitchedModeRenderer.cpp \
 	src/SwitchStateHandler.cpp \
 	src/IntFlowManager.cpp \
@@ -147,6 +200,7 @@ if RENDERER_OVS
 	src/FlowBuilder.cpp \
 	src/SwitchConnection.cpp \
 	src/SwitchManager.cpp \
+	src/CtZoneManager.cpp \
 	src/PortMapper.cpp \
 	src/PolicyStatsManager.cpp \
 	src/InterfaceStatsManager.cpp \
@@ -157,7 +211,17 @@ if RENDERER_OVS
 	src/PacketInHandler.cpp \
 	src/AdvertManager.cpp \
 	src/FlowUtils.cpp \
+	src/FlowConstants.cpp \
 	src/ovs-shim.c
+endif
+
+if RENDERER_VPP
+  libagent_ovs_la_SOURCES += \
+	src/VppRenderer.cpp \
+	src/VppUplink.cpp \
+	src/VppManager.cpp \
+	src/VppVirtualRouter.cpp \
+	src/VppInspect.cpp
 endif
 
 bin_PROGRAMS=agent_ovs gbp_inspect mcast_daemon
@@ -168,57 +232,69 @@ agent_ovs_SOURCES = \
 	src/main.cpp
 agent_ovs_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libagent_ovs.la
+	libagent_ovs.la \
+	$(COMMON_SHARED_LIBS)
 
-gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
+gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
+	$(libopflex_CFLAGS) \
+	$(libmodelgbp_CFLAGS)
 gbp_inspect_SOURCES = \
 	src/gbp_inspect.cpp
 gbp_inspect_LDADD = \
 	$(BOOST_IOSTREAMS_LIB) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libagent_ovs.la
+	libagent_ovs.la \
+	$(COMMON_SHARED_LIBS)
 
-mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
+mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"' \
+	$(libopflex_CFLAGS)
 mcast_daemon_SOURCES = \
 	src/mcast_daemon.cpp
 mcast_daemon_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libagent_ovs.la
+	libagent_ovs.la \
+	$(COMMON_SHARED_LIBS)
 
 TESTS = agent_test
 noinst_PROGRAMS = $(TESTS) mock_server integration_test
 
-agent_test_CFLAGS = \
+OVS_TEST_CFLAGS =
+if RENDERER_OVS
+  OVS_TEST_CFLAGS += \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
+endif
+
+VPP_TEST_CFLAGS =
+
+agent_test_CFLAGS = \
+	$(OVS_TEST_CFLAGS) \
+	$(VPP_TEST_CFLAGS) \
+	$(libofproto_CFLAGS) \
+	$(rapidjson_CFLAGS)
+
 agent_test_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) \
 	$(OVS_ADDL_CFLAGS) \
+	$(OVS_TEST_CFLAGS) \
+	$(VPP_ADDL_CFLAGS) \
+	$(VPP_TEST_CFLAGS) \
+	$(libopflex_CFLAGS) \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS) \
 	-DBOOST_TEST_DYN_LINK
 
-agent_test_SOURCES = \
-	test/include/BaseFixture.h \
-	test/include/ModbFixture.h \
-	test/include/MockSwitchConnection.h \
+
+OVS_TEST_SOURCES =
+if RENDERER_OVS
+  OVS_TEST_SOURCES += \
+    test/include/MockSwitchConnection.h \
 	test/include/MockPortMapper.h \
 	test/include/MockFlowExecutor.h \
 	test/include/MockFlowReader.h \
 	test/include/MockSwitchManager.h \
 	test/include/FlowManagerFixture.h \
-	test/include/PolicyStatsManagerFixture.h \
-	test/PolicyManager_test.cpp \
-	test/EndpointManager_test.cpp \
-	test/IdGenerator_test.cpp \
-	test/KeyedRateLimiter_test.cpp \
-	test/NotifServer_test.cpp \
-	test/Network_test.cpp \
-	test/main.cpp
-
-if RENDERER_OVS
-  agent_test_SOURCES += \
 	test/MockFlowExecutor.cpp \
 	test/FlowManagerFixture.cpp \
 	test/IntFlowManager_test.cpp \
@@ -236,9 +312,30 @@ if RENDERER_OVS
 	test/TableState_test.cpp
 endif
 
+VPP_TEST_SOURCES=
+if RENDERER_VPP
+  VPP_TEST_SOURCES += \
+	test/VppManager_test.cpp
+endif
+
+agent_test_SOURCES = \
+	$(OVS_TEST_SOURCES) \
+	$(VPP_TEST_SOURCES) \
+	test/include/BaseFixture.h \
+	test/include/ModbFixture.h \
+	test/include/PolicyStatsManagerFixture.h \
+	test/PolicyManager_test.cpp \
+	test/EndpointManager_test.cpp \
+	test/IdGenerator_test.cpp \
+	test/KeyedRateLimiter_test.cpp \
+	test/NotifServer_test.cpp \
+	test/Network_test.cpp \
+	test/main.cpp
+
 agent_test_LDADD = \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	libagent_ovs.la
+	libagent_ovs.la \
+	$(COMMON_SHARED_LIBS)
 
 mock_server_CXXFLAGS = \
 	-I$(top_srcdir)/test/include \
@@ -249,7 +346,8 @@ mock_server_SOURCES = \
 	test/mock_server.cpp
 mock_server_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libagent_ovs.la
+	libagent_ovs.la \
+	$(COMMON_SHARED_LIBS)
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
@@ -281,19 +379,26 @@ endif
 integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/integration-test/include \
 	$(OVS_ADDL_CFLAGS) \
-	$(libopenvswitch_CFLAGS) \
-	$(libofproto_CFLAGS)
+	$(OVS_TEST_CFLAGS) \
+	$(VPP_ADDL_CFLAGS) \
+	$(VPP_TEST_CFLAGS)
 
-integration_test_SOURCES = \
-	integration-test/include/ConnectionFixture.h \
-	integration-test/main.cpp \
-	integration-test/ctzone_test.cpp
 
+OVS_INTTEST_SOURCES =
 if RENDERER_OVS
-  integration_test_SOURCES += \
+  OVS_INTTEST_SOURCES += \
+	integration-test/include/ConnectionFixture.h \
+	integration-test/ctzone_test.cpp \
 	integration-test/connection_test.cpp \
 	integration-test/flowmod_test.cpp
 endif
+
+VPP_INTTEST_SOURCES =
+integration_test_SOURCES = \
+	$(OVS_INTTEST_SOURCES) \
+	$(VPP_INTTEST_SOURCES) \
+	integration-test/main.cpp
+
 
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 integration_test_LDADD = \
