@@ -210,7 +210,7 @@ void InterfaceStatsManager::Handle(SwitchConnection* connection,
         for (const std::string& uuid : endpoints) {
             if ((counters.rxDrop == std::numeric_limits<uint64_t>::max()) ||
                 (counters.txDrop == std::numeric_limits<uint64_t>::max()))
-            // set value to 0 if counter is not supported by OVS
+                // set value to 0 if counter is not supported by OVS
             if (counters.rxDrop == std::numeric_limits<uint64_t>::max())
                 counters.rxDrop = 0;
             if (counters.txDrop == std::numeric_limits<uint64_t>::max())
