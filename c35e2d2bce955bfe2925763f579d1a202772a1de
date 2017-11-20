@@ -66,6 +66,24 @@
     },
     {
       "key": {
+        "uuid": "9a245df4_74a15693",
+        "filename": "agent-ovs/src/VppInspect.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "libuv dependency added.",
+      "parentUuid": "9a245df4_bfc72f63",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_3ffe9f6b",
         "filename": "agent-ovs/src/VppInspect.cpp",
         "patchSetId": 1
@@ -77,6 +95,24 @@
       "writtenOn": "2017-11-17T18:55:46Z",
       "side": 1,
       "message": "you guys have this throughout the code but the agent source code uses braces on the previous line.  This is true for essentially all uses of braces, including namespaces, classes, functions, etc.",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_d4ac828e",
+        "filename": "agent-ovs/src/VppInspect.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_3ffe9f6b",
       "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
@@ -146,6 +182,30 @@
     },
     {
       "key": {
+        "uuid": "9a245df4_f4954633",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1031,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_bf9e0f61",
+      "range": {
+        "startLine": 1031,
+        "startChar": 0,
+        "endLine": 1031,
+        "endChar": 27
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_3f821f00",
         "filename": "agent-ovs/src/VppManager.cpp",
         "patchSetId": 1
@@ -157,6 +217,30 @@
       "writtenOn": "2017-11-17T18:55:46Z",
       "side": 1,
       "message": "I\u0027ll note that almost all real-world uses of security groups will require connection-tracking.",
+      "range": {
+        "startLine": 1096,
+        "startChar": 17,
+        "endLine": 1096,
+        "endChar": 37
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_94a68aac",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1096,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "understood. VPP supports the equivalent of connection tracking using what it terms \u0027reflexsive\u0027 ACLS.",
+      "parentUuid": "9a245df4_3f821f00",
       "range": {
         "startLine": 1096,
         "startChar": 17,
@@ -192,6 +276,30 @@
     },
     {
       "key": {
+        "uuid": "9a245df4_349cfe5c",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1117,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_ff8b671c",
+      "range": {
+        "startLine": 1116,
+        "startChar": 47,
+        "endLine": 1117,
+        "endChar": 125
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_1f859b06",
         "filename": "agent-ovs/src/VppRenderer.cpp",
         "patchSetId": 1
@@ -215,6 +323,30 @@
     },
     {
       "key": {
+        "uuid": "9a245df4_14ba9ac0",
+        "filename": "agent-ovs/src/VppRenderer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "lol. duct tape and pliers.",
+      "parentUuid": "9a245df4_1f859b06",
+      "range": {
+        "startLine": 39,
+        "startChar": 0,
+        "endLine": 39,
+        "endChar": 51
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_5f7a7324",
         "filename": "agent-ovs/src/include/VppInspect.h",
         "patchSetId": 1
@@ -226,6 +358,30 @@
       "writtenOn": "2017-11-17T18:55:46Z",
       "side": 1,
       "message": "this should not be indented",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 5
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_14e1fad0",
+        "filename": "agent-ovs/src/include/VppInspect.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_5f7a7324",
       "range": {
         "startLine": 28,
         "startChar": 0,
@@ -278,6 +434,30 @@
     },
     {
       "key": {
+        "uuid": "9a245df4_54b092dc",
+        "filename": "agent-ovs/src/include/VppManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_9f706b41",
+      "range": {
+        "startLine": 201,
+        "startChar": 0,
+        "endLine": 201,
+        "endChar": 37
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_ff92474a",
         "filename": "agent-ovs/src/include/VppUplink.h",
         "patchSetId": 1
@@ -301,6 +481,30 @@
     },
     {
       "key": {
+        "uuid": "9a245df4_34b35eea",
+        "filename": "agent-ovs/src/include/VppUplink.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_ff92474a",
+      "range": {
+        "startLine": 22,
+        "startChar": 1,
+        "endLine": 23,
+        "endChar": 1
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_df95c333",
         "filename": "agent-ovs/src/include/VppVirtualRouter.h",
         "patchSetId": 1
@@ -312,6 +516,30 @@
       "writtenOn": "2017-11-17T18:55:46Z",
       "side": 1,
       "message": "should not be indented",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 7
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_74c83655",
+        "filename": "agent-ovs/src/include/VppVirtualRouter.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_df95c333",
       "range": {
         "startLine": 19,
         "startChar": 0,
@@ -398,6 +626,24 @@
       "writtenOn": "2017-11-17T18:55:46Z",
       "side": 1,
       "message": "the test coverage is a bit... suspect ... here.",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_b4be2eac",
+        "filename": "agent-ovs/test/VppManager_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-11-20T19:28:28Z",
+      "side": 1,
+      "message": "the coverage is blatantly guilty your honour...\n\ntests will be added.",
+      "parentUuid": "9a245df4_1feabbab",
       "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
