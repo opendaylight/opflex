@@ -136,6 +136,24 @@
     },
     {
       "key": {
+        "uuid": "9a245df4_fcf1a895",
+        "filename": "agent-ovs/src/VppInterfaceStatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7340
+      },
+      "writtenOn": "2017-11-21T14:41:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_9fc22b51",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_1fae3b98",
         "filename": "agent-ovs/src/VppManager.cpp",
         "patchSetId": 1
@@ -411,6 +429,24 @@
     },
     {
       "key": {
+        "uuid": "9a245df4_dceca4bd",
+        "filename": "agent-ovs/src/include/VppInterfaceStatsManager.hpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7340
+      },
+      "writtenOn": "2017-11-21T14:41:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_bf756f33",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_9f706b41",
         "filename": "agent-ovs/src/include/VppManager.h",
         "patchSetId": 1
@@ -609,6 +645,24 @@
       "writtenOn": "2017-11-17T18:55:46Z",
       "side": 1,
       "message": "again this is copy/pasted code that can\u0027t work",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_1c32bc5e",
+        "filename": "agent-ovs/test/VppInterfaceStatsManager_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7340
+      },
+      "writtenOn": "2017-11-21T14:41:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a245df4_dfe303d7",
       "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
