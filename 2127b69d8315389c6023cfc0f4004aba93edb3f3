@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a245df4_e82e0aa4",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-21T01:04:17Z",
+      "side": 1,
+      "message": "I specifically chose not to since they might be different from what OpFlex agent requires.",
+      "parentUuid": "9a245df4_88f78ed2",
+      "revId": "2127b69d8315389c6023cfc0f4004aba93edb3f3",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_c829869c",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-21T01:04:17Z",
+      "side": 1,
+      "message": "same as above",
+      "parentUuid": "9a245df4_28be62d5",
+      "revId": "2127b69d8315389c6023cfc0f4004aba93edb3f3",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_281ca277",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-21T01:04:17Z",
+      "side": 1,
+      "message": "yes",
+      "parentUuid": "9a245df4_88e5ce0a",
+      "revId": "2127b69d8315389c6023cfc0f4004aba93edb3f3",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
