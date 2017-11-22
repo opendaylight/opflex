@@ -340,6 +340,7 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
              .go(IN_POL).done());
     } else {
         ADDF(Bldr().table(GRP).priority(100).in(access)
+             .noVlan()
              .actions().load(RD, zoneId).load(SEPG, 1)
              .load(OUTPORT, uplink).go(OUT_POL).done());
         ADDF(Bldr().table(GRP).priority(100).in(uplink)
