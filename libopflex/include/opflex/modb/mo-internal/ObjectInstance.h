@@ -107,7 +107,18 @@ public:
      *
      * @param class_id_ the class ID for the object
      */
-    ObjectInstance(class_id_t class_id_) : class_id(class_id_) { }
+    ObjectInstance(class_id_t class_id_)
+        : class_id(class_id_), local(true) { }
+
+    /**
+     * Construct an empty object represented the specified class and
+     * using the provided local flag
+     *
+     * @param class_id_ the class ID for the object
+     * @param local_ True if the instance is locally-created
+     */
+    ObjectInstance(class_id_t class_id_, bool local_)
+        : class_id(class_id_), local(local_) { }
 
     /**
      * Get the class ID for this object instance
@@ -115,6 +126,14 @@ public:
      * @return the class ID
      */
     class_id_t getClassId() const { return class_id; }
+
+    /**
+     * Return whether the object was from the remote policy repository
+     * or was written locally.
+     *
+     * @return true if the object is local
+     */
+    bool isLocal() const { return local; }
 
     /**
      * Check whether the given property is set.  If the property is
@@ -467,6 +486,7 @@ private:
 
     typedef OF_UNORDERED_MAP<prop_key_t, Value> prop_map_t;
     prop_map_t prop_map;
+    bool local;
 
     friend bool operator==(const ObjectInstance& lhs,
                            const ObjectInstance& rhs);

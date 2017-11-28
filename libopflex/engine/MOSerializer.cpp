@@ -122,7 +122,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
         URI uri(uriv.GetString());
         const ClassInfo& ci = store->getClassInfo(classv.GetString());
         OF_SHARED_PTR<ObjectInstance> oi =
-            OF_MAKE_SHARED<ObjectInstance>(ci.getId());
+            OF_MAKE_SHARED<ObjectInstance>(ci.getId(), false);
         if (mo.HasMember("properties")) {
             const Value& properties = mo["properties"];
             if (properties.IsArray()) {

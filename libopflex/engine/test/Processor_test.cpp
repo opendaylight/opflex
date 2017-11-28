@@ -177,8 +177,8 @@ BOOST_FIXTURE_TEST_CASE( dereference, Fixture ) {
     client2->put(6, c6u, oi6);
     client2->addChild(4, c4u, 12, 6, c6u);
 
-    processor.remoteObjectUpdated(4, c4u);
-    processor.remoteObjectUpdated(6, c6u);
+    processor.objectUpdated(4, c4u);
+    processor.objectUpdated(6, c6u);
 
     client2->queueNotification(4, c4u, notifs);
     client2->queueNotification(6, c6u, notifs);
@@ -547,6 +547,11 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
     notifs.clear();
 
     WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+
+    // simulate a delayed notification after item is removed
+    WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
+    client2->deliverNotifications(notifs);
+    notifs.clear();
 
     client2->put(5, c5u, oi5);
     client2->queueNotification(5, c5u, notifs);

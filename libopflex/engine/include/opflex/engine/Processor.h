@@ -45,8 +45,7 @@ namespace engine {
  * information for each of the managed objects in the MODB.
  */
 class Processor : public internal::AbstractObjectListener,
-                  public internal::HandlerFactory,
-                  public internal::MOSerializer::Listener {
+                  public internal::HandlerFactory {
 public:
     /**
      * Construct a processor associated with the given object store
@@ -162,10 +161,6 @@ public:
     // See AbstractObjectListener::objectUpdated
     virtual void objectUpdated(modb::class_id_t class_id,
                                const modb::URI& uri);
-
-    // See MOSerializer::Listener::remoteObjectUpdated
-    virtual void remoteObjectUpdated(modb::class_id_t class_id,
-                                     const modb::URI& uri);
 
     /**
      * Get the reference count for an object
@@ -460,9 +455,6 @@ private:
     bool isOrphan(const item& item);
     bool isParentSyncObject(const item& item);
     void doProcess();
-    void doObjectUpdated(modb::class_id_t class_id,
-                         const modb::URI& uri,
-                         bool remote);
     void sendToRole(const item& it, uint64_t& newexp,
                     internal::OpflexMessage* req,
                     ofcore::OFConstants::OpflexRole role);
@@ -471,11 +463,6 @@ private:
     bool declareObj(modb::ClassInfo::class_type_t type, const item& it,
                     uint64_t& newexp);
     void handleNewConnections();
-    void clearTombstone(obj_state_by_uri& uri_index,
-                        obj_state_by_uri::iterator& uit,
-                        bool* remote = NULL);
-
-    friend class MOSerializer;
 };
 
 } /* namespace engine */
