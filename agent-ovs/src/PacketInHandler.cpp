@@ -946,10 +946,10 @@ static void handleVIPPktIn(bool v4,
                         });
 
     unordered_set<string> uuids;
-    std::transform(eps.begin(), eps.end(), uuids.begin(),
-                   [](const ep_ptr& ep) {
-                       return ep->getUUID();
-                   });
+    std::for_each(eps.begin(), eps.end(),
+                  [&uuids](const ep_ptr& ep) {
+                      uuids.insert(ep->getUUID());
+                  });
 
     if (uuids.size() > 0) {
         LOG(DEBUG) << "Virtual IP ownership advertised for ("

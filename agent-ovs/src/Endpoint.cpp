@@ -78,6 +78,16 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
         ep.getAccessUplinkInterface();
     if (accessUplink)
         os << ",access-uplink=" << accessUplink.get();
+    if (!ep.getVirtualIPs().empty()) {
+        os << ",virtual-ip=[";
+        first = true;
+        for (auto& vip : ep.getVirtualIPs()) {
+            if (first) first = false;
+            else os << ",";
+            os << "(" << vip.first << "," << vip.second << ")";
+        }
+        os << "]";
+    }
     if (ep.getDHCPv4Config())
         os << ",dhcpv4";
     if (ep.getDHCPv6Config())
