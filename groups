@@ -1,7 +1,4 @@
 # UUID                                                           	Group Name
 #
-a8a0136d79d41eaa0aad6725a5467f9e58a67bae                         	Non-Interactive opflex users
 c9025ab9ddc1e3171919e085449f22c54f8f7b54                         	GitHub Replication
-global:Anonymous-Users                                           	Anonymous Users
-global:Registered-Users                                          	Registered Users
 ldap:cn=gerrit-opflex-committers,ou=Groups,dc=opendaylight,dc=org	ldap/gerrit-opflex-committers
