@@ -134,7 +134,7 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
         if (clsfr.isIcmpTypeSet()) {
             srcPorts.push_back(Mask(clsfr.getIcmpType(0), ~0));
         }
-        if (clsfr.isIcmpTypeSet()) {
+        if (clsfr.isIcmpCodeSet()) {
             dstPorts.push_back(Mask(clsfr.getIcmpCode(0), ~0));
         }
     } else {
