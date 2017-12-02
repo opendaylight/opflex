@@ -82,6 +82,7 @@ public:
     std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier7;
     std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier8;
     std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier9;
+    std::shared_ptr<modelgbp::gbpe::L24Classifier> classifier10;
 
     std::shared_ptr<modelgbp::gbp::AllowDenyAction> action1;
 
@@ -321,6 +322,10 @@ protected:
             .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(6 /* TCP */)
             .setSFromPort(66).setSToPort(69)
             .setDFromPort(94).setDToPort(95);
+        classifier10 = space->addGbpeL24Classifier("classifier10");
+        classifier10->setOrder(30)
+            .setEtherT(l2::EtherTypeEnumT::CONST_IPV4).setProt(1 /* ICMP */)
+            .setIcmpType(10).setIcmpCode(5);
         con3 = space->addGbpContract("contract3");
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
             ->setOrder(1)
@@ -335,6 +340,11 @@ protected:
             .setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier4->getURI().toString())
             ->setTargetL24Classifier(classifier4->getURI());
+        con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule3")
+            ->setOrder(3)
+            .setDirection(DirectionEnumT::CONST_IN)
+            .addGbpRuleToClassifierRSrc(classifier10->getURI().toString())
+            ->setTargetL24Classifier(classifier10->getURI());
         epg0->addGbpEpGroupToProvContractRSrc(con3->getURI().toString());
         epg1->addGbpEpGroupToConsContractRSrc(con3->getURI().toString());
 
