@@ -177,6 +177,30 @@
     },
     {
       "key": {
+        "uuid": "7a1969be_f1d98184",
+        "filename": "agent-ovs/src/VppManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-12-04T10:53:22Z",
+      "side": 1,
+      "message": "I\u0027m a fan of exposing an API that is semantically correct. There is only one connection to VPP, as such there can be only one connection object. So to expose an API like:\n HW:connect(connection_object)\nor\n  connection_object-\u003econnect()\nwould be semantically incorrect as it expresses the possibility of using multiple connection objects. \n\nThat said, as you explained, unit-testing is more difficult without the ability to mock the connection object. So I have moved the creation of the connection object into VppRenederer so this can be passed at initialisation time. This way VppManager unit tests can use a mock connection object.\nOne could therefore say the connection object is still ‘global’ but that’s because there is only one. It is not ‘global’ in the sense of global variables that we know to avoid, since its access is only via the exposed API.",
+      "parentUuid": "9a245df4_1fae3b98",
+      "range": {
+        "startLine": 154,
+        "startChar": 0,
+        "endLine": 154,
+        "endChar": 23
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_bf9e0f61",
         "filename": "agent-ovs/src/VppManager.cpp",
         "patchSetId": 1
@@ -634,6 +658,30 @@
     },
     {
       "key": {
+        "uuid": "7a1969be_d1f3a508",
+        "filename": "agent-ovs/src/logging.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-12-04T10:53:22Z",
+      "side": 1,
+      "message": "Fixed. We now use the same method as with ofplex to register the log handler.",
+      "parentUuid": "9a245df4_dfbca3bd",
+      "range": {
+        "startLine": 250,
+        "startChar": 0,
+        "endLine": 250,
+        "endChar": 36
+      },
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a245df4_dfe303d7",
         "filename": "agent-ovs/test/VppInterfaceStatsManager_test.cpp",
         "patchSetId": 1
@@ -698,6 +746,24 @@
       "side": 1,
       "message": "the coverage is blatantly guilty your honour...\n\ntests will be added.",
       "parentUuid": "9a245df4_1feabbab",
+      "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a1969be_b1f8a9e6",
+        "filename": "agent-ovs/test/VppManager_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2017-12-04T10:53:22Z",
+      "side": 1,
+      "message": "Unit tests added to cover;\n -boot up\n - endpoint group add/delete\n - endpoint add/delete\nmore will be added as we go.",
+      "parentUuid": "9a245df4_b4be2eac",
       "revId": "c35e2d2bce955bfe2925763f579d1a202772a1de",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
