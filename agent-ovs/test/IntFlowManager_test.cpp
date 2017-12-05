@@ -2349,15 +2349,20 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .inport().done());
     }
 
-    ADDF(Bldr().table(BR).priority(50)
-         .udp().reg(RD, 1)
+    auto expIsEthDst = [&exposed, &mac](Bldr& b) -> Bldr& {
+        if (exposed)
+            b.isEthDst(mac);
+        return b;
+    };
+    ADDF(expIsEthDst(Bldr().table(BR).priority(50)
+                     .udp().reg(RD, 1))
          .isIpDst("169.254.169.254").isTpDst(53)
          .actions()
          .ethSrc(rmac).ethDst(rmac)
          .multipath("symmetric_l3l4+udp,1024,iter_hash,2,32,NXM_NX_REG7[]")
          .go(SVH).done());
-    ADDF(Bldr().table(BR).priority(50)
-         .tcp6().reg(RD, 1)
+    ADDF(expIsEthDst(Bldr().table(BR).priority(50)
+                     .tcp6().reg(RD, 1))
          .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
          .actions()
          .ethSrc(rmac).ethDst(rmac)
@@ -2368,32 +2373,36 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
         string commit = string("commit,zone=1,exec(load:") +
             (exposed ? "0x80000001" : "0x1") + "->NXM_NX_CT_MARK[])";
 
-        ADDF(Bldr().table(SVH).priority(99)
-             .udp().reg(RD, 1).isFromServiceIface(exposed)
+        ADDF(expIsEthDst(Bldr().table(SVH).priority(99)
+                         .udp().reg(RD, 1)
+                         .isFromServiceIface(exposed))
              .isIpDst("169.254.169.254").isTpDst(53)
              .actions()
              .tpDst(5353).ipDst("169.254.169.1")
              .decTtl()
              .ct(commit).meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
-        ADDF(Bldr().table(SVH).priority(100)
-             .udp().reg(RD, 1).reg(OUTPORT, 1).isFromServiceIface(exposed)
+        ADDF(expIsEthDst(Bldr().table(SVH).priority(100)
+                         .udp().reg(RD, 1).reg(OUTPORT, 1)
+                         .isFromServiceIface(exposed))
              .isIpDst("169.254.169.254").isTpDst(53)
              .actions()
              .tpDst(5353).ipDst("169.254.169.2")
              .decTtl().ct(commit)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
-        ADDF(Bldr().table(SVH).priority(99)
-             .tcp6().reg(RD, 1).isFromServiceIface(exposed)
+        ADDF(expIsEthDst(Bldr().table(SVH).priority(99)
+                         .tcp6().reg(RD, 1)
+                         .isFromServiceIface(exposed))
              .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
              .actions()
              .ipv6Dst("fe80::a9:fe:a9:1")
              .decTtl().ct(commit)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
-        ADDF(Bldr().table(SVH).priority(100)
-             .tcp6().reg(RD, 1).reg(OUTPORT, 1).isFromServiceIface(exposed)
+        ADDF(expIsEthDst(Bldr().table(SVH).priority(100)
+                         .tcp6().reg(RD, 1).reg(OUTPORT, 1)
+                         .isFromServiceIface(exposed))
              .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
              .actions()
              .ipv6Dst("fe80::a9:fe:a9:2")
@@ -2401,29 +2410,29 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
     } else {
-        ADDF(Bldr().table(SVH).priority(99)
-             .udp().reg(RD, 1)
+        ADDF(expIsEthDst(Bldr().table(SVH).priority(99)
+                         .udp().reg(RD, 1))
              .isIpDst("169.254.169.254").isTpDst(53)
              .actions()
              .tpDst(5353).ipDst("169.254.169.1")
              .decTtl().meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
-        ADDF(Bldr().table(SVH).priority(100)
-             .udp().reg(RD, 1).reg(OUTPORT, 1)
+        ADDF(expIsEthDst(Bldr().table(SVH).priority(100)
+                         .udp().reg(RD, 1).reg(OUTPORT, 1))
              .isIpDst("169.254.169.254").isTpDst(53)
              .actions()
              .tpDst(5353).ipDst("169.254.169.2")
              .decTtl().meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
-        ADDF(Bldr().table(SVH).priority(99)
-             .tcp6().reg(RD, 1)
+        ADDF(expIsEthDst(Bldr().table(SVH).priority(99)
+                         .tcp6().reg(RD, 1))
              .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
              .actions()
              .ipv6Dst("fe80::a9:fe:a9:1")
              .decTtl().meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
-        ADDF(Bldr().table(SVH).priority(100)
-             .tcp6().reg(RD, 1).reg(OUTPORT, 1)
+        ADDF(expIsEthDst(Bldr().table(SVH).priority(100)
+                         .tcp6().reg(RD, 1).reg(OUTPORT, 1))
              .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
              .actions()
              .ipv6Dst("fe80::a9:fe:a9:2")

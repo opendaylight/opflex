@@ -1353,6 +1353,8 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                 FlowBuilder serviceDest;
                 matchDestDom(serviceDest, 0, rdId);
                 matchActionServiceProto(serviceDest, proto, sm, true, false);
+                if (as.getServiceMAC())
+                    serviceDest.ethDst(macAddr);
 
                 serviceDest
                     .priority(50)
@@ -1390,6 +1392,8 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                     FlowBuilder ipMap;
                     matchDestDom(ipMap, 0, rdId);
                     matchActionServiceProto(ipMap, proto, sm, true, true);
+                    if (as.getServiceMAC())
+                        ipMap.ethDst(macAddr);
                     ipMap.ipDst(serviceAddr);
 
                     // use the first address as a "default" so that
