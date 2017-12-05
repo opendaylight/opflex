@@ -2349,15 +2349,20 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .inport().done());
     }
 
-    ADDF(Bldr().table(BR).priority(50)
-         .udp().reg(RD, 1)
+    auto expIsEthDst = [&exposed, &mac](Bldr& b) -> Bldr& {
+        if (exposed)
+            b.isEthDst(mac);
+        return b;
+    };
+    ADDF(expIsEthDst(Bldr().table(BR).priority(50)
+                     .udp().reg(RD, 1))
          .isIpDst("169.254.169.254").isTpDst(53)
          .actions()
          .ethSrc(rmac).ethDst(rmac)
          .multipath("symmetric_l3l4+udp,1024,iter_hash,2,32,NXM_NX_REG7[]")
          .go(SVH).done());
-    ADDF(Bldr().table(BR).priority(50)
-         .tcp6().reg(RD, 1)
+    ADDF(expIsEthDst(Bldr().table(BR).priority(50)
+                     .tcp6().reg(RD, 1))
          .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
          .actions()
          .ethSrc(rmac).ethDst(rmac)
