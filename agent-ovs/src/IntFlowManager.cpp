@@ -1353,6 +1353,8 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                 FlowBuilder serviceDest;
                 matchDestDom(serviceDest, 0, rdId);
                 matchActionServiceProto(serviceDest, proto, sm, true, false);
+                if (as.getServiceMAC())
+                    serviceDest.ethDst(macAddr);
 
                 serviceDest
                     .priority(50)
