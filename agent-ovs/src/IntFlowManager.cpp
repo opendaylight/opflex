@@ -61,6 +61,7 @@ using boost::ref;
 using boost::optional;
 using boost::asio::deadline_timer;
 using boost::asio::ip::address;
+using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
 using boost::asio::placeholders::error;
 using std::chrono::milliseconds;
@@ -367,10 +368,12 @@ static FlowBuilder& matchEpg(FlowBuilder& fb,
     return fb;
 }
 
-static FlowBuilder& matchDestDom(FlowBuilder& fb, uint32_t bdId, uint32_t l3Id) {
+static FlowBuilder& matchDestDom(FlowBuilder& fb, uint32_t bdId,
+                                 uint32_t l3Id) {
     if (bdId != 0)
         fb.reg(4, bdId);
-    fb.reg(6, l3Id);
+    if (l3Id != 0)
+        fb.reg(6, l3Id);
     return fb;
 }
 
@@ -493,8 +496,7 @@ static FlowBuilder& actionOutputToEPGTunnel(FlowBuilder& fb) {
 static FlowBuilder& actionArpReply(FlowBuilder& fb, const uint8_t *mac,
                                    const address& ip,
                                    IntFlowManager::EncapType type
-                                   = IntFlowManager::ENCAP_NONE,
-                                   uint32_t replyEpg = 0) {
+                                   = IntFlowManager::ENCAP_NONE) {
     fb.action()
         .regMove(MFF_ETH_SRC, MFF_ETH_DST)
         .reg(MFF_ETH_SRC, mac)
@@ -586,7 +588,7 @@ static void flowsProxyDiscovery(FlowEntryList& el,
             matchDestArp(proxyArpTun.priority(priority+1).inPort(tunPort),
                          ipAddr, bdId, rdId);
             actionArpReply(proxyArpTun, macAddr, ipAddr,
-                           encapType, epgVnid)
+                           encapType)
                 .build(el);
         }
         {
@@ -604,8 +606,6 @@ static void flowsProxyDiscovery(FlowEntryList& el,
         ((uint8_t*)&metadata)[7] = 1;
         if (router)
             ((uint8_t*)&metadata)[6] = 1;
-
-        // XXX TODO pass encap type/tunnel port in pkt-in metadata
 
         FlowBuilder proxyND;
         if (matchSourceMac)
@@ -843,12 +843,18 @@ static void flowsVirtualDhcp(FlowEntryList& elSrc, uint32_t ofPort,
         .build(elSrc);
 }
 
-static void flowsEndpointDHCPSource(FlowEntryList& elPortSec,
+static void flowsEndpointDHCPSource(IntFlowManager& flowMgr,
+                                    FlowEntryList& elPortSec,
+                                    FlowEntryList& elBridgeDst,
                                     const Endpoint& endPoint,
                                     uint32_t ofPort,
                                     bool hasMac,
                                     uint8_t* macAddr,
-                                    bool virtualDHCPEnabled) {
+                                    bool virtualDHCPEnabled,
+                                    bool hasForwardingInfo,
+                                    uint32_t epgVnid,
+                                    uint32_t rdId,
+                                    uint32_t bdId) {
     if (ofPort == OFPP_NONE)
         return;
 
@@ -856,10 +862,46 @@ static void flowsEndpointDHCPSource(FlowEntryList& elPortSec,
         optional<Endpoint::DHCPv4Config> v4c = endPoint.getDHCPv4Config();
         optional<Endpoint::DHCPv6Config> v6c = endPoint.getDHCPv6Config();
 
-        if (v4c)
+        if (v4c) {
             flowsVirtualDhcp(elPortSec, ofPort, macAddr, true);
-        if (v6c)
+
+            if (hasForwardingInfo) {
+                address_v4 serverIp(packets::LINK_LOCAL_DHCP);
+                if (v4c.get().getServerIp()) {
+                    boost::system::error_code ec;
+                    address_v4 sip =
+                        address_v4::from_string(v4c.get().getServerIp().get(),
+                                                ec);
+                    if (ec) {
+                        LOG(WARNING) << "Invalid DHCP server IP: "
+                                     << v4c.get().getServerIp().get();
+                    } else  {
+                        serverIp = sip;
+                    }
+                }
+
+                flowsProxyDiscovery(elBridgeDst, 51,
+                                    serverIp, flowMgr.getDHCPMacAddr(),
+                                    epgVnid, rdId, bdId, false,
+                                    NULL, OFPP_NONE,
+                                    IntFlowManager::ENCAP_NONE);
+            }
+        }
+        if (v6c) {
             flowsVirtualDhcp(elPortSec, ofPort, macAddr, false);
+
+            if (hasForwardingInfo) {
+                // IPv6 link-local address made from the DHCP MAC
+                address_v6 serverIp = network::
+                    construct_auto_ip_addr(address_v6::from_string("fe80::"),
+                                           flowMgr.getDHCPMacAddr());
+                flowsProxyDiscovery(elBridgeDst, 51,
+                                    serverIp, flowMgr.getDHCPMacAddr(),
+                                    epgVnid, rdId, bdId, false,
+                                    NULL, OFPP_NONE,
+                                    IntFlowManager::ENCAP_NONE);
+            }
+        }
 
         for (const Endpoint::virt_ip_t& vip :
                  endPoint.getVirtualIPs()) {
@@ -1011,7 +1053,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
     optional<URI> epgURI = epMgr.getComputedEPG(uuid);
     bool hasForwardingInfo = false;
-    uint32_t epgVnid, rdId, bdId, fgrpId;
+    uint32_t epgVnid = 0, rdId = 0, bdId = 0, fgrpId = 0;
     optional<URI> fgrpURI, bdURI, rdURI;
     optional<shared_ptr<FloodDomain> > fd;
 
@@ -1043,8 +1085,9 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     }
 
     // Virtual DHCP is allowed even without forwarding resolution
-    flowsEndpointDHCPSource(elPortSec, endPoint, ofPort, hasMac, macAddr,
-                            virtualDHCPEnabled);
+    flowsEndpointDHCPSource(*this, elPortSec, elBridgeDst, endPoint, ofPort,
+                            hasMac, macAddr, virtualDHCPEnabled,
+                            hasForwardingInfo, epgVnid, rdId, bdId);
 
     if (hasForwardingInfo) {
         /* Port security flows */

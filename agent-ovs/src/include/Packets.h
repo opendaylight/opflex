@@ -49,6 +49,14 @@ extern const uint8_t MAC_ADDR_IPV6MULTICAST[6];
 extern const uint8_t MAC_ADDR_ZERO[6];
 
 /**
+ * Link-local ipv4 address used for optimized DHCP replies when not
+ * otherwise specified by the user.
+ *
+ * 169.254.32.32
+ */
+extern const boost::asio::ip::address_v4 LINK_LOCAL_DHCP;
+
+/**
  * Compute an internet checksum over the specified data.  chksum
  * should be first initialized to zero, then chksum_accum called for
  * each block of data, and finally call chksum_finalize to get the

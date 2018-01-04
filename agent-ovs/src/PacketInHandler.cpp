@@ -481,8 +481,6 @@ static void handleNDPktIn(Agent& agent,
     uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
     PolicyManager& polMgr = agent.getPolicyManager();
     optional<URI> egUri = polMgr.getGroupForVnid(epgId);
-    if (!egUri)
-        return;
 
     if (flow.dl_type != htons(eth::type::IPV6) ||
         flow.nw_proto != 58 /* ICMPv6 */)
@@ -523,7 +521,7 @@ static void handleNDPktIn(Agent& agent,
                                             &neigh_sol->nd_ns_target,
                                             &flow.ipv6_src);
 
-    } else if (icmp->icmp6_type == ND_ROUTER_SOLICIT) {
+    } else if (icmp->icmp6_type == ND_ROUTER_SOLICIT && egUri) {
         /* Router solicitation */
         struct nd_router_solicit* router_sol =
             (struct nd_router_solicit*) dpp_l4(pkt);
