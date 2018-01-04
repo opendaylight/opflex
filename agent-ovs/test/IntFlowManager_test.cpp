@@ -2606,16 +2606,38 @@ void IntFlowManagerFixture::initExpVirtualIp() {
 }
 
 void IntFlowManagerFixture::initExpVirtualDhcp(bool virtIp) {
+    string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
+    string bmac("ff:ff:ff:ff:ff:ff");
 
     uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
     ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
          .table(SEC).priority(35).udp().in(port)
          .isEthSrc("00:00:00:00:80:00").isTpSrc(68).isTpDst(67)
          .actions().controller(65535).done());
+    ADDF(Bldr().table(BR).priority(51).arp()
+         .reg(BD, 1)
+         .reg(RD, 1)
+         .isEthDst(bmac).isTpa("169.254.32.32")
+         .isArpOp(1)
+         .actions().move(ETHSRC, ETHDST)
+         .load(ETHSRC, "0xaabbccddeeff").load(ARPOP, 2)
+         .move(ARPSHA, ARPTHA).load(ARPSHA, "0xaabbccddeeff")
+         .move(ARPSPA, ARPTPA).load(ARPSPA, "0xa9fe2020")
+         .inport().done());
+
     ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))
          .table(SEC).priority(35).udp6().in(port)
          .isEthSrc("00:00:00:00:80:00").isTpSrc(546).isTpDst(547)
          .actions().controller(65535).done());
+    ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
+         .table(BR).priority(51).icmp6()
+         .reg(BD, 1).reg(RD, 1).isEthDst(mmac)
+         .icmp_type(135).icmp_code(0)
+         .isNdTarget("fe80::a8bb:ccff:fedd:eeff")
+         .actions()
+         .load(SEPG, 0xa0a).load64(METADATA, 0x100ffeeddccbbaall)
+         .controller(65535).done());
+
     if (virtIp) {
         ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
              .table(SEC).priority(35).udp().in(port)

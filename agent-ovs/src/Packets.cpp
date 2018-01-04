@@ -36,6 +36,7 @@ const uint8_t MAC_ADDR_IPV6MULTICAST[6] =
     {0x33, 0x33, 0x00, 0x00, 0x00, 0x01};
 const uint8_t MAC_ADDR_ZERO[6] =
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const boost::asio::ip::address_v4 LINK_LOCAL_DHCP(0xa9fe2020);
 
 using std::string;
 using std::stringbuf;
@@ -366,7 +367,6 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
     return b;
 }
 
-static const uint32_t LINK_LOCAL_DHCP = 0xa9fe2020;
 static const size_t MAX_IP = 32;
 static const size_t MAX_ROUTE = 16;
 
@@ -539,7 +539,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     ip->ttl = 64;
     ip->protocol = 17;
 
-    uint32_t serverIp = LINK_LOCAL_DHCP;
+    uint32_t serverIp = LINK_LOCAL_DHCP.to_ulong();
     if (serverIpStr) {
         address_v4 sip = address_v4::from_string(serverIpStr.get(), ec);
         if (ec) {
