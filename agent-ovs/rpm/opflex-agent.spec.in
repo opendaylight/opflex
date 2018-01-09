@@ -1,0 +1,228 @@
+#
+# Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Eclipse Public License v1.0 which accompanies this distribution,
+# and is available at http://www.eclipse.org/legal/epl-v10.html
+#
+
+%{!?packageversion:%define packageversion @VERSION@}
+%{!?buildversion:%define buildversion @BVERSION@}
+%global _hardened_build 1
+
+Name: opflex-agent
+Epoch: 1
+Version: %{packageversion}
+Release: %{buildversion}%{?dist}
+Summary: OpFlex agent for group-based policy
+
+Group: System Environment/Daemons
+License: EPLv1.0
+URL: https://wiki.opendaylight.org/view/OpFlex:Main
+
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
+Source: %{name}-%{version}.tar.gz
+Requires: libopflex >= %{version}
+Requires: libmodelgbp >= %{version}
+Requires: opflex-agent-lib = %{epoch}:%{version}-%{release}
+Requires: boost >= 1.53
+Requires: boost-program-options
+Requires: boost-system
+Requires: boost-date-time
+Requires: boost-thread
+Requires: boost-filesystem
+BuildRequires: libopflex-devel
+BuildRequires: libmodelgbp-devel
+BuildRequires: boost-devel
+BuildRequires: boost-test
+BuildRequires: noiro-openvswitch-devel >= 2.6.0
+BuildRequires: noiro-openvswitch-lib >= 2.6.0
+BuildRequires: doxygen
+BuildRequires: systemd-units
+BuildRequires: rapidjson-devel >= 1.0
+BuildRequires: libnetfilter_conntrack-devel >= 1.0
+Requires(pre): shadow-utils
+Requires(post): systemd-units
+Requires(preun): systemd-units
+Requires(postun): systemd-units
+
+%bcond_without check
+
+%description
+The Opflex agent runs alongside the management plane of a network
+packet forwarding entity such as Open vSwitch and enforces group-based
+policy semantics on the network traffic.
+
+%package -n agent-ovs
+Summary: Transitional package for OpFlex Agent and OVS renderer
+Requires: %{name} >= %{epoch}:%{version}-%{release}
+Requires: %{name}-renderer-openvswitch >= %{epoch}:%{version}-%{release}
+
+%description -n agent-ovs
+This package depends on opflex-agent and opflex-agent-renderer-openvswitch to
+allow smoother transition from the older packages
+
+%package renderer-openvswitch
+Summary: Open vSwitch renderer module for OpFlex Agent
+Group: Development/Libraries
+Requires: %{name} = %{epoch}:%{version}-%{release}
+Requires: noiro-openvswitch-lib >= 2.6
+Requires: openvswitch >= 2.6
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+
+%description renderer-openvswitch
+The Open vSwitch renderer provides a loadable module that adds support
+for rendering group-based policy model to Open vSwitch.
+
+%package lib
+Summary: Library for building OpFlex agent loadable plugins
+Group: Development/Libraries
+Requires: %{name} = %{epoch}:%{version}-%{release}
+Requires: libopflex >= %{version}
+Requires: libmodelgbp >= %{version}
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+
+%description lib
+Library containing symbols needed for building OpFlex agent loadable
+plugins
+
+%package devel
+Summary: Development libraries for libopflex_agent
+Group: Development/Libraries
+Requires: %{name} = %{epoch}:%{version}-%{release}
+Requires: pkgconfig
+Requires: libopflex-devel >= %{version}
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+Provides: libopflex_agent-static = %{version}-%{release}
+
+%description devel
+Development libraries for libopflex_agent
+
+%prep
+%setup -q
+
+%build
+%configure --disable-assert
+make %{?_smp_mflags}
+
+%install
+%make_install
+install -p -D -m 0644 \
+    rpm/opflex-agent.service \
+    $RPM_BUILD_ROOT%{_unitdir}/opflex-agent.service
+install -p -D -m 0644 \
+    rpm/opflex-agent-openvswitch.conf \
+    $RPM_BUILD_ROOT%{_unitdir}/opflex-agent.service.d/10-opflex-agent-openvswitch.conf
+install -p -D -m 0644 \
+    rpm/mcast-daemon.service \
+    $RPM_BUILD_ROOT%{_unitdir}/mcast-daemon.service
+install -p -D -m 0644 \
+    rpm/90-opflex-agent-sysctl.conf \
+    $RPM_BUILD_ROOT%{_sysctldir}/90-opflex-agent-sysctl.conf
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/endpoints
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/services
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/mcast
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/openvswitch/ids
+mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/opflex-agent-ovs/conf.d
+
+%check
+%if %{with check}
+    make check
+%endif
+
+%pre
+getent group opflexep >/dev/null || groupadd -r opflexep
+
+%preun
+%if 0%{?systemd_preun:1}
+    %systemd_preun %{name}.service
+    %systemd_preun mcast-daemon.service
+%else
+    if [ $1 -eq 0 ] ; then
+        # Package removal, not upgrade
+        /bin/systemctl --no-reload disable %{name}.service >/dev/null 2>&1 || :
+        /bin/systemctl stop %{name}.service >/dev/null 2>&1 || :
+
+        /bin/systemctl --no-reload disable mcast-daemon.service >/dev/null 2>&1 || :
+        /bin/systemctl stop mcast-daemon.service >/dev/null 2>&1 || :
+    fi
+%endif
+
+%post
+%if %{?sysctl_apply:1}%{!?sysctl_apply:0}
+    %sysctl_apply 90-opflex-agent-sysctl.conf
+%else
+    /sbin/sysctl -p %{_sysctldir}/90-opflex-agent-sysctl.conf >/dev/null 2>&1 || :
+%endif
+
+%if 0%{?systemd_post:1}
+    %systemd_post %{name}.service
+    %systemd_post mcast-daemon.service
+%else
+    if [ $1 -eq 1 ]; then
+        # Package install, not upgrade
+        /bin/systemctl daemon-reload >dev/null || :
+    fi
+%endif
+
+%post renderer-openvswitch
+/bin/systemctl daemon-reload >dev/null || :
+
+%postun
+%if 0%{?systemd_postun_with_restart:1}
+    %systemd_postun_with_restart %{name}.service
+    %systemd_postun_with_restart mcast-daemon.service
+%else
+    /bin/systemctl daemon-reload >/dev/null 2>&1 || :
+    if [ "$1" -ge "1" ] ; then
+        # Package upgrade, not uninstall
+        /bin/systemctl try-restart %{name}.service >/dev/null 2>&1 || :
+        /bin/systemctl try-restart mcast-daemon.service >/dev/null 2>&1 || :
+    fi
+%endif
+
+%postun renderer-openvswitch
+/bin/systemctl daemon-reload >dev/null || :
+
+%files
+%defattr(-,root,root)
+%{_bindir}/opflex_agent
+%{_bindir}/mcast_daemon
+%{_bindir}/gbp_inspect
+%config(noreplace) %{_sysconfdir}/opflex-agent-ovs/opflex-agent-ovs.conf
+%dir %{_sysconfdir}/opflex-agent-ovs/conf.d
+%dir %{_sysconfdir}/opflex-agent-ovs/plugins.conf.d
+%{_unitdir}/opflex-agent.service
+%{_unitdir}/mcast-daemon.service
+%{_sysctldir}/90-opflex-agent-sysctl.conf
+%dir %attr(0775, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/endpoints
+%dir %attr(0775, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/services
+%dir %{_localstatedir}/lib/opflex-agent-ovs/mcast
+
+%files -n agent-ovs
+
+%files renderer-openvswitch
+%defattr(-,root,root)
+%{_libdir}/libopflex_agent_renderer_openvswitch.so*
+%config(noreplace) %{_sysconfdir}/opflex-agent-ovs/plugins.conf.d/plugin-renderer-openvswitch.conf
+%dir %{_localstatedir}/lib/opflex-agent-ovs/openvswitch/ids
+%{_unitdir}/opflex-agent.service.d/10-opflex-agent-openvswitch.conf
+
+%files lib
+%defattr(-,root,root)
+%{_libdir}/libopflex_agent.so*
+
+%files devel
+%defattr(-,root,root)
+%{_bindir}/mock_server
+%{_libdir}/libopflex_agent.la
+%{_libdir}/libopflex_agent_renderer_openvswitch.la
+%{_libdir}/pkgconfig/libopflex_agent.pc
+%{_includedir}/opflexagent/
+
+%changelog
+* Tue Dec 09 2014 Rob Adams <readams@readams.net> - 1:0.1.0
+- New package file
