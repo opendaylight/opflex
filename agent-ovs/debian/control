@@ -1,35 +1,65 @@
-Source: agent-ovs
+Source: opflex-agent
 Priority: optional
 Section: net
 Maintainer: OpFlex Developers <opflex-dev@lists.opendaylight.org>
 Build-Depends:
  debhelper (>= 8.0.0), autotools-dev, libboost-all-dev (>= 1.53),
- libopflex-dev, libmodelgbp-dev, noiro-openvswitch-dev (>= 2.6.0),
- rapidjson-dev (>=1.0), pkgconf, dh-systemd, libssl-dev (>= 1.0),
+ libopflex-dev, libmodelgbp-dev, libnoiro-openvswitch-dev (>= 2.6.0),
+ libnoiro-openvswitch (>= 2.6.0), rapidjson-dev (>=1.0),
+ pkgconf, dh-systemd, libssl-dev (>= 1.0),
  libnetfilter-conntrack-dev (>= 1.0)
 Standards-Version: 3.9.4
 Homepage: https://wiki.opendaylight.org/view/OpFlex:Main
 
-Package: agent-ovs
+Package: libopflex-agent
 Architecture: any
 Depends:
  libopflex (= ${binary:Version}), libmodelgbp (= ${binary:Version}),
  ${shlibs:Depends}, ${misc:Depends}
-Description: Agent for integrating group-based policy with Open vSwitch
- The Opflex agent runs alongside the management plane of a network
- packet forwarding entity such as Open vSwitch and enforces group-based
- policy semantics on the network traffic.
+Description:  Open vSwitch renderer module for OpFlex Agent
+ The Open vSwitch renderer provides a loadable module that adds
+ support for rendering group-based policy model to Open vSwitch.
 
-Package: agent-ovs-dbg
+Package: libopflex-agent-dev
+Architecture: linux-any
+Depends:
+ libopflex-agent (= ${binary:Version}),
+ ${misc:Depends}
+Description: Development libraries for libopflex_agent
+
+Package: opflex-agent
+Architecture: any
+Depends:
+ libopflex-agent (= ${binary:Version}),
+ ${shlibs:Depends}
+Description: OpFlex agent for group-based policy
+ The Opflex agent runs alongside the management plane of a network
+ packet forwarding entity such as Open vSwitch and enforces
+ group-based policy semantics on the network traffic.
+
+Package: opflex-agent-renderer-openvswitch
+Architecture: any
+Depends:
+ openvswitch-switch (>= 2.6),
+ ${shlibs:Depends}, ${misc:Depends}
+Description:  Open vSwitch renderer module for OpFlex Agent
+ The Open vSwitch renderer provides a loadable module that adds
+ support for rendering group-based policy model to Open vSwitch.
+
+Package: agent-ovs
+Architecture: any
+Depends:
+ opflex-agent (>= ${binary:Version}),
+ opflex-agent-renderer-openvswitch (>= ${binary:Version})
+Description: Transitional package for OpFlex Agent and OVS renderer
+ This package depends on opflex-agent and
+ opflex-agent-renderer-openvswitch to allow smoother transition from
+ the older packages
+
+Package: opflex-agent-dbg
 Architecture: any
 Section: debug
 Priority: extra
 Depends:
- agent-ovs (= ${binary:Version}),
  ${misc:Depends}
-Description: Debug symbols for agent-ovs package
- The Opflex agent runs alongside the management plane of a network
- packet forwarding entity such as Open vSwitch and enforces group-based
- policy semantics on the network traffic.
- .
- This package contains the debugging symbols for agent-ovs.
+Description: Debug symbols for opflex-agent package

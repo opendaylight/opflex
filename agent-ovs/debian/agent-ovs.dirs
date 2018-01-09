@@ -1,5 +1,0 @@
-var/lib/opflex-agent-ovs/endpoints
-var/lib/opflex-agent-ovs/services
-var/lib/opflex-agent-ovs/ids
-var/lib/opflex-agent-ovs/mcast
-etc/opflex-agent-ovs/conf.d
