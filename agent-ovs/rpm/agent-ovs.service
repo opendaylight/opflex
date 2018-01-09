@@ -1,11 +1,12 @@
 [Unit]
-Description=Opflex OVS Agent
+Description=Opflex group-based policy agent
 After=openvswitch.service
 Wants=openvswitch.service mcast-daemon.service
 
 [Service]
 ExecStart=/usr/bin/agent_ovs --syslog \
    -c /etc/opflex-agent-ovs/opflex-agent-ovs.conf \
+   -c /etc/opflex-agent-ovs/plugins.conf.d \
    -c /etc/opflex-agent-ovs/conf.d
 Restart=always
 
