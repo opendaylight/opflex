@@ -1,5 +1,5 @@
 #
-# agent-ovs: Opflex agent for integrating Group-based policy with OVS
+# opflex-agent: Opflex policy agent for Group-based policy
 #
 ###########
 #
@@ -12,8 +12,8 @@
 # ---------------------------------------------------------------
 # Initialization
 
-AC_INIT([agent-ovs], [1.5.0])
-AC_SUBST(MODULE_NAME, ["Group-based Policy Agent for OVS"])
+AC_INIT([opflex-agent], [1.5.0])
+AC_SUBST(MODULE_NAME, ["Group-based Policy Agent"])
 
 # initialize automake and libtool
 AM_INIT_AUTOMAKE([subdir-objects])
@@ -62,14 +62,13 @@ AX_CXX_COMPILE_STDCXX([11], [ext], [mandatory])
 AC_CHECK_PROGS(DOXYGEN,doxygen,none)
 AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone'])
 
-# switch to enable OVS renderer support
+# switch to enable OVS renderer plugin
 AC_ARG_ENABLE(renderer-ovs,
               AC_HELP_STRING([--renderer-ovs],
                              [Build the OVS renderer]))
 AM_CONDITIONAL([RENDERER_OVS], [test x$enable_renderer_ovs != 'xno'])
 AM_COND_IF([RENDERER_OVS],
-           [AC_DEFINE([RENDERER_OVS], [1], [Build OVS renderer])
-            AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
+           [AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
            [AC_MSG_NOTICE([Open vSwitch renderer is disabled])])
 
 # ---------------------------------------------------------------
@@ -159,7 +158,7 @@ AC_CONFIG_FILES([\
         Makefile \
         debian/changelog \
         doc/Doxyfile \
-        rpm/agent-ovs.spec])
+        rpm/opflex-agent.spec])
 AC_CONFIG_FILES([debian/rules], [chmod +x debian/rules])
 AC_OUTPUT
 
