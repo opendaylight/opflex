@@ -1,0 +1,5 @@
+usr/bin/mock_server
+usr/lib/*/libopflex_agent.la
+usr/lib/*/libopflex_agent_renderer_openvswitch.la
+usr/lib/*/pkgconfig/*
+usr/include/opflexagent/

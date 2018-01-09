@@ -4,28 +4,30 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-PACKAGE=agent-ovs
+PACKAGE=opflex-agent
 
 %:
 	dh $@ --parallel --with autotools-dev,systemd
 
 override_dh_auto_configure:
-	dh_auto_configure -- --disable-assert --disable-shared --with-buildversion=@BVERSION@
+	dh_auto_configure -- --disable-assert --disable-static --with-buildversion=@BVERSION@
 
 override_dh_auto_test:
 	if ! make check; then find . -name test-suite.log -exec cat {} \; && false; fi
 
 override_dh_auto_install:
 	$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
+	mkdir -p debian/libopflex-agent/DEBIAN/
+	install -m644 debian/libopflex-agent.shlibs \
+		debian/libopflex-agent/DEBIAN/shlibs
 
 override_dh_shlibdeps:
-	dh_shlibdeps -- --ignore-missing-info
+	dh_shlibdeps -- --warnings=0
 
 override_dh_strip:
 	dh_strip --dbg-package=$(PACKAGE)-dbg
 
 override_dh_installinit:
 	dh_installinit -R
-	dh_systemd_enable -pagent-ovs --name=mcast-daemon mcast-daemon.service
-	dh_installinit -pagent-ovs --name=mcast-daemon
-
+	dh_systemd_enable -popflex-agent --name=mcast-daemon mcast-daemon.service
+	dh_installinit -popflex-agent --name=mcast-daemon

@@ -1,5 +1,5 @@
 #
-# agent-ovs: Opflex agent for integrating Group-based policy with OVS
+# opflex-agent: Opflex policy agent for Group-based policy
 #
 ###########
 #
@@ -12,13 +12,35 @@
 # ---------------------------------------------------------------
 # Initialization
 
-AC_INIT([agent-ovs], [1.6.0])
-AC_SUBST(MODULE_NAME, ["Group-based Policy Agent for OVS"])
+AC_INIT([opflex-agent], [1.7.0])
+AC_SUBST(MODULE_NAME, ["Group-based Policy Agent"])
+
+dnl For more information on libtool versioning, see:
+dnl https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+dnl
+dnl The version string is [current:revision:age] or [c:r:a].  Here are a
+dnl set of rules to help you update your library version information:
+dnl  1. Start with version information of 0:0:0 for each libtool
+dnl     library.
+dnl  2. Update the version information only immediately before a public
+dnl     release of your software. More frequent updates are unnecessary,
+dnl     and only guarantee that the current interface number gets larger
+dnl     faster.
+dnl  3. If the library source code has changed at all since the last
+dnl     update, then increment revision (c:r:a becomes c:r+1:a).
+dnl  4. If any interfaces have been added, removed, or changed since the
+dnl     last update, increment current, and set revision to 0.
+dnl  5. If any interfaces have been added since the last public release,
+dnl     then increment age.
+dnl  6. If any interfaces have been removed since the last public
+dnl     release, then set age to 0.
+
+AC_SUBST(VERSION_INFO, [7:0:7])
 
 # initialize automake and libtool
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_CONFIG_HEADER(config.h)
-LT_INIT()
+LT_INIT([disable-static])
 AC_PROG_LIBTOOL
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -62,14 +84,13 @@ AX_CXX_COMPILE_STDCXX([11], [ext], [mandatory])
 AC_CHECK_PROGS(DOXYGEN,doxygen,none)
 AM_CONDITIONAL(HAVE_DOXYGEN, [test x$DOXYGEN != 'xnone'])
 
-# switch to enable OVS renderer support
+# switch to enable OVS renderer plugin
 AC_ARG_ENABLE(renderer-ovs,
               AC_HELP_STRING([--renderer-ovs],
                              [Build the OVS renderer]))
 AM_CONDITIONAL([RENDERER_OVS], [test x$enable_renderer_ovs != 'xno'])
 AM_COND_IF([RENDERER_OVS],
-           [AC_DEFINE([RENDERER_OVS], [1], [Build OVS renderer])
-            AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
+           [AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
            [AC_MSG_NOTICE([Open vSwitch renderer is disabled])])
 
 # ---------------------------------------------------------------
@@ -157,9 +178,10 @@ fi
 
 AC_CONFIG_FILES([\
         Makefile \
+	libopflex_agent.pc \
         debian/changelog \
         doc/Doxyfile \
-        rpm/agent-ovs.spec])
+        rpm/opflex-agent.spec])
 AC_CONFIG_FILES([debian/rules], [chmod +x debian/rules])
 AC_OUTPUT
 
