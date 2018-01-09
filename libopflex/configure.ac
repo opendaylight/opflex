@@ -22,7 +22,7 @@ dnl 1. the version in AC_INIT
 dnl 2. the libtool version in VERSION_INFO
 
 m4_define([sdk_pversion], 1)
-m4_define([sdk_sversion], 6)
+m4_define([sdk_sversion], 7)
 m4_define([sdk_iversion], 0)
 AC_INIT([libopflex], [sdk_pversion.sdk_sversion.sdk_iversion])
 AC_SUBST(SDK_MARKETNAME, ["OpFlex Framework"])
@@ -48,7 +48,7 @@ dnl     then increment age.
 dnl  6. If any interfaces have been removed since the last public
 dnl     release, then set age to 0.
 
-AC_SUBST(VERSION_INFO, [6:0:6])
+AC_SUBST(VERSION_INFO, [7:0:7])
 
 dnl ---------------------------------------------------------------
 dnl Initialization

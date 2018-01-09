@@ -1,0 +1,3 @@
+usr/lib/*/libopflex_agent_renderer_openvswitch.so*
+etc/opflex-agent-ovs/plugins.conf.d/plugin-renderer-openvswitch.conf
+debian/10-opflex-agent-openvswitch.conf /etc/systemd/system/opflex-agent.service.d/

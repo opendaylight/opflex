@@ -1,0 +1,129 @@
+{
+    "plugins": {
+	// Load openvswitch renderer plugin
+        "renderer": ["libopflex_agent_renderer_openvswitch.so"]
+    },
+
+    "renderers": {
+        // Open vSwitch renderer
+        // EXAMPLE:
+        // "openvswitch": {
+        //     // "Integration" bridge used to enforce contracts and forward
+        //     // packets
+        //     "int-bridge-name": "br-int",
+        //
+        //     // "Access" bridge used to enforce access control and enforce
+        //     // security groups.
+        //     "access-bridge-name": "br-access",
+        //
+        //     // Set encapsulation type.  Must set either vxlan or vlan.
+        //     "encap": {
+        //         // Encapsulate traffic with VXLAN.
+        //         "vxlan" : {
+        //             // The name of the tunnel interface in OVS
+        //             "encap-iface": "br0_vxlan0",
+        //
+        //             // The name of the interface whose IP should be used
+        //             // as the source IP in encapsulated traffic.
+        //             "uplink-iface": "team0.4093",
+        //
+        //             // The vlan tag, if any, used on the uplink interface.
+        //             // Set to zero or omit if the uplink is untagged.
+        //             "uplink-vlan": 4093,
+        //
+        //             // The IP address used for the destination IP in
+        //             // the encapsulated traffic.  This should be an
+        //             // anycast IP address understood by the upstream
+        //             // stiched-mode fabric.
+        //             "remote-ip": "10.0.0.32",
+        //
+        //             // UDP port number of the encapsulated traffic.
+        //             "remote-port": 8472
+        //         }
+        //
+        //         // Encapsulate traffic with a locally-significant VLAN
+        //         // tag
+        //         // EXAMPLE:
+        //         // "vlan" : {
+        //         //     // The name of the uplink interface in OVS
+        //         //     "encap-iface": "team0"
+        //         // }
+        //     },
+        //
+        //     // Configure forwarding policy
+        //     "forwarding": {
+        //         // Configure the virtual distributed router
+        //         "virtual-router": {
+        //             // Enable virtual distributed router.  Set to true
+        //             // to enable or false to disable.
+        //             // Default: true.
+        //             "enabled": true,
+        //
+        //             // Override MAC address for virtual router.
+        //             // Default: "00:22:bd:f8:19:ff"
+        //             "mac": "00:22:bd:f8:19:ff",
+        //
+        //             // Configure IPv6-related settings for the virtual
+        //             // router
+        //             "ipv6" : {
+        //                 // Send router advertisement messages in
+        //                 // response to router solicitation requests as
+        //                 // well as unsolicited advertisements.  This
+        //                 // is not required in stitched mode since the
+        //                 // hardware router will send them.
+        //                 "router-advertisement": false
+        //             }
+        //         },
+        //
+        //         // Configure virtual distributed DHCP server
+        //         "virtual-dhcp": {
+        //             // Enable virtual distributed DHCP server.  Set to
+        //             // true to enable or false to disable.
+        //             // Default: true
+        //             "enabled": true,
+        //
+        //             // Override MAC address for virtual dhcp server.
+        //             // Default: "00:22:bd:f8:19:ff"
+        //             "mac": "00:22:bd:f8:19:ff"
+        //         },
+        //
+        //         "endpoint-advertisements": {
+        //             // Set mode for generation of periodic ARP/NDP
+        //             // advertisements for endpoints.  Possible values:
+        //             // disabled: Do not send advertisements
+        //             // gratuitous-unicast: Send gratuitous endpoint
+        //             //   advertisements as unicast packets to the router
+        //             //   mac.
+        //             // gratuitous-broadcast: Send gratuitous endpoint
+        //             //   advertisements as broadcast packets.
+        //             // router-request: Unicast a spoofed request/solicitation
+        //             //   for the subnet's gateway router.
+        //             // Default: gratuitous-broadcast.
+        //             "mode": "gratuitous-broadcast"
+        //         },
+        //
+        //         "connection-tracking": {
+        //             // Enable support for connection tracking
+        //             // Default: true
+        //             "enabled": true,
+        //
+        //             // Specify the range of zone IDs to use for connection
+        //             // tracking.  Minimum is 1 and maximum is 65534.
+        //             // Default: 1-65534
+        //             "zone-range": {
+        //                 "start": 1,
+        //                 "end": 65534
+        //             }
+        //         }
+        //     },
+        //
+        //     // Location to store cached IDs for managing flow state
+        //     // Default: "DEFAULT_FLOWID_CACHE_DIR"
+        //     "flowid-cache-dir": "DEFAULT_FLOWID_CACHE_DIR",
+        //
+        //     // Location to write multicast groups for the mcast-daemon
+        //     // Default: "DEFAULT_MCAST_GROUP_FILE"
+        //     "mcast-group-file": "DEFAULT_MCAST_GROUP_FILE"
+        // }
+    }
+}
