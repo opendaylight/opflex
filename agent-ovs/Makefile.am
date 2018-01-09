@@ -1,6 +1,6 @@
 #
-# agent-ovs: Opflex agent for integrating Group-based policy with OVS
-# Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
+# opflex-agent: OpFlex agent for group-based policy
+# Copyright (c) 2014-2018 Cisco Systems, Inc. and others.  All rights reserved.
 #
 # This program and the accompanying materials are made available under the
 # terms of the Eclipse Public License v1.0 which accompanies this distribution,
@@ -18,292 +18,349 @@ OVS_ADDL_CFLAGS = \
 	-fpermissive
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
-	-I$(top_srcdir)/src/include \
+	-I$(top_srcdir)/ovs/include \
+	-I$(top_srcdir)/lib/include \
 	-DLOCALSTATEDIR='"$(localstatedir)"'
 
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
-noinst_LTLIBRARIES = libagent_ovs.la
-libagent_ovs_la_CFLAGS = \
-	$(libopenvswitch_CFLAGS) \
-	$(libofproto_CFLAGS)
-libagent_ovs_la_CXXFLAGS = \
+noinst_LTLIBRARIES =
+lib_LTLIBRARIES = libopflex_agent.la
+
+libopflex_agent_la_CXXFLAGS = -pthread \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS) \
-	$(OVS_ADDL_CFLAGS) \
-	$(libopenvswitch_CFLAGS) \
-	$(libofproto_CFLAGS) \
-	$(libnfct_CFLAGS) \
-	$(rapidjson_CFLAGS)
-libagent_ovs_la_LIBADD = \
+	$(rapidjson_CFLAGS) \
+	$(libnfct_CFLAGS)
+libopflex_agent_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
-	$(libopenvswitch_LIBS) \
-	$(libofproto_LIBS) \
 	$(libnfct_LIBS) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_ASIO_LIB)
 
-noinst_HEADERS = \
-	src/include/AgentLogHandler.h \
-	src/include/PolicyListener.h \
-	src/include/PolicyManager.h \
-	src/include/FSWatcher.h \
-	src/include/Endpoint.h \
-	src/include/EndpointListener.h \
-	src/include/EndpointManager.h \
-	src/include/EndpointSource.h \
-	src/include/FSEndpointSource.h \
-	src/include/ModelEndpointSource.h \
-	src/include/Service.h \
-	src/include/ServiceListener.h \
-	src/include/ServiceSource.h \
-	src/include/ServiceManager.h \
-	src/include/FSServiceSource.h \
-	src/include/ExtraConfigListener.h \
-	src/include/ExtraConfigManager.h \
-	src/include/FSRDConfigSource.h \
-	src/include/RDConfig.h \
-	src/include/Renderer.h \
-	src/include/StitchedModeRenderer.h \
-	src/include/TunnelEpManager.h \
-	src/include/FlowExecutor.h \
-	src/include/FlowReader.h \
-	src/include/SwitchStateHandler.h \
-	src/include/IntFlowManager.h \
-	src/include/AccessFlowManager.h \
-	src/include/ovs-shim.h \
-	src/include/ovs-ofputil.h \
-	src/include/ovs-ofpbuf.h \
-	src/include/TableState.h \
-	src/include/ActionBuilder.h \
-	src/include/FlowBuilder.h \
-	src/include/SwitchConnection.h \
-	src/include/SwitchManager.h \
-	src/include/PortMapper.h \
-	src/include/InterfaceStatsManager.h \
-	src/include/PolicyStatsManager.h \
-	src/include/ContractStatsManager.h \
-	src/include/SecGrpStatsManager.h \
-	src/include/Agent.h \
-	src/include/IdGenerator.h \
-	src/include/CtZoneManager.h \
-	src/include/RangeMask.h \
-	src/include/Packets.h \
-	src/include/PacketInHandler.h \
-	src/include/AdvertManager.h \
-	src/include/KeyedRateLimiter.h \
-	src/include/NotifServer.h \
-	src/include/MulticastListener.h \
-	src/include/TaskQueue.h \
-	src/include/FlowUtils.h \
-	src/include/FlowConstants.h \
-	src/include/Network.h \
-	src/include/udp.h \
-	src/include/dhcp.h \
-	src/include/arp.h \
-	src/include/eth.h \
-	src/include/cmd.h \
-	src/include/logging.h
+libopflex_agent_la_includedir = $(includedir)/opflexagent
+libopflex_agent_la_include_HEADERS = \
+	lib/include/opflexagent/AgentLogHandler.h \
+	lib/include/opflexagent/PolicyListener.h \
+	lib/include/opflexagent/PolicyManager.h \
+	lib/include/opflexagent/FSWatcher.h \
+	lib/include/opflexagent/Endpoint.h \
+	lib/include/opflexagent/EndpointListener.h \
+	lib/include/opflexagent/EndpointManager.h \
+	lib/include/opflexagent/EndpointSource.h \
+	lib/include/opflexagent/FSEndpointSource.h \
+	lib/include/opflexagent/ModelEndpointSource.h \
+	lib/include/opflexagent/Service.h \
+	lib/include/opflexagent/ServiceListener.h \
+	lib/include/opflexagent/ServiceSource.h \
+	lib/include/opflexagent/ServiceManager.h \
+	lib/include/opflexagent/FSServiceSource.h \
+	lib/include/opflexagent/ExtraConfigListener.h \
+	lib/include/opflexagent/ExtraConfigManager.h \
+	lib/include/opflexagent/FSRDConfigSource.h \
+	lib/include/opflexagent/RDConfig.h \
+	lib/include/opflexagent/Renderer.h \
+	lib/include/opflexagent/TunnelEpManager.h \
+	lib/include/opflexagent/Agent.h \
+	lib/include/opflexagent/KeyedRateLimiter.h \
+	lib/include/opflexagent/MulticastListener.h \
+	lib/include/opflexagent/TaskQueue.h \
+	lib/include/opflexagent/NotifServer.h \
+	lib/include/opflexagent/Network.h \
+	lib/include/opflexagent/cmd.h \
+	lib/include/opflexagent/logging.h
 
-libagent_ovs_la_SOURCES = \
-	src/AgentLogHandler.cpp \
-	src/PolicyManager.cpp \
-	src/FSWatcher.cpp \
-	src/Endpoint.cpp \
-	src/EndpointManager.cpp \
-	src/EndpointSource.cpp \
-	src/FSEndpointSource.cpp \
-	src/ModelEndpointSource.cpp \
-	src/Service.cpp \
-	src/ServiceSource.cpp \
-	src/ServiceManager.cpp \
-	src/FSServiceSource.cpp \
-	src/ExtraConfigManager.cpp \
-	src/RDConfig.cpp \
-	src/FSRDConfigSource.cpp \
-	src/Renderer.cpp \
-	src/TunnelEpManager.cpp \
-	src/cmd.cpp \
-	src/logging.cpp \
-	src/Agent.cpp \
-	src/IdGenerator.cpp \
-	src/CtZoneManager.cpp \
-	src/NotifServer.cpp \
-	src/MulticastListener.cpp \
-	src/TaskQueue.cpp \
-	src/Network.cpp \
-	src/FlowConstants.cpp
+noinst_HEADERS = \
+	ovs/include/OVSRenderer.h \
+	ovs/include/FlowExecutor.h \
+	ovs/include/FlowReader.h \
+	ovs/include/SwitchStateHandler.h \
+	ovs/include/IntFlowManager.h \
+	ovs/include/AccessFlowManager.h \
+	ovs/include/ovs-shim.h \
+	ovs/include/ovs-ofputil.h \
+	ovs/include/ovs-ofpbuf.h \
+	ovs/include/TableState.h \
+	ovs/include/ActionBuilder.h \
+	ovs/include/FlowBuilder.h \
+	ovs/include/SwitchConnection.h \
+	ovs/include/SwitchManager.h \
+	ovs/include/PortMapper.h \
+	ovs/include/InterfaceStatsManager.h \
+	ovs/include/PolicyStatsManager.h \
+	ovs/include/ContractStatsManager.h \
+	ovs/include/SecGrpStatsManager.h \
+	ovs/include/IdGenerator.h \
+	ovs/include/CtZoneManager.h \
+	ovs/include/RangeMask.h \
+	ovs/include/Packets.h \
+	ovs/include/PacketInHandler.h \
+	ovs/include/AdvertManager.h \
+	ovs/include/FlowUtils.h \
+	ovs/include/FlowConstants.h \
+	ovs/include/udp.h \
+	ovs/include/dhcp.h \
+	ovs/include/arp.h \
+	ovs/include/eth.h
+
+libopflex_agent_la_SOURCES = \
+	lib/AgentLogHandler.cpp \
+	lib/PolicyManager.cpp \
+	lib/FSWatcher.cpp \
+	lib/Endpoint.cpp \
+	lib/EndpointManager.cpp \
+	lib/EndpointSource.cpp \
+	lib/FSEndpointSource.cpp \
+	lib/ModelEndpointSource.cpp \
+	lib/Service.cpp \
+	lib/ServiceSource.cpp \
+	lib/ServiceManager.cpp \
+	lib/FSServiceSource.cpp \
+	lib/ExtraConfigManager.cpp \
+	lib/RDConfig.cpp \
+	lib/FSRDConfigSource.cpp \
+	lib/Renderer.cpp \
+	lib/TunnelEpManager.cpp \
+	lib/cmd.cpp \
+	lib/logging.cpp \
+	lib/Agent.cpp \
+	lib/IdGenerator.cpp \
+	lib/CtZoneManager.cpp \
+	lib/NotifServer.cpp \
+	lib/MulticastListener.cpp \
+	lib/TaskQueue.cpp \
+	lib/Network.cpp
+libopflex_agent_la_LDFLAGS = -shared -version-info ${VERSION_INFO}
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = libopflex_agent.pc
 
 if RENDERER_OVS
-  libagent_ovs_la_SOURCES += \
-	src/StitchedModeRenderer.cpp \
-	src/SwitchStateHandler.cpp \
-	src/IntFlowManager.cpp \
-	src/AccessFlowManager.cpp \
-	src/TableState.cpp \
-	src/FlowExecutor.cpp \
-	src/FlowReader.cpp \
-	src/ActionBuilder.cpp \
-	src/FlowBuilder.cpp \
-	src/SwitchConnection.cpp \
-	src/SwitchManager.cpp \
-	src/PortMapper.cpp \
-	src/PolicyStatsManager.cpp \
-	src/InterfaceStatsManager.cpp \
-	src/ContractStatsManager.cpp \
-	src/SecGrpStatsManager.cpp \
-	src/RangeMask.cpp \
-	src/Packets.cpp \
-	src/PacketInHandler.cpp \
-	src/AdvertManager.cpp \
-	src/FlowUtils.cpp \
-	src/ovs-shim.c
+  lib_LTLIBRARIES += libopflex_agent_renderer_openvswitch.la
+  libopflex_agent_renderer_openvswitch_la_SOURCES =
+  noinst_LTLIBRARIES += librenderer_openvswitch.la
+  librenderer_openvswitch_la_SOURCES = \
+	ovs/OVSRenderer.cpp \
+	ovs/SwitchStateHandler.cpp \
+	ovs/IntFlowManager.cpp \
+	ovs/AccessFlowManager.cpp \
+	ovs/TableState.cpp \
+	ovs/FlowExecutor.cpp \
+	ovs/FlowReader.cpp \
+	ovs/ActionBuilder.cpp \
+	ovs/FlowBuilder.cpp \
+	ovs/SwitchConnection.cpp \
+	ovs/SwitchManager.cpp \
+	ovs/PortMapper.cpp \
+	ovs/PolicyStatsManager.cpp \
+	ovs/InterfaceStatsManager.cpp \
+	ovs/ContractStatsManager.cpp \
+	ovs/SecGrpStatsManager.cpp \
+	ovs/RangeMask.cpp \
+	ovs/Packets.cpp \
+	ovs/PacketInHandler.cpp \
+	ovs/AdvertManager.cpp \
+	ovs/FlowUtils.cpp \
+	ovs/FlowConstants.cpp \
+	ovs/ovs-shim.c
+  librenderer_openvswitch_la_CFLAGS = \
+	$(libopenvswitch_CFLAGS) \
+	$(libofproto_CFLAGS)
+  librenderer_openvswitch_la_CXXFLAGS = \
+	$(libopflex_CFLAGS) \
+	$(libmodelgbp_CFLAGS) \
+	$(OVS_ADDL_CFLAGS) \
+	$(libopenvswitch_CFLAGS) \
+	$(libofproto_CFLAGS)
+  librenderer_openvswitch_la_LIBADD = \
+	$(libopflex_LIBS) \
+	$(libmodelgbp_LIBS) \
+	$(libopenvswitch_LIBS) \
+	$(libofproto_LIBS) \
+	$(BOOST_SYSTEM_LIB) \
+	$(BOOST_FILESYSTEM_LIB) \
+	$(BOOST_ASIO_LIB)
+  libopflex_agent_renderer_openvswitch_la_LIBADD = \
+	librenderer_openvswitch.la
+  libopflex_agent_renderer_openvswitch_la_LDFLAGS = \
+	-avoid-version -module -shared
 endif
 
-bin_PROGRAMS=agent_ovs gbp_inspect mcast_daemon
-agent_ovs_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
+bin_PROGRAMS=opflex_agent gbp_inspect mcast_daemon mock_server
+opflex_agent_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS)
-agent_ovs_SOURCES = \
-	src/main.cpp
-agent_ovs_LDADD = \
+opflex_agent_SOURCES = \
+	cmd/opflex_agent.cpp
+opflex_agent_LDADD = \
+	$(libopflex_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libagent_ovs.la
+	$(BOOST_FILESYSTEM_LIB) \
+	$(BOOST_SYSTEM_LIB) \
+	libopflex_agent.la
 
 gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
 gbp_inspect_SOURCES = \
-	src/gbp_inspect.cpp
+	cmd/gbp_inspect.cpp
 gbp_inspect_LDADD = \
+	$(libopflex_LIBS) \
+	$(libmodelgbp_LIBS) \
 	$(BOOST_IOSTREAMS_LIB) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libagent_ovs.la
+	libopflex_agent.la
 
 mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
 mcast_daemon_SOURCES = \
-	src/mcast_daemon.cpp
+	cmd/mcast_daemon.cpp
 mcast_daemon_LDADD = \
+	$(BOOST_FILESYSTEM_LIB) \
+	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libagent_ovs.la
+	libopflex_agent.la
 
 TESTS = agent_test
-noinst_PROGRAMS = $(TESTS) mock_server integration_test
+noinst_PROGRAMS = $(TESTS) integration_test
 
-agent_test_CFLAGS = \
-	$(libopenvswitch_CFLAGS) \
-	$(libofproto_CFLAGS)
+agent_test_CFLAGS =
 agent_test_CXXFLAGS = \
-	-I$(top_srcdir)/test/include \
+	-I$(top_srcdir)/lib/include \
+	-I$(top_srcdir)/cmd/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) \
-	$(OVS_ADDL_CFLAGS) \
-	$(libopenvswitch_CFLAGS) \
-	$(libofproto_CFLAGS) \
 	-DBOOST_TEST_DYN_LINK
 
-agent_test_SOURCES = \
-	test/include/BaseFixture.h \
-	test/include/ModbFixture.h \
-	test/include/MockSwitchConnection.h \
-	test/include/MockPortMapper.h \
-	test/include/MockFlowExecutor.h \
-	test/include/MockFlowReader.h \
-	test/include/MockSwitchManager.h \
-	test/include/FlowManagerFixture.h \
-	test/include/PolicyStatsManagerFixture.h \
-	test/PolicyManager_test.cpp \
-	test/EndpointManager_test.cpp \
-	test/ModelEndpointSource_test.cpp \
-	test/IdGenerator_test.cpp \
-	test/KeyedRateLimiter_test.cpp \
-	test/NotifServer_test.cpp \
-	test/Network_test.cpp \
-	test/main.cpp
+agent_test_includedir = $(includedir)/opflexagent/test
+agent_test_include_HEADERS = \
+	lib/include/opflexagent/test/BaseFixture.h \
+	lib/include/opflexagent/test/ModbFixture.h
 
-if RENDERER_OVS
-  agent_test_SOURCES += \
-	test/MockFlowExecutor.cpp \
-	test/FlowManagerFixture.cpp \
-	test/IntFlowManager_test.cpp \
-	test/AccessFlowManager_test.cpp \
-	test/PacketInHandler_test.cpp \
-	test/PacketInHandler_test_shim.c \
-	test/AdvertManager_test.cpp \
-	test/PortMapper_test.cpp \
-	test/FlowExecutor_test.cpp \
-	test/RangeMask_test.cpp \
-	test/Packets_test.cpp \
-	test/InterfaceStatsManager_test.cpp \
-	test/ContractStatsManager_test.cpp \
-	test/SecGrpStatsManager_test.cpp \
-	test/TableState_test.cpp
-endif
+agent_test_SOURCES = \
+	lib/test/PolicyManager_test.cpp \
+	lib/test/EndpointManager_test.cpp \
+	lib/test/ModelEndpointSource_test.cpp \
+	lib/test/IdGenerator_test.cpp \
+	lib/test/KeyedRateLimiter_test.cpp \
+	lib/test/NotifServer_test.cpp \
+	lib/test/Network_test.cpp \
+	cmd/test/agent_test.cpp
 
 agent_test_LDADD = \
+	$(libopflex_LIBS) \
+	$(libmodelgbp_LIBS) \
+	$(BOOST_FILESYSTEM_LIB) \
+	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	libagent_ovs.la
+	libopflex_agent.la
+
+if RENDERER_OVS
+  agent_test_CFLAGS += \
+	-I$(top_srcdir)/ovs/test/include \
+	$(librenderer_openvswitch_la_CFLAGS)
+  agent_test_CXXFLAGS += \
+	-I$(top_srcdir)/ovs/test/include \
+	$(librenderer_openvswitch_la_CXXFLAGS)
+  agent_test_LDADD += \
+	librenderer_openvswitch.la
+  agent_test_SOURCES += \
+	ovs/test/include/MockSwitchConnection.h \
+	ovs/test/include/MockPortMapper.h \
+	ovs/test/include/MockFlowExecutor.h \
+	ovs/test/include/MockFlowReader.h \
+	ovs/test/include/MockSwitchManager.h \
+	ovs/test/include/FlowManagerFixture.h \
+	ovs/test/include/PolicyStatsManagerFixture.h \
+	ovs/test/MockFlowExecutor.cpp \
+	ovs/test/FlowManagerFixture.cpp \
+	ovs/test/IntFlowManager_test.cpp \
+	ovs/test/AccessFlowManager_test.cpp \
+	ovs/test/PacketInHandler_test.cpp \
+	ovs/test/PacketInHandler_test_shim.c \
+	ovs/test/AdvertManager_test.cpp \
+	ovs/test/PortMapper_test.cpp \
+	ovs/test/FlowExecutor_test.cpp \
+	ovs/test/RangeMask_test.cpp \
+	ovs/test/Packets_test.cpp \
+	ovs/test/InterfaceStatsManager_test.cpp \
+	ovs/test/ContractStatsManager_test.cpp \
+	ovs/test/SecGrpStatsManager_test.cpp \
+	ovs/test/TableState_test.cpp
+endif
 
 mock_server_CXXFLAGS = \
-	-I$(top_srcdir)/test/include \
+	-I$(top_srcdir)/cmd/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS)
 mock_server_SOURCES = \
-	test/include/Policies.h \
-	test/Policies.cpp \
-	test/mock_server.cpp
+	cmd/test/include/Policies.h \
+	cmd/test/Policies.cpp \
+	cmd/test/mock_server.cpp
 mock_server_LDADD = \
+	$(libopflex_LIBS) \
+	$(libmodelgbp_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libagent_ovs.la
+	libopflex_agent.la
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
+pluginconfdir=$(sysconfdir)/opflex-agent-ovs/plugins.conf.d
+pluginconf_DATA = plugin-renderer-openvswitch.conf
 
-flowidcachedir=${localstatedir}/lib/opflex-agent-ovs/ids
 defepwatchdir=${localstatedir}/lib/opflex-agent-ovs/endpoints
 defservwatchdir=${localstatedir}/lib/opflex-agent-ovs/services
-mcastgroupfile=${localstatedir}/lib/opflex-agent-ovs/mcast/opflex-groups.json
-inspectsock=${localstatedir}/run/opflex-agent-ovs-inspect.sock
-notifsock=${localstatedir}/run/opflex-agent-ovs-notif.sock
+inspectsock=${localstatedir}/run/opflex-agent-inspect.sock
+notifsock=${localstatedir}/run/opflex-agent-notif.sock
 cacertdir=${sysconfdir}/ssl/certs
 clientcertpath=${agentconfdir}/opflex-agent-cert.pem
 opflex-agent-ovs.conf: $(top_srcdir)/opflex-agent-ovs.conf.in
 	sed -e "s|DEFAULT_FS_ENDPOINT_DIR|${defepwatchdir}|" \
 	    -e "s|DEFAULT_FS_SERVICE_DIR|${defservwatchdir}|" \
-	    -e "s|DEFAULT_FLOWID_CACHE_DIR|${flowidcachedir}|" \
-	    -e "s|DEFAULT_MCAST_GROUP_FILE|${mcastgroupfile}|" \
 	    -e "s|DEFAULT_INSPECTOR_SOCKET|${inspectsock}|" \
 	    -e "s|DEFAULT_NOTIF_SOCKET|${notifsock}|" \
 	    -e "s|DEFAULT_CA_CERT_DIR|${cacertdir}|" \
 	    -e "s|DEFAULT_CLIENT_CERT_PATH|${clientcertpath}|" \
-	$(top_srcdir)/opflex-agent-ovs.conf.in > opflex-agent-ovs.conf
+	$< > $@
+
+flowidcachedir=${localstatedir}/lib/opflex-agent-ovs/ids
+mcastgroupfile=${localstatedir}/lib/opflex-agent-ovs/mcast/opflex-groups.json
+plugin-renderer-openvswitch.conf: $(top_srcdir)/plugin-renderer-openvswitch.conf.in
+	sed -e "s|DEFAULT_FLOWID_CACHE_DIR|${flowidcachedir}|" \
+	    -e "s|DEFAULT_MCAST_GROUP_FILE|${mcastgroupfile}|" \
+	$< > $@
 
 if HAVE_DOXYGEN
   noinst_DATA = \
 	doc/html
 endif
 
-integration_test_CXXFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
-	-I$(top_srcdir)/integration-test/include \
-	$(OVS_ADDL_CFLAGS) \
-	$(libopenvswitch_CFLAGS) \
-	$(libofproto_CFLAGS)
+integration_test_CXXFLAGS = \
+	$(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
+	-I$(top_srcdir)/integration-test/include
 
 integration_test_SOURCES = \
-	integration-test/include/ConnectionFixture.h \
-	integration-test/main.cpp \
-	integration-test/ctzone_test.cpp
-
-if RENDERER_OVS
-  integration_test_SOURCES += \
-	integration-test/connection_test.cpp \
-	integration-test/flowmod_test.cpp
-endif
+	lib/integration-test/ctzone_test.cpp \
+	cmd/integration-test/integration_test.cpp
 
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 integration_test_LDADD = \
+	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	libagent_ovs.la
+	libopflex_agent.la
 
-check-integration: agent_ovs
+if RENDERER_OVS
+  integration_test_SOURCES += \
+	ovs/integration-test/include/ConnectionFixture.h \
+	ovs/integration-test/connection_test.cpp \
+	ovs/integration-test/flowmod_test.cpp
+  integration_test_CXXFLAGS += \
+	-I$(top_srcdir)/ovs/integration-test/include \
+	$(librenderer_openvswitch_la_CXXFLAGS)
+  integration_test_LDADD += \
+	$(libopenvswitch_LIBS) \
+	$(libofproto_LIBS) \
+	librenderer_openvswitch.la
+endif
+
+check-integration: integration_test
 	$(top_builddir)/integration_test
 doc/html: $(model_include_HEADERS) $(noinst_HEADERS) doc/Doxyfile
 	cd doc && ${DOXYGEN} Doxyfile
@@ -314,8 +371,12 @@ clean-doc:
 clean-local: clean-doc
 	rm -f *.rpm *.deb
 
-EXTRA_DIST=rpm/agent-ovs.service rpm/mcast-daemon.service \
-	rpm/90-agent-ovs-sysctl.conf opflex-agent-ovs.conf.in
+EXTRA_DIST = \
+	rpm/opflex-agent.service \
+	rpm/opflex-agent-openvswitch.conf \
+	rpm/mcast-daemon.service \
+	rpm/90-opflex-agent-sysctl.conf \
+	opflex-agent-ovs.conf.in plugin-renderer-openvswitch.conf.in
 
 CWD=`pwd`
 RPMFLAGS=--define "_topdir ${CWD}/rpm"
@@ -336,12 +397,18 @@ srpm: dist rpm/${PACKAGE}.spec
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
 
-EXTRA_DIST += debian/agent-ovs.dirs debian/agent-ovs.install \
-	debian/agent-ovs.postinst debian/agent-ovs.preinst \
-	debian/agent-ovs.upstart debian/mcast-daemon.conf \
-	debian/agent-ovs.service debian/mcast-daemon.service \
-	debian/changelog debian/compat debian/conffiles debian/control \
-	debian/copyright debian/rules debian/source/format
+EXTRA_DIST += debian/opflex-agent.dirs \
+	debian/libopflex-agent.install \
+	debian/libopflex-agent-dev.install \
+	debian/opflex-agent.install \
+	debian/opflex-agent-renderer-openvswitch.install \
+	debian/libopflex-agent.shlibs \
+	debian/opflex-agent.postinst debian/opflex-agent.preinst \
+	debian/opflex-agent.upstart debian/mcast-daemon.conf \
+	debian/opflex-agent.service debian/mcast-daemon.service \
+	debian/10-opflex-agent-openvswitch.conf \
+	debian/changelog debian/compat debian/control \
+	debian/copyright debian/rules debian/source/format 
 
 # Set env var DEB_BUILD_OPTIONS="parallel=<#cores>" to speed up package builds
 DEB_PKG_DIR=deb-pkg-build
