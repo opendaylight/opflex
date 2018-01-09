@@ -1,0 +1,64 @@
+#
+# Copyright (c) 2018 Cisco Systems, Inc. and others.  All rights reserved.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Eclipse Public License v1.0 which accompanies this distribution,
+# and is available at http://www.eclipse.org/legal/epl-v10.html
+#
+
+%{!?packageversion:%define packageversion @VERSION@}
+%{!?buildversion:%define buildversion @BVERSION@}
+%global _hardened_build 1
+
+Name: opflex-agent-renderer-sample
+Epoch: 1
+Version: %{packageversion}
+Release: %{buildversion}%{?dist}
+Summary: Sample renderer module for OpFlex Agent
+
+Group: System Environment/Daemons
+License: EPLv1.0
+URL: https://wiki.opendaylight.org/view/OpFlex:Main
+
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
+Source: %{name}-%{version}.tar.gz
+Requires: opflex-agent = %{epoch}:@libopflex_agent_VERSION@
+BuildRequires: opflex-agent-devel
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+Requires(post): systemd-units
+Requires(postun): systemd-units
+
+%description
+The sample renderer provides a loadable module that demonstrates
+the basic structure of an OpFlex agent renderer plugin,
+
+%prep
+%setup -q
+
+%build
+%configure --disable-assert
+make %{?_smp_mflags}
+
+%install
+%make_install
+
+%check
+%if %{with check}
+    make check
+%endif
+
+%post
+/bin/systemctl daemon-reload >dev/null || :
+
+%postun
+/bin/systemctl daemon-reload >dev/null || :
+
+%files
+%defattr(-,root,root)
+%{_libdir}/libopflex_agent_renderer_sample.so*
+%config(noreplace) %{_sysconfdir}/opflex-agent-ovs/plugins.conf.d/plugin-renderer-sample.conf
+
+%changelog
+* Wed Jan 31 2018 Rob Adams <readams@readams.net> - 1:1.0.0
+- New package file
