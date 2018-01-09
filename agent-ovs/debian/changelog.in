@@ -1,11 +1,5 @@
-agent-ovs (@PACKAGE_VERSION@-@BVERSION@) unstable; urgency=medium
+opflex-agent (@PACKAGE_VERSION@-@BVERSION@) unstable; urgency=medium
 
-  * Updated for 16.04
+  * OpFlex agent package
 
- -- Rob Adams <readams@ubuntu>  Tue, 07 Jun 2016 13:45:13 -0700
-
-agent-ovs (1.0.0-1) unstable; urgency=low
-
-  * Initial release
-
- -- Amit Bose <bose@noironetworks.com>  Mon, 30 Mar 2015 15:56:14 -0700
+ -- Rob Adams <readams@readams.net>  Tue, 07 Jun 2016 13:45:13 -0700
