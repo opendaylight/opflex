@@ -130,7 +130,8 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
     ovs_be64 ckbe = ovs_htonll(cookie);
     MaskList srcPorts;
     MaskList dstPorts;
-    if (clsfr.isIcmpTypeSet() || clsfr.isIcmpCodeSet()) {
+    if (clsfr.getProt(0) == 1 &&
+        (clsfr.isIcmpTypeSet() || clsfr.isIcmpCodeSet())) {
         if (clsfr.isIcmpTypeSet()) {
             srcPorts.push_back(Mask(clsfr.getIcmpType(0), ~0));
         }
