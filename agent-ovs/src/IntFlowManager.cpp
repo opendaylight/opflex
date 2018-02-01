@@ -1400,15 +1400,11 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                     as.getServiceMode() == Service::LOADBALANCER)
                     serviceDest.ethDst(macAddr);
 
-                serviceDest.priority(50).ipDst(serviceAddr);
-                if (as.getServiceMode() == Service::LOCAL_ANYCAST &&
-                    encapType == ENCAP_VLAN) {
-                    // Flows for load-balanced services add a VLAN tag
-                    // to egress traffic in VLAN mode. Remove it if
-                    // destination is a local anycast service.
-                    serviceDest.action().popVlan();
-                }
-                serviceDest.action().ethSrc(getRouterMacAddr());
+                serviceDest
+                    .priority(50)
+                    .ipDst(serviceAddr)
+                    .action()
+                    .ethSrc(getRouterMacAddr());
 
                 if (!nextHopAddrs.empty()) {
                     // map traffic to service to the next hop IPs

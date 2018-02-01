@@ -170,7 +170,6 @@ public:
     void groupFloodTest();
     void connectTest();
     void portStatusTest();
-    void anycastServiceTest();
 
     IntFlowManager intFlowManager;
     PacketInHandler pktInHandler;
@@ -1141,15 +1140,7 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("nexthop", 500);
 }
 
-BOOST_FIXTURE_TEST_CASE(anycastService_vxlan, VxlanIntFlowManagerFixture) {
-	anycastServiceTest();
-}
-
-BOOST_FIXTURE_TEST_CASE(anycastService_vlan, VlanIntFlowManagerFixture) {
-	anycastServiceTest();
-}
-
-void IntFlowManagerFixture::anycastServiceTest() {
+BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
     setConnected();
     intFlowManager.egDomainUpdated(epg0->getURI());
     intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
@@ -2174,24 +2165,23 @@ void IntFlowManagerFixture::initExpAnycastService(int nextHop) {
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
-    bool vlan = (IntFlowManager::ENCAP_VLAN == intFlowManager.getEncapType());
 
     if (nextHop) {
         std::stringstream mss;
         mss << "symmetric_l3l4+udp,1024,iter_hash,"
             << nextHop << ",32,NXM_NX_REG7[]";
-        Bldr nhb = Bldr().table(BR).priority(50).ip().reg(RD, 1)
-            .isIpDst("169.254.169.254").actions();
-        if (vlan) {
-            nhb.popVlan();
-        }
-        ADDF(nhb.ethSrc(rmac).ethDst(mac).multipath(mss.str()).go(SVH).done());
-        nhb = Bldr().table(BR).priority(50).ipv6().reg(RD, 1)
-            .isIpv6Dst("fe80::a9:fe:a9:fe").actions();
-        if (vlan) {
-            nhb.popVlan();
-        }
-        ADDF(nhb.ethSrc(rmac).ethDst(mac).multipath(mss.str()).go(SVH).done());
+        ADDF(Bldr().table(BR).priority(50)
+             .ip().reg(RD, 1).isIpDst("169.254.169.254")
+             .actions()
+             .ethSrc(rmac).ethDst(mac)
+             .multipath(mss.str())
+             .go(SVH).done());
+        ADDF(Bldr().table(BR).priority(50)
+             .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
+             .actions()
+             .ethSrc(rmac).ethDst(mac)
+             .multipath(mss.str())
+             .go(SVH).done());
 
         ADDF(Bldr().table(SVH).priority(99)
              .ip().reg(RD, 1)
@@ -2257,18 +2247,15 @@ void IntFlowManagerFixture::initExpAnycastService(int nextHop) {
                  .go(SVD).done());
         }
     } else {
-        Bldr nhb = Bldr().table(BR).priority(50).ip().reg(RD, 1)
-            .isIpDst("169.254.169.254").actions();
-        if (vlan) {
-            nhb.popVlan();
-        }
-        ADDF(nhb.ethSrc(rmac).ethDst(mac).decTtl().outPort(17).done());
-        nhb = Bldr().table(BR).priority(50).ipv6().reg(RD, 1)
-           .isIpv6Dst("fe80::a9:fe:a9:fe").actions();
-        if (vlan) {
-           nhb.popVlan();
-        }
-        ADDF(nhb.ethSrc(rmac).ethDst(mac).decTtl().outPort(17).done());
+        ADDF(Bldr().table(BR).priority(50)
+             .ip().reg(RD, 1).isIpDst("169.254.169.254")
+             .actions()
+             .ethSrc(rmac).ethDst(mac)
+             .decTtl().outPort(17).done());
+        ADDF(Bldr().table(BR).priority(50)
+             .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
+             .actions()
+             .ethSrc(rmac).ethDst(mac).decTtl().outPort(17).done());
 
         ADDF(Bldr().table(SEC).priority(100).ip().in(17)
              .isEthSrc("ed:84:da:ef:16:96")
