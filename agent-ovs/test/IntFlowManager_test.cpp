@@ -170,6 +170,7 @@ public:
     void groupFloodTest();
     void connectTest();
     void portStatusTest();
+    void loadBalancedServiceTest();
 
     IntFlowManager intFlowManager;
     PacketInHandler pktInHandler;
@@ -1214,7 +1215,15 @@ BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("nexthop lb", 500);
 }
 
-BOOST_FIXTURE_TEST_CASE(loadBalancedService, VxlanIntFlowManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(loadBalancedService_vxlan, VxlanIntFlowManagerFixture) {
+    loadBalancedServiceTest();
+}
+
+BOOST_FIXTURE_TEST_CASE(loadBalancedService_vlan, VlanIntFlowManagerFixture) {
+    loadBalancedServiceTest();
+}
+
+void IntFlowManagerFixture::loadBalancedServiceTest() {
     setConnected();
     intFlowManager.egDomainUpdated(epg0->getURI());
     intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
@@ -2437,6 +2446,29 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
     }
 
     if (conntrack) {
+        if (IntFlowManager::ENCAP_VLAN == intFlowManager.getEncapType()) {
+            uint32_t tunPort = intFlowManager.getTunnelPort();
+            ADDF(Bldr().table(SVR).priority(101)
+                 .isCtState("-trk").udp().reg(RD, 1).in(tunPort)
+                 .isIpSrc("169.254.169.1").isTpSrc(5353)
+                 .actions().pushVlan().move(SEPG12, VLAN)
+                 .ct("table=1,zone=1").done());
+            ADDF(Bldr().table(SVR).priority(101)
+                 .isCtState("-trk").udp().reg(RD, 1).in(tunPort)
+                 .isIpSrc("169.254.169.2").isTpSrc(5353)
+                 .actions().pushVlan().move(SEPG12, VLAN)
+                 .ct("table=1,zone=1").done());
+            ADDF(Bldr().table(SVR).priority(101)
+                 .isCtState("-trk").tcp6().reg(RD, 1).in(tunPort)
+                 .isIpv6Src("fe80::a9:fe:a9:1").isTpSrc(80)
+                 .actions().pushVlan().move(SEPG12, VLAN)
+                 .ct("table=1,zone=1").done());
+            ADDF(Bldr().table(SVR).priority(101)
+                 .isCtState("-trk").tcp6().reg(RD, 1).in(tunPort)
+                 .isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
+                 .actions().pushVlan().move(SEPG12, VLAN)
+                 .ct("table=1,zone=1").done());
+        }
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").udp().reg(RD, 1)
              .isIpSrc("169.254.169.1").isTpSrc(5353)
