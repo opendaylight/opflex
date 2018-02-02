@@ -993,6 +993,34 @@ static void matchActionServiceProto(FlowBuilder& flow, uint8_t proto,
     }
 }
 
+static void flowRevMapCt(FlowEntryList& serviceRevFlows,
+                         uint16_t priority,
+                         const Service::ServiceMapping& sm,
+                         address nextHopAddr,
+                         uint32_t rdId,
+                         uint16_t zoneId,
+                         uint8_t proto,
+                         uint32_t tunPort,
+                         IntFlowManager::EncapType encapType) {
+    FlowBuilder ipRevMapCt;
+    matchDestDom(ipRevMapCt, 0, rdId);
+    matchActionServiceProto(ipRevMapCt, proto, sm,
+                            false, false);
+    ipRevMapCt.conntrackState(0, FlowBuilder::CT_TRACKED)
+        .priority(priority)
+        .ipSrc(nextHopAddr);
+    if (encapType == IntFlowManager::ENCAP_VLAN) {
+        ipRevMapCt.inPort(tunPort);
+        ipRevMapCt.action()
+            .pushVlan()
+            .regMove(MFF_REG0, MFF_VLAN_VID);
+    }
+    ipRevMapCt.action()
+        .conntrack(0, static_cast<mf_field_id>(0),
+                   zoneId, IntFlowManager::SRC_TABLE_ID);
+    ipRevMapCt.build(serviceRevFlows);
+}
+
 void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
     LOG(DEBUG) << "Updating endpoint " << uuid;
@@ -1485,22 +1513,20 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                     // For load balanced services reverse traffic is
                     // handled with normal policy semantics
                     if (zoneId != static_cast<uint16_t>(-1)) {
-                        FlowBuilder ipRevMapCt;
-                        matchDestDom(ipRevMapCt, 0, rdId);
-                        matchActionServiceProto(ipRevMapCt, proto, sm,
-                                                false, false);
-                        ipRevMapCt.conntrackState(0, FlowBuilder::CT_TRACKED);
-                        ipRevMapCt.priority(100)
-                            .ipSrc(nextHopAddr);
                         if (encapType == ENCAP_VLAN) {
-                            ipRevMapCt.action()
-                                .pushVlan()
-                                .regMove(MFF_REG0, MFF_VLAN_VID);
+                            // traffic from the uplink will originally
+                            // have had a vlan tag that was stripped
+                            // in the source table.  Restore the tag
+                            // before running through the conntrack
+                            // table to ensure we can property rebuild
+                            // the state when the packet comes back.
+                            flowRevMapCt(serviceRevFlows, 101,
+                                         sm, nextHopAddr, rdId, zoneId, proto,
+                                         getTunnelPort(), ENCAP_VLAN);
                         }
-                        ipRevMapCt.action()
-                            .conntrack(0, static_cast<mf_field_id>(0),
-                                       zoneId, SRC_TABLE_ID);
-                        ipRevMapCt.build(serviceRevFlows);
+                        flowRevMapCt(serviceRevFlows, 100,
+                                     sm, nextHopAddr, rdId, zoneId, proto,
+                                     0, ENCAP_NONE);
                     }
                     {
                         FlowBuilder ipRevMap;
