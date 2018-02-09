@@ -607,7 +607,9 @@ static void handleDHCPv4PktIn(Agent& agent,
             message_type = ((uint8_t*)cur)[2];
             break;
         case option::REQUESTED_IP:
-            requested_ip = address_v4(ntohl(*((uint32_t*)((uint8_t*)cur + 2))));
+            uint32_t ipVal;
+            memcpy(&ipVal, (uint8_t*)cur + 2, sizeof(ipVal));
+            requested_ip = address_v4(ntohl(ipVal));
         }
 
         cur += hdr->len + 2;
@@ -989,16 +991,20 @@ static void handleICMPErrPktIn(bool v4,
             (struct iphdr*)(ofpbuf_at_assert(b, inner_offset +
                                              sizeof(struct icmphdr),
                                              sizeof(iphdr)));
-        inner_ip->saddr = outer->daddr;
+        memcpy(&inner_ip->saddr, &outer->daddr, sizeof(inner_ip->saddr));
 
         // compute checksum
-        inner_icmp->checksum = 0;
+        memset(&inner_icmp->checksum, 0, sizeof(inner_icmp->checksum));
         uint32_t chksum = 0;
         packets::chksum_accum(chksum, (uint16_t*)inner_icmp, l4_size);
-        inner_icmp->checksum = packets::chksum_finalize(chksum);
+        chksum = packets::chksum_finalize(chksum);
+        memcpy(&inner_icmp->checksum, &chksum, sizeof(chksum));
 
+        uint32_t saddr;
+        memcpy(&saddr, &inner_ip->saddr, sizeof(saddr));
+        saddr = htonl(saddr);
         LOG(DEBUG) << "Translating ICMPv4 error packet for "
-                   << boost::asio::ip::address_v4(htonl(inner_ip->saddr))
+                   << boost::asio::ip::address_v4(saddr)
                    << " on " << pi.flow_metadata.flow.regs[7];
     }
 

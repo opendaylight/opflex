@@ -69,18 +69,28 @@ FlowBuilder& FlowBuilder::inPort(uint32_t port) {
 }
 
 FlowBuilder& FlowBuilder::ethSrc(const uint8_t mac[6], const uint8_t mask[6]) {
-    if (mask)
-        match_set_dl_src_masked(match(), *(eth_addr*)mac, *(eth_addr*)mask);
-    else
-        match_set_dl_src(match(), *(eth_addr*)mac);
+    eth_addr macAddr;
+    memcpy(&macAddr, mac, sizeof(eth_addr));
+    if (mask) {
+        eth_addr maskAddr;
+        memcpy(&maskAddr, mask, sizeof(eth_addr));
+        match_set_dl_src_masked(match(), macAddr, maskAddr);
+    } else {
+        match_set_dl_src(match(), macAddr);
+    }
     return *this;
 }
 
 FlowBuilder& FlowBuilder::ethDst(const uint8_t mac[6], const uint8_t mask[6]) {
-    if (mask)
-        match_set_dl_dst_masked(match(), *(eth_addr*)mac, *(eth_addr*)mask);
-    else
-        match_set_dl_dst(match(), *(eth_addr*)mac);
+    eth_addr macAddr;
+    memcpy(&macAddr, mac, sizeof(eth_addr));
+    if (mask) {
+        eth_addr maskAddr;
+        memcpy(&maskAddr, mask, sizeof(eth_addr));
+        match_set_dl_dst_masked(match(), macAddr, maskAddr);
+    } else {
+        match_set_dl_dst(match(), macAddr);
+    }
     return *this;
 }
 

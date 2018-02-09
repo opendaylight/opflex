@@ -686,8 +686,11 @@ static void verify_icmpv4(ofpbuf* msg) {
     struct iphdr* ip_pkt =
         (struct iphdr*)((char*)icmp_pkt + sizeof(icmphdr));
 
-    BOOST_CHECK_EQUAL(address_v4(ip_pkt->saddr),
-                      address_v4(outer_ip_pkt->daddr));
+    uint32_t saddr;
+    uint32_t daddr;
+    memcpy(&saddr, &ip_pkt->saddr, sizeof(saddr));
+    memcpy(&daddr, &outer_ip_pkt->daddr, sizeof(daddr));
+    BOOST_CHECK_EQUAL(address_v4(saddr), address_v4(daddr));
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
