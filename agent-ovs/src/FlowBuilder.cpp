@@ -233,6 +233,11 @@ FlowBuilder& FlowBuilder::vlan(uint16_t vlan) {
     return *this;
 }
 
+FlowBuilder& FlowBuilder::tci(uint16_t tci, uint16_t mask) {
+    match_set_dl_tci_masked(match(), htons(tci), htons(mask));
+    return *this;
+}
+
 FlowBuilder& FlowBuilder::tunId(uint64_t tunId) {
     match_set_tun_id(match(), ovs_htonll(tunId));
     return *this;

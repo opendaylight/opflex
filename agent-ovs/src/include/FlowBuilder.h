@@ -218,6 +218,14 @@ public:
     FlowBuilder& vlan(uint16_t vlan);
 
     /**
+     * Add a match against tag control information bits
+     * @param tci the tci to match
+     * @param mask the mask for the match
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& tci(uint16_t tci, uint16_t mask);
+
+    /**
      * Add a match against tunnel ID
      * @param tunId the tunnel ID to match
      * @return this flow builder for chaining

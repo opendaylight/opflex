@@ -157,7 +157,7 @@ public:
         rep(",tp_dst=", str(p, true) + "/" + str(m, true)); return *this;
     }
     Bldr& isVlan(uint16_t v) { rep(",dl_vlan=", str(v)); return *this; }
-    Bldr& noVlan() { rep(",vlan_tci=0x0000"); return *this; }
+    Bldr& noVlan() { rep(",vlan_tci=0x0000/0x1fff"); return *this; }
     Bldr& isNdTarget(const std::string& t) {
         rep(",nd_target=", t); return *this;
     }
