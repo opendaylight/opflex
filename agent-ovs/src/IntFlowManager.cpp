@@ -422,6 +422,13 @@ static FlowBuilder& matchSubnet(FlowBuilder& fb, uint32_t rdId,
     return fb;
 }
 
+static FlowBuilder& matchIcmpEchoReq(FlowBuilder& fb, bool v4) {
+    return fb.ethType(v4 ? eth::type::IP : eth::type::IPV6)
+        .proto(v4 ? 1 : 58)
+        .tpSrc(v4 ? 8: 128)
+        .tpDst(0);
+}
+
 // Action helper functions
 static FlowBuilder& actionSource(FlowBuilder& fb, uint32_t epgId, uint32_t bdId,
                                  uint32_t fgrpId,  uint32_t l3Id,
@@ -552,7 +559,9 @@ static FlowBuilder& actionSecAllow(FlowBuilder& fb) {
     return fb;
 }
 
-static void revNatICMPFlows(FlowEntryList& el, bool v4, uint8_t type) {
+// Flow creation helpers
+
+static void flowsRevNatICMP(FlowEntryList& el, bool v4, uint8_t type) {
     FlowBuilder fb;
     fb.priority(10)
         .cookie(v4 ? flow::cookie::ICMP_ERROR_V4 : flow::cookie::ICMP_ERROR_V6)
@@ -564,10 +573,8 @@ static void revNatICMPFlows(FlowEntryList& el, bool v4, uint8_t type) {
     } else {
         fb.ethType(eth::type::IPV6).proto(58 /* ICMP */).tpSrc(type);
     }
-    return fb.build(el);
+    fb.build(el);
 }
-
-// Flow creation helpers
 
 static void flowsProxyDiscovery(FlowEntryList& el,
                                 uint16_t priority,
@@ -578,7 +585,8 @@ static void flowsProxyDiscovery(FlowEntryList& el,
                                 bool router,
                                 const uint8_t* matchSourceMac,
                                 uint32_t tunPort,
-                                IntFlowManager::EncapType encapType) {
+                                IntFlowManager::EncapType encapType,
+                                bool directDelivery = false) {
     if (ipAddr.is_v4()) {
         if (tunPort != OFPP_NONE &&
             encapType != IntFlowManager::ENCAP_NONE) {
@@ -605,6 +613,8 @@ static void flowsProxyDiscovery(FlowEntryList& el,
         memcpy(&metadata, macAddr, 6);
         ((uint8_t*)&metadata)[7] = 1;
         if (router)
+            ((uint8_t*)&metadata)[7] = 3;
+        if (directDelivery)
             ((uint8_t*)&metadata)[6] = 1;
 
         FlowBuilder proxyND;
@@ -630,6 +640,21 @@ static void flowsProxyDiscovery(IntFlowManager& flowMgr,
                         bdId, router, matchSourceMac, flowMgr.getTunnelPort(),
                         (epgVnid != 0)
                         ? flowMgr.getEncapType() : IntFlowManager::ENCAP_NONE);
+}
+
+static void flowsProxyICMP(FlowEntryList& el,
+                           uint16_t priority,
+                           const address& ipAddr,
+                           uint32_t bdId,
+                           uint32_t l3Id) {
+    FlowBuilder fb;
+    bool v4 = ipAddr.is_v4();
+    matchIcmpEchoReq(fb, v4).priority(priority)
+        .ipDst(ipAddr)
+        .cookie(v4 ? flow::cookie::ICMP_ECHO_V4 : flow::cookie::ICMP_ECHO_V6);
+    matchDestDom(fb, bdId, l3Id);
+    actionController(fb, 0, ovs_htonll(0x100));
+    fb.build(el);
 }
 
 static void flowsIpm(IntFlowManager& flowMgr,
@@ -1620,7 +1645,8 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                         }
                     }
 
-                    // Reply to ARP/ND requests for the service address
+                    // Reply to ARP/ND requests for the service
+                    // address
                     flowsProxyDiscovery(*this, bridgeFlows,
                                         51, serviceAddr, macAddr,
                                         0, rdId, 0);
@@ -1686,11 +1712,11 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                                  << as.getIfaceIP().get()
                                  << ":" << ec.message();
                 } else {
-                    // XXX TODO this won't work for ipv6 with packet-in
                     flowsProxyDiscovery(bridgeFlows,
                                         51, ifaceAddr, macAddr,
                                         proxyVnid, rdId, 0, false, NULL,
-                                        ofPort, serviceEncapType);
+                                        ofPort, serviceEncapType, true);
+                    flowsProxyICMP(bridgeFlows, 51, ifaceAddr, 0, rdId);
                 }
             }
         }
@@ -1863,9 +1889,9 @@ void IntFlowManager::createStaticFlows() {
         }
         {
             // send reverse NAT ICMP error packets to controller
-            revNatICMPFlows(outFlows, true, 3 ); // unreachable
-            revNatICMPFlows(outFlows, true, 11); // time exceeded
-            revNatICMPFlows(outFlows, true, 12); // param
+            flowsRevNatICMP(outFlows, true, 3 ); // unreachable
+            flowsRevNatICMP(outFlows, true, 11); // time exceeded
+            flowsRevNatICMP(outFlows, true, 12); // param
         }
 
         switchManager.writeFlow("static", OUT_TABLE_ID, outFlows);

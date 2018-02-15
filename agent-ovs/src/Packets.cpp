@@ -24,6 +24,8 @@
 
 #include <sstream>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/icmp6.h>
 
 namespace ovsagent {
 namespace packets {
@@ -227,8 +229,8 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     chksum += (uint16_t)htons(58);
     // payload
     chksum_accum(chksum, (uint16_t*)router_ad, payloadLen);
-    chksum = chksum_finalize(chksum);
-    memcpy(&router_ad->nd_ra_hdr.icmp6_cksum, &chksum, sizeof(chksum));
+    uint16_t fchksum = chksum_finalize(chksum);
+    memcpy(&router_ad->nd_ra_hdr.icmp6_cksum, &fchksum, sizeof(fchksum));
 
     return b;
 }
@@ -307,8 +309,8 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     chksum += (uint16_t)htons(58);
     // payload
     chksum_accum(chksum, payload, payloadLen);
-    chksum = chksum_finalize(chksum);
-    memcpy(&neigh_ad->nd_na_hdr.icmp6_cksum, &chksum, sizeof(chksum));
+    uint16_t fchksum = chksum_finalize(chksum);
+    memcpy(&neigh_ad->nd_na_hdr.icmp6_cksum, &fchksum, sizeof(fchksum));
 
     return b;
 }
@@ -387,12 +389,155 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
     chksum += (uint16_t)htons(58);
     // payload
     chksum_accum(chksum, payload, payloadLen);
-    chksum = chksum_finalize(chksum);
-    memcpy(&neigh_sol->nd_ns_hdr.icmp6_cksum, &chksum, sizeof(chksum));
+    uint16_t fchksum = chksum_finalize(chksum);
+    memcpy(&neigh_sol->nd_ns_hdr.icmp6_cksum, &fchksum, sizeof(fchksum));
+
+    return b;
+}
+/*
+ofpbuf* compose_icmp4_echo_reply(const uint8_t* srcMac,
+                                 const uint8_t* dstMac,
+                                 uint32_t srcIp,
+                                 uint32_t dstIp,
+                                 uint16_t identifier,
+                                 uint16_t seqNum,
+                                 const uint8_t* payload,
+                                 size_t payloadLen) {
+    struct ofpbuf* b = NULL;
+
+    size_t len = sizeof(eth::eth_header) +
+        sizeof(struct iphdr) +
+        sizeof(struct icmphdr) +
+        payloadLen;
+
+    b = ofpbuf_new(len);
+    ofpbuf_clear(b);
+    ofpbuf_reserve(b, len);
+
+    uint8_t* replyData = (uint8_t*)ofpbuf_push_zeros(b, payloadLen);
+    struct icmphdr* icmp = (struct icmphdr*)
+        ofpbuf_push_zeros(b, sizeof(struct icmphdr));
+    struct iphdr* ip = (struct iphdr*)
+        ofpbuf_push_zeros(b, sizeof(struct iphdr));
+    eth::eth_header* eth = (eth::eth_header*)
+        ofpbuf_push_zeros(b, sizeof(eth::eth_header));
+
+    // initialize icmp header
+    struct icmphdr tmpIcmp;
+    memset(&tmpIcmp, 0, sizeof(tmpIcmp));
+    tmpIcmp.type = ICMP_ECHOREPLY;
+    tmpIcmp.un.echo.id = identifier;
+    tmpIcmp.un.echo.sequence = seqNum;
+    memcpy(icmp, &tmpIcmp, sizeof(tmpIcmp));
+
+    // initialize ethernet header
+    memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
+    memcpy(eth->eth_dst, dstMac, eth::ADDR_LEN);
+    eth->eth_type = htons(eth::type::IP);
+
+    // initialize IPv4 header
+    struct iphdr tmpIp;
+    memset(&tmpIp, 0, sizeof(tmpIp));
+    tmpIp.version = 4;
+    tmpIp.ihl = sizeof(struct iphdr)/4;
+    tmpIp.tot_len = htons(payloadLen +
+                        sizeof(struct iphdr) +
+                        sizeof(struct icmphdr));
+    tmpIp.ttl = 64;
+    tmpIp.protocol = 1;
+    tmpIp.saddr = htonl(srcIp);
+    tmpIp.daddr = htonl(dstIp);
+
+    // compute IP header checksum
+    uint32_t chksum = 0;
+    chksum_accum(chksum, (uint16_t*)&tmpIp, sizeof(struct iphdr));
+    tmpIp.check = chksum_finalize(chksum);
+    memcpy(ip, &tmpIp, sizeof(tmpIp));
+
+    // Copy payload
+    memcpy(replyData, payload, payloadLen);
+
+    // compute ICMP checksum
+    chksum = 0;
+    chksum_accum(chksum, (uint16_t*)icmp, sizeof(struct icmphdr));
+    chksum_accum(chksum, (uint16_t*)replyData, payloadLen);
+    uint16_t fchksum = chksum_finalize(chksum);
+    memcpy(&icmp->checksum, &fchksum, sizeof(fchksum));
 
     return b;
 }
 
+ofpbuf* compose_icmp6_echo_reply(const uint8_t* srcMac,
+                                 const uint8_t* dstMac,
+                                 const struct in6_addr* srcIp,
+                                 const struct in6_addr* dstIp,
+                                 uint16_t identifier,
+                                 uint16_t seqNum,
+                                 const uint8_t* payload,
+                                 size_t payloadLen) {
+    struct ofpbuf* b = NULL;
+
+    size_t len = sizeof(eth::eth_header) +
+        sizeof(struct ip6_hdr) +
+        sizeof(struct icmp6_hdr) +
+        payloadLen;
+
+    b = ofpbuf_new(len);
+    ofpbuf_clear(b);
+    ofpbuf_reserve(b, len);
+
+    uint8_t* replyData = (uint8_t*)ofpbuf_push_zeros(b, payloadLen);
+    struct icmp6_hdr* icmp6 = (struct icmp6_hdr*)
+        ofpbuf_push_zeros(b, sizeof(struct icmp6_hdr));
+    struct ip6_hdr* ip6 = (struct ip6_hdr*)
+        ofpbuf_push_zeros(b, sizeof(struct ip6_hdr));
+    eth::eth_header* eth = (eth::eth_header*)
+        ofpbuf_push_zeros(b, sizeof(eth::eth_header));
+
+    // initialize icmp header
+    struct icmp6_hdr tmpIcmp;
+    memset(&tmpIcmp, 0, sizeof(tmpIcmp));
+    tmpIcmp.icmp6_type = ICMP6_ECHO_REPLY;
+    tmpIcmp.icmp6_id = identifier;
+    tmpIcmp.icmp6_seq = seqNum;
+    memcpy(icmp6, &tmpIcmp, sizeof(tmpIcmp));
+
+    // initialize ethernet header
+    memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
+    memcpy(eth->eth_dst, dstMac, eth::ADDR_LEN);
+    eth->eth_type = htons(eth::type::IPV6);
+
+    // Initialize IPv6 header
+    struct ip6_hdr tmpIp6;
+    memset(&tmpIp6, 0, sizeof(tmpIp6));
+    tmpIp6.ip6_vfc = 0x60;
+    tmpIp6.ip6_hlim = 255;
+    tmpIp6.ip6_nxt = 58;
+    tmpIp6.ip6_plen = htons(payloadLen);
+    memcpy(&tmpIp6.ip6_src, srcIp, sizeof(struct in6_addr));
+    memcpy(&tmpIp6.ip6_dst, dstIp, sizeof(struct in6_addr));
+    memcpy(ip6, &tmpIp6, sizeof(tmpIp6));
+
+    // Copy payload
+    memcpy(replyData, payload, payloadLen);
+
+    // compute checksum
+    uint32_t chksum = 0;
+    // pseudoheader
+    chksum_accum(chksum, (uint16_t*)&tmpIp6.ip6_src,
+                 sizeof(struct in6_addr));
+    chksum_accum(chksum, (uint16_t*)&tmpIp6.ip6_dst,
+                 sizeof(struct in6_addr));
+    chksum_accum(chksum, (uint16_t*)&tmpIp6.ip6_plen, 2);
+    chksum += (uint16_t)htons(58);
+    // payload
+    chksum_accum(chksum, (uint16_t*)replyData, payloadLen);
+    uint16_t fchksum = chksum_finalize(chksum);
+    memcpy(&icmp6->icmp6_cksum, &fchksum, sizeof(fchksum));
+
+    return b;
+}
+*/
 static const size_t MAX_IP = 32;
 static const size_t MAX_ROUTE = 16;
 

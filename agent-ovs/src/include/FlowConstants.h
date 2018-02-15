@@ -71,6 +71,16 @@ extern const uint64_t ICMP_ERROR_V4;
  */
 extern const uint64_t ICMP_ERROR_V6;
 
+/**
+ * The cookie used for flows for responding to ICMPv4 echo requests
+ */
+extern const uint64_t ICMP_ECHO_V4;
+
+/**
+ * The cookie used for flows for responding to ICMPv6 echo requests
+ */
+extern const uint64_t ICMP_ECHO_V6;
+
 } // namespace cookie
 
 namespace meta {

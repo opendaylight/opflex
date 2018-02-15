@@ -14,9 +14,6 @@
 
 #include <stdint.h>
 #include <arpa/inet.h>
-#include <netinet/ip6.h>
-#include <netinet/icmp6.h>
-#include <netinet/ip.h>
 
 #include <boost/asio/ip/address.hpp>
 
@@ -126,6 +123,27 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
                                 const struct in6_addr* dstIp,
                                 const opflex::modb::URI& egUri,
                                 PolicyManager& polMgr);
+
+/**
+ * Compose an ICMP6 echo reply
+ *
+ * @param srcMac the source MAC
+ * @param dstMac the dst MAC
+ * @param srcIp the source Ip
+ * @param dstIp the destination IP
+ * @param identifier the identifier from the echo request packet
+ * @param seqNum the sequence number from the echo request packet
+ * @param payload the payload from the echo request packet
+ * @param payloadLen the length of the payload of the echo request
+ */
+ofpbuf* compose_icmp6_echo_reply(const uint8_t* srcMac,
+                                 const uint8_t* dstMac,
+                                 const struct in6_addr* srcIp,
+                                 const struct in6_addr* dstIp,
+                                 uint16_t identifier,
+                                 uint16_t seqNum,
+                                 const uint8_t* payload,
+                                 size_t payloadLen);
 
 /**
  * A convenience typedef for static routes

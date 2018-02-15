@@ -24,6 +24,8 @@ const uint64_t VIRTUAL_IP_V4   = DEF_COOKIE(6);
 const uint64_t VIRTUAL_IP_V6   = DEF_COOKIE(7);
 const uint64_t ICMP_ERROR_V4   = DEF_COOKIE(8);
 const uint64_t ICMP_ERROR_V6   = DEF_COOKIE(9);
+const uint64_t ICMP_ECHO_V4    = DEF_COOKIE(10);
+const uint64_t ICMP_ECHO_V6    = DEF_COOKIE(11);
 #undef DEF_COOKIE
 
 } // namespace cookie
