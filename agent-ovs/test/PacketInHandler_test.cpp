@@ -87,6 +87,7 @@ public:
 
     void testDhcpv4Discover(MockSwitchConnection& tconn);
     void testIcmpv4Error(MockSwitchConnection& tconn);
+    void testIcmpEcho(bool v4);
 
     IdGenerator idGen;
     CtZoneManager ctZoneManager;
@@ -341,12 +342,51 @@ static const uint8_t pkt_icmp4_ttl_exc[] =
      0x00, 0x00, 0x01, 0x11, 0x9a, 0x18, 0x67, 0x67, 0x01, 0x05, 0xac, 0x1c,
      0xb8, 0x30, 0x8c, 0x98, 0x82, 0x9e, 0x00, 0x28, 0x2e, 0xa9};
 
+static const uint8_t pkt_icmp4_echo_req[] =
+    "\x00\x00\x00\x10\x00\x10\x32\x59\x3a\xce\x77\x36\x08\x00\x45\x00" \
+    "\x00\x54\x55\x25\x40\x00\x40\x01\x6d\x14\x0a\x05\x64\x64\x0a\x05" \
+    "\x00\x02\x08\x00\x5d\x29\x97\x5a\x00\x01\xd3\xd3\x85\x5a\x00\x00" \
+    "\x00\x00\xe5\x79\x06\x00\x00\x00\x00\x00\x10\x11\x12\x13\x14\x15" \
+    "\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25" \
+    "\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31\x32\x33\x34\x35" \
+    "\x36\x37";
+
+static const uint8_t pkt_icmp4_echo_rep[] =
+    "\x32\x59\x3a\xce\x77\x36\x00\x00\x00\x10\x00\x10\x08\x00\x45\x00" \
+    "\x00\x54\x55\x25\x40\x00\x40\x01\x6d\x14\x0a\x05\x00\x02\x0a\x05" \
+    "\x64\x64\x00\x00\x65\x29\x97\x5a\x00\x01\xd3\xd3\x85\x5a\x00\x00" \
+    "\x00\x00\xe5\x79\x06\x00\x00\x00\x00\x00\x10\x11\x12\x13\x14\x15" \
+    "\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25" \
+    "\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31\x32\x33\x34\x35" \
+    "\x36\x37";
+
+static const uint8_t pkt_icmp6_echo_req[] =
+    "\x00\x00\x00\x10\x00\x10\x32\x59\x3a\xce\x77\x36\x86\xdd\x60\x09" \
+    "\x28\x1b\x00\x40\x3a\x40\xfd\xd6\x6e\x3c\xd8\x91\xff\x49\x00\x00" \
+    "\x00\x00\x00\x00\x01\x00\xfd\xd6\x6e\x3c\xd8\x91\xff\x49\x00\x00" \
+    "\x00\x00\x00\x00\x00\x03\x80\x00\xa3\xd9\x97\x6d\x00\x01\xdc\xd3" \
+    "\x85\x5a\x00\x00\x00\x00\x99\x5a\x01\x00\x00\x00\x00\x00\x10\x11" \
+    "\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21" \
+    "\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31" \
+    "\x32\x33\x34\x35\x36\x37";
+
+static const uint8_t pkt_icmp6_echo_rep[] =
+    "\x32\x59\x3a\xce\x77\x36\x00\x00\x00\x10\x00\x10\x86\xdd\x60\x09" \
+    "\x28\x1b\x00\x40\x3a\x40\xfd\xd6\x6e\x3c\xd8\x91\xff\x49\x00\x00" \
+    "\x00\x00\x00\x00\x00\x03\xfd\xd6\x6e\x3c\xd8\x91\xff\x49\x00\x00" \
+    "\x00\x00\x00\x00\x01\x00\x81\x00\xa2\xd9\x97\x6d\x00\x01\xdc\xd3" \
+    "\x85\x5a\x00\x00\x00\x00\x99\x5a\x01\x00\x00\x00\x00\x00\x10\x11" \
+    "\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21" \
+    "\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31" \
+    "\x32\x33\x34\x35\x36\x37";
+
 static void init_packet_in(ofputil_packet_in_private& pin,
                            const void* packet_buf, size_t len,
                            uint64_t cookie = 0,
                            uint8_t table_id = IntFlowManager::ROUTE_TABLE_ID,
                            uint32_t in_port = 42,
-                           uint32_t dstReg = 0) {
+                           uint32_t dstReg = 0,
+                           uint64_t metadata = 0) {
     memset(&pin, 0, sizeof(pin));
     pin.publ.reason = OFPR_ACTION;
     pin.publ.cookie = cookie;
@@ -357,6 +397,7 @@ static void init_packet_in(ofputil_packet_in_private& pin,
     match_set_reg(&pin.publ.flow_metadata, 0, 0xA0A);
     match_set_reg(&pin.publ.flow_metadata, 5, 10);
     match_set_reg(&pin.publ.flow_metadata, 7, dstReg);
+    match_set_metadata(&pin.publ.flow_metadata, metadata);
 }
 
 extern "C" {
@@ -662,7 +703,7 @@ static void verify_dhcpv6(ofpbuf* msg, uint8_t message_type,
 #undef CONTAINS
 }
 
-static void verify_icmpv4(ofpbuf* msg) {
+static void verify_icmpv4_err(ofpbuf* msg) {
     struct ofputil_packet_out po;
     uint64_t ofpacts_stub[1024 / 8];
     struct ofpbuf ofpact;
@@ -963,7 +1004,7 @@ void PacketInHandlerFixture::testIcmpv4Error(MockSwitchConnection& tconn) {
     BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
     ofpbuf_delete(b);
 
-    verify_icmpv4(tconn.sentMsgs[0]);
+    verify_icmpv4_err(tconn.sentMsgs[0]);
 }
 
 BOOST_FIXTURE_TEST_CASE(icmpv4_error, PacketInHandlerFixture) {
@@ -977,6 +1018,43 @@ BOOST_FIXTURE_TEST_CASE(icmpv4_error_acc, PacketInHandlerFixture) {
     pktInHandler.registerConnection(&intConn, &accConn);
 
     testIcmpv4Error(accConn);
+}
+
+void PacketInHandlerFixture::testIcmpEcho(bool v4) {
+    ofputil_packet_in_private pin;
+    auto req = v4 ? pkt_icmp4_echo_req : pkt_icmp6_echo_req;
+    auto rep = v4 ? pkt_icmp4_echo_rep : pkt_icmp6_echo_rep;
+    auto rsize = v4 ? sizeof(pkt_icmp4_echo_req) : sizeof(pkt_icmp6_echo_req);
+    init_packet_in(pin, req, rsize,
+                   v4 ? flow::cookie::ICMP_ECHO_V4 : flow::cookie::ICMP_ECHO_V6,
+                   IntFlowManager::ROUTE_TABLE_ID, 5, 101, 0x100);
+
+    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
+                                                 OFPUTIL_P_OF13_OXM,
+                                                 NXPIF_NXT_PACKET_IN,
+                                                 0xffff, NULL);
+
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    ofpbuf_delete(b);
+
+    struct ofputil_packet_out po;
+    uint64_t ofpacts_stub[1024 / 8];
+    struct ofpbuf ofpact;
+    ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
+    ofputil_decode_packet_out(&po,
+                              (ofp_header*)intConn.sentMsgs[0]->data,
+                              &ofpact);
+
+    BOOST_CHECK(0 == memcmp(rep, po.packet, po.packet_len));
+}
+
+BOOST_FIXTURE_TEST_CASE(icmpv4_echo, PacketInHandlerFixture) {
+    testIcmpEcho(true);
+}
+
+BOOST_FIXTURE_TEST_CASE(icmpv6_echo, PacketInHandlerFixture) {
+    testIcmpEcho(false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

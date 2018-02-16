@@ -24,6 +24,8 @@
 
 #include <sstream>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/icmp6.h>
 
 namespace ovsagent {
 namespace packets {
@@ -227,8 +229,8 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     chksum += (uint16_t)htons(58);
     // payload
     chksum_accum(chksum, (uint16_t*)router_ad, payloadLen);
-    chksum = chksum_finalize(chksum);
-    memcpy(&router_ad->nd_ra_hdr.icmp6_cksum, &chksum, sizeof(chksum));
+    uint16_t fchksum = chksum_finalize(chksum);
+    memcpy(&router_ad->nd_ra_hdr.icmp6_cksum, &fchksum, sizeof(fchksum));
 
     return b;
 }
@@ -307,8 +309,8 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     chksum += (uint16_t)htons(58);
     // payload
     chksum_accum(chksum, payload, payloadLen);
-    chksum = chksum_finalize(chksum);
-    memcpy(&neigh_ad->nd_na_hdr.icmp6_cksum, &chksum, sizeof(chksum));
+    uint16_t fchksum = chksum_finalize(chksum);
+    memcpy(&neigh_ad->nd_na_hdr.icmp6_cksum, &fchksum, sizeof(fchksum));
 
     return b;
 }
@@ -387,8 +389,8 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
     chksum += (uint16_t)htons(58);
     // payload
     chksum_accum(chksum, payload, payloadLen);
-    chksum = chksum_finalize(chksum);
-    memcpy(&neigh_sol->nd_ns_hdr.icmp6_cksum, &chksum, sizeof(chksum));
+    uint16_t fchksum = chksum_finalize(chksum);
+    memcpy(&neigh_sol->nd_ns_hdr.icmp6_cksum, &fchksum, sizeof(fchksum));
 
     return b;
 }

@@ -1228,10 +1228,15 @@ void IntFlowManagerFixture::loadBalancedServiceTest() {
     intFlowManager.egDomainUpdated(epg0->getURI());
     intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
 
-    Service as;
-    as.setUUID("ed84daef-1696-4b98-8c80-6b22d85f4dc2");
-    as.setDomainURI(URI(rd0->getURI()));
-    as.setServiceMode(Service::LOADBALANCER);
+    Service as1;
+    as1.setUUID("ed84daef-1696-4b98-8c80-6b22d85f4dc2");
+    as1.setDomainURI(URI(rd0->getURI()));
+    as1.setServiceMode(Service::LOADBALANCER);
+
+    Service as2;
+    as2.setUUID("262f1120-3e08-4529-affe-6164de3ff410");
+    as2.setDomainURI(URI(rd0->getURI()));
+    as2.setServiceMode(Service::LOADBALANCER);
 
     Service::ServiceMapping sm1;
     sm1.setServiceIP("169.254.169.254");
@@ -1240,7 +1245,7 @@ void IntFlowManagerFixture::loadBalancedServiceTest() {
     sm1.addNextHopIP("169.254.169.2");
     sm1.setServicePort(53);
     sm1.setNextHopPort(5353);
-    as.addServiceMapping(sm1);
+    as1.addServiceMapping(sm1);
 
     Service::ServiceMapping sm2;
     sm2.setServiceIP("fe80::a9:fe:a9:fe");
@@ -1248,17 +1253,20 @@ void IntFlowManagerFixture::loadBalancedServiceTest() {
     sm2.addNextHopIP("fe80::a9:fe:a9:1");
     sm2.addNextHopIP("fe80::a9:fe:a9:2");
     sm2.setServicePort(80);
-    as.addServiceMapping(sm2);
+    as1.addServiceMapping(sm2);
 
-    as.clearServiceMappings();
+    as1.clearServiceMappings();
     sm1.addNextHopIP("169.254.169.2");
-    as.addServiceMapping(sm1);
+    as1.addServiceMapping(sm1);
+
     sm2.addNextHopIP("fe80::a9:fe:a9:2");
-    as.addServiceMapping(sm2);
+    as2.addServiceMapping(sm2);
 
-    servSrc.updateService(as);
+    servSrc.updateService(as1);
+    servSrc.updateService(as2);
 
-    intFlowManager.serviceUpdated(as.getUUID());
+    intFlowManager.serviceUpdated(as1.getUUID());
+    intFlowManager.serviceUpdated(as2.getUUID());
 
     clearExpFlowTables();
     initExpStatic();
@@ -1270,14 +1278,17 @@ void IntFlowManagerFixture::loadBalancedServiceTest() {
     initExpLBService();
     WAIT_FOR_TABLES("create", 500);
 
-    as.clearServiceMappings();
+    as1.clearServiceMappings();
+    as2.clearServiceMappings();
     sm1.setConntrackMode(true);
-    as.addServiceMapping(sm1);
+    as1.addServiceMapping(sm1);
     sm2.setConntrackMode(true);
-    as.addServiceMapping(sm2);
+    as2.addServiceMapping(sm2);
 
-    servSrc.updateService(as);
-    intFlowManager.serviceUpdated(as.getUUID());
+    servSrc.updateService(as1);
+    servSrc.updateService(as2);
+    intFlowManager.serviceUpdated(as1.getUUID());
+    intFlowManager.serviceUpdated(as2.getUUID());
 
     clearExpFlowTables();
     initExpStatic();
@@ -1291,25 +1302,26 @@ void IntFlowManagerFixture::loadBalancedServiceTest() {
 
     portmapper.ports["service-iface"] = 17;
     portmapper.RPortMap[17] = "service-iface";
-    as.setServiceMAC(MAC("13:37:13:37:13:37"));
-    as.setInterfaceName("service-iface");
-    as.setIfaceIP("1.1.1.1");
-    as.setIfaceVlan(4003);
+    as1.setServiceMAC(MAC("13:37:13:37:13:37"));
+    as1.setInterfaceName("service-iface");
+    as1.setIfaceIP("1.1.1.1");
+    as1.setIfaceVlan(4003);
+    as2.setServiceMAC(MAC("13:37:13:37:13:37"));
+    as2.setInterfaceName("service-iface");
+    as2.setIfaceIP("fd82:3372:749c:631b::42");
+    as2.setIfaceVlan(4003);
 
-    // TODO
-    //Service asv6;
-    //asv6.setUUID("ed84daef-1696-4b98-8c80-6b22d85f4dc3");
-    //asv6.setDomainURI(URI(rd0->getURI()));
-    //asv6.setServiceMode(Service::LOADBALANCER);
-
-    as.clearServiceMappings();
+    as1.clearServiceMappings();
+    as2.clearServiceMappings();
     sm1.setConntrackMode(false);
-    as.addServiceMapping(sm1);
+    as1.addServiceMapping(sm1);
     sm2.setConntrackMode(false);
-    as.addServiceMapping(sm2);
+    as2.addServiceMapping(sm2);
 
-    servSrc.updateService(as);
-    intFlowManager.serviceUpdated(as.getUUID());
+    servSrc.updateService(as1);
+    servSrc.updateService(as2);
+    intFlowManager.serviceUpdated(as1.getUUID());
+    intFlowManager.serviceUpdated(as2.getUUID());
 
     clearExpFlowTables();
     initExpStatic();
@@ -1321,14 +1333,17 @@ void IntFlowManagerFixture::loadBalancedServiceTest() {
     initExpLBService(false, true);
     WAIT_FOR_TABLES("exposed", 500);
 
-    as.clearServiceMappings();
+    as1.clearServiceMappings();
+    as2.clearServiceMappings();
     sm1.setConntrackMode(true);
-    as.addServiceMapping(sm1);
+    as1.addServiceMapping(sm1);
     sm2.setConntrackMode(true);
-    as.addServiceMapping(sm2);
+    as2.addServiceMapping(sm2);
 
-    servSrc.updateService(as);
-    intFlowManager.serviceUpdated(as.getUUID());
+    servSrc.updateService(as1);
+    servSrc.updateService(as2);
+    intFlowManager.serviceUpdated(as1.getUUID());
+    intFlowManager.serviceUpdated(as2.getUUID());
 
     clearExpFlowTables();
     initExpStatic();
@@ -2316,12 +2331,13 @@ void IntFlowManagerFixture::initExpAnycastService(int nextHop) {
          .icmp_type(135).icmp_code(0)
          .isNdTarget("fe80::1")
          .actions()
-         .load64(METADATA, 0x101ffeeddccbbaall)
+         .load64(METADATA, 0x300ffeeddccbbaall)
          .controller(65535).done());
 }
 
 void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
     string mac = "13:37:13:37:13:37";
+    string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
     string bmac("ff:ff:ff:ff:ff:ff");
     uint8_t rmacArr[6];
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
@@ -2356,6 +2372,27 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .move(ARPSHA, ARPTHA).load(ARPSHA, "0x133713371337")
              .move(ARPSPA, ARPTPA).load(ARPSPA, "0x1010101")
              .inport().done());
+        ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::NEIGH_DISC))
+             .table(BR).priority(51).icmp6()
+             .reg(RD, 1).isEthDst(mmac)
+             .icmp_type(135).icmp_code(0)
+             .isNdTarget("fd82:3372:749c:631b::42")
+             .actions()
+             .load(SEPG, 0xfa3).load64(METADATA, 0x101371337133713ll)
+             .controller(65535).done());
+
+        ADDF(Bldr().table(BR).priority(51)
+             .cookie(ovs_ntohll(flow::cookie::ICMP_ECHO_V4))
+             .icmp().reg(RD, 1)
+             .isIpDst("1.1.1.1").icmp_type(8).icmp_code(0)
+             .actions().load64(METADATA, ovs_htonll(0x100ll))
+             .controller(65535).done());
+        ADDF(Bldr().table(BR).priority(51)
+             .cookie(ovs_ntohll(flow::cookie::ICMP_ECHO_V6))
+             .icmp6().reg(RD, 1)
+             .isIpv6Dst("fd82:3372:749c:631b::42").icmp_type(128).icmp_code(0)
+             .actions().load64(METADATA, ovs_htonll(0x100ll))
+             .controller(65535).done());
     }
 
     auto expIsEthDst = [&exposed, &mac](Bldr& b) -> Bldr& {
@@ -2379,8 +2416,10 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
          .go(SVH).done());
 
     if (conntrack) {
-        string commit = string("commit,zone=1,exec(load:") +
+        string commit1 = string("commit,zone=1,exec(load:") +
             (exposed ? "0x80000001" : "0x1") + "->NXM_NX_CT_MARK[])";
+        string commit2 = string("commit,zone=1,exec(load:") +
+            (exposed ? "0x80000002" : "0x2") + "->NXM_NX_CT_MARK[])";
 
         ADDF(Bldr().table(SVH).priority(99)
              .udp().reg(RD, 1).isFromServiceIface(exposed)
@@ -2388,14 +2427,14 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .actions()
              .tpDst(5353).ipDst("169.254.169.1")
              .decTtl()
-             .ct(commit).meta(flow::meta::ROUTED, flow::meta::ROUTED)
+             .ct(commit1).meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
         ADDF(Bldr().table(SVH).priority(100)
              .udp().reg(RD, 1).reg(OUTPORT, 1).isFromServiceIface(exposed)
              .isIpDst("169.254.169.254").isTpDst(53)
              .actions()
              .tpDst(5353).ipDst("169.254.169.2")
-             .decTtl().ct(commit)
+             .decTtl().ct(commit1)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
         ADDF(Bldr().table(SVH).priority(99)
@@ -2403,7 +2442,7 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
              .actions()
              .ipv6Dst("fe80::a9:fe:a9:1")
-             .decTtl().ct(commit)
+             .decTtl().ct(commit2)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
         ADDF(Bldr().table(SVH).priority(100)
@@ -2411,7 +2450,7 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .isIpv6Dst("fe80::a9:fe:a9:fe").isTpDst(80)
              .actions()
              .ipv6Dst("fe80::a9:fe:a9:2")
-             .decTtl().ct(commit)
+             .decTtl().ct(commit2)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
     } else {
@@ -2502,14 +2541,14 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
                  .decTtl().pushVlan().setVlan(4003)
                  .ethDst(rmac).outPort(17).done());
             ADDF(Bldr().table(SVR).priority(100)
-                 .isCtState("-new+est-inv+trk").isCtMark("0x80000001")
+                 .isCtState("-new+est-inv+trk").isCtMark("0x80000002")
                  .tcp6().reg(RD, 1).isIpv6Src("fe80::a9:fe:a9:1").isTpSrc(80)
                  .actions()
                  .ethSrc(mac).ipv6Src("fe80::a9:fe:a9:fe")
                  .decTtl().pushVlan().setVlan(4003)
                  .ethDst(rmac).outPort(17).done());
             ADDF(Bldr().table(SVR).priority(100)
-                 .isCtState("-new+est-inv+trk").isCtMark("0x80000001")
+                 .isCtState("-new+est-inv+trk").isCtMark("0x80000002")
                  .tcp6().reg(RD, 1).isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
                  .actions()
                  .ethSrc(mac).ipv6Src("fe80::a9:fe:a9:fe")
@@ -2531,14 +2570,14 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
                  .decTtl().meta(flow::meta::ROUTED, flow::meta::ROUTED)
                  .go(BR).done());
             ADDF(Bldr().table(SVR).priority(100)
-                 .isCtState("-new+est-inv+trk").isCtMark("0x1")
+                 .isCtState("-new+est-inv+trk").isCtMark("0x2")
                  .tcp6().reg(RD, 1).isIpv6Src("fe80::a9:fe:a9:1").isTpSrc(80)
                  .actions()
                  .ethSrc(rmac).ipv6Src("fe80::a9:fe:a9:fe")
                  .decTtl().meta(flow::meta::ROUTED, flow::meta::ROUTED)
                  .go(BR).done());
             ADDF(Bldr().table(SVR).priority(100)
-                 .isCtState("-new+est-inv+trk").isCtMark("0x1")
+                 .isCtState("-new+est-inv+trk").isCtMark("0x2")
                  .tcp6().reg(RD, 1).isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
                  .actions()
                  .ethSrc(rmac).ipv6Src("fe80::a9:fe:a9:fe")

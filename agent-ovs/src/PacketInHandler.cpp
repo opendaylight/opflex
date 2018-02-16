@@ -362,6 +362,12 @@ static opt_output_act_t tunnelOutActions(IntFlowManager& intFlowManager,
     return outActions;
 }
 
+static opt_output_act_t pushVlanActions(uint32_t vlan) {
+    return opt_output_act_t([vlan](ActionBuilder& ab) {
+            ab.pushVlan().setVlanVid(vlan);
+        });
+}
+
 static void send_packet_out(SwitchConnection* conn,
                             struct ofpbuf* b,
                             ofputil_protocol& proto,
@@ -420,11 +426,13 @@ static void send_packet_out(Agent& agent,
 
         unordered_set<string> eps;
         agent.getEndpointManager().getEndpointsByIface(iface, eps);
-        if (eps.size() == 0)
-            LOG(WARNING) << "No endpoint found for ICMP error packet"
+        if (eps.size() == 0) {
+            LOG(WARNING) << "No endpoint found for output packet"
                          << " on " << iface;
+            return;
+        }
         if (eps.size() > 1)
-            LOG(WARNING) << "Multiple possible endpoints for ICMP error packet "
+            LOG(WARNING) << "Multiple possible endpoints for output packet "
                          << " on " << iface;
 
         ep_ptr ep = agent.getEndpointManager().getEndpoint(*eps.begin());
@@ -499,9 +507,9 @@ static void handleNDPktIn(Agent& agent,
     bool router = true;
     // Use the MAC address from the metadata if available
     uint64_t metadata = ovs_ntohll(pi.flow_metadata.flow.metadata);
-    if (((uint8_t*)&metadata)[7] == 1) {
+    if ((1 & ((uint8_t*)&metadata)[7]) == 1) {
         mac = (uint8_t*)&metadata;
-        router = mac[6] == 1;
+        router = (2 & mac[7]) == 1;
     }
 
     if (icmp->icmp6_type == ND_NEIGHBOR_SOLICIT) {
@@ -537,9 +545,16 @@ static void handleNDPktIn(Agent& agent,
                                              polMgr);
     }
 
-    send_packet_out(agent, intConn, accConn, intFlowManager,
-                    intPortMapper, accPortMapper, egUri, b, proto,
-                    OFPP_CONTROLLER, pi.flow_metadata.flow.in_port.ofp_port);
+    if (((uint8_t*)&metadata)[6] == 1) {
+        uint32_t vlan = pi.flow_metadata.flow.regs[0];
+        send_packet_out(intConn, b, proto, OFPP_CONTROLLER,
+                        pi.flow_metadata.flow.regs[7], pushVlanActions(vlan));
+    } else {
+        send_packet_out(agent, intConn, accConn, intFlowManager,
+                        intPortMapper, accPortMapper, egUri, b, proto,
+                        OFPP_CONTROLLER,
+                        pi.flow_metadata.flow.in_port.ofp_port);
+    }
 }
 
 static void handleDHCPv4PktIn(Agent& agent,
@@ -997,8 +1012,8 @@ static void handleICMPErrPktIn(bool v4,
         memset(&inner_icmp->checksum, 0, sizeof(inner_icmp->checksum));
         uint32_t chksum = 0;
         packets::chksum_accum(chksum, (uint16_t*)inner_icmp, l4_size);
-        chksum = packets::chksum_finalize(chksum);
-        memcpy(&inner_icmp->checksum, &chksum, sizeof(chksum));
+        uint16_t fchksum = packets::chksum_finalize(chksum);
+        memcpy(&inner_icmp->checksum, &fchksum, sizeof(fchksum));
 
         uint32_t saddr;
         memcpy(&saddr, &inner_ip->saddr, sizeof(saddr));
@@ -1012,6 +1027,128 @@ static void handleICMPErrPktIn(bool v4,
                     intPortMapper, accPortMapper, egUri,
                     b, proto, pi.flow_metadata.flow.regs[7],
                     OFPP_IN_PORT);
+}
+
+static void handleICMPEchoPktIn(bool v4,
+                                Agent& agent,
+                                IntFlowManager& intFlowManager,
+                                PortMapper* intPortMapper,
+                                PortMapper* accPortMapper,
+                                SwitchConnection* intConn,
+                                SwitchConnection* accConn,
+                                struct ofputil_packet_in& pi,
+                                ofputil_protocol& proto,
+                                struct dp_packet* pkt) {
+    struct ofpbuf* b = NULL;
+
+    uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
+    optional<URI> egUri = agent.getPolicyManager().getGroupForVnid(epgId);
+
+    size_t l4_size = dpp_l4_size(pkt);
+
+    if (v4) {
+        if (l4_size < sizeof(struct icmphdr))
+            return;
+    } else {
+        if (l4_size < sizeof(struct icmp6_hdr))
+            return;
+    }
+
+    char* pkt_data = (char*)dpp_data(pkt);
+    b = ofpbuf_clone_data(pkt_data, dpp_size(pkt));
+
+    uint8_t* eth_hdr =
+        (uint8_t*)(ofpbuf_at_assert(b, 0, sizeof(eth::eth_header)));
+
+    size_t ip_offset = (char*)dpp_l3(pkt)-pkt_data;
+    size_t icmp_offset = (char*)dpp_l4(pkt)-pkt_data;
+
+    // swap source/dest MAC
+    uint8_t mac[eth::ADDR_LEN];
+    memcpy(&mac, eth_hdr, eth::ADDR_LEN);
+    memcpy(eth_hdr, eth_hdr + eth::ADDR_LEN, eth::ADDR_LEN);
+    memcpy(eth_hdr + eth::ADDR_LEN, mac, eth::ADDR_LEN);
+
+    if (v4) {
+        struct iphdr* ip =
+            (struct iphdr*)(ofpbuf_at_assert(b, ip_offset, sizeof(iphdr)));
+        struct icmphdr* icmp =
+            (struct icmphdr*)(ofpbuf_at_assert(b, icmp_offset,
+                                               sizeof(icmphdr)));
+
+        // swap source/dest IP
+        uint32_t saddr;
+        uint32_t daddr;
+        memcpy(&saddr, &ip->saddr, sizeof(saddr));
+        memcpy(&daddr, &ip->daddr, sizeof(daddr));
+        memcpy(&ip->saddr, &daddr, sizeof(daddr));
+        memcpy(&ip->daddr, &saddr, sizeof(saddr));
+
+        // set ICMP type, code, checksum
+        memset(icmp, 0, 4);
+
+        // compute checksum
+        uint32_t chksum = 0;
+        packets::chksum_accum(chksum, (uint16_t*)icmp, l4_size);
+        uint16_t fchksum = packets::chksum_finalize(chksum);
+        memcpy(&icmp->checksum, &fchksum, sizeof(fchksum));
+
+        LOG(DEBUG) << "Replying to ICMPv4 echo request "
+                   << boost::asio::ip::address_v4(ntohl(saddr)) << "->"
+                   << boost::asio::ip::address_v4(ntohl(daddr))
+                   << " on " << pi.flow_metadata.flow.in_port.ofp_port;
+    } else {
+        struct ip6_hdr* ip6 =
+            (struct ip6_hdr*)(ofpbuf_at_assert(b, ip_offset,
+                                             sizeof(struct ip6_hdr)));
+        struct icmp6_hdr* icmp =
+            (struct icmp6_hdr*)(ofpbuf_at_assert(b, icmp_offset,
+                                                 sizeof(struct icmp6_hdr)));
+
+        // swap source/dest IP
+        boost::asio::ip::address_v6::bytes_type saddr;
+        boost::asio::ip::address_v6::bytes_type daddr;
+        memcpy(saddr.data(), &ip6->ip6_src, saddr.size());
+        memcpy(daddr.data(), &ip6->ip6_dst, daddr.size());
+        memcpy(&ip6->ip6_src, daddr.data(), daddr.size());
+        memcpy(&ip6->ip6_dst, saddr.data(), saddr.size());
+
+        // set ICMP type, code, checksum
+        memset(icmp, 0, 4);
+        memset(icmp, 129, 1);
+
+        // compute checksum
+        uint32_t chksum = 0;
+        // pseudoheader
+        packets::chksum_accum(chksum, (uint16_t*)daddr.data(), daddr.size());
+        packets::chksum_accum(chksum, (uint16_t*)saddr.data(), saddr.size());
+        packets::chksum_accum(chksum, (uint16_t*)ip6 + 2, 2);
+        chksum += (uint16_t)htons(58);
+        // payload
+        packets::chksum_accum(chksum, (uint16_t*)icmp, l4_size);
+        uint16_t fchksum = packets::chksum_finalize(chksum);
+        memcpy(&icmp->icmp6_cksum, &fchksum, sizeof(fchksum));
+
+        LOG(DEBUG) << "Replying to ICMPv6 echo request "
+                   << boost::asio::ip::address_v6(saddr) << "->"
+                   << boost::asio::ip::address_v6(daddr)
+                   << " on " << pi.flow_metadata.flow.in_port.ofp_port;
+    }
+
+    if (!b) return;
+
+    uint64_t metadata = ovs_ntohll(pi.flow_metadata.flow.metadata);
+    if (((uint8_t*)&metadata)[6] == 1) {
+        uint32_t vlan = pi.flow_metadata.flow.regs[0];
+        send_packet_out(intConn, b, proto, OFPP_CONTROLLER,
+                        pi.flow_metadata.flow.in_port.ofp_port,
+                        pushVlanActions(vlan));
+    } else {
+        send_packet_out(agent, intConn, accConn, intFlowManager,
+                        intPortMapper, accPortMapper, egUri,
+                        b, proto, pi.flow_metadata.flow.regs[7],
+                        OFPP_IN_PORT);
+    }
 }
 
 /**
@@ -1068,6 +1205,14 @@ void PacketInHandler::Handle(SwitchConnection* conn,
         handleICMPErrPktIn(true, agent, intFlowManager,
                            intPortMapper, accessPortMapper,
                            conn, accSwConnection, pi, proto, pkt.ptr);
+    else if (pi.cookie == flow::cookie::ICMP_ECHO_V4)
+        handleICMPEchoPktIn(true, agent, intFlowManager,
+                            intPortMapper, accessPortMapper,
+                            conn, accSwConnection, pi, proto, pkt.ptr);
+    else if (pi.cookie == flow::cookie::ICMP_ECHO_V6)
+        handleICMPEchoPktIn(false, agent, intFlowManager,
+                            intPortMapper, accessPortMapper,
+                            conn, accSwConnection, pi, proto, pkt.ptr);
 }
 
 } /* namespace ovsagent */
