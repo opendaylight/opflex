@@ -374,6 +374,8 @@ static void send_packet_out(SwitchConnection* conn,
                             uint32_t in_port,
                             uint32_t out_port = OFPP_IN_PORT,
                             opt_output_act_t outActions = boost::none) {
+    if (!b) return;
+
     // send reply as packet-out
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
@@ -429,6 +431,7 @@ static void send_packet_out(Agent& agent,
         if (eps.size() == 0) {
             LOG(WARNING) << "No endpoint found for output packet"
                          << " on " << iface;
+            ofpbuf_delete(b);
             return;
         }
         if (eps.size() > 1)
@@ -437,8 +440,10 @@ static void send_packet_out(Agent& agent,
 
         ep_ptr ep = agent.getEndpointManager().getEndpoint(*eps.begin());
         if (ep && ep->getAccessInterface() && ep->getAccessUplinkInterface()) {
-            if (!accConn || !accPortMapper)
+            if (!accConn || !accPortMapper) {
+                ofpbuf_delete(b);
                 return;
+            }
             conn = accConn;
             uint32_t accPort =
                 accPortMapper->FindPort(ep->getAccessInterface().get());
@@ -1134,8 +1139,6 @@ static void handleICMPEchoPktIn(bool v4,
                    << boost::asio::ip::address_v6(daddr)
                    << " on " << pi.flow_metadata.flow.in_port.ofp_port;
     }
-
-    if (!b) return;
 
     uint64_t metadata = ovs_ntohll(pi.flow_metadata.flow.metadata);
     if (((uint8_t*)&metadata)[6] == 1) {
