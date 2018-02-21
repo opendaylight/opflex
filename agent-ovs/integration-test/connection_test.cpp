@@ -99,13 +99,13 @@ BOOST_FIXTURE_TEST_CASE(msghandler, ConnectionFixture) {
 
     BOOST_CHECK(!conn.Connect(OFP13_VERSION));
 
-    ofpbuf *echoReq1 = make_echo_request(OFP13_VERSION);
+    OfpBuf echoReq1(make_echo_request(OFP13_VERSION));
     BOOST_CHECK(conn.SendMessage(echoReq1) == 0);
     WAIT_FOR(erh1.counter == 1, 1);
     BOOST_CHECK(erh2.counter == 1);
 
     conn.UnregisterMessageHandler(OFPTYPE_ECHO_REPLY, &erh1);
-    ofpbuf *echoReq2 = make_echo_request(OFP13_VERSION);
+    OfpBuf echoReq2(make_echo_request(OFP13_VERSION));
     BOOST_CHECK(conn.SendMessage(echoReq2) == 0);
     WAIT_FOR(erh2.counter == 2, 1);
     BOOST_CHECK(erh1.counter == 1);
@@ -123,7 +123,7 @@ BOOST_FIXTURE_TEST_CASE(sendrecv, ConnectionFixture) {
 
     const int numEchos = 5;
     for (int i = 0; i < numEchos; ++i) {
-        ofpbuf *echoReq = make_echo_request(OFP13_VERSION);
+        OfpBuf echoReq(make_echo_request(OFP13_VERSION));
         BOOST_CHECK(conn.SendMessage(echoReq) == 0);
     }
     WAIT_FOR(erh.counter == numEchos, 5);
@@ -131,7 +131,7 @@ BOOST_FIXTURE_TEST_CASE(sendrecv, ConnectionFixture) {
     conn.Disconnect();
 
     /* Send when disconnected, expect error */
-    ofpbuf *echoReq = make_echo_request(OFP13_VERSION);
+    OfpBuf echoReq(make_echo_request(OFP13_VERSION));
     BOOST_CHECK(conn.SendMessage(echoReq) != 0);
 }
 
