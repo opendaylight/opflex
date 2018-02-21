@@ -104,14 +104,14 @@ private:
      * all
      * @return flow-table read request
      */
-    ofpbuf *createFlowRequest(uint8_t tableId, struct match* m = NULL);
+    OfpBuf createFlowRequest(uint8_t tableId, struct match* m = NULL);
 
     /**
      * Create a request for reading all entries of group-table.
      *
      * @return group-table read request
      */
-    ofpbuf *createGroupRequest();
+    OfpBuf createGroupRequest();
 
     /**
      * Send specified read request on the connection and update
@@ -123,7 +123,7 @@ private:
      * @return true if request was sent successfully
      */
     template <typename U, typename V>
-    bool sendRequest(ofpbuf *msg, const U& cb, V& reqMap);
+    bool sendRequest(OfpBuf& msg, const U& cb, V& reqMap);
 
     /**
      * Process the reply message received for a read request

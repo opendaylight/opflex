@@ -34,7 +34,7 @@ public:
     }
 
     int GetProtocolVersion() { return OFP13_VERSION; }
-    int SendMessage(ofpbuf *msg);
+    int SendMessage(OfpBuf& msg);
 
     void Expect(const FlowEdit& fe) {
         expectedEdits = fe;
@@ -77,6 +77,7 @@ BOOST_FIXTURE_TEST_CASE(multiedit, FlowExecutorFixture) {
             (FlowEdit::MOD, flows[1])(FlowEdit::DEL, flows[0]);
     conn.Expect(fe);
     BOOST_CHECK(fexec.Execute(fe));
+    BOOST_CHECK_EQUAL(sizeof(struct ofpbuf*), sizeof(OfpBuf));
 }
 
 BOOST_FIXTURE_TEST_CASE(noblock, FlowExecutorFixture) {
@@ -106,9 +107,9 @@ BOOST_FIXTURE_TEST_CASE(reconnect, FlowExecutorFixture) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-int MockExecutorConnection::SendMessage(ofpbuf *msg) {
+int MockExecutorConnection::SendMessage(OfpBuf& msg) {
     uint16_t COMM[] = {OFPFC_ADD, OFPFC_MODIFY_STRICT, OFPFC_DELETE_STRICT};
-    ofp_header *msgHdr = (ofp_header *)msg->data;
+    ofp_header *msgHdr = (ofp_header *)msg.data();
     ofptype type;
     ofptype_decode(&type, msgHdr);
     BOOST_CHECK(type == OFPTYPE_FLOW_MOD ||
@@ -150,8 +151,8 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
          BOOST_CHECK(expectedEdits.edits.empty());
 
          if (reconnectReply) {
-             ofpbuf_delete(msg);
              executor->Connected(this);
+             msg.reset();
              return 0;
          }
          struct ofpbuf *barrRep =
@@ -166,7 +167,7 @@ int MockExecutorConnection::SendMessage(ofpbuf *msg) {
          ofpbuf_delete(barrRep);
     }
 
-    ofpbuf_delete(msg);
+    msg.reset();
     return 0;
 }
 
