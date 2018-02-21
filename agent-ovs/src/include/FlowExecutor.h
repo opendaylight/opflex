@@ -98,8 +98,8 @@ public:
      * @param ofVersion OpenFlow version to use for encoding
      * @return flow-modification message
      */
-    static ofpbuf *EncodeFlowMod(const FlowEdit::Entry& edit,
-                                 int ofVersion);
+    static OfpBuf EncodeFlowMod(const FlowEdit::Entry& edit,
+                                int ofVersion);
 
     /**
      * Construct a group-modification message for the specified group-edit.
@@ -107,8 +107,8 @@ public:
      * @param ofVersion OpenFlow version to use for encoding
      * @return group-modification message
      */
-    static ofpbuf *EncodeGroupMod(const GroupEdit::Entry& edit,
-                                  int ofVersion);
+    static OfpBuf EncodeGroupMod(const GroupEdit::Entry& edit,
+                                 int ofVersion);
 private:
     /**
      * Internal helper function to execute blocking flow/group-edits.
@@ -151,7 +151,7 @@ private:
      */
     template<typename T>
     static
-    ofpbuf *EncodeMod(const T& edit, int ofVersion);
+    OfpBuf EncodeMod(const T& edit, int ofVersion);
 
     /**
      * Send the barrier request specified and wait for a reply.
@@ -160,7 +160,7 @@ private:
      * sending barrier message or an error reply was received for any of
      * the associated messages
      */
-    int WaitOnBarrier(ofpbuf *barrReq);
+    int WaitOnBarrier(OfpBuf& barrReq);
 
     SwitchConnection *swConn;
 

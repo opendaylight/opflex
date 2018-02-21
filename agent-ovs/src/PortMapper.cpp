@@ -64,12 +64,9 @@ PortMapper::UninstallListenersForConnection(SwitchConnection *conn) {
 void
 PortMapper::Connected(SwitchConnection *conn) {
 
-    struct ofpbuf *portDescReq;
-    ovs_be32 reqId;
-
-    portDescReq = ofputil_encode_port_desc_stats_request(
-        (ofp_version)conn->GetProtocolVersion(), OFPP_NONE);
-    reqId = ((ofp_header *)portDescReq->data)->xid;
+    OfpBuf portDescReq(ofputil_encode_port_desc_stats_request(
+        (ofp_version)conn->GetProtocolVersion(), OFPP_NONE));
+    ovs_be32 reqId = ((ofp_header *)portDescReq->data)->xid;
 
     int err = conn->SendMessage(portDescReq);
     if (err != 0) {
