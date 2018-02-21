@@ -19,6 +19,7 @@
 
 struct vconn;
 struct ofpbuf;
+class OfpBuf;
 
 namespace ovsagent {
 
@@ -116,7 +117,7 @@ public:
      * Send an OpenFlow message to the switch.
      * @return 0 on success, openvswitch error code on failure
      */
-    virtual int SendMessage(struct ofpbuf *msg);
+    virtual int SendMessage(OfpBuf& msg);
 
     /**
      * Returns the OpenFlow protocol version being used by the connection.
