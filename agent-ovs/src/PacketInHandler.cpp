@@ -133,8 +133,7 @@ bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
     }
     ab.build(&fm);
 
-    struct ofpbuf * message =
-        ofputil_encode_flow_mod(&fm, (ofputil_protocol)proto);
+    OfpBuf message(ofputil_encode_flow_mod(&fm, (ofputil_protocol)proto));
     int error = conn->SendMessage(message);
     free(fm.ofpacts);
     if (error) {
@@ -183,7 +182,7 @@ static void removeLearnFlow(SwitchConnection* conn, const FlowEntryPtr& fe) {
     fm.out_group = OFPG_ANY;
     fm.flags = (ofputil_flow_mod_flags)0;
 
-    struct ofpbuf * message = ofputil_encode_flow_mod(&fm, proto);
+    OfpBuf message(ofputil_encode_flow_mod(&fm, proto));
     int error = conn->SendMessage(message);
     if (error) {
         LOG(ERROR) << "Could not delete flow mod: " << ovs_strerror(error);
@@ -310,8 +309,7 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
         ab.group(groupId);
         ab.build(&fm);
 
-        struct ofpbuf* message = ofputil_encode_flow_mod
-            (&fm, (ofputil_protocol)proto);
+        OfpBuf message(ofputil_encode_flow_mod(&fm, (ofputil_protocol)proto));
         int error = conn->SendMessage(message);
         free(fm.ofpacts);
         if (error) {
@@ -333,8 +331,7 @@ void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
         ab.group(groupId);
         ab.build(&po);
 
-        struct ofpbuf* message =
-            ofputil_encode_packet_out(&po, (ofputil_protocol)proto);
+        OfpBuf message(ofputil_encode_packet_out(&po, (ofputil_protocol)proto));
         int error = conn->SendMessage(message);
         free(po.ofpacts);
         if (error) {
@@ -369,18 +366,16 @@ static opt_output_act_t pushVlanActions(uint32_t vlan) {
 }
 
 static void send_packet_out(SwitchConnection* conn,
-                            struct ofpbuf* b,
+                            OfpBuf& b,
                             ofputil_protocol& proto,
                             uint32_t in_port,
                             uint32_t out_port = OFPP_IN_PORT,
                             opt_output_act_t outActions = boost::none) {
-    if (!b) return;
-
     // send reply as packet-out
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
-    po.packet = b->data;
-    po.packet_len = b->size;
+    po.packet = b.data();
+    po.packet_len = b.size();
     po.in_port = in_port;
 
     ActionBuilder ab;
@@ -390,14 +385,12 @@ static void send_packet_out(SwitchConnection* conn,
     ab.output(out_port);
     ab.build(&po);
 
-    struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
+    OfpBuf message(ofputil_encode_packet_out(&po, proto));
     int error = conn->SendMessage(message);
     free(po.ofpacts);
     if (error) {
         LOG(ERROR) << "Could not write packet-out: " << ovs_strerror(error);
     }
-
-    ofpbuf_delete(b);
 }
 
 typedef shared_ptr<const Endpoint> ep_ptr;
@@ -409,12 +402,10 @@ static void send_packet_out(Agent& agent,
                             PortMapper* intPortMapper,
                             PortMapper* accPortMapper,
                             optional<URI> egUri,
-                            struct ofpbuf* b,
+                            OfpBuf& b,
                             ofputil_protocol& proto,
                             uint32_t in_port,
                             uint32_t out_port) {
-    if (!b) return;
-
     string iface;
     opt_output_act_t outActions =
         tunnelOutActions(intFlowManager, egUri, out_port);
@@ -431,7 +422,6 @@ static void send_packet_out(Agent& agent,
         if (eps.size() == 0) {
             LOG(WARNING) << "No endpoint found for output packet"
                          << " on " << iface;
-            ofpbuf_delete(b);
             return;
         }
         if (eps.size() > 1)
@@ -441,7 +431,6 @@ static void send_packet_out(Agent& agent,
         ep_ptr ep = agent.getEndpointManager().getEndpoint(*eps.begin());
         if (ep && ep->getAccessInterface() && ep->getAccessUplinkInterface()) {
             if (!accConn || !accPortMapper) {
-                ofpbuf_delete(b);
                 return;
             }
             conn = accConn;
@@ -506,7 +495,7 @@ static void handleNDPktIn(Agent& agent,
     if (icmp->icmp6_code != 0)
         return;
 
-    struct ofpbuf* b = NULL;
+    OfpBuf b((struct ofpbuf*)NULL);
 
     const uint8_t* mac = intFlowManager.getRouterMacAddr();
     bool router = true;
@@ -533,7 +522,6 @@ static void handleNDPktIn(Agent& agent,
                                             flow.dl_src.ea,
                                             &neigh_sol->nd_ns_target,
                                             &flow.ipv6_src);
-
     } else if (icmp->icmp6_type == ND_ROUTER_SOLICIT && egUri) {
         /* Router solicitation */
         struct nd_router_solicit* router_sol =
@@ -543,11 +531,13 @@ static void handleNDPktIn(Agent& agent,
 
         LOG(DEBUG) << "Handling ICMPv6 router solicitation";
 
-        b = packets::compose_icmp6_router_ad(mac,
-                                             flow.dl_src.ea,
-                                             &flow.ipv6_src,
-                                             egUri.get(),
-                                             polMgr);
+        auto tb(packets::compose_icmp6_router_ad(mac,
+                                                 flow.dl_src.ea,
+                                                 &flow.ipv6_src,
+                                                 egUri.get(),
+                                                 polMgr));
+        if (!tb) return;
+        b = std::move(tb.get());
     }
 
     if (((uint8_t*)&metadata)[6] == 1) {
@@ -636,7 +626,6 @@ static void handleDHCPv4PktIn(Agent& agent,
         remaining -= hdr->len + 2;
     }
 
-    struct ofpbuf* b = NULL;
     MAC srcMac(flow.dl_src.ea);
 
     uint8_t prefixLen = v4c.get().getPrefixLen().get_value_or(32);
@@ -664,23 +653,24 @@ static void handleDHCPv4PktIn(Agent& agent,
         return;
     }
 
-    b = packets::compose_dhcpv4_reply(reply_type,
-                                      dhcp_pkt->xid,
-                                      intFlowManager.getDHCPMacAddr(),
-                                      flow.dl_src.ea,
-                                      dhcpIp.to_ulong(),
-                                      prefixLen,
-                                      v4c.get().getServerIp(),
-                                      v4c.get().getRouters(),
-                                      v4c.get().getDnsServers(),
-                                      v4c.get().getDomain(),
-                                      v4c.get().getStaticRoutes(),
-                                      v4c.get().getInterfaceMtu(),
-                                      v4c.get().getLeaseTime());
+    OfpBuf b(packets::compose_dhcpv4_reply(reply_type,
+                                           dhcp_pkt->xid,
+                                           intFlowManager.getDHCPMacAddr(),
+                                           flow.dl_src.ea,
+                                           dhcpIp.to_ulong(),
+                                           prefixLen,
+                                           v4c.get().getServerIp(),
+                                           v4c.get().getRouters(),
+                                           v4c.get().getDnsServers(),
+                                           v4c.get().getDomain(),
+                                           v4c.get().getStaticRoutes(),
+                                           v4c.get().getInterfaceMtu(),
+                                           v4c.get().getLeaseTime()));
 
     send_packet_out(agent, intConn, accConn, intFlowManager,
-                    intPortMapper, accPortMapper, URI::ROOT, b, proto,
-                    OFPP_CONTROLLER, pi.flow_metadata.flow.in_port.ofp_port);
+                    intPortMapper, accPortMapper, URI::ROOT, b,
+                    proto, OFPP_CONTROLLER,
+                    pi.flow_metadata.flow.in_port.ofp_port);
 }
 
 static void handleDHCPv6PktIn(Agent& agent,
@@ -760,7 +750,6 @@ static void handleDHCPv6PktIn(Agent& agent,
         remaining -= opt_len + opt_hdr_len;
     }
 
-    struct ofpbuf* b = NULL;
     uint8_t reply_type = message_type::REPLY;
     MAC srcMac(flow.dl_src.ea);
 
@@ -793,27 +782,28 @@ static void handleDHCPv6PktIn(Agent& agent,
         return;
     }
 
-    b = packets::compose_dhcpv6_reply(reply_type,
-                                      dhcp_pkt->transaction_id,
-                                      intFlowManager.getDHCPMacAddr(),
-                                      flow.dl_src.ea,
-                                      &flow.ipv6_src,
-                                      client_id,
-                                      client_id_len,
-                                      iaid,
-                                      v6addresses,
-                                      v6c.get().getDnsServers(),
-                                      v6c.get().getSearchList(),
-                                      temporary,
-                                      rapid_commit,
-                                      v6c.get().getT1(),
-                                      v6c.get().getT2(),
-                                      v6c.get().getPreferredLifetime(),
-                                      v6c.get().getValidLifetime());
+    OfpBuf b(packets::compose_dhcpv6_reply(reply_type,
+                                           dhcp_pkt->transaction_id,
+                                           intFlowManager.getDHCPMacAddr(),
+                                           flow.dl_src.ea,
+                                           &flow.ipv6_src,
+                                           client_id,
+                                           client_id_len,
+                                           iaid,
+                                           v6addresses,
+                                           v6c.get().getDnsServers(),
+                                           v6c.get().getSearchList(),
+                                           temporary,
+                                           rapid_commit,
+                                           v6c.get().getT1(),
+                                           v6c.get().getT2(),
+                                           v6c.get().getPreferredLifetime(),
+                                           v6c.get().getValidLifetime()));
 
     send_packet_out(agent, intConn, accConn, intFlowManager,
                     intPortMapper, accPortMapper, URI::ROOT, b, proto,
-                    OFPP_CONTROLLER, pi.flow_metadata.flow.in_port.ofp_port);
+                    OFPP_CONTROLLER,
+                    pi.flow_metadata.flow.in_port.ofp_port);
 }
 
 typedef std::function<bool (const Endpoint&)> ep_pred;
@@ -988,8 +978,6 @@ static void handleICMPErrPktIn(bool v4,
                                struct ofputil_packet_in& pi,
                                ofputil_protocol& proto,
                                struct dp_packet* pkt) {
-    struct ofpbuf* b = NULL;
-
     uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
     optional<URI> egUri = agent.getPolicyManager().getGroupForVnid(epgId);
 
@@ -999,18 +987,16 @@ static void handleICMPErrPktIn(bool v4,
             return;
 
         char* pkt_data = (char*)dpp_data(pkt);
-        b = ofpbuf_clone_data(pkt_data, dpp_size(pkt));
+        OfpBuf b(ofpbuf_clone_data(pkt_data, dpp_size(pkt)));
         struct iphdr* outer =
             (struct iphdr*)((char*)dpp_l3(pkt));
 
         size_t inner_offset = (char*)dpp_l4(pkt)-pkt_data;
         struct icmphdr* inner_icmp =
-            (struct icmphdr*)(ofpbuf_at_assert(b, inner_offset,
-                                               sizeof(icmphdr)));
+            (struct icmphdr*)b.at_assert(inner_offset, sizeof(icmphdr));
         struct iphdr* inner_ip =
-            (struct iphdr*)(ofpbuf_at_assert(b, inner_offset +
-                                             sizeof(struct icmphdr),
-                                             sizeof(iphdr)));
+            (struct iphdr*)b.at_assert(inner_offset + sizeof(struct icmphdr),
+                                       sizeof(iphdr));
         memcpy(&inner_ip->saddr, &outer->daddr, sizeof(inner_ip->saddr));
 
         // compute checksum
@@ -1026,12 +1012,13 @@ static void handleICMPErrPktIn(bool v4,
         LOG(DEBUG) << "Translating ICMPv4 error packet for "
                    << boost::asio::ip::address_v4(saddr)
                    << " on " << pi.flow_metadata.flow.regs[7];
+
+        send_packet_out(agent, intConn, accConn, intFlowManager,
+                        intPortMapper, accPortMapper, egUri,
+                        b, proto, pi.flow_metadata.flow.regs[7],
+                        OFPP_IN_PORT);
     }
 
-    send_packet_out(agent, intConn, accConn, intFlowManager,
-                    intPortMapper, accPortMapper, egUri,
-                    b, proto, pi.flow_metadata.flow.regs[7],
-                    OFPP_IN_PORT);
 }
 
 static void handleICMPEchoPktIn(bool v4,
@@ -1044,8 +1031,6 @@ static void handleICMPEchoPktIn(bool v4,
                                 struct ofputil_packet_in& pi,
                                 ofputil_protocol& proto,
                                 struct dp_packet* pkt) {
-    struct ofpbuf* b = NULL;
-
     uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
     optional<URI> egUri = agent.getPolicyManager().getGroupForVnid(epgId);
 
@@ -1060,10 +1045,9 @@ static void handleICMPEchoPktIn(bool v4,
     }
 
     char* pkt_data = (char*)dpp_data(pkt);
-    b = ofpbuf_clone_data(pkt_data, dpp_size(pkt));
+    OfpBuf b(ofpbuf_clone_data(pkt_data, dpp_size(pkt)));
 
-    uint8_t* eth_hdr =
-        (uint8_t*)(ofpbuf_at_assert(b, 0, sizeof(eth::eth_header)));
+    uint8_t* eth_hdr = (uint8_t*)b.at_assert(0, sizeof(eth::eth_header));
 
     size_t ip_offset = (char*)dpp_l3(pkt)-pkt_data;
     size_t icmp_offset = (char*)dpp_l4(pkt)-pkt_data;
@@ -1076,10 +1060,9 @@ static void handleICMPEchoPktIn(bool v4,
 
     if (v4) {
         struct iphdr* ip =
-            (struct iphdr*)(ofpbuf_at_assert(b, ip_offset, sizeof(iphdr)));
+            (struct iphdr*)b.at_assert(ip_offset, sizeof(iphdr));
         struct icmphdr* icmp =
-            (struct icmphdr*)(ofpbuf_at_assert(b, icmp_offset,
-                                               sizeof(icmphdr)));
+            (struct icmphdr*)b.at_assert(icmp_offset, sizeof(icmphdr));
 
         // swap source/dest IP
         uint32_t saddr;
@@ -1104,11 +1087,10 @@ static void handleICMPEchoPktIn(bool v4,
                    << " on " << pi.flow_metadata.flow.in_port.ofp_port;
     } else {
         struct ip6_hdr* ip6 =
-            (struct ip6_hdr*)(ofpbuf_at_assert(b, ip_offset,
-                                             sizeof(struct ip6_hdr)));
+            (struct ip6_hdr*)b.at_assert(ip_offset, sizeof(struct ip6_hdr));
         struct icmp6_hdr* icmp =
-            (struct icmp6_hdr*)(ofpbuf_at_assert(b, icmp_offset,
-                                                 sizeof(struct icmp6_hdr)));
+            (struct icmp6_hdr*)b.at_assert(icmp_offset,
+                                           sizeof(struct icmp6_hdr));
 
         // swap source/dest IP
         boost::asio::ip::address_v6::bytes_type saddr;

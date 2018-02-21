@@ -9,6 +9,7 @@
  */
 
 #include <boost/test/unit_test.hpp>
+#include <boost/optional.hpp>
 
 #include "SwitchConnection.h"
 #include "PortMapper.h"
@@ -25,26 +26,22 @@ using namespace ovsagent;
 
 class MockConnection : public SwitchConnection {
 public:
-    MockConnection() : SwitchConnection("mockBridge"), lastSentMsg(NULL) {
-    }
-    ~MockConnection() {
-        ofpbuf_delete(lastSentMsg);
+    MockConnection() : SwitchConnection("mockBridge") {
     }
 
     int GetProtocolVersion() { return OFP13_VERSION; }
 
-    int SendMessage(ofpbuf *msg) {
-        ofp_header *hdr = (ofp_header *)msg->data;
+    int SendMessage(OfpBuf& msg) {
+        ofp_header *hdr = (ofp_header *)msg.data();
         ofptype typ;
         ofptype_decode(&typ, hdr);
         BOOST_CHECK(typ == OFPTYPE_PORT_DESC_STATS_REQUEST);
 
-        ofpbuf_delete(lastSentMsg);
-        lastSentMsg = msg;
+        lastSentMsg = std::move(msg);
         return 0;
     }
 
-    ofpbuf *lastSentMsg;
+    boost::optional<OfpBuf> lastSentMsg;
 };
 
 // for some reason this type has been moved out of OVS headers
@@ -92,9 +89,10 @@ public:
         }
     }
 
-    ofpbuf *MakeReplyMsg(size_t startIdx, size_t endIdx, bool more) {
+    boost::optional<OfpBuf> MakeReplyMsg(size_t startIdx,
+                                         size_t endIdx, bool more) {
         ovs_list replies;
-        ofpmp_init(&replies, (ofp_header *)conn.lastSentMsg->data);
+        ofpmp_init(&replies, (ofp_header *)conn.lastSentMsg->data());
         for (size_t i = startIdx; i < endIdx && i < ports.size(); ++i) {
             ofputil_append_port_desc_stats_reply(&ports[i], &replies);
         }
@@ -113,23 +111,22 @@ public:
             if (more) {
                 SetReplyFlags(replyHdr, ofpmp_flags(replyHdr) | OFPSF_REPLY_MORE);
             }
-            return reply;
+            return OfpBuf(reply);
         }
-        return NULL;
+        return boost::none;
     }
 
-    ofpbuf *MakePortStatusMsg(int portIdx, ofp_port_reason reas) {
+    OfpBuf MakePortStatusMsg(int portIdx, ofp_port_reason reas) {
         ofputil_port_status ps = {reas, ports[portIdx]};
-        return ofputil_encode_port_status
+        return OfpBuf(ofputil_encode_port_status
             (&ps, ofputil_protocol_from_ofp_version
-             ((ofp_version)conn.GetProtocolVersion()));
+             ((ofp_version)conn.GetProtocolVersion())));
     }
 
-    void Received(PortMapper& pm, ofpbuf *msg) {
+    void Received(PortMapper& pm, OfpBuf& msg) {
         ofptype t;
-        ofptype_decode(&t, (ofp_header *)msg->data);
-        pm.Handle(&conn, t, msg);
-        ofpbuf_delete(msg);
+        ofptype_decode(&t, (ofp_header *)msg.data());
+        pm.Handle(&conn, t, msg.get());
     }
 
     MockConnection conn;
@@ -143,8 +140,9 @@ BOOST_FIXTURE_TEST_CASE(portdesc_single, PortMapperFixture) {
     pm.Connected(&conn);
 
     /* Send all ports in one message */
-    ofpbuf *reply = MakeReplyMsg(0, 6, false);
-    Received(pm, reply);
+    auto reply = MakeReplyMsg(0, 6, false);
+    BOOST_REQUIRE(reply);
+    Received(pm, reply.get());
 
     BOOST_CHECK(pm.FindPort("test-port-5") == 5);
     BOOST_CHECK(pm.FindPort("test-port-15") == 15);
@@ -153,7 +151,8 @@ BOOST_FIXTURE_TEST_CASE(portdesc_single, PortMapperFixture) {
 
     /* spurious message */
     reply = MakeReplyMsg(6, ports.size(), false);
-    Received(pm, reply);
+    BOOST_REQUIRE(reply);
+    Received(pm, reply.get());
     BOOST_CHECK(pm.FindPort("test-port-45") == OFPP_NONE);
 }
 
@@ -161,16 +160,19 @@ BOOST_FIXTURE_TEST_CASE(portdesc_multi, PortMapperFixture) {
     pm.Connected(&conn);
 
     /* Send ports in multiple messages */
-    ofpbuf *reply3 = MakeReplyMsg(5, ports.size(), true);
+    auto reply3 = MakeReplyMsg(5, ports.size(), true);
+    BOOST_REQUIRE(reply3);
     BOOST_CHECK(pm.FindPort("test-port-45") == OFPP_NONE);
-    Received(pm, reply3);
+    Received(pm, reply3.get());
 
-    ofpbuf *reply1 = MakeReplyMsg(0, 2, true);
+    auto reply1 = MakeReplyMsg(0, 2, true);
+    BOOST_REQUIRE(reply1);
     BOOST_CHECK(pm.FindPort("test-port-5") == OFPP_NONE);
-    Received(pm, reply1);
+    Received(pm, reply1.get());
 
-    ofpbuf *reply2 = MakeReplyMsg(2, 5, false);
-    Received(pm, reply2);
+    auto reply2 = MakeReplyMsg(2, 5, false);
+    BOOST_REQUIRE(reply2);
+    Received(pm, reply2.get());
     BOOST_CHECK(pm.FindPort("test-port-5") == 5);
     BOOST_CHECK(pm.FindPort("test-port-15") == 15);
     BOOST_CHECK(pm.FindPort("test-port-45") == 45);
@@ -179,10 +181,11 @@ BOOST_FIXTURE_TEST_CASE(portdesc_multi, PortMapperFixture) {
 BOOST_FIXTURE_TEST_CASE(portstatus, PortMapperFixture) {
     pm.Connected(&conn);
 
-    ofpbuf *reply1 = MakeReplyMsg(5, ports.size(), false);
-    Received(pm, reply1);
+    auto reply1 = MakeReplyMsg(5, ports.size(), false);
+    BOOST_REQUIRE(reply1);
+    Received(pm, reply1.get());
 
-    ofpbuf *notif = MakePortStatusMsg(0, OFPPR_ADD);
+    OfpBuf notif(MakePortStatusMsg(0, OFPPR_ADD));
     Received(pm, notif);
     BOOST_CHECK(pm.FindPort("test-port-5") == 5);
 
@@ -208,12 +211,13 @@ BOOST_FIXTURE_TEST_CASE(portstatus_listener, PortMapperFixture) {
     MockListener psl;
     pm.registerPortStatusListener(&psl);
 
-    ofpbuf *reply1 = MakeReplyMsg(0, 1, false);
-    Received(pm, reply1);
+    auto reply1 = MakeReplyMsg(0, 1, false);
+    BOOST_REQUIRE(reply1);
+    Received(pm, reply1.get());
     BOOST_CHECK_EQUAL(psl.lastPortName, "test-port-5");
     BOOST_CHECK_EQUAL(psl.lastPortNo, 5);
 
-    ofpbuf *notif = MakePortStatusMsg(2, OFPPR_ADD);
+    OfpBuf notif(MakePortStatusMsg(2, OFPPR_ADD));
     Received(pm, notif);
     BOOST_CHECK_EQUAL(psl.lastPortName, "test-port-15");
     BOOST_CHECK_EQUAL(psl.lastPortNo, 15);

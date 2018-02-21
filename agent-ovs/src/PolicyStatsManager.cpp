@@ -453,8 +453,8 @@ void PolicyStatsManager::sendRequest(uint32_t table_id) {
     fsr.out_group = OFPG_ANY;
     fsr.cookie = fsr.cookie_mask = (uint64_t)0;
 
-    ofpbuf *req = ofputil_encode_flow_stats_request(&fsr, proto);
-    ofpmsg_update_length(req);
+    OfpBuf req(ofputil_encode_flow_stats_request(&fsr, proto));
+    ofpmsg_update_length(req.get());
 
     int err = connection->SendMessage(req);
     if (err != 0) {

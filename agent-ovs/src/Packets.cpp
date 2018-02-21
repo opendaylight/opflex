@@ -75,15 +75,15 @@ struct nd_opt_def_route_info {
     uint32_t nd_opt_ri_lifetime;
 };
 
-ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
-                                const uint8_t* dstMac,
-                                const struct in6_addr* dstIp,
-                                const opflex::modb::URI& egUri,
-                                PolicyManager& polMgr) {
+boost::optional<OfpBuf> compose_icmp6_router_ad(const uint8_t* srcMac,
+                                                const uint8_t* dstMac,
+                                                const struct in6_addr* dstIp,
+                                                const opflex::modb::URI& egUri,
+                                                PolicyManager& polMgr) {
     using namespace modelgbp::gbp;
 
     optional<shared_ptr<RoutingDomain> > rd = polMgr.getRDForGroup(egUri);
-    if (!rd) return NULL;
+    if (!rd) return boost::none;
 
     uint32_t mtu = 0;
 
@@ -102,9 +102,8 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     }
 
     if (ipv6Subnets.size() == 0)
-        return NULL;
+        return boost::none;
 
-    struct ofpbuf* b = NULL;
     uint16_t payloadLen = sizeof(struct nd_router_advert) +
         sizeof(struct nd_opt_hdr) + 6 +
         + (mtu == 0 ? 0 : sizeof(struct nd_opt_mtu)) +
@@ -114,13 +113,13 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
         sizeof(struct ip6_hdr) +
         payloadLen;
 
-    b = ofpbuf_new(len);
-    ofpbuf_clear(b);
-    ofpbuf_reserve(b, len);
+    OfpBuf b(len);
+    b.clear();
+    b.reserve(len);
 
     // default route
     struct nd_opt_def_route_info* defroute = (struct  nd_opt_def_route_info*)
-        ofpbuf_push_zeros(b, sizeof(struct nd_opt_def_route_info));
+        b.push_zeros(sizeof(struct nd_opt_def_route_info));
     struct nd_opt_def_route_info tmpRI;
     memset(&tmpRI, 0, sizeof(tmpRI));
     tmpRI.nd_opt_ri_type = 24;
@@ -140,7 +139,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
         if (!networkAddr.is_v6()) continue;
 
         struct nd_opt_prefix_info* prefix = (struct nd_opt_prefix_info*)
-            ofpbuf_push_zeros(b, sizeof(struct nd_opt_prefix_info));
+            b.push_zeros(sizeof(struct nd_opt_prefix_info));
         struct nd_opt_prefix_info tmpPI;
         memset(&tmpPI, 0, sizeof(tmpRI));
         tmpPI.nd_opt_pi_type = ND_OPT_PREFIX_INFORMATION;
@@ -163,7 +162,7 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     // MTU option
     if (mtu) {
         struct nd_opt_mtu* opt_mtu = (struct nd_opt_mtu*)
-            ofpbuf_push_zeros(b, sizeof(struct nd_opt_mtu));
+            b.push_zeros(sizeof(struct nd_opt_mtu));
         opt_mtu->nd_opt_mtu_type = ND_OPT_MTU;
         opt_mtu->nd_opt_mtu_len = 1;
         opt_mtu->nd_opt_mtu_mtu = htonl(mtu);
@@ -171,14 +170,14 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
 
     // source link-layer address option
     struct nd_opt_hdr* source_ll = (struct nd_opt_hdr*)
-        ofpbuf_push_zeros(b, sizeof(struct nd_opt_hdr) + 6);
+        b.push_zeros(sizeof(struct nd_opt_hdr) + 6);
     source_ll->nd_opt_type = ND_OPT_SOURCE_LINKADDR;
     source_ll->nd_opt_len = 1;
     memcpy(((char*)source_ll)+2, srcMac, eth::ADDR_LEN);
 
     // fill in router advertisement
     struct nd_router_advert* router_ad = (struct nd_router_advert*)
-        ofpbuf_push_zeros(b, sizeof(struct nd_router_advert));
+        b.push_zeros(sizeof(struct nd_router_advert));
     struct nd_router_advert tmpRA;
     memset(&tmpRA, 0, sizeof(tmpRA));
     tmpRA.nd_ra_hdr.icmp6_type = ND_ROUTER_ADVERT;
@@ -194,9 +193,9 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     memcpy(router_ad, &tmpRA, sizeof(tmpRA));
 
     struct ip6_hdr* ip6 = (struct ip6_hdr*)
-        ofpbuf_push_zeros(b, sizeof(struct ip6_hdr));
+        b.push_zeros(sizeof(struct ip6_hdr));
     eth::eth_header* eth = (eth::eth_header*)
-        ofpbuf_push_zeros(b, sizeof(eth::eth_header));
+        b.push_zeros(sizeof(eth::eth_header));
 
     // initialize ethernet header
     memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
@@ -235,12 +234,11 @@ ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
     return b;
 }
 
-ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
+OfpBuf compose_icmp6_neigh_ad(uint32_t naFlags,
                                const uint8_t* srcMac,
                                const uint8_t* dstMac,
                                const struct in6_addr* srcIp,
                                const struct in6_addr* dstIp) {
-    struct ofpbuf* b = NULL;
     eth::eth_header* eth = NULL;
     struct ip6_hdr* ip6 = NULL;
     uint16_t* payload;
@@ -253,10 +251,12 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
         sizeof(struct ip6_hdr) +
         sizeof(struct nd_neighbor_advert) +
         sizeof(struct nd_opt_hdr) + 6;
-    b = ofpbuf_new(len);
-    ofpbuf_clear(b);
-    ofpbuf_reserve(b, len);
-    char* buf = (char*)ofpbuf_push_zeros(b, len);
+
+    OfpBuf b(len);
+    b.clear();
+    b.reserve(len);
+
+    char* buf = (char*)b.push_zeros(len);
     eth = (eth::eth_header*)buf;
     buf += sizeof(eth::eth_header);
     ip6 = (struct ip6_hdr*)buf;
@@ -315,12 +315,11 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
     return b;
 }
 
-ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
+OfpBuf compose_icmp6_neigh_solit(const uint8_t* srcMac,
                                   const uint8_t* dstMac,
                                   const struct in6_addr* srcIp,
                                   const struct in6_addr* dstIp,
                                   const struct in6_addr* targetIp) {
-    struct ofpbuf* b = NULL;
     eth::eth_header* eth = NULL;
     struct ip6_hdr* ip6 = NULL;
     uint16_t* payload;
@@ -333,10 +332,12 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
         sizeof(struct ip6_hdr) +
         sizeof(struct nd_neighbor_solicit) +
         sizeof(struct nd_opt_hdr) + 6;
-    b = ofpbuf_new(len);
-    ofpbuf_clear(b);
-    ofpbuf_reserve(b, len);
-    char* buf = (char*)ofpbuf_push_zeros(b, len);
+
+    OfpBuf b(len);
+    b.clear();
+    b.reserve(len);
+
+    char* buf = (char*)b.push_zeros(len);
     eth = (eth::eth_header*)buf;
     buf += sizeof(eth::eth_header);
     ip6 = (struct ip6_hdr*)buf;
@@ -407,7 +408,7 @@ public:
     address_v4 nextHop;
 };
 
-ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
+OfpBuf compose_dhcpv4_reply(uint8_t message_type,
                              uint32_t xid,
                              const uint8_t* srcMac,
                              const uint8_t* clientMac,
@@ -423,7 +424,6 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     using namespace dhcp;
     using namespace udp;
 
-    struct ofpbuf* b = NULL;
     eth::eth_header* eth = NULL;
     struct iphdr* ip = NULL;
     struct udp_hdr* udp = NULL;
@@ -507,10 +507,11 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
         payloadLen;
 
     // allocate the DHCP reply
-    b = ofpbuf_new(len);
-    ofpbuf_clear(b);
-    ofpbuf_reserve(b, len);
-    char* buf =  (char*)ofpbuf_push_zeros(b, len);
+    OfpBuf b(len);
+    b.clear();
+    b.reserve(len);
+
+    char* buf =  (char*)b.push_zeros(len);
     eth = (eth::eth_header*)buf;
     buf += sizeof(eth::eth_header);
     ip = (struct iphdr*)buf;
@@ -699,7 +700,7 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
     return b;
 }
 
-ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
+OfpBuf compose_dhcpv6_reply(uint8_t message_type,
                              const uint8_t* xid,
                              const uint8_t* srcMac,
                              const uint8_t* clientMac,
@@ -719,7 +720,6 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     using namespace dhcp6;
     using namespace udp;
 
-    struct ofpbuf* b = NULL;
     eth::eth_header* eth = NULL;
     struct ip6_hdr* ip6 = NULL;
     struct udp_hdr* udp = NULL;
@@ -799,10 +799,11 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
         payloadLen;
 
     // allocate the DHCPv6 reply
-    b = ofpbuf_new(len);
-    ofpbuf_clear(b);
-    ofpbuf_reserve(b, len);
-    char* buf = (char*)ofpbuf_push_zeros(b, len);
+    OfpBuf b(len);
+    b.clear();
+    b.reserve(len);
+
+    char* buf = (char*)b.push_zeros(len);
     eth = (eth::eth_header*)buf;
     buf += sizeof(eth::eth_header);
     ip6 = (struct ip6_hdr*)buf;
@@ -961,7 +962,7 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
     return b;
 }
 
-ofpbuf* compose_arp(uint16_t op,
+OfpBuf compose_arp(uint16_t op,
                     const uint8_t* srcMac,
                     const uint8_t* dstMac,
                     const uint8_t* sha,
@@ -970,7 +971,6 @@ ofpbuf* compose_arp(uint16_t op,
                     uint32_t tpa) {
     using namespace arp;
 
-    struct ofpbuf* b = NULL;
     eth::eth_header* eth = NULL;
     struct arp_hdr* arp = NULL;
     uint8_t* shaptr = NULL;
@@ -981,10 +981,12 @@ ofpbuf* compose_arp(uint16_t op,
     size_t len =
         sizeof(eth::eth_header) + sizeof(arp_hdr) +
         2 * eth::ADDR_LEN + 2 * 4;
-    b = ofpbuf_new(len);
-    ofpbuf_clear(b);
-    ofpbuf_reserve(b, len);
-    char* buf = (char*)ofpbuf_push_zeros(b, len);
+
+    OfpBuf b(len);
+    b.clear();
+    b.reserve(len);
+
+    char* buf = (char*)b.push_zeros(len);
     eth = (eth::eth_header*)buf;
     buf += sizeof(eth::eth_header);
     arp = (struct arp_hdr*)buf;

@@ -423,12 +423,11 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     init_packet_in(pin1, &packet_buf, sizeof(packet_buf),
                    flow::cookie::PROACTIVE_LEARN);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin1,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
-    ofpbuf_delete(b);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin1,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
     BOOST_CHECK(intConn.sentMsgs.size() == 3);
     uint64_t ofpacts_stub1[1024 / 8];
@@ -468,12 +467,11 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     init_packet_in(pin1, &packet_buf, sizeof(packet_buf),
                    flow::cookie::LEARN, 3, 24, 42);
 
-    b = ofputil_encode_packet_in_private(&pin1,
-                                         OFPUTIL_P_OF13_OXM,
-                                         NXPIF_NXT_PACKET_IN,
-                                         0xffff, NULL);
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
-    ofpbuf_delete(b);
+    b = OfpBuf(ofputil_encode_packet_in_private(&pin1,
+                                                OFPUTIL_P_OF13_OXM,
+                                                NXPIF_NXT_PACKET_IN,
+                                                0xffff, NULL));
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
     BOOST_CHECK(intConn.sentMsgs.size() == 2);
     ofputil_decode_flow_mod(&fm1, (ofp_header *)intConn.sentMsgs[0]->data,
@@ -490,7 +488,7 @@ BOOST_FIXTURE_TEST_CASE(learn, PacketInHandlerFixture) {
     BOOST_CHECK_EQUAL(-1, check_action_learn4(fm2.ofpacts, fm2.ofpacts_len));
 }
 
-static void verify_dhcpv4(ofpbuf* msg, uint8_t message_type) {
+static void verify_dhcpv4(OfpBuf& msg, uint8_t message_type) {
     using namespace dhcp;
     using namespace udp;
 
@@ -499,7 +497,7 @@ static void verify_dhcpv4(ofpbuf* msg, uint8_t message_type) {
     struct ofpbuf ofpact;
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
-                              (ofp_header*)msg->data,
+                              (ofp_header*)msg.data(),
                               &ofpact);
     DpPacketP pkt;
     struct flow flow;
@@ -598,7 +596,7 @@ enum ReplyType {
     RAPID_PERM
 };
 
-static void verify_dhcpv6(ofpbuf* msg, uint8_t message_type,
+static void verify_dhcpv6(OfpBuf& msg, uint8_t message_type,
                           ReplyType rt = PERM) {
     using namespace dhcp6;
     using namespace udp;
@@ -608,7 +606,7 @@ static void verify_dhcpv6(ofpbuf* msg, uint8_t message_type,
     struct ofpbuf ofpact;
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
-                              (ofp_header*)msg->data,
+                              (ofp_header*)msg.data(),
                               &ofpact);
     DpPacketP pkt;
     struct flow flow;
@@ -703,13 +701,13 @@ static void verify_dhcpv6(ofpbuf* msg, uint8_t message_type,
 #undef CONTAINS
 }
 
-static void verify_icmpv4_err(ofpbuf* msg) {
+static void verify_icmpv4_err(OfpBuf& msg) {
     struct ofputil_packet_out po;
     uint64_t ofpacts_stub[1024 / 8];
     struct ofpbuf ofpact;
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
-                              (ofp_header*)msg->data,
+                              (ofp_header*)msg.data(),
                               &ofpact);
     DpPacketP pkt;
     struct flow flow;
@@ -740,12 +738,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
-    ofpbuf_delete(b);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
     BOOST_CHECK_EQUAL(0, intConn.sentMsgs.size());
 }
@@ -758,14 +755,13 @@ void PacketInHandlerFixture::testDhcpv4Discover(MockSwitchConnection& tconn) {
                    flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_dhcpv4(tconn.sentMsgs[0], ovsagent::dhcp::message_type::OFFER);
 }
@@ -790,12 +786,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
-    ofpbuf_delete(b);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
 
@@ -816,12 +811,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
-    ofpbuf_delete(b);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     free(buf);
 
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -835,12 +829,11 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
-    ofpbuf_delete(b);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
     BOOST_CHECK_EQUAL(0, intConn.sentMsgs.size());
 }
@@ -853,14 +846,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::ADVERTISE);
 }
@@ -874,14 +866,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
                   RAPID_PERM);
@@ -895,14 +886,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
 }
@@ -915,14 +905,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
                   TEMP);
@@ -936,14 +925,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_confirm, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
 }
@@ -956,14 +944,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY);
 }
@@ -976,14 +963,13 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
                    flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_dhcpv6(intConn.sentMsgs[0], ovsagent::dhcp6::message_type::REPLY,
                   INFO);
@@ -995,14 +981,13 @@ void PacketInHandlerFixture::testIcmpv4Error(MockSwitchConnection& tconn) {
                    flow::cookie::ICMP_ERROR_V4,
                    IntFlowManager::OUT_TABLE_ID, 5, 80);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     verify_icmpv4_err(tconn.sentMsgs[0]);
 }
@@ -1029,14 +1014,13 @@ void PacketInHandlerFixture::testIcmpEcho(bool v4) {
                    v4 ? flow::cookie::ICMP_ECHO_V4 : flow::cookie::ICMP_ECHO_V6,
                    IntFlowManager::ROUTE_TABLE_ID, 5, 101, 0x100);
 
-    ofpbuf* b = ofputil_encode_packet_in_private(&pin,
-                                                 OFPUTIL_P_OF13_OXM,
-                                                 NXPIF_NXT_PACKET_IN,
-                                                 0xffff, NULL);
+    OfpBuf b(ofputil_encode_packet_in_private(&pin,
+                                              OFPUTIL_P_OF13_OXM,
+                                              NXPIF_NXT_PACKET_IN,
+                                              0xffff, NULL));
 
-    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b);
+    pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
-    ofpbuf_delete(b);
 
     struct ofputil_packet_out po;
     uint64_t ofpacts_stub[1024 / 8];
