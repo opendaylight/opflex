@@ -306,8 +306,8 @@ void AdvertManagerFixture::testEpAdvert(AdvertManager::EndpointAdvMode mode) {
     // allow fallback to grat broadcast for service IPs
     unordered_set<string> fallback { "2002:db8::2" };
     unordered_set<string> found;
-    for (ofpbuf* msg : conn->sentMsgs) {
-        verify_epadv(msg, found, mode, fallback);
+    for (auto& msg : conn->sentMsgs) {
+        verify_epadv(msg.get(), found, mode, fallback);
     }
 
     // endpoints
@@ -345,13 +345,13 @@ BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
     BOOST_CHECK_EQUAL(1, conn->sentMsgs.size());
 
     unordered_set<string> found;
-    for (ofpbuf* msg : conn->sentMsgs) {
+    for (auto& msg : conn->sentMsgs) {
         struct ofputil_packet_out po;
         uint64_t ofpacts_stub[1024 / 8];
         struct ofpbuf ofpact;
         ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
         ofputil_decode_packet_out(&po,
-                                  (ofp_header*)msg->data,
+                                  (ofp_header*)msg.data(),
                                   &ofpact);
         DpPacketP pkt;
         struct flow flow;

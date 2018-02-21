@@ -28,9 +28,6 @@ public:
     }
 
     virtual void clear() {
-        for (ofpbuf* msg : sentMsgs) {
-            ofpbuf_delete(msg);
-        }
         sentMsgs.clear();
     }
 
@@ -42,15 +39,15 @@ public:
 
     virtual int GetProtocolVersion() { return OFP13_VERSION; }
 
-    virtual int SendMessage(ofpbuf *msg) {
-        sentMsgs.push_back(msg);
+    virtual int SendMessage(OfpBuf& msg) {
+        sentMsgs.push_back(std::move(msg));
         return 0;
     }
 
     virtual bool IsConnected() { return connected; }
 
     bool connected;
-    std::vector<ofpbuf*> sentMsgs;
+    std::vector<OfpBuf> sentMsgs;
 };
 
 } // namespace ovsagent
