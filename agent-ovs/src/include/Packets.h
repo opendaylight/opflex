@@ -16,11 +16,12 @@
 #include <arpa/inet.h>
 
 #include <boost/asio/ip/address.hpp>
+#include <boost/optional.hpp>
 
 #include "PolicyManager.h"
 #include "Endpoint.h"
 
-struct ofpbuf;
+class OfpBuf;
 
 namespace ovsagent {
 namespace packets {
@@ -85,11 +86,11 @@ uint16_t chksum_finalize(uint32_t chksum);
  * @param dstIp the destination Ip
  * @return a ofpbuf containing the message
  */
-ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
-                               const uint8_t* srcMac,
-                               const uint8_t* dstMac,
-                               const struct in6_addr* srcIp,
-                               const struct in6_addr* dstIp);
+OfpBuf compose_icmp6_neigh_ad(uint32_t naFlags,
+                              const uint8_t* srcMac,
+                              const uint8_t* dstMac,
+                              const struct in6_addr* srcIp,
+                              const struct in6_addr* dstIp);
 
 /**
  * Compose an ICMP6 neighbor solicitation ethernet frame
@@ -102,11 +103,11 @@ ofpbuf* compose_icmp6_neigh_ad(uint32_t naFlags,
  * @param targetIp The target IP for the solicitation
  * @return a ofpbuf containing the message
  */
-ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
-                                  const uint8_t* dstMac,
-                                  const struct in6_addr* srcIp,
-                                  const struct in6_addr* dstIp,
-                                  const struct in6_addr* targetIp);
+OfpBuf compose_icmp6_neigh_solit(const uint8_t* srcMac,
+                                 const uint8_t* dstMac,
+                                 const struct in6_addr* srcIp,
+                                 const struct in6_addr* dstIp,
+                                 const struct in6_addr* targetIp);
 
 /**
  * Compose an ICMP6 router advertisement ethernet frame
@@ -118,11 +119,11 @@ ofpbuf* compose_icmp6_neigh_solit(const uint8_t* srcMac,
  * @param polMgr the policy manager
  * @return a ofpbuf containing the message
  */
-ofpbuf* compose_icmp6_router_ad(const uint8_t* srcMac,
-                                const uint8_t* dstMac,
-                                const struct in6_addr* dstIp,
-                                const opflex::modb::URI& egUri,
-                                PolicyManager& polMgr);
+boost::optional<OfpBuf> compose_icmp6_router_ad(const uint8_t* srcMac,
+                                                const uint8_t* dstMac,
+                                                const struct in6_addr* dstIp,
+                                                const opflex::modb::URI& egUri,
+                                                PolicyManager& polMgr);
 
 /**
  * A convenience typedef for static routes
@@ -148,19 +149,19 @@ typedef Endpoint::DHCPv4Config::static_route_t static_route_t;
  * @param interfaceMtu value of interface MTU to return to the client
  * @param leaseTime the lease time to send to the client
  */
-ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
-                             uint32_t xid,
-                             const uint8_t* srcMac,
-                             const uint8_t* clientMac,
-                             uint32_t clientIp,
-                             uint8_t prefixLen,
-                             const boost::optional<std::string>& serverIp,
-                             const std::vector<std::string>& routers,
-                             const std::vector<std::string>& dnsServers,
-                             const boost::optional<std::string>& domain,
-                             const std::vector<static_route_t>& staticRoutes,
-                             const boost::optional<uint16_t>& interfaceMtu,
-                             const boost::optional<uint32_t>& leaseTime);
+OfpBuf compose_dhcpv4_reply(uint8_t message_type,
+                            uint32_t xid,
+                            const uint8_t* srcMac,
+                            const uint8_t* clientMac,
+                            uint32_t clientIp,
+                            uint8_t prefixLen,
+                            const boost::optional<std::string>& serverIp,
+                            const std::vector<std::string>& routers,
+                            const std::vector<std::string>& dnsServers,
+                            const boost::optional<std::string>& domain,
+                            const std::vector<static_route_t>& staticRoutes,
+                            const boost::optional<uint16_t>& interfaceMtu,
+                            const boost::optional<uint32_t>& leaseTime);
 
 /**
  * Compose a DHCPv6 Advertise or Reply message
@@ -184,23 +185,23 @@ ofpbuf* compose_dhcpv4_reply(uint8_t message_type,
  * addresses
  * @param validLifetime the valid lifetime for the IPv6 addresses
  */
-ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
-                             const uint8_t* xid,
-                             const uint8_t* srcMac,
-                             const uint8_t* clientMac,
-                             const struct in6_addr* dstIp,
-                             uint8_t* client_id,
-                             uint16_t client_id_len,
-                             uint8_t* iaid,
-                             const std::vector<boost::asio::ip::address_v6>& ips,
-                             const std::vector<std::string>& dnsServers,
-                             const std::vector<std::string>& searchList,
-                             bool temporary,
-                             bool rapid,
-                             const boost::optional<uint32_t>& t1,
-                             const boost::optional<uint32_t>& t2,
-                             const boost::optional<uint32_t>& preferredLifetime,
-                             const boost::optional<uint32_t>& validLifetime);
+OfpBuf compose_dhcpv6_reply(uint8_t message_type,
+                            const uint8_t* xid,
+                            const uint8_t* srcMac,
+                            const uint8_t* clientMac,
+                            const struct in6_addr* dstIp,
+                            uint8_t* client_id,
+                            uint16_t client_id_len,
+                            uint8_t* iaid,
+                            const std::vector<boost::asio::ip::address_v6>& ips,
+                            const std::vector<std::string>& dnsServers,
+                            const std::vector<std::string>& searchList,
+                            bool temporary,
+                            bool rapid,
+                            const boost::optional<uint32_t>& t1,
+                            const boost::optional<uint32_t>& t2,
+                            const boost::optional<uint32_t>& preferredLifetime,
+                            const boost::optional<uint32_t>& validLifetime);
 
 /**
  * Compose an ARP packet
@@ -213,13 +214,13 @@ ofpbuf* compose_dhcpv6_reply(uint8_t message_type,
  * @param spa the source protocol address
  * @param tpa the target protocol address
  */
-ofpbuf* compose_arp(uint16_t op,
-                    const uint8_t* srcMac,
-                    const uint8_t* dstMac,
-                    const uint8_t* sha,
-                    const uint8_t* tha,
-                    uint32_t spa,
-                    uint32_t tpa);
+OfpBuf compose_arp(uint16_t op,
+                   const uint8_t* srcMac,
+                   const uint8_t* dstMac,
+                   const uint8_t* sha,
+                   const uint8_t* tha,
+                   uint32_t spa,
+                   uint32_t tpa);
 
 } /* namespace packets */
 } /* namespace ovsagent */

@@ -72,8 +72,8 @@ FlowExecutor::ExecuteInt(const T& fe) {
         return true;
     }
     /* create the barrier request first to setup request-map */
-    ofpbuf *barrReq = ofputil_encode_barrier_request(
-        (ofp_version)swConn->GetProtocolVersion());
+    OfpBuf barrReq(ofputil_encode_barrier_request(
+       (ofp_version)swConn->GetProtocolVersion()));
     ovs_be32 barrXid = ((ofp_header *)barrReq->data)->xid;
 
     {
@@ -101,14 +101,14 @@ FlowExecutor::ExecuteIntNoBlock(const T& fe) {
 }
 
 template<>
-ofpbuf *
+OfpBuf
 FlowExecutor::EncodeMod<GroupEdit::Entry>(const GroupEdit::Entry& edit,
                                           int ofVersion) {
     return ofputil_encode_group_mod((ofp_version)ofVersion, edit->mod);
 }
 
 template<>
-ofpbuf *
+OfpBuf
 FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
                                          int ofVersion) {
     ofputil_protocol proto =
@@ -149,13 +149,13 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     return ofputil_encode_flow_mod(&flowMod, proto);
 }
 
-ofpbuf *
+OfpBuf
 FlowExecutor::EncodeFlowMod(const FlowEdit::Entry& edit,
                             int ofVersion) {
     return EncodeMod<FlowEdit::Entry>(edit, ofVersion);
 }
 
-ofpbuf *
+OfpBuf
 FlowExecutor::EncodeGroupMod(const GroupEdit::Entry& edit,
                              int ofVersion) {
     return EncodeMod<GroupEdit::Entry>(edit, ofVersion);
@@ -168,7 +168,7 @@ FlowExecutor::DoExecuteNoBlock(const T& fe,
     ofp_version ofVersion = (ofp_version)swConn->GetProtocolVersion();
 
     for (const typename T::Entry& e : fe.edits) {
-        ofpbuf *msg = EncodeMod<typename T::Entry>(e, ofVersion);
+        OfpBuf msg(EncodeMod<typename T::Entry>(e, ofVersion));
         ovs_be32 xid = ((ofp_header *)msg->data)->xid;
         if (barrXid) {
             mutex_guard lock(reqMtx);
@@ -188,8 +188,8 @@ FlowExecutor::DoExecuteNoBlock(const T& fe,
 }
 
 int
-FlowExecutor::WaitOnBarrier(ofpbuf *barrReq) {
-    ovs_be32 barrXid = ((ofp_header *)barrReq->data)->xid;
+FlowExecutor::WaitOnBarrier(OfpBuf& barrReq) {
+    ovs_be32 barrXid = ((ofp_header *)barrReq.data())->xid;
     LOG(DEBUG) << "[" << swConn->getSwitchName() << "] "
                << "Sending barrier request xid=" << barrXid;
     int err = swConn->SendMessage(barrReq);

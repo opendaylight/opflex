@@ -52,16 +52,16 @@ bool FlowReader::getFlows(uint8_t tableId, const FlowCb& cb) {
 }
 
 bool FlowReader::getFlows(uint8_t tableId, match* m, const FlowCb& cb) {
-    ofpbuf *req = createFlowRequest(tableId, m);
+    OfpBuf req(createFlowRequest(tableId, m));
     return sendRequest<FlowCb, FlowCbMap>(req, cb, flowRequests);
 }
 
 bool FlowReader::getGroups(const GroupCb& cb) {
-    ofpbuf *req = createGroupRequest();
+    OfpBuf req(createGroupRequest());
     return sendRequest<GroupCb, GroupCbMap>(req, cb, groupRequests);
 }
 
-ofpbuf *FlowReader::createFlowRequest(uint8_t tableId, match* m) {
+OfpBuf FlowReader::createFlowRequest(uint8_t tableId, match* m) {
     ofp_version ofVer = (ofp_version)swConn->GetProtocolVersion();
     ofputil_protocol proto = ofputil_protocol_from_ofp_version(ofVer);
 
@@ -77,18 +77,17 @@ ofpbuf *FlowReader::createFlowRequest(uint8_t tableId, match* m) {
     fsr.out_group = OFPG_ANY;
     fsr.cookie = fsr.cookie_mask = (uint64_t)0;
 
-    ofpbuf *req = ofputil_encode_flow_stats_request(&fsr, proto);
-    return req;
+    return ofputil_encode_flow_stats_request(&fsr, proto);
 }
 
-ofpbuf *FlowReader::createGroupRequest() {
+OfpBuf FlowReader::createGroupRequest() {
     return ofputil_encode_group_desc_request
         ((ofp_version)swConn->GetProtocolVersion(), OFPG_ALL);
 }
 
 // XXX TODO need a way to time out requests
 template <typename U, typename V>
-bool FlowReader::sendRequest(ofpbuf *req, const U& cb, V& reqMap) {
+bool FlowReader::sendRequest(OfpBuf& req, const U& cb, V& reqMap) {
     ovs_be32 reqXid = ((ofp_header *)req->data)->xid;
     LOG(DEBUG) << "Sending flow/group read request xid=" << reqXid;
 

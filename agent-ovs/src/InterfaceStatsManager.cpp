@@ -105,8 +105,8 @@ void InterfaceStatsManager::on_timer(const error_code& ec) {
 
     // send port stats request
     if (intConnection) {
-        struct ofpbuf *intPortStatsReq = ofputil_encode_dump_ports_request(
-            (ofp_version)intConnection->GetProtocolVersion(), OFPP_ANY);
+        OfpBuf intPortStatsReq = (ofputil_encode_dump_ports_request(
+            (ofp_version)intConnection->GetProtocolVersion(), OFPP_ANY));
         int err = intConnection->SendMessage(intPortStatsReq);
         if (err != 0) {
             LOG(ERROR) << "Failed to send int-port statistics request: "
@@ -116,8 +116,8 @@ void InterfaceStatsManager::on_timer(const error_code& ec) {
 
     // send port stats request
     if (accessConnection) {
-        struct ofpbuf *accessPortStatsReq = ofputil_encode_dump_ports_request(
-            (ofp_version)accessConnection->GetProtocolVersion(), OFPP_ANY);
+        OfpBuf accessPortStatsReq(ofputil_encode_dump_ports_request(
+            (ofp_version)accessConnection->GetProtocolVersion(), OFPP_ANY));
         int err = accessConnection->SendMessage(accessPortStatsReq);
         if (err != 0) {
             LOG(ERROR) << "Failed to send acc-port statistics request: "

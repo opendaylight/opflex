@@ -7,6 +7,10 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#ifndef OVSAGENT_OFPBUF_H_
+#define OVSAGENT_OFPBUF_H_
+#pragma once
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -24,4 +28,27 @@ extern "C" {
 
 #ifdef __cplusplus
 }
-#endif
+
+/**
+ * Smart pointer wrapper to hold an ofpbuf
+ */
+class OfpBuf : public std::unique_ptr<struct ofpbuf,
+                                      void(*)(struct ofpbuf*)> {
+public:
+    OfpBuf(size_t size): unique_ptr(ofpbuf_new(size), ofpbuf_delete) {}
+    OfpBuf(struct ofpbuf* _buf): unique_ptr(_buf, ofpbuf_delete) {}
+
+    void clear() { ofpbuf_clear(get()); }
+    void reserve(size_t size) { ofpbuf_reserve(get(), size); }
+    void* push_zeros(size_t size) { return ofpbuf_push_zeros(get(), size); }
+    void* put_zeros(size_t size) { return ofpbuf_put_zeros(get(), size); }
+    void* at_assert(size_t offset, size_t size) {
+        return ofpbuf_at_assert(get(), offset, size);
+    }
+    void* data() const { return get()->data; }
+    size_t size() const { return get()->size; }
+};
+
+#endif /* __cplusplus */
+
+#endif /* OVSAGENT_OFPBUF_H_ */
