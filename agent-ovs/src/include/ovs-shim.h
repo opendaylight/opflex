@@ -267,25 +267,40 @@ extern "C" {
 #ifdef __cplusplus
 }
 
+#include <memory>
+
+/**
+ * Generic allocation and deletion functor
+ */
+template <typename P, P*(*Alloc)(), void(*Clean)(void*) = free>
+class OvsPFunctor {
+public:
+    P* operator()() {
+        return Alloc();
+    }
+
+    void operator()(void *p) {
+        Clean(p);
+    }
+};
+
 /**
  * Smart pointer type to hold a pointer to OVS types and properly
  * clean them up while allowing incomplete types
  */
-template <typename P, P*(*Alloc)(), void(*Clean)(void*) = free>
-class OvsP {
+template <typename P, typename Functor>
+class OvsP : public std::unique_ptr<P, Functor> {
 public:
-    OvsP(): ptr(Alloc()) {}
-    OvsP(P* _ptr) : ptr(_ptr) {}
-    ~OvsP() { Clean(ptr); }
-
-    P* get() const { return ptr; }
-
-    P* ptr;
+    OvsP() : std::unique_ptr<P, Functor>(Functor()()) {}
+    explicit OvsP(P* p) : std::unique_ptr<P, Functor>(p) {}
 };
 
-typedef OvsP<struct dp_packet, alloc_dpp> DpPacketP;
-typedef OvsP<struct ds, alloc_ds, clean_ds> DsP;
-typedef OvsP<struct ofputil_phy_port, alloc_phy_port> PhyPortP;
+typedef OvsP<struct dp_packet,
+             OvsPFunctor<struct dp_packet, alloc_dpp>> DpPacketP;
+typedef OvsP<struct ds,
+             OvsPFunctor<struct ds, alloc_ds, clean_ds>> DsP;
+typedef OvsP<struct ofputil_phy_port,
+             OvsPFunctor<struct ofputil_phy_port, alloc_phy_port>> PhyPortP;
 
 #endif
 
