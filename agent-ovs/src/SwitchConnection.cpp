@@ -256,8 +256,8 @@ SwitchConnection::Monitor() {
                 LOG(ERROR) << "Timed out reading from switch socket";
                 connLost = true;
             } else if (diff >= ECHO_INTERVAL) {
-                struct ofpbuf *msg =
-                    make_echo_request((ofp_version)GetProtocolVersion());
+                OfpBuf msg(
+                    make_echo_request((ofp_version)GetProtocolVersion()));
                 SendMessage(msg);
             }
         }
@@ -298,20 +298,15 @@ SwitchConnection::receiveOFMessage() {
 }
 
 int
-SwitchConnection::SendMessage(ofpbuf *msg) {
-    BOOST_SCOPE_EXIT((&msg)) {
-        if (msg) {
-            ofpbuf_delete(msg);
-        }
-    } BOOST_SCOPE_EXIT_END
+SwitchConnection::SendMessage(OfpBuf& msg) {
     while(true) {
         mutex_guard lock(connMtx);
         if (!IsConnectedLocked()) {
             return ENOTCONN;
         }
-        int err = vconn_send(ofConn, msg);
+        int err = vconn_send(ofConn, msg.get());
         if (err == 0) {
-            msg = NULL;
+            msg.reset();
             return 0;
         } else if (err != EAGAIN) {
             LOG(ERROR) << "Error sending OF message: " << ovs_strerror(err);
@@ -327,32 +322,29 @@ void
 SwitchConnection::FireOnConnectListeners() {
     if (GetProtocolVersion() >= OFP12_VERSION) {
         // Set controller role to MASTER
-        ofpbuf *b0;
         ofp12_role_request *rr;
-        b0 = ofpraw_alloc(OFPRAW_OFPT12_ROLE_REQUEST,
-                          GetProtocolVersion(), sizeof *rr);
-        rr = (ofp12_role_request*)ofpbuf_put_zeros(b0, sizeof *rr);
+        OfpBuf b0(ofpraw_alloc(OFPRAW_OFPT12_ROLE_REQUEST,
+                               GetProtocolVersion(), sizeof *rr));
+        rr = (ofp12_role_request*)b0.put_zeros(sizeof *rr);
         rr->role = htonl(OFPCR12_ROLE_MASTER);
         SendMessage(b0);
     }
     {
         // Set default miss length to non-zero value to enable
         // asynchronous messages
-        ofpbuf *b1;
         ofp_switch_config *osc;
-        b1 = ofpraw_alloc(OFPRAW_OFPT_SET_CONFIG,
-                          GetProtocolVersion(), sizeof *osc);
-        osc = (ofp_switch_config*)ofpbuf_put_zeros(b1, sizeof *osc);
+        OfpBuf b1(ofpraw_alloc(OFPRAW_OFPT_SET_CONFIG,
+                               GetProtocolVersion(), sizeof *osc));
+        osc = (ofp_switch_config*)b1.put_zeros(sizeof *osc);
         osc->miss_send_len = htons(OFP_DEFAULT_MISS_SEND_LEN);
         SendMessage(b1);
     }
     {
         // Set packet-in format to nicira-extended format
-        ofpbuf *b2;
         nx_set_packet_in_format* pif;
-        b2 = ofpraw_alloc(OFPRAW_NXT_SET_PACKET_IN_FORMAT,
-                          GetProtocolVersion(), sizeof *pif);
-        pif = (nx_set_packet_in_format*)ofpbuf_put_zeros(b2, sizeof *pif);
+        OfpBuf b2(ofpraw_alloc(OFPRAW_NXT_SET_PACKET_IN_FORMAT,
+                               GetProtocolVersion(), sizeof *pif));
+        pif = (nx_set_packet_in_format*)b2.put_zeros(sizeof *pif);
         pif->format = htonl(NXPIF_NXT_PACKET_IN);
         SendMessage(b2);
     }
@@ -370,7 +362,7 @@ void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
                                              int, ofpbuf *msg) {
     const ofp_header *rq = (const ofp_header *)msg->data;
-    struct ofpbuf *echoReplyMsg = make_echo_reply(rq);
+    OfpBuf echoReplyMsg(make_echo_reply(rq));
     swConn->SendMessage(echoReplyMsg);
 }
 
