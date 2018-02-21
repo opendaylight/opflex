@@ -275,8 +275,18 @@ template <typename P, P*(*Alloc)(), void(*Clean)(void*) = free>
 class OvsP {
 public:
     OvsP(): ptr(Alloc()) {}
-    OvsP(P* _ptr) : ptr(_ptr) {}
+    explicit OvsP(P* _ptr) : ptr(_ptr) {}
     ~OvsP() { Clean(ptr); }
+    OvsP(const OvsP&) = delete;
+    OvsP& operator=(const OvsP&) = delete;
+    OvsP(const OvsP&& o) {
+        Clean(ptr);
+        ptr = o.ptr;
+    }
+    OvsP& operator=(const OvsP&& o) {
+        Clean(ptr);
+        ptr = o.ptr;
+    }
 
     P* get() const { return ptr; }
 

@@ -139,7 +139,7 @@ void AdvertManager::scheduleServiceAdv(const std::string& uuid) {
 }
 
 static int send_packet_out(SwitchConnection* conn,
-                           ofpbuf* b,
+                           OfpBuf& b,
                            unordered_set<uint32_t>& out_ports,
                            IntFlowManager::EncapType encapType =
                            IntFlowManager::ENCAP_NONE,
@@ -147,8 +147,8 @@ static int send_packet_out(SwitchConnection* conn,
                            address tunDst = address()) {
     struct ofputil_packet_out po;
     po.buffer_id = UINT32_MAX;
-    po.packet = b->data;
-    po.packet_len = b->size;
+    po.packet = b.data();
+    po.packet_len = b.size();
     po.in_port = OFPP_CONTROLLER;
 
     ActionBuilder ab;
@@ -164,10 +164,9 @@ static int send_packet_out(SwitchConnection* conn,
     ofputil_protocol proto = ofputil_protocol_from_ofp_version
         ((ofp_version)conn->GetProtocolVersion());
     assert(ofputil_protocol_is_valid(proto));
-    struct ofpbuf* message = ofputil_encode_packet_out(&po, proto);
+    OfpBuf message(ofputil_encode_packet_out(&po, proto));
     int error = conn->SendMessage(message);
     free(po.ofpacts);
-    ofpbuf_delete(b);
     return error;
 }
 
@@ -200,12 +199,12 @@ void AdvertManager::sendRouterAdvs() {
         if (out_ports.size() == 0) continue;
 
         address_v6::bytes_type bytes = ALL_NODES_IP.to_bytes();
-        struct ofpbuf* b =
+        auto b =
             packets::compose_icmp6_router_ad(intFlowManager.getRouterMacAddr(),
                                              packets::MAC_ADDR_IPV6MULTICAST,
                                              (struct in6_addr*)bytes.data(),
                                              epg, polMgr);
-        if (b == NULL) continue;
+        if (!b.get()) continue;
 
         int error = send_packet_out(switchConnection, b, out_ports);
         if (error) {
@@ -265,7 +264,8 @@ static void doSendEpAdv(PolicyManager& policyManager,
                    << ": " << ec.message();
         return;
     }
-    ofpbuf* b = NULL;
+
+    OfpBuf b((struct ofpbuf*)NULL);
 
     boost::optional<address> routerIp;
     if (mode == AdvertManager::EPADV_ROUTER_REQUEST) {
@@ -332,7 +332,7 @@ static void doSendEpAdv(PolicyManager& policyManager,
                                                 addrv, allnodes);
         }
     }
-    if (b == NULL) return;
+    if (!b.get()) return;
 
     int error = send_packet_out(switchConnection, b, out_ports,
                                 encapType, epgVnid, tunDst);
