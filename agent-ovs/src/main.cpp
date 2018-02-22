@@ -74,10 +74,7 @@ static void readConfig(Agent& agent, string configFile) {
     agent.setProperties(properties);
 }
 
-bool isConfigFile(const fs::path& file) {
-    if (!fs::is_regular_file(file))
-        return false;
-
+bool isConfigPath(const fs::path& file) {
     const string fstr = file.filename().string();
     if (boost::algorithm::ends_with(fstr, ".conf") &&
         !boost::algorithm::starts_with(fstr, ".")) {
@@ -102,9 +99,11 @@ public:
 
                 std::unique_lock<std::mutex> lock(mutex);
 
-                configure(configWatcher, agent);
+                addWatches(configWatcher);
                 configWatcher.setInitialScan(false);
                 configWatcher.start();
+
+                configure(agent);
                 agent.start();
 
                 cond.wait(lock, [this]{ return stopped || need_reload; });
@@ -113,6 +112,7 @@ public:
                         "configuration update";
                 }
                 agent.stop();
+                configWatcher.stop();
 
                 if (stopped) {
                     return 0;
@@ -131,7 +131,7 @@ public:
     }
 
     virtual void updated(const boost::filesystem::path& filePath) {
-        if (!isConfigFile(filePath))
+        if (!isConfigPath(filePath))
             return;
 
         {
@@ -162,20 +162,28 @@ private:
     std::mutex mutex;
     std::condition_variable cond;
 
-    void configure(FSWatcher& configWatcher, Agent& agent) {
+    void addWatches(FSWatcher& configWatcher) {
+        if (!watch) return;
+        for (const string& configFile : configFiles) {
+            if (fs::is_directory(configFile)) {
+                LOG(INFO) << "Watching configuration directory "
+                          << configFile << " for changes";
+                configWatcher.addWatch(configFile, *this);
+            }
+        }
+    }
+
+    void configure(Agent& agent) {
         for (const string& configFile : configFiles) {
             if (fs::is_directory(configFile)) {
                 LOG(INFO) << "Reading configuration from config directory "
                           << configFile;
-                if (watch) {
-                    configWatcher.addWatch(configFile, *this);
-                }
 
                 fs::directory_iterator end;
                 std::set<string> files;
                 for (fs::directory_iterator it(configFile);
                      it != end; ++it) {
-                    if (isConfigFile(it->path())) {
+                    if (isConfigPath(it->path())) {
                         files.insert(it->path().string());
                     }
                 }
