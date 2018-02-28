@@ -1456,9 +1456,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
 
                 serviceDest
                     .priority(50)
-                    .ipDst(serviceAddr)
-                    .action()
-                    .ethSrc(getRouterMacAddr());
+                    .ipDst(serviceAddr);
 
                 if (!nextHopAddrs.empty()) {
                     // map traffic to service to the next hop IPs
