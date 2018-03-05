@@ -465,9 +465,13 @@ public:
         writer.String("observable");
         writer.StartArray();
         BOOST_FOREACH(modb::reference_t& p, observables) {
-            serializer.serialize(p.first, p.second,
-                                 *client, writer,
-                                 true);
+            try {
+                serializer.serialize(p.first, p.second,
+                                     *client, writer,
+                                     true);
+            } catch (std::out_of_range e) {
+                // observable no longer exists locally
+            }
         }
         writer.EndArray();
 
