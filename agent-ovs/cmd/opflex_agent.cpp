@@ -92,16 +92,16 @@ public:
 
     int run() {
         try {
+            FSWatcher configWatcher;
+
+            addWatches(configWatcher);
+            configWatcher.setInitialScan(false);
+            configWatcher.start();
+
             while (true) {
-                FSWatcher configWatcher;
+                std::unique_lock<std::mutex> lock(mutex);
                 opflex::ofcore::OFFramework framework;
                 Agent agent(framework);
-
-                std::unique_lock<std::mutex> lock(mutex);
-
-                addWatches(configWatcher);
-                configWatcher.setInitialScan(false);
-                configWatcher.start();
 
                 configure(agent);
                 agent.start();
@@ -111,14 +111,16 @@ public:
                     LOG(INFO) << "Reloading agent because of " <<
                         "configuration update";
                 }
+
                 agent.stop();
-                configWatcher.stop();
 
                 if (stopped) {
                     return 0;
                 }
                 need_reload = false;
             }
+
+            configWatcher.stop();
         } catch (pt::json_parser_error& e) {
             return 4;
         } catch (const std::exception& e) {

@@ -93,7 +93,9 @@ void FSWatcher::start() {
 
 void FSWatcher::stop() {
 #ifdef USE_INOTIFY
-    if (pollThread != NULL) {
+    if (pollThread) {
+        LOG(DEBUG) << "Stopping FSWatcher";
+
         uint64_t u = 1;
         ssize_t s = write(eventFd, &u, sizeof(uint64_t));
         if (s != sizeof(uint64_t))
@@ -105,6 +107,8 @@ void FSWatcher::stop() {
 
         close(eventFd);
         eventFd = -1;
+
+        LOG(DEBUG) << "FSWatcher stopped";
     }
 
 #endif /* USE_INOTIFY */
@@ -165,7 +169,6 @@ void FSWatcher::operator()() {
     // inotify input
     fds[1].fd = fd;
     fds[1].events = POLLIN;
-
 
     while (true) {
         int poll_num = poll(fds, nfds, -1);
