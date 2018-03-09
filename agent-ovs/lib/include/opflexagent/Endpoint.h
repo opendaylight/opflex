@@ -564,6 +564,26 @@ public:
         }
 
         /**
+         * Get the MAC address to use for DHCP replies and ARP replies
+         * for the DHCP server IP
+         *
+         * @return the MAC address
+         */
+        const boost::optional<opflex::modb::MAC>& getServerMac() const {
+            return serverMac;
+        }
+
+        /**
+         * Set the MAC address to use for DHCP replies and ARP replies
+         * for the DHCP server IP
+         *
+         * @param serverMac the MAC address
+         */
+        void setServerMac(const opflex::modb::MAC& serverMac) {
+            this->serverMac = serverMac;
+        }
+
+        /**
          * Clear the list of routers
          */
         void clearRouters() {
@@ -709,6 +729,7 @@ public:
         boost::optional<std::string> ipAddress;
         boost::optional<uint8_t> prefixLen;
         boost::optional<std::string> serverIp;
+        boost::optional<opflex::modb::MAC> serverMac;
         std::vector<std::string> routers;
         boost::optional<std::string> domain;
         std::vector<static_route_t> staticRoutes;

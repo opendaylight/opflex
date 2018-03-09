@@ -906,8 +906,16 @@ static void flowsEndpointDHCPSource(IntFlowManager& flowMgr,
                     }
                 }
 
+                uint8_t serverMac[6];
+                if (v4c.get().getServerMac()) {
+                    v4c.get().getServerMac()->toUIntArray(serverMac);
+                } else {
+                    memcpy(serverMac, flowMgr.getDHCPMacAddr(),
+                           sizeof(serverMac));
+                }
+
                 flowsProxyDiscovery(elBridgeDst, 51,
-                                    serverIp, flowMgr.getDHCPMacAddr(),
+                                    serverIp, serverMac,
                                     epgVnid, rdId, bdId, false,
                                     NULL, OFPP_NONE,
                                     IntFlowManager::ENCAP_NONE);

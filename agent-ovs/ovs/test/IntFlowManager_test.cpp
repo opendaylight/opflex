@@ -160,7 +160,7 @@ public:
     void initExpVirtualIp();
 
     /** Initialize DHCP flow entries */
-    void initExpVirtualDhcp(bool virtIp);
+    void initExpVirtualDhcp(bool virtIp, bool serverOverride);
 
     // Test drivers
     void epgTest();
@@ -1397,7 +1397,7 @@ BOOST_FIXTURE_TEST_CASE(virtDhcp, VxlanIntFlowManagerFixture) {
     initExpBd();
     initExpRd();
     initExpEp(ep0, epg0);
-    initExpVirtualDhcp(false);
+    initExpVirtualDhcp(false, false);
     WAIT_FOR_TABLES("create", 500);
 
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42.42.42.42"));
@@ -1405,6 +1405,11 @@ BOOST_FIXTURE_TEST_CASE(virtDhcp, VxlanIntFlowManagerFixture) {
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:42"), "42::42"));
     ep0->addVirtualIP(make_pair(MAC("42:42:42:42:42:43"), "42::10/124"));
     ep0->addVirtualIP(make_pair(MAC("00:00:00:00:80:00"), "10.20.44.3"));
+
+    v4.setServerIp("1.2.3.4");
+    v4.setServerMac(MAC("ff:bb:ff:dd:ee:ff"));
+    ep0->setDHCPv4Config(v4);
+
     epSrc.updateEndpoint(*ep0);
     intFlowManager.endpointUpdated(ep0->getUUID());
 
@@ -1415,7 +1420,7 @@ BOOST_FIXTURE_TEST_CASE(virtDhcp, VxlanIntFlowManagerFixture) {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpVirtualIp();
-    initExpVirtualDhcp(true);
+    initExpVirtualDhcp(true, true);
     WAIT_FOR_TABLES("virtip", 500);
 }
 
@@ -2676,7 +2681,8 @@ void IntFlowManagerFixture::initExpVirtualIp() {
          .actions().controller(65535).go(SRC).done());
 }
 
-void IntFlowManagerFixture::initExpVirtualDhcp(bool virtIp) {
+void IntFlowManagerFixture::initExpVirtualDhcp(bool virtIp,
+                                               bool serverOverride) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
     string bmac("ff:ff:ff:ff:ff:ff");
 
@@ -2685,15 +2691,24 @@ void IntFlowManagerFixture::initExpVirtualDhcp(bool virtIp) {
          .table(SEC).priority(35).udp().in(port)
          .isEthSrc("00:00:00:00:80:00").isTpSrc(68).isTpDst(67)
          .actions().controller(65535).done());
+
+    string serverIp = "169.254.32.32";
+    string hexServerIp = "0xa9fe2020";
+    string serverMac = "0xaabbccddeeff";
+    if (serverOverride) {
+        serverIp = "1.2.3.4";
+        hexServerIp = "0x1020304";
+        serverMac = "0xffbbffddeeff";
+    }
     ADDF(Bldr().table(BR).priority(51).arp()
          .reg(BD, 1)
          .reg(RD, 1)
-         .isEthDst(bmac).isTpa("169.254.32.32")
+         .isEthDst(bmac).isTpa(serverIp)
          .isArpOp(1)
          .actions().move(ETHSRC, ETHDST)
-         .load(ETHSRC, "0xaabbccddeeff").load(ARPOP, 2)
-         .move(ARPSHA, ARPTHA).load(ARPSHA, "0xaabbccddeeff")
-         .move(ARPSPA, ARPTPA).load(ARPSPA, "0xa9fe2020")
+         .load(ETHSRC, serverMac).load(ARPOP, 2)
+         .move(ARPSHA, ARPTHA).load(ARPSHA, serverMac)
+         .move(ARPSPA, ARPTPA).load(ARPSPA, hexServerIp)
          .inport().done());
 
     ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V6))

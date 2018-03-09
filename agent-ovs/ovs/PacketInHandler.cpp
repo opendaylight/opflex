@@ -652,9 +652,16 @@ static void handleDHCPv4PktIn(Agent& agent,
         return;
     }
 
+    uint8_t serverMac[6];
+    if (v4c.get().getServerMac()) {
+        v4c.get().getServerMac()->toUIntArray(serverMac);
+    } else {
+        memcpy(serverMac, intFlowManager.getDHCPMacAddr(), sizeof(serverMac));
+    }
+
     OfpBuf b(packets::compose_dhcpv4_reply(reply_type,
                                            dhcp_pkt->xid,
-                                           intFlowManager.getDHCPMacAddr(),
+                                           serverMac,
                                            flow.dl_src.ea,
                                            dhcpIp.to_ulong(),
                                            prefixLen,
