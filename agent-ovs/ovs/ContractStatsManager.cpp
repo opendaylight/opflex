@@ -58,8 +58,10 @@ ContractStatsManager::ContractStatsManager(Agent* agent_, IdGenerator& idGen_,
 ContractStatsManager::~ContractStatsManager() {
 
 }
+
 void ContractStatsManager::start() {
-    LOG(DEBUG) << "Starting policy stats manager";
+    LOG(DEBUG) << "Starting contract stats manager ("
+               << timer_interval << " ms)";
     PolicyStatsManager::start();
     EpGroup::registerListener(agent->getFramework(),this);
     RoutingDomain::registerListener(agent->getFramework(),this);
@@ -67,7 +69,7 @@ void ContractStatsManager::start() {
 }
 
 void ContractStatsManager::stop() {
-    LOG(DEBUG) << "Stopping policy stats manager";
+    LOG(DEBUG) << "Stopping contract stats manager";
     stopping = true;
     EpGroup::unregisterListener(agent->getFramework(),this);
     RoutingDomain::unregisterListener(agent->getFramework(),this);

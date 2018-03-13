@@ -66,6 +66,15 @@ public:
     void registerConnection(SwitchConnection* connection);
 
     /**
+     * Set the interval between stats requests.
+     *
+     * @param timerInterval the interval in milliseconds
+     */
+    void setTimerInterval(long timerInterval) {
+        timer_interval = timerInterval;
+    }
+
+    /**
      * Start the policy stats manager
      */
     void start();

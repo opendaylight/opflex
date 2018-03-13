@@ -56,8 +56,10 @@ SecGrpStatsManager::SecGrpStatsManager(Agent* agent_, IdGenerator& idGen_,
 SecGrpStatsManager::~SecGrpStatsManager() {
 
 }
+
 void SecGrpStatsManager::start() {
-    LOG(DEBUG) << "Starting security group stats manager";
+    LOG(DEBUG) << "Starting security group stats manager ("
+               << timer_interval << " ms)";
     PolicyStatsManager::start();
     timer->async_wait(bind(&SecGrpStatsManager::on_timer, this, error));
 }

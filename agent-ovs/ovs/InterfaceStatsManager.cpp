@@ -43,8 +43,9 @@ InterfaceStatsManager::InterfaceStatsManager(Agent* agent_,
 InterfaceStatsManager::~InterfaceStatsManager() {
 }
 
-void InterfaceStatsManager::registerConnection(SwitchConnection* intConnection,
-                                 SwitchConnection *accessConnection ) {
+void InterfaceStatsManager::
+registerConnection(SwitchConnection* intConnection,
+                   SwitchConnection *accessConnection ) {
     this->intConnection = intConnection;
     this->accessConnection = accessConnection;
 }
@@ -57,7 +58,8 @@ void InterfaceStatsManager::start() {
             "Unable to start; mandatory connection (int-conn) unavailable";
         return;
     }
-    LOG(DEBUG) << "Starting stats manager";
+    LOG(DEBUG) << "Starting interface stats manager ("
+               << timer_interval << " ms)";
 
     if (intConnection)
         intConnection->RegisterMessageHandler(OFPTYPE_PORT_STATS_REPLY, this);
@@ -72,7 +74,7 @@ void InterfaceStatsManager::start() {
 }
 
 void InterfaceStatsManager::stop() {
-    LOG(DEBUG) << "Stopping stats manager";
+    LOG(DEBUG) << "Stopping interface stats manager";
     stopping = true;
 
     if (intConnection) {

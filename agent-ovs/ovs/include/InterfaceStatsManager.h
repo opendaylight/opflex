@@ -74,6 +74,14 @@ public:
     void registerConnection(SwitchConnection* intConnection,
                             SwitchConnection *accessConnection);
 
+    /**
+     * Set the interval between stats requests.
+     *
+     * @param timerInterval the interval in milliseconds
+     */
+    void setTimerInterval(long timerInterval) {
+        timer_interval = timerInterval;
+    }
 
     /**
      * Start the stats manager
