@@ -18,6 +18,7 @@
 #include <time.h>
 #include <uv.h>
 #include <limits>
+#include <cmath>
 
 #include <boost/tuple/tuple.hpp>
 #include <boost/foreach.hpp>
@@ -225,8 +226,26 @@ void Processor::sendToRole(const item& i, uint64_t& newexp,
     obj_state_by_uri::iterator uit = uri_index.find(i.uri);
     uri_index.modify(uit, change_last_xid(xid));
 
-    if (pending > 0)
-        newexp = now(proc_loop) + retryDelay;
+    if (pending > 0) {
+        uint64_t nextRetryDelay =
+            (uint64_t)std::pow(2, i.details->retry_count) * retryDelay;
+
+        if (nextRetryDelay > LOCAL_REFRESH_RATE)
+            nextRetryDelay = LOCAL_REFRESH_RATE;
+
+        if (i.details->retry_count > 0) {
+            LOG(DEBUG) << "Retrying dropped message for item "
+                       << i.uri
+                       << " (next attempt in " << nextRetryDelay << " ms)";
+        }
+
+        if (i.details->retry_count < 16)
+            i.details->retry_count += 1;
+
+        newexp = now(proc_loop) + nextRetryDelay;
+    } else {
+        i.details->retry_count = 0;
+    }
 }
 
 bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
@@ -704,6 +723,7 @@ void Processor::responseReceived(uint64_t reqId) {
 
         if (uit->details->pending_reqs == 0) {
             // All peers responded to the message
+            uit->details->retry_count = 0;
             uri_index.modify(uit,
                              change_expiration(uit->details->resolve_time +
                                                uit->details->refresh_rate));

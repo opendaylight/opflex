@@ -300,6 +300,11 @@ private:
          * transaction ID
          */
         size_t pending_reqs;
+
+        /**
+         * Number of retries for this item
+         */
+        uint16_t retry_count;
     };
 
     /**
@@ -324,6 +329,7 @@ private:
             details->local = local_;
             details->resolve_time = 0;
             details->pending_reqs = 0;
+            details->retry_count = 0;
         }
         ~item() { if (details) delete details; }
         item& operator=( const item& rhs ) {
