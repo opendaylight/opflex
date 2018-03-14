@@ -68,6 +68,8 @@ void FSWatcher::setInitialScan(bool scan) {
 
 void FSWatcher::start() {
 #ifdef USE_INOTIFY
+    if (regWatches.size() == 0) return;
+
     for (const path_map_t::value_type& w : regWatches) {
         if (!fs::exists(w.first)) {
             throw runtime_error(string("Filesystem watch directory " ) +
