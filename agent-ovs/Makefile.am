@@ -230,7 +230,7 @@ mcast_daemon_LDADD = \
 	libopflex_agent.la
 
 TESTS = agent_test
-noinst_PROGRAMS = $(TESTS) integration_test
+noinst_PROGRAMS = $(TESTS) integration_test policy_repo_stress
 
 agent_test_CFLAGS =
 agent_test_CXXFLAGS = \
@@ -307,6 +307,18 @@ mock_server_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	libopflex_agent.la
+
+policy_repo_stress_CXXFLAGS = \
+	$(libopflex_CFLAGS) \
+	$(libmodelgbp_CFLAGS)
+policy_repo_stress_SOURCES = \
+	cmd/test/policy_repo_stress.cpp
+policy_repo_stress_LDADD = \
+	$(libopflex_LIBS) \
+	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	$(BOOST_FILESYSTEM_LIB) \
+	$(BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
