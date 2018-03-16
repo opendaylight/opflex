@@ -53,7 +53,8 @@ using boost::system::error_code;
 ContractStatsManager::ContractStatsManager(Agent* agent_, IdGenerator& idGen_,
                                            SwitchManager& switchManager_,
                                            long timer_interval_)
-    : PolicyStatsManager(agent_,idGen_,switchManager_,timer_interval_) {}
+    : PolicyStatsManager(agent_,idGen_,switchManager_,timer_interval_),
+      dropGenId(0) {}
 
 ContractStatsManager::~ContractStatsManager() {
 
