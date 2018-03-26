@@ -23,6 +23,15 @@ module[domain]
                 ]
         }
 
+        dependency[remoteEndpointInventory;
+                   cardinality=single;
+                   ]
+        {
+            to[class=inv/RemoteEndpointInventory;
+                cardinality=many;
+                ]
+        }
+
         named
         {
             parent[class=*;]

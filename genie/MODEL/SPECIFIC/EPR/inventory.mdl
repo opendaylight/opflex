@@ -145,6 +145,26 @@ module[inv]
         member[mac; type=address/MAC]
     }
 
+    class[RemoteIp;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/RemoteInventoryEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=ip]
+            }
+        }
+
+        # An IP address
+        member[ip; type=address/IP]
+    }
+
     class[IpMapping;
           super=policy/NamedDefinition;
           concrete;
@@ -379,4 +399,59 @@ module[inv]
         member[value; type=ascii/String]
     }
 
+    # Container for remote endpoint inventory
+    class[RemoteEndpointInventory;
+          super=policy/Definition;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/Universe]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+            }
+        }
+    }
+
+    # an endpoint with network identifiers
+    class[RemoteInventoryEp;
+          super=inv/InventoryEp;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/RemoteEndpointInventory]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
+        # mac address of the end-point
+        member[mac; type=address/MAC]
+
+        # Next hop remote tunnel endpoint
+        member[nextHopTunnel; type=address/IP]
+
+        dependency[group;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EpGroup;
+                cardinality=many;
+                ]
+        }
+    }
 }
