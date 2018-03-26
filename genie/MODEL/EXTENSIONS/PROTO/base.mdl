@@ -14,6 +14,18 @@ module[platform]
         const[name=intra_rd; value=4]
     }
 
+    type[RemoteInventoryType; super=scalar/Enum8]
+    {
+        # Remote inventory doesn't contain any endpoints
+        const[name=NONE; value=0]
+
+        # Remote inventory contains all endpoints that share a fabric uplink
+        const[name=ON_LINK; value=1]
+
+        # Remote inventory is a complete accounting of remote endpoints
+        const[name=COMPLETE; value=2]
+    }
+
     class[Config;
           super=policy/NameResolvedDefinition;
           concrete
@@ -22,6 +34,7 @@ module[platform]
         member[encapType; type=gbpe/EncapType]
         member[mode; type=platform/SwitchingMode]
         member[multicastGroupIP; type=address/IP]
+        member[inventoryType; type=platform/RemoteInventoryType]
         contained
         {
             parent[class=policy/Universe]

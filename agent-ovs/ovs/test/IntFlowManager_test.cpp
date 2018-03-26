@@ -18,6 +18,7 @@
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
 #include <modelgbp/gbp/BcastFloodModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
+#include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include "IntFlowManager.h"
@@ -37,6 +38,7 @@
 using namespace boost::assign;
 using namespace opflex::modb;
 using namespace modelgbp::gbp;
+using namespace modelgbp::platform;
 using namespace opflexagent;
 namespace fs = boost::filesystem;
 namespace pt = boost::property_tree;
@@ -52,16 +54,16 @@ using boost::optional;
 
 BOOST_AUTO_TEST_SUITE(IntFlowManager_test)
 
-class IntFlowManagerFixture : public FlowManagerFixture {
+class BaseIntFlowManagerFixture : public FlowManagerFixture {
 public:
-    IntFlowManagerFixture()
+    BaseIntFlowManagerFixture()
         : FlowManagerFixture(),
           intFlowManager(agent, switchManager, idGen,
                          ctZoneManager, pktInHandler),
           pktInHandler(agent, intFlowManager),
           policyMgr(agent.getPolicyManager()),
           ep2_port(11), ep4_port(22) {
-        createObjects();
+
         expTables.resize(IntFlowManager::NUM_FLOW_TABLES);
 
         tunIf = "br0_vxlan0";
@@ -70,23 +72,9 @@ public:
         intFlowManager.setVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
         intFlowManager.setVirtualDHCP(true, "aa:bb:cc:dd:ee:ff");
 
-        portmapper.ports[ep0->getInterfaceName().get()] = 80;
-        portmapper.RPortMap[80] = ep0->getInterfaceName().get();
         portmapper.ports[tunIf] = 2048;
         portmapper.RPortMap[2048] = tunIf;
         tun_port_new = 4096;
-
-        WAIT_FOR(policyMgr.groupExists(epg0->getURI()), 500);
-        WAIT_FOR(policyMgr.getBDForGroup(epg0->getURI()) != boost::none, 500);
-
-        WAIT_FOR(policyMgr.groupExists(epg1->getURI()), 500);
-        WAIT_FOR(policyMgr.getRDForGroup(epg1->getURI()) != boost::none, 500);
-
-        WAIT_FOR(policyMgr.groupExists(epg3->getURI()), 500);
-        WAIT_FOR(policyMgr.getRDForGroup(epg3->getURI()) != boost::none, 500);
-
-        WAIT_FOR(policyMgr.groupExists(epg4->getURI()), 500);
-        WAIT_FOR(policyMgr.getRDForGroup(epg4->getURI()) != boost::none, 500);
 
         switchManager.registerStateHandler(&intFlowManager);
         intFlowManager.enableConnTrack();
@@ -94,9 +82,9 @@ public:
         pktInHandler.registerConnection(switchManager.getConnection(), NULL);
         pktInHandler.setPortMapper(&switchManager.getPortMapper(), NULL);
         pktInHandler.setFlowReader(&switchManager.getFlowReader());
-        start();
+
     }
-    virtual ~IntFlowManagerFixture() {
+    virtual ~BaseIntFlowManagerFixture() {
         intFlowManager.stop();
         stop();
     }
@@ -110,12 +98,15 @@ public:
      * Initialize flow tables with static flow entries not scoped to any
      * object
      */
-    void initExpStatic();
+    void initExpStatic(uint8_t remoteInventoryType =
+                       RemoteInventoryTypeEnumT::CONST_NONE);
 
     /** Initialize EPG-scoped flow entries */
     void initExpEpg(shared_ptr<EpGroup>& epg,
                     uint32_t fdId = 0, uint32_t bdId = 1, uint32_t rdId = 1,
-                    bool isolated = false);
+                    bool isolated = false,
+                    uint8_t remoteInventoryType =
+                    RemoteInventoryTypeEnumT::CONST_NONE);
 
     /** Initialize flood domain-scoped flow entries */
     void initExpFd(uint32_t fdId = 0);
@@ -125,7 +116,7 @@ public:
                    bool routeOn = true);
 
     /** Initialize routing domain-scoped flow entries */
-    void initExpRd(uint32_t rdId = 1);
+    void initExpRd(uint32_t rdId = 1, bool includeSubnets = true);
 
     /** Initialize endpoint-scoped flow entries */
     void initExpEp(shared_ptr<Endpoint>& ep,
@@ -135,6 +126,9 @@ public:
 
     /** Initialize flows related to IP address mapping */
     void initExpIpMapping(bool natEpgMap = true, bool nextHop = false);
+
+    /** Initialize remote endpoint flows */
+    void initExpRemoteEp();
 
     /** Initialize contract 1 flows */
     void initExpCon1();
@@ -171,6 +165,7 @@ public:
     void connectTest();
     void portStatusTest();
     void loadBalancedServiceTest();
+    void remoteEndpointTest();
 
     IntFlowManager intFlowManager;
     PacketInHandler pktInHandler;
@@ -189,6 +184,30 @@ public:
     uint32_t ep2_port;
     uint32_t ep4_port;
     uint32_t tun_port_new;
+};
+
+class IntFlowManagerFixture : public BaseIntFlowManagerFixture {
+public:
+    IntFlowManagerFixture() : BaseIntFlowManagerFixture() {
+        createObjects();
+
+        portmapper.ports[ep0->getInterfaceName().get()] = 80;
+        portmapper.RPortMap[80] = ep0->getInterfaceName().get();
+
+        WAIT_FOR(policyMgr.groupExists(epg0->getURI()), 500);
+        WAIT_FOR(policyMgr.getBDForGroup(epg0->getURI()) != boost::none, 500);
+
+        WAIT_FOR(policyMgr.groupExists(epg1->getURI()), 500);
+        WAIT_FOR(policyMgr.getRDForGroup(epg1->getURI()) != boost::none, 500);
+
+        WAIT_FOR(policyMgr.groupExists(epg3->getURI()), 500);
+        WAIT_FOR(policyMgr.getRDForGroup(epg3->getURI()) != boost::none, 500);
+
+        WAIT_FOR(policyMgr.groupExists(epg4->getURI()), 500);
+        WAIT_FOR(policyMgr.getRDForGroup(epg4->getURI()) != boost::none, 500);
+
+        start();
+    }
 };
 
 class VxlanIntFlowManagerFixture : public IntFlowManagerFixture {
@@ -213,7 +232,7 @@ public:
     virtual ~VlanIntFlowManagerFixture() {}
 };
 
-void IntFlowManagerFixture::epgTest() {
+void BaseIntFlowManagerFixture::epgTest() {
     setConnected();
 
     /* create */
@@ -362,7 +381,7 @@ BOOST_FIXTURE_TEST_CASE(epg_vlan, VlanIntFlowManagerFixture) {
     epgTest();
 }
 
-void IntFlowManagerFixture::routeModeTest() {
+void BaseIntFlowManagerFixture::routeModeTest() {
     setConnected();
     intFlowManager.egDomainUpdated(epg0->getURI());
     initExpStatic();
@@ -420,7 +439,7 @@ BOOST_FIXTURE_TEST_CASE(routemode_vlan, VlanIntFlowManagerFixture) {
     routeModeTest();
 }
 
-void IntFlowManagerFixture::arpModeTest() {
+void BaseIntFlowManagerFixture::arpModeTest() {
     /* setup entries for epg0 connected to fd0 */
     setConnected();
     exec.IgnoreGroupMods();
@@ -559,7 +578,7 @@ BOOST_FIXTURE_TEST_CASE(noifaceEp, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("change", 500);
 }
 
-void IntFlowManagerFixture::fdTest() {
+void BaseIntFlowManagerFixture::fdTest() {
     setConnected();
 
     /* create */
@@ -671,7 +690,7 @@ BOOST_FIXTURE_TEST_CASE(fd_vlan, VlanIntFlowManagerFixture) {
     fdTest();
 }
 
-void IntFlowManagerFixture::groupFloodTest() {
+void BaseIntFlowManagerFixture::groupFloodTest() {
     intFlowManager.setFloodScope(IntFlowManager::ENDPOINT_GROUP);
     setConnected();
 
@@ -814,7 +833,7 @@ BOOST_FIXTURE_TEST_CASE(policy_portrange, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("con3", 500);
 }
 
-void IntFlowManagerFixture::connectTest() {
+void BaseIntFlowManagerFixture::connectTest() {
     exec.ignoredFlowMods.insert(FlowEdit::ADD);
     exec.Expect(FlowEdit::DEL, fe_connect_1);
     exec.Expect(FlowEdit::DEL, fe_connect_learn);
@@ -842,7 +861,7 @@ BOOST_FIXTURE_TEST_CASE(connect_vlan, VlanIntFlowManagerFixture) {
     connectTest();
 }
 
-void IntFlowManagerFixture::portStatusTest() {
+void BaseIntFlowManagerFixture::portStatusTest() {
     setConnected();
 
     /* create entries for epg0, ep0 and ep2 with original tunnel port */
@@ -1141,6 +1160,116 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("nexthop", 500);
 }
 
+BOOST_FIXTURE_TEST_CASE(remoteInventoryMode, BaseIntFlowManagerFixture) {
+    {
+        Mutator mutator(framework, policyOwner);
+        config = universe->addPlatformConfig("default");
+        config->setMulticastGroupIP("224.1.1.1");
+
+        bd0 = space->addGbpBridgeDomain("bd0");
+        rd0 = space->addGbpRoutingDomain("rd0");
+        bd0->addGbpBridgeDomainToNetworkRSrc()
+            ->setTargetRoutingDomain(rd0->getURI());
+
+        epg0 = space->addGbpEpGroup("epg0");
+        epg0->addGbpEpGroupToNetworkRSrc()
+            ->setTargetBridgeDomain(bd0->getURI());
+        epg0->addGbpeInstContext()->setEncapId(0xA0A);
+        mutator.commit();
+    }
+
+    start();
+    intFlowManager.setEncapType(IntFlowManager::ENCAP_VXLAN);
+    intFlowManager.start();
+    setConnected();
+
+    /* create */
+    intFlowManager.egDomainUpdated(epg0->getURI());
+    intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd(1, false);
+    WAIT_FOR_TABLES("create", 500);
+
+    /* on-link inventory */
+    {
+        Mutator mutator(framework, policyOwner);
+        auto config = universe->resolvePlatformConfig("default");
+        BOOST_REQUIRE(config);
+        config.get()->
+            setInventoryType(RemoteInventoryTypeEnumT::CONST_ON_LINK);
+        mutator.commit();
+        intFlowManager.configUpdated(config.get()->getURI());
+    }
+
+    clearExpFlowTables();
+    initExpStatic(RemoteInventoryTypeEnumT::CONST_ON_LINK);
+    initExpEpg(epg0, 0, 1, 1, false, RemoteInventoryTypeEnumT::CONST_ON_LINK);
+    initExpBd();
+    initExpRd(1, false);
+    WAIT_FOR_TABLES("on_link", 500);
+
+    /* complete inventory */
+    {
+        Mutator mutator(framework, policyOwner);
+        auto config = universe->resolvePlatformConfig("default");
+        BOOST_REQUIRE(config);
+        config.get()->
+            setInventoryType(RemoteInventoryTypeEnumT::CONST_COMPLETE);
+        mutator.commit();
+        intFlowManager.configUpdated(config.get()->getURI());
+    }
+
+    clearExpFlowTables();
+    initExpStatic(RemoteInventoryTypeEnumT::CONST_COMPLETE);
+    initExpEpg(epg0, 0, 1, 1, false, RemoteInventoryTypeEnumT::CONST_COMPLETE);
+    initExpBd();
+    initExpRd(1, false);
+    WAIT_FOR_TABLES("complete", 500);
+
+}
+
+void BaseIntFlowManagerFixture::remoteEndpointTest() {
+    setConnected();
+    intFlowManager.egDomainUpdated(epg0->getURI());
+    intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
+
+    Mutator m(framework, policyOwner);
+    auto invu = modelgbp::inv::Universe::resolve(framework);
+    auto inv = invu.get()->addInvRemoteEndpointInventory();
+    auto rep1 = inv->addInvRemoteInventoryEp("ep1");
+    rep1->setMac(MAC("ab:cd:ef:ab:cd:ef"))
+        .setNextHopTunnel("5.6.7.8")
+        .addInvRemoteInventoryEpToGroupRSrc()
+        ->setTargetEpGroup(epg0->getURI());
+    rep1->addInvRemoteIp("1.3.5.7");
+    rep1->addInvRemoteIp("2.4.6.8");
+    m.commit();
+
+    intFlowManager.remoteEndpointUpdated("ep1");
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    initExpRemoteEp();
+    WAIT_FOR_TABLES("remoteep", 500);
+}
+
+BOOST_FIXTURE_TEST_CASE(remoteEndpoint_vxlan, VxlanIntFlowManagerFixture) {
+    remoteEndpointTest();
+}
+
+BOOST_FIXTURE_TEST_CASE(remoteEndpoint_vlan, VlanIntFlowManagerFixture) {
+    remoteEndpointTest();
+}
+
 BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
     setConnected();
     intFlowManager.egDomainUpdated(epg0->getURI());
@@ -1223,7 +1352,7 @@ BOOST_FIXTURE_TEST_CASE(loadBalancedService_vlan, VlanIntFlowManagerFixture) {
     loadBalancedServiceTest();
 }
 
-void IntFlowManagerFixture::loadBalancedServiceTest() {
+void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     setConnected();
     intFlowManager.egDomainUpdated(epg0->getURI());
     intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
@@ -1429,7 +1558,7 @@ enum TABLE {
     SEC, SRC, SVR, BR, SVH, RT, NAT, LRN, SVD, POL, OUT
 };
 
-void IntFlowManagerFixture::initExpStatic() {
+void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
     uint32_t tunPort = intFlowManager.getTunnelPort();
     uint8_t rmacArr[6];
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
@@ -1475,19 +1604,30 @@ void IntFlowManagerFixture::initExpStatic() {
     if (tunPort != OFPP_NONE) {
         ADDF(Bldr().table(SEC).priority(50).in(tunPort)
              .actions().go(SRC).done());
-        ADDF(Bldr().table(BR).priority(1)
-             .actions().mdAct(flow::meta::out::TUNNEL)
-             .go(OUT).done());
-        ADDF(Bldr().table(RT).priority(1)
-             .actions().mdAct(flow::meta::out::TUNNEL)
-             .go(OUT).done());
+        if (remoteInventoryType != RemoteInventoryTypeEnumT::CONST_COMPLETE) {
+            ADDF(Bldr().table(BR).priority(1)
+                 .actions().mdAct(flow::meta::out::TUNNEL)
+                 .go(OUT).done());
+            ADDF(Bldr().table(RT).priority(1)
+                 .actions().mdAct(flow::meta::out::TUNNEL)
+                 .go(OUT).done());
+        }
+        if (intFlowManager.getEncapType() != IntFlowManager::ENCAP_VLAN) {
+            ADDF(Bldr().table(OUT).priority(15)
+                .isMdAct(flow::meta::out::REMOTE_TUNNEL)
+                .actions()
+                .move(DEPG, TUNID).move(OUTPORT, TUNDST)
+                .outPort(tunPort)
+                .done());
+        }
     }
 }
 
 // Initialize EPG-scoped flow entries
-void IntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
-                                    uint32_t fdId, uint32_t bdId,
-                                    uint32_t rdId, bool isolated) {
+void BaseIntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
+                                           uint32_t fdId, uint32_t bdId,
+                                           uint32_t rdId, bool isolated,
+                                           uint8_t remoteInventoryType) {
     IntFlowManager::EncapType encapType = intFlowManager.getEncapType();
     uint32_t tunPort = intFlowManager.getTunnelPort();
     uint32_t vnid = policyMgr.getVnidForGroup(epg->getURI()).get();
@@ -1551,17 +1691,27 @@ void IntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
             ADDF(Bldr().table(SRC).priority(149).tunId(vnid)
                  .in(tunPort).actions().load(SEPG, vnid).load(BD, bdId)
                  .load(FD, fdId).load(RD, rdId).polApplied().go(SVR).done());
-            ADDF(Bldr().table(OUT).priority(10).reg(SEPG, vnid)
-                 .isMdAct(flow::meta::out::TUNNEL)
-                 .actions().move(SEPG, TUNID)
-                 .load(TUNDST, mcast.to_v4().to_ulong())
-                 .outPort(tunPort).done());
-            ADDF(Bldr().table(OUT).priority(11).reg(SEPG, vnid)
-                 .isMdAct(flow::meta::out::TUNNEL)
-                 .isEthDst(rmac)
-                 .actions().move(SEPG, TUNID)
-                 .load(TUNDST, intFlowManager.getTunnelDst().to_v4().to_ulong())
-                 .outPort(tunPort).done());
+            if (remoteInventoryType == RemoteInventoryTypeEnumT::CONST_NONE) {
+                ADDF(Bldr().table(OUT).priority(10).reg(SEPG, vnid)
+                     .isMdAct(flow::meta::out::TUNNEL)
+                     .actions().move(SEPG, TUNID)
+                     .load(TUNDST, mcast.to_v4().to_ulong())
+                     .outPort(tunPort).done());
+                ADDF(Bldr().table(OUT).priority(11).reg(SEPG, vnid)
+                     .isMdAct(flow::meta::out::TUNNEL)
+                     .isEthDst(rmac)
+                     .actions().move(SEPG, TUNID)
+                     .load(TUNDST, intFlowManager.getTunnelDst()
+                           .to_v4().to_ulong())
+                     .outPort(tunPort).done());
+            } else {
+                ADDF(Bldr().table(OUT).priority(11).reg(SEPG, vnid)
+                     .isMdAct(flow::meta::out::TUNNEL)
+                     .actions().move(SEPG, TUNID)
+                     .load(TUNDST, intFlowManager.getTunnelDst()
+                           .to_v4().to_ulong())
+                     .outPort(tunPort).done());
+            }
             break;
         }
     }
@@ -1576,7 +1726,7 @@ void IntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
 }
 
 // Initialize flood domain-scoped flow entries
-void IntFlowManagerFixture::initExpFd(uint32_t fdId) {
+void BaseIntFlowManagerFixture::initExpFd(uint32_t fdId) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
     if (fdId != 0) {
@@ -1587,8 +1737,8 @@ void IntFlowManagerFixture::initExpFd(uint32_t fdId) {
 }
 
 // Initialize bridge domain-scoped flow entries
-void IntFlowManagerFixture::initExpBd(uint32_t bdId, uint32_t rdId,
-                                      bool routeOn) {
+void BaseIntFlowManagerFixture::initExpBd(uint32_t bdId, uint32_t rdId,
+                                          bool routeOn) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
     if (routeOn) {
@@ -1606,8 +1756,11 @@ void IntFlowManagerFixture::initExpBd(uint32_t bdId, uint32_t rdId,
 }
 
 // Initialize routing domain-scoped flow entries
-void IntFlowManagerFixture::initExpRd(uint32_t rdId) {
+void BaseIntFlowManagerFixture::initExpRd(uint32_t rdId, bool includeSubnets) {
     uint32_t tunPort = intFlowManager.getTunnelPort();
+
+    ADDF(Bldr().table(POL).priority(1).reg(RD, rdId).actions().drop().done());
+    if (!includeSubnets) return;
 
     if (tunPort != OFPP_NONE) {
         ADDF(Bldr().table(RT).priority(324)
@@ -1633,14 +1786,14 @@ void IntFlowManagerFixture::initExpRd(uint32_t rdId) {
              .ipv6().reg(RD, rdId).isIpv6Dst("2001:db8::/32")
              .actions().drop().done());
     }
-    ADDF(Bldr().table(POL).priority(1).reg(RD, rdId).actions().drop().done());
 }
 
 // Initialize endpoint-scoped flow entries
-void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
-                                      shared_ptr<EpGroup>& epg,
-                                      uint32_t fdId, uint32_t bdId,
-                                      uint32_t rdId, bool arpOn, bool routeOn) {
+void BaseIntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
+                                          shared_ptr<EpGroup>& epg,
+                                          uint32_t fdId, uint32_t bdId,
+                                          uint32_t rdId, bool arpOn,
+                                          bool routeOn) {
     IntFlowManager::EncapType encapType = intFlowManager.getEncapType();
     string mac = ep->getMAC().get().toString();
     uint32_t port = portmapper.FindPort(ep->getInterfaceName().get());
@@ -1855,8 +2008,8 @@ void IntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
     }
 }
 
-void IntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
-                                        uint32_t bdId, uint32_t rdId) {
+void BaseIntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
+                                            uint32_t bdId, uint32_t rdId) {
     string bmac("ff:ff:ff:ff:ff:ff");
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
     uint32_t tunPort = intFlowManager.getTunnelPort();
@@ -1913,7 +2066,7 @@ void IntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
     }
 }
 
-void IntFlowManagerFixture::initExpCon1() {
+void BaseIntFlowManagerFixture::initExpCon1() {
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
     unordered_set<uint32_t> pvnids, cvnids;
@@ -1972,7 +2125,7 @@ void IntFlowManagerFixture::initExpCon1() {
     }
 }
 
-void IntFlowManagerFixture::initExpCon2() {
+void BaseIntFlowManagerFixture::initExpCon2() {
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
     unordered_set<uint32_t> ivnids;
@@ -1989,7 +2142,7 @@ void IntFlowManagerFixture::initExpCon2() {
     }
 }
 
-void IntFlowManagerFixture::initExpCon3() {
+void BaseIntFlowManagerFixture::initExpCon3() {
     uint32_t epg0_vnid = policyMgr.getVnidForGroup(epg0->getURI()).get();
     uint32_t epg1_vnid = policyMgr.getVnidForGroup(epg1->getURI()).get();
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
@@ -2028,7 +2181,7 @@ void IntFlowManagerFixture::initExpCon3() {
 }
 
 // Initialize flows related to IP address mapping/NAT
-void IntFlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
+void BaseIntFlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
     uint8_t rmacArr[6];
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac(MAC(rmacArr).toString());
@@ -2187,7 +2340,36 @@ void IntFlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
     }
 }
 
-void IntFlowManagerFixture::initExpAnycastService(int nextHop) {
+void BaseIntFlowManagerFixture::initExpRemoteEp() {
+    IntFlowManager::EncapType encapType = intFlowManager.getEncapType();
+    uint32_t vnid = policyMgr.getVnidForGroup(epg0->getURI()).get();
+    address tunDst = address::from_string("5.6.7.8");
+    uint8_t rmacArr[6];
+    memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
+    string rmac = MAC(rmacArr).toString();
+
+    if (encapType != IntFlowManager::ENCAP_VLAN) {
+        ADDF(Bldr().table(BR).priority(10).reg(BD, 1)
+             .isEthDst("ab:cd:ef:ab:cd:ef").actions().load(DEPG, vnid)
+             .load(OUTPORT, tunDst.to_v4().to_ulong())
+             .mdAct(flow::meta::out::REMOTE_TUNNEL)
+             .go(POL).done());
+        ADDF(Bldr().table(RT).priority(500).ip().reg(RD, 1)
+             .isEthDst(rmac).isIpDst("1.3.5.7")
+             .actions().load(DEPG, vnid)
+             .load(OUTPORT, tunDst.to_v4().to_ulong())
+             .mdAct(flow::meta::out::REMOTE_TUNNEL)
+             .go(POL).done());
+        ADDF(Bldr().table(RT).priority(500).ip().reg(RD, 1)
+             .isEthDst(rmac).isIpDst("2.4.6.8")
+             .actions().load(DEPG, vnid)
+             .load(OUTPORT, tunDst.to_v4().to_ulong())
+             .mdAct(flow::meta::out::REMOTE_TUNNEL)
+             .go(POL).done());
+    }
+}
+
+void BaseIntFlowManagerFixture::initExpAnycastService(int nextHop) {
     string mac = "ed:84:da:ef:16:96";
     string bmac("ff:ff:ff:ff:ff:ff");
     uint8_t rmacArr[6];
@@ -2340,7 +2522,7 @@ void IntFlowManagerFixture::initExpAnycastService(int nextHop) {
          .controller(65535).done());
 }
 
-void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
+void BaseIntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
     string mac = "13:37:13:37:13:37";
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
     string bmac("ff:ff:ff:ff:ff:ff");
@@ -2652,7 +2834,7 @@ void IntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
     }
 }
 
-void IntFlowManagerFixture::initExpVirtualIp() {
+void BaseIntFlowManagerFixture::initExpVirtualIp() {
     uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
     ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::VIRTUAL_IP_V4))
          .table(SEC).priority(60).arp().in(port)
@@ -2681,8 +2863,8 @@ void IntFlowManagerFixture::initExpVirtualIp() {
          .actions().controller(65535).go(SRC).done());
 }
 
-void IntFlowManagerFixture::initExpVirtualDhcp(bool virtIp,
-                                               bool serverOverride) {
+void BaseIntFlowManagerFixture::initExpVirtualDhcp(bool virtIp,
+                                                   bool serverOverride) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
     string bmac("ff:ff:ff:ff:ff:ff");
 
@@ -2748,7 +2930,8 @@ void IntFlowManagerFixture::initExpVirtualDhcp(bool virtIp,
  * Create group mod entries for use in tests
  */
 void
-IntFlowManagerFixture::createGroupEntries(IntFlowManager::EncapType encapType) {
+BaseIntFlowManagerFixture::
+createGroupEntries(IntFlowManager::EncapType encapType) {
     uint32_t tunPort = intFlowManager.getTunnelPort();
     uint32_t ep0_port = portmapper.FindPort(ep0->getInterfaceName().get());
 
@@ -2787,7 +2970,7 @@ IntFlowManagerFixture::createGroupEntries(IntFlowManager::EncapType encapType) {
     ge_epg2_prom = "group_id=2147483650,type=all";
 }
 
-void IntFlowManagerFixture::
+void BaseIntFlowManagerFixture::
 createOnConnectEntries(IntFlowManager::EncapType encapType,
                        FlowEntryList& flows,
                        GroupEdit::EntryList& groups) {
