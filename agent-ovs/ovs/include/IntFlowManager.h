@@ -240,6 +240,7 @@ public:
 
     /* Interface: EndpointListener */
     virtual void endpointUpdated(const std::string& uuid);
+    virtual void remoteEndpointUpdated(const std::string& uuid);
 
     /* Interface: ServiceListener */
     virtual void serviceUpdated(const std::string& uuid);
@@ -275,7 +276,6 @@ public:
                                    PeerStatus peerStatus);
 
     /**
-     * Get the VNID for the specified endpoint groups or L3 external
      * networks
      *
      * @param uris URIs of endpoint groups to search for
@@ -399,6 +399,14 @@ private:
      * managed objecs.
      */
     void createStaticFlows();
+
+    /**
+     * Compare and update flow/group tables due to changes in an remote
+     * endpoint.
+     *
+     * @param uuid UUID of the changed remote endpoint
+     */
+    void handleRemoteEndpointUpdate(const std::string& uuid);
 
     /**
      * Compare and update flow/group tables due to changes in an endpoint.

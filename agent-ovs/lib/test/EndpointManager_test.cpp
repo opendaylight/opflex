@@ -528,6 +528,97 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
     watcher.stop();
 }
 
+class MockEndpointListener : public EndpointListener {
+public:
+    virtual void endpointUpdated(const std::string& uuid) {};
+    virtual void remoteEndpointUpdated(const std::string& uuid) {
+        std::unique_lock<std::mutex> guard(mutex);
+        updates.insert(uuid);
+    };
+
+    size_t numUpdates() {
+        std::unique_lock<std::mutex> guard(mutex);
+        return updates.size();
+    }
+    void clear() {
+        std::unique_lock<std::mutex> guard(mutex);
+        updates.clear();
+    }
+
+    std::mutex mutex;
+    std::unordered_set<std::string> updates;
+};
+
+BOOST_FIXTURE_TEST_CASE( remoteEndpoint, BaseFixture ) {
+    MockEndpointListener listener;
+    agent.getEndpointManager().registerListener(&listener);
+
+    Mutator m(framework, "policyreg");
+    auto universe = policy::Universe::resolve(framework).get();
+    auto space = universe->addPolicySpace("tenant0");
+    auto bd0 = space->addGbpBridgeDomain("bd0");
+    auto bd1 = space->addGbpBridgeDomain("bd1");
+    auto epg0 = space->addGbpEpGroup("epg0");
+    auto epg1 = space->addGbpEpGroup("epg1");
+    auto invu = modelgbp::inv::Universe::resolve(framework);
+    auto inv = invu.get()->addInvRemoteEndpointInventory();
+    auto rep1 = inv->addInvRemoteInventoryEp("ep1");
+    rep1->setMac(MAC("ab:cd:ef:ab:cd:ef"))
+        .setNextHopTunnel("5.6.7.8")
+        .addInvRemoteInventoryEpToGroupRSrc()
+        ->setTargetEpGroup(epg0->getURI());
+    auto rep2 = inv->addInvRemoteInventoryEp("ep2");
+    rep2->setMac(MAC("ab:cd:ef:ab:cd:ff"))
+        .setNextHopTunnel("5.6.7.9")
+        .addInvRemoteInventoryEpToGroupRSrc()
+        ->setTargetEpGroup(epg0->getURI());
+    auto rep3 = inv->addInvRemoteInventoryEp("ep3");
+    rep3->addInvRemoteInventoryEpToGroupRSrc()
+        ->setTargetEpGroup(epg0->getURI());
+    m.commit();
+
+    // basic ep add
+    WAIT_FOR(agent.getPolicyManager().groupExists(epg0->getURI()), 500);
+    WAIT_FOR(agent.getPolicyManager().groupExists(epg1->getURI()), 500);
+    WAIT_FOR(listener.numUpdates() == 3, 500);
+    listener.clear();
+
+    // update epg for ep
+    rep1->addInvRemoteInventoryEpToGroupRSrc()
+        ->setTargetEpGroup(epg1->getURI());
+    m.commit();
+
+    WAIT_FOR(listener.numUpdates() == 1, 500);
+    listener.clear();
+
+    // eg domain update
+    epg0->addGbpEpGroupToNetworkRSrc()
+        ->setTargetBridgeDomain(bd0->getURI());
+    m.commit();
+    WAIT_FOR(agent.getPolicyManager().getBDForGroup(epg0->getURI()), 500);
+    WAIT_FOR(agent.getPolicyManager().getBDForGroup(epg0->getURI())
+             .get()->getURI() == bd0->getURI(), 500);
+    WAIT_FOR(listener.numUpdates() == 3, 500);
+    listener.clear();
+
+    // ep remove
+    rep2->remove();
+    m.commit();
+    WAIT_FOR(listener.numUpdates() == 1, 500);
+    listener.clear();
+
+    // eg domain update (again)
+    epg0->addGbpEpGroupToNetworkRSrc()
+        ->setTargetBridgeDomain(bd1->getURI());
+    m.commit();
+    WAIT_FOR(agent.getPolicyManager().getBDForGroup(epg0->getURI())
+             .get()->getURI() == bd1->getURI(), 500);
+    WAIT_FOR(listener.numUpdates() == 1, 500);
+    listener.clear();
+
+    agent.getEndpointManager().unregisterListener(&listener);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } /* namespace opflexagent */

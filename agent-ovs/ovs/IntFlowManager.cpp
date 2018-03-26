@@ -27,6 +27,7 @@
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
+#include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/Endpoint.h>
@@ -248,6 +249,13 @@ void IntFlowManager::endpointUpdated(const std::string& uuid) {
     advertManager.scheduleEndpointAdv(uuid);
     taskQueue.dispatch(uuid,
                        bind(&IntFlowManager::handleEndpointUpdate, this, uuid));
+}
+
+void IntFlowManager::remoteEndpointUpdated(const string& uuid) {
+    if (stopping) return;
+    taskQueue.dispatch(uuid, [this, uuid](){
+        handleRemoteEndpointUpdate(uuid);
+    });
 }
 
 void IntFlowManager::serviceUpdated(const std::string& uuid) {
@@ -1055,8 +1063,101 @@ static void flowRevMapCt(FlowEntryList& serviceRevFlows,
     ipRevMapCt.build(serviceRevFlows);
 }
 
-void IntFlowManager::handleEndpointUpdate(const string& uuid) {
+void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
+    LOG(DEBUG) << "Updating remote endpoint " << uuid;
 
+    optional<shared_ptr<modelgbp::inv::RemoteInventoryEp>> ep =
+        modelgbp::inv::RemoteInventoryEp::resolve(agent.getFramework(), uuid);
+
+    if (!ep || (encapType == ENCAP_VLAN || encapType == ENCAP_NONE)) {
+        switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
+        switchManager.clearFlows(uuid, ROUTE_TABLE_ID);
+        return;
+    }
+
+    // Get remote endpoint MAC
+    uint8_t macAddr[6];
+    bool hasMac = ep.get()->isMacSet();
+    if (hasMac)
+        ep.get()->getMac().get().toUIntArray(macAddr);
+
+    // Get remote endpoint IP addresses
+    boost::system::error_code ec;
+
+    std::vector<address> ipAddresses;
+    std::vector<std::shared_ptr<modelgbp::inv::RemoteIp>> invIps;
+    ep.get()->resolveInvRemoteIp(invIps);
+    for (const auto& invIp : invIps) {
+        if (!invIp->isIpSet()) continue;
+
+        address addr = address::from_string(invIp->getIp().get(), ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid remote endpoint IP: "
+                         << invIp->getIp().get() << ": " << ec.message();
+        } else {
+            ipAddresses.push_back(addr);
+        }
+    }
+
+    // Get remote tunnel destination
+    optional<address> tunDst;
+    if (ep.get()->isNextHopTunnelSet()) {
+        string ipStr = ep.get()->getNextHopTunnel().get();
+        tunDst = address::from_string(ipStr, ec);
+        if (ec || !tunDst->is_v4()) {
+            LOG(WARNING) << "Invalid remote tunnel destination IP: "
+                         << ipStr << ": " << ec.message();
+        }
+    }
+
+    uint32_t epgVnid = 0, rdId = 0, bdId = 0, fgrpId = 0;
+    optional<URI> epgURI, fgrpURI, bdURI, rdURI;
+    auto epgRef = ep.get()->resolveInvRemoteInventoryEpToGroupRSrc();
+    if (epgRef) {
+        epgURI = epgRef.get()->getTargetURI();
+    }
+
+    bool hasForwardingInfo = false;
+    if (epgURI && getGroupForwardingInfo(epgURI.get(), epgVnid, rdURI,
+                                         rdId, bdURI, bdId, fgrpURI, fgrpId)) {
+        hasForwardingInfo = true;
+    }
+
+    FlowEntryList elBridgeDst;
+    FlowEntryList elRouteDst;
+
+    if (hasMac && hasForwardingInfo && tunDst) {
+        FlowBuilder bridgeFlow;
+        matchDestDom(bridgeFlow, bdId, 0)
+            .priority(10)
+            .ethDst(macAddr)
+            .action()
+            .reg(MFF_REG2, epgVnid)
+            .reg(MFF_REG7, tunDst->to_v4().to_ulong())
+            .metadata(flow::meta::out::REMOTE_TUNNEL, flow::meta::out::MASK)
+            .go(POL_TABLE_ID)
+            .parent().build(elBridgeDst);
+
+        for (const address& ipAddr : ipAddresses) {
+            FlowBuilder routeFlow;
+            matchDestDom(routeFlow, 0, rdId)
+                .priority(500)
+                .ethDst(getRouterMacAddr())
+                .ipDst(ipAddr)
+                .action()
+                .reg(MFF_REG2, epgVnid)
+                .reg(MFF_REG7, tunDst->to_v4().to_ulong())
+                .metadata(flow::meta::out::REMOTE_TUNNEL, flow::meta::out::MASK)
+                .go(POL_TABLE_ID)
+                .parent().build(elRouteDst);
+        }
+    }
+
+    switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
+    switchManager.writeFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
+}
+
+void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     LOG(DEBUG) << "Updating endpoint " << uuid;
 
     EndpointManager& epMgr = agent.getEndpointManager();
@@ -1869,13 +1970,24 @@ void IntFlowManager::createStaticFlows() {
         switchManager.writeFlow("static", POL_TABLE_ID, policyStatic);
     }
     {
+        using namespace modelgbp::platform;
+        auto invType = RemoteInventoryTypeEnumT::CONST_NONE;
+        auto config =
+            Config::resolve(agent.getFramework(),
+                            agent.getPolicyManager().getOpflexDomain());
+        if (config)
+            invType = config.get()->
+                getInventoryType(RemoteInventoryTypeEnumT::CONST_NONE);
+
         FlowEntryList unknownTunnelBr;
         FlowEntryList unknownTunnelRt;
-        if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
-            // Output to the tunnel interface, bypassing policy
-            // note that if the flood domain is set to flood unknown, then
-            // there will be a higher-priority rule installed for that
-            // flood domain.
+        if (tunPort != OFPP_NONE && encapType != ENCAP_NONE &&
+            invType != RemoteInventoryTypeEnumT::CONST_COMPLETE) {
+            // If the remote inventory allows for unknown remote
+            // endpoints, output to the tunnel interface, bypassing
+            // policy note that if the flood domain is set to flood
+            // unknown, then there will be a higher-priority rule
+            // installed for that flood domain.
             actionOutputToEPGTunnel(FlowBuilder().priority(1))
                 .build(unknownTunnelBr);
 
@@ -1895,6 +2007,17 @@ void IntFlowManager::createStaticFlows() {
                 .metadata(flow::meta::out::REV_NAT,
                           flow::meta::out::MASK)
                 .action().outputReg(MFF_REG7)
+                .parent().build(outFlows);
+        }
+        if (encapType != ENCAP_VLAN && encapType != ENCAP_NONE &&
+            tunPort != OFPP_NONE) {
+            FlowBuilder().priority(15)
+                .metadata(flow::meta::out::REMOTE_TUNNEL,
+                          flow::meta::out::MASK)
+                .action()
+                .regMove(MFF_REG2, MFF_TUN_ID)
+                .regMove(MFF_REG7, MFF_TUN_DST)
+                .output(tunPort)
                 .parent().build(outFlows);
         }
         {
@@ -2043,7 +2166,16 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             .parent().build(egOutFlows);
     }
     if (encapType != ENCAP_NONE && tunPort != OFPP_NONE) {
-        {
+        using namespace modelgbp::platform;
+        auto invType = RemoteInventoryTypeEnumT::CONST_NONE;
+        auto config =
+            Config::resolve(agent.getFramework(),
+                            agent.getPolicyManager().getOpflexDomain());
+        if (config)
+            invType = config.get()->
+                getInventoryType(RemoteInventoryTypeEnumT::CONST_NONE);
+
+        if (invType == RemoteInventoryTypeEnumT::CONST_NONE) {
             // Output table action to output to the tunnel appropriate for
             // the source EPG
             FlowBuilder tunnelOut;
@@ -2060,8 +2192,9 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             FlowBuilder tunnelOutRtr;
             tunnelOutRtr.priority(11)
                 .reg(0, epgVnid)
-                .ethDst(getRouterMacAddr())
                 .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
+            if (invType == RemoteInventoryTypeEnumT::CONST_NONE)
+                tunnelOutRtr.ethDst(getRouterMacAddr());
             actionTunnelMetadata(tunnelOutRtr.action(),
                                  encapType, getTunnelDst());
             tunnelOutRtr.action().output(tunPort);
@@ -2671,8 +2804,18 @@ void IntFlowManager::handleConfigUpdate(const opflex::modb::URI& configURI) {
     LOG(DEBUG) << "Updating platform config " << configURI;
     initPlatformConfig();
 
-    /* Directly update the group-table */
+    // Directly update the group-table
     updateGroupTable();
+
+    // update any flows that might have been affected by platform
+    // config update
+    createStaticFlows();
+
+    PolicyManager::uri_set_t epgURIs;
+    agent.getPolicyManager().getGroups(epgURIs);
+    for (const URI& epg : epgURIs) {
+        egDomainUpdated(epg);
+    }
 }
 
 void IntFlowManager::updateGroupTable() {

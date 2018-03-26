@@ -283,6 +283,11 @@ private:
     bool updateEndpointLocal(const std::string& uuid);
 
     /**
+     * Update the remote endpoint entries associated with an endpoint
+     */
+    void updateEndpointRemote(const opflex::modb::URI& uri);
+
+    /**
      * Update the endpoint registry entries associated with an endpoint
      * @return true if we should notify listeners
      */
@@ -353,6 +358,8 @@ private:
     typedef std::unordered_map<std::string, EndpointState> ep_map_t;
     typedef std::unordered_set<std::string> str_uset_t;
     typedef std::unordered_map<opflex::modb::URI, str_uset_t> group_ep_map_t;
+    typedef std::unordered_map<std::string, opflex::modb::URI> ep_group_map_t;
+    typedef std::unordered_map<opflex::modb::URI, std::string> ep_uuid_map_t;
     typedef std::unordered_map<std::string, str_uset_t> string_ep_map_t;
     typedef std::unordered_map<EndpointListener::uri_set_t,
                                str_uset_t> secgrp_ep_map_t;
@@ -368,6 +375,21 @@ private:
      * Map endpoint group URI to a set of endpoint UUIDs
      */
     group_ep_map_t group_ep_map;
+
+    /**
+     * Map remote endpoint URI to remote endpoint uuid
+     */
+    ep_uuid_map_t remote_ep_uuid_map;
+
+    /**
+     * Map endpoint group URI to a set of remote endpoint UUIDs
+     */
+    group_ep_map_t group_remote_ep_map;
+
+    /**
+     * Map remote endpoint UUID to endpoint group URI
+     */
+    ep_group_map_t remote_ep_group_map;
 
     /**
      * Map sets of security groups to a set of endpoint UUIDs
@@ -414,6 +436,7 @@ private:
     std::mutex listener_mutex;
 
     void notifyListeners(const std::string& uuid);
+    void notifyRemoteListeners(const std::string& uuid);
     void notifyListeners(const EndpointListener::uri_set_t& secGroups);
 
     /**
