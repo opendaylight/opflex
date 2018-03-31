@@ -63,28 +63,44 @@ EndpointManager::EndpointState::EndpointState() : endpoint(new Endpoint()) {
 
 void EndpointManager::start() {
     using namespace modelgbp::gbpe;
+    using namespace modelgbp::inv;
 
     LOG(DEBUG) << "Starting endpoint manager";
 
     EpgMapping::registerListener(framework, &epgMappingListener);
     EpAttributeSet::registerListener(framework, &epgMappingListener);
+    RemoteEndpointInventory::registerListener(framework, &epgMappingListener);
+    RemoteInventoryEp::registerListener(framework, &epgMappingListener);
 
     policyManager.registerListener(this);
+
+    opflex::modb::Mutator mutator(framework, "init");
+    optional<shared_ptr<modelgbp::domain::Config> >
+        config(modelgbp::domain::Config::resolve(framework));
+    if (config) {
+        config.get()->addDomainConfigToRemoteEndpointInventoryRSrc();
+    }
+    mutator.commit();
 }
 
 void EndpointManager::stop() {
+    using namespace modelgbp::inv;
     using namespace modelgbp::gbpe;
-
     LOG(DEBUG) << "Stopping endpoint manager";
 
     EpgMapping::unregisterListener(framework, &epgMappingListener);
     EpAttributeSet::unregisterListener(framework, &epgMappingListener);
+    RemoteEndpointInventory::unregisterListener(framework, &epgMappingListener);
+    RemoteInventoryEp::unregisterListener(framework, &epgMappingListener);
 
     policyManager.unregisterListener(this);
 
     unique_lock<mutex> guard(ep_mutex);
     ep_map.clear();
     group_ep_map.clear();
+    group_remote_ep_map.clear();
+    remote_ep_group_map.clear();
+    remote_ep_uuid_map.clear();
     secgrp_ep_map.clear();
     ipm_group_ep_map.clear();
     ipm_nexthop_if_ep_map.clear();
@@ -108,6 +124,13 @@ void EndpointManager::notifyListeners(const std::string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
     for (EndpointListener* listener : endpointListeners) {
         listener->endpointUpdated(uuid);
+    }
+}
+
+void EndpointManager::notifyRemoteListeners(const std::string& uuid) {
+    unique_lock<mutex> guard(listener_mutex);
+    for (EndpointListener* listener : endpointListeners) {
+        listener->remoteEndpointUpdated(uuid);
     }
 }
 
@@ -415,6 +438,61 @@ optional<URI> EndpointManager::resolveEpgMapping(EndpointState& es) {
         return egSrc.get()->getTargetURI().get();
 
     return boost::none;
+}
+
+void EndpointManager::updateEndpointRemote(const opflex::modb::URI& uri) {
+    LOG(DEBUG) << "Remote endpoint updated " << uri;
+    auto ep = modelgbp::inv::RemoteInventoryEp::resolve(framework, uri);
+
+    optional<std::string> uuid;
+
+    unique_lock<mutex> guard(ep_mutex);
+    if (!ep || !ep.get()->isUuidSet()) {
+        auto it = remote_ep_uuid_map.find(uri);
+        if (it != remote_ep_uuid_map.end()) {
+            // removed endpoint
+            uuid = it->second;
+            auto git = remote_ep_group_map.find(uuid.get());
+            if (git != remote_ep_group_map.end()) {
+                group_remote_ep_map.erase(git->second);
+            }
+            remote_ep_group_map.erase(git);
+            remote_ep_uuid_map.erase(it);
+        }
+    } else {
+        // added or updated endpoint
+        uuid = ep.get()->getUuid();
+        remote_ep_uuid_map.emplace(uri, uuid.get());
+
+        optional<URI> egUri, oldEgUri;
+        auto epg = ep.get()->resolveInvRemoteInventoryEpToGroupRSrc();
+        if (epg)
+            egUri = epg.get()->getTargetURI();
+
+        auto uit = remote_ep_group_map.find(uuid.get());
+        if (uit != remote_ep_group_map.end())
+            oldEgUri = uit->second;
+
+        if (oldEgUri != egUri) {
+            if (oldEgUri) {
+                unordered_set<string>& eps = group_remote_ep_map[oldEgUri.get()];
+                eps.erase(uuid.get());
+                if (eps.empty())
+                    group_remote_ep_map.erase(oldEgUri.get());
+            }
+            if (egUri) {
+                group_remote_ep_map[egUri.get()].insert(uuid.get());
+                remote_ep_group_map.emplace(uuid.get(), egUri.get());
+            } else {
+                remote_ep_group_map.erase(uuid.get());
+            }
+        }
+    }    
+
+    guard.unlock();
+    LOG(DEBUG) << "Remote endpoint update done " << uri;
+    if (uuid)
+        notifyRemoteListeners(uuid.get());
 }
 
 bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
@@ -780,6 +858,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
 
 void EndpointManager::egDomainUpdated(const URI& egURI) {
     unordered_set<string> notify;
+    unordered_set<string> remoteNotify;
     unique_lock<mutex> guard(ep_mutex);
 
     group_ep_map_t::const_iterator it = group_ep_map.find(egURI);
@@ -787,6 +866,13 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
         for (const std::string& uuid : it->second) {
             if (updateEndpointReg(uuid))
                 notify.insert(uuid);
+        }
+    }
+
+    group_ep_map_t::const_iterator rit = group_remote_ep_map.find(egURI);
+    if (rit != group_remote_ep_map.end()) {
+        for (const std::string& uuid : rit->second) {
+            remoteNotify.insert(uuid);
         }
     }
 
@@ -801,6 +887,9 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
 
     for (const std::string& uuid : notify) {
         notifyListeners(uuid);
+    }
+    for (const std::string& uuid : remoteNotify) {
+        notifyRemoteListeners(uuid);
     }
 }
 
@@ -905,9 +994,9 @@ EndpointManager::EPGMappingListener::~EPGMappingListener() {}
 void EndpointManager::EPGMappingListener::objectUpdated(class_id_t classId,
                                                         const URI& uri) {
     using namespace modelgbp::gbpe;
-    unique_lock<mutex> guard(epmanager.ep_mutex);
 
     if (classId == EpAttributeSet::CLASS_ID) {
+        unique_lock<mutex> guard(epmanager.ep_mutex);
         optional<shared_ptr<EpAttributeSet> > attrSet =
             EpAttributeSet::resolve(epmanager.framework, uri);
         if (!attrSet) return;
@@ -939,6 +1028,7 @@ void EndpointManager::EPGMappingListener::objectUpdated(class_id_t classId,
             epmanager.notifyListeners(uuid.get());
         }
     } else if (classId == EpgMapping::CLASS_ID) {
+        unique_lock<mutex> guard(epmanager.ep_mutex);
         optional<shared_ptr<EpgMapping> > epgMapping =
             EpgMapping::resolve(epmanager.framework, uri);
         if (!epgMapping) return;
@@ -961,6 +1051,8 @@ void EndpointManager::EPGMappingListener::objectUpdated(class_id_t classId,
         for (const std::string& uuid : notify) {
             epmanager.notifyListeners(uuid);
         }
+    } else if (classId == modelgbp::inv::RemoteInventoryEp::CLASS_ID) {
+        epmanager.updateEndpointRemote(uri);
     }
 }
 
