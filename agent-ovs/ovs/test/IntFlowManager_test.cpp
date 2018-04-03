@@ -1513,6 +1513,14 @@ void IntFlowManagerFixture::initExpStatic() {
         ADDF(Bldr().table(RT).priority(1)
              .actions().mdAct(flow::meta::out::TUNNEL)
              .go(OUT).done());
+        if (intFlowManager.getEncapType() != IntFlowManager::ENCAP_VLAN) {
+            ADDF(Bldr().table(OUT).priority(15)
+                .isMdAct(flow::meta::out::REMOTE_TUNNEL)
+                .actions()
+                .move(DEPG, TUNID).move(OUTPORT, TUNDST)
+                .outPort(tunPort)
+                .done());
+        }
     }
 }
 

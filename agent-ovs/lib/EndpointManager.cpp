@@ -490,7 +490,6 @@ void EndpointManager::updateEndpointRemote(const opflex::modb::URI& uri) {
     }    
 
     guard.unlock();
-    LOG(DEBUG) << "Remote endpoint update done " << uri;
     if (uuid)
         notifyRemoteListeners(uuid.get());
 }

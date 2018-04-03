@@ -1977,7 +1977,8 @@ void IntFlowManager::createStaticFlows() {
                 .action().outputReg(MFF_REG7)
                 .parent().build(outFlows);
         }
-        if (encapType != ENCAP_VLAN) {
+        if (encapType != ENCAP_VLAN && encapType != ENCAP_NONE &&
+            tunPort != OFPP_NONE) {
             FlowBuilder().priority(15)
                 .metadata(flow::meta::out::REMOTE_TUNNEL,
                           flow::meta::out::MASK)
@@ -1985,7 +1986,7 @@ void IntFlowManager::createStaticFlows() {
                 .regMove(MFF_REG2, MFF_TUN_ID)
                 .regMove(MFF_REG7, MFF_TUN_DST)
                 .output(tunPort)
-                .parent().buil(egOutFlows);
+                .parent().build(outFlows);
         }
         {
             // send reverse NAT ICMP error packets to controller
@@ -2154,18 +2155,18 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             tunnelOut.build(egOutFlows);
         }
         if (encapType != ENCAP_VLAN) {
-	    // If destination is the router mac, override EPG tunnel
-	    // and send to unicast tunnel
-	    FlowBuilder tunnelOutRtr;
-	    tunnelOutRtr.priority(11)
- 	        .reg(0, epgVnid)
-	        .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
-	    if (invType == RemoteInventoryTypeEnumT::CONST_NONE)
-	        tunnelOutRtr.ethDst(getRouterMacAddr())
-	    actionTunnelMetadata(tunnelOutRtr.action(),
-	    		       encapType, getTunnelDst());
-	    tunnelOutRtr.action().output(tunPort);
-	    tunnelOutRtr.build(egOutFlows);
+            // If destination is the router mac, override EPG tunnel
+            // and send to unicast tunnel
+            FlowBuilder tunnelOutRtr;
+            tunnelOutRtr.priority(11)
+                .reg(0, epgVnid)
+                .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
+            if (invType == RemoteInventoryTypeEnumT::CONST_NONE)
+                tunnelOutRtr.ethDst(getRouterMacAddr());
+            actionTunnelMetadata(tunnelOutRtr.action(),
+                               encapType, getTunnelDst());
+            tunnelOutRtr.action().output(tunPort);
+            tunnelOutRtr.build(egOutFlows);
         }
     }
     switchManager.writeFlow(epgId, OUT_TABLE_ID, egOutFlows);
