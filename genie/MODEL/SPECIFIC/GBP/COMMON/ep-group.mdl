@@ -54,6 +54,15 @@ module[gbp]
                 ]
         }
 
+        dependency[tabooContract;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/Contract;
+                cardinality=many;
+                ]
+        }
+
         dependency[subnets;
                    cardinality=single;]
         {
