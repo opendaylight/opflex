@@ -141,6 +141,11 @@ extern const uint64_t TUNNEL;
  */
 extern const uint64_t FLOOD;
 
+/**
+ * Output to the tunnel destination specified in the output register
+ */
+extern const uint64_t REMOTE_TUNNEL;
+
 } // namespace out
 } // namespace meta
 
