@@ -69,6 +69,8 @@ module[gbp]
         # subnet, if desired.  Can be either IPv4 or IPv6.
         member[virtualRouterIp; type=address/IP]
 
+        member[macAddress; type=address/MAC]
+
         # Valid lifetime reported in ipv6 router advertisement
         member[ipv6AdvValidLifetime; type=scalar/UInt32]
 

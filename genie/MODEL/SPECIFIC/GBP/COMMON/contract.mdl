@@ -1,5 +1,11 @@
 module[gbp]
 {
+    type[ContractType; super=scalar/Enum8]
+    {
+        const[standard; value=1]
+        const[taboo; value=2]
+    }
+
     class[Contract;
           super=gbp/AccessBehavioralGroup;
           concrete]
@@ -16,6 +22,8 @@ module[gbp]
                           member=name]
             }
         }
+
+        member[type; type=gbp/ContractType]
     }
 
     class[Subject;

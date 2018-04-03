@@ -22,6 +22,9 @@ module[platform]
         member[encapType; type=gbpe/EncapType]
         member[mode; type=platform/SwitchingMode]
         member[multicastGroupIP; type=address/IP]
+        # min interval (in ms) between state_report calls for stats on a given MO
+        # a value of 0 indicates that stats reporting should be disabled
+        member[statsInterval; type=scalar/UInt32]
         contained
         {
             parent[class=policy/Universe]
