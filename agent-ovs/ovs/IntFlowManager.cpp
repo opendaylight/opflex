@@ -27,6 +27,7 @@
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
+#include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/Endpoint.h>
@@ -134,6 +135,12 @@ void IntFlowManager::registerModbListeners() {
     agent.getServiceManager().registerListener(this);
     agent.getExtraConfigManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
+}
+
+void IntFlowManager::remoteEndpointUpdated(const string& uuid) {
+    taskQueue.dispatch(uuid, [this, uuid](){
+        handleRemoteEndpointUpdate(uuid);
+    });
 }
 
 void IntFlowManager::stop() {
@@ -1055,6 +1062,79 @@ static void flowRevMapCt(FlowEntryList& serviceRevFlows,
     ipRevMapCt.build(serviceRevFlows);
 }
 
+void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
+    LOG(DEBUG) << "Updating remote endpoint " << uuid;
+
+    optional<shared_ptr<modelgbp::inv::RemoteInventoryEp>> ep =
+        modelgbp::inv::RemoteInventoryEp::resolve(agent.getFramework(), uuid);
+
+    if (!ep) {
+        switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
+        switchManager.clearFlows(uuid, ROUTE_TABLE_ID);
+	return;
+    }
+
+    // Get remote endpoint MAC
+    uint8_t macAddr[6];
+    bool hasMac = ep.get()->isMacSet();
+    if (hasMac)
+        ep.get()->getMac().get().toUIntArray(macAddr);
+
+    // Get remote endpoint IP addresses
+    boost::system::error_code ec;
+
+    std::vector<address> ipAddresses;
+    //for (const string& ipStr : endPoint.getIPs()) {
+    //    address addr = address::from_string(ipStr, ec);
+    //    if (ec) {
+    //        LOG(WARNING) << "Invalid endpoint IP: "
+    //                     << ipStr << ": " << ec.message();
+    //    } else {
+    //        ipAddresses.push_back(addr);
+    //    }
+    //}
+
+    // Get remote tunnel destination
+    optional<address> tunDst;
+    if (ep.get()->isNextHopTunnelSet()) {
+        string ipStr = ep.get()->getNextHopTunnel().get();
+        tunDst = address::from_string(ipStr, ec);
+	if (ec || !tunDst->is_v4()) {
+	  LOG(WARNING) << "Invalid remote tunnel destination IP: "
+		       << ipStr << ": " << ec.message();
+	}
+    }
+
+    uint32_t epgVnid = 0, rdId = 0, bdId = 0, fgrpId = 0;
+    optional<URI> epgURI, fgrpURI, bdURI, rdURI;
+    auto epgRef = ep.get()->resolveInvRemoteInventoryEpToGroupRSrc();
+    if (epgRef) {
+        epgURI = epgRef.get()->getTargetURI();
+    }
+
+    bool hasForwardingInfo = false;
+    if (epgURI && getGroupForwardingInfo(epgURI.get(), epgVnid, rdURI,
+                                         rdId, bdURI, bdId, fgrpURI, fgrpId)) {
+        hasForwardingInfo = true;
+    }
+
+    FlowEntryList elBridgeDst;
+    FlowEntryList elRouteDst;
+
+    if (hasMac && hasForwardingInfo && tunDst) {
+        FlowBuilder().priority(10).ethDst(macAddr).reg(4, bdId)
+	  .action()
+	  .reg(MFF_REG2, epgVnid)
+	  .reg(MFF_REG7, tunDst->to_v4().to_ulong())
+	  .metadata(flow::meta::out::REMOTE_TUNNEL, flow::meta::out::MASK)
+	  .go(POL_TABLE_ID)
+	  .parent().build(elBridgeDst);
+    }
+
+    switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
+    switchManager.writeFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
+}
+
 void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
     LOG(DEBUG) << "Updating endpoint " << uuid;
@@ -1897,6 +1977,17 @@ void IntFlowManager::createStaticFlows() {
                 .action().outputReg(MFF_REG7)
                 .parent().build(outFlows);
         }
+        if (encapType != ENCAP_VLAN && encapType != ENCAP_NONE &&
+            tunPort != OFPP_NONE) {
+            FlowBuilder().priority(15)
+                .metadata(flow::meta::out::REMOTE_TUNNEL,
+                          flow::meta::out::MASK)
+                .action()
+                .regMove(MFF_REG2, MFF_TUN_ID)
+                .regMove(MFF_REG7, MFF_TUN_DST)
+                .output(tunPort)
+                .parent().build(outFlows);
+        }
         {
             // send reverse NAT ICMP error packets to controller
             flowsRevNatICMP(outFlows, true, 3 ); // unreachable
@@ -2043,7 +2134,16 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             .parent().build(egOutFlows);
     }
     if (encapType != ENCAP_NONE && tunPort != OFPP_NONE) {
-        {
+        using namespace modelgbp::platform;
+	auto invType = RemoteInventoryTypeEnumT::CONST_NONE;
+        auto config =
+            Config::resolve(agent.getFramework(),
+                            agent.getPolicyManager().getOpflexDomain());
+        if (config)
+            invType = config.get()->
+                getInventoryType(RemoteInventoryTypeEnumT::CONST_NONE);
+
+        if (invType == RemoteInventoryTypeEnumT::CONST_NONE) {
             // Output table action to output to the tunnel appropriate for
             // the source EPG
             FlowBuilder tunnelOut;
@@ -2060,10 +2160,11 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             FlowBuilder tunnelOutRtr;
             tunnelOutRtr.priority(11)
                 .reg(0, epgVnid)
-                .ethDst(getRouterMacAddr())
                 .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
+            if (invType == RemoteInventoryTypeEnumT::CONST_NONE)
+                tunnelOutRtr.ethDst(getRouterMacAddr());
             actionTunnelMetadata(tunnelOutRtr.action(),
-                                 encapType, getTunnelDst());
+                               encapType, getTunnelDst());
             tunnelOutRtr.action().output(tunPort);
             tunnelOutRtr.build(egOutFlows);
         }

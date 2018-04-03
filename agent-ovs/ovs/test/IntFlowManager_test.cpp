@@ -136,6 +136,9 @@ public:
     /** Initialize flows related to IP address mapping */
     void initExpIpMapping(bool natEpgMap = true, bool nextHop = false);
 
+    /** Initialize remote endpoint flows */
+    void initExpRemoteEp();
+
     /** Initialize contract 1 flows */
     void initExpCon1();
 
@@ -1141,6 +1144,35 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("nexthop", 500);
 }
 
+BOOST_FIXTURE_TEST_CASE(remoteEndpoint, VxlanIntFlowManagerFixture) {
+    setConnected();
+    intFlowManager.egDomainUpdated(epg0->getURI());
+    intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
+
+    Mutator m(framework, policyOwner);
+    auto invu = modelgbp::inv::Universe::resolve(framework);
+    auto inv = invu.get()->addInvRemoteEndpointInventory();
+    auto rep1 = inv->addInvRemoteInventoryEp("ep1");
+    rep1->setMac(MAC("ab:cd:ef:ab:cd:ef"))
+        .setNextHopTunnel("5.6.7.8")
+        .addInvRemoteInventoryEpToGroupRSrc()
+        ->setTargetEpGroup(epg0->getURI());
+    //auto ep2 = inv->addInvLocalInventoryEp("ep2");
+    m.commit();
+
+    intFlowManager.remoteEndpointUpdated("ep1");
+
+    clearExpFlowTables();
+    initExpStatic();
+    initExpEpg(epg0);
+    initExpBd();
+    initExpRd();
+    initExpEp(ep0, epg0);
+    initExpEp(ep2, epg0);
+    initExpRemoteEp();
+    WAIT_FOR_TABLES("remoteep", 500);
+}
+
 BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
     setConnected();
     intFlowManager.egDomainUpdated(epg0->getURI());
@@ -1481,6 +1513,14 @@ void IntFlowManagerFixture::initExpStatic() {
         ADDF(Bldr().table(RT).priority(1)
              .actions().mdAct(flow::meta::out::TUNNEL)
              .go(OUT).done());
+        if (intFlowManager.getEncapType() != IntFlowManager::ENCAP_VLAN) {
+            ADDF(Bldr().table(OUT).priority(15)
+                .isMdAct(flow::meta::out::REMOTE_TUNNEL)
+                .actions()
+                .move(DEPG, TUNID).move(OUTPORT, TUNDST)
+                .outPort(tunPort)
+                .done());
+        }
     }
 }
 
@@ -2185,6 +2225,18 @@ void IntFlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
              .load(OUTPORT, 0).load64(METADATA, flow::meta::ROUTED)
              .resubmit(BR).done());
     }
+}
+
+void IntFlowManagerFixture::initExpRemoteEp() {
+    uint32_t vnid = policyMgr.getVnidForGroup(epg0->getURI()).get();
+    address tunDst = address::from_string("5.6.7.8");
+
+    ADDF(Bldr().table(BR).priority(10).reg(BD, 1)
+       .isEthDst("ab:cd:ef:ab:cd:ef").actions().load(DEPG, vnid)
+       .load(OUTPORT, tunDst.to_v4().to_ulong())
+       .mdAct(flow::meta::out::REMOTE_TUNNEL)
+       .go(POL).done());
+
 }
 
 void IntFlowManagerFixture::initExpAnycastService(int nextHop) {
