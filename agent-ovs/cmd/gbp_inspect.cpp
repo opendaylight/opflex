@@ -47,7 +47,7 @@ using namespace opflexagent;
 void sighandler(int sig) {
     LOG(INFO) << "Got " << strsignal(sig) << " signal";
 }
-#define DEF_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-inspect.sock"
+#define DEF_SOCKET LOCALSTATEDIR"/run/opflex-agent-inspect.sock"
 
 int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
