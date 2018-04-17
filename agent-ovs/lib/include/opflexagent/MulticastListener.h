@@ -52,8 +52,8 @@ public:
 
 private:
     boost::asio::io_service& io_service;
-    boost::asio::ip::udp::socket socket_v4;
-    boost::asio::ip::udp::socket socket_v6;
+    std::unique_ptr<boost::asio::ip::udp::socket> socket_v4;
+    std::unique_ptr<boost::asio::ip::udp::socket> socket_v6;
     std::unordered_set<std::string> addresses;
     volatile bool running;
 
