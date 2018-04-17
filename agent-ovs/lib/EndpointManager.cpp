@@ -462,7 +462,7 @@ void EndpointManager::updateEndpointRemote(const opflex::modb::URI& uri) {
         }
     } else {
         // added or updated endpoint
-        uuid = ep.get()->getUuid();
+        uuid = ep.get()->getUuid().get();
         remote_ep_uuid_map.emplace(uri, uuid.get());
 
         optional<URI> egUri, oldEgUri;
