@@ -71,8 +71,24 @@ void override_raw_actions(const struct ofpact* acts, size_t len) {
     const struct ofpact *act;
     OFPACT_FOR_EACH(act, acts, len) {
         if (act->type == OFPACT_OUTPUT_REG ||
-            act->type == OFPACT_REG_MOVE) {
+            act->type == OFPACT_REG_MOVE ||
+            act->type == OFPACT_RESUBMIT) {
             ((struct ofpact*)act)->raw = (uint8_t)(-1);
+        }
+    }
+}
+
+void override_flow_has_vlan(const struct ofpact* acts, size_t len) {
+    // unset flow_has_vlan field for any fields where the flow parser
+    // sets the field in a situation where the physical OVS doesn't
+    const struct ofpact *act;
+    OFPACT_FOR_EACH(act, acts, len) {
+        if (act->type == OFPACT_SET_FIELD) {
+            struct ofpact_set_field* sf = (struct ofpact_set_field*)act;
+            if (sf->field->id != MFF_ETH_DST &&
+                sf->field->id != MFF_ETH_SRC) {
+                sf->flow_has_vlan = false;
+            }
         }
     }
 }
@@ -105,6 +121,11 @@ void act_reg_move(struct ofpbuf* buf,
     int bitsToMove = min(move->src.n_bits, move->dst.n_bits);
     move->src.n_bits = bitsToMove;
     move->dst.n_bits  = bitsToMove;
+}
+
+void act_reg_load(struct ofpbuf* buf,
+                  int regId, const void* regValue, const void* mask) {
+    ofpact_put_reg_load(buf, mf_from_id(regId), regValue, mask);
 }
 
 void act_metadata(struct ofpbuf* buf, uint64_t metadata, uint64_t mask) {
@@ -268,6 +289,57 @@ void act_multipath(struct ofpbuf* buf,
     act->max_link = maxLink;
     act->arg = arg;
     initSubField(&act->dst, dst);
+}
+
+void act_macvlan_learn(struct ofpbuf* ofpacts,
+                       uint16_t prio,
+                       uint64_t cookie,
+                       uint8_t table) {
+    struct ofpact_learn *learn = ofpact_put_LEARN(ofpacts);
+    learn->priority = prio;
+    learn->cookie = htonll(cookie);
+    learn->table_id = table;
+
+    learn->idle_timeout = 300;
+    learn->hard_timeout = OFP_FLOW_PERMANENT;
+    learn->flags = NX_LEARN_F_DELETE_LEARNED;
+
+    {
+        // Learn/match on src VLAN
+        struct ofpact_learn_spec *spec =
+            ofpbuf_put_zeros(ofpacts, sizeof(struct ofpact_learn_spec));
+        initSubField(&spec->dst, MFF_VLAN_TCI);
+        spec->src = spec->dst;
+        spec->n_bits = spec->dst.n_bits;
+        spec->src_type = NX_LEARN_SRC_FIELD;
+        spec->dst_type = NX_LEARN_DST_MATCH;
+        learn = ofpacts->header;
+    }
+    {
+        // Match on dst ethernet address and learn on src ethernet
+        // address
+        struct ofpact_learn_spec *spec =
+            ofpbuf_put_zeros(ofpacts, sizeof(struct ofpact_learn_spec));
+        initSubField(&spec->dst, MFF_ETH_DST);
+        initSubField(&spec->src, MFF_ETH_SRC);
+        spec->n_bits = spec->src.n_bits;
+        spec->src_type = NX_LEARN_SRC_FIELD;
+        spec->dst_type = NX_LEARN_DST_MATCH;
+        learn = ofpacts->header;
+    }
+    {
+        // Copy source port to output register
+        struct ofpact_learn_spec *spec =
+            ofpbuf_put_zeros(ofpacts, sizeof(struct ofpact_learn_spec));
+        initSubField(&spec->src, MFF_IN_PORT);
+        initSubField(&spec->dst, MFF_REG7);
+        spec->n_bits = spec->src.n_bits;
+        spec->dst.n_bits = spec->src.n_bits;
+        spec->src_type = NX_LEARN_SRC_FIELD;
+        spec->dst_type = NX_LEARN_DST_LOAD;
+        learn = ofpacts->header;
+    }
+    ofpact_finish_LEARN(ofpacts, &learn);
 }
 
 uint32_t get_output_reg_value(const struct ofpact* ofpacts,

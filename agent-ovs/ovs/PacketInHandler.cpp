@@ -68,8 +68,6 @@ void PacketInHandler::setPortMapper(PortMapper* intMapper,
 }
 
 void PacketInHandler::start() {
-    if (intPortMapper)
-        intPortMapper->registerPortStatusListener(this);
     if (intSwConnection)
         intSwConnection->RegisterMessageHandler(OFPTYPE_PACKET_IN, this);
 }
@@ -77,267 +75,6 @@ void PacketInHandler::start() {
 void PacketInHandler::stop() {
     if (intSwConnection)
         intSwConnection->UnregisterMessageHandler(OFPTYPE_PACKET_IN, this);
-}
-
-bool PacketInHandler::writeLearnFlow(SwitchConnection *conn,
-                                     int proto,
-                                     struct ofputil_packet_in& pi,
-                                     struct flow& flow,
-                                     bool stage2) {
-    uint32_t tunPort = intFlowManager.getTunnelPort();
-
-    bool dstKnown = (0 != pi.flow_metadata.flow.regs[7]);
-    bool broadcast = (flow.dl_dst.ea[0] & 0x01) != 0;
-    if (stage2 && (!dstKnown || broadcast)) return false;
-
-    uint8_t* flowMac = NULL;
-
-    struct ofputil_flow_mod fm;
-    memset(&fm, 0, sizeof(fm));
-    fm.buffer_id = UINT32_MAX;
-    fm.table_id = IntFlowManager::LEARN_TABLE_ID;
-    fm.priority = stage2 ? 150 : 100;
-    fm.idle_timeout = 300;
-    fm.command = OFPFC_ADD;
-    fm.new_cookie = flow::cookie::LEARN;
-
-    match_set_reg(&fm.match, 5 /* REG5 */, pi.flow_metadata.flow.regs[5]);
-    if (stage2) {
-        match_set_in_port(&fm.match, pi.flow_metadata.flow.in_port.ofp_port);
-        flowMac = flow.dl_dst.ea;
-        match_set_dl_dst(&fm.match, flow.dl_dst);
-        match_set_dl_src(&fm.match, flow.dl_src);
-    } else {
-        flowMac = flow.dl_src.ea;
-        match_set_dl_dst(&fm.match, flow.dl_src);
-    }
-
-    // Set the output register
-    uint32_t outport = stage2
-        ? pi.flow_metadata.flow.regs[7]
-        : pi.flow_metadata.flow.in_port.ofp_port;
-
-    ActionBuilder ab;
-
-    // Set destination epg == source epg
-    ab.reg(MFF_REG2, pi.flow_metadata.flow.regs[0]);
-    ab.reg(MFF_REG7, outport);
-    if (stage2) {
-        if (outport == tunPort) {
-            ab.metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
-        }
-        ab.go(IntFlowManager::POL_TABLE_ID);
-    } else {
-        ab.output(outport);
-        ab.controller();
-    }
-    ab.build(&fm);
-
-    OfpBuf message(ofputil_encode_flow_mod(&fm, (ofputil_protocol)proto));
-    int error = conn->SendMessage(message);
-    free(fm.ofpacts);
-    if (error) {
-        LOG(ERROR) << "Could not write flow mod: " << ovs_strerror(error);
-    }
-
-    if (intFlowReader && !stage2) {
-        FlowReader::FlowCb dstCb = [=](const FlowEntryList& flows, bool) {
-            dstFlowCb(flows, MAC(flowMac), outport,
-                      pi.flow_metadata.flow.regs[5]);
-        };
-
-        match fmatch;
-        memset(&fmatch, 0, sizeof(fmatch));
-        match_set_reg(&fmatch, 5 /* REG5 */, pi.flow_metadata.flow.regs[5]);
-        match_set_dl_dst(&fmatch, flow.dl_src);
-
-        intFlowReader->getFlows(IntFlowManager::LEARN_TABLE_ID,
-                                &fmatch, dstCb);
-    }
-
-    return true;
-}
-
-static uint32_t getOutputRegValue(const FlowEntryPtr& fe) {
-    return get_output_reg_value(fe->entry->ofpacts, fe->entry->ofpacts_len);
-}
-
-static void removeLearnFlow(SwitchConnection* conn, const FlowEntryPtr& fe) {
-    ofputil_protocol proto = ofputil_protocol_from_ofp_version
-        ((ofp_version)conn->GetProtocolVersion());
-    assert(ofputil_protocol_is_valid(proto));
-
-    struct ofputil_flow_mod fm;
-    memset(&fm, 0, sizeof(fm));
-    fm.table_id = IntFlowManager::LEARN_TABLE_ID;
-    fm.command = OFPFC_DELETE_STRICT;
-    fm.priority = fe->entry->priority;
-    fm.cookie = flow::cookie::LEARN;
-    memcpy(&fm.match, &fe->entry->match, sizeof(fe->entry->match));
-
-    fm.idle_timeout = fe->entry->idle_timeout;
-    fm.hard_timeout = fe->entry->hard_timeout;
-    fm.buffer_id = UINT32_MAX;
-    fm.out_port = OFPP_ANY;
-    fm.out_group = OFPG_ANY;
-    fm.flags = (ofputil_flow_mod_flags)0;
-
-    OfpBuf message(ofputil_encode_flow_mod(&fm, proto));
-    int error = conn->SendMessage(message);
-    if (error) {
-        LOG(ERROR) << "Could not delete flow mod: " << ovs_strerror(error);
-    }
-}
-
-void PacketInHandler::dstFlowCb(const FlowEntryList& flows,
-                                const MAC& dstMac, uint32_t outPort,
-                                uint32_t fgrpId) {
-    if (!intSwConnection) return;
-    for (const FlowEntryPtr& fe : flows) {
-        if (fe->entry->cookie == flow::cookie::LEARN) {
-            uint32_t port = getOutputRegValue(fe);
-            uint32_t flowFgrpId = fe->entry->match.flow.regs[5];
-            MAC flowDstMac(fe->entry->match.flow.dl_dst.ea);
-            if (flowFgrpId == fgrpId && flowDstMac == dstMac &&
-                port != outPort) {
-                LOG(DEBUG) << "Removing stale learn flow with dst "
-                           << flowDstMac
-                           << " on port " << port;
-                removeLearnFlow(intSwConnection, fe);
-            }
-        }
-    }
-}
-
-void PacketInHandler::anyFlowCb(const FlowEntryList& flows) {
-    if (!intSwConnection) return;
-    for (const FlowEntryPtr& fe : flows) {
-        if (fe->entry->cookie == flow::cookie::LEARN &&
-            !reconcileReactiveFlow(fe)) {
-            removeLearnFlow(intSwConnection, fe);
-        }
-    }
-}
-
-bool PacketInHandler::reconcileReactiveFlow(const FlowEntryPtr& fe) {
-    EndpointManager& epMgr = agent.getEndpointManager();
-
-    if (!intPortMapper) return true;
-    if (fe->entry->cookie != flow::cookie::LEARN)
-        return false;   // non-reactive entries must be reconciled
-
-    uint32_t port = getOutputRegValue(fe);
-    if (port == intFlowManager.getTunnelPort())
-        return true;
-
-    MAC dstMac(fe->entry->match.flow.dl_dst.ea);
-
-    try {
-        const string& portName = intPortMapper->FindPort(port);
-        unordered_set<string> eps;
-        epMgr.getEndpointsByIface(portName, eps);
-        for (const string& uuid : eps) {
-            shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
-            if (!ep) continue;
-            if (ep->isPromiscuousMode()) return true;
-
-            optional<MAC> mac = ep->getMAC();
-            if (!mac) continue;
-            if (mac == dstMac) return true;
-        }
-    } catch (std::out_of_range) {
-        // fall through
-    }
-
-    LOG(DEBUG) << "Removing stale learn flow with dst " << dstMac
-               << " on port " << port;
-    return false;
-}
-
-void PacketInHandler::portStatusUpdate(const string&, uint32_t,
-                                       bool fromDesc) {
-    if (fromDesc) return;
-    if (intFlowReader && intPortMapper) {
-        intFlowReader->getFlows(IntFlowManager::LEARN_TABLE_ID,
-                                [this](const FlowEntryList& flows, bool) {
-                                    anyFlowCb(flows);
-                                });
-    }
-}
-
-
-void PacketInHandler::handleLearnPktIn(SwitchConnection *conn,
-                                       struct ofputil_packet_in& pi,
-                                       uint32_t pi_buffer_id,
-                                       int proto,
-                                       const struct dp_packet* pkt,
-                                       struct flow& flow) {
-    writeLearnFlow(conn, proto, pi, flow, false);
-    if (writeLearnFlow(conn, proto, pi, flow, true))
-        return;
-
-    uint32_t epgId = (uint32_t)pi.flow_metadata.flow.regs[0];
-    PolicyManager& polMgr = agent.getPolicyManager();
-    optional<URI> egUri = polMgr.getGroupForVnid(epgId);
-    const address tunDst = egUri
-        ? intFlowManager.getEPGTunnelDst(egUri.get())
-        : intFlowManager.getTunnelDst();
-
-    bool broadcast = (flow.dl_dst.ea[0] & 0x01) != 0;
-    uint32_t groupId = broadcast
-        ? pi.flow_metadata.flow.regs[5]
-        : IntFlowManager::getPromId(pi.flow_metadata.flow.regs[5]);
-    {
-        // install a forward flow to flood to the promiscuous ports in
-        // the flood domain until we learn the correct reverse path
-        struct ofputil_flow_mod fm;
-        memset(&fm, 0, sizeof(fm));
-        fm.buffer_id = pi_buffer_id;
-        fm.table_id = IntFlowManager::LEARN_TABLE_ID;
-        fm.priority = 50;
-        fm.idle_timeout = 5;
-        fm.hard_timeout = 60;
-        fm.command = OFPFC_ADD;
-        fm.new_cookie = flow::cookie::LEARN;
-
-        match_set_in_port(&fm.match, pi.flow_metadata.flow.in_port.ofp_port);
-        match_set_reg(&fm.match, 5 /* REG5 */, pi.flow_metadata.flow.regs[5]);
-        match_set_dl_src(&fm.match, flow.dl_src);
-
-        ActionBuilder ab;
-        ab.reg(MFF_REG7, tunDst.to_v4().to_ulong());
-        ab.group(groupId);
-        ab.build(&fm);
-
-        OfpBuf message(ofputil_encode_flow_mod(&fm, (ofputil_protocol)proto));
-        int error = conn->SendMessage(message);
-        free(fm.ofpacts);
-        if (error) {
-            LOG(ERROR) << "Could not write flow mod: " << ovs_strerror(error);
-        }
-    }
-
-    if (pi_buffer_id == UINT32_MAX) {
-        // Send packet out if needed
-        struct ofputil_packet_out po;
-        po.buffer_id = UINT32_MAX;
-        po.packet = dpp_data(pkt);
-        po.packet_len = dpp_size(pkt);
-        po.in_port = pi.flow_metadata.flow.in_port.ofp_port;
-
-        ActionBuilder ab;
-        ab.reg(MFF_REG0, pi.flow_metadata.flow.regs[0]);
-        ab.reg(MFF_REG7, tunDst.to_v4().to_ulong());
-        ab.group(groupId);
-        ab.build(&po);
-
-        OfpBuf message(ofputil_encode_packet_out(&po, (ofputil_protocol)proto));
-        int error = conn->SendMessage(message);
-        free(po.ofpacts);
-        if (error) {
-            LOG(ERROR) << "Could not write packet-out: " << ovs_strerror(error);
-        }
-    }
 }
 
 typedef std::function<void (ActionBuilder&)> output_act_t;
@@ -450,7 +187,7 @@ static void send_packet_out(Agent& agent,
                 }
             }
         }
-    } catch (std::out_of_range) {
+    } catch (std::out_of_range&) {
         LOG(WARNING) << "Port " << out_port << " not found in int bridge";
     }
 
@@ -868,7 +605,7 @@ static void handleDHCPPktIn(bool v4,
     string iface;
     try {
         iface = intPortMapper->FindPort(pi.flow_metadata.flow.in_port.ofp_port);
-    } catch (std::out_of_range) {
+    } catch (std::out_of_range&) {
         return;
     }
 
@@ -942,7 +679,7 @@ static void handleVIPPktIn(bool v4,
     string iface;
     try {
         iface = intPortMapper.FindPort(pi.flow_metadata.flow.in_port.ofp_port);
-    } catch (std::out_of_range) {
+    } catch (std::out_of_range&) {
         return;
     }
 
@@ -1173,10 +910,7 @@ void PacketInHandler::Handle(SwitchConnection* conn,
         ((ofp_version)conn->GetProtocolVersion());
     assert(ofputil_protocol_is_valid(proto));
 
-    if (pi.cookie == flow::cookie::LEARN ||
-        pi.cookie == flow::cookie::PROACTIVE_LEARN)
-        handleLearnPktIn(conn, pi, pi_buffer_id, proto, pkt.get(), flow);
-    else if (pi.cookie == flow::cookie::NEIGH_DISC)
+    if (pi.cookie == flow::cookie::NEIGH_DISC)
         handleNDPktIn(agent, intFlowManager, conn, accSwConnection,
                       intPortMapper, accessPortMapper,
                       pi, proto, pkt.get(), flow);

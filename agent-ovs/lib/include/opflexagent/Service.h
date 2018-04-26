@@ -351,7 +351,7 @@ public:
          * destination IP to the specified next hop IP address.  If
          * there are multiple addreses, load balance across them
          *
-         * @return the IP address
+         * @return the set of IP addresses
          */
         const std::set<std::string>& getNextHopIPs() const {
             return nextHopIps;

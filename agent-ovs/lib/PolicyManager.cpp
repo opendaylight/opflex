@@ -1007,21 +1007,11 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
 uint8_t PolicyManager::getEffectiveRoutingMode(const URI& egURI) {
     using namespace modelgbp::gbp;
 
-    optional<shared_ptr<FloodDomain> > fd = getFDForGroup(egURI);
     optional<shared_ptr<BridgeDomain> > bd = getBDForGroup(egURI);
-
-    uint8_t floodMode = UnknownFloodModeEnumT::CONST_DROP;
-    if (fd)
-        floodMode = fd.get()
-            ->getUnknownFloodMode(floodMode);
 
     uint8_t routingMode = RoutingModeEnumT::CONST_ENABLED;
     if (bd)
         routingMode = bd.get()->getRoutingMode(routingMode);
-
-    // In learning mode, we can't handle routing at present
-    if (floodMode == UnknownFloodModeEnumT::CONST_FLOOD)
-        routingMode = RoutingModeEnumT::CONST_DISABLED;
 
     return routingMode;
 }

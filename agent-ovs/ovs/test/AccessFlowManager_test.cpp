@@ -9,6 +9,7 @@
  */
 
 #include <opflexagent/test/BaseFixture.h>
+#include <opflexagent/LearningBridgeSource.h>
 #include "FlowManagerFixture.h"
 #include "AccessFlowManager.h"
 #include "CtZoneManager.h"
@@ -69,6 +70,9 @@ public:
 
     /* Initialize dhcp flow entries */
     void initExpDhcpEp(shared_ptr<Endpoint>& ep);
+
+    /* Initialize learning bridge entries */
+    void initExpLearningBridge();
 };
 
 BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
@@ -152,6 +156,32 @@ BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
     initExpStatic();
     initExpDhcpEp(ep0);
     WAIT_FOR_TABLES("dhcp-configured", 500);
+}
+
+BOOST_FIXTURE_TEST_CASE(learningBridge, AccessFlowManagerFixture) {
+    setConnected();
+
+    ep0.reset(new Endpoint("0-0-0-0"));
+    ep0->setInterfaceName("ep0-int");
+    ep0->setAccessInterface("ep0-access");
+    ep0->setAccessUplinkInterface("ep0-uplink");
+    portmapper.ports[ep0->getAccessInterface().get()] = 42;
+    portmapper.ports[ep0->getAccessUplinkInterface().get()] = 24;
+    portmapper.RPortMap[42] = ep0->getAccessInterface().get();
+    portmapper.RPortMap[24] = ep0->getAccessUplinkInterface().get();
+    epSrc.updateEndpoint(*ep0);
+
+    LearningBridgeSource lbSource(&agent.getLearningBridgeManager());
+    LearningBridgeIface if1;
+    if1.setUUID("1");
+    if1.setInterfaceName(ep0->getInterfaceName().get());
+    if1.setTrunkVlans({ {0x400,0x4ff} });
+    lbSource.updateLBIface(if1);
+
+    initExpStatic();
+    initExpEp(ep0);
+    initExpLearningBridge();
+    WAIT_FOR_TABLES("create", 500);
 }
 
 BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
@@ -347,6 +377,15 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
              .actions().load(RD, zoneId).load(SEPG, 1)
              .load(OUTPORT, access).go(IN_POL).done());
     }
+}
+
+void AccessFlowManagerFixture::initExpLearningBridge() {
+    ADDF(Bldr().table(GRP).priority(500).in(24)
+         .isVlanTci("0x1400/0x1f00")
+         .actions().outPort(42).done());
+    ADDF(Bldr().table(GRP).priority(500).in(42)
+         .isVlanTci("0x1400/0x1f00")
+         .actions().outPort(24).done());
 }
 
 void AccessFlowManagerFixture::initExpSecGrpSet1() {

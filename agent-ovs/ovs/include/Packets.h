@@ -46,6 +46,17 @@ extern const uint8_t MAC_ADDR_IPV6MULTICAST[6];
 extern const uint8_t MAC_ADDR_ZERO[6];
 
 /**
+ * Mac addresses assigned for standards use that should be filtered by
+ * a bridge
+ */
+extern const uint8_t MAC_ADDR_FILTERED[6];
+
+/**
+ * Mask for MAC_ADDR_FILTERED
+ */
+extern const uint8_t MAC_ADDR_FILTERED_MASK[6];
+
+/**
  * Link-local ipv4 address used for optimized DHCP replies when not
  * otherwise specified by the user.
  *
