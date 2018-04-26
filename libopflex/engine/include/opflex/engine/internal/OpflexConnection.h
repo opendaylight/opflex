@@ -167,6 +167,7 @@ private:
     void doWrite(OpflexMessage* message);
 
     virtual void notifyReady();
+    virtual void notifyFailed() {}
 
     friend class OpflexHandler;
 };

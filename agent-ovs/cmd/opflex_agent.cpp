@@ -130,6 +130,8 @@ public:
             LOG(ERROR) << "Unknown fatal error";
             return 3;
         }
+        // unreachable
+        return 0;
     }
 
     virtual void updated(const boost::filesystem::path& filePath) {

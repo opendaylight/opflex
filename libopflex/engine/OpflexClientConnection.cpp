@@ -58,6 +58,11 @@ void OpflexClientConnection::notifyReady() {
     ready = true;
     uv_timer_stop(handshake_timer);
     pool->updatePeerStatus(hostname, port, PeerStatusListener::READY);
+    failureCount = 0;
+}
+
+void OpflexClientConnection::notifyFailed() {
+    connectionFailure();
 }
 
 void OpflexClientConnection::connect() {
@@ -150,7 +155,6 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
         conn->pool->updatePeerStatus(conn->hostname, conn->port,
                                      PeerStatusListener::CONNECTED);
         conn->handler->connected();
-        conn->failureCount = 0;
         break;
     case yajr::StateChange::DISCONNECT:
         LOG(INFO) << "[" << conn->getRemotePeer() << "] "
