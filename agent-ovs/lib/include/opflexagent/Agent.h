@@ -16,6 +16,7 @@
 #include <opflexagent/EndpointManager.h>
 #include <opflexagent/ServiceManager.h>
 #include <opflexagent/ExtraConfigManager.h>
+#include <opflexagent/LearningBridgeManager.h>
 #include <opflexagent/NotifServer.h>
 #include <opflexagent/FSWatcher.h>
 
@@ -40,6 +41,7 @@ class RendererPlugin;
 class EndpointSource;
 class ServiceSource;
 class FSRDConfigSource;
+class LearningBridgeSource;
 
 /**
  * Master object for the OVS agent.  This class holds the state for
@@ -107,9 +109,16 @@ public:
     ServiceManager& getServiceManager() { return serviceManager; }
 
     /**
-     * Get the extra config object for this agent
+     * Get the extra config manager object for this agent
      */
     ExtraConfigManager& getExtraConfigManager() { return extraConfigManager; }
+
+    /**
+     * Get the learning bridge manager object for this agent
+     */
+    LearningBridgeManager& getLearningBridgeManager() {
+        return learningBridgeManager;
+    }
 
     /**
      * Get the notification server object for this agent
@@ -135,6 +144,7 @@ private:
     EndpointManager endpointManager;
     ServiceManager serviceManager;
     ExtraConfigManager extraConfigManager;
+    LearningBridgeManager learningBridgeManager;
     NotifServer notifServer;
     FSWatcher fsWatcher;
 
@@ -153,6 +163,7 @@ private:
     std::set<std::string> endpointSourceModelLocalNames;
     std::vector<std::unique_ptr<EndpointSource>> endpointSources;
     std::vector<std::unique_ptr<FSRDConfigSource>> rdConfigSources;
+    std::vector<std::unique_ptr<LearningBridgeSource>> learningBridgeSources;
 
     std::set<std::string> serviceSourcePaths;
     std::vector<std::unique_ptr<ServiceSource>> serviceSources;

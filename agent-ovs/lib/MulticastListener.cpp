@@ -31,7 +31,6 @@
 namespace opflexagent {
 
 namespace ba = boost::asio;
-using std::bind;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::unordered_set;
@@ -52,7 +51,7 @@ MulticastListener::MulticastListener(ba::io_service& io_service_)
         v4->set_option(ba::socket_base::reuse_address(true));
         v4->bind(v4_endpoint);
         socket_v4 = std::move(v4);
-    } catch (boost::system::system_error e) {
+    } catch (boost::system::system_error& e) {
         LOG(WARNING) << "Could not bind to IPv4 socket: "
                      << e.what();
     }
@@ -66,7 +65,7 @@ MulticastListener::MulticastListener(ba::io_service& io_service_)
         v6->set_option(ba::ip::v6_only(true));
         v6->bind(v6_endpoint);
         socket_v6 = std::move(v6);
-    } catch (boost::system::system_error e) {
+    } catch (boost::system::system_error& e) {
         LOG(WARNING) << "Could not bind to IPv6 socket: "
                      << e.what();
     }
@@ -99,7 +98,7 @@ void MulticastListener::stop() {
 
     LOG(INFO) << "Shutting down";
 
-    io_service.dispatch(bind(&MulticastListener::do_stop, this));
+    io_service.dispatch([this]() { MulticastListener::do_stop(); });
 }
 
 void MulticastListener::join(std::string mcast_address) {

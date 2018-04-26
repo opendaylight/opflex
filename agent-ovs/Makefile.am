@@ -57,6 +57,10 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/ServiceSource.h \
 	lib/include/opflexagent/ServiceManager.h \
 	lib/include/opflexagent/FSServiceSource.h \
+	lib/include/opflexagent/LearningBridgeIface.h \
+	lib/include/opflexagent/LearningBridgeSource.h \
+	lib/include/opflexagent/LearningBridgeManager.h \
+	lib/include/opflexagent/FSLearningBridgeSource.h \
 	lib/include/opflexagent/ExtraConfigListener.h \
 	lib/include/opflexagent/ExtraConfigManager.h \
 	lib/include/opflexagent/FSRDConfigSource.h \
@@ -118,6 +122,10 @@ libopflex_agent_la_SOURCES = \
 	lib/ServiceSource.cpp \
 	lib/ServiceManager.cpp \
 	lib/FSServiceSource.cpp \
+	lib/LearningBridgeIface.cpp \
+	lib/LearningBridgeSource.cpp \
+	lib/LearningBridgeManager.cpp \
+	lib/FSLearningBridgeSource.cpp \
 	lib/ExtraConfigManager.cpp \
 	lib/RDConfig.cpp \
 	lib/FSRDConfigSource.cpp \
@@ -239,6 +247,7 @@ agent_test_SOURCES = \
 	lib/test/PolicyManager_test.cpp \
 	lib/test/EndpointManager_test.cpp \
 	lib/test/ModelEndpointSource_test.cpp \
+	lib/test/LearningBridgeManager_test.cpp \
 	lib/test/IdGenerator_test.cpp \
 	lib/test/KeyedRateLimiter_test.cpp \
 	lib/test/NotifServer_test.cpp \
@@ -275,7 +284,6 @@ if RENDERER_OVS
 	ovs/test/IntFlowManager_test.cpp \
 	ovs/test/AccessFlowManager_test.cpp \
 	ovs/test/PacketInHandler_test.cpp \
-	ovs/test/PacketInHandler_test_shim.c \
 	ovs/test/AdvertManager_test.cpp \
 	ovs/test/PortMapper_test.cpp \
 	ovs/test/FlowExecutor_test.cpp \

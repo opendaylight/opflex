@@ -364,6 +364,19 @@ public:
                              mf_field_id dst);
 
     /**
+     * Perform a MAC/VLAN learning action and write the result to the
+     * specified table with the specified priority and cookie.
+     *
+     * @param prio the priority for the resulting learned flow
+     * @param cookie the cookie for the resulting learned flow
+     * @param table the table to which the learned flow should be
+     * written.
+     */
+    ActionBuilder& macVlanLearn(uint16_t prio,
+                                uint64_t cookie,
+                                uint8_t table);
+
+    /**
      * Extract and return an array of flow actions from a buffer used
      * for constructing those actions.
      *

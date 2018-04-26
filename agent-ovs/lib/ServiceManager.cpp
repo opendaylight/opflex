@@ -57,7 +57,7 @@ void ServiceManager::removeIfaces(const Service& service) {
         string_serv_map_t::iterator it =
             iface_aserv_map.find(service.getInterfaceName().get());
         if (it != iface_aserv_map.end()) {
-            unordered_set<std::string> servs = it->second;
+            unordered_set<std::string>& servs = it->second;
             servs.erase(service.getUUID());
 
             if (servs.size() == 0) {
@@ -72,7 +72,7 @@ void ServiceManager::removeDomains(const Service& service) {
         uri_serv_map_t::iterator it =
             domain_aserv_map.find(service.getDomainURI().get());
         if (it != domain_aserv_map.end()) {
-            unordered_set<std::string> servs = it->second;
+            unordered_set<std::string>& servs = it->second;
             servs.erase(service.getUUID());
 
             if (servs.size() == 0) {
@@ -122,7 +122,7 @@ void ServiceManager::removeService(const std::string& uuid) {
 }
 
 void ServiceManager::getServicesByIface(const std::string& ifaceName,
-                                               /*out*/ unordered_set<string>& servs) {
+                                        /*out*/ unordered_set<string>& servs) {
     unique_lock<mutex> guard(serv_mutex);
     string_serv_map_t::const_iterator it = iface_aserv_map.find(ifaceName);
     if (it != iface_aserv_map.end()) {
@@ -131,7 +131,7 @@ void ServiceManager::getServicesByIface(const std::string& ifaceName,
 }
 
 void ServiceManager::getServicesByDomain(const opflex::modb::URI& domain,
-                                                /*out*/ unordered_set<string>& servs) {
+                                         /*out*/ unordered_set<string>& servs) {
     unique_lock<mutex> guard(serv_mutex);
     uri_serv_map_t::const_iterator it = domain_aserv_map.find(domain);
     if (it != domain_aserv_map.end()) {

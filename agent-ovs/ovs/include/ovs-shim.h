@@ -202,6 +202,14 @@ extern "C" {
                        int dst);
 
     /**
+     * MAC/VLAN learn
+     */
+    void act_macvlan_learn(struct ofpbuf* ofpacts,
+                           uint16_t prio,
+                           uint64_t cookie,
+                           uint8_t table);
+
+    /**
      * Get the value of the output reg action
      */
     uint32_t get_output_reg_value(const struct ofpact* ofpacts,

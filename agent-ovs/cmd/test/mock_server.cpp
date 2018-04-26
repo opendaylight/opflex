@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
         if (vm.count("peer"))
             peers = vm["peer"].as<std::vector<string> >();
 
-    } catch (po::unknown_option e) {
+    } catch (po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
     }
