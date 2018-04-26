@@ -10,6 +10,7 @@
 #include "CtZoneManager.h"
 #include "FlowBuilder.h"
 #include "FlowUtils.h"
+#include "RangeMask.h"
 #include <opflexagent/logging.h>
 
 #include <boost/algorithm/string/find_iterator.hpp>
@@ -73,6 +74,7 @@ void AccessFlowManager::enableConnTrack() {
 void AccessFlowManager::start() {
     switchManager.getPortMapper().registerPortStatusListener(this);
     agent.getEndpointManager().registerListener(this);
+    agent.getLearningBridgeManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
 
     for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
@@ -86,22 +88,20 @@ void AccessFlowManager::stop() {
     stopping = true;
     switchManager.getPortMapper().unregisterPortStatusListener(this);
     agent.getEndpointManager().unregisterListener(this);
+    agent.getLearningBridgeManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
 }
 
 void AccessFlowManager::endpointUpdated(const string& uuid) {
     if (stopping) return;
-    taskQueue.dispatch(uuid,
-                       std::bind(&AccessFlowManager::handleEndpointUpdate,
-                                 this, uuid));
+    taskQueue.dispatch(uuid, [=](){ handleEndpointUpdate(uuid); });
 }
 
 void AccessFlowManager::secGroupSetUpdated(const uri_set_t& secGrps) {
     if (stopping) return;
     const string id = getSecGrpSetId(secGrps);
     taskQueue.dispatch("set:" + id,
-                       std::bind(&AccessFlowManager::handleSecGrpSetUpdate,
-                                 this, secGrps, id));
+                       [=]() { handleSecGrpSetUpdate(secGrps, id); });
 }
 
 void AccessFlowManager::configUpdated(const opflex::modb::URI& configURI) {
@@ -112,16 +112,14 @@ void AccessFlowManager::configUpdated(const opflex::modb::URI& configURI) {
 void AccessFlowManager::secGroupUpdated(const opflex::modb::URI& uri) {
     if (stopping) return;
     taskQueue.dispatch("secgrp:" + uri.toString(),
-                       std::bind(&AccessFlowManager::handleSecGrpUpdate,
-                                   this, uri));
+                       [=]() { handleSecGrpUpdate(uri); });
 }
 
 void AccessFlowManager::portStatusUpdate(const string& portName,
                                          uint32_t portNo, bool) {
     if (stopping) return;
     agent.getAgentIOService()
-        .dispatch(std::bind(&AccessFlowManager::handlePortStatusUpdate,
-                              this, portName, portNo));
+        .dispatch([=]() { handlePortStatusUpdate(portName, portNo); });
 }
 
 static FlowEntryPtr flowEmptySecGroup(uint32_t emptySecGrpSetId) {
@@ -194,6 +192,25 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
                        << uuid;
     }
 
+    MaskList trunkVlans;
+    if (ep->getInterfaceName()) {
+        LearningBridgeManager& lbMgr = agent.getLearningBridgeManager();
+        std::unordered_set<std::string> lbiUuids;
+        lbMgr.getLBIfaceByIface(ep->getInterfaceName().get(), lbiUuids);
+
+        for (auto& uuid : lbiUuids) {
+            auto iface = lbMgr.getLBIface(uuid);
+            if (!iface) continue;
+
+            for (auto& range : iface->getTrunkVlans()) {
+                MaskList masks;
+                RangeMask::getMasks(range.first, range.second, masks);
+                trunkVlans.insert(trunkVlans.end(),
+                                  masks.begin(), masks.end());
+            }
+        }
+    }
+
     FlowEntryList el;
     if (accessPort != OFPP_NONE && uplinkPort != OFPP_NONE) {
         {
@@ -246,6 +263,21 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
             }
             out.action().go(SEC_GROUP_IN_TABLE_ID);
             out.build(el);
+        }
+
+        // Bypass the access bridge for ports trunked by learning
+        // bridge interfaces.
+        for (const Mask& m : trunkVlans) {
+            uint16_t tci = 0x1000 | m.first;
+            uint16_t mask = 0x1000 | (0xfff & m.second);
+            FlowBuilder().priority(500).inPort(accessPort)
+                .tci(tci, mask)
+                .action().output(uplinkPort)
+                .parent().build(el);
+            FlowBuilder().priority(500).inPort(uplinkPort)
+                .tci(tci, mask)
+                .action().output(accessPort)
+                .parent().build(el);
         }
     }
     switchManager.writeFlow(uuid, GROUP_MAP_TABLE_ID, el);
@@ -387,8 +419,28 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
     switchManager.writeFlow(secGrpsIdStr, SEC_GROUP_OUT_TABLE_ID, secGrpOut);
 }
 
+void AccessFlowManager::lbIfaceUpdated(const std::string& uuid) {
+    LOG(DEBUG) << "Updating learning bridge interface " << uuid;
+
+    LearningBridgeManager& lbMgr = agent.getLearningBridgeManager();
+    shared_ptr<const LearningBridgeIface> iface = lbMgr.getLBIface(uuid);
+
+    if (!iface)
+        return;
+
+    if (iface->getInterfaceName()) {
+        EndpointManager& epMgr = agent.getEndpointManager();
+        std::unordered_set<std::string> epUuids;
+        epMgr.getEndpointsByIface(iface->getInterfaceName().get(), epUuids);
+
+        for (auto& uuid : epUuids) {
+            endpointUpdated(uuid);
+        }
+    }
+}
+
 static bool secGrpSetIdGarbageCb(EndpointManager& endpointManager,
-                                 const string&, const string& str) {
+                                 const string& str) {
     uri_set_t secGrps;
 
     typedef boost::algorithm::split_iterator<string::const_iterator> ssi;
@@ -405,17 +457,19 @@ static bool secGrpSetIdGarbageCb(EndpointManager& endpointManager,
 }
 
 void AccessFlowManager::cleanup() {
-    using std::placeholders::_1;
-    using std::placeholders::_2;
+    using namespace modelgbp::gbp;
 
-    IdGenerator::garbage_cb_t gcb1 =
-        std::bind(IdGenerator::uriIdGarbageCb<modelgbp::gbp::SecGroup>,
-                  std::ref(agent.getFramework()), _1, _2);
+    auto gcb1 = [=](const std::string& ns,
+                    const std::string& str) -> bool {
+        return IdGenerator::uriIdGarbageCb<SecGroup>(agent.getFramework(),
+                                                     ns, str);
+    };
     idGen.collectGarbage(ID_NMSPC_SECGROUP, gcb1);
 
-    IdGenerator::garbage_cb_t gcb2 =
-        std::bind(secGrpSetIdGarbageCb,
-                  std::ref(agent.getEndpointManager()), _1, _2);
+    auto gcb2 = [=](const std::string&,
+                    const std::string& str) -> bool {
+        return secGrpSetIdGarbageCb(agent.getEndpointManager(), str);
+    };
     idGen.collectGarbage(ID_NMSPC_SECGROUP_SET, gcb2);
 }
 

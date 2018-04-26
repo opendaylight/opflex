@@ -43,7 +43,6 @@ using boost::uuids::basic_random_generator;
 using boost::asio::deadline_timer;
 using boost::asio::placeholders::error;
 using boost::posix_time::milliseconds;
-using std::bind;
 using boost::system::error_code;
 
 TunnelEpManager::TunnelEpManager(Agent* agent_, long timer_interval_)
