@@ -200,7 +200,7 @@ void InterfaceStatsManager::Handle(SwitchConnection* connection,
                                        FindPort(ps.port_no);
                 epMgr.getEndpointsByAccessIface(accessPortName, endpoints);
             }
-        } catch (std::out_of_range e) {
+        } catch (std::out_of_range& e) {
             LOG(DEBUG) << "OpenFlow port on bridge "
                        << ((connection == intConnection) ?
                            intConnection->getSwitchName() :

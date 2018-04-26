@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <thread>
+#include <list>
 
 namespace opflexagent {
 
@@ -108,154 +109,169 @@ enum FLAG {
  */
 class Bldr {
 public:
-    Bldr(const std::string& init="");
-    Bldr(const std::string& init, uint32_t flag);
+    Bldr();
+    Bldr(uint32_t flag);
 
-    std::string done() { cntr = 0; return entry; }
-    Bldr& table(uint8_t t) { rep(", table=", str(t)); return *this; }
-    Bldr& priority(uint16_t p) { rep(", priority=", str(p)); return *this; }
-    Bldr& cookie(uint64_t c) { rep("cookie=", str64(c, true)); return *this; }
-    Bldr& tunId(uint32_t id) { rep(",tun_id=", str(id, true)); return *this; }
-    Bldr& in(uint32_t p) { rep(",in_port=", str(p)); return *this; }
-    Bldr& reg(REG r, uint32_t v);
-    Bldr& isEthSrc(const std::string& s) { rep(",dl_src=", s); return *this; }
-    Bldr& isEthDst(const std::string& s) { rep(",dl_dst=", s); return *this; }
-    Bldr& ip() { rep(",ip"); return *this; }
-    Bldr& ipv6() { rep(",ipv6"); return *this; }
-    Bldr& arp() { rep(",arp"); return *this; }
-    Bldr& tcp() { rep(",tcp"); return *this; }
-    Bldr& tcp6() { rep(",tcp6"); return *this; }
-    Bldr& udp() { rep(",udp"); return *this; }
-    Bldr& udp6() { rep(",udp6"); return *this; }
-    Bldr& icmp() { rep(",icmp"); return *this; }
-    Bldr& icmp6() { rep(",icmp6"); return *this; }
-    Bldr& icmp_type(uint8_t t) { rep(",icmp_type=", str(t)); return *this; }
-    Bldr& icmp_code(uint8_t c) { rep(",icmp_code=", str(c)); return *this; }
-    Bldr& isArpOp(uint8_t op) { rep(",arp_op=", str(op)); return *this; }
-    Bldr& isSpa(const std::string& s) { rep(",arp_spa=", s); return *this; }
-    Bldr& isTpa(const std::string& s) {
-        rep(",arp_tpa=", s); return *this;
-    }
-    Bldr& isIpSrc(const std::string& s) {
-        rep(",nw_src=", s); return *this;
-    }
-    Bldr& isIpv6Src(const std::string& s) {
-        rep(",ipv6_src=", s); return *this;
-    }
-    Bldr& isIpDst(const std::string& s) {
-        rep(",nw_dst=", s); return *this;
-    }
-    Bldr& isIpv6Dst(const std::string& s) {
-        rep(",ipv6_dst=", s); return *this;
-    }
-    Bldr& isTpSrc(uint16_t p) { rep(",tp_src=", str(p)); return *this; }
-    Bldr& isTpDst(uint16_t p) { rep(",tp_dst=", str(p)); return *this; }
-    Bldr& isTpSrc(uint16_t p, uint16_t m) {
-        rep(",tp_src=", str(p, true) + "/" + str(m, true)); return *this;
-    }
-    Bldr& isTpDst(uint16_t p, uint16_t m) {
-        rep(",tp_dst=", str(p, true) + "/" + str(m, true)); return *this;
-    }
-    Bldr& isVlan(uint16_t v) { rep(",dl_vlan=", str(v)); return *this; }
-    Bldr& noVlan() { rep(",vlan_tci=0x0000/0x1fff"); return *this; }
-    Bldr& isNdTarget(const std::string& t) {
-        rep(",nd_target=", t); return *this;
-    }
-    Bldr& isEth(uint16_t t)  { rep(",dl_type=", str(t, true)); return *this; }
-    Bldr& isTcpFlags(const std::string& s)  {
-        rep(",tcp_flags=", s); return *this;
-    }
-    Bldr& isCtState(const std::string& s) {
-        rep(",ct_state=" + s); return *this;
-    }
-    Bldr& isCtMark(const std::string& s) {
-        rep(",ct_mark=" + s); return *this;
-    }
-    Bldr& isMdAct(uint8_t a) {
-        rep(",metadata=", str(a, true), "/0xff"); return *this;
-    }
-    Bldr& isPolicyApplied() { rep(",metadata=0x100/0x100"); return *this; }
-    Bldr& isFromServiceIface(bool yes = true) {
-        rep((std::string(",metadata=") +
-             (yes ? "0x200" : "0") + "/0x200").c_str());
+    std::string done();
+    Bldr& table(uint8_t t) {
+        _table = "table=" + str(t);
         return *this;
     }
-    Bldr& isMd(const std::string& m) { rep(",metadata=", m); return *this; }
-    Bldr& isPktMark(uint32_t m) {
-        rep(",pkt_mark=", str(m, true)); return *this;
+    Bldr& priority(uint16_t p) {
+        _priority = "priority=" + str(p); return *this;
     }
-    Bldr& actions() { rep(" actions="); cntr = 1; return *this; }
-    Bldr& drop() { rep("drop"); return *this; }
+    Bldr& cookie(uint64_t c) {
+        _cookie = "cookie=" + str64(c, true); return *this;
+    }
+    Bldr& tunId(uint32_t id) { m("tun_id", str(id, true)); return *this; }
+    Bldr& in(uint32_t p) { m("in_port", str(p)); return *this; }
+    Bldr& reg(REG r, uint32_t v);
+    Bldr& isEthSrc(const std::string& s) { m("dl_src", s); return *this; }
+    Bldr& isEthDst(const std::string& s) { m("dl_dst", s); return *this; }
+    Bldr& ip() { m("ip"); return *this; }
+    Bldr& ipv6() { m("ipv6"); return *this; }
+    Bldr& arp() { m("arp"); return *this; }
+    Bldr& tcp() { m("tcp"); return *this; }
+    Bldr& tcp6() { m("tcp6"); return *this; }
+    Bldr& udp() { m("udp"); return *this; }
+    Bldr& udp6() { m("udp6"); return *this; }
+    Bldr& icmp() { m("icmp"); return *this; }
+    Bldr& icmp6() { m("icmp6"); return *this; }
+    Bldr& icmp_type(uint8_t t) { m("icmp_type", str(t)); return *this; }
+    Bldr& icmp_code(uint8_t c) { m("icmp_code", str(c)); return *this; }
+    Bldr& isArpOp(uint8_t op) { m("arp_op", str(op)); return *this; }
+    Bldr& isSpa(const std::string& s) { m("arp_spa", s); return *this; }
+    Bldr& isTpa(const std::string& s) {
+        m("arp_tpa", s); return *this;
+    }
+    Bldr& isIpSrc(const std::string& s) {
+        m("nw_src", s); return *this;
+    }
+    Bldr& isIpv6Src(const std::string& s) {
+        m("ipv6_src", s); return *this;
+    }
+    Bldr& isIpDst(const std::string& s) {
+        m("nw_dst", s); return *this;
+    }
+    Bldr& isIpv6Dst(const std::string& s) {
+        m("ipv6_dst", s); return *this;
+    }
+    Bldr& isTpSrc(uint16_t p) { m("tp_src", str(p)); return *this; }
+    Bldr& isTpDst(uint16_t p) { m("tp_dst", str(p)); return *this; }
+    Bldr& isTpSrc(uint16_t p, uint16_t mask) {
+        m("tp_src", str(p, true) + "/" + str(mask, true)); return *this;
+    }
+    Bldr& isTpDst(uint16_t p, uint16_t mask) {
+        m("tp_dst", str(p, true) + "/" + str(mask, true)); return *this;
+    }
+    Bldr& isVlan(uint16_t v) { m("dl_vlan", str(v)); return *this; }
+    Bldr& noVlan() { m("vlan_tci=0x0000/0x1fff"); return *this; }
+    Bldr& isVlanTci(const std::string& v) {
+        m("vlan_tci", v); return *this;
+    }
+    Bldr& isNdTarget(const std::string& t) {
+        m("nd_target", t); return *this;
+    }
+    Bldr& isEth(uint16_t t)  { m("dl_type", str(t, true)); return *this; }
+    Bldr& isTcpFlags(const std::string& s)  {
+        m("tcp_flags", s); return *this;
+    }
+    Bldr& isCtState(const std::string& s) {
+        m("ct_state", s); return *this;
+    }
+    Bldr& isCtMark(const std::string& s) {
+        m("ct_mark", s); return *this;
+    }
+    Bldr& isMdAct(uint8_t a) {
+        m("metadata", str(a, true) + "/0xff"); return *this;
+    }
+    Bldr& isPolicyApplied() { m("metadata", "0x100/0x100"); return *this; }
+    Bldr& isFromServiceIface(bool yes = true) {
+        m() << "metadata=" << (yes ? "0x200" : "0") << "/0x200";
+        return *this;
+    }
+    Bldr& isMd(const std::string& md) { m("metadata", md); return *this; }
+    Bldr& isPktMark(uint32_t mark) {
+        m("pkt_mark", str(mark, true)); return *this;
+    }
+    Bldr& actions() { return *this; }
+    Bldr& drop() { a("drop"); return *this; }
     Bldr& load64(REG r, uint64_t v);
     Bldr& load(REG r, uint32_t v);
     Bldr& load(REG r, const std::string& v);
     Bldr& move(REG s, REG d);
     Bldr& ethSrc(const std::string& s) {
-        rep("set_field:", s, "->eth_src"); return *this;
+        a("set_field", s + "->eth_src"); return *this;
     }
     Bldr& ethDst(const std::string& s) {
-        rep("set_field:", s, "->eth_dst"); return *this;
+        a("set_field", s + "->eth_dst"); return *this;
     }
     Bldr& ipSrc(const std::string& s) {
-        rep("mod_nw_src:", s); return *this;
+        a("mod_nw_src", s); return *this;
     }
     Bldr& ipDst(const std::string& s) {
-        rep("mod_nw_dst:", s); return *this;
+        a("mod_nw_dst", s); return *this;
     }
     Bldr& tpSrc(uint16_t p) {
-        rep("mod_tp_src:", str(p)); return *this;
+        a("mod_tp_src", str(p)); return *this;
     }
     Bldr& tpDst(uint16_t p) {
-        rep("mod_tp_dst:", str(p)); return *this;
+        a("mod_tp_dst", str(p)); return *this;
     }
     Bldr& ipv6Src(const std::string& s) {
-        rep("set_field:", s, "->ipv6_src"); return *this;
+        a("set_field", s + "->ipv6_src"); return *this;
     }
     Bldr& ipv6Dst(const std::string& s) {
-        rep("set_field:", s, "->ipv6_dst"); return *this;
+        a("set_field", s + "->ipv6_dst"); return *this;
     }
-    Bldr& go(uint8_t t) { rep("goto_table:", str(t)); return *this; }
+    Bldr& go(uint8_t t) { a("goto_table", str(t)); return *this; }
     Bldr& out(REG r);
-    Bldr& decTtl() { rep("dec_ttl"); return *this; }
-    Bldr& group(uint32_t g) { rep("group:", str(g)); return *this; }
-    Bldr& bktId(uint32_t b) { rep("bucket_id:", str(b)); return *this; }
-    Bldr& bktActions() { rep(",actions="); cntr = 1; return *this; }
-    Bldr& outPort(uint32_t p) { rep("output:", str(p)); return *this; }
-    Bldr& pushVlan() { rep("push_vlan:0x8100"); return *this; }
-    Bldr& popVlan() { rep("pop_vlan"); return *this; }
-    Bldr& setVlan(uint16_t v) { rep("set_vlan_vid:", str(v)); return *this; }
-    Bldr& inport() { rep("IN_PORT"); return *this; }
+    Bldr& decTtl() { a("dec_ttl"); return *this; }
+    Bldr& group(uint32_t g) { a("group", str(g)); return *this; }
+    Bldr& outPort(uint32_t p) { a("output", str(p)); return *this; }
+    Bldr& pushVlan() { a("push_vlan:0x8100"); return *this; }
+    Bldr& popVlan() { a("pop_vlan"); return *this; }
+    Bldr& setVlan(uint16_t v) { a("set_vlan_vid", str(v)); return *this; }
+    Bldr& inport() { a("IN_PORT"); return *this; }
     Bldr& controller(uint16_t len) {
-        rep("CONTROLLER:", str(len)); return *this;
+        a("CONTROLLER", str(len)); return *this;
     }
-    Bldr& meta(uint64_t a, uint64_t m) {
-        rep("write_metadata:", str(a, true),
-            "/" + str(m, true)); return *this;
+    Bldr& meta(uint64_t meta, uint64_t mask) {
+        a("write_metadata", str(meta, true) + "/" + str(mask, true));
+        return *this;
     }
-    Bldr& mdAct(uint8_t a) {
-        rep("write_metadata:", str(a, true), "/0xff"); return *this;
+    Bldr& mdAct(uint8_t act) {
+        a("write_metadata", str(act, true) + "/0xff"); return *this;
     }
-    Bldr& ct(const std::string& s) { rep("ct(", s, ")"); return *this; }
+    Bldr& ct(const std::string& s) {
+        a() << "ct(" << s << ")"; return *this;
+    }
+    Bldr& learn(const std::string& s) {
+        a() << "learn(" << s << ")"; return *this;
+    }
     Bldr& multipath(const std::string& s) {
-        rep("multipath(", s, ")"); return *this;
+        a() << "multipath(" << s << ")"; return *this;
     }
-    Bldr& polApplied() { rep("write_metadata:0x100/0x100"); return *this; }
-    Bldr& resubmit(uint8_t t) { rep("resubmit(,", str(t), ")"); return *this; }
+    Bldr& polApplied() { a("write_metadata", "0x100/0x100"); return *this; }
+    Bldr& resubmit(uint8_t t) {
+        a() << "resubmit(," << str(t) << ")"; return *this;
+    }
 
 private:
-    /**
-     * Matches a field in the entry string using prefix and optional
-     * suffix, and replaces the value-part with the given value. If
-     * field is not found, appends it to the end.
-     */
-    void rep(const std::string& pfx, const std::string& val="",
-             const std::string& sfx="");
+    std::stringstream& m();
+    std::stringstream& a();
+    void m(const std::string& pfx, const std::string& val="");
+    void a(const std::string& pfx, const std::string& val="");
     std::string str(int i, bool hex = false);
     std::string str64(uint64_t i, bool hex = false);
     std::string strpad(int i);
 
-    std::string entry;
-    int cntr;
+    uint32_t _flag;
+    std::list<std::stringstream> _match;
+    std::list<std::stringstream> _action;
+    std::string _table;
+    std::string _cookie;
+    std::string _priority;
 };
 
 } // namespace opflexagent

@@ -247,6 +247,13 @@ ActionBuilder& ActionBuilder::multipath(enum nx_hash_fields fields,
     return *this;
 }
 
+ActionBuilder& ActionBuilder::macVlanLearn(uint16_t prio,
+                                           uint64_t cookie,
+                                           uint8_t table) {
+    act_macvlan_learn(buf, prio, cookie, table);
+    return *this;
+}
+
 } // namespace opflexagent
 
 

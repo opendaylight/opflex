@@ -23,6 +23,7 @@
 #include <opflexagent/ModelEndpointSource.h>
 #include <opflexagent/FSServiceSource.h>
 #include <opflexagent/FSRDConfigSource.h>
+#include <opflexagent/FSLearningBridgeSource.h>
 #include <opflexagent/logging.h>
 
 #include <opflexagent/Renderer.h>
@@ -367,6 +368,12 @@ void Agent::start() {
             FSRDConfigSource* source =
                 new FSRDConfigSource(&extraConfigManager, fsWatcher, path);
             rdConfigSources.emplace_back(source);
+        }
+        {
+            LearningBridgeSource* source =
+                new FSLearningBridgeSource(&learningBridgeManager,
+                                           fsWatcher, path);
+            learningBridgeSources.emplace_back(source);
         }
     }
     if (endpointSourceModelLocalNames.size() > 0) {
