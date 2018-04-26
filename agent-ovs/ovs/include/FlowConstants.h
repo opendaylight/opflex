@@ -19,12 +19,6 @@ namespace flow {
 
 namespace cookie {
 /**
- * The cookie used for learn flow entries that are proactively
- * installed
- */
-extern const uint64_t PROACTIVE_LEARN;
-
-/**
  * The cookie used for flow entries that are learned reactively.
  */
 extern const uint64_t LEARN;
@@ -145,6 +139,11 @@ extern const uint64_t FLOOD;
  * Output to the tunnel destination specified in the output register
  */
 extern const uint64_t REMOTE_TUNNEL;
+
+/**
+ * Output as appropriate for the learning bridge
+ */
+extern const uint64_t LEARN;
 
 } // namespace out
 } // namespace meta

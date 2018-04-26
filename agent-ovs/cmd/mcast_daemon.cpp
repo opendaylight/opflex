@@ -98,7 +98,7 @@ private:
                 for (const pt::ptree::value_type &v : groups.get())
                     fileAddrs.insert(v.second.data());
             }
-        } catch (pt::json_parser_error e) {
+        } catch (pt::json_parser_error& e) {
             LOG(ERROR) << "Could not parse multicast group file: " << e.what();
         }
 
@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
         if (vm.count("syslog")) {
             logToSyslog = true;
         }
-    } catch (po::unknown_option e) {
+    } catch (po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
     }
