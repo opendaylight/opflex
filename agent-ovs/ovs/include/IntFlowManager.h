@@ -44,6 +44,7 @@ class IntFlowManager : public SwitchStateHandler,
                        public EndpointListener,
                        public ServiceListener,
                        public ExtraConfigListener,
+                       public LearningBridgeListener,
                        public PolicyListener,
                        public PortStatusListener,
                        public opflex::ofcore::PeerStatusListener,
@@ -248,6 +249,10 @@ public:
     /* Interface: ExtraConfigListener */
     virtual void rdConfigUpdated(const opflex::modb::URI& rdURI);
 
+    /* Interface: LearningBridgeListener */
+    virtual void lbIfaceUpdated(const std::string& uuid);
+    virtual void lbVlanUpdated(LearningBridgeIface::vlan_range_t vlan);
+
     /* Interface: PolicyListener */
     virtual void egDomainUpdated(const opflex::modb::URI& egURI);
     virtual void domainUpdated(opflex::modb::class_id_t cid,
@@ -366,10 +371,7 @@ public:
          */
         NAT_IN_TABLE_ID,
         /**
-         * If the bridge domain is configured to flood packets (such
-         * as is required to enable transparent layer 2 services),
-         * this table handles the MAC learning using a simple reactive
-         * model.
+         * Source for flows installed by OVS learn action
          */
         LEARN_TABLE_ID,
         /**
@@ -422,6 +424,22 @@ private:
      * @param uuid UUID of the changed service
      */
     void handleServiceUpdate(const std::string& uuid);
+
+    /**
+     * Compare and update flow/group tables due to changes in a
+     * learning bridge interface.
+     *
+     * @param uuid UUID of the changed learning bridge interface
+     */
+    void handleLearningBridgeIfaceUpdate(const std::string& uuid);
+
+    /**
+     * Compare and update flow/group tables due to changes in a
+     * learning bridge VLAN
+     *
+     * @param vlan the VLAN whose membership has changed
+     */
+    void handleLearningBridgeVlanUpdate(LearningBridgeIface::vlan_range_t vlan);
 
     /**
      * Compare and update flow/group tables due to changes in an
@@ -493,13 +511,11 @@ private:
      * @param fgrpURI URI of flood-group (flood-domain or endpoint-group)
      * @param endpoint The endpoint to update
      * @param epPort Port number of endpoint
-     * @param isPromiscuous whether the endpoint port is promiscuous
      * @param fd Flood-domain to which the endpoint belongs
      */
     void updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
                                   const Endpoint& endPoint,
                                   uint32_t epPort,
-                                  bool isPromiscuous,
                                   boost::optional<std::shared_ptr<
                                       modelgbp::gbp::FloodDomain> >& fd);
 
@@ -513,8 +529,7 @@ private:
     /*
      * Map of endpoint to the port it is using.
      */
-    typedef std::unordered_map<std::string,
-                               std::pair<uint32_t, bool> > Ep2PortMap;
+    typedef std::unordered_map<std::string, uint32_t> Ep2PortMap;
 
     /**
      * Construct a group-table modification.
@@ -522,29 +537,14 @@ private:
      * @param type The modification type
      * @param groupId Identifier for the flow group to edit
      * @param ep2port Ports to be associated with this flow group
-     * @param onlyPromiscuous only include promiscuous endpoints and
-     * uplinks in the group
      * @return Group-table modification entry
      */
     GroupEdit::Entry createGroupMod(uint16_t type, uint32_t groupId,
-                                    const Ep2PortMap& ep2port,
-                                    bool onlyPromiscuous = false);
+                                    const Ep2PortMap& ep2port);
 
-    /**
-     * Check if a group with given ID and endpoints is present
-     * in the received groups, and update the given group-edits if the
-     * group is not found or is different. If a group is found, it is
-     * removed from the set of received groups.
-     *
-     * @param recvGroups the group map to check
-     * @param groupId ID of the group to check
-     * @param epMap endpoints in the group to check
-     * @param prom if promiscuous mode endpoints only are to be considered
-     * @param ge Container to append the changes
-     */
     void checkGroupEntry(GroupMap& recvGroups,
                          uint32_t groupId, const Ep2PortMap& epMap,
-                         bool prom, GroupEdit& ge);
+                         GroupEdit& ge);
 
     Agent& agent;
     SwitchManager& switchManager;
@@ -580,7 +580,7 @@ private:
     AdvertManager advertManager;
 
     bool isSyncing;
-    volatile bool stopping;
+    std::atomic<bool> stopping;
 
     void initPlatformConfig();
 

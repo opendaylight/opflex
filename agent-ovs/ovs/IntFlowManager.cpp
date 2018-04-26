@@ -16,7 +16,7 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/asio/placeholders.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <netinet/icmp6.h>
 
@@ -32,7 +32,6 @@
 #include <opflexagent/logging.h>
 #include <opflexagent/Endpoint.h>
 #include <opflexagent/EndpointManager.h>
-#include <opflexagent/EndpointListener.h>
 #include <opflexagent/Network.h>
 
 #include "SwitchConnection.h"
@@ -44,6 +43,7 @@
 #include "FlowUtils.h"
 #include "FlowConstants.h"
 #include "FlowBuilder.h"
+#include "RangeMask.h"
 
 #include "arp.h"
 #include "eth.h"
@@ -57,15 +57,12 @@ using std::ostringstream;
 using std::shared_ptr;
 using std::unordered_set;
 using std::unordered_map;
-using std::bind;
 using boost::algorithm::trim;
-using boost::ref;
 using boost::optional;
 using boost::asio::deadline_timer;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
-using boost::asio::placeholders::error;
 using std::chrono::milliseconds;
 using std::unique_lock;
 using std::mutex;
@@ -134,6 +131,7 @@ void IntFlowManager::registerModbListeners() {
     agent.getEndpointManager().registerListener(this);
     agent.getServiceManager().registerListener(this);
     agent.getExtraConfigManager().registerListener(this);
+    agent.getLearningBridgeManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
 }
 
@@ -143,6 +141,7 @@ void IntFlowManager::stop() {
     agent.getEndpointManager().unregisterListener(this);
     agent.getServiceManager().unregisterListener(this);
     agent.getExtraConfigManager().unregisterListener(this);
+    agent.getLearningBridgeManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
 
     advertManager.stop();
@@ -194,7 +193,7 @@ void IntFlowManager::setVirtualRouter(bool virtualRouterEnabled,
     this->routerAdv = routerAdv;
     try {
         MAC(virtualRouterMac).toUIntArray(routerMac);
-    } catch (std::invalid_argument) {
+    } catch (std::invalid_argument&) {
         LOG(ERROR) << "Invalid virtual router MAC: " << virtualRouterMac;
     }
     advertManager.enableRouterAdv(virtualRouterEnabled && routerAdv);
@@ -205,7 +204,7 @@ void IntFlowManager::setVirtualDHCP(bool dhcpEnabled,
     this->virtualDHCPEnabled = dhcpEnabled;
     try {
         MAC(mac).toUIntArray(dhcpMac);
-    } catch (std::invalid_argument) {
+    } catch (std::invalid_argument&) {
         LOG(ERROR) << "Invalid virtual DHCP server MAC: " << mac;
     }
 }
@@ -247,66 +246,74 @@ void IntFlowManager::endpointUpdated(const std::string& uuid) {
     if (stopping) return;
 
     advertManager.scheduleEndpointAdv(uuid);
-    taskQueue.dispatch(uuid,
-                       bind(&IntFlowManager::handleEndpointUpdate, this, uuid));
+    taskQueue.dispatch(uuid, [=]() { handleEndpointUpdate(uuid); });
 }
 
 void IntFlowManager::remoteEndpointUpdated(const string& uuid) {
     if (stopping) return;
-    taskQueue.dispatch(uuid, [this, uuid](){
-        handleRemoteEndpointUpdate(uuid);
-    });
+    taskQueue.dispatch(uuid,
+                       [=](){ handleRemoteEndpointUpdate(uuid); });
 }
 
 void IntFlowManager::serviceUpdated(const std::string& uuid) {
     if (stopping) return;
 
     advertManager.scheduleServiceAdv(uuid);
-    taskQueue.dispatch(uuid,
-                       bind(&IntFlowManager::handleServiceUpdate,
-                            this, uuid));
+    taskQueue.dispatch(uuid, [=]() { handleServiceUpdate(uuid); });
 }
 
 void IntFlowManager::rdConfigUpdated(const opflex::modb::URI& rdURI) {
     domainUpdated(RoutingDomain::CLASS_ID, rdURI);
 }
 
+void IntFlowManager::lbIfaceUpdated(const std::string& uuid) {
+    if (stopping) return;
+
+    taskQueue.dispatch(uuid,
+                       [=]() { handleLearningBridgeIfaceUpdate(uuid); });
+}
+
+void IntFlowManager::lbVlanUpdated(LearningBridgeIface::vlan_range_t vlan) {
+    if (stopping) return;
+
+    taskQueue.dispatch(boost::lexical_cast<string>(vlan),
+                       [=]() { handleLearningBridgeVlanUpdate(vlan); });
+}
+
 void IntFlowManager::egDomainUpdated(const opflex::modb::URI& egURI) {
     if (stopping) return;
 
     taskQueue.dispatch(egURI.toString(),
-                       bind(&IntFlowManager::handleEndpointGroupDomainUpdate,
-                            this, egURI));
+                       [=]() { handleEndpointGroupDomainUpdate(egURI); });
 }
 
 void IntFlowManager::domainUpdated(class_id_t cid, const URI& domURI) {
     if (stopping) return;
 
     taskQueue.dispatch(domURI.toString(),
-                       bind(&IntFlowManager::handleDomainUpdate,
-                            this, cid, domURI));
+                       [=]() { handleDomainUpdate(cid, domURI); });
 }
 
 void IntFlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
     if (stopping) return;
     taskQueue.dispatch(contractURI.toString(),
-                       bind(&IntFlowManager::handleContractUpdate,
-                            this, contractURI));
+                       [=]() { handleContractUpdate(contractURI); });
 }
 
 void IntFlowManager::configUpdated(const opflex::modb::URI& configURI) {
     if (stopping) return;
     switchManager.enableSync();
     agent.getAgentIOService()
-        .dispatch(bind(&IntFlowManager::handleConfigUpdate, this, configURI));
+        .dispatch([=]() { handleConfigUpdate(configURI); });
 }
 
 void IntFlowManager::portStatusUpdate(const string& portName,
                                       uint32_t portNo, bool fromDesc) {
     if (stopping) return;
     agent.getAgentIOService()
-        .dispatch(bind(&IntFlowManager::handlePortStatusUpdate, this,
-                       portName, portNo));
+        .dispatch([=]() {
+                handlePortStatusUpdate(portName, portNo);
+            });
 }
 
 void IntFlowManager::peerStatusUpdated(const std::string&, int,
@@ -965,7 +972,6 @@ static void flowsEndpointDHCPSource(IntFlowManager& flowMgr,
 }
 
 static void flowsEndpointSource(FlowEntryList& elSrc,
-                                FlowEntryList& elEpLearn,
                                 const Endpoint& endPoint,
                                 uint32_t ofPort,
                                 bool hasMac,
@@ -982,28 +988,6 @@ static void flowsEndpointSource(FlowEntryList& elSrc,
     if (hasMac) {
         actionSource(FlowBuilder().priority(140)
                      .inPort(ofPort).ethSrc(macAddr),
-                     epgVnid, bdId, fgrpId, rdId)
-            .build(elSrc);
-
-        if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL &&
-            unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
-            // Prepopulate a stage1 learning entry for known EPs
-            matchFd(FlowBuilder().priority(101)
-                    .cookie(flow::cookie::PROACTIVE_LEARN),
-                    fgrpId, true, macAddr)
-                .action()
-                .reg(MFF_REG7, ofPort)
-                .output(ofPort)
-                .controller()
-                .parent().build(elEpLearn);
-        }
-    }
-
-    if (endPoint.isPromiscuousMode()) {
-        // if the source is unknown, but the interface is
-        // promiscuous we allow the traffic into the learning
-        // table
-        actionSource(FlowBuilder().priority(138).inPort(ofPort),
                      epgVnid, bdId, fgrpId, rdId)
             .build(elSrc);
     }
@@ -1168,7 +1152,6 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         switchManager.clearFlows(uuid, SRC_TABLE_ID);
         switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
         switchManager.clearFlows(uuid, ROUTE_TABLE_ID);
-        switchManager.clearFlows(uuid, LEARN_TABLE_ID);
         switchManager.clearFlows(uuid, SERVICE_DST_TABLE_ID);
         switchManager.clearFlows(uuid, OUT_TABLE_ID);
         removeEndpointFromFloodGroup(uuid);
@@ -1208,7 +1191,6 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
     FlowEntryList elPortSec;
     FlowEntryList elSrc;
-    FlowEntryList elEpLearn;
     FlowEntryList elBridgeDst;
     FlowEntryList elRouteDst;
     FlowEntryList elServiceMap;
@@ -1258,7 +1240,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                              hasMac, macAddr, ipAddresses);
 
         /* Source Table flows; applicable only to local endpoints */
-        flowsEndpointSource(elSrc, elEpLearn, endPoint, ofPort,
+        flowsEndpointSource(elSrc, endPoint, ofPort,
                             hasMac, macAddr, unkFloodMode, bcastFloodMode,
                             epgVnid, bdId, fgrpId, rdId);
 
@@ -1445,7 +1427,6 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
     switchManager.writeFlow(uuid, SEC_TABLE_ID, elPortSec);
     switchManager.writeFlow(uuid, SRC_TABLE_ID, elSrc);
-    switchManager.writeFlow(uuid, LEARN_TABLE_ID, elEpLearn);
     switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
     switchManager.writeFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
     switchManager.writeFlow(uuid, SERVICE_DST_TABLE_ID, elServiceMap);
@@ -1453,7 +1434,6 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
     if (fgrpURI && ofPort != OFPP_NONE) {
         updateEndpointFloodGroup(fgrpURI.get(), endPoint, ofPort,
-                                 endPoint.isPromiscuousMode(),
                                  fd);
     } else {
         removeEndpointFromFloodGroup(uuid);
@@ -1553,8 +1533,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
 
             // Traffic sent to services is intercepted in the bridge
             // table, despite the fact that it is effectively
-            // performing a routing action, to allow it to work with
-            // flood domains configured to use mac learning.
+            // performing a routing action for historical reasons
             {
                 FlowBuilder serviceDest;
                 matchDestDom(serviceDest, 0, rdId);
@@ -1841,6 +1820,109 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
     switchManager.writeFlow(uuid, SERVICE_DST_TABLE_ID, serviceDstFlows);
 }
 
+void IntFlowManager::handleLearningBridgeIfaceUpdate(const string& uuid) {
+    LOG(DEBUG) << "Updating learning bridge interface " << uuid;
+
+    LearningBridgeManager& lbMgr = agent.getLearningBridgeManager();
+    shared_ptr<const LearningBridgeIface> iface = lbMgr.getLBIface(uuid);
+
+    if (!iface) {
+        switchManager.clearFlows(uuid, SEC_TABLE_ID);
+        return;
+    }
+
+    uint32_t ofPort = OFPP_NONE;
+    const optional<string>& ofPortName = iface->getInterfaceName();
+    if (ofPortName) {
+        ofPort = switchManager.getPortMapper().FindPort(ofPortName.get());
+    }
+
+    MaskList trunkVlans;
+    for (auto& range : iface->getTrunkVlans()) {
+        MaskList masks;
+        RangeMask::getMasks(range.first, range.second, masks);
+        trunkVlans.insert(trunkVlans.end(), masks.begin(), masks.end());
+    }
+
+    FlowEntryList secFlows;
+
+    if (ofPort != OFPP_NONE) {
+        for (const Mask& m : trunkVlans) {
+            uint16_t tci = 0x1000 | m.first;
+            uint16_t mask = 0x1000 | (0xfff & m.second);
+            FlowBuilder().priority(501).inPort(ofPort)
+                .tci(tci, mask)
+                .ethDst(packets::MAC_ADDR_FILTERED,
+                        packets::MAC_ADDR_FILTERED_MASK)
+                .build(secFlows);
+            FlowBuilder().priority(501).inPort(ofPort)
+                .tci(tci, mask)
+                .ethSrc(packets::MAC_ADDR_MULTICAST,
+                        packets::MAC_ADDR_MULTICAST)
+                .build(secFlows);
+            // Cookie is assigned based on ofPort and VLAN; removal of
+            // this flow removes all associated learned flows because
+            // of the NX_LEARN_F_DELETE_LEARNED set in the learn
+            // flags.
+            uint64_t cookie = (uint64_t)ofPort << 32 |
+                ((uint64_t)tci) | ((uint64_t)mask << 16);
+            FlowBuilder().priority(500).inPort(ofPort)
+                .tci(tci, mask)
+                .action()
+                .macVlanLearn(OFP_DEFAULT_PRIORITY, ovs_htonll(cookie),
+                              LEARN_TABLE_ID)
+                .resubmit(OFPP_IN_PORT, LEARN_TABLE_ID)
+                .parent().build(secFlows);
+        }
+    }
+
+    switchManager.writeFlow(uuid, SEC_TABLE_ID, secFlows);
+}
+
+void IntFlowManager::
+handleLearningBridgeVlanUpdate(LearningBridgeIface::vlan_range_t vlan) {
+    LOG(DEBUG) << "Updating learning bridge vlan range " << vlan;
+
+    LearningBridgeManager& lbMgr = agent.getLearningBridgeManager();
+
+    unordered_set<string> ifaces;
+    lbMgr.getIfacesByVlanRange(vlan, ifaces);
+    std::set<uint16_t> ofPorts;
+    for (auto& uuid : ifaces) {
+        shared_ptr<const LearningBridgeIface> iface =
+            lbMgr.getLBIface(uuid);
+        if (!iface) continue;
+
+        const optional<string>& ofPortName = iface->getInterfaceName();
+        if (!ofPortName) continue;
+
+        uint32_t ofPort =
+            switchManager.getPortMapper().FindPort(ofPortName.get());
+        if (ofPort == OFPP_NONE) continue;
+
+        ofPorts.insert(ofPort);
+    }
+
+    FlowEntryList learnFlows;
+
+    if (!ofPorts.empty()) {
+        MaskList vlanMasks;
+        RangeMask::getMasks(vlan.first, vlan.second, vlanMasks);
+        for (const Mask& m : vlanMasks) {
+            FlowBuilder flood;
+            flood.priority(1)
+                .tci(0x1000 | m.first, 0x1000 | (0xfff & m.second));
+            for (auto ofPort : ofPorts) {
+                flood.action().output(ofPort);
+            }
+            flood.build(learnFlows);
+        }
+    }
+
+    switchManager.writeFlow(boost::lexical_cast<string>(vlan),
+                            LEARN_TABLE_ID, learnFlows);
+}
+
 void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
                                     uint32_t fgrpId, address epgTunDst) {
     uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
@@ -2060,31 +2142,12 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
 
     FlowEntryList uplinkMatch;
     if (tunPort != OFPP_NONE && encapType != ENCAP_NONE) {
-        // In flood mode we send all traffic from the uplink to the
-        // learning table.  Otherwise move to the destination mapper
-        // table as normal.
-
-        uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
-        uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
-        optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
-        if (epgFd) {
-            unkFloodMode = epgFd.get()
-                ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
-            bcastFloodMode = epgFd.get()
-                ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
-        }
-
-        uint8_t nextTable = IntFlowManager::SERVICE_REV_TABLE_ID;
-        if (unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD &&
-            bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL)
-            nextTable = IntFlowManager::LEARN_TABLE_ID;
-
         // Assign the source registers based on the VNID from the
         // tunnel uplink
         actionSource(matchEpg(FlowBuilder().priority(149).inPort(tunPort),
                               encapType, epgVnid),
                      epgVnid, bdId, fgrpId, rdId,
-                     nextTable, encapType, true)
+                     IntFlowManager::SERVICE_REV_TABLE_ID, encapType, true)
             .build(uplinkMatch);
     }
     switchManager.writeFlow(epgId, SRC_TABLE_ID, uplinkMatch);
@@ -2522,19 +2585,14 @@ ofputil_bucket *createBucket(uint32_t bucketId) {
 
 GroupEdit::Entry
 IntFlowManager::createGroupMod(uint16_t type, uint32_t groupId,
-                            const Ep2PortMap& ep2port, bool onlyPromiscuous) {
+                               const Ep2PortMap& ep2port) {
     GroupEdit::Entry entry(new GroupEdit::GroupMod());
     entry->mod->command = type;
     entry->mod->group_id = groupId;
 
     for (const Ep2PortMap::value_type& kv : ep2port) {
-        if (onlyPromiscuous && !kv.second.second)
-            continue;
-
-        ofputil_bucket *bkt = createBucket(kv.second.first);
-        ActionBuilder ab;
-        ab.output(kv.second.first)
-            .build(bkt);
+        ofputil_bucket *bkt = createBucket(kv.second);
+        ActionBuilder().output(kv.second).build(bkt);
         ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
     }
     uint32_t tunPort = getTunnelPort();
@@ -2550,29 +2608,16 @@ IntFlowManager::createGroupMod(uint16_t type, uint32_t groupId,
     return entry;
 }
 
-uint32_t IntFlowManager::getPromId(uint32_t fgrpId) {
-    return ((1<<31) | fgrpId);
-}
-
 void
-IntFlowManager::updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
-                                      const Endpoint& endPoint, uint32_t epPort,
-                                      bool isPromiscuous,
-                                      optional<shared_ptr<FloodDomain> >& fd) {
+IntFlowManager::
+updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
+                         const Endpoint& endPoint,
+                         uint32_t epPort,
+                         optional<shared_ptr<FloodDomain> >& fd) {
     const std::string& epUUID = endPoint.getUUID();
-    std::pair<uint32_t, bool> epPair(epPort, isPromiscuous);
     uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
     string fgrpStrId = "fd:" + fgrpURI.toString();
     FloodGroupMap::iterator fgrpItr = floodGroupMap.find(fgrpURI);
-
-    uint8_t unkFloodMode = UnknownFloodModeEnumT::CONST_DROP;
-    uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
-    if (fd) {
-        unkFloodMode =
-            fd.get()->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
-        bcastFloodMode =
-            fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
-    }
 
     if (fgrpItr != floodGroupMap.end()) {
         Ep2PortMap& epMap = fgrpItr->second;
@@ -2583,24 +2628,19 @@ IntFlowManager::updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
              * if it was attached to a different one */
             removeEndpointFromFloodGroup(epUUID);
         }
-        if (epItr == epMap.end() || epItr->second != epPair) {
-            epMap[epUUID] = epPair;
+        if (epItr == epMap.end() || epItr->second != epPort) {
+            LOG(DEBUG) << "Adding " << epUUID << " to group " << fgrpId;
+            epMap[epUUID] = epPort;
             GroupEdit::Entry e = createGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
             switchManager.writeGroupMod(e);
-            GroupEdit::Entry e2 =
-                createGroupMod(OFPGC11_MODIFY, getPromId(fgrpId), epMap, true);
-            switchManager.writeGroupMod(e2);
         }
     } else {
         /* Remove EP attachment to old floodgroup, if any */
         removeEndpointFromFloodGroup(epUUID);
-        floodGroupMap[fgrpURI][epUUID] = epPair;
+        floodGroupMap[fgrpURI][epUUID] = epPort;
         GroupEdit::Entry e =
             createGroupMod(OFPGC11_ADD, fgrpId, floodGroupMap[fgrpURI]);
         switchManager.writeGroupMod(e);
-        GroupEdit::Entry e2 = createGroupMod(OFPGC11_ADD, getPromId(fgrpId),
-                                             floodGroupMap[fgrpURI], true);
-        switchManager.writeGroupMod(e2);
     }
 
     FlowEntryList fdOutput;
@@ -2614,27 +2654,6 @@ IntFlowManager::updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
             .parent().build(fdOutput);
     }
     switchManager.writeFlow(fgrpStrId, OUT_TABLE_ID, fdOutput);
-
-    FlowEntryList grpDst;
-    FlowEntryList learnDst;
-    if (bcastFloodMode == BcastFloodModeEnumT::CONST_NORMAL &&
-        unkFloodMode == UnknownFloodModeEnumT::CONST_FLOOD) {
-        // go to the learning table on an unknown unicast
-        // destination in flood mode
-        matchFd(FlowBuilder().priority(5), fgrpId, false)
-            .action()
-            .go(IntFlowManager::LEARN_TABLE_ID)
-            .parent().build(grpDst);
-
-        // Deliver unknown packets in the flood domain when
-        // learning to the controller for reactive flow setup.
-        matchFd(FlowBuilder().priority(5).cookie(flow::cookie::PROACTIVE_LEARN),
-                fgrpId, false)
-            .action().controller()
-            .parent().build(learnDst);
-    }
-    switchManager.writeFlow(fgrpStrId, BRIDGE_TABLE_ID, grpDst);
-    switchManager.writeFlow(fgrpStrId, LEARN_TABLE_ID, learnDst);
 }
 
 void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
@@ -2651,17 +2670,13 @@ void IntFlowManager::removeEndpointFromFloodGroup(const std::string& epUUID) {
                 OFPGC11_DELETE : OFPGC11_MODIFY;
         GroupEdit::Entry e0 =
                 createGroupMod(type, fgrpId, epMap);
-        GroupEdit::Entry e1 =
-                createGroupMod(type, getPromId(fgrpId), epMap, true);
         if (epMap.empty()) {
             string fgrpStrId = "fd:" + fgrpURI.toString();
             switchManager.clearFlows(fgrpStrId, OUT_TABLE_ID);
             switchManager.clearFlows(fgrpStrId, BRIDGE_TABLE_ID);
-            switchManager.clearFlows(fgrpStrId, LEARN_TABLE_ID);
             floodGroupMap.erase(fgrpURI);
         }
         switchManager.writeGroupMod(e0);
-        switchManager.writeGroupMod(e1);
         break;
     }
 }
@@ -2830,9 +2845,6 @@ void IntFlowManager::updateGroupTable() {
 
         GroupEdit::Entry e1 = createGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
         switchManager.writeGroupMod(e1);
-        GroupEdit::Entry e2 = createGroupMod(OFPGC11_MODIFY,
-                                             getPromId(fgrpId), epMap, true);
-        switchManager.writeGroupMod(e2);
     }
 }
 
@@ -2871,6 +2883,21 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
                 .getServicesByIface(portName, uuids);
             for (const string& uuid : uuids) {
                 serviceUpdated(uuid);
+            }
+        }
+        {
+            unordered_set<string> uuids;
+            agent.getLearningBridgeManager()
+                .getLBIfaceByIface(portName, uuids);
+            for (const string& uuid : uuids) {
+                lbIfaceUpdated(uuid);
+
+                std::set<LearningBridgeManager::vlan_range_t> ranges;
+                agent.getLearningBridgeManager()
+                    .getVlanRangesByIface(uuid, ranges);
+                for (auto& r : ranges) {
+                    lbVlanUpdated(r);
+                }
             }
         }
     }
@@ -2915,19 +2942,26 @@ static bool serviceIdGarbageCb(ServiceManager& serviceManager,
 
 void IntFlowManager::cleanup() {
     for (size_t i = 0; i < sizeof(ID_NAMESPACE_CB)/sizeof(IdCb); i++) {
-        string ns(ID_NAMESPACES[i]);
-        IdGenerator::garbage_cb_t gcb =
-            bind(ID_NAMESPACE_CB[i], ref(agent.getFramework()), _1, _2);
         agent.getAgentIOService()
-            .dispatch(bind(&IdGenerator::collectGarbage, ref(idGen),
-                           ns, gcb));
+            .dispatch([=]() {
+                    auto gcb = [this, i](const std::string& ns,
+                                         const std::string& str) -> bool {
+                        return ID_NAMESPACE_CB[i](agent.getFramework(),
+                                                  ns, str);
+                    };
+                    idGen.collectGarbage(ID_NAMESPACES[i], gcb);
+                });
     }
 
-    IdGenerator::garbage_cb_t sgcb =
-        bind(serviceIdGarbageCb, std::ref(agent.getServiceManager()), _1, _2);
     agent.getAgentIOService()
-        .dispatch(bind(&IdGenerator::collectGarbage, ref(idGen),
-                       ID_NMSPC_SERVICE, sgcb));
+        .dispatch([=]() {
+                auto sgcb = [this](const std::string& ns,
+                                   const std::string& str) -> bool {
+                    return serviceIdGarbageCb(agent.getServiceManager(),
+                                              ns, str);
+                };
+                idGen.collectGarbage(ID_NMSPC_SERVICE, sgcb);
+            });
 }
 
 const char * IntFlowManager::getIdNamespace(class_id_t cid) {
@@ -3007,7 +3041,7 @@ static const std::string MCAST_QUEUE_ITEM("mcast-groups");
 
 void IntFlowManager::multicastGroupsUpdated() {
     taskQueue.dispatch(MCAST_QUEUE_ITEM,
-                       bind(&IntFlowManager::writeMulticastGroups, this));
+                       [this]() { writeMulticastGroups(); });
 }
 
 void IntFlowManager::writeMulticastGroups() {
@@ -3021,32 +3055,16 @@ void IntFlowManager::writeMulticastGroups() {
 
     try {
         pt::write_json(mcastGroupFile, tree);
-    } catch (pt::json_parser_error e) {
+    } catch (pt::json_parser_error& e) {
         LOG(ERROR) << "Could not write multicast group file "
                    << e.what();
     }
 }
 
-std::vector<FlowEdit>
-IntFlowManager::reconcileFlows(std::vector<TableState> flowTables,
-                               std::vector<FlowEntryList>& recvFlows) {
-    // special handling for learning table - reconcile using
-    // PacketInHandler reactive reconciler
-    FlowEntryList learnFlows;
-    recvFlows[IntFlowManager::LEARN_TABLE_ID].swap(learnFlows);
-    for (const FlowEntryPtr& fe : learnFlows) {
-        if (!pktInHandler.reconcileReactiveFlow(fe)) {
-            recvFlows[IntFlowManager::LEARN_TABLE_ID].push_back(fe);
-        }
-    }
-
-    return SwitchStateHandler::reconcileFlows(flowTables, recvFlows);
-}
-
 void IntFlowManager::checkGroupEntry(GroupMap& recvGroups,
                                      uint32_t groupId,
                                      const Ep2PortMap& epMap,
-                                     bool prom, GroupEdit& ge) {
+                                     GroupEdit& ge) {
     GroupMap::iterator itr;
     itr = recvGroups.find(groupId);
     uint16_t comm = OFPGC11_ADD;
@@ -3055,13 +3073,30 @@ void IntFlowManager::checkGroupEntry(GroupMap& recvGroups,
         comm = OFPGC11_MODIFY;
         recv = itr->second;
     }
-    GroupEdit::Entry e0 = createGroupMod(comm, groupId, epMap, prom);
+    GroupEdit::Entry e0 = createGroupMod(comm, groupId, epMap);
     if (!GroupEdit::groupEq(e0, recv)) {
         ge.edits.push_back(e0);
     }
     if (itr != recvGroups.end()) {
         recvGroups.erase(itr);
     }
+}
+
+std::vector<FlowEdit>
+IntFlowManager::reconcileFlows(std::vector<TableState> flowTables,
+                               std::vector<FlowEntryList>& recvFlows) {
+    // special handling for learning table; reconcile only the
+    // reactive flows.
+    FlowEntryList learnFlows;
+    recvFlows[IntFlowManager::LEARN_TABLE_ID].swap(learnFlows);
+
+    for (const FlowEntryPtr& fe : learnFlows) {
+        if (fe->entry->cookie == 0) {
+            recvFlows[IntFlowManager::LEARN_TABLE_ID].push_back(fe);
+        }
+    }
+
+    return SwitchStateHandler::reconcileFlows(flowTables, recvFlows);
 }
 
 GroupEdit IntFlowManager::reconcileGroups(GroupMap& recvGroups) {
@@ -3071,10 +3106,7 @@ GroupEdit IntFlowManager::reconcileGroups(GroupMap& recvGroups) {
         Ep2PortMap& epMap = kv.second;
 
         uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
-        checkGroupEntry(recvGroups, fgrpId, epMap, false, ge);
-
-        uint32_t promFdId = getPromId(fgrpId);
-        checkGroupEntry(recvGroups, promFdId, epMap, true, ge);
+        checkGroupEntry(recvGroups, fgrpId, epMap, ge);
     }
     Ep2PortMap tmp;
     for (const GroupMap::value_type& kv : recvGroups) {

@@ -41,6 +41,7 @@ void addExpFlowEntry(std::vector<FlowEntryList>& tables,
     fm.ofpacts = NULL;
     e->entry->ofpacts_len = fm.ofpacts_len;
     e->entry->flags = fm.flags;
+    override_flow_has_vlan(e->entry->ofpacts, e->entry->ofpacts_len);
     tables[fm.table_id].push_back(e);
 
     DsP strBuf;
@@ -104,87 +105,89 @@ static string rstr1[] =
     { "reg0", "reg0", "reg2", "reg4", "reg5", "reg6", "reg7",
       "", "", "", "", "", "", "" ,"", "", "", "", ""};
 
-Bldr::Bldr(const string& init) : entry(init) {
-    cntr = 0;
-    if (entry.empty()) {
-        entry = "cookie=0x0, duration=0s, table=0, n_packets=0, "
-            "n_bytes=0, idle_age=0, priority=0";
-    }
-}
+Bldr::Bldr() :
+    _flag(0), _table("table=0"), _cookie("cookie=0x0"),
+    _priority("priority=0") {}
 
-Bldr::Bldr(const string& init, uint32_t flag) : entry(init) {
-    cntr = 0;
-    if (entry.empty()) {
-        if (flag == SEND_FLOW_REM)
-            entry = "cookie=0x0, duration=0s, table=0, n_packets=0, "
-                "n_bytes=0, send_flow_rem idle_age=0, priority=0";
-        else
-            entry = "cookie=0x0, duration=0s, table=0, n_packets=0, "
-                "n_bytes=0, idle_age=0, priority=0";
-    }
-}
+Bldr::Bldr(uint32_t flag) :
+    _flag(flag), _table("table=0"), _cookie("cookie=0x0"),
+    _priority("priority=0") {}
 
+std::string Bldr::done() {
+    std::stringstream ss;
+    ss << _cookie << ", duration=0s, "
+       << _table << ", n_packets=0, n_bytes=0, ";
+    if (_flag == SEND_FLOW_REM) {
+        ss << "send_flow_rem ";
+    }
+    ss << "idle_age=0, " << _priority;
+    for (auto& m : _match) {
+        ss << "," << m.str();
+    }
+    ss << " actions=";
+    bool first = true;
+    for (auto& a : _action) {
+        if (!first) ss << ",";
+        first = false;
+        ss << a.str();
+    }
+    return ss.str();
+}
 Bldr& Bldr::reg(REG r, uint32_t v) {
-    rep("," + rstr1[r] + "=", str(v, true));
+    m(rstr1[r], str(v, true));
     return *this;
 }
 
 Bldr& Bldr::load64(REG r, uint64_t v) {
-    rep("load:", str64(v, true), "->" + rstr[r]);
+    a("load", str64(v, true) + "->" + rstr[r]);
     return *this;
 }
 
 Bldr& Bldr::load(REG r, uint32_t v) {
-    rep("load:", str(v, true), "->" + rstr[r]);
+    a("load", str(v, true) + "->" + rstr[r]);
     return *this;
 }
 
 Bldr& Bldr::load(REG r, const string& v) {
-    rep("load:", v, "->" + rstr[r]);
+    a("load", v + "->" + rstr[r]);
     return *this;
 }
 
 Bldr& Bldr::move(REG s, REG d) {
-    rep("move:"+rstr[s]+"->"+rstr[d]);
+    a("move", rstr[s]+"->"+rstr[d]);
     return *this;
 }
 
 Bldr& Bldr::out(REG r) {
-    rep("output:" + rstr[r]);
+    a("output", rstr[r]);
     return *this;
 }
 
-void Bldr::rep(const string& pfx, const string& val, const string& sfx) {
-    string sep(cntr == 2 ? "," : "");
-    if (cntr == 1) {
-        cntr = 2;
-    }
-    size_t pos2 = 0;
-    do {
-        size_t pos1 = entry.find(pfx, pos2);
-        if (pos1 == string::npos) {
-            entry.append(sep).append(pfx).append(val).append(sfx);
-            return;
-        }
-        pos2 = pos1+pfx.size();
-        while (pos2 < entry.size() && entry[pos2] != ',' &&
-               entry[pos2] != ' ' && entry[pos2] != '-') {
-            ++pos2;
-        }
-        if (!sfx.empty()) {
-            if (pos2 < entry.size() &&
-                entry.compare(pos2, sfx.size(), sfx)) {
-                continue;
-            }
-        }
-        string tmp;
-        if (pos1 > 0)
-            tmp += entry.substr(0, pos1) + sep;
-        tmp += pfx + val + entry.substr(pos2);
-        entry = tmp;
-        return;
-    } while(true);
+std::stringstream& Bldr::m() {
+    _match.emplace_back();
+    return _match.back();
 }
+
+std::stringstream& Bldr::a() {
+    _action.emplace_back();
+    return _action.back();
+}
+
+void Bldr::m(const std::string& pfx, const std::string& val) {
+    auto& s = m();
+    s << pfx;
+    if (val.size()) {
+        s << "=" << val;
+    }
+}
+void Bldr::a(const std::string& pfx, const std::string& val) {
+    auto& s = a();
+    s << pfx;
+    if (val.size()) {
+        s << ":" << val;
+    }
+}
+
 string Bldr::str(int i, bool hex) {
     char buf[20];
     sprintf(buf, hex && i != 0 ? "0x%x" : "%d", i);

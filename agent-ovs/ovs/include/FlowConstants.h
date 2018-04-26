@@ -19,17 +19,6 @@ namespace flow {
 
 namespace cookie {
 /**
- * The cookie used for learn flow entries that are proactively
- * installed
- */
-extern const uint64_t PROACTIVE_LEARN;
-
-/**
- * The cookie used for flow entries that are learned reactively.
- */
-extern const uint64_t LEARN;
-
-/**
  * The cookie used for flows that direct neighbor discovery
  * packets to the controller
  */

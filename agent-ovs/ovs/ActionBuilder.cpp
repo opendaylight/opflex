@@ -66,46 +66,35 @@ FlowBuilder& ActionBuilder::parent() {
 
 ActionBuilder& ActionBuilder::reg8(mf_field_id regId, uint8_t regValue) {
     uint8_t mask = 0xff;
-    ofpact_put_reg_load(buf,
-                        &mf_fields[(int)regId],
-                        &regValue, &mask);
+    act_reg_load(buf, regId, &regValue, &mask);
     return *this;
 }
 
 ActionBuilder& ActionBuilder::reg16(mf_field_id regId, uint16_t regValue) {
     uint16_t value = htons(regValue);
     uint16_t mask = ~((uint16_t)0);
-    ofpact_put_reg_load(buf,
-                        &mf_fields[(int)regId],
-                        &value, &mask);
+    act_reg_load(buf, regId, &value, &mask);
     return *this;
 }
 
 ActionBuilder& ActionBuilder::reg(mf_field_id regId, uint32_t regValue) {
     uint32_t value = htonl(regValue);
     uint32_t mask = ~((uint32_t)0);
-    ofpact_put_reg_load(buf,
-                        &mf_fields[(int)regId],
-                        &value, &mask);
+    act_reg_load(buf, regId, &value, &mask);
     return *this;
 }
 
 ActionBuilder& ActionBuilder::reg64(mf_field_id regId, uint64_t regValue) {
     uint64_t value = ovs_htonll(regValue);
     uint64_t mask = ~((uint64_t)0);
-    ofpact_put_reg_load(buf,
-                        &mf_fields[(int)regId],
-                        &value, &mask);
-
+    act_reg_load(buf, regId, &value, &mask);
     return *this;
 }
 
 ActionBuilder& ActionBuilder::reg(mf_field_id regId, const uint8_t *macValue) {
     uint8_t mask[6];
     memset(mask, 0xff, sizeof(mask));
-
-    ofpact_put_reg_load(buf, &mf_fields[(int)regId],
-                        macValue, mask);
+    act_reg_load(buf, regId, macValue, mask);
     return *this;
 }
 
@@ -244,6 +233,13 @@ ActionBuilder& ActionBuilder::multipath(enum nx_hash_fields fields,
                                         uint32_t arg,
                                         mf_field_id dst) {
     act_multipath(buf, fields, basis, algorithm, maxLink, arg, dst);
+    return *this;
+}
+
+ActionBuilder& ActionBuilder::macVlanLearn(uint16_t prio,
+                                           uint64_t cookie,
+                                           uint8_t table) {
+    act_macvlan_learn(buf, prio, cookie, table);
     return *this;
 }
 

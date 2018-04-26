@@ -32,7 +32,6 @@ class IntFlowManager;
  * Handler for packet-in messages arriving from the switch
  */
 class PacketInHandler : public MessageHandler,
-                        public PortStatusListener,
                         private boost::noncopyable {
 public:
     /**
@@ -89,46 +88,7 @@ public:
     virtual void Handle(SwitchConnection *swConn, int msgType,
                         ofpbuf *msg);
 
-    // ******************
-    // PortStatusListener
-    // ******************
-
-    void portStatusUpdate(const std::string& portName,
-                          uint32_t portNo, bool fromDesc);
-
 private:
-    /**
-     * Handle a packet-in for the learning table.  Perform MAC
-     * learning for flood domains that require flooding for unknown
-     * unicast traffic.  Note that this will only manage the reactive
-     * flows associated with MAC learning; there are static flows to
-     * enabling MAC learning elsewhere.  Any resulting flows or
-     * packet-out messages are written directly to the connection.
-     *
-     * @param conn the openflow switch connection
-     * @param pi the packet-in
-     * @param pi_buffer_id the buffer ID associated with the packet-in
-     * @param proto an openflow proto version
-     * @param pkt the packet from the packet-in
-     * @param flow the parsed flow from the packet
-     */
-    void handleLearnPktIn(SwitchConnection *conn,
-                          struct ofputil_packet_in& pi,
-                          uint32_t pi_buffer_id,
-                          int proto,
-                          const struct dp_packet* pkt,
-                          struct flow& flow);
-    bool writeLearnFlow(SwitchConnection *conn,
-                        int proto,
-                        struct ofputil_packet_in& pi,
-                        struct flow& flow,
-                        bool stage2);
-    void dstFlowCb(const FlowEntryList& flows,
-                   const opflex::modb::MAC& dstMac,
-                   uint32_t outPort,
-                   uint32_t fgrpId);
-    void anyFlowCb(const FlowEntryList& flows);
-
     Agent& agent;
     IntFlowManager& intFlowManager;
     PortMapper* intPortMapper;

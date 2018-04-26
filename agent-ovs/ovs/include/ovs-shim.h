@@ -65,6 +65,11 @@ extern "C" {
     void override_raw_actions(const struct ofpact* acts, size_t len);
 
     /**
+     * Overwrite the flow_has_vlan field where appropriate
+     */
+    void override_flow_has_vlan(const struct ofpact* acts, size_t len);
+
+    /**
      * Duplicates forward declaration inside of ofp-actions.h
      */
     struct ofpact_set_field *ofpact_put_reg_load(struct ofpbuf *ofpacts,
@@ -79,6 +84,12 @@ extern "C" {
                       int srcRegId, int dstRegId,
                       uint8_t sourceOffset, uint8_t destOffset,
                       uint8_t nBits);
+
+    /**
+     * Load a register
+     */
+    void act_reg_load(struct ofpbuf* buf,
+                      int regId, const void* regValue, const void* mask);
 
     /**
      * Set metadata
@@ -200,6 +211,14 @@ extern "C" {
                        uint16_t maxLink,
                        uint32_t arg,
                        int dst);
+
+    /**
+     * MAC/VLAN learn
+     */
+    void act_macvlan_learn(struct ofpbuf* ofpacts,
+                           uint16_t prio,
+                           uint64_t cookie,
+                           uint8_t table);
 
     /**
      * Get the value of the output reg action
