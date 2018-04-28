@@ -1972,16 +1972,18 @@ void IntFlowManager::createStaticFlows() {
     {
         using namespace modelgbp::platform;
         auto invType = RemoteInventoryTypeEnumT::CONST_NONE;
-        auto config =
-            Config::resolve(agent.getFramework(),
-                            agent.getPolicyManager().getOpflexDomain());
-        if (config)
-            invType = config.get()->
-                getInventoryType(RemoteInventoryTypeEnumT::CONST_NONE);
+        if (encapType != ENCAP_NONE && encapType != ENCAP_VLAN) {
+            auto config =
+                Config::resolve(agent.getFramework(),
+                                agent.getPolicyManager().getOpflexDomain());
+            if (config)
+                invType = config.get()->
+                    getInventoryType(RemoteInventoryTypeEnumT::CONST_NONE);
+        }
 
         FlowEntryList unknownTunnelBr;
         FlowEntryList unknownTunnelRt;
-        if (tunPort != OFPP_NONE && encapType != ENCAP_NONE &&
+        if (tunPort != OFPP_NONE &&
             invType != RemoteInventoryTypeEnumT::CONST_COMPLETE) {
             // If the remote inventory allows for unknown remote
             // endpoints, output to the tunnel interface, bypassing
@@ -2168,12 +2170,14 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
     if (encapType != ENCAP_NONE && tunPort != OFPP_NONE) {
         using namespace modelgbp::platform;
         auto invType = RemoteInventoryTypeEnumT::CONST_NONE;
-        auto config =
-            Config::resolve(agent.getFramework(),
-                            agent.getPolicyManager().getOpflexDomain());
-        if (config)
-            invType = config.get()->
-                getInventoryType(RemoteInventoryTypeEnumT::CONST_NONE);
+        if (encapType != ENCAP_VLAN) {
+            auto config =
+                Config::resolve(agent.getFramework(),
+                                agent.getPolicyManager().getOpflexDomain());
+            if (config)
+                invType = config.get()->
+                    getInventoryType(RemoteInventoryTypeEnumT::CONST_NONE);
+        }
 
         if (invType == RemoteInventoryTypeEnumT::CONST_NONE) {
             // Output table action to output to the tunnel appropriate for
