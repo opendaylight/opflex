@@ -301,8 +301,8 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found,
 }
 
 void AdvertManagerFixture::testEpAdvert(AdvertManager::EndpointAdvMode mode) {
-    WAIT_FOR(conn->sentMsgs.size() == 8, 1000);
-    BOOST_CHECK_EQUAL(8, conn->sentMsgs.size());
+    WAIT_FOR(conn->sentMsgs.size() == 11, 1000);
+    BOOST_CHECK_EQUAL(11, conn->sentMsgs.size());
     // allow fallback to grat broadcast for service IPs
     unordered_set<string> fallback { "2002:db8::2" };
     unordered_set<string> found;
@@ -311,14 +311,14 @@ void AdvertManagerFixture::testEpAdvert(AdvertManager::EndpointAdvMode mode) {
     }
 
     // endpoints
-    BOOST_CHECK(!CONTAINS(found, "10.20.45.31")); // unknown flood
-    BOOST_CHECK(!CONTAINS(found, "10.20.45.32")); // unknown flood
+    BOOST_CHECK(CONTAINS(found, "10.20.45.31")); // unknown flood
+    BOOST_CHECK(CONTAINS(found, "10.20.45.32")); // unknown flood
     BOOST_CHECK(CONTAINS(found, "10.20.44.21"));
     BOOST_CHECK(CONTAINS(found, "10.20.44.3"));
     BOOST_CHECK(CONTAINS(found, "10.20.44.2"));
     BOOST_CHECK(CONTAINS(found, "2001:db8::2"));
     BOOST_CHECK(CONTAINS(found, "2001:db8::3"));
-    BOOST_CHECK(!CONTAINS(found, "10.20.54.11")); // routing disabled
+    BOOST_CHECK(CONTAINS(found, "10.20.54.11")); // routing disabled
 
     // services
     BOOST_CHECK(CONTAINS(found, "201.1.1.1"));
