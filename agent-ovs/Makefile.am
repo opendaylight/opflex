@@ -58,6 +58,7 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/ServiceManager.h \
 	lib/include/opflexagent/FSServiceSource.h \
 	lib/include/opflexagent/LearningBridgeIface.h \
+	lib/include/opflexagent/LearningBridgeListener.h \
 	lib/include/opflexagent/LearningBridgeSource.h \
 	lib/include/opflexagent/LearningBridgeManager.h \
 	lib/include/opflexagent/FSLearningBridgeSource.h \
