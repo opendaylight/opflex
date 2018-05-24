@@ -12,7 +12,7 @@
 # ---------------------------------------------------------------
 # Initialization
 
-AC_INIT([opflex-agent], [1.8.0])
+AC_INIT([opflex-agent], [1.9.0])
 AC_SUBST(MODULE_NAME, ["Group-based Policy Agent"])
 
 dnl For more information on libtool versioning, see:
@@ -35,7 +35,7 @@ dnl     then increment age.
 dnl  6. If any interfaces have been removed since the last public
 dnl     release, then set age to 0.
 
-AC_SUBST(VERSION_INFO, [8:0:8])
+AC_SUBST(VERSION_INFO, [9:0:9])
 
 # initialize automake and libtool
 AM_INIT_AUTOMAKE([subdir-objects])
