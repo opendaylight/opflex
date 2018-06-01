@@ -315,6 +315,12 @@ enum TABLE {
 void AccessFlowManagerFixture::initExpStatic() {
     ADDF(Bldr().table(OUT).priority(1).isMdAct(0)
          .actions().out(OUTPORT).done());
+    ADDF(Bldr().table(OUT).priority(1)
+         .isMdAct(flow::meta::access_out::PUSH_VLAN)
+         .actions().pushVlan().move(FD12, VLAN).out(OUTPORT).done());
+    ADDF(Bldr().table(OUT).priority(1)
+         .isMdAct(flow::meta::access_out::POP_VLAN)
+         .actions().popVlan().out(OUTPORT).done());
 
     ADDF(Bldr().table(OUT_POL).priority(PolicyManager::MAX_POLICY_RULE_PRIORITY)
          .reg(SEPG, 1).actions().go(OUT).done());
@@ -335,8 +341,8 @@ void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
              .isVlan(ep->getAccessIfaceVlan().get())
              .isTpSrc(68).isTpDst(67)
              .actions()
-             .popVlan()
              .load(OUTPORT, uplink)
+             .mdAct(flow::meta::access_out::POP_VLAN)
              .go(OUT).done());
     }
     if (ep->getDHCPv6Config()) {
@@ -345,8 +351,8 @@ void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
              .isVlan(ep->getAccessIfaceVlan().get())
              .isTpSrc(546).isTpDst(547)
              .actions()
-             .popVlan()
              .load(OUTPORT, uplink)
+             .mdAct(flow::meta::access_out::POP_VLAN)
              .go(OUT).done());
     }
 }
@@ -362,11 +368,14 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
         ADDF(Bldr().table(GRP).priority(100).in(access)
              .isVlan(ep->getAccessIfaceVlan().get())
              .actions()
-             .popVlan().load(RD, zoneId).load(SEPG, 1)
-             .load(OUTPORT, uplink).go(OUT_POL).done());
+             .load(RD, zoneId).load(SEPG, 1)
+             .load(OUTPORT, uplink)
+             .mdAct(flow::meta::access_out::POP_VLAN)
+             .go(OUT_POL).done());
         ADDF(Bldr().table(GRP).priority(100).in(uplink)
              .actions().load(RD, zoneId).load(SEPG, 1).load(OUTPORT, access)
-             .pushVlan().setVlan(ep->getAccessIfaceVlan().get())
+             .load(FD, ep->getAccessIfaceVlan().get())
+             .mdAct(flow::meta::access_out::PUSH_VLAN)
              .go(IN_POL).done());
     } else {
         ADDF(Bldr().table(GRP).priority(100).in(access)
