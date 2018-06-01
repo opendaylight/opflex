@@ -136,6 +136,22 @@ extern const uint64_t FLOOD;
 extern const uint64_t REMOTE_TUNNEL;
 
 } // namespace out
+
+
+namespace access_out {
+
+/**
+ * Pop the VLAN tag
+ */
+const uint64_t POP_VLAN = 0x1;
+
+/**
+ * Push the VLAN tag stored in REG5
+ */
+const uint64_t PUSH_VLAN = 0x2;
+
+} // namespace access
+
 } // namespace meta
 
 } // namespace flow

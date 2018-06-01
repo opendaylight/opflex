@@ -95,14 +95,15 @@ void diffTables(Agent& agent,
 
 static string rstr[] = {
     "NXM_NX_REG0[]", "NXM_NX_REG0[0..11]", "NXM_NX_REG2[]", "NXM_NX_REG4[]",
-    "NXM_NX_REG5[]", "NXM_NX_REG6[]", "NXM_NX_REG7[]", "NXM_NX_TUN_ID[0..31]",
-    "NXM_NX_TUN_IPV4_SRC[]", "NXM_NX_TUN_IPV4_DST[]", "OXM_OF_VLAN_VID[]",
-    "NXM_OF_ETH_SRC[]", "NXM_OF_ETH_DST[]", "NXM_OF_ARP_OP[]",
-    "NXM_NX_ARP_SHA[]", "NXM_NX_ARP_THA[]", "NXM_OF_ARP_SPA[]",
-    "NXM_OF_ARP_TPA[]", "OXM_OF_METADATA[]", "NXM_NX_PKT_MARK[]"
+    "NXM_NX_REG5[]", "NXM_NX_REG5[0..11]", "NXM_NX_REG6[]", "NXM_NX_REG7[]",
+    "NXM_NX_TUN_ID[0..31]", "NXM_NX_TUN_IPV4_SRC[]", "NXM_NX_TUN_IPV4_DST[]",
+    "OXM_OF_VLAN_VID[]", "NXM_OF_ETH_SRC[]", "NXM_OF_ETH_DST[]",
+    "NXM_OF_ARP_OP[]", "NXM_NX_ARP_SHA[]", "NXM_NX_ARP_THA[]",
+    "NXM_OF_ARP_SPA[]", "NXM_OF_ARP_TPA[]", "OXM_OF_METADATA[]",
+    "NXM_NX_PKT_MARK[]"
 };
 static string rstr1[] =
-    { "reg0", "reg0", "reg2", "reg4", "reg5", "reg6", "reg7",
+    { "reg0", "reg0", "reg2", "reg4", "reg5", "reg5", "reg6", "reg7",
       "", "", "", "", "", "", "" ,"", "", "", "", ""};
 
 Bldr::Bldr() :

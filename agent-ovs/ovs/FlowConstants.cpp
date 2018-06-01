@@ -45,6 +45,15 @@ const uint64_t FLOOD = 0x5;
 const uint64_t REMOTE_TUNNEL = 0x7;
 
 } // namespace out
+
+namespace access {
+
+const uint64_t MASK = 0xff;
+const uint64_t POP_VLAN = 0x1;
+const uint64_t PUSH_VLAN = 0x1;
+
+} // namespace access
+
 } // namespace meta
 
 } // namespace flow

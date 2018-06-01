@@ -10,6 +10,7 @@
 #include "CtZoneManager.h"
 #include "FlowBuilder.h"
 #include "FlowUtils.h"
+#include "FlowConstants.h"
 #include "RangeMask.h"
 #include <opflexagent/logging.h>
 
@@ -135,23 +136,43 @@ static void flowBypassDhcpRequest(FlowEntryList& el, bool v4, uint32_t inport,
                                   uint32_t outport,
                                   std::shared_ptr<const Endpoint>& ep ) {
     FlowBuilder fb;
-    if (ep->getAccessIfaceVlan()) {
-        fb.vlan(ep->getAccessIfaceVlan().get());
-        fb.action().popVlan();
-    }
-
     fb.priority(200).inPort(inport);
     flowutils::match_dhcp_req(fb, v4);
-    fb.action()
-        .reg(MFF_REG7, outport)
-        .go(AccessFlowManager::OUT_TABLE_ID);
+    fb.action().reg(MFF_REG7, outport);
+
+    if (ep->getAccessIfaceVlan()) {
+        fb.vlan(ep->getAccessIfaceVlan().get());
+        fb.action().metadata(flow::meta::access_out::POP_VLAN,
+                             flow::meta::out::MASK);
+    }
+
+    fb.action().go(AccessFlowManager::OUT_TABLE_ID);
     fb.build(el);
 }
 
 void AccessFlowManager::createStaticFlows() {
     LOG(DEBUG) << "Writing static flows";
-    switchManager.writeFlow("static", OUT_TABLE_ID,
-                            flowutils::default_out_flow());
+    {
+        FlowEntryList outFlows;
+        FlowBuilder()
+            .priority(1)
+            .metadata(flow::meta::access_out::POP_VLAN,
+                      flow::meta::out::MASK)
+            .tci(0x1000, 0x1000)
+            .action()
+            .popVlan().outputReg(MFF_REG7)
+            .parent().build(outFlows);
+        FlowBuilder()
+            .priority(1)
+            .metadata(flow::meta::access_out::PUSH_VLAN,
+                      flow::meta::out::MASK)
+            .action()
+            .pushVlan().regMove(MFF_REG5, MFF_VLAN_VID).outputReg(MFF_REG7)
+            .parent().build(outFlows);
+        outFlows.push_back(flowutils::default_out_flow());
+
+        switchManager.writeFlow("static", OUT_TABLE_ID, outFlows);
+    }
 
     // everything is allowed for endpoints with no security group set
     uint32_t emptySecGrpSetId = idGen.getId(ID_NMSPC_SECGROUP_SET, "");
@@ -216,20 +237,24 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
         {
             FlowBuilder in;
             in.priority(100).inPort(accessPort);
-            if (ep->getAccessIfaceVlan()) {
-                in.vlan(ep->getAccessIfaceVlan().get());
-                in.action().popVlan();
-            } else {
-                in.tci(0, 0x1fff);
-            }
             if (zoneId != static_cast<uint16_t>(-1))
                 in.action()
                     .reg(MFF_REG6, zoneId);
 
             in.action()
                 .reg(MFF_REG0, secGrpSetId)
-                .reg(MFF_REG7, uplinkPort)
-                .go(SEC_GROUP_OUT_TABLE_ID);
+                .reg(MFF_REG7, uplinkPort);
+
+            if (ep->getAccessIfaceVlan()) {
+                in.vlan(ep->getAccessIfaceVlan().get());
+                in.action()
+                    .metadata(flow::meta::access_out::POP_VLAN,
+                              flow::meta::out::MASK);
+            } else {
+                in.tci(0, 0x1fff);
+            }
+
+            in.action().go(SEC_GROUP_OUT_TABLE_ID);
             in.build(el);
 
         }
@@ -258,8 +283,9 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
                 .reg(MFF_REG7, accessPort);
             if (ep->getAccessIfaceVlan()) {
                 out.action()
-                    .pushVlan()
-                    .setVlanVid(ep->getAccessIfaceVlan().get());
+                    .reg(MFF_REG5, ep->getAccessIfaceVlan().get())
+                    .metadata(flow::meta::access_out::PUSH_VLAN,
+                              flow::meta::out::MASK);
             }
             out.action().go(SEC_GROUP_IN_TABLE_ID);
             out.build(el);
