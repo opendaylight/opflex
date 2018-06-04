@@ -38,8 +38,9 @@ using opflex::modb::URIBuilder;
 using boost::optional;
 using boost::asio::ip::address;
 
-PolicyManager::PolicyManager(OFFramework& framework_)
-    : framework(framework_), opflexDomain("default"),
+PolicyManager::PolicyManager(OFFramework& framework_,
+                             boost::asio::io_service& agent_io_)
+    : framework(framework_), opflexDomain("default"), taskQueue(agent_io_),
       domainListener(*this), contractListener(*this),
       secGroupListener(*this), configListener(*this) {
 
@@ -1090,53 +1091,65 @@ PolicyManager::ContractListener::~ContractListener() {}
 void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
                                                     const URI& uri) {
     using namespace modelgbp::gbp;
-
     LOG(DEBUG) << "ContractListener update for URI " << uri;
-    unique_lock<mutex> guard(pmanager.state_mutex);
 
     uri_set_t contractsToNotify;
     if (classId == EpGroup::CLASS_ID) {
+        unique_lock<mutex> guard(pmanager.state_mutex);
         pmanager.updateGroupContracts(classId, uri, contractsToNotify);
     } else if (classId == L3ExternalNetwork::CLASS_ID) {
+        unique_lock<mutex> guard(pmanager.state_mutex);
         pmanager.updateGroupContracts(classId, uri, contractsToNotify);
     } else if (classId == RoutingDomain::CLASS_ID) {
+        unique_lock<mutex> guard(pmanager.state_mutex);
         pmanager.updateL3Nets(uri, contractsToNotify);
     } else {
         if (classId == Contract::CLASS_ID) {
             pmanager.contractMap[uri];
         }
 
-        /* recompute the rules for all contracts if a policy object changed */
-        for (PolicyManager::contract_map_t::iterator itr =
-                 pmanager.contractMap.begin();
-             itr != pmanager.contractMap.end(); ) {
-            bool notFound = false;
-            if (pmanager.updateContractRules(itr->first, notFound)) {
-                contractsToNotify.insert(itr->first);
-            }
-            /*
-             * notFound == true may happen if the contract was removed or there
-             * is a reference from a group to a contract that has not been
-             * received yet. The URI given to the listener callback should
-             * match the map entry in the first case.
-             */
-            if (notFound && itr->first == uri) {
-                contractsToNotify.insert(itr->first);
-                // if contract has providers/consumers, only clear the rules
-                if (itr->second.providerGroups.empty() &&
-                    itr->second.consumerGroups.empty() &&
-                    itr->second.intraGroups.empty()) {
-                    itr = pmanager.contractMap.erase(itr);
-                } else {
-                    itr->second.rules.clear();
-                    ++itr;
+        pmanager.taskQueue.dispatch("contract", [this]() {
+                unique_lock<mutex> guard(pmanager.state_mutex);
+                uri_set_t contractsToNotify;
+
+                /* recompute the rules for all contracts if a policy
+                   object changed */
+                for (PolicyManager::contract_map_t::iterator itr =
+                         pmanager.contractMap.begin();
+                     itr != pmanager.contractMap.end();) {
+
+                    bool notFound = false;
+                    if (pmanager.updateContractRules(itr->first, notFound)) {
+                        contractsToNotify.insert(itr->first);
+                    }
+                    /*
+                     * notFound == true may happen if the contract was
+                     * removed or there is a reference from a group to
+                     * a contract that has not been received yet.
+                     */
+                    if (notFound) {
+                        contractsToNotify.insert(itr->first);
+                        // if contract has providers/consumers, only
+                        // clear the rules
+                        if (itr->second.providerGroups.empty() &&
+                            itr->second.consumerGroups.empty() &&
+                            itr->second.intraGroups.empty()) {
+                            itr = pmanager.contractMap.erase(itr);
+                        } else {
+                            itr->second.rules.clear();
+                            ++itr;
+                        }
+                    } else {
+                        ++itr;
+                    }
                 }
-            } else {
-                ++itr;
-            }
-        }
+                guard.unlock();
+
+                for (const URI& u : contractsToNotify) {
+                    pmanager.notifyContract(u);
+                }
+            });
     }
-    guard.unlock();
 
     for (const URI& u : contractsToNotify) {
         pmanager.notifyContract(u);
@@ -1151,30 +1164,39 @@ PolicyManager::SecGroupListener::~SecGroupListener() {}
 void PolicyManager::SecGroupListener::objectUpdated(class_id_t classId,
                                                     const URI& uri) {
     LOG(DEBUG) << "SecGroupListener update for URI " << uri;
-    unique_lock<mutex> guard(pmanager.state_mutex);
-    uri_set_t toNotify;
-    if (classId == modelgbp::gbp::SecGroup::CLASS_ID) {
-        pmanager.secGrpMap[uri];
-    }
-    PolicyManager::secgrp_map_t::iterator it = pmanager.secGrpMap.begin();
-    while (it != pmanager.secGrpMap.end()) {
-        bool notfound = false;
-        if (pmanager.updateSecGrpRules(it->first, notfound)) {
-            toNotify.insert(it->first);
-        }
-        if (notfound) {
-            toNotify.insert(it->first);
-            it = pmanager.secGrpMap.erase(it);
-        } else {
-            ++it;
+    {
+        unique_lock<mutex> guard(pmanager.state_mutex);
+        if (classId == modelgbp::gbp::SecGroup::CLASS_ID) {
+            pmanager.secGrpMap[uri];
         }
     }
 
-    guard.unlock();
+    pmanager.taskQueue.dispatch("secgroup", [this]() {
+            /* recompute the rules for all security groups if a policy
+               object changed */
+            unique_lock<mutex> guard(pmanager.state_mutex);
 
-    for (const URI& u : toNotify) {
-        pmanager.notifySecGroup(u);
-    }
+            uri_set_t toNotify;
+            PolicyManager::secgrp_map_t::iterator it =
+                pmanager.secGrpMap.begin();
+            while (it != pmanager.secGrpMap.end()) {
+                bool notfound = false;
+                if (pmanager.updateSecGrpRules(it->first, notfound)) {
+                    toNotify.insert(it->first);
+                }
+                if (notfound) {
+                    toNotify.insert(it->first);
+                    it = pmanager.secGrpMap.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            guard.unlock();
+
+            for (const URI& u : toNotify) {
+                pmanager.notifySecGroup(u);
+            }
+        });
 }
 
 PolicyManager::ConfigListener::ConfigListener(PolicyManager& pmanager_)

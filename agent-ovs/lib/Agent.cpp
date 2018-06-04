@@ -48,7 +48,7 @@ using boost::optional;
 using boost::asio::io_service;
 
 Agent::Agent(OFFramework& framework_)
-    : framework(framework_), policyManager(framework),
+    : framework(framework_), policyManager(framework, agent_io),
       endpointManager(framework, policyManager), notifServer(agent_io),
       started(false) {
 
