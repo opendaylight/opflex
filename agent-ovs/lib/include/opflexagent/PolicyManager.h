@@ -15,8 +15,10 @@
 
 #include <opflexagent/PolicyListener.h>
 #include <opflexagent/Network.h>
+#include <opflexagent/TaskQueue.h>
 
 #include <boost/noncopyable.hpp>
+#include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/modb/ObjectListener.h>
@@ -134,9 +136,12 @@ public:
     /**
      * Instantiate a new policy manager using the specified framework
      * instance.
-     * @param framework the opflex framework
+     * @param framework_ the framework object
+     * @param agent_io_ an IO service object for asynchronous task
+     * execution.
      */
-    PolicyManager(opflex::ofcore::OFFramework& framework);
+    PolicyManager(opflex::ofcore::OFFramework& framework_,
+                  boost::asio::io_service& agent_io_);
 
     /**
      * Destroy the policy manager and clean up all state
@@ -435,6 +440,7 @@ public:
 private:
     opflex::ofcore::OFFramework& framework;
     std::string opflexDomain;
+    TaskQueue taskQueue;
 
     /**
      * State and indices related to a given group
@@ -679,6 +685,28 @@ private:
 
     bool updateSecGrpRules(const opflex::modb::URI& secGrpURI,
                            bool& notFound);
+
+    /**
+     * Recompute contract rules and notify listeners as needed
+     */
+    void updateContracts();
+
+    /**
+     * Recompute security group rules and notify listeners as needed
+     */
+    void updateSecGrps();
+
+    /**
+     * Update state for the domain listener
+     */
+    void updateDomain(opflex::modb::class_id_t class_id,
+                      const opflex::modb::URI& uri);
+
+    /**
+     * Execute a function and notify contract listeners
+     * @param func the function to execute
+     */
+    void executeAndNotifyContract(const std::function<void(uri_set_t&)>& func);
 
     /**
      * Notify policy listeners about an update to a contract.
