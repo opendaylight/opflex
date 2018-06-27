@@ -35,7 +35,6 @@ namespace opflexagent {
 
 namespace ba = boost::asio;
 using ba::local::stream_protocol;
-using std::bind;
 using std::shared_ptr;
 using rapidjson::Document;
 using rapidjson::StringBuffer;
@@ -356,7 +355,7 @@ void NotifServer::stop() {
     running = false;
     if (acceptor)
         acceptor->close();
-    io_service.dispatch(bind(&NotifServer::do_stop, this));
+    io_service.dispatch([this]() { NotifServer::do_stop(); });
 }
 
 static void do_dispatch(shared_ptr<StringBuffer> buffer,

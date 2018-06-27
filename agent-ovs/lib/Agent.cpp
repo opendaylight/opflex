@@ -23,6 +23,7 @@
 #include <opflexagent/ModelEndpointSource.h>
 #include <opflexagent/FSServiceSource.h>
 #include <opflexagent/FSRDConfigSource.h>
+#include <opflexagent/FSLearningBridgeSource.h>
 #include <opflexagent/logging.h>
 
 #include <opflexagent/Renderer.h>
@@ -47,7 +48,7 @@ using boost::optional;
 using boost::asio::io_service;
 
 Agent::Agent(OFFramework& framework_)
-    : framework(framework_), policyManager(framework),
+    : framework(framework_), policyManager(framework, agent_io),
       endpointManager(framework, policyManager), notifServer(agent_io),
       started(false) {
 
@@ -61,8 +62,8 @@ Agent::~Agent() {
     }
 }
 
-#define DEF_INSPECT_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-inspect.sock"
-#define DEF_NOTIF_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-notif.sock"
+#define DEF_INSPECT_SOCKET LOCALSTATEDIR"/run/opflex-agent-inspect.sock"
+#define DEF_NOTIF_SOCKET LOCALSTATEDIR"/run/opflex-agent-notif.sock"
 
 Renderer* disabled_create(Agent& agent) {
     return NULL;
@@ -367,6 +368,12 @@ void Agent::start() {
             FSRDConfigSource* source =
                 new FSRDConfigSource(&extraConfigManager, fsWatcher, path);
             rdConfigSources.emplace_back(source);
+        }
+        {
+            LearningBridgeSource* source =
+                new FSLearningBridgeSource(&learningBridgeManager,
+                                           fsWatcher, path);
+            learningBridgeSources.emplace_back(source);
         }
     }
     if (endpointSourceModelLocalNames.size() > 0) {

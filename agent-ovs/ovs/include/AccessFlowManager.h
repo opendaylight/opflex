@@ -30,6 +30,7 @@ class CtZoneManager;
  * per-endpoint security policy and security groups.
  */
 class AccessFlowManager : public EndpointListener,
+                          public LearningBridgeListener,
                           public PortStatusListener,
                           public PolicyListener,
                           public SwitchStateHandler,
@@ -66,6 +67,9 @@ public:
     /* Interface: EndpointListener */
     virtual void endpointUpdated(const std::string& uuid);
     virtual void secGroupSetUpdated(const EndpointListener::uri_set_t& secGrps);
+
+    /* Interface: LearningBridgeListener */
+    virtual void lbIfaceUpdated(const std::string& uuid);
 
     /* Interface: PolicyListener */
     virtual void secGroupUpdated(const opflex::modb::URI&);

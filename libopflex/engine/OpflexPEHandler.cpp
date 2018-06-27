@@ -245,7 +245,7 @@ void OpflexPEHandler::handleSendIdentityErr(uint64_t reqId,
                                             const Value& payload) {
     handleError(reqId, payload, "Send Identity");
     LOG(ERROR) << "Handshake failed; terminating connection";
-    conn->disconnect();
+    setState(FAILED);
 }
 
 void OpflexPEHandler::handlePolicyResolveRes(uint64_t reqId,

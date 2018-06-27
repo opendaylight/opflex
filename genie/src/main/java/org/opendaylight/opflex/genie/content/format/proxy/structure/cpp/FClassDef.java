@@ -965,7 +965,7 @@ public class FClassDef extends ItemFormatterTask
         }
         else if (aInBaseType.getLanguageBinding(Language.CPP).getSyntax().startsWith("int"))
         {
-            lEffSyntax = getPropEffSyntax(MType.get("scalar/Int64"));
+            lEffSyntax = getPropEffSyntax(MType.get("scalar/SInt64"));
         }
         return lEffSyntax;
     }

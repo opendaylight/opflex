@@ -12,7 +12,7 @@
 # ---------------------------------------------------------------
 # Initialization
 
-AC_INIT([opflex-agent], [1.7.0])
+AC_INIT([opflex-agent], [1.9.0])
 AC_SUBST(MODULE_NAME, ["Group-based Policy Agent"])
 
 dnl For more information on libtool versioning, see:
@@ -35,7 +35,7 @@ dnl     then increment age.
 dnl  6. If any interfaces have been removed since the last public
 dnl     release, then set age to 0.
 
-AC_SUBST(VERSION_INFO, [7:0:7])
+AC_SUBST(VERSION_INFO, [9:0:9])
 
 # initialize automake and libtool
 AM_INIT_AUTOMAKE([subdir-objects])
@@ -129,8 +129,8 @@ if test "x$ax_cv_boost_asio" != xyes; then
     AC_MSG_ERROR([Boost::ASIO library is required])
 fi
 
-PKG_CHECK_MODULES([libopflex], [libopflex >= 1.4.0])
-PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.4.0])
+PKG_CHECK_MODULES([libopflex], [libopflex >= 1.9.0])
+PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.9.0])
 PKG_CHECK_MODULES([rapidjson], [RapidJSON >= 1.0])
 
 AM_COND_IF([RENDERER_OVS], [

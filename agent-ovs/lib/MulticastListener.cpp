@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <sstream>
+#include <stdexcept>
 #include <unistd.h>
 #include <sys/types.h>
 #include <grp.h>
@@ -30,30 +31,48 @@
 namespace opflexagent {
 
 namespace ba = boost::asio;
-using std::bind;
 using std::shared_ptr;
+using std::unique_ptr;
 using std::unordered_set;
 using std::string;
 
 #define LISTEN_PORT 34242
 
 MulticastListener::MulticastListener(ba::io_service& io_service_)
-    : io_service(io_service_), socket_v4(io_service_), socket_v6(io_service_),
-      running(true) {
+    : io_service(io_service_), running(true) {
 
     LOG(INFO) << "Starting multicast listener";
 
-    ba::ip::udp::endpoint v4_endpoint(ba::ip::udp::v4(), LISTEN_PORT);
-    ba::ip::udp::endpoint v6_endpoint(ba::ip::udp::v6(), LISTEN_PORT);
+    try {
+        unique_ptr<ba::ip::udp::socket> v4(new ba::ip::udp::socket(io_service));
+        ba::ip::udp::endpoint v4_endpoint(ba::ip::udp::v4(), LISTEN_PORT);
 
-    socket_v4.open(v4_endpoint.protocol());
-    socket_v4.set_option(ba::socket_base::reuse_address(true));
-    socket_v4.bind(v4_endpoint);
+        v4->open(v4_endpoint.protocol());
+        v4->set_option(ba::socket_base::reuse_address(true));
+        v4->bind(v4_endpoint);
+        socket_v4 = std::move(v4);
+    } catch (boost::system::system_error& e) {
+        LOG(WARNING) << "Could not bind to IPv4 socket: "
+                     << e.what();
+    }
 
-    socket_v6.open(v6_endpoint.protocol());
-    socket_v6.set_option(ba::socket_base::reuse_address(true));
-    socket_v6.set_option(ba::ip::v6_only(true));
-    socket_v6.bind(v6_endpoint);
+    try {
+        unique_ptr<ba::ip::udp::socket> v6(new ba::ip::udp::socket(io_service));
+        ba::ip::udp::endpoint v6_endpoint(ba::ip::udp::v6(), LISTEN_PORT);
+
+        v6->open(v6_endpoint.protocol());
+        v6->set_option(ba::socket_base::reuse_address(true));
+        v6->set_option(ba::ip::v6_only(true));
+        v6->bind(v6_endpoint);
+        socket_v6 = std::move(v6);
+    } catch (boost::system::system_error& e) {
+        LOG(WARNING) << "Could not bind to IPv6 socket: "
+                     << e.what();
+    }
+
+    if (!socket_v4 && !socket_v6) {
+        throw std::runtime_error("Could not bind to any socket");
+    }
 }
 
 MulticastListener::~MulticastListener() {
@@ -61,8 +80,16 @@ MulticastListener::~MulticastListener() {
 }
 
 void MulticastListener::do_stop() {
-    socket_v4.close();
-    socket_v6.close();
+    if (socket_v4) {
+        socket_v4->shutdown(boost::asio::ip::udp::socket::shutdown_both);
+        socket_v4->close();
+        socket_v4.reset();
+    }
+    if (socket_v6) {
+        socket_v6->shutdown(boost::asio::ip::udp::socket::shutdown_both);
+        socket_v6->close();
+        socket_v6.reset();
+    }
 }
 
 void MulticastListener::stop() {
@@ -71,7 +98,7 @@ void MulticastListener::stop() {
 
     LOG(INFO) << "Shutting down";
 
-    io_service.dispatch(bind(&MulticastListener::do_stop, this));
+    io_service.dispatch([this]() { MulticastListener::do_stop(); });
 }
 
 void MulticastListener::join(std::string mcast_address) {
@@ -88,10 +115,19 @@ void MulticastListener::join(std::string mcast_address) {
 
     LOG(INFO) << "Joining group " << addr;
 
-    if (addr.is_v4())
-        socket_v4.set_option(ba::ip::multicast::join_group(addr), ec);
-    else
-        socket_v6.set_option(ba::ip::multicast::join_group(addr), ec);
+    if (addr.is_v4()) {
+        if (socket_v4)
+            socket_v4->set_option(ba::ip::multicast::join_group(addr), ec);
+        else
+            LOG(ERROR) << "Could not join group "
+                       << addr << ": " << "IPv4 socket not available";
+    } else {
+        if (socket_v6)
+            socket_v6->set_option(ba::ip::multicast::join_group(addr), ec);
+        else
+            LOG(ERROR) << "Could not join group "
+                       << addr << ": " << "IPv6 socket not available";
+    }
 
     if (ec)
         LOG(ERROR) << "Could not join group " << addr << ": " << ec.message();
@@ -105,10 +141,13 @@ void MulticastListener::leave(std::string mcast_address) {
 
     LOG(INFO) << "Leaving group " << addr;
 
-    if (addr.is_v4())
-        socket_v4.set_option(ba::ip::multicast::leave_group(addr), ec);
-    else
-        socket_v6.set_option(ba::ip::multicast::leave_group(addr), ec);
+    if (addr.is_v4()) {
+        if (socket_v4)
+            socket_v4->set_option(ba::ip::multicast::leave_group(addr), ec);
+    } else {
+        if (socket_v6)
+            socket_v6->set_option(ba::ip::multicast::leave_group(addr), ec);
+    }
 
     if (ec)
         LOG(ERROR) << "Could not leave group " << addr << ": " << ec.message();

@@ -40,7 +40,7 @@ void TaskQueue::dispatch(const std::string& taskId,
         std::unique_lock<std::mutex> guard(queueMutex);
         if (!queuedItems.insert(taskId).second) return;
     }
-    io_service.post(std::bind(&TaskQueue::run_task, this, taskId, task));
+    io_service.post([=]() { TaskQueue::run_task(taskId, task); });
 }
 
 } // namespace opflexagent

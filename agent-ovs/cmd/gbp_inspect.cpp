@@ -47,7 +47,7 @@ using namespace opflexagent;
 void sighandler(int sig) {
     LOG(INFO) << "Got " << strsignal(sig) << " signal";
 }
-#define DEF_SOCKET LOCALSTATEDIR"/run/opflex-agent-ovs-inspect.sock"
+#define DEF_SOCKET LOCALSTATEDIR"/run/opflex-agent-inspect.sock"
 
 int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
         if (vm.count("query"))
             queries = vm["query"].as<std::vector<string> >();
         truncate = vm["width"].as<int>();
-    } catch (po::unknown_option e) {
+    } catch (po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
     }

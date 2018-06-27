@@ -117,6 +117,7 @@ private:
     static void on_timer_close(uv_handle_t* handle);
 
     virtual void notifyReady();
+    virtual void notifyFailed();
 
 protected:
     static void on_state_change(yajr::Peer* p, void* data,

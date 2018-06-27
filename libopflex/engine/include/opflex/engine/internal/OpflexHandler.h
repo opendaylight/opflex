@@ -60,7 +60,8 @@ public:
     enum ConnectionState {
         DISCONNECTED,
         CONNECTED,
-        READY
+        READY,
+        FAILED
     };
 
     /**

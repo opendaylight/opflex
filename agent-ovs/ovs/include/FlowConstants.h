@@ -19,17 +19,6 @@ namespace flow {
 
 namespace cookie {
 /**
- * The cookie used for learn flow entries that are proactively
- * installed
- */
-extern const uint64_t PROACTIVE_LEARN;
-
-/**
- * The cookie used for flow entries that are learned reactively.
- */
-extern const uint64_t LEARN;
-
-/**
  * The cookie used for flows that direct neighbor discovery
  * packets to the controller
  */
@@ -141,7 +130,28 @@ extern const uint64_t TUNNEL;
  */
 extern const uint64_t FLOOD;
 
+/**
+ * Output to the tunnel destination specified in the output register
+ */
+extern const uint64_t REMOTE_TUNNEL;
+
 } // namespace out
+
+
+namespace access_out {
+
+/**
+ * Pop the VLAN tag
+ */
+const uint64_t POP_VLAN = 0x1;
+
+/**
+ * Push the VLAN tag stored in REG5
+ */
+const uint64_t PUSH_VLAN = 0x2;
+
+} // namespace access
+
 } // namespace meta
 
 } // namespace flow

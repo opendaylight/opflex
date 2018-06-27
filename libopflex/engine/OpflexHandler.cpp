@@ -45,6 +45,8 @@ void OpflexHandler::setState(ConnectionState state_) {
     state = state_;
     if (state == READY)
         conn->notifyReady();
+    else if (state == FAILED)
+        conn->notifyFailed();
 }
 
 void OpflexHandler::handleUnexpected(const string& type) {

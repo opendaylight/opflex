@@ -57,6 +57,11 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/ServiceSource.h \
 	lib/include/opflexagent/ServiceManager.h \
 	lib/include/opflexagent/FSServiceSource.h \
+	lib/include/opflexagent/LearningBridgeIface.h \
+	lib/include/opflexagent/LearningBridgeListener.h \
+	lib/include/opflexagent/LearningBridgeSource.h \
+	lib/include/opflexagent/LearningBridgeManager.h \
+	lib/include/opflexagent/FSLearningBridgeSource.h \
 	lib/include/opflexagent/ExtraConfigListener.h \
 	lib/include/opflexagent/ExtraConfigManager.h \
 	lib/include/opflexagent/FSRDConfigSource.h \
@@ -118,6 +123,10 @@ libopflex_agent_la_SOURCES = \
 	lib/ServiceSource.cpp \
 	lib/ServiceManager.cpp \
 	lib/FSServiceSource.cpp \
+	lib/LearningBridgeIface.cpp \
+	lib/LearningBridgeSource.cpp \
+	lib/LearningBridgeManager.cpp \
+	lib/FSLearningBridgeSource.cpp \
 	lib/ExtraConfigManager.cpp \
 	lib/RDConfig.cpp \
 	lib/FSRDConfigSource.cpp \
@@ -221,7 +230,7 @@ mcast_daemon_LDADD = \
 	libopflex_agent.la
 
 TESTS = agent_test
-noinst_PROGRAMS = $(TESTS) integration_test
+noinst_PROGRAMS = $(TESTS) integration_test policy_repo_stress
 
 agent_test_CFLAGS =
 agent_test_CXXFLAGS = \
@@ -239,6 +248,7 @@ agent_test_SOURCES = \
 	lib/test/PolicyManager_test.cpp \
 	lib/test/EndpointManager_test.cpp \
 	lib/test/ModelEndpointSource_test.cpp \
+	lib/test/LearningBridgeManager_test.cpp \
 	lib/test/IdGenerator_test.cpp \
 	lib/test/KeyedRateLimiter_test.cpp \
 	lib/test/NotifServer_test.cpp \
@@ -275,7 +285,6 @@ if RENDERER_OVS
 	ovs/test/IntFlowManager_test.cpp \
 	ovs/test/AccessFlowManager_test.cpp \
 	ovs/test/PacketInHandler_test.cpp \
-	ovs/test/PacketInHandler_test_shim.c \
 	ovs/test/AdvertManager_test.cpp \
 	ovs/test/PortMapper_test.cpp \
 	ovs/test/FlowExecutor_test.cpp \
@@ -298,6 +307,18 @@ mock_server_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	libopflex_agent.la
+
+policy_repo_stress_CXXFLAGS = \
+	$(libopflex_CFLAGS) \
+	$(libmodelgbp_CFLAGS)
+policy_repo_stress_SOURCES = \
+	cmd/test/policy_repo_stress.cpp
+policy_repo_stress_LDADD = \
+	$(libopflex_LIBS) \
+	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	$(BOOST_FILESYSTEM_LIB) \
+	$(BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs

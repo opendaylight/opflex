@@ -68,6 +68,12 @@ public:
     void build(ofputil_bucket *dstBucket);
 
     /**
+     * Set the flowHasVlan bit for actions
+     * @return this action builder for chaining
+     */
+    ActionBuilder& setFlowHasVlan(bool hasVlan = true);
+
+    /**
      * If this action builder has a parent flow builder, return it.
      * Asserts if this builder has no parent.
      * @return the parent
@@ -362,6 +368,19 @@ public:
                              uint16_t maxLink,
                              uint32_t arg,
                              mf_field_id dst);
+
+    /**
+     * Perform a MAC/VLAN learning action and write the result to the
+     * specified table with the specified priority and cookie.
+     *
+     * @param prio the priority for the resulting learned flow
+     * @param cookie the cookie for the resulting learned flow
+     * @param table the table to which the learned flow should be
+     * written.
+     */
+    ActionBuilder& macVlanLearn(uint16_t prio,
+                                uint64_t cookie,
+                                uint8_t table);
 
     /**
      * Extract and return an array of flow actions from a buffer used

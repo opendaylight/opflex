@@ -15,8 +15,6 @@ namespace flow {
 namespace cookie {
 
 #define DEF_COOKIE(val) ovs_htonll((uint64_t)1 << 63 | val)
-const uint64_t PROACTIVE_LEARN = DEF_COOKIE(1);
-const uint64_t LEARN           = DEF_COOKIE(2);
 const uint64_t NEIGH_DISC      = DEF_COOKIE(3);
 const uint64_t DHCP_V4         = DEF_COOKIE(4);
 const uint64_t DHCP_V6         = DEF_COOKIE(5);
@@ -44,9 +42,19 @@ const uint64_t NAT = 0x2;
 const uint64_t REV_NAT = 0x3;
 const uint64_t TUNNEL = 0x4;
 const uint64_t FLOOD = 0x5;
+const uint64_t REMOTE_TUNNEL = 0x7;
 
 } // namespace out
-} // namespace metadata
+
+namespace access {
+
+const uint64_t MASK = 0xff;
+const uint64_t POP_VLAN = 0x1;
+const uint64_t PUSH_VLAN = 0x1;
+
+} // namespace access
+
+} // namespace meta
 
 } // namespace flow
 } // namespace opflexagent
