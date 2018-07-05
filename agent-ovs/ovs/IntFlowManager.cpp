@@ -69,6 +69,7 @@ using std::mutex;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::class_id_t;
+using modelgbp::gbpe::L24Classifier;
 
 namespace pt = boost::property_tree;
 using namespace modelgbp::gbp;
@@ -2694,11 +2695,15 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
         flowutils::ClassAction act = flowutils::CA_DENY;
         if (pc->getAllow())
             act = flowutils::CA_ALLOW;
-
         if (dir == DirectionEnumT::CONST_BIDIRECTIONAL &&
             !allowBidirectional) {
             dir = DirectionEnumT::CONST_IN;
         }
+        MaskList srcPorts;
+        MaskList dstPorts;
+
+        flowutils::add_port_ranges(*cls, srcPorts, dstPorts);
+
         if (dir == DirectionEnumT::CONST_IN ||
             dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
             flowutils::add_classifier_entries(*cls, act,
@@ -2709,10 +2714,13 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
                                               OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
                                               cvnid, pvnid,
+                                              srcPorts, dstPorts,
                                               entryList);
         }
-        if (dir == DirectionEnumT::CONST_OUT ||
-            dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
+        /* If the dir is bi-bir, only then reverse the
+         * ports
+         */
+        if (dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
             flowutils::add_classifier_entries(*cls, act,
                                               boost::none,
                                               boost::none,
@@ -2721,6 +2729,19 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
                                               OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
                                               pvnid, cvnid,
+                                              dstPorts, srcPorts,
+                                              entryList);
+        }
+        if (dir == DirectionEnumT::CONST_OUT) {
+            flowutils::add_classifier_entries(*cls, act,
+                                              boost::none,
+                                              boost::none,
+                                              IntFlowManager::OUT_TABLE_ID,
+                                              pc->getPriority(),
+                                              OFPUTIL_FF_SEND_FLOW_REM,
+                                              cookie,
+                                              pvnid, cvnid,
+                                              srcPorts, dstPorts,
                                               entryList);
         }
     }
@@ -2776,7 +2797,6 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
             bool allowBidirectional =
                 provIds.find(cvnid) == provIds.end() ||
                 consIds.find(pvnid) == consIds.end();
-
             addContractRules(entryList, pvnid, cvnid,
                              allowBidirectional,
                              rules);
