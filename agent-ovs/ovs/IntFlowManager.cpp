@@ -69,6 +69,7 @@ using std::mutex;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::class_id_t;
+using modelgbp::gbpe::L24Classifier;
 
 namespace pt = boost::property_tree;
 using namespace modelgbp::gbp;
@@ -2462,6 +2463,11 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
                 if (ec) continue;
 
                 {
+                    // TODO:SNAT action for the external networks
+                    //make a map of the endpoints that want the snat
+                    //action to be applied and for each one of them add the
+                    //SNAT:metadata, so that in out table we can apply
+                    //the CT+SNAT action.
                     FlowBuilder snr;
                     matchSubnet(snr, rdId, 150, addr,
                                 extsub->getPrefixLen(0), false);
@@ -2689,16 +2695,39 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
     for (const shared_ptr<PolicyRule>& pc : rules) {
         uint8_t dir = pc->getDirection();
         const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
+        L24Classifier& clsfr = *cls;
         const opflex::modb::URI& ruleURI = cls.get()->getURI();
         uint64_t cookie = getId(L24Classifier::CLASS_ID, ruleURI);
         flowutils::ClassAction act = flowutils::CA_DENY;
         if (pc->getAllow())
             act = flowutils::CA_ALLOW;
-
         if (dir == DirectionEnumT::CONST_BIDIRECTIONAL &&
             !allowBidirectional) {
             dir = DirectionEnumT::CONST_IN;
         }
+		MaskList srcPorts;
+		MaskList dstPorts;
+		if (clsfr.getProt(0) == 1 &&
+			(clsfr.isIcmpTypeSet() || clsfr.isIcmpCodeSet())) {
+			if (clsfr.isIcmpTypeSet()) {
+				srcPorts.push_back(Mask(clsfr.getIcmpType(0), ~0));
+			}
+			if (clsfr.isIcmpCodeSet()) {
+				dstPorts.push_back(Mask(clsfr.getIcmpCode(0), ~0));
+			}
+		} else {
+			RangeMask::getMasks(clsfr.getSFromPort(), clsfr.getSToPort(), srcPorts);
+			RangeMask::getMasks(clsfr.getDFromPort(), clsfr.getDToPort(), dstPorts);
+		}
+
+		/* Add a "ignore" mask to empty ranges - makes the loop later easy */
+		if (srcPorts.empty()) {
+			srcPorts.push_back(Mask(0x0, 0x0));
+		}
+		if (dstPorts.empty()) {
+			dstPorts.push_back(Mask(0x0, 0x0));
+		}
+
         if (dir == DirectionEnumT::CONST_IN ||
             dir == DirectionEnumT::CONST_BIDIRECTIONAL) {
             flowutils::add_classifier_entries(*cls, act,
@@ -2709,6 +2738,7 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
                                               OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
                                               cvnid, pvnid,
+											  srcPorts, dstPorts,
                                               entryList);
         }
         if (dir == DirectionEnumT::CONST_OUT ||
@@ -2721,6 +2751,7 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
                                               OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
                                               pvnid, cvnid,
+											  dstPorts, srcPorts,
                                               entryList);
         }
     }
@@ -2776,7 +2807,6 @@ IntFlowManager::handleContractUpdate(const opflex::modb::URI& contractURI) {
             bool allowBidirectional =
                 provIds.find(cvnid) == provIds.end() ||
                 consIds.find(pvnid) == consIds.end();
-
             addContractRules(entryList, pvnid, cvnid,
                              allowBidirectional,
                              rules);

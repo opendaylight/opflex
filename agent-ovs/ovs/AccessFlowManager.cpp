@@ -355,6 +355,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
         for (shared_ptr<PolicyRule>& pc : rules) {
             uint8_t dir = pc->getDirection();
             const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
+            L24Classifier& clsfr = *cls;
             const URI& ruleURI = cls.get()->getURI();
             uint64_t secGrpCookie =
                 idGen.getId("l24classifierRule", ruleURI.toString());
@@ -371,6 +372,29 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                     act = CA_ALLOW;
                 }
             }
+            MaskList srcPorts;
+            MaskList dstPorts;
+            if (clsfr.getProt(0) == 1 &&
+                (clsfr.isIcmpTypeSet() || clsfr.isIcmpCodeSet())) {
+                if (clsfr.isIcmpTypeSet()) {
+                    srcPorts.push_back(Mask(clsfr.getIcmpType(0), ~0));
+                }
+                if (clsfr.isIcmpCodeSet()) {
+                    dstPorts.push_back(Mask(clsfr.getIcmpCode(0), ~0));
+                }
+            } else {
+                RangeMask::getMasks(clsfr.getSFromPort(), clsfr.getSToPort(), srcPorts);
+                RangeMask::getMasks(clsfr.getDFromPort(), clsfr.getDToPort(), dstPorts);
+            }
+
+            /* Add a "ignore" mask to empty ranges - makes the loop later easy */
+            if (srcPorts.empty()) {
+                srcPorts.push_back(Mask(0x0, 0x0));
+            }
+            if (dstPorts.empty()) {
+                dstPorts.push_back(Mask(0x0, 0x0));
+            }
+
 
             if (dir == DirectionEnumT::CONST_BIDIRECTIONAL ||
                 dir == DirectionEnumT::CONST_IN) {
@@ -382,6 +406,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   OFPUTIL_FF_SEND_FLOW_REM,
                                                   secGrpCookie,
                                                   secGrpSetId, 0,
+                                                  srcPorts, dstPorts,
                                                   secGrpIn);
                 if (act == CA_REFLEX_FWD) {
                     // add reverse entries for reflexive classifier
@@ -393,6 +418,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       OFPUTIL_FF_SEND_FLOW_REM,
                                                       0,
                                                       secGrpSetId, 0,
+                                                      srcPorts, dstPorts,
                                                       secGrpOut);
                     flowutils::add_classifier_entries(*cls, CA_REFLEX_REV_ALLOW,
                                                       boost::none,
@@ -402,6 +428,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       OFPUTIL_FF_SEND_FLOW_REM,
                                                       secGrpCookie,
                                                       secGrpSetId, 0,
+                                                      srcPorts, dstPorts,
                                                       secGrpOut);
                 }
             }
@@ -415,6 +442,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   OFPUTIL_FF_SEND_FLOW_REM,
                                                   secGrpCookie,
                                                   secGrpSetId, 0,
+                                                  srcPorts, dstPorts,
                                                   secGrpOut);
                 if (act == CA_REFLEX_FWD) {
                     // add reverse entries for reflexive classifier
@@ -426,6 +454,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       OFPUTIL_FF_SEND_FLOW_REM,
                                                       0,
                                                       secGrpSetId, 0,
+                                                      srcPorts, dstPorts,
                                                       secGrpIn);
                     flowutils::add_classifier_entries(*cls, CA_REFLEX_REV_ALLOW,
                                                       remoteSubs,
@@ -435,6 +464,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       OFPUTIL_FF_SEND_FLOW_REM,
                                                       secGrpCookie,
                                                       secGrpSetId, 0,
+                                                      srcPorts, dstPorts,
                                                       secGrpIn);
                 }
             }

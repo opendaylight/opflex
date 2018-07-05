@@ -124,33 +124,11 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
                             uint8_t nextTable, uint16_t priority,
                             uint32_t flags, uint64_t cookie,
                             uint32_t svnid, uint32_t dvnid,
+                            MaskList& srcPorts, MaskList& dstPorts,
                             /* out */ FlowEntryList& entries) {
     using modelgbp::l4::TcpFlagsEnumT;
 
     ovs_be64 ckbe = ovs_htonll(cookie);
-    MaskList srcPorts;
-    MaskList dstPorts;
-    if (clsfr.getProt(0) == 1 &&
-        (clsfr.isIcmpTypeSet() || clsfr.isIcmpCodeSet())) {
-        if (clsfr.isIcmpTypeSet()) {
-            srcPorts.push_back(Mask(clsfr.getIcmpType(0), ~0));
-        }
-        if (clsfr.isIcmpCodeSet()) {
-            dstPorts.push_back(Mask(clsfr.getIcmpCode(0), ~0));
-        }
-    } else {
-        RangeMask::getMasks(clsfr.getSFromPort(), clsfr.getSToPort(), srcPorts);
-        RangeMask::getMasks(clsfr.getDFromPort(), clsfr.getDToPort(), dstPorts);
-    }
-
-    /* Add a "ignore" mask to empty ranges - makes the loop later easy */
-    if (srcPorts.empty()) {
-        srcPorts.push_back(Mask(0x0, 0x0));
-    }
-    if (dstPorts.empty()) {
-        dstPorts.push_back(Mask(0x0, 0x0));
-    }
-
     vector<uint32_t> tcpFlagsVec;
     uint32_t tcpFlags = clsfr.getTcpFlags(TcpFlagsEnumT::CONST_UNSPECIFIED);
     if (tcpFlags & TcpFlagsEnumT::CONST_ESTABLISHED) {
