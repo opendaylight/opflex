@@ -139,6 +139,9 @@ public:
     /** Initialize contract 3 flows */
     void initExpCon3();
 
+    /** Initialize contract 4 flows */
+    void initExpCon4();
+
     /** Initialize subnet-scoped flow entries */
     void initSubnets(PolicyManager::subnet_vector_t sns,
                      uint32_t bdId = 1, uint32_t rdId = 1);
@@ -773,7 +776,6 @@ BOOST_FIXTURE_TEST_CASE(policy, VxlanIntFlowManagerFixture) {
     setConnected();
 
     createPolicyObjects();
-
     PolicyManager::uri_set_t egs;
     WAIT_FOR_DO(egs.size() == 2, 1000, egs.clear();
                 policyMgr.getContractProviders(con1->getURI(), egs));
@@ -781,8 +783,13 @@ BOOST_FIXTURE_TEST_CASE(policy, VxlanIntFlowManagerFixture) {
     WAIT_FOR_DO(egs.size() == 2, 500, egs.clear();
                 policyMgr.getContractConsumers(con1->getURI(), egs));
     egs.clear();
+
     WAIT_FOR_DO(egs.size() == 2, 500, egs.clear();
                 policyMgr.getContractIntra(con2->getURI(), egs));
+    egs.clear();
+
+    WAIT_FOR_DO(egs.size() == 1, 1000, egs.clear();
+                policyMgr.getContractProviders(con4->getURI(), egs));
 
     /* add con2 */
     intFlowManager.contractUpdated(con2->getURI());
@@ -790,11 +797,15 @@ BOOST_FIXTURE_TEST_CASE(policy, VxlanIntFlowManagerFixture) {
     initExpCon2();
     WAIT_FOR_TABLES("con2", 500);
 
+    /* add con4 */
+    intFlowManager.contractUpdated(con4->getURI());
+    initExpCon4();
+    WAIT_FOR_TABLES("con4", 500);
+
     /* add con1 */
     intFlowManager.contractUpdated(con1->getURI());
     initExpCon1();
     WAIT_FOR_TABLES("con1", 500);
-
     /* remove */
     Mutator m2(framework, policyOwner);
     con2->remove();
@@ -808,6 +819,7 @@ BOOST_FIXTURE_TEST_CASE(policy, VxlanIntFlowManagerFixture) {
     clearExpFlowTables();
     initExpStatic();
     initExpCon1();
+    initExpCon4();
     WAIT_FOR_TABLES("remove", 500);
 }
 
@@ -878,7 +890,7 @@ void BaseIntFlowManagerFixture::portStatusTest() {
 
     /* delete all groups except epg0, then update tunnel port */
     PolicyManager::uri_set_t epgURIs;
-    WAIT_FOR_DO(epgURIs.size() == 5, 500,
+    WAIT_FOR_DO(epgURIs.size() == 7, 500,
                 epgURIs.clear(); policyMgr.getGroups(epgURIs));
 
     epgURIs.erase(epg0->getURI());
@@ -2130,6 +2142,7 @@ void BaseIntFlowManagerFixture::initExpCon2() {
     PolicyManager::uri_set_t ps, cs;
     unordered_set<uint32_t> ivnids;
     const opflex::modb::URI& ruleURI_5 = classifier5.get()->getURI();
+
     uint32_t con2_cookie = intFlowManager.getId(
                          classifier5->getClassId(), ruleURI_5);
 
@@ -2178,6 +2191,40 @@ void BaseIntFlowManagerFixture::initExpCon3() {
     ADDF(Bldr("", SEND_FLOW_REM).table(POL).priority(prio-256)
         .cookie(con10_cookie).icmp().reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
         .icmp_type(10).icmp_code(5).actions().go(OUT).done());
+}
+
+void BaseIntFlowManagerFixture::initExpCon4() {
+    uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
+    PolicyManager::uri_set_t ps, cs;
+    unordered_set<uint32_t> pvnids, cvnids;
+
+    policyMgr.getContractProviders(con4->getURI(), ps);
+    policyMgr.getContractConsumers(con4->getURI(), cs);
+    intFlowManager.getGroupVnid(ps, pvnids);
+    intFlowManager.getGroupVnid(cs, cvnids);
+
+    for (const uint32_t& pvnid : pvnids) {
+        for (const uint32_t& cvnid : cvnids) {
+            /* classifer 1  */
+            const opflex::modb::URI& ruleURI_1 = classifier1.get()->getURI();
+            uint32_t con4_cookie = intFlowManager.getId(
+                         classifier1->getClassId(), ruleURI_1);
+            ADDF(Bldr(SEND_FLOW_REM).table(POL)
+                 .priority(prio)
+                 .cookie(con4_cookie).tcp()
+                 .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
+                 .actions()
+                 .go(OUT)
+                 .done());
+             ADDF(Bldr(SEND_FLOW_REM).table(POL)
+                 .priority(prio)
+                 .cookie(con4_cookie).tcp()
+                 .reg(SEPG, pvnid).reg(DEPG, cvnid).isTpSrc(80)
+                 .actions()
+                 .go(OUT)
+                 .done());
+        }
+    }
 }
 
 // Initialize flows related to IP address mapping/NAT

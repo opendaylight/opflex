@@ -79,7 +79,8 @@ public:
     std::shared_ptr<modelgbp::policy::Space> space;
     std::shared_ptr<modelgbp::platform::Config> config;
     std::shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
-    std::shared_ptr<modelgbp::gbp::EpGroup> epg0, epg1, epg2, epg3, epg4;
+    std::shared_ptr<modelgbp::gbp::EpGroup> epg0, epg1, epg2, epg3, epg4, epg5,
+        epg6;
     std::shared_ptr<modelgbp::gbp::FloodDomain> fd0, fd1;
     std::shared_ptr<modelgbp::gbpe::FloodContext> fd0ctx;
     std::shared_ptr<modelgbp::gbp::RoutingDomain> rd0;
@@ -106,6 +107,7 @@ public:
     std::shared_ptr<modelgbp::gbp::Contract> con1;
     std::shared_ptr<modelgbp::gbp::Contract> con2;
     std::shared_ptr<modelgbp::gbp::Contract> con3;
+    std::shared_ptr<modelgbp::gbp::Contract> con4;
     std::string policyOwner;
 protected:
 
@@ -197,6 +199,16 @@ protected:
         epg4->addGbpeInstContext()->setEncapId(0xE0E);
         epg4->addGbpEpGroupToNetworkRSrc()
             ->setTargetRoutingDomain(rd0->getURI());
+
+        epg5 = space->addGbpEpGroup("epg5");
+        epg5->addGbpEpGroupToNetworkRSrc()
+            ->setTargetBridgeDomain(bd0->getURI());
+        epg5->addGbpeInstContext()->setEncapId(0xF0A);
+
+        epg6 = space->addGbpEpGroup("epg6");
+        epg6->addGbpEpGroupToNetworkRSrc()
+            ->setTargetBridgeDomain(bd1->getURI());
+        epg6->addGbpeInstContext()->setEncapId(0xF0B);
 
         mutator.commit();
 
@@ -317,12 +329,21 @@ protected:
         con2->addGbpSubject("2_subject1")->addGbpRule("2_1_rule2")
             ->setDirection(DirectionEnumT::CONST_BIDIRECTIONAL).setOrder(20)
             .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
+        con4 = space->addGbpContract("contract4");
+        con4->addGbpSubject("4_subject1")->addGbpRule("4_1_rule1")
+            ->addGbpRuleToClassifierRSrc(classifier0->getURI().toString());
+        con4->addGbpSubject("4_subject1")->addGbpRule("4_1_rule2")
+            ->setDirection(DirectionEnumT::CONST_BIDIRECTIONAL).setOrder(20)
+            .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
 
         epg0->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         epg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
 
         epg2->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
         epg3->addGbpEpGroupToConsContractRSrc(con1->getURI().toString());
+
+        epg5->addGbpEpGroupToProvContractRSrc(con4->getURI().toString());
+        epg6->addGbpEpGroupToConsContractRSrc(con4->getURI().toString());
 
         epg2->addGbpEpGroupToIntraContractRSrc(con2->getURI().toString());
         epg3->addGbpEpGroupToIntraContractRSrc(con2->getURI().toString());
