@@ -20,6 +20,7 @@
 #include <boost/optional.hpp>
 
 #include <stdint.h>
+#include "RangeMask.h"
 
 namespace opflexagent {
 
@@ -96,6 +97,7 @@ void add_classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
                             uint8_t nextTable, uint16_t priority,
                             uint32_t flags, uint64_t cookie,
                             uint32_t svnid, uint32_t dvnid,
+                            MaskList& srcPorts, MaskList& dstPorts,
                             /* out */ FlowEntryList& entries);
 
 /**
