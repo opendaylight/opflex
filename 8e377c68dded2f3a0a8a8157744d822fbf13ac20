@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3da0fe0f_e502b48d",
+        "filename": "agent-ovs/ovs/AccessFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2018-07-06T17:12:37Z",
+      "side": 1,
+      "message": "make this a helper function in FlowUtils",
+      "revId": "8e377c68dded2f3a0a8a8157744d822fbf13ac20",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e3b77a3d_79c9030b",
+        "filename": "agent-ovs/ovs/FlowUtils.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2018-07-06T17:12:37Z",
+      "side": 1,
+      "message": "nit: make this parameters \u0027const\u0027",
+      "revId": "8e377c68dded2f3a0a8a8157744d822fbf13ac20",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5946ed0f_b2fb2843",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2466,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2018-07-06T17:12:37Z",
+      "side": 1,
+      "message": "This comment should not be in this commit",
+      "revId": "8e377c68dded2f3a0a8a8157744d822fbf13ac20",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a54a73ad_4bb7d505",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2698,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2018-07-06T17:12:37Z",
+      "side": 1,
+      "message": "this line is really not needed ... you could just use -\u003e",
+      "revId": "8e377c68dded2f3a0a8a8157744d822fbf13ac20",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d92f02c4_56e87fa8",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2708,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2018-07-06T17:12:37Z",
+      "side": 1,
+      "message": "please convert all the tabs in the changed line to spaces.",
+      "revId": "8e377c68dded2f3a0a8a8157744d822fbf13ac20",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4f65eab1_7ce8b901",
+        "filename": "agent-ovs/ovs/test/IntFlowManager_test.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2178,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2018-07-06T17:12:37Z",
+      "side": 1,
+      "message": "remove",
+      "revId": "8e377c68dded2f3a0a8a8157744d822fbf13ac20",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
