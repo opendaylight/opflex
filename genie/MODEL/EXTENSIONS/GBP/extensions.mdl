@@ -85,6 +85,8 @@ module[gbpe]
 
         member[icmpType; type=scalar/UInt8]
         member[icmpCode; type=scalar/UInt8]
+
+        member[fragmentFlags; type=scalar/UInt8]
     }
 
     # A set of counters for a network endpoint
