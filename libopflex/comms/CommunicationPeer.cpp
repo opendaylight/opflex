@@ -972,6 +972,7 @@ bool CommunicationPeer::__checkInvariants() const {
 
     }
 
+#ifdef PERFORM_CRAZY_BYTE_BY_BYTE_INVARIANT_CHECK
     // loop again, because we want the above debug first, to be less confusing
     for (size_t i = 0; i < iov.size(); ++i) {
         delta -= iov[i].iov_len;
@@ -1021,6 +1022,7 @@ bool CommunicationPeer::__checkInvariants() const {
         }
 
     }
+#endif
 
     if (delta) {
 
