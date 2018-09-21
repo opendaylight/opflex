@@ -1022,7 +1022,6 @@ bool CommunicationPeer::__checkInvariants() const {
         }
 
     }
-#endif
 
     if (delta) {
 
@@ -1055,6 +1054,7 @@ bool CommunicationPeer::__checkInvariants() const {
             << iov.size()
         ;
     }
+#endif
 
     return result;
 }
