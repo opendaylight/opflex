@@ -368,7 +368,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
         << ")"
     ;
 
-    while (--nread > 0) {
+    while ((--nread > 0) && connected_) {
         chunk_size = readChunk(buffer);
         nread -= chunk_size++;
 

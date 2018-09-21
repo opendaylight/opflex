@@ -46,6 +46,10 @@ MessageFactory::InboundMessage(
      * with a malformed input it might seldomly crash
      */
 
+    /* There is a bug in HasMember() in recent versions of rapidjson, such that
+     * with a malformed input it might seldomly crash
+     */
+
     /* we don't accept any notifications */
     if (id.IsNull()) {
         LOG(ERROR)
