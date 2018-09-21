@@ -467,7 +467,7 @@ std::ostream& operator << (
     return os;
 }
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 void CommunicationPeer::logDeque() const {
 
     if (!VLOG_IS_ON(7)) {
@@ -847,7 +847,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     return ret;
 }
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 bool CommunicationPeer::__checkInvariants() const {
 
     bool result = true;

@@ -26,7 +26,7 @@
 #include <sstream>  /* for basic_stringstream<> */
 #include <iostream>
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 #  include <boost/version.hpp>
 #  if BOOST_VERSION > 105300
 #    define COMMS_DEBUG_OBJECT_COUNT
@@ -244,7 +244,7 @@ class Peer : public SafeListBaseHook {
         bool destroying_;
         uint64_t refCount_;
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
         static char const * const kPSStr[];
 #endif
     };
@@ -286,7 +286,7 @@ class Peer : public SafeListBaseHook {
          ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL,
          Peer::PeerStatus status = kPS_UNINITIALIZED)
             :
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
               /* make valgrind happy with early invocations of operator << () */
               handle_(),
               keepAliveTimer_(),
@@ -308,7 +308,7 @@ class Peer : public SafeListBaseHook {
 #endif
             }
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual char const * peerType() const {return "?";} //= 0;
 #endif
 
@@ -322,13 +322,13 @@ class Peer : public SafeListBaseHook {
 
     virtual void destroy(bool now = false) = 0;
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual
 #else
     static
 #endif
     bool __checkInvariants()
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     const
 #endif
     __attribute__((no_instrument_function));
@@ -394,7 +394,7 @@ class Peer : public SafeListBaseHook {
     }
     friend std::ostream& operator<< (std::ostream&, Peer const *);
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     struct PidSequence {
         pid_t pid;
         size_t count;
@@ -458,7 +458,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 req_.data = this;
                 getHandle()->loop = uvLoopSelector_(getData());
                 getLoopData()->up();
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
                 s_.cP_ = this;
 #endif
  
@@ -474,7 +474,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     }
 #endif
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
     virtual void retry() = 0;
@@ -633,7 +633,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
             std::vector<iovec> const & iov
     );
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     // Don't even ship it in final builds
     void logDeque() const;
 #endif
@@ -708,7 +708,7 @@ class ActivePeer : public CommunicationPeer {
     }
 #endif
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual char const * peerType() const {
         return "A";
     }
@@ -720,7 +720,7 @@ class ActivePeer : public CommunicationPeer {
 
     virtual void destroy(bool now = false);
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
 
@@ -840,7 +840,7 @@ class PassivePeer : public CommunicationPeer {
     }
 #endif
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual char const * peerType() const {
         return "P";
     }
@@ -850,7 +850,7 @@ class PassivePeer : public CommunicationPeer {
         assert(0);
     }
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
 
@@ -896,7 +896,7 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
     }
 #endif
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual char const * peerType() const {
         return "L";
     }
@@ -910,7 +910,7 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
 
     virtual void destroy(bool now = false);
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     virtual bool __checkInvariants() const __attribute__((no_instrument_function));
 #endif
     ::yajr::Peer::StateChangeCb getConnectionHandler() const {

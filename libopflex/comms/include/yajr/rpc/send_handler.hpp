@@ -62,7 +62,7 @@ struct GenericStringQueue {
     }
 
     std::deque<Ch> deque_;
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     void const * cP_;
 #endif
 };

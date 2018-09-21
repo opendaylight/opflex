@@ -480,7 +480,7 @@ int ::yajr::comms::internal::ListeningTcpPeer::setAddrFromIpAndPort(
 
     VLOG(4);
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     /* make valgrind happy */
     listen_on_ = sockaddr_storage();
 #endif
