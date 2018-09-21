@@ -839,10 +839,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
         onDisconnect();
     }
 
-    /* wipe ssIn_ out */
-    // std::stringstream().swap(ssIn_); // C++11 only
-    ssIn_.~basic_stringstream();
-    new ((void *) &ssIn_) std::stringstream();
+    resetSsIn();
 
     return ret;
 }

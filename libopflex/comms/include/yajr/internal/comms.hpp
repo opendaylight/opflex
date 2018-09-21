@@ -662,13 +662,13 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
   private:
 
+    mutable ::yajr::internal::StringQueue s_;
+
     ::yajr::Peer::StateChangeCb connectionHandler_;
     void * data_;
 
     mutable rapidjson::Document docIn_;
-    mutable std::stringstream ssIn_;
 
-    mutable ::yajr::internal::StringQueue s_;
     mutable ::yajr::rpc::SendHandler writer_;
     mutable size_t pendingBytes_;
     mutable uint64_t nextId_;
@@ -678,6 +678,16 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     ::yajr::transport::Transport transport_;
 
+    mutable std::stringstream ssIn_;
+
+    void resetSsIn() const {
+        const static std::stringstream initialFmt;
+        const static std::string emptyStr;
+
+        ssIn_.str(emptyStr);
+        ssIn_.clear();
+        ssIn_.copyfmt(initialFmt);
+    }
 };
 
 class ActivePeer : public CommunicationPeer {
