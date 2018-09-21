@@ -244,9 +244,7 @@ void ::yajr::comms::internal::ListeningUnixPeer::retry() {
             << "] "
             << uv_strerror(rc)
             ;
-        onError(rc);
-        insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
-        return;
+        goto failed_unix_init;
     }
 
     VLOG(1)
@@ -297,7 +295,7 @@ failed_after_init:
     ;
     uv_close((uv_handle_t*) getHandle(), on_close);
 
-failed_tcp_init:
+failed_unix_init:
     insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
 
     onError(rc);
