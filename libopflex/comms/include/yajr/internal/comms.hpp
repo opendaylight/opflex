@@ -581,6 +581,9 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     void onConnect();
 
+    void onDisconnect(bool now = false) const {
+        const_cast<CommunicationPeer *>(this)->onDisconnect(now);
+    }
     void onDisconnect(bool now = false);
 
     virtual void disconnect(bool now = false) {

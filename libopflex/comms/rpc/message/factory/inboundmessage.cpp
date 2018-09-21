@@ -68,8 +68,12 @@ MessageFactory::InboundMessage(
 
             dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
                 ->onError(UV_EPROTO);
+            dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
+                ->onDisconnect();
 
+#ifdef ASSERT_ON_PROTO_ERRORS
             assert(methodValue.IsString());
+#endif
 
             return NULL;
         }
@@ -92,6 +96,11 @@ MessageFactory::InboundMessage(
 
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
             ->onError(UV_EPROTO);
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
+            ->onDisconnect();
+#ifdef ASSERT_ON_PROTO_ERRORS
+        assert(0);
+#endif
 
         return NULL;
     }
@@ -104,12 +113,16 @@ MessageFactory::InboundMessage(
 
     if (doc.HasMember("error")) {
         const rapidjson::Value & error = doc["error"];
+#ifdef ASSERT_ON_PROTO_ERRORS
         assert(error.IsObject());
+#endif
 
         if (!error.IsObject()) {
 
             dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
                 ->onError(UV_EPROTO);
+            dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
+                ->onDisconnect();
 
             return NULL;
         }
@@ -119,7 +132,11 @@ MessageFactory::InboundMessage(
 
     dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
         ->onError(UV_EPROTO);
+    dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
+        ->onDisconnect();
+#ifdef ASSERT_ON_PROTO_ERRORS
     assert(0);
+#endif
 
     return NULL;
 }

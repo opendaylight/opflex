@@ -815,7 +815,13 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
             << ")"
         ;
 
+#ifdef ASSERT_ON_PROTO_ERRORS
         assert(!ssIn_.str().data());
+#endif
+        if (ssIn_.str().data()) {
+            onError(UV_EPROTO);
+            onDisconnect();
+        }
     }
 
     /* don't clean up ssIn_ yet. yes, it's technically a "dead" variable here,
@@ -825,7 +831,13 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     yajr::rpc::InboundMessage * ret =
         yajr::rpc::MessageFactory::getInboundMessage(*this, docIn_);
 
+#ifdef ASSERT_ON_PROTO_ERRORS
     assert(ret);
+#endif
+    if (!ret) {
+        onError(UV_EPROTO);
+        onDisconnect();
+    }
 
     /* wipe ssIn_ out */
     // std::stringstream().swap(ssIn_); // C++11 only
