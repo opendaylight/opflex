@@ -56,7 +56,12 @@ MessageFactory::InboundMessage(
 
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
             ->onError(UV_EPROTO);
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
+            ->onDisconnect();
 
+#ifdef ASSERT_ON_PROTO_ERRORS
+        assert(0);
+#endif
         return NULL;
     }
 
