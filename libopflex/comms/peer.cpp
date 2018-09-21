@@ -63,7 +63,9 @@ std::ostream& operator << (
             static_cast< ::yajr::comms::internal::CommunicationPeer const * >(p);
         os
             << ";|"
-            << cP->s_.deque_.size()
+            << cP->s_.buffers_.size()
+            << "->|->"
+            << cP->s_.buffers_.pending()
             << "->|->"
             << cP->pendingBytes_
             << "|"
@@ -176,6 +178,7 @@ void Peer::up() {
         << " -> "
         << uvRefCnt_ + 1
     ;
+    PLOG('+');
 
     ++uvRefCnt_;
 }
@@ -189,6 +192,7 @@ bool Peer::down() {
         << " -> "
         << uvRefCnt_ - 1
     ;
+    PLOG('-');
 
     if (--uvRefCnt_) {
         return false;
@@ -235,6 +239,9 @@ void Peer::unlink() {
 }
 
 Peer::~Peer() {
+    if (createFail_) {
+        return;
+    }
 
     VLOG(5)
         << "{"

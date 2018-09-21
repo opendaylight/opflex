@@ -16,13 +16,11 @@
 
 #include <deque>
 
-#ifdef PERFORM_CRAZY_BYTE_BY_BYTE_INVARIANT_CHECK
-#include <opflex/logging/internal/logging.hpp>
-#endif
+#include <yajr/internal/buffers.hpp>
+
 namespace yajr {
     namespace internal {
 
-bool __checkInvariants(void const *);
 bool isLegitPunct(int c);
 
 template <typename Encoding = rapidjson::UTF8<> >
@@ -31,37 +29,25 @@ struct GenericStringQueue {
     typedef typename Encoding::Ch Ch;
 
     void Put(Ch c) {
-        deque_.push_back(c);
+        buffers_.append(c);
         assert(::yajr::internal::isLegitPunct(c));
-#ifdef PERFORM_CRAZY_BYTE_BY_BYTE_INVARIANT_CHECK
-        assert(__checkInvariants(cP_));
-        if(deque_.back()!=c){
-            LOG(ERROR)
-                << "inserted char already changed: \""
-                << c
-                << "\"->\""
-                << deque_.back()
-                << "\""
-            ;
-        }
-#endif
     }
 
     void Flush() {}
 
     void Clear() {
-        deque_.clear();
+        buffers_.clear();
     }
 
     void ShrinkToFit() {
-        deque_.shrink_to_fit();
+        buffers_.shrink_to_fit();
     }
 
     size_t GetSize() const {
-        return deque_.size();
+        return buffers_.size();
     }
 
-    std::deque<Ch> deque_;
+    Buffers<Ch, mm::Allocator<Ch> > buffers_;
 #ifdef EXTRA_CHECKS
     void const * cP_;
 #endif

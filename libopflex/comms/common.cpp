@@ -123,6 +123,7 @@ void on_close(uv_handle_t * h) {
 
     peer->choked_ = 1;
 
+    peer->PLOG('c');
     peer->down();
 
     return;

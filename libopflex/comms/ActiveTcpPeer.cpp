@@ -85,6 +85,7 @@ void ::yajr::comms::internal::ActiveTcpPeer::retry() {
         VLOG(1)
             << this
             << " up() for a pending getaddrinfo()";
+        PLOG('D');
         up();
         insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
     }
@@ -95,6 +96,7 @@ void ActiveTcpPeer::onFailedConnect(int rc) {
 
     extern void retry_later(ActivePeer * peer);
 
+    PLOG('#');
     if ((rc = connect_to_next_address(this))) {
         LOG(WARNING)
             << this
@@ -107,8 +109,9 @@ void ActiveTcpPeer::onFailedConnect(int rc) {
         onError(rc);
 
         if (!uv_is_closing((uv_handle_t*)this->getHandle())) {
+            PLOG('M');
             uv_close((uv_handle_t*)this->getHandle(), on_close);
-        }
+        } else PLOG('m');
 
         /* retry later */
         retry_later(this);

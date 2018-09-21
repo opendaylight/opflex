@@ -33,6 +33,7 @@ void ActivePeer::destroy(bool now) {
     bool alreadyBeingDestroyed = destroying_;
 
     if (!alreadyBeingDestroyed || now) {
+        PLOG(']');
         CommunicationPeer::destroy(now);
     }
 
@@ -41,6 +42,7 @@ void ActivePeer::destroy(bool now) {
             << this
             << " multiple destroy()s detected"
         ;
+        PLOG('}');
         return;
     }
 
@@ -48,6 +50,7 @@ void ActivePeer::destroy(bool now) {
         << this
         << " down() for destruction"
     ;
+    PLOG('k');
     down();
 }
 

@@ -38,7 +38,7 @@ int Cb< PlainText >::send_cb(CommunicationPeer const * peer) {
     ;
 
     assert(!peer->pendingBytes_);
-    peer->pendingBytes_ = peer->s_.deque_.size();
+    peer->pendingBytes_ = peer->s_.buffers_.size();
 
     if (!peer->pendingBytes_) {
         /* great success! */
@@ -49,11 +49,7 @@ int Cb< PlainText >::send_cb(CommunicationPeer const * peer) {
         return 0;
     }
 
-    std::vector<iovec> iov =
-        ::yajr::comms::internal::get_iovec(
-                peer->s_.deque_.begin(),
-                peer->s_.deque_.end()
-        );
+    std::vector<iovec> iov = peer->s_.buffers_.get_iovec();
 
     assert (iov.size());
 
@@ -67,10 +63,7 @@ void Cb< PlainText >::on_sent(CommunicationPeer const * peer) {
         << peer
     ;
 
-    peer->s_.deque_.erase(
-            peer->s_.deque_.begin(),
-            peer->s_.deque_.begin() + peer->pendingBytes_
-    );
+    peer->s_.buffers_.consumed();
 
 }
 
@@ -126,6 +119,7 @@ void Cb< PlainText >::on_read(
             << " => closing"
         ;
 
+        peer->PLOG(';');
         peer->onDisconnect();
     }
 

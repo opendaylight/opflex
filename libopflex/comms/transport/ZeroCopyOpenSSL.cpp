@@ -31,6 +31,13 @@ namespace {
 
     bool const SSL_ERROR = true;
 
+    char const * safe_strerror(int error_no) {
+        if ((error_no >= sys_nerr) || (error_no < 0)) {
+            return "Unknown error";
+        }
+        return sys_errlist[errno];
+    }
+
 }
 
 #define                                                           \
@@ -191,7 +198,8 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
                 << sslErr
             ;
         }
-        const_cast<CommunicationPeer *>(peer)->onDisconnect();
+        peer->PLOG(',');
+        peer->onDisconnect();
     }
 
     VLOG(totalRead ? 4 : 3)
@@ -221,7 +229,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
     }
 
     /* we have to encrypt the plaintext data, if any is available */
-    if (!peer->s_.deque_.size()) {
+    if (!peer->s_.buffers_.size()) {
         VLOG(4)
             << peer
             << " has no data to send"
@@ -236,11 +244,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
     ssize_t nwrite = 0;
     ssize_t tryWrite;
 
-    std::vector<iovec> iovIn =
-        ::yajr::comms::internal::get_iovec(
-                peer->s_.deque_.begin(),
-                peer->s_.deque_.end()
-        );
+    std::vector<iovec> iovIn = peer->s_.buffers_.get_iovec();
 
     std::vector<iovec>::iterator iovInIt;
     for (iovInIt = iovIn.begin(); iovInIt != iovIn.end(); ++iovInIt) {
@@ -304,13 +308,13 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
                 << sslErr
             ;
         }
-        const_cast<CommunicationPeer *>(peer)->onDisconnect();
+        peer->PLOG('<');
+        peer->onDisconnect();
+
+        return 0;
     }
 
-    peer->s_.deque_.erase(
-            peer->s_.deque_.begin(),
-            peer->s_.deque_.begin() + totalWrite
-    );
+    peer->s_.buffers_.consumed(totalWrite);
 
     VLOG(totalWrite ? 4 : 3)
         << peer
@@ -426,6 +430,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
             << " will disconnect"
         ;
 
+        peer->PLOG('.');
         giveUp = true;
     }
 
@@ -440,6 +445,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
             << " will disconnect"
         ;
 
+        peer->PLOG('>');
         giveUp = true;
     }
 
@@ -447,7 +453,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
     assert(advancement == peer->pendingBytes_);
 
     if (giveUp) {
-        const_cast<CommunicationPeer *>(peer)->onDisconnect();
+        peer->onDisconnect();
         return;
     }
 
@@ -530,6 +536,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
             << " => closing"
         ;
 
+        peer->PLOG('/');
         peer->onDisconnect();
     }
 
@@ -567,6 +574,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
                 << " will disconnect"
             ;
 
+            peer->PLOG('?');
             giveUp = true;
         }
 
@@ -581,6 +589,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
                 << " will disconnect"
             ;
 
+            peer->PLOG('|');
             giveUp = true;
         }
 
@@ -951,16 +960,12 @@ size_t ZeroCopyOpenSSL::Ctx::addCaFileOrDirectory(
 
     struct stat s;
     if (stat(caFileOrDirectory, &s)) {
-        char buf[256];
-        if (0 != strerror_r(errno, buf, sizeof(buf))) {
-            buf[0] = '\0';
-        }
 
         LOG(ERROR)
             << "Error ["
             << errno
             << "] (\""
-            << buf
+            << safe_strerror(errno)
             << "\") on path \""
             << caFileOrDirectory
             << "\" does not exist"

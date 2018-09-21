@@ -62,13 +62,22 @@
         << port
     ;
 
-    ::yajr::comms::internal::ListeningTcpPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ListeningTcpPeer(
+    ::yajr::comms::internal::ListeningTcpPeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new ::yajr::comms::internal::ListeningTcpPeer(
             connectionHandler,
             acceptHandler,
             data,
             listenerUvLoop,
-            uvLoopSelector))) {
+            uvLoopSelector);
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << "out of memory, unable to create listener"
         ;
@@ -93,6 +102,7 @@
         << peer
         << " queued up for listening"
     ;
+    peer->PLOG('t');
     peer->insert(::yajr::comms::internal::Peer::LoopData::TO_LISTEN);
 
     return peer;
@@ -111,14 +121,23 @@
         << socketName
     ;
 
-    ::yajr::comms::internal::ListeningUnixPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ListeningUnixPeer(
-            socketName,
-            connectionHandler,
-            acceptHandler,
-            data,
-            listenerUvLoop,
-            uvLoopSelector))) {
+    ::yajr::comms::internal::ListeningUnixPeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new ::yajr::comms::internal::ListeningUnixPeer(
+                socketName,
+                connectionHandler,
+                acceptHandler,
+                data,
+                listenerUvLoop,
+                uvLoopSelector);
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << "out of memory, unable to create listener"
         ;
@@ -129,6 +148,7 @@
         << peer
         << " queued up for listening"
     ;
+    peer->PLOG('a');
     peer->insert(::yajr::comms::internal::Peer::LoopData::TO_LISTEN);
 
     return peer;
@@ -148,6 +168,7 @@ void ::yajr::comms::internal::ListeningTcpPeer::retry() {
             << "Not retrying because of pending destroy"
         ;
 
+        PLOG('K');
         return;
 
     }
@@ -169,6 +190,7 @@ void ::yajr::comms::internal::ListeningTcpPeer::retry() {
         << this
         << " up() for listening tcp init"
     ;
+    PLOG('b');
     up();
 
     if ((rc = uv_tcp_bind(reinterpret_cast<uv_tcp_t *>(getHandle()),
@@ -228,6 +250,7 @@ void ::yajr::comms::internal::ListeningUnixPeer::retry() {
             << this
             << "Not retrying because of pending destroy"
         ;
+        PLOG('A');
 
         return;
 
@@ -251,6 +274,7 @@ void ::yajr::comms::internal::ListeningUnixPeer::retry() {
         << this
         << " up() for listening domain socket init"
     ;
+    PLOG('S');
     up();
 
     if ((rc = uv_pipe_bind(reinterpret_cast<uv_pipe_t *>(getHandle()),
@@ -330,6 +354,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
             << uv_strerror(status)
         ;
 
+        listener->PLOG('7');
         /* there could also be legitimate reasons for this, but we still have to
          * encounter them
          */
@@ -353,13 +378,15 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
             << uv_strerror(rc)
         ;
         peer->onError(rc);
+        peer->PLOG('`');
         uv_close((uv_handle_t*) peer->getHandle(), on_close);
         return;
-    }
+    } else peer->PLOG('~');
 
     if (peer->unchoke()) {
+        peer->PLOG('8');
         return;
-    }
+    } else peer->PLOG('9');
 
     peer->insert(internal::Peer::LoopData::ONLINE);
 
@@ -371,12 +398,20 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
 ::yajr::comms::internal::PassivePeer *
 ::yajr::comms::internal::ListeningTcpPeer::getNewPassive() {
 
-    ::yajr::comms::internal::PassivePeer * peer;
-    if (!(peer = new (std::nothrow) PassivePeer(
-                    getConnectionHandler(),
-                    getConnectionHandlerData(),
-                    getUvLoopSelector()
-                    ))) {
+    ::yajr::comms::internal::PassivePeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new PassivePeer(
+                getConnectionHandler(),
+                getConnectionHandlerData(),
+                getUvLoopSelector());
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << "out of memory, dropping new peer on the floor"
         ;
@@ -386,9 +421,10 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
     int rc;
     if ((rc = peer->tcpInit())) {
         peer->onError(rc);
+        peer->PLOG('!');
         peer->down();  // this is invoked with an intent to delete!
         return NULL;
-    }
+    } else peer->PLOG('@');
 
     return peer;
 
@@ -429,12 +465,20 @@ public:
 ::yajr::comms::internal::PassivePeer *
 ::yajr::comms::internal::ListeningUnixPeer::getNewPassive() {
 
-    ::yajr::comms::internal::PassivePeer * peer;
-    if (!(peer = new (std::nothrow) PassiveUnixPeer(
-                    getConnectionHandler(),
-                    getConnectionHandlerData(),
-                    getUvLoopSelector()
-                    ))) {
+    ::yajr::comms::internal::PassivePeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new PassiveUnixPeer(
+                getConnectionHandler(),
+                getConnectionHandlerData(),
+                getUvLoopSelector());
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << "out of memory, dropping new peer on the floor"
         ;
@@ -453,9 +497,10 @@ public:
             << uv_strerror(rc)
             ;
         peer->onError(rc);
+        peer->PLOG('&');
         peer->down();  // this is invoked with an intent to delete!
         return NULL;
-    }
+    } else peer->PLOG('*');
 
     return peer;
 

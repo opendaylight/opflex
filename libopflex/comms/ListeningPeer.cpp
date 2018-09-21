@@ -37,21 +37,24 @@ void ListeningPeer::destroy(bool now) {
             << this
             << " Double destroy() detected"
         ;
+        PLOG('{');
 
         return;
     }
 
     destroying_ = 1;
 
+    PLOG('(');
     if (down()) {
         return;
-    }
+    } else PLOG(')');
 
     if (connected_) {
         connected_ = 0;
         if (!uv_is_closing((uv_handle_t*)getHandle())) {
+            PLOG('%');
             uv_close((uv_handle_t*)getHandle(), on_close);
-        }
+        } else PLOG('^');
     }
 }
 
