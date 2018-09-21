@@ -45,108 +45,102 @@ MessageFactory::InboundMessage(
      * with a malformed input it might seldomly crash
      */
 
+    if (!doc.IsObject()) {
+        LOG(ERROR)
+            << &peer
+            << " Received frame that is not a JSON object."
+        ;
+        goto error;
+    }
+
     /* we don't accept any notifications */
     if (!doc.HasMember("id") || doc["id"].IsNull()) {
         LOG(ERROR)
             << &peer
             << " Received frame with"
             << (doc.HasMember("id") ? " null" : "out")
-            << " id. Dropping."
+            << " id."
         ;
-
-        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-            ->onError(UV_EPROTO);
-        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-            ->onDisconnect();
-
-#ifdef ASSERT_ON_PROTO_ERRORS
-        assert(0);
-#endif
-        return NULL;
+        goto error;
     }
 
-    /* Stale comment below. We used not to check that doc.HasMember("id"),
-     * and the above branch was performed after the below aliasing of the
-     * id value. This behavior was slowing down QA with debug builds so we
-     * changed it. Keeping the comment for reference.
-     *
-     * NOTA BENE: this might assert() in debug builds, and
-     * yield a NullValue in final builds. That's exactly what
-     * we want and it allow us to write much simpler code ;-) */
-    const rapidjson::Value& id = doc["id"]; // <-- READ COMMENT ABOVE!!!
+    {
+        /* Stale comment below. We used not to check that doc.HasMember("id"),
+         * and the above branch was performed after the below aliasing of the
+         * id value. This behavior was slowing down QA with debug builds so we
+         * changed it. Keeping the comment for reference.
+         *
+         * NOTA BENE: this might assert() in debug builds, and
+         * yield a NullValue in final builds. That's exactly what
+         * we want and it allow us to write much simpler code ;-) */
+        const rapidjson::Value& id = doc["id"]; // <-- READ COMMENT ABOVE!!!
 
-    if (doc.HasMember("method")) {
-        const rapidjson::Value& methodValue = doc["method"];
+        if (doc.HasMember("method")) {
+            const rapidjson::Value& methodValue = doc["method"];
 
-        if (!methodValue.IsString()) {
+            if (!methodValue.IsString()) {
+                LOG(ERROR)
+                    << &peer
+                    << " Received request with non-string method. Dropping"
+                ;
+
+                goto error;
+            }
+
+            const char * method = methodValue.GetString();
+
+            /* Once again, be liberal with input... On a case by case
+             * basis, the handler will respond with an error if it is
+             * unacceptable to have no parameters for the invoked method.
+             */
+            const rapidjson::Value& params = doc[Message::kPayloadKey.params];
+
+            return MessageFactory::InboundRequest(peer, params, method, id);
+        }
+
+        /* id must be an array for replies, and its first element must be a string */
+        assert(id.IsArray());
+        assert(id[rapidjson::SizeType(0)].IsString());
+        if (!id.IsArray() || !id[rapidjson::SizeType(0)].IsString()) {
             LOG(ERROR)
                 << &peer
-                << " Received request with non-string method. Dropping"
+                << " Received frame with an id that is not an array of strings."
             ;
-
-            dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-                ->onError(UV_EPROTO);
-            dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-                ->onDisconnect();
-
-#ifdef ASSERT_ON_PROTO_ERRORS
-            assert(methodValue.IsString());
-#endif
-
-            return NULL;
-        }
-
-        const char * method = methodValue.GetString();
-
-        /* Once again, be liberal with input... On a case by case
-         * basis, the handler will respond with an error if it is
-         * unacceptable to have no parameters for the invoked method.
-         */
-        const rapidjson::Value& params = doc[Message::kPayloadKey.params];
-
-        return MessageFactory::InboundRequest(peer, params, method, id);
-    }
-
-    /* id must be an array for replies, and its first element must be a string */
-    assert(id.IsArray());
-    assert(id[rapidjson::SizeType(0)].IsString());
-    if (!id.IsArray() || !id[rapidjson::SizeType(0)].IsString()) {
-
-        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-            ->onError(UV_EPROTO);
-        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-            ->onDisconnect();
 #ifdef ASSERT_ON_PROTO_ERRORS
         assert(0);
 #endif
 
-        return NULL;
-    }
-
-    if (doc.HasMember(Message::kPayloadKey.result)) {
-        const rapidjson::Value & result = doc[Message::kPayloadKey.result];
-
-        return MessageFactory::InboundResult(peer, result, id);
-    }
-
-    if (doc.HasMember("error")) {
-        const rapidjson::Value & error = doc["error"];
-#ifdef ASSERT_ON_PROTO_ERRORS
-        assert(error.IsObject());
-#endif
-
-        if (!error.IsObject()) {
-
-            dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-                ->onError(UV_EPROTO);
-            dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-                ->onDisconnect();
-
-            return NULL;
+            goto error;
         }
 
-        return MessageFactory::InboundError(peer, error, id);
+        if (doc.HasMember(Message::kPayloadKey.result)) {
+            const rapidjson::Value & result = doc[Message::kPayloadKey.result];
+
+            return MessageFactory::InboundResult(peer, result, id);
+        }
+
+        if (doc.HasMember("error")) {
+            const rapidjson::Value & error = doc["error"];
+#ifdef ASSERT_ON_PROTO_ERRORS
+            assert(error.IsObject());
+#endif
+
+            if (!error.IsObject()) {
+                LOG(ERROR)
+                    << &peer
+                    << " Received error frame with an error that is not an object."
+                ;
+                goto error;
+            }
+
+            return MessageFactory::InboundError(peer, error, id);
+        }
     }
+error:
+    LOG(ERROR)
+        << &peer
+        << " Dropping client because of protocol error."
+    ;
 
     dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
         ->onError(UV_EPROTO);
