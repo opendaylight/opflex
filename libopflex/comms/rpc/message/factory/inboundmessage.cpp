@@ -42,6 +42,10 @@ MessageFactory::InboundMessage(
      * we want and it allow us to write much simpler code ;-) */
     const rapidjson::Value& id = doc["id"]; // <-- READ COMMENT ABOVE!!!
 
+    /* There is a bug in HasMember() in recent versions of rapidjson, such that
+     * with a malformed input it might seldomly crash
+     */
+
     /* we don't accept any notifications */
     if (id.IsNull()) {
         LOG(ERROR)
