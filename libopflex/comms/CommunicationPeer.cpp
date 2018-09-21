@@ -837,6 +837,8 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     if (!ret) {
         onError(UV_EPROTO);
         onDisconnect();
+    } else {
+        const_cast<CommunicationPeer *>(this)->up();
     }
 
     resetSsIn();
