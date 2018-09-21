@@ -37,11 +37,6 @@ MessageFactory::InboundMessage(
      * and conservative in what you send".
      */
 
-    /* NOTA BENE: this might assert() in debug builds, and
-     * yield a NullValue in final builds. That's exactly what
-     * we want and it allow us to write much simpler code ;-) */
-    const rapidjson::Value& id = doc["id"]; // <-- READ COMMENT ABOVE!!!
-
     /* There is a bug in HasMember() in recent versions of rapidjson, such that
      * with a malformed input it might seldomly crash
      */
@@ -51,7 +46,7 @@ MessageFactory::InboundMessage(
      */
 
     /* we don't accept any notifications */
-    if (id.IsNull()) {
+    if (!doc.HasMember("id") || doc["id"].IsNull()) {
         LOG(ERROR)
             << &peer
             << " Received frame with"
@@ -64,6 +59,16 @@ MessageFactory::InboundMessage(
 
         return NULL;
     }
+
+    /* Stale comment below. We used not to check that doc.HasMember("id"),
+     * and the above branch was performed after the below aliasing of the
+     * id value. This behavior was slowing down QA with debug builds so we
+     * changed it. Keeping the comment for reference.
+     *
+     * NOTA BENE: this might assert() in debug builds, and
+     * yield a NullValue in final builds. That's exactly what
+     * we want and it allow us to write much simpler code ;-) */
+    const rapidjson::Value& id = doc["id"]; // <-- READ COMMENT ABOVE!!!
 
     if (doc.HasMember("method")) {
         const rapidjson::Value& methodValue = doc["method"];
