@@ -31,6 +31,13 @@ namespace {
 
     bool const SSL_ERROR = true;
 
+    char const * safe_strerror(int error_no) {
+        if ((error_no >= sys_nerr) || (error_no < 0)) {
+            return "Unknown error";
+        }
+        return sys_errlist[errno];
+    }
+
 }
 
 #define                                                           \
@@ -191,7 +198,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
                 << sslErr
             ;
         }
-        const_cast<CommunicationPeer *>(peer)->onDisconnect();
+        peer->onDisconnect();
     }
 
     VLOG(totalRead ? 4 : 3)
@@ -304,7 +311,9 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
                 << sslErr
             ;
         }
-        const_cast<CommunicationPeer *>(peer)->onDisconnect();
+        peer->onDisconnect();
+
+        return 0;
     }
 
     peer->s_.deque_.erase(
@@ -429,7 +438,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
         giveUp = true;
     }
 
-    if (advancement != peer->pendingBytes_) {
+    if (advancement != static_cast<ssize_t>(peer->pendingBytes_)) {
 
         LOG(ERROR)
             << peer
@@ -444,10 +453,10 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
     }
 
     assert(e->lastOutBuf_ == whereTheReadShouldHaveStarted);
-    assert(advancement == peer->pendingBytes_);
+    assert(advancement == static_cast<ssize_t>(peer->pendingBytes_));
 
     if (giveUp) {
-        const_cast<CommunicationPeer *>(peer)->onDisconnect();
+        peer->onDisconnect();
         return;
     }
 
@@ -479,7 +488,7 @@ void Cb< ZeroCopyOpenSSL >::alloc_cb(
 
     assert(avail >= 0);
 
-    if ((size > SSIZE_MAX) || (size > avail)) {
+    if ((size > SSIZE_MAX) || (size > static_cast<size_t>(avail))) {
         size = avail;
     }
 
@@ -513,6 +522,10 @@ void Cb< ZeroCopyOpenSSL >::on_read(
     VLOG(4)
         << peer
     ;
+
+    if (!peer->connected_) {
+        return;
+    }
 
     if (nread < 0) {
 
@@ -718,7 +731,7 @@ int ZeroCopyOpenSSL::initOpenSSL(bool forMultipleThreads) {
             return UV_ENOMEM;
         }
 
-        for (size_t i=0; i < CRYPTO_num_locks(); ++i) {
+        for (ssize_t i=0; i < CRYPTO_num_locks(); ++i) {
             uv_rwlock_init(&rwlock[i]);
         }
 
@@ -740,7 +753,7 @@ void ZeroCopyOpenSSL::finiOpenSSL() {
 
         CRYPTO_set_locking_callback(NULL);
 
-        for (size_t i=0; i<CRYPTO_num_locks(); ++i) {
+        for (ssize_t i=0; i<CRYPTO_num_locks(); ++i) {
             uv_rwlock_destroy(&rwlock[i]);
         }
 
@@ -879,7 +892,7 @@ int ZeroCopyOpenSSL::Ctx::pwdCb(
 
     size_t actualSize = passphrase.size();
 
-    if (actualSize > size) {
+    if (actualSize > static_cast<size_t>(size)) {
         LOG(ERROR)
             << "OpenSSL can't accept passphrases longer than "
             << size
@@ -947,16 +960,12 @@ size_t ZeroCopyOpenSSL::Ctx::addCaFileOrDirectory(
 
     struct stat s;
     if (stat(caFileOrDirectory, &s)) {
-        char buf[256];
-        if (0 != strerror_r(errno, buf, sizeof(buf))) {
-            buf[0] = '\0';
-        }
 
         LOG(ERROR)
             << "Error ["
             << errno
             << "] (\""
-            << buf
+            << safe_strerror(errno)
             << "\") on path \""
             << caFileOrDirectory
             << "\" does not exist"

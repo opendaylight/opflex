@@ -132,6 +132,10 @@ void on_write(uv_write_t *req, int status) {
 
     VLOG(5);
 
+    CommunicationPeer * peer = Peer::get(req);
+
+    peer->down();
+
     if (status == UV_ECANCELED || status == UV_ECONNRESET) {
         LOG(INFO)
             << "["
@@ -143,8 +147,6 @@ void on_write(uv_write_t *req, int status) {
     }
 
     /* see here if more output can be dequeued */
-
-    CommunicationPeer * peer = Peer::get(req);
 
     peer->onWrite();
 

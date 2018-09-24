@@ -62,13 +62,22 @@
         << port
     ;
 
-    ::yajr::comms::internal::ListeningTcpPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ListeningTcpPeer(
+    ::yajr::comms::internal::ListeningTcpPeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new ::yajr::comms::internal::ListeningTcpPeer(
             connectionHandler,
             acceptHandler,
             data,
             listenerUvLoop,
-            uvLoopSelector))) {
+            uvLoopSelector);
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << "out of memory, unable to create listener"
         ;
@@ -111,14 +120,23 @@
         << socketName
     ;
 
-    ::yajr::comms::internal::ListeningUnixPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ListeningUnixPeer(
-            socketName,
-            connectionHandler,
-            acceptHandler,
-            data,
-            listenerUvLoop,
-            uvLoopSelector))) {
+    ::yajr::comms::internal::ListeningUnixPeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new ::yajr::comms::internal::ListeningUnixPeer(
+                socketName,
+                connectionHandler,
+                acceptHandler,
+                data,
+                listenerUvLoop,
+                uvLoopSelector);
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << "out of memory, unable to create listener"
         ;
@@ -244,9 +262,7 @@ void ::yajr::comms::internal::ListeningUnixPeer::retry() {
             << "] "
             << uv_strerror(rc)
             ;
-        onError(rc);
-        insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
-        return;
+        goto failed_unix_init;
     }
 
     VLOG(1)
@@ -297,7 +313,7 @@ failed_after_init:
     ;
     uv_close((uv_handle_t*) getHandle(), on_close);
 
-failed_tcp_init:
+failed_unix_init:
     insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
 
     onError(rc);
@@ -373,12 +389,20 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
 ::yajr::comms::internal::PassivePeer *
 ::yajr::comms::internal::ListeningTcpPeer::getNewPassive() {
 
-    ::yajr::comms::internal::PassivePeer * peer;
-    if (!(peer = new (std::nothrow) PassivePeer(
-                    getConnectionHandler(),
-                    getConnectionHandlerData(),
-                    getUvLoopSelector()
-                    ))) {
+    ::yajr::comms::internal::PassivePeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new PassivePeer(
+                getConnectionHandler(),
+                getConnectionHandlerData(),
+                getUvLoopSelector());
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << "out of memory, dropping new peer on the floor"
         ;
@@ -431,12 +455,20 @@ public:
 ::yajr::comms::internal::PassivePeer *
 ::yajr::comms::internal::ListeningUnixPeer::getNewPassive() {
 
-    ::yajr::comms::internal::PassivePeer * peer;
-    if (!(peer = new (std::nothrow) PassiveUnixPeer(
-                    getConnectionHandler(),
-                    getConnectionHandlerData(),
-                    getUvLoopSelector()
-                    ))) {
+    ::yajr::comms::internal::PassivePeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new PassiveUnixPeer(
+                getConnectionHandler(),
+                getConnectionHandlerData(),
+                getUvLoopSelector());
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << "out of memory, dropping new peer on the floor"
         ;
@@ -480,7 +512,7 @@ int ::yajr::comms::internal::ListeningTcpPeer::setAddrFromIpAndPort(
 
     VLOG(4);
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     /* make valgrind happy */
     listen_on_ = sockaddr_storage();
 #endif

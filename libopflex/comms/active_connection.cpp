@@ -57,13 +57,22 @@
         << service
     ;
 
-    ::yajr::comms::internal::ActiveTcpPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActiveTcpPeer(
-                    host,
-                    service,
-                    connectionHandler,
-                    data,
-                    uvLoopSelector))) {
+    ::yajr::comms::internal::ActiveTcpPeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new ::yajr::comms::internal::ActiveTcpPeer(
+                host,
+                service,
+                connectionHandler,
+                data,
+                uvLoopSelector);
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << ": out of memory, dropping new peer on the floor"
         ;
@@ -86,12 +95,21 @@
         UvLoopSelector uvLoopSelector
    ) {
 
-    ::yajr::comms::internal::ActiveUnixPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActiveUnixPeer(
+    ::yajr::comms::internal::ActiveUnixPeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new ::yajr::comms::internal::ActiveUnixPeer(
                     socketName,
                     connectionHandler,
                     data,
-                    uvLoopSelector))) {
+                    uvLoopSelector);
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << ": out of memory, dropping new peer on the floor"
         ;
@@ -197,7 +215,9 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
     ActiveTcpPeer * peer = Peer::get(req);
     assert(!peer->passive_);
+#ifdef EXTRA_CHECK
     assert(peer->peerType()[0]=='A');
+#endif
 
     void retry_later(ActivePeer * peer);
 

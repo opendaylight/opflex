@@ -16,9 +16,7 @@ SUBDIRS = include
 lib_LTLIBRARIES =
 noinst_LTLIBRARIES  =
 noinst_LTLIBRARIES += librpcperfect.la
-if TRACING_COMMS
-  noinst_LTLIBRARIES += libcommstrace.la
-endif
+noinst_LTLIBRARIES += libcommstrace.la
 if SEPARATE_COMMS
   lib_LTLIBRARIES += libcomms.la
 else

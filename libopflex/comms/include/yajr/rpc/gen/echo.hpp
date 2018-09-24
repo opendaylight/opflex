@@ -22,7 +22,7 @@ class EchoGen {
 
     bool operator()(rpc::SendHandler & handler);
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     static char const canary[];
     static size_t const kNcanaries;
 #endif
