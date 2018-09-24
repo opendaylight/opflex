@@ -16,7 +16,7 @@
 
 #include <yajr/internal/walkAndDumpHandlesCb.hpp>
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 # include <unistd.h>
 #endif
 
@@ -37,13 +37,13 @@ std::ostream& operator << (
         ::yajr::comms::internal::Peer const * p
     ) {
     os
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
         << getpid()
 #endif
         << "{"
         << reinterpret_cast<void const *>(p)
         << "}"
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
         << p->peerType()
 #endif
         << "["
@@ -57,13 +57,15 @@ std::ostream& operator << (
 //        << ";TD:"
 //        << p->keepAliveTimer_.data
     ;
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     if ('L' != *p->peerType()) {
         ::yajr::comms::internal::CommunicationPeer const * cP =
             static_cast< ::yajr::comms::internal::CommunicationPeer const * >(p);
         os
             << ";|"
-            << cP->s_.deque_.size()
+            << cP->s_.buffers_.size()
+            << "->|->"
+            << cP->s_.buffers_.pending()
             << "->|->"
             << cP->pendingBytes_
             << "|"
@@ -108,7 +110,7 @@ CommunicationPeer * Peer::get(uv_timer_t * h) {
     CommunicationPeer * peer = static_cast<CommunicationPeer *>(h->data);
 
     VLOG(7)
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
         << getpid()
 #endif
         << "{"
@@ -125,7 +127,7 @@ ActivePeer * Peer::get(uv_connect_t * r) {
     ActivePeer * peer = Peer::get<ActivePeer>(r->handle);
 
     VLOG(7)
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
         << getpid()
 #endif
         << "{"
@@ -141,7 +143,7 @@ ActiveTcpPeer * Peer::get(uv_getaddrinfo_t * r) {
     ActiveTcpPeer * peer = static_cast<ActiveTcpPeer *>(r->data);
 
     VLOG(7)
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
         << getpid()
 #endif
         << "{"
@@ -154,15 +156,15 @@ ActiveTcpPeer * Peer::get(uv_getaddrinfo_t * r) {
 }
 
 bool Peer::__checkInvariants()
-#ifdef NDEBUG
-{
-#else
+#ifdef EXTRA_CHECKS
     const
 {
     VLOG(7)
         << this
     ;
     appendPID();
+#else
+{
 #endif
     return true;
 }
@@ -176,6 +178,7 @@ void Peer::up() {
         << " -> "
         << uvRefCnt_ + 1
     ;
+    PLOG('+');
 
     ++uvRefCnt_;
 }
@@ -189,6 +192,7 @@ bool Peer::down() {
         << " -> "
         << uvRefCnt_ - 1
     ;
+    PLOG('-');
 
     if (--uvRefCnt_) {
         return false;
@@ -235,6 +239,9 @@ void Peer::unlink() {
 }
 
 Peer::~Peer() {
+    if (createFail_) {
+        return;
+    }
 
     VLOG(5)
         << "{"
@@ -285,7 +292,7 @@ Peer::~Peer() {
 char const * internal::Peer::LoopData::getPSStr(
         internal::Peer::LoopData::PeerState s
     ) {
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     if (s >= TOTAL_STATES) {
         return "<too_large>";
     }
@@ -296,7 +303,7 @@ char const * internal::Peer::LoopData::getPSStr(
 #endif
 }
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 char const * const internal::Peer::LoopData::kPSStr[] = {
 #define XX(_, s) s,
     PEER_STATE_MAP(XX)

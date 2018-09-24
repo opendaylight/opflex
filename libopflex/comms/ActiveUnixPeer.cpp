@@ -31,8 +31,9 @@ void ::yajr::comms::internal::ActiveUnixPeer::onFailedConnect(int rc) {
     onError(rc);
 
     if (!uv_is_closing((uv_handle_t*)this->getHandle())) {
+        PLOG('x');
         uv_close((uv_handle_t*)this->getHandle(), on_close);
-    }
+    } else PLOG('X');
 
     /* retry later */
     retry_later(this);
@@ -46,6 +47,7 @@ void ::yajr::comms::internal::ActiveUnixPeer::retry() {
             << this
             << "Not retrying because of pending destroy"
         ;
+        PLOG('Z');
 
         return;
 
@@ -56,6 +58,7 @@ void ::yajr::comms::internal::ActiveUnixPeer::retry() {
             << " has to wait for reference count to fall to 1 before retrying"
         ;
 
+        PLOG('W');
         insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
 
         return;
@@ -74,6 +77,7 @@ void ::yajr::comms::internal::ActiveUnixPeer::retry() {
             << uv_strerror(rc)
             ;
         onError(rc);
+        PLOG('[');
         insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
         return;
     }

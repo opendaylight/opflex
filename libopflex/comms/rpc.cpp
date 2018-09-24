@@ -210,26 +210,41 @@ bool OutboundMessage::send() {
 #if THREAD_LOCAL_DEBUGS_READY
     latestCp = cP;
 #endif
-    bool ok = Accept(cP->getWriter());
 
-    if (!ok) {
+
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        bool ok = Accept(cP->getWriter());
+
+        assert(cP->__checkInvariants());
+
+        cP->delimitFrame();
+
+        assert(cP->__checkInvariants());
+
+        cP->write();
+
+        assert(cP->__checkInvariants());
+
+        if (!ok) {
+            LOG(ERROR)
+                << cP
+                << " problem Accept()ing a message"
+                ;
+
+            assert(ok);
+        }
+
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+        cP->flush_memory();
         LOG(ERROR)
             << cP
-            << " problem Accept()ing a message"
+            << " out-of-memory while Accept()ing a message"
         ;
-
-        assert(ok);
     }
-
-    assert(cP->__checkInvariants());
-
-    cP->delimitFrame();
-
-    assert(cP->__checkInvariants());
-
-    cP->write();
-
-    assert(cP->__checkInvariants());
+#endif
 
     return true;
 

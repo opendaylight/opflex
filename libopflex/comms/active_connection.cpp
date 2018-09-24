@@ -57,13 +57,22 @@
         << service
     ;
 
-    ::yajr::comms::internal::ActiveTcpPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActiveTcpPeer(
-                    host,
-                    service,
-                    connectionHandler,
-                    data,
-                    uvLoopSelector))) {
+    ::yajr::comms::internal::ActiveTcpPeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new ::yajr::comms::internal::ActiveTcpPeer(
+                host,
+                service,
+                connectionHandler,
+                data,
+                uvLoopSelector);
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << ": out of memory, dropping new peer on the floor"
         ;
@@ -74,6 +83,7 @@
         << peer
         << " queued up for resolution"
     ;
+    peer->PLOG('d');
     peer->insert(::yajr::comms::internal::Peer::LoopData::TO_RESOLVE);
 
     return peer;
@@ -86,12 +96,21 @@
         UvLoopSelector uvLoopSelector
    ) {
 
-    ::yajr::comms::internal::ActiveUnixPeer * peer;
-    if (!(peer = new (std::nothrow) ::yajr::comms::internal::ActiveUnixPeer(
+    ::yajr::comms::internal::ActiveUnixPeer * peer = NULL;
+#if __cpp_exceptions || __EXCEPTIONS
+    try {
+#endif
+        peer = new ::yajr::comms::internal::ActiveUnixPeer(
                     socketName,
                     connectionHandler,
                     data,
-                    uvLoopSelector))) {
+                    uvLoopSelector);
+#if __cpp_exceptions || __EXCEPTIONS
+    } catch(std::bad_alloc) {
+    }
+#endif
+
+    if (!peer) {
         LOG(WARNING)
             << ": out of memory, dropping new peer on the floor"
         ;
@@ -102,6 +121,7 @@
         << peer
         << " queued up for connect"
     ;
+    peer->PLOG('h');
     peer->insert(::yajr::comms::internal::Peer::LoopData::TO_RESOLVE);
 
     return peer;
@@ -152,6 +172,8 @@ void on_active_connection(uv_connect_t *req, int status) {
             << peer
             << " peer is being destroyed. down() it"
         ;
+        peer->PLOG('r');
+        peer->PLOG('2');
         peer->down();
         return;
     }
@@ -165,6 +187,7 @@ void on_active_connection(uv_connect_t *req, int status) {
             << "] "
             << uv_strerror(status)
         ;
+        peer->PLOG('o');
         peer->onFailedConnect(status);
         return;
     }
@@ -182,6 +205,7 @@ void on_active_connection(uv_connect_t *req, int status) {
     }
 
     peer->unlink();
+    peer->PLOG('O');
     peer->insert(internal::Peer::LoopData::ONLINE);
 
     /* kick the ball */
@@ -197,7 +221,9 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
     ActiveTcpPeer * peer = Peer::get(req);
     assert(!peer->passive_);
+#ifdef EXTRA_CHECK
     assert(peer->peerType()[0]=='A');
+#endif
 
     void retry_later(ActivePeer * peer);
 
@@ -206,6 +232,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
             << peer
             << " peer is being destroyed. down() it"
         ;
+        peer->PLOG('w');
         peer->down();
         return;
     }
@@ -220,6 +247,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
         peer->status_ = Peer::kPS_FAILED_TO_RESOLVE;
         uv_freeaddrinfo(resp);
 
+        peer->PLOG('u');
         peer->down();
         return retry_later(peer);
     }
@@ -232,6 +260,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
     if ((rc = peer->tcpInit())) {
 
+        peer->PLOG('i');
         peer->down();
         return retry_later(peer);
 
@@ -246,8 +275,9 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
             << uv_strerror(rc)
         ;
         if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
+            peer->PLOG('I');
             uv_close((uv_handle_t*)peer->getHandle(), on_close);
-        }
+        } else peer->PLOG('L');
         return retry_later(peer);
     }
 
@@ -347,6 +377,7 @@ void retry_later(ActivePeer * peer) {
             << peer
             << " peer is being destroyed. not inserting in RETRY_TO_CONNECT"
         ;
+        peer->PLOG('z');
 
         return;
 
@@ -357,6 +388,7 @@ void retry_later(ActivePeer * peer) {
     ;
 
     peer->unlink();
+    peer->PLOG('6');
     peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
 
  // VLOG(1)
@@ -385,6 +417,7 @@ void swap_stack_on_close(uv_handle_t * h) {
     /* FIXME: pass the loop along */
     if ((rc = peer->tcpInit())) {
 
+        peer->PLOG('j');
         peer->down();
         retry_later(peer);
 
@@ -399,8 +432,9 @@ void swap_stack_on_close(uv_handle_t * h) {
             << uv_strerror(rc)
         ;
         if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
+            peer->PLOG('J');
             uv_close((uv_handle_t*)peer->getHandle(), on_close);
-        }
+        } else peer->PLOG('l');
         return retry_later(peer);
     }
 
@@ -423,6 +457,7 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
             << peer
             << " peer is being destroyed. down() it"
         ;
+        peer->PLOG('B');
         peer->down();
         return UV_ECANCELED;
     }
@@ -457,8 +492,9 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
                         << "destroying socket and retrying"
                     ;
                     if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
+                        peer->PLOG('N');
                         uv_close((uv_handle_t*)peer->getHandle(), swap_stack_on_close);
-                    }
+                    } else peer->PLOG('n');
             }
 
             return 0;
@@ -472,6 +508,7 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
     /* 'ai' is either NULL or the one that is pending... */
     if (!(peer->_.ai_next = ai ? ai->ai_next : NULL)) {
         if(peer->_.ai) { /* on_active_connection(*, -1) could call us again */
+            peer->PLOG('g');
             uv_freeaddrinfo(peer->_.ai);
         }
         peer->_.ai = NULL;
@@ -482,11 +519,13 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
             << peer
             << " unable to issue a(nother) connect request"
         ;
+        peer->PLOG('Q');
     } else {
         VLOG(1)
             << peer
             << " issued a connect request"
         ;
+        peer->PLOG('q');
     }
 
     return rc;

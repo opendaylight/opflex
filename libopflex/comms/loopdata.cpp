@@ -20,7 +20,7 @@
 
 #include <uv.h>
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 # include <unistd.h>
 #endif
 
@@ -82,7 +82,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
     peers[TO_RESOLVE]
         .clear_and_dispose(RetryPeer());
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
     for (size_t state = 0; state < TOTAL_STATES; ++state) {
         for (Peer::List::const_iterator peer = peers[state].cbegin();
                 peer != peers[state].cend();
@@ -188,7 +188,7 @@ void internal::Peer::LoopData::destroy(bool now) {
 
 std::ostream& operator << (std::ostream& os, Peer::LoopData const * lD) {
     return os
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
         << getpid()
 #endif
         << "{"

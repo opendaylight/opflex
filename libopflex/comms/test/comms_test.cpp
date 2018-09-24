@@ -52,6 +52,19 @@ struct CommsTests {
             .set_threshold_level(::boost::unit_test::log_successful_tests);
 
         opflex::logging::OFLogHandler::registerHandler(commsTestLogger_);
+
+        LOG(INFO)
+            << "\n    Peer: " << sizeof(yajr::comms::internal::Peer)
+            << "\n    CommunicationPeer: " << sizeof(yajr::comms::internal::CommunicationPeer)
+            << "\n    ActivePeer: " << sizeof(yajr::comms::internal::ActivePeer)
+            << "\n    ActiveTcpPeer: " << sizeof(yajr::comms::internal::ActiveTcpPeer)
+            << "\n    ActiveUnixPeer: " << sizeof(yajr::comms::internal::ActiveUnixPeer)
+            << "\n    PassivePeer: " << sizeof(yajr::comms::internal::PassivePeer)
+            << "\n    ListeningPeer: " << sizeof(yajr::comms::internal::ListeningPeer)
+            << "\n    ListeningTcpPeer: " << sizeof(yajr::comms::internal::ListeningTcpPeer)
+            << "\n    ListeningUnixPeer: " << sizeof(yajr::comms::internal::ListeningUnixPeer)
+            << std::endl;
+
     }
 
     ~CommsTests() {

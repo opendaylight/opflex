@@ -16,9 +16,7 @@ SUBDIRS = include
 lib_LTLIBRARIES =
 noinst_LTLIBRARIES  =
 noinst_LTLIBRARIES += librpcperfect.la
-if TRACING_COMMS
-  noinst_LTLIBRARIES += libcommstrace.la
-endif
+noinst_LTLIBRARIES += libcommstrace.la
 if SEPARATE_COMMS
   lib_LTLIBRARIES += libcomms.la
 else
@@ -60,6 +58,7 @@ libcomms_la_SOURCES  =
 libcomms_la_SOURCES += active_connection.cpp
 libcomms_la_SOURCES += passive_listener.cpp
 libcomms_la_SOURCES += common.cpp
+libcomms_la_SOURCES += mmap_allocator.cpp
 libcomms_la_SOURCES += transport/PlainText.cpp
 libcomms_la_SOURCES += transport/ZeroCopyOpenSSL.cpp
 libcomms_la_SOURCES += rpc.cpp
