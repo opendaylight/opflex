@@ -2209,14 +2209,14 @@ void BaseIntFlowManagerFixture::initExpCon4() {
             const opflex::modb::URI& ruleURI_1 = classifier1.get()->getURI();
             uint32_t con4_cookie = intFlowManager.getId(
                          classifier1->getClassId(), ruleURI_1);
-            ADDF(Bldr(SEND_FLOW_REM).table(POL)
+            ADDF(Bldr("", SEND_FLOW_REM).table(POL)
                  .priority(prio)
                  .cookie(con4_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
                  .actions()
                  .go(OUT)
                  .done());
-             ADDF(Bldr(SEND_FLOW_REM).table(POL)
+             ADDF(Bldr("", SEND_FLOW_REM).table(POL)
                  .priority(prio)
                  .cookie(con4_cookie).tcp()
                  .reg(SEPG, pvnid).reg(DEPG, cvnid).isTpSrc(80)
