@@ -55,7 +55,7 @@ void ListeningPeer::destroy(bool now) {
     }
 }
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 bool ListeningPeer::__checkInvariants() const {
     return internal::Peer::__checkInvariants();
 }

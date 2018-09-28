@@ -24,10 +24,6 @@
 
 namespace yajr {
     namespace internal {
-        bool __checkInvariants(void const * cP) {
-            return static_cast< comms::internal::CommunicationPeer const * >(cP)
-                ->__checkInvariants();
-        }
 
         bool isLegitPunct(int c) {
 
@@ -47,7 +43,30 @@ namespace yajr {
                 case  '{':
                 case  '|':
                 case  '}':
+                case  '\\':
+                case  '(': 
+                case  ')': 
+                case  '<': 
+                case  '>': 
+                case  '$':
+                case  '\n':
+                case  '\t':
+                case  '\r':
+                case  '!':
+                case  '#':
+                case  '&':
+                case  '*':
+                case  '+':
+                case  '\'':
+                case  ';':
+                case  '=':
+                case  '?':
+                case  '^':
+                case  '`':
+                case  '@':
+                case  '~':
                     return true;
+
                 default:
                     return (
                         (c & 0xe0)             // ASCII from 1 to 31 are BAD
@@ -165,16 +184,13 @@ void CommunicationPeer::onDisconnect(bool now) {
 
     if (connected_) {
 
-        /* wipe ssIn_ out */
-        // std::stringstream().swap(ssIn_); // C++11 only
-        ssIn_.~basic_stringstream();
-        new ((void *) &ssIn_) std::stringstream();
-
         /* wipe deque out and reset pendingBytes_ */
         s_.deque_.clear();
         pendingBytes_ = 0;
 
         connected_ = 0;
+
+        resetSsIn();
 
         if (getKeepAliveInterval()) {
             stopKeepAlive();
@@ -368,7 +384,7 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
         << ")"
     ;
 
-    while (--nread > 0) {
+    while ((--nread > 0) && connected_) {
         chunk_size = readChunk(buffer);
         nread -= chunk_size++;
 
@@ -467,49 +483,6 @@ std::ostream& operator << (
     return os;
 }
 
-#ifndef NDEBUG
-void CommunicationPeer::logDeque() const {
-
-    if (!VLOG_IS_ON(7)) {
-        return;
-    }
-
-    std::stringstream dbgLog;
-
-    dbgLog
-        << "\n IOV "
-        << this
-    ;
-
-    if (pendingBytes_) {
-        dbgLog
-            << "\n IOV Pending:"
-        ;
-        dumpIov(dbgLog,
-                get_iovec(
-                    s_.deque_.begin(),
-                    s_.deque_.begin() + pendingBytes_
-                    )
-               );
-    }
-
-    dbgLog
-        << "\n IOV Full:"
-    ;
-    dumpIov(dbgLog,
-            get_iovec(
-                s_.deque_.begin(),
-                s_.deque_.end()
-                )
-           );
-
-    VLOG(7)
-        << dbgLog.str()
-    ;
-
-}
-#endif // NDEBUG
-
 void CommunicationPeer::onWrite() {
 
     VLOG(5)
@@ -574,8 +547,9 @@ int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
             << uv_strerror(rc)
         ;
         onError(rc);
-        const_cast< CommunicationPeer * >(this)
-            ->onDisconnect();
+        onDisconnect();
+    } else {
+        const_cast<CommunicationPeer *>(this)->up();
     }
 
     return rc;
@@ -719,8 +693,7 @@ int comms::internal::CommunicationPeer::choke() const {
         /* FIXME: this might even not be a big issue if SSL is not involved */
 
         onError(rc);
-        const_cast< CommunicationPeer * >(this)
-            ->onDisconnect();
+        onDisconnect();
 
     } else {
 
@@ -764,8 +737,7 @@ int comms::internal::CommunicationPeer::unchoke() const {
         ;
 
         onError(rc);
-        const_cast< CommunicationPeer * >(this)
-            ->onDisconnect();
+        onDisconnect();
 
     } else {
 
@@ -796,6 +768,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
         return NULL;
     }
 
+    yajr::rpc::InboundMessage * ret = NULL;
     yajr::comms::internal::wrapper::IStreamWrapper is(ssIn_);
 
     docIn_.GetAllocator().Clear();
@@ -815,27 +788,34 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
             << ")"
         ;
 
-        assert(!ssIn_.str().data());
+        if (ssIn_.str().data()) {
+            onError(UV_EPROTO);
+            onDisconnect();
+        }
+
+        // ret stays set to NULL
+
+    } else {
+
+        /* don't clean up ssIn_ yet. yes, it's technically a "dead" variable here,
+         * but we might need to inspect it from gdb to make our life easier when
+         * getInboundMessage() isn't happy :)
+         */
+        ret = yajr::rpc::MessageFactory::getInboundMessage(*this, docIn_);
+
+        // assert(ret);
+        if (!ret) {
+            onError(UV_EPROTO);
+            onDisconnect();
+        }
     }
 
-    /* don't clean up ssIn_ yet. yes, it's technically a "dead" variable here,
-     * but we might need to inspect it from gdb to make our life easier when
-     * getInboundMessage() isn't happy :)
-     */
-    yajr::rpc::InboundMessage * ret =
-        yajr::rpc::MessageFactory::getInboundMessage(*this, docIn_);
-
-    assert(ret);
-
-    /* wipe ssIn_ out */
-    // std::stringstream().swap(ssIn_); // C++11 only
-    ssIn_.~basic_stringstream();
-    new ((void *) &ssIn_) std::stringstream();
+    resetSsIn();
 
     return ret;
 }
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 bool CommunicationPeer::__checkInvariants() const {
 
     bool result = true;
@@ -868,36 +848,6 @@ bool CommunicationPeer::__checkInvariants() const {
 
         result = false;
     }
-
-    ssize_t s1 = s_.deque_.size();
-    std::vector<iovec> iov = get_iovec(s_.deque_.begin(), s_.deque_.end());
-    ssize_t s2 = s_.deque_.size();
-
-    if (s1 != s2) {
-        LOG(ERROR)
-            << this
-            << " s1="
-            << s1
-            << " s2="
-            << s2
-        ;
-    }
-
-    ssize_t delta = s_.deque_.size();
-    if (delta != s2) {
-        LOG(ERROR)
-            << this
-            << " s1="
-            << s1
-            << " s2="
-            << s2
-            << " delta="
-            << delta
-        ;
-    }
-    assert(delta == s2);
-    assert(delta == s1);
-    assert(s2 == s1);
 
  // if (status_ != kPS_ONLINE) {
     if (connected_) {
@@ -938,124 +888,12 @@ bool CommunicationPeer::__checkInvariants() const {
             << " just check for Peer's invariants"
         ;
 
-        if (iov.size()) {
-            LOG(ERROR)
-                << this
-                << " is not online, and iov.size() = "
-                << iov.size()
-            ;
 
-            result = false;
-        }
-
-        if (delta) {
-            LOG(ERROR)
-                << this
-                << " is not online, and egress queue size() = "
-                << delta
-            ;
-
-            result = false;
-        }
-
-        if (iov.size() || delta) {
-            logDeque();
-        }
-
-    }
-
-    if (VLOG_IS_ON(6)) {
-        // some sub-parts of this are only there at verbosity level 7 but we log at 6
-        VLOG(6)
-            << iov
-        ;
-
-    }
-
-    // loop again, because we want the above debug first, to be less confusing
-    for (size_t i = 0; i < iov.size(); ++i) {
-        delta -= iov[i].iov_len;
-
-        size_t show_corrupt = 5;
-        for (
-                char const * c = static_cast< char const * >(iov[i].iov_base),
-                     * const e = c + iov[i].iov_len
-            ;
-                c < e
-            ;
-                ++c
-        ) {
-
-            if (::yajr::internal::isLegitPunct(*c)) {
-
-                continue;
-            }
-
-            LOG(ERROR)
-                << this
-                << " egress queue corrupt, after "
-                << s_.deque_.size() - delta - (e - c)
-                << " bytes, byte value: \""
-                << *c
-                << "\", hex value: "
-                << std::hex
-                << static_cast< unsigned int >(
-                        static_cast< unsigned char >(*c)
-                    )
-                << " DQ.size="
-                << s_.deque_.size()
-                << " currentDelta="
-                << delta
-                << " tailIOV="
-                << e - c
-                << " IOVlen="
-                << iov[i].iov_len
-            ;
-
-            result = false;
-
-            if (!--show_corrupt) {
-                break;
-            }
-
-        }
-
-    }
-
-    if (delta) {
-
-        LOG(ERROR)
-            << this
-            << " egress queue corrupt, iov.size() = "
-            << iov.size()
-            << " delta = "
-            << delta
-            << " queue size = "
-            << s_.deque_.size()
-        ;
-        if (!VLOG_IS_ON(6)) {
-            LOG(ERROR)
-                << "IOVECs: "
-                << iov
-            ;
-        }
-
-        result = false;
-
-        logDeque();
-
-    } else {
-        VLOG(6)
-            << this
-            << " egress queue consistent, deque size() = "
-            << s_.deque_.size()
-            << " iov.size() = "
-            << iov.size()
-        ;
     }
 
     return result;
 }
+#endif
 
 #if 0
 char const EchoGen::canary[] =
@@ -1317,7 +1155,6 @@ char const EchoGen::canary[] =
                     "_16_QWERTYUIOPASDFGHJ"
 ;
 size_t const EchoGen::kNcanaries = 20;
-#endif
 #endif
 
 } // namespace internal

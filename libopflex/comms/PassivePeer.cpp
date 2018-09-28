@@ -24,7 +24,7 @@ namespace yajr {
 ::boost::atomic<size_t> PassivePeer::counter(0);
 #endif
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 bool PassivePeer::__checkInvariants() const {
     return CommunicationPeer::__checkInvariants();
 }

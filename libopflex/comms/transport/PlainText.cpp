@@ -109,6 +109,10 @@ void Cb< PlainText >::on_read(
         << peer
     ;
 
+    if (!peer->connected_) {
+        return;
+    }
+
     if (nread < 0) {
 
         VLOG(2)

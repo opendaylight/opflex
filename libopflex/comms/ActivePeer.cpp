@@ -51,7 +51,7 @@ void ActivePeer::destroy(bool now) {
     down();
 }
 
-#ifndef NDEBUG
+#ifdef EXTRA_CHECKS
 bool ActivePeer::__checkInvariants() const {
     return CommunicationPeer::__checkInvariants();
 }
