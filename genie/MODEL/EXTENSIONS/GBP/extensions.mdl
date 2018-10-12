@@ -6,6 +6,7 @@ module[gbpe]
         const[name=unknown; value=0]
         const[name=vlan; value=1]
         const[name=vxlan; value=2]
+        const[name=vxlan-gpe; value=3]
     }
     type[EncapId; super=scalar/UInt32]
 
