@@ -27,6 +27,7 @@
 #include <opflex/ofcore/OFFramework.h>
 #include <modelgbp/metadata/metadata.hpp>
 
+
 #include <set>
 #include <utility>
 #include <string>
@@ -42,6 +43,7 @@ class EndpointSource;
 class ServiceSource;
 class FSRDConfigSource;
 class LearningBridgeSource;
+class SimStats;
 
 /**
  * Master object for the OVS agent.  This class holds the state for
@@ -158,6 +160,10 @@ private:
     boost::optional<std::string> notifOwner;
     boost::optional<std::string> notifGroup;
     boost::optional<std::string> notifPerms;
+    // stats simulation
+    boost::optional<bool> enableSimStats = false;
+    std::unique_ptr<SimStats> pSimStats;
+    int update_interval = 10;   /* seconds */
 
     std::set<std::string> endpointSourceFSPaths;
     std::set<std::string> endpointSourceModelLocalNames;
