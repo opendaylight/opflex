@@ -119,4 +119,13 @@
     // Default: no renderers
     "renderers": {
     }
+   // Simulate statistics. Counters for various artifacts.
+   // if this section is left out, no simulator is started.
+   // enabled: if true, starts the statistics simulator, default false.
+   // update-interval: the frequency of updates in seconds, default 10 secs, min 10 secs.
+   // "simulate": {
+   //   "enabled": true,
+   //   "update-interval" : 15
+   // }
+
 }
