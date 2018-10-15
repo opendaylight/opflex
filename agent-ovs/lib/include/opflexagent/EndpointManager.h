@@ -161,6 +161,14 @@ public:
                              /* out */ std::unordered_set<std::string>& eps);
 
     /**
+     * Get all endpoints
+     *
+     * @param eps a set that will be filled with the UUIDs of matching
+     * endpoints.
+     */
+    void getEndpointUUIDs( /* out */ std::unordered_set<std::string>& eps);
+
+    /**
      * Get the endpoints that are on a particular access interface
      *
      * @param ifaceName the name of the interface
