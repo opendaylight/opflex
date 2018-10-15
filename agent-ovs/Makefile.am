@@ -76,7 +76,8 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/NotifServer.h \
 	lib/include/opflexagent/Network.h \
 	lib/include/opflexagent/cmd.h \
-	lib/include/opflexagent/logging.h
+	lib/include/opflexagent/logging.h \
+	lib/include/opflexagent/SimStats.h
 
 noinst_HEADERS = \
 	ovs/include/OVSRenderer.h \
@@ -140,7 +141,8 @@ libopflex_agent_la_SOURCES = \
 	lib/NotifServer.cpp \
 	lib/MulticastListener.cpp \
 	lib/TaskQueue.cpp \
-	lib/Network.cpp
+	lib/Network.cpp \
+	lib/SimStats.cpp
 libopflex_agent_la_LDFLAGS = -shared -version-info ${VERSION_INFO}
 
 pkgconfigdir = $(libdir)/pkgconfig

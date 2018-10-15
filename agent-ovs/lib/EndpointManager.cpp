@@ -903,6 +903,13 @@ static void getEps(const K& key, const M& map,
     }
 }
 
+template <typename M>
+static void getEps(const M& map, /* out */ unordered_set<string>& eps) {
+    for (const auto& elem : map) {
+        eps.insert(elem.second.begin(), elem.second.end());
+    }
+}
+
 void EndpointManager::getEndpointsForGroup(const URI& egURI,
                                            /*out*/ unordered_set<string>& eps) {
     unique_lock<mutex> guard(ep_mutex);
@@ -940,6 +947,11 @@ void EndpointManager::getEndpointsByIface(const std::string& ifaceName,
                                           /* out */ str_uset_t& eps) {
     unique_lock<mutex> guard(ep_mutex);
     getEps(ifaceName, iface_ep_map, eps);
+}
+
+void EndpointManager::getEndpointUUIDs( /* out */ str_uset_t& eps) {
+    unique_lock<mutex> guard(ep_mutex);
+    getEps(iface_ep_map, eps);
 }
 
 void EndpointManager::getEndpointsByAccessIface(const std::string& ifaceName,
