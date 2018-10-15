@@ -27,6 +27,7 @@
 #include <opflexagent/logging.h>
 
 #include <opflexagent/Renderer.h>
+#include <opflexagent/SimStats.h>
 
 #include <unordered_map>
 #include <cstdlib>
@@ -136,6 +137,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string RENDERERS("renderers");
     static const std::string RENDERERS_STITCHED_MODE("renderers.stitched-mode");
     static const std::string RENDERERS_OPENVSWITCH("renderers.openvswitch");
+    static const std::string OPFLEX_SIM_STATS("simulate.enabled");
+    static const std::string OPFLEX_SIM_STATS_INTERVAL("simulate.update-interval");
 
     optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
@@ -167,11 +170,15 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         properties.get_optional<std::string>(OPFLEX_NOTIF_GROUP);
     boost::optional<std::string> notPerms =
         properties.get_optional<std::string>(OPFLEX_NOTIF_PERMS);
+    boost::optional<bool> enabSimStats =
+            properties.get_optional<bool>(OPFLEX_SIM_STATS);
+
     if (enabNotif) enableNotif = enabNotif;
     if (notSocket) notifSock = notSocket;
     if (notOwner) notifOwner = notOwner;
     if (notGrp) notifGroup = notGrp;
     if (notPerms) notifPerms = notPerms;
+    if( enabSimStats ) enableSimStats = enabSimStats;
 
     optional<const ptree&> fsEndpointSource =
         properties.get_child_optional(ENDPOINT_SOURCE_FSPATH);
@@ -270,6 +277,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
             r->setProperties(rtree.get());
         }
     }
+
+    if( enableSimStats ) {
+        boost::optional<int> upd_interval =
+                properties.get_optional<int>(OPFLEX_SIM_STATS_INTERVAL);
+        if( upd_interval ) {
+            update_interval = upd_interval.get() > 10 ? upd_interval.get() : 10;
+        }
+    }
 }
 
 void Agent::applyProperties() {
@@ -358,6 +373,8 @@ void Agent::start() {
     io_work.reset(new io_service::work(agent_io));
     io_service_thread.reset(new thread([this]() { agent_io.run(); }));
 
+
+
     for (const std::string& path : endpointSourceFSPaths) {
         {
             EndpointSource* source =
@@ -391,11 +408,24 @@ void Agent::start() {
 
     for (const host_t& h : opflexPeers)
         framework.addPeer(h.first, h.second);
+
+
+    if( enableSimStats ) {
+        pSimStats = std::make_unique<SimStats>( *this, update_interval*1000 );
+        pSimStats->start();
+        policyManager.registerListener(&(*pSimStats));
+
+    }
 }
 
 void Agent::stop() {
     if (!started) return;
     LOG(INFO) << "Stopping OpFlex Agent";
+
+    // if stats simulation is enbaled, stop it.
+    if( enableSimStats ) {
+        pSimStats->stop();
+    }
 
     // Just in case the io_service gets blocked by some stray
     // events that don't get cleared, abort the process after a
