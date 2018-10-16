@@ -14,6 +14,29 @@ module[gbp]
         const[name=enabled; value=1]
     }
 
+    class[EPRetPolicy;
+          super=gbp/L2BehavioralGroup;
+          concrete]
+    {
+        member[holdIntvl; type=scalar/UInt32]
+        member[bnceAgeIntvl; type=scalar/UInt32]
+        member[localAgeIntvl; type=scalar/UInt32]
+        member[remoteAgeIntvl; type=scalar/UInt32]
+        member[moveFreq; type=scalar/UInt32]
+        contained
+        {
+            parent[class=policy/Space]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ep-ret;
+                          member=name]
+            }
+        }
+    }
+
     class[BridgeDomain;
           super=gbp/L2BehavioralGroup;
           concrete]
@@ -25,6 +48,14 @@ module[gbp]
             to[class=gbp/RoutingDomain;
                cardinality=many;
                ]
+        }
+        dependency[epret;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/EPRetPolicy;
+               cardinality=single;
+              ]
         }
         contained
         {
@@ -65,6 +96,10 @@ module[gbp]
         # interfaces in the flood domain, and perform traditional MAC
         # learning in the flood domain.
         const[name=flood; value=1]
+
+        # Proxy mode, send L2 and L3 unknown unicast packets to the
+        # corresponding spine proxy address
+        const[name=proxy; value=1]
     }
 
     type[BcastFloodMode; super=scalar/Enum8]

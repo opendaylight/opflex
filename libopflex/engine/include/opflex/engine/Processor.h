@@ -135,7 +135,8 @@ public:
      * Start the processor thread.  Should call only after the
      * underlying object store is started.
      */
-    void start();
+    void start(ofcore::OFConstants::OpflexAgentMode mode =
+               ofcore::OFConstants::OpflexAgentMode::STITCHED_MODE);
 
     /**
      * Stop the processor thread.  Should call before stopping the

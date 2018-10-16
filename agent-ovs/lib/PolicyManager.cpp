@@ -306,6 +306,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     optional<shared_ptr<FloodDomain> > newfd;
     optional<shared_ptr<FloodContext> > newfdctx;
     GroupState::subnet_map_t newsmap;
+    optional<shared_ptr<EPRetPolicy> > newepretpolicy;
+    optional<URI> nEpRetURI;
 
     optional<class_id_t> domainClass;
     optional<URI> domainURI;
@@ -332,6 +334,11 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
         }
     }
 
+    optional<shared_ptr<InstContext> > newBDInstCtx =
+        epg.get()->resolveGbpeInstContext();
+    optional<shared_ptr<InstContext> > newRDInstCtx =
+        epg.get()->resolveGbpeInstContext();
+
     // walk up the chain of forwarding domains
     while (domainURI && domainClass) {
         URI du = domainURI.get();
@@ -348,6 +355,7 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                 if (newrd) {
                     fwdSns = newrd.get()->
                         resolveGbpForwardingBehavioralGroupToSubnetsRSrc();
+                    newRDInstCtx = newrd.get()->resolveGbpeInstContext();
                 }
             }
             break;
@@ -363,6 +371,14 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                     }
                     fwdSns = newbd.get()->
                         resolveGbpForwardingBehavioralGroupToSubnetsRSrc();
+                    newBDInstCtx = newbd.get()->resolveGbpeInstContext();
+                    optional<shared_ptr<BridgeDomainToEpretRSrc> > dref2 =
+                        newbd.get()->resolveGbpBridgeDomainToEpretRSrc();
+                    if(dref2) {
+                        nEpRetURI = dref2.get()->getTargetURI();
+                        newepretpolicy =
+                            EPRetPolicy::resolve(framework, nEpRetURI.get());
+                    }
                 }
             }
             break;
@@ -409,7 +425,10 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
         newfdctx != gs.floodContext ||
         newbd != gs.bridgeDomain ||
         newrd != gs.routingDomain ||
-        newsmap != gs.subnet_map)
+        newsmap != gs.subnet_map ||
+        newBDInstCtx != gs.instBDContext ||
+        newRDInstCtx != gs.instRDContext ||
+        newepretpolicy != gs.epRetPolicy)
         updated = true;
 
     gs.epGroup = epg;
@@ -419,6 +438,9 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     gs.bridgeDomain = newbd;
     gs.routingDomain = newrd;
     gs.subnet_map = newsmap;
+    gs.instBDContext = newBDInstCtx;
+    gs.instRDContext = newRDInstCtx;
+    gs.epRetPolicy = newepretpolicy;
 
     return updated;
 }
@@ -430,6 +452,26 @@ PolicyManager::getVnidForGroup(const opflex::modb::URI& eg) {
     return it != group_map.end() && it->second.instContext &&
         it->second.instContext.get()->getEncapId()
         ? it->second.instContext.get()->getEncapId().get()
+        : optional<uint32_t>();
+}
+
+boost::optional<uint32_t>
+PolicyManager::getBDVnidForGroup(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instBDContext &&
+        it->second.instContext.get()->getEncapId()
+        ? it->second.instContext.get()->getEncapId().get()
+        : optional<uint32_t>();
+}
+
+boost::optional<uint32_t>
+PolicyManager::getRDVnidForGroup(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instRDContext &&
+        it->second.instRDContext.get()->getEncapId()
+        ? it->second.instRDContext.get()->getEncapId().get()
         : optional<uint32_t>();
 }
 
@@ -447,6 +489,41 @@ optional<string> PolicyManager::getMulticastIPForGroup(const URI& eg) {
         it->second.instContext.get()->getMulticastGroupIP()
         ? it->second.instContext.get()->getMulticastGroupIP().get()
         : optional<string>();
+}
+
+optional<string> PolicyManager::getBDMulticastIPForGroup(const URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instBDContext &&
+        it->second.instBDContext.get()->getMulticastGroupIP()
+        ? it->second.instBDContext.get()->getMulticastGroupIP().get()
+        : optional<string>();
+}
+
+optional<string> PolicyManager::getRDMulticastIPForGroup(const URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instRDContext &&
+        it->second.instRDContext.get()->getMulticastGroupIP()
+        ? it->second.instRDContext.get()->getMulticastGroupIP().get()
+        : optional<string>();
+}
+
+optional<uint32_t> PolicyManager::getSclassForGroup(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instContext
+        ? it->second.instContext.get()->getSclass()
+        : optional<uint32_t>();
+}
+
+optional<shared_ptr<modelgbp::gbp::EPRetPolicy>> PolicyManager::getEPRetentionPolicyForGroup(
+const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.epRetPolicy.get()
+        ? it->second.epRetPolicy
+        : optional<std::shared_ptr<modelgbp::gbp::EPRetPolicy>>();
 }
 
 bool PolicyManager::groupExists(const opflex::modb::URI& eg) {

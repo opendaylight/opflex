@@ -71,7 +71,7 @@ void EndpointManager::start() {
     EpAttributeSet::registerListener(framework, &epgMappingListener);
     RemoteEndpointInventory::registerListener(framework, &epgMappingListener);
     RemoteInventoryEp::registerListener(framework, &epgMappingListener);
-
+    BounceInventoryEp::registerListener(framework, &epgMappingListener);
     policyManager.registerListener(this);
 
     opflex::modb::Mutator mutator(framework, "init");
@@ -102,6 +102,7 @@ void EndpointManager::stop() {
     group_remote_ep_map.clear();
     remote_ep_group_map.clear();
     remote_ep_uuid_map.clear();
+    bounce_ep_uuid_map.clear();
     secgrp_ep_map.clear();
     ipm_group_ep_map.clear();
     ipm_nexthop_if_ep_map.clear();
@@ -132,6 +133,21 @@ void EndpointManager::notifyRemoteListeners(const std::string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
     for (EndpointListener* listener : endpointListeners) {
         listener->remoteEndpointUpdated(uuid);
+    }
+}
+
+void EndpointManager::notifyBounceListeners(const std::string& uuid) {
+    unique_lock<mutex> guard(listener_mutex);
+    for (EndpointListener* listener : endpointListeners) {
+        listener->bounceEndpointUpdated(uuid);
+    }
+}
+
+void EndpointManager::notifyExternalEndpointListeners(
+    const std::string& uuid) {
+    unique_lock<mutex> guard(listener_mutex);
+    for (EndpointListener* listener : endpointListeners) {
+        listener->externalEndpointUpdated(uuid);
     }
 }
 
@@ -183,6 +199,35 @@ static void updateEpMap(const optional<std::string>& oldVal,
             val_map[val.get()].insert(uuid);
         }
     }
+}
+
+void EndpointManager::updateEndpointBounce(const opflex::modb::URI& uri) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::epdr;
+    LOG(DEBUG) << "Bounce endpoint updated " << uri;
+    auto ep = modelgbp::inv::BounceInventoryEp::resolve(framework, uri);
+
+    optional<std::string> uuid;
+
+    unique_lock<mutex> guard(ep_mutex);
+    if (!ep || !ep.get()->isUuidSet()) {
+        auto it = bounce_ep_uuid_map.find(uri);
+        if (it != bounce_ep_uuid_map.end()) {
+            // removed endpoint
+            uuid = it->second;
+            bounce_ep_uuid_map.erase(it);
+        }
+    } else {
+        // added or updated endpoint
+        uuid = ep.get()->getUuid().get();
+        bounce_ep_uuid_map.emplace(uri, uuid.get());
+    }
+
+    guard.unlock();
+    if (uuid)
+        notifyBounceListeners(uuid.get());
+
 }
 
 void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
@@ -494,6 +539,11 @@ void EndpointManager::updateEndpointRemote(const opflex::modb::URI& uri) {
     guard.unlock();
     if (uuid)
         notifyRemoteListeners(uuid.get());
+}
+
+bool EndpointManager::updateEndpointExternal(const std::string& uuid) {
+   //TODO
+    return false;
 }
 
 bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
@@ -1054,6 +1104,8 @@ void EndpointManager::EPGMappingListener::objectUpdated(class_id_t classId,
         }
     } else if (classId == modelgbp::inv::RemoteInventoryEp::CLASS_ID) {
         epmanager.updateEndpointRemote(uri);
+    } else if (classId == modelgbp::inv::BounceInventoryEp::CLASS_ID) {
+        epmanager.updateEndpointBounce(uri);
     }
 }
 

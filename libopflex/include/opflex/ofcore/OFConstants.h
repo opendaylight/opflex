@@ -56,6 +56,19 @@ public:
          */
         OBSERVER = 8
     };
+
+    enum OpflexAgentMode {
+        /**
+         * Agent is serving a renderer that is operating in stitched mode.
+         * Unknown packets are sent to leaf proxy with vxlan encap.
+         */
+        STITCHED_MODE = 0,
+        /**
+         * Agent is serving a renderer that is operating in transport mode.
+         * Unknown packets are sent to spine proxy with ivxlan encap.
+         */
+        TRANSPORT_MODE = 1,
+    };
 };
 
 /** @} ofcore */

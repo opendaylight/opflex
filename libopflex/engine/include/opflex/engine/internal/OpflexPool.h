@@ -20,6 +20,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/asio.hpp>
 #include <uv.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -281,6 +282,36 @@ public:
      */
     void addConfiguredPeers();
 
+    typedef opflex::ofcore::OFConstants::OpflexAgentMode AgentMode;
+
+    void setClientMode(AgentMode mode) {
+        client_mode = mode;
+    }
+    AgentMode getClientMode() {
+        return client_mode;
+    }
+    void setV4Proxy(boost::asio::ip::address_v4& v4_proxy) {
+        ipv4_proxy = v4_proxy;
+    }
+    void setV6Proxy(boost::asio::ip::address_v4& v6_proxy) {
+        ipv6_proxy = v6_proxy;
+    }
+    void setMacProxy(boost::asio::ip::address_v4& mac_proxy) {
+        mac_proxy = mac_proxy;
+    }
+
+    boost::asio::ip::address_v4 getV4Proxy() {
+        return ipv4_proxy;
+    }
+
+    boost::asio::ip::address_v4 getV6Proxy() {
+        return ipv6_proxy;
+    }
+
+    boost::asio::ip::address_v4 getMacProxy() {
+        return mac_proxy;
+    }
+
 private:
     HandlerFactory& factory;
     util::ThreadManager& threadManager;
@@ -322,6 +353,11 @@ private:
     conn_map_t connections;
     role_map_t roles;
     bool active;
+
+    opflex::ofcore::OFConstants::OpflexAgentMode client_mode;
+    boost::asio::ip::address_v4 ipv4_proxy;
+    boost::asio::ip::address_v4 ipv6_proxy;
+    boost::asio::ip::address_v4 mac_proxy;
 
     uv_loop_t* client_loop;
     uv_async_t conn_async;

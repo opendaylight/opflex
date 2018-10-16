@@ -41,4 +41,34 @@ module[epr]
             }
         }
     }
+
+    # universe containing reported dynamic routes
+    class[PeerRouteUniverse;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=dynamic-rt;]
+            }
+        }
+    }
+
+    # universe containing aged notification for bounce L2/L3 end-points
+    class[BounceAgedUniverse;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=bounce;]
+            }
+        }
+    }
 }

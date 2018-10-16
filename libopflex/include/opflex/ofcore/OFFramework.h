@@ -581,6 +581,8 @@
 #include "opflex/modb/Mutator.h"
 #include "opflex/ofcore/PeerStatusListener.h"
 #include "opflex/ofcore/MainLoopAdaptor.h"
+#include "opflex/ofcore/OFConstants.h"
+#include "boost/asio/ip/address_v4.hpp"
 
 /**
  * @defgroup cpp C++ Interface
@@ -823,6 +825,40 @@ public:
      * @param listener the listener to register
      */
     virtual void registerPeerStatusListener(PeerStatusListener* listener);
+
+    /**
+     * Set the agent mode for the opflex agent. Agent mode
+     * can be set only before starting the framework
+     *
+     * @param mode_ stitched(default) or transport mode
+     * @return whether setting was successful
+     */
+    virtual bool setAgentMode(
+    opflex::ofcore::OFConstants::OpflexAgentMode mode_);
+
+    /**
+     * Get the Ipv4 proxy address for the vswitch in transport mode.
+     * In transport mode, proxy addresses are obtained
+     * from the first peer's identity response whereas in stitched mode,
+     * proxy address is configured/implicit.
+     *
+     * @param v4ProxyAddress
+     */
+    virtual void getV4Proxy(boost::asio::ip::address_v4 &v4ProxyAddress );
+
+    /**
+     * Get the Ipv6 proxy address for the vswitch in transport mode.
+     *
+     * @param v6ProxyAddress
+     */
+    virtual void getV6Proxy(boost::asio::ip::address_v4 &v6ProxyAddress );
+
+    /**
+     * Get the Mac proxy address for the vswitch in transport mode.
+     *
+     * @param macProxyAddress
+     */
+    virtual void getMacProxy(boost::asio::ip::address_v4 &macProxyAddress );
 
 private:
     /**
