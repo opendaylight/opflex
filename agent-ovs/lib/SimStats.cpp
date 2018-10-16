@@ -18,8 +18,8 @@ namespace opflexagent {
 
 
 SimStats::SimStats(opflexagent::Agent& agent_, uint32_t timer_interval_)
- : agent(agent_), intCounter(0), contractCounter(0), stopping(false),
- timer_interval(timer_interval_) {}
+    : agent(agent_), intCounter(0), contractCounter(0), stopping(false),
+      timer_interval(timer_interval_) {}
 
 SimStats::~SimStats() {}
 
