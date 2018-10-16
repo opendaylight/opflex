@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8f94779e_194c10d4",
+        "filename": "agent-ovs/lib/include/opflexagent/SimStats.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-16T06:18:13Z",
+      "side": 1,
+      "message": "Can you follow the standard used by other headers? I would have expected OPFLEXAGENT_SIMSTATS_H_\n\nCan you also add \u0027#pragma once\u0027 above the ifndef",
+      "revId": "3f00329faec710b4efcf4c0548b0ca98070cd181",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bbe61233_94cbee61",
+        "filename": "agent-ovs/lib/include/opflexagent/SimStats.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-16T06:18:13Z",
+      "side": 1,
+      "message": "Can you add some basic documentation consumable by doxygen?",
+      "revId": "3f00329faec710b4efcf4c0548b0ca98070cd181",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a82e7e57_3fa3a04d",
+        "filename": "agent-ovs/opflex-agent-ovs.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-16T06:18:13Z",
+      "side": 1,
+      "message": "This is not what I was looking for.\n\nI expected you to modify the existing agent-ovs/opflex-agent-ovs.conf.in to include a commented out section showing the simulation config (similar to the commented out section for logging)",
+      "revId": "3f00329faec710b4efcf4c0548b0ca98070cd181",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
