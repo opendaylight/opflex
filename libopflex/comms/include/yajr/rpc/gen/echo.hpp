@@ -22,11 +22,6 @@ class EchoGen {
 
     bool operator()(rpc::SendHandler & handler);
 
-#ifdef EXTRA_CHECKS
-    static char const canary[];
-    static size_t const kNcanaries;
-#endif
-
   private:
     CommunicationPeer const & peer_;
 };
