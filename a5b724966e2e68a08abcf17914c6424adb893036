@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "35fc5470_95f795e2",
+        "filename": "agent-ovs/lib/SimStats.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-17T19:20:02Z",
+      "side": 1,
+      "message": "remove extra space after parenthesis",
+      "revId": "a5b724966e2e68a08abcf17914c6424adb893036",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "49611d27_c0d579af",
+        "filename": "agent-ovs/lib/SimStats.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-17T19:20:02Z",
+      "side": 1,
+      "message": "uuuid -\u003e uuid",
+      "revId": "a5b724966e2e68a08abcf17914c6424adb893036",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c9d7e3ea_d669e879",
+        "filename": "agent-ovs/opflex-agent-ovs.conf.in",
+        "patchSetId": 3
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-17T19:20:02Z",
+      "side": 1,
+      "message": "This section has to be commented out by default. This file is used as the base for opflex-agent-ovs.conf",
+      "revId": "a5b724966e2e68a08abcf17914c6424adb893036",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
