@@ -343,6 +343,7 @@ getVlanRangesByIface(const std::string& uuid,
     auto it = lbi_map.find(uuid);
     if (it == lbi_map.end()) return;
 
+    LOG(DEBUG) << "getVlanRangesByIface for " << uuid;
     for (auto r : it->second.iface->getTrunkVlans()) {
         auto it = range_lbi_map.find(r);
 
@@ -351,6 +352,7 @@ getVlanRangesByIface(const std::string& uuid,
                 break;
 
             ranges.insert(it->first);
+            it++;
         }
     }
 }
