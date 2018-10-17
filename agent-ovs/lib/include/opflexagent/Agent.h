@@ -25,6 +25,7 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/noncopyable.hpp>
 #include <opflex/ofcore/OFFramework.h>
+#include <opflex/ofcore/OFConstants.h>
 #include <modelgbp/metadata/metadata.hpp>
 
 #include <set>
@@ -113,6 +114,26 @@ public:
      */
     ExtraConfigManager& getExtraConfigManager() { return extraConfigManager; }
 
+    /*
+     * Get renderer forwarding mode for this agent
+     */
+    uint8_t getRendererForwardingMode()
+    { return rendererFwdMode; }
+    /*
+    * Get Proxy addresses for transport mode
+    */
+    void getV4Proxy(boost::asio::ip::address_v4 &v4ProxyAddress ) {
+        framework.getV4Proxy(v4ProxyAddress);
+    }
+
+    void getV6Proxy(boost::asio::ip::address_v4 &v6ProxyAddress ) {
+        framework.getV6Proxy(v6ProxyAddress);
+    }
+
+    void getMacProxy(boost::asio::ip::address_v4 &macProxyAddress ) {
+        framework.getMacProxy(macProxyAddress);
+    }
+
     /**
      * Get the learning bridge manager object for this agent
      */
@@ -147,6 +168,7 @@ private:
     LearningBridgeManager learningBridgeManager;
     NotifServer notifServer;
     FSWatcher fsWatcher;
+    opflex::ofcore::OFConstants::OpflexAgentMode rendererFwdMode;
 
     boost::optional<std::string> opflexName;
     boost::optional<std::string> opflexDomain;

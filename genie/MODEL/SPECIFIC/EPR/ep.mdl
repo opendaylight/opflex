@@ -4,6 +4,7 @@ module[epr]
     type[name=L2Context; super=epr/Context]
     type[name=L3Context; super=epr/Context]
     type[name=GroupContext; super=epr/Context]
+    type[name=L3OutContext; super=epr/Context]
 
     # Superclass for all end points declared in the epr universes.
     # End point is an entity to which we can apply policy
@@ -62,6 +63,27 @@ module[epr]
 
         # endpoint group for the endpoint
         member[group; type=epr/GroupContext]
+    }
+
+    class[ReportedRoute;
+          super=gbp/BaseRoute;
+          concrete;]
+    {
+        member[uuid; type=reference/UUID]
+        contained
+        {
+            parent[class=epr/PeerRouteUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # endpoint group for the endpoint
+        member[vrf; type=epr/L3Context]
     }
 
     class[SecurityGroupContext;
@@ -159,5 +181,61 @@ module[epr]
                 component[prefix=-;member=ip]
             }
         }
+    }
+
+    class[BounceL3EpAged;
+          concrete;
+         ]
+    {
+        contained
+        {
+           parent[class=epr/BounceAgedUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+                component[prefix=-;member=ip]
+            }
+        }
+
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
+        # vnid of the routing-domain
+        member[rdVnid; type=gbpe/EncapId]
+
+        member[ip; type=address/IP]
+    }
+
+    class[BounceL2EpAged;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=epr/BounceAgedUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+                component[prefix=-;member=mac]
+            }
+        }
+
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
+        # vnid of the bridge-domain
+        member[bdVnid; type=gbpe/EncapId]
+
+        # mac address of the end-point
+        member[mac; type=address/MAC]
+
     }
 }

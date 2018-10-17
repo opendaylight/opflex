@@ -61,6 +61,8 @@ LT_INIT()
 
 m4_include([m4/ax_boost_base.m4])
 m4_include([m4/ax_boost_unit_test_framework.m4])
+m4_include([m4/ax_boost_system.m4])
+m4_include([m4/ax_boost_asio.m4])
 m4_include([m4/ax_check_compile_flags.m4])
 m4_include([m4/ax_cxx_compile_stdcxx.m4])
 
@@ -138,6 +140,8 @@ AC_STDC_HEADERS
 
 dnl Boost dependencies
 AX_BOOST_BASE([1.49.0], [], AC_MSG_ERROR([Boost is required]))
+AX_BOOST_SYSTEM
+AX_BOOST_ASIO
 AX_BOOST_UNIT_TEST_FRAMEWORK
 
 dnl Package-config dependencies

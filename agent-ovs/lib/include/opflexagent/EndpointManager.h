@@ -283,9 +283,20 @@ private:
     bool updateEndpointLocal(const std::string& uuid);
 
     /**
+     * Update the bounce endpoint entries associated with an endpoint
+     * @return true if we should notify listeners
+     */
+    void updateEndpointBounce(const opflex::modb::URI& uri);
+
+    /**
      * Update the remote endpoint entries associated with an endpoint
      */
     void updateEndpointRemote(const opflex::modb::URI& uri);
+
+    /**
+     * Update the external endpoint entries associated with an endpoint
+     */
+    bool updateEndpointExternal(const std::string& uuid);
 
     /**
      * Update the endpoint registry entries associated with an endpoint
@@ -392,6 +403,11 @@ private:
     ep_group_map_t remote_ep_group_map;
 
     /**
+     * Map remote endpoint URI to bounce endpoint uuid
+     */
+    ep_uuid_map_t bounce_ep_uuid_map;
+
+    /**
      * Map sets of security groups to a set of endpoint UUIDs
      */
     secgrp_ep_map_t secgrp_ep_map;
@@ -438,7 +454,8 @@ private:
     void notifyListeners(const std::string& uuid);
     void notifyRemoteListeners(const std::string& uuid);
     void notifyListeners(const EndpointListener::uri_set_t& secGroups);
-
+    void notifyBounceListeners(const std::string& uuid);
+    void notifyExternalEndpointListeners(const std::string& uuid);
     /**
      * Listener for changes related to endpoint group mapping
      */

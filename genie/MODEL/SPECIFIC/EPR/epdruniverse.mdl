@@ -29,4 +29,34 @@ module[epdr]
             }
         }
     }
+
+    # universe containing L3Out end-points
+    class[ExternalDiscovered;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=external-l3discovered;]
+            }
+        }
+    }
+
+    # universe containing peer injected dynamic routes
+    class[PeerRoute;
+          super=epr/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=peer-route;]
+            }
+        }
+    }
 }

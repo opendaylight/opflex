@@ -74,6 +74,7 @@ module[gbp]
                 ]
         }
     }
+    # Wanroute populated by COOP into opflex proxy
 
     # A subnet associated with an external network
     class[ExternalSubnet;
@@ -92,4 +93,5 @@ module[gbp]
             }
         }
     }
+
 }

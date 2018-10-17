@@ -50,6 +50,20 @@ public:
     virtual void remoteEndpointUpdated(const std::string& uuid) {};
 
     /**
+     * Called when a distant endpoint is added, updated, or removed.
+     *
+     * @param uuid the UUID for the endpoint
+     */
+    virtual void bounceEndpointUpdated(const std::string& uuid) {};
+
+    /**
+     * Called when a external endpoint is added, updated, or removed.
+     *
+     * @param uuid the UUID for the endpoint
+     */
+    virtual void externalEndpointUpdated(const std::string& uuid) {};
+
+    /**
      * A set of URIs
      */
     typedef std::set<opflex::modb::URI> uri_set_t;

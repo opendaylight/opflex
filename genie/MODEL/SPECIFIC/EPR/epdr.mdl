@@ -60,4 +60,102 @@ module[epdr]
         }
 
     }
+
+    # abstraction of L3Out end-point identifies the external peer
+    # on the l3out which is instantiated on the compute.
+    class[ExternalL3Ep;
+          super=epr/LocalEp;
+          concrete;
+          ]
+    {
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
+        # ip address of the l3out interface
+        member[ip; type=address/IP]
+
+        # mac address of the l3out interface
+        member[mac; type=address/MAC]
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        dependency[pathAtt;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/ExternalInterface;
+                cardinality=single;
+                ]
+        }
+
+        dependency[nodeAtt;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/ExternalNode;
+                cardinality=single;
+                ]
+        }
+
+        contained
+        {
+            parent[class=epdr/ExternalDiscovered]
+        }
+
+    }
+
+    class[DynamicNextHop;
+          super=gbp/BaseNextHop;
+          concrete]
+    {
+        contained
+        {
+            parent[class=epdr/DynamicRoute]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+    }
+
+    class[DynamicRoute;
+          super=gbp/BaseRoute;
+          concrete]
+    {
+        member[uuid; type=reference/UUID]
+
+        member[as; type=Scalar/UInt32]
+
+        member[cost; type=Scalar/UInt32]
+
+        dependency[vrf;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/RoutingDomain;
+               cardinality=single;
+               ]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+        contained
+        {
+            parent[class=epdr/PeerRoute]
+        }
+    }
 }

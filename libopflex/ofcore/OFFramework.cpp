@@ -40,7 +40,9 @@ using std::string;
 class OFFramework::OFFrameworkImpl {
 public:
     OFFrameworkImpl()
-        : db(threadManager), processor(&db, threadManager), started(false) { }
+        : db(threadManager), processor(&db, threadManager), started(false),
+          mode(opflex::ofcore::OFConstants::OpflexAgentMode::STITCHED_MODE)
+          {}
     ~OFFrameworkImpl() {}
 
     util::ThreadManager threadManager;
@@ -48,6 +50,7 @@ public:
     engine::Processor processor;
     scoped_ptr<engine::Inspector> inspector;
     uv_key_t mutator_key;
+    opflex::ofcore::OFConstants::OpflexAgentMode mode;
     bool started;
 };
 
@@ -76,11 +79,21 @@ void OFFramework::setModel(const modb::ModelMetadata& model) {
     pimpl->db.init(model);
 }
 
+bool OFFramework::setAgentMode(
+    opflex::ofcore::OFConstants::OpflexAgentMode mode_) {
+    if(!pimpl->started) {
+        pimpl->mode = mode_;
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void OFFramework::start() {
     LOG(DEBUG) << "Starting OpFlex Framework";
     pimpl->started = true;
     pimpl->db.start();
-    pimpl->processor.start();
+    pimpl->processor.start(pimpl->mode);
     if (pimpl->inspector)
         pimpl->inspector->start();
 }
@@ -165,6 +178,21 @@ void OFFramework::addPeer(const std::string& hostname,
 
 void OFFramework::registerPeerStatusListener(PeerStatusListener* listener) {
     pimpl->processor.registerPeerStatusListener(listener);
+}
+
+void OFFramework::getV4Proxy(boost::asio::ip::address_v4 &v4ProxyAddress ) {
+    engine::internal::OpflexPool& pool = pimpl->processor.getPool();
+    v4ProxyAddress = pool.getV4Proxy();
+}
+
+void OFFramework::getV6Proxy(boost::asio::ip::address_v4 &v6ProxyAddress ) {
+    engine::internal::OpflexPool& pool = pimpl->processor.getPool();
+    v6ProxyAddress = pool.getV6Proxy();
+}
+
+void OFFramework::getMacProxy(boost::asio::ip::address_v4 &macProxyAddress ) {
+    engine::internal::OpflexPool& pool = pimpl->processor.getPool();
+    macProxyAddress = pool.getMacProxy();
 }
 
 void MockOFFramework::start() {
