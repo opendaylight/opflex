@@ -827,7 +827,7 @@ BOOST_FIXTURE_TEST_CASE(policy_portrange, VxlanIntFlowManagerFixture) {
     WAIT_FOR_DO(egs.size() == 1, 500, egs.clear();
                 policyMgr.getContractConsumers(con3->getURI(), egs));
     PolicyManager::rule_list_t rules;
-    WAIT_FOR_DO(rules.size() == 3, 500, rules.clear();
+    WAIT_FOR_DO(rules.size() == 2, 500, rules.clear();
                 policyMgr.getContractRules(con3->getURI(), rules));
 
     /* add con3 */
@@ -2201,9 +2201,6 @@ void BaseIntFlowManagerFixture::initExpCon3() {
     const opflex::modb::URI& ruleURI_4 = classifier4.get()->getURI();
     uint32_t con4_cookie = intFlowManager.getId(
                          classifier4->getClassId(), ruleURI_4);
-    const opflex::modb::URI& ruleURI_10 = classifier10.get()->getURI();
-    uint32_t con10_cookie = intFlowManager.getId(
-        classifier10->getClassId(), ruleURI_10);
     MaskList ml_80_85 = list_of<Mask>(0x0050, 0xfffc)(0x0054, 0xfffe);
     MaskList ml_66_69 = list_of<Mask>(0x0042, 0xfffe)(0x0044, 0xfffe);
     MaskList ml_94_95 = list_of<Mask>(0x005e, 0xfffe);
@@ -2222,9 +2219,6 @@ void BaseIntFlowManagerFixture::initExpCon3() {
                  .actions().go(OUT).done());
         }
     }
-    ADDF(Bldr(SEND_FLOW_REM).table(POL).priority(prio-256)
-        .cookie(con10_cookie).icmp().reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
-        .icmp_type(10).icmp_code(5).actions().go(OUT).done());
 }
 
 void BaseIntFlowManagerFixture::initExpCon4() {
