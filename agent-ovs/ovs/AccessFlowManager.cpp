@@ -136,7 +136,12 @@ static void flowBypassDhcpRequest(FlowEntryList& el, bool v4, uint32_t inport,
                                   uint32_t outport,
                                   std::shared_ptr<const Endpoint>& ep ) {
     FlowBuilder fb;
-    fb.priority(200).inPort(inport);
+    if (ep->getAccessIfaceVlan()) {
+        fb.priority(201).inPort(inport);
+    } else {
+        fb.priority(200).inPort(inport);
+    }
+
     flowutils::match_dhcp_req(fb, v4);
     fb.action().reg(MFF_REG7, outport);
 

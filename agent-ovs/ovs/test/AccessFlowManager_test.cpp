@@ -338,7 +338,7 @@ void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
     initExpEp(ep);
     if (ep->getDHCPv4Config()) {
         ADDF(Bldr()
-             .table(GRP).priority(200).udp().in(access)
+             .table(GRP).priority(ep->getAccessIfaceVlan() ? 201 : 200).udp().in(access)
              .isVlan(ep->getAccessIfaceVlan().get())
              .isTpSrc(68).isTpDst(67)
              .actions()
@@ -348,7 +348,7 @@ void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
     }
     if (ep->getDHCPv6Config()) {
         ADDF(Bldr()
-             .table(GRP).priority(200).udp6().in(access)
+             .table(GRP).priority(ep->getAccessIfaceVlan() ? 201 : 200).udp6().in(access)
              .isVlan(ep->getAccessIfaceVlan().get())
              .isTpSrc(546).isTpDst(547)
              .actions()
