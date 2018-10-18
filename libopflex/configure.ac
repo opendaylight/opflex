@@ -22,7 +22,7 @@ dnl 1. the version in AC_INIT
 dnl 2. the libtool version in VERSION_INFO
 
 m4_define([sdk_pversion], 1)
-m4_define([sdk_sversion], 9)
+m4_define([sdk_sversion], 10)
 m4_define([sdk_iversion], 0)
 AC_INIT([libopflex], [sdk_pversion.sdk_sversion.sdk_iversion])
 AC_SUBST(SDK_MARKETNAME, ["OpFlex Framework"])
