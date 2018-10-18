@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "63231d6a_62dc229d",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-18T08:03:37Z",
+      "side": 1,
+      "message": "Can simulated stats be enabled/disabled on the fly or only on an agent restart?",
+      "revId": "f6a1355eeb4971852bca3325b0857530e6a0bca0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2cbac597_a9db016e",
+        "filename": "agent-ovs/lib/EndpointManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 908,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-18T08:03:37Z",
+      "side": 1,
+      "message": "spacing ...add one after for, remove spaces before/after parentheses",
+      "revId": "f6a1355eeb4971852bca3325b0857530e6a0bca0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
