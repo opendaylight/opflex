@@ -32,6 +32,14 @@ module[gbpe]
                 component[prefix=ext-context]
             }
         }
+        dependency[epRetention;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbpe/EndpointRetention;
+                cardinality=many;
+                ]
+        }
     }
 
     # Contains additional context for a flood domain
