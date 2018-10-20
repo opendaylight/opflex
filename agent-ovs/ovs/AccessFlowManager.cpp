@@ -371,10 +371,6 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                     act = CA_ALLOW;
                 }
             }
-            MaskList srcPorts;
-            MaskList dstPorts;
-
-            flowutils::add_port_ranges(*cls, srcPorts, dstPorts);
 
             if (dir == DirectionEnumT::CONST_BIDIRECTIONAL ||
                 dir == DirectionEnumT::CONST_IN) {
@@ -386,7 +382,6 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   OFPUTIL_FF_SEND_FLOW_REM,
                                                   secGrpCookie,
                                                   secGrpSetId, 0,
-                                                  srcPorts, dstPorts,
                                                   secGrpIn);
                 if (act == CA_REFLEX_FWD) {
                     // add reverse entries for reflexive classifier
@@ -398,7 +393,6 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       OFPUTIL_FF_SEND_FLOW_REM,
                                                       0,
                                                       secGrpSetId, 0,
-                                                      srcPorts, dstPorts,
                                                       secGrpOut);
                     flowutils::add_classifier_entries(*cls, CA_REFLEX_REV_ALLOW,
                                                       boost::none,
@@ -408,7 +402,6 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       OFPUTIL_FF_SEND_FLOW_REM,
                                                       secGrpCookie,
                                                       secGrpSetId, 0,
-                                                      srcPorts, dstPorts,
                                                       secGrpOut);
                 }
             }
@@ -422,7 +415,6 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                   OFPUTIL_FF_SEND_FLOW_REM,
                                                   secGrpCookie,
                                                   secGrpSetId, 0,
-                                                  srcPorts, dstPorts,
                                                   secGrpOut);
                 if (act == CA_REFLEX_FWD) {
                     // add reverse entries for reflexive classifier
@@ -434,7 +426,6 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       OFPUTIL_FF_SEND_FLOW_REM,
                                                       0,
                                                       secGrpSetId, 0,
-                                                      srcPorts, dstPorts,
                                                       secGrpIn);
                     flowutils::add_classifier_entries(*cls, CA_REFLEX_REV_ALLOW,
                                                       remoteSubs,
@@ -444,7 +435,6 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                                                       OFPUTIL_FF_SEND_FLOW_REM,
                                                       secGrpCookie,
                                                       secGrpSetId, 0,
-                                                      srcPorts, dstPorts,
                                                       secGrpIn);
                 }
             }
