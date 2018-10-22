@@ -104,9 +104,9 @@ public:
             ->setOrder(25).setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
-            ->addGbpRuleToActionRSrc(action1->getURI().toString());
+            ->addGbpRuleToActionRSrcAllowDenyAction(action1->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
-            ->addGbpRuleToActionRSrc(action2->getURI().toString());
+            ->addGbpRuleToActionRSrcAllowDenyAction(action2->getURI().toString());
 
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule4")
             ->setOrder(5).setDirection(DirectionEnumT::CONST_IN)
