@@ -19,6 +19,15 @@ module[gbp]
                 component[prefix=ext-domain; member=name]
             }
         }
+
+        dependency[vrf;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/RoutingDomain;
+                cardinality=many;
+              ]
+        }
     }
 
     # An external network that can provide or consume contracts
