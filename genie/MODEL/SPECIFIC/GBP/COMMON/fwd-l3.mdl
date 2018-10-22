@@ -17,6 +17,14 @@ module[gbp]
         const[name=both; value=2]
     }
 
+    type[L3IfType; super=scalar/Enum8]
+    {
+        const[name=unspec; value=0]
+        const[name=subIntf; value=1]
+        const[name=l3Port; value=2]
+        const[name=extSvi; value=3]
+    }
+
     class[RoutingDomain;
           super=gbp/L3BehavioralGroup;
           concrete]
@@ -59,6 +67,85 @@ module[gbp]
 
         # prefix length for the subnet
         member[prefixLen; type=scalar/UInt8]
+    }
+
+    class[BaseNextHop;
+          super=gbp/BehavioralGroup;
+          abstract]
+    {
+        # Nexthop address
+        member[ip; type=address/IP]
+        member[mac; type=address/MAC]
+    }
+
+    class[StaticNextHop;
+          super=gbp/BaseNextHop;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbp/StaticRoute]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=ip]
+            }
+        }
+    }
+
+    class[RemoteNextHop;
+          super=gbp/BaseNextHop;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbp/RemoteRoute]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=ip]
+            }
+        }
+    }
+
+    class[BaseRoute;
+          super=gbp/BehavioralGroup;
+          abstract]
+    {
+        # The network address
+        member[address; type=address/IP]
+
+        # prefix length for the subnet
+        member[prefixLen; type=scalar/UInt8]
+    }
+
+    class[StaticRoute;
+          super=gbp/BaseRoute;
+          concrete]
+    {
+        dependency[vrf;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/RoutingDomain;
+               cardinality=single;
+               ]
+        }
+        contained
+        {
+            parent[class=gbp/ExternalNode]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
     }
 
     class[Subnet;
@@ -110,4 +197,196 @@ module[gbp]
             }
         }
     }
+
+    class[ExternalNodeProfile;
+          super=gbp/BehavioralGroup;
+          concrete]
+    {
+        contained
+        {
+            parent[class=policy/Space]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+    }
+
+    class[ExternalInterfaceProfile;
+          super=gbp/BehavioralGroup;
+          concrete]
+    {
+        contained
+        {
+            parent[class=policy/Space]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+    }
+
+    class[ExternalL3BridgeDomain;
+          super=gbp/L3BehavioralGroup;
+          concrete]
+    {
+        contained
+        {
+            parent[class=policy/Space]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=extl3bd;
+                          member=name]
+            }
+        }
+    }
+
+    class[BgpPeerProfile;
+          super=gbp/BaseSubnet;
+          concrete]
+    {
+        member[asn; type=scalar/UInt32]
+        contained
+        {
+            parent[class=gbp/ExternalInterfaceProfile]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+    }
+
+    class[ExternalInterface;
+          super=gbp/BehavioralGroup;
+          concrete]
+    {
+        # Path uuid
+        member[uuid; type=reference/UUID]
+
+        # The network address
+        member[address; type=address/IP]
+
+        # prefix length for the subnet
+        member[prefixLen; type=scalar/UInt8]
+
+        # mac address
+        member[mac; type=address/MAC]
+
+        # interfaceType
+        member[ifInstT; type=gbp/L3IfType]
+
+        contained
+        {
+            parent[class=policy/Space]
+        }
+
+        dependency[extl3bd;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/ExternalL3BridgeDomain;
+               cardinality=single;
+              ]
+        }
+
+        dependency[l3out;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/L3ExternalDomain;
+               cardinality=single;
+              ]
+        }
+
+        dependency[l3outNP;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/ExternalNodeProfile;
+               cardinality=single;
+              ]
+        }
+
+        dependency[l3outIP;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/ExternalInterfaceProfile;
+               cardinality=single;
+              ]
+        }
+
+        dependency[bgppeerpfx;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/BgpPeerProfile;
+               cardinality=single;
+              ]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ext-path;member=uuid]
+            }
+        }
+    }
+
+    class[ExternalNode;
+          super=gbp/BehavioralGroup;
+          concrete]
+    {
+        # Path uuid
+        member[uuid; type=reference/UUID]
+
+        # rtrId
+        member[rtrId; type=address/IP]
+
+        contained
+        {
+            parent[class=policy/Space]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=ext-node;member=uuid]
+            }
+        }
+    }
+
+    class[RemoteRoute;
+          super=gbp/BaseRoute;
+          concrete]
+    {
+        contained
+        {
+            parent[class=gbp/RoutingDomain]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=name]
+            }
+        }
+
+    }
+
 }
