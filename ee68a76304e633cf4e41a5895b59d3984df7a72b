@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b3bf68cb_55cb47ed",
+        "filename": "agent-ovs/lib/include/opflexagent/test/ModbFixture.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-22T19:20:43Z",
+      "side": 1,
+      "message": "This might be a valid change but it shouldn\u0027t be part of this changeset",
+      "revId": "ee68a76304e633cf4e41a5895b59d3984df7a72b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4e12e1e6_2e528db2",
+        "filename": "agent-ovs/lib/test/PolicyManager_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-22T19:20:43Z",
+      "side": 1,
+      "message": "Same comment. These might be valid changes but shouldn\u0027t be part of this changeset",
+      "revId": "ee68a76304e633cf4e41a5895b59d3984df7a72b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ea3ff7bf_bf896e7c",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-22T19:20:43Z",
+      "side": 1,
+      "message": "Isn\u0027t this exactly the same as the classid defined above?\n\nAlso the ClassId type is meant to be used instead of PcTag",
+      "revId": "ee68a76304e633cf4e41a5895b59d3984df7a72b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
