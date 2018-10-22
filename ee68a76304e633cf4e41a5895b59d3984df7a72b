@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1c8ce75d_e5780dc6",
+        "filename": "agent-ovs/lib/include/opflexagent/test/ModbFixture.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-22T22:13:22Z",
+      "side": 1,
+      "message": "This is a result of the model change for the action object. So action model should go with these changes.",
+      "parentUuid": "b3bf68cb_55cb47ed",
+      "revId": "ee68a76304e633cf4e41a5895b59d3984df7a72b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4e12e1e6_2e528db2",
         "filename": "agent-ovs/lib/test/PolicyManager_test.cpp",
         "patchSetId": 1
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "57b11ede_499f955b",
+        "filename": "agent-ovs/lib/test/PolicyManager_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-22T22:13:22Z",
+      "side": 1,
+      "message": "Same response as previous.",
+      "parentUuid": "4e12e1e6_2e528db2",
+      "revId": "ee68a76304e633cf4e41a5895b59d3984df7a72b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ea3ff7bf_bf896e7c",
         "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
         "patchSetId": 1
@@ -47,6 +83,24 @@
       "writtenOn": "2018-10-22T19:20:43Z",
       "side": 1,
       "message": "Isn\u0027t this exactly the same as the classid defined above?\n\nAlso the ClassId type is meant to be used instead of PcTag",
+      "revId": "ee68a76304e633cf4e41a5895b59d3984df7a72b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d6f12488_20cfc1f5",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-22T22:13:22Z",
+      "side": 1,
+      "message": "I was confused with the implementation in IntFlowManager since they dont use this id and use a generated class Id. I agree with you, will remove this change.",
+      "parentUuid": "ea3ff7bf_bf896e7c",
       "revId": "ee68a76304e633cf4e41a5895b59d3984df7a72b",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
