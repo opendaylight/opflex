@@ -1,6 +1,7 @@
 module[gbpe]
 {
     type[ClassId; super=scalar/UInt32]
+    type[PcTag; super=scalar/UInt32]
     type[EncapType; super=scalar/Enum8]
     {
         const[name=unknown; value=0]
@@ -10,6 +11,7 @@ module[gbpe]
     }
     type[EncapId; super=scalar/UInt32]
 
+
     # represents a set of extensions that specify specific identifiers
     # used by the data plane of the wire
     class[InstContext;
@@ -17,6 +19,7 @@ module[gbpe]
           concrete]
     {
         member[classid; type=gbpe/ClassId]
+        member[sclass; type=gbpe/PcTag]
         member[encapId; type=gbpe/EncapId]
         member[multicastGroupIP; type=address/IP]
         contained
@@ -24,6 +27,8 @@ module[gbpe]
             parent[class=gbp/EpGroup]
             parent[class=gbp/BridgeDomain]
             parent[class=gbp/RoutingDomain]
+            parent[class=gbp/ExternalL3BridgeDomain]
+            parent[class=gbp/L3ExternalNetwork]
         }
         named
         {
