@@ -454,4 +454,81 @@ module[inv]
                 ]
         }
     }
+
+     # Container for non-local endpoint inventory
+    class[BounceEndpointInventory;
+          super=policy/Definition;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/Universe]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+            }
+        }
+    }
+
+    class[BounceIp;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/BounceInventoryEp]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=ip]
+            }
+        }
+
+        # An IP address
+        member[ip; type=address/IP]
+    }
+
+    # an endpoint with network identifiers
+    class[BounceInventoryEp;
+          super=inv/InventoryEp;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=inv/BounceEndpointInventory]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
+        # vnid of the routing-domain
+        member[rdVnid; type=gbpe/EncapId]
+
+        # vnid of the bridge-domain
+        member[bdVnid; type=gbpe/EncapId]
+
+        # vnid of the endpoint-group
+        member[epgVnid; type=gbpe/EncapId]
+
+        # mac address of the end-point
+        member[mac; type=address/MAC]
+
+        # Next hop remote tunnel endpoint
+        member[nextHopTunnel; type=address/IP]
+    }
+
 }
