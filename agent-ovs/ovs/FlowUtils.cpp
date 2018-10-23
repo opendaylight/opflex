@@ -130,18 +130,8 @@ void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
     ovs_be64 ckbe = ovs_htonll(cookie);
     MaskList srcPorts;
     MaskList dstPorts;
-    if (clsfr.getProt(0) == 1 &&
-        (clsfr.isIcmpTypeSet() || clsfr.isIcmpCodeSet())) {
-        if (clsfr.isIcmpTypeSet()) {
-            srcPorts.push_back(Mask(clsfr.getIcmpType(0), ~0));
-        }
-        if (clsfr.isIcmpCodeSet()) {
-            dstPorts.push_back(Mask(clsfr.getIcmpCode(0), ~0));
-        }
-    } else {
-        RangeMask::getMasks(clsfr.getSFromPort(), clsfr.getSToPort(), srcPorts);
-        RangeMask::getMasks(clsfr.getDFromPort(), clsfr.getDToPort(), dstPorts);
-    }
+    RangeMask::getMasks(clsfr.getSFromPort(), clsfr.getSToPort(), srcPorts);
+    RangeMask::getMasks(clsfr.getDFromPort(), clsfr.getDToPort(), dstPorts);
 
     /* Add a "ignore" mask to empty ranges - makes the loop later easy */
     if (srcPorts.empty()) {
