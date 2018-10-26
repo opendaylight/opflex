@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "397692f0_1f788b45",
+        "filename": "genie/MODEL/SPECIFIC/EPR/universe.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-26T22:14:39Z",
+      "side": 1,
+      "message": "ok",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "47b57748_910c6f55",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l2.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-26T22:14:39Z",
+      "side": 1,
+      "message": "OK but can we use hwproxy instead of proxy? That matches what the AVE team used for this mode and makes it easier for them to migrate",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "561e3baa_5f25674e",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-26T22:14:39Z",
+      "side": 1,
+      "message": "What is ExternalNode contained by?",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6d352862_cfa0bfd4",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 370,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-26T22:14:39Z",
+      "side": 1,
+      "message": "quotes around ext-node aren\u0027t needed",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
