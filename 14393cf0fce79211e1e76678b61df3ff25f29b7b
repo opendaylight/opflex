@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "01b745d2_19b5ab8f",
+        "filename": "genie/MODEL/SPECIFIC/EPR/ep.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-26T23:01:41Z",
+      "side": 1,
+      "message": "OK but remove tab/spaces on line 72/74",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "397692f0_1f788b45",
         "filename": "genie/MODEL/SPECIFIC/EPR/universe.mdl",
         "patchSetId": 2
