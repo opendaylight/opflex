@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f66d6647_6e489128",
+        "filename": "genie/MODEL/SPECIFIC/EPR/ep.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-29T15:45:24Z",
+      "side": 1,
+      "message": "ok will remove",
+      "parentUuid": "01b745d2_19b5ab8f",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "397692f0_1f788b45",
         "filename": "genie/MODEL/SPECIFIC/EPR/universe.mdl",
         "patchSetId": 2
@@ -53,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "46631418_8c4ff9d8",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l2.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-29T15:45:24Z",
+      "side": 1,
+      "message": "Sure will do. Thanks.",
+      "parentUuid": "47b57748_910c6f55",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "561e3baa_5f25674e",
         "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
         "patchSetId": 2
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "52836229_1d924d51",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-29T15:45:24Z",
+      "side": 1,
+      "message": "External Node is contained in the Node profile in the APIC model. Will make it contained in Policy/Space. THanks",
+      "parentUuid": "561e3baa_5f25674e",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6d352862_cfa0bfd4",
         "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
         "patchSetId": 2
@@ -81,6 +135,24 @@
       "writtenOn": "2018-10-26T22:14:39Z",
       "side": 1,
       "message": "quotes around ext-node aren\u0027t needed",
+      "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e10c5e2d_351dac38",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 370,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-29T15:45:24Z",
+      "side": 1,
+      "message": "Ok.",
+      "parentUuid": "6d352862_cfa0bfd4",
       "revId": "14393cf0fce79211e1e76678b61df3ff25f29b7b",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
