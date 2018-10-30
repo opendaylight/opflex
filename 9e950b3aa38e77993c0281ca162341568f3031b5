@@ -22,6 +22,30 @@
       "revId": "9e950b3aa38e77993c0281ca162341568f3031b5",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85452e06_9ce9a416",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-30T02:52:58Z",
+      "side": 1,
+      "message": "Yes because the current code hardcodes lib/opflex-agent-ovs/ids as the default not lib/opflex-agent-ovs/openvswitch/ids.\n\nAs it is if you don\u0027t override the default in the conf file nothing works.",
+      "parentUuid": "e8d6e1ab_7ddce4e7",
+      "range": {
+        "startLine": 11,
+        "startChar": 46,
+        "endLine": 11,
+        "endChar": 48
+      },
+      "revId": "9e950b3aa38e77993c0281ca162341568f3031b5",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
