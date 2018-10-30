@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "14e2a608_11aa49d4",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 3
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-30T23:22:38Z",
+      "side": 1,
+      "message": "Why aren\u0027t these (rdVnid, bdVnid, epgVnid) relations to GbpRoutingDomain, GbpBridgeDomain and GbpEpGroup like RemoteInventoryEp",
+      "revId": "7b36907d656fd79fa7eb874738c4fa73349d2070",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
