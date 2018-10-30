@@ -16,6 +16,24 @@
       "revId": "7b36907d656fd79fa7eb874738c4fa73349d2070",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b6a5b3e9_20590d3c",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 3
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-30T23:51:51Z",
+      "side": 1,
+      "message": "This bounce object is different in that these are the attributes you would get from the coop MTS message.This is not coming from policy, so we want to keep the message verbatim and consume it in datapath.",
+      "parentUuid": "14e2a608_11aa49d4",
+      "revId": "7b36907d656fd79fa7eb874738c4fa73349d2070",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
