@@ -125,8 +125,8 @@ install -p -D -m 0644 \
     $RPM_BUILD_ROOT%{_sysctldir}/90-opflex-agent-sysctl.conf
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/endpoints
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/services
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/mcast
-mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/openvswitch/ids
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/opflex-agent-ovs/conf.d
 
 %check
@@ -202,6 +202,7 @@ getent group opflexep >/dev/null || groupadd -r opflexep
 %dir %attr(0775, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/endpoints
 %dir %attr(0775, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/services
 %dir %{_localstatedir}/lib/opflex-agent-ovs/mcast
+%dir %{_localstatedir}/lib/opflex-agent-ovs/ids
 
 %files -n agent-ovs
 
@@ -209,7 +210,6 @@ getent group opflexep >/dev/null || groupadd -r opflexep
 %defattr(-,root,root)
 %{_libdir}/libopflex_agent_renderer_openvswitch.so*
 %config(noreplace) %{_sysconfdir}/opflex-agent-ovs/plugins.conf.d/plugin-renderer-openvswitch.conf
-%dir %{_localstatedir}/lib/opflex-agent-ovs/openvswitch/ids
 %{_unitdir}/opflex-agent.service.d/10-opflex-agent-openvswitch.conf
 
 %files lib
