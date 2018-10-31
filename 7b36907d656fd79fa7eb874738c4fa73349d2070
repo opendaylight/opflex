@@ -52,6 +52,24 @@
       "revId": "7b36907d656fd79fa7eb874738c4fa73349d2070",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c818e3af_79884101",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 3
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-10-31T06:25:09Z",
+      "side": 1,
+      "message": "Ideally this COOP message should not have to be represented an object, but we don\u0027t have a message in opflex without an object. vlan encap is southbound, within the fabric it\u0027s always ivxlan. Coop is telling us what vnid to use to bounce the packet back to the fabric.",
+      "parentUuid": "8a0fa0e7_63be3e53",
+      "revId": "7b36907d656fd79fa7eb874738c4fa73349d2070",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
