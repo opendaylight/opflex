@@ -31,13 +31,6 @@ namespace {
 
     bool const SSL_ERROR = true;
 
-    char const * safe_strerror(int error_no) {
-        if ((error_no >= sys_nerr) || (error_no < 0)) {
-            return "Unknown error";
-        }
-        return sys_errlist[errno];
-    }
-
 }
 
 #define                                                           \
@@ -960,12 +953,15 @@ size_t ZeroCopyOpenSSL::Ctx::addCaFileOrDirectory(
 
     struct stat s;
     if (stat(caFileOrDirectory, &s)) {
-
+        char buf[256];
+        if (0 != strerror_r(errno, buf, sizeof(buf))) {
+            buf[0] = '\0';
+        }
         LOG(ERROR)
             << "Error ["
             << errno
             << "] (\""
-            << safe_strerror(errno)
+            << buf
             << "\") on path \""
             << caFileOrDirectory
             << "\" does not exist"
