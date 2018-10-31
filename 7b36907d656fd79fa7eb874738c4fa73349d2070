@@ -34,6 +34,24 @@
       "revId": "7b36907d656fd79fa7eb874738c4fa73349d2070",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8a0fa0e7_63be3e53",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 3
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-10-31T06:18:14Z",
+      "side": 1,
+      "message": "I don\u0027t think the interface we get from coop should dictate this.\nAlso what if we wanted to support bounce EPs with VLAN encap?",
+      "parentUuid": "b6a5b3e9_20590d3c",
+      "revId": "7b36907d656fd79fa7eb874738c4fa73349d2070",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
