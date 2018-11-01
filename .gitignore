@@ -6,3 +6,7 @@ genie.iml
 .project
 .cproject
 .settings*
+
+# Sphinx documentation
+.tox/
+docs/_build/
