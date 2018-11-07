@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f33f5bba_6d01985a",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 7
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-11-07T19:13:20Z",
+      "side": 1,
+      "message": "I believe this is incorrect. An EndpointRetention policy can be shared by many InstContext instances (but an InstContext can only depend on a single EndpointRetention policy)",
+      "revId": "8cdcbde8797c8b8e6d04dc9bb37c079ef9ea49f3",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
