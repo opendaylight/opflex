@@ -48,7 +48,7 @@ dnl     then increment age.
 dnl  6. If any interfaces have been removed since the last public
 dnl     release, then set age to 0.
 
-AC_SUBST(VERSION_INFO, [7:0:7])
+AC_SUBST(VERSION_INFO, [10:0:10])
 
 dnl ---------------------------------------------------------------
 dnl Initialization
