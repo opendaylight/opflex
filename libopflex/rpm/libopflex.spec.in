@@ -22,7 +22,7 @@ URL: https://wiki.opendaylight.org/view/OpFlex:Main
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 Source: %{name}-%{version}.tar.gz
-Requires: libuv >= 1.0
+Requires: libuv >= 1.8.0
 Requires: openssl >= 1.0.1
 BuildRequires: libuv-devel
 BuildRequires: openssl-devel
@@ -45,7 +45,7 @@ Group: Development/Libraries
 Requires: %{name} = %{epoch}:%{version}-%{release}
 Requires: pkgconfig
 Requires: openssl-devel >= 1.0.1
-Requires: libuv-devel >= 1.0
+Requires: libuv-devel >= 1.8.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Provides: libopflex-static = %{version}-%{release}

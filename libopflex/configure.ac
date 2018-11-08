@@ -141,8 +141,8 @@ AX_BOOST_BASE([1.49.0], [], AC_MSG_ERROR([Boost is required]))
 AX_BOOST_UNIT_TEST_FRAMEWORK
 
 dnl Package-config dependencies
-PKG_CHECK_MODULES([UV], [libuv >= 0.11.0])
-PKG_CHECK_MODULES([OPENSSL], [openssl >= 0.9.8])
+PKG_CHECK_MODULES([UV], [libuv >= 1.8.0])
+PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1])
 PKG_CHECK_MODULES([RAPIDJSON], [RapidJSON >= 1.0])
 
 dnl Older versions of autoconf don't define docdir
