@@ -59,6 +59,7 @@ struct CommsTests {
             << "global teardown\n"
         ;
 
+#if (OPENSSL_VERSION_NUMBER < 10002000L)
         /* this is the reason number 1232342985473894512321837423rd why OpenSSL
          * is a giant pile of ________
          *
@@ -68,11 +69,16 @@ struct CommsTests {
                 SSL_COMP_get_compression_methods(),
                 free_comp_methods
         );
+#elif (OPENSSL_VERSION_NUMBER < 10100000L)
+        SSL_COMP_free_compression_methods();
+#endif
     }
 
+#if (OPENSSL_VERSION_NUMBER < 10002000L)
     static void free_comp_methods(SSL_COMP * p) {
         OPENSSL_free(p);
     }
+#endif
 
     /* potentially subject to static initialization order fiasco */
     static opflex::logging::StdOutLogHandler commsTestLogger_;
@@ -145,7 +151,9 @@ class CommsFixture {
         uv_close((uv_handle_t *)&prepare_, down_on_close);
 
 #ifdef YAJR_HAS_OPENSSL
-        ERR_remove_state(0); // later equivalent to ERR_remove_thread_state(NULL)
+#if (OPENSSL_VERSION_NUMBER > 10000000L && OPENSSL_VERSION_NUMBER < 11000000L)
+        ERR_remove_thread_state(NULL);
+#endif
         CONF_modules_unload(1);
         ERR_free_strings();
         EVP_cleanup();
@@ -299,32 +307,6 @@ class CommsFixture {
 
         return std::make_pair(final_peers, transient_peers);
     }
-
-#if 0
-    static void wait_for_zero_peers_cb(uv_idle_t * handle) {
-
-        static size_t old_count;
-        size_t count = internal::Peer::getCounter();
-
-        if (count) {
-            if (old_count != count) {
-                LOG(DEBUG)
-                    << count
-                    << " peers left"
-                ;
-            }
-            old_count = count;
-            return;
-        }
-        LOG(DEBUG)
-            << "no peers left"
-        ;
-
-        uv_idle_stop(handle);
-        uv_stop(CommsFixture::current_loop);
-
-    }
-#endif
 
     static void dump_peer_db_brief() {
 
@@ -815,44 +797,6 @@ static void pc_non_existent(void) {
             ->size(), 0);
 
 }
-
-#if 0
-static void pc_non_existent(void) {
-
-    LOG(DEBUG);
-
-    /* non-empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 1);
-
-    /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 0);
-
-    /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
-
-}
-#endif
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_host, CommsFixture ) {
 

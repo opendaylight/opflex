@@ -755,7 +755,9 @@ void ZeroCopyOpenSSL::finiOpenSSL() {
     }
 
     CONF_modules_free();
-    ERR_remove_state(0);
+#if (OPENSSL_VERSION_NUMBER > 10000000L && OPENSSL_VERSION_NUMBER < 10100000L)
+    ERR_remove_thread_state(NULL);
+#endif
     ENGINE_cleanup();
     CONF_modules_unload(1);
     ERR_free_strings();
