@@ -65,6 +65,10 @@ module[gbp]
         # interfaces in the flood domain, and perform traditional MAC
         # learning in the flood domain.
         const[name=flood; value=1]
+
+        # Proxy mode, send L2 and L3 unknown unicast packets to the
+        # corresponding spine proxy address.
+        const[name=hwproxy; value=2]
     }
 
     type[BcastFloodMode; super=scalar/Enum8]
