@@ -35,6 +35,7 @@ using rapidjson::Writer;
 using modb::mointernal::StoreClient;
 using ofcore::OFConstants;
 using test::MockOpflexServer;
+typedef OFConstants::OpflexTransportModeState AgentTransportState;
 
 void MockServerHandler::connected() {
 
@@ -58,10 +59,11 @@ public:
                     const std::string& domain_,
                     const optional<std::string>& your_location_,
                     const uint8_t roles_,
-                    test::MockOpflexServer::peer_vec_t peers_)
+                    test::MockOpflexServer::peer_vec_t peers_,
+                    const std::vector<std::string>& proxies_)
         : OpflexMessage("send_identity", RESPONSE, &id),
           name(name_), domain(domain_), your_location(your_location_),
-          roles(roles_), peers(peers_) {}
+          roles(roles_), peers(peers_), proxies(proxies_) {}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
@@ -82,9 +84,28 @@ public:
         writer.String(name.c_str());
         writer.String("domain");
         writer.String(domain.c_str());
-        if (your_location) {
+        if (your_location || (proxies.size() != 0)) {
             writer.String("your_location");
+            writer.StartObject();
+            writer.String("location");
             writer.String(your_location.get().c_str());
+            int i = 0;
+            for(const std::string& proxy: proxies) {
+                switch(i) {
+                    case 0:
+                        writer.String("proxy_v4");
+                        break;
+                    case 1:
+                        writer.String("proxy_v6");
+                        break;
+                    case 2:
+                        writer.String("proxy_mac");
+                        break;
+                }
+                writer.String(proxy.c_str());
+                i++;
+            }
+            writer.EndObject();
         }
         writer.String("my_role");
         writer.StartArray();
@@ -127,6 +148,7 @@ private:
     optional<std::string> your_location;
     uint8_t roles;
     test::MockOpflexServer::peer_vec_t peers;
+    std::vector<std::string> proxies;
 };
 
 class PolicyResolveRes : public OpflexMessage {
@@ -234,7 +256,8 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
         new SendIdentityRes(id, sb.str(), "testdomain",
                             std::string("location_string"),
                             server->getRoles(),
-                            server->getPeers());
+                            server->getPeers(),
+                            server->getProxies());
     getConnection()->sendMessage(res, true);
     ready();
 }
