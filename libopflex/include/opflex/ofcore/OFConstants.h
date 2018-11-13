@@ -56,6 +56,38 @@ public:
          */
         OBSERVER = 8
     };
+
+        /**
+         * Set of possible element modes. Forwarding model is different in
+         * each mode.
+         */
+    enum OpflexElementMode {
+        /**
+         * Element is serving a renderer that is operating in stitched mode.
+         * Unknown packets are sent to leaf proxy with vxlan encap.
+         */
+        STITCHED_MODE = 0,
+        /**
+         * Element is serving a renderer that is operating in transport mode.
+         * Unknown packets are sent to spine proxy with ivxlan encap.
+         */
+        TRANSPORT_MODE = 1,
+    };
+        /**
+         * Set of possible element states in transport mode.
+         */
+    enum OpflexTransportModeState {
+        /**
+         * Element is looking for proxy addresses to use in transport mode.
+         * Peer is expected to send proxy addresses.
+         */
+        SEEKING_PROXIES = 0,
+        /**
+         * Element is able to forward in transport mode.
+         * It is a policy client from opflex perspective.
+         */
+        POLICY_CLIENT = 1,
+    };
 };
 
 /** @} ofcore */
