@@ -292,6 +292,26 @@ public:
     boost::optional<uint32_t> getVnidForGroup(const opflex::modb::URI& eg);
 
     /**
+     * Get the virtual-network identifier (vnid) associated with the
+     * specified endpoint group's bridge domain.
+     *
+     * @param eg the URI for the endpoint group
+     * @return vnid of the group if group is found and its vnid is set,
+     * boost::none otherwise
+     */
+    boost::optional<uint32_t> getBDVnidForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the virtual-network identifier (vnid) associated with the
+     * specified endpoint group's routing domain.
+     *
+     * @param eg the URI for the endpoint group
+     * @return vnid of the group if group is found and its vnid is set,
+     * boost::none otherwise
+     */
+    boost::optional<uint32_t> getRDVnidForGroup(const opflex::modb::URI& eg);
+
+    /**
      * Get the endpoint group associated with the specified identifier
      *
      * @param vnid the VNID to look up
@@ -308,6 +328,50 @@ public:
      */
     boost::optional<std::string>
     getMulticastIPForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the multicast IP group configured for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return Multicast IP for the group if any, boost::none otherwise
+     */
+    boost::optional<std::string>
+    getBDMulticastIPForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the multicast IP group configured for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return Multicast IP for the group if any, boost::none otherwise
+     */
+    boost::optional<std::string>
+    getRDMulticastIPForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the sclass or source pctag for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return sclass for the group if any, boost::none otherwise
+     */
+    boost::optional<uint32_t>
+    getSclassForGroup(const opflex::modb::URI& eg);
+
+
+    /**
+     * Get the L2EPRetention Policy for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return EP retention policy for the epg if any, boost::none otherwise
+     */
+    boost::optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention>>getL2EPRetentionPolicyForGroup(const opflex::modb::URI& eg );
+
+    /**
+     * Get the L3EPRetention Policy for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return EP retention policy for the epg if any, boost::none otherwise
+     */
+    boost::optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention>>getL3EPRetentionPolicyForGroup(const opflex::modb::URI& eg );
 
     /**
      * Check if an endpoint group exists
@@ -448,12 +512,16 @@ private:
     struct GroupState {
         boost::optional<std::shared_ptr<modelgbp::gbp::EpGroup> > epGroup;
         boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instBDContext;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instRDContext;
         boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
         boost::optional<std::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;
         boost::optional<std::shared_ptr<modelgbp::gbp::FloodDomain> > floodDomain;
         boost::optional<std::shared_ptr<modelgbp::gbpe::FloodContext> > floodContext;
         typedef std::unordered_map<opflex::modb::URI,
                                      std::shared_ptr<modelgbp::gbp::Subnet> > subnet_map_t;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention> > l2EpRetPolicy;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention> > l3EpRetPolicy;
         subnet_map_t subnet_map;
     };
 

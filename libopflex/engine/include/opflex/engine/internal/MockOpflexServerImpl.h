@@ -42,6 +42,7 @@ public:
      */
     MockOpflexServerImpl(int port, uint8_t roles,
                          test::MockOpflexServer::peer_vec_t peers,
+                         std::vector<std::string> proxies,
                          const modb::ModelMetadata& md);
     virtual ~MockOpflexServerImpl();
 
@@ -86,6 +87,13 @@ public:
      * @return a vector of peer pairs
      */
     const test::MockOpflexServer::peer_vec_t& getPeers() { return peers; }
+
+    /**
+     * Get the proxies that this server was configured with
+     *
+     * @return a vector of proxies
+     */
+    const std::vector<std::string>& getProxies() { return proxies; }
 
     /**
      * Get the port number that this server was configured with
@@ -140,6 +148,8 @@ private:
     uint8_t roles;
 
     test::MockOpflexServer::peer_vec_t peers;
+
+    std::vector<std::string> proxies;
 
     OpflexListener listener;
 
