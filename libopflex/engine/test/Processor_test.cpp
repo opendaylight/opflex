@@ -90,7 +90,7 @@ public:
         threadManager.stop();
     }
 
-    void testBootstrap(bool ssl);
+    void testBootstrap(bool ssl, bool transport_mode);
 
     ThreadManager threadManager;
     Processor processor;
@@ -114,6 +114,23 @@ public:
     }
 };
 
+class FixtureTransportMode : public BasePFixture {
+public:
+    FixtureTransportMode() {
+        processor.start(OFConstants::OpflexElementMode::TRANSPORT_MODE);
+    }
+};
+
+class SSLFixtureTransportMode : public BasePFixture {
+public:
+    SSLFixtureTransportMode() {
+        processor.enableSSL(SRCDIR"/comms/test/ca.pem",
+                            SRCDIR"/comms/test/server.pem",
+                            "password123", true);
+        processor.start(OFConstants::OpflexElementMode::TRANSPORT_MODE);
+    }
+};
+
 class SyncFixture : public BasePFixture {
 public:
     SyncFixture() {
@@ -129,6 +146,7 @@ public:
     ServerFixture()
         : mockServer(8009, SERVER_ROLES,
                      list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
+                     vector<std::string>(),
                      md) {
         mockServer.start();
         WAIT_FOR(mockServer.getListener().isListening(), 1000);
@@ -211,15 +229,24 @@ static void initServerSSL(MockOpflexServerImpl& server) {
 }
 
 // test bootstrapping of Opflex connection
-void BasePFixture::testBootstrap(bool ssl) {
+void BasePFixture::testBootstrap(bool ssl, bool transport_mode) {
+typedef OFConstants::OpflexTransportModeState AgentState;
+using boost::asio::ip::address_v4;
     MockOpflexServer::peer_t p1 =
         make_pair(SERVER_ROLES, "127.0.0.1:8009");
     MockOpflexServer::peer_t p2 =
         make_pair(SERVER_ROLES, "127.0.0.1:8010");
 
-    MockOpflexServerImpl anycastServer(8011, 0, list_of(p1)(p2), md);
-    MockOpflexServerImpl peer1(8009, SERVER_ROLES, list_of(p1)(p2), md);
-    MockOpflexServerImpl peer2(8010, SERVER_ROLES, list_of(p1)(p2), md);
+    MockOpflexServerImpl anycastServer(8011, 0, list_of(p1)(p2),
+                                       (transport_mode?
+                                       vector<std::string>(
+                                       {"1.1.1.1","2.2.2.2","3.3.3.3"}):
+                                       vector<std::string>()),
+                                       md);
+    MockOpflexServerImpl peer1(8009, SERVER_ROLES, list_of(p1)(p2),
+                               vector<std::string>(), md);
+    MockOpflexServerImpl peer2(8010, SERVER_ROLES, list_of(p1)(p2),
+                               vector<std::string>(), md);
 
     if (ssl) {
         initServerSSL(anycastServer);
@@ -234,6 +261,10 @@ void BasePFixture::testBootstrap(bool ssl) {
     WAIT_FOR(peer1.getListener().isListening(), 1000);
     WAIT_FOR(peer2.getListener().isListening(), 1000);
 
+    if(transport_mode) {
+        BOOST_CHECK_EQUAL(processor.getPool().getTransportModeState(),
+                          AgentState::SEEKING_PROXIES);
+    }
     processor.addPeer(LOCALHOST, 8011);
 
     // client should connect to anycast server, get a list of peers
@@ -242,6 +273,16 @@ void BasePFixture::testBootstrap(bool ssl) {
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8010), 1000);
     WAIT_FOR(processor.getPool().getPeer(LOCALHOST, 8011) == NULL, 1000);
+    if(transport_mode) {
+        BOOST_CHECK_EQUAL(processor.getPool().getTransportModeState(),
+                          AgentState::POLICY_CLIENT);
+        BOOST_CHECK_EQUAL(processor.getPool().getV4Proxy(),
+                          address_v4(0x01010101));
+        BOOST_CHECK_EQUAL(processor.getPool().getV6Proxy(),
+                          address_v4(0x02020202));
+        BOOST_CHECK_EQUAL(processor.getPool().getMacProxy(),
+                          address_v4(0x03030303));
+    }
     WAIT_FOR(PeerStatusListener::READY == peerStatus.statusMap[8009], 1000);
     WAIT_FOR(PeerStatusListener::READY == peerStatus.statusMap[8010], 1000);
     WAIT_FOR(PeerStatusListener::CLOSING == peerStatus.statusMap[8011], 1000);
@@ -262,11 +303,19 @@ void BasePFixture::testBootstrap(bool ssl) {
 }
 
 BOOST_FIXTURE_TEST_CASE( bootstrap, Fixture ) {
-    testBootstrap(false);
+    testBootstrap(false, false);
 }
 
 BOOST_FIXTURE_TEST_CASE( bootstrap_ssl, SSLFixture ) {
-    testBootstrap(true);
+    testBootstrap(true, false);
+}
+
+BOOST_FIXTURE_TEST_CASE( bootstrap_transport, FixtureTransportMode ) {
+    testBootstrap(false, true);
+}
+
+BOOST_FIXTURE_TEST_CASE( bootstrap_ssl_transport, SSLFixtureTransportMode ) {
+    testBootstrap(true, true);
 }
 
 static bool make_flaky_pred(OpflexServerConnection* conn, void* user) {
@@ -374,6 +423,7 @@ BOOST_FIXTURE_TEST_CASE( main_loop_adaptor, SyncFixture ) {
                                     SERVER_ROLES,
                                     list_of(make_pair(SERVER_ROLES,
                                                       LOCALHOST":8009")),
+                                    vector<std::string>(),
                                     md);
     mockServer.start();
 
