@@ -220,6 +220,7 @@ gbp_inspect_LDADD = \
 	$(libmodelgbp_LIBS) \
 	$(BOOST_IOSTREAMS_LIB) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	$(BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
 mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
@@ -309,6 +310,7 @@ mock_server_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	$(BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
 policy_repo_stress_CXXFLAGS = \

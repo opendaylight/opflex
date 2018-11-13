@@ -136,6 +136,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string PLUGINS_RENDERER("plugins.renderer");
     static const std::string RENDERERS("renderers");
     static const std::string RENDERERS_STITCHED_MODE("renderers.stitched-mode");
+    static const std::string RENDERERS_TRANSPORT_MODE("renderers.transport-mode");
     static const std::string RENDERERS_OPENVSWITCH("renderers.openvswitch");
     static const std::string OPFLEX_SIM_STATS("simulate.enabled");
     static const std::string OPFLEX_SIM_STATS_INTERVAL("simulate.update-interval");
@@ -245,11 +246,18 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     }
 
     if (properties.get_child_optional(RENDERERS_OPENVSWITCH) ||
-        properties.get_child_optional(RENDERERS_STITCHED_MODE)) {
+        properties.get_child_optional(RENDERERS_STITCHED_MODE) ||
+        properties.get_child_optional(RENDERERS_TRANSPORT_MODE)) {
         // Special case for backward compatibility: if config attempts
         // to create an openvswitch renderer, load the plugin
         // automatically.
         loadPlugin("libopflex_agent_renderer_openvswitch.so");
+    }
+
+    if(properties.get_child_optional(RENDERERS_TRANSPORT_MODE)) {
+        this->rendererFwdMode = opflex::ofcore::OFConstants::TRANSPORT_MODE;
+    } else {
+        this->rendererFwdMode = opflex::ofcore::OFConstants::STITCHED_MODE;
     }
 
     optional<const ptree&> rendConfig =
@@ -344,6 +352,7 @@ void Agent::start() {
 
     // instantiate the opflex framework
     framework.setModel(modelgbp::getMetadata());
+    framework.setElementMode(this->rendererFwdMode);
     framework.start();
 
     Mutator mutator(framework, "init");
