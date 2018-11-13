@@ -22,6 +22,8 @@
 #include <rapidjson/document.h>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ip/address_v4.hpp>
 
 #include "opflex/engine/Processor.h"
 #include "opflex/engine/internal/OpflexPool.h"
@@ -47,6 +49,10 @@ using modb::mointernal::StoreClient;
 using rapidjson::Value;
 using rapidjson::Writer;
 using ofcore::OFConstants;
+using boost::asio::ip::address_v4;
+
+typedef opflex::ofcore::OFConstants::OpflexElementMode AgentMode;
+typedef opflex::ofcore::OFConstants::OpflexTransportModeState AgentTransportState;
 
 class SendIdentityReq : public OpflexMessage {
 public:
@@ -55,7 +61,8 @@ public:
                     const optional<string>& location_,
                     const uint8_t roles_)
         : OpflexMessage("send_identity", REQUEST),
-          name(name_), domain(domain_), location(location_), roles(roles_) {}
+          name(name_), domain(domain_), location(location_), roles(roles_),
+          mode(mode_) , transport_state(state_){}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
@@ -134,6 +141,30 @@ void OpflexPEHandler::ready() {
     getProcessor()->connectionReady(getConnection());
 }
 
+static bool validateProxyAddress(const Value &val,
+                                 OpflexClientConnection *conn,
+                                 const std::string &peer,
+                                 address_v4 &parsedAddr) {
+    std::string prtStr;
+    if(val.IsString()){
+        boost::system::error_code ec;
+        parsedAddr = address_v4::from_string(val.GetString(), ec);
+        if(!ec && !parsedAddr.is_multicast()) {
+            return true;
+        }
+        prtStr = val.GetString();
+    }
+    if(prtStr.empty()) {
+        prtStr = "not a string";
+    }
+    LOG(ERROR) << "[" << peer << "] "
+               << "vLeaf proxy address "
+               << prtStr
+               << " is not a valid unicast IPv4 address";
+    conn->disconnect();
+    return false;
+}
+
 void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
                                             const Value& payload) {
     getProcessor()->responseReceived(reqId);
@@ -143,13 +174,68 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
     bool foundSelf = false;
 
     OpflexPool::peer_name_set_t peer_set;
+    const std::string &remotePeer = getConnection()->getRemotePeer();
+    bool isTransportMode = (pool.getClientMode() == AgentMode::TRANSPORT_MODE);
+    bool seekingProxies = (pool.getTransportModeState() ==
+                           AgentTransportState::SEEKING_PROXIES);
+    int proxy_count = 0;
 
     if (payload.HasMember("your_location")) {
         const Value& ylocation = payload["your_location"];
         if (ylocation.IsString())
             pool.setLocation(ylocation.GetString());
+        else if (ylocation.IsObject()) {
+            address_v4 addr;
+            Value::ConstMemberIterator itr = ylocation.FindMember("location");
+            if (itr != ylocation.MemberEnd()) {
+                const Value& locv = itr->value;
+                if (locv.IsString())
+                    pool.setLocation(locv.GetString());
+            }
+            if(isTransportMode && seekingProxies) {
+                if ((itr = ylocation.FindMember("proxy_v4"))
+                    != ylocation.MemberEnd()) {
+                    if(!validateProxyAddress(itr->value, conn,
+                                            remotePeer, addr)) {
+                        return;
+                    }
+                    pool.setV4Proxy(addr);
+                    LOG(INFO) << "[ V4Proxy set to " << addr << " ]";
+                    proxy_count++;
+                }
+                if ((itr = ylocation.FindMember("proxy_v6"))
+                    != ylocation.MemberEnd()) {
+                    if(!validateProxyAddress(itr->value, conn,
+                                            remotePeer, addr)) {
+                        return;
+                    }
+                    pool.setV6Proxy(addr);
+                    LOG(INFO) << "[ V6Proxy set to " << addr << " ]";
+                    proxy_count++;
+                }
+                if ((itr = ylocation.FindMember("proxy_mac"))
+                    != ylocation.MemberEnd()) {
+                    if(!validateProxyAddress(itr->value, conn,
+                                            remotePeer, addr)) {
+                        return;
+                    }
+                    pool.setMacProxy(addr);
+                    LOG(INFO) << "[ MacProxy set to " << addr <<
+                                 " ]";
+                    proxy_count++;
+                }
+            }
+        }
     }
-
+    if(isTransportMode && seekingProxies && (proxy_count != 3)) {
+        LOG(ERROR) << "[" << remotePeer << "] "
+                   << "Three proxy addresses not returned in "
+                   << "Identity response for transport mode agent";
+        conn->disconnect();
+        return;
+    } else if(isTransportMode && seekingProxies) {
+        pool.setTransportModeState(AgentTransportState::POLICY_CLIENT);
+    }
     if (payload.HasMember("peers")) {
         const Value& peers = payload["peers"];
         if (!peers.IsArray()) {
