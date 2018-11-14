@@ -16,6 +16,24 @@
       "revId": "f721a857c3d89c338cf6962065b158e89330bd0b",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "87daeb7f_e4c51b8d",
+        "filename": "libopflex/engine/MockServerHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-11-14T20:52:32Z",
+      "side": 1,
+      "message": "Hi Tom, these addresses are coming from the bootstrap physical Leaf after which vLeaf will not have a connection to the physical leaf. We want to make the bootstrap very tight as in not enough information-\u003econnection-teardown. Because later VTORs will not have this information of the local proxies and cannot resolve.",
+      "parentUuid": "f50b68c3_d7121b53",
+      "revId": "f721a857c3d89c338cf6962065b158e89330bd0b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
