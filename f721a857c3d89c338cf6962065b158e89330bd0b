@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f50b68c3_d7121b53",
+        "filename": "libopflex/engine/MockServerHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-11-14T20:05:15Z",
+      "side": 1,
+      "message": "I don\u0027t think proxy_addresses should be returned in the identity response. They should be in a separate policy that gets resolved.",
+      "revId": "f721a857c3d89c338cf6962065b158e89330bd0b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
