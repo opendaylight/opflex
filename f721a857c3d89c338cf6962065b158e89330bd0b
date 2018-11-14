@@ -34,6 +34,24 @@
       "revId": "f721a857c3d89c338cf6962065b158e89330bd0b",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2602994e_db19acaa",
+        "filename": "libopflex/engine/MockServerHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-11-14T21:29:45Z",
+      "side": 1,
+      "message": "https://www.ietf.org/archive/id/draft-smith-opflex-03.txt defines what we can return in an identity response.",
+      "parentUuid": "87daeb7f_e4c51b8d",
+      "revId": "f721a857c3d89c338cf6962065b158e89330bd0b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
