@@ -52,6 +52,24 @@
       "revId": "f721a857c3d89c338cf6962065b158e89330bd0b",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2ec3bdf4_9e33098f",
+        "filename": "libopflex/engine/MockServerHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2018-11-15T00:39:06Z",
+      "side": 1,
+      "message": "So can I ask what is the model you have in mind. Agent connects to pLeaf proxy and resolves the addresses and how does it tell the pLeaf to handover the connection, resolve another policy saying I\u0027m done?",
+      "parentUuid": "2602994e_db19acaa",
+      "revId": "f721a857c3d89c338cf6962065b158e89330bd0b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
