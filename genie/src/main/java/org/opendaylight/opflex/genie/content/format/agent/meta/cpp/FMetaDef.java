@@ -55,20 +55,17 @@ public class FMetaDef
         String lOldRelativePath = aInFnr.getRelativePath();
         String lNewRelativePath = lOldRelativePath + "/src/";
 
-        FileNameRule lFnr = new FileNameRule(
+        return new FileNameRule(
                 lNewRelativePath,
                 null,
                 aInFnr.getFilePrefix(),
                 aInFnr.getFileSuffix(),
                 aInFnr.getFileExtension(),
                 "metadata");
-
-        return lFnr;
     }
 
     public void generate()
     {
-        out.println(0, "#include <boost/assign/list_of.hpp>");
         out.println(0, "#include <" + Config.getProjName() + "/metadata/metadata.hpp>");
         out.println(0, "#include <" + Config.getProjName() + "/dmtree/Root.hpp>");
 
@@ -85,26 +82,28 @@ public class FMetaDef
         out.println(aInIndent, "const opflex::modb::ModelMetadata& getMetadata()");
         out.println(aInIndent, "{");
         out.println(aInIndent + 1, "using namespace opflex::modb;");
-        out.println(aInIndent + 1, "using namespace boost::assign;");
-            out.println(aInIndent + 1, "static const opflex::modb::ModelMetadata metadata(\"" + 
+        out.println(aInIndent + 1, "static const opflex::modb::ModelMetadata metadata(\"" +
                     Config.getProjName() + "\", ");
-            generateClassDefs(aInIndent + 2);
-            out.println(aInIndent + 2, ");");
-            out.println(aInIndent + 1, "return metadata;");
+        generateClassDefs(aInIndent + 2);
+        out.println(aInIndent + 2, ");");
+        out.println(aInIndent + 1, "return metadata;");
         out.println(aInIndent, "}");
     }
 
     private void generateClassDefs(int aInIndent)
     {
-        out.println(aInIndent, "list_of");
+        out.println(aInIndent, "{");
+        boolean lFirst = true;
         for (Item lIt : MClass.getConcreteClasses())
         {
             MClass lClass = (MClass) lIt;
             if (lClass.isConcrete())
             {
-                genMo(aInIndent + 2, lClass);
+                genMo(aInIndent + 2, lClass, lFirst);
+                lFirst = false;
             }
         }
+        out.println(aInIndent, "}");
     }
 
     public static String getClassType(MClass aIn)
@@ -218,40 +217,14 @@ public class FMetaDef
         return lOwners.isEmpty() ? (aIn.isConcrete() ? "default" : "abstract") : lOwners.iterator().next().getLID().getName();
     }
 
-    private void genMo(int aInIndent, MClass aInClass)
+    private void genMo(int aInIndent, MClass aInClass, boolean aInIsFirst)
     {
-        out.println(aInIndent, '(');
-            /**
-            out.println(aInIndent, "// NAME: " + aInClass.getGID().getName());
-            out.println(aInIndent, "// CONT PATHS: " + aInClass.getContainmentPaths());
-            out.println(aInIndent, "// NAMING PATHS: " + aInClass.getNamingPaths());
-            if (aInClass instanceof MRelationshipClass)
-            {
-                out.printIncodeComment(aInIndent + 1, new String[]
-                        {
-                                "RELATIONSHIPS: " + ((MRelationshipClass) aInClass).getRelationships(),
-                                "NAME: " + aInClass.getGID().getName(),
-                                "CONTAINED BY: " + aInClass.getContainedByClasses(true, true),
-                                "SOURCE: " + ((MRelationshipClass) aInClass).getSourceClass().getGID().getName(),
-                                "TARGETS: " + ((MRelationshipClass) aInClass).getTargetClasses(),
-                        });
-            }
-             */
-            out.print(aInIndent + 1, "ClassInfo(" + aInClass.getGID().getId() + ", ");
-
-            // if (aInClass.hasSuperclass())
-            // {
-            //    MClass lSuper = aInClass.getSuperclass();
-            //    out.print(lSuper.getGID().getId() + "/* super: " + lSuper.getGID().getName() + " */, ");
-            // }
-            // else
-            // {
-            //    out.print("0 /* no superclass */, ");
-            // }
-            out.println(getClassType(aInClass) + ", \"" + aInClass.getFullConcatenatedName() + "\", \"" + getOwner(aInClass) + "\",");
-                genProps(aInIndent + 2, aInClass);
-                genNamingProps(aInIndent + 2, aInClass);
-                out.println(aInIndent + 2, ")");
+        out.println(aInIndent, aInIsFirst ? "(" : ",(");
+        out.print(aInIndent + 1, "ClassInfo(" + aInClass.getGID().getId() + ", ");
+        out.println(getClassType(aInClass) + ", \"" + aInClass.getFullConcatenatedName() + "\", \"" + getOwner(aInClass) + "\",");
+        genProps(aInIndent + 2, aInClass);
+        genNamingProps(aInIndent + 2, aInClass);
+        out.println(aInIndent + 2, ')');
         out.println(aInIndent, ')');
     }
 
@@ -261,11 +234,10 @@ public class FMetaDef
     
     private void genProps(int aInIndent, MClass aInClass)
     {
-        //boolean hasDesc = aInClass.hasProps() || aInClass.hasContained();
-        TreeMap<String,MProp> lProps = new TreeMap<String, MProp>();
+        TreeMap<String,MProp> lProps = new TreeMap<>();
         aInClass.findProp(lProps,true);
 
-        TreeMap<Ident,MClass> lConts = new TreeMap<Ident, MClass>();
+        TreeMap<Ident,MClass> lConts = new TreeMap<>();
         aInClass.getContainsClasses(lConts, true, true);//false, true);
 
         if (lProps.size() + lConts.size() == 0)
@@ -274,70 +246,67 @@ public class FMetaDef
         }
         else
         {
-//            int lCount = 0;
-            out.println(aInIndent, "list_of");
+            out.println(aInIndent, "{");
+            boolean lIsFirst = true;
             // HANLDE PROPS
-                for (MProp lProp : lProps.values())
-                {
-                    MType lPropType = lProp.getType(false);
-                    MType lPrimitiveType = lPropType.getBuiltInType();
-                    MTypeHint lHint = lPrimitiveType.getTypeHint();
+            for (MProp lProp : lProps.values())
+            {
+                MType lPropType = lProp.getType(false);
+                MType lPrimitiveType = lPropType.getBuiltInType();
+                MTypeHint lHint = lPrimitiveType.getTypeHint();
 
-                    int lLocalId = lProp.getPropId(aInClass);
+                int lLocalId = lProp.getPropId(aInClass);
 
-                    if (isRelationshipSource(aInClass)) {
-                        if (lProp.getLID().getName().equalsIgnoreCase("targetClass"))
-                            continue;
-                        else if (lProp.getLID().getName().equalsIgnoreCase("targetName")) {
-                            out.println(aInIndent + 1,
-                                        "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"target\", PropertyInfo::REFERENCE, PropertyInfo::SCALAR)) // " + lProp.toString());
-                        }
-                    }
-                    else if (lProp.getLID().getName().equalsIgnoreCase("source") && isRelationshipTarget(aInClass))
-                    {
+                if (isRelationshipSource(aInClass)) {
+                    if (lProp.getLID().getName().equalsIgnoreCase("targetClass"))
+                        continue;
+                    else if (lProp.getLID().getName().equalsIgnoreCase("targetName")) {
                         out.println(aInIndent + 1,
-                                "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"source\", PropertyInfo::REFERENCE, PropertyInfo::SCALAR)) // " + lProp.toString());
-                    }
-                    // TODO
-                    /**else if (isRelationshipResolver(aInClass))
-                    {
-
-                    }
-                     **/
-                    else if (Config.isEnumSupport() &&
-                             (lHint.getInfo() == TypeInfo.ENUM ||
-                              lHint.getInfo() == TypeInfo.BITMASK))
-                    {
-                        out.println(
-                                aInIndent + 1,
-                                "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR,");
-                        genConsts(aInIndent + 2, aInClass, lProp, lPropType);
-                        out.println(
-                                ")) // "
-                                + lProp.toString());
-                    }
-                    else
-                    {
-                        out.println(
-                                aInIndent + 1,
-                                "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR)) // "
-                                + lProp.toString());
+                                    (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"target\", PropertyInfo::REFERENCE, PropertyInfo::SCALAR)) // " + lProp.toString());
+                        lIsFirst = false;
                     }
                 }
+                else if (lProp.getLID().getName().equalsIgnoreCase("source") && isRelationshipTarget(aInClass))
+                {
+                    out.println(aInIndent + 1,
+                                (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"source\", PropertyInfo::REFERENCE, PropertyInfo::SCALAR)) // " + lProp.toString());
+                    lIsFirst = false;
+                }
+                else if (Config.isEnumSupport() &&
+                         (lHint.getInfo() == TypeInfo.ENUM ||
+                          lHint.getInfo() == TypeInfo.BITMASK))
+                {
+                    out.println(
+                        aInIndent + 1,
+                        (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR,");
+                    genConsts(aInIndent + 2, aInClass, lProp, lPropType);
+                    out.println(")) // " + lProp.toString());
+                    lIsFirst = false;
+                }
+                else
+                {
+                    out.println(
+                        aInIndent + 1,
+                        (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR)) // "
+                        + lProp.toString());
+                    lIsFirst = false;
+                }
+            }
 
 
             // HANDLE CONTAINED CLASSES
-                for (MClass lContained : lConts.values())
-                {
-                    out.println(aInIndent + 1, "(PropertyInfo(" + toUnsignedStr(lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
-                }
+            for (MClass lContained : lConts.values())
+            {
+                out.println(aInIndent + 1, (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
+                lIsFirst = false;
+            }
 
-                out.println(aInIndent + 1, ",");
+            out.println(aInIndent + 1, "},");
         }
     }
     private void genConsts(int aInIndent, MClass aInClass, MProp aInProp, MType aInType)
     {
-        Map<String, MConst> lConsts = new TreeMap<String,MConst>();
+        Map<String, MConst> lConsts = new TreeMap<>();
         aInProp.findConst(lConsts, true);
         out.println(aInIndent, "EnumInfo(\"" + aInType.getFullConcatenatedName() + "\",");
 
@@ -355,10 +324,14 @@ public class FMetaDef
                     lCount++;
                     if (1 == lCount)
                     {
-                        out.println(aInIndent + 1, "list_of");
+                        out.println(aInIndent + 1, "{");
                     }
-                    out.println(aInIndent + 3, "(ConstInfo(\"" + lConst.getLID().getName() + "\", " + lConst.getValue().getValue() + ")) // " + lConst);
+                    out.println(aInIndent + 3, (lCount > 1 ? "," : "") + "(ConstInfo(\"" + lConst.getLID().getName() + "\", " + lConst.getValue().getValue() + ")) // " + lConst);
                 }
+            }
+            if (0 < lCount)
+            {
+                out.println(aInIndent + 1, "}");
             }
             if (0 == lCount)
             {
@@ -393,7 +366,8 @@ public class FMetaDef
             }
             else
             {
-                out.println(aInIndent, "list_of // " + lNr);
+                out.println(aInIndent, "{ // " + lNr);
+                boolean lIsFirst = true;
                 for (MNameComponent lIt : lComps)
                 {
                     if (lIt.hasPropName())
@@ -401,12 +375,13 @@ public class FMetaDef
                         MProp lProp = aInClass.findProp(lIt.getPropName(),false);
                         if (null != lProp)
                         {
-                            out.println(aInIndent + 1, "(" + lProp.getPropId(aInClass) + ") //" + lProp + " of name component " + lIt);
+                            out.println(aInIndent + 1, (lIsFirst ? "" : ",") + "(" + lProp.getPropId(aInClass) + ") //" + lProp + " of name component " + lIt);
+                            lIsFirst = false;
                         }
                     }
                 }
+                out.println(aInIndent, "}");
             }
         }
     }
-    //private TreeMap<String, Integer> propIds = new TreeMap<String, Integer>();
 }
