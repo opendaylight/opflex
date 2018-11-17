@@ -210,7 +210,8 @@ opflex_agent_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_SYSTEM_LIB) \
-	libopflex_agent.la
+	libopflex_agent.la \
+	$(libmodelgbp_LIBS)
 
 gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
 gbp_inspect_SOURCES = \
