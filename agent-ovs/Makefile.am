@@ -210,7 +210,8 @@ opflex_agent_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_SYSTEM_LIB) \
-	libopflex_agent.la
+	libopflex_agent.la \
+	$(libmodelgbp_LIBS)
 
 gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
 gbp_inspect_SOURCES = \
@@ -221,7 +222,8 @@ gbp_inspect_LDADD = \
 	$(BOOST_IOSTREAMS_LIB) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
 	$(BOOST_SYSTEM_LIB) \
-	libopflex_agent.la
+	libopflex_agent.la \
+	$(libmodelgbp_LIBS)
 
 mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
 mcast_daemon_SOURCES = \
@@ -230,7 +232,8 @@ mcast_daemon_LDADD = \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	libopflex_agent.la
+	libopflex_agent.la \
+	$(libmodelgbp_LIBS)
 
 TESTS = agent_test
 noinst_PROGRAMS = $(TESTS) integration_test policy_repo_stress
@@ -264,7 +267,8 @@ agent_test_LDADD = \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	libopflex_agent.la
+	libopflex_agent.la \
+	$(libmodelgbp_LIBS)
 
 if RENDERER_OVS
   agent_test_CFLAGS += \
@@ -311,7 +315,8 @@ mock_server_LDADD = \
 	$(libmodelgbp_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
 	$(BOOST_SYSTEM_LIB) \
-	libopflex_agent.la
+	libopflex_agent.la \
+	$(libmodelgbp_LIBS)
 
 policy_repo_stress_CXXFLAGS = \
 	$(libopflex_CFLAGS) \
@@ -323,7 +328,8 @@ policy_repo_stress_LDADD = \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_SYSTEM_LIB) \
-	libopflex_agent.la
+	libopflex_agent.la \
+	$(libmodelgbp_LIBS)
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
 agentconf_DATA = opflex-agent-ovs.conf
@@ -369,7 +375,8 @@ integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 integration_test_LDADD = \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
-	libopflex_agent.la
+	libopflex_agent.la \
+	$(libmodelgbp_LIBS)
 
 if RENDERER_OVS
   integration_test_SOURCES += \
