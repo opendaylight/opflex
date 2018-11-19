@@ -219,13 +219,12 @@ public class FMetaDef
 
     private void genMo(int aInIndent, MClass aInClass, boolean aInIsFirst)
     {
-        out.println(aInIndent, aInIsFirst ? "(" : ",(");
-        out.print(aInIndent + 1, "ClassInfo(" + aInClass.getGID().getId() + ", ");
+        String lPrefix = aInIsFirst ? "" : ",";
+        out.print(aInIndent , lPrefix + "ClassInfo(" + aInClass.getGID().getId() + ", ");
         out.println(getClassType(aInClass) + ", \"" + aInClass.getFullConcatenatedName() + "\", \"" + getOwner(aInClass) + "\",");
-        genProps(aInIndent + 2, aInClass);
-        genNamingProps(aInIndent + 2, aInClass);
-        out.println(aInIndent + 2, ')');
-        out.println(aInIndent, ')');
+        genProps(aInIndent + 1, aInClass);
+        genNamingProps(aInIndent + 1, aInClass);
+        out.println(aInIndent + 1, ')');
     }
 
     private String toUnsignedStr(int aInInt) {

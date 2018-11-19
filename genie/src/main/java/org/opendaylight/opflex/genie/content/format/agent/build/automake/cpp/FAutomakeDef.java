@@ -116,7 +116,7 @@ public class FAutomakeDef
         out.println();
 
         out.println(ainIndent, "lib_LTLIBRARIES = " + aInLibName + ".la");
-        out.println(ainIndent, aInLibName + "_la_CXXFLAGS = -I$(top_srcdir)/include $(libopflex_CFLAGS)");
+        out.println(ainIndent, aInLibName + "_la_CXXFLAGS = -fno-var-tracking-assignments -I$(top_srcdir)/include $(libopflex_CFLAGS)");
         out.println(ainIndent, aInLibName + "_la_SOURCES = src/metadata.cpp");
         out.println(ainIndent, aInLibName + "_la_LIBADD = $(libopflex_LIBS)");
         out.println(ainIndent, aInLibName + "_la_LDFLAGS = -version-info ${VERSION_INFO}");
