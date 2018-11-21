@@ -35,7 +35,12 @@ using yajr::transport::ZeroCopyOpenSSL;
 OpflexPool::OpflexPool(HandlerFactory& factory_,
                        util::ThreadManager& threadManager_)
     : factory(factory_), threadManager(threadManager_),
-      active(false), curHealth(PeerStatusListener::DOWN) {
+      active(false), curHealth(PeerStatusListener::DOWN),
+      client_mode(OFConstants::OpflexElementMode::STITCHED_MODE),
+      transport_state(OFConstants::OpflexTransportModeState::SEEKING_PROXIES),
+      ipv4_proxy(0), ipv6_proxy(0),
+      mac_proxy(0)
+{
     uv_mutex_init(&conn_mutex);
     uv_key_create(&conn_mutex_key);
 }
