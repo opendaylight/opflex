@@ -603,7 +603,8 @@ static void flowsProxyDiscovery(FlowEntryList& el,
                                 const uint8_t* matchSourceMac,
                                 uint32_t tunPort,
                                 IntFlowManager::EncapType encapType,
-                                bool directDelivery = false) {
+                                bool directDelivery = false,
+                                uint32_t dropInPort = OFPP_NONE) {
     if (ipAddr.is_v4()) {
         if (tunPort != OFPP_NONE &&
             encapType != IntFlowManager::ENCAP_NONE) {
@@ -618,11 +619,22 @@ static void flowsProxyDiscovery(FlowEntryList& el,
         }
         {
             FlowBuilder proxyArp;
+            // Match on inPort to ignore this arp (prio + 1)
+            if (dropInPort != OFPP_NONE)
+                proxyArp.priority(priority+1).inPort(dropInPort);
+            else
+                proxyArp.priority(priority);
+
             if (matchSourceMac)
                 proxyArp.ethSrc(matchSourceMac);
-            matchDestArp(proxyArp.priority(priority), ipAddr, bdId, rdId);
-            actionArpReply(proxyArp, macAddr, ipAddr)
-                .build(el);
+            matchDestArp(proxyArp, ipAddr, bdId, rdId);
+
+            // Drop the arp request on this inPort
+            if (dropInPort != OFPP_NONE)
+                proxyArp.build(el);
+            else
+                actionArpReply(proxyArp, macAddr, ipAddr)
+                    .build(el);
         }
     } else {
         // pass MAC address in flow metadata
@@ -930,6 +942,13 @@ static void flowsEndpointDHCPSource(IntFlowManager& flowMgr,
                            sizeof(serverMac));
                 }
 
+                // Ignore arp requests on uplink interface.
+                flowsProxyDiscovery(elBridgeDst, 51,
+                                    serverIp, serverMac,
+                                    epgVnid, rdId, bdId, false,
+                                    NULL, OFPP_NONE,
+                                    IntFlowManager::ENCAP_NONE,
+                                    false, flowMgr.getTunnelPort());
                 flowsProxyDiscovery(elBridgeDst, 51,
                                     serverIp, serverMac,
                                     epgVnid, rdId, bdId, false,
