@@ -22,6 +22,8 @@
 #include <rapidjson/document.h>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ip/address_v4.hpp>
 
 #include "opflex/engine/Processor.h"
 #include "opflex/engine/internal/OpflexPool.h"
@@ -47,15 +49,23 @@ using modb::mointernal::StoreClient;
 using rapidjson::Value;
 using rapidjson::Writer;
 using ofcore::OFConstants;
+using boost::asio::ip::address_v4;
+
+typedef opflex::ofcore::OFConstants::OpflexElementMode AgentMode;
+typedef opflex::ofcore::OFConstants::OpflexTransportModeState AgentTransportState;
 
 class SendIdentityReq : public OpflexMessage {
 public:
     SendIdentityReq(const string& name_,
                     const string& domain_,
                     const optional<string>& location_,
-                    const uint8_t roles_)
+                    const uint8_t roles_,
+                    AgentMode mode_ = AgentMode::STITCHED_MODE,
+                    AgentTransportState state_ =
+                    AgentTransportState::POLICY_CLIENT)
         : OpflexMessage("send_identity", REQUEST),
-          name(name_), domain(domain_), location(location_), roles(roles_) {}
+          name(name_), domain(domain_), location(location_), roles(roles_),
+          mode(mode_) , transport_state(state_){}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
@@ -94,6 +104,17 @@ public:
         if (roles & OFConstants::OBSERVER)
             writer.String("observer");
         writer.EndArray();
+        /*stitched_mode is implied by default*/
+        if(mode == AgentMode::TRANSPORT_MODE) {
+            writer.String("agent_mode");
+            writer.String("transport_mode");
+            writer.String("agent_transport_mode_state");
+            if(transport_state == AgentTransportState::SEEKING_PROXIES) {
+                writer.String("seeking_proxies");
+            } else if(transport_state == AgentTransportState::POLICY_CLIENT) {
+                writer.String("policy_client");
+            }
+        }
         writer.EndObject();
         writer.EndArray();
 
@@ -105,6 +126,8 @@ private:
     string domain;
     optional<string> location;
     uint8_t roles;
+    AgentMode mode;
+    AgentTransportState transport_state;
 };
 
 void OpflexPEHandler::connected() {
@@ -115,7 +138,9 @@ void OpflexPEHandler::connected() {
         new SendIdentityReq(pool.getName(),
                             pool.getDomain(),
                             pool.getLocation(),
-                            OFConstants::POLICY_ELEMENT);
+                            OFConstants::POLICY_ELEMENT,
+                            pool.getClientMode(),
+                            pool.getTransportModeState());
     getConnection()->sendMessage(req, true);
 }
 
@@ -144,10 +169,67 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
 
     OpflexPool::peer_name_set_t peer_set;
 
+    if((pool.getClientMode() == AgentMode::TRANSPORT_MODE) &&
+       !payload.HasMember("proxy_addresses") &&
+       (pool.getTransportModeState()
+        == AgentTransportState::SEEKING_PROXIES)) {
+        LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                   << "No proxy addresses returned in Identity response";
+        conn->disconnect();
+        return;
+    }
+
     if (payload.HasMember("your_location")) {
         const Value& ylocation = payload["your_location"];
         if (ylocation.IsString())
             pool.setLocation(ylocation.GetString());
+    }
+
+    if (payload.HasMember("proxy_addresses") && (pool.getTransportModeState() ==
+         AgentTransportState::SEEKING_PROXIES)) {
+        const Value& proxies = payload["proxy_addresses"];
+         if (!proxies.IsArray()) {
+            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                       << "Malformed proxies: must be array";
+            conn->disconnect();
+            return;
+        }
+
+        Value::ConstValueIterator it;
+        int i=0;
+        for (it = proxies.Begin(); it != proxies.End(); ++it, i++) {
+            boost::system::error_code ec;
+            address_v4 addr = address_v4::from_string(it->GetString(), ec);
+            if(ec || addr.is_multicast()) {
+                LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                           << "vLeaf proxy address " << it->GetString()
+                           << " is not a valid unicast IPv4 address";
+                conn->disconnect();
+                return;
+            }
+            switch(i) {
+                case 0:
+                    pool.setV4Proxy(addr);
+		    LOG(INFO) << "[ V4Proxy set to " << it->GetString() << " ]";
+                    break;
+                case 1:
+                    pool.setV6Proxy(addr);
+		    LOG(INFO) << "[ V6Proxy set to " << it->GetString() << " ]";
+                    break;
+                case 2:
+                    pool.setMacProxy(addr);
+		    LOG(INFO) << "[ MacProxy set to " << it->GetString() <<
+                                 " ]";
+                    break;
+            }
+        }
+        if(i != 3) {
+            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                       << "Malformed proxies: must have three proxy addresses";
+            conn->disconnect();
+            return;
+        }
+        pool.setTransportModeState(AgentTransportState::POLICY_CLIENT);
     }
 
     if (payload.HasMember("peers")) {
