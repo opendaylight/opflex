@@ -15,6 +15,7 @@
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/L3IfTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
@@ -54,6 +55,9 @@ public:
         bd->addGbpBridgeDomainToNetworkRSrc()
             ->setTargetRoutingDomain(rd->getURI());
 
+        rd->addGbpeInstContext()->setEncapId(2983);
+        bd->addGbpeInstContext()->setEncapId(2984);
+
         subnetseg2 = space->addGbpSubnets("subnetseg2");
         subnetseg2_1 = subnetseg2->addGbpSubnet("subnetseg2_1");
 
@@ -83,11 +87,41 @@ public:
         classifier4 = space->addGbpeL24Classifier("classifier4");
         classifier5 = space->addGbpeL24Classifier("classifier5");
         classifier6 = space->addGbpeL24Classifier("classifier6");
+        classifier7 = space->addGbpeL24Classifier("classifier7");
 
         action1 = space->addGbpAllowDenyAction("action1");
         action1->setAllow(0).setOrder(5);
         action2 = space->addGbpAllowDenyAction("action2");
         action2->setAllow(1).setOrder(10);
+
+        redirDstGrp1 = space->addGbpRedirectDestGroup("redirDstGrp1");
+        redirDst1 = redirDstGrp1->addGbpRedirectDest("redirDst1");
+        redirDst2 = redirDstGrp1->addGbpRedirectDest("redirDst2");
+        opflex::modb::MAC mac1("00:01:02:03:04:05"), mac2("01:02:03:04:05:06");
+        redirDst1->setIp("1.1.1.1");
+        redirDst1->setMac(mac1);
+        redirDst1->addGbpRedirectDestToDomainRSrcBridgeDomain(
+                   bd->getURI().toString());
+        redirDst1->addGbpRedirectDestToDomainRSrcRoutingDomain(
+                   rd->getURI().toString());
+        redirDst2->setIp("2.2.2.2");
+        redirDst2->setMac(mac2);
+        redirDst2->addGbpRedirectDestToDomainRSrcBridgeDomain(
+                   bd->getURI().toString());
+        redirDst2->addGbpRedirectDestToDomainRSrcRoutingDomain(
+                   rd->getURI().toString());
+        action3 = space->addGbpRedirectAction("action3");
+        action3->addGbpRedirectActionToDestGrpRSrc()
+               ->setTargetRedirectDestGroup(redirDstGrp1->getURI());
+        redirDstGrp2 = space->addGbpRedirectDestGroup("redirDstGrp2");
+        redirDst4 = redirDstGrp2->addGbpRedirectDest("redirDst4");
+        opflex::modb::MAC mac3("02:03:04:05:06:07"), mac4("03:04:05:06:07:08");
+        redirDst4->setIp("4.4.4.4");
+        redirDst4->setMac(mac4);
+        redirDst4->addGbpRedirectDestToDomainRSrcBridgeDomain(
+                   bd->getURI().toString());
+        redirDst4->addGbpRedirectDestToDomainRSrcRoutingDomain(
+                   rd->getURI().toString());
 
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
@@ -104,9 +138,9 @@ public:
             ->setOrder(25).setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
-            ->addGbpRuleToActionRSrc(action1->getURI().toString());
+            ->addGbpRuleToActionRSrcAllowDenyAction(action1->getURI().toString());
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule3")
-            ->addGbpRuleToActionRSrc(action2->getURI().toString());
+            ->addGbpRuleToActionRSrcAllowDenyAction(action2->getURI().toString());
 
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule4")
             ->setOrder(5).setDirection(DirectionEnumT::CONST_IN)
@@ -126,6 +160,13 @@ public:
             ->setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
 
+        con4 = space->addGbpContract("contract4");
+        con4->addGbpSubject("4_subject1")->addGbpRule("3_1_rule1")
+        ->setDirection(DirectionEnumT::CONST_IN)
+        .addGbpRuleToClassifierRSrc(classifier7->getURI().toString());
+        con4->addGbpSubject("4_subject1")->addGbpRule("3_1_rule1")
+        ->addGbpRuleToActionRSrcRedirectAction(action3->getURI().toString());
+
         eg1 = space->addGbpEpGroup("group1");
         eg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetFloodDomain(fd->getURI());
@@ -144,6 +185,16 @@ public:
 
         eg3 = space->addGbpEpGroup("group3");
         eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
+
+        eg4 = space->addGbpEpGroup("group4");
+        eg4->addGbpeInstContext()->setEncapId(3867);
+        eg4->addGbpEpGroupToProvContractRSrc(con4->getURI().toString());
+	eg4->addGbpEpGroupToNetworkRSrc()->setTargetBridgeDomain(bd->getURI());
+
+        eg5 = space->addGbpEpGroup("group5");
+        eg5->addGbpeInstContext()->setEncapId(3948);
+        eg5->addGbpEpGroupToConsContractRSrc(con4->getURI().toString());
+	eg5->addGbpEpGroupToNetworkRSrc()->setTargetBridgeDomain(bd->getURI());
 
         bd_ext = common->addGbpBridgeDomain("bd_ext");
         rd_ext = common->addGbpRoutingDomain("rd_ext");
@@ -166,6 +217,34 @@ public:
         l3ext_net->addGbpExternalSubnet("outside")
             ->setAddress("0.0.0.0")
             .setPrefixLen(0);
+
+        rd_ext1 = space->addGbpRoutingDomain("rd_ext1");
+        rd_ext1->addGbpeInstContext()->setEncapId(9999);
+        ext_bd1 = space->addGbpExternalL3BridgeDomain("ext_bd1");
+        ext_bd1->addGbpeInstContext()->setEncapId(1991);
+        ext_bd1->addGbpExternalL3BridgeDomainToVrfRSrc()->
+            setTargetRoutingDomain(rd_ext1->getURI());
+        ext_node1 = space->addGbpExternalNode("ext_node1");
+        ext_int1 = space->addGbpExternalInterface("ext_int1");
+        ext_int1->setAddress("100.100.100.0");
+        ext_int1->setPrefixLen(24);
+        ext_int1->setEncap(100);
+        ext_int1->setIfInstT(L3IfTypeEnumT::CONST_EXTSVI);
+        ext_int1->addGbpExternalInterfaceToExtl3bdRSrc()->
+            setTargetExternalL3BridgeDomain(ext_bd1->getURI());
+        static_route1 = ext_node1->addGbpStaticRoute("static_route1");
+        static_route1->addGbpStaticRouteToVrfRSrc()->
+        setTargetRoutingDomain(rd_ext1->getURI());
+        static_route1->setAddress("101.101.0.0");
+        static_route1->setPrefixLen(16);
+        static_route1->addGbpStaticNextHop("100.100.100.2");
+        static_nh1 = static_route1->addGbpStaticNextHop("100.100.100.3");
+        static_route1->addGbpStaticNextHop("100.100.100.4");
+        remote_route1 = rd_ext1->addGbpRemoteRoute("remote_route1");
+        remote_route1->setAddress("101.101.0.0");
+        remote_route1->setPrefixLen(16);
+        remote_nh2 = remote_route1->addGbpRemoteNextHop("10.10.10.1");
+        remote_nh1 = remote_route1->addGbpRemoteNextHop("10.10.10.2");
         mutator.commit();
     }
 
@@ -197,6 +276,8 @@ public:
     shared_ptr<EpGroup> eg2;
     shared_ptr<EpGroup> eg3;
     shared_ptr<EpGroup> eg_nat;
+    shared_ptr<EpGroup> eg4;
+    shared_ptr<EpGroup> eg5;
 
     shared_ptr<L24Classifier> classifier1;
     shared_ptr<L24Classifier> classifier2;
@@ -204,13 +285,33 @@ public:
     shared_ptr<L24Classifier> classifier4;
     shared_ptr<L24Classifier> classifier5;
     shared_ptr<L24Classifier> classifier6;
+    shared_ptr<L24Classifier> classifier7;
 
+    shared_ptr<RedirectDestGroup> redirDstGrp1;
+    shared_ptr<RedirectDestGroup> redirDstGrp2;
+    shared_ptr<RedirectDest> redirDst1;
+    shared_ptr<RedirectDest> redirDst2;
+    shared_ptr<RedirectDest> redirDst3;
+    shared_ptr<RedirectDest> redirDst4;
+    shared_ptr<RedirectDest> redirDst5;
     shared_ptr<AllowDenyAction> action1;
     shared_ptr<AllowDenyAction> action2;
+    shared_ptr<RedirectAction> action3;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
     shared_ptr<Contract> con3;
+    shared_ptr<Contract> con4;
+
+    shared_ptr<RoutingDomain> rd_ext1;
+    shared_ptr<ExternalInterface> ext_int1;
+    shared_ptr<ExternalL3BridgeDomain> ext_bd1;
+    shared_ptr<ExternalNode> ext_node1;
+    shared_ptr<StaticRoute> static_route1;
+    shared_ptr<StaticNextHop> static_nh1;
+    shared_ptr<RemoteRoute> remote_route1;
+    shared_ptr<RemoteNextHop> remote_nh1;
+    shared_ptr<RemoteNextHop> remote_nh2;
 };
 
 class MockListener : public PolicyListener {
@@ -494,6 +595,97 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
                            DirectionEnumT::CONST_IN));
 }
 
+BOOST_FIXTURE_TEST_CASE( redirect_action_rules, PolicyFixture ) {
+    using boost::asio::ip::address;
+    PolicyManager& pm = agent.getPolicyManager();
+    WAIT_FOR(pm.contractExists(con4->getURI()), 500);
+
+    BOOST_CHECK(pm.contractExists(URI("invalid")) == false);
+
+    PolicyManager::rule_list_t rules;
+    WAIT_FOR_DO(rules.size() == 1, 500,
+                rules.clear(); pm.getContractRules(con4->getURI(), rules));
+    uint8_t hashOpt, hashParam;
+    int ctr=0;
+    std::vector<address> testIps;
+    boost::system::error_code ec;
+    testIps.insert(testIps.end(),address::from_string("1.1.1.1", ec));
+    testIps.insert(testIps.end(),address::from_string("2.2.2.2", ec));
+    testIps.insert(testIps.end(),address::from_string("3.3.3.3", ec));
+    std::vector<opflex::modb::MAC> testMacs;
+    testMacs.insert(testMacs.end(),opflex::modb::MAC("00:01:02:03:04:05"));
+    testMacs.insert(testMacs.end(),opflex::modb::MAC("01:02:03:04:05:06"));
+    testMacs.insert(testMacs.end(),opflex::modb::MAC("02:03:04:05:06:07"));
+    PolicyManager::redir_dest_list_t redirList;
+    PolicyManager::rule_list_t::const_iterator rIter = rules.begin();
+    while(rIter != rules.end()) {
+        BOOST_CHECK(((*rIter)->getL24Classifier()->getURI() ==
+                    classifier7->getURI()) &&
+                    ((*rIter)->getDirection() ==
+                     DirectionEnumT::CONST_IN) &&
+                    ((*rIter)->getRedirect() == true) &&
+                    ((*rIter)->getRedirectDestGrpURI() ==
+                     redirDstGrp1->getURI()));
+        pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
+                               hashOpt,hashParam);
+        WAIT_FOR_DO(redirList.size()==2, 500, redirList.clear();
+			pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
+                               hashOpt,hashParam));
+        for(auto it = redirList.begin(); it != redirList.end(); it++, ctr++){
+            BOOST_CHECK((it->get()->getIp() == testIps[ctr]) &&
+                        (it->get()->getMac() == testMacs[ctr]) &&
+                        (it->get()->getBD()->getURI() == bd->getURI()) &&
+                        (it->get()->getRD()->getURI() == rd->getURI()));
+        }
+        rIter++;
+    }
+
+    /*
+     * Modify Action to RedirectDestGrp
+     */
+    Mutator mutator1(framework, "policyreg");
+    action3->addGbpRedirectActionToDestGrpRSrc()
+	   ->setTargetRedirectDestGroup(redirDstGrp2->getURI());
+    mutator1.commit();
+
+    rules.clear();
+    WAIT_FOR_DO(rules.size() == 1, 2000,
+                rules.clear(); pm.getContractRules(con4->getURI(), rules));
+    rIter = rules.begin();
+    while(rIter != rules.end()) {
+        WAIT_FOR((*rIter)->getRedirectDestGrpURI() ==
+                redirDstGrp2->getURI(),500);
+        rIter++;
+    }
+
+    /*
+     * Modify RedirectDestGrp
+     */
+    Mutator mutator2(framework, "policyreg");
+    opflex::modb::MAC mac3("02:03:04:05:06:07");
+    redirDst3 = redirDstGrp1->addGbpRedirectDest("redirDst3");
+    redirDst3->setIp("3.3.3.3");
+    redirDst3->setMac(mac3);
+    redirDst3->addGbpRedirectDestToDomainRSrcBridgeDomain(
+               bd->getURI().toString());
+    redirDst3->addGbpRedirectDestToDomainRSrcRoutingDomain(
+               rd->getURI().toString());
+    mutator2.commit();
+    ctr = 0;
+    redirList.clear();
+    WAIT_FOR_DO((redirList.size()==3),1000,
+                redirList.clear();
+                pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
+                                      hashOpt, hashParam));
+    for(auto it = redirList.begin(); it != redirList.end(); it++, ctr++) {
+        BOOST_CHECK((it->get()->getIp() == testIps[ctr]) &&
+                    (it->get()->getMac() == testMacs[ctr]) &&
+                    (it->get()->getBD()->getURI() == bd->getURI()) &&
+                    (it->get()->getRD()->getURI() == rd->getURI()));
+    }
+
+}
+
 BOOST_FIXTURE_TEST_CASE( nat_rd_update, PolicyFixture ) {
     PolicyManager& pm = agent.getPolicyManager();
 
@@ -606,6 +798,39 @@ BOOST_FIXTURE_TEST_CASE( group_contract_remove_add, PolicyFixture ) {
 
     pm.getContractRules(con1->getURI(), rules);
     BOOST_CHECK(rules.size() == 0);
+}
+
+BOOST_FIXTURE_TEST_CASE( static_route_add_mod_del, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    shared_ptr<RoutingDomain> rd_;
+    shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
+    boost::asio::ip::address addr_;
+    std::list<boost::asio::ip::address> nhList;
+    uint8_t pfx_len;
+    WAIT_FOR_DO(nhList.size() == 3, 500, nhList.clear();
+                pm.getRoute(StaticRoute::CLASS_ID, static_route1->getURI(),
+                         rd_, rdInst_, addr_, pfx_len, nhList)); 
+
+    WAIT_FOR_DO(nhList.size() == 2, 500, nhList.clear();
+                pm.getRoute(RemoteRoute::CLASS_ID, remote_route1->getURI(),
+                         rd_, rdInst_, addr_, pfx_len, nhList));
+
+    Mutator m0(framework, "policyreg");
+    static_nh1->remove();
+    m0.commit(); 
+    nhList.clear();
+    WAIT_FOR_DO(nhList.size() == 2, 500, nhList.clear();
+                pm.getRoute(StaticRoute::CLASS_ID, static_route1->getURI(),
+                         rd_, rdInst_, addr_, pfx_len, nhList));
+ 
+    Mutator m1(framework, "policyreg");
+    remote_nh1->remove();
+    //remote_nh2->remove();
+    m1.commit(); 
+    nhList.clear();
+    WAIT_FOR_DO(nhList.size() == 1, 500, nhList.clear();
+                pm.getRoute(RemoteRoute::CLASS_ID, remote_route1->getURI(),
+                         rd_, rdInst_, addr_, pfx_len, nhList));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -70,6 +70,9 @@ int main(int argc, char** argv) {
          "Use the specified password for the private key")
         ("peer", po::value<std::vector<string> >(),
          "A peer specified as hostname:port to return in identity response")
+        ("transport_mode_proxies", po::value<std::vector<string> >(),
+         "3 transport_mode_proxy IPv4 addresses specified to return "
+         "in identity response")
         ;
 
     bool daemon = false;
@@ -81,6 +84,7 @@ int main(int argc, char** argv) {
     std::string ssl_key;
     std::string ssl_pass;
     std::vector<std::string> peers;
+    std::vector<std::string> transport_mode_proxies;
 
     po::variables_map vm;
     try {
@@ -105,7 +109,10 @@ int main(int argc, char** argv) {
         ssl_pass = vm["ssl_pass"].as<string>();
         if (vm.count("peer"))
             peers = vm["peer"].as<std::vector<string> >();
-
+        if(vm.count("transport_mode_proxies")) {
+            transport_mode_proxies =
+                vm["transport_mode_proxies"].as<std::vector<string>>();
+        }
     } catch (po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
@@ -137,6 +144,7 @@ int main(int argc, char** argv) {
             peer_vec.push_back(make_pair(SERVER_ROLES, LOCALHOST":8009"));
 
         MockOpflexServer server(8009, SERVER_ROLES, peer_vec,
+                                transport_mode_proxies,
                                 modelgbp::getMetadata());
 
         if (policy_file != "") {

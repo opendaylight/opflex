@@ -28,9 +28,10 @@ namespace test {
 
 MockOpflexServer::MockOpflexServer(int port, uint8_t roles,
                                    peer_vec_t peers,
+                                   std::vector<std::string> proxies,
                                    const modb::ModelMetadata& md)
     : pimpl(new engine::internal
-            ::MockOpflexServerImpl(port, roles, peers, md)) { }
+            ::MockOpflexServerImpl(port, roles, peers, proxies, md)) { }
 
 MockOpflexServer::~MockOpflexServer() {
     delete pimpl;
@@ -57,6 +58,11 @@ void MockOpflexServer::readPolicy(const std::string& file) {
 const MockOpflexServer::peer_vec_t& MockOpflexServer::getPeers() const {
     return pimpl->getPeers();
 };
+
+const std::vector<std::string>& MockOpflexServer::getProxies() const {
+    return pimpl->getProxies();
+};
+
 int MockOpflexServer::getPort() const { return pimpl->getPort(); };
 uint8_t MockOpflexServer::getRoles() const { return pimpl->getRoles(); };
 
@@ -72,8 +78,10 @@ using test::MockOpflexServer;
 
 MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
                                            MockOpflexServer::peer_vec_t peers_,
+                                           std::vector<std::string> proxies_,
                                            const modb::ModelMetadata& md)
     : port(port_), roles(roles_), peers(peers_),
+      proxies(proxies_),
       listener(*this, port_, "name", "domain"),
       db(threadManager), serializer(&db) {
     db.init(md);

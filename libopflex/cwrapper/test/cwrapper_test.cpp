@@ -34,6 +34,8 @@ using opflex::engine::internal::MockOpflexServerImpl;
 using opflex::ofcore::OFConstants;
 using std::make_pair;
 using boost::assign::list_of;
+using std::string;
+using std::vector;
 
 BOOST_AUTO_TEST_SUITE(cwrapper_test)
 
@@ -49,6 +51,7 @@ public:
         : MDFixture(),
           mockServer(8009, SERVER_ROLES,
                      list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
+                     vector<string>(),
                      md),
           peerStatus(-1), poolHealth(1) {
         mockServer.start();
