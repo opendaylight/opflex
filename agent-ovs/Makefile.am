@@ -51,6 +51,7 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/EndpointManager.h \
 	lib/include/opflexagent/EndpointSource.h \
 	lib/include/opflexagent/FSEndpointSource.h \
+	lib/include/opflexagent/FSExternalEndpointSource.h \
 	lib/include/opflexagent/ModelEndpointSource.h \
 	lib/include/opflexagent/Service.h \
 	lib/include/opflexagent/ServiceListener.h \
@@ -119,6 +120,7 @@ libopflex_agent_la_SOURCES = \
 	lib/EndpointManager.cpp \
 	lib/EndpointSource.cpp \
 	lib/FSEndpointSource.cpp \
+	lib/FSExternalEndpointSource.cpp \
 	lib/ModelEndpointSource.cpp \
 	lib/Service.cpp \
 	lib/ServiceSource.cpp \
@@ -220,6 +222,7 @@ gbp_inspect_LDADD = \
 	$(libmodelgbp_LIBS) \
 	$(BOOST_IOSTREAMS_LIB) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	$(BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
 mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
@@ -309,6 +312,7 @@ mock_server_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
+	$(BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
 policy_repo_stress_CXXFLAGS = \
