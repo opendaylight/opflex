@@ -14,6 +14,7 @@
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/HashProfOptionEnumT.hpp>
 #include <opflex/modb/URIBuilder.h>
 
 #include <opflexagent/logging.h>
@@ -42,7 +43,7 @@ PolicyManager::PolicyManager(OFFramework& framework_,
                              boost::asio::io_service& agent_io_)
     : framework(framework_), opflexDomain("default"), taskQueue(agent_io_),
       domainListener(*this), contractListener(*this),
-      secGroupListener(*this), configListener(*this) {
+      secGroupListener(*this), configListener(*this), routeListener(*this) {
 
 }
 
@@ -69,6 +70,8 @@ void PolicyManager::start() {
     Subnet::registerListener(framework, &domainListener);
     EpGroup::registerListener(framework, &domainListener);
     L3ExternalNetwork::registerListener(framework, &domainListener);
+    ExternalInterface::registerListener(framework, &domainListener);
+    ExternalL3BridgeDomain::registerListener(framework, &domainListener);
 
     EpGroup::registerListener(framework, &contractListener);
     L3ExternalNetwork::registerListener(framework, &contractListener);
@@ -77,6 +80,8 @@ void PolicyManager::start() {
     Subject::registerListener(framework, &contractListener);
     Rule::registerListener(framework, &contractListener);
     L24Classifier::registerListener(framework, &contractListener);
+    RedirectDestGroup::registerListener(framework, &contractListener);
+    RedirectDest::registerListener(framework, &contractListener);
 
     SecGroup::registerListener(framework, &secGroupListener);
     SecGroupSubject::registerListener(framework, &secGroupListener);
@@ -84,6 +89,13 @@ void PolicyManager::start() {
     L24Classifier::registerListener(framework, &secGroupListener);
     Subnets::registerListener(framework, &secGroupListener);
     Subnet::registerListener(framework, &secGroupListener);
+
+    ExternalNode::registerListener(framework, &routeListener);
+    StaticRoute::registerListener(framework, &routeListener);
+    StaticNextHop::registerListener(framework, &routeListener);
+    RoutingDomain::registerListener(framework, &routeListener);
+    RemoteRoute::registerListener(framework, &routeListener);
+    RemoteNextHop::registerListener(framework, &routeListener);
 
     // resolve platform config
     Mutator mutator(framework, "init");
@@ -110,6 +122,8 @@ void PolicyManager::stop() {
     Subnet::unregisterListener(framework, &domainListener);
     EpGroup::unregisterListener(framework, &domainListener);
     L3ExternalNetwork::unregisterListener(framework, &domainListener);
+    ExternalInterface::unregisterListener(framework, &domainListener);
+    ExternalL3BridgeDomain::unregisterListener(framework, &domainListener);
 
     EpGroup::unregisterListener(framework, &contractListener);
     L3ExternalNetwork::unregisterListener(framework, &contractListener);
@@ -118,6 +132,8 @@ void PolicyManager::stop() {
     Subject::unregisterListener(framework, &contractListener);
     Rule::unregisterListener(framework, &contractListener);
     L24Classifier::unregisterListener(framework, &contractListener);
+    RedirectDestGroup::unregisterListener(framework, &contractListener);
+    RedirectDest::unregisterListener(framework, &contractListener);
 
     SecGroup::unregisterListener(framework, &secGroupListener);
     SecGroupSubject::unregisterListener(framework, &secGroupListener);
@@ -125,6 +141,13 @@ void PolicyManager::stop() {
     L24Classifier::unregisterListener(framework, &secGroupListener);
     Subnets::unregisterListener(framework, &secGroupListener);
     Subnet::unregisterListener(framework, &secGroupListener);
+
+    ExternalNode::unregisterListener(framework, &routeListener);
+    StaticRoute::unregisterListener(framework, &routeListener);
+    StaticNextHop::unregisterListener(framework, &routeListener);
+    RoutingDomain::unregisterListener(framework, &routeListener);
+    RemoteRoute::unregisterListener(framework, &routeListener);
+    RemoteNextHop::unregisterListener(framework, &routeListener);
 
     lock_guard<mutex> guard(state_mutex);
     group_map.clear();
@@ -145,6 +168,27 @@ void PolicyManager::notifyEPGDomain(const URI& egURI) {
     lock_guard<mutex> guard(listener_mutex);
     for (PolicyListener* listener : policyListeners) {
         listener->egDomainUpdated(egURI);
+    }
+}
+
+void PolicyManager::notifyExternalInterface(const URI& extIntfURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    for (PolicyListener* listener : policyListeners) {
+        listener->externalInterfaceUpdated(extIntfURI);
+    }
+}
+
+void PolicyManager::notifyStaticRoute(const URI& staticRtURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    for (PolicyListener* listener : policyListeners) {
+        listener->staticRouteUpdated(staticRtURI);
+    }
+}
+
+void PolicyManager::notifyRemoteRoute(const URI& remoteRtURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    for (PolicyListener* listener : policyListeners) {
+        listener->remoteRouteUpdated(remoteRtURI);
     }
 }
 
@@ -306,6 +350,9 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     optional<shared_ptr<FloodDomain> > newfd;
     optional<shared_ptr<FloodContext> > newfdctx;
     GroupState::subnet_map_t newsmap;
+    optional<shared_ptr<EndpointRetention> > newl2epretpolicy;
+    optional<shared_ptr<EndpointRetention> > newl3epretpolicy;
+    optional<URI> nEpRetURI;
 
     optional<class_id_t> domainClass;
     optional<URI> domainURI;
@@ -332,6 +379,11 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
         }
     }
 
+    optional<shared_ptr<InstContext> > newBDInstCtx =
+        epg.get()->resolveGbpeInstContext();
+    optional<shared_ptr<InstContext> > newRDInstCtx =
+        epg.get()->resolveGbpeInstContext();
+
     // walk up the chain of forwarding domains
     while (domainURI && domainClass) {
         URI du = domainURI.get();
@@ -348,6 +400,16 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                 if (newrd) {
                     fwdSns = newrd.get()->
                         resolveGbpForwardingBehavioralGroupToSubnetsRSrc();
+                    newRDInstCtx = newrd.get()->resolveGbpeInstContext();
+                    if(newRDInstCtx) {
+                        optional<shared_ptr<InstContextToEpRetentionRSrc> > dref2 =
+                            newRDInstCtx.get()->resolveGbpeInstContextToEpRetentionRSrc();
+                        if(dref2) {
+                            nEpRetURI = dref2.get()->getTargetURI();
+                            newl3epretpolicy =
+                                EndpointRetention::resolve(framework, nEpRetURI.get());
+                        }
+                    }
                 }
             }
             break;
@@ -363,6 +425,16 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                     }
                     fwdSns = newbd.get()->
                         resolveGbpForwardingBehavioralGroupToSubnetsRSrc();
+                    newBDInstCtx = newbd.get()->resolveGbpeInstContext();
+                    if(newBDInstCtx) {
+                        optional<shared_ptr<InstContextToEpRetentionRSrc> > dref2 =
+                            newBDInstCtx.get()->resolveGbpeInstContextToEpRetentionRSrc();
+                        if(dref2) {
+                            nEpRetURI = dref2.get()->getTargetURI();
+                            newl2epretpolicy =
+                                EndpointRetention::resolve(framework, nEpRetURI.get());
+                        }
+                    }
                 }
             }
             break;
@@ -409,7 +481,11 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
         newfdctx != gs.floodContext ||
         newbd != gs.bridgeDomain ||
         newrd != gs.routingDomain ||
-        newsmap != gs.subnet_map)
+        newsmap != gs.subnet_map ||
+        newBDInstCtx != gs.instBDContext ||
+        newRDInstCtx != gs.instRDContext ||
+        newl2epretpolicy != gs.l2EpRetPolicy ||
+        newl3epretpolicy != gs.l3EpRetPolicy)
         updated = true;
 
     gs.epGroup = epg;
@@ -419,6 +495,10 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     gs.bridgeDomain = newbd;
     gs.routingDomain = newrd;
     gs.subnet_map = newsmap;
+    gs.instBDContext = newBDInstCtx;
+    gs.instRDContext = newRDInstCtx;
+    gs.l2EpRetPolicy = newl2epretpolicy;
+    gs.l3EpRetPolicy = newl3epretpolicy;
 
     return updated;
 }
@@ -431,6 +511,64 @@ PolicyManager::getVnidForGroup(const opflex::modb::URI& eg) {
         it->second.instContext.get()->getEncapId()
         ? it->second.instContext.get()->getEncapId().get()
         : optional<uint32_t>();
+}
+
+boost::optional<uint32_t>
+PolicyManager::getBDVnidForGroup(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instBDContext &&
+        it->second.instBDContext.get()->getEncapId()
+        ? it->second.instBDContext.get()->getEncapId().get()
+        : optional<uint32_t>();
+}
+
+boost::optional<uint32_t>
+PolicyManager::getRDVnidForGroup(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instRDContext &&
+        it->second.instRDContext.get()->getEncapId()
+        ? it->second.instRDContext.get()->getEncapId().get()
+        : optional<uint32_t>();
+}
+
+boost::optional<uint32_t>
+PolicyManager::getBDVnidForExternalInterface(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instContext &&
+    it->second.instContext.get()->getEncapId()
+    ? it->second.instContext.get()->getEncapId().get()
+    : optional<uint32_t>();
+}
+
+boost::optional<modelgbp::gbp::BridgeDomain>
+PolicyManager::getBDForExternalInterface(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instContext 
+    ? it->second.instContext
+    : optional<modelgbp::gbp::BridgeDomain>();
+}
+
+boost::optional<uint32_t>
+PolicyManager::getRDVnidForExternalInterface(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instRDContext &&
+    it->second.instRDContext.get()->getEncapId()
+    ? it->second.instRDContext.get()->getEncapId().get()
+    : optional<uint32_t>();
+}
+
+boost::optional<shared_ptr<modelgbp::gbp::RoutingDomain>>
+PolicyManager::getRDForExternalInterface(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instRDContext
+    ? it->second.instRDContext.get()
+    : optional<shared_ptr<modelgbp::gbp::RoutingDomain>>();
 }
 
 boost::optional<opflex::modb::URI>
@@ -447,6 +585,78 @@ optional<string> PolicyManager::getMulticastIPForGroup(const URI& eg) {
         it->second.instContext.get()->getMulticastGroupIP()
         ? it->second.instContext.get()->getMulticastGroupIP().get()
         : optional<string>();
+}
+
+optional<string> PolicyManager::getBDMulticastIPForGroup(const URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instBDContext &&
+        it->second.instBDContext.get()->getMulticastGroupIP()
+        ? it->second.instBDContext.get()->getMulticastGroupIP().get()
+        : optional<string>();
+}
+
+optional<string> PolicyManager::getRDMulticastIPForGroup(const URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instRDContext &&
+        it->second.instRDContext.get()->getMulticastGroupIP()
+        ? it->second.instRDContext.get()->getMulticastGroupIP().get()
+        : optional<string>();
+}
+
+optional<uint32_t> PolicyManager::getSclassForGroup(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.instContext
+        ? it->second.instContext.get()->getClassId()
+        : optional<uint32_t>();
+}
+
+optional<shared_ptr<modelgbp::gbpe::EndpointRetention>> PolicyManager::getL2EPRetentionPolicyForGroup(
+const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.l2EpRetPolicy.get()
+        ? it->second.l2EpRetPolicy
+        : optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention>>();
+}
+
+optional<shared_ptr<modelgbp::gbpe::EndpointRetention>> PolicyManager::getL3EPRetentionPolicyForGroup(
+const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    group_map_t::iterator it = group_map.find(eg);
+    return it != group_map.end() && it->second.l3EpRetPolicy.get()
+        ? it->second.l3EpRetPolicy
+        : optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention>>();
+}
+
+optional<uint32_t> PolicyManager::getSclassForExternalInterface(
+const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instContext
+    ? it->second.instContext.get()->getClassId()
+    : optional<uint32_t>();
+}
+
+optional<std::shared_ptr<modelgbp::gbp::L3ExternalDomain>>
+PolicyManager::getExternalDomainForExternalInterface(
+const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.extDomain
+    ? it->second.extDomain
+    : optional<std::shared_ptr<modelgbp::gbp::L3ExternalDomain>>();
+}
+
+optional<uint32_t> PolicyManager::getSclassForExternalNet(
+const opflex::modb::URI& ei) {
+    lock_guard<mutex> guard(state_mutex);
+    l3n_map_t::iterator it = l3n_map.find(ei);
+    return it != l3n_map.end() && it->second.instContext.get()
+    ? it->second.instContext.get()->getClassId()
+    : optional<uint32_t>();
 }
 
 bool PolicyManager::groupExists(const opflex::modb::URI& eg) {
@@ -615,10 +825,11 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
 }
 
 bool operator==(const PolicyRule& lhs, const PolicyRule& rhs) {
-    return (lhs.getDirection() == rhs.getDirection() &&
-            lhs.getAllow() == rhs.getAllow() &&
-            lhs.getRemoteSubnets() == rhs.getRemoteSubnets() &&
-            *lhs.getL24Classifier() == *rhs.getL24Classifier());
+    return ((lhs.getDirection() == rhs.getDirection()) &&
+            (lhs.getAllow() == rhs.getAllow()) &&
+            (lhs.getRemoteSubnets() == rhs.getRemoteSubnets()) &&
+            (*lhs.getL24Classifier() == *rhs.getL24Classifier()) &&
+            (lhs.getRedirectDestGrpURI() == rhs.getRedirectDestGrpURI()));
 }
 
 bool operator!=(const PolicyRule& lhs, const PolicyRule& rhs) {
@@ -632,6 +843,7 @@ std::ostream & operator<<(std::ostream &os, const PolicyRule& rule) {
     os << "PolicyRule[classifier="
        << rule.getL24Classifier()->getURI()
        << ",allow=" << rule.getAllow()
+       << ",redirect=" << rule.getRedirect()
        << ",prio=" << rule.getPriority()
        << ",direction=";
 
@@ -649,9 +861,145 @@ std::ostream & operator<<(std::ostream &os, const PolicyRule& rule) {
 
     if (!rule.getRemoteSubnets().empty())
         os << ",remoteSubnets=" << rule.getRemoteSubnets();
+    if (rule.getRedirectDestGrpURI())
+        os << ",redirectGroup=" << rule.getRedirectDestGrpURI().get();
 
     os << "]";
     return os;
+}
+
+bool operator==(const PolicyRedirectDest& lhs,
+                const PolicyRedirectDest& rhs) {
+    return ((lhs.getIp()==rhs.getIp()) &&
+            (lhs.getMac()==rhs.getMac()) &&
+            (lhs.getRD()->getURI()==rhs.getRD()->getURI()) &&
+            (lhs.getBD()->getURI()==rhs.getBD()->getURI()));
+}
+
+bool operator!=(const PolicyRedirectDest& lhs, const PolicyRedirectDest& rhs) {
+    return !operator==(lhs,rhs);
+}
+
+bool PolicyManager::getPolicyDestGroup(opflex::modb::URI redirURI,
+                                       redir_dest_list_t &redirList,
+                             uint8_t &hashParam_, uint8_t &hashOpt_)
+{
+    lock_guard<mutex> guard(state_mutex);
+    redir_dst_grp_map_t::iterator it = redirGrpMap.find(redirURI);
+    if(it == redirGrpMap.end()){
+        return false;
+    }
+    hashParam_ = it->second.hashParam;
+    hashOpt_ = it->second.hashOpt;
+    redirList.insert(redirList.end(),
+                     it->second.redirDstList.begin(),
+                     it->second.redirDstList.end());
+    return true;
+}
+
+static bool compareRedirects(const std::shared_ptr<PolicyRedirectDest>& lhs,
+                             const std::shared_ptr<PolicyRedirectDest>& rhs)
+{
+    return (lhs->getIp() < rhs->getIp())?true:false;
+}
+
+void PolicyManager::updateRedirectDestGroup(const opflex::modb::URI& uri,
+                                            uri_set_t &notifyGroup) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+    typedef std::shared_ptr<modelgbp::gbp::RedirectDestToDomainRSrc> \
+        redir_domp_t;
+    bool updated = false;
+    boost::optional<std::shared_ptr<RedirectDestGroup>> redirDstGrp =
+    RedirectDestGroup::resolve(framework,uri);
+    RedirectDestGrpState &redirState = redirGrpMap[uri];
+    if(!redirDstGrp) {
+        notifyGroup.insert(redirState.ctrctSet.begin(),
+                           redirState.ctrctSet.end());
+        redirGrpMap.erase(uri);
+        return;
+    }
+    std::vector<std::shared_ptr<RedirectDest>> redirDests;
+    redirDstGrp.get()->resolveGbpRedirectDest(redirDests);
+    PolicyManager::redir_dest_list_t newRedirDests;
+
+    LOG(DEBUG) << uri;
+    for(std::shared_ptr<RedirectDest>& redirDest : redirDests) {
+        /*Redirect Destination should be completely resolved
+         in order to be useful for forwarding*/
+        std::vector<redir_domp_t> redirDoms;
+        redirDest->resolveGbpRedirectDestToDomainRSrc(redirDoms);
+        boost::optional<shared_ptr<BridgeDomain>> bd;
+        boost::optional<shared_ptr<RoutingDomain>> rd;
+        boost::optional<shared_ptr<InstContext>> bdInst,rdInst;
+        for(const redir_domp_t &redirDom: redirDoms) {
+            if(!redirDom->getTargetURI() || !redirDom->getTargetClass())
+                continue;
+            class_id_t redirDomClass = redirDom->getTargetClass().get();
+            if(redirDomClass == BridgeDomain::CLASS_ID) {
+                bd = BridgeDomain::resolve(framework,
+                                           redirDom->getTargetURI().get());
+                if(!bd) {
+                    break;
+		}
+                bdInst = bd.get()->resolveGbpeInstContext();
+            }
+            if(redirDomClass == RoutingDomain::CLASS_ID) {
+                rd = RoutingDomain::resolve(framework,
+                                            redirDom->getTargetURI().get());
+                if(!rd){
+                   break;
+                }
+                rdInst = rd.get()->resolveGbpeInstContext();
+            }
+        }
+        if(!bdInst || !rdInst || !redirDest->isIpSet() ||
+           !redirDest->isMacSet()) {
+            continue;
+        }
+        boost::system::error_code ec;
+        boost::asio::ip::address addr = address::from_string(
+                                            redirDest->getIp().get(),ec);
+        if(ec) {
+            continue;
+        }
+        newRedirDests.push_back(
+            make_shared<PolicyRedirectDest>(redirDest,addr,
+                                            redirDest->getMac().get(),
+                                            rd.get(), bd.get(),
+                                            rdInst.get(), bdInst.get()));
+    }
+    redir_dest_list_t::const_iterator li = redirState.redirDstList.begin();
+    redir_dest_list_t::const_iterator ri = newRedirDests.begin();
+    while ((li != redirState.redirDstList.end()) &&
+           (ri != newRedirDests.end()) &&
+           (li->get() == ri->get())) {
+        ++li;
+        ++ri;
+    }
+    if((li != redirState.redirDstList.end()) ||
+       (ri != newRedirDests.end()) ||
+       (redirDstGrp.get()->getHashOpt(HashProfOptionEnumT::CONST_SYMMETRIC)
+        != redirState.hashOpt) ||
+       (redirDstGrp.get()->getHashParam(1) != redirState.hashParam)) {
+        notifyGroup.insert(redirState.ctrctSet.begin(),
+                           redirState.ctrctSet.end());
+    }
+    /* Order in which the next-hops are inserted may not be the order of
+     * resolution. Return in ascending order
+     */
+    newRedirDests.sort(compareRedirects);
+    redirState.redirDstList.swap(newRedirDests);
+    redirState.hashOpt = redirDstGrp.get()->getHashOpt(
+                             HashProfOptionEnumT::CONST_SYMMETRIC);
+    redirState.hashParam = redirDstGrp.get()->getHashParam(1);
+}
+
+void PolicyManager::updateRedirectDestGroups(uri_set_t &notifyGroup) {
+    for (PolicyManager::redir_dst_grp_map_t::iterator itr =
+         redirGrpMap.begin(); itr != redirGrpMap.end(); itr++) {
+        updateRedirectDestGroup(itr->first, notifyGroup);
+    }
 }
 
 void PolicyManager::resolveSubnets(OFFramework& framework,
@@ -726,11 +1074,16 @@ void resolveRemoteSubnets(OFFramework& framework,
 template <typename Parent, typename Subject, typename Rule>
 static bool updatePolicyRules(OFFramework& framework,
                               const URI& parentURI, bool& notFound,
-                              PolicyManager::rule_list_t& oldRules) {
+                              PolicyManager::rule_list_t& oldRules,
+                              PolicyManager::uri_set_t &oldRedirGrps,
+                              PolicyManager::uri_set_t &newRedirGrps)
+{
     using modelgbp::gbpe::L24Classifier;
     using modelgbp::gbp::RuleToClassifierRSrc;
     using modelgbp::gbp::RuleToActionRSrc;
     using modelgbp::gbp::AllowDenyAction;
+    using modelgbp::gbp::RedirectAction;
+    using modelgbp::gbp::RedirectDestGroup;
 
     optional<shared_ptr<Parent> > parent =
         Parent::resolve(framework, parentURI);
@@ -780,19 +1133,45 @@ static bool updatePolicyRules(OFFramework& framework,
             vector<shared_ptr<RuleToActionRSrc> > actRel;
             rule->resolveGbpRuleToActionRSrc(actRel);
             bool ruleAllow = true;
+            bool ruleRedirect = false;
             uint32_t minOrder = UINT32_MAX;
+            optional<shared_ptr<RedirectDestGroup>> redirDstGrp;
+            optional<URI> destGrpUri;
             for (shared_ptr<RuleToActionRSrc>& r : actRel) {
-                if (!r->isTargetSet() ||
-                    r->getTargetClass().get() != AllowDenyAction::CLASS_ID) {
+                if (!r->isTargetSet()) {
                     continue;
                 }
-                optional<shared_ptr<AllowDenyAction> > act =
-                    AllowDenyAction::resolve(framework, r->getTargetURI().get());
-                if (act) {
-                    if (act.get()->getOrder(UINT32_MAX-1) < minOrder) {
-                        minOrder = act.get()->getOrder(UINT32_MAX-1);
-                        ruleAllow = act.get()->getAllow(0) != 0;
+                if(r->getTargetClass().get() == AllowDenyAction::CLASS_ID) {
+                    optional<shared_ptr<AllowDenyAction> > act =
+                        AllowDenyAction::resolve(framework, r->getTargetURI().get());
+                    if (act) {
+                        if (act.get()->getOrder(UINT32_MAX-1) < minOrder) {
+                            minOrder = act.get()->getOrder(UINT32_MAX-1);
+                            ruleAllow = act.get()->getAllow(0) != 0;
+                        }
                     }
+                }
+                else if(r->getTargetClass().get() ==
+                        RedirectAction::CLASS_ID) {
+                    optional<shared_ptr<RedirectAction> > act =
+                    RedirectAction::resolve(framework, r->getTargetURI().get());
+                    ruleRedirect = true;
+                    ruleAllow = false;
+                    if (!act) {
+                        continue;
+                    }
+                    optional<shared_ptr<modelgbp::gbp::RedirectActionToDestGrpRSrc>>
+                        destRef = act.get()->resolveGbpRedirectActionToDestGrpRSrc();
+                    if(!destRef){
+                        continue;
+                    }
+                    destGrpUri = destRef.get()->getTargetURI();
+                    if(!destGrpUri) {
+                        continue;
+                    }
+                    redirDstGrp =
+                    RedirectDestGroup::resolve(framework, destGrpUri.get());
+                    newRedirGrps.insert(destGrpUri.get());
                 }
             }
 
@@ -802,13 +1181,22 @@ static bool updatePolicyRules(OFFramework& framework,
                                    make_shared<PolicyRule>(dir,
                                                            rulePrio - clsPrio,
                                                            c, ruleAllow,
-                                                           remoteSubnets));
+                                                           remoteSubnets,
+                                                           ruleRedirect,
+                                                           destGrpUri));
                 if (clsPrio < 127)
                     clsPrio += 1;
             }
             if (rulePrio > 128)
                 rulePrio -= 128;
         }
+    }
+    PolicyManager::rule_list_t::const_iterator oi = oldRules.begin();
+    while(oi != oldRules.end()) {
+        if(oi->get()->getRedirectDestGrpURI()) {
+            oldRedirGrps.insert(oi->get()->getRedirectDestGrpURI().get());
+        }
+        ++oi;
     }
     PolicyManager::rule_list_t::const_iterator li = oldRules.begin();
     PolicyManager::rule_list_t::const_iterator ri = newRules.begin();
@@ -829,16 +1217,31 @@ static bool updatePolicyRules(OFFramework& framework,
 
 bool PolicyManager::updateSecGrpRules(const URI& secGrpURI, bool& notFound) {
     using namespace modelgbp::gbp;
+    uri_set_t oldRedirGrps, newRedirGrps;
     return updatePolicyRules<SecGroup, SecGroupSubject,
                              SecGroupRule>(framework, secGrpURI,
-                                           notFound, secGrpMap[secGrpURI]);
+                                           notFound, secGrpMap[secGrpURI],
+                                           oldRedirGrps, newRedirGrps);
 }
 
 bool PolicyManager::updateContractRules(const URI& contrURI, bool& notFound) {
     using namespace modelgbp::gbp;
+    uri_set_t oldRedirGrps, newRedirGrps;
     ContractState& cs = contractMap[contrURI];
-    return updatePolicyRules<Contract, Subject, Rule>(framework, contrURI,
-                                                      notFound, cs.rules);
+    bool updated = updatePolicyRules<Contract, Subject,
+                                     Rule>(framework, contrURI,
+                                           notFound, cs.rules,
+                                           oldRedirGrps,
+                                           newRedirGrps);
+    for (const URI& u : oldRedirGrps) {
+        if(redirGrpMap.find(u) != redirGrpMap.end()) {
+            redirGrpMap[u].ctrctSet.erase(contrURI);
+        }
+    }
+    for (const URI& u : newRedirGrps) {
+        redirGrpMap[u].ctrctSet.insert(contrURI);
+    }
+    return updated;
 }
 
 void PolicyManager::updateContracts() {
@@ -1038,6 +1441,7 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
             } else {
                 l3s.natEpg = boost::none;
             }
+            l3s.instContext = net->resolveGbpeInstContext();
 
             updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                  net->getURI(), contractsToNotify);
@@ -1103,12 +1507,100 @@ PolicyManager::getRouterIpForSubnet(modelgbp::gbp::Subnet& subnet) {
     return boost::none;
 }
 
+bool PolicyManager::updateExternalInterface(const URI& uri, bool &toRemove) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+    bool updated = false;
+
+    optional<URI> extDomURI, extBDURI, extRDURI, extBgpPeerURI;
+    optional<shared_ptr<RoutingDomain>> newRD;
+    optional<shared_ptr<L3ExternalDomain>> newExtDom;
+    optional<shared_ptr<ExternalL3BridgeDomain>> newExtBD;
+    optional<shared_ptr<InstContext>> newRDContext, newBDContext;
+    ExternalInterfaceState  &eis = ext_int_map[uri];
+
+    optional<shared_ptr<ExternalInterface>> extIntf =
+    ExternalInterface::resolve(framework, uri);
+    if(!extIntf) {
+        toRemove = true;
+        return true;
+    }
+    toRemove = false;
+    optional<shared_ptr<ExternalInterfaceToL3outRSrc> > refL3Out =
+    extIntf.get()->resolveGbpExternalInterfaceToL3outRSrc();
+    if (refL3Out) {
+        extDomURI = refL3Out.get()->getTargetURI();
+    }
+    if(extDomURI) {
+        newExtDom = L3ExternalDomain::resolve(framework, extDomURI.get());
+    }
+    optional<shared_ptr<ExternalInterfaceToExtl3bdRSrc> > refL3BD =
+    extIntf.get()->resolveGbpExternalInterfaceToExtl3bdRSrc();
+    if (refL3BD && refL3BD.get()->isTargetSet()) {
+        extBDURI = refL3BD.get()->getTargetURI();
+    }
+    if(extBDURI) {
+        newExtBD = ExternalL3BridgeDomain::resolve(framework, extBDURI.get());
+        if(newExtBD) {
+            newBDContext =
+            newExtBD.get()->resolveGbpeInstContext();
+            optional<shared_ptr<ExternalL3BridgeDomainToVrfRSrc>> refRD =
+            newExtBD.get()->resolveGbpExternalL3BridgeDomainToVrfRSrc();
+            if(refRD && refRD.get()->isTargetSet()) {
+                extRDURI = refRD.get()->getTargetURI();
+            }
+        }
+    }
+    if(extRDURI) {
+        newRD = RoutingDomain::resolve(framework, extRDURI.get());
+        if(newRD) {
+            newRDContext =
+            newRD.get()->resolveGbpeInstContext();
+        }
+    }
+    std::vector<std::shared_ptr<ExternalInterfaceToBgppeerpfxRSrc> > newBgpRefs;
+    extIntf.get()->resolveGbpExternalInterfaceToBgppeerpfxRSrc(newBgpRefs);
+    std::vector<std::shared_ptr<BgpPeerProfile>> newBgpPeers;
+    for(const auto &intfToPeer: newBgpRefs){
+        if(intfToPeer->isTargetSet()) {
+            boost::optional<opflex::modb::URI> peerURI =
+                intfToPeer->getTargetURI();
+            boost::optional<std::shared_ptr<BgpPeerProfile>> bgpPeer;
+            if(peerURI) {
+                bgpPeer = BgpPeerProfile::resolve(framework, peerURI.get());
+            }
+            if(bgpPeer){
+                newBgpPeers.push_back(bgpPeer.get());
+            }
+        }
+    }
+
+   /*TBD: Handle updates to BgpPeerPrefixes here.
+     As of now update the BgpPeerPrefixes in the external interface*/
+    if(newExtDom.get()->getURI() != eis.extDomain.get()->getURI() ||
+       newRD.get()->getURI() != eis.routingDomain.get()->getURI() ||
+       newExtBD.get()->getURI() != eis.bridgeDomain.get()->getURI() ||
+       newRDContext.get() != eis.instRDContext.get() ||
+       newBDContext.get() != eis.instContext.get()) {
+        updated = true;
+    }
+    eis.extInterface = extIntf;
+    eis.extDomain = newExtDom;
+    eis.routingDomain = newRD;
+    eis.bridgeDomain = newExtBD;
+    eis.bgpPeer = newBgpPeers;
+    eis.instContext = newBDContext;
+    eis.instRDContext = newRDContext;
+    return updated;
+}
+
 void PolicyManager::updateDomain(class_id_t class_id, const URI& uri) {
     using namespace modelgbp::gbp;
     unique_lock<mutex> guard(state_mutex);
 
     uri_set_t notifyGroups;
     uri_set_t notifyRds;
+    uri_set_t notifyExtIntfs;
 
     if (class_id == modelgbp::gbp::EpGroup::CLASS_ID) {
         group_map[uri];
@@ -1133,17 +1625,327 @@ void PolicyManager::updateDomain(class_id_t class_id, const URI& uri) {
             }
         }
     }
+    for (PolicyManager::ext_int_map_t::iterator itr = ext_int_map.begin();
+         itr != ext_int_map.end(); ) {
+        bool toRemove = false;
+        if (updateExternalInterface(itr->first, toRemove)) {
+            notifyExtIntfs.insert(itr->first);
+        }
+        itr = (toRemove ? ext_int_map.erase(itr) : ++itr);
+    }
     notifyRds.erase(uri);   // Avoid updating twice
     guard.unlock();
 
     for (const URI& u : notifyGroups) {
         notifyEPGDomain(u);
     }
-    if (class_id != modelgbp::gbp::EpGroup::CLASS_ID) {
+    for (const URI& u : notifyExtIntfs) {
+        notifyExternalInterface(u);
+    }
+    if ((class_id != modelgbp::gbp::EpGroup::CLASS_ID) ||
+        (class_id != modelgbp::gbp::ExternalInterface::CLASS_ID)) {
         notifyDomain(class_id, uri);
     }
     for (const URI& rd : notifyRds) {
         notifyDomain(RoutingDomain::CLASS_ID, rd);
+    }
+}
+
+bool operator==(const PolicyRoute& lhs, const PolicyRoute& rhs)
+{
+    return ((lhs.rd->getURI() == rhs.rd->getURI()) &&
+            (lhs.rdInst == rhs.rdInst) &&
+            (lhs.address == rhs.address) &&
+            (lhs.prefix_len == rhs.prefix_len) &&
+            (lhs.nextHops == rhs.nextHops));
+}
+
+bool operator!=(const PolicyRoute& lhs, const PolicyRoute& rhs)
+{
+    return !operator==(lhs, rhs);
+}
+
+PolicyRoute& PolicyRoute::operator=(const PolicyRoute& pRoute)
+{
+    this->rd = pRoute.rd;
+    this->rdInst = pRoute.rdInst;
+    this->address = pRoute.address;
+    this->prefix_len = pRoute.prefix_len;
+    this->nextHops = pRoute.nextHops;
+    this->nd = pRoute.nd;
+    return *this;
+}
+
+bool PolicyManager::getRoute(class_id_t route_type, const URI &uri,
+                             shared_ptr<modelgbp::gbp::RoutingDomain> &rd_,
+                  shared_ptr<modelgbp::gbpe::InstContext> &rdInst_,
+                  boost::asio::ip::address &addr_, uint8_t &pfx_len,
+                        std::list<boost::asio::ip::address> &nhList)
+{
+    lock_guard<mutex> guard(state_mutex);
+    if(route_type == modelgbp::gbp::StaticRoute::CLASS_ID) {
+        route_map_t::iterator iter = static_route_map.find(uri);
+        if(iter == static_route_map.end()){
+            return false;
+        }
+        iter->second.getRoute(rd_, rdInst_, addr_, pfx_len, nhList);
+        return true;
+    } else if(route_type == modelgbp::gbp::RemoteRoute::CLASS_ID) {
+        route_map_t::iterator iter = remote_route_map.find(uri);
+        if(iter == remote_route_map.end()){
+            return false;
+        }
+        iter->second.getRoute(rd_, rdInst_, addr_, pfx_len, nhList);
+        return true;
+    }
+}
+
+void PolicyManager::updateStaticRoutes(const URI& uri,
+                                       uri_set_t &notifyStaticRoutes) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+
+    LOG(DEBUG) << "updateStaticRoutes for URI " << uri;
+    optional<shared_ptr<RoutingDomain>> rd;
+    optional<shared_ptr<ExternalNode>> extNode =
+    ExternalNode::resolve(framework, uri);
+    if(!extNode){
+        ext_node_map_t::iterator extIter = ext_node_map.find(uri);
+        if(extIter != ext_node_map.end()) {
+            //Remove all static routes under external node
+            for(const auto &iter: extIter->second.static_routes) {
+                notifyStaticRoutes.insert(iter);
+            }
+            ext_node_map.erase(extIter);
+        }
+        return;
+    }
+    optional<shared_ptr<InstContext>> rdInst;
+    ExternalNodeState &ens = ext_node_map[uri];
+    vector<shared_ptr<StaticRoute>> staticRoutes;
+    extNode.get()->resolveGbpStaticRoute(staticRoutes);
+    for(shared_ptr<StaticRoute> route: staticRoutes) {
+        route_map_t::iterator routeIter;
+        optional<shared_ptr<StaticRouteToVrfRSrc>> vrfRef =
+        route->resolveGbpStaticRouteToVrfRSrc();
+        if(vrfRef && vrfRef.get()->getTargetURI()) {
+            rd = RoutingDomain::resolve(framework,
+                    vrfRef.get()->getTargetURI().get());
+            rdInst = rd.get()->resolveGbpeInstContext();
+        }
+        if(!rd || !route->getAddress() || !route->getPrefixLen()
+           || !rdInst) {
+            continue;
+        }
+        boost::system::error_code ec;
+        boost::asio::ip::address addr =
+            address::from_string(route->getAddress().get(), ec);
+        if(ec) {
+            continue;
+        }
+        vector<shared_ptr<StaticNextHop>> nhs;
+        route->resolveGbpStaticNextHop(nhs);
+        std::list<boost::asio::ip::address> lnhs;
+        for(const auto &nh: nhs) {
+            if(nh->getIp()) {
+                addr = address::from_string(nh->getIp().get(), ec);
+                if(!ec) {
+                    lnhs.push_back(addr);
+                }
+            }
+        }
+        lnhs.sort();
+        PolicyRoute newRoute(rd.get(), rdInst.get(), addr,
+                             route->getPrefixLen().get(),
+                             lnhs, extNode.get());
+        auto rIter = ens.static_routes.find(route->getURI());
+        if(rIter == ens.static_routes.end()) {
+            ens.static_routes.insert(route->getURI());
+            notifyStaticRoutes.insert(route->getURI());
+            auto it = static_route_map.insert(std::make_pair(route->getURI(),
+                                              newRoute));
+            it.first->second.setPresent(true);
+            continue;
+        }
+        routeIter = static_route_map.find(route->getURI());
+        if((routeIter != static_route_map.end()) &&
+           (routeIter->second != newRoute)) {
+            routeIter->second.setPresent(true);
+            routeIter->second = newRoute;
+            notifyStaticRoutes.insert(route->getURI());
+        }
+    }
+    //Deleted static routes
+    uri_set_t::iterator itr = ens.static_routes.begin();
+    while(itr != ens.static_routes.end()) {
+        route_map_t::iterator routeIter;
+        routeIter = static_route_map.find(*itr);
+        if(routeIter != static_route_map.end() &&
+           !routeIter->second.isPresent()) {
+            itr = ens.static_routes.erase(itr);
+            static_route_map.erase(routeIter);
+            notifyStaticRoutes.insert(*itr);
+            continue;
+        }
+        routeIter->second.setPresent(false);
+        itr++;
+    }
+}
+
+void PolicyManager::updateStaticRoute(class_id_t class_id, const URI& uri,
+                                      uri_set_t &notifyStaticRoutes) {
+    using namespace modelgbp::gbp;
+    if(class_id == StaticRoute::CLASS_ID) {
+        route_map_t::iterator iter = static_route_map.find(uri);
+        if(iter == static_route_map.end())
+            return;
+        boost::optional<opflex::modb::URI> extNodeURI;
+        iter->second.getExtNodeURI(extNodeURI);
+        if(extNodeURI)
+            updateStaticRoutes(extNodeURI.get(), notifyStaticRoutes);
+    }
+    if(class_id == StaticNextHop::CLASS_ID) {
+        ext_node_map_t::iterator itr;
+        for(itr = ext_node_map.begin(); itr != ext_node_map.end(); itr++) {
+            updateStaticRoutes(itr->first,notifyStaticRoutes);
+        }
+    }
+}
+/*TBD: Templatize part of the code*/
+void PolicyManager::updateRemoteRoutes(const URI& uri,
+                                       uri_set_t &notifyRemoteRoutes) {
+    using namespace modelgbp::gbp;
+    LOG(DEBUG) << "updateRemoteRoutes for URI " << uri;
+    optional<shared_ptr<RoutingDomain>> rd;
+    std::vector<std::shared_ptr<RemoteRoute>> remoteRoutes;
+    optional<std::shared_ptr<modelgbp::gbpe::InstContext>> rdInst;
+    rd = RoutingDomain::resolve(framework,uri);
+    if(!rd){
+        rd_map_t::iterator rdIter = rd_map.find(uri);
+        if(rdIter == rd_map.end()) {
+
+            for(const auto &iter: rdIter->second.remote_routes) {
+                notifyRemoteRoutes.insert(iter);
+            }
+            //RoutingDomain deletion will happen in domain context
+            rdIter->second.remote_routes.clear();
+        }
+        return;
+    }
+
+    rdInst = rd.get()->resolveGbpeInstContext();
+    //We will get called again when Routing Domain has forwarding data
+    if(!rdInst){
+        return;
+    }
+    RoutingDomainState &rs = rd_map[uri];
+    rd.get()->resolveGbpRemoteRoute(remoteRoutes);
+    for(shared_ptr<RemoteRoute> route: remoteRoutes) {
+        if(!route->getAddress() || !route->getPrefixLen()) {
+            continue;
+        }
+        route_map_t::iterator routeIter;
+        boost::system::error_code ec;
+        boost::asio::ip::address addr;
+        addr = address::from_string(route->getAddress().get(), ec);
+        if(ec) {
+            continue;
+        }
+        vector<shared_ptr<RemoteNextHop>> nhs;
+        route->resolveGbpRemoteNextHop(nhs);
+        std::list<boost::asio::ip::address> lnhs;
+        for(const auto &nh: nhs) {
+            if(nh->getIp()) {
+                addr = address::from_string(nh->getIp().get(), ec);
+                if(!ec) {
+                    lnhs.push_back(addr);
+                }
+            }
+        }
+        lnhs.sort();
+        PolicyRoute newRoute(rd.get(), rdInst.get(), addr,
+                             route->getPrefixLen().get(),
+                             lnhs);
+
+        auto it = rs.remote_routes.find(route->getURI());
+        if(it == rs.remote_routes.end()) {
+            //New remote route
+            rs.remote_routes.insert(route->getURI());
+            auto rIter = remote_route_map.insert(
+                std::make_pair(route->getURI(),newRoute));
+            rIter.first->second.setPresent(true);
+            notifyRemoteRoutes.insert(route->getURI());
+            continue;
+        }
+        routeIter = remote_route_map.find(route->getURI());
+        if((routeIter != remote_route_map.end()) &&
+            routeIter->second != newRoute) {
+            //Updated remote route
+            routeIter->second.setPresent(true);
+            routeIter->second = newRoute;
+            notifyRemoteRoutes.insert(route->getURI());
+        }
+    }
+    //Deleted remote routes
+    uri_set_t::iterator itr = rs.remote_routes.begin();
+    while(itr != rs.remote_routes.end()) {
+        route_map_t::iterator routeIter;
+        routeIter = remote_route_map.find(*itr);
+        if((routeIter != remote_route_map.end()) &&
+           !routeIter->second.isPresent()) {
+            notifyRemoteRoutes.insert(*itr);
+            itr = rs.remote_routes.erase(itr);
+            remote_route_map.erase(routeIter);
+            continue;
+        }
+        routeIter->second.setPresent(false);
+        itr++;
+    }
+}
+
+void PolicyManager::updateRemoteRoute(class_id_t class_id, const URI& uri,
+                                      uri_set_t &notifyRemoteRoutes) {
+    using namespace modelgbp::gbp;
+    if(class_id == RemoteRoute::CLASS_ID) {
+        route_map_t::iterator iter = remote_route_map.find(uri);
+        if(iter == remote_route_map.end()) {
+            return;
+        }
+        opflex::modb::URI rdURI = iter->second.getRDURI();
+        updateRemoteRoutes(rdURI, notifyRemoteRoutes);
+    }
+    if(class_id == RemoteNextHop::CLASS_ID) {
+        /*TBD:This should be optimized*/
+        rd_map_t::iterator iter = rd_map.begin();
+        while(iter != rd_map.end()) {
+            updateRemoteRoutes(iter->first, notifyRemoteRoutes);
+            iter++;
+        }
+    }
+}
+
+void PolicyManager::updateRoutes(class_id_t class_id, const URI& uri) {
+    using namespace modelgbp::gbp;
+    unique_lock<mutex> guard(state_mutex);
+    uri_set_t notifyStaticRoutes,notifyRemoteRoutes;
+
+    if(class_id == ExternalNode::CLASS_ID) {
+        updateStaticRoutes(uri, notifyStaticRoutes);
+    } else if(class_id == RoutingDomain::CLASS_ID) {
+        updateRemoteRoutes(uri, notifyRemoteRoutes);
+    } else if((class_id == StaticRoute::CLASS_ID)||
+              (class_id == StaticNextHop::CLASS_ID)) {
+        updateStaticRoute(class_id, uri, notifyStaticRoutes);
+    } else if((class_id == RemoteRoute::CLASS_ID) ||
+              (class_id == RemoteNextHop::CLASS_ID)) {
+        updateRemoteRoute(class_id, uri, notifyRemoteRoutes);
+    }
+    guard.unlock();
+    for (const URI& u : notifyStaticRoutes) {
+        notifyStaticRoute(u);
+    }
+    for (const URI& u : notifyRemoteRoutes) {
+        notifyRemoteRoute(u);
     }
 }
 
@@ -1195,6 +1997,18 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
                         pmanager.updateL3Nets(uri, notif);
                     });
             });
+    } else if (classId == RedirectDestGroup::CLASS_ID) {
+        pmanager.taskQueue.dispatch("cl"+uri.toString(), [=]() {
+            pmanager.executeAndNotifyContract([&](uri_set_t& notif) {
+                pmanager.updateRedirectDestGroup(uri, notif);
+            });
+        });
+    } else if (classId == RedirectDest::CLASS_ID) {
+        pmanager.taskQueue.dispatch("cl"+uri.toString(), [=]() {
+            pmanager.executeAndNotifyContract([&](uri_set_t& notif) {
+                pmanager.updateRedirectDestGroups(notif);
+            });
+        });
     } else {
         {
             unique_lock<mutex> guard(pmanager.state_mutex);
@@ -1238,4 +2052,13 @@ void PolicyManager::ConfigListener::objectUpdated(class_id_t, const URI& uri) {
     pmanager.notifyConfig(uri);
 }
 
+PolicyManager::RouteListener::RouteListener(PolicyManager& pmanager_)
+    : pmanager(pmanager_) {}
+
+    PolicyManager::RouteListener::~RouteListener() {}
+
+    void PolicyManager::RouteListener::objectUpdated(
+         class_id_t classId, const URI& uri) {
+        pmanager.updateRoutes(classId, uri);
+    }
 } /* namespace opflexagent */

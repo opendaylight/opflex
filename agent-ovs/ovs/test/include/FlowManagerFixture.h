@@ -26,9 +26,11 @@
 namespace opflexagent {
 
 class FlowManagerFixture : public ModbFixture {
+typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
 public:
-    FlowManagerFixture()
-        : ctZoneManager(idGen), switchManager(agent, exec, reader, portmapper) {
+    FlowManagerFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE)
+        : ModbFixture(mode), ctZoneManager(idGen),
+        switchManager(agent, exec, reader, portmapper) {
         switchManager.setSyncDelayOnConnect(0);
         ctZoneManager.setCtZoneRange(1, 65534);
         ctZoneManager.init("conntrack");

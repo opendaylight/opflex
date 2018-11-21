@@ -54,9 +54,11 @@ public:
      * @param port listen port for the server
      * @param roles the opflex roles for this server
      * @param peers a list of peers to return in the opflex handshake
+     * @param proxies a list of proxies to return in the opflex handshake
      * @param md the model metadata for the server
      */
     MockOpflexServer(int port, uint8_t roles, peer_vec_t peers,
+                     std::vector<std::string> proxies,
                      const modb::ModelMetadata& md);
 
     /**
@@ -105,6 +107,13 @@ public:
      * @return a vector of peer pairs
      */
     const peer_vec_t& getPeers() const;
+
+    /**
+     * Get the proxies that this server was configured with
+     *
+     * @return a vector of proxies
+     */
+    const std::vector<std::string>& getProxies() const;
 
     /**
      * Get the port number that this server was configured with
