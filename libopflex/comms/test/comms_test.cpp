@@ -725,7 +725,7 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv6, CommsFixture ) {
     BOOST_CHECK_EQUAL(!l, 0);
 
     ::yajr::Peer * p = ::yajr::Peer::create(
-            "localhost", boost::lexical_cast<std::string>(65534-kPortOffset), doNothingOnConnect,
+            "::", boost::lexical_cast<std::string>(65534-kPortOffset), doNothingOnConnect,
             NULL, CommsFixture::loopSelector
     );
 

@@ -59,11 +59,13 @@ public:
  */
 class ModbFixture : public BaseFixture {
     //! @cond Doxygen_Suppress
+typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
 public:
-    ModbFixture() : BaseFixture(),
-                    epSrc(&agent.getEndpointManager()),
-                    servSrc(&agent.getServiceManager()),
-                    policyOwner("policyreg") {
+    ModbFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE) :
+    BaseFixture(mode),
+    epSrc(&agent.getEndpointManager()),
+    servSrc(&agent.getServiceManager()),
+    policyOwner("policyreg") {
         universe = modelgbp::policy::Universe::resolve(framework).get();
         opflex::modb::Mutator mutator(framework, policyOwner);
         space = universe->addPolicySpace("tenant0");
@@ -370,7 +372,8 @@ protected:
             .addGbpRuleToClassifierRSrc(classifier3->getURI().toString())
             ->setTargetL24Classifier(classifier3->getURI());
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
-            ->addGbpRuleToActionRSrc(action1->getURI().toString())
+            ->addGbpRuleToActionRSrcAllowDenyAction(
+                action1->getURI().toString())
             ->setTargetAllowDenyAction(action1->getURI());
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule2")
             ->setOrder(2)

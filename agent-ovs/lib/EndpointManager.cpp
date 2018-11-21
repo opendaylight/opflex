@@ -71,7 +71,6 @@ void EndpointManager::start() {
     EpAttributeSet::registerListener(framework, &epgMappingListener);
     RemoteEndpointInventory::registerListener(framework, &epgMappingListener);
     RemoteInventoryEp::registerListener(framework, &epgMappingListener);
-
     policyManager.registerListener(this);
 
     opflex::modb::Mutator mutator(framework, "init");
@@ -132,6 +131,14 @@ void EndpointManager::notifyRemoteListeners(const std::string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
     for (EndpointListener* listener : endpointListeners) {
         listener->remoteEndpointUpdated(uuid);
+    }
+}
+
+void EndpointManager::notifyExternalEndpointListeners(
+    const std::string& uuid) {
+    unique_lock<mutex> guard(listener_mutex);
+    for (EndpointListener* listener : endpointListeners) {
+        listener->externalEndpointUpdated(uuid);
     }
 }
 
@@ -494,6 +501,131 @@ void EndpointManager::updateEndpointRemote(const opflex::modb::URI& uri) {
     guard.unlock();
     if (uuid)
         notifyRemoteListeners(uuid.get());
+}
+
+void EndpointManager::updateEndpointExternal(const Endpoint& endpoint) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::epdr;
+
+    unique_lock<mutex> guard(ep_mutex);
+    const string& uuid = endpoint.getUUID();
+    EndpointState& es = ep_map[uuid];
+
+    // update endpoint group to endpoint mapping
+    const optional<URI>& oldEgURI = es.egURI;
+
+    optional<URI> egURI = es.endpoint->getEgURI();
+   // update endpoint group to endpoint mapping
+    if(oldEgURI != egURI) {
+        if (oldEgURI) {
+            unordered_set<string>& eps = group_ep_map[oldEgURI.get()];
+            eps.erase(uuid);
+            if (eps.empty())
+                group_ep_map.erase(oldEgURI.get());
+        }
+        if (egURI) {
+            group_ep_map[egURI.get()].insert(uuid);
+        }
+        es.egURI = egURI;
+    }
+
+    // update interface name to endpoint mapping
+    const optional<std::string>& oldIface = es.endpoint->getInterfaceName();
+    const optional<std::string>& iface = endpoint.getInterfaceName();
+    updateEpMap(oldIface, iface, iface_ep_map, uuid);
+
+    // update access interface name to endpoint mapping
+    const optional<std::string>& oldAccess = es.endpoint->getAccessInterface();
+    const optional<std::string>& access = endpoint.getAccessInterface();
+    updateEpMap(oldAccess, access, access_iface_ep_map, uuid);
+
+    // update access uplink interface name to endpoint mapping
+    const optional<std::string>& oldUplink =
+    es.endpoint->getAccessUplinkInterface();
+    const optional<std::string>& uplink = endpoint.getAccessUplinkInterface();
+    updateEpMap(oldUplink, uplink, access_uplink_ep_map, uuid);
+
+    // TBD: SecurityGroups,FloatingIPs and VMM reporting are not required for
+    // External EP
+
+    std::shared_ptr<Endpoint> ep = std::make_shared<Endpoint>(endpoint);
+    // Update ExternalEndpoint object in the MODB, which will trigger
+    // resolution of the external interface and external domain, if
+    // needed.
+    Mutator mutator(framework, "policyelement");
+    optional<shared_ptr<ExternalDiscovered> > extD =
+        ExternalDiscovered::resolve(framework);
+    if (extD) {
+        shared_ptr<ExternalL3Ep> extL3Ep = extD.get()->addEpdrExternalL3Ep(uuid);
+        extL3Ep->setMac(ep->getMAC().get());
+        /*There should be a single IP for an external endpoint*/
+        for (const string& ip : ep->getIPs()) {
+            if (!validateIp(ip)) continue;
+            extL3Ep->setIp(ip);
+        }
+        if(ep->getExtInterfaceURI()) {
+            LOG(INFO) <<"Set extIntURI "<<ep->getExtInterfaceURI().get();
+            extL3Ep->addEpdrExternalL3EpToPathAttRSrc()
+                   ->setTargetExternalInterface(ep->getExtInterfaceURI().get());
+        } else {
+            optional<std::shared_ptr<ExternalL3EpToPathAttRSrc>> ctx =
+                    extL3Ep->resolveEpdrExternalL3EpToPathAttRSrc();
+            if (ctx)
+                ctx.get()->remove();
+        }
+        if(ep->getExtNodeURI()) {
+            LOG(INFO) <<"Set extnodeURI "<<ep->getExtNodeURI().get();
+            extL3Ep->addEpdrExternalL3EpToNodeAttRSrc()
+                   ->setTargetExternalNode(ep->getExtNodeURI().get());
+        } else {
+            optional<std::shared_ptr<ExternalL3EpToNodeAttRSrc>> ctx =
+                    extL3Ep->resolveEpdrExternalL3EpToNodeAttRSrc();
+            if (ctx)
+                ctx.get()->remove();
+        }
+    }
+    mutator.commit();
+    es.endpoint = ep;
+    guard.unlock();
+    notifyExternalEndpointListeners(uuid);
+}
+
+void EndpointManager::removeEndpointExternal(const std::string& uuid) {
+    using namespace modelgbp::epdr;
+    using namespace modelgbp::epr;
+    using namespace modelgbp::gbpe;
+
+    unique_lock<mutex> guard(ep_mutex);
+    Mutator mutator(framework, "policyelement");
+
+    ep_map_t::iterator it = ep_map.find(uuid);
+    if (it != ep_map.end()) {
+        EndpointState& es = it->second;
+        // remove any associated modb entries
+        ExternalL3Ep::remove(framework, uuid);
+        EpCounter::remove(framework, uuid);
+        if (es.egURI) {
+            group_ep_map_t::iterator it = group_ep_map.find(es.egURI.get());
+            if (it != group_ep_map.end()) {
+                it->second.erase(uuid);
+                if (it->second.empty()) {
+                    group_ep_map.erase(it);
+                }
+            }
+        }
+        updateEpMap(es.endpoint->getInterfaceName(), boost::none,
+                    iface_ep_map, uuid);
+        updateEpMap(es.endpoint->getAccessInterface(), boost::none,
+                    access_iface_ep_map, uuid);
+        updateEpMap(es.endpoint->getAccessUplinkInterface(), boost::none,
+                    access_uplink_ep_map, uuid);
+
+        ep_map.erase(it);
+    }
+    mutator.commit();
+    guard.unlock();
+    notifyExternalEndpointListeners(uuid);
 }
 
 bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
