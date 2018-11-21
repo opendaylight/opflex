@@ -2895,6 +2895,7 @@ void BaseIntFlowManagerFixture::initExpVirtualDhcp(bool virtIp,
                                                    bool serverOverride) {
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
     string bmac("ff:ff:ff:ff:ff:ff");
+    uint32_t tunPort = intFlowManager.getTunnelPort();
 
     uint32_t port = portmapper.FindPort(ep0->getInterfaceName().get());
     ADDF(Bldr().cookie(ovs_ntohll(flow::cookie::DHCP_V4))
@@ -2910,6 +2911,13 @@ void BaseIntFlowManagerFixture::initExpVirtualDhcp(bool virtIp,
         hexServerIp = "0x1020304";
         serverMac = "0xffbbffddeeff";
     }
+    ADDF(Bldr().table(BR).priority(52).arp()
+         .reg(BD, 1)
+         .reg(RD, 1)
+         .in(tunPort)
+         .isEthDst(bmac).isTpa(serverIp)
+         .isArpOp(1)
+         .actions().drop().done());
     ADDF(Bldr().table(BR).priority(51).arp()
          .reg(BD, 1)
          .reg(RD, 1)
