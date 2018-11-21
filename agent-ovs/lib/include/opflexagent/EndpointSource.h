@@ -53,6 +53,21 @@ public:
      */
     virtual void removeEndpoint(const std::string& uuid);
 
+    /**
+     * Add or update the specified external endpoint in the endpoint manager.
+     *
+     * @param endpoint the endpoint to add/update
+     */
+    virtual void updateEndpointExternal(const Endpoint& endpoint);
+
+    /**
+     * Remove an external endpoint that no longer exists from the endpoint
+     * manager
+     *
+     * @param uuid the endpoint that no longer exists
+     */
+    virtual void removeEndpointExternal(const std::string& uuid);
+
 protected:
     /**
      * The endpoint manager that will be updated
