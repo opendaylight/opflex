@@ -35,6 +35,7 @@ using rapidjson::Writer;
 using modb::mointernal::StoreClient;
 using ofcore::OFConstants;
 using test::MockOpflexServer;
+typedef OFConstants::OpflexTransportModeState AgentTransportState;
 
 void MockServerHandler::connected() {
 
@@ -58,10 +59,15 @@ public:
                     const std::string& domain_,
                     const optional<std::string>& your_location_,
                     const uint8_t roles_,
-                    test::MockOpflexServer::peer_vec_t peers_)
+                    test::MockOpflexServer::peer_vec_t peers_,
+                    const std::vector<std::string>& proxies_,
+                    bool isClientTM_,
+                    AgentTransportState state_)
         : OpflexMessage("send_identity", RESPONSE, &id),
           name(name_), domain(domain_), your_location(your_location_),
-          roles(roles_), peers(peers_) {}
+          roles(roles_), peers(peers_), proxies(proxies_),
+          isClientTransportMode(isClientTM_),
+          transport_state(state_) {}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
@@ -117,6 +123,16 @@ public:
             writer.EndObject();
         }
         writer.EndArray();
+        if(isClientTransportMode &&
+           (transport_state ==
+            AgentTransportState::SEEKING_PROXIES)) {
+            writer.String("proxy_addresses");
+            writer.StartArray();
+            for(const std::string& proxy: proxies) {
+                writer.String(proxy.c_str());
+            }
+            writer.EndArray();
+        }
         writer.EndObject();
         return true;
     }
@@ -127,6 +143,9 @@ private:
     optional<std::string> your_location;
     uint8_t roles;
     test::MockOpflexServer::peer_vec_t peers;
+    std::vector<std::string> proxies;
+    bool isClientTransportMode;
+    AgentTransportState transport_state;
 };
 
 class PolicyResolveRes : public OpflexMessage {
@@ -228,13 +247,62 @@ protected:
 void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
                                               const Value& payload) {
     LOG(DEBUG) << "Got send_identity req";
+    Value::ConstValueIterator it;
+    bool isClientTM = false;
+    AgentTransportState transport_state;
+
+    for (it = payload.Begin(); it != payload.End(); ++it) {
+        if (it->HasMember("agent_mode")) {
+            std::string agentMode;
+            const Value& modeV = (*it)["agent_mode"];
+            if (!modeV.IsString()) {
+                sendErrorRes(id, "ERROR",
+                             "Malformed message:agent_mode is not a string");
+                return;
+            }
+            agentMode = modeV.GetString();
+            if(agentMode != "transport_mode" && agentMode != "stitched_mode") {
+                sendErrorRes(id, "ERROR",
+                         "Malformed message:agent_mode is not a valid string");
+                return;
+            }
+            if(agentMode == "transport_mode") {
+                isClientTM = true;
+            }
+        }
+        if (it->HasMember("agent_transport_mode_state")) {
+            const Value& stateV = (*it)["agent_transport_mode_state"];
+            std::string transportMode;
+            if (!stateV.IsString()) {
+                sendErrorRes(id, "ERROR",
+                             "Malformed message:agent_transport_mode_state is"
+                             " not a string");
+                return;
+            }
+            transportMode = stateV.GetString();
+            if(transportMode == "seeking_proxies") {
+                transport_state = AgentTransportState::SEEKING_PROXIES;
+            } else if(transportMode == "policy_client") {
+                transport_state = AgentTransportState::POLICY_CLIENT;
+            } else {
+                sendErrorRes(id, "ERROR",
+                         "Malformed message:agent_transport_mode_state"
+                         " is not a valid string");
+                return;
+            }
+        }
+    }
+
     std::stringstream sb;
     sb << "127.0.0.1:" << server->getPort();
     SendIdentityRes* res =
         new SendIdentityRes(id, sb.str(), "testdomain",
                             std::string("location_string"),
                             server->getRoles(),
-                            server->getPeers());
+                            server->getPeers(),
+                            server->getProxies(),
+                            isClientTM,
+                            transport_state);
     getConnection()->sendMessage(res, true);
     ready();
 }

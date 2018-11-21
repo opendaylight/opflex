@@ -64,6 +64,32 @@ module[epr]
         member[group; type=epr/GroupContext]
     }
 
+    class[ReportedRoute;
+          super=gbp/BaseRoute;
+          concrete;]
+    {
+        member[uuid; type=reference/UUID]
+
+        member[asn; type=scalar/UInt32]
+
+        member[cost; type=scalar/UInt32]
+
+        contained
+        {
+            parent[class=epr/PeerRouteUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # endpoint group for the endpoint
+        member[vrf; type=epr/L3Context]
+    }
+
     class[SecurityGroupContext;
           super=gbp/BehavioralGroup;
           concrete]

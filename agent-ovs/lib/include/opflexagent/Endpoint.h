@@ -34,7 +34,7 @@ public:
     /**
      * Default constructor for containers
      */
-    Endpoint() : promiscuousMode(false), discoveryProxyMode(false) {}
+    Endpoint() : promiscuousMode(false), discoveryProxyMode(false), external(false) {}
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that
@@ -44,7 +44,7 @@ public:
      * @param uuid_ the unique ID for the endpoint.
      */
     explicit Endpoint(const std::string& uuid_)
-        : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false) {}
+        : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false), external(false) {}
 
     /**
      * Get the endpoint group URI associated with this endpoint.  Note
@@ -1205,6 +1205,67 @@ public:
         return attestations;
     }
 
+    /**
+     * Set the endpoint to be external
+     *
+     */
+    void setExternal() {
+        external = true;
+    }
+
+    /**
+     * Get whether this endpoint is external
+     *
+     * @return whether the endpoint is external
+     */
+    bool isExternal() {
+        return external;
+    }
+
+    /**
+     * Set the external interface URI associated with this endpoint.
+     * The external interface URI is the path attachment of this external
+     * endpoint to the fabric.
+     *
+     * @param extIntURI the interface URI to set
+     */
+    void setExtInterfaceURI(const opflex::modb::URI& extIntURI) {
+        this->extInterfaceURI = extIntURI;
+    }
+
+    /**
+     * Get the external interface URI associated with this endpoint.
+     * The external interface URI is the path attachment of this external
+     * endpoint to the fabric.
+     *
+     * @return the external interface URI associated with this endpoint
+     */
+    boost::optional<opflex::modb::URI> getExtInterfaceURI() {
+        return this->extInterfaceURI;
+    }
+
+    /**
+     * Set the external node URI associated with this endpoint.
+     * The external node URI is the node attachment of this external
+     * endpoint to the fabric.
+     *
+     * @param extNodeURI the interface URI to set
+     */
+    void setExtNodeURI(const opflex::modb::URI& extNodeURI) {
+        this->extNodeURI = extNodeURI;
+    }
+
+    /**
+     * Get the external node URI associated with this endpoint.
+     * The external node URI is the node attachment of this external
+     * endpoint to the fabric.
+     *
+     * @return the external node URI associated with this endpoint
+     */
+    boost::optional<opflex::modb::URI> getExtNodeURI() {
+        return this->extNodeURI;
+    }
+
 private:
     std::string uuid;
     boost::optional<opflex::modb::MAC> mac;
@@ -1213,6 +1274,11 @@ private:
     virt_ip_set virtualIps;
     boost::optional<std::string> egMappingAlias;
     boost::optional<opflex::modb::URI> egURI;
+    /*Properties in this block are relevant for external
+     endpoints only*/
+    boost::optional<opflex::modb::URI> extInterfaceURI;
+    boost::optional<opflex::modb::URI> extNodeURI;
+    /*End external enpoint properties*/
     std::set<opflex::modb::URI> securityGroups;
     boost::optional<std::string> interfaceName;
     boost::optional<std::string> accessInterface;
@@ -1220,6 +1286,7 @@ private:
     boost::optional<std::string> accessUplinkInterface;
     bool promiscuousMode;
     bool discoveryProxyMode;
+    bool external;
     attr_map_t attributes;
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
