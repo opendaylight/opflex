@@ -51,14 +51,20 @@ public:
      * @param allow_ true if the traffic should be allowed; false
      * otherwise
      * @param remoteSubnets_ remote subnets to which this rule applies
+     * @param redirect_, points to a redirect action
+     * @param rDG, redirect URI
      */
     PolicyRule(const uint8_t dir,
                const uint16_t prio_,
                const std::shared_ptr<modelgbp::gbpe::L24Classifier>& c,
                bool allow_,
-               const network::subnets_t& remoteSubnets_) :
+               const network::subnets_t& remoteSubnets_,
+               bool redirect_,
+               const boost::optional<opflex::modb::URI>& rDG
+               ) :
         direction(dir), prio(prio_), l24Classifier(c), allow(allow_),
-        remoteSubnets(remoteSubnets_) {
+        remoteSubnets(remoteSubnets_), redirect(redirect_),
+        redirDstGrp(rDG) {
     }
 
     /**
@@ -102,14 +108,103 @@ public:
         return l24Classifier;
     }
 
+    /*
+     * Get the RedirectDestGrpURI for the classifier rule.
+     * @return the RedirectDestGrp URI.
+     */
+    boost::optional<opflex::modb::URI> getRedirectDestGrpURI() const
+    {
+        return redirDstGrp;
+    }
+
+    /**
+     * Whether matching traffic should be redirected
+     * @return true if traffic should be redirected, false otherwise
+     */
+    bool getRedirect() const {
+        return redirect;
+    }
+
 private:
     uint8_t direction;
     uint16_t prio;
     std::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
     bool allow;
+    bool redirect;
     network::subnets_t remoteSubnets;
-
+    boost::optional<opflex::modb::URI> redirDstGrp;
     friend bool operator==(const PolicyRule& lhs, const PolicyRule& rhs);
+};
+
+class PolicyRedirectDest {
+public:
+    PolicyRedirectDest(const std::shared_ptr<modelgbp::gbp::RedirectDest> dst_,
+                       const boost::asio::ip::address& ip_,
+                       const opflex::modb::MAC& mac_,
+                       const std::shared_ptr<modelgbp::gbp::RoutingDomain>& rd_,
+                       const std::shared_ptr<modelgbp::gbp::BridgeDomain>& bd_,
+                       const std::shared_ptr<modelgbp::gbpe::InstContext>& rdInstCtxt_,
+                       const std::shared_ptr<modelgbp::gbpe::InstContext>& bdInstCtxt_
+                       ):redirDst(dst_), ip(ip_), mac(mac_),rd(rd_), bd(bd_),
+                         rdInstCtxt(rdInstCtxt_), bdInstCtxt(bdInstCtxt_){}
+    /*
+     * Get the RoutingDomain for the redirect destination.
+     * @return the RoutingDomain object.
+     */
+    const std::shared_ptr<modelgbp::gbp::RoutingDomain> getRD () const {
+        return rd;
+    }
+
+    /*
+     * Get the RoutingDomain for the redirect destination.
+     * @return the RoutingDomain object.
+     */
+    uint32_t getRDVnid() {
+        return rdInstCtxt->getEncapId().get();
+    }
+
+    /*
+     * Get the BridgeDomain for the redirect destination.
+     * @return the BridgeDomain object.
+     */
+    const std::shared_ptr<modelgbp::gbp::BridgeDomain> getBD () const {
+        return bd;
+    }
+
+    /*
+     * Get the BDVnid for the redirect destination.
+     * @return the bd vnid .
+     */
+    uint32_t getBDVnid() {
+        return bdInstCtxt->getEncapId().get();
+    }
+
+    /*
+     * Get the ip address for the redirect destination.
+     * @return the ip address .
+     */
+    boost::asio::ip::address getIp() const {
+        return ip;
+    }
+
+    /*
+     * Get the mac address for the redirect destination.
+     * @return the mac address .
+     */
+    opflex::modb::MAC getMac() const {
+        return mac;
+    }
+
+private:
+    boost::asio::ip::address ip;
+    opflex::modb::MAC mac;
+    std::shared_ptr<modelgbp::gbp::RedirectDest> redirDst;
+    std::shared_ptr<modelgbp::gbp::RoutingDomain> rd;
+    std::shared_ptr<modelgbp::gbp::BridgeDomain> bd;
+    std::shared_ptr<modelgbp::gbpe::InstContext> rdInstCtxt;
+    std::shared_ptr<modelgbp::gbpe::InstContext> bdInstCtxt;
+    friend bool operator==(const PolicyRedirectDest& lhs,
+                           const PolicyRedirectDest& rhs);
 };
 
 /**
@@ -126,6 +221,77 @@ bool operator==(const PolicyRule& lhs, const PolicyRule& rhs);
  * Check for PolicyRule inequality.
  */
 bool operator!=(const PolicyRule& lhs, const PolicyRule& rhs);
+
+class PolicyRoute {
+public:
+
+    PolicyRoute(std::shared_ptr<modelgbp::gbp::RoutingDomain>& rd_,
+                std::shared_ptr<modelgbp::gbpe::InstContext>& rdInst_,
+                boost::asio::ip::address addr_, uint8_t pfx_len_,
+                std::list<boost::asio::ip::address> &nh_,
+                std::shared_ptr<modelgbp::gbp::ExternalNode> nd_=
+                std::shared_ptr<modelgbp::gbp::ExternalNode>()):
+		rd(rd_), rdInst(rdInst_), address(addr_),
+                prefix_len(pfx_len_),present(false),nextHops(nh_),
+                nd(nd_) {};
+
+    PolicyRoute(const PolicyRoute& pRoute):
+		rd(pRoute.rd), rdInst(pRoute.rdInst),
+                address(pRoute.address),
+                prefix_len(pRoute.prefix_len), present(false),
+                nextHops(pRoute.nextHops), nd(pRoute.nd) {};
+
+    void setPresent(bool prst_) {
+        present = prst_;
+    }
+
+    bool isPresent() {
+        return present;
+    }
+
+    void getRoute(std::shared_ptr<modelgbp::gbp::RoutingDomain> &rd_,
+                  std::shared_ptr<modelgbp::gbpe::InstContext> &rdInst_,
+                  boost::asio::ip::address &addr_, uint8_t &pfx_len,
+                  std::list<boost::asio::ip::address> &nhList) const {
+        rd_ = rd;
+        rdInst_ = rdInst;
+        addr_ = address;
+        pfx_len = prefix_len;
+        nhList = nextHops;
+    }
+
+    void getExtNodeURI(boost::optional<opflex::modb::URI> &uri) {
+        if(nd) {
+            uri = nd->getURI();
+        }
+    }
+    opflex::modb::URI getRDURI() {
+        return rd->getURI();
+    }
+
+    PolicyRoute& operator=(const PolicyRoute& rhs);
+
+private:
+    std::shared_ptr<modelgbp::gbp::RoutingDomain> rd;
+    std::shared_ptr<modelgbp::gbpe::InstContext> rdInst;
+    boost::asio::ip::address address;
+    uint8_t prefix_len;
+    std::list<boost::asio::ip::address> nextHops;
+    bool present;
+    std::shared_ptr<modelgbp::gbp::ExternalNode> nd;
+    friend bool operator==(const PolicyRoute& lhs, const PolicyRoute& rhs);
+};
+
+/**
+ * Check for PolicyRoute equality.
+ */
+bool operator==(const PolicyRoute& lhs, const PolicyRoute& rhs);
+
+
+/**
+ * Check for PolicyRoute inequality.
+ */
+bool operator!=(const PolicyRoute& lhs, const PolicyRoute& rhs);
 
 /**
  * The policy manager maintains various state and indices related
@@ -292,6 +458,26 @@ public:
     boost::optional<uint32_t> getVnidForGroup(const opflex::modb::URI& eg);
 
     /**
+     * Get the virtual-network identifier (vnid) associated with the
+     * specified endpoint group's bridge domain.
+     *
+     * @param eg the URI for the endpoint group
+     * @return vnid of the group if group is found and its vnid is set,
+     * boost::none otherwise
+     */
+    boost::optional<uint32_t> getBDVnidForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the virtual-network identifier (vnid) associated with the
+     * specified endpoint group's routing domain.
+     *
+     * @param eg the URI for the endpoint group
+     * @return vnid of the group if group is found and its vnid is set,
+     * boost::none otherwise
+     */
+    boost::optional<uint32_t> getRDVnidForGroup(const opflex::modb::URI& eg);
+
+    /**
      * Get the endpoint group associated with the specified identifier
      *
      * @param vnid the VNID to look up
@@ -308,6 +494,110 @@ public:
      */
     boost::optional<std::string>
     getMulticastIPForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the multicast IP group configured for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return Multicast IP for the group if any, boost::none otherwise
+     */
+    boost::optional<std::string>
+    getBDMulticastIPForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the multicast IP group configured for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return Multicast IP for the group if any, boost::none otherwise
+     */
+    boost::optional<std::string>
+    getRDMulticastIPForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the sclass or source pctag for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return sclass for the group if any, boost::none otherwise
+     */
+    boost::optional<uint32_t>
+    getSclassForGroup(const opflex::modb::URI& eg);
+
+    /**
+     * Get the bdvnid for an external interface.
+     *
+     * @param eg the URI for the external interface
+     * @return bd vnid for the external interface if any, boost::none otherwise
+     */
+    boost::optional<uint32_t>
+    getBDVnidForExternalInterface(const opflex::modb::URI& eg);
+
+    /**
+     * Get the rdvnid for an external interface.
+     *
+     * @param eg the URI for the external interface
+     * @return rd vnid for the external interface if any, boost::none otherwise
+     */
+    boost::optional<uint32_t>
+    getRDVnidForExternalInterface(const opflex::modb::URI& eg);
+
+    /**
+     * Get the multicastIP associated with the external BD of an
+     * external interface.
+     *
+     * @param eg the URI for the external interface
+     * @return multicast IP for the external interface if any,
+     * boost::none otherwise
+     */
+    boost::optional<std::string> getBDMulticastIPForExternalInterface(
+        const opflex::modb::URI& eg);
+
+    /**
+     * Get the sclass associated with the external BD of an
+     * external interface.
+     *
+     * @param eg the URI for the external interface
+     * @return sclass for the external interface if any,
+     * boost::none otherwise
+     */
+    boost::optional<uint32_t>
+    getSclassForExternalInterface(const opflex::modb::URI& eg);
+
+    /**
+     * Get the external domain associated with an
+     * external interface.
+     *
+     * @param eg the URI for the external interface
+     * @return external domain for the external interface if any,
+     * boost::none otherwise
+     */
+    boost::optional<std::shared_ptr<modelgbp::gbp::L3ExternalDomain>>
+        getExternalDomainForExternalInterface(const opflex::modb::URI& eg);
+
+    /**
+     * Get sclass associated with an external network (external epg).
+     *
+     * @param eg the URI for the external network
+     * @return sclass for the external network, if any
+     * boost::none otherwise
+     */
+    boost::optional<uint32_t> getSclassForExternalNet(
+        const opflex::modb::URI& ei);
+
+    /**
+     * Get the L2EPRetention Policy for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return EP retention policy for the epg if any, boost::none otherwise
+     */
+    boost::optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention>>getL2EPRetentionPolicyForGroup(const opflex::modb::URI& eg );
+
+    /**
+     * Get the L3EPRetention Policy for an endpoint group.
+     *
+     * @param eg the URI for the endpoint group
+     * @return EP retention policy for the epg if any, boost::none otherwise
+     */
+    boost::optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention>>getL3EPRetentionPolicyForGroup(const opflex::modb::URI& eg );
 
     /**
      * Check if an endpoint group exists
@@ -437,6 +727,19 @@ public:
      */
     static const uint16_t MAX_POLICY_RULE_PRIORITY;
 
+    typedef std::list<std::shared_ptr<PolicyRedirectDest>> redir_dest_list_t;
+
+    bool getPolicyDestGroup(opflex::modb::URI,
+                            redir_dest_list_t &redirList, uint8_t &hashParam,
+                            uint8_t &hashOpt);
+
+    bool getRoute(opflex::modb::class_id_t route_type,
+                  const opflex::modb::URI & egURI,
+		  std::shared_ptr<modelgbp::gbp::RoutingDomain> &rd_,
+                  std::shared_ptr<modelgbp::gbpe::InstContext> &rdInst_,
+                  boost::asio::ip::address &addr_, uint8_t &pfx_len,
+                  std::list<boost::asio::ip::address> &nhList);
+
 private:
     opflex::ofcore::OFFramework& framework;
     std::string opflexDomain;
@@ -448,29 +751,61 @@ private:
     struct GroupState {
         boost::optional<std::shared_ptr<modelgbp::gbp::EpGroup> > epGroup;
         boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instBDContext;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instRDContext;
         boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
         boost::optional<std::shared_ptr<modelgbp::gbp::BridgeDomain> > bridgeDomain;
         boost::optional<std::shared_ptr<modelgbp::gbp::FloodDomain> > floodDomain;
         boost::optional<std::shared_ptr<modelgbp::gbpe::FloodContext> > floodContext;
         typedef std::unordered_map<opflex::modb::URI,
                                      std::shared_ptr<modelgbp::gbp::Subnet> > subnet_map_t;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention> > l2EpRetPolicy;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention> > l3EpRetPolicy;
         subnet_map_t subnet_map;
     };
 
+
     struct L3NetworkState {
+        boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
         boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
         boost::optional<opflex::modb::URI> natEpg;
     };
 
     struct RoutingDomainState {
-        std::unordered_set<opflex::modb::URI> extNets;
+         std::unordered_set<opflex::modb::URI> extNets;
+        uri_set_t remote_routes;
     };
+
+    typedef std::unordered_map<opflex::modb::URI, PolicyRoute>
+        route_map_t;
+
+    struct ExternalInterfaceState {
+        boost::optional<std::shared_ptr<modelgbp::gbp::ExternalInterface> > extInterface;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instContext;
+        boost::optional<std::shared_ptr<modelgbp::gbpe::InstContext> > instRDContext;
+        boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> > routingDomain;
+        boost::optional<std::shared_ptr<modelgbp::gbp::ExternalL3BridgeDomain> > bridgeDomain;
+        boost::optional<std::shared_ptr<modelgbp::gbp::L3ExternalDomain> > extDomain;
+        std::vector<std::shared_ptr<modelgbp::gbp::BgpPeerProfile> > bgpPeer;
+    };
+
+    struct ExternalNodeState {
+        uri_set_t static_routes;
+    };
+
+    route_map_t static_route_map;
+    route_map_t remote_route_map;
 
     typedef std::unordered_map<opflex::modb::URI, GroupState> group_map_t;
     typedef std::unordered_map<uint32_t, opflex::modb::URI> vnid_map_t;
     typedef std::unordered_map<opflex::modb::URI, RoutingDomainState> rd_map_t;
     typedef std::unordered_map<opflex::modb::URI, L3NetworkState> l3n_map_t;
     typedef std::unordered_map<opflex::modb::URI, uri_set_t> uri_ref_map_t;
+
+    typedef std::unordered_map<opflex::modb::URI, ExternalInterfaceState> \
+    ext_int_map_t;
+    typedef std::unordered_map<opflex::modb::URI, ExternalNodeState> \
+    ext_node_map_t;
 
     /**
      * A map from EPG URI to its state
@@ -491,6 +826,16 @@ private:
      * A map from l3 network URI to its state
      */
     l3n_map_t l3n_map;
+
+    /**
+     * A map from external interface URI to its state
+     */
+    ext_int_map_t ext_int_map;
+
+    /**
+     * A map from external interface URI to its state
+     */
+    ext_node_map_t ext_node_map;
 
     /**
      * A map from ep group URI to a set of l3 domains with l3 external
@@ -613,6 +958,23 @@ private:
     friend class ConfigListener;
 
     /**
+     * Listener for changes related to routes.
+     */
+    class RouteListener : public opflex::modb::ObjectListener {
+    public:
+        RouteListener(PolicyManager& pmanager);
+        virtual ~RouteListener();
+
+        virtual void objectUpdated(opflex::modb::class_id_t class_id,
+                                    const opflex::modb::URI& uri);
+    private:
+        PolicyManager& pmanager;
+    };
+    RouteListener routeListener;
+
+    friend class RouteListener;
+
+    /**
      * The policy listeners that have been registered
      */
     std::list<PolicyListener*> policyListeners;
@@ -636,6 +998,28 @@ private:
      * updated
      */
     void notifyEPGDomain(const opflex::modb::URI& egURI);
+
+    /**
+     * Notify policy listeners about an update to an external interface.
+     *
+     * @param extIntfURI the URI of the endpoint group that has been
+     * updated
+     */
+    void notifyExternalInterface(const opflex::modb::URI& extIntfURI);
+
+    /**
+     * Notify policy listeners about an update to a static route.
+     *
+     * @staticRtURI the URI of the static route that has been updated
+     */
+    void notifyStaticRoute(const opflex::modb::URI& staticRtURI);
+
+    /**
+     * Notify policy listeners about an update to a remote route.
+     *
+     * @remoteRtURI the URI of the remote route that has been updated
+     */
+    void notifyRemoteRoute(const opflex::modb::URI& remoteRtURI);
 
     /**
      * Update the L3 network cache information for all L3 networks
@@ -741,6 +1125,62 @@ private:
      * @return true if the contract entry was removed
      */
     bool removeContractIfRequired(const opflex::modb::URI& contractURI);
+
+    struct RedirectDestGrpState {
+        uint8_t hashParam;
+        uint8_t hashOpt;
+        std::shared_ptr<modelgbp::gbp::RedirectDestGroup> redirDstGrp;
+        redir_dest_list_t redirDstList;
+        uri_set_t ctrctSet;
+    };
+    /**
+     * Map of redirect dest group URI to its state
+     */
+    typedef std::unordered_map<opflex::modb::URI, RedirectDestGrpState> \
+    redir_dst_grp_map_t;
+    redir_dst_grp_map_t redirGrpMap;
+
+    void updateRedirectDestGroup(const opflex::modb::URI& uri,
+                                 uri_set_t &notify);
+    void updateRedirectDestGroups(uri_set_t &notify);
+    void getRedirectDestGroupCtrctSet(uri_set_t &ctrctSet);
+
+    /**
+     * Update the external interface cache information for the
+     * specified external interface URI.  You must hold a state
+     * lock to call this function.
+     *
+     * @param extIntURI the URI of the external interface that should
+     * be updated
+     * @return true if the external interface was updated
+     */
+    bool updateExternalInterface(const opflex::modb::URI& extIntURI,
+                                 bool &toRemove);
+
+    /**
+     * Update the route cache information for the specified external node.
+     * You must hold a state lock to call this function.
+     *
+     * @param classId class id of the object that should be updated
+     * @param objURI URI of the object that should be updated
+     * @return true if the external interface was updated
+     */
+    void updateRoutes(opflex::modb::class_id_t classId,
+                      const opflex::modb::URI& objURI);
+
+    void updateStaticRoutes(const opflex::modb::URI& uri,
+                            uri_set_t &notifyRoutes);
+
+    void updateRemoteRoutes(const opflex::modb::URI& uri,
+                            uri_set_t &notifyRoutes);
+
+    void updateStaticRoute(opflex::modb::class_id_t classId,
+                           const opflex::modb::URI& uri,
+                           uri_set_t &notifyStaticRoutes);
+
+    void updateRemoteRoute(opflex::modb::class_id_t classId,
+                           const opflex::modb::URI& uri,
+                           uri_set_t &notifyRemoteRoutes);
 };
 
 /**
