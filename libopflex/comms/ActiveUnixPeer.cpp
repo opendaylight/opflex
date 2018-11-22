@@ -96,7 +96,7 @@ void ::yajr::comms::internal::ActiveUnixPeer::retry() {
     getLoopData()->kickLibuv();
 
     up();
-    status_ = Peer::kPS_CONNECTING;
+    status_ = internal::Peer::kPS_CONNECTING;
     insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
 
     VLOG(1)
