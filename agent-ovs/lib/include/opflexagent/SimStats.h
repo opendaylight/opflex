@@ -37,8 +37,8 @@ class SimStats : public opflexagent::PolicyListener {
 public:
     /**
      * Create an instance of SimStats
-     * @param[in] agent a reference to an instance of opflex agent.
-     * @parama[in] timer_interval the update interval in seconds.
+     * @param[in] agent_ a reference to an instance of opflex agent.
+     * @param[in] timer_interval_ the update interval in seconds.
      */
     SimStats(opflexagent::Agent& agent_, uint32_t timer_interval_);
     /**
