@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "059a7e95_b95fb297",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2018-12-03T12:19:48Z",
+      "side": 1,
+      "message": "return enum the type",
+      "revId": "f24aeb8c5e153c0efce8f401eebd74788046f37f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
