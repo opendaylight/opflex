@@ -19,21 +19,10 @@ namespace yajr {
 template < ::opflex::logging::OFLogHandler::Level LOGGING_LEVEL >
 void Peer::LoopData::walkAndDumpHandlesCb(uv_handle_t* h, void* loopData) {
 
-    char const * type;
-
-    switch (h->type) {
-#define X(uc, lc)                               \
-        case UV_##uc: type = #lc;               \
-            break;
-      UV_HANDLE_TYPE_MAP(X)
-#undef X
-      default: type = "<unknown>";
-    }
-
     LOG(LOGGING_LEVEL)
         << static_cast<Peer::LoopData const *>(loopData)
         << " pending handle of type "
-        << type
+        << getUvHandleType(h)
         << " @"
         << reinterpret_cast<void const *>(h)
         << " which is "
