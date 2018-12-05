@@ -75,7 +75,7 @@ void MOSerializer::deserialize_ref(modb::mointernal::StoreClient& client,
         } else {
             oi.addReference(pinfo.getId(), ci.getId(), URI(refuri.GetString()));
         }
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         // ignore unknown class
         LOG(DEBUG) << "Could not deserialize reference of unknown class "
                    << subject.GetString();
@@ -97,7 +97,7 @@ void MOSerializer::deserialize_enum(modb::mointernal::StoreClient& client,
             oi.addUInt64(pinfo.getId(), val);
         }
 
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         LOG(WARNING) << "No value of type "
                      << ei.getName()
                      << " found for name "
@@ -228,12 +228,12 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                             // do nothing;
                             break;
                         }
-                    } catch (std::invalid_argument e) {
+                    } catch (const std::invalid_argument& e) {
                         LOG(DEBUG) << "Invalid property "
                                    << pname.GetString()
                                    << " in class "
                                    << ci.getName();
-                    } catch (std::out_of_range e) {
+                    } catch (const std::out_of_range& e) {
                         LOG(DEBUG) << "Unknown property "
                                    << pname.GetString()
                                    << " in class "
@@ -277,7 +277,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                         LOG(DEBUG2) << "No parent present for "
                                     << uri.toString();
                     }
-                } catch (std::out_of_range e) {
+                } catch (const std::out_of_range& e) {
                     // no parent class or property found
                     LOG(ERROR) << "Invalid parent or property for "
                                << uri.toString();
@@ -322,7 +322,7 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                                     (*notifs)[child] = it->second.getClassId();
                                     remoteUpdated = true;
                                 }
-                            } catch (std::out_of_range e) {
+                            } catch (const std::out_of_range& e) {
                                 // most likely already removed by
                                 // another thread
                             }
@@ -340,11 +340,11 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                 listener->remoteObjectUpdated(ci.getId(), uri);
         }
 
-    } catch (std::invalid_argument e) {
+    } catch (const std::invalid_argument& e) {
         // ignore invalid URIs
         LOG(DEBUG) << "Could not deserialize invalid object of class "
                    << classv.GetString();
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         // ignore unknown class
         LOG(DEBUG) << "Could not deserialize object of unknown class "
                    << classv.GetString();
@@ -358,7 +358,7 @@ static void getRoots(ObjectStore* store, Region::obj_set_t& roots) {
         try {
             Region* r = store->getRegion(owner);
             r->getRoots(roots);
-        } catch (std::out_of_range e) { }
+        } catch (const std::out_of_range& e) { }
     }
 }
 
@@ -374,7 +374,7 @@ void MOSerializer::dumpMODB(FILE* pfile) {
     BOOST_FOREACH(Region::obj_set_t::value_type r, roots) {
         try {
             serialize(r.first, r.second, client, writer, true);
-        } catch (std::out_of_range e) { }
+        } catch (const std::out_of_range& e) { }
     }
     writer.EndArray();
     fwrite("\n", 1, 1, pfile);
@@ -441,7 +441,7 @@ static std::string getRefSubj(const modb::ObjectStore& store,
         const modb::ClassInfo& ref_class =
             store.getClassInfo(ref.first);
         return ref_class.getName();
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         return "UNKNOWN:" + ref.first;
     }
 }
@@ -450,7 +450,7 @@ static std::string getEnumVal(const modb::PropertyInfo& pinfo, uint64_t v) {
     const modb::EnumInfo& ei = pinfo.getEnumInfo();
     try {
         return ei.getNameById(v);
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         return "UNKNOWN: " + v;
     }
 }
@@ -678,7 +678,7 @@ void MOSerializer::displayMODB(std::ostream& ostream,
             displayObject(ostream, r.first, r.second,
                           tree, true, includeProps,
                           true, "", 0, utf8, truncate);
-        } catch (std::out_of_range e) { }
+        } catch (const std::out_of_range& e) { }
     }
 }
 

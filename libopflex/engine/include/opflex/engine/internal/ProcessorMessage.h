@@ -99,7 +99,7 @@ public:
                 writer.String("prr");
                 writer.Int64(3600);
                 writer.EndObject();
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 LOG(WARNING) << "No class found for class ID " << p.first;
             }
         }
@@ -157,7 +157,7 @@ public:
                 writer.String("policy_uri");
                 writer.String(p.second.toString().c_str());
                 writer.EndObject();
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 LOG(WARNING) << "No class found for class ID " << p.first;
             }
         }
@@ -218,7 +218,7 @@ public:
                 writer.String("prr");
                 writer.Int64(3600);
                 writer.EndObject();
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 LOG(WARNING) << "No class found for class ID " << p.first;
             }
         }
@@ -277,7 +277,7 @@ public:
                 writer.String("endpoint_uri");
                 writer.String(p.second.toString().c_str());
                 writer.EndObject();
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 LOG(WARNING) << "No class found for class ID " << p.first;
             }
         }
@@ -340,7 +340,7 @@ public:
                 serializer.serialize(p.first, p.second,
                                      *client, writer,
                                      true);
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 // endpoint no longer exists locally
             }
         }
@@ -405,7 +405,7 @@ public:
                 writer.String("endpoint_uri");
                 writer.String(p.second.toString().c_str());
                 writer.EndObject();
-            }  catch (std::out_of_range e) {
+            }  catch (const std::out_of_range& e) {
                 LOG(WARNING) << "No class found for class ID " << p.first;
             }
         }
@@ -469,7 +469,7 @@ public:
                 serializer.serialize(p.first, p.second,
                                      *client, writer,
                                      true);
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 // observable no longer exists locally
             }
         }

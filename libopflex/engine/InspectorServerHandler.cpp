@@ -83,7 +83,7 @@ public:
                 serializer.serialize(p.first, p.second,
                                      client, writer,
                                      recursive);
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 // policy doesn't exist locally
             }
         }
@@ -147,7 +147,7 @@ void InspectorServerHandler::handlePolicyQueryReq(const Value& id,
                     mos.push_back(mo);
                 }
             }
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
                          std::string("Unknown subject: ") +
                          subjectv.GetString());

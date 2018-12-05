@@ -185,7 +185,7 @@ public:
                 serializer.serialize(p.first, p.second,
                                      *client, writer,
                                      true);
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 // policy doesn't exist locally
             }
         }
@@ -233,7 +233,7 @@ public:
                 serializer.serialize(p.first, p.second,
                                      *client, writer,
                                      true);
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
                 // endpoint doesn't exist locally
             }
         }
@@ -311,7 +311,7 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                 found = false;
             resolutions.insert(mo);
             mos.push_back(mo);
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
                          std::string("Unknown subject: ") +
                          subjectv.GetString());
@@ -370,7 +370,7 @@ void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             resolutions.erase(std::make_pair(ci.getId(), puri));
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
                          std::string("Unknown subject: ") +
                          subjectv.GetString());
@@ -487,7 +487,7 @@ void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
             modb::URI euri(euriv.GetString());
             client.remove(ci.getId(), euri, false, &notifs);
             client.queueNotification(ci.getId(), euri, notifs);
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
                          std::string("Unknown subject: ") +
                          subjectv.GetString());
@@ -546,7 +546,7 @@ void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
             modb::reference_t mo(ci.getId(), puri);
             resolutions.insert(mo);
             mos.push_back(mo);
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
                          std::string("Unknown subject: ") +
                          subjectv.GetString());
@@ -600,7 +600,7 @@ void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             resolutions.erase(std::make_pair(ci.getId(), puri));
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
                          std::string("Unknown subject: ") +
                          subjectv.GetString());

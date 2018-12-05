@@ -169,7 +169,7 @@ protected:
         try {
             return OF_MAKE_SHARED<T>(framework, uri,
                                      resolveOI(framework, class_id, uri));
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             return boost::none;
         }
     }

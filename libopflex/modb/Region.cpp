@@ -72,7 +72,7 @@ void Region::put(class_id_t class_id, const URI& uri,
         uri_map[uri] = oi;
         ci.addInstance(uri);
         if (!ci.hasParent(uri)) roots.insert(make_pair(class_id, uri));
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         throw std::out_of_range("Unknown class ID");
     }
 }
@@ -97,7 +97,7 @@ bool Region::putIfModified(class_id_t class_id, const URI& uri,
 
         if (!ci.hasParent(uri)) roots.insert(make_pair(class_id, uri));
         return result;
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         throw std::out_of_range("Unknown class ID");
     }
 }

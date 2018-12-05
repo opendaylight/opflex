@@ -212,7 +212,7 @@ static std::string getRefSubj(const modb::ObjectStore& store,
         const modb::ClassInfo& ref_class =
             store.getClassInfo(ref.first);
         return ref_class.getName();
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         return "UNKNOWN:" + ref.first;
     }
 }
@@ -245,7 +245,7 @@ void InspectorClientImpl::remoteObjectUpdated(modb::class_id_t class_id,
             }
         }
         executeCommands();
-    } catch (std::out_of_range e) {}
+    } catch (const std::out_of_range& e) {}
 }
 
 } /* namespace engine */

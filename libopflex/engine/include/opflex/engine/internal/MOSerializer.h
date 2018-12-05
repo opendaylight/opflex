@@ -338,7 +338,7 @@ private:
             writer.String("reference_uri");
             writer.String(ref.second.toString().c_str());
             writer.EndObject();
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             writer.Null();
             LOG(ERROR) << "Could not find class for " << ref.first;
         }
@@ -359,7 +359,7 @@ private:
         try {
             const std::string& name = ei.getNameById(v);
             writer.String(name.c_str());
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range& e) {
             writer.Null();
             LOG(WARNING) << "No name of type "
                          << ei.getName()
