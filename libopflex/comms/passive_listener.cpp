@@ -512,11 +512,6 @@ int ::yajr::comms::internal::ListeningTcpPeer::setAddrFromIpAndPort(
 
     VLOG(4);
 
-#ifdef EXTRA_CHECKS
-    /* make valgrind happy */
-    listen_on_ = sockaddr_storage();
-#endif
-
     int rc;
     struct sockaddr_in* addr4;
     struct sockaddr_in6* addr6;

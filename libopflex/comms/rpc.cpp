@@ -64,43 +64,25 @@ bool LocalIdentifier::emitId(yajr::rpc::SendHandler & h) const {
     ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
 #endif
 
-    __t_assert(cP->__checkInvariants());
-
     if (!h.StartArray()) {
-
-        __t_assert(cP->__checkInvariants());
 
         return false;
     }
-
-    __t_assert(cP->__checkInvariants());
 
     if (!h.String(requestMethod())) {
 
-        __t_assert(cP->__checkInvariants());
-
         return false;
     }
-
-    __t_assert(cP->__checkInvariants());
 
     if (!h.Uint64(id_)) {
 
-        __t_assert(cP->__checkInvariants());
-
         return false;
     }
-
-    __t_assert(cP->__checkInvariants());
 
     if (!h.EndArray()) {
 
-        __t_assert(cP->__checkInvariants());
-
         return false;
     }
-
-    __t_assert(cP->__checkInvariants());
 
     return true;
 
@@ -116,11 +98,7 @@ bool RemoteIdentifier::emitId(yajr::rpc::SendHandler & h) const {
     VLOG(5) << latestCp;
 #endif
 
-    __t_assert(cP->__checkInvariants());
-
     bool ok = id_.Accept(h);
-
-    __t_assert(cP->__checkInvariants());
 
     return ok;
 }
@@ -135,44 +113,29 @@ bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
     VLOG(5) << latestCp;
 #endif
 
-    __t_assert(cP->__checkInvariants());
-
     if (!handler.StartObject()) {
-        __t_assert(cP->__checkInvariants());
         return false;
     }
 
-    __t_assert(cP->__checkInvariants());
     if (!handler.String("id")) {
-        __t_assert(cP->__checkInvariants());
         return false;
     }
 
-    __t_assert(cP->__checkInvariants());
     if (!emitId(handler)) {
-        __t_assert(cP->__checkInvariants());
         return false;
     }
-    __t_assert(cP->__checkInvariants());
     if (!emitMethod(handler)) {
-        __t_assert(cP->__checkInvariants());
         return false;
     }
 
-    __t_assert(cP->__checkInvariants());
     if (!handler.String(getPayloadKey())) {
-        __t_assert(cP->__checkInvariants());
         return false;
     }
-    __t_assert(cP->__checkInvariants());
     if (!payloadGenerator_(handler)) {
-        __t_assert(cP->__checkInvariants());
         return false;
     }
 
-    __t_assert(cP->__checkInvariants());
     if (!handler.EndObject()) {
-        __t_assert(cP->__checkInvariants());
         return false;
     }
 
@@ -204,8 +167,6 @@ bool OutboundMessage::send() {
 
         return false;
     }
-
-    assert(cP->__checkInvariants());
 
 #if THREAD_LOCAL_DEBUGS_READY
     latestCp = cP;

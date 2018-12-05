@@ -215,9 +215,6 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
     ActiveTcpPeer * peer = Peer::get(req);
     assert(!peer->passive_);
-#ifdef EXTRA_CHECK
-    assert(peer->peerType()[0]=='A');
-#endif
 
     void retry_later(ActivePeer * peer);
 

@@ -20,10 +20,6 @@ namespace yajr {
     namespace comms {
         namespace internal {
 
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-::boost::atomic<size_t> ActiveTcpPeer::counter(0);
-#endif
-
 void ::yajr::comms::internal::ActiveTcpPeer::retry() {
 
     if (destroying_) {

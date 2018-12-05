@@ -363,69 +363,6 @@ class CommsFixture {
 
         dump_peer_db_brief();
 
-        static std::string oldDbgLog;
-        std::stringstream dbgLog;
-        std::string newDbgLog;
-
-        bool good = true;
-        bool peerGood;
-
-        /* check all easily reachable peers' invariants */
-#if 1
-        for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
-            internal::Peer::List * pL = internal::Peer::LoopData::getPeerList(
-                    CommsFixture::current_loop,
-                    internal::Peer::LoopData::PeerState(i));
-
-            dbgLog
-                << "\n"
-            ;
-
-            dbgLog
-                << " pL #"
-                << i
-                << " @"
-                << pL
-            ;
-
-            dbgLog
-                << "["
-                << static_cast<void*>(&*pL->begin())
-                << "->"
-                << static_cast<void*>(&*pL->end())
-                << "]("
-                << pL->size()
-                << ")"
-            ;
-
-            for(internal::Peer::List::iterator it = pL->begin(); it != pL->end(); ++it) {
-                dbgLog
-                    << " peer "
-                    << &*it
-                ;
-                peerGood = it->__checkInvariants();
-                if (!peerGood) {
-                    dbgLog
-                        << " BAD!"
-                    ;
-                    good = false;
-                }
-            }
-        }
-#endif
-
-        newDbgLog = dbgLog.str();
-
-        if (oldDbgLog != newDbgLog) {
-            oldDbgLog = newDbgLog;
-
-            VLOG(good ? 5 : 1)
-                << newDbgLog
-            ;
-        }
-
-        assert(good);
-
         /* at LEAST # required final peers must be in final state */
         if (
                 (eventCounter < required_event_counter)
