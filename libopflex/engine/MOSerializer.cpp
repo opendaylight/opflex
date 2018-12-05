@@ -19,6 +19,7 @@
 
 #include <boost/utility.hpp>
 #include <boost/foreach.hpp>
+#include <boost/next_prior.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/filereadstream.h>
