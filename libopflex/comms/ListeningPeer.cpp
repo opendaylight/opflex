@@ -20,10 +20,6 @@ namespace yajr {
     namespace comms {
         namespace internal {
 
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-::boost::atomic<size_t> ListeningPeer::counter(0);
-#endif
-
 void ListeningPeer::destroy(bool now) {
 
     VLOG(1)
@@ -54,12 +50,6 @@ void ListeningPeer::destroy(bool now) {
         }
     }
 }
-
-#ifdef EXTRA_CHECKS
-bool ListeningPeer::__checkInvariants() const {
-    return internal::Peer::__checkInvariants();
-}
-#endif
 
 } // namespace internal
 } // namespace comms

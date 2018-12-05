@@ -26,14 +26,6 @@
 #include <sstream>  /* for basic_stringstream<> */
 #include <iostream>
 
-#ifdef EXTRA_CHECKS
-#  include <boost/version.hpp>
-#  if BOOST_VERSION > 105300
-#    define COMMS_DEBUG_OBJECT_COUNT
-#    include <boost/atomic.hpp>
-#  endif
-#endif
-
 #define uv_close(h, cb)                        \
     do {                                       \
         uv_handle_t * _h = h;                  \
@@ -122,18 +114,12 @@ typedef ::boost::intrusive::list_base_hook<
     SafeListBaseHook;
 
 class Peer : public SafeListBaseHook {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static ::boost::atomic<size_t> counter;
-#endif
   public:
 
     typedef ::boost::intrusive::list<Peer,
             ::boost::intrusive::constant_time_size<false> > List;
 
     class LoopData {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-        static ::boost::atomic<size_t> counter;
-#endif
       public:
 
 #define VaS(YY, s) YY(s, #s)
@@ -156,8 +142,6 @@ class Peer : public SafeListBaseHook {
           TOTAL_STATES
         } PeerState;
 
-        static char const * getPSStr(PeerState s);
-
         struct CloseHandle {
             LoopData const * loopData;
             uv_close_cb      closeCb;
@@ -174,9 +158,6 @@ class Peer : public SafeListBaseHook {
             destroying_(0),
             refCount_(1)
         {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-            ++counter;
-#endif
             uv_prepare_init(loop, &prepare_);
             uv_prepare_start(&prepare_, &onPrepareLoop);
             prepare_.data = this;
@@ -184,12 +165,6 @@ class Peer : public SafeListBaseHook {
             prepareAgain_.data = this;
             uv_async_init(loop, &kickLibuv_, NULL);
         }
-
-#ifdef COMMS_DEBUG_OBJECT_COUNT 
-        static size_t getCounter() {
-            return counter;
-        }
-#endif
 
         Peer::List peers[LoopData::TOTAL_STATES];
 
@@ -243,10 +218,6 @@ class Peer : public SafeListBaseHook {
         uint64_t lastRun_;
         bool destroying_;
         uint64_t refCount_;
-
-#ifdef EXTRA_CHECKS
-        static char const * const kPSStr[];
-#endif
     };
 
     template <typename T, typename U>
@@ -259,12 +230,6 @@ class Peer : public SafeListBaseHook {
     static ActivePeer * get(uv_connect_t * r);
 
     static ActiveTcpPeer * get(uv_getaddrinfo_t * r);
-
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static size_t getCounter() {
-        return counter;
-    }
-#endif
 
     /* Ideally nested as Peer::PeerStatus, but this is only possible with C++11 */
     enum PeerStatus {
@@ -286,11 +251,6 @@ class Peer : public SafeListBaseHook {
          ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL,
          Peer::PeerStatus status = kPS_UNINITIALIZED)
             :
-#ifdef EXTRA_CHECKS
-              /* make valgrind happy with early invocations of operator << () */
-              handle_(),
-              keepAliveTimer_(),
-#endif
               uvLoopSelector_(uvLoopSelector ? : &uvDefaultLoop),
               uvRefCnt_(1),
               connected_(0),
@@ -303,14 +263,8 @@ class Peer : public SafeListBaseHook {
                 getHandle()->data = this;
                 /* FIXME: this hack is filthy and unix-only */
                 getHandle()->flags = 0x02 /* UV_CLOSED */;
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-                ++counter;
-#endif
             }
 
-#ifdef EXTRA_CHECKS
-    virtual char const * peerType() const {return "?";} //= 0;
-#endif
 
     virtual void retry() = 0;
 
@@ -321,17 +275,6 @@ class Peer : public SafeListBaseHook {
     virtual void onDelete() {}
 
     virtual void destroy(bool now = false) = 0;
-
-#ifdef EXTRA_CHECKS
-    virtual
-#else
-    static
-#endif
-    bool __checkInvariants()
-#ifdef EXTRA_CHECKS
-    const
-#endif
-    __attribute__((no_instrument_function));
 
     /**
      * Get the uv_loop_t * for this peer
@@ -393,16 +336,6 @@ class Peer : public SafeListBaseHook {
         return Peer::LoopData::getLoopData(getUvLoop());
     }
     friend std::ostream& operator<< (std::ostream&, Peer const *);
-
-#ifdef EXTRA_CHECKS
-    struct PidSequence {
-        pid_t pid;
-        size_t count;
-    };
-
-    mutable std::vector<PidSequence> pidSeq_;
-    void appendPID() const;
-#endif
 };
 static_assert (sizeof(Peer) <= 4096, "Peer won't fit on one page");
 
@@ -434,9 +367,6 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     struct
     transport::Cb< E >::StaticHelpers;
 
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static ::boost::atomic<size_t> counter;
-#endif
   public:
 
     explicit CommunicationPeer(bool passive,
@@ -459,25 +389,8 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 req_.data = this;
                 getHandle()->loop = uvLoopSelector_(getData());
                 getLoopData()->up();
-#ifdef EXTRA_CHECKS
-                s_.cP_ = this;
-#endif
- 
-
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-                ++counter;
-#endif
             }
 
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static size_t getCounter() {
-        return counter;
-    }
-#endif
-
-#ifdef EXTRA_CHECKS
-    virtual bool __checkInvariants() const __attribute__((no_instrument_function));
-#endif
     virtual void retry() = 0;
 
     size_t readChunk(char const * buffer) const {
@@ -501,7 +414,6 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     bool delimitFrame() const {
         s_.Put('\0');
-        assert(__checkInvariants());
 
         return true;
     }
@@ -621,9 +533,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     };
 
     ::yajr::rpc::SendHandler & getWriter() const {
-        assert(__checkInvariants());
         writer_.Reset(s_);
-        assert(__checkInvariants());
         return writer_;
     }
 
@@ -650,11 +560,7 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     }
   protected:
     /* don't leak memory! */
-    virtual ~CommunicationPeer() {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-        --counter;
-#endif
-    }
+    virtual ~CommunicationPeer() {}
 
   private:
 
@@ -688,9 +594,6 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 static_assert (sizeof(CommunicationPeer) <= 4096, "CommunicationPeer won't fit on one page");
 
 class ActivePeer : public CommunicationPeer {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static ::boost::atomic<size_t> counter;
-#endif
   public:
     explicit ActivePeer(
             ::yajr::Peer::StateChangeCb connectionHandler,
@@ -704,22 +607,7 @@ class ActivePeer : public CommunicationPeer {
                     uvLoopSelector,
                     kPS_RESOLVING)
         {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-            ++counter;
-#endif
         }
-
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static size_t getCounter() {
-        return counter;
-    }
-#endif
-
-#ifdef EXTRA_CHECKS
-    virtual char const * peerType() const {
-        return "A";
-    }
-#endif
 
     virtual void onFailedConnect(int rc) = 0;
 
@@ -727,24 +615,13 @@ class ActivePeer : public CommunicationPeer {
 
     virtual void destroy(bool now = false);
 
-#ifdef EXTRA_CHECKS
-    virtual bool __checkInvariants() const __attribute__((no_instrument_function));
-#endif
-
   protected:
     /* don't leak memory! */
-    virtual ~ActivePeer() {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-        --counter;
-#endif
-    }
+    virtual ~ActivePeer() {}
 };
 static_assert (sizeof(ActivePeer) <= 4096, "ActivePeer won't fit on one page");
 
 class ActiveTcpPeer : public ActivePeer {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static ::boost::atomic<size_t> counter;
-#endif
   public:
     explicit ActiveTcpPeer(
             std::string const & hostname,
@@ -760,9 +637,6 @@ class ActiveTcpPeer : public ActivePeer {
             hostname_(hostname),
             service_(service)
         {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-            ++counter;
-#endif
             createFail_ = 0;
         }
     virtual void onFailedConnect(int rc);
@@ -778,20 +652,13 @@ class ActiveTcpPeer : public ActivePeer {
     virtual void retry();
   protected:
     /* don't leak memory! */
-    virtual ~ActiveTcpPeer() {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-        --counter;
-#endif
-    }
+    virtual ~ActiveTcpPeer() {}
     std::string const hostname_;
     std::string const service_;
 };
 static_assert (sizeof(ActiveTcpPeer) <= 4096, "ActiveTcpPeer won't fit on one page");
 
 class ActiveUnixPeer : public ActivePeer {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static ::boost::atomic<size_t> counter;
-#endif
   public:
     explicit ActiveUnixPeer(
             std::string const & socketName,
@@ -806,28 +673,18 @@ class ActiveUnixPeer : public ActivePeer {
             socketName_(socketName)
         {
             _.ai = NULL;
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-            ++counter;
-#endif
             createFail_ = 0;
         }
     virtual void onFailedConnect(int rc);
     virtual void retry();
   protected:
     /* don't leak memory! */
-    virtual ~ActiveUnixPeer() {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-        --counter;
-#endif
-    }
+    virtual ~ActiveUnixPeer() {}
     std::string const socketName_;
 };
 static_assert (sizeof(ActiveUnixPeer) <= 4096, "ActiveUnixPeer won't fit on one page");
 
 class PassivePeer : public CommunicationPeer {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static ::boost::atomic<size_t> counter;
-#endif
   public:
     explicit PassivePeer(
             ::yajr::Peer::StateChangeCb connectionHandler,
@@ -841,46 +698,20 @@ class PassivePeer : public CommunicationPeer {
                     uvLoopSelector,
                     kPS_RESOLVING)
         {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-            ++counter;
-#endif
             createFail_ = 0;
         }
-
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static size_t getCounter() {
-        return counter;
-    }
-#endif
-
-#ifdef EXTRA_CHECKS
-    virtual char const * peerType() const {
-        return "P";
-    }
-#endif
 
     virtual void retry() {
         assert(0);
     }
 
-#ifdef EXTRA_CHECKS
-    virtual bool __checkInvariants() const __attribute__((no_instrument_function));
-#endif
-
   protected:
     /* don't leak memory! */
-    virtual ~PassivePeer() {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-        --counter;
-#endif
-    }
+    virtual ~PassivePeer() {}
 };
 static_assert (sizeof(PassivePeer) <= 4096, "PassivePeer won't fit on one page");
 
 class ListeningPeer : public Peer, virtual public ::yajr::Listener {
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static ::boost::atomic<size_t> counter;
-#endif
   public:
     explicit ListeningPeer(
             ::yajr::Peer::StateChangeCb connectionHandler,
@@ -897,24 +728,10 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
         {
             getHandle()->loop = _.listener_.uvLoop_ = listenerUvLoop ? : uv_default_loop();
             getLoopData()->up();
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-            ++counter;
-#endif
         }
 
     virtual PassivePeer * getNewPassive() = 0;
 
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    static size_t getCounter() {
-        return counter;
-    }
-#endif
-
-#ifdef EXTRA_CHECKS
-    virtual char const * peerType() const {
-        return "L";
-    }
-#endif
     void onError(int error) {
         if(acceptHandler_) {
             acceptHandler_(this, data_, error);
@@ -924,9 +741,6 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
 
     virtual void destroy(bool now = false);
 
-#ifdef EXTRA_CHECKS
-    virtual bool __checkInvariants() const __attribute__((no_instrument_function));
-#endif
     ::yajr::Peer::StateChangeCb getConnectionHandler() const {
         return connectionHandler_;
     }
@@ -1038,8 +852,6 @@ struct internal::Peer::LoopData::PeerDeleter {
 template <typename T, typename U>
 T * Peer::get(U * h) {
     T * peer = static_cast<T *>(h->data);
-
-    assert(peer->__checkInvariants());
 
     return peer;
 }

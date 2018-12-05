@@ -20,10 +20,6 @@ namespace yajr {
     namespace comms {
         namespace internal {
 
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-::boost::atomic<size_t> ActiveUnixPeer::counter(0);
-#endif
-
 void ::yajr::comms::internal::ActiveUnixPeer::onFailedConnect(int rc) {
 
     void retry_later(ActivePeer * peer);

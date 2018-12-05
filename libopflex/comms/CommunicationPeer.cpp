@@ -80,10 +80,6 @@ namespace yajr {
     namespace comms {
         namespace internal {
 
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-::boost::atomic<size_t> CommunicationPeer::counter(0);
-#endif
-
 void CommunicationPeer::startKeepAlive(
         uint64_t begin,
         uint64_t repeat,
@@ -110,7 +106,6 @@ void CommunicationPeer::stopKeepAlive() {
     VLOG(1)
         << this
     ;
- // assert(keepAliveInterval_ && uv_is_active((uv_handle_t *)&keepAliveTimer_));
 
     uv_timer_stop(&keepAliveTimer_);
     keepAliveInterval_ = 0;
@@ -149,11 +144,7 @@ void CommunicationPeer::onConnect() {
     uv_timer_init(getUvLoop(), &keepAliveTimer_);
     uv_unref((uv_handle_t*) &keepAliveTimer_);
 
-    assert(__checkInvariants());
-
     connectionHandler_(this, data_, ::yajr::StateChange::CONNECT, 0);
-
-    assert(__checkInvariants());
 
     /* some transports, like for example SSL/TLS, need to start talking
      * before there's anything to say */
@@ -233,46 +224,6 @@ void CommunicationPeer::onDisconnect(bool now) {
         insert(internal::Peer::LoopData::PENDING_DELETE);
         status_ = kPS_PENDING_DELETE;
     }
-#ifdef OLD_VERSION
-    if (!connected_) {
-        return;
-    }
-
-    connected_ = 0;
-
-    if (getKeepAliveInterval()) {
-        stopKeepAlive();
-    }
-
-    if (!uv_is_closing((uv_handle_t*)&keepAliveTimer_)) {
-        uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
-    }
- // uv_close((uv_handle_t*)getHandle(), on_close);
-
-    unlink();
-
-    /* FIXME: might be called too many times? */
-    connectionHandler_(this, data_, ::yajr::StateChange::DISCONNECT, 0);
-
-    if (destroying_) {
-        return;
-    }
-
-    if (!passive_) {
-        VLOG(2)
-            << this
-            << " active => retry queue"
-        ;
-        /* we should attempt to reconnect later */
-        insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
-    } else {
-        VLOG(2)
-            << this
-            << " passive => eventually drop";
-        /* whoever it was, hopefully will reconnect again */
-        insert(internal::Peer::LoopData::PENDING_DELETE);
-    }
-#endif
 
 }
 
@@ -502,8 +453,6 @@ void CommunicationPeer::onWrite() {
 
 int CommunicationPeer::write() const {
 
-    assert(__checkInvariants());
-
     if (pendingBytes_) {
 
         VLOG(4)
@@ -516,8 +465,6 @@ int CommunicationPeer::write() const {
     }
 
     int retVal = transport_.callbacks_->sendCb_(this);
-
-    assert(__checkInvariants());
 
     return retVal;
 
@@ -795,86 +742,6 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
 
     return ret;
 }
-
-#ifdef EXTRA_CHECKS
-bool CommunicationPeer::__checkInvariants() const {
-
-    bool result = true;
-
-    if (!internal::Peer::__checkInvariants()) {
-        result = false;
-    }
-
-    if (!!connected_ != !!(status_ == kPS_ONLINE)) {
-        VLOG(7)  // should be an ERROR but we need to first clean things up
-            << this
-            << " has incongruent state: connected_ = "
-            << static_cast< bool >(connected_)
-            << " status_ = "
-            << static_cast< int >(status_)
-        ;
-
-        /* TODO: clean up status book-keeping */
-     // result = false;
-    }
-
-    if (getHandle()->data != this) {
-        LOG(ERROR)
-            << this
-            << " getHandle()->data = "
-            <<   getHandle()->data
-            << " should be "
-            << reinterpret_cast< void const * >(this)
-        ;
-
-        result = false;
-    }
-
- // if (status_ != kPS_ONLINE) {
-    if (connected_) {
-
-        if (keepAliveTimer_.data != this) {
-            LOG(ERROR)
-                << this
-                << " keepAliveTimer_.data = "
-                <<   keepAliveTimer_.data
-                << " should be "
-                << reinterpret_cast< void const * >(this)
-            ;
-
-            result = false;
-        }
-
-        if (!!keepAliveInterval_ != !!uv_is_active((uv_handle_t *)&keepAliveTimer_)) {
-            LOG(ERROR)
-                << this
-                << " keepAliveInterval_ = "
-                <<   keepAliveInterval_
-                <<                             " keepAliveTimer_ = "
-                << (uv_is_active((uv_handle_t *)&keepAliveTimer_) ? "" : "in")
-                << "active"
-            ;
-
-            result = false;
-        }
-
-    } else {
-
-        VLOG(5)
-            << this
-            << " status = "
-            << static_cast< int >(status_)
-            << " connected_ = "
-            << static_cast< int >(connected_)
-            << " just check for Peer's invariants"
-        ;
-
-
-    }
-
-    return result;
-}
-#endif
 
 } // namespace internal
 } // namespace comms

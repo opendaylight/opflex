@@ -98,36 +98,6 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 
     ZeroCopyOpenSSL * e = peer->getEngine<ZeroCopyOpenSSL>();
 
-    /* as of now, if you define WE_COULD_ALWAYS_CHECK_FOR_PENDING_DATA, bad
-     * things will happen, much later than their root issue
-     */
-#ifdef WE_COULD_ALWAYS_CHECK_FOR_PENDING_DATA
-    size_t pending, tryRead;
-    ssize_t nread = 0;
-    ssize_t totalRead = 0;
-
-    while ((pending = BIO_ctrl_pending(e->bioSSL_))) {
-
-        /* we use the stack for a fast buffer allocation, hence must set an upper
-         * bound */
-        tryRead = std::min<size_t>(pending, 24576);
-
-        VLOG(4)
-            << peer
-            << " has "
-            << pending
-            << " pending bytes to decrypt, trying the first "
-            << tryRead
-            << " bytes for now"
-        ;
-
-        char buffer[tryRead + 1];
-        nread = BIO_read(
-                e->bioSSL_,
-                &buffer,
-                tryRead);
-} // <--- just to make vim's %-match happy :)
-#else
 #  define tryRead 24576
     char buffer[tryRead + 1];
     ssize_t nread = 0;
@@ -138,7 +108,6 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
                     buffer,
                     tryRead))) {
 #  undef tryRead
-#endif
 
         if (nread > 0) {
             VLOG(6)
@@ -168,20 +137,6 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
                 << BIO_should_io_special(e->bioSSL_)
             ;
         }
-
-#ifdef WE_COULD_ALWAYS_CHECK_FOR_PENDING_DATA
-        if (nread < tryRead) {
-            VLOG(3)
-                << peer
-                << " Expected to decrypt "
-                << tryRead
-                << " bytes but only got "
-                << nread
-            ;
-            break;
-        }
-#endif
-
     }
     IF_SSL_EMIT_ERRORS(peer) {
         IF_SSL_ERROR(sslErr) {
@@ -371,8 +326,7 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
             << " S="
             << BIO_should_io_special(e->bioExternal_)
         ;
-     // if (BIO_should_retry()) {
-     // }
+
         return 0;
     }
 
@@ -452,12 +406,6 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
         peer->onDisconnect();
         return;
     }
-
- // /* could be able to make some progress on the decryption port now */
- // if (Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(peer) >= 0) {
- //     peer->unchoke();
- // }
-
 }
 
 template<>

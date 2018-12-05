@@ -67,7 +67,6 @@ libcomms_la_SOURCES += ActiveTcpPeer.cpp
 libcomms_la_SOURCES += ActiveUnixPeer.cpp
 libcomms_la_SOURCES += CommunicationPeer.cpp
 libcomms_la_SOURCES += ListeningPeer.cpp
-libcomms_la_SOURCES += PassivePeer.cpp
 libcomms_la_SOURCES += loopdata.cpp
 
 # inbound REQUESTs

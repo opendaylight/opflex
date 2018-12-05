@@ -20,10 +20,6 @@
 
 #include <uv.h>
 
-#ifdef EXTRA_CHECKS
-# include <unistd.h>
-#endif
-
 namespace {
 
     void prepareAgainCB(uv_timer_t *) { VLOG(6); }
@@ -33,10 +29,6 @@ namespace {
 namespace yajr {
     namespace comms {
         namespace internal {
-
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-::boost::atomic<size_t> Peer::LoopData::counter(0);
-#endif
 
 std::ostream& operator << (
         std::ostream& os,
@@ -81,16 +73,6 @@ void internal::Peer::LoopData::onPrepareLoop() {
 
     peers[TO_RESOLVE]
         .clear_and_dispose(RetryPeer());
-
-#ifdef EXTRA_CHECKS
-    for (size_t state = 0; state < TOTAL_STATES; ++state) {
-        for (Peer::List::const_iterator peer = peers[state].cbegin();
-                peer != peers[state].cend();
-                ++peer) {
-            assert(peer->__checkInvariants());
-        }
-    }
-#endif
 
     if (now - lastRun_ < 750) {
         goto prepared;
@@ -188,9 +170,6 @@ void internal::Peer::LoopData::destroy(bool now) {
 
 std::ostream& operator << (std::ostream& os, Peer::LoopData const * lD) {
     return os
-#ifdef EXTRA_CHECKS
-        << getpid()
-#endif
         << "{"
         << reinterpret_cast<void const *>(lD)
         << "}"
@@ -338,10 +317,6 @@ Peer::LoopData::~LoopData() {
         peers[Peer::LoopData::PeerState(i)]
             .clear_and_dispose(PeerDeleter());
     }
-
-#ifdef COMMS_DEBUG_OBJECT_COUNT
-    --counter;
-#endif
 }
 
 void Peer::LoopData::PeerDisposer::operator () (Peer *peer)
