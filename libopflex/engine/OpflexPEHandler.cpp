@@ -440,7 +440,7 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
                     modb::URI puri(puriv.GetString());
                     client->remove(ci.getId(), puri, false, &notifs);
                     client->queueNotification(ci.getId(), puri, notifs);
-                } catch (std::out_of_range e) {
+                } catch (const std::out_of_range& e) {
                     sendErrorRes(id, "ERROR",
                                  std::string("Unknown subject: ") +
                                  subjectv.GetString());
@@ -566,7 +566,7 @@ void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& id,
                     modb::URI puri(puriv.GetString());
                     client->remove(ci.getId(), puri, false, &notifs);
                     client->queueNotification(ci.getId(), puri, notifs);
-                } catch (std::out_of_range e) {
+                } catch (const std::out_of_range& e) {
                     sendErrorRes(id, "ERROR",
                                  std::string("Unknown subject: ") +
                                  subjectv.GetString());
