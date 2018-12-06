@@ -10,16 +10,18 @@
  */
 
 #include <opflexagent/SimStats.h>
+#include <modelgbp/gbpe/SecGrpClassifierCounter.hpp>
+#include <modelgbp/gbpe/L24ClassifierCounter.hpp>
 
 
 
 namespace opflexagent {
 
-
+using namespace modelgbp::gbpe;
 
 SimStats::SimStats(opflexagent::Agent& agent_, uint32_t timer_interval_)
     : agent(agent_), timer_interval(timer_interval_), intCounter(0), contractCounter(0),
-      stopping(false) {}
+      stopping(false), secGrpCounter(0)  {}
 
 SimStats::~SimStats() {}
 
@@ -61,7 +63,7 @@ void SimStats::updateContractCounters(opflexagent::Agent& a) {
         polMgr.getContractProviders(con, providers);
         polMgr.getContractIntra(con, intras);
         polMgr.getContractRules(con, rules);
-        uint64_t genId = ++contractGenIdCounter;
+        uint64_t c = ++contractCounter;
 
         for (auto& rule : rules) {
             auto& l24Classifier =
@@ -69,9 +71,9 @@ void SimStats::updateContractCounters(opflexagent::Agent& a) {
 
             for (auto& consumer : consumers) {
                 for (auto& provider : providers) {
-                    uint64_t c = ++contractCounter;
-                    su.get()->
-                        addGbpeL24ClassifierCounter("uuid", genId,
+                    L24ClassifierCounter::remove(a.getFramework(), "uuid", (c - 1), consumer.toString(),
+                                                 provider.toString(),l24Classifier);
+                    su.get()->addGbpeL24ClassifierCounter("uuid", c,
                                                     consumer.toString(),
                                                     provider.toString(),
                                                     l24Classifier)
@@ -81,9 +83,10 @@ void SimStats::updateContractCounters(opflexagent::Agent& a) {
             }
 
             for (auto& intra : intras) {
-                uint64_t c = ++contractCounter;
+                L24ClassifierCounter::remove(a.getFramework(), "uuid", (c - 1), intra.toString(),
+                                                 intra.toString(),l24Classifier);
                 su.get()->
-                    addGbpeL24ClassifierCounter("uuid", genId,
+                    addGbpeL24ClassifierCounter("uuid", c,
                                                 intra.toString(),
                                                 intra.toString(),
                                                 l24Classifier)
@@ -105,19 +108,23 @@ void SimStats::updateSecGrpCounters(opflexagent::Agent& a) {
     opflexagent::PolicyManager::rule_list_t rules;
 
 
-    uint64_t counter = ++secGrpGenIdCounter;
+    uint64_t c = ++secGrpCounter;
     for (auto& sec : secGroups) {
+        LOG(DEBUG) << "update sec grp " << sec;
         polMgr.getSecGroupRules(sec, rules);
         for (auto& rule : rules) {
             auto& l24Classifier =
                 rule->getL24Classifier()->getURI().toString();
 
-            su.get()->addGbpeSecGrpClassifierCounter("uuid", counter,
+            LOG(DEBUG) << "found secGrp l24classifier " << l24Classifier;
+            SecGrpClassifierCounter::remove(agent.getFramework(), "uuid", (c - 1),
+                                    l24Classifier);
+            su.get()->addGbpeSecGrpClassifierCounter("uuid", c,
                   l24Classifier)
-                  ->setTxpackets(counter)
-                  .setTxbytes(counter * 1500)
-                  .setRxpackets(counter)
-                  .setRxbytes(counter * 1500);
+                  ->setTxpackets(c)
+                  .setTxbytes(c * 1500)
+                  .setRxpackets(c)
+                  .setRxbytes(c * 1500);
         }
     }
     mutator.commit();

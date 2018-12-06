@@ -67,16 +67,16 @@ public:
     void on_timer(const boost::system::error_code& ec);
     /**
      * start the statistics simulator.
+     * A new thread is started using ASIO.
      */
     void start();
     /**
      * stop the statistics simulator.
-     * A new thread is started using ASIO.
+     * stop all threads associated with this instance.
      */
     void stop();
     /**
      * call back for informing opflex agent about changes to contracts.
-     * stop all threads associated with this instance.
      */
     virtual void contractUpdated(const opflex::modb::URI& uri);
     /**
