@@ -16,6 +16,24 @@
       "revId": "22c347125116f58d04308dccd8ce811bfb045211",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa217ee2_d79bec5f",
+        "filename": "agent-ovs/lib/SimStats.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2018-12-07T17:04:18Z",
+      "side": 1,
+      "message": "I should remove them. Will upload another patch after removing logs.",
+      "parentUuid": "3f3020c6_3452c1ed",
+      "revId": "22c347125116f58d04308dccd8ce811bfb045211",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
