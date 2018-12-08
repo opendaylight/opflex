@@ -140,6 +140,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string RENDERERS_OPENVSWITCH("renderers.openvswitch");
     static const std::string OPFLEX_SIM_STATS("simulate.enabled");
     static const std::string OPFLEX_SIM_STATS_INTERVAL("simulate.update-interval");
+    static const std::string OPFLEX_PRR_INTERVAL("opflex.timers.prr");
 
     optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
@@ -293,6 +294,18 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
             update_interval = upd_interval.get() > 10 ? upd_interval.get() : 10;
         }
     }
+   
+    boost::optional<boost::uint_t<64>::fast> prr_timer_present = 
+        properties.get_optional<boost::uint_t<64>::fast>(OPFLEX_PRR_INTERVAL);
+    if (prr_timer_present) { 
+        prr_timer = prr_timer_present.get();
+        if (prr_timer < 15) {
+           prr_timer = 15;  /* min is 15 seconds */
+        } else {
+           prr_timer = prr_timer;
+        }
+    }
+    LOG(INFO) << "prr timer set to " << prr_timer << " secs";
 }
 
 void Agent::applyProperties() {
@@ -344,6 +357,8 @@ void Agent::applyProperties() {
             framework.enableSSL(sslCaStore.get(), verifyPeers);
         }
     }
+     
+    framework.setPrrTimerDuration(prr_timer);
 }
 
 void Agent::start() {

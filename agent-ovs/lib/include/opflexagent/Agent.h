@@ -186,6 +186,10 @@ private:
     std::unique_ptr<SimStats> pSimStats;
     int update_interval = 10;   /* seconds */
 
+    // timers
+    // prr timer - policy resolve request timer
+    boost::uint_t<64>::fast prr_timer = 3600;  /* seconds */
+
     std::set<std::string> endpointSourceFSPaths;
     std::set<std::string> endpointSourceModelLocalNames;
     std::vector<std::unique_ptr<EndpointSource>> endpointSources;
