@@ -89,6 +89,10 @@ bool OFFramework::setElementMode(
     }
 }
 
+void OFFramework::setPrrTimerDuration(const uint64_t duration) {
+    pimpl->processor.setPrrTimerDuration(duration);
+}
+
 void OFFramework::start() {
     LOG(DEBUG) << "Starting OpFlex Framework";
     pimpl->started = true;

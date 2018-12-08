@@ -184,6 +184,11 @@ public:
      */
     void setRetryDelay(uint64_t delay) { retryDelay = delay; }
 
+    /**
+     * Set the prr timer duration in msecs
+     */
+    void setPrrTimerDuration(const uint64_t duration) { prrTimerDuration = duration; }
+
     // See HandlerFactory::newHandler
     virtual
     internal::OpflexHandler* newHandler(internal::OpflexConnection* conn);
@@ -437,6 +442,11 @@ private:
      * Amount of time to wait before retrying message sends
      */
     uint64_t retryDelay;
+
+    /**
+     * prr timer duration
+     */
+    uint64_t prrTimerDuration;
 
     /**
      * Processing thread

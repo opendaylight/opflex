@@ -90,7 +90,13 @@
             // specified octal permissions mask
             // Default: do not set the permissions
             "socket-permissions": "770"
-        }
+        },
+       "timers": {
+           // Custom settings for various timers related to opflex
+           // prr - Policy Resolve Request timer duration in seconds.
+           // default 1800 secs, min 15 secs
+           // "prr": 1800
+       }
     },
 
     // Endpoint sources provide metadata about local endpoints

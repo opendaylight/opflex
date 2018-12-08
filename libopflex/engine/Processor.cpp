@@ -49,7 +49,6 @@ using util::ThreadManager;
 
 using namespace internal;
 
-static const uint64_t LOCAL_REFRESH_RATE = 1000*60*30;
 static const uint64_t DEFAULT_PROC_DELAY = 250;
 static const uint64_t DEFAULT_RETRY_DELAY = 1000*60*2;
 static const uint64_t FIRST_XID = (uint64_t)1 << 63;
@@ -111,7 +110,7 @@ void Processor::addRef(obj_state_by_exp::iterator& it,
                         << up.second << " from reference";
 
             obj_state.insert(item(up.second, up.first,
-                                  0, LOCAL_REFRESH_RATE,
+                                  0, prrTimerDuration,
                                   UNRESOLVED, false));
             uit = uri_index.find(up.second);
         }
@@ -230,8 +229,8 @@ void Processor::sendToRole(const item& i, uint64_t& newexp,
         uint64_t nextRetryDelay =
             (uint64_t)std::pow(2, i.details->retry_count) * retryDelay;
 
-        if (nextRetryDelay > LOCAL_REFRESH_RATE)
-            nextRetryDelay = LOCAL_REFRESH_RATE;
+        if (nextRetryDelay > prrTimerDuration)
+            nextRetryDelay = prrTimerDuration;
 
         if (i.details->retry_count > 0) {
             LOG(DEBUG) << "Retrying dropped message for item "
@@ -627,7 +626,7 @@ void Processor::objectUpdated(modb::class_id_t class_id,
             uint64_t nexp = 0;
             if (local) nexp = curtime+processingDelay;
             obj_state.insert(item(uri, class_id,
-                                  nexp, LOCAL_REFRESH_RATE,
+                                  nexp, prrTimerDuration,
                                   local ? NEW : REMOTE, local));
         }
     } else {
