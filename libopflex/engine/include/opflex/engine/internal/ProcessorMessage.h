@@ -97,7 +97,7 @@ public:
                 writer.String("policy_uri");
                 writer.String(p.second.toString().c_str());
                 writer.String("prr");
-                writer.Int64(3600);
+                writer.Int64(processor->getPrrTimerDuration());
                 writer.EndObject();
             } catch (const std::out_of_range& e) {
                 LOG(WARNING) << "No class found for class ID " << p.first;
@@ -216,7 +216,7 @@ public:
                 writer.String("endpoint_uri");
                 writer.String(p.second.toString().c_str());
                 writer.String("prr");
-                writer.Int64(3600);
+                writer.Int64(processor->getPrrTimerDuration());
                 writer.EndObject();
             } catch (const std::out_of_range& e) {
                 LOG(WARNING) << "No class found for class ID " << p.first;
@@ -346,7 +346,7 @@ public:
         }
         writer.EndArray();
         writer.String("prr");
-        writer.Int64(3600);
+        writer.Int64(processor->getPrrTimerDuration());
 
         writer.EndObject();
         writer.EndArray();
