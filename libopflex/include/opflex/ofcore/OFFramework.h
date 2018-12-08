@@ -715,6 +715,12 @@ public:
     opflex::ofcore::OFConstants::OpflexElementMode mode_);
 
     /**
+     * set the prr (policy resolve request) timer durarion.
+     * @param duration timer duration in milliseconds
+     */
+    void setPrrTimerDuration(const uint64_t duration);
+
+    /**
      * Start the framework.  This will start all the framework threads
      * and attempt to connect to configured OpFlex peers.
      */
