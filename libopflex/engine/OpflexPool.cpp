@@ -35,11 +35,11 @@ using yajr::transport::ZeroCopyOpenSSL;
 OpflexPool::OpflexPool(HandlerFactory& factory_,
                        util::ThreadManager& threadManager_)
     : factory(factory_), threadManager(threadManager_),
-      active(false), curHealth(PeerStatusListener::DOWN),
+      active(false),
       client_mode(OFConstants::OpflexElementMode::STITCHED_MODE),
       transport_state(OFConstants::OpflexTransportModeState::SEEKING_PROXIES),
       ipv4_proxy(0), ipv6_proxy(0),
-      mac_proxy(0)
+      mac_proxy(0), curHealth(PeerStatusListener::DOWN)
 {
     uv_mutex_init(&conn_mutex);
     uv_key_create(&conn_mutex_key);
@@ -110,7 +110,7 @@ void OpflexPool::on_cleanup_async(uv_async_t* handle) {
         BOOST_FOREACH(conn_map_t::value_type& v, conns) {
             v.second.conn->close();
         }
-        if (pool->connections.size() > 0)
+        if (!pool->connections.empty())
             return;
     }
 
@@ -285,7 +285,7 @@ void OpflexPool::updateRole(ConnData& cd,
                 if (it->second.curMaster == cd.conn)
                     it->second.curMaster = NULL;
                 it->second.conns.erase(cd.conn);
-                if (it->second.conns.size() == 0)
+                if (it->second.conns.empty())
                     roles.erase(it);
             }
             cd.roles &= ~role;
@@ -299,10 +299,10 @@ void OpflexPool::updateRole(ConnData& cd,
     }
 }
 
-int OpflexPool::getRoleCount(ofcore::OFConstants::OpflexRole role) {
+size_t OpflexPool::getRoleCount(ofcore::OFConstants::OpflexRole role) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
 
-    role_map_t::iterator it = roles.find(role);
+    auto it = roles.find(role);
     if (it == roles.end()) return 0;
     return it->second.conns.size();
 }

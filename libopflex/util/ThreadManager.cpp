@@ -85,7 +85,6 @@ void ThreadManager::stopTask(const std::string& name) {
 }
 
 void ThreadManager::cleanup_func(uv_async_t* handle) {
-    Task* task = static_cast<Task*>(handle->data);
     uv_close((uv_handle_t*)handle, NULL);
 }
 

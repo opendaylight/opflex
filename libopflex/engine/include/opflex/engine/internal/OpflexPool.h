@@ -245,7 +245,7 @@ public:
      * @param role the role to search for
      * @return the count of connections in that role
      */
-    int getRoleCount(ofcore::OFConstants::OpflexRole role);
+size_t getRoleCount(ofcore::OFConstants::OpflexRole role);
 
     /**
      * Check whether the given port and hostname is in the set of

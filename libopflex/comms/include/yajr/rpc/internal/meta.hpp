@@ -20,10 +20,6 @@ namespace yajr {
         namespace internal {
             namespace meta {
 
-#pragma warning(push)
-/* disable addition overflow warning */
-#pragma warning(disable:4307)
-
 template <typename Seed, typename Value>
 struct hash_combine
 {
@@ -32,8 +28,6 @@ struct hash_combine
       + 0x9e3779b9 + (Seed::value << 6) + (Seed::value >> 2))
   > type;
 };
-
-#pragma warning(pop)
 
 /* Hash any sequence of integral wrapper types */
 template <typename Sequence>
