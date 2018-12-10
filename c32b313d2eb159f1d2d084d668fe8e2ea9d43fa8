@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "335c9d42_12ee51ba",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-12-10T05:25:33Z",
+      "side": 1,
+      "message": "The default should match the previous default (3600 sec) so nothing changes on an upgrade",
+      "revId": "c32b313d2eb159f1d2d084d668fe8e2ea9d43fa8",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f6f60d0a_b03b68f2",
+        "filename": "agent-ovs/opflex-agent-ovs.conf.in",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2018-12-10T05:25:33Z",
+      "side": 1,
+      "message": "default should be 3600",
+      "revId": "c32b313d2eb159f1d2d084d668fe8e2ea9d43fa8",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
