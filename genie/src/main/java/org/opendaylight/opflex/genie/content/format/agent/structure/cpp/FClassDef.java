@@ -512,9 +512,9 @@ public class FClassDef extends ItemFormatterTask
     {
         String lName = (target ? "target" : "source");
         genPropDefaultedAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments, 
-                                 lName + "Class", "opflex::modb::class_id_t");
+                                 lName + "Class", "const opflex::modb::class_id_t");
         genPropDefaultedAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments, 
-                                 lName + "URI", "opflex::modb::URI");
+                                 lName + "URI", "const opflex::modb::URI&");
     }
 
     private void genPropMutator(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
