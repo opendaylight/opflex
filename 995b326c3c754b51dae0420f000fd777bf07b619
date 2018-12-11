@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bb3cc1a6_5e087156",
+        "filename": "agent-ovs/lib/include/opflexagent/PolicyManager.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2018-12-11T15:33:20Z",
+      "side": 1,
+      "message": "can all functions that return an IP address please return an address type.",
+      "revId": "995b326c3c754b51dae0420f000fd777bf07b619",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
