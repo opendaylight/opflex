@@ -287,7 +287,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         }
     }
 
-    if (enableSimStats) {
+    if (enableSimStats == true) {
         boost::optional<int> upd_interval =
             properties.get_optional<int>(OPFLEX_SIM_STATS_INTERVAL);
         if (upd_interval) {
@@ -432,7 +432,7 @@ void Agent::start() {
         framework.addPeer(h.first, h.second);
 
 
-    if (enableSimStats) {
+    if (enableSimStats == true) {
         pSimStats = std::unique_ptr<SimStats>(new SimStats(*this, update_interval*1000));
         pSimStats->start();
         policyManager.registerListener(&(*pSimStats));
@@ -445,7 +445,7 @@ void Agent::stop() {
     LOG(INFO) << "Stopping OpFlex Agent";
 
     // if stats simulation is enbaled, stop it.
-    if (enableSimStats) {
+    if (enableSimStats == true) {
         pSimStats->stop();
     }
 
