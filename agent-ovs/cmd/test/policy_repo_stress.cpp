@@ -86,7 +86,7 @@ class StatsSimulator : public opflexagent::PolicyListener {
 public:
     StatsSimulator(std::vector<TestAgent>& agents_,
                    uint32_t timer_interval_)
-        : agents(agents_), intCounter(0), contractCounter(0), stopping(false),
+        : agents(agents_), intCounter(0), contractCounter(0), clsfrGenId(0), stopping(false),
           timer_interval(timer_interval_) {}
 
     void updateInterfaceCounters(opflexagent::Agent& a) {
@@ -108,7 +108,7 @@ public:
         }
     }
 
-    void updateContractCounters(opflexagent::Agent& a) {
+    void updateContractCounters(opflexagent::Agent& a, const uint64_t genId) {
         auto& polMgr = a.getPolicyManager();
         auto pu = modelgbp::policy::Universe::resolve(a.getFramework());
         auto su =
@@ -135,7 +135,7 @@ public:
                     for (auto& provider : providers) {
                         uint64_t c = ++contractCounter;
                         su.get()->
-                            addGbpeL24ClassifierCounter("uuid", 1,
+                            addGbpeL24ClassifierCounter("uuid", genId,
                                                         consumer.toString(),
                                                         provider.toString(),
                                                         l24Classifier)
@@ -147,7 +147,7 @@ public:
                 for (auto& intra : intras) {
                     uint64_t c = ++contractCounter;
                     su.get()->
-                        addGbpeL24ClassifierCounter("uuid", 1,
+                        addGbpeL24ClassifierCounter("uuid", genId,
                                                     intra.toString(),
                                                     intra.toString(),
                                                     l24Classifier)
@@ -190,12 +190,12 @@ public:
             timer.reset();
             return;
         }
-
+        const uint64_t genId = ++clsfrGenId;
         LOG(INFO) << "Updating counters [intCounter=" << intCounter
-                  << ", contractCounter=" << contractCounter << "]";
+                  << ", contractCounter=" << contractCounter << ", genId = " << clsfrGenId << "]";
         for (auto& a : agents) {
             io.post([this, &a]() { updateInterfaceCounters(*a.agent); });
-            io.post([this, &a]() { updateContractCounters(*a.agent); });
+            io.post([this, &a, genId]() { updateContractCounters(*a.agent, genId); });
         }
 
         if (!stopping) {
@@ -215,6 +215,7 @@ public:
     std::vector<TestAgent>& agents;
     std::atomic<uint64_t> intCounter;
     std::atomic<uint64_t> contractCounter;
+    std::atomic<uint64_t> clsfrGenId;
 
     std::mutex mutex;
     std::unordered_set<opflex::modb::URI> contracts;

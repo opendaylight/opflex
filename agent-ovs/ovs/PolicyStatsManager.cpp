@@ -50,7 +50,7 @@ PolicyStatsManager::PolicyStatsManager(Agent* agent_, IdGenerator& idGen_,
                                        long timer_interval_)
     : idGen(idGen_), agent(agent_),
       switchManager(switchManager_), connection(NULL),
-      timer_interval(timer_interval_), clsfrGenId(0), stopping(false) {}
+      timer_interval(timer_interval_), stopping(false) {}
 
 PolicyStatsManager::~PolicyStatsManager() {}
 

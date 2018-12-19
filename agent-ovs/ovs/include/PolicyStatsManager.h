@@ -355,7 +355,7 @@ protected:
     /**
      * Atomic generation counter for stats syncing
      */
-    std::atomic<std::uint64_t> clsfrGenId;
+    std::atomic<uint64_t> clsfrGenId{0};
 
     /**
      * Update a the flow entry maps from the given entry
