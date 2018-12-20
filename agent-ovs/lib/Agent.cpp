@@ -15,6 +15,9 @@
 
 #include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 
 #include <opflexagent/cmd.h>
@@ -34,6 +37,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
+#include <random>
 
 #include <dlfcn.h>
 
@@ -47,12 +51,16 @@ using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
 using boost::optional;
 using boost::asio::io_service;
+using boost::uuids::to_string;
+using boost::uuids::basic_random_generator;
 
 Agent::Agent(OFFramework& framework_)
     : framework(framework_), policyManager(framework, agent_io),
       endpointManager(framework, policyManager), notifServer(agent_io),
       started(false) {
-
+    std::random_device rng;
+    std::mt19937 urng(rng());
+    uuid = to_string(basic_random_generator<std::mt19937>(urng)())
 }
 
 Agent::~Agent() {
@@ -301,8 +309,6 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         prr_timer = prr_timer_present.get();
         if (prr_timer < 15) {
            prr_timer = 15;  /* min is 15 seconds */
-        } else {
-           prr_timer = prr_timer;
         }
     }
     LOG(INFO) << "prr timer set to " << prr_timer << " secs";
