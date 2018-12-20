@@ -135,7 +135,7 @@ public:
                     for (auto& provider : providers) {
                         uint64_t c = ++contractCounter;
                         su.get()->
-                            addGbpeL24ClassifierCounter("uuid", genId,
+                            addGbpeL24ClassifierCounter(a.getUuid(), genId,
                                                         consumer.toString(),
                                                         provider.toString(),
                                                         l24Classifier)
@@ -147,7 +147,7 @@ public:
                 for (auto& intra : intras) {
                     uint64_t c = ++contractCounter;
                     su.get()->
-                        addGbpeL24ClassifierCounter("uuid", genId,
+                        addGbpeL24ClassifierCounter(a.getUuid(), genId,
                                                     intra.toString(),
                                                     intra.toString(),
                                                     l24Classifier)

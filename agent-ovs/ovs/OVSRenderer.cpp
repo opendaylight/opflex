@@ -14,10 +14,6 @@
 
 #include <boost/asio/placeholders.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include <openvswitch/vlog.h>
 
 namespace opflexagent {
@@ -27,8 +23,6 @@ using opflex::ofcore::OFFramework;
 using boost::property_tree::ptree;
 using boost::asio::deadline_timer;
 using boost::asio::placeholders::error;
-using boost::uuids::to_string;
-using boost::uuids::basic_random_generator;
 
 static const std::string ID_NMSPC_CONNTRACK("conntrack");
 static const boost::posix_time::milliseconds CLEANUP_INTERVAL(3*60*1000);
@@ -150,11 +144,6 @@ void OVSRenderer::start() {
     pktInHandler.setFlowReader(&intSwitchManager.getFlowReader());
     pktInHandler.start();
 
-    std::random_device rng;
-    std::mt19937 urng(rng());
-    std::string agentUUID =
-        to_string(basic_random_generator<std::mt19937>(urng)());
-
     if (ifaceStatsEnabled) {
         interfaceStatsManager.setTimerInterval(ifaceStatsInterval);
         interfaceStatsManager.
@@ -166,14 +155,14 @@ void OVSRenderer::start() {
     }
     if (contractStatsEnabled) {
         contractStatsManager.setTimerInterval(contractStatsInterval);
-        contractStatsManager.setAgentUUID(agentUUID);
+        contractStatsManager.setAgentUUID(getAgent().getUuid());
         contractStatsManager.
             registerConnection(intSwitchManager.getConnection());
         contractStatsManager.start();
     }
     if (secGroupStatsEnabled && accessBridgeName != "") {
         secGrpStatsManager.setTimerInterval(secGroupStatsInterval);
-        secGrpStatsManager.setAgentUUID(agentUUID);
+        secGrpStatsManager.setAgentUUID(getAgent().getUuid());
         secGrpStatsManager.
             registerConnection(accessSwitchManager.getConnection());
         secGrpStatsManager.start();

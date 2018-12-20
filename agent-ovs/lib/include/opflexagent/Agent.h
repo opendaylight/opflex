@@ -157,6 +157,11 @@ public:
      */
     boost::asio::io_service& getAgentIOService() { return agent_io; }
 
+    /**
+     * Get a unique identifer for the agent incarnation
+     */
+    const std::string& getUuid() { return uuid; }
+
 private:
     boost::asio::io_service agent_io;
     std::unique_ptr<boost::asio::io_service::work> io_work;
@@ -220,6 +225,8 @@ private:
     bool started;
 
     void loadPlugin(const std::string& name);
+
+    std::string uuid;
 };
 
 } /* namespace opflexagent */
