@@ -118,8 +118,18 @@ static flow_func make_flow_functor(const network::subnet_t& ss,
     return std::bind(applyRemoteSub, _1, func, addr, ss.second, _2);
 }
 
-void add_port_ranges(L24Classifier& clsfr, MaskList& srcPorts,
-                        MaskList& dstPorts) {
+void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
+                            boost::optional<const network::subnets_t&> sourceSub,
+                            boost::optional<const network::subnets_t&> destSub,
+                            uint8_t nextTable, uint16_t priority,
+                            uint32_t flags, uint64_t cookie,
+                            uint32_t svnid, uint32_t dvnid,
+                            /* out */ FlowEntryList& entries) {
+    using modelgbp::l4::TcpFlagsEnumT;
+
+    ovs_be64 ckbe = ovs_htonll(cookie);
+    MaskList srcPorts;
+    MaskList dstPorts;
     if (clsfr.getProt(0) == 1 &&
         (clsfr.isIcmpTypeSet() || clsfr.isIcmpCodeSet())) {
         if (clsfr.isIcmpTypeSet()) {
@@ -129,8 +139,8 @@ void add_port_ranges(L24Classifier& clsfr, MaskList& srcPorts,
             dstPorts.push_back(Mask(clsfr.getIcmpCode(0), ~0));
         }
     } else {
-            RangeMask::getMasks(clsfr.getSFromPort(), clsfr.getSToPort(), srcPorts);
-            RangeMask::getMasks(clsfr.getDFromPort(), clsfr.getDToPort(), dstPorts);
+        RangeMask::getMasks(clsfr.getSFromPort(), clsfr.getSToPort(), srcPorts);
+        RangeMask::getMasks(clsfr.getDFromPort(), clsfr.getDToPort(), dstPorts);
     }
 
     /* Add a "ignore" mask to empty ranges - makes the loop later easy */
@@ -140,19 +150,7 @@ void add_port_ranges(L24Classifier& clsfr, MaskList& srcPorts,
     if (dstPorts.empty()) {
         dstPorts.push_back(Mask(0x0, 0x0));
     }
-}
 
-void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
-                            boost::optional<const network::subnets_t&> sourceSub,
-                            boost::optional<const network::subnets_t&> destSub,
-                            uint8_t nextTable, uint16_t priority,
-                            uint32_t flags, uint64_t cookie,
-                            uint32_t svnid, uint32_t dvnid,
-                            const MaskList& srcPorts, const MaskList& dstPorts,
-                            /* out */ FlowEntryList& entries) {
-    using modelgbp::l4::TcpFlagsEnumT;
-
-    ovs_be64 ckbe = ovs_htonll(cookie);
     vector<uint32_t> tcpFlagsVec;
     uint32_t tcpFlags = clsfr.getTcpFlags(TcpFlagsEnumT::CONST_UNSPECIFIED);
     if (tcpFlags & TcpFlagsEnumT::CONST_ESTABLISHED) {
