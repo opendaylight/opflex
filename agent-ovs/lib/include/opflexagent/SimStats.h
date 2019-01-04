@@ -40,31 +40,38 @@ public:
      * @param[in] agent_ a reference to an instance of opflex agent.
      * @param[in] timer_interval_ the update interval in seconds.
      */
-    SimStats(opflexagent::Agent& agent_, uint32_t timer_interval_);
+    SimStats(opflexagent::Agent& agent_);
     /**
      * Destroy this instance of SimStats
      */
     ~SimStats();
     /**
      * update all the interface counters known to this instance of opflex agent.
-     * @param[in] a a reference to an instance of opflex agent.
      */
-    void updateInterfaceCounters(opflexagent::Agent& a);
+    void updateInterfaceCounters();
     /**
      * update all the contract counters known to this instance of opflex agent.
-     * @param[in] a a reference to an instance of opflex agent.
      */
-    void updateContractCounters(opflexagent::Agent& a);
+    void updateContractCounters();
     /**
      * update all the security group counters known to this instance of opflex agent.
-     * @param[in] a a reference to an instance of opflex agent.
      */
-    void updateSecGrpCounters(opflexagent::Agent& a);
+    void updateSecGrpCounters();
     /**
-     * called when timer expires. It invokes the update methods for various counters.
+     * called when contract timer expires. It invokes the update method for contract counters.
      * @param[in] ec error code.
      */
-    void on_timer(const boost::system::error_code& ec);
+    void on_timer_contract(const boost::system::error_code& ec);
+    /**
+     * called when security group timer expires. It invokes the update method for security group counters.
+     * @param[in] ec error code.
+     */
+    void on_timer_security_group(const boost::system::error_code& ec);
+    /**
+     * called when interface timer expires. It invokes the update method for interface counters.
+     * @param[in] ec error code.
+     */
+    void on_timer_interface(const boost::system::error_code& ec);
     /**
      * start the statistics simulator.
      * A new thread is started using ASIO.
@@ -97,7 +104,15 @@ private:
     boost::asio::io_service io;
     std::atomic_bool stopping;
     std::shared_ptr<std::thread> io_service_thread;
-    std::shared_ptr<boost::asio::deadline_timer> timer;
+    std::shared_ptr<boost::asio::deadline_timer> contract_timer;
+    std::shared_ptr<boost::asio::deadline_timer> security_group_timer;
+    std::shared_ptr<boost::asio::deadline_timer> interface_timer;
+
+    bool on_timer_check(std::shared_ptr<boost::asio::deadline_timer> timer,
+                        const boost::system::error_code& ec);
+    void timer_restart(uint32_t interval,
+                       std::function<void(const boost::system::error_code& ec)> on_timer,
+                       std::shared_ptr<boost::asio::deadline_timer> timer);
 };
 
 } /* namespace opflexagent */

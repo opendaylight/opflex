@@ -45,6 +45,8 @@ class FSRDConfigSource;
 class LearningBridgeSource;
 class SimStats;
 
+enum StatMode { REAL, SIM, OFF };
+
 /**
  * Master object for the OVS agent.  This class holds the state for
  * the agent and handles initialization, configuration and cleanup.
@@ -179,6 +181,54 @@ public:
      * Get a unique identifer for the agent incarnation
      */
     const std::string& getUuid() { return uuid; }
+    /**
+     * Get contract counter timer interval.
+     * returns millisesonds.
+     */
+    long getContractInterval() { return contractInterval; }
+    /**
+     * Set contract counter timer to <interval> milliseconds.
+     * A 0 setting means timer is turned off.
+     * @param  interval - time in milliseconds
+     */
+    void setContractInterval(const long interval) { contractInterval = interval; }
+    /**
+     * Get security group counter timer interval.
+     * returns milliseconds.
+     */
+    long getSecurityGroupInterval() { return securityGroupInterval; }
+    /**
+     * Set security group counter timer to <interval> milliseconds.
+     * A 0 setting means timer is turned off.
+     * @param  interval - time in milliseconds
+     */
+    void setSecurityGroupInterval(const long interval) { securityGroupInterval = interval; }
+    /**
+     * Get interface counter timer interval.
+     * returns milliseconds.
+     */
+    long getInterfaceInterval() { return interfaceInterval; }
+    /**
+     * Set interface counter timer to <interval> milliseconds.
+     * A 0 setting means timer is turned off.
+     * @param  interval - time in milliseconds
+     */
+    void setInterfaceInterval(const long interval) { interfaceInterval = interval; }
+    /**
+     * A class used as a POD (Plain Old Data) object
+     * to pass counter settings around.
+     */
+    class StatProps {
+        public:
+        /**
+         * setting to enable/disable counter timer.
+         */
+        bool enabled;
+        /**
+         * setting for timer interval.
+         */
+        long interval;
+    };
 
 private:
     boost::asio::io_service agent_io;
@@ -205,9 +255,8 @@ private:
     boost::optional<std::string> notifGroup;
     boost::optional<std::string> notifPerms;
     // stats simulation
-    boost::optional<bool> enableSimStats = false;
+    StatMode statMode = StatMode::REAL;
     std::unique_ptr<SimStats> pSimStats;
-    int update_interval = 10;   /* seconds */
 
     // timers
     // prr timer - policy resolve request timer
@@ -246,6 +295,17 @@ private:
     void loadPlugin(const std::string& name);
 
     std::string uuid;
+
+    StatMode getStatModeFromString(const std::string& mode);
+    int setInterval(int& upd_interval);
+
+    void setSimStatProperties(const std::string& enabled_prop,
+                              const std::string& interval_prop,
+                              const boost::property_tree::ptree& properties,
+                              Agent::StatProps& props);
+    long contractInterval;
+    long securityGroupInterval;
+    long interfaceInterval;
 };
 
 } /* namespace opflexagent */

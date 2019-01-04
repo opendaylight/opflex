@@ -96,6 +96,30 @@
            // prr - Policy Resolve Request timer duration in seconds.
            // default 3600 secs, min 15 secs
            // "prr": 3600
+       },
+       // Statistics. Counters for various artifacts.
+       // mode: can have three values, viz.
+       //       "real" - counters are based on actual data traffic. default.
+       //       "simulate" - simulate counters.
+       //       "off" - turn off all counters.
+       // There are three sections, one each for interface, contract and
+       // security-group counters. Each section has two fields, viz.,
+       // enabled to enable/disable the counter and
+       // interval to set the counter update interval in secs.
+       "statistics": {
+       //   "mode": "real",
+       //   "interface": {
+       //      "enabled": true,
+       //      "interval": 30
+       //   },
+       //   "contract": {
+       //      "enabled": true,
+       //      "interval": 10
+       //   },
+       //   "security-group": {
+       //      "enabled": true,
+       //      "interval": 10
+       //   }
        }
     },
 
@@ -125,13 +149,5 @@
     // Default: no renderers
     "renderers": {
     }
-   // Simulate statistics. Counters for various artifacts.
-   // if this section is left out, no simulator is started.
-   // enabled: if true, starts the statistics simulator, default false.
-   // update-interval: the frequency of updates in seconds, default 10 secs, min 10 secs.
-   // "simulate": {
-   //   "enabled": true,
-   //   "update-interval" : 15
-   // }
 
 }

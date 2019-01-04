@@ -19,16 +19,16 @@ namespace opflexagent {
 
 using namespace modelgbp::gbpe;
 
-SimStats::SimStats(opflexagent::Agent& agent_, uint32_t timer_interval_)
-    : agent(agent_), timer_interval(timer_interval_), intCounter(0), contractCounter(0),
-      stopping(false), secGrpCounter(0)  {}
+SimStats::SimStats(opflexagent::Agent& agent_)
+    : agent(agent_), intCounter(0), contractCounter(0),
+      secGrpCounter(0), stopping(false)  {}
 
 SimStats::~SimStats() {}
 
-void SimStats::updateInterfaceCounters(opflexagent::Agent& a) {
+void SimStats::updateInterfaceCounters() {
     if (stopping) return;
 
-    auto& epMgr = a.getEndpointManager();
+    auto& epMgr = agent.getEndpointManager();
     std::unordered_set<std::string> eps;
     epMgr.getEndpointUUIDs(eps);
     for (auto& uuid : eps) {
@@ -44,15 +44,15 @@ void SimStats::updateInterfaceCounters(opflexagent::Agent& a) {
     }
 }
 
-void SimStats::updateContractCounters(opflexagent::Agent& a) {
+void SimStats::updateContractCounters() {
 
-    auto& polMgr = a.getPolicyManager();
-    auto pu = modelgbp::policy::Universe::resolve(a.getFramework());
+    auto& polMgr = agent.getPolicyManager();
+    auto pu = modelgbp::policy::Universe::resolve(agent.getFramework());
     auto su =
-        modelgbp::observer::PolicyStatUniverse::resolve(a.getFramework());
+        modelgbp::observer::PolicyStatUniverse::resolve(agent.getFramework());
 
     std::unique_lock<std::mutex> guard(mutex);
-    opflex::modb::Mutator mutator(a.getFramework(), "policyelement");
+    opflex::modb::Mutator mutator(agent.getFramework(), "policyelement");
     for (auto& con : contracts) {
         opflexagent::PolicyManager::uri_set_t consumers;
         opflexagent::PolicyManager::uri_set_t providers;
@@ -71,9 +71,9 @@ void SimStats::updateContractCounters(opflexagent::Agent& a) {
 
             for (auto& consumer : consumers) {
                 for (auto& provider : providers) {
-                    L24ClassifierCounter::remove(a.getFramework(), "uuid", (c - 1), consumer.toString(),
+                    L24ClassifierCounter::remove(agent.getFramework(), agent.getUuid(), (c - 1), consumer.toString(),
                                                  provider.toString(),l24Classifier);
-                    su.get()->addGbpeL24ClassifierCounter("uuid", c,
+                    su.get()->addGbpeL24ClassifierCounter(agent.getUuid(), c,
                                                     consumer.toString(),
                                                     provider.toString(),
                                                     l24Classifier)
@@ -83,10 +83,10 @@ void SimStats::updateContractCounters(opflexagent::Agent& a) {
             }
 
             for (auto& intra : intras) {
-                L24ClassifierCounter::remove(a.getFramework(), "uuid", (c - 1), intra.toString(),
+                L24ClassifierCounter::remove(agent.getFramework(), agent.getUuid(), (c - 1), intra.toString(),
                                                  intra.toString(),l24Classifier);
                 su.get()->
-                    addGbpeL24ClassifierCounter("uuid", c,
+                    addGbpeL24ClassifierCounter(agent.getUuid(), c,
                                                 intra.toString(),
                                                 intra.toString(),
                                                 l24Classifier)
@@ -98,12 +98,12 @@ void SimStats::updateContractCounters(opflexagent::Agent& a) {
     mutator.commit();
 }
 
-void SimStats::updateSecGrpCounters(opflexagent::Agent& a) {
+void SimStats::updateSecGrpCounters() {
 
-    auto& polMgr = a.getPolicyManager();
-    auto su = modelgbp::observer::PolicyStatUniverse::resolve(a.getFramework());
+    auto& polMgr = agent.getPolicyManager();
+    auto su = modelgbp::observer::PolicyStatUniverse::resolve(agent.getFramework());
     std::unique_lock<std::mutex> guard(mutex);
-    opflex::modb::Mutator mutator(a.getFramework(), "policyelement");
+    opflex::modb::Mutator mutator(agent.getFramework(), "policyelement");
 
     opflexagent::PolicyManager::rule_list_t rules;
 
@@ -115,9 +115,9 @@ void SimStats::updateSecGrpCounters(opflexagent::Agent& a) {
             auto& l24Classifier =
                 rule->getL24Classifier()->getURI().toString();
 
-            SecGrpClassifierCounter::remove(agent.getFramework(), "uuid", (c - 1),
+            SecGrpClassifierCounter::remove(agent.getFramework(), agent.getUuid(), (c - 1),
                                     l24Classifier);
-            su.get()->addGbpeSecGrpClassifierCounter("uuid", c,
+            su.get()->addGbpeSecGrpClassifierCounter(agent.getUuid(), c,
                   l24Classifier)
                   ->setTxpackets(c)
                   .setTxbytes(c * 1500)
@@ -129,38 +129,63 @@ void SimStats::updateSecGrpCounters(opflexagent::Agent& a) {
 
 }
 
-void SimStats::on_timer(const boost::system::error_code& ec) {
-    if (ec) {
-        // shut down the timer when we get a cancellation
-        timer.reset();
+void SimStats::on_timer_contract(const boost::system::error_code& ec) {
+    std::function<void(const boost::system::error_code&)> fn = [this](const boost::system::error_code& ec) {
+                           this->on_timer_contract(ec);
+    };
+    if (!on_timer_check(contract_timer, ec)) {
         return;
     }
+    io.post([this]() { updateContractCounters(); });
+    timer_restart(agent.getContractInterval(), fn, contract_timer);
+}
 
-
-    auto& a = agent;
-    io.post([this, &a]() { updateInterfaceCounters(a); });
-    io.post([this, &a]() { updateContractCounters(a); });
-    io.post([this, &a]() { updateSecGrpCounters(a); });
-
-
-    if (!stopping) {
-        timer->expires_at(timer->expires_at() +
-                          milliseconds(timer_interval));
-        timer->async_wait([this](const boost::system::error_code& ec) {
-                on_timer(ec);
-            });
+void SimStats::on_timer_security_group(const boost::system::error_code& ec) {
+    std::function<void(const boost::system::error_code&)> fn = [this](const boost::system::error_code& ec) {
+                           this->on_timer_security_group(ec);
+    };
+    if (!on_timer_check(security_group_timer, ec)) {
+        return;
     }
+    io.post([this]() { updateSecGrpCounters(); });
+    timer_restart(agent.getSecurityGroupInterval(), fn, security_group_timer);
+}
+
+void SimStats::on_timer_interface(const boost::system::error_code& ec) {
+    std::function<void(const boost::system::error_code&)> fn = [this](const boost::system::error_code& ec) {
+                           this->on_timer_interface(ec);
+    };
+    if (!on_timer_check(interface_timer, ec)) {
+        return;
+    }
+    io.post([this]() { updateInterfaceCounters(); });
+    timer_restart(agent.getInterfaceInterval(), fn, interface_timer);
 }
 
 void SimStats::start() {
-    if (timer_interval <= 0) return;
 
     LOG(INFO) << "Starting stats simulator";
 
-    timer.reset(new deadline_timer(io, milliseconds(timer_interval)));
-    timer->async_wait([this](const boost::system::error_code& ec) {
-            on_timer(ec);
+    if (agent.getContractInterval() != 0) {
+        contract_timer.reset(new deadline_timer(io, milliseconds(agent.getContractInterval())));
+        contract_timer->async_wait([this](const boost::system::error_code& ec) {
+                                          on_timer_contract(ec);
         });
+    }
+
+    if (agent.getSecurityGroupInterval() != 0) {
+        security_group_timer.reset(new deadline_timer(io, milliseconds(agent.getSecurityGroupInterval())));
+        security_group_timer->async_wait([this](const boost::system::error_code& ec) {
+                                                on_timer_security_group(ec);
+        });
+    }
+
+    if (agent.getInterfaceInterval() != 0) {
+        interface_timer.reset(new deadline_timer(io, milliseconds(agent.getInterfaceInterval())));
+        interface_timer->async_wait([this](const boost::system::error_code& ec) {
+                                           on_timer_interface(ec);
+        });
+    }
 
     io_service_thread.reset(new std::thread([this]() { io.run(); }));
 }
@@ -168,8 +193,14 @@ void SimStats::start() {
 void SimStats::stop() {
     stopping = true;
 
-    if (timer) {
-        timer->cancel();
+    if (contract_timer) {
+        contract_timer->cancel();
+    }
+    if (security_group_timer) {
+        security_group_timer->cancel();
+    }
+    if (interface_timer) {
+        interface_timer->cancel();
     }
     if (io_service_thread) {
         io_service_thread->join();
@@ -187,5 +218,23 @@ void SimStats::secGroupUpdated(const opflex::modb::URI& uri) {
     secGroups.insert(uri);
 }
 
+inline bool SimStats::on_timer_check(std::shared_ptr<boost::asio::deadline_timer> timer,
+                           const boost::system::error_code& ec) {
+    if (ec) {
+        // shut down the timer when we get a cancellation
+        timer.reset();
+        return false;
+    }
+    return true;
+}
+inline void SimStats::timer_restart(uint32_t interval,
+                      std::function<void(const boost::system::error_code& ec)> on_timer,
+                      std::shared_ptr<boost::asio::deadline_timer> timer) {
+    if (!this->stopping) {
+        timer->expires_at(timer->expires_at() +
+                          milliseconds(interval));
+        timer->async_wait(on_timer);
+    }
+}
 
 } /* namespace opflexagent */
