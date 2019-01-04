@@ -148,6 +148,9 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string RENDERERS_OPENVSWITCH("renderers.openvswitch");
     static const std::string OPFLEX_SIM_STATS("simulate.enabled");
     static const std::string OPFLEX_SIM_STATS_INTERVAL("simulate.update-interval");
+    static const std::string OPFLEX_SIM_STATS_CONTRACT("simulate.contracts");
+    static const std::string OPFLEX_SIM_STATS_SECGRP("simulate.security-grps");
+    static const std::string OPFLEX_SIM_STATS_EP("simulate.endpoints");
     static const std::string OPFLEX_PRR_INTERVAL("opflex.timers.prr");
 
     optional<std::string> logLvl =
@@ -296,11 +299,33 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     }
 
     if (enableSimStats == true) {
+        LOG(INFO) << "Simulation of stats enabled";
         boost::optional<int> upd_interval =
             properties.get_optional<int>(OPFLEX_SIM_STATS_INTERVAL);
         if (upd_interval) {
             update_interval = upd_interval.get() > 10 ? upd_interval.get() : 10;
         }
+        boost::optional<bool> contract_stats =
+            properties.get_optional<bool>(OPFLEX_SIM_STATS_CONTRACT);
+        if (contract_stats) {
+            contract_stats_enabled = contract_stats.get();
+        }
+        if (contract_stats_enabled)
+            LOG(INFO) << "contract stats enabled";
+        boost::optional<bool> secgrp_stats =
+            properties.get_optional<bool>(OPFLEX_SIM_STATS_SECGRP);
+        if (secgrp_stats) {
+            secgrp_stats_enabled = secgrp_stats.get();
+        }
+        if (secgrp_stats_enabled)
+            LOG(INFO) << "security group stats enabled";
+        boost::optional<bool> ep_stats =
+            properties.get_optional<bool>(OPFLEX_SIM_STATS_EP);
+        if (ep_stats) {
+            ep_stats_enabled = ep_stats.get();
+        }
+        if (ep_stats_enabled)
+            LOG(INFO) << "endpoint stats enabled";
     }
    
     boost::optional<boost::uint_t<64>::fast> prr_timer_present = 
@@ -368,7 +393,7 @@ void Agent::applyProperties() {
 }
 
 void Agent::start() {
-    LOG(INFO) << "Starting OpFlex Agent";
+    LOG(INFO) << "Starting OpFlex Agent " << uuid;
     started = true;
 
     // instantiate the opflex framework

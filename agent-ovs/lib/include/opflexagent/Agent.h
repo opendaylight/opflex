@@ -162,6 +162,9 @@ public:
      */
     const std::string& getUuid() { return uuid; }
 
+    bool contract_stats_enabled = true;
+    bool secgrp_stats_enabled = true;
+    bool ep_stats_enabled = true;
 private:
     boost::asio::io_service agent_io;
     std::unique_ptr<boost::asio::io_service::work> io_work;

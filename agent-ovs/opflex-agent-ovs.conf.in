@@ -129,9 +129,15 @@
    // if this section is left out, no simulator is started.
    // enabled: if true, starts the statistics simulator, default false.
    // update-interval: the frequency of updates in seconds, default 10 secs, min 10 secs.
+   // contracts: enable/disbale simulation of contract counters, default enabled.
+   // security-grps: enable/disable simulation of seciruty group counters, default enabled.
+   // endpoints: enable/disable simulatio of endpoint counters, default enabled.
    // "simulate": {
    //   "enabled": true,
-   //   "update-interval" : 15
+   //   "update-interval" : 15,
+   //   "contracts": false, 
+   //   "security-grps": true, 
+   //   "endpoints": true 
    // }
 
 }

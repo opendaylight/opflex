@@ -71,9 +71,9 @@ void SimStats::updateContractCounters(opflexagent::Agent& a) {
 
             for (auto& consumer : consumers) {
                 for (auto& provider : providers) {
-                    L24ClassifierCounter::remove(a.getFramework(), "uuid", (c - 1), consumer.toString(),
+                    L24ClassifierCounter::remove(a.getFramework(), a.getUuid(), (c - 1), consumer.toString(),
                                                  provider.toString(),l24Classifier);
-                    su.get()->addGbpeL24ClassifierCounter("uuid", c,
+                    su.get()->addGbpeL24ClassifierCounter(a.getUuid(), c,
                                                     consumer.toString(),
                                                     provider.toString(),
                                                     l24Classifier)
@@ -83,10 +83,10 @@ void SimStats::updateContractCounters(opflexagent::Agent& a) {
             }
 
             for (auto& intra : intras) {
-                L24ClassifierCounter::remove(a.getFramework(), "uuid", (c - 1), intra.toString(),
+                L24ClassifierCounter::remove(a.getFramework(), a.getUuid(), (c - 1), intra.toString(),
                                                  intra.toString(),l24Classifier);
                 su.get()->
-                    addGbpeL24ClassifierCounter("uuid", c,
+                    addGbpeL24ClassifierCounter(a.getUuid(), c,
                                                 intra.toString(),
                                                 intra.toString(),
                                                 l24Classifier)
@@ -115,9 +115,9 @@ void SimStats::updateSecGrpCounters(opflexagent::Agent& a) {
             auto& l24Classifier =
                 rule->getL24Classifier()->getURI().toString();
 
-            SecGrpClassifierCounter::remove(agent.getFramework(), "uuid", (c - 1),
+            SecGrpClassifierCounter::remove(agent.getFramework(), a.getUuid(), (c - 1),
                                     l24Classifier);
-            su.get()->addGbpeSecGrpClassifierCounter("uuid", c,
+            su.get()->addGbpeSecGrpClassifierCounter(a.getUuid(), c,
                   l24Classifier)
                   ->setTxpackets(c)
                   .setTxbytes(c * 1500)
@@ -138,10 +138,12 @@ void SimStats::on_timer(const boost::system::error_code& ec) {
 
 
     auto& a = agent;
-    io.post([this, &a]() { updateInterfaceCounters(a); });
-    io.post([this, &a]() { updateContractCounters(a); });
-    io.post([this, &a]() { updateSecGrpCounters(a); });
-
+    if (a.ep_stats_enabled)
+        io.post([this, &a]() { updateInterfaceCounters(a); });
+    if (a.secgrp_stats_enabled)
+        io.post([this, &a]() { updateSecGrpCounters(a); });
+    if (a.contract_stats_enabled)
+        io.post([this, &a]() { updateContractCounters(a); });
 
     if (!stopping) {
         timer->expires_at(timer->expires_at() +
