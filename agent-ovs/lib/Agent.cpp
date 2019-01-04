@@ -146,8 +146,10 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string RENDERERS_STITCHED_MODE("renderers.stitched-mode");
     static const std::string RENDERERS_TRANSPORT_MODE("renderers.transport-mode");
     static const std::string RENDERERS_OPENVSWITCH("renderers.openvswitch");
-    static const std::string OPFLEX_SIM_STATS("simulate.enabled");
-    static const std::string OPFLEX_SIM_STATS_INTERVAL("simulate.update-interval");
+    static const std::string OPFLEX_SIM_STATS("opflex.statistics.mode");
+    static const std::string OPFLEX_SIM_STATS_CONTRACT("opflex.statistics.timers.contracts");
+    static const std::string OPFLEX_SIM_STATS_SECGRP("opflex.statistics.timers.security-groups");
+    static const std::string OPFLEX_SIM_STATS_INTFC("opflex.statistics.timers.interfaces");
     static const std::string OPFLEX_PRR_INTERVAL("opflex.timers.prr");
 
     optional<std::string> logLvl =
@@ -180,15 +182,17 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         properties.get_optional<std::string>(OPFLEX_NOTIF_GROUP);
     boost::optional<std::string> notPerms =
         properties.get_optional<std::string>(OPFLEX_NOTIF_PERMS);
-    boost::optional<bool> enabSimStats =
-        properties.get_optional<bool>(OPFLEX_SIM_STATS);
+    boost::optional<std::string> statMode_json =
+        properties.get_optional<std::string>(OPFLEX_SIM_STATS);
 
     if (enabNotif) enableNotif = enabNotif;
     if (notSocket) notifSock = notSocket;
     if (notOwner) notifOwner = notOwner;
     if (notGrp) notifGroup = notGrp;
     if (notPerms) notifPerms = notPerms;
-    if (enabSimStats) enableSimStats = enabSimStats;
+    if (statMode_json) {
+        statMode = getStatModeFromString(statMode_json.get());
+    }
 
     optional<const ptree&> fsEndpointSource =
         properties.get_child_optional(ENDPOINT_SOURCE_FSPATH);
@@ -295,12 +299,24 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         }
     }
 
-    if (enableSimStats == true) {
+    if (statMode == StatMode::SIM) {
+        LOG(INFO) << "Simulation of stats enabled";
         boost::optional<int> upd_interval =
-            properties.get_optional<int>(OPFLEX_SIM_STATS_INTERVAL);
+            properties.get_optional<int>(OPFLEX_SIM_STATS_CONTRACT);
         if (upd_interval) {
-            update_interval = upd_interval.get() > 10 ? upd_interval.get() : 10;
+            contractInterval = setInterval(upd_interval.get())*1000; 
         }
+        LOG(INFO) << "contract interval set to " << contractInterval;
+        upd_interval = properties.get_optional<int>(OPFLEX_SIM_STATS_SECGRP);
+        if (upd_interval) {
+            securityGroupInterval = setInterval(upd_interval.get())*1000;
+        }
+        LOG(INFO) << "security group interval set to " << securityGroupInterval;
+        upd_interval = properties.get_optional<int>(OPFLEX_SIM_STATS_INTFC);
+        if (upd_interval) {
+            interfaceInterval = setInterval(upd_interval.get())*1000;
+        }
+        LOG(INFO) << "interface interval set to " << interfaceInterval;
     }
    
     boost::optional<boost::uint_t<64>::fast> prr_timer_present = 
@@ -368,7 +384,7 @@ void Agent::applyProperties() {
 }
 
 void Agent::start() {
-    LOG(INFO) << "Starting OpFlex Agent";
+    LOG(INFO) << "Starting OpFlex Agent " << uuid;
     started = true;
 
     // instantiate the opflex framework
@@ -438,8 +454,8 @@ void Agent::start() {
         framework.addPeer(h.first, h.second);
 
 
-    if (enableSimStats == true) {
-        pSimStats = std::unique_ptr<SimStats>(new SimStats(*this, update_interval*1000));
+    if (statMode == StatMode::SIM) {
+        pSimStats = std::unique_ptr<SimStats>(new SimStats(*this));
         pSimStats->start();
         policyManager.registerListener(&(*pSimStats));
 
@@ -451,7 +467,7 @@ void Agent::stop() {
     LOG(INFO) << "Stopping OpFlex Agent";
 
     // if stats simulation is enbaled, stop it.
-    if (enableSimStats == true) {
+    if (statMode = StatMode::SIM) {
         pSimStats->stop();
     }
 
@@ -511,6 +527,22 @@ void Agent::stop() {
     abort_timer.join();
 
     LOG(INFO) << "Agent stopped";
+}
+
+StatMode Agent::getStatModeFromString(std::string& mode) {
+    if (mode == "real") 
+        return StatMode::REAL;    
+    else if (mode == "simulate")
+        return StatMode::SIM;
+    else if (mode == "off")
+        return StatMode::OFF;
+}
+
+inline int Agent::setInterval(int& upd_interval) {
+    int interval = upd_interval;
+    if (interval != 0)
+        interval = interval >= 10 ? interval : 10;
+    return interval;
 }
 
 } /* namespace opflexagent */

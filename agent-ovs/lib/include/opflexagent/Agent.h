@@ -45,6 +45,8 @@ class FSRDConfigSource;
 class LearningBridgeSource;
 class SimStats;
 
+enum StatMode { REAL, SIM, OFF };
+
 /**
  * Master object for the OVS agent.  This class holds the state for
  * the agent and handles initialization, configuration and cleanup.
@@ -161,7 +163,12 @@ public:
      * Get a unique identifer for the agent incarnation
      */
     const std::string& getUuid() { return uuid; }
-
+    /**
+     * Timer settings in millisecs for various counters.
+     */
+    int contractInterval = 30*1000;
+    int securityGroupInterval = 30*1000;
+    int interfaceInterval = 30*1000;
 private:
     boost::asio::io_service agent_io;
     std::unique_ptr<boost::asio::io_service::work> io_work;
@@ -187,9 +194,8 @@ private:
     boost::optional<std::string> notifGroup;
     boost::optional<std::string> notifPerms;
     // stats simulation
-    boost::optional<bool> enableSimStats = false;
+    StatMode statMode = StatMode::REAL;
     std::unique_ptr<SimStats> pSimStats;
-    int update_interval = 10;   /* seconds */
 
     // timers
     // prr timer - policy resolve request timer
@@ -227,6 +233,9 @@ private:
     void loadPlugin(const std::string& name);
 
     std::string uuid;
+
+    StatMode getStatModeFromString(std::string& mode);
+    int setInterval(int& upd_interval);
 };
 
 } /* namespace opflexagent */
