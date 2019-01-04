@@ -168,6 +168,7 @@ getent group opflexep >/dev/null || groupadd -r opflexep
         /bin/systemctl daemon-reload >dev/null || :
     fi
 %endif
+/bin/pkill -9 agent-ovs || :
 
 %post renderer-openvswitch
 /bin/systemctl daemon-reload >dev/null || :
