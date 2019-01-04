@@ -20,7 +20,6 @@
 #include <boost/optional.hpp>
 
 #include <stdint.h>
-#include "RangeMask.h"
 
 namespace opflexagent {
 
@@ -97,14 +96,8 @@ void add_classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
                             uint8_t nextTable, uint16_t priority,
                             uint32_t flags, uint64_t cookie,
                             uint32_t svnid, uint32_t dvnid,
-                            const MaskList& srcPorts, const MaskList& dstPorts,
                             /* out */ FlowEntryList& entries);
 
-/**
- * Fill up the  src and dst port ranges from the classifies
- */
-void add_port_ranges(modelgbp::gbpe::L24Classifier& clsfr,
-                     MaskList& srcPorts, MaskList& dstPorts);
 /**
  * Add a match entry for the DHCP v4 and v6 request
  *
