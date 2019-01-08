@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4ccfea68_72eed853",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 16
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T20:31:35Z",
+      "side": 1,
+      "message": "unspec-\u003eunspecified\nsubIntf-\u003esubinterface",
+      "revId": "e148dccdfe7a900e8d5574551727f14707dda435",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
