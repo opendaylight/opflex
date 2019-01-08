@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54458d56_8ef07e16",
+        "filename": "agent-ovs/opflex-agent-ovs.conf.in",
+        "patchSetId": 1
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T22:00:32Z",
+      "side": 1,
+      "message": "disbale -\u003e disable",
+      "revId": "119e6986a40dc262bcc79304dac081a3eff0a073",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d7de87f6_6ac9a7c6",
+        "filename": "agent-ovs/opflex-agent-ovs.conf.in",
+        "patchSetId": 1
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T22:00:32Z",
+      "side": 1,
+      "message": "security-grps -\u003e security-groups",
+      "revId": "119e6986a40dc262bcc79304dac081a3eff0a073",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86c01aae_afd61036",
+        "filename": "agent-ovs/opflex-agent-ovs.conf.in",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T22:00:32Z",
+      "side": 1,
+      "message": "simulatio -\u003e simulation\n\nI\u0027d prefer endpoints to be changes to something more specific (interface-counters?) as I could see us adding other types of endpoint stats in the future",
+      "revId": "119e6986a40dc262bcc79304dac081a3eff0a073",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
