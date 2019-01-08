@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e9066247_db409380",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T20:31:35Z",
+      "side": 1,
+      "message": "I had no idea what this was supposed to be until I found it in the ACI documentation. Let\u0027s not be as cryptic and call it HashingAlgorithm or EcmpHashingAlgorithm or something similar",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e35ee5d2_af24d975",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T20:31:35Z",
+      "side": 1,
+      "message": "Is the cardinality really \"many\" or should it be \"single\"?",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ac45fb7a_3393acca",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T20:31:35Z",
+      "side": 1,
+      "message": "hashOpt -\u003e hashingAlgo or something similar",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e4fbfd89_3de6c2a6",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T20:31:35Z",
+      "side": 1,
+      "message": "Why not just resilientHash with an enum type (enabled/disabled)",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "af72aea5_dbec0a2f",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T20:31:35Z",
+      "side": 1,
+      "message": "unspec-\u003eunspecified",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "00eeedc9_fe6fe1db",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-08T20:31:35Z",
+      "side": 1,
+      "message": "why not just ifType",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
