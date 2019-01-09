@@ -50,6 +50,40 @@
       "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9b2432ed_5575b205",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 5
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-01-09T12:50:23Z",
+      "side": 1,
+      "message": "whitespace only",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9b05aae8_55029e3a",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/external.mdl",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-01-09T12:50:23Z",
+      "side": 1,
+      "message": "whitespace only.",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
