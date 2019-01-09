@@ -12,11 +12,11 @@
 #endif
 
 
-#include <yajr/rpc/internal/meta.hpp>
+#include <yajr/rpc/internal/fnv_1a_64.hpp>
 #include <yajr/rpc/methods.hpp>
 #include <yajr/rpc/rpc.hpp>
 
-namespace meta = yajr::rpc::internal::meta;
+namespace fnv_1a_64 = yajr::rpc::internal::fnv_1a_64;
 
 namespace yajr {
     namespace rpc {
