@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ed924863_18cf316a",
+        "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1221,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-01-09T08:14:18Z",
+      "side": 1,
+      "message": "this member function should be const",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7c3ed598_1e0ecc66",
+        "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1243,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-01-09T08:14:18Z",
+      "side": 1,
+      "message": "this member function should be const.",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9558ba69_11676272",
+        "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1265,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-01-09T08:14:18Z",
+      "side": 1,
+      "message": "this member function should be const",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
