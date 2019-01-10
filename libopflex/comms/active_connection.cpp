@@ -68,7 +68,7 @@
                 data,
                 uvLoopSelector);
 #if __cpp_exceptions || __EXCEPTIONS
-    } catch(std::bad_alloc) {
+    } catch(const std::bad_alloc&) {
     }
 #endif
 
@@ -105,7 +105,7 @@
                     data,
                     uvLoopSelector);
 #if __cpp_exceptions || __EXCEPTIONS
-    } catch(std::bad_alloc) {
+    } catch(const std::bad_alloc&) {
     }
 #endif
 
@@ -262,8 +262,8 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
             << "] "
             << uv_strerror(rc)
         ;
-        if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
-            uv_close((uv_handle_t*)peer->getHandle(), on_close);
+        if (!uv_is_closing(peer->getHandle())) {
+            uv_close(peer->getHandle(), on_close);
         }
         return retry_later(peer);
     }
@@ -415,8 +415,8 @@ void swap_stack_on_close(uv_handle_t * h) {
             << "] "
             << uv_strerror(rc)
         ;
-        if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
-            uv_close((uv_handle_t*)peer->getHandle(), on_close);
+        if (!uv_is_closing(peer->getHandle())) {
+            uv_close(peer->getHandle(), on_close);
         }
         return retry_later(peer);
     }
@@ -473,8 +473,8 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
                     LOG(INFO)
                         << "destroying socket and retrying"
                     ;
-                    if (!uv_is_closing((uv_handle_t*)peer->getHandle())) {
-                        uv_close((uv_handle_t*)peer->getHandle(), swap_stack_on_close);
+                    if (!uv_is_closing(peer->getHandle())) {
+                        uv_close(peer->getHandle(), swap_stack_on_close);
                     }
             }
 

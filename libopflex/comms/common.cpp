@@ -16,7 +16,6 @@
 #include <yajr/internal/comms.hpp>
 
 #include <opflex/logging/internal/logging.hpp>
-#include <boost/scoped_ptr.hpp>
 
 #include <uv.h>
 
@@ -91,7 +90,7 @@ char const * getUvHandleField(uv_handle_t * h, internal::Peer * peer) {
     if (h == reinterpret_cast< uv_handle_t * >(&peer->keepAliveTimer_)) {
         hType = "keepAliveTimer";
     } else {
-        if (h == reinterpret_cast< uv_handle_t * >(peer->getHandle())) {
+        if (h == peer->getHandle()) {
             hType = "TCP";
         }
     }
@@ -124,8 +123,6 @@ void on_close(uv_handle_t * h) {
     peer->choked_ = 1;
 
     peer->down();
-
-    return;
 }
 
 void on_write(uv_write_t *req, int status) {
@@ -149,8 +146,6 @@ void on_write(uv_write_t *req, int status) {
     /* see here if more output can be dequeued */
 
     peer->onWrite();
-
-    return;
 }
 
 } /* yajr::comms::internal namespace */

@@ -9,7 +9,7 @@
 #pragma once
 #ifndef _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
 #define _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
-
+#include <opflex/logging/internal/logging.hpp>
 #include <yajr/rpc/send_handler.hpp>
 #include <yajr/rpc/message_factory.hpp>
 #include <yajr/yajr.hpp>
@@ -155,7 +155,7 @@ class Peer : public SafeListBaseHook {
         explicit LoopData(uv_loop_t * loop)
         :
             lastRun_(uv_now(loop)),
-            destroying_(0),
+            destroying_(false),
             refCount_(1)
         {
             uv_prepare_init(loop, &prepare_);
@@ -186,15 +186,11 @@ class Peer : public SafeListBaseHook {
 
         void down();
 
-        void ensureResolvePending();
-
         void kickLibuv() {
             /* workaround for libuv syncronous uv_pipe_connect() failures bug */
             uv_async_send(&kickLibuv_);
         }
 
-        template < ::opflex::logging::OFLogHandler::Level LOGGING_LEVEL >
-        static void walkAndDumpHandlesCb(uv_handle_t* handle, void* _) __attribute__((no_instrument_function));
         static void walkAndCloseHandlesCb(uv_handle_t* handle, void* closeHandles) __attribute__((no_instrument_function));
         static void walkAndCountHandlesCb(uv_handle_t* handle, void* countHandles) __attribute__((no_instrument_function));
 
@@ -494,14 +490,11 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     void onConnect();
 
-    void onDisconnect(bool now = false) const {
-        const_cast<CommunicationPeer *>(this)->onDisconnect(now);
-    }
-    void onDisconnect(bool now = false);
+    virtual void onDisconnect();
 
     virtual void disconnect(bool now = false) {
 
-        onDisconnect(now);
+        onDisconnect();
 
     }
 
@@ -786,6 +779,7 @@ class ListeningTcpPeer : public ListeningPeer {
                   uvLoopSelector
           ) {
               createFail_ = 0;
+	      listen_on_ = sockaddr_storage();
           }
 
     virtual PassivePeer * getNewPassive();

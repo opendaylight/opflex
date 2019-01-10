@@ -146,7 +146,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
                 << sslErr
             ;
         }
-        peer->onDisconnect();
+        const_cast<CommunicationPeer *>(peer)->onDisconnect();
     }
 
     VLOG(totalRead ? 4 : 3)
@@ -259,7 +259,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
                 << sslErr
             ;
         }
-        peer->onDisconnect();
+        const_cast<CommunicationPeer *>(peer)->onDisconnect();
 
         return 0;
     }
@@ -403,7 +403,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
     assert(advancement == static_cast<ssize_t>(peer->pendingBytes_));
 
     if (giveUp) {
-        peer->onDisconnect();
+        const_cast<CommunicationPeer *>(peer)->onDisconnect();
         return;
     }
 }
@@ -480,7 +480,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
             << " => closing"
         ;
 
-        peer->onDisconnect();
+        const_cast<CommunicationPeer *>(peer)->onDisconnect();
     }
 
     if (nread > 0) {
@@ -538,7 +538,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
         assert(advancement == nread);
 
         if (giveUp) {
-            peer->onDisconnect();
+            const_cast<CommunicationPeer *>(peer)->onDisconnect();
             return;
         }
 

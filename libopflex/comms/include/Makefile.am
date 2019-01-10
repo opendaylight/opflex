@@ -25,7 +25,6 @@ comms_headers += yajr/rpc/gen/echo.hpp
 comms_headers += yajr/transport/engine.hpp
 comms_headers += yajr/transport/PlainText.hpp
 comms_headers += yajr/transport/ZeroCopyOpenSSL.hpp
-comms_headers += yajr/internal/walkAndDumpHandlesCb.hpp
 
 if SEPARATE_COMMS
   nobase_include_HEADERS = $(comms_headers)

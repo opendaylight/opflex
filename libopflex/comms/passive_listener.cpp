@@ -73,7 +73,7 @@
             listenerUvLoop,
             uvLoopSelector);
 #if __cpp_exceptions || __EXCEPTIONS
-    } catch(std::bad_alloc) {
+    } catch(const std::bad_alloc&) {
     }
 #endif
 
@@ -132,7 +132,7 @@
                 listenerUvLoop,
                 uvLoopSelector);
 #if __cpp_exceptions || __EXCEPTIONS
-    } catch(std::bad_alloc) {
+    } catch(const std::bad_alloc&) {
     }
 #endif
 
@@ -230,7 +230,7 @@ failed_after_init:
     VLOG(1)
         << "closing tcp handle because of immediate failure after init"
     ;
-    uv_close((uv_handle_t*) getHandle(), on_close);
+    uv_close(getHandle(), on_close);
 
 failed_tcp_init:
     insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
@@ -311,7 +311,7 @@ failed_after_init:
     VLOG(1)
         << "closing pipe handle because of immediate failure after init"
     ;
-    uv_close((uv_handle_t*) getHandle(), on_close);
+    uv_close(getHandle(), on_close);
 
 failed_unix_init:
     insert(internal::Peer::LoopData::RETRY_TO_LISTEN);
@@ -371,7 +371,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
             << uv_strerror(rc)
         ;
         peer->onError(rc);
-        uv_close((uv_handle_t*) peer->getHandle(), on_close);
+        uv_close(peer->getHandle(), on_close);
         return;
     }
 
@@ -398,7 +398,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status)
                 getConnectionHandlerData(),
                 getUvLoopSelector());
 #if __cpp_exceptions || __EXCEPTIONS
-    } catch(std::bad_alloc) {
+    } catch(const std::bad_alloc&) {
     }
 #endif
 
@@ -464,7 +464,7 @@ public:
                 getConnectionHandlerData(),
                 getUvLoopSelector());
 #if __cpp_exceptions || __EXCEPTIONS
-    } catch(std::bad_alloc) {
+    } catch(const std::bad_alloc&) {
     }
 #endif
 

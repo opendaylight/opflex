@@ -191,7 +191,7 @@ bool OutboundMessage::send() {
         }
 
 #if __cpp_exceptions || __EXCEPTIONS
-    } catch(std::bad_alloc) {
+    } catch(const std::bad_alloc&) {
         LOG(ERROR)
             << cP
             << " out-of-memory while Accept()ing a message"

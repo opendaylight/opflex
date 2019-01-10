@@ -151,9 +151,6 @@ private:
      */
     OF_UNORDERED_SET<URI> instance_map;
 
-    void doDelCMap(const URI& parent, prop_id_t parent_prop,
-                   const URI& child);
-
 };
 
 } /* namespace modb */

@@ -14,8 +14,6 @@
 
 #include <yajr/internal/comms.hpp>
 
-#include <yajr/internal/walkAndDumpHandlesCb.hpp>
-
 #include <opflex/logging/internal/logging.hpp>
 
 #include <uv.h>
@@ -114,8 +112,6 @@ void internal::Peer::LoopData::onPrepareLoop() {
     lastRun_ = now;
 
 prepared:
-    uv_walk(prepare_.loop, walkAndDumpHandlesCb<DEBUG6>, this);
-
     if (peers[RETRY_TO_CONNECT].begin() !=
         peers[RETRY_TO_CONNECT].end()) {
         /* We need to make sure we unblock */
@@ -158,7 +154,7 @@ void internal::Peer::LoopData::destroy(bool now) {
         return;
     }
 
-    destroying_ = 1;
+    destroying_ = true;
     down();
 
     for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
@@ -288,11 +284,6 @@ void Peer::LoopData::down() {
     --refCount_;
 
     if (destroying_ && !refCount_) {
-        LOG(INFO)
-            << this
-            << " walking uv_loop before stopping it"
-        ;
-        uv_walk(prepare_.loop, walkAndDumpHandlesCb< DEBUG >, this);
 
         CloseHandle closeHandle = { this, NULL };
 

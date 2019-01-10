@@ -152,24 +152,22 @@ void CommunicationPeer::onConnect() {
 
 }
 
-void CommunicationPeer::onDisconnect(bool now) {
+void CommunicationPeer::onDisconnect() {
 
     VLOG(1)
         << this
         << " connected_ = "
         << static_cast< bool >(connected_)
-        << " now = "
-        << now
     ;
 
- // if (connected_ || now) {
-        if (!uv_is_closing((uv_handle_t*)getHandle())) {
+ // if (connected_) {
+        if (!uv_is_closing(getHandle())) {
             VLOG(2)
                 << this
                 << " issuing close for tcp handle"
             ;
-            uv_close((uv_handle_t*)getHandle(), on_close);
-         // uv_close((uv_handle_t*)getHandle(), connected_? on_close : NULL);
+            uv_close(getHandle(), on_close);
+         // uv_close(getHandle(), connected_? on_close : NULL);
         }
  // }
 
@@ -233,10 +231,8 @@ void CommunicationPeer::destroy(bool now) {
     ;
 
  // Peer::destroy();
-    destroying_ = 1;
-
-    onDisconnect(now);
-
+    destroying_ = true;
+    onDisconnect();
 }
 
 int CommunicationPeer::tcpInit() {
@@ -494,7 +490,7 @@ int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
             << uv_strerror(rc)
         ;
         onError(rc);
-        onDisconnect();
+        const_cast<CommunicationPeer *>(this)->onDisconnect();
     } else {
         const_cast<CommunicationPeer *>(this)->up();
     }
@@ -574,7 +570,7 @@ void CommunicationPeer::timeout() {
         ;
 
         /* close the connection and hope for the best */
-        onDisconnect();
+        const_cast<CommunicationPeer *>(this)->onDisconnect();
      // if (!uv_is_closing((uv_handle_t*)getHandle())) {
      //     uv_close((uv_handle_t*)getHandle(), on_close);
      // }
@@ -621,7 +617,7 @@ int comms::internal::CommunicationPeer::choke() const {
         /* FIXME: this might even not be a big issue if SSL is not involved */
 
         onError(rc);
-        onDisconnect();
+        const_cast<CommunicationPeer *>(this)->onDisconnect();
 
     } else {
 
@@ -665,7 +661,7 @@ int comms::internal::CommunicationPeer::unchoke() const {
         ;
 
         onError(rc);
-        onDisconnect();
+        const_cast<CommunicationPeer *>(this)->onDisconnect();
 
     } else {
 
@@ -692,7 +688,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
     bumpLastHeard();
 
     /* empty frames are legal too */
-    if (!ssIn_.str().size()) {
+    if (ssIn_.str().empty()) {
         return NULL;
     }
 
@@ -718,7 +714,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
 
         if (ssIn_.str().data()) {
             onError(UV_EPROTO);
-            onDisconnect();
+            const_cast<CommunicationPeer *>(this)->onDisconnect();
         }
 
         // ret stays set to NULL
@@ -734,7 +730,7 @@ yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() con
         // assert(ret);
         if (!ret) {
             onError(UV_EPROTO);
-            onDisconnect();
+            const_cast<CommunicationPeer *>(this)->onDisconnect();
         }
     }
 

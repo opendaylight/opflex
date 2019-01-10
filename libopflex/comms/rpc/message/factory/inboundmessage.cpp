@@ -134,7 +134,7 @@ error:
 
     dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
         ->onError(UV_EPROTO);
-    dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
+    const_cast<::yajr::comms::internal::CommunicationPeer *>(dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer))
         ->onDisconnect();
 
     return NULL;

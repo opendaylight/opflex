@@ -45,8 +45,8 @@ void ListeningPeer::destroy(bool now) {
 
     if (connected_) {
         connected_ = 0;
-        if (!uv_is_closing((uv_handle_t*)getHandle())) {
-            uv_close((uv_handle_t*)getHandle(), on_close);
+        if (!uv_is_closing(getHandle())) {
+            uv_close(getHandle(), on_close);
         }
     }
 }

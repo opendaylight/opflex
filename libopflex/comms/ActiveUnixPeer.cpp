@@ -26,8 +26,8 @@ void ::yajr::comms::internal::ActiveUnixPeer::onFailedConnect(int rc) {
 
     onError(rc);
 
-    if (!uv_is_closing((uv_handle_t*)this->getHandle())) {
-        uv_close((uv_handle_t*)this->getHandle(), on_close);
+    if (!uv_is_closing(this->getHandle())) {
+        uv_close(this->getHandle(), on_close);
     }
 
     /* retry later */

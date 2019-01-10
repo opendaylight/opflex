@@ -14,8 +14,6 @@
 #include <yajr/internal/comms.hpp>
 #include <yajr/transport/engine.hpp>
 
-#include <yajr/internal/walkAndDumpHandlesCb.hpp>
-
 namespace yajr {
     namespace comms {
         namespace internal {
@@ -38,10 +36,7 @@ std::ostream& operator << (
         << reinterpret_cast<void const *>(p->getHandle())
         << ";HD:"
         << p->getHandle()->data
-        << "];timer@"
-//        << reinterpret_cast<void const *>(&p->keepAliveTimer_)
-//        << ";TD:"
-//        << p->keepAliveTimer_.data
+        << "]"
     ;
 
     return os;
@@ -126,9 +121,6 @@ void Peer::unlink() {
     ;
 
     SafeListBaseHook::unlink();
-
-    return;
-
 }
 
 Peer::~Peer() {
@@ -173,7 +165,7 @@ Peer::~Peer() {
         << (getHandle()->flags & 0x10000)
     ;
     assert(!uvRefCnt_);
-    assert(!uv_is_active(reinterpret_cast< uv_handle_t * >(getHandle())));
+    assert(!uv_is_active(getHandle()));
 
     getLoopData()->down();
 }
