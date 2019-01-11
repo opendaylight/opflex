@@ -13,6 +13,7 @@
 comms_headers =
 comms_headers += yajr/internal/comms.hpp
 comms_headers += yajr/yajr.hpp
+comms_headers += yajr/rpc/internal/fnv_1a_64.hpp
 comms_headers += yajr/rpc/internal/json_stream_wrappers.hpp
 comms_headers += yajr/rpc/message_factory.hpp
 comms_headers += yajr/rpc/message_factory.inl.hpp
