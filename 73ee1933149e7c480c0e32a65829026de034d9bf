@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "38e60939_68cd6c14",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-11T20:05:03Z",
+      "side": 1,
+      "message": "This is not merely a hashing algorithm but a Hash profile-\u003e meaning parameters for the hash and the algorithm are supposed to come out of this. So the name seems appropriate.This is not a one to one translation as well. ACI would use different constants for the same hashing algorithm. So calling it HashProf\"ile\"option",
+      "parentUuid": "e9066247_db409380",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e35ee5d2_af24d975",
         "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
         "patchSetId": 23
@@ -30,6 +48,24 @@
       "writtenOn": "2019-01-08T20:31:35Z",
       "side": 1,
       "message": "Is the cardinality really \"many\" or should it be \"single\"?",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "25fa4583_9ade9b0c",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-11T20:05:03Z",
+      "side": 1,
+      "message": "This should be many, because ACI model includes BD and RD vnid in the definition.",
+      "parentUuid": "e35ee5d2_af24d975",
       "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "bb234d66_35be418e",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-11T20:05:03Z",
+      "side": 1,
+      "message": "Just using a shorter form of hashProfOption",
+      "parentUuid": "ac45fb7a_3393acca",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e4fbfd89_3de6c2a6",
         "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
         "patchSetId": 23
@@ -64,6 +118,24 @@
       "writtenOn": "2019-01-08T20:31:35Z",
       "side": 1,
       "message": "Why not just resilientHash with an enum type (enabled/disabled)",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0ebf1707_afd0f644",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/action.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-11T20:05:03Z",
+      "side": 1,
+      "message": "There seems to be no reason why a non-resilient hash should be used, once the feature is available. So we wanted to keep the parameter generic and add more values to it,i.e point to an enum when more cases arise.",
+      "parentUuid": "e4fbfd89_3de6c2a6",
       "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "d7fbe2a7_a9e34a8d",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-11T20:05:03Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "af72aea5_dbec0a2f",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "00eeedc9_fe6fe1db",
         "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
         "patchSetId": 23
@@ -98,6 +188,24 @@
       "writtenOn": "2019-01-08T20:31:35Z",
       "side": 1,
       "message": "why not just ifType",
+      "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0186a24b_72b536b7",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 23
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-11T20:05:03Z",
+      "side": 1,
+      "message": "ok.. will change",
+      "parentUuid": "00eeedc9_fe6fe1db",
       "revId": "73ee1933149e7c480c0e32a65829026de034d9bf",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
