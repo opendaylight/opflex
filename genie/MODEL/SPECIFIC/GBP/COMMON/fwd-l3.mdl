@@ -61,6 +61,15 @@ module[gbp]
         member[prefixLen; type=scalar/UInt8]
     }
 
+    class[BaseNextHop;
+          super=gbp/BehavioralGroup;
+          abstract]
+    {
+        # Nexthop address
+        member[ip; type=address/IP]
+        member[mac; type=address/MAC]
+    }
+
     class[Subnet;
           super=gbp/BaseSubnet;
           concrete]
