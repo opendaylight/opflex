@@ -51,14 +51,20 @@ public:
      * @param allow_ true if the traffic should be allowed; false
      * otherwise
      * @param remoteSubnets_ remote subnets to which this rule applies
+     * @param redirect_ points to a redirect action
+     * @param rDG redirect URI
      */
     PolicyRule(const uint8_t dir,
                const uint16_t prio_,
                const std::shared_ptr<modelgbp::gbpe::L24Classifier>& c,
                bool allow_,
-               const network::subnets_t& remoteSubnets_) :
+               const network::subnets_t& remoteSubnets_,
+               bool redirect_,
+               const boost::optional<opflex::modb::URI>& rDG
+               ) :
         direction(dir), prio(prio_), l24Classifier(c), allow(allow_),
-        remoteSubnets(remoteSubnets_) {
+        redirect(redirect_), remoteSubnets(remoteSubnets_),
+        redirDstGrp(rDG) {
     }
 
     /**
@@ -102,14 +108,116 @@ public:
         return l24Classifier;
     }
 
+    /*
+     * Get the RedirectDestGrpURI for the classifier rule.
+     * @return the RedirectDestGrp URI.
+     */
+    boost::optional<opflex::modb::URI> getRedirectDestGrpURI() const
+    {
+        return redirDstGrp;
+    }
+
+    /**
+     * Whether matching traffic should be redirected
+     * @return true if traffic should be redirected, false otherwise
+     */
+    bool getRedirect() const {
+        return redirect;
+    }
+
 private:
     uint8_t direction;
     uint16_t prio;
     std::shared_ptr<modelgbp::gbpe::L24Classifier> l24Classifier;
     bool allow;
+    bool redirect;
     network::subnets_t remoteSubnets;
-
+    boost::optional<opflex::modb::URI> redirDstGrp;
     friend bool operator==(const PolicyRule& lhs, const PolicyRule& rhs);
+};
+
+/**
+ * Class to represent information about a redirect destination.
+ */
+class PolicyRedirectDest {
+public:
+    /**
+     * Constructor that accepts arguments for all  private members.
+     * @param dst_ RedirectDest object
+     * @param ip_ Redirect Ip address
+     * @param mac_ Redirect mac address
+     * @param rd_ Routing Domain object
+     * @param bd_ Bridge Domain object
+     * @param rdInstCtxt_ Routing Domain Instance context
+     * @param bdInstCtxt_ Bridge Domain Instance context
+     */
+    PolicyRedirectDest(const std::shared_ptr<modelgbp::gbp::RedirectDest> dst_,
+                       const boost::asio::ip::address& ip_,
+                       const opflex::modb::MAC& mac_,
+                       const std::shared_ptr<modelgbp::gbp::RoutingDomain>& rd_,
+                       const std::shared_ptr<modelgbp::gbp::BridgeDomain>& bd_,
+                       const std::shared_ptr<modelgbp::gbpe::InstContext>& rdInstCtxt_,
+                       const std::shared_ptr<modelgbp::gbpe::InstContext>& bdInstCtxt_
+                       ):ip(ip_), mac(mac_), redirDst(dst_), rd(rd_), bd(bd_),
+                         rdInstCtxt(rdInstCtxt_), bdInstCtxt(bdInstCtxt_){}
+    /**
+     * Get the RoutingDomain for the redirect destination.
+     * @return the RoutingDomain object.
+     */
+    const std::shared_ptr<modelgbp::gbp::RoutingDomain> getRD () const {
+        return rd;
+    }
+
+    /**
+     * Get the RoutingDomain for the redirect destination.
+     * @return the RoutingDomain object.
+     */
+    uint32_t getRDVnid() {
+        return rdInstCtxt->getEncapId().get();
+    }
+
+    /**
+     * Get the BridgeDomain for the redirect destination.
+     * @return the BridgeDomain object.
+     */
+    const std::shared_ptr<modelgbp::gbp::BridgeDomain> getBD () const {
+        return bd;
+    }
+
+    /**
+     * Get the BDVnid for the redirect destination.
+     * @return the bd vnid .
+     */
+    uint32_t getBDVnid() {
+        return bdInstCtxt->getEncapId().get();
+    }
+
+    /**
+     * Get the ip address for the redirect destination.
+     * @return the ip address .
+     */
+    boost::asio::ip::address getIp() const {
+        return ip;
+    }
+
+    /**
+     * Get the mac address for the redirect destination.
+     * @return the mac address .
+     */
+    opflex::modb::MAC getMac() const {
+        return mac;
+    }
+
+private:
+    boost::asio::ip::address ip;
+    opflex::modb::MAC mac;
+    std::shared_ptr<modelgbp::gbp::RedirectDest> redirDst;
+    std::shared_ptr<modelgbp::gbp::RoutingDomain> rd;
+    std::shared_ptr<modelgbp::gbp::BridgeDomain> bd;
+    std::shared_ptr<modelgbp::gbpe::InstContext> rdInstCtxt;
+    std::shared_ptr<modelgbp::gbpe::InstContext> bdInstCtxt;
+    friend bool operator==(const PolicyRedirectDest& lhs,
+                           const PolicyRedirectDest& rhs);
 };
 
 /**
@@ -501,6 +609,23 @@ public:
      */
     static const uint16_t MAX_POLICY_RULE_PRIORITY;
 
+    /**
+     * List of entries in a redirect dest group entry.
+     */
+    typedef std::list<std::shared_ptr<PolicyRedirectDest>> redir_dest_list_t;
+
+    /**
+     * Get the redirectdestgroup contents for the given URI
+     * @param redirDstURI URI for the redirectdestgroup
+     * @param redirList list of dests for the redirectdestgroup
+     * @param hashParam whether hashing should be non-symmetric(1)
+     * @param hashOpt hash function value HashProfOptionEnumT
+     * @return whether the redirectdestgroup is valid
+     */
+    bool getPolicyDestGroup(opflex::modb::URI redirDstURI,
+                            redir_dest_list_t &redirList, uint8_t &hashParam,
+                            uint8_t &hashOpt);
+
 private:
     opflex::ofcore::OFFramework& framework;
     std::string opflexDomain;
@@ -809,6 +934,25 @@ private:
      * @return true if the contract entry was removed
      */
     bool removeContractIfRequired(const opflex::modb::URI& contractURI);
+
+    struct RedirectDestGrpState {
+        uint8_t resilientHashEnabled;
+        uint8_t hashOpt;
+        std::shared_ptr<modelgbp::gbp::RedirectDestGroup> redirDstGrp;
+        redir_dest_list_t redirDstList;
+        uri_set_t ctrctSet;
+    };
+    /**
+     * Map of redirect dest group URI to its state
+     */
+    typedef std::unordered_map<opflex::modb::URI, RedirectDestGrpState> \
+    redir_dst_grp_map_t;
+    redir_dst_grp_map_t redirGrpMap;
+
+    void updateRedirectDestGroup(const opflex::modb::URI& uri,
+                                 uri_set_t &notify);
+    void updateRedirectDestGroups(uri_set_t &notify);
+    void getRedirectDestGroupCtrctSet(uri_set_t &ctrctSet);
 };
 
 /**
