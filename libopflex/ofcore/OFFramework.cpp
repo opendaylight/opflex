@@ -50,8 +50,8 @@ public:
     engine::Processor processor;
     scoped_ptr<engine::Inspector> inspector;
     uv_key_t mutator_key;
-    opflex::ofcore::OFConstants::OpflexElementMode mode;
     bool started;
+    opflex::ofcore::OFConstants::OpflexElementMode mode;
 };
 
 OFFramework::OFFramework() : pimpl(new OFFrameworkImpl()) {

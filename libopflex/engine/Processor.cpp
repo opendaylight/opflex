@@ -618,7 +618,7 @@ void Processor::objectUpdated(modb::class_id_t class_id,
     bool present = false;
     bool local = false;
     OF_SHARED_PTR<const ObjectInstance> oi;
-    if (present = client->get(class_id, uri, oi)) {
+    if ((present = client->get(class_id, uri, oi))) {
         local = oi->isLocal();
     }
 

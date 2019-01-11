@@ -115,22 +115,28 @@ public:
      */
     ExtraConfigManager& getExtraConfigManager() { return extraConfigManager; }
 
-    /*
+    /**
      * Get renderer forwarding mode for this agent
      */
-    uint8_t getRendererForwardingMode()
-    { return rendererFwdMode; }
-    /*
-    * Get Proxy addresses for transport mode
-    */
+    uint8_t getRendererForwardingMode() { return rendererFwdMode; }
+
+    /**
+     * Get Proxy addresses for transport mode
+     */
     void getV4Proxy(boost::asio::ip::address_v4 &v4ProxyAddress ) {
         framework.getV4Proxy(v4ProxyAddress);
     }
 
+    /**
+     * Get V6 Proxy addresses for transport mode
+     */
     void getV6Proxy(boost::asio::ip::address_v4 &v6ProxyAddress ) {
         framework.getV6Proxy(v6ProxyAddress);
     }
 
+    /**
+     * Get MAC Proxy addresses for transport mode
+     */
     void getMacProxy(boost::asio::ip::address_v4 &macProxyAddress ) {
         framework.getMacProxy(macProxyAddress);
     }
