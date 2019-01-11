@@ -14,6 +14,7 @@
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/HashingAlgorithmEnumT.hpp>
 #include <opflex/modb/URIBuilder.h>
 
 #include <opflexagent/logging.h>
@@ -77,6 +78,9 @@ void PolicyManager::start() {
     Subject::registerListener(framework, &contractListener);
     Rule::registerListener(framework, &contractListener);
     L24Classifier::registerListener(framework, &contractListener);
+    RedirectDestGroup::registerListener(framework, &contractListener);
+    RedirectDest::registerListener(framework, &contractListener);
+    RedirectAction::registerListener(framework, &contractListener);
 
     SecGroup::registerListener(framework, &secGroupListener);
     SecGroupSubject::registerListener(framework, &secGroupListener);
@@ -118,6 +122,9 @@ void PolicyManager::stop() {
     Subject::unregisterListener(framework, &contractListener);
     Rule::unregisterListener(framework, &contractListener);
     L24Classifier::unregisterListener(framework, &contractListener);
+    RedirectDestGroup::unregisterListener(framework, &contractListener);
+    RedirectDest::unregisterListener(framework, &contractListener);
+    RedirectAction::unregisterListener(framework, &contractListener);
 
     SecGroup::unregisterListener(framework, &secGroupListener);
     SecGroupSubject::unregisterListener(framework, &secGroupListener);
@@ -129,6 +136,7 @@ void PolicyManager::stop() {
     lock_guard<mutex> guard(state_mutex);
     group_map.clear();
     vnid_map.clear();
+    redirGrpMap.clear();
 }
 
 void PolicyManager::registerListener(PolicyListener* listener) {
@@ -715,10 +723,11 @@ void PolicyManager::updateGroupContracts(class_id_t groupType,
 }
 
 bool operator==(const PolicyRule& lhs, const PolicyRule& rhs) {
-    return (lhs.getDirection() == rhs.getDirection() &&
-            lhs.getAllow() == rhs.getAllow() &&
-            lhs.getRemoteSubnets() == rhs.getRemoteSubnets() &&
-            *lhs.getL24Classifier() == *rhs.getL24Classifier());
+    return ((lhs.getDirection() == rhs.getDirection()) &&
+            (lhs.getAllow() == rhs.getAllow()) &&
+            (lhs.getRemoteSubnets() == rhs.getRemoteSubnets()) &&
+            (*lhs.getL24Classifier() == *rhs.getL24Classifier()) &&
+            (lhs.getRedirectDestGrpURI() == rhs.getRedirectDestGrpURI()));
 }
 
 bool operator!=(const PolicyRule& lhs, const PolicyRule& rhs) {
@@ -732,6 +741,7 @@ std::ostream & operator<<(std::ostream &os, const PolicyRule& rule) {
     os << "PolicyRule[classifier="
        << rule.getL24Classifier()->getURI()
        << ",allow=" << rule.getAllow()
+       << ",redirect=" << rule.getRedirect()
        << ",prio=" << rule.getPriority()
        << ",direction=";
 
@@ -749,9 +759,143 @@ std::ostream & operator<<(std::ostream &os, const PolicyRule& rule) {
 
     if (!rule.getRemoteSubnets().empty())
         os << ",remoteSubnets=" << rule.getRemoteSubnets();
+    if (rule.getRedirectDestGrpURI())
+        os << ",redirectGroup=" << rule.getRedirectDestGrpURI().get();
 
     os << "]";
     return os;
+}
+
+bool operator==(const PolicyRedirectDest& lhs,
+                const PolicyRedirectDest& rhs) {
+    return ((lhs.getIp()==rhs.getIp()) &&
+            (lhs.getMac()==rhs.getMac()) &&
+            (lhs.getRD()->getURI()==rhs.getRD()->getURI()) &&
+            (lhs.getBD()->getURI()==rhs.getBD()->getURI()));
+}
+
+bool operator!=(const PolicyRedirectDest& lhs, const PolicyRedirectDest& rhs) {
+    return !operator==(lhs,rhs);
+}
+
+bool PolicyManager::getPolicyDestGroup(opflex::modb::URI redirURI,
+                                       redir_dest_list_t &redirList,
+                             uint8_t &hashParam_, uint8_t &hashOpt_)
+{
+    lock_guard<mutex> guard(state_mutex);
+    redir_dst_grp_map_t::iterator it = redirGrpMap.find(redirURI);
+    if(it == redirGrpMap.end()){
+        return false;
+    }
+    hashParam_ = it->second.resilientHashEnabled;
+    hashOpt_ = it->second.hashAlgo;
+    redirList.insert(redirList.end(),
+                     it->second.redirDstList.begin(),
+                     it->second.redirDstList.end());
+    return true;
+}
+
+static bool compareRedirects(const std::shared_ptr<PolicyRedirectDest>& lhs,
+                             const std::shared_ptr<PolicyRedirectDest>& rhs)
+{
+    return (lhs->getIp() < rhs->getIp())?true:false;
+}
+
+void PolicyManager::updateRedirectDestGroup(const opflex::modb::URI& uri,
+                                            uri_set_t &notifyGroup) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+    typedef std::shared_ptr<RedirectDestToDomainRSrc> redir_domp_t;
+    boost::optional<std::shared_ptr<RedirectDestGroup>> redirDstGrp =
+    RedirectDestGroup::resolve(framework,uri);
+    RedirectDestGrpState &redirState = redirGrpMap[uri];
+    if(!redirDstGrp) {
+        notifyGroup.insert(redirState.ctrctSet.begin(),
+                           redirState.ctrctSet.end());
+        redirGrpMap.erase(uri);
+        return;
+    }
+    std::vector<std::shared_ptr<RedirectDest>> redirDests;
+    redirDstGrp.get()->resolveGbpRedirectDest(redirDests);
+    PolicyManager::redir_dest_list_t newRedirDests;
+
+    LOG(DEBUG) << uri;
+    for(std::shared_ptr<RedirectDest>& redirDest : redirDests) {
+        /*Redirect Destination should be completely resolved
+         in order to be useful for forwarding*/
+        std::vector<redir_domp_t> redirDoms;
+        redirDest->resolveGbpRedirectDestToDomainRSrc(redirDoms);
+        boost::optional<shared_ptr<BridgeDomain>> bd;
+        boost::optional<shared_ptr<RoutingDomain>> rd;
+        boost::optional<shared_ptr<InstContext>> bdInst,rdInst;
+        for(const redir_domp_t &redirDom: redirDoms) {
+            if(!redirDom->getTargetURI() || !redirDom->getTargetClass())
+                continue;
+            class_id_t redirDomClass = redirDom->getTargetClass().get();
+            if(redirDomClass == BridgeDomain::CLASS_ID) {
+                bd = BridgeDomain::resolve(framework,
+                                           redirDom->getTargetURI().get());
+                if(!bd) {
+                    break;
+		}
+                bdInst = bd.get()->resolveGbpeInstContext();
+            }
+            if(redirDomClass == RoutingDomain::CLASS_ID) {
+                rd = RoutingDomain::resolve(framework,
+                                            redirDom->getTargetURI().get());
+                if(!rd){
+                   break;
+                }
+                rdInst = rd.get()->resolveGbpeInstContext();
+            }
+        }
+        if(!bdInst || !rdInst || !redirDest->isIpSet() ||
+           !redirDest->isMacSet()) {
+            continue;
+        }
+        boost::system::error_code ec;
+        boost::asio::ip::address addr = address::from_string(
+                                            redirDest->getIp().get(),ec);
+        if(ec) {
+            continue;
+        }
+        newRedirDests.push_back(
+            make_shared<PolicyRedirectDest>(redirDest,addr,
+                                            redirDest->getMac().get(),
+                                            rd.get(), bd.get(),
+                                            rdInst.get(), bdInst.get()));
+    }
+    redir_dest_list_t::const_iterator li = redirState.redirDstList.begin();
+    redir_dest_list_t::const_iterator ri = newRedirDests.begin();
+    while ((li != redirState.redirDstList.end()) &&
+           (ri != newRedirDests.end()) &&
+           (li->get() == ri->get())) {
+        ++li;
+        ++ri;
+    }
+    if((li != redirState.redirDstList.end()) ||
+       (ri != newRedirDests.end()) ||
+       (redirDstGrp.get()->getHashAlgo(HashingAlgorithmEnumT::CONST_SYMMETRIC)
+        != redirState.hashAlgo) ||
+       (redirDstGrp.get()->getResilientHashEnabled(1) != redirState.resilientHashEnabled)) {
+        notifyGroup.insert(redirState.ctrctSet.begin(),
+                           redirState.ctrctSet.end());
+    }
+    /* Order in which the next-hops are inserted may not be the order of
+     * resolution. Return in ascending order
+     */
+    newRedirDests.sort(compareRedirects);
+    redirState.redirDstList.swap(newRedirDests);
+    redirState.hashAlgo = redirDstGrp.get()->getHashAlgo(
+                             HashingAlgorithmEnumT::CONST_SYMMETRIC);
+    redirState.resilientHashEnabled = redirDstGrp.get()->getResilientHashEnabled(1);
+}
+
+void PolicyManager::updateRedirectDestGroups(uri_set_t &notifyGroup) {
+    for (PolicyManager::redir_dst_grp_map_t::iterator itr =
+         redirGrpMap.begin(); itr != redirGrpMap.end(); itr++) {
+        updateRedirectDestGroup(itr->first, notifyGroup);
+    }
 }
 
 void PolicyManager::resolveSubnets(OFFramework& framework,
@@ -826,11 +970,16 @@ void resolveRemoteSubnets(OFFramework& framework,
 template <typename Parent, typename Subject, typename Rule>
 static bool updatePolicyRules(OFFramework& framework,
                               const URI& parentURI, bool& notFound,
-                              PolicyManager::rule_list_t& oldRules) {
+                              PolicyManager::rule_list_t& oldRules,
+                              PolicyManager::uri_set_t &oldRedirGrps,
+                              PolicyManager::uri_set_t &newRedirGrps)
+{
     using modelgbp::gbpe::L24Classifier;
     using modelgbp::gbp::RuleToClassifierRSrc;
     using modelgbp::gbp::RuleToActionRSrc;
     using modelgbp::gbp::AllowDenyAction;
+    using modelgbp::gbp::RedirectAction;
+    using modelgbp::gbp::RedirectDestGroup;
 
     optional<shared_ptr<Parent> > parent =
         Parent::resolve(framework, parentURI);
@@ -880,19 +1029,45 @@ static bool updatePolicyRules(OFFramework& framework,
             vector<shared_ptr<RuleToActionRSrc> > actRel;
             rule->resolveGbpRuleToActionRSrc(actRel);
             bool ruleAllow = true;
+            bool ruleRedirect = false;
             uint32_t minOrder = UINT32_MAX;
+            optional<shared_ptr<RedirectDestGroup>> redirDstGrp;
+            optional<URI> destGrpUri;
             for (shared_ptr<RuleToActionRSrc>& r : actRel) {
-                if (!r->isTargetSet() ||
-                    r->getTargetClass().get() != AllowDenyAction::CLASS_ID) {
+                if (!r->isTargetSet()) {
                     continue;
                 }
-                optional<shared_ptr<AllowDenyAction> > act =
-                    AllowDenyAction::resolve(framework, r->getTargetURI().get());
-                if (act) {
-                    if (act.get()->getOrder(UINT32_MAX-1) < minOrder) {
-                        minOrder = act.get()->getOrder(UINT32_MAX-1);
-                        ruleAllow = act.get()->getAllow(0) != 0;
+                if(r->getTargetClass().get() == AllowDenyAction::CLASS_ID) {
+                    optional<shared_ptr<AllowDenyAction> > act =
+                        AllowDenyAction::resolve(framework, r->getTargetURI().get());
+                    if (act) {
+                        if (act.get()->getOrder(UINT32_MAX-1) < minOrder) {
+                            minOrder = act.get()->getOrder(UINT32_MAX-1);
+                            ruleAllow = act.get()->getAllow(0) != 0;
+                        }
                     }
+                }
+                else if(r->getTargetClass().get() ==
+                        RedirectAction::CLASS_ID) {
+                    optional<shared_ptr<RedirectAction> > act =
+                    RedirectAction::resolve(framework, r->getTargetURI().get());
+                    ruleRedirect = true;
+                    ruleAllow = false;
+                    if (!act) {
+                        continue;
+                    }
+                    optional<shared_ptr<modelgbp::gbp::RedirectActionToDestGrpRSrc>>
+                        destRef = act.get()->resolveGbpRedirectActionToDestGrpRSrc();
+                    if(!destRef){
+                        continue;
+                    }
+                    destGrpUri = destRef.get()->getTargetURI();
+                    if(!destGrpUri) {
+                        continue;
+                    }
+                    redirDstGrp =
+                    RedirectDestGroup::resolve(framework, destGrpUri.get());
+                    newRedirGrps.insert(destGrpUri.get());
                 }
             }
 
@@ -902,13 +1077,22 @@ static bool updatePolicyRules(OFFramework& framework,
                                    make_shared<PolicyRule>(dir,
                                                            rulePrio - clsPrio,
                                                            c, ruleAllow,
-                                                           remoteSubnets));
+                                                           remoteSubnets,
+                                                           ruleRedirect,
+                                                           destGrpUri));
                 if (clsPrio < 127)
                     clsPrio += 1;
             }
             if (rulePrio > 128)
                 rulePrio -= 128;
         }
+    }
+    PolicyManager::rule_list_t::const_iterator oi = oldRules.begin();
+    while(oi != oldRules.end()) {
+        if(oi->get()->getRedirectDestGrpURI()) {
+            oldRedirGrps.insert(oi->get()->getRedirectDestGrpURI().get());
+        }
+        ++oi;
     }
     PolicyManager::rule_list_t::const_iterator li = oldRules.begin();
     PolicyManager::rule_list_t::const_iterator ri = newRules.begin();
@@ -929,16 +1113,31 @@ static bool updatePolicyRules(OFFramework& framework,
 
 bool PolicyManager::updateSecGrpRules(const URI& secGrpURI, bool& notFound) {
     using namespace modelgbp::gbp;
+    uri_set_t oldRedirGrps, newRedirGrps;
     return updatePolicyRules<SecGroup, SecGroupSubject,
                              SecGroupRule>(framework, secGrpURI,
-                                           notFound, secGrpMap[secGrpURI]);
+                                           notFound, secGrpMap[secGrpURI],
+                                           oldRedirGrps, newRedirGrps);
 }
 
 bool PolicyManager::updateContractRules(const URI& contrURI, bool& notFound) {
     using namespace modelgbp::gbp;
+    uri_set_t oldRedirGrps, newRedirGrps;
     ContractState& cs = contractMap[contrURI];
-    return updatePolicyRules<Contract, Subject, Rule>(framework, contrURI,
-                                                      notFound, cs.rules);
+    bool updated = updatePolicyRules<Contract, Subject,
+                                     Rule>(framework, contrURI,
+                                           notFound, cs.rules,
+                                           oldRedirGrps,
+                                           newRedirGrps);
+    for (const URI& u : oldRedirGrps) {
+        if(redirGrpMap.find(u) != redirGrpMap.end()) {
+            redirGrpMap[u].ctrctSet.erase(contrURI);
+        }
+    }
+    for (const URI& u : newRedirGrps) {
+        redirGrpMap[u].ctrctSet.insert(contrURI);
+    }
+    return updated;
 }
 
 void PolicyManager::updateContracts() {
@@ -1295,6 +1494,18 @@ void PolicyManager::ContractListener::objectUpdated(class_id_t classId,
                         pmanager.updateL3Nets(uri, notif);
                     });
             });
+    } else if (classId == RedirectDestGroup::CLASS_ID) {
+        pmanager.taskQueue.dispatch("cl"+uri.toString(), [=]() {
+            pmanager.executeAndNotifyContract([&](uri_set_t& notif) {
+                pmanager.updateRedirectDestGroup(uri, notif);
+            });
+        });
+    } else if (classId == RedirectDest::CLASS_ID) {
+        pmanager.taskQueue.dispatch("cl"+uri.toString(), [=]() {
+            pmanager.executeAndNotifyContract([&](uri_set_t& notif) {
+                pmanager.updateRedirectDestGroups(notif);
+            });
+        });
     } else {
         {
             unique_lock<mutex> guard(pmanager.state_mutex);

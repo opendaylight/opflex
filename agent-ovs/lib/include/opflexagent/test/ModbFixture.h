@@ -349,7 +349,8 @@ protected:
             .addGbpRuleToClassifierRSrc(classifier3->getURI().toString())
             ->setTargetL24Classifier(classifier3->getURI());
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
-            ->addGbpRuleToActionRSrc(action1->getURI().toString())
+            ->addGbpRuleToActionRSrcAllowDenyAction(
+                action1->getURI().toString())
             ->setTargetAllowDenyAction(action1->getURI());
         con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule2")
             ->setOrder(2)
