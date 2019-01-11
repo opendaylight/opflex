@@ -774,8 +774,7 @@ public class FClassDef extends ItemFormatterTask
              "",
              "@param framework the framework instance to use",
              "@param uri the URI of the object to retrieve",
-             "@return a shared pointer to the object or boost::none if it",
-             "does not exist."};
+             "@return a shared pointer to the object or boost::none if it does not exist."};
         out.printHeaderComment(aInIdent,lComment);
 
         out.println(aInIdent, "static boost::optional<OF_SHARED_PTR<" + lFullyQualifiedClassName + "> > resolve(");
@@ -794,8 +793,7 @@ public class FClassDef extends ItemFormatterTask
              "exist remotely.",
              "",
              "@param uri the URI of the object to retrieve",
-             "@return a shared pointer to the object or boost::none if it",
-             "does not exist."};
+             "@return a shared pointer to the object or boost::none if it does not exist."};
         out.printHeaderComment(aInIdent,lComment2);
         out.println(aInIdent, "static boost::optional<OF_SHARED_PTR<" + lFullyQualifiedClassName + "> > resolve(");
         out.println(aInIdent + 1, "const opflex::modb::URI& uri)");
@@ -894,7 +892,7 @@ public class FClassDef extends ItemFormatterTask
         String lclassName = getClassName(aInThisContClass, false);
         for (MNameComponent lNc : aInNcs)
         {
-            if (lNc.hasPropName())
+            if (lNc.hasPropName() && !lNc.getPropName().equalsIgnoreCase("targetClass"))
             {
                 result.add("@param " + 
                            getPropParamName(aInThisContClass, lNc.getPropName()) +
@@ -1270,8 +1268,7 @@ public class FClassDef extends ItemFormatterTask
             "",
             "@param framework the framework instance to use "));
         addPathComment(aInClass, aInNamingPath, comment);
-        comment.add("@return a shared pointer to the object or boost::none if it");
-        comment.add("does not exist.");
+        comment.add("@return a shared pointer to the object or boost::none if it does not exist.");
         out.printHeaderComment(aInIdent,comment);
 
         out.println(aInIdent,"static boost::optional<OF_SHARED_PTR<" + getClassName(aInClass,true)+ "> > " + lMethodName + "(");
@@ -1308,8 +1305,7 @@ public class FClassDef extends ItemFormatterTask
             getUriDoc(aInClass, aInNamingPath),
             ""));
         addPathComment(aInClass, aInNamingPath, comment);
-        comment.add("@return a shared pointer to the object or boost::none if it");
-        comment.add("does not exist.");
+        comment.add("@return a shared pointer to the object or boost::none if it does not exist.");
         out.printHeaderComment(aInIdent,comment);
         out.println(aInIdent,
                     "static boost::optional<OF_SHARED_PTR<" + getClassName(aInClass, true) + "> > " + lMethodName + "(");
@@ -1472,8 +1468,7 @@ public class FClassDef extends ItemFormatterTask
             "locally, it may still exist remotely.",
             ""));
         addPathComment(aInChildClass, aInNcs, comment);
-        comment.add("@return a shared pointer to the object or boost::none if it");
-        comment.add("does not exist.");
+        comment.add("@return a shared pointer to the object or boost::none if it does not exist.");
         out.printHeaderComment(aInIdent,comment);
         
         String lTargetClassName = null;

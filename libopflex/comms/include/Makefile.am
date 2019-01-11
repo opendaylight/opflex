@@ -14,7 +14,6 @@ comms_headers =
 comms_headers += yajr/internal/comms.hpp
 comms_headers += yajr/yajr.hpp
 comms_headers += yajr/rpc/internal/json_stream_wrappers.hpp
-comms_headers += yajr/rpc/internal/meta.hpp
 comms_headers += yajr/rpc/message_factory.hpp
 comms_headers += yajr/rpc/message_factory.inl.hpp
 comms_headers += yajr/rpc/method_lookup.hpp
