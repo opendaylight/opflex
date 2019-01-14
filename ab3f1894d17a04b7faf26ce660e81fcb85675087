@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "56323fdb_d3b15aba",
+        "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1221,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-14T05:26:47Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "ed924863_18cf316a",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7c3ed598_1e0ecc66",
         "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2019-01-09T08:14:18Z",
       "side": 1,
       "message": "this member function should be const.",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff7898f8_3020f356",
+        "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1243,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-14T05:26:47Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "7c3ed598_1e0ecc66",
       "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "f17fa007_c09a3e98",
+        "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1265,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-14T05:26:47Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "9558ba69_11676272",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9b2432ed_5575b205",
         "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
         "patchSetId": 5
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "48927d02_c7351651",
+        "filename": "genie/MODEL/SPECIFIC/EPR/inventory.mdl",
+        "patchSetId": 5
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-14T05:26:47Z",
+      "side": 1,
+      "message": "there are some changes between the versions for review and this branch, so some errors have crept in. will remove",
+      "parentUuid": "9b2432ed_5575b205",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9b05aae8_55029e3a",
         "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/external.mdl",
         "patchSetId": 5
@@ -81,6 +153,24 @@
       "writtenOn": "2019-01-09T12:50:23Z",
       "side": 1,
       "message": "whitespace only.",
+      "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "26d94a11_e50354bf",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/external.mdl",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-14T05:26:47Z",
+      "side": 1,
+      "message": "will remove",
+      "parentUuid": "9b05aae8_55029e3a",
       "revId": "ab3f1894d17a04b7faf26ce660e81fcb85675087",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
