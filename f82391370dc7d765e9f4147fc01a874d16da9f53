@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b8ea0e9b_afe1d289",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-14T20:09:58Z",
+      "side": 1,
+      "message": "Nit: URI instead of opflex::modb::URI",
+      "revId": "f82391370dc7d765e9f4147fc01a874d16da9f53",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "27b184b5_20db769e",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 798,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-14T20:09:58Z",
+      "side": 1,
+      "message": "Nit: shared_ptr instead of std::shared_ptr",
+      "revId": "f82391370dc7d765e9f4147fc01a874d16da9f53",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e5a7db5c_5c72e3f8",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 804,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-14T20:09:58Z",
+      "side": 1,
+      "message": "Nit: just URI",
+      "revId": "f82391370dc7d765e9f4147fc01a874d16da9f53",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e17273d1_b9757976",
+        "filename": "agent-ovs/lib/include/opflexagent/PolicyManager.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-14T20:09:58Z",
+      "side": 1,
+      "message": "Should be /** not /* for doxygen comment",
+      "revId": "f82391370dc7d765e9f4147fc01a874d16da9f53",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
