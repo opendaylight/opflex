@@ -27,6 +27,7 @@
 #include <opflexagent/FSServiceSource.h>
 #include <opflexagent/FSRDConfigSource.h>
 #include <opflexagent/FSLearningBridgeSource.h>
+#include <opflexagent/FSExternalEndpointSource.h>
 #include <opflexagent/logging.h>
 
 #include <opflexagent/Renderer.h>
@@ -58,8 +59,9 @@ using boost::uuids::basic_random_generator;
 Agent::Agent(OFFramework& framework_)
     : framework(framework_), policyManager(framework, agent_io),
       endpointManager(framework, policyManager), notifServer(agent_io),
+      rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
-      spanManager(framework) {
+      spanManager(framework){
     std::random_device rng;
     std::mt19937 urng(rng());
     uuid = to_string(basic_random_generator<std::mt19937>(urng)());
@@ -275,12 +277,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         loadPlugin("libopflex_agent_renderer_openvswitch.so");
     }
 
-    if(this->presetFwdMode != opflex::ofcore::OFConstants::INVALID_MODE) {
-        this->rendererFwdMode = this->presetFwdMode;
-    } else if(properties.get_child_optional(RENDERERS_TRANSPORT_MODE)) {
-        this->rendererFwdMode = opflex::ofcore::OFConstants::TRANSPORT_MODE;
-    } else {
-        this->rendererFwdMode = opflex::ofcore::OFConstants::STITCHED_MODE;
+    if(this->rendererFwdMode == opflex::ofcore::OFConstants::INVALID_MODE) {
+        if(this->presetFwdMode != opflex::ofcore::OFConstants::INVALID_MODE) {
+            this->rendererFwdMode = this->presetFwdMode;
+        } else if(properties.get_child_optional(RENDERERS_TRANSPORT_MODE)) {
+            this->rendererFwdMode = opflex::ofcore::OFConstants::TRANSPORT_MODE;
+        } else {
+            this->rendererFwdMode = opflex::ofcore::OFConstants::STITCHED_MODE;
+        }
     }
 
     optional<const ptree&> rendConfig =
@@ -424,6 +428,9 @@ void Agent::start() {
     root->addObserverEpStatUniverse();
     root->addObserverPolicyStatUniverse();
     root->addSpanUniverse();
+    root->addEpdrExternalDiscovered();
+    root->addEpdrLocalRouteDiscovered();
+    root->addEprPeerRouteUniverse();
     mutator.commit();
 
     // instantiate other components
@@ -455,6 +462,11 @@ void Agent::start() {
                 new FSLearningBridgeSource(&learningBridgeManager,
                                            fsWatcher, path);
             learningBridgeSources.emplace_back(source);
+        }
+        {
+            EndpointSource* source =
+            new FSExternalEndpointSource(&endpointManager, fsWatcher, path);
+            endpointSources.emplace_back(source);
         }
     }
     if (endpointSourceModelLocalNames.size() > 0) {
@@ -523,7 +535,6 @@ void Agent::stop() {
     notifServer.stop();
     endpointManager.stop();
     policyManager.stop();
-    framework.stop();
 
     if (io_work) {
         io_work.reset();
@@ -533,6 +544,7 @@ void Agent::stop() {
         io_service_thread.reset();
     }
 
+    framework.stop();
     endpointSources.clear();
     rdConfigSources.clear();
     serviceSources.clear();
