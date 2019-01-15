@@ -10,3 +10,4 @@ genie.iml
 # Sphinx documentation
 .tox/
 docs/_build/
+/build/
