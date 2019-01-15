@@ -15,6 +15,7 @@
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/L3IfTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
@@ -35,6 +36,7 @@ using namespace modelgbp;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
 using namespace boost::assign;
+using namespace modelgbp::epdr;
 
 class PolicyFixture : public BaseFixture {
 public:
@@ -166,11 +168,18 @@ public:
         con4->addGbpSubject("4_subject1")->addGbpRule("3_1_rule1")
         ->addGbpRuleToActionRSrcRedirectAction(action3->getURI().toString());
 
+        con5 = space->addGbpContract("contract5");
+        con5->addGbpSubject("5_subject1")->addGbpRule("5_1_rule1")
+        ->setDirection(DirectionEnumT::CONST_IN)
+        .addGbpRuleToClassifierRSrc(classifier7->getURI().toString());
+        con5->addGbpSubject("5_subject1")->addGbpRule("5_1_rule1")
+            ->addGbpRuleToActionRSrcAllowDenyAction(action2->getURI().toString());
+
         eg1 = space->addGbpEpGroup("group1");
         eg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetFloodDomain(fd->getURI());
         eg1->addGbpeInstContext()->setEncapId(1234)
-            .setMulticastGroupIP("224.1.1.1");
+            .setMulticastGroupIP("224.1.1.1").setClassid(3456);
         eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
         eg1->addGbpEpGroupToIntraContractRSrc(con3->getURI().toString());
@@ -216,6 +225,57 @@ public:
         l3ext_net->addGbpExternalSubnet("outside")
             ->setAddress("0.0.0.0")
             .setPrefixLen(0);
+
+        rd_ext1 = space->addGbpRoutingDomain("rd_ext1");
+        rd_ext1->addGbpeInstContext()->setEncapId(9999);
+        l3ext2 = rd_ext1->addGbpL3ExternalDomain("ext_dom2");
+        l3ext2_net = l3ext2->addGbpL3ExternalNetwork("ext_dom2_net1");
+        l3ext2_net->addGbpExternalSubnet("ext_dom2_net1_sub1")
+            ->setAddress("105.0.0.0")
+            .setPrefixLen(24);
+        l3ext2_net2 = l3ext2->addGbpL3ExternalNetwork("ext_dom2_net2");
+        l3ext2_net2->addGbpExternalSubnet("ext_dom2_net2_sub1")
+            ->setAddress("106.0.0.0")
+            .setPrefixLen(16);
+        l3ext2_net->addGbpL3ExternalNetworkToProvContractRSrc(con5->getURI().toString());
+        l3ext2_net2->addGbpL3ExternalNetworkToConsContractRSrc(con5->getURI().toString());
+        l3ext2_net2->addGbpeInstContext()->setClassid(1234);
+        l3ext2_net->addGbpeInstContext()->setClassid(40000);
+        subnets_ext = space->addGbpSubnets("subnets_ext");
+        subnets_ext_sub1 = subnets_ext->addGbpSubnet("subnets_ext_sub1");
+        subnets_ext_sub1->setAddress("100.100.100.0")
+            .setPrefixLen(24)
+            .setVirtualRouterIp("100.100.100.1");
+        rd_ext1->addGbpRoutingDomainToIntSubnetsRSrc(
+            subnets_ext->getURI().toString());
+        ext_bd1 = space->addGbpExternalL3BridgeDomain("ext_bd1");
+        ext_bd1->addGbpeInstContext()->setEncapId(1991).setClassid(1992);
+        ext_bd1->addGbpExternalL3BridgeDomainToVrfRSrc()->
+            setTargetRoutingDomain(rd_ext1->getURI());
+        ext_node1 = space->addGbpExternalNode("ext_node1");
+        ext_int1 = space->addGbpExternalInterface("ext_int1");
+        ext_int1->setAddress("100.100.100.1");
+        ext_int1->addGbpExternalInterfaceToLocalPfxRSrc()
+            ->setTargetSubnets(subnets_ext->getURI());
+        ext_int1->setEncap(100);
+        ext_int1->setIfInstT(L3IfTypeEnumT::CONST_EXTSVI);
+        ext_int1->addGbpExternalInterfaceToExtl3bdRSrc()->
+            setTargetExternalL3BridgeDomain(ext_bd1->getURI());
+        ext_int1->addGbpExternalInterfaceToL3outRSrc()->
+            setTargetL3ExternalDomain(l3ext2->getURI());
+        static_route1 = ext_node1->addGbpStaticRoute("static_route1");
+        static_route1->addGbpStaticRouteToVrfRSrc()->
+        setTargetRoutingDomain(rd_ext1->getURI());
+        static_route1->setAddress("105.0.0.0");
+        static_route1->setPrefixLen(16);
+        static_route1->addGbpStaticNextHop("100.100.100.2");
+        static_nh1 = static_route1->addGbpStaticNextHop("100.100.100.3");
+        static_route1->addGbpStaticNextHop("100.100.100.4");
+        remote_route1 = rd_ext1->addGbpRemoteRoute("remote_route1");
+        remote_route1->setAddress("105.0.0.0");
+        remote_route1->setPrefixLen(16);
+        remote_nh2 = remote_route1->addGbpRemoteNextHop("10.10.10.1");
+        remote_nh1 = remote_route1->addGbpRemoteNextHop("10.10.10.2");
         mutator.commit();
     }
 
@@ -240,6 +300,8 @@ public:
     shared_ptr<Subnet> subnetsbd1;
     shared_ptr<Subnets> subnetsrd;
     shared_ptr<Subnet> subnetsrd1;
+    shared_ptr<Subnets> subnets_ext;
+    shared_ptr<Subnet> subnets_ext_sub1;
     shared_ptr<L3ExternalDomain> l3ext;
     shared_ptr<L3ExternalNetwork> l3ext_net;
 
@@ -273,6 +335,20 @@ public:
     shared_ptr<Contract> con2;
     shared_ptr<Contract> con3;
     shared_ptr<Contract> con4;
+    shared_ptr<Contract> con5;
+
+    shared_ptr<L3ExternalDomain> l3ext2;
+    shared_ptr<L3ExternalNetwork> l3ext2_net;
+    shared_ptr<L3ExternalNetwork> l3ext2_net2;
+    shared_ptr<RoutingDomain> rd_ext1;
+    shared_ptr<ExternalInterface> ext_int1;
+    shared_ptr<ExternalL3BridgeDomain> ext_bd1;
+    shared_ptr<ExternalNode> ext_node1;
+    shared_ptr<StaticRoute> static_route1;
+    shared_ptr<StaticNextHop> static_nh1;
+    shared_ptr<RemoteRoute> remote_route1;
+    shared_ptr<RemoteNextHop> remote_nh1;
+    shared_ptr<RemoteNextHop> remote_nh2;
 };
 
 class MockListener : public PolicyListener {
@@ -300,6 +376,10 @@ public:
 
     void configUpdated(const opflex::modb::URI& configURI) {
          onUpdate(configURI);
+    }
+
+    void externalInterfaceUpdated(const opflex::modb::URI& extIntURI) {
+         onUpdate(extIntURI);
     }
 
     bool hasNotif(const URI& uri) {
@@ -382,6 +462,9 @@ BOOST_FIXTURE_TEST_CASE( group, PolicyFixture ) {
 
     mcastIp = pm.getMulticastIPForGroup(eg2->getURI());
     BOOST_CHECK(!mcastIp);
+
+    optional<uint32_t> sclass = pm.getSclassForGroup(eg1->getURI());
+    BOOST_CHECK(sclass.get() == 3456);
 
     Mutator mutator(framework, "policyreg");
     eg1->remove();
@@ -757,6 +840,181 @@ BOOST_FIXTURE_TEST_CASE( group_contract_remove_add, PolicyFixture ) {
     BOOST_CHECK(rules.size() == 0);
 }
 
+BOOST_FIXTURE_TEST_CASE( static_route_add_mod_del, PolicyFixture ) {
+    using boost::asio::ip::address;
+    PolicyManager& pm = agent.getPolicyManager();
+    shared_ptr<RoutingDomain> rd_,rd2_;
+    shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
+    address addr_, self_tep = address::from_string("10.10.10.1");
+    std::list<address> nhList;
+    uint8_t pfx_len;
+    boost::optional<uint32_t> sclass;
+    bool are_nhs_remote = false;
+    std::string expectedRoute("105.0.0.0");
+    WAIT_FOR_DO(nhList.size() == 3, 500, nhList.clear();
+                pm.getRoute(StaticRoute::CLASS_ID, static_route1->getURI(),
+                            self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                            are_nhs_remote, sclass));
+    BOOST_CHECK((addr_ == address::from_string(expectedRoute))
+                && (pfx_len == 16));
+    std::list<address> expectedNh;
+    std::vector<std::string> nhIps =
+    {"100.100.100.2","100.100.100.3","100.100.100.4"};
+    expectedNh.push_back(address::from_string(nhIps[0]));
+    expectedNh.push_back(address::from_string(nhIps[1]));
+    expectedNh.push_back(address::from_string(nhIps[2]));
+    BOOST_CHECK(nhList == expectedNh);
+    rd2_ = rd_;
+    WAIT_FOR_DO(nhList.size() == 2, 500, nhList.clear();
+                pm.getRoute(RemoteRoute::CLASS_ID, remote_route1->getURI(),
+                            self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                            are_nhs_remote, sclass));
+    BOOST_CHECK((addr_ == address::from_string(expectedRoute))
+                && (pfx_len == 16));
+    std::vector<std::string> remoteNhIps =
+    {"10.10.10.1","10.10.10.2"};
+    expectedNh.clear();
+    expectedNh.push_back(address::from_string(remoteNhIps[0]));
+    expectedNh.push_back(address::from_string(remoteNhIps[1]));
+    BOOST_CHECK(nhList == expectedNh);
+    boost::optional<shared_ptr<LocalRouteDiscovered>> lD;
+    boost::optional<shared_ptr<LocalRoute>> localRoute;
+    boost::optional<shared_ptr<modelgbp::epr::ReportedRoute>> reportedRoute;
+    boost::optional<shared_ptr<modelgbp::epr::PeerRouteUniverse>> pU;
+    std::string repAddress;
+    pU = modelgbp::epr::PeerRouteUniverse::resolve(framework);
+    localRoute = LocalRoute::resolve(framework,
+                    rd_->getURI().toString(), addr_.to_string(), pfx_len);
+    BOOST_CHECK(localRoute);
+    reportedRoute = pU.get()->resolveEprReportedRoute(
+                        rd_->getURI().toString(), addr_.to_string(), pfx_len);
+    BOOST_CHECK(reportedRoute);
+    BOOST_CHECK(reportedRoute.get()->getAddress().get() == expectedRoute);
+    std::vector<std::shared_ptr<LocalRouteToSrtRSrc>> srt;
+    WAIT_FOR_DO(srt.size()==1, 500, srt.clear();
+                    localRoute.get()->resolveEpdrLocalRouteToSrtRSrc(srt));
+    
+    BOOST_CHECK(srt[0]->getTargetURI().get() == static_route1->getURI());
+    boost::optional<std::shared_ptr<LocalRouteToPrtRSrc>>
+        lrtToPrt = localRoute.get()->resolveEpdrLocalRouteToPrtRSrc();
+    boost::optional<std::shared_ptr<LocalRouteToRrtRSrc>>
+        lrtToRrt = localRoute.get()->resolveEpdrLocalRouteToRrtRSrc();
+    BOOST_CHECK(!lrtToPrt);
+    BOOST_CHECK(lrtToRrt.get()->getTargetURI() == remote_route1->getURI());
+    //Check for the policy prefix
+    localRoute = LocalRoute::resolve(framework,
+                     rd_->getURI().toString(), addr_.to_string(), 24);
+    lrtToPrt = localRoute.get()->resolveEpdrLocalRouteToPrtRSrc();
+    lrtToRrt = localRoute.get()->resolveEpdrLocalRouteToRrtRSrc();
+    BOOST_CHECK(lrtToPrt.get()->getTargetURI() == l3ext2_net->getURI());
+    BOOST_CHECK(lrtToRrt.get()->getTargetURI() == remote_route1->getURI());
+    expectedNh.clear();
+    expectedNh.push_back(address::from_string(nhIps[0]));
+    expectedNh.push_back(address::from_string(nhIps[1]));
+    expectedNh.push_back(address::from_string(nhIps[2]));
+    WAIT_FOR_DO((nhList == expectedNh), 1000, nhList.clear();
+                pm.getRoute(LocalRoute::CLASS_ID,
+                    localRoute.get()->getURI(),
+                    self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                    are_nhs_remote, sclass));
+    BOOST_CHECK(are_nhs_remote == false);
+    BOOST_CHECK(sclass.get() == 40000);
+    Mutator m0(framework, "policyreg");
+    static_nh1->remove();
+    m0.commit();
+    nhList.clear();
+    WAIT_FOR_DO(nhList.size() == 2, 500, nhList.clear();
+                pm.getRoute(StaticRoute::CLASS_ID, static_route1->getURI(),
+                            self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                            are_nhs_remote, sclass));
+    static_route1->remove();
+    m0.commit();
+    WAIT_FOR_DO(nhList.size() == 0, 500, nhList.clear();
+                pm.getRoute(StaticRoute::CLASS_ID, static_route1->getURI(),
+                            self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                            are_nhs_remote, sclass));
+    localRoute = LocalRoute::resolve(framework,
+                     rd2_->getURI().toString(), expectedRoute, 16);
+    BOOST_CHECK(localRoute);
+    reportedRoute = pU.get()->resolveEprReportedRoute(
+                    rd2_->getURI().toString(), expectedRoute, 16);
+    BOOST_CHECK(!reportedRoute);
+}
+
+BOOST_FIXTURE_TEST_CASE( external_interface_add_del, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    shared_ptr<ExternalInterface> ext_int2;
+    shared_ptr<modelgbp::gbpe::InstContext> instCtx;
+    MockListener lsnr(pm);
+    PolicyManager::subnet_vector_t subnets;
+    Mutator m0(framework, "policyreg");
+    ext_int2 = space->addGbpExternalInterface("ext_int2");
+    ext_int2->setAddress("101.101.101.0");
+    ext_int2->setEncap(101);
+    ext_int2->setIfInstT(L3IfTypeEnumT::CONST_EXTSVI);
+    ext_int2->addGbpExternalInterfaceToExtl3bdRSrc()->
+        setTargetExternalL3BridgeDomain(ext_bd1->getURI());
+    ext_int2->addGbpExternalInterfaceToL3outRSrc()->
+        setTargetL3ExternalDomain(l3ext2->getURI());
+    m0.commit();
+    boost::optional<uint32_t> bd_vnid = 1991;
+    WAIT_FOR(lsnr.hasNotif(ext_int2->getURI()),500);
+    lsnr.clear();
+    WAIT_FOR((pm.getBDVnidForExternalInterface(ext_int2->getURI())==bd_vnid),500);
+    BOOST_CHECK(pm.getSclassForExternalNet(l3ext2_net2->getURI()) ==
+                boost::optional<uint32_t>(1234));
+    BOOST_CHECK(pm.getSclassForExternalInterface(ext_int2->getURI()) ==
+                boost::optional<uint32_t>(1992));
+    pm.getSubnetsForExternalInterface(ext_int1->getURI(), subnets);
+    BOOST_CHECK(subnets.size()==1);
+    boost::optional<boost::asio::ip::address> routerIp =
+    PolicyManager::getRouterIpForSubnet(*subnets[0]);
+    BOOST_CHECK(routerIp.get().to_string() == "100.100.100.1");
+    ext_int2->remove();
+    m0.commit();
+    WAIT_FOR(lsnr.hasNotif(ext_int2->getURI()),500);
+}
+
+BOOST_FIXTURE_TEST_CASE( external_network_contract_remove_add, PolicyFixture ) {
+    // Remove contract, then add it back. Expect the providers/consumers to
+    // remain the same as prior to remove.
+    PolicyManager& pm = agent.getPolicyManager();
+    WAIT_FOR(pm.contractExists(con1->getURI()), 500);
+
+    PolicyManager::uri_set_t egs;
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractProviders(con5->getURI(), egs));
+
+    egs.clear();
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractConsumers(con5->getURI(), egs));
+
+    // Remove contract
+    PolicyManager::rule_list_t rules;
+    WAIT_FOR_DO(!rules.empty(), 500,
+        pm.getContractRules(con5->getURI(), rules));
+    Mutator m0(framework, "policyreg");
+    con5->addGbpSubject("5_subject1")->remove();
+    con5->remove();
+    m0.commit();
+    WAIT_FOR_DO(rules.empty(), 500,
+        rules.clear(); pm.getContractRules(con5->getURI(), rules));
+    BOOST_CHECK(pm.contractExists(con5->getURI()));
+
+    // Add contract back
+    con1 = space->addGbpContract("contract5");
+    m0.commit();
+
+    egs.clear();
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractProviders(con5->getURI(), egs));
+    egs.clear();
+    WAIT_FOR_DO(egs.size() == 1, 500,
+            egs.clear(); pm.getContractConsumers(con5->getURI(), egs));
+
+    pm.getContractRules(con5->getURI(), rules);
+    BOOST_CHECK(rules.size() == 0);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
