@@ -284,6 +284,19 @@ public:
     // see PolicyListener
     virtual void egDomainUpdated(const opflex::modb::URI& egURI);
 
+    virtual void externalInterfaceUpdated(const opflex::modb::URI& extIntURI);
+    /**
+     * Get the adjacency(mac, interface) for a given L3 destination
+     *
+     * @param rdURI the URI of the RD where adjacency is needed
+     * @param address string form of ipv4/6 address for adjacency
+     * @param ep Endpoint structure corresponding to RD/address
+     * @return whether adjacency was successfully retrieved
+     */
+    bool getAdjacency(const opflex::modb::URI& rdURI,
+                      const std::string& address,
+                      std::shared_ptr<const Endpoint> &ep);
+
 private:
     /**
      * Add or update the endpoint state with new information about an
@@ -303,6 +316,11 @@ private:
     void updateEndpointRemote(const opflex::modb::URI& uri);
 
     /**
+     * Update the external endpoint entries associated with an endpoint
+     */
+    void updateEndpointExternal(const Endpoint& endpoint);
+
+    /**
      * Update the endpoint registry entries associated with an endpoint
      * @return true if we should notify listeners
      */
@@ -315,6 +333,14 @@ private:
      * @param uuid the UUID of the endpoint that no longer exists
      */
     void removeEndpoint(const std::string& uuid);
+
+    /**
+     * Remove the external endpoint with the specified UUID from the endpoint
+     * manager.
+     *
+     * @param uuid the UUID of the endpoint that no longer exists
+     */
+    void removeEndpointExternal(const std::string& uuid);
 
     opflex::ofcore::OFFramework& framework;
     PolicyManager& policyManager;
@@ -378,6 +404,9 @@ private:
     typedef std::unordered_map<std::string, str_uset_t> string_ep_map_t;
     typedef std::unordered_map<EndpointListener::uri_set_t,
                                str_uset_t> secgrp_ep_map_t;
+    typedef std::unordered_map<std::string,
+                            std::shared_ptr<const Endpoint>> ipmac_map_t;
+    typedef std::unordered_map<opflex::modb::URI, ipmac_map_t> adj_ep_map_t;
 
     std::mutex ep_mutex;
 
@@ -445,6 +474,16 @@ private:
     string_ep_map_t epgmapping_ep_map;
 
     /**
+     * Map endpoint UUID to endpoint state object
+     */
+    ep_map_t ext_ep_map;
+
+    /**
+     * Map Ip address to mac address for external EPs
+     */
+    adj_ep_map_t adj_ep_map;
+
+    /**
      * The endpoint listeners that have been registered
      */
     std::list<EndpointListener*> endpointListeners;
@@ -453,7 +492,7 @@ private:
     void notifyListeners(const std::string& uuid);
     void notifyRemoteListeners(const std::string& uuid);
     void notifyListeners(const EndpointListener::uri_set_t& secGroups);
-
+    void notifyExternalEndpointListeners(const std::string& uuid);
     /**
      * Listener for changes related to endpoint group mapping
      */

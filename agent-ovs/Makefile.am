@@ -73,6 +73,7 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/EndpointManager.h \
 	lib/include/opflexagent/EndpointSource.h \
 	lib/include/opflexagent/FSEndpointSource.h \
+	lib/include/opflexagent/FSExternalEndpointSource.h \
 	lib/include/opflexagent/ModelEndpointSource.h \
 	lib/include/opflexagent/Service.h \
 	lib/include/opflexagent/ServiceListener.h \
@@ -142,6 +143,7 @@ libopflex_agent_la_SOURCES = \
 	lib/EndpointManager.cpp \
 	lib/EndpointSource.cpp \
 	lib/FSEndpointSource.cpp \
+	lib/FSExternalEndpointSource.cpp \
 	lib/ModelEndpointSource.cpp \
 	lib/Service.cpp \
 	lib/ServiceSource.cpp \
@@ -273,6 +275,7 @@ agent_test_include_HEADERS = \
 
 agent_test_SOURCES = \
 	lib/test/PolicyManager_test.cpp \
+	lib/test/PolicyManagerIvLeaf_test.cpp \
 	lib/test/EndpointManager_test.cpp \
 	lib/test/ModelEndpointSource_test.cpp \
 	lib/test/LearningBridgeManager_test.cpp \

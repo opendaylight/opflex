@@ -172,5 +172,45 @@ bool cidr_contains(const cidr_t& cidr, const address& addr) {
     return (cidr.first == mask_address(addr, cidr.second));
 }
 
+bool prefix_match(const boost::asio::ip::address& addr,
+                  uint32_t srcPfxLen,
+                  const boost::asio::ip::address& targetAddr,
+                  uint32_t tgtPfxLen,
+                  bool &is_exact_match) {
+    if (addr.is_v4()) {
+        if (srcPfxLen > 32) srcPfxLen = 32;
+        uint32_t mask = get_subnet_mask_v4(srcPfxLen);
+        uint32_t netAddr = addr.to_v4().to_ulong() & mask;
+        uint32_t rtAddr = targetAddr.to_v4().to_ulong() & mask;
+        if ((netAddr == rtAddr) &&
+            (srcPfxLen <= tgtPfxLen)) {
+            if(srcPfxLen == tgtPfxLen)
+                is_exact_match=true;
+            return true;
+        }
+    } else {
+        if (srcPfxLen > 128) srcPfxLen = 128;
+        struct in6_addr mask;
+        struct in6_addr netAddr;
+        struct in6_addr rtAddr;
+        memcpy(&rtAddr, targetAddr.to_v6().to_bytes().data(),
+               sizeof(rtAddr));
+        network::compute_ipv6_subnet(addr.to_v6(), srcPfxLen,
+                                     &mask, &netAddr);
+
+        ((uint64_t*)&rtAddr)[0] &= ((uint64_t*)&mask)[0];
+        ((uint64_t*)&rtAddr)[1] &= ((uint64_t*)&mask)[1];
+
+        if ((((uint64_t*)&rtAddr)[0] == ((uint64_t*)&netAddr)[0]) &&
+            (((uint64_t*)&rtAddr)[1] == ((uint64_t*)&netAddr)[1]) &&
+            (srcPfxLen <= tgtPfxLen)) {
+            if(srcPfxLen == tgtPfxLen)
+                is_exact_match=true;
+            return true;
+        }
+    }
+    return false;
+}
+
 } /* namespace packets */
 } /* namespace opflexagent */
