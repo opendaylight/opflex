@@ -72,6 +72,10 @@ public:
          * Unknown packets are sent to spine proxy with vxlan-gpe encap.
          */
         TRANSPORT_MODE = 1,
+        /**
+         * Invalid forwarding mode.
+         */
+        INVALID_MODE = -1
     };
         /**
          * Set of possible element states in transport mode.
