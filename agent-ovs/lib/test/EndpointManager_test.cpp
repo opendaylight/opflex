@@ -16,6 +16,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <opflexagent/FSEndpointSource.h>
+#include <opflexagent/FSExternalEndpointSource.h>
 #include <opflexagent/logging.h>
 
 #include <opflexagent/test/BaseFixture.h>
@@ -71,6 +72,10 @@ public:
         EpgMappingCtx::registerListener(framework, this);
         BridgeDomain::registerListener(framework, this);
         EpGroup::registerListener(framework, this);
+        ExternalL3EpToPathAttRSrc::registerListener(framework, this);
+        ExternalL3EpToNodeAttRSrc::registerListener(framework, this);
+        ExternalInterface::registerListener(framework, this);
+        ExternalL3BridgeDomain::registerListener(framework, this);
     }
 
     virtual ~EndpointFixture() {
@@ -78,6 +83,10 @@ public:
         EpgMappingCtx::unregisterListener(framework, this);
         BridgeDomain::unregisterListener(framework, this);
         EpGroup::unregisterListener(framework, this);
+        ExternalL3EpToPathAttRSrc::unregisterListener(framework, this);
+        ExternalL3EpToNodeAttRSrc::unregisterListener(framework, this);
+        ExternalInterface::unregisterListener(framework, this);
+        ExternalL3BridgeDomain::unregisterListener(framework, this);
     }
 
     void addBd(const std::string& name) {
@@ -140,12 +149,54 @@ public:
     void rmEpAttributeSet() {
         EpAttributeSet::remove(framework, "72ffb982-b2d5-4ae4-91ac-0dd61daf527a");
     }
-
+    opflex::modb::URI getExtL3BDURI(std::string& name) {
+        return URIBuilder().addElement("PolicyUniverse")
+               .addElement("PolicySpace")
+               .addElement("test")
+               .addElement("GbpExternalL3BridgeDomain")
+               .addElement(name).build();
+    }
+    void addExternalInterface(const std::string& name) {
+        optional<shared_ptr<ExternalInterface> > extInt =
+            ExternalInterface::resolve(framework, "test", name);
+        std::shared_ptr<ExternalL3BridgeDomain> bd;
+        if (!extInt) {
+            std::string bd_name = name;
+            bd_name += "bd";
+            space->addGbpExternalInterface(name)
+                ->addGbpExternalInterfaceToExtl3bdRSrc()
+                ->setTargetExternalL3BridgeDomain(
+                    getExtL3BDURI(bd_name));
+         }
+    }
+    void addExtL3BD(const std::string& name="ext_int1bd") {
+        optional<shared_ptr<ExternalL3BridgeDomain>> obj =
+            ExternalL3BridgeDomain::resolve(framework, "test", name);
+        if(!obj) {
+            space->addGbpExternalL3BridgeDomain(name)
+                 ->addGbpExternalL3BridgeDomainToVrfRSrc()
+                 ->setTargetRoutingDomain(rduri);
+        }
+    }
+    void addExternalNode(const std::string& name) {
+        optional<shared_ptr<ExternalNode> > extNode =
+            space->resolveGbpExternalNode(name);
+        if (!extNode)
+            space->addGbpExternalNode(name);
+    }
+    void rmExternalInterface(const std::string& name="ext_int1") {
+        ExternalInterface::remove(framework, "test", name);
+    }
+    void rmExtL3BD(const std::string& name) {
+        ExternalL3BridgeDomain::remove(framework, "test", name);
+    }
+    void rmExternalNode(const std::string& name="ext_node1") {
+        ExternalNode::remove(framework, "test", name);
+    }
     virtual void objectUpdated(class_id_t class_id,
                                const URI& uri) {
         // Simulate policy resolution from the policy repository by
         // writing the referenced object in response to any changes
-
         Mutator mutator(framework, "policyreg");
 
         switch (class_id) {
@@ -190,6 +241,67 @@ public:
                     EpGroup::resolve(framework, uri);
                 if (obj) addBd("bd");
                 else rmBd("bd");
+                break;
+            }
+        case ExternalL3EpToPathAttRSrc::CLASS_ID:
+            {
+                optional<shared_ptr<ExternalL3EpToPathAttRSrc> > obj =
+                    ExternalL3EpToPathAttRSrc::resolve(framework, uri);
+                vector<string> uriElems;
+                uri.getElements(uriElems);
+                if (obj) {
+                    vector<string> elements;
+                    obj.get()->getTargetURI().get().getElements(elements);
+                    addExternalInterface(elements.back());
+                    ext_int_map[uriElems[2]] = elements.back();
+                } else {
+                    auto it = ext_int_map.find(uriElems[2]);
+                    if(it != ext_int_map.end()) {
+                        rmExternalInterface(it->second);
+                        ext_int_map.erase(it);
+                    }
+                }
+                break;
+            }
+        case ExternalL3EpToNodeAttRSrc::CLASS_ID:
+            {
+                optional<shared_ptr<ExternalL3EpToNodeAttRSrc> > obj =
+                    ExternalL3EpToNodeAttRSrc::resolve(framework, uri);
+                vector<string> uriElems;
+                uri.getElements(uriElems);
+                if (obj) {
+                    vector<string> elements;
+                    obj.get()->getTargetURI().get().getElements(elements);
+                    addExternalNode(elements.back());
+                    ext_node_map[uriElems[2]] = elements.back();
+                }
+                else {
+                    auto it = ext_node_map.find(uriElems[2]);
+                    if(it != ext_node_map.end()) {
+                        rmExternalNode(it->second);
+                        ext_node_map.erase(it);
+                    }
+                }
+                break;
+            }
+        case ExternalInterface::CLASS_ID:
+            {
+                optional<shared_ptr<ExternalInterface> > obj =
+                    ExternalInterface::resolve(framework, uri);
+                vector<string> elements;
+                uri.getElements(elements);
+                std::string bd_name = elements.back() + "bd";
+                if (obj) addExtL3BD(bd_name);
+                else rmExtL3BD(bd_name);
+                break;
+            }
+        case ExternalL3BridgeDomain::CLASS_ID:
+            {
+                optional<shared_ptr<ExternalL3BridgeDomain> > obj =
+                    ExternalL3BridgeDomain::resolve(framework, uri);
+                if (obj) addRd("rd");
+                else rmRd("rd");
+                break;
             }
         default:
             break;
@@ -202,6 +314,8 @@ public:
     MockEndpointSource epSource;
     URI bduri;
     URI rduri;
+    std::unordered_map<std::string,std::string> ext_int_map;
+    std::unordered_map<std::string,std::string> ext_node_map;
 };
 
 class FSEndpointFixture : public EndpointFixture {
@@ -228,6 +342,15 @@ bool hasEPREntry(OFFramework& framework, const URI& uri,
         T::resolve(framework, uri);
     if (!entry) return false;
     if (uuid) return (entry.get()->getUuid("") == uuid);
+    return true;
+}
+
+template<typename T>
+bool hasPolicyEntry(OFFramework& framework, const URI& uri
+                   ) {
+    boost::optional<std::shared_ptr<T> > entry =
+        T::resolve(framework, uri);
+    if (!entry) return false;
     return true;
 }
 
@@ -617,6 +740,129 @@ BOOST_FIXTURE_TEST_CASE( remoteEndpoint, BaseFixture ) {
     listener.clear();
 
     agent.getEndpointManager().unregisterListener(&listener);
+}
+
+BOOST_FIXTURE_TEST_CASE( fsextsource, FSEndpointFixture ) {
+
+    // check already existing
+    fs::path path1(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c790.extep");
+    fs::ofstream os(path1);
+    os << "{"
+       << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c790\","
+       << "\"mac\":\"10:ff:00:a3:02:00\","
+       << "\"ip\":[\"10.0.0.2\"],"
+       << "\"interface-name\":\"veth0\","
+       << "\"policy-space-name\":\"test\","
+       << "\"path-attachment\":\"ext_int1\","
+       << "\"node-attachment\":\"ext_node1\""
+       << "}" << std::endl;
+    os.close();
+
+    FSWatcher watcher;
+    FSExternalEndpointSource source(&agent.getEndpointManager(), watcher,
+                             temp.string());
+    watcher.start();
+
+    URI extInt1 = URIBuilder()
+        .addElement("PolicyUniverse")
+        .addElement("PolicySpace")
+        .addElement("test")
+        .addElement("GbpExternalInterface")
+        .addElement("ext_int1").build();
+
+    URI extbd1 = URIBuilder()
+        .addElement("PolicyUniverse")
+        .addElement("PolicySpace")
+        .addElement("test")
+        .addElement("GbpExternalL3BridgeDomain")
+        .addElement("ext_int1bd").build();
+
+    WAIT_FOR(hasPolicyEntry<ExternalInterface>(framework, extInt1), 500);
+    WAIT_FOR(hasPolicyEntry<ExternalL3BridgeDomain>(framework, extbd1), 500);
+
+    // check for a new EP added to watch directory
+    fs::path path2(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c791.extep");
+    fs::ofstream os2(path2);
+    os2 << "{"
+       << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c791\","
+       << "\"mac\":\"10:ff:00:a3:02:01\","
+       << "\"ip\":[\"10.0.0.3\"],"
+       << "\"interface-name\":\"veth1\","
+       << "\"policy-space-name\":\"test\","
+       << "\"path-attachment\":\"ext_int2\","
+       << "\"node-attachment\":\"ext_node2\""
+       << "}" << std::endl;
+    os2.close();
+
+    URI extInt2 = URIBuilder()
+        .addElement("PolicyUniverse")
+        .addElement("PolicySpace")
+        .addElement("test")
+        .addElement("GbpExternalInterface")
+        .addElement("ext_int2").build();
+
+    URI extbd2 = URIBuilder()
+        .addElement("PolicyUniverse")
+        .addElement("PolicySpace")
+        .addElement("test")
+        .addElement("GbpExternalL3BridgeDomain")
+        .addElement("ext_int2bd").build();
+
+    URI extL3Ep2 = URIBuilder()
+        .addElement("EpdrExternalDiscovered")
+        .addElement("EpdrExternalL3Ep")
+        .addElement("83f18f0b-80f7-46e2-b06c-4d9487b0c791")
+        .build();
+
+    WAIT_FOR(hasPolicyEntry<ExternalInterface>(framework, extInt2), 500);
+    WAIT_FOR(hasPolicyEntry<ExternalL3BridgeDomain>(framework, extbd2), 500);
+
+    // check for adjacency
+    optional<opflex::modb::URI> rdURI = URIBuilder()
+                                .addElement("PolicyUniverse")
+                                .addElement("PolicySpace")
+                                .addElement("test")
+                                .addElement("GbpRoutingDomain")
+                                .addElement("rd").build();
+
+    std::string ep_ip_address("10.0.0.3");
+    std::shared_ptr<const Endpoint> ep_new;
+    agent.getEndpointManager().getAdjacency(rdURI.get(),
+                                            ep_ip_address,
+                                            ep_new);
+    boost::optional<opflex::modb::MAC> mac = ep_new->getMAC();
+    boost::optional<std::string> accIntf = ep_new->getInterfaceName();
+    std::string assigned_intf("veth1");
+    opflex::modb::MAC assigned_mac("10:ff:00:a3:02:01");
+    BOOST_CHECK(mac == assigned_mac);
+    BOOST_CHECK(accIntf == assigned_intf);
+
+    // check for removing an endpoint
+    fs::remove(path2);
+
+    WAIT_FOR(!hasPolicyEntry<ExternalL3Ep>(framework, extL3Ep2), 500);
+
+    // check for overwriting existing file with new ep
+    fs::ofstream os3(path1);
+    std::string uuid3("83f18f0b-80f7-46e2-b06c-4d9487b0c792");
+    os3 << "{"
+        << "\"uuid\":\"" << uuid3 << "\","
+        << "\"mac\":\"10:ff:00:a3:01:02\","
+        << "\"ip\":[\"10.0.0.4\"],"
+        << "\"interface-name\":\"veth0\","
+        << "\"policy-space-name\":\"test\","
+        << "\"path-attachment\":\"ext_int2\","
+        << "\"node-attachment\":\"ext_node2\""
+        << "}" << std::endl;
+    os3.close();
+
+    URI extL3Ep3 = URIBuilder()
+        .addElement("EpdrExternalDiscovered")
+        .addElement("EpdrExternalL3Ep")
+        .addElement("83f18f0b-80f7-46e2-b06c-4d9487b0c792")
+        .build();
+    WAIT_FOR(hasPolicyEntry<ExternalL3Ep>(framework, extL3Ep3), 500);
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
