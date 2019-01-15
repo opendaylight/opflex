@@ -73,6 +73,7 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/EndpointManager.h \
 	lib/include/opflexagent/EndpointSource.h \
 	lib/include/opflexagent/FSEndpointSource.h \
+	lib/include/opflexagent/FSExternalEndpointSource.h \
 	lib/include/opflexagent/ModelEndpointSource.h \
 	lib/include/opflexagent/Service.h \
 	lib/include/opflexagent/ServiceListener.h \
@@ -141,6 +142,7 @@ libopflex_agent_la_SOURCES = \
 	lib/EndpointManager.cpp \
 	lib/EndpointSource.cpp \
 	lib/FSEndpointSource.cpp \
+	lib/FSExternalEndpointSource.cpp \
 	lib/ModelEndpointSource.cpp \
 	lib/Service.cpp \
 	lib/ServiceSource.cpp \
