@@ -193,6 +193,12 @@ bool cidr_from_string(const std::string& cidrStr, cidr_t& cidr);
  */
 bool cidr_contains(const cidr_t& cidr, const boost::asio::ip::address& addr);
 
+bool prefix_match(const boost::asio::ip::address& addr,
+                  uint32_t srcPfxLen,
+                  const boost::asio::ip::address& targetAddr,
+                  uint32_t tgtPfxLen,
+                  bool &is_exact_match);
+
 } /* namespace packets */
 } /* namespace opflexagent */
 

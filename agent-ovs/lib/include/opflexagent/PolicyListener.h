@@ -36,6 +36,26 @@ public:
     virtual void egDomainUpdated(const opflex::modb::URI&) {};
 
     /**
+     * Called when an external interface has been updated.
+     */
+    virtual void externalInterfaceUpdated(const opflex::modb::URI&) {};
+
+    /**
+     * Called when a static route has been updated.
+     */
+    virtual void staticRouteUpdated(const opflex::modb::URI&) {};
+
+    /**
+     * Called when a remote route has been updated.
+     */
+    virtual void remoteRouteUpdated(const opflex::modb::URI&) {};
+
+    /**
+     * Called when a local route has been updated.
+     */
+    virtual void localRouteUpdated(const opflex::modb::URI&) {};
+
+    /**
      * Called when a forwarding domain object is updated.
      */
     virtual void domainUpdated(opflex::modb::class_id_t,
