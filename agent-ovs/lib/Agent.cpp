@@ -422,6 +422,9 @@ void Agent::start() {
     root->addGbpeVMUniverse();
     root->addObserverEpStatUniverse();
     root->addObserverPolicyStatUniverse();
+    root->addEpdrExternalDiscovered();
+    root->addEpdrPeerRouteDiscovered();
+    root->addEpdrLocalRouteDiscovered();
     mutator.commit();
 
     // instantiate other components
