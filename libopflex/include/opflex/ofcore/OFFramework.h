@@ -912,6 +912,29 @@ class MockOFFramework : public OFFramework {
 public:
     MockOFFramework() : OFFramework() { }
     virtual ~MockOFFramework() {};
+    /**
+     * Set the Ipv4 proxy address for the vswitch in transport mode.
+     * In transport mode, proxy addresses are obtained
+     * from the first peer's identity response whereas in stitched mode,
+     * proxy address is configured/implicit.
+     *
+     * @param v4ProxyAddress
+     */
+    virtual void setV4Proxy(boost::asio::ip::address_v4 &v4ProxyAddress );
+
+    /**
+     * Set the Ipv6 proxy address for the vswitch in transport mode.
+     *
+     * @param v6ProxyAddress
+     */
+    virtual void setV6Proxy(boost::asio::ip::address_v4 &v6ProxyAddress );
+
+    /**
+     * Set the Mac proxy address for the vswitch in transport mode.
+     *
+     * @param macProxyAddress
+     */
+    virtual void setMacProxy(boost::asio::ip::address_v4 &macProxyAddress );
 
     virtual void start();
     virtual void stop();

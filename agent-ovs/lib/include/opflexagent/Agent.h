@@ -50,6 +50,7 @@ class SimStats;
  * the agent and handles initialization, configuration and cleanup.
  */
 class Agent : private boost::noncopyable {
+typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
 public:
     /**
      * Instantiate a new agent using the specified framework
@@ -119,7 +120,18 @@ public:
      * Get renderer forwarding mode for this agent
      */
     uint8_t getRendererForwardingMode() { return rendererFwdMode; }
-
+    /**
+     * Set renderer forwarding mode for this agent
+     */
+     bool setRendererForwardingMode(opflex_elem_t elemMode)
+     {   if(started)
+            return false;
+         presetFwdMode = elemMode;
+         if(elemMode != opflex_elem_t::INVALID_MODE) {
+            rendererFwdMode = presetFwdMode;
+         }
+         return true;
+     }
     /**
      * Get Proxy addresses for transport mode
      */
@@ -180,7 +192,7 @@ private:
     LearningBridgeManager learningBridgeManager;
     NotifServer notifServer;
     FSWatcher fsWatcher;
-    opflex::ofcore::OFConstants::OpflexElementMode rendererFwdMode;
+    opflex_elem_t rendererFwdMode;
 
     boost::optional<std::string> opflexName;
     boost::optional<std::string> opflexDomain;
@@ -229,6 +241,7 @@ private:
     std::unique_ptr<std::thread> io_service_thread;
 
     bool started;
+    opflex_elem_t presetFwdMode;
 
     void loadPlugin(const std::string& name);
 

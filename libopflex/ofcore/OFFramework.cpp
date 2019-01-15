@@ -199,6 +199,21 @@ void OFFramework::getMacProxy(boost::asio::ip::address_v4 &macProxyAddress ) {
     macProxyAddress = pool.getMacProxy();
 }
 
+void MockOFFramework::setV4Proxy(boost::asio::ip::address_v4 &v4ProxyAddress ) {
+    engine::internal::OpflexPool& pool = pimpl->processor.getPool();
+    pool.setV4Proxy(v4ProxyAddress);
+}
+
+void MockOFFramework::setV6Proxy(boost::asio::ip::address_v4 &v6ProxyAddress ) {
+    engine::internal::OpflexPool& pool = pimpl->processor.getPool();
+    pool.setV6Proxy(v6ProxyAddress);
+}
+
+void MockOFFramework::setMacProxy(boost::asio::ip::address_v4 &macProxyAddress ) {
+    engine::internal::OpflexPool& pool = pimpl->processor.getPool();
+    pool.setMacProxy(macProxyAddress);
+}
+
 void MockOFFramework::start() {
     LOG(DEBUG) << "Starting OpFlex Framework";
 

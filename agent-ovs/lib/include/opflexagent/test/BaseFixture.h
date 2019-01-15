@@ -10,6 +10,7 @@
  */
 
 #include <opflex/ofcore/OFFramework.h>
+#include <opflex/ofcore/OFConstants.h>
 #include <modelgbp/metadata/metadata.hpp>
 
 #include <opflexagent/Agent.h>
@@ -27,8 +28,25 @@ namespace opflexagent {
  * A fixture that adds an object store
  */
 class BaseFixture {
+typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
 public:
-    BaseFixture() : agent(framework) {
+    BaseFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE) :
+    agent(framework) {
+        agent.setRendererForwardingMode(mode);
+        if(mode == opflex_elem_t::TRANSPORT_MODE) {
+            /**
+             * Set test values for transport mode
+             **/
+            boost::system::error_code ec;
+            boost::asio::ip::address_v4 proxyAddress;
+            framework.setElementMode(mode);
+            proxyAddress = boost::asio::ip::address_v4::from_string("44.44.44.44",ec);
+            framework.setV4Proxy(proxyAddress);
+            proxyAddress = boost::asio::ip::address_v4::from_string("66.66.66.66",ec);
+            framework.setV6Proxy(proxyAddress);
+            proxyAddress = boost::asio::ip::address_v4::from_string("55.55.55.55",ec);
+            framework.setMacProxy(proxyAddress);
+        }
         agent.start();
     }
 
