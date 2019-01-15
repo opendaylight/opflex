@@ -43,7 +43,7 @@ PolicyManager::PolicyManager(OFFramework& framework_,
                              boost::asio::io_service& agent_io_)
     : framework(framework_), opflexDomain("default"), taskQueue(agent_io_),
       domainListener(*this), contractListener(*this),
-      secGroupListener(*this), configListener(*this) {
+      secGroupListener(*this), configListener(*this), routeListener(*this) {
 
 }
 
@@ -70,6 +70,8 @@ void PolicyManager::start() {
     Subnet::registerListener(framework, &domainListener);
     EpGroup::registerListener(framework, &domainListener);
     L3ExternalNetwork::registerListener(framework, &domainListener);
+    ExternalInterface::registerListener(framework, &domainListener);
+    ExternalL3BridgeDomain::registerListener(framework, &domainListener);
 
     EpGroup::registerListener(framework, &contractListener);
     L3ExternalNetwork::registerListener(framework, &contractListener);
@@ -88,6 +90,13 @@ void PolicyManager::start() {
     L24Classifier::registerListener(framework, &secGroupListener);
     Subnets::registerListener(framework, &secGroupListener);
     Subnet::registerListener(framework, &secGroupListener);
+
+    ExternalNode::registerListener(framework, &routeListener);
+    StaticRoute::registerListener(framework, &routeListener);
+    StaticNextHop::registerListener(framework, &routeListener);
+    RoutingDomain::registerListener(framework, &routeListener);
+    RemoteRoute::registerListener(framework, &routeListener);
+    RemoteNextHop::registerListener(framework, &routeListener);
 
     // resolve platform config
     Mutator mutator(framework, "init");
@@ -114,6 +123,8 @@ void PolicyManager::stop() {
     Subnet::unregisterListener(framework, &domainListener);
     EpGroup::unregisterListener(framework, &domainListener);
     L3ExternalNetwork::unregisterListener(framework, &domainListener);
+    ExternalInterface::unregisterListener(framework, &domainListener);
+    ExternalL3BridgeDomain::unregisterListener(framework, &domainListener);
 
     EpGroup::unregisterListener(framework, &contractListener);
     L3ExternalNetwork::unregisterListener(framework, &contractListener);
@@ -132,6 +143,13 @@ void PolicyManager::stop() {
     L24Classifier::unregisterListener(framework, &secGroupListener);
     Subnets::unregisterListener(framework, &secGroupListener);
     Subnet::unregisterListener(framework, &secGroupListener);
+
+    ExternalNode::unregisterListener(framework, &routeListener);
+    StaticRoute::unregisterListener(framework, &routeListener);
+    StaticNextHop::unregisterListener(framework, &routeListener);
+    RoutingDomain::unregisterListener(framework, &routeListener);
+    RemoteRoute::unregisterListener(framework, &routeListener);
+    RemoteNextHop::unregisterListener(framework, &routeListener);
 
     lock_guard<mutex> guard(state_mutex);
     group_map.clear();
@@ -153,6 +171,27 @@ void PolicyManager::notifyEPGDomain(const URI& egURI) {
     lock_guard<mutex> guard(listener_mutex);
     for (PolicyListener* listener : policyListeners) {
         listener->egDomainUpdated(egURI);
+    }
+}
+
+void PolicyManager::notifyExternalInterface(const URI& extIntfURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    for (PolicyListener* listener : policyListeners) {
+        listener->externalInterfaceUpdated(extIntfURI);
+    }
+}
+
+void PolicyManager::notifyStaticRoute(const URI& staticRtURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    for (PolicyListener* listener : policyListeners) {
+        listener->staticRouteUpdated(staticRtURI);
+    }
+}
+
+void PolicyManager::notifyRemoteRoute(const URI& remoteRtURI) {
+    lock_guard<mutex> guard(listener_mutex);
+    for (PolicyListener* listener : policyListeners) {
+        listener->remoteRouteUpdated(remoteRtURI);
     }
 }
 
@@ -482,8 +521,8 @@ PolicyManager::getBDVnidForGroup(const opflex::modb::URI& eg) {
     lock_guard<mutex> guard(state_mutex);
     group_map_t::iterator it = group_map.find(eg);
     return it != group_map.end() && it->second.instBDContext &&
-        it->second.instContext.get()->getEncapId()
-        ? it->second.instContext.get()->getEncapId().get()
+        it->second.instBDContext.get()->getEncapId()
+        ? it->second.instBDContext.get()->getEncapId().get()
         : optional<uint32_t>();
 }
 
@@ -495,6 +534,42 @@ PolicyManager::getRDVnidForGroup(const opflex::modb::URI& eg) {
         it->second.instRDContext.get()->getEncapId()
         ? it->second.instRDContext.get()->getEncapId().get()
         : optional<uint32_t>();
+}
+
+boost::optional<uint32_t>
+PolicyManager::getBDVnidForExternalInterface(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instContext &&
+    it->second.instContext.get()->getEncapId()
+    ? it->second.instContext.get()->getEncapId().get()
+    : optional<uint32_t>();
+}
+
+boost::optional<shared_ptr<modelgbp::gbp::ExternalL3BridgeDomain>>
+PolicyManager::getBDForExternalInterface(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() ? it->second.bridgeDomain
+    : optional<shared_ptr<modelgbp::gbp::ExternalL3BridgeDomain>>();
+}
+
+boost::optional<uint32_t>
+PolicyManager::getRDVnidForExternalInterface(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instRDContext &&
+    it->second.instRDContext.get()->getEncapId()
+    ? it->second.instRDContext.get()->getEncapId().get()
+    : optional<uint32_t>();
+}
+
+boost::optional<shared_ptr<modelgbp::gbp::RoutingDomain>>
+PolicyManager::getRDForExternalInterface(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() ? it->second.routingDomain
+    : optional<shared_ptr<modelgbp::gbp::RoutingDomain>>();
 }
 
 boost::optional<opflex::modb::URI>
@@ -522,6 +597,16 @@ optional<string> PolicyManager::getBDMulticastIPForGroup(const URI& eg) {
         : optional<string>();
 }
 
+optional<string> PolicyManager::getBDMulticastIPForExternalInterface(
+const URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instContext &&
+    it->second.instContext.get()->getMulticastGroupIP()
+    ? it->second.instContext.get()->getMulticastGroupIP().get()
+    : optional<string>();
+}
+
 optional<string> PolicyManager::getRDMulticastIPForGroup(const URI& eg) {
     lock_guard<mutex> guard(state_mutex);
     group_map_t::iterator it = group_map.find(eg);
@@ -531,28 +616,57 @@ optional<string> PolicyManager::getRDMulticastIPForGroup(const URI& eg) {
         : optional<string>();
 }
 
-optional<uint32_t> PolicyManager::getSclassForGroup(const opflex::modb::URI& eg) {
+optional<uint32_t> PolicyManager::getSclassForGroup(const opflex::modb::URI& eg)
+{
     lock_guard<mutex> guard(state_mutex);
     group_map_t::iterator it = group_map.find(eg);
     return it != group_map.end() && it->second.instContext
-        ? it->second.instContext.get()->getClassId()
+        ? it->second.instContext.get()->getClassid()
         : optional<uint32_t>();
 }
 
-optional<shared_ptr<modelgbp::gbpe::EndpointRetention>> PolicyManager::getL2EPRetentionPolicyForGroup(
+optional<uint32_t> PolicyManager::getSclassForExternalNet(
+const opflex::modb::URI& ei) {
+    lock_guard<mutex> guard(state_mutex);
+    l3n_map_t::iterator it = l3n_map.find(ei);
+    return it != l3n_map.end() && it->second.instContext
+    ? it->second.instContext.get()->getClassid()
+    : optional<uint32_t>();
+}
+
+optional<uint32_t> PolicyManager::getSclassForExternalInterface(
 const opflex::modb::URI& eg) {
     lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.instContext
+    ? it->second.instContext.get()->getClassid()
+    : optional<uint32_t>();
+}
+
+optional<std::shared_ptr<modelgbp::gbp::L3ExternalDomain>>
+PolicyManager::getExternalDomainForExternalInterface(
+const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
+    ext_int_map_t::iterator it = ext_int_map.find(eg);
+    return it != ext_int_map.end() && it->second.extDomain
+    ? it->second.extDomain
+    : optional<std::shared_ptr<modelgbp::gbp::L3ExternalDomain>>();
+}
+
+optional<shared_ptr<modelgbp::gbpe::EndpointRetention>>
+PolicyManager::getL2EPRetentionPolicyForGroup(const opflex::modb::URI& eg) {
+    lock_guard<mutex> guard(state_mutex);
     group_map_t::iterator it = group_map.find(eg);
-    return it != group_map.end() && it->second.l2EpRetPolicy.get()
+    return it != group_map.end() && it->second.l2EpRetPolicy
         ? it->second.l2EpRetPolicy
         : optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention>>();
 }
 
-optional<shared_ptr<modelgbp::gbpe::EndpointRetention>> PolicyManager::getL3EPRetentionPolicyForGroup(
-const opflex::modb::URI& eg) {
+optional<shared_ptr<modelgbp::gbpe::EndpointRetention>>
+PolicyManager::getL3EPRetentionPolicyForGroup(const opflex::modb::URI& eg) {
     lock_guard<mutex> guard(state_mutex);
     group_map_t::iterator it = group_map.find(eg);
-    return it != group_map.end() && it->second.l3EpRetPolicy.get()
+    return it != group_map.end() && it->second.l3EpRetPolicy
         ? it->second.l3EpRetPolicy
         : optional<std::shared_ptr<modelgbp::gbpe::EndpointRetention>>();
 }
@@ -1337,6 +1451,7 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
             } else {
                 l3s.natEpg = boost::none;
             }
+            l3s.instContext = net->resolveGbpeInstContext();
 
             updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                  net->getURI(), contractsToNotify);
@@ -1402,15 +1517,105 @@ PolicyManager::getRouterIpForSubnet(modelgbp::gbp::Subnet& subnet) {
     return boost::none;
 }
 
+bool PolicyManager::updateExternalInterface(const URI& uri, bool &toRemove) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+    bool updated = false;
+
+    optional<URI> extDomURI, extBDURI, extRDURI, extBgpPeerURI;
+    optional<shared_ptr<RoutingDomain>> newRD;
+    optional<shared_ptr<L3ExternalDomain>> newExtDom;
+    optional<shared_ptr<ExternalL3BridgeDomain>> newExtBD;
+    optional<shared_ptr<InstContext>> newRDContext, newBDContext;
+    ExternalInterfaceState  &eis = ext_int_map[uri];
+
+    optional<shared_ptr<ExternalInterface>> extIntf =
+    ExternalInterface::resolve(framework, uri);
+    if(!extIntf) {
+        toRemove = true;
+        return true;
+    }
+    toRemove = false;
+    optional<shared_ptr<ExternalInterfaceToL3outRSrc> > refL3Out =
+    extIntf.get()->resolveGbpExternalInterfaceToL3outRSrc();
+    if (refL3Out) {
+        extDomURI = refL3Out.get()->getTargetURI();
+    }
+    if(extDomURI) {
+        newExtDom = L3ExternalDomain::resolve(framework, extDomURI.get());
+    }
+    optional<shared_ptr<ExternalInterfaceToExtl3bdRSrc> > refL3BD =
+    extIntf.get()->resolveGbpExternalInterfaceToExtl3bdRSrc();
+    if (refL3BD && refL3BD.get()->isTargetSet()) {
+        extBDURI = refL3BD.get()->getTargetURI();
+    }
+    if(extBDURI) {
+        newExtBD = ExternalL3BridgeDomain::resolve(framework, extBDURI.get());
+        if(newExtBD) {
+            newBDContext =
+            newExtBD.get()->resolveGbpeInstContext();
+            optional<shared_ptr<ExternalL3BridgeDomainToVrfRSrc>> refRD =
+            newExtBD.get()->resolveGbpExternalL3BridgeDomainToVrfRSrc();
+            if(refRD && refRD.get()->isTargetSet()) {
+                extRDURI = refRD.get()->getTargetURI();
+            }
+        }
+    }
+    if(extRDURI) {
+        newRD = RoutingDomain::resolve(framework, extRDURI.get());
+        if(newRD) {
+            newRDContext =
+            newRD.get()->resolveGbpeInstContext();
+        }
+    }
+    std::vector<std::shared_ptr<ExternalInterfaceToBgppeerpfxRSrc> > newBgpRefs;
+    extIntf.get()->resolveGbpExternalInterfaceToBgppeerpfxRSrc(newBgpRefs);
+    std::vector<std::shared_ptr<BgpPeerProfile>> newBgpPeers;
+    for(const auto &intfToPeer: newBgpRefs){
+        if(intfToPeer->isTargetSet()) {
+            boost::optional<opflex::modb::URI> peerURI =
+                intfToPeer->getTargetURI();
+            boost::optional<std::shared_ptr<BgpPeerProfile>> bgpPeer;
+            if(peerURI) {
+                bgpPeer = BgpPeerProfile::resolve(framework, peerURI.get());
+            }
+            if(bgpPeer){
+                newBgpPeers.push_back(bgpPeer.get());
+            }
+        }
+    }
+
+   /*TBD: Handle updates to BgpPeerPrefixes here.
+     As of now update the BgpPeerPrefixes in the external interface*/
+    if(newExtDom != eis.extDomain ||
+       newRD != eis.routingDomain ||
+       newExtBD != eis.bridgeDomain ||
+       newRDContext != eis.instRDContext ||
+       newBDContext != eis.instContext) {
+        updated = true;
+    }
+    eis.extInterface = extIntf;
+    eis.extDomain = newExtDom;
+    eis.routingDomain = newRD;
+    eis.bridgeDomain = newExtBD;
+    eis.bgpPeer = newBgpPeers;
+    eis.instContext = newBDContext;
+    eis.instRDContext = newRDContext;
+    return updated;
+}
+
 void PolicyManager::updateDomain(class_id_t class_id, const URI& uri) {
     using namespace modelgbp::gbp;
     unique_lock<mutex> guard(state_mutex);
-
     uri_set_t notifyGroups;
     uri_set_t notifyRds;
+    uri_set_t notifyExtIntfs;
 
     if (class_id == modelgbp::gbp::EpGroup::CLASS_ID) {
         group_map[uri];
+    }
+    if (class_id == modelgbp::gbp::ExternalInterface::CLASS_ID) {
+        ext_int_map[uri];
     }
     for (PolicyManager::group_map_t::iterator itr = group_map.begin();
          itr != group_map.end(); ) {
@@ -1432,17 +1637,328 @@ void PolicyManager::updateDomain(class_id_t class_id, const URI& uri) {
             }
         }
     }
+    for (PolicyManager::ext_int_map_t::iterator itr = ext_int_map.begin();
+         itr != ext_int_map.end(); ) {
+        bool toRemove = false;
+        if (updateExternalInterface(itr->first, toRemove)) {
+            notifyExtIntfs.insert(itr->first);
+        }
+        itr = (toRemove ? ext_int_map.erase(itr) : ++itr);
+    }
     notifyRds.erase(uri);   // Avoid updating twice
     guard.unlock();
 
     for (const URI& u : notifyGroups) {
         notifyEPGDomain(u);
     }
-    if (class_id != modelgbp::gbp::EpGroup::CLASS_ID) {
+    for (const URI& u : notifyExtIntfs) {
+        notifyExternalInterface(u);
+    }
+    if ((class_id != modelgbp::gbp::EpGroup::CLASS_ID) ||
+        (class_id != modelgbp::gbp::ExternalInterface::CLASS_ID)) {
         notifyDomain(class_id, uri);
     }
     for (const URI& rd : notifyRds) {
         notifyDomain(RoutingDomain::CLASS_ID, rd);
+    }
+}
+
+bool operator==(const PolicyRoute& lhs, const PolicyRoute& rhs)
+{
+    return ((lhs.rd->getURI() == rhs.rd->getURI()) &&
+            (lhs.rdInst == rhs.rdInst) &&
+            (lhs.address == rhs.address) &&
+            (lhs.prefix_len == rhs.prefix_len) &&
+            (lhs.nextHops == rhs.nextHops));
+}
+
+bool operator!=(const PolicyRoute& lhs, const PolicyRoute& rhs)
+{
+    return !operator==(lhs, rhs);
+}
+
+PolicyRoute& PolicyRoute::operator=(const PolicyRoute& pRoute)
+{
+    this->rd = pRoute.rd;
+    this->rdInst = pRoute.rdInst;
+    this->address = pRoute.address;
+    this->prefix_len = pRoute.prefix_len;
+    this->nextHops = pRoute.nextHops;
+    this->nd = pRoute.nd;
+    return *this;
+}
+
+bool PolicyManager::getRoute(class_id_t route_type, const URI &uri,
+                             shared_ptr<modelgbp::gbp::RoutingDomain> &rd_,
+                  shared_ptr<modelgbp::gbpe::InstContext> &rdInst_,
+                  boost::asio::ip::address &addr_, uint8_t &pfx_len,
+                        std::list<boost::asio::ip::address> &nhList)
+{
+    lock_guard<mutex> guard(state_mutex);
+    if(route_type == modelgbp::gbp::StaticRoute::CLASS_ID) {
+        route_map_t::iterator iter = static_route_map.find(uri);
+        if(iter == static_route_map.end()){
+            return false;
+        }
+        iter->second.getRoute(rd_, rdInst_, addr_, pfx_len, nhList);
+        return true;
+    } else if(route_type == modelgbp::gbp::RemoteRoute::CLASS_ID) {
+        route_map_t::iterator iter = remote_route_map.find(uri);
+        if(iter == remote_route_map.end()){
+            return false;
+        }
+        iter->second.getRoute(rd_, rdInst_, addr_, pfx_len, nhList);
+        return true;
+    }
+    return false;
+}
+
+void PolicyManager::updateStaticRoutes(const URI& uri,
+                                       uri_set_t &notifyStaticRoutes) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::gbpe;
+
+    LOG(DEBUG) << "updateStaticRoutes for URI " << uri;
+    optional<shared_ptr<RoutingDomain>> rd;
+    optional<shared_ptr<ExternalNode>> extNode =
+    ExternalNode::resolve(framework, uri);
+    if(!extNode){
+        ext_node_map_t::iterator extIter = ext_node_map.find(uri);
+        if(extIter != ext_node_map.end()) {
+            //Remove all static routes under external node
+            for(const auto &iter: extIter->second.static_routes) {
+                notifyStaticRoutes.insert(iter);
+            }
+            ext_node_map.erase(extIter);
+        }
+        return;
+    }
+    optional<shared_ptr<InstContext>> rdInst;
+    ExternalNodeState &ens = ext_node_map[uri];
+    vector<shared_ptr<StaticRoute>> staticRoutes;
+    extNode.get()->resolveGbpStaticRoute(staticRoutes);
+    for(shared_ptr<StaticRoute> route: staticRoutes) {
+        route_map_t::iterator routeIter;
+        optional<shared_ptr<StaticRouteToVrfRSrc>> vrfRef =
+        route->resolveGbpStaticRouteToVrfRSrc();
+        if(vrfRef && vrfRef.get()->getTargetURI()) {
+            rd = RoutingDomain::resolve(framework,
+                    vrfRef.get()->getTargetURI().get());
+            rdInst = rd.get()->resolveGbpeInstContext();
+        }
+        if(!rd || !route->getAddress() || !route->getPrefixLen()
+           || !rdInst) {
+            continue;
+        }
+        boost::system::error_code ec;
+        boost::asio::ip::address addr =
+            address::from_string(route->getAddress().get(), ec);
+        if(ec) {
+            continue;
+        }
+        vector<shared_ptr<StaticNextHop>> nhs;
+        route->resolveGbpStaticNextHop(nhs);
+        std::list<boost::asio::ip::address> lnhs;
+        for(const auto &nh: nhs) {
+            if(nh->getIp()) {
+                addr = address::from_string(nh->getIp().get(), ec);
+                if(!ec) {
+                    lnhs.push_back(addr);
+                }
+            }
+        }
+        lnhs.sort();
+        PolicyRoute newRoute(rd.get(), rdInst.get(), addr,
+                             route->getPrefixLen().get(),
+                             lnhs, extNode.get());
+        auto rIter = ens.static_routes.find(route->getURI());
+        if(rIter == ens.static_routes.end()) {
+            ens.static_routes.insert(route->getURI());
+            notifyStaticRoutes.insert(route->getURI());
+            auto it = static_route_map.insert(std::make_pair(route->getURI(),
+                                              newRoute));
+            it.first->second.setPresent(true);
+            continue;
+        }
+        routeIter = static_route_map.find(route->getURI());
+        if((routeIter != static_route_map.end()) &&
+           (routeIter->second != newRoute)) {
+            routeIter->second.setPresent(true);
+            routeIter->second = newRoute;
+            notifyStaticRoutes.insert(route->getURI());
+        }
+    }
+    //Deleted static routes
+    uri_set_t::iterator itr = ens.static_routes.begin();
+    while(itr != ens.static_routes.end()) {
+        route_map_t::iterator routeIter;
+        routeIter = static_route_map.find(*itr);
+        if(routeIter != static_route_map.end() &&
+           !routeIter->second.isPresent()) {
+            notifyStaticRoutes.insert(*itr);
+            itr = ens.static_routes.erase(itr);
+            static_route_map.erase(routeIter);
+            continue;
+        }
+        routeIter->second.setPresent(false);
+        itr++;
+    }
+}
+
+void PolicyManager::updateStaticRoute(class_id_t class_id, const URI& uri,
+                                      uri_set_t &notifyStaticRoutes) {
+    using namespace modelgbp::gbp;
+    if(class_id == StaticRoute::CLASS_ID) {
+        route_map_t::iterator iter = static_route_map.find(uri);
+        if(iter == static_route_map.end())
+            return;
+        boost::optional<opflex::modb::URI> extNodeURI;
+        iter->second.getExtNodeURI(extNodeURI);
+        if(extNodeURI)
+            updateStaticRoutes(extNodeURI.get(), notifyStaticRoutes);
+    }
+    if(class_id == StaticNextHop::CLASS_ID) {
+        ext_node_map_t::iterator itr;
+        for(itr = ext_node_map.begin(); itr != ext_node_map.end(); itr++) {
+            updateStaticRoutes(itr->first,notifyStaticRoutes);
+        }
+    }
+}
+/*TBD: Templatize part of the code*/
+void PolicyManager::updateRemoteRoutes(const URI& uri,
+                                       uri_set_t &notifyRemoteRoutes) {
+    using namespace modelgbp::gbp;
+    LOG(DEBUG) << "updateRemoteRoutes for URI " << uri;
+    optional<shared_ptr<RoutingDomain>> rd;
+    std::vector<std::shared_ptr<RemoteRoute>> remoteRoutes;
+    optional<std::shared_ptr<modelgbp::gbpe::InstContext>> rdInst;
+    rd = RoutingDomain::resolve(framework,uri);
+    if(!rd){
+        rd_map_t::iterator rdIter = rd_map.find(uri);
+        if(rdIter == rd_map.end()) {
+
+            for(const auto &iter: rdIter->second.remote_routes) {
+                notifyRemoteRoutes.insert(iter);
+            }
+            //RoutingDomain deletion will happen in domain context
+            rdIter->second.remote_routes.clear();
+        }
+        return;
+    }
+
+    rdInst = rd.get()->resolveGbpeInstContext();
+    //We will get called again when Routing Domain has forwarding data
+    if(!rdInst){
+        return;
+    }
+    RoutingDomainState &rs = rd_map[uri];
+    rd.get()->resolveGbpRemoteRoute(remoteRoutes);
+    for(shared_ptr<RemoteRoute> route: remoteRoutes) {
+        if(!route->getAddress() || !route->getPrefixLen()) {
+            continue;
+        }
+        route_map_t::iterator routeIter;
+        boost::system::error_code ec;
+        boost::asio::ip::address addr;
+        addr = address::from_string(route->getAddress().get(), ec);
+        if(ec) {
+            continue;
+        }
+        vector<shared_ptr<RemoteNextHop>> nhs;
+        route->resolveGbpRemoteNextHop(nhs);
+        std::list<boost::asio::ip::address> lnhs;
+        for(const auto &nh: nhs) {
+            if(nh->getIp()) {
+                addr = address::from_string(nh->getIp().get(), ec);
+                if(!ec) {
+                    lnhs.push_back(addr);
+                }
+            }
+        }
+        lnhs.sort();
+        PolicyRoute newRoute(rd.get(), rdInst.get(), addr,
+                             route->getPrefixLen().get(),
+                             lnhs);
+
+        auto it = rs.remote_routes.find(route->getURI());
+        if(it == rs.remote_routes.end()) {
+            //New remote route
+            rs.remote_routes.insert(route->getURI());
+            auto rIter = remote_route_map.insert(
+                std::make_pair(route->getURI(),newRoute));
+            rIter.first->second.setPresent(true);
+            notifyRemoteRoutes.insert(route->getURI());
+            continue;
+        }
+        routeIter = remote_route_map.find(route->getURI());
+        if((routeIter != remote_route_map.end()) &&
+            routeIter->second != newRoute) {
+            //Updated remote route
+            routeIter->second.setPresent(true);
+            routeIter->second = newRoute;
+            notifyRemoteRoutes.insert(route->getURI());
+        }
+    }
+    //Deleted remote routes
+    uri_set_t::iterator itr = rs.remote_routes.begin();
+    while(itr != rs.remote_routes.end()) {
+        route_map_t::iterator routeIter;
+        routeIter = remote_route_map.find(*itr);
+        if((routeIter != remote_route_map.end()) &&
+           !routeIter->second.isPresent()) {
+            notifyRemoteRoutes.insert(*itr);
+            itr = rs.remote_routes.erase(itr);
+            remote_route_map.erase(routeIter);
+            continue;
+        }
+        routeIter->second.setPresent(false);
+        itr++;
+    }
+}
+
+void PolicyManager::updateRemoteRoute(class_id_t class_id, const URI& uri,
+                                      uri_set_t &notifyRemoteRoutes) {
+    using namespace modelgbp::gbp;
+    if(class_id == RemoteRoute::CLASS_ID) {
+        route_map_t::iterator iter = remote_route_map.find(uri);
+        if(iter == remote_route_map.end()) {
+            return;
+        }
+        opflex::modb::URI rdURI = iter->second.getRDURI();
+        updateRemoteRoutes(rdURI, notifyRemoteRoutes);
+    }
+    if(class_id == RemoteNextHop::CLASS_ID) {
+        /*TBD:This should be optimized*/
+        rd_map_t::iterator iter = rd_map.begin();
+        while(iter != rd_map.end()) {
+            updateRemoteRoutes(iter->first, notifyRemoteRoutes);
+            iter++;
+        }
+    }
+}
+
+void PolicyManager::updateRoutes(class_id_t class_id, const URI& uri) {
+    using namespace modelgbp::gbp;
+    unique_lock<mutex> guard(state_mutex);
+    uri_set_t notifyStaticRoutes,notifyRemoteRoutes;
+
+    if(class_id == ExternalNode::CLASS_ID) {
+        updateStaticRoutes(uri, notifyStaticRoutes);
+    } else if(class_id == RoutingDomain::CLASS_ID) {
+        updateRemoteRoutes(uri, notifyRemoteRoutes);
+    } else if((class_id == StaticRoute::CLASS_ID)||
+              (class_id == StaticNextHop::CLASS_ID)) {
+        updateStaticRoute(class_id, uri, notifyStaticRoutes);
+    } else if((class_id == RemoteRoute::CLASS_ID) ||
+              (class_id == RemoteNextHop::CLASS_ID)) {
+        updateRemoteRoute(class_id, uri, notifyRemoteRoutes);
+    }
+    guard.unlock();
+    for (const URI& u : notifyStaticRoutes) {
+        notifyStaticRoute(u);
+    }
+    for (const URI& u : notifyRemoteRoutes) {
+        notifyRemoteRoute(u);
     }
 }
 
@@ -1549,4 +2065,13 @@ void PolicyManager::ConfigListener::objectUpdated(class_id_t, const URI& uri) {
     pmanager.notifyConfig(uri);
 }
 
+PolicyManager::RouteListener::RouteListener(PolicyManager& pmanager_)
+    : pmanager(pmanager_) {}
+
+    PolicyManager::RouteListener::~RouteListener() {}
+
+    void PolicyManager::RouteListener::objectUpdated(
+         class_id_t classId, const URI& uri) {
+        pmanager.updateRoutes(classId, uri);
+    }
 } /* namespace opflexagent */
