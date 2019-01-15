@@ -15,6 +15,7 @@
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/L3IfTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
@@ -35,6 +36,7 @@ using namespace modelgbp;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
 using namespace boost::assign;
+using namespace modelgbp::epdr;
 
 class PolicyFixture : public BaseFixture {
 public:
@@ -93,35 +95,6 @@ public:
         action2 = space->addGbpAllowDenyAction("action2");
         action2->setAllow(1).setOrder(10);
 
-        redirDstGrp1 = space->addGbpRedirectDestGroup("redirDstGrp1");
-        redirDst1 = redirDstGrp1->addGbpRedirectDest("redirDst1");
-        redirDst2 = redirDstGrp1->addGbpRedirectDest("redirDst2");
-        opflex::modb::MAC mac1("00:01:02:03:04:05"), mac2("01:02:03:04:05:06");
-        redirDst1->setIp("1.1.1.1");
-        redirDst1->setMac(mac1);
-        redirDst1->addGbpRedirectDestToDomainRSrcBridgeDomain(
-                   bd->getURI().toString());
-        redirDst1->addGbpRedirectDestToDomainRSrcRoutingDomain(
-                   rd->getURI().toString());
-        redirDst2->setIp("2.2.2.2");
-        redirDst2->setMac(mac2);
-        redirDst2->addGbpRedirectDestToDomainRSrcBridgeDomain(
-                   bd->getURI().toString());
-        redirDst2->addGbpRedirectDestToDomainRSrcRoutingDomain(
-                   rd->getURI().toString());
-        action3 = space->addGbpRedirectAction("action3");
-        action3->addGbpRedirectActionToDestGrpRSrc()
-               ->setTargetRedirectDestGroup(redirDstGrp1->getURI());
-        redirDstGrp2 = space->addGbpRedirectDestGroup("redirDstGrp2");
-        redirDst4 = redirDstGrp2->addGbpRedirectDest("redirDst4");
-        opflex::modb::MAC mac3("02:03:04:05:06:07"), mac4("03:04:05:06:07:08");
-        redirDst4->setIp("4.4.4.4");
-        redirDst4->setMac(mac4);
-        redirDst4->addGbpRedirectDestToDomainRSrcBridgeDomain(
-                   bd->getURI().toString());
-        redirDst4->addGbpRedirectDestToDomainRSrcRoutingDomain(
-                   rd->getURI().toString());
-
         con1 = space->addGbpContract("contract1");
         con1->addGbpSubject("1_subject1")->addGbpRule("1_1_rule1")
             ->setOrder(15).setDirection(DirectionEnumT::CONST_IN)
@@ -159,18 +132,11 @@ public:
             ->setDirection(DirectionEnumT::CONST_IN)
             .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
 
-        con4 = space->addGbpContract("contract4");
-        con4->addGbpSubject("4_subject1")->addGbpRule("3_1_rule1")
-        ->setDirection(DirectionEnumT::CONST_IN)
-        .addGbpRuleToClassifierRSrc(classifier7->getURI().toString());
-        con4->addGbpSubject("4_subject1")->addGbpRule("3_1_rule1")
-        ->addGbpRuleToActionRSrcRedirectAction(action3->getURI().toString());
-
         eg1 = space->addGbpEpGroup("group1");
         eg1->addGbpEpGroupToNetworkRSrc()
             ->setTargetFloodDomain(fd->getURI());
         eg1->addGbpeInstContext()->setEncapId(1234)
-            .setMulticastGroupIP("224.1.1.1");
+            .setMulticastGroupIP("224.1.1.1").setClassid(3456);
         eg1->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
         eg1->addGbpEpGroupToProvContractRSrc(con2->getURI().toString());
         eg1->addGbpEpGroupToIntraContractRSrc(con3->getURI().toString());
@@ -184,16 +150,6 @@ public:
 
         eg3 = space->addGbpEpGroup("group3");
         eg3->addGbpEpGroupToProvContractRSrc(con1->getURI().toString());
-
-        eg4 = space->addGbpEpGroup("group4");
-        eg4->addGbpeInstContext()->setEncapId(3867);
-        eg4->addGbpEpGroupToProvContractRSrc(con4->getURI().toString());
-	eg4->addGbpEpGroupToNetworkRSrc()->setTargetBridgeDomain(bd->getURI());
-
-        eg5 = space->addGbpEpGroup("group5");
-        eg5->addGbpeInstContext()->setEncapId(3948);
-        eg5->addGbpEpGroupToConsContractRSrc(con4->getURI().toString());
-	eg5->addGbpEpGroupToNetworkRSrc()->setTargetBridgeDomain(bd->getURI());
 
         bd_ext = common->addGbpBridgeDomain("bd_ext");
         rd_ext = common->addGbpRoutingDomain("rd_ext");
@@ -272,7 +228,6 @@ public:
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
     shared_ptr<Contract> con3;
-    shared_ptr<Contract> con4;
 };
 
 class MockListener : public PolicyListener {
@@ -300,6 +255,10 @@ public:
 
     void configUpdated(const opflex::modb::URI& configURI) {
          onUpdate(configURI);
+    }
+
+    void externalInterfaceUpdated(const opflex::modb::URI& extIntURI) {
+         onUpdate(extIntURI);
     }
 
     bool hasNotif(const URI& uri) {
@@ -382,6 +341,9 @@ BOOST_FIXTURE_TEST_CASE( group, PolicyFixture ) {
 
     mcastIp = pm.getMulticastIPForGroup(eg2->getURI());
     BOOST_CHECK(!mcastIp);
+
+    optional<uint32_t> sclass = pm.getSclassForGroup(eg1->getURI());
+    BOOST_CHECK(sclass.get() == 3456);
 
     Mutator mutator(framework, "policyreg");
     eg1->remove();
@@ -556,93 +518,6 @@ BOOST_FIXTURE_TEST_CASE( contract_rules, PolicyFixture ) {
                            DirectionEnumT::CONST_IN));
 }
 
-BOOST_FIXTURE_TEST_CASE( redirect_action_rules, PolicyFixture ) {
-    using boost::asio::ip::address;
-    PolicyManager& pm = agent.getPolicyManager();
-    WAIT_FOR(pm.contractExists(con4->getURI()), 500);
-
-    BOOST_CHECK(pm.contractExists(URI("invalid")) == false);
-
-    PolicyManager::rule_list_t rules;
-    WAIT_FOR_DO(rules.size() == 1, 500,
-                rules.clear(); pm.getContractRules(con4->getURI(), rules));
-    uint8_t hashOpt, hashParam;
-    int ctr=0;
-    std::vector<address> testIps;
-    boost::system::error_code ec;
-    testIps.insert(testIps.end(),address::from_string("1.1.1.1", ec));
-    testIps.insert(testIps.end(),address::from_string("2.2.2.2", ec));
-    testIps.insert(testIps.end(),address::from_string("3.3.3.3", ec));
-    std::vector<opflex::modb::MAC> testMacs;
-    testMacs.insert(testMacs.end(),opflex::modb::MAC("00:01:02:03:04:05"));
-    testMacs.insert(testMacs.end(),opflex::modb::MAC("01:02:03:04:05:06"));
-    testMacs.insert(testMacs.end(),opflex::modb::MAC("02:03:04:05:06:07"));
-    PolicyManager::redir_dest_list_t redirList;
-    PolicyManager::rule_list_t::const_iterator rIter = rules.begin();
-    while(rIter != rules.end()) {
-        BOOST_CHECK(((*rIter)->getL24Classifier()->getURI() ==
-                    classifier7->getURI()) &&
-                    ((*rIter)->getDirection() ==
-                     DirectionEnumT::CONST_IN) &&
-                    ((*rIter)->getRedirect() == true) &&
-                    ((*rIter)->getRedirectDestGrpURI() ==
-                     redirDstGrp1->getURI()));
-        pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
-                               hashOpt,hashParam);
-        WAIT_FOR_DO(redirList.size()==2, 500, redirList.clear();
-			pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
-                               hashOpt,hashParam));
-        for(auto it = redirList.begin(); it != redirList.end(); it++, ctr++){
-            BOOST_CHECK((it->get()->getIp() == testIps[ctr]) &&
-                        (it->get()->getMac() == testMacs[ctr]) &&
-                        (it->get()->getBD()->getURI() == bd->getURI()) &&
-                        (it->get()->getRD()->getURI() == rd->getURI()));
-        }
-        rIter++;
-    }
-
-    /*
-     * Modify Action to RedirectDestGrp
-     */
-    Mutator mutator1(framework, "policyreg");
-    action3->addGbpRedirectActionToDestGrpRSrc()
-	   ->setTargetRedirectDestGroup(redirDstGrp2->getURI());
-    mutator1.commit();
-
-    rules.clear();
-    WAIT_FOR_DO((rules.size() == 1) &&
-            ((*rules.begin())->getRedirectDestGrpURI()
-                == redirDstGrp2->getURI()) , 500,
-            rules.clear(); pm.getContractRules(con4->getURI(), rules));
-
-    /*
-     * Modify RedirectDestGrp
-     */
-    Mutator mutator2(framework, "policyreg");
-    opflex::modb::MAC mac3("02:03:04:05:06:07");
-    redirDst3 = redirDstGrp1->addGbpRedirectDest("redirDst3");
-    redirDst3->setIp("3.3.3.3");
-    redirDst3->setMac(mac3);
-    redirDst3->addGbpRedirectDestToDomainRSrcBridgeDomain(
-               bd->getURI().toString());
-    redirDst3->addGbpRedirectDestToDomainRSrcRoutingDomain(
-               rd->getURI().toString());
-    mutator2.commit();
-    ctr = 0;
-    redirList.clear();
-    WAIT_FOR_DO((redirList.size()==3),1000,
-                redirList.clear();
-                pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
-                                      hashOpt, hashParam));
-    for(auto it = redirList.begin(); it != redirList.end(); it++, ctr++) {
-        BOOST_CHECK((it->get()->getIp() == testIps[ctr]) &&
-                    (it->get()->getMac() == testMacs[ctr]) &&
-                    (it->get()->getBD()->getURI() == bd->getURI()) &&
-                    (it->get()->getRD()->getURI() == rd->getURI()));
-    }
-
-}
-
 BOOST_FIXTURE_TEST_CASE( nat_rd_update, PolicyFixture ) {
     PolicyManager& pm = agent.getPolicyManager();
 
@@ -756,7 +631,6 @@ BOOST_FIXTURE_TEST_CASE( group_contract_remove_add, PolicyFixture ) {
     pm.getContractRules(con1->getURI(), rules);
     BOOST_CHECK(rules.size() == 0);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()
 
