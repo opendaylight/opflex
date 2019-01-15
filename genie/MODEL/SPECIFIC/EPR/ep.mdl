@@ -64,6 +64,38 @@ module[epr]
         member[group; type=epr/GroupContext]
     }
 
+    class[ReportedRoute;
+          super=gbp/BaseRoute;
+          concrete;]
+    {
+        # routing domain for the route
+        member[vrf; type=epr/L3Context]
+
+        # The network address
+        member[address; type=address/IP]
+
+        # prefix length for the subnet
+        member[prefixLen; type=scalar/UInt8]
+
+        member[asn; type=scalar/UInt32]
+
+        member[cost; type=scalar/UInt32]
+
+        contained
+        {
+            parent[class=epr/PeerRouteUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=vrf]
+                component[prefix=-;member=address]
+                component[prefix="/";member=prefixLen]
+            }
+        }
+    }
+
     class[SecurityGroupContext;
           super=gbp/BehavioralGroup;
           concrete]
