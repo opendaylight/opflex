@@ -62,8 +62,7 @@ module[gbp]
         const[name=drop; value=0]
 
         # Flood packets addressed to unknown layer 2 addresses to all
-        # interfaces in the flood domain, and perform traditional MAC
-        # learning in the flood domain.
+        # interfaces in the flood domain
         const[name=flood; value=1]
 
         # Proxy mode, send L2 and L3 unknown unicast packets to the
@@ -78,6 +77,18 @@ module[gbp]
 
         # Treat flood domain as isolated
         const[name=isolated; value=1]
+
+        # Drop packets addressed to unknown multicast addresses
+        const[name=drop; value=2]
+    }
+
+    type[EpLearningMode; super=scalar/Enum8]
+    {
+        # Don't learn endpoints on this FD
+        const[name=disabled; value=0]
+
+        # Learn endpoints on this FD
+        const[name=enabled; value=1]
     }
 
     class[FloodDomain;
@@ -108,5 +119,6 @@ module[gbp]
         member[neighborDiscMode; type=gbp/AddressResMode]
         member[unknownFloodMode; type=gbp/UnknownFloodMode]
         member[bcastFloodMode; type=gbp/BcastFloodMode]
+        member[epLearnMode; type=gbp/EpLearningMode]
     }
 }
