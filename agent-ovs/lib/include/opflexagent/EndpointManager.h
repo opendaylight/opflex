@@ -303,6 +303,11 @@ private:
     void updateEndpointRemote(const opflex::modb::URI& uri);
 
     /**
+     * Update the external endpoint entries associated with an endpoint
+     */
+    void updateEndpointExternal(const Endpoint& endpoint);
+
+    /**
      * Update the endpoint registry entries associated with an endpoint
      * @return true if we should notify listeners
      */
@@ -315,6 +320,14 @@ private:
      * @param uuid the UUID of the endpoint that no longer exists
      */
     void removeEndpoint(const std::string& uuid);
+
+    /**
+     * Remove the external endpoint with the specified UUID from the endpoint
+     * manager.
+     *
+     * @param uuid the UUID of the endpoint that no longer exists
+     */
+    void removeEndpointExternal(const std::string& uuid);
 
     opflex::ofcore::OFFramework& framework;
     PolicyManager& policyManager;
@@ -453,7 +466,7 @@ private:
     void notifyListeners(const std::string& uuid);
     void notifyRemoteListeners(const std::string& uuid);
     void notifyListeners(const EndpointListener::uri_set_t& secGroups);
-
+    void notifyExternalEndpointListeners(const std::string& uuid);
     /**
      * Listener for changes related to endpoint group mapping
      */

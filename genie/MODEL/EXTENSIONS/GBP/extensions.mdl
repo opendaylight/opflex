@@ -24,6 +24,8 @@ module[gbpe]
             parent[class=gbp/EpGroup]
             parent[class=gbp/BridgeDomain]
             parent[class=gbp/RoutingDomain]
+            parent[class=gbp/ExternalL3BridgeDomain]
+            parent[class=gbp/L3ExternalNetwork]
         }
         named
         {
@@ -37,8 +39,8 @@ module[gbpe]
                    ]
         {
             to[class=gbpe/EndpointRetention;
-                cardinality=many;
-                ]
+               cardinality=many;
+               ]
         }
     }
 
