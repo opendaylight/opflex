@@ -49,6 +49,10 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<policy::Space> common;
     shared_ptr<FloodDomain> fd1;
     shared_ptr<FloodDomain> fd2;
+    shared_ptr<FloodDomain> fd3;
+    shared_ptr<FloodDomain> fd4;
+    shared_ptr<FloodDomain> fd5;
+    shared_ptr<FloodDomain> fd6;
     shared_ptr<FloodDomain> fd_ext;
     shared_ptr<RoutingDomain> rd;
     shared_ptr<L3ExternalDomain> l3ext;
@@ -57,23 +61,38 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<BridgeDomain> bd;
     shared_ptr<BridgeDomain> bd2;
     shared_ptr<BridgeDomain> bd_ext;
+    shared_ptr<BridgeDomain> bd3;
+    shared_ptr<BridgeDomain> bd4;
+    shared_ptr<BridgeDomain> bd5;
+    shared_ptr<BridgeDomain> bd6;
     shared_ptr<Subnets> subnetsfd1;
     shared_ptr<Subnets> subnetsfd2;
+    shared_ptr<Subnets> subnetsfd3;
     shared_ptr<Subnet> subnetsfd1_1;
     shared_ptr<Subnet> subnetsfd1_2;
     shared_ptr<Subnet> subnetsfd1_3;
     shared_ptr<Subnet> subnetsfd2_1;
     shared_ptr<Subnet> subnetsfd2_2;
+    shared_ptr<Subnet> subnetsfd3_1;
     shared_ptr<Subnets> subnetsbd;
     shared_ptr<Subnet> subnetsbd1;
     shared_ptr<Subnets> subnetsrd;
     shared_ptr<Subnet> subnetsrd1;
     shared_ptr<Subnets> subnets_ext;
+    shared_ptr<Subnets> subnetsfd4;
+    shared_ptr<Subnet> subnetsfd4_1;
+    shared_ptr<Subnets> subnetsfd5;
+    shared_ptr<Subnet> subnetsfd5_1;
+    shared_ptr<Subnets> subnetsfd6;
+    shared_ptr<Subnet> subnetsfd6_1;
 
     shared_ptr<EpGroup> eg1;
     shared_ptr<EpGroup> eg2;
     shared_ptr<EpGroup> eg3;
+    shared_ptr<EpGroup> eg4;
+    shared_ptr<EpGroup> eg5;
     shared_ptr<EpGroup> eg_nat;
+    shared_ptr<EpGroup> eg6;
 
     shared_ptr<L24Classifier> classifier1;
     shared_ptr<L24Classifier> classifier2;
@@ -81,13 +100,21 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<L24Classifier> classifier4;
     shared_ptr<L24Classifier> classifier5;
     shared_ptr<L24Classifier> classifier6;
+    shared_ptr<L24Classifier> classifier7;
 
     shared_ptr<Contract> con1;
     shared_ptr<Contract> con2;
+    shared_ptr<Contract> con3;
+    shared_ptr<RedirectAction> action3;
 
     shared_ptr<SecGroup> secGrp1;
     shared_ptr<SecGroup> secGrp2;
     shared_ptr<SecGroup> secGrp3;
+
+    shared_ptr<RedirectDestGroup> redirDstGrp1;
+    shared_ptr<RedirectDest> redirDst1;
+    shared_ptr<RedirectDest> redirDst2;
+    shared_ptr<RedirectDest> redirDst3;
 
     shared_ptr<policy::Universe> universe =
         policy::Universe::resolve(framework).get();
@@ -117,9 +144,18 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->setTargetBridgeDomain(bd2->getURI());
     bd->addGbpBridgeDomainToNetworkRSrc()
         ->setTargetRoutingDomain(rd->getURI());
+    bd->addGbpeInstContext()->setEncapId(15001);
+    bd->addGbpeInstContext()->setClassid(10001);
+    bd->addGbpeInstContext()->setMulticastGroupIP("224.100.1.1");
     bd2->addGbpBridgeDomainToNetworkRSrc()
         ->setTargetRoutingDomain(rd->getURI());
+    bd2->addGbpeInstContext()->setEncapId(15002);
+    bd2->addGbpeInstContext()->setClassid(10002);
+    bd2->addGbpeInstContext()->setMulticastGroupIP("224.100.1.2");
 
+    bd_ext->addGbpeInstContext()->setEncapId(16001);
+    bd_ext->addGbpeInstContext()->setClassid(11001);
+    bd_ext->addGbpeInstContext()->setMulticastGroupIP("224.200.1.1");
     fd_ext->addGbpFloodDomainToNetworkRSrc()
         ->setTargetBridgeDomain(bd_ext->getURI());
     bd_ext->addGbpBridgeDomainToNetworkRSrc()
@@ -178,6 +214,7 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
                                                 getURI().toString());
     rd_ext->addGbpForwardingBehavioralGroupToSubnetsRSrc()
         ->setTargetSubnets(subnets_ext->getURI());
+    rd_ext->addGbpeInstContext()->setEncapId(200);
 
     // ARP
     classifier1 = space->addGbpeL24Classifier("classifier1");
@@ -302,6 +339,139 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->setDirection(DirectionEnumT::CONST_IN)
         .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
 
+    rd->addGbpeInstContext()->setEncapId(100);
+    fd3 = space->addGbpFloodDomain("fd3");
+    fd3->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_HWPROXY);
+    subnetsfd3 = space->addGbpSubnets("subnetsfd3");
+    subnetsfd3_1 = subnetsfd2->addGbpSubnet("subnetsfd3_1");
+    subnetsfd3_1->setAddress("1.1.1.0")
+    .setPrefixLen(24)
+    .setVirtualRouterIp("1.1.1.128");
+    fd4 = space->addGbpFloodDomain("fd4");
+    fd4->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
+    fd5 = space->addGbpFloodDomain("fd5");
+    fd5->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_FLOOD);
+    subnetsfd4 = space->addGbpSubnets("subnetsfd4");
+    subnetsfd4_1 = subnetsfd1->addGbpSubnet("subnetsfd4_1");
+    subnetsfd4_1->setAddress("11.0.0.0")
+    .setPrefixLen(24)
+    .setVirtualRouterIp("11.0.0.1");
+    fd4->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+    ->setTargetSubnets(subnetsfd4->getURI());
+    rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd4_1->getURI().toString());
+    subnetsfd5 = space->addGbpSubnets("subnetsfd5");
+    subnetsfd5_1 = subnetsfd1->addGbpSubnet("subnetsfd5_1");
+    subnetsfd5_1->setAddress("12.0.0.0")
+    .setPrefixLen(24)
+    .setVirtualRouterIp("12.0.0.1");
+    fd5->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+    ->setTargetSubnets(subnetsfd5->getURI());
+    rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd5_1->getURI().toString());
+
+    // Pass all Ipv4 packets
+    classifier7 = space->addGbpeL24Classifier("classifier7");
+    classifier7->setOrder(100)
+    .setEtherT(EtherTypeEnumT::CONST_IPV4);
+
+    bd3 = space->addGbpBridgeDomain("bd3");
+    bd3->addGbpeInstContext()->setEncapId(15003);
+    bd3->addGbpeInstContext()->setClassid(10003);
+    bd3->addGbpeInstContext()->setMulticastGroupIP("224.100.1.3");
+    bd3->addGbpBridgeDomainToNetworkRSrc()
+    ->setTargetRoutingDomain(rd->getURI());
+    fd3->addGbpFloodDomainToNetworkRSrc()
+    ->setTargetBridgeDomain(bd3->getURI());
+
+    bd4 = space->addGbpBridgeDomain("bd4");
+    bd4->addGbpeInstContext()->setEncapId(15004);
+    bd4->addGbpeInstContext()->setClassid(10004);
+    bd4->addGbpeInstContext()->setMulticastGroupIP("224.100.1.4");
+    bd4->addGbpBridgeDomainToNetworkRSrc()
+    ->setTargetRoutingDomain(rd->getURI());
+    fd4->addGbpFloodDomainToNetworkRSrc()
+    ->setTargetBridgeDomain(bd4->getURI());
+
+    bd5 = space->addGbpBridgeDomain("bd5");
+    bd5->addGbpeInstContext()->setEncapId(15005);
+    bd5->addGbpeInstContext()->setClassid(10005);
+    bd5->addGbpeInstContext()->setMulticastGroupIP("224.100.1.5");
+    bd5->addGbpBridgeDomainToNetworkRSrc()
+    ->setTargetRoutingDomain(rd->getURI());
+    fd5->addGbpFloodDomainToNetworkRSrc()
+    ->setTargetBridgeDomain(bd5->getURI());
+
+    redirDstGrp1 = space->addGbpRedirectDestGroup("redirDstGrp1");
+    redirDst1 = redirDstGrp1->addGbpRedirectDest("redirDst1");
+    redirDst2 = redirDstGrp1->addGbpRedirectDest("redirDst2");
+    redirDst3 = redirDstGrp1->addGbpRedirectDest("redirDst3");
+    opflex::modb::MAC mac1("00:01:02:03:04:05"), mac2("00:02:03:04:05:06"),
+    mac3("00:03:04:05:06:07");
+    redirDst1->setIp("1.1.1.1");
+    redirDst1->setMac(mac1);
+    redirDst1->addGbpRedirectDestToDomainRSrcBridgeDomain(
+                                                    bd3->getURI().toString());
+    redirDst1->addGbpRedirectDestToDomainRSrcRoutingDomain(
+                                                    rd->getURI().toString());
+    redirDst2->setIp("1.1.1.10");
+    redirDst2->setMac(mac2);
+    redirDst2->addGbpRedirectDestToDomainRSrcBridgeDomain(
+                                                    bd3->getURI().toString());
+    redirDst2->addGbpRedirectDestToDomainRSrcRoutingDomain(
+                                                    rd->getURI().toString());
+    redirDst3->setIp("1.1.1.20");
+    redirDst3->setMac(mac3);
+    redirDst3->addGbpRedirectDestToDomainRSrcBridgeDomain(
+                                                    bd3->getURI().toString());
+    redirDst3->addGbpRedirectDestToDomainRSrcRoutingDomain(
+                                                    rd->getURI().toString());
+    action3 = space->addGbpRedirectAction("action3");
+    action3->addGbpRedirectActionToDestGrpRSrc()
+    ->setTargetRedirectDestGroup(redirDstGrp1->getURI());
+
+    con3 = space->addGbpContract("contract3");
+    con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
+    ->setDirection(DirectionEnumT::CONST_BIDIRECTIONAL)
+    .addGbpRuleToClassifierRSrc(classifier7->getURI().toString());
+    con3->addGbpSubject("3_subject1")->addGbpRule("3_1_rule1")
+    ->addGbpRuleToActionRSrcRedirectAction(action3->getURI().toString());
+
+    eg4 = space->addGbpEpGroup("group4");
+    eg4->addGbpEpGroupToProvContractRSrc(con3->getURI().toString());
+    eg4->addGbpEpGroupToConsContractRSrc(con3->getURI().toString());
+    eg4->addGbpEpGroupToNetworkRSrc()
+    ->setTargetFloodDomain(fd4->getURI());
+    eg4->addGbpeInstContext()->setEncapId(0x1010);
+
+    eg5 = space->addGbpEpGroup("group5");
+    eg5->addGbpEpGroupToProvContractRSrc(con3->getURI().toString());
+    eg5->addGbpEpGroupToConsContractRSrc(con3->getURI().toString());
+    eg5->addGbpEpGroupToNetworkRSrc()
+    ->setTargetFloodDomain(fd5->getURI());
+    eg5->addGbpeInstContext()->setEncapId(0x1011);
+
+    fd6 = space->addGbpFloodDomain("fd6");
+    fd6->setUnknownFloodMode(UnknownFloodModeEnumT::CONST_HWPROXY);
+    subnetsfd6 = space->addGbpSubnets("subnetsfd6");
+    subnetsfd6_1 = subnetsfd1->addGbpSubnet("subnetsfd6_1");
+    subnetsfd6_1->setAddress("13.0.0.0")
+    .setPrefixLen(24)
+    .setVirtualRouterIp("13.0.0.1");
+    fd6->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+    ->setTargetSubnets(subnetsfd6->getURI());
+    rd->addGbpRoutingDomainToIntSubnetsRSrc(subnetsfd6_1->getURI().toString());
+    bd6 = space->addGbpBridgeDomain("bd6");
+    bd6->addGbpeInstContext()->setEncapId(15006);
+    bd6->addGbpeInstContext()->setClassid(10006);
+    bd6->addGbpeInstContext()->setMulticastGroupIP("224.100.1.6");
+    bd6->addGbpBridgeDomainToNetworkRSrc()
+    ->setTargetRoutingDomain(rd->getURI());
+    fd6->addGbpFloodDomainToNetworkRSrc()
+    ->setTargetBridgeDomain(bd6->getURI());
+
+    eg6 = space->addGbpEpGroup("group6");
+    eg6->addGbpEpGroupToNetworkRSrc()
+    ->setTargetFloodDomain(fd6->getURI());
+    eg6->addGbpeInstContext()->setEncapId(0x1012);
     mutator.commit();
 }
 
