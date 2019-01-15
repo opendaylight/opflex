@@ -15,6 +15,7 @@
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
+#include <modelgbp/gbp/L3IfTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
@@ -216,6 +217,34 @@ public:
         l3ext_net->addGbpExternalSubnet("outside")
             ->setAddress("0.0.0.0")
             .setPrefixLen(0);
+
+        rd_ext1 = space->addGbpRoutingDomain("rd_ext1");
+        rd_ext1->addGbpeInstContext()->setEncapId(9999);
+        ext_bd1 = space->addGbpExternalL3BridgeDomain("ext_bd1");
+        ext_bd1->addGbpeInstContext()->setEncapId(1991);
+        ext_bd1->addGbpExternalL3BridgeDomainToVrfRSrc()->
+            setTargetRoutingDomain(rd_ext1->getURI());
+        ext_node1 = space->addGbpExternalNode("ext_node1");
+        ext_int1 = space->addGbpExternalInterface("ext_int1");
+        ext_int1->setAddress("100.100.100.0");
+        ext_int1->setPrefixLen(24);
+        ext_int1->setEncap(100);
+        ext_int1->setIfInstT(L3IfTypeEnumT::CONST_EXTSVI);
+        ext_int1->addGbpExternalInterfaceToExtl3bdRSrc()->
+            setTargetExternalL3BridgeDomain(ext_bd1->getURI());
+        static_route1 = ext_node1->addGbpStaticRoute("static_route1");
+        static_route1->addGbpStaticRouteToVrfRSrc()->
+        setTargetRoutingDomain(rd_ext1->getURI());
+        static_route1->setAddress("101.101.0.0");
+        static_route1->setPrefixLen(16);
+        static_route1->addGbpStaticNextHop("100.100.100.2");
+        static_nh1 = static_route1->addGbpStaticNextHop("100.100.100.3");
+        static_route1->addGbpStaticNextHop("100.100.100.4");
+        remote_route1 = rd_ext1->addGbpRemoteRoute("remote_route1");
+        remote_route1->setAddress("101.101.0.0");
+        remote_route1->setPrefixLen(16);
+        remote_nh2 = remote_route1->addGbpRemoteNextHop("10.10.10.1");
+        remote_nh1 = remote_route1->addGbpRemoteNextHop("10.10.10.2");
         mutator.commit();
     }
 
@@ -273,6 +302,16 @@ public:
     shared_ptr<Contract> con2;
     shared_ptr<Contract> con3;
     shared_ptr<Contract> con4;
+
+    shared_ptr<RoutingDomain> rd_ext1;
+    shared_ptr<ExternalInterface> ext_int1;
+    shared_ptr<ExternalL3BridgeDomain> ext_bd1;
+    shared_ptr<ExternalNode> ext_node1;
+    shared_ptr<StaticRoute> static_route1;
+    shared_ptr<StaticNextHop> static_nh1;
+    shared_ptr<RemoteRoute> remote_route1;
+    shared_ptr<RemoteNextHop> remote_nh1;
+    shared_ptr<RemoteNextHop> remote_nh2;
 };
 
 class MockListener : public PolicyListener {
@@ -757,6 +796,29 @@ BOOST_FIXTURE_TEST_CASE( group_contract_remove_add, PolicyFixture ) {
     BOOST_CHECK(rules.size() == 0);
 }
 
+BOOST_FIXTURE_TEST_CASE( static_route_add_mod_del, PolicyFixture ) {
+    PolicyManager& pm = agent.getPolicyManager();
+    shared_ptr<RoutingDomain> rd_;
+    shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
+    boost::asio::ip::address addr_;
+    std::list<boost::asio::ip::address> nhList;
+    uint8_t pfx_len;
+    WAIT_FOR_DO(nhList.size() == 3, 500, nhList.clear();
+                pm.getRoute(StaticRoute::CLASS_ID, static_route1->getURI(),
+                         rd_, rdInst_, addr_, pfx_len, nhList));
+
+    WAIT_FOR_DO(nhList.size() == 2, 500, nhList.clear();
+                pm.getRoute(RemoteRoute::CLASS_ID, remote_route1->getURI(),
+                         rd_, rdInst_, addr_, pfx_len, nhList));
+
+    Mutator m0(framework, "policyreg");
+    static_nh1->remove();
+    m0.commit();
+    nhList.clear();
+    WAIT_FOR_DO(nhList.size() == 2, 500, nhList.clear();
+                pm.getRoute(StaticRoute::CLASS_ID, static_route1->getURI(),
+                         rd_, rdInst_, addr_, pfx_len, nhList));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
