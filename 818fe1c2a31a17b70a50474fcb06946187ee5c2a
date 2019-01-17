@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aba663e2_74101fde",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 546,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T21:03:03Z",
+      "side": 1,
+      "message": "const std::string\u0026",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b16ba6fb_b6758439",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T21:03:03Z",
+      "side": 1,
+      "message": "nit: remove trailing spaces on lines 547, 548, 568, and 569",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c4a25e45_9801bfa7",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T21:03:03Z",
+      "side": 1,
+      "message": "This changes the current behavior in OVSRenderer as contract and sec group stats have a 10 sec interval there while interface stats are 30 sec",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "50ee47c5_c06a94c6",
+        "filename": "agent-ovs/opflex-agent-ovs.conf.in",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T21:03:03Z",
+      "side": 1,
+      "message": "The current default interval for contract/security group stats is 10 sec in OVSRenderer.cpp",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
