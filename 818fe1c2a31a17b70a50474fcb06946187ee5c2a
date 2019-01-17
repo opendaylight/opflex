@@ -36,6 +36,40 @@
     },
     {
       "key": {
+        "uuid": "102be38f_e2d90dd1",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 551,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T23:01:08Z",
+      "side": 1,
+      "message": "What should you do if \u0027mode\u0027 does not equal any of the options?\n\nThis is currently triggering a compiler warning\n\n17:35:05 lib/Agent.cpp: In member function \u0027opflexagent::StatMode opflexagent::Agent::getStatModeFromString(std::string\u0026)\u0027:\n17:35:05 lib/Agent.cpp:553:1: warning: control reaches end of non-void function [-Wreturn-type]\n17:35:05  }\n17:35:05  ^",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0d32e65f_a5f648a3",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T23:01:08Z",
+      "side": 1,
+      "message": "Is this actually used? It doesn\u0027t actually set the interval...it just returns the passed value unless it\u0027s less than 10",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c4a25e45_9801bfa7",
         "filename": "agent-ovs/lib/Agent.cpp",
         "patchSetId": 3
@@ -47,6 +81,91 @@
       "writtenOn": "2019-01-17T21:03:03Z",
       "side": 1,
       "message": "This changes the current behavior in OVSRenderer as contract and sec group stats have a 10 sec interval there while interface stats are 30 sec",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bce86168_0f2a4a97",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T23:01:08Z",
+      "side": 1,
+      "message": "Please make these private instead with accessors",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f9f1f6b4_8136711f",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T23:01:08Z",
+      "side": 1,
+      "message": "should be \u0027/**\u0027",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31f95019_b5825567",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T23:01:08Z",
+      "side": 1,
+      "message": "Add doxygen comments for members",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8ef03b1f_a4bbd4e1",
+        "filename": "agent-ovs/lib/include/opflexagent/SimStats.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T23:01:08Z",
+      "side": 1,
+      "message": "no longer a param",
+      "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a454acee_7c5c7f80",
+        "filename": "agent-ovs/lib/include/opflexagent/SimStats.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-17T23:01:08Z",
+      "side": 1,
+      "message": "I don\u0027t think this is used now",
       "revId": "818fe1c2a31a17b70a50474fcb06946187ee5c2a",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
