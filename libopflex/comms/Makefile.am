@@ -16,7 +16,6 @@ SUBDIRS = include
 lib_LTLIBRARIES =
 noinst_LTLIBRARIES  =
 noinst_LTLIBRARIES += librpcperfect.la
-noinst_LTLIBRARIES += libcommstrace.la
 if SEPARATE_COMMS
   lib_LTLIBRARIES += libcomms.la
 else
@@ -31,11 +30,6 @@ AM_CPPFLAGS += -I$(top_srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/logging/include
 AM_CPPFLAGS += $(OPENSSL_CFLAGS) -DYAJR_HAS_OPENSSL
 
-libcommstrace_la_SOURCES  =
-libcommstrace_la_SOURCES += debug_trace.cpp
-
-libcommstrace_la_CXXFLAGS  = $(AM_CXXFLAGS)
-
 libcomms_la_CPPFLAGS  = $(AM_CPPFLAGS)
 
 libcomms_la_CXXFLAGS  = $(AM_CXXFLAGS)
@@ -44,10 +38,6 @@ libcomms_la_CXXFLAGS += $(RAPIDJSON_CFLAGS)
 
 libcomms_la_CPPFLAGS += -DBOOST_EXCEPTION_DISABLE
 libcomms_la_CXXFLAGS += -fno-exceptions
-
-if TRACING_COMMS
-  libcomms_la_CXXFLAGS += -finstrument-functions
-endif
 
 libcomms_la_LIBADD  =
 libcomms_la_LIBADD += librpcperfect.la
@@ -168,9 +158,6 @@ comms_test_LDFLAGS += $(OPENSSL_LIBS)
 comms_test_LDADD  =
 comms_test_LDADD += libcomms.la
 comms_test_LDADD += ../logging/liblogging.la
-if TRACING_COMMS
-  comms_test_LDADD += libcommstrace.la
-endif
 comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 EXTRA_DIST=test/server.pem test/ca.pem

@@ -480,7 +480,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
             << " => closing"
         ;
 
-        const_cast<CommunicationPeer *>(peer)->onDisconnect();
+        peer->onDisconnect();
     }
 
     if (nread > 0) {
@@ -538,7 +538,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
         assert(advancement == nread);
 
         if (giveUp) {
-            const_cast<CommunicationPeer *>(peer)->onDisconnect();
+            peer->onDisconnect();
             return;
         }
 

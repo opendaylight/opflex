@@ -30,8 +30,7 @@ namespace yajr {
 
 std::ostream& operator << (
         std::ostream& os,
-        Peer::LoopData const * lD)
-                                        __attribute__((no_instrument_function));
+        Peer::LoopData const * lD);
 
 
 void internal::Peer::LoopData::onPrepareLoop() {

@@ -9,7 +9,7 @@
 #pragma once
 #ifndef _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
 #define _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
-#include <opflex/logging/internal/logging.hpp>
+
 #include <yajr/rpc/send_handler.hpp>
 #include <yajr/rpc/message_factory.hpp>
 #include <yajr/yajr.hpp>
@@ -178,7 +178,7 @@ class Peer : public SafeListBaseHook {
             return &getLoopData(uv_loop)->peers[peerState];
         }
 
-        void onPrepareLoop() __attribute__((no_instrument_function));
+        void onPrepareLoop();
 
         void destroy(bool now = false);
 
@@ -191,8 +191,8 @@ class Peer : public SafeListBaseHook {
             uv_async_send(&kickLibuv_);
         }
 
-        static void walkAndCloseHandlesCb(uv_handle_t* handle, void* closeHandles) __attribute__((no_instrument_function));
-        static void walkAndCountHandlesCb(uv_handle_t* handle, void* countHandles) __attribute__((no_instrument_function));
+        static void walkAndCloseHandlesCb(uv_handle_t* handle, void* closeHandles);
+        static void walkAndCountHandlesCb(uv_handle_t* handle, void* countHandles);
 
       private:
         friend std::ostream& operator<< (std::ostream&, Peer::LoopData const *);
@@ -205,7 +205,7 @@ class Peer : public SafeListBaseHook {
 
         struct PeerDeleter;
 
-        static void onPrepareLoop(uv_prepare_t *) __attribute__((no_instrument_function));
+        static void onPrepareLoop(uv_prepare_t *);
         static void fini(uv_handle_t *);
 
         uv_prepare_t prepare_;
@@ -779,7 +779,7 @@ class ListeningTcpPeer : public ListeningPeer {
                   uvLoopSelector
           ) {
               createFail_ = 0;
-	      listen_on_ = sockaddr_storage();
+              listen_on_ = sockaddr_storage();
           }
 
     virtual PassivePeer * getNewPassive();

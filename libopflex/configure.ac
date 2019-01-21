@@ -85,12 +85,6 @@ AC_ARG_ENABLE(separate-comms,
                              [Install raw opflex communications library separately]))
 AM_CONDITIONAL(SEPARATE_COMMS, [test x$enable_separate_comms = 'xyes'])
 
-dnl Create an option to trace all of the function calls within the communications library
-AC_ARG_ENABLE(comms-trace,
-              AS_HELP_STRING([--enable-comms-trace],
-                             [Trace all function calls within opflex communications library]))
-AM_CONDITIONAL(TRACING_COMMS, [test x$enable_comms_trace = 'xyes'])
-
 dnl Create an option to build unit tests only with make check
 AC_ARG_ENABLE(tests-make-all,
               AC_HELP_STRING([--disable-tests-make-all],

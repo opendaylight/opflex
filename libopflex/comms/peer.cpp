@@ -13,15 +13,12 @@
 
 #include <yajr/internal/comms.hpp>
 #include <yajr/transport/engine.hpp>
+#include <opflex/logging/internal/logging.hpp>
 
 namespace yajr {
     namespace comms {
         namespace internal {
 
-std::ostream& operator << (
-        std::ostream& os,
-        ::yajr::comms::internal::Peer const * p)
-                                        __attribute__((no_instrument_function));
 std::ostream& operator << (
         std::ostream& os,
         ::yajr::comms::internal::Peer const * p

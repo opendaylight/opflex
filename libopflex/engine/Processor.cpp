@@ -15,7 +15,7 @@
 #endif
 
 
-#include <time.h>
+#include <ctime>
 #include <uv.h>
 #include <limits>
 #include <cmath>
@@ -95,7 +95,7 @@ void Processor::setPrrTimerDuration(uint64_t duration) {
 }
 // check whether the object state index has work for us
 bool Processor::hasWork(/* out */ obj_state_by_exp::iterator& it) {
-    if (obj_state.size() == 0) return false;
+    if (obj_state.empty()) return false;
     obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
     it = exp_index.begin();
     if (it->expiration == 0 || now(proc_loop) >= it->expiration) return true;
@@ -270,7 +270,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
             LOG(DEBUG) << "Resolving policy " << i.uri;
             i.details->resolve_time = curTime;
             vector<reference_t> refs;
-            refs.push_back(make_pair(i.details->class_id, i.uri));
+            refs.emplace_back(i.details->class_id, i.uri);
             PolicyResolveReq* req =
                 new PolicyResolveReq(this, nextXid++, refs);
             sendToRole(i, newexp, req, OFConstants::POLICY_REPOSITORY);
@@ -282,7 +282,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
             LOG(DEBUG) << "Resolving remote endpoint " << i.uri;
             i.details->resolve_time = curTime;
             vector<reference_t> refs;
-            refs.push_back(make_pair(i.details->class_id, i.uri));
+            refs.emplace_back(i.details->class_id, i.uri);
             EndpointResolveReq* req =
                 new EndpointResolveReq(this, nextXid++, refs);
             sendToRole(i, newexp, req, OFConstants::ENDPOINT_REGISTRY);
@@ -305,7 +305,7 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i,
             LOG(DEBUG) << "Declaring local endpoint " << i.uri;
             i.details->resolve_time = curTime;
             vector<reference_t> refs;
-            refs.push_back(make_pair(i.details->class_id, i.uri));
+            refs.emplace_back(i.details->class_id, i.uri);
             EndpointDeclareReq* req =
                 new EndpointDeclareReq(this, nextXid++, refs);
             sendToRole(i, newexp, req, OFConstants::ENDPOINT_REGISTRY);
@@ -317,7 +317,7 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i,
             LOG(DEBUG3) << "Declaring local observable " << i.uri;
             i.details->resolve_time = curTime;
             vector<reference_t> refs;
-            refs.push_back(make_pair(i.details->class_id, i.uri));
+            refs.emplace_back(i.details->class_id, i.uri);
             StateReportReq* req = new StateReportReq(this, nextXid++, refs);
             sendToRole(i, newexp, req, OFConstants::OBSERVER);
         }
@@ -471,7 +471,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             if (it->details->resolve_time > 0) {
                 LOG(DEBUG) << "Unresolving " << it->uri.toString();
                 vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
+                refs.emplace_back(it->details->class_id, it->uri);
                 PolicyUnresolveReq* req =
                     new PolicyUnresolveReq(this, nextXid++, refs);
                 pool.sendToRole(req, OFConstants::POLICY_REPOSITORY);
@@ -481,7 +481,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             if (it->details->resolve_time > 0) {
                 LOG(DEBUG) << "Unresolving " << it->uri.toString();
                 vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
+                refs.emplace_back(it->details->class_id, it->uri);
                 EndpointUnresolveReq* req =
                     new EndpointUnresolveReq(this, nextXid++, refs);
                 pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
@@ -491,7 +491,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
             {
                 LOG(DEBUG) << "Undeclaring " << it->uri.toString();
                 vector<reference_t> refs;
-                refs.push_back(make_pair(it->details->class_id, it->uri));
+                refs.emplace_back(it->details->class_id, it->uri);
                 EndpointUndeclareReq* req =
                     new EndpointUndeclareReq(this, nextXid++, refs);
                 pool.sendToRole(req, OFConstants::ENDPOINT_REGISTRY);
@@ -511,7 +511,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
 
     guard.release();
 
-    if (notifs.size() > 0)
+    if (!notifs.empty())
         client->deliverNotifications(notifs);
 }
 
