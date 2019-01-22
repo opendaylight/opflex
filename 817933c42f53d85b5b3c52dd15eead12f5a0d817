@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "3bc4a9a4_65dc4ef7",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1590,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-01-22T13:19:09Z",
+      "side": 1,
+      "message": "not all of these boost optionals are set at this point.",
+      "revId": "817933c42f53d85b5b3c52dd15eead12f5a0d817",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "12b12588_ee0ab245",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1617,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-01-22T13:19:09Z",
+      "side": 1,
+      "message": "externalInterfaces can only be removed with this function. i did:\n    if (class_id \u003d\u003d modelgbp::gbp::EpGroup::CLASS_ID) {\n        group_map[uri];\n+    } else if (class_id \u003d\u003d modelgbp::gbp::ExternalInterface::CLASS_ID) {\n+       ext_int_map[uri];\n+  }",
+      "revId": "817933c42f53d85b5b3c52dd15eead12f5a0d817",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7b2c203c_02f818a2",
         "filename": "agent-ovs/lib/PolicyManager.cpp",
         "patchSetId": 1
