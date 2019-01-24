@@ -16,6 +16,7 @@
 #include <modelgbp/ascii/StringMatchTypeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 
 #include <opflexagent/EndpointManager.h>
 #include <opflexagent/Network.h>
@@ -71,17 +72,7 @@ void EndpointManager::start() {
     EpAttributeSet::registerListener(framework, &epgMappingListener);
     RemoteEndpointInventory::registerListener(framework, &epgMappingListener);
     RemoteInventoryEp::registerListener(framework, &epgMappingListener);
-
     policyManager.registerListener(this);
-
-    opflex::modb::Mutator mutator(framework, "init");
-    optional<shared_ptr<modelgbp::domain::Config> >
-        config(modelgbp::domain::Config::resolve(framework));
-    if (config) {
-        config.get()->addDomainConfigToRemoteEndpointInventoryRSrc()
-            ->setTargetRemoteEndpointInventory();
-    }
-    mutator.commit();
 }
 
 void EndpointManager::stop() {
@@ -1069,4 +1060,38 @@ void EndpointManager::EPGMappingListener::objectUpdated(class_id_t classId,
     }
 }
 
+void EndpointManager::configUpdated(const URI& uri) {
+    using namespace modelgbp::platform;
+    bool setRemoteEndpoint = false;
+    opflex::modb::Mutator mutator(framework, "init");
+    optional<shared_ptr<modelgbp::domain::Config> >
+        configD(modelgbp::domain::Config::resolve(framework));
+    if (!configD) {
+       LOG(WARNING) << "Domain config not available";
+       return;
+    }
+
+    optional<shared_ptr<Config>> config = Config::resolve(framework, uri);
+    if (config) {
+       boost::optional<const uint8_t> invType = config.get()->getInventoryType();
+       if (invType) {
+           auto on_link =  RemoteInventoryTypeEnumT::CONST_ON_LINK;
+           if (invType.get() == on_link) {
+               LOG(DEBUG) << "setting remote endpoint discovery";
+               configD.get()->addDomainConfigToRemoteEndpointInventoryRSrc()
+                            ->setTargetRemoteEndpointInventory();
+               setRemoteEndpoint = true;
+           }
+       }
+    }
+    if (!setRemoteEndpoint) {
+       optional<shared_ptr<modelgbp::domain::ConfigToRemoteEndpointInventoryRSrc>> reInv =
+                        configD.get()->resolveDomainConfigToRemoteEndpointInventoryRSrc();
+       if (reInv) {
+          LOG(DEBUG) << "removing remote endpoint discovery";
+          reInv.get()->remove();
+       }
+    }
+    mutator.commit();
+}
 } /* namespace opflexagent */
