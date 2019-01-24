@@ -200,6 +200,13 @@ public:
                                     /* out */
                                     std::unordered_set<std::string>& eps);
 
+   /**
+    * Callback to receive updates on changes to Platform/Config
+    *
+    * @param uri string uri reference to the platform/config object that changed.
+    */
+    void configUpdated(const opflex::modb::URI& uri);
+
     /**
      * Counter values for endpoint stats
      */
