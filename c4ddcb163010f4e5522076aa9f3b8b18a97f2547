@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc744916_b2a7e8c2",
+        "filename": "agent-ovs/lib/EndpointManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1063,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-01-25T05:58:06Z",
+      "side": 1,
+      "message": "opflex::modb::URI -\u003e URI",
+      "revId": "c4ddcb163010f4e5522076aa9f3b8b18a97f2547",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
