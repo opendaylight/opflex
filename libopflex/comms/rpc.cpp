@@ -48,21 +48,9 @@ bool operator< (rapidjson::Value const & l, rapidjson::Value const & r) {
     return (lh < rh);
 }
 
-#if THREAD_LOCAL_DEBUGS_READY
-// TODO: make thread-local
-static ::yajr::comms::internal::CommunicationPeer const * latestCp = NULL;
-#  define __t_assert(arg) assert(arg)
-#else
-#  define __t_assert(arg) do{} while(0)
-#endif
-
 bool LocalIdentifier::emitId(yajr::rpc::SendHandler & h) const {
 
     VLOG(4);
-
-#if THREAD_LOCAL_DEBUGS_READY
-    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
-#endif
 
     if (!h.StartArray()) {
 
@@ -92,12 +80,6 @@ bool RemoteIdentifier::emitId(yajr::rpc::SendHandler & h) const {
 
     VLOG(4);
 
-#if THREAD_LOCAL_DEBUGS_READY
-    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
-
-    VLOG(5) << latestCp;
-#endif
-
     bool ok = id_.Accept(h);
 
     return ok;
@@ -106,12 +88,6 @@ bool RemoteIdentifier::emitId(yajr::rpc::SendHandler & h) const {
 bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
     VLOG(5);
-
-#if THREAD_LOCAL_DEBUGS_READY
-    ::yajr::comms::internal::CommunicationPeer const * cP = latestCp;
-
-    VLOG(5) << latestCp;
-#endif
 
     if (!handler.StartObject()) {
         return false;
@@ -162,15 +138,8 @@ bool OutboundMessage::send() {
 
     if (!connected) {
         cP->onError(UV_ENOTCONN);
-
-     // assert(connected);
-
         return false;
     }
-
-#if THREAD_LOCAL_DEBUGS_READY
-    latestCp = cP;
-#endif
 
 
 #if __cpp_exceptions || __EXCEPTIONS
