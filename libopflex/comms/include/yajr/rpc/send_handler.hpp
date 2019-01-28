@@ -46,7 +46,6 @@ struct GenericStringQueue {
     }
 
     std::deque<Ch> deque_;
-    void const * cP_;
 };
 
 //! String buffer with UTF8 encoding
