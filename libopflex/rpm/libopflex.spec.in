@@ -20,14 +20,19 @@ Group: Development/Libraries
 License: EPLv1.0
 URL: https://wiki.opendaylight.org/view/OpFlex:Main
 
+# Add --without dynboost option. Enable by default
+%bcond_without dynboost
+
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 Source: %{name}-%{version}.tar.gz
 Requires: libuv >= 1.8.0
 Requires: openssl >= 1.0.1
 BuildRequires: libuv-devel
 BuildRequires: openssl-devel
+%if %{with dynboost}
 BuildRequires: boost-devel
 BuildRequires: boost-test
+%endif
 BuildRequires: rapidjson-devel >= 1.0
 BuildRequires: doxygen
 BuildRequires: pkgconfig
@@ -57,7 +62,11 @@ Development libraries for libopflex
 %setup -q
 
 %build
+%if %{with dynboost}
 %configure --disable-assert --disable-tests-make-all
+%else
+%configure --disable-assert --with-static-boost --with-boost=/usr/local/boost_1_58_0
+%endif
 make %{?_smp_mflags}
 
 %install
