@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "2bf59ecc_8f13d343",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1590,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-30T01:20:59Z",
+      "side": 1,
+      "message": "I see the errors with the unit test. Will fix this. Thanks.",
+      "parentUuid": "3bc4a9a4_65dc4ef7",
+      "revId": "817933c42f53d85b5b3c52dd15eead12f5a0d817",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "12b12588_ee0ab245",
         "filename": "agent-ovs/lib/PolicyManager.cpp",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2019-01-22T13:19:09Z",
       "side": 1,
       "message": "externalInterfaces can only be removed with this function. i did:\n    if (class_id \u003d\u003d modelgbp::gbp::EpGroup::CLASS_ID) {\n        group_map[uri];\n+    } else if (class_id \u003d\u003d modelgbp::gbp::ExternalInterface::CLASS_ID) {\n+       ext_int_map[uri];\n+  }",
+      "revId": "817933c42f53d85b5b3c52dd15eead12f5a0d817",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a71a3590_e313d209",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1617,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-01-30T01:20:59Z",
+      "side": 1,
+      "message": "Agree. I did not have unit test cases for these. Will add those. Thanks",
+      "parentUuid": "12b12588_ee0ab245",
       "revId": "817933c42f53d85b5b3c52dd15eead12f5a0d817",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
