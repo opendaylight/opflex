@@ -12,6 +12,28 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
+if HAVE_STATIC_BOOST
+$(info Static boost enabled)
+$(info BOOST_STATIC_LIB_DIR $(BOOST_STATIC_LIB_DIR))
+USE_BOOST_SYSTEM_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_system.a
+USE_BOOST_FILESYSTEM_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_filesystem.a
+USE_BOOST_PROGRAM_OPTIONS_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_program_options.a
+USE_BOOST_UNIT_TEST_FRAMEWORK_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_test_exec_monitor.a \
+				  $(BOOST_STATIC_LIB_DIR)/libboost_unit_test_framework.a
+USE_BOOST_IOSTREAMS_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_iostreams.a
+USE_TEST_FLAGS=-DBoost_USE_STATIC_LIBS=ON
+RPM_BUILD_FLAGS=--without-dynboost
+else
+$(info Static boost disabled)
+USE_BOOST_SYSTEM_LIB=$(BOOST_SYSTEM_LIB)
+USE_BOOST_FILESYSTEM_LIB=$(BOOST_FILESYSTEM_LIB)
+USE_BOOST_ASIO_LIB=$(BOOST_ASIO_LIB)
+USE_BOOST_PROGRAM_OPTIONS_LIB=$(BOOST_PROGRAM_OPTIONS_LIB)
+USE_BOOST_UNIT_TEST_FRAMEWORK_LIB=$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
+USE_BOOST_IOSTREAMS_LIB=$(BOOST_IOSTREAMS_LIB)
+USE_TEST_FLAGS=-DBOOST_TEST_DYN_LINK
+endif
+
 OVS_ADDL_CFLAGS = \
 	-D__STDC_LIMIT_MACROS \
 	-D__STDC_CONSTANT_MACROS \
@@ -36,9 +58,9 @@ libopflex_agent_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(libnfct_LIBS) \
-	$(BOOST_SYSTEM_LIB) \
-	$(BOOST_FILESYSTEM_LIB) \
-	$(BOOST_ASIO_LIB)
+	$(USE_BOOST_SYSTEM_LIB) \
+	$(USE_BOOST_FILESYSTEM_LIB) \
+	$(USE_BOOST_ASIO_LIB)
 
 libopflex_agent_la_includedir = $(includedir)/opflexagent
 libopflex_agent_la_include_HEADERS = \
@@ -188,9 +210,9 @@ if RENDERER_OVS
 	$(libmodelgbp_LIBS) \
 	$(libopenvswitch_LIBS) \
 	$(libofproto_LIBS) \
-	$(BOOST_SYSTEM_LIB) \
-	$(BOOST_FILESYSTEM_LIB) \
-	$(BOOST_ASIO_LIB)
+	$(USE_BOOST_SYSTEM_LIB) \
+	$(USE_BOOST_FILESYSTEM_LIB) \
+	$(USE_BOOST_ASIO_LIB)
   libopflex_agent_renderer_openvswitch_la_LIBADD = \
 	librenderer_openvswitch.la
   libopflex_agent_renderer_openvswitch_la_LDFLAGS = \
@@ -205,9 +227,9 @@ opflex_agent_SOURCES = \
 	cmd/opflex_agent.cpp
 opflex_agent_LDADD = \
 	$(libopflex_LIBS) \
-	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	$(BOOST_FILESYSTEM_LIB) \
-	$(BOOST_SYSTEM_LIB) \
+	$(USE_BOOST_PROGRAM_OPTIONS_LIB) \
+	$(USE_BOOST_FILESYSTEM_LIB) \
+	$(USE_BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
 gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
@@ -216,17 +238,17 @@ gbp_inspect_SOURCES = \
 gbp_inspect_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
-	$(BOOST_IOSTREAMS_LIB) \
-	$(BOOST_PROGRAM_OPTIONS_LIB) \
+        $(USE_BOOST_IOSTREAMS_LIB) \
+        $(USE_BOOST_PROGRAM_OPTIONS_LIB) \
 	libopflex_agent.la
 
 mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
 mcast_daemon_SOURCES = \
 	cmd/mcast_daemon.cpp
 mcast_daemon_LDADD = \
-	$(BOOST_FILESYSTEM_LIB) \
-	$(BOOST_SYSTEM_LIB) \
-	$(BOOST_PROGRAM_OPTIONS_LIB) \
+        $(USE_BOOST_FILESYSTEM_LIB) \
+        $(USE_BOOST_SYSTEM_LIB) \
+        $(USE_BOOST_PROGRAM_OPTIONS_LIB) \
 	libopflex_agent.la
 
 TESTS = agent_test
@@ -237,7 +259,7 @@ agent_test_CXXFLAGS = \
 	-I$(top_srcdir)/lib/include \
 	-I$(top_srcdir)/cmd/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) \
-	-DBOOST_TEST_DYN_LINK
+	$(USE_TEST_FLAGS)
 
 agent_test_includedir = $(includedir)/opflexagent/test
 agent_test_include_HEADERS = \
@@ -258,9 +280,9 @@ agent_test_SOURCES = \
 agent_test_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
-	$(BOOST_FILESYSTEM_LIB) \
-	$(BOOST_SYSTEM_LIB) \
-	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
+	$(USE_BOOST_FILESYSTEM_LIB) \
+	$(USE_BOOST_SYSTEM_LIB) \
+	$(USE_BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 	libopflex_agent.la
 
 if RENDERER_OVS
@@ -306,7 +328,7 @@ mock_server_SOURCES = \
 mock_server_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
-	$(BOOST_PROGRAM_OPTIONS_LIB) \
+        $(USE_BOOST_PROGRAM_OPTIONS_LIB) \
 	libopflex_agent.la
 
 policy_repo_stress_CXXFLAGS = \
@@ -316,9 +338,9 @@ policy_repo_stress_SOURCES = \
 	cmd/test/policy_repo_stress.cpp
 policy_repo_stress_LDADD = \
 	$(libopflex_LIBS) \
-	$(BOOST_PROGRAM_OPTIONS_LIB) \
-	$(BOOST_FILESYSTEM_LIB) \
-	$(BOOST_SYSTEM_LIB) \
+	$(USE_BOOST_PROGRAM_OPTIONS_LIB) \
+	$(USE_BOOST_FILESYSTEM_LIB) \
+	$(USE_BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
 agentconfdir=$(sysconfdir)/opflex-agent-ovs
@@ -354,7 +376,7 @@ if HAVE_DOXYGEN
 endif
 
 integration_test_CXXFLAGS = \
-	$(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
+	$(BOOST_CPPFLAGS) $(USE_TEST_FLAGS) \
 	-I$(top_srcdir)/integration-test/include
 
 integration_test_SOURCES = \
@@ -363,8 +385,8 @@ integration_test_SOURCES = \
 
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
 integration_test_LDADD = \
-	$(BOOST_SYSTEM_LIB) \
-	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
+	$(USE_BOOST_SYSTEM_LIB) \
+	$(USE_BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 	libopflex_agent.la
 
 if RENDERER_OVS
@@ -407,14 +429,14 @@ RPMDIRS=rpm/BUILD rpm/SOURCES rpm/RPMS rpm/SRPMS
 rpm: dist rpm/${PACKAGE}.spec
 	mkdir -p ${RPMDIRS}
 	cp ${SOURCE_FILE} rpm/SOURCES/
-	rpmbuild ${RPMFLAGS} -ba rpm/${PACKAGE}.spec
+	rpmbuild ${RPMFLAGS} ${RPM_BUILD_FLAGS} -ba rpm/${PACKAGE}.spec
 	cp rpm/RPMS/${ARCH}/*.rpm .
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
 srpm: dist rpm/${PACKAGE}.spec
 	mkdir -p ${RPMDIRS}
 	cp ${SOURCE_FILE} rpm/SOURCES/
-	rpmbuild ${RPMFLAGS} -bs rpm/${PACKAGE}.spec
+	rpmbuild ${RPMFLAGS} ${RPM_BUILD_FLAGS} -bs rpm/${PACKAGE}.spec
 	cp rpm/SRPMS/*.rpm .
 	rm -rf ${RPMDIRS}
 
