@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9ede468b_da2117cd",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-01-31T10:53:48Z",
+      "side": 1,
+      "message": "it !\u003d l3n_map.end() \u0026\u0026 it-\u003esecond.instContext.get()\nshould be\n   it !\u003d l3n_map.end() \u0026\u0026 it-\u003esecond.instContext\ni.e. extra get()",
+      "revId": "1fe538c4f4b95f157d2e99be3ea0e967820de026",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
