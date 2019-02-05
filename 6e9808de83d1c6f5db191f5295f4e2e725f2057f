@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "feb27912_26936a36",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 1712,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-02-05T11:39:06Z",
+      "side": 1,
+      "message": "control reaches end of non-void function",
+      "revId": "6e9808de83d1c6f5db191f5295f4e2e725f2057f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b93212aa_566570e2",
+        "filename": "agent-ovs/lib/include/opflexagent/PolicyManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 270,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-02-05T11:39:06Z",
+      "side": 1,
+      "message": "present is declared after but initalised before nexthops.\nnew compilers issue a warning about this.",
+      "revId": "6e9808de83d1c6f5db191f5295f4e2e725f2057f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
