@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "36939453_429e1e01",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 1712,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-02-05T21:54:44Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "feb27912_26936a36",
+      "revId": "6e9808de83d1c6f5db191f5295f4e2e725f2057f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b93212aa_566570e2",
         "filename": "agent-ovs/lib/include/opflexagent/PolicyManager.h",
         "patchSetId": 7
@@ -30,6 +48,24 @@
       "writtenOn": "2019-02-05T11:39:06Z",
       "side": 1,
       "message": "present is declared after but initalised before nexthops.\nnew compilers issue a warning about this.",
+      "revId": "6e9808de83d1c6f5db191f5295f4e2e725f2057f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5c3bb5cc_55fc9990",
+        "filename": "agent-ovs/lib/include/opflexagent/PolicyManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 270,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-02-05T21:54:44Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "b93212aa_566570e2",
       "revId": "6e9808de83d1c6f5db191f5295f4e2e725f2057f",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
