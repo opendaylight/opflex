@@ -223,7 +223,6 @@ public class FMetaDef
         out.print(aInIndent , lPrefix + "ClassInfo(" + aInClass.getGID().getId() + ", ");
         out.println(getClassType(aInClass) + ", \"" + aInClass.getFullConcatenatedName() + "\", \"" + getOwner(aInClass) + "\",");
         genProps(aInIndent + 1, aInClass);
-        genNamingProps(aInIndent + 1, aInClass);
         out.println(aInIndent + 1, ')');
     }
 
@@ -300,7 +299,7 @@ public class FMetaDef
                 lIsFirst = false;
             }
 
-            out.println(aInIndent + 1, "},");
+            out.println(aInIndent + 1, "}");
         }
     }
     private void genConsts(int aInIndent, MClass aInClass, MProp aInProp, MType aInType)

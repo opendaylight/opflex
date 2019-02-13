@@ -56,8 +56,7 @@ public:
                                    (PropertyInfo(23, "class9",
                                                  PropertyInfo::COMPOSITE, 
                                                  9, 
-                                                 PropertyInfo::VECTOR)),
-                               std::vector<prop_id_t>()))
+                                                 PropertyInfo::VECTOR))))
                     (ClassInfo(2, ClassInfo::LOCAL_ENDPOINT, "class2", "owner1",
                                list_of 
                                    (PropertyInfo(4, "prop4", 
@@ -69,8 +68,7 @@ public:
                                    (PropertyInfo(5, "class3", 
                                                  PropertyInfo::COMPOSITE, 
                                                  3,
-                                                 PropertyInfo::VECTOR)),
-                               list_of(4)))
+                                                 PropertyInfo::VECTOR))))
                     (ClassInfo(3, ClassInfo::OBSERVABLE, "class3", "owner2",
                                list_of 
                                    (PropertyInfo(6, "prop6", 
@@ -81,8 +79,7 @@ public:
                                                  PropertyInfo::SCALAR))
                                    (PropertyInfo(16, "prop16", 
                                                  PropertyInfo::STRING, 
-                                                 PropertyInfo::SCALAR)),
-                               list_of(6)(7)))
+                                                 PropertyInfo::SCALAR))))
                     (ClassInfo(4, ClassInfo::POLICY, "class4", "owner2",
                                list_of 
                                    (PropertyInfo(9, "prop9",
@@ -95,8 +92,7 @@ public:
                                    (PropertyInfo(25, "class7",
                                                  PropertyInfo::COMPOSITE, 
                                                  7, 
-                                                 PropertyInfo::VECTOR)),
-                               list_of(9)))
+                                                 PropertyInfo::VECTOR))))
                     (ClassInfo(5, ClassInfo::RELATIONSHIP, "class5", "owner2",
                                list_of 
                                    (PropertyInfo(10, "prop10", 
@@ -104,14 +100,12 @@ public:
                                                  PropertyInfo::SCALAR))
                                    (PropertyInfo(11, "class4Ref", 
                                                  PropertyInfo::REFERENCE,
-                                                 PropertyInfo::VECTOR)),
-                               list_of(10)))
+                                                 PropertyInfo::VECTOR))))
                     (ClassInfo(6, ClassInfo::POLICY, "class6", "owner2",
                                list_of 
                                    (PropertyInfo(13, "prop13",
                                                  PropertyInfo::STRING, 
-                                                 PropertyInfo::SCALAR)),
-                               list_of(13)))
+                                                 PropertyInfo::SCALAR))))
                     (ClassInfo(7, ClassInfo::LOCAL_ONLY, "class7", "owner2",
                                list_of
                                    (PropertyInfo(14, "prop14",
@@ -120,8 +114,7 @@ public:
                                                  EnumInfo("PlatformAdminState",
                                                           list_of
                                                               (ConstInfo("off", 0))
-                                                              (ConstInfo("on", 1))))),
-                               list_of(14)))
+                                                              (ConstInfo("on", 1)))))))
                     (ClassInfo(8, ClassInfo::REMOTE_ENDPOINT, "class8", "owner2",
                                list_of 
                                    (PropertyInfo(17, "prop17",
@@ -130,8 +123,7 @@ public:
                                    (PropertyInfo(20, "class10",
                                                  PropertyInfo::COMPOSITE, 
                                                  10, 
-                                                 PropertyInfo::VECTOR)),
-                               list_of(17)))
+                                                 PropertyInfo::VECTOR))))
                     (ClassInfo(9, ClassInfo::RELATIONSHIP, "class9", "owner2",
                                list_of 
                                    (PropertyInfo(18, "prop18", 
@@ -139,14 +131,12 @@ public:
                                                  PropertyInfo::SCALAR))
                                    (PropertyInfo(19, "class8Ref", 
                                                  PropertyInfo::REFERENCE,
-                                                 PropertyInfo::SCALAR)),
-                               list_of(18)))
+                                                 PropertyInfo::SCALAR))))
                     (ClassInfo(10, ClassInfo::REMOTE_ENDPOINT, "class10", "owner2",
                                list_of 
                                    (PropertyInfo(21, "prop21",
                                                  PropertyInfo::STRING, 
-                                                 PropertyInfo::SCALAR)),
-                               list_of(21)))
+                                                 PropertyInfo::SCALAR))))
              ) { }
 
     ModelMetadata md;

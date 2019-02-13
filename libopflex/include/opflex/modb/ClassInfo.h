@@ -112,8 +112,7 @@ public:
               class_type_t class_type,
               const std::string& class_name,
               const std::string& owner,
-              const std::vector<PropertyInfo>& properties,
-              const std::vector<prop_id_t>& naming_props);
+              const std::vector<PropertyInfo>& properties);
 
     /**
      * Destroy the class index
@@ -150,16 +149,6 @@ public:
      * @return A map from prop_id_t to PropertyInfo
      */
     const property_map_t& getProperties() const { return properties; }
-
-    /**
-     * Get the vector of naming properties (in order) that make up the
-     * key or naming properties for this class.
-     *
-     * @return a vector of property ID object.
-     */
-    const std::vector<prop_id_t>& getNamingProps() const {
-        return naming_props;
-    }
 
     /**
      * Get the PropertyInfo for the given named property

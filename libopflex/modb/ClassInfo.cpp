@@ -24,13 +24,11 @@ ClassInfo::ClassInfo(class_id_t class_id_,
                      class_type_t class_type_,
                      const std::string& class_name_,
                      const std::string& owner_,
-                     const std::vector<PropertyInfo>& properties_,
-                     const std::vector<prop_id_t>& naming_props_)
+                     const std::vector<PropertyInfo>& properties_)
     : class_id(class_id_),
       class_type(class_type_),
       class_name(class_name_), 
-      owner(owner_),
-      naming_props(naming_props_) {
+      owner(owner_) {
     std::vector<PropertyInfo>::const_iterator it;
     for (it = properties_.begin(); it != properties_.end(); ++it) {
         properties[it->getId()] = *it;

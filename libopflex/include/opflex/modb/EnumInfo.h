@@ -63,12 +63,6 @@ public:
     const std::string& getName() const { return name; }
 
     /**
-     * Get the vector of possible const values for the enum
-     * @return the vector of possible const values
-     */
-    const std::vector<ConstInfo>& getConsts() const { return consts; }
-
-    /**
      * Get the constant value by the enum name
      *
      * @return The integer enum value
@@ -89,11 +83,6 @@ private:
      * The name for this enum
      */
     std::string name;
-
-    /**
-     * Possible const values for the enum
-     */
-    std::vector<ConstInfo> consts;
 
     typedef OF_UNORDERED_MAP<std::string, uint64_t> const_name_map_t;
     typedef OF_UNORDERED_MAP<uint64_t, std::string> const_value_map_t;

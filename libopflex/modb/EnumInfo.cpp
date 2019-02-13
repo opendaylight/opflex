@@ -24,9 +24,8 @@ namespace modb {
 
 EnumInfo::EnumInfo(const std::string &name_,
          const std::vector<ConstInfo>& consts_)
-    : name(name_),
-      consts(consts_) {
-    BOOST_FOREACH(ConstInfo& cinst, consts) {
+    : name(name_) {
+    BOOST_FOREACH(const ConstInfo& cinst, consts_) {
         const_name_map[cinst.getName()] = cinst.getId();
         const_value_map[cinst.getId()] = cinst.getName();
     }
@@ -38,7 +37,6 @@ EnumInfo::~EnumInfo() {
 const uint64_t EnumInfo::getIdByName(const std::string& name) const {
     return const_name_map.at(name);
 }
-
 
 const std::string& EnumInfo::getNameById(uint64_t id) const {
     return const_value_map.at(id);
