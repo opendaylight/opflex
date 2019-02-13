@@ -465,6 +465,7 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
                     /* your kernel hates you */
                 case -EHOSTUNREACH:
                 case -ENETUNREACH:
+                case -EADDRNOTAVAIL:
                 case -EPROTONOSUPPORT:
                 case -EPFNOSUPPORT:
                 case -EAFNOSUPPORT:
