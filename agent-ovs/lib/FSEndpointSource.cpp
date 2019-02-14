@@ -73,11 +73,6 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EP_DISC_PROXY("discovery-proxy-mode");
     static const std::string EP_ATTRIBUTES("attributes");
 
-    static const std::string ATTESTATION("attestation");
-    static const std::string ATTEST_NAME("name");
-    static const std::string ATTEST_VALIDATOR("validator");
-    static const std::string ATTEST_VALIDATOR_MAC("validator-mac");
-
     static const std::string DHCP4("dhcp4");
     static const std::string DHCP6("dhcp6");
     static const std::string DHCP_IP("ip");
@@ -396,30 +391,6 @@ void FSEndpointSource::updated(const fs::path& filePath) {
 
                 if (ipm.getMappedIP())
                     newep.addIPAddressMapping(ipm);
-            }
-        }
-
-        optional<ptree&> attests =
-            properties.get_child_optional(ATTESTATION);
-        if (attests) {
-            for (const ptree::value_type &v : attests.get()) {
-                optional<string> name =
-                    v.second.get_optional<string>(ATTEST_NAME);
-                if (!name) continue;
-
-                Endpoint::Attestation attest(name.get());
-
-                optional<string> validator =
-                    v.second.get_optional<string>(ATTEST_VALIDATOR);
-                optional<string> validatorMac =
-                    v.second.get_optional<string>(ATTEST_VALIDATOR_MAC);
-                if (!validator || !validatorMac)
-                    continue;
-
-                attest.setValidator(validator.get());
-                attest.setValidatorMac(validatorMac.get());
-
-                newep.addAttestation(attest);
             }
         }
 

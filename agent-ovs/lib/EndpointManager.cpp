@@ -688,14 +688,6 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
             l2e->setVmName(ap.second);
     }
 
-    for (const Endpoint::Attestation& a : ep->getAttestations()) {
-        if (!a.getValidator() || !a.getValidatorMac())
-            continue;
-        l2e->addGbpeAttestation(a.getName())
-            ->setValidator(a.getValidator().get())
-            .setValidatorMac(a.getValidatorMac().get());
-    }
-
     return l2e;
 }
 static shared_ptr<modelgbp::epr::L3Ep>
@@ -717,14 +709,6 @@ populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
 
     for (const opflex::modb::URI& secGroup : secGroups) {
         l3e->addEprSecurityGroupContext(secGroup.toString());
-    }
-
-    for (const Endpoint::Attestation& a : ep->getAttestations()) {
-        if (!a.getValidator() || !a.getValidatorMac())
-            continue;
-        l3e->addGbpeAttestation(a.getName())
-            ->setValidator(a.getValidator().get())
-            .setValidatorMac(a.getValidatorMac().get());
     }
 
     return l3e;

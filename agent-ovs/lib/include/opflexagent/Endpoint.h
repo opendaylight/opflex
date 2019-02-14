@@ -1099,112 +1099,6 @@ public:
         return ipAddressMappings;
     }
 
-    /**
-     * An attestation can be used by the endpoint registry to confirm
-     * the validity of a reported endpoint.
-     */
-    class Attestation {
-    public:
-        /**
-         * Construct a new attestation
-         *
-         * @param name_ a name for this attestation unique for the
-         * endpoint
-         */
-        Attestation(const std::string& name_) : name(name_) { }
-
-        /**
-         * Get the name for this attestation
-         * @return the name
-         */
-        const std::string& getName() const {
-            return name;
-        }
-
-        /**
-         * Get the validator for this endpoint.  This is an encoded
-         * string that provides validation for the information in the
-         * endpoint.
-         *
-         * @return the validator
-         */
-        const boost::optional<std::string>& getValidator() const {
-            return validator;
-        }
-
-        /**
-         * Set the validator for the endpoint.  This is an encoded
-         * string that provides validation for the information in the
-         * endpoint.
-         *
-         * @param validator the validator string
-         */
-        void setValidator(const std::string& validator) {
-            this->validator = validator;
-        }
-
-        /**
-         * Unset the validator
-         */
-        void unsetValidator() {
-            validator = boost::none;
-        }
-
-        /**
-         * Get the validator MAC for this endpoint's validator.
-         *
-         * @return the validatorMac
-         */
-        const boost::optional<std::string>& getValidatorMac() const {
-            return validatorMac;
-        }
-
-        /**
-         * Set the validator MAC for this endpoint's validator.  The
-         * validator MAC authenticates the validator.
-         *
-         * @param validatorMac the validator MAC encoded string
-         */
-        void setValidatorMac(const std::string& validatorMac) {
-            this->validatorMac = validatorMac;
-        }
-
-        /**
-         * Unset the validatorMac
-         */
-        void unsetValidatorMac() {
-            validatorMac = boost::none;
-        }
-
-    private:
-        std::string name;
-        boost::optional<std::string> validator;
-        boost::optional<std::string> validatorMac;
-    };
-
-    /**
-     * Clear the list of attestations
-     */
-    void clearAttestations() {
-        attestations.clear();
-    }
-
-    /**
-     * Add a address mapping to the endpoint
-     *
-     * @param attestation the address mapping object
-     */
-    void addAttestation(const Attestation& attestation);
-
-    /**
-     * Get the set of address mappings for the endpoint
-     *
-     * @return a set of address mapping objects
-     */
-    const std::vector<Attestation>& getAttestations() const {
-        return attestations;
-    }
-
 private:
     std::string uuid;
     boost::optional<opflex::modb::MAC> mac;
@@ -1224,7 +1118,6 @@ private:
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
     ipam_set ipAddressMappings;
-    std::vector<Attestation> attestations;
 };
 
 /**
