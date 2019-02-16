@@ -446,10 +446,6 @@ public:
         addr->sun_path[sizeof(addr->sun_path)-1] = '\0';
         return rc;
     }
-
-    virtual int getSockName(struct sockaddr* remoteAddress, int* len) const {
-        return getPeerName(remoteAddress, len);
-    }
 };
 
 ::yajr::comms::internal::PassivePeer *

@@ -202,12 +202,6 @@ private:
      * Look up properties IDs by name
      */
     prop_name_map_t prop_names;
-
-    /**
-     * The property IDs (in order) that make up the key or naming
-     * properties for this class.
-     */
-    std::vector<prop_id_t> naming_props;
 };
 
 /* @} metadata */

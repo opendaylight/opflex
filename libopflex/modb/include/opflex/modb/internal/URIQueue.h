@@ -134,10 +134,6 @@ private:
     uv_async_t item_async;
     uv_async_t cleanup_async;
 
-    /**
-     * Processing thread
-     */
-    uv_thread_t proc_thread;
     volatile bool proc_shouldRun;
     static void proc_async_func(uv_async_t* handle);
     static void cleanup_async_func(uv_async_t* handle);

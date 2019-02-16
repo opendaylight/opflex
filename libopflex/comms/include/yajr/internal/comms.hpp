@@ -104,10 +104,7 @@ void on_passive_connection(uv_stream_t * server_handle, int status);
 int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack = true);
 void on_active_connection(uv_connect_t *req, int status);
 void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp);
-int addr_from_ip_and_port(const char * ip_address, uint16_t port,
-        struct sockaddr_storage * addr);
 
-
 
 typedef ::boost::intrusive::list_base_hook<
     ::boost::intrusive::link_mode< ::boost::intrusive::auto_unlink> >
@@ -428,12 +425,6 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         connectionHandler_(dynamic_cast<yajr::Peer *>(this), data_, ::yajr::StateChange::DELETE, 0);
     }
 
-    virtual size_t getPendingBytes() const {
-        /* will only need to be overridden for UDP sockets */
-        return reinterpret_cast<uv_stream_t const *>(getHandle())
-            ->write_queue_size;
-    }
-
     virtual void startKeepAlive(
             uint64_t begin    =  100,
             uint64_t repeat   = 1250,
@@ -505,13 +496,6 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 len);
     }
 
-    virtual int getSockName(struct sockaddr* remoteAddress, int* len) const {
-        return uv_tcp_getsockname(
-                reinterpret_cast<uv_tcp_t const *>(getHandle()),
-                remoteAddress,
-                len);
-    }
-
     virtual void destroy(bool now = false);
 
     uint64_t getKeepAliveInterval() const {
@@ -531,15 +515,6 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     }
 
     int tcpInit();
-
-    static void dumpIov(
-            std::stringstream & dbgLog,
-            std::vector<iovec> const & iov
-    );
-
-    yajr::transport::Transport::Engine * getTransportData() {
-        return transport_.data_;
-    }
 
     template< class E >
     E * getEngine() const {

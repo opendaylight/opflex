@@ -366,7 +366,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
 
     ssize_t advancement = BIO_nread(
             e->bioExternal_,
-            (char**)&whereTheReadShouldHaveStarted,
+            &whereTheReadShouldHaveStarted,
             peer->pendingBytes_);
 
     bool giveUp = false;

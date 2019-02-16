@@ -371,25 +371,6 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
     }
 }
 
-void CommunicationPeer::dumpIov(std::stringstream & dbgLog, std::vector<iovec> const & iov) {
-    dbgLog << "DUMP_IOV\n";
-    for (size_t i=0; i < iov.size(); ++i) {
-        iovec const & j = iov[i];
-        dbgLog
-            << "\n IOV "
-            << i
-            << ": "
-            << j.iov_base
-            << "+"
-            << j.iov_len
-        ;
-        std::copy((char*)j.iov_base,
-                  (char*)j.iov_base + j.iov_len,
-                  std::ostream_iterator<char>(dbgLog, ""));
-    }
-}
-
-
 std::ostream& operator << (
         std::ostream& os,
         std::vector<iovec> const & iov) {
