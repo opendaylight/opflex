@@ -1005,10 +1005,40 @@ static void flowsEndpointSource(FlowEntryList& elSrc,
         return;
 
     if (hasMac) {
-        actionSource(FlowBuilder().priority(140)
-                     .inPort(ofPort).ethSrc(macAddr),
-                     epgVnid, bdId, fgrpId, rdId)
+        FlowBuilder l2Classify;
+        l2Classify.priority(140)
+                  .inPort(ofPort).ethSrc(macAddr);
+        // Map on L2. Port security rules filter L2
+        // and L3 before we reach this table.
+        if (!endPoint.isPromiscuousMode()) {
+            actionSource(l2Classify, epgVnid, bdId, fgrpId, rdId)
+                .build(elSrc);
+            return;
+        }
+
+        // Map on L2 and L3. Promiscuous endpoints do
+        // not have port security rules to filter L2
+        // or L3. So its done here.
+        l2Classify.ethType(eth::type::ARP);
+        actionSource(l2Classify, epgVnid, bdId, fgrpId, rdId)
             .build(elSrc);
+
+        for (const string& ipStr : endPoint.getIPs()) {
+
+            boost::system::error_code ec;
+
+            address addr = address::from_string(ipStr, ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid endpoint IP: "
+                             << ipStr << ": " << ec.message();
+                continue;
+            }
+            actionSource(FlowBuilder().priority(140)
+                         .ipSrc(addr)
+                         .inPort(ofPort).ethSrc(macAddr),
+                         epgVnid, bdId, fgrpId, rdId)
+                .build(elSrc);
+        }
     }
 }
 
