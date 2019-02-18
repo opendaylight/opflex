@@ -496,6 +496,13 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 len);
     }
 
+    virtual int getSockName(struct sockaddr* remoteAddress, int* len) const {
+        return uv_tcp_getsockname(
+                reinterpret_cast<uv_tcp_t const *>(getHandle()),
+                remoteAddress,
+                len);
+    }
+
     virtual void destroy(bool now = false);
 
     uint64_t getKeepAliveInterval() const {
