@@ -18,6 +18,7 @@ owner[init]
     class[dci/EpToUnivRSrc]
     class[dci/Universe]
     class[observer/Universe]
+    class[monitor/Universe]
     module[dmtree]
     {
         class[*]
@@ -51,6 +52,10 @@ owner[policyreg]
         class[*]
     }
     module[inv]
+    {
+        class[*]
+    }
+    module[monitor]
     {
         class[*]
     }

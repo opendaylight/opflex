@@ -15,7 +15,9 @@
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <modelgbp/gbp/AutoconfigEnumT.hpp>
+#include <modelgbp/monitor/Universe.hpp>
 #include <opflex/modb/Mutator.h>
+#include <opflexagent/logging.h>
 
 #include "Policies.h"
 
@@ -41,6 +43,7 @@ void Policies::writeBasicInit(opflex::ofcore::OFFramework& framework) {
     root->addEprL3Universe();
     root->addEpdrL2Discovered();
     root->addEpdrL3Discovered();
+    root->addMonitorUniverse();
     mutator.commit();
 }
 
@@ -91,6 +94,9 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     shared_ptr<policy::Universe> universe =
         policy::Universe::resolve(framework).get();
+
+    shared_ptr<monitor::Universe> monitor =
+        monitor::Universe::resolve(framework).get();
 
     Mutator mutator(framework, "policyreg");
     universe->addPlatformConfig("openstack")
@@ -301,6 +307,23 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->addGbpSecGroupRule("3_2_rule1")
         ->setDirection(DirectionEnumT::CONST_IN)
         .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
+
+    // span monitoring
+    // assume root has already been created.
+
+    shared_ptr<monitor::SrcGrp> srcGrp1 = monitor->addMonitorSrcGrp("SrcGrp1");
+    shared_ptr<monitor::SrcMember> srcMem1 = srcGrp1->addMonitorSrcMember("SrcMem1");
+    shared_ptr<monitor::DstGrp> dstGrp1 = monitor->addMonitorDstGrp("DstGrp1");
+    shared_ptr<monitor::DstMember> dstMem1 = dstGrp1->addMonitorDstMember("DstMem1");
+    shared_ptr<monitor::LocalEp> lEp1 = monitor->addMonitorLocalEp("localEp1");
+    opflex::modb::MAC mac = opflex::modb::MAC("01:02:03:04:05:06");
+    lEp1->addMonitorLocalEpToEpRSrc()->setTargetL2Ep("bd", mac);
+    srcMem1->addMonitorMemberToRefRSrc()->setTargetLocalEp(lEp1->getName().get());
+    srcGrp1->addMonitorSrcMember(srcMem1->getName().get());
+    dstGrp1->addMonitorDstMember(dstMem1->getName().get());
+    dstMem1->setDest("192.168.20.100");
+    dstMem1->setVersion(1);
+    srcGrp1->addMonitorSrcGrpToRefRSrc()->setTargetDstGrp(dstGrp1->getName().get());
 
     mutator.commit();
 }

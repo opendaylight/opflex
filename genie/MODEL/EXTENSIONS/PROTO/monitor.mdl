@@ -1,16 +1,27 @@
-module[span]
+module[monitor]
 {
+    # Universe containing all monitoring artifacts
+    class[Universe;
+          concrete;]
+    {
+        # part of root node
+        root
+        
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=mon;]
+            }
+        }
+    }
+    
     type[ErspanVersion; super=scalar/Enum8]
     {
         const[name=v1; value=1]
         const[name=v2; value=2]
     }
 
-    type[ErspanDestMode; super=scalar/Enum8]
-    {
-        const[name=visible; value=1]
-        const[name=notVisible; value=2]
-    }
 
     type[Direction; super=scalar/Enum8]
     {
@@ -24,12 +35,15 @@ module[span]
           abstract]
 
     class[SrcGrp;
-          super=span/Grp;
+          super=monitor/Grp;
           concrete]
     {
         member[state; type=platform/AdminState]
         member[label; type=scalar/UInt32]
-
+        contained
+        {
+            parent[class=monitor/Universe]
+        }
         named
         {
             parent[class=*;]
@@ -38,12 +52,24 @@ module[span]
                           member=name]
             }
         }
+        dependency[ref;
+                   cardinality=single;
+                  ]
+        {
+            to[class=monitor/DstGrp;
+                cardinality=single;
+              ]
+        }        
     }
 
     class[DstGrp;
-          super=span/Grp;
+          super=monitor/Grp;
           concrete]
     {
+        contained
+        {
+            parent[class=monitor/Universe]
+        }     
         named
         {
             parent[class=*;]
@@ -59,6 +85,10 @@ module[span]
           concrete]
     {
         member[nic; type=ascii/Name]
+        contained
+        {
+            parent[class=monitor/Universe]
+        }
         dependency[ep;
                    cardinality=single;
                    ]
@@ -90,14 +120,9 @@ module[span]
                 cardinality=many;
                 ]
 
-            to[class=span/LocalEp;
+            to[class=monitor/LocalEp;
                 cardinality=many;
                 ]
-        }
-
-        contained
-        {
-            parent[class=span/Grp]
         }
         named
         {
@@ -110,39 +135,28 @@ module[span]
     }
 
     class[SrcMember;
-          super=span/Member;
+          super=monitor/Member;
           concrete]
     {
-        member[dir; type=span/Direction]
+        member[dir; type=monitor/Direction]
+        
+        contained
+        {
+            parent[class=monitor/SrcGrp]
+        }
+
     }
 
     class[DstMember;
-          super=span/Member;
-          concrete]
-
-    class[DstSummary;
+          super=monitor/Member;
           concrete]
     {
         member[dest; type=address/IP]
-        member[srcPrefix; type=address/IP]
-        member[version; type=span/ErspanVersion]
-        member[flowId; type=scalar/UInt16]
-        member[ttl; type=scalar/UInt8]
-        member[vrfName; type=ascii/Name]
-        member[mtu; type=l2/Mtu]
-        member[dscp; type=scalar/UInt8]
-        member[mode; type=span/ErspanDestMode]
+        member[version; type=monitor/ErspanVersion]
 
         contained
         {
-            parent[class=span/DstMember]
-        }
-        named
-        {
-            parent[class=*;]
-            {
-                component[prefix=summary]
-            }
+            parent[class=monitor/DstGrp]
         }
     }
 }
