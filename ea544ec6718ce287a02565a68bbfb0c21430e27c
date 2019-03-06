@@ -1,0 +1,242 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e6cac889_669a1ca2",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "Not needed at this time. Please remove",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86e8ab8a_817f8705",
+        "filename": "agent-ovs/lib/EndpointManager.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "can you log something at some debug level if validate fails...tough to debug otherwise if external ep file is malformed",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f797d40_af1ef13e",
+        "filename": "agent-ovs/lib/FSExternalEndpointSource.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "This duplicates a lot of code from FSEndpointSource.cpp\n\nPlease look at refactoring the common stuff out somehow to avoid code dup",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4a0409e8_387cf5bf",
+        "filename": "agent-ovs/lib/FSExternalEndpointSource.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "indentation",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7094a480_beaee746",
+        "filename": "agent-ovs/lib/FSExternalEndpointSource.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "indent",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85934315_e2f1faa4",
+        "filename": "agent-ovs/lib/FSExternalEndpointSource.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "should still be a 4 space indent",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "30c5a9b3_e841881a",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 1710,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "indentation",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d6147e47_9e43b31a",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 1729,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "indentation",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e77717ec_60b56295",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 13
+      },
+      "lineNbr": 1885,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "std::vector -\u003e vector\nstd::shared_ptr -\u003e shared_ptr (this and next line)",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1c84c456_37efcf2a",
+        "filename": "genie/MODEL/SPECIFIC/EPR/epdr.mdl",
+        "patchSetId": 13
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "This isn\u0027t used anywhere in this changeset. Please remove",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "084ccdd8_303834f8",
+        "filename": "genie/MODEL/SPECIFIC/EPR/epdr.mdl",
+        "patchSetId": 13
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "Not needed at this time. Please remove",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf1421be_bb591ff6",
+        "filename": "genie/MODEL/SPECIFIC/EPR/epdr.mdl",
+        "patchSetId": 13
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "Not needed at this time. Please remove",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9334db7b_60e8b789",
+        "filename": "genie/MODEL/SPECIFIC/EPR/epdr.mdl",
+        "patchSetId": 13
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "Remove relation to DynamicRoute until we support them",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "41bd752a_e5e59896",
+        "filename": "genie/MODEL/SPECIFIC/EPR/epdruniverse.mdl",
+        "patchSetId": 13
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-06T20:10:42Z",
+      "side": 1,
+      "message": "Not needed at this time. Please remove",
+      "revId": "ea544ec6718ce287a02565a68bbfb0c21430e27c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
