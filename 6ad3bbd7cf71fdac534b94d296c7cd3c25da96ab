@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "709f9a7a_7d30ec14",
+        "filename": "agent-ovs/lib/include/opflexagent/PolicyManager.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 636,
+      "author": {
+        "id": 7401
+      },
+      "writtenOn": "2019-03-06T08:12:24Z",
+      "side": 1,
+      "message": "sclass is a 16 bit number. maybe tpedef sclass_t and use throughout.",
+      "revId": "6ad3bbd7cf71fdac534b94d296c7cd3c25da96ab",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
