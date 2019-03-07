@@ -15,6 +15,7 @@
 #include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <modelgbp/gbp/UnknownFloodModeEnumT.hpp>
 #include <modelgbp/gbp/AutoconfigEnumT.hpp>
+#include <modelgbp/span/Universe.hpp>
 #include <opflex/modb/Mutator.h>
 
 #include "Policies.h"
@@ -41,6 +42,7 @@ void Policies::writeBasicInit(opflex::ofcore::OFFramework& framework) {
     root->addEprL3Universe();
     root->addEpdrL2Discovered();
     root->addEpdrL3Discovered();
+    root->addSpanUniverse();
     mutator.commit();
 }
 
@@ -91,6 +93,9 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
 
     shared_ptr<policy::Universe> universe =
         policy::Universe::resolve(framework).get();
+
+    shared_ptr<span::Universe> span =
+        span::Universe::resolve(framework).get();
 
     Mutator mutator(framework, "policyreg");
     universe->addPlatformConfig("openstack")
@@ -302,6 +307,19 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->setDirection(DirectionEnumT::CONST_IN)
         .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
 
+    shared_ptr<span::SrcGrp> srcGrp1 = span->addSpanSrcGrp("SrcGrp1");
+    shared_ptr<span::SrcMember> srcMem1 = srcGrp1->addSpanSrcMember("SrcMem1");
+    shared_ptr<span::DstGrp> dstGrp1 = span->addSpanDstGrp("DstGrp1");
+    shared_ptr<span::DstMember> dstMem1 = dstGrp1->addSpanDstMember("DstMem1");
+    shared_ptr<span::DstSummary> dstSumm1 = dstMem1->addSpanDstSummary();
+    shared_ptr<span::LocalEp> lEp1 = span->addSpanLocalEp("localEp1");
+    opflex::modb::MAC mac = opflex::modb::MAC("01:02:03:04:05:06");
+    lEp1->addSpanLocalEpToEpRSrc()->setTargetL2Ep("bd", mac);
+    srcMem1->addSpanMemberToRefRSrc()->setTargetLocalEp(lEp1->getName().get());
+    srcGrp1->addSpanSrcMember(srcMem1->getName().get());
+    dstGrp1->addSpanDstMember(dstMem1->getName().get());
+    dstSumm1->setDest("192.168.20.100");
+    dstSumm1->setVersion(1);
     mutator.commit();
 }
 

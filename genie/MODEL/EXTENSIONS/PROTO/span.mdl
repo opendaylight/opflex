@@ -1,5 +1,20 @@
 module[span]
 {
+    # Universe containing all monitoring artifacts
+    class[Universe;
+          concrete;]
+    {
+        # part of root node
+        root
+        
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=span;]
+            }
+        }
+    }
     type[ErspanVersion; super=scalar/Enum8]
     {
         const[name=v1; value=1]
@@ -29,7 +44,10 @@ module[span]
     {
         member[state; type=platform/AdminState]
         member[label; type=scalar/UInt32]
-
+        contained
+        {
+            parent[class=span/Universe]
+        }
         named
         {
             parent[class=*;]
@@ -44,6 +62,10 @@ module[span]
           super=span/Grp;
           concrete]
     {
+        contained
+        {
+            parent[class=span/Universe]
+        }
         named
         {
             parent[class=*;]
@@ -75,6 +97,10 @@ module[span]
                 component[prefix=ep;
                           member=name]
             }
+        }
+        contained
+        {
+            parent[class=span/Universe]
         }
     }
 
@@ -114,11 +140,21 @@ module[span]
           concrete]
     {
         member[dir; type=span/Direction]
+         contained
+        {
+            parent[class=span/SrcGrp]
+        }
     }
 
     class[DstMember;
           super=span/Member;
           concrete]
+    {
+        contained
+        {
+            parent[class=span/DstGrp]
+        }
+    }
 
     class[DstSummary;
           concrete]
