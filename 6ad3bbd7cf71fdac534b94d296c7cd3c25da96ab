@@ -16,6 +16,24 @@
       "revId": "6ad3bbd7cf71fdac534b94d296c7cd3c25da96ab",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b9b42db3_9104d754",
+        "filename": "agent-ovs/lib/include/opflexagent/PolicyManager.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 636,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-03-07T09:32:49Z",
+      "side": 1,
+      "message": "sclass in the genie model was pre-existing and defined as 32 bit inline with ACI object model.( although actually it is 16 bits in practice). So, I don\u0027t want to change this.",
+      "parentUuid": "709f9a7a_7d30ec14",
+      "revId": "6ad3bbd7cf71fdac534b94d296c7cd3c25da96ab",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
