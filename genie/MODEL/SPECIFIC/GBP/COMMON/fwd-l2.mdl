@@ -78,6 +78,9 @@ module[gbp]
 
         # Treat flood domain as isolated
         const[name=isolated; value=1]
+
+        # Drop packets addressed to unknown multicast addresses
+        const[name=drop; value=2]
     }
 
     class[FloodDomain;

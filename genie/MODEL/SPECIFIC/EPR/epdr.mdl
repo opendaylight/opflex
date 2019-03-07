@@ -60,4 +60,88 @@ module[epdr]
         }
 
     }
+
+    # abstraction of external end-point identifies the external peer
+    class[ExternalL3Ep;
+          super=epr/LocalEp;
+          concrete;
+          ]
+    {
+        # A unique identifer for the endpoint.  Could be related to a
+        # UUID for an interface, virtual machine, etc.
+        member[uuid; type=reference/UUID]
+
+        # ip address of the external endpoint
+        member[ip; type=address/IP]
+
+        # mac address of the external endpoint
+        member[mac; type=address/MAC]
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        dependency[pathAtt;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/ExternalInterface;
+                cardinality=single;
+                ]
+        }
+
+        dependency[nodeAtt;
+                   cardinality=single;
+                   ]
+        {
+            to[class=gbp/ExternalNode;
+                cardinality=single;
+                ]
+        }
+
+        dependency[secGroup;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/SecGroup;
+                cardinality=many;
+                ]
+        }
+
+        contained
+        {
+            parent[class=epdr/ExternalDiscovered]
+        }
+
+    }
+
+    class[LocalRoute;
+          super=gbp/BaseRoute;
+          concrete]
+    {
+        member[vrf; type=reference/URI]
+        dependency[srt;
+                   cardinality=many;]
+        {
+            to[class=gbp/StaticRoute;
+               cardinality=single;]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=vrf]
+                component[prefix=-;member=address]
+                component[prefix="/";member=prefixLen]
+            }
+        }
+        contained
+        {
+            parent[class=epdr/LocalRouteDiscovered]
+        }
+    }
 }
