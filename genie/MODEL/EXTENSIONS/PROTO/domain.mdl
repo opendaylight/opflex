@@ -32,6 +32,15 @@ module[domain]
                 ]
         }
 
+        dependency[RemoteSpan;
+                   cardinality=single;
+                   ]
+        {
+            to[class=span/RemoteSpan;
+                cardinality=single;
+                ]
+        }
+        
         named
         {
             parent[class=*;]
