@@ -19,6 +19,7 @@
 #include <opflexagent/LearningBridgeManager.h>
 #include <opflexagent/NotifServer.h>
 #include <opflexagent/FSWatcher.h>
+#include <opflexagent/SpanManager.h>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional.hpp>
@@ -243,6 +244,7 @@ private:
     NotifServer notifServer;
     FSWatcher fsWatcher;
     opflex_elem_t rendererFwdMode;
+    SpanManager spanManager;
 
     boost::optional<std::string> opflexName;
     boost::optional<std::string> opflexDomain;

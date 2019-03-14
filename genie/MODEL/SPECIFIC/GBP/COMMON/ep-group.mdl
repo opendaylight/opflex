@@ -70,6 +70,13 @@ module[gbp]
                cardinality=many;
                ]
         }
+        
+        dependency[spanSession;
+                   cardinality=many;]
+        {
+            to[class=span/Session;
+               cardinality=many;]
+        }
 
         contained
         {
