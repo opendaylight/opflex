@@ -2,6 +2,7 @@ module[span]
 {
     # Universe containing all monitoring artifacts
     class[Universe;
+    super=policy/Definition;
           concrete;]
     {
         # part of root node
@@ -33,6 +34,23 @@ module[span]
         const[name=out; value=2]
         const[name=both; value=3]
     }
+    
+    class[Session;
+          super=policy/Definition;
+          concrete;]
+    {
+        member[label; type=scalar/UInt32]
+        contained
+        {
+            parent[class=span/Universe]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+            }
+        }
+    }
 
     class[Grp;
           super=platform/ConfigComponent;
@@ -46,7 +64,7 @@ module[span]
         member[label; type=scalar/UInt32]
         contained
         {
-            parent[class=span/Universe]
+            parent[class=span/Session]
         }
         named
         {
@@ -64,7 +82,7 @@ module[span]
     {
         contained
         {
-            parent[class=span/Universe]
+            parent[class=span/Session]
         }
         named
         {
@@ -100,7 +118,7 @@ module[span]
         }
         contained
         {
-            parent[class=span/Universe]
+            parent[class=span/Session]
         }
     }
 

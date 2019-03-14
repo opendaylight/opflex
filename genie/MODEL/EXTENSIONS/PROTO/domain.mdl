@@ -32,6 +32,15 @@ module[domain]
                 ]
         }
 
+        dependency[SpanSession;
+                   cardinality=single;
+                   ]
+        {
+            to[class=span/Session;
+                cardinality=single;
+                ]
+        }
+        
         named
         {
             parent[class=*;]

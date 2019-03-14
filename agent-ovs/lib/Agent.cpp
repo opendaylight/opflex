@@ -58,7 +58,8 @@ using boost::uuids::basic_random_generator;
 Agent::Agent(OFFramework& framework_)
     : framework(framework_), policyManager(framework, agent_io),
       endpointManager(framework, policyManager), notifServer(agent_io),
-      started(false), presetFwdMode(opflex_elem_t::INVALID_MODE) {
+      started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
+      spanManager(framework) {
     std::random_device rng;
     std::mt19937 urng(rng());
     uuid = to_string(basic_random_generator<std::mt19937>(urng)());
@@ -422,12 +423,14 @@ void Agent::start() {
     root->addGbpeVMUniverse();
     root->addObserverEpStatUniverse();
     root->addObserverPolicyStatUniverse();
+    root->addSpanUniverse();
     mutator.commit();
 
     // instantiate other components
     policyManager.start();
     endpointManager.start();
     notifServer.start();
+    spanManager.start();
 
     for (auto& r : renderers) {
         r.second->start();
