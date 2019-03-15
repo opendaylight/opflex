@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "483feafc_0ffd794f",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/domain.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-15T01:35:05Z",
+      "side": 1,
+      "message": "This doesn\u0027t make sense. There can be many sessions on an agent. The other relation you have from the EpGroup makes sense to me",
+      "revId": "ea3f0214c3cadfad5fb8f0c1a0c2fe12ccbc53f4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f78e90d_78f4e0e5",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-15T01:35:05Z",
+      "side": 1,
+      "message": "why does it need to inherit from this?",
+      "revId": "ea3f0214c3cadfad5fb8f0c1a0c2fe12ccbc53f4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "92d91b4c_b3da9c76",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-15T01:35:05Z",
+      "side": 1,
+      "message": "There can be many concurrent sessions on an agent. There needs to be a naming component (name?)",
+      "revId": "ea3f0214c3cadfad5fb8f0c1a0c2fe12ccbc53f4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c2d08160_772c7101",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-15T01:35:05Z",
+      "side": 1,
+      "message": "where does this number come from?",
+      "revId": "ea3f0214c3cadfad5fb8f0c1a0c2fe12ccbc53f4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b964f8f2_c70b3574",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/ep-group.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-15T01:35:05Z",
+      "side": 1,
+      "message": "i think you could have multiple sessions associated with an EpGroup at the same time",
+      "revId": "ea3f0214c3cadfad5fb8f0c1a0c2fe12ccbc53f4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
