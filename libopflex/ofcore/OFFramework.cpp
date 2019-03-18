@@ -16,8 +16,6 @@
 
 #include <cstdio>
 
-#include "config.h"
-
 #include <boost/assign.hpp>
 #include <boost/foreach.hpp>
 #include <boost/scoped_ptr.hpp>

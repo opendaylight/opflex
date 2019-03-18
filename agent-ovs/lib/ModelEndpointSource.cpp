@@ -37,7 +37,8 @@ ModelEndpointSource(EndpointManager* manager_,
         config(modelgbp::domain::Config::resolve(framework));
     if (config) {
         for (const auto& name: inventories_) {
-            config.get()->addDomainConfigToEndpointInventoryRSrc(name);
+            config.get()->addDomainConfigToEndpointInventoryRSrc(name)->
+                setTargetLocalEndpointInventory(name);
         }
     }
     mutator.commit();
