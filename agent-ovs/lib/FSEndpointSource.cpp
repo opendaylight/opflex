@@ -71,6 +71,8 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EP_ACCESS_UPLINK_IFACE("access-uplink-interface");
     static const std::string EP_PROMISCUOUS("promiscuous-mode");
     static const std::string EP_DISC_PROXY("discovery-proxy-mode");
+    static const std::string EP_NAT_MODE("nat-mode");
+    static const std::string EP_ATTRIBUTE_VM_NAME("vm-name");
     static const std::string EP_ATTRIBUTES("attributes");
 
     static const std::string DHCP4("dhcp4");
@@ -215,12 +217,21 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             properties.get_optional<bool>(EP_DISC_PROXY);
         if (discprox)
             newep.setDiscoveryProxyMode(discprox.get());
+        optional<bool> natMode =
+            properties.get_optional<bool>(EP_NAT_MODE);
+        if (natMode)
+            newep.setNatMode(natMode.get());
 
         optional<ptree&> attrs =
             properties.get_child_optional(EP_ATTRIBUTES);
         if (attrs) {
             for (const ptree::value_type &v : attrs.get()) {
                 newep.addAttribute(v.first, v.second.data());
+                if (v.first == EP_ATTRIBUTE_VM_NAME &&
+                    // vm-name attribute starts with snat|
+                    v.second.data().rfind("snat|", 0) == 0) {
+                    newep.setNatMode(true);
+                }
             }
         }
 

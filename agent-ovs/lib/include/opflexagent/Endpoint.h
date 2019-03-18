@@ -432,6 +432,24 @@ public:
     }
 
     /**
+     * Set the Nat mode flag to the value specified
+     *
+     * @param Nat the new value for the NAT mode
+     */
+    void setNatMode(bool natMode) {
+        this->natMode = natMode;
+    }
+
+    /**
+     * Get the value of the Nat mode flag
+     *
+     * @return true if Nat mode is on
+     */
+    bool isNatMode() const {
+        return natMode;
+    }
+
+    /**
      * Clear the attribute map
      */
     void clearAttributes() {
@@ -1114,6 +1132,7 @@ private:
     boost::optional<std::string> accessUplinkInterface;
     bool promiscuousMode;
     bool discoveryProxyMode;
+    bool natMode;
     attr_map_t attributes;
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
