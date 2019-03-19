@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a8b0a6fd_f9f1adc2",
+        "filename": "agent-ovs/cmd/test/Policies.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-19T18:51:39Z",
+      "side": 1,
+      "message": "This isn\u0027t right...these can be more than one active session on the agent...need to add a naming param in the model for Session",
+      "revId": "c1782370972d54ccd0e7f319fe413c5196ec06c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3147f2b0_3f40bb68",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-19T18:51:39Z",
+      "side": 1,
+      "message": "EndpointManager -\u003e SpanManager",
+      "revId": "c1782370972d54ccd0e7f319fe413c5196ec06c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d71407b7_2476d377",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-19T18:51:39Z",
+      "side": 1,
+      "message": "Should probably use 2019 instead of 2014 now",
+      "revId": "c1782370972d54ccd0e7f319fe413c5196ec06c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2aeb97c9_3ade1cdd",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-19T18:51:39Z",
+      "side": 1,
+      "message": "Update comment for span and copyright year",
+      "revId": "c1782370972d54ccd0e7f319fe413c5196ec06c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "38bf8f79_ecfd699a",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/domain.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-19T18:51:39Z",
+      "side": 1,
+      "message": "this file can be removed from the changeset",
+      "revId": "c1782370972d54ccd0e7f319fe413c5196ec06c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c11fff0_d7576697",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-19T18:51:39Z",
+      "side": 1,
+      "message": "nit: remove tab/spaces on blank line",
+      "revId": "c1782370972d54ccd0e7f319fe413c5196ec06c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3215a5b5_95a23b8d",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-19T18:51:39Z",
+      "side": 1,
+      "message": "still missing the naming definition to distinguish multiple sessions\n\nsomething like\n\ncomponent[prefix\u003dsession;\n                    member\u003dname]",
+      "revId": "c1782370972d54ccd0e7f319fe413c5196ec06c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6c42f436_0ba4c295",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/ep-group.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-19T18:51:39Z",
+      "side": 1,
+      "message": "nit: remove tab",
+      "revId": "c1782370972d54ccd0e7f319fe413c5196ec06c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
