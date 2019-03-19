@@ -34,7 +34,7 @@ public:
     /**
      * Default constructor for containers
      */
-    Endpoint() : promiscuousMode(false), discoveryProxyMode(false) {}
+    Endpoint() : promiscuousMode(false), discoveryProxyMode(false), natMode(false) {}
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that
@@ -44,7 +44,7 @@ public:
      * @param uuid_ the unique ID for the endpoint.
      */
     explicit Endpoint(const std::string& uuid_)
-        : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false) {}
+        : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false), natMode(false) {}
 
     /**
      * Get the endpoint group URI associated with this endpoint.  Note
