@@ -19,6 +19,7 @@
 #include <opflexagent/LearningBridgeManager.h>
 #include <opflexagent/NotifServer.h>
 #include <opflexagent/FSWatcher.h>
+#include <opflexagent/SpanManager.h>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional.hpp>
@@ -306,6 +307,8 @@ private:
     long contractInterval;
     long securityGroupInterval;
     long interfaceInterval;
+
+    SpanManager spanManager;
 };
 
 } /* namespace opflexagent */

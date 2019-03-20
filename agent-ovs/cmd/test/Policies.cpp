@@ -307,15 +307,24 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         ->setDirection(DirectionEnumT::CONST_IN)
         .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
 
-    shared_ptr<span::SrcGrp> srcGrp1 = span->addSpanSrcGrp("SrcGrp1");
-    shared_ptr<span::SrcMember> srcMem1 = srcGrp1->addSpanSrcMember("SrcMem1");
-    shared_ptr<span::DstGrp> dstGrp1 = span->addSpanDstGrp("DstGrp1");
-    shared_ptr<span::DstMember> dstMem1 = dstGrp1->addSpanDstMember("DstMem1");
+    // Add span related artifacts
+    shared_ptr<span::Session> sess =
+        span->addSpanSession("sess1");
+    shared_ptr<EpGroupToSpanSessionRSrc> epg1Rsrc =
+        eg1->addGbpEpGroupToSpanSessionRSrc(sess->getName().get());
+    epg1Rsrc->setTargetSession(sess->getURI());
+    shared_ptr<span::SrcGrp> srcGrp1 = sess->addSpanSrcGrp("SrcGrp1");
+    shared_ptr<span::SrcMember> srcMem1 =
+        srcGrp1->addSpanSrcMember("SrcMem1");
+    shared_ptr<span::DstGrp> dstGrp1 = sess->addSpanDstGrp("DstGrp1");
+    shared_ptr<span::DstMember> dstMem1 =
+        dstGrp1->addSpanDstMember("DstMem1");
     shared_ptr<span::DstSummary> dstSumm1 = dstMem1->addSpanDstSummary();
-    shared_ptr<span::LocalEp> lEp1 = span->addSpanLocalEp("localEp1");
+    shared_ptr<span::LocalEp> lEp1 = sess->addSpanLocalEp("localEp1");
     opflex::modb::MAC mac = opflex::modb::MAC("01:02:03:04:05:06");
     lEp1->addSpanLocalEpToEpRSrc()->setTargetL2Ep("bd", mac);
-    srcMem1->addSpanMemberToRefRSrc()->setTargetLocalEp(lEp1->getName().get());
+    srcMem1->addSpanMemberToRefRSrc()->setTargetLocalEp(lEp1->
+        getURI());
     srcGrp1->addSpanSrcMember(srcMem1->getName().get());
     dstGrp1->addSpanDstMember(dstMem1->getName().get());
     dstSumm1->setDest("192.168.20.100");
