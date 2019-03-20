@@ -434,7 +434,7 @@ public:
     /**
      * Set the Nat mode flag to the value specified
      *
-     * @param Nat the new value for the NAT mode
+     * @param natMode the new value for the NAT mode
      */
     void setNatMode(bool natMode) {
         this->natMode = natMode;
