@@ -71,6 +71,13 @@ module[gbp]
                ]
         }
 
+        dependency[spanSession;
+                   cardinality=many;]
+        {
+            to[class=span/Session;
+               cardinality=many;]
+        }
+
         contained
         {
             parent[class=policy/Space]
