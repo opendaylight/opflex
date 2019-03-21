@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.content.format.proxy.structure.cpp;
 
-import org.opendaylight.opflex.genie.content.format.agent.meta.cpp.FMetaDef;
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.mnaming.MNameComponent;
 import org.opendaylight.opflex.genie.content.model.mnaming.MNameRule;
@@ -153,15 +152,8 @@ public class FClassDef extends ItemFormatterTask
         out.println(aInIndent,getInclude("boost/pointer_cast.hpp", true));
         out.println(aInIndent,getInclude("opflex/modb/URIBuilder.h", false));
         out.println(aInIndent, getInclude("opflex/modb/MO.h", false));
-        /**
-         if (aInClass.hasSuperclass())
-         {
-         MClass lSuper = aInClass.getSuperclass();
-         out.printIncodeComment(aInIndent, "superclass: " + lSuper);
-         out.println(aInIndent,getInclude(lSuper), false);
-         }
-         */
-        TreeMap<Ident, MClass> lConts = new TreeMap<Ident, MClass>();
+
+        Map<Ident, MClass> lConts = new TreeMap<>();
         aInClass.getContainsClasses(lConts, true, true);
         for (MClass lThis : lConts.values())
         {
@@ -187,16 +179,7 @@ public class FClassDef extends ItemFormatterTask
     private void genClass(int aInIndent, MClass aInClass)
     {
         out.println(aInIndent, "class " + aInClass.getLID().getName());
-        /**
-         if (aInClass.hasSuperclass())
-         {
-         MClass lSuperclass = aInClass.getSuperclass();
-         out.println(aInIndent + 1, ": public " + getClassName(lSuperclass,true));
-         }
-         else**/
-        {
-            out.println(aInIndent + 1, ": public opflex::modb::MO");
-        }
+        out.println(aInIndent + 1, ": public opflex::modb::MO");
         out.println(aInIndent, "{");
         genPublic(aInIndent + 1, aInClass);
         out.println(aInIndent, "}; // class " + aInClass.getLID().getName());
@@ -215,22 +198,18 @@ public class FClassDef extends ItemFormatterTask
     private void genClassId(int aInIndent, MClass aInClass)
     {
         String lClassName = getClassName(aInClass, false);
-        out.printHeaderComment(aInIndent, Arrays.asList("The unique class ID for " + lClassName));
+        out.printHeaderComment(aInIndent, Collections.singletonList("The unique class ID for " + lClassName));
         out.println(aInIndent, "static const opflex::modb::class_id_t CLASS_ID = " + aInClass.getGID().getId() + ";");
         out.println();
     }
 
     private void genProps(int aInIndent, MClass aInClass)
     {
-        TreeMap<String, MProp> lProps = new TreeMap<String, MProp>();
+        Map<String, MProp> lProps = new TreeMap<>();
         aInClass.findProp(lProps, true); // false
         for (MProp lProp : lProps.values())
         {
-            // ONLY IF THIS PROPERTY IS DEFINED LOCALLY
-            //if (lProp.getBase().getMClass() == aInClass)
-            {
-                genProp(aInIndent, aInClass, lProp, lProp.getPropId(aInClass));
-            }
+            genProp(aInIndent, aInClass, lProp, lProp.getPropId(aInClass));
         }
     }
 
@@ -274,7 +253,7 @@ public class FClassDef extends ItemFormatterTask
         MType lType = lBaseProp.getType(false);
         MType lBaseType = lType.getBuiltInType();
 
-        LinkedList<String> lComments = new LinkedList<String>();
+        List<String> lComments = new LinkedList<>();
         aInProp.getComments(lComments);
 
         if (aInClass.isConcreteSuperclassOf("relator/Source") &&
@@ -282,28 +261,26 @@ public class FClassDef extends ItemFormatterTask
         {
             if (aInProp.getLID().getName().equalsIgnoreCase("targetName"))
             {
-                genRef(aInIndent,aInClass,aInProp,aInPropIdx,lType,lBaseType,lComments, true);
+                genRef(aInIndent,aInClass, aInPropIdx,lType, lComments, true);
             }
         }
         else
         {
-            genPropCheck(aInIndent,aInClass,aInProp,aInPropIdx,lType,lBaseType,lComments);
-            genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, lType, lBaseType, lComments);
-            genPropMutator(aInIndent, aInClass, aInProp, aInPropIdx, lType, lBaseType, lComments);
+            genPropCheck(aInIndent, aInProp,aInPropIdx, lComments);
+            genPropAccessor(aInIndent, aInProp, aInPropIdx, lBaseType, lComments);
+            genPropMutator(aInIndent, aInClass, aInProp, aInPropIdx, lBaseType, lComments);
         }
     }
 
-    private void genRef(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInComments, boolean aInTarget)
+    private void genRef(int aInIndent, MClass aInClass, int aInPropIdx, MType aInType,
+                        Collection<String> aInComments, boolean aInTarget)
     {
-        genRefCheck(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
-        genRefAccessors(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
-        genRefMutators(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInType, aInComments, aInTarget);
+        genRefCheck(aInIndent, aInPropIdx, aInComments, aInTarget);
+        genRefAccessors(aInIndent, aInPropIdx, aInComments, aInTarget);
+        genRefMutators(aInIndent, aInClass, aInPropIdx, aInType, aInComments, aInTarget);
     }
 
-    private void genPropCheck(
-            int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInComments, String aInCheckName, String aInPType)
+    private void genPropCheck(int aInIndent, int aInPropIdx, Collection<String> aInComments, String aInCheckName)
     {
         //
         // COMMENT
@@ -333,25 +310,23 @@ public class FClassDef extends ItemFormatterTask
     }
 
     private void genPropCheck(
-            int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInComments)
+            int aInIndent, MProp aInProp, int aInPropIdx, Collection<String> aInComments)
     {
-        String lPType = FMetaDef.getTypeName(aInBaseType);
-        genPropCheck(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType,
-                     aInComments, aInProp.getLID().getName(),
-                     lPType);
+        genPropCheck(aInIndent, aInPropIdx,
+                aInComments, aInProp.getLID().getName()
+        );
     }
 
     private void genRefCheck(
-            int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+            int aInIndent, int aInPropIdx,
             Collection<String> aInComments, boolean target)
     {
-        genPropCheck(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType,
-                     aInComments, target ? "target" : "source", "REFERENCE");
+        genPropCheck(aInIndent, aInPropIdx,
+                aInComments, target ? "target" : "source");
     }
 
     private void genPropAccessor(
-            int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+            int aInIndent, int aInPropIdx,
             Collection<String> aInComments, String aInCheckName, String aInName, String aInEffSyntax, String aInPType,
             String aInCast, String aInAccessor)
     {
@@ -385,7 +360,7 @@ public class FClassDef extends ItemFormatterTask
     }
 
     private void genPropAccessor(
-            int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+            int aInIndent, MProp aInProp, int aInPropIdx, MType aInBaseType,
             Collection<String> aInComments)
     {
         String lName = aInProp.getLID().getName();
@@ -394,23 +369,22 @@ public class FClassDef extends ItemFormatterTask
         String lCast = getCast(lPType, lEffSyntax);
         lEffSyntax = mapToInternalRep(aInBaseType, lEffSyntax);
         lPType = getTypeAccessor(lPType);
-        genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments,
+        genPropAccessor(aInIndent, aInPropIdx, aInComments,
                         lName, lName, lEffSyntax, lPType, lCast, "");
     }
 
     private void genRefAccessors(
-            int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInComments, boolean target)
+            int aInIndent, int aInPropIdx, Collection<String> aInComments, boolean target)
     {
         String lName = (target ? "target" : "source");
-        genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments,
+        genPropAccessor(aInIndent, aInPropIdx, aInComments,
                         lName, lName + "Class", "opflex::modb::class_id_t", "Reference", "", ".first");
-        genPropAccessor(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType, aInComments,
+        genPropAccessor(aInIndent, aInPropIdx, aInComments,
                         lName, lName + "URI", "opflex::modb::URI", "Reference", "", ".second");
     }
 
-    private void genPropMutator(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
-            Collection<String> aInBaseComments, Collection<String> aInComments, String aInName, String aInPType, String aInEffSyntax, String aInParamName, String aInParamHelp,
+    private void genPropMutator(int aInIndent, MClass aInClass, int aInPropIdx, MType aInBaseType, Collection<String> aInBaseComments,
+            Collection<String> aInComments, String aInName, String aInEffSyntax, String aInParamName, String aInParamHelp,
             String aInSetterPrefix)
     {
         //
@@ -448,9 +422,9 @@ public class FClassDef extends ItemFormatterTask
         out.println();
     }
 
-    private void genNamedPropMutators(int aInIndent, MClass aInClass, MClass aInRefClass, int aInPropIdx,
+    private void genNamedPropMutators(int aInIndent, MClass aInClass, MClass aInRefClass,
                                       List<Pair<String, MNameRule>> aInNamingPath, boolean aInIsUniqueNaming,
-                                      String aInMethName, String aInPType, String aInSetterPrefix)
+                                      String aInMethName)
     {
         String lRefClassName = getClassName(aInRefClass, false);
         ArrayList<String> lComment = new ArrayList<>(Arrays.asList(
@@ -458,9 +432,9 @@ public class FClassDef extends ItemFormatterTask
             "by constructing its URI from the path elements that lead to it.",
             "",
             "The reference URI generated by this function will take the form:",
-            getUriDoc(aInRefClass, aInNamingPath),
+            getUriDoc(aInNamingPath),
             ""));
-        addPathComment(aInClass, aInNamingPath, lComment);
+        addPathComment(aInNamingPath, lComment);
         lComment.add("");
         lComment.add("@return a reference to the current object");
         out.printHeaderComment(aInIndent,lComment);
@@ -504,29 +478,27 @@ public class FClassDef extends ItemFormatterTask
         //
         // BODY
         //
-        String lUriBuilder = getUriBuilder(aInClass, aInNamingPath);
+        String lUriBuilder = getUriBuilder(aInNamingPath);
         out.println(aInIndent,"{");
-        out.println(aInIndent + 1, "set" + Strings.upFirstLetter(lMethName) + "(" + lUriBuilder + ");");
+        String lCommonMethName = getMethName(aInNamingPath, true, aInMethName);
+        out.println(aInIndent + 1, "set" + Strings.upFirstLetter(lCommonMethName) + "(" + lUriBuilder + ");");
         out.println(aInIndent + 1, "return *this;");
         out.println(aInIndent,"}");
         out.println();
     }
 
-    private void genPropMutator(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+    private void genPropMutator(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInBaseType,
             Collection<String> aInComments)
     {
         String lName = aInProp.getLID().getName();
-        String lPType = Strings.upFirstLetter(aInBaseType.getLID().getName());
-        lPType = getTypeAccessor(lPType);
-        List<String> lComments = Arrays.asList(
-                "Set " + lName + " to the specified value.");
-        genPropMutator(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType,
-                       lComments, aInComments, lName, lPType,
-                       getPropEffSyntax(aInBaseType), "newValue", "the new value to set.",
+        List<String> lComments = Collections.singletonList("Set " + lName + " to the specified value.");
+        genPropMutator(aInIndent, aInClass, aInPropIdx, aInBaseType,
+                       lComments, aInComments, lName,
+                getPropEffSyntax(aInBaseType), "newValue", "the new value to set.",
                        "");
     }
 
-    private void genRefMutators(int aInIndent, MClass aInClass, MProp aInProp, int aInPropIdx, MType aInType, MType aInBaseType,
+    private void genRefMutators(int aInIndent, MClass aInClass, int aInPropIdx, MType aInBaseType,
                                 Collection<String> aInComments, boolean target)
     {
         for (MClass lTargetClass : ((MRelationshipClass) aInClass).getTargetClasses(true))
@@ -536,18 +508,17 @@ public class FClassDef extends ItemFormatterTask
             List<String> lComments = Arrays.asList(
                     "Set the reference to point to an instance of " + getClassName(lTargetClass, false),
                     "with the specified URI");
-            genPropMutator(aInIndent, aInClass, aInProp, aInPropIdx, aInType, aInBaseType,
-                    lComments, aInComments, lName, "Reference",
+            genPropMutator(aInIndent, aInClass, aInPropIdx, aInBaseType,
+                    lComments, aInComments, lName,
                     "const opflex::modb::URI&", "uri", "The URI of the reference to add",
                     Integer.toString(lTargetClass.getGID().getId()));
 
-            Collection<List<Pair<String, MNameRule>>> lNamingPaths = new LinkedList<List<Pair<String, MNameRule>>>();
+            Collection<List<Pair<String, MNameRule>>> lNamingPaths = new LinkedList<>();
             boolean lIsUniqueNaming = lTargetClass.getNamingPaths(lNamingPaths, Language.CPP);
             for (List<Pair<String, MNameRule>> lNamingPath : lNamingPaths)
             {
-//                if (!hasValidPath(lNamingPath)) continue;
-                genNamedPropMutators(aInIndent, aInClass, lTargetClass, aInPropIdx, lNamingPath, lIsUniqueNaming,
-                        lName, "Reference", Integer.toString(lTargetClass.getGID().getId()));
+                genNamedPropMutators(aInIndent, aInClass, lTargetClass, lNamingPath, lIsUniqueNaming,
+                        lName);
             }
         }
     }
@@ -579,7 +550,7 @@ public class FClassDef extends ItemFormatterTask
 
     private void genChildrenResolvers(int aInIdent, MClass aInClass)
     {
-        TreeMap<Ident,MClass> lConts = new TreeMap<Ident, MClass>();
+        Map<Ident,MClass> lConts = new TreeMap<>();
         aInClass.getContainsClasses(lConts, true, true);//true, true);
         for (MClass lChildClass : lConts.values())
         {
@@ -605,8 +576,7 @@ public class FClassDef extends ItemFormatterTask
         }
     }
 
-    private void addPathComment(MClass aInClass,
-                                List<Pair<String, MNameRule>> aInNamingPath,
+    private void addPathComment(List<Pair<String, MNameRule>> aInNamingPath,
                                 List<String> result)
     {
         for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
@@ -639,8 +609,6 @@ public class FClassDef extends ItemFormatterTask
                 {
                     MClass lClass = MClass.get(lPathNode.getFirst());
                     Module lMod = lClass.getModule();
-                    lPathNode.getSecond();
-
                     lSb.append(Strings.upFirstLetter(lMod.getLID().getName()));
                     lSb.append(Strings.upFirstLetter(lClass.getLID().getName()));
                 }
@@ -711,14 +679,14 @@ public class FClassDef extends ItemFormatterTask
         return lRet.toString();
     }
 
-    public static String getUriBuilder(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath)
+    public static String getUriBuilder(List<Pair<String, MNameRule>> aInNamingPath)
     {
         StringBuilder lSb = new StringBuilder();
-        getUriBuilder(aInClass,aInNamingPath, lSb);
+        getUriBuilder(aInNamingPath, lSb);
         return lSb.toString();
     }
 
-    public static void getUriBuilder(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
+    public static void getUriBuilder(List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
     {
         aOut.append("opflex::modb::URIBuilder()");
         for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
@@ -743,13 +711,13 @@ public class FClassDef extends ItemFormatterTask
         aOut.append(".build()");
     }
 
-    public static String getUriDoc(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath)
+    public static String getUriDoc(List<Pair<String, MNameRule>> aInNamingPath)
     {
         StringBuilder lSb = new StringBuilder();
-        getUriDoc(aInClass,aInNamingPath, lSb);
+        getUriDoc(aInNamingPath, lSb);
         return lSb.toString();
     }
-    public static void getUriDoc(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
+    public static void getUriDoc(List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
     {
         for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
         {
@@ -769,14 +737,14 @@ public class FClassDef extends ItemFormatterTask
         }
     }
 
-    public static String getUriBuilder(MClass aInParentClass,MClass aInChildClass, MNameRule aInNamingRule)
+    public static String getUriBuilder(MClass aInChildClass, MNameRule aInNamingRule)
     {
         StringBuilder lSb = new StringBuilder();
-        getUriBuilder(aInParentClass, aInChildClass, aInNamingRule, lSb);
+        getUriBuilder(aInChildClass, aInNamingRule, lSb);
         return lSb.toString();
 
     }
-    public static void getUriBuilder(MClass aInParentClass,MClass aInChildClass, MNameRule aInNamingRule, StringBuilder aOut)
+    public static void getUriBuilder(MClass aInChildClass, MNameRule aInNamingRule, StringBuilder aOut)
     {
         aOut.append("opflex::modb::URIBuilder(getURI())");
         aOut.append(".addElement(\"");
@@ -901,7 +869,7 @@ public class FClassDef extends ItemFormatterTask
         {
             String lFormattedChildClassName = getClassName(aInChildClass,true);
             String lConcatenatedChildClassName = aInChildClass.getFullConcatenatedName();
-            String lUriBuilder = getUriBuilder(aInParentClass,aInChildClass, lChildNr);
+            String lUriBuilder = getUriBuilder(aInChildClass, lChildNr);
             Collection<MNameComponent> lNcs = lChildNr.getComponents();
             boolean lMultipleChildren = false;
             for (MNameComponent lNc : lNcs)
