@@ -53,7 +53,7 @@ module[span]
     }
 
     class[Grp;
-          super=platform/ConfigComponent;
+          super=policy/NamedComponent;
           abstract]
 
     class[SrcGrp;
@@ -95,7 +95,7 @@ module[span]
     }
 
     class[LocalEp;
-          super=platform/ConfigComponent;
+          super=policy/NamedComponent;
           concrete]
     {
         member[nic; type=ascii/Name]
