@@ -61,7 +61,7 @@ ActiveTcpPeer * Peer::get(uv_getaddrinfo_t * r) {
 
 void Peer::up() {
 
-    VLOG(2)
+    VLOG(7)
         << this
         << " refcnt: "
         << uvRefCnt_
@@ -74,7 +74,7 @@ void Peer::up() {
 
 bool Peer::down() {
 
-    VLOG(2)
+    VLOG(7)
         << this 
         << " refcnt: "
         << uvRefCnt_

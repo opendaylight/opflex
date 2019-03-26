@@ -314,6 +314,10 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
         eg1->addGbpEpGroupToSpanSessionRSrc(sess->getName().get());
     epg1Rsrc->setTargetSession(sess->getURI());
     shared_ptr<span::SrcGrp> srcGrp1 = sess->addSpanSrcGrp("SrcGrp1");
+    shared_ptr<span::FilterGrp> fltGrp1 = span->addSpanFilterGrp("fltGrp1");
+    shared_ptr<span::FilterEntry> fltEnt1 = fltGrp1->addSpanFilterEntry("fltEnt1");
+    fltEnt1->addSpanFilterEntryToFltEntryRSrc()->setTargetL24Classifier(
+            "test", "filter1");
     shared_ptr<span::SrcMember> srcMem1 =
         srcGrp1->addSpanSrcMember("SrcMem1");
     shared_ptr<span::DstGrp> dstGrp1 = sess->addSpanDstGrp("DstGrp1");
@@ -326,6 +330,8 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     srcMem1->addSpanMemberToRefRSrc()->setTargetLocalEp(lEp1->
         getURI());
     srcGrp1->addSpanSrcMember(srcMem1->getName().get());
+    srcGrp1->addSpanSrcGrpToFltGrpRSrc(fltGrp1->getName().get())
+        ->setTargetFilterGrp("fltGrp1");
     dstGrp1->addSpanDstMember(dstMem1->getName().get());
     dstSumm1->setDest("192.168.20.100");
     dstSumm1->setVersion(1);
