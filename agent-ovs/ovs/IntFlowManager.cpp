@@ -2215,7 +2215,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
         switch (intraGroup) {
         case IntraGroupPolicyEnumT::CONST_DENY:
             prio = PolicyManager::MAX_POLICY_RULE_PRIORITY + 200;
-            break;
+            /* fall through */
         case IntraGroupPolicyEnumT::CONST_REQUIRE_CONTRACT:
             // Only automatically allow intra-EPG traffic if its come
             // from the uplink and therefore already had policy
