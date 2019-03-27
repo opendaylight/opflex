@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be0c461c_13c9d8fc",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-27T02:58:17Z",
+      "side": 1,
+      "message": "convention for dependencies is to start with a lower-case letter",
+      "revId": "3c7d8af9d1aba6668e7504dc65837bec87b33795",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2340f61e_36b75a18",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-27T02:58:17Z",
+      "side": 1,
+      "message": "shouldn\u0027t this go under span/Universe instead so it can be shared by many Sessions?",
+      "revId": "3c7d8af9d1aba6668e7504dc65837bec87b33795",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "813eb944_40380d9e",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-27T02:58:17Z",
+      "side": 1,
+      "message": "Expand to FilterEntry for class name",
+      "revId": "3c7d8af9d1aba6668e7504dc65837bec87b33795",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ace7d72c_05ba0391",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/span.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-03-27T02:58:17Z",
+      "side": 1,
+      "message": "convention for dependencies is to start with a lower-case letter",
+      "revId": "3c7d8af9d1aba6668e7504dc65837bec87b33795",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
