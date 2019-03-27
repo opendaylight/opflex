@@ -395,7 +395,7 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
                     routerMac, ipm.getEgURI().get(),
                     ipmVnid.get(), out_ports, sendEndpointAdv,
                     intFlowManager.getEncapType(),
-                    intFlowManager.getEPGTunnelDst(epgURI.get()));
+                    intFlowManager.getEPGTunnelDst(ipm.getEgURI().get()));
     }
 }
 
