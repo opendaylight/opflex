@@ -12,7 +12,7 @@
 #ifndef OPFLEXAGENT_PACKETS_H
 #define OPFLEXAGENT_PACKETS_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <arpa/inet.h>
 
 #include <boost/asio/ip/address.hpp>

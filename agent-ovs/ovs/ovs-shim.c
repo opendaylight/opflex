@@ -15,8 +15,6 @@
 #include <lib/byte-order.h>
 #include <lib/dp-packet.h>
 
-#include <stdlib.h>
-
 void format_action(const struct ofpact* acts, size_t ofpacts_len,
                    struct ds* str) {
     ofpacts_format(acts, ofpacts_len, str);

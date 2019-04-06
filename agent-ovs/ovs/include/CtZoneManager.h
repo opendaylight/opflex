@@ -16,7 +16,7 @@
 #endif
 
 #include <string>
-#include <stdint.h>
+#include <cstdint>
 #include <boost/noncopyable.hpp>
 
 namespace opflexagent {

@@ -29,7 +29,7 @@
 #include <random>
 #include <atomic>
 
-#include <signal.h>
+#include <csignal>
 
 using std::string;
 using boost::uuids::to_string;

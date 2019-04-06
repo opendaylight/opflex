@@ -11,7 +11,7 @@
 
 #include <opflexagent/logging.h>
 #include <opflexagent/cmd.h>
-#include <signal.h>
+#include <csignal>
 
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/metadata/metadata.hpp>
@@ -30,7 +30,6 @@
 #include <memory>
 
 #include <unistd.h>
-#include <signal.h>
 #include <sys/ioctl.h>
 
 using std::string;

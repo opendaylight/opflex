@@ -28,7 +28,7 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <signal.h>
+#include <csignal>
 #include <string.h>
 
 using std::string;

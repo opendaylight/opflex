@@ -10,8 +10,8 @@
 #ifndef OPFLEXAGENT_TABLESTATE_H_
 #define OPFLEXAGENT_TABLESTATE_H_
 
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdlib>
 #include <vector>
 #include <utility>
 #include <memory>

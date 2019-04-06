@@ -12,7 +12,7 @@
 #ifndef OPFLEXAGENT_FLOWCONSTANTS_H
 #define OPFLEXAGENT_FLOWCONSTANTS_H
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace opflexagent {
 namespace flow {

@@ -19,7 +19,7 @@
 #include <boost/asio/ip/address.hpp>
 #include <opflex/modb/MAC.h>
 
-#include <stdint.h>
+#include <cstdint>
 #include <arpa/inet.h>
 #include <netinet/ip6.h>
 #include <netinet/ip.h>

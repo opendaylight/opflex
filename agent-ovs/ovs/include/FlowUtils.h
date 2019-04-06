@@ -19,7 +19,7 @@
 
 #include <boost/optional.hpp>
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace opflexagent {
 

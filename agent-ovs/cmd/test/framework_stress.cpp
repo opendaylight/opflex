@@ -9,7 +9,7 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 #include <unistd.h>
-#include <signal.h>
+#include <csignal>
 
 #include <string>
 #include <vector>
@@ -26,7 +26,6 @@
 #include <opflexagent/logging.h>
 #include <opflexagent/cmd.h>
 #include "Policies.h"
-#include <signal.h>
 
 using std::string;
 using std::make_pair;

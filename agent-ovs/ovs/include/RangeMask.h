@@ -10,7 +10,7 @@
 #ifndef OPFLEXAGENT_RANGEMASK_H_
 #define OPFLEXAGENT_RANGEMASK_H_
 
-#include <stdint.h>
+#include <cstdint>
 #include <ostream>
 #include <vector>
 

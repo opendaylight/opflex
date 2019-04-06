@@ -10,7 +10,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <opflexagent/logging.h>
-#include "stdlib.h"
+#include <cstdlib>
 
 #include <opflexagent/IdGenerator.h>
 #include "CtZoneManager.h"

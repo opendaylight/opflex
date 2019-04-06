@@ -28,7 +28,7 @@
 #include <thread>
 #include <functional>
 
-#include <signal.h>
+#include <csignal>
 #include <string.h>
 
 using std::string;
