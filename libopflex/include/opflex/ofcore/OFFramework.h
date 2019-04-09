@@ -920,21 +920,21 @@ public:
      *
      * @param v4ProxyAddress
      */
-    virtual void setV4Proxy(boost::asio::ip::address_v4 &v4ProxyAddress );
+    virtual void setV4Proxy(const boost::asio::ip::address_v4& v4ProxyAddress);
 
     /**
      * Set the Ipv6 proxy address for the vswitch in transport mode.
      *
      * @param v6ProxyAddress
      */
-    virtual void setV6Proxy(boost::asio::ip::address_v4 &v6ProxyAddress );
+    virtual void setV6Proxy(const boost::asio::ip::address_v4& v6ProxyAddress);
 
     /**
      * Set the Mac proxy address for the vswitch in transport mode.
      *
      * @param macProxyAddress
      */
-    virtual void setMacProxy(boost::asio::ip::address_v4 &macProxyAddress );
+    virtual void setMacProxy(const boost::asio::ip::address_v4& macProxyAddress);
 
     virtual void start();
     virtual void stop();

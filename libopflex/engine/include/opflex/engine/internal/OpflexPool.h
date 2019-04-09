@@ -290,13 +290,13 @@ size_t getRoleCount(ofcore::OFConstants::OpflexRole role);
     AgentMode getClientMode() {
         return client_mode;
     }
-    void setV4Proxy(boost::asio::ip::address_v4& v4_proxy) {
+    void setV4Proxy(const boost::asio::ip::address_v4& v4_proxy) {
         ipv4_proxy = v4_proxy;
     }
-    void setV6Proxy(boost::asio::ip::address_v4& v6_proxy) {
+    void setV6Proxy(const boost::asio::ip::address_v4& v6_proxy) {
         ipv6_proxy = v6_proxy;
     }
-    void setMacProxy(boost::asio::ip::address_v4& l2a_proxy) {
+    void setMacProxy(const boost::asio::ip::address_v4& l2a_proxy) {
         mac_proxy = l2a_proxy;
     }
 
