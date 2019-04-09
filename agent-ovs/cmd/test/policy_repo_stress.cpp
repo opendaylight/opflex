@@ -12,7 +12,7 @@
 #include <opflexagent/Agent.h>
 #include <opflexagent/logging.h>
 #include <opflexagent/cmd.h>
-
+#include <modelgbp/fault/SeverityEnumT.hpp>
 #include <boost/program_options.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -108,6 +108,28 @@ public:
         }
     }
 
+    void createFault(opflexagent::Agent& a, const uint64_t genId) {
+        if (genId % 10 != 0) return; // reduce the frequency of faults
+
+        auto l2u = modelgbp::epr::L2Universe::resolve(a.getFramework());
+        std::vector<OF_SHARED_PTR<modelgbp::epr::L2Ep> > l2Eps;
+        l2u.get()->resolveEprL2Ep(l2Eps);
+        if (l2Eps.empty())
+        {
+            // No EPs to raise fault on
+            return;
+        }
+        auto fu = modelgbp::fault::Universe::resolve(a.getFramework());
+        std::unique_lock<std::mutex> guard(mutex);
+        opflex::modb::Mutator mutator(a.getFramework(), "policyelement");
+        auto fi = fu.get()->addFaultInstance(to_string(uuidGen()));
+        fi->setDescription("broken endpoint");
+        fi->setSeverity(modelgbp::fault::SeverityEnumT::CONST_CRITICAL);
+        auto l2Ep = *(l2Eps.begin());
+        fi->setAffectedObject(l2Ep.get()->getURI().toString());
+        mutator.commit();
+    }
+
     void updateContractCounters(opflexagent::Agent& a, const uint64_t genId) {
         auto& polMgr = a.getPolicyManager();
         auto pu = modelgbp::policy::Universe::resolve(a.getFramework());
@@ -196,6 +218,7 @@ public:
         for (auto& a : agents) {
             io.post([this, &a]() { updateInterfaceCounters(*a.agent); });
             io.post([this, &a, genId]() { updateContractCounters(*a.agent, genId); });
+            io.post([this, &a, genId]() { createFault(*a.agent, genId); });
         }
 
         if (!stopping) {

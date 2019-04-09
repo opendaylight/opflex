@@ -1,0 +1,55 @@
+module[fault]
+{
+    # ITU perceived severity level
+    type[Severity; super=scalar/Enum8]
+    {
+        const[name=cleared; value=0]
+        const[name=info; value=1]
+        const[name=warning; value=2]
+        const[name=minor; value=3]
+        const[name=major; value=4]
+        const[name=critical; value=5]
+    }
+
+    # Universe containing faults
+    class[Universe;
+          super=observer/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=fault;]
+            }
+        }
+    }
+
+    class[Instance;
+          super=observer/UuidObservable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=fault/Universe]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # The URI of the affected object
+        member[affectedObject; type=reference/URI]
+
+        # fault description
+        member[description; type=naming/Description]
+
+        # fault severity
+        member[severity; type=fault/Severity]
+    }
+}

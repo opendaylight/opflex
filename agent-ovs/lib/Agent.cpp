@@ -431,6 +431,7 @@ void Agent::start() {
     root->addEpdrExternalDiscovered();
     root->addEpdrLocalRouteDiscovered();
     root->addEprPeerRouteUniverse();
+    root->addFaultUniverse();
     mutator.commit();
 
     // instantiate other components
