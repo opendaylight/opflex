@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "48321dc0_d16b47f4",
+        "filename": "agent-ovs/lib/PolicyManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 1784,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-04-11T16:42:46Z",
+      "side": 1,
+      "message": "!empty() instead of size() !\u003d 0",
+      "revId": "deb3883b380fc67c0d1719ba4e068b2178b14ca8",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
