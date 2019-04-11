@@ -1771,6 +1771,7 @@ bool PolicyManager::isLocalRouteDeletable(
          shared_ptr<modelgbp::epdr::LocalRoute> &localRoute)
 {
     using namespace modelgbp::epdr;
+    using namespace modelgbp::gbp;
     auto lrtToPrt = localRoute->
                         resolveEpdrLocalRouteToPrtRSrc();
     auto lrtToRrt = localRoute->
@@ -1780,7 +1781,37 @@ bool PolicyManager::isLocalRouteDeletable(
     if(!lrtToRrt && !lrtToPrt && (lrtToSrt.size() ==0)) {
         return true;
     }
-    return false;
+    if(lrtToSrt.size() != 0) {
+        return false;
+    }
+    if(lrtToRrt) {
+        optional<shared_ptr<RemoteRoute>> rRt =
+            RemoteRoute::resolve(framework,
+                lrtToRrt.get()->getTargetURI().get());
+        /* One of the owners is RemoteRoute which is still present*/
+        if((rRt.get()->getAddress().get() == localRoute->getAddress().get())
+           && (rRt.get()->getPrefixLen().get() ==
+                   localRoute->getPrefixLen().get())) {
+            return false;
+        }
+    }
+    if(lrtToPrt) {
+        auto lrtToPsrt = localRoute->
+                             resolveEpdrLocalRouteToPsrtRSrc();
+        /* Owner is PolicyPrefix which is still present*/
+        if(lrtToPsrt) {
+            optional<shared_ptr<ExternalSubnet>> extSub =
+                ExternalSubnet::resolve(framework,
+                    lrtToPsrt.get()->getTargetURI().get());
+            if((extSub.get()->getAddress().get() ==
+                    localRoute->getAddress().get())
+               && (extSub.get()->getPrefixLen().get() ==
+                       localRoute->getPrefixLen().get())) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 void PolicyManager::getBestRemoteRoute(
@@ -2043,7 +2074,6 @@ void PolicyManager::updateDomain(class_id_t class_id, const URI& uri) {
 bool operator==(const PolicyRoute& lhs, const PolicyRoute& rhs)
 {
     return ((lhs.rd->getURI() == rhs.rd->getURI()) &&
-            (lhs.rdInst == rhs.rdInst) &&
             (lhs.address == rhs.address) &&
             (lhs.prefix_len == rhs.prefix_len) &&
             (lhs.nextHops == rhs.nextHops));
@@ -2237,8 +2267,11 @@ void PolicyManager::updateExternalNode(const URI& uri,
             continue;
         }
         routeIter = static_route_map.find(route->getURI());
-        if((routeIter != static_route_map.end()) &&
-           (*(routeIter->second) != *newRoute)) {
+        if(routeIter == static_route_map.end()) {
+            continue;
+        }
+        routeIter->second->setPresent(true);
+        if(*(routeIter->second) != *newRoute) {
             routeIter->second = newRoute;
             routeIter->second->setPresent(true);
             notifyStaticRoutes.insert(route->getURI());
@@ -2366,10 +2399,10 @@ void PolicyManager::updateStaticRoute(class_id_t class_id, const URI& uri,
 
 void PolicyManager::updatePolicyPrefixChildrenForRemoteRoute(
          const URI& rdURI,
-         optional<URI> routeURI,
+         const optional<URI> &routeURI,
          const std::string &pfx,
          const uint32_t  pfxLen,
-         optional<URI> parentRemoteRt,
+         const optional<URI> &parentRemoteRt,
          uri_set_t &notifyLocalRoutes) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::epdr;
@@ -2493,6 +2526,7 @@ void PolicyManager::updateRemoteRoutes(const URI& uri,
         if(ec) {
             continue;
         }
+        optional<URI> newRemoteRt = route->getURI();
         vector<shared_ptr<RemoteNextHop>> nhs;
         route->resolveGbpRemoteNextHop(nhs);
         list<boost::asio::ip::address> lnhs;
@@ -2565,7 +2599,7 @@ void PolicyManager::updateRemoteRoutes(const URI& uri,
                 parentRemoteRt,
                 route->getAddress().get(),
                 route->getPrefixLen().get(),
-                route->getURI(),
+                newRemoteRt,
                 notifyLocalRoutes);
             rs.remote_routes.insert(route->getURI());
             auto rIter = remote_route_map.insert(
@@ -2576,18 +2610,27 @@ void PolicyManager::updateRemoteRoutes(const URI& uri,
             continue;
         }
         routeIter = remote_route_map.find(route->getURI());
-        if((routeIter != remote_route_map.end()) &&
-            *(routeIter->second) != *newRoute) {
+        if(routeIter == remote_route_map.end()) {
+            continue;
+        }
+        routeIter->second->setPresent(true);
+        if(*(routeIter->second) != *newRoute) {
             //Updated remote route
             routeIter->second = newRoute;
             routeIter->second->setPresent(true);
             notifyRemoteRoutes.insert(route->getURI());
             updatePolicyPrefixChildrenForRemoteRoute(rd.get()->getURI(),
-                                               route->getURI(),
+                                               newRemoteRt,
                                                route->getAddress().get(),
                                                route->getPrefixLen().get(),
-                                               route->getURI(),
+                                               newRemoteRt,
                                                notifyLocalRoutes);
+            optional<shared_ptr<LocalRoute>> lRt =
+                LocalRoute::resolve(framework,
+                                    rd.get()->getURI().toString(),
+                                    route->getAddress().get(),
+                                    route->getPrefixLen().get());
+            notifyLocalRoutes.insert(lRt.get()->getURI());
         }
     }
     //Deleted remote routes
@@ -2600,7 +2643,7 @@ void PolicyManager::updateRemoteRoutes(const URI& uri,
         if((routeIter != remote_route_map.end()) &&
            !routeIter->second->isPresent()) {
             notifyRemoteRoutes.insert(*itr);
-            opflex::modb::URI rtURI = *itr;
+            optional<URI> rtURI = *itr;
             std::string delRemoteRt =
                 routeIter->second->getAddress().to_string();
             uint32_t prefixLen = routeIter->second->getPrefixLen();

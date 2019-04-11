@@ -1415,10 +1415,10 @@ private:
      */
     void updatePolicyPrefixChildrenForRemoteRoute(
              const opflex::modb::URI& rdUri,
-             boost::optional<opflex::modb::URI> routeUri,
+             const boost::optional<opflex::modb::URI> &routeUri,
              const std::string &pfx,
              const uint32_t pfxLen,
-             boost::optional<opflex::modb::URI> parentRemoteRt,
+             const boost::optional<opflex::modb::URI> &parentRemoteRt,
              uri_set_t &notifyLocalRoutes);
     /**
      * Update policy prefix for remote route children of the prefix.
