@@ -455,6 +455,68 @@ BOOST_FIXTURE_TEST_CASE( static_route_add_mod_del, PolicyIvLeafFixture ) {
     BOOST_CHECK(!reportedRoute);
 }
 
+BOOST_FIXTURE_TEST_CASE( remote_route_add_mod_del, PolicyIvLeafFixture ) {
+    using boost::asio::ip::address;
+    PolicyManager& pm = agent.getPolicyManager();
+    MockIvLeafListener lsnr(pm);
+    std::string expectedRoute("106.0.0.0");
+    shared_ptr<RemoteRoute> remote_route2;
+    address addr_, self_tep = address::from_string("10.10.10.3");
+    shared_ptr<RoutingDomain> rd_,rd2_;
+    shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
+    std::list<address> nhList, expectedNh;
+    uint8_t pfx_len;
+    boost::optional<uint32_t> sclass,expected_sclass = 1234;
+    bool are_nhs_remote = false;
+    opflex::modb::URI lRtURI =
+            opflex::modb::URIBuilder()
+            .addElement("EpdrLocalRouteDiscovered")
+            .addElement("EpdrLocalRoute")
+            .addElement(rd_ext1->getURI().toString())
+            .addElement(expectedRoute)
+            .addElement("24").build();
+    Mutator m0(framework, "policyreg");
+    remote_route2 = rd_ext1->addGbpRemoteRoute("remote_route2");
+    remote_route2->setAddress("106.0.0.0");
+    remote_route2->setPrefixLen(24);
+    remote_route2->addGbpRemoteNextHop("10.10.10.1");
+    remote_route2->addGbpRemoteNextHop("10.10.10.2");
+    m0.commit();
+    std::vector<std::string> remoteNhIps =
+        {"10.10.10.1","10.10.10.2", "10.10.10.4"};
+    expectedNh.push_back(address::from_string(remoteNhIps[0]));
+    expectedNh.push_back(address::from_string(remoteNhIps[1]));
+    WAIT_FOR(lsnr.hasNotif(lRtURI),500);
+    lsnr.clear();
+    boost::optional<shared_ptr<LocalRoute>> localRoute;
+    localRoute = LocalRoute::resolve(framework,lRtURI);
+    pm.getRoute(LocalRoute::CLASS_ID,
+                localRoute.get()->getURI(),
+                self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                are_nhs_remote, sclass);
+    BOOST_CHECK(nhList == expectedNh);
+    BOOST_CHECK(sclass.get() == 1234);
+    BOOST_CHECK(are_nhs_remote == true);
+    expectedNh.push_back(address::from_string(remoteNhIps[2]));
+    remote_route2->addGbpRemoteNextHop("10.10.10.4");
+    m0.commit();
+    WAIT_FOR(lsnr.hasNotif(lRtURI),500);
+    lsnr.clear();
+    localRoute = LocalRoute::resolve(framework, lRtURI);
+    pm.getRoute(LocalRoute::CLASS_ID,
+                localRoute.get()->getURI(),
+                self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                are_nhs_remote, sclass);
+    BOOST_CHECK(nhList == expectedNh);
+    BOOST_CHECK(sclass.get() == 1234);
+    BOOST_CHECK(are_nhs_remote == true);
+    remote_route2->remove();
+    m0.commit();
+    WAIT_FOR(lsnr.hasNotif(lRtURI),500);
+    localRoute = LocalRoute::resolve(framework,lRtURI);
+    BOOST_CHECK(!localRoute);
+}
+
 BOOST_FIXTURE_TEST_CASE( external_network_contract_remove_add, PolicyIvLeafFixture ) {
     // Remove contract, then add it back. Expect the providers/consumers to
     // remain the same as prior to remove.
