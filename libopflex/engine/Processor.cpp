@@ -397,10 +397,9 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
                 LOG(DEBUG2) << "Queuing delete for orphan "
                             << it->uri.toString();
                 newState = PENDING_DELETE;
+                newexp = now(proc_loop) + processingDelay;
                 obj_state_by_exp& exp_index = obj_state.get<expiration_tag>();
-                exp_index.modify(it,
-                                 change_expiration(now(proc_loop)+
-                                                   processingDelay));
+                exp_index.modify(it, change_expiration(newexp));
                 break;
             }
         default:
