@@ -1174,6 +1174,7 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
 
         for (const address& ipAddr : ipAddresses) {
             FlowBuilder routeFlow;
+            FlowBuilder proxyArp;
             matchDestDom(routeFlow, 0, rdId)
                 .priority(500)
                 .ethDst(getRouterMacAddr())
@@ -1184,6 +1185,11 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
                 .metadata(flow::meta::out::REMOTE_TUNNEL, flow::meta::out::MASK)
                 .go(POL_TABLE_ID)
                 .parent().build(elRouteDst);
+
+            // Resolve inter-node arp without going to leaf
+            matchDestArp(proxyArp.priority(40), ipAddr, bdId, rdId);
+            actionArpReply(proxyArp, macAddr, ipAddr)
+                .build(elBridgeDst);
         }
     }
 
@@ -1283,6 +1289,36 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     flowsEndpointDHCPSource(*this, elPortSec, elBridgeDst, endPoint, ofPort,
                             hasMac, macAddr, virtualDHCPEnabled,
                             hasForwardingInfo, epgVnid, rdId, bdId);
+
+    /* Add ARP responder for veth_host */
+    if (uuid.find("veth_host_ac") != std::string::npos) {
+        for (const string& ipStr : endPoint.getIPs()) {
+            address ipa = address::from_string(ipStr, ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid endpoint IP: "
+                             << ipStr << ": " << ec.message();
+                continue;
+            } else {
+                LOG(DEBUG) << "Found endpoint IP: "
+                           << ipStr;
+            }
+            FlowBuilder proxyArp;
+            proxyArp.priority(41).inPort(ofPort)
+                .ethSrc(macAddr).arpSrc(ipa)
+                .proto(arp::op::REQUEST)
+                .ethDst(packets::MAC_ADDR_BROADCAST)
+                .action()
+                    .regMove(MFF_ETH_SRC, MFF_ETH_DST)
+                    .reg(MFF_ETH_SRC, getRouterMacAddr())
+                    .reg16(MFF_ARP_OP, arp::op::REPLY)
+                    .regMove(MFF_ARP_SHA, MFF_ARP_THA)
+                    .reg(MFF_ARP_SHA, getRouterMacAddr())
+                    .regMove(MFF_ARP_TPA, MFF_ARP_SPA)
+                    .reg(MFF_ARP_TPA, ipa.to_v4().to_ulong())
+                    .output(OFPP_IN_PORT)
+                    .parent().build(elPortSec);
+        }
+    }
 
     if (hasForwardingInfo) {
         /* Port security flows */

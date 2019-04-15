@@ -2381,6 +2381,7 @@ void BaseIntFlowManagerFixture::initExpRemoteEp() {
     uint8_t rmacArr[6];
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
+    string bmac("ff:ff:ff:ff:ff:ff");
 
     if (encapType != IntFlowManager::ENCAP_VLAN) {
         ADDF(Bldr().table(BR).priority(10).reg(BD, 1)
@@ -2400,6 +2401,24 @@ void BaseIntFlowManagerFixture::initExpRemoteEp() {
              .load(OUTPORT, tunDst.to_v4().to_ulong())
              .mdAct(flow::meta::out::REMOTE_TUNNEL)
              .go(POL).done());
+        ADDF(Bldr().table(BR).priority(40).arp()
+             .reg(BD, 1).reg(RD, 1)
+             .isEthDst(bmac).isTpa("1.3.5.7")
+             .isArpOp(1)
+             .actions().move(ETHSRC, ETHDST)
+             .load(ETHSRC, "0xabcdefabcdef").load(ARPOP, 2)
+             .move(ARPSHA, ARPTHA).load(ARPSHA, "0xabcdefabcdef")
+             .move(ARPSPA, ARPTPA).load(ARPSPA, "0x1030507")
+             .inport().done());
+        ADDF(Bldr().table(BR).priority(40).arp()
+             .reg(BD, 1).reg(RD, 1)
+             .isEthDst(bmac).isTpa("2.4.6.8")
+             .isArpOp(1)
+             .actions().move(ETHSRC, ETHDST)
+             .load(ETHSRC, "0xabcdefabcdef").load(ARPOP, 2)
+             .move(ARPSHA, ARPTHA).load(ARPSHA, "0xabcdefabcdef")
+             .move(ARPSPA, ARPTPA).load(ARPSPA, "0x2040608")
+             .inport().done());
     }
 }
 
