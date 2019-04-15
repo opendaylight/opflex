@@ -337,6 +337,7 @@ mock_server_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(USE_BOOST_PROGRAM_OPTIONS_LIB) \
+	$(USE_BOOST_FILESYSTEM_LIB) \
 	$(USE_BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 
