@@ -517,6 +517,87 @@ BOOST_FIXTURE_TEST_CASE( remote_route_add_mod_del, PolicyIvLeafFixture ) {
     BOOST_CHECK(!localRoute);
 }
 
+BOOST_FIXTURE_TEST_CASE( external_subnet_add_del, PolicyIvLeafFixture ) {
+    using boost::asio::ip::address;
+    PolicyManager& pm = agent.getPolicyManager();
+    MockIvLeafListener lsnr(pm);
+    std::string expectedRoute("0.0.0.0");
+    shared_ptr<RemoteRoute> remote_route3;
+    address addr_, self_tep = address::from_string("10.10.10.3");
+    shared_ptr<RoutingDomain> rd_,rd2_;
+    shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
+    std::list<address> nhList, expectedNh;
+    uint8_t pfx_len;
+    boost::optional<uint32_t> sclass,expected_sclass = 1234;
+    bool are_nhs_remote = false;
+    shared_ptr<L3ExternalNetwork> l3ext2_net3;
+    Mutator m0(framework, "policyreg");
+    l3ext2_net3 = l3ext2->addGbpL3ExternalNetwork("ext_dom2_net3");
+    l3ext2_net3->addGbpExternalSubnet("ext_dom2_net3_sub1")
+        ->setAddress("0.0.0.0")
+        .setPrefixLen(0);
+    l3ext2_net3->addGbpL3ExternalNetworkToConsContractRSrc(con5->getURI().toString());
+    l3ext2_net3->addGbpeInstContext()->setClassid(40001);
+    m0.commit();
+    opflex::modb::URI lRtURI =
+                opflex::modb::URIBuilder()
+                .addElement("EpdrLocalRouteDiscovered")
+                .addElement("EpdrLocalRoute")
+                .addElement(rd_ext1->getURI().toString())
+                .addElement(expectedRoute)
+                .addElement("0").build();
+    WAIT_FOR(lsnr.hasNotif(lRtURI),500);
+    lsnr.clear();
+    boost::optional<shared_ptr<LocalRoute>> localRoute;
+    localRoute = LocalRoute::resolve(framework,lRtURI);
+    pm.getRoute(LocalRoute::CLASS_ID,
+                localRoute.get()->getURI(),
+                self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                are_nhs_remote, sclass);
+    BOOST_CHECK(nhList == expectedNh);
+    BOOST_CHECK(sclass.get() == 40001);
+    BOOST_CHECK(are_nhs_remote == true);
+    remote_route3 = rd_ext1->addGbpRemoteRoute("remote_route3");
+    remote_route3->setAddress("107.0.0.0");
+    remote_route3->setPrefixLen(24);
+    remote_route3->addGbpRemoteNextHop("10.10.10.1");
+    remote_route3->addGbpRemoteNextHop("10.10.10.2");
+    m0.commit();
+    lRtURI = opflex::modb::URIBuilder()
+            .addElement("EpdrLocalRouteDiscovered")
+            .addElement("EpdrLocalRoute")
+            .addElement(rd_ext1->getURI().toString())
+            .addElement("107.0.0.0")
+            .addElement("24").build();
+    WAIT_FOR(lsnr.hasNotif(lRtURI),500);
+    lsnr.clear();
+    std::vector<std::string> remoteNhIps =
+            {"10.10.10.1","10.10.10.2"};
+    expectedNh.push_back(address::from_string(remoteNhIps[0]));
+    expectedNh.push_back(address::from_string(remoteNhIps[1]));
+    localRoute = LocalRoute::resolve(framework,lRtURI);
+    pm.getRoute(LocalRoute::CLASS_ID,
+                localRoute.get()->getURI(),
+                self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                are_nhs_remote, sclass);
+    BOOST_CHECK(nhList == expectedNh);
+    BOOST_CHECK(sclass.get() == 40001);
+    BOOST_CHECK(are_nhs_remote == true);
+    sclass = boost::none;
+    l3ext2_net3->remove();
+    m0.commit();
+    WAIT_FOR(lsnr.hasNotif(lRtURI),500);
+    localRoute = LocalRoute::resolve(framework,lRtURI);
+    pm.getRoute(LocalRoute::CLASS_ID,
+                localRoute.get()->getURI(),
+                self_tep, rd_, rdInst_, addr_, pfx_len, nhList,
+                are_nhs_remote, sclass);
+    BOOST_CHECK(nhList == expectedNh);
+    BOOST_CHECK(!sclass);
+    BOOST_CHECK(are_nhs_remote == true);
+}
+
+
 BOOST_FIXTURE_TEST_CASE( external_network_contract_remove_add, PolicyIvLeafFixture ) {
     // Remove contract, then add it back. Expect the providers/consumers to
     // remain the same as prior to remove.

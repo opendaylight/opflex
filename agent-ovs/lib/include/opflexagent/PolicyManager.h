@@ -1372,6 +1372,19 @@ private:
                            const opflex::modb::URI& uri,
                            uri_set_t &notifyRemoteRoutes,
                            uri_set_t &notifyLocalRoutes);
+
+    /**
+     * Update the route cache information for the specified external network.
+     * You must hold a state lock to call this function.
+     *
+     * @param uri URI of the external network that that triggered the update
+     * @param notifyRemoteRoutes set of remote route URIs that were updated
+     * @param notifyLocalRoutes set of local route URIs that were updated
+     */
+    void updateExternalNetworkPrefixes(const opflex::modb::URI& uri,
+                                       uri_set_t &notifyRemoteRoutes,
+                                       uri_set_t &notifyLocalRoutes);
+
     /**
      * Get the best policy prefix for the given prefix.
      *

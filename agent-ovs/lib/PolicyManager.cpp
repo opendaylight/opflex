@@ -102,7 +102,7 @@ void PolicyManager::start() {
     RoutingDomain::registerListener(framework, &routeListener);
     RemoteRoute::registerListener(framework, &routeListener);
     RemoteNextHop::registerListener(framework, &routeListener);
-
+    L3ExternalNetwork::registerListener(framework, &routeListener);
     // resolve platform config
     Mutator mutator(framework, "init");
     optional<shared_ptr<dmtree::Root> >
@@ -1491,6 +1491,8 @@ void PolicyManager::updateRemoteRouteChildrenForPolicyPrefix(
                     } else {
                         lrtToPrt.get()->remove();
                         lrtToPsrt.get()->remove();
+                        LOG(DEBUG) << "Orphaning "
+                            << rdURI << addr << "/" << prefixLen;
                     }
                     mutator.commit();
                     notifyLocalRoutes.insert(localRoute.get()->getURI());
@@ -1709,48 +1711,6 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
                         }
                     }
                 }
-                //Update policyprefix delete for each subnet
-                auto snet = l3s.subnet_map.begin();
-                while (snet != l3s.subnet_map.end())
-                {
-                    optional<shared_ptr<L3ExternalNetwork>> newNet;
-                    optional<shared_ptr<ExternalSubnet>> newExtSub;
-                    opflex::modb::URI delURI = snet->second->getURI();
-                    std::string delPPfx = snet->second->getAddress().get();
-                    uint32_t pPfxLen = snet->second->getPrefixLen().get();
-                    //This is a deleted policy prefix, update localRoutes
-                    //being served by this policy prefix
-                    localRoute = LocalRoute::resolve(
-                                     framework,
-                                     rd.get()->getURI().toString(),
-                                     delPPfx,
-                                     pPfxLen);
-                    auto lrtToPrt = localRoute.get()->
-                                        resolveEpdrLocalRouteToPrtRSrc();
-                    notifyLocalRoutes.insert(localRoute.get()->getURI());
-                    Mutator mutator(framework, "policyelement");
-                    lrtToPrt.get()->remove();
-                    mutator.commit();
-                    snet = l3s.subnet_map.erase(snet);
-                    if(isLocalRouteDeletable(localRoute.get())) {
-                        localRoute.get()->remove();
-                        mutator.commit();
-                    }
-                    getBestPolicyPrefix(rd.get()->getURI(),
-                                        delPPfx,
-                                        pPfxLen,
-                                        newNet, newExtSub);
-                    updateRemoteRouteChildrenForPolicyPrefix(
-                        rd.get()->getURI(),
-                        net,
-                        delURI,
-                        delPPfx,
-                        pPfxLen,
-                        newNet,
-                        newExtSub,
-                        notifyLocalRoutes);
-                }
-                l3n_map.erase(lit);
 
                 updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                      net, contractsToNotify);
@@ -2454,6 +2414,8 @@ void PolicyManager::updatePolicyPrefixChildrenForRemoteRoute(
                         }
                         else {
                             lrtToRrt.get()->remove();
+                            LOG(DEBUG) << "Orphaning " << " for ppfx "
+                                << rdURI << addr << "/" << prefixLen;
                         }
                         mutator.commit();
                         notifyLocalRoutes.insert(localRoute.get()->getURI());
@@ -2706,6 +2668,76 @@ void PolicyManager::updateRemoteRoute(class_id_t class_id, const URI& uri,
     }
 }
 
+void PolicyManager::updateExternalNetworkPrefixes(
+        const opflex::modb::URI& uri,
+        uri_set_t &notifyRemoteRoutes,
+        uri_set_t &notifyLocalRoutes) {
+    using namespace modelgbp::gbp;
+    using namespace modelgbp::epdr;
+    optional<shared_ptr<LocalRouteDiscovered>> lD;
+    optional<shared_ptr<LocalRoute>> localRoute;
+    optional<shared_ptr<L3ExternalNetwork>> l3ext;
+    LOG(DEBUG) << "updateExternalNetworkPrefixes for" << uri;
+    auto l3n_iter = l3n_map.find(uri);
+    if(l3n_iter == l3n_map.end()) {
+        return;
+    }
+    L3NetworkState &l3s = l3n_iter->second;
+    lD = LocalRouteDiscovered::resolve(framework);
+
+    l3ext = L3ExternalNetwork::resolve(framework, uri);
+    if(l3ext) {
+        // Addition and update are handled by updateL3Nets
+        return;
+    }
+    optional<shared_ptr<RoutingDomain > > rd =
+        l3s.routingDomain;
+
+    //Update policyprefix delete for each subnet
+    auto snet = l3s.subnet_map.begin();
+    while (snet != l3s.subnet_map.end())
+    {
+        optional<shared_ptr<L3ExternalNetwork>> newNet;
+        optional<shared_ptr<ExternalSubnet>> newExtSub;
+        opflex::modb::URI delURI = snet->second->getURI();
+        std::string delPPfx = snet->second->getAddress().get();
+        uint32_t pPfxLen = snet->second->getPrefixLen().get();
+        //This is a deleted policy prefix, update localRoutes
+        //being served by this policy prefix
+        localRoute = LocalRoute::resolve(
+                         framework,
+                         rd.get()->getURI().toString(),
+                         delPPfx,
+                         pPfxLen);
+        auto lrtToPrt = localRoute.get()->
+                            resolveEpdrLocalRouteToPrtRSrc();
+        notifyLocalRoutes.insert(localRoute.get()->getURI());
+        Mutator mutator(framework, "policyelement");
+        lrtToPrt.get()->remove();
+        mutator.commit();
+        snet = l3s.subnet_map.erase(snet);
+        if(isLocalRouteDeletable(localRoute.get())) {
+            localRoute.get()->remove();
+            mutator.commit();
+        }
+        getBestPolicyPrefix(rd.get()->getURI(),
+                            delPPfx,
+                            pPfxLen,
+                            newNet, newExtSub);
+        updateRemoteRouteChildrenForPolicyPrefix(
+            rd.get()->getURI(),
+            uri,
+            delURI,
+            delPPfx,
+            pPfxLen,
+            newNet,
+            newExtSub,
+            notifyLocalRoutes);
+    }
+    l3n_map.erase(l3n_iter);
+
+}
+
 PolicyManager::DomainListener::DomainListener(PolicyManager& pmanager_)
     : pmanager(pmanager_) {}
 PolicyManager::DomainListener::~DomainListener() {}
@@ -2859,7 +2891,7 @@ void PolicyManager::executeAndNotifyRoutes(bool static_source,
 }
 
 void PolicyManager::RouteListener::objectUpdated(
-	 class_id_t classId, const URI& uri) {
+        class_id_t classId, const URI& uri) {
     using namespace modelgbp::gbp;
     LOG(DEBUG) << "RouteListener update for URI " << uri;
 
@@ -2888,6 +2920,15 @@ void PolicyManager::RouteListener::objectUpdated(
                 pmanager.updateRemoteRoutes(uri, notifyRemoteRoutes,
                                             notifyLocalRoutes);
             });});
+    } else if(classId == L3ExternalNetwork::CLASS_ID) {
+        pmanager.taskQueue.dispatch("rl"+uri.toString(),[=]() {
+            pmanager.executeAndNotifyRoutes(false,
+                   [&](uri_set_t &notifyRemoteRoutes,
+                       uri_set_t &notifyLocalRoutes) {
+                pmanager.updateExternalNetworkPrefixes(
+                        uri, notifyRemoteRoutes,
+                        notifyLocalRoutes);
+           });});
     } else if((classId == StaticRoute::CLASS_ID)||
               (classId == StaticNextHop::CLASS_ID)) {
         pmanager.taskQueue.dispatch("rl"+uri.toString(),[=]() {
