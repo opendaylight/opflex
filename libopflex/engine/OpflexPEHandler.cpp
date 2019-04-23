@@ -183,44 +183,40 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
         const Value& ylocation = payload["your_location"];
         if (ylocation.IsString())
             pool.setLocation(ylocation.GetString());
-        else if (ylocation.IsObject()) {
-            address_v4 addr;
-            Value::ConstMemberIterator itr = ylocation.FindMember("location");
-            if (itr != ylocation.MemberEnd()) {
-                const Value& locv = itr->value;
-                if (locv.IsString())
-                    pool.setLocation(locv.GetString());
-            }
+    }
+    if (payload.HasMember("data")) {
+        const Value& data = payload["data"];
+        if (data.IsObject()) {
             if(isTransportMode && seekingProxies) {
-                if ((itr = ylocation.FindMember("proxy_v4"))
-                    != ylocation.MemberEnd()) {
+                address_v4 addr;
+                Value::ConstMemberIterator itr = data.FindMember("proxy_v4");
+                if (itr != data.MemberEnd()) {
                     if(!validateProxyAddress(itr->value, conn,
-                                            remotePeer, addr)) {
+                                             remotePeer, addr)) {
                         return;
                     }
                     pool.setV4Proxy(addr);
                     LOG(INFO) << "[ V4Proxy set to " << addr << " ]";
                     proxy_count++;
                 }
-                if ((itr = ylocation.FindMember("proxy_v6"))
-                    != ylocation.MemberEnd()) {
+                if ((itr = data.FindMember("proxy_v6"))
+                    != data.MemberEnd()) {
                     if(!validateProxyAddress(itr->value, conn,
-                                            remotePeer, addr)) {
+                                             remotePeer, addr)) {
                         return;
                     }
                     pool.setV6Proxy(addr);
                     LOG(INFO) << "[ V6Proxy set to " << addr << " ]";
                     proxy_count++;
                 }
-                if ((itr = ylocation.FindMember("proxy_mac"))
-                    != ylocation.MemberEnd()) {
+                if ((itr = data.FindMember("proxy_mac"))
+                    != data.MemberEnd()) {
                     if(!validateProxyAddress(itr->value, conn,
-                                            remotePeer, addr)) {
+                                             remotePeer, addr)) {
                         return;
                     }
                     pool.setMacProxy(addr);
-                    LOG(INFO) << "[ MacProxy set to " << addr <<
-                                 " ]";
+                    LOG(INFO) << "[ MacProxy set to " << addr << " ]";
                     proxy_count++;
                 }
             }
