@@ -59,7 +59,7 @@ public:
                     const std::string& domain_,
                     const optional<std::string>& your_location_,
                     const uint8_t roles_,
-                    test::MockOpflexServer::peer_vec_t peers_,
+                    const test::MockOpflexServer::peer_vec_t& peers_,
                     const std::vector<std::string>& proxies_)
         : OpflexMessage("send_identity", RESPONSE, &id),
           name(name_), domain(domain_), your_location(your_location_),
@@ -84,11 +84,11 @@ public:
         writer.String(name.c_str());
         writer.String("domain");
         writer.String(domain.c_str());
-        if (your_location || (proxies.size() != 0)) {
+        if (your_location || !proxies.empty()) {
             writer.String("your_location");
-            writer.StartObject();
-            writer.String("location");
             writer.String(your_location.get().c_str());
+            writer.String("data");
+            writer.StartObject();
             int i = 0;
             for(const std::string& proxy: proxies) {
                 switch(i) {
