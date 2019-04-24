@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "80251b6b_4d5b4d8d",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/dhcp.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-04-24T23:29:50Z",
+      "side": 1,
+      "message": "name is already defined in superclass",
+      "revId": "e2850fe35c5b42e80e16b5c48245d63cf32cc13e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bac4ad85_97498a16",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/dhcp.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-04-24T23:29:50Z",
+      "side": 1,
+      "message": "Is this really needed? What do you do with it if it\u0027s just free form text?",
+      "revId": "e2850fe35c5b42e80e16b5c48245d63cf32cc13e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fca245f1_e048a2f8",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/dhcp.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-04-24T23:29:50Z",
+      "side": 1,
+      "message": "name is already defined in superclass",
+      "revId": "e2850fe35c5b42e80e16b5c48245d63cf32cc13e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "38add71d_03da7cd7",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/dhcp.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-04-24T23:29:50Z",
+      "side": 1,
+      "message": "addr -\u003e address",
+      "revId": "e2850fe35c5b42e80e16b5c48245d63cf32cc13e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd3c374e_011f237a",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/dhcp.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-04-24T23:29:50Z",
+      "side": 1,
+      "message": "Should be the URI of an RD\n\nmember[vrf, type\u003dreference/URI]",
+      "revId": "e2850fe35c5b42e80e16b5c48245d63cf32cc13e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bb975de7_efb6dceb",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/dhcp.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-04-24T23:29:50Z",
+      "side": 1,
+      "message": "Lbl -\u003e Label",
+      "revId": "e2850fe35c5b42e80e16b5c48245d63cf32cc13e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0e4e79a1_c4313881",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/dhcp.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-04-24T23:29:50Z",
+      "side": 1,
+      "message": "shadow? how about just relay",
+      "revId": "e2850fe35c5b42e80e16b5c48245d63cf32cc13e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
