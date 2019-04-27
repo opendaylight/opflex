@@ -263,7 +263,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     Mutator mutator(framework, "policyelement");
     if (es.vmEP) {
         optional<shared_ptr<VMEp> > oldvme =
-            VMEp::resolve(es.vmEP.get());
+            VMEp::resolve(framework, es.vmEP.get());
         if (oldvme && oldvme.get()->getUuid("") != uuid)
             oldvme.get()->remove();
     }
