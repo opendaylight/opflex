@@ -25,6 +25,12 @@ module[gbp]
         const[name=extSvi; value=3]
     }
 
+    type[SubnetPrimaryType; super=scalar/Enum8]
+    {
+        const[name=disabled; value=0]
+        const[name=enabled; value=1]
+    }
+
     class[RoutingDomain;
           super=gbp/L3BehavioralGroup;
           concrete]
@@ -167,6 +173,9 @@ module[gbp]
 
         # Preferred lifetime reported in ipv6 router advertisement
         member[ipv6AdvPreferredLifetime; type=scalar/UInt32]
+
+        # is this ip address primary
+        member[primary; type=gbp/SubnetPrimaryType]
 
         contained
         {
