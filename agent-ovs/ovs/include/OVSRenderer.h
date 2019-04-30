@@ -22,6 +22,7 @@
 #include <opflexagent/TunnelEpManager.h>
 #include "PacketInHandler.h"
 #include "CtZoneManager.h"
+#include "SpanRenderer.h"
 
 #pragma once
 #ifndef OPFLEXAGENT_OVSRENDERER_H
@@ -66,6 +67,7 @@ private:
     PortMapper intPortMapper;
     SwitchManager intSwitchManager;
     IntFlowManager intFlowManager;
+    SpanRenderer spanRenderer;
 
     FlowExecutor accessFlowExecutor;
     FlowReader accessFlowReader;
