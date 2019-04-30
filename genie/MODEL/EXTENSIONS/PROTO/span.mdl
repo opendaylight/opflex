@@ -188,10 +188,6 @@ module[span]
                 ]
         }
 
-        contained
-        {
-            parent[class=span/Grp]
-        }
         named
         {
             parent[class=*;]
