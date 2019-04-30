@@ -105,6 +105,11 @@ public:
     PolicyManager& getPolicyManager() { return policyManager; }
 
     /**
+     * Get the span manager object for this agent
+     */
+    SpanManager& getSpanManager() { return spanManager; }
+
+    /**
      * Get the endpoint manager object for this agent
      */
     EndpointManager& getEndpointManager() { return endpointManager; }

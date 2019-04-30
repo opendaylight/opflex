@@ -61,7 +61,7 @@ Agent::Agent(OFFramework& framework_)
       endpointManager(framework, policyManager), notifServer(agent_io),
       rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
-      spanManager(framework){
+      spanManager(framework, agent_io){
     std::random_device rng;
     std::mt19937 urng(rng());
     uuid = to_string(basic_random_generator<std::mt19937>(urng)());
