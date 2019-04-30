@@ -135,7 +135,7 @@ BOOST_FIXTURE_TEST_CASE( model, FrameworkFixture ) {
 
     //out2 = class2::resolve(uri2);
     //BOOST_CHECK(!out2);
-    r4 = testmodel::class4::resolve("class4Name");
+    r4 = testmodel::class4::resolve(framework, "class4Name");
     BOOST_CHECK(!r4);
 
     testmodel::class1::unregisterListener(framework, &listener);
