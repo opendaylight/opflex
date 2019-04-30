@@ -583,6 +583,8 @@
 #include "opflex/ofcore/MainLoopAdaptor.h"
 #include "opflex/ofcore/OFConstants.h"
 #include "boost/asio/ip/address_v4.hpp"
+#include <opflex/modb/URI.h>
+#include <opflex/modb/PropertyInfo.h>
 
 /**
  * @defgroup cpp C++ Interface
@@ -865,6 +867,18 @@ public:
      * @param macProxyAddress
      */
     virtual void getMacProxy(boost::asio::ip::address_v4 &macProxyAddress );
+
+    /**
+     * Get the parent URI for the passed in child object URI
+     * @param[in] child_class the class of the child object
+     * @param[in] child the URI of the child object
+     * @return a (URI, prop_id_t) pair which is the URI of the parent
+     * and the property that represents the relation.
+     */
+    std::pair<opflex::modb::URI, opflex::modb::prop_id_t>
+         getParent(opflex::modb::class_id_t child_class,
+                   const opflex::modb::URI& child);
+
 
 private:
     /**

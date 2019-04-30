@@ -392,7 +392,8 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     shared_ptr<span::DstSummary> dstSumm1 = dstMem1->addSpanDstSummary();
     shared_ptr<span::LocalEp> lEp1 = sess->addSpanLocalEp("localEp1");
     opflex::modb::MAC mac = opflex::modb::MAC("01:02:03:04:05:06");
-    lEp1->addSpanLocalEpToEpRSrc()->setTargetL2Ep("bd", mac);
+    lEp1->addSpanLocalEpToEpRSrc()->setTargetL2Ep(bd->getURI().toString(), mac);
+    lEp1->setName("localEp1");
     srcMem1->addSpanMemberToRefRSrc()->setTargetLocalEp(lEp1->
         getURI());
     srcGrp1->addSpanSrcMember(srcMem1->getName().get());
