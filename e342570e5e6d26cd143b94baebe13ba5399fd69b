@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "58512979_72fe1876",
+        "filename": "genie/MODEL/SPECIFIC/GBP/COMMON/fwd-l3.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-01T22:05:08Z",
+      "side": 1,
+      "message": "typo - pimary -\u003e primary",
+      "revId": "e342570e5e6d26cd143b94baebe13ba5399fd69b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
