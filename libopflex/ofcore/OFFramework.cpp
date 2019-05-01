@@ -24,6 +24,8 @@
 #include "opflex/engine/Processor.h"
 #include "opflex/engine/Inspector.h"
 #include "opflex/logging/internal/logging.hpp"
+#include "opflex/modb/internal/ObjectStore.h"
+#include "opflex/modb/mo-internal/StoreClient.h"
 
 #include "ThreadManager.h"
 
@@ -31,6 +33,7 @@ namespace opflex {
 namespace ofcore {
 
 using namespace boost::assign;
+using namespace opflex::modb;
 using engine::internal::MOSerializer;
 using boost::scoped_ptr;
 using std::string;
@@ -227,6 +230,18 @@ void MockOFFramework::stop() {
 
 modb::ObjectStore& OFFramework::getStore() {
     return pimpl->db;
+}
+
+boost::optional<opflex::modb::URI> OFFramework::getParent(class_id_t child_class,
+                                        const URI& child) {
+    boost::optional<opflex::modb::URI> uri;
+    try {
+	uri = (pimpl->processor.getSystemClient()->
+	          getParent(child_class, child)).first;
+    } catch(const std::out_of_range&) {
+	LOG(DEBUG) << "Unable to find parent for " << child;
+    }
+    return uri;
 }
 
 OFFramework& OFFramework::defaultInstance() {
