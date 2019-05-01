@@ -29,6 +29,7 @@ Requires: libuv >= 1.8.0
 Requires: openssl >= 1.0.1
 BuildRequires: libuv-devel
 BuildRequires: openssl-devel
+BuildRequires: devtoolset-7-toolchain
 %if %{with dynboost}
 BuildRequires: boost-devel
 BuildRequires: boost-test
@@ -62,6 +63,8 @@ Development libraries for libopflex
 %setup -q
 
 %build
+. /opt/rh/devtoolset-7/enable
+%define __strip /opt/rh/devtoolset-7/root/usr/bin/strip
 %if %{with dynboost}
 %configure --disable-assert --disable-tests-make-all
 %else
@@ -74,6 +77,8 @@ make %{?_smp_mflags}
 
 %check
 %if %{with check}
+    . /opt/rh/devtoolset-7/enable
+    %define __strip /opt/rh/devtoolset-7/root/usr/bin/strip
     make check
 %endif
 
