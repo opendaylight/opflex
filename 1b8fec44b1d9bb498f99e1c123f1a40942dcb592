@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "03bf9f6f_99f4b29e",
+        "filename": "libopflex/include/opflex/ofcore/OFFramework.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 876,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-01T20:11:49Z",
+      "side": 1,
+      "message": "As currently implemented this function can throw std::out_of_range and that should be documented",
+      "revId": "1b8fec44b1d9bb498f99e1c123f1a40942dcb592",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "713f1805_9338e5ae",
+        "filename": "libopflex/ofcore/OFFramework.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-01T20:11:49Z",
+      "side": 1,
+      "message": "Is there any reason not to just return the URI instead of the pair from here?",
+      "revId": "1b8fec44b1d9bb498f99e1c123f1a40942dcb592",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "77d919c4_3dc8d370",
+        "filename": "libopflex/ofcore/OFFramework.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-01T20:11:49Z",
+      "side": 1,
+      "message": "Can you use pimpl-\u003eprocessor.getSystemClient() instead of hard coding the client name",
+      "revId": "1b8fec44b1d9bb498f99e1c123f1a40942dcb592",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
