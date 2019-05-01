@@ -159,7 +159,8 @@ generated model library. In this case, it assumes your model is called
     #include <mymodel/metadata/metadata.hpp>
     // ...
     using opflex::ofcore::OFFramework;
-    OFFramework::defaultInstance().setModel(mymodel::getMetadata());
+    OFFramework framework;
+    framework.setModel(mymodel::getMetadata());
 
 The other critical piece of information required for initialization is
 the OpFlex identity information. The identity information is required in
@@ -170,21 +171,21 @@ information by calling:
 
 .. code:: cpp
 
-    OFFramework::defaultInstance()
+    framework
         .setOpflexIdentity("[component name]", "[unique domain]");
 
 You can then start the framework simply by calling:
 
 .. code:: cpp
 
-    OFFramework::defaultInstance().start();
+    framework.start();
 
 Finally, you can add peers after the framework is started by calling the
 ``opflex::ofcore::OFFramework::addPeer`` method:
 
 .. code:: cpp
 
-    OFFramework::defaultInstance().addPeer("192.168.1.5", 1234);
+    framework.addPeer("192.168.1.5", 1234);
 
 When connecting to the peer, that peer may provide an additional list of
 peers to connect to, which will be automatically added as peers. If the
@@ -197,7 +198,7 @@ To cleanly shut down, you can call:
 
 .. code:: cpp
 
-    OFFramework::defaultInstance().stop();
+    framework.stop();
 
 Working with Data in the Tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

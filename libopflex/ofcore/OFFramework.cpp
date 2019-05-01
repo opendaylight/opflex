@@ -244,11 +244,6 @@ boost::optional<URI> OFFramework::getParent(class_id_t child_class,
     return uri;
 }
 
-OFFramework& OFFramework::defaultInstance() {
-    static OFFramework staticInstance;
-    return staticInstance;
-}
-
 void OFFramework::registerTLMutator(modb::Mutator& mutator) {
     uv_key_set(&pimpl->mutator_key, (void*)&mutator);
 }

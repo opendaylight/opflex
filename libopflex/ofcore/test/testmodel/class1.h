@@ -199,23 +199,6 @@ public:
     }
 
     /**
-     * Retrieve an instance of class1 from the default managed object
-     * store using its URI.  If the object does not exist in the local
-     * store, returns boost::none.  Note that even though it may not
-     * exist locally, it may still exist remotely.
-     *
-     * @param framework the framework instance to use
-     * @param uri the URI of the object to retrieve
-     * @return a shared pointer to the object or boost::none if it
-     * does not exist.
-     */
-    static boost::optional<OF_SHARED_PTR<class1> >
-    resolve(const opflex::modb::URI& uri) {
-        return resolve(opflex::ofcore::OFFramework::defaultInstance(),
-                       uri);
-    }
-
-    /**
      * Retrieve an instance of class1 from the managed object store by
      * constructing its URI from the path elements that lead to it.
      * If the object does not exist in the local store, returns
@@ -234,21 +217,6 @@ public:
     }
 
     /**
-     * Retrieve an instance of class1 from the default managed object
-     * store by constructing its URI from the path elements that lead
-     * to it.  If the object does not exist in the local store,
-     * returns boost::none.  Note that even though it may not exist
-     * locally, it may still exist remotely.
-     *
-     * @return a shared pointer to the object or boost::none if it
-     * does not exist.
-     */
-    static boost::optional<OF_SHARED_PTR<class1> >
-    resolve() {
-        return resolve(opflex::ofcore::OFFramework::defaultInstance());
-    }
-
-    /**
      * Create an instance of class1, the root element in the
      * management information tree for the given framework instance in
      * the currently-active mutator.
@@ -261,19 +229,6 @@ public:
     createRootElement(opflex::ofcore::OFFramework& framework) {
         return opflex::modb::mointernal
             ::MO::createRootElement<class1>(framework, CLASS_ID);
-    }
-
-    /**
-     * Create an instance of class1, the root element in the
-     * management information tree in the default framework instance
-     * in the currently-active mutator.
-     *
-     * @throws std::logic_error if no mutator is active
-     * @see opflex::modb::Mutator
-     */
-    static OF_SHARED_PTR<class1>
-    createRootElement() {
-        return createRootElement(opflex::ofcore::OFFramework::defaultInstance());
     }
 
     /**
@@ -490,22 +445,6 @@ public:
     }
 
     /**
-     * Register a listener that will get called for changes related to
-     * this class with the default framework instance.  This listener
-     * will be called for any modifications of this class or any
-     * transitive children of this class.
-     *
-     * @param listener the listener functional object that should be
-     * called when changes occur related to the class.  This memory is
-     * owned by the caller and should be freed only after it has been
-     * unregistered.
-     */
-    static void registerListener(opflex::modb::ObjectListener* listener) {
-        registerListener(opflex::ofcore::OFFramework::defaultInstance(),
-                         listener);
-    }
-
-    /**
      * Unregister a listener from updates to this class.
      *
      * @param framework the framework instance
@@ -515,17 +454,6 @@ public:
                                    opflex::modb::ObjectListener* listener) {
         return opflex::modb::mointernal
             ::MO::unregisterListener(framework, listener, CLASS_ID);
-    }
-
-    /**
-     * Unregister a listener from updates to this class from the
-     * default framework instance.
-     *
-     * @param listener The listener to unregister.
-     */
-    static void unregisterListener(opflex::modb::ObjectListener* listener) {
-        unregisterListener(opflex::ofcore::OFFramework::defaultInstance(),
-                           listener);
     }
 
     /**
