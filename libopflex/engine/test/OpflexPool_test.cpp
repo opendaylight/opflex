@@ -40,7 +40,7 @@ public:
         OpflexClientConnection(handlerFactory,
                                pool,
                                hostname,
-                               port), ready(true) {}
+                               port), ready(true),closed(false) {}
 
     virtual void connect() {}
     virtual void disconnect() {
@@ -51,7 +51,10 @@ public:
         static std::string dummy("DUMMY");
         return dummy;
     }
-
+    virtual void close() {
+        closed = true;
+    }
+    bool closed;
     bool ready;
 };
 
@@ -128,6 +131,37 @@ BOOST_FIXTURE_TEST_CASE( manage_roles , PoolFixture ) {
     BOOST_CHECK_EQUAL(0, pool.getRoleCount(OFConstants::POLICY_REPOSITORY));
     BOOST_CHECK_EQUAL(0, pool.getRoleCount(OFConstants::OBSERVER));
     BOOST_CHECK_EQUAL(0, pool.getRoleCount(OFConstants::ENDPOINT_REGISTRY));
+}
+
+BOOST_FIXTURE_TEST_CASE( manage_ivxlan_roles , PoolFixture ) {
+    MockClientConn* c1 = new MockClientConn(handlerFactory, &pool,
+                                            "1.2.3.4", 1234);
+    MockClientConn* c2 = new MockClientConn(handlerFactory, &pool,
+                                            "1.2.3.4", 1235);
+    MockClientConn* c3 = new MockClientConn(handlerFactory, &pool,
+                                            "1.2.3.4", 1236);
+    pool.setClientMode(opflex::ofcore::OFConstants::OpflexElementMode::TRANSPORT_MODE);
+    pool.addPeer(c1);
+    pool.addPeer(c2);
+    pool.addPeer(c3);
+    pool.setRoles(c1,
+                  OFConstants::POLICY_REPOSITORY |
+                  OFConstants::OBSERVER |
+                  OFConstants::ENDPOINT_REGISTRY);
+    OpflexPool::peer_name_set_t c1_peers, c2_peers;
+    c1_peers.insert(std::make_pair<std::string, int>("1.2.3.4",1234));
+    pool.validatePeerSet(c1,c1_peers);
+    BOOST_CHECK_EQUAL(false, c1->closed);
+    BOOST_CHECK_EQUAL(false, c2->closed);
+    BOOST_CHECK_EQUAL(false, c3->closed);
+    c2_peers.insert(std::make_pair<std::string, int>("1.2.3.4",1235));
+    pool.validatePeerSet(c2,c2_peers);
+    BOOST_CHECK_EQUAL(true, c1->closed);
+    BOOST_CHECK_EQUAL(false, c2->closed);
+    BOOST_CHECK_EQUAL(true, c3->closed);
+    c1->disconnect();
+    c2->disconnect();
+    c3->disconnect();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
