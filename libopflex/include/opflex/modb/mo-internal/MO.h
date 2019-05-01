@@ -71,16 +71,6 @@ public:
     const URI& getURI() const;
 
 protected:
-    /**
-     * Construct an MO
-     *
-     * @param class_id the class ID for the object
-     * @param uri the URI for the object
-     * @param oi the object instance for this object
-     */
-    MO(class_id_t class_id,
-       const URI& uri,
-       const OF_SHARED_PTR<const ObjectInstance>& oi);
 
     /**
      * Construct an MO associated with a non-default framework instance

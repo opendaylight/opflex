@@ -229,11 +229,6 @@ modb::ObjectStore& OFFramework::getStore() {
     return pimpl->db;
 }
 
-OFFramework& OFFramework::defaultInstance() {
-    static OFFramework staticInstance;
-    return staticInstance;
-}
-
 void OFFramework::registerTLMutator(modb::Mutator& mutator) {
     uv_key_set(&pimpl->mutator_key, (void*)&mutator);
 }

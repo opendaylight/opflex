@@ -60,13 +60,6 @@ namespace modb {
  */
 class Mutator {
 public:
-    /**
-     * Create a mutator that will work with the default framework
-     * instance and owner.
-     * @param owner the owner string that will control which fields
-     * can be modified.
-     */
-    Mutator(const std::string& owner);
 
     /**
      * Create a mutator that will work with the provided framework

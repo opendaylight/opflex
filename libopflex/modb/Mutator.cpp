@@ -48,9 +48,6 @@ public:
                 const std::string& owner)
         : framework(framework_),
           client(framework.getStore().getStoreClient(owner)) { }
-    MutatorImpl(const std::string& owner)
-        : framework(ofcore::OFFramework::defaultInstance()),
-          client(framework.getStore().getStoreClient(owner)) { }
 
     ofcore::OFFramework& framework;
     StoreClient& client;
@@ -64,11 +61,6 @@ public:
     // added children
     uri_prop_uri_map_t added_children;
 };
-
-Mutator::Mutator(const std::string& owner)
-    : pimpl(new MutatorImpl(owner)) {
-    pimpl->framework.registerTLMutator(*this);
-}
 
 Mutator::Mutator(ofcore::OFFramework& framework,
                  const std::string& owner)

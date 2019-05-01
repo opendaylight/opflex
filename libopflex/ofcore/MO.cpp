@@ -33,11 +33,6 @@ public:
            const OF_SHARED_PTR<const ObjectInstance>& oi_)
         : framework(framework_),
           class_id(class_id_), uri(uri_), oi(oi_){ }
-    MOImpl(class_id_t class_id_,
-           const URI& uri_,
-           const OF_SHARED_PTR<const ObjectInstance>& oi_)
-        : framework(OFFramework::defaultInstance()),
-          class_id(class_id_), uri(uri_), oi(oi_) { }
 
     ~MOImpl() { }
 
@@ -71,13 +66,6 @@ MO::MO(OFFramework& framework,
        const URI& uri,
        const OF_SHARED_PTR<const ObjectInstance>& oi)
     : pimpl(new MOImpl(framework, class_id, uri, oi)) {
-
-}
-
-MO::MO(class_id_t class_id,
-       const URI& uri,
-       const OF_SHARED_PTR<const ObjectInstance>& oi)
-    : pimpl(new MOImpl(class_id, uri, oi)) {
 
 }
 
