@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc3c7767_37e9d5d3",
+        "filename": "libopflex/ofcore/OFFramework.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-01T23:27:47Z",
+      "side": 1,
+      "message": "nit\n\nboost::optional\u003copflex::modb::URI\u003e -\u003e boost::optional\u003cURI\u003e",
+      "revId": "d6b5e8781ee2b8eaba39398a9fc4218e356ac5f6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "faea63b9_997f1b53",
+        "filename": "libopflex/ofcore/OFFramework.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-01T23:27:47Z",
+      "side": 1,
+      "message": "ok this looks fine but can you convert the tabs here to spaces",
+      "revId": "d6b5e8781ee2b8eaba39398a9fc4218e356ac5f6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
