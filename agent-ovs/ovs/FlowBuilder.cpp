@@ -240,7 +240,7 @@ FlowBuilder& FlowBuilder::tcpFlags(uint16_t tcpFlags, uint16_t mask) {
 }
 
 FlowBuilder& FlowBuilder::vlan(uint16_t vlan) {
-    match_set_dl_vlan(match(), htons(vlan));
+    match_set_dl_vlan(match(), htons(vlan), 0);
     return *this;
 }
 

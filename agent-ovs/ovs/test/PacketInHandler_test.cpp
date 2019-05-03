@@ -12,6 +12,7 @@
 #include <linux/icmp.h>
 #include <netinet/ip6.h>
 #include <netinet/icmp6.h>
+#include <openvswitch/ofp-msgs.h>
 
 #include <boost/test/unit_test.hpp>
 
@@ -388,16 +389,16 @@ static void init_packet_in(ofputil_packet_in_private& pin,
                            uint32_t dstReg = 0,
                            uint64_t metadata = 0) {
     memset(&pin, 0, sizeof(pin));
-    pin.publ.reason = OFPR_ACTION;
-    pin.publ.cookie = cookie;
-    pin.publ.packet = (void*)packet_buf;
-    pin.publ.packet_len = len;
-    pin.publ.table_id = table_id;
-    match_set_in_port(&pin.publ.flow_metadata, in_port);
-    match_set_reg(&pin.publ.flow_metadata, 0, 0xA0A);
-    match_set_reg(&pin.publ.flow_metadata, 5, 10);
-    match_set_reg(&pin.publ.flow_metadata, 7, dstReg);
-    match_set_metadata(&pin.publ.flow_metadata, metadata);
+    pin.base.reason = OFPR_ACTION;
+    pin.base.cookie = cookie;
+    pin.base.packet = (void*)packet_buf;
+    pin.base.packet_len = len;
+    pin.base.table_id = table_id;
+    match_set_in_port(&pin.base.flow_metadata, in_port);
+    match_set_reg(&pin.base.flow_metadata, 0, 0xA0A);
+    match_set_reg(&pin.base.flow_metadata, 5, 10);
+    match_set_reg(&pin.base.flow_metadata, 7, dstReg);
+    match_set_metadata(&pin.base.flow_metadata, metadata);
 }
 
 static void verify_dhcpv4(OfpBuf& msg, uint8_t message_type) {
@@ -410,6 +411,7 @@ static void verify_dhcpv4(OfpBuf& msg, uint8_t message_type) {
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
                               (ofp_header*)msg.data(),
+                              NULL,
                               &ofpact);
     DpPacketP pkt;
     struct flow flow;
@@ -519,6 +521,7 @@ static void verify_dhcpv6(OfpBuf& msg, uint8_t message_type,
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
                               (ofp_header*)msg.data(),
+                              NULL,
                               &ofpact);
     DpPacketP pkt;
     struct flow flow;
@@ -620,6 +623,7 @@ static void verify_icmpv4_err(OfpBuf& msg) {
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
                               (ofp_header*)msg.data(),
+                              NULL,
                               &ofpact);
     DpPacketP pkt;
     struct flow flow;
@@ -652,8 +656,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
     BOOST_CHECK_EQUAL(0, intConn.sentMsgs.size());
@@ -669,8 +672,7 @@ void PacketInHandlerFixture::testDhcpv4Discover(MockSwitchConnection& tconn) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
@@ -700,8 +702,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -725,8 +726,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     free(buf);
 
@@ -743,8 +743,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
     BOOST_CHECK_EQUAL(0, intConn.sentMsgs.size());
@@ -760,8 +759,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -780,8 +778,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -800,8 +797,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -819,8 +815,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -839,8 +834,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_confirm, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -858,8 +852,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -877,8 +870,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -895,8 +887,7 @@ void PacketInHandlerFixture::testIcmpv4Error(MockSwitchConnection& tconn) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
@@ -928,8 +919,7 @@ void PacketInHandlerFixture::testIcmpEcho(bool v4) {
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
                                               OFPUTIL_P_OF13_OXM,
-                                              NXPIF_NXT_PACKET_IN,
-                                              0xffff, NULL));
+                                              OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
@@ -940,6 +930,7 @@ void PacketInHandlerFixture::testIcmpEcho(bool v4) {
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
                               (ofp_header*)intConn.sentMsgs[0]->data,
+                              NULL,
                               &ofpact);
 
     BOOST_CHECK(0 == memcmp(rep, po.packet, po.packet_len));

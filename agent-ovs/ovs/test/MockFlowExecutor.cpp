@@ -18,6 +18,9 @@
 extern "C" {
 #include <openvswitch/dynamic-string.h>
 #include <openvswitch/ofp-print.h>
+#include <openvswitch/ofp-errors.h>
+#include <openvswitch/ofp-flow.h>
+#include <openflow/openflow-common.h>
 }
 
 namespace opflexagent {
@@ -60,7 +63,8 @@ bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
         if (ignoredFlowMods.find(ed.first) != ignoredFlowMods.end())
             continue;
 
-        ofp_print_flow_stats(strBuf.get(), ed.second->entry);
+        ofputil_flow_stats_format(strBuf.get(), ed.second->entry,
+                                  NULL, NULL, true);
         string str = (const char*)(ds_cstr(strBuf.get())+1); // trim space
 
         BOOST_CHECK_MESSAGE(!flowMods.empty(), "\nexp:\ngot: " << ed);

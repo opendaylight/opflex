@@ -139,7 +139,7 @@ struct ofpbuf *makeFlowStatReplyMessage(MockConnection *pConn,
         match_set_reg(&(fs->match), 2 /* REG2 */, reg2);
         match_set_reg(&(fs->match), 6 /* REG6 */, reg6);
 
-        ofputil_append_flow_stats_reply(fs, &ovs_replies);
+        ofputil_append_flow_stats_reply(fs, &ovs_replies, NULL);
         reply = ofpbuf_from_list(ovs_list_back(&ovs_replies));
         ofpmsg_update_length(reply);
         // set it to be OFPRAW_ type of openflow message by setting

@@ -10,6 +10,7 @@
 #include "ovs-ofputil.h"
 
 #include <openvswitch/ofp-actions.h>
+#include <openvswitch/ofp-port.h>
 #include <openvswitch/meta-flow.h>
 #include <openvswitch/match.h>
 #include <lib/byte-order.h>
@@ -17,7 +18,8 @@
 
 void format_action(const struct ofpact* acts, size_t ofpacts_len,
                    struct ds* str) {
-    ofpacts_format(acts, ofpacts_len, str);
+    struct ofpact_format_params fp = { .s = str };
+    ofpacts_format(acts, ofpacts_len, &fp);
 }
 
 int action_equal(const struct ofpact* lhs, size_t lhs_len,
@@ -372,7 +374,7 @@ void *dpp_l3(const struct dp_packet* pkt) {
 }
 
 void *dpp_l2(const struct dp_packet* pkt) {
-    return dp_packet_l2(pkt);
+    return dp_packet_eth(pkt);
 }
 
 void *dpp_data(const struct dp_packet* pkt) {

@@ -30,6 +30,8 @@
 
 // OVS lib
 #include <lib/util.h>
+#include <openvswitch/ofp-msgs.h>
+#include <openvswitch/match.h>
 
 using std::string;
 using std::vector;
@@ -113,7 +115,7 @@ static void send_packet_out(SwitchConnection* conn,
     po.buffer_id = UINT32_MAX;
     po.packet = b.data();
     po.packet_len = b.size();
-    po.in_port = in_port;
+    match_set_in_port(&po.flow_metadata, in_port);
 
     ActionBuilder ab;
     if (outActions) {
@@ -890,7 +892,8 @@ void PacketInHandler::Handle(SwitchConnection* conn,
     struct ofputil_packet_in pi;
     uint32_t pi_buffer_id;
 
-    enum ofperr err = ofputil_decode_packet_in(oh, false, &pi, NULL,
+    enum ofperr err = ofputil_decode_packet_in(oh, false, NULL, NULL,
+                                               &pi, NULL,
                                                &pi_buffer_id, NULL);
     if (err) {
         LOG(ERROR) << "Failed to decode packet-in: " << ovs_strerror(err);

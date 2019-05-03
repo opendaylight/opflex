@@ -19,6 +19,7 @@
 #include <lib/util.h>
 extern "C" {
 #include <openvswitch/ofp-msgs.h>
+#include <openvswitch/ofp-port.h>
 }
 
 namespace opflexagent {

@@ -18,7 +18,9 @@
 #include "ovs-ofputil.h"
 
 #include <openvswitch/ofp-print.h>
+#include <openvswitch/ofp-flow.h>
 #include <openvswitch/list.h>
+#include <openflow/openflow-common.h>
 
 extern "C" {
 #include <openvswitch/dynamic-string.h>
@@ -90,14 +92,15 @@ ostream & operator<<(ostream& os, const FlowEntry& fe) {
 
 ostream & operator<<(ostream& os, const struct ofputil_flow_stats& fs) {
     DsP str;
-    ofp_print_flow_stats(str.get(), (ofputil_flow_stats*)&fs);
+    ofputil_flow_stats_format(str.get(), (ofputil_flow_stats*)&fs,
+                              NULL, NULL, true);
     os << (const char*)(ds_cstr(str.get()) + 1); // trim space
     return os;
 }
 
 ostream & operator<<(ostream& os, const match& m) {
     DsP str;
-    match_format(&m, str.get(), OFP_DEFAULT_PRIORITY);
+    match_format(&m, NULL, str.get(), OFP_DEFAULT_PRIORITY);
     os << (const char*)(ds_cstr(str.get()));
     return os;
 }
