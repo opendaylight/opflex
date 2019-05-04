@@ -65,7 +65,7 @@ bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
 
         ofputil_flow_stats_format(strBuf.get(), ed.second->entry,
                                   NULL, NULL, true);
-        string str = (const char*)(ds_cstr(strBuf.get())+1); // trim space
+        string str = (const char*)(ds_cstr(strBuf.get())); // trim space
 
         BOOST_CHECK_MESSAGE(!flowMods.empty(), "\nexp:\ngot: " << ed);
         if (!flowMods.empty()) {

@@ -48,7 +48,7 @@ void addExpFlowEntry(std::vector<FlowEntryList>& tables,
 
     DsP strBuf;
     ofputil_flow_stats_format(strBuf.get(), e->entry, NULL, NULL, true);
-    string str = (const char*)(ds_cstr(strBuf.get())+1); // trim space
+    string str = (const char*)(ds_cstr(strBuf.get())); // trim space
     BOOST_CHECK_EQUAL(str, flowMod);
 }
 

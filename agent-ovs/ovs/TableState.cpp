@@ -94,7 +94,7 @@ ostream & operator<<(ostream& os, const struct ofputil_flow_stats& fs) {
     DsP str;
     ofputil_flow_stats_format(str.get(), (ofputil_flow_stats*)&fs,
                               NULL, NULL, true);
-    os << (const char*)(ds_cstr(str.get()) + 1); // trim space
+    os << (const char*)(ds_cstr(str.get())); // trim space
     return os;
 }
 

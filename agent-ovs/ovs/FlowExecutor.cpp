@@ -120,7 +120,6 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     ofputil_flow_stats& flow = *(edit.second->entry);
 
     ofputil_flow_mod flowMod;
-    struct minimatch mini;
     memset(&flowMod, 0, sizeof(flowMod));
     flowMod.table_id = flow.table_id;
     flowMod.priority = flow.priority;
@@ -130,8 +129,7 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     }
     flowMod.new_cookie = mod == FlowEdit::MOD ? OVS_BE64_MAX :
             (mod == FlowEdit::ADD ? flow.cookie : 0);
-    minimatch_init(&mini, &flow.match);
-    memcpy(&flowMod.match, &mini, sizeof(mini));
+    minimatch_init(&flowMod.match, &flow.match);
     if (mod != FlowEdit::DEL) {
         flowMod.ofpacts_len = flow.ofpacts_len;
         flowMod.ofpacts = (ofpact*)flow.ofpacts;
