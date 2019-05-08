@@ -174,6 +174,11 @@ public class FEnumDef extends ItemFormatterTask
         }
     }
 
+    public static String getInclTag(Item aInItem)
+    {
+        return "GI_" + getNamespace(aInItem,false).toUpperCase() + '_' + getClassName(aInItem, false).toUpperCase() + "_HPP";
+    }
+
     public void generate()
     {
         genBody(0, getItem());
@@ -181,6 +186,11 @@ public class FEnumDef extends ItemFormatterTask
 
     private void genBody(int aInIndent, Item aIn)
     {
+        out.println(aInIndent,"#pragma once");
+        String lInclTag = getInclTag(aIn);
+        out.println(aInIndent,"#ifndef " + lInclTag);
+        out.println(aInIndent,"#define " + lInclTag);
+
         Item lSuperHolder = getSuperHolder(aIn);
 
         if (null != lSuperHolder)
@@ -222,5 +232,6 @@ public class FEnumDef extends ItemFormatterTask
         out.println(aInIndent + 1, "};");
         out.println(aInIndent, "}");
         out.println(aInIndent, "}");
+        out.println(aInIndent,"#endif // " + lInclTag);
     }
 }
