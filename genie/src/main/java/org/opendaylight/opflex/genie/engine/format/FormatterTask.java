@@ -95,13 +95,9 @@ public abstract class FormatterTask implements Task
 
     public final void run()
     {
-        //System.out.println(this + ".run()");
         init();
-        //System.out.println(this + ".run(): initialized");
         generate();
-        //System.out.println(this + ".run(): generated");
         finish();
-        //System.out.println(this + ".run(): finished");
     }
 
     public void firstLineCb()
@@ -113,7 +109,7 @@ public abstract class FormatterTask implements Task
     {
         out.printHeaderComment(
                 -1,
-                out.getHeaderComments(formatDescription(),file.isOverrideExisting()));
+                out.getHeaderComments(formatDescription()));
     }
 
     protected void init()

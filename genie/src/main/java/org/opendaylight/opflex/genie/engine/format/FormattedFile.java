@@ -359,12 +359,7 @@ public class FormattedFile
     {
         try
         {
-            String lFileName = file.toString();
             writer = new PrintWriter(new Writer(file, formatterCtx.getStats()));
-            //return new PrintWriter(
-            //    new BufferedWriter(
-            //        new Writer(file),
-            //        1024 * 1024 * 1)); // 1 mB buffer
         }
         catch (Throwable lE)
         {
