@@ -1,8 +1,4 @@
-package org.opendaylight.opflex.genie.content.format.agent.meta.cpp;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.TreeMap;
+package org.opendaylight.opflex.genie.content.format.proxy.meta.cpp;
 
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.mconst.ConstAction;
@@ -17,6 +13,10 @@ import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.proc.Config;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Created by midvorki on 9/24/14.
@@ -95,7 +95,7 @@ public class FMetaDef
         for (Item lIt : MClass.getConcreteClasses())
         {
             MClass lClass = (MClass) lIt;
-            if (lClass.isConcrete())
+            if (lClass.isConcrete() && !isRelationshipTarget(lClass) && !isRelationshipResolver(lClass))
             {
                 genMo(aInIndent + 2, lClass, lFirst);
                 lFirst = false;
@@ -144,7 +144,7 @@ public class FMetaDef
         }
     }
     
-    public static String getTypeName(MType aIn)
+    private static String getTypeName(MType aIn)
     {
         String lType = aIn.getLID().getName().toUpperCase();
         switch (lType)
@@ -193,12 +193,12 @@ public class FMetaDef
         return aIn.isConcreteSuperclassOf("relator/Source");
     }
 
-    private static boolean isRelationshipTarget(MClass aIn)
+    public static boolean isRelationshipTarget(MClass aIn)
     {
         return aIn.isConcreteSuperclassOf("relator/Target");
     }
 
-    private static boolean isRelationshipResolver(MClass aIn)
+    public static boolean isRelationshipResolver(MClass aIn)
     {
         return aIn.isConcreteSuperclassOf("relator/Resolver");
     }
@@ -287,8 +287,11 @@ public class FMetaDef
             // HANDLE CONTAINED CLASSES
             for (MClass lContained : lConts.values())
             {
-                out.println(aInIndent + 1, (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
-                lIsFirst = false;
+                if (!isRelationshipTarget(lContained) && !isRelationshipResolver(lContained))
+                {
+                    out.println(aInIndent + 1, (lIsFirst ? "" : ",") + "(PropertyInfo(" + toUnsignedStr(lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
+                    lIsFirst = false;
+                }
             }
 
             out.println(aInIndent + 1, "}");
