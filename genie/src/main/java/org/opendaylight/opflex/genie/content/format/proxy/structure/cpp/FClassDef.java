@@ -22,6 +22,8 @@ import org.opendaylight.opflex.modlan.utils.Strings;
 
 import java.util.*;
 
+import static org.opendaylight.opflex.genie.content.format.proxy.meta.cpp.FMetaDef.isRelationshipResolver;
+
 /**
  * Created by midvorki on 11/20/14.
  */
@@ -56,7 +58,9 @@ public class FClassDef extends ItemFormatterTask
      */
     public static boolean shouldTriggerTask(Item aIn)
     {
-        return ((MClass)aIn).isConcrete();
+        return ((MClass)aIn).isConcrete() &&
+                !((MClass)aIn).isConcreteSuperclassOf("relator/Target") &&
+                !((MClass)aIn).isConcreteSuperclassOf("relator/Resolver");
     }
 
     /**
@@ -157,8 +161,11 @@ public class FClassDef extends ItemFormatterTask
         aInClass.getContainsClasses(lConts, true, true);
         for (MClass lThis : lConts.values())
         {
-            out.printIncodeComment(aInIndent, "contains: " + lThis);
-            out.println(aInIndent, getInclude(lThis), false);
+            if (!isRelationshipResolver(lThis))
+            {
+                out.printIncodeComment(aInIndent, "contains: " + lThis);
+                out.println(aInIndent, getInclude(lThis), false);
+            }
         }
     }
 
@@ -892,7 +899,7 @@ public class FClassDef extends ItemFormatterTask
                     if (!lMultipleChildren) break;
                 }
             }
-            else
+            else if (!isRelationshipResolver(aInChildClass))
             {
                 genChildAdder(aInIdent, aInParentClass, aInChildClass, lNcs,
                         lFormattedChildClassName, lConcatenatedChildClassName,
