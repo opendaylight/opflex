@@ -27,13 +27,6 @@ module[span]
         const[name=notVisible; value=2]
     }
 
-    type[Direction; super=scalar/Enum8]
-    {
-        const[name=in; value=1]
-        const[name=out; value=2]
-        const[name=both; value=3]
-    }
-
     class[Session;
           super=policy/NamedComponent;
           concrete;]
@@ -202,7 +195,7 @@ module[span]
           super=span/Member;
           concrete]
     {
-        member[dir; type=span/Direction]
+        member[dir; type=gbp/Direction]
          contained
         {
             parent[class=span/SrcGrp]
