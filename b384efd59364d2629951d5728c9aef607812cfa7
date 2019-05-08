@@ -1,0 +1,293 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "75812104_d25303ae",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "Need to call unregisterListener for each listener registered",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4551af88_0dad7b78",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "Drop boost:: as you have a using above",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0564f187_0b0ee396",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "Couldn\u0027t you just use generated constants in modelgbp::span::DirectionEnumT. It seems like you\u0027d have to convert to/from those constants somewhere if you don\u0027t",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a5fa032_b43ae074",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "string -\u003e const string\u0026",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a99bb06_d2c8df06",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "address -\u003e const address\u0026 unless you need to return a copy",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "92606150_f68dde06",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "How is name set? It\u0027s not in the constructor and there is no setter. Is it needed?",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d5b320ca_1bf80a4a",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "string -\u003e const string\u0026",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7bd1fb6c_84af98bc",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "const string -\u003e const string\u0026",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd02485d_c721f7e8",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "const std::string -\u003e const std::string\u0026\n\nplease be consistent with string vs std::string",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a9d4f391_d5cbfa48",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "You have a using namespace std so drop the std::\n\nCan you return a reference instead of a copy?",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "61d76faa_c448ac08",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "drop the std::",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a9ffb8c_9ae21f56",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "drop the std::",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a337c70e_76e92871",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "Be consistent and prefer URI over opflex::modb::URI everywhere",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "19f92715_9e006f54",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "opflex::modb::URI -\u003e const opflex::modb::URI\u0026",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7e263ee8_702da37c",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "add const for param and be consistent and put \u0026 after the type",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4f56b124_8bbe2ba0",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "Drop the std:: for all members",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eb1cc921_a7a74812",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-08T05:34:05Z",
+      "side": 1,
+      "message": "Drop the std:: for all members",
+      "revId": "b384efd59364d2629951d5728c9aef607812cfa7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
