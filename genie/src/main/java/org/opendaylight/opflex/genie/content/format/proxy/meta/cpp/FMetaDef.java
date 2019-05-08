@@ -1,8 +1,4 @@
-package org.opendaylight.opflex.genie.content.format.agent.meta.cpp;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.TreeMap;
+package org.opendaylight.opflex.genie.content.format.proxy.meta.cpp;
 
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.mconst.ConstAction;
@@ -17,6 +13,10 @@ import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.proc.Config;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Created by midvorki on 9/24/14.
@@ -95,16 +95,19 @@ public class FMetaDef
         for (Item lIt : MClass.getConcreteClasses())
         {
             MClass lClass = (MClass) lIt;
-            if (lClass.isConcrete())
+            if (lClass.isConcrete() && !isRelationshipTarget(lClass))
             {
                 genMo(aInIndent + 2, lClass, lFirst);
                 lFirst = false;
+            }
+            if (isRelationshipTarget(lClass)) {
+                System.err.println("Skipping class " + lClass.getFullConcatenatedName());
             }
         }
         out.println(aInIndent, "}");
     }
 
-    private static String getClassType(MClass aIn)
+    public static String getClassType(MClass aIn)
     {
         if (isPolicy(aIn))
         {
@@ -167,43 +170,43 @@ public class FMetaDef
         }
     }
 
-    private static boolean isLocalEp(MClass aIn)
+    public static boolean isLocalEp(MClass aIn)
     {
         return aIn.isSubclassOf("epr/LocalEp");
 
     }
 
-    private static boolean isGlobalEp(MClass aIn)
+    public static boolean isGlobalEp(MClass aIn)
     {
         return aIn.isSubclassOf("epr/ReportedEp");
     }
 
-    private static boolean isPolicy(MClass aIn)
+    public static boolean isPolicy(MClass aIn)
     {
         return aIn.isSubclassOf("policy/Component") || aIn.isSubclassOf("policy/Definition");
     }
 
-    private static boolean isObservable(MClass aIn)
+    public static boolean isObservable(MClass aIn)
     {
         return aIn.isSubclassOf("observer/Observable");
     }
 
-    private static boolean isRelationshipSource(MClass aIn)
+    public static boolean isRelationshipSource(MClass aIn)
     {
         return aIn.isConcreteSuperclassOf("relator/Source");
     }
 
-    private static boolean isRelationshipTarget(MClass aIn)
+    public static boolean isRelationshipTarget(MClass aIn)
     {
         return aIn.isConcreteSuperclassOf("relator/Target");
     }
 
-    private static boolean isRelationshipResolver(MClass aIn)
+    public static boolean isRelationshipResolver(MClass aIn)
     {
         return aIn.isConcreteSuperclassOf("relator/Resolver");
     }
 
-    private static String getOwner(MClass aIn)
+    public static String getOwner(MClass aIn)
     {
         Collection<MOwner> lOwners = aIn.findOwners();
         return lOwners.isEmpty() ? (aIn.isConcrete() ? "default" : "abstract") : lOwners.iterator().next().getLID().getName();
@@ -287,8 +290,11 @@ public class FMetaDef
             // HANDLE CONTAINED CLASSES
             for (MClass lContained : lConts.values())
             {
-                out.println(aInIndent + 1, (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
-                lIsFirst = false;
+                if (!isRelationshipTarget(lContained))
+                {
+                    out.println(aInIndent + 1, (lIsFirst ? "" : ",") + "(PropertyInfo(" + toUnsignedStr(lContained.getClassAsPropId(aInClass)) + ", \"" + lContained.getFullConcatenatedName() + "\", PropertyInfo::COMPOSITE, " + lContained.getGID().getId() + ", PropertyInfo::VECTOR)) // " + lContained.toString());
+                    lIsFirst = false;
+                }
             }
 
             out.println(aInIndent + 1, "}");

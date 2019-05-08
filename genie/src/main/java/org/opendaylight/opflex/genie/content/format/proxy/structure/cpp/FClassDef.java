@@ -56,7 +56,8 @@ public class FClassDef extends ItemFormatterTask
      */
     public static boolean shouldTriggerTask(Item aIn)
     {
-        return ((MClass)aIn).isConcrete();
+        return ((MClass)aIn).isConcrete() &&
+                !((MClass)aIn).isConcreteSuperclassOf("relator/Target");
     }
 
     /**

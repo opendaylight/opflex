@@ -24,9 +24,7 @@ public class Formatter
         commentFormatDirective = aInCommentFormatDirective;
     }
 
-    protected String[] getHeaderComments(
-            String[] aInDescription,
-            boolean aInDoNotOverwriteExisting)
+    protected String[] getHeaderComments(String[] aInDescription)
     {
         Header lHeader = Config.getHeaderFormat();
 
