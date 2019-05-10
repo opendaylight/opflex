@@ -133,6 +133,7 @@ void IntFlowManager::registerModbListeners() {
     agent.getExtraConfigManager().registerListener(this);
     agent.getLearningBridgeManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
+    agent.getSnatManager().registerListener(this);
 }
 
 void IntFlowManager::stop() {
@@ -143,6 +144,7 @@ void IntFlowManager::stop() {
     agent.getExtraConfigManager().unregisterListener(this);
     agent.getLearningBridgeManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
+    agent.getSnatManager().unregisterListener(this);
 
     advertManager.stop();
     switchManager.getPortMapper().unregisterPortStatusListener(this);
@@ -314,6 +316,11 @@ void IntFlowManager::portStatusUpdate(const string& portName,
         .dispatch([=]() {
                 handlePortStatusUpdate(portName, portNo);
             });
+}
+
+void IntFlowManager::snatUpdated(const std::string& snatIp) {
+    if (stopping) return;
+    taskQueue.dispatch(snatIp, [=]() { handleSnatUpdate(snatIp); });
 }
 
 void IntFlowManager::peerStatusUpdated(const std::string&, int,
@@ -1197,6 +1204,60 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
     switchManager.writeFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
 }
 
+/**
+ * Endpoint specific SNAT flows
+ * All other SNAT flows are added via handleSnatUpdate
+ */
+static void flowsEndpointSNAT(SnatManager& snatMgr,
+                              const Endpoint& endPoint,
+                              FlowEntryList& el,
+                              uint32_t rdId) {
+
+    const optional<string>& snatIp = endPoint.getSnatIP();
+    if (snatIp) {
+        shared_ptr<const Snat> asWrapper =
+            snatMgr.getSnat(snatIp.get());
+        if (asWrapper && asWrapper->getSnatIP() == snatIp.get()) {
+            const Snat& as = *asWrapper;
+            boost::system::error_code ec;
+            address nwDst;
+            uint8_t prefixlen;
+            FlowBuilder fb;
+
+            for (const string& ipStr : endPoint.getIPs()) {
+                address nwSrc =
+                    address::from_string(ipStr, ec);
+                if (ec) {
+                    LOG(WARNING) << "Invalid endpoint IP: "
+                                 << ipStr << ": " << ec.message();
+                    continue;
+                }
+                fb.priority(300)
+                    .reg(6, rdId)
+                    .ipSrc(nwSrc);
+                if (as.getDest()) {
+                    nwDst =
+                        address::from_string(as.getDest().get(), ec);
+                    if (ec) {
+                        LOG(WARNING) << "Invalid SNAT destination: "
+                                     << as.getDest().get()
+                                     << ": " << ec.message();
+                    } else {
+                        if (as.getDestPrefix())
+                            prefixlen = as.getDestPrefix().get();
+                        if (prefixlen == 0)
+                            prefixlen = 32;
+                        fb.ipDst(nwDst, prefixlen);
+                    }
+                }
+                fb.action()
+                  .go(IntFlowManager::SNAT_TABLE_ID)
+                  .parent().build(el);
+            }
+        }
+    }
+}
+
 void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     LOG(DEBUG) << "Updating endpoint " << uuid;
 
@@ -1448,6 +1509,9 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                              mappedIp, floatingIp, nextHop,
                              nextHopMacp);
                 }
+                flowsEndpointSNAT(agent.getSnatManager(),
+                                  endPoint, elRouteDst, rdId);
+
             }
 
             // When traffic returns from a service interface, we have a
@@ -2007,6 +2071,57 @@ handleLearningBridgeVlanUpdate(LearningBridgeIface::vlan_range_t vlan) {
 
     switchManager.writeFlow(boost::lexical_cast<string>(vlan),
                             LEARN_TABLE_ID, learnFlows);
+}
+
+void IntFlowManager::handleSnatUpdate(const string& snatIp) {
+    LOG(DEBUG) << "Updating snat " << snatIp;
+
+    SnatManager& snatMgr = agent.getSnatManager();
+    shared_ptr<const Snat> asWrapper = snatMgr.getSnat(snatIp);
+    if (!asWrapper || asWrapper->getSnatIP() != snatIp) {
+        LOG(DEBUG) << "Clearing snat for " << snatIp;
+        switchManager.clearFlows(snatIp, SEC_TABLE_ID);
+        switchManager.clearFlows(snatIp, ROUTE_TABLE_ID);
+        switchManager.clearFlows(snatIp, SNAT_REV_TABLE_ID);
+        switchManager.clearFlows(snatIp, SNAT_TABLE_ID);
+        switchManager.clearFlows(snatIp, OUT_TABLE_ID);
+        return;
+    }
+
+    const Snat& as = *asWrapper;
+    LOG(DEBUG) << as;
+
+    address mappedIp =
+        address::from_string(snatIp);
+    uint16_t zoneId;
+    if (as.getZone())
+        zoneId = as.getZone().get();
+    if (zoneId == 0)
+        zoneId = ctZoneManager.getId(as.getUUID());
+    uint32_t ofPort = OFPP_NONE;
+    if (as.getInterfaceName()) {
+        ofPort = switchManager.getPortMapper()
+                              .FindPort(as.getInterfaceName().get());
+    }
+
+    if (ofPort != OFPP_NONE) {
+        FlowEntryList elSnat;
+        FlowBuilder fb;
+
+        // Flows from Endpoint to ext world
+        fb.priority(9)
+          .ethType(eth::type::IP)
+          .action()
+          .conntrack(ActionBuilder::CT_COMMIT,
+                     static_cast<mf_field_id>(0),
+                     zoneId, 0xff, 0);
+        if (as.getIfaceVlan())
+            fb.action()
+              .pushVlan()
+              .setVlanVid(as.getIfaceVlan().get());
+        fb.action().output(ofPort).parent().build(elSnat);
+        switchManager.writeFlow(as.getUUID(), SNAT_TABLE_ID, elSnat);
+    }
 }
 
 void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
