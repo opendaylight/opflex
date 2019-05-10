@@ -20,6 +20,7 @@
 #include <opflexagent/NotifServer.h>
 #include <opflexagent/FSWatcher.h>
 #include <opflexagent/SpanManager.h>
+#include <opflexagent/SnatManager.h>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional.hpp>
@@ -44,6 +45,7 @@ class EndpointSource;
 class ServiceSource;
 class FSRDConfigSource;
 class LearningBridgeSource;
+class SnatSource;
 class SimStats;
 
 enum StatMode { REAL, SIM, OFF };
@@ -118,6 +120,11 @@ public:
      * Get the extra config manager object for this agent
      */
     ExtraConfigManager& getExtraConfigManager() { return extraConfigManager; }
+
+    /**
+     * Get the snat manager object for this agent
+     */
+    SnatManager& getSnatManager() { return snatManager; }
 
     /**
      * Get renderer forwarding mode for this agent
@@ -241,6 +248,7 @@ private:
     ServiceManager serviceManager;
     ExtraConfigManager extraConfigManager;
     LearningBridgeManager learningBridgeManager;
+    SnatManager snatManager;
     NotifServer notifServer;
     FSWatcher fsWatcher;
     opflex_elem_t rendererFwdMode;
@@ -271,6 +279,9 @@ private:
 
     std::set<std::string> serviceSourcePaths;
     std::vector<std::unique_ptr<ServiceSource>> serviceSources;
+
+    std::set<std::string> snatSourcePaths;
+    std::vector<std::unique_ptr<SnatSource>> snatSources;
 
     std::unordered_set<std::string> rendPluginLibs;
     std::unordered_set<void*> rendPluginHandles;

@@ -47,6 +47,7 @@ class IntFlowManager : public SwitchStateHandler,
                        public LearningBridgeListener,
                        public PolicyListener,
                        public PortStatusListener,
+                       public SnatListener,
                        public opflex::ofcore::PeerStatusListener,
                        private boost::noncopyable {
 public:
@@ -264,6 +265,9 @@ public:
     virtual void portStatusUpdate(const std::string& portName, uint32_t portNo,
                                   bool fromDesc);
 
+    /* Interface: SnatListener */
+    virtual void snatUpdated(const std::string& snatIp);
+
     /**
      * Run periodic cleanup tasks
      */
@@ -338,6 +342,13 @@ public:
          */
         SRC_TABLE_ID,
         /**
+         * External World to SNAT IP
+         * UN-SNAT traffic using connection tracking. Changes
+         * network destination using state in connection
+         * tracker and forwards traffic to the endpoint.
+         */
+        SNAT_REV_TABLE_ID,
+        /**
          * For traffic returning from load-balanced service IP
          * addresses, restore the source address to the service
          * address
@@ -363,6 +374,14 @@ public:
          * by later tables.
          */
         ROUTE_TABLE_ID,
+        /**
+         * Endpoint -> External World
+         * Traffic that needs SNAT is determined after routing
+         * local traffic. SNAT changes the source ip address and
+         * source port based on configuration in the endpoint
+         * file.
+         */
+        SNAT_TABLE_ID,
         /**
          * For flows destined for a NAT IP address, determine the
          * source external network for the mapped IP address and set
@@ -489,6 +508,13 @@ private:
      * @param portNo Port number of the port that changed
      */
     void handlePortStatusUpdate(const std::string& portName, uint32_t portNo);
+
+    /**
+     * Create / Update SNAT flows due to SNAT update
+     *
+     * @param snatIp, the snat ip affected
+     */
+    void handleSnatUpdate(const std::string& snatIp);
 
     bool getGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
             boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId,
