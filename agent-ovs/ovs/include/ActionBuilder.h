@@ -263,6 +263,14 @@ public:
     ActionBuilder& popVlan();
 
     /**
+     * Set nat action in conntrack
+     */
+    ActionBuilder& nat(const boost::asio::ip::address& natIp,
+                       uint16_t protoMin,
+                       uint16_t protoMax,
+                       bool snat);
+
+    /**
      * Flas for conn track action
      */
     enum ConnTrackFlags {

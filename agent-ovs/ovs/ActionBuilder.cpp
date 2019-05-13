@@ -207,6 +207,20 @@ ActionBuilder& ActionBuilder::popVlan() {
     return *this;
 }
 
+ActionBuilder& ActionBuilder::nat(const address& natIp,
+                                  uint16_t protoMin,
+                                  uint16_t protoMax,
+                                  bool snat) {
+    if (natIp.is_v4()) {
+        act_nat(buf,
+                htonl(natIp.to_v4().to_ulong()), 0,
+                protoMin,
+                protoMax,
+                snat);
+    }
+    return *this;
+}
+
 ActionBuilder&
 ActionBuilder::conntrack(uint16_t flags,
                          mf_field_id zoneSrc,
