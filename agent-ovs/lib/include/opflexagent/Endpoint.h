@@ -1120,6 +1120,31 @@ public:
     }
 
     /**
+     * Get SNAT IP address
+     *
+     * @return the SNAT IP address
+     */
+    const boost::optional<std::string>& getSnatIP() const {
+        return snatIp;
+    }
+
+    /**
+     * Set SNAT IP address
+     *
+     * @param snatIp the SNAT IP address
+     */
+    void setSnatIP(const std::string& snatIp) {
+        this->snatIp = snatIp;
+    }
+
+    /**
+     * Unset the SNAT IP address
+     */
+    void unsetSnatIP() {
+        snatIp = boost::none;
+    }
+
+    /**
      * Set the endpoint to be external
      *
      */
@@ -1206,6 +1231,8 @@ private:
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
     ipam_set ipAddressMappings;
+    boost::optional<std::string> snatIp;
+
 };
 
 /**
