@@ -101,7 +101,12 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/cmd.h \
 	lib/include/opflexagent/logging.h \
 	lib/include/opflexagent/SimStats.h \
-	lib/include/opflexagent/SpanManager.h
+	lib/include/opflexagent/SpanManager.h \
+        lib/include/opflexagent/FSSnatSource.h \
+        lib/include/opflexagent/SnatManager.h \
+        lib/include/opflexagent/Snat.h \
+        lib/include/opflexagent/SnatSource.h \
+        lib/include/opflexagent/SnatListener.h
 
 noinst_HEADERS = \
 	ovs/include/OVSRenderer.h \
@@ -168,7 +173,11 @@ libopflex_agent_la_SOURCES = \
 	lib/TaskQueue.cpp \
 	lib/Network.cpp \
 	lib/SimStats.cpp \
-	lib/SpanManager.cpp
+	lib/SpanManager.cpp \
+        lib/FSSnatSource.cpp \
+        lib/Snat.cpp \
+        lib/SnatManager.cpp \
+        lib/SnatSource.cpp
 libopflex_agent_la_LDFLAGS = -shared -version-info ${VERSION_INFO}
 
 pkgconfigdir = $(libdir)/pkgconfig

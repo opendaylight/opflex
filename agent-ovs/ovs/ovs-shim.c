@@ -247,6 +247,24 @@ void act_pop_vlan(struct ofpbuf* buf) {
     ofpact_put_STRIP_VLAN(buf)->ofpact.raw = 8;
 }
 
+void act_nat(struct ofpbuf* buf,
+             uint32_t ip_min, /* network order */
+             uint32_t ip_max, /* network order */
+             uint16_t proto_min,
+             uint16_t proto_max,
+             bool snat) {
+    uint16_t flags = (snat) ? NX_NAT_F_SRC : NX_NAT_F_DST;
+
+    flags |= NX_NAT_F_PERSISTENT;
+    struct ofpact_nat *act = ofpact_put_NAT(buf);
+    act->flags = flags;
+    act->range_af = AF_INET;
+    act->range.addr.ipv4.min = ip_min;
+    act->range.addr.ipv4.max = ip_max;
+    act->range.proto.min = proto_min;
+    act->range.proto.max = proto_max;
+}
+
 void act_conntrack(struct ofpbuf* buf,
                    uint16_t flags,
                    uint16_t zoneImm,

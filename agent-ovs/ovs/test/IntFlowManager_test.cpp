@@ -1589,7 +1589,7 @@ BOOST_FIXTURE_TEST_CASE(learningBridge, BaseIntFlowManagerFixture) {
 
 #define ADDF(flow) addExpFlowEntry(expTables, flow)
 enum TABLE {
-    SEC, SRC, SVR, BR, SVH, RT, NAT, LRN, SVD, POL, OUT
+    SEC, SRC, SNAT_REV, SVR, BR, SVH, RT, SNAT, NAT, LRN, SVD, POL, OUT
 };
 
 void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
@@ -3021,7 +3021,7 @@ void BaseIntFlowManagerFixture::initExpLearningBridge() {
         ADDF(Bldr().table(SEC).priority(500).in(s.port)
              .isVlanTci(s.tci, s.mask)
              .actions()
-             .learn("table=7,idle_timeout=300,delete_learned,cookie="
+             .learn("table=9,idle_timeout=300,delete_learned,cookie="
                     + (boost::format("0x%lx") % (ovs_htonll(cookie))).str() +
                     ",NXM_OF_VLAN_TCI[0..12],"
                     "NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],"

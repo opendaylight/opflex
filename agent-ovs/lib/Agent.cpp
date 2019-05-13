@@ -28,6 +28,7 @@
 #include <opflexagent/FSRDConfigSource.h>
 #include <opflexagent/FSLearningBridgeSource.h>
 #include <opflexagent/FSExternalEndpointSource.h>
+#include <opflexagent/FSSnatSource.h>
 #include <opflexagent/logging.h>
 
 #include <opflexagent/Renderer.h>
@@ -127,6 +128,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string ENDPOINT_SOURCE_FSPATH("endpoint-sources.filesystem");
     static const std::string ENDPOINT_SOURCE_MODEL_LOCAL("endpoint-sources.model-local");
     static const std::string SERVICE_SOURCE_PATH("service-sources.filesystem");
+    static const std::string SNAT_SOURCE_PATH("snat-sources.filesystem");
     static const std::string OPFLEX_PEERS("opflex.peers");
     static const std::string OPFLEX_SSL_MODE("opflex.ssl.mode");
     static const std::string OPFLEX_SSL_CA_STORE("opflex.ssl.ca-store");
@@ -226,6 +228,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (serviceSource) {
         for (const ptree::value_type &v : serviceSource.get())
             serviceSourcePaths.insert(v.second.data());
+    }
+
+    optional<const ptree&> snatSource =
+        properties.get_child_optional(SNAT_SOURCE_PATH);
+
+    if (snatSource) {
+        for (const ptree::value_type &v : snatSource.get())
+             snatSourcePaths.insert(v.second.data());
     }
 
     optional<const ptree&> peers =
@@ -367,6 +377,8 @@ void Agent::applyProperties() {
         LOG(ERROR) << "No endpoint sources found in configuration.";
     if (serviceSourcePaths.size() == 0)
         LOG(INFO) << "No service sources found in configuration.";
+    if (snatSourcePaths.size() == 0)
+        LOG(INFO) << "No SNAT sources found in configuration.";
     if (opflexPeers.size() == 0)
         LOG(ERROR) << "No Opflex peers found in configuration";
     if (renderers.size() == 0)
@@ -480,6 +492,11 @@ void Agent::start() {
         ServiceSource* source =
             new FSServiceSource(&serviceManager, fsWatcher, path);
         serviceSources.emplace_back(source);
+    }
+    for (const std::string& path : snatSourcePaths) {
+        SnatSource* source =
+            new FSSnatSource(&snatManager, fsWatcher, path);
+        snatSources.emplace_back(source);
     }
     fsWatcher.start();
 
