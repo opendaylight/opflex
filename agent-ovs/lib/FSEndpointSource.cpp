@@ -102,6 +102,8 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string IPM_NEXTHOP_IF("next-hop-if");
     static const std::string IPM_NEXTHOP_MAC("next-hop-mac");
 
+    static const std::string SNAT_IP("snat-ip");
+
     try {
         using boost::property_tree::ptree;
         Endpoint newep;
@@ -404,6 +406,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
                     newep.addIPAddressMapping(ipm);
             }
         }
+
+        optional<string> snatIp =
+            properties.get_optional<string>(SNAT_IP);
+        if (snatIp)
+            newep.setSnatIP(snatIp.get());
 
         ep_map_t::const_iterator it = knownEps.find(pathstr);
         if (it != knownEps.end()) {
