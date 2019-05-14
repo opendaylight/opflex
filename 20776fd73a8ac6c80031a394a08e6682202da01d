@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "24e8cded_8ecc1b70",
+        "filename": "agent-ovs/lib/SnatManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-14T22:44:42Z",
+      "side": 1,
+      "message": "this is declared but everywhere you fully qualify in this file. Can you convert std::string -\u003e string and std::unordered_set -\u003e unordered_set",
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "261ab021_cc58d5cc",
         "filename": "agent-ovs/lib/SnatManager.cpp",
         "patchSetId": 1
@@ -48,6 +65,40 @@
     },
     {
       "key": {
+        "uuid": "aa8d92ef_e1c652d2",
+        "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 1134,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-14T22:44:42Z",
+      "side": 1,
+      "message": "mappedIp -\u003e snatIp",
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "19965383_ffccc836",
+        "filename": "agent-ovs/lib/include/opflexagent/Snat.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-14T22:44:42Z",
+      "side": 1,
+      "message": "Compiler warning to address\n\n14:57:03 /w/workspace/opflex-verify-sodium/agent-ovs/lib/include/opflexagent/Snat.h:33: warning: argument \u0027snatIp\u0027 of command @param is not found in the argument list of opflexagent::Snat::Snat()",
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "95781b57_99368988",
         "filename": "agent-ovs/lib/include/opflexagent/Snat.h",
         "patchSetId": 1
@@ -65,6 +116,74 @@
         "endLine": 257,
         "endChar": 16
       },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4c9fff61_46d5e455",
+        "filename": "agent-ovs/lib/include/opflexagent/SnatListener.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-14T22:44:42Z",
+      "side": 1,
+      "message": "uuid - \u003e snatIp\n\nparam description should also be updated",
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8bd64c2f_15842b4b",
+        "filename": "agent-ovs/lib/include/opflexagent/SnatManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-14T22:44:42Z",
+      "side": 1,
+      "message": "a bunch of doxygen complaints in this file...take a look at the build output",
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fddd98a6_6fff4499",
+        "filename": "agent-ovs/lib/include/opflexagent/SnatSource.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-14T22:44:42Z",
+      "side": 1,
+      "message": "uuid -\u003e snatIp",
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cc62df20_0d646124",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2170,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-14T22:44:42Z",
+      "side": 1,
+      "message": "14:59:45 ovs/IntFlowManager.cpp: In member function \u0027void opflexagent::IntFlowManager::handleSnatUpdate(const string\u0026)\u0027:\n14:59:45 ovs/IntFlowManager.cpp:2170:13: warning: variable \u0027mappedIp\u0027 set but not used [-Wunused-but-set-variable]\n14:59:45      address mappedIp \u003d\n14:59:45              ^",
       "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
