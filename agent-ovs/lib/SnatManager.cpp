@@ -50,7 +50,7 @@ SnatManager::getSnat(const std::string& snatIp) {
 
 void SnatManager::updateSnat(const Snat& snat) {
     unique_lock<mutex> guard(snat_mutex);
-    const string& snatIp = snat.getSnatIP();
+    const string snatIp = snat.getSnatIP();
     snat_map_t::const_iterator it = snat_map.find(snatIp);
     if (it != snat_map.end()) {
         snat_map.erase(it);

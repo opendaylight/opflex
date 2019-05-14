@@ -2180,12 +2180,6 @@ void IntFlowManager::handleSnatUpdate(const string& snatIp) {
                               .FindPort(as.getInterfaceName().get());
     }
 
-    if (ofPort != OFPP_NONE) {
-        FlowEntryList elSnat;
-        FlowBuilder fb;
-
-        switchManager.writeFlow(as.getUUID(), SNAT_TABLE_ID, elSnat);
-    }
 }
 
 void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
