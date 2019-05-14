@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "261ab021_cc58d5cc",
+        "filename": "agent-ovs/lib/SnatManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 8445
+      },
+      "writtenOn": "2019-05-14T19:14:06Z",
+      "side": 1,
+      "message": "This is deleted and we are accessing it again in next statement which might cause the crash. are we planning to add and trigger the Update gain?",
+      "range": {
+        "startLine": 54,
+        "startChar": 0,
+        "endLine": 54,
+        "endChar": 58
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e085bb23_03857433",
+        "filename": "agent-ovs/lib/SnatManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 8445
+      },
+      "writtenOn": "2019-05-14T19:14:06Z",
+      "side": 1,
+      "message": "can we use a find on snatIP instead of directly accessing it .  and if it is not there probably you need to insert the entry along with uuid",
+      "range": {
+        "startLine": 83,
+        "startChar": 29,
+        "endLine": 83,
+        "endChar": 35
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "95781b57_99368988",
+        "filename": "agent-ovs/lib/include/opflexagent/Snat.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 8445
+      },
+      "writtenOn": "2019-05-14T19:14:06Z",
+      "side": 1,
+      "message": "Can we move this Variables under private scope",
+      "range": {
+        "startLine": 257,
+        "startChar": 8,
+        "endLine": 257,
+        "endChar": 16
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0a166405_9a0e86a5",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2184,
+      "author": {
+        "id": 8445
+      },
+      "writtenOn": "2019-05-14T19:14:06Z",
+      "side": 1,
+      "message": "do we need to set elSnat here",
+      "range": {
+        "startLine": 2184,
+        "startChar": 22,
+        "endLine": 2184,
+        "endChar": 28
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3527b8af_e489ab61",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2185,
+      "author": {
+        "id": 8445
+      },
+      "writtenOn": "2019-05-14T19:14:06Z",
+      "side": 1,
+      "message": "do we need FlowBuilder ? variable here",
+      "range": {
+        "startLine": 2185,
+        "startChar": 8,
+        "endLine": 2185,
+        "endChar": 19
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
