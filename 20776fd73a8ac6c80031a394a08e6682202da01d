@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f21cc3a2_b82c7e89",
+        "filename": "agent-ovs/lib/SnatManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-05-15T00:29:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "24e8cded_8ecc1b70",
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "261ab021_cc58d5cc",
         "filename": "agent-ovs/lib/SnatManager.cpp",
         "patchSetId": 1
@@ -30,6 +48,30 @@
       "writtenOn": "2019-05-14T19:14:06Z",
       "side": 1,
       "message": "This is deleted and we are accessing it again in next statement which might cause the crash. are we planning to add and trigger the Update gain?",
+      "range": {
+        "startLine": 54,
+        "startChar": 0,
+        "endLine": 54,
+        "endChar": 58
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "748f1bda_2a8ba6ec",
+        "filename": "agent-ovs/lib/SnatManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-05-15T00:29:09Z",
+      "side": 1,
+      "message": "This should not be an issue since its a shared_ptr",
+      "parentUuid": "261ab021_cc58d5cc",
       "range": {
         "startLine": 54,
         "startChar": 0,
@@ -65,6 +107,30 @@
     },
     {
       "key": {
+        "uuid": "3762c868_4fb3806e",
+        "filename": "agent-ovs/lib/SnatManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-05-15T00:29:09Z",
+      "side": 1,
+      "message": "That statement should  add an empty epset to the map if it does not exist. and we do insert the uuid into the set in the lines below.",
+      "parentUuid": "e085bb23_03857433",
+      "range": {
+        "startLine": 83,
+        "startChar": 29,
+        "endLine": 83,
+        "endChar": 35
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "aa8d92ef_e1c652d2",
         "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
         "patchSetId": 1
@@ -76,6 +142,24 @@
       "writtenOn": "2019-05-14T22:44:42Z",
       "side": 1,
       "message": "mappedIp -\u003e snatIp",
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c090e568_5061179c",
+        "filename": "agent-ovs/lib/include/opflexagent/Endpoint.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 1134,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-05-15T00:29:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aa8d92ef_e1c652d2",
       "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
@@ -110,6 +194,30 @@
       "writtenOn": "2019-05-14T19:14:06Z",
       "side": 1,
       "message": "Can we move this Variables under private scope",
+      "range": {
+        "startLine": 257,
+        "startChar": 8,
+        "endLine": 257,
+        "endChar": 16
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "92952c31_f1c50b86",
+        "filename": "agent-ovs/lib/include/opflexagent/Snat.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-05-15T00:29:09Z",
+      "side": 1,
+      "message": "I did not make it private intentionally since I wanted to access the class from other places.",
+      "parentUuid": "95781b57_99368988",
       "range": {
         "startLine": 257,
         "startChar": 8,
@@ -213,6 +321,30 @@
     },
     {
       "key": {
+        "uuid": "318bcde7_6da73d21",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2184,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-05-15T00:29:09Z",
+      "side": 1,
+      "message": "yeah that code does nothing until the reverse flows are there. (in my next commit) I can delete it from here.",
+      "parentUuid": "0a166405_9a0e86a5",
+      "range": {
+        "startLine": 2184,
+        "startChar": 22,
+        "endLine": 2184,
+        "endChar": 28
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3527b8af_e489ab61",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 1
@@ -224,6 +356,30 @@
       "writtenOn": "2019-05-14T19:14:06Z",
       "side": 1,
       "message": "do we need FlowBuilder ? variable here",
+      "range": {
+        "startLine": 2185,
+        "startChar": 8,
+        "endLine": 2185,
+        "endChar": 19
+      },
+      "revId": "20776fd73a8ac6c80031a394a08e6682202da01d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "30f63077_1a1282e5",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2185,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-05-15T00:29:09Z",
+      "side": 1,
+      "message": "will delete it and add it in the next set of diffs.",
+      "parentUuid": "3527b8af_e489ab61",
       "range": {
         "startLine": 2185,
         "startChar": 8,
