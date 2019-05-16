@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1d356f96_316d4ce5",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-05-16T18:39:44Z",
+      "side": 1,
+      "message": "shouldn\u0027t the name be part of the hash as well?",
+      "revId": "9b4c4f3a19a85a6621e42620fc2b42ee5368c7f0",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
