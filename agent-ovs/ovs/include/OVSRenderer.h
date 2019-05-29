@@ -67,7 +67,6 @@ private:
     PortMapper intPortMapper;
     SwitchManager intSwitchManager;
     IntFlowManager intFlowManager;
-    SpanRenderer spanRenderer;
 
     FlowExecutor accessFlowExecutor;
     FlowReader accessFlowReader;
@@ -108,6 +107,8 @@ private:
     long contractStatsInterval;
     bool secGroupStatsEnabled;
     long secGroupStatsInterval;
+
+    SpanRenderer spanRenderer;
 
     bool started;
 
