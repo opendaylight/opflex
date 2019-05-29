@@ -65,7 +65,7 @@ module[epr]
     }
 
     class[ReportedRoute;
-          super=gbp/BaseRoute;
+          super=epr/ReportedEp;
           concrete;]
     {
         # routing domain for the route
