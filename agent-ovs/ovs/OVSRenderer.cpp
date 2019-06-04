@@ -94,6 +94,7 @@ void OVSRenderer::start() {
         encapType == IntFlowManager::ENCAP_IVXLAN) {
         tunnelEpManager.setUplinkIface(uplinkIface);
         tunnelEpManager.setUplinkVlan(uplinkVlan);
+        tunnelEpManager.setParentRenderer(this);
         tunnelEpManager.start();
     }
 

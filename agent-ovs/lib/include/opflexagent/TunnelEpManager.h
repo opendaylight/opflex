@@ -25,6 +25,7 @@
 namespace opflexagent {
 
 class Agent;
+class Renderer;
 
 /**
  * The tunnel endpoint manager creates a tunnel termination endpoint
@@ -74,6 +75,10 @@ public:
         this->uplinkVlan = uplinkVlan;
     }
 
+    void setParentRenderer(Renderer *r) {
+        this->renderer = r;
+    }
+
     /**
      * Get the tunnel termination IP address for the tunnel endpoint
      * with the given uuid
@@ -104,6 +109,7 @@ public:
 
 private:
     Agent* agent;
+    Renderer* renderer;
     boost::asio::io_service& agent_io;
     long timer_interval;
     std::unique_ptr<boost::asio::deadline_timer> timer;

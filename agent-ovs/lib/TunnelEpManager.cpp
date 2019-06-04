@@ -27,6 +27,7 @@
 
 #include <opflexagent/Agent.h>
 #include <opflexagent/TunnelEpManager.h>
+#include <opflexagent/Renderer.h>
 #include <opflexagent/logging.h>
 
 namespace opflexagent {
@@ -162,7 +163,10 @@ void TunnelEpManager::on_timer(const error_code& ec) {
     string bestIface;
     string bestMac;
     bool bestAddrIsV4 = false;
-
+    if(renderer && renderer->isUplinkAddressImplemented()) {
+        bestAddress = renderer->getUplinkAddress();
+        bestMac = renderer->getUplinkMac();
+    } else {
 #ifdef HAVE_IFADDRS_H
     // This is linux-specific.  Other plaforms will require their own
     // platform-specific interface enumeration.
@@ -246,6 +250,7 @@ void TunnelEpManager::on_timer(const error_code& ec) {
     terminationIpIsV4 = bestAddrIsV4;
 
 #endif
+    }
 
     if ((!bestAddress.empty() && bestAddress != terminationIp) ||
         (!bestMac.empty() && bestMac != terminationMac)) {

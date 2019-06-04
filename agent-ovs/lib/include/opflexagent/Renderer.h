@@ -60,6 +60,29 @@ public:
     virtual void stop() = 0;
 
     /**
+     * Is uplink address owned by renderer
+     */
+    virtual bool isUplinkAddressImplemented() {
+        return false;
+    }
+
+    /**
+     * Get uplink address from renderer
+     */
+    virtual string getUplinkAddress() {
+        string addr("");
+        return addr;
+    }
+
+    /**
+     * Get uplink mac from renderer
+     */
+    virtual string getUplinkMac() {
+        string mac("");
+        return mac;
+    }
+
+    /**
      * Get the Agent object
      */
     Agent& getAgent() { return agent; }
