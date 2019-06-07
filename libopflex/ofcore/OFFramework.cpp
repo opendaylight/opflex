@@ -84,6 +84,7 @@ bool OFFramework::setElementMode(
     opflex::ofcore::OFConstants::OpflexElementMode mode_) {
     if(!pimpl->started) {
         pimpl->mode = mode_;
+        mode = mode_;
         return true;
     } else {
         return false;
