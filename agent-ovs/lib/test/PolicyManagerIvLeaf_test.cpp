@@ -40,7 +40,9 @@ using namespace modelgbp::epdr;
 
 class PolicyIvLeafFixture : public BaseFixture {
 public:
-    PolicyIvLeafFixture() {
+    PolicyIvLeafFixture():
+        BaseFixture(
+            opflex::ofcore::OFConstants::OpflexElementMode::TRANSPORT_MODE) {
         shared_ptr<policy::Universe> universe =
             policy::Universe::resolve(framework).get();
 

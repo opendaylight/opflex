@@ -713,6 +713,13 @@ public:
     opflex::ofcore::OFConstants::OpflexElementMode mode_);
 
     /**
+     * Get the element mode for the opflex element.
+     *
+     * @return stitched or transport mode
+     */
+    opflex::ofcore::OFConstants::OpflexElementMode getElementMode();
+
+    /**
      * set the prr (policy resolve request) timer durarion.
      * @param duration timer duration in milliseconds
      */

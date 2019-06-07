@@ -1572,130 +1572,135 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
             } else {
                 l3s.natEpg = boost::none;
             }
-            l3s.instContext = net->resolveGbpeInstContext();
-            vector<shared_ptr<ExternalSubnet>> extSubs;
-            net->resolveGbpExternalSubnet(extSubs);
-            ext_subnet_map_t newExtSubs;
-            for (shared_ptr<ExternalSubnet> &extsub : extSubs) {
-                if (!extsub->isAddressSet() || !extsub->isPrefixLenSet())
-                    continue;
-                boost::system::error_code ec;
-                address addr =
-                address::from_string(extsub->getAddress().get(), ec);
-                if (ec) continue;
-                newExtSubs[extsub->getURI()] = extsub;
-                if(l3s.subnet_map.find(extsub->getURI()) ==
-                   l3s.subnet_map.end()) {
-                    optional<
-                        shared_ptr<modelgbp::gbp::L3ExternalNetwork>> oldNet;
-                    optional<
-                        shared_ptr<modelgbp::gbp::ExternalSubnet>> oldExtSub;
-                    getBestPolicyPrefix(rd.get()->getURI(),
-                                        extsub->getAddress().get(),
-                                        extsub->getPrefixLen().get(),
-                                        oldNet, oldExtSub);
-                    Mutator mutator(framework, "policyelement");
-                    //This is a new policy prefix, create a new localRoute
-                    //with this info and fetch the next-hops for it
-                    localRoute = lD.get()->addEpdrLocalRoute(
-                                     rd.get()->getURI().toString(),
-                                     extsub->getAddress().get(),
-                                     extsub->getPrefixLen().get());
-                    LOG(DEBUG) << "Added policy prefix " <<
-                        rd.get()->getURI() << ", " <<
-                        extsub->getAddress().get() << "/" <<
-                        (uint32_t)extsub->getPrefixLen().get();
-                    localRoute.get()->addEpdrLocalRouteToPrtRSrc()
-                                        ->setTargetL3ExternalNetwork(
-                                            net->getURI());
-                    localRoute.get()->addEpdrLocalRouteToPsrtRSrc()
-                                        ->setTargetExternalSubnet(
-                                            extsub->getURI());
-                    lrtToRrt = localRoute.get()->
-                                   resolveEpdrLocalRouteToRrtRSrc();
-                    if(!lrtToRrt) {
-                        optional<URI> remoteRt;
-                        getBestRemoteRoute(
+            if(framework.getElementMode() ==
+                    opflex::ofcore::OFConstants::TRANSPORT_MODE) {
+                l3s.instContext = net->resolveGbpeInstContext();
+                vector<shared_ptr<ExternalSubnet>> extSubs;
+                net->resolveGbpExternalSubnet(extSubs);
+                ext_subnet_map_t newExtSubs;
+                for (shared_ptr<ExternalSubnet> &extsub : extSubs) {
+                    if (!extsub->isAddressSet() || !extsub->isPrefixLenSet())
+                        continue;
+                    boost::system::error_code ec;
+                    address addr =
+                    address::from_string(extsub->getAddress().get(), ec);
+                    if (ec) continue;
+                    newExtSubs[extsub->getURI()] = extsub;
+                    if(l3s.subnet_map.find(extsub->getURI()) ==
+                       l3s.subnet_map.end()) {
+                        optional<shared_ptr<modelgbp::gbp::L3ExternalNetwork>>
+                            oldNet;
+                        optional<shared_ptr<modelgbp::gbp::ExternalSubnet>>
+                            oldExtSub;
+                        getBestPolicyPrefix(rd.get()->getURI(),
+                                            extsub->getAddress().get(),
+                                            extsub->getPrefixLen().get(),
+                                            oldNet, oldExtSub);
+                        Mutator mutator(framework, "policyelement");
+                        //This is a new policy prefix, create a new localRoute
+                        //with this info and fetch the next-hops for it
+                        localRoute = lD.get()->addEpdrLocalRoute(
+                                         rd.get()->getURI().toString(),
+                                         extsub->getAddress().get(),
+                                         extsub->getPrefixLen().get());
+                        LOG(DEBUG) << "Added policy prefix " <<
+                            rd.get()->getURI() << ", " <<
+                            extsub->getAddress().get() << "/" <<
+                            (uint32_t)extsub->getPrefixLen().get();
+                        localRoute.get()->addEpdrLocalRouteToPrtRSrc()
+                                            ->setTargetL3ExternalNetwork(
+                                                net->getURI());
+                        localRoute.get()->addEpdrLocalRouteToPsrtRSrc()
+                                            ->setTargetExternalSubnet(
+                                                extsub->getURI());
+                        lrtToRrt = localRoute.get()->
+                                       resolveEpdrLocalRouteToRrtRSrc();
+                        if(!lrtToRrt) {
+                            optional<URI> remoteRt;
+                            getBestRemoteRoute(
+                                rd.get()->getURI(),
+                                extsub->getAddress().get(),
+                                extsub->getPrefixLen().get(),
+                                remoteRt);
+                            if(remoteRt) {
+                                LOG(DEBUG) << "Inheriting " <<
+                                remoteRt.get() << " for ppfx " <<
+                                rd.get()->getURI() <<
+                                extsub->getAddress().get()<< "/" <<
+                                (uint32_t)extsub->getPrefixLen().get();
+                                localRoute.get()->addEpdrLocalRouteToRrtRSrc()
+                                                    ->setTargetRemoteRoute(
+                                                        remoteRt.get());
+                            }
+                        }
+                        mutator.commit();
+                        updateRemoteRouteChildrenForPolicyPrefix(
                             rd.get()->getURI(),
+                            (oldNet? oldNet.get()->getURI():net->getURI()),
+                            (oldExtSub?
+                                oldExtSub.get()->getURI():extsub->getURI()),
                             extsub->getAddress().get(),
                             extsub->getPrefixLen().get(),
-                            remoteRt);
-                        if(remoteRt) {
-                            LOG(DEBUG) << "Inheriting " <<
-                            remoteRt.get() << " for ppfx " <<
-                            rd.get()->getURI() << extsub->getAddress().get()
-                            << "/" << (uint32_t)extsub->getPrefixLen().get();
-                            localRoute.get()->addEpdrLocalRouteToRrtRSrc()
-                                                ->setTargetRemoteRoute(
-                                                    remoteRt.get());
-                        }
+                            net,
+                            extsub,
+                            notifyLocalRoutes);
+                        notifyLocalRoutes.insert(localRoute.get()->getURI());
+                        l3s.subnet_map[extsub->getURI()] = extsub;
                     }
-                    mutator.commit();
-                    updateRemoteRouteChildrenForPolicyPrefix(
-                        rd.get()->getURI(),
-                        (oldNet? oldNet.get()->getURI():net->getURI()),
-                        (oldExtSub? oldExtSub.get()->getURI():extsub->getURI()),
-                        extsub->getAddress().get(),
-                        extsub->getPrefixLen().get(),
-                        net,
-                        extsub,
-                        notifyLocalRoutes);
-                    notifyLocalRoutes.insert(localRoute.get()->getURI());
-                    l3s.subnet_map[extsub->getURI()] = extsub;
                 }
-            }
-            for (auto snet = l3s.subnet_map.begin();
-                 snet != l3s.subnet_map.end();) {
-                optional<shared_ptr<L3ExternalNetwork>> newNet;
-                optional<shared_ptr<ExternalSubnet>> newExtSub;
-                if(newExtSubs.find(snet->first) == newExtSubs.end()) {
-                    //This is a deleted policy prefix, update localRoutes
-                    //being served by this policy prefix
-                    opflex::modb::URI delURI = snet->second->getURI();
-                    std::string delPPfx = snet->second->getAddress().get();
-                    uint32_t pPfxLen = snet->second->getPrefixLen().get();
-                    localRoute = LocalRoute::resolve(
-                                     framework,
-                                     rd.get()->getURI().toString(),
-                                     delPPfx,
-                                     pPfxLen);
-                    notifyLocalRoutes.insert(localRoute.get()->getURI());
-                    auto lrtToPrt = localRoute.get()->
-                                        resolveEpdrLocalRouteToPrtRSrc();
-                    auto lrtToPsrt = localRoute.get()->
-                                        resolveEpdrLocalRouteToPsrtRSrc();
-                    Mutator mutator(framework, "policyelement");
-                    lrtToPrt.get()->remove();
-                    lrtToPsrt.get()->remove();
-                    mutator.commit();
-                    if(isLocalRouteDeletable(localRoute.get())) {
-                        localRoute.get()->remove();
+                for (auto snet = l3s.subnet_map.begin();
+                     snet != l3s.subnet_map.end();) {
+                    optional<shared_ptr<L3ExternalNetwork>> newNet;
+                    optional<shared_ptr<ExternalSubnet>> newExtSub;
+                    if(newExtSubs.find(snet->first) == newExtSubs.end()) {
+                        //This is a deleted policy prefix, update localRoutes
+                        //being served by this policy prefix
+                        opflex::modb::URI delURI = snet->second->getURI();
+                        std::string delPPfx = snet->second->getAddress().get();
+                        uint32_t pPfxLen = snet->second->getPrefixLen().get();
+                        localRoute = LocalRoute::resolve(
+                                         framework,
+                                         rd.get()->getURI().toString(),
+                                         delPPfx,
+                                         pPfxLen);
+                        notifyLocalRoutes.insert(localRoute.get()->getURI());
+                        auto lrtToPrt = localRoute.get()->
+                                            resolveEpdrLocalRouteToPrtRSrc();
+                        auto lrtToPsrt = localRoute.get()->
+                                            resolveEpdrLocalRouteToPsrtRSrc();
+                        Mutator mutator(framework, "policyelement");
+                        lrtToPrt.get()->remove();
+                        lrtToPsrt.get()->remove();
                         mutator.commit();
+                        if(isLocalRouteDeletable(localRoute.get())) {
+                            localRoute.get()->remove();
+                            mutator.commit();
+                        }
+                        snet = l3s.subnet_map.erase(snet);
+                        getBestPolicyPrefix(
+                            rd.get()->getURI(),
+                            delPPfx,
+                            pPfxLen,
+                            newNet,
+                            newExtSub);
+                        updateRemoteRouteChildrenForPolicyPrefix(
+                            rd.get()->getURI(),
+                            net->getURI(),
+                            delURI,
+                            delPPfx,
+                            pPfxLen,
+                            newNet,
+                            newExtSub,
+                            notifyLocalRoutes);
+                        continue;
                     }
-                    snet = l3s.subnet_map.erase(snet);
-                    getBestPolicyPrefix(
-                        rd.get()->getURI(),
-                        delPPfx,
-                        pPfxLen,
-                        newNet,
-                        newExtSub);
-                    updateRemoteRouteChildrenForPolicyPrefix(
-                        rd.get()->getURI(),
-                        net->getURI(),
-                        delURI,
-                        delPPfx,
-                        pPfxLen,
-                        newNet,
-                        newExtSub,
-                        notifyLocalRoutes);
-                    continue;
+                    snet++;
                 }
-                snet++;
             }
-
             updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                  net->getURI(), contractsToNotify);
         }
+
         for (const URI& net : rds.extNets) {
             if (newNets.find(net) == newNets.end()) {
                 l3n_map_t::iterator lit = l3n_map.find(net);
@@ -1711,7 +1716,10 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
                         }
                     }
                 }
-
+                if(framework.getElementMode() !=
+                    opflex::ofcore::OFConstants::TRANSPORT_MODE) {
+                    l3n_map.erase(lit);
+                }
                 updateGroupContracts(L3ExternalNetwork::CLASS_ID,
                                      net, contractsToNotify);
             }
@@ -2672,6 +2680,11 @@ void PolicyManager::updateExternalNetworkPrefixes(
         const opflex::modb::URI& uri,
         uri_set_t &notifyRemoteRoutes,
         uri_set_t &notifyLocalRoutes) {
+
+    if(framework.getElementMode() !=
+            opflex::ofcore::OFConstants::TRANSPORT_MODE) {
+        return;
+    }
     using namespace modelgbp::gbp;
     using namespace modelgbp::epdr;
     optional<shared_ptr<LocalRouteDiscovered>> lD;

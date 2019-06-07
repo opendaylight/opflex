@@ -90,6 +90,10 @@ bool OFFramework::setElementMode(
     }
 }
 
+opflex::ofcore::OFConstants::OpflexElementMode OFFramework::getElementMode() {
+    return pimpl->mode;
+}
+
 void OFFramework::setPrrTimerDuration(const uint64_t duration) {
     pimpl->processor.setPrrTimerDuration(duration);
 }
