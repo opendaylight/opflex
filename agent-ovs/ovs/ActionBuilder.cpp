@@ -221,6 +221,11 @@ ActionBuilder& ActionBuilder::nat(const address& natIp,
     return *this;
 }
 
+ActionBuilder& ActionBuilder::unnat() {
+        act_unnat(buf);
+        return *this;
+}
+
 ActionBuilder&
 ActionBuilder::conntrack(uint16_t flags,
                          mf_field_id zoneSrc,

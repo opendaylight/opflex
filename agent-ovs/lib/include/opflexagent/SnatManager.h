@@ -111,8 +111,9 @@ private:
      * manager.
      *
      * @param snatIp of the snat that no longer exists
+     * @param uuid of the snat that no longer exists
      */
-    void removeSnat(const std::string& snatIp);
+    void removeSnat(const std::string& snatIp, const std::string& uuid);
 
     class SnatState {
     public:
@@ -140,7 +141,7 @@ private:
     std::list<SnatListener*> snatListeners;
     std::mutex listener_mutex;
 
-    void notifyListeners(const std::string& uuid);
+    void notifyListeners(const std::string& snatIp, const std::string& uuid);
 
     friend class SnatSource;
 };

@@ -266,7 +266,8 @@ public:
                                   bool fromDesc);
 
     /* Interface: SnatListener */
-    virtual void snatUpdated(const std::string& snatIp);
+    virtual void snatUpdated(const std::string& snatIp,
+                             const std::string& uuid);
 
     /**
      * Run periodic cleanup tasks
@@ -512,9 +513,11 @@ private:
     /**
      * Create / Update SNAT flows due to SNAT update
      *
-     * @param snatIp, the snat ip affected
+     * @param snatIp the snat ip affected
+     * @param snatUuid the snat uuid for the snat object
      */
-    void handleSnatUpdate(const std::string& snatIp);
+    void handleSnatUpdate(const std::string& snatIp,
+                          const std::string& snatUuid);
 
     bool getGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
             boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId,
