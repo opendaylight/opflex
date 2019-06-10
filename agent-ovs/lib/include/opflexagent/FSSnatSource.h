@@ -50,8 +50,9 @@ public:
     virtual void deleted(const boost::filesystem::path& filePath);
 
 private:
-    // Map filePath to snatIp
-    typedef std::unordered_map<std::string, std::string> snat_map_t;
+    typedef std::pair<std::string, std::string> snat_pair_t;
+    // Map filePath to <snat-ip, uuid>
+    typedef std::unordered_map<std::string, snat_pair_t> snat_map_t;
 
     /**
      * Snats that are known to the filesystem watcher

@@ -35,8 +35,10 @@ public:
      * Called when a snat is added, updated, or removed.
      *
      * @param snatIp the SNAT IP for the snat
+     * @param uuid the uuid of the snat object
      */
-    virtual void snatUpdated(const std::string& snatIp) = 0;
+    virtual void snatUpdated(const std::string& snatIp,
+                             const std::string& uuid) = 0;
 };
 
 } /* namespace opflexagent */

@@ -50,8 +50,10 @@ public:
      * manager
      *
      * @param snatIp the snat that no longer exists
+     * @param uuid of the snat that no longer exists
      */
-    virtual void removeSnat(const std::string& snatIp);
+    virtual void removeSnat(const std::string& snatIp,
+                            const std::string& uuid);
 
 protected:
     /**
