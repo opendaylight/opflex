@@ -265,6 +265,12 @@ void act_nat(struct ofpbuf* buf,
     act->range.proto.max = proto_max;
 }
 
+void act_unnat(struct ofpbuf* buf) {
+    struct ofpact_nat *act = ofpact_put_NAT(buf);
+    act->flags = 0;
+    act->range_af = AF_UNSPEC;
+}
+
 void act_conntrack(struct ofpbuf* buf,
                    uint16_t flags,
                    uint16_t zoneImm,

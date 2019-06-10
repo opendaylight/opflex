@@ -32,10 +32,10 @@ void SnatManager::unregisterListener(SnatListener* listener) {
     snatListeners.remove(listener);
 }
 
-void SnatManager::notifyListeners(const string& snatIp) {
+void SnatManager::notifyListeners(const string& snatIp, const string& uuid) {
     unique_lock<mutex> guard(listener_mutex);
     for (SnatListener* listener : snatListeners) {
-        listener->snatUpdated(snatIp);
+        listener->snatUpdated(snatIp, uuid);
     }
 }
 
@@ -51,6 +51,7 @@ SnatManager::getSnat(const string& snatIp) {
 void SnatManager::updateSnat(const Snat& snat) {
     unique_lock<mutex> guard(snat_mutex);
     const string& snatIp = snat.getSnatIP();
+    const string& uuid = snat.getUUID();
     snat_map_t::const_iterator it = snat_map.find(snatIp);
     if (it != snat_map.end()) {
         snat_map.erase(it);
@@ -59,17 +60,17 @@ void SnatManager::updateSnat(const Snat& snat) {
     SnatState& state = snat_map[snatIp];
     state.snat = make_shared<const Snat>(snat);
     guard.unlock();
-    notifyListeners(snatIp);
+    notifyListeners(snatIp, uuid);
 }
 
-void SnatManager::removeSnat(const string& snatIp) {
+void SnatManager::removeSnat(const string& snatIp, const string& uuid) {
     unique_lock<mutex> guard(snat_mutex);
     snat_map_t::const_iterator it = snat_map.find(snatIp);
     if (it != snat_map.end()) {
         snat_map.erase(it);
     }
     guard.unlock();
-    notifyListeners(snatIp);
+    notifyListeners(snatIp, uuid);
 }
 
 void SnatManager::addEndpoint(const string& snatIp,
