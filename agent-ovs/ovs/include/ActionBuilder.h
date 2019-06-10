@@ -270,6 +270,11 @@ public:
                        uint16_t protoMax,
                        bool snat);
 
+   /**
+    * unnat action
+    */
+    ActionBuilder& unnat();
+
     /**
      * Flas for conn track action
      */
