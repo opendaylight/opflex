@@ -199,6 +199,10 @@ extern "C" {
                  uint16_t proto_min,
                  uint16_t proto_max,
                  bool snat);
+    /**
+     * unnat
+     */
+    void act_unnat(struct ofpbuf* buf);
 
     /**
      * conntrack

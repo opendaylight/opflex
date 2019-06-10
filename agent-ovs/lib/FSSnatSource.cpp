@@ -61,6 +61,8 @@ void FSSnatSource::updated(const fs::path& filePath) {
     static const std::string PORT_RANGE("port-range");
     static const std::string PORT_RANGE_START("start");
     static const std::string PORT_RANGE_END("end");
+    static const std::string REMOTE("remote");
+    static const std::string MAC("mac");
 
     try {
         using boost::property_tree::ptree;
@@ -71,9 +73,17 @@ void FSSnatSource::updated(const fs::path& filePath) {
         string pathstr = filePath.string();
 
         read_json(pathstr, properties);
+
+        // Common to local and remote
         newsnat.setUUID(properties.get<string>(UUID));
         newsnat.setSnatIP(properties.get<string>(SNAT_IP));
+        newsnat.setInterfaceName(properties.get<string>(INTERFACE_NAME));
+        optional<uint16_t> ifaceVlan =
+            properties.get_optional<uint16_t>(INTERFACE_VLAN);
+        if (ifaceVlan)
+            newsnat.setIfaceVlan(ifaceVlan.get());
 
+        // Local configuration
         optional<bool> local =
             properties.get_optional<bool>(LOCAL);
         if (local)
@@ -90,23 +100,15 @@ void FSSnatSource::updated(const fs::path& filePath) {
                     v.second.get_optional<uint16_t>
                     (PORT_RANGE_END);
                 if (a && b && b.get() > a.get()) {
-                    newsnat.addPortRange(a.get(), b.get());
+                    newsnat.addPortRange("local", a.get(), b.get());
                     valid_range = true;
                 }
             }
             if (valid_range) {
-                optional<string> ifaceName =
-                    properties.get_optional<string>(INTERFACE_NAME);
-                if (ifaceName)
-                    newsnat.setInterfaceName(ifaceName.get());
                 optional<string> ifaceMac =
                      properties.get_optional<string>(INTERFACE_MAC);
                 if (ifaceMac)
                     newsnat.setInterfaceMAC(opflex::modb::MAC(ifaceMac.get()));
-                optional<uint16_t> ifaceVlan =
-                    properties.get_optional<uint16_t>(INTERFACE_VLAN);
-                if (ifaceVlan)
-                    newsnat.setIfaceVlan(ifaceVlan.get());
                 optional<string> nw_dst =
                     properties.get_optional<string>(DEST);
                 if (nw_dst)
@@ -122,13 +124,42 @@ void FSSnatSource::updated(const fs::path& filePath) {
             }
         }
 
+        // Remote configuration
+        optional<ptree&> remote =
+            properties.get_child_optional(REMOTE);
+        if (remote) {
+            for (const ptree::value_type &r : remote.get()) {
+                optional<string> remoteMac =
+                    r.second.get_optional<string>(MAC);
+                if (!remoteMac)
+                    continue;
+                optional<const ptree&> prs =
+                    r.second.get_child_optional(PORT_RANGE);
+                if (prs) {
+                    for (const ptree::value_type &v : prs.get()) {
+                        optional<uint16_t> a =
+                            v.second.get_optional<uint16_t>
+                            (PORT_RANGE_START);
+                        optional<uint16_t> b =
+                            v.second.get_optional<uint16_t>
+                            (PORT_RANGE_END);
+                        if (a && b && b.get() > a.get()) {
+                            newsnat.addPortRange(remoteMac.get(),
+                                                 a.get(), b.get());
+                        }
+                    }
+                }
+            }
+        }
+
         snat_map_t::const_iterator it = knownSnats.find(pathstr);
         if (it != knownSnats.end()) {
-            if (newsnat.getSnatIP() != it->second)
+            if (newsnat.getSnatIP() != it->second.first)
                 deleted(filePath);
         }
         if (valid_range) {
-            knownSnats[pathstr] = newsnat.getSnatIP();
+            knownSnats[pathstr] = make_pair(newsnat.getSnatIP(),
+                                            newsnat.getUUID());
             updateSnat(newsnat);
             LOG(INFO) << "Updated Snat " << newsnat
                       << " from " << filePath;
@@ -150,9 +181,10 @@ void FSSnatSource::deleted(const fs::path& filePath) {
         snat_map_t::iterator it = knownSnats.find(pathstr);
         if (it != knownSnats.end()) {
             LOG(INFO) << "Removed snat-ip "
-                      << it->second
+                      << it->second.first
+                      << "uuid " << it->second.second
                       << " at " << filePath;
-            removeSnat(it->second);
+            removeSnat(it->second.first, it->second.second);
             knownSnats.erase(it);
         }
     } catch (const std::exception& ex) {

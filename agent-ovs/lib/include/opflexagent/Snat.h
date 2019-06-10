@@ -97,7 +97,7 @@ public:
      * @return the interface name or boost::none if no interface name
      * is set.
      */
-    const boost::optional<std::string>& getInterfaceName() const {
+    const std::string& getInterfaceName() const {
         return interfaceName;
     }
 
@@ -109,13 +109,6 @@ public:
      */
     void setInterfaceName(const std::string& interfaceName) {
         this->interfaceName = interfaceName;
-    }
-
-    /**
-     * Unset the local interface name
-     */
-    void unsetInterfaceName() {
-        interfaceName = boost::none;
     }
 
     /**
@@ -261,10 +254,24 @@ public:
     };
 
     /**
-     * Add range of ports for translation
+     * A vector of port ranges
      */
-    void addPortRange(uint16_t start, uint16_t end) {
-        portRanges.push_back(port_range_t(start, end));
+    typedef std::vector<port_range_t> PortRanges;
+
+    /**
+     * Map of mac address to port-ranges
+     */
+    typedef std::unordered_map<std::string, PortRanges> PortRangeMap;
+
+    /**
+     * Add range of ports for translation
+     *
+     * @param mac the mac address for remote node or "local"
+     * @param start the start for the range
+     * @param end the end for the range
+     */
+    void addPortRange(const std::string& mac, uint16_t start, uint16_t end) {
+        portRangeMap[mac].push_back(port_range_t(start, end));
     }
 
     /**
@@ -272,28 +279,41 @@ public:
      *
      * @return a vector of port ranges
      */
-    const std::vector<port_range_t>& getPortRanges() const {
-        return portRanges;
+    boost::optional<PortRanges> getPortRanges(const std::string& mac) const {
+        auto it = portRangeMap.find(mac);
+        if (it != portRangeMap.end())
+            return it->second;
+        else
+            return boost::none;
+    }
+
+    /**
+     * Get port range map
+     *
+     * @return portRangeMap for this snat-ip
+     */
+    PortRangeMap getPortRangeMap() const {
+        return portRangeMap;
     }
 
     /**
      * Clear the list of port ranges
      */
     void clearPortRanges() {
-        portRanges.clear();
+        portRangeMap.clear();
     }
 
 private:
     std::string uuid;
     std::string snatIp;
+    std::string interfaceName;
     bool local;
-    boost::optional<std::string> interfaceName;
     boost::optional<opflex::modb::MAC> interfaceMac;
     boost::optional<uint16_t> ifaceVlan;
     boost::optional<std::string> destIp;
     boost::optional<uint8_t> destPrefix;
     boost::optional<uint16_t> zone;
-    std::vector<port_range_t> portRanges;
+    PortRangeMap portRangeMap;
 };
 
 /**
