@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "6ad3a82a_98485a64",
+        "filename": "agent-ovs/lib/include/opflexagent/Snat.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-06-11T15:10:32Z",
+      "side": 1,
+      "message": "Even here we iterate over the returned values / ranges and pass them as reference to the range mask function. I do not want the ranges to be modified in this function. I will check if this is the case. Also without reference with copy elision it would seem that the copy will be performed only when needed. I will have to check on that as well. Just want to do what is safe here.",
+      "parentUuid": "f220d0a3_9ec47bdc",
+      "range": {
+        "startLine": 295,
+        "startChar": 17,
+        "endLine": 295,
+        "endChar": 32
+      },
+      "revId": "d43ef800bf2104e805a29dbcaf33c40c9be0e600",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "81aed8bb_65133c40",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 3
