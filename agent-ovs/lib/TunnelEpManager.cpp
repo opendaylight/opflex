@@ -164,8 +164,14 @@ void TunnelEpManager::on_timer(const error_code& ec) {
     string bestMac;
     bool bestAddrIsV4 = false;
     if(renderer && renderer->isUplinkAddressImplemented()) {
-        bestAddress = renderer->getUplinkAddress();
-        bestMac = renderer->getUplinkMac();
+        boost::asio::ip::address bestAddr = renderer->getUplinkAddress();
+        if(!bestAddr.is_unspecified()) {
+            bestAddress = bestAddr.to_string();
+        }
+        string l2_address = renderer->getUplinkMac();
+        if(l2_address.length()==17) {
+            bestMac = renderer->getUplinkMac();
+        }
     } else {
 #ifdef HAVE_IFADDRS_H
     // This is linux-specific.  Other plaforms will require their own

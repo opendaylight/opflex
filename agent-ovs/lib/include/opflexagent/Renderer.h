@@ -69,16 +69,16 @@ public:
     /**
      * Get uplink address from renderer
      */
-    virtual string getUplinkAddress() {
-        string addr("");
+    virtual boost::asio::ip::address getUplinkAddress() {
+        boost::asio::ip::address addr;
         return addr;
     }
 
     /**
      * Get uplink mac from renderer
      */
-    virtual string getUplinkMac() {
-        string mac("");
+    virtual std::string getUplinkMac() {
+        std::string mac;
         return mac;
     }
 
