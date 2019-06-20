@@ -35,7 +35,7 @@ public:
     /**
      * Initialize a task with the given name
      * @param name the name of the task
-     * @param a uv_loop that can be used for the task
+     * @return a uv_loop that can be used for the task
      */
     uv_loop_t* initTask(const std::string& name);
 
