@@ -317,6 +317,7 @@ class Peer : public SafeListBaseHook {
     unsigned char choked_     :1;
     unsigned char createFail_ :1;
     unsigned char status_     :3;
+    bool nullTermination = true;
 
   protected:
     /* don't leak memory! */

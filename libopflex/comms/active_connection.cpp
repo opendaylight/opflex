@@ -48,7 +48,8 @@
         std::string const & service,
         ::yajr::Peer::StateChangeCb connectionHandler,
         void * data,
-        UvLoopSelector uvLoopSelector
+        UvLoopSelector uvLoopSelector,
+        bool nullTermination_
     ) {
 
     LOG(INFO)
@@ -79,6 +80,7 @@
         return NULL;
     }
 
+    peer->nullTermination = nullTermination_;
     VLOG(1)
         << peer
         << " queued up for resolution"

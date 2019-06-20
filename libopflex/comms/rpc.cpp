@@ -147,7 +147,8 @@ bool OutboundMessage::send() {
 #endif
         bool ok = Accept(cP->getWriter());
 
-        cP->delimitFrame();
+        if (cP->nullTermination)
+            cP->delimitFrame();
         cP->write();
 
         if (!ok) {

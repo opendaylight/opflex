@@ -121,8 +121,10 @@ struct Peer {
                                               /**< [in] state change callback */
             void                  * data              = NULL,
                                                       /**< [in] callback data */
-            UvLoopSelector          uvLoopSelector    = NULL
+            UvLoopSelector          uvLoopSelector    = NULL,
                                      /**< [in] uv_loop selector for this Peer */
+            bool nullTermination = true
+                 /**< [in] add null byte to end of every rpc message sent out */
     );
 
     /**
