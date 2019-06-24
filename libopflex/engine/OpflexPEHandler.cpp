@@ -107,12 +107,10 @@ public:
             (roles & OFConstants::POLICY_ELEMENT)) {
             writer.StartObject();
             writer.String("data");
-            writer.StartArray();
             writer.StartObject();
             writer.String("mac");
             writer.String(mac.c_str());
             writer.EndObject();
-            writer.EndArray();
             writer.EndObject();
         }
         writer.EndArray();
