@@ -720,6 +720,15 @@ public:
     opflex::ofcore::OFConstants::OpflexElementMode getElementMode();
 
     /**
+     * Set the tunnel mac for the opflex element.
+     * Changing the tunnel mac value has the effect of restarting the
+     * opflex connection if framework is in transport mode
+     *
+     * @param mac tunnel MAC on which endpoints reside
+     */
+    void setTunnelMac(const opflex::modb::MAC &mac);
+
+    /**
      * set the prr (policy resolve request) timer durarion.
      * @param duration timer duration in milliseconds
      */

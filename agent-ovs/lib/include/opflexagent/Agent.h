@@ -228,6 +228,12 @@ public:
      */
     void setInterfaceInterval(const long interval) { interfaceInterval = interval; }
     /**
+     * Set valid uplink mac discovered from TunnelEpManager.
+     * @param  mac - Mac address in canonical form xx:xx (17 chars)
+     */
+    void setUplinkMac(const std::string &mac);
+
+    /**
      * A class used as a POD (Plain Old Data) object
      * to pass counter settings around.
      */

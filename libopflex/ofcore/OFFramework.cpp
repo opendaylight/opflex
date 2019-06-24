@@ -53,6 +53,7 @@ public:
     uv_key_t mutator_key;
     bool started;
     opflex::ofcore::OFConstants::OpflexElementMode mode;
+    opflex::modb::MAC tunnelMac;
 };
 
 OFFramework::OFFramework() : pimpl(new OFFrameworkImpl()) {
@@ -87,6 +88,20 @@ bool OFFramework::setElementMode(
         return true;
     } else {
         return false;
+    }
+}
+
+void OFFramework::setTunnelMac(const opflex::modb::MAC &mac) {
+    if(pimpl->tunnelMac != mac) {
+        pimpl->tunnelMac = mac;
+        if(pimpl->started && (pimpl->mode ==
+           opflex::ofcore::OFConstants::OpflexElementMode::TRANSPORT_MODE)) {
+            pimpl->processor.stop();
+            pimpl->processor.setTunnelMac(mac);
+            pimpl->processor.start(pimpl->mode);
+        } else {
+            pimpl->processor.setTunnelMac(mac);
+        }
     }
 }
 

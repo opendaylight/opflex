@@ -264,6 +264,7 @@ void TunnelEpManager::on_timer(const error_code& ec) {
             unique_lock<mutex> guard(termip_mutex);
             terminationIp = bestAddress;
             terminationMac = bestMac;
+            agent->setUplinkMac(bestMac);
         }
 
         LOG(INFO) << "Discovered uplink IP: " << bestAddress

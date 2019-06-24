@@ -561,6 +561,10 @@ void Processor::cleanup_async_cb(uv_async_t* handle) {
     uv_close((uv_handle_t*)handle, NULL);
 }
 
+void Processor::setTunnelMac(const opflex::modb::MAC &mac) {
+    pool.setTunnelMac(mac);
+}
+
 void Processor::start(ofcore::OFConstants::OpflexElementMode agent_mode) {
     if (proc_active) return;
     proc_active = true;

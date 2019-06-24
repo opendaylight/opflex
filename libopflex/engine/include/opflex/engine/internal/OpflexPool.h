@@ -27,6 +27,7 @@
 #include "opflex/engine/internal/OpflexClientConnection.h"
 #include "opflex/ofcore/PeerStatusListener.h"
 #include "opflex/ofcore/OFTypes.h"
+#include "opflex/modb/MAC.h"
 #include "yajr/transport/ZeroCopyOpenSSL.hpp"
 #include "ThreadManager.h"
 
@@ -322,6 +323,14 @@ size_t getRoleCount(ofcore::OFConstants::OpflexRole role);
          transport_state = state;
     }
 
+    void setTunnelMac(const opflex::modb::MAC &mac) {
+        tunnelMac = mac;
+    }
+
+    opflex::modb::MAC getTunnelMac() {
+        return tunnelMac;
+    }
+
 private:
     HandlerFactory& factory;
     util::ThreadManager& threadManager;
@@ -369,6 +378,7 @@ private:
     boost::asio::ip::address_v4 ipv4_proxy;
     boost::asio::ip::address_v4 ipv6_proxy;
     boost::asio::ip::address_v4 mac_proxy;
+    opflex::modb::MAC tunnelMac;
 
     uv_loop_t* client_loop;
     uv_async_t conn_async;

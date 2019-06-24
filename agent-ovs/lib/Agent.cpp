@@ -611,4 +611,16 @@ inline void Agent::setSimStatProperties(const std::string& enabled_prop,
     }
 }
 
+void Agent::setUplinkMac(const std::string &mac) {
+    LOG(DEBUG) << "Got TunnelEp MAC " << mac;
+    opflex::modb::MAC _mac = opflex::modb::MAC(mac);
+    framework.setTunnelMac(_mac);
+    if(rendererFwdMode != opflex::ofcore::OFConstants::TRANSPORT_MODE) {
+        return;
+    }
+    for (const host_t& h : opflexPeers)
+        framework.addPeer(h.first, h.second);
+
+}
+
 } /* namespace opflexagent */

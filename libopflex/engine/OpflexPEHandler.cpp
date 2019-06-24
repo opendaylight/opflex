@@ -59,9 +59,11 @@ public:
     SendIdentityReq(const string& name_,
                     const string& domain_,
                     const optional<string>& location_,
-                    const uint8_t roles_)
+                    const uint8_t roles_,
+                    const string& mac_)
         : OpflexMessage("send_identity", REQUEST),
-          name(name_), domain(domain_), location(location_), roles(roles_) {}
+          name(name_), domain(domain_), location(location_), roles(roles_),
+          mac(mac_) {}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
@@ -101,6 +103,18 @@ public:
             writer.String("observer");
         writer.EndArray();
         writer.EndObject();
+        if (!mac.empty() &&
+            (roles & OFConstants::POLICY_ELEMENT)) {
+            writer.StartObject();
+            writer.String("data");
+            writer.StartArray();
+            writer.StartObject();
+            writer.String("mac");
+            writer.String(mac.c_str());
+            writer.EndObject();
+            writer.EndArray();
+            writer.EndObject();
+        }
         writer.EndArray();
 
         return true;
@@ -111,6 +125,7 @@ private:
     string domain;
     optional<string> location;
     uint8_t roles;
+    string mac;
 };
 
 void OpflexPEHandler::connected() {
@@ -121,7 +136,8 @@ void OpflexPEHandler::connected() {
         new SendIdentityReq(pool.getName(),
                             pool.getDomain(),
                             pool.getLocation(),
-                            OFConstants::POLICY_ELEMENT);
+                            OFConstants::POLICY_ELEMENT,
+                            pool.getTunnelMac().toString());
     getConnection()->sendMessage(req, true);
 }
 

@@ -218,6 +218,14 @@ public:
      */
     void responseReceived(uint64_t reqId);
 
+    /**
+     * Set the tunnelMac to send to opflex registries as the parent of
+     * endpoints
+     *
+     * @param mac tunnelMac
+     */
+    void setTunnelMac(const opflex::modb::MAC &mac);
+
 private:
     /**
      * The system store client
