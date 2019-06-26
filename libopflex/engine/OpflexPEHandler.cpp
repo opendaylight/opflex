@@ -102,17 +102,15 @@ public:
         if (roles & OFConstants::OBSERVER)
             writer.String("observer");
         writer.EndArray();
-        writer.EndObject();
         if (!mac.empty() &&
             (roles & OFConstants::POLICY_ELEMENT)) {
-            writer.StartObject();
             writer.String("data");
             writer.StartObject();
             writer.String("mac");
             writer.String(mac.c_str());
             writer.EndObject();
-            writer.EndObject();
         }
+        writer.EndObject();
         writer.EndArray();
 
         return true;
