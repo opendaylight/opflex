@@ -12,7 +12,7 @@
 
 #include <yajr/transport/engine.hpp>
 
-#include <assert.h>
+#include <cassert>
 
 namespace yajr {
     namespace transport {

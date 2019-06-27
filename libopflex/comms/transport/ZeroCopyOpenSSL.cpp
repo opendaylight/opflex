@@ -447,8 +447,6 @@ void Cb< ZeroCopyOpenSSL >::alloc_cb(
     }
 
     buf->len = size;
-
-    return;
 }
 
 template<>
@@ -718,6 +716,7 @@ ZeroCopyOpenSSL::ZeroCopyOpenSSL(ZeroCopyOpenSSL::Ctx * ctx, bool passive)
         bioInternal_(BIO_new(BIO_s_bio())),
         bioExternal_(BIO_new(BIO_s_bio())),
         bioSSL_(BIO_new(BIO_f_ssl())),
+        lastOutBuf_(NULL),
         ssl_(NULL),
         ready_(false)
     {

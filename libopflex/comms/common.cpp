@@ -12,7 +12,6 @@
 #endif
 
 
-#include <yajr/rpc/rpc.hpp>
 #include <yajr/internal/comms.hpp>
 
 #include <opflex/logging/internal/logging.hpp>

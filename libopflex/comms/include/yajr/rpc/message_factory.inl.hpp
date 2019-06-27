@@ -11,7 +11,7 @@ using namespace yajr::rpc::method;
 
 template <MethodName * M>
 OutReq<M> * yajr::rpc::MessageFactory::newReq(
-        PayloadGenerator payloadGenerator,
+        PayloadGenerator const & payloadGenerator,
         yajr::Peer const * peer
     ) {
 

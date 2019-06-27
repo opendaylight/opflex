@@ -49,7 +49,7 @@ class MessageFactory {
 
     template <MethodName * M>
     static yajr::rpc::OutReq<M> * newReq(
-            yajr::rpc::PayloadGenerator payloadGenerator,
+            yajr::rpc::PayloadGenerator const & payloadGenerator,
             yajr::Peer const * peer = NULL);
 
     static MethodName const * lookupMethod(char const * method);
