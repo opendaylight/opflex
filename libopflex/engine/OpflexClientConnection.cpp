@@ -38,7 +38,7 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
                                                const string& hostname_,
                                                int port_)
     : OpflexConnection(handlerFactory),
-      pool(pool_), hostname(hostname_), port(port_), peer(NULL),
+      pool(pool_), hostname(hostname_), port(port_), role(0), peer(NULL),
       started(false), active(false), closing(false), ready(false),
       failureCount(0), handshake_timer(NULL) {
 }
