@@ -274,9 +274,11 @@ size_t getRoleCount(ofcore::OFConstants::OpflexRole role);
      * configured peers and the peers that appear in the provided set
      * of peer names.
      *
+     * @param conn the current connection on which peer set was received
      * @param peerNames the set of peer names to validate against
      */
-    void validatePeerSet(const peer_name_set_t& peers);
+    void validatePeerSet(OpflexClientConnection *conn,
+        const peer_name_set_t& peers);
 
     /**
      * Add configured peers back into the connection pool

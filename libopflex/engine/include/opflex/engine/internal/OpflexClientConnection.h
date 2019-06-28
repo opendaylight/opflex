@@ -94,6 +94,8 @@ public:
 
     virtual yajr::Peer* getPeer() { return peer; }
     virtual void messagesReady();
+    virtual void setRoles(uint8_t _role) { role = _role; }
+    virtual uint8_t getRoles() { return role; }
 
 private:
     OpflexPool* pool;
@@ -101,6 +103,7 @@ private:
     std::string hostname;
     int port;
     std::string remote_peer;
+    uint8_t role;
 
     yajr::Peer* peer;
 

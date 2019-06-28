@@ -299,9 +299,6 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
             }
         }
     }
-
-    pool.validatePeerSet(peer_set);
-
     if (foundSelf) {
         uint8_t peerRoles = 0;
         if (payload.HasMember("my_role")) {
@@ -326,12 +323,15 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
             }
         }
         pool.setRoles(conn, peerRoles);
+        pool.validatePeerSet(conn,peer_set);
         ready();
     } else {
+        pool.validatePeerSet(conn,peer_set);
         LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] "
                   << "Current peer not found in peer list; closing";
         conn->close();
     }
+
 }
 
 void OpflexPEHandler::handleSendIdentityErr(uint64_t reqId,
