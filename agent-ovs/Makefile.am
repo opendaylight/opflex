@@ -489,6 +489,17 @@ deb: dist
 	cp $(DEB_PKG_DIR)/*.deb .
 	rm -rf $(DEB_PKG_DIR)
 
+deb-no-renderer: dist
+	- rm -rf  $(DEB_PKG_DIR)
+	mkdir -p $(DEB_PKG_DIR)
+	cp $(SOURCE_FILE) $(DEB_PKG_DIR)/
+	tar -C $(DEB_PKG_DIR)/ -xf $(DEB_PKG_DIR)/$(SOURCE_FILE)
+	mv $(DEB_PKG_DIR)/$(SOURCE_FILE) $(DEB_PKG_DIR)/$(PACKAGE)_$(VERSION).orig.tar.gz
+	cd $(DEB_PKG_DIR)/$(PACKAGE)-$(VERSION)/; \
+		dpkg-buildpackage -us -uc -rfakeroot -b -Pnorenderer
+	cp $(DEB_PKG_DIR)/*.deb .
+	rm -rf $(DEB_PKG_DIR)
+
 dsc: dist
 	- rm -rf  $(DEB_PKG_DIR)
 	mkdir -p $(DEB_PKG_DIR)
