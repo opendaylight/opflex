@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "99f9da94_040fe13b",
+        "filename": "agent-ovs/debian/rules.in",
+        "patchSetId": 2
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-07-03T19:26:52Z",
+      "side": 1,
+      "message": "should still use @BVERSION@ for the normal case",
+      "revId": "9fa2217c1ee513606f086409293133f7f94bf4c4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
