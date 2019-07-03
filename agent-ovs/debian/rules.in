@@ -10,7 +10,11 @@ PACKAGE=opflex-agent
 	dh $@ --parallel --with autotools-dev,systemd
 
 override_dh_auto_configure:
-	dh_auto_configure -- --disable-assert --disable-static --with-buildversion=@BVERSION@
+	if [ -z $(filter norenderer,$(DEB_BUILD_PROFILES)) ]; then \
+            dh_auto_configure -- --disable-assert --disable-static --with-buildversion=@BVERSION@ ; \
+	else \
+            dh_auto_configure -- --disable-assert --disable-static --with-buildversion=@BVERSION@ --enable-renderer-ovs=no ;\
+        fi
 
 override_dh_auto_test:
 	if ! make check; then find . -name test-suite.log -exec cat {} \; && false; fi
