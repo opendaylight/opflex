@@ -23,6 +23,8 @@
 #include <uv.h>
 
 #include "yajr/yajr.hpp"
+#include "yajr/rpc/message_factory.hpp"
+#include "opflex/engine/internal/OpflexMessage.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXCONNECTION_H
@@ -185,6 +187,20 @@ public:
      * connection
      */
     virtual OpflexHandler* newHandler(OpflexConnection* conn) = 0;
+};
+
+
+class PayloadWrapper {
+public:
+    PayloadWrapper(OpflexMessage* message_)
+        : message(message_) { }
+
+    bool operator()(yajr::rpc::SendHandler& handler) {
+        message->serializePayload(handler);
+        return true;
+    }
+
+    OpflexMessage* message;
 };
 
 } /* namespace internal */

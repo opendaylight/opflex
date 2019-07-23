@@ -394,6 +394,8 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         return chunk_size;
     }
 
+    void readBufNoNull(char* buffer,
+                       size_t nread);
     void readBuffer(
             char * buffer,
             size_t nread,

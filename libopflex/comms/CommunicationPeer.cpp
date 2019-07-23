@@ -274,6 +274,21 @@ int CommunicationPeer::tcpInit() {
     return 0;
 }
 
+void CommunicationPeer::readBufNoNull(char* buffer,
+                   size_t nread) {
+    VLOG(6) << "nread " << nread;
+    ssIn_.write(buffer, nread);
+
+    boost::scoped_ptr<yajr::rpc::InboundMessage> msg(parseFrame());
+    if (!msg) {
+        LOG(ERROR) << "skipping inbound message";
+        return;
+    }
+
+    msg->process();
+
+}
+
 void CommunicationPeer::readBuffer(
         char * buffer,
         size_t nread,
