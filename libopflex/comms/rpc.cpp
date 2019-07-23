@@ -290,6 +290,7 @@ MethodName method::endpoint_resolve("endpoint_resolve");
 MethodName method::endpoint_unresolve("endpoint_unresolve");
 MethodName method::endpoint_update("endpoint_update");
 MethodName method::state_report("state_report");
+MethodName method::transact("transact");
 MethodName method::custom("custom");
 
 } /* yajr::rpc namespace */

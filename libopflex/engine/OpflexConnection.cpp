@@ -90,20 +90,6 @@ void OpflexConnection::notifyReady() {
 
 }
 
-
-class PayloadWrapper {
-public:
-    PayloadWrapper(OpflexMessage* message_)
-        : message(message_) { }
-
-    bool operator()(yajr::rpc::SendHandler& handler) {
-        message->serializePayload(handler);
-        return true;
-    }
-
-    OpflexMessage* message;
-};
-
 void OpflexConnection::doWrite(OpflexMessage* message) {
     if (getPeer() == NULL) return;
 
