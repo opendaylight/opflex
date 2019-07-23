@@ -139,12 +139,15 @@ void Cb< PlainText >::on_read(
             << buf->len
         ;
 
-        peer->readBuffer(
+        if (peer->nullTermination) {
+            peer->readBuffer(
                 buf->base,
                 nread,
                 (buf->len > static_cast< size_t >(nread))
-        );
-
+            );
+        } else {
+            peer->readBufNoNull(buf->base, nread);
+        }
     }
 
     if (buf->base) {
