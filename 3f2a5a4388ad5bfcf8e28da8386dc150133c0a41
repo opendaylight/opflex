@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "059a33ec_7dfb7f6e",
+        "filename": "libopflex/engine/include/opflex/engine/internal/JsonRpc.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-07-24T23:19:01Z",
+      "side": 1,
+      "message": "Please move the pragma/ifndef/define before the first #include",
+      "revId": "3f2a5a4388ad5bfcf8e28da8386dc150133c0a41",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "58be0978_f686b523",
+        "filename": "libopflex/engine/include/opflex/engine/internal/JsonRpc.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-07-24T23:19:01Z",
+      "side": 1,
+      "message": "As discussed, StartObject should be moved above the if",
+      "revId": "3f2a5a4388ad5bfcf8e28da8386dc150133c0a41",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
