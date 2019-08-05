@@ -267,7 +267,7 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
     switch (type) {
     case ClassInfo::POLICY:
         {
-            LOG(DEBUG) << "Resolving policy " << i.uri;
+            LOG(DEBUG2) << "Resolving policy " << i.uri;
             i.details->resolve_time = curTime;
             vector<reference_t> refs;
             refs.emplace_back(i.details->class_id, i.uri);
@@ -468,7 +468,7 @@ void Processor::processItem(obj_state_by_exp::iterator& it) {
         switch (ci.getType()) {
         case ClassInfo::POLICY:
             if (it->details->resolve_time > 0) {
-                LOG(DEBUG) << "Unresolving " << it->uri.toString();
+                LOG(DEBUG2) << "Unresolving " << it->uri.toString();
                 vector<reference_t> refs;
                 refs.emplace_back(it->details->class_id, it->uri);
                 PolicyUnresolveReq* req =
@@ -618,7 +618,7 @@ void Processor::objectUpdated(modb::class_id_t class_id,
 
     uint64_t curtime = now(proc_loop);
 
-    bool present = false;
+    bool present;
     bool local = false;
     OF_SHARED_PTR<const ObjectInstance> oi;
     if ((present = client->get(class_id, uri, oi))) {
