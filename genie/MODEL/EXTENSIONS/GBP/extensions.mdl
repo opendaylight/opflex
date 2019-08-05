@@ -129,6 +129,12 @@ module[gbpe]
         # the number of sent packets dropped
         member[txDrop; type=scalar/UInt64]
 
+        # the number of received packets dropped due to mal-formation
+        member[rxMalformedDrop; type=scalar/UInt64]
+
+        # the number of sent packets dropped due to mal-formation
+        member[txMalformedDrop; type=scalar/UInt64]
+
         # the number of received multicast packets
         member[rxMulticast; type=scalar/UInt64]
 
