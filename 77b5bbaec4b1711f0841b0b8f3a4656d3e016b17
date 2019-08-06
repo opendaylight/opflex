@@ -16,6 +16,24 @@
       "revId": "77b5bbaec4b1711f0841b0b8f3a4656d3e016b17",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3051ad8d_70eb3239",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 8508
+      },
+      "writtenOn": "2019-08-06T16:53:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1c698f67_8c259b99",
+      "revId": "77b5bbaec4b1711f0841b0b8f3a4656d3e016b17",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
