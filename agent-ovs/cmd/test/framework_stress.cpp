@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
         level_str = vm["level"].as<string>();
         policy_file = vm["policy"].as<string>();
 
-    } catch (po::unknown_option e) {
+    } catch (const po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
     }
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
     try {
         MockOpflexServer::peer_vec_t peer_vec;
         peer_vec.push_back(make_pair(SERVER_ROLES, LOCALHOST":8009"));
-        MockOpflexServer server(8009, SERVER_ROLES, peer_vec,
+        MockOpflexServer server(8009, SERVER_ROLES, peer_vec, std::vector<std::string>(),
                                 modelgbp::getMetadata());
 
         if (policy_file != "") {
