@@ -1,0 +1,126 @@
+module[netflow]
+{
+    type[MatchParams; super=scalar/Bitmask64]
+    {
+        const[name=unspecified; value=0]
+        const[name=ethertype; value=1]
+        const[name=dst-mac; value=2]
+        const[name=src-mac; value=4]
+        const[name=vlan; value=8]
+        const[name=proto; value=16]
+        const[name=tos; value=32]
+        const[name=src-ipv4; value=64]
+        const[name=dst-ipv4; value=128]
+        const[name=src-ipv6; value=256]
+        const[name=dst-ipv6; value=512]
+        const[name=src-port; value=1024]
+        const[name=dst-port; value=2048]
+        const[name=src-ip; value=4096]
+        const[name=dst-ip; value=8192]
+    }
+
+    type[CollectParams; super=scalar/Bitmask64]
+    {
+        const[name=count-bytes; value=1]
+        const[name=count-pkts; value=2]
+        const[name=sampler-id; value=4]
+        const[name=pkt-disp; value=8]
+        const[name=ts-first; value=16]
+        const[name=ts-recent; value=32]
+        const[name=tcp-flags; value=64]
+        const[name=src-intf; value=128]
+    }
+
+    class[ExporterConfig;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        member[dstAddr; type=address/IP]
+        member[dstPort; type=platform/Port]
+        member[srcAddr; type=address/IP]
+        member[activeFlowTimeOut; type=scalar/UInt32]
+        member[idleFlowTimeOut; type=scalar/UInt32]
+        member[samplingRate; type=scalar/UInt32]
+
+        contained
+        {
+            parent[class=platform/Config]
+            parent[class=policy/Space]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=exporter;
+                          member=name]
+            }
+        }
+
+    }
+
+    class[RecordConfig;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        member[match; type=netflow/MatchParams]
+        member[collect; type=netflow/CollectParams]
+
+        contained
+        {
+            parent[class=platform/Config]
+            parent[class=policy/Space]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=record;
+                          member=name]
+            }
+        }
+
+    }
+
+    class[MonitorConfig;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+
+        contained
+        {
+            parent[class=platform/Config]
+            parent[class=policy/Space]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=monitor;
+                          member=name]
+            }
+        }
+
+        dependency[expoter;
+                   cardinality=many;
+                   ]
+        {
+            to[class=netflow/ExporterConfig;
+                cardinality=many;
+                ]
+        }
+
+        dependency[record;
+                   cardinality=many;
+                   ]
+        {
+            to[class=netflow/RecordConfig;
+                cardinality=single;
+                ]
+        }
+
+    }
+
+}
