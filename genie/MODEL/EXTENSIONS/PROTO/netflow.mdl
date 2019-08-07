@@ -1,0 +1,189 @@
+module[netflow]
+{
+    # Match parameters to identify a flow
+    type[MatchParams; super=scalar/Bitmask64]
+    {
+        const[name=unspecified; value=0]
+        # Ethertype
+        const[name=ethertype; value=1]
+        # Destination MAC
+        const[name=dst-mac; value=2]
+        # Source MAC
+        const[name=src-mac; value=4]
+        # VLAN
+        const[name=vlan; value=8]
+        # IP protocol
+        const[name=proto; value=16]
+        # IP type of service
+        const[name=tos; value=32]
+        # Source IPv4
+        const[name=src-ipv4; value=64]
+        # Destination IPv4
+        const[name=dst-ipv4; value=128]
+        # Source IPv6
+        const[name=src-ipv6; value=256]
+        # Destination IPv6
+        const[name=dst-ipv6; value=512]
+        # Source port
+        const[name=src-port; value=1024]
+        # Destination port
+        const[name=dst-port; value=2048]
+    }
+
+    # Parameters to collect 
+    type[CollectParams; super=scalar/Bitmask64]
+    {
+        # Bytes counter
+        const[name=count-bytes; value=1]
+        # Packets counter
+        const[name=count-pkts; value=2]
+        # Sampler Id
+        const[name=sampler-id; value=4]
+        # Packet disposition
+        const[name=pkt-disp; value=8]
+        # First packet timestamp
+        const[name=ts-first; value=16]
+        # Recent packet timestamp
+        const[name=ts-recent; value=32]
+        # TCP flags
+        const[name=tcp-flags; value=64]
+        # Source interface
+        const[name=src-intf; value=128]
+    }
+
+    # IP filter type
+    type[FltType; super=scalar/Enum8]
+    {
+        # Ipv4 filter type
+        const[name=ipv4; value=1]
+        # Ipv6 filter type
+        const[name=ipv6; value=2]
+        # CE filter type
+        const[name=ce; value=3]
+    }
+
+    class[ExporterConfig;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        member[dstAddr; type=address/IP]
+        member[dstPort; type=l4/Port]
+        member[srcAddr; type=address/IP]
+        member[activeFlowTimeOut; type=scalar/UInt32]
+        member[idleFlowTimeOut; type=scalar/UInt32]
+        member[samplingRate; type=scalar/UInt32]
+
+        contained
+        {
+            parent[class=platform/Config]
+            parent[class=policy/Space]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=exporter;
+                          member=name]
+            }
+        }
+
+    }
+
+    class[RecordConfig;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        member[match; type=netflow/MatchParams]
+        member[collect; type=netflow/CollectParams]
+
+        contained
+        {
+            parent[class=platform/Config]
+            parent[class=policy/Space]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=record;
+                          member=name]
+            }
+        }
+
+    }
+
+    class[MonitorConfig;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+
+        contained
+        {
+            parent[class=platform/Config]
+            parent[class=policy/Space]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=monitor;
+                          member=name]
+            }
+        }
+
+        dependency[exporter;
+                   cardinality=many;
+                   ]
+        {
+            to[class=netflow/ExporterConfig;
+                cardinality=many;
+                ]
+        }
+
+        dependency[record;
+                   cardinality=many;
+                   ]
+        {
+            to[class=netflow/RecordConfig;
+                cardinality=single;
+                ]
+        }
+
+    }
+
+    class[MonitorHolder;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+
+        member[fltType; type=netflow/FltType]
+
+        contained
+        {
+            parent[class=gbp/BridgeDomain]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=monitorholder;
+                          member=fltType]
+            }
+        }
+
+        dependency[monitor;
+                   cardinality=single;
+                   ]
+        {
+            to[class=netflow/MonitorConfig;
+               cardinality=single;
+               ]
+        }
+
+    }
+
+}
