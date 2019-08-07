@@ -26,6 +26,18 @@ module[platform]
         const[name=COMPLETE; value=2]
     }
 
+    type[Port; super=scalar/UInt16]
+    {
+        const[name=unspecified; value=0]
+        const[name=dns; value=53]
+        const[name=ftp_data; value=20]
+        const[name=http; value=80]
+        const[name=https; value=443]
+        const[name=rtsp; value=554]
+        const[name=pop3; value=110]
+        const[name=smtp; value=255555]
+    }
+
     class[Config;
           super=policy/NameResolvedDefinition;
           concrete

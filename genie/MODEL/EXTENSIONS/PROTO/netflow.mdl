@@ -1,0 +1,14 @@
+module[netflow]
+{
+    class[ExporterConfig;
+          super=platform/ConfigComponent;
+          concrete]
+    {
+        member[dstAddr; type=address/IP]
+        member[dstPort; type=platform/Port]
+        member[srcAddr; type=address/IP]
+        member[activeFlowTimeOut; type=scalar/UInt32]
+        member[idleFlowTimeOut; type=scalar/UInt32]
+        member[samplingRate; type=scalar/UInt32]
+    }
+}
