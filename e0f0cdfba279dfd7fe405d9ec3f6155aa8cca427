@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea79a8d6_f8847585",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/base.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-08-13T21:55:48Z",
+      "side": 1,
+      "message": "I don\u0027t think that\u0027s the right smtp port number",
+      "revId": "e0f0cdfba279dfd7fe405d9ec3f6155aa8cca427",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
