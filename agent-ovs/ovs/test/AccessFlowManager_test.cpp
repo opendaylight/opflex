@@ -504,12 +504,25 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
     ruleId = idGen.getId("l24classifierRule",
                          classifier9->getURI().toString());
     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(ruleId)
-         .isCtState("-new+est-inv+trk").tcp().reg(SEPG, setId)
+         .isCtState("-new+est-rel+rpl-inv+trk").tcp().reg(SEPG, setId)
+         .actions().go(OUT).done());
+    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(ruleId)
+         .isCtState("-new-est+rel-inv+trk").tcp().reg(SEPG, setId)
          .actions().go(OUT).done());
     ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("-trk").tcp().reg(SEPG, setId)
          .actions().ct("table=0,zone=NXM_NX_REG6[0..15]").done());
     ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(ruleId)
+         .isCtState("-trk")
+         .tcp().reg(SEPG, setId).isTpDst(22)
+         .actions().ct("table=0,zone=NXM_NX_REG6[0..15]").done());
+    ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(ruleId)
+         .isCtState("+est+trk")
+         .tcp().reg(SEPG, setId).isTpDst(22)
+         .actions()
+         .go(OUT).done());
+    ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(ruleId)
+         .isCtState("+new+trk")
          .tcp().reg(SEPG, setId).isTpDst(22)
          .actions().ct("commit,zone=NXM_NX_REG6[0..15]")
          .go(OUT).done());

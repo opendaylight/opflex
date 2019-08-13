@@ -64,14 +64,26 @@ enum ClassAction {
      */
     CA_REFLEX_FWD,
     /**
+     * Track an established forward flow
+     */
+    CA_REFLEX_FWD_EST,
+    /**
      * Match against empty conntrack state and send to conntrack table,
      * recirculating the flow to nextTable
      */
-    CA_REFLEX_REV,
+    CA_REFLEX_FWD_TRACK,
+    /**
+     * same as above in reverse direction
+     */
+    CA_REFLEX_REV_TRACK,
     /**
      * Match against established conntrack state and go to nextTable
      */
     CA_REFLEX_REV_ALLOW,
+    /**
+     * Match against related flows in reverse direction
+     */
+    CA_REFLEX_REV_RELATED,
 };
 
 /**
