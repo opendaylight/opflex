@@ -14,8 +14,6 @@
 #include "ovs-shim.h"
 #include "ovs-ofputil.h"
 
-extern const struct mf_field mf_fields[MFF_N_IDS];
-
 using boost::asio::ip::address;
 using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
