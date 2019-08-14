@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cc83efd8_dea47d80",
+        "filename": "agent-ovs/ovs/FlowUtils.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-08-14T23:55:29Z",
+      "side": 1,
+      "message": "Should all the CA enums be here?",
+      "range": {
+        "startLine": 217,
+        "startChar": 40,
+        "endLine": 217,
+        "endChar": 57
+      },
+      "revId": "3e0802db2ea868119aa2997430755ec03940a19a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8c1f9f67_5c7fc217",
+        "filename": "agent-ovs/ovs/FlowUtils.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-08-14T23:55:29Z",
+      "side": 1,
+      "message": "Didn\u0027t follow why we need REV_RELATED and CT_RELATED? (REV_TRACK and REV_ALLOW don\u0027t suffice?)",
+      "range": {
+        "startLine": 253,
+        "startChar": 40,
+        "endLine": 253,
+        "endChar": 61
+      },
+      "revId": "3e0802db2ea868119aa2997430755ec03940a19a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
