@@ -20,6 +20,7 @@ using std::shared_ptr;
 using std::make_shared;
 using std::unique_lock;
 using std::mutex;
+using std::make_pair;
 using boost::optional;
 
 void SnatManager::registerListener(SnatListener* listener) {
@@ -48,6 +49,19 @@ SnatManager::getSnat(const string& snatIp) {
     return shared_ptr<const Snat>();
 }
 
+void SnatManager::removeIfaces(const Snat& snat) {
+    iface_snats_map_t::iterator it =
+         iface_snats_map.find(snat.getInterfaceName());
+    if (it != iface_snats_map.end()) {
+         snats_t& snats = it->second;
+         snats.erase(make_pair(snat.getUUID(), snat.getSnatIP()));
+
+         if (snats.size() == 0) {
+            iface_snats_map.erase(it);
+         }
+    }
+}
+
 void SnatManager::updateSnat(const Snat& snat) {
     unique_lock<mutex> guard(snat_mutex);
     const string& snatIp = snat.getSnatIP();
@@ -55,8 +69,13 @@ void SnatManager::updateSnat(const Snat& snat) {
     snat_map_t::const_iterator it = snat_map.find(snatIp);
     if (it != snat_map.end()) {
         snat_map.erase(it);
+        shared_ptr<const Snat> asWrapper = it->second.snat;
+        const Snat& as = *asWrapper;
+        removeIfaces(as);
     }
 
+    iface_snats_map[snat.getInterfaceName()]
+        .insert(make_pair(uuid, snatIp));
     SnatState& state = snat_map[snatIp];
     state.snat = make_shared<const Snat>(snat);
     guard.unlock();
@@ -67,6 +86,9 @@ void SnatManager::removeSnat(const string& snatIp, const string& uuid) {
     unique_lock<mutex> guard(snat_mutex);
     snat_map_t::const_iterator it = snat_map.find(snatIp);
     if (it != snat_map.end()) {
+        shared_ptr<const Snat> asWrapper = it->second.snat;
+        const Snat& as = *asWrapper;
+        removeIfaces(as);
         snat_map.erase(it);
     }
     guard.unlock();
@@ -135,4 +157,12 @@ void SnatManager::getEndpoints(const string& snatIp,
     }
 }
 
+void SnatManager::getSnatsByIface(const std::string& ifaceName,
+                                  /* out */ snats_t& snats) {
+    unique_lock<mutex> guard(snat_mutex);
+    iface_snats_map_t::const_iterator it = iface_snats_map.find(ifaceName);
+    if (it != iface_snats_map.end()) {
+        snats.insert(it->second.begin(), it->second.end());
+    }
+}
 } /* namespace opflexagent */

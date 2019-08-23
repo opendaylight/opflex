@@ -3248,6 +3248,14 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
                 }
             }
         }
+        {
+            SnatManager::snats_t snats;
+            agent.getSnatManager()
+                .getSnatsByIface(portName, snats);
+            for (const pair<string, string>& snat : snats) {
+                snatUpdated(snat.second, snat.first);
+            }
+        }
     }
 }
 
