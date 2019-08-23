@@ -99,6 +99,15 @@ public:
      */
     void getEndpoints(const std::string& snatIp,
                       /* out */ std::unordered_set<std::string>& eps);
+    /**
+     * Get the snats that are on a particular interface
+     *
+     * @param ifaceName the name of the interface
+     * @param snats a set of <uuid, snat-ip> pairs using the interface
+     */
+    typedef std::set<std::pair<std::string, std::string>> snats_t;
+    void getSnatsByIface(const std::string& ifaceName,
+                         /* out */ snats_t& snats);
 private:
     /**
      * Add or update the snat state with new information about an
@@ -123,6 +132,7 @@ private:
     typedef std::unordered_map<std::string, SnatState> snat_map_t;
     typedef std::unordered_set<std::string> ep_set_t;
     typedef std::unordered_map<std::string, ep_set_t> ep_map_t;
+    typedef std::unordered_map<std::string, snats_t> iface_snats_map_t;
     std::mutex snat_mutex;
 
     /**
@@ -136,12 +146,18 @@ private:
     ep_map_t ep_map;
 
     /**
+     * Map snat interface to set of <uuid, snat-ip> that share the interface
+     */
+    iface_snats_map_t iface_snats_map;
+
+    /**
      * The snat listeners that have been registered
      */
     std::list<SnatListener*> snatListeners;
     std::mutex listener_mutex;
 
     void notifyListeners(const std::string& snatIp, const std::string& uuid);
+    void removeIfaces(const Snat& snat);
 
     friend class SnatSource;
 };
