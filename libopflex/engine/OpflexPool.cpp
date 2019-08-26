@@ -414,7 +414,9 @@ void OpflexPool::validatePeerSet(OpflexClientConnection * conn, const peer_name_
             (configured_peers.find(peer_name) == configured_peers.end()) &&
             ((srcPeer->getRoles()==0) || (getClientMode() != AgentMode::TRANSPORT_MODE))) {
             LOG(INFO) << "Removing stale peer connection: "
-                      << peer_name.first << ":" << peer_name.second;
+                      << peer_name.first << ":" << peer_name.second
+                      << " based on peer-list from "
+                      << srcPeer->getHostname() << ":" << srcPeer->getPort();
             c->close();
         }
     }

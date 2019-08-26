@@ -287,7 +287,19 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         loadPlugin("libopflex_agent_renderer_openvswitch.so");
     }
 
-    if(this->rendererFwdMode == opflex::ofcore::OFConstants::INVALID_MODE) {
+    // Following two blocks of code ensure that
+    // In the absence of a mode config: default mode, stitched-mode is chosen
+    // In the presence of a mode config: the last conf file mode setting
+    // overrides the current setting
+
+    bool modeConfigPresent = false;
+    if(properties.get_child_optional(RENDERERS_STITCHED_MODE) ||
+       properties.get_child_optional(RENDERERS_TRANSPORT_MODE)) {
+        modeConfigPresent = true;
+    }
+
+    if(this->rendererFwdMode == opflex::ofcore::OFConstants::INVALID_MODE ||
+       modeConfigPresent) {
         if(this->presetFwdMode != opflex::ofcore::OFConstants::INVALID_MODE) {
             this->rendererFwdMode = this->presetFwdMode;
         } else if(properties.get_child_optional(RENDERERS_TRANSPORT_MODE)) {
@@ -360,6 +372,9 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         }
     }
     LOG(INFO) << "prr timer set to " << prr_timer << " secs";
+    LOG(INFO) << "Agent mode set to " <<
+       ((this->rendererFwdMode == opflex::ofcore::OFConstants::TRANSPORT_MODE)?
+        "transport-mode" : "stitched-mode");
 }
 
 void Agent::applyProperties() {

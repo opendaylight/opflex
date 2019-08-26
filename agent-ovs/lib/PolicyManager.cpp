@@ -1582,7 +1582,6 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
                     if (!extsub->isAddressSet() || !extsub->isPrefixLenSet())
                         continue;
                     boost::system::error_code ec;
-                    address addr =
                     address::from_string(extsub->getAddress().get(), ec);
                     if (ec) continue;
                     newExtSubs[extsub->getURI()] = extsub;
@@ -1704,7 +1703,6 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
         for (const URI& net : rds.extNets) {
             if (newNets.find(net) == newNets.end()) {
                 l3n_map_t::iterator lit = l3n_map.find(net);
-                L3NetworkState& l3s = l3n_map[net];
                 if (lit != l3n_map.end()) {
                     if (lit->second.natEpg) {
                         uri_ref_map_t::iterator git =
