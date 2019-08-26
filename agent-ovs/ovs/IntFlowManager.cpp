@@ -57,6 +57,7 @@ using std::ostringstream;
 using std::shared_ptr;
 using std::unordered_set;
 using std::unordered_map;
+using std::pair;
 using boost::algorithm::trim;
 using boost::optional;
 using boost::asio::deadline_timer;
