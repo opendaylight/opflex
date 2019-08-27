@@ -83,19 +83,14 @@ public class FClassDef extends ItemFormatterTask
      */
     public static FileNameRule transformFileNameRule(FileNameRule aInFnr,Item aInItem)
     {
-        String lTargetModue = getTargetModule(aInItem);
-        String lOldRelativePath = aInFnr.getRelativePath();
-        String lNewRelativePath = lOldRelativePath + "/include/" + Config.getProjName() + "/" + lTargetModue;
-
-        FileNameRule lFnr = new FileNameRule(
+        String lNewRelativePath = aInFnr.getRelativePath() + "/include/" + Config.getProjName() + "/" + getTargetModule(aInItem);
+        return new FileNameRule(
                 lNewRelativePath,
                 null,
                 aInFnr.getFilePrefix(),
                 aInFnr.getFileSuffix(),
                 aInFnr.getFileExtension(),
                 getClassName((MClass)aInItem, false));
-
-        return lFnr;
     }
 
     public void generate()
@@ -573,7 +568,7 @@ public class FClassDef extends ItemFormatterTask
         String lclassName = getClassName(aInThisContClass, false);
         for (MNameComponent lNc : aInNcs)
         {
-            if (lNc.hasPropName())
+            if (lNc.hasPropName() && !lNc.getPropName().equalsIgnoreCase("targetClass"))
             {
                 result.add("@param " +
                         getPropParamName(aInThisContClass, lNc.getPropName()) +
@@ -608,9 +603,8 @@ public class FClassDef extends ItemFormatterTask
         else
         {
             StringBuilder lSb = new StringBuilder();
-            lSb.append(prefix + "Under");
-            int lSize = aInNamingPath.size();
-            int lIdx = lSize;
+            lSb.append(prefix).append("Under");
+            int lIdx = aInNamingPath.size();
             for (Pair<String, MNameRule> lPathNode : aInNamingPath)
             {
                 if (0 < --lIdx)
@@ -732,7 +726,7 @@ public class FClassDef extends ItemFormatterTask
             MNameRule lNr = lNamingNode.getSecond();
             MClass lThisContClass = MClass.get(lNamingNode.getFirst());
             Collection<MNameComponent> lNcs = lNr.getComponents();
-            aOut.append("/" + lThisContClass.getFullConcatenatedName());
+            aOut.append('/').append(lThisContClass.getFullConcatenatedName());
             for (MNameComponent lNc : lNcs)
             {
                 if (lNc.hasPropName())
@@ -836,13 +830,13 @@ public class FClassDef extends ItemFormatterTask
         out.println(aInIdent,"{");
         if (aInTargetClass != null && lClassProp != null)
         {
-            out.println(aInIdent + 1, "opflex::modb::class_id_t " + getPropParamName(aInChildClass, lClassProp.getPropName()) + " = " + aInTargetClass.getGID().getId() + ";");
+            out.println(aInIdent + 1, "const opflex::modb::class_id_t " + getPropParamName(aInChildClass, lClassProp.getPropName()) + " = " + aInTargetClass.getGID().getId() + ";");
         }
-        out.println(aInIdent + 1, "boost::shared_ptr<opflex::modb::MO> mo = addChild(");
-        out.println(aInIdent + 2, toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
-        out.println(aInIdent + 2, aInUriBuilder);
-        out.println(aInIdent + 2, ");");
-        out.println(aInIdent + 1, "boost::shared_ptr<" + aInFormattedChildClassName + "> result = boost::static_pointer_cast<" + aInFormattedChildClassName + ">(mo);");
+        out.println(aInIdent + 1, "boost::shared_ptr<" + aInFormattedChildClassName + "> result =");
+        out.println(aInIdent + 2, "boost::static_pointer_cast<" + aInFormattedChildClassName + ">(");
+        out.println(aInIdent + 3, "addChild(" + toUnsignedStr(aInChildClass.getClassAsPropId(aInParentClass)) + ", " + aInChildClass.getGID().getId() + ",");
+        out.println(aInIdent + 4, aInUriBuilder + ")");
+        out.println(aInIdent + 1, ");");
         aInNcs = aInChildNr.getComponents();
         for (MNameComponent lNc : aInNcs)
         {

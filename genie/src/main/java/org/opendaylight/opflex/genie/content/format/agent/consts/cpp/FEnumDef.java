@@ -111,19 +111,14 @@ public class FEnumDef extends ItemFormatterTask
      */
     public static FileNameRule transformFileNameRule(FileNameRule aInFnr,Item aInItem)
     {
-        String lTargetModue = getTargetModule(aInItem);
-        String lOldRelativePath = aInFnr.getRelativePath();
-        String lNewRelativePath = lOldRelativePath + "/include/" + Config.getProjName() + "/" + lTargetModue;
-
-        FileNameRule lFnr = new FileNameRule(
+        String lNewRelativePath = aInFnr.getRelativePath() + "/include/" + Config.getProjName() + "/" + getTargetModule(aInItem);
+        return new FileNameRule(
                 lNewRelativePath,
                 null,
                 aInFnr.getFilePrefix(),
                 aInFnr.getFileSuffix(),
                 aInFnr.getFileExtension(),
                 getClassName(aInItem, false));
-
-        return lFnr;
     }
 
     public static Item getSuperHolder(Item aIn)
@@ -202,8 +197,7 @@ public class FEnumDef extends ItemFormatterTask
         }
         else
         {
-            out.println(aInIndent, "#include <boost/cstdint.hpp>");
-            out.println(aInIndent, "#include <cstddef>");
+            out.println(aInIndent, "#include <cstdint>");
         }
         out.println(aInIndent, "namespace " + Config.getProjName() + " {");
         out.println(aInIndent, "namespace " + getNamespace(aIn,false) + " {");
