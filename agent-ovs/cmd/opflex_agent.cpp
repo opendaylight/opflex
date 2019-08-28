@@ -84,6 +84,16 @@ bool isConfigPath(const fs::path& file) {
     return false;
 }
 
+bool isRebootConfigPath(const fs::path& file) {
+    const string fstr = file.filename().string();
+    if (boost::algorithm::ends_with(fstr, ".conf") &&
+        boost::algorithm::starts_with(fstr, "reboot")) {
+        LOG(INFO) << "Config filename: " << fstr;
+        return true;
+    }
+    return false;
+}
+
 class AgentLauncher : FSWatcher::Watcher {
 public:
     AgentLauncher(bool watch_, std::vector<string>& configFiles_)
@@ -187,7 +197,7 @@ private:
                 std::set<string> files;
                 for (fs::directory_iterator it(configFile);
                      it != end; ++it) {
-                    if (isConfigPath(it->path())) {
+                    if (isConfigPath(it->path()) && !isRebootConfigPath(it->path())) {
                         files.insert(it->path().string());
                     }
                 }
