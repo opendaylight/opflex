@@ -591,7 +591,7 @@ void EndpointManager::updateEndpointExternal(const Endpoint& endpoint) {
         if(ep->getExtInterfaceURI()) {
             extL3Ep->addEpdrExternalL3EpToPathAttRSrc()
                    ->setTargetExternalInterface(ep->getExtInterfaceURI().get());
-            boost::optional<std::shared_ptr<RoutingDomain>> rd;
+            optional<std::shared_ptr<RoutingDomain>> rd;
             rd = policyManager.getRDForExternalInterface(
                     ep->getExtInterfaceURI().get());
             if(rd) {
@@ -649,7 +649,7 @@ void EndpointManager::removeEndpointExternal(const std::string& uuid) {
     Mutator mutator(framework, "policyelement");
 
     ep_map_t::iterator it = ext_ep_map.find(uuid);
-    boost::optional<std::shared_ptr<RoutingDomain>> rd;
+    optional<std::shared_ptr<RoutingDomain>> rd;
     if (it != ext_ep_map.end()) {
         EndpointState& es = it->second;
         // remove any associated modb entries
@@ -1089,7 +1089,7 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
 void EndpointManager::externalInterfaceUpdated(const URI& extIntURI) {
     using namespace modelgbp::gbp;
     group_ep_map_t::const_iterator gep_it = group_ep_map.find(extIntURI);
-    boost::optional<shared_ptr<RoutingDomain>> rd;
+    optional<shared_ptr<RoutingDomain>> rd;
     unordered_set<string> notify;
     rd = policyManager.getRDForExternalInterface(extIntURI);
     if(!rd)
@@ -1315,25 +1315,30 @@ void EndpointManager::configUpdated(const URI& uri) {
 
     optional<shared_ptr<Config>> config = Config::resolve(framework, uri);
     if (config) {
-       boost::optional<const uint8_t> invType = config.get()->getInventoryType();
-       if (invType) {
-           auto on_link =  RemoteInventoryTypeEnumT::CONST_ON_LINK;
-           if (invType.get() == on_link) {
-               LOG(DEBUG) << "setting remote endpoint discovery";
-               configD.get()->addDomainConfigToRemoteEndpointInventoryRSrc()
-                            ->setTargetRemoteEndpointInventory();
-               setRemoteEndpoint = true;
-           }
-       }
+        optional<const uint8_t> invType = config.get()->getInventoryType();
+        if (invType) {
+            auto on_link = RemoteInventoryTypeEnumT::CONST_ON_LINK;
+            if (invType.get() == on_link) {
+                LOG(DEBUG) << "setting remote endpoint discovery";
+                configD.get()->addDomainConfigToRemoteEndpointInventoryRSrc()
+                             ->setTargetRemoteEndpointInventory();
+                setRemoteEndpoint = true;
+            }
+        }
     }
     if (!setRemoteEndpoint) {
-       optional<shared_ptr<modelgbp::domain::ConfigToRemoteEndpointInventoryRSrc>> reInv =
-                        configD.get()->resolveDomainConfigToRemoteEndpointInventoryRSrc();
-       if (reInv) {
-          LOG(DEBUG) << "removing remote endpoint discovery";
-          reInv.get()->remove();
-       }
+        optional<shared_ptr<modelgbp::domain::ConfigToRemoteEndpointInventoryRSrc>> reInv =
+                configD.get()->resolveDomainConfigToRemoteEndpointInventoryRSrc();
+        if (reInv) {
+            LOG(DEBUG) << "removing remote endpoint discovery";
+            reInv.get()->remove();
+        }
     }
     mutator.commit();
+
+    if (!config) {
+        LOG(WARNING) << "Platform config has been deleted. Disconnect from existing peers and fallback to configured list";
+        framework.resetAllPeers();
+    }
 }
 } /* namespace opflexagent */

@@ -889,6 +889,11 @@ public:
          getParent(opflex::modb::class_id_t child_class,
                    const opflex::modb::URI& child);
 
+    /**
+     * Disconnect from all current peers and use the configured
+     * peer list to establish new peers.
+     */
+     virtual void resetAllPeers();
 
 private:
     /**
