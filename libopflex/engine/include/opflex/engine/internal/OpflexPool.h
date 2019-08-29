@@ -200,6 +200,8 @@ public:
      */
     OpflexClientConnection* getPeer(const std::string& hostname, int port);
 
+    void resetAllPeers();
+
     /**
      * Register the given peer status listener to get updates on the
      * health of the connection pool and on individual connections.

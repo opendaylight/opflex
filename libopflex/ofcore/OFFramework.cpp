@@ -263,6 +263,14 @@ boost::optional<URI> OFFramework::getParent(class_id_t child_class,
     return uri;
 }
 
+void OFFramework::resetAllPeers() {
+    engine::internal::OpflexPool& pool = pimpl->processor.getPool();
+    std::string location;
+    pool.setLocation(location);
+    pool.resetAllPeers();
+    pool.addConfiguredPeers();
+}
+
 void OFFramework::registerTLMutator(modb::Mutator& mutator) {
     uv_key_set(&pimpl->mutator_key, (void*)&mutator);
 }
