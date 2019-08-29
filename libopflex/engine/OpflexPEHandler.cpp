@@ -20,14 +20,12 @@
 #include <utility>
 
 #include <rapidjson/document.h>
-#include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ip/address_v4.hpp>
 
 #include "opflex/engine/Processor.h"
 #include "opflex/engine/internal/OpflexPool.h"
-#include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/OpflexPEHandler.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "opflex/engine/internal/MOSerializer.h"
@@ -102,12 +100,18 @@ public:
         if (roles & OFConstants::OBSERVER)
             writer.String("observer");
         writer.EndArray();
-        if (!mac.empty() &&
-            (roles & OFConstants::POLICY_ELEMENT)) {
+
+        if (roles & OFConstants::POLICY_ELEMENT) {
             writer.String("data");
             writer.StartObject();
-            writer.String("mac");
-            writer.String(mac.c_str());
+            if (!mac.empty()) {
+                writer.String("mac");
+                writer.String(mac.c_str());
+            }
+            writer.String("features");
+            writer.StartArray();
+            writer.String("anycastFallback");
+            writer.EndArray();
             writer.EndObject();
         }
         writer.EndObject();
