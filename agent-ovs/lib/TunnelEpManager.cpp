@@ -96,6 +96,12 @@ const std::string& TunnelEpManager::getTerminationIp(const std::string& uuid) {
     return terminationIp;
 }
 
+const std::string& TunnelEpManager::getTerminationMac(const std::string& uuid) {
+    if (uuid != tunnelEpUUID || terminationMac == "")
+        throw std::out_of_range("No such tunnel termination endpoint: " + uuid);
+    return terminationMac;
+}
+
 #ifdef HAVE_IFADDRS_H
 static string getInterfaceMac(const string& iface) {
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);

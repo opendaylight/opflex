@@ -15,6 +15,7 @@
 #include <opflexagent/IdGenerator.h>
 #include "ActionBuilder.h"
 #include "AdvertManager.h"
+#include <opflexagent/TunnelEpManager.h>
 #include <opflexagent/RDConfig.h>
 #include <opflexagent/TaskQueue.h>
 #include "SwitchStateHandler.h"
@@ -63,7 +64,8 @@ public:
                    SwitchManager& switchManager,
                    IdGenerator& idGen,
                    CtZoneManager& ctZoneManager,
-                   PacketInHandler& pktInHandler);
+                   PacketInHandler& pktInHandler,
+                   TunnelEpManager& tnlEpManager);
     ~IntFlowManager() {}
 
     /**
@@ -185,8 +187,10 @@ public:
      * Enable or disable endpoint advertisements and set the mode
      *
      * @param mode the endpoint advertisement mode
+     * @param tunnelMode the tunnel endpoint advertisement mode
      */
-    void setEndpointAdv(AdvertManager::EndpointAdvMode mode);
+    void setEndpointAdv(AdvertManager::EndpointAdvMode mode,
+            AdvertManager::EndpointAdvMode tunnelMode);
 
     /**
      * Set the multicast group file
@@ -414,6 +418,8 @@ public:
          */
         NUM_FLOW_TABLES
     };
+
+    TunnelEpManager& tunnelEpManager;
 
 private:
     /**

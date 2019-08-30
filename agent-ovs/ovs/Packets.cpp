@@ -972,7 +972,8 @@ OfpBuf compose_arp(uint16_t op,
                     const uint8_t* sha,
                     const uint8_t* tha,
                     uint32_t spa,
-                    uint32_t tpa) {
+                    uint32_t tpa,
+                    bool rarp) {
     using namespace arp;
 
     eth::eth_header* eth = NULL;
@@ -1007,7 +1008,11 @@ OfpBuf compose_arp(uint16_t op,
     // initialize ethernet header
     memcpy(eth->eth_src, srcMac, eth::ADDR_LEN);
     memcpy(eth->eth_dst, dstMac, eth::ADDR_LEN);
-    eth->eth_type = htons(eth::type::ARP);
+    if(rarp) {
+        eth->eth_type = htons(eth::type::RARP);
+    } else {
+        eth->eth_type = htons(eth::type::ARP);
+    }
 
     // initialize the ARP packet
     arp->htype = htons(1);

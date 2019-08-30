@@ -14,6 +14,7 @@
 #include <modelgbp/metadata/metadata.hpp>
 
 #include <opflexagent/Agent.h>
+#include <opflexagent/TunnelEpManager.h>
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/test/unit_test.hpp>
@@ -31,7 +32,7 @@ class BaseFixture {
 typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
 public:
     BaseFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE) :
-    agent(framework) {
+    agent(framework), tunnelEpManager(&agent) {
         agent.setRendererForwardingMode(mode);
         if(mode == opflex_elem_t::TRANSPORT_MODE) {
             /**
@@ -62,6 +63,7 @@ public:
      * An agent instance
      */
     Agent agent;
+    TunnelEpManager tunnelEpManager;
 };
 
 /**

@@ -44,7 +44,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
     : Renderer(agent_), ctZoneManager(idGen),
       intSwitchManager(agent_, intFlowExecutor, intFlowReader, intPortMapper),
       intFlowManager(agent_, intSwitchManager, idGen,
-                     ctZoneManager, pktInHandler),
+                     ctZoneManager, pktInHandler, tunnelEpManager),
       accessSwitchManager(agent_, accessFlowExecutor,
                           accessFlowReader, accessPortMapper),
       accessFlowManager(agent_, accessSwitchManager, idGen, ctZoneManager),
@@ -121,7 +121,7 @@ void OVSRenderer::start() {
     intFlowManager.setVirtualRouter(virtualRouter, routerAdv, virtualRouterMac);
     intFlowManager.setVirtualDHCP(virtualDHCP, virtualDHCPMac);
     intFlowManager.setMulticastGroupFile(mcastGroupFile);
-    intFlowManager.setEndpointAdv(endpointAdvMode);
+    intFlowManager.setEndpointAdv(endpointAdvMode, tunnelEndpointAdvMode);
 
     intSwitchManager.registerStateHandler(&intFlowManager);
     intSwitchManager.start(intBridgeName);
@@ -249,6 +249,8 @@ void OVSRenderer::setProperties(const ptree& properties) {
                                           "endpoint-advertisements.enabled");
     static const std::string ENDPOINT_ADV_MODE("forwarding."
                                                "endpoint-advertisements.mode");
+    static const std::string ENDPOINT_TNL_ADV_MODE("forwarding."
+                               "endpoint-advertisements.tunnel-endpoint-mode");
 
     static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
     static const std::string MCAST_GROUP_FILE("mcast-group-file");
@@ -337,6 +339,17 @@ void OVSRenderer::setProperties(const ptree& properties) {
         } else {
             endpointAdvMode = AdvertManager::EPADV_GRATUITOUS_BROADCAST;
         }
+    }
+
+    std::string tnlEpAdvStr =
+        properties.get<std::string>(ENDPOINT_TNL_ADV_MODE,
+                                    "rarp-broadcast");
+    if (tnlEpAdvStr == "gratuitous-broadcast") {
+        tunnelEndpointAdvMode = AdvertManager::EPADV_GRATUITOUS_BROADCAST;
+    } else if(tnlEpAdvStr == "disabled") {
+        tunnelEndpointAdvMode = AdvertManager::EPADV_DISABLED;
+    } else {
+        tunnelEndpointAdvMode = AdvertManager::EPADV_RARP_BROADCAST;
     }
 
     connTrack = properties.get<bool>(CONN_TRACK, true);

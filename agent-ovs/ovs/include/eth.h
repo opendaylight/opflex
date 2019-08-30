@@ -50,6 +50,11 @@ const uint16_t IP = 0x0800;
 const uint16_t ARP = 0x0806;
 
 /**
+ * RARP ether type
+ */
+const uint16_t RARP = 0x8035;
+
+/**
  * IPv6 ether type
  */
 const uint16_t IPV6 = 0x86dd;

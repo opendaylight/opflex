@@ -92,9 +92,11 @@ IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,
                                IdGenerator& idGen_,
                                CtZoneManager& ctZoneManager_,
-                               PacketInHandler& pktInHandler_) :
+                               PacketInHandler& pktInHandler_,
+                               TunnelEpManager& tunnelEpManager_) :
     agent(agent_), switchManager(switchManager_), idGen(idGen_),
     ctZoneManager(ctZoneManager_), pktInHandler(pktInHandler_),
+    tunnelEpManager(tunnelEpManager_),
     taskQueue(agent.getAgentIOService()), encapType(ENCAP_NONE),
     floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
     virtualRouterEnabled(false), routerAdv(false),
@@ -135,6 +137,7 @@ void IntFlowManager::registerModbListeners() {
     agent.getLearningBridgeManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
     agent.getSnatManager().registerListener(this);
+    tunnelEpManager.registerListener(this);
 }
 
 void IntFlowManager::stop() {
@@ -146,6 +149,7 @@ void IntFlowManager::stop() {
     agent.getLearningBridgeManager().unregisterListener(this);
     agent.getPolicyManager().unregisterListener(this);
     agent.getSnatManager().unregisterListener(this);
+    tunnelEpManager.unregisterListener(this);
 
     advertManager.stop();
     switchManager.getPortMapper().unregisterPortStatusListener(this);
@@ -212,9 +216,11 @@ void IntFlowManager::setVirtualDHCP(bool dhcpEnabled,
     }
 }
 
-void IntFlowManager::setEndpointAdv(AdvertManager::EndpointAdvMode mode) {
+void IntFlowManager::setEndpointAdv(AdvertManager::EndpointAdvMode mode,
+        AdvertManager::EndpointAdvMode tunnelMode) {
     if (mode != AdvertManager::EPADV_DISABLED)
         advertManager.enableEndpointAdv(mode);
+    advertManager.enableTunnelEndpointAdv(tunnelMode);
 }
 
 void IntFlowManager::setMulticastGroupFile(const std::string& mcastGroupFile) {
@@ -248,6 +254,10 @@ address IntFlowManager::getEPGTunnelDst(const URI& epgURI) {
 void IntFlowManager::endpointUpdated(const std::string& uuid) {
     if (stopping) return;
 
+    if(tunnelEpManager.isTunnelEp(uuid)){
+        advertManager.scheduleTunnelEpAdv(uuid);
+        return;
+    }
     advertManager.scheduleEndpointAdv(uuid);
     taskQueue.dispatch(uuid, [=]() { handleEndpointUpdate(uuid); });
 }

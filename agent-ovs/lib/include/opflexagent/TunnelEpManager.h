@@ -89,6 +89,15 @@ public:
     const std::string& getTerminationIp(const std::string& uuid);
 
     /**
+     * Get the mac address for the tunnel endpoint
+     * with the given uuid
+     *
+     * @param uuid the UUID of the tunnel termination endpoint
+     * @throws std::out_of_range if there is no such uuid
+     */
+    const std::string& getTerminationMac(const std::string& uuid);
+
+    /**
      * Register a listener for tunnelEp change events
      *
      * @param listener the listener functional object that should be
@@ -106,6 +115,15 @@ public:
      * @throws std::out_of_range if there is no such class
      */
     void unregisterListener(EndpointListener* listener);
+
+    /**
+     * Check whether given UUID is of the TunnelEp
+     * @param uuid uuid to check
+     * @return whether uuid is tunnelEpUUID
+     */
+    bool isTunnelEp(const std::string &uuid) {
+        return (uuid == tunnelEpUUID);
+    }
 
 private:
     Agent* agent;
