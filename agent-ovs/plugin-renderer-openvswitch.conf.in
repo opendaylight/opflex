@@ -99,7 +99,13 @@
         //             // router-request: Unicast a spoofed request/solicitation
         //             //   for the subnet's gateway router.
         //             // Default: gratuitous-broadcast.
-        //             "mode": "gratuitous-broadcast"
+        //             "mode": "gratuitous-broadcast",
+        //             // disabled: Do not send tunnel ep advertisements
+        //             // gratuitous-broadcast: Send gratuitous arp
+        //             //   broadcast requests
+        //             // rarp-broadcast: Send rarp broadcast requests
+        //             // Default: rarp-broadcast
+        //             "tunnel-endpoint-mode": "rarp-broadcast"
         //         },
         //
         //         "connection-tracking": {

@@ -56,6 +56,9 @@ AdvertManager::AdvertManager(Agent& agent_,
       portMapper(NULL), switchConnection(NULL),
       ioService(&agent.getAgentIOService()),
       started(false), stopping(false) {
+    //TunnelEpTimer has no dependencies and needs to be
+    //initialized early
+    tunnelEpAdvTimer.reset(new deadline_timer(*ioService));
 
 }
 
@@ -72,6 +75,7 @@ void AdvertManager::start() {
         endpointAdvTimer.reset(new deadline_timer(*ioService));
         scheduleInitialEndpointAdv();
     }
+
 }
 
 void AdvertManager::stop() {
@@ -83,6 +87,8 @@ void AdvertManager::stop() {
         endpointAdvTimer->cancel();
     if (allEndpointAdvTimer)
         allEndpointAdvTimer->cancel();
+    if(tunnelEpAdvTimer)
+        tunnelEpAdvTimer->cancel();
 }
 
 void AdvertManager::scheduleInitialRouterAdv() {
@@ -594,6 +600,88 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
 
     if (pendingEps.size() > 0 || pendingServices.size() > 0)
         doScheduleEpAdv(repeat_dis(urng));
+}
+
+void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
+    uint32_t tunPort = intFlowManager.getTunnelPort();
+    if (tunPort == OFPP_NONE) return;
+    unordered_set<uint32_t> out_ports;
+    out_ports.insert(tunPort);
+
+    const std::string tunnelMac =
+            intFlowManager.tunnelEpManager.getTerminationMac(uuid);
+    opflex::modb::MAC opMac(tunnelMac);
+    uint8_t tunnelMacBytes[6];
+    opMac.toUIntArray(tunnelMacBytes);
+    OfpBuf b((struct ofpbuf*)NULL);
+    if(tunnelEndpointAdv == EndpointAdvMode::EPADV_GRATUITOUS_BROADCAST) {
+        const std::string tunnelIp =
+                        intFlowManager.tunnelEpManager.getTerminationIp(uuid);
+        boost::system::error_code ec;
+        address addr = address::from_string(tunnelIp, ec);
+        if (ec || !addr.is_v4()) {
+            LOG(ERROR) << "Invalid IPv4 address: " << tunnelIp;
+            if(ec) {
+                LOG(ERROR) << ": " << ec.message();
+            }
+            return;
+        }
+        uint32_t addrv = addr.to_v4().to_ulong();
+        b = packets::compose_arp(arp::op::REQUEST,
+                tunnelMacBytes, packets::MAC_ADDR_BROADCAST,
+                tunnelMacBytes, packets::MAC_ADDR_BROADCAST,
+                addrv, addrv);
+    } else {
+        b = packets::compose_arp(arp::op::REVERSE_REQUEST,
+                tunnelMacBytes, packets::MAC_ADDR_BROADCAST,
+                tunnelMacBytes, tunnelMacBytes,
+                0, 0, true);
+    }
+
+    int error = send_packet_out(switchConnection, b, out_ports);
+    if (error) {
+        LOG(ERROR) << "Could not write packet-out: "
+                   << ovs_strerror(error);
+    }
+}
+
+void AdvertManager::onTunnelEpAdvTimer(const boost::system::error_code& ec) {
+    if(ec)
+        return;
+    unique_lock<mutex> guard(tunnelep_mutex);
+    {
+        auto it = pendingTunnelEps.begin();
+        while (it != pendingTunnelEps.end()) {
+            agent.getAgentIOService()
+                .post(bind(&AdvertManager::sendTunnelEpAdvs,
+                           this, it->first));
+            if (it->second <= 1) {
+                it = pendingTunnelEps.erase(it);
+            } else {
+                it->second -= 1;
+                it++;
+            }
+        }
+    }
+    if (pendingTunnelEps.size() > 0)
+        doScheduleTunnelEpAdv(repeat_dis(urng));
+}
+
+void AdvertManager::doScheduleTunnelEpAdv(uint64_t time) {
+    tunnelEpAdvTimer->expires_from_now(milliseconds(time));
+    tunnelEpAdvTimer->
+            async_wait(bind(&AdvertManager::onTunnelEpAdvTimer,
+                            this, error));
+}
+
+void AdvertManager::scheduleTunnelEpAdv(const std::string& uuid) {
+    if (tunnelEpAdvTimer &&
+            (tunnelEndpointAdv != EPADV_DISABLED)) {
+        LOG(DEBUG) << "Scheduling Tunnel Ep advertisement";
+        unique_lock<mutex> guard(tunnelep_mutex);
+        pendingTunnelEps[uuid] = 5;
+        doScheduleTunnelEpAdv();
+    }
 }
 
 } /* namespace opflexagent */

@@ -223,6 +223,7 @@ OfpBuf compose_dhcpv6_reply(uint8_t message_type,
  * @param tha the target hardware address
  * @param spa the source protocol address
  * @param tpa the target protocol address
+ * @param rarp use RARP ethertype instead
  */
 OfpBuf compose_arp(uint16_t op,
                    const uint8_t* srcMac,
@@ -230,7 +231,8 @@ OfpBuf compose_arp(uint16_t op,
                    const uint8_t* sha,
                    const uint8_t* tha,
                    uint32_t spa,
-                   uint32_t tpa);
+                   uint32_t tpa,
+                   bool rarp = false);
 
 } /* namespace packets */
 } /* namespace opflexagent */
