@@ -12,7 +12,7 @@
  */
 
 #include <string>
-#include <stdint.h>
+#include <cstdint>
 #include <sstream>
 #include <list>
 #include <utility>

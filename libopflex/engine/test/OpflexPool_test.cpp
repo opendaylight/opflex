@@ -54,8 +54,8 @@ public:
     virtual void close() {
         closed = true;
     }
-    bool closed;
     bool ready;
+    bool closed;
 };
 
 class PoolFixture {

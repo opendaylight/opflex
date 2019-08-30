@@ -16,9 +16,7 @@
 
 
 #include <vector>
-#include <utility>
 
-#include <boost/foreach.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>

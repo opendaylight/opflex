@@ -99,13 +99,18 @@ public:
      */
     void getEndpoints(const std::string& snatIp,
                       /* out */ std::unordered_set<std::string>& eps);
+
+    /**
+     * Set of <uuid, snat-ip> pairs
+     */
+    typedef std::set<std::pair<std::string, std::string>> snats_t;
+
     /**
      * Get the snats that are on a particular interface
      *
      * @param ifaceName the name of the interface
      * @param snats a set of <uuid, snat-ip> pairs using the interface
      */
-    typedef std::set<std::pair<std::string, std::string>> snats_t;
     void getSnatsByIface(const std::string& ifaceName,
                          /* out */ snats_t& snats);
 private:

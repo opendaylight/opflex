@@ -21,49 +21,9 @@ namespace opflex {
 namespace engine {
 namespace internal {
 
-using rapidjson::StringBuffer;
-using rapidjson::Writer;
-
 OpflexMessage::OpflexMessage(const std::string& method_, MessageType type_,
                              const rapidjson::Value* id_) 
     : method(method_), type(type_), id(id_) {
-}
-
-StringBuffer* OpflexMessage::serialize() {
-    StringBuffer* sb = new StringBuffer();
-    Writer<StringBuffer> writer(*sb);
-    writer.StartObject();
-    switch (type) {
-    case REQUEST:
-        writer.String("method");
-        writer.String(method.c_str());
-        writer.String("params");
-        serializePayload(writer);
-        break;
-    case RESPONSE:
-        writer.String("result");
-        serializePayload(writer);
-        writer.String("error");
-        writer.Null();
-        break;
-    case ERROR_RESPONSE:
-        writer.String("result");
-        writer.Null();
-        writer.String("error");
-        serializePayload(writer);
-        break;
-    }
-    writer.String("id");
-    if (id == NULL)
-        writer.String(method.c_str());
-    else
-        id->Accept(writer);
-    writer.EndObject();
-
-    // we delimit our frames with a nul byte
-    sb->Put('\0');
-
-    return sb;
 }
 
 void GenericOpflexMessage::serializePayload(yajr::rpc::SendHandler& writer) {

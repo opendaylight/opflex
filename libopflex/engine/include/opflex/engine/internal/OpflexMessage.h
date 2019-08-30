@@ -131,14 +131,6 @@ public:
         return true;
     }
 
-    /**
-     * Serialize into a fully-formed opflex message
-     *
-     * @return a newly-allocated string buffer containing the message
-     * data
-     */
-    rapidjson::StringBuffer* serialize();
-
 protected:
     /**
      * The request method associated with the message
