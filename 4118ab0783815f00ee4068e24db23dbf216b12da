@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "21ba024e_b974fc7d",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-03T17:56:53Z",
+      "side": 1,
+      "message": "Do we really need src-ip/dst-ip in addition to src-ipv4/dst-ipv4, src-ipv6/dst-ipv6?",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ecf6810_289847f6",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-03T17:56:53Z",
+      "side": 1,
+      "message": "Can you add some comments to indicate what each of these constants represent?",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "968e989e_61ba1618",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-03T17:56:53Z",
+      "side": 1,
+      "message": "I think dstPort should use l4/Port and not define the possible port values instead of creating a new type. The reason is that we would be restricting the possible dstPort values to what we had defined ahead of time and couldn\u0027t support other values until the genie model was updated.\n\nThe ACI model behaves differently here in that you can use the enum if it\u0027s defined or provide any numeric value within the allowed range.",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ed11a12_e9949c2c",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-03T17:56:53Z",
+      "side": 1,
+      "message": "expoter -\u003e exporter",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
