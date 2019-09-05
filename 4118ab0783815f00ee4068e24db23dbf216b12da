@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8c3cd4d7_cc0ceb17",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 8502
+      },
+      "writtenOn": "2019-09-05T06:45:16Z",
+      "side": 1,
+      "message": "these are used to qualify both ipv4 and ipv6. ACI model has these separately",
+      "parentUuid": "21ba024e_b974fc7d",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9ecf6810_289847f6",
         "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
         "patchSetId": 2
@@ -33,6 +51,24 @@
       "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8fc87f7b_bfa7f10a",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 8502
+      },
+      "writtenOn": "2019-09-05T06:45:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9ecf6810_289847f6",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "29cf1790_3988e6c9",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 8502
+      },
+      "writtenOn": "2019-09-05T06:45:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "968e989e_61ba1618",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8ed11a12_e9949c2c",
         "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
         "patchSetId": 2
@@ -67,6 +121,24 @@
       "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e506d35c_536807e9",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 8502
+      },
+      "writtenOn": "2019-09-05T06:45:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8ed11a12_e9949c2c",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
