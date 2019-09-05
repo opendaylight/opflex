@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "b05b9784_cbdebc2c",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-05T21:11:27Z",
+      "side": 1,
+      "message": "Yes I understand. We faced the same issue with filters and the way l2::EtherType is defined on the ACI side. In that case we decided that since there\u0027s no such thing as an \u0027ip\u0027 ethertype, we split filters using that type into two seperate filters instead. I don\u0027t feel that strongly about it but could we do that here as well?",
+      "parentUuid": "8c3cd4d7_cc0ceb17",
+      "revId": "4118ab0783815f00ee4068e24db23dbf216b12da",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9ecf6810_289847f6",
         "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
         "patchSetId": 2
