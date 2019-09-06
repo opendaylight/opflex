@@ -151,7 +151,7 @@ namespace opflexagent {
         LOG(DEBUG) << "notifying delete listener";
         lock_guard<mutex> guard(listener_mutex);
         for (SpanListener *listener : spanListeners) {
-            listener->sessionDeleted(seSt);
+            listener->spanDeleted(seSt);
         }
     }
 

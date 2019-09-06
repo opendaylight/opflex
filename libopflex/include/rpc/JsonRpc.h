@@ -1,0 +1,199 @@
+/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
+/*!
+ * @file JsonRpc.h
+ * @brief Interface definition for various JSON/RPC messages used by the
+ * engine
+ */
+/*
+ * Copyright (c) 2019 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+#pragma once
+#ifndef RPC_JSONRPC_H
+#define RPC_JSONRPC_H
+
+#include<set>
+#include<map>
+#include<list>
+
+#include <condition_variable>
+#include <mutex>
+
+#include <rapidjson/document.h>
+#include <boost/lexical_cast.hpp>
+
+namespace opflex {
+namespace engine {
+namespace internal {
+
+using namespace std;
+using namespace rapidjson;
+ /**
+  * Abstract base class to represent JSON/RPC data.
+  */
+class BaseData {
+public:
+    enum class Dtype {STRING, TUPLE};
+    Dtype type;
+    virtual string toString() = 0;
+};
+
+/**
+ * class for representing JSON/RPC string data
+ */
+class StringData : public BaseData {
+public:
+    StringData(string s) : data(s) { type = Dtype::STRING;}
+    string data;
+    string toString() { return data;}
+};
+
+/**
+ * class for representing JSON/RPC tuple data
+ */
+class TupleData : public BaseData {
+public:
+    TupleData(set<tuple<string, string>> m, string l = "") :
+        label(l) {
+        type = Dtype::TUPLE;
+        tset.insert(m.begin(), m.end());
+    }
+    string label;
+    set<tuple<string, string>> tset;
+    string toString() {
+        stringstream ss;
+        ss << "label " << label << endl;
+        for (auto elem : tset) {
+            ss << std::get<0>(elem) << " : " << get<1>(elem) << endl;
+        }
+        return ss.str();
+    }
+};
+
+/**
+ * struct representing row data for JSON/RPC requests
+ */
+typedef map<string, shared_ptr<BaseData>> row_map;
+
+/**
+ * struct used for setting up a JSON/RPC request.
+ */
+typedef struct transData_ {
+    set<tuple<string, string, string>> conditions;
+    string operation;
+    string table;
+    set<string> columns;
+    row_map rows;
+    map<string, string> kvPairs;
+    transData_() {};
+    transData_(const transData_& td) : conditions(td.conditions),
+            operation(td.operation), table(td.table),
+            columns(td.columns), rows(td.rows), kvPairs(td.kvPairs) {};
+} transData;
+
+/**
+ * JSON/RPC transaction base class
+ */
+class Transaction {
+public:
+    virtual void handleTransaction(uint64_t reqId,
+            const rapidjson::Value& payload) = 0;
+    //TransactReq* req;
+};
+
+/**
+ * class for managing RPC connection to a server.
+ */
+class RpcConnection {
+    public:
+    RpcConnection(Transaction* pTrans_) : pTrans(pTrans_) {}
+
+    /**
+     * call back for transaction response
+     * @param[in] reqId request ID of the request for this response.
+     * @param[in] payload rapidjson::Value reference of the response body.
+     */
+    virtual void handleTransaction(uint64_t reqId,
+                const rapidjson::Value& payload) = 0;
+
+    /**
+     * initialize the module
+     */
+    virtual void start() = 0;
+
+    /**
+     * stop the module
+     */
+    virtual void stop() = 0;
+
+    /**
+     * create a tcp connection to peer
+     * @param[in] hostname host name of the peer.
+     * @param[in] port port number to connect to.
+     * @param[in] pTrans pointer to Transaction object
+     */
+    virtual void connect(string const& hostname, int port) = 0;
+    /**
+     * get state of connection
+     * @return true if connected, false otherwise
+     */
+    bool isConnected() { return connected;};
+
+    /**
+     * set connection state
+     * @param[in] state state of connection
+     */
+    void setConnected(bool state) {
+        connected = state;
+    }
+
+    /**
+     * condition variable used for synchronizing JSON/RPC
+     * request and response
+     */
+    condition_variable ready;
+    /**
+     * mutex used for synchronizing JSON/RPC
+     * request and response
+     */
+    mutex mtx;
+
+    /**
+     * boolean flag to indicate connection state.
+     */
+    bool connected = false;
+    /**
+     * pointer to a Transaction object instance
+     */
+    Transaction* pTrans;
+};
+
+ /**
+  * send a JSON/RPC transaction request
+  * @param[in] tl list of transData objects
+  * @param[in] p shared pointer to an RpcConnection object
+  * @param[in] reqId request ID of this transaction
+  */
+void sendTransaction(list<transData> tl,shared_ptr<RpcConnection> p, uint64_t reqId);
+
+/**
+ * create an RPC connection to a server
+ * @param[in] trans a pointer to a Transaction object instance
+ * @retuen shared pointer to an RpcConnection object
+ */
+shared_ptr<RpcConnection> createConnection(Transaction& trans);
+
+/**
+ * helper function to get Value of a given index
+ * @param[in] val rapidjson Value object
+ * @param[in] idx list of strings representing indices
+ */
+Value getValue(const Value& val, list<string> idx);
+}
+}
+}
+#endif
