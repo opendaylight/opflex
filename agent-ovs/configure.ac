@@ -53,6 +53,7 @@ m4_include([m4/ax_boost_filesystem.m4])
 m4_include([m4/ax_boost_iostreams.m4])
 m4_include([m4/ax_boost_asio.m4])
 m4_include([m4/ax_cxx_compile_stdcxx.m4])
+m4_include([m4/ax_boost_regex.m4])
 
 dnl ---------------------------------------------------------------
 dnl Configure options
@@ -148,6 +149,10 @@ fi
 AX_BOOST_ASIO
 if test "x$ax_cv_boost_asio" != xyes; then
     AC_MSG_ERROR([Boost::ASIO library is required])
+fi
+AX_BOOST_REGEX
+if test "x$ax_cv_boost_regex" != xyes; then
+    AC_MSG_ERROR([Boost::Regex library is required])
 fi
 
 PKG_CHECK_MODULES([libopflex], [libopflex >= 1.12.0])

@@ -21,6 +21,7 @@ USE_BOOST_PROGRAM_OPTIONS_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_program_options.a
 USE_BOOST_UNIT_TEST_FRAMEWORK_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_test_exec_monitor.a \
 				  $(BOOST_STATIC_LIB_DIR)/libboost_unit_test_framework.a
 USE_BOOST_IOSTREAMS_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_iostreams.a
+USE_BOOST_REGEX_LIB=$(BOOST_STATIC_LIB_DIR)/libboost_regex.a
 USE_TEST_FLAGS=-DBoost_USE_STATIC_LIBS=ON
 RPM_BUILD_FLAGS=--without-dynboost
 else
@@ -31,6 +32,7 @@ USE_BOOST_ASIO_LIB=$(BOOST_ASIO_LIB)
 USE_BOOST_PROGRAM_OPTIONS_LIB=$(BOOST_PROGRAM_OPTIONS_LIB)
 USE_BOOST_UNIT_TEST_FRAMEWORK_LIB=$(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 USE_BOOST_IOSTREAMS_LIB=$(BOOST_IOSTREAMS_LIB)
+USE_BOOST_REGEX_LIB=$(BOOST_REGEX_LIB)
 USE_TEST_FLAGS=-DBOOST_TEST_DYN_LINK
 endif
 
@@ -141,7 +143,8 @@ noinst_HEADERS = \
 	ovs/include/dhcp.h \
 	ovs/include/arp.h \
 	ovs/include/eth.h \
-	ovs/include/SpanRenderer.h
+	ovs/include/SpanRenderer.h \
+	ovs/include/JsonRpc.h
 
 libopflex_agent_la_SOURCES = \
 	lib/AgentLogHandler.cpp \
@@ -214,7 +217,8 @@ if RENDERER_OVS
 	ovs/FlowUtils.cpp \
 	ovs/FlowConstants.cpp \
 	ovs/ovs-shim.c \
-	ovs/SpanRenderer.cpp
+	ovs/SpanRenderer.cpp \
+	ovs/JsonRpc.cpp
   librenderer_openvswitch_la_CFLAGS = \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
@@ -231,7 +235,8 @@ if RENDERER_OVS
 	$(libofproto_LIBS) \
 	$(USE_BOOST_SYSTEM_LIB) \
 	$(USE_BOOST_FILESYSTEM_LIB) \
-	$(USE_BOOST_ASIO_LIB)
+	$(USE_BOOST_ASIO_LIB) \
+	$(USE_BOOST_REGEX_LIB)
   libopflex_agent_renderer_openvswitch_la_LIBADD = \
 	librenderer_openvswitch.la
   libopflex_agent_renderer_openvswitch_la_LDFLAGS = \
