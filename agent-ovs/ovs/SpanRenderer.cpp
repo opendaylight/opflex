@@ -37,10 +37,15 @@ namespace opflexagent {
     }
 
     void SpanRenderer::spanUpdated(const opflex::modb::URI& spanURI) {
-        taskQueue.dispatch(spanURI.toString(),
-                           [=]() { handleSpanUpdate(spanURI); });
+        handleSpanUpdate(spanURI);
     }
 
+    void SpanRenderer::spanDeleted(shared_ptr<SessionState> seSt) {
+        unique_lock<mutex> lock(handlerMutex);
+        connect();
+        sessionDeleted(seSt);
+        cleanup();
+    }
 
     void SpanRenderer::sessionDeleted(shared_ptr<SessionState> seSt) {
         deleteMirror(seSt->getName());
@@ -49,7 +54,8 @@ namespace opflexagent {
     }
 
     void SpanRenderer::handleSpanUpdate(const opflex::modb::URI& spanURI) {
-        LOG(DEBUG) << "Span handle update";
+        LOG(DEBUG) << "Span handle update, thread " << std::this_thread::get_id();
+        unique_lock<mutex> lock(handlerMutex);
         SpanManager& spMgr = agent.getSpanManager();
         optional<shared_ptr<SessionState>> seSt =
                                              spMgr.getSessionState(spanURI);
@@ -57,8 +63,11 @@ namespace opflexagent {
         if (!seSt) {
             return;
         }
+
+        connect();
+
         // There should be at least one source and one destination.
-        // need to accommodate for a change from previous configuration.
+        // TBD: need to accommodate for a change from previous configuration.
         if (seSt.get()->getSrcEndPointMap().empty() ||
             seSt.get()->getDstEndPointMap().empty()) {
             LOG(DEBUG) << "Delete existing mirror if any";
@@ -66,27 +75,91 @@ namespace opflexagent {
             return;
         }
         //get the source ports.
-        vector<string> srcPort;
+        set<string> srcPort;
         for (auto src : seSt.get()->getSrcEndPointMap()) {
-            srcPort.push_back(src.second.get()->getPort());
+            srcPort.emplace(src.second.get()->getPort());
         }
         // get the destination IPs
         set<address> dstIp;
         for (auto dst : seSt.get()->getDstEndPointMap()) {
-            dstIp.insert(dst.second.get()->getAddress());
+            dstIp.emplace(dst.second.get()->getAddress());
         }
-
+        // get the first element of the set as only one
+        // destination is allowed in OVS 2.10
+        string ipAddr = (*(dstIp.begin())).to_string();
         // delete existing mirror and erspan port, then create a new one.
         sessionDeleted(seSt.get());
+        addErspanPort(BRIDGE, ipAddr);
         LOG(DEBUG) << "creating mirror";
         createMirror(seSt.get()->getName(), srcPort, dstIp);
+        cleanup();
     }
 
+    inline void SpanRenderer::connect() {
+        // connect to OVSDB, destination is always the loopback address.
+        // TBD: what happens if connect fails
+        jRpc = make_unique<JsonRpc>();
+        jRpc->start();
+        jRpc->connect("127.0.0.1", jRpc->OVSDB_RPC_PORT);
+    }
+
+    void getOvsSpanArtifacts() {
+        // get mirror entry
+
+    }
     bool SpanRenderer::deleteMirror(string sess) {
+        if (!jRpc->deleteMirror(BRIDGE)) {
+            LOG(DEBUG) << "Unable to delete mirror";
+            cleanup();
+            return false;
+        }
+        return true;
+    }
+
+    void SpanRenderer::cleanup() {
+        jRpc.release();
+    }
+
+    bool SpanRenderer::addErspanPort(string brName, string ipAddr) {
+        JsonRpc::erspan_port ep;
+        ep.name = ERSPAN_PORT_NAME;
+        ep.ip_address = ipAddr;
+        if (!jRpc->addErspanPort(brName, ep)) {
+            LOG(DEBUG) << "add erspan port failed";
+            return false;
+        }
+        return true;
     }
 
     bool SpanRenderer::deleteErspnPort(const string name) {
+        string erspanUuid = jRpc->getPortUuid(ERSPAN_PORT_NAME);
+        LOG(DEBUG) << ERSPAN_PORT_NAME << " uuid: " << erspanUuid;
+        JsonRpc::BrPortResult res;
+        if (jRpc->getBridgePortList("br-int", res)) {
+            LOG(DEBUG) << "br UUID " << res.brUuid;
+            for (auto elem : res.portUuids) {
+                LOG(DEBUG) << elem;
+            }
+        }
+
+        tuple<string, set<string>> ports =
+                make_tuple(res.brUuid, res.portUuids);
+        jRpc->updateBridgePorts(ports, erspanUuid, false);
     }
-    bool SpanRenderer::createMirror(string sess, vector<string> srcPort, set<address> dstIp) {
+    bool SpanRenderer::createMirror(string sess, set<string> srcPort,
+            set<address> dstIp) {
+        JsonRpc::mirror mir;
+        set<string> out_ports = {"erspan1"};
+        mir.src_ports = srcPort;
+        //.insert(src_ports.begin(), src_ports.end());
+        mir.dst_ports = srcPort;
+        //.insert(dst_ports.begin(), dst_ports.end());
+        mir.out_ports.emplace(ERSPAN_PORT_NAME);
+
+        jRpc->addMirrorData("msandhu-sess1", mir);
+        string brUuid = jRpc->getBridgeUuid("br-int");
+        LOG(DEBUG) << "bridge uuid " << brUuid;
+
+        jRpc->createMirror(brUuid, "msandhu-sess1");
     }
 }

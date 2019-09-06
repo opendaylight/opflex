@@ -33,7 +33,7 @@ public:
      * called when span session has been deleted
      * @param[in] seSt shared pointer to SessionState object
      */
-    virtual void sessionDeleted(shared_ptr<SessionState> seSt) {};
+    virtual void spanDeleted(shared_ptr<SessionState> seSt) {};
 
     /**
      * Called when span objects are updated.
