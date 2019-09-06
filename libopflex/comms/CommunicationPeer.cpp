@@ -444,6 +444,7 @@ void CommunicationPeer::onWrite() {
 }
 
 int CommunicationPeer::write() const {
+    VLOG(4) << this;
 
     if (pendingBytes_) {
 
@@ -468,6 +469,8 @@ int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
         << this
         << " IOVEC of size "
         << iov.size()
+        << " on_write "
+        << (void*)on_write
     ;
     assert(iov.size());
 

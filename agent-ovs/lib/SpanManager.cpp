@@ -21,16 +21,22 @@
 #include <boost/optional/optional_io.hpp>
 #include <opflex/modb/Mutator.h>
 
+#include <modelgbp/epr/L2Universe.hpp>
+#include <modelgbp/epdr/EndPointToGroupRSrc.hpp>
+
 namespace opflexagent {
 
     using namespace std;
     using namespace modelgbp::epr;
+    using namespace modelgbp::gbp;
     using namespace opflex::modb;
     using boost::optional;
     using opflex::modb::class_id_t;
     using opflex::modb::URI;
     using boost::posix_time::milliseconds;
     using opflex::modb::Mutator;
+
+    using namespace modelgbp::epdr;
 
     SpanManager::SpanManager(opflex::ofcore::OFFramework &framework_,
                              boost::asio::io_service& agent_io_) :
@@ -88,7 +94,8 @@ namespace opflexagent {
                  }
             }
         } else if (classId == LocalEp::CLASS_ID) {
-            processLocalEp(uri);
+            vector<URI> vUri{uri};
+            processLocalEp(vUri);
         } else if (classId == L2Ep::CLASS_ID) {
             if (L2Ep::resolve(spanmanager.framework, uri)) {
                 shared_ptr <L2Ep> l2Ep = L2Ep::resolve(
@@ -151,7 +158,7 @@ namespace opflexagent {
         LOG(DEBUG) << "notifying delete listener";
         lock_guard<mutex> guard(listener_mutex);
         for (SpanListener *listener : spanListeners) {
-            listener->sessionDeleted(seSt);
+            listener->spanDeleted(seSt);
         }
     }
 
@@ -191,6 +198,7 @@ namespace opflexagent {
     void SpanManager::SpanUniverseListener::processSrcGrp(shared_ptr<SrcGrp> srcGrp) {
         vector<shared_ptr<SrcMember>> srcMemVec;
         srcGrp.get()->resolveSpanSrcMember(srcMemVec);
+        vector<URI> srcPoints;
         for (shared_ptr<SrcMember> srcMem : srcMemVec) {
             optional <shared_ptr<MemberToRefRSrc>> memRefOpt =
                     srcMem.get()->resolveSpanMemberToRefRSrc();
@@ -199,15 +207,22 @@ namespace opflexagent {
                 if (memRef->getTargetClass()) {
                     class_id_t class_id = memRef->getTargetClass().get();
                     if (class_id == modelgbp::gbp::EpGroup::CLASS_ID) {
+                        if (memRef->getTargetURI()) {
+                            URI pUri = memRef->getTargetURI().get();
+                            LOG(DEBUG) << pUri.toString();
+                            vector<URI> lVec = processEpGroup(pUri);
+                            srcPoints.insert(srcPoints.begin(), lVec.begin(), lVec.end());
+                        }
                     } else if (class_id == LocalEp::CLASS_ID) {
                         if (memRef->getTargetURI()) {
                             URI pUri = memRef->getTargetURI().get();
-                            processLocalEp(pUri);
+                            srcPoints.push_back(pUri);
                         }
                     }
                 }
             }
         }
+        processLocalEp(srcPoints);
     }
 
     void SpanManager::SpanUniverseListener::processDstGrp(DstGrp& dstGrp,
@@ -243,7 +258,8 @@ namespace opflexagent {
         srcEndPoints.emplace(uri, srcEp);
     }
 
-    void SpanManager::SpanUniverseListener::processLocalEp(const URI& pUri) {
+    void SpanManager::SpanUniverseListener::processLocalEp(const vector<URI>& vUri) {
+        for (auto pUri : vUri) {
             if (LocalEp::resolve(spanmanager.framework, pUri)) {
                 shared_ptr <LocalEp> lEp = LocalEp::resolve(spanmanager.framework, pUri).get();
                 if (lEp->resolveSpanLocalEpToEpRSrc()) {
@@ -261,6 +277,25 @@ namespace opflexagent {
                     }
                 }
             }
+        }
+    }
+
+    vector<URI> SpanManager::SpanUniverseListener::processEpGroup(const URI& uri) {
+        LOG(DEBUG) << "Epg uri " << uri;
+        boost::optional<shared_ptr<L2Universe>> l2u = L2Universe::resolve(spanmanager.framework);
+        std::vector<OF_SHARED_PTR<modelgbp::epr::L2Ep> > out;
+        l2u.get()->resolveEprL2Ep(out);
+        vector<URI> l2EpVec;
+        for (auto ep : out) {
+            LOG(DEBUG) << "ep " << ep.get()->getURI();
+            URI egUri(ep.get()->getGroup().get());
+            LOG(DEBUG) << "epg uri " << egUri;
+            if (uri == egUri) {
+                LOG(DEBUG) << "found L2Ep " << ep.get()->getURI();
+                l2EpVec.push_back(ep.get()->getURI());
+            }
+        }
+        return l2EpVec;
     }
 
     const unordered_map<URI, shared_ptr<SourceEndPoint>>&
