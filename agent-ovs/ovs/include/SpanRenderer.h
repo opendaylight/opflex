@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Include file for SwitchManager
+ * Include file for SpanRenderer
  *
  * Copyright (c) 2019 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -17,6 +17,7 @@
 #include <opflexagent/PolicyListener.h>
 #include <opflexagent/Agent.h>
 #include <opflexagent/SpanListener.h>
+#include "JsonRpc.h"
 
 namespace opflexagent {
 
@@ -44,7 +45,8 @@ public:
     void stop();
 
     virtual void spanUpdated(const opflex::modb::URI& spanURI);
-    virtual void sessionDeleted(shared_ptr<SessionState> sesSt);
+
+    virtual void spanDeleted(shared_ptr<SessionState> sesSt);
 
 private:
     /**
@@ -53,13 +55,21 @@ private:
      * @param spanURI URI of the changed span object
      */
     void handleSpanUpdate(const opflex::modb::URI& spanURI);
-
-    bool deleteErspnPort(string name);
-    bool deleteMirror(string session);
-    bool createMirror(string session, vector<string> srcPorts, set<address> dstIPs);
-    const string ERSPAN_PORT_NAME = "erspn";
+    virtual void sessionDeleted(shared_ptr<SessionState> sesSt);
+    void cleanup();
+    void connect();
+    bool deleteErspnPort(const string& name);
+    bool deleteMirror(const string& session);
+    bool createMirror(const string& session, const set<string>& srcPorts,
+            const set<address>& dstIPs);
+    bool addErspanPort(const string& brName, const string& ipAddr);
+    const string ERSPAN_PORT_NAME = "erspan";
+    const string BRIDGE = "br-int";
     Agent& agent;
     TaskQueue taskQueue;
+    condition_variable cv;
+    mutex handlerMutex;
+    unique_ptr<JsonRpc> jRpc;
 };
 }
 #endif //OPFLEX_SPANRENDERER_H

@@ -156,9 +156,9 @@ public:
         void processDstGrp(DstGrp& dstGrp, Session& sess);
         /**
         * process LocalEp update
-        * @param[in] uri a uri pointing to the LocalEp object in  MODB.
+        * @param[in] vUri a vector of uris pointing to the LocalEp objects in  MODB.
         */
-        void processLocalEp(const URI& uri);
+        void processLocalEp(const vector<URI>& vUri);
 
         /**
          * process L2EP update
@@ -174,6 +174,12 @@ public:
           void addEndPoint(shared_ptr<LocalEp> lEp, shared_ptr<L2Ep> l2Ep);
 
     private:
+          /**
+           * process EP group
+           * @param[in] uri uri pointing to EpGroup
+           */
+          vector<URI> processEpGroup(const URI& uri);
+
         SpanManager& spanmanager;
 
     };
