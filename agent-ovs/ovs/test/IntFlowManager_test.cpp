@@ -1665,6 +1665,7 @@ void BaseIntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
                                            uint8_t remoteInventoryType) {
     IntFlowManager::EncapType encapType = intFlowManager.getEncapType();
     uint32_t tunPort = intFlowManager.getTunnelPort();
+    WAIT_FOR(policyMgr.getVnidForGroup(epg->getURI()), 500);
     uint32_t vnid = policyMgr.getVnidForGroup(epg->getURI()).get();
     address mcast = intFlowManager.getEPGTunnelDst(epg->getURI());
     uint8_t rmacArr[6];
