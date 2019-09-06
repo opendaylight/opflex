@@ -17,7 +17,7 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 	-I$(top_srcdir)/modb/include \
 	-I$(top_srcdir)/logging/include \
 	-I$(top_srcdir)/util/include \
-	-I$(top_srcdir)/comms/include
+	-I$(top_srcdir)/comms/include 
 
 noinst_LTLIBRARIES = libengine.la
 
@@ -41,7 +41,6 @@ libengine_la_SOURCES = \
 	include/opflex/engine/internal/InspectorServerHandler.h \
 	include/opflex/engine/internal/InspectorClientHandler.h \
 	include/opflex/engine/internal/InspectorClientConn.h \
-	include/opflex/engine/internal/JsonRpc.h \
 	include/opflex/engine/Inspector.h \
 	include/opflex/engine/InspectorClientImpl.h \
 	include/opflex/engine/Processor.h \

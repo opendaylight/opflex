@@ -25,7 +25,7 @@
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/engine/Processor.h"
-#include "opflex/engine/internal/JsonRpc.h"
+#include "opflex/engine/internal/OvsdbConnection.h"
 
 #include "opflex/logging/internal/logging.hpp"
 #include <yajr/yajr.hpp>
@@ -323,7 +323,7 @@ void InbErr<&yajr::rpc::method::custom>::process() const {
 template<>
 void InbRes<&yajr::rpc::method::transact>::process() const {
     VLOG(5) << "calling InbRes transact";
-    ((opflex::engine::internal::Transaction*)getPeer()->getData())
+    ((opflex::engine::internal::OvsdbConnection*)getPeer()->getData())
             ->handleTransaction(getLocalId().id_, getPayload());
 }
 
