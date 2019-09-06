@@ -66,6 +66,9 @@ c_include_HEADERS = \
 	include/opflex/c/ofpeerstatuslistener_c.h \
 	include/opflex/c/ofmutator_c.h \
 	include/opflex/c/offramework_c.h
+rpc_includedir = $(includedir)/rpc
+rpc_include_HEADERS = \
+	include/rpc/JsonRpc.h
 
 lib_LTLIBRARIES = libopflex.la
 libopflex_la_SOURCES = 
