@@ -46,6 +46,7 @@ using boost::asio::ip::address_v6;
 typedef EndpointListener::uri_set_t uri_set_t;
 
 static const string VM_NAME_ATTR("vm-name");
+static const string NULL_MAC_ADDR("00:00:00:00:00:00");
 
 EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
                                  PolicyManager& policyManager_)
@@ -959,7 +960,7 @@ bool EndpointManager::updateEndpointReg(const std::string& uuid) {
 
     optional<shared_ptr<L2Universe> > l2u =
         L2Universe::resolve(framework);
-    if (l2u && bd && mac) {
+    if (l2u && bd && mac && (NULL_MAC_ADDR != mac.get().toString())) {
         // If the bridge domain is known, we can register the l2
         // endpoint
         {
