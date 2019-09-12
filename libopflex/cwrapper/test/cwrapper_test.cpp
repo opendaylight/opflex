@@ -103,6 +103,7 @@ BOOST_FIXTURE_TEST_CASE( init, ServerFixture ) {
     BOOST_CHECK(OF_IS_SUCCESS(offramework_register_peerstatuslistener(framework,
                                                                       peer_listener)));
     BOOST_CHECK(OF_IS_SUCCESS(offramework_set_model(framework, &md)));
+    BOOST_CHECK(OF_IS_SUCCESS(offramework_set_opflex_identity(framework, "dummy", "test")));
     BOOST_CHECK(OF_IS_SUCCESS(offramework_start(framework)));
     BOOST_CHECK(OF_IS_SUCCESS(offramework_add_peer(framework, LOCALHOST, 8009)));
     WAIT_FOR(peerStatus == OF_PEERSTATUS_READY, 1000)
