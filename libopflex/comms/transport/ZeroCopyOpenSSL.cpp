@@ -1022,6 +1022,8 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
         return NULL;
     }
 
+    SSL_CTX_set_options(sslCtx, SSL_OP_NO_TLSv1 | SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2);
+
     size_t failure = 0;
 
     Ctx * ctx = new (std::nothrow) Ctx(sslCtx, passphrase);
