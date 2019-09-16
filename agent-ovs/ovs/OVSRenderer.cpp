@@ -121,7 +121,8 @@ void OVSRenderer::start() {
     intFlowManager.setVirtualRouter(virtualRouter, routerAdv, virtualRouterMac);
     intFlowManager.setVirtualDHCP(virtualDHCP, virtualDHCPMac);
     intFlowManager.setMulticastGroupFile(mcastGroupFile);
-    intFlowManager.setEndpointAdv(endpointAdvMode, tunnelEndpointAdvMode);
+    intFlowManager.setEndpointAdv(endpointAdvMode, tunnelEndpointAdvMode,
+            tunnelEndpointAdvIntvl);
 
     intSwitchManager.registerStateHandler(&intFlowManager);
     intSwitchManager.start(intBridgeName);
@@ -251,6 +252,8 @@ void OVSRenderer::setProperties(const ptree& properties) {
                                                "endpoint-advertisements.mode");
     static const std::string ENDPOINT_TNL_ADV_MODE("forwarding."
                                "endpoint-advertisements.tunnel-endpoint-mode");
+    static const std::string ENDPOINT_TNL_ADV_INTVL("forwarding."
+                                   "endpoint-advertisements.tunnel-endpoint-interval");
 
     static const std::string FLOWID_CACHE_DIR("flowid-cache-dir");
     static const std::string MCAST_GROUP_FILE("mcast-group-file");
@@ -351,6 +354,10 @@ void OVSRenderer::setProperties(const ptree& properties) {
     } else {
         tunnelEndpointAdvMode = AdvertManager::EPADV_RARP_BROADCAST;
     }
+
+    tunnelEndpointAdvIntvl =
+        properties.get<uint64_t>(ENDPOINT_TNL_ADV_INTVL,
+                                    300);
 
     connTrack = properties.get<bool>(CONN_TRACK, true);
     ctZoneRangeStart = properties.get<uint16_t>(CONN_TRACK_RANGE_START, 1);
