@@ -217,10 +217,11 @@ void IntFlowManager::setVirtualDHCP(bool dhcpEnabled,
 }
 
 void IntFlowManager::setEndpointAdv(AdvertManager::EndpointAdvMode mode,
-        AdvertManager::EndpointAdvMode tunnelMode) {
+        AdvertManager::EndpointAdvMode tunnelMode,
+        uint64_t tunnelAdvIntvl) {
     if (mode != AdvertManager::EPADV_DISABLED)
         advertManager.enableEndpointAdv(mode);
-    advertManager.enableTunnelEndpointAdv(tunnelMode);
+    advertManager.enableTunnelEndpointAdv(tunnelMode, tunnelAdvIntvl);
 }
 
 void IntFlowManager::setMulticastGroupFile(const std::string& mcastGroupFile) {

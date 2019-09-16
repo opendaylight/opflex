@@ -188,9 +188,11 @@ public:
      *
      * @param mode the endpoint advertisement mode
      * @param tunnelMode the tunnel endpoint advertisement mode
+     * @param tunnelAdvIntvl the tunnel endpoint advertisement interval
      */
     void setEndpointAdv(AdvertManager::EndpointAdvMode mode,
-            AdvertManager::EndpointAdvMode tunnelMode);
+            AdvertManager::EndpointAdvMode tunnelMode,
+            uint64_t tunnelAdvIntvl=600);
 
     /**
      * Set the multicast group file

@@ -94,6 +94,7 @@ private:
     bool routerAdv;
     AdvertManager::EndpointAdvMode endpointAdvMode;
     AdvertManager::EndpointAdvMode tunnelEndpointAdvMode;
+    uint64_t tunnelEndpointAdvIntvl;
     bool virtualDHCP;
     std::string virtualDHCPMac;
     std::string flowIdCache;
