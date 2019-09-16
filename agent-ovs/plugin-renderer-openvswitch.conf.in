@@ -105,7 +105,10 @@
         //             //   broadcast requests
         //             // rarp-broadcast: Send rarp broadcast requests
         //             // Default: rarp-broadcast
-        //             "tunnel-endpoint-mode": "rarp-broadcast"
+        //             "tunnel-endpoint-mode": "rarp-broadcast",
+        //             // tunnel endpoint advertisement interval in seconds
+        //             // Default: 300 s
+        //             "tunnel-endpoint-interval": 300
         //         },
         //
         //         "connection-tracking": {

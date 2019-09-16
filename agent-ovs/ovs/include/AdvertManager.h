@@ -93,8 +93,10 @@ public:
      */
     void enableEndpointAdv(EndpointAdvMode mode) { sendEndpointAdv = mode; }
 
-    void enableTunnelEndpointAdv(EndpointAdvMode tunnelMode)
-    { tunnelEndpointAdv = tunnelMode;}
+    void enableTunnelEndpointAdv(EndpointAdvMode tunnelMode,
+            uint64_t delay = 300)
+    { tunnelEndpointAdv = tunnelMode;
+      tunnelEpAdvInterval = delay;}
 
     /**
      * Module start
@@ -206,11 +208,12 @@ private:
      */
     EndpointAdvMode sendEndpointAdv;
     EndpointAdvMode tunnelEndpointAdv;
+    uint64_t tunnelEpAdvInterval;
     void onEndpointAdvTimer(const boost::system::error_code& ec);
     void onAllEndpointAdvTimer(const boost::system::error_code& ec);
     void doScheduleEpAdv(uint64_t time = 250);
     void onTunnelEpAdvTimer(const boost::system::error_code& ec);
-    void doScheduleTunnelEpAdv(uint64_t time = 250);
+    void doScheduleTunnelEpAdv(uint64_t time = 1);
     std::unique_ptr<boost::asio::deadline_timer> endpointAdvTimer;
     std::unique_ptr<boost::asio::deadline_timer> allEndpointAdvTimer;
     std::unique_ptr<boost::asio::deadline_timer> tunnelEpAdvTimer;

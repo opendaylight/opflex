@@ -8,7 +8,13 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
-
+#include <config.h>
+#ifdef  __linux__
+#include <sys/socket.h>
+#include <netpacket/packet.h>
+#include <net/if.h>
+#include <linux/if_ether.h>
+#endif
 #include "AdvertManager.h"
 #include "Packets.h"
 #include "ActionBuilder.h"
@@ -603,20 +609,42 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
 }
 
 void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
-    uint32_t tunPort = intFlowManager.getTunnelPort();
-    if (tunPort == OFPP_NONE) return;
-    unordered_set<uint32_t> out_ports;
-    out_ports.insert(tunPort);
-
+#ifdef __linux__
+    const std::string tunnelIp  =
+            intFlowManager.tunnelEpManager.getTerminationIp(uuid);
     const std::string tunnelMac =
             intFlowManager.tunnelEpManager.getTerminationMac(uuid);
     opflex::modb::MAC opMac(tunnelMac);
-    uint8_t tunnelMacBytes[6];
+    uint8_t tunnelMacBytes[ETH_ALEN];
     opMac.toUIntArray(tunnelMacBytes);
-    OfpBuf b((struct ofpbuf*)NULL);
+    unsigned char buf[46];
+    ifreq ifReq;
+    struct sockaddr sa;
+    struct sockaddr_ll *sa_ll;
+    int sockfd;
+    memset(&ifReq, 0, sizeof(ifReq));
+    memset(&sa, 0, sizeof(sa));
+    memset(buf, 0, 46);
+    struct arp::arp_hdr *arp_ptr = (struct arp::arp_hdr *) buf;
+    sa_ll = (struct sockaddr_ll *)&sa;
+    sa_ll->sll_family = htons(AF_PACKET);
+    sa_ll->sll_hatype = htons(1);
+    sa_ll->sll_halen = htons(ETH_ALEN);
+    string uplinkIface;
+    intFlowManager.tunnelEpManager.getUplinkIface(uplinkIface);
+    sa_ll->sll_ifindex = if_nametoindex(uplinkIface.c_str());
+    if(sa_ll->sll_ifindex < 0) {
+        LOG(ERROR) << "Failed to get ifindex by name " << uplinkIface <<
+                ": " << sa_ll->sll_ifindex;
+        return;
+    }
+    memset(sa_ll->sll_addr, 0xff, ETH_ALEN);
+    arp_ptr->htype = htons(1);
+    arp_ptr->ptype = htons(0x0800);
+    arp_ptr->hlen = ETH_ALEN;
+    arp_ptr->plen = 4;
+    unsigned char *ptr = (unsigned char *)((unsigned char *)arp_ptr + sizeof(arp::arp_hdr));
     if(tunnelEndpointAdv == EndpointAdvMode::EPADV_GRATUITOUS_BROADCAST) {
-        const std::string tunnelIp =
-                        intFlowManager.tunnelEpManager.getTerminationIp(uuid);
         boost::system::error_code ec;
         address addr = address::from_string(tunnelIp, ec);
         if (ec || !addr.is_v4()) {
@@ -626,23 +654,45 @@ void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
             }
             return;
         }
-        uint32_t addrv = addr.to_v4().to_ulong();
-        b = packets::compose_arp(arp::op::REQUEST,
-                tunnelMacBytes, packets::MAC_ADDR_BROADCAST,
-                tunnelMacBytes, packets::MAC_ADDR_BROADCAST,
-                addrv, addrv);
+        uint32_t addrv = htonl(addr.to_v4().to_ulong());
+        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ARP));
+        if(sockfd < 0) {
+            LOG(ERROR) << "Failed to create socket: " << sockfd;
+            return;
+        }
+        sa_ll->sll_protocol = htons(ETH_P_ARP);
+
+        arp_ptr->op = htons(opflexagent::arp::op::REQUEST);
+        memcpy(ptr, tunnelMacBytes, ETH_ALEN);
+        ptr+=ETH_ALEN;
+        memcpy(ptr, &addrv, 4);
+        ptr += 4;
+        memcpy(ptr, tunnelMacBytes, ETH_ALEN);
+        ptr+=ETH_ALEN;
+        memcpy(ptr, &addrv, 4);
     } else {
-        b = packets::compose_arp(arp::op::REVERSE_REQUEST,
-                tunnelMacBytes, packets::MAC_ADDR_BROADCAST,
-                tunnelMacBytes, tunnelMacBytes,
-                0, 0, true);
+        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_RARP));
+        if(sockfd < 0) {
+            LOG(ERROR) << "Failed to create socket: " << sockfd;
+            return;
+        }
+        sa_ll->sll_protocol = htons(ETH_P_RARP);
+
+        arp_ptr->op = htons((opflexagent::arp::op::REVERSE_REQUEST));
+        memcpy(ptr, tunnelMacBytes, ETH_ALEN);
+        ptr += (ETH_ALEN + 4);
+        memcpy(ptr, tunnelMacBytes, ETH_ALEN);
     }
 
-    int error = send_packet_out(switchConnection, b, out_ports);
-    if (error) {
-        LOG(ERROR) << "Could not write packet-out: "
-                   << ovs_strerror(error);
+    int error = sendto(sockfd, buf, 46 , htonl(SO_BROADCAST), &sa, sizeof(struct sockaddr_ll));
+    if (error < 0) {
+        LOG(ERROR) << "Could not send tunnel advertisement: "
+                   << error;
+    } else {
+       LOG(DEBUG) << "Sent advertisement for TunnelEp: " << tunnelMac << " " << tunnelIp;
     }
+    close(sockfd);
+#endif
 }
 
 void AdvertManager::onTunnelEpAdvTimer(const boost::system::error_code& ec) {
@@ -655,20 +705,15 @@ void AdvertManager::onTunnelEpAdvTimer(const boost::system::error_code& ec) {
             agent.getAgentIOService()
                 .post(bind(&AdvertManager::sendTunnelEpAdvs,
                            this, it->first));
-            if (it->second <= 1) {
-                it = pendingTunnelEps.erase(it);
-            } else {
-                it->second -= 1;
-                it++;
-            }
+            it++;
         }
     }
     if (pendingTunnelEps.size() > 0)
-        doScheduleTunnelEpAdv(repeat_dis(urng));
+        doScheduleTunnelEpAdv(tunnelEpAdvInterval);
 }
 
 void AdvertManager::doScheduleTunnelEpAdv(uint64_t time) {
-    tunnelEpAdvTimer->expires_from_now(milliseconds(time));
+    tunnelEpAdvTimer->expires_from_now(seconds(time));
     tunnelEpAdvTimer->
             async_wait(bind(&AdvertManager::onTunnelEpAdvTimer,
                             this, error));
@@ -677,10 +722,14 @@ void AdvertManager::doScheduleTunnelEpAdv(uint64_t time) {
 void AdvertManager::scheduleTunnelEpAdv(const std::string& uuid) {
     if (tunnelEpAdvTimer &&
             (tunnelEndpointAdv != EPADV_DISABLED)) {
+#ifdef __linux__
         LOG(DEBUG) << "Scheduling Tunnel Ep advertisement";
         unique_lock<mutex> guard(tunnelep_mutex);
         pendingTunnelEps[uuid] = 5;
         doScheduleTunnelEpAdv();
+#else
+        LOG(ERROR) << "Tunnel advertisement not supported for non-linux platforms";
+#endif
     }
 }
 
