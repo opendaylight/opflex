@@ -67,6 +67,14 @@ public:
     }
 
     /**
+     * Get the uplink interface name
+     * @param uplinkInterface sting to populate
+     */
+    void  getUplinkIface(std::string& uplinkInterface) {
+        uplinkInterface = this->uplinkIface;
+    }
+
+    /**
      * Set the VLAN tag set on the uplink interface
      *
      * @param uplinkVlan the vlan tag used on the uplink interface
