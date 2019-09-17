@@ -665,7 +665,7 @@ void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
         ptr+=ETH_ALEN;
         memcpy(ptr, &addrv, 4);
         ptr += 4;
-        memcpy(ptr, tunnelMacBytes, ETH_ALEN);
+        memset(ptr, 0xff, ETH_ALEN);
         ptr+=ETH_ALEN;
         memcpy(ptr, &addrv, 4);
     } else {
