@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8802d163_2c21c3b0",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 8
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-18T21:13:18Z",
+      "side": 1,
+      "message": "Why do we need \u003cregex\u003e and \u003cboost/regex.hpp\u003e",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c5f36b1_ca3c77f9",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 8
+      },
+      "lineNbr": 450,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-18T21:13:18Z",
+      "side": 1,
+      "message": "Can we use std::regex_replace instead and avoid adding a dep on boost::regex?",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7238e6a2_bb954103",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-18T21:13:18Z",
+      "side": 1,
+      "message": "Can we rename this header to avoid confusion with the other JsonRpc.h? JsonRpcTransaction.h or something",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4c99bbc9_cd01a763",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-18T21:13:18Z",
+      "side": 1,
+      "message": "JsonRpc isn\u0027t a great name for this class if it\u0027s dedicated to ovsdb",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6e164ffd_9be6063f",
+        "filename": "libopflex/engine/Makefile.am",
+        "patchSetId": 8
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-18T21:13:18Z",
+      "side": 1,
+      "message": "revert",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "553abe3a_d859d7f1",
+        "filename": "libopflex/engine/include/opflex/engine/internal/OvsdbConnection.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-18T21:13:18Z",
+      "side": 1,
+      "message": "We should not have OvsdbConnection.h in libopflex. It belong in agent-ovs",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c917a90e_ba7588a3",
+        "filename": "libopflex/engine/include/opflex/engine/internal/OvsdbConnection.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-18T21:13:18Z",
+      "side": 1,
+      "message": "JsonRpc.h -\u003e OvsdbConnection.h",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
