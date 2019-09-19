@@ -37,7 +37,6 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/optional/optional.hpp>
-#include <boost/regex.hpp>
 
 using namespace boost;
 using namespace opflex::ofcore;
@@ -447,8 +446,9 @@ using boost::uuids::basic_random_generator;
         std::mt19937 urng(rng());
         string uuid_name = to_string(basic_random_generator<std::mt19937>(urng)());
         uuid_name.insert(0,"row");
-        boost::regex hyph ("-");
-        return boost::regex_replace(uuid_name, hyph, "_");
+        std::regex hyph ("-");
+        string underscore("_");
+        return std::regex_replace(uuid_name, hyph, underscore);
     }
 
     bool JsonRpc::addErspanPort(const string bridge, const erspan_port port) {
