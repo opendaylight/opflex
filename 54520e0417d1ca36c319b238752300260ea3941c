@@ -118,6 +118,57 @@
       "revId": "54520e0417d1ca36c319b238752300260ea3941c",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c264cf85_0948408e",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-20T16:26:03Z",
+      "side": 1,
+      "message": "string -\u003e const string\u0026",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "42045514_bcad5d81",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-20T16:26:03Z",
+      "side": 1,
+      "message": "consrtructor -\u003e constructor",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "29ac47da_0529d341",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-20T16:26:03Z",
+      "side": 1,
+      "message": "pass the set as a const\u0026 to avoid copy",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
     }
   ]
 }
