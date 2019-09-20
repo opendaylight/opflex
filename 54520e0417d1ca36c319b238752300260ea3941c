@@ -140,6 +140,24 @@
     },
     {
       "key": {
+        "uuid": "5e57d7b8_d2aee7fc",
+        "filename": "libopflex/engine/Makefile.am",
+        "patchSetId": 8
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2019-09-20T19:34:50Z",
+      "side": 1,
+      "message": "removed the space in patch 10",
+      "parentUuid": "a8642b81_8a5eda3e",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "553abe3a_d859d7f1",
         "filename": "libopflex/engine/include/opflex/engine/internal/OvsdbConnection.h",
         "patchSetId": 8
