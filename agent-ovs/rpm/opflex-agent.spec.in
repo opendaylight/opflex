@@ -20,15 +20,11 @@ Group: System Environment/Daemons
 License: EPLv1.0
 URL: https://wiki.opendaylight.org/view/OpFlex:Main
 
-# Add --without dynboost option. Enable by default
-%bcond_without dynboost
-
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 Source: %{name}-%{version}.tar.gz
 Requires: libopflex >= %{version}
 Requires: libmodelgbp >= %{version}
 Requires: opflex-agent-lib = %{epoch}:%{version}-%{release}
-%if %{with dynboost}
 Requires: boost >= 1.53
 Requires: boost-program-options
 Requires: boost-system
@@ -37,7 +33,6 @@ Requires: boost-thread
 Requires: boost-filesystem
 BuildRequires: boost-devel
 BuildRequires: boost-test
-%endif
 BuildRequires: libopflex-devel
 BuildRequires: libmodelgbp-devel
 BuildRequires: noiro-openvswitch-devel >= 2.6.0
@@ -114,11 +109,7 @@ Development libraries for libopflex_agent
 %build
 . /opt/rh/devtoolset-7/enable
 %define __strip /opt/rh/devtoolset-7/root/usr/bin/strip
-%if %{with dynboost}
 %configure --disable-assert
-%else
-%configure --disable-assert --with-static-boost --with-boost=/usr/local/boost_1_58_0
-%endif
 make %{?_smp_mflags}
 
 %install

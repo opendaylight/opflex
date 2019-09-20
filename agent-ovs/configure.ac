@@ -93,27 +93,6 @@ AM_COND_IF([RENDERER_OVS],
            [AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
            [AC_MSG_NOTICE([Open vSwitch renderer is disabled])])
 
-# --with-static-boost enables linking with a static boost library
-# Disabled by default
-# --with-static-boost also requires --with-boost that points to
-# boost location with boost static libraries compiled with -fPIC
-# option to enable linking them with shared libraries.
-AC_ARG_WITH([static-boost],
-            [AS_HELP_STRING([--with-static-boost],[Enable static boost support])],
-            [],[with_static_boost=no])
-AS_IF([test "x$with_static_boost" != xno], [
-      AC_ARG_WITH([boost],
-                  [AS_HELP_STRING([--with-boost],[Use boost from location])],
-                  [], [AC_MSG_FAILURE([--with-static-boost given, but --with-boost is missing])])
-])
-AM_CONDITIONAL([HAVE_STATIC_BOOST],[test "x$with_static_boost" != 'xno'])
-if test "x$with_static_boost" != xno; then
-   AC_SUBST(BOOST_STATIC_LIB_DIR, [${with_boost}/lib])
-   AC_MSG_NOTICE([Building with Static boost libraries from $with_boost/lib])
-else
-   AC_MSG_NOTICE([Building without Static boost libraries])
-fi
-
 # ---------------------------------------------------------------
 # Dependency checks
 
