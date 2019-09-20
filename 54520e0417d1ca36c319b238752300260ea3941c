@@ -70,6 +70,23 @@
     },
     {
       "key": {
+        "uuid": "78d41cbc_e556dcab",
+        "filename": "libopflex/Makefile.am",
+        "patchSetId": 8
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-20T16:27:08Z",
+      "side": 1,
+      "message": "single tab indent only",
+      "revId": "54520e0417d1ca36c319b238752300260ea3941c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6e164ffd_9be6063f",
         "filename": "libopflex/engine/Makefile.am",
         "patchSetId": 8
