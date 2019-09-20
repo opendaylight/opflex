@@ -20,10 +20,6 @@ namespace fnv_1a_64 = yajr::rpc::internal::fnv_1a_64;
 namespace yajr {
     namespace rpc {
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmultichar"
-
-
 MethodName const *
 MessageFactory::lookupMethod(char const * method) {
     VLOG(6)
@@ -34,8 +30,6 @@ MessageFactory::lookupMethod(char const * method) {
     &method
 #include <yajr/rpc/method_lookup.hpp>
 }
-
-#pragma GCC diagnostic pop
 
 } /* yajr::rpc namespace */
 } /* yajr namespace */

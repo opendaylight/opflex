@@ -21,9 +21,6 @@ namespace fnv_1a_64 = yajr::rpc::internal::fnv_1a_64;
 namespace yajr {
     namespace rpc {
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmultichar"
-
 yajr::rpc::InboundRequest *
 MessageFactory::InboundRequest(
         yajr::Peer const & peer,
@@ -36,8 +33,6 @@ MessageFactory::InboundRequest(
     new (std::nothrow) InbReq<&method>(peer, params, id)
 #include <yajr/rpc/method_lookup.hpp>
 }
-
-#pragma GCC diagnostic pop
 
 }
 }
