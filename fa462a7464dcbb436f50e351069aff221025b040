@@ -1,0 +1,361 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "83c0aefa_13d3a1f2",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 10
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "boost_regex is not part of the change now",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f53b787c_bbb7cbca",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 10
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "INFO -\u003e DEBUG or remove",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "453e6f1b_2ea2cede",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 10
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "INFO -\u003e DEBUG",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "de831c95_62de7c97",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 10
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "INFO -\u003e DEBUG",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ddaa3425_6d21ef2e",
+        "filename": "agent-ovs/ovs/SpanRenderer.cpp",
+        "patchSetId": 10
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "exit? is it worth retrying?",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9b4c7360_960b03dd",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "This doxygen comment isn\u0027t placed correctly or needs to be updated as it\u0027s trying to apply to DECLARE_HANDLER",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "11d7a9b4_af52791a",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "no uuid param exists",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "99a6d081_9e8360b4",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "Is it really worth using a macro here? It\u0027s not really doing much other than ensuring handlers have a specific signature.",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bcc2cbd9_56bcd8a7",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 270,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "This should be configurable",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "469a1855_6a1e2b2f",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "first param is not msg",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3b0e140_3e9f97ff",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "const\u0026",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e43ba3af_dcc3565b",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "const\u0026",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "47402136_2cc3ddbc",
+        "filename": "agent-ovs/ovs/include/SpanRenderer.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "Update to use const\u0026 for all of these methods",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d8c79a05_756d3d06",
+        "filename": "agent-ovs/ovs/include/SpanRenderer.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "erspn? typo or is erspan a reserved word or something?",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "46916b6c_ba3d00d2",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "Who\u0027s responsible for cleaning up the Transaction*",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e9a1e284_c49b6d94",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "there is no pTrans param",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f94ae028_9190db42",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "Can tl be a const\u0026",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b7c4de8_f17045aa",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "passing by reference not as a pointer",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "44211a6c_e7ebc015",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "retuen -\u003e return",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7cb6762a_e371462a",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "missing @return",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a57d407d_311681a3",
+        "filename": "libopflex/include/rpc/JsonRpc.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-09-23T21:54:22Z",
+      "side": 1,
+      "message": "Can idx be a const\u0026",
+      "revId": "fa462a7464dcbb436f50e351069aff221025b040",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
