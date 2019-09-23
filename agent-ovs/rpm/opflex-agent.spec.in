@@ -39,7 +39,7 @@ BuildRequires: noiro-openvswitch-devel >= 2.6.0
 BuildRequires: noiro-openvswitch-lib >= 2.6.0
 BuildRequires: doxygen
 BuildRequires: systemd-units
-BuildRequires: rapidjson-devel >= 1.0
+BuildRequires: rapidjson-devel >= 1.1
 BuildRequires: libnetfilter_conntrack-devel >= 1.0
 BuildRequires: devtoolset-7-toolchain
 Requires(pre): shadow-utils

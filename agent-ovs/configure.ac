@@ -131,7 +131,7 @@ fi
 
 PKG_CHECK_MODULES([libopflex], [libopflex >= 1.12.0])
 PKG_CHECK_MODULES([libmodelgbp], [libmodelgbp >= 1.12.0])
-PKG_CHECK_MODULES([rapidjson], [RapidJSON >= 1.0])
+PKG_CHECK_MODULES([rapidjson], [RapidJSON >= 1.1])
 
 AM_COND_IF([RENDERER_OVS], [
     # check for libopenvswitch

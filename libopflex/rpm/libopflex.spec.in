@@ -29,7 +29,7 @@ BuildRequires: openssl-devel
 BuildRequires: devtoolset-7-toolchain
 BuildRequires: boost-devel
 BuildRequires: boost-test
-BuildRequires: rapidjson-devel >= 1.0
+BuildRequires: rapidjson-devel >= 1.1
 BuildRequires: doxygen
 BuildRequires: pkgconfig
 

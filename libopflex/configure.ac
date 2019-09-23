@@ -141,7 +141,7 @@ AX_BOOST_UNIT_TEST_FRAMEWORK
 dnl Package-config dependencies
 PKG_CHECK_MODULES([UV], [libuv >= 1.8.0])
 PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1])
-PKG_CHECK_MODULES([RAPIDJSON], [RapidJSON >= 1.0])
+PKG_CHECK_MODULES([RAPIDJSON], [RapidJSON >= 1.1])
 
 dnl Older versions of autoconf don't define docdir
 if test x$docdir = x; then
