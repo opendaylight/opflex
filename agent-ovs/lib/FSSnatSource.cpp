@@ -88,6 +88,22 @@ void FSSnatSource::updated(const fs::path& filePath) {
             properties.get_optional<bool>(LOCAL);
         if (local)
             newsnat.setLocal(local.get());
+        optional<string> ifaceMac =
+             properties.get_optional<string>(INTERFACE_MAC);
+        if (ifaceMac)
+            newsnat.setInterfaceMAC(opflex::modb::MAC(ifaceMac.get()));
+        optional<string> nw_dst =
+            properties.get_optional<string>(DEST);
+        if (nw_dst)
+            newsnat.setDest(nw_dst.get());
+        optional<uint8_t> prefix =
+            properties.get_optional<uint8_t>(DEST_PREFIX);
+        if (prefix)
+            newsnat.setDestPrefix(prefix.get());
+        optional<uint16_t> zone =
+            properties.get_optional<uint16_t>(ZONE);
+        if (zone)
+            newsnat.setZone(zone.get());
 
         optional<ptree&> prs =
             properties.get_child_optional(PORT_RANGE);
@@ -103,24 +119,6 @@ void FSSnatSource::updated(const fs::path& filePath) {
                     newsnat.addPortRange("local", a.get(), b.get());
                     valid_range = true;
                 }
-            }
-            if (valid_range) {
-                optional<string> ifaceMac =
-                     properties.get_optional<string>(INTERFACE_MAC);
-                if (ifaceMac)
-                    newsnat.setInterfaceMAC(opflex::modb::MAC(ifaceMac.get()));
-                optional<string> nw_dst =
-                    properties.get_optional<string>(DEST);
-                if (nw_dst)
-                    newsnat.setDest(nw_dst.get());
-                optional<uint8_t> prefix =
-                    properties.get_optional<uint8_t>(DEST_PREFIX);
-                if (prefix)
-                    newsnat.setDestPrefix(prefix.get());
-                optional<uint16_t> zone =
-                    properties.get_optional<uint16_t>(ZONE);
-                if (zone)
-                    newsnat.setZone(zone.get());
             }
         }
 
