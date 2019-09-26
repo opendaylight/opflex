@@ -86,6 +86,7 @@ make %{?_smp_mflags}
 %{_libdir}/%{name}.la
 %{_libdir}/%{name}.a
 %{_libdir}/pkgconfig/%{name}.pc
+%{_includedir}/rpc/
 %{_includedir}/opflex/
 %doc %{_docdir}/libopflex/
 
