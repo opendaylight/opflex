@@ -151,13 +151,14 @@ class CommsFixture {
         uv_close((uv_handle_t *)&prepare_, down_on_close);
 
 #ifdef YAJR_HAS_OPENSSL
-#if (OPENSSL_VERSION_NUMBER > 10000000L && OPENSSL_VERSION_NUMBER < 11000000L)
+#if (OPENSSL_VERSION_NUMBER > 10000000L && OPENSSL_VERSION_NUMBER < 10100000L)
         ERR_remove_thread_state(NULL);
 #endif
         CONF_modules_unload(1);
+#if (OPENSSL_VERSION_NUMBER < 10100000L)
         ERR_free_strings();
         EVP_cleanup();
-
+#endif
         ZeroCopyOpenSSL::finiOpenSSL();
 #endif
 
