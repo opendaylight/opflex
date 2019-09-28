@@ -595,6 +595,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
 
 }
 
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
 uv_rwlock_t * ZeroCopyOpenSSL::rwlock = NULL;
 
 void ZeroCopyOpenSSL::lockingCallback(
@@ -636,11 +637,12 @@ void ZeroCopyOpenSSL::lockingCallback(
 
     }
 }
+#endif
 
 int ZeroCopyOpenSSL::initOpenSSL(bool forMultipleThreads) {
 
     LOG(INFO);
-
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     assert(!rwlock);
 
     if (rwlock) {
@@ -651,12 +653,14 @@ int ZeroCopyOpenSSL::initOpenSSL(bool forMultipleThreads) {
 
         return UV_EEXIST;
     }
-
     SSL_library_init();
     SSL_load_error_strings();
+#else
+   OPENSSL_init_ssl(0, NULL);
+#endif
     ERR_load_SSL_strings();
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     OpenSSL_add_all_algorithms();
-
     if (forMultipleThreads) {
 
         rwlock = new (std::nothrow) uv_rwlock_t[CRYPTO_num_locks()];
@@ -677,9 +681,8 @@ int ZeroCopyOpenSSL::initOpenSSL(bool forMultipleThreads) {
         CRYPTO_set_locking_callback(lockingCallback);
 
     }
-
+#endif
     return 0;
-
 }
 
 #include <openssl/conf.h>
@@ -688,6 +691,7 @@ void ZeroCopyOpenSSL::finiOpenSSL() {
 
     LOG(INFO);
 
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     if (rwlock) {
 
         CRYPTO_set_locking_callback(NULL);
@@ -697,18 +701,22 @@ void ZeroCopyOpenSSL::finiOpenSSL() {
         }
 
         delete [] rwlock;
-
     }
 
     CONF_modules_free();
-#if (OPENSSL_VERSION_NUMBER > 10000000L && OPENSSL_VERSION_NUMBER < 10100000L)
+#endif
+#if (OPENSSL_VERSION_NUMBER > 0x10000000L && OPENSSL_VERSION_NUMBER < 0x10100000L)
     ERR_remove_thread_state(NULL);
 #endif
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     ENGINE_cleanup();
+#endif
     CONF_modules_unload(1);
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     ERR_free_strings();
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
+#endif
 }
 
 ZeroCopyOpenSSL::ZeroCopyOpenSSL(ZeroCopyOpenSSL::Ctx * ctx, bool passive)
@@ -1010,7 +1018,11 @@ ZeroCopyOpenSSL::Ctx * ZeroCopyOpenSSL::Ctx::createCtx(
         char const * passphrase
    ) {
 
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     SSL_CTX * sslCtx = SSL_CTX_new(SSLv23_method());
+#else
+    SSL_CTX * sslCtx = SSL_CTX_new(TLS_method());
+#endif
 
     if (!sslCtx) {
         IF_SSL_ERROR(sslErr) {

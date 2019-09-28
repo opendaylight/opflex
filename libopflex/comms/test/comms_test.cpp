@@ -59,7 +59,7 @@ struct CommsTests {
             << "global teardown\n"
         ;
 
-#if (OPENSSL_VERSION_NUMBER < 10002000L)
+#if (OPENSSL_VERSION_NUMBER < 0x10002000L)
         /* this is the reason number 1232342985473894512321837423rd why OpenSSL
          * is a giant pile of ________
          *
@@ -69,12 +69,12 @@ struct CommsTests {
                 SSL_COMP_get_compression_methods(),
                 free_comp_methods
         );
-#elif (OPENSSL_VERSION_NUMBER < 10100000L)
+#elif (OPENSSL_VERSION_NUMBER < 0x10100000L)
         SSL_COMP_free_compression_methods();
 #endif
     }
 
-#if (OPENSSL_VERSION_NUMBER < 10002000L)
+#if (OPENSSL_VERSION_NUMBER < 0x10002000L)
     static void free_comp_methods(SSL_COMP * p) {
         OPENSSL_free(p);
     }
@@ -151,13 +151,14 @@ class CommsFixture {
         uv_close((uv_handle_t *)&prepare_, down_on_close);
 
 #ifdef YAJR_HAS_OPENSSL
-#if (OPENSSL_VERSION_NUMBER > 10000000L && OPENSSL_VERSION_NUMBER < 11000000L)
+#if (OPENSSL_VERSION_NUMBER > 0x10000000L && OPENSSL_VERSION_NUMBER < 0x10100000L)
         ERR_remove_thread_state(NULL);
 #endif
         CONF_modules_unload(1);
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
         ERR_free_strings();
         EVP_cleanup();
-
+#endif
         ZeroCopyOpenSSL::finiOpenSSL();
 #endif
 
