@@ -129,7 +129,7 @@ public class FDebPkg
         + "Maintainer: OpFlex Developers <opflex-dev@lists.opendaylight.org>\n"
         + "Build-Depends: debhelper (>= 8.0.0), autotools-dev,\n"
         + " libopflex-dev, libboost-dev, doxygen, pkgconf\n"
-        + "Standards-Version: 3.9.4\n"
+        + "Standards-Version: 3.9.8\n"
         + "Section: libs\n"
         + "Homepage: https://wiki.opendaylight.org/view/OpFlex:Main\n"
         + "\n"

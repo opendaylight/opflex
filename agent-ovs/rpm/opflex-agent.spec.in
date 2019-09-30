@@ -35,8 +35,8 @@ BuildRequires: boost-devel
 BuildRequires: boost-test
 BuildRequires: libopflex-devel
 BuildRequires: libmodelgbp-devel
-BuildRequires: noiro-openvswitch-devel >= 2.6.0
-BuildRequires: noiro-openvswitch-lib >= 2.6.0
+BuildRequires: noiro-openvswitch-devel >= 2.6.7
+BuildRequires: noiro-openvswitch-lib >= 2.6.7
 BuildRequires: doxygen
 BuildRequires: systemd-units
 BuildRequires: rapidjson-devel >= 1.1
