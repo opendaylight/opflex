@@ -177,7 +177,7 @@ class RpcConnection {
      * @param[in] payload rapidjson::Value reference of the response body.
      */
     virtual void handleTransaction(uint64_t reqId,
-                const rapidjson::Value& payload) = 0;
+                const rapidjson::Value& payload);
 
     /**
      * initialize the module
@@ -210,6 +210,13 @@ class RpcConnection {
     }
 
     /**
+     * send transaction request
+     * @param[in] tl list of transData objects
+     * @param[in] reqId request ID
+     */
+    virtual void sendTransaction(const list<transData>& tl, const uint64_t& reqId) = 0;
+
+    /**
      * condition variable used for synchronizing JSON/RPC
      * request and response
      */
@@ -230,15 +237,6 @@ class RpcConnection {
     Transaction* pTrans;
 
 };
-
- /**
-  * send a JSON/RPC transaction request
-  * @param[in] tl list of transData objects
-  * @param[in] p shared pointer to an RpcConnection object
-  * @param[in] reqId request ID of this transaction
-  */
-void sendTransaction(const list<transData>& tl, shared_ptr<RpcConnection> p,
-        const uint64_t& reqId);
 
 /**
  * create an RPC connection to a server

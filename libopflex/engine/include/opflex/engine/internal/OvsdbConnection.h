@@ -62,7 +62,7 @@ public:
  */
 class JsonReq : public OpflexMessage {
 public:
-    JsonReq(list<transData> tl);
+    JsonReq(list<transData> tl, uint64_t reqId);
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer);
 
@@ -88,19 +88,12 @@ public:
     }
 
     list<shared_ptr<TransactReq>> transList;
+    uint64_t reqId;
 };
 
 class OvsdbConnection : public RpcConnection {
     public:
     OvsdbConnection(Transaction* pTrans_) : RpcConnection(pTrans_) {}
-
-    /**
-     * call back for transaction response
-     * @param[in] reqId request ID of the request for this response.
-     * @param[in] payload rapidjson::Value reference of the response body.
-     */
-    void handleTransaction(uint64_t reqId,
-                const rapidjson::Value& payload);
 
     /**
      * get pointer to peer object
@@ -117,12 +110,6 @@ class OvsdbConnection : public RpcConnection {
      * stop the module
      */
     void stop();
-
-    /**
-     * call back for idle task. Is used to keep the loop active.
-     * @param[in] handle reference to uv_idle_t struct
-     */
-    static void idle_cb(uv_idle_t* handle);
 
     /**
      * call back to handle connection state changes
@@ -146,18 +133,52 @@ class OvsdbConnection : public RpcConnection {
      * create a tcp connection to peer
      * @param[in] hostname host name of the peer.
      * @param[in] port port number to connect to.
-     * @param[in] pTrans pointer to Transaction object
      */
     void connect(string const& hostname, int port);
+
+    /**
+     * callback for invoking connect
+     * @param[in] handle pointer to uv_async_t
+     */
+    static void connect_cb(uv_async_t* handle);
+
+    /**
+     * callback for sending requests
+     * @param[in] handle pointer to uv_async_t
+     */
+    static void send_req_cb(uv_async_t* handle);
+
+    /**
+     * send transaction request
+     * @param[in] tl list of transData objects
+     * @param[in] reqId request ID
+     */
+    virtual void sendTransaction(const list<transData>& tl, const uint64_t& reqId);
+
 
     yajr::Peer* peer;
 
 private:
 
-    uv_idle_t idler;
+    typedef struct req_cb_data_ {
+        JsonReq* req;
+        yajr::Peer* peer;
+    } req_cb_data;
+
+    /**
+     * send transaction request
+     * @param[in] req request object
+     * @param reqId request ID
+     */
+    void sendTransaction(JsonReq& req, uint64_t reqId);
+
     uv_loop_t* client_loop;
     util::ThreadManager threadManager;
-    uint64_t idle_count = 0;
+    uv_async_t connect_async;
+    uv_async_t send_req_async;
+    string hostname;
+    int port;
+
 
 };
 }

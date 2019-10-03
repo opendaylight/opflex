@@ -55,7 +55,8 @@ void TransactReq::serializePayload(MessageWriter& writer) {
     (*this)(writer);
 }
 
-JsonReq::JsonReq(list<transData> tl) : OpflexMessage("transact", REQUEST)
+JsonReq::JsonReq(list<transData> tl, uint64_t reqId)
+    : OpflexMessage("transact", REQUEST), reqId(reqId)
 {
     for (auto elem : tl) {
         shared_ptr<TransactReq> pTr = make_shared<TransactReq>(elem);
@@ -77,26 +78,25 @@ void JsonReq::addTransaction(shared_ptr<TransactReq> req) {
     transList.push_back(req);
 }
 
-void sendTransaction(TransactReq& req, yajr::Peer *p, uint64_t reqId) {
-    VLOG(5) << "send transaction";
-        yajr::rpc::MethodName method(req.getMethod().c_str());
-        PayloadWrapper wrapper(&req);
-        yajr::rpc::OutboundRequest outm(wrapper, &method, reqId, p);
-        outm.send();
-}
-void sendTransaction(JsonReq& req, std::shared_ptr<RpcConnection> p, uint64_t reqId) {
-    VLOG(5) << "send transaction";
-    shared_ptr<OvsdbConnection> pOv = dynamic_pointer_cast<OvsdbConnection>(p);
-        yajr::rpc::MethodName method(req.getMethod().c_str());
-        PayloadWrapper wrapper(&req);
-        yajr::rpc::OutboundRequest outm(wrapper, &method, reqId, pOv->getPeer());
-        outm.send();
+void OvsdbConnection::send_req_cb(uv_async_t* handle) {
+    req_cb_data* reqCbd = (req_cb_data*)handle->data;
+    JsonReq* req = reqCbd->req;
+    yajr::rpc::MethodName method(req->getMethod().c_str());
+    PayloadWrapper wrapper(req);
+    yajr::rpc::OutboundRequest outr =
+            yajr::rpc::OutboundRequest(wrapper, &method, req->reqId, reqCbd->peer);
+    outr.send();
+    delete(req);
+    delete(reqCbd);
 }
 
-void sendTransaction(const list<transData>& tl,shared_ptr<RpcConnection> p,
+void OvsdbConnection::sendTransaction(const list<transData>& tl,
         const uint64_t& reqId) {
-    shared_ptr<JsonReq> req = make_shared<JsonReq>(tl);
-    sendTransaction(*req, p, reqId);
+    req_cb_data* reqCbd = new req_cb_data();
+    reqCbd->req = new JsonReq(tl, reqId);
+    reqCbd->peer = getPeer();
+    send_req_async.data = (void*)reqCbd;
+    uv_async_send(&send_req_async);
 }
 
 /**
@@ -104,8 +104,7 @@ void sendTransaction(const list<transData>& tl,shared_ptr<RpcConnection> p,
  * to retrieve the Value.
  * @param[in] val the Value tree to be walked
  * @param[in] idx list of indices to walk the tree.
- * @return a tuple: bool is true if Value found, false otherwise
- *         the Value or NULL.
+ * @return a Value object.
  */
 Value getValue(const Value& val, const list<string>& idx) {
     stringstream ss;
@@ -266,30 +265,31 @@ bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
     return true;
 }
 
-void OvsdbConnection::idle_cb(uv_idle_t* handle) {
-    OvsdbConnection* conn = (OvsdbConnection*)handle->data;
-    conn->idle_count++;
-    if (conn->idle_count % 10000 == 0) {
-        //LOG(DEBUG) << "idle count " << conn->idle_count;
-    }
-
-}
-
 void OvsdbConnection::start() {
 
     LOG(DEBUG) << "Starting .....";
     unique_lock<mutex> lock(mtx);
     client_loop = threadManager.initTask("OvsdbConnection");
     yajr::initLoop(client_loop);
-    uv_idle_init(client_loop, &idler);
-    idler.data = (void*)this;
-    uv_idle_start(&idler, idle_cb);
+    uv_async_init(client_loop,&connect_async, connect_cb);
+    uv_async_init(client_loop, &send_req_async, send_req_cb);
 
     threadManager.startTask("OvsdbConnection");
 }
 
+void OvsdbConnection::connect_cb(uv_async_t* handle) {
+    OvsdbConnection* ocp = (OvsdbConnection*)handle->data;
+    VLOG(5) << ocp;
+    ocp->peer = yajr::Peer::create(ocp->hostname,
+                               boost::lexical_cast<string>(ocp->port),
+                               on_state_change,
+                               ocp, loop_selector, false);
+    assert(ocp->peer);
+}
 
 void OvsdbConnection::stop() {
+    uv_close((uv_handle_t*)&connect_async, NULL);
+    uv_close((uv_handle_t*)&send_req_async, NULL);
     peer->destroy();
     yajr::finiLoop(client_loop);
     threadManager.stopTask("OvsdbConnection");
@@ -303,13 +303,11 @@ void OvsdbConnection::stop() {
         switch (stateChange) {
         case yajr::StateChange::CONNECT:
             conn->setConnected(true);
-            //uv_idle_stop(&(conn->idler));
             LOG(INFO) << "New client connection";
             conn->ready.notify_all();
 
             break;
         case yajr::StateChange::DISCONNECT:
-            uv_idle_stop(&(conn->idler));
             conn->setConnected(false);
             LOG(INFO) << "Disconnected";
             //p->stopKeepAlive();
@@ -337,19 +335,16 @@ uv_loop_t* OvsdbConnection::loop_selector(void* data) {
     return jRpc->client_loop;
 }
 
-void OvsdbConnection::handleTransaction(uint64_t reqId,
+void RpcConnection::handleTransaction(uint64_t reqId,
             const rapidjson::Value& payload) {
-    VLOG(5) << "thread " << this_thread::get_id();
     pTrans->handleTransaction(reqId, payload);
 }
 
 void OvsdbConnection::connect(string const& hostname, int port) {
-
-    peer = yajr::Peer::create(hostname,
-                               boost::lexical_cast<string>(port),
-                               on_state_change,
-                               this, loop_selector, false);
-
+    this->hostname = hostname;
+    this->port = port;
+    connect_async.data = this;
+    uv_async_send(&connect_async);
 }
 
 std::shared_ptr<RpcConnection> createConnection(Transaction& trans) {

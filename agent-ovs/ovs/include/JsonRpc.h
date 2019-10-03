@@ -291,16 +291,14 @@ private:
 */
     template <typename T>
     inline bool sendRequest(list<T>& tl, uint64_t reqId) {
-        LOG(DEBUG) << "thread " << this_thread::get_id() << " waiting on lock";
         unique_lock<mutex> lock(pConn->mtx);
         if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
                 [=]{return pConn->isConnected();})) {
             LOG(DEBUG) << "lock timed out";
             return false;
         }
-        LOG(DEBUG) << "thread " << this_thread::get_id() << " got lock";
         responseReceived = false;
-        opflex::engine::internal::sendTransaction(tl, pConn, reqId);
+        pConn->sendTransaction(tl, reqId);
         return true;
     }
     /**

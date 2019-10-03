@@ -55,7 +55,6 @@ using boost::uuids::basic_random_generator;
         pResp.reset(new response(reqId, payload));
         responseReceived = true;
         pConn->ready.notify_all();
-        LOG(DEBUG) << "thread " << this_thread::get_id();
     }
 
     bool JsonRpc::handleGetPortUuidResp(uint64_t reqId,
@@ -568,14 +567,12 @@ using boost::uuids::basic_random_generator;
     }
 
     inline bool JsonRpc::checkForResponse() {
-        LOG(DEBUG) << "thread " << this_thread::get_id() << " waiting on lock";
         unique_lock<mutex> lock(pConn->mtx);
         if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
                 [=]{return responseReceived;})) {
             LOG(DEBUG) << "lock timed out";
             return false;
         } else {
-            LOG(DEBUG) << "thread " << this_thread::get_id() << " got lock";
             return true;
         }
     }
