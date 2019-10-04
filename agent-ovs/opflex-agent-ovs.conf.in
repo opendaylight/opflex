@@ -139,6 +139,13 @@
         "filesystem": ["DEFAULT_FS_SERVICE_DIR"]
     },
 
+    // Debug config
+    "drop-log-config-sources": {
+        // Filesystem path to monitor for drop log control
+        // Default: no drop log service
+        "filesystem": ["DEFAULT_DROP_LOG_DIR"]
+    },
+
     // Dynamically loaded plugins can add new functionality to the
     // opflex agent at startup.
     "plugins": {
