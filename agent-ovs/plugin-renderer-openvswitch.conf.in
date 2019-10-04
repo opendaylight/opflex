@@ -50,6 +50,19 @@
         //         // }
         //     },
         //
+        //     "drop-log": {
+        //         // Encapsulate drop-log traffic with GENEVE.
+        //         "geneve" : {
+        //               // The name of the drop-log tunnel interface in OVS
+        //               "int-br-iface": "droplog_geneve0",
+        //               // The name of the drop-log tunnel access interface in OVS
+        //               "access-br-iface": "droplog_geneve1",
+        //               // The IP address used for the destination IP in
+        //               // the encapsulated traffic.
+        //               "remote-ip": "192.168.1.2"
+        //         }
+        //     },
+        //
         //     // Configure forwarding policy
         //     "forwarding": {
         //         // Configure the virtual distributed router

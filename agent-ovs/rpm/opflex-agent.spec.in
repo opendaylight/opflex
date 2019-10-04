@@ -130,6 +130,7 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/endpoints
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/services
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/ids
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/mcast
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/opflex-agent-ovs/droplog
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/opflex-agent-ovs/conf.d
 
 %check
@@ -209,6 +210,7 @@ getent group opflexep >/dev/null || groupadd -r opflexep
 %dir %attr(0775, root, opflexep) %{_localstatedir}/lib/opflex-agent-ovs/services
 %dir %{_localstatedir}/lib/opflex-agent-ovs/mcast
 %dir %{_localstatedir}/lib/opflex-agent-ovs/ids
+%dir %{_localstatedir}/lib/opflex-agent-ovs/droplog
 
 %files -n agent-ovs
 

@@ -394,6 +394,12 @@ public:
     ActionBuilder& macVlanLearn(uint16_t prio,
                                 uint64_t cookie,
                                 uint8_t table);
+    /**
+     * Fill tunnel metadata with current openflow state
+     *
+     * @param table_id the table in which the drop/log occured.
+     */
+    ActionBuilder& dropLog(uint32_t table_id);
 
     /**
      * Extract and return an array of flow actions from a buffer used

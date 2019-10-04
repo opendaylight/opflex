@@ -29,6 +29,7 @@
 #include <opflexagent/FSLearningBridgeSource.h>
 #include <opflexagent/FSExternalEndpointSource.h>
 #include <opflexagent/FSSnatSource.h>
+#include <opflexagent/FSPacketDropLogConfigSource.h>
 #include <opflexagent/logging.h>
 
 #include <opflexagent/Renderer.h>
@@ -59,8 +60,8 @@ using boost::uuids::basic_random_generator;
 
 Agent::Agent(OFFramework& framework_)
     : framework(framework_), policyManager(framework, agent_io),
-      endpointManager(framework, policyManager), notifServer(agent_io),
-      rendererFwdMode(opflex_elem_t::INVALID_MODE),
+      endpointManager(framework, policyManager), extraConfigManager(framework),
+      notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
       spanManager(framework, agent_io){
     std::random_device rng;
@@ -129,6 +130,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string ENDPOINT_SOURCE_MODEL_LOCAL("endpoint-sources.model-local");
     static const std::string SERVICE_SOURCE_PATH("service-sources.filesystem");
     static const std::string SNAT_SOURCE_PATH("snat-sources.filesystem");
+    static const std::string DROP_LOG_CFG_SOURCE_FSPATH("drop-log-config-sources.filesystem");
     static const std::string OPFLEX_PEERS("opflex.peers");
     static const std::string OPFLEX_SSL_MODE("opflex.ssl.mode");
     static const std::string OPFLEX_SSL_CA_STORE("opflex.ssl.ca-store");
@@ -236,6 +238,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (snatSource) {
         for (const ptree::value_type &v : snatSource.get())
              snatSourcePaths.insert(v.second.data());
+    }
+
+    optional<const ptree&> dropLogCfgSrc =
+        properties.get_child_optional(DROP_LOG_CFG_SOURCE_FSPATH);
+
+    if (dropLogCfgSrc) {
+        for (const ptree::value_type &v : dropLogCfgSrc.get())
+        dropLogCfgSourcePath = v.second.data();
     }
 
     optional<const ptree&> peers =
@@ -454,6 +464,7 @@ void Agent::start() {
     root->addGbpeVMUniverse();
     root->addObserverEpStatUniverse();
     root->addObserverPolicyStatUniverse();
+    root->addObserverDropFlowConfigUniverse();
     root->addSpanUniverse();
     root->addEpdrExternalDiscovered();
     root->addEpdrLocalRouteDiscovered();
@@ -512,6 +523,13 @@ void Agent::start() {
         SnatSource* source =
             new FSSnatSource(&snatManager, fsWatcher, path);
         snatSources.emplace_back(source);
+    }
+    if(!dropLogCfgSourcePath.empty()) {
+        opflex::modb::URI uri = (opflex::modb::URIBuilder()
+                .addElement("PolicyUniverse").addElement("ObserverDropLogConfig")
+                .build());
+        dropLogCfgSource.reset(new FSPacketDropLogConfigSource(&extraConfigManager,
+                        fsWatcher, dropLogCfgSourcePath, uri));
     }
     fsWatcher.start();
 

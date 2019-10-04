@@ -312,6 +312,24 @@ public:
      */
     FlowBuilder& ctLabel(ovs_u128 ctLabel, ovs_u128 mask);
 
+    /**
+     * Match against the connection tracking label
+     * @param ip the address used to match the outer ip source
+     * @param prefixLen the mask for the match
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& outerIpSrc(const boost::asio::ip::address& ip,
+                                    uint8_t prefixLen = 32);
+
+    /**
+     * Match against the connection tracking label
+     * @param ip the address used to match the outer ip dst
+     * @param prefixLen the mask for the match
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& outerIpDst(const boost::asio::ip::address& ip,
+                                    uint8_t prefixLen = 32);
+
 private:
     std::unique_ptr<ActionBuilder> action_;
     FlowEntryPtr entry_;
