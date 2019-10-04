@@ -64,6 +64,20 @@ public:
      */
     void stop();
 
+    /**
+     * Set the drop log parameters
+     * @param dropLogPort port name for the drop-log port
+     * @param dropLogRemoteIp outer ip address for the drop-log geneve tunnel
+     * @param dropLogRemotePort port number for geneve encap
+     */
+    void setDropLog(const string& dropLogPort, const string& dropLogRemoteIp,
+            const uint16_t dropLogRemotePort);
+
+    /* Interface: ExtraConfigListener */
+    virtual void rdConfigUpdated(const opflex::modb::URI& rdURI);
+    virtual void packetDropLogConfigUpdated(const opflex::modb::URI& dropLogCfgURI);
+    virtual void packetDropFlowConfigUpdated(const opflex::modb::URI& dropFlowCfgURI);
+
     /* Interface: EndpointListener */
     virtual void endpointUpdated(const std::string& uuid);
     virtual void secGroupSetUpdated(const EndpointListener::uri_set_t& secGrps);
@@ -89,6 +103,10 @@ public:
      */
     enum {
         /**
+         * Handles drop log policy
+         */
+        DROP_LOG_TABLE_ID,
+        /**
          * Map packets to a security group and set their destination
          * port after applying policy
          */
@@ -107,6 +125,11 @@ public:
          * Output to the final destination port
          */
         OUT_TABLE_ID,
+        /*
+         * Handle explicitly dropped packets here based on the
+         * drop-log config
+         */
+        EXP_DROP_TABLE_ID,
         /**
          * The total number of flow tables
          */
@@ -129,6 +152,9 @@ private:
 
     bool conntrackEnabled;
     bool stopping;
+    std::string dropLogIface;
+    boost::asio::ip::address dropLogDst;
+    uint16_t dropLogRemotePort;
 };
 
 } // namespace opflexagent

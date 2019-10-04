@@ -15,6 +15,8 @@
 
 #include <opflexagent/ExtraConfigListener.h>
 #include <opflexagent/RDConfig.h>
+#include <opflexagent/PacketDropLogConfig.h>
+#include <opflex/ofcore/OFFramework.h>
 
 #include <boost/noncopyable.hpp>
 #include <opflex/modb/URI.h>
@@ -32,7 +34,7 @@ public:
     /**
      * Instantiate a new extra config manager
      */
-    ExtraConfigManager();
+    ExtraConfigManager(opflex::ofcore::OFFramework& framework);
 
     /**
      * Register a listener for config change events
@@ -64,6 +66,8 @@ public:
         getRDConfig(const opflex::modb::URI& domain);
 
 private:
+    opflex::ofcore::OFFramework& framework;
+
     /**
      * Add or update a routing domain config object
      *
@@ -93,6 +97,34 @@ private:
     rdc_map_t rdc_map;
 
     /**
+     * Notify listeners for packet drop log config
+     *
+     * @param dropLogCfgURI  Drop log cfg URI
+     */
+    void notifyPacketDropLogConfigListeners(const opflex::modb::URI &dropLogCfgURI);
+
+    /**
+     * Notify listeners for drop flow config object
+     *
+     * @param dropFlowCfgURI Drop flow spec URI
+     */
+    void notifyPacketDropFlowConfigListeners(const opflex::modb::URI &dropFlowCfgURI);
+
+    /**
+     * Add or update a packet drop log config object
+     *
+     * @param dropCfg Drop log enable and mode
+     */
+    void packetDropLogConfigUpdated(PacketDropLogConfig &dropCfg);
+
+    /**
+     * Add or update a packet drop flow config object
+     *
+     * @param dropFlow Drop flow file path and spec
+     */
+    void packetDropFlowConfigUpdated(PacketDropFlowConfig &dropFlow);
+
+    /**
      * The extraConfig listeners that have been registered
      */
     std::list<ExtraConfigListener*> extraConfigListeners;
@@ -101,6 +133,7 @@ private:
     void notifyListeners(const opflex::modb::URI& uuid);
 
     friend class FSRDConfigSource;
+    friend class FSPacketDropLogConfigSource;
 };
 
 } /* namespace opflexagent */

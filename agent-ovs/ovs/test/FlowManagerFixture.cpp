@@ -205,4 +205,26 @@ string Bldr::strpad(int i) {
     return buf;
 }
 
+Bldr& Bldr::dropLog(uint32_t table_id) {
+    a("move", "NXM_NX_REG0[]->NXM_NX_TUN_METADATA0[0..31]");
+    a("move", "NXM_NX_REG1[]->NXM_NX_TUN_METADATA1[0..31]");
+    a("move", "NXM_NX_REG2[]->NXM_NX_TUN_METADATA2[0..31]");
+    a("move", "NXM_NX_REG3[]->NXM_NX_TUN_METADATA3[0..31]");
+    a("move", "NXM_NX_REG4[]->NXM_NX_TUN_METADATA4[0..31]");
+    a("move", "NXM_NX_REG5[]->NXM_NX_TUN_METADATA5[0..31]");
+    a("move", "NXM_NX_REG6[]->NXM_NX_TUN_METADATA6[0..31]");
+    a("move", "NXM_NX_REG7[]->NXM_NX_TUN_METADATA7[0..31]");
+    a("move", "NXM_NX_CT_STATE[]->NXM_NX_TUN_METADATA8[0..31]");
+    a("move", "NXM_NX_CT_ZONE[]->NXM_NX_TUN_METADATA9[0..15]");
+    a("move", "NXM_NX_CT_MARK[]->NXM_NX_TUN_METADATA10[0..31]");
+    a("move", "NXM_NX_CT_LABEL[]->NXM_NX_TUN_METADATA11[0..127]");
+    /*
+    char buf[32];
+    std::snprintf(buf, 32,"%d->NXM_NX_TUN_METADATA12[0..31]",table_id);
+    string s(buf);
+    a("load", s );
+    */
+    return *this;
+}
+
 } // namespace opflexagent

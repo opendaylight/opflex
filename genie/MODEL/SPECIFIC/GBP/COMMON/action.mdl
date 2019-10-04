@@ -37,6 +37,14 @@ module[gbp]
         member[allow; type=scalar/UInt8]
     }
 
+    class[LogAction;
+          super=gbp/Action;
+          concrete]
+    {
+        # Set to nonzero to log, or zero to skip logging
+        member[log; type=scalar/UInt8]
+    }
+
     class[RedirectDest;
           super=gbp/BaseNextHop;
           concrete]
