@@ -39,6 +39,20 @@ public:
      * @param domainURI the URI for the associated routing domain
      */
     virtual void rdConfigUpdated(const opflex::modb::URI& domainURI) = 0;
+
+    /**
+     * Called when a packet drop log config object is updated
+     *
+     * @param dropLogCfgURI the URI for the associated packet drop log
+     */
+    virtual void packetDropLogConfigUpdated(const opflex::modb::URI& dropLogCfgURI) = 0;
+
+    /**
+     * Called when a packet drop flow config object is updated
+     *
+     * @param dropFlowCfgURI Flow spec and path for the drop flow
+     */
+    virtual void packetDropFlowConfigUpdated(const opflex::modb::URI& dropFlowCfgURI) = 0;
 };
 
 } /* namespace opflexagent */

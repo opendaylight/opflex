@@ -1,0 +1,62 @@
+module[observer]
+{
+    type[DropLogMode; super=scalar/Enum8]
+    {
+        # Log all drops
+        const[name=unfiltered-drop-log; value=0]
+
+        # Log drops for flows that are configured as drop flows
+        const[name=flow-based-drop-log; value=1]
+    }
+
+    class[DropLogConfig;
+          super=policy/Definition;
+          concrete;
+         ]
+    {
+        contained
+        {
+            parent[class=policy/Universe]
+        }
+        member[dropLogMode; type=observer/DropLogMode]
+        # set to 0 to disable and 1 to enable drop logging
+        member[dropLogEnable; type=scalar/UInt8]
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=drop-log-cfg]
+            }
+        }
+    }
+
+    class[DropFlowConfig;
+          super=policy/Definition;
+          concrete;
+         ]
+    {
+        contained
+        {
+            parent[class=observer/DropFlowConfigUniverse]
+        }
+        member[uuid; type=reference/UUID]
+        member[outerSrcAddress; type=address/IP]
+        member[outerDstAddress; type=address/IP]
+        member[innerSrcAddress; type=address/IP]
+        member[innerDstAddress; type=address/IP]
+        member[innerSrcMac; type=address/MAC]
+        member[innerDstMac; type=address/MAC]
+        member[ethType; type=scalar/UWord]
+        member[ipProto; type=scalar/UByte]
+        member[srcPort; type=scalar/UWord]
+        member[dstPort; type=scalar/UWord]
+        member[tunnelId; type=scalar/UDWord]
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+    }
+}

@@ -169,6 +169,56 @@ static void addMatchSubnet(struct match* match,
    }
 }
 
+static void addMatchOuterSubnet(struct match* match,
+                           const boost::asio::ip::address& ip,
+                           uint8_t prefixLen, bool src,
+                           uint16_t& ethType) {
+   if (ip.is_v4()) {
+       switch (ethType) {
+       case 0:
+           ethType = eth::type::IP;
+           /* fall through */
+       case eth::type::IP:
+       case eth::type::ARP:
+           break;
+       default:
+           return;
+       }
+
+       if (prefixLen > 32) prefixLen = 32;
+       uint32_t mask = (prefixLen != 0)
+           ? (~((uint32_t)0) << (32 - prefixLen))
+           : 0;
+       uint32_t addr = ip.to_v4().to_ulong() & mask;
+       match_set_dl_type(match, htons(ethType));
+       if (src)
+           match_set_tun_src_masked(match, htonl(addr), htonl(mask));
+       else
+           match_set_tun_dst_masked(match, htonl(addr), htonl(mask));
+   } else {
+       switch (ethType) {
+       case 0:
+           ethType = eth::type::IPV6;
+           /* fall through */
+       case eth::type::IPV6:
+           break;
+       default:
+           return;
+       }
+
+       if (prefixLen > 128) prefixLen = 128;
+       struct in6_addr mask;
+       struct in6_addr addr;
+       network::compute_ipv6_subnet(ip.to_v6(), prefixLen, &mask, &addr);
+
+       match_set_dl_type(match, htons(ethType));
+       if (src)
+           match_set_tun_ipv6_src_masked(match, &addr, &mask);
+       else
+           match_set_tun_ipv6_dst_masked(match, &addr, &mask);
+   }
+}
+
 FlowBuilder& FlowBuilder::ipSrc(const boost::asio::ip::address& ip,
                                 uint8_t prefixLen) {
     addMatchSubnet(match(), ip, prefixLen, true, ethType_);
@@ -284,4 +334,15 @@ FlowBuilder& FlowBuilder::ctLabel(ovs_u128 ctLabel, ovs_u128 mask) {
     return *this;
 }
 
+FlowBuilder& FlowBuilder::outerIpSrc(const boost::asio::ip::address& ip,
+                                uint8_t prefixLen) {
+    addMatchOuterSubnet(match(), ip, prefixLen, true, ethType_);
+    return *this;
+}
+
+FlowBuilder& FlowBuilder::outerIpDst(const boost::asio::ip::address& ip,
+                                uint8_t prefixLen) {
+    addMatchOuterSubnet(match(), ip, prefixLen, false, ethType_);
+    return *this;
+}
 } // namespace opflexagent

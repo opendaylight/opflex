@@ -47,6 +47,7 @@ class FSRDConfigSource;
 class LearningBridgeSource;
 class SnatSource;
 class SimStats;
+class FSPacketDropLogConfigSource;
 
 enum StatMode { REAL, SIM, OFF };
 
@@ -287,6 +288,8 @@ private:
     std::vector<std::unique_ptr<EndpointSource>> endpointSources;
     std::vector<std::unique_ptr<FSRDConfigSource>> rdConfigSources;
     std::vector<std::unique_ptr<LearningBridgeSource>> learningBridgeSources;
+    std::string dropLogCfgSourcePath;
+    std::unique_ptr<FSPacketDropLogConfigSource> dropLogCfgSource;
 
     std::set<std::string> serviceSourcePaths;
     std::vector<std::unique_ptr<ServiceSource>> serviceSources;
