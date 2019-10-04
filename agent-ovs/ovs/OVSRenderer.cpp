@@ -123,7 +123,10 @@ void OVSRenderer::start() {
     intFlowManager.setMulticastGroupFile(mcastGroupFile);
     intFlowManager.setEndpointAdv(endpointAdvMode, tunnelEndpointAdvMode,
             tunnelEndpointAdvIntvl);
-
+    if(!dropLogIface.empty()) {
+        intFlowManager.setDropLog(dropLogIface, dropLogRemoteIp,
+                dropLogRemotePort, dropLogLogVnid, dropLogDropVnid);
+    }
     intSwitchManager.registerStateHandler(&intFlowManager);
     intSwitchManager.start(intBridgeName);
     if (accessBridgeName != "") {
@@ -280,6 +283,9 @@ void OVSRenderer::setProperties(const ptree& properties) {
     static const std::string STATS_SECGROUP_INTERVAL("statistics"
                                                      ".security-group"
                                                      ".interval");
+    static const std::string DROP_LOG_ENCAP_VXLAN("drop-log.vxlan");
+    static const std::string DROP_LOG_LOG_VNID("log-vnid");
+    static const std::string DROP_LOG_DROP_VNID("drop-vnid");
 
     intBridgeName =
         properties.get<std::string>(OVS_BRIDGE_NAME, "br-int");
@@ -294,6 +300,10 @@ void OVSRenderer::setProperties(const ptree& properties) {
         properties.get_child_optional(ENCAP_VXLAN);
     boost::optional<const ptree&> vlan =
         properties.get_child_optional(ENCAP_VLAN);
+
+    boost::optional<const ptree&> dropLogEncapVxlan =
+            properties.get_child_optional(DROP_LOG_ENCAP_VXLAN);
+
 
     encapType = IntFlowManager::ENCAP_NONE;
     int count = 0;
@@ -319,6 +329,14 @@ void OVSRenderer::setProperties(const ptree& properties) {
     if (count > 1) {
         LOG(WARNING) << "Multiple encapsulation types specified for "
                      << "stitched-mode renderer";
+    }
+
+    if(dropLogEncapVxlan) {
+        dropLogIface = dropLogEncapVxlan.get().get<std::string>(ENCAP_IFACE, "");
+        dropLogRemoteIp = dropLogEncapVxlan.get().get<std::string>(REMOTE_IP, "");
+        dropLogRemotePort = dropLogEncapVxlan.get().get<uint16_t>(REMOTE_PORT, 4789);
+        dropLogLogVnid = dropLogEncapVxlan.get().get<uint32_t>(DROP_LOG_LOG_VNID, 1);
+        dropLogDropVnid = dropLogEncapVxlan.get().get<uint32_t>(DROP_LOG_DROP_VNID, 2);
     }
 
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);

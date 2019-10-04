@@ -50,6 +50,21 @@
         //         // }
         //     },
         //
+        //     "drop-log": {
+        //         // Encapsulate drop-log traffic with VXLAN.
+        //         "vxlan" : {
+        //               // The name of the drop-log tunnel interface in OVS
+        //               "encap-iface": "droplog_vxlan0"
+        //               // The IP address used for the destination IP in
+        //               // the encapsulated traffic.
+        //               "remote-ip": "172.168.1.2",
+        //               // VNID used for log action
+        //               "log-vnid": 1,
+        //               // VNID used for logging drops
+        //               "drop-vnid": 2
+        //         }
+        //     },
+        //
         //     // Configure forwarding policy
         //     "forwarding": {
         //         // Configure the virtual distributed router

@@ -113,6 +113,9 @@ private:
     SpanRenderer spanRenderer;
 
     bool started;
+    std::string dropLogIface, dropLogRemoteIp;
+    uint16_t dropLogRemotePort;
+    uint32_t dropLogLogVnid, dropLogDropVnid;
 
     /**
      * Timer callback to clean up IDs that have been erased

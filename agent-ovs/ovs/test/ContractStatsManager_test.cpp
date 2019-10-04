@@ -62,7 +62,7 @@ public:
         createPolicyObjects();
         idGen.initNamespace("l24classifierRule");
         idGen.initNamespace("routingDomain");
-        switchManager.setMaxFlowTables(12);
+        switchManager.setMaxFlowTables(IntFlowManager::NUM_FLOW_TABLES);
     }
     virtual ~ContractStatsManagerFixture() {
         stop();

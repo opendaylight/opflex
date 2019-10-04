@@ -28,6 +28,7 @@
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/gbp/ConnTrackEnumT.hpp>
 #include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
+#include <modelgbp/observer/DropLogModeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/Endpoint.h>
@@ -193,6 +194,29 @@ void IntFlowManager::setTunnel(const string& tunnelRemoteIp,
     tunnelPortStr = ss.str();
 }
 
+uint32_t IntFlowManager::getDropLogPort() {
+    return switchManager.getPortMapper().FindPort(dropLogIface);
+}
+
+void IntFlowManager::setDropLog(const string& dropLogPort, const string& dropLogRemoteIp,
+        const uint16_t _dropLogRemotePort, const uint32_t _dropLogLogVnid,
+        const uint32_t _dropLogDropVnid) {
+    dropLogIface = dropLogPort;
+    boost::system::error_code ec;
+    address tunDst = address::from_string(dropLogRemoteIp, ec);
+    if (ec) {
+        LOG(ERROR) << "Invalid drop-log tunnel destination IP: "
+                   << dropLogRemoteIp << ": " << ec.message();
+    } else if (tunDst.is_v6()) {
+        LOG(ERROR) << "IPv6 drop-log tunnel destinations are not supported";
+    } else {
+        dropLogDst = tunDst;
+    }
+    dropLogRemotePort = _dropLogRemotePort;
+    dropLogLogVnid = _dropLogLogVnid;
+    dropLogDropVnid = _dropLogDropVnid;
+}
+
 void IntFlowManager::setVirtualRouter(bool virtualRouterEnabled,
                                       bool routerAdv,
                                       const string& virtualRouterMac) {
@@ -278,6 +302,98 @@ void IntFlowManager::serviceUpdated(const std::string& uuid) {
 
 void IntFlowManager::rdConfigUpdated(const opflex::modb::URI& rdURI) {
     domainUpdated(RoutingDomain::CLASS_ID, rdURI);
+}
+
+void IntFlowManager::packetDropLogConfigUpdated(const opflex::modb::URI& dropLogCfgURI) {
+    using modelgbp::observer::DropLogConfig;
+    using modelgbp::observer::DropLogModeEnumT;
+    FlowEntryList dropLogFlows;
+    optional<shared_ptr<DropLogConfig>> dropLogCfg =
+            DropLogConfig::resolve(agent.getFramework(), dropLogCfgURI);
+    if(!dropLogCfg) {
+        FlowBuilder().priority(2)
+                .action().go(IntFlowManager::SEC_TABLE_ID)
+                .parent().build(dropLogFlows);
+        switchManager.writeFlow("DropLogConfig", DROP_LOG_TABLE_ID, dropLogFlows);
+        return;
+    }
+    if(dropLogCfg.get()->getDropLogEnable(0) != 0) {
+        if(dropLogCfg.get()->getDropLogMode(
+                    DropLogModeEnumT::CONST_UNFILTERED_DROP_LOG) ==
+           DropLogModeEnumT::CONST_UNFILTERED_DROP_LOG) {
+            FlowBuilder().priority(2)
+                    .action()
+                    .metadata(flow::meta::DROP_LOG,
+                              flow::meta::DROP_LOG)
+                    .go(IntFlowManager::SEC_TABLE_ID)
+                    .parent().build(dropLogFlows);
+        } else {
+            switchManager.clearFlows("DropLogConfig", DROP_LOG_TABLE_ID);
+            return;
+        }
+    } else {
+        FlowBuilder().priority(2)
+                .action()
+                .go(IntFlowManager::SEC_TABLE_ID)
+                .parent().build(dropLogFlows);
+    }
+    switchManager.writeFlow("DropLogConfig", DROP_LOG_TABLE_ID, dropLogFlows);
+}
+
+void IntFlowManager::packetDropFlowConfigUpdated(const opflex::modb::URI& dropFlowCfgURI) {
+    using modelgbp::observer::DropFlowConfig;
+    optional<shared_ptr<DropFlowConfig>> dropFlowCfg =
+            DropFlowConfig::resolve(agent.getFramework(), dropFlowCfgURI);
+    if(!dropFlowCfg) {
+        switchManager.clearFlows(dropFlowCfgURI.toString(), DROP_LOG_TABLE_ID);
+        return;
+    }
+    FlowEntryList dropLogFlows;
+    FlowBuilder fb;
+    fb.priority(1);
+    if(dropFlowCfg.get()->isEthTypeSet()) {
+        fb.ethType(dropFlowCfg.get()->getEthType(0));
+    }
+    if(dropFlowCfg.get()->isInnerSrcAddressSet()) {
+        const std::string &innerSrc =
+                dropFlowCfg.get()->getInnerSrcAddress("");
+        address addr = address::from_string(innerSrc);
+        fb.ipSrc(addr);
+    }
+    if(dropFlowCfg.get()->isInnerDstAddressSet()) {
+        const std::string &innerDst =
+                dropFlowCfg.get()->getInnerDstAddress("");
+        address addr = address::from_string(innerDst);
+        fb.ipDst(addr);
+    }
+    if(dropFlowCfg.get()->IsOuterSrcAddressSet()) {
+        const std::string &outerSrc =
+                dropFlowCfg.get()->getOuterSrcAddress("");
+        address addr = address::from_string(outerSrc);
+        fb.outerIpSrc(addr);
+    }
+    if(dropFlowCfg.get()->IsOuterDstAddressSet()) {
+        const std::string &outerDst =
+                dropFlowCfg.get()->getOuterSrcAddress("");
+        address addr = address::from_string(outerDst);
+        fb.outerIpDst(addr);
+    }
+    if(dropFlowCfg.get()->isTunnelIdSet()) {
+        fb.tunId(dropFlowCfg.get()->getTunnelId(0));
+    }
+    if(dropFlowCfg.get()->isIpProtoSet()) {
+        fb.proto(dropFlowCfg.get()->getIpProto(0));
+    }
+    if(dropFlowCfg.get()->isSrcPortSet()) {
+        fb.tpSrc(dropFlowCfg.get()->getSrcPort(0));
+    }
+    if(dropFlowCfg.get()->isDstPortSet()) {
+        fb.tpDst(dropFlowCfg.get()->getDstPort(0));
+    }
+    fb.action().metadata(flow::meta::DROP_LOG, flow::meta::DROP_LOG)
+            .go(IntFlowManager::SEC_TABLE_ID).parent().build(dropLogFlows);
+    switchManager.writeFlow(dropFlowCfgURI.toString(), DROP_LOG_TABLE_ID,
+            dropLogFlows);
 }
 
 void IntFlowManager::lbIfaceUpdated(const std::string& uuid) {
@@ -2472,6 +2588,28 @@ void IntFlowManager::createStaticFlows() {
         }
 
         switchManager.writeFlow("static", OUT_TABLE_ID, outFlows);
+    }
+    {
+        FlowEntryList dropLogFlows;
+        FlowBuilder().priority(0)
+                .action().go(IntFlowManager::SEC_TABLE_ID)
+                .parent().build(dbgLogFlows);
+        switchManager.writeFlow("static", DROP_LOG_TABLE_ID, dropLogFlows);
+        /*Insert a flow at the end of every table to match dropped packets
+         *and punt to the given drop log port
+         */
+        if(!dropLogIface.empty() && dropLogDst.is_v4()) {
+            for(unsigned table_id = SEC_TABLE_ID; table_id < NUM_FLOW_TABLES; table_id++) {
+                FlowEntryList dropLogFlow;
+                FlowBuilder().priority(0)
+                        .metadata(flow::meta::DROP_LOG, flow::meta::DROP_LOG)
+                        .action().reg(MFF_TUN_ID, dropLogDropVnid)
+                        .reg(MFF_TUN_DST, dropLogDst.to_v4().to_ulong())
+                        .go(getDropLogPort())
+                        .parent().build(dropLogFlow);
+                switchManager.writeFlow("DropLogFlow", table_id, dropLogFlow);
+            }
+        }
     }
 }
 
