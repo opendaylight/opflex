@@ -1590,7 +1590,7 @@ BOOST_FIXTURE_TEST_CASE(learningBridge, BaseIntFlowManagerFixture) {
 
 #define ADDF(flow) addExpFlowEntry(expTables, flow)
 enum TABLE {
-    SEC, SRC, SNAT_REV, SVR, BR, SVH, RT, SNAT, NAT, LRN, SVD, POL, OUT
+    DROPLOG, SEC, SRC, SNAT_REV, SVR, BR, SVH, RT, SNAT, NAT, LRN, SVD, POL, OUT
 };
 
 void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
@@ -1598,7 +1598,7 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
     uint8_t rmacArr[6];
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
-
+    ADDF(Bldr().table(DROPLOG).priority(0).actions().go(SEC).done());
     ADDF(Bldr().table(SEC).priority(25).arp().actions().drop().done());
     ADDF(Bldr().table(SEC).priority(25).ip().actions().drop().done());
     ADDF(Bldr().table(SEC).priority(25).ipv6().actions().drop().done());
@@ -2733,39 +2733,39 @@ void BaseIntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
                  .isCtState("-trk").udp().reg(RD, 1).in(tunPort)
                  .isIpSrc("169.254.169.1").isTpSrc(5353)
                  .actions().pushVlan().move(SEPG12, VLAN)
-                 .ct("table=1,zone=1").done());
+                 .ct("table=2,zone=1").done());
             ADDF(Bldr().table(SVR).priority(101)
                  .isCtState("-trk").udp().reg(RD, 1).in(tunPort)
                  .isIpSrc("169.254.169.2").isTpSrc(5353)
                  .actions().pushVlan().move(SEPG12, VLAN)
-                 .ct("table=1,zone=1").done());
+                 .ct("table=2,zone=1").done());
             ADDF(Bldr().table(SVR).priority(101)
                  .isCtState("-trk").tcp6().reg(RD, 1).in(tunPort)
                  .isIpv6Src("fe80::a9:fe:a9:1").isTpSrc(80)
                  .actions().pushVlan().move(SEPG12, VLAN)
-                 .ct("table=1,zone=1").done());
+                 .ct("table=2,zone=1").done());
             ADDF(Bldr().table(SVR).priority(101)
                  .isCtState("-trk").tcp6().reg(RD, 1).in(tunPort)
                  .isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
                  .actions().pushVlan().move(SEPG12, VLAN)
-                 .ct("table=1,zone=1").done());
+                 .ct("table=2,zone=1").done());
         }
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").udp().reg(RD, 1)
              .isIpSrc("169.254.169.1").isTpSrc(5353)
-             .actions().ct("table=1,zone=1").done());
+             .actions().ct("table=2,zone=1").done());
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").udp().reg(RD, 1)
              .isIpSrc("169.254.169.2").isTpSrc(5353)
-             .actions().ct("table=1,zone=1").done());
+             .actions().ct("table=2,zone=1").done());
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").tcp6().reg(RD, 1)
              .isIpv6Src("fe80::a9:fe:a9:1").isTpSrc(80)
-             .actions().ct("table=1,zone=1").done());
+             .actions().ct("table=2,zone=1").done());
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").tcp6().reg(RD, 1)
              .isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
-             .actions().ct("table=1,zone=1").done());
+             .actions().ct("table=2,zone=1").done());
 
         if (exposed) {
             ADDF(Bldr().table(SVR).priority(100)
@@ -3023,7 +3023,7 @@ void BaseIntFlowManagerFixture::initExpLearningBridge() {
         ADDF(Bldr().table(SEC).priority(500).in(s.port)
              .isVlanTci(s.tci, s.mask)
              .actions()
-             .learn("table=9,idle_timeout=300,delete_learned,cookie="
+             .learn("table=10,idle_timeout=300,delete_learned,cookie="
                     + (boost::format("0x%lx") % (ovs_htonll(cookie))).str() +
                     ",NXM_OF_VLAN_TCI[0..12],"
                     "NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],"

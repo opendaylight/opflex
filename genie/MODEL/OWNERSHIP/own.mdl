@@ -80,4 +80,6 @@ owner[policyelement]
     {
         class[*]
     }
+    class[observer/DropLogConfig]
+    class[observer/DropFlowConfig]
 }
