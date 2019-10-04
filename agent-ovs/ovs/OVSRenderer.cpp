@@ -123,7 +123,14 @@ void OVSRenderer::start() {
     intFlowManager.setMulticastGroupFile(mcastGroupFile);
     intFlowManager.setEndpointAdv(endpointAdvMode, tunnelEndpointAdvMode,
             tunnelEndpointAdvIntvl);
-
+    if(!dropLogIntIface.empty()) {
+        intFlowManager.setDropLog(dropLogIntIface, dropLogRemoteIp,
+                dropLogRemotePort);
+    }
+    if(!dropLogAccessIface.empty()) {
+        accessFlowManager.setDropLog(dropLogAccessIface, dropLogRemoteIp,
+                        dropLogRemotePort);
+    }
     intSwitchManager.registerStateHandler(&intFlowManager);
     intSwitchManager.start(intBridgeName);
     if (accessBridgeName != "") {
@@ -234,6 +241,8 @@ void OVSRenderer::setProperties(const ptree& properties) {
     static const std::string ENCAP_IFACE("encap-iface");
     static const std::string REMOTE_IP("remote-ip");
     static const std::string REMOTE_PORT("remote-port");
+    static const std::string INT_BR_IFACE("int-br-iface");
+    static const std::string ACC_BR_IFACE("access-br-iface");
 
     static const std::string VIRTUAL_ROUTER("forwarding"
                                             ".virtual-router.enabled");
@@ -280,6 +289,7 @@ void OVSRenderer::setProperties(const ptree& properties) {
     static const std::string STATS_SECGROUP_INTERVAL("statistics"
                                                      ".security-group"
                                                      ".interval");
+    static const std::string DROP_LOG_ENCAP_GENEVE("drop-log.geneve");
 
     intBridgeName =
         properties.get<std::string>(OVS_BRIDGE_NAME, "br-int");
@@ -294,6 +304,10 @@ void OVSRenderer::setProperties(const ptree& properties) {
         properties.get_child_optional(ENCAP_VXLAN);
     boost::optional<const ptree&> vlan =
         properties.get_child_optional(ENCAP_VLAN);
+
+    boost::optional<const ptree&> dropLogEncapGeneve =
+            properties.get_child_optional(DROP_LOG_ENCAP_GENEVE);
+
 
     encapType = IntFlowManager::ENCAP_NONE;
     int count = 0;
@@ -319,6 +333,13 @@ void OVSRenderer::setProperties(const ptree& properties) {
     if (count > 1) {
         LOG(WARNING) << "Multiple encapsulation types specified for "
                      << "stitched-mode renderer";
+    }
+
+    if(dropLogEncapGeneve) {
+        dropLogIntIface = dropLogEncapGeneve.get().get<std::string>(INT_BR_IFACE, "");
+        dropLogAccessIface = dropLogEncapGeneve.get().get<std::string>(ACC_BR_IFACE, "");
+        dropLogRemoteIp = dropLogEncapGeneve.get().get<std::string>(REMOTE_IP, "");
+        dropLogRemotePort = dropLogEncapGeneve.get().get<uint16_t>(REMOTE_PORT, 6081);
     }
 
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);

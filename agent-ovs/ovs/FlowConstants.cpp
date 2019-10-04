@@ -33,6 +33,7 @@ namespace meta {
 const uint64_t POLICY_APPLIED = 0x100;
 const uint64_t FROM_SERVICE_INTERFACE = 0x200;
 const uint64_t ROUTED = 0x400;
+const uint64_t DROP_LOG = 0x800;
 
 namespace out {
 

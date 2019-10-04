@@ -91,6 +91,11 @@ extern const uint64_t FROM_SERVICE_INTERFACE;
  */
 extern const uint64_t ROUTED;
 
+/**
+ * Indicates that if this packet is dropped, then it should be logged
+ */
+extern const uint64_t DROP_LOG;
+
 namespace out {
 
 /**

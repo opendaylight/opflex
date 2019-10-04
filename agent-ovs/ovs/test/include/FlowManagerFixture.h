@@ -270,6 +270,7 @@ public:
     Bldr& resubmit(uint8_t t) {
         a() << "resubmit(," << str(t) << ")"; return *this;
     }
+    Bldr& dropLog(uint32_t table_id);
 
 private:
     std::stringstream& m();

@@ -202,6 +202,15 @@ public:
     void setMulticastGroupFile(const std::string& mcastGroupFile);
 
     /**
+     * Set the drop log parameters
+     * @param dropLogPort port name for the drop-log port
+     * @param dropLogRemoteIp outer ip address for the drop-log geneve tunnel
+     * @param dropLogRemotePort port number for geneve encap
+     */
+    void setDropLog(const string& dropLogPort, const string& dropLogRemoteIp,
+            const uint16_t dropLogRemotePort);
+
+    /**
      * Get the openflow port that maps to the configured tunnel
      * interface
      * @return the openflow port number
@@ -255,6 +264,8 @@ public:
 
     /* Interface: ExtraConfigListener */
     virtual void rdConfigUpdated(const opflex::modb::URI& rdURI);
+    virtual void packetDropLogConfigUpdated(const opflex::modb::URI& dropLogCfgURI);
+    virtual void packetDropFlowConfigUpdated(const opflex::modb::URI& dropFlowCfgURI);
 
     /* Interface: LearningBridgeListener */
     virtual void lbIfaceUpdated(const std::string& uuid);
@@ -340,6 +351,10 @@ public:
      */
     enum {
         /**
+         * Handles drop log policy
+         */
+        DROP_LOG_TABLE_ID,
+        /**
          * Handles port security/ingress policy
          */
         SEC_TABLE_ID,
@@ -415,6 +430,11 @@ public:
          * metadata field.
          */
         OUT_TABLE_ID,
+        /*
+         * Handle explicitly dropped packets here based on the
+         * drop-log config
+         */
+        EXP_DROP_TABLE_ID,
         /**
          * The total number of flow tables
          */
@@ -604,6 +624,9 @@ private:
     uint8_t dhcpMac[6];
     std::string flowIdCache;
     std::string mcastGroupFile;
+    std::string dropLogIface;
+    boost::asio::ip::address dropLogDst;
+    uint16_t dropLogRemotePort;
 
     /*
      * Map of flood-group URI to the endpoints associated with it.
@@ -661,6 +684,7 @@ private:
                                  const uint32_t cvnid,
                                  bool allowBidirectional,
                                  const PolicyManager::rule_list_t& rules);
+
 };
 
 } // namespace opflexagent
