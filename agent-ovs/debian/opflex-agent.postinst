@@ -24,6 +24,7 @@ case "$1" in
         chmod 0775 /var/lib/opflex-agent-ovs/endpoints
         chgrp opflexep /var/lib/opflex-agent-ovs/services
         chmod 0775 /var/lib/opflex-agent-ovs/services
+        chmod 0775 /var/lib/opflex-agent-ovs/droplog
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

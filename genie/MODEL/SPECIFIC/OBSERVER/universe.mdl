@@ -41,4 +41,19 @@ module[observer]
             }
         }
     }
+
+    # Universe containing Configured drop flows
+    class[DropFlowConfigUniverse;
+          super=observer/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=dropFlowCfg;]
+            }
+        }
+    }
 }
