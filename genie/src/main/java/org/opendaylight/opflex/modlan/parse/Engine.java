@@ -84,7 +84,6 @@ public class Engine
     private boolean hasNestedData()
     {
         boolean lRet = false;
-        State lNextState = null;
         boolean lDone = false;
         while ((!lDone) && ctx.hasMore())
         {
@@ -94,16 +93,16 @@ public class Engine
                 case ' ':
 
                     break;
-                /**
+                /*
                 case '\n':
                 case '\r':
 
                     break;
-                **/
+                */
                 default:
                 {
                     lDone = true;
-                    lNextState = getNextState(lThatChar);
+                    State lNextState = getNextState(lThatChar);
                     ctx.holdThisForNext();
                     if (null != lNextState)
                     {
@@ -146,12 +145,10 @@ public class Engine
     }
     private boolean checkHandleNextState(char aInThisChar, char aInOrigChar)
     {
-        State lNextState = state;
         boolean lRet = false;
-        lNextState = getNextState(aInThisChar);
+        State lNextState = getNextState(aInThisChar);
         if (null != lNextState && state != lNextState)
         {
-            //reportInfo("checkHandleNextState", (lNextState.isSelfContained() ? "SELF CONTAINED > " : "NON-SELF-CONT > ") + "NEW STATE: '" + lNextState + "' ON CHAR: '" + aInThisChar + "'");
             if (lNextState.isSelfContained())
             {
                 if (ctx.hasMore())
@@ -206,12 +203,6 @@ public class Engine
             }
             lRet = true;
         }
-        /**
-        try
-        {
-            Thread.sleep(2000);
-        }
-        catch (Throwable e) {}**/
         return lRet;
     }
 
@@ -313,7 +304,7 @@ public class Engine
             else if (' ' == lThisChar ||
                      '\t' == lThisChar)
             {
-                /**if (aInState.isSelfContained())
+                /*if (aInState.isSelfContained())
                 {
                     switch (aInState.getBlankIncl())
                     {
@@ -337,7 +328,7 @@ public class Engine
                             break;
                     }
                 }
-                 **/
+                 */
                 switch (aInState.getBlankIncl())
                 {
                     case DISALLOW:
@@ -387,28 +378,21 @@ public class Engine
             }
         }
     }
-    public StateCtx getStateCtx()
-    {
-        return stack.empty() ? null : stack.peek();
-    }
 
     private String formatLocationContext()
     {
-        StringBuffer lSb = new StringBuffer();
-        lSb.append('(');
-        lSb.append(run);
-        lSb.append(')');
-        lSb.append(ctx.getFileName());
-        lSb.append('(');
-        lSb.append(ctx.getCurrLineNum());
-        lSb.append(':');
-        lSb.append(ctx.getCurrColumnNum());
-        lSb.append('/');
-        lSb.append(ctx.getCurrCharNum());
-        lSb.append(") STATE=");
-        lSb.append(state);
-
-        return lSb.toString();
+        return "(" +
+                run +
+                ')' +
+                ctx.getFileName() +
+                '(' +
+                ctx.getCurrLineNum() +
+                ':' +
+                ctx.getCurrColumnNum() +
+                '/' +
+                ctx.getCurrCharNum() +
+                ") STATE=" +
+                state;
     }
 
     protected void reportDeadly(String aInCause, Throwable aInT)
@@ -436,16 +420,6 @@ public class Engine
         Severity.INFO.report(formatLocationContext(),"PARSE", aInCause, aInMessage);
     }
 
-    protected void reportTodo(String aInCause, String aInMessage)
-    {
-        Severity.TODO.report(formatLocationContext(),"PARSE", aInCause, aInMessage);
-    }
-
-    protected void stack(String aInCause, String aInMessage)
-    {
-        Severity.INFO.stack(formatLocationContext(), "PARSE", aInCause, aInMessage);
-    }
-
     private void initCallTbl()
     {
         for (State lThisState : State.values())
@@ -454,7 +428,7 @@ public class Engine
             {
                 try
                 {
-                    callTbl[lThisState.getIdx()][0] = consumer.getClass().getMethod(lThisState.getBeginCb(), new Class[]{String.class});
+                    callTbl[lThisState.getIdx()][0] = consumer.getClass().getMethod(lThisState.getBeginCb(), String.class);
                 }
                 catch(Throwable e)
                 {
@@ -466,7 +440,7 @@ public class Engine
             {
                 try
                 {
-                    callTbl[lThisState.getIdx()][1] = consumer.getClass().getMethod(lThisState.getEndCb(), new Class[]{String.class});
+                    callTbl[lThisState.getIdx()][1] = consumer.getClass().getMethod(lThisState.getEndCb(), String.class);
                 }
                 catch(Throwable e)
                 {
@@ -479,7 +453,7 @@ public class Engine
 
     private final Ctx ctx;
     private final Consumer consumer;
-    private final Method callTbl[][] = {
+    private final Method[][] callTbl = {
                                            { null, null,},
                                            { null, null,},
                                            { null, null },
@@ -489,7 +463,7 @@ public class Engine
                                            { null, null },
                                         };
     private State state = State.DOC;
-    private Stack<StateCtx> stack = new Stack<StateCtx>();
+    private final Stack<StateCtx> stack = new Stack<>();
 
     private LitBuff literals = new LitBuff();
     int run;

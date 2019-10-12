@@ -10,13 +10,13 @@ import org.opendaylight.opflex.modlan.report.Severity;
  */
 public class RelatorCat extends Cat
 {
-    public static enum Type
+    public enum Type
     {
         FROM,
         TO
     }
 
-    public static enum Direction
+    public enum Direction
     {
         DIRECT,
         INVERSE
@@ -55,16 +55,6 @@ public class RelatorCat extends Cat
     public static RelatorCat getCreate(String aIn, Cardinality aInCardinality)
     {
         return getCreate(aIn, aInCardinality, Type.FROM, Direction.DIRECT, true);
-    }
-
-    public static RelatorCat getCreateFromDirect(String aIn, Cardinality aInCardinality, boolean aInCreateIfNotFound)
-    {
-        return RelatorCat.getCreate(
-                aIn,
-                aInCardinality,
-                RelatorCat.Type.FROM,
-                RelatorCat.Direction.DIRECT,
-                aInCreateIfNotFound);
     }
 
     public static RelatorCat getCreateToDirect(String aIn, Cardinality aInCardinality, boolean aInCreateIfNotFound)
@@ -200,7 +190,7 @@ public class RelatorCat extends Cat
     {
         //System.out.println("#### Relator.doAdd(" + aInFromRelatorCat + "," + aInFromCat + ", " + aInFromGName + ", "  + ", " + aInToRelatorCat + ", " + aInToCat + ", " + aInToGName + ")");
 
-        Relator lFromRelator = (Relator) aInFromRelatorCat.getRelator(aInFromGName);//aInFromRelatorCat.getNodes().getItem(aInFromGName);
+        Relator lFromRelator = aInFromRelatorCat.getRelator(aInFromGName);//aInFromRelatorCat.getNodes().getItem(aInFromGName);
 
         if (null == lFromRelator)
         {
@@ -280,14 +270,9 @@ public class RelatorCat extends Cat
         RelatorCat.register(this);
     }
 
-    public void validateCb()
-    {
-        super.validateCb();
-    }
-
     private final Cardinality cardinality;
     private final Type type;
     private final Direction direction;
-    private static Map<String, RelatorCat> nameToCatTable = new TreeMap<String, RelatorCat>();
-    private static Map<Number, RelatorCat> idToCatTable = new TreeMap<Number, RelatorCat>();
+    private static final Map<String, RelatorCat> nameToCatTable = new TreeMap<>();
+    private static final Map<Number, RelatorCat> idToCatTable = new TreeMap<>();
 }
