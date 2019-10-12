@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0b2953c8_dddaa551",
+        "filename": "agent-ovs/Makefile.am",
+        "patchSetId": 5
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "Directory needs to be added to the rpm and debian specs",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "48d0ae38_2c3ea860",
+        "filename": "agent-ovs/lib/include/opflexagent/ExtraConfigManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "Missing doxygen comments for these",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fb78a5f4_47eb1513",
+        "filename": "agent-ovs/lib/include/opflexagent/PacketDropLogConfig.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "add doxygen comments",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fb2e631f_a4dc57fd",
+        "filename": "agent-ovs/lib/include/opflexagent/PacketDropLogConfig.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "There\u0027s a couple of compiler warnings generated here that need to be cleaned up",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a507676a_e557740c",
+        "filename": "agent-ovs/lib/include/opflexagent/PacketDropLogConfig.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "add doxygen comments",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4c7a4bc3_513a5d52",
+        "filename": "agent-ovs/lib/include/opflexagent/PacketDropLogConfig.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "All the members need to be documented as well",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "49daca89_b3cd2e6b",
+        "filename": "agent-ovs/lib/include/opflexagent/PacketDropLogConfig.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "add doxygen comments",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "94216ba3_3f639469",
+        "filename": "agent-ovs/ovs/include/ActionBuilder.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "table -\u003e table_id",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3dcc3a85_7f962c97",
+        "filename": "genie/MODEL/OWNERSHIP/own.mdl",
+        "patchSetId": 5
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-12T07:01:50Z",
+      "side": 1,
+      "message": "So this only be configured locally?",
+      "revId": "503691e97c0ad354e3de1d2c9af1ae4494085e5e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
