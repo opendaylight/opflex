@@ -302,6 +302,16 @@ public:
                    modb::mointernal::StoreClient& client);
 
     /**
+     * Update managed objects from RapidJson document into the MODB
+     *
+     * @param d the RapidJson document representing the update
+     * @param client the store client to use
+     * @param return the number of managed objects updated
+     */
+    size_t updateMOs(rapidjson::Document& d,
+                     modb::mointernal::StoreClient& client);
+
+    /**
      * Display the managed object database in a human-readable format
      *
      * @param ostream the output stream to write to
