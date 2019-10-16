@@ -82,6 +82,13 @@ public:
     void readPolicy(const std::string& file);
 
     /**
+     * Update policy from RapidJson document
+     *
+     * @param d the RapidJson document to be read in
+     */
+    void updatePolicy(rapidjson::Document& d);
+
+    /**
      * Get the peers that this server was configured with
      *
      * @return a vector of peer pairs

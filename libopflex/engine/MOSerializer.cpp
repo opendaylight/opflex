@@ -412,6 +412,17 @@ size_t MOSerializer::readMOs(FILE* pfile, StoreClient& client) {
     return i;
 }
 
+size_t MOSerializer::updateMOs(rapidjson::Document& d, StoreClient& client) {
+    rapidjson::Value::ConstValueIterator moit;
+    size_t i = 0;
+    for (moit = d.Begin(); moit != d.End(); ++ moit) {
+        const rapidjson::Value& mo = *moit;
+        deserialize(mo, client, true, NULL);
+        i += 1;
+    }
+    return i;
+}
+
 #define FORMAT_PROP(gfunc, type, prefixTrunc, output)                   \
     {                                                                   \
         std::ostringstream str;                                         \
