@@ -93,6 +93,13 @@ AM_COND_IF([RENDERER_OVS],
            [AC_MSG_NOTICE([Open vSwitch renderer is enabled])],
            [AC_MSG_NOTICE([Open vSwitch renderer is disabled])])
 
+# Enable grpc support, disabled by default
+AC_ARG_ENABLE(grpc,
+              AC_HELP_STRING([--enable-grpc], [Enable Grpc support]))
+AM_CONDITIONAL(ENABLE_GRPC, [test x$enable_grpc = 'xyes'])
+AM_COND_IF([ENABLE_GRPC],
+          [AC_MSG_NOTICE([GRPC is enabled])],
+          [AC_MSG_NOTICE([GRPC is disabled])])
 # ---------------------------------------------------------------
 # Dependency checks
 
@@ -142,6 +149,19 @@ AM_COND_IF([RENDERER_OVS], [
     PKG_CHECK_MODULES([libnfct], [libnetfilter_conntrack >= 1.0.0],
                       [AC_DEFINE([HAVE_LIBNFCT], [1], [Use libnfct])],
                       AC_MSG_WARN([libnetfilter_conntrack not found]))
+])
+
+AM_COND_IF([ENABLE_GRPC], [
+    # check for grpc++
+    PKG_CHECK_MODULES([GRPC], [grpc++], [grpc_found=yes], [grpc_found=no])
+    # check for protobuf
+    PKG_CHECK_MODULES([PROTOBUF], [protobuf],
+                     [protobuf_found=yes], [protobuf_found=no])
+    AS_IF([test x$grpc_found = 'xyes' && test x$protobuf_found = 'xyes'], [
+        AC_DEFINE([HAVE_GRPC_SUPPORT],[1],[Define if grpc support is enabled])
+    ], [
+        AC_MSG_ERROR([***GRPC requested but not found ***])
+    ])
 ])
 
 # inotify check

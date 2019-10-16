@@ -55,6 +55,10 @@ void MockOpflexServer::readPolicy(const std::string& file) {
     pimpl->readPolicy(file);
 }
 
+void MockOpflexServer::updatePolicy(rapidjson::Document& d) {
+    pimpl->updatePolicy(d);
+}
+
 const MockOpflexServer::peer_vec_t& MockOpflexServer::getPeers() const {
     return pimpl->getPeers();
 };
@@ -122,6 +126,12 @@ void MockOpflexServerImpl::readPolicy(const std::string& file) {
     size_t objs = serializer.readMOs(pfile, *getSystemClient());
     LOG(INFO) << "Read " << objs
               << " managed objects from policy file \"" << file << "\"";
+}
+
+void MockOpflexServerImpl::updatePolicy(rapidjson::Document& d) {
+    size_t objs = serializer.updateMOs(d, *getSystemClient());
+    LOG(INFO) << "Update " << objs
+              << " managed objects from GRPC update";
 }
 
 OpflexHandler* MockOpflexServerImpl::newHandler(OpflexConnection* conn) {
