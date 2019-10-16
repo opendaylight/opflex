@@ -8,6 +8,10 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include <unistd.h>
 #include <csignal>
 #include <sys/inotify.h>
@@ -29,6 +33,7 @@
 #include <opflexagent/logging.h>
 #include <opflexagent/cmd.h>
 #include "Policies.h"
+#include "GbpClient.h"
 
 using std::string;
 using std::make_pair;
@@ -76,6 +81,8 @@ int main(int argc, char** argv) {
         ("transport_mode_proxies", po::value<std::vector<string> >(),
          "3 transport_mode_proxy IPv4 addresses specified to return "
          "in identity response")
+        ("grpc_address", po::value<string>()->default_value("localhost:19999"),
+         "GRPC server address for policy updates")
         ;
 
     bool daemon = false;
@@ -90,6 +97,9 @@ int main(int argc, char** argv) {
     std::string ssl_pass;
     std::vector<std::string> peers;
     std::vector<std::string> transport_mode_proxies;
+#ifdef HAVE_GRPC_SUPPORT
+    std::string grpc_address;
+#endif
     char buf[EVENT_BUF_LEN];
     int fd, wd;
 
@@ -120,6 +130,9 @@ int main(int argc, char** argv) {
             transport_mode_proxies =
                 vm["transport_mode_proxies"].as<std::vector<string>>();
         }
+#ifdef HAVE_GRPC_SUPPORT
+        grpc_address = vm["grpc_address"].as<string>();
+#endif
     } catch (po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
@@ -153,6 +166,9 @@ int main(int argc, char** argv) {
         MockOpflexServer server(8009, SERVER_ROLES, peer_vec,
                                 transport_mode_proxies,
                                 modelgbp::getMetadata());
+#ifdef HAVE_GRPC_SUPPORT
+        GbpClient client(grpc_address, server);
+#endif
 
         if (policy_file != "") {
             server.readPolicy(policy_file);

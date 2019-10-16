@@ -13,6 +13,7 @@
 
 #include <vector>
 #include <utility>
+#include <rapidjson/document.h>
 
 #include "opflex/modb/ModelMetadata.h"
 
@@ -84,6 +85,13 @@ public:
      * @param file the filename to read in
      */
     void readPolicy(const std::string& file);
+
+    /**
+     * Update policy from RapidJson document
+     *
+     * @param d the RapidJson document to be read in
+     */
+    void updatePolicy(rapidjson::Document& d);
 
     /**
      * Enable SSL for connections to opflex peers.  Call before start()

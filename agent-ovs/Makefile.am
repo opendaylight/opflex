@@ -326,10 +326,24 @@ endif
 mock_server_CXXFLAGS = \
 	-I$(top_srcdir)/cmd/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS)
+if ENABLE_GRPC
+mock_server_CXXFLAGS += $(GRPC_CFLAGS)
+endif
+
 mock_server_SOURCES = \
 	cmd/test/include/Policies.h \
 	cmd/test/Policies.cpp \
 	cmd/test/mock_server.cpp
+if ENABLE_GRPC
+%.grpc.pb.cc %.grpc.pb.h %.pb.cc %.pb.h: %.proto
+	protoc --cpp_out=. $^
+	protoc --grpc_out=. --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $^
+mock_server_SOURCES += cmd/test/gbp.pb.cc \
+		       cmd/test/gbp.grpc.pb.cc \
+                       cmd/test/GbpClient.cpp
+                       
+endif
+
 mock_server_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
@@ -337,6 +351,9 @@ mock_server_LDADD = \
 	$(BOOST_FILESYSTEM_LIB) \
 	$(BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
+if ENABLE_GRPC
+mock_server_LDADD += $(GRPC_LIBS) $(PROTOBUF_LIBS) -lgrpc++_reflection
+endif
 
 policy_repo_stress_CXXFLAGS = \
 	$(libopflex_CFLAGS) \
@@ -422,6 +439,9 @@ clean-doc:
 	rm -rf doc/html doc/latex
 clean-local: clean-doc
 	rm -f *.rpm *.deb
+if ENABLE_GRPC
+	-rm -rf cmd/test/gbp.grpc.pb.* cmd/test/gbp.pb.*
+endif
 
 EXTRA_DIST = \
 	rpm/opflex-agent.service \
