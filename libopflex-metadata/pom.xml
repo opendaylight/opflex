@@ -12,7 +12,7 @@
   <parent>
     <groupId>org.opendaylight.odlparent</groupId>
     <artifactId>odlparent</artifactId>
-    <version>3.0.2-SNAPSHOT</version>
+    <version>3.1.9</version>
   </parent>
 
   <!-- Project Information -->
@@ -42,8 +42,8 @@
   </dependencies>
 
   <properties>
-    <java.version.source>1.7</java.version.source>
-    <java.version.target>1.7</java.version.target>
+    <java.version.source>1.8</java.version.source>
+    <java.version.target>1.8</java.version.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
