@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a006319b_bb52af9f",
+        "filename": "agent-ovs/cmd/test/GbpClient.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-16T19:18:17Z",
+      "side": 1,
+      "message": "ok for now but we should be using TLS",
+      "revId": "63062c1e9478e98e146bba44f511b503c6c24abc",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a57173bc_c5d14e78",
+        "filename": "agent-ovs/cmd/test/gbp.proto",
+        "patchSetId": 3
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-16T19:18:17Z",
+      "side": 1,
+      "message": "So no way of reporting state (faults, stats) upwards at this point",
+      "revId": "63062c1e9478e98e146bba44f511b503c6c24abc",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1fe8c10b_4e902f43",
+        "filename": "agent-ovs/cmd/test/include/GbpClient.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-16T19:18:17Z",
+      "side": 1,
+      "message": "incorrect filename",
+      "revId": "63062c1e9478e98e146bba44f511b503c6c24abc",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
