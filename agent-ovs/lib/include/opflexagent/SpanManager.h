@@ -51,7 +51,19 @@ namespace opflexagent {
 class SpanManager {
 
 public:
-
+    /**
+     * data holder for source member information
+     */
+        typedef struct {
+            /**
+             * URI pointing to source member
+             */
+            URI uri;
+            /**
+             * direction of traffic flow
+             */
+            unsigned char dir;
+        } srcMemInfo;
 
     /**
      * Instantiate a new span manager
@@ -117,6 +129,11 @@ public:
     void notifyListeners(const shared_ptr<SessionState> seSt);
 
     /**
+     * Notify span listeners to signal all span deletion
+     */
+    void notifyListeners();
+
+    /**
      * Listener for changes related to span
      */
     class SpanUniverseListener : public opflex::modb::ObjectListener {
@@ -136,6 +153,7 @@ public:
         virtual void objectUpdated(opflex::modb::class_id_t class_id,
                                    const URI& uri);
 
+    private:
         /**
          * process session update
          * @param[in] sess shared pointer to a Session object
@@ -158,7 +176,7 @@ public:
         * process LocalEp update
         * @param[in] vUri a vector of uris pointing to the LocalEp objects in  MODB.
         */
-        void processLocalEp(const vector<URI>& vUri);
+        void processLocalEp(const srcMemInfo& s);
 
         /**
          * process L2EP update
@@ -170,15 +188,15 @@ public:
           * add an end point to session state object
           * @param[in] lEp shared pointer to LocalEp object
           * @param[in] l2Ep shared pointer to L2EP object
+          * @param[in] s struct for source member info params
           */
-          void addEndPoint(shared_ptr<LocalEp> lEp, shared_ptr<L2Ep> l2Ep);
+          void addEndPoint(shared_ptr<LocalEp> lEp, shared_ptr<L2Ep> l2Ep, const srcMemInfo& i);
 
-    private:
           /**
            * process EP group
            * @param[in] uri uri pointing to EpGroup
            */
-          vector<URI> processEpGroup(const URI& uri);
+          void processEpGroup(const srcMemInfo& s);
 
         SpanManager& spanmanager;
 
@@ -191,6 +209,8 @@ public:
     friend class SpanUniverseListener;
 
 private:
+
+    boost::optional<shared_ptr<SrcMember>> findSrcMem(shared_ptr<LocalEp> lEp);
 
     opflex::ofcore::OFFramework& framework;
     /**
@@ -205,6 +225,7 @@ private:
     // list of URIs to send to listeners
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<SessionState>> notifyDelete;
+    bool isDeletePending = false;
 };
 }
 
