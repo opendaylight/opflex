@@ -18,6 +18,7 @@
 
 #include <tuple>
 #include <map>
+#include <unordered_map>
 #include <condition_variable>
 #include <mutex>
 #include <chrono>
@@ -35,11 +36,42 @@ using namespace opflex;
 using namespace opflex::engine::internal;
 using namespace std::chrono;
 
+/*
+ * name of ERPSAN port
+ */
+static const string ERSPAN_PORT_NAME("erspan");
+
 /**
  * class to handle JSON/RPC transactions without opflex.
  */
 class JsonRpc : public Transaction {
 public:
+    /**
+     * struct for ERSPAN interface parameters
+     */
+    typedef struct erspan_ifc_ {
+        /**
+         * name of ERSPAN port
+         */
+        string name;
+        /**
+         * ERSPAN port index
+         */
+        int erspan_idx;
+        /**
+         * ERSPAN version
+         */
+        int erspan_ver;
+        /**
+         * ERSPAN key
+         */
+        int key;
+        /**
+         * destination IP address
+         */
+        string remote_ip;
+    } erspan_ifc;
+
     /**
      * struct for managing mirror data
      */
@@ -65,31 +97,6 @@ public:
          */
         set<string> out_ports;
     } mirror;
-
-    /**
-     * struct for managing erspan data
-     */
-    typedef struct erspan_port_ {
-        /**
-         * name of erspan port
-         */
-        string name;
-        /**
-         * IP Address of the destination
-         */
-        string ip_address;
-    } erspan_port;
-
-    /**
-     * result for mirror.
-     * has a subset of columns from the mirror table in OVSDB
-     */
-    struct MirrorResult {
-        /**
-         * struct for holding mirror information
-         */
-        mirror mir;
-    };
 
     /**
      * results for bridge port list query
@@ -138,7 +145,7 @@ public:
      * @param[in] name name of the port
      * @return uuid of the port or empty string.
      */
-    string getPortUuid(string name);
+    string getPortUuid(const string& name);
 
     /**
      * initialize the module
@@ -199,10 +206,10 @@ public:
     /**
      * add an erspan port to the bridge
      * @param[in] bridgeName name of bridge to add the port to
-     * @param[in] port name of port to be added
+     * @param[in] port erspan_ifc struct
      * @return true if success, false otherwise
      */
-    bool addErspanPort(const string bridgeName, const erspan_port port);
+    bool addErspanPort(const string bridgeName, const erspan_ifc port);
 
     /**
      * add mirror data to in memory struct
@@ -242,6 +249,22 @@ public:
             string& uuid);
 
     /**
+     * process mirror config
+     * @param[in] reqId request ID
+     * @param[in] payload body of the response
+     * @param[out] mir mirror info
+     * @return true id success, false otherwise
+     */
+    bool handleMirrorConfig(uint64_t reqId, const rapidjson::Value& payload,
+            mirror& mir);
+
+    /**
+     * get the mirror config from OVSDB.
+     * @param[out] mir struct to hold mirror data
+     */
+    bool getOvsdbMirrorConfig(mirror& mir);
+
+    /**
      * process bridge port list response
      * @param[in] reqId request ID
      * @param[in] payload body of the response
@@ -250,6 +273,14 @@ public:
      */
     bool handleCreateMirrorResp(uint64_t reqId, const rapidjson::Value& payload,
             string& uuid);
+
+    /**
+     * get ERSPAN interface parameters from OVSDB
+     * @param[in] ifc erspan interface struct
+     * @return true if success, false otherwise
+     */
+    bool getErspanIfcParams(erspan_ifc& ifc);
+
 /*! macro to declare handlers */
 #define DECLARE_HANDLER(F) \
         /** \
@@ -270,9 +301,28 @@ public:
      */
     const uint32_t OVSDB_RPC_PORT = 6640;
 
-
 private:
     uint64_t getNextId() { return ++id; }
+
+    /**
+     * get UUIDs from a Value struct. Can handle both a single uuid two tuple
+     * or an set of uuid two tuples.
+     * @param[in] payload Value struct with the info to be parsed
+     * @param[in] index an index into the Value struct
+     * @param[out] uuidSet set of UUIDs extracted from the Value struct
+     */
+    void getUuidsFromVal(set<string>& uuidSet, const Value& payload,
+                const string index);
+
+    /**
+     * get the list of port names and UUIDs from the Value struct
+     * @param[in] payload Value struct with the info to be parsed
+     * @param[in] payload a Value struct
+     * @param[out] portMap unordered map of port UUID as key and name as value
+     * @return bool false if there is a problem getting the value, true otherwise
+     */
+    bool getPortList(const uint64_t reqId, const Value& payload,
+                unordered_map<string, string>& portMap);
 
     /**
      * generate a UUID for use by OVSDB when creating new artifacts.
@@ -282,13 +332,33 @@ private:
     string generateTempUuid();
 
     /**
-     * send a JSON RPC request to the peer
-     * @param[in] tl list of transData objects
-     * @param[in] reqId request ID of the message
-     * @return true if message sent, false otherwise.
+     * get the port parameter from Value struct
+     * @param[in] payload Value struct with the info to be parsed
+     * @param[in] payload a Value struct
+     * @param[in] col column name in the table
+     * @param[out] param the paramter to be returned
+     * @return bool false if there is a problem getting the value, true otherwise.
+     */
+    bool handleGetPortParam(uint64_t reqId,
+                const rapidjson::Value& payload, string& col, string& param);
 
-    bool sendRequest(TransactReq&, uint64_t);
-*/
+    /**
+     * get a value of the column in a specific row of the port table
+     * @param[in] col the column name in the port table
+     * @param[in] match the mtach that we are looking for
+     * @return bool flase if problem getting the value, true otherwise.
+     */
+    string getPortParam(const string& col, const string& match);
+
+    /**
+     * get ERSPAN interface options from Value struct
+     * @param[in] reqId request ID
+     * @param[in] payload response Value struct
+     * @param[out] ifc ERSPAN interface struct
+     */
+    bool getErspanOptions(const uint64_t reqId, const Value& payload,
+            erspan_ifc& ifc);
+
     template <typename T>
     inline bool sendRequest(list<T>& tl, uint64_t reqId) {
         unique_lock<mutex> lock(pConn->mtx);
@@ -301,6 +371,9 @@ private:
         pConn->sendTransaction(tl, reqId);
         return true;
     }
+
+    void substituteSet(set<string>& s, const unordered_map<string, string>& portMap);
+
     /**
      * checks for response arrival
      * @return true if response received, false if timed out.
@@ -318,13 +391,10 @@ private:
      */
     void printMap(const map<string, string>& m);
 
-    enum Action {
-        NOP = 0,
-        DEL_PORT,
-        DEL_MIRROR,
-        ADD_PORT,
-        ADD_MIRROR,
-    };
+    /**
+     * print set<string> members.
+     */
+    void printSet(const set<string>& s);
 
     typedef struct response_ {
         uint64_t reqId;
@@ -336,7 +406,6 @@ private:
 
 //    bool connected = false;
     bool responseReceived = false;
-    Action action = NOP;
     map<string, string> results;
     map<string, mirror> mirMap;
     const int WAIT_TIMEOUT = 10;
