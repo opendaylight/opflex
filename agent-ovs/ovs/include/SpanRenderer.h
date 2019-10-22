@@ -44,9 +44,22 @@ public:
      */
     void stop();
 
+    /**
+     * handle updates to span artifacts
+     * @param[in] spanURI URI pointing to a span session.
+     */
     virtual void spanUpdated(const opflex::modb::URI& spanURI);
 
+    /**
+     * delete span pointed to by the pointer
+     * @param[in] sesSt shared pointer to a Session object
+     */
     virtual void spanDeleted(shared_ptr<SessionState> sesSt);
+
+    /**
+     * delete all span artifacts
+     */
+    virtual void spanDeleted();
 
 private:
     /**
@@ -56,15 +69,15 @@ private:
      */
     void handleSpanUpdate(const opflex::modb::URI& spanURI);
     virtual void sessionDeleted(shared_ptr<SessionState> sesSt);
+    virtual void sessionDeleted();
     void cleanup();
     void connect();
     bool deleteErspnPort(const string& name);
     bool deleteMirror(const string& session);
     bool createMirror(const string& session, const set<string>& srcPorts,
-            const set<address>& dstIPs);
+            const set<string>& dstPorts);
     bool addErspanPort(const string& brName, const string& ipAddr);
-    const string ERSPAN_PORT_NAME = "erspan";
-    const string BRIDGE = "br-int";
+    void updateMirrorConfig(shared_ptr<SessionState> seSt);
     Agent& agent;
     TaskQueue taskQueue;
     condition_variable cv;

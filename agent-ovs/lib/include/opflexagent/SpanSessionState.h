@@ -14,9 +14,11 @@
 #define OPFLEX_SPANSESSIONSTATE_H
 
 #include <opflex/modb/URI.h>
+#include <modelgbp/gbp/DirectionEnumT.hpp>
 #include <boost/asio.hpp>
 
 namespace  std {
+
     /**
      * template for hash function for address::ip.
      */
@@ -147,15 +149,15 @@ using namespace opflex::modb;
          * gets the direction of spanned traffic
          * @return a value from DirectionEnumT.
          */
-        const uint8_t getDirection() const { return dir; };
+        const unsigned char getDirection() const { return dir; };
         /**
          * set direction to one of gbp::DirectionEnumT values
          * @param[in] dir_ direction to be set
          */
-        void setDirection(const uint8_t dir_) { dir = dir_;};
+        void setDirection(const unsigned char dir_) { dir = dir_;};
         /**
          * gets the map of filters keyed by filter name
-         * @returns a reference to a map of name to filters.
+         * @return a reference to a map of name to filters.
          */
         const unordered_map<string, filter_t>& getFilterSet() const {
             return filters;
@@ -165,7 +167,7 @@ using namespace opflex::modb;
         string name;
         address srcEndPoint;
         string port;
-        uint8_t dir;
+        unsigned char dir;
         unordered_map<string, filter_t> filters;
 
     };
@@ -175,6 +177,7 @@ using namespace opflex::modb;
     */
     class SessionState {
     public:
+
         /**
          * constructor that takes a SessionState as reference.
          * @param s reference to a SessionState object
@@ -206,28 +209,27 @@ using namespace opflex::modb;
 
         /**
          * add a source end point to the internal map
-         * @param uri uri pointing to a LocalEp object
          * @param srcEp shared pointer to a SourceEndPoint object.
          */
-        void addSrcEndPoint(const URI& uri, shared_ptr<SourceEndPoint> srcEp);
+        void addSrcEndPoint(shared_ptr<SourceEndPoint> srcEp);
 
         /**
-         * get the source end point map reference
-         * @returns a reference to the source end point map
+         * get the source end point set reference
+         * @return a reference to the source end point set
          */
-        const unordered_map<URI, shared_ptr<SourceEndPoint>>&
-             getSrcEndPointMap() const;
+        const unordered_set<shared_ptr<SourceEndPoint>>&
+             getSrcEndPointSet() const;
 
         /**
          * gets the destination end point map reference
-         * @returns a reference to the destination end point map.
+         * @return a reference to the destination end point map.
          */
         const unordered_map<URI, shared_ptr<DstEndPoint>>&
              getDstEndPointMap() const;
 
         /**
          * gets the name string for this object
-         * @returns the name attribute string.
+         * @return the name attribute string.
          */
         const string& getName() { return name; };
 
@@ -235,7 +237,8 @@ using namespace opflex::modb;
         URI uri;
         string name;
         // mapping LocalEp to SourceEndPoint
-        unordered_map<URI, shared_ptr<SourceEndPoint>> srcEndPoints;
+        // unordered_map<URI, shared_ptr<SourceEndPoint>> srcEndPoints;
+        unordered_set<shared_ptr<SourceEndPoint>> srcEndPoints;
         // mapping DstSummary to DstEndPoint
         unordered_map<URI, shared_ptr<DstEndPoint>> dstEndPoints;
         unordered_map<string, filter_t> filters;

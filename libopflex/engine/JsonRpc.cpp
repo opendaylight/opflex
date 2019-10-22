@@ -258,7 +258,6 @@ bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
                 writer.String(sPtr->data.c_str());
                 LOG(DEBUG) << "string " << sPtr->data;
             }
-
         }
         writer.EndObject();
     }

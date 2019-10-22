@@ -250,6 +250,21 @@ public:
         long interval;
     };
 
+    /**
+     * get OVSDB IP address
+     */
+    const std::string& getOvsdbIpAddress() { return ovsdbIpAddress; }
+
+    /**
+     * get OVSDB port
+     */
+    const unsigned long getOvsdbPort() { return ovsdbPort; }
+
+    /**
+     * get OVSDB bridge name
+     */
+    const std::string& getOvsdbBridge() { return ovsdbBridge; }
+
 private:
     boost::asio::io_service agent_io;
     std::unique_ptr<boost::asio::io_service::work> io_work;
@@ -334,6 +349,11 @@ private:
     long interfaceInterval;
 
     SpanManager spanManager;
+
+    // ovsdb parameters
+    std::string ovsdbIpAddress;
+    unsigned long ovsdbPort;
+    std::string ovsdbBridge;
 };
 
 } /* namespace opflexagent */

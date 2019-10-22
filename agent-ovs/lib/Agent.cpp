@@ -163,6 +163,9 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_STATS_SECGRP_SETTING("opflex.statistics.security-group.enabled");
     static const std::string OPFLEX_STATS_SECGRP_INTERVAL("opflex.statistics.security-group.interval");
     static const std::string OPFLEX_PRR_INTERVAL("opflex.timers.prr");
+    static const std::string OVSDB_IP_ADDRESS("ovsdb.ip-address");
+    static const std::string OVSDB_PORT("ovsdb.port");
+    static const std::string OVSDB_BRIDGE("ovsdb.bridge");
 
     optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
@@ -385,6 +388,31 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     LOG(INFO) << "Agent mode set to " <<
        ((this->rendererFwdMode == opflex::ofcore::OFConstants::TRANSPORT_MODE)?
         "transport-mode" : "stitched-mode");
+
+    boost::optional<std::string> ovsdb_ip_addr =
+            properties.get_optional<std::string>(OVSDB_IP_ADDRESS);
+    if (ovsdb_ip_addr) {
+        ovsdbIpAddress = ovsdb_ip_addr.get();
+    } else {
+        ovsdbIpAddress = "127.0.0.1";
+    }
+    boost::optional<unsigned long> ovsdb_port =
+            properties.get_optional<unsigned long>(OVSDB_PORT);
+    if (ovsdb_port) {
+        ovsdbPort = ovsdb_port.get();
+    } else {
+        ovsdbPort = 6640;
+    }
+    boost::optional<std::string> ovsdb_bridge =
+            properties.get_optional<std::string>(OVSDB_BRIDGE);
+    if (ovsdb_bridge) {
+        ovsdbBridge = ovsdb_bridge.get();
+    } else {
+        ovsdbBridge = "br-int";
+    }
+
+    LOG(INFO) << "OVSDB IP address " << ovsdbIpAddress <<
+            ", OVSDB port " << ovsdbPort;
 }
 
 void Agent::applyProperties() {
