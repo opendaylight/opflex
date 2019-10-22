@@ -80,6 +80,36 @@ using boost::uuids::basic_random_generator;
         }
     }
 
+    bool JsonRpc::handleGetPortParam(uint64_t reqId,
+            const rapidjson::Value& payload, string& col, string& param) {
+        if (payload.IsArray()) {
+            try {
+                list<string> ids;
+                if (col.compare("_uuid")) {
+                    ids = { "0","rows","0","_uuid","1" };
+                } else if (col.compare("name")) {
+                    ids = { "0","rows","0","name"};
+                } else {
+                    return false;
+                }
+                 const Value& obj3 =
+                         opflex::engine::internal::getValue(payload, ids);
+                 if (obj3.IsNull()) {
+                     LOG(DEBUG) << "got null";
+                     return false;
+                 }
+                param = obj3.GetString();
+                return true;
+            } catch(const std::exception &e) {
+                LOG(DEBUG) << "caught exception " << e.what();
+                return false;
+            }
+        } else {
+            LOG(DEBUG) << "payload is not an array";
+            return false;
+        }
+    }
+
     void JsonRpc::printMirMap(const map<string, mirror>& mirMap) {
         stringstream ss;
         ss << endl;
@@ -95,10 +125,11 @@ using boost::uuids::basic_random_generator;
             for (string uuid : elem.second.dst_ports) {
                 ss << "      " << uuid << endl;
             }
-            ss << "   output ports" << endl;
-            for (string uuid : elem.second.out_ports) {
+            ss << "   output port" << endl;
+            for (string uuid : elem.second.dst_ports) {
                 ss << "      " << uuid << endl;
             }
+
             LOG(DEBUG) << ss.rdbuf();
         }
     }
@@ -108,6 +139,15 @@ using boost::uuids::basic_random_generator;
         ss << endl;
         for (auto elem : m) {
             ss << elem.first << ":" << elem.second << endl;
+        }
+        LOG(DEBUG) << ss.rdbuf();
+    }
+
+    void JsonRpc::printSet(const set<string>& s) {
+        stringstream ss;
+        ss << endl;
+        for (auto elem : s) {
+            ss << elem << endl;
         }
         LOG(DEBUG) << ss.rdbuf();
     }
@@ -227,6 +267,32 @@ using boost::uuids::basic_random_generator;
         return true;
     }
 
+    void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Value& payload,
+            const string& index) {
+        list<string> ids = {"0","rows","0",index,"0"};
+        Value val =
+                opflex::engine::internal::getValue(payload, ids);
+        if (!val.IsNull() && val.IsString()) {
+            string valStr(val.GetString());
+            ids = {"0", "rows", "0", index, "1"};
+            val = opflex::engine::internal::getValue(payload, ids);
+            if (valStr.compare("uuid") == 0) {
+                uuidSet.emplace(val.GetString());
+            }
+        } else {
+            error = "Error getting port uuid";
+            LOG(DEBUG) << error;
+            return;
+        }
+
+        if (val.IsArray()) {
+            for (Value::ConstValueIterator itr1 = val.Begin();
+                    itr1 != val.End(); itr1++) {
+                uuidSet.emplace((*itr1)[1].GetString());
+            }
+        }
+    }
+
     bool JsonRpc::getBridgePortList(string bridge,
             BrPortResult& res) {
         std::tuple<string, string, string> cond1("name", "==", bridge);
@@ -259,20 +325,232 @@ using boost::uuids::basic_random_generator;
         }
         return false;
     }
-/*
-    string JsonRpc::getBridgeUuidFromMap(string name) {
-        map<string, mirror>::iterator itMap = mirMap.find(name);
-        if( itMap == mirMap.end()) {
-            LOG(WARNING) << "mirror not found";
-            return "";
-        } else {
-            return itMap->second.brUuid;
+
+    bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
+        transData td;
+        td.operation = "select";
+        td.table = "Mirror";
+        uint64_t reqId = getNextId();
+        list<transData> tl;
+        tl.push_back(td);
+
+        if (!sendRequest(tl, reqId)) {
+            LOG(DEBUG) << "Error sending message";
+            return false;
         }
+        if (!checkForResponse()) {
+            LOG(DEBUG) << "Error getting response";
+            return false;
+        }
+        handleMirrorConfig(pResp->reqId, pResp->payload, mir);
+        printSet(mir.src_ports);
+        printSet(mir.dst_ports);
+        printSet(mir.out_ports);
+        // collect all port UUIDs in a set and query
+        // OVSDB for names.
+        set<string> uuids;
+        uuids.insert(mir.src_ports.begin(), mir.src_ports.end());
+        uuids.insert(mir.dst_ports.begin(), mir.dst_ports.end());
+        uuids.insert(mir.out_ports.begin(), mir.out_ports.end());
+
+        td.operation = "select";
+        td.table = "Port";
+        td.columns.emplace("name");
+        td.columns.emplace("_uuid");
+        reqId = getNextId();
+        tl.clear();
+        tl.push_back(td);
+
+        if (!sendRequest(tl, reqId)) {
+            LOG(DEBUG) << "Error sending message";
+            return false;
+        }
+        if (!checkForResponse()) {
+            LOG(DEBUG) << "Error getting response";
+            return false;
+        }
+        unordered_map<string, string> portMap;
+        if (!getPortList(pResp->reqId, pResp->payload, portMap)) {
+            LOG(DEBUG) << "Unable to get port list";
+            return false;
+        }
+        //replace port UUIDs with names in the mirror struct
+        substituteSet(mir.src_ports, portMap);
+        substituteSet(mir.dst_ports, portMap);
+        substituteSet(mir.out_ports, portMap);
+        printSet(mir.src_ports);
+        printSet(mir.dst_ports);
+        printSet(mir.out_ports);
+        return true;
     }
-*/
-    string JsonRpc::getPortUuid(string name) {
+
+        bool JsonRpc::getErspanIfcParams(erspan_ifc& ifc) {
+            // for ERSPAN port get IP address
+            transData td;
+            td.operation = "select";
+            td.table = "Interface";
+            std::tuple<string, string, string> cond1("name", "==", ERSPAN_PORT_NAME);
+            set<std::tuple<string, string, string>> condSet;
+            condSet.emplace(cond1);
+            td.conditions = condSet;
+            td.columns.emplace("options");
+            uint64_t reqId = getNextId();
+            list<transData> tl;
+            tl.push_back(td);
+
+            if (!sendRequest(tl, reqId)) {
+                LOG(DEBUG) << "Error sending message";
+                return false;
+            }
+            if (!checkForResponse()) {
+                LOG(DEBUG) << "Error getting response";
+                return false;
+            }
+
+            unordered_map<string, string> optMap;
+            if (!getErspanOptions(pResp->reqId, pResp->payload, ifc)) {
+                LOG(DEBUG) << "failed to get ERSPAN options";
+                return false;
+            }
+
+            return true;
+    }
+
+    void JsonRpc::substituteSet(set<string>& s, const unordered_map<string, string>& portMap) {
+        set<string> names;
+        for (auto elem = s.begin(); elem != s.end(); elem++) {
+            LOG(DEBUG) << "uuid " << *elem;
+            auto itr  = portMap.find(*elem);
+            if (itr != portMap.end()) {
+                LOG(DEBUG) << "name " << itr->second;
+                names.insert(itr->second);
+            }
+        }
+        s.clear();
+        s.insert(names.begin(), names.end());
+    }
+
+    bool JsonRpc::handleMirrorConfig(uint64_t reqId,
+            const rapidjson::Value& payload, mirror& mir) {
+        set<string> uuids;
+        getUuidsFromVal(uuids, payload, "_uuid");
+        if (uuids.empty()) {
+            LOG(DEBUG) << "no mirror found";
+            return false;
+        }
+        printSet(uuids);
+        mir.uuid = *(uuids.begin());
+        getUuidsFromVal(uuids, payload, "select_src_port");
+        printSet(uuids);
+        mir.src_ports.insert(uuids.begin(), uuids.end());
+        uuids.clear();
+        getUuidsFromVal(uuids, payload, "select_dst_port");
+        printSet(uuids);
+        mir.dst_ports.insert(uuids.begin(), uuids.end());
+        uuids.clear();
+        getUuidsFromVal(uuids, payload, "output_port");
+        printSet(uuids);
+        mir.out_ports.insert(uuids.begin(), uuids.end());
+        return true;
+    }
+
+    bool JsonRpc::getPortList(const uint64_t reqId, const Value& payload,
+            unordered_map<string, string>& portMap) {
+        if (payload.IsArray()) {
+            try {
+                list<string> ids = { "0","rows"};
+                 const Value& arr =
+                         opflex::engine::internal::getValue(payload, ids);
+                 if (arr.IsNull() || !arr.IsArray()) {
+                     LOG(DEBUG) << "expected array";
+                     return false;
+                 }
+                 for (Value::ConstValueIterator itr1 = arr.Begin();
+                         itr1 != arr.End(); itr1++) {
+                     LOG(DEBUG) << (*itr1)["name"].GetString() << ":"
+                     << (*itr1)["_uuid"][1].GetString();
+                     portMap.emplace((*itr1)["_uuid"][1].GetString(),
+                             (*itr1)["name"].GetString());
+                 }
+            } catch(const std::exception &e) {
+                LOG(DEBUG) << "caught exception " << e.what();
+                return false;
+            }
+        } else {
+            LOG(DEBUG) << "payload is not an array";
+            return false;
+        }
+        return true;
+    }
+
+    bool JsonRpc::getErspanOptions(const uint64_t reqId, const Value& payload,
+            erspan_ifc& ifc) {
+        if (!payload.IsArray()) {
+            LOG(DEBUG) << "payload is not an array";
+            return false;
+        }
+        try {
+            list<string> ids = {"0","rows","0","options","1"};
+            const Value& arr =
+                    opflex::engine::internal::getValue(payload, ids);
+            if (arr.IsNull() || !arr.IsArray()) {
+                LOG(DEBUG) << "expected array";
+                return false;
+            }
+            for (Value::ConstValueIterator itr1 = arr.Begin();
+                    itr1 != arr.End(); itr1++) {
+                LOG(DEBUG) << (*itr1)[0].GetString() << ":"
+                << (*itr1)[1].GetString();
+                string val((*itr1)[1].GetString());
+                string index((*itr1)[0].GetString());
+                if (index.compare("erspan_idx") == 0 ||
+                    index.compare("erspan_ver") == 0 ||
+                    index.compare("key")) {
+                        ifc.erspan_ver = stoi(val);
+                } else if (index.compare("remote_ip") == 0) {
+                    ifc.remote_ip = val;
+                }
+            }
+       } catch(const std::exception &e) {
+           LOG(DEBUG) << "caught exception " << e.what();
+           return false;
+       }
+       return true;
+    }
+
+    string JsonRpc::getPortUuid(const string& name) {
         transData td;
         std::tuple<string, string, string> cond1("name", "==", name);
+        set<std::tuple<string, string, string>> condSet;
+        condSet.emplace(cond1);
+        td.conditions = condSet;
+
+        td.operation = "select";
+        td.table = "Port";
+
+        uint64_t reqId = getNextId();
+        list<transData> tl;
+        tl.push_back(td);
+        if (!sendRequest(tl, reqId)) {
+            LOG(DEBUG) << "Error sending message";
+            return "";
+        }
+        if (!checkForResponse()) {
+            LOG(DEBUG) << "Error getting response";
+            return "";
+        }
+        string uuid;
+        if (handleGetPortUuidResp(pResp->reqId, pResp->payload,
+                uuid)) {
+            return uuid;
+        } else {
+            return "";
+        }
+    }
+
+    string JsonRpc::getPortParam(const string& col, const string& match) {
+        transData td;
+        std::tuple<string, string, string> cond1(col, "==", match);
         set<std::tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
         td.conditions = condSet;
@@ -366,7 +644,7 @@ using boost::uuids::basic_random_generator;
         set<string> ports;
         ports.insert(mir.src_ports.begin(), mir.src_ports.end());
         ports.insert(mir.dst_ports.begin(), mir.dst_ports.end());
-        ports.insert(mir.out_ports.begin(), mir.out_ports.end());
+        ports.insert(ERSPAN_PORT_NAME);
         for (set<string>::iterator it = ports.begin();
                 it != ports.end(); ++it) {
             portUuidMap.emplace(*it, "");
@@ -394,7 +672,9 @@ using boost::uuids::basic_random_generator;
 
         // output ports
         rdata.clear();
-        populatePortUuids(mir.out_ports, portUuidMap, rdata);
+        ports.clear();
+        ports.insert(ERSPAN_PORT_NAME);
+        populatePortUuids(ports, portUuidMap, rdata);
         tPtr.reset( new TupleData(rdata, "set"));
         td1.rows.emplace("output_port", tPtr);
 
@@ -450,7 +730,7 @@ using boost::uuids::basic_random_generator;
         return std::regex_replace(uuid_name, hyph, underscore);
     }
 
-    bool JsonRpc::addErspanPort(const string bridge, const erspan_port port) {
+    bool JsonRpc::addErspanPort(const string& bridge, const erspan_ifc& port) {
 
         transData td;
         td.operation = "insert";
@@ -484,10 +764,10 @@ using boost::uuids::basic_random_generator;
         td1.rows.emplace("name", sPtr);
         // options
         rdata.clear();
-        rdata.emplace("erspan_idx", "1");
-        rdata.emplace("erspan_ver", "1");
-        rdata.emplace("key", "1");
-        rdata.emplace("remote_ip", port.ip_address);
+        rdata.emplace("erspan_idx", std::to_string(port.erspan_idx));
+        rdata.emplace("erspan_ver", std::to_string(port.erspan_ver));
+        rdata.emplace("key", std::to_string(port.key));
+        rdata.emplace("remote_ip", port.remote_ip);
         mPtr.reset(new TupleData(rdata, "map"));
         td1.rows.emplace("options", mPtr);
         // type
@@ -538,7 +818,8 @@ using boost::uuids::basic_random_generator;
                 it != ports.end(); ++it) {
             map<string, string>::iterator itmap = uuidMap.find(*it);
             if (itmap != uuidMap.end()) {
-                entries.emplace("uuid",itmap->second);
+                if (!itmap->second.empty())
+                    entries.emplace("uuid",itmap->second);
             }
         }
     }

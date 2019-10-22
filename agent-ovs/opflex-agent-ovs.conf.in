@@ -152,6 +152,13 @@
         "renderer": []
     },
 
+    // OVSDB parameters for client to connect
+    "ovsdb": {
+        "ip-address": "127.0.0.1",
+        "port": "6640",
+        "bridge": "br-int"
+    },
+
     // Renderers enforce policy obtained via OpFlex.
     // Default: no renderers
     "renderers": {

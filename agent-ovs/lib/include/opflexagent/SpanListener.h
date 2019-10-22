@@ -38,7 +38,12 @@ public:
     /**
      * Called when span objects are updated.
      */
-     virtual void spanUpdated(const opflex::modb::URI&) {}
+     virtual void spanUpdated(const opflex::modb::URI&) {};
+
+     /**
+      * delete all span config
+      */
+     virtual void spanDeleted() {};
 
 };
 }
