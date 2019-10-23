@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "24ec63e7_63a5ecb8",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "double semicolon",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "36bf175e_846da7c4",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "indentation is off for this block",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f44560da_a13f733d",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "Shouldn\u0027t you be looking at the return value from getPortList?",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "88222d73_023f41c2",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "pass params by ref",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "61125696_7bcd58ec",
+        "filename": "agent-ovs/ovs/SpanRenderer.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "this call returns a bool. If the return values aren\u0027t going to be used then just return void and log in the function",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c7043e49_2c62ea37",
+        "filename": "agent-ovs/ovs/SpanRenderer.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "no need for an explicit return at the end of a function returning void",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "71024bed_e23facee",
+        "filename": "agent-ovs/ovs/SpanRenderer.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "indentation is off",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "727fe8be_5f67234a",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "const \u0026 for both params",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "86afb1ec_b1420b8b",
+        "filename": "agent-ovs/ovs/include/JsonRpc.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-10-23T06:22:03Z",
+      "side": 1,
+      "message": "const string\u0026 index",
+      "revId": "50afb0749d07e6454f4e328b6ac45194dce6442f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
