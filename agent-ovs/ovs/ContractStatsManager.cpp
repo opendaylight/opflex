@@ -18,8 +18,6 @@
 
 #include "ovs-ofputil.h"
 
-#include <lib/util.h>
-
 extern "C" {
 #include <openvswitch/ofp-msgs.h>
 }
@@ -221,12 +219,11 @@ void ContractStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
                                          const opflex::modb::URI& uri) {
     if (class_id == L24Classifier::CLASS_ID) {
         if (!L24Classifier::resolve(agent->getFramework(),uri)) {
-            std::string classifierName = uri.toString();
-            removeAllCounterObjects(classifierName);
+            removeAllCounterObjects(uri.toString());
         }
     } else if (class_id == EpGroup::CLASS_ID) {
         if (!EpGroup::resolve(agent->getFramework(),uri)) {
-            std::string epgName = uri.toString();
+            const std::string& epgName = uri.toString();
             // iterate trough all keys and objects
             // and check which ones srcEpg or dstEpg is equal to epgName
             Mutator mutator(agent->getFramework(), "policyelement");
@@ -247,7 +244,7 @@ void ContractStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
     } else if (class_id == RoutingDomain::CLASS_ID) {
         if (!RoutingDomain::resolve(agent->getFramework(),uri)) {
             Mutator mutator(agent->getFramework(), "policyelement");
-            std::string rdName = uri.toString();
+            const std::string& rdName = uri.toString();
             if (!dropCounterList_.count(rdName)) return;
             for (size_t i = 0; i < dropCounterList_[rdName]->uidList.size();
                  i++) {

@@ -92,7 +92,7 @@ compute_eff_sub(boost::optional<const network::subnets_t&> sub) {
 typedef std::function<void(FlowBuilder*,
                              boost::asio::ip::address&,
                              uint8_t)> FlowBuilderFunc;
-static bool applyRemoteSub(FlowBuilder& fb, FlowBuilderFunc func,
+static bool applyRemoteSub(FlowBuilder& fb, const FlowBuilderFunc& func,
                            boost::asio::ip::address addr,
                            uint8_t prefixLen, uint16_t ethType) {
     if (addr.is_v4() && ethType != eth::type::ARP && ethType != eth::type::IP)
@@ -106,12 +106,12 @@ static bool applyRemoteSub(FlowBuilder& fb, FlowBuilderFunc func,
 
 typedef std::function<bool(FlowBuilder&, uint16_t)> flow_func;
 static flow_func make_flow_functor(const network::subnet_t& ss,
-                                   FlowBuilderFunc func) {
+                                   const FlowBuilderFunc& func) {
     using std::placeholders::_1;
     using std::placeholders::_2;
 
     boost::system::error_code ec;
-    if (ss.first == "") return NULL;
+    if (ss.first.empty()) return NULL;
     boost::asio::ip::address addr =
         boost::asio::ip::address::from_string(ss.first, ec);
     if (ec) return NULL;

@@ -413,7 +413,7 @@ static bool connTrackIdGarbageCb(EndpointManager& endpointManager,
                                  opflex::ofcore::OFFramework& framework,
                                  const std::string& nmspc,
                                  const std::string& str) {
-    if (str.size() == 0) return false;
+    if (str.empty()) return false;
     if (str[0] == '/') {
         // a URI means a routing domain (in IntFlowManager)
         return IdGenerator::uriIdGarbageCb

@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(chksum) {
     uint32_t plen = htonl(24);
     chksum_accum(chksum, (uint16_t*)&plen, 4);
     uint16_t nxthdr = htons(58);
-    chksum_accum(chksum, (uint16_t*)&nxthdr, 2);
+    chksum_accum(chksum, &nxthdr, 2);
     chksum_accum(chksum, (uint16_t*)(packet+14+40), 24);
     uint16_t result = htons(chksum_finalize(chksum));
 

@@ -8,12 +8,9 @@
 
 #include <string>
 #include <cstdlib>
-#include <cstdio>
 #include <cstring>
 #include <sstream>
 #include <boost/system/error_code.hpp>
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/trim.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/lexical_cast.hpp>
@@ -26,7 +23,6 @@
 #include <modelgbp/gbp/BcastFloodModeEnumT.hpp>
 #include <modelgbp/gbp/AddressResModeEnumT.hpp>
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
-#include <modelgbp/gbp/ConnTrackEnumT.hpp>
 #include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 #include <modelgbp/observer/DropLogModeEnumT.hpp>
 
@@ -59,7 +55,6 @@ using std::shared_ptr;
 using std::unordered_set;
 using std::unordered_map;
 using std::pair;
-using boost::algorithm::trim;
 using boost::optional;
 using boost::asio::deadline_timer;
 using boost::asio::ip::address;

@@ -342,7 +342,7 @@ void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
 }
 
 void PolicyStatsManager::
-handleMessage(int msgType, ofpbuf *msg, table_map_t tableMap) {
+handleMessage(int msgType, ofpbuf *msg, const table_map_t& tableMap) {
     if (msg == (ofpbuf *)NULL) {
         LOG(ERROR) << "Unexpected null message";
         return;
@@ -358,7 +358,7 @@ handleMessage(int msgType, ofpbuf *msg, table_map_t tableMap) {
 
 }
 
-void PolicyStatsManager::handleFlowStats(ofpbuf *msg, table_map_t tableMap) {
+void PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMap) {
 
     struct ofputil_flow_stats* fentry, fstat;
     PolicyCounterMap_t newCountersMap;
@@ -411,7 +411,7 @@ void PolicyStatsManager::handleFlowStats(ofpbuf *msg, table_map_t tableMap) {
 
 }
 
-void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg, table_map_t tableMap) {
+void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg, const table_map_t& tableMap) {
 
     const struct ofp_header *oh = (ofp_header *)msg->data;
     struct ofputil_flow_removed* fentry, flow_removed;

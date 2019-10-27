@@ -34,7 +34,7 @@ namespace std {
 
 template<> struct hash<cookieMatch> {
     size_t operator()(const cookieMatch& key) const noexcept {
-        size_t hashv = match_hash((struct match*)&key.match, 0);
+        size_t hashv = match_hash(&key.match, 0);
         boost::hash_combine(hashv, key.prio);
         boost::hash_combine(hashv, key.cookie);
         return hashv;

@@ -105,7 +105,7 @@ OfpBuf compose_icmp6_router_ad(const uint8_t* srcMac,
             ipv6Subnets.push_back(sn);
     }
 
-    if (ipv6Subnets.size() == 0)
+    if (ipv6Subnets.empty())
         return OfpBuf((struct ofpbuf*)NULL);
 
     uint16_t payloadLen = sizeof(struct nd_router_advert) +
@@ -459,7 +459,7 @@ OfpBuf compose_dhcpv4_reply(uint8_t message_type,
         routerIps.push_back(ip);
         if (routerIps.size() >= MAX_IP) break;
     }
-    if (routerIps.size() > 0)
+    if (!routerIps.empty())
         router_len = 2 + 4*routerIps.size();
 
     vector<address_v4> dnsIps;
@@ -469,7 +469,7 @@ OfpBuf compose_dhcpv4_reply(uint8_t message_type,
         dnsIps.push_back(ip);
         if (dnsIps.size() >= MAX_IP) break;
     }
-    if (dnsIps.size() > 0)
+    if (!dnsIps.empty())
         dns_len = 2 + 4*dnsIps.size();
 
     if (domain && domain.get().size() <= 255)
@@ -485,7 +485,7 @@ OfpBuf compose_dhcpv4_reply(uint8_t message_type,
         if (prefix > 32) prefix = 32;
 
         static_route_len += (prefix / 8) + (prefix % 8 != 0) + 5;
-        routes.push_back(Routev4(dst, prefix, nextHop));
+        routes.emplace_back(Routev4(dst, prefix, nextHop));
         if (routes.size() >= MAX_ROUTE) break;
     }
     if (static_route_len > 0) static_route_len += 2;
@@ -751,7 +751,7 @@ OfpBuf compose_dhcpv6_reply(uint8_t message_type,
         dnsIps.push_back(ip);
         if (dnsIps.size() >= MAX_IP) break;
     }
-    if (dnsIps.size() > 0)
+    if (!dnsIps.empty())
         dns_len = opt_hdr_len + sizeof(struct in6_addr) * dnsIps.size();
 
     stringbuf domain_opt_buf;
@@ -770,7 +770,7 @@ OfpBuf compose_dhcpv6_reply(uint8_t message_type,
                 break;
             }
         }
-        if (!validdomain || dchunks.size() == 0) continue;
+        if (!validdomain || dchunks.empty()) continue;
 
         for (const string& dchunk : dchunks) {
             domain_opt_buf.sputc((uint8_t)dchunk.size());
@@ -784,7 +784,7 @@ OfpBuf compose_dhcpv6_reply(uint8_t message_type,
         domain_list_len = domain_opt_len + opt_hdr_len;
     }
 
-    if (ips.size() > 0 && iaid != NULL) {
+    if (!ips.empty() && iaid != NULL) {
         ia_len = opt_hdr_len + 4 + ips.size() * (24 + opt_hdr_len);
         if (!temporary) ia_len += 8;
     }

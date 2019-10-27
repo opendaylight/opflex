@@ -387,7 +387,7 @@ protected:
     /**
      * handle the OpenFlow message provided using the given table map
      */
-    void handleMessage(int msgType, ofpbuf *msg, table_map_t tableMap);
+    void handleMessage(int msgType, ofpbuf *msg, const table_map_t& tableMap);
 
     /**
      * Handle a drop stats message
@@ -433,8 +433,8 @@ protected:
     volatile bool stopping;
 
 private:
-    void handleFlowStats(ofpbuf *msg, table_map_t tableMap);
-    void handleFlowRemoved(ofpbuf *msg, table_map_t tableMap);
+    void handleFlowStats(ofpbuf *msg, const table_map_t& tableMap);
+    void handleFlowRemoved(ofpbuf *msg, const table_map_t& tableMap);
 
     void updateNewFlowCounters(uint32_t cookie,
                                uint16_t priority,

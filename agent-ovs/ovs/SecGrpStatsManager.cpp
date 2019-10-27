@@ -11,15 +11,12 @@
 
 #include <opflexagent/logging.h>
 #include "AccessFlowManager.h"
-#include "IntFlowManager.h"
 #include <opflexagent/IdGenerator.h>
 #include <opflexagent/Agent.h>
 #include "TableState.h"
 #include "SecGrpStatsManager.h"
 
 #include "ovs-ofputil.h"
-
-#include <lib/util.h>
 
 extern "C" {
 #include <openvswitch/ofp-msgs.h>
@@ -159,8 +156,7 @@ void SecGrpStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
                                        const opflex::modb::URI& uri) {
     if (class_id == L24Classifier::CLASS_ID) {
         if (!L24Classifier::resolve(agent->getFramework(),uri)) {
-            std::string key = uri.toString();
-            removeAllCounterObjects(key);
+            removeAllCounterObjects(uri.toString());
         }
     }
 }
