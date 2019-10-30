@@ -12,8 +12,14 @@
  */
 
 #include <arpa/inet.h>
+#include <uv.h>
+#include <mutex>
 
 #include "opflex/engine/internal/OpflexConnection.h"
+#include "opflex/modb/URI.h"
+#include "opflex/modb/PropertyInfo.h"
+#include "opflex/modb/mo-internal/ObjectInstance.h"
+#include "opflex/gbp/Policy.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXSERVERCONNECTION_H
@@ -74,11 +80,74 @@ public:
     virtual yajr::Peer* getPeer() { return peer; }
     virtual void messagesReady();
 
+    /**
+     * Add URI to resolve uri map
+     *
+     * @param uri uri to be added to map
+     * @lifetime lifetime of the uri
+     */
+    void addUri(const opflex::modb::URI& uri, int64_t lifetime);
+
+    /**
+     * Check if URI exists in resolve uri map
+     *
+     * @returns true if uri exists
+     */
+    bool getUri(const opflex::modb::URI& uri);
+
+    /**
+     * Clear URI from resolve uri map
+     *
+     * @param uri uri to be removed
+     * @returns true if remove successful
+     */
+    bool clearUri(const opflex::modb::URI& uri);
+
+    /**
+     * Add reference to pending update
+     *
+     * @param class_id_t class_id for modb::reference_t
+     * @param uri uri for modb::reference_t
+     * @param op the update operation type
+     */
+    void addPendingUpdate(opflex::modb::class_id_t class_id,
+                          const opflex::modb::URI& uri,
+                          opflex::gbp::PolicyUpdateOp op);
+
+    /**
+     * Send pending updates to each agent
+     */
+    void sendUpdates();
+
 private:
     OpflexListener* listener;
 
     std::string remote_peer;
     void setRemotePeer(int rc, struct sockaddr_storage& name);
+    /**
+     * uri_map is a map of URIs agent is interested in
+     */
+    OF_UNORDERED_MAP<opflex::modb::URI, int64_t> uri_map;
+    std::mutex uri_map_mutex;
+
+    /**
+     * replace and del vectors are used to construct policy update
+     */
+    std::vector<opflex::modb::reference_t> replace;
+    std::vector<opflex::modb::reference_t> merge;
+    std::vector<opflex::modb::reference_t> deleted;
+    std::mutex uri_update_mutex;
+
+    /**
+     * Start a thread for sending policy updates to agent
+     */
+    uv_loop_t server_loop;
+    uv_thread_t server_thread;
+    uv_async_t policy_update_async;
+    uv_async_t cleanup_async;
+    static void server_thread_entry(void *data);
+    static void on_policy_update_async(uv_async_t *handle);
+    static void on_cleanup_async(uv_async_t *handle);
 
     yajr::Peer* peer;
 };

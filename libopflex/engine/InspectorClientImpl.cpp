@@ -218,7 +218,8 @@ static std::string getRefSubj(const modb::ObjectStore& store,
 }
 
 void InspectorClientImpl::remoteObjectUpdated(modb::class_id_t class_id,
-                                              const modb::URI& uri) {
+                                              const modb::URI& uri,
+                                              gbp::PolicyUpdateOp op) {
     if (!followRefs) return;
 
     try {

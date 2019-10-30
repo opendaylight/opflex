@@ -18,6 +18,7 @@
 #include <rapidjson/writer.h>
 
 #include "opflex/modb/internal/ObjectStore.h"
+#include "opflex/gbp/Policy.h"
 #include "opflex/logging/internal/logging.hpp"
 
 #ifndef OPFLEX_ENGINE_MOSERIALIZER_H
@@ -47,7 +48,8 @@ public:
          * A managed object was just written to the store
          */
         virtual void remoteObjectUpdated(modb::class_id_t class_id,
-                                         const modb::URI& uri) = 0;
+                                         const modb::URI& uri,
+                                         gbp::PolicyUpdateOp op) = 0;
     };
 
     /**
@@ -306,10 +308,12 @@ public:
      *
      * @param d the RapidJson document representing the update
      * @param client the store client to use
+     * @param op the Update opcode
      * @param return the number of managed objects updated
      */
     size_t updateMOs(rapidjson::Document& d,
-                     modb::mointernal::StoreClient& client);
+                     modb::mointernal::StoreClient& client,
+                     gbp::PolicyUpdateOp op);
 
     /**
      * Display the managed object database in a human-readable format

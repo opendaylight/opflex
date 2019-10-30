@@ -47,6 +47,7 @@ using rapidjson::Document;
 using rapidjson::SizeType;
 using std::vector;
 using std::string;
+using gbp::PolicyUpdateOp;
 
 MOSerializer::MOSerializer(ObjectStore* store_, Listener* listener_)
     : store(store_), listener(listener_) {
@@ -337,8 +338,10 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
             LOG(DEBUG2) << "Updated object " << uri;
             if (notifs)
                 client.queueNotification(ci.getId(), uri, *notifs);
+            PolicyUpdateOp op = replaceChildren ? PolicyUpdateOp::REPLACE
+                                                : PolicyUpdateOp::ADD;
             if (listener)
-                listener->remoteObjectUpdated(ci.getId(), uri);
+                listener->remoteObjectUpdated(ci.getId(), uri, op);
         }
 
     } catch (const std::invalid_argument& e) {
@@ -412,13 +415,47 @@ size_t MOSerializer::readMOs(FILE* pfile, StoreClient& client) {
     return i;
 }
 
-size_t MOSerializer::updateMOs(rapidjson::Document& d, StoreClient& client) {
+size_t MOSerializer::updateMOs(rapidjson::Document& d, StoreClient& client,
+                               PolicyUpdateOp op) {
     rapidjson::Value::ConstValueIterator moit;
     size_t i = 0;
-    for (moit = d.Begin(); moit != d.End(); ++ moit) {
-        const rapidjson::Value& mo = *moit;
-        deserialize(mo, client, true, NULL);
-        i += 1;
+    bool replaceChildren = (op == PolicyUpdateOp::REPLACE);
+    bool deleteRec = (op == PolicyUpdateOp::DELETE_RECURSIVE);
+    if (replaceChildren || op == PolicyUpdateOp::ADD) {
+        for (moit = d.Begin(); moit != d.End(); ++ moit) {
+            const rapidjson::Value& mo = *moit;
+            deserialize(mo, client, replaceChildren, NULL);
+            i += 1;
+        }
+    } else if (deleteRec || op == PolicyUpdateOp::DELETE) {
+        for (moit = d.Begin(); moit != d.End(); ++ moit) {
+            const rapidjson::Value& mo = *moit;
+
+            if (!mo.IsObject()
+                || !mo.HasMember("uri")
+                || !mo.HasMember("subject")) continue;
+
+            const Value& uriv = mo["uri"];
+            if (!uriv.IsString()) continue;
+            const Value& classv = mo["subject"];
+            if (!classv.IsString()) continue;
+
+            try {
+                URI uri(uriv.GetString());
+                const ClassInfo& ci = store->getClassInfo(classv.GetString());
+                if (client.remove(ci.getId(), uri, deleteRec, NULL) && listener)
+                    listener->remoteObjectUpdated(ci.getId(), uri, op);
+            } catch (const std::invalid_argument& e) {
+                // ignore invalid URIs
+                LOG(DEBUG) << "Could not deserialize invalid object of class "
+                           << classv.GetString();
+            } catch (const std::out_of_range& e) {
+                // ignore unknown class
+                LOG(DEBUG) << "Could not deserialize object of unknown class "
+                           << classv.GetString();
+            }
+            i += 1;
+        }
     }
     return i;
 }

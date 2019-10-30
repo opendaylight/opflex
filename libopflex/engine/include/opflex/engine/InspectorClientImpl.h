@@ -21,6 +21,7 @@
 #include "opflex/engine/internal/InspectorClientHandler.h"
 #include "opflex/engine/internal/InspectorClientConn.h"
 #include "opflex/engine/internal/MOSerializer.h"
+#include "opflex/gbp/Policy.h"
 
 namespace opflex {
 namespace engine {
@@ -94,7 +95,8 @@ public:
     // **********************
 
     virtual void remoteObjectUpdated(modb::class_id_t class_id,
-                                     const modb::URI& uri);
+                                     const modb::URI& uri,
+                                     gbp::PolicyUpdateOp op);
 
 private:
     internal::InspectorClientConn conn;

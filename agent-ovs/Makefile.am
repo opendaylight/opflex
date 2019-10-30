@@ -223,6 +223,9 @@ if RENDERER_OVS
 endif
 
 bin_PROGRAMS=opflex_agent gbp_inspect mcast_daemon mock_server
+if ENABLE_GRPC
+bin_PROGRAMS += gbp_client_stress
+endif
 opflex_agent_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS)
@@ -358,6 +361,17 @@ mock_server_LDADD = \
 	libopflex_agent.la
 if ENABLE_GRPC
 mock_server_LDADD += $(GRPC_LIBS) $(PROTOBUF_LIBS) -lgrpc++_reflection
+endif
+
+if ENABLE_GRPC
+gbp_client_stress_CXXFLAGS = \
+	-I$(top_srcdir)/cmd/test/include $(GRPC_CFLAGS)
+gbp_client_stress_SOURCES = cmd/test/gbp_client_stress.cpp
+nodist_gbp_client_stress_SOURCES = cmd/test/gbp.pb.cc \
+			    cmd/test/gbp.grpc.pb.cc \
+			    cmd/test/gbp.pb.h \
+			    cmd/test/gbp.grpc.pb.h
+gbp_client_stress_LDADD = $(GRPC_LIBS) $(PROTOBUF_LIBS) -lgrpc++_reflection
 endif
 
 policy_repo_stress_CXXFLAGS = \

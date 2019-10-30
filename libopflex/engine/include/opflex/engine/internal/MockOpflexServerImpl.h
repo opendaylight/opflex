@@ -13,6 +13,7 @@
 
 #include "opflex/test/MockOpflexServer.h"
 #include "opflex/modb/internal/ObjectStore.h"
+#include "opflex/gbp/Policy.h"
 #include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -30,7 +31,8 @@ namespace internal {
  * An opflex server we can use for mocking interactions with a real
  * Opflex server
  */
-class MockOpflexServerImpl : public HandlerFactory {
+class MockOpflexServerImpl : public HandlerFactory,
+                             public MOSerializer::Listener {
 public:
     /**
      * Construct a new mock opflex server
@@ -85,8 +87,9 @@ public:
      * Update policy from RapidJson document
      *
      * @param d the RapidJson document to be read in
+     * @param op the Update opcode
      */
-    void updatePolicy(rapidjson::Document& d);
+    void updatePolicy(rapidjson::Document& d, gbp::PolicyUpdateOp op);
 
     /**
      * Get the peers that this server was configured with
@@ -143,6 +146,14 @@ public:
     void policyUpdate(const std::vector<modb::reference_t>& replace,
                       const std::vector<modb::reference_t>& merge_children,
                       const std::vector<modb::reference_t>& del);
+    /**
+     * Dispatch a policy update to a single client
+     */
+    void policyUpdate(OpflexServerConnection* conn,
+                      const std::vector<modb::reference_t>& replace,
+                      const std::vector<modb::reference_t>& merge_children,
+                      const std::vector<modb::reference_t>& del);
+
 
     /**
      * Dispatch an endpoint update to the attached clients
@@ -150,6 +161,13 @@ public:
     void endpointUpdate(const std::vector<modb::reference_t>& replace,
                         const std::vector<modb::reference_t>& del);
 
+    // **********************
+    // MOSerializer::Listener
+    // **********************
+
+    virtual void remoteObjectUpdated(modb::class_id_t class_id,
+                                     const modb::URI& uri,
+                                     gbp::PolicyUpdateOp op);
 private:
     int port;
     uint8_t roles;

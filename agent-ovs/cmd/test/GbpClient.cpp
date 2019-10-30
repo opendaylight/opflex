@@ -21,6 +21,7 @@
 #include "gbp.grpc.pb.h"
 #include "GbpClient.h"
 #include <opflexagent/logging.h>
+#include <opflex/gbp/Policy.h>
 
 namespace opflexagent {
 
@@ -44,6 +45,8 @@ using rapidjson::kArrayType;
 using rapidjson::StringRef;
 using rapidjson::StringBuffer;
 using rapidjson::PrettyWriter;
+
+using opflex::gbp::PolicyUpdateOp;
 
 class GbpClientImpl {
 public:
@@ -144,7 +147,25 @@ private:
                 JsonDocAdd(jsonDoc, object);
             }
             JsonDump(jsonDoc);
-            server_.updatePolicy(jsonDoc);
+            PolicyUpdateOp op;
+            switch (oper.opcode()) {
+            case GBPOperation::ADD:
+                op = PolicyUpdateOp::ADD;
+                break;
+            case GBPOperation::REPLACE:
+                op = PolicyUpdateOp::REPLACE;
+                break;
+            case GBPOperation::DELETE:
+                op = PolicyUpdateOp::DELETE;
+                break;
+            case GBPOperation::DELETE_RECURSIVE:
+                op = PolicyUpdateOp::DELETE_RECURSIVE;
+                break;
+            default:
+                LOG(DEBUG) << "Unknown operation " << oper.opcode();
+                continue;
+            }
+            server_.updatePolicy(jsonDoc, op);
         }
         Status status = reader->Finish();
         if (status.ok()) {

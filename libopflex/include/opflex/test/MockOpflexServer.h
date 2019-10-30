@@ -16,6 +16,7 @@
 #include <rapidjson/document.h>
 
 #include "opflex/modb/ModelMetadata.h"
+#include "opflex/gbp/Policy.h"
 
 #pragma once
 #ifndef OPFLEX_TEST_MOCKOPFLEXSERVER_H
@@ -90,8 +91,9 @@ public:
      * Update policy from RapidJson document
      *
      * @param d the RapidJson document to be read in
+     * @param op the Update opcode
      */
-    void updatePolicy(rapidjson::Document& d);
+    void updatePolicy(rapidjson::Document& d, gbp::PolicyUpdateOp op);
 
     /**
      * Enable SSL for connections to opflex peers.  Call before start()
