@@ -21,6 +21,7 @@
 #include <opflexagent/FSWatcher.h>
 #include <opflexagent/SpanManager.h>
 #include <opflexagent/SnatManager.h>
+#include <opflexagent/NetFlowManager.h>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional.hpp>
@@ -111,6 +112,11 @@ public:
      * Get the span manager object for this agent
      */
     SpanManager& getSpanManager() { return spanManager; }
+
+    /**
+     *  Get the netflow manager object for this agent
+     */
+     NetFlowManager& getNetFlowManager() { return netflowManager; }
 
     /**
      * Get the endpoint manager object for this agent
@@ -348,6 +354,7 @@ private:
     long interfaceInterval;
 
     SpanManager spanManager;
+    NetFlowManager netflowManager;
 
     // ovsdb parameters
     std::string ovsdbIpAddress;
