@@ -258,6 +258,18 @@ bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
                 writer.String(sPtr->data.c_str());
                 LOG(DEBUG) << "string " << sPtr->data;
             }
+            else if (bPtr->type == BaseData::Dtype::INT) {
+                shared_ptr<IntData> sPtr =
+                        dynamic_pointer_cast<IntData>(itr->second);
+                writer.Int64(sPtr->data);
+                LOG(DEBUG) << "int " << sPtr->data;
+            }
+             else if (bPtr->type == BaseData::Dtype::BOOL) {
+                shared_ptr<BoolData> sPtr =
+                        dynamic_pointer_cast<BoolData>(itr->second);
+                writer.Bool(sPtr->data);
+                LOG(DEBUG) << "bool " << sPtr->data;
+            }
         }
         writer.EndObject();
     }

@@ -40,7 +40,7 @@ public:
     /**
      * enum for row data type
      */
-    enum class Dtype {STRING, TUPLE};
+    enum class Dtype {STRING, TUPLE, INT, BOOL};
     /**
      * data type
      */
@@ -103,7 +103,43 @@ public:
         return ss.str();
     }
 };
+/**
+ * class for representing JSON/RPC int data
+ */
+class IntData : public BaseData {
+public:
+     /**
+     * constructor takes a string
+     */
+    IntData(const int& s) : data(s) { type = Dtype::INT;}
+    /**
+     * data holder
+     */
+    int data;
+    /**
+     * string representation of object
+     */
+    string toString() { return std::to_string(data);}
+};
 
+/**
+ * class for representing JSON/RPC bool data
+ */
+class BoolData : public BaseData {
+public:
+    /**
+     * constructor takes a string
+     */
+    BoolData(const bool& s) : data(s) { type = Dtype::BOOL;}
+    /**
+     * data holder
+     */
+    bool data;
+    /**
+     * string representation of object
+     */
+    string toString() {  return std::to_string(data);}
+};
 /**
  * struct representing row data for JSON/RPC requests
  */
