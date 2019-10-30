@@ -395,4 +395,3 @@ std::shared_ptr<RpcConnection> createConnection(Transaction& trans) {
 }
 }
 }
-
