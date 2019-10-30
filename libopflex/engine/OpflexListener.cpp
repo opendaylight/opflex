@@ -21,6 +21,7 @@
 #include <boost/scoped_ptr.hpp>
 
 #include "opflex/engine/internal/OpflexListener.h"
+#include "opflex/engine/internal/MockOpflexServerImpl.h"
 #include "opflex/engine/internal/OpflexPool.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "RecursiveLockGuard.h"
@@ -183,6 +184,30 @@ void OpflexListener::sendToAll(OpflexMessage* message) {
     BOOST_FOREACH(OpflexServerConnection* conn, conns) {
         // this is inefficient but we only use this for testing
         conn->sendMessage(message->clone());
+    }
+}
+
+void OpflexListener::sendToOne(OpflexServerConnection* conn, OpflexMessage* message) {
+    boost::scoped_ptr<OpflexMessage> messagep(message);
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+    if (!active) return;
+    conn->sendMessage(message->clone());
+}
+
+void OpflexListener::addPendingUpdate(opflex::modb::class_id_t class_id,
+                                      const opflex::modb::URI& uri,
+                                      bool del) {
+    if (!active) return;
+    BOOST_FOREACH(OpflexServerConnection* conn, conns) {
+        if (conn->getUri(uri))
+            conn->addPendingUpdate(class_id, uri, del);
+    }
+}
+
+void OpflexListener::sendUpdates() {
+    if (!active) return;
+    BOOST_FOREACH(OpflexServerConnection* conn, conns) {
+        conn->sendUpdates();
     }
 }
 
