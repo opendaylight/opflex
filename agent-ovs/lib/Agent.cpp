@@ -63,6 +63,7 @@ Agent::Agent(OFFramework& framework_)
       endpointManager(framework, policyManager), extraConfigManager(framework),
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
+      netflowManager(framework,agent_io),
       spanManager(framework, agent_io){
     std::random_device rng;
     std::mt19937 urng(rng());
@@ -505,7 +506,7 @@ void Agent::start() {
     endpointManager.start();
     notifServer.start();
     spanManager.start();
-
+    netflowManager.start();
     for (auto& r : renderers) {
         r.second->start();
     }
