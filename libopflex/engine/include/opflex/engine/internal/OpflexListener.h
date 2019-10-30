@@ -33,6 +33,7 @@ namespace engine {
 namespace internal {
 
 class OpflexPool;
+class MockOpflexServerImpl;
 
 /**
  * Represents a listen socket that will spawn OpflexServerConnections
@@ -121,6 +122,39 @@ public:
      * by the listener
      */
     void sendToAll(OpflexMessage* message);
+
+    /**
+     * Send a given message to a single peer.
+     *
+     * @param conn the peer to send message to
+     * @param message the message to write.  The memory will be owned
+     * by the listener
+     */
+    void sendToOne(OpflexServerConnection* conn, OpflexMessage* message);
+
+    /**
+     * Add pending update for conn
+     *
+     * @param class_id class_id for modb::reference_t
+     * @param uri uri for modb::reference_t
+     * @param del true if reference_t should be deleted
+     *
+     */
+    void addPendingUpdate(modb::class_id_t class_id,
+                          const modb::URI& uri,
+                          bool del);
+
+    /**
+     * Send pending updates to each agent
+     */
+    void sendUpdates();
+
+    /**
+     * get handlerFactory
+     *
+     * @returns pointer to handlerFactory
+     */
+    HandlerFactory *getHandlerFactory() { return &handlerFactory; }
 
     /**
      * A predicate for use with applyConnPred

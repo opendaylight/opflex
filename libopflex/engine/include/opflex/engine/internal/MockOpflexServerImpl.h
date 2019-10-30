@@ -30,7 +30,8 @@ namespace internal {
  * An opflex server we can use for mocking interactions with a real
  * Opflex server
  */
-class MockOpflexServerImpl : public HandlerFactory {
+class MockOpflexServerImpl : public HandlerFactory,
+                             public MOSerializer::Listener {
 public:
     /**
      * Construct a new mock opflex server
@@ -143,6 +144,14 @@ public:
     void policyUpdate(const std::vector<modb::reference_t>& replace,
                       const std::vector<modb::reference_t>& merge_children,
                       const std::vector<modb::reference_t>& del);
+    /**
+     * Dispatch a policy update to a single client
+     */
+    void policyUpdate(OpflexServerConnection* conn,
+                      const std::vector<modb::reference_t>& replace,
+                      const std::vector<modb::reference_t>& merge_children,
+                      const std::vector<modb::reference_t>& del);
+
 
     /**
      * Dispatch an endpoint update to the attached clients
@@ -150,6 +159,12 @@ public:
     void endpointUpdate(const std::vector<modb::reference_t>& replace,
                         const std::vector<modb::reference_t>& del);
 
+    // **********************
+    // MOSerializer::Listener
+    // **********************
+
+    virtual void remoteObjectUpdated(modb::class_id_t class_id,
+                                     const modb::URI& uri);
 private:
     int port;
     uint8_t roles;

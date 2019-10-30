@@ -264,7 +264,9 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
 
 void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                                                const Value& payload) {
-    LOG(DEBUG) << "Got policy_resolve req";
+    OpflexServerConnection* conn = dynamic_cast<OpflexServerConnection*>(getConnection());
+
+    LOG(DEBUG) << "Got policy_resolve req from " << conn->getRemotePeer();
 
     bool found = true;
     Value::ConstValueIterator it;
@@ -301,10 +303,12 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
             return;
         }
 
+        uint64_t lifetime = opflex::modb::URI::DEFAULT_LIFETIME;
+        modb::URI puri(puriv.GetString());
+        conn->addUri(puri, lifetime);
         try {
             const modb::ClassInfo& ci =
                 server->getStore().getClassInfo(subjectv.GetString());
-            modb::URI puri(puriv.GetString());
             modb::reference_t mo(ci.getId(), puri);
 
             if (resolutions.find(mo) == resolutions.end())
@@ -331,7 +335,9 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
 
 void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
                                                  const rapidjson::Value& payload) {
-    LOG(DEBUG) << "Got policy_unresolve req";
+    OpflexServerConnection* conn = dynamic_cast<OpflexServerConnection*>(getConnection());
+
+    LOG(DEBUG) << "Got policy_unresolve req from " << conn->getRemotePeer();
     Value::ConstValueIterator it;
     for (it = payload.Begin(); it != payload.End(); ++it) {
         if (!it->IsObject()) {
@@ -370,6 +376,7 @@ void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             resolutions.erase(std::make_pair(ci.getId(), puri));
+            conn->clearUri(puri);
         } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
                          std::string("Unknown subject: ") +

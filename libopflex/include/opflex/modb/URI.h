@@ -83,6 +83,11 @@ public:
      */
     static const URI ROOT;
 
+    /**
+     * Default lifetime in seconds
+     */
+    static const uint64_t DEFAULT_LIFETIME = 3600;
+
 private:
     OF_SHARED_PTR<const std::string> uri;
     size_t hashv;

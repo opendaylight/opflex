@@ -21,6 +21,7 @@
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/logging/internal/logging.hpp"
+#include "opflex/engine/internal/MockOpflexServerImpl.h"
 #include "LockGuard.h"
 
 namespace opflex {
@@ -33,11 +34,29 @@ using yajr::transport::ZeroCopyOpenSSL;
 OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
     : OpflexConnection(listener_->handlerFactory),
       listener(listener_), peer(NULL) {
+      int rc;
 
+      uv_loop_init(&server_loop);
+      policy_update_async.data = this;
+      uv_async_init(&server_loop, &policy_update_async, on_policy_update_async);
+      cleanup_async.data = this;
+      uv_async_init(&server_loop, &cleanup_async, on_cleanup_async);
+      rc = uv_thread_create(&server_thread, server_thread_entry, this);
+      if (rc < 0) {
+          throw std::runtime_error(string("Could not create policy update thread: ") +
+                                   uv_strerror(rc));
+      }
 }
 
 OpflexServerConnection::~OpflexServerConnection() {
+      uv_async_send(&cleanup_async);
+      uv_thread_join(&server_thread);
+      uv_loop_close(&server_loop);
+}
 
+void OpflexServerConnection::server_thread_entry(void *data) {
+    OpflexServerConnection* conn = (OpflexServerConnection*)data;
+    uv_run(&conn->server_loop, UV_RUN_DEFAULT);
 }
 
 void OpflexServerConnection::setRemotePeer(int rc, struct sockaddr_storage& name) {
@@ -51,12 +70,16 @@ void OpflexServerConnection::setRemotePeer(int rc, struct sockaddr_storage& name
         remote_peer = ((struct sockaddr_un*)&name)->sun_path;
     } else {
         char addrbuffer[INET6_ADDRSTRLEN];
+        uint16_t port;
         inet_ntop(name.ss_family,
                   name.ss_family == AF_INET
                   ? (void *) &(((struct sockaddr_in*)&name)->sin_addr)
                   : (void *) &(((struct sockaddr_in6*)&name)->sin6_addr),
                   addrbuffer, INET6_ADDRSTRLEN);
-        remote_peer = addrbuffer;
+        port = name.ss_family == AF_INET
+               ? ntohs(((struct sockaddr_in*)&name)->sin_port)
+               : ntohs(((struct sockaddr_in6*)&name)->sin6_port);
+        remote_peer = std::string(addrbuffer) + ":" + std::to_string(port);
     }
 
     LOG(INFO) << "[" << getRemotePeer() << "] "
@@ -131,6 +154,68 @@ void OpflexServerConnection::disconnect() {
 
 void OpflexServerConnection::messagesReady() {
     listener->messagesReady();
+}
+
+void OpflexServerConnection::addUri(opflex::modb::URI& uri,
+                                    uint64_t lifetime) {
+    std::lock_guard<std::mutex> lock(uri_map_mutex);
+
+    uri_map[uri] = lifetime;
+}
+
+bool OpflexServerConnection::getUri(const opflex::modb::URI& uri) {
+    std::lock_guard<std::mutex> lock(uri_map_mutex);
+
+    auto it = uri_map.find(uri);
+    return (it != uri_map.end());
+}
+
+bool OpflexServerConnection::clearUri(opflex::modb::URI& uri) {
+    std::lock_guard<std::mutex> lock(uri_map_mutex);
+
+    auto it = uri_map.find(uri);
+    if (it == uri_map.end()) return false;
+
+    uri_map.erase(it);
+    return true;
+}
+
+void OpflexServerConnection::addPendingUpdate(opflex::modb::class_id_t class_id,
+                                              const opflex::modb::URI& uri,
+                                              bool del) {
+    std::lock_guard<std::mutex> lock(uri_update_mutex);
+    if (del)
+        deleted.push_back(std::make_pair(class_id, uri));
+    else
+        replace.push_back(std::make_pair(class_id, uri));
+}
+
+void OpflexServerConnection::sendUpdates() {
+    std::lock_guard<std::mutex> lock(uri_update_mutex);
+    uv_async_send(&policy_update_async);
+}
+
+void OpflexServerConnection::on_policy_update_async(uv_async_t* handle) {
+    OpflexServerConnection* conn = (OpflexServerConnection *)handle->data;
+    MockOpflexServerImpl* server = dynamic_cast<MockOpflexServerImpl*>
+        (conn->listener->getHandlerFactory());
+    std::lock_guard<std::mutex> lock(conn->uri_update_mutex);
+
+    if (conn->replace.empty() && conn->merge.empty() && conn->deleted.empty())
+        return;
+
+    server->policyUpdate(conn, conn->replace, conn->merge, conn->deleted);
+
+    conn->replace.clear();
+    conn->merge.clear();
+    conn->deleted.clear();
+}
+
+void OpflexServerConnection::on_cleanup_async(uv_async_t* handle) {
+    OpflexServerConnection* conn = (OpflexServerConnection *)handle->data;
+
+    uv_close((uv_handle_t*)&conn->policy_update_async, NULL);
+    uv_close((uv_handle_t*)handle, NULL);
 }
 
 } /* namespace internal */

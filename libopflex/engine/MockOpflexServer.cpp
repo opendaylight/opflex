@@ -87,7 +87,7 @@ MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
     : port(port_), roles(roles_), peers(peers_),
       proxies(proxies_),
       listener(*this, port_, "name", "domain"),
-      db(threadManager), serializer(&db) {
+      db(threadManager), serializer(&db, this) {
     db.init(md);
     client = &db.getStoreClient("_SYSTEM_");
 }
@@ -132,6 +132,7 @@ void MockOpflexServerImpl::updatePolicy(rapidjson::Document& d) {
     size_t objs = serializer.updateMOs(d, *getSystemClient());
     LOG(INFO) << "Update " << objs
               << " managed objects from GRPC update";
+    listener.sendUpdates();
 }
 
 OpflexHandler* MockOpflexServerImpl::newHandler(OpflexConnection* conn) {
@@ -222,6 +223,15 @@ void MockOpflexServerImpl::policyUpdate(const std::vector<modb::reference_t>& re
     listener.sendToAll(req);
 }
 
+void MockOpflexServerImpl::policyUpdate(OpflexServerConnection* conn,
+                                        const std::vector<modb::reference_t>& replace,
+                                        const std::vector<modb::reference_t>& merge_children,
+                                        const std::vector<modb::reference_t>& del) {
+    PolicyUpdateReq* req =
+        new PolicyUpdateReq(*this, replace, merge_children, del);
+    listener.sendToOne(conn, req);
+}
+
 class EndpointUpdateReq : public OpflexMessage {
 public:
     EndpointUpdateReq(MockOpflexServerImpl& server_,
@@ -290,6 +300,11 @@ void MockOpflexServerImpl::endpointUpdate(const std::vector<modb::reference_t>& 
                                           const std::vector<modb::reference_t>& del) {
     EndpointUpdateReq* req = new EndpointUpdateReq(*this, replace, del);
     listener.sendToAll(req);
+}
+
+void MockOpflexServerImpl::remoteObjectUpdated(modb::class_id_t class_id,
+                                               const modb::URI& uri) {
+    listener.addPendingUpdate(class_id, uri, false);
 }
 
 } /* namespace internal */
