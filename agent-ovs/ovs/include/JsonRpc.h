@@ -218,6 +218,33 @@ public:
      */
     void addMirrorData(string name, mirror mir);
 
+     /**
+     * createNetFlow
+     * @param[in] brUuid uuid of the bridge to add the netflow to.
+     * @param[in] target target of netflow
+     * @param[in] timeout timeout of netflow
+     * @param[in] addidtointerface add id to interface of netflow
+     * @return bool true if created successfully, false otherwise.
+    */
+    bool createNetFlow(const string& brUuid, const string& target, const int& timeout, bool addidtointerface = false);
+
+     /**
+     * deletes netflow on OVSDB bridge.
+     * @param[in] brName name of bridge that the netflow is associated with
+     * @return true if success, false otherwise.
+    */
+    bool deleteNetFlow(const string& brName);
+
+    /**
+     * process bridge netflow lst response
+     * @param[in] reqId request ID
+     * @param[in] payload body of the response
+     * @param[out] uuid of the mirror
+     * @return true id success, false otherwise
+    */
+    bool handleCreateNetFlowResp(uint64_t reqId, const rapidjson::Value& payload,
+            string& uuid);
+
     /**
      * process port uuid request response
      * @param[in] reqId request ID

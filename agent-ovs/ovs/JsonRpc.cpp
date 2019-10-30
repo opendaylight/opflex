@@ -57,6 +57,113 @@ using boost::uuids::basic_random_generator;
         pConn->ready.notify_all();
     }
 
+     bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const int& timeout, bool addidtointerface ) {
+        transData td1;
+        td1.operation = "insert";
+        td1.table = "NetFlow";
+        set<shared_ptr<BaseData>> pSet;
+
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+        pSet.clear();
+
+        shared_ptr<TupleData<string>> sTarget = make_shared<TupleData<string>>("", target);
+        pSet.emplace(sTarget);
+        pTdSet.reset(new TupleDataSet(pSet));
+        td1.rows.emplace("target", pTdSet);
+
+        shared_ptr<TupleData<int>> iTimeout = make_shared<TupleData<int>>("", timeout);
+        pSet.emplace(iTimeout);
+        pTdSet.reset(new TupleDataSet(pSet));
+        td1.rows.emplace("active_timeout", pTdSet);
+
+        shared_ptr<TupleData<bool>> bAddIdToInterface = make_shared<TupleData<bool>>("", addidtointerface);
+        pSet.emplace(bAddIdToInterface);
+        pTdSet.reset(new TupleDataSet(pSet));
+        td1.rows.emplace("add_id_to_interface", pTdSet);
+
+        uint64_t reqId = getNextId();
+        list<transData> tl;
+        tl.push_back(td1);
+        // msg2
+        string uuid_name = generateTempUuid();
+        td1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
+
+        std::tuple<string, string, string> cond1("_uuid", "==", brUuid);
+        set<std::tuple<string, string, string>> condSet;
+        condSet.emplace(cond1);
+
+        transData td2;
+        pSet.clear();
+        td2.conditions = condSet;
+        td2.operation = "update";
+        td2.table = "Bridge";
+
+        shared_ptr<TupleData<string>> uuidname = make_shared<TupleData<string>>("named-uuid", uuid_name);
+        pSet.emplace(uuidname);
+        pTdSet.reset(new TupleDataSet(pSet));
+        td2.rows.emplace("netflow", pTdSet);
+
+        tl.push_back(td2);
+
+        if (!sendRequest(tl, reqId)) {
+            LOG(DEBUG) << "Error sending message";
+            return false;
+        }
+        if (!checkForResponse()) {
+            LOG(DEBUG) << "Error getting response";
+            return false;
+        }
+        string uuid;
+        if (handleCreateNetFlowResp(pResp->reqId, pResp->payload, uuid)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+  bool JsonRpc::handleCreateNetFlowResp(uint64_t reqId,
+            const rapidjson::Value& payload, string& uuid) {
+        list<string> ids = {"0","uuid","1"};
+        Value val = opflex::engine::internal::getValue(payload, ids);
+        if (!val.IsNull() && val.IsString()) {
+            LOG(DEBUG) << "netflow uuid " << val.GetString();
+            uuid = val.GetString();
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    bool JsonRpc::deleteNetFlow(const string& brName) {
+
+        tuple<string, string, string> cond1("name", "==", brName);
+        set<tuple<string, string, string>> condSet;
+        condSet.emplace(cond1);
+
+        transData td;
+        td.conditions = condSet;
+        td.operation = "update";
+        td.table = "Bridge";
+
+        set<shared_ptr<BaseData>> pSet;
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+        pTdSet->label = "set";
+        td.rows.emplace("netflow", pTdSet);
+
+        uint64_t reqId = getNextId();
+
+        list<transData> tl = {td};
+
+        if (!sendRequest(tl, reqId))
+        {
+            LOG(DEBUG) << "Error sending message";
+            return false;
+            }
+            if (!checkForResponse()) {
+                LOG(DEBUG) << "Error getting response";
+                return false;
+            }
+            return true;
+    }
     bool JsonRpc::handleGetPortUuidResp(uint64_t reqId,
             const rapidjson::Value& payload, string& uuid) {
         if (payload.IsArray()) {
