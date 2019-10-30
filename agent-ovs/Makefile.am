@@ -82,6 +82,9 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/SpanSessionState.h \
 	lib/include/opflexagent/SpanListener.h \
 	lib/include/opflexagent/SpanManager.h \
+	lib/include/opflexagent/ExporterConfigState.h \
+	lib/include/opflexagent/NetFlowListener.h \
+	lib/include/opflexagent/NetFlowManager.h \
 	lib/include/opflexagent/FSSnatSource.h \
 	lib/include/opflexagent/SnatManager.h \
 	lib/include/opflexagent/Snat.h \
@@ -121,6 +124,8 @@ noinst_HEADERS = \
 	ovs/include/dhcp.h \
 	ovs/include/arp.h \
 	ovs/include/eth.h \
+	ovs/include/NetFlowRenderer.h \
+	ovs/include/NetFlowJsonRpc.h \
 	ovs/include/SpanRenderer.h \
 	ovs/include/JsonRpc.h
 
@@ -158,6 +163,7 @@ libopflex_agent_la_SOURCES = \
 	lib/Network.cpp \
 	lib/SimStats.cpp \
 	lib/SpanManager.cpp \
+	lib/NetFlowManager.cpp \
 	lib/FSSnatSource.cpp \
 	lib/Snat.cpp \
 	lib/SnatManager.cpp \
@@ -197,6 +203,8 @@ if RENDERER_OVS
 	ovs/FlowUtils.cpp \
 	ovs/FlowConstants.cpp \
 	ovs/ovs-shim.c \
+	ovs/NetFlowRenderer.cpp \
+	ovs/NetFlowJsonRpc.cpp \
 	ovs/SpanRenderer.cpp \
 	ovs/JsonRpc.cpp
   librenderer_openvswitch_la_CFLAGS = \
