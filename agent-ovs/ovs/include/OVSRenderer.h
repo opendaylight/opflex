@@ -23,6 +23,7 @@
 #include "PacketInHandler.h"
 #include "CtZoneManager.h"
 #include "SpanRenderer.h"
+#include "NetFlowRenderer.h"
 
 #pragma once
 #ifndef OPFLEXAGENT_OVSRENDERER_H
@@ -112,6 +113,7 @@ private:
     long secGroupStatsInterval;
 
     SpanRenderer spanRenderer;
+    NetFlowRenderer netflowRenderer;
 
     bool started;
     std::string dropLogIntIface, dropLogAccessIface, dropLogRemoteIp;

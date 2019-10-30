@@ -59,7 +59,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       ifaceStatsEnabled(true), ifaceStatsInterval(0),
       contractStatsEnabled(true), contractStatsInterval(0),
       secGroupStatsEnabled(true), secGroupStatsInterval(0),
-      spanRenderer(agent_),
+      spanRenderer(agent_),netflowRenderer(agent_),
       started(false) {
 
 }
@@ -141,6 +141,7 @@ void OVSRenderer::start() {
     intFlowManager.start();
     intFlowManager.registerModbListeners();
     spanRenderer.start();
+    netflowRenderer.start();
 
     if (accessBridgeName != "") {
         accessFlowManager.start();
