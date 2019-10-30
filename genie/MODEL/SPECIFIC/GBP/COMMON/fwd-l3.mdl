@@ -31,10 +31,19 @@ module[gbp]
         const[name=enabled; value=1]
     }
 
+    type[EnforcementPreferenceType; super=scalar/Enum8]
+    {
+        const[name=enforced; value=0]
+        const[name=unenforced; value=1]
+    }
+
     class[RoutingDomain;
           super=gbp/L3BehavioralGroup;
           concrete]
     {
+        # This is the enforcement preference type - unenforced or enforced
+        member[enforcementPreference; type=gbp/EnforcementPreferenceType]
+
         contained
         {
             parent[class=policy/Space]
