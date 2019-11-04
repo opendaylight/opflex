@@ -1,0 +1,242 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bbbf3aeb_eaefcec6",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Add mo.HasMember checks and logs for \"subject\" and \"uri\"",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "95b3f4a2_5a9d7141",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Should at least log if name is not specified",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "42bb1380_df806576",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Change to use normal opflex logging with levels",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e88d07e6_167a18cb",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Why do you need to wait between messages?",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "13b96be1_3ac79c3c",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Change to use normal opflex logging with levels",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6da0beac_5c0556cd",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Change to use normal opflex logging with levels",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "55dd2ad8_c80abc20",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "I don\u0027t think InsecureServerCredentials should be the default.\nWe could add a config param to use it if needed for debugging.",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ab1fa63_fd23a9b2",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Change to use normal opflex logging with levels",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "798565d7_6ecf5cba",
+        "filename": "libopflex/engine/MockServerHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "ok for now but we\u0027ll either have to remove this or lower the level later when testing with many agents",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4304d115_645136b5",
+        "filename": "libopflex/engine/MockServerHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "This has to come from the \"prr\" param of the policy_resolve req. If not provided you should send an error response to the agent",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8b4d9bd3_57040e08",
+        "filename": "libopflex/engine/OpflexServerConnection.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Add const to uri param",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ae6457f7_9e5c0cf6",
+        "filename": "libopflex/engine/OpflexServerConnection.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "Add const to param",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "56591778_5c761760",
+        "filename": "libopflex/engine/OpflexServerConnection.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "couldn\u0027t you just \u0027return 0 !\u003d uri_map.erase(uri);\u0027",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a726dc18_af866761",
+        "filename": "libopflex/include/opflex/modb/URI.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-04T20:44:23Z",
+      "side": 1,
+      "message": "This doesn\u0027t seem like the right place for this constant...I believe it\u0027s related to the default expiry time of requests from agents\n\nWe have a default lifetime (PRR) elsewhere already and it can be overridden in conf files. Agents must provide this value on every policy resolve so no default is needed on the server side",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
