@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8b02fe08_3ed9823c",
+        "filename": "agent-ovs/cmd/test/GbpServer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-04T22:32:22Z",
+      "side": 1,
+      "message": "yeah i am checking for subject and uri. Also i renamed this file to gbp_client_stress.cpp since this is simply a way for me to stress test the mock server and not a part of the actual product. Since it has no agent dependencies I am not using agent logging here. At some point I plan to make these checks a part of make check and will figure out how to integrate it with the rest of the tests. For now its just a standalone binary. \n\nAnd yeah we need to support secure grpc everywhere from HostAgent, GbpClient before we add it to the test code.",
+      "parentUuid": "bbbf3aeb_eaefcec6",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "95b3f4a2_5a9d7141",
         "filename": "agent-ovs/cmd/test/GbpServer.cpp",
         "patchSetId": 1
@@ -155,6 +173,24 @@
     },
     {
       "key": {
+        "uuid": "c0090ec9_6628044a",
+        "filename": "libopflex/engine/MockServerHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-04T22:32:22Z",
+      "side": 1,
+      "message": "yeah will remove it later.",
+      "parentUuid": "798565d7_6ecf5cba",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4304d115_645136b5",
         "filename": "libopflex/engine/MockServerHandler.cpp",
         "patchSetId": 1
@@ -166,6 +202,24 @@
       "writtenOn": "2019-11-04T20:44:23Z",
       "side": 1,
       "message": "This has to come from the \"prr\" param of the policy_resolve req. If not provided you should send an error response to the agent",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "44f33e34_578e0237",
+        "filename": "libopflex/engine/MockServerHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-04T22:32:22Z",
+      "side": 1,
+      "message": "done.",
+      "parentUuid": "4304d115_645136b5",
       "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
@@ -189,6 +243,24 @@
     },
     {
       "key": {
+        "uuid": "d3af2c14_783c589f",
+        "filename": "libopflex/engine/OpflexServerConnection.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-04T22:32:22Z",
+      "side": 1,
+      "message": "Done and changed lifetime to int64_t",
+      "parentUuid": "8b4d9bd3_57040e08",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ae6457f7_9e5c0cf6",
         "filename": "libopflex/engine/OpflexServerConnection.cpp",
         "patchSetId": 1
@@ -200,6 +272,24 @@
       "writtenOn": "2019-11-04T20:44:23Z",
       "side": 1,
       "message": "Add const to param",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2389774f_e1857d52",
+        "filename": "libopflex/engine/OpflexServerConnection.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-04T22:32:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ae6457f7_9e5c0cf6",
       "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
@@ -223,6 +313,24 @@
     },
     {
       "key": {
+        "uuid": "de327aed_a00c8c3d",
+        "filename": "libopflex/engine/OpflexServerConnection.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-04T22:32:22Z",
+      "side": 1,
+      "message": "yeah.",
+      "parentUuid": "56591778_5c761760",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a726dc18_af866761",
         "filename": "libopflex/include/opflex/modb/URI.h",
         "patchSetId": 1
@@ -234,6 +342,24 @@
       "writtenOn": "2019-11-04T20:44:23Z",
       "side": 1,
       "message": "This doesn\u0027t seem like the right place for this constant...I believe it\u0027s related to the default expiry time of requests from agents\n\nWe have a default lifetime (PRR) elsewhere already and it can be overridden in conf files. Agents must provide this value on every policy resolve so no default is needed on the server side",
+      "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d7f8aa89_20094c64",
+        "filename": "libopflex/include/opflex/modb/URI.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-04T22:32:22Z",
+      "side": 1,
+      "message": "correct. i removed it from here and always getting it from agent.",
+      "parentUuid": "a726dc18_af866761",
       "revId": "86cb42340374b35771cdcc6e6791013737d1d868",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
