@@ -211,6 +211,7 @@ public:
 private:
 
     boost::optional<shared_ptr<SrcMember>> findSrcMem(shared_ptr<LocalEp> lEp);
+    const boost::optional<URI> getSession(shared_ptr<LocalEp> lEp);
 
     opflex::ofcore::OFFramework& framework;
     /**

@@ -280,6 +280,7 @@ agent_test_SOURCES = \
 	lib/test/KeyedRateLimiter_test.cpp \
 	lib/test/NotifServer_test.cpp \
 	lib/test/Network_test.cpp \
+	lib/test/SpanManager_test.cpp \
 	cmd/test/agent_test.cpp
 
 agent_test_LDADD = \
