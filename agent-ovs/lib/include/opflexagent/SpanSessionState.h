@@ -177,7 +177,46 @@ using namespace opflex::modb;
     */
     class SessionState {
     public:
-
+        /**
+         * comparison criteria for adding to srcEndPoint set
+         */
+        struct SrcCompare {
+        public:
+            /**
+             * compare the port strings of the source end points
+             * @param src1 shared pointer to source end point 1
+             * @param src2 shared pointer to source end point 2
+             * @return bool true if comparison passes.
+             */
+            bool operator()(std::shared_ptr<SourceEndPoint> src1,
+                    std::shared_ptr<SourceEndPoint> src2) const {
+                if (src1->getPort().compare(src2->getPort()) == 0)
+                    return true;
+                else
+                    return false;
+            }
+        };
+        /**
+         * hash function fpr srcEndPoint set
+         */
+        struct SrcHash {
+        public:
+            /**
+             * hashes the concatenation of port and direction
+             * @param src shared pointer to source end point
+             * @return size_t
+             */
+            size_t operator()(shared_ptr<SourceEndPoint> src) const {
+                string strHash(src->getPort());
+                strHash += src->getDirection();
+                return std::hash<string>()(strHash);
+            }
+        };
+        /**
+         * typedef for source end point set
+         */
+        typedef unordered_set<shared_ptr<SourceEndPoint>, SrcHash, SrcCompare>
+            srcEpSet;
         /**
          * constructor that takes a SessionState as reference.
          * @param s reference to a SessionState object
@@ -217,8 +256,7 @@ using namespace opflex::modb;
          * get the source end point set reference
          * @return a reference to the source end point set
          */
-        const unordered_set<shared_ptr<SourceEndPoint>>&
-             getSrcEndPointSet() const;
+        const srcEpSet& getSrcEndPointSet();
 
         /**
          * gets the destination end point map reference
@@ -238,7 +276,8 @@ using namespace opflex::modb;
         string name;
         // mapping LocalEp to SourceEndPoint
         // unordered_map<URI, shared_ptr<SourceEndPoint>> srcEndPoints;
-        unordered_set<shared_ptr<SourceEndPoint>> srcEndPoints;
+
+        srcEpSet srcEndPoints;
         // mapping DstSummary to DstEndPoint
         unordered_map<URI, shared_ptr<DstEndPoint>> dstEndPoints;
         unordered_map<string, filter_t> filters;

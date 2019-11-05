@@ -56,6 +56,19 @@ namespace opflexagent {
         }
     }
 
+    static void print_set(SessionState::srcEpSet const& m) {
+        for (auto const &elem: m) {
+             LOG(DEBUG) << "{" << elem << "}\n";
+        }
+    }
+
+    ostream& operator<<(ostream& os,
+             const SourceEndPoint& sEp) {
+        os << "name: " << sEp.getName() << " port: " << sEp.getPort()
+                << " dir: " << sEp.getDirection();
+        return os;
+    }
+
     void SpanManager::start() {
         LOG(DEBUG) << "starting span manager";
         Universe::registerListener(framework, &spanUniverseListener);
@@ -292,23 +305,23 @@ namespace opflexagent {
     }
 
     void SpanManager::SpanUniverseListener::processLocalEp(const srcMemInfo& sInfo) {
-            if (LocalEp::resolve(spanmanager.framework, sInfo.uri)) {
-                shared_ptr<LocalEp> lEp = LocalEp::resolve(spanmanager.framework, sInfo.uri).get();
-                if (lEp->resolveSpanLocalEpToEpRSrc()) {
-                    shared_ptr <LocalEpToEpRSrc> epRSrc = lEp->resolveSpanLocalEpToEpRSrc().get();
-                    if (epRSrc.get()->getTargetURI()) {
-                        URI epUri = epRSrc.get()->getTargetURI().get();
-                        if (L2Ep::resolve(spanmanager.framework, epUri)) {
-                            shared_ptr <L2Ep> l2Ep = L2Ep::resolve(
-                                    spanmanager.framework, epUri).get();
-                            addEndPoint(lEp, l2Ep, sInfo);
-                        } else {
-                            spanmanager.l2EpUri.emplace(epUri, lEp);
-                            print_map(spanmanager.l2EpUri);
-                        }
+        if (LocalEp::resolve(spanmanager.framework, sInfo.uri)) {
+            shared_ptr<LocalEp> lEp = LocalEp::resolve(spanmanager.framework, sInfo.uri).get();
+            if (lEp->resolveSpanLocalEpToEpRSrc()) {
+                shared_ptr <LocalEpToEpRSrc> epRSrc = lEp->resolveSpanLocalEpToEpRSrc().get();
+                if (epRSrc.get()->getTargetURI()) {
+                    URI epUri = epRSrc.get()->getTargetURI().get();
+                    if (L2Ep::resolve(spanmanager.framework, epUri)) {
+                        shared_ptr <L2Ep> l2Ep = L2Ep::resolve(
+                                spanmanager.framework, epUri).get();
+                        addEndPoint(lEp, l2Ep, sInfo);
+                    } else {
+                        spanmanager.l2EpUri.emplace(epUri, lEp);
+                        print_map(spanmanager.l2EpUri);
                     }
                 }
             }
+        }
     }
 
     void SpanManager::SpanUniverseListener::processEpGroup(const srcMemInfo& sInfo) {
@@ -358,8 +371,7 @@ namespace opflexagent {
     }
 
 
-    const unordered_set<shared_ptr<SourceEndPoint>>&
-        SessionState::getSrcEndPointSet() const {
+    const SessionState::srcEpSet& SessionState::getSrcEndPointSet() {
         return srcEndPoints;
     }
 
@@ -372,8 +384,7 @@ namespace opflexagent {
         addEndPoint(shared_ptr<LocalEp> lEp, shared_ptr<L2Ep> l2Ep, const srcMemInfo& sInfo) {
         LOG(DEBUG) << "get parent lEp " << (lEp ? "set" : "null") <<
                       " l2Ep " << (l2Ep ? "set" : "null");
-        optional<URI> parent = spanmanager.framework.
-                               getParent(lEp->CLASS_ID, lEp->getURI());
+        optional<URI> parent = spanmanager.getSession(lEp);
         if (parent) {
             spanmanager.notifyUpdate.insert(parent.get());
             optional<shared_ptr<Session>> sess = Session::resolve(spanmanager.framework,
@@ -391,32 +402,66 @@ namespace opflexagent {
         }
     }
 
+    /**
+     * Find the span session URI by walking back the elements of the LocalEp
+     * URI. The span session URI will be the one prior to the element "SpanLocalEp".
+     */
+    const optional<URI> SpanManager::getSession(shared_ptr<LocalEp> lEp) {
+        string uriStr;
+        vector<string> elements;
+        lEp->getURI().getElements(elements);
+        vector<string>::reverse_iterator rit = elements.rbegin();
+        for (; rit != elements.rend(); ++rit) {
+            if ((*rit).compare("SpanLocalEp") == 0) {
+                rit++;
+                for (;rit != elements.rend(); ++rit) {
+                    string temp("/");
+                    temp.append(*rit);
+                    uriStr.insert(0, temp);
+                }
+                uriStr.append("/");
+                break;
+            }
+        }
+        if (uriStr.empty()) {
+            optional<URI> uri;
+            return uri;
+        } else {
+            LOG(DEBUG) << "uri " << uriStr;
+            optional<URI> uri(uriStr);
+            return uri;
+        }
+    }
+
     optional<shared_ptr<SrcMember>> SpanManager::findSrcMem(shared_ptr<LocalEp> lEp) {
-        optional<URI> parent = framework.
-                                getParent(lEp->CLASS_ID, lEp->getURI());
-        optional<shared_ptr<Session>> sess = Session::resolve(framework,
-                            parent.get());
+
+        optional<URI> parent = getSession(lEp);
         optional<shared_ptr<SrcMember>> pSrcMem;
-        if (sess) {
-            vector <shared_ptr<SrcGrp>> srcGrpVec;
-            sess.get()->resolveSpanSrcGrp(srcGrpVec);
-            for (shared_ptr <SrcGrp> srcGrp : srcGrpVec) {
-                vector<shared_ptr<SrcMember>> srcMemVec;
-                srcGrp.get()->resolveSpanSrcMember(srcMemVec);
-                for (shared_ptr<SrcMember> srcMem : srcMemVec) {
-                    optional <shared_ptr<MemberToRefRSrc>> memRefOpt =
-                            srcMem.get()->resolveSpanMemberToRefRSrc();
-                    if (memRefOpt) {
-                        shared_ptr <MemberToRefRSrc> memRef = memRefOpt.get();
-                        if (memRef->getTargetURI()) {
-                            URI uri = memRef->getTargetURI().get();
-                            if (lEp->getURI() == uri) {
-                                pSrcMem = srcMem;
+        if (parent)
+        {
+            optional<shared_ptr<Session>> sess = Session::resolve(framework,
+                            parent.get());
+            if (sess) {
+                vector <shared_ptr<SrcGrp>> srcGrpVec;
+                sess.get()->resolveSpanSrcGrp(srcGrpVec);
+                for (shared_ptr <SrcGrp> srcGrp : srcGrpVec) {
+                    vector<shared_ptr<SrcMember>> srcMemVec;
+                    srcGrp.get()->resolveSpanSrcMember(srcMemVec);
+                    for (shared_ptr<SrcMember> srcMem : srcMemVec) {
+                        optional <shared_ptr<MemberToRefRSrc>> memRefOpt =
+                                srcMem.get()->resolveSpanMemberToRefRSrc();
+                        if (memRefOpt) {
+                            shared_ptr <MemberToRefRSrc> memRef = memRefOpt.get();
+                            if (memRef->getTargetURI()) {
+                                URI uri = memRef->getTargetURI().get();
+                                if (lEp->getURI() == uri) {
+                                    pSrcMem = srcMem;
+                                }
                             }
                         }
                     }
-                }
-             }
+                 }
+            }
         }
         return pSrcMem;
     }
@@ -446,14 +491,6 @@ namespace opflexagent {
 
     SourceEndPoint::SourceEndPoint(const string& name_,
             const string& port_) : name(name_), port(port_) {}
-
-    ostream& operator<<(ostream& os,
-             const SourceEndPoint& sEp) {
-        os << "name: " << sEp.getName() << " port: " << sEp.getPort();
-        return os;
-    }
-
-
 
 }
 

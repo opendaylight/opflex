@@ -208,6 +208,13 @@ public:
     SpanUniverseListener spanUniverseListener;
     friend class SpanUniverseListener;
 
+    /**
+     * get the URI of the parent of LocalEp object
+     * @param lEp shared pointer to a LocalEpp object
+     * @return optional URI reference
+     */
+    static const boost::optional<URI> getSession(shared_ptr<LocalEp> lEp);
+
 private:
 
     boost::optional<shared_ptr<SrcMember>> findSrcMem(shared_ptr<LocalEp> lEp);
@@ -226,6 +233,7 @@ private:
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<SessionState>> notifyDelete;
     bool isDeletePending = false;
+
 };
 }
 
