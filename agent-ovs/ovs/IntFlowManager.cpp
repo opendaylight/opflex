@@ -1196,7 +1196,7 @@ static void matchActionServiceProto(FlowBuilder& flow, uint8_t proto,
 static void flowRevMapCt(FlowEntryList& serviceRevFlows,
                          uint16_t priority,
                          const Service::ServiceMapping& sm,
-                         address nextHopAddr,
+                         const address& nextHopAddr,
                          uint32_t rdId,
                          uint16_t zoneId,
                          uint8_t proto,
@@ -1322,7 +1322,7 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
 }
 
 static void flowsEndpointPortRangeSNAT(const Snat& as,
-                                       address nwSrc,
+                                       const address& nwSrc,
                                        uint16_t start,
                                        uint16_t end,
                                        uint32_t rdId,
@@ -2388,7 +2388,7 @@ void IntFlowManager::handleSnatUpdate(const string& snatIp,
 }
 
 void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
-                                    uint32_t fgrpId, address epgTunDst) {
+                                    uint32_t fgrpId, const address& epgTunDst) {
     uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
     optional<shared_ptr<FloodDomain> > fd =
         agent.getPolicyManager().getFDForGroup(epgURI);

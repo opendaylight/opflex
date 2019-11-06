@@ -24,8 +24,6 @@
 #include <opflex/ofcore/OFConstants.h>
 
 #include <opflexagent/logging.h>
-#include <opflexagent/cmd.h>
-#include "Policies.h"
 
 using std::string;
 using std::make_pair;

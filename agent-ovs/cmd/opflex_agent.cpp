@@ -29,7 +29,7 @@
 #include <condition_variable>
 
 #include <csignal>
-#include <string.h>
+#include <cstring>
 
 using std::string;
 namespace po = boost::program_options;
@@ -53,7 +53,7 @@ private:
     }
 };
 
-static void readConfig(Agent& agent, string configFile) {
+static void readConfig(Agent& agent, const string& configFile) {
     pt::ptree properties;
 
     LOG(INFO) << "Reading configuration from " << configFile;

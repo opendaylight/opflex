@@ -11,10 +11,8 @@
 
 #include <opflexagent/Agent.h>
 #include <opflexagent/logging.h>
-#include <opflexagent/cmd.h>
 #include <modelgbp/fault/SeverityEnumT.hpp>
 #include <boost/program_options.hpp>
-#include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/algorithm/string.hpp>

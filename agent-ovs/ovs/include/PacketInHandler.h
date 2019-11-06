@@ -62,16 +62,6 @@ public:
                             SwitchConnection* accessConnection);
 
     /**
-     * Reconcile the provided reactive flow against the current system
-     * state.
-     *
-     * @param fe the flow entry to reconcile
-     * @return true if the flow should be ignored during reconcilation (and
-     * therefore left as is), false if it must be compared with expected flows
-     */
-    bool reconcileReactiveFlow(const FlowEntryPtr& fe);
-
-    /**
      * Start the packet in handler
      */
     void start();

@@ -7,7 +7,6 @@
  */
 
 #include <algorithm>
-#include <boost/assert.hpp>
 
 #include "ActionBuilder.h"
 #include "FlowBuilder.h"

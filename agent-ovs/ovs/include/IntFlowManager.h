@@ -555,7 +555,7 @@ private:
                             uint32_t bdId, uint32_t rdId);
     void updateEPGFlood(const opflex::modb::URI& epgURI,
                         uint32_t epgVnid, uint32_t fgrpId,
-                        boost::asio::ip::address epgTunDst);
+                        const boost::asio::ip::address& epgTunDst);
 
     /**
      * Update all current group table entries

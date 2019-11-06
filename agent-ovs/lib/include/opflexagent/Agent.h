@@ -338,7 +338,6 @@ private:
     std::string uuid;
 
     StatMode getStatModeFromString(const std::string& mode);
-    int setInterval(int& upd_interval);
 
     void setSimStatProperties(const std::string& enabled_prop,
                               const std::string& interval_prop,

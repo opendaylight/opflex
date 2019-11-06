@@ -120,8 +120,6 @@ private:
 
     void updatePolicyStatsDropCounters(const std::string& rdURI,
                                        PolicyDropCounters_t& counters);
-    void updatePolicyFlowEntryMap(uint64_t cookie, uint16_t priority,
-                                  const struct match& match);
 };
 
 } /* namespace opflexagent */

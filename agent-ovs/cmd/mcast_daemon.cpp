@@ -29,7 +29,7 @@
 #include <functional>
 
 #include <csignal>
-#include <string.h>
+#include <cstring>
 
 using std::string;
 using boost::optional;
@@ -76,7 +76,7 @@ private:
 
     void sync() {
         shared_ptr<unordered_set<string > > addrs(new unordered_set<string >());
-        for (const file_addr_map_t::value_type faddr : addresses) {
+        for (const file_addr_map_t::value_type& faddr : addresses) {
             addrs->insert(faddr.second.begin(), faddr.second.end());
         }
 

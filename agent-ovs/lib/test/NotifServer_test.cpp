@@ -19,8 +19,6 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/filewritestream.h>
 
 #include <opflex/modb/MAC.h>
 
@@ -32,7 +30,6 @@ namespace ba = boost::asio;
 using ba::local::stream_protocol;
 using rapidjson::StringBuffer;
 using rapidjson::Writer;
-using rapidjson::PrettyWriter;
 using rapidjson::Document;
 
 BOOST_AUTO_TEST_SUITE(NotifServer_test)
@@ -109,13 +106,6 @@ BOOST_FIXTURE_TEST_CASE(subscribe, NotifFixture) {
     Document rdoc;
     readMessage(s, rdoc);
 
-    //StringBuffer output;
-    //{
-    //    PrettyWriter<StringBuffer> owriter(output);
-    //    rdoc.Accept(owriter);
-    //    LOG(INFO) << std::endl << output.GetString();
-    //}
-
     {
         std::unordered_set<std::string> uuids;
         uuids.insert("4412dcd2-0cd0-4741-99d1-d8b3946e1fa9");
@@ -158,14 +148,6 @@ BOOST_FIXTURE_TEST_CASE(subscribe, NotifFixture) {
     BOOST_CHECK_EQUAL(2, us.size());
     BOOST_CHECK(us.find("4412dcd2-0cd0-4741-99d1-d8b3946e1fa9") != us.end());
     BOOST_CHECK(us.find("1cc9483a-8d7a-48d5-9c23-862401691e01") != us.end());
-
-    //output.Clear();
-    //{
-    //    PrettyWriter<StringBuffer> owriter(output);
-    //    notif.Accept(owriter);
-    //    LOG(INFO) << std::endl << output.GetString();
-    //}
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
