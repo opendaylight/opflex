@@ -211,6 +211,13 @@ void OpflexListener::sendUpdates() {
     }
 }
 
+void OpflexListener::sendTimeouts() {
+    if (!active) return;
+    BOOST_FOREACH(OpflexServerConnection* conn, conns) {
+        conn->sendTimeouts();
+    }
+}
+
 bool OpflexListener::applyConnPred(conn_pred_t pred, void* user) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     BOOST_FOREACH(OpflexServerConnection* conn, conns) {

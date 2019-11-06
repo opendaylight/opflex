@@ -147,7 +147,7 @@ public:
         : mockServer(8009, SERVER_ROLES,
                      list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
                      vector<std::string>(),
-                     md) {
+                     md, 60) {
         mockServer.start();
         WAIT_FOR(mockServer.getListener().isListening(), 1000);
     }
@@ -242,11 +242,11 @@ using boost::asio::ip::address_v4;
                                        vector<std::string>(
                                        {"1.1.1.1","2.2.2.2","3.3.3.3"}):
                                        vector<std::string>()),
-                                       md);
+                                       md, 60);
     MockOpflexServerImpl peer1(8009, SERVER_ROLES, list_of(p1)(p2),
-                               vector<std::string>(), md);
+                               vector<std::string>(), md, 60);
     MockOpflexServerImpl peer2(8010, SERVER_ROLES, list_of(p1)(p2),
-                               vector<std::string>(), md);
+                               vector<std::string>(), md, 60);
 
     if (ssl) {
         initServerSSL(anycastServer);
@@ -424,7 +424,7 @@ BOOST_FIXTURE_TEST_CASE( main_loop_adaptor, SyncFixture ) {
                                     list_of(make_pair(SERVER_ROLES,
                                                       LOCALHOST":8009")),
                                     vector<std::string>(),
-                                    md);
+                                    md, 60);
     mockServer.start();
 
     processor.addPeer(LOCALHOST, 8009);

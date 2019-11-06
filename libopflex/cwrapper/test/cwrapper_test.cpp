@@ -52,7 +52,7 @@ public:
           mockServer(8009, SERVER_ROLES,
                      list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
                      vector<string>(),
-                     md),
+                     md, 60),
           peerStatus(-1), poolHealth(1) {
         mockServer.start();
         WAIT_FOR(mockServer.getListener().isListening(), 1000);

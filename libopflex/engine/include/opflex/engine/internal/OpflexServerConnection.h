@@ -119,6 +119,11 @@ public:
      */
     void sendUpdates();
 
+    /**
+     * Send timeout triggers to each agent
+     */
+    void sendTimeouts();
+
 private:
     OpflexListener* listener;
 
@@ -145,9 +150,11 @@ private:
     uv_thread_t server_thread;
     uv_async_t policy_update_async;
     uv_async_t cleanup_async;
+    uv_async_t prr_timer_async;
     static void server_thread_entry(void *data);
     static void on_policy_update_async(uv_async_t *handle);
     static void on_cleanup_async(uv_async_t *handle);
+    static void on_prr_timer_async(uv_async_t* handle);
 
     yajr::Peer* peer;
 };

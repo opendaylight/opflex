@@ -42,6 +42,8 @@ OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
       uv_async_init(&server_loop, &policy_update_async, on_policy_update_async);
       cleanup_async.data = this;
       uv_async_init(&server_loop, &cleanup_async, on_cleanup_async);
+      prr_timer_async.data = this;
+      uv_async_init(&server_loop, &prr_timer_async, on_prr_timer_async);
       rc = uv_thread_create(&server_thread, server_thread_entry, this);
       if (rc < 0) {
           throw std::runtime_error(string("Could not create policy update thread: ") +
@@ -198,8 +200,11 @@ void OpflexServerConnection::addPendingUpdate(opflex::modb::class_id_t class_id,
 }
 
 void OpflexServerConnection::sendUpdates() {
-    std::lock_guard<std::mutex> lock(uri_update_mutex);
     uv_async_send(&policy_update_async);
+}
+
+void OpflexServerConnection::sendTimeouts() {
+    uv_async_send(&prr_timer_async);
 }
 
 void OpflexServerConnection::on_policy_update_async(uv_async_t* handle) {
@@ -218,10 +223,27 @@ void OpflexServerConnection::on_policy_update_async(uv_async_t* handle) {
     conn->deleted.clear();
 }
 
+void OpflexServerConnection::on_prr_timer_async(uv_async_t* handle) {
+    OpflexServerConnection* conn = (OpflexServerConnection *)handle->data;
+    MockOpflexServerImpl* server = dynamic_cast<MockOpflexServerImpl*>
+        (conn->listener->getHandlerFactory());
+    std::lock_guard<std::mutex> lock(conn->uri_update_mutex);
+
+    auto it = conn->uri_map.begin();
+    while (it != conn->uri_map.end()) {
+        it->second -= server->getPrrIntervalSecs();
+        if (it->second <= 0)
+            it = conn->uri_map.erase(it);
+        else
+            it++;
+    }
+}
+
 void OpflexServerConnection::on_cleanup_async(uv_async_t* handle) {
     OpflexServerConnection* conn = (OpflexServerConnection *)handle->data;
 
     uv_close((uv_handle_t*)&conn->policy_update_async, NULL);
+    uv_close((uv_handle_t*)&conn->prr_timer_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
 }
 

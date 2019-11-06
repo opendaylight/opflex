@@ -150,6 +150,11 @@ public:
     void sendUpdates();
 
     /**
+     * Send timeout triggers to each agent
+     */
+    void sendTimeouts();
+
+    /**
      * get handlerFactory
      *
      * @returns pointer to handlerFactory
