@@ -58,10 +58,12 @@ public:
      * @param peers a list of peers to return in the opflex handshake
      * @param proxies a list of proxies to return in the opflex handshake
      * @param md the model metadata for the server
+     * @param prr_interval_secs how often to wakeup prr timer thread
      */
     MockOpflexServer(int port, uint8_t roles, peer_vec_t peers,
                      std::vector<std::string> proxies,
-                     const modb::ModelMetadata& md);
+                     const modb::ModelMetadata& md,
+                     int prr_interval_secs);
 
     /**
      * Destroy the opflex server

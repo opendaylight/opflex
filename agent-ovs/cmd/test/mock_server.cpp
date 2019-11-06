@@ -85,6 +85,8 @@ int main(int argc, char** argv) {
          "in identity response")
         ("grpc_address", po::value<string>()->default_value("localhost:19999"),
          "GRPC server address for policy updates")
+        ("prr_interval_secs", po::value<int>()->default_value(60),
+         "How often to wakeup prr thread to check for prr timeouts")
         ;
 
     bool daemon = false;
@@ -99,6 +101,7 @@ int main(int argc, char** argv) {
     std::string ssl_pass;
     std::vector<std::string> peers;
     std::vector<std::string> transport_mode_proxies;
+    int prr_interval_secs;
 #ifdef HAVE_GRPC_SUPPORT
     std::string grpc_address;
 #endif
@@ -135,6 +138,7 @@ int main(int argc, char** argv) {
 #ifdef HAVE_GRPC_SUPPORT
         grpc_address = vm["grpc_address"].as<string>();
 #endif
+        prr_interval_secs = vm["prr_interval_secs"].as<int>();
     } catch (po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
@@ -167,7 +171,8 @@ int main(int argc, char** argv) {
 
         MockOpflexServer server(8009, SERVER_ROLES, peer_vec,
                                 transport_mode_proxies,
-                                modelgbp::getMetadata());
+                                modelgbp::getMetadata(),
+                                prr_interval_secs);
 #ifdef HAVE_GRPC_SUPPORT
         GbpClient client(grpc_address, server);
 #endif

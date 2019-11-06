@@ -29,9 +29,11 @@ namespace test {
 MockOpflexServer::MockOpflexServer(int port, uint8_t roles,
                                    peer_vec_t peers,
                                    std::vector<std::string> proxies,
-                                   const modb::ModelMetadata& md)
+                                   const modb::ModelMetadata& md,
+                                   int prr_interval_secs)
     : pimpl(new engine::internal
-            ::MockOpflexServerImpl(port, roles, peers, proxies, md)) { }
+            ::MockOpflexServerImpl(port, roles, peers, proxies, md,
+                                   prr_interval_secs)) { }
 
 MockOpflexServer::~MockOpflexServer() {
     delete pimpl;
@@ -80,15 +82,20 @@ using rapidjson::Value;
 using rapidjson::Writer;
 using modb::mointernal::StoreClient;
 using test::MockOpflexServer;
+using boost::asio::deadline_timer;
+using boost::posix_time::seconds;
 
 MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
                                            MockOpflexServer::peer_vec_t peers_,
                                            std::vector<std::string> proxies_,
-                                           const modb::ModelMetadata& md)
+                                           const modb::ModelMetadata& md,
+                                           int prr_interval_secs_)
     : port(port_), roles(roles_), peers(peers_),
       proxies(proxies_),
       listener(*this, port_, "name", "domain"),
-      db(threadManager), serializer(&db, this) {
+      db(threadManager), serializer(&db, this),
+      prr_interval_secs(prr_interval_secs_),
+      stopping(false) {
     db.init(md);
     client = &db.getStoreClient("_SYSTEM_");
 }
@@ -107,13 +114,44 @@ void MockOpflexServerImpl::enableSSL(const std::string& caStorePath,
 
 void MockOpflexServerImpl::start() {
     db.start();
+    prr_timer.reset(new deadline_timer(io, seconds(prr_interval_secs)));
+    prr_timer->async_wait([this](const boost::system::error_code& ec) {
+        on_timer(ec);
+        });
+    io_service_thread.reset(new std::thread([this]() { io.run(); }));
     listener.listen();
 }
 
 void MockOpflexServerImpl::stop() {
+    stopping = true;
+
+    if (prr_timer) {
+        prr_timer->cancel();
+    }
+    if (io_service_thread) {
+        io_service_thread->join();
+        io_service_thread.reset();
+    }
     listener.disconnect();
     db.stop();
     client = NULL;
+}
+
+void MockOpflexServerImpl::on_timer(const boost::system::error_code& ec) {
+    if (ec) {
+        prr_timer.reset();
+        return;
+    }
+
+    listener.sendTimeouts();
+
+    if (!stopping) {
+        prr_timer->expires_at(prr_timer->expires_at() +
+                              seconds(prr_interval_secs));
+        prr_timer->async_wait([this](const boost::system::error_code& ec) {
+                on_timer(ec);
+            });
+    }
 }
 
 void MockOpflexServerImpl::readPolicy(const std::string& file) {
