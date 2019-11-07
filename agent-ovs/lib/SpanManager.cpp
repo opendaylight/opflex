@@ -13,7 +13,6 @@
 #include <opflexagent/SpanManager.h>
 #include <opflexagent/logging.h>
 #include <modelgbp/span/Universe.hpp>
-#include <modelgbp/domain/Config.hpp>
 #include <opflex/modb/PropertyInfo.h>
 
 #include <modelgbp/gbp/EpGroup.hpp>
@@ -423,7 +422,6 @@ namespace opflexagent {
     }
 
     void SpanManager::SpanUniverseListener::processL2Ep(shared_ptr<L2Ep> l2Ep) {
-        LOG(DEBUG) << "processl2Ep shared_ptr " << (l2Ep ? "not null" : "null");
         auto itr = spanmanager.l2EpUri.find(l2Ep->getURI());
         if (itr == spanmanager.l2EpUri.end()) {
             return;
