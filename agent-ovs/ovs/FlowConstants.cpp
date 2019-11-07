@@ -44,6 +44,7 @@ const uint64_t REV_NAT = 0x3;
 const uint64_t TUNNEL = 0x4;
 const uint64_t FLOOD = 0x5;
 const uint64_t REMOTE_TUNNEL = 0x7;
+const uint64_t HOST_ACCESS = 0x8;
 
 } // namespace out
 

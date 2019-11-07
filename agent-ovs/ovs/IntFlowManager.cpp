@@ -1259,12 +1259,15 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
 
     // Get remote tunnel destination
     optional<address> tunDst;
+    bool hasTunDest = false;
     if (ep.get()->isNextHopTunnelSet()) {
         string ipStr = ep.get()->getNextHopTunnel().get();
         tunDst = address::from_string(ipStr, ec);
         if (ec || !tunDst->is_v4()) {
             LOG(WARNING) << "Invalid remote tunnel destination IP: "
                          << ipStr << ": " << ec.message();
+        } else {
+            hasTunDest = true;
         }
     }
 
@@ -1284,17 +1287,29 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
     FlowEntryList elBridgeDst;
     FlowEntryList elRouteDst;
 
-    if (hasMac && hasForwardingInfo && tunDst) {
+    if (hasForwardingInfo) {
         FlowBuilder bridgeFlow;
-        matchDestDom(bridgeFlow, bdId, 0)
-            .priority(10)
-            .ethDst(macAddr)
-            .action()
-            .reg(MFF_REG2, epgVnid)
-            .reg(MFF_REG7, tunDst->to_v4().to_ulong())
-            .metadata(flow::meta::out::REMOTE_TUNNEL, flow::meta::out::MASK)
-            .go(POL_TABLE_ID)
-            .parent().build(elBridgeDst);
+        uint32_t outReg = 0;
+        uint64_t meta;
+
+        if (hasTunDest) {
+            outReg = tunDst->to_v4().to_ulong();
+            meta = flow::meta::out::REMOTE_TUNNEL;
+        } else {
+            meta = flow::meta::out::HOST_ACCESS;
+        }
+
+        if (hasMac) {
+            matchDestDom(bridgeFlow, bdId, 0)
+                .priority(10)
+                .ethDst(macAddr)
+                .action()
+                .reg(MFF_REG2, epgVnid)
+                .reg(MFF_REG7, outReg)
+                .metadata(meta, flow::meta::out::MASK)
+                .go(POL_TABLE_ID)
+                .parent().build(elBridgeDst);
+        }
 
         for (const address& ipAddr : ipAddresses) {
             FlowBuilder routeFlow;
@@ -1305,8 +1320,8 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
                 .ipDst(ipAddr)
                 .action()
                 .reg(MFF_REG2, epgVnid)
-                .reg(MFF_REG7, tunDst->to_v4().to_ulong())
-                .metadata(flow::meta::out::REMOTE_TUNNEL, flow::meta::out::MASK)
+                .reg(MFF_REG7, outReg)
+                .metadata(meta, flow::meta::out::MASK)
                 .go(POL_TABLE_ID)
                 .parent().build(elRouteDst);
 
@@ -1556,6 +1571,56 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                     .output(OFPP_IN_PORT)
                     .parent().build(elPortSec);
         }
+        uint16_t zoneId = ctZoneManager.getId("veth_host_ac");
+        // Allow traffic from pod to external ip
+        // This traffic will go back to access bridge
+        // then to outside world via veth_host_ac
+        FlowBuilder()
+            .priority(15)
+            .ethType(eth::type::IP)
+            .metadata(flow::meta::out::HOST_ACCESS,
+                      flow::meta::out::MASK)
+            .action()
+                .ethSrc(getRouterMacAddr())
+                .ethDst(macAddr)
+                .decTtl()
+                .conntrack(ActionBuilder::CT_COMMIT,
+                           static_cast<mf_field_id>(0),
+                           zoneId, 0xff)
+                .output(ofPort)
+                .parent().build(elOutput);
+
+        // Add low priority rule in route table
+        // that would allow traffic to any external
+        // destination. This rule will only get hit
+        // if there is no higher priority rule
+        // matching same traffic in cases where we
+        // have an external epg applying policy.
+        FlowBuilder()
+            .priority(20)
+            .ethType(eth::type::IP)
+            .reg(6, rdId)
+            .ethDst(getRouterMacAddr())
+            .action()
+                .regMove(MFF_REG0, MFF_REG2)
+                .metadata(flow::meta::out::HOST_ACCESS,
+                          flow::meta::out::MASK)
+                .go(POL_TABLE_ID)
+                .parent().build(elRouteDst);
+
+        // Allow reverse traffic from external ips
+        // to reach the pod. iptables conntrack
+        // rules ensure only related or established
+        // traffic is sent to us. We check it as
+        // well. prio > 25 = drop priority
+        FlowBuilder()
+            .priority(26)
+                .ethType(eth::type::IP)
+                .inPort(ofPort)
+                .ethSrc(macAddr)
+                .action()
+                    .go(SRC_TABLE_ID)
+                    .parent().build(elPortSec);
     }
 
     if (hasForwardingInfo) {

@@ -140,6 +140,11 @@ extern const uint64_t FLOOD;
  */
 extern const uint64_t REMOTE_TUNNEL;
 
+/**
+ * Output to the veth_host_ac destination specified in output register
+ */
+extern const uint64_t HOST_ACCESS;
+
 } // namespace out
 
 
