@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "e91756bf_2f098b85",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1298,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-08T18:57:24Z",
+      "side": 1,
+      "message": "I was using a temporary for REG7 which is the register storing output port. So I named it outreg. It can be 0 for veth_host_ac where the ofport is derived using a later rule.",
+      "parentUuid": "3cf446d9_31b455ca",
+      "range": {
+        "startLine": 1298,
+        "startChar": 15,
+        "endLine": 1298,
+        "endChar": 16
+      },
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "96c58844_f8dfe6a0",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 1
@@ -42,6 +66,24 @@
     },
     {
       "key": {
+        "uuid": "25bc4798_81842f7e",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1586,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-08T18:57:24Z",
+      "side": 1,
+      "message": "This really only applies to veth_host_ac, we are routing the packet to linux via veth_host_ac.",
+      "parentUuid": "96c58844_f8dfe6a0",
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a6800a0a_86776841",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 1
@@ -53,6 +95,30 @@
       "writtenOn": "2019-11-08T18:38:00Z",
       "side": 1,
       "message": "Why do we need this flow?",
+      "range": {
+        "startLine": 1609,
+        "startChar": 42,
+        "endLine": 1609,
+        "endChar": 44
+      },
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6d7bfaae_4b9e0447",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1609,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-08T18:57:24Z",
+      "side": 1,
+      "message": "without this rule nothing would match in the route table for packets going via veth_host_ac because they all check the meta.",
+      "parentUuid": "a6800a0a_86776841",
       "range": {
         "startLine": 1609,
         "startChar": 42,
