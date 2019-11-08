@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3cf446d9_31b455ca",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1298,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-11-08T18:38:00Z",
+      "side": 1,
+      "message": "What is outReg in this case? Should this be ofport",
+      "range": {
+        "startLine": 1298,
+        "startChar": 15,
+        "endLine": 1298,
+        "endChar": 16
+      },
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96c58844_f8dfe6a0",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1586,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-11-08T18:38:00Z",
+      "side": 1,
+      "message": "Why are we decrementing ttl here? Shouldn\u0027t setting the router mac address be part of the host config?The packet may be bridged, aren\u0027t we changing the packet here?",
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a6800a0a_86776841",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1609,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-11-08T18:38:00Z",
+      "side": 1,
+      "message": "Why do we need this flow?",
+      "range": {
+        "startLine": 1609,
+        "startChar": 42,
+        "endLine": 1609,
+        "endChar": 44
+      },
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
