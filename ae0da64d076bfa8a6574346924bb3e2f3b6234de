@@ -136,6 +136,24 @@
     },
     {
       "key": {
+        "uuid": "4c011e81_cbbc8a4c",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1598,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-08T19:33:17Z",
+      "side": 1,
+      "message": "I do not believe so. we use conntrack to ensure that only related flows are allowed.",
+      "parentUuid": "94cecbd9_b46894d9",
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a6800a0a_86776841",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 1
