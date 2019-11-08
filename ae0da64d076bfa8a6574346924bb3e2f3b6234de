@@ -286,6 +286,24 @@
     },
     {
       "key": {
+        "uuid": "be71f773_8a1fd613",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1598,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-08T21:45:14Z",
+      "side": 1,
+      "message": "i dont know what host network you are referring to. these packets go from pod to linux. this is a special case for pods to reach external world in cloud env. it does not apply when physical leaf is involved. thats why the whole block is under if (veth_host_ac)",
+      "parentUuid": "87b3cb10_549a7575",
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a6800a0a_86776841",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 1
