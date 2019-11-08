@@ -84,6 +84,30 @@
     },
     {
       "key": {
+        "uuid": "9b6dd0e9_0392eabd",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1298,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-11-08T19:35:04Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e91756bf_2f098b85",
+      "range": {
+        "startLine": 1298,
+        "startChar": 15,
+        "endLine": 1298,
+        "endChar": 16
+      },
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "96c58844_f8dfe6a0",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 1
@@ -113,6 +137,24 @@
       "side": 1,
       "message": "This really only applies to veth_host_ac, we are routing the packet to linux via veth_host_ac.",
       "parentUuid": "96c58844_f8dfe6a0",
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "92ecc397_28998753",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1586,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-11-08T19:35:04Z",
+      "side": 1,
+      "message": "I don\u0027t see why we need to set src and dest mac here? We got to the out table because either ep mac was the dst mac or IP matched the ep and dst mac was router mac. We should be setting the src mac, if we routed the packet( in the route table). We could be just bridging, in which case, we should not decrement TTL( it will still have the IP header).",
+      "parentUuid": "25bc4798_81842f7e",
       "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
@@ -189,6 +231,30 @@
       "side": 1,
       "message": "without this rule nothing would match in the route table for packets going via veth_host_ac because they all check the meta.",
       "parentUuid": "a6800a0a_86776841",
+      "range": {
+        "startLine": 1609,
+        "startChar": 42,
+        "endLine": 1609,
+        "endChar": 44
+      },
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "48a2663c_8b15a2b1",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1609,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-11-08T19:35:04Z",
+      "side": 1,
+      "message": "This will allow all IP packets sent to the router mac in that VRF to be marked with the meta(asssuming it got thro\u0027 port sec and src table- which is not hard ). If we don\u0027t have the destination subnet, we usually drop the packet, here we seem to allow and make dstepg \u003dsrcepg. \nThis will catch some packets that we would not normally allow from regular EPs and mark them. We may not have the leaf in this case to drop it.",
+      "parentUuid": "6d7bfaae_4b9e0447",
       "range": {
         "startLine": 1609,
         "startChar": 42,
