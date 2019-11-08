@@ -66,6 +66,24 @@
     },
     {
       "key": {
+        "uuid": "1316fa02_857d409d",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1298,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2019-11-08T19:27:25Z",
+      "side": 1,
+      "message": "host access hasTunDest will always be false.That was the reason I had to refactor the code, else the entire if block will be untrue and we skip addition of all these flows.",
+      "parentUuid": "f915e1ed_6360ed22",
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "96c58844_f8dfe6a0",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 1
