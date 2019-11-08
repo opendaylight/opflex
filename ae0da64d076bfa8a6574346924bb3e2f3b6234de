@@ -108,6 +108,24 @@
     },
     {
       "key": {
+        "uuid": "77fab96d_b5e2246c",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1298,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2019-11-08T20:58:04Z",
+      "side": 1,
+      "message": "Madhu mentioned that veth_host_ac wont have nexthop tunnel set. Resolving this.",
+      "parentUuid": "1316fa02_857d409d",
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "96c58844_f8dfe6a0",
         "filename": "agent-ovs/ovs/IntFlowManager.cpp",
         "patchSetId": 1
@@ -208,6 +226,24 @@
       "side": 1,
       "message": "I do not believe so. we use conntrack to ensure that only related flows are allowed.",
       "parentUuid": "94cecbd9_b46894d9",
+      "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ae64c15_8843b4da",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1598,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2019-11-08T20:58:04Z",
+      "side": 1,
+      "message": "I see. Is connection tracking always enabled? will all unknown flows hit this flow?\n\nshouldn\u0027t we allow contracts/policy table entries to correctly do the enforcement for communication between pod and host/node network? If we do reg0\u003dreg2, then EPG1 (pod in this compute) to EPG2 (unknown subnet in this compute node) traffic in an enforced VRF might be sent to host network even without contract between these EPGs. Will host network kill these unintended packets?\n\nCan we match on the host network subnet in the routing table to be safe?",
+      "parentUuid": "4c011e81_cbbc8a4c",
       "revId": "ae0da64d076bfa8a6574346924bb3e2f3b6234de",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
