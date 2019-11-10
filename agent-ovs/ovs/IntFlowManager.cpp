@@ -25,6 +25,7 @@
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 #include <modelgbp/observer/DropLogModeEnumT.hpp>
+#include <modelgbp/gbp/EnforcementPreferenceTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/Endpoint.h>
@@ -2934,12 +2935,15 @@ void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
 void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     optional<shared_ptr<RoutingDomain > > rd =
         RoutingDomain::resolve(agent.getFramework(), rdURI);
+    // Avoding clash with dropLog flow objId, giving new name
+    const string& rdEnfPrefURIId = "EnfPref:" + rdURI.toString();
 
     if (!rd) {
         LOG(DEBUG) << "Cleaning up for RD: " << rdURI;
         switchManager.clearFlows(rdURI.toString(), NAT_IN_TABLE_ID);
         switchManager.clearFlows(rdURI.toString(), ROUTE_TABLE_ID);
         switchManager.clearFlows(rdURI.toString(), POL_TABLE_ID);
+        switchManager.clearFlows(rdEnfPrefURIId, POL_TABLE_ID);
         idGen.erase(getIdNamespace(RoutingDomain::CLASS_ID), rdURI.toString());
         ctZoneManager.erase(rdURI.toString());
         return;
@@ -2951,6 +2955,32 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     boost::system::error_code ec;
     uint32_t tunPort = getTunnelPort();
     uint32_t rdId = getId(RoutingDomain::CLASS_ID, rdURI);
+
+    /* VRF unenforced mode:
+     * In this mode, inter epg communication is allowed without any
+     * contracts. This is achieved by installing a flow entry on top
+     * of existing policy entries for this rtId.
+     * Note: As a design choice we still allow the contracts within
+     * this VRF to be  downloaded and installed in OVS. This will
+     * ensure that contracts dont have to be pulled when this VRF
+     * becomes enforced */
+    uint8_t enforcementPreference =
+                    rd.get()->isEnforcementPreferenceSet()?
+                    rd.get()->getEnforcementPreference().get():
+                    EnforcementPreferenceTypeEnumT::CONST_ENFORCED;
+    if (enforcementPreference
+            == EnforcementPreferenceTypeEnumT::CONST_UNENFORCED) {
+        LOG(DEBUG) << "Create unenforced flow for RD: " << rdURI;
+        FlowBuilder unenforcedFlow;
+        unenforcedFlow.priority(PolicyManager::MAX_POLICY_RULE_PRIORITY + 250);
+        unenforcedFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+        flowutils::match_rdId(unenforcedFlow, rdId);
+        switchManager.writeFlow(rdEnfPrefURIId, POL_TABLE_ID, unenforcedFlow);
+    } else {
+        // Enforced case
+        LOG(DEBUG) << "Remove unenforced flow for RD: " << rdURI;
+        switchManager.clearFlows(rdEnfPrefURIId, POL_TABLE_ID);
+    }
 
     // For subnets internal to a routing domain, we want to perform
     // ordinary routing without mapping to external network.  These
