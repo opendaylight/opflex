@@ -28,6 +28,11 @@ namespace flowutils {
 using std::vector;
 using modelgbp::gbpe::L24Classifier;
 
+void match_rdId(FlowBuilder& f, uint32_t rdId)
+{
+    f.reg(6, rdId);
+}
+
 void match_group(FlowBuilder& f, uint16_t prio,
                  uint32_t svnid, uint32_t dvnid) {
     f.priority(prio);
