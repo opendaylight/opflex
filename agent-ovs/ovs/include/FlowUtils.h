@@ -29,6 +29,14 @@ class ActionBuilder;
 namespace flowutils {
 
 /**
+ * Add a match against routingDomain ID in REG6
+ *
+ * @param f the flow builder
+ * @param rdId the routing domain ID or the VRF/context ID
+ */
+void match_rdId(FlowBuilder& f, uint32_t rdId);
+
+/**
  * Add a match against source/destination group ID in REG0 and REG2
  *
  * @param f the flow builder
