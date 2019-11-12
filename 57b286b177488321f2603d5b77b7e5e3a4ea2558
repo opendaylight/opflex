@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_9f9c656b",
+        "filename": "agent-ovs/src/TunnelEpManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-01-02T23:38:18Z",
+      "side": 1,
+      "message": "Doesn\u0027t seem right to return 0 in the case when encap type couldn\u0027t be determined. In that case, the TEP should be declared with \"unknown\" encap or something like that.\n\nIf you prefer, you leave this as is for now; I\u0027ll fix it once you commit.",
+      "revId": "57b286b177488321f2603d5b77b7e5e3a4ea2558",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_ffab2987",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-01-02T23:38:18Z",
+      "side": 1,
+      "message": "Add \"unknown\" as well.",
+      "revId": "57b286b177488321f2603d5b77b7e5e3a4ea2558",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_bf95a141",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-01-02T23:38:18Z",
+      "side": 1,
+      "message": "Not sure I understand the need for having per-group encap-type. This seems more like a \"global\" setting.",
+      "revId": "57b286b177488321f2603d5b77b7e5e3a4ea2558",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_df92ed56",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-01-02T23:38:18Z",
+      "side": 1,
+      "message": "suggest renaming \"encapValue\" to \"encapIdentifier\"",
+      "revId": "57b286b177488321f2603d5b77b7e5e3a4ea2558",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_3f899126",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2015-01-02T23:38:18Z",
+      "side": 1,
+      "message": "suggest renaming to \u0027encapIdentifier\u0027",
+      "revId": "57b286b177488321f2603d5b77b7e5e3a4ea2558",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
