@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a96c907_7388e222",
+        "filename": "libopflex/include/opflex/modb/PropertyInfo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2014-11-26T20:02:36Z",
+      "side": 1,
+      "message": "Does it need to be 64 bits?",
+      "range": {
+        "startLine": 36,
+        "startChar": 8,
+        "endLine": 36,
+        "endChar": 16
+      },
+      "revId": "d05f8052ad770aadb82c82cec9700bca92bc819f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
