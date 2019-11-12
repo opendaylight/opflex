@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3aa0d159_e8ddaa43",
+        "filename": "libopflex-metadata/src/main/java/org/opendaylight/opflex/modb/URIBuilder.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2015-04-29T20:49:50Z",
+      "side": 1,
+      "message": "you need to URI escape this string",
+      "range": {
+        "startLine": 23,
+        "startChar": 19,
+        "endLine": 23,
+        "endChar": 23
+      },
+      "revId": "03a5749097dd1e5db2945fc57d10c488edbe2cae",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
