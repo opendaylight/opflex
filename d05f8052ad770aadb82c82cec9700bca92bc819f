@@ -22,6 +22,30 @@
       "revId": "d05f8052ad770aadb82c82cec9700bca92bc819f",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a96c907_85d0c154",
+        "filename": "libopflex/include/opflex/modb/PropertyInfo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-12T18:44:53Z",
+      "side": 1,
+      "message": "Not really but this was the easiest path. Defining it as uint32_t caused a number of unit test failure in engine/test (\u0027deduced conflicting types for parameter\u0027) as well as compilation problems on another platform.",
+      "parentUuid": "7a96c907_7388e222",
+      "range": {
+        "startLine": 36,
+        "startChar": 8,
+        "endLine": 36,
+        "endChar": 16
+      },
+      "revId": "d05f8052ad770aadb82c82cec9700bca92bc819f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
