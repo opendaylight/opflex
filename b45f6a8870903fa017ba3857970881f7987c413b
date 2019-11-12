@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a245df4_cf56e329",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/epgmapping.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-11-07T21:08:44Z",
+      "side": 1,
+      "message": "I believe the comment here is not right; it binds to the traffic in AVS but in a really stupid broken way.  We never implemented this because of how broken it is.",
+      "range": {
+        "startLine": 160,
+        "startChar": 4,
+        "endLine": 176,
+        "endChar": 5
+      },
+      "revId": "b45f6a8870903fa017ba3857970881f7987c413b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
