@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a93c517_10b7f6d9",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-12T18:44:53Z",
+      "side": 1,
+      "message": "\"The the\" -\u003e \"The\"",
+      "revId": "a52ac93a385cb92216d5e1ab82da20bf3cb636c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a93c517_ad0ca495",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-12T18:44:53Z",
+      "side": 1,
+      "message": "to match the rest of the model there shouldn\u0027t be a leading cap in member name",
+      "revId": "a52ac93a385cb92216d5e1ab82da20bf3cb636c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a93c517_cd11f0ad",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/extensions.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-12T18:44:53Z",
+      "side": 1,
+      "message": "leading cap again",
+      "revId": "a52ac93a385cb92216d5e1ab82da20bf3cb636c6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
