@@ -22,6 +22,30 @@
       "revId": "b45f6a8870903fa017ba3857970881f7987c413b",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a245df4_b22f9487",
+        "filename": "genie/MODEL/EXTENSIONS/GBP/epgmapping.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-12T18:44:53Z",
+      "side": 1,
+      "message": "OK I\u0027ll revert this uncomment and address their request + rework this as part of a different changeset",
+      "parentUuid": "9a245df4_cf56e329",
+      "range": {
+        "startLine": 160,
+        "startChar": 4,
+        "endLine": 176,
+        "endChar": 5
+      },
+      "revId": "b45f6a8870903fa017ba3857970881f7987c413b",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
