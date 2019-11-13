@@ -21,10 +21,11 @@ namespace opflexagent {
  * Write sample policies to an MODB
  */
 class Policies {
+private:
+    static void writeVrfUnEnforcedPolicy(opflex::ofcore::OFFramework& framework);
 public:
     static void writeBasicInit(opflex::ofcore::OFFramework& framework);
     static void writeTestPolicy(opflex::ofcore::OFFramework& framework);
-
 };
 
 } /* namespace opflexagent */

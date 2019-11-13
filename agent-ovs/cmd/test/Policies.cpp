@@ -17,6 +17,7 @@
 #include <modelgbp/gbp/AutoconfigEnumT.hpp>
 #include <modelgbp/span/Universe.hpp>
 #include <opflex/modb/Mutator.h>
+#include <modelgbp/gbp/EnforcementPreferenceTypeEnumT.hpp>
 
 #include "Policies.h"
 #include <modelgbp/gbp/L3IfTypeEnumT.hpp>
@@ -603,6 +604,107 @@ void Policies::writeTestPolicy(opflex::ofcore::OFFramework& framework) {
     remote_route1->setPrefixLen(24);
     remote_route1->addGbpRemoteNextHop("10.1.0.59");
     remote_route1->addGbpRemoteNextHop("10.1.0.60");
+
+    mutator.commit();
+
+    writeVrfUnEnforcedPolicy(framework);
+}
+
+// Create a VRF thats unenforced with a couple of EPGs.
+void Policies::writeVrfUnEnforcedPolicy (
+                                opflex::ofcore::OFFramework& framework) {
+    Mutator mutator(framework, "policyreg");
+    shared_ptr<policy::Universe> universe =
+        policy::Universe::resolve(framework).get();
+
+    optional<shared_ptr<policy::Space>> space =
+                universe->resolvePolicySpace("test");
+    if (!space) {
+        return;
+    }
+
+    // VRF unenforced objects
+    shared_ptr<FloodDomain> fd1UnEnf;
+    shared_ptr<FloodDomain> fd2UnEnf;
+    shared_ptr<BridgeDomain> bdUnEnf;
+    shared_ptr<RoutingDomain> rdUnEnf;
+    shared_ptr<Subnets> subnetsfd1UnEnf;
+    shared_ptr<Subnet> subnetsfd1UnEnf_1;
+    shared_ptr<Subnets> subnetsfd2UnEnf;
+    shared_ptr<Subnet> subnetsfd2UnEnf_1;
+    shared_ptr<EpGroup> eg1UnEnf;
+    shared_ptr<EpGroup> eg2UnEnf;
+    shared_ptr<Subnets> subnetsbdUnEnf;
+    shared_ptr<Subnet> subnetsbd1UnEnf;
+    shared_ptr<Subnets> subnetsrdUnEnf;
+    shared_ptr<Subnet> subnetsrd1UnEnf;
+    fd1UnEnf = space.get()->addGbpFloodDomain("fd1UnEnf");
+    fd2UnEnf = space.get()->addGbpFloodDomain("fd2UnEnf");
+    bdUnEnf = space.get()->addGbpBridgeDomain("bdUnEnf");
+    rdUnEnf = space.get()->addGbpRoutingDomain("rdUnEnf");
+    rdUnEnf->setIpv6Autoconfig(AutoconfigEnumT::CONST_DHCP);
+    rdUnEnf->setEnforcementPreference(
+                EnforcementPreferenceTypeEnumT::CONST_UNENFORCED);
+
+    fd1UnEnf->addGbpFloodDomainToNetworkRSrc()
+            ->setTargetBridgeDomain(bdUnEnf->getURI());
+    fd1UnEnf->addGbpeFloodContext()->setMulticastGroupIP("224.20.1.1");
+    fd2UnEnf->addGbpFloodDomainToNetworkRSrc()
+            ->setTargetBridgeDomain(bdUnEnf->getURI());
+    fd2UnEnf->addGbpeFloodContext()->setMulticastGroupIP("224.30.1.1");
+    bdUnEnf->addGbpBridgeDomainToNetworkRSrc()
+           ->setTargetRoutingDomain(rdUnEnf->getURI());
+    bdUnEnf->addGbpeInstContext()->setEncapId(15007);
+    bdUnEnf->addGbpeInstContext()->setClassid(10007);
+    bdUnEnf->addGbpeInstContext()->setMulticastGroupIP("224.100.1.7");
+
+    subnetsfd1UnEnf = space.get()->addGbpSubnets("subnetsfd1UnEnf");
+    subnetsfd1UnEnf_1 = subnetsfd1UnEnf->addGbpSubnet("subnetsfd1UnEnf_1");
+    subnetsfd1UnEnf_1->setAddress("10.0.2.0")
+            .setPrefixLen(24)
+            .setVirtualRouterIp("10.0.2.128");
+    fd1UnEnf->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+            ->setTargetSubnets(subnetsfd1UnEnf->getURI());
+    rdUnEnf->addGbpRoutingDomainToIntSubnetsRSrc(
+                                    subnetsfd1UnEnf->getURI().toString());
+
+    subnetsfd2UnEnf = space.get()->addGbpSubnets("subnetsfd2UnEnf");
+    subnetsfd2UnEnf_1 = subnetsfd2UnEnf->addGbpSubnet("subnetsfd2UnEnf_1");
+    subnetsfd2UnEnf_1->setAddress("10.0.3.0")
+            .setPrefixLen(24)
+            .setVirtualRouterIp("10.0.3.128");
+    fd2UnEnf->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+            ->setTargetSubnets(subnetsfd2UnEnf->getURI());
+    rdUnEnf->addGbpRoutingDomainToIntSubnetsRSrc(
+                                    subnetsfd2UnEnf->getURI().toString());
+
+    subnetsbdUnEnf = space.get()->addGbpSubnets("subnetsbdUnEnf");
+    subnetsbd1UnEnf = subnetsbdUnEnf->addGbpSubnet("subnetsbd1UnEnf");
+    bdUnEnf->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+           ->setTargetSubnets(subnetsbdUnEnf->getURI());
+    rdUnEnf->addGbpRoutingDomainToIntSubnetsRSrc(
+                                    subnetsbd1UnEnf->getURI().toString());
+
+    subnetsrdUnEnf = space.get()->addGbpSubnets("subnetsrdUnEnf");
+    subnetsrd1UnEnf = subnetsrdUnEnf->addGbpSubnet("subnetsrd1UnEnf");
+    rdUnEnf->addGbpForwardingBehavioralGroupToSubnetsRSrc()
+           ->setTargetSubnets(subnetsrdUnEnf->getURI());
+    rdUnEnf->addGbpRoutingDomainToIntSubnetsRSrc(
+                                    subnetsrdUnEnf->getURI().toString());
+    rdUnEnf->addGbpeInstContext()->setEncapId(300);
+
+    eg1UnEnf = space.get()->addGbpEpGroup("group1UnEnf");
+    eg1UnEnf->addGbpEpGroupToNetworkRSrc()
+            ->setTargetFloodDomain(fd1UnEnf->getURI());
+    eg1UnEnf->addGbpeInstContext()->setEncapId(0x6000);
+    eg1UnEnf->addGbpeInstContext()->setClassid(60001);
+
+    eg2UnEnf = space.get()->addGbpEpGroup("group2UnEnf");
+    eg2UnEnf->addGbpEpGroupToNetworkRSrc()
+            ->setTargetFloodDomain(fd2UnEnf->getURI());
+    eg2UnEnf->addGbpeInstContext()->setEncapId(0x6001);
+    eg2UnEnf->addGbpeInstContext()->setClassid(60002);
+
     mutator.commit();
 }
 
