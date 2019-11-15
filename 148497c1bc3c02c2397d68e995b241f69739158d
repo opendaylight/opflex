@@ -1,0 +1,274 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba1f61a0_51b37be8",
+        "filename": "agent-ovs/src/AccessFlowManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "Given that both the v4c and v6c blocks are totally identical except for one boolean value, this seems like it ought to be factored out into a helper function rather than copy/paste",
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_f1ac2f8e",
+        "filename": "agent-ovs/src/AccessFlowManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "no need to create an extra level of block here since the if block already provides scoping.",
+      "range": {
+        "startLine": 201,
+        "startChar": 8,
+        "endLine": 202,
+        "endChar": 22
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_11bd83b7",
+        "filename": "agent-ovs/src/AccessFlowManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "these should be indented.",
+      "range": {
+        "startLine": 221,
+        "startChar": 17,
+        "endLine": 222,
+        "endChar": 34
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_71b03fdd",
+        "filename": "agent-ovs/src/AccessFlowManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "these should be indented",
+      "range": {
+        "startLine": 246,
+        "startChar": 22,
+        "endLine": 247,
+        "endChar": 34
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_b1cd9768",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 443,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 428,
+        "startChar": 0,
+        "endLine": 443,
+        "endChar": 6
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_d1be4bad",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 1712,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "argument indents are aligned with open paren.\nIn this case it should be:\nactionSecAllow(flowutils::matchDhcpReq(FlowBuilder().priority(27),\n                                       true))\n     .build(portSec);\n\nCould also change it to be two expressions.",
+      "range": {
+        "startLine": 1711,
+        "startChar": 18,
+        "endLine": 1712,
+        "endChar": 22
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_31e1a7d1",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 1719,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "see above",
+      "range": {
+        "startLine": 1718,
+        "startChar": 1,
+        "endLine": 1719,
+        "endChar": 1
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_11e463df",
+        "filename": "agent-ovs/src/include/FlowUtils.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "spelling",
+      "range": {
+        "startLine": 102,
+        "startChar": 9,
+        "endLine": 102,
+        "endChar": 14
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_51ea5bac",
+        "filename": "agent-ovs/src/include/FlowUtils.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "add blank line before this one",
+      "range": {
+        "startLine": 110,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 24
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_f1da6f15",
+        "filename": "agent-ovs/test/AccessFlowManager_test.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "indentation of these expressions does not match the style used in the rest of the code.\n(indent to the open paren for ADDF)",
+      "range": {
+        "startLine": 302,
+        "startChar": 0,
+        "endLine": 302,
+        "endChar": 19
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_b1d477ec",
+        "filename": "agent-ovs/test/AccessFlowManager_test.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "remove trailing whitespace",
+      "range": {
+        "startLine": 307,
+        "startChar": 19,
+        "endLine": 307,
+        "endChar": 45
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_91cfb355",
+        "filename": "agent-ovs/test/AccessFlowManager_test.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T18:01:18Z",
+      "side": 1,
+      "message": "remove trailing whitespace",
+      "range": {
+        "startLine": 317,
+        "startChar": 0,
+        "endLine": 319,
+        "endChar": 1
+      },
+      "revId": "148497c1bc3c02c2397d68e995b241f69739158d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
