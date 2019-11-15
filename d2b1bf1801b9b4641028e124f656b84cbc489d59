@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba1f61a0_4c8644dc",
+        "filename": "agent-ovs/src/AccessFlowManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T22:56:37Z",
+      "side": 1,
+      "message": "you don\u0027t need to do the full doxygen-style docs for helper functions.  This is needed for stuff in header files though.",
+      "range": {
+        "startLine": 148,
+        "startChar": 2,
+        "endLine": 157,
+        "endChar": 3
+      },
+      "revId": "d2b1bf1801b9b4641028e124f656b84cbc489d59",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_6c8348cc",
+        "filename": "agent-ovs/src/AccessFlowManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T22:56:37Z",
+      "side": 1,
+      "message": "use spaces not tabs",
+      "range": {
+        "startLine": 177,
+        "startChar": 0,
+        "endLine": 178,
+        "endChar": 46
+      },
+      "revId": "d2b1bf1801b9b4641028e124f656b84cbc489d59",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_ec761805",
+        "filename": "agent-ovs/src/IntFlowManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 1696,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T22:56:37Z",
+      "side": 1,
+      "message": "use spaces not tabs",
+      "range": {
+        "startLine": 1696,
+        "startChar": 2,
+        "endLine": 1696,
+        "endChar": 16
+      },
+      "revId": "d2b1bf1801b9b4641028e124f656b84cbc489d59",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_ac70a00b",
+        "filename": "agent-ovs/src/include/FlowUtils.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T22:56:37Z",
+      "side": 1,
+      "message": "you\u0027re missing a * here to make this work for doxygen.\n\n/**\n * Description\n * ...\n */",
+      "range": {
+        "startLine": 101,
+        "startChar": 1,
+        "endLine": 101,
+        "endChar": 2
+      },
+      "revId": "d2b1bf1801b9b4641028e124f656b84cbc489d59",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba1f61a0_8c6b1c1d",
+        "filename": "agent-ovs/src/include/FlowUtils.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 46
+      },
+      "writtenOn": "2017-09-20T22:56:37Z",
+      "side": 1,
+      "message": "need blank line before this line",
+      "range": {
+        "startLine": 110,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 1
+      },
+      "revId": "d2b1bf1801b9b4641028e124f656b84cbc489d59",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
