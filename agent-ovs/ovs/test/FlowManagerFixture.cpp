@@ -34,6 +34,19 @@ void addExpFlowEntry(std::vector<FlowEntryList>& tables,
 
     FlowEntryPtr e(new FlowEntry());
     minimatch_expand(&fm.match, &e->entry->match);
+
+    /* Fix for flow that set "dl_type":
+     * parse_ofp_flow_mod_str() calls several functions which indirectly
+     * calls parse_ofp_str__() to generate the actual "flow". If dl_type
+     * is set, then packet_type also gets set :(. This will not show up
+     * while analyzing key using "match_to_string()" since packet_type
+     * isnt printed here. Memory dump of the entire key will reveal this
+     * problem. Setting packet_type within flow and wc to 0 for the
+     * mock tests to pass. This field is immaterial since its not
+     * programmed in the actual table within ovs.*/
+    e->entry->match.flow.packet_type=0;
+    e->entry->match.wc.masks.packet_type=0;
+
     e->entry->cookie = fm.new_cookie;
     e->entry->table_id = fm.table_id;
     e->entry->priority = fm.priority;
