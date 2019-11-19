@@ -143,6 +143,20 @@ int MockExecutorConnection::SendMessage(OfpBuf& msg) {
         BOOST_CHECK(fm.cookie_mask ==
                     (fm.command == OFPFC_ADD ? 0 : ~((uint64_t)0)));
         minimatch_expand(&fm.match, &ma);
+
+	      /* Fix for flow that set "dl_type":
+         * Following sequence of calls lead to default packet_type setting
+         * in ovs 2.11.2.
+	       * MockExecutorConnection::SendMessage(OfpBuf& msg)
+         * --> int err = ofputil_decode_flow_mod(&fm, ...
+         * --> error = ofputil_pull_ofp11_match(&b, ... , &match,
+         * --> return ofputil_match_from_ofp11_match(om, match);
+         * --> match_set_default_packet_type(match); <-- along with set dl_type
+         * Since ofputil_decode_flow_mod() is used only during mock tests,
+         * setting packet_type as 0 to match expected flows.*/
+        ma.flow.packet_type=0;
+        ma.wc.masks.packet_type=0;
+
         BOOST_CHECK(match_equal(&ee.match, &ma));
         if (fm.command == OFPFC_DELETE_STRICT) {
             BOOST_CHECK_EQUAL(fm.ofpacts_len, 0);

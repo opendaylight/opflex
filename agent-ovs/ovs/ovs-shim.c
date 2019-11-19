@@ -232,7 +232,11 @@ void act_controller(struct ofpbuf* buf, uint16_t max_len) {
 }
 
 void act_push_vlan(struct ofpbuf* buf) {
-    ofpact_put_PUSH_VLAN(buf);
+    struct ofpact_push_vlan *act = ofpact_put_PUSH_VLAN(buf);
+    /* In OVS 2.6.7, encode_PUSH_VLAN() sets the ethertype as well.
+     * In OVS 2.11.2, this can be done only via encode_SET_VLAN_VID
+     * with flow_has_vlan=0 and push_vlan_if_needed=1.*/
+    act->ethertype = htons(0x8100);
 }
 
 void act_set_vlan_vid(struct ofpbuf* buf, uint16_t vlan) {
