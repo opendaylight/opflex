@@ -13,6 +13,7 @@
 extern "C" {
 #include <openvswitch/ofp-parse.h>
 #include <openvswitch/ofp-print.h>
+#include <openvswitch/match.h>
 }
 
 namespace opflexagent {
@@ -24,14 +25,28 @@ void addExpFlowEntry(std::vector<FlowEntryList>& tables,
     struct ofputil_flow_mod fm;
     enum ofputil_protocol prots;
     char* error =
-        parse_ofp_flow_mod_str(&fm, flowMod.c_str(), OFPFC_ADD, &prots);
+        parse_ofp_flow_mod_str(&fm, flowMod.c_str(), NULL, NULL,
+                               OFPFC_ADD, &prots);
     if (error) {
         LOG(ERROR) << "Could not parse: " << flowMod << ": " << error;
         return;
     }
 
     FlowEntryPtr e(new FlowEntry());
-    e->entry->match = fm.match;
+    minimatch_expand(&fm.match, &e->entry->match);
+
+    /* Fix for flow that set "dl_type":
+     * parse_ofp_flow_mod_str() calls several functions which indirectly
+     * calls parse_ofp_str__() to generate the actual "flow". If dl_type
+     * is set, then packet_type also gets set :(. This will not show up
+     * while analyzing key using "match_to_string()" since packet_type
+     * isnt printed here. Memory dump of the entire key will reveal this
+     * problem. Setting packet_type within flow and wc to 0 for the
+     * mock tests to pass. This field is immaterial since its not
+     * programmed in the actual table within ovs.*/
+    e->entry->match.flow.packet_type=0;
+    e->entry->match.wc.masks.packet_type=0;
+
     e->entry->cookie = fm.new_cookie;
     e->entry->table_id = fm.table_id;
     e->entry->priority = fm.priority;
@@ -45,8 +60,8 @@ void addExpFlowEntry(std::vector<FlowEntryList>& tables,
     tables[fm.table_id].push_back(e);
 
     DsP strBuf;
-    ofp_print_flow_stats(strBuf.get(), e->entry);
-    string str = (const char*)(ds_cstr(strBuf.get())+1); // trim space
+    ofputil_flow_stats_format(strBuf.get(), e->entry, NULL, NULL, true);
+    string str = (const char*)(ds_cstr(strBuf.get())); // trim space
     BOOST_CHECK_EQUAL(str, flowMod);
 }
 
