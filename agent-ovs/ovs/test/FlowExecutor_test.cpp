@@ -11,6 +11,7 @@
 #include <vector>
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_inserter.hpp>
+#include <openvswitch/ofp-msgs.h>
 
 #include <opflexagent/logging.h>
 
@@ -111,6 +112,8 @@ int MockExecutorConnection::SendMessage(OfpBuf& msg) {
     ofp_header *msgHdr = (ofp_header *)msg.data();
     ofptype type;
     ofptype_decode(&type, msgHdr);
+    struct match ma;
+
     BOOST_CHECK(type == OFPTYPE_FLOW_MOD ||
             type == OFPTYPE_BARRIER_REQUEST);
     if (type == OFPTYPE_FLOW_MOD) {
@@ -120,6 +123,7 @@ int MockExecutorConnection::SendMessage(OfpBuf& msg) {
         int err = ofputil_decode_flow_mod
             (&fm, msgHdr, ofputil_protocol_from_ofp_version
              ((ofp_version)GetProtocolVersion()),
+                NULL, NULL,
                 &ofpacts, OFPP_MAX, 255);
         fm.ofpacts = ActionBuilder::getActionsFromBuffer(&ofpacts,
                 fm.ofpacts_len);
@@ -138,7 +142,22 @@ int MockExecutorConnection::SendMessage(OfpBuf& msg) {
                 (fm.command == OFPFC_ADD ? fm.new_cookie : fm.cookie));
         BOOST_CHECK(fm.cookie_mask ==
                     (fm.command == OFPFC_ADD ? 0 : ~((uint64_t)0)));
-        BOOST_CHECK(match_equal(&ee.match, &fm.match));
+        minimatch_expand(&fm.match, &ma);
+
+	      /* Fix for flow that set "dl_type":
+         * Following sequence of calls lead to default packet_type setting
+         * in ovs 2.11.2.
+	       * MockExecutorConnection::SendMessage(OfpBuf& msg)
+         * --> int err = ofputil_decode_flow_mod(&fm, ...
+         * --> error = ofputil_pull_ofp11_match(&b, ... , &match,
+         * --> return ofputil_match_from_ofp11_match(om, match);
+         * --> match_set_default_packet_type(match); <-- along with set dl_type
+         * Since ofputil_decode_flow_mod() is used only during mock tests,
+         * setting packet_type as 0 to match expected flows.*/
+        ma.flow.packet_type=0;
+        ma.wc.masks.packet_type=0;
+
+        BOOST_CHECK(match_equal(&ee.match, &ma));
         if (fm.command == OFPFC_DELETE_STRICT) {
             BOOST_CHECK_EQUAL(fm.ofpacts_len, 0);
         } else {
