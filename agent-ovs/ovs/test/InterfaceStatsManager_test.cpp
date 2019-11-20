@@ -12,6 +12,7 @@
 #include <limits>
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
+#include <openvswitch/ofp-port.h>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/test/ModbFixture.h>
