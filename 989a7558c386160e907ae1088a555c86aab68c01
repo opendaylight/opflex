@@ -34,6 +34,24 @@
       "revId": "989a7558c386160e907ae1088a555c86aab68c01",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "29fb6d7e_97700557",
+        "filename": "agent-ovs/ovs/include/ovs-poll.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2019-11-21T03:55:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "68fe17c0_6eb48830",
+      "revId": "989a7558c386160e907ae1088a555c86aab68c01",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
