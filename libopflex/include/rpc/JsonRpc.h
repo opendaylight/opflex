@@ -32,55 +32,168 @@ namespace internal {
 
 using namespace std;
 using namespace rapidjson;
- /**
-  * Abstract base class to represent JSON/RPC data.
-  */
-class BaseData {
+
+/**
+ * enum for data types to be sent over JSON/RPC
+ */
+enum class  Dtype {STRING, INTEGER, BOOL};
+
+/**
+ * Data template for JSON/RPC data representation
+ */
+template<typename T>
+class DValue {
 public:
     /**
-     * enum for row data type
+     * constructor for data type class
+     * @param val_ type T for data type value to be stored
      */
-    enum class Dtype {STRING, TUPLE};
+    DValue(T val_) : val(val_) {}
+    /**
+     * data of type T
+     */
+    T val;
+    /**
+     * data type enum
+     */
+    Dtype type;
+};
+
+/**
+ * specialization of data template for string
+ */
+template<> class DValue<string> {
+public:
+    /**
+     * default constructor
+     */
+    DValue() {}
+    /**
+     * constructor
+     * @param val_ string data value
+     */
+    DValue(string val_) : val(val_) { type = Dtype::STRING; }
+    /**
+     * string data
+     */
+    string val;
     /**
      * data type
      */
     Dtype type;
-    /**
-     * string representation of object
-     */
-    virtual string toString() = 0;
 };
 
 /**
- * class for representing JSON/RPC string data
+ * specialization of data template for int
  */
-class StringData : public BaseData {
+template<> class DValue<int> {
 public:
     /**
-     * constructor takes a string
+     * default constructor
      */
-    StringData(const string& s) : data(s) { type = Dtype::STRING;}
+    DValue() {}
     /**
-     * data holder
+     * constructor
+     * @param val_ int value of data
      */
-    string data;
+    DValue(int val_) : val(val_) { type = Dtype::INTEGER; }
     /**
-     * string representation of object
+     * int data
      */
-    string toString() { return data;}
+    int val;
+    /**
+     * data type enum
+     */
+    Dtype type;
 };
 
 /**
- * class for representing JSON/RPC tuple data
+ * specialization of data template for bool
  */
+template<> class DValue<bool> {
+public:
+    /**
+     * default constructor
+     */
+    DValue() {}
+    /**
+     * constructor for bool data type
+     * @param val_ bool data type
+     */
+    DValue(bool val_) : val(val_) { type = Dtype::BOOL; }
+    /**
+     * bool data type
+     */
+    bool val;
+    /**
+     * data type enum
+     */
+    Dtype type;
+};
+
+/**
+ * abstract class for data types.
+ */
+class BaseData {
+public:
+    /**
+     * get the type of data
+     * @return enum Dtype
+     */
+    virtual Dtype getType() = 0;
+    /**
+     * virtual destructor
+     */
+    virtual ~BaseData() {}
+};
+ /**
+  * Class to represent JSON/RPC tuple data.
+  */
+template<typename T>
 class TupleData : public BaseData {
+public:
+    /**
+     * constructor
+     * @param key the key string
+     * @param val data type T
+     */
+    TupleData(string key, T val) {
+        data = make_tuple<string, DValue<T>>(std::move(key), DValue<T>(val));
+    }
+
+    /**
+     * string representation of object
+     */
+    string toString() {
+        stringstream ss;
+        ss << std::get<0>(data) << " : " << get<1>(data).val << endl;
+        return ss.str();
+    }
+
+    /**
+     * get the data type
+     * @return enum Dtype
+     */
+    virtual Dtype getType() {
+        return get<1>(data).type;
+    }
+
+    /**
+     * data stored as tuple of key value pair
+     */
+    tuple<string, DValue<T>> data;
+};
+
+/**
+ * class for representing JSON/RPC tuple data set
+ */
+class TupleDataSet  {
 public:
     /**
      * constructor that takes a tuple
      */
-    TupleData(set<tuple<string, string>>& m, string l = "") :
+    TupleDataSet(set<shared_ptr<BaseData>>& m, string l = "") :
         label(l) {
-        type = Dtype::TUPLE;
         tset.insert(m.begin(), m.end());
     }
     /**
@@ -90,7 +203,7 @@ public:
     /**
      * tuple data
      */
-    set<tuple<string, string>> tset;
+    set<shared_ptr<BaseData>> tset;
     /**
      * string representation of object
      */
@@ -98,7 +211,19 @@ public:
         stringstream ss;
         ss << "label " << label << endl;
         for (auto elem : tset) {
-            ss << std::get<0>(elem) << " : " << get<1>(elem) << endl;
+            if (elem->getType() == Dtype::INTEGER) {
+                shared_ptr<TupleData<int>> tPtr =
+                        dynamic_pointer_cast<TupleData<int>>(elem);
+                ss << get<0>(tPtr->data) << " : " << get<1>(tPtr->data).val << endl;
+            } else if (elem->getType() == Dtype::STRING) {
+                shared_ptr<TupleData<string>> tPtr =
+                        dynamic_pointer_cast<TupleData<string>>(elem);
+                ss << get<0>(tPtr->data) << " : " << get<1>(tPtr->data).val << endl;
+            } else if (elem->getType() == Dtype::BOOL) {
+                shared_ptr<TupleData<bool>> tPtr =
+                        dynamic_pointer_cast<TupleData<bool>>(elem);
+                ss << get<0>(tPtr->data) << " : " << get<1>(tPtr->data).val << endl;
+            }
         }
         return ss.str();
     }
@@ -107,7 +232,7 @@ public:
 /**
  * struct representing row data for JSON/RPC requests
  */
-typedef map<string, shared_ptr<BaseData>> row_map;
+typedef map<string, shared_ptr<TupleDataSet>> row_map;
 
 /**
  * struct used for setting up a JSON/RPC request.
@@ -136,7 +261,7 @@ typedef struct transData_ {
     /**
      * key value pairs
      */
-    map<string, string> kvPairs;
+    set<shared_ptr<BaseData>> kvPairs;
     /**
      * default constructor
      */

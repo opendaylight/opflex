@@ -38,22 +38,10 @@ public:
     template <typename T>
     bool operator()(rapidjson::Writer<T> & writer);
 
-public:
-
-    enum class COLLECTION {
-        NONE = 0,
-        SET,
-        MAP,
-    };
-
-    enum class TYPE {
-        NONE = 0,
-        NAMED_UUID,
-        UUID,
-    };
+    template <typename T>
+    void writePair(rapidjson::Writer<T>& writer, shared_ptr<BaseData> bPtr, bool kvPair);
 
     transData tData;
-    //std::function<void()> ResponseCb();
 
 };
 

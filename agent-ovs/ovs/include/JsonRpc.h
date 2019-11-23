@@ -376,7 +376,6 @@ private:
      */
     bool checkForResponse();
 
-    //std::function<void(uint64_t, const rapidjson::Value&)> nextMethod;
     /**
      * print mirror map values
      */
@@ -399,8 +398,6 @@ private:
             reqId(reqId), payload(payload) {}
     } response;
 
-
-//    bool connected = false;
     bool responseReceived = false;
     map<string, string> results;
     map<string, mirror> mirMap;

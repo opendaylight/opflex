@@ -38,7 +38,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/optional/optional.hpp>
 
-using namespace boost;
+
 using namespace opflex::ofcore;
 using namespace std::chrono;
 
@@ -205,17 +205,21 @@ using boost::uuids::basic_random_generator;
         transData td;
         td.operation = "update";
         td.table = "Bridge";
-        std::tuple<string, string, string> cond1("_uuid", "==", brPortUuid);
-        set<std::tuple<string, string, string>> condSet;
+        tuple<string, string, string> cond1("_uuid", "==", brPortUuid);
+        set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
         td.conditions = condSet;
-        set<tuple<string, string>> rdata;
+        set<shared_ptr<BaseData>> pSet;
         for (auto elem : brPorts) {
-            rdata.emplace("uuid", elem);
+            shared_ptr<TupleData<string>> tPtr =
+                    make_shared<TupleData<string>>("uuid", elem);
+            pSet.emplace(tPtr);
         }
-        std::shared_ptr<TupleData> mPtr = make_shared<TupleData>(rdata, "set");
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+        pTdSet->label = "set";
+        td.rows.emplace("ports", pTdSet);
+
         uint64_t reqId = getNextId();
-        td.rows.emplace("ports", mPtr);
         list<transData> tl;
         tl.push_back(td);
         if (!sendRequest(tl, reqId)) {
@@ -231,8 +235,8 @@ using boost::uuids::basic_random_generator;
 
     bool JsonRpc::handleGetBridgePortList(uint64_t reqId,
             const rapidjson::Value& payload,
-            std::shared_ptr<BrPortResult> brPtr) {
-        std::tuple<string, set<string>> brPorts;
+            shared_ptr<BrPortResult> brPtr) {
+        tuple<string, set<string>> brPorts;
         string brPortUuid;
         set<string> brPortSet;
         list<string> ids = {"0","rows","0","ports","0"};
@@ -295,8 +299,8 @@ using boost::uuids::basic_random_generator;
 
     bool JsonRpc::getBridgePortList(string bridge,
             BrPortResult& res) {
-        std::tuple<string, string, string> cond1("name", "==", bridge);
-        set<std::tuple<string, string, string>> condSet;
+        tuple<string, string, string> cond1("name", "==", bridge);
+        set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
         transData td;
         td.conditions = condSet;
@@ -317,7 +321,7 @@ using boost::uuids::basic_random_generator;
             return false;
         }
 
-        std::shared_ptr<BrPortResult> brPtr =
+        shared_ptr<BrPortResult> brPtr =
                 make_shared<BrPortResult>();
         if (handleGetBridgePortList(pResp->reqId, pResp->payload, brPtr)) {
             res = *brPtr;
@@ -389,8 +393,8 @@ using boost::uuids::basic_random_generator;
             transData td;
             td.operation = "select";
             td.table = "Interface";
-            std::tuple<string, string, string> cond1("name", "==", ERSPAN_PORT_NAME);
-            set<std::tuple<string, string, string>> condSet;
+            tuple<string, string, string> cond1("name", "==", ERSPAN_PORT_NAME);
+            set<tuple<string, string, string>> condSet;
             condSet.emplace(cond1);
             td.conditions = condSet;
             td.columns.emplace("options");
@@ -520,8 +524,8 @@ using boost::uuids::basic_random_generator;
 
     string JsonRpc::getPortUuid(const string& name) {
         transData td;
-        std::tuple<string, string, string> cond1("name", "==", name);
-        set<std::tuple<string, string, string>> condSet;
+        tuple<string, string, string> cond1("name", "==", name);
+        set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
         td.conditions = condSet;
 
@@ -550,8 +554,8 @@ using boost::uuids::basic_random_generator;
 
     string JsonRpc::getPortParam(const string& col, const string& match) {
         transData td;
-        std::tuple<string, string, string> cond1(col, "==", match);
-        set<std::tuple<string, string, string>> condSet;
+        tuple<string, string, string> cond1(col, "==", match);
+        set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
         td.conditions = condSet;
 
@@ -589,8 +593,8 @@ using boost::uuids::basic_random_generator;
     }
 
     string JsonRpc::getBridgeUuid(string name) {
-        std::tuple<string, string, string> cond1("name", "==", name);
-        set<std::tuple<string, string, string>> condSet;
+        tuple<string, string, string> cond1("name", "==", name);
+        set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
         transData td;
         td.conditions = condSet;
@@ -657,51 +661,76 @@ using boost::uuids::basic_random_generator;
 
         td1.operation = "insert";
         td1.table = "Mirror";
+
+        set<shared_ptr<BaseData>> pSet;
         // src ports
         set<tuple<string,string>> rdata;
         populatePortUuids(mir.src_ports, portUuidMap, rdata);
-        std::shared_ptr<TupleData> tPtr = make_shared<TupleData>(rdata, "set");
-
-        td1.rows.emplace("select_src_port", tPtr);
+        for (auto pair : rdata) {
+            shared_ptr<TupleData<string>> tPtr =
+                    make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
+            pSet.emplace(tPtr);
+        }
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+        pTdSet->label = "set";
+        td1.rows.emplace("select_src_port", pTdSet);
 
         // dst ports
         rdata.clear();
+        pSet.clear();
         populatePortUuids(mir.dst_ports, portUuidMap, rdata);
-        tPtr.reset(new TupleData(rdata, "set"));
-        td1.rows.emplace("select_dst_port", tPtr);
+        for (auto pair : rdata) {
+            shared_ptr<TupleData<string>> tPtr =
+                    make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
+            pSet.emplace(tPtr);
+        }
+        pTdSet.reset(new TupleDataSet(pSet));
+        pTdSet->label = "set";
+        td1.rows.emplace("select_dst_port", pTdSet);
 
         // output ports
+        pSet.clear();
         rdata.clear();
         ports.clear();
         ports.insert(ERSPAN_PORT_NAME);
         populatePortUuids(ports, portUuidMap, rdata);
-        tPtr.reset( new TupleData(rdata, "set"));
-        td1.rows.emplace("output_port", tPtr);
+        for (auto pair : rdata) {
+            shared_ptr<TupleData<string>> tPtr =
+                    make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
+            pSet.emplace(tPtr);
+        }
+        pTdSet.reset(new TupleDataSet(pSet));
+        pTdSet->label = "set";
+        td1.rows.emplace("output_port", pTdSet);
 
         // name
-        std::shared_ptr<StringData> sPtr = make_shared<StringData>(name);
-        td1.rows.emplace("name", sPtr);
+        pSet.clear();
+        shared_ptr<TupleData<string>> tPtr =
+                make_shared<TupleData<string>>("", name);
+        pSet.emplace(tPtr);
+        pTdSet.reset(new TupleDataSet(TupleDataSet(pSet)));
+        td1.rows.emplace("name", pTdSet);
 
         string uuid_name = generateTempUuid();
-        td1.kvPairs.emplace("uuid-name", uuid_name);
+        td1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
         uint64_t reqId = getNextId();
         list<transData> tl;
         tl.push_back(td1);
 
         // msg2
-        std::tuple<string, string, string> cond1("_uuid", "==", brUuid);
-        set<std::tuple<string, string, string>> condSet;
+        tuple<string, string, string> cond1("_uuid", "==", brUuid);
+        set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
 
         transData td2;
+        pSet.clear();
         td2.conditions = condSet;
         td2.operation = "update";
         td2.table = "Bridge";
-        rdata.clear();
-        rdata.emplace("named-uuid", uuid_name);
-        tPtr.reset(new TupleData(rdata));
-        td2.rows.emplace("mirrors", tPtr);
-        //req->addTransaction(msg2);
+        tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
+        pSet.emplace(tPtr);
+        pTdSet.reset(new TupleDataSet(pSet));
+        td2.rows.emplace("mirrors", pTdSet);
         tl.push_back(td2);
 
         if (!sendRequest(tl, reqId)) {
@@ -712,6 +741,7 @@ using boost::uuids::basic_random_generator;
             LOG(DEBUG) << "Error getting response";
             return false;
         }
+
         string uuid;
         if (handleCreateMirrorResp(pResp->reqId, pResp->payload, uuid)) {
             return true;
@@ -721,9 +751,9 @@ using boost::uuids::basic_random_generator;
     }
 
     inline string JsonRpc::generateTempUuid() {
-        std::random_device rng;
-        std::mt19937 urng(rng());
-        string uuid_name = to_string(basic_random_generator<std::mt19937>(urng)());
+        random_device rng;
+        mt19937 urng(rng());
+        string uuid_name = to_string(basic_random_generator<mt19937>(urng)());
         uuid_name.insert(0,"row");
         std::regex hyph ("-");
         string underscore("_");
@@ -735,20 +765,25 @@ using boost::uuids::basic_random_generator;
         transData td;
         td.operation = "insert";
         td.table = "Port";
-        std::shared_ptr<StringData> sPtr = make_shared<StringData>(port.name);
+        shared_ptr<TupleData<string>> tPtr =
+                make_shared<TupleData<string>>("", port.name);
+        set<shared_ptr<BaseData>> pSet;
+        pSet.emplace(tPtr);
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
 
-        td.rows.emplace("name", sPtr);
+        td.rows.emplace("name", pTdSet);
 
         // uuid-name
         string uuid_name = generateTempUuid();
-        td.kvPairs.emplace("uuid-name", uuid_name);
+        td.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
 
         // interfaces
         string named_uuid = generateTempUuid();
-        set<tuple<string, string>> rdata;
-        rdata.emplace("named-uuid", named_uuid);
-        std::shared_ptr<TupleData> mPtr = make_shared<TupleData>(rdata);
-        td.rows.emplace("interfaces", mPtr);
+        tPtr.reset(new TupleData<string>("named-uuid", named_uuid));
+        pSet.clear();
+        pSet.emplace(tPtr);
+        pTdSet.reset(new TupleDataSet(TupleDataSet(pSet)));
+        td.rows.emplace("interfaces", pTdSet);
 
         list<transData> tl;
         tl.push_back(td);
@@ -757,49 +792,64 @@ using boost::uuids::basic_random_generator;
         transData td1;
         td1.operation = "insert";
         td1.table = "Interface";
-        td1.kvPairs.emplace("uuid-name", named_uuid);
+        td1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", named_uuid));
 
         // row entries
         // name
-        td1.rows.emplace("name", sPtr);
+        tPtr.reset(new TupleData<string>("", port.name));
+        pSet.clear();
+        pSet.emplace(tPtr);
+        pTdSet.reset(new TupleDataSet(pSet));
+        td1.rows.emplace("name", pTdSet);
+
         // options
-        rdata.clear();
-        rdata.emplace("erspan_idx", std::to_string(port.erspan_idx));
-        rdata.emplace("erspan_ver", std::to_string(port.erspan_ver));
-        rdata.emplace("key", std::to_string(port.key));
-        rdata.emplace("remote_ip", port.remote_ip);
-        mPtr.reset(new TupleData(rdata, "map"));
-        td1.rows.emplace("options", mPtr);
+        pSet.clear();
+        tPtr.reset(new TupleData<string>("erspan_idx", std::to_string(port.erspan_idx)));
+        pSet.emplace(tPtr);
+        tPtr.reset(new TupleData<string>("erspan_ver", std::to_string(port.erspan_ver)));
+        pSet.emplace(tPtr);
+        tPtr.reset(new TupleData<string>("key", std::to_string(port.key)));
+        pSet.emplace(tPtr);
+        tPtr.reset(new TupleData<string>("remote_ip", port.remote_ip));
+        pSet.emplace(tPtr);
+        pTdSet.reset(new TupleDataSet(pSet));
+        pTdSet->label = "map";
+        td1.rows.emplace("options", pTdSet);
+
         // type
-        sPtr.reset();
-        sPtr = make_shared<StringData>("erspan");
-        td1.rows.emplace("type", sPtr);
+        tPtr.reset(new TupleData<string>("", "erspan"));
+        pSet.clear();
+        pSet.emplace(tPtr);
+        pTdSet.reset(new TupleDataSet(pSet));
+        td1.rows.emplace("type", pTdSet);
         tl.push_back(td1);
-        //req->addTransaction(msg2);
 
         // get bridge port list and add erspan port to it.
         BrPortResult res;
         if (!getBridgePortList(bridge, res)) {
             return false;
         }
-        std::tuple<string, string, string> cond1("_uuid", "==", res.brUuid);
-        set<std::tuple<string, string, string>> condSet;
+        tuple<string, string, string> cond1("_uuid", "==", res.brUuid);
+        set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
 
         transData td2;
         td2.operation = "update";
         td2.table = "Bridge";
-        rdata.clear();
+        //rdata.clear();
+        pSet.clear();
         for (auto elem : res.portUuids) {
-            rdata.emplace("uuid", elem);
+            tPtr.reset(new TupleData<string>("uuid", elem));
+            pSet.emplace(tPtr);
         }
-        rdata.emplace("named-uuid", uuid_name);
-        mPtr.reset(new TupleData(rdata, "set"));
-        td2.rows.emplace("ports", mPtr);
+        tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
+        pSet.emplace(tPtr);
+        pTdSet.reset(new TupleDataSet(pSet, "set"));
+        td2.rows.emplace("ports", pTdSet);
+        tl.push_back(td2);
 
         uint64_t reqId = getNextId();
 
-        tl.push_back(td2);
         if (!sendRequest(tl, reqId)) {
             LOG(DEBUG) << "Error sending message";
             return "";
@@ -860,8 +910,8 @@ using boost::uuids::basic_random_generator;
 
     bool JsonRpc::deleteMirror(string brName) {
             list<string> mirList;
-            std::tuple<string, string, string> cond1("name", "==", brName);
-            set<std::tuple<string, string, string>> condSet;
+            tuple<string, string, string> cond1("name", "==", brName);
+            set<tuple<string, string, string>> condSet;
             condSet.emplace(cond1);
 
             transData td;
@@ -869,9 +919,11 @@ using boost::uuids::basic_random_generator;
             td.operation = "update";
             td.table = "Bridge";
 
-            set<tuple<string, string>> rdata;
-            std::shared_ptr<TupleData> mPtr = make_shared<TupleData>(rdata, "set");
-            td.rows.emplace("mirrors", mPtr);
+            set<shared_ptr<BaseData>> pSet;
+            shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+            pTdSet->label = "set";
+            td.rows.emplace("mirrors", pTdSet);
+
             uint64_t reqId = getNextId();
 
             list<transData> tl = {td};
@@ -884,6 +936,7 @@ using boost::uuids::basic_random_generator;
                 LOG(DEBUG) << "Error getting response";
                 return false;
             }
+
             return true;
     }
 
