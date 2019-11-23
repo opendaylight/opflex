@@ -38,6 +38,10 @@ public:
     template <typename T>
     bool operator()(rapidjson::Writer<T> & writer);
 
+    template <typename T>
+    void writePair(rapidjson::Writer<T>& writer, shared_ptr<BaseData> bPtr, bool kvPair);
+
+/*
 public:
 
     enum class COLLECTION {
@@ -51,7 +55,7 @@ public:
         NAMED_UUID,
         UUID,
     };
-
+*/
     transData tData;
     //std::function<void()> ResponseCb();
 

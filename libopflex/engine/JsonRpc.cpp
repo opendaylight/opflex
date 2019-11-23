@@ -174,12 +174,69 @@ Value getValue(const Value& val, const list<string>& idx) {
     return tmpVal;
 }
 
+template<typename T>
+void TransactReq::writePair(rapidjson::Writer<T>& writer, shared_ptr<BaseData> bPtr,
+        bool kvPair) {
+    if (bPtr->getType() == Dtype::INTEGER) {
+        shared_ptr<TupleData<int>> tPtr =
+                dynamic_pointer_cast<TupleData<int>>(bPtr);
+        if (kvPair) {
+            writer.String(get<0>(tPtr->data).c_str());
+            writer.Int(get<1>(tPtr->data).val);
+        } else {
+            string str = get<0>(tPtr->data);
+            if (!str.empty()) {
+                writer.StartArray();
+                writer.String(get<0>(tPtr->data).c_str());
+            }
+            writer.Int(get<1>(tPtr->data).val);
+            if (!str.empty()) {
+                writer.EndArray();
+            }
+        }
+    } else if (bPtr->getType() == Dtype::STRING) {
+        shared_ptr<TupleData<string>> tPtr =
+                dynamic_pointer_cast<TupleData<string>>(bPtr);
+        if (kvPair) {
+            writer.String(get<0>(tPtr->data).c_str());
+            writer.String(get<1>(tPtr->data).val.c_str());
+        } else {
+            string str = get<0>(tPtr->data);
+            if (!str.empty()) {
+                writer.StartArray();
+                writer.String(get<0>(tPtr->data).c_str());
+            }
+            writer.String(get<1>(tPtr->data).val.c_str());
+            if (!str.empty()) {
+                writer.EndArray();
+            }
+        }
+    } else if (bPtr->getType() == Dtype::BOOL) {
+        shared_ptr<TupleData<bool>> tPtr =
+                dynamic_pointer_cast<TupleData<bool>>(bPtr);
+        if (kvPair) {
+            writer.String(get<0>(tPtr->data).c_str());
+            writer.Bool(get<1>(tPtr->data).val);
+        } else {
+            string str = get<0>(tPtr->data);
+            if (!str.empty()) {
+                writer.StartArray();
+                writer.String(get<0>(tPtr->data).c_str());
+            }
+            writer.Bool(get<1>(tPtr->data).val);
+            if (!str.empty()) {
+                writer.EndArray();
+            }
+        }
+    }
+}
+
 template <typename T>
 bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
     for (auto pair : tData.kvPairs) {
-        writer.String(pair.first.c_str());
-        writer.String(pair.second.c_str());
+        writePair<T>(writer, pair, true);
     }
+
     if (tData.operation != "insert") {
         writer.String("where");
         writer.StartArray();
@@ -219,6 +276,7 @@ bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
         }
         writer.EndArray();
     }
+
     if (!tData.rows.empty()) {
         writer.String("row");
         writer.StartObject();
@@ -227,36 +285,21 @@ bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
             string col = itr->first;
             LOG(DEBUG) << "row label " << col;
             writer.String(col.c_str());
+            shared_ptr<TupleDataSet> tdsPtr = itr->second;
+            if (!tdsPtr->label.empty()) {
+                writer.StartArray();
+                writer.String(tdsPtr->label.c_str());
+                writer.StartArray();
+                LOG(DEBUG) << "label " << tdsPtr->label;
 
-            shared_ptr<BaseData> bPtr = itr->second;
-            if (bPtr->type == BaseData::Dtype::TUPLE) {
-                LOG(DEBUG) << "map";
-                shared_ptr<TupleData> mPtr =
-                        dynamic_pointer_cast<TupleData>(itr->second);
-                if (!mPtr->label.empty()) {
-                    writer.StartArray();
-                    writer.String(mPtr->label.c_str());
-                    writer.StartArray();
-                    LOG(DEBUG) << "label " << mPtr->label;
-                }
-                for (auto val : mPtr->tset)
+                for (auto val : tdsPtr->tset)
                 {
-                        writer.StartArray();
-                        writer.String(get<0>(val).c_str());
-                        writer.String(get<1>(val).c_str());
-                        LOG(DEBUG) << "first " << get<0>(val)
-                                   << ", second " << get<1>(val);
-                        writer.EndArray();
+                    writePair<T>(writer, val, false);
                 }
-                if (!mPtr->label.empty()) {
                     writer.EndArray();
                     writer.EndArray();
-                }
-            } else if (bPtr->type == BaseData::Dtype::STRING) {
-                shared_ptr<StringData> sPtr =
-                        dynamic_pointer_cast<StringData>(itr->second);
-                writer.String(sPtr->data.c_str());
-                LOG(DEBUG) << "string " << sPtr->data;
+            } else {
+                writePair(writer, *(tdsPtr->tset.begin()), false);
             }
         }
         writer.EndObject();
