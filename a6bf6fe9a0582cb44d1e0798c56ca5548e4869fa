@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1b91ebb7_31d00796",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-25T05:41:50Z",
+      "side": 1,
+      "message": "Compiler warning here\n\n12:00:56 In file included from lib/Agent.cpp:24:0:\n12:00:56 ./lib/include/opflexagent/Agent.h: In constructor \u0027opflexagent::Agent::Agent(opflex::ofcore::OFFramework\u0026)\u0027:\n12:00:56 ./lib/include/opflexagent/Agent.h:357:20: warning: \u0027opflexagent::Agent::netflowManager\u0027 will be initialized after [-Wreorder]\n12:00:56      NetFlowManager netflowManager;\n12:00:56                     ^\n12:00:56 ./lib/include/opflexagent/Agent.h:356:17: warning:   \u0027opflexagent::SpanManager opflexagent::Agent::spanManager\u0027 [-Wreorder]\n12:00:56      SpanManager spanManager;\n12:00:56                  ^\n12:00:56 lib/Agent.cpp:61:1: warning:   when initialized here [-Wreorder]\n12:00:56  Agent::Agent(OFFramework\u0026 framework_)\n12:00:56  ^",
+      "revId": "a6bf6fe9a0582cb44d1e0798c56ca5548e4869fa",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90031c53_4f6b9083",
+        "filename": "agent-ovs/lib/include/opflexagent/NetFlowListener.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-25T05:41:50Z",
+      "side": 1,
+      "message": "No param named exporterconfigSt exists",
+      "revId": "a6bf6fe9a0582cb44d1e0798c56ca5548e4869fa",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5ea9e624_f594ee29",
+        "filename": "agent-ovs/ovs/include/NetFlowJsonRpc.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-25T05:41:50Z",
+      "side": 1,
+      "message": "uuid -\u003e brUuid",
+      "revId": "a6bf6fe9a0582cb44d1e0798c56ca5548e4869fa",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "458f4023_29f9e619",
+        "filename": "agent-ovs/ovs/include/NetFlowJsonRpc.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-25T05:41:50Z",
+      "side": 1,
+      "message": "doxygen comments are missing some params",
+      "revId": "a6bf6fe9a0582cb44d1e0798c56ca5548e4869fa",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
