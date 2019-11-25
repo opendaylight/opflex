@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2895797b_90713fda",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-25T20:38:32Z",
+      "side": 1,
+      "message": "std::tuple -\u003e tuple",
+      "revId": "1898a9115e21a8e29d7aab8bad59cd5ab0c0cd76",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "63c06919_777b8e1b",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-25T20:38:32Z",
+      "side": 1,
+      "message": "std::shared_ptr -\u003e shared_ptr throughout as we have \u0027using namespace std\u0027 in JsonRpc.h",
+      "revId": "1898a9115e21a8e29d7aab8bad59cd5ab0c0cd76",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a319a57c_34e2fa4b",
+        "filename": "libopflex/engine/include/opflex/engine/internal/OvsdbConnection.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-11-25T20:38:32Z",
+      "side": 1,
+      "message": "Can we remove the commented out code here and other places in this changeset? git has the history if you need it",
+      "revId": "1898a9115e21a8e29d7aab8bad59cd5ab0c0cd76",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
