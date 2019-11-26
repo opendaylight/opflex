@@ -112,6 +112,7 @@ void OVSRenderer::start() {
 
     intFlowManager.setEncapType(encapType);
     intFlowManager.setEncapIface(encapIface);
+    intFlowManager.setUplinkIface(uplinkNativeIface);
     intFlowManager.setFloodScope(IntFlowManager::ENDPOINT_GROUP);
     if (encapType == IntFlowManager::ENCAP_VXLAN ||
         encapType == IntFlowManager::ENCAP_IVXLAN) {
@@ -236,6 +237,7 @@ void OVSRenderer::setProperties(const ptree& properties) {
     static const std::string ENCAP_IVXLAN("encap.ivxlan");
     static const std::string ENCAP_VLAN("encap.vlan");
 
+    static const std::string UPLINK_NATIVE_IFACE("uplink-native-iface");
     static const std::string UPLINK_IFACE("uplink-iface");
     static const std::string UPLINK_VLAN("uplink-vlan");
     static const std::string ENCAP_IFACE("encap-iface");
@@ -318,12 +320,14 @@ void OVSRenderer::setProperties(const ptree& properties) {
     if (vlan) {
         encapType = IntFlowManager::ENCAP_VLAN;
         encapIface = vlan.get().get<std::string>(ENCAP_IFACE, "");
+        uplinkNativeIface = vlan.get().get<std::string>(UPLINK_NATIVE_IFACE, "");
         count += 1;
     }
     if (vxlan) {
         encapType = IntFlowManager::ENCAP_VXLAN;
         encapIface = vxlan.get().get<std::string>(ENCAP_IFACE, "");
         uplinkIface = vxlan.get().get<std::string>(UPLINK_IFACE, "");
+        uplinkNativeIface = vxlan.get().get<std::string>(UPLINK_NATIVE_IFACE, "");
         uplinkVlan = vxlan.get().get<uint16_t>(UPLINK_VLAN, 0);
         tunnelRemoteIp = vxlan.get().get<std::string>(REMOTE_IP, "");
         tunnelRemotePort = vxlan.get().get<uint16_t>(REMOTE_PORT, 4789);

@@ -128,6 +128,12 @@ public:
     void setEncapIface(const std::string& encapIface);
 
     /**
+     * Set the openflow interface name for uplink external tagged packets
+     * @param uplinkIf the uplink interface names
+     */
+    void setUplinkIface(const std::string& uplinkIf);
+
+    /**
      * Flooding scopes supported by the flow manager.
      */
     enum FloodScope {
@@ -218,6 +224,13 @@ public:
     uint32_t getTunnelPort();
 
     /**
+     * Get the openflow port that maps to the configured uplink
+     * interface
+     * @return the openflow port number
+     */
+    uint32_t getUplinkPort();
+
+    /**
      * Get the configured tunnel destination as a parsed IP address
      * @return the tunnel destination
      */
@@ -258,6 +271,7 @@ public:
     /* Interface: EndpointListener */
     virtual void endpointUpdated(const std::string& uuid);
     virtual void remoteEndpointUpdated(const std::string& uuid);
+    virtual void localExternalDomainUpdated(const opflex::modb::URI& uri);
 
     /* Interface: ServiceListener */
     virtual void serviceUpdated(const std::string& uuid);
@@ -547,15 +561,39 @@ private:
     void handleSnatUpdate(const std::string& snatIp,
                           const std::string& snatUuid);
 
+    /**
+     * Create/Update/Delete local external domain
+     *
+     * @param uri URI of the local external domain
+     */
+    void handleLocalExternalDomainUpdated(const opflex::modb::URI &uri);
+
+    /**
+     * Get Forwarding Info for a given EpGroup
+     *
+     * @param snatIp the snat ip affected
+     * @param snatUuid the snat uuid for the snat object
+     */
     bool getGroupForwardingInfo(const opflex::modb::URI& egUri, uint32_t& vnid,
             boost::optional<opflex::modb::URI>& rdURI, uint32_t& rdId,
             boost::optional<opflex::modb::URI>& bdURI, uint32_t& bdId,
             boost::optional<opflex::modb::URI>& fdURI, uint32_t& fdId);
+
     void updateGroupSubnets(const opflex::modb::URI& egUri,
                             uint32_t bdId, uint32_t rdId);
+    /**
+     * Apply appropriate flood action on the EPG
+     *
+     * @param epgURI EPG URI
+     * @param epgVnid encap id of the EPG
+     * @param fgrpId flood group id
+     * @param epgTunDst epg multicast IP to flood
+     * @param isLocalExtDomain EPG refers to a local external domain
+     */
     void updateEPGFlood(const opflex::modb::URI& epgURI,
                         uint32_t epgVnid, uint32_t fgrpId,
-                        const boost::asio::ip::address& epgTunDst);
+                        const boost::asio::ip::address& epgTunDst,
+                        bool isLocalExtDomain=false);
 
     /**
      * Update all current group table entries
@@ -611,7 +649,7 @@ private:
     TaskQueue taskQueue;
 
     EncapType encapType;
-    std::string encapIface;
+    std::string encapIface, uplinkIface;
     FloodScope floodScope;
     boost::asio::ip::address tunnelDst;
     std::string tunnelPortStr;
@@ -649,6 +687,8 @@ private:
     /* Map of multi-cast IP addresses to associated managed objects */
     typedef std::unordered_map<std::string, UriSet> MulticastMap;
     MulticastMap mcastMap;
+    /* Set of external flood domain Ids*/
+    std::unordered_set<uint32_t> localExternalFdSet;
 
     /**
      * Associate or disassociate a managed object with a multicast IP, and

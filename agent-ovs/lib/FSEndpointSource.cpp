@@ -74,6 +74,9 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EP_NAT_MODE("nat-mode");
     static const std::string EP_ATTRIBUTE_VM_NAME("vm-name");
     static const std::string EP_ATTRIBUTES("attributes");
+    static const std::string EP_EXT_SVI_FLAG("ext-svi");
+    static const std::string EP_EXT_ENCAP_TYPE("ext-encap-type");
+    static const std::string EP_EXT_ENCAP_ID("ext-encap-id");
 
     static const std::string DHCP4("dhcp4");
     static const std::string DHCP6("dhcp6");
@@ -411,6 +414,31 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             properties.get_optional<string>(SNAT_IP);
         if (snatIp)
             newep.setSnatIP(snatIp.get());
+
+        optional<bool> ext_svi =
+                properties.get_optional<bool>(EP_EXT_SVI_FLAG);
+        if(ext_svi && ext_svi.get()) {
+            newep.setExternal();
+        }
+
+        if(newep.isExternal() && !newep.getEgURI()) {
+            LOG(ERROR) << "endpoint-group not specified for external endpoint";
+            return;
+        }
+        std::string ext_encap_type = properties.get(EP_EXT_ENCAP_TYPE,"vlan");
+        if(ext_encap_type != "vlan") {
+            LOG(ERROR) << "No encap other than vlan is supported for external EP";
+            return;
+        }
+        optional<uint32_t> ext_encap =
+                properties.get_optional<uint32_t>(EP_EXT_ENCAP_ID);
+        if(ext_encap) {
+            newep.setExtEncap(ext_encap.get());
+        } else if(newep.isExternal()) {
+            LOG(ERROR) << EP_EXT_ENCAP_ID << " not provided for external EP: "
+                    << filePath;
+            return;
+        }
 
         ep_map_t::const_iterator it = knownEps.find(pathstr);
         if (it != knownEps.end()) {
