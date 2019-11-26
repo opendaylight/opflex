@@ -164,6 +164,18 @@ void IntFlowManager::setEncapIface(const string& encapIf) {
     encapIface = encapIf;
 }
 
+void IntFlowManager::setUplinkIface(const string& uplinkIf) {
+    if (uplinkIf.empty()) {
+        LOG(ERROR) << "Ignoring empty uplink interface name";
+        return;
+    }
+    uplinkIface = uplinkIf;
+}
+
+uint32_t IntFlowManager::getUplinkPort() {
+    return switchManager.getPortMapper().FindPort(uplinkIface);
+}
+
 void IntFlowManager::setFloodScope(FloodScope fscope) {
     floodScope = fscope;
 }
@@ -274,6 +286,11 @@ void IntFlowManager::endpointUpdated(const std::string& uuid) {
     }
     advertManager.scheduleEndpointAdv(uuid);
     taskQueue.dispatch(uuid, [=]() { handleEndpointUpdate(uuid); });
+}
+
+void IntFlowManager::localExternalDomainUpdated(const opflex::modb::URI& egURI) {
+    if (stopping) return;
+    taskQueue.dispatch(egURI.toString(), [=]() { handleLocalExternalDomainUpdated(egURI); });
 }
 
 void IntFlowManager::remoteEndpointUpdated(const string& uuid) {
@@ -456,38 +473,62 @@ bool IntFlowManager::getGroupForwardingInfo(const URI& epgURI, uint32_t& vnid,
                                             uint32_t& bdId,
                                             optional<URI>& fdURI,
                                             uint32_t& fdId) {
-    PolicyManager& polMgr = agent.getPolicyManager();
-    optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI);
-    if (!epgVnid) {
-        return false;
-    }
-    vnid = epgVnid.get();
+    EndpointManager &epMgr = agent.getEndpointManager();
 
-    optional<shared_ptr<RoutingDomain> > epgRd = polMgr.getRDForGroup(epgURI);
-    optional<shared_ptr<BridgeDomain> > epgBd = polMgr.getBDForGroup(epgURI);
-    optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
-    if (!epgRd && !epgBd && !epgFd) {
-        return false;
-    }
-
-    bdId = 0;
-    if (epgBd) {
-        bdURI = epgBd.get()->getURI();
-        bdId = getId(BridgeDomain::CLASS_ID, bdURI.get());
-    }
-    fdId = 0;
-    if (epgFd) {    // FD present -> flooding is desired
-        if (floodScope == ENDPOINT_GROUP) {
-            fdURI = epgURI;
-        } else  {
-            fdURI = epgFd.get()->getURI();
+    if(epMgr.localExternalDomainExists(epgURI)) {
+        string bdStr, fdStr;
+        /* Ext encap id is a vlan id which falls in the same namespace as
+         * the vnid for the flow tables and it could clash with a real EPG.
+         * So we add a >24 bit value prefix to it.
+         */
+        optional<uint32_t> epgVnid = ((1<< 30) + epMgr.getExtEncapId(epgURI));
+        if (!epgVnid) {
+            return false;
         }
+        vnid = epgVnid.get();
+        bdStr = "extbd:" + epgURI.toString();
+        bdURI = URI(bdStr);
+        bdId = getId(BridgeDomain::CLASS_ID, bdURI.get());
+
+        fdStr = "extfd:" + epgURI.toString();
+        fdURI = URI(fdStr);
         fdId = getId(FloodDomain::CLASS_ID, fdURI.get());
-    }
-    rdId = 0;
-    if (epgRd) {
-        rdURI = epgRd.get()->getURI();
-        rdId = getId(RoutingDomain::CLASS_ID, rdURI.get());
+
+        rdId = 0;
+    } else {
+        PolicyManager& polMgr = agent.getPolicyManager();
+        optional<uint32_t> epgVnid = polMgr.getVnidForGroup(epgURI);
+        if (!epgVnid) {
+            return false;
+        }
+        vnid = epgVnid.get();
+
+        optional<shared_ptr<RoutingDomain> > epgRd = polMgr.getRDForGroup(epgURI);
+        optional<shared_ptr<BridgeDomain> > epgBd = polMgr.getBDForGroup(epgURI);
+        optional<shared_ptr<FloodDomain> > epgFd = polMgr.getFDForGroup(epgURI);
+        if (!epgRd && !epgBd && !epgFd) {
+            return false;
+        }
+
+        bdId = 0;
+        if (epgBd) {
+            bdURI = epgBd.get()->getURI();
+            bdId = getId(BridgeDomain::CLASS_ID, bdURI.get());
+        }
+        fdId = 0;
+        if (epgFd) {    // FD present -> flooding is desired
+            if (floodScope == ENDPOINT_GROUP) {
+                fdURI = epgURI;
+            } else  {
+                fdURI = epgFd.get()->getURI();
+            }
+            fdId = getId(FloodDomain::CLASS_ID, fdURI.get());
+        }
+        rdId = 0;
+        if (epgRd) {
+            rdURI = epgRd.get()->getURI();
+            rdId = getId(RoutingDomain::CLASS_ID, rdURI.get());
+        }
     }
     return true;
 }
@@ -1522,21 +1563,30 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         hasForwardingInfo = true;
     }
 
-    if (hasForwardingInfo)
-        fd = agent.getPolicyManager().getFDForGroup(epgURI.get());
-    if (fd) {
-        // Irrespective of flooding scope (epg vs. flood-domain), the
-        // properties of the flood-domain object decide how flooding
-        // is done.
+    if(endPoint.isExternal()) {
+        arpMode = AddressResModeEnumT::CONST_FLOOD;
+        ndMode = AddressResModeEnumT::CONST_FLOOD;
+        unkFloodMode = UnknownFloodModeEnumT::CONST_FLOOD;
+        bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
+        hasForwardingInfo = true;
+    } else {
+        if (hasForwardingInfo)
+            fd = agent.getPolicyManager().getFDForGroup(epgURI.get());
 
-        arpMode = fd.get()
-            ->getArpMode(AddressResModeEnumT::CONST_UNICAST);
-        ndMode = fd.get()
-            ->getNeighborDiscMode(AddressResModeEnumT::CONST_UNICAST);
-        unkFloodMode = fd.get()
-            ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
-        bcastFloodMode = fd.get()
-            ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+        if (fd) {
+            // Irrespective of flooding scope (epg vs. flood-domain), the
+            // properties of the flood-domain object decide how flooding
+            // is done.
+
+            arpMode = fd.get()
+                ->getArpMode(AddressResModeEnumT::CONST_UNICAST);
+            ndMode = fd.get()
+                ->getNeighborDiscMode(AddressResModeEnumT::CONST_UNICAST);
+            unkFloodMode = fd.get()
+                ->getUnknownFloodMode(UnknownFloodModeEnumT::CONST_DROP);
+            bcastFloodMode = fd.get()
+                ->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+        }
     }
 
     // Virtual DHCP is allowed even without forwarding resolution
@@ -2454,13 +2504,16 @@ void IntFlowManager::handleSnatUpdate(const string& snatIp,
 }
 
 void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
-                                    uint32_t fgrpId, const address& epgTunDst) {
+                                    uint32_t fgrpId, const address& epgTunDst,
+                                    bool isLocalExtDomain) {
     uint8_t bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
-    optional<shared_ptr<FloodDomain> > fd =
-        agent.getPolicyManager().getFDForGroup(epgURI);
-    if (fd) {
-        bcastFloodMode =
-            fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+    if(!isLocalExtDomain) {
+        optional<shared_ptr<FloodDomain> > fd =
+            agent.getPolicyManager().getFDForGroup(epgURI);
+        if (fd) {
+            bcastFloodMode =
+                fd.get()->getBcastFloodMode(BcastFloodModeEnumT::CONST_NORMAL);
+        }
     }
 
     FlowEntryList grpDst;
@@ -2476,14 +2529,16 @@ void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
             mcast.metadata(flow::meta::POLICY_APPLIED,
                            flow::meta::POLICY_APPLIED);
         }
-        switch (getEncapType()) {
-        case ENCAP_VLAN:
-            break;
-        case ENCAP_VXLAN:
-        case ENCAP_IVXLAN:
-        default:
-            mcast.action().reg(MFF_REG7, epgTunDst.to_v4().to_ulong());
-            break;
+        if(!isLocalExtDomain) {
+            switch (getEncapType()) {
+            case ENCAP_VLAN:
+                break;
+            case ENCAP_VXLAN:
+            case ENCAP_IVXLAN:
+            default:
+                mcast.action().reg(MFF_REG7, epgTunDst.to_v4().to_ulong());
+                break;
+            }
         }
         mcast.action()
             .metadata(flow::meta::out::FLOOD, flow::meta::out::MASK)
@@ -2881,6 +2936,96 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
     }
 }
 
+void IntFlowManager::handleLocalExternalDomainUpdated(const opflex::modb::URI &epgURI) {
+    // Validate if URI is actually external
+    // Generate IDs for bd and fd. rdId should be 0.
+    LOG(DEBUG) << "Updating external endpoint-group " << epgURI;
+
+    const string& epgId = epgURI.toString();
+    EndpointManager& epMgr = agent.getEndpointManager();
+    uint32_t uplinkPort = getUplinkPort();
+    address epgTunDst;
+
+    if (!epMgr.localExternalDomainExists(epgURI)) {  // EPG removed
+        switchManager.clearFlows(epgId, SRC_TABLE_ID);
+        switchManager.clearFlows(epgId, POL_TABLE_ID);
+        switchManager.clearFlows(epgId, OUT_TABLE_ID);
+        switchManager.clearFlows(epgId, BRIDGE_TABLE_ID);
+        opflex::modb::URI fdURI =
+                opflex::modb::URI("extfd:" + epgURI.toString());
+        uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fdURI);
+        localExternalFdSet.erase(fgrpId);
+        updateMulticastList(boost::none, epgURI);
+        return;
+    }
+
+    uint32_t epgVnid, rdId, bdId, fgrpId;
+    optional<URI> fgrpURI, bdURI, rdURI;
+    if (!getGroupForwardingInfo(epgURI, epgVnid, rdURI, rdId,
+                                bdURI, bdId, fgrpURI, fgrpId)) {
+        return;
+    }
+
+    FlowEntryList uplinkMatch;
+    if (uplinkPort != OFPP_NONE && encapType != ENCAP_NONE) {
+        // Assign the source registers based on the VNID from the
+        // tunnel uplink
+        // Note that although the concocted epgVnid(1<<30 + encap_vlan)
+        // is passed in, matchEpg masks the vlan_id to 12 bits before matching
+        actionSource(matchEpg(FlowBuilder().priority(149).inPort(uplinkPort),
+                              ENCAP_VLAN, epgVnid),
+                     epgVnid, bdId, fgrpId, rdId,
+                     IntFlowManager::SERVICE_REV_TABLE_ID, ENCAP_VLAN, true)
+            .build(uplinkMatch);
+    }
+    switchManager.writeFlow(epgId, SRC_TABLE_ID, uplinkMatch);
+
+    /*Allow traffic within same EPG*/
+    FlowBuilder intraGroupFlow;
+    uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY + 100;
+    flowutils::match_group(intraGroupFlow, prio, epgVnid, epgVnid);
+    intraGroupFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+    switchManager.writeFlow(epgId, POL_TABLE_ID, intraGroupFlow);
+
+    updateEPGFlood(epgURI, epgVnid, fgrpId, epgTunDst, true);
+
+    FlowEntryList egOutFlows;
+    {
+        // Output table action to resubmit the flow to the bridge
+        // table with source registers set to the current EPG
+        FlowBuilder().priority(10)
+            .reg(7, epgVnid)
+            .metadata(flow::meta::out::RESUBMIT_DST, flow::meta::out::MASK)
+            .action()
+            .reg(MFF_REG0, epgVnid)
+            .reg(MFF_REG4, bdId)
+            .reg(MFF_REG5, fgrpId)
+            .reg(MFF_REG6, rdId)
+            .reg(MFF_REG7, (uint32_t)0)
+            .reg64(MFF_METADATA, flow::meta::ROUTED)
+            .resubmit(OFPP_IN_PORT, BRIDGE_TABLE_ID)
+            .parent().build(egOutFlows);
+    }
+    FlowBuilder tunnelOut;
+    tunnelOut.priority(10)
+        .reg(0, epgVnid)
+        .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK);
+    actionTunnelMetadata(tunnelOut.action(), ENCAP_VLAN, epgTunDst);
+    tunnelOut.action().output(uplinkPort);
+    tunnelOut.build(egOutFlows);
+
+    switchManager.writeFlow(epgId, OUT_TABLE_ID, egOutFlows);
+
+    unordered_set<string> epUuids;
+    // note this combines with the IPM group endpoints from above:
+    epMgr.getEndpointsForGroup(epgURI, epUuids);
+    for (const string& uuid : epUuids) {
+        advertManager.scheduleEndpointAdv(uuid);
+        endpointUpdated(uuid);
+    }
+
+}
+
 void IntFlowManager::updateGroupSubnets(const URI& egURI, uint32_t bdId,
                                         uint32_t rdId) {
     PolicyManager::subnet_vector_t subnets;
@@ -3198,14 +3343,23 @@ IntFlowManager::createGroupMod(uint16_t type, uint32_t groupId,
         ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
     }
     uint32_t tunPort = getTunnelPort();
-    if (type != OFPGC11_DELETE && tunPort != OFPP_NONE &&
-        encapType != ENCAP_NONE) {
-        ofputil_bucket *bkt = createBucket(tunPort);
+    uint32_t uplinkPort = getUplinkPort();
+    if (type != OFPGC11_DELETE && encapType != ENCAP_NONE) {
         ActionBuilder ab;
-        actionTunnelMetadata(ab, encapType);
-        ab.output(tunPort)
-            .build(bkt);
-        ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
+        if((localExternalFdSet.find(groupId) != localExternalFdSet.end()) &&
+               (uplinkPort != OFPP_NONE)) {
+            ofputil_bucket *bkt = createBucket(uplinkPort);
+            actionTunnelMetadata(ab, ENCAP_VLAN);
+            ab.output(uplinkPort)
+                    .build(bkt);
+            ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
+        } else if(tunPort != OFPP_NONE) {
+            ofputil_bucket *bkt = createBucket(tunPort);
+            actionTunnelMetadata(ab, encapType);
+            ab.output(tunPort)
+                .build(bkt);
+            ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
+        }
     }
     return entry;
 }
@@ -3220,7 +3374,9 @@ updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
     uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fgrpURI);
     string fgrpStrId = "fd:" + fgrpURI.toString();
     FloodGroupMap::iterator fgrpItr = floodGroupMap.find(fgrpURI);
-
+    if(endPoint.isExternal()) {
+        localExternalFdSet.insert(fgrpId);
+    }
     if (fgrpItr != floodGroupMap.end()) {
         Ep2PortMap& epMap = fgrpItr->second;
         Ep2PortMap::iterator epItr = epMap.find(epUUID);
