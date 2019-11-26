@@ -57,6 +57,13 @@ public:
     virtual void externalEndpointUpdated(const std::string& uuid) {};
 
     /**
+     * Called when a local External Domain is added, updated, or removed.
+     *
+     * @param uri the UUID for the external domain
+     */
+    virtual void localExternalDomainUpdated(const opflex::modb::URI& uri) {};
+
+    /**
      * A set of URIs
      */
     typedef std::set<opflex::modb::URI> uri_set_t;

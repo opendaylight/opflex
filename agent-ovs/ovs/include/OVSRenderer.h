@@ -89,6 +89,7 @@ private:
     uint16_t tunnelRemotePort;
     std::string uplinkIface;
     uint16_t uplinkVlan;
+    std::string uplinkNativeIface;
     bool virtualRouter;
     std::string virtualRouterMac;
     bool routerAdv;
