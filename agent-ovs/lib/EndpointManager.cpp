@@ -17,6 +17,7 @@
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
+#include <modelgbp/gbpe/EncapTypeEnumT.hpp>
 
 #include <opflexagent/EndpointManager.h>
 #include <opflexagent/Network.h>
@@ -143,6 +144,14 @@ void EndpointManager::notifyListeners(const uri_set_t& secGroups) {
     }
 }
 
+void EndpointManager::notifyLocalExternalDomainListeners(
+        const opflex::modb::URI& uri) {
+    unique_lock<mutex> guard(listener_mutex);
+    for (EndpointListener* listener : endpointListeners) {
+        listener->localExternalDomainUpdated(uri);
+    }
+}
+
 shared_ptr<const Endpoint> EndpointManager::getEndpoint(const string& uuid) {
     unique_lock<mutex> guard(ep_mutex);
 
@@ -202,6 +211,7 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     const string& uuid = endpoint.getUUID();
     EndpointState& es = ep_map[uuid];
     unordered_set<uri_set_t> notifySecGroupSets;
+    EndpointListener::uri_set_t notifyExtDomSets;
 
     // update security group mapping
     const set<URI>& oldSecGroups = es.endpoint->getSecurityGroups();
@@ -260,26 +270,32 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     const optional<std::string>& epgmap = endpoint.getEgMappingAlias();
     updateEpMap(oldEpgmap, epgmap, epgmapping_ep_map, uuid);
 
-    // Update VMEp registration
-    Mutator mutator(framework, "policyelement");
-    if (es.vmEP) {
-        optional<shared_ptr<VMEp> > oldvme =
-            VMEp::resolve(framework, es.vmEP.get());
-        if (oldvme && oldvme.get()->getUuid("") != uuid)
-            oldvme.get()->remove();
+    if(!endpoint.isExternal()) {
+        // Update VMEp registration
+        Mutator mutator(framework, "policyelement");
+        if (es.vmEP) {
+            optional<shared_ptr<VMEp> > oldvme =
+                VMEp::resolve(framework, es.vmEP.get());
+            if (oldvme && oldvme.get()->getUuid("") != uuid)
+                oldvme.get()->remove();
+        }
+        optional<shared_ptr<VMUniverse> > vmu =
+            VMUniverse::resolve(framework);
+        shared_ptr<VMEp> vme = vmu.get()
+            ->addGbpeVMEp(uuid);
+        es.vmEP = vme->getURI();
+        mutator.commit();
     }
-    optional<shared_ptr<VMUniverse> > vmu =
-        VMUniverse::resolve(framework);
-    shared_ptr<VMEp> vme = vmu.get()
-        ->addGbpeVMEp(uuid);
-    es.vmEP = vme->getURI();
-    mutator.commit();
 
     es.endpoint = make_shared<const Endpoint>(endpoint);
-
-    updateEndpointLocal(uuid);
+    optional<EndpointListener::uri_set_t &> extDomSets(notifyExtDomSets);
+    updateEndpointLocal(uuid, extDomSets);
     guard.unlock();
+    for (auto& s : notifyExtDomSets) {
+        notifyLocalExternalDomainListeners(s);
+    }
     notifyListeners(uuid);
+
     for (auto& s : notifySecGroupSets) {
         notifyListeners(s);
     }
@@ -293,6 +309,8 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     unique_lock<mutex> guard(ep_mutex);
     Mutator mutator(framework, "policyelement");
     unordered_set<uri_set_t> notifySecGroupSets;
+    bool extDomRemoved = false;
+    URI *egURI;
 
     ep_map_t::iterator it = ep_map.find(uuid);
     if (it != ep_map.end()) {
@@ -319,6 +337,11 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
                 it->second.erase(uuid);
                 if (it->second.empty()) {
                     group_ep_map.erase(it);
+                    if(es.endpoint->isExternal()){
+                        extDomRemoved = true;
+                        egURI = &es.egURI.get();
+                        local_ext_dom_map.erase(*egURI);
+                    }
                 }
             }
         }
@@ -373,12 +396,17 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     for (auto& s : notifySecGroupSets) {
         notifyListeners(s);
     }
+    if(extDomRemoved) {
+        notifyLocalExternalDomainListeners(*egURI);
+    }
 }
 
 optional<URI> EndpointManager::resolveEpgMapping(EndpointState& es) {
     using namespace modelgbp::gbpe;
     using namespace modelgbp::ascii;
-
+    if(es.endpoint->isExternal()) {
+        return boost::none;
+    }
     const optional<string>& mappingAlias = es.endpoint->getEgMappingAlias();
     if (!mappingAlias) return boost::none;
     optional<shared_ptr<EpgMapping> > mapping =
@@ -705,7 +733,8 @@ void EndpointManager::removeEndpointExternal(const std::string& uuid) {
     }
 }
 
-bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
+bool EndpointManager::updateEndpointLocal(const std::string& uuid,
+        boost::optional<EndpointListener::uri_set_t &> extDomSet) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;
     using namespace modelgbp::epdr;
@@ -730,15 +759,35 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
         if (oldEgURI) {
             unordered_set<string>& eps = group_ep_map[oldEgURI.get()];
             eps.erase(uuid);
-            if (eps.empty())
+            if (eps.empty()) {
                 group_ep_map.erase(oldEgURI.get());
+                auto it = local_ext_dom_map.find(oldEgURI.get());
+                if(it != local_ext_dom_map.end()) {
+                    local_ext_dom_map.erase(it);
+                    if(extDomSet) {
+                        extDomSet.get().insert(oldEgURI.get());
+                    }
+                }
+            }
         }
         if (egURI) {
             group_ep_map[egURI.get()].insert(uuid);
         }
+        local_ext_dom_map_t::iterator it = local_ext_dom_map.end();
+        if(es.endpoint->isExternal()) {
+            it = local_ext_dom_map.find(egURI.get());
+            if(it == local_ext_dom_map.end()) {
+                local_ext_dom_map.insert(std::make_pair(egURI.get(),
+                                         es.endpoint->getExtEncapId()));
+                if(extDomSet) {
+                    extDomSet.get().insert(egURI.get());
+                }
+            }
+        }
         es.egURI = egURI;
         updated = true;
     }
+
 
     unordered_set<URI> newlocall3eps;
     unordered_set<URI> newlocall2eps;
@@ -758,32 +807,38 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
             shared_ptr<LocalL2Ep> l2e = l2d.get()
                 ->addEpdrLocalL2Ep(uuid);
             l2e->setMac(mac.get());
-            if (egURI) {
-                l2e->addEpdrEndPointToGroupRSrc()
-                    ->setTargetEpGroup(egURI.get());
+            if(es.endpoint->isExternal()) {
+                l2e->setDom(egURI.get().toString());
+                l2e->setExtEncapType(
+                        modelgbp::gbpe::EncapTypeEnumT::CONST_VLAN);
+                l2e->setExtEncapId(es.endpoint->getExtEncapId());
             } else {
-                optional<shared_ptr<EndPointToGroupRSrc> > ctx =
-                    l2e->resolveEpdrEndPointToGroupRSrc();
-                if (ctx)
-                    ctx.get()->remove();
-            }
+                if (egURI) {
+                    l2e->addEpdrEndPointToGroupRSrc()
+                        ->setTargetEpGroup(egURI.get());
+                } else {
+                    optional<shared_ptr<EndPointToGroupRSrc> > ctx =
+                        l2e->resolveEpdrEndPointToGroupRSrc();
+                    if (ctx)
+                        ctx.get()->remove();
+                }
 
-            const optional<string>& epgMapping =
-                es.endpoint->getEgMappingAlias();
-            if (epgMapping) {
-                l2e->addGbpeEpgMappingCtx()
-                    ->addGbpeEpgMappingCtxToEpgMappingRSrc()
-                    ->setTargetEpgMapping(epgMapping.get());
-                l2e->addGbpeEpgMappingCtx()
-                    ->addGbpeEpgMappingCtxToAttrSetRSrc()
-                    ->setTargetEpAttributeSet(uuid);
-            } else {
-                optional<shared_ptr<EpgMappingCtx> > ctx =
-                    l2e->resolveGbpeEpgMappingCtx();
-                if (ctx)
-                    ctx.get()->remove();
+                const optional<string>& epgMapping =
+                    es.endpoint->getEgMappingAlias();
+                if (epgMapping) {
+                    l2e->addGbpeEpgMappingCtx()
+                        ->addGbpeEpgMappingCtxToEpgMappingRSrc()
+                        ->setTargetEpgMapping(epgMapping.get());
+                    l2e->addGbpeEpgMappingCtx()
+                        ->addGbpeEpgMappingCtxToAttrSetRSrc()
+                        ->setTargetEpAttributeSet(uuid);
+                } else {
+                    optional<shared_ptr<EpgMappingCtx> > ctx =
+                        l2e->resolveGbpeEpgMappingCtx();
+                    if (ctx)
+                        ctx.get()->remove();
+                }
             }
-
             newlocall2eps.insert(l2e->getURI());
 
             vector<shared_ptr<EndPointToSecGroupRSrc> > oldSecGrps;
@@ -863,6 +918,10 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid) {
     es.ipMappingGroups = newipmgroups;
 
     mutator.commit();
+
+    if(es.endpoint->isExternal()) {
+       return updated;
+    }
 
     updated |= updateEndpointReg(uuid);
 

@@ -31,6 +31,9 @@ module[epdr]
                 cardinality=many;
                 ]
         }
+        member[dom; type=reference/URI]
+        member[extEncapType; type=gbpe/EncapType]
+        member[extEncapId; type=gbpe/EncapId]
     }
 
     # abstraction of local L2 end-point identifies an end-point that is locally discovered.

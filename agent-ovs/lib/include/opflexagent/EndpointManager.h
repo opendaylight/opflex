@@ -296,6 +296,30 @@ public:
     bool getAdjacency(const opflex::modb::URI& rdURI,
                       const std::string& address,
                       std::shared_ptr<const Endpoint> &ep);
+    /**
+     * Get whether the given local external domain URI is still
+     * being referenced by any local EP.
+     *
+     * @param epgURI the URI of the local external domain
+     * @return whether local external domain is still being referenced
+     */
+    bool localExternalDomainExists(const opflex::modb::URI& epgURI) {
+        auto it = local_ext_dom_map.find(epgURI);
+        return (it != local_ext_dom_map.end());
+    }
+    /**
+     * Get the external encap value for the given ext domain egURI
+     *
+     * @param epgURI the URI of the local external domain
+     * @return external encap id
+     */
+    uint32_t getExtEncapId(const opflex::modb::URI& epgURI) {
+        auto it = local_ext_dom_map.find(epgURI);
+        if(it != local_ext_dom_map.end()) {
+            return it->second;
+        }
+        return 0;
+    }
 
 private:
     /**
@@ -306,9 +330,12 @@ private:
 
     /**
      * Update the local endpoint entries associated with an endpoint
+     * @param uuid uuid of the endpoint
+     * @param extDomSet set of updated external domains
      * @return true if we should notify listeners
      */
-    bool updateEndpointLocal(const std::string& uuid);
+    bool updateEndpointLocal(const std::string& uuid,
+            boost::optional<EndpointListener::uri_set_t &> extDomSet = boost::none);
 
     /**
      * Update the remote endpoint entries associated with an endpoint
@@ -389,13 +416,11 @@ private:
          */
         Endpoint::attr_map_t epAttrs;
     };
-
     /**
      * Resolve the default endpoint group for an endpoint using its
      * epg mapping, if present
      */
     boost::optional<opflex::modb::URI> resolveEpgMapping(EndpointState& es);
-
     typedef std::unordered_map<std::string, EndpointState> ep_map_t;
     typedef std::unordered_set<std::string> str_uset_t;
     typedef std::unordered_map<opflex::modb::URI, str_uset_t> group_ep_map_t;
@@ -407,6 +432,7 @@ private:
     typedef std::unordered_map<std::string,
                             std::shared_ptr<const Endpoint>> ipmac_map_t;
     typedef std::unordered_map<opflex::modb::URI, ipmac_map_t> adj_ep_map_t;
+    typedef std::unordered_map<opflex::modb::URI, uint32_t> local_ext_dom_map_t;
 
     std::mutex ep_mutex;
 
@@ -482,6 +508,10 @@ private:
      * Map Ip address to mac address for external EPs
      */
     adj_ep_map_t adj_ep_map;
+    /**
+     * Set of all known local external domains
+     */
+    local_ext_dom_map_t local_ext_dom_map;
 
     /**
      * The endpoint listeners that have been registered
@@ -493,6 +523,7 @@ private:
     void notifyRemoteListeners(const std::string& uuid);
     void notifyListeners(const EndpointListener::uri_set_t& secGroups);
     void notifyExternalEndpointListeners(const std::string& uuid);
+    void notifyLocalExternalDomainListeners(const opflex::modb::URI& uri);
     /**
      * Listener for changes related to endpoint group mapping
      */

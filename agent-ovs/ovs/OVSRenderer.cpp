@@ -112,6 +112,7 @@ void OVSRenderer::start() {
 
     intFlowManager.setEncapType(encapType);
     intFlowManager.setEncapIface(encapIface);
+    intFlowManager.setUplinkIface(uplinkIface);
     intFlowManager.setFloodScope(IntFlowManager::ENDPOINT_GROUP);
     if (encapType == IntFlowManager::ENCAP_VXLAN ||
         encapType == IntFlowManager::ENCAP_IVXLAN) {
