@@ -71,13 +71,16 @@ public:
         expTables.resize(IntFlowManager::NUM_FLOW_TABLES);
 
         tunIf = "br0_vxlan0";
+        uplinkIf = "uplink";
         intFlowManager.setEncapIface(tunIf);
+        intFlowManager.setUplinkIface(uplinkIf);
         intFlowManager.setTunnel("10.11.12.13", 4789);
         intFlowManager.setVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
         intFlowManager.setVirtualDHCP(true, "aa:bb:cc:dd:ee:ff");
-
+        portmapper.ports[uplinkIf] = 1024;
         portmapper.ports[tunIf] = 2048;
         portmapper.RPortMap[2048] = tunIf;
+        portmapper.RPortMap[1024] = uplinkIf;
         tun_port_new = 4096;
 
         switchManager.registerStateHandler(&intFlowManager);
@@ -165,6 +168,13 @@ public:
     /** Initialize learning bridge flow entries */
     void initExpLearningBridge();
 
+    /** Initialize ext SVI BD entries */
+    void initExpSviBD(const URI& sviBDURI, uint32_t fdId, uint32_t bdId);
+
+    /** Initialize ext SVI Ep entries */
+    void initExpExtSviEp(shared_ptr<Endpoint>& ep,
+            uint32_t fdId, uint32_t bdId);
+
     // Test drivers
     void epgTest();
     void routeModeTest();
@@ -180,16 +190,16 @@ public:
     PacketInHandler pktInHandler;
     PolicyManager& policyMgr;
 
-    string tunIf;
+    string tunIf,uplinkIf;
 
     vector<string> fe_connect_learn;
     string fe_connect_1, fe_connect_2;
-    string ge_fd0, ge_bkt_ep0, ge_bkt_ep2, ge_bkt_tun;
-    string ge_fd1, ge_bkt_ep4;
+    string ge_fd0, ge_bkt_ep0, ge_bkt_ep2, ge_bkt_tun, ge_bkt_up;
+    string ge_fd1, ge_bkt_ep4, ge_bkt_ep5;
     string ge_bkt_tun_new;
-    string ge_epg0, ge_epg2;
+    string ge_epg0, ge_epg2, ge_extsvi1;
     uint32_t ep2_port;
-    uint32_t ep4_port;
+    uint32_t ep4_port,ep5_port;
     uint32_t tun_port_new;
 };
 
@@ -1636,6 +1646,7 @@ enum TABLE {
 
 void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
     uint32_t tunPort = intFlowManager.getTunnelPort();
+    uint32_t uplink = intFlowManager.getUplinkPort();
     uint8_t rmacArr[6];
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
@@ -1699,6 +1710,11 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
                 .outPort(tunPort)
                 .done());
         }
+    }
+
+    if (uplink != OFPP_NONE) {
+        ADDF(Bldr().table(SEC).priority(50).in(uplink)
+            .actions().go(SRC).done());
     }
 }
 
@@ -3190,6 +3206,148 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
             .actions().drop().done();
     fe_connect_2 = Bldr().table(POL).priority(8292).reg(SEPG, epg4_vnid)
             .reg(DEPG, epg4_vnid).actions().go(OUT).done();
+}
+
+// Initialize EPG-scoped flow entries
+void BaseIntFlowManagerFixture::initExpSviBD(const URI& sviBDURI,
+                                     uint32_t fdId, uint32_t bdId) {
+    uint32_t uplink = intFlowManager.getUplinkPort();
+    uint32_t vnid = agent.getEndpointManager().getExtEncapId(sviBDURI);
+    string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
+    uint32_t rdId = 0;
+    uint32_t fixedVnid = ((1<<30) + vnid);
+
+    ADDF(Bldr().table(BR).priority(10)
+         .reg(SEPG, fixedVnid).reg(FD, fdId).isEthDst(mmac).actions()
+         .mdAct(flow::meta::out::FLOOD)
+         .go(OUT).done());
+    ADDF(Bldr().table(BR).priority(2)
+         .actions().mdAct(flow::meta::out::TUNNEL)
+         .go(OUT).done());
+    ADDF(Bldr().table(SRC).priority(149)
+         .in(uplink).isVlan(vnid)
+         .actions().popVlan()
+         .load(SEPG, fixedVnid).load(BD, bdId)
+         .load(FD, fdId).load(RD, rdId)
+         .polApplied().go(SVR).done());
+    ADDF(Bldr().table(OUT).priority(10).reg(SEPG, fixedVnid)
+         .isMdAct(flow::meta::out::TUNNEL)
+         .actions().pushVlan().move(SEPG12, VLAN)
+         .outPort(uplink).done());
+
+    ADDF(Bldr().table(POL).priority(8292).reg(SEPG, fixedVnid)
+         .reg(DEPG, fixedVnid).actions().go(OUT).done());
+    ADDF(Bldr().table(OUT).priority(10)
+         .reg(OUTPORT, fixedVnid).isMdAct(flow::meta::out::RESUBMIT_DST)
+         .actions().load(SEPG, fixedVnid).load(BD, bdId)
+         .load(FD, fdId).load(RD, rdId)
+         .load(OUTPORT, 0).load64(METADATA, flow::meta::ROUTED)
+         .resubmit(BR).done());
+}
+
+// Initialize endpoint-scoped flow entries
+void BaseIntFlowManagerFixture::initExpExtSviEp(shared_ptr<Endpoint>& ep,
+                                          uint32_t fdId, uint32_t bdId) {
+    uint32_t uplink = intFlowManager.getUplinkPort();
+    string mac = ep->getMAC().get().toString();
+    uint32_t port = portmapper.FindPort(ep->getInterfaceName().get());
+    unordered_set<string> ips(ep->getIPs());
+    string lladdr =
+        network::construct_link_local_ip_addr(ep->getMAC().get()).to_string();
+    ips.insert(lladdr);
+    const unordered_set<string>* acastIps = &ep->getAnycastReturnIPs();
+    if (acastIps->size() == 0) acastIps = &ips;
+    uint32_t vnid = ep->getExtEncapId();
+    uint32_t rdId =0;
+    uint32_t fixedVnid = ((1<<30) + vnid);
+
+    string bmac("ff:ff:ff:ff:ff:ff");
+    string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
+
+    // source rules
+    if (port != OFPP_NONE) {
+        ADDF(Bldr().table(SEC).priority(20).in(port).isEthSrc(mac)
+             .actions().go(SRC).done());
+
+        for (const string& ip : ips) {
+            address ipa = address::from_string(ip);
+            if (ipa.is_v4()) {
+                ADDF(Bldr().table(SEC).priority(30).ip().in(port)
+                     .isEthSrc(mac).isIpSrc(ip).actions().go(SRC).done());
+                ADDF(Bldr().table(SEC).priority(40).arp().in(port)
+                     .isEthSrc(mac).isSpa(ip).actions().go(SRC).done());
+            } else {
+                ADDF(Bldr().table(SEC).priority(30).ipv6().in(port)
+                     .isEthSrc(mac).isIpv6Src(ip).actions().go(SRC).done());
+                ADDF(Bldr().table(SEC).priority(40).icmp6().in(port)
+                     .isEthSrc(mac).icmp_type(136).icmp_code(0).isNdTarget(ip)
+                     .actions().go(SRC).done());
+            }
+        }
+
+        ADDF(Bldr().table(SRC).priority(140).in(port)
+             .isEthSrc(mac).actions().load(SEPG, fixedVnid).load(BD, bdId)
+             .load(FD, fdId).load(RD, rdId).go(SVR).done());
+    }
+
+    // dest rules
+    if (port != OFPP_NONE) {
+        // bridge
+        ADDF(Bldr().table(BR).priority(10).reg(BD, bdId)
+             .isEthDst(mac).actions().load(DEPG, fixedVnid)
+             .load(OUTPORT, port).go(POL).done());
+
+    }
+
+    // hairpin output rule
+    if (port != OFPP_NONE) {
+        ADDF(Bldr().table(OUT).priority(2)
+             .reg(OUTPORT, port).isMd("0x400/0x4ff").in(port)
+             .actions().inport().done());
+        ADDF(Bldr().table(OUT).priority(2)
+             .reg(OUTPORT, port).isMd("0x403/0x4ff").in(port)
+             .actions().inport().done());
+    }
+
+    /* Group entries */
+    ge_extsvi1 = "group_id=1,type=all";
+
+    boost::format epBktFormat(",bucket=bucket_id:%1%,actions=output:%2%");
+    ge_bkt_ep5 = (epBktFormat % port % port).str();
+
+    boost::format tunBktFormat =
+            boost::format(",bucket=bucket_id:%1%,"
+                          "actions=push_vlan:0x8100,"
+                          "move:NXM_NX_REG0[0..11]->OXM_OF_VLAN_VID[],"
+                          "output:%2%");
+    ge_bkt_up = (tunBktFormat % uplink % uplink).str();
+}
+
+BOOST_FIXTURE_TEST_CASE(extSvi, VxlanIntFlowManagerFixture) {
+    setConnected();
+    URI extSVIBD("/tenant0/extSvi1");
+    intFlowManager.localExternalDomainUpdated(extSVIBD);
+    portmapper.ports[ep5->getInterfaceName().get()] = 105;
+    portmapper.RPortMap[105] = ep5->getInterfaceName().get();
+    initExpStatic();
+    initExpSviBD(extSVIBD,1,1);
+    initExpFd(1);
+    initExpExtSviEp(ep5,1,1);
+    exec.Clear();
+    exec.ExpectGroup(FlowEdit::ADD, ge_extsvi1 + ge_bkt_ep5 + ge_bkt_up);
+    intFlowManager.endpointUpdated(ep5->getUUID());
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+    WAIT_FOR_TABLES("create", 500);
+
+    epSrc.removeEndpoint(ep5->getUUID());
+    exec.Clear();
+    exec.ExpectGroup(FlowEdit::DEL, ge_extsvi1);
+    intFlowManager.endpointUpdated(ep5->getUUID());
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+    intFlowManager.localExternalDomainUpdated(extSVIBD);
+    clearExpFlowTables();
+    initExpStatic();
+    WAIT_FOR_TABLES("delete", 500);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

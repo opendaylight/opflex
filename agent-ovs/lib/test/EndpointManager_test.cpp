@@ -865,6 +865,41 @@ BOOST_FIXTURE_TEST_CASE( fsextsource, FSEndpointFixture ) {
 
 }
 
+BOOST_FIXTURE_TEST_CASE( fsextsvisource, FSEndpointFixture ) {
+
+    // check for a new EP added to watch directory
+    fs::path path1(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c793.ep");
+    fs::ofstream os(path1);
+    os << "{"
+       << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c793\","
+       << "\"mac\":\"10:ff:00:a3:01:03\","
+       << "\"ip\":[\"10.1.0.3\"],"
+       << "\"interface-name\":\"veth0\","
+       << "\"policy-space-name\":\"test-ext-svi\","
+       << "\"ext-svi\" : true,"
+       << "\"ext-encap-id\": 1000,"
+       << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/ExtSviBD1/\""
+       << "}" << std::endl;
+    os.close();
+    FSWatcher watcher;
+    FSEndpointSource source(&agent.getEndpointManager(), watcher,
+                             temp.string());
+    watcher.start();
+    WAIT_FOR((agent.getEndpointManager().getEndpoint(
+            "83f18f0b-80f7-46e2-b06c-4d9487b0c793") != nullptr), 500);
+    auto extSviEp = agent.getEndpointManager().getEndpoint(
+            "83f18f0b-80f7-46e2-b06c-4d9487b0c793");
+    BOOST_CHECK(extSviEp->isExternal() == true);
+    BOOST_CHECK(extSviEp->getExtEncapId() == 1000);
+
+    // check for removing an endpoint
+    fs::remove(path1);
+
+    WAIT_FOR((agent.getEndpointManager().getEndpoint(
+            "83f18f0b-80f7-46e2-b06c-4d9487b0c793") == nullptr), 500);
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } /* namespace opflexagent */

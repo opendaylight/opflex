@@ -1160,6 +1160,23 @@ public:
     bool isExternal() const {
         return external;
     }
+    /**
+     * Set the external Encap for this endpoint
+     *
+     *@param encap vlan id of the external ep
+     */
+    void setExtEncap(uint32_t encap) {
+        extEncap = encap;
+    }
+
+    /**
+     * Get the external Encap for this endpoint
+     *
+     * @return the external Encap
+     */
+    uint32_t getExtEncapId() const {
+        return extEncap;
+    }
 
     /**
      * Set the external interface URI associated with this endpoint.
@@ -1232,7 +1249,7 @@ private:
     boost::optional<DHCPv6Config> dhcpv6Config;
     ipam_set ipAddressMappings;
     boost::optional<std::string> snatIp;
-
+    uint32_t extEncap;
 };
 
 /**

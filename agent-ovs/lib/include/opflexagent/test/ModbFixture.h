@@ -80,7 +80,7 @@ public:
     std::shared_ptr<modelgbp::policy::Universe> universe;
     std::shared_ptr<modelgbp::policy::Space> space;
     std::shared_ptr<modelgbp::platform::Config> config;
-    std::shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4;
+    std::shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4, ep5;
     std::shared_ptr<modelgbp::gbp::EpGroup> epg0, epg1, epg2, epg3, epg4;
     std::shared_ptr<modelgbp::gbp::FloodDomain> fd0, fd1;
     std::shared_ptr<modelgbp::gbpe::FloodContext> fd0ctx;
@@ -241,6 +241,17 @@ protected:
         ep4->setEgURI(epg3->getURI());
         ep4->setPromiscuousMode(true);
         epSrc.updateEndpoint(*ep4);
+
+        ep5.reset(new Endpoint("0-0-0-5"));
+        ep5->setMAC(opflex::modb::MAC("00:00:00:00:00:05"));
+        ep5->addIP("10.20.46.3");
+        ep5->setInterfaceName("eth5");
+        URI extSviBD("/tenant0/extSvi1");
+        ep5->setEgURI(extSviBD);
+        ep5->setExternal();
+        ep5->setExtEncap(1000);
+        epSrc.updateEndpoint(*ep5);
+
     }
 
     void createPolicyObjects() {
