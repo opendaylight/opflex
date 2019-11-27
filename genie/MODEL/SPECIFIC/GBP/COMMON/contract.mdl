@@ -49,6 +49,12 @@ module[gbp]
         const[name=out; value=2]
     }
 
+    type[AdminState; super=scalar/Enum8]
+    {
+        const[name=disabled; value=0]
+        const[name=enabled; value=1]
+    }
+
     class[Rule;
           super=gbp/AccessBehavioralGroup;
           concrete]
@@ -85,6 +91,6 @@ module[gbp]
 
         member[order; type=scalar/UInt32]
         member[direction; type=gbp/Direction]
+        member[log; type=gbp/AdminState]
     }
-
 }
