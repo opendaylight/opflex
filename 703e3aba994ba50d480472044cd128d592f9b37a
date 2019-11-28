@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ca75f570_03fec674",
+        "filename": "agent-ovs/ovs/NetFlowRenderer.cpp",
+        "patchSetId": 10
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2019-11-28T04:40:00Z",
+      "side": 1,
+      "message": "the logic is only creating netflow. You need to take care of changes to existing config and deletion. Also, the logic should compare the existing config coming from MODB to OVSDB and decide if any changes need to be made.",
+      "range": {
+        "startLine": 52,
+        "startChar": 26,
+        "endLine": 52,
+        "endChar": 45
+      },
+      "revId": "703e3aba994ba50d480472044cd128d592f9b37a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6adb3cb9_d558ab14",
+        "filename": "agent-ovs/ovs/NetFlowRenderer.cpp",
+        "patchSetId": 10
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2019-11-28T04:40:00Z",
+      "side": 1,
+      "message": "change comment to reference netflow",
+      "range": {
+        "startLine": 58,
+        "startChar": 18,
+        "endLine": 58,
+        "endChar": 26
+      },
+      "revId": "703e3aba994ba50d480472044cd128d592f9b37a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
