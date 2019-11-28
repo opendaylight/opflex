@@ -36,6 +36,46 @@
     },
     {
       "key": {
+        "uuid": "70eee528_1d705b26",
+        "filename": "agent-ovs/ovs/NetFlowJsonRpc.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2019-11-28T04:40:00Z",
+      "side": 1,
+      "message": "Only methods that need to be implemented are netflow specific. Rest of the code can be reused fro JsonRpc.",
+      "revId": "a6bf6fe9a0582cb44d1e0798c56ca5548e4869fa",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dc3f634d_d2e4515a",
+        "filename": "agent-ovs/ovs/NetFlowRenderer.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2019-11-28T04:40:00Z",
+      "side": 1,
+      "message": "Some of the code in this file is a copy of SpanRenderer.cpp. The connectmethod has chnaged to use config from the opflex config file. IP address and port come from there.\nYou can add netlfow JSON/RPC methods to JsonRpc.cpp and instantiate it here. This way code does not have to be duplicated. Use an instance of JsonRpc instead of NetFlowJsonRpc. NetFlowJsonRpc should not be required.",
+      "range": {
+        "startLine": 74,
+        "startChar": 4,
+        "endLine": 74,
+        "endChar": 10
+      },
+      "revId": "a6bf6fe9a0582cb44d1e0798c56ca5548e4869fa",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5ea9e624_f594ee29",
         "filename": "agent-ovs/ovs/include/NetFlowJsonRpc.h",
         "patchSetId": 6
