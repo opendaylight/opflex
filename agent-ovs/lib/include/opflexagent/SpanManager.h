@@ -22,6 +22,7 @@
 #include <modelgbp/span/SrcGrp.hpp>
 #include <modelgbp/span/SrcMember.hpp>
 #include <modelgbp/span/LocalEp.hpp>
+#include <modelgbp/gbp/EpGroup.hpp>
 #include <opflexagent/TaskQueue.h>
 #include <opflex/modb/URI.h>
 #include <modelgbp/epr/L2Ep.hpp>
@@ -44,6 +45,7 @@ namespace opflexagent {
     using namespace modelgbp::epr;
     namespace span = modelgbp::span;
     using namespace span;
+    using namespace modelgbp::gbp;
 
 /**
  * class to represent information on span
@@ -217,7 +219,8 @@ public:
 
 private:
 
-    boost::optional<shared_ptr<SrcMember>> findSrcMem(shared_ptr<LocalEp> lEp);
+    boost::optional<shared_ptr<SrcMember>> findSrcMem(const URI& sessUri, const URI& uri);
+    void getSrcEpGroups(vector <shared_ptr<EpGroup>>& epGrpVec);
 
     opflex::ofcore::OFFramework& framework;
     /**

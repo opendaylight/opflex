@@ -309,6 +309,11 @@ public:
      */
     bool getErspanIfcParams(erspan_ifc& ifc);
 
+    /**
+     * check if connection has been established
+     */
+    bool isConnected();
+
 /*! macro to declare handlers */
 #define DECLARE_HANDLER(F) \
         /** \
