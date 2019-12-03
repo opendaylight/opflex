@@ -492,8 +492,8 @@ void EndpointManager::updateEndpointRemote(const opflex::modb::URI& uri) {
             auto git = remote_ep_group_map.find(uuid.get());
             if (git != remote_ep_group_map.end()) {
                 group_remote_ep_map.erase(git->second);
+                remote_ep_group_map.erase(git);
             }
-            remote_ep_group_map.erase(git);
             remote_ep_uuid_map.erase(it);
         }
     } else {
