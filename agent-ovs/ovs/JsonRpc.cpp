@@ -1065,4 +1065,15 @@ using boost::uuids::basic_random_generator;
         pConn->connect(hostname, port);
     }
 
+    bool JsonRpc::isConnected() {
+        unique_lock<mutex> lock(pConn->mtx);
+        if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
+                [=]{return pConn->isConnected();})) {
+            LOG(DEBUG) << "lock timed out, no connection";
+            return false;
+        }
+        return true;
+    }
+
+
 } // namespace opflex

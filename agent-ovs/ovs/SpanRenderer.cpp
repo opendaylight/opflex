@@ -16,6 +16,8 @@
 
 #include <boost/range/adaptors.hpp>
 #include <boost/format.hpp>
+#include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 
 namespace opflexagent {
@@ -43,7 +45,17 @@ namespace opflexagent {
 
     void SpanRenderer::spanDeleted(shared_ptr<SessionState> seSt) {
         unique_lock<mutex> lock(handlerMutex);
-        connect();
+        if (!connect()) {
+            LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY <<
+                    " seconds";
+            // connection failed, start a timer to try again
+            connection_timer.reset(new deadline_timer(agent.getAgentIOService(),
+                    boost::posix_time::seconds(CONNECTION_RETRY)));
+            connection_timer->async_wait(boost::bind(&SpanRenderer::delConnectPtrCb, this,
+                    boost::asio::placeholders::error, seSt));
+            timerStarted = true;
+            return;
+        }
         sessionDeleted(seSt);
         cleanup();
     }
@@ -51,7 +63,17 @@ namespace opflexagent {
     void SpanRenderer::spanDeleted() {
         LOG(DEBUG) << "deleting mirror";
         unique_lock<mutex> lock(handlerMutex);
-        connect();
+        if (!connect()) {
+            LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY <<
+                    " seconds";
+            // connection failed, start a timer to try again
+            connection_timer.reset(new deadline_timer(agent.getAgentIOService(),
+                    boost::posix_time::seconds(CONNECTION_RETRY)));
+            connection_timer->async_wait(boost::bind(&SpanRenderer::delConnectCb, this,
+                    boost::asio::placeholders::error));
+            timerStarted = true;
+            return;
+        }
         sessionDeleted();
         cleanup();
     }
@@ -70,6 +92,41 @@ namespace opflexagent {
         deleteErspnPort(ERSPAN_PORT_NAME);
     }
 
+    void SpanRenderer::updateConnectCb(const boost::system::error_code& ec,
+            const opflex::modb::URI spanURI) {
+        LOG(DEBUG) << "timer update cb";
+        if (ec) {
+            string cat = string(ec.category().name());
+            LOG(DEBUG) << "timer error " << cat << ":" << ec.value();
+            if (!(cat.compare("system") == 0 &&
+                ec.value() == 125)) {
+                connection_timer->cancel();
+                timerStarted = false;
+            }
+            return;
+        }
+        spanUpdated(spanURI);
+    }
+
+    void SpanRenderer::delConnectPtrCb(const boost::system::error_code& ec,
+            shared_ptr<SessionState> pSt) {
+        if (ec) {
+            connection_timer.reset();
+            return;
+        }
+        LOG(DEBUG) << "timer span del with ptr cb";
+        spanDeleted(pSt);
+    }
+
+    void SpanRenderer::delConnectCb(const boost::system::error_code& ec) {
+        if (ec) {
+            connection_timer.reset();
+            return;
+        }
+        LOG(DEBUG) << "timer span del cb";
+        spanDeleted();
+    }
+
     void SpanRenderer::handleSpanUpdate(const opflex::modb::URI& spanURI) {
         LOG(DEBUG) << "Span handle update, thread " << std::this_thread::get_id();
         unique_lock<mutex> lock(handlerMutex);
@@ -81,7 +138,20 @@ namespace opflexagent {
             return;
         }
 
-        connect();
+        if (!connect()) {
+            LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY <<
+                    " seconds";
+            // connection failed, start a timer to try again
+
+            connection_timer.reset(new deadline_timer(agent.getAgentIOService(),
+                    milliseconds(CONNECTION_RETRY*1000)));
+            connection_timer->async_wait(boost::bind(&SpanRenderer::updateConnectCb, this,
+                    boost::asio::placeholders::error, spanURI));
+            timerStarted = true;
+            LOG(DEBUG) << "conn timer " << connection_timer << ", timerStarted: " << timerStarted;
+            cleanup();
+            return;
+        }
 
         // get mirror artifacts from OVSDB if provisioned
         JsonRpc::mirror mir;
@@ -214,12 +284,23 @@ namespace opflexagent {
         createMirror(seSt->getName(), srcPort, dstPort);
     }
 
-    inline void SpanRenderer::connect() {
-        // connect to OVSDB, destination is always the loopback address.
-        // TBD: what happens if connect fails
+    inline bool SpanRenderer::connect() {
+        // connect to OVSDB, destination is specified in agent config file.
+        // If not the default is applied
+        // If connection fails, a timer is started to retry and
+        // back off at periodic intervals.
+        if (timerStarted) {
+            LOG(DEBUG) << "Cancelling timer";
+            connection_timer->cancel();
+            timerStarted = false;
+        }
         jRpc = unique_ptr<JsonRpc>(new JsonRpc());
         jRpc->start();
         jRpc->connect(agent.getOvsdbIpAddress(), agent.getOvsdbPort());
+        if (!jRpc->isConnected()) {
+            return false;
+        }
+        return true;
     }
 
     bool SpanRenderer::deleteMirror(const string& sess) {
