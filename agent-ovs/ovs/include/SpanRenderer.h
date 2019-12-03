@@ -14,12 +14,16 @@
 #define OPFLEX_SPANRENDERER_H
 
 #include <boost/noncopyable.hpp>
+#include <boost/asio.hpp>
 #include <opflexagent/PolicyListener.h>
 #include <opflexagent/Agent.h>
 #include <opflexagent/SpanListener.h>
 #include "JsonRpc.h"
 
 namespace opflexagent {
+
+using boost::asio::deadline_timer;
+using boost::posix_time::milliseconds;
 
 /**
  * class to render span config on a virtual switch
@@ -71,7 +75,7 @@ private:
     virtual void sessionDeleted(shared_ptr<SessionState> sesSt);
     virtual void sessionDeleted();
     void cleanup();
-    void connect();
+    bool connect();
     bool deleteErspnPort(const string& name);
     bool deleteMirror(const string& session);
     bool createMirror(const string& session, const set<string>& srcPorts,
@@ -83,6 +87,14 @@ private:
     condition_variable cv;
     mutex handlerMutex;
     unique_ptr<JsonRpc> jRpc;
+    std::shared_ptr<boost::asio::deadline_timer> connection_timer;
+    // retry interval in seconds
+    const long CONNECTION_RETRY = 60;
+    void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI uri);
+    void delConnectPtrCb(const boost::system::error_code& ec, shared_ptr<SessionState> pSt);
+    void delConnectCb(const boost::system::error_code& ec);
+    bool timerStarted = false;
+
 };
 }
 #endif //OPFLEX_SPANRENDERER_H
