@@ -1712,6 +1712,11 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
         }
     }
 
+    for(int i=SEC; i<=OUT; i++) {
+        ADDF(Bldr().table(i).priority(0)
+         .actions().dropLog(i).go(EXP_DROPLOG).done());
+    }
+
     if (uplink != OFPP_NONE) {
         ADDF(Bldr().table(SEC).priority(50).in(uplink)
             .actions().go(SRC).done());

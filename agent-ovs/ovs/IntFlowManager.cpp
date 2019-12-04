@@ -2724,28 +2724,18 @@ void IntFlowManager::createStaticFlows() {
                 .action().go(IntFlowManager::SEC_TABLE_ID)
                 .parent().build(dropLogFlows);
         switchManager.writeFlow("DropLogStatic", DROP_LOG_TABLE_ID, dropLogFlows);
-        /*Insert a flow at the end of every table to match dropped packets
-         *and punt to the given drop log port
+        /* Insert a flow at the end of every table to match dropped packets
+         * and go to the drop table where it will be punted to a port when configured
          */
-        FlowEntryList catchDropFlows;
-        if(!dropLogIface.empty() && dropLogDst.is_v4()) {
-            for(unsigned table_id = SEC_TABLE_ID; table_id < EXP_DROP_TABLE_ID; table_id++) {
-                FlowEntryList dropLogFlow;
-                FlowBuilder().priority(0)
-                        .metadata(flow::meta::DROP_LOG, flow::meta::DROP_LOG)
-                        .action().dropLog(table_id)
-                        .reg(MFF_TUN_DST, dropLogDst.to_v4().to_ulong())
-                        .output((switchManager.getPortMapper().FindPort(dropLogIface)))
-                        .parent().build(dropLogFlow);
-                switchManager.writeFlow("DropLogStatic", table_id, dropLogFlow);
-            }
+        for(unsigned table_id = SEC_TABLE_ID; table_id < EXP_DROP_TABLE_ID; table_id++) {
+            FlowEntryList dropLogFlow;
             FlowBuilder().priority(0)
-                    .metadata(flow::meta::DROP_LOG, flow::meta::DROP_LOG)
-                    .action().reg(MFF_TUN_DST, dropLogDst.to_v4().to_ulong())
-                    .output((switchManager.getPortMapper().FindPort(dropLogIface)))
-                    .parent().build(catchDropFlows);
-            switchManager.writeFlow("DropLogStatic", EXP_DROP_TABLE_ID, catchDropFlows);
+                    .action().dropLog(table_id)
+                    .go(EXP_DROP_TABLE_ID)
+                    .parent().build(dropLogFlow);
+            switchManager.writeFlow("DropLogStatic", table_id, dropLogFlow);
         }
+        handleDropLogPortUpdate();
     }
 }
 
@@ -3623,6 +3613,23 @@ void IntFlowManager::updateGroupTable() {
     }
 }
 
+void IntFlowManager::handleDropLogPortUpdate() {
+    if(dropLogIface.empty() || !dropLogDst.is_v4()) {
+        LOG(WARNING) << "Ignoring dropLog port";
+        return;
+    }
+    FlowEntryList catchDropFlows;
+    int dropLogPort = switchManager.getPortMapper().FindPort(dropLogIface);
+    if(dropLogPort != OFPP_NONE) {
+        FlowBuilder().priority(0)
+                .metadata(flow::meta::DROP_LOG, flow::meta::DROP_LOG)
+                .action().reg(MFF_TUN_DST, dropLogDst.to_v4().to_ulong())
+                .output(dropLogPort)
+                .parent().build(catchDropFlows);
+        switchManager.writeFlow("DropLogStatic", EXP_DROP_TABLE_ID, catchDropFlows);
+    }
+}
+
 void IntFlowManager::handlePortStatusUpdate(const string& portName,
                                             uint32_t) {
     LOG(DEBUG) << "Port-status update for " << portName;
@@ -3642,6 +3649,8 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
         }
         /* Directly update the group-table */
         updateGroupTable();
+    } else if(portName == dropLogIface) {
+        handleDropLogPortUpdate();
     } else {
         {
             unordered_set<string> uuids;

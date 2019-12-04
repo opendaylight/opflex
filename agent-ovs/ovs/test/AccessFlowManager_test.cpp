@@ -329,6 +329,10 @@ void AccessFlowManagerFixture::initExpStatic() {
          .reg(SEPG, 1).actions().go(OUT).done());
     ADDF(Bldr().table(DROP_LOG).priority(0)
             .actions().go(GRP).done());
+    for(int i=GRP; i<=OUT; i++) {
+        ADDF(Bldr().table(i).priority(0)
+                .actions().dropLog(i).go(EXP_DROP).done());
+    }
 }
 
 void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {

@@ -201,29 +201,18 @@ void AccessFlowManager::createStaticFlows() {
                 .action().go(GROUP_MAP_TABLE_ID)
                 .parent().build(dropLogFlows);
         switchManager.writeFlow("static", DROP_LOG_TABLE_ID, dropLogFlows);
-        /*Insert a flow at the end of every table to match dropped packets
-         *and punt to the given drop log port
+        /* Insert a flow at the end of every table to match dropped packets
+         * and go to the drop table where it will be punted to a port when configured
          */
-        FlowEntryList catchDropFlows;
-        if(!dropLogIface.empty() && dropLogDst.is_v4()) {
-            for(unsigned table_id = GROUP_MAP_TABLE_ID; table_id < EXP_DROP_TABLE_ID; table_id++) {
-                FlowEntryList dropLogFlow;
-                FlowBuilder().priority(0)
-                        .metadata(flow::meta::DROP_LOG, flow::meta::DROP_LOG)
-                        .action().dropLog(table_id)
-                        .reg(MFF_TUN_DST, dropLogDst.to_v4().to_ulong())
-                        .go(switchManager.getPortMapper().FindPort(dropLogIface))
-                        .parent().build(dropLogFlow);
-                switchManager.writeFlow("DropLogFlow", table_id, dropLogFlow);
-            }
+        for(unsigned table_id = GROUP_MAP_TABLE_ID; table_id < EXP_DROP_TABLE_ID; table_id++) {
+            FlowEntryList dropLogFlow;
             FlowBuilder().priority(0)
-                    .metadata(flow::meta::DROP_LOG, flow::meta::DROP_LOG)
-                    .action()
-                    .reg(MFF_TUN_DST, dropLogDst.to_v4().to_ulong())
-                    .output((switchManager.getPortMapper().FindPort(dropLogIface)))
-                    .parent().build(catchDropFlows);
-            switchManager.writeFlow("static", EXP_DROP_TABLE_ID, catchDropFlows);
+                    .action().dropLog(table_id)
+                    .go(EXP_DROP_TABLE_ID)
+                    .parent().build(dropLogFlow);
+            switchManager.writeFlow("DropLogFlow", table_id, dropLogFlow);
         }
+        handleDropLogPortUpdate();
     }
 
     // everything is allowed for endpoints with no security group set
@@ -361,6 +350,24 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
     switchManager.writeFlow(uuid, GROUP_MAP_TABLE_ID, el);
 }
 
+void AccessFlowManager::handleDropLogPortUpdate() {
+    FlowEntryList catchDropFlows;
+    if(dropLogIface.empty() || !dropLogDst.is_v4()) {
+        LOG(WARNING) << "Ignoring dropLog port";
+        return;
+    }
+    int dropLogPort = switchManager.getPortMapper().FindPort(dropLogIface);
+    if(dropLogPort != OFPP_NONE) {
+        FlowBuilder().priority(0)
+                .metadata(flow::meta::DROP_LOG, flow::meta::DROP_LOG)
+                .action()
+                .reg(MFF_TUN_DST, dropLogDst.to_v4().to_ulong())
+                .output(dropLogPort)
+                .parent().build(catchDropFlows);
+        switchManager.writeFlow("static", EXP_DROP_TABLE_ID, catchDropFlows);
+    }
+}
+
 void AccessFlowManager::handlePortStatusUpdate(const string& portName,
                                                uint32_t) {
     unordered_set<std::string> eps;
@@ -368,6 +375,9 @@ void AccessFlowManager::handlePortStatusUpdate(const string& portName,
     agent.getEndpointManager().getEndpointsByAccessUplink(portName, eps);
     for (const std::string& ep : eps)
         endpointUpdated(ep);
+    if(portName == dropLogIface) {
+        handleDropLogPortUpdate();
+    }
 }
 
 void AccessFlowManager::handleSecGrpUpdate(const opflex::modb::URI& uri) {
