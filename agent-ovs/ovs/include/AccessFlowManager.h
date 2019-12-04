@@ -73,6 +73,11 @@ public:
     void setDropLog(const string& dropLogPort, const string& dropLogRemoteIp,
             const uint16_t dropLogRemotePort);
 
+    /**
+     * Handle if the droplog port name is read later
+     */
+    void handleDropLogPortUpdate();
+
     /* Interface: ExtraConfigListener */
     virtual void rdConfigUpdated(const opflex::modb::URI& rdURI);
     virtual void packetDropLogConfigUpdated(const opflex::modb::URI& dropLogCfgURI);

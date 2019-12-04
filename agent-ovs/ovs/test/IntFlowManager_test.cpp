@@ -841,7 +841,7 @@ BOOST_FIXTURE_TEST_CASE(policy_portrange, VxlanIntFlowManagerFixture) {
 
 void BaseIntFlowManagerFixture::connectTest() {
     exec.ignoredFlowMods.insert(FlowEdit::ADD);
-    exec.Expect(FlowEdit::DEL, fe_connect_1);
+    exec.Expect(FlowEdit::MOD, fe_connect_1);
     exec.Expect(FlowEdit::DEL, fe_connect_learn);
     exec.Expect(FlowEdit::MOD, fe_connect_2);
     exec.ExpectGroup(FlowEdit::DEL, "group_id=10,type=all");
@@ -1710,6 +1710,11 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
                 .outPort(tunPort)
                 .done());
         }
+    }
+
+    for(int i=SEC; i<=OUT; i++) {
+        ADDF(Bldr().table(i).priority(0)
+         .actions().dropLog(i).go(EXP_DROPLOG).done());
     }
 
     if (uplink != OFPP_NONE) {
@@ -3202,8 +3207,8 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
     groups.push_back(entryIn);
 
     // Flow mods that we expect after diffing against the table
-    fe_connect_1 = Bldr().table(SEC).priority(0).cookie(0xabcd)
-            .actions().drop().done();
+    fe_connect_1 = Bldr().table(SEC).priority(0)
+            .actions().dropLog(SEC).go(EXP_DROPLOG).done();
     fe_connect_2 = Bldr().table(POL).priority(8292).reg(SEPG, epg4_vnid)
             .reg(DEPG, epg4_vnid).actions().go(OUT).done();
 }
