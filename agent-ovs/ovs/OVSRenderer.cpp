@@ -15,6 +15,11 @@
 #include <boost/asio/placeholders.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <openvswitch/vlog.h>
+#include <fstream>
+#include <ctime>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 namespace opflexagent {
 
@@ -26,6 +31,8 @@ using boost::asio::placeholders::error;
 
 static const std::string ID_NMSPC_CONNTRACK("conntrack");
 static const boost::posix_time::milliseconds CLEANUP_INTERVAL(3*60*1000);
+
+#define PACKET_LOGGER_PIDDIR LOCALSTATEDIR"/lib/opflex-agent-ovs/pids"
 
 OVSRendererPlugin::OVSRendererPlugin() {
     /* No good way to redirect OVS logs to our logs, suppress them for now */
@@ -59,8 +66,8 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       ifaceStatsEnabled(true), ifaceStatsInterval(0),
       contractStatsEnabled(true), contractStatsInterval(0),
       secGroupStatsEnabled(true), secGroupStatsInterval(0),
-      spanRenderer(agent_),netflowRenderer(agent_),
-      started(false) {
+      spanRenderer(agent_), netflowRenderer(agent_), started(false),
+      pktLogger(pktLoggerIO) {
 
 }
 
@@ -132,6 +139,7 @@ void OVSRenderer::start() {
         accessFlowManager.setDropLog(dropLogAccessIface, dropLogRemoteIp,
                         dropLogRemotePort);
     }
+
     intSwitchManager.registerStateHandler(&intFlowManager);
     intSwitchManager.start(intBridgeName);
     if (accessBridgeName != "") {
@@ -191,6 +199,95 @@ void OVSRenderer::start() {
     cleanupTimer->expires_from_now(CLEANUP_INTERVAL);
     cleanupTimer->async_wait(bind(&OVSRenderer::onCleanupTimer,
                                   this, error));
+
+    if(!dropLogIntIface.empty() || !dropLogAccessIface.empty()) {
+        boost::system::error_code ec;
+        boost::asio::ip::address addr = boost::asio::ip::address::from_string(dropLogRemoteIp, ec);
+        if(ec) {
+            LOG(ERROR) << "PacketLogger: Failed to start:" << ec << "invalid address:" <<dropLogRemoteIp;
+            return;
+        }
+        // Inform the io_service that we are about to become a daemon. The
+        // io_service cleans up any internal resources, such as threads, that may
+        // interfere with forking.
+        pktLoggerIO.notify_fork(boost::asio::io_service::fork_prepare);
+        if(pid_t pid = fork()) {
+            if (pid > 0) {
+                pktLoggerIO.notify_fork(boost::asio::io_service::fork_parent);
+            } else {
+                LOG(ERROR) << "PacketLogger: Failed to fork:" << errno;
+            }
+            int status;
+            waitpid(pid, &status, 0);
+            return;
+        }
+        setsid();
+        chdir("/");
+        pktLoggerIO.notify_fork(boost::asio::io_service::fork_prepare);
+        if (pid_t pid = fork()) {
+            if (pid > 0) {
+                pktLoggerIO.notify_fork(boost::asio::io_service::fork_parent);
+                exit(0);
+            } else {
+                LOG(ERROR) << "PacketLogger: Second fork failed:" << errno;
+                exit(1);
+            }
+        }
+        // Close the standard streams. This decouples the daemon from the terminal
+        // that started it.
+        int fd;
+        fd = open("/dev/null",O_RDWR, 0);
+        if (fd != -1) {
+            dup2 (fd, STDIN_FILENO);
+            dup2 (fd, STDOUT_FILENO);
+            dup2 (fd, STDERR_FILENO);
+            if (fd > 2)
+                close (fd);
+        }
+        // Inform the io_service that we have finished becoming a daemon. The
+        // io_service uses this opportunity to create any internal file descriptors
+        // that need to be private to the new process.
+        pktLoggerIO.notify_fork(boost::asio::io_service::fork_child);
+        std::string netNs = "/var/run/netns/" + dropLogNs;
+        int ns_fd = open(netNs.c_str(), O_RDONLY);
+        if(ns_fd < 0) {
+            LOG(ERROR) << "PacketLogger: Failed to open namespace "
+                       << dropLogNs << ":" << errno;
+            exit(1);
+        }
+        int err = setns(ns_fd, CLONE_NEWNET);
+        if(err) {
+            LOG(ERROR) << "PacketLogger: Failed to switch to namespace "
+                       << netNs << ":" << err;
+            exit(1);
+        }
+
+        pktLogger.setAddress(addr, dropLogRemotePort);
+        if(!pktLogger.start()) {
+            LOG(ERROR) << "PacketLogger: Failed to bind socket:" << errno;
+            exit(1);
+        }
+
+        // Register signal handlers so that the daemon may be shut down.
+        boost::asio::signal_set signals(pktLoggerIO, SIGUSR1);
+        signals.async_wait([this](const boost::system::error_code err,
+                int signal_number) {this->getPacketLogger().stop();});
+        pid_t child_pid = getpid();
+        std::string fileName(std::string(PACKET_LOGGER_PIDDIR) + "/logger.pid");
+        fstream s(fileName, s.out);
+        if(!s.is_open()) {
+            LOG(ERROR) << "Failed to open " << fileName;
+        } else {
+            s << child_pid;
+        }
+        s.close();
+        std::string log_file("");
+        std::string level_str("info");
+        std::string facility_name("opflexagent_packetlogger");
+        initLogging(level_str, true, log_file, facility_name);
+        pktLoggerIO.run();
+        exit(0);
+    }
 }
 
 void OVSRenderer::stop() {
@@ -222,6 +319,19 @@ void OVSRenderer::stop() {
         encapType == IntFlowManager::ENCAP_IVXLAN) {
         tunnelEpManager.stop();
     }
+    {
+        std::string fileName(std::string(PACKET_LOGGER_PIDDIR) +"/logger.pid");
+        fstream s(fileName, s.in);
+        pid_t child_pid;
+        if(s >> child_pid) {
+            if(kill(child_pid, SIGUSR1)) {
+                LOG(ERROR) << "Failed to stop logger" << errno;
+            } else {
+                LOG(INFO) << "terminating logger process " << child_pid;
+            }
+        }
+    }
+
 }
 
 #define DEF_FLOWID_CACHEDIR \
@@ -293,6 +403,7 @@ void OVSRenderer::setProperties(const ptree& properties) {
                                                      ".security-group"
                                                      ".interval");
     static const std::string DROP_LOG_ENCAP_GENEVE("drop-log.geneve");
+    static const std::string REMOTE_NAMESPACE("namespace");
 
     intBridgeName =
         properties.get<std::string>(OVS_BRIDGE_NAME, "br-int");
@@ -345,6 +456,7 @@ void OVSRenderer::setProperties(const ptree& properties) {
         dropLogAccessIface = dropLogEncapGeneve.get().get<std::string>(ACC_BR_IFACE, "");
         dropLogRemoteIp = dropLogEncapGeneve.get().get<std::string>(REMOTE_IP, "");
         dropLogRemotePort = dropLogEncapGeneve.get().get<uint16_t>(REMOTE_PORT, 6081);
+        dropLogNs = dropLogEncapGeneve.get().get<std::string>(REMOTE_NAMESPACE, "DropLog");
     }
 
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
