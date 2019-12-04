@@ -724,6 +724,10 @@ private:
                                  const uint32_t cvnid,
                                  bool allowBidirectional,
                                  const PolicyManager::rule_list_t& rules);
+    /**
+     * Handle if the droplog port name is read later
+     */
+    void handleDropLogPortUpdate();
 
 };
 
