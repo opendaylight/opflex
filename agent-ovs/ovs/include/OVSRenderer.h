@@ -24,6 +24,7 @@
 #include "CtZoneManager.h"
 #include "SpanRenderer.h"
 #include "NetFlowRenderer.h"
+#include "PacketLogHandler.h"
 
 #pragma once
 #ifndef OPFLEXAGENT_OVSRENDERER_H
@@ -58,6 +59,10 @@ public:
     virtual void setProperties(const boost::property_tree::ptree& properties);
     virtual void start();
     virtual void stop();
+    /**
+     *  Get the packetLoggerInstance
+     */
+    PacketLogHandler &getPacketLogger() {return pktLogger;}
 
 private:
     IdGenerator idGen;
@@ -116,8 +121,10 @@ private:
     NetFlowRenderer netflowRenderer;
 
     bool started;
-    std::string dropLogIntIface, dropLogAccessIface, dropLogRemoteIp;
+    std::string dropLogIntIface, dropLogAccessIface, dropLogRemoteIp, dropLogNs;
     uint16_t dropLogRemotePort;
+    boost::asio::io_service pktLoggerIO;
+    PacketLogHandler pktLogger;
 
     /**
      * Timer callback to clean up IDs that have been erased
