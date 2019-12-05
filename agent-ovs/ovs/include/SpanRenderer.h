@@ -15,9 +15,8 @@
 
 #include <boost/noncopyable.hpp>
 #include <opflexagent/PolicyListener.h>
-#include <opflexagent/Agent.h>
 #include <opflexagent/SpanListener.h>
-#include "JsonRpc.h"
+#include "JsonRpcRenderer.h"
 
 namespace opflexagent {
 
@@ -25,6 +24,7 @@ namespace opflexagent {
  * class to render span config on a virtual switch
  */
 class SpanRenderer : public SpanListener,
+                     private JsonRpcRenderer,
                      private boost::noncopyable {
 
 public:
@@ -70,19 +70,15 @@ private:
     void handleSpanUpdate(const opflex::modb::URI& spanURI);
     virtual void sessionDeleted(shared_ptr<SessionState> sesSt);
     virtual void sessionDeleted();
-    void cleanup();
-    void connect();
     bool deleteErspnPort(const string& name);
     bool deleteMirror(const string& session);
     bool createMirror(const string& session, const set<string>& srcPorts,
             const set<string>& dstPorts);
     bool addErspanPort(const string& brName, const string& ipAddr);
     void updateMirrorConfig(shared_ptr<SessionState> seSt);
-    Agent& agent;
-    TaskQueue taskQueue;
-    condition_variable cv;
-    mutex handlerMutex;
-    unique_ptr<JsonRpc> jRpc;
+    void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI uri);
+    void delConnectPtrCb(const boost::system::error_code& ec, shared_ptr<SessionState> pSt);
+    void delConnectCb(const boost::system::error_code& ec);
 };
 }
 #endif //OPFLEX_SPANRENDERER_H
