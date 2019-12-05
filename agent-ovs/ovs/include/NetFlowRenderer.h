@@ -15,9 +15,9 @@
 
 #include <boost/noncopyable.hpp>
 #include <opflexagent/PolicyListener.h>
-#include <opflexagent/Agent.h>
 #include <opflexagent/NetFlowListener.h>
-#include "JsonRpc.h"
+#include "JsonRpcRenderer.h"
+
 
 namespace opflexagent {
 
@@ -25,6 +25,7 @@ namespace opflexagent {
  * class to render netflow export config on a virtual switch
  */
 class NetFlowRenderer : public NetFlowListener,
+                     private JsonRpcRenderer,
                      private boost::noncopyable {
 
 public:
@@ -55,15 +56,10 @@ private:
      * @param netflowURI URI of the changed netflow exporter object
     */
     void handleNetFlowUpdate(const opflex::modb::URI& netflowURI);
-    void cleanup();
-    void connect();
     bool deleteNetFlow();
     bool createNetFlow(const string& targets, int timeout);
-    Agent& agent;
-    TaskQueue taskQueue;
-    condition_variable cv;
-    mutex handlerMutex;
-    unique_ptr<JsonRpc> jRpc;
+    void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI uri);
+    void delConnectCb(const boost::system::error_code &ec);
 };
 }
 #endif //OPFLEX_NETFLOWRENDERER_H

@@ -124,6 +124,7 @@ noinst_HEADERS = \
 	ovs/include/dhcp.h \
 	ovs/include/arp.h \
 	ovs/include/eth.h \
+	ovs/include/JsonRpcRenderer.h \
 	ovs/include/NetFlowRenderer.h \
 	ovs/include/SpanRenderer.h \
 	ovs/include/JsonRpc.h
@@ -202,6 +203,7 @@ if RENDERER_OVS
 	ovs/FlowUtils.cpp \
 	ovs/FlowConstants.cpp \
 	ovs/ovs-shim.c \
+	ovs/JsonRpcRenderer.cpp \
 	ovs/NetFlowRenderer.cpp \
 	ovs/SpanRenderer.cpp \
 	ovs/JsonRpc.cpp
