@@ -22,8 +22,7 @@ namespace opflexagent {
     using boost::optional;
     using namespace boost::adaptors;
 
-    NetFlowRenderer::NetFlowRenderer(Agent& agent_) : agent(agent_),
-                                                taskQueue(agent.getAgentIOService()) {
+    NetFlowRenderer::NetFlowRenderer(Agent& agent_) : JsonRpcRenderer(agent_) {
 
     }
 
@@ -59,7 +58,21 @@ namespace opflexagent {
         if (!expSt) {
             return;
         }
-        connect();
+        if (!connect())
+        {
+            LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY << " seconds";
+            // connection failed, start a timer to try again
+
+            connection_timer.reset(new deadline_timer(agent.getAgentIOService(),
+                                                      milliseconds(CONNECTION_RETRY * 1000)));
+            connection_timer->async_wait(boost::bind(&NetFlowRenderer::updateConnectCb, this,
+                                                     boost::asio::placeholders::error, netFlowURI));
+            timerStarted = true;
+            LOG(DEBUG) << "conn timer " << connection_timer << ", timerStarted: " << timerStarted;
+            cleanup();
+            return;
+        }
+
         LOG(DEBUG) << "creating netflow";
         std::string target = expSt.get()->getDstAddress() + ":";
         std::string port = std::to_string(expSt.get()->getDestinationPort());
@@ -69,13 +82,6 @@ namespace opflexagent {
         LOG(DEBUG) << "netflow timeout " << timeout;
         createNetFlow(target, timeout);
         cleanup();
-    }
-
-    inline void NetFlowRenderer::connect() {
-        // connect to OVSDB, destination is always the loopback address.
-        jRpc = unique_ptr<JsonRpc>(new JsonRpc());
-        jRpc->start();
-        jRpc->connect(agent.getOvsdbIpAddress(), agent.getOvsdbPort());
     }
 
     bool NetFlowRenderer::deleteNetFlow() {
@@ -89,11 +95,6 @@ namespace opflexagent {
         return true;
     }
 
-    void NetFlowRenderer::cleanup() {
-        jRpc->stop();
-        jRpc.release();
-    }
-
     bool NetFlowRenderer::createNetFlow(const string &targets, int timeout) {
         LOG(DEBUG) << "createNetFlow:";
         string brUuid = jRpc->getBridgeUuid(agent.getOvsdbBridge());
@@ -101,4 +102,31 @@ namespace opflexagent {
         jRpc->createNetFlow(brUuid, targets, timeout);
         return true;
     }
+
+    void NetFlowRenderer::updateConnectCb(const boost::system::error_code& ec,
+            const opflex::modb::URI spanURI) {
+        LOG(DEBUG) << "timer update cb";
+        if (ec) {
+            string cat = string(ec.category().name());
+            LOG(DEBUG) << "timer error " << cat << ":" << ec.value();
+            if (!(cat.compare("system") == 0 &&
+                ec.value() == 125)) {
+                connection_timer->cancel();
+                timerStarted = false;
+            }
+            return;
+        }
+        netflowUpdated(spanURI);
+    }
+
+    void NetFlowRenderer::delConnectCb(const boost::system::error_code& ec) {
+        if (ec) {
+            connection_timer.reset();
+            return;
+        }
+        LOG(DEBUG) << "timer span del cb";
+        netflowDeleted();
+    }
+
+
 }
