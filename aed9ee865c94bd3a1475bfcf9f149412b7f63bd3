@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "181906fc_90e8b5b1",
+        "filename": "agent-ovs/ovs/JsonRpcRenderer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2019-12-05T17:55:22Z",
+      "side": 1,
+      "message": "remove this comment",
+      "range": {
+        "startLine": 29,
+        "startChar": 8,
+        "endLine": 29,
+        "endChar": 72
+      },
+      "revId": "aed9ee865c94bd3a1475bfcf9f149412b7f63bd3",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
