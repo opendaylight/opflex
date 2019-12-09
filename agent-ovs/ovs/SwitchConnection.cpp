@@ -38,8 +38,6 @@ const int LOST_CONN_BACKOFF_MSEC = 5000;
 const std::chrono::seconds ECHO_INTERVAL(5);
 const std::chrono::seconds MAX_ECHO_INTERVAL(30);
 
-#define OVS_VSWITCH_DAEMON  "ovs-vswitchd"
-
 namespace opflexagent {
 
 SwitchConnection::SwitchConnection(const std::string& swName) :
@@ -265,7 +263,6 @@ SwitchConnection::Monitor() {
             }
         }
     }
-    return;
 }
 
 int

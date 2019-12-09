@@ -880,16 +880,6 @@ public:
     virtual void getMacProxy(boost::asio::ip::address_v4 &macProxyAddress );
 
     /**
-     * Get the parent URI for the passed in child object URI
-     * @param[in] child_class the class of the child object
-     * @param[in] child the URI of the child object
-     * @return a reference to the URI of the parent
-     */
-    boost::optional<opflex::modb::URI>
-         getParent(opflex::modb::class_id_t child_class,
-                   const opflex::modb::URI& child);
-
-    /**
      * Disconnect from all current peers and use the configured
      * peer list to establish new peers.
      */
@@ -924,7 +914,6 @@ private:
     class OFFrameworkImpl;
     OFFrameworkImpl* pimpl;
 
-    friend class OFFrameworkImpl;
     friend class modb::Mutator;
     friend class modb::mointernal::MO;
     friend class MockOFFramework;

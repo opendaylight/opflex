@@ -28,7 +28,6 @@
 #include "opflex/engine/internal/OvsdbConnection.h"
 
 #include "opflex/logging/internal/logging.hpp"
-#include <yajr/yajr.hpp>
 #include <yajr/rpc/rpc.hpp>
 #include <yajr/rpc/methods.hpp>
 
@@ -53,7 +52,7 @@ void OpflexHandler::handleUnexpected(const string& type) {
     conn->disconnect();
 }
 
-void OpflexHandler::handleUnsupportedReq(const rapidjson::Value& id,
+void OpflexHandler::handleUnsupportedReq(const Value& id,
                                          const string& type) {
     LOG(WARNING) << "[" << getConnection()->getRemotePeer() << "] "
                  << "Ignoring unsupported request of type " << type;
@@ -61,7 +60,7 @@ void OpflexHandler::handleUnsupportedReq(const rapidjson::Value& id,
 }
 
 void OpflexHandler::handleError(uint64_t reqId,
-                                const rapidjson::Value& payload,
+                                const Value& payload,
                                 const string& type) {
     string code;
     string message;
@@ -122,7 +121,7 @@ void OpflexHandler::sendErrorRes(const Value& id,
                                  const string& code,
                                  const string& message) {
     rapidjson::StringBuffer sb;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+    Writer<rapidjson::StringBuffer> writer(sb);
     id.Accept(writer);
     LOG(ERROR) << "Error processing message " << sb.GetString()
                << ": " << code << ": " << message;
@@ -130,7 +129,7 @@ void OpflexHandler::sendErrorRes(const Value& id,
 }
 
 bool OpflexHandler::requireReadyReq(const Value& id,
-                                    const std::string& method) {
+                                    const string& method) {
     if (isReady()) return true;
 
     sendErrorRes(id, "ESTATE", "Unexpected request of type " + method);
@@ -139,7 +138,7 @@ bool OpflexHandler::requireReadyReq(const Value& id,
 }
 
 bool OpflexHandler::requireReadyRes(uint64_t reqId,
-                                    const std::string& method) {
+                                    const string& method) {
     if (isReady()) return true;
     handleUnexpected(method);
     return false;

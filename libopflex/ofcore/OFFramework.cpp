@@ -251,18 +251,6 @@ modb::ObjectStore& OFFramework::getStore() {
     return pimpl->db;
 }
 
-boost::optional<URI> OFFramework::getParent(class_id_t child_class,
-                                        const URI& child) {
-    boost::optional<URI> uri;
-    try {
-        uri = (pimpl->processor.getSystemClient()->
-               getParent(child_class, child)).first;
-    } catch(const std::out_of_range&) {
-          LOG(DEBUG) << "Unable to find parent for " << child;
-    }
-    return uri;
-}
-
 void OFFramework::resetAllPeers() {
     engine::internal::OpflexPool& pool = pimpl->processor.getPool();
     std::string location;
