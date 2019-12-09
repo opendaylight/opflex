@@ -72,8 +72,8 @@ const std::vector<int>& OFFramework::getVersion() {
     return version;
 }
 
-const std::string& OFFramework::getVersionStr() {
-    static const std::string version(SDK_FULL_VERSION);
+const string& OFFramework::getVersionStr() {
+    static const string version(SDK_FULL_VERSION);
     return version;
 }
 
@@ -144,7 +144,7 @@ void OFFramework::stop() {
     pimpl->started = false;
 }
 
-void OFFramework::dumpMODB(const std::string& file) {
+void OFFramework::dumpMODB(const string& file) {
     MOSerializer& serializer = pimpl->processor.getSerializer();
     serializer.dumpMODB(file);
 }
@@ -163,26 +163,26 @@ void OFFramework::prettyPrintMODB(std::ostream& output,
     serializer.displayMODB(output, tree, includeProps, utf8, truncate);
 }
 
-void OFFramework::setOpflexIdentity(const std::string& name,
-                                    const std::string& domain) {
+void OFFramework::setOpflexIdentity(const string& name,
+                                    const string& domain) {
     pimpl->processor.setOpflexIdentity(name, domain);
 }
 
-void OFFramework::setOpflexIdentity(const std::string& name,
-                                    const std::string& domain,
-                                    const std::string& location) {
+void OFFramework::setOpflexIdentity(const string& name,
+                                    const string& domain,
+                                    const string& location) {
     pimpl->processor.setOpflexIdentity(name, domain, location);
 }
 
-void OFFramework::enableSSL(const std::string& caStorePath,
+void OFFramework::enableSSL(const string& caStorePath,
                             bool verifyPeers) {
     pimpl->processor.enableSSL(caStorePath,
                                verifyPeers);
 }
 
-void OFFramework::enableSSL(const std::string& caStorePath,
-                            const std::string& keyAndCertFilePath,
-                            const std::string& passphrase,
+void OFFramework::enableSSL(const string& caStorePath,
+                            const string& keyAndCertFilePath,
+                            const string& passphrase,
                             bool verifyPeers) {
     pimpl->processor.enableSSL(caStorePath,
                                keyAndCertFilePath,
@@ -190,12 +190,12 @@ void OFFramework::enableSSL(const std::string& caStorePath,
                                verifyPeers);
 }
 
-void OFFramework::enableInspector(const std::string& socketName) {
+void OFFramework::enableInspector(const string& socketName) {
     pimpl->inspector.reset(new engine::Inspector(&pimpl->db));
     pimpl->inspector->setSocketName(socketName);
 }
 
-void OFFramework::addPeer(const std::string& hostname,
+void OFFramework::addPeer(const string& hostname,
                           int port) {
     pimpl->processor.addPeer(hostname, port);
 }
@@ -253,7 +253,7 @@ modb::ObjectStore& OFFramework::getStore() {
 
 void OFFramework::resetAllPeers() {
     engine::internal::OpflexPool& pool = pimpl->processor.getPool();
-    std::string location;
+    string location;
     pool.setLocation(location);
     pool.resetAllPeers();
     pool.addConfiguredPeers();
@@ -270,6 +270,11 @@ modb::Mutator& OFFramework::getTLMutator() {
 }
 void OFFramework::clearTLMutator() {
     uv_key_set(&pimpl->mutator_key, NULL);
+}
+
+void OFFramework::getOpflexPeerStats(std::unordered_map<string, OF_SHARED_PTR<OFStats>>& stats) {
+    engine::internal::OpflexPool& pool = pimpl->processor.getPool();
+    pool.getOpflexPeerStats(stats);
 }
 
 } /* namespace ofcore */
