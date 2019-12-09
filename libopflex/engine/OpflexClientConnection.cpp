@@ -41,16 +41,17 @@ OpflexClientConnection::OpflexClientConnection(HandlerFactory& handlerFactory,
       pool(pool_), hostname(hostname_), port(port_), role(0), peer(NULL),
       started(false), active(false), closing(false), ready(false),
       failureCount(0), handshake_timer(NULL) {
+    opflexStats = OF_MAKE_SHARED<OFStats>();
 }
 
 OpflexClientConnection::~OpflexClientConnection() {
 }
 
-const std::string& OpflexClientConnection::getName() {
+const string& OpflexClientConnection::getName() {
     return pool->getName();
 }
 
-const std::string& OpflexClientConnection::getDomain() {
+const string& OpflexClientConnection::getDomain() {
     return pool->getDomain();
 }
 
@@ -118,12 +119,12 @@ void OpflexClientConnection::close() {
 }
 
 uv_loop_t* OpflexClientConnection::loop_selector(void * data) {
-    OpflexClientConnection* conn = (OpflexClientConnection*)data;
+    auto conn = (OpflexClientConnection*)data;
     return conn->getPool()->getLoop();
 }
 
 void OpflexClientConnection::on_handshake_timer(uv_timer_t* handle) {
-    OpflexClientConnection* conn = (OpflexClientConnection*)handle->data;
+    auto conn = (OpflexClientConnection*)handle->data;
     if (conn == NULL) return;
     LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                << "Handshake timed out";
@@ -137,7 +138,7 @@ void OpflexClientConnection::on_timer_close(uv_handle_t* handle) {
 void OpflexClientConnection::on_state_change(Peer * p, void * data,
                                              yajr::StateChange::To stateChange,
                                              int error) {
-    OpflexClientConnection* conn = (OpflexClientConnection*)data;
+    auto conn = (OpflexClientConnection*)data;
     switch (stateChange) {
     case yajr::StateChange::CONNECT:
         LOG(INFO) << "[" << conn->getRemotePeer() << "] "

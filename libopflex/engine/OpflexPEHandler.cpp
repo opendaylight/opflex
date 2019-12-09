@@ -132,19 +132,21 @@ void OpflexPEHandler::connected() {
     setState(CONNECTED);
 
     OpflexPool& pool = getProcessor()->getPool();
-    SendIdentityReq* req =
+    auto req =
         new SendIdentityReq(pool.getName(),
                             pool.getDomain(),
                             pool.getLocation(),
                             OFConstants::POLICY_ELEMENT,
                             pool.getTunnelMac().toString());
-    getConnection()->sendMessage(req, true);
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrIdentReqs();
+    conn->sendMessage(req, true);
 }
 
 void OpflexPEHandler::disconnected() {
     setState(DISCONNECTED);
     OpflexPool& pool = getProcessor()->getPool();
-    OpflexClientConnection* conn = (OpflexClientConnection*)getConnection();
+    auto conn = (OpflexClientConnection*)getConnection();
     pool.setRoles(conn, 0);
 }
 
@@ -182,14 +184,15 @@ static bool validateProxyAddress(const Value &val,
 
 void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
                                             const Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrIdentResps();
     getProcessor()->responseReceived(reqId);
     OpflexPool& pool = getProcessor()->getPool();
-    OpflexClientConnection* conn = (OpflexClientConnection*)getConnection();
 
     bool foundSelf = false;
 
     OpflexPool::peer_name_set_t peer_set;
-    const std::string &remotePeer = getConnection()->getRemotePeer();
+    const std::string &remotePeer = conn->getRemotePeer();
     bool isTransportMode = (pool.getClientMode() == AgentMode::TRANSPORT_MODE);
     bool seekingProxies = (pool.getTransportModeState() ==
                            AgentTransportState::SEEKING_PROXIES);
@@ -250,7 +253,7 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
     if (payload.HasMember("peers")) {
         const Value& peers = payload["peers"];
         if (!peers.IsArray()) {
-            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+            LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                        << "Malformed peers: must be array";
             conn->disconnect();
             return;
@@ -260,7 +263,7 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
 
         for (it = peers.Begin(); it != peers.End(); ++it) {
             if (!it->IsObject()) {
-                LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                            << "Malformed peers: must contain objects";
                 conn->disconnect();
                 return;
@@ -288,14 +291,14 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
 
                     peer_set.insert(make_pair(host, port));
                 } catch( boost::bad_lexical_cast const& ) {
-                    LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                    LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                                << "Invalid port in connectivity_info: "
                                << portstr;
                     conn->disconnect();
                     return;
                 }
             } else {
-                LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+                LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                            << "Connectivity info could not be parsed: "
                            << ci;
                 conn->disconnect();
@@ -331,7 +334,7 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
         ready();
     } else {
         pool.validatePeerSet(conn,peer_set);
-        LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] "
+        LOG(INFO) << "[" << conn->getRemotePeer() << "] "
                   << "Current peer not found in peer list; closing";
         conn->close();
     }
@@ -340,6 +343,8 @@ void OpflexPEHandler::handleSendIdentityRes(uint64_t reqId,
 
 void OpflexPEHandler::handleSendIdentityErr(uint64_t reqId,
                                             const Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrIdentErrs();
     handleError(reqId, payload, "Send Identity");
     LOG(ERROR) << "Handshake failed; terminating connection";
     setState(FAILED);
@@ -347,6 +352,8 @@ void OpflexPEHandler::handleSendIdentityErr(uint64_t reqId,
 
 void OpflexPEHandler::handlePolicyResolveRes(uint64_t reqId,
                                              const Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrPolResolveResps();
     getProcessor()->responseReceived(reqId);
     StoreClient* client = getProcessor()->getSystemClient();
     MOSerializer& serializer = getProcessor()->getSerializer();
@@ -354,7 +361,7 @@ void OpflexPEHandler::handlePolicyResolveRes(uint64_t reqId,
     if (payload.HasMember("policy")) {
         const Value& policy = payload["policy"];
         if (!policy.IsArray()) {
-            LOG(ERROR) << "[" << getConnection()->getRemotePeer() << "] "
+            LOG(ERROR) << "[" << conn->getRemotePeer() << "] "
                        << "Malformed policy resolve response: policy must be array";
             conn->disconnect();
         }
@@ -368,8 +375,17 @@ void OpflexPEHandler::handlePolicyResolveRes(uint64_t reqId,
     client->deliverNotifications(notifs);
 }
 
+void OpflexPEHandler::handlePolicyResolveErr(uint64_t reqId,
+                                             const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrPolResolveErrs();
+    handleError(reqId, payload, "Policy Resolve");
+}
+
 void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
                                             const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrPolUpdates();
     StoreClient* client = getProcessor()->getSystemClient();
     MOSerializer& serializer = getProcessor()->getSerializer();
     StoreClient::notif_t notifs;
@@ -467,17 +483,44 @@ void OpflexPEHandler::handlePolicyUpdateReq(const rapidjson::Value& id,
 
 void OpflexPEHandler::handlePolicyUnresolveRes(uint64_t reqId,
                                                const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrPolUnresolveResps();
     // nothing to do
+}
+
+void OpflexPEHandler::handlePolicyUnresolveErr(uint64_t reqId,
+                                               const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrPolUnresolveErrs();
+    handleError(reqId, payload, "Policy Unresolve");
 }
 
 void OpflexPEHandler::handleEPDeclareRes(uint64_t reqId,
                                          const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrEpDeclareResps();
     getProcessor()->responseReceived(reqId);
+}
+
+void OpflexPEHandler::handleEPDeclareErr(uint64_t reqId,
+                                         const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrEpDeclareErrs();
+    handleError(reqId, payload, "Endpoint Declare");
 }
 
 void OpflexPEHandler::handleEPUndeclareRes(uint64_t reqId,
                                            const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrEpUndeclareResps();
     // nothing to do
+}
+
+void OpflexPEHandler::handleEPUndeclareErr(uint64_t reqId,
+                                           const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrEpUndeclareErrs();
+    handleError(reqId, payload, "Endpoint Undeclare");
 }
 
 void OpflexPEHandler::handleEPResolveRes(uint64_t reqId,
@@ -593,7 +636,16 @@ void OpflexPEHandler::handleEPUpdateReq(const rapidjson::Value& id,
 
 void OpflexPEHandler::handleStateReportRes(uint64_t reqId,
                                            const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrStateReportResps();
     getProcessor()->responseReceived(reqId);
+}
+
+void OpflexPEHandler::handleStateReportErr(uint64_t reqId,
+                                           const rapidjson::Value& payload) {
+    auto conn = (OpflexClientConnection*)getConnection();
+    conn->getOpflexStats()->incrStateReportErrs();
+    handleError(reqId, payload, "State Report");
 }
 
 } /* namespace internal */

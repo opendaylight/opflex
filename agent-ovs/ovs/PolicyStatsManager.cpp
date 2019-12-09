@@ -256,6 +256,38 @@ on_timer_base(const error_code& ec,
             itr++;
     }
 
+    // flush OpFlex client stats
+    std::unordered_map<string, OF_SHARED_PTR<OFStats>> stats;
+    agent->getFramework().getOpflexPeerStats(stats);
+    Mutator mutator(agent->getFramework(), "policyelement");
+    optional<shared_ptr<SysStatUniverse> > ssu =
+        SysStatUniverse::resolve(agent->getFramework());
+    if (ssu) {
+        for (const auto& peerStat : stats) {
+            ssu.get()->addObserverOpflexCounter(peerStat.first)
+                    ->setIdentReqs(peerStat.second->getIdentReqs())
+                    .setIdentResps(peerStat.second->getIdentResps())
+                    .setIdentErrs(peerStat.second->getIdentErrs())
+                    .setPolResolves(peerStat.second->getPolResolves())
+                    .setPolResolveResps(peerStat.second->getPolResolveResps())
+                    .setPolResolveErrs(peerStat.second->getPolResolveErrs())
+                    .setPolUnresolves(peerStat.second->getPolUnresolves())
+                    .setPolUnresolveResps(peerStat.second->getPolUnresolveResps())
+                    .setPolUnresolveErrs(peerStat.second->getPolUnresolveErrs())
+                    .setPolUpdates(peerStat.second->getPolUpdates())
+                    .setEpDeclares(peerStat.second->getEpDeclares())
+                    .setEpDeclareResps(peerStat.second->getEpDeclareResps())
+                    .setEpDeclareErrs(peerStat.second->getEpDeclareErrs())
+                    .setEpUndeclares(peerStat.second->getEpUndeclares())
+                    .setEpUndeclareResps(peerStat.second->getEpUndeclareResps())
+                    .setEpUndeclareErrs(peerStat.second->getEpUndeclareErrs())
+                    .setStateReports(peerStat.second->getStateReports())
+                    .setStateReportResps(peerStat.second->getStateReportResps())
+                    .setStateReportErrs(peerStat.second->getStateReportErrs());
+        }
+    }
+
+    mutator.commit();
 }
 
 void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
