@@ -202,7 +202,7 @@ public class FEnumDef extends ItemFormatterTask
         out.println(aInIndent, "namespace " + Config.getProjName() + " {");
         out.println(aInIndent, "namespace " + getNamespace(aIn,false) + " {");
 
-
+        out.println(aInIndent + 1, "/** " + getClassName(aIn, false)  + "*/");
         out.println(aInIndent + 1, "struct " + getClassName(aIn, false) +
                                    (null != lSuperHolder ?
                                             ": public " + getClassName(lSuperHolder,true) :
@@ -216,6 +216,7 @@ public class FEnumDef extends ItemFormatterTask
             {
                 if (lConst.hasValue())
                 {
+                    out.println(aInIndent + 2, "/** CONST_" + Strings.repaceIllegal(lConst.getLID().getName().toUpperCase()) + " */");
                     out.println(
                             aInIndent + 2,
                             "static const " + lLang.getSyntax() +
