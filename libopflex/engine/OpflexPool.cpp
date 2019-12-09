@@ -50,19 +50,19 @@ OpflexPool::~OpflexPool() {
     uv_mutex_destroy(&conn_mutex);
 }
 
-boost::optional<std::string> OpflexPool::getLocation() {
+boost::optional<string> OpflexPool::getLocation() {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     return location;
 }
 
-void OpflexPool::setLocation(const std::string& location) {
+void OpflexPool::setLocation(const string& location) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     this->location = location;
 }
 
-void OpflexPool::enableSSL(const std::string& caStorePath,
-                           const std::string& keyAndCertFilePath,
-                           const std::string& passphrase,
+void OpflexPool::enableSSL(const string& caStorePath,
+                           const string& keyAndCertFilePath,
+                           const string& passphrase,
                            bool verifyPeers) {
     OpflexConnection::initSSL();
     clientCtx.reset(ZeroCopyOpenSSL::Ctx::createCtx(caStorePath.c_str(),
@@ -77,7 +77,7 @@ void OpflexPool::enableSSL(const std::string& caStorePath,
         clientCtx.get()->setNoVerify();
 }
 
-void OpflexPool::enableSSL(const std::string& caStorePath,
+void OpflexPool::enableSSL(const string& caStorePath,
                            bool verifyPeers) {
     OpflexConnection::initSSL();
     clientCtx.reset(ZeroCopyOpenSSL::Ctx::createCtx(caStorePath.c_str()));
@@ -154,15 +154,15 @@ void OpflexPool::stop() {
     threadManager.stopTask("connection_pool");
 }
 
-void OpflexPool::setOpflexIdentity(const std::string& name,
-                                   const std::string& domain) {
+void OpflexPool::setOpflexIdentity(const string& name,
+                                   const string& domain) {
     this->name = name;
     this->domain = domain;
 }
 
-void OpflexPool::setOpflexIdentity(const std::string& name,
-                                   const std::string& domain,
-                                   const std::string& location) {
+void OpflexPool::setOpflexIdentity(const string& name,
+                                   const string& domain,
+                                   const string& location) {
     this->name = name;
     this->domain = domain;
     this->location = location;
@@ -173,7 +173,7 @@ OpflexPool::registerPeerStatusListener(PeerStatusListener* listener) {
     peerStatusListeners.push_back(listener);
 }
 
-void OpflexPool::updatePeerStatus(const std::string& hostname, int port,
+void OpflexPool::updatePeerStatus(const string& hostname, int port,
                                   PeerStatusListener::PeerStatus status) {
     PeerStatusListener::Health newHealth = PeerStatusListener::DOWN;
     bool notifyHealth = false;
@@ -217,7 +217,7 @@ void OpflexPool::updatePeerStatus(const std::string& hostname, int port,
     }
 }
 
-OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname,
+OpflexClientConnection* OpflexPool::getPeer(const string& hostname,
                                             int port) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     conn_map_t::iterator it = connections.find(make_pair(hostname, port));
@@ -227,7 +227,7 @@ OpflexClientConnection* OpflexPool::getPeer(const std::string& hostname,
     return NULL;
 }
 
-void OpflexPool::addPeer(const std::string& hostname, int port,
+void OpflexPool::addPeer(const string& hostname, int port,
                          bool configured) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     if (configured)
@@ -236,7 +236,7 @@ void OpflexPool::addPeer(const std::string& hostname, int port,
     uv_async_send(&conn_async);
 }
 
-void OpflexPool::doAddPeer(const std::string& hostname, int port) {
+void OpflexPool::doAddPeer(const string& hostname, int port) {
     if (!active) return;
     ConnData& cd = connections[make_pair(hostname, port)];
     if (cd.conn != NULL) {
@@ -264,7 +264,7 @@ void OpflexPool::addPeer(OpflexClientConnection* conn) {
     cd.conn = conn;
 }
 
-void OpflexPool::doRemovePeer(const std::string& hostname, int port) {
+void OpflexPool::doRemovePeer(const string& hostname, int port) {
     conn_map_t::iterator it = connections.find(make_pair(hostname, port));
     if (it != connections.end()) {
         if (it->second.conn) {
@@ -369,6 +369,29 @@ void OpflexPool::messagesReady() {
     uv_async_send(&writeq_async);
 }
 
+void incrementMsgCounter(OpflexClientConnection* conn, OpflexMessage* msg)
+{
+    if (OpflexMessage::REQUEST == msg->getType()) {
+        if ("send_identity" == msg->getMethod()) {
+            conn->getOpflexStats()->incrIdentReqs();
+        } else if ("policy_resolve" == msg->getMethod()) {
+            conn->getOpflexStats()->incrPolResolves();
+        } else if ("policy_unresolve" == msg->getMethod()) {
+            conn->getOpflexStats()->incrPolUnresolves();
+        } else if ("endpoint_declare" == msg->getMethod()) {
+            conn->getOpflexStats()->incrEpDeclares();
+        } else if ("endpoint_undeclare" == msg->getMethod()) {
+            conn->getOpflexStats()->incrEpUndeclares();
+        } else if ("state_report" == msg->getMethod()) {
+            conn->getOpflexStats()->incrStateReports();
+        } else {
+            LOG(INFO) << "Unhandled request named " << msg->getMethod();
+        }
+    } else {
+        LOG(INFO) << "Unhandled type named " << msg->getType();
+    }
+}
+
 size_t OpflexPool::sendToRole(OpflexMessage* message,
                            OFConstants::OpflexRole role,
                            bool sync) {
@@ -400,6 +423,7 @@ size_t OpflexPool::sendToRole(OpflexMessage* message,
             m_copy = message;
             messagep.release();
         }
+        incrementMsgCounter(conn, m_copy);
         conn->sendMessage(m_copy, sync);
         i += 1;
     }
@@ -429,7 +453,7 @@ void OpflexPool::validatePeerSet(OpflexClientConnection * conn, const peer_name_
     }
 }
 
-bool OpflexPool::isConfiguredPeer(const std::string& hostname, int port) {
+bool OpflexPool::isConfiguredPeer(const string& hostname, int port) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
     return configured_peers.find(make_pair(hostname, port)) !=
         configured_peers.end();
@@ -441,6 +465,15 @@ void OpflexPool::addConfiguredPeers() {
         addPeer(peer_name.first, peer_name.second, false);
     }
 }
+
+void OpflexPool::getOpflexPeerStats(std::unordered_map<string, OF_SHARED_PTR<OFStats>>& stats) {
+    util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
+    BOOST_FOREACH(conn_map_t::value_type& v, connections) {
+        const string peername = v.first.first + ":" + std::to_string(v.first.second);
+        stats.emplace(std::make_pair(peername, v.second.conn->getOpflexStats()));
+    }
+}
+
 
 } /* namespace internal */
 } /* namespace engine */

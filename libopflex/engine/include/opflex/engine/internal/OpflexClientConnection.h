@@ -15,6 +15,8 @@
 #ifndef OPFLEX_ENGINE_OPFLEXCLIENTCONNECTION_H
 #define OPFLEX_ENGINE_OPFLEXCLIENTCONNECTION_H
 
+#include <include/opflex/ofcore/OFStats.h>
+#include <include/opflex/ofcore/OFTypes.h>
 #include "opflex/engine/internal/OpflexConnection.h"
 
 namespace opflex {
@@ -97,6 +99,7 @@ public:
     virtual void setRoles(uint8_t _role) { role = _role; }
     virtual uint8_t getRoles() { return role; }
 
+    OF_SHARED_PTR<OFStats> getOpflexStats() { return opflexStats; }
 private:
     OpflexPool* pool;
 
@@ -112,6 +115,8 @@ private:
     bool closing;
     bool ready;
     int failureCount;
+
+    OF_SHARED_PTR<OFStats> opflexStats;
 
     uv_timer_t* handshake_timer;
 

@@ -66,13 +66,21 @@ public:
                                        const rapidjson::Value& payload);
     virtual void handlePolicyResolveRes(uint64_t reqId,
                                         const rapidjson::Value& payload);
+    virtual void handlePolicyResolveErr(uint64_t reqId,
+                                        const rapidjson::Value& payload);
     virtual void handlePolicyUnresolveRes(uint64_t reqId,
+                                          const rapidjson::Value& payload);
+    virtual void handlePolicyUnresolveErr(uint64_t reqId,
                                           const rapidjson::Value& payload);
     virtual void handlePolicyUpdateReq(const rapidjson::Value& id,
                                        const rapidjson::Value& payload);
     virtual void handleEPDeclareRes(uint64_t reqId,
                                     const rapidjson::Value& payload);
+    virtual void handleEPDeclareErr(uint64_t reqId,
+                                    const rapidjson::Value& payload);
     virtual void handleEPUndeclareRes(uint64_t reqId,
+                                      const rapidjson::Value& payload);
+    virtual void handleEPUndeclareErr(uint64_t reqId,
                                       const rapidjson::Value& payload);
     virtual void handleEPResolveRes(uint64_t reqId,
                                     const rapidjson::Value& payload);
@@ -81,6 +89,8 @@ public:
     virtual void handleEPUpdateReq(const rapidjson::Value& id,
                                    const rapidjson::Value& payload);
     virtual void handleStateReportRes(uint64_t reqId,
+                                      const rapidjson::Value& payload);
+    virtual void handleStateReportErr(uint64_t reqId,
                                       const rapidjson::Value& payload);
 
 private:
