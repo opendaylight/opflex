@@ -584,6 +584,7 @@
 #include "opflex/ofcore/MainLoopAdaptor.h"
 #include "opflex/ofcore/OFConstants.h"
 #include "boost/asio/ip/address_v4.hpp"
+#include "opflex/ofcore/OFStats.h"
 #include <opflex/modb/URI.h>
 #include <opflex/modb/PropertyInfo.h>
 
@@ -884,6 +885,13 @@ public:
      * peer list to establish new peers.
      */
      virtual void resetAllPeers();
+
+    /**
+     * Retrieve OpFlex client stats for each available peer
+     *
+     * @param stats Map of named peers to associated OpFlex stats
+     */
+    void getOpflexPeerStats(std::unordered_map<std::string, OF_SHARED_PTR<OFStats>>& stats);
 
 private:
     /**

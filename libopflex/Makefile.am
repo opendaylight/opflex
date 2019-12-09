@@ -49,6 +49,7 @@ core_include_HEADERS = \
 	include/opflex/ofcore/MainLoopAdaptor.h \
 	include/opflex/ofcore/InspectorClient.h \
 	include/opflex/ofcore/OFConstants.h \
+	include/opflex/ofcore/OFStats.h \
 	include/opflex/ofcore/OFTypes.h
 test_includedir = $(includedir)/opflex/test
 test_include_HEADERS = \

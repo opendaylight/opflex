@@ -248,7 +248,7 @@ public:
      * @param role the role to search for
      * @return the count of connections in that role
      */
-size_t getRoleCount(ofcore::OFConstants::OpflexRole role);
+    size_t getRoleCount(ofcore::OFConstants::OpflexRole role);
 
     /**
      * Check whether the given port and hostname is in the set of
@@ -334,6 +334,13 @@ size_t getRoleCount(ofcore::OFConstants::OpflexRole role);
     opflex::modb::MAC getTunnelMac() {
         return tunnelMac;
     }
+
+    /**
+     * Retrieve OpFlex client stats for each available peer
+     *
+     * @param stats Map of named peers to associated OpFlex stats
+     */
+    void getOpflexPeerStats(std::unordered_map<std::string, OF_SHARED_PTR<OFStats>>& stats);
 
 private:
     HandlerFactory& factory;

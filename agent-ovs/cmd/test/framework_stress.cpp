@@ -143,6 +143,7 @@ int main(int argc, char** argv) {
                 root->addEpdrL3Discovered();
                 root->addGbpeVMUniverse();
                 root->addObserverEpStatUniverse();
+                root->addObserverSysStatUniverse();
 
                 root->addDomainConfig()
                     ->addDomainConfigToConfigRSrc()
