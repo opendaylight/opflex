@@ -16,6 +16,24 @@
       "revId": "2c92b4b2c26cddc1bd5b4bf3d88563793e6ef36c",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "52f2d87e_8c359b58",
+        "filename": "libopflex/include/opflex/ofcore/OFStats.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-10T00:47:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8dc1e5fe_45bbc9df",
+      "revId": "2c92b4b2c26cddc1bd5b4bf3d88563793e6ef36c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
