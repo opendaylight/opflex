@@ -166,6 +166,9 @@ static bool checkSpan(boost::optional<shared_ptr<SessionState>> pSess,
 
 static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
     shared_ptr<span::SrcMember> srcMem, shared_ptr<L2Ep> l2e) {
+    if (!pSess) {
+        return false;
+    }
     SessionState::srcEpSet srcEps = pSess.get()->getSrcEndPointSet();
     if (srcEps.size() == 0) {
         return false;
@@ -187,6 +190,9 @@ static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
 
 static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess,
     shared_ptr<span::DstSummary> dstSumm1) {
+    if (!pSess) {
+        return false;
+    }
     unordered_map<URI, shared_ptr<DstEndPoint>> dstMap =
             pSess.get()->getDstEndPointMap();
     unordered_map<URI, shared_ptr<DstEndPoint>>::iterator it;
