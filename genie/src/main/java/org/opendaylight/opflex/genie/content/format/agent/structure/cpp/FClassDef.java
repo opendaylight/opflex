@@ -234,19 +234,10 @@ public class FClassDef extends ItemFormatterTask
 
     private void genClass(int aInIndent, MClass aInClass)
     {
-        out.println(aInIndent, "class " + aInClass.getLID().getName());
-        /**
-        if (aInClass.hasSuperclass())
-        {
-            MClass lSuperclass = aInClass.getSuperclass();
-            out.println(aInIndent + 1, ": public " + getClassName(lSuperclass,true));
-        }
-        else**/
-        {
-            out.println(aInIndent + 1, ": public opflex::modb::mointernal::MO");
-        }
+        out.println(aInIndent, "/** " + aInClass.getLID().getName() + " */");
+        out.println(aInIndent, "class " + aInClass.getLID().getName() + " : public opflex::modb::mointernal::MO");
         out.println(aInIndent, "{");
-            genPublic(aInIndent + 1, aInClass);
+        genPublic(aInIndent + 1, aInClass);
         out.println(aInIndent, "}; // class " + aInClass.getLID().getName());
     }
 
