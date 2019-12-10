@@ -43,6 +43,7 @@ Renderer* OVSRendererPlugin::create(Agent& agent) const {
 OVSRenderer::OVSRenderer(Agent& agent_)
     : Renderer(agent_), ctZoneManager(idGen),
       intSwitchManager(agent_, intFlowExecutor, intFlowReader, intPortMapper),
+      tunnelEpManager(&agent_),
       intFlowManager(agent_, intSwitchManager, idGen,
                      ctZoneManager, pktInHandler, tunnelEpManager),
       accessSwitchManager(agent_, accessFlowExecutor,
@@ -53,7 +54,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
                             accessSwitchManager.getPortMapper()),
       contractStatsManager(&agent_, idGen, intSwitchManager),
       secGrpStatsManager(&agent_, idGen, accessSwitchManager),
-      tunnelEpManager(&agent_), tunnelRemotePort(0), uplinkVlan(0),
+      tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true),
       connTrack(true), ctZoneRangeStart(0), ctZoneRangeEnd(0),
       ifaceStatsEnabled(true), ifaceStatsInterval(0),
