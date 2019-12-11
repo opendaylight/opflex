@@ -142,8 +142,8 @@ PKG_CHECK_MODULES([rapidjson], [RapidJSON >= 1.1])
 
 AM_COND_IF([RENDERER_OVS], [
     # check for libopenvswitch
-    PKG_CHECK_MODULES([libofproto], [libofproto >= 2.6.7])
-    PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.6.7])
+    PKG_CHECK_MODULES([libofproto], [libofproto >= 2.12.0])
+    PKG_CHECK_MODULES([libopenvswitch], [libopenvswitch >= 2.12.0])
 
     # check for libnetfilter-conntrack
     PKG_CHECK_MODULES([libnfct], [libnetfilter_conntrack >= 1.0.0],

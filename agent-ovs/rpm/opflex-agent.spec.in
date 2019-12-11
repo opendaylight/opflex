@@ -35,8 +35,8 @@ BuildRequires: boost-devel
 BuildRequires: boost-test
 BuildRequires: libopflex-devel
 BuildRequires: libmodelgbp-devel
-BuildRequires: noiro-openvswitch-devel >= 2.6.7
-BuildRequires: noiro-openvswitch-lib >= 2.6.7
+BuildRequires: noiro-openvswitch-devel >= 2.12.0
+BuildRequires: noiro-openvswitch-lib >= 2.12.0
 BuildRequires: doxygen
 BuildRequires: systemd-units
 BuildRequires: rapidjson-devel >= 1.1
@@ -67,8 +67,8 @@ allow smoother transition from the older packages
 Summary: Open vSwitch renderer module for OpFlex Agent
 Group: Development/Libraries
 Requires: %{name} = %{epoch}:%{version}-%{release}
-Requires: noiro-openvswitch-lib >= 2.6
-Requires: openvswitch >= 2.6
+Requires: noiro-openvswitch-lib >= 2.12.0
+Requires: openvswitch >= 2.12.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 
