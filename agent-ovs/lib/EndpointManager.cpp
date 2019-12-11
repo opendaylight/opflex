@@ -9,6 +9,10 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <set>
 #include <algorithm>
 
@@ -22,6 +26,9 @@
 #include <opflexagent/EndpointManager.h>
 #include <opflexagent/Network.h>
 #include <opflexagent/logging.h>
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
 
 namespace opflexagent {
 
@@ -49,12 +56,24 @@ typedef EndpointListener::uri_set_t uri_set_t;
 static const string VM_NAME_ATTR("vm-name");
 static const string NULL_MAC_ADDR("00:00:00:00:00:00");
 
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
+                                 PolicyManager& policyManager_,
+                                 PrometheusManager& prometheusManager_)
+    : framework(framework_), policyManager(policyManager_),
+      prometheusManager(prometheusManager_), epgMappingListener(*this) {
+
+}
+#else
 EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
                                  PolicyManager& policyManager_)
     : framework(framework_), policyManager(policyManager_),
       epgMappingListener(*this) {
 
 }
+#endif
+
 
 EndpointManager::~EndpointManager() {
 
@@ -301,6 +320,24 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     }
 }
 
+std::string EndpointManager::getEpName (const std::string& uuid)
+{
+    LOG(DEBUG) << "Getting ep name for uuid " << uuid;
+    ep_map_t::iterator it = ep_map.find(uuid);
+    if (it != ep_map.end()) {
+        EndpointState& es = it->second;
+        auto& ep_name = es.endpoint->getAccessInterface();
+        if (ep_name) {
+            LOG(DEBUG) << "ep name is " << ep_name.get();
+            return ep_name.get();
+        } else {
+            LOG(DEBUG) << "ep name not found";
+        }
+    }
+
+    return std::string();
+}
+
 void EndpointManager::removeEndpoint(const std::string& uuid) {
     using namespace modelgbp::epdr;
     using namespace modelgbp::epr;
@@ -315,6 +352,11 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     ep_map_t::iterator it = ep_map.find(uuid);
     if (it != ep_map.end()) {
         EndpointState& es = it->second;
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        auto ep_name = getEpName(uuid);
+        if (!ep_name.empty())
+            prometheusManager.removeEpCounter(ep_name);
+#endif
         // remove any associated modb entries
         for (const URI& locall2ep : es.locall2EPs) {
             LocalL2Ep::remove(framework, locall2ep);
@@ -682,6 +724,11 @@ void EndpointManager::removeEndpointExternal(const std::string& uuid) {
     if (it != ext_ep_map.end()) {
         EndpointState& es = it->second;
         // remove any associated modb entries
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        auto ep_name = getEpName(uuid);
+        if (!ep_name.empty())
+            prometheusManager.removeEpCounter(ep_name);
+#endif
         ExternalL3Ep::remove(framework, uuid);
         EpCounter::remove(framework, uuid);
         rd = policyManager.getRDForExternalInterface(
@@ -1290,6 +1337,11 @@ void EndpointManager::updateEndpointCounters(const std::string& uuid,
     }
 
     mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    auto ep_name = getEpName(uuid);
+    if (!ep_name.empty())
+        prometheusManager.addNUpdateEpCounter(ep_name, uuid);
+#endif
 }
 
 EndpointManager::EPGMappingListener::EPGMappingListener(EndpointManager& epmgr_)

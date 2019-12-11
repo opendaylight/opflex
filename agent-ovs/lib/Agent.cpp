@@ -58,13 +58,27 @@ using boost::asio::io_service;
 using boost::uuids::to_string;
 using boost::uuids::basic_random_generator;
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
 Agent::Agent(OFFramework& framework_)
-    : framework(framework_), policyManager(framework, agent_io),
-      endpointManager(framework, policyManager), extraConfigManager(framework),
+    : framework(framework_), prometheusManager(framework),
+      policyManager(framework, agent_io),
+      endpointManager(framework, policyManager, prometheusManager),
+      extraConfigManager(framework),
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
       spanManager(framework, agent_io),
       netflowManager(framework,agent_io) {
+#else
+Agent::Agent(OFFramework& framework_)
+    : framework(framework_),
+      policyManager(framework, agent_io),
+      endpointManager(framework, policyManager),
+      extraConfigManager(framework),
+      notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
+      started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
+      spanManager(framework, agent_io),
+      netflowManager(framework,agent_io) {
+#endif
     std::random_device rng;
     std::mt19937 urng(rng());
     uuid = to_string(basic_random_generator<std::mt19937>(urng)());
@@ -503,6 +517,9 @@ void Agent::start() {
     mutator.commit();
 
     // instantiate other components
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.start();
+#endif
     policyManager.start();
     endpointManager.start();
     notifServer.start();
@@ -616,6 +633,9 @@ void Agent::stop() {
     notifServer.stop();
     endpointManager.stop();
     policyManager.stop();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.stop();
+#endif
 
     if (io_work) {
         io_work.reset();
