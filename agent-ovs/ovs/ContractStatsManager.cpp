@@ -82,25 +82,39 @@ void ContractStatsManager::on_timer(const error_code& ec) {
         return;
     }
 
-    TableState::cookie_callback_t cb_func;
-    cb_func = [this](uint64_t cookie, uint16_t priority,
+    TableState::cookie_callback_t cb_func_contracts;
+    cb_func_contracts = [this](uint64_t cookie, uint16_t priority,
                      const struct match& match) {
         updateFlowEntryMap(contractState, cookie, priority, match);
+    };
+
+    TableState::cookie_callback_t cb_func_stats;
+    cb_func_stats = [this](uint64_t cookie, uint16_t priority,
+                     const struct match& match) {
+        updateFlowEntryMap(statsState, cookie, priority, match);
     };
 
     // Request Switch Manager to provide flow entries
     {
         std::lock_guard<std::mutex> lock(pstatMtx);
         switchManager.forEachCookieMatch(IntFlowManager::POL_TABLE_ID,
-                                         cb_func);
+                                         cb_func_contracts);
+        switchManager.forEachCookieMatch(IntFlowManager::STATS_TABLE_ID,
+                                         cb_func_stats);
 
-        PolicyCounterMap_t newClassCountersMap;
-        on_timer_base(ec, contractState, newClassCountersMap);
+        PolicyCounterMap_t newClassCountersContractsMap;
+        on_timer_base(ec, contractState,
+                      newClassCountersContractsMap);
 
-        generatePolicyStatsObjects(&newClassCountersMap);
+        PolicyCounterMap_t newClassCountersStatsMap;
+        on_timer_base(ec, statsState,
+                      newClassCountersStatsMap);
+
+        generatePolicyStatsObjects(&newClassCountersContractsMap);
     }
 
     sendRequest(IntFlowManager::POL_TABLE_ID);
+    sendRequest(IntFlowManager::STATS_TABLE_ID);
     if (!stopping && timer) {
         timer->expires_from_now(milliseconds(timer_interval));
         timer->async_wait(bind(&ContractStatsManager::on_timer, this, error));
@@ -268,6 +282,8 @@ void ContractStatsManager::Handle(SwitchConnection* connection,
                   [this](uint32_t table_id) -> flowCounterState_t* {
                       if (table_id == IntFlowManager::POL_TABLE_ID)
                           return &contractState;
+                      else if (table_id == IntFlowManager::STATS_TABLE_ID)
+                          return &statsState;
                       else
                           return NULL;
                   });

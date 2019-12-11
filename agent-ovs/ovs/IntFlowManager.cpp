@@ -46,6 +46,7 @@
 #include "arp.h"
 #include "eth.h"
 #include "ovs-ofputil.h"
+#include "ovs-shim.h"
 
 #include <openvswitch/list.h>
 
@@ -678,7 +679,7 @@ static FlowBuilder& actionDestEpArp(FlowBuilder& fb,
 static FlowBuilder& actionOutputToEPGTunnel(FlowBuilder& fb) {
     fb.action()
         .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK)
-        .go(IntFlowManager::OUT_TABLE_ID);
+        .go(IntFlowManager::STATS_TABLE_ID);
     return fb;
 }
 
@@ -1923,6 +1924,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
         switchManager.clearFlows(uuid, SERVICE_REV_TABLE_ID);
         switchManager.clearFlows(uuid, SERVICE_DST_TABLE_ID);
         switchManager.clearFlows(uuid, SERVICE_NEXTHOP_TABLE_ID);
+        switchManager.clearFlows(uuid, STATS_TABLE_ID);
         idGen.erase(ID_NMSPC_SERVICE, uuid);
         return;
     }
@@ -1934,6 +1936,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
     FlowEntryList serviceRevFlows;
     FlowEntryList serviceDstFlows;
     FlowEntryList serviceNextHopFlows;
+    FlowEntryList elStats;
 
     boost::system::error_code ec;
 
@@ -2080,7 +2083,11 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                                            zoneId, 0xff, 0, setMark);
                         }
 
+                        // Save service address to reg8
                         ipMap.action()
+#ifdef ENABLE_POD_SVC_STATS_FLOWS
+                            .reg(MFF_REG8, serviceAddr.to_v4().to_ulong())
+#endif
                             .metadata(flow::meta::ROUTED, flow::meta::ROUTED)
                             .go(ROUTE_TABLE_ID);
 
@@ -2154,6 +2161,52 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
 
                 link += 1;
             }
+
+#ifdef ENABLE_POD_SVC_STATS_FLOWS
+            // Add stats flows for this service
+            unordered_set<string> epUuids;
+            EndpointManager& epMgr = agent.getEndpointManager();
+            epMgr.getEndpointUUIDs(epUuids);
+
+            for (const string& epUuid : epUuids) {
+                shared_ptr<const Endpoint> epWrapper
+                     = epMgr.getEndpoint(epUuid);
+                if (!epWrapper) {
+                    continue;
+                }
+                const Endpoint& endPoint = *epWrapper.get();
+                long long cookieId = 0LL;
+                auto it = endPoint.getAttributes().find("deployment");
+                if (it != endPoint.getAttributes().end()) {
+                    string deploymentId = it->second;
+                    cookieId = ovs_htonll(stoll(deploymentId));
+                }
+                for (const string& ipStr : endPoint.getIPs()) {
+                    address addr = address::from_string(ipStr, ec);
+                    // to service stats
+                    FlowBuilder()
+                        .priority(100)
+                        .cookie(cookieId)
+                        .ethType(eth::type::IP)
+                        .ipSrc(addr)
+                        .reg(8, serviceAddr.to_v4().to_ulong())
+                        .action()
+                            .go(OUT_TABLE_ID)
+                            .parent().build(elStats);
+
+                    // from service stats
+                    FlowBuilder()
+                        .priority(100)
+                        .cookie(cookieId)
+                        .ethType(eth::type::IP)
+                        .ipSrc(serviceAddr)
+                        .ipDst(addr)
+                        .action()
+                            .go(OUT_TABLE_ID)
+                            .parent().build(elStats);
+                }
+            }
+#endif
 
             if (ofPort != OFPP_NONE) {
                 if (as.getServiceMode() == Service::LOCAL_ANYCAST) {
@@ -2289,6 +2342,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
     switchManager.writeFlow(uuid, SERVICE_NEXTHOP_TABLE_ID,
                             serviceNextHopFlows);
     switchManager.writeFlow(uuid, SERVICE_DST_TABLE_ID, serviceDstFlows);
+    switchManager.writeFlow(uuid, STATS_TABLE_ID, elStats);
 }
 
 void IntFlowManager::handleLearningBridgeIfaceUpdate(const string& uuid) {
@@ -2549,7 +2603,7 @@ void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
         }
         mcast.action()
             .metadata(flow::meta::out::FLOOD, flow::meta::out::MASK)
-            .go(IntFlowManager::OUT_TABLE_ID);
+            .go(IntFlowManager::STATS_TABLE_ID);
         mcast.build(grpDst);
     }
     switchManager.writeFlow(epgURI.toString(), BRIDGE_TABLE_ID, grpDst);
@@ -2624,7 +2678,7 @@ void IntFlowManager::createStaticFlows() {
         FlowBuilder().priority(PolicyManager::MAX_POLICY_RULE_PRIORITY + 51)
             .metadata(flow::meta::FROM_SERVICE_INTERFACE,
                       flow::meta::FROM_SERVICE_INTERFACE)
-            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .action().go(IntFlowManager::STATS_TABLE_ID)
             .parent().build(policyStatic);
 
         // Block flows from the uplink when not allowed by
@@ -2637,21 +2691,21 @@ void IntFlowManager::createStaticFlows() {
         // blocks them.
         FlowBuilder().priority(10)
             .ethType(eth::type::ARP)
-            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .action().go(IntFlowManager::STATS_TABLE_ID)
             .parent().build(policyStatic);
         FlowBuilder().priority(10)
             .ethType(eth::type::IPV6)
             .proto(58)
             .tpSrc(ND_NEIGHBOR_SOLICIT)
             .tpDst(0)
-            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .action().go(IntFlowManager::STATS_TABLE_ID)
             .parent().build(policyStatic);
         FlowBuilder().priority(10)
             .ethType(eth::type::IPV6)
             .proto(58)
             .tpSrc(ND_NEIGHBOR_ADVERT)
             .tpDst(0)
-            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .action().go(IntFlowManager::STATS_TABLE_ID)
             .parent().build(policyStatic);
 
         switchManager.writeFlow("static", POL_TABLE_ID, policyStatic);
@@ -2687,6 +2741,14 @@ void IntFlowManager::createStaticFlows() {
         }
         switchManager.writeFlow("static", BRIDGE_TABLE_ID, unknownTunnelBr);
         switchManager.writeFlow("static", ROUTE_TABLE_ID, unknownTunnelRt);
+    }
+    {
+        FlowEntryList statsFlows;
+        FlowBuilder().priority(10)
+            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .parent().build(statsFlows);
+
+        switchManager.writeFlow("static", STATS_TABLE_ID, statsFlows);
     }
     {
         FlowEntryList outFlows;
@@ -2809,7 +2871,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             /* fall through */
         case IntraGroupPolicyEnumT::CONST_ALLOW:
         default:
-            intraGroupFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+            intraGroupFlow.action().go(IntFlowManager::STATS_TABLE_ID);
             break;
         }
         flowutils::match_group(intraGroupFlow, prio, epgVnid, epgVnid);
@@ -2998,7 +3060,7 @@ void IntFlowManager::handleLocalExternalDomainUpdated(const opflex::modb::URI &e
     FlowBuilder intraGroupFlow;
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY + 100;
     flowutils::match_group(intraGroupFlow, prio, epgVnid, epgVnid);
-    intraGroupFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+    intraGroupFlow.action().go(IntFlowManager::STATS_TABLE_ID);
     switchManager.writeFlow(epgId, POL_TABLE_ID, intraGroupFlow);
 
     updateEPGFlood(epgURI, epgVnid, fgrpId, epgTunDst, true);
@@ -3135,7 +3197,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
         LOG(DEBUG) << "Create unenforced flow for RD: " << rdURI;
         FlowBuilder unenforcedFlow;
         unenforcedFlow.priority(PolicyManager::MAX_POLICY_RULE_PRIORITY + 250);
-        unenforcedFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+        unenforcedFlow.action().go(IntFlowManager::STATS_TABLE_ID);
         flowutils::match_rdId(unenforcedFlow, rdId);
         switchManager.writeFlow(rdEnfPrefURIId, POL_TABLE_ID, unenforcedFlow);
     } else {
@@ -3479,7 +3541,7 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
             flowutils::add_classifier_entries(*cls, act,
                                               boost::none,
                                               boost::none,
-                                              IntFlowManager::OUT_TABLE_ID,
+                                              IntFlowManager::STATS_TABLE_ID,
                                               pc->getPriority(),
                                               OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
@@ -3491,7 +3553,7 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
             flowutils::add_classifier_entries(*cls, act,
                                               boost::none,
                                               boost::none,
-                                              IntFlowManager::OUT_TABLE_ID,
+                                              IntFlowManager::STATS_TABLE_ID,
                                               pc->getPriority(),
                                               OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,

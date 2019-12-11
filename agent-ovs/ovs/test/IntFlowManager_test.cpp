@@ -1641,7 +1641,7 @@ BOOST_FIXTURE_TEST_CASE(learningBridge, BaseIntFlowManagerFixture) {
 
 #define ADDF(flow) addExpFlowEntry(expTables, flow)
 enum TABLE {
-    DROPLOG, SEC, SRC, SNAT_REV, SVR, BR, SVH, RT, SNAT, NAT, LRN, SVD, POL, OUT, EXP_DROPLOG
+    DROPLOG, SEC, SRC, SNAT_REV, SVR, BR, SVH, RT, SNAT, NAT, LRN, SVD, POL, STAT, OUT, EXP_DROPLOG
 };
 
 void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
@@ -1651,6 +1651,7 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
     ADDF(Bldr().table(DROPLOG).priority(0).actions().go(SEC).done());
+    ADDF(Bldr().table(STAT).priority(10).actions().go(OUT).done());
     ADDF(Bldr().table(SEC).priority(25).arp().actions()
             .dropLog(SEC).go(EXP_DROPLOG).done());
     ADDF(Bldr().table(SEC).priority(25).ip().actions()
@@ -1667,12 +1668,12 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
     ADDF(Bldr().table(POL).priority(8242).isPolicyApplied()
          .actions().drop().done());
     ADDF(Bldr().table(POL).priority(8243).isFromServiceIface()
-         .actions().go(OUT).done());
-    ADDF(Bldr().table(POL).priority(10).arp().actions().go(OUT).done());
+         .actions().go(STAT).done());
+    ADDF(Bldr().table(POL).priority(10).arp().actions().go(STAT).done());
     ADDF(Bldr().table(POL).priority(10).icmp6().icmp_type(135).icmp_code(0)
-         .actions().go(OUT).done());
+         .actions().go(STAT).done());
     ADDF(Bldr().table(POL).priority(10).icmp6().icmp_type(136).icmp_code(0)
-         .actions().go(OUT).done());
+         .actions().go(STAT).done());
     ADDF(Bldr().table(OUT).priority(1).isMdAct(0)
          .actions().out(OUTPORT).done());
     ADDF(Bldr().table(OUT).priority(1)
@@ -1697,10 +1698,10 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
         if (remoteInventoryType != RemoteInventoryTypeEnumT::CONST_COMPLETE) {
             ADDF(Bldr().table(BR).priority(1)
                  .actions().mdAct(flow::meta::out::TUNNEL)
-                 .go(OUT).done());
+                 .go(STAT).done());
             ADDF(Bldr().table(RT).priority(1)
                  .actions().mdAct(flow::meta::out::TUNNEL)
-                 .go(OUT).done());
+                 .go(STAT).done());
         }
         if (intFlowManager.getEncapType() != IntFlowManager::ENCAP_VLAN) {
             ADDF(Bldr().table(OUT).priority(15)
@@ -1740,12 +1741,12 @@ void BaseIntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
                  .reg(SEPG, vnid).reg(FD, fdId)
                  .isPolicyApplied().isEthDst(mmac).actions()
                  .mdAct(flow::meta::out::FLOOD)
-                 .go(OUT).done());
+                 .go(STAT).done());
         } else {
             ADDF(Bldr().table(BR).priority(10)
                  .reg(SEPG, vnid).reg(FD, fdId).isEthDst(mmac).actions()
                  .mdAct(flow::meta::out::FLOOD)
-                 .go(OUT).done());
+                 .go(STAT).done());
         }
         break;
     case IntFlowManager::ENCAP_VXLAN:
@@ -1757,13 +1758,13 @@ void BaseIntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
                  .isPolicyApplied().isEthDst(mmac).actions()
                  .load(OUTPORT, mcast.to_v4().to_ulong())
                  .mdAct(flow::meta::out::FLOOD)
-                 .go(OUT).done());
+                 .go(STAT).done());
         } else {
             ADDF(Bldr().table(BR).priority(10)
                  .reg(SEPG, vnid).reg(FD, fdId).isEthDst(mmac).actions()
                  .load(OUTPORT, mcast.to_v4().to_ulong())
                  .mdAct(flow::meta::out::FLOOD)
-                 .go(OUT).done());
+                 .go(STAT).done());
         }
     }
 
@@ -1812,7 +1813,7 @@ void BaseIntFlowManagerFixture::initExpEpg(shared_ptr<EpGroup>& epg,
         }
     }
     ADDF(Bldr().table(POL).priority(8292).reg(SEPG, vnid)
-         .reg(DEPG, vnid).actions().go(OUT).done());
+         .reg(DEPG, vnid).actions().go(STAT).done());
     ADDF(Bldr().table(OUT).priority(10)
          .reg(OUTPORT, vnid).isMdAct(flow::meta::out::RESUBMIT_DST)
          .actions().load(SEPG, vnid).load(BD, bdId)
@@ -1862,7 +1863,7 @@ void BaseIntFlowManagerFixture::initExpRd(uint32_t rdId,
 
     if (isUnenforced) {
         ADDF(Bldr().table(POL).priority(8442).reg(RD, rdId).
-                                  actions().go(OUT).done());
+                                  actions().go(STAT).done());
     }
 
     if (!includeSubnets) return;
@@ -1871,15 +1872,15 @@ void BaseIntFlowManagerFixture::initExpRd(uint32_t rdId,
         ADDF(Bldr().table(RT).priority(324)
              .ip().reg(RD, rdId).isIpDst("10.20.44.0/24")
              .actions().mdAct(flow::meta::out::TUNNEL)
-             .go(OUT).done());
+             .go(STAT).done());
         ADDF(Bldr().table(RT).priority(324)
              .ip().reg(RD, rdId).isIpDst("10.20.45.0/24")
              .actions().mdAct(flow::meta::out::TUNNEL)
-             .go(OUT).done());
+             .go(STAT).done());
         ADDF(Bldr().table(RT).priority(332)
              .ipv6().reg(RD, rdId).isIpv6Dst("2001:db8::/32")
              .actions().mdAct(flow::meta::out::TUNNEL)
-             .go(OUT).done());
+             .go(STAT).done());
     } else {
         ADDF(Bldr().table(RT).priority(324)
              .ip().reg(RD, rdId).isIpDst("10.20.44.0/24")
@@ -2192,7 +2193,7 @@ void BaseIntFlowManagerFixture::initExpCon1() {
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpDst(80)
                  .actions()
-                 .go(OUT)
+                 .go(STAT)
                  .done());
             /* classifier 2  */
             const opflex::modb::URI& ruleURI_2 = classifier2.get()->getURI();
@@ -2202,7 +2203,7 @@ void BaseIntFlowManagerFixture::initExpCon1() {
                  .priority(prio-128)
                  .cookie(con1_cookie).arp()
                  .reg(SEPG, pvnid).reg(DEPG, cvnid)
-                 .actions().go(OUT).done());
+                 .actions().go(STAT).done());
             /* classifier 6 */
             const opflex::modb::URI& ruleURI_6 = classifier6.get()->getURI();
             con1_cookie = intFlowManager.getId(classifier6->getClassId(),
@@ -2211,7 +2212,7 @@ void BaseIntFlowManagerFixture::initExpCon1() {
                  .priority(prio-256)
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(22)
-                 .isTcpFlags("+syn+ack").actions().go(OUT).done());
+                 .isTcpFlags("+syn+ack").actions().go(STAT).done());
             /* classifier 7 */
             const opflex::modb::URI& ruleURI_7 = classifier7.get()->getURI();
             con1_cookie = intFlowManager.getId(classifier7->getClassId(),
@@ -2220,12 +2221,12 @@ void BaseIntFlowManagerFixture::initExpCon1() {
                  .priority(prio-384)
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(21)
-                 .isTcpFlags("+ack").actions().go(OUT).done());
+                 .isTcpFlags("+ack").actions().go(STAT).done());
             ADDF(Bldr(SEND_FLOW_REM).table(POL)
                  .priority(prio-384)
                  .cookie(con1_cookie).tcp()
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(21)
-                 .isTcpFlags("+rst").actions().go(OUT).done());
+                 .isTcpFlags("+rst").actions().go(STAT).done());
         }
     }
 }
@@ -2243,7 +2244,7 @@ void BaseIntFlowManagerFixture::initExpCon2() {
     for (const uint32_t& ivnid : ivnids) {
         ADDF(Bldr().table(POL).priority(prio).cookie(con2_cookie)
              .reg(SEPG, ivnid).reg(DEPG, ivnid).isEth(0x8906)
-             .actions().go(OUT).done());
+             .actions().go(STAT).done());
     }
 }
 
@@ -2277,12 +2278,12 @@ void BaseIntFlowManagerFixture::initExpCon3() {
                  .cookie(con4_cookie).tcp()
                  .reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
                  .isTpSrc(mks.first, mks.second).isTpDst(mkd.first, mkd.second)
-                 .actions().go(OUT).done());
+                 .actions().go(STAT).done());
         }
     }
     ADDF(Bldr(SEND_FLOW_REM).table(POL).priority(prio-256)
         .cookie(con10_cookie).icmp().reg(SEPG, epg1_vnid).reg(DEPG, epg0_vnid)
-        .icmp_type(10).icmp_code(5).actions().go(OUT).done());
+        .icmp_type(10).icmp_code(5).actions().go(STAT).done());
 }
 
 // Initialize flows related to IP address mapping/NAT
@@ -2363,11 +2364,11 @@ void BaseIntFlowManagerFixture::initExpIpMapping(bool natEpgMap, bool nextHop) {
         ADDF(Bldr().table(RT).priority(166).ipv6().reg(RD, 1)
              .isIpv6Dst("fdf1::/16")
              .actions().mdAct(flow::meta::out::TUNNEL)
-             .go(OUT).done());
+             .go(STAT).done());
         ADDF(Bldr().table(RT).priority(158).ip().reg(RD, 1)
              .isIpDst("5.0.0.0/8")
              .actions().mdAct(flow::meta::out::TUNNEL)
-             .go(OUT).done());
+             .go(STAT).done());
     }
 
     ADDF(Bldr().table(NAT).priority(166).ipv6().reg(RD, 1)
@@ -2738,7 +2739,11 @@ void BaseIntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .actions()
              .tpDst(5353).ipDst("169.254.169.1")
              .decTtl()
-             .ct(commit1).meta(flow::meta::ROUTED, flow::meta::ROUTED)
+             .ct(commit1)
+#ifdef ENABLE_POD_SVC_STATS_FLOWS
+             .load(8, 0xa9fea9fe)
+#endif
+             .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
         ADDF(Bldr().table(SVH).priority(100)
              .udp().reg(RD, 1).reg(OUTPORT, 1).isFromServiceIface(exposed)
@@ -2746,6 +2751,9 @@ void BaseIntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .actions()
              .tpDst(5353).ipDst("169.254.169.2")
              .decTtl().ct(commit1)
+#ifdef ENABLE_POD_SVC_STATS_FLOWS
+             .load(8, 0xa9fea9fe)
+#endif
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
         ADDF(Bldr().table(SVH).priority(99)
@@ -2770,14 +2778,22 @@ void BaseIntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
              .isIpDst("169.254.169.254").isTpDst(53)
              .actions()
              .tpDst(5353).ipDst("169.254.169.1")
-             .decTtl().meta(flow::meta::ROUTED, flow::meta::ROUTED)
+             .decTtl()
+#ifdef ENABLE_POD_SVC_STATS_FLOWS
+             .load(8, 0xa9fea9fe)
+#endif
+             .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
         ADDF(Bldr().table(SVH).priority(100)
              .udp().reg(RD, 1).reg(OUTPORT, 1)
              .isIpDst("169.254.169.254").isTpDst(53)
              .actions()
              .tpDst(5353).ipDst("169.254.169.2")
-             .decTtl().meta(flow::meta::ROUTED, flow::meta::ROUTED)
+             .decTtl()
+#ifdef ENABLE_POD_SVC_STATS_FLOWS
+             .load(8, 0xa9fea9fe)
+#endif
+             .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
         ADDF(Bldr().table(SVH).priority(99)
              .tcp6().reg(RD, 1)
@@ -3205,7 +3221,7 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
     fe_connect_1 = Bldr().table(SEC).priority(0).cookie(0xabcd)
             .actions().drop().done();
     fe_connect_2 = Bldr().table(POL).priority(8292).reg(SEPG, epg4_vnid)
-            .reg(DEPG, epg4_vnid).actions().go(OUT).done();
+            .reg(DEPG, epg4_vnid).actions().go(STAT).done();
 }
 
 // Initialize EPG-scoped flow entries
@@ -3220,10 +3236,10 @@ void BaseIntFlowManagerFixture::initExpSviBD(const URI& sviBDURI,
     ADDF(Bldr().table(BR).priority(10)
          .reg(SEPG, fixedVnid).reg(FD, fdId).isEthDst(mmac).actions()
          .mdAct(flow::meta::out::FLOOD)
-         .go(OUT).done());
+         .go(STAT).done());
     ADDF(Bldr().table(BR).priority(2)
          .actions().mdAct(flow::meta::out::TUNNEL)
-         .go(OUT).done());
+         .go(STAT).done());
     ADDF(Bldr().table(SRC).priority(149)
          .in(uplink).isVlan(vnid)
          .actions().popVlan()
@@ -3236,7 +3252,7 @@ void BaseIntFlowManagerFixture::initExpSviBD(const URI& sviBDURI,
          .outPort(uplink).done());
 
     ADDF(Bldr().table(POL).priority(8292).reg(SEPG, fixedVnid)
-         .reg(DEPG, fixedVnid).actions().go(OUT).done());
+         .reg(DEPG, fixedVnid).actions().go(STAT).done());
     ADDF(Bldr().table(OUT).priority(10)
          .reg(OUTPORT, fixedVnid).isMdAct(flow::meta::out::RESUBMIT_DST)
          .actions().load(SEPG, fixedVnid).load(BD, bdId)
