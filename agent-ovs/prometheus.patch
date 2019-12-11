@@ -1,0 +1,86 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 28e193f..e158c11 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -97,6 +97,63 @@ install(
+   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+ )
+
++# Function to generate pkg-config files.
++function(generate_pkgconfig name description version libname requires
++                            libs libs_private output_filename)
++  set(PC_NAME "${name}")
++  set(PC_DESCRIPTION "${description}")
++  set(PC_VERSION "${version}")
++  set(PC_REQUIRES "${requires}")
++  set(PC_LIB "${libs}")
++  set(PC_LIBS_PRIVATE "${libs_private}")
++  set(output_filepath "${CMAKE_CURRENT_BINARY_DIR}/${libname}/libs/opt/pkgconfig/${output_filename}")
++  configure_file(
++    "${PROJECT_SOURCE_DIR}/cmake/pkg-config-template.pc.in"
++    "${output_filepath}"
++    @ONLY)
++  install(FILES "${output_filepath}"
++    DESTINATION "lib/pkgconfig/")
++endfunction()
++
++# prometheus-cpp-core.pc file
++generate_pkgconfig(
++  "${PROJECT_NAME}-core"
++  "prometheus-cpp core support library"
++  ${PROJECT_VERSION}
++  "core"
++  ""
++  "-l${PROJECT_NAME}-core"
++  ""
++  "${PROJECT_NAME}-core.pc")
++
++# prometheus-cpp-pull.pc file
++if(ENABLE_PULL)
++  # prometheus-cpp-pull.pc file
++  generate_pkgconfig(
++    "${PROJECT_NAME}-pull"
++    "prometheus-cpp pull support library"
++    ${PROJECT_VERSION}
++    "pull"
++    ""
++    "-l${PROJECT_NAME}-pull"
++    ""
++    "${PROJECT_NAME}-pull.pc")
++endif()
++
++# prometheus-cpp-push.pc file
++if(ENABLE_PUSH)
++  # prometheus-cpp-pull.pc file
++  generate_pkgconfig(
++    "${PROJECT_NAME}-push"
++    "prometheus-cpp push support library"
++    ${PROJECT_VERSION}
++    "push"
++    ""
++    "-l${PROJECT_NAME}-push"
++    ""
++    "${PROJECT_NAME}-push.pc")
++endif()
++
+ # summary
+
+ include(FeatureSummary)
+diff --git a/cmake/pkg-config-template.pc.in b/cmake/pkg-config-template.pc.in
+new file mode 100644
+index 0000000..d56154b
+--- /dev/null
++++ b/cmake/pkg-config-template.pc.in
+@@ -0,0 +1,12 @@
++prefix=@CMAKE_INSTALL_PREFIX@
++exec_prefix=${prefix}
++includedir=${prefix}/include
++libdir=${exec_prefix}/lib
++
++Name: @PC_NAME@
++Description: @PC_DESCRIPTION@
++Version: @PC_VERSION@
++Cflags: -I${includedir}
++Requires: @PC_REQUIRES@
++Libs: -L${libdir} @PC_LIB@
++Libs.private: @PC_LIBS_PRIVATE@
