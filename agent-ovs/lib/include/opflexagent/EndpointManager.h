@@ -13,9 +13,16 @@
 #ifndef OPFLEXAGENT_ENDPOINTMANAGER_H
 #define OPFLEXAGENT_ENDPOINTMANAGER_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <opflexagent/Endpoint.h>
 #include <opflexagent/EndpointListener.h>
 #include <opflexagent/PolicyManager.h>
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
 
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/modb/ObjectListener.h>
@@ -45,8 +52,14 @@ public:
      * Instantiate a new endpoint manager using the specified framework
      * instance.
      */
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    EndpointManager(opflex::ofcore::OFFramework& framework,
+                    PolicyManager& policyManager,
+                    PrometheusManager& prometheusManager);
+#else
     EndpointManager(opflex::ofcore::OFFramework& framework,
                     PolicyManager& policyManager);
+#endif
 
     /**
      * Destroy the endpoint manager and clean up all state
@@ -371,6 +384,9 @@ private:
 
     opflex::ofcore::OFFramework& framework;
     PolicyManager& policyManager;
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    PrometheusManager& prometheusManager;
+#endif
 
     class EndpointState {
     public:
