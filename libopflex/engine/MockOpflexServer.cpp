@@ -94,8 +94,7 @@ MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
       proxies(proxies_),
       listener(*this, port_, "name", "domain"),
       db(threadManager), serializer(&db, this),
-      prr_interval_secs(prr_interval_secs_),
-      stopping(false) {
+      stopping(false), prr_interval_secs(prr_interval_secs_) {
     db.init(md);
     client = &db.getStoreClient("_SYSTEM_");
 }

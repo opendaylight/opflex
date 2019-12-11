@@ -44,7 +44,6 @@ public:
      * @param idGen the ID generator
      * @param switchManager the switchManager associated with the
      * Base Stats Manager
-     * @param idGen the flow ID generator
      * @param timer_interval the interval for the stats timer in
      * milliseconds
      */
