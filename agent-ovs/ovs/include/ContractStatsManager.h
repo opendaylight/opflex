@@ -102,6 +102,7 @@ private:
                        std::unique_ptr<CircularBuffer>> dropCounterList_;
 
     flowCounterState_t contractState;
+    flowCounterState_t statsState;
     std::atomic<std::uint64_t> dropGenId;
 
     /**

@@ -440,6 +440,10 @@ public:
          */
         POL_TABLE_ID,
         /**
+         * Flow stats computation
+         */
+        STATS_TABLE_ID,
+        /**
          * Apply a destination action based on the action set in the
          * metadata field.
          */

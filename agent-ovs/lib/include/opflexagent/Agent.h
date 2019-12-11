@@ -13,6 +13,10 @@
 #ifndef OPFLEXAGENT_AGENT_H
 #define OPFLEXAGENT_AGENT_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <opflexagent/EndpointManager.h>
 #include <opflexagent/ServiceManager.h>
 #include <opflexagent/ExtraConfigManager.h>
@@ -22,6 +26,9 @@
 #include <opflexagent/SpanManager.h>
 #include <opflexagent/SnatManager.h>
 #include <opflexagent/NetFlowManager.h>
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional.hpp>
@@ -112,6 +119,13 @@ public:
      * Get the span manager object for this agent
      */
     SpanManager& getSpanManager() { return spanManager; }
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    /**
+     * Get the prometheus manager object for this agent
+     */
+    PrometheusManager& getPrometheusManager() { return prometheusManager; }
+#endif
 
     /**
      *  Get the netflow manager object for this agent
@@ -279,6 +293,9 @@ private:
     PolicyManager policyManager;
     EndpointManager endpointManager;
     ServiceManager serviceManager;
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    PrometheusManager prometheusManager;
+#endif
     ExtraConfigManager extraConfigManager;
     LearningBridgeManager learningBridgeManager;
     SnatManager snatManager;
