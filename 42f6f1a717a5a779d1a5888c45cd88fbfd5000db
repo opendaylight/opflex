@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f9ceb5af_afb9bde0",
+        "filename": "agent-ovs/ovs/OVSRenderer.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-12-11T08:32:01Z",
+      "side": 1,
+      "message": "Sure, I will move this line to after the check.",
+      "parentUuid": "03de6348_22affe0e",
+      "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0580b41e_d6825128",
         "filename": "agent-ovs/ovs/OVSRenderer.cpp",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2019-12-11T06:58:49Z",
       "side": 1,
       "message": "Is this directory layout the same on RHEL and Ubuntu?",
+      "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4f9a25d3_aee3adf2",
+        "filename": "agent-ovs/ovs/OVSRenderer.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-12-11T08:32:01Z",
+      "side": 1,
+      "message": "man ip-netns gives /var/run/netns as the conventional location independent of distribution. man page also suggests that you can use it as an argument to setns. I confirmed it is the same in the two distros on my VMs.",
+      "parentUuid": "0580b41e_d6825128",
       "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "bf9821ae_39171cde",
+        "filename": "agent-ovs/ovs/include/AccessFlowManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-12-11T08:32:01Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8aed43ba_12d0ec21",
+      "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "32812b49_1f15f095",
         "filename": "agent-ovs/ovs/include/PacketDecoderLayers.h",
         "patchSetId": 5
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "3cf5896c_b133accd",
+        "filename": "agent-ovs/ovs/include/PacketDecoderLayers.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-12-11T08:32:01Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "32812b49_1f15f095",
+      "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "88054b7e_c9a61428",
         "filename": "agent-ovs/ovs/include/PacketDecoderLayers.h",
         "patchSetId": 5
@@ -84,6 +156,24 @@
       "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1e96bcf8_a6118c88",
+        "filename": "agent-ovs/ovs/include/PacketDecoderLayers.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2019-12-11T08:32:01Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "88054b7e_c9a61428",
+      "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
