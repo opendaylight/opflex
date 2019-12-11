@@ -100,6 +100,14 @@ AM_CONDITIONAL(ENABLE_GRPC, [test x$enable_grpc = 'xyes'])
 AM_COND_IF([ENABLE_GRPC],
           [AC_MSG_NOTICE([GRPC is enabled])],
           [AC_MSG_NOTICE([GRPC is disabled])])
+
+# Enable prometheus support, disabled by default
+AC_ARG_ENABLE(prometheus,
+              AC_HELP_STRING([--enable-prometheus], [Enable Prometheus support]))
+AM_CONDITIONAL(ENABLE_PROMETHEUS, [test x$enable_prometheus = 'xyes'])
+AM_COND_IF([ENABLE_PROMETHEUS],
+          [AC_MSG_NOTICE([PROMETHEUS is enabled])],
+          [AC_MSG_NOTICE([PROMETHEUS is disabled])])
 # ---------------------------------------------------------------
 # Dependency checks
 
@@ -161,6 +169,19 @@ AM_COND_IF([ENABLE_GRPC], [
         AC_DEFINE([HAVE_GRPC_SUPPORT],[1],[Define if grpc support is enabled])
     ], [
         AC_MSG_ERROR([***GRPC requested but not found ***])
+    ])
+])
+
+AM_COND_IF([ENABLE_PROMETHEUS], [
+    # check for prometheus
+    PKG_CHECK_MODULES([PROMETHEUS_CORE], [prometheus-cpp-core],
+                     [prometheus_core_found=yes], [prometheus_core_found=no])
+    PKG_CHECK_MODULES([PROMETHEUS_PULL], [prometheus-cpp-pull],
+                     [prometheus_pull_found=yes], [prometheus_pull_found=no])
+    AS_IF([test x$prometheus_core_found = 'xyes' && test x$prometheus_pull_found = 'xyes'], [
+        AC_DEFINE([HAVE_PROMETHEUS_SUPPORT],[1],[Define if prometheus support is enabled])
+    ], [
+        AC_MSG_ERROR([***PROMETHEUS requested but not found ***])
     ])
 ])
 
