@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "03de6348_22affe0e",
+        "filename": "agent-ovs/ovs/OVSRenderer.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-11T06:58:49Z",
+      "side": 1,
+      "message": "Should you check that you have a valid dropLogRemoteIp before calling notify_fork?",
+      "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0580b41e_d6825128",
+        "filename": "agent-ovs/ovs/OVSRenderer.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-11T06:58:49Z",
+      "side": 1,
+      "message": "Is this directory layout the same on RHEL and Ubuntu?",
+      "revId": "42f6f1a717a5a779d1a5888c45cd88fbfd5000db",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
