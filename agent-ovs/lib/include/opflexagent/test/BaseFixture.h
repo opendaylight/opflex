@@ -63,6 +63,9 @@ public:
      * An agent instance
      */
     Agent agent;
+    /**
+     * A tunnel ep manager instance
+     */
     TunnelEpManager tunnelEpManager;
 };
 

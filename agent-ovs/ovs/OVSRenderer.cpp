@@ -223,7 +223,10 @@ void OVSRenderer::start() {
             return;
         }
         setsid();
-        chdir("/");
+        int chdir_ret = chdir("/");
+        if(chdir_ret) {
+            LOG(ERROR) << "PacketLogger: Failed to chdir to /";
+        }
         pktLoggerIO.notify_fork(boost::asio::io_service::fork_prepare);
         if (pid_t pid = fork()) {
             if (pid > 0) {
@@ -282,10 +285,6 @@ void OVSRenderer::start() {
             s << child_pid;
         }
         s.close();
-        std::string log_file("");
-        std::string level_str("info");
-        std::string facility_name("opflexagent_packetlogger");
-        initLogging(level_str, true, log_file, facility_name);
         pktLoggerIO.run();
         exit(0);
     }
