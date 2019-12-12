@@ -59,6 +59,7 @@ public:
      * @param idGen the flow ID generator
      * @param ctZoneManager the conntrack zone manager
      * @param pktInHandler the packet-in handler
+     * @param tnlEpManager tunnelEpManager instance
      */
     IntFlowManager(Agent& agent,
                    SwitchManager& switchManager,
@@ -454,9 +455,13 @@ public:
          */
         NUM_FLOW_TABLES
     };
-
-    TunnelEpManager& tunnelEpManager;
-
+    /**
+     * Get registered Tunnel EpManager instance
+     * @return Tunnel ep manager instance
+     */
+    TunnelEpManager &getTunnelEpManager(){
+        return tunnelEpManager;
+    }
 private:
     /**
      * Write flows that are fixed and not related to any policy or
@@ -646,6 +651,7 @@ private:
     IdGenerator& idGen;
     CtZoneManager& ctZoneManager;
     PacketInHandler& pktInHandler;
+    TunnelEpManager& tunnelEpManager;
     TaskQueue taskQueue;
 
     EncapType encapType;

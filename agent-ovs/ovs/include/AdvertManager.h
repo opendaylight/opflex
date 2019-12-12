@@ -93,6 +93,9 @@ public:
      */
     void enableEndpointAdv(EndpointAdvMode mode) { sendEndpointAdv = mode; }
 
+    /**
+     * Enable tunnel endpoint advertisements
+     */
     void enableTunnelEndpointAdv(EndpointAdvMode tunnelMode,
             uint64_t delay = 300)
     { tunnelEndpointAdv = tunnelMode;

@@ -327,10 +327,18 @@ public:
      */
     PolicyRoute& operator=(const PolicyRoute& rhs);
 
+    /**
+     * Get prefix for the route
+     * @return prefix
+     */
     const boost::asio::ip::address getAddress() {
         return address;
     }
 
+    /**
+     * Get prefix length.
+     * @return prefix length
+     */
     uint32_t getPrefixLen() {
         return prefix_len;
     }

@@ -291,19 +291,19 @@ public:
      */
     virtual void getFormatString(boost::format &fmtStr)=0;
 protected:
-    /**
-     * Layer Identifiers as mentioned
-     */
+    ///@{
+    /** Layer Identifiers as mentioned */
     std::string layerTypeName,layerName, nextTypeName, optionLayerName;
-    /**
-     * length in bytes of layer and key for its base layer
-     */
+    ///@}
+    ///@{
+    /** length in bytes of layer and key for its base layer */
     uint32_t byteLength, key;
-    /**
-     * Layer Identifiers as mentioned
-     */
+    ///@}
+    ///@{
+    /** Layer Identifiers as mentioned */
     uint32_t layerTypeId, layerId, nextTypeId, optionLayerTypeId,
     optionLayerId, numOutArgs;
+    ///@}
     /**
      * Fields in the layer
      */

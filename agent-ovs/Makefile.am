@@ -339,7 +339,8 @@ if RENDERER_OVS
 	ovs/test/InterfaceStatsManager_test.cpp \
 	ovs/test/ContractStatsManager_test.cpp \
 	ovs/test/SecGrpStatsManager_test.cpp \
-	ovs/test/TableState_test.cpp
+	ovs/test/TableState_test.cpp \
+	ovs/test/PacketDecoder_test.cpp
 endif
 
 mock_server_CXXFLAGS = \

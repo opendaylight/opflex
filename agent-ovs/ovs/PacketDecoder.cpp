@@ -58,7 +58,6 @@ int PacketDecoderLayerField::decode(const unsigned char *buf, std::size_t length
         case FLDTYPE_BITFIELD:
         {
             uint32_t value = 0;
-            uint32_t parsedLength = 0;
             unsigned char *ptr = (unsigned char *)&value;
             uint32_t valBytes = 0;
             uint32_t remBits = 0;
@@ -73,7 +72,7 @@ int PacketDecoderLayerField::decode(const unsigned char *buf, std::size_t length
             }
             unsigned char maskLow = ((1<<(8-(bitOffset%8)))-1);
             ptr[3-valBytes] = *data_ptr & maskLow;
-            for( int i=1; i < valBytes; i++) {
+            for( uint32_t i=1; i < valBytes; i++) {
                 data_ptr++;
                 ptr[3-valBytes+i] = *data_ptr;
             }
@@ -107,7 +106,7 @@ int PacketDecoderLayerField::decode(const unsigned char *buf, std::size_t length
             if (byteLen <= 4) {
                 uint32_t value = 0;
                 unsigned char *ptr = (unsigned char *)&value;
-                for(int i=0; i<byteLen; i++) {
+                for(uint8_t i=0; i<byteLen; i++) {
                     ptr[4-byteLen+i] = *data_ptr;
                     data_ptr++;
                 }
@@ -127,7 +126,7 @@ int PacketDecoderLayerField::decode(const unsigned char *buf, std::size_t length
                 unsigned char *ptr = (unsigned char *)&value;
                 memcpy(ptr, data_ptr, byteLen);
                 if(shouldLog()) {
-                    for (int i=0; i<byteLen; i++) {
+                    for (uint8_t i=0; i<byteLen; i++) {
                         ostr << hex << *ptr;
                         ptr++;
                     }
@@ -185,11 +184,16 @@ int PacketDecoderLayerField::decode(const unsigned char *buf, std::size_t length
             }
             memcpy(bytes,data_ptr,var_length);
             if(shouldLog()) {
-                for(int i=0; i < var_length; i++) {
+                for(uint32_t i=0; i < var_length; i++) {
                     ostr << hex << bytes[i] << " ";
                 }
             }
             p.inferredDataLength = 0;
+            break;
+        }
+        default:
+        case FLDTYPE_NONE:
+        {
             break;
         }
     }
@@ -252,7 +256,7 @@ int PacketDecoderLayer::decode(const unsigned char *buf, std::size_t length, Par
 
     boost::format fmtStr;
     getFormatString(fmtStr);
-    for(int i=1; i<=numOutArgs; i++) {
+    for(unsigned i=1; i<=numOutArgs; i++) {
         fmtStr%p.formattedFields[i-1];
     }
     try {
@@ -361,6 +365,7 @@ int PacketDecoder::configure() {
     registerLayer(sptrIPv6);
     /*Set the base layer id*/
     baseLayerId = sptrGeneve->getId();
+    return 0;
 }
 
 }

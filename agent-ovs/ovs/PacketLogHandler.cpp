@@ -50,7 +50,7 @@ void UdpServer::handleReceive(const boost::system::error_code& error,
         uint32_t length = (bytes_transferred > 4096) ? 4096: bytes_transferred;
         boost::asio::io_service &packet_io(serverSocket.get_io_service());
         packet_io.post([=](){this->pktLogger.parseLog(recv_buffer.data(),
-                bytes_transferred);});
+                length);});
     }
     if(!stopped) {
         startReceive();

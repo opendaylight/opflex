@@ -612,9 +612,9 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
 void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
 #ifdef __linux__
     const std::string tunnelIp  =
-            intFlowManager.tunnelEpManager.getTerminationIp(uuid);
+            intFlowManager.getTunnelEpManager().getTerminationIp(uuid);
     const std::string tunnelMac =
-            intFlowManager.tunnelEpManager.getTerminationMac(uuid);
+            intFlowManager.getTunnelEpManager().getTerminationMac(uuid);
     opflex::modb::MAC opMac(tunnelMac);
     uint8_t tunnelMacBytes[ETH_ALEN];
     opMac.toUIntArray(tunnelMacBytes);
@@ -630,7 +630,7 @@ void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
     sa_ll.sll_hatype = htons(1);
     sa_ll.sll_halen = htons(ETH_ALEN);
     string uplinkIface;
-    intFlowManager.tunnelEpManager.getUplinkIface(uplinkIface);
+    intFlowManager.getTunnelEpManager().getUplinkIface(uplinkIface);
     sa_ll.sll_ifindex = if_nametoindex(uplinkIface.c_str());
     if(sa_ll.sll_ifindex < 0) {
         LOG(ERROR) << "Failed to get ifindex by name " << uplinkIface <<

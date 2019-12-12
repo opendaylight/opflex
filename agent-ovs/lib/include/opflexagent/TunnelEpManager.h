@@ -83,6 +83,11 @@ public:
         this->uplinkVlan = uplinkVlan;
     }
 
+    /**
+     * Set the renderer being used with opflexagent currently
+     *
+     * @param r pointer to the renderer
+     */
     void setParentRenderer(Renderer *r) {
         this->renderer = r;
     }
