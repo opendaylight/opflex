@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8da70551_62bf4f58",
+        "filename": "agent-ovs/lib/EndpointManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2019-12-13T15:54:34Z",
+      "side": 1,
+      "message": "The getEpName is just a place holder to put a meaningful name. For testing I used AccessInterfaceName. But we will add a meaningful name with namespace and pod as well. Since it wasnt decided what the naming convention is going to be, keeping the function for now so that we can decide and change within the function. This needs to be enhanced to pass on more information: namespace, pod, any other user defined attributes. I might move this functionality within PrometheusManager.cc.",
+      "parentUuid": "0b71a105_2a96ed49",
+      "revId": "6c711552d2501c42db57a8341870a070d03b511f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4d7ccb54_3d34bacd",
         "filename": "agent-ovs/lib/EndpointManager.cpp",
         "patchSetId": 1
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "e9559562_9734e8bb",
+        "filename": "agent-ovs/lib/EndpointManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 728,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2019-12-13T15:54:34Z",
+      "side": 1,
+      "message": "Same as above.",
+      "parentUuid": "4d7ccb54_3d34bacd",
+      "revId": "6c711552d2501c42db57a8341870a070d03b511f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f3e0af65_844dec5e",
         "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
         "patchSetId": 1
@@ -47,6 +83,24 @@
       "writtenOn": "2019-12-13T08:01:27Z",
       "side": 1,
       "message": "the coding style used in the project doesn\u0027t use trailing underscores for members",
+      "revId": "6c711552d2501c42db57a8341870a070d03b511f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43cc9415_8281a253",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2019-12-13T15:54:34Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f3e0af65_844dec5e",
       "revId": "6c711552d2501c42db57a8341870a070d03b511f",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
