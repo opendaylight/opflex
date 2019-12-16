@@ -155,7 +155,14 @@ public:
     template <class MO>
     static bool uriIdGarbageCb(opflex::ofcore::OFFramework& framework,
                                const std::string& ns, const std::string& str) {
-        return (bool)MO::resolve(framework, opflex::modb::URI(str));
+        if((bool)MO::resolve(framework, opflex::modb::URI(str))) {
+            return true;
+        };
+        // Make an exception for external bd and fd as we implicitly generate
+        // these ids and the objects are never created or resolved. These ids
+        // are cleared when all the referring endpoints go away
+        std::string beginStr = str.substr(0,6);
+        return ((beginStr == "extbd:") || (beginStr == "extfd:"));
     }
 
     /**

@@ -984,14 +984,24 @@ static void flowsEndpointPortSec(FlowEntryList& elPortSec,
         actionSecAllow(FlowBuilder().priority(20)
                        .inPort(ofPort).ethSrc(macAddr))
             .build(elPortSec);
-
-        for (const address& ipAddr : ipAddresses) {
-            // Allow IPv4/IPv6 packets from port with EP IP address
+        if(endPoint.isExternal()) {
             actionSecAllow(FlowBuilder().priority(30)
                            .inPort(ofPort).ethSrc(macAddr)
-                           .ipSrc(ipAddr))
-                .build(elPortSec);
-
+                           .ethType(eth::type::IP))
+                           .build(elPortSec);
+            actionSecAllow(FlowBuilder().priority(30)
+                           .inPort(ofPort).ethSrc(macAddr)
+                           .ethType(eth::type::IPV6))
+                           .build(elPortSec);
+        }
+        for (const address& ipAddr : ipAddresses) {
+            if(!endPoint.isExternal()) {
+                // Allow IPv4/IPv6 packets from port with EP IP address
+                actionSecAllow(FlowBuilder().priority(30)
+                               .inPort(ofPort).ethSrc(macAddr)
+                               .ipSrc(ipAddr))
+                    .build(elPortSec);
+            }
             if (ipAddr.is_v4()) {
                 // Allow ARP with correct source address
                 actionSecAllow(FlowBuilder().priority(40)
@@ -2957,9 +2967,13 @@ void IntFlowManager::handleLocalExternalDomainUpdated(const opflex::modb::URI &e
         switchManager.clearFlows(epgId, BRIDGE_TABLE_ID);
         opflex::modb::URI fdURI =
                 opflex::modb::URI("extfd:" + epgURI.toString());
+        opflex::modb::URI bdURI =
+                opflex::modb::URI("extbd:" + epgURI.toString());
         uint32_t fgrpId = getId(FloodDomain::CLASS_ID, fdURI);
         localExternalFdSet.erase(fgrpId);
         updateMulticastList(boost::none, epgURI);
+        idGen.erase(getIdNamespace(BridgeDomain::CLASS_ID), bdURI.toString());
+        idGen.erase(getIdNamespace(FloodDomain::CLASS_ID), fdURI.toString());
         return;
     }
 

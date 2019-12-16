@@ -3273,17 +3273,16 @@ void BaseIntFlowManagerFixture::initExpExtSviEp(shared_ptr<Endpoint>& ep,
     if (port != OFPP_NONE) {
         ADDF(Bldr().table(SEC).priority(20).in(port).isEthSrc(mac)
              .actions().go(SRC).done());
-
+        ADDF(Bldr().table(SEC).priority(30).ipv6().in(port)
+                             .isEthSrc(mac).actions().go(SRC).done());
+        ADDF(Bldr().table(SEC).priority(30).ip().in(port)
+                             .isEthSrc(mac).actions().go(SRC).done());
         for (const string& ip : ips) {
             address ipa = address::from_string(ip);
             if (ipa.is_v4()) {
-                ADDF(Bldr().table(SEC).priority(30).ip().in(port)
-                     .isEthSrc(mac).isIpSrc(ip).actions().go(SRC).done());
                 ADDF(Bldr().table(SEC).priority(40).arp().in(port)
                      .isEthSrc(mac).isSpa(ip).actions().go(SRC).done());
             } else {
-                ADDF(Bldr().table(SEC).priority(30).ipv6().in(port)
-                     .isEthSrc(mac).isIpv6Src(ip).actions().go(SRC).done());
                 ADDF(Bldr().table(SEC).priority(40).icmp6().in(port)
                      .isEthSrc(mac).icmp_type(136).icmp_code(0).isNdTarget(ip)
                      .actions().go(SRC).done());
