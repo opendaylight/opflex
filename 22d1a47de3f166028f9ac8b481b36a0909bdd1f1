@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d1c6f2d7_52a87325",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2088,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-18T23:26:43Z",
+      "side": 1,
+      "message": "Why do we need ENABLE_POD_SVC_STATS_FLOWS? I don\u0027t see a configure flag to enable/disable it?\n\nI really would have preferred the svc stats changes to have been in a separate changeset",
+      "revId": "22d1a47de3f166028f9ac8b481b36a0909bdd1f1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
