@@ -68,6 +68,7 @@ int main(int argc, char** argv) {
         ("query,q", po::value<std::vector<string> >(),
          "Query for a specific object with subjectname,uri or all objects "
          "of a specific type with subjectname")
+        ("unresolved,u", "Retrieve all unresolved relations")
         ("recursive,r", "Retrieve the whole subtree for each returned object")
         ("follow-refs,f", "Follow references in returned objects")
         ("load", po::value<std::string>()->default_value(""),
@@ -96,7 +97,7 @@ int main(int argc, char** argv) {
     bool recursive = false;
     bool followRefs = false;
     int truncate = 0;
-
+    bool unresolved = false;
     po::variables_map vm;
     try {
         po::store(po::command_line_parser(argc, argv).
@@ -114,6 +115,8 @@ int main(int argc, char** argv) {
             recursive = true;
         if (vm.count("follow-refs"))
             followRefs = true;
+        if (vm.count("unresolved"))
+            unresolved = true;
 
         log_file = vm["log"].as<string>();
         level_str = vm["level"].as<string>();
@@ -153,6 +156,9 @@ int main(int argc, char** argv) {
         client->setRecursive(recursive);
         client->setFollowRefs(followRefs);
 
+        if(unresolved) {
+            client->setUnresolved(true);
+        }
         for (string query : queries) {
             size_t ci = query.find_first_of(",");
             if (ci == string::npos) {
