@@ -57,7 +57,107 @@ public:
      */
     MOSerializer(modb::ObjectStore* store, Listener* listener = NULL);
     ~MOSerializer();
+    /**
+     * Serialize the unreolved object subtree rooted at the given URI.
+     *
+     * @param class_id the class ID of the object to serialize
+     * @param uri the URI of the object instance
+     * @param client the store client to use to look up the data
+     * @param writer the writer to write to
+     * @param recursive serialize the children as well
+     * @throws std::out_of_range if there is no such managed object
+     */
+    template <typename T>
+    void serializeUnresolved(modb::class_id_t class_id,
+                   const modb::URI& uri,
+                   modb::mointernal::StoreClient& client,
+                   T& writer,
+                   bool recursive = true) {
+        const modb::ClassInfo& ci = store->getClassInfo(class_id);
+        const OF_SHARED_PTR<const modb::mointernal::ObjectInstance>
+            oi(client.get(class_id, uri));
+        std::map<modb::class_id_t, std::vector<modb::URI> > children;
 
+        const modb::ClassInfo::property_map_t& pmap = ci.getProperties();
+        modb::ClassInfo::property_map_t::const_iterator pit;
+        for (pit = pmap.begin(); pit != pmap.end(); ++pit) {
+            if (pit->second.getType() != modb::PropertyInfo::COMPOSITE &&
+                !oi->isSet(pit->first, pit->second.getType(),
+                           pit->second.getCardinality()))
+                continue;
+            switch (pit->second.getType()) {
+                case modb::PropertyInfo::REFERENCE:
+
+                    if (pit->second.getCardinality() ==
+                        modb::PropertyInfo::SCALAR) {
+                        modb::reference_t r = oi->getReference(pit->first);
+                        const modb::ClassInfo& ref_class =
+                            store->getClassInfo(r.first);
+                        if (!client.isPresent(ref_class.getId(), r.second)) {
+                            writer.StartObject();
+                            writer.String("subject");
+                            writer.String(ci.getName().c_str());
+                            writer.String("uri");
+                            writer.String(uri.toString().c_str());
+                            writer.String("properties");
+                            writer.StartArray();
+                            writer.StartObject();
+                            writer.String("name");
+                            writer.String(pit->second.getName().c_str());
+                            writer.String("data");
+                            serialize_ref(client, writer, r);
+                        }
+                    } else {
+                        writer.StartArray();
+                        size_t len = oi->getReferenceSize(pit->first);
+                        for (size_t i = 0; i < len; ++i) {
+                            modb::reference_t r =
+                                oi->getReference(pit->first, i);
+                            const modb::ClassInfo& ref_class =
+                                store->getClassInfo(r.first);
+                            if (!client.isPresent(ref_class.getId(),
+                                                  r.second)) {
+                                writer.StartObject();
+                                writer.String("subject");
+                                writer.String(ci.getName().c_str());
+
+                                writer.String("uri");
+                                writer.String(uri.toString().c_str());
+                                writer.String("properties");
+                                writer.StartArray();
+                                writer.StartObject();
+                                writer.String("name");
+                                writer.String(pit->second.getName().c_str());
+                                writer.String("data");
+                                serialize_ref(client, writer, r);
+                            }
+                        }
+                        writer.EndArray();
+                    }
+                    writer.EndObject();
+                    writer.EndArray();
+                    writer.EndObject();
+                    break;
+                case modb::PropertyInfo::COMPOSITE:
+                    client.getChildren(class_id, uri, pit->first,
+                                       pit->second.getClassId(),
+                                       children[pit->second.getClassId()]);
+                    break;
+            }
+        }
+
+        if (recursive) {
+            std::map<modb::class_id_t, std::vector<modb::URI> >::const_iterator
+                clsit;
+            std::vector<modb::URI>::const_iterator cit;
+            for (clsit = children.begin(); clsit != children.end(); ++clsit) {
+                for (cit = clsit->second.begin(); cit != clsit->second.end();
+                     ++cit) {
+                    serializeUnresolved(clsit->first, *cit, client, writer);
+                }
+            }
+        }
+    }
     /**
      * Serialize the whole object subtree rooted at the given URI.
      *
@@ -78,7 +178,6 @@ public:
         const OF_SHARED_PTR<const modb::mointernal::ObjectInstance>
             oi(client.get(class_id, uri));
         std::map<modb::class_id_t, std::vector<modb::URI> > children;
-
         writer.StartObject();
 
         writer.String("subject");
@@ -294,6 +393,14 @@ public:
     void dumpMODB(FILE* file);
 
     /**
+     * Dump the unresolved managed object database to the file specified as a
+     * JSON blob.
+     *
+     * @param file the file to write to.
+     */
+    void dumpUnResolvedMODB(FILE *file);
+
+    /**
      * Read managed objects from the given file into the MODB
      *
      * @param file the file containing the managed objects
@@ -328,6 +435,14 @@ public:
     void displayMODB(std::ostream& ostream,
                      bool tree = true, bool includeProps = false,
                      bool utf8 = true, size_t truncate = 0);
+
+    /**
+     * Display the unresolved refrence in managed object database in a human-readable format
+     *
+     * @param ostream the output stream to write to
+     * @param utf8 use UTF-8 characters when drawing trees
+     */
+    void displayUnresolved(std::ostream& ostream, bool tree = true, bool utf8 = true);
 
 private:
     modb::ObjectStore* store;
@@ -417,6 +532,12 @@ private:
                        size_t prefixCharCount,
                        bool utf8, size_t truncate = 0);
 
+     /**
+     * Display a particular unresolved relation object
+     */
+    void displayUnresolvedObject(std::ostream& ostream,
+                                 modb::class_id_t class_id,
+                                 const modb::URI& uri, bool tree, bool utf8);
 };
 
 } /* namespace internal */
