@@ -366,10 +366,27 @@ static void getRoots(ObjectStore* store, Region::obj_set_t& roots) {
     }
 }
 
+void MOSerializer::dumpUnResolvedMODB(FILE* pfile) {
+    Region::obj_set_t roots;
+    getRoots(store, roots);
+    char buffer[1024];
+    rapidjson::FileWriteStream ws(pfile, buffer, sizeof(buffer));
+    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(ws);
+    writer.StartArray();
+    StoreClient& client = store->getReadOnlyStoreClient();
+    BOOST_FOREACH (Region::obj_set_t::value_type r, roots) {
+        try {
+            serializeUnresolved(r.first, r.second, client, writer, true);
+        } catch (const std::out_of_range& e) {
+        }
+    }
+    writer.EndArray();
+    fwrite("\n", 1, 1, pfile);
+}
+
 void MOSerializer::dumpMODB(FILE* pfile) {
     Region::obj_set_t roots;
     getRoots(store, roots);
-
     char buffer[1024];
     rapidjson::FileWriteStream ws(pfile, buffer, sizeof(buffer));
     rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(ws);
@@ -417,6 +434,7 @@ size_t MOSerializer::readMOs(FILE* pfile, StoreClient& client) {
 
 size_t MOSerializer::updateMOs(rapidjson::Document& d, StoreClient& client,
                                PolicyUpdateOp op) {
+
     rapidjson::Value::ConstValueIterator moit;
     size_t i = 0;
     bool replaceChildren = (op == PolicyUpdateOp::REPLACE);
@@ -525,7 +543,6 @@ void MOSerializer::displayObject(std::ostream& ostream,
     const OF_SHARED_PTR<const modb::mointernal::ObjectInstance>
         oi(client.get(class_id, uri));
     std::map<modb::class_id_t, std::vector<modb::URI> > children;
-
     typedef std::map<std::string, std::pair<bool, std::string> > dmap;
     dmap dispProps;
     size_t maxPropName = 0;
@@ -731,6 +748,127 @@ void MOSerializer::displayMODB(std::ostream& ostream,
     }
 }
 
+void MOSerializer::displayUnresolved(std::ostream& ostream, bool tree,
+                                     bool utf8) {
+    Region::obj_set_t roots;
+    getRoots(store, roots);
+
+    BOOST_FOREACH (Region::obj_set_t::value_type r, roots) {
+        try {
+            displayUnresolvedObject(ostream, r.first, r.second, tree, utf8);
+        } catch (const std::out_of_range& e) {
+        }
+    }
+}
+
+void MOSerializer::displayUnresolvedObject(std::ostream& ostream,
+                                           modb::class_id_t class_id,
+                                           const modb::URI& uri, bool tree,
+                                           bool utf8) {
+    StoreClient& client = store->getReadOnlyStoreClient();
+    const modb::ClassInfo& ci = store->getClassInfo(class_id);
+    const OF_SHARED_PTR<const modb::mointernal::ObjectInstance> oi(
+        client.get(class_id, uri));
+    std::map<modb::class_id_t, std::vector<modb::URI> > children;
+    typedef std::map<std::string, std::pair<bool, std::string> > dmap;
+    size_t maxPropName = 0;
+    bool resolved = true;
+    const modb::ClassInfo::property_map_t& pmap = ci.getProperties();
+    modb::ClassInfo::property_map_t::const_iterator pit;
+    for (pit = pmap.begin(); pit != pmap.end(); ++pit) {
+        if (pit->second.getType() != modb::PropertyInfo::COMPOSITE &&
+            !oi->isSet(pit->first, pit->second.getType(),
+                       pit->second.getCardinality()))
+            continue;
+
+        if (pit->second.getType() != modb::PropertyInfo::COMPOSITE &&
+            pit->second.getName().size() > maxPropName)
+            maxPropName = pit->second.getName().size();
+
+        switch (pit->second.getType()) {
+            case modb::PropertyInfo::REFERENCE: {
+                std::ostringstream str;
+                if (pit->second.getCardinality() ==
+                    modb::PropertyInfo::SCALAR) {
+                    modb::reference_t pvalue(oi->getReference(pit->first));
+                    const modb::ClassInfo& ref_class =
+                        store->getClassInfo(pvalue.first);
+
+                    if (!client.isPresent(ref_class.getId(), pvalue.second)) {
+                        str << ref_class.getName() << ","
+                            << pvalue.second.toString();
+                        resolved = false;
+                    }
+
+                } else {
+                    size_t len = oi->getReferenceSize(pit->first);
+                    bool first = true;
+                    str << '[';
+                    for (size_t i = 0; i < len; ++i) {
+                        modb::reference_t pvalue(
+                            oi->getReference(pit->first, i));
+                        if (!first) {
+                            str << ", ";
+                            first = false;
+                        }
+                        const modb::ClassInfo& ref_class =
+                            store->getClassInfo(pvalue.first);
+                        if (!client.isPresent(ref_class.getId(),
+                                              pvalue.second)) {
+                            str << ref_class.getName() << ","
+                                << pvalue.second.toString();
+                            resolved = false;
+                        }
+                    }
+                    str << ']';
+                }
+                if (!resolved) {
+                    if (tree) {
+                        ostream << (utf8 ? VERT_RIGHT : "|");
+                        ostream << (utf8 ? HORIZ : "-");
+                        ostream << (utf8 ? HORIZ : "-") << (utf8 ? BULLET : "*")
+                                << " ";
+                    }
+                    ostream << ci.getName() << "," << uri;
+                    ostream << std::endl;
+                    string pprefix = "      ";
+                    ostream << pprefix << "{" << std::endl;
+                    ostream << pprefix << pprefix;
+                    ostream.width(maxPropName);
+                    ostream << std::left << pit->second.getName() << " : ";
+                    ostream << str.str();
+                    ostream << std::endl;
+                    ostream << pprefix << "}" << std::endl;
+                }
+
+            } break;
+            case modb::PropertyInfo::COMPOSITE:
+                client.getChildren(class_id, uri, pit->first,
+                                   pit->second.getClassId(),
+                                   children[pit->second.getClassId()]);
+                break;
+        }
+    }
+
+    bool hasChildren = false;
+    std::map<modb::class_id_t, std::vector<modb::URI> >::iterator clsit;
+    std::vector<modb::URI>::const_iterator cit;
+    for (clsit = children.begin(); clsit != children.end();) {
+        if (clsit->second.size() == 0)
+            children.erase(clsit++);
+        else {
+            hasChildren = true;
+            ++clsit;
+        }
+    }
+
+    for (clsit = children.begin(); clsit != children.end(); ++clsit) {
+        bool lclass = boost::next(clsit) == children.end();
+        for (cit = clsit->second.begin(); cit != clsit->second.end(); ++cit) {
+            displayUnresolvedObject(ostream, clsit->first, *cit, tree, utf8);
+        }
+    }
+}
 
 } /* namespace internal */
 } /* namespace engine */

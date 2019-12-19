@@ -183,7 +183,11 @@ void InspectorClientImpl::addClassQuery(const string& subject) {
 }
 
 void InspectorClientImpl::dumpToFile(FILE* file) {
-    serializer.dumpMODB(file);
+    if (unresolved) {
+        serializer.dumpUnResolvedMODB(file);
+    } else {
+        serializer.dumpMODB(file);
+    }
 }
 
 size_t InspectorClientImpl::loadFromFile(FILE* file) {
@@ -195,7 +199,11 @@ void InspectorClientImpl::prettyPrint(std::ostream& output,
                                       bool includeProps,
                                       bool utf8,
                                       size_t truncate) {
-    serializer.displayMODB(output, tree, includeProps, utf8, truncate);
+    if (unresolved) {
+        serializer.displayUnresolved(output, tree, utf8);
+    } else {
+        serializer.displayMODB(output, tree, includeProps, utf8, truncate);
+    }
 }
 
 void InspectorClientImpl::setFollowRefs(bool enabled) {
@@ -204,6 +212,11 @@ void InspectorClientImpl::setFollowRefs(bool enabled) {
 
 void InspectorClientImpl::setRecursive(bool enabled) {
     recursive = enabled;
+}
+
+void InspectorClientImpl::setUnresolved(bool enabled) {
+    unresolved = enabled;
+    followRefs = enabled;
 }
 
 static std::string getRefSubj(const modb::ObjectStore& store,

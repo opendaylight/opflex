@@ -73,6 +73,13 @@ public:
     virtual void setRecursive(bool enabled) = 0;
 
     /**
+     * follow refrence for retrieved object is resolved or not
+     *
+     * @param enabled set to true to enable recursive downloading
+     */
+    virtual void setUnresolved(bool enabled) = 0;
+
+    /**
      * Query for a particular managed object
      *
      * @param subject the subject (class name) of the object
@@ -125,6 +132,7 @@ public:
                              bool includeProps = true,
                              bool utf8 = true,
                              size_t truncate = 0) = 0;
+
 };
 
 /** @} ofcore */
