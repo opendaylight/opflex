@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9f24ead6_7b41d8d7",
+        "filename": "agent-ovs/cmd/gbp_inspect.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-19T23:02:27Z",
+      "side": 1,
+      "message": "Some typos. I would prefer \u0027Retrieve all unresolved relations\u0027",
+      "revId": "b1bcb9c784a452bfe02306cc405295e6e293dacb",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9723a63d_c7defa4a",
+        "filename": "libopflex/engine/include/opflex/engine/internal/MOSerializer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-19T23:02:27Z",
+      "side": 1,
+      "message": "typo - unreolved -\u003e unresolved",
+      "revId": "b1bcb9c784a452bfe02306cc405295e6e293dacb",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
