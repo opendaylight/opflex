@@ -645,10 +645,12 @@ using boost::uuids::basic_random_generator;
             LOG(DEBUG) << "Error sending message";
             return "";
         }
+
         if (!checkForResponse()) {
             LOG(DEBUG) << "Error getting response";
             return "";
         }
+
         string uuid;
         if (handleGetPortUuidResp(pResp->reqId, pResp->payload,
                 uuid)) {

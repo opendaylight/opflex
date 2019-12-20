@@ -31,7 +31,7 @@ namespace opflexagent {
         // If connection fails, a timer is started to retry and
         // back off at periodic intervals.
         if (timerStarted) {
-            LOG(DEBUG) << "Cancelling timer";
+            LOG(DEBUG) << "Canceling timer";
             connection_timer->cancel();
             timerStarted = false;
         }
