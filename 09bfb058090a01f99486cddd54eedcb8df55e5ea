@@ -1,0 +1,327 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c412fbae_b6af5207",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "#ifdef HAVE_CONFIG_H needed around this #include",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e14b6df1_142c3cc7",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "duplicate #include but it doesn\u0027t look like either are needed.",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "80077e04_33f5d77e",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "since you have this please replace all std::string instances with string",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b568a7a2_23eb0a9c",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "not used",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "056cfa1e_0a1b6e03",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "not used",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4675762d_020ec00b",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "unneeded return for void function",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a9f28b3a_4482df09",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "unneeded return",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ea0c3b9a_cd8a4705",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "unneeded return",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d7a8d8ab_2d975b90",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "unneeded return",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "47734ba1_b0a90244",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "unneeded return",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06480cb1_cc278d7a",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "unneeded return",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5e499a9f_2817b1b5",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "boost::optional -\u003e optional throughout",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f78a98c_3fe9d4c8",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "unneeded return",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d88d67c1_8cc8d42f",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 595,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "unneeded return",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3212dc99_1451049a",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "#ifdef HAVE_CONFIG_H needed around this #include",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ea954c7_a76a194d",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "not needed as far as I can tell",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "db9ba749_c0066856",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "not used",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4f263d67_7fa07d43",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "not used",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8bdf8d20_6d33ab2a",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-20T08:17:05Z",
+      "side": 1,
+      "message": "You have a \u0027using std::string\u0027. We should replace all std::string with string",
+      "revId": "09bfb058090a01f99486cddd54eedcb8df55e5ea",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
