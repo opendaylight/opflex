@@ -32,6 +32,8 @@
 #include <yajr/rpc/rpc.hpp>
 
 #include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/prettywriter.h>
 
 using  rapidjson::Writer;
 using rapidjson::Value;
@@ -41,6 +43,13 @@ using rapidjson::Document;
 namespace opflex {
 namespace engine {
 namespace internal {
+
+void prettyPrintValue(const rapidjson::Value& val) {
+    StringBuffer buf;
+    PrettyWriter<StringBuffer> writer(buf);
+    val.Accept(writer);
+    LOG(DEBUG) << buf.GetString();
+}
 
 TransactReq::TransactReq(const transData& td) : OpflexMessage("transact", REQUEST),
         tData(td) {}
@@ -391,6 +400,39 @@ void OvsdbConnection::connect(string const& hostname, int port) {
 std::shared_ptr<RpcConnection> createConnection(Transaction& trans) {
     return make_shared<OvsdbConnection>(&trans);
 }
+
+void MockRpcConnection::sendTransaction(const list<transData>& tl,
+        const uint64_t& reqId) {
+    JsonReq* jr = new JsonReq(tl, reqId);
+    StringBuffer r;
+    Writer<StringBuffer> writer(r);
+    (*jr)(writer);
+    size_t reqHash = hash<string>{}(r.GetString());
+    ResponseDict& rDict = ResponseDict::Instance();
+    map<size_t, Value*>::iterator itr = rDict.dict.find(reqHash);
+    if (itr != rDict.dict.end()) {
+        handleTransaction(1, *(itr->second));
+    }
+}
+
+void ResponseDict::init() {
+    for (unsigned int i=0; i < no_of_msgs; i++) {
+        d.GetAllocator().Clear();
+        d.Parse(response[i].c_str());
+        Value& tmpVal = d;
+        Value* val1 = new Value(tmpVal, d.GetAllocator());
+        dict.emplace(hash<string>{}(request[i]), val1);
+    }
+}
+
+    ResponseDict& ResponseDict::Instance() {
+        static ResponseDict inst;
+        if (!inst.isInitialized) {
+            inst.init();
+            inst.isInitialized = true;
+        }
+        return inst;
+    }
 
 }
 }
