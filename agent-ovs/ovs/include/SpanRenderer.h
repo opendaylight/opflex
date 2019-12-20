@@ -24,7 +24,7 @@ namespace opflexagent {
  * class to render span config on a virtual switch
  */
 class SpanRenderer : public SpanListener,
-                     private JsonRpcRenderer,
+                     public JsonRpcRenderer,
                      private boost::noncopyable {
 
 public:
