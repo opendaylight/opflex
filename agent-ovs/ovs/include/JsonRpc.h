@@ -115,6 +115,10 @@ public:
     };
 
     /**
+     * destructor
+     */
+    virtual ~JsonRpc() {}
+    /**
      * call back for transaction response
      * @param[in] reqId request ID of the request for this response.
      * @param[in] payload rapidjson::Value reference of the response body.
@@ -150,7 +154,7 @@ public:
     /**
      * initialize the module
      */
-    void start();
+    virtual void start();
 
     /**
      * stop the module
@@ -328,6 +332,18 @@ public:
     DECLARE_HANDLER(handleAddMirrorToBridgeResp);
     /*! declaration for handleAddErspanPortResp */
     DECLARE_HANDLER(handleAddErspanPortResp);
+
+    /**
+     * get rpc connection pointer
+     * @returns shared pointer to rpc connection object
+     */
+    shared_ptr<RpcConnection> getRpcConnectionPtr() { return pConn; }
+
+    /**
+     * set rpc connection pointer
+     * @param shared pointer to rpc connection object
+     */
+    void setRpcConnectionPtr(shared_ptr<RpcConnection> rPtr) { pConn = rPtr; }
 
 private:
     uint64_t getNextId() { return ++id; }
