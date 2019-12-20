@@ -34,6 +34,12 @@ using namespace std;
 using namespace rapidjson;
 
 /**
+ * utility class to pretty print rapidjson::Value
+ * @param val Value object reference
+ */
+void prettyPrintValue(const rapidjson::Value& val);
+
+/**
  * enum for data types to be sent over JSON/RPC
  */
 enum class  Dtype {STRING, INTEGER, BOOL};
@@ -305,6 +311,11 @@ class RpcConnection {
                 const rapidjson::Value& payload);
 
     /**
+     * destructor
+     */
+    virtual ~RpcConnection() {}
+
+    /**
      * initialize the module
      */
     virtual void start() = 0;
@@ -362,7 +373,93 @@ class RpcConnection {
     Transaction* pTrans;
 
 };
+/**
+ * class for a mockup of an RpcConnection object
+ */
+class MockRpcConnection : public RpcConnection {
+public:
+    /**
+     * constructor that takes a Transaction object reference
+     */
+    MockRpcConnection(Transaction& pTrans_) : RpcConnection(&pTrans_) {}
 
+    /**
+     * establish mock connection
+     * @param hostname name of host to connect to
+     * @param port port to connect to
+     */
+    void connect(string const& hostname, int port) { connected = true;}
+
+    /**
+     * send transaction
+     * @param tl list of Transaction objects
+     * @param reqId request ID
+     */
+    void sendTransaction(const list<transData>& tl,
+            const uint64_t& reqId);
+
+    /**
+     * destructor
+     */
+    virtual ~MockRpcConnection() {}
+private:
+    void start() {}
+    void stop() {}
+};
+
+/**
+ * class holding the request response lookup
+ */
+class ResponseDict {
+public:
+    /**
+     * get the sole instance of this class
+     */
+    static ResponseDict& Instance();
+
+    /**
+     * initialize the object instance
+     */
+    void init();
+
+protected:
+    /**
+     * constructor
+     */
+    ResponseDict() {}
+
+    /**
+     * destructor
+     */
+    ~ResponseDict() {}
+public:
+    /**
+     * flag to indicate initialization state
+     */
+    bool isInitialized = false;
+
+    /**
+     * map of request response pairs
+     */
+    map<size_t, Value*> dict;
+private:
+    static const unsigned int no_of_msgs = 1;
+    Document d;
+    string request1 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"p1-tap\"]],"\
+                        "\"table\":\"Port\",\"op\":\"select\"}]"};
+    string response1 {"[{\"rows\":[{\"name\":\"p1-tap\",\"bond_downdelay\":0,\
+            \"statistics\":[\"map\",[]],\"protected\":false,\"fake_bridge\":false,\
+            \"mac\":[\"set\",[]],\"trunks\":[\"set\",[]],\"_uuid\":[\"uuid\",\
+            \"0a7a4d65-e785-4674-a219-167391d10c3f\"],\"rstp_status\":[\"map\",[]],\
+            \"tag\":[\"set\",[]],\"_version\":[\"uuid\",\"af7d6539-1d04-4955-b574-64d281464bfe\"],\
+            \"cvlans\":[\"set\",[]],\"bond_updelay\":0,\"bond_active_slave\":[\"set\",[]],\
+            \"external_ids\":[\"map\",[]],\"other_config\":[\"map\",[]],\"status\":[\"map\",[]],\
+            \"bond_mode\":[\"set\",[]],\"qos\":[\"set\",[]],\"bond_fake_iface\":false,\
+            \"interfaces\":[\"uuid\",\"22eb4594-4ee5-42f0-be04-3c6daf46918f\"],\
+            \"vlan_mode\":[\"set\",[]],\"rstp_statistics\":[\"map\",[]],\"lacp\":[\"set\",[]]}]}]"};
+    string request[no_of_msgs] = {request1};
+    string response[no_of_msgs] = {response1};
+};
 /**
  * create an RPC connection to a server
  * @param[in] trans a reference to a Transaction object instance

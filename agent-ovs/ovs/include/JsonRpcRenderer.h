@@ -25,17 +25,17 @@ using boost::posix_time::milliseconds;
 
 class JsonRpcRenderer {
 
-protected:
+public:
     JsonRpcRenderer(Agent &agent_);
-    bool connect();
+    virtual bool connect();
     void cleanup();
+    unique_ptr<JsonRpc> jRpc;
 
 protected:
     Agent &agent;
     TaskQueue taskQueue;
     condition_variable cv;
     mutex handlerMutex;
-    unique_ptr<JsonRpc> jRpc;
     std::shared_ptr<boost::asio::deadline_timer> connection_timer;
     // retry interval in seconds
     const long CONNECTION_RETRY = 60;
