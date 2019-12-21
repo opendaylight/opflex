@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4f747e1f_bfbf17a0",
+        "filename": "agent-ovs/ovs/JsonRpc.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-21T05:24:36Z",
+      "side": 1,
+      "message": "Why is this change needed?",
+      "revId": "f3fa8e5996df53c77552d7c2e0fe8678c3574400",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "531f4e87_780fa02b",
+        "filename": "agent-ovs/ovs/test/SpanRenderer_test.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-21T05:24:36Z",
+      "side": 1,
+      "message": "remove commented out code",
+      "revId": "f3fa8e5996df53c77552d7c2e0fe8678c3574400",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b8d57b43_1a837d57",
+        "filename": "agent-ovs/ovs/test/SpanRenderer_test.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2019-12-21T05:24:36Z",
+      "side": 1,
+      "message": "remove commented out code",
+      "revId": "f3fa8e5996df53c77552d7c2e0fe8678c3574400",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
