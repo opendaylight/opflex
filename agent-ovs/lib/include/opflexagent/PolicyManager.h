@@ -839,7 +839,7 @@ public:
      * @param hashOpt hash function value HashProfOptionEnumT
      * @return whether the redirectdestgroup is valid
      */
-    bool getPolicyDestGroup(opflex::modb::URI redirDstURI,
+    bool getPolicyDestGroup(const opflex::modb::URI& redirDstURI,
                             redir_dest_list_t &redirList, uint8_t &hashParam,
                             uint8_t &hashOpt);
 

@@ -57,8 +57,8 @@ private:
     std::unordered_set<std::string> addresses;
     volatile bool running;
 
-    void join(std::string mcast_address);
-    void leave(std::string mcast_address);
+    void join(const std::string& mcast_address);
+    void leave(const std::string& mcast_address);
 
     void do_stop();
 };

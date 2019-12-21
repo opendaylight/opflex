@@ -34,7 +34,7 @@ std::ostream & operator<<(std::ostream &os, const Snat& s) {
     Snat::PortRangeMap portRangeMap = s.getPortRangeMap();
     bool firstpr = true;
     os << ",port-range-map=<";
-    for (auto it : portRangeMap) {
+    for (const auto& it : portRangeMap) {
         if (firstpr) firstpr = false;
         else os << ",";
         os << "(macaddr=" << it.first;

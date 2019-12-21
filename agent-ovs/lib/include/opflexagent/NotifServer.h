@@ -92,7 +92,7 @@ public:
      * @param macAddr the MAC address seen in the advertisement
      * @param ipAddr the IP address seen in the advertisement
      */
-    void dispatchVirtualIp(std::unordered_set<std::string> uuids,
+    void dispatchVirtualIp(const std::unordered_set<std::string>& uuids,
                            const opflex::modb::MAC& macAddr,
                            const std::string& ipAddr);
 

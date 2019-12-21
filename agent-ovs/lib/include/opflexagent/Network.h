@@ -75,7 +75,7 @@ std::ostream& operator<<(std::ostream &os, const subnets_t& subnets);
  * @param srcMac the MAC address of the interface
  * @param dstAddr the in6_addr struct in which the result will be stored
  */
-void construct_auto_ip(boost::asio::ip::address_v6 prefix,
+void construct_auto_ip(const boost::asio::ip::address_v6& prefix,
                        const uint8_t* srcMac,
                        /* out */ struct in6_addr* dstAddr);
 
@@ -87,7 +87,7 @@ void construct_auto_ip(boost::asio::ip::address_v6 prefix,
  * @return the ip address object
  */
 boost::asio::ip::address_v6
-construct_auto_ip_addr(boost::asio::ip::address_v6 prefix,
+construct_auto_ip_addr(const boost::asio::ip::address_v6& prefix,
                        const uint8_t* srcMac);
 
 /**
@@ -142,7 +142,7 @@ void get_subnet_mask_v6(uint8_t prefixLen, in6_addr *mask);
  * @param mask return the computed mask
  * @param addr return the masked network address
  */
-void compute_ipv6_subnet(boost::asio::ip::address_v6 netAddr,
+void compute_ipv6_subnet(const boost::asio::ip::address_v6& netAddr,
                          uint8_t prefixLen,
                          /* out */ struct in6_addr* mask,
                          /* out */ struct in6_addr* addr);

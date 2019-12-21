@@ -15,7 +15,6 @@
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/DirectionEnumT.hpp>
-#include <modelgbp/gbp/L3IfTypeEnumT.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>

@@ -21,7 +21,6 @@
 #include <modelgbp/platform/Config.hpp>
 #include <modelgbp/netflow/ExporterConfig.hpp>
 #include <opflexagent/ExporterConfigState.h>
-#include <opflexagent/SpanManager.h>
 
 namespace opflexagent {
 

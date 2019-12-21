@@ -27,7 +27,7 @@ using opflex::modb::MAC;
 ModelEndpointSource::
 ModelEndpointSource(EndpointManager* manager_,
                     opflex::ofcore::OFFramework& framework_,
-                    std::set<std::string> inventories_)
+                    const std::set<std::string>& inventories_)
     : EndpointSource(manager_), framework(framework_) {
     LOG(INFO) << "Watching opflex model inventory for endpoint data";
     modelgbp::inv::LocalInventoryEp::registerListener(framework, this);
@@ -241,18 +241,18 @@ void ModelEndpointSource::objectUpdated (opflex::modb::class_id_t class_id,
                 if (!ipMapping->isNameSet()) continue;
 
                 Endpoint::IPAddressMapping newipm(ipMapping->getName().get());
-                if (ipMapping.get()->isMappedIpSet())
-                    newipm.setMappedIP(ipMapping.get()->getMappedIp().get());
-                if (ipMapping.get()->isFloatingIpSet())
-                    newipm.setFloatingIP(ipMapping.get()->
+                if (ipMapping->isMappedIpSet())
+                    newipm.setMappedIP(ipMapping->getMappedIp().get());
+                if (ipMapping->isFloatingIpSet())
+                    newipm.setFloatingIP(ipMapping->
                                          getFloatingIp().get());
-                if (ipMapping.get()->isNextHopIfSet())
-                    newipm.setNextHopIf(ipMapping.get()->getNextHopIf().get());
-                if (ipMapping.get()->isNextHopMacSet())
-                    newipm.setNextHopMAC(MAC(ipMapping.get()->
+                if (ipMapping->isNextHopIfSet())
+                    newipm.setNextHopIf(ipMapping->getNextHopIf().get());
+                if (ipMapping->isNextHopMacSet())
+                    newipm.setNextHopMAC(MAC(ipMapping->
                                              getNextHopMac().get()));
 
-                auto gsrc = ipMapping.get()->
+                auto gsrc = ipMapping->
                     resolveInvIpMappingToGroupRSrc();
                 if (gsrc && gsrc.get()->isTargetSet()) {
                     newipm.setEgURI(gsrc.get()->getTargetURI().get());

@@ -14,7 +14,6 @@
 
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
-#include <boost/asio/placeholders.hpp>
 #include <boost/filesystem.hpp>
 
 #define RAPIDJSON_ASSERT(x)
@@ -367,7 +366,7 @@ static void do_dispatch(shared_ptr<StringBuffer> buffer,
     }
 }
 
-void NotifServer::dispatchVirtualIp(std::unordered_set<std::string> uuids,
+void NotifServer::dispatchVirtualIp(const std::unordered_set<std::string>& uuids,
                                     const opflex::modb::MAC& macAddr,
                                     const std::string& ipAddr) {
     std::string mstr = macAddr.toString();

@@ -39,7 +39,7 @@ public:
      */
     ModelEndpointSource(EndpointManager* manager,
                         opflex::ofcore::OFFramework& framework,
-                        std::set<std::string> inventories);
+                        const std::set<std::string>& inventories);
 
     /**
      * Destroy the endpoint source and clean up all state

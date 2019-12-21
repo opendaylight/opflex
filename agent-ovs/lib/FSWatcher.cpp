@@ -22,12 +22,10 @@
 #include <sys/eventfd.h>
 #endif
 #include <poll.h>
-#include <errno.h>
+#include <cerrno>
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
 #include <opflex/modb/URIBuilder.h>
@@ -68,7 +66,7 @@ void FSWatcher::setInitialScan(bool scan) {
 
 void FSWatcher::start() {
 #ifdef USE_INOTIFY
-    if (regWatches.size() == 0) return;
+    if (regWatches.empty()) return;
 
     for (const path_map_t::value_type& w : regWatches) {
         if (!fs::exists(w.first)) {

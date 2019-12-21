@@ -12,21 +12,12 @@
 #include <opflexagent/MulticastListener.h>
 #include <opflexagent/logging.h>
 
-#include <boost/asio/read.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/asio/placeholders.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/asio/socket_base.hpp>
 #include <boost/asio/ip/v6_only.hpp>
 #include <boost/asio/ip/multicast.hpp>
 
-#include <cstdio>
 #include <sstream>
 #include <stdexcept>
-#include <unistd.h>
-#include <sys/types.h>
-#include <grp.h>
-#include <pwd.h>
 
 namespace opflexagent {
 
@@ -101,7 +92,7 @@ void MulticastListener::stop() {
     io_service.dispatch([this]() { MulticastListener::do_stop(); });
 }
 
-void MulticastListener::join(std::string mcast_address) {
+void MulticastListener::join(const std::string& mcast_address) {
     boost::system::error_code ec;
     ba::ip::address addr = ba::ip::address::from_string(mcast_address, ec);
     if (ec) {
@@ -133,7 +124,7 @@ void MulticastListener::join(std::string mcast_address) {
         LOG(ERROR) << "Could not join group " << addr << ": " << ec.message();
 }
 
-void MulticastListener::leave(std::string mcast_address) {
+void MulticastListener::leave(const std::string& mcast_address) {
     boost::system::error_code ec;
     ba::ip::address addr = ba::ip::address::from_string(mcast_address, ec);
     if (ec)
@@ -154,7 +145,7 @@ void MulticastListener::leave(std::string mcast_address) {
 }
 
 void MulticastListener::sync(const shared_ptr<unordered_set<string> >& naddrs) {
-    unordered_set<std::string>::iterator it = addresses.begin();
+    auto it = addresses.begin();
     while (it != addresses.end()) {
         if (naddrs->find(*it) == naddrs->end()) {
             leave(*it);

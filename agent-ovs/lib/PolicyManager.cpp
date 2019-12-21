@@ -915,7 +915,7 @@ bool operator!=(const PolicyRedirectDest& lhs, const PolicyRedirectDest& rhs) {
     return !operator==(lhs,rhs);
 }
 
-bool PolicyManager::getPolicyDestGroup(URI redirURI,
+bool PolicyManager::getPolicyDestGroup(const URI& redirURI,
                                        redir_dest_list_t &redirList,
                              uint8_t &hashParam_, uint8_t &hashOpt_)
 {
@@ -1448,7 +1448,7 @@ void PolicyManager::updateRemoteRouteChildrenForPolicyPrefix(
         return;
     }
     RoutingDomainState &rs = rd_map[rdURI];
-    for(auto remoteRt : rs.remote_routes) {
+    for(const auto& remoteRt : rs.remote_routes) {
         auto route_iter = remote_route_map.find(remoteRt);
         if(route_iter == remote_route_map.end()) {
             LOG(ERROR) << "No cached policy route for " << remoteRt;
@@ -1553,7 +1553,7 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
                     nat_epg_l3_ext.find(l3s.natEpg.get());
                 if (it != nat_epg_l3_ext.end()) {
                     it->second.erase(net->getURI());
-                    if (it->second.size() == 0)
+                    if (it->second.empty())
                         nat_epg_l3_ext.erase(it);
                 }
             }
@@ -1709,7 +1709,7 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
                             nat_epg_l3_ext.find(lit->second.natEpg.get());
                         if (git != nat_epg_l3_ext.end()) {
                             git->second.erase(net);
-                            if (git->second.size() == 0)
+                            if (git->second.empty())
                                 nat_epg_l3_ext.erase(git);
                         }
                     }
@@ -1837,7 +1837,7 @@ void PolicyManager::getBestPolicyPrefix(
     }
     uint32_t bestLen = 0;
     RoutingDomainState &rs = rd_map[rdURI];
-    for (auto extNet : rs.extNets) {
+    for (const auto& extNet : rs.extNets) {
         L3NetworkState &l3s = l3n_map[extNet];
         for (auto &extSubItr: l3s.subnet_map) {
             shared_ptr<modelgbp::gbp::ExternalSubnet> &extsub =
@@ -2379,7 +2379,7 @@ void PolicyManager::updatePolicyPrefixChildrenForRemoteRoute(
         return;
     }
     RoutingDomainState &rs = rd_map[rdURI];
-    for (auto extNet : rs.extNets) {
+    for (const auto& extNet : rs.extNets) {
         L3NetworkState &l3s = l3n_map[extNet];
         for (auto &extSubItr: l3s.subnet_map) {
             shared_ptr<modelgbp::gbp::ExternalSubnet> &extsub =

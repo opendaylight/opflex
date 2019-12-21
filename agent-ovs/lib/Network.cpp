@@ -40,7 +40,7 @@ std::ostream & operator<<(std::ostream &os, const subnet_t& subnet) {
 
 std::ostream & operator<<(std::ostream &os, const subnets_t& subnets) {
     bool first = true;
-    for (subnet_t s : subnets) {
+    for (const subnet_t& s : subnets) {
         if (first) first = false;
         else os << ",";
         os << s;
@@ -48,7 +48,7 @@ std::ostream & operator<<(std::ostream &os, const subnets_t& subnets) {
     return os;
 }
 
-void construct_auto_ip(boost::asio::ip::address_v6 prefix,
+void construct_auto_ip(const boost::asio::ip::address_v6& prefix,
                        const uint8_t* srcMac,
                        /* out */ struct in6_addr* dstAddr) {
     address_v6::bytes_type prefixb = prefix.to_bytes();
@@ -61,7 +61,7 @@ void construct_auto_ip(boost::asio::ip::address_v6 prefix,
     memcpy(((char*)dstAddr) + 13, srcMac+3, 3);
 }
 
-address_v6 construct_auto_ip_addr(address_v6 prefix,
+address_v6 construct_auto_ip_addr(const address_v6& prefix,
                                   const uint8_t* srcMac) {
     address_v6::bytes_type ip;
     construct_auto_ip(prefix, srcMac, (struct in6_addr*)ip.data());
@@ -94,7 +94,7 @@ uint32_t get_subnet_mask_v4(uint8_t prefixLen) {
            : 0;
 }
 
-void compute_ipv6_subnet(boost::asio::ip::address_v6 netAddr,
+void compute_ipv6_subnet(const boost::asio::ip::address_v6& netAddr,
                          uint8_t prefixLen,
                          /* out */ struct in6_addr* mask,
                          /* out */ struct in6_addr* addr) {

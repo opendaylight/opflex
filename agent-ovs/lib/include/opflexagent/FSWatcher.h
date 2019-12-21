@@ -118,8 +118,8 @@ private:
     int eventFd;
     bool initialScan;
 
-    void scanPath(const WatchState* ws,
-                  const boost::filesystem::path& watchPath);
+    static void scanPath(const WatchState* ws,
+                         const boost::filesystem::path& watchPath);
 };
 
 } /* namespace opflexagent */
