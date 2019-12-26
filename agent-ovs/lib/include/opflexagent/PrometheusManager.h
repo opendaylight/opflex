@@ -27,11 +27,17 @@
 namespace opflexagent {
 
 using std::string;
+using std::map;
 using std::unordered_map;
 using std::unique_ptr;
 using std::shared_ptr;
 using std::mutex;
+using std::pair;
+using boost::optional;
 using namespace prometheus;
+
+// Optional pair of label attr map and Gauge ptr
+typedef optional<pair<size_t, Gauge *> >  hgauge_pair_t;
 
 class PrometheusManager {
 public:
@@ -53,22 +59,27 @@ public:
     void stop();
 
     /* EpCounter related APIs */
+    // Return a rolling hash of attribute map for the ep
+    static size_t calcHashEpAttributes(const string& ep_name,
+            const unordered_map<string, string>&    attr_map);
     /**
      * Create EpCounter metric family if its not present.
      * Update EpCounter metric family if its already present
      *
-     * @param ep_name   the name of the ep
-     * @param uuid      uuid of ep
+     * @param uuid        uuid of ep
+     * @param ep_name     the name of the ep
+     * @param attr_hash   hash of prometheus compatible ep attr
+     * @param attr_map    map of all ep attributes
      */
     void addNUpdateEpCounter(const string& uuid,
                              const string& ep_name,
+                             const size_t& attr_hash,
         const unordered_map<string, string>&    attr_map);
     /**
      * Remove EpCounter metric given the ep name
      */
     void removeEpCounter(const string& uuid,
                          const string& ep_name);
-
     // TODO: Other Counter related APIs
 
 private:
@@ -102,20 +113,6 @@ private:
     void removeDynamicGaugeFamilies(void);
     void removeDynamicCounters(void);
     void removeDynamicGauges(void);
-    /**
-     * Prometheus expects label/metric family names to be given
-     * in a particular format.
-     * More info: https://prometheus.io/docs/concepts/data_model/
-     * In short: the names can be like "[a-zA-Z_:][a-zA-Z0-9_:]*"
-     * and cannot start with "__" (used internally).
-     *
-     * @param: the name that we have to sanitize
-     *
-     * @return: the sanitized name that can be given to prometheus
-     */
-    string sanitizeMetricName(string metric_name);
-    // Api to check if the input metric_name is prometheus compatible.
-    bool checkMetricName(const string& metric_name);
 
     /* Start of EpCounter related apis and state */
     // Lock to safe guard EpCounter related state
@@ -175,9 +172,10 @@ private:
     bool createDynamicGaugeEp(EP_METRICS metric,
                               const string& uuid,
                               const string& ep_name,
+                              const size_t& attr_hash,
         const unordered_map<string, string>&    attr_map);
     // func to get gauge for EpCounter given metric type, uuid
-    Gauge* getDynamicGaugeEp(EP_METRICS metric, const string& uuid);
+    hgauge_pair_t getDynamicGaugeEp(EP_METRICS metric, const string& uuid);
     // func to remove gauge for EpCounter given metric type, uuid
     bool removeDynamicGaugeEp(EP_METRICS metric, const string& uuid);
     // func to remove all gauge of every EpCounter for a metric type
@@ -185,8 +183,33 @@ private:
     // func to remove all gauges of every EpCounter
     void removeDynamicGaugeEp(void);
 
-    // cache the gauge metric for every ep uuid
-    unordered_map<string, Gauge *>    ep_gauge_map[EP_METRICS_MAX];
+    /**
+     * cache the pair of (label map hash, gauge ptr) for every ep uuid
+     * The hash is created utilizing prometheus lib, which is basically
+     * a rolling hash  of all the key,value pairs of the ep attributes.
+     */
+    unordered_map<string, hgauge_pair_t> ep_gauge_map[EP_METRICS_MAX];
+
+    //Utility apis
+    /**
+     * Prometheus expects label/metric family names to be given
+     * in a particular format.
+     * More info: https://prometheus.io/docs/concepts/data_model/
+     * In short: the names can be like "[a-zA-Z_:][a-zA-Z0-9_:]*"
+     * and cannot start with "__" (used internally).
+     *
+     * @param: the name that we have to sanitize
+     *
+     * @return: the sanitized name that can be given to prometheus
+     */
+    static string sanitizeMetricName(string metric_name);
+    // Api to check if the input metric_name is prometheus compatible.
+    static bool checkMetricName(const string& metric_name);
+
+
+    // Create a label map that can be used for annotation, given the ep attr map
+    static map<string,string> createLabelMapFromAttr(const string& ep_name_,
+                           const unordered_map<string, string>&    attr_map);
     /* End of EpCounter related apis and state */
 
     /* TODO: Other Counter related apis and state */

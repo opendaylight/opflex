@@ -23,6 +23,9 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 namespace opflexagent {
 
 /**
@@ -472,6 +475,18 @@ public:
      * A string to string mapping
      */
     typedef std::unordered_map<std::string, std::string> attr_map_t;
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    // Set hash of all EP attributes that are prometheus compatible
+    void setAttributeHash (const size_t& hash) {
+        attr_hash = hash;
+    }
+
+    // Get hash of all EP attributes that are prometheus compatible
+    const size_t& getAttributeHash () const {
+        return attr_hash;
+    }
+#endif
 
     /**
      * Get a reference to a map of name/value attributes
@@ -1245,6 +1260,14 @@ private:
     bool natMode;
     bool external;
     attr_map_t attributes;
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    /**
+     * Hash of all the ep attributes. Will be used to detect any
+     * attribute changes in the map when processed by prometheus
+     * manager.
+     */
+    size_t    attr_hash;
+#endif
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
     ipam_set ipAddressMappings;

@@ -21,6 +21,7 @@
 #include <prometheus/counter.h>
 #include <prometheus/exposer.h>
 #include <prometheus/registry.h>
+#include <prometheus/detail/utils.h>
 
 namespace opflexagent {
 
@@ -28,8 +29,9 @@ using boost::optional;
 using std::lock_guard;
 using std::regex;
 using std::regex_match;
-using std::map;
 using std::make_shared;
+using std::make_pair;
+using namespace prometheus::detail;
 
 static string ep_family_names[] =
 {
@@ -313,26 +315,60 @@ string PrometheusManager::sanitizeMetricName (string metric_name)
 // Create EpCounter gauge given metric type and an uuid
 bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
                                               const string& uuid,
-                                              const string& ep_name_,
-            const unordered_map<string, string>&    attr_map)
+                                              const string& ep_name,
+                                              const size_t& attr_hash,
+                    const unordered_map<string, string>&    attr_map)
 {
-    LOG(DEBUG) << "creating dyn gauge family " << ep_name_;
-
-    // TODO: Currently we just have a map of {UUID: gauge_ptr} per metric.
-    // We ideally have to create a hash of all the key, value pairs in
-    // label attr_map and then maintain a map of uuid to another pair of
-    // all attr hash and gauge ptr
-    // {uuid: pair(old_all_attr_hash, gauge_ptr)}
-    auto gauge_ptr = getDynamicGaugeEp(metric, uuid);
-    if (gauge_ptr) {
-        LOG(DEBUG) << "EP already present for metric " << ep_family_names[metric];
-        return false;
+    /**
+     * We create a hash of all the key, value pairs in label attr_map
+     * and then maintain a map of uuid to another pair of all attr hash
+     * and gauge ptr
+     * {uuid: pair(old_all_attr_hash, gauge_ptr)}
+     */
+    auto hgauge = getDynamicGaugeEp(metric, uuid);
+    if (hgauge) {
+        LOG(DEBUG) << "ep already present"
+                   << " metric: " << ep_family_names[metric]
+                   << " hash: " << hgauge.get().first
+                   << " Gauge ptr: " << hgauge.get().second;
+        /**
+         * Detect attribute change by comparing hashes:
+         * Check incoming hash with the cached hash to detect attribute change
+         * Note:
+         * - we dont do a delete and create of metric for every attribute change.
+         * Rather the dttribute's delete and create will get processed in EP Mgr.
+         * Then during periodic update of epCounter, we will detect attr change in
+         * PrometheusManager and do a delete/create of metric for latest label
+         * annotations.
+         * - by not doing del/add of metric for every attribute change, we reduce
+         * # of metric+label creation in prometheus.
+         */
+        if (attr_hash == hgauge.get().first)
+            return false;
+        else {
+            LOG(DEBUG) << "deleting existing ep since attr hash doesnt match";
+            removeDynamicGaugeEp(metric, uuid);
+        }
     }
 
+    auto label_map = createLabelMapFromAttr(ep_name, attr_map);
+    auto hash = hash_labels(label_map);
+    LOG(DEBUG) << "creating dyn gauge family: " << ep_name
+               << " label hash: " << hash;
+    auto& gauge = gauge_ep_family_ptr[metric]->Add(label_map);
+    ep_gauge_map[metric][uuid] = make_pair(hash, &gauge);
+
+    return true;
+}
+
+// Create a label map that can be used for annotation, given the ep attr map
+map<string,string> PrometheusManager::createLabelMapFromAttr (
+                                                           const string& ep_name_,
+                                 const unordered_map<string, string>&    attr_map)
+{
     map<string,string>   label_map;
     auto ep_name = checkMetricName(ep_name_)?ep_name_:sanitizeMetricName(ep_name_);
     label_map["if_name"] = ep_name;
-    LOG(DEBUG) << "attr_map size is " << attr_map.size();
     for (const auto &p : attr_map) {
         // empty values can be discarded
         if (p.second.empty())
@@ -350,35 +386,32 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
         }
     }
 
-    auto& gauge = gauge_ep_family_ptr[metric]->Add(label_map);
-    ep_gauge_map[metric][uuid] = &gauge;
-
-    return true;
+    return label_map;
 }
 
 // Get EpCounter gauge given the metric, uuid of EP
-Gauge* PrometheusManager::getDynamicGaugeEp (EP_METRICS metric,
-                                             const string& uuid)
+hgauge_pair_t PrometheusManager::getDynamicGaugeEp (EP_METRICS metric,
+                                                   const string& uuid)
 {
-    Gauge* gauge_ptr = nullptr;
+    hgauge_pair_t hgauge = boost::none;
     auto itr = ep_gauge_map[metric].find(uuid);
     if (itr == ep_gauge_map[metric].end()) {
         LOG(DEBUG) << "Dyn Gauge EpCounter not found " << uuid;
     } else {
-        gauge_ptr = itr->second;
+        hgauge = itr->second;
     }
 
-    return gauge_ptr;
+    return hgauge;
 }
 
 // Remove dynamic EpCounter gauge given a metic type and ep uuid
 bool PrometheusManager::removeDynamicGaugeEp (EP_METRICS metric,
                                               const string& uuid)
 {
-    auto gauge_ptr = getDynamicGaugeEp(metric, uuid);
-    if (gauge_ptr) {
+    auto hgauge = getDynamicGaugeEp(metric, uuid);
+    if (hgauge) {
         ep_gauge_map[metric].erase(uuid);
-        gauge_ep_family_ptr[metric]->Remove(gauge_ptr);
+        gauge_ep_family_ptr[metric]->Remove(hgauge.get().second);
     } else {
         LOG(DEBUG) << "remove dynamic gauge ep not found uuid:" << uuid;
         return false;
@@ -392,9 +425,11 @@ void PrometheusManager::removeDynamicGaugeEp (EP_METRICS metric)
     auto itr = ep_gauge_map[metric].begin();
     while (itr != ep_gauge_map[metric].end()) {
         LOG(DEBUG) << "Delete Ep uuid: " << itr->first
-                   << " Gauge: " << itr->second;
+                   << " hash: " << itr->second.get().first
+                   << " Gauge: " << itr->second.get().second;
         //ep_gauge_map[metric].erase(itr->first);
-        gauge_ep_family_ptr[metric]->Remove(itr->second);
+        // TODO: Fix below
+        gauge_ep_family_ptr[metric]->Remove(itr->second.get().second);
         itr++;
 
         if (metric == (EP_METRICS_MAX-1)) {
@@ -461,17 +496,29 @@ void PrometheusManager::removeStaticGaugeFamilies()
     removeStaticGaugeFamiliesEp();
 }
 
+// Return a rolling hash of attribute map for the ep
+size_t PrometheusManager::calcHashEpAttributes (const string& ep_name,
+                      const unordered_map<string, string>&    attr_map)
+{
+    auto label_map = createLabelMapFromAttr(ep_name, attr_map);
+    auto hash = hash_labels(label_map);
+    LOG(DEBUG) << ep_name << ":calculated label hash = " << hash;
+    return hash;
+}
+
 /* Function called from EP Manager to update EpCounter */
 void PrometheusManager::addNUpdateEpCounter (const string& uuid,
                                              const string& ep_name,
-            const unordered_map<string, string>&    attr_map)
+                                             const size_t& attr_hash,
+                  const unordered_map<string, string>&    attr_map)
 {
     using namespace opflex::modb;
     using namespace modelgbp::gbpe;
     using namespace modelgbp::observer;
 
     const lock_guard<mutex> lock(ep_counter_mutex);
-    LOG(DEBUG) << "addNupdate ep counter" << ep_name;
+    LOG(DEBUG) << "addNupdate ep counter for " << ep_name
+               << " hash: " << attr_hash;
     Mutator mutator(framework, "policyelement");
     optional<shared_ptr<EpStatUniverse> > su =
                             EpStatUniverse::resolve(framework);
@@ -487,6 +534,7 @@ void PrometheusManager::addNUpdateEpCounter (const string& uuid,
                 if (!createDynamicGaugeEp(metric,
                                           uuid,
                                           ep_name,
+                                          attr_hash,
                                           attr_map)) {
                     break;
                 }
@@ -501,7 +549,7 @@ void PrometheusManager::addNUpdateEpCounter (const string& uuid,
             for (EP_METRICS metric=EP_RX_BYTES;
                     metric < EP_METRICS_MAX;
                         metric = EP_METRICS(metric+1)) {
-                Gauge* gauge_ptr = getDynamicGaugeEp(metric, uuid);
+                hgauge_pair_t hgauge = getDynamicGaugeEp(metric, uuid);
                 optional<uint64_t>   metric_opt;
                 switch (metric) {
                 case EP_RX_BYTES:
@@ -543,8 +591,8 @@ void PrometheusManager::addNUpdateEpCounter (const string& uuid,
                 default:
                     LOG(ERROR) << "Unhandled metric: " << metric;
                 }
-                if (metric_opt)
-                    gauge_ptr->Set(static_cast<double>(metric_opt.get()));
+                if (metric_opt && hgauge)
+                    hgauge.get().second->Set(static_cast<double>(metric_opt.get()));
             }
         }
     }

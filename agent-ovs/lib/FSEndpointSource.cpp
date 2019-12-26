@@ -9,7 +9,9 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
 #if defined(HAVE_SYS_INOTIFY_H) && defined(HAVE_SYS_EVENTFD_H)
 #define USE_INOTIFY
 #endif
@@ -24,6 +26,9 @@
 
 #include <opflexagent/FSEndpointSource.h>
 #include <opflexagent/logging.h>
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
 
 namespace opflexagent {
 
@@ -239,6 +244,16 @@ void FSEndpointSource::updated(const fs::path& filePath) {
                 }
             }
         }
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        auto acc_intf = newep.getAccessInterface();
+        if (acc_intf) {
+            newep.setAttributeHash(
+                PrometheusManager::calcHashEpAttributes(
+                                            acc_intf.get(),
+                                            newep.getAttributes()));
+        }
+#endif
 
         optional<ptree&> dhcp4 = properties.get_child_optional(DHCP4);
         if (dhcp4) {
