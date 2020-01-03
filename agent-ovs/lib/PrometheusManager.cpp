@@ -361,6 +361,9 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
     return true;
 }
 
+// Max allowed annotations per metric
+int PrometheusManager::max_metric_attr_count = 5;
+
 // Create a label map that can be used for annotation, given the ep attr map
 map<string,string> PrometheusManager::createLabelMapFromAttr (
                                                            const string& ep_name_,
@@ -369,7 +372,14 @@ map<string,string> PrometheusManager::createLabelMapFromAttr (
     map<string,string>   label_map;
     auto ep_name = checkMetricName(ep_name_)?ep_name_:sanitizeMetricName(ep_name_);
     label_map["if_name"] = ep_name;
+
+    int attr_count = 1; // Accounting for if_name
     for (const auto &p : attr_map) {
+        if (attr_count == max_metric_attr_count) {
+            LOG(DEBUG) << "Exceeding max attr count " << attr_count;
+            break;
+        }
+
         // empty values can be discarded
         if (p.second.empty())
             continue;
@@ -377,9 +387,15 @@ map<string,string> PrometheusManager::createLabelMapFromAttr (
         if (!p.first.compare("pod-template-hash"))
             continue;
 
-        if (checkMetricName(p.first) && checkMetricName(p.second))
+        if (checkMetricName(p.first) && checkMetricName(p.second)) {
             label_map[p.first] = p.second;
-        else {
+            /* Only prometheus compatible metrics are accounted against
+             * attr_count. If user appends valid attributes to ep file that
+             * exceeds the max_metric_attr_count, then only the first 5
+             * attributes from the attr map will be used for metric
+             * annotation */
+            attr_count++;
+        } else {
             LOG(ERROR) << "ep attr not compatible with prometheus"
                        << " K:" << p.first
                        << " V:" << p.second;

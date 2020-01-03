@@ -39,6 +39,12 @@ using namespace prometheus;
 // Optional pair of label attr map and Gauge ptr
 typedef optional<pair<size_t, Gauge *> >  hgauge_pair_t;
 
+/**
+ * Prometheus manager is responsible for maintaining state of all
+ * the metrics exposed from opflex agent to prometheus. It is also
+ * responsible for opening a http server to accept get requests for
+ * exporting available metrics to prometheus.
+ */
 class PrometheusManager {
 public:
     /**
@@ -59,7 +65,14 @@ public:
     void stop();
 
     /* EpCounter related APIs */
-    // Return a rolling hash of attribute map for the ep
+    /**
+     * Return a rolling hash of attribute map for the ep
+     *
+     * @param ep_name     Name of the endpoint. Usually the
+     * access interface name
+     * @param attr_map    The map of endpoint attributes
+     * @return            the hash value of endpoint attributes
+     */
     static size_t calcHashEpAttributes(const string& ep_name,
             const unordered_map<string, string>&    attr_map);
     /**
@@ -210,6 +223,8 @@ private:
     // Create a label map that can be used for annotation, given the ep attr map
     static map<string,string> createLabelMapFromAttr(const string& ep_name_,
                            const unordered_map<string, string>&    attr_map);
+    // Maximum number of labels that can be used for annotating a metric
+    static int max_metric_attr_count;
     /* End of EpCounter related apis and state */
 
     /* TODO: Other Counter related apis and state */
