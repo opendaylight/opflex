@@ -345,6 +345,12 @@ public:
      */
     void setRpcConnectionPtr(shared_ptr<RpcConnection> rPtr) { pConn = rPtr; }
 
+    /**
+     * set the next request ID
+     * @param id request id
+     */
+    void setNextId(uint64_t id_) { id = id_;}
+
 private:
     uint64_t getNextId() { return ++id; }
 
