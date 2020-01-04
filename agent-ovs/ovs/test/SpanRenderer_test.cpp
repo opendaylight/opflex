@@ -69,7 +69,7 @@ class SpanRendererFixture : public BaseFixture {
 public:
     SpanRendererFixture() : BaseFixture() {
         spr = make_shared<MockSpanRenderer>(agent);
-        initLogging("debug7", false, "");
+        initLogging("debug", false, "");
         spr->connect();
     }
 
@@ -78,18 +78,58 @@ public:
     shared_ptr<MockSpanRenderer> spr;
 };
 
-static bool verifyPortUuid(shared_ptr<MockSpanRenderer> spr) {
-    string uuid =  spr->jRpc->getPortUuid("p1-tap");
-    LOG(DEBUG) << uuid;
-    if (uuid.empty()) {
+static bool verifyCreateDestroy(shared_ptr<MockSpanRenderer> spr) {
+    spr->jRpc->setNextId(999);
+    JsonRpc::mirror mir;
+    if (!spr->jRpc->getOvsdbMirrorConfig(mir)) {
         return false;
-    } else {
-        return true;
     }
+    string erspanUuid = spr->jRpc->getPortUuid("erspan");
+    if (erspanUuid.empty()) {
+        return false;
+    }
+    JsonRpc::BrPortResult res;
+    if (!spr->jRpc->getBridgePortList("br-int", res)) {
+        return false;
+    }
+    tuple<string, set<string>> ports = make_tuple(res.brUuid, res.portUuids);
+    if (!spr->jRpc->updateBridgePorts(ports, erspanUuid, false)) {
+        return false;
+    }
+
+    if (!spr->jRpc->deleteMirror("br-int")) {
+        return false;
+    }
+    JsonRpc::erspan_ifc ep;
+    ep.name = "erspan";
+    ep.remote_ip = "10.20.120.240";
+    ep.erspan_idx = 1;
+    ep.erspan_ver = 1;
+    ep.key = 1;
+    if (!spr->jRpc->addErspanPort("br-int", ep)) {
+        return false;
+    }
+
+    set<string> src_ports = {"p1-tap", "p2-tap"};
+    set<string> dst_ports = {"p1-tap", "p2-tap"};
+    set<string> out_ports = {"erspan"};
+    mir.src_ports.insert(src_ports.begin(), src_ports.end());
+    mir.dst_ports.insert(dst_ports.begin(), dst_ports.end());
+    mir.out_ports.insert(out_ports.begin(), out_ports.end());
+    spr->jRpc->addMirrorData("msandhu-sess1", mir);
+
+    string brUuid = spr->jRpc->getBridgeUuid("br-int");
+    if (brUuid.empty()) {
+        return false;
+    }
+    if (!spr->jRpc->createMirror(brUuid, "msandhu-sess1")) {
+        return false;
+    }
+    return true;
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {
-    WAIT_FOR(verifyPortUuid(spr), 500);
+    WAIT_FOR(verifyCreateDestroy(spr), 500);
 }
 BOOST_AUTO_TEST_SUITE_END()
 

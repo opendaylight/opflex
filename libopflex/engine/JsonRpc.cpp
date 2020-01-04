@@ -120,7 +120,7 @@ Value getValue(const Value& val, const list<string>& idx) {
     for (auto str : idx) {
         ss << " " << str << ", ";
     }
-    LOG(DEBUG) << ss.rdbuf();
+    LOG(DEBUG4) << ss.rdbuf();
     Document d;
     Document::AllocatorType& alloc = d.GetAllocator();
     Value tmpVal(Type::kNullType);
@@ -134,22 +134,22 @@ Value getValue(const Value& val, const list<string>& idx) {
     tmpVal.CopyFrom(val, alloc);
     for (list<string>::const_iterator itr=idx.begin(); itr != idx.end();
             itr++) {
-        LOG(DEBUG) << "index " << *itr;
+        LOG(DEBUG4) << "index " << *itr;
         bool isArr = false;
         try {
             index = stoi(*itr);
             isArr = true;
-            LOG(DEBUG) << "Is array";
+            LOG(DEBUG4) << "Is array";
         } catch (const invalid_argument& e) {
             // must be object name.
-            LOG(DEBUG) << "Is not array";
+            LOG(DEBUG4) << "Is not array";
         }
 
         if (isArr) {
             int arrSize = tmpVal.Size();
-            LOG(DEBUG) << "arr size " << arrSize;
+            LOG(DEBUG4) << "arr size " << arrSize;
             if ((arrSize - 1) < index) {
-                LOG(DEBUG) << "arr size is less than index";
+                LOG(DEBUG4) << "arr size is less than index";
                 // array size is less than the index we are looking for
                 tmpVal.SetNull();
                 return tmpVal;
@@ -160,7 +160,7 @@ Value getValue(const Value& val, const list<string>& idx) {
                 Value::ConstMemberIterator itrMem =
                         tmpVal.FindMember((*itr).c_str());
                 if (itrMem != tmpVal.MemberEnd()) {
-                    LOG(DEBUG) << "obj name << " << itrMem->name.GetString();
+                    LOG(DEBUG4) << "obj name << " << itrMem->name.GetString();
                     tmpVal.CopyFrom(itrMem->value, alloc);
                 } else {
                     // member not found
@@ -403,26 +403,23 @@ std::shared_ptr<RpcConnection> createConnection(Transaction& trans) {
 
 void MockRpcConnection::sendTransaction(const list<transData>& tl,
         const uint64_t& reqId) {
-    JsonReq* jr = new JsonReq(tl, reqId);
-    StringBuffer r;
-    Writer<StringBuffer> writer(r);
-    (*jr)(writer);
-    size_t reqHash = hash<string>{}(r.GetString());
     ResponseDict& rDict = ResponseDict::Instance();
-    map<size_t, Value*>::iterator itr = rDict.dict.find(reqHash);
+    map<size_t, int>::iterator itr = rDict.dict.find(reqId);
     if (itr != rDict.dict.end()) {
-        handleTransaction(1, *(itr->second));
+        handleTransaction(1, rDict.d[itr->second]);
+    } else {
+        LOG(DEBUG) << "No response found";
     }
 }
 
 void ResponseDict::init() {
-    for (unsigned int i=0; i < no_of_msgs; i++) {
-        d.GetAllocator().Clear();
-        d.Parse(response[i].c_str());
-        Value& tmpVal = d;
-        Value* val1 = new Value(tmpVal, d.GetAllocator());
-        dict.emplace(hash<string>{}(request[i]), val1);
+    uint64_t j=1000;
+    for (unsigned int i=0 ; i < no_of_msgs; i++, j++) {
+        d[i].GetAllocator().Clear();
+        d[i].Parse(response[i].c_str());
+        dict.emplace(j, i);
     }
+
 }
 
     ResponseDict& ResponseDict::Instance() {

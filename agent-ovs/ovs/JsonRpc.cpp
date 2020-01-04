@@ -453,9 +453,6 @@ using boost::uuids::basic_random_generator;
             return false;
         }
         handleMirrorConfig(pResp->reqId, pResp->payload, mir);
-        printSet(mir.src_ports);
-        printSet(mir.dst_ports);
-        printSet(mir.out_ports);
         // collect all port UUIDs in a set and query
         // OVSDB for names.
         set<string> uuids;
@@ -488,9 +485,6 @@ using boost::uuids::basic_random_generator;
         substituteSet(mir.src_ports, portMap);
         substituteSet(mir.dst_ports, portMap);
         substituteSet(mir.out_ports, portMap);
-        printSet(mir.src_ports);
-        printSet(mir.dst_ports);
-        printSet(mir.out_ports);
         return true;
     }
 
@@ -548,18 +542,18 @@ using boost::uuids::basic_random_generator;
             LOG(DEBUG) << "no mirror found";
             return false;
         }
-        printSet(uuids);
+
         mir.uuid = *(uuids.begin());
         getUuidsFromVal(uuids, payload, "select_src_port");
-        printSet(uuids);
+
         mir.src_ports.insert(uuids.begin(), uuids.end());
         uuids.clear();
         getUuidsFromVal(uuids, payload, "select_dst_port");
-        printSet(uuids);
+
         mir.dst_ports.insert(uuids.begin(), uuids.end());
         uuids.clear();
         getUuidsFromVal(uuids, payload, "output_port");
-        printSet(uuids);
+
         mir.out_ports.insert(uuids.begin(), uuids.end());
         return true;
     }
@@ -762,8 +756,6 @@ using boost::uuids::basic_random_generator;
             portUuidMap.emplace(*it, "");
         }
         getPortUuids(portUuidMap);
-
-        printMap(portUuidMap);
 
         transData td1;
 
