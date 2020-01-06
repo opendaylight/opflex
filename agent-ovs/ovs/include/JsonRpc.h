@@ -347,7 +347,7 @@ public:
 
     /**
      * set the next request ID
-     * @param id request id
+     * @param id_ request id
      */
     void setNextId(uint64_t id_) { id = id_;}
 
