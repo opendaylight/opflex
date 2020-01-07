@@ -893,6 +893,14 @@ public:
      */
     void getOpflexPeerStats(std::unordered_map<std::string, OF_SHARED_PTR<OFStats>>& stats);
 
+    /**
+     * Enable/Disable reporting of observable changes to registered observers
+     *
+     * @param class_id Observable class ID
+     * @param enabled Should reporting be enabled/disabled to observers
+     */
+     void overrideObservableReporting(modb::class_id_t class_id, bool enabled);
+
 private:
     /**
      * Get the object store that provides access to the managed object

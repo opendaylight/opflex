@@ -555,7 +555,7 @@ void Agent::start() {
             endpointSources.emplace_back(source);
         }
     }
-    if (endpointSourceModelLocalNames.size() > 0) {
+    if (!endpointSourceModelLocalNames.empty()) {
         EndpointSource* source =
                 new ModelEndpointSource(&endpointManager, framework,
                                         endpointSourceModelLocalNames);
@@ -588,8 +588,11 @@ void Agent::start() {
         pSimStats = std::unique_ptr<SimStats>(new SimStats(*this));
         pSimStats->start();
         policyManager.registerListener(&(*pSimStats));
-
     }
+
+    // disable reporting of some stats for now (MODB only)
+    LOG(INFO) << "Disable OpflexCounter reporting";
+    framework.overrideObservableReporting(modelgbp::observer::OpflexCounter::CLASS_ID, false);
 }
 
 void Agent::stop() {

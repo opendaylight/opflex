@@ -847,4 +847,15 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve_reconnect, EndpointResFixture ) {
     WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
+BOOST_FIXTURE_TEST_CASE( test_override_observale_reporting, BasePFixture ) {
+
+    const class_id_t classId = 12;
+    // default is to report
+    BOOST_CHECK(processor.isObservableReportable(classId));
+    processor.overrideObservableReporting(classId, false);
+    BOOST_CHECK(!processor.isObservableReportable(classId));
+    processor.overrideObservableReporting(classId, true);
+    BOOST_CHECK(processor.isObservableReportable(classId));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

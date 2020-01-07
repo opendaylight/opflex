@@ -226,6 +226,22 @@ public:
      */
     void setTunnelMac(const opflex::modb::MAC &mac);
 
+    /**
+     * Enable/Disable reporting of observable changes to registered observers
+     *
+     * @param class_id Observable class ID
+     * @param enabled Should reporting be enabled/disabled to observers
+     */
+    void overrideObservableReporting(modb::class_id_t class_id, bool enabled);
+
+    /**
+     * Should changes for specified observable class be reported
+     *
+     * @param class_id Observable class ID
+     * @return If observable changes should be reported
+     */
+    bool isObservableReportable(modb::class_id_t class_id);
+
 private:
     /**
      * The system store client
@@ -251,6 +267,11 @@ private:
      * Request ID counter
      */
     uint64_t nextXid;
+
+    /**
+     * Override whether observable is reportable
+     */
+     std::map<modb::class_id_t, bool> overrideReportable;
 
     /**
      * The status of items in the MODB with respect to the opflex
