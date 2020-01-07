@@ -296,6 +296,19 @@ bool Processor::resolveObj(ClassInfo::class_type_t type, const item& i,
     }
 }
 
+void Processor::overrideObservableReporting(class_id_t class_id, bool reportable) {
+    overrideReportable[class_id] = reportable;
+}
+
+bool Processor::isObservableReportable(class_id_t class_id) {
+    auto iter = overrideReportable.find(class_id);
+    if (iter != overrideReportable.end()) {
+        return iter->second;
+    }
+    // all observables are reportable by default
+    return true;
+}
+
 bool Processor::declareObj(ClassInfo::class_type_t type, const item& i,
                            uint64_t& newexp) {
     uint64_t curTime = now(proc_loop);
@@ -311,9 +324,8 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i,
             sendToRole(i, newexp, req, OFConstants::ENDPOINT_REGISTRY);
         }
         return true;
-        break;
     case ClassInfo::OBSERVABLE:
-        if (isParentSyncObject(i)) {
+        if (isParentSyncObject(i) && isObservableReportable(i.details->class_id)) {
             LOG(DEBUG3) << "Declaring local observable " << i.uri;
             i.details->resolve_time = curTime;
             vector<reference_t> refs;
@@ -322,11 +334,9 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i,
             sendToRole(i, newexp, req, OFConstants::OBSERVER);
         }
         return true;
-        break;
     default:
         // do nothing
         return false;
-        break;
     }
 }
 

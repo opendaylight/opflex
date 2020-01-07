@@ -277,5 +277,9 @@ void OFFramework::getOpflexPeerStats(std::unordered_map<string, OF_SHARED_PTR<OF
     pool.getOpflexPeerStats(stats);
 }
 
+void OFFramework::overrideObservableReporting(modb::class_id_t class_id, bool enabled) {
+    pimpl->processor.overrideObservableReporting(class_id, enabled);
+}
+
 } /* namespace ofcore */
 } /* namespace opflex */
