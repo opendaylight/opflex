@@ -770,7 +770,6 @@ void MOSerializer::displayUnresolvedObject(std::ostream& ostream,
     const OF_SHARED_PTR<const modb::mointernal::ObjectInstance> oi(
         client.get(class_id, uri));
     std::map<modb::class_id_t, std::vector<modb::URI> > children;
-    typedef std::map<std::string, std::pair<bool, std::string> > dmap;
     size_t maxPropName = 0;
     bool resolved = true;
     const modb::ClassInfo::property_map_t& pmap = ci.getProperties();
@@ -786,6 +785,16 @@ void MOSerializer::displayUnresolvedObject(std::ostream& ostream,
             maxPropName = pit->second.getName().size();
 
         switch (pit->second.getType()) {
+            case modb::PropertyInfo::STRING:
+            case modb::PropertyInfo::S64:
+            case modb::PropertyInfo::U64:
+            case modb::PropertyInfo::MAC:
+            case modb::PropertyInfo::ENUM8:
+            case modb::PropertyInfo::ENUM16:
+            case modb::PropertyInfo::ENUM32:
+            case modb::PropertyInfo::ENUM64:
+                break;
+
             case modb::PropertyInfo::REFERENCE: {
                 std::ostringstream str;
                 if (pit->second.getCardinality() ==
@@ -850,20 +859,9 @@ void MOSerializer::displayUnresolvedObject(std::ostream& ostream,
         }
     }
 
-    bool hasChildren = false;
     std::map<modb::class_id_t, std::vector<modb::URI> >::iterator clsit;
     std::vector<modb::URI>::const_iterator cit;
-    for (clsit = children.begin(); clsit != children.end();) {
-        if (clsit->second.size() == 0)
-            children.erase(clsit++);
-        else {
-            hasChildren = true;
-            ++clsit;
-        }
-    }
-
     for (clsit = children.begin(); clsit != children.end(); ++clsit) {
-        bool lclass = boost::next(clsit) == children.end();
         for (cit = clsit->second.begin(); cit != clsit->second.end(); ++cit) {
             displayUnresolvedObject(ostream, clsit->first, *cit, tree, utf8);
         }

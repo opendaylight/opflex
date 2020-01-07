@@ -23,6 +23,9 @@ namespace opflexagent
 using namespace std;
 using namespace opflex::modb;
 
+/**
+ * represent netflow exporter config object
+ */
 class ExporterConfigState
 {
 

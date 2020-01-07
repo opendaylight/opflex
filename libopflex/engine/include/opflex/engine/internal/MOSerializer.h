@@ -86,6 +86,15 @@ public:
                            pit->second.getCardinality()))
                 continue;
             switch (pit->second.getType()) {
+                case modb::PropertyInfo::STRING:
+                case modb::PropertyInfo::S64:
+                case modb::PropertyInfo::U64:
+                case modb::PropertyInfo::MAC:
+                case modb::PropertyInfo::ENUM8:
+                case modb::PropertyInfo::ENUM16:
+                case modb::PropertyInfo::ENUM32:
+                case modb::PropertyInfo::ENUM64:
+                    break;
                 case modb::PropertyInfo::REFERENCE:
 
                     if (pit->second.getCardinality() ==
