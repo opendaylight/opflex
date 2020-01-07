@@ -31,8 +31,6 @@
                                                             (Active Connections)
 */
 
-
-
 /*
    ____        _     _ _        _       _             __
   |  _ \ _   _| |__ | (_) ___  (_)_ __ | |_ ___ _ __ / _| __ _  ___ ___  ___
@@ -132,8 +130,6 @@ namespace yajr {
     namespace comms {
 
 using namespace yajr::comms::internal;
-
-
 
 namespace internal {
 /*
@@ -279,7 +275,6 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
 }
 
-
 
 /*
      _   _ _   _ _ _ _            __                  _   _
@@ -378,15 +373,7 @@ void retry_later(ActivePeer * peer) {
     peer->unlink();
     peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
 
- // VLOG(1)
- //     << peer
- //     << " down() for a retry_later()"
- // ;
-
     assert(peer->uvRefCnt_ > 0);
- // peer->down();
-
-    return;
 }
 
 void swap_stack_on_close(uv_handle_t * h) {
@@ -396,9 +383,6 @@ void swap_stack_on_close(uv_handle_t * h) {
     VLOG(1)
         << peer
     ;
-
- // LOG(DEBUG) << "{" << peer << "}A down() for a swap_stack_on_close()";
- // peer->down();
 
     int rc;
     /* FIXME: pass the loop along */
@@ -473,12 +457,13 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
                 case -EAFNOSUPPORT:
                 case -EPROTOTYPE:
                 case -EINVAL:
-                    LOG(INFO)
-                        << "destroying socket and retrying"
-                    ;
+                    LOG(INFO) << "destroying socket and retrying";
                     if (!uv_is_closing(peer->getHandle())) {
                         uv_close(peer->getHandle(), swap_stack_on_close);
                     }
+                    break;
+                 default:
+                    LOG(WARNING) << "Unexpected tcp connect rc " << rc;
             }
 
             return 0;
