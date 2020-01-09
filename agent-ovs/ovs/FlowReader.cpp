@@ -151,6 +151,41 @@ void FlowReader::decodeReply(ofpbuf *msg, FlowEntryList& recvFlows,
         ofpbuf_init(&actsBuf, 32);
         int ret = ofputil_decode_flow_stats_reply(entry->entry, msg, false,
                 &actsBuf);
+
+        /**
+         * From OVS 2.11.2, when we are decoding flows received from ovs
+         * using ofputil_decode_flow_stats_reply(), packet_type gets set
+         * internally when OVS tries to generate "match" struct from "ofp11_match".
+         * While we create flows using ofputil_encode_flow_mod(), packet_type
+         * doesnt get set.
+         *
+         * packet_type is something internal which ovs sets up. From opflex-agent
+         * point of view, we dont have to really worry about this packet_type,
+         * since it wasnt used during creation of flows. Masking this field's
+         * key and wildcard.
+         *
+         * Mentioning the call sequences for clarity.
+         *
+         * writeFlow()
+         * --> FlowExecutor::DoExecuteNoBlock(const T& fe,
+         * --> EncodeMod<typename T::Entry>(e, ofVersion)
+         * --> ofputil_encode_flow_mod(&flowMod, proto)
+         * --> ofputil_put_ofp11_match(msg, &match, protocol)
+         * --> ofputil_match_to_ofp11_match(match, om)
+         * --> packet_type is not set in the final match
+         *
+         * FlowReader::decodeReply()
+         * --> ofputil_decode_flow_stats_reply(entry->entry, msg, false,
+         * --> ofputil_pull_ofp11_match(msg, NULL, NULL, &fs->match,
+         * --> ofputil_match_from_ofp11_match(om, match)
+         * --> match_set_default_packet_type(match) <-- This is getting set for
+         *                    dl_type, dl_src, dl_dst and some cases of dl_vlan
+         */
+        if (entry->entry) {
+            entry->entry->match.flow.packet_type = 0;
+            entry->entry->match.wc.masks.packet_type = 0;
+        }
+
         entry->entry->ofpacts = ActionBuilder::getActionsFromBuffer(&actsBuf,
                 entry->entry->ofpacts_len);
         ofpbuf_uninit(&actsBuf);
