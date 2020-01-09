@@ -68,7 +68,7 @@ Summary: Open vSwitch renderer module for OpFlex Agent
 Group: Development/Libraries
 Requires: %{name} = %{epoch}:%{version}-%{release}
 Requires: noiro-openvswitch-lib >= 2.12.0
-Requires: openvswitch >= 2.12.0
+Requires: openvswitch >= 2.9.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 
