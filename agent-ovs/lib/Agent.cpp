@@ -181,6 +181,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OVSDB_IP_ADDRESS("ovsdb.ip-address");
     static const std::string OVSDB_PORT("ovsdb.port");
     static const std::string OVSDB_BRIDGE("ovsdb.bridge");
+    static const std::string FEATURE_ERSPAN("feature.erspan");
 
     optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
@@ -404,30 +405,37 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
        ((this->rendererFwdMode == opflex::ofcore::OFConstants::TRANSPORT_MODE)?
         "transport-mode" : "stitched-mode");
 
-    boost::optional<std::string> ovsdb_ip_addr =
-            properties.get_optional<std::string>(OVSDB_IP_ADDRESS);
-    if (ovsdb_ip_addr) {
-        ovsdbIpAddress = ovsdb_ip_addr.get();
+    boost::optional<std::string> feature_erspan =
+            properties.get_optional<std::string>(FEATURE_ERSPAN);
+    if (!feature_erspan ||
+       (feature_erspan && (feature_erspan.get().compare("ON")) == 0)) {
+        boost::optional<std::string> ovsdb_ip_addr =
+                properties.get_optional<std::string>(OVSDB_IP_ADDRESS);
+        if (ovsdb_ip_addr) {
+            ovsdbIpAddress = ovsdb_ip_addr.get();
+        } else {
+            ovsdbIpAddress = "127.0.0.1";
+        }
+        boost::optional<unsigned long> ovsdb_port =
+                properties.get_optional<unsigned long>(OVSDB_PORT);
+        if (ovsdb_port) {
+            ovsdbPort = ovsdb_port.get();
+        } else {
+            ovsdbPort = 6640;
+        }
+        boost::optional<std::string> ovsdb_bridge =
+                properties.get_optional<std::string>(OVSDB_BRIDGE);
+        if (ovsdb_bridge) {
+            ovsdbBridge = ovsdb_bridge.get();
+        } else {
+            ovsdbBridge = "br-int";
+        }
+        LOG(INFO) << "OVSDB IP address " << ovsdbIpAddress <<
+                ", OVSDB port " << ovsdbPort;
     } else {
-        ovsdbIpAddress = "127.0.0.1";
+        LOG(DEBUG) << "ERSPAN feature disabled";
+        featureErspan = false;
     }
-    boost::optional<unsigned long> ovsdb_port =
-            properties.get_optional<unsigned long>(OVSDB_PORT);
-    if (ovsdb_port) {
-        ovsdbPort = ovsdb_port.get();
-    } else {
-        ovsdbPort = 6640;
-    }
-    boost::optional<std::string> ovsdb_bridge =
-            properties.get_optional<std::string>(OVSDB_BRIDGE);
-    if (ovsdb_bridge) {
-        ovsdbBridge = ovsdb_bridge.get();
-    } else {
-        ovsdbBridge = "br-int";
-    }
-
-    LOG(INFO) << "OVSDB IP address " << ovsdbIpAddress <<
-            ", OVSDB port " << ovsdbPort;
 }
 
 void Agent::applyProperties() {
@@ -523,7 +531,8 @@ void Agent::start() {
     policyManager.start();
     endpointManager.start();
     notifServer.start();
-    spanManager.start();
+    if (featureErspan)
+        spanManager.start();
     netflowManager.start();
     for (auto& r : renderers) {
         r.second->start();

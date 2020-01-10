@@ -285,6 +285,12 @@ public:
      */
     const std::string& getOvsdbBridge() { return ovsdbBridge; }
 
+    /**
+     * get ERSPAN feature setting
+     * @return true if feature is enabled, false otherwise.
+     */
+    bool getErspanFeatureSetting() { return featureErspan;}
+
 private:
     boost::asio::io_service agent_io;
     std::unique_ptr<boost::asio::io_service::work> io_work;
@@ -373,6 +379,8 @@ private:
     SpanManager spanManager;
     NetFlowManager netflowManager;
 
+    // erspan feature flag
+    bool featureErspan = true;
     // ovsdb parameters
     std::string ovsdbIpAddress;
     unsigned long ovsdbPort;

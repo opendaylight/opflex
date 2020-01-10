@@ -149,7 +149,8 @@ void OVSRenderer::start() {
     }
     intFlowManager.start();
     intFlowManager.registerModbListeners();
-    spanRenderer.start();
+    if (getAgent().getErspanFeatureSetting())
+        spanRenderer.start();
     netflowRenderer.start();
 
     if (accessBridgeName != "") {
