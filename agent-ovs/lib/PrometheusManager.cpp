@@ -65,6 +65,16 @@ static string ep_family_help[] =
   "Local endpoint tx broadcast packets"
 };
 
+static string metric_annotate_skip[] =
+{
+  "vm-name",
+  "namespace",
+  "interface-name",
+  "pod-template-hash",
+  "controller-revision-hash",
+  "pod-template-generation"
+};
+
 // construct PrometheusManager
 PrometheusManager::PrometheusManager(opflex::ofcore::OFFramework &fwk_) :
                                      framework(fwk_),
@@ -366,14 +376,25 @@ int PrometheusManager::max_metric_attr_count = 5;
 
 // Create a label map that can be used for annotation, given the ep attr map
 map<string,string> PrometheusManager::createLabelMapFromAttr (
-                                                           const string& ep_name_,
+                                                           const string& ep_name,
                                  const unordered_map<string, string>&    attr_map)
 {
     map<string,string>   label_map;
-    auto ep_name = checkMetricName(ep_name_)?ep_name_:sanitizeMetricName(ep_name_);
     label_map["if_name"] = ep_name;
-
     int attr_count = 1; // Accounting for if_name
+
+    auto ns_itr = attr_map.find("namespace");
+    if (ns_itr != attr_map.end()) {
+        label_map["namespace"] = ns_itr->second;
+        attr_count++; // accounting for ns
+    }
+
+    auto pod_itr = attr_map.find("vm-name");
+    if (pod_itr != attr_map.end()) {
+        label_map["pod"] = pod_itr->second;
+        attr_count++; // accounting for pod
+    }
+
     for (const auto &p : attr_map) {
         if (attr_count == max_metric_attr_count) {
             LOG(DEBUG) << "Exceeding max attr count " << attr_count;
@@ -384,10 +405,18 @@ map<string,string> PrometheusManager::createLabelMapFromAttr (
         if (p.second.empty())
             continue;
 
-        if (!p.first.compare("pod-template-hash"))
+        bool metric_skip = false;
+        for (auto &skip_str : metric_annotate_skip) {
+            if (!p.first.compare(skip_str)) {
+                metric_skip = true;
+                break;
+            }
+        }
+        if (metric_skip)
             continue;
 
-        if (checkMetricName(p.first) && checkMetricName(p.second)) {
+        // Label values can be anything in prometheus
+        if (checkMetricName(p.first)) {
             label_map[p.first] = p.second;
             /* Only prometheus compatible metrics are accounted against
              * attr_count. If user appends valid attributes to ep file that
