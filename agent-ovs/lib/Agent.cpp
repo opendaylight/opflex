@@ -181,6 +181,10 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OVSDB_IP_ADDRESS("ovsdb.ip-address");
     static const std::string OVSDB_PORT("ovsdb.port");
     static const std::string OVSDB_BRIDGE("ovsdb.bridge");
+    static const std::string DISABLED_FEATURES("feature.disabled");
+
+    // set feature flags to true
+    clearFeatureFlags();
 
     optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
@@ -226,6 +230,12 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         statMode = getStatModeFromString(statMode_json.get());
     }
 
+    optional<const ptree&> disabledFeatures =
+            properties.get_child_optional(DISABLED_FEATURES);
+    if (disabledFeatures) {
+        for (const ptree::value_type &v : disabledFeatures.get())
+            disabledFeaturesSet.insert(v.second.data());
+    }
     optional<const ptree&> fsEndpointSource =
         properties.get_child_optional(ENDPOINT_SOURCE_FSPATH);
 
@@ -425,9 +435,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     } else {
         ovsdbBridge = "br-int";
     }
-
     LOG(INFO) << "OVSDB IP address " << ovsdbIpAddress <<
             ", OVSDB port " << ovsdbPort;
+
+    if (disabledFeaturesSet.find("erspan") != disabledFeaturesSet.end()) {
+        LOG(DEBUG) << "ERSPAN feature disabled";
+        featureFlag[FeatureList::ERSPAN] = false;
+    }
+
 }
 
 void Agent::applyProperties() {
@@ -523,7 +538,8 @@ void Agent::start() {
     policyManager.start();
     endpointManager.start();
     notifServer.start();
-    spanManager.start();
+    if (isFeatureEnabled(FeatureList::ERSPAN))
+        spanManager.start();
     netflowManager.start();
     for (auto& r : renderers) {
         r.second->start();
@@ -636,6 +652,9 @@ void Agent::stop() {
     notifServer.stop();
     endpointManager.stop();
     policyManager.stop();
+    if (isFeatureEnabled(FeatureList::ERSPAN))
+        spanManager.stop();
+    netflowManager.stop();
 #ifdef HAVE_PROMETHEUS_SUPPORT
     prometheusManager.stop();
 #endif
@@ -707,6 +726,12 @@ void Agent::setUplinkMac(const std::string &mac) {
     for (const host_t& h : opflexPeers)
         framework.addPeer(h.first, h.second);
 
+}
+
+void Agent::clearFeatureFlags() {
+    for (int i=0 ; i < FeatureList::MAX; i++) {
+        featureFlag[i] = true;
+    }
 }
 
 } /* namespace opflexagent */
