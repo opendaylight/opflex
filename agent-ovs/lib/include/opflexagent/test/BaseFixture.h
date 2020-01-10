@@ -48,6 +48,8 @@ public:
             proxyAddress = boost::asio::ip::address_v4::from_string("55.55.55.55",ec);
             framework.setMacProxy(proxyAddress);
         }
+        // set feature flags to true
+        agent.clearFeatureFlags();
         agent.start();
     }
 

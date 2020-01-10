@@ -206,7 +206,8 @@ namespace opflexagent {
     }
 
     optional<shared_ptr<SessionState>>
-        SpanManager::getSessionState(const URI& uri) const {
+        SpanManager::getSessionState(const URI& uri) {
+        lock_guard<mutex> guard(mtx);
         unordered_map<URI, shared_ptr<SessionState>>
                 ::const_iterator itr = sess_map.find(uri);
         if (itr == sess_map.end()) {
@@ -218,12 +219,15 @@ namespace opflexagent {
 
     void SpanManager::SpanUniverseListener::processSession(shared_ptr<Session> sess) {
         shared_ptr<SessionState> sessState;
-        auto itr = spanmanager.sess_map.find(sess->getURI());
-        if (itr != spanmanager.sess_map.end()) {
-            spanmanager.sess_map.erase(itr);
+        {
+            lock_guard<mutex> guard(spanmanager.mtx);
+            auto itr = spanmanager.sess_map.find(sess->getURI());
+            if (itr != spanmanager.sess_map.end()) {
+                spanmanager.sess_map.erase(itr);
+            }
+            sessState = make_shared<SessionState>(sess->getURI(), sess->getName().get());
+            spanmanager.sess_map.insert(make_pair(sess->getURI(), sessState));
         }
-        sessState = make_shared<SessionState>(sess->getURI(), sess->getName().get());
-        spanmanager.sess_map.insert(make_pair(sess->getURI(), sessState));
         print_map(spanmanager.sess_map);
 
         vector <shared_ptr<SrcGrp>> srcGrpVec;

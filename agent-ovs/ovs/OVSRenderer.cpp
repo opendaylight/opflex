@@ -149,8 +149,10 @@ void OVSRenderer::start() {
     }
     intFlowManager.start();
     intFlowManager.registerModbListeners();
-    spanRenderer.start();
-    netflowRenderer.start();
+    if (getAgent().isFeatureEnabled(FeatureList::ERSPAN))
+        spanRenderer.start();
+    if (getAgent().isFeatureEnabled(FeatureList::NETFLOW))
+        netflowRenderer.start();
 
     if (accessBridgeName != "") {
         accessFlowManager.start();
@@ -314,6 +316,10 @@ void OVSRenderer::stop() {
 
     intSwitchManager.stop();
     accessSwitchManager.stop();
+    if (getAgent().isFeatureEnabled(FeatureList::ERSPAN))
+        spanRenderer.stop();
+    if (getAgent().isFeatureEnabled(FeatureList::NETFLOW))
+        netflowRenderer.stop();
 
     if (encapType == IntFlowManager::ENCAP_VXLAN ||
         encapType == IntFlowManager::ENCAP_IVXLAN) {

@@ -159,6 +159,14 @@
         "bridge": "br-int"
     },
 
+    // feature on/off switch
+    "feature": {
+        "disabled": {
+           "erspan": ""
+           "netflow": ""
+        }
+    },
+
     // Renderers enforce policy obtained via OpFlex.
     // Default: no renderers
     "renderers": {

@@ -94,7 +94,7 @@ public:
       * @return shared pointer to SessionState or none.
       */
       boost::optional<shared_ptr<SessionState>>
-          getSessionState(const URI& uri) const;
+          getSessionState(const URI& uri);
 
     /**
      * Register a listener for span change events
@@ -236,6 +236,10 @@ private:
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<SessionState>> notifyDelete;
     bool isDeletePending = false;
+    /**
+     * mutex used for synchronizing access to data structs
+     */
+    mutex mtx;
 
 };
 }
