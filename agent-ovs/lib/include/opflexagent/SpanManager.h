@@ -94,7 +94,7 @@ public:
       * @return shared pointer to SessionState or none.
       */
       boost::optional<shared_ptr<SessionState>>
-          getSessionState(const URI& uri) const;
+          getSessionState(const URI& uri);
 
     /**
      * Register a listener for span change events

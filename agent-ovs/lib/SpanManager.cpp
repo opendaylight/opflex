@@ -206,7 +206,7 @@ namespace opflexagent {
     }
 
     optional<shared_ptr<SessionState>>
-        SpanManager::getSessionState(const URI& uri) const {
+        SpanManager::getSessionState(const URI& uri) {
         unordered_map<URI, shared_ptr<SessionState>>
                 ::const_iterator itr = sess_map.find(uri);
         if (itr == sess_map.end()) {
