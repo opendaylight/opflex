@@ -159,6 +159,11 @@
         "bridge": "br-int"
     },
 
+    // feature on/off switch
+    "feature": {
+        "disabled": []
+    },
+
     // Renderers enforce policy obtained via OpFlex.
     // Default: no renderers
     "renderers": {

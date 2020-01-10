@@ -58,6 +58,10 @@ class SimStats;
 class FSPacketDropLogConfigSource;
 
 enum StatMode { REAL, SIM, OFF };
+/**
+ * feature list enum. Always keep MAX at the end.
+ */
+enum FeatureList { ERSPAN=0, MAX };
 
 /**
  * Master object for the OVS agent.  This class holds the state for
@@ -285,6 +289,16 @@ public:
      */
     const std::string& getOvsdbBridge() { return ovsdbBridge; }
 
+    /**
+     * get feature
+     * @return true if feature is enabled, false otherwise.
+     */
+    bool isFeatureEnabled(FeatureList feature) { return featureFlag[feature];}
+
+    /**
+     * clear feature flags. set them to true.
+     */
+    void clearFeatureFlags();
 private:
     boost::asio::io_service agent_io;
     std::unique_ptr<boost::asio::io_service::work> io_work;
@@ -322,6 +336,7 @@ private:
     boost::uint_t<64>::fast prr_timer = 3600;  /* seconds */
 
     std::set<std::string> endpointSourceFSPaths;
+    std::set<std::string> disabledFeaturesSet;
     std::set<std::string> endpointSourceModelLocalNames;
     std::vector<std::unique_ptr<EndpointSource>> endpointSources;
     std::vector<std::unique_ptr<FSRDConfigSource>> rdConfigSources;
@@ -373,6 +388,8 @@ private:
     SpanManager spanManager;
     NetFlowManager netflowManager;
 
+    // feature flag array
+    bool featureFlag[FeatureList::MAX];
     // ovsdb parameters
     std::string ovsdbIpAddress;
     unsigned long ovsdbPort;
