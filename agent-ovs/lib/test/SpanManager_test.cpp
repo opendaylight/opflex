@@ -220,8 +220,8 @@ static bool testGetSession(shared_ptr<LocalEp> le, optional<URI> uri) {
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, SpanFixture ) {
-    WAIT_FOR(checkSpan(agent.getSpanManager().getSessionState(sess->getURI()),
-            sess->getURI()), 500);
+//    WAIT_FOR(checkSpan(agent.getSpanManager().getSessionState(sess->getURI()),
+//            sess->getURI()), 500);
     WAIT_FOR(agent.getSpanManager().getSessionState(sess->getURI())
             .get()->getSrcEndPointSet().size() == 2, 500);
     WAIT_FOR(checkSrcEps(agent.getSpanManager().getSessionState(sess->getURI()),

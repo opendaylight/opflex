@@ -181,6 +181,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OVSDB_IP_ADDRESS("ovsdb.ip-address");
     static const std::string OVSDB_PORT("ovsdb.port");
     static const std::string OVSDB_BRIDGE("ovsdb.bridge");
+    static const std::string FEATURE_ERSPAN("feature.disabled.erspan");
+    static const std::string FEATURE_NETFLOW("feature.disabled.netflow");
 
     optional<std::string> logLvl =
         properties.get_optional<std::string>(LOG_LEVEL);
@@ -425,9 +427,21 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     } else {
         ovsdbBridge = "br-int";
     }
-
     LOG(INFO) << "OVSDB IP address " << ovsdbIpAddress <<
             ", OVSDB port " << ovsdbPort;
+
+    boost::optional<std::string> feature_erspan =
+            properties.get_optional<std::string>(FEATURE_ERSPAN);
+    if (feature_erspan) {
+        LOG(DEBUG) << "ERSPAN feature disabled";
+        featureFlag[FeatureList::ERSPAN] = false;
+    }
+    boost::optional<std::string> feature_netflow =
+            properties.get_optional<std::string>(FEATURE_NETFLOW);
+    if (feature_netflow) {
+        LOG(DEBUG) << "NETFLOW feature disabled";
+        featureFlag[FeatureList::NETFLOW] = false;
+    }
 }
 
 void Agent::applyProperties() {
@@ -523,8 +537,10 @@ void Agent::start() {
     policyManager.start();
     endpointManager.start();
     notifServer.start();
-    spanManager.start();
-    netflowManager.start();
+    if (isFeatureEnabled(FeatureList::ERSPAN))
+        spanManager.start();
+    if (isFeatureEnabled(FeatureList::NETFLOW))
+        netflowManager.start();
     for (auto& r : renderers) {
         r.second->start();
     }
@@ -636,6 +652,10 @@ void Agent::stop() {
     notifServer.stop();
     endpointManager.stop();
     policyManager.stop();
+    if (isFeatureEnabled(FeatureList::ERSPAN))
+        spanManager.stop();
+    if (isFeatureEnabled(FeatureList::NETFLOW))
+        netflowManager.stop();
 #ifdef HAVE_PROMETHEUS_SUPPORT
     prometheusManager.stop();
 #endif

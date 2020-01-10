@@ -86,8 +86,8 @@ static bool checkNetFlowDstPort(boost::optional<shared_ptr<ExporterConfigState>>
         return false;
 }
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, NetflowFixture ) {
-    WAIT_FOR(checkNetFlow(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()),
-                          exportCfg->getURI()), 500);
+//    WAIT_FOR(checkNetFlow(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()),
+//                          exportCfg->getURI()), 500);
     WAIT_FOR(checkNetFlowTimeout(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
     WAIT_FOR(checkNetFlowDstAddress(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
     WAIT_FOR(checkNetFlowDstPort(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
