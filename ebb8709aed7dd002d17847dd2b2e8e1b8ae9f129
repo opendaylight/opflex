@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b7490279_2b6477ae",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 414,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-12T08:17:31Z",
+      "side": 1,
+      "message": "Don\u0027t we still need an OVSDB connection for netflow?",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ae377472_944dac03",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-12T08:17:31Z",
+      "side": 1,
+      "message": "There should be a corresponding check and call to spanManager.stop (and netflowManager.stop()) in stop()",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ddf40a3_73c7dbf6",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-12T08:17:31Z",
+      "side": 1,
+      "message": "Can you make this more generic so we don\u0027t have to add methods for every feature we want to be able to disable if needed",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43cd5702_c7f556b6",
+        "filename": "agent-ovs/ovs/OVSRenderer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-12T08:17:31Z",
+      "side": 1,
+      "message": "There should be a corresponding check and call to spanRenderer.stop (and netflowRenderer.stop()) in OVSRenderer::stop()",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
