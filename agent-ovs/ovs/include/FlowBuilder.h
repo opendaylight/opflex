@@ -32,6 +32,10 @@ public:
      * Build the flow entry
      */
     FlowEntryPtr build();
+    /**
+     * Build the tlv entry
+     */
+    TlvEntryPtr buildTlv();
 
     /**
      * Build the entry and add it to a flow entry list
@@ -40,9 +44,26 @@ public:
     void build(FlowEntryList& list);
 
     /**
+     * Build the entry and add it to a tlv entry list
+     * @param tlv the tlv list to add to
+     */
+    void buildTlv(TlvEntryList& tlv);
+
+    /**
      * Get the action builder to set up the action
      */
     ActionBuilder& action();
+
+    /**
+     * Set the tlv
+     * @param opt_class Option class
+     * @param opt_type Option type
+     * @param opt_len length of the option value
+     * @param idx tunnel metadata register index
+     * @return this flow builder for chaining
+     */
+    FlowBuilder& tlv(uint16_t opt_class, uint8_t opt_type,
+            uint8_t opt_len, uint16_t idx);
 
     /**
      * Set the table ID for the flow entry
@@ -333,6 +354,7 @@ public:
 private:
     std::unique_ptr<ActionBuilder> action_;
     FlowEntryPtr entry_;
+    TlvEntryPtr tlvEntry_;
     uint16_t ethType_;
 
     struct match* match();

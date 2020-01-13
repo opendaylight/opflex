@@ -34,6 +34,10 @@ struct match_key_t {
     struct match match;
 };
 
+struct tlv_key_t {
+     uint16_t option_class;
+     uint16_t option_type;
+};
 } /* namespace opflexagent */
 
 namespace std {
@@ -42,6 +46,19 @@ template<> struct hash<opflexagent::match_key_t> {
     size_t operator()(const opflexagent::match_key_t& match_key) const noexcept {
         size_t hashv = match_hash(&match_key.match, 0);
         boost::hash_combine(hashv, match_key.prio);
+        return hashv;
+    }
+};
+
+} /* namespace std */
+
+namespace std {
+
+template<> struct hash<opflexagent::tlv_key_t> {
+    size_t operator()(const opflexagent::tlv_key_t& tlv_key) const noexcept {
+        size_t hashv = 0;
+        boost::hash_combine(hashv, tlv_key.option_class);
+        boost::hash_combine(hashv, tlv_key.option_type);
         return hashv;
     }
 };
@@ -187,6 +204,12 @@ typedef std::unordered_map<match_key_t, flow_vec_t> match_map_t;
 typedef std::unordered_map<std::string, match_map_t> entry_map_t;
 typedef std::unordered_set<match_key_t> cookie_set_t;
 typedef std::unordered_map<uint64_t, cookie_set_t> cookie_map_t;
+typedef std::vector<TlvEntryPtr> tlv_vec_t;
+typedef std::pair<std::string, TlvEntryPtr> obj_id_tlv_t;
+typedef std::vector<obj_id_tlv_t> obj_id_tlv_vec_t;
+typedef std::unordered_map<tlv_key_t, tlv_vec_t> match_tlv_opt_map_t;
+typedef std::unordered_map<std::string, match_tlv_opt_map_t> tlv_entry_map_t;
+typedef std::unordered_map<tlv_key_t, obj_id_tlv_vec_t> match_obj_tlv_map_t;
 
 bool operator==(const match_key_t& lhs, const match_key_t& rhs) {
     return lhs.prio == rhs.prio && match_equal(&lhs.match, &rhs.match);
@@ -195,11 +218,21 @@ bool operator!=(const match_key_t& lhs, const match_key_t& rhs) {
     return !(lhs == rhs);
 }
 
+bool operator==(const tlv_key_t& lhs, const tlv_key_t& rhs) {
+    return ((lhs.option_class == rhs.option_class) &&
+    (lhs.option_type == rhs.option_type));
+}
+bool operator!=(const tlv_key_t& lhs, const tlv_key_t& rhs) {
+    return !(lhs == rhs);
+}
+
 class TableState::TableStateImpl {
 public:
     entry_map_t entry_map;
     match_obj_map_t match_obj_map;
     cookie_map_t cookie_map;
+    tlv_entry_map_t tlv_entry_map;
+    match_obj_tlv_map_t match_obj_tlv_map;
 };
 
 TableState::TableState() : pimpl(new TableStateImpl()) { }
@@ -248,6 +281,44 @@ void TableState::diffSnapshot(const FlowEntryList& oldEntries,
     }
 }
 
+void TableState::diffSnapshot(const TlvEntryList& oldEntries,
+                              TlvEdit& diffs) const {
+    typedef std::pair<bool, TlvEntryPtr> visited_te_t;
+    typedef std::unordered_map<tlv_key_t, visited_te_t> old_entry_map_t;
+
+    diffs.edits.clear();
+
+    old_entry_map_t old_entries;
+    for (const TlvEntryPtr& te : oldEntries) {
+        tlv_key_t key;
+        key.option_class = te->entry->option_class;
+        key.option_type = te->entry->option_type;
+        old_entries[key] = make_pair(false, te);
+    }
+
+    // Add/mod any matches in the object map
+    for (match_obj_tlv_map_t::value_type& e : pimpl->match_obj_tlv_map) {
+        old_entry_map_t::iterator it = old_entries.find(e.first);
+        if (it == old_entries.end()) {
+            diffs.add(TlvEdit::ADD, e.second.front().second);
+        } else {
+            it->second.first = true;
+            TlvEntryPtr& olde = it->second.second;
+            TlvEntryPtr& newe = e.second.front().second;
+            if (!olde->tlvEq(*newe)) {
+                diffs.add(TlvEdit::DEL, olde);
+                diffs.add(TlvEdit::ADD, newe);
+            }
+        }
+    }
+
+    // Remove unvisited entries from the old entry list
+    for (old_entry_map_t::value_type& e : old_entries) {
+        if (e.second.first) continue;
+        diffs.add(TlvEdit::DEL, e.second.second);
+    }
+}
+
 void TableState::forEachCookieMatch(cookie_callback_t& cb) const {
     for (const auto& cookies : pimpl->cookie_map) {
         for (const auto& match_key : cookies.second) {
@@ -283,6 +354,7 @@ void TableState::apply(const std::string& objId,
 
     match_map_t new_entries;
     for (const FlowEntryPtr& fe : newEntries) {
+
         match_key_t key;
         key.prio = fe->entry->priority;
         key.match = fe->entry->match;
@@ -420,6 +492,202 @@ void TableState::apply(const std::string& objId,
     } else {
         if (itr == pimpl->entry_map.end()) {
             pimpl->entry_map[objId].swap(new_entries);
+        } else {
+            itr->second.swap(new_entries);
+        }
+    }
+}
+
+TlvEntry::TlvEntry(struct ofputil_tlv_map *tlv_map) {
+    entry = (ofputil_tlv_map *)calloc(1, sizeof(struct ofputil_tlv_map));
+    entry->option_class = tlv_map->option_class;
+    entry->option_type = tlv_map->option_type;
+    entry->option_len = tlv_map->option_len;
+    entry->index = tlv_map->index;
+}
+
+TlvEntry::TlvEntry() {
+    entry = (ofputil_tlv_map *)calloc(1, sizeof(struct ofputil_tlv_map));
+}
+
+TlvEntry::~TlvEntry() {
+    if (entry) {
+        free(entry);
+    }
+    entry = NULL;
+}
+
+bool TlvEntry::tlvEq(const TlvEntry& rhs) {
+    return (
+    (entry->option_class == rhs.entry->option_class) &&
+    (entry->option_type == rhs.entry->option_type) &&
+    (entry->option_len == rhs.entry->option_len) &&
+    (entry->index == rhs.entry->index));
+}
+
+ostream & operator<<(ostream& os, const TlvEntryPtr& te) {
+    os << "{class=" << (uint32_t)te->entry->option_class << ",type="
+       << (uint32_t)te->entry->option_type << ",len="
+       << (uint32_t)te->entry->option_len << "}->tun_metadata"
+       << (uint32_t)te->entry->index;
+    return os;
+}
+
+ostream & operator<<(ostream& os, const struct ofputil_tlv_map& fs) {
+    DsP str;
+    print_tlv_map(str.get(), &fs);
+    os << (const char*)(ds_cstr(str.get())); // trim space
+    return os;
+}
+
+ostream & operator<<(ostream& os, const TlvEdit::Entry& te) {
+    std::vector<std::string> op{"ADD", "DEL", "CLR"};
+    os << op[te.first] << "|" << te.second;
+    return os;
+}
+
+/** TlvEdit **/
+void TlvEdit::add(TlvEdit::type t, TlvEntryPtr te) {
+    edits.push_back(std::make_pair(t, te));
+}
+
+void TableState::apply(const std::string& objId,
+                       TlvEntryList& newEntries,
+                       /* out */ TlvEdit& diffs) {
+    diffs.edits.clear();
+
+    match_tlv_opt_map_t new_entries;
+    for (const TlvEntryPtr& te : newEntries) {
+
+        tlv_key_t key;
+        key.option_class = te->entry->option_class;
+        key.option_type = te->entry->option_type;
+        new_entries[key].push_back(te);
+    }
+
+    // load new entries
+    for (match_tlv_opt_map_t::value_type& e : new_entries) {
+        // check if there's an overlapping match already in the table
+        match_obj_tlv_map_t::iterator oit =
+                pimpl->match_obj_tlv_map.find(e.first);
+
+        if (oit != pimpl->match_obj_tlv_map.end()) {
+            // there is an existing entry
+            TlvEntryPtr& tomod = e.second.back();
+            if (oit->second.front().first == objId) {
+
+                if ((oit->second.front().second->entry->option_len !=
+                        e.second.back()->entry->option_len) ||
+                        (oit->second.front().second->entry->index !=
+                                e.second.back()->entry->index)) {
+                    diffs.add(TlvEdit::DEL, oit->second.front().second);
+                    oit->second.front().second = tomod;
+                    diffs.add(TlvEdit::ADD, tomod);
+                }
+            } else {
+                // There are entries from other objects already there.
+                // just add/update it in the queue but don't generate
+                // diff
+                obj_id_tlv_vec_t::iterator fvit = oit->second.begin()+1;
+                bool found = false;
+                bool actionEq = true;
+                while (fvit != oit->second.end()) {
+                    if (fvit->first == objId) {
+                        *fvit = make_pair(objId, tomod);
+                        found = true;
+                        break;
+                    } else if ((fvit->second->entry->option_len !=
+                            tomod->entry->option_len) ||
+                            (fvit->second->entry->index !=
+                                    tomod->entry->index)) {
+                        actionEq = false;
+                    }
+                    ++fvit;
+                }
+                if (!found) {
+                    if (!actionEq) {
+                        // it's only a warning if there are duplicate
+                        // matches with different actions.
+                        LOG(WARNING) << "Duplicate TLV for "
+                                     << objId << " (conflicts with "
+                                     << oit->second.front().first << "): "
+                                     << tomod;
+                    }
+
+                    oit->second.push_back(make_pair(objId, tomod));
+                }
+            }
+        } else {
+            // there is no existing entry.  Add a new one
+            TlvEntryPtr& toadd = e.second.back();
+
+            pimpl->match_obj_tlv_map[e.first].push_back(make_pair(objId, toadd));
+            diffs.add(TlvEdit::ADD, toadd);
+        }
+    }
+
+    // check for deleted entries
+    tlv_entry_map_t::iterator itr = pimpl->tlv_entry_map.find(objId);
+    if (itr != pimpl->tlv_entry_map.end()) {
+        for (match_tlv_opt_map_t::value_type& e : itr->second) {
+            match_tlv_opt_map_t::iterator mit = new_entries.find(e.first);
+            if (mit == new_entries.end()) {
+                match_obj_tlv_map_t::iterator oit =
+                    pimpl->match_obj_tlv_map.find(e.first);
+                if (oit != pimpl->match_obj_tlv_map.end()) {
+                    if (oit->second.front().first == objId) {
+                        // this object is the one in the flow table,
+                        // so remove it
+                        TlvEntryPtr& todel = oit->second.front().second;
+
+                        if (oit->second.size() == 1) {
+                            diffs.add(TlvEdit::DEL, todel);
+                            pimpl->match_obj_tlv_map.erase(oit);
+                        } else {
+                            // Need to add the next entry back to the
+                            // table now that the first instance is
+                            // removed
+                            TlvEntryPtr& tomod = oit->second[1].second;
+
+
+                            if ((todel->entry->option_len != tomod->entry->option_len)
+                                ||(todel->entry->index != tomod->entry->index)) {
+                                diffs.add(TlvEdit::DEL, todel);
+                                diffs.add(TlvEdit::ADD, tomod);
+                            }
+                            oit->second.erase(oit->second.begin());
+                        }
+                    } else {
+                        // This object is queued behind another
+                        // object.  Just remove it without generating
+                        // diff.
+                        obj_id_tlv_vec_t::iterator fvit = oit->second.begin()+1;
+                        while (fvit != oit->second.end()) {
+                            if (fvit->first == objId)
+                                fvit = oit->second.erase(fvit);
+                            else
+                                ++fvit;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (diffs.edits.size() > 0) {
+        LOG(DEBUG) << "ObjId=" << objId << ", #diffs = " << diffs.edits.size();
+        for (const TlvEdit::Entry& e : diffs.edits) {
+            LOG(DEBUG) << e;
+        }
+    }
+
+    /* newEntries.empty() => delete */
+    if (new_entries.empty() && itr != pimpl->tlv_entry_map.end()) {
+        itr->second.swap(new_entries);
+        pimpl->tlv_entry_map.erase(itr);
+    } else {
+        if (itr == pimpl->tlv_entry_map.end()) {
+            pimpl->tlv_entry_map[objId].swap(new_entries);
         } else {
             itr->second.swap(new_entries);
         }
