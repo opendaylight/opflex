@@ -2729,6 +2729,14 @@ void IntFlowManager::createStaticFlows() {
         switchManager.writeFlow("static", OUT_TABLE_ID, outFlows);
     }
     {
+        TlvEntryList tlvFlows;
+        for(int i = 0; i <= 10; i++) {
+            FlowBuilder().tlv(0xffff, i, 8, i).buildTlv(tlvFlows);
+        }
+        FlowBuilder().tlv(0xffff, 11, 20, 11).buildTlv(tlvFlows);
+        switchManager.writeTlv("DropLogStatic", tlvFlows);
+    }
+    {
         FlowEntryList dropLogFlows;
         FlowBuilder().priority(0)
                 .action().go(IntFlowManager::SEC_TABLE_ID)
@@ -2747,6 +2755,7 @@ void IntFlowManager::createStaticFlows() {
         }
         handleDropLogPortUpdate();
     }
+
 }
 
 void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {

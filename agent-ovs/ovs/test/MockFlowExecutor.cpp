@@ -48,7 +48,7 @@ static string canonicalizeGroupEntryStr(const string& entryStr) {
 }
 
 MockFlowExecutor::MockFlowExecutor()
-    : ignoreFlowMods(true), ignoreGroupMods(true) {}
+    : ignoreFlowMods(true), ignoreGroupMods(true), ignoreTlvMods(true) {}
 
 bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
     if (ignoreFlowMods) return true;
@@ -103,6 +103,22 @@ bool MockFlowExecutor::Execute(const GroupEdit& groupEdits) {
     }
     return true;
 }
+bool MockFlowExecutor::Execute(const TlvEdit& TlvEdits) {
+    if (ignoreTlvMods) return true;
+
+    for (const TlvEdit::Entry& ed : TlvEdits.edits) {
+        std::stringstream ss;
+        ss << ed;
+        BOOST_CHECK_MESSAGE(!tlvMods.empty(), "\nexp:\ngot: " << ss.str());
+        if (!tlvMods.empty()) {
+            tlv_mod_t exp = tlvMods.front();
+            tlvMods.pop_front();
+            BOOST_CHECK_MESSAGE(exp.second == ss.str(),
+                                "\nexp: " << exp.second << "\ngot: " << ss.str());
+        }
+    }
+    return true;
+}
 void MockFlowExecutor::Expect(FlowEdit::type mod, const string& fe) {
     ignoreFlowMods = false;
     flowMods.push_back(mod_t(mod, fe));
@@ -118,6 +134,14 @@ void MockFlowExecutor::ExpectGroup(FlowEdit::type mod, const string& ge) {
     groupMods.push_back(canonicalizeGroupEntryStr(string(modStr[mod]) + "|" +
                                                   ge));
 }
+void MockFlowExecutor::Expect(TlvEdit::type mod, const string& te) {
+    ignoreTlvMods = false;
+    tlvMods.push_back(tlv_mod_t(mod, te));
+}
+void MockFlowExecutor::IgnoreTlvMods() {
+    ignoreTlvMods = true;
+    tlvMods.clear();
+}
 void MockFlowExecutor::IgnoreFlowMods() {
     ignoreFlowMods = true;
     flowMods.clear();
@@ -130,9 +154,11 @@ bool MockFlowExecutor::IsEmpty() { return flowMods.empty() || ignoreFlowMods; }
 bool MockFlowExecutor::IsGroupEmpty() {
     return groupMods.empty() || ignoreGroupMods;
 }
+bool MockFlowExecutor::IsTlvEmpty() { return tlvMods.empty() || ignoreTlvMods; }
 void MockFlowExecutor::Clear() {
     flowMods.clear();
     groupMods.clear();
+    tlvMods.clear();
 }
 
 } // namespace opflexagent

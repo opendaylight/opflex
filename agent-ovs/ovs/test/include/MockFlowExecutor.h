@@ -29,21 +29,28 @@ public:
 
     virtual bool Execute(const FlowEdit& flowEdits);
     virtual bool Execute(const GroupEdit& groupEdits);
+    virtual bool Execute(const TlvEdit& tlvEdits);
     virtual void Expect(FlowEdit::type mod, const std::string& fe);
     virtual void Expect(FlowEdit::type mod, const std::vector<std::string>& fe);
+    virtual void Expect(TlvEdit::type mod, const std::string& te);
     virtual void ExpectGroup(FlowEdit::type mod, const std::string& ge);
     virtual void IgnoreFlowMods();
     virtual void IgnoreGroupMods();
+    virtual void IgnoreTlvMods();
     virtual bool IsEmpty();
     virtual bool IsGroupEmpty();
+    virtual bool IsTlvEmpty();
     virtual void Clear();
 
     typedef std::pair<FlowEdit::type, std::string> mod_t;
+    typedef std::pair<TlvEdit::type, std::string> tlv_mod_t;
     std::list<mod_t> flowMods;
     std::list<std::string> groupMods;
+    std::list<tlv_mod_t> tlvMods;
     bool ignoreFlowMods;
     std::unordered_set<int> ignoredFlowMods;
     bool ignoreGroupMods;
+    bool ignoreTlvMods;
 };
 
 } // namespace opflexagent

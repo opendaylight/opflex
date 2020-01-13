@@ -15,6 +15,7 @@
 #include <openvswitch/match.h>
 #include <lib/byte-order.h>
 #include <lib/dp-packet.h>
+#include <openvswitch/ofp-msgs.h>
 
 void format_action(const struct ofpact* acts, size_t ofpacts_len,
                    struct ds* str) {
@@ -426,4 +427,17 @@ void clean_ds(void* p) {
 
 struct ofputil_phy_port* alloc_phy_port() {
     return (struct ofputil_phy_port*)malloc(sizeof(struct ofputil_phy_port));
+}
+
+struct ofpbuf * encode_tlv_table_request(enum ofp_version ofp_version) {
+    return ofpraw_alloc(OFPRAW_NXT_TLV_TABLE_REQUEST,
+            ofp_version, 0);
+}
+
+void print_tlv_map(struct ds *s, const struct ofputil_tlv_map *map) {
+    ds_put_char(s, '\n');
+    ds_put_format(s, " 0x%"PRIx16"\t0x%"PRIx8"\t%"PRIu8"\ttun_metadata%"PRIu16,
+                          map->option_class, map->option_type, map->option_len,
+                          map->index);
+
 }

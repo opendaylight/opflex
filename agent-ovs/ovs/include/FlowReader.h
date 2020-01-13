@@ -87,6 +87,20 @@ public:
      */
     virtual bool getGroups(const GroupCb& cb);
 
+    /**
+     * Callback function to process a list of tlv-table entries.
+     */
+    typedef std::function<void (const TlvEntryList&, bool)> TlvCb;
+
+    /**
+     * Get the tlv-table entries from switch.
+     *
+     * @param cb Callback function to invoke when tlv-entries are
+     * received
+     * @return true if request for getting tlvs was sent successfully
+     */
+    virtual bool getTlvs(const TlvCb& cb);
+
     /* Interface: MessageHandler */
     void Handle(SwitchConnection *c, int msgType, ofpbuf *msg);
 
@@ -112,6 +126,13 @@ private:
      * @return group-table read request
      */
     OfpBuf createGroupRequest();
+
+    /**
+     * Create a request for reading all entries of tlv-table.
+     *
+     * @return tlv-table read request
+     */
+    OfpBuf createTlvRequest();
 
     /**
      * Send specified read request on the connection and update
@@ -154,6 +175,8 @@ private:
     FlowCbMap flowRequests;
     typedef std::unordered_map<uint32_t, GroupCb> GroupCbMap;
     GroupCbMap groupRequests;
+    typedef std::unordered_map<uint32_t, TlvCb> TlvCbMap;
+    TlvCbMap tlvRequests;
 };
 
 }   // namespace opflexagent

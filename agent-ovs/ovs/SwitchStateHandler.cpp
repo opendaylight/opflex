@@ -32,4 +32,17 @@ GroupEdit SwitchStateHandler::reconcileGroups(GroupMap& recvGroups) {
     return GroupEdit();
 }
 
+TlvEdit
+SwitchStateHandler::reconcileTlvs(TableState tlvTable,
+                                  TlvEntryList& recvTlvs) {
+    TlvEdit diffs;
+    tlvTable.diffSnapshot(recvTlvs, diffs);
+    LOG(DEBUG) << "Tlv Table snapshot has "
+               << diffs.edits.size() << " diff(s)";
+    for (const TlvEdit::Entry& e : diffs.edits) {
+        LOG(DEBUG) << e;
+    }
+
+    return diffs;
+}
 } // namespace opflexagent
