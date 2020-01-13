@@ -16,6 +16,24 @@
       "revId": "0f6c9c46dd4f505fc596b6f446fe94c728f097e6",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e8449f60_ab867702",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 8560
+      },
+      "writtenOn": "2020-01-13T16:12:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e03467f7_70821612",
+      "revId": "0f6c9c46dd4f505fc596b6f446fe94c728f097e6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
