@@ -65,6 +65,30 @@ public:
      */
     virtual GroupEdit reconcileGroups(GroupMap& recvGroups);
 
+
+    class TlvKey {
+    public:
+         uint16_t option_class;
+         uint16_t option_type;
+    };
+
+    /**
+     * A map from a TLV entry to an associated Tlv edit
+     */
+    typedef std::unordered_map<TlvKey, TlvEdit::Entry> TlvMap;
+
+    /**
+     * Compare tlv tables read from switch and make modification to
+     * eliminate differences.
+     *
+     * @param tlvTable the current tlv table state
+     * @param recvTlvs the tlvs received from the switch to
+     * reconcile against, with a tlv entry list per table.  It is
+     * safe to modify this vector.
+     * @return the necessary edits to reconcile the tlvs
+     */
+    virtual TlvEdit reconcileTlvs(TableState tlvTable, TlvEntryList& recvTlvs);
+
     /**
      * Called when the state sync process completes
      */

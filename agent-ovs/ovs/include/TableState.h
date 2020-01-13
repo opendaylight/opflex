@@ -21,6 +21,7 @@
 struct ofputil_flow_stats;
 struct ofputil_group_mod;
 struct match;
+struct ofputil_tlv_map;
 
 namespace opflexagent {
 
@@ -173,9 +174,94 @@ public:
 };
 
 /**
- * Print a group-table change to an output stream.
+ * Class representing an entry in a TLV table.
  */
-std::ostream& operator<<(std::ostream& os, const GroupEdit::Entry& ge);
+class TlvEntry : private boost::noncopyable {
+public:
+    TlvEntry();
+    TlvEntry(struct ofputil_tlv_map* tlv_map);
+    ~TlvEntry();
+
+    /**
+     * Check whether the given TLV entry is equal to this one
+     * @param rhs the entry to compare against
+     * @return true if the match entry is equal
+     */
+    bool tlvEq(const TlvEntry &rhs);
+
+    /**
+     * The TLV entry
+     */
+    struct ofputil_tlv_map* entry;
+};
+/**
+ * A shared pointer to a TLV entry
+ */
+typedef std::shared_ptr<TlvEntry> TlvEntryPtr;
+/**
+ * A vector of TLV entry pointers
+ */
+typedef std::vector<TlvEntryPtr> TlvEntryList;
+
+
+/**
+ * Class that represents a list of tlv changes.
+ */
+class TlvEdit {
+public:
+    /**
+     * The type of edit to make
+     */
+    enum type {
+        /**
+         * Add new TLV
+         */
+        ADD,
+        /**
+         * Delete TLV
+         */
+        DEL,
+        /**
+         * Clear TLV table
+         */
+        CLR
+    };
+    /**
+     * A TLV edit entry
+     */
+    typedef std::pair<type, TlvEntryPtr> Entry;
+    /**
+     * A vector of TLV edits
+     */
+    typedef std::vector<TlvEdit::Entry> EntryList;
+
+    /**
+     * The TLV edits that need to be made
+     */
+    TlvEdit::EntryList edits;
+
+    /**
+     * Add a new edit
+     * @param t the type of the edit
+     * @param te the tlv entry associated with the edit
+     */
+    void add(type t, TlvEntryPtr te);
+};
+
+/**
+ * Print a TLV edit to an output stream.
+ */
+std::ostream& operator<<(std::ostream& os, const TlvEdit::Entry& te);
+
+/**
+ * Compare two TLV edit entries
+ */
+bool operator<(const TlvEdit::Entry& f1, const TlvEdit::Entry& f2);
+
+/**
+ * Print a TLV entry to an output stream.
+ */
+std::ostream & operator<<(std::ostream& os, const TlvEntryPtr& te);
 
 /**
  * Class that maintains a cached version of an OpenFlow table.
@@ -198,6 +284,13 @@ public:
                /* out */ FlowEdit& diffs);
 
     /**
+     * Update cached entry-list corresponding to given object-id
+     */
+    void apply(const std::string& objId,
+               TlvEntryList& el,
+               /* out */ TlvEdit& diffs);
+
+    /**
      * Compute the differences between provided table-entries and all the
      * entries currently in the table.
      *
@@ -205,6 +298,15 @@ public:
      * @param diffs the differences between provided entries and the table
      */
     void diffSnapshot(const FlowEntryList& oldEntries, FlowEdit& diffs) const;
+
+    /**
+     * Compute the differences between provided table-entries and all the
+     * entries currently in the table.
+     *
+     * @param oldEntries the entries to compare against
+     * @param diffs the differences between provided entries and the table
+     */
+    void diffSnapshot(const TlvEntryList& oldEntries, TlvEdit& diffs) const;
 
     /**
      * A callback that can be passed to forEachCookieMatch.
