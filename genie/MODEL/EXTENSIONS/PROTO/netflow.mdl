@@ -61,6 +61,16 @@ module[netflow]
         # CE filter type
         const[name=ce; value=3]
     }
+     # Collector Version type
+    type[CollectorVersion; super=scalar/Enum8]
+    {
+        # Version 5
+        const[name=v5; value=1]
+        # Version 9
+        const[name=v9; value=2]
+        # Cisco proprietary version 1
+        const[name=cisco-v1; value=3]
+    }
 
     class[ExporterConfig;
           super=policy/NamedDefinition;
@@ -72,7 +82,8 @@ module[netflow]
         member[activeFlowTimeOut; type=scalar/UInt32]
         member[idleFlowTimeOut; type=scalar/UInt32]
         member[samplingRate; type=scalar/UInt32]
-
+        member[version; type=span/CollectorVersion]
+        member[dscp; type=scalar/UInt8]
         contained
         {
             parent[class=platform/Config]
