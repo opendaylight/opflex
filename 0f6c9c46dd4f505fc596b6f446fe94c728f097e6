@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e03467f7_70821612",
+        "filename": "genie/MODEL/EXTENSIONS/PROTO/netflow.mdl",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-13T15:49:37Z",
+      "side": 1,
+      "message": "Please remove cisco-v1. We won\u0027t be supporting that",
+      "revId": "0f6c9c46dd4f505fc596b6f446fe94c728f097e6",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
