@@ -212,6 +212,26 @@ bool SwitchManager::writeGroupMod(const GroupEdit::Entry& e) {
     return success;
 }
 
+bool SwitchManager::writeTlv(const std::string& objId, TlvEntryList& el) {
+    bool success = true;
+
+    TlvEdit diffs;
+    tlvTable.apply(objId, el, diffs);
+    if (!syncing) {
+        // If a sync is in progress, don't write to the flow tables
+        // while we are reading and reconciling with the current
+        // flows.
+        if (!(success = flowExecutor.Execute(diffs))) {
+            LOG(ERROR) << "[" << connection->getSwitchName() << "] "
+                       << "Writing flows for " << objId << " failed";
+
+        }
+    }
+    el.clear();
+
+    return success;
+}
+
 void SwitchManager::diffTableState(int tableId, const FlowEntryList& el,
                                    /* out */ FlowEdit& diffs) {
     const TableState& tab = flowTables[tableId];
@@ -240,6 +260,8 @@ void SwitchManager::initiateSync() {
     clearSyncState();
 
     flowReader.getGroups(bind(&SwitchManager::gotGroups, this, _1, _2));
+
+    flowReader.getTlvs(bind(&SwitchManager::gotTlvEntries, this, _1, _2));
 
     for (size_t i = 0; i < flowTables.size(); ++i)
         flowReader.getFlows(i, bind(&SwitchManager::gotFlows, this, i, _1, _2));
@@ -274,15 +296,29 @@ void SwitchManager::gotFlows(int tableId, const FlowEntryList& flows,
     }
 }
 
+void SwitchManager::gotTlvEntries(const TlvEntryList& tlvs,
+                             bool done) {
+    TlvEntryList& rl = recvTlvs;
+    rl.insert(rl.end(), tlvs.begin(), tlvs.end());
+    tlvTableDone = done;
+    if (done) {
+        LOG(DEBUG) << "[" << connection->getSwitchName() << "] "
+                   << "Got all entries for tlv table"
+                   << ", #flows=" << rl.size();
+        checkRecvDone();
+    }
+}
+
 void SwitchManager::checkRecvDone() {
     bool allDone = groupsDone;
     for (size_t i = 0; allDone && i < flowTables.size(); ++i) {
         allDone = allDone && tableDone[i];
     }
+    allDone = allDone & tlvTableDone;
 
     if (allDone) {
         LOG(DEBUG) << "[" << connection->getSwitchName() << "] "
-                   << "Got all group and flow tables, starting reconciliation";
+                   << "Got all group,flow and tlv tables, starting reconciliation";
         agent.getAgentIOService()
             .dispatch(bind(&SwitchManager::completeSync, this));
     }
@@ -298,6 +334,14 @@ void SwitchManager::completeSync() {
                        << "Failed to execute group table changes";
         }
 
+        TlvEdit te_diffs =
+            stateHandler->reconcileTlvs(tlvTable, recvTlvs);
+        success = flowExecutor.Execute(te_diffs);
+        if (!success) {
+            LOG(ERROR) << "[" << connection->getSwitchName() << "] "
+                       << "Failed to execute diffs on tlv table";
+        }
+
         std::vector<FlowEdit> diffs =
             stateHandler->reconcileFlows(flowTables, recvFlows);
         for (size_t i = 0; i < flowTables.size(); ++i) {
@@ -307,6 +351,7 @@ void SwitchManager::completeSync() {
                            << "Failed to execute diffs on table=" << i;
             }
         }
+
     }
 
     clearSyncState();
@@ -333,6 +378,7 @@ void SwitchManager::clearSyncState() {
     }
     recvGroups.clear();
     groupsDone = false;
+    tlvTableDone = false;
 }
 
 } // namespace opflexagent

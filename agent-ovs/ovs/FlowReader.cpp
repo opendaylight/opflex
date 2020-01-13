@@ -34,11 +34,13 @@ void FlowReader::installListenersForConnection(SwitchConnection *conn) {
     swConn = conn;
     conn->RegisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
     conn->RegisterMessageHandler(OFPTYPE_GROUP_DESC_STATS_REPLY, this);
+    conn->RegisterMessageHandler(OFPTYPE_NXT_TLV_TABLE_REPLY, this);
 }
 
 void FlowReader::uninstallListenersForConnection(SwitchConnection *conn) {
     conn->UnregisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
-    conn->RegisterMessageHandler(OFPTYPE_GROUP_DESC_STATS_REPLY, this);
+    conn->UnregisterMessageHandler(OFPTYPE_GROUP_DESC_STATS_REPLY, this);
+    conn->UnregisterMessageHandler(OFPTYPE_NXT_TLV_TABLE_REPLY, this);
 }
 
 void FlowReader::clear() {
@@ -59,6 +61,11 @@ bool FlowReader::getFlows(uint8_t tableId, match* m, const FlowCb& cb) {
 bool FlowReader::getGroups(const GroupCb& cb) {
     OfpBuf req(createGroupRequest());
     return sendRequest<GroupCb, GroupCbMap>(req, cb, groupRequests);
+}
+
+bool FlowReader::getTlvs(const TlvCb& cb) {
+    OfpBuf req(createTlvRequest());
+    return sendRequest<TlvCb, TlvCbMap>(req, cb, tlvRequests);
 }
 
 OfpBuf FlowReader::createFlowRequest(uint8_t tableId, match* m) {
@@ -85,11 +92,16 @@ OfpBuf FlowReader::createGroupRequest() {
                   ((ofp_version)swConn->GetProtocolVersion(), OFPG_ALL));
 }
 
+OfpBuf FlowReader::createTlvRequest() {
+    return OfpBuf(encode_tlv_table_request
+                  ((ofp_version)swConn->GetProtocolVersion()));
+}
+
 // XXX TODO need a way to time out requests
 template <typename U, typename V>
 bool FlowReader::sendRequest(OfpBuf& req, const U& cb, V& reqMap) {
     ovs_be32 reqXid = ((ofp_header *)req->data)->xid;
-    LOG(DEBUG) << "Sending flow/group read request xid=" << reqXid;
+    LOG(DEBUG) << "Sending flow/group/tlv read request xid=" << reqXid;
 
     {
         mutex_guard lock(reqMtx);
@@ -97,7 +109,7 @@ bool FlowReader::sendRequest(OfpBuf& req, const U& cb, V& reqMap) {
     }
     int err = swConn->SendMessage(req);
     if (err != 0) {
-        LOG(ERROR) << "Failed to send flow/group read request: "
+        LOG(ERROR) << "Failed to send flow/group/tlv read request: "
             << ovs_strerror(err);
         mutex_guard lock(reqMtx);
         reqMap.erase(reqXid);
@@ -111,6 +123,8 @@ void FlowReader::Handle(SwitchConnection*, int msgType, ofpbuf *msg) {
     } else if (msgType == OFPTYPE_GROUP_DESC_STATS_REPLY) {
         handleReply<GroupEdit::EntryList, GroupCb, GroupCbMap>(msg,
                                                                groupRequests);
+    } else if (msgType == OFPTYPE_NXT_TLV_TABLE_REPLY) {
+        handleReply<TlvEntryList, TlvCb, TlvCbMap>(msg, tlvRequests);
     }
 }
 
@@ -237,6 +251,27 @@ void FlowReader::decodeReply(ofpbuf *msg, GroupEdit::EntryList& recv,
 
         LOG(DEBUG) << "Got group: " << entry;
      }
+}
+
+template<>
+void FlowReader::decodeReply(ofpbuf *msg, TlvEntryList& recv,
+        bool& replyDone) {
+    const struct ofp_header *oh = (ofp_header *)msg->data;
+    struct ofputil_tlv_table_reply tlv_reply;
+    int ret = ofputil_decode_tlv_table_reply(oh, &tlv_reply);
+    if (ret != 0) {
+        LOG(ERROR) << "Failed to decode dump tlv reply: "
+            << ovs_strerror(ret);
+        replyDone = true;
+    } else {
+        struct ofputil_tlv_map *map;
+        LIST_FOR_EACH(map, list_node, &tlv_reply.mappings) {
+            TlvEntryPtr tlv_entry(new TlvEntry(map));
+            recv.push_back(tlv_entry);
+        }
+        ofputil_uninit_tlv_table(&tlv_reply.mappings);
+        replyDone = true;
+    }
 }
 
 }   // namespace opflexagent

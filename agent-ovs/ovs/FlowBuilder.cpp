@@ -16,7 +16,8 @@
 
 namespace opflexagent {
 
-FlowBuilder::FlowBuilder() : entry_(new FlowEntry()), ethType_(0) {
+FlowBuilder::FlowBuilder() : entry_(new FlowEntry()),
+    tlvEntry_(new TlvEntry()), ethType_(0) {
 
 }
 
@@ -345,4 +346,22 @@ FlowBuilder& FlowBuilder::outerIpDst(const boost::asio::ip::address& ip,
     addMatchOuterSubnet(match(), ip, prefixLen, false, ethType_);
     return *this;
 }
+
+FlowBuilder& FlowBuilder::tlv(uint16_t opt_class, uint8_t opt_type,
+        uint8_t opt_len, uint16_t idx) {
+    tlvEntry_->entry->option_class = htons(opt_class);
+    tlvEntry_->entry->option_type = opt_type;
+    tlvEntry_->entry->option_len = opt_len;
+    tlvEntry_->entry->index = htons(idx);
+    return *this;
+}
+
+TlvEntryPtr FlowBuilder::buildTlv() {
+    return tlvEntry_;
+}
+
+void FlowBuilder::buildTlv(TlvEntryList& tlvList) {
+    tlvList.push_back(tlvEntry_);
+}
+
 } // namespace opflexagent

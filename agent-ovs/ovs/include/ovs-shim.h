@@ -22,6 +22,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <openflow/openflow-common.h>
+#include <openvswitch/ofp-errors.h>
+#include <openvswitch/ofp-match.h>
 
     struct ofputil_flow_stats;
     struct ofputil_group_mod;
@@ -297,6 +300,10 @@ extern "C" {
     void clean_ds(void* ds);
 
     struct ofputil_phy_port* alloc_phy_port();
+
+    struct ofpbuf* encode_tlv_table_request(enum ofp_version ofp_version);
+
+    void print_tlv_map(struct ds *s, const struct ofputil_tlv_map *map);
 
 #ifdef __cplusplus
 }
