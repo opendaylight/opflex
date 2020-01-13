@@ -49,7 +49,7 @@ public:
      */
     explicit Endpoint(const std::string& uuid_)
         : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-          external(false) {}
+          external(false), aapModeAA(false) {}
 
     /**
      * Get the endpoint group URI associated with this endpoint.  Note
@@ -443,6 +443,28 @@ public:
      */
     void setNatMode(bool natMode) {
         this->natMode = natMode;
+    }
+
+    /**
+     * Set the Active Active allowed address pair mode
+     * flag to the value specified
+     *
+     * @param aapModeAA the new value for the active
+     * active allowed address pair mode
+     */
+    void setAapModeAA(bool aapModeAA) {
+        this->aapModeAA = aapModeAA;
+    }
+
+    /**
+     * Get the value of the Active Active allowed
+     * address pair mode
+     *
+     * @return true if Active Active allowed
+     * address pair mode is set
+     */
+    bool isAapModeAA() const {
+        return aapModeAA;
     }
 
     /**
@@ -1259,6 +1281,7 @@ private:
     bool discoveryProxyMode;
     bool natMode;
     bool external;
+    bool aapModeAA;
     attr_map_t attributes;
 #ifdef HAVE_PROMETHEUS_SUPPORT
     /**
