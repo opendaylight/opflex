@@ -35,9 +35,14 @@ public:
         cb(groups, true);
         return true;
     }
+    virtual bool getTlvs(const FlowReader::TlvCb& cb) {
+        cb(tlvs, true);
+        return true;
+    }
 
     FlowEntryList flows;
     GroupEdit::EntryList groups;
+    TlvEntryList tlvs;
 };
 
 } // namespace opflexagent

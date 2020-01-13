@@ -55,6 +55,16 @@ public:
     virtual bool Execute(const GroupEdit& ge);
 
     /**
+     * Construct and send TLV-add/del messages corresponding
+     * to the TLV-edits specified. Waits till all the messages
+     * have been acted upon (through a barrier message).
+     * @param te The TLV modifications
+     * @return false if any error occurs while sending messages or
+     * an error reply was received, true otherwise
+     */
+    virtual bool Execute(const TlvEdit& te);
+
+    /**
      * Construct and send flow-modification messages corresponding
      * to the flow-edits specified, but does not wait the messages
      * to be acted upon.
@@ -74,6 +84,15 @@ public:
      */
     virtual bool ExecuteNoBlock(const GroupEdit& ge);
 
+    /**
+     * Construct and send tlv-modification messages corresponding
+     * to the tlv-edits specified, but does not wait the messages
+     * to be acted upon.
+     * @param te The TLV modifications
+     * @return false if any error occurs while sending messages,
+     * true otherwise
+     */
+    virtual bool ExecuteNoBlock(const TlvEdit& te);
     /**
      * Register all the necessary event listeners on connection.
      * @param conn Connection to register
