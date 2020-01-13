@@ -19,6 +19,7 @@
 extern "C" {
 #include <openvswitch/ofp-msgs.h>
 #include <openvswitch/match.h>
+#include <openvswitch/ofp-match.h>
 }
 
 typedef std::unique_lock<std::mutex> mutex_guard;
@@ -64,6 +65,16 @@ FlowExecutor::Execute(const GroupEdit& ge) {
 bool
 FlowExecutor::ExecuteNoBlock(const GroupEdit& ge) {
     return ExecuteIntNoBlock<GroupEdit>(ge);
+}
+
+bool
+FlowExecutor::Execute(const TlvEdit& te) {
+    return ExecuteInt<TlvEdit>(te);
+}
+
+bool
+FlowExecutor::ExecuteNoBlock(const TlvEdit& te) {
+    return ExecuteIntNoBlock<TlvEdit>(te);
 }
 
 template<typename T>
@@ -148,6 +159,19 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
         flowMod.flags = flow.flags;
 
     return OfpBuf(ofputil_encode_flow_mod(&flowMod, proto));
+}
+
+template<>
+OfpBuf
+FlowExecutor::EncodeMod<TlvEdit::Entry>(const TlvEdit::Entry& edit,
+                                         int ofVersion) {
+    struct ofputil_tlv_table_mod tlvMod;
+    memset(&tlvMod, 0, sizeof(tlvMod));
+    tlvMod.command = edit.first;
+    ovs_list_init(&tlvMod.mappings);
+    ovs_list_push_back(&tlvMod.mappings, &edit.second->entry->list_node);
+    return OfpBuf(ofputil_encode_tlv_table_mod((ofp_version)ofVersion,
+    &tlvMod));
 }
 
 OfpBuf

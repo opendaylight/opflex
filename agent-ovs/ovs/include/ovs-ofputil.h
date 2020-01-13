@@ -17,6 +17,7 @@ extern "C" {
 #include <openvswitch/ofp-util.h>
 #include <openvswitch/ofp-group.h>
 #include <openvswitch/ofp-flow.h>
+#include <openvswitch/ofp-match.h>
 #undef public
 
 #ifdef __cplusplus

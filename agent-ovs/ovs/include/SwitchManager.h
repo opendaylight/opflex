@@ -166,6 +166,14 @@ public:
     bool writeGroupMod(const GroupEdit::Entry& entry);
 
     /**
+     * Write the given tlv entry to the flow table
+     *
+     * @param objId the ID for the object associated with the tlv
+     * @param e the list of flows to write
+     */
+    bool writeTlv(const std::string& objId, TlvEntryList &e);
+
+    /**
      * Compare the state of a give table against the provided
      * snapshot.
      *
@@ -219,6 +227,13 @@ private:
                    bool done);
 
     /**
+     * Callback function provided to FlowReader to process received
+     * group table entries.
+     */
+    void gotTlvEntries(const TlvEntryList& tlvs,
+                             bool done);
+
+    /**
      * Determine if all flows/groups were received; starts reconciliation
      * if so.
      */
@@ -237,6 +252,7 @@ private:
 
     // table state
     std::vector<TableState> flowTables;
+    TableState tlvTable;
 
     // connection state
     void handleConnection(SwitchConnection *sw);
@@ -253,9 +269,14 @@ private:
 
     std::vector<FlowEntryList> recvFlows;
     std::vector<bool> tableDone;
+    TlvEntryList recvTlvs;
+    bool tlvTableDone;
 
     SwitchStateHandler::GroupMap recvGroups;
     bool groupsDone;
+
+
+
 };
 
 } // namespace opflexagent
