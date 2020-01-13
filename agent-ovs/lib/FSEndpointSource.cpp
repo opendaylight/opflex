@@ -111,6 +111,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string IPM_NEXTHOP_MAC("next-hop-mac");
 
     static const std::string SNAT_IP("snat-ip");
+    static const std::string ACTIVE_ACTIVE_AAP("active-active-aap");
 
     try {
         using boost::property_tree::ptree;
@@ -429,6 +430,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             properties.get_optional<string>(SNAT_IP);
         if (snatIp)
             newep.setSnatIP(snatIp.get());
+
+        optional<bool> aapModeAA =
+            properties.get_optional<bool>(ACTIVE_ACTIVE_AAP);
+        if (aapModeAA)
+            newep.setAapModeAA(aapModeAA.get());
 
         optional<bool> ext_svi =
                 properties.get_optional<bool>(EP_EXT_SVI_FLAG);
