@@ -227,13 +227,15 @@ void PrometheusManager::start()
     const lock_guard<mutex> lock(ep_counter_mutex);
     LOG(DEBUG) << "starting prometheus manager";
     /**
-     * create an http server running on port 8080
+     * create an http server running on port 9612
      * Note: The third argument is the total worker thread count. Prometheus
      * follows boss-worker thread model. 1 boss thread will get created to
      * intercept HTTP requests. The requests will then be serviced by free
      * worker threads. We are using 1 worker thread to service the requests.
+     * Note: Port #9612 has been reserved for opflex here:
+     * https://github.com/prometheus/prometheus/wiki/Default-port-allocations
      */
-    exposer_ptr = unique_ptr<Exposer>(new Exposer{"127.0.0.1:8080", "/metrics", 1});
+    exposer_ptr = unique_ptr<Exposer>(new Exposer{"127.0.0.1:9612", "/metrics", 1});
     registry_ptr = make_shared<Registry>();
 
     /* Initialize Metric families which can be created during
