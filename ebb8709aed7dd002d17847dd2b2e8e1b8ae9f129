@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "2ffc1d90_cf8fc689",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 414,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2020-01-13T18:38:06Z",
+      "side": 1,
+      "message": "Yes, assuming Netflow is enabled. Will fix this in next iteration.",
+      "parentUuid": "b7490279_2b6477ae",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ae377472_944dac03",
         "filename": "agent-ovs/lib/Agent.cpp",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2020-01-12T08:17:31Z",
       "side": 1,
       "message": "There should be a corresponding check and call to spanManager.stop (and netflowManager.stop()) in stop()",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fb017655_f253c41d",
+        "filename": "agent-ovs/lib/Agent.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2020-01-13T18:38:06Z",
+      "side": 1,
+      "message": "Agreed, will address in next iteration.",
+      "parentUuid": "ae377472_944dac03",
       "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "d54119c6_81acc751",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2020-01-13T18:38:06Z",
+      "side": 1,
+      "message": "My impression was that we need a \"Feature\" level switch. Which implies the ability to turn \na \"feature\" off or on. Examples of \"features\" being, ERSPAN, NetFlow among others. Hence this\nspecific method for turning the ERSPAN feature on or off. Its not clear what will the switch operate on, if not a feature. Please provide an example.",
+      "parentUuid": "9ddf40a3_73c7dbf6",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "43cd5702_c7f556b6",
         "filename": "agent-ovs/ovs/OVSRenderer.cpp",
         "patchSetId": 1
@@ -64,6 +118,24 @@
       "writtenOn": "2020-01-12T08:17:31Z",
       "side": 1,
       "message": "There should be a corresponding check and call to spanRenderer.stop (and netflowRenderer.stop()) in OVSRenderer::stop()",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5a5442df_520a32a8",
+        "filename": "agent-ovs/ovs/OVSRenderer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2020-01-13T18:38:06Z",
+      "side": 1,
+      "message": "Agreed, will fix in next iteration.",
+      "parentUuid": "43cd5702_c7f556b6",
       "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
