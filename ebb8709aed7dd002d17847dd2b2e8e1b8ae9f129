@@ -107,6 +107,24 @@
     },
     {
       "key": {
+        "uuid": "a95daead_bce38b7c",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-13T18:52:25Z",
+      "side": 1,
+      "message": "I\u0027m asking for something like a feature list enum (or bitmask) and instead of getters for every features that can be disabled, a single check like isAgentFeatureDisabled(Feature) that does the check",
+      "parentUuid": "d54119c6_81acc751",
+      "revId": "ebb8709aed7dd002d17847dd2b2e8e1b8ae9f129",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "43cd5702_c7f556b6",
         "filename": "agent-ovs/ovs/OVSRenderer.cpp",
         "patchSetId": 1
