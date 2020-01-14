@@ -57,6 +57,7 @@ static bool checkNetFlow(boost::optional<shared_ptr<ExporterConfigState>> pExpst
                       const URI& netflowUri) {
     if (!pExpst)
         return false;
+    LOG(DEBUG) << "checkNetFlow" << pExpst.get()->getUri();
     if (netflowUri == pExpst.get()->getUri())
         return true;
     else
@@ -65,6 +66,9 @@ static bool checkNetFlow(boost::optional<shared_ptr<ExporterConfigState>> pExpst
 
 static bool checkNetFlowTimeout(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
                              shared_ptr<netflow::ExporterConfig> pExportCfg) {
+    if (!pExpst)
+        return false;
+     LOG(DEBUG) << "checkNetFlowTimeout" << pExpst.get()->getActiveFlowTimeOut();
     if (pExpst.get()->getActiveFlowTimeOut() == pExportCfg.get()->getActiveFlowTimeOut())
         return true;
     else
@@ -72,7 +76,10 @@ static bool checkNetFlowTimeout(boost::optional<shared_ptr<ExporterConfigState>>
 }
 static bool checkNetFlowDstAddress(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
                                 shared_ptr<netflow::ExporterConfig> pExportCfg) {
+    if (!pExpst)
+        return false;
     const string addr = pExportCfg.get()->getDstAddr("");
+    LOG(DEBUG) << "checkNetFlowDstAddress" << addr;
     if (pExpst.get()->getDstAddress() == addr)
         return true;
     else
@@ -80,6 +87,9 @@ static bool checkNetFlowDstAddress(boost::optional<shared_ptr<ExporterConfigStat
 }
 static bool checkNetFlowDstPort(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
                            shared_ptr<netflow::ExporterConfig> pExportCfg) {
+    if (!pExpst)
+        return false;
+    LOG(DEBUG) << "checkNetFlowDstPort" << pExpst.get()->getDestinationPort();   
     if (pExpst.get()->getDestinationPort() == pExportCfg.get()->getDstPort())
         return true;
     else
