@@ -92,7 +92,7 @@ namespace opflexagent {
             }
         }
         // notify all listeners. put it on a task Q for non blocking notification.
-        for (URI uri : netflowmanager.notifyUpdate) {
+        for (const URI& uri : netflowmanager.notifyUpdate) {
             netflowmanager.taskQueue.dispatch(uri.toString(), [=]() {
                 netflowmanager.notifyListeners(uri);
             });

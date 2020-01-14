@@ -58,7 +58,7 @@ private:
     void handleNetFlowUpdate(const opflex::modb::URI& netflowURI);
     bool deleteNetFlow();
     bool createNetFlow(const string& targets, int timeout);
-    void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI uri);
+    void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
     void delConnectCb(const boost::system::error_code &ec);
 };
 }

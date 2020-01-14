@@ -104,7 +104,7 @@ namespace opflexagent {
     }
 
     void NetFlowRenderer::updateConnectCb(const boost::system::error_code& ec,
-            const opflex::modb::URI spanURI) {
+            const opflex::modb::URI& spanURI) {
         LOG(DEBUG) << "timer update cb";
         if (ec) {
             string cat = string(ec.category().name());
