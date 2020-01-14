@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8a3bd581_53264df8",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-14T06:11:35Z",
+      "side": 1,
+      "message": "Unrelated to the change but why bother declaring the variable before initializing? Especially as the variable is only currently used when guarded by the mutex",
+      "revId": "3b8fa49f25449e6ed32602a6b8a25bf7b6a9eec4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0df0d2df_09d4e534",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-14T06:11:35Z",
+      "side": 1,
+      "message": "should print_map also be guarded by the mutex?",
+      "revId": "3b8fa49f25449e6ed32602a6b8a25bf7b6a9eec4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "73a59933_db021280",
+        "filename": "agent-ovs/lib/include/opflexagent/SpanManager.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-14T06:11:35Z",
+      "side": 1,
+      "message": "This is an unrelated change. Please put the span unit test fixes into their own changeset",
+      "revId": "3b8fa49f25449e6ed32602a6b8a25bf7b6a9eec4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "058af427_38374cd0",
+        "filename": "agent-ovs/opflex-agent-ovs.conf.in",
+        "patchSetId": 5
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-14T06:11:35Z",
+      "side": 1,
+      "message": "No point in having a key/value in there. Just use an array\n\n\"feature\" : {\n    \"disabled\": [\"erspan\", \"netflow\"]\n}\n\nThis whole section should be commented out as the features should be enabled by default\nTBH, netflow probably doesn\u0027t even need to be a feature that can be disabled as it was already supported in OVS 2.6",
+      "revId": "3b8fa49f25449e6ed32602a6b8a25bf7b6a9eec4",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
