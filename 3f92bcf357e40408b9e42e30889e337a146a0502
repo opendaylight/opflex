@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e944da14_766f9050",
+        "filename": "agent-ovs/ovs/include/FlowBuilder.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-15T23:59:31Z",
+      "side": 1,
+      "message": "list -\u003e tlv in comment",
+      "revId": "3f92bcf357e40408b9e42e30889e337a146a0502",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "05361272_c56947f2",
+        "filename": "agent-ovs/ovs/include/SwitchStateHandler.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-15T23:59:31Z",
+      "side": 1,
+      "message": "Add doxygen comment\n\n00:33:50 Parsing file /w/workspace/opflex-verify-magne/w/workspace/opflex-verify-magnesium/agent-ovs/ovs/include/SwitchStateHandler.h:69: warning: Compound opflexagent::SwitchStateHandler::TlvKey is not documented.\n00:33:55 /w/workspace/opflex-verify-magnesium/agent-ovs/ovs/include/SwitchStateHandler.h:71: warning: Member option_class (variable) of class opflexagent::SwitchStateHandler::TlvKey is not documented.\n00:33:55 /w/workspace/opflex-verify-magnesium/agent-ovs/ovs/include/SwitchStateHandler.h:72: warning: Member option_type (variable) of class opflexagent::SwitchStateHandler::TlvKey is not documented.",
+      "revId": "3f92bcf357e40408b9e42e30889e337a146a0502",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cbbbc99e_25a5cf85",
+        "filename": "agent-ovs/ovs/include/TableState.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-15T23:59:31Z",
+      "side": 1,
+      "message": "00:33:55 /w/workspace/opflex-verify-magnesium/agent-ovs/ovs/include/TableState.h:187: warning: Member TlvEntry(struct ofputil_tlv_map *tlv_map) (function) of class opflexagent::TlvEntry is not documented.",
+      "revId": "3f92bcf357e40408b9e42e30889e337a146a0502",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
