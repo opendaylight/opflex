@@ -217,6 +217,11 @@ public:
      */
     static const boost::optional<URI> getSession(shared_ptr<LocalEp> lEp);
 
+    /**
+     * mutex for co ordinating modb updates
+     */
+    mutex mtx;
+
 private:
 
     boost::optional<shared_ptr<SrcMember>> findSrcMem(const URI& sessUri, const URI& uri);

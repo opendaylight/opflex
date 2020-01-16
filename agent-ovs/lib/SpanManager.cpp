@@ -91,6 +91,7 @@ namespace opflexagent {
     void SpanManager::SpanUniverseListener::objectUpdated(class_id_t classId,
                                                           const URI &uri) {
         LOG(DEBUG) << "update on class ID " << classId << " URI " << uri;
+        //lock_guard<mutex> guard(spanmanager.mtx);
 
         // updates on parent container for session are received for
         // session creation. Deletion and modification updates are
@@ -128,6 +129,10 @@ namespace opflexagent {
                 }
             }
         } else if (classId == L2Ep::CLASS_ID) {
+            // if there are no sessions then we don't need to process
+            // L2Ep updates.
+            if (spanmanager.sess_map.empty())
+                return;
             if (L2Ep::resolve(spanmanager.framework, uri)) {
                 shared_ptr <L2Ep> l2Ep = L2Ep::resolve(
                         spanmanager.framework, uri).get();
@@ -221,6 +226,7 @@ namespace opflexagent {
         auto itr = spanmanager.sess_map.find(sess->getURI());
         if (itr != spanmanager.sess_map.end()) {
             spanmanager.sess_map.erase(itr);
+            itr->second.reset();
         }
         sessState = make_shared<SessionState>(sess->getURI(), sess->getName().get());
         spanmanager.sess_map.insert(make_pair(sess->getURI(), sessState));
