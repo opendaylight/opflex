@@ -158,7 +158,14 @@ FlowExecutor::EncodeMod<FlowEdit::Entry>(const FlowEdit::Entry& edit,
     if (flow.flags)
         flowMod.flags = flow.flags;
 
-    return OfpBuf(ofputil_encode_flow_mod(&flowMod, proto));
+    auto msg = OfpBuf(ofputil_encode_flow_mod(&flowMod, proto));
+    /**
+     * ofputil_encode_flow_mod() constructs the match from flowMod->match,
+     * and finally it returns ofpbuf. flowMod is no longer needed
+     * since ofpbuf is already encoded.
+     */
+    minimatch_destroy(&flowMod.match);
+    return msg;
 }
 
 template<>
