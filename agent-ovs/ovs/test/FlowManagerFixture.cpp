@@ -63,6 +63,8 @@ void addExpFlowEntry(std::vector<FlowEntryList>& tables,
     ofputil_flow_stats_format(strBuf.get(), e->entry, NULL, NULL, true);
     string str = (const char*)(ds_cstr(strBuf.get())); // trim space
     BOOST_CHECK_EQUAL(str, flowMod);
+
+    minimatch_destroy(&fm.match);
 }
 
 void printAllDiffs(std::vector<FlowEntryList>& expected,
