@@ -221,6 +221,7 @@ namespace opflexagent {
         auto itr = spanmanager.sess_map.find(sess->getURI());
         if (itr != spanmanager.sess_map.end()) {
             spanmanager.sess_map.erase(itr);
+            itr->second.reset();
         }
         sessState = make_shared<SessionState>(sess->getURI(), sess->getName().get());
         spanmanager.sess_map.insert(make_pair(sess->getURI(), sessState));
