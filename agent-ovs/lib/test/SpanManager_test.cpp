@@ -10,6 +10,8 @@
  */
 
 #include <list>
+#include <thread>
+#include <chrono>
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
@@ -49,6 +51,7 @@ public:
             policy::Universe::resolve(framework).get();
         shared_ptr<span::Universe> sUniverse =
             span::Universe::resolve(framework).get();
+        {
         Mutator mutator(framework, "policyreg");
         space = pUniverse->addPolicySpace("test");
         common = pUniverse->addPolicySpace("common");
@@ -90,6 +93,7 @@ public:
         dstSumm1->setVersion(1);
 
         mutator.commit();
+        }
 
         shared_ptr<L2Universe> l2u =
                     L2Universe::resolve(framework).get();
@@ -109,7 +113,7 @@ public:
         ep2.setInterfaceName("veth2");
         ep2.setEgURI(eg2->getURI());
         epSource.updateEndpoint(ep2);
-
+        {
         Mutator mutatorElem(framework, "policyelement");
         l2E1 = l2u->addEprL2Ep(bd->getURI().toString(),
                 ep1.getMAC().get());
@@ -124,11 +128,16 @@ public:
         l2e2->setInterfaceName(ep2.getInterfaceName().get());
 
         mutatorElem.commit();
-
-        Mutator mutator2(framework, "policyreg");
+        }
+        {
+        Mutator mutator(framework, "policyreg");
         lEp1->addSpanLocalEpToEpRSrc()->setTargetL2Ep(l2E1->getURI());
 
-        mutator2.commit();
+        mutator.commit();
+        }
+        unsigned int delay = 1000;
+        LOG(DEBUG) << "sleeping for " << delay << " msecs";
+        this_thread::sleep_for(chrono::milliseconds(delay));
 
     }
 
@@ -154,8 +163,10 @@ public:
 BOOST_AUTO_TEST_SUITE(SpanManager_test)
 
 
-static bool checkSpan(boost::optional<shared_ptr<SessionState>> pSess,
+static bool checkSpan(Agent& agent,
                       const URI& spanUri) {
+    boost::optional<shared_ptr<SessionState>> pSess =
+            agent.getSpanManager().getSessionState(spanUri);
     if (!pSess)
         return false;
     if (spanUri == pSess.get()->getUri())
@@ -164,8 +175,10 @@ static bool checkSpan(boost::optional<shared_ptr<SessionState>> pSess,
         return false;
 }
 
-static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
+static bool checkSrcEps(Agent& agent, const URI& spanUri,
     shared_ptr<span::SrcMember> srcMem, shared_ptr<L2Ep> l2e) {
+    boost::optional<shared_ptr<SessionState>> pSess =
+            agent.getSpanManager().getSessionState(spanUri);
     if (!pSess) {
         return false;
     }
@@ -188,8 +201,10 @@ static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
     return false;
 }
 
-static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess,
+static bool checkDst(Agent& agent, const URI& spanUri,
     shared_ptr<span::DstSummary> dstSumm1) {
+    boost::optional<shared_ptr<SessionState>> pSess =
+            agent.getSpanManager().getSessionState(spanUri);
     if (!pSess) {
         return false;
     }
@@ -219,17 +234,19 @@ static bool testGetSession(shared_ptr<LocalEp> le, optional<URI> uri) {
         return true;
 }
 
+static bool checkEndPoints(Agent& agent, const URI& spanUri, long unsigned int num) {
+    if (agent.getSpanManager().getSessionState(spanUri)
+                .get()->getSrcEndPointSet().size() == num)
+        return true;
+    return false;
+}
+
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, SpanFixture ) {
-    WAIT_FOR(checkSpan(agent.getSpanManager().getSessionState(sess->getURI()),
-            sess->getURI()), 500);
-    WAIT_FOR(agent.getSpanManager().getSessionState(sess->getURI())
-            .get()->getSrcEndPointSet().size() == 2, 500);
-    WAIT_FOR(checkSrcEps(agent.getSpanManager().getSessionState(sess->getURI()),
-            srcMem1, l2E1), 500);
-    WAIT_FOR(checkSrcEps(agent.getSpanManager().getSessionState(sess->getURI()),
-            srcMem2, l2e2), 500);
-    WAIT_FOR(checkDst(agent.getSpanManager().getSessionState(sess->getURI()),
-            dstSumm1), 500);
+    WAIT_FOR(checkSpan(agent, sess->getURI()), 500);
+    WAIT_FOR(checkEndPoints(agent, sess->getURI(), 2), 500);
+    WAIT_FOR(checkSrcEps(agent, sess->getURI(), srcMem1, l2E1), 500);
+    WAIT_FOR(checkSrcEps(agent, sess->getURI(), srcMem2, l2e2), 500);
+    WAIT_FOR(checkDst(agent, sess->getURI(), dstSumm1), 500);
     boost::optional<URI> uri("/SpanUniverse/SpanSession/sess1/");
     BOOST_CHECK(testGetSession(lEp1, uri));
 }
