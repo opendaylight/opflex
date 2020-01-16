@@ -165,6 +165,9 @@ int MockExecutorConnection::SendMessage(OfpBuf& msg) {
                                      fm.ofpacts, fm.ofpacts_len));
         }
         free((void *)fm.ofpacts);
+
+         // ofputil_decode_flow_mod() internally calls minimatch_init().
+        minimatch_destroy(&fm.match);
     } else if (type == OFPTYPE_BARRIER_REQUEST) {
          BOOST_CHECK(expectedEdits.edits.empty());
 
