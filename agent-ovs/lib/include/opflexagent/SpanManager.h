@@ -35,6 +35,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include <atomic>
 
 using boost::asio::deadline_timer;
 using namespace std;
@@ -94,7 +95,7 @@ public:
       * @return shared pointer to SessionState or none.
       */
       boost::optional<shared_ptr<SessionState>>
-          getSessionState(const URI& uri) const;
+          getSessionState(const URI& uri);
 
     /**
      * Register a listener for span change events
@@ -216,6 +217,11 @@ public:
      * @return optional URI reference
      */
     static const boost::optional<URI> getSession(shared_ptr<LocalEp> lEp);
+
+    /**
+     * bool flag for locking resources
+     */
+    //mutex mtx;
 
 private:
 
