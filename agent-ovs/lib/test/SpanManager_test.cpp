@@ -90,7 +90,7 @@ public:
         dstSumm1->setVersion(1);
 
         mutator.commit();
-
+/*
         shared_ptr<L2Universe> l2u =
                     L2Universe::resolve(framework).get();
 
@@ -129,7 +129,7 @@ public:
         lEp1->addSpanLocalEpToEpRSrc()->setTargetL2Ep(l2E1->getURI());
 
         mutator2.commit();
-
+*/
     }
 
     virtual ~SpanFixture() {}
@@ -154,8 +154,11 @@ public:
 BOOST_AUTO_TEST_SUITE(SpanManager_test)
 
 
-static bool checkSpan(boost::optional<shared_ptr<SessionState>> pSess,
+static bool checkSpan(Agent& agent,
                       const URI& spanUri) {
+    //lock_guard<mutex> guard(agent.getSpanManager().mtx);
+    boost::optional<shared_ptr<SessionState>> pSess =
+            agent.getSpanManager().getSessionState(spanUri);
     if (!pSess)
         return false;
     if (spanUri == pSess.get()->getUri())
@@ -164,8 +167,11 @@ static bool checkSpan(boost::optional<shared_ptr<SessionState>> pSess,
         return false;
 }
 
-static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
+static bool checkSrcEps(Agent& agent, const URI& spanUri,
     shared_ptr<span::SrcMember> srcMem, shared_ptr<L2Ep> l2e) {
+    //lock_guard<mutex> guard(agent.getSpanManager().mtx);
+    boost::optional<shared_ptr<SessionState>> pSess =
+            agent.getSpanManager().getSessionState(spanUri);
     if (!pSess) {
         return false;
     }
@@ -188,8 +194,11 @@ static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
     return false;
 }
 
-static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess,
+static bool checkDst(Agent& agent, const URI& spanUri,
     shared_ptr<span::DstSummary> dstSumm1) {
+    //lock_guard<mutex> guard(agent.getSpanManager().mtx);
+    boost::optional<shared_ptr<SessionState>> pSess =
+            agent.getSpanManager().getSessionState(spanUri);
     if (!pSess) {
         return false;
     }
@@ -219,17 +228,59 @@ static bool testGetSession(shared_ptr<LocalEp> le, optional<URI> uri) {
         return true;
 }
 
+static bool checkEndPoints(Agent& agent, const URI& spanUri, long unsigned int num) {
+    //lock_guard<mutex> guard(agent.getSpanManager().mtx);
+    if (agent.getSpanManager().getSessionState(spanUri)
+                .get()->getSrcEndPointSet().size() == num)
+        return true;
+    return false;
+}
+
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, SpanFixture ) {
-    WAIT_FOR(checkSpan(agent.getSpanManager().getSessionState(sess->getURI()),
-            sess->getURI()), 500);
-    WAIT_FOR(agent.getSpanManager().getSessionState(sess->getURI())
-            .get()->getSrcEndPointSet().size() == 2, 500);
-    WAIT_FOR(checkSrcEps(agent.getSpanManager().getSessionState(sess->getURI()),
-            srcMem1, l2E1), 500);
-    WAIT_FOR(checkSrcEps(agent.getSpanManager().getSessionState(sess->getURI()),
-            srcMem2, l2e2), 500);
-    WAIT_FOR(checkDst(agent.getSpanManager().getSessionState(sess->getURI()),
-            dstSumm1), 500);
+    WAIT_FOR(checkSpan(agent, sess->getURI()), 500);
+
+    shared_ptr<L2Universe> l2u =
+                L2Universe::resolve(framework).get();
+
+    Endpoint ep1("e82e883b-851d-4cc6-bedb-fb5e27530043");
+    ep1.setMAC(MAC("00:00:00:00:00:01"));
+    ep1.addIP("10.1.1.2");
+    ep1.addIP("10.1.1.3");
+    ep1.setInterfaceName("veth1");
+    ep1.setEgURI(eg1->getURI());
+    epSource.updateEndpoint(ep1);
+
+    Endpoint ep2("e82e883b-851d-4cc6-bedb-fb5e27530044");
+    ep2.setMAC(MAC("00:00:00:00:00:02"));
+    ep2.addIP("10.1.1.4");
+    ep2.addIP("10.1.1.5");
+    ep2.setInterfaceName("veth2");
+    ep2.setEgURI(eg2->getURI());
+    epSource.updateEndpoint(ep2);
+
+    Mutator mutatorElem(framework, "policyelement");
+    l2E1 = l2u->addEprL2Ep(bd->getURI().toString(),
+            ep1.getMAC().get());
+    l2E1->setUuid(ep1.getUUID());
+    l2E1->setGroup(eg1->getURI().toString());
+    l2E1->setInterfaceName(ep1.getInterfaceName().get());
+
+    l2e2 = l2u->addEprL2Ep(bd->getURI().toString(),
+            ep2.getMAC().get());
+    l2e2->setUuid(ep2.getUUID());
+    l2e2->setGroup(eg2->getURI().toString());
+    l2e2->setInterfaceName(ep2.getInterfaceName().get());
+
+    mutatorElem.commit();
+
+    Mutator mutator2(framework, "policyreg");
+    lEp1->addSpanLocalEpToEpRSrc()->setTargetL2Ep(l2E1->getURI());
+
+    mutator2.commit();
+    WAIT_FOR(checkEndPoints(agent, sess->getURI(), 2), 500);
+    WAIT_FOR(checkSrcEps(agent, sess->getURI(), srcMem1, l2E1), 500);
+    WAIT_FOR(checkSrcEps(agent, sess->getURI(), srcMem2, l2e2), 500);
+    WAIT_FOR(checkDst(agent, sess->getURI(), dstSumm1), 500);
     boost::optional<URI> uri("/SpanUniverse/SpanSession/sess1/");
     BOOST_CHECK(testGetSession(lEp1, uri));
 }
