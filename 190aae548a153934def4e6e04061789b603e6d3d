@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce9cbc3e_a702c443",
+        "filename": "libopflex/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-17T07:11:14Z",
+      "side": 1,
+      "message": "Does the RPM spec and deb control file need to be updated to add this or is it covered by existing dependencies?",
+      "revId": "190aae548a153934def4e6e04061789b603e6d3d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
