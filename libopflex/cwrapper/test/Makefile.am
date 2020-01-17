@@ -35,7 +35,8 @@ cwrapper_test_LDADD = ../libcwrapper.la \
 	../../logging/liblogging.la \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 	$(BOOST_ASIO_LIB) \
-	$(BOOST_SYSTEM_LIB)
+	$(BOOST_SYSTEM_LIB) \
+        $(BOOST_FILESYSTEM_LIB)
 
 if MAKE_ALL_TESTS
     noinst_PROGRAMS = $(TESTS)

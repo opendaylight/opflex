@@ -16,6 +16,8 @@
 
 #include <openssl/err.h>
 #include <sys/un.h>
+#include <iostream>
+#include <boost/filesystem.hpp>
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
@@ -161,6 +163,7 @@ void OpflexServerConnection::messagesReady() {
 
 void OpflexServerConnection::addUri(const opflex::modb::URI& uri,
                                     int64_t lifetime) {
+    LOG(DEBUG) << "AGENT->SERVER ADD " << uri;
     std::lock_guard<std::mutex> lock(uri_map_mutex);
 
     uri_map[uri] = lifetime;
@@ -170,10 +173,24 @@ bool OpflexServerConnection::getUri(const opflex::modb::URI& uri) {
     std::lock_guard<std::mutex> lock(uri_map_mutex);
 
     auto it = uri_map.find(uri);
-    return (it != uri_map.end());
+    bool found = (it != uri_map.end());
+    if (!found) {
+        boost::filesystem::path puri(uri.toString());
+        puri = puri.parent_path();
+        while (puri != "/") {
+            opflex::modb::URI curi(puri.string() + "/");
+            it = uri_map.find(curi);
+            found = (it != uri_map.end());
+            if (found)
+                break;
+            puri = puri.parent_path();
+        }
+    }
+    return found;
 }
 
 bool OpflexServerConnection::clearUri(const opflex::modb::URI& uri) {
+    LOG(DEBUG) << "AGENT->SERVER CLEAR " << uri;
     std::lock_guard<std::mutex> lock(uri_map_mutex);
 
     return (0 != uri_map.erase(uri));
