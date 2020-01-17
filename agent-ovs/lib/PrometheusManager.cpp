@@ -339,10 +339,6 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
      */
     auto hgauge = getDynamicGaugeEp(metric, uuid);
     if (hgauge) {
-        LOG(DEBUG) << "ep already present"
-                   << " metric: " << ep_family_names[metric]
-                   << " hash: " << hgauge.get().first
-                   << " Gauge ptr: " << hgauge.get().second;
         /**
          * Detect attribute change by comparing hashes:
          * Check incoming hash with the cached hash to detect attribute change
@@ -358,7 +354,12 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
         if (attr_hash == hgauge.get().first)
             return false;
         else {
-            LOG(DEBUG) << "deleting existing ep since attr hash doesnt match";
+            LOG(DEBUG) << "addNupdate epcounter: " << ep_name
+                       << " incoming attr_hash: " << attr_hash << "\n"
+                       << "existing ep metric, but deleting: hash modified;"
+                       << " metric: " << ep_family_names[metric]
+                       << " hash: " << hgauge.get().first
+                       << " gaugeptr: " << hgauge.get().second;
             removeDynamicGaugeEp(metric, uuid);
         }
     }
@@ -564,8 +565,6 @@ void PrometheusManager::addNUpdateEpCounter (const string& uuid,
     using namespace modelgbp::observer;
 
     const lock_guard<mutex> lock(ep_counter_mutex);
-    LOG(DEBUG) << "addNupdate ep counter for " << ep_name
-               << " hash: " << attr_hash;
     Mutator mutator(framework, "policyelement");
     optional<shared_ptr<EpStatUniverse> > su =
                             EpStatUniverse::resolve(framework);
