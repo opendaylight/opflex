@@ -16,6 +16,24 @@
       "revId": "190aae548a153934def4e6e04061789b603e6d3d",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "89664dc1_d6709f48",
+        "filename": "libopflex/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2020-01-17T15:14:32Z",
+      "side": 1,
+      "message": "It says it requires boost-devel and not individual libraries. So I think it is covered. If you want me to I can trigger an rpm build on a private branch with this change.",
+      "parentUuid": "ce9cbc3e_a702c443",
+      "revId": "190aae548a153934def4e6e04061789b603e6d3d",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
     }
   ]
 }
