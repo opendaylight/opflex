@@ -112,6 +112,7 @@ static void send_packet_out(SwitchConnection* conn,
                             opt_output_act_t outActions = boost::none) {
     // send reply as packet-out
     struct ofputil_packet_out po;
+    match_init_catchall(&po.flow_metadata);
     po.buffer_id = UINT32_MAX;
     po.packet = b.data();
     po.packet_len = b.size();
