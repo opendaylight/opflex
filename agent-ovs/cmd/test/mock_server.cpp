@@ -32,6 +32,8 @@
 
 #include <opflexagent/logging.h>
 #include <opflexagent/cmd.h>
+#include <rapidjson/document.h>
+#include <rapidjson/filereadstream.h>
 #include "Policies.h"
 #ifdef HAVE_GRPC_SUPPORT
 #include "GbpClient.h"
@@ -85,6 +87,8 @@ int main(int argc, char** argv) {
          "in identity response")
         ("grpc_address", po::value<string>()->default_value("localhost:19999"),
          "GRPC server address for policy updates")
+        ("grpc_conf", po::value<string>()->default_value(""),
+         "GRPC config file, should be in same directory as policy file")
         ("prr_interval_secs", po::value<int>()->default_value(60),
          "How often to wakeup prr thread to check for prr timeouts")
         ;
@@ -104,6 +108,7 @@ int main(int argc, char** argv) {
     int prr_interval_secs;
 #ifdef HAVE_GRPC_SUPPORT
     std::string grpc_address;
+    std::string grpc_conf_file;
 #endif
     char buf[EVENT_BUF_LEN];
     int fd, wd;
@@ -136,7 +141,30 @@ int main(int argc, char** argv) {
                 vm["transport_mode_proxies"].as<std::vector<string>>();
         }
 #ifdef HAVE_GRPC_SUPPORT
-        grpc_address = vm["grpc_address"].as<string>();
+        grpc_conf_file = vm["grpc_conf"].as<string>();
+        if (grpc_conf_file != "") {
+            FILE* fp = fopen(grpc_conf_file.c_str(), "r");
+            if (fp == NULL) {
+                LOG(ERROR) << "Could not open grpc_conf file "
+                           << grpc_conf_file << " for reading";
+            } else {
+                char buffer[1024];
+                rapidjson::FileReadStream f(fp, buffer, sizeof(buffer));
+                rapidjson::Document d;
+                d.ParseStream<0, rapidjson::UTF8<>,
+                    rapidjson::FileReadStream>(f);
+                fclose(fp);
+                if (d.IsObject()) {
+                    if (d.HasMember("grpc-address")) {
+                        const rapidjson::Value& grpc_addressv = d["grpc-address"];
+                        if (grpc_addressv.IsString())
+                            grpc_address = grpc_addressv.GetString();
+                   }
+                }
+            }
+        }
+        if (grpc_address == "")
+            grpc_address = vm["grpc_address"].as<string>();
 #endif
         prr_interval_secs = vm["prr_interval_secs"].as<int>();
     } catch (po::unknown_option& e) {
@@ -174,6 +202,8 @@ int main(int argc, char** argv) {
                                 modelgbp::getMetadata(),
                                 prr_interval_secs);
 #ifdef HAVE_GRPC_SUPPORT
+	LOG(INFO) << "Connecting to gbp-server at address: "
+                  << grpc_address;
         GbpClient client(grpc_address, server);
 #endif
 
@@ -202,8 +232,8 @@ int main(int argc, char** argv) {
                        << strerror(errno);
             goto cleanup;
         } else {
-            LOG(INFO) << "Watching policy file: "
-                      << policy_file;
+            LOG(INFO) << "Watching policy/conf directory: "
+                      << pf_dir;
         }
         while (true) {
             ssize_t len = read(fd, buf, sizeof buf);
@@ -221,7 +251,7 @@ int main(int argc, char** argv) {
                  event = (const struct inotify_event *) ptr;
 
                 if ((event->mask & IN_CLOSE_WRITE) && event->len > 0) {
-                    LOG(INFO) << "Policy file modified : " << policy_file;
+                    LOG(INFO) << "Policy/Config dir modified : " << pf_dir;
                     if (execv(argv[0], argv)) {
                         LOG(ERROR) << "opflex_server failed to restart self"
                                    << strerror(errno);
