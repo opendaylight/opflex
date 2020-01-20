@@ -92,7 +92,8 @@
         std::string const & socketName,
         ::yajr::Peer::StateChangeCb connectionHandler,
         void * data,
-        UvLoopSelector uvLoopSelector
+        UvLoopSelector uvLoopSelector,
+        bool nullTermination_
    ) {
 
     ::yajr::comms::internal::ActiveUnixPeer * peer = NULL;
@@ -115,6 +116,7 @@
         ;
         return NULL;
     }
+    peer->nullTermination = nullTermination_;
 
     VLOG(1)
         << peer

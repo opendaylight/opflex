@@ -330,10 +330,10 @@ void OvsdbConnection::start() {
 void OvsdbConnection::connect_cb(uv_async_t* handle) {
     OvsdbConnection* ocp = (OvsdbConnection*)handle->data;
     VLOG(5) << ocp;
-    ocp->peer = yajr::Peer::create(ocp->hostname,
-                               boost::lexical_cast<string>(ocp->port),
-                               on_state_change,
-                               ocp, loop_selector, false);
+    // TODO - don't hardcode socket...this whole thing needs to moved out of libopflex
+    std::string swPath("/usr/local/var/run/openvswitch/db.sock");
+    ocp->peer = yajr::Peer::create(swPath, on_state_change,
+                                   ocp, loop_selector, false);
     assert(ocp->peer);
 }
 
