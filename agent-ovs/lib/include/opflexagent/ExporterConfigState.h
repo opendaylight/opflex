@@ -38,6 +38,8 @@ private:
     uint16_t dstPort;
     URI uri;
     string name;
+    uint8_t version;
+    uint8_t dscp;
 
 public:
     /**
@@ -60,7 +62,7 @@ public:
     const string& getDstAddress() const { return dstAddr; };
     /**
      * set the address of the destination of ExporterConfig
-     * @return address  of the destination ExporterConfig
+     * @param[in] dstAddr_  destination address of ExporterConfig
      */
     void setDstAddress(const string& dstAddr_ )  { dstAddr = dstAddr_; };
     /**
@@ -70,7 +72,7 @@ public:
     const string& getSrcAddress() const { return srcAddr; };
     /**
      * set the address of the source of ExporterConfig
-     * @return address  of the source ExporterConfig
+     * @param[in] srcAddr_  source address of the source ExporterConfig
      */
     void setSrcAddress(const string& srcAddr_ ) { srcAddr = srcAddr_; };
     /**
@@ -80,7 +82,7 @@ public:
     const uint32_t& getActiveFlowTimeOut() const { return activeFlowTimeOut; };
     /**
      * set the  activeFlowTimeOut of ExporterConfig
-     * @return activeFlowTimeOut  of the  ExporterConfig
+     * @param[in] activeFlowTimeOut_ activeFlowTimeOut of the ExporterConfig
      */
     void setActiveFlowTimeOut(const uint32_t& activeFlowTimeOut_ ) { activeFlowTimeOut = activeFlowTimeOut_; };
     /**
@@ -90,7 +92,7 @@ public:
     const uint32_t& getIdleFlowTimeOut() const { return idleFlowTimeOut; };
     /**
      * set the  idleFlowTimeOut of ExporterConfig
-     * @return idleFlowTimeOut  of the  ExporterConfig
+     * @param[in] idleFlowTimeOut_ idleFlowTimeOut  of the  ExporterConfig
      */
     void setIdleFlowTimeOut(const uint32_t& idleFlowTimeOut_ ) { idleFlowTimeOut = idleFlowTimeOut_; };
     /**
@@ -99,8 +101,8 @@ public:
      */
     const uint32_t& getSamplingRate() const { return samplingRate; };
     /**
-     * set the  idleFlowTimeOut of ExporterConfig
-     * @return idleFlowTimeOut  of the  ExporterConfig
+     * set the  samplingRate of ExporterConfig
+     * @param[in] samplingRate_ samplingRate  of the  ExporterConfig
      */
     void setSamplingRate(const uint32_t& samplingRate_ ) { samplingRate = samplingRate_; };
     /**
@@ -109,10 +111,30 @@ public:
      */
     const uint16_t& getDestinationPort() const { return dstPort; };
     /**
-     * set the  idleFlowTimeOut of ExporterConfig
-     * @return idleFlowTimeOut  of the  ExporterConfig
+     * set the  dstPort of ExporterConfig
+     * @param[in] dstPort_ dstPort  of the  ExporterConfig
      */
     void setDestinationPort(const uint16_t& dstPort_ ) { dstPort = dstPort_; };
+    /**
+     * get the version of  ExporterConfig
+     * @return version  of the  ExporterConfig
+     */
+    const uint8_t& getVersion() const { return version; };
+    /**
+     * set the  version of ExporterConfig
+     * @param[in] version_ version  of the  ExporterConfig
+     */
+    void setVersion(const uint8_t& version_ ) { version = version_; };
+    /**
+     * get the version of  ExporterConfig
+     * @return version  of the  ExporterConfig
+     */
+    const uint8_t& getDscp() const { return dscp; };
+    /**
+     * set the  dscp of ExporterConfig
+     * @param[in] dscp_ dscp  of the  ExporterConfig
+     */
+    void setDscp(const uint8_t& dscp_ ) { dscp = dscp; };
     /**
      * gets the URI, which points to a  ExporterConfig object
      * @return a URI

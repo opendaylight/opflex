@@ -240,6 +240,22 @@ public:
     bool deleteNetFlow(const string& brName);
 
     /**
+     * createNetFlow
+     * @param[in] brUuid uuid of the bridge to add the ipfix to.
+     * @param[in] target target of ipfix
+     * @param[in] sampling sampling of ipfix
+     * @return bool true if created successfully, false otherwise.
+    */
+    bool createIpfix(const string& brUuid, const string& target, const int& sampling);
+
+     /**
+     * deletes ipfix on OVSDB bridge.
+     * @param[in] brName name of bridge that the ipfix is associated with
+     * @return true if success, false otherwise.
+    */
+    bool deleteIpfix(const string& brName);
+
+    /**
      * process bridge netflow lst response
      * @param[in] reqId request ID
      * @param[in] payload body of the response
@@ -247,6 +263,15 @@ public:
      * @return true id success, false otherwise
     */
     bool handleCreateNetFlowResp(uint64_t reqId, const rapidjson::Value& payload,
+            string& uuid);
+    /**
+     * process bridge ipfix lst response
+     * @param[in] reqId request ID
+     * @param[in] payload body of the response
+     * @param[out] uuid of the mirror
+     * @return true id success, false otherwise
+    */
+    bool handleCreateIpfixResp(uint64_t reqId, const rapidjson::Value& payload,
             string& uuid);
 
     /**

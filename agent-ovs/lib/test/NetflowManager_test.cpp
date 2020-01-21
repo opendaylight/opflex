@@ -21,7 +21,7 @@
 #include <modelgbp/platform/Config.hpp>
 #include <modelgbp/netflow/ExporterConfig.hpp>
 #include <opflexagent/ExporterConfigState.h>
-
+#include <modelgbp/netflow/CollectorVersionEnumT.hpp>
 namespace opflexagent {
 
 using std::shared_ptr;
@@ -40,6 +40,8 @@ public:
         exportCfg->setDstAddr("1.2.3.4");
         exportCfg->setDstPort(1234);
         exportCfg->setActiveFlowTimeOut(60);
+        exportCfg->setSamplingRate(20);
+        exportCfg->setVersion(CollectorVersionEnumT::CONST_V5);
         mutator.commit();
     }
 
@@ -95,12 +97,22 @@ static bool checkNetFlowDstPort(boost::optional<shared_ptr<ExporterConfigState>>
     else
         return false;
 }
+static bool checkNetFlowVers(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
+                           shared_ptr<netflow::ExporterConfig> pExportCfg) {
+    if (!pExpst) return false;
+    LOG(DEBUG) << "checkNetFlowDstPort" << pExpst.get()->getVersion();
+    if (pExpst.get()->getVersion() == pExportCfg.get()->getVersion().get())
+        return true;
+    else
+        return false;
+}
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, NetflowFixture ) {
     WAIT_FOR(checkNetFlow(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()),
                           exportCfg->getURI()), 500);
     WAIT_FOR(checkNetFlowTimeout(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
     WAIT_FOR(checkNetFlowDstAddress(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
     WAIT_FOR(checkNetFlowDstPort(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
+     WAIT_FOR(checkNetFlowVers(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

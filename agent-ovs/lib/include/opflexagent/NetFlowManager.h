@@ -20,6 +20,7 @@
 
 #include <modelgbp/platform/Config.hpp>
 #include <modelgbp/netflow/ExporterConfig.hpp>
+#include <modelgbp/netflow/CollectorVersionEnumT.hpp>
 #include <opflexagent/TaskQueue.h>
 #include <opflex/modb/URI.h>
 
@@ -167,7 +168,6 @@ private:
    // list of URIs to send to listeners
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<ExporterConfigState>> notifyDelete;
-    bool isDeletePending = false;
 };
 }
 

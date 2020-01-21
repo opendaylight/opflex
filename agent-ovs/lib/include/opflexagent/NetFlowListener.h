@@ -32,12 +32,12 @@ public:
     /**
      * called when netflow exporterconfig has been deleted
      */
-    virtual void netflowDeleted() {};
+    virtual void exporterDeleted(shared_ptr<ExporterConfigState> expSt) {};
 
     /**
      * Called when netflow objects are updated.
      */
-     virtual void netflowUpdated(const opflex::modb::URI&) {}
+     virtual void exporterUpdated(const opflex::modb::URI&) {}
 };
 }
 #endif // OPFLEX_NETFOWLISTENER_H
