@@ -252,6 +252,11 @@ int main(int argc, char** argv) {
 
                 if ((event->mask & IN_CLOSE_WRITE) && event->len > 0) {
                     LOG(INFO) << "Policy/Config dir modified : " << pf_dir;
+#ifdef HAVE_GRPC_SUPPORT
+                    client.Stop();
+#endif
+                    /* should be stopped after client */
+                    server.stop();
                     if (execv(argv[0], argv)) {
                         LOG(ERROR) << "opflex_server failed to restart self"
                                    << strerror(errno);

@@ -38,6 +38,7 @@ public:
     GbpClient(const std::string& address,
               opflex::test::MockOpflexServer& server);
     ~GbpClient();
+    void Stop();
 
 private:
     void Start(const std::string& address);
@@ -45,6 +46,7 @@ private:
     void JsonDocAdd(rapidjson::Document& d, const gbpserver::GBPObject& gbp);
     std::thread thread_;
     opflex::test::MockOpflexServer& server_;
+    bool stopping;
 };
 
 } /* namespace opflexagent */

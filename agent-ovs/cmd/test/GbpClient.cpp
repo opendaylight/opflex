@@ -181,7 +181,8 @@ private:
 };
 
 GbpClient::GbpClient(const std::string& address,
-                     opflex::test::MockOpflexServer& server) : server_(server) {
+                     opflex::test::MockOpflexServer& server) :
+    server_(server), stopping(false) {
     thread_ = std::thread(&GbpClient::Start, this, address);
 }
 
@@ -191,6 +192,8 @@ GbpClient::~GbpClient() {
 
 void GbpClient::Start(const std::string& address) {
     while (true) {
+        if (stopping)
+            return;
         GbpClientImpl client(
             grpc::CreateChannel(address,
                                 grpc::InsecureChannelCredentials()),
@@ -198,6 +201,11 @@ void GbpClient::Start(const std::string& address) {
         client.Wait();
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
+}
+
+void GbpClient::Stop() {
+    stopping = true;
+    thread_.join();
 }
 
 } /* namespace opflexagent */
