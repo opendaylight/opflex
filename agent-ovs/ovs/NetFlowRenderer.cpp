@@ -12,6 +12,7 @@
 #include "NetFlowRenderer.h"
 #include <opflexagent/logging.h>
 #include <opflexagent/NetFlowManager.h>
+
 #include <boost/optional.hpp>
 
 #include <boost/range/adaptors.hpp>
@@ -36,15 +37,33 @@ namespace opflexagent {
         agent.getNetFlowManager().unregisterListener(this);
     }
 
-    void NetFlowRenderer::netflowUpdated(const opflex::modb::URI& netFlowURI) {
-        LOG(DEBUG) << "NetFlowRenderer netflowUpdated";
+    void NetFlowRenderer::exporterUpdated(const opflex::modb::URI& netFlowURI) {
+        LOG(DEBUG) << "NetFlowRenderer exporterupdated";
         handleNetFlowUpdate(netFlowURI);
     }
 
-    void NetFlowRenderer::netflowDeleted() {
+    void NetFlowRenderer::exporterDeleted(shared_ptr<ExporterConfigState> expSt) {
+        LOG(DEBUG) << "deleting exporter";
         unique_lock<mutex> lock(handlerMutex);
-        connect();
-        deleteNetFlow();
+         if (!expSt) {
+            return;
+        }
+        if (!connect()) {
+            LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY << " seconds";
+            // connection failed, start a timer to try again
+            connection_timer.reset(new deadline_timer(agent.getAgentIOService(),
+                                                        boost::posix_time::seconds(CONNECTION_RETRY)));
+            connection_timer->async_wait(boost::bind(&NetFlowRenderer::delConnectCb, this,
+                                                    boost::asio::placeholders::error, expSt));
+            timerStarted = true;
+            return;
+        }
+       if(expSt.get()->getVersion() ==  CollectorVersionEnumT::CONST_V5) {
+            deleteNetFlow();
+       }
+       else if(expSt.get()->getVersion() == CollectorVersionEnumT::CONST_V9) {
+           deleteIpfix();
+       }
         cleanup();
     }
 
@@ -58,8 +77,7 @@ namespace opflexagent {
         if (!expSt) {
             return;
         }
-        if (!connect())
-        {
+        if (!connect()) {
             LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY << " seconds";
             // connection failed, start a timer to try again
 
@@ -72,16 +90,25 @@ namespace opflexagent {
             cleanup();
             return;
         }
-
-        LOG(DEBUG) << "creating netflow";
         std::string target = expSt.get()->getDstAddress() + ":";
         std::string port = std::to_string(expSt.get()->getDestinationPort());
         target += port;
-        uint32_t timeout = expSt.get()->getActiveFlowTimeOut();
-        LOG(DEBUG) << "netflow target " << target.c_str();
-        LOG(DEBUG) << "netflow timeout " << timeout;
-        createNetFlow(target, timeout);
-        cleanup();
+        LOG(DEBUG) << "netflow/ipfix target " << target.c_str() << "version is " << expSt.get()->getVersion() ;
+
+        if (expSt.get()->getVersion() == CollectorVersionEnumT::CONST_V5) {
+            LOG(DEBUG) << "creating netflow";
+            uint32_t timeout = expSt.get()->getActiveFlowTimeOut();
+            LOG(DEBUG) << "netflow timeout " << timeout;
+            createNetFlow(target, timeout);
+            cleanup();
+
+        } else if (expSt.get()->getVersion() ==
+                   CollectorVersionEnumT::CONST_V9) {
+            LOG(DEBUG) << "creating IPFIX";
+            uint32_t sampling = expSt.get()->getSamplingRate();
+            createIpfix(target, sampling);
+            cleanup();
+        }
     }
 
     bool NetFlowRenderer::deleteNetFlow() {
@@ -95,11 +122,30 @@ namespace opflexagent {
         return true;
     }
 
+      bool NetFlowRenderer::deleteIpfix() {
+        LOG(DEBUG) << "deleting IPFIX";
+        if (!jRpc->deleteIpfix(agent.getOvsdbBridge()))
+        {
+            LOG(DEBUG) << "Unable to delete ipfix";
+            cleanup();
+            return false;
+        }
+        return true;
+    }
+
     bool NetFlowRenderer::createNetFlow(const string &targets, int timeout) {
         LOG(DEBUG) << "createNetFlow:";
         string brUuid = jRpc->getBridgeUuid(agent.getOvsdbBridge());
         LOG(DEBUG) << "bridge uuid " << brUuid;
         jRpc->createNetFlow(brUuid, targets, timeout);
+        return true;
+    }
+
+     bool NetFlowRenderer::createIpfix(const string &targets, int sampling) {
+        LOG(DEBUG) << "createIpfix:";
+        string brUuid = jRpc->getBridgeUuid(agent.getOvsdbBridge());
+        LOG(DEBUG) << "bridge uuid " << brUuid << "sampling rate is" << sampling;
+        jRpc->createIpfix(brUuid, targets, sampling);
         return true;
     }
 
@@ -116,16 +162,18 @@ namespace opflexagent {
             }
             return;
         }
-        netflowUpdated(spanURI);
+
+        exporterUpdated(spanURI);
     }
 
-    void NetFlowRenderer::delConnectCb(const boost::system::error_code& ec) {
+    void NetFlowRenderer::delConnectCb(const boost::system::error_code& ec,
+                                       shared_ptr<ExporterConfigState> expSt) {
         if (ec) {
             connection_timer.reset();
             return;
         }
         LOG(DEBUG) << "timer span del cb";
-        netflowDeleted();
+        exporterDeleted(expSt);
     }
 
 

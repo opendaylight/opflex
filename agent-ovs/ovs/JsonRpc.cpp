@@ -113,11 +113,7 @@ using boost::uuids::basic_random_generator;
             return false;
         }
         string uuid;
-        if (handleCreateNetFlowResp(pResp->reqId, pResp->payload, uuid)) {
-            return true;
-        } else {
-            return false;
-        }
+        return handleCreateNetFlowResp(pResp->reqId, pResp->payload, uuid);
     }
   bool JsonRpc::handleCreateNetFlowResp(uint64_t reqId,
             const rapidjson::Value& payload, string& uuid) {
@@ -125,6 +121,75 @@ using boost::uuids::basic_random_generator;
         Value val = opflex::engine::internal::getValue(payload, ids);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "netflow uuid " << val.GetString();
+            uuid = val.GetString();
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int& sampling)
+    {
+         transData td1;
+        td1.operation = "insert";
+        td1.table = "IPFIX";
+
+        shared_ptr<TupleData<string>> tPtr =
+            make_shared<TupleData<string>>("", target);
+        set<shared_ptr<BaseData>> pSet;
+        pSet.emplace(tPtr);
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+        td1.rows.emplace("targets", pTdSet);
+        if (sampling != 0) {
+            shared_ptr<TupleData<int>> iSampling =
+                make_shared<TupleData<int>>("", sampling);
+            pSet.clear();
+            pSet.emplace(iSampling);
+            pTdSet.reset(new TupleDataSet(pSet));
+            td1.rows.emplace("sampling", pTdSet);
+        }
+
+        string uuid_name = generateTempUuid();
+        td1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
+        uint64_t reqId = getNextId();
+        list<transData> tl;
+        tl.push_back(td1);
+
+        tuple<string, string, string> cond1("_uuid", "==", brUuid);
+        set<tuple<string, string, string>> condSet;
+        condSet.emplace(cond1);
+
+        transData td2;
+        pSet.clear();
+        td2.conditions = condSet;
+        td2.operation = "update";
+        td2.table = "Bridge";
+
+        tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
+        pSet.emplace(tPtr);
+        pTdSet.reset(new TupleDataSet(pSet));
+        td2.rows.emplace("ipfix", pTdSet);
+
+        tl.push_back(td2);
+
+        if (!sendRequest(tl, reqId)) {
+            LOG(DEBUG) << "Error sending message";
+            return false;
+        }
+        if (!checkForResponse()) {
+            LOG(DEBUG) << "Error getting response";
+            return false;
+        }
+        string uuid;
+        return handleCreateIpfixResp(pResp->reqId, pResp->payload, uuid);
+    }
+
+    bool JsonRpc::handleCreateIpfixResp(uint64_t reqId,
+            const rapidjson::Value& payload, string& uuid) {
+        list<string> ids = {"0","uuid","1"};
+        Value val = opflex::engine::internal::getValue(payload, ids);
+        if (!val.IsNull() && val.IsString()) {
+            LOG(DEBUG) << "ipfix uuid " << val.GetString();
             uuid = val.GetString();
         } else {
             return false;
@@ -163,6 +228,38 @@ using boost::uuids::basic_random_generator;
             }
             return true;
     }
+    bool JsonRpc::deleteIpfix(const string& brName) {
+
+        tuple<string, string, string> cond1("name", "==", brName);
+        set<tuple<string, string, string>> condSet;
+        condSet.emplace(cond1);
+
+        transData td;
+        td.conditions = condSet;
+        td.operation = "update";
+        td.table = "Bridge";
+
+        set<shared_ptr<BaseData>> pSet;
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+        pTdSet->label = "set";
+        td.rows.emplace("ipfix", pTdSet);
+
+        uint64_t reqId = getNextId();
+
+        list<transData> tl = {td};
+
+        if (!sendRequest(tl, reqId))
+        {
+            LOG(DEBUG) << "Error sending message";
+            return false;
+            }
+            if (!checkForResponse()) {
+                LOG(DEBUG) << "Error getting response";
+                return false;
+            }
+            return true;
+    }
+
     bool JsonRpc::handleGetPortUuidResp(uint64_t reqId,
             const rapidjson::Value& payload, string& uuid) {
         if (payload.IsArray()) {

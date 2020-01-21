@@ -45,9 +45,9 @@ public:
      */
     void stop();
 
-    virtual void netflowUpdated(const opflex::modb::URI& netflowURI);
+    virtual void exporterUpdated(const opflex::modb::URI& netflowURI);
 
-    virtual void netflowDeleted();
+    virtual void exporterDeleted(shared_ptr<ExporterConfigState> expSt);
 
 private:
     /**
@@ -58,8 +58,10 @@ private:
     void handleNetFlowUpdate(const opflex::modb::URI& netflowURI);
     bool deleteNetFlow();
     bool createNetFlow(const string& targets, int timeout);
+    bool deleteIpfix();
+    bool createIpfix(const string& targets, int sample);
     void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
-    void delConnectCb(const boost::system::error_code &ec);
+    void delConnectCb(const boost::system::error_code& ec, shared_ptr<ExporterConfigState> expSt);
 };
 }
 #endif //OPFLEX_NETFLOWRENDERER_H

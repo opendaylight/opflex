@@ -76,9 +76,14 @@ namespace opflexagent {
             optional<shared_ptr<modelgbp::netflow::ExporterConfig>> exporterconfig =
                     modelgbp::netflow::ExporterConfig::resolve(netflowmanager.framework, uri);
             if (exporterconfig) {
-                LOG(DEBUG) << "update on exporterconfig and uri is " << exporterconfig.get()->getURI()
-			<< " dst address is " << exporterconfig.get()->getDstAddr()
-			<< " dst port is " << exporterconfig.get()->getDstPort();
+                LOG(DEBUG) << "update on exporterconfig and uri is "
+                           << exporterconfig.get()->getURI()
+                           << " dst address is "
+                           << exporterconfig.get()->getDstAddr()
+                           << " dst port is "
+                           << exporterconfig.get()->getDstPort()
+                           << " version is "
+                           << exporterconfig.get()->getVersion();
                 //process exporter config
                 processExporterConfig(exporterconfig.get());
                 netflowmanager.notifyUpdate.insert(uri);
@@ -108,12 +113,8 @@ namespace opflexagent {
 
     void NetFlowManager::registerListener(NetFlowListener *listener) {
         LOG(DEBUG) << "registering netflow listener";
-        lock_guard <mutex> guard(listener_mutex);
+        lock_guard<mutex> guard(listener_mutex);
         netflowListeners.push_back(listener);
-         if (isDeletePending) {
-            notifyListeners();
-        }
-        isDeletePending = false;
     }
 
     void NetFlowManager::unregisterListener(NetFlowListener* listener) {
@@ -126,7 +127,7 @@ namespace opflexagent {
         lock_guard<mutex> guard(listener_mutex);
         for (NetFlowListener *listener : netflowListeners) {
              LOG(DEBUG) << "calling netflow listener updated method";
-            listener->netflowUpdated(exporterURI);
+            listener->exporterUpdated(exporterURI);
         }
     }
 
@@ -134,25 +135,19 @@ namespace opflexagent {
         LOG(DEBUG) << "notifying delete listener";
         lock_guard<mutex> guard(listener_mutex);
         for (NetFlowListener *listener : netflowListeners) {
-            listener->netflowDeleted();
+            listener->exporterDeleted(expSt);
         }
     }
-        void NetFlowManager::notifyListeners() {
-        LOG(DEBUG) << "notifying delete listener";
-        lock_guard<mutex> guard(listener_mutex);
-        for (NetFlowListener* listener : netflowListeners) {
-            listener->netflowDeleted();
+
+    optional<shared_ptr<ExporterConfigState>>
+    NetFlowManager::getExporterConfigState(const URI& uri) const {
+        unordered_map<URI, shared_ptr<ExporterConfigState>>::const_iterator
+            itr = exporter_map.find(uri);
+        if (itr == exporter_map.end()) {
+            return boost::none;
+        } else {
+            return itr->second;
         }
-    }
-     optional<shared_ptr<ExporterConfigState>>
-         NetFlowManager::getExporterConfigState(const URI& uri) const {
-         unordered_map<URI, shared_ptr<ExporterConfigState>>
-                 ::const_iterator itr = exporter_map.find(uri);
-         if (itr == exporter_map.end()) {
-             return boost::none;
-         } else {
-             return itr->second;
-         }
      }
 
     void NetFlowManager::NetFlowUniverseListener::processExporterConfig(const shared_ptr<modelgbp::netflow::ExporterConfig>& exporterconfig) {
@@ -165,7 +160,22 @@ namespace opflexagent {
         boost::optional<const string& > dstAddr =   exporterconfig->getDstAddr();
         if(dstAddr) {
              exportState->setDstAddress(dstAddr.get());
-
+        }
+        boost::optional<uint32_t> samplingrate = exporterconfig->getSamplingRate();
+        if(samplingrate)
+        {
+            LOG(DEBUG) << "update on exporterconfig and samplingrate is " << samplingrate.get();
+            exportState->setSamplingRate(samplingrate.get());
+        }
+        boost::optional<const uint8_t> ver = exporterconfig->getVersion();
+        if(ver)
+        {
+            exportState->setVersion(ver.get());
+        }
+        boost::optional<const uint8_t> dscp = exporterconfig->getDscp();
+        if(dscp)
+        {
+            exportState->setDscp(dscp.get());
         }
         boost::optional<uint16_t > dstPort =   exporterconfig->getDstPort();
         if(dstPort) {
