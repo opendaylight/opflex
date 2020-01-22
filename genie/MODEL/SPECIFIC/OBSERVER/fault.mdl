@@ -51,5 +51,8 @@ module[fault]
 
         # fault severity
         member[severity; type=fault/Severity]
+
+        # fault code 
+        member[faultCode; type=scalar/UInt32] 
     }
 }
