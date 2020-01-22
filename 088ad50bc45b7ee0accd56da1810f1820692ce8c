@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aad669c6_e0c2c670",
+        "filename": "genie/MODEL/SPECIFIC/OBSERVER/fault.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-22T19:09:55Z",
+      "side": 1,
+      "message": "Where would these be defined? Should it be an enum?",
+      "revId": "088ad50bc45b7ee0accd56da1810f1820692ce8c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
