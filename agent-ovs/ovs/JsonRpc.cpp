@@ -42,8 +42,8 @@ using boost::uuids::to_string;
 using boost::uuids::basic_random_generator;
 
     void JsonRpc::handleTransaction(uint64_t reqId,
-            const rapidjson::Value& payload) {
-        pResp.reset(new response(reqId, payload));
+            const rapidjson::Document& payload) {
+        pResp.reset(new Response(reqId, payload));
         responseReceived = true;
         pConn->ready.notify_all();
     }
@@ -107,9 +107,10 @@ using boost::uuids::basic_random_generator;
         return handleCreateNetFlowResp(pResp->reqId, pResp->payload, uuid);
     }
   bool JsonRpc::handleCreateNetFlowResp(uint64_t reqId,
-            const rapidjson::Value& payload, string& uuid) {
+            const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","uuid","1"};
-        Value val = opflex::engine::internal::getValue(payload, ids);
+        Value val;
+        opflex::engine::internal::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "netflow uuid " << val.GetString();
             uuid = val.GetString();
@@ -176,9 +177,10 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::handleCreateIpfixResp(uint64_t reqId,
-            const rapidjson::Value& payload, string& uuid) {
+            const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","uuid","1"};
-        Value val = opflex::engine::internal::getValue(payload, ids);
+        Value val;
+        opflex::engine::internal::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "ipfix uuid " << val.GetString();
             uuid = val.GetString();
@@ -252,16 +254,16 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::handleGetPortUuidResp(uint64_t reqId,
-            const rapidjson::Value& payload, string& uuid) {
+            const rapidjson::Document& payload, string& uuid) {
         if (payload.IsArray()) {
             try {
                 list<string> ids = { "0","rows","0","_uuid","1" };
-                 const Value& obj3 =
-                         opflex::engine::internal::getValue(payload, ids);
-                 if (obj3.IsNull()) {
-                     LOG(DEBUG) << "got null";
-                     return false;
-                 }
+                Value obj3;
+                opflex::engine::internal::getValue(payload, ids, obj3);
+                if (obj3.IsNull()) {
+                    LOG(DEBUG) << "got null";
+                    return false;
+                }
                 uuid = obj3.GetString();
                 return true;
             } catch(const std::exception &e) {
@@ -275,7 +277,7 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::handleGetPortParam(uint64_t reqId,
-            const rapidjson::Value& payload, string& col, string& param) {
+            const rapidjson::Document& payload, string& col, string& param) {
         if (payload.IsArray()) {
             try {
                 list<string> ids;
@@ -286,8 +288,8 @@ using boost::uuids::basic_random_generator;
                 } else {
                     return false;
                 }
-                 const Value& obj3 =
-                         opflex::engine::internal::getValue(payload, ids);
+                 Value obj3;
+                 opflex::engine::internal::getValue(payload, ids, obj3);
                  if (obj3.IsNull()) {
                      LOG(DEBUG) << "got null";
                      return false;
@@ -329,10 +331,11 @@ using boost::uuids::basic_random_generator;
     }
 
     void JsonRpc::handleGetBridgeMirrorUuidResp(uint64_t reqId,
-            const rapidjson::Value& payload) {
+            const rapidjson::Document& payload) {
         list<string> ids = {"0","rows","0","_uuid","1"};
         string brUuid;
-        Value val = opflex::engine::internal::getValue(payload, ids);
+        Value val;
+        opflex::engine::internal::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "bridge uuid " << val.GetString();
             brUuid = val.GetString();
@@ -342,11 +345,12 @@ using boost::uuids::basic_random_generator;
         }
         // OVS supports only one mirror, expect only one.
         ids = {"0","rows","0","mirrors","1"};
-        val = opflex::engine::internal::getValue(payload, ids);
+        Value val2;
+        opflex::engine::internal::getValue(payload, ids, val2);
         string mirUuid;
-        if (!val.IsNull() && val.IsString()) {
-            LOG(DEBUG) << "mirror uuid " << val.GetString();
-            mirUuid = val.GetString();
+        if (!val2.IsNull() && val2.IsString()) {
+            LOG(DEBUG) << "mirror uuid " << val2.GetString();
+            mirUuid = val2.GetString();
         } else {
             LOG(WARNING) << "did not find mirror ID";
             responseReceived = true;
@@ -410,20 +414,22 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::handleGetBridgePortList(uint64_t reqId,
-            const rapidjson::Value& payload,
+            const rapidjson::Document& payload,
             shared_ptr<BrPortResult> brPtr) {
         tuple<string, set<string>> brPorts;
         string brPortUuid;
         set<string> brPortSet;
         list<string> ids = {"0","rows","0","ports","0"};
-        Value val =
-                opflex::engine::internal::getValue(payload, ids);
+        Value val;
+        opflex::engine::internal::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             string valStr(val.GetString());
             ids = {"0", "rows", "0", "ports", "1"};
-            val = opflex::engine::internal::getValue(payload, ids);
+            Value val2;
+            opflex::engine::internal::getValue(payload, ids, val2);
             if (valStr == "uuid") {
-                brPortSet.emplace(val.GetString());
+                string uuidString(val2.GetString());
+                brPortSet.emplace(uuidString);
             }
         } else {
             error = "Error getting port uuid";
@@ -438,8 +444,9 @@ using boost::uuids::basic_random_generator;
             }
         }
         ids = {"0", "rows", "0", "_uuid", "1"};
-        val = opflex::engine::internal::getValue(payload, ids);
-        brPortUuid = val.GetString();
+        Value val3;
+        opflex::engine::internal::getValue(payload, ids, val3);
+        brPortUuid = val3.GetString();
         brPorts = make_tuple(brPortUuid, brPortSet);
 
         brPtr->brUuid = brPortUuid;
@@ -447,17 +454,19 @@ using boost::uuids::basic_random_generator;
         return true;
     }
 
-    void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Value& payload,
+    void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Document& payload,
             const string& index) {
         list<string> ids = {"0","rows","0",index,"0"};
-        Value val =
-                opflex::engine::internal::getValue(payload, ids);
+        Value val;
+        opflex::engine::internal::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             string valStr(val.GetString());
             ids = {"0", "rows", "0", index, "1"};
-            val = opflex::engine::internal::getValue(payload, ids);
+            Value val2;
+            opflex::engine::internal::getValue(payload, ids, val2);
             if (valStr == "uuid") {
-                uuidSet.emplace(val.GetString());
+                string uuidString(val2.GetString());
+                uuidSet.emplace(uuidString);
             }
         } else {
             error = "Error getting port uuid";
@@ -468,7 +477,8 @@ using boost::uuids::basic_random_generator;
         if (val.IsArray()) {
             for (Value::ConstValueIterator itr1 = val.Begin();
                     itr1 != val.End(); itr1++) {
-                uuidSet.emplace((*itr1)[1].GetString());
+                string uuidString((*itr1)[1].GetString());
+                uuidSet.emplace(uuidString);
             }
         }
     }
@@ -605,7 +615,7 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::handleMirrorConfig(uint64_t reqId,
-            const rapidjson::Value& payload, mirror& mir) {
+            const rapidjson::Document& payload, mirror& mir) {
         set<string> uuids;
         getUuidsFromVal(uuids, payload, "_uuid");
         if (uuids.empty()) {
@@ -628,24 +638,24 @@ using boost::uuids::basic_random_generator;
         return true;
     }
 
-    bool JsonRpc::getPortList(const uint64_t reqId, const Value& payload,
+    bool JsonRpc::getPortList(const uint64_t reqId, const Document& payload,
             unordered_map<string, string>& portMap) {
         if (payload.IsArray()) {
             try {
                 list<string> ids = { "0","rows"};
-                 const Value& arr =
-                         opflex::engine::internal::getValue(payload, ids);
-                 if (arr.IsNull() || !arr.IsArray()) {
-                     LOG(DEBUG) << "expected array";
-                     return false;
-                 }
-                 for (Value::ConstValueIterator itr1 = arr.Begin();
-                         itr1 != arr.End(); itr1++) {
-                     LOG(DEBUG) << (*itr1)["name"].GetString() << ":"
-                     << (*itr1)["_uuid"][1].GetString();
-                     portMap.emplace((*itr1)["_uuid"][1].GetString(),
-                             (*itr1)["name"].GetString());
-                 }
+                Value arr;
+                opflex::engine::internal::getValue(payload, ids, arr);
+                if (arr.IsNull() || !arr.IsArray()) {
+                    LOG(DEBUG) << "expected array";
+                    return false;
+                }
+                for (Value::ConstValueIterator itr1 = arr.Begin();
+                     itr1 != arr.End(); itr1++) {
+                    LOG(DEBUG) << (*itr1)["name"].GetString() << ":"
+                        << (*itr1)["_uuid"][1].GetString();
+                    portMap.emplace((*itr1)["_uuid"][1].GetString(),
+                                    (*itr1)["name"].GetString());
+                }
             } catch(const std::exception &e) {
                 LOG(DEBUG) << "caught exception " << e.what();
                 return false;
@@ -657,7 +667,7 @@ using boost::uuids::basic_random_generator;
         return true;
     }
 
-    bool JsonRpc::getErspanOptions(const uint64_t reqId, const Value& payload,
+    bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload,
             erspan_ifc& ifc) {
         if (!payload.IsArray()) {
             LOG(DEBUG) << "payload is not an array";
@@ -665,8 +675,8 @@ using boost::uuids::basic_random_generator;
         }
         try {
             list<string> ids = {"0","rows","0","options","1"};
-            const Value& arr =
-                    opflex::engine::internal::getValue(payload, ids);
+            Value arr;
+            opflex::engine::internal::getValue(payload, ids, arr);
             if (arr.IsNull() || !arr.IsArray()) {
                 LOG(DEBUG) << "expected array";
                 return false;
@@ -794,9 +804,10 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::handleGetBridgeUuidResp(uint64_t reqId,
-                    const rapidjson::Value& payload, string& uuid) {
+                    const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","rows","0","_uuid","1"};
-        Value val = opflex::engine::internal::getValue(payload, ids);
+        Value val;
+        opflex::engine::internal::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             uuid = val.GetString();
         } else {
@@ -1042,9 +1053,10 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::handleCreateMirrorResp(uint64_t reqId,
-            const rapidjson::Value& payload, string& uuid) {
+            const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","uuid","1"};
-        Value val = opflex::engine::internal::getValue(payload, ids);
+        Value val;
+        opflex::engine::internal::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "mirror uuid " << val.GetString();
             uuid = val.GetString();
@@ -1055,11 +1067,11 @@ using boost::uuids::basic_random_generator;
     }
 
     void JsonRpc::handleAddMirrorToBridgeResp(uint64_t reqId,
-            const rapidjson::Value& payload) {
+            const rapidjson::Document& payload) {
     }
 
     void JsonRpc::handleAddErspanPortResp(uint64_t reqId,
-            const rapidjson::Value& payload) {
+            const rapidjson::Document& payload) {
         //ready.notify_all();
         responseReceived = true;
     }

@@ -75,7 +75,7 @@ void JsonReq::serializePayload(MessageWriter& writer) {
     (*this)(writer);
 }
 
-    void OvsdbConnection::send_req_cb(uv_async_t* handle) {
+void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     req_cb_data* reqCbd = (req_cb_data*)handle->data;
     JsonReq* req = reqCbd->req;
     yajr::rpc::MethodName method(req->getMethod().c_str());
@@ -103,18 +103,17 @@ void OvsdbConnection::sendTransaction(const list<transData>& tl,
  * @param[in] idx list of indices to walk the tree.
  * @return a Value object.
  */
-Value getValue(const Value& val, const list<string>& idx) {
+void getValue(const Document& val, const list<string>& idx, Value& result) {
     stringstream ss;
     for (auto& str : idx) {
         ss << " " << str << ", ";
     }
     LOG(DEBUG4) << ss.rdbuf();
-    Document d;
-    Document::AllocatorType& alloc = d.GetAllocator();
+    Document::AllocatorType& alloc = ((Document&)val).GetAllocator();
     Value tmpVal(Type::kNullType);
-    //Value tmpVal;
     if (val == NULL || !val.IsArray()) {
-        return tmpVal;
+        result = tmpVal;
+        return;
     }
     // if string is a number, treat it as index array.
     // otherwise its an object name.
@@ -140,7 +139,8 @@ Value getValue(const Value& val, const list<string>& idx) {
                 LOG(DEBUG4) << "arr size is less than index";
                 // array size is less than the index we are looking for
                 tmpVal.SetNull();
-                return tmpVal;
+                result = tmpVal;
+                return;
             }
             tmpVal = tmpVal[index];
         } else if (tmpVal.IsObject()) {
@@ -153,21 +153,24 @@ Value getValue(const Value& val, const list<string>& idx) {
                 } else {
                     // member not found
                     tmpVal.RemoveAllMembers();
-                    return tmpVal;
+                    result = tmpVal;
+                    return;
                 }
             } else {
                 tmpVal.RemoveAllMembers();
-                return tmpVal;
+                result = tmpVal;
+                return;
             }
         } else {
             LOG(DEBUG) << "Value is not array or object";
             // some primitive type, should not hit this before
             // list iteration is over.
             tmpVal.SetNull();
-            return tmpVal;
+            result = tmpVal;
+            return;
         }
     }
-    return tmpVal;
+    result = tmpVal;
 }
 
 template<typename T>
@@ -371,7 +374,7 @@ uv_loop_t* OvsdbConnection::loop_selector(void* data) {
 }
 
 void RpcConnection::handleTransaction(uint64_t reqId,
-            const rapidjson::Value& payload) {
+            const rapidjson::Document& payload) {
     pTrans->handleTransaction(reqId, payload);
 }
 

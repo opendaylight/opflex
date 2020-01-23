@@ -23,7 +23,7 @@
 #include <mutex>
 #include <chrono>
 #include <thread>
-
+#include <rapidjson/document.h>
 #include "rpc/JsonRpc.h"
 #include <opflexagent/logging.h>
 
@@ -121,10 +121,10 @@ public:
     /**
      * call back for transaction response
      * @param[in] reqId request ID of the request for this response.
-     * @param[in] payload rapidjson::Value reference of the response body.
+     * @param[in] payload rapidjson::Document reference of the response body.
      */
     void handleTransaction(uint64_t reqId,
-                const rapidjson::Value& payload);
+                const rapidjson::Document& payload);
 
     /**
      * update the port list for the bridge
@@ -262,7 +262,7 @@ public:
      * @param[out] uuid of the mirror
      * @return true id success, false otherwise
     */
-    static bool handleCreateNetFlowResp(uint64_t reqId, const rapidjson::Value& payload,
+    static bool handleCreateNetFlowResp(uint64_t reqId, const rapidjson::Document& payload,
             string& uuid);
     /**
      * process bridge ipfix lst response
@@ -271,7 +271,7 @@ public:
      * @param[out] uuid of the mirror
      * @return true id success, false otherwise
     */
-    static bool handleCreateIpfixResp(uint64_t reqId, const rapidjson::Value& payload,
+    static bool handleCreateIpfixResp(uint64_t reqId, const rapidjson::Document& payload,
             string& uuid);
 
     /**
@@ -281,7 +281,7 @@ public:
      * @param[out] uuid uuid of the port
      * @return true id success, false otherwise
      */
-    static bool handleGetPortUuidResp(uint64_t reqId, const rapidjson::Value& payload,
+    static bool handleGetPortUuidResp(uint64_t reqId, const rapidjson::Document& payload,
             string& uuid);
 
     /**
@@ -291,7 +291,7 @@ public:
      * @param[out] brPtr shared pointer to result struct
      * @return true id success, false otherwise
      */
-    bool handleGetBridgePortList(uint64_t reqId, const rapidjson::Value& payload,
+    bool handleGetBridgePortList(uint64_t reqId, const rapidjson::Document& payload,
             shared_ptr<BrPortResult> brPtr);
 
     /**
@@ -301,7 +301,7 @@ public:
      * @param[out] uuid of the bridge
      * @return true id success, false otherwise
      */
-    static bool handleGetBridgeUuidResp(uint64_t reqId, const rapidjson::Value& payload,
+    static bool handleGetBridgeUuidResp(uint64_t reqId, const rapidjson::Document& payload,
             string& uuid);
 
     /**
@@ -311,7 +311,7 @@ public:
      * @param[out] mir mirror info
      * @return true id success, false otherwise
      */
-    bool handleMirrorConfig(uint64_t reqId, const rapidjson::Value& payload,
+    bool handleMirrorConfig(uint64_t reqId, const rapidjson::Document& payload,
             mirror& mir);
 
     /**
@@ -328,7 +328,7 @@ public:
      * @param[out] uuid of the mirror
      * @return true id success, false otherwise
      */
-    static bool handleCreateMirrorResp(uint64_t reqId, const rapidjson::Value& payload,
+    static bool handleCreateMirrorResp(uint64_t reqId, const rapidjson::Document& payload,
             string& uuid);
 
     /**
@@ -350,7 +350,7 @@ public:
          * @param[in] reqId request ID \
          * @param[in] payload body of the response \
          */ \
-        void F(uint64_t reqId, const rapidjson::Value& payload);
+        void F(uint64_t reqId, const rapidjson::Document& payload);
     /*! declaration for  handleGetBridgeMirrorUuidResp */
     DECLARE_HANDLER(handleGetBridgeMirrorUuidResp);
     /*! declaration for handleAddMirrorToBridgeResp */
@@ -386,7 +386,7 @@ private:
      * @param[in] index an index into the Value struct
      * @param[out] uuidSet set of UUIDs extracted from the Value struct
      */
-    void getUuidsFromVal(set<string>& uuidSet, const Value& payload,
+    void getUuidsFromVal(set<string>& uuidSet, const Document& payload,
                 const string& index);
 
     /**
@@ -396,7 +396,7 @@ private:
      * @param[out] portMap unordered map of port UUID as key and name as value
      * @return bool false if there is a problem getting the value, true otherwise
      */
-    static bool getPortList(const uint64_t reqId, const Value& payload,
+    static bool getPortList(const uint64_t reqId, const Document& payload,
                 unordered_map<string, string>& portMap);
 
     /**
@@ -415,7 +415,7 @@ private:
      * @return bool false if there is a problem getting the value, true otherwise.
      */
     static bool handleGetPortParam(uint64_t reqId,
-                const rapidjson::Value& payload, string& col, string& param);
+                const rapidjson::Document& payload, string& col, string& param);
 
     /**
      * get a value of the column in a specific row of the port table
@@ -431,7 +431,7 @@ private:
      * @param[in] payload response Value struct
      * @param[out] ifc ERSPAN interface struct
      */
-    static bool getErspanOptions(const uint64_t reqId, const Value& payload,
+    static bool getErspanOptions(const uint64_t reqId, const Document& payload,
             erspan_ifc& ifc);
 
     template <typename T>
@@ -460,19 +460,23 @@ private:
      */
     static void printMirMap(const map<string, mirror>& mirMap);
 
-    typedef struct response_ {
+    class Response {
+    public:
         uint64_t reqId;
-        const rapidjson::Value& payload;
-        response_(uint64_t reqId, const rapidjson::Value& payload) :
-            reqId(reqId), payload(payload) {}
-    } response;
+        rapidjson::Document payload;
+
+        Response(uint64_t reqId, const rapidjson::Document& payload_) :
+            reqId(reqId) {
+            payload.CopyFrom(payload_, payload.GetAllocator());
+        }
+    };
 
     bool responseReceived = false;
     map<string, mirror> mirMap;
     const int WAIT_TIMEOUT = 10;
     string error;
     shared_ptr<RpcConnection> pConn;
-    shared_ptr<response> pResp;
+    shared_ptr<Response> pResp;
     uint64_t id = 0;
 };
 }

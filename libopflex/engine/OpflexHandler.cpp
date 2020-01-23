@@ -323,7 +323,7 @@ template<>
 void InbRes<&yajr::rpc::method::transact>::process() const {
     VLOG(5) << "calling InbRes transact";
     ((opflex::engine::internal::OvsdbConnection*)getPeer()->getData())
-            ->handleTransaction(getLocalId().id_, getPayload());
+            ->handleTransaction(getLocalId().id_, (rapidjson::Document&)getPayload());
 }
 
 template<>
