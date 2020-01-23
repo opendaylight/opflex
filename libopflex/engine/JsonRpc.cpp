@@ -17,7 +17,6 @@
 #include <set>
 #include <tuple>
 #include <memory>
-#include <thread>
 
 #include <yajr/rpc/methods.hpp>
 
@@ -44,13 +43,6 @@ namespace opflex {
 namespace engine {
 namespace internal {
 
-void prettyPrintValue(const rapidjson::Value& val) {
-    StringBuffer buf;
-    PrettyWriter<StringBuffer> writer(buf);
-    val.Accept(writer);
-    LOG(DEBUG) << buf.GetString();
-}
-
 TransactReq::TransactReq(const transData& td) : OpflexMessage("transact", REQUEST),
         tData(td) {}
 
@@ -64,10 +56,10 @@ void TransactReq::serializePayload(MessageWriter& writer) {
     (*this)(writer);
 }
 
-JsonReq::JsonReq(list<transData> tl, uint64_t reqId)
+JsonReq::JsonReq(const list<transData>& tl, uint64_t reqId)
     : OpflexMessage("transact", REQUEST), reqId(reqId)
 {
-    for (auto elem : tl) {
+    for (auto& elem : tl) {
         shared_ptr<TransactReq> pTr = make_shared<TransactReq>(elem);
         transList.push_back(pTr);
     }
@@ -83,11 +75,7 @@ void JsonReq::serializePayload(MessageWriter& writer) {
     (*this)(writer);
 }
 
-void JsonReq::addTransaction(shared_ptr<TransactReq> req) {
-    transList.push_back(req);
-}
-
-void OvsdbConnection::send_req_cb(uv_async_t* handle) {
+    void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     req_cb_data* reqCbd = (req_cb_data*)handle->data;
     JsonReq* req = reqCbd->req;
     yajr::rpc::MethodName method(req->getMethod().c_str());
@@ -117,7 +105,7 @@ void OvsdbConnection::sendTransaction(const list<transData>& tl,
  */
 Value getValue(const Value& val, const list<string>& idx) {
     stringstream ss;
-    for (auto str : idx) {
+    for (auto& str : idx) {
         ss << " " << str << ", ";
     }
     LOG(DEBUG4) << ss.rdbuf();
@@ -241,7 +229,7 @@ void TransactReq::writePair(rapidjson::Writer<T>& writer, shared_ptr<BaseData> b
 
 template <typename T>
 bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
-    for (auto pair : tData.kvPairs) {
+    for (auto& pair : tData.kvPairs) {
         writePair<T>(writer, pair, true);
     }
 
@@ -277,9 +265,7 @@ bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
     if (!tData.columns.empty()) {
         writer.String("columns");
         writer.StartArray();
-        for (set<string>::iterator it = tData.columns.begin();
-                it != tData.columns.end(); ++it) {
-            string tmp = *it;
+        for (auto& tmp : tData.columns) {
             writer.String(tmp.c_str());
         }
         writer.EndArray();
@@ -300,12 +286,11 @@ bool TransactReq::operator()(rapidjson::Writer<T> & writer) {
                 writer.StartArray();
                 LOG(DEBUG) << "label " << tdsPtr->label;
 
-                for (auto val : tdsPtr->tset)
-                {
+                for (auto& val : tdsPtr->tset) {
                     writePair<T>(writer, val, false);
                 }
-                    writer.EndArray();
-                    writer.EndArray();
+                writer.EndArray();
+                writer.EndArray();
             } else {
                 writePair(writer, *(tdsPtr->tset.begin()), false);
             }
@@ -404,7 +389,7 @@ std::shared_ptr<RpcConnection> createConnection(Transaction& trans) {
 void MockRpcConnection::sendTransaction(const list<transData>& tl,
         const uint64_t& reqId) {
     ResponseDict& rDict = ResponseDict::Instance();
-    map<size_t, int>::iterator itr = rDict.dict.find(reqId);
+    auto itr = rDict.dict.find(reqId);
     if (itr != rDict.dict.end()) {
         handleTransaction(1, rDict.d[itr->second]);
     } else {

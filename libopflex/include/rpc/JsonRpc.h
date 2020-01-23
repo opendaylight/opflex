@@ -34,12 +34,6 @@ using namespace std;
 using namespace rapidjson;
 
 /**
- * utility class to pretty print rapidjson::Value
- * @param val Value object reference
- */
-void prettyPrintValue(const rapidjson::Value& val);
-
-/**
  * enum for data types to be sent over JSON/RPC
  */
 enum class  Dtype {STRING, INTEGER, BOOL};
@@ -216,7 +210,7 @@ public:
     string toString() {
         stringstream ss;
         ss << "label " << label << endl;
-        for (auto elem : tset) {
+        for (auto& elem : tset) {
             if (elem->getType() == Dtype::INTEGER) {
                 shared_ptr<TupleData<int>> tPtr =
                         dynamic_pointer_cast<TupleData<int>>(elem);

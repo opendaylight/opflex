@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file JsonRpc.h
+ * @file OvsdbConnection.h
  * @brief Interface definition for various JSON/RPC messages used by the
  * engine
  */
@@ -50,7 +50,7 @@ public:
  */
 class JsonReq : public OpflexMessage {
 public:
-    JsonReq(list<transData> tl, uint64_t reqId);
+    JsonReq(const list<transData>& tl, uint64_t reqId);
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer);
 
@@ -59,8 +59,6 @@ public:
     virtual JsonReq* clone(){
         return new JsonReq(*this);
     };
-
-    void addTransaction(shared_ptr<TransactReq> req);
 
     template <typename T>
     bool operator()(rapidjson::Writer<T> & writer) {
@@ -153,20 +151,12 @@ private:
         yajr::Peer* peer;
     } req_cb_data;
 
-    /**
-     * send transaction request
-     * @param[in] req request object
-     * @param reqId request ID
-     */
-    void sendTransaction(JsonReq& req, uint64_t reqId);
-
     uv_loop_t* client_loop;
     util::ThreadManager threadManager;
     uv_async_t connect_async;
     uv_async_t send_req_async;
     string hostname;
     int port;
-
 
 };
 }
