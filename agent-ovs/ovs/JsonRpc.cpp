@@ -19,32 +19,23 @@
 #include <regex>
 #include <string>
 #include <rapidjson/document.h>
-#include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
-#include <uv.h>
 
 #include "JsonRpc.h"
 
-
 #include <opflexagent/logging.h>
-#include "opflex/ofcore/OFConstants.h"
 #include "rpc/JsonRpc.h"
 
 #include <random>
 
-#include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/optional/optional.hpp>
 
 
-using namespace opflex::ofcore;
 using namespace std::chrono;
 
 namespace opflexagent {
-
-using rapidjson::Writer;
 
 using namespace rapidjson;
 using boost::uuids::to_string;
@@ -321,38 +312,20 @@ using boost::uuids::basic_random_generator;
             ss << "   uuid: " << elem.second.uuid << endl;
             ss << "   bridge uuid: " << elem.second.brUuid << endl;
             ss << "   src ports" << endl;
-            for (string uuid : elem.second.src_ports) {
+            for (const string& uuid : elem.second.src_ports) {
                 ss << "      " << uuid << endl;
             }
             ss << "...dst ports" << endl;
-            for (string uuid : elem.second.dst_ports) {
+            for (const string& uuid : elem.second.dst_ports) {
                 ss << "      " << uuid << endl;
             }
             ss << "   output port" << endl;
-            for (string uuid : elem.second.dst_ports) {
+            for (const string& uuid : elem.second.dst_ports) {
                 ss << "      " << uuid << endl;
             }
 
             LOG(DEBUG) << ss.rdbuf();
         }
-    }
-
-    void JsonRpc::printMap(const map<string, string>& m) {
-        stringstream ss;
-        ss << endl;
-        for (auto elem : m) {
-            ss << elem.first << ":" << elem.second << endl;
-        }
-        LOG(DEBUG) << ss.rdbuf();
-    }
-
-    void JsonRpc::printSet(const set<string>& s) {
-        stringstream ss;
-        ss << endl;
-        for (auto elem : s) {
-            ss << elem << endl;
-        }
-        LOG(DEBUG) << ss.rdbuf();
     }
 
     void JsonRpc::handleGetBridgeMirrorUuidResp(uint64_t reqId,
@@ -392,10 +365,10 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
-            string port, bool action) {
+            const string& port, bool action) {
         string brPortUuid = get<0>(ports);
         set<string> brPorts = get<1>(ports);
-        for (set<string>::iterator itr = brPorts.begin();
+        for (auto itr = brPorts.begin();
                 itr != brPorts.end(); ++itr) {
         }
         if (action) {
@@ -413,7 +386,7 @@ using boost::uuids::basic_random_generator;
         condSet.emplace(cond1);
         td.conditions = condSet;
         set<shared_ptr<BaseData>> pSet;
-        for (auto elem : brPorts) {
+        for (auto& elem : brPorts) {
             shared_ptr<TupleData<string>> tPtr =
                     make_shared<TupleData<string>>("uuid", elem);
             pSet.emplace(tPtr);
@@ -449,7 +422,7 @@ using boost::uuids::basic_random_generator;
             string valStr(val.GetString());
             ids = {"0", "rows", "0", "ports", "1"};
             val = opflex::engine::internal::getValue(payload, ids);
-            if (valStr.compare("uuid") == 0) {
+            if (valStr == "uuid") {
                 brPortSet.emplace(val.GetString());
             }
         } else {
@@ -483,7 +456,7 @@ using boost::uuids::basic_random_generator;
             string valStr(val.GetString());
             ids = {"0", "rows", "0", index, "1"};
             val = opflex::engine::internal::getValue(payload, ids);
-            if (valStr.compare("uuid") == 0) {
+            if (valStr == "uuid") {
                 uuidSet.emplace(val.GetString());
             }
         } else {
@@ -500,7 +473,7 @@ using boost::uuids::basic_random_generator;
         }
     }
 
-    bool JsonRpc::getBridgePortList(string bridge,
+    bool JsonRpc::getBridgePortList(const string& bridge,
             BrPortResult& res) {
         tuple<string, string, string> cond1("name", "==", bridge);
         set<tuple<string, string, string>> condSet;
@@ -619,9 +592,9 @@ using boost::uuids::basic_random_generator;
 
     void JsonRpc::substituteSet(set<string>& s, const unordered_map<string, string>& portMap) {
         set<string> names;
-        for (auto elem = s.begin(); elem != s.end(); elem++) {
-            LOG(DEBUG) << "uuid " << *elem;
-            auto itr  = portMap.find(*elem);
+        for (const auto& elem : s) {
+            LOG(DEBUG) << "uuid " << elem;
+            auto itr  = portMap.find(elem);
             if (itr != portMap.end()) {
                 LOG(DEBUG) << "name " << itr->second;
                 names.insert(itr->second);
@@ -782,16 +755,15 @@ using boost::uuids::basic_random_generator;
     }
 
     void JsonRpc::getPortUuids(map<string, string>& ports) {
-        for (map<string, string>::iterator it = ports.begin();
-                it != ports.end(); ++it) {
-            string uuid = getPortUuid(it->first);
+        for (auto& port : ports) {
+            string uuid = getPortUuid(port.first);
             if (!uuid.empty()) {
-               it->second = uuid;
+               port.second = uuid;
             }
         }
     }
 
-    string JsonRpc::getBridgeUuid(string name) {
+    string JsonRpc::getBridgeUuid(const string& name) {
         tuple<string, string, string> cond1("name", "==", name);
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
@@ -833,7 +805,7 @@ using boost::uuids::basic_random_generator;
         return true;
     }
 
-    bool JsonRpc::createMirror(string brUuid, string name) {
+    bool JsonRpc::createMirror(const string& brUuid, const string& name) {
         map<string, string> portUuidMap;
 
         auto itr = mirMap.find(name);
@@ -848,9 +820,8 @@ using boost::uuids::basic_random_generator;
         ports.insert(mir.src_ports.begin(), mir.src_ports.end());
         ports.insert(mir.dst_ports.begin(), mir.dst_ports.end());
         ports.insert(ERSPAN_PORT_NAME);
-        for (set<string>::iterator it = ports.begin();
-                it != ports.end(); ++it) {
-            portUuidMap.emplace(*it, "");
+        for (const auto& port : ports) {
+            portUuidMap.emplace(port, "");
         }
         getPortUuids(portUuidMap);
 
@@ -1035,7 +1006,7 @@ using boost::uuids::basic_random_generator;
         td2.table = "Bridge";
         //rdata.clear();
         pSet.clear();
-        for (auto elem : res.portUuids) {
+        for (const auto& elem : res.portUuids) {
             tPtr.reset(new TupleData<string>("uuid", elem));
             pSet.emplace(tPtr);
         }
@@ -1049,11 +1020,11 @@ using boost::uuids::basic_random_generator;
 
         if (!sendRequest(tl, reqId)) {
             LOG(DEBUG) << "Error sending message";
-            return "";
+            return false;
         }
         if (!checkForResponse()) {
             LOG(DEBUG) << "Error getting response";
-            return "";
+            return false;
         }
 
         return true;
@@ -1061,9 +1032,8 @@ using boost::uuids::basic_random_generator;
 
     inline void JsonRpc::populatePortUuids(set<string>& ports, map<string,
             string>& uuidMap, set<tuple<string,string>>& entries) {
-        for (set<string>::iterator it = ports.begin();
-                it != ports.end(); ++it) {
-            map<string, string>::iterator itmap = uuidMap.find(*it);
+        for (const auto& port : ports) {
+            auto itmap = uuidMap.find(port);
             if (itmap != uuidMap.end()) {
                 if (!itmap->second.empty())
                     entries.emplace("uuid",itmap->second);
@@ -1105,7 +1075,7 @@ using boost::uuids::basic_random_generator;
         }
     }
 
-    bool JsonRpc::deleteMirror(string brName) {
+    bool JsonRpc::deleteMirror(const string& brName) {
             list<string> mirList;
             tuple<string, string, string> cond1("name", "==", brName);
             set<tuple<string, string, string>> condSet;
@@ -1137,7 +1107,7 @@ using boost::uuids::basic_random_generator;
             return true;
     }
 
-    void JsonRpc::addMirrorData(string name, mirror mir) {
+    void JsonRpc::addMirrorData(const string& name, const mirror& mir) {
         mirMap.emplace(make_pair(name, mir));
     }
 
