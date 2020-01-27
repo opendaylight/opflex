@@ -23,9 +23,8 @@ void SnatSource::updateSnat(const Snat& snat) {
     manager->updateSnat(snat);
 }
 
-void SnatSource::removeSnat(const std::string& snatIp,
-                            const std::string& uuid) {
-    manager->removeSnat(snatIp, uuid);
+void SnatSource::removeSnat(const std::string& uuid) {
+    manager->removeSnat(uuid);
 }
 
 } /* namespace opflexagent */

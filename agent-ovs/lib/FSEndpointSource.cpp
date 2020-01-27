@@ -110,7 +110,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string IPM_NEXTHOP_IF("next-hop-if");
     static const std::string IPM_NEXTHOP_MAC("next-hop-mac");
 
-    static const std::string SNAT_IP("snat-ip");
+    static const std::string SNAT_UUIDS("snat-uuids");
     static const std::string ACTIVE_ACTIVE_AAP("active-active-aap");
 
     try {
@@ -426,10 +426,13 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             }
         }
 
-        optional<string> snatIp =
-            properties.get_optional<string>(SNAT_IP);
-        if (snatIp)
-            newep.setSnatIP(snatIp.get());
+        optional<ptree&> snats =
+            properties.get_child_optional(SNAT_UUIDS);
+
+        if (snats) {
+            for (const ptree::value_type &v : snats.get())
+                newep.addSnatUuid(v.second.data());
+        }
 
         optional<bool> aapModeAA =
             properties.get_optional<bool>(ACTIVE_ACTIVE_AAP);

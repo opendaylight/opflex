@@ -1157,28 +1157,21 @@ public:
     }
 
     /**
-     * Get SNAT IP address
+     * Get SNAT uuid set
      *
-     * @return the SNAT IP address
+     * @return all the SNAT uuids
      */
-    const boost::optional<std::string>& getSnatIP() const {
-        return snatIp;
+    const std::vector<std::string>& getSnatUuids() const {
+        return snatUuids;
     }
 
     /**
-     * Set SNAT IP address
+     * add SNAT uuid to this endpoint
      *
-     * @param snatIp the SNAT IP address
+     * @param snatUuid the uuid of snat
      */
-    void setSnatIP(const std::string& snatIp) {
-        this->snatIp = snatIp;
-    }
-
-    /**
-     * Unset the SNAT IP address
-     */
-    void unsetSnatIP() {
-        snatIp = boost::none;
+    void addSnatUuid(const std::string& snatUuid) {
+        this->snatUuids.push_back(snatUuid);
     }
 
     /**
@@ -1294,7 +1287,7 @@ private:
     boost::optional<DHCPv4Config> dhcpv4Config;
     boost::optional<DHCPv6Config> dhcpv6Config;
     ipam_set ipAddressMappings;
-    boost::optional<std::string> snatIp;
+    std::vector<std::string> snatUuids;
     uint32_t extEncap;
 };
 

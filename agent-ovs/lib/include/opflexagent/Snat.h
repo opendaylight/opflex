@@ -34,7 +34,7 @@ public:
      * Default constructor for Snat
      */
     Snat()
-    : local(false), destIp(boost::none), destPrefix(0), zone(0) {}
+    : local(false), zone(0) {}
 
     /**
      * Get the UUID for this snat
@@ -164,48 +164,18 @@ public:
     /**
      * Get destination network that should be SNATTED
      *
-     * @return the destination network for which SNAT
+     * @return the destination networks for which SNAT
      * action should be performed
      */
-    const boost::optional<std::string>& getDest() const {
-        return destIp;
+    const std::vector<std::string>& getDest() const {
+        return dest;
     }
 
     /**
-     * Set destination network that should be SNATTED
+     * Add destination network that should be SNATTED
      */
-    void setDest(const std::string&  destIp) {
-        this->destIp = destIp;
-    }
-
-    /**
-     * Unset the destination network
-     */
-    void unsetDest() {
-        destIp = boost::none;
-    }
-
-    /**
-     * Get destination prefix for destination network
-     *
-     * @return prefix
-     */
-    const boost::optional<uint8_t> getDestPrefix() const {
-         return destPrefix;
-    }
-
-    /**
-     * Set destination prefix for destination network
-     */
-    void setDestPrefix(uint8_t destPrefix) {
-        this->destPrefix = destPrefix;
-    }
-
-    /**
-     * Unset destination prefix
-     */
-    void unsetDestPrefix() {
-        destPrefix = 0;
+    void addDest(const std::string& d) {
+        this->dest.push_back(d);
     }
 
     /**
@@ -310,8 +280,7 @@ private:
     bool local;
     boost::optional<opflex::modb::MAC> interfaceMac;
     boost::optional<uint16_t> ifaceVlan;
-    boost::optional<std::string> destIp;
-    boost::optional<uint8_t> destPrefix;
+    std::vector<std::string> dest;
     boost::optional<uint16_t> zone;
     PortRangeMap portRangeMap;
 };
