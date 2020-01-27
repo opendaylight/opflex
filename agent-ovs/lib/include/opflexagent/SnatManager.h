@@ -57,53 +57,44 @@ public:
     /**
      * Get the detailed information for an snat
      *
-     * @param snatIp the snat ip address
+     * @param uuid, the uuid of the snat object
      * @return the object containing the detailed information, or a
      * NULL pointer if there is no such snat
      */
     std::shared_ptr<const Snat>
-        getSnat(const std::string& snatIp);
+        getSnat(const std::string& uuid);
 
     /**
      * Add endpoint to ep_map
      *
-     * @param snatIp the snat ip address
-     * @param uuid the uuid of the endpoint
+     * @param uuid the uuid of the snat object
+     * @param epUuid the uuid of the endpoint
      */
-    void addEndpoint(const std::string& snatIp,
-                     const std::string& uuid);
-
-    /**
-     * Delete endpoint from ep_map
-     *
-     * @param snatIp the snat ip address
-     * @param uuid the uuid of the endpoint
-     */
-    void delEndpoint(const std::string& snatIp,
-                     const std::string& uuid);
+    void addEndpoint(const std::string& uuid,
+                     const std::string& epUuid);
 
     /**
      * Delete endpoint from ep_map
      * search all snat ips for the ep
      * and delete the ep
      *
-     * @param uuid the uuid of the endpoint
+     * @param epUuid the uuid of the endpoint
      */
-    void delEndpoint(const std::string& uuid);
+    void delEndpoint(const std::string& epUuid);
 
     /**
      * Get endpoints for snat ip
      *
-     * @param snatIp the snat ip address
+     * @param uuid the uuid of the snat object
      * @param eps endpoints using the snat ip
      */
-    void getEndpoints(const std::string& snatIp,
+    void getEndpoints(const std::string& uuid,
                       /* out */ std::unordered_set<std::string>& eps);
 
     /**
      * Set of <uuid, snat-ip> pairs
      */
-    typedef std::set<std::pair<std::string, std::string>> snats_t;
+    typedef std::set<std::string> snats_t;
 
     /**
      * Get the snats that are on a particular interface
@@ -124,10 +115,9 @@ private:
      * Remove the snat with the specified snatIp from the snat
      * manager.
      *
-     * @param snatIp of the snat that no longer exists
      * @param uuid of the snat that no longer exists
      */
-    void removeSnat(const std::string& snatIp, const std::string& uuid);
+    void removeSnat(const std::string& uuid);
 
     class SnatState {
     public:
@@ -161,7 +151,7 @@ private:
     std::list<SnatListener*> snatListeners;
     std::mutex listener_mutex;
 
-    void notifyListeners(const std::string& snatIp, const std::string& uuid);
+    void notifyListeners(const std::string& uuid);
     void removeIfaces(const Snat& snat);
 
     friend class SnatSource;

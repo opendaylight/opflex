@@ -56,7 +56,6 @@ void FSSnatSource::updated(const fs::path& filePath) {
     static const std::string INTERFACE_MAC("interface-mac");
     static const std::string INTERFACE_VLAN("interface-vlan");
     static const std::string DEST("dest");
-    static const std::string DEST_PREFIX("dest-prefix");
     static const std::string ZONE("zone");
     static const std::string PORT_RANGE("port-range");
     static const std::string PORT_RANGE_START("start");
@@ -92,14 +91,14 @@ void FSSnatSource::updated(const fs::path& filePath) {
              properties.get_optional<string>(INTERFACE_MAC);
         if (ifaceMac)
             newsnat.setInterfaceMAC(opflex::modb::MAC(ifaceMac.get()));
-        optional<string> nw_dst =
-            properties.get_optional<string>(DEST);
-        if (nw_dst)
-            newsnat.setDest(nw_dst.get());
-        optional<uint8_t> prefix =
-            properties.get_optional<uint8_t>(DEST_PREFIX);
-        if (prefix)
-            newsnat.setDestPrefix(prefix.get());
+
+        optional<ptree&> nw_dsts =
+            properties.get_child_optional(DEST);
+        if (nw_dsts) {
+            for (const ptree::value_type &v : nw_dsts.get())
+                newsnat.addDest(v.second.data());
+        }
+
         optional<uint16_t> zone =
             properties.get_optional<uint16_t>(ZONE);
         if (zone)
@@ -153,12 +152,11 @@ void FSSnatSource::updated(const fs::path& filePath) {
 
         snat_map_t::const_iterator it = knownSnats.find(pathstr);
         if (it != knownSnats.end()) {
-            if (newsnat.getSnatIP() != it->second.first)
+            if (newsnat.getUUID() != it->second)
                 deleted(filePath);
         }
         if (valid_range) {
-            knownSnats[pathstr] = make_pair(newsnat.getSnatIP(),
-                                            newsnat.getUUID());
+            knownSnats[pathstr] = newsnat.getUUID();
             updateSnat(newsnat);
             LOG(INFO) << "Updated Snat " << newsnat
                       << " from " << filePath;
@@ -179,11 +177,10 @@ void FSSnatSource::deleted(const fs::path& filePath) {
         string pathstr = filePath.string();
         snat_map_t::iterator it = knownSnats.find(pathstr);
         if (it != knownSnats.end()) {
-            LOG(INFO) << "Removed snat-ip "
-                      << it->second.first
-                      << "uuid " << it->second.second
+            LOG(INFO) << "Removed snat-uuid "
+                      << it->second
                       << " at " << filePath;
-            removeSnat(it->second.first, it->second.second);
+            removeSnat(it->second);
             knownSnats.erase(it);
         }
     } catch (const std::exception& ex) {

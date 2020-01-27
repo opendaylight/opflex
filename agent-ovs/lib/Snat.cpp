@@ -20,10 +20,10 @@ std::ostream & operator<<(std::ostream &os, const Snat& s) {
        << ",interface-name=" << s.getInterfaceName()
        << ",local=" << s.isLocal();
 
-    if (s.getDest())
-        os << ",dest=" << s.getDest().get();
-    if (s.getDestPrefix())
-        os << ",prefix=" << unsigned(s.getDestPrefix().get());
+    os << ",dest=[";
+    for (auto it = s.getDest().begin(); it != s.getDest().end(); ++it)
+        os << *it << ",";
+    os << "]";
     if (s.getZone())
         os << ",zone=" << s.getZone().get();
     if (s.getInterfaceMAC())
