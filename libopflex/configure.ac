@@ -140,7 +140,7 @@ AX_BOOST_UNIT_TEST_FRAMEWORK
 AX_BOOST_FILESYSTEM
 
 dnl Package-config dependencies
-PKG_CHECK_MODULES([UV], [libuv >= 1.8.0])
+PKG_CHECK_MODULES([UV], [libuv >= 1.18.0])
 PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1])
 PKG_CHECK_MODULES([RAPIDJSON], [RapidJSON >= 1.1])
 
