@@ -111,12 +111,6 @@ public:
      */
     void notifyListeners(const shared_ptr<ExporterConfigState>& expSt);
 
-
-    /**
-     * Notify net flow listeners to signal all net flow deletion
-     */
-    void notifyListeners();
-
     /**
      * Listener for changes related to net flow
      */
@@ -152,7 +146,6 @@ public:
      * instance of net flow universe listener class.
      */
     NetFlowUniverseListener netflowUniverseListener;
-    friend class NetFlowUniverseListener;
 
 private:
 
@@ -163,6 +156,7 @@ private:
     list<NetFlowListener*> netflowListeners;
     mutex listener_mutex;
     TaskQueue taskQueue;
+    static recursive_mutex exporter_mutex;
     unordered_map<opflex::modb::URI, shared_ptr<ExporterConfigState>>
            exporter_map;
    // list of URIs to send to listeners

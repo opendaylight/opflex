@@ -19,7 +19,6 @@
 #include <opflex/modb/Mutator.h>
 
 
-
 namespace opflexagent {
 
     using namespace std;
@@ -29,6 +28,8 @@ namespace opflexagent {
     using opflex::modb::URI;
     using boost::posix_time::milliseconds;
     using opflex::modb::Mutator;
+
+    recursive_mutex NetFlowManager::exporter_mutex;
 
     NetFlowManager::NetFlowManager(opflex::ofcore::OFFramework &framework_,
                              boost::asio::io_service& agent_io_) :
@@ -53,7 +54,7 @@ namespace opflexagent {
     void NetFlowManager::NetFlowUniverseListener::objectUpdated(class_id_t classId,
                                                           const URI &uri) {
         LOG(DEBUG) << "update on NetFlowUniverseListener URI " << uri;
-
+        lock_guard<recursive_mutex> guard(opflexagent::NetFlowManager::exporter_mutex);
         // updates on parent container for exporterconfig are received for
         // exporterconfig creation. Deletion and modification updates are
         // sent to the object itself.
@@ -141,8 +142,8 @@ namespace opflexagent {
 
     optional<shared_ptr<ExporterConfigState>>
     NetFlowManager::getExporterConfigState(const URI& uri) const {
-        unordered_map<URI, shared_ptr<ExporterConfigState>>::const_iterator
-            itr = exporter_map.find(uri);
+        lock_guard<recursive_mutex> guard(exporter_mutex);
+        auto itr = exporter_map.find(uri);
         if (itr == exporter_map.end()) {
             return boost::none;
         } else {
@@ -151,11 +152,12 @@ namespace opflexagent {
      }
 
     void NetFlowManager::NetFlowUniverseListener::processExporterConfig(const shared_ptr<modelgbp::netflow::ExporterConfig>& exporterconfig) {
-         shared_ptr<ExporterConfigState> exportState;
-         auto itr = netflowmanager.exporter_map.find(exporterconfig->getURI());
-         if (itr != netflowmanager.exporter_map.end()) {
-             netflowmanager.exporter_map.erase(itr);
-         }
+        shared_ptr<ExporterConfigState> exportState;
+        lock_guard<recursive_mutex> guard(opflexagent::NetFlowManager::exporter_mutex);
+        auto itr = netflowmanager.exporter_map.find(exporterconfig->getURI());
+        if (itr != netflowmanager.exporter_map.end()) {
+            netflowmanager.exporter_map.erase(itr);
+        }
         exportState = make_shared<ExporterConfigState>(exporterconfig->getURI(), exporterconfig->getName().get());
         boost::optional<const string& > dstAddr =   exporterconfig->getDstAddr();
         if(dstAddr) {
