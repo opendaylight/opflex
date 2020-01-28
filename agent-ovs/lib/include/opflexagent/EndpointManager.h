@@ -124,16 +124,6 @@ public:
                               /* out */ std::unordered_set<std::string>& eps);
 
     /**
-     * Get the set of endpoints that exist for a given set of security groups
-     *
-     * @param secGrps the set of security groups
-     * @param eps a set that will be filled with the UUIDs of matching
-     * endpoints.
-     */
-    void getEndpointsForSecGrps(const EndpointListener::uri_set_t& secGrps,
-                                /* out */ std::unordered_set<std::string>& eps);
-
-    /**
      * Check whether the given security group set contains any endpoints
      *
      * @param secGrps the security group set to check
@@ -555,7 +545,6 @@ private:
     };
     EPGMappingListener epgMappingListener;
 
-    friend class EPGMappingListener;
     friend class EndpointSource;
 };
 

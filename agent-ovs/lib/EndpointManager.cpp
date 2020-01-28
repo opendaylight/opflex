@@ -973,7 +973,7 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
     using namespace modelgbp::epr;
 
     shared_ptr<L2Ep> l2e =
-        l2u->addEprL2Ep(bd.get()->getURI().toString(),
+        l2u->addEprL2Ep(bd->getURI().toString(),
                         ep->getMAC().get());
     l2e->setUuid(uuid);
     l2e->setGroup(egURI.toString());
@@ -1012,7 +1012,7 @@ populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
     using namespace modelgbp::epr;
 
     shared_ptr<L3Ep> l3e =
-        l3u.get()->addEprL3Ep(rd.get()->getURI().toString(), ip);
+        l3u->addEprL3Ep(rd->getURI().toString(), ip);
     l3e->setMac(ep->getMAC().get())
         .setGroup(egURI.toString())
         .setUuid(uuid);
@@ -1181,6 +1181,7 @@ void EndpointManager::egDomainUpdated(const URI& egURI) {
 
 void EndpointManager::externalInterfaceUpdated(const URI& extIntURI) {
     using namespace modelgbp::gbp;
+    unique_lock<mutex> guard(ep_mutex);
     group_ep_map_t::const_iterator gep_it = group_ep_map.find(extIntURI);
     optional<shared_ptr<RoutingDomain>> rd;
     unordered_set<string> notify;
@@ -1201,6 +1202,7 @@ void EndpointManager::externalInterfaceUpdated(const URI& extIntURI) {
             }
         }
     }
+    guard.unlock();
     for (const std::string& uuid : notify) {
         notifyExternalEndpointListeners(uuid);
     }
@@ -1210,6 +1212,7 @@ void EndpointManager::externalInterfaceUpdated(const URI& extIntURI) {
 bool EndpointManager::getAdjacency(const URI& rdURI,
                                    const std::string& address,
                                    shared_ptr<const Endpoint> &ep) {
+    unique_lock<mutex> guard(ep_mutex);
     auto aep_it = adj_ep_map.find(rdURI);
     if(aep_it == adj_ep_map.end())
         return false;
@@ -1240,12 +1243,6 @@ void EndpointManager::getEndpointsForGroup(const URI& egURI,
                                            /*out*/ unordered_set<string>& eps) {
     unique_lock<mutex> guard(ep_mutex);
     getEps(egURI, group_ep_map, eps);
-}
-
-void EndpointManager::getEndpointsForSecGrps(const uri_set_t& secGrps,
-                                             unordered_set<std::string>& eps) {
-    unique_lock<mutex> guard(ep_mutex);
-    getEps(secGrps, secgrp_ep_map, eps);
 }
 
 bool EndpointManager::secGrpSetEmpty(const uri_set_t& secGrps) {
