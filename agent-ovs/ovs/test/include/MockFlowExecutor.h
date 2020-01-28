@@ -12,6 +12,7 @@
 
 #include "FlowExecutor.h"
 
+#include <mutex>
 #include <string>
 #include <vector>
 #include <utility>
@@ -49,6 +50,7 @@ public:
     std::list<tlv_mod_t> tlvMods;
     bool ignoreFlowMods;
     std::unordered_set<int> ignoredFlowMods;
+    std::mutex group_mod_mutex;
     bool ignoreGroupMods;
     bool ignoreTlvMods;
 };

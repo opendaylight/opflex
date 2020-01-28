@@ -85,6 +85,7 @@ bool MockFlowExecutor::Execute(const FlowEdit& flowEdits) {
     return true;
 }
 bool MockFlowExecutor::Execute(const GroupEdit& groupEdits) {
+    std::lock_guard<std::mutex> guard(group_mod_mutex);
     if (ignoreGroupMods) return true;
 
     for (const GroupEdit::Entry& ed : groupEdits.edits) {
@@ -129,6 +130,7 @@ void MockFlowExecutor::Expect(FlowEdit::type mod, const vector<string>& fe) {
         flowMods.push_back(mod_t(mod, s));
 }
 void MockFlowExecutor::ExpectGroup(FlowEdit::type mod, const string& ge) {
+    std::lock_guard<std::mutex> guard(group_mod_mutex);
     ignoreGroupMods = false;
     const char *modStr[] = {"ADD", "MOD", "DEL"};
     groupMods.push_back(canonicalizeGroupEntryStr(string(modStr[mod]) + "|" +
@@ -147,15 +149,18 @@ void MockFlowExecutor::IgnoreFlowMods() {
     flowMods.clear();
 }
 void MockFlowExecutor::IgnoreGroupMods() {
+    std::lock_guard<std::mutex> guard(group_mod_mutex);
     ignoreGroupMods = true;
     groupMods.clear();
 }
 bool MockFlowExecutor::IsEmpty() { return flowMods.empty() || ignoreFlowMods; }
 bool MockFlowExecutor::IsGroupEmpty() {
+    std::lock_guard<std::mutex> guard(group_mod_mutex);
     return groupMods.empty() || ignoreGroupMods;
 }
 bool MockFlowExecutor::IsTlvEmpty() { return tlvMods.empty() || ignoreTlvMods; }
 void MockFlowExecutor::Clear() {
+    std::lock_guard<std::mutex> guard(group_mod_mutex);
     flowMods.clear();
     groupMods.clear();
     tlvMods.clear();
