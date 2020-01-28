@@ -207,8 +207,6 @@ void on_active_connection(uv_connect_t *req, int status) {
 
 }
 
-void debug_resolution_entries(struct addrinfo const * ai);
-
 void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
 
     VLOG(2);
@@ -242,8 +240,6 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     }
 
     peer->status_ = Peer::kPS_RESOLVED;
-
-    debug_resolution_entries(resp);
 
     int rc;
 
@@ -341,18 +337,6 @@ void debug_address(struct addrinfo const * ai, size_t m = 0) {
         <<    " ai_canonname="
         << (ai->ai_canonname ?: "")
     ;
-
-}
-
-void debug_resolution_entries(struct addrinfo const * ai) {
-
-    if (!VLOG_IS_ON(3)) {
-        return;
-    }
-
-    do {
-        debug_address(ai, 1);
-    } while ((ai = ai->ai_next));
 
 }
 

@@ -269,25 +269,13 @@ void Peer::LoopData::up() {
 
 void Peer::LoopData::down() {
 
-    VLOG(3)
-        << this
-        << " Down() on Loop"
-        << " LoopRefCnt: "
-        <<       refCount_
-        << " -> "
-        <<       refCount_ - 1
-    ;
-
     assert(refCount_);
 
     --refCount_;
 
     if (destroying_ && !refCount_) {
-
         CloseHandle closeHandle = { this, NULL };
-
         uv_walk(prepare_.loop, walkAndCloseHandlesCb, &closeHandle);
-
     }
 }
 
