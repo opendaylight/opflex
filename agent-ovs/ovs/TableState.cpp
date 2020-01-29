@@ -17,7 +17,6 @@
 #include "ovs-shim.h"
 #include "ovs-ofputil.h"
 
-#include <openvswitch/ofp-print.h>
 #include <openvswitch/ofp-flow.h>
 #include <openvswitch/list.h>
 #include <openflow/openflow-common.h>
@@ -130,7 +129,7 @@ ostream& operator<<(ostream& os, const FlowEdit::Entry& fe) {
 
 /** FlowEdit **/
 void FlowEdit::add(type t, FlowEntryPtr fe) {
-    edits.push_back(std::make_pair(t, fe));
+    edits.emplace_back(t, fe);
 }
 
 bool operator<(const FlowEdit::Entry& f1, const FlowEdit::Entry& f2) {
@@ -336,7 +335,7 @@ static void updateCookieMap(cookie_map_t& cookie_map,
         cookie_map_t::iterator it = cookie_map.find(oldCookie);
         if (it != cookie_map.end()) {
             it->second.erase(match);
-            if (it->second.size() == 0)
+            if (it->second.empty())
                 cookie_map.erase(it);
         }
     }
@@ -407,7 +406,7 @@ void TableState::apply(const std::string& objId,
                                      << *tomod;
                     }
 
-                    oit->second.push_back(make_pair(objId, tomod));
+                    oit->second.emplace_back(objId, tomod);
                 }
             }
         } else {

@@ -13,7 +13,6 @@
 #include <boost/assign/list_of.hpp>
 
 #include "RangeMask.h"
-#include <opflexagent/logging.h>
 
 using namespace opflexagent;
 using namespace std;

@@ -13,25 +13,18 @@
 #include <boost/assign/list_of.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include <opflexagent/logging.h>
 #include <opflexagent/test/ModbFixture.h>
 #include "ovs-ofputil.h"
-#include <lib/util.h>
 #include "AccessFlowManager.h"
 #include "IntFlowManager.h"
 #include "SecGrpStatsManager.h"
-#include "SwitchConnection.h"
-#include "MockSwitchManager.h"
 #include "TableState.h"
 #include "ActionBuilder.h"
 #include "RangeMask.h"
 #include "FlowConstants.h"
-#include "FlowUtils.h"
 #include "PolicyStatsManagerFixture.h"
-#include "FlowBuilder.h"
 
 #include "ovs-ofputil.h"
-#include <modelgbp/gbpe/L24Classifier.hpp>
 #include <modelgbp/gbpe/SecGrpClassifierCounter.hpp>
 #include <modelgbp/observer/PolicyStatUniverse.hpp>
 

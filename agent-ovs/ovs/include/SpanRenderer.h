@@ -76,7 +76,7 @@ private:
             const set<string>& dstPorts);
     bool addErspanPort(const string& brName, const string& ipAddr);
     void updateMirrorConfig(shared_ptr<SessionState> seSt);
-    void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI uri);
+    void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
     void delConnectPtrCb(const boost::system::error_code& ec, shared_ptr<SessionState> pSt);
     void delConnectCb(const boost::system::error_code& ec);
 };

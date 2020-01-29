@@ -149,7 +149,7 @@ public:
     void initExpCon3();
 
     /** Initialize subnet-scoped flow entries */
-    void initSubnets(PolicyManager::subnet_vector_t sns,
+    void initSubnets(PolicyManager::subnet_vector_t& sns,
                      uint32_t bdId = 1, uint32_t rdId = 1);
 
     /** Initialize service-scoped flow entries for local services */
@@ -2118,7 +2118,7 @@ void BaseIntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
     }
 }
 
-void BaseIntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t sns,
+void BaseIntFlowManagerFixture::initSubnets(PolicyManager::subnet_vector_t& sns,
                                             uint32_t bdId, uint32_t rdId) {
     string bmac("ff:ff:ff:ff:ff:ff");
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
@@ -2189,7 +2189,7 @@ void BaseIntFlowManagerFixture::initExpCon1() {
     for (const uint32_t& pvnid : pvnids) {
         for (const uint32_t& cvnid : cvnids) {
             /* classifer 1  */
-            const opflex::modb::URI& ruleURI_1 = classifier1.get()->getURI();
+            const opflex::modb::URI& ruleURI_1 = classifier1->getURI();
             uint32_t con1_cookie = intFlowManager.getId(
                          classifier1->getClassId(), ruleURI_1);
             ADDF(Bldr(SEND_FLOW_REM).table(POL)
@@ -2200,7 +2200,7 @@ void BaseIntFlowManagerFixture::initExpCon1() {
                  .go(OUT)
                  .done());
             /* classifier 2  */
-            const opflex::modb::URI& ruleURI_2 = classifier2.get()->getURI();
+            const opflex::modb::URI& ruleURI_2 = classifier2->getURI();
             con1_cookie = intFlowManager.getId(classifier2->getClassId(),
                                                ruleURI_2);
             ADDF(Bldr(SEND_FLOW_REM).table(POL)
@@ -2209,7 +2209,7 @@ void BaseIntFlowManagerFixture::initExpCon1() {
                  .reg(SEPG, pvnid).reg(DEPG, cvnid)
                  .actions().go(OUT).done());
             /* classifier 6 */
-            const opflex::modb::URI& ruleURI_6 = classifier6.get()->getURI();
+            const opflex::modb::URI& ruleURI_6 = classifier6->getURI();
             con1_cookie = intFlowManager.getId(classifier6->getClassId(),
                                                ruleURI_6);
             ADDF(Bldr(SEND_FLOW_REM).table(POL)
@@ -2218,7 +2218,7 @@ void BaseIntFlowManagerFixture::initExpCon1() {
                  .reg(SEPG, cvnid).reg(DEPG, pvnid).isTpSrc(22)
                  .isTcpFlags("+syn+ack").actions().go(OUT).done());
             /* classifier 7 */
-            const opflex::modb::URI& ruleURI_7 = classifier7.get()->getURI();
+            const opflex::modb::URI& ruleURI_7 = classifier7->getURI();
             con1_cookie = intFlowManager.getId(classifier7->getClassId(),
                                                ruleURI_7);
             ADDF(Bldr(SEND_FLOW_REM).table(POL)
@@ -2239,7 +2239,7 @@ void BaseIntFlowManagerFixture::initExpCon2() {
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
     unordered_set<uint32_t> ivnids;
-    const opflex::modb::URI& ruleURI_5 = classifier5.get()->getURI();
+    const opflex::modb::URI& ruleURI_5 = classifier5->getURI();
     uint32_t con2_cookie = intFlowManager.getId(
                          classifier5->getClassId(), ruleURI_5);
 
@@ -2258,13 +2258,13 @@ void BaseIntFlowManagerFixture::initExpCon3() {
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY;
     PolicyManager::uri_set_t ps, cs;
 
-    const opflex::modb::URI& ruleURI_3 = classifier3.get()->getURI();
+    const opflex::modb::URI& ruleURI_3 = classifier3->getURI();
     uint32_t con3_cookie = intFlowManager.getId(
                          classifier3->getClassId(), ruleURI_3);
-    const opflex::modb::URI& ruleURI_4 = classifier4.get()->getURI();
+    const opflex::modb::URI& ruleURI_4 = classifier4->getURI();
     uint32_t con4_cookie = intFlowManager.getId(
                          classifier4->getClassId(), ruleURI_4);
-    const opflex::modb::URI& ruleURI_10 = classifier10.get()->getURI();
+    const opflex::modb::URI& ruleURI_10 = classifier10->getURI();
     uint32_t con10_cookie = intFlowManager.getId(
         classifier10->getClassId(), ruleURI_10);
     MaskList ml_80_85 = list_of<Mask>(0x0050, 0xfffc)(0x0054, 0xfffe);

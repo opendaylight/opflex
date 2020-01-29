@@ -74,7 +74,7 @@ namespace opflexagent {
         cleanup();
     }
     void SpanRenderer::updateConnectCb(const boost::system::error_code& ec,
-            const opflex::modb::URI spanURI) {
+            const opflex::modb::URI& spanURI) {
         LOG(DEBUG) << "timer update cb";
         if (ec) {
             string cat = string(ec.category().name());
@@ -228,7 +228,7 @@ namespace opflexagent {
         // get the destination IPs
         set<address> dstIp;
         for (auto dst : seSt.get()->getDstEndPointMap()) {
-            dstIp.emplace(dst.second.get()->getAddress());
+            dstIp.emplace(dst.second->getAddress());
         }
         // get the first element of the set as only one
         // destination is allowed in OVS 2.10
@@ -268,7 +268,7 @@ namespace opflexagent {
         // get the destination IPs
         set<address> dstIp;
         for (auto dst : seSt->getDstEndPointMap()) {
-            dstIp.emplace(dst.second.get()->getAddress());
+            dstIp.emplace(dst.second->getAddress());
         }
         // get the first element of the set as only one
         // destination is allowed in OVS 2.10
@@ -309,7 +309,7 @@ namespace opflexagent {
         JsonRpc::BrPortResult res;
         if (jRpc->getBridgePortList(agent.getOvsdbBridge(), res)) {
             LOG(DEBUG) << "br UUID " << res.brUuid;
-            for (auto elem : res.portUuids) {
+            for (auto& elem : res.portUuids) {
                 LOG(DEBUG) << elem;
             }
         }

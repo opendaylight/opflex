@@ -102,7 +102,7 @@ public:
      *
      * @param uuid the UUID to set
      */
-    void setAgentUUID(std::string uuid) { agentUUID = uuid; };
+    void setAgentUUID(const std::string& uuid) { agentUUID = uuid; };
 
     /**
      * Get the agent instance ID for this PolicyStatsManager instance.

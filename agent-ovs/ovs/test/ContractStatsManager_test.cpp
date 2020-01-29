@@ -19,15 +19,11 @@
 #include <lib/util.h>
 #include "IntFlowManager.h"
 #include "ContractStatsManager.h"
-#include "SwitchConnection.h"
-#include "MockSwitchManager.h"
 #include "TableState.h"
 #include "ActionBuilder.h"
 #include "RangeMask.h"
 #include "FlowConstants.h"
-#include "FlowUtils.h"
 #include "PolicyStatsManagerFixture.h"
-#include "FlowBuilder.h"
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/Contract.hpp>
 #include "ovs-ofputil.h"

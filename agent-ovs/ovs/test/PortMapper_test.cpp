@@ -62,7 +62,7 @@ public:
         lastPortNo = portNo;
     }
     string lastPortName;
-    uint16_t lastPortNo;
+    uint32_t lastPortNo;
 };
 
 class PortMapperFixture {

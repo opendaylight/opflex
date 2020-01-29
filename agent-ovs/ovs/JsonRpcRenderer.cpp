@@ -7,20 +7,10 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <vector>
-
 #include "JsonRpcRenderer.h"
 #include <opflexagent/logging.h>
-#include <opflexagent/NetFlowManager.h>
-#include <boost/optional.hpp>
 
-#include <boost/range/adaptors.hpp>
-#include <boost/format.hpp>
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 namespace opflexagent {
-    using boost::optional;
-    using namespace boost::adaptors;
 
     JsonRpcRenderer::JsonRpcRenderer(Agent& agent_) : agent(agent_),taskQueue(agent.getAgentIOService()) {
 

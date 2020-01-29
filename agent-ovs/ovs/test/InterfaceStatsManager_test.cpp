@@ -14,7 +14,6 @@
 #include <boost/assign/list_of.hpp>
 #include <openvswitch/ofp-port.h>
 
-#include <opflexagent/logging.h>
 #include <opflexagent/test/ModbFixture.h>
 #include "InterfaceStatsManager.h"
 #include "MockPortMapper.h"

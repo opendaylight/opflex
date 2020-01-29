@@ -12,7 +12,6 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_inserter.hpp>
 #include <boost/bind.hpp>
-#include <opflexagent/logging.h>
 
 #include "ConnectionFixture.h"
 #include "FlowReader.h"

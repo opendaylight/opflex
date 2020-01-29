@@ -28,8 +28,6 @@
 #include "Packets.h"
 #include "ovs-shim.h"
 
-// OVS lib
-#include <lib/util.h>
 extern "C" {
 #include <openvswitch/flow.h>
 }
@@ -57,7 +55,7 @@ public:
         WAIT_FOR_DO(rdURIs.find(rd0->getURI()) != rdURIs.end(), 1000,
                     agent.getPolicyManager().getRoutingDomains(rdURIs));
 
-        auto svc = [&](const string id,
+        auto svc = [&](const string& id,
                        const opflex::modb::MAC& mac,
                        const string& ip) -> Service {
             Service s(id);

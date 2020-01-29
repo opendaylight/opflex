@@ -12,7 +12,6 @@
 #include <openvswitch/ofp-actions.h>
 #include <openvswitch/ofp-port.h>
 #include <openvswitch/meta-flow.h>
-#include <openvswitch/match.h>
 #include <lib/byte-order.h>
 #include <lib/dp-packet.h>
 #include <openvswitch/ofp-msgs.h>

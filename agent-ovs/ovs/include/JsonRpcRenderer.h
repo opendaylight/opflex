@@ -13,7 +13,6 @@
 #ifndef OPFLEX_JSONRPCRENDERER_H
 #define OPFLEX_JSONRPCRENDERER_H
 
-#include <boost/noncopyable.hpp>
 #include <boost/asio.hpp>
 #include <opflexagent/Agent.h>
 #include "JsonRpc.h"

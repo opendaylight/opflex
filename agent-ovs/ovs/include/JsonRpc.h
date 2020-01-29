@@ -166,7 +166,7 @@ public:
      * @param[in] hostname host name of the peer.
      * @param[in] port port number to connect to.
      */
-    void connect(string const& hostname, int port);
+    virtual void connect(string const& hostname, int port);
 
     /**
      * create mirror

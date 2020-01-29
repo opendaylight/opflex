@@ -11,7 +11,6 @@
 #include <list>
 
 #include <boost/test/unit_test.hpp>
-#include <rapidjson/document.h>
 
 #include "rpc/JsonRpc.h"
 #include <opflexagent/logging.h>
