@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "734a02d7_f47463c9",
+        "filename": "agent-ovs/lib/include/opflexagent/ExporterConfigState.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-29T07:50:11Z",
+      "side": 1,
+      "message": "missed this in the initial review...it should be dscp \u003d dscp_;\n\nCurrently it\u0027s not using the passed value",
+      "revId": "025b800f4c5bd3aaa083dce6f9e13d7d061b3637",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
