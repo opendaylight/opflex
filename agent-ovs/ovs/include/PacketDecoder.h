@@ -19,10 +19,102 @@
 #include <string>
 #include <sstream>
 #include <boost/format.hpp>
+#include <map>
+#include <time.h>
 
 namespace opflexagent {
 
 class PacketDecoder;
+
+/**
+ * Class used to generate Packet Events
+ */
+class PacketTuple {
+public:
+    /**
+     * Constructor for packetTuple
+     * Typically only used by test code
+     * @param ts_ timeStamp
+     * @param dropReason_ drop reason
+     * @param sourceMac_ source Mac
+     * @param destMac_ destination mac
+     * @param ethType_ ethertype
+     * @param sourceIp_ source IP
+     * @param destinationIp_ destination IP
+     * @param ipProto_ ip protocol
+     * @param srcPort_ source port
+     * @param dstPort_ destination port
+     */
+    PacketTuple(std::string ts_, std::string dropReason_,
+            std::string sourceMac_, std::string destMac_,
+            std::string ethType_, std::string sourceIp_,
+            std::string destinationIp_, std::string ipProto_,
+            std::string srcPort_, std::string dstPort_):
+            PacketTuple() {
+        int field_count = 0;
+        TimeStamp = ts_;
+        fields[field_count++].second = dropReason_;
+        fields[field_count++].second = sourceMac_;
+        fields[field_count++].second = destMac_;
+        fields[field_count++].second = ethType_;
+        fields[field_count++].second = sourceIp_;
+        fields[field_count++].second = destinationIp_;
+        fields[field_count++].second = ipProto_;
+        fields[field_count++].second = srcPort_;
+        fields[field_count++].second = dstPort_;
+    };
+    /**
+     * Default constructor for packetTuple
+     * */
+    PacketTuple() {
+        int field_count = 0;
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("DropReason", "")));
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("SourceMac", "")));
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("DestinationMac", "")));
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("EtherType", "")));
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("SourceIP", "")));
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("DestinationIP", "")));
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("IPProto", "")));
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("SourcePort", "")));
+        fields.insert(std::make_pair(field_count++,
+                std::make_pair("DestinationPort", "")));
+    };
+    /**
+     * set a member in the tuple by the index of the member
+     * @param index index of the member
+     * @param value value of the member
+     * */
+    void setField(unsigned index, std::string &value) {
+        if(index > fields.size()) {
+            return;
+        }
+        fields[index].second = value;
+    }
+    /**
+     * TimeStamp when the packet was received
+     */
+    std::string TimeStamp;
+    /**
+     * TimeStamp when the packet was received
+     */
+    std::map<int, std::pair<std::string, std::string>> fields;
+};
+
+/**
+ * Equality operator
+ * Note that timestamps are not compared
+ * @param lhs: Comparable left
+ * @param rhs: Comparable right
+ */
+bool operator== (const PacketTuple &lhs, const PacketTuple &rhs);
 
 /**
  *  Struct to hold parsing context
@@ -37,7 +129,13 @@ struct ParseInfo {
             nextKey(0), optionLayerTypeId(0), parsedLength(0), parsedString(),
             formattedFields(), layerFormatterString(), hasOptBytes(false),
             pendingOptionLength(0), inferredLength(0), inferredDataLength(0),
-            scratchpad{0,0,0,0} {};
+            scratchpad{0,0,0,0}, packetTuple() {
+        time_t rawtime;
+        struct tm *time_info;
+        time(&rawtime);
+        time_info = localtime ( &rawtime );
+        packetTuple.TimeStamp = std::string(asctime(time_info));
+    };
     /**
      * Packet decoder instance
      */
@@ -90,6 +188,11 @@ struct ParseInfo {
      * Scratchpad to store 4 select field values in a layer
      */
     uint32_t scratchpad[4];
+    /**
+     * Packet Tuple used to generate events
+     */
+    PacketTuple packetTuple;
+
 };
 
 /* Allowed header field types */
@@ -119,13 +222,15 @@ public:
      * @param length true if this field holds the length of this header
      * @param _scratchOffset scratchpad offset that this value should go to.
      * @param printSeq formatted position in the layer output
+     * @param tupleSeq_ position in layer packet tuple
      */
     PacketDecoderLayerField(std::string &name, uint32_t len, uint32_t offset,
             PacketDecoderLayerFieldType type, bool nextKey=false,
-            bool length=false, int _scratchOffset = -1, int printSeq = 0):
+            bool length=false, int _scratchOffset = -1, int printSeq = 0,
+            int tupleSeq_ = 0):
         fieldType(type), fieldName(name), bitLength(len), bitOffset(offset),
         isNextKey(nextKey), isLength(length), scratchOffset(_scratchOffset),
-        outSeq(printSeq) {}
+        outSeq(printSeq), tupleSeq(tupleSeq_) {}
     /**
      * Whether matching traffic should be allowed or dropped
      * @return true if this field indicates the length of the containing Layer
@@ -150,11 +255,12 @@ private:
     uint32_t bitLength;
     uint32_t bitOffset;
     bool isNextKey,isLength;
-    int scratchOffset, outSeq;
+    int scratchOffset, outSeq, tupleSeq;
     std::unordered_map<uint32_t, std::string> kvOutMap;
     bool getIsNextKey() {return isNextKey;}
     bool shouldSave(int &_offset) {_offset=scratchOffset; return (_offset != -1);}
     bool shouldLog() {return (outSeq != 0);}
+    bool isTupleField() {return (tupleSeq != 0);}
     void transformLog(uint32_t val, std::stringstream &ostr, ParseInfo &p);
 };
 
@@ -323,13 +429,15 @@ protected:
      * @param scratchOffset index of scratchpad buffer to which this
      * field will be moved
      * @param printSeq output sequence number in layer format string
+     * @param tupleSeq tuple field number as collected in packetTuple
      * @return 0 if no errors
      */
     int addField(std::string name, uint32_t len, uint32_t offset,
             PacketDecoderLayerFieldType fldType, bool nextKey=false,
-            bool isLength=false, int scratchOffset=-1, int printSeq = -1) {
+            bool isLength=false, int scratchOffset=-1, int printSeq = 0,
+            int tupleSeq=0) {
         pktFields.push_back(PacketDecoderLayerField(name, len, offset, fldType,
-                nextKey, isLength, scratchOffset, printSeq));
+                nextKey, isLength, scratchOffset, printSeq, tupleSeq));
         return 0;
     };
 };

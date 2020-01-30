@@ -68,44 +68,56 @@ static const uint8_t tcpv6_buf[] = {0x02, 0x00, 0x65, 0x58, 0x00, 0x03, 0xe8,
 
 BOOST_FIXTURE_TEST_CASE(arp_test, PacketDecoderFixture) {
     ParseInfo p(&pktDecoder);
+    PacketTuple expectedTuple("", "", "9e:72:a6:94:18:af", "ff:ff:ff:ff:ff:ff", "ARP", "", "" ,"", "", "");
     std::string expected(" BR=1000 MAC=ff:ff:ff:ff:ff:ff:9e:72:a6:94:18:af:ARP ARP_SPA=13.0.0.3 ARP_TPA=13.0.0.5 ARP_OP=1");
     pktDecoder.decode(arp_buf, 58, p);
     BOOST_CHECK(p.parsedString == expected);
+    BOOST_CHECK(p.packetTuple == expectedTuple);
 }
 
 BOOST_FIXTURE_TEST_CASE(icmp_test, PacketDecoderFixture) {
     ParseInfo p(&pktDecoder);
+    PacketTuple expectedTuple("", "", "9e:72:a6:94:18:af", "5a:08:66:ce:0b:49", "IPv4", "14.0.0.2", "100.0.0.1" ,"ICMP", "", "");
     std::string expected(" BR=1000 MAC=5a:08:66:ce:0b:49:9e:72:a6:94:18:af:IPv4 SRC=14.0.0.2 DST=100.0.0.1 LEN=28 DSCP=0 TTL=255 ID=0 FLAGS=0 FRAG=0 PROTO=ICMP TYPE=8 CODE=0 ID=0 SEQ=0");
     pktDecoder.decode(icmp_buf, 58, p);
     BOOST_CHECK(p.parsedString == expected);
+    BOOST_CHECK(p.packetTuple == expectedTuple);
 }
 
 BOOST_FIXTURE_TEST_CASE(tcp_test, PacketDecoderFixture) {
     ParseInfo p(&pktDecoder);
+    PacketTuple expectedTuple("", "", "9e:72:a6:94:18:af", "5a:08:66:ce:0b:49", "IPv4", "14.0.0.2", "100.0.0.1" ,"TCP", "41634", "179");
     std::string expected(" BR=1000 MAC=5a:08:66:ce:0b:49:9e:72:a6:94:18:af:IPv4 SRC=14.0.0.2 DST=100.0.0.1 LEN=28 DSCP=0 TTL=255 ID=0 FLAGS=0 FRAG=0 PROTO=TCP SPT=41634 DPT=179 SEQ=2939917199 ACK=0 LEN=10 WINDOWS=29200 SYN  URGP=0");
     pktDecoder.decode(tcp_buf, 90, p);
     BOOST_CHECK(p.parsedString == expected);
+    BOOST_CHECK(p.packetTuple == expectedTuple);
 }
 
 BOOST_FIXTURE_TEST_CASE(udp_test, PacketDecoderFixture) {
     ParseInfo p(&pktDecoder);
+    PacketTuple expectedTuple("", "", "9e:72:a6:94:18:af", "5a:08:66:ce:0b:49", "IPv4", "14.0.0.2", "100.0.0.1" ,"UDP", "60376", "161");
     std::string expected(" BR=1000 MAC=5a:08:66:ce:0b:49:9e:72:a6:94:18:af:IPv4 SRC=14.0.0.2 DST=100.0.0.1 LEN=28 DSCP=0 TTL=255 ID=0 FLAGS=0 FRAG=0 PROTO=UDP SPT=60376 DPT=161 LEN=74");
     pktDecoder.decode(udp_buf, 58, p);
     BOOST_CHECK(p.parsedString == expected);
+    BOOST_CHECK(p.packetTuple == expectedTuple);
 }
 
 BOOST_FIXTURE_TEST_CASE(udp_over_v6_test, PacketDecoderFixture) {
     ParseInfo p(&pktDecoder);
+    PacketTuple expectedTuple("", "", "9e:72:a6:94:18:af", "5a:08:66:ce:0b:49", "IPv6", "fe80::a00:27ff:fefe:8f95", "ff02::1:2" ,"UDP", "546", "547");
     std::string expected(" BR=1000 MAC=5a:08:66:ce:0b:49:9e:72:a6:94:18:af:IPv6 SRC=fe80::a00:27ff:fefe:8f95 DST=ff02::1:2 LEN=60 TC=0 HL=1 FL=0 PROTO=UDP SPT=546 DPT=547 LEN=60");
     pktDecoder.decode(udpv6_buf, 78, p);
     BOOST_CHECK(p.parsedString == expected);
+    BOOST_CHECK(p.packetTuple == expectedTuple);
 }
 
 BOOST_FIXTURE_TEST_CASE(tcp_over_v6_test, PacketDecoderFixture) {
     ParseInfo p(&pktDecoder);
+    PacketTuple expectedTuple("", "", "9e:72:a6:94:18:af", "5a:08:66:ce:0b:49", "IPv6", "fe80::a00:27ff:fefe:8f95", "ff02::1:2" ,"TCP", "41634", "179");
     std::string expected(" BR=1000 MAC=5a:08:66:ce:0b:49:9e:72:a6:94:18:af:IPv6 SRC=fe80::a00:27ff:fefe:8f95 DST=ff02::1:2 LEN=60 TC=0 HL=1 FL=0 PROTO=TCP SPT=41634 DPT=179 SEQ=2939917199 ACK=0 LEN=10 WINDOWS=29200 SYN  URGP=0");
     pktDecoder.decode(tcpv6_buf, 110, p);
     BOOST_CHECK(p.parsedString == expected);
+    BOOST_CHECK(p.packetTuple == expectedTuple);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

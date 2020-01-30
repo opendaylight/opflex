@@ -18,6 +18,14 @@ namespace opflexagent {
 
 using namespace std;
 
+bool operator== (const PacketTuple &lhs, const PacketTuple &rhs) {
+    bool all_fields_match = (lhs.fields.size() == rhs.fields.size());
+    if (!all_fields_match)
+        return false;
+    all_fields_match &= (lhs.fields == rhs.fields);
+    return all_fields_match;
+}
+
 void PacketDecoderLayerField::transformLog(uint32_t value, stringstream &ostr, ParseInfo &p) {
     if(!shouldLog()){
         return;
@@ -199,6 +207,10 @@ int PacketDecoderLayerField::decode(const unsigned char *buf, std::size_t length
     }
     if(shouldLog()) {
         p.formattedFields[outSeq-1] += ostr.str();
+    }
+    if(isTupleField()) {
+        std::string tupleStr = ostr.str();
+        p.packetTuple.setField((unsigned)(tupleSeq-1), tupleStr);
     }
     return err;
 }
