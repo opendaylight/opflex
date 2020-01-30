@@ -16,6 +16,24 @@
       "revId": "088ad50bc45b7ee0accd56da1810f1820692ce8c",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2dddbba1_33d25846",
+        "filename": "genie/MODEL/SPECIFIC/OBSERVER/fault.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 8560
+      },
+      "writtenOn": "2020-01-30T11:24:51Z",
+      "side": 1,
+      "message": "for simplicity it should be an integer only else whenever we need to add any new fault we need to change the mdl file in enum section,\nwhat i was thinking rather just make an integer and we will provide error code and description for help purpose only like generic error code is implemented in c++.As per you suggestion i will modify the mdl file.",
+      "parentUuid": "aad669c6_e0c2c670",
+      "revId": "088ad50bc45b7ee0accd56da1810f1820692ce8c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
     }
   ]
 }
