@@ -134,7 +134,7 @@ public:
      * set the  dscp of ExporterConfig
      * @param[in] dscp_ dscp  of the  ExporterConfig
      */
-    void setDscp(const uint8_t& dscp_ ) { dscp = dscp; };
+    void setDscp(const uint8_t& dscp_ ) { dscp = dscp_; };
     /**
      * gets the URI, which points to a  ExporterConfig object
      * @return a URI
