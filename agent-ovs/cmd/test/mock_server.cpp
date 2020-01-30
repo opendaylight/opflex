@@ -21,7 +21,6 @@
 #include <iostream>
 
 #include <boost/program_options.hpp>
-#include <boost/assign/list_of.hpp>
 #include <boost/filesystem.hpp>
 
 #include <modelgbp/dmtree/Root.hpp>
@@ -32,7 +31,6 @@
 
 #include <opflexagent/logging.h>
 #include <opflexagent/cmd.h>
-#include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 #include "Policies.h"
 #ifdef HAVE_GRPC_SUPPORT
@@ -41,7 +39,6 @@
 
 using std::string;
 using std::make_pair;
-using boost::assign::list_of;
 namespace po = boost::program_options;
 using opflex::test::MockOpflexServer;
 using opflex::ofcore::OFConstants;

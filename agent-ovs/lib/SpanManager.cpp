@@ -152,7 +152,7 @@ namespace opflexagent {
             }
         }
         // notify all listeners. put it on a task Q for non blocking notification.
-        for (URI uri : spanmanager.notifyUpdate) {
+        for (const URI& uri : spanmanager.notifyUpdate) {
             spanmanager.taskQueue.dispatch(uri.toString(), [=]() {
                 spanmanager.notifyListeners(uri);
             });
@@ -207,8 +207,7 @@ namespace opflexagent {
 
     optional<shared_ptr<SessionState>>
         SpanManager::getSessionState(const URI& uri) const {
-        unordered_map<URI, shared_ptr<SessionState>>
-                ::const_iterator itr = sess_map.find(uri);
+        auto itr = sess_map.find(uri);
         if (itr == sess_map.end()) {
             return boost::none;
         } else {
@@ -227,12 +226,12 @@ namespace opflexagent {
         print_map(spanmanager.sess_map);
 
         vector <shared_ptr<SrcGrp>> srcGrpVec;
-        sess.get()->resolveSpanSrcGrp(srcGrpVec);
+        sess->resolveSpanSrcGrp(srcGrpVec);
         for (shared_ptr <SrcGrp> srcGrp : srcGrpVec) {
             processSrcGrp(srcGrp);
         }
         vector <shared_ptr<DstGrp>> dstGrpVec;
-        sess.get()->resolveSpanDstGrp(dstGrpVec);
+        sess->resolveSpanDstGrp(dstGrpVec);
         for (shared_ptr<DstGrp> dstGrp : dstGrpVec) {
             processDstGrp(*dstGrp, *sess);
         }
@@ -240,10 +239,10 @@ namespace opflexagent {
 
     void SpanManager::SpanUniverseListener::processSrcGrp(shared_ptr<SrcGrp> srcGrp) {
         vector<shared_ptr<SrcMember>> srcMemVec;
-        srcGrp.get()->resolveSpanSrcMember(srcMemVec);
+        srcGrp->resolveSpanSrcMember(srcMemVec);
         for (shared_ptr<SrcMember> srcMem : srcMemVec) {
             optional <shared_ptr<MemberToRefRSrc>> memRefOpt =
-                    srcMem.get()->resolveSpanMemberToRefRSrc();
+                    srcMem->resolveSpanMemberToRefRSrc();
             if (memRefOpt) {
                 shared_ptr <MemberToRefRSrc> memRef = memRefOpt.get();
                 if (memRef->getTargetClass()) {
@@ -313,8 +312,8 @@ namespace opflexagent {
             shared_ptr<LocalEp> lEp = LocalEp::resolve(spanmanager.framework, sInfo.uri).get();
             if (lEp->resolveSpanLocalEpToEpRSrc()) {
                 shared_ptr <LocalEpToEpRSrc> epRSrc = lEp->resolveSpanLocalEpToEpRSrc().get();
-                if (epRSrc.get()->getTargetURI()) {
-                    URI epUri = epRSrc.get()->getTargetURI().get();
+                if (epRSrc->getTargetURI()) {
+                    const URI& epUri = epRSrc->getTargetURI().get();
                     if (L2Ep::resolve(spanmanager.framework, epUri)) {
                         shared_ptr <L2Ep> l2Ep = L2Ep::resolve(
                                 spanmanager.framework, epUri).get();
@@ -363,7 +362,7 @@ namespace opflexagent {
             unordered_map<opflex::modb::URI, shared_ptr<SessionState>>::iterator it;
             it = spanmanager.sess_map.find(sesRsrc->getTargetURI().get());
             if (it != spanmanager.sess_map.end()) {
-                LOG(DEBUG) << "found session " << sesRsrc.get()->getTargetURI();
+                LOG(DEBUG) << "found session " << sesRsrc->getTargetURI();
                 for (auto ep : l2EpVec) {
                     shared_ptr<SourceEndPoint> srcEp =
                                  make_shared<SourceEndPoint>(ep->getURI().toString(),
@@ -448,10 +447,10 @@ namespace opflexagent {
             sess.get()->resolveSpanSrcGrp(srcGrpVec);
             for (shared_ptr <SrcGrp> srcGrp : srcGrpVec) {
                 vector<shared_ptr<SrcMember>> srcMemVec;
-                srcGrp.get()->resolveSpanSrcMember(srcMemVec);
+                srcGrp->resolveSpanSrcMember(srcMemVec);
                 for (shared_ptr<SrcMember> srcMem : srcMemVec) {
                     optional <shared_ptr<MemberToRefRSrc>> memRefOpt =
-                            srcMem.get()->resolveSpanMemberToRefRSrc();
+                            srcMem->resolveSpanMemberToRefRSrc();
                     if (memRefOpt) {
                         shared_ptr <MemberToRefRSrc> memRef = memRefOpt.get();
                         if (memRef->getTargetURI()) {
@@ -510,9 +509,9 @@ namespace opflexagent {
                     unordered_map<opflex::modb::URI, shared_ptr<SessionState>>::iterator it;
                     it = spanmanager.sess_map.find(sesRsrc->getTargetURI().get());
                     if (it != spanmanager.sess_map.end()) {
-                        LOG(DEBUG) << "found session " << sesRsrc.get()->getTargetURI();
+                        LOG(DEBUG) << "found session " << sesRsrc->getTargetURI();
                         optional<shared_ptr<SrcMember>> pSmem =
-                                spanmanager.findSrcMem(sesRsrc.get()->getTargetURI().get(),
+                                spanmanager.findSrcMem(sesRsrc->getTargetURI().get(),
                                         pEpg->getURI());
                         if (pSmem) {
                             optional<const unsigned char> dir = pSmem.get()->getDir();
@@ -532,7 +531,7 @@ namespace opflexagent {
     }
 
     void SpanManager::getSrcEpGroups(vector <shared_ptr<EpGroup>>& epGrpVec) {
-        for ( auto sess : sess_map) {
+        for (const auto& sess : sess_map) {
             URI sessUri = sess.first;
             optional<shared_ptr<Session>> sPtr = Session::resolve(framework, sessUri);
             if (!sPtr)
@@ -541,10 +540,10 @@ namespace opflexagent {
             sPtr.get()->resolveSpanSrcGrp(srcGrpVec);
             for (auto srcGrp : srcGrpVec) {
                 vector<shared_ptr<SrcMember>> srcMemVec;
-                srcGrp.get()->resolveSpanSrcMember(srcMemVec);
+                srcGrp->resolveSpanSrcMember(srcMemVec);
                 for (shared_ptr<SrcMember> srcMem : srcMemVec) {
                     optional <shared_ptr<MemberToRefRSrc>> memRefOpt =
-                            srcMem.get()->resolveSpanMemberToRefRSrc();
+                            srcMem->resolveSpanMemberToRefRSrc();
                     if (memRefOpt) {
                         shared_ptr <MemberToRefRSrc> memRef = memRefOpt.get();
                         if (memRef->getTargetClass()) {

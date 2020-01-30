@@ -252,7 +252,7 @@ public:
      */
     PolicyRoute(std::shared_ptr<modelgbp::gbp::RoutingDomain>& rd_,
                 std::shared_ptr<modelgbp::gbpe::InstContext>& rdInst_,
-                boost::asio::ip::address addr_, uint8_t pfx_len_,
+                const boost::asio::ip::address& addr_, uint8_t pfx_len_,
                 std::list<boost::asio::ip::address> &nh_,
                 std::shared_ptr<modelgbp::gbp::ExternalNode> nd_=
                 std::shared_ptr<modelgbp::gbp::ExternalNode>()):
@@ -331,7 +331,7 @@ public:
      * Get prefix for the route
      * @return prefix
      */
-    const boost::asio::ip::address getAddress() {
+    const boost::asio::ip::address& getAddress() {
         return address;
     }
 

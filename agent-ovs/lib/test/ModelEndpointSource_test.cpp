@@ -19,10 +19,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <cstdio>
 #include <sstream>
-#include <thread>
-#include <chrono>
 #include <algorithm>
 
 using opflex::modb::MAC;

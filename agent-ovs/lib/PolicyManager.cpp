@@ -1456,7 +1456,7 @@ void PolicyManager::updateRemoteRouteChildrenForPolicyPrefix(
         }
         shared_ptr<PolicyRoute> &route = route_iter->second;
         boost::system::error_code ec;
-        const boost::asio::ip::address addr = route->getAddress();
+        const boost::asio::ip::address& addr = route->getAddress();
         uint32_t prefixLen = route->getPrefixLen();
         if(addr.is_v4()  !=  targetAddr.is_v4()) {
             continue;
@@ -1802,7 +1802,7 @@ void PolicyManager::getBestRemoteRoute(
         }
         shared_ptr<PolicyRoute> &route = route_iter->second;
         boost::system::error_code ec;
-        const boost::asio::ip::address addr = route->getAddress();
+        const boost::asio::ip::address& addr = route->getAddress();
         uint32_t prefixLen = route->getPrefixLen();
         if(addr.is_v4()  !=  targetAddr.is_v4()) {
             continue;
@@ -2028,7 +2028,7 @@ void PolicyManager::updateDomain(class_id_t class_id, const URI& uri) {
     for (const URI& u : notifyExtIntfs) {
         notifyExternalInterface(u);
     }
-    if ((class_id != modelgbp::gbp::EpGroup::CLASS_ID) ||
+    if ((class_id != modelgbp::gbp::EpGroup::CLASS_ID) &&
         (class_id != modelgbp::gbp::ExternalInterface::CLASS_ID)) {
         notifyDomain(class_id, uri);
     }

@@ -93,7 +93,7 @@ using namespace opflex::modb;
          * constructor that accepts destination IP address.
          * @param ip ip address of destination end point
          */
-        DstEndPoint(address ip) : dstIp(ip) {};
+        DstEndPoint(const address& ip) : dstIp(ip) {};
         /**
          * get the name of this destination end point
          * @return string name of destination end point

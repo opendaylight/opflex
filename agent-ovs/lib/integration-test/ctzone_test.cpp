@@ -9,7 +9,6 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <opflexagent/logging.h>
 #include <cstdlib>
 
 #include <opflexagent/IdGenerator.h>

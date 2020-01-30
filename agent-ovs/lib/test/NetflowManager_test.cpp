@@ -9,7 +9,6 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <list>
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>

@@ -143,7 +143,6 @@ public:
     shared_ptr<span::SrcGrp> srcGrp1;
     MockEndpointSource epSource;
     shared_ptr<span::DstSummary> dstSumm1;
-    boost::optional<shared_ptr<SessionState>> pSess;
     shared_ptr<L2Ep> l2E1;
     shared_ptr<L2Ep> l2e2;
     shared_ptr<span::SrcMember> srcMem1;
@@ -170,7 +169,7 @@ static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
         return false;
     }
     SessionState::srcEpSet srcEps = pSess.get()->getSrcEndPointSet();
-    if (srcEps.size() == 0) {
+    if (srcEps.empty()) {
         return false;
     }
     SessionState::srcEpSet::iterator it = srcEps.begin();
