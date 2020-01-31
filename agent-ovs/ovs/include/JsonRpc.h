@@ -47,23 +47,20 @@ static const string ERSPAN_PORT_NAME("erspan");
 class JsonRpc : public Transaction {
 public:
     /**
-     * struct for ERSPAN interface parameters
+     * base struct for ERSPAN interface parameters
      */
     typedef struct erspan_ifc_ {
-        /**
-         * name of ERSPAN port
-         */
-        string name;
-        /**
-         * ERSPAN port index
-         */
-        int erspan_idx;
         /**
          * ERSPAN version
          */
         int erspan_ver;
         /**
+         * name of ERSPAN port
+         */
+        string name;
+        /**
          * ERSPAN key
+         * maps to ERSPAN session ID/Span ID
          */
         int key;
         /**
@@ -71,6 +68,51 @@ public:
          */
         string remote_ip;
     } erspan_ifc;
+
+    /**
+     * ERSPAN type II struct
+     */
+    typedef struct erspan_ifc_v1_ : erspan_ifc {
+        /**
+         * constructor
+         * ERSPAN version 1 maps to ERSPAN type 2
+         */
+        erspan_ifc_v1_() {
+            erspan_ver = 1;
+            erspan_idx = 0;
+        }
+        /**
+         * ERSPAN index
+         * This field is a 20-bit index/port number associated with the ERSPAN traffic's
+         * source port and direction (ingress/egress). This field is platform dependent.
+         */
+        int erspan_idx;
+    } erspan_ifc_v1;
+
+    /**
+     * ERSPAN type III struct
+     */
+    typedef struct erspan_ifc_v2_ : erspan_ifc {
+        /**
+         * constructor
+         * ERSPAN version 2 maps to ERSPAN type 3.
+         */
+        erspan_ifc_v2_() {
+            erspan_ver = 2;
+            erspan_hw_id = 0;
+            erspan_dir = 0;
+        }
+        /**
+         * ERSPAN hardware ID
+         * A 6-bit unique identifier of an ERSPAN v2 engine within a system.
+         */
+        int erspan_hw_id;
+        /**
+         * ERSPAN direction
+         * the mirrored traffic's direction: 0 for ingress traffic, 1 for egress traffic.
+         */
+        int erspan_dir;
+    } erspan_ifc_v2;
 
     /**
      * struct for managing mirror data
@@ -213,7 +255,7 @@ public:
      * @param[in] port erspan_ifc struct
      * @return true if success, false otherwise
      */
-    bool addErspanPort(const string& bridgeName, const erspan_ifc& port);
+    bool addErspanPort(const string& bridgeName, shared_ptr<erspan_ifc> port);
 
     /**
      * add mirror data to in memory struct
@@ -333,10 +375,10 @@ public:
 
     /**
      * get ERSPAN interface parameters from OVSDB
-     * @param[in] ifc erspan interface struct
+     * @param[out] pIfc empty shared pointer reference to erspan interface struct
      * @return true if success, false otherwise
      */
-    bool getErspanIfcParams(erspan_ifc& ifc);
+    bool getErspanIfcParams(shared_ptr<erspan_ifc>& pIfc);
 
     /**
      * check if connection has been established
@@ -429,10 +471,12 @@ private:
      * get ERSPAN interface options from Value struct
      * @param[in] reqId request ID
      * @param[in] payload response Value struct
-     * @param[out] ifc ERSPAN interface struct
+     * @param[out] pIfc empty shared pointer to ERSPAN
+     * interface struct
      */
-    static bool getErspanOptions(const uint64_t reqId, const Document& payload,
-            erspan_ifc& ifc);
+    bool getErspanOptions(const uint64_t reqId, const Document& payload,
+            shared_ptr<erspan_ifc>& pIfc);
+
 
     template <typename T>
     inline bool sendRequest(list<T>& tl, uint64_t reqId) {
