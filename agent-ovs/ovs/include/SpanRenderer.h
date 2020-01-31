@@ -74,7 +74,7 @@ private:
     bool deleteMirror(const string& session);
     bool createMirror(const string& session, const set<string>& srcPorts,
             const set<string>& dstPorts);
-    bool addErspanPort(const string& brName, const string& ipAddr);
+    bool addErspanPort(const string& brName, const string& ipAddr, const uint8_t version);
     void updateMirrorConfig(shared_ptr<SessionState> seSt);
     void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
     void delConnectPtrCb(const boost::system::error_code& ec, shared_ptr<SessionState> pSt);
