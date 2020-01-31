@@ -33,8 +33,8 @@ using opflex::test::MockOpflexServer;
 using opflex::ofcore::OFConstants;
 using namespace opflexagent;
 
-volatile bool running = true;
-volatile int gotconfig = 0;
+std::atomic<bool> running(true);
+std::atomic<int> gotconfig(0);
 
 /**
  * Listener for changes related to plaform config.
@@ -107,9 +107,9 @@ int main(int argc, char** argv) {
         MockOpflexServer::peer_vec_t peer_vec;
         peer_vec.push_back(make_pair(SERVER_ROLES, LOCALHOST":8009"));
         MockOpflexServer server(8009, SERVER_ROLES, peer_vec, std::vector<std::string>(),
-                                modelgbp::getMetadata());
+                                modelgbp::getMetadata(), 30);
 
-        if (policy_file != "") {
+        if (!policy_file.empty()) {
             server.readPolicy(policy_file);
         }
 
