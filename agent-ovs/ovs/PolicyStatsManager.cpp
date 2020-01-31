@@ -44,14 +44,15 @@ using boost::asio::deadline_timer;
 using boost::posix_time::milliseconds;
 using boost::system::error_code;
 
-static const int MAX_AGE = 9;
 
 PolicyStatsManager::PolicyStatsManager(Agent* agent_, IdGenerator& idGen_,
                                        SwitchManager& switchManager_,
                                        long timer_interval_)
     : idGen(idGen_), agent(agent_),
-      switchManager(switchManager_), connection(NULL),
-      timer_interval(timer_interval_), stopping(false) {}
+      switchManager(switchManager_),
+      connection(NULL),
+      timer_interval(timer_interval_),
+      stopping(false) {}
 
 PolicyStatsManager::~PolicyStatsManager() {}
 
@@ -62,6 +63,8 @@ void PolicyStatsManager::registerConnection(SwitchConnection* connection) {
 void PolicyStatsManager::start() {
     stopping = false;
 
+    LOG(DEBUG) << "Starting policy stats manager " << this;
+
     connection->RegisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
     connection->RegisterMessageHandler(OFPTYPE_FLOW_REMOVED, this);
     L24Classifier::registerListener(agent->getFramework(),this);
@@ -71,6 +74,8 @@ void PolicyStatsManager::start() {
 
 void PolicyStatsManager::stop() {
     stopping = true;
+
+    LOG(DEBUG) << "Stopping policy stats manager " << this;
 
     if (connection) {
         connection->UnregisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
@@ -138,11 +143,11 @@ on_timer_base(const error_code& ec,
         if (newFlowCounters.diff_packet_count &&
             newFlowCounters.diff_packet_count.get() != 0) {
 
-            FlowMatchKey_t flowMatchKey(flowEntryKey.cookie,
+            PolicyFlowMatchKey_t flowMatchKey(flowEntryKey.cookie,
                                         flowEntryKey.match->flow.regs[0],
                                         flowEntryKey.match->flow.regs[2]);
 
-            PolicyCounters_t&  newClassCounters =
+            FlowStats_t&  newClassCounters =
                 newClassCountersMap[flowMatchKey];
 
             // We get multiple flow stats entries for same
@@ -195,11 +200,11 @@ on_timer_base(const error_code& ec,
         // Have we collected non-zero diffs for this removed flow entry
         if (remFlowCounters.diff_packet_count) {
 
-            FlowMatchKey_t flowMatchKey(remFlowEntryKey.cookie,
+            PolicyFlowMatchKey_t flowMatchKey(remFlowEntryKey.cookie,
                                         remFlowEntryKey.match->flow.regs[0],
                                         remFlowEntryKey.match->flow.regs[2]);
 
-            PolicyCounters_t& newClassCounters =
+            FlowStats_t& newClassCounters =
                 newClassCountersMap[flowMatchKey];
 
             uint64_t packet_count = 0;
@@ -257,6 +262,7 @@ on_timer_base(const error_code& ec,
     }
 
     // flush OpFlex client stats
+    // TODO: Move these to a separate class to avoid polluting Policy/FlowStatsManager
     std::unordered_map<string, OF_SHARED_PTR<OFStats>> stats;
     agent->getFramework().getOpflexPeerStats(stats);
     Mutator mutator(agent->getFramework(), "policyelement");
@@ -394,7 +400,6 @@ handleMessage(int msgType, ofpbuf *msg, const table_map_t& tableMap) {
 void PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMap) {
 
     struct ofputil_flow_stats* fentry, fstat;
-    PolicyCounterMap_t newCountersMap;
 
     fentry = &fstat;
     std::lock_guard<std::mutex> lock(pstatMtx);
@@ -415,6 +420,41 @@ void PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMa
             }
             break;
         } else {
+
+            /**
+             * From OVS 2.11.2, when we are decoding flows received from ovs
+             * using ofputil_decode_flow_stats_reply(), packet_type gets set
+             * internally when OVS tries to generate "match" struct from "ofp11_match".
+             * While we create flows using ofputil_encode_flow_mod(), packet_type
+             * doesnt get set.
+             *
+             * packet_type is something internal which ovs sets up. From opflex-agent
+             * point of view, we dont have to really worry about this packet_type,
+             * since it wasnt used during creation of flows. Masking this field's
+             * key and wildcard.
+             *
+             * Mentioning the call sequences for clarity.
+             *
+             * writeFlow()
+             * --> FlowExecutor::DoExecuteNoBlock(const T& fe,
+             * --> EncodeMod<typename T::Entry>(e, ofVersion)
+             * --> ofputil_encode_flow_mod(&flowMod, proto)
+             * --> ofputil_put_ofp11_match(msg, &match, protocol)
+             * --> ofputil_match_to_ofp11_match(match, om)
+             * --> packet_type is not set in the final match
+             *
+             * FlowReader::decodeReply()
+             * --> ofputil_decode_flow_stats_reply(entry->entry, msg, false,
+             * --> ofputil_pull_ofp11_match(msg, NULL, NULL, &fs->match,
+             * --> ofputil_match_from_ofp11_match(om, match)
+             * --> match_set_default_packet_type(match) <-- This is getting set for
+             *                    dl_type, dl_src, dl_dst and some cases of dl_vlan
+             */
+            if (fentry) {
+                fentry->match.flow.packet_type = 0;
+                fentry->match.wc.masks.packet_type = 0;
+            }
+
             flowCounterState_t* counterState = tableMap(fentry->table_id);
             if (!counterState)
                 return;
@@ -460,6 +500,13 @@ void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg, const table_map_t& table
                    << ovs_strerror(ret);
         return;
     } else {
+        /* ovs 2.11.2 specific changes. Check handleFlowStats for
+         * more comments on below fix */
+        if (fentry) {
+            fentry->match.flow.packet_type = 0;
+            fentry->match.wc.masks.packet_type = 0;
+        }
+
         flowCounterState_t* counterState = tableMap(fentry->table_id);
         if (!counterState)
                 return;
@@ -500,6 +547,7 @@ static bool isExtNet(uint64_t reg) {
     return (reg & (1 << 31));
 }
 
+// Generate/update Policy table stats objects
 void PolicyStatsManager::
 generatePolicyStatsObjects(PolicyCounterMap_t *newCountersMap1,
                            PolicyCounterMap_t *newCountersMap2) {
@@ -509,9 +557,9 @@ generatePolicyStatsObjects(PolicyCounterMap_t *newCountersMap1,
     for (PolicyCounterMap_t:: iterator itr = newCountersMap1->begin();
          itr != newCountersMap1->end();
          itr++) {
-        const FlowMatchKey_t& flowKey = itr->first;
-        PolicyCounters_t&  newCounters1 = itr->second;
-        PolicyCounters_t newCounters2;
+        const PolicyFlowMatchKey_t& flowKey = itr->first;
+        FlowStats_t&  newCounters1 = itr->second;
+        FlowStats_t  newCounters2;
         optional<URI> srcEpgUri;
         optional<URI> dstEpgUri;
         if (newCountersMap2 != NULL) {
@@ -565,9 +613,8 @@ generatePolicyStatsObjects(PolicyCounterMap_t *newCountersMap1,
 void PolicyStatsManager::removeAllCounterObjects(const std::string& key) {
     if (!genIdList_.count(key)) return;
     Mutator mutator(agent->getFramework(), "policyelement");
-    for (size_t i = 0; i < genIdList_[key]->uidList.size(); i++) {
+    for (size_t i = 0; i < genIdList_[key]->uidList.size(); i++)
         clearCounterObject(key, i);
-    }
     if (genIdList_.count(key)) genIdList_.erase(genIdList_.find(key));
     mutator.commit();
 }
@@ -575,7 +622,8 @@ void PolicyStatsManager::removeAllCounterObjects(const std::string& key) {
 void PolicyStatsManager::clearOldCounters(const std::string& key,
                                           uint64_t nextId) {
     if (!genIdList_.count(key)) {
-        genIdList_[key] = std::unique_ptr<CircularBuffer>(new CircularBuffer());
+        genIdList_[key] =
+            std::unique_ptr<CircularBuffer>(new CircularBuffer());
     }
     if (genIdList_[key]->count == MAX_COUNTER_LIMIT) {
         genIdList_[key]->count = 0;
@@ -589,8 +637,8 @@ void PolicyStatsManager::clearOldCounters(const std::string& key,
     genIdList_[key]->count++;
 }
 
-bool PolicyStatsManager::FlowMatchKey_t::
-operator==(const FlowMatchKey_t &other) const {
+bool PolicyStatsManager::PolicyFlowMatchKey_t::
+operator==(const PolicyFlowMatchKey_t &other) const {
     return (cookie == other.cookie
             && reg0 == other.reg0
             && reg2 == other.reg2);
@@ -617,8 +665,8 @@ operator==(const FlowEntryMatchKey_t &other) const {
             && match_equal(match.get(), other.match.get()));
 }
 
-size_t PolicyStatsManager::KeyHasher::
-operator()(const PolicyStatsManager::FlowMatchKey_t& k) const noexcept {
+size_t PolicyStatsManager::PolicyKeyHasher::
+operator()(const PolicyStatsManager::PolicyFlowMatchKey_t& k) const noexcept {
     using boost::hash_value;
     using boost::hash_combine;
 

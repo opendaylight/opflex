@@ -431,61 +431,61 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
     ruleId = idGen.getId("l24classifierRule",
                          classifier1->getURI().toString());
     if (remoteAddress) {
-        ADDF(Bldr().table(IN_POL).priority(prio).cookie(ruleId)
+        ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio).cookie(ruleId)
              .tcp().reg(SEPG, setId).isIpSrc("192.168.0.0/16").isTpDst(80)
              .actions().go(OUT).done());
         if (remoteAddress > 1)
-            ADDF(Bldr().table(IN_POL).priority(prio).cookie(ruleId)
+            ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio).cookie(ruleId)
                  .tcp().reg(SEPG, setId).isIpSrc("10.0.0.0/8").isTpDst(80)
                  .actions().go(OUT).done());
     } else {
-        ADDF(Bldr().table(IN_POL).priority(prio).cookie(ruleId)
+        ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio).cookie(ruleId)
              .tcp().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     }
     /* classifer 8  */
     ruleId = idGen.getId("l24classifierRule",
                          classifier8->getURI().toString());
     if (remoteAddress) {
-        ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(ruleId)
+        ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio-128).cookie(ruleId)
              .tcp6().reg(SEPG, setId).isIpv6Src("fd80::/32").isTpDst(80)
              .actions().go(OUT).done());
         if (remoteAddress > 1)
-            ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(ruleId)
+            ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio-128).cookie(ruleId)
                  .tcp6().reg(SEPG, setId)
                  .isIpv6Src("fd34:9c39:1374:358c::/64")
                  .isTpDst(80).actions().go(OUT).done());
     } else {
-        ADDF(Bldr().table(IN_POL).priority(prio-128).cookie(ruleId)
+        ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio-128).cookie(ruleId)
              .tcp6().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     }
     /* classifier 2  */
     ruleId = idGen.getId("l24classifierRule",
                          classifier2->getURI().toString());
     if (remoteAddress) {
-        ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(ruleId)
+        ADDF(Bldr(SEND_FLOW_REM).table(OUT_POL).priority(prio-256).cookie(ruleId)
              .arp().reg(SEPG, setId).isTpa("192.168.0.0/16").actions()
              .go(OUT).done());
         if (remoteAddress > 1)
-            ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(ruleId)
+            ADDF(Bldr(SEND_FLOW_REM).table(OUT_POL).priority(prio-256).cookie(ruleId)
                  .arp().reg(SEPG, setId).isTpa("10.0.0.0/8").actions()
                  .go(OUT).done());
     } else {
-        ADDF(Bldr().table(OUT_POL).priority(prio-256).cookie(ruleId)
+        ADDF(Bldr(SEND_FLOW_REM).table(OUT_POL).priority(prio-256).cookie(ruleId)
              .arp().reg(SEPG, setId).actions().go(OUT).done());
     }
     /* classifier 6 */
     ruleId = idGen.getId("l24classifierRule",
                          classifier6->getURI().toString());
-    ADDF(Bldr().table(IN_POL).priority(prio-384).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio-384).cookie(ruleId)
          .tcp().reg(SEPG, setId).isTpSrc(22)
          .isTcpFlags("+syn+ack").actions().go(OUT).done());
     /* classifier 7 */
     ruleId = idGen.getId("l24classifierRule",
                          classifier7->getURI().toString());
-    ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio-512).cookie(ruleId)
          .tcp().reg(SEPG, setId).isTpSrc(21)
          .isTcpFlags("+ack").actions().go(OUT).done());
-    ADDF(Bldr().table(IN_POL).priority(prio-512).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio-512).cookie(ruleId)
          .tcp().reg(SEPG, setId).isTpSrc(21)
          .isTcpFlags("+rst").actions().go(OUT).done());
 
@@ -501,33 +501,33 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
     /* classifier 5 */
     ruleId = idGen.getId("l24classifierRule",
                          classifier5->getURI().toString());
-    ADDF(Bldr().table(IN_POL).priority(prio).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio).cookie(ruleId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
-    ADDF(Bldr().table(OUT_POL).priority(prio).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(OUT_POL).priority(prio).cookie(ruleId)
          .reg(SEPG, setId).isEth(0x8906).actions().go(OUT).done());
 
     /* classifier 9 */
     ruleId = idGen.getId("l24classifierRule",
                          classifier9->getURI().toString());
-    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("-new+est-rel+rpl-inv+trk").tcp().reg(SEPG, setId)
          .actions().go(OUT).done());
-    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("-new-est+rel-inv+trk").tcp().reg(SEPG, setId)
          .actions().go(OUT).done());
-    ADDF(Bldr().table(IN_POL).priority(prio - 128).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("-trk").tcp().reg(SEPG, setId)
          .actions().ct("table=1,zone=NXM_NX_REG6[0..15]").done());
-    ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(OUT_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("-trk")
          .tcp().reg(SEPG, setId).isTpDst(22)
          .actions().ct("table=1,zone=NXM_NX_REG6[0..15]").done());
-    ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(OUT_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("+est+trk")
          .tcp().reg(SEPG, setId).isTpDst(22)
          .actions()
          .go(OUT).done());
-    ADDF(Bldr().table(OUT_POL).priority(prio - 128).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(OUT_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("+new+trk")
          .tcp().reg(SEPG, setId).isTpDst(22)
          .actions().ct("commit,zone=NXM_NX_REG6[0..15]")

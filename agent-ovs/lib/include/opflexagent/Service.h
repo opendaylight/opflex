@@ -471,6 +471,37 @@ public:
         return serviceMappings;
     }
 
+    /**
+     * Clear the attribute map
+     */
+    void clearAttributes() {
+        attributes.clear();
+    }
+
+    /**
+     * Add an attribute to the attribute map
+     *
+     * @param name the name of the attribute to set
+     * @param value the new value for the attribute
+     */
+    void addAttribute(const std::string& name, const std::string& value) {
+        attributes[name] = value;
+    }
+
+    /**
+     * A string to string mapping
+     */
+    typedef std::unordered_map<std::string, std::string> attr_map_t;
+
+    /**
+     * Get a reference to a map of name/value attributes
+     *
+     * @return a map of name/value attribute pairs
+     */
+    const attr_map_t& getAttributes() const {
+        return attributes;
+    }
+
 private:
     std::string uuid;
     boost::optional<opflex::modb::URI> domainURI;
@@ -480,6 +511,7 @@ private:
     boost::optional<std::string> ifaceIP;
     ServiceMode serviceMode;
     sm_set serviceMappings;
+    attr_map_t attributes;
 };
 
 /**

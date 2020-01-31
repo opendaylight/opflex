@@ -49,7 +49,8 @@ Renderer* OVSRendererPlugin::create(Agent& agent) const {
 
 OVSRenderer::OVSRenderer(Agent& agent_)
     : Renderer(agent_), ctZoneManager(idGen),
-      intSwitchManager(agent_, intFlowExecutor, intFlowReader, intPortMapper),
+      intSwitchManager(agent_, intFlowExecutor, intFlowReader,
+                       intPortMapper),
       tunnelEpManager(&agent_),
       intFlowManager(agent_, intSwitchManager, idGen,
                      ctZoneManager, pktInHandler, tunnelEpManager),
@@ -60,12 +61,15 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       interfaceStatsManager(&agent_, intSwitchManager.getPortMapper(),
                             accessSwitchManager.getPortMapper()),
       contractStatsManager(&agent_, idGen, intSwitchManager),
+      podsvcStatsManager(&agent_, idGen, intSwitchManager,
+                           intFlowManager),
       secGrpStatsManager(&agent_, idGen, accessSwitchManager),
       tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true),
       connTrack(true), ctZoneRangeStart(0), ctZoneRangeEnd(0),
       ifaceStatsEnabled(true), ifaceStatsInterval(0),
       contractStatsEnabled(true), contractStatsInterval(0),
+      podsvcStatsEnabled(true), podsvcStatsInterval(0),
       secGroupStatsEnabled(true), secGroupStatsInterval(0),
       spanRenderer(agent_), netflowRenderer(agent_), started(false),
       pktLogger(pktLoggerIO) {
@@ -183,6 +187,13 @@ void OVSRenderer::start() {
         contractStatsManager.
             registerConnection(intSwitchManager.getConnection());
         contractStatsManager.start();
+    }
+    if (podsvcStatsEnabled) {
+        podsvcStatsManager.setTimerInterval(contractStatsInterval);
+        podsvcStatsManager.setAgentUUID(getAgent().getUuid());
+        podsvcStatsManager.
+            registerConnection(intSwitchManager.getConnection());
+        podsvcStatsManager.start();
     }
     if (secGroupStatsEnabled && accessBridgeName != "") {
         secGrpStatsManager.setTimerInterval(secGroupStatsInterval);
@@ -303,6 +314,8 @@ void OVSRenderer::stop() {
 
     if (ifaceStatsEnabled)
         interfaceStatsManager.stop();
+    if (podsvcStatsEnabled)
+        podsvcStatsManager.stop();
     if (contractStatsEnabled)
         contractStatsManager.stop();
     if (secGroupStatsEnabled)
@@ -401,6 +414,10 @@ void OVSRenderer::setProperties(const ptree& properties) {
                                                     ".contract.enabled");
     static const std::string STATS_CONTRACT_INTERVAL("statistics"
                                                     ".contract.interval");
+    static const std::string STATS_PODSVC_ENABLED("statistics"
+                                                  ".podsvc.enabled");
+    static const std::string STATS_PODSVC_INTERVAL("statistics"
+                                                   ".podsvc.interval");
     static const std::string STATS_SECGROUP_ENABLED("statistics"
                                                     ".security-group.enabled");
     static const std::string STATS_SECGROUP_INTERVAL("statistics"
@@ -513,10 +530,13 @@ void OVSRenderer::setProperties(const ptree& properties) {
 
     ifaceStatsEnabled = properties.get<bool>(STATS_INTERFACE_ENABLED, true);
     contractStatsEnabled = properties.get<bool>(STATS_CONTRACT_ENABLED, true);
+    podsvcStatsEnabled = properties.get<bool>(STATS_PODSVC_ENABLED, true);
     secGroupStatsEnabled = properties.get<bool>(STATS_SECGROUP_ENABLED, true);
     ifaceStatsInterval = properties.get<long>(STATS_INTERFACE_INTERVAL, 30000);
     contractStatsInterval =
         properties.get<long>(STATS_CONTRACT_INTERVAL, 10000);
+    podsvcStatsInterval =
+        properties.get<long>(STATS_PODSVC_INTERVAL, 10000);
     secGroupStatsInterval =
         properties.get<long>(STATS_SECGROUP_INTERVAL, 10000);
     if (ifaceStatsInterval <= 0) {

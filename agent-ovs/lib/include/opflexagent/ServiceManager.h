@@ -75,6 +75,14 @@ public:
                             /* out */ std::unordered_set<std::string>& servs);
 
     /**
+     * Get all services
+     *
+     * @param svcs a set that will be filled with the UUIDs of matching
+     * services.
+     */
+    void getServiceUUIDs( /* out */ std::unordered_set<std::string>& svcs);
+
+    /**
      * Get the services associated with a particular routing
      * domain
      *
@@ -139,6 +147,7 @@ private:
     void removeDomains(const Service& service);
 
     friend class ServiceSource;
+    friend class DummyServiceSrc;
 };
 
 } /* namespace opflexagent */

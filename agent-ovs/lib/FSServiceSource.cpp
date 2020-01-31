@@ -71,7 +71,7 @@ void FSServiceSource::updated(const fs::path& filePath) {
     static const std::string SM_NEXT_HOP_IPS("next-hop-ips");
     static const std::string SM_NEXT_HOP_PORT("next-hop-port");
     static const std::string SM_CONNTRACK("conntrack-enabled");
-
+    static const std::string SVC_ATTRIBUTES("attributes");
     try {
         using boost::property_tree::ptree;
         Service newserv;
@@ -130,6 +130,22 @@ void FSServiceSource::updated(const fs::path& filePath) {
                                      .addElement("GbpRoutingDomain")
                                      .addElement(domainName.get()).build());
             }
+        }
+
+        optional<ptree&> attrs =
+            properties.get_child_optional(SVC_ATTRIBUTES);
+        if (attrs) {
+            for (const ptree::value_type &v : attrs.get()) {
+                newserv.addAttribute(v.first, v.second.data());
+            }
+        } else {
+            // In pod<--> svc stats MOs, we want to mention name of the service.
+            // For k8s, "name" will be part of attr map. For OpenStack, there
+            // wont be any attr map, in which case we instead use svc intf name.
+            // To keep the code generic within agent to process attr for k8s vs open
+            // stack, if attr map isnt there, create one with "name" = intf name
+            if (ifaceName)
+                newserv.addAttribute("name", ifaceName.get());
         }
 
         optional<ptree&> sms =
