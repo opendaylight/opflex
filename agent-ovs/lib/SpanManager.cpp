@@ -69,6 +69,24 @@ namespace opflexagent {
         return os;
     }
 
+    ostream& operator<< (ostream& out, const SessionState& seSt) {
+        stringstream msg;
+        msg << "uri " << seSt.uri << endl << "name " << seSt.name
+                << ", admin state " << to_string(seSt.adminState)
+                << ", version " << to_string(seSt.version) << endl
+                << ", source end points:" << endl;
+        for (auto const &elem: seSt.srcEndPoints) {
+            msg << "name: " << elem->getName() << " port: " << elem->getPort()
+                            << " dir: " << to_string(elem->getDirection()) << "\n";
+        }
+        msg << endl << "Destination endpoints:" << endl;
+        for (auto const &pair: seSt.dstEndPoints) {
+            msg << "{" << pair.first << ":" << pair.second << "}\n";
+        }
+        out << msg.str();
+        return out;
+    }
+
     void SpanManager::start() {
         LOG(DEBUG) << "starting span manager";
         Universe::registerListener(framework, &spanUniverseListener);
@@ -90,6 +108,7 @@ namespace opflexagent {
 
     void SpanManager::SpanUniverseListener::objectUpdated(class_id_t classId,
                                                           const URI &uri) {
+        lock_guard <recursive_mutex> guard(spanmanager.listener_mutex);
         LOG(DEBUG) << "update on class ID " << classId << " URI " << uri;
 
         // updates on parent container for session are received for
@@ -168,7 +187,6 @@ namespace opflexagent {
 
     void SpanManager::registerListener(SpanListener *listener) {
         LOG(DEBUG) << "registering listener";
-        lock_guard <mutex> guard(listener_mutex);
         spanListeners.push_back(listener);
         if (isDeletePending) {
             notifyListeners();
@@ -177,13 +195,11 @@ namespace opflexagent {
     }
 
     void SpanManager::unregisterListener(SpanListener* listener) {
-        lock_guard <mutex> guard(listener_mutex);
         spanListeners.remove(listener);
     }
 
     void SpanManager::notifyListeners(const URI& spanURI) {
         LOG(DEBUG) << "notifying update listener";
-        lock_guard<mutex> guard(listener_mutex);
         for (SpanListener *listener : spanListeners) {
             listener->spanUpdated(spanURI);
         }
@@ -191,7 +207,6 @@ namespace opflexagent {
 
     void SpanManager::notifyListeners(shared_ptr<SessionState> seSt) {
         LOG(DEBUG) << "notifying delete listener";
-        lock_guard<mutex> guard(listener_mutex);
         for (SpanListener *listener : spanListeners) {
             listener->spanDeleted(seSt);
         }
@@ -199,14 +214,14 @@ namespace opflexagent {
 
     void SpanManager::notifyListeners() {
         LOG(DEBUG) << "notifying delete listener";
-        lock_guard<mutex> guard(listener_mutex);
         for (SpanListener* listener : spanListeners) {
             listener->spanDeleted();
         }
     }
 
     optional<shared_ptr<SessionState>>
-        SpanManager::getSessionState(const URI& uri) const {
+        SpanManager::getSessionState(const URI& uri) {
+        lock_guard <recursive_mutex> guard(listener_mutex);
         auto itr = sess_map.find(uri);
         if (itr == sess_map.end()) {
             return boost::none;
@@ -216,6 +231,7 @@ namespace opflexagent {
     }
 
     void SpanManager::SpanUniverseListener::processSession(shared_ptr<Session> sess) {
+        LOG(DEBUG) << "Process Session " << sess->getURI();
         shared_ptr<SessionState> sessState;
         auto itr = spanmanager.sess_map.find(sess->getURI());
         if (itr != spanmanager.sess_map.end()) {
@@ -223,6 +239,14 @@ namespace opflexagent {
         }
         sessState = make_shared<SessionState>(sess->getURI(), sess->getName().get());
         spanmanager.sess_map.insert(make_pair(sess->getURI(), sessState));
+        if (sess->getState()) {
+            // TODO: opflex proxy does not send down this setting.
+            // When this is addressed this code can be uncommented.
+            // unil then hardcode to 1
+            //sessState->setAdminState(sess->getState().get());
+        }
+        sessState->setAdminState('1');
+
         print_map(spanmanager.sess_map);
 
         vector <shared_ptr<SrcGrp>> srcGrpVec;
@@ -289,6 +313,9 @@ namespace opflexagent {
                         address ip = boost::asio::ip::address::from_string(dest.get());
                         shared_ptr<DstEndPoint> dEp = make_shared<DstEndPoint>(ip);
                         seSt->second->addDstEndPoint(dstSumm.get()->getURI(), dEp);
+                        if (dstSumm.get()->getVersion()) {
+                            seSt->second->setVersion(dstSumm.get()->getVersion().get());
+                        }
                     }
                 }
             }
@@ -381,7 +408,7 @@ namespace opflexagent {
     }
 
     const unordered_map<URI, shared_ptr<DstEndPoint>>&
-        SessionState::getDstEndPointMap() const {
+        SessionState::getDstEndPointMap() {
         return dstEndPoints;
     }
 
@@ -395,14 +422,17 @@ namespace opflexagent {
             optional<shared_ptr<Session>> sess = Session::resolve(spanmanager.framework,
                     parent.get());
             if (sess) {
-                shared_ptr<SessionState> sesSt = spanmanager.sess_map[sess.get()->getURI()];
-                shared_ptr<SourceEndPoint> srcEp =
-                          make_shared<SourceEndPoint>(lEp->getName().get(),
-                                                      l2Ep->getInterfaceName().get());
-                srcEp->setDirection(sInfo.dir);
-                sesSt->addSrcEndPoint(srcEp);
-                spanmanager.notifyUpdate.insert(sess.get()->getURI());
-                print_set(sesSt->getSrcEndPointSet());
+                auto itr = spanmanager.sess_map.find(sess.get()->getURI());
+                if (itr != spanmanager.sess_map.end()) {
+                    shared_ptr<SessionState> sesSt = spanmanager.sess_map[sess.get()->getURI()];
+                    shared_ptr<SourceEndPoint> srcEp =
+                              make_shared<SourceEndPoint>(lEp->getName().get(),
+                                                          l2Ep->getInterfaceName().get());
+                    srcEp->setDirection(sInfo.dir);
+                    sesSt->addSrcEndPoint(srcEp);
+                    spanmanager.notifyUpdate.insert(sess.get()->getURI());
+                    print_set(sesSt->getSrcEndPointSet());
+                }
             }
         }
     }
@@ -472,7 +502,8 @@ namespace opflexagent {
         auto itr = spanmanager.l2EpUri.find(l2Ep->getURI());
         if (itr != spanmanager.l2EpUri.end()) {
             optional<URI> sessUri = getSession(itr->second);
-            if (sessUri) {
+            if (sessUri && (spanmanager.sess_map.find(sessUri.get())
+                    != spanmanager.sess_map.end())) {
                 optional<shared_ptr<SrcMember>> pSmem =
                                 spanmanager.findSrcMem(sessUri.get(), (itr->second)->getURI());
                 if (pSmem) {
