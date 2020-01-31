@@ -70,7 +70,11 @@ std::ostream & operator<<(std::ostream &os, const Service& s) {
         os << "]";
     }
 
-    os << "]";
+    auto attr_map = s.getAttributes();
+    os << ",attr={";
+    for (auto &p : attr_map)
+        os << "(" << p.first << "," << p.second << ")";
+    os << "}]";
 
     return os;
 }

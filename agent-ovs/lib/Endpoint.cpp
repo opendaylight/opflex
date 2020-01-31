@@ -93,6 +93,12 @@ std::ostream & operator<<(std::ostream &os, const Endpoint& ep) {
     if (ep.getDHCPv6Config())
         os << ",dhcpv6";
 
+    auto attr_map = ep.getAttributes();
+    os << ",attr={";
+    for (auto &p : attr_map)
+        os << "(" << p.first << "," << p.second << ")";
+    os << "}]";
+
     return os;
 }
 

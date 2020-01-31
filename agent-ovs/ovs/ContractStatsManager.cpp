@@ -78,6 +78,7 @@ void ContractStatsManager::stop() {
 void ContractStatsManager::on_timer(const error_code& ec) {
     if (ec) {
         // shut down the timer when we get a cancellation
+        LOG(DEBUG) << "Resetting timer, error: " << ec.message();
         timer.reset();
         return;
     }
@@ -93,10 +94,8 @@ void ContractStatsManager::on_timer(const error_code& ec) {
         std::lock_guard<std::mutex> lock(pstatMtx);
         switchManager.forEachCookieMatch(IntFlowManager::POL_TABLE_ID,
                                          cb_func);
-
         PolicyCounterMap_t newClassCountersMap;
         on_timer_base(ec, contractState, newClassCountersMap);
-
         generatePolicyStatsObjects(&newClassCountersMap);
     }
 
@@ -150,7 +149,7 @@ void ContractStatsManager::
 updatePolicyStatsCounters(const std::string& srcEpg,
                           const std::string& dstEpg,
                           const std::string& l24Classifier,
-                          PolicyCounters_t& newVals) {
+                          FlowStats_t& newVals) {
 
     Mutator mutator(agent->getFramework(), "policyelement");
     optional<shared_ptr<PolicyStatUniverse> > su =

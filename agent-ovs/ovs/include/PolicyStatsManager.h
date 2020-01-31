@@ -126,15 +126,21 @@ public:
      */
     static const int MAX_DROP_COUNTER_LIMIT = 5;
 
+    /**
+     * Maximum iterations a flowcounter can be alive without stats
+     * collection
+     */
+    static const int MAX_AGE = 9;
+
 protected:
     /**
-     * Type used as a key for counter maps
+     * Type used as a key for Policy counter maps
      */
-    struct FlowMatchKey_t {
+    struct PolicyFlowMatchKey_t {
         /**
          * Trivial constructor for flow match key
          */
-        FlowMatchKey_t(uint32_t k1, uint32_t k2, uint32_t k3) {
+        PolicyFlowMatchKey_t(uint32_t k1, uint32_t k2, uint32_t k3) {
             cookie = k1;
             reg0 = k2;
             reg2 = k3;
@@ -156,17 +162,17 @@ protected:
         /**
          * equality operator
          */
-        bool operator==(const FlowMatchKey_t &other) const;
+        bool operator==(const PolicyFlowMatchKey_t &other) const;
     };
 
     /**
-     * Hasher for FlowMatchKey_t
+     * Hasher for PolicyFlowMatchKey_t
      */
-    struct KeyHasher {
+    struct PolicyKeyHasher {
         /**
          * Hash for FlowMatch Key
          */
-        size_t operator()(const FlowMatchKey_t& k) const noexcept;
+        size_t operator()(const PolicyFlowMatchKey_t& k) const noexcept;
     };
 
     /**
@@ -249,9 +255,9 @@ protected:
     };
 
     /**
-     * Counters for L24Classifiers
+     * Flow Stats - used by contracts, sec-groups, pod<-->svc etc.
      */
-    struct PolicyCounters_t {
+    struct FlowStats_t {
         /**
          * Counter in packets
          */
@@ -285,8 +291,10 @@ protected:
     };
 
     /** map flow to Policy counters */
-    typedef std::unordered_map<FlowMatchKey_t, PolicyCounters_t,
-                               KeyHasher> PolicyCounterMap_t;
+    typedef std::unordered_map<PolicyFlowMatchKey_t,
+                               FlowStats_t,
+                               PolicyKeyHasher> PolicyCounterMap_t;
+
     /**
      * A simple circular buffer of integers
      */
@@ -400,7 +408,7 @@ protected:
                                     PolicyCounterMap_t *counters2 = NULL);
 
     /**
-     * Base timer function
+     * Base timer function for Policy Stats
      */
     virtual void on_timer_base(const boost::system::error_code& ec,
                                flowCounterState_t& counterState,
@@ -409,14 +417,14 @@ protected:
     /**
      * Clear the counter objects for the given key
      */
-    virtual void clearCounterObject(const std::string& key,uint8_t index) = 0;
+    virtual void clearCounterObject(const std::string& key,uint8_t index) {};
 
     /**
      * Update the security group stats counters
      */
     virtual void updatePolicyStatsCounters(const std::string& l24Classifier,
-                                           PolicyCounters_t& newVals1,
-                                           PolicyCounters_t& newVals2) {};
+                                           FlowStats_t& newVals1,
+                                           FlowStats_t& newVals2) {};
 
     /**
      * Update the contract stats counters
@@ -424,7 +432,7 @@ protected:
     virtual void updatePolicyStatsCounters(const std::string& srcEpg,
                                            const std::string& dstEpg,
                                            const std::string& ruleURI,
-                                           PolicyCounters_t& counters) {};
+                                           FlowStats_t& counters) {};
 
     /**
      * True if shutting down
