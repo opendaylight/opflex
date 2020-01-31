@@ -94,7 +94,7 @@ public:
       * @return shared pointer to SessionState or none.
       */
       boost::optional<shared_ptr<SessionState>>
-          getSessionState(const URI& uri) const;
+          getSessionState(const URI& uri);
 
     /**
      * Register a listener for span change events
@@ -227,7 +227,7 @@ private:
      * The span listeners that have been registered
      */
     list<SpanListener*> spanListeners;
-    mutex listener_mutex;
+    recursive_mutex listener_mutex;
     TaskQueue taskQueue;
     unordered_map<opflex::modb::URI, shared_ptr<SessionState>>
             sess_map;
