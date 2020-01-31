@@ -21,6 +21,11 @@
 #include <boost/format.hpp>
 #include <map>
 #include <time.h>
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+
+using rapidjson::Writer;
+using rapidjson::StringBuffer;
 
 namespace opflexagent {
 
@@ -49,44 +54,11 @@ public:
             const std::string &sourceMac_, const std::string &destMac_,
             const std::string &ethType_, const std::string &sourceIp_,
             const std::string &destinationIp_, const std::string &ipProto_,
-            const std::string &srcPort_, const std::string &dstPort_):
-            PacketTuple() {
-        int field_count = 0;
-        TimeStamp = ts_;
-        fields[field_count++].second = dropReason_;
-        fields[field_count++].second = sourceMac_;
-        fields[field_count++].second = destMac_;
-        fields[field_count++].second = ethType_;
-        fields[field_count++].second = sourceIp_;
-        fields[field_count++].second = destinationIp_;
-        fields[field_count++].second = ipProto_;
-        fields[field_count++].second = srcPort_;
-        fields[field_count++].second = dstPort_;
-    };
+            const std::string &srcPort_, const std::string &dstPort_);
     /**
      * Default constructor for packetTuple
      * */
-    PacketTuple() {
-        int field_count = 0;
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("DropReason", "")));
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("SourceMac", "")));
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("DestinationMac", "")));
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("EtherType", "")));
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("SourceIP", "")));
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("DestinationIP", "")));
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("IPProto", "")));
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("SourcePort", "")));
-        fields.insert(std::make_pair(field_count++,
-                std::make_pair("DestinationPort", "")));
-    };
+    PacketTuple();
     /**
      * set a member in the tuple by the index of the member
      * @param index index of the member
@@ -98,6 +70,12 @@ public:
         }
         fields[index].second = value;
     }
+    /**
+     * serialize this packet tuple into a json stream
+     * @param writer JSON encoder
+     * @return whether serialization was successful
+     * */
+    bool serialize(Writer<StringBuffer> &writer);
     /**
      * TimeStamp when the packet was received
      */
