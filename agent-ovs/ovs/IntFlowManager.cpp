@@ -26,6 +26,9 @@
 #include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 #include <modelgbp/observer/DropLogModeEnumT.hpp>
 #include <modelgbp/gbp/EnforcementPreferenceTypeEnumT.hpp>
+#include <modelgbp/gbpe/SvcToEpCounter.hpp>
+#include <modelgbp/gbpe/EpToSvcCounter.hpp>
+#include <modelgbp/observer/PolicyStatUniverse.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/Endpoint.h>
@@ -46,8 +49,10 @@
 #include "arp.h"
 #include "eth.h"
 #include "ovs-ofputil.h"
+#include "ovs-shim.h"
 
 #include <openvswitch/list.h>
+#include <arpa/inet.h>
 
 using std::string;
 using std::vector;
@@ -67,6 +72,7 @@ using std::mutex;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::class_id_t;
+using modelgbp::observer::PolicyStatUniverse;
 
 namespace pt = boost::property_tree;
 using namespace modelgbp::gbp;
@@ -76,14 +82,16 @@ namespace opflexagent {
 
 static const char* ID_NAMESPACES[] =
     {"floodDomain", "bridgeDomain", "routingDomain",
-     "externalNetwork", "l24classifierRule", "service"};
+     "externalNetwork", "l24classifierRule",
+     "podsvc", "service"};
 
 static const char* ID_NMSPC_FD            = ID_NAMESPACES[0];
 static const char* ID_NMSPC_BD            = ID_NAMESPACES[1];
 static const char* ID_NMSPC_RD            = ID_NAMESPACES[2];
 static const char* ID_NMSPC_EXTNET        = ID_NAMESPACES[3];
 static const char* ID_NMSPC_L24CLASS_RULE = ID_NAMESPACES[4];
-static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[5];
+static const char* ID_NMSPC_PODSVC        = ID_NAMESPACES[5];
+static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[6];
 
 IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,
@@ -677,7 +685,7 @@ static FlowBuilder& actionDestEpArp(FlowBuilder& fb,
 static FlowBuilder& actionOutputToEPGTunnel(FlowBuilder& fb) {
     fb.action()
         .metadata(flow::meta::out::TUNNEL, flow::meta::out::MASK)
-        .go(IntFlowManager::OUT_TABLE_ID);
+        .go(IntFlowManager::STATS_TABLE_ID);
     return fb;
 }
 
@@ -1542,6 +1550,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         switchManager.clearFlows(uuid, OUT_TABLE_ID);
         removeEndpointFromFloodGroup(uuid);
         agent.getSnatManager().delEndpoint(uuid);
+        updatePodSvcFlows(uuid, false, false);
         return;
     }
     const Endpoint& endPoint = *epWrapper.get();
@@ -1608,6 +1617,9 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         bcastFloodMode = BcastFloodModeEnumT::CONST_NORMAL;
         hasForwardingInfo = true;
     } else {
+        // Add stats flows between "ep to svc" and "svc to ep"
+        updatePodSvcFlows(uuid, false, true);
+
         if (hasForwardingInfo)
             fd = agent.getPolicyManager().getFDForGroup(epgURI.get());
 
@@ -1976,6 +1988,366 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     }
 }
 
+void IntFlowManager::in6AddrToLong (address sAddr, uint32_t *pAddr)
+{
+    boost::asio::ip::address_v6::bytes_type bytes = sAddr.to_v6().to_bytes();
+    memcpy(pAddr, bytes.data(), sizeof(uint32_t) * 4);
+    pAddr[0] = htonl(pAddr[0]);
+    pAddr[1] = htonl(pAddr[1]);
+    pAddr[2] = htonl(pAddr[2]);
+    pAddr[3] = htonl(pAddr[3]);
+}
+
+template <class MO>
+void IntFlowManager::updatePodSvcStatsAttr (const std::shared_ptr<MO> &obj,
+                                            const attr_map &epAttr,
+                                            const attr_map &svcAttr)
+{
+    {
+        auto podItr = epAttr.find("vm-name");
+        auto svcItr = svcAttr.find("name");
+        if ((podItr != epAttr.end())
+            && (svcItr != svcAttr.end())) {
+            obj.get()->setEp(podItr->second);
+            obj.get()->setSvc(svcItr->second);
+        }
+    }
+
+    {
+        auto podItr = epAttr.find("namespace");
+        auto svcItr = svcAttr.find("namespace");
+        if ((podItr != epAttr.end())
+            && (svcItr != svcAttr.end())) {
+            obj.get()->setEpNs(podItr->second);
+            obj.get()->setSvcNs(svcItr->second);
+        }
+    }
+}
+
+// Called from PolicyStatsManager to update stats
+void IntFlowManager::
+updatePodSvcStatsCounters (const uint64_t &cookie,
+                           const uint64_t &newPktCount,
+                           const uint64_t &newByteCount)
+{
+    const std::lock_guard<mutex> lock(podSvcMutex);
+
+    updatePodSvcStatsCounters(cookie,
+                              newPktCount,
+                              newByteCount,
+                              attr_map(),
+                              attr_map());
+}
+
+// Private function to update stats and attributes
+void IntFlowManager::
+updatePodSvcStatsCounters (const uint64_t &cookie,
+                           const uint64_t &newPktCount,
+                           const uint64_t &newByteCount,
+                           const attr_map &epAttr,
+                           const attr_map &svcAttr)
+{
+    boost::optional<std::string> idStr =
+        idGen.getStringForId(ID_NMSPC_PODSVC, cookie);
+    if (idStr == boost::none) {
+        LOG(ERROR) << "Cookie: " << cookie
+                   << " to pod<-->svc translation does not exist";
+        return;
+    }
+
+    bool isEpToSvc = !strcmp(idStr.get().substr(0,7).c_str(),
+                             "eptosvc")?true:false;
+
+    Mutator mutator(agent.getFramework(), "policyelement");
+    optional<shared_ptr<PolicyStatUniverse> > su =
+        PolicyStatUniverse::resolve(agent.getFramework());
+    if (su) {
+        if (isEpToSvc) {
+            auto pEpToSvc = su.get()->resolveGbpeEpToSvcCounter(
+                                        agent.getUuid(), idStr.get());
+            if (!pEpToSvc) {
+                pEpToSvc = su.get()->addGbpeEpToSvcCounter(
+                                        agent.getUuid(), idStr.get());
+            }
+
+            auto oldPktCount = pEpToSvc.get()->getPackets(0);
+            auto oldByteCount = pEpToSvc.get()->getBytes(0);
+            pEpToSvc.get()->setPackets(oldPktCount + newPktCount)
+                           .setBytes(oldByteCount + newByteCount);
+            if (!newPktCount) {
+                updatePodSvcStatsAttr<EpToSvcCounter>(pEpToSvc.get(),
+                                                      epAttr,
+                                                      svcAttr);
+            }
+        } else {
+            auto pSvcToEp = su.get()->resolveGbpeSvcToEpCounter(
+                                        agent.getUuid(), idStr.get());
+            if (!pSvcToEp) {
+                pSvcToEp = su.get()->addGbpeSvcToEpCounter(
+                                        agent.getUuid(), idStr.get());
+            }
+
+            auto oldPktCount = pSvcToEp.get()->getPackets(0);
+            auto oldByteCount = pSvcToEp.get()->getBytes(0);
+            pSvcToEp.get()->setPackets(oldPktCount + newPktCount)
+                           .setBytes(oldByteCount + newByteCount);
+            if (!newPktCount) {
+                updatePodSvcStatsAttr<SvcToEpCounter>(pSvcToEp.get(),
+                                                      epAttr,
+                                                      svcAttr);
+            }
+        }
+    }
+    mutator.commit();
+}
+
+// Clear pod svc objects
+void IntFlowManager::clearPodSvcCounters (const std::string& uuid)
+{
+    Mutator mutator(agent.getFramework(), "policyelement");
+    bool isEpToSvc = !strcmp(uuid.substr(0,7).c_str(),
+                             "eptosvc")?true:false;
+    if (isEpToSvc) {
+        EpToSvcCounter::remove(agent.getFramework(),
+                               agent.getUuid(), uuid);
+    } else {
+        SvcToEpCounter::remove(agent.getFramework(),
+                               agent.getUuid(), uuid);
+    }
+    mutator.commit();
+}
+
+// Add/del stats flows between "ep to svc" and "svc to ep"
+void IntFlowManager::updatePodSvcFlows (const string &uuid,
+                                        const bool &is_svc,
+                                        const bool &is_add)
+{
+    const std::lock_guard<mutex> lock(podSvcMutex);
+
+    LOG(DEBUG) << "##### Updating pod<-->svc flows:"
+               << " uuid: " << uuid
+               << " is_svc: " << is_svc
+               << " is_add: " << is_add << "#######";
+
+    /* A service could have multiple ServiceMappings and an EP
+     * could have multiple IPs. The flows are created for each of the
+     * IP pairs between pod <--> svc.
+     * i.e multiple of these "epIP<-->smIP" are tracked together under
+     * their respective "pod<-->svc" uuids */
+    unordered_map<string, FlowEntryList> uuid_felist_map;
+
+    // Expr to del stats flow between "ep to svc" and "svc to ep"
+    auto podSvcFlowRemExpr =
+        [this] (const string &uuid) -> void {
+        switchManager.clearFlows(uuid, STATS_TABLE_ID);
+        // Qualifying the names given to idGen with eptosvc/svctoep
+        // so that stat's infra's genIdList_ is unique per direction
+        clearPodSvcCounters("eptosvc:"+uuid);
+        clearPodSvcCounters("svctoep:"+uuid);
+        idGen.erase(ID_NMSPC_PODSVC, "eptosvc:"+uuid);
+        idGen.erase(ID_NMSPC_PODSVC, "svctoep:"+uuid);
+        podSvcUuidCkMap.erase(uuid);
+    };
+
+    // Expr to add stats flow between "ep to svc" and "svc to ep"
+    auto podSvcFlowAddExpr =
+        [this, &uuid_felist_map]
+        (const string &uuid, address &epAddr, address &svcAddr,
+         const attr_map &epAttr, const attr_map &svcAttr) -> void {
+
+        // ensure flows are either v4 or v6 - no mix-n-match
+        if (svcAddr.is_v4() != epAddr.is_v4()) {
+            LOG(DEBUG) << "Not adding flow - ip types are different";
+            return;
+        }
+
+        FlowBuilder epToSvc; // to service stats
+        FlowBuilder svcToEp; // from service stats
+
+        auto itr = podSvcUuidCkMap.find(uuid);
+        if (itr == podSvcUuidCkMap.end()) {
+            // Qualifying the names given to idGen with eptosvc/svctoep
+            // so that stat's infra's genIdList_ is unique per direction
+            // Note: we are not using genIdList_ currently. But keeping
+            // this extra qualifier anyway since both classes share same
+            // ns
+            uint64_t cookieIdIg = (uint64_t)idGen.getId(ID_NMSPC_PODSVC,
+                                                        "eptosvc:"+uuid);
+            uint64_t cookieIdEg = (uint64_t)idGen.getId(ID_NMSPC_PODSVC,
+                                                        "svctoep:"+uuid);
+
+            // Create the objects and cookies once for every POD,SVC combination
+            LOG(DEBUG) << "Creating pod<-->svc counters for uuid: " << uuid;
+            podSvcUuidCkMap[uuid] = make_pair(cookieIdIg, cookieIdEg);
+        }
+
+        // Note: the objects are created once. But we still call below counter
+        // updates to take care of ep/svc attr changes
+        updatePodSvcStatsCounters(podSvcUuidCkMap[uuid].first, 0, 0, epAttr, svcAttr);
+        updatePodSvcStatsCounters(podSvcUuidCkMap[uuid].second, 0, 0, epAttr, svcAttr);
+
+        if (svcAddr.is_v4()) {
+            epToSvc.priority(100).ethType(eth::type::IP)
+                   .ipSrc(epAddr)
+                   .reg(8, svcAddr.to_v4().to_ulong())
+                   .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                   .cookie(ovs_htonll(podSvcUuidCkMap[uuid].first))
+                   .action().go(OUT_TABLE_ID);
+            svcToEp.priority(100).ethType(eth::type::IP)
+                   .ipSrc(svcAddr).ipDst(epAddr)
+                   .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                   .cookie(ovs_htonll(podSvcUuidCkMap[uuid].second))
+                   .action().go(OUT_TABLE_ID);
+        } else {
+            uint32_t pAddr[4];
+            in6AddrToLong(svcAddr, &pAddr[0]);
+            // E.g. An addr = fe80::a9:fe:a9:fe will get stuffed in regs as below
+            // reg8=0xfe800000,reg9=0,reg10=0xa900fe,reg11=0xa900fe
+            epToSvc.priority(100).ethType(eth::type::IPV6)
+                   .ipSrc(epAddr)
+                   .reg(8, pAddr[0]).reg(9, pAddr[1])
+                   .reg(10, pAddr[2]).reg(11, pAddr[3])
+                   .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                   .cookie(ovs_htonll(podSvcUuidCkMap[uuid].first))
+                   .action().go(OUT_TABLE_ID);
+            svcToEp.priority(100).ethType(eth::type::IPV6)
+                   .ipSrc(svcAddr).ipDst(epAddr)
+                   .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                   .cookie(ovs_htonll(podSvcUuidCkMap[uuid].second))
+                   .action().go(OUT_TABLE_ID);
+        }
+        epToSvc.build(uuid_felist_map[uuid]);
+        svcToEp.build(uuid_felist_map[uuid]);
+    };
+
+    boost::system::error_code ec;
+    if (is_svc) {
+        unordered_set<string> epUuids;
+        EndpointManager& epMgr = agent.getEndpointManager();
+        epMgr.getEndpointUUIDs(epUuids);
+
+        if (!is_add) {
+            for (const string& epUuid : epUuids)
+                podSvcFlowRemExpr(epUuid+":"+uuid);
+            return;
+        }
+
+        ServiceManager& srvMgr = agent.getServiceManager();
+        shared_ptr<const Service> asWrapper = srvMgr.getService(uuid);
+
+        if (!asWrapper || !asWrapper->getDomainURI()) {
+            LOG(DEBUG) << "unable to get service from uuid";
+            return;
+        }
+
+        const Service& as = *asWrapper;
+        LOG(DEBUG) << "####### pod<-->svc Service ########";
+        LOG(DEBUG) << *asWrapper;
+        for (auto const& sm : as.getServiceMappings()) {
+            if (!sm.getServiceIP())
+                continue;
+
+            address serviceAddr =
+                address::from_string(sm.getServiceIP().get(), ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid service IP: "
+                             << sm.getServiceIP().get()
+                             << ": " << ec.message();
+                continue;
+            }
+
+            for (const string& epUuid : epUuids) {
+                shared_ptr<const Endpoint> epWrapper
+                     = epMgr.getEndpoint(epUuid);
+                if (!epWrapper)
+                    continue;
+                LOG(DEBUG) << "####### pod<-->svc Endpoint ########";
+                LOG(DEBUG) << *epWrapper;
+
+                const Endpoint& endPoint = *epWrapper.get();
+                for (const string& ipStr : endPoint.getIPs()) {
+                    address epAddr = address::from_string(ipStr, ec);
+                    LOG(DEBUG) << "Adding pod<-->svc flow between"
+                               << " epIp: " << ipStr
+                               << " <--> svc-smIp: " << sm.getServiceIP().get();
+                    podSvcFlowAddExpr(epUuid+":"+uuid,
+                                      epAddr, serviceAddr,
+                                      endPoint.getAttributes(),
+                                      as.getAttributes());
+                }
+            }
+        }
+    } else {
+        unordered_set<string> svcUuids;
+        ServiceManager& svcMgr = agent.getServiceManager();
+        svcMgr.getServiceUUIDs(svcUuids);
+
+        if (!is_add) {
+            for (const string& svcUuid : svcUuids)
+                podSvcFlowRemExpr(uuid+":"+svcUuid);
+            return;
+        }
+
+        EndpointManager& epMgr = agent.getEndpointManager();
+        shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(uuid);
+
+        // following can be valid only during is_add=false, but adding for safety
+        if (!epWrapper) {
+            LOG(DEBUG) << "unable to get ep from uuid";
+            return;
+        }
+
+        LOG(DEBUG) << "####### pod<-->svc Endpoint ########";
+        LOG(DEBUG) << *epWrapper;
+
+        const Endpoint& endPoint = *epWrapper.get();
+        for (const string& ipStr : endPoint.getIPs()) {
+            address epAddr = address::from_string(ipStr, ec);
+            if (ec) {
+                LOG(WARNING) << "Invalid endpoint IP: "
+                             << ipStr << ": " << ec.message();
+                continue;
+            }
+
+            for (const string& svcUuid : svcUuids) {
+                shared_ptr<const Service> asWrapper
+                     = svcMgr.getService(svcUuid);
+                if (!asWrapper)
+                    continue;
+
+                LOG(DEBUG) << "####### pod<-->svc Service ########";
+                LOG(DEBUG) << *asWrapper;
+
+                const Service& as = *asWrapper.get();
+                for (auto const& sm : as.getServiceMappings()) {
+                    if (!sm.getServiceIP())
+                        continue;
+
+                    address serviceAddr =
+                        address::from_string(sm.getServiceIP().get(), ec);
+                    if (ec) {
+                        LOG(WARNING) << "Invalid service IP: "
+                                     << sm.getServiceIP().get()
+                                     << ": " << ec.message();
+                        continue;
+                    }
+                    LOG(DEBUG) << "Adding pod<-->svc flow between"
+                               << " EP IP: " << ipStr
+                               << " SVC-SM IP: " << sm.getServiceIP().get();
+
+                    podSvcFlowAddExpr(uuid+":"+svcUuid,
+                                      epAddr, serviceAddr,
+                                      endPoint.getAttributes(),
+                                      as.getAttributes());
+                }
+            }
+        }
+    }
+
+    for (auto &p : uuid_felist_map)
+        switchManager.writeFlow(p.first, STATS_TABLE_ID, p.second);
+}
+
 void IntFlowManager::handleServiceUpdate(const string& uuid) {
     LOG(DEBUG) << "Updating service " << uuid;
 
@@ -1988,6 +2360,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
         switchManager.clearFlows(uuid, SERVICE_REV_TABLE_ID);
         switchManager.clearFlows(uuid, SERVICE_DST_TABLE_ID);
         switchManager.clearFlows(uuid, SERVICE_NEXTHOP_TABLE_ID);
+        updatePodSvcFlows(uuid, true, false);
         idGen.erase(ID_NMSPC_SERVICE, uuid);
         return;
     }
@@ -2024,6 +2397,9 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
         uint32_t ctMark = idGen.getId(ID_NMSPC_SERVICE, uuid);
         if (as.getInterfaceName())
             ctMark |= 1 << 31;
+
+        // Add stats flows between "ep to svc" and "svc to ep"
+        updatePodSvcFlows(uuid, true, true);
 
         for (auto const& sm : as.getServiceMappings()) {
             if (!sm.getServiceIP())
@@ -2103,7 +2479,27 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                 } else if (as.getServiceMode() == Service::LOCAL_ANYCAST &&
                            ofPort != OFPP_NONE) {
                     serviceDest.action()
-                        .ethDst(macAddr).decTtl().output(ofPort);
+                        .ethDst(macAddr).decTtl();
+                    /**
+                     * For anycast service without any nexthop, embed v4 service
+                     * addr within reg8 in bridge table. This way, the stats table
+                     * flows can just match on reg8 (v4 src addr of service) for
+                     * traffic destined towards services with and without NHs.
+                     * Similarly embed v6 addr in regs 8 to 11.
+                     */
+                    if (serviceAddr.is_v4()) {
+                        serviceDest.action()
+                            .reg(MFF_REG8, serviceAddr.to_v4().to_ulong());
+                    } else {
+                        uint32_t pAddr[4];
+                        in6AddrToLong(serviceAddr, &pAddr[0]);
+                        serviceDest.action()
+                            .reg(MFF_REG8, pAddr[0])
+                            .reg(MFF_REG9, pAddr[1])
+                            .reg(MFF_REG10, pAddr[2])
+                            .reg(MFF_REG11, pAddr[3]);
+                    }
+                    serviceDest.action().output(ofPort);
                 }
 
                 serviceDest.build(bridgeFlows);
@@ -2127,6 +2523,20 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                             .reg(7, link);
                     }
                     ipMap.action().ipDst(nextHopAddr).decTtl();
+                    // For both LB & Anycast, save v4 service address to reg8
+                    // Save v6 addr in regs 8 to 11
+                    if (serviceAddr.is_v4()) {
+                        ipMap.action()
+                            .reg(MFF_REG8, serviceAddr.to_v4().to_ulong());
+                    } else {
+                        uint32_t pAddr[4];
+                        in6AddrToLong(serviceAddr, &pAddr[0]);
+                        ipMap.action()
+                            .reg(MFF_REG8, pAddr[0])
+                            .reg(MFF_REG9, pAddr[1])
+                            .reg(MFF_REG10, pAddr[2])
+                            .reg(MFF_REG11, pAddr[3]);
+                    }
 
                     if (as.getServiceMode() == Service::LOADBALANCER) {
                         if (zoneId != static_cast<uint16_t>(-1)) {
@@ -2148,7 +2558,6 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                         ipMap.action()
                             .metadata(flow::meta::ROUTED, flow::meta::ROUTED)
                             .go(ROUTE_TABLE_ID);
-
                     } else if (as.getServiceMode() == Service::LOCAL_ANYCAST &&
                                ofPort != OFPP_NONE) {
                         ipMap.action().output(ofPort);
@@ -2611,7 +3020,7 @@ void IntFlowManager::updateEPGFlood(const URI& epgURI, uint32_t epgVnid,
         }
         mcast.action()
             .metadata(flow::meta::out::FLOOD, flow::meta::out::MASK)
-            .go(IntFlowManager::OUT_TABLE_ID);
+            .go(IntFlowManager::STATS_TABLE_ID);
         mcast.build(grpDst);
     }
     switchManager.writeFlow(epgURI.toString(), BRIDGE_TABLE_ID, grpDst);
@@ -2686,7 +3095,7 @@ void IntFlowManager::createStaticFlows() {
         FlowBuilder().priority(PolicyManager::MAX_POLICY_RULE_PRIORITY + 51)
             .metadata(flow::meta::FROM_SERVICE_INTERFACE,
                       flow::meta::FROM_SERVICE_INTERFACE)
-            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .action().go(IntFlowManager::STATS_TABLE_ID)
             .parent().build(policyStatic);
 
         // Block flows from the uplink when not allowed by
@@ -2699,21 +3108,21 @@ void IntFlowManager::createStaticFlows() {
         // blocks them.
         FlowBuilder().priority(10)
             .ethType(eth::type::ARP)
-            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .action().go(IntFlowManager::STATS_TABLE_ID)
             .parent().build(policyStatic);
         FlowBuilder().priority(10)
             .ethType(eth::type::IPV6)
             .proto(58)
             .tpSrc(ND_NEIGHBOR_SOLICIT)
             .tpDst(0)
-            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .action().go(IntFlowManager::STATS_TABLE_ID)
             .parent().build(policyStatic);
         FlowBuilder().priority(10)
             .ethType(eth::type::IPV6)
             .proto(58)
             .tpSrc(ND_NEIGHBOR_ADVERT)
             .tpDst(0)
-            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .action().go(IntFlowManager::STATS_TABLE_ID)
             .parent().build(policyStatic);
 
         switchManager.writeFlow("static", POL_TABLE_ID, policyStatic);
@@ -2749,6 +3158,14 @@ void IntFlowManager::createStaticFlows() {
         }
         switchManager.writeFlow("static", BRIDGE_TABLE_ID, unknownTunnelBr);
         switchManager.writeFlow("static", ROUTE_TABLE_ID, unknownTunnelRt);
+    }
+    {
+        FlowEntryList statsFlows;
+        FlowBuilder().priority(10)
+            .action().go(IntFlowManager::OUT_TABLE_ID)
+            .parent().build(statsFlows);
+
+        switchManager.writeFlow("static", STATS_TABLE_ID, statsFlows);
     }
     {
         FlowEntryList outFlows;
@@ -2870,7 +3287,7 @@ void IntFlowManager::handleEndpointGroupDomainUpdate(const URI& epgURI) {
             /* fall through */
         case IntraGroupPolicyEnumT::CONST_ALLOW:
         default:
-            intraGroupFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+            intraGroupFlow.action().go(IntFlowManager::STATS_TABLE_ID);
             break;
         }
         flowutils::match_group(intraGroupFlow, prio, epgVnid, epgVnid);
@@ -3063,7 +3480,7 @@ void IntFlowManager::handleLocalExternalDomainUpdated(const opflex::modb::URI &e
     FlowBuilder intraGroupFlow;
     uint16_t prio = PolicyManager::MAX_POLICY_RULE_PRIORITY + 100;
     flowutils::match_group(intraGroupFlow, prio, epgVnid, epgVnid);
-    intraGroupFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+    intraGroupFlow.action().go(IntFlowManager::STATS_TABLE_ID);
     switchManager.writeFlow(epgId, POL_TABLE_ID, intraGroupFlow);
 
     updateEPGFlood(epgURI, epgVnid, fgrpId, epgTunDst, true);
@@ -3200,7 +3617,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
         LOG(DEBUG) << "Create unenforced flow for RD: " << rdURI;
         FlowBuilder unenforcedFlow;
         unenforcedFlow.priority(PolicyManager::MAX_POLICY_RULE_PRIORITY + 250);
-        unenforcedFlow.action().go(IntFlowManager::OUT_TABLE_ID);
+        unenforcedFlow.action().go(IntFlowManager::STATS_TABLE_ID);
         flowutils::match_rdId(unenforcedFlow, rdId);
         switchManager.writeFlow(rdEnfPrefURIId, POL_TABLE_ID, unenforcedFlow);
     } else {
@@ -3544,7 +3961,7 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
             flowutils::add_classifier_entries(*cls, act,
                                               boost::none,
                                               boost::none,
-                                              IntFlowManager::OUT_TABLE_ID,
+                                              IntFlowManager::STATS_TABLE_ID,
                                               pc->getPriority(),
                                               OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
@@ -3556,7 +3973,7 @@ void IntFlowManager::addContractRules(FlowEntryList& entryList,
             flowutils::add_classifier_entries(*cls, act,
                                               boost::none,
                                               boost::none,
-                                              IntFlowManager::OUT_TABLE_ID,
+                                              IntFlowManager::STATS_TABLE_ID,
                                               pc->getPriority(),
                                               OFPUTIL_FF_SEND_FLOW_REM,
                                               cookie,
@@ -3807,6 +4224,22 @@ static bool serviceIdGarbageCb(ServiceManager& serviceManager,
     return (bool)serviceManager.getService(str);
 }
 
+static bool podSvcIdGarbageCb(EndpointManager& epManager,
+                              ServiceManager& serviceManager,
+                              const std::string& nmspc,
+                              const std::string& str) {
+    // The idgen strings for epToSvc and svcToEp will have below format
+    // eptosvc:ep-uuid:svc-uuid
+    // svctoep:ep-uuid:svc-uuid
+    size_t pos1 = str.find(":");
+    size_t pos2 = str.find(":", pos1+1);
+    string epUuid = str.substr(pos1+1, pos2-pos1-1);
+    string svcUuid = str.substr(pos2+1);
+
+    return ((bool)serviceManager.getService(svcUuid)
+             && (bool)epManager.getEndpoint(epUuid));
+}
+
 void IntFlowManager::cleanup() {
     for (size_t i = 0; i < sizeof(ID_NAMESPACE_CB)/sizeof(IdCb); i++) {
         agent.getAgentIOService()
@@ -3829,6 +4262,17 @@ void IntFlowManager::cleanup() {
                 };
                 idGen.collectGarbage(ID_NMSPC_SERVICE, sgcb);
             });
+
+    agent.getAgentIOService()
+        .dispatch([=]() {
+                auto psgcb = [this](const std::string& ns,
+                                   const std::string& str) -> bool {
+                    return podSvcIdGarbageCb(agent.getEndpointManager(),
+                                             agent.getServiceManager(),
+                                             ns, str);
+                };
+                idGen.collectGarbage(ID_NMSPC_PODSVC, psgcb);
+            });
 }
 
 const char * IntFlowManager::getIdNamespace(class_id_t cid) {
@@ -3839,6 +4283,8 @@ const char * IntFlowManager::getIdNamespace(class_id_t cid) {
     case FloodDomain::CLASS_ID:     nmspc = ID_NMSPC_FD; break;
     case L3ExternalNetwork::CLASS_ID: nmspc = ID_NMSPC_EXTNET; break;
     case L24Classifier::CLASS_ID: nmspc = ID_NMSPC_L24CLASS_RULE; break;
+    case SvcToEpCounter::CLASS_ID: // both ep2svc and svc2ep share same ns
+    case EpToSvcCounter::CLASS_ID: nmspc = ID_NMSPC_PODSVC; break;
     default:
         assert(false);
     }

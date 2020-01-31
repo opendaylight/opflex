@@ -18,6 +18,7 @@
 #include "PortMapper.h"
 #include "InterfaceStatsManager.h"
 #include "ContractStatsManager.h"
+#include "PodSvcStatsManager.h"
 #include "SecGrpStatsManager.h"
 #include <opflexagent/TunnelEpManager.h>
 #include "PacketInHandler.h"
@@ -85,6 +86,7 @@ private:
 
     InterfaceStatsManager interfaceStatsManager;
     ContractStatsManager contractStatsManager;
+    PodSvcStatsManager podsvcStatsManager;
     SecGrpStatsManager secGrpStatsManager;
 
     std::string intBridgeName;
@@ -114,6 +116,8 @@ private:
     long ifaceStatsInterval;
     bool contractStatsEnabled;
     long contractStatsInterval;
+    bool podsvcStatsEnabled;
+    long podsvcStatsInterval;
     bool secGroupStatsEnabled;
     long secGroupStatsInterval;
 

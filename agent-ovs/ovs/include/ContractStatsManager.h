@@ -90,7 +90,7 @@ public:
     void updatePolicyStatsCounters(const std::string& srcEpg,
                                    const std::string& dstEpg,
                                    const std::string& ruleURI,
-                                   PolicyCounters_t & counters) override;
+                                   FlowStats_t & counters) override;
     void handleDropStats(struct ofputil_flow_stats* fentry) override;
 
 private:
@@ -100,7 +100,9 @@ private:
     std::unordered_map<std::string,
                        std::unique_ptr<CircularBuffer>> dropCounterList_;
 
+    // Flow state of all contracts from policy table
     flowCounterState_t contractState;
+
     std::atomic<std::uint64_t> dropGenId;
 
     /**

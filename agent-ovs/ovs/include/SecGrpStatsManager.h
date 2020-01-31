@@ -77,8 +77,8 @@ public:
                 int msgType, ofpbuf *msg) override;
 
     void updatePolicyStatsCounters(const std::string& l24Classifier,
-                                   PolicyCounters_t& newVals1,
-                                   PolicyCounters_t& newVals2) override;
+                                   FlowStats_t& newVals1,
+                                   FlowStats_t& newVals2) override;
 
 private:
     flowCounterState_t secGrpInState;
