@@ -317,6 +317,96 @@ module[gbpe]
 
     }
 
+    # Counter for showing stats between service to ep
+    class[SvcToEpCounter;
+          super=observer/Observable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=observer/PolicyStatUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=aUuid]
+                component[member=epSvcUuid]
+            }
+        }
+
+        # A unique identifer for the agent incarnation
+        member[aUuid; type=reference/UUID]
+
+        # A unique ep<-->svc identifer
+        member[epSvcUuid; type=reference/UUID]
+
+        # name of the endpoint
+        member[ep; type=ascii/String]
+
+        # name of the svc: taken from attr for k8s OR intf-name for openstack
+        member[svc; type=ascii/String]
+
+        # name of the endpoint namespace; only populated in k8s
+        member[epNs; type=ascii/String]
+
+        # name of the svc namespace; only populated in k8s
+        member[svcNs; type=ascii/String]
+
+        # number of packets sent from svc to ep
+        member[packets; type=scalar/UInt64]
+
+        # number of bytes sent from svc to ep
+        member[bytes; type=scalar/UInt64]
+
+    }
+
+    # Counter for showing stats between ep to service
+    class[EpToSvcCounter;
+          super=observer/Observable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=observer/PolicyStatUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=aUuid]
+                component[member=epSvcUuid]
+            }
+        }
+
+        # A unique identifer for the agent incarnation
+        member[aUuid; type=reference/UUID]
+
+        # A unique ep<-->svc identifer
+        member[epSvcUuid; type=reference/UUID]
+
+        # name of the endpoint
+        member[ep; type=ascii/String]
+
+        # name of the svc: taken from attr for k8s OR intf-name for openstack
+        member[svc; type=ascii/String]
+
+        # name of the endpoint namespace; only populated in k8s
+        member[epNs; type=ascii/String]
+
+        # name of the svc namespace; only populated in k8s
+        member[svcNs; type=ascii/String]
+
+        # number of packets sent from ep to svc
+        member[packets; type=scalar/UInt64]
+
+        # number of bytes sent from ep to svc
+        member[bytes; type=scalar/UInt64]
+
+    }
+
     class[SecGrpClassifierCounter;
           super=observer/Observable;
           concrete;

@@ -139,4 +139,18 @@ void ServiceManager::getServicesByDomain(const opflex::modb::URI& domain,
     }
 }
 
+template <typename M>
+static void getSvcs(const M& map, /* out */ unordered_set<string>& svcs) {
+    for (const auto& elem : map) {
+        svcs.insert(elem.first);
+    }
+}
+
+void ServiceManager::getServiceUUIDs ( /* out */
+                        std::unordered_set<std::string> &svcs)
+{
+    unique_lock<mutex> guard(serv_mutex);
+    getSvcs(aserv_map, svcs);
+}
+
 } /* namespace opflexagent */

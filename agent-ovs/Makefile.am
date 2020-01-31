@@ -124,6 +124,7 @@ noinst_HEADERS = \
 	ovs/include/InterfaceStatsManager.h \
 	ovs/include/PolicyStatsManager.h \
 	ovs/include/ContractStatsManager.h \
+	ovs/include/PodSvcStatsManager.h \
 	ovs/include/SecGrpStatsManager.h \
 	ovs/include/CtZoneManager.h \
 	ovs/include/RangeMask.h \
@@ -213,6 +214,7 @@ if RENDERER_OVS
 	ovs/PolicyStatsManager.cpp \
 	ovs/InterfaceStatsManager.cpp \
 	ovs/ContractStatsManager.cpp \
+	ovs/PodSvcStatsManager.cpp \
 	ovs/SecGrpStatsManager.cpp \
 	ovs/RangeMask.cpp \
 	ovs/Packets.cpp \
