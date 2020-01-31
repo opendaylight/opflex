@@ -348,6 +348,15 @@ public:
                          tunDst = boost::none);
 
     /**
+     * Convert ipv6 boost address to 4 longs
+     * @param sAddr the source boost address
+     * @param pAddr the pointer to first long addr
+     * of an array of 4 longs.
+     */
+    static void
+    in6AddrToLong(boost::asio::ip::address sAddr, uint32_t *pAddr);
+
+    /**
      * Get the promiscuous-mode ID equivalent for a flood domain ID
      * @param fgrpId the flood domain Id
      */
@@ -440,6 +449,10 @@ public:
          */
         POL_TABLE_ID,
         /**
+         * Flow stats computation
+         */
+        STATS_TABLE_ID,
+        /**
          * Apply a destination action based on the action set in the
          * metadata field.
          */
@@ -461,6 +474,19 @@ public:
     TunnelEpManager &getTunnelEpManager(){
         return tunnelEpManager;
     }
+
+    /**
+     * Calls by PolicyStatsManager to update stats
+     *
+     * @param cookie flow.cookie formed by "podsvc" idgen. This
+     *               uniquely identifies the pod<-->svc combination.
+     * @param pkts   aggregated packets per (pod,svc)
+     * @param bytes  aggregated bytes per (pod,svc)
+     */
+    void updatePodSvcStatsCounters(const uint64_t &cookie,
+                                   const uint64_t &pkts,
+                                   const uint64_t &bytes);
+
 private:
     /**
      * Write flows that are fixed and not related to any policy or
@@ -490,6 +516,40 @@ private:
      * @param uuid UUID of the changed service
      */
     void handleServiceUpdate(const std::string& uuid);
+
+    /**
+     * Update flow tables due to changes in a service/ep.
+     *
+     * @param uuid UUID of the changed service/ep
+     * @param is_svc true if the uuid belongs to svc
+     * @param is_add true if the svc/ep is added
+     */
+    void updatePodSvcFlows(const std::string &uuid,
+                           const bool &is_svc,
+                           const bool &is_add);
+    /**
+     * Clear podsvc counter objects
+     *
+     * @param key The unique key to identify (pod,svc)
+     */
+    void clearPodSvcCounters(const std::string& key);
+
+    /*
+     * Update podsvc counter objects
+     */
+    typedef std::unordered_map<std::string, std::string> attr_map;
+    void updatePodSvcStatsCounters(const uint64_t &cookie,
+                                   const uint64_t &pkts,
+                                   const uint64_t &bytes,
+                                   const attr_map &ep_attr_map,
+                                   const attr_map &svc_attr_map);
+    /*
+     * Update podsvc counter attributes
+     */
+    template <class MO>
+    void updatePodSvcStatsAttr(const std::shared_ptr<MO> &obj,
+                               const attr_map &epAttr,
+                               const attr_map &svcAttr);
 
     /**
      * Compare and update flow/group tables due to changes in a
@@ -668,6 +728,13 @@ private:
     std::string dropLogIface;
     boost::asio::ip::address dropLogDst;
     uint16_t dropLogRemotePort;
+
+    /* Map containing ingress and egress cookie: Flows generated out
+     * of same pod<-->svc uuid will use these cookies */
+    unordered_map<std::string, pair<uint64_t, uint64_t>> podSvcUuidCkMap;
+
+    // Lock to safe guard podsvc related state
+    std::mutex podSvcMutex;
 
     /*
      * Map of flood-group URI to the endpoints associated with it.
