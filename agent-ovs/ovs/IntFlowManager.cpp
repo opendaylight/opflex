@@ -3690,6 +3690,7 @@ void IntFlowManager::updateGroupTable() {
 
 void IntFlowManager::handleDropLogPortUpdate() {
     if(dropLogIface.empty() || !dropLogDst.is_v4()) {
+        switchManager.clearFlows("DropLogStatic", EXP_DROP_TABLE_ID);
         LOG(WARNING) << "Ignoring dropLog port";
         return;
     }

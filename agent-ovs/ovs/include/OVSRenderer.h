@@ -124,6 +124,7 @@ private:
     std::string dropLogIntIface, dropLogAccessIface, dropLogRemoteIp, dropLogNs;
     uint16_t dropLogRemotePort;
     boost::asio::io_service pktLoggerIO;
+    boost::asio::io_service exporterIO;
     PacketLogHandler pktLogger;
 
     /**

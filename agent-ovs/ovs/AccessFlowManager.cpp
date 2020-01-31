@@ -361,6 +361,7 @@ void AccessFlowManager::handleDropLogPortUpdate() {
     FlowEntryList catchDropFlows;
     if(dropLogIface.empty() || !dropLogDst.is_v4()) {
         LOG(WARNING) << "Ignoring dropLog port";
+        switchManager.clearFlows("static", EXP_DROP_TABLE_ID);
         return;
     }
     int dropLogPort = switchManager.getPortMapper().FindPort(dropLogIface);
@@ -378,6 +379,7 @@ void AccessFlowManager::handleDropLogPortUpdate() {
 void AccessFlowManager::handlePortStatusUpdate(const string& portName,
                                                uint32_t) {
     unordered_set<std::string> eps;
+    LOG(DEBUG) << "Port-status update for " << portName;
     agent.getEndpointManager().getEndpointsByAccessIface(portName, eps);
     agent.getEndpointManager().getEndpointsByAccessUplink(portName, eps);
     for (const std::string& ep : eps)
