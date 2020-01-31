@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a54f1f7b_4e33fa79",
+        "filename": "agent-ovs/ovs/PacketLogHandler.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-31T21:41:44Z",
+      "side": 1,
+      "message": "Don\u0027t hardcode 30 in log. Use maxOutstandingEvents instead in case it changes",
+      "revId": "c2bd48d88ef8d54860388e6f2d0dba948cc6c5c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eabd53b9_e4fa6f22",
+        "filename": "agent-ovs/ovs/include/PacketLogHandler.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-31T21:41:44Z",
+      "side": 1,
+      "message": "13:10:46 /w/workspace/opflex-verify-magnesium/agent-ovs/ovs/include/PacketLogHandler.h:92: warning: The following parameters of opflexagent::LocalClient::LocalClient(PacketLogHandler \u0026logHandler, boost::asio::io_service \u0026client_io, std::string \u0026socketFileName) are not documented:\n13:10:46   parameter \u0027client_io\u0027",
+      "revId": "c2bd48d88ef8d54860388e6f2d0dba948cc6c5c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b6ae256f_169318a8",
+        "filename": "agent-ovs/ovs/include/PacketLogHandler.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-31T21:41:44Z",
+      "side": 1,
+      "message": "can be const",
+      "revId": "c2bd48d88ef8d54860388e6f2d0dba948cc6c5c9",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
