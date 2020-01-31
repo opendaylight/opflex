@@ -57,7 +57,7 @@ public:
     /**
      * Get the detailed information for an snat
      *
-     * @param uuid, the uuid of the snat object
+     * @param uuid the uuid of the snat object
      * @return the object containing the detailed information, or a
      * NULL pointer if there is no such snat
      */
