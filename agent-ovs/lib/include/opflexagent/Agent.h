@@ -290,6 +290,11 @@ public:
     const std::string& getOvsdbBridge() { return ovsdbBridge; }
 
     /**
+     * Get packet event notification socket file name
+     */
+    const std::string& getPacketEventNotifSock() { return packetEventNotifSockPath; }
+
+    /**
      * get feature
      * @return true if feature is enabled, false otherwise.
      */
@@ -342,6 +347,7 @@ private:
     std::vector<std::unique_ptr<FSRDConfigSource>> rdConfigSources;
     std::vector<std::unique_ptr<LearningBridgeSource>> learningBridgeSources;
     std::string dropLogCfgSourcePath;
+    std::string packetEventNotifSockPath;
     std::unique_ptr<FSPacketDropLogConfigSource> dropLogCfgSource;
 
     std::set<std::string> serviceSourcePaths;

@@ -18,12 +18,63 @@ namespace opflexagent {
 
 using namespace std;
 
+PacketTuple::PacketTuple(const std::string &ts_,
+        const std::string &dropReason_, const std::string &sourceMac_,
+        const std::string &destMac_, const std::string &ethType_,
+        const std::string &sourceIp_, const std::string &destinationIp_,
+        const std::string &ipProto_, const std::string &srcPort_,
+        const std::string &dstPort_): PacketTuple() {
+    int field_count = 0;
+    TimeStamp = ts_;
+    fields[field_count++].second = dropReason_;
+    fields[field_count++].second = sourceMac_;
+    fields[field_count++].second = destMac_;
+    fields[field_count++].second = ethType_;
+    fields[field_count++].second = sourceIp_;
+    fields[field_count++].second = destinationIp_;
+    fields[field_count++].second = ipProto_;
+    fields[field_count++].second = srcPort_;
+    fields[field_count++].second = dstPort_;
+};
+
+PacketTuple::PacketTuple() {
+    int field_count = 0;
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("DropReason", "")));
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("SourceMac", "")));
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("DestinationMac", "")));
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("EtherType", "")));
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("SourceIP", "")));
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("DestinationIP", "")));
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("IPProto", "")));
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("SourcePort", "")));
+    fields.insert(std::make_pair(field_count++,
+            std::make_pair("DestinationPort", "")));
+};
+
+bool PacketTuple::serialize(Writer<StringBuffer> &writer) {
+    writer.StartObject();
+    writer.String("TimeStamp");
+    writer.String(TimeStamp.c_str());
+    for(unsigned i=0; i < fields.size(); i++) {
+        writer.String(fields[i].first.c_str());
+        writer.String(fields[i].second.c_str());
+    }
+    writer.EndObject();
+    return true;
+}
+
 bool operator== (const PacketTuple &lhs, const PacketTuple &rhs) {
-    bool all_fields_match = (lhs.fields.size() == rhs.fields.size());
-    if (!all_fields_match)
+    if (lhs.fields.size() != rhs.fields.size())
         return false;
-    all_fields_match &= (lhs.fields == rhs.fields);
-    return all_fields_match;
+    return  (lhs.fields == rhs.fields);
 }
 
 void PacketDecoderLayerField::transformLog(uint32_t value, stringstream &ostr, ParseInfo &p) {
