@@ -34,6 +34,24 @@
       "revId": "088ad50bc45b7ee0accd56da1810f1820692ce8c",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d5f023af_83e7b1db",
+        "filename": "genie/MODEL/SPECIFIC/OBSERVER/fault.mdl",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-01-31T07:00:15Z",
+      "side": 1,
+      "message": "OK let\u0027s leave as is for now",
+      "parentUuid": "2dddbba1_33d25846",
+      "revId": "088ad50bc45b7ee0accd56da1810f1820692ce8c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
