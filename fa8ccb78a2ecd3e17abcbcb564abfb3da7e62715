@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "429e9509_63d1374f",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T01:33:27Z",
+      "side": 1,
+      "message": "You don\u0027t need the sess-\u003egetState() guard with the change to use sess-\u003egetState(1)",
+      "revId": "fa8ccb78a2ecd3e17abcbcb564abfb3da7e62715",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
