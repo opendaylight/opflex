@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d7470535_45f81466",
+        "filename": "agent-ovs/ovs/OVSRenderer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T00:35:17Z",
+      "side": 1,
+      "message": "23:42:50 In file included from ovs/OVSRenderer.cpp:12:0:\n23:42:50 ./ovs/include/OVSRenderer.h: In constructor \u0027opflexagent::OVSRenderer::OVSRenderer(opflexagent::Agent\u0026)\u0027:\n23:42:50 ./ovs/include/OVSRenderer.h:120:10: warning: \u0027opflexagent::OVSRenderer::contractStatsInterval\u0027 will be initialized after [-Wreorder]\n23:42:50      long contractStatsInterval;\n23:42:50           ^\n23:42:50 ./ovs/include/OVSRenderer.h:117:10: warning:   \u0027bool opflexagent::OVSRenderer::podsvcStatsEnabled\u0027 [-Wreorder]\n23:42:50      bool podsvcStatsEnabled;\n23:42:50           ^\n23:42:50 ovs/OVSRenderer.cpp:50:1: warning:   when initialized here [-Wreorder]\n23:42:50  OVSRenderer::OVSRenderer(Agent\u0026 agent_)\n23:42:50  ^",
+      "revId": "e6b97962396947d8a3481052e3ec514cb875492e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "11d8f3f7_0c58eb54",
+        "filename": "agent-ovs/ovs/OVSRenderer.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T00:35:17Z",
+      "side": 1,
+      "message": "Shouldn\u0027t it be set to podsvcStatsInterval?",
+      "revId": "e6b97962396947d8a3481052e3ec514cb875492e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "db52d4d9_3ad30ce2",
+        "filename": "agent-ovs/ovs/PodSvcStatsManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T00:35:17Z",
+      "side": 1,
+      "message": "23:44:57 ovs/PodSvcStatsManager.cpp: In member function \u0027void opflexagent::PodSvcStatsManager::updatePodSvcStatsObjects(opflexagent::PodSvcStatsManager::PodSvcCounterMap_t*)\u0027:\n23:44:57 ovs/PodSvcStatsManager.cpp:247:20: warning: unused variable \u0027polMgr\u0027 [-Wunused-variable]\n23:44:57      PolicyManager\u0026 polMgr \u003d agent-\u003egetPolicyManager();\n23:44:57                     ^",
+      "revId": "e6b97962396947d8a3481052e3ec514cb875492e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "092ebbea_0e4d2b9d",
+        "filename": "agent-ovs/ovs/include/IntFlowManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T00:35:17Z",
+      "side": 1,
+      "message": "23:39:54 /w/workspace/opflex-verify-magnesium/agent-ovs/ovs/include/IntFlowManager.h:479: warning: Member updatePodSvcStatsCounters(const uint64_t \u0026cookie, const uint64_t \u0026pkts, const uint64_t \u0026bytes) (function) of class opflexagent::IntFlowManager is not documented.",
+      "revId": "e6b97962396947d8a3481052e3ec514cb875492e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d619557d_16ca17a6",
+        "filename": "agent-ovs/ovs/include/IntFlowManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 514,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T00:35:17Z",
+      "side": 1,
+      "message": "typo - pdata -\u003e Update",
+      "revId": "e6b97962396947d8a3481052e3ec514cb875492e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f4527822_127954db",
+        "filename": "agent-ovs/ovs/include/IntFlowManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 525,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T00:35:17Z",
+      "side": 1,
+      "message": "Missing @param for key",
+      "revId": "e6b97962396947d8a3481052e3ec514cb875492e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "010cee68_ccda83a7",
+        "filename": "agent-ovs/ovs/include/PodSvcStatsManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T00:35:17Z",
+      "side": 1,
+      "message": "2017 -\u003e 2020",
+      "revId": "e6b97962396947d8a3481052e3ec514cb875492e",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
