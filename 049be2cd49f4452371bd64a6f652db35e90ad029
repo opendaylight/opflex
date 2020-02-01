@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ca047ba4_05bb71d8",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-01T00:53:45Z",
+      "side": 1,
+      "message": "Instead of doing this just call getState(1) and it will use 1 as the default value if it\u0027s not set by the server. We also support deployments without a physical leaf that can set this value today so no need to leave commented",
+      "revId": "049be2cd49f4452371bd64a6f652db35e90ad029",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
