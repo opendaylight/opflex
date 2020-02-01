@@ -132,13 +132,6 @@ public:
     void scheduleEndpointAdv(const std::string& uuid);
 
     /**
-     * Schedule endpoint advertisements for a set of endpoints
-     *
-     * @param uuids the uuids of the endpoints
-     */
-    void scheduleEndpointAdv(const std::unordered_set<std::string>& uuids);
-
-    /**
      * Schedule service advertisements for a specific service
      *
      * @param uuid the uuid of the service
@@ -217,6 +210,7 @@ private:
     void doScheduleEpAdv(uint64_t time = 250);
     void onTunnelEpAdvTimer(const boost::system::error_code& ec);
     void doScheduleTunnelEpAdv(uint64_t time = 1);
+    std::recursive_mutex timer_mutex;
     std::unique_ptr<boost::asio::deadline_timer> endpointAdvTimer;
     std::unique_ptr<boost::asio::deadline_timer> allEndpointAdvTimer;
     std::unique_ptr<boost::asio::deadline_timer> tunnelEpAdvTimer;
@@ -233,8 +227,8 @@ private:
     SwitchConnection* switchConnection;
     boost::asio::io_service* ioService;
 
-    bool started;
-    bool stopping;
+    std::atomic<bool> started;
+    std::atomic<bool> stopping;
 };
 
 }

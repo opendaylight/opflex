@@ -8,7 +8,6 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
-#include <config.h>
 #ifdef  __linux__
 #include <sys/socket.h>
 #include <netpacket/packet.h>
@@ -72,6 +71,7 @@ AdvertManager::AdvertManager(Agent& agent_,
 void AdvertManager::start() {
     if (started) return;
     started = true;
+    lock_guard<recursive_mutex> guard(timer_mutex);
 
     if (sendRouterAdv) {
         routerAdvTimer.reset(new deadline_timer(*ioService));
@@ -88,6 +88,7 @@ void AdvertManager::start() {
 void AdvertManager::stop() {
     stopping = true;
 
+    lock_guard<recursive_mutex> guard(timer_mutex);
     if (routerAdvTimer)
         routerAdvTimer->cancel();
     if (endpointAdvTimer)
@@ -99,6 +100,7 @@ void AdvertManager::stop() {
 }
 
 void AdvertManager::scheduleInitialRouterAdv() {
+    lock_guard<recursive_mutex> guard(timer_mutex);
     initialRouterAdvs = 0;
     if (routerAdvTimer) {
         routerAdvTimer->expires_from_now(milliseconds(250));
@@ -108,6 +110,7 @@ void AdvertManager::scheduleInitialRouterAdv() {
 }
 
 void AdvertManager::scheduleInitialEndpointAdv(uint64_t delay) {
+    lock_guard<recursive_mutex> guard(timer_mutex);
     if (allEndpointAdvTimer) {
         allEndpointAdvTimer->expires_from_now(milliseconds(delay));
         allEndpointAdvTimer->
@@ -117,23 +120,15 @@ void AdvertManager::scheduleInitialEndpointAdv(uint64_t delay) {
 }
 
 void AdvertManager::doScheduleEpAdv(uint64_t time) {
+    lock_guard<recursive_mutex> guard(timer_mutex);
     endpointAdvTimer->expires_from_now(milliseconds(time));
     endpointAdvTimer->
         async_wait(bind(&AdvertManager::onEndpointAdvTimer,
                         this, error));
 }
 
-void AdvertManager::scheduleEndpointAdv(const unordered_set<string>& uuids) {
-    if (endpointAdvTimer) {
-        unique_lock<mutex> guard(ep_mutex);
-        for (const string& uuid : uuids)
-            pendingEps[uuid] = 5;
-
-        doScheduleEpAdv();
-    }
-}
-
 void AdvertManager::scheduleEndpointAdv(const std::string& uuid) {
+    lock_guard<recursive_mutex> guard(timer_mutex);
     if (endpointAdvTimer) {
         unique_lock<mutex> guard(ep_mutex);
         pendingEps[uuid] = 5;
@@ -143,6 +138,7 @@ void AdvertManager::scheduleEndpointAdv(const std::string& uuid) {
 }
 
 void AdvertManager::scheduleServiceAdv(const std::string& uuid) {
+    lock_guard<recursive_mutex> guard(timer_mutex);
     if (endpointAdvTimer) {
         unique_lock<mutex> guard(ep_mutex);
         pendingServices[uuid] = 5;
@@ -209,7 +205,7 @@ void AdvertManager::sendRouterAdvs() {
                 out_ports.insert(port);
         }
 
-        if (out_ports.size() == 0) continue;
+        if (out_ports.empty()) continue;
 
         address_v6::bytes_type bytes = ALL_NODES_IP.to_bytes();
         auto b =
@@ -255,6 +251,7 @@ void AdvertManager::onRouterAdvTimer(const boost::system::error_code& ec) {
     }
 
     if (!stopping) {
+        lock_guard<recursive_mutex> guard(timer_mutex);
         routerAdvTimer->expires_from_now(seconds(nextInterval));
         routerAdvTimer->async_wait(bind(&AdvertManager::onRouterAdvTimer,
                                         this, error));
@@ -508,6 +505,7 @@ void AdvertManager::onAllEndpointAdvTimer(const boost::system::error_code& ec) {
     }
 
     if (!stopping) {
+        lock_guard<recursive_mutex> guard(timer_mutex);
         allEndpointAdvTimer->expires_from_now(seconds(all_ep_dis(urng)));
         allEndpointAdvTimer->
             async_wait(bind(&AdvertManager::onAllEndpointAdvTimer,
@@ -605,7 +603,7 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
         }
     }
 
-    if (pendingEps.size() > 0 || pendingServices.size() > 0)
+    if (!pendingEps.empty() || !pendingServices.empty())
         doScheduleEpAdv(repeat_dis(urng));
 }
 
@@ -708,7 +706,7 @@ void AdvertManager::onTunnelEpAdvTimer(const boost::system::error_code& ec) {
             it++;
         }
     }
-    if (pendingTunnelEps.size() > 0)
+    if (!pendingTunnelEps.empty())
         doScheduleTunnelEpAdv(tunnelEpAdvInterval);
 }
 
