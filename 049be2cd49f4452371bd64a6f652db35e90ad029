@@ -16,6 +16,24 @@
       "revId": "049be2cd49f4452371bd64a6f652db35e90ad029",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "656b445f_599cb4b0",
+        "filename": "agent-ovs/lib/SpanManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 8288
+      },
+      "writtenOn": "2020-02-01T01:32:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ca047ba4_05bb71d8",
+      "revId": "049be2cd49f4452371bd64a6f652db35e90ad029",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
