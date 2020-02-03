@@ -443,6 +443,7 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
                 case -EAFNOSUPPORT:
                 case -EPROTOTYPE:
                 case -EINVAL:
+                case -EBUSY:
                     LOG(INFO) << "destroying socket and retrying";
                     if (!uv_is_closing(peer->getHandle())) {
                         uv_close(peer->getHandle(), swap_stack_on_close);
