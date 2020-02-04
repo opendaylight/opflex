@@ -118,6 +118,7 @@ IntFlowManager::IntFlowManager(Agent& agent_,
 }
 
 void IntFlowManager::start() {
+    LOG(DEBUG) << "Starting IntFlowManager";
     // set up port mapper
     switchManager.getPortMapper().registerPortStatusListener(this);
     advertManager.setPortMapper(&switchManager.getPortMapper());
@@ -146,6 +147,7 @@ void IntFlowManager::registerModbListeners() {
 }
 
 void IntFlowManager::stop() {
+    LOG(DEBUG) << "Stopping IntFlowManager";
     stopping = true;
 
     agent.getEndpointManager().unregisterListener(this);

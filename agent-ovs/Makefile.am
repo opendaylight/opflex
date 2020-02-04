@@ -364,6 +364,7 @@ if RENDERER_OVS
 	ovs/test/Packets_test.cpp \
 	ovs/test/InterfaceStatsManager_test.cpp \
 	ovs/test/ContractStatsManager_test.cpp \
+	ovs/test/PodSvcStatsManager_test.cpp \
 	ovs/test/SecGrpStatsManager_test.cpp \
 	ovs/test/TableState_test.cpp \
 	ovs/test/SpanRenderer_test.cpp \
