@@ -437,7 +437,7 @@ protected:
     /**
      * True if shutting down
      */
-    volatile bool stopping;
+    std::atomic<bool> stopping;
 
 private:
     void handleFlowStats(ofpbuf *msg, const table_map_t& tableMap);

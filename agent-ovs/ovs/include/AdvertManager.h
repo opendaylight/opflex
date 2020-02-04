@@ -163,7 +163,7 @@ private:
     bool sendRouterAdv;
     void onRouterAdvTimer(const boost::system::error_code& ec);
     std::unique_ptr<boost::asio::deadline_timer> routerAdvTimer;
-    volatile int initialRouterAdvs;
+    std::atomic<int> initialRouterAdvs;
 
     /**
      * Synchronously send endpoint gratuitous advertisements for the

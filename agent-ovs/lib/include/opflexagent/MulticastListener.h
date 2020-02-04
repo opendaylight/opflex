@@ -55,7 +55,7 @@ private:
     std::unique_ptr<boost::asio::ip::udp::socket> socket_v4;
     std::unique_ptr<boost::asio::ip::udp::socket> socket_v6;
     std::unordered_set<std::string> addresses;
-    volatile bool running;
+    std::atomic<bool> running;
 
     void join(const std::string& mcast_address);
     void leave(const std::string& mcast_address);

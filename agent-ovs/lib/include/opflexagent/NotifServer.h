@@ -112,7 +112,7 @@ private:
     std::string notifSocketOwner;
     std::string notifSocketGroup;
     std::string notifSocketPerms;
-    volatile bool running;
+    std::atomic<bool> running;
 
     std::set<session_ptr> sessions;
 

@@ -123,7 +123,7 @@ private:
                                 SwitchConnection *swConn,
                                 EndpointManager::EpCounters& counters);
 
-    volatile bool stopping;
+    std::atomic<bool> stopping;
 };
 
 } /* namespace opflexagent */

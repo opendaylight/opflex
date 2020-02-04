@@ -147,7 +147,7 @@ private:
 
     void on_timer(const boost::system::error_code& ec);
 
-    volatile bool stopping;
+    std::atomic<bool> stopping;
 
     /**
      * the uplink interface to search
