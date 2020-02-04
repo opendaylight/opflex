@@ -13,7 +13,7 @@
 
 #include <set>
 #include <netinet/in.h>
-
+#include <boost/atomic.hpp>
 #include <uv.h>
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
@@ -193,7 +193,7 @@ private:
     std::string name;
     std::string domain;
 
-    volatile bool active;
+    boost::atomic<bool> active;
 
     uv_loop_t server_loop;
     uv_thread_t server_thread;

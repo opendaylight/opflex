@@ -18,6 +18,7 @@
 #include <vector>
 #include <utility>
 
+#include <boost/atomic.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
@@ -492,7 +493,7 @@ private:
      * Processing thread
      */
     uv_loop_t* proc_loop;
-    volatile bool proc_active;
+    boost::atomic<bool> proc_active;
     uv_async_t cleanup_async;
     uv_async_t proc_async;
     uv_async_t connect_async;

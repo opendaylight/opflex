@@ -14,6 +14,7 @@
 #ifndef MODB_URIQUEUE_H
 #define MODB_URIQUEUE_H
 
+#include <boost/atomic.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
@@ -134,7 +135,7 @@ private:
     uv_async_t item_async;
     uv_async_t cleanup_async;
 
-    volatile bool proc_shouldRun;
+    boost::atomic<bool> proc_shouldRun;
     static void proc_async_func(uv_async_t* handle);
     static void cleanup_async_func(uv_async_t* handle);
 };
