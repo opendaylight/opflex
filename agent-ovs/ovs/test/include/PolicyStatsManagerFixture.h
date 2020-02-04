@@ -153,15 +153,15 @@ public:
             bzero(fs, sizeof(struct ofputil_flow_stats));
             fs->table_id = table_id;
             fs->priority = fe->entry->priority;
-#if 0
-            LOG(DEBUG) << "COOKIE: " << fe->entry->cookie
-                       << " " << ovs_htonll(fe->entry->cookie);
-#endif
             fs->cookie = fe->entry->cookie;
             fs->packet_count = packet_count;
             fs->byte_count = PACKET_SIZE * (fs->packet_count);
             fs->flags = fe->entry->flags;
             fs->match = fe->entry->match;
+            LOG(DEBUG) << "### stats reply for COOKIE: "
+                       << ovs_ntohll(fe->entry->cookie)
+                       << " pkts: " << packet_count
+                       << " bytes: " << fs->byte_count;
 
             ofputil_append_flow_stats_reply(fs, &ovs_replies, NULL);
         }

@@ -133,6 +133,7 @@ private:
      */
     IntFlowManager& intFlowManager;
 
+    friend class PodSvcStatsManagerFixture;
 };
 
 } /* namespace opflexagent */
