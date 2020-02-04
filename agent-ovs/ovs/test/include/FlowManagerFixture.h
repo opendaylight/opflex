@@ -76,21 +76,21 @@ void printAllDiffs(std::vector<FlowEntryList>& expected,
 void doDiffTables(SwitchManager* switchManager,
                   std::vector<FlowEntryList>& expected,
                   FlowEdit* diffs,
-                  volatile int* fail);
+                  std::atomic<int>& fail);
 
 void diffTables(Agent& agent,
                 SwitchManager& switchManager,
                 std::vector<FlowEntryList>& expected,
                 FlowEdit* diffs,
-                volatile int* fail);
+                std::atomic<int>& fail);
 
 #define WAIT_FOR_TABLES(test, count)                                    \
     {                                                                   \
         FlowEdit _diffs[expTables.size()];                              \
-        volatile int _fail = 512;                                       \
+        std::atomic<int> _fail(512);                                    \
         WAIT_FOR_DO_ONFAIL(_fail == 0, count,                           \
                            diffTables(agent, switchManager, expTables,  \
-                                      _diffs, &_fail),                  \
+                                      _diffs, _fail),                   \
                            LOG(ERROR) << test ": Incorrect tables: "    \
                            << _fail;                                    \
                            printAllDiffs(expTables, _diffs));           \

@@ -70,7 +70,7 @@ void addExpFlowEntry(std::vector<FlowEntryList>& tables,
 void printAllDiffs(std::vector<FlowEntryList>& expected,
                    FlowEdit* diffs) {
     for (size_t i = 0; i < expected.size(); i++) {
-        if (diffs[i].edits.size() != 0) {
+        if (!diffs[i].edits.empty()) {
             LOG(ERROR) << "== Expected state for table " << i << ": ==";
             for (size_t j = 0; j < expected[i].size(); ++j) {
                 LOG(ERROR) << *(expected[i][j]);
@@ -87,7 +87,7 @@ void printAllDiffs(std::vector<FlowEntryList>& expected,
 void doDiffTables(SwitchManager* switchManager,
                   std::vector<FlowEntryList>& expected,
                   FlowEdit* diffs,
-                  volatile int* fail) {
+                  std::atomic<int>& fail) {
     for (size_t i = 0; i < expected.size(); i++) {
         diffs[i].edits.clear();
         switchManager->diffTableState(i, expected[i], diffs[i]);
@@ -96,18 +96,18 @@ void doDiffTables(SwitchManager* switchManager,
     for (size_t i = 0; i < expected.size(); i++) {
         if (diffs[i].edits.size() > 0) failed += 1;
     }
-    *fail = failed;
+    fail = failed;
 }
 
 void diffTables(Agent& agent,
                 SwitchManager& switchManager,
                 std::vector<FlowEntryList>& expected,
                 FlowEdit* diffs,
-                volatile int* fail) {
-    *fail = 512;
+                std::atomic<int>& fail) {
+    fail = 512;
     agent.getAgentIOService().dispatch(bind(doDiffTables, &switchManager,
-                                            boost::ref(expected), diffs, fail));
-    WAIT_FOR(*fail != 512, 1000);
+                                            boost::ref(expected), diffs, boost::ref(fail)));
+    WAIT_FOR(fail != 512, 1000);
 }
 
 static string rstr[] = {
