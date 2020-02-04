@@ -13,6 +13,7 @@
 
 #include <string>
 
+#include <boost/thread/mutex.hpp>
 #include <boost/noncopyable.hpp>
 #include <rapidjson/document.h>
 
@@ -69,7 +70,7 @@ public:
      *
      * @return the current state for the connection
      */
-    ConnectionState getState() const { return state; }
+    ConnectionState getState();
 
     /**
      * Check whether the connection is ready to accept requests.  This
@@ -78,7 +79,7 @@ public:
      *
      * @return true if the connection is ready
      */
-    bool isReady() { return state == READY; }
+    bool isReady();
 
     /**
      * Set the connection state for the connection
@@ -578,6 +579,11 @@ protected:
      * The current connection state
      */
     ConnectionState state;
+
+    /**
+     * Mutex to ensure access to connection state is controlled
+     */
+    boost::mutex stateMutex;
 };
 
 

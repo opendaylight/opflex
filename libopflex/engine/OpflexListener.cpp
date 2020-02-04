@@ -21,7 +21,6 @@
 #include <boost/scoped_ptr.hpp>
 
 #include "opflex/engine/internal/OpflexListener.h"
-#include "opflex/engine/internal/MockOpflexServerImpl.h"
 #include "opflex/engine/internal/OpflexPool.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "RecursiveLockGuard.h"
@@ -73,7 +72,7 @@ void OpflexListener::enableSSL(const std::string& caStorePath,
         throw std::runtime_error("Could not enable SSL");
 
     if (verifyPeers)
-        serverCtx.get()->setVerify();
+        serverCtx->setVerify();
 }
 
 void OpflexListener::on_cleanup_async(uv_async_t* handle) {
@@ -86,7 +85,7 @@ void OpflexListener::on_cleanup_async(uv_async_t* handle) {
         BOOST_FOREACH(OpflexServerConnection* conn, conns) {
             conn->close();
         }
-        if (listener->conns.size() != 0) return;
+        if (!listener->conns.empty()) return;
     }
 
     uv_close((uv_handle_t*)&listener->writeq_async, NULL);
@@ -234,8 +233,8 @@ void OpflexListener::messagesReady() {
 
 bool OpflexListener::isListening() {
     using yajr::comms::internal::Peer;
-    return Peer::LoopData::getPeerList(&server_loop,
-                                       Peer::LoopData::LISTENING)->size() > 0;
+    return !Peer::LoopData::getPeerList(&server_loop,
+                                       Peer::LoopData::LISTENING)->empty();
 }
 
 } /* namespace internal */
