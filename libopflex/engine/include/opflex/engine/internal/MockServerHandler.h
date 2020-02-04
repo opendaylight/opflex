@@ -13,6 +13,7 @@
 
 #include <string>
 
+#include <boost/atomic.hpp>
 #include <rapidjson/document.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -94,7 +95,7 @@ protected:
     MockOpflexServerImpl* server;
     OF_UNORDERED_SET<modb::reference_t> resolutions;
     OF_UNORDERED_SET<modb::reference_t> declarations;
-    bool flakyMode;
+    boost::atomic<bool> flakyMode;
 };
 
 } /* namespace internal */
