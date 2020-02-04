@@ -39,12 +39,26 @@ using std::string;
 using rapidjson::Value;
 using rapidjson::Writer;
 
+OpflexHandler::ConnectionState OpflexHandler::getState() {
+    boost::unique_lock<boost::mutex> guard(stateMutex);
+    return state;
+}
+
+bool OpflexHandler::isReady() {
+    boost::unique_lock<boost::mutex> guard(stateMutex);
+    return state == READY;
+}
+
 void OpflexHandler::setState(ConnectionState state_) {
+    boost::unique_lock<boost::mutex> guard(stateMutex);
     state = state_;
-    if (state == READY)
+    if (state == READY) {
+        guard.unlock();
         conn->notifyReady();
-    else if (state == FAILED)
+    } else if (state == FAILED) {
+        guard.unlock();
         conn->notifyFailed();
+    }
 }
 
 void OpflexHandler::handleUnexpected(const string& type) {
