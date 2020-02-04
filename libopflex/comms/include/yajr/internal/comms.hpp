@@ -251,7 +251,8 @@ class Peer : public SafeListBaseHook {
               passive_(passive),
               choked_(1),
               createFail_(1),
-              status_(status)
+              status_(status),
+              nullTermination(true)
             {
                 getHandle()->data = this;
                 /* FIXME: this hack is filthy and unix-only */
@@ -317,7 +318,7 @@ class Peer : public SafeListBaseHook {
     unsigned char choked_     :1;
     unsigned char createFail_ :1;
     unsigned char status_     :3;
-    bool nullTermination = true;
+    bool nullTermination;
 
   protected:
     /* don't leak memory! */
