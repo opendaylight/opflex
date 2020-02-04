@@ -538,8 +538,10 @@ void PolicyStatsManager::sendRequest(uint32_t table_id) {
 
     int err = connection->SendMessage(req);
     if (err != 0) {
-        LOG(ERROR) << "Failed to send policy statistics request: "
-                   << ovs_strerror(err);
+        LOG(ERROR) << "Failed to send stats request"
+                   << " swname: " << connection->getSwitchName()
+                   << " tableid: " << table_id
+                   << " err: " << ovs_strerror(err);
     }
 }
 
