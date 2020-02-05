@@ -60,8 +60,8 @@ public:
      * @param md the model metadata for the server
      * @param prr_interval_secs how often to wakeup prr timer thread
      */
-    MockOpflexServer(int port, uint8_t roles, peer_vec_t peers,
-                     std::vector<std::string> proxies,
+    MockOpflexServer(int port, uint8_t roles, const peer_vec_t& peers,
+                     const std::vector<std::string>& proxies,
                      const modb::ModelMetadata& md,
                      int prr_interval_secs);
 

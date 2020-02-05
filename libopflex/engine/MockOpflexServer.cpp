@@ -27,8 +27,8 @@ namespace opflex {
 namespace test {
 
 MockOpflexServer::MockOpflexServer(int port, uint8_t roles,
-                                   peer_vec_t peers,
-                                   std::vector<std::string> proxies,
+                                   const peer_vec_t& peers,
+                                   const std::vector<std::string>& proxies,
                                    const modb::ModelMetadata& md,
                                    int prr_interval_secs)
     : pimpl(new engine::internal
@@ -64,14 +64,14 @@ void MockOpflexServer::updatePolicy(rapidjson::Document& d,
 
 const MockOpflexServer::peer_vec_t& MockOpflexServer::getPeers() const {
     return pimpl->getPeers();
-};
+}
 
 const std::vector<std::string>& MockOpflexServer::getProxies() const {
     return pimpl->getProxies();
-};
+}
 
-int MockOpflexServer::getPort() const { return pimpl->getPort(); };
-uint8_t MockOpflexServer::getRoles() const { return pimpl->getRoles(); };
+int MockOpflexServer::getPort() const { return pimpl->getPort(); }
+uint8_t MockOpflexServer::getRoles() const { return pimpl->getRoles(); }
 
 } /* namespace test */
 
@@ -86,8 +86,8 @@ using boost::asio::deadline_timer;
 using boost::posix_time::seconds;
 
 MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
-                                           MockOpflexServer::peer_vec_t peers_,
-                                           std::vector<std::string> proxies_,
+                                           const MockOpflexServer::peer_vec_t& peers_,
+                                           const std::vector<std::string>& proxies_,
                                            const modb::ModelMetadata& md,
                                            int prr_interval_secs_)
     : port(port_), roles(roles_), peers(peers_),
@@ -115,7 +115,8 @@ void MockOpflexServerImpl::start() {
     db.start();
     prr_timer.reset(new deadline_timer(io, seconds(prr_interval_secs)));
     prr_timer->async_wait([this](const boost::system::error_code& ec) {
-        on_timer(ec);
+        if (!stopping)
+            on_timer(ec);
         });
     io_service_thread.reset(new std::thread([this]() { io.run(); }));
     listener.listen();
