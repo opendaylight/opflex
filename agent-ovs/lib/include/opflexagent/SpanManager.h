@@ -217,6 +217,10 @@ public:
      */
     static const boost::optional<URI> getSession(shared_ptr<LocalEp> lEp);
 
+    /**
+     * mutex for guarding span manager data structures.
+    */
+    static recursive_mutex updates;
 private:
 
     boost::optional<shared_ptr<SrcMember>> findSrcMem(const URI& sessUri, const URI& uri);
@@ -228,7 +232,7 @@ private:
      */
     list<SpanListener*> spanListeners;
     mutex listener_mutex;
-    recursive_mutex updates;
+
     TaskQueue taskQueue;
     unordered_map<opflex::modb::URI, shared_ptr<SessionState>>
             sess_map;

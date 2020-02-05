@@ -127,6 +127,7 @@ namespace opflexagent {
         LOG(DEBUG) << "Span handle update, thread " << std::this_thread::get_id();
         unique_lock<mutex> lock(handlerMutex);
         SpanManager& spMgr = agent.getSpanManager();
+        lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
         optional<shared_ptr<SessionState>> seSt =
                                              spMgr.getSessionState(spanURI);
         // Is the session state pointer set

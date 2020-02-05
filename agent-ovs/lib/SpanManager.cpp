@@ -37,6 +37,8 @@ namespace opflexagent {
 
     using namespace modelgbp::epdr;
 
+    recursive_mutex SpanManager::updates;
+
     SpanManager::SpanManager(opflex::ofcore::OFFramework &framework_,
                              boost::asio::io_service& agent_io_) :
             spanUniverseListener(*this), framework(framework_),
@@ -323,12 +325,14 @@ namespace opflexagent {
 
     void SessionState::addDstEndPoint
                          (const URI& uri, shared_ptr<DstEndPoint> dEp) {
+        lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
         LOG(DEBUG) << "Add dst IP " << dEp->getAddress();
         dstEndPoints.emplace(uri, dEp);
     }
 
     void SessionState::addSrcEndPoint
                    (shared_ptr<SourceEndPoint> srcEp) {
+        lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
         LOG(DEBUG) << "Adding src end point" << *srcEp;
         srcEndPoints.emplace(srcEp);
     }
@@ -403,12 +407,27 @@ namespace opflexagent {
 
 
     const SessionState::srcEpSet& SessionState::getSrcEndPointSet() {
+        lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
         return srcEndPoints;
+    }
+
+    const void SessionState::getSrcEndPointSet(srcEpSet& ep) {
+        lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
+        ep.insert(srcEndPoints.begin(), srcEndPoints.end());
     }
 
     const unordered_map<URI, shared_ptr<DstEndPoint>>&
         SessionState::getDstEndPointMap() {
+        lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
         return dstEndPoints;
+    }
+
+    const void SessionState::getDstEndPointMap(unordered_map<URI, shared_ptr<DstEndPoint>>& dMap) {
+        lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
+        for (auto elem : dstEndPoints) {
+            shared_ptr<DstEndPoint> dEp = make_shared<DstEndPoint>(*(elem.second.get()));
+            dMap.emplace(elem.first, dEp);
+        }
     }
 
     void SpanManager::SpanUniverseListener::
