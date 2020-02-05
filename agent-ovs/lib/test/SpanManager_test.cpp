@@ -168,8 +168,9 @@ static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
     if (!pSess) {
         return false;
     }
-    SessionState::srcEpSet srcEps = pSess.get()->getSrcEndPointSet();
-    if (srcEps.empty()) {
+    SessionState::srcEpSet srcEps;
+    pSess.get()->getSrcEndPointSet(srcEps);
+    if (srcEps.size() != 2) {
         return false;
     }
     SessionState::srcEpSet::iterator it = srcEps.begin();
@@ -192,8 +193,8 @@ static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess,
     if (!pSess) {
         return false;
     }
-    unordered_map<URI, shared_ptr<DstEndPoint>> dstMap =
-            pSess.get()->getDstEndPointMap();
+    unordered_map<URI, shared_ptr<DstEndPoint>> dstMap;
+    pSess.get()->getDstEndPointMap(dstMap);
     unordered_map<URI, shared_ptr<DstEndPoint>>::iterator it;
     it = dstMap.find(dstSumm1->getURI());
     if (it == dstMap.end())
@@ -221,8 +222,6 @@ static bool testGetSession(shared_ptr<LocalEp> le, optional<URI> uri) {
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, SpanFixture ) {
     WAIT_FOR(checkSpan(agent.getSpanManager().getSessionState(sess->getURI()),
             sess->getURI()), 500);
-    WAIT_FOR(agent.getSpanManager().getSessionState(sess->getURI())
-            .get()->getSrcEndPointSet().size() == 2, 500);
     WAIT_FOR(checkSrcEps(agent.getSpanManager().getSessionState(sess->getURI()),
             srcMem1, l2E1), 500);
     WAIT_FOR(checkSrcEps(agent.getSpanManager().getSessionState(sess->getURI()),
