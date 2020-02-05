@@ -50,8 +50,8 @@ public:
      * @param prr_interval_secs how often to wakeup prr timer thread
      */
     MockOpflexServerImpl(int port, uint8_t roles,
-                         test::MockOpflexServer::peer_vec_t peers,
-                         std::vector<std::string> proxies,
+                         const test::MockOpflexServer::peer_vec_t& peers,
+                         const std::vector<std::string>& proxies,
                          const modb::ModelMetadata& md,
                          int prr_interval_secs);
     virtual ~MockOpflexServerImpl();
