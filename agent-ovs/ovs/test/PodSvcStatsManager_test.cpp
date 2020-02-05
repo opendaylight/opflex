@@ -73,6 +73,8 @@ public:
         stop();
     }
 
+    IntFlowManager  intFlowManager;
+    PacketInHandler pktInHandler;
     PodSvcStatsManager podsvcStatsManager;
     void testFlowStats(MockConnection& portConn,
                        PolicyStatsManager *statsManager,
@@ -87,8 +89,6 @@ public:
                      bool isOld, bool isFlowStateReAdd);
 
 private:
-    IntFlowManager  intFlowManager;
-    PacketInHandler pktInHandler;
     Service as;
     Service::ServiceMapping sm1;
     Service::ServiceMapping sm2;
