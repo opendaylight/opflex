@@ -47,7 +47,10 @@ void PodSvcStatsManager::start() {
     LOG(DEBUG) << "Starting podsvc stats manager ("
                << timer_interval << " ms)";
     PolicyStatsManager::start();
-    timer->async_wait(bind(&PodSvcStatsManager::on_timer, this, error));
+    {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        timer->async_wait(bind(&PodSvcStatsManager::on_timer, this, error));
+    }
 }
 
 void PodSvcStatsManager::stop() {
@@ -58,6 +61,7 @@ void PodSvcStatsManager::stop() {
 
 void PodSvcStatsManager::on_timer(const error_code& ec) {
     if (ec) {
+        std::lock_guard<std::mutex> lock(timer_mutex);
         // shut down the timer when we get a cancellation
         LOG(DEBUG) << "Resetting timer, error: " << ec.message(); 
         timer.reset();
@@ -90,9 +94,12 @@ void PodSvcStatsManager::on_timer(const error_code& ec) {
     }
 
     sendRequest(IntFlowManager::STATS_TABLE_ID);
-    if (!stopping && timer) {
-        timer->expires_from_now(milliseconds(timer_interval));
-        timer->async_wait(bind(&PodSvcStatsManager::on_timer, this, error));
+    if (!stopping) {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        if (timer) {
+            timer->expires_from_now(milliseconds(timer_interval));
+            timer->async_wait(bind(&PodSvcStatsManager::on_timer, this, error));
+        }
     }
 }
 

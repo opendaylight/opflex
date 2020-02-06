@@ -325,6 +325,11 @@ protected:
     std::mutex pstatMtx;
 
     /**
+     * mutex for timer
+     */
+    std::mutex timer_mutex;
+
+    /**
      * ID generator
      */
     IdGenerator& idGen;
