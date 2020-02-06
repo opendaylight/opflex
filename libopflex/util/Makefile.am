@@ -10,7 +10,7 @@
 #
 # Process this file with automake to produce a Makefile.in
 
-AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
+AM_CPPFLAGS = $(BOOST_CPPFLAGS) -Wall \
         -I$(srcdir)/include -I$(top_srcdir)/include 
 
 noinst_LTLIBRARIES = libutil.la
