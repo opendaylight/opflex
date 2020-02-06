@@ -215,59 +215,84 @@ PodSvcStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
                                         bool isOld,
                                         bool isFlowStateReAdd)
 {
-
+    std::unique_lock<std::mutex> guard(podsvcStatsManager.pstatMtx);
     LOG(DEBUG) << "####### START - testFlowAge " << isOld << " " << isFlowStateReAdd
                << " new: " << podsvcStatsManager.statsState.newFlowCounterMap.size()
                << " old: " << podsvcStatsManager.statsState.oldFlowCounterMap.size()
                << " rem: " << podsvcStatsManager.statsState.removedFlowCounterMap.size();
+    guard.unlock();
 
     if (isOld && !isFlowStateReAdd) {
+        guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.oldFlowCounterMap.size(), 2);
+        guard.unlock();
+
         for (auto age = 0; age < PolicyStatsManager::MAX_AGE; age++) {
             boost::system::error_code ec;
             ec = make_error_code(boost::system::errc::success);
             statsManager->on_timer(ec);
         }
+
         // 2 flows got aged
+        guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.oldFlowCounterMap.size(), 0);
+        guard.unlock();
     }
 
     if (isOld && isFlowStateReAdd) {
+        guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.oldFlowCounterMap.size(), 0);
         // 16 flows based on config, -2 aged flows
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 14);
+        guard.unlock();
 
         boost::system::error_code ec;
         ec = make_error_code(boost::system::errc::success);
         statsManager->on_timer(ec);
 
         // 2 flows get readded to new map
+        guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.oldFlowCounterMap.size(), 0);
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 16);
+        guard.unlock();
     }
 
     if (!isOld && !isFlowStateReAdd) {
+        guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 16);
+        guard.unlock();
+
         for (auto age = 0; age < PolicyStatsManager::MAX_AGE; age++) {
             boost::system::error_code ec;
             ec = make_error_code(boost::system::errc::success);
             statsManager->on_timer(ec);
         }
+
+        guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 0);
+        guard.unlock();
     }
 
     if (!isOld && isFlowStateReAdd) {
+        guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 0);
+        guard.unlock();
+
         boost::system::error_code ec;
         ec = make_error_code(boost::system::errc::success);
         statsManager->on_timer(ec);
+
+        guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 16);
+        guard.unlock();
     }
 
+    guard.lock();
     LOG(DEBUG) << "####### END - testFlowAge " << isOld << " " << isFlowStateReAdd
                << " new: " << podsvcStatsManager.statsState.newFlowCounterMap.size()
                << " old: " << podsvcStatsManager.statsState.oldFlowCounterMap.size()
                << " rem: " << podsvcStatsManager.statsState.removedFlowCounterMap.size();
+    guard.unlock();
 }
 
 void
@@ -595,6 +620,7 @@ void PodSvcStatsManagerFixture::checkPodSvcObsObj (bool add)
 
 void PodSvcStatsManagerFixture::checkNewFlowMapInitialized (void)
 {
+    std::lock_guard<std::mutex> lock(podsvcStatsManager.pstatMtx);
     LOG(DEBUG) << "####### START - checkNewFlowMapInitialized"
                << " new: " << podsvcStatsManager.statsState.newFlowCounterMap.size()
                << " old: " << podsvcStatsManager.statsState.oldFlowCounterMap.size()

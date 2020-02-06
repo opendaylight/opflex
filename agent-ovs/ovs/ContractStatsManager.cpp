@@ -64,7 +64,11 @@ void ContractStatsManager::start() {
     PolicyStatsManager::start();
     EpGroup::registerListener(agent->getFramework(),this);
     RoutingDomain::registerListener(agent->getFramework(),this);
-    timer->async_wait(bind(&ContractStatsManager::on_timer, this, error));
+
+    {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        timer->async_wait(bind(&ContractStatsManager::on_timer, this, error));
+    }
 }
 
 void ContractStatsManager::stop() {
@@ -77,6 +81,7 @@ void ContractStatsManager::stop() {
 
 void ContractStatsManager::on_timer(const error_code& ec) {
     if (ec) {
+        std::lock_guard<std::mutex> lock(timer_mutex);
         // shut down the timer when we get a cancellation
         LOG(DEBUG) << "Resetting timer, error: " << ec.message();
         timer.reset();
@@ -100,9 +105,13 @@ void ContractStatsManager::on_timer(const error_code& ec) {
     }
 
     sendRequest(IntFlowManager::POL_TABLE_ID);
-    if (!stopping && timer) {
-        timer->expires_from_now(milliseconds(timer_interval));
-        timer->async_wait(bind(&ContractStatsManager::on_timer, this, error));
+
+    if (!stopping) {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        if (timer) {
+            timer->expires_from_now(milliseconds(timer_interval));
+            timer->async_wait(bind(&ContractStatsManager::on_timer, this, error));
+        }
     }
 }
 
