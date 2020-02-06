@@ -12,6 +12,8 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
+AM_CPPFLAGS = -Wall
+
 SUBDIRS  =
 SUBDIRS += util
 SUBDIRS += logging
