@@ -309,12 +309,12 @@ private:
     std::unique_ptr<boost::asio::io_service::work> io_work;
 
     opflex::ofcore::OFFramework& framework;
-    PolicyManager policyManager;
-    EndpointManager endpointManager;
-    ServiceManager serviceManager;
 #ifdef HAVE_PROMETHEUS_SUPPORT
     PrometheusManager prometheusManager;
 #endif
+    PolicyManager policyManager;
+    EndpointManager endpointManager;
+    ServiceManager serviceManager;
     ExtraConfigManager extraConfigManager;
     LearningBridgeManager learningBridgeManager;
     SnatManager snatManager;

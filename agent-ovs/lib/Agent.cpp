@@ -60,7 +60,8 @@ using boost::uuids::basic_random_generator;
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
 Agent::Agent(OFFramework& framework_)
-    : framework(framework_), prometheusManager(framework),
+    : framework(framework_),
+      prometheusManager(framework),
       policyManager(framework, agent_io),
       endpointManager(framework, policyManager, prometheusManager),
       extraConfigManager(framework),
