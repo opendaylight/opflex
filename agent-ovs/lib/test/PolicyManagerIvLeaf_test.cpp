@@ -362,7 +362,7 @@ BOOST_FIXTURE_TEST_CASE( static_route_add_mod_del, PolicyIvLeafFixture ) {
     shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
     address addr_, self_tep = address::from_string("10.10.10.1");
     std::list<address> nhList;
-    uint8_t pfx_len;
+    uint8_t pfx_len = 0;
     boost::optional<uint32_t> sclass;
     bool are_nhs_remote = false;
     std::string expectedRoute("105.0.0.0");
@@ -468,7 +468,7 @@ BOOST_FIXTURE_TEST_CASE( remote_route_add_mod_del, PolicyIvLeafFixture ) {
     shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
     std::list<address> nhList, expectedNh;
     uint8_t pfx_len;
-    boost::optional<uint32_t> sclass,expected_sclass = 1234;
+    boost::optional<uint32_t> sclass = 1234;
     bool are_nhs_remote = false;
     opflex::modb::URI lRtURI =
             opflex::modb::URIBuilder()
@@ -530,7 +530,7 @@ BOOST_FIXTURE_TEST_CASE( external_subnet_add_del, PolicyIvLeafFixture ) {
     shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
     std::list<address> nhList, expectedNh;
     uint8_t pfx_len;
-    boost::optional<uint32_t> sclass,expected_sclass = 1234;
+    boost::optional<uint32_t> sclass = 1234;
     bool are_nhs_remote = false;
     shared_ptr<L3ExternalNetwork> l3ext2_net3;
     Mutator m0(framework, "policyreg");

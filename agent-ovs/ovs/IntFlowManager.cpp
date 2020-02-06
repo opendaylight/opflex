@@ -1463,7 +1463,7 @@ static void flowsEndpointSNAT(SnatManager& snatMgr,
 
     boost::system::error_code ec;
     address nwDst;
-    uint8_t prefixlen;
+    uint8_t prefixlen = 0;
 
     for (const string& ipStr : endPoint.getIPs()) {
         address nwSrc =
@@ -1891,7 +1891,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                      if (asWrapper && asWrapper->isLocal() &&
                          asWrapper->getUUID() == snatUuid) {
                          const Snat& as = *asWrapper;
-                         uint16_t zoneId;
+                         uint16_t zoneId = 0;
                          uint32_t snatPort = OFPP_NONE;
 
                          if (as.getZone())
@@ -2895,7 +2895,7 @@ void IntFlowManager::handleSnatUpdate(const string& snatUuid) {
 
     FlowEntryList toSnatFlows;
     FlowEntryList snatFlows;
-    uint16_t zoneId;
+    uint16_t zoneId = 0;
     boost::system::error_code ec;
     address addr = address::from_string(as.getSnatIP(), ec);
     if (ec) return;
