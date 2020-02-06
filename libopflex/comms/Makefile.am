@@ -23,6 +23,7 @@ else
 endif
 
 AM_CPPFLAGS  =
+AM_CPPFLAGS += -Wall
 AM_CPPFLAGS += $(BOOST_CPPFLAGS)
 AM_CPPFLAGS += -I$(top_builddir)
 AM_CPPFLAGS += -I$(srcdir)/include

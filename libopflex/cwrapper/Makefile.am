@@ -13,6 +13,7 @@
 SUBDIRS = . test
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
+        -Wall \
         -I$(srcdir)/include -I$(top_srcdir)/include
 
 noinst_LTLIBRARIES = libcwrapper.la

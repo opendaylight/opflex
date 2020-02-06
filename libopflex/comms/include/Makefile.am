@@ -11,6 +11,7 @@
 # Install the yajr headers
 
 comms_headers =
+comms_headers += -Wall
 comms_headers += yajr/internal/comms.hpp
 comms_headers += yajr/yajr.hpp
 comms_headers += yajr/rpc/internal/fnv_1a_64.hpp

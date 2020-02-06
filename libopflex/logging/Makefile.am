@@ -14,6 +14,7 @@ noinst_LTLIBRARIES  =
 noinst_LTLIBRARIES += liblogging.la
 
 AM_CPPFLAGS = \
+	-Wall \
 	-I$(srcdir)/include \
 	-I$(top_srcdir)/include
 
