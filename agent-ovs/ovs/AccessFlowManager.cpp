@@ -12,6 +12,7 @@
 #include "FlowUtils.h"
 #include "FlowConstants.h"
 #include "RangeMask.h"
+#include "eth.h"
 #include <opflexagent/logging.h>
 
 #include <boost/algorithm/string/find_iterator.hpp>
@@ -165,6 +166,48 @@ static void flowBypassDhcpRequest(FlowEntryList& el, bool v4, uint32_t inport,
         fb.vlan(ep->getAccessIfaceVlan().get());
         fb.action().metadata(flow::meta::access_out::POP_VLAN,
                              flow::meta::out::MASK);
+    }
+
+    fb.action().go(AccessFlowManager::OUT_TABLE_ID);
+    fb.build(el);
+}
+
+static void flowBypassFloatingIP(FlowEntryList& el, uint32_t inport,
+                                 uint32_t outport, bool in,
+                                 address& floatingIp,
+                                 std::shared_ptr<const Endpoint>& ep ) {
+    FlowBuilder fb;
+    if (ep->getAccessIfaceVlan()) {
+        fb.priority(201).inPort(inport);
+    } else {
+        fb.priority(200).inPort(inport);
+    }
+
+    if (floatingIp.is_v4()) {
+        fb.ethType(eth::type::IP);
+    } else {
+        fb.ethType(eth::type::IPV6);
+    }
+
+    if (in) {
+        fb.ipSrc(floatingIp);
+    } else {
+        fb.ipDst(floatingIp);
+    }
+
+    fb.action().reg(MFF_REG7, outport);
+    if (ep->getAccessIfaceVlan()) {
+        if (in) {
+            fb.action()
+                .reg(MFF_REG5, ep->getAccessIfaceVlan().get())
+                .metadata(flow::meta::access_out::PUSH_VLAN,
+                          flow::meta::out::MASK);
+        } else {
+            fb.vlan(ep->getAccessIfaceVlan().get());
+            fb.action()
+                .metadata(flow::meta::access_out::POP_VLAN,
+                          flow::meta::out::MASK);
+        }
     }
 
     fb.action().go(AccessFlowManager::OUT_TABLE_ID);
@@ -352,6 +395,32 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
                 .tci(tci, mask)
                 .action().output(accessPort)
                 .parent().build(el);
+        }
+
+        // Bypass conntrack from endpoint reaching its
+        // floating ips.
+        for(const Endpoint::IPAddressMapping& ipm :
+                ep->getIPAddressMappings()) {
+            if (!ipm.getMappedIP() || !ipm.getEgURI())
+                continue;
+
+	    boost::system::error_code ec;
+            address mappedIp =
+                address::from_string(ipm.getMappedIP().get(), ec);
+            if (ec) continue;
+
+            address floatingIp;
+            if (ipm.getFloatingIP()) {
+                floatingIp =
+                    address::from_string(ipm.getFloatingIP().get(), ec);
+                if (ec) continue;
+                if (floatingIp.is_v4() != mappedIp.is_v4()) continue;
+                if (floatingIp.is_unspecified()) continue;
+            }
+            flowBypassFloatingIP(el, accessPort, uplinkPort, false,
+                                 floatingIp, ep);
+            flowBypassFloatingIP(el, uplinkPort, accessPort, true,
+                                 floatingIp, ep);
         }
     }
     switchManager.writeFlow(uuid, GROUP_MAP_TABLE_ID, el);
