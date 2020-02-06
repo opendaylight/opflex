@@ -68,8 +68,11 @@ void PolicyStatsManager::start() {
     connection->RegisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
     connection->RegisterMessageHandler(OFPTYPE_FLOW_REMOVED, this);
     L24Classifier::registerListener(agent->getFramework(),this);
-    timer.reset(new deadline_timer(agent->getAgentIOService(),
+    {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        timer.reset(new deadline_timer(agent->getAgentIOService(),
                                    milliseconds(timer_interval)));
+    }
 }
 
 void PolicyStatsManager::stop() {
@@ -83,8 +86,11 @@ void PolicyStatsManager::stop() {
     }
     L24Classifier::unregisterListener(agent->getFramework(),this);
 
-    if (timer) {
-        timer->cancel();
+    {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        if (timer) {
+            timer->cancel();
+        }
     }
 }
 
