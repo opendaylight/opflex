@@ -136,6 +136,12 @@ public:
     void notifyListeners();
 
     /**
+     * set update delay for first time MODB update
+     * @param delay_ delay in seconds
+     */
+    void setUpdateDelay(unsigned int delay_) { update_delay = delay_;};
+
+    /**
      * Listener for changes related to span
      */
     class SpanUniverseListener : public opflex::modb::ObjectListener {
@@ -240,7 +246,7 @@ private:
     // list of URIs to send to listeners
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<SessionState>> notifyDelete;
-    bool isDeletePending = false;
+    unsigned int update_delay = 5;
 
 };
 }
