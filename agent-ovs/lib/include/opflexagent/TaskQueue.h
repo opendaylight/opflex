@@ -12,6 +12,7 @@
 #define OPFLEXAGENT_TASK_QUEUE_H_
 
 #include <boost/asio/io_service.hpp>
+#include <boost/asio.hpp>
 
 #include <unordered_set>
 #include <string>
@@ -19,6 +20,7 @@
 #include <functional>
 
 namespace opflexagent {
+using namespace std;
 
 /**
  * Queue tasks using a boost::asio::io_service so that the same task
@@ -42,16 +44,42 @@ public:
      * @param task a function to execute for the task.  This will be
      * copied onto the task queue
      */
-    void dispatch(const std::string& taskId,
-                  const std::function<void ()>& task);
+
+    void dispatch(const string& taskId,
+                  const function<void ()>& task);
+    /**
+     * Dispatch the task immediately if delay is false.
+     * Otherwise, if a timer is active, ignore dispatch request
+     * and return.
+     * If timer is not active and this is the first time since startup,
+     * then start timer and queue task.
+     * If timer is not active and this is not the forst time then
+     * dispatch task.
+     *
+     * @param taskID id of the task assigned by user.
+     * @param task task a function to execute for the task.
+     * @param delay delay in seconds, 0 means no delay.
+     */
+    void dispatch(const string& taskId,
+                      const function<void ()>& task, unsigned int delay);
+
+    /**
+     * cancel delay timer if running
+     */
+    void timerCancel();
 
 private:
-    void run_task(const std::string& taskId,
-                  const std::function<void ()>& task);
-
+    void run_task(const string& taskId,
+                  const function<void ()>& task);
+    void dispatchCb(const boost::system::error_code& ec,
+            const string& taskId, const function<void ()>& task);
     boost::asio::io_service& io_service;
-    std::mutex queueMutex;
-    std::unordered_set<std::string> queuedItems;
+    recursive_mutex queueMutex;
+    unordered_set<string> queuedItems;
+    bool first_time = true;
+    bool timer_started = false;
+    shared_ptr<boost::asio::deadline_timer> delay_timer;
+    map<const string, const function<void ()>> taskMap;
 };
 
 } // namespace opflexagent
