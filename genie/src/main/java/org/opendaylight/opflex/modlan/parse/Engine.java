@@ -31,13 +31,11 @@ public class Engine
 
     public final void execute()
     {
-//        reportInfo("execute", "begin");
         if (null != ctx)
         {
             literals.reset();
             stack.push(new StateCtx(state, "doc-root", null));
             stack.peek().setData(invokeBeginCb(stack.peek().getText()));
-            //reportInfo("execute", "push: " + stack.peek());
             while (ctx.hasMore())
             {
                 ctx.getNext();
@@ -50,7 +48,6 @@ public class Engine
         {
             endState();
         }
-//        reportInfo("execute", "end");
     }
 
     private void stateMachine()
@@ -77,7 +74,6 @@ public class Engine
         {
             endState();
             ctx.holdThisForNext();
-            //reportInfo("stateMachine", "NO END, NO BEGIN: WTF: \'" + lThisChar + "' (0x" + Integer.toHexString(lThisChar)+ ")");
         }
     }
 
@@ -93,12 +89,7 @@ public class Engine
                 case ' ':
 
                     break;
-                /*
-                case '\n':
-                case '\r':
 
-                    break;
-                */
                 default:
                 {
                     lDone = true;
@@ -106,7 +97,6 @@ public class Engine
                     ctx.holdThisForNext();
                     if (null != lNextState)
                     {
-                        //System.out.println("fastforwarded to next potential state: " + lNextState);
                         lRet = lNextState.isRecursivelyAttached();
                     }
                 }
@@ -132,14 +122,12 @@ public class Engine
 
     private void endState()
     {
-        //reportInfo("endState", "POP: " + stack.peek());
         stack.peek().setData(invokeEndCb(stack.peek().getText()));
         literals.reset();
         stack.pop();
         if (!stack.empty())
         {
             state = stack.peek().getState();
-            //reportInfo("endState", "NEW TOP: " + stack.peek());
         }
 
     }
@@ -183,20 +171,12 @@ public class Engine
                         }
                     }
                     handleLiterals(lNextState);
-                    // IF THIS IS NAMED ITEM, WE NEED TO HOLD THE LAST CHAR
-                    //if (state.isNamed())
-                    {
-                        ctx.holdThisForNext();
-                    }
+                    ctx.holdThisForNext();
                 }
-
-                //reportInfo("checkHandleNextState", "NEW STATE: " + lNextState + "(" + literals + ")");
-
 
                 state = lNextState;
                 String lThisString = literals.toString();
                 stack.push(new StateCtx(state, lThisString, stack.peek()));
-                //reportInfo("checkHandleNextState", "PUSH: " + stack.peek());
                 // INVOKE BEGIN CB AND REMEMBER DATA RETURNED
                 stack.peek().setData(invokeBeginCb(lThisString));
                 literals.reset();
@@ -213,7 +193,6 @@ public class Engine
 
     private Data invokeBeginCb(State aInState, String aInString)
     {
-        //reportInfo("invokeBeginCb", "[+++] invoking for " + aInState + " STRING: " + aInString);
         if (null != callTbl[aInState.getIdx()][0])
         {
             try
@@ -236,8 +215,6 @@ public class Engine
 
     private Data invokeEndCb(State aInState, String aInString)
     {
-        //reportInfo("invokeEndCb", "[---] invoking for " + aInState + " STRING: " + aInString);
-
         if (null != callTbl[aInState.getIdx()][1])
         {
             try
@@ -268,8 +245,6 @@ public class Engine
 
     private void handleLiterals(State aInState)
     {
-        //reportInfo("handleLiterals(" + aInState + ")", "begin");
-
         literals.reset();
         char lThisChar = ctx.getThis();
 
@@ -279,14 +254,11 @@ public class Engine
             if (aInState.isEnd(lThisChar))
             {
                 // END OF STATE
-                //reportInfo("handleLiterals(" + aInState + ")", "DONE: @end with: " + literals);
                 return;
             }
             else if (null != TransitionTable.get(aInState, lThisChar))
             {
                 // NEXT STATE IS BEGINNING
-                //reportInfo("handleLiterals(" + aInState + ")",
-                //           "DONE: @next state '" + TransitionTable.get(aInState, lThisChar) + "' on '" + lThisChar + "' with: " + literals);
                 return;
             }
             else if (Character.isLetter(lThisChar) ||
@@ -304,31 +276,6 @@ public class Engine
             else if (' ' == lThisChar ||
                      '\t' == lThisChar)
             {
-                /*if (aInState.isSelfContained())
-                {
-                    switch (aInState.getBlankIncl())
-                    {
-                        case DISALLOW:
-
-                            reportDeadly(
-                                    "parsing " + aInState.getName() + "[" + literals.toString() + "]",
-                                    "unexpected blank space");
-
-                            break;
-
-                        case SKIP:
-
-                            // NO PARSING OF THIS CHARACTER
-                            break;
-
-                        case ALLOW:
-                        default:
-
-                            literals.append(lThisChar);
-                            break;
-                    }
-                }
-                 */
                 switch (aInState.getBlankIncl())
                 {
                     case DISALLOW:
@@ -405,21 +352,6 @@ public class Engine
         Severity.DEATH.report(formatLocationContext(),"PARSE", aInCause, aInMessage);
     }
 
-    protected void reportError(String aInCause, String aInMessage)
-    {
-        Severity.ERROR.report(formatLocationContext(),"PARSE", aInCause, aInMessage);
-    }
-
-    protected void reportWarning(String aInCause, String aInMessage)
-    {
-        Severity.WARN.report(formatLocationContext(),"PARSE", aInCause, aInMessage);
-    }
-
-    protected void reportInfo(String aInCause, String aInMessage)
-    {
-        Severity.INFO.report(formatLocationContext(),"PARSE", aInCause, aInMessage);
-    }
-
     private void initCallTbl()
     {
         for (State lThisState : State.values())
@@ -465,6 +397,6 @@ public class Engine
     private State state = State.DOC;
     private final Stack<StateCtx> stack = new Stack<>();
 
-    private LitBuff literals = new LitBuff();
+    private final LitBuff literals = new LitBuff();
     int run;
 }

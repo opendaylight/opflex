@@ -2,7 +2,6 @@ package org.opendaylight.opflex.modlan.report;
 
 import java.io.File;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 
 /**
  * Created by midvorki on 3/15/14.
@@ -87,18 +86,14 @@ public enum Severity
                 if (null == stream)
                 {
                     System.err.println(aInText);
-                    if (null != aInT)
-                    {
-                        aInT.printStackTrace();
-                    }
                 }
                 else
                 {
                     stream.report(aInText);
-                    if (null != aInT)
-                    {
-                        aInT.printStackTrace();
-                    }
+                }
+                if (null != aInT)
+                {
+                    aInT.printStackTrace();
                 }
                 break;
         }
@@ -157,10 +152,8 @@ public enum Severity
 
         int lThisCnt = (null == stream) ? 666 : stream.getLinecnt();
 
-///        synchronized (this) { lThisCnt = count++; };
-
         aOutSb.append(lThisCnt);
-        aOutSb.append(":" + Thread.currentThread().getName());
+        aOutSb.append(':').append(Thread.currentThread().getName());
         aOutSb.append('>');
 
         aOutSb.append(name);
@@ -210,7 +203,7 @@ public enum Severity
         }
     }
 
-    public static final void init(String aInReportRoot)
+    public static void init(String aInReportRoot)
     {
         System.out.println("====================================================");
         System.out.println("==      STARTING GENIE, THE CODE WRITING ROBOT    ==");
@@ -245,7 +238,7 @@ public enum Severity
 
     }
 
-    public static final void end(boolean aInNormal)
+    public static void end(boolean aInNormal)
     {
         ((null == origOut) ? System.out : origOut).println("====================================================");
         ((null == origOut) ? System.out : origOut).println("== GENIE THE ROBOT FINISHED WRITING CODE FOR YOU  ==");

@@ -5,8 +5,6 @@ package org.opendaylight.opflex.modlan.parse;
  */
 public class LitBuff
 {
-    public static final int BUFF_MAX_SIZE = 512;
-
     public LitBuff()
     {
         reset();
@@ -36,39 +34,4 @@ public class LitBuff
     }
 
     private StringBuilder sb = null;
-
-    /**
-     *
-     * public static final int BUFF_MAX_SIZE = 512;
-
-     public LitBuff()
-     {
-     reset();
-     }
-
-     public void append(char aIn)
-     {
-     literal[literalIdx++] = aIn;
-     literal[literalIdx] = '\0';
-     }
-
-     public void reset()
-     {
-     literalIdx = 0;
-     literal[0] = '\0';
-     }
-
-     public int getSize()
-     {
-     return literalIdx;
-     }
-
-     public String toString()
-     {
-     return new String(literal);
-     }
-
-     private char literal[] = new char[BUFF_MAX_SIZE];
-     private int literalIdx = 0;
-     */
 }

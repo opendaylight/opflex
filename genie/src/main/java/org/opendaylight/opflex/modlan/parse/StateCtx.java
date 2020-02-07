@@ -14,7 +14,6 @@ public class StateCtx
         parent = aInParent;
         synchronized (StateCtx.class) { id = ++COUNT; }
         depth = (null == aInParent) ? 0 : aInParent.getDepth() + 1;
-        //System.out.println("******* NEW : " + this);
     }
 
     public String toString()
@@ -57,21 +56,6 @@ public class StateCtx
         return text;
     }
 
-    public Object getParent()
-    {
-        return parent;
-    }
-
-    public int getId()
-    {
-        return id;
-    }
-
-    public Data getData()
-    {
-        return data;
-    }
-
     public void setData(Data aIn)
     {
         if (null != aIn)
@@ -95,8 +79,8 @@ public class StateCtx
     private final String text;
     private final State state;
     private final StateCtx parent;
-    private int id;
-    private int depth = 0;
+    private final int id;
+    private final int depth;
     private Data data = null;
     private static int COUNT = 0;
 }

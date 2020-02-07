@@ -5,17 +5,17 @@ package org.opendaylight.opflex.modlan.parse;
  */
 public interface Ctx
 {
-    public boolean hasMore();
+    boolean hasMore();
 
-    public char getThis();
+    char getThis();
 
-    public char getNext();
+    char getNext();
 
-    public void holdThisForNext();
+    void holdThisForNext();
 
-    public String getFileName();
+    String getFileName();
 
-    public int getCurrLineNum();
-    public int getCurrColumnNum();
-    public int getCurrCharNum();
+    int getCurrLineNum();
+    int getCurrColumnNum();
+    int getCurrCharNum();
 }

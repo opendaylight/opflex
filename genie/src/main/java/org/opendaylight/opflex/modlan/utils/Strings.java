@@ -15,10 +15,7 @@ public class Strings
     public static final String DEFAULT = "default";
     public static final String EMPTY = "";
     public static final String EXCLUSIVE = "exclusive";
-    public static final String MAX = "max";
     public static final String METADATA = "metadata";
-    public static final String META = "meta";
-    public static final String MIN = "min";
     public static final String NAME = "name";
     public static final String NO = "no";
     public static final String OPTION = "option";
@@ -27,10 +24,8 @@ public class Strings
     public static final String REGEX = "regex";
     public static final String ROOT = "root";
     public static final String SUPER = "super";
-    public static final String STAR = ASTERISK;
     public static final String TARGET = "target";
     public static final String TYPE = "type";
-    public static final String TYPEDEF = "typedef";
     public static final String VALUE = "value";
     public static final String WILDCARD = ASTERISK;
     public static final String YES = "yes";
@@ -39,18 +34,11 @@ public class Strings
 
     public static boolean isAny(String aIn) { return isEmpty(aIn) || ANY.equalsIgnoreCase(aIn); }
 
-    public static boolean isDefault(String aIn) { return DEFAULT.equalsIgnoreCase(aIn); }
-
     public static boolean isWildCard(String aIn) { return isEmpty(aIn) || WILDCARD.equals(aIn); }
 
     public static boolean isYes(String aIn)
     {
         return YES.equalsIgnoreCase(aIn);
-    }
-
-    public static boolean isNo(String aIn)
-    {
-        return NO.equalsIgnoreCase(aIn);
     }
 
     public static String replaceChar(String aIn, int aInPos, char aInNewChar)
