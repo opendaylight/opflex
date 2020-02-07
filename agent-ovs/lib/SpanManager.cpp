@@ -95,6 +95,10 @@ namespace opflexagent {
         Session::registerListener(framework,&spanUniverseListener);
         LocalEp::registerListener(framework, &spanUniverseListener);
         L2Ep::registerListener(framework, &spanUniverseListener);
+        URI uri("/SpanUniverse/");
+        taskQueue.dispatch(uri.toString(), [=]() {
+            spanUniverseListener.objectUpdated(Universe::CLASS_ID, uri);
+        }, true);
     }
 
     void SpanManager::stop() {
@@ -122,6 +126,12 @@ namespace opflexagent {
             if (univ_opt) {
                 vector <shared_ptr<Session>> sessVec;
                 univ_opt.get()->resolveSpanSession(sessVec);
+                if (sessVec.empty()) {
+                    LOG(DEBUG) << "No sessions found";
+                    spanmanager.taskQueue.dispatch( "", [=]() {
+                                    spanmanager.notifyListeners();}, true);
+                    return;
+                }
                 for (shared_ptr <Session> sess : sessVec) {
                     auto itr = spanmanager.sess_map.find(sess->getURI());
                     if (itr == spanmanager.sess_map.end()) {
@@ -176,13 +186,13 @@ namespace opflexagent {
         for (const URI& uri : spanmanager.notifyUpdate) {
             spanmanager.taskQueue.dispatch(uri.toString(), [=]() {
                 spanmanager.notifyListeners(uri);
-            });
+            }, true);
         }
         spanmanager.notifyUpdate.clear();
         for (shared_ptr<SessionState> seSt : spanmanager.notifyDelete) {
             spanmanager.taskQueue.dispatch(seSt->getName(), [=]() {
                 spanmanager.notifyListeners(seSt);
-            });
+            }, true);
         }
         spanmanager.notifyDelete.clear();
     }
@@ -191,10 +201,6 @@ namespace opflexagent {
         lock_guard<mutex> guard(listener_mutex);
         LOG(DEBUG) << "registering listener";
         spanListeners.push_back(listener);
-        if (isDeletePending) {
-            notifyListeners();
-        }
-        isDeletePending = false;
     }
 
     void SpanManager::unregisterListener(SpanListener* listener) {

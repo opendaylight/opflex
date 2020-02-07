@@ -240,7 +240,6 @@ private:
     // list of URIs to send to listeners
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<SessionState>> notifyDelete;
-    bool isDeletePending = false;
 
 };
 }
