@@ -1,11 +1,7 @@
 package org.opendaylight.opflex.genie.content.model.mownership;
 
 import java.util.LinkedList;
-import java.util.Map;
-import java.util.TreeMap;
 
-import org.opendaylight.opflex.genie.content.model.mclass.MClass;
-import org.opendaylight.opflex.genie.content.model.module.Module;
 import org.opendaylight.opflex.genie.engine.model.Cat;
 import org.opendaylight.opflex.genie.engine.model.Item;
 
@@ -39,28 +35,6 @@ public class MOwner extends MOwnershipComponent
     private MOwner(String aInName)
     {
         super(MY_CAT,null,aInName, DefinitionScope.GLOBAL);
-    }
-
-    public void getClasses(Map<String, MClass> aOut)
-    {
-        // GO THROUGH IMMEDIATE CLASS RULES
-        {
-            LinkedList<Item> lIts = new LinkedList<Item>();
-            getChildItems(MClassRule.MY_CAT, lIts);
-            for (Item lIt : lIts)
-            {
-                ((MClassRule)lIt).getClasses(aOut);
-            }
-        }
-        // GO THROUGH MODULE RULES
-        {
-            LinkedList<Item> lIts = new LinkedList<Item>();
-            getChildItems(MModuleRule.MY_CAT, lIts);
-            for (Item lIt : lIts)
-            {
-                ((MModuleRule)lIt).getClasses(aOut);
-            }
-        }
     }
 
     public void postLoadCb()

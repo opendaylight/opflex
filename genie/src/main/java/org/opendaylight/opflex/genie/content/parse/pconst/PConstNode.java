@@ -27,7 +27,7 @@ public class PConstNode
     protected void addParent(ProcessorNode aInParent)
     {
         super.addParent(aInParent);
-        scope = ConstScope.get(aInParent.getName());
+        ConstScope scope = ConstScope.get(aInParent.getName());
     }
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
@@ -52,12 +52,12 @@ public class PConstNode
             factory(ConstAction.DEFAULT, aInParentItem, Strings.DEFAULT, lIndirectionTarget, null);
         }
 
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE, lConst);
+        return new Pair<>(ParseDirective.CONTINUE, lConst);
     }
 
     private MConst factory(ConstAction aInAction, Item aInParentItem, String aInName, String aInIndTarget, String aInValue)
     {
-        MConst lConst = new MConst(aInParentItem, aInName, aInAction, scope);
+        MConst lConst = new MConst(aInParentItem, aInName, aInAction);
 
         if (!Strings.isEmpty(aInIndTarget))
         {
@@ -71,5 +71,4 @@ public class PConstNode
     }
 
     private ConstAction action;
-    private ConstScope scope = null;
 }

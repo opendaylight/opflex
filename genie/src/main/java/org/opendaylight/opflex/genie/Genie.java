@@ -21,8 +21,6 @@ public class Genie
         // trigger the processing
         new Processor(
                 1,
-                //lMetaPaths,
-                //lPrePaths,
                 ParseRegistry.init(),
                 aInArgs
                 );

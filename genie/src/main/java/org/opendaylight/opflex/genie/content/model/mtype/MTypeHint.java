@@ -24,5 +24,5 @@ public class MTypeHint
         return info;
     }
 
-    private TypeInfo info;
+    private final TypeInfo info;
 }

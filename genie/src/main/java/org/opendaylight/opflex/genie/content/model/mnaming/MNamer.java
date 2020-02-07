@@ -121,7 +121,7 @@ public class MNamer extends Item
 
     public void getNamingRules(Map<String, MNameRule> aOut)
     {
-        LinkedList<Item> lNRs = new LinkedList<Item>();
+        LinkedList<Item> lNRs = new LinkedList<>();
         getChildItems(MNameRule.MY_CAT, lNRs);
 
         for (Item lIt : lNRs)

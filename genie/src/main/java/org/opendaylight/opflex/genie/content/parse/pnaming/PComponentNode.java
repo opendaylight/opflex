@@ -40,12 +40,11 @@ public class PComponentNode extends ParseNode
             MNameRule lNr = lNamer.getNameRule(lParent.getLID().getName(), true);
             aInParentItem = lNr;
         }
-        return new Pair<ParseDirective, Item>(
-                ParseDirective.CONTINUE,
-                new MNameComponent((MNameRule)aInParentItem,
-                                   aInData.getNamedValue("prefix", null, false),
-                                   aInData.getNamedValue("member", null, false)
-                                   ));
+        return new Pair<>(
+            ParseDirective.CONTINUE,
+            new MNameComponent((MNameRule) aInParentItem,
+                aInData.getNamedValue("member", null, false)
+            ));
     }
 
     private boolean isPartOfContainmentDef = false;

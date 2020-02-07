@@ -24,9 +24,6 @@ public class MOwned extends Item
 
     public MClassRule getRule() { return rule; }
 
-    public DefinitionScope getScope() { return rule.getDefinitionScope(); }
-
-
     private final MOwner owner;
     private final MClassRule rule;
 }

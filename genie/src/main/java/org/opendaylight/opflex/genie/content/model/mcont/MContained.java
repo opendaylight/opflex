@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.content.model.mcont;
 
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -41,14 +40,14 @@ public class MContained
      * @param aInChildGName global name of the child class
      * @return pair of contained and container objects
      */
-    public static final Pair<MContained, MParent> addRule(String aInParentGName, String aInChildGName)
+    public static Pair<MContained, MParent> addRule(String aInParentGName, String aInChildGName)
     {
         MContained lContd = MContained.get(aInChildGName, true);
         MParent lMParent = lContd.getMParent(aInParentGName, true);
 
-        MContainer lContr = MContainer.addRule(aInParentGName, aInChildGName);
+        MContainer.addRule(aInParentGName, aInChildGName);
 
-        return new Pair<MContained, MParent>(lContd,lMParent);
+        return new Pair<>(lContd, lMParent);
     }
 
     /**
@@ -95,28 +94,6 @@ public class MContained
     }
 
     /**
-     * checks if there are per parent rules
-     */
-    public boolean hasParents()
-    {
-        return hasChildren(MParent.MY_CAT);
-    }
-
-    /**
-     * retrieves set of rules, each specified per specific parent
-     * @param aOut rules specified per specific parent
-     */
-    public void getParents(Collection<MParent> aOut)
-    {
-        LinkedList<Item> lItems = new LinkedList<Item>();
-        getChildItems(MParent.MY_CAT, lItems);
-        for (Item lIt : lItems)
-        {
-            aOut.add((MParent)lIt);
-        }
-    }
-
-    /**
      * retrieves a rule specified per specific parent identified by corresponding class's global name
      * @param aInClassGName global name of the parent class
      */
@@ -153,7 +130,7 @@ public class MContained
      */
     public void getParentClasses(Map<Ident,MClass> aOut, boolean aInResolveToConcrete)
     {
-        LinkedList<Item> lItems = new LinkedList<Item>();
+        LinkedList<Item> lItems = new LinkedList<>();
         getChildItems(MParent.MY_CAT, lItems);
         for (Item lIt : lItems)
         {

@@ -28,14 +28,14 @@ public class PNamedNode extends ParseNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,
-                                              MNamer.get(
-                                                      (DefinitionScope.CLASS == scope ?
-                                                              aInParentItem.getGID().getName() :
-                                                              aInData.getNamedValue(Strings.CLASS,
-                                                                                    aInData.getNamedValue(Strings.NAME, null, false),
-                                                                                    true)),
-                                                      true));
+        return new Pair<>(ParseDirective.CONTINUE,
+            MNamer.get(
+                (DefinitionScope.CLASS == scope ?
+                    aInParentItem.getGID().getName() :
+                    aInData.getNamedValue(Strings.CLASS,
+                        aInData.getNamedValue(Strings.NAME, null, false),
+                        true)),
+                true));
     }
 
     private DefinitionScope scope = DefinitionScope.NONE;

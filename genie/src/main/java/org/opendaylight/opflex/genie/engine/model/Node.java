@@ -96,19 +96,6 @@ public class Node implements Validatable
         return lThat;
     }
 
-    public Node getAncestorOfNthDegree(int aInDegree)
-    {
-        Node lThat = null;
-        for (lThat = getParent(); null != lThat; lThat = lThat.getParent())
-        {
-            if (0 == --aInDegree)
-            {
-                break;
-            }
-        }
-        return lThat;
-    }
-
     public Item getAncestorItemOfCat(Cat aInCat)
     {
         Node lAnc = getAncestorOfCat(aInCat);
@@ -223,8 +210,6 @@ public class Node implements Validatable
 
     public void preLoadModelCompleteCb() { getItem().preLoadModelCompleteCb(); }
 
-    public void loadModelCompleteCb() { getItem().loadModelCompleteCb(); }
-
     /**
      * Stringifier
      * @return printable string of this Node identity
@@ -261,16 +246,6 @@ public class Node implements Validatable
         if (null != gID)
         {
             aIn.append(gID.getName());
-            /**
-            aIn.append('(');
-            aIn.append(gID.getId());
-            if (null != lID)
-            {
-                aIn.append('|');
-                aIn.append(lID.getId());
-            }
-            aIn.append(')');
-             **/
         }
         else if (null != lID)
         {
@@ -289,7 +264,6 @@ public class Node implements Validatable
      */
     private void attach(Node aInChildNode)
     {
-        //System.out.println(this + ".attach(" + aInChildNode + ")");
         getChildren().add(aInChildNode);
     }
 
@@ -307,22 +281,22 @@ public class Node implements Validatable
     /**
      * Node Category
      */
-    private Cat cat;
+    private final Cat cat;
 
     /**
      * Global identifier
      */
-    private Ident gID;
+    private final Ident gID;
 
     /**
      * Local identifier
      */
-    private Ident lID;
+    private final Ident lID;
 
     /**
      * Parent node
      */
-    private Node parent;
+    private final Node parent;
 
     /**
      * This node's item item

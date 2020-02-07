@@ -26,6 +26,6 @@ public class MOwnershipComponent extends Item
         return isWildCard;
     }
 
-    private DefinitionScope definitionScope;
-    private boolean isWildCard;
+    private final DefinitionScope definitionScope;
+    private final boolean isWildCard;
 }

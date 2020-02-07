@@ -2,7 +2,6 @@ package org.opendaylight.opflex.genie.content.model.mmeta;
 
 import org.opendaylight.opflex.genie.engine.model.Cat;
 import org.opendaylight.opflex.genie.engine.model.Item;
-import org.opendaylight.opflex.genie.engine.parse.model.ParseNodePropType;
 
 /**
  * Created by midvorki on 10/22/14.

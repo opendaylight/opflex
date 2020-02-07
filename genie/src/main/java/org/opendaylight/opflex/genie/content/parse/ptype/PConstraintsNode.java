@@ -24,15 +24,11 @@ public class PConstraintsNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        return new Pair<ParseDirective, Item>(
-                    ParseDirective.CONTINUE,
-                    new MConstraints((MLanguageBinding) aInParentItem,
-                                   aInData.getNamedValue("use-type", null, false),
-                                   aInData.getNamedValue("min", null, false),
-                                   aInData.getNamedValue("max", null, false),
-                                   aInData.getNamedValue("default", null, false),
-                                   Integer.parseInt(aInData.getNamedValue("size", "-1", false)),
-                                   aInData.getNamedValue("regex", null, false)));
+        return new Pair<>(
+            ParseDirective.CONTINUE,
+            new MConstraints((MLanguageBinding) aInParentItem,
+                aInData.getNamedValue("use-type", null, false)
+            ));
     }
 
 }

@@ -35,11 +35,7 @@ public class PDependencyNode extends ParseNode
                 aInData.getNamedValue(Strings.CLASS,null, true);
 
         MRelator lRel = MRelator.get(lRelatingClass,true);
-
-
-//        Severity.WARN.report(toString(),"","", (isRoot ? "ROOT " : "NON-ROOT ") + scope + " CONTAINED RULE ADDED: " + lContained);
-
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE, lRel);
+        return new Pair<>(ParseDirective.CONTINUE, lRel);
     }
 
     public DefinitionScope getScope()

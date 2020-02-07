@@ -28,24 +28,6 @@ public class Item
     }
 
     /**
-     * Constructor. Constructs item and automatically attaches it to the graph.
-     *
-     * @param aInCat    category of the item and graph node
-     * @param aInParent parent item
-     * @param aInLId    local context identifier
-     * @param aInGId    global context identifier
-     */
-    private Item(
-            Cat aInCat,
-            Item aInParent,
-            Ident aInLId,
-            Ident aInGId
-            )
-    {
-        this(aInCat.nodeFactory(null == aInParent ? null : aInParent.getNode(), aInLId, aInGId));
-    }
-
-    /**
      * Constructor. Constructs item within context of passed in node.
      *
      * @param aInNode model graph node.
@@ -54,8 +36,6 @@ public class Item
     {
         node = aInNode;
         node.register(this);
-
-        //System.out.println("ITEM::CONSTRUCTED(" + this + ")");
     }
 
     /**
@@ -118,11 +98,6 @@ public class Item
         return getNode().getChildren();
     }
 
-    public void getChildNodes(Cat aInCat, Collection<Node> aOut)
-    {
-        getNode().getChildNodes(aInCat,aOut);
-    }
-
     public void getChildItems(Cat aInCat, Collection<Item> aOut)
     {
         getNode().getChildItem(aInCat, aOut);
@@ -131,11 +106,6 @@ public class Item
     public Item getChildItem(Cat aInCat, String aInName)
     {
         return getNode().getChildItem(aInCat,aInName);
-    }
-
-    public Node getChildNode(Cat aInCat, String aInName)
-    {
-        return getNode().getChildNode(aInCat, aInName);
     }
 
     @Override
@@ -160,8 +130,6 @@ public class Item
     public void metaModelLoadCompleteCb() {  }
 
     public void preLoadModelCompleteCb() {  }
-
-    public void loadModelCompleteCb() {  }
 
     /**
      * Stringifier
@@ -196,7 +164,7 @@ public class Item
     {
         if (null == parsingDataNodes)
         {
-            parsingDataNodes = new LinkedList<org.opendaylight.opflex.genie.engine.parse.modlan.Node>();
+            parsingDataNodes = new LinkedList<>();
         }
         parsingDataNodes.add(aIn);
     }
@@ -208,31 +176,6 @@ public class Item
     public boolean hasParsingDataNodes()
     {
         return null != parsingDataNodes && !parsingDataNodes.isEmpty();
-    }
-
-    /**
-     * returns parsing data nodes associated with this item
-     * @return parsing data nodes or null, if none are available
-     */
-    public LinkedList<org.opendaylight.opflex.genie.engine.parse.modlan.Node> getParsingDataNodes()
-    {
-        return parsingDataNodes;
-    }
-
-    /**
-     * adds a list of comments to this item
-     * @param aIn comments added
-     */
-    public void addComments(String[] aIn)
-    {
-        if (null == comments)
-        {
-            comments = new LinkedList<String>();
-        }
-        for (String lThis : aIn)
-        {
-            comments.add(lThis);
-        }
     }
 
     /**
@@ -268,5 +211,5 @@ public class Item
      */
     private LinkedList<org.opendaylight.opflex.genie.engine.parse.modlan.Node> parsingDataNodes = null;
 
-    private LinkedList<String> comments = null;
+    private final LinkedList<String> comments = null;
 }

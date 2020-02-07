@@ -36,6 +36,6 @@ public class PAlias
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
         MNodeAlias lNA = new MNodeAlias((MNode)aInParentItem,aInData.getNamedValue(Strings.NAME, null, true));
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE, lNA);
+        return new Pair<>(ParseDirective.CONTINUE, lNA);
     }
 }

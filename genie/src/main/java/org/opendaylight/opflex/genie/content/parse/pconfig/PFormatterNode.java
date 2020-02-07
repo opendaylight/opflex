@@ -26,7 +26,7 @@ public class PFormatterNode
         Config.setFormatterRelPath(aInData.getNamedValue("path", null, true), aInData
                 .getNamedValue("filetype", ".meta", true));
 
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,aInParentItem);
+        return new Pair<>(ParseDirective.CONTINUE, aInParentItem);
     }
 
     /**

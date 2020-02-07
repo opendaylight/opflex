@@ -21,6 +21,6 @@ public class PDomainNode extends ParseNode
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
         MFormatterDomain lDom = new MFormatterDomain(aInData.getNamedValue(Strings.NAME,null, true));
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lDom);
+        return new Pair<>(ParseDirective.CONTINUE, lDom);
     }
 }

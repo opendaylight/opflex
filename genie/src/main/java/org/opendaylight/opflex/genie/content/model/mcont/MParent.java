@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.content.model.mcont;
 
-import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.engine.model.Cardinality;
 import org.opendaylight.opflex.genie.engine.model.Cat;
 import org.opendaylight.opflex.genie.engine.model.RelatorCat;
@@ -37,29 +36,4 @@ public class MParent extends MContRuleItem
         return (MContained) getParent();
     }
 
-    public MClass getContainedClass()
-    {
-        return getContained().getTarget();
-    }
-
-    public MContainer getMContainer()
-    {
-        return MContainer.get(getLID().getName());
-    }
-
-    public MChild getMChild()
-    {
-        return getMContainer().getMChild(getContained().getLID().getName());
-    }
-
-    public void validateCb()
-    {
-        super.validateCb();
-
-        /*Severity.WARN.report(toString(),"validate", "",
-                             "\n\tcontained: " + getContained() + "\n" +
-                             "\tcontained class: " + getContainedClass() + "\n" +
-                             "\tcontainer: " + getMContainer() + "\n" +
-                             "\tmchild: " + getMChild());*/
-    }
 }

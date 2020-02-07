@@ -24,19 +24,6 @@ public class MType extends SubModuleItem
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Constructor for non-built-in/non-base types.
-     *
-     * @param aInModule name of the module to which this type belongs
-     * @param aInLName name of the type
-     */
-    public MType(
-            Module aInModule,
-            String aInLName)
-    {
-        this(aInModule,aInLName,true);
-    }
-
-    /**
      * general constructor
      * @param aInModule name of the module to which this type belongs
      * @param aInLName name of the type
@@ -151,16 +138,6 @@ public class MType extends SubModuleItem
     }
 
     /**
-     * checks if the type has a supertype
-     * @return returns true if this type has supertype, false otherwise
-     */
-    public boolean hasSupertype()
-    {
-        Relator lRel = SUPER_CAT.getRelator(getGID().getName());
-        return null != lRel && lRel.hasTo();
-    }
-
-    /**
      * retrieves supertpype of this class
      * @return supertype if supertype exists, null otherwise
      */
@@ -168,21 +145,6 @@ public class MType extends SubModuleItem
     {
         Relator lRel = getSupertypeRelator();
         return (MType) (null == lRel ? null : lRel.getToItem());
-    }
-
-    /**
-     * retrieves all supertypes for this type. supertypes are added in order of distance from the subtype.
-     * @param aOut collection of supertypes
-     * @param aInIncludeSelf identifies whether to include this type
-     */
-    public void getSupertypes(Collection<MType> aOut, boolean aInIncludeSelf)
-    {
-        for (MType lThat = aInIncludeSelf ? this : getSupertype();
-             null != lThat;
-             lThat = lThat.getSupertype())
-        {
-            aOut.add(lThat);
-        }
     }
 
     /**
@@ -223,81 +185,7 @@ public class MType extends SubModuleItem
         }
     }
 
-    /**
-     * checks if this type has subtypes
-     * @return true if this type has subtypes. false otherwise.
-     */
-    public boolean hasSubtypes()
-    {
-        Relator lInvRel = SUPER_CAT.getInverseRelator(getGID().getName());
-        return null != lInvRel && lInvRel.hasTo();
-    }
 
-    /**
-     * Retrieves subclasses of this class
-     * @param aOut collection of subtypes of this type
-     * @param aInIsDirectOnly specifies if only direct subtypes are returned
-     */
-    public void getSubtypes(
-            Collection<MType> aOut,
-            boolean aInIsDirectOnly)
-    {
-        Relator lInvRel = SUPER_CAT.getInverseRelator(getGID().getName());
-        if (null != lInvRel)
-        {
-            for (Item lItem : lInvRel.getToItems())
-            {
-                MType lType = (MType) lItem;
-                aOut.add(lType);
-                if (!aInIsDirectOnly)
-                {
-                    lType.getSubtypes(aOut, aInIsDirectOnly);
-                }
-            }
-        }
-    }
-
-    /**
-     * Retrieves subtypes of this type in type inheritance tree
-     * @param aOut collection of subtypes of this type
-     */
-    public void getSubtypes(Collection<MType> aOut)
-    {
-        getSubtypes(aOut, false);
-    }
-
-    /**
-     * Retrieves subtypes of this type in type inheritance tree
-     * @return collection of subtypes of this type
-     */
-    public Collection<MType> getSubtypes()
-    {
-        LinkedList<MType> lRet = new LinkedList<MType>();
-        getSubtypes(lRet, false);
-        return lRet;
-    }
-
-    /**
-     * Retrieves direct subtypes of this type in type inheritance tree
-     * @param aOut collection of direct subtypes of this type
-     */
-    public void getDirectSubtypes(Collection<MType> aOut)
-    {
-        getSubtypes(aOut, true);
-    }
-
-    /**
-     * Retrieves direct subtypes of this type in type inheritance tree
-     * @return collection of direct subtypes of this type
-     */
-    public Collection<MType> getDirectSubtypes()
-    {
-        LinkedList<MType> lRet = new LinkedList<MType>();
-        getSubtypes(lRet, true);
-        return lRet;
-    }
-
-    
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // PRIMITIVE LIKE API
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -346,21 +234,6 @@ public class MType extends SubModuleItem
     {
         Relator lRel = getLiketypeRelator();
         return (MType) (null == lRel ? null : lRel.getToItem());
-    }
-
-    /**
-     * retrieves all liketypes for this type. liketypes are added in order of distance from the subtype.
-     * @param aOut collection of liketypes
-     * @param aInIncludeSelf identifies whether to include this type
-     */
-    public void getLiketypes(Collection<MType> aOut, boolean aInIncludeSelf)
-    {
-        for (MType lThat = aInIncludeSelf ? this : getLiketype();
-             null != lThat;
-             lThat = lThat.getLiketype())
-        {
-            aOut.add(lThat);
-        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -422,50 +295,12 @@ public class MType extends SubModuleItem
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * retrieves constant defined under this type by name
-     * @param aInName name of the constant to be retrieved.
-     * @return Constant associated with the name passed in that is defined under this type
-     */
-    public MConst getConst(String aInName)
-    {
-        return (MConst) getChildItem(MConst.MY_CAT, aInName);
-    }
-
-    /**
-     * finds constant defined under this type or, if specified, any of the supertypes, by name
-     * @param aInName name of the constant to be retrieved.
-     * @param aInCheckSuperTypes identifies that supertypes are to be checked
-     * @return
-     */
-    public MConst findConst(String aInName, boolean aInCheckSuperTypes)
-    {
-        MConst lConst = null;
-        for (MType lThisType = this;
-             null != lThisType && null == lConst;
-             lThisType = aInCheckSuperTypes ? lThisType.getSupertype() : null)
-        {
-            lConst = lThisType.getConst(aInName);
-
-            if (null != lConst && lThisType.isBase())
-            {
-                for (lThisType = lThisType.getLiketype();
-                     null != lThisType && null == lConst;
-                     lThisType = lThisType.getLiketype())
-                {
-                    lConst = lThisType.getConst(aInName);
-                }
-            }
-        }
-
-        return lConst;
-    }
-    /**
      * retrieves all constants defined under this type
      * @param aOut  All constants defined under this type
      */
     public void getConst(Map<String, MConst> aOut)
     {
-        Collection<Item> lItems = new LinkedList<Item>();
+        Collection<Item> lItems = new LinkedList<>();
         getChildItems(MConst.MY_CAT,lItems);
 
         if (isBase())
@@ -553,49 +388,12 @@ public class MType extends SubModuleItem
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * retrieves validator defined under this type by name
-     * @param aInName name of the validator to be retrieved.
-     * @return Validator associated with the name passed in that is defined under this type
-     */
-    public MValidator getValidator(String aInName)
-    {
-        return (MValidator) getChildItem(MValidator.MY_CAT, aInName);
-    }
-
-    /**
-     * finds validator defined under this type or, if specified, any of the supertypes, by name
-     * @param aInName name of the validator to be retrieved.
-     * @param aInCheckSuperTypes identifies that supertypes are to be checked
-     * @return
-     */
-    public MValidator findValidator(String aInName, boolean aInCheckSuperTypes)
-    {
-        MValidator lValidator = null;
-        for (MType lThisType = this;
-             null != lThisType &&
-             null == lValidator;
-             lThisType = aInCheckSuperTypes ? lThisType.getSupertype() : null)
-        {
-            lValidator = lThisType.getValidator(aInName);
-            if (null != lValidator && lThisType.isBase())
-            {
-                for (lThisType = lThisType.getLiketype();
-                     null != lThisType && null == lValidator;
-                     lThisType = lThisType.getLiketype())
-                {
-                    lValidator = lThisType.getValidator(aInName);
-                }
-            }
-        }
-        return lValidator;
-    }
-    /**
      * retrieves all validators defined under this type
      * @param aOut  All validators defined under this type
      */
     public void getValidator(Map<String, MValidator> aOut)
     {
-        Collection<Item> lItems = new LinkedList<Item>();
+        Collection<Item> lItems = new LinkedList<>();
         getChildItems(MValidator.MY_CAT,lItems);
         if (isBase())
         {
@@ -635,8 +433,8 @@ public class MType extends SubModuleItem
     {
         super.validateCb();
         getBase();
-        findConst(new TreeMap<String, MConst>(), true);
-        findValidator(new TreeMap<String, MValidator>(), true);
+        findConst(new TreeMap<>(), true);
+        findValidator(new TreeMap<>(), true);
         getTypeHint();
         for (Language lLang : Language.values())
         {

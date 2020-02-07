@@ -2,11 +2,8 @@ package org.opendaylight.opflex.genie.content.model.mnaming;
 
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.Map;
 
-import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.engine.model.*;
-import org.opendaylight.opflex.modlan.report.Severity;
 import org.opendaylight.opflex.modlan.utils.Strings;
 
 /**
@@ -36,7 +33,6 @@ public class MNameRule extends Item
                 NameRuleScope.ANY.getName() :
                 aInContainerClassOrAny
                 );
-        isAnyTarget = Strings.isAny(aInContainerClassOrAny);
     }
 
     /**
@@ -48,81 +44,6 @@ public class MNameRule extends Item
         return (MNamer) getParent();
     }
 
-    public MClass getTargetClassExplicit()
-    {
-        MClass lClass = MClass.get(getLID().getName());
-        if (null == lClass)
-        {
-            Severity.DEATH.report(
-                    this.toString(),
-                    "retrieval of target class",
-                    "class not found",
-                    "naming rule can't find associated class.");
-        }
-        return lClass;
-    }
-
-    /**
-     * target class(s) resolver.
-     * @param aOut map of target classes
-     */
-    public void getTargetClass(Map<Ident,MClass> aOut)
-    {
-        MClass lContainerClass = null;
-        if (isAnyTarget)
-        {
-            MNamer lNamer = getNamer();
-            MClass lNamedClass = lNamer.getTargetClass();
-
-            // resolved all of the
-            lNamedClass.getContainedByClasses(aOut, true, true);
-        }
-        else
-        {
-            lContainerClass = getTargetClassExplicit();
-            if (lContainerClass.isConcrete())
-            {
-                aOut.put(lContainerClass.getGID(),lContainerClass);
-            }
-            else
-            {
-                lContainerClass.getSubclasses(aOut, false, true);
-            }
-
-        }
-    }
-
-    public int countNamingProps()
-    {
-        int lCount = 0;
-        Children lChildren = getNode().getChildren();
-        if (null != lChildren)
-        {
-            CatEntry lCatEntry = lChildren.getEntry(MNameComponent.MY_CAT);
-            if (null != lCatEntry)
-            {
-                Collection<Node> lNodes = lCatEntry.getList();
-                if (null != lNodes)
-                {
-                    for (Node lNode : lNodes)
-                    {
-                        MNameComponent lComp = (MNameComponent) lNode.getItem();
-                        if (lComp.hasPropName())
-                        {
-                              lCount++;
-                        }
-                    }
-                }
-            }
-        }
-        return lCount;
-    }
-
-    public int getCurrCompCount()
-    {
-        return componentCount;
-    }
-
     public String getNextComponentName()
     {
         return "" + (++componentCount);
@@ -130,7 +51,7 @@ public class MNameRule extends Item
 
     public void getComponents(Collection<MNameComponent> aOut)
     {
-        LinkedList<Item> lChildren = new LinkedList<Item>();
+        LinkedList<Item> lChildren = new LinkedList<>();
         getChildItems(MNameComponent.MY_CAT,lChildren);
         for (Item lIt : lChildren)
         {
@@ -140,11 +61,10 @@ public class MNameRule extends Item
 
     public Collection<MNameComponent> getComponents()
     {
-        LinkedList<MNameComponent> lComps = new LinkedList<MNameComponent>();
+        LinkedList<MNameComponent> lComps = new LinkedList<>();
         getComponents(lComps);
         return lComps;
     }
 
-    private final boolean isAnyTarget;
     private int componentCount = 0;
 }

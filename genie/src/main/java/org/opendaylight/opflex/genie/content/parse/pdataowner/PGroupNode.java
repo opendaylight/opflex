@@ -26,8 +26,7 @@ public class PGroupNode extends ParseNode
     protected void addParent(ProcessorNode aInParent)
     {
         super.addParent(aInParent);
-        scope = DefinitionScope.get(aInParent.getName());
+        DefinitionScope scope = DefinitionScope.get(aInParent.getName());
     }
 
-    private DefinitionScope scope = null;
 }

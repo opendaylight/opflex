@@ -31,8 +31,8 @@ public class PValidateNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        MValidator lVal = new MValidator(aInParentItem,aInData.getNamedValue(Strings.NAME,Strings.DEFAULT,true), scope,action);
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lVal);
+        MValidator lVal = new MValidator(aInParentItem,aInData.getNamedValue(Strings.NAME,Strings.DEFAULT,true), action);
+        return new Pair<>(ParseDirective.CONTINUE, lVal);
     }
 
     private final ValidatorAction action;

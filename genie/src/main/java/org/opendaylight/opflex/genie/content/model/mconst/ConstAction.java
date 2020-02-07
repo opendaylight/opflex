@@ -65,22 +65,6 @@ public enum ConstAction
     }
 
     /**
-     * Specifies if corresponding constant has implied indirection (as in reverts to previous value)
-     */
-    public boolean hasImplicitIndirection()
-    {
-        return AUTO_REVERTIVE == this;
-    }
-
-    /**
-     * indicates if corresponding constant has a transient value that automatically transitions to another value.
-     */
-    public boolean isTransient()
-    {
-        return AUTO_REVERTIVE == this || AUTO_TRANSITION == this;
-    }
-
-    /**
      * identifies if corresponding constant has value.
      */
     public boolean hasValue()
@@ -116,32 +100,12 @@ public enum ConstAction
         }
     }
 
-    public boolean hasDirectOrIndirectValue()
-    {
-        return this != REMOVE;
-    }
-    /**
-     * identifies if corresponding constant acts like an alias.
-     */
-    public boolean isMapped()
-    {
-        return EXCLUSIVE == this || DEFAULT == this || MAPPED == this;
-    }
-
-    /**
-     * identifies if corresponding constant acts as a default indicator (points to a constant that provides default value)
-     */
-    public boolean isDefault()
-    {
-        return DEFAULT == this;
-    }
-
     /**
      * constructor of const action
      * @param aIn name of the constant
      * @param aInModelName model-level name
      */
-    private ConstAction(String aIn, String aInModelName)
+    ConstAction(String aIn, String aInModelName)
     {
         name = aIn;
         modelName = aInModelName;

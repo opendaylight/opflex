@@ -18,7 +18,7 @@ public class PRangeNode
     public PRangeNode(String aInName)
     {
         super(aInName);
-        action = ValidatorAction.get(aInName);
+        ValidatorAction action = ValidatorAction.get(aInName);
     }
 
     protected void addParent(ProcessorNode aInParent)
@@ -30,27 +30,9 @@ public class PRangeNode
     {
         MRange lRange = new MRange(
                 (MValidator)aInParentItem,
-                aInData.getNamedValue(Strings.NAME,Strings.DEFAULT,true), action);
+                aInData.getNamedValue(Strings.NAME,Strings.DEFAULT,true));
 
-        addConstraints(aInData,lRange);
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lRange);
+        return new Pair<>(ParseDirective.CONTINUE,lRange);
     }
 
-    private void addConstraints(Node aInData, MRange aInRange)
-    {
-        for (ConstraintValueType lConstrType : ConstraintValueType.values())
-        {
-            addConstraint(aInData,aInRange,lConstrType);
-        }
-    }
-
-    private void addConstraint(Node aInData, MRange aInRange, ConstraintValueType aInType)
-    {
-        String lConstr = aInData.getNamedValue(aInType.getName(),null, false);
-        if (!Strings.isEmpty(lConstr))
-        {
-            new MConstraintValue(aInRange, lConstr, aInType);
-        }
-    }
-    private final ValidatorAction action;
 }

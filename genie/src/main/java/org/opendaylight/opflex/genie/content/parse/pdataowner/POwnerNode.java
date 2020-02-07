@@ -22,9 +22,9 @@ public class POwnerNode extends ParseNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        return new Pair<ParseDirective, Item>(
-                ParseDirective.CONTINUE,
-                MOwner.get(aInData.getNamedValue(Strings.NAME,"",true), true));
+        return new Pair<>(
+            ParseDirective.CONTINUE,
+            MOwner.get(aInData.getNamedValue(Strings.NAME, "", true), true));
     }
 
     protected void addParent(ProcessorNode aInParent)

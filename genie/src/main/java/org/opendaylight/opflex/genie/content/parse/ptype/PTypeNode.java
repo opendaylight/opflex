@@ -32,11 +32,10 @@ public class PTypeNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        //System.out.println("----------->" + this + ".beginCb(" + aInData + ", " + aInParentItem + ")");
         MType lType = new MType((Module) aInParentItem, aInData.getNamedValue(Strings.NAME,null,true), isPrimitive);
         lType.addSupertype(aInData.getNamedValue(Strings.SUPER, null, !isPrimitive));
         lType.addLiketype(aInData.getNamedValue("like", null, false));
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lType);
+        return new Pair<>(ParseDirective.CONTINUE, lType);
     }
 
     public boolean isPrimitive()

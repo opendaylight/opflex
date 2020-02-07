@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.content.parse.ptype;
 
-import org.opendaylight.opflex.genie.content.model.mtype.DefinedIn;
 import org.opendaylight.opflex.genie.content.model.mtype.MConstants;
 import org.opendaylight.opflex.genie.content.model.mtype.MLanguageBinding;
 import org.opendaylight.opflex.genie.engine.model.Item;
@@ -25,12 +24,10 @@ public class PConstantsNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        return new Pair<ParseDirective, Item>(
+        return new Pair<>(
             ParseDirective.CONTINUE,
-            new MConstants((MLanguageBinding) aInParentItem,
-                           DefinedIn.get(aInData.getNamedValue("defined-in", null, false)),
-                           aInData.getNamedValue("prefix", null, false),
-                           aInData.getNamedValue("suffix", null, false)));
+            new MConstants((MLanguageBinding) aInParentItem
+            ));
     }
 
 }

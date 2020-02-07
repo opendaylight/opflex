@@ -34,7 +34,7 @@ public class MFormatterDomain
         FormatterDomainMeta lDomainMeta = new FormatterDomainMeta(getLID().getName());
         FormatterRegistry.get().addDomain(lDomainMeta);
 
-        Collection<Item> lFeatures = new LinkedList<Item>();
+        Collection<Item> lFeatures = new LinkedList<>();
         getChildItems(MFormatterFeature.MY_CAT,lFeatures);
 
         for (Item lFeatureItem : lFeatures)
@@ -43,7 +43,7 @@ public class MFormatterDomain
             FormatterFeatureMeta lFeatureMeta = new FormatterFeatureMeta(lFeatureItem.getLID().getName());
             lDomainMeta.addFeature(lFeatureMeta);
 
-            Collection<Item> lTasks = new LinkedList<Item>();
+            Collection<Item> lTasks = new LinkedList<>();
             lFeature.getChildItems(MFormatterTask.MY_CAT,lTasks);
             for (Item lTaskItem : lTasks)
             {

@@ -24,8 +24,4 @@ public class MFormatterFeature
         super(MY_CAT, aInDomain, aInLName);
     }
 
-    public MFormatterDomain getDomain()
-    {
-        return (MFormatterDomain) getParent();
-    }
 }

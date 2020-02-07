@@ -197,14 +197,14 @@ public class MNode extends Item
             try
             {
                 ParseNode lParseNode = (ParseNode) lParserClass.getConstructor(String.class).newInstance(getLID().getName());
-                LinkedList<String> lAliases = new LinkedList<String>();
+                LinkedList<String> lAliases = new LinkedList<>();
                 getAliases(lAliases);
                 if (!lAliases.isEmpty())
                 {
                     lParseNode.setAliases(lAliases);
                 }
                 lParentParseNode.addChild(lParseNode);
-                TreeMap<String,MNodeProp> lNodeProps = new TreeMap<String,MNodeProp>();
+                TreeMap<String,MNodeProp> lNodeProps = new TreeMap<>();
                 getProps(lNodeProps);
                 for (MNodeProp lNodeProp : lNodeProps.values())
                 {
@@ -244,7 +244,7 @@ public class MNode extends Item
 
     public void getProps(Map<String,MNodeProp> aOut)
     {
-        LinkedList<Item> lNodePropItems = new LinkedList<Item>();
+        LinkedList<Item> lNodePropItems = new LinkedList<>();
         getChildItems(MNodeProp.MY_CAT,lNodePropItems);
 
         for (Item lIt : lNodePropItems)
@@ -266,7 +266,7 @@ public class MNode extends Item
 
     public void getAliases(Collection<String> aOut)
     {
-        LinkedList<Item> lAliasList = new LinkedList<Item>();
+        LinkedList<Item> lAliasList = new LinkedList<>();
         getChildItems(MNodeAlias.MY_CAT,lAliasList);
         for (Item lIt : lAliasList)
         {

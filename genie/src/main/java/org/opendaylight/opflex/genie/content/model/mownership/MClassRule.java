@@ -91,7 +91,7 @@ public class MClassRule extends MOwnershipRule
                     Module lModule = Module.get(lModuleRule.getLID().getName());
                     if (null != lModule)
                     {
-                        LinkedList<Item> lIts = new LinkedList<Item>();
+                        LinkedList<Item> lIts = new LinkedList<>();
                         lModule.getChildItems(MClass.MY_CAT, lIts);
                         for (Item lIt : lIts)
                         {

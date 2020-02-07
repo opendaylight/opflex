@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.content.model.mconst;
 
-import org.opendaylight.opflex.genie.content.model.mtype.MType;
 import org.opendaylight.opflex.genie.engine.model.Cat;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.modlan.report.Severity;
@@ -53,32 +52,5 @@ public class MValue extends Item
         return value;
     }
 
-    /**
-     * Containing constant accessor. Retrieves containing constant to which this value corresponds.
-     * @return
-     */
-    public MConst getConst()
-    {
-        return (MConst) getParent();
-    }
-
-    /**
-     * accessor of data type for the constant for which this value is defined.
-     * @return datatype definition for the constants in scope
-     */
-    public MType getType()
-    {
-        return getConst().getType(false);
-    }
-
-    /**
-     * accessor of base data type for the constant for which this value is defined.
-     * @return base datatype definition for the constants in scope
-     */
-    public MType getBaseType()
-    {
-        return getType().getBase();
-    }
-
-    private String value;
+    private final String value;
 }

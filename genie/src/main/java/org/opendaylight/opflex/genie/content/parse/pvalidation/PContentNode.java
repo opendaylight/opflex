@@ -30,7 +30,7 @@ public class PContentNode
     {
         MContentValidator lVal = new MContentValidator(
                 (MValidator)aInParentItem,
-                aInData.getNamedValue(Strings.NAME,Strings.DEFAULT,true), action);
+                aInData.getNamedValue(Strings.NAME,Strings.DEFAULT,true));
 
         addConstraint(aInData, lVal);
 
@@ -46,8 +46,7 @@ public class PContentNode
             new MContentValidatorParam(
                     aInVal,
                     aInData.getNamedValue(Strings.NAME,null,true),
-                    lConstr,
-                    aInData.getNamedValue(Strings.TYPE,null,false));
+                aInData.getNamedValue(Strings.TYPE,null,false));
         }
     }
 

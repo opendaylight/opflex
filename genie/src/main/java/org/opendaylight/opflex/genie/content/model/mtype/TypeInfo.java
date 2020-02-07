@@ -54,7 +54,7 @@ public enum TypeInfo
         }
     }
 
-    private TypeInfo(String aInTag)
+    TypeInfo(String aInTag)
     {
         tag = aInTag;
     }

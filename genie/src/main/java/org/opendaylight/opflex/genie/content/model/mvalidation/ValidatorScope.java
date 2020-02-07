@@ -18,7 +18,7 @@ public enum ValidatorScope
     TYPE(new String[]{"primitive", "type", "base"})
     ;
 
-    private ValidatorScope(String[] aInModelNames)
+    ValidatorScope(String[] aInModelNames)
     {
         modelNames = aInModelNames;
     }

@@ -11,7 +11,7 @@ public enum Language
     CPP("cpp"),
     JAVA("java")
     ;
-    private Language(String aIn)
+    Language(String aIn)
     {
         name = aIn;
     }

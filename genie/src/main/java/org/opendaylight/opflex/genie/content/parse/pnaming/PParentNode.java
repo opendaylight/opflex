@@ -20,13 +20,13 @@ public class PParentNode extends ParseNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        return new Pair<ParseDirective, Item>(
-                            ParseDirective.CONTINUE,
-                            ((MNamer)aInParentItem).getNameRule(
-                                aInData.getNamedValue(
-                                     Strings.CLASS,
-                                     aInData.getNamedValue(Strings.NAME, null, false),
-                                     true),
-                                true));
+        return new Pair<>(
+            ParseDirective.CONTINUE,
+            ((MNamer) aInParentItem).getNameRule(
+                aInData.getNamedValue(
+                    Strings.CLASS,
+                    aInData.getNamedValue(Strings.NAME, null, false),
+                    true),
+                true));
     }
 }

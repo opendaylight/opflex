@@ -9,7 +9,7 @@ import org.opendaylight.opflex.modlan.report.Severity;
  */
 public class MConstraint extends Item
 {
-    protected MConstraint(Cat aInCat, MValidator aInValidator, String aInName, ValidatorAction aInAction)
+    protected MConstraint(Cat aInCat, MValidator aInValidator, String aInName)
     {
         super(aInCat, aInValidator, aInName);
         if (ValidatorAction.REMOVE == aInValidator.getAction())
@@ -20,37 +20,5 @@ public class MConstraint extends Item
                     "constraint can't be defined",
                     "constraint can only be defined under non-removed validators: " + aInValidator.getAction());
         }
-        action = (null == aInAction) ?
-                    (ValidatorAction.ADD == aInValidator.getAction() ?
-                                            ValidatorAction.CLOBBER : aInValidator.getAction()) :
-                    (ValidatorAction.ADD == aInAction ?
-                            ValidatorAction.CLOBBER : aInAction);
-
     }
-
-    public ValidatorAction getAction()
-    {
-        return action;
-    }
-
-    public MValidator getValidator()
-    {
-        return (MValidator) getAncestorOfCat(MValidator.MY_CAT);
-    }
-
-    public MConstraint getSuperConstraint()
-    {
-        MConstraint lConstraint = null;
-        if (ValidatorAction.REMOVE != getAction())
-        {
-            for (MValidator lValidator = getValidator().getSuperValidator();
-                 null != lValidator && null == lConstraint; lValidator = lValidator.getSuperValidator())
-            {
-                lConstraint = (MConstraint) lValidator.getChildItem(getCat(), getLID().getName());
-            }
-        }
-        return lConstraint;
-    }
-
-    private final ValidatorAction action;
 }

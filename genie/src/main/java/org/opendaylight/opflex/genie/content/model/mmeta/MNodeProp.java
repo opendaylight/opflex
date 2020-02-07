@@ -26,5 +26,5 @@ public class MNodeProp
         return type;
     }
 
-    private ParseNodePropType type;
+    private final ParseNodePropType type;
 }

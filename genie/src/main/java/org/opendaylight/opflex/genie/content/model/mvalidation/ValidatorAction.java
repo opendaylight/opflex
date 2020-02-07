@@ -12,7 +12,7 @@ public enum ValidatorAction
     REMOVE(new String[]{"remove", "remove-validate", "remove-range", "remove-content"}),
     ;
 
-    private ValidatorAction(String[] aIn)
+    ValidatorAction(String[] aIn)
     {
         names = aIn;
     }

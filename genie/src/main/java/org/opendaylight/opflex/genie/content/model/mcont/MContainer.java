@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.content.model.mcont;
 
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -38,14 +37,12 @@ public class MContainer
      * rule registration API. Adds or finds containment rule. This API is scoped to the package and is for internal use.
      * @param aInParentGName name of the parent class
      * @param aInChildGName name of the child class
-     * @return container corresponding to the parent name passed in.
      */
-    static final MContainer addRule(String aInParentGName, String aInChildGName)
+    static void addRule(String aInParentGName, String aInChildGName)
     {
         MContainer lContr = MContainer.get(aInParentGName, true);
         lContr.getMChild(aInChildGName, true);
 
-        return lContr;
     }
 
     /**
@@ -84,29 +81,6 @@ public class MContainer
     }
 
     /**
-     * checks if there are per child rules per this container
-     * @return true if this container has children containment rules.
-     */
-    public boolean hasChild()
-    {
-        return hasChildren(MChild.MY_CAT);
-    }
-
-    /**
-     * retrieves child containment rules specified within this container.
-     * @param aOut set of child containement rules
-     */
-    public void getChildren(Collection<MChild> aOut)
-    {
-        LinkedList<Item> lItems = new LinkedList<Item>();
-        getChildItems(MChild.MY_CAT, lItems);
-        for (Item lIt : lItems)
-        {
-            aOut.add((MChild)lIt);
-        }
-    }
-
-    /**
      * retrieves specific child containment rule corresponding to the class with a name passed in
      * @param aInClassGName global name of the associated contained class
      * @return child containment rule
@@ -119,9 +93,8 @@ public class MContainer
     /**
      * retrieves oro optionally creates a specific child containment rule corresponding to the class with a name passed in
      * @param aInClassGName global name of the associated contained class
-     * @return child containment rule found or created
      */
-    public synchronized MChild getMChild(String aInClassGName, boolean aInCreateIfNotFound)
+    public synchronized void getMChild(String aInClassGName, boolean aInCreateIfNotFound)
     {
         MChild lMChild = getMChild(aInClassGName);
         if (null == lMChild && aInCreateIfNotFound)
@@ -129,10 +102,9 @@ public class MContainer
             lMChild = getMChild(aInClassGName);
             if (null == lMChild)
             {
-                lMChild = new MChild(this, aInClassGName);
+                new MChild(this, aInClassGName);
             }
         }
-        return lMChild;
     }
 
     /**
@@ -142,24 +114,19 @@ public class MContainer
      */
     public void getChildClasses(Map<Ident,MClass> aOut, boolean aInResolveToConcrete)
     {
-        LinkedList<Item> lItems = new LinkedList<Item>();
+        LinkedList<Item> lItems = new LinkedList<>();
         getChildItems(MChild.MY_CAT, lItems);
-//        System.out.println(this + ".getChildClasses("+ aInResolveToConcrete + ") has child items: " + (!lItems.isEmpty()));
         for (Item lIt : lItems)
         {
             MChild lChild = (MChild) lIt;
             MClass lThat = lChild.getTarget();
 
-//            System.out.println(this + ".getChildClasses("+ aInResolveToConcrete + ") CHILD: " + lChild + " :: " + lThat);
-
             if (aInResolveToConcrete && !lThat.isConcrete())
             {
-//                System.out.println(this + ".getChildClasses(): resolving subclasses; concrete: " + lThat.isConcrete());
                 lThat.getSubclasses(aOut,false,aInResolveToConcrete);
             }
             else
             {
-//                System.out.println(this + ".getChildClasses(): no need to resolve subclasses; concrete: " + lThat.isConcrete());
                 aOut.put(lThat.getGID(), lThat);
             }
         }

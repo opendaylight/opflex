@@ -40,7 +40,7 @@ public class PConfigNode
 
         Config.setHeaderFormat(aInData.getNamedValue("headerpath", null, false));
 
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,null);
+        return new Pair<>(ParseDirective.CONTINUE, null);
     }
 
     /**

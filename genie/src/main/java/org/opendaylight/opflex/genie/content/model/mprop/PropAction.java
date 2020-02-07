@@ -11,19 +11,9 @@ public enum PropAction
     OVERRIDE(new String[] {"override", "clobber", "override-member", "clobber-member"}),
     HIDE(new String[] {"hide", "remove", "remove-member", "hide-member"}),
     ;
-    private PropAction(String[] aIn)
+    PropAction(String[] aIn)
     {
         names = aIn;
-    }
-
-    public boolean isOverride()
-    {
-        return DEFINE != this;
-    }
-
-    public boolean isHide()
-    {
-        return HIDE == this;
     }
 
     public boolean isDefine()

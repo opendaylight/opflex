@@ -38,7 +38,7 @@ public class PProp
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
         MNodeProp lNP = new MNodeProp((MNode)aInParentItem,aInData.getNamedValue(Strings.NAME, null, true), getType());
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE, lNP);
+        return new Pair<>(ParseDirective.CONTINUE, lNP);
     }
 
     public ParseNodePropType getType()

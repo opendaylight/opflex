@@ -24,6 +24,6 @@ public class PFeatureNode extends ParseNode
         MFormatterFeature lF = new MFormatterFeature(
                 (MFormatterDomain) aInParentItem,
                 aInData.getNamedValue(Strings.NAME,null, true));
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE, lF);
+        return new Pair<>(ParseDirective.CONTINUE, lF);
     }
 }

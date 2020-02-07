@@ -21,21 +21,17 @@ public class MLanguageBinding
      * @param aInType parent type for which this binding is defined
      * @param aInLang target language for which the binding is defined
      * @param aInSyntax  target language syntax
-     * @param aInObjectSyntax target language object syntax
      * @param aInPassBy  identifies whether value is passed by: value, reference, pointer
      * @param aInPassConst identifies whether this type should always be passed as constant
-     * @param aInInclude required include file for this type
      * @param aInLikePrimitiveGName language binding borrowing parameters from other language binding
      */
     public MLanguageBinding(
-            MType aInType,
-            Language aInLang,
-            String aInSyntax,
-            String aInObjectSyntax,
-            PassBy aInPassBy,
-            boolean aInPassConst,
-            String aInInclude,
-            String aInLikePrimitiveGName)
+        MType aInType,
+        Language aInLang,
+        String aInSyntax,
+        PassBy aInPassBy,
+        boolean aInPassConst,
+        String aInLikePrimitiveGName)
     {
         super(MY_CAT, aInType, aInLang.getName());
         if (aInType.isDerived())
@@ -49,10 +45,8 @@ public class MLanguageBinding
         lang = aInLang;
         syntax = aInSyntax;
 
-        objectSyntax = null == aInObjectSyntax ? syntax : aInObjectSyntax;
         passBy = null == aInPassBy ? PassBy.REFERENCE : aInPassBy;
         passConst = aInPassConst || (passBy == PassBy.REFERENCE);
-        include = aInInclude;
         if (!Strings.isEmpty(aInLikePrimitiveGName))
         {
             LIKE.add(MY_CAT, getGID().getName(), MY_CAT, aInLikePrimitiveGName);
@@ -66,16 +60,6 @@ public class MLanguageBinding
     public Relator getLikeRelator()
     {
         return LIKE.getRelator(getGID().getName());
-    }
-
-    /**
-     * checks if the binding has a like relationship with another binding
-     * @return returns true if this binding has like, false otherwise
-     */
-    public boolean hasLike()
-    {
-        Relator lRel = LIKE.getRelator(getGID().getName());
-        return null != lRel && lRel.hasTo();
     }
 
     /**
@@ -98,15 +82,6 @@ public class MLanguageBinding
     }
 
     /**
-     * Language accessor. Retrieves language with which this type binding is associated with
-     * @return language with which this type binding is associated with
-     */
-    public Language getLanguage()
-    {
-        return lang;
-    }
-
-    /**
      * Syntax accessor. Retrieves target language syntax (like "uint32_t" in C++)
      * @return target language syntax
      */
@@ -125,29 +100,6 @@ public class MLanguageBinding
             Severity.DEATH.report(this.toString(),"syntax retrieval","","no syntax defined");
         }
         return syntax;
-    }
-
-    /**
-     * object syntax accessor: retrieves target language syntax for object containing this type...
-     * for example, in java, a primitive int has object equivalent of java.lang.Integer
-     * @return target language syntax for object containing this type
-     */
-    public String getObjectSyntax()
-    {
-        if (Strings.isEmpty(objectSyntax))
-        {
-            MLanguageBinding lLB = getLike();
-            if (null != lLB)
-            {
-                objectSyntax = lLB.getObjectSyntax();
-            }
-        }
-        if (Strings.isEmpty(objectSyntax))
-        {
-            Severity.WARN.report(this.toString(),"object syntax retrieval","","no object syntax defined: assuming same as syntax");
-            objectSyntax = syntax;
-        }
-        return objectSyntax;
     }
 
     /**
@@ -237,12 +189,6 @@ public class MLanguageBinding
     private String syntax;
 
     /**
-     * target language syntax for object containing this type...
-     * for example, in java, a primitive int has object equivalent of java.lang.Integer
-     */
-    private String objectSyntax;
-
-    /**
      * identifies whether value is passed by: value, reference, pointer
      */
     private PassBy passBy;
@@ -251,9 +197,4 @@ public class MLanguageBinding
      * identifies whether this type should always be passed as constant (true by default)
      */
     private final boolean passConst;
-
-    /**
-     * required include file for this type
-     */
-    private final String include;
 }

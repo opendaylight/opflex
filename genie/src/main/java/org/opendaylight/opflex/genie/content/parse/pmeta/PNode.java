@@ -9,6 +9,7 @@ import org.opendaylight.opflex.genie.engine.model.Pair;
 import org.opendaylight.opflex.genie.engine.parse.model.ParseNode;
 import org.opendaylight.opflex.genie.engine.parse.modlan.Node;
 import org.opendaylight.opflex.genie.engine.parse.modlan.ParseDirective;
+import org.opendaylight.opflex.modlan.report.Severity;
 import org.opendaylight.opflex.modlan.utils.Strings;
 
 /**
@@ -114,9 +115,9 @@ public class PNode
             }
             lMNode.setInheritProps(aInData.getNamedOption("inherit-props",true));
         }
-        return new Pair<ParseDirective, Item>(
-                ParseDirective.CONTINUE,
-                lMNode);
+        return new Pair<>(
+            ParseDirective.CONTINUE,
+            lMNode);
     }
 
     private final NodeType type;

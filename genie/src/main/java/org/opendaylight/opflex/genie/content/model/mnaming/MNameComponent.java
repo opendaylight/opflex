@@ -24,42 +24,12 @@ public class MNameComponent extends Item
     /**
      * Constructor
      * @param aInRule naming rule under which this component is instantiated
-     * @param aInPrefixOrNull optional component prefix
      * @param aInLocalPropertyNameOrNull optional component naming property name
      */
-    public MNameComponent(MNameRule aInRule, String aInPrefixOrNull, String aInLocalPropertyNameOrNull)
+    public MNameComponent(MNameRule aInRule, String aInLocalPropertyNameOrNull)
     {
         super(MY_CAT, aInRule, aInRule.getNextComponentName());
-        componentId = aInRule.getCurrCompCount();
-        prefix = aInPrefixOrNull;
         propName = aInLocalPropertyNameOrNull;
-    }
-
-    /**
-     * component id accessor
-     * @return sequential order/id of this component in which it was defined in the model
-     */
-    public int getComponentId()
-    {
-        return componentId;
-    }
-
-    /**
-     * prefix accessor
-     * @return name component prefix or none
-     */
-    public String getPrefix()
-    {
-        return prefix;
-    }
-
-    /**
-     * checks if this component has prefix
-     * @return true if has prefix
-     */
-    public boolean hasPrefix()
-    {
-        return !Strings.isEmpty(prefix);
     }
 
     /**
@@ -131,7 +101,5 @@ public class MNameComponent extends Item
         }
     }
 
-    private int componentId;
-    private String prefix;
-    private String propName;
+    private final String propName;
 }

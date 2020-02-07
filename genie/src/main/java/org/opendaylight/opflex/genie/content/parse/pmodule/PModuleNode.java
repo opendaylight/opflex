@@ -23,9 +23,8 @@ public class PModuleNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        //System.out.println("----------->" + this + ".beginCb(" + aInData + ", " + aInParentItem + ")");
-        return new Pair<ParseDirective, Item>(
-                    ParseDirective.CONTINUE,
-                    Module.get(aInData.getNamedValue("name",null, true), true));
+        return new Pair<>(
+            ParseDirective.CONTINUE,
+            Module.get(aInData.getNamedValue("name", null, true), true));
     }
 }

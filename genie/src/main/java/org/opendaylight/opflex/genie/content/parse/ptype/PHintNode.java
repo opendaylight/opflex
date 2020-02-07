@@ -27,6 +27,6 @@ public class PHintNode
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
         MTypeHint lHint = new MTypeHint((MType)aInParentItem, TypeInfo.get(aInData.getNamedValue(Strings.NAME,null,true)));
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lHint);
+        return new Pair<>(ParseDirective.CONTINUE, lHint);
     }
 }

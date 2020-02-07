@@ -28,16 +28,6 @@ public class MFormatterTask
         super(MY_CAT, aInDomain, aInLName);
     }
 
-    public MFormatterFeature getFeature()
-    {
-        return (MFormatterFeature) getParent();
-    }
-
-    public MFormatterDomain getDomain()
-    {
-        return getFeature().getDomain();
-    }
-
     public FormatterTaskType getTarget() { return target; }
     public void setTarget(FormatterTaskType aIn) { target = aIn; }
     public void setTarget(String aIn) { setTarget(FormatterTaskType.get(aIn)); }

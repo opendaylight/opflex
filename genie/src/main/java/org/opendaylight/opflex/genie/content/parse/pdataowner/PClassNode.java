@@ -39,9 +39,9 @@ public class PClassNode extends ParseNode
                 lRule = new MClassRule((MModuleRule) aInParentItem, aInData.getNamedValue(Strings.NAME,Strings.ASTERISK, true));
                 break;
         }
-        return new Pair<ParseDirective, Item>(
-                        ParseDirective.CONTINUE,
-                        lRule);
+        return new Pair<>(
+            ParseDirective.CONTINUE,
+            lRule);
     }
 
     protected void addParent(ProcessorNode aInParent)

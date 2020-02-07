@@ -20,7 +20,7 @@ public enum ConstScope
     TYPE(new String[]{"primitive", "type", "base"})
     ;
 
-    private ConstScope(String[] aInModelNames)
+    ConstScope(String[] aInModelNames)
     {
         modelNames = aInModelNames;
     }

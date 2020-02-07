@@ -38,10 +38,7 @@ public class PContainedNode extends ParseNode
                                 MContained.addRule(MClass.ROOT_CLASS_GNAME, lContainedClass).getFirst() :
                                 MContained.get(lContainedClass, true);
 
-
-//        Severity.WARN.report(toString(),"","", (isRoot ? "ROOT " : "NON-ROOT ") + scope + " CONTAINED RULE ADDED: " + lContained);
-
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE, lContained);
+        return new Pair<>(ParseDirective.CONTINUE, lContained);
     }
 
     public boolean isRoot()

@@ -1,10 +1,5 @@
 package org.opendaylight.opflex.genie.content.model.mrelator;
 
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.Map;
-
-import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.engine.model.*;
 
 /**
@@ -29,11 +24,10 @@ public class MRelated
      * @param aInSourceGName name of the source class
      * @return related corresponding to the target name passed in.
      */
-    static final synchronized  MRelated addRule(String aInTargetGName, String aInSourceGName)
+    static synchronized  MRelated addRule(String aInTargetGName, String aInSourceGName)
     {
         MRelated lContr = MRelated.get(aInTargetGName, true);
         lContr.getMSource(aInSourceGName, true);
-
         return lContr;
     }
 
@@ -73,29 +67,6 @@ public class MRelated
     }
 
     /**
-     * checks if there are per source rules per this related
-     * @return true if this related has sourceren containment rules.
-     */
-    public boolean hasSource()
-    {
-        return hasChildren(MSource.MY_CAT);
-    }
-
-    /**
-     * retrieves source containment rules specified within this related.
-     * @param aOut set of source containement rules
-     */
-    public void getSourceren(Collection<MSource> aOut)
-    {
-        LinkedList<Item> lItems = new LinkedList<Item>();
-        getChildItems(MSource.MY_CAT, lItems);
-        for (Item lIt : lItems)
-        {
-            aOut.add((MSource)lIt);
-        }
-    }
-
-    /**
      * retrieves specific source containment rule corresponding to the class with a name passed in
      * @param aInClassGName global name of the associated relator class
      * @return source containment rule
@@ -108,9 +79,8 @@ public class MRelated
     /**
      * retrieves oro optionally creates a specific source containment rule corresponding to the class with a name passed in
      * @param aInClassGName global name of the associated relator class
-     * @return source containment rule found or created
      */
-    public synchronized MSource getMSource(String aInClassGName, boolean aInCreateIfNotFound)
+    public synchronized void getMSource(String aInClassGName, boolean aInCreateIfNotFound)
     {
         MSource lMSource = getMSource(aInClassGName);
         if (null == lMSource && aInCreateIfNotFound)
@@ -118,38 +88,7 @@ public class MRelated
             lMSource = getMSource(aInClassGName);
             if (null == lMSource)
             {
-                lMSource = new MSource(this, aInClassGName);
-            }
-        }
-        return lMSource;
-    }
-
-    /**
-     * retrieves all source classes associated with a target
-     * @param aOut map of classes of relator/source objects
-     * @param aInResolveToConcrete specifies whether classes need to be resolved to concrete.
-     */
-    public void getSourceClasses(Map<Ident,MClass> aOut, boolean aInResolveToConcrete)
-    {
-        LinkedList<Item> lItems = new LinkedList<Item>();
-        getChildItems(MSource.MY_CAT, lItems);
-//        System.out.println(this + ".getSourceClasses("+ aInResolveToConcrete + ") has source items: " + (!lItems.isEmpty()));
-        for (Item lIt : lItems)
-        {
-            MSource lSource = (MSource) lIt;
-            MClass lThat = lSource.getTarget();
-
-//            System.out.println(this + ".getSourceClasses("+ aInResolveToConcrete + ") SOURCE: " + lSource + " :: " + lThat);
-
-            if (aInResolveToConcrete && !lThat.isConcrete())
-            {
-//                System.out.println(this + ".getSourceClasses(): resolving subclasses; concrete: " + lThat.isConcrete());
-                lThat.getSubclasses(aOut,false,aInResolveToConcrete);
-            }
-            else
-            {
-//                System.out.println(this + ".getSourceClasses(): no need to resolve subclasses; concrete: " + lThat.isConcrete());
-                aOut.put(lThat.getGID(), lThat);
+                new MSource(this, aInClassGName);
             }
         }
     }

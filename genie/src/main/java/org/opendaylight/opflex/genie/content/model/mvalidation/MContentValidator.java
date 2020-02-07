@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.content.model.mvalidation;
 
-import org.opendaylight.opflex.genie.content.model.mtype.MType;
 import org.opendaylight.opflex.genie.engine.model.Cat;
 
 /**
@@ -10,18 +9,8 @@ public class MContentValidator extends MConstraint
 {
     public static final Cat MY_CAT = Cat.getCreate("mvalidator:mcontent");
 
-    public MContentValidator(MValidator aInParent, String aInName, ValidatorAction aInActionOrNull)
+    public MContentValidator(MValidator aInParent, String aInName)
     {
-        super(MY_CAT, aInParent, aInName, aInActionOrNull);
-    }
-
-    public MType getType(boolean aInIsBaseType)
-    {
-        return getValidator().getType(aInIsBaseType);
-    }
-
-    public MContentValidator getSuper()
-    {
-        return (MContentValidator) getSuperConstraint();
+        super(MY_CAT, aInParent, aInName);
     }
 }

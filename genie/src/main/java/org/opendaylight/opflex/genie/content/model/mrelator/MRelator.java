@@ -1,10 +1,5 @@
 package org.opendaylight.opflex.genie.content.model.mrelator;
 
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.Map;
-
-import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.engine.model.*;
 
 /**
@@ -30,7 +25,7 @@ public class MRelator
      * @param aInSourceGName global name of the source class
      * @return pair of relator and related objects
      */
-    public static final Pair<MRelator, MRelated> addRule(
+    public static Pair<MRelator, MRelated> addRule(
             RelatorType aInType,
             String aInName,
             String aInSourceGName,
@@ -51,7 +46,7 @@ public class MRelator
 
         MRelated lContr = MRelated.addRule(aInTargetGName, aInSourceGName);
 
-        return new Pair<MRelator, MRelated>(lSrc,lContr);
+        return new Pair<>(lSrc,lContr);
     }
 
     /**
@@ -91,28 +86,6 @@ public class MRelator
     }
 
     /**
-     * checks if there are per target rules
-     */
-    public boolean hasTargets()
-    {
-        return hasChildren(MTarget.MY_CAT);
-    }
-
-    /**
-     * retrieves set of rules, each specified per specific target
-     * @param aOut rules specified per specific target
-     */
-    public void getTargets(Collection<MTarget> aOut)
-    {
-        LinkedList<Item> lItems = new LinkedList<Item>();
-        getChildItems(MTarget.MY_CAT, lItems);
-        for (Item lIt : lItems)
-        {
-            aOut.add((MTarget)lIt);
-        }
-    }
-
-    /**
      * retrieves a rule specified per specific target identified by corresponding class's global name
      * @param aInClassGName global name of the target class
      */
@@ -136,26 +109,4 @@ public class MRelator
         return lMTarget;
     }
 
-    /**
-     * retrieves collection of classes that are potential targets
-     * @param aOut collection of classes of potential targets
-     */
-    public void getTargetClasses(Map<Ident,MClass> aOut, boolean aInResolveToConcrete)
-    {
-        LinkedList<Item> lItems = new LinkedList<Item>();
-        getChildItems(MTarget.MY_CAT, lItems);
-        for (Item lIt : lItems)
-        {
-            MTarget lTarget = (MTarget) lIt;
-            MClass lThat = lTarget.getTarget();
-            if (aInResolveToConcrete && !lThat.isConcrete())
-            {
-                lThat.getSubclasses(aOut,false,aInResolveToConcrete);
-            }
-            else
-            {
-                aOut.put(lThat.getGID(), lThat);
-            }
-        }
-    }
 }

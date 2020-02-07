@@ -182,7 +182,6 @@ public class Processor
         dsp.drain();
         LoaderRegistry.get().process(LoadStage.POST);
         dsp.drain();
-        Cat.loadModelComplete();
         Severity.INFO.report(this.toString(),"load","model loaded", "END");
     }
 

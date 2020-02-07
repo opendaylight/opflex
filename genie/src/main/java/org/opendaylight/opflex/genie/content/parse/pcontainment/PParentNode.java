@@ -30,10 +30,8 @@ public class PParentNode extends ParseNode
                                             aInData.getNamedValue(Strings.CLASS, null, true);
 
         Pair<MContained, MParent> lRule = MContained.addRule(lContainerClassName,lContainedClassName);
-
-//        Severity.WARN.report(this.toString(),"","","CONT RULE ADDED: " + lRule);
         MParent lContainer = lRule.getSecond();
 
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE, lContainer);
+        return new Pair<>(ParseDirective.CONTINUE, lContainer);
     }
 }

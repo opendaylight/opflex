@@ -23,10 +23,10 @@ public class PModuleNode extends ParseNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        return new Pair<ParseDirective, Item>(
-                ParseDirective.CONTINUE,
-                new MModuleRule((MOwner) aInParentItem,
-                                aInData.getNamedValue(Strings.NAME,Strings.ASTERISK, true)));
+        return new Pair<>(
+            ParseDirective.CONTINUE,
+            new MModuleRule((MOwner) aInParentItem,
+                aInData.getNamedValue(Strings.NAME, Strings.ASTERISK, true)));
     }
 
     protected void addParent(ProcessorNode aInParent)
