@@ -45,6 +45,7 @@ class SpanFixture : public BaseFixture {
 
 public:
     SpanFixture() : BaseFixture(), epSource(&agent.getEndpointManager()) {
+        agent.getSpanManager().setUpdateDelay(0);
         shared_ptr<policy::Universe> pUniverse =
             policy::Universe::resolve(framework).get();
         shared_ptr<span::Universe> sUniverse =
