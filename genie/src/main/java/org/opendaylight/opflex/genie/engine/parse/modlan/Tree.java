@@ -132,9 +132,9 @@ public class Tree
     //////////////////////////////////////////////////////////////
 
 
-    private final java.util.Stack<Node> stack = new java.util.Stack<Node>();
+    private final java.util.Stack<Node> stack = new java.util.Stack<>();
     private final Node root = new Node(null, "doc-root");
-    private final LinkedList<String> commentBuffer = new LinkedList<String>();
+    private final LinkedList<String> commentBuffer = new LinkedList<>();
     private final ProcessorRegistry preg;
     private Engine engine = null;
 }

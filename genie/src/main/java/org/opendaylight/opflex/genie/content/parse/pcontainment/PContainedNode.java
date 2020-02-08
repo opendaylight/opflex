@@ -52,5 +52,5 @@ public class PContainedNode extends ParseNode
     }
 
     private DefinitionScope scope;
-    private boolean isRoot;
+    private final boolean isRoot;
 }

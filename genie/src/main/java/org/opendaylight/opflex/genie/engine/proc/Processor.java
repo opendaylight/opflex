@@ -148,7 +148,7 @@ public class Processor
     {
         Severity.INFO.report(this.toString(), "load", "model loading", "BEGIN");
 
-        int i, j, m;
+        int i, m;
         // FIRST PRE-LOAD METADATA
         for (m = 0; m < metadataLoadPaths.length; m++)
         {
@@ -241,5 +241,5 @@ public class Processor
     private FormatterCtx[] formatterCtxs;
     private Dsptchr dsp;
     private static Processor INSTANCE = null;
-    private int parallelism;
+    private final int parallelism;
 }

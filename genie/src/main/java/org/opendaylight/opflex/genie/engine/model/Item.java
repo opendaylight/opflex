@@ -8,9 +8,7 @@ import java.util.LinkedList;
  *
  * Created by midvorki on 3/27/14.
  */
-public class Item
-        implements Validatable
-{
+public class Item {
     /**
      * Constructor. Constructs item and automatically attaches it to the graph.
      *
@@ -108,17 +106,10 @@ public class Item
         return getNode().getChildItem(aInCat,aInName);
     }
 
-    @Override
-    public void preValidateCb()
-    {
-    }
-
-    @Override
     public void validateCb()
     {
     }
 
-    @Override
     public void postValidateCb()
     {
     }
@@ -194,10 +185,6 @@ public class Item
                 }
             }
         }
-        if (null != comments && !comments.isEmpty())
-        {
-            aOut.addAll(comments);
-        }
     }
 
 
@@ -210,6 +197,4 @@ public class Item
      * parsing data nodes that resulted in genesis and formation of this item
      */
     private LinkedList<org.opendaylight.opflex.genie.engine.parse.modlan.Node> parsingDataNodes = null;
-
-    private final LinkedList<String> comments = null;
 }

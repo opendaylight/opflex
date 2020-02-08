@@ -7,28 +7,26 @@
  */
 package org.opendaylight.opflex.genie.content.format.proxy.build.mvn;
 
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.proc.Config;
 
 public class FMvnDef extends GenericFormatterTask
 {
     public FMvnDef(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile)
     {
         super(aInFormatterCtx,
               aInFileNameRule,
               aInIndenter,
               null,
               aInCommentFormatDirective,
-              aInIsUserFile,
-              aInStats);
+              aInIsUserFile
+        );
     }
 
     /**

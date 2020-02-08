@@ -12,7 +12,6 @@ import org.opendaylight.opflex.genie.content.model.mprop.MProp;
 import org.opendaylight.opflex.genie.content.model.mtype.MType;
 import org.opendaylight.opflex.genie.content.model.mtype.MTypeHint;
 import org.opendaylight.opflex.genie.content.model.mtype.TypeInfo;
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
 import org.opendaylight.opflex.genie.engine.model.Item;
@@ -25,21 +24,20 @@ public class FMetaDef
         extends GenericFormatterTask
 {
     public FMetaDef(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile)
     {
         super(aInFormatterCtx,
               aInFileNameRule,
               aInIndenter,
               aInHeaderFormatDirective,
               aInCommentFormatDirective,
-              aInIsUserFile,
-              aInStats);
+              aInIsUserFile
+        );
     }
 
     /**
@@ -269,7 +267,7 @@ public class FMetaDef
                     out.println(
                         aInIndent + 1,
                         (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"" + lProp.getLID().getName() + "\", PropertyInfo::" + getTypeName(lPrimitiveType) + ", PropertyInfo::SCALAR,");
-                    genConsts(aInIndent + 2, aInClass, lProp, lPropType);
+                    genConsts(aInIndent + 2, lProp, lPropType);
                     out.println(")) // " + lProp.toString());
                     lIsFirst = false;
                 }
@@ -294,7 +292,7 @@ public class FMetaDef
             out.println(aInIndent + 1, "}");
         }
     }
-    private void genConsts(int aInIndent, MClass aInClass, MProp aInProp, MType aInType)
+    private void genConsts(int aInIndent, MProp aInProp, MType aInType)
     {
         Map<String, MConst> lConsts = new TreeMap<>();
         aInProp.findConst(lConsts, true);

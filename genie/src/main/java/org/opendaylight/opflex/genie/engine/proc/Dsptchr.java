@@ -35,7 +35,7 @@ public class Dsptchr
         chnl.markForDeath();
     }
 
-    private int size;
-    private Chnl chnl = new Chnl();
-    private Doer doers[];
+    private final int size;
+    private final Chnl chnl = new Chnl();
+    private final Doer[] doers;
 }

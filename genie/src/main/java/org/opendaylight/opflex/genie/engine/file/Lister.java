@@ -62,6 +62,6 @@ public class Lister
         }
     }
 
-    private TreeMap<URI, File> files = new TreeMap<URI, File>();
+    private final TreeMap<URI, File> files = new TreeMap<>();
     private final String root;
 }

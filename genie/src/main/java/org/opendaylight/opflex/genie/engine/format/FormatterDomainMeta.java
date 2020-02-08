@@ -62,5 +62,5 @@ public class FormatterDomainMeta
 
     private final String name;
     private boolean isEnabled = true;
-    private TreeMap<String,FormatterFeatureMeta> tasks = new TreeMap<String,FormatterFeatureMeta>();
+    private final TreeMap<String,FormatterFeatureMeta> tasks = new TreeMap<>();
 }

@@ -92,40 +92,6 @@ public class Node
         return validateBoolean(aInName, lRet, false);
     }
 
-    public Map<String,String> getNvps()
-    {
-        return nvps;
-    }
-
-    /**
-     * checks if this node has any child nodes
-     * @return true if this node has children, false otherwise.
-     */
-    public boolean hasChildren()
-    {
-        return null != children && !children.isEmpty();
-    }
-
-    /**
-     * check if this node has children of specific type identified by passed in string
-     * @param aInTypeOfChild a string identifying type of the child
-     * @return  true if this node has children of given type, false otherwise
-     */
-    public boolean hasChildren(String aInTypeOfChild)
-    {
-        return hasChildren() && children.containsKey(aInTypeOfChild) && !children.get(aInTypeOfChild).isEmpty();
-    }
-
-    /**
-     * children list accessor: retrieves a list of children of specific type identified by passed i string
-     * @param aInTypeOfChild a string identifying type of the child
-     * @return a list of children corresponding to the type described by the string passed in or null if not found.
-     */
-    public java.util.LinkedList<Node> getChildren(String aInTypeOfChild)
-    {
-        return hasChildren() ? children.get(aInTypeOfChild) : null;
-    }
-
     /**
      * checks if the node has comments
      * @return true if there are comments for this node
@@ -270,7 +236,7 @@ public class Node
     {
         if (null == children)
         {
-            children = new java.util.TreeMap<String, java.util.LinkedList<Node>>();
+            children = new java.util.TreeMap<>();
         }
 
         String lKey = null == aIn.getNodeName() ? "default" : aIn.getNodeName();
@@ -278,7 +244,7 @@ public class Node
 
         if (null == lDataList)
         {
-            lDataList = new java.util.LinkedList<Node>();
+            lDataList = new java.util.LinkedList<>();
             children.put(lKey, lDataList);
         }
 
@@ -295,28 +261,13 @@ public class Node
     {
         if (null == comments)
         {
-            comments = new java.util.LinkedList<String>();
+            comments = new java.util.LinkedList<>();
         }
         //System.out.println(this + ".addComments(" + aIn + ")");
         for (String lThis : aIn)
         {
             comments.add(Strings.trimFirstN(lThis, 1));
         }
-    }
-
-    /**
-     * INTERNAL: DO NOT CALL EXPLICITLY!
-     * adds a single comment line to this node.
-     * @param aIn a comment line to be added.
-     */
-    public void addComment(String aIn)
-    {
-        if (null == comments)
-        {
-            comments = new java.util.LinkedList<String>();
-        }
-        //System.out.println(this + ".addComments(" + aIn + ")");
-        comments.add(aIn);
     }
 
     /**
@@ -404,12 +355,6 @@ public class Node
 
                         if (!Strings.isEmpty(lNVPair[0]))
                         {
-                            /**
-                            if (0 == i)
-                            {
-                                addNVP(aInType, lNVPair[0]); // NO VALUE
-                            }
-                             **/
                             addNVP(lNVPair[0], lNVPair[1]);
                         }
                         break;
@@ -435,7 +380,7 @@ public class Node
     {
         if (null == nvps)
         {
-            nvps = new TreeMap<String, String>();
+            nvps = new TreeMap<>();
         }
         nvps.put(aInKey,aInValue);
     }

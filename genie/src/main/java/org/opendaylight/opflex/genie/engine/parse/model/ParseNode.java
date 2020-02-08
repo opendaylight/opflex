@@ -6,7 +6,6 @@ import java.util.TreeMap;
 
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.model.Pair;
-import org.opendaylight.opflex.genie.engine.parse.model.ProcessorNode;
 import org.opendaylight.opflex.genie.engine.parse.modlan.Node;
 import org.opendaylight.opflex.genie.engine.parse.modlan.ParseDirective;
 import org.opendaylight.opflex.modlan.report.Severity;
@@ -50,7 +49,7 @@ public class ParseNode extends ProcessorNode
     {
         if (null == props)
         {
-            props = new TreeMap<String, ParseNodeProp>();
+            props = new TreeMap<>();
         }
 
         if (!props.containsKey(aInProp.getName()))
@@ -61,11 +60,6 @@ public class ParseNode extends ProcessorNode
         {
             Severity.DEATH.report(this.toString(), "add parsing prop", "", aInProp + " already registered;");
         }
-    }
-
-    public ParseNodeProp getProp(String aInName)
-    {
-        return hasProps() ? props.get(aInName) : null;
     }
 
     public boolean hasProp(String aInName)

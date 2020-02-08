@@ -186,7 +186,7 @@ public class Indenter
             String aInLast,
             String aInCommon)
     {
-        StringBuffer lSb = new StringBuffer();
+        StringBuilder lSb = new StringBuilder();
         if (0 != aInDepth)
         {
             aInDepth--;

@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.engine.format;
 
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.model.Item;
 
 /**
@@ -15,22 +14,21 @@ public abstract class ItemFormatterTask extends FormatterTask
     }
 
     protected ItemFormatterTask(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats,
-            Item aInItem)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile,
+        Item aInItem)
     {
         super(aInFormatterCtx,
               aInFileNameRule,
               aInIndenter,
               aInHeaderFormatDirective,
               aInCommentFormatDirective,
-              aInIsUserFile,
-              aInStats);
+              aInIsUserFile
+        );
 
         item = aInItem;
     }

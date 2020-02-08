@@ -68,6 +68,6 @@ public class PClassNode
         {
             lClass.addSuperclass(lSuper);
         }
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lClass);
+        return new Pair<>(ParseDirective.CONTINUE, lClass);
     }
 }

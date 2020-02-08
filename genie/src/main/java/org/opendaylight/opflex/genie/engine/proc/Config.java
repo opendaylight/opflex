@@ -12,7 +12,7 @@ import org.opendaylight.opflex.modlan.utils.Strings;
  */
 public class Config
 {
-    public static String CONFIG_FILE_NAME = "genie.cfg";
+    public static final String CONFIG_FILE_NAME = "genie.cfg";
 
     public static String getProjName() { return projName; }
     public static String getLibName() { return libName; }
@@ -40,31 +40,7 @@ public class Config
 
     public static Collection<SearchPath> getLoaderPath() { return loaderPath; }
 
-    public static String[][] getLoaderPathArray()
-    {
-        String lRet[][] = new String[getLoaderPath().size()][2];
-        int lIdx = 0;
-        for (SearchPath lSp : getLoaderPath())
-        {
-            lRet[lIdx][0] = lSp.getPath();
-            lRet[lIdx++][1] = lSp.getSuffix();
-        }
-        return lRet;
-    }
-
     public static Collection<SearchPath> getFormatterPath() { return formatterPath; }
-
-    public static String[][] getFormatterPathArray()
-    {
-        String lRet[][] = new String[getFormatterPath().size()][2];
-        int lIdx = 0;
-        for (SearchPath lSp : getFormatterPath())
-        {
-            lRet[lIdx][0] = lSp.getPath();
-            lRet[lIdx++][1] = lSp.getSuffix();
-        }
-        return lRet;
-    }
 
     public static String[][] getPreLoadPaths()
     {
@@ -211,10 +187,10 @@ public class Config
     public static String libVersion = null;
     public static String libtoolVersion= null;
     public static String homePath = null;
-    public static String workingPath = initWorkingPath();
-    public static Collection<SearchPath> syntaxPath = new LinkedList<SearchPath>();
-    public static Collection<SearchPath> loaderPath = new LinkedList<SearchPath>();
-    public static Collection<SearchPath> formatterPath = new LinkedList<SearchPath>();
+    public static final String workingPath = initWorkingPath();
+    public static final Collection<SearchPath> syntaxPath = new LinkedList<>();
+    public static final Collection<SearchPath> loaderPath = new LinkedList<>();
+    public static final Collection<SearchPath> formatterPath = new LinkedList<>();
 
     public static String genDestPath = null;
     public static String configPath = null;

@@ -49,6 +49,6 @@ public class LoaderRegistry
     {
         return "loader:registry";
     }
-    private TreeMap<String,LoaderDomainMeta> domains = new TreeMap<String,LoaderDomainMeta>();
+    private final TreeMap<String,LoaderDomainMeta> domains = new TreeMap<>();
     private static final LoaderRegistry inst = new LoaderRegistry();
 }

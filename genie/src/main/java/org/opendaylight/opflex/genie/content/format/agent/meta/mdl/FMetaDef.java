@@ -6,7 +6,6 @@ import java.util.TreeMap;
 
 import org.opendaylight.opflex.genie.content.model.mmeta.MNode;
 import org.opendaylight.opflex.genie.content.model.mmeta.MNodeProp;
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Item;
 
@@ -17,16 +16,16 @@ public class FMetaDef
         extends GenericFormatterTask
 {
     public FMetaDef(
-            FormatterCtx aInFormatterCtx, FileNameRule aInFileNameRule, Indenter aInIndenter, BlockFormatDirective aInHeaderFormatDirective, BlockFormatDirective aInCommentFormatDirective, boolean aInIsUserFile, WriteStats aInStats
-                   )
+        FormatterCtx aInFormatterCtx, FileNameRule aInFileNameRule, Indenter aInIndenter, BlockFormatDirective aInHeaderFormatDirective, BlockFormatDirective aInCommentFormatDirective, boolean aInIsUserFile
+    )
     {
         super(aInFormatterCtx,
               aInFileNameRule,
               aInIndenter,
               aInHeaderFormatDirective,
               aInCommentFormatDirective,
-              aInIsUserFile,
-              aInStats);
+              aInIsUserFile
+        );
     }
 
     public void generate()
@@ -47,9 +46,9 @@ public class FMetaDef
     {
         if (aInNode.getParent() == aInParent)
         {
-            TreeMap<String, MNodeProp> lNodeProps = new TreeMap<String, MNodeProp>();
+            TreeMap<String, MNodeProp> lNodeProps = new TreeMap<>();
             aInNode.getProps(lNodeProps);
-            LinkedList<String> lComms = new LinkedList<String>();
+            LinkedList<String> lComms = new LinkedList<>();
             lComms.add("NODE: " + aInNode.getGID().getName());
             aInNode.getComments(lComms);
             getPropComments(lNodeProps.values(), lComms);
@@ -63,7 +62,7 @@ public class FMetaDef
                 out.println(aInIndent, ']');
             }
 
-            LinkedList<Item> lChildNodes = new LinkedList<Item>();
+            LinkedList<Item> lChildNodes = new LinkedList<>();
             aInNode.getChildItems(MNode.MY_CAT, lChildNodes);
 
             if (!lChildNodes.isEmpty())
@@ -100,7 +99,7 @@ public class FMetaDef
         }
     }
 
-    public static String[] DUMMY = new String[0];
+    public static final String[] DUMMY = new String[0];
     private void genComments(int aInIndent, MNode aInNode, Collection<String> aInComments)
     {
         out.printIncodeComment(aInIndent,aInComments.toArray(DUMMY));

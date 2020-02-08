@@ -9,7 +9,6 @@ import org.opendaylight.opflex.genie.engine.model.Pair;
 import org.opendaylight.opflex.genie.engine.parse.model.ParseNode;
 import org.opendaylight.opflex.genie.engine.parse.modlan.Node;
 import org.opendaylight.opflex.genie.engine.parse.modlan.ParseDirective;
-import org.opendaylight.opflex.modlan.report.Severity;
 import org.opendaylight.opflex.modlan.utils.Strings;
 
 /**

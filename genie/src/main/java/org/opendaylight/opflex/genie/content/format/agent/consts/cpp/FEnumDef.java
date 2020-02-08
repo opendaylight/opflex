@@ -5,7 +5,6 @@ import org.opendaylight.opflex.genie.content.model.mprop.MProp;
 import org.opendaylight.opflex.genie.content.model.mtype.Language;
 import org.opendaylight.opflex.genie.content.model.mtype.MLanguageBinding;
 import org.opendaylight.opflex.genie.content.model.mtype.MType;
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.proc.Config;
@@ -19,14 +18,13 @@ import java.util.Collection;
 public class FEnumDef extends ItemFormatterTask
 {
     public FEnumDef(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats,
-            Item aInItem)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile,
+        Item aInItem)
     {
         super(
                 aInFormatterCtx,
@@ -35,8 +33,7 @@ public class FEnumDef extends ItemFormatterTask
                 aInHeaderFormatDirective,
                 aInCommentFormatDirective,
                 aInIsUserFile,
-                aInStats,
-                aInItem);
+            aInItem);
     }
 
     /**

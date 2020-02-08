@@ -1,7 +1,5 @@
 package org.opendaylight.opflex.genie.engine.format;
 
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
-
 /**
  * Created by midvorki on 7/25/14.
  */
@@ -17,16 +15,15 @@ public abstract class GenericFormatterTask extends FormatterTask
                                    Indenter aInIndenter,
                                    BlockFormatDirective aInHeaderFormatDirective,
                                    BlockFormatDirective aInCommentFormatDirective,
-                                   boolean aInIsUserFile,
-                                   WriteStats aInStats)
+                                   boolean aInIsUserFile)
     {
         super(aInFormatterCtx,
               aInFileNameRule,
               aInIndenter,
               aInHeaderFormatDirective,
               aInCommentFormatDirective,
-              aInIsUserFile,
-              aInStats);
+              aInIsUserFile
+        );
     }
 
     public void generate()

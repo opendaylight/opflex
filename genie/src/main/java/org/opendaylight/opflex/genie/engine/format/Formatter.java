@@ -76,13 +76,6 @@ public class Formatter
 
     public void printHeaderComment(
             int aInIndent,
-            String aInComment)
-    {
-        printHeaderComment(aInIndent, new String[]{aInComment});
-    }
-
-    public void printHeaderComment(
-            int aInIndent,
             String[] aInComment)
     {
         printComment(aInIndent, aInComment, headerFormatDirective);

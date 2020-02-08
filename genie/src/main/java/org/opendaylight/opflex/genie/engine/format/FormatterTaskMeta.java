@@ -3,7 +3,6 @@ package org.opendaylight.opflex.genie.engine.format;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.model.Cat;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.proc.Processor;
@@ -143,7 +142,6 @@ public class FormatterTaskMeta
                             BlockFormatDirective.class,
                             BlockFormatDirective.class,
                             boolean.class,
-                            WriteStats.class,
                             Item.class);
                     break;
                 }
@@ -156,7 +154,6 @@ public class FormatterTaskMeta
                             BlockFormatDirective.class,
                             BlockFormatDirective.class,
                             boolean.class,
-                            WriteStats.class,
                             Cat.class);
                     break;
                 }
@@ -169,8 +166,7 @@ public class FormatterTaskMeta
                             Indenter.class,
                             BlockFormatDirective.class,
                             BlockFormatDirective.class,
-                            boolean.class,
-                            WriteStats.class);
+                            boolean.class);
                     break;
                 }
             }
@@ -319,8 +315,6 @@ public class FormatterTaskMeta
                                                     file.getHeaderFormatDirective(),
                                                     file.getCommentFormatDirective(),
                                                     isUser,
-                                                    aInCtx.getStats(),
-                                                    //NO NEED FOR CATEGORY: catOrNull,
                                                     lItem);
                             lTask.setMeta(this);
                             Processor.get().getDsp().trigger(lTask);
@@ -344,15 +338,10 @@ public class FormatterTaskMeta
                                 file.getHeaderFormatDirective(),
                                 file.getCommentFormatDirective(),
                                 isUser,
-                                aInCtx.getStats(),
                                 catOrNull);
 
                         lTask.setMeta(this);
                         Processor.get().getDsp().trigger(lTask);
-                    }
-                    else
-                    {
-                        //Severity.INFO.report(toString(),"process", "task not accepted for: " + catOrNull, "this is normal, check the acceptor/shouldTriggerTask method on your formatter task:" + taskClass);
                     }
 
                     break;
@@ -368,8 +357,7 @@ public class FormatterTaskMeta
                                 file.getIndenter(),
                                 file.getHeaderFormatDirective(),
                                 file.getCommentFormatDirective(),
-                                isUser,
-                                aInCtx.getStats());
+                                isUser);
 
                         lTask.setMeta(this);
                         Processor.get().getDsp().trigger(lTask);

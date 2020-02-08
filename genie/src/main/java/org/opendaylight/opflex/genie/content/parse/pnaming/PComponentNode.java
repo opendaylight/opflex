@@ -37,8 +37,7 @@ public class PComponentNode extends ParseNode
             MParent lParent = (MParent) aInParentItem;
             MContained lContd = lParent.getContained();
             MNamer lNamer = MNamer.get(lContd.getLID().getName(), true);
-            MNameRule lNr = lNamer.getNameRule(lParent.getLID().getName(), true);
-            aInParentItem = lNr;
+            aInParentItem = lNamer.getNameRule(lParent.getLID().getName(), true);
         }
         return new Pair<>(
             ParseDirective.CONTINUE,

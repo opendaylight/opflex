@@ -20,11 +20,6 @@ public class Children
         return null == children || children.isEmpty();
     }
 
-    public Collection<CatEntry> getList()
-    {
-        return isEmpty() ? CatEntry.EMPTY_COL : children.values();
-    }
-
     public Map<Cat, CatEntry> getMap()
     {
         return isEmpty() ? CatEntry.EMPTY_CAT_MAP : children;
@@ -46,27 +41,12 @@ public class Children
         return null == lEntry ? null : lEntry.get(aInName);
     }
 
-    public Item getItem(Cat aInCat, String aInName)
-    {
-        Node lNode = getNode(aInCat, aInName);
-        return null == lNode ? null : lNode.getItem();
-    }
-
     public void getItem(Cat aInCat, Collection<Item> aOut)
     {
         CatEntry lEntry = getEntry(aInCat);
         if (null != lEntry)
         {
             lEntry.getItem(aOut);
-        }
-    }
-
-    public void getNodes(Cat aInCat, Collection<Node> aOut)
-    {
-        CatEntry lEntry = getEntry(aInCat);
-        if (null != lEntry)
-        {
-            lEntry.getNodes(aOut);
         }
     }
 
@@ -80,7 +60,7 @@ public class Children
     {
         if (null == children && aInCreateIfDoesNotExist)
         {
-            children = new TreeMap<Cat, CatEntry>();
+            children = new TreeMap<>();
         }
         CatEntry lPerCat = children.get(aIn);
         if (null == lPerCat && aInCreateIfDoesNotExist)
@@ -123,5 +103,5 @@ public class Children
     }
 
     private TreeMap<Cat, CatEntry> children = null;
-    String name;
+    final String name;
 }

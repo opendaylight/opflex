@@ -68,5 +68,5 @@ public class LoaderDomainMeta
 
     private final String name;
     private boolean isEnabled = true;
-    private TreeMap<String,LoaderFeatureMeta> features = new TreeMap<String,LoaderFeatureMeta>();
+    private final TreeMap<String,LoaderFeatureMeta> features = new TreeMap<>();
 }

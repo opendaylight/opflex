@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.engine.format;
 
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.proc.Task;
 
 /**
@@ -60,21 +59,19 @@ public abstract class FormatterTask implements Task
           aInFormatter.getIndenter(),
           aInFormatter.getHeaderFormatDirective(),
           aInFormatter.getCommentFormatDirective(),
-          !aInFormatter.getFormattedFile().isOverrideExisting(),
-          aInFormatter.getFormattedFile().getCtx().getStats()
-          );
+          !aInFormatter.getFormattedFile().isOverrideExisting()
+        );
         file = aInFormatter.getFormattedFile();
         out = aInFormatter;
     }
 
     protected FormatterTask(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile)
     {
         formatterCtx = aInFormatterCtx;
         fileNameRule = aInFileNameRule;
@@ -82,7 +79,6 @@ public abstract class FormatterTask implements Task
         headerFormatDirective = aInHeaderFormatDirective;
         commentFormatDirective = aInCommentFormatDirective;
         isUserFile = aInIsUserFile;
-        stats = aInStats;
     }
 
     public FormatterCtx getFormatterCtx() { return formatterCtx; }
@@ -91,7 +87,6 @@ public abstract class FormatterTask implements Task
     public BlockFormatDirective getHeaderFormatDirective() { return headerFormatDirective; }
     public BlockFormatDirective getCommentFormatDirective() { return commentFormatDirective; }
     public boolean isUserFile() { return isUserFile; }
-    public WriteStats getStats() { return stats; }
 
     public final void run()
     {
@@ -167,5 +162,4 @@ public abstract class FormatterTask implements Task
     private final BlockFormatDirective headerFormatDirective;
     private final BlockFormatDirective commentFormatDirective;
     private final boolean isUserFile;
-    private final WriteStats stats;
 }

@@ -17,7 +17,6 @@ import org.opendaylight.opflex.genie.content.model.mprop.MProp;
 import org.opendaylight.opflex.genie.content.model.mtype.MType;
 import org.opendaylight.opflex.genie.content.model.mtype.MTypeHint;
 import org.opendaylight.opflex.genie.content.model.mtype.TypeInfo;
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
 import org.opendaylight.opflex.genie.engine.proc.Config;
@@ -31,21 +30,20 @@ public class FMetaDef
         extends GenericFormatterTask
 {
     public FMetaDef(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile)
     {
         super(aInFormatterCtx,
               aInFileNameRule,
               aInIndenter,
               aInHeaderFormatDirective,
               aInCommentFormatDirective,
-              aInIsUserFile,
-              aInStats);
+              aInIsUserFile
+        );
     }
 
     /**

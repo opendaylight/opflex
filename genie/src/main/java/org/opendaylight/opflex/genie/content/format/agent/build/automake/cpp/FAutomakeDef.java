@@ -5,7 +5,6 @@ import java.util.Collection;
 import org.opendaylight.opflex.genie.content.format.agent.consts.cpp.FEnumDef;
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.module.Module;
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.BlockFormatDirective;
 import org.opendaylight.opflex.genie.engine.format.FileNameRule;
 import org.opendaylight.opflex.genie.engine.format.FormatterCtx;
@@ -23,21 +22,20 @@ public class FAutomakeDef
         extends GenericFormatterTask
 {
     public FAutomakeDef(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile)
     {
         super(aInFormatterCtx,
               aInFileNameRule,
               aInIndenter,
               aInHeaderFormatDirective,
               aInCommentFormatDirective,
-              aInIsUserFile,
-              aInStats);
+              aInIsUserFile
+        );
     }
 
     /**
@@ -48,15 +46,13 @@ public class FAutomakeDef
      */
     public static FileNameRule transformFileNameRule(FileNameRule aInFnr)
     {
-        FileNameRule lFnr = new FileNameRule(
+        return new FileNameRule(
                 aInFnr.getRelativePath(),
                 null,
                 aInFnr.getFilePrefix(),
                 aInFnr.getFileSuffix(),
                 aInFnr.getFileExtension(),
                 "Makefile");
-
-        return lFnr;
     }
 
     public void generate()

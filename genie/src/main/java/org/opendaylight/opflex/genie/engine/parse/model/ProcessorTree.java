@@ -15,7 +15,7 @@ import org.opendaylight.opflex.genie.engine.parse.modlan.ProcessorRegistry;
 public class ProcessorTree
         extends ProcessorNode implements ProcessorRegistry
 {
-    public static String DOC_ROOT_NAME = "doc-root";
+    public static final String DOC_ROOT_NAME = "doc-root";
 
     public ProcessorTree()
     {

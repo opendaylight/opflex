@@ -5,8 +5,6 @@ import java.io.File;
 import org.opendaylight.opflex.genie.engine.file.Lister;
 import org.opendaylight.opflex.genie.engine.parse.model.ProcessorTree;
 import org.opendaylight.opflex.genie.engine.parse.modlan.Tree;
-import org.opendaylight.opflex.genie.engine.proc.Dsptchr;
-import org.opendaylight.opflex.genie.engine.proc.Task;
 import org.opendaylight.opflex.modlan.utils.Strings;
 
 /**
@@ -61,33 +59,18 @@ public class LoadTarget
         }
         else
         {
-            //Severity.WARN.report("","","","LOADING...");
             listers = new Lister[paths.length];
             for (int i = 0; i < paths.length; i++)
             {
-                final int lThisI = i;
-                if (!Strings.isEmpty((paths[lThisI])))
+                if (!Strings.isEmpty((paths[i])))
                 {
-                    //Severity.WARN.report("", "", "", "CREATING LISTER: ..." + paths[lThisI]);
+                    listers[i] = new Lister(paths[i], suffix);
 
-                    listers[lThisI] = new Lister(paths[lThisI], suffix);
-                    //Severity.WARN.report("", "", "", "LOAD PATH: ..." + paths[lThisI]);
-
-                    for (final File lFile : listers[lThisI].getFiles())
+                    for (final File lFile : listers[i].getFiles())
                     {
-
                         org.opendaylight.opflex.genie.engine.file.Reader lReader = new org.opendaylight.opflex.genie.engine.file.Reader(lFile);
-
-                        //Severity.WARN.report("", "", "", "LOADING: " + lFile);
-
                         org.opendaylight.opflex.modlan.parse.Engine lE = new org.opendaylight.opflex.modlan.parse.Engine(lReader, new Tree(pTree));
-
-                        //Severity.WARN.report("", "", "", "LOADED: " + lFile);
-
                         lE.execute();
-
-                        //Severity.WARN.report("", "", "", "EXECUTED: " + lFile);
-
                     }
                 }
             }
@@ -102,11 +85,6 @@ public class LoadTarget
     public String[] getPaths()
     {
         return paths;
-    }
-
-    public Lister[] getListers()
-    {
-        return listers;
     }
 
     private final String paths[];

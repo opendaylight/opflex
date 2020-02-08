@@ -4,7 +4,6 @@ import java.util.TreeMap;
 
 import org.opendaylight.opflex.genie.content.model.mclass.MClass;
 import org.opendaylight.opflex.genie.content.model.mprop.MProp;
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
 
@@ -15,21 +14,20 @@ public class FContDef
         extends GenericFormatterTask
 {
     public FContDef(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile)
     {
         super(aInFormatterCtx,
               aInFileNameRule,
               aInIndenter,
               aInHeaderFormatDirective,
               aInCommentFormatDirective,
-              aInIsUserFile,
-              aInStats);
+              aInIsUserFile
+        );
     }
 
     public void generate()
@@ -48,7 +46,7 @@ public class FContDef
 
     private void genProps(int aInIndent, MClass aInClass)
     {
-        TreeMap<String,MProp> lProps = new TreeMap<String, MProp>();
+        TreeMap<String,MProp> lProps = new TreeMap<>();
         aInClass.findProp(lProps, false);
         if (!lProps.isEmpty())
         {
@@ -76,7 +74,7 @@ public class FContDef
 
     private void genContained(int aInIndent, MClass aInParent)
     {
-        TreeMap<Ident,MClass> lContained = new TreeMap<Ident,MClass>();
+        TreeMap<Ident,MClass> lContained = new TreeMap<>();
         aInParent.getContainsClasses(lContained, true, true);
         if (!lContained.isEmpty())
         {

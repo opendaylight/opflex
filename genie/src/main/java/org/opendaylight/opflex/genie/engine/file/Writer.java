@@ -18,22 +18,17 @@ public class Writer extends java.io.Writer
      *
      * @param aInFile The file to be generated.
      */
-    public Writer(File aInFile, WriteStats aInStats)
+    public Writer(File aInFile)
     {
-        stats = aInStats;
         try
         {
-            stats.incrTotal();
-
             file = aInFile;
             if (aInFile.exists())
             {
-                stats.incrDuplicate();
                 reader = new FileReader(aInFile);
             }
             else
             {
-                stats.incrNew();
                 writer = new FileWriter(aInFile);
             }
         }
@@ -81,7 +76,7 @@ public class Writer extends java.io.Writer
                 // not writing, chunk must be the same as one to write.
                 if (oldBuffers == null)
                 {
-                    oldBuffers = new ArrayList<char[]>();
+                    oldBuffers = new ArrayList<>();
                 }
                 oldBuffers.add(buffer);
                 buffer = null;
@@ -132,8 +127,6 @@ public class Writer extends java.io.Writer
             throws
             IOException
     {
-        stats.decrDuplicate();
-        stats.incrChanged();
         reader.close();
         reader = null;
 
@@ -165,5 +158,4 @@ public class Writer extends java.io.Writer
      */
     private ArrayList<char[]> oldBuffers;
 
-    private final WriteStats stats;
 }

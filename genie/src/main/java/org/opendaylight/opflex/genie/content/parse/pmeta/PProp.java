@@ -46,6 +46,6 @@ public class PProp
         return type;
     }
 
-    private ParseNodePropType type;
+    private final ParseNodePropType type;
 
 }

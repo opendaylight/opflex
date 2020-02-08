@@ -70,5 +70,5 @@ public class PConstNode
         return lConst;
     }
 
-    private ConstAction action;
+    private final ConstAction action;
 }

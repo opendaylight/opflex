@@ -12,8 +12,7 @@ import org.opendaylight.opflex.modlan.report.Severity;
  *
  * Created by midvorki on 3/26/14.
  */
-public class Cat extends Ident implements Validatable
-{
+public class Cat extends Ident {
     protected Cat(String aInName)
     {
         super(allocateId(), aInName);
@@ -42,16 +41,6 @@ public class Cat extends Ident implements Validatable
     }
 
     /**
-     * Looks up Cat entry by name
-     * @param aIn : name of the category to be looked up
-     * @return category corresponding to name passed in or null if it doesn't exist.
-     */
-    public static Cat get(int aIn)
-    {
-        return idToCatTable.get(aIn);
-    }
-
-    /**
      * Adds model node to category registry
      * @param aIn model node to be added
      */
@@ -65,10 +54,7 @@ public class Cat extends Ident implements Validatable
         return nodes;
     }
 
-    public Node getNode(String aIn) { return nodes.get(aIn); }
-    public Node getNode(int aIn) { return nodes.get(aIn); }
     public Item getItem(String aIn) { return nodes.getItem(aIn); }
-    public Item getItem(int aIn) { return nodes.getItem(aIn); }
 
     /**
      * Stringifier
@@ -189,7 +175,7 @@ public class Cat extends Ident implements Validatable
 
     public static void metaModelLoadComplete()
     {
-        for (Cat lCat : new LinkedList<Cat>(idToCatTable.values()))
+        for (Cat lCat : new LinkedList<>(idToCatTable.values()))
         {
             lCat.metaModelLoadCompleteCb();
         }
@@ -205,7 +191,7 @@ public class Cat extends Ident implements Validatable
 
     public static void preLoadModelComplete()
     {
-        for (Cat lCat : new LinkedList<Cat>(idToCatTable.values()))
+        for (Cat lCat : new LinkedList<>(idToCatTable.values()))
         {
             lCat.preLoadModelCompleteCb();
         }
@@ -223,7 +209,7 @@ public class Cat extends Ident implements Validatable
     {
         validated = true;
 
-        for (Cat lCat : new LinkedList<Cat>(idToCatTable.values()))
+        for (Cat lCat : new LinkedList<>(idToCatTable.values()))
         {
             lCat.postLoadCb();
         }
@@ -231,25 +217,15 @@ public class Cat extends Ident implements Validatable
 
     public static void validateAll()
     {
-        preValidate();
         validate();
         postValidate();
-    }
-
-
-    private static void preValidate()
-    {
-        for (Cat lCat : new LinkedList<Cat>(idToCatTable.values()))
-        {
-            lCat.preValidateCb();
-        }
     }
 
     private static void validate()
     {
         validated = true;
 
-        for (Cat lCat : new LinkedList<Cat>(idToCatTable.values()))
+        for (Cat lCat : new LinkedList<>(idToCatTable.values()))
         {
             lCat.validateCb();
         }
@@ -263,15 +239,6 @@ public class Cat extends Ident implements Validatable
         }
     }
 
-    @Override
-    public void preValidateCb()
-    {
-        for (Node lNode : nodes.getList())
-        {
-            lNode.preValidateCb();
-        }
-    }
-
     public void validateCb()
     {
         for (Node lNode : nodes.getList())
@@ -280,7 +247,6 @@ public class Cat extends Ident implements Validatable
         }
     }
 
-    @Override
     public void postValidateCb()
     {
         for (Node lNode : nodes.getList())
@@ -301,7 +267,7 @@ public class Cat extends Ident implements Validatable
 
     private static boolean validated = false;
     private static int idAllocator = 0;
-    private static Map<String, Cat> nameToCatTable = new TreeMap<>();
-    private static Map<Number, Cat> idToCatTable = new TreeMap<>();
+    private static final Map<String, Cat> nameToCatTable = new TreeMap<>();
+    private static final Map<Number, Cat> idToCatTable = new TreeMap<>();
     private final CatEntry nodes;
 }

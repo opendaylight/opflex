@@ -21,12 +21,6 @@ public class SearchPath
         return suffix;
     }
 
-    public String[] toArray()
-    {
-        String[] lStrA = {path, suffix};
-        return lStrA;
-    }
-
     public String toString()
     {
         return "search-path(path=" + path + ", suffix=" + suffix + ")";

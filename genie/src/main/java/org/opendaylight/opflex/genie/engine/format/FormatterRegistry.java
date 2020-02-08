@@ -59,6 +59,6 @@ public class FormatterRegistry
     {
         return "formatter:registry";
     }
-    private TreeMap<String,FormatterDomainMeta> domains = new TreeMap<String,FormatterDomainMeta>();
+    private final TreeMap<String,FormatterDomainMeta> domains = new TreeMap<>();
     private static final FormatterRegistry inst = new FormatterRegistry();
 }

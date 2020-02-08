@@ -138,7 +138,7 @@ public class Reader implements org.opendaylight.opflex.modlan.parse.Ctx
 
     public String toString()
     {
-        StringBuffer lSb = new StringBuffer();
+        StringBuilder lSb = new StringBuilder();
         lSb.append("READER[");
         lSb.append(file.toURI());
         lSb.append('(');

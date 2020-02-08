@@ -359,7 +359,7 @@ public class FormattedFile
     {
         try
         {
-            writer = new PrintWriter(new Writer(file, formatterCtx.getStats()));
+            writer = new PrintWriter(new Writer(file));
         }
         catch (Throwable lE)
         {

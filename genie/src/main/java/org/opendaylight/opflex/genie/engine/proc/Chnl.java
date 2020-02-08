@@ -48,37 +48,10 @@ public class Chnl
             {
                 notifyAll();
             }
-            /**
-            if (null != lTask)
-            {
-                procCount++;
-            }
-             **/
         }
         return lTask;
     }
 
-    /*
-    public synchronized void suspendUntilDrained()
-    {
-        if (!isDeath())
-        {
-            if (hasOutstandingTasks())
-            {
-                Severity.INFO.report("processor:chnl", "suspend", "", "SUSPENDING CHNL!!");
-                status = Status.SUSPEND;
-            }
-            else
-            {
-                Severity.INFO.report("processor:chnl", "suspend", "", "NO TASKS: NO SUSPENSION NECESSARY!!");
-            }
-        }
-        else
-        {
-            notifyAll();
-        }
-    }
-    */
     public void suspendUntilDrained()
     {
         synchronized (this)
@@ -186,7 +159,7 @@ public class Chnl
     }
 
     private int procCount = 0;
-    private Queue<Task> queue = new LinkedList<Task>();
+    private final Queue<Task> queue = new LinkedList<>();
     private Status status = Status.RUNNING;
 
 }

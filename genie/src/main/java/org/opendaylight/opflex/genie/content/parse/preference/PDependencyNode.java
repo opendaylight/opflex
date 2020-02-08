@@ -46,5 +46,5 @@ public class PDependencyNode extends ParseNode
     public RelatorType getType() { return type; }
 
     private DefinitionScope scope;
-    private RelatorType type;
+    private final RelatorType type;
 }

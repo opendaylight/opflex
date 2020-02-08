@@ -1,7 +1,6 @@
 package org.opendaylight.opflex.genie.engine.model;
 
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -15,8 +14,7 @@ import org.opendaylight.opflex.modlan.report.Severity;
  */
 public class CatEntry
 {
-    public static final Collection<CatEntry> EMPTY_COL = new LinkedList<CatEntry>();
-    public static final Map<Cat, CatEntry> EMPTY_CAT_MAP = new TreeMap<Cat, CatEntry>();
+    public static final Map<Cat, CatEntry> EMPTY_CAT_MAP = new TreeMap<>();
 
     /**
      * Constructor
@@ -73,11 +71,6 @@ public class CatEntry
         return null == byName || byName.isEmpty();
     }
 
-    public void getNodes(Collection<Node> aOut)
-    {
-        aOut.addAll(byName.values());
-    }
-
     public void getItem(Collection<Item> aOut)
     {
         for (Node lNode : byName.values())
@@ -125,7 +118,7 @@ public class CatEntry
      */
     public Collection<Item> getItemsList()
     {
-        Map<Ident,Item> lMap = new TreeMap<Ident,Item>();
+        Map<Ident,Item> lMap = new TreeMap<>();
         getItems(lMap);
         return lMap.values();
     }
@@ -206,9 +199,9 @@ public class CatEntry
         return (global ? "global-" : "local-") + "cat-entry(" + cat.getName() + (null == name ? "" : (" of " + name)) + ")";
     }
 
-    private TreeMap<String, Node> byName = new TreeMap<String, Node>();
-    private TreeMap<Number, Node> byId = new TreeMap<Number, Node>();
-    private TreeMap<String, Number> ids = new TreeMap<String, Number>();
+    private final TreeMap<String, Node> byName = new TreeMap<>();
+    private final TreeMap<Number, Node> byId = new TreeMap<>();
+    private final TreeMap<String, Number> ids = new TreeMap<>();
 
     private final String name;
     private final Cat cat;

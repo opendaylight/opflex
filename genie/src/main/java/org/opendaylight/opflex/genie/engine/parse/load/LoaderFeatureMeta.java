@@ -48,5 +48,5 @@ public class LoaderFeatureMeta
     }
 
     private final String name;
-    private TreeMap<String,LoaderIncludeMeta> tasks = new TreeMap<String,LoaderIncludeMeta>();
+    private final TreeMap<String,LoaderIncludeMeta> tasks = new TreeMap<>();
 }

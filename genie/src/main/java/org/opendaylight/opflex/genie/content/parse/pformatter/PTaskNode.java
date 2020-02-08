@@ -9,7 +9,6 @@ import org.opendaylight.opflex.genie.engine.parse.model.ParseNode;
 import org.opendaylight.opflex.genie.engine.parse.modlan.Node;
 import org.opendaylight.opflex.genie.engine.parse.modlan.ParseDirective;
 import org.opendaylight.opflex.genie.engine.proc.Config;
-import org.opendaylight.opflex.modlan.report.Severity;
 import org.opendaylight.opflex.modlan.utils.Strings;
 
 /**
@@ -39,6 +38,6 @@ public class PTaskNode extends ParseNode
         lTask.setFileSuffix(aInData.getNamedValue("file-suffix", null, false));
         lTask.setFormatterClass(aInData.getNamedValue("formatter", null, true));
         lTask.setIsUser(aInData.checkFlag("user"));
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lTask);
+        return new Pair<>(ParseDirective.CONTINUE, lTask);
     }
 }

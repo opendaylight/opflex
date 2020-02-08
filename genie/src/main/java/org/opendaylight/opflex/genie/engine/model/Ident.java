@@ -50,11 +50,6 @@ public class Ident implements Comparable<Ident>
     public void toIdentString(StringBuilder aIn)
     {
         aIn.append(getName());
-        /**
-        aIn.append('(');
-        aIn.append(getId());
-        aIn.append(')');
-        */
     }
 
     /**

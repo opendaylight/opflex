@@ -9,8 +9,7 @@ import org.opendaylight.opflex.modlan.report.Severity;
  *
  * Created by midvorki on 3/26/14.
  */
-public class Node implements Validatable
-{
+public class Node {
     /**
      * Constructor
      *
@@ -146,14 +145,6 @@ public class Node implements Validatable
         return null == lNode ? null : lNode.getItem();
     }
 
-    public void getChildNodes(Cat aInCat, Collection<Node> aOut)
-    {
-        if (null != children)
-        {
-            children.getNodes(aInCat, aOut);
-        }
-    }
-
     public void getChildItem(Cat aInCat, Collection<Item> aOut)
     {
         if (null != children)
@@ -183,19 +174,11 @@ public class Node implements Validatable
         return item;
     }
 
-    @Override
-    public void preValidateCb()
-    {
-        getItem().preValidateCb();
-    }
-
-    @Override
     public void validateCb()
     {
         getItem().validateCb();
     }
 
-    @Override
     public void postValidateCb()
     {
         getItem().postValidateCb();

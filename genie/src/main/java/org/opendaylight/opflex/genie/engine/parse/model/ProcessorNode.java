@@ -23,7 +23,7 @@ public abstract class ProcessorNode
 
     public ProcessorNode getChild(String aInName)
     {
-        ProcessorNode lThis = null;
+        ProcessorNode lThis;
 
         if (null == children)
         {
@@ -46,18 +46,6 @@ public abstract class ProcessorNode
 
     private ProcessorNode getRecursion()
     {
-        /**
-        ProcessorNode lThis = null;
-        if (isRecursive)
-        {
-            for (lThis = this;
-                 null != lThis && lThis.isRecursive && !lThis.equals(getName());
-                 lThis = lThis.parent)
-            {
-
-            }
-        }
-         **/
         return isRecursive ? this : null;
     }
 
@@ -69,7 +57,7 @@ public abstract class ProcessorNode
     {
         if (null == children)
         {
-            children = new TreeMap<String, ProcessorNode>();
+            children = new TreeMap<>();
         }
         children.put(aInNode.getName(), aInNode);
         Collection<String> lAliases = aInNode.getAliases();
@@ -145,8 +133,8 @@ public abstract class ProcessorNode
         return aliases;
     }
 
-    private String name;
-    private boolean isRecursive;
+    private final String name;
+    private final boolean isRecursive;
     private TreeMap<String, ProcessorNode> children = null;
     private ProcessorNode parent = null;
     private Collection<String> aliases = null;

@@ -1,7 +1,5 @@
 package org.opendaylight.opflex.genie.engine.format;
 
-import org.opendaylight.opflex.modlan.report.Severity;
-
 import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
@@ -36,6 +34,6 @@ public class HeaderLine
         return options.contains(aIn);
     }
 
-    private String line;
-    private Set<HeaderOption> options = new TreeSet<>();
+    private final String line;
+    private final Set<HeaderOption> options = new TreeSet<>();
 }

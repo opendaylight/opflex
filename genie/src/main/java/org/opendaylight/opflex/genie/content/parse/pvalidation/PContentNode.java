@@ -4,7 +4,6 @@ import org.opendaylight.opflex.genie.content.model.mvalidation.*;
 import org.opendaylight.opflex.genie.engine.model.Item;
 import org.opendaylight.opflex.genie.engine.model.Pair;
 import org.opendaylight.opflex.genie.engine.parse.model.ParseNode;
-import org.opendaylight.opflex.genie.engine.parse.model.ProcessorNode;
 import org.opendaylight.opflex.genie.engine.parse.modlan.Node;
 import org.opendaylight.opflex.genie.engine.parse.modlan.ParseDirective;
 import org.opendaylight.opflex.modlan.utils.Strings;
@@ -21,11 +20,6 @@ public class PContentNode
         action = ValidatorAction.get(aInName);
     }
 
-    protected void addParent(ProcessorNode aInParent)
-    {
-        super.addParent(aInParent);
-    }
-
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
         MContentValidator lVal = new MContentValidator(
@@ -34,7 +28,7 @@ public class PContentNode
 
         addConstraint(aInData, lVal);
 
-        return new Pair<ParseDirective, Item>(ParseDirective.CONTINUE,lVal);
+        return new Pair<>(ParseDirective.CONTINUE, lVal);
     }
 
 

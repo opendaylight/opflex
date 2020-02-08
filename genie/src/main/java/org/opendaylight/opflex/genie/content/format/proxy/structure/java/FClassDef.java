@@ -17,7 +17,6 @@ import org.opendaylight.opflex.genie.content.model.mrelator.MRelationshipClass;
 import org.opendaylight.opflex.genie.content.model.mtype.Language;
 import org.opendaylight.opflex.genie.content.model.mtype.MLanguageBinding;
 import org.opendaylight.opflex.genie.content.model.mtype.MType;
-import org.opendaylight.opflex.genie.engine.file.WriteStats;
 import org.opendaylight.opflex.genie.engine.format.*;
 import org.opendaylight.opflex.genie.engine.model.Ident;
 import org.opendaylight.opflex.genie.engine.model.Item;
@@ -32,14 +31,13 @@ import java.util.*;
 public class FClassDef extends ItemFormatterTask
 {
     public FClassDef(
-            FormatterCtx aInFormatterCtx,
-            FileNameRule aInFileNameRule,
-            Indenter aInIndenter,
-            BlockFormatDirective aInHeaderFormatDirective,
-            BlockFormatDirective aInCommentFormatDirective,
-            boolean aInIsUserFile,
-            WriteStats aInStats,
-            Item aInItem)
+        FormatterCtx aInFormatterCtx,
+        FileNameRule aInFileNameRule,
+        Indenter aInIndenter,
+        BlockFormatDirective aInHeaderFormatDirective,
+        BlockFormatDirective aInCommentFormatDirective,
+        boolean aInIsUserFile,
+        Item aInItem)
     {
         super(aInFormatterCtx,
               aInFileNameRule,
@@ -47,8 +45,7 @@ public class FClassDef extends ItemFormatterTask
               aInHeaderFormatDirective,
               aInCommentFormatDirective,
               aInIsUserFile,
-              aInStats,
-              aInItem);
+            aInItem);
     }
 
     /**
@@ -198,7 +195,7 @@ public class FClassDef extends ItemFormatterTask
         {
             if (aInProp.getLID().getName().equalsIgnoreCase("targetName"))
             {
-                genRef(aInIndent,aInClass, aInPropIdx, lComments, true);
+                genRef(aInIndent,aInClass, aInPropIdx, lComments);
             }
         }
         else
@@ -209,11 +206,11 @@ public class FClassDef extends ItemFormatterTask
         }
     }
 
-    private void genRef(int aInIndent, MClass aInClass, int aInPropIdx, Collection<String> aInComments, boolean aInTarget)
+    private void genRef(int aInIndent, MClass aInClass, int aInPropIdx, Collection<String> aInComments)
     {
-        genRefCheck(aInIndent, aInPropIdx, aInComments, aInTarget);
-        genRefAccessors(aInIndent, aInPropIdx, aInComments, aInTarget);
-        genRefMutators(aInIndent, aInClass, aInPropIdx, aInComments, aInTarget);
+        genRefCheck(aInIndent, aInPropIdx, aInComments);
+        genRefAccessors(aInIndent, aInPropIdx, aInComments);
+        genRefMutators(aInIndent, aInClass, aInPropIdx, aInComments);
     }
 
     private void genPropCheck(int aInIndent, int aInPropIdx, Collection<String> aInComments, String aInCheckName)
@@ -252,10 +249,10 @@ public class FClassDef extends ItemFormatterTask
         );
     }
 
-    private void genRefCheck(int aInIndent, int aInPropIdx, Collection<String> aInComments, boolean target)
+    private void genRefCheck(int aInIndent, int aInPropIdx, Collection<String> aInComments)
     {
         genPropCheck(aInIndent, aInPropIdx,
-                aInComments, target ? "target" : "source");
+                aInComments, "target");
     }
 
     private void genPropAccessor(
@@ -305,9 +302,9 @@ public class FClassDef extends ItemFormatterTask
     }
 
     private void genRefAccessors(
-            int aInIndent, int aInPropIdx, Collection<String> aInComments, boolean target)
+        int aInIndent, int aInPropIdx, Collection<String> aInComments)
     {
-        String lName = (target ? "target" : "source");
+        String lName = "target";
         genPropAccessor(aInIndent, aInPropIdx, aInComments,
                 lName + "Class", "long", "Reference", "", ".classId");
         genPropAccessor(aInIndent, aInPropIdx, aInComments,
@@ -403,7 +400,7 @@ public class FClassDef extends ItemFormatterTask
         //
         // BODY
         //
-        String lUriBuilder = getUriBuilder(aInClass, aInNamingPath);
+        String lUriBuilder = getUriBuilder(aInNamingPath);
         out.println(aInIndent,"{");
         out.println(aInIndent + 1, "set" + Strings.upFirstLetter(lMethName) + "(" + lUriBuilder + ");");
         out.println(aInIndent,"}");
@@ -421,11 +418,11 @@ public class FClassDef extends ItemFormatterTask
                        "");
     }
 
-    private void genRefMutators(int aInIndent, MClass aInClass, int aInPropIdx, Collection<String> aInComments, boolean target)
+    private void genRefMutators(int aInIndent, MClass aInClass, int aInPropIdx, Collection<String> aInComments)
     {
         for (MClass lTargetClass : ((MRelationshipClass) aInClass).getTargetClasses(true))
         {
-            String lName = (target ? "target" : "source") +
+            String lName = "target" +
                     Strings.upFirstLetter(lTargetClass.getLID().getName());
             List<String> lComments = Arrays.asList(
                     "Set the reference to point to an instance of " + getClassName(lTargetClass),
@@ -580,14 +577,14 @@ public class FClassDef extends ItemFormatterTask
         return lRet.toString();
     }
 
-    public static String getUriBuilder(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath)
+    public static String getUriBuilder(List<Pair<String, MNameRule>> aInNamingPath)
     {
         StringBuilder lSb = new StringBuilder();
-        getUriBuilder(aInClass,aInNamingPath, lSb);
+        getUriBuilder(aInNamingPath, lSb);
         return lSb.toString();
     }
 
-    public static void getUriBuilder(MClass aInClass, List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
+    public static void getUriBuilder(List<Pair<String, MNameRule>> aInNamingPath, StringBuilder aOut)
     {
         aOut.append("new URIBuilder()");
         for (Pair<String,MNameRule> lNamingNode : aInNamingPath)
@@ -638,14 +635,14 @@ public class FClassDef extends ItemFormatterTask
         }
     }
 
-    public static String getUriBuilder(MClass aInParentClass,MClass aInChildClass, MNameRule aInNamingRule)
+    public static String getUriBuilder(MClass aInChildClass, MNameRule aInNamingRule)
     {
         StringBuilder lSb = new StringBuilder();
-        getUriBuilder(aInParentClass, aInChildClass, aInNamingRule, lSb);
+        getUriBuilder(aInChildClass, aInNamingRule, lSb);
         return lSb.toString();
 
     }
-    public static void getUriBuilder(MClass aInParentClass,MClass aInChildClass, MNameRule aInNamingRule, StringBuilder aOut)
+    public static void getUriBuilder(MClass aInChildClass, MNameRule aInNamingRule, StringBuilder aOut)
     {
         aOut.append("new URIBuilder(getURI())");
         aOut.append(".addElement(\"");
@@ -770,7 +767,7 @@ public class FClassDef extends ItemFormatterTask
         {
             String lFormattedChildClassName = "org.opendaylight.opflex.generated." + Strings.repaceIllegal(Config.getProjName()) + "." + getTargetModule(aInChildClass) + "." + getClassName(aInChildClass);
             String lConcatenatedChildClassName = aInChildClass.getFullConcatenatedName();
-            String lUriBuilder = getUriBuilder(aInParentClass,aInChildClass, lChildNr);
+            String lUriBuilder = getUriBuilder(aInChildClass, lChildNr);
             Collection<MNameComponent> lNcs = lChildNr.getComponents();
             boolean lMultipleChildren = false;
             for (MNameComponent lNc : lNcs)
