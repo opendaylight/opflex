@@ -36,8 +36,12 @@ using std::pair;
 using boost::optional;
 using namespace prometheus;
 
-// Optional pair of label attr map and Gauge ptr
+class Agent;
+
+// Optional pair of label attr hash and Gauge ptr
 typedef optional<pair<size_t, Gauge *> >  hgauge_pair_t;
+// Optional pair of label attr map and Gauge ptr
+typedef optional<pair<map<string, string>, Gauge *> >  mgauge_pair_t;
 
 /**
  * Prometheus manager is responsible for maintaining state of all
@@ -50,7 +54,7 @@ public:
     /**
      * Instantiate a new prometheus manager
      */
-    PrometheusManager(opflex::ofcore::OFFramework &fwk_);
+    PrometheusManager(Agent &agent_, opflex::ofcore::OFFramework &fwk_);
     /**
      * Destroy the prometheus manager and clean up all state
      */
@@ -93,9 +97,35 @@ public:
      */
     void removeEpCounter(const string& uuid,
                          const string& ep_name);
+
+    /* PodSvcCounter related APIs */
+    /**
+     * Create PodSvcCounter metric family if its not present.
+     * Update PodSvcCounter metric family if its already present
+     *
+     * @param isEpToSvc       true if EpToSvc reporting
+     * @param uuid            uuid of POD+SVC
+     * @param ep_attr_map     map of all ep attributes
+     * @param svc_attr_map    map of all svc attributes
+     */
+    void addNUpdatePodSvcCounter(bool isEpToSvc,
+                                 const string& uuid,
+        const unordered_map<string, string>& ep_attr_map,
+        const unordered_map<string, string>& svc_attr_map);
+    /**
+     * Remove PodSvcCounter metric given the direciton and uuid
+     *
+     * @param isEpToSvc     true if EpToSvc reporting
+     * @param uuid          uuid of POD+SVC
+     */
+    void removePodSvcCounter(bool isEpToSvc,
+                             const string& uuid);
+
     // TODO: Other Counter related APIs
 
 private:
+    // opflex agent handle
+    Agent&     agent;
     // opflex framwork handle
     opflex::ofcore::OFFramework& framework;
     // The http server handle
@@ -126,6 +156,22 @@ private:
     void removeDynamicGaugeFamilies(void);
     void removeDynamicCounters(void);
     void removeDynamicGauges(void);
+
+    //Utility apis
+    /**
+     * Prometheus expects label/metric family names to be given
+     * in a particular format.
+     * More info: https://prometheus.io/docs/concepts/data_model/
+     * In short: the names can be like "[a-zA-Z_:][a-zA-Z0-9_:]*"
+     * and cannot start with "__" (used internally).
+     *
+     * @param: the name that we have to sanitize
+     *
+     * @return: the sanitized name that can be given to prometheus
+     */
+    static string sanitizeMetricName(string metric_name);
+    // Api to check if the input metric_name is prometheus compatible.
+    static bool checkMetricName(const string& metric_name);
 
     /* Start of EpCounter related apis and state */
     // Lock to safe guard EpCounter related state
@@ -204,28 +250,71 @@ private:
     unordered_map<string, hgauge_pair_t> ep_gauge_map[EP_METRICS_MAX];
 
     //Utility apis
-    /**
-     * Prometheus expects label/metric family names to be given
-     * in a particular format.
-     * More info: https://prometheus.io/docs/concepts/data_model/
-     * In short: the names can be like "[a-zA-Z_:][a-zA-Z0-9_:]*"
-     * and cannot start with "__" (used internally).
-     *
-     * @param: the name that we have to sanitize
-     *
-     * @return: the sanitized name that can be given to prometheus
-     */
-    static string sanitizeMetricName(string metric_name);
-    // Api to check if the input metric_name is prometheus compatible.
-    static bool checkMetricName(const string& metric_name);
-
-
     // Create a label map that can be used for annotation, given the ep attr map
-    static map<string,string> createLabelMapFromAttr(const string& ep_name_,
+    static map<string,string> createLabelMapFromEpAttr(const string& ep_name_,
                            const unordered_map<string, string>&    attr_map);
     // Maximum number of labels that can be used for annotating a metric
     static int max_metric_attr_count;
     /* End of EpCounter related apis and state */
+
+
+    /* Start of PodSvcCounter related apis and state */
+    // Lock to safe guard PodSvcCounter related state
+    mutex podsvc_counter_mutex;
+
+    enum PODSVC_METRICS {
+        PODSVC_METRICS_MIN,
+        PODSVC_EP2SVC_MIN = PODSVC_METRICS_MIN,
+        PODSVC_EP2SVC_BYTES = PODSVC_EP2SVC_MIN,
+        PODSVC_EP2SVC_PKTS,
+        PODSVC_EP2SVC_MAX = PODSVC_EP2SVC_PKTS,
+        PODSVC_SVC2EP_MIN,
+        PODSVC_SVC2EP_BYTES = PODSVC_SVC2EP_MIN,
+        PODSVC_SVC2EP_PKTS,
+        PODSVC_SVC2EP_MAX = PODSVC_SVC2EP_PKTS,
+        PODSVC_METRICS_MAX = PODSVC_SVC2EP_MAX
+    };
+
+    // Static Metric families and metrics
+    // metric families to track all PodSvcCounter metrics
+    Family<Gauge>      *gauge_podsvc_family_ptr[PODSVC_METRICS_MAX+1];
+
+    // create any podsvc gauge metric families during start
+    void createStaticGaugeFamiliesPodSvc(void);
+    // remove any podsvc gauge metric families during stop
+    void removeStaticGaugeFamiliesPodSvc(void);
+
+    // Dynamic Metric families and metrics
+    // CRUD for every PodSvc counter metric
+    // func to create gauge for PodSvcCounter given metric type,
+    // uuid of ep+svc & attr map of ep and svc
+    void createDynamicGaugePodSvc(PODSVC_METRICS metric,
+                                  const string& uuid,
+        const unordered_map<string, string>& ep_attr_map,
+        const unordered_map<string, string>& svc_attr_map);
+
+    // func to get label map and Gauge for PodSvcCounter given metric type, uuid
+    mgauge_pair_t getDynamicGaugePodSvc(PODSVC_METRICS metric, const string& uuid);
+
+    // func to remove gauge for PodSvcCounter given metric type, uuid
+    bool removeDynamicGaugePodSvc(PODSVC_METRICS metric, const string& uuid);
+    // func to remove all gauge of every PodSvcCounter for a metric type
+    void removeDynamicGaugePodSvc(PODSVC_METRICS metric);
+    // func to remove all gauges of every PodSvcCounter
+    void removeDynamicGaugePodSvc(void);
+
+    /**
+     * cache the label map and Gauge ptr for every (endpoint + service) uuid
+     */
+    unordered_map<string, mgauge_pair_t> podsvc_gauge_map[PODSVC_METRICS_MAX+1];
+
+    //Utility apis
+    // Create a label map that can be used for annotation, given the ep+svc attr map
+    static const map<string,string> createLabelMapFromPodSvcAttr(
+                           const unordered_map<string, string>&  ep_attr_map,
+                           const unordered_map<string, string>&  svc_attr_map);
+    /* End of PodSvcCounter related apis and state */
+
 
     /* TODO: Other Counter related apis and state */
 };

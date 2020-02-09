@@ -23,6 +23,7 @@
 #include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 #include <modelgbp/gbpe/EncapTypeEnumT.hpp>
 
+#include <opflexagent/Agent.h>
 #include <opflexagent/EndpointManager.h>
 #include <opflexagent/Network.h>
 #include <opflexagent/logging.h>
@@ -58,17 +59,19 @@ static const string NULL_MAC_ADDR("00:00:00:00:00:00");
 
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
-EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
+EndpointManager::EndpointManager(Agent& agent_,
+                                 opflex::ofcore::OFFramework& framework_,
                                  PolicyManager& policyManager_,
                                  PrometheusManager& prometheusManager_)
-    : framework(framework_), policyManager(policyManager_),
+    : agent(agent_), framework(framework_), policyManager(policyManager_),
       prometheusManager(prometheusManager_), epgMappingListener(*this) {
 
 }
 #else
-EndpointManager::EndpointManager(opflex::ofcore::OFFramework& framework_,
+EndpointManager::EndpointManager(Agent& agent_,
+                                 opflex::ofcore::OFFramework& framework_,
                                  PolicyManager& policyManager_)
-    : framework(framework_), policyManager(policyManager_),
+    : agent(agent_), framework(framework_), policyManager(policyManager_),
       epgMappingListener(*this) {
 
 }

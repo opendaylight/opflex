@@ -61,9 +61,9 @@ using boost::uuids::basic_random_generator;
 #ifdef HAVE_PROMETHEUS_SUPPORT
 Agent::Agent(OFFramework& framework_)
     : framework(framework_),
-      prometheusManager(framework),
+      prometheusManager(*this, framework),
       policyManager(framework, agent_io),
-      endpointManager(framework, policyManager, prometheusManager),
+      endpointManager(*this, framework, policyManager, prometheusManager),
       extraConfigManager(framework),
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
@@ -73,7 +73,7 @@ Agent::Agent(OFFramework& framework_)
 Agent::Agent(OFFramework& framework_)
     : framework(framework_),
       policyManager(framework, agent_io),
-      endpointManager(framework, policyManager),
+      endpointManager(*this, framework, policyManager),
       extraConfigManager(framework),
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),

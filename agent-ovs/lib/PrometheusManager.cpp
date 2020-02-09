@@ -11,6 +11,7 @@
 
 #include <opflex/modb/Mutator.h>
 #include <opflexagent/logging.h>
+#include <opflexagent/Agent.h>
 #include <opflexagent/PrometheusManager.h>
 #include <opflexagent/EndpointManager.h>
 #include <map>
@@ -65,6 +66,22 @@ static string ep_family_help[] =
   "Local endpoint tx broadcast packets"
 };
 
+static string podsvc_family_names[] =
+{
+  "opflex_endpoint_to_svc_bytes",
+  "opflex_endpoint_to_svc_packets",
+  "opflex_svc_to_endpoint_bytes",
+  "opflex_svc_to_endpoint_packets"
+};
+
+static string podsvc_family_help[] =
+{
+  "endpoint to service bytes",
+  "endpoint to service packets",
+  "service to endpoint bytes",
+  "service to endpoint packets"
+};
+
 static string metric_annotate_skip[] =
 {
   "vm-name",
@@ -76,7 +93,9 @@ static string metric_annotate_skip[] =
 };
 
 // construct PrometheusManager
-PrometheusManager::PrometheusManager(opflex::ofcore::OFFramework &fwk_) :
+PrometheusManager::PrometheusManager(Agent &agent_,
+                                     opflex::ofcore::OFFramework &fwk_) :
+                                     agent(agent_),
                                      framework(fwk_),
                                      gauge_ep_total{0}  {}
 
@@ -111,7 +130,10 @@ void PrometheusManager::createStaticCounterFamiliesEp (void)
 void PrometheusManager::createStaticCounterFamilies (void)
 {
     // EpCounter families
-    createStaticCounterFamiliesEp();
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        createStaticCounterFamiliesEp();
+    }
 }
 
 // create all static ep counters during start
@@ -124,12 +146,14 @@ void PrometheusManager::createStaticCountersEp ()
     counter_ep_remove_ptr = &counter_ep_remove;
 }
 
-
-
 // create all static counters during start
 void PrometheusManager::createStaticCounters ()
 {
-    createStaticCountersEp();
+    // EpCounter related metrics
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        createStaticCountersEp();
+    }
 }
 
 // remove all dynamic counters during stop
@@ -141,7 +165,18 @@ void PrometheusManager::removeDynamicCounters ()
 // remove all dynamic counters during stop
 void PrometheusManager::removeDynamicGauges ()
 {
-    removeDynamicGaugeEp();
+    // Remove EpCounter related gauges
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        removeDynamicGaugeEp();
+    }
+
+    // Remove PodSvcCounter related gauges
+    {
+        const lock_guard<mutex> lock(podsvc_counter_mutex);
+        removeDynamicGaugePodSvc();
+    }
+
 }
 
 // remove all static ep counters during stop
@@ -157,7 +192,12 @@ void PrometheusManager::removeStaticCountersEp ()
 // remove all static counters during stop
 void PrometheusManager::removeStaticCounters ()
 {
-    removeStaticCountersEp();
+
+    // Remove EpCounter related counter metrics
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        removeStaticCountersEp();
+    }
 }
 
 // create all EP specific gauge families during start
@@ -187,11 +227,38 @@ void PrometheusManager::createStaticGaugeFamiliesEp (void)
     }
 }
 
+// create all PODSVC specific gauge families during start
+void PrometheusManager::createStaticGaugeFamiliesPodSvc (void)
+{
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+
+    for (PODSVC_METRICS metric=PODSVC_METRICS_MIN;
+            metric <= PODSVC_METRICS_MAX;
+                metric = PODSVC_METRICS(metric+1)) {
+        auto& gauge_podsvc_family = BuildGauge()
+                             .Name(podsvc_family_names[metric])
+                             .Help(podsvc_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_podsvc_family_ptr[metric] = &gauge_podsvc_family;
+    }
+}
 
 // create all gauge families during start
 void PrometheusManager::createStaticGaugeFamilies (void)
 {
-    createStaticGaugeFamiliesEp();
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        createStaticGaugeFamiliesEp();
+    }
+
+    {
+        const lock_guard<mutex> lock(podsvc_counter_mutex);
+        createStaticGaugeFamiliesPodSvc();
+    }
 }
 
 // create EpCounter gauges during start
@@ -204,7 +271,11 @@ void PrometheusManager::createStaticGaugesEp ()
 // create gauges during start
 void PrometheusManager::createStaticGauges ()
 {
-    createStaticGaugesEp();
+    // EpCounter related gauges
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        createStaticGaugesEp();
+    }
 }
 
 // remove ep gauges during stop
@@ -218,13 +289,17 @@ void PrometheusManager::removeStaticGaugesEp ()
 // remove gauges during stop
 void PrometheusManager::removeStaticGauges ()
 {
-    removeStaticGaugesEp();
+
+    // Remove EpCounter related gauge metrics
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        removeStaticGaugesEp();
+    }
 }
 
 // Start of PrometheusManager instance
 void PrometheusManager::start()
 {
-    const lock_guard<mutex> lock(ep_counter_mutex);
     LOG(DEBUG) << "starting prometheus manager";
     /**
      * create an http server running on port 9612
@@ -254,7 +329,6 @@ void PrometheusManager::start()
 // Stop of PrometheusManager instance
 void PrometheusManager::stop()
 {
-    const lock_guard<mutex> lock(ep_counter_mutex);
     LOG(DEBUG) << "stopping prometheus manager";
 
     // Gracefully delete state
@@ -324,6 +398,54 @@ string PrometheusManager::sanitizeMetricName (string metric_name)
     return metric_name;
 }
 
+// Create PodSvcCounter gauge given metric type, ep+svc uuid & attr_maps
+void PrometheusManager::createDynamicGaugePodSvc (PODSVC_METRICS metric,
+                                                  const string& uuid,
+                    const unordered_map<string, string>&    ep_attr_map,
+                    const unordered_map<string, string>&    svc_attr_map)
+{
+    // During counter update from stats manager, dont create new gauge metric
+    if ((ep_attr_map.size() == 0) && (svc_attr_map.size() == 0))
+        return;
+
+    auto const &label_map = createLabelMapFromPodSvcAttr(ep_attr_map, svc_attr_map);
+    auto hash_new = hash_labels(label_map);
+
+    // Retrieve the Gauge if its already created
+    auto const &mgauge = getDynamicGaugePodSvc(metric, uuid);
+    if (mgauge) {
+        /**
+         * Detect attribute change by comparing hashes of cached label map
+         * with new label map
+         */
+        if (hash_new == hash_labels(mgauge.get().first))
+            return;
+        else {
+            LOG(DEBUG) << "addNupdate podsvccounter uuid " << uuid
+                       << "existing podsvc metric, but deleting: hash modified;"
+                       << " metric: " << podsvc_family_names[metric]
+                       << " gaugeptr: " << mgauge.get().second;
+            removeDynamicGaugePodSvc(metric, uuid);
+        }
+    }
+
+    // We shouldnt add a gauge for PodSvc which doesnt have
+    // ep name and svc name.
+    if (!hash_new) {
+        LOG(ERROR) << "label map is empty for podsvc dyn gauge family"
+               << " metric: " << metric
+               << " uuid: " << uuid;
+        return;
+    }
+
+    LOG(DEBUG) << "creating podsvc dyn gauge family"
+               << " metric: " << metric
+               << " uuid: " << uuid
+               << " label hash: " << hash_new;
+    auto& gauge = gauge_podsvc_family_ptr[metric]->Add(label_map);
+    podsvc_gauge_map[metric][uuid] = make_pair(std::move(label_map), &gauge);
+}
+
 // Create EpCounter gauge given metric type and an uuid
 bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
                                               const string& uuid,
@@ -364,9 +486,9 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
         }
     }
 
-    auto label_map = createLabelMapFromAttr(ep_name, attr_map);
+    auto label_map = createLabelMapFromEpAttr(ep_name, attr_map);
     auto hash = hash_labels(label_map);
-    LOG(DEBUG) << "creating dyn gauge family: " << ep_name
+    LOG(DEBUG) << "creating ep dyn gauge family: " << ep_name
                << " label hash: " << hash;
     auto& gauge = gauge_ep_family_ptr[metric]->Add(label_map);
     ep_gauge_map[metric][uuid] = make_pair(hash, &gauge);
@@ -374,11 +496,44 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
     return true;
 }
 
+// Create a label map that can be used for annotation, given the ep attr map
+// and svc attr_map
+const map<string,string> PrometheusManager::createLabelMapFromPodSvcAttr (
+                          const unordered_map<string, string>&  ep_attr_map,
+                          const unordered_map<string, string>&  svc_attr_map)
+{
+    map<string,string>   label_map;
+
+    auto ep_name_itr = ep_attr_map.find("vm-name");
+    auto svc_name_itr = svc_attr_map.find("name");
+    // Ensuring both ep and svc's names are present in attributes
+    // If not, there is no point in creating this metric
+    if ((ep_name_itr != ep_attr_map.end())
+            && (svc_name_itr != svc_attr_map.end())) {
+        label_map["ep_name"] = ep_name_itr->second;
+        label_map["svc_name"] = svc_name_itr->second;
+    } else {
+        return label_map;
+    }
+
+    auto ep_ns_itr = ep_attr_map.find("namespace");
+    if (ep_ns_itr != ep_attr_map.end()) {
+        label_map["ep_namespace"] = ep_ns_itr->second;
+    }
+
+    auto svc_ns_itr = svc_attr_map.find("namespace");
+    if (svc_ns_itr != svc_attr_map.end()) {
+        label_map["svc_namespace"] = svc_ns_itr->second;
+    }
+
+    return label_map;
+}
+
 // Max allowed annotations per metric
 int PrometheusManager::max_metric_attr_count = 5;
 
 // Create a label map that can be used for annotation, given the ep attr map
-map<string,string> PrometheusManager::createLabelMapFromAttr (
+map<string,string> PrometheusManager::createLabelMapFromEpAttr (
                                                            const string& ep_name,
                                  const unordered_map<string, string>&    attr_map)
 {
@@ -437,6 +592,23 @@ map<string,string> PrometheusManager::createLabelMapFromAttr (
     return label_map;
 }
 
+// Get PodSvcCounter gauge given the metric, uuid of Pod+Svc
+mgauge_pair_t PrometheusManager::getDynamicGaugePodSvc (PODSVC_METRICS metric,
+                                                  const string& uuid)
+{
+    mgauge_pair_t mgauge = boost::none;
+    auto itr = podsvc_gauge_map[metric].find(uuid);
+    if (itr == podsvc_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Dyn Gauge PodSvcCounter not found"
+                   << " metric: " << metric
+                   << " uuid: " << uuid;
+    } else {
+        mgauge = itr->second;
+    }
+
+    return mgauge;
+}
+
 // Get EpCounter gauge given the metric, uuid of EP
 hgauge_pair_t PrometheusManager::getDynamicGaugeEp (EP_METRICS metric,
                                                    const string& uuid)
@@ -450,6 +622,48 @@ hgauge_pair_t PrometheusManager::getDynamicGaugeEp (EP_METRICS metric,
     }
 
     return hgauge;
+}
+
+// Remove dynamic PodSvcCounter gauge given a metic type and podsvc uuid
+bool PrometheusManager::removeDynamicGaugePodSvc (PODSVC_METRICS metric,
+                                                  const string& uuid)
+{
+    auto mgauge = getDynamicGaugePodSvc(metric, uuid);
+    if (mgauge) {
+        auto &mpair = podsvc_gauge_map[metric][uuid];
+        mpair.get().first.clear(); // free the label map
+        podsvc_gauge_map[metric].erase(uuid);
+        gauge_podsvc_family_ptr[metric]->Remove(mgauge.get().second);
+    } else {
+        LOG(DEBUG) << "remove dynamic gauge podsvc not found uuid:" << uuid;
+        return false;
+    }
+    return true;
+}
+
+// Remove dynamic PodSvcCounter gauge given a metric type
+void PrometheusManager::removeDynamicGaugePodSvc (PODSVC_METRICS metric)
+{
+    auto itr = podsvc_gauge_map[metric].begin();
+    while (itr != podsvc_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Delete PodSvc uuid: " << itr->first
+                   << " Gauge: " << itr->second.get().second;
+        gauge_podsvc_family_ptr[metric]->Remove(itr->second.get().second);
+        itr->second.get().first.clear(); // free the label map
+        itr++;
+    }
+
+    podsvc_gauge_map[metric].clear();
+}
+
+// Remove dynamic PodSvcCounter gauges for all metrics
+void PrometheusManager::removeDynamicGaugePodSvc ()
+{
+    for (PODSVC_METRICS metric=PODSVC_METRICS_MIN;
+            metric <= PODSVC_METRICS_MAX;
+                metric = PODSVC_METRICS(metric+1)) {
+        removeDynamicGaugePodSvc(metric);
+    }
 }
 
 // Remove dynamic EpCounter gauge given a metic type and ep uuid
@@ -475,8 +689,6 @@ void PrometheusManager::removeDynamicGaugeEp (EP_METRICS metric)
         LOG(DEBUG) << "Delete Ep uuid: " << itr->first
                    << " hash: " << itr->second.get().first
                    << " Gauge: " << itr->second.get().second;
-        //ep_gauge_map[metric].erase(itr->first);
-        // TODO: Fix below
         gauge_ep_family_ptr[metric]->Remove(itr->second.get().second);
         itr++;
 
@@ -523,7 +735,20 @@ void PrometheusManager::removeStaticCounterFamiliesEp ()
 void PrometheusManager::removeStaticCounterFamilies ()
 {
     // EpCounter specific
-    removeStaticCounterFamiliesEp();
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        removeStaticCounterFamiliesEp();
+    }
+}
+
+// Remove all statically allocated podsvc gauge families
+void PrometheusManager::removeStaticGaugeFamiliesPodSvc()
+{
+    for (PODSVC_METRICS metric=PODSVC_METRICS_MIN;
+            metric <= PODSVC_METRICS_MAX;
+                metric = PODSVC_METRICS(metric+1)) {
+        gauge_podsvc_family_ptr[metric] = nullptr;
+    }
 }
 
 // Remove all statically allocated ep gauge families
@@ -541,17 +766,120 @@ void PrometheusManager::removeStaticGaugeFamiliesEp()
 void PrometheusManager::removeStaticGaugeFamilies()
 {
     // EpCounter specific
-    removeStaticGaugeFamiliesEp();
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        removeStaticGaugeFamiliesEp();
+    }
+
+    // PodSvcCounter specific
+    {
+        const lock_guard<mutex> lock(podsvc_counter_mutex);
+        removeStaticGaugeFamiliesPodSvc();
+    }
 }
 
 // Return a rolling hash of attribute map for the ep
 size_t PrometheusManager::calcHashEpAttributes (const string& ep_name,
                       const unordered_map<string, string>&    attr_map)
 {
-    auto label_map = createLabelMapFromAttr(ep_name, attr_map);
+    auto label_map = createLabelMapFromEpAttr(ep_name, attr_map);
     auto hash = hash_labels(label_map);
     LOG(DEBUG) << ep_name << ":calculated label hash = " << hash;
     return hash;
+}
+
+/* Function called from IntFlowManager to update PodSvcCounter */
+void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
+                                                 const string& uuid,
+                  const unordered_map<string, string>& ep_attr_map,
+                  const unordered_map<string, string>& svc_attr_map)
+{
+    using namespace opflex::modb;
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::observer;
+
+    const lock_guard<mutex> lock(podsvc_counter_mutex);
+    Mutator mutator(framework, "policyelement");
+    optional<shared_ptr<PolicyStatUniverse> > su =
+                            PolicyStatUniverse::resolve(framework);
+    if (!su)
+        return;
+
+    if (isEpToSvc) {
+        optional<shared_ptr<EpToSvcCounter> > counter =
+                        su.get()->resolveGbpeEpToSvcCounter(agent.getUuid(),
+                                                            uuid);
+        if (counter) {
+            // Create the gauge counters if they arent present already
+            for (PODSVC_METRICS metric=PODSVC_EP2SVC_MIN;
+                    metric <= PODSVC_EP2SVC_MAX;
+                        metric = PODSVC_METRICS(metric+1)) {
+                createDynamicGaugePodSvc(metric,
+                                         uuid,
+                                         ep_attr_map,
+                                         svc_attr_map);
+            }
+
+            // Update the metrics
+            for (PODSVC_METRICS metric=PODSVC_EP2SVC_MIN;
+                    metric <= PODSVC_EP2SVC_MAX;
+                        metric = PODSVC_METRICS(metric+1)) {
+                const mgauge_pair_t &mgauge = getDynamicGaugePodSvc(metric, uuid);
+                optional<uint64_t>   metric_opt;
+                switch (metric) {
+                case PODSVC_EP2SVC_BYTES:
+                    metric_opt = counter.get()->getBytes();
+                    break;
+                case PODSVC_EP2SVC_PKTS:
+                    metric_opt = counter.get()->getPackets();
+                    break;
+                default:
+                    LOG(ERROR) << "Unhandled eptosvc metric: " << metric;
+                }
+                if (metric_opt && mgauge)
+                    mgauge.get().second->Set(static_cast<double>(metric_opt.get()));
+            }
+        } else {
+            LOG(DEBUG) << "EpToSvcCounter yet to be created for uuid: " << uuid;
+        }
+    } else {
+        optional<shared_ptr<SvcToEpCounter> > counter =
+                        su.get()->resolveGbpeSvcToEpCounter(agent.getUuid(),
+                                                            uuid);
+        if (counter) {
+            // Create the gauge counters if they arent present already
+            for (PODSVC_METRICS metric=PODSVC_SVC2EP_MIN;
+                    metric <= PODSVC_SVC2EP_MAX;
+                        metric = PODSVC_METRICS(metric+1)) {
+                createDynamicGaugePodSvc(metric,
+                                         uuid,
+                                         ep_attr_map,
+                                         svc_attr_map);
+            }
+
+            // Update the metrics
+            for (PODSVC_METRICS metric=PODSVC_SVC2EP_MIN;
+                    metric <= PODSVC_SVC2EP_MAX;
+                        metric = PODSVC_METRICS(metric+1)) {
+                const mgauge_pair_t &mgauge = getDynamicGaugePodSvc(metric, uuid);
+                optional<uint64_t>   metric_opt;
+                switch (metric) {
+                case PODSVC_SVC2EP_BYTES:
+                    metric_opt = counter.get()->getBytes();
+                    break;
+                case PODSVC_SVC2EP_PKTS:
+                    metric_opt = counter.get()->getPackets();
+                    break;
+                default:
+                    LOG(ERROR) << "Unhandled svctoep metric: " << metric;
+                }
+                if (metric_opt && mgauge)
+                    mgauge.get().second->Set(static_cast<double>(metric_opt.get()));
+            }
+        } else {
+            LOG(DEBUG) << "SvcToEpCounter yet to be created for uuid: " << uuid;
+        }
+    }
 }
 
 /* Function called from EP Manager to update EpCounter */
@@ -640,6 +968,32 @@ void PrometheusManager::addNUpdateEpCounter (const string& uuid,
                 if (metric_opt && hgauge)
                     hgauge.get().second->Set(static_cast<double>(metric_opt.get()));
             }
+        }
+    }
+}
+
+// Function called from IntFlowManager to remove PodSvcCounter
+void PrometheusManager::removePodSvcCounter (bool isEpToSvc,
+                                             const string& uuid)
+{
+    const lock_guard<mutex> lock(podsvc_counter_mutex);
+    LOG(DEBUG) << "remove podsvc counter"
+               << " isEpToSvc: " << isEpToSvc
+               << " uuid: " << uuid;
+
+    if (isEpToSvc) {
+        for (PODSVC_METRICS metric=PODSVC_EP2SVC_MIN;
+                metric <= PODSVC_EP2SVC_MAX;
+                    metric = PODSVC_METRICS(metric+1)) {
+            if (!removeDynamicGaugePodSvc(metric, uuid))
+                break;
+        }
+    } else {
+        for (PODSVC_METRICS metric=PODSVC_SVC2EP_MIN;
+                metric <= PODSVC_SVC2EP_MAX;
+                    metric = PODSVC_METRICS(metric+1)) {
+            if (!removeDynamicGaugePodSvc(metric, uuid))
+                break;
         }
     }
 }

@@ -102,6 +102,9 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     agent(agent_), switchManager(switchManager_), idGen(idGen_),
     ctZoneManager(ctZoneManager_), pktInHandler(pktInHandler_),
     tunnelEpManager(tunnelEpManager_),
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager(agent.getPrometheusManager()),
+#endif
     taskQueue(agent.getAgentIOService()), encapType(ENCAP_NONE),
     floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
     virtualRouterEnabled(false), routerAdv(false),
@@ -2007,22 +2010,30 @@ void IntFlowManager::updatePodSvcStatsAttr (const std::shared_ptr<MO> &obj,
 {
     {
         auto podItr = epAttr.find("vm-name");
-        auto svcItr = svcAttr.find("name");
-        if ((podItr != epAttr.end())
-            && (svcItr != svcAttr.end())) {
+        if (podItr != epAttr.end())
             obj.get()->setEp(podItr->second);
+        else
+            obj.get()->unsetEp();
+
+        auto svcItr = svcAttr.find("name");
+        if (svcItr != svcAttr.end())
             obj.get()->setSvc(svcItr->second);
-        }
+        else
+            obj.get()->unsetSvc();
     }
 
     {
         auto podItr = epAttr.find("namespace");
-        auto svcItr = svcAttr.find("namespace");
-        if ((podItr != epAttr.end())
-            && (svcItr != svcAttr.end())) {
+        if (podItr != epAttr.end())
             obj.get()->setEpNs(podItr->second);
+        else
+            obj.get()->unsetEpNs();
+
+        auto svcItr = svcAttr.find("namespace");
+        if (svcItr != svcAttr.end())
             obj.get()->setSvcNs(svcItr->second);
-        }
+        else
+            obj.get()->unsetSvcNs();
     }
 }
 
@@ -2101,6 +2112,12 @@ updatePodSvcStatsCounters (const uint64_t &cookie,
         }
     }
     mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.addNUpdatePodSvcCounter(isEpToSvc,
+                                              idStr.get(),
+                                              epAttr,
+                                              svcAttr);
+#endif
 }
 
 // Clear pod svc objects
@@ -2117,6 +2134,9 @@ void IntFlowManager::clearPodSvcCounters (const std::string& uuid)
                                agent.getUuid(), uuid);
     }
     mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.removePodSvcCounter(isEpToSvc, uuid);
+#endif
 }
 
 // Add/del stats flows between "ep to svc" and "svc to ep"

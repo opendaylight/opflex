@@ -10,6 +10,10 @@
 #ifndef OPFLEXAGENT_INTFLOWMANAGER_H_
 #define OPFLEXAGENT_INTFLOWMANAGER_H_
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <opflexagent/Agent.h>
 #include "SwitchManager.h"
 #include <opflexagent/IdGenerator.h>
@@ -18,6 +22,9 @@
 #include <opflexagent/TunnelEpManager.h>
 #include <opflexagent/RDConfig.h>
 #include <opflexagent/TaskQueue.h>
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
 #include "SwitchStateHandler.h"
 
 #include <opflex/ofcore/PeerStatusListener.h>
@@ -709,6 +716,9 @@ private:
     CtZoneManager& ctZoneManager;
     PacketInHandler& pktInHandler;
     TunnelEpManager& tunnelEpManager;
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    PrometheusManager& prometheusManager;
+#endif
     TaskQueue taskQueue;
 
     EncapType encapType;

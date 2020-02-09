@@ -37,6 +37,8 @@
 
 namespace opflexagent {
 
+class Agent;
+
 /**
  * The endpoint manager is responsible for maintaining the state
  * related to endpoints.  It discovers new endpoints on the system and
@@ -53,11 +55,13 @@ public:
      * instance.
      */
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    EndpointManager(opflex::ofcore::OFFramework& framework,
+    EndpointManager(Agent& agent,
+                    opflex::ofcore::OFFramework& framework,
                     PolicyManager& policyManager,
                     PrometheusManager& prometheusManager);
 #else
-    EndpointManager(opflex::ofcore::OFFramework& framework,
+    EndpointManager(Agent& agent,
+                    opflex::ofcore::OFFramework& framework,
                     PolicyManager& policyManager);
 #endif
 
@@ -372,6 +376,7 @@ private:
      */
     void removeEndpointExternal(const std::string& uuid);
 
+    Agent& agent;
     opflex::ofcore::OFFramework& framework;
     PolicyManager& policyManager;
 #ifdef HAVE_PROMETHEUS_SUPPORT
