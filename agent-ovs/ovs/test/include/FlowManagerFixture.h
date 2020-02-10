@@ -209,6 +209,12 @@ public:
     Bldr& isPktMark(uint32_t mark) {
         m("pkt_mark", str(mark, true)); return *this;
     }
+    Bldr& flags(uint32_t flags) {
+        if(flags & OFPUTIL_FF_SEND_FLOW_REM) {
+            _flag = SEND_FLOW_REM;
+        }
+        return *this;
+    }
     Bldr& actions() { return *this; }
     Bldr& drop() { a("drop"); return *this; }
     Bldr& load64(REG r, uint64_t v);

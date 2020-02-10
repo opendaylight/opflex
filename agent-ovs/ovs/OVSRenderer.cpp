@@ -64,6 +64,8 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       podsvcStatsManager(&agent_, idGen, intSwitchManager,
                            intFlowManager),
       secGrpStatsManager(&agent_, idGen, accessSwitchManager),
+      tableDropStatsManager(&agent_, idGen, intSwitchManager,
+              accessSwitchManager),
       tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true),
       connTrack(true), ctZoneRangeStart(0), ctZoneRangeEnd(0),
@@ -71,6 +73,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       contractStatsEnabled(true), contractStatsInterval(0),
       podsvcStatsEnabled(true), podsvcStatsInterval(0),
       secGroupStatsEnabled(true), secGroupStatsInterval(0),
+      tableDropStatsEnabled(true), tableDropStatsInterval(0),
       spanRenderer(agent_), netflowRenderer(agent_), started(false),
       pktLogger(pktLoggerIO, exporterIO) {
 
@@ -201,6 +204,17 @@ void OVSRenderer::start() {
         secGrpStatsManager.
             registerConnection(accessSwitchManager.getConnection());
         secGrpStatsManager.start();
+    }
+    if (tableDropStatsEnabled) {
+        tableDropStatsManager.setTimerInterval(tableDropStatsInterval);
+        tableDropStatsManager.setAgentUUID(getAgent().getUuid());
+
+        tableDropStatsManager.
+            registerConnection(intSwitchManager.getConnection(),
+                               (accessBridgeName != "")
+                               ? accessSwitchManager.getConnection()
+                               : NULL);
+        tableDropStatsManager.start();
     }
 
     intSwitchManager.connect();
@@ -432,6 +446,10 @@ void OVSRenderer::setProperties(const ptree& properties) {
     static const std::string STATS_SECGROUP_INTERVAL("statistics"
                                                      ".security-group"
                                                      ".interval");
+    static const std::string TABLE_DROP_STATS_ENABLED("statistics"
+                                                      ".table-drop.enabled");
+    static const std::string TABLE_DROP_STATS_INTERVAL("statistics"
+                                                       ".table-drop.interval");
     static const std::string DROP_LOG_ENCAP_GENEVE("drop-log.geneve");
     static const std::string REMOTE_NAMESPACE("namespace");
 
@@ -542,12 +560,16 @@ void OVSRenderer::setProperties(const ptree& properties) {
     podsvcStatsEnabled = properties.get<bool>(STATS_PODSVC_ENABLED, true);
     secGroupStatsEnabled = properties.get<bool>(STATS_SECGROUP_ENABLED, true);
     ifaceStatsInterval = properties.get<long>(STATS_INTERFACE_INTERVAL, 30000);
+    tableDropStatsEnabled = properties.get<bool>(TABLE_DROP_STATS_ENABLED, true);
+
     contractStatsInterval =
         properties.get<long>(STATS_CONTRACT_INTERVAL, 10000);
     podsvcStatsInterval =
         properties.get<long>(STATS_PODSVC_INTERVAL, 10000);
     secGroupStatsInterval =
         properties.get<long>(STATS_SECGROUP_INTERVAL, 10000);
+    tableDropStatsInterval =
+        properties.get<long>(TABLE_DROP_STATS_INTERVAL, 30000);
     if (ifaceStatsInterval <= 0) {
         ifaceStatsEnabled = false;
     }
@@ -556,6 +578,9 @@ void OVSRenderer::setProperties(const ptree& properties) {
     }
     if (secGroupStatsInterval <= 0) {
         secGroupStatsEnabled = false;
+    }
+    if(tableDropStatsInterval <= 0) {
+        tableDropStatsEnabled = false;
     }
 }
 

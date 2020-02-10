@@ -1686,11 +1686,20 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
     string rmac = MAC(rmacArr).toString();
     ADDF(Bldr().table(DROPLOG).priority(0).actions().go(SEC).done());
     ADDF(Bldr().table(STAT).priority(10).actions().go(OUT).done());
-    ADDF(Bldr().table(SEC).priority(25).arp().actions()
+    ADDF(Bldr().table(SEC)
+            .cookie(ovs_ntohll(flow::cookie::TABLE_DROP_FLOW))
+            .flags(OFPUTIL_FF_SEND_FLOW_REM)
+            .priority(25).arp().actions()
             .dropLog(SEC).go(EXP_DROPLOG).done());
-    ADDF(Bldr().table(SEC).priority(25).ip().actions()
+    ADDF(Bldr().table(SEC)
+            .cookie(ovs_ntohll(flow::cookie::TABLE_DROP_FLOW))
+            .flags(OFPUTIL_FF_SEND_FLOW_REM)
+            .priority(25).ip().actions()
             .dropLog(SEC).go(EXP_DROPLOG).done());
-    ADDF(Bldr().table(SEC).priority(25).ipv6().actions()
+    ADDF(Bldr().table(SEC)
+            .cookie(ovs_ntohll(flow::cookie::TABLE_DROP_FLOW))
+            .flags(OFPUTIL_FF_SEND_FLOW_REM)
+            .priority(25).ipv6().actions()
             .dropLog(SEC).go(EXP_DROPLOG).done());
     ADDF(Bldr().table(SEC).priority(27).udp().isTpSrc(68).isTpDst(67)
          .actions().go(SRC).done());
@@ -1748,8 +1757,10 @@ void BaseIntFlowManagerFixture::initExpStatic(uint8_t remoteInventoryType) {
     }
 
     for(int i=SEC; i<=OUT; i++) {
-        ADDF(Bldr().table(i).priority(0)
-         .actions().dropLog(i).go(EXP_DROPLOG).done());
+        ADDF(Bldr().table(i)
+        .cookie(ovs_ntohll(flow::cookie::TABLE_DROP_FLOW))
+        .flags(OFPUTIL_FF_SEND_FLOW_REM).priority(0)
+        .actions().dropLog(i).go(EXP_DROPLOG).done());
     }
 
     if (uplink != OFPP_NONE) {
@@ -3358,6 +3369,8 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
 
     // Flow mods that we expect after diffing against the table
     fe_connect_1 = Bldr().table(SEC).priority(0)
+            .cookie(ovs_ntohll(flow::cookie::TABLE_DROP_FLOW))
+            .flags(OFPUTIL_FF_SEND_FLOW_REM)
             .actions().dropLog(SEC).go(EXP_DROPLOG).done();
     fe_connect_2 = Bldr().table(POL).priority(8292).reg(SEPG, epg4_vnid)
             .reg(DEPG, epg4_vnid).actions().go(STAT).done();

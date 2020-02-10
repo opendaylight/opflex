@@ -483,3 +483,45 @@ module[gbpe]
         member[bytes; type=scalar/UInt64]
 
     }
+
+    class[TableDropCounter;
+          super=observer/Observable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=observer/PolicyStatUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+                component[member=bridgeName]
+                component[member=tableId]
+            }
+        }
+
+        # A unique identifer for the agent incarnation
+        member[uuid; type=reference/UUID]
+
+        # Bridge name of this drop counter
+        member[bridgeName; type=ascii/String]
+
+        # Table Id of this drop counter
+        member[tableId; type=scalar/UInt32]
+
+        # Table name
+        member[tableName; type=ascii/String]
+
+        # Probable drop reason
+        member[probableDropReason; type=ascii/String]
+
+        # number of packets dropped for the table
+        member[packets; type=scalar/UInt64]
+
+        # number of bytes dropped for the table
+        member[bytes; type=scalar/UInt64]
+
+    }
