@@ -12,6 +12,7 @@
 #include <opflexagent/logging.h>
 #include <opflexagent/IdGenerator.h>
 #include <opflexagent/Agent.h>
+#include "FlowConstants.h"
 #include "IntFlowManager.h"
 #include "TableState.h"
 #include "PolicyStatsManager.h"
@@ -60,22 +61,25 @@ void PolicyStatsManager::registerConnection(SwitchConnection* connection) {
     this->connection = connection;
 }
 
-void PolicyStatsManager::start() {
+void PolicyStatsManager::start(bool register_listener) {
     stopping = false;
 
     LOG(DEBUG) << "Starting policy stats manager " << this;
-
-    connection->RegisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
-    connection->RegisterMessageHandler(OFPTYPE_FLOW_REMOVED, this);
-    L24Classifier::registerListener(agent->getFramework(),this);
-    {
-        std::lock_guard<std::mutex> lock(timer_mutex);
-        timer.reset(new deadline_timer(agent->getAgentIOService(),
-                                   milliseconds(timer_interval)));
+    if(connection) {
+        connection->RegisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
+        connection->RegisterMessageHandler(OFPTYPE_FLOW_REMOVED, this);
+        {
+            std::lock_guard<std::mutex> lock(timer_mutex);
+            timer.reset(new deadline_timer(agent->getAgentIOService(),
+                                               milliseconds(timer_interval)));
+        }
+    }
+    if(register_listener) {
+        L24Classifier::registerListener(agent->getFramework(),this);
     }
 }
 
-void PolicyStatsManager::stop() {
+void PolicyStatsManager::stop(bool unregister_listener) {
     stopping = true;
 
     LOG(DEBUG) << "Stopping policy stats manager " << this;
@@ -84,8 +88,9 @@ void PolicyStatsManager::stop() {
         connection->UnregisterMessageHandler(OFPTYPE_FLOW_STATS_REPLY, this);
         connection->UnregisterMessageHandler(OFPTYPE_FLOW_REMOVED, this);
     }
-    L24Classifier::unregisterListener(agent->getFramework(),this);
-
+    if(unregister_listener) {
+        L24Classifier::unregisterListener(agent->getFramework(),this);
+    }
     {
         std::lock_guard<std::mutex> lock(timer_mutex);
         if (timer) {
@@ -473,8 +478,13 @@ void PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMa
             // Does flow stats entry qualify to be a drop entry?
             // if yes, then process it and continue with next flow
             // stats entry.
-            if (fentry->priority == 1) {
+            if ((fentry->cookie & flow::cookie::RD_POL_DROP_FLOW) ==
+                    flow::cookie::RD_POL_DROP_FLOW) {
                 handleDropStats(fentry);
+                handleTableDropStats(fentry);
+            } else if ((fentry->cookie & flow::cookie::TABLE_DROP_FLOW) ==
+                    flow::cookie::TABLE_DROP_FLOW) {
+                handleTableDropStats(fentry);
             } else {
                 // Handle flow stats entries for packets that are matched
                 // and are forwarded
@@ -525,7 +535,8 @@ void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg, const table_map_t& table
     }
 }
 
-void PolicyStatsManager::sendRequest(uint32_t table_id) {
+void PolicyStatsManager::sendRequest(uint32_t table_id, uint64_t _cookie,
+        uint64_t _cookie_mask) {
     // send port stats request again
     ofp_version ofVer = (ofp_version)connection->GetProtocolVersion();
     ofputil_protocol proto = ofputil_protocol_from_ofp_version(ofVer);
@@ -537,7 +548,8 @@ void PolicyStatsManager::sendRequest(uint32_t table_id) {
     fsr.table_id = table_id;
     fsr.out_port = OFPP_ANY;
     fsr.out_group = OFPG_ANY;
-    fsr.cookie = fsr.cookie_mask = (uint64_t)0;
+    fsr.cookie = (uint64_t)_cookie;
+    fsr.cookie_mask = (uint64_t) _cookie_mask;
 
     OfpBuf req(ofputil_encode_flow_stats_request(&fsr, proto));
     ofpmsg_update_length(req.get());

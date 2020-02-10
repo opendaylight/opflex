@@ -47,6 +47,23 @@ static const char* ID_NAMESPACES[] =
 static const char* ID_NMSPC_SECGROUP     = ID_NAMESPACES[0];
 static const char* ID_NMSPC_SECGROUP_SET = ID_NAMESPACES[1];
 
+void AccessFlowManager::populateTableDescriptionMap() {
+    // Populate descriptions of flow tables
+    SwitchManager::TableDescriptionMap fwdTblDescr;
+#define TABLE_DESC(table_id, table_name, drop_reason) \
+        fwdTblDescr.insert( \
+                    std::make_pair(table_id, \
+                            std::make_pair(table_name, drop_reason)));
+    TABLE_DESC(GROUP_MAP_TABLE_ID, "GROUP_MAP_TABLE", "Access port incorrect")
+    TABLE_DESC(SEC_GROUP_IN_TABLE_ID, "SEC_GROUP_IN_TABLE",
+            "Egress Security group derivation missing/incorrect")
+    TABLE_DESC(SEC_GROUP_OUT_TABLE_ID, "SEC_GROUP_OUT_TABLE",
+            "Ingress security group missing/incorrect")
+    TABLE_DESC(OUT_TABLE_ID, "OUT_TABLE", "Output port missing/incorrect")
+#undef TABLE_DESC
+    switchManager.setForwardingTableList(fwdTblDescr);
+}
+
 AccessFlowManager::AccessFlowManager(Agent& agent_,
                                      SwitchManager& switchManager_,
                                      IdGenerator& idGen_,
@@ -56,6 +73,7 @@ AccessFlowManager::AccessFlowManager(Agent& agent_,
       conntrackEnabled(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
+    populateTableDescriptionMap();
 }
 
 static string getSecGrpSetId(const uri_set_t& secGrps) {
@@ -256,7 +274,8 @@ void AccessFlowManager::createStaticFlows() {
          */
         for(unsigned table_id = GROUP_MAP_TABLE_ID; table_id < EXP_DROP_TABLE_ID; table_id++) {
             FlowEntryList dropLogFlow;
-            FlowBuilder().priority(0)
+            FlowBuilder().priority(0).cookie(flow::cookie::TABLE_DROP_FLOW)
+                    .flags(OFPUTIL_FF_SEND_FLOW_REM)
                     .action().dropLog(table_id)
                     .go(EXP_DROP_TABLE_ID)
                     .parent().build(dropLogFlow);
