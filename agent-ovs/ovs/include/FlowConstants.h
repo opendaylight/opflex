@@ -70,6 +70,15 @@ extern const uint64_t ICMP_ECHO_V4;
  */
 extern const uint64_t ICMP_ECHO_V6;
 
+/**
+ * The cookie used for flows for counting per RD drops in policy table
+ */
+extern const uint64_t RD_POL_DROP_FLOW;
+
+/**
+ * The cookie used for flows for per table drops.
+ */
+extern const uint64_t TABLE_DROP_FLOW;
 } // namespace cookie
 
 namespace meta {
