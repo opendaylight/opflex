@@ -808,6 +808,10 @@ private:
      * Handle if the droplog port name is read later
      */
     void handleDropLogPortUpdate();
+    /**
+     * Populate table description map for use by drop counters
+     */
+    void populateTableDescriptionMap();
 
 };
 

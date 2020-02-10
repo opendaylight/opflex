@@ -150,6 +150,10 @@ private:
     void handlePortStatusUpdate(const std::string& portName, uint32_t portNo);
     void handleSecGrpSetUpdate(const EndpointListener::uri_set_t& secGrps,
                                const std::string& secGrpsId);
+    /**
+     * Populate table description for drop counters
+     */
+    void populateTableDescriptionMap();
 
     Agent& agent;
     SwitchManager& switchManager;

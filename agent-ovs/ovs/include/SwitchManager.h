@@ -193,11 +193,38 @@ public:
      */
     void forEachCookieMatch(int tableId, TableState::cookie_callback_t& cb);
 
+    /**
+     * Map of table_id to (Table name, Drop Reason) for use by
+     * table drop counters
+     */
+    typedef std::unordered_map<unsigned, std::pair<std::string,std::string>>
+                TableDescriptionMap;
+    /**
+     * Set the mapping of forwarding tables for which drop counters should be
+     * tracked to their names.
+     * @param forwardingTableMap map of table id to table name
+     */
+    void setForwardingTableList(TableDescriptionMap& forwardingTableMap);
+
+    /**
+     * Get the mapping of forwarding tables for which drop counters should be
+     * tracked to their names.
+     * @param forwardingTableMap map of table id to table name
+     */
+    void getForwardingTableList(TableDescriptionMap& forwardingTableMap) const;
+
 protected:
     /**
      * Connection for this switch
      */
     std::unique_ptr<SwitchConnection> connection;
+
+    /**
+     * Implement this method while inheriting from SwitchManager,
+     * if you need to export Drop Counters for the bridge that the
+     * SwitchManager child manages
+     */
+    virtual void populateTableDescriptionMap(){}
 
 private:
     /**
@@ -275,7 +302,8 @@ private:
     SwitchStateHandler::GroupMap recvGroups;
     bool groupsDone;
 
-
+    /*Drop counter table list*/
+    TableDescriptionMap tableDescriptionMap;
 
 };
 

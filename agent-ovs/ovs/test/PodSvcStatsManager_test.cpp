@@ -244,7 +244,7 @@ PodSvcStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.oldFlowCounterMap.size(), 0);
         // 16 flows based on config, -2 aged flows
-        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 14);
+        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 15);
         guard.unlock();
 
         boost::system::error_code ec;
@@ -254,13 +254,13 @@ PodSvcStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         // 2 flows get readded to new map
         guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.oldFlowCounterMap.size(), 0);
-        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 16);
+        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 17);
         guard.unlock();
     }
 
     if (!isOld && !isFlowStateReAdd) {
         guard.lock();
-        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 16);
+        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 17);
         guard.unlock();
 
         for (auto age = 0; age < PolicyStatsManager::MAX_AGE; age++) {
@@ -284,7 +284,7 @@ PodSvcStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         statsManager->on_timer(ec);
 
         guard.lock();
-        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 16);
+        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 17);
         guard.unlock();
     }
 
@@ -624,7 +624,7 @@ bool PodSvcStatsManagerFixture::checkNewFlowMapSize (void)
     std::lock_guard<std::mutex> lock(podsvcStatsManager.pstatMtx);
     // 6 eps with 6 ipv4 + 2 ipv6
     // 2 svc mappings with 1 v6 and 1v4
-    if (podsvcStatsManager.statsState.newFlowCounterMap.size() == 16)
+    if (podsvcStatsManager.statsState.newFlowCounterMap.size() == 17)
         return true;
     return false;
 }

@@ -77,6 +77,16 @@ void SwitchManager::setMaxFlowTables(int max) {
     tableDone.resize(max);
 }
 
+void SwitchManager::setForwardingTableList(
+        TableDescriptionMap  &forwardingTableMap) {
+    tableDescriptionMap = forwardingTableMap;
+}
+
+void SwitchManager::getForwardingTableList(
+        TableDescriptionMap& forwardingTableMap) const {
+    forwardingTableMap = tableDescriptionMap;
+}
+
 void SwitchManager::enableSync() {
     if (stopping) return;
 
