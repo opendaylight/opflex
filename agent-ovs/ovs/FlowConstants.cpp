@@ -24,6 +24,8 @@ const uint64_t ICMP_ERROR_V4   = DEF_COOKIE(8);
 const uint64_t ICMP_ERROR_V6   = DEF_COOKIE(9);
 const uint64_t ICMP_ECHO_V4    = DEF_COOKIE(10);
 const uint64_t ICMP_ECHO_V6    = DEF_COOKIE(11);
+const uint64_t RD_POL_DROP_FLOW = DEF_COOKIE(12);
+const uint64_t TABLE_DROP_FLOW = DEF_COOKIE(13);
 #undef DEF_COOKIE
 
 } // namespace cookie

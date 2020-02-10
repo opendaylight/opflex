@@ -20,6 +20,7 @@
 #include "ContractStatsManager.h"
 #include "PodSvcStatsManager.h"
 #include "SecGrpStatsManager.h"
+#include "TableDropStatsManager.h"
 #include <opflexagent/TunnelEpManager.h>
 #include "PacketInHandler.h"
 #include "CtZoneManager.h"
@@ -88,6 +89,7 @@ private:
     ContractStatsManager contractStatsManager;
     PodSvcStatsManager podsvcStatsManager;
     SecGrpStatsManager secGrpStatsManager;
+    TableDropStatsManager tableDropStatsManager;
 
     std::string intBridgeName;
     std::string accessBridgeName;
@@ -120,6 +122,8 @@ private:
     long podsvcStatsInterval;
     bool secGroupStatsEnabled;
     long secGroupStatsInterval;
+    bool tableDropStatsEnabled;
+    long tableDropStatsInterval;
 
     SpanRenderer spanRenderer;
     NetFlowRenderer netflowRenderer;
