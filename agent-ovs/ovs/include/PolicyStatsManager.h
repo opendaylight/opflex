@@ -76,7 +76,7 @@ public:
     /**
      * Start the policy stats manager
      */
-    void start();
+    void start(bool register_listener=true);
 
     /**
      * Get the classifier counter generation ID
@@ -88,7 +88,7 @@ public:
     /**
      * Stop the policy stats manager
      */
-    void stop();
+    void stop(bool unregister_learner=true);
 
     /**
      * Get and increment the classifier counter generation ID
@@ -379,7 +379,8 @@ protected:
     /**
      * Send a flow stats request to the given table
      */
-    void sendRequest(uint32_t table_id);
+    void sendRequest(uint32_t table_id, uint64_t _cookie=0,
+                     uint64_t _cookie_mask=0);
 
     /**
      * Clear stale counter values
@@ -405,6 +406,11 @@ protected:
      * Handle a drop stats message
      */
     virtual void handleDropStats(struct ofputil_flow_stats* fentry) {};
+
+    /**
+     * Handle a table drop stats message
+     */
+    virtual void handleTableDropStats(struct ofputil_flow_stats* fentry) {};
 
     /**
      * Generate the policy stats objects for from the counter maps
@@ -438,7 +444,16 @@ protected:
                                            const std::string& dstEpg,
                                            const std::string& ruleURI,
                                            FlowStats_t& counters) {};
-
+    /**
+     * Update the flow counters
+     */
+    void updateNewFlowCounters(uint32_t cookie,
+                               uint16_t priority,
+                               struct match& match,
+                               uint64_t flow_packet_count,
+                               uint64_t flow_byte_count,
+                               flowCounterState_t& counterState,
+                               bool flowRemoved);
     /**
      * True if shutting down
      */
@@ -448,13 +463,6 @@ private:
     void handleFlowStats(ofpbuf *msg, const table_map_t& tableMap);
     void handleFlowRemoved(ofpbuf *msg, const table_map_t& tableMap);
 
-    void updateNewFlowCounters(uint32_t cookie,
-                               uint16_t priority,
-                               struct match& match,
-                               uint64_t flow_packet_count,
-                               uint64_t flow_byte_count,
-                               flowCounterState_t& counterState,
-                               bool flowRemoved);
 };
 
 } /* namespace opflexagent */
