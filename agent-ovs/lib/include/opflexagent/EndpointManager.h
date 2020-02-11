@@ -342,7 +342,7 @@ private:
      * @return true if we should notify listeners
      */
     bool updateEndpointLocal(const std::string& uuid,
-            boost::optional<EndpointListener::uri_set_t &> extDomSet = boost::none);
+            const boost::optional<EndpointListener::uri_set_t &> extDomSet = boost::none);
 
     /**
      * Update the remote endpoint entries associated with an endpoint
@@ -402,12 +402,6 @@ private:
          * address mappings
          */
         uri_uset_t ipMappingGroups;
-
-        /**
-         * reference to the vmep object related to this endpoint that
-         * registers the VM to trigger attribute resolution
-         */
-        boost::optional<opflex::modb::URI> vmEP;
 
         // references to the modb epdr localL2 and locall3 objects
         // related to this endpoint that exist to cause policy

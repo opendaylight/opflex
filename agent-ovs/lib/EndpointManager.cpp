@@ -292,23 +292,6 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     const optional<std::string>& epgmap = endpoint.getEgMappingAlias();
     updateEpMap(oldEpgmap, epgmap, epgmapping_ep_map, uuid);
 
-    if(!endpoint.isExternal()) {
-        // Update VMEp registration
-        Mutator mutator(framework, "policyelement");
-        if (es.vmEP) {
-            optional<shared_ptr<VMEp> > oldvme =
-                VMEp::resolve(framework, es.vmEP.get());
-            if (oldvme && oldvme.get()->getUuid("") != uuid)
-                oldvme.get()->remove();
-        }
-        optional<shared_ptr<VMUniverse> > vmu =
-            VMUniverse::resolve(framework);
-        shared_ptr<VMEp> vme = vmu.get()
-            ->addGbpeVMEp(uuid);
-        es.vmEP = vme->getURI();
-        mutator.commit();
-    }
-
     es.endpoint = make_shared<const Endpoint>(endpoint);
     optional<EndpointListener::uri_set_t &> extDomSets(notifyExtDomSets);
     updateEndpointLocal(uuid, extDomSets);
@@ -358,8 +341,6 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
             L3Ep::remove(framework, l3ep);
         }
         EpCounter::remove(framework, uuid);
-        if (es.vmEP)
-            VMEp::remove(framework, es.vmEP.get());
         if (es.egURI) {
             group_ep_map_t::iterator it = group_ep_map.find(es.egURI.get());
             if (it != group_ep_map.end()) {
@@ -468,7 +449,7 @@ optional<URI> EndpointManager::resolveEpgMapping(EndpointState& es) {
         }
 
         // apply the match
-        bool matches = false;
+        bool matches;
         switch (type) {
         case StringMatchTypeEnumT::CONST_CONTAINS:
             matches = contains(attrValue, matchString.get());
@@ -770,7 +751,7 @@ void EndpointManager::removeEndpointExternal(const std::string& uuid) {
 }
 
 bool EndpointManager::updateEndpointLocal(const std::string& uuid,
-        boost::optional<EndpointListener::uri_set_t &> extDomSet) {
+        const boost::optional<EndpointListener::uri_set_t &> extDomSet) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::gbpe;
     using namespace modelgbp::epdr;
@@ -809,9 +790,8 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid,
         if (egURI) {
             group_ep_map[egURI.get()].insert(uuid);
         }
-        local_ext_dom_map_t::iterator it = local_ext_dom_map.end();
         if(es.endpoint->isExternal()) {
-            it = local_ext_dom_map.find(egURI.get());
+            auto it = local_ext_dom_map.find(egURI.get());
             if(it == local_ext_dom_map.end()) {
                 local_ext_dom_map.insert(std::make_pair(egURI.get(),
                                          es.endpoint->getExtEncapId()));
@@ -823,7 +803,6 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid,
         es.egURI = egURI;
         updated = true;
     }
-
 
     unordered_set<URI> newlocall3eps;
     unordered_set<URI> newlocall2eps;
@@ -1229,7 +1208,7 @@ bool EndpointManager::getAdjacency(const URI& rdURI,
 template <typename K, typename M>
 static void getEps(const K& key, const M& map,
                    /* out */ unordered_set<string>& eps) {
-    typename M::const_iterator it = map.find(key);
+    auto it = map.find(key);
     if (it != map.end()) {
         eps.insert(it->second.begin(), it->second.end());
     }
