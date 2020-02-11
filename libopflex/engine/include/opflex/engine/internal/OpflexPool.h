@@ -17,6 +17,7 @@
 #include <set>
 #include <memory>
 
+#include <boost/atomic.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 #include <boost/functional/hash.hpp>
@@ -382,7 +383,7 @@ private:
     peer_name_set_t configured_peers;
     conn_map_t connections;
     role_map_t roles;
-    bool active;
+    boost::atomic<bool> active;
 
     opflex::ofcore::OFConstants::OpflexElementMode client_mode;
     opflex::ofcore::OFConstants::OpflexTransportModeState transport_state;

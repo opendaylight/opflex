@@ -63,7 +63,7 @@ static bool itemPresent(StoreClient* client,
     try {
         client->get(class_id, uri);
         return true;
-    } catch (std::out_of_range e) {
+    } catch (const std::out_of_range& e) {
         return false;
     }
 }
