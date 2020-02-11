@@ -30,7 +30,7 @@ using std::make_pair;
 using opflex::util::LockGuard;
 using mointernal::ObjectInstance;
 
-Region::Region(ObjectStore* parent, string owner_)
+Region::Region(ObjectStore* parent, const string& owner_)
     : client(parent, this), owner(owner_) {
     uv_mutex_init(&region_mutex);
 }
@@ -134,21 +134,6 @@ bool Region::delChild(class_id_t parent_class,
     if (uri_map.find(child_uri) != uri_map.end() && !ci.hasParent(child_uri))
         roots.insert(make_pair(child_class, child_uri));
     return r;
-}
-
-void Region::clearChildren(class_id_t parent_class,
-                           const URI& parent_uri,
-                           prop_id_t parent_prop,
-                           class_id_t child_class) {
-    LockGuard guard(&region_mutex);
-    ClassIndex& ci = class_map.at(child_class);
-    vector<URI> children;
-    ci.getChildren(parent_uri, parent_prop, children);
-
-    BOOST_FOREACH(const URI& child_uri, children) {
-        delChild(parent_class, parent_uri, parent_prop,
-                 child_class, child_uri);
-    }
 }
 
 void Region::getChildren(class_id_t parent_class,

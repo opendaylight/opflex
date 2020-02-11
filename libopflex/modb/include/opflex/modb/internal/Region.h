@@ -37,7 +37,7 @@ public:
      * Construct a new, empty region associated with the given owner
      * identifier.
      */
-    Region(ObjectStore* parent, std::string owner);
+    Region(ObjectStore* parent, const std::string& owner);
 
     /**
      * Destroy the Region
@@ -168,19 +168,6 @@ public:
                   prop_id_t parent_prop,
                   class_id_t child_class,
                   const URI& child_uri);
-
-    /**
-     * Clear all children for a parent property of a particular type
-     *
-     * @param parent_class the class ID of the parent
-     * @param parent_uri the URI of the parent object
-     * @param parent_prop the property ID in the parent object
-     * @param child_class the class ID of the children
-     */
-    void clearChildren(class_id_t parent_class,
-                       const URI& parent_uri,
-                       prop_id_t parent_prop,
-                       class_id_t child_class);
 
     /**
      * Get the children of the parent URI and property and put the
