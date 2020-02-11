@@ -51,13 +51,6 @@ namespace opflexagent {
         }
     }
 
-    template<typename K>
-    static void print_set(unordered_set<K> const& m) {
-        for (auto const &elem: m) {
-            LOG(DEBUG) << "{" << elem << "}\n";
-        }
-    }
-
     static void print_set(SessionState::srcEpSet const& m) {
         for (auto const &elem: m) {
              LOG(DEBUG) << "{" << elem << "}\n";
@@ -340,10 +333,12 @@ namespace opflexagent {
     void SpanManager::SpanUniverseListener::processLocalEp(const srcMemInfo& sInfo) {
         if (LocalEp::resolve(spanmanager.framework, sInfo.uri)) {
             shared_ptr<LocalEp> lEp = LocalEp::resolve(spanmanager.framework, sInfo.uri).get();
-            if (lEp->resolveSpanLocalEpToEpRSrc()) {
-                shared_ptr <LocalEpToEpRSrc> epRSrc = lEp->resolveSpanLocalEpToEpRSrc().get();
-                if (epRSrc->getTargetURI()) {
-                    const URI& epUri = epRSrc->getTargetURI().get();
+            auto epRSrcOpt = lEp->resolveSpanLocalEpToEpRSrc();
+            if (epRSrcOpt) {
+                shared_ptr<LocalEpToEpRSrc> epRSrc = epRSrcOpt.get();
+                auto epUriOpt = epRSrc->getTargetURI();
+                if (epUriOpt) {
+                    const URI& epUri = epUriOpt.get();
                     if (L2Ep::resolve(spanmanager.framework, epUri)) {
                         shared_ptr <L2Ep> l2Ep = L2Ep::resolve(
                                 spanmanager.framework, epUri).get();
@@ -424,7 +419,7 @@ namespace opflexagent {
 
     const void SessionState::getDstEndPointMap(unordered_map<URI, shared_ptr<DstEndPoint>>& dMap) {
         lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
-        for (auto elem : dstEndPoints) {
+        for (auto& elem : dstEndPoints) {
             shared_ptr<DstEndPoint> dEp = make_shared<DstEndPoint>(*(elem.second.get()));
             dMap.emplace(elem.first, dEp);
         }
