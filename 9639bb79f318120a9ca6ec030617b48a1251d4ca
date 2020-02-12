@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d3d95c45_4300d876",
+        "filename": "agent-ovs/ovs/PolicyStatsManager.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-12T23:44:46Z",
+      "side": 1,
+      "message": "learner -\u003e listener",
+      "revId": "9639bb79f318120a9ca6ec030617b48a1251d4ca",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d1e60f27_fd4f00fd",
+        "filename": "agent-ovs/ovs/TableDropStatsManager.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-12T23:44:46Z",
+      "side": 1,
+      "message": "2017-\u003e2020",
+      "revId": "9639bb79f318120a9ca6ec030617b48a1251d4ca",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b4578b64_afce47ad",
+        "filename": "agent-ovs/ovs/include/PolicyStatsManager.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-12T23:44:46Z",
+      "side": 1,
+      "message": "unregister_learner?",
+      "revId": "9639bb79f318120a9ca6ec030617b48a1251d4ca",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c11d963c_a812544d",
+        "filename": "agent-ovs/ovs/include/SwitchManager.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-12T23:44:46Z",
+      "side": 1,
+      "message": "13:30:27 /w/workspace/opflex-verify-magnesium/agent-ovs/ovs/include/SwitchManager.h:197: warning: Member TableDescriptionMap (typedef) of class opflexagent::SwitchManager is not documented.",
+      "revId": "9639bb79f318120a9ca6ec030617b48a1251d4ca",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dbae9db8_86765acd",
+        "filename": "agent-ovs/ovs/include/TableDropStatsManager.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-12T23:44:46Z",
+      "side": 1,
+      "message": "2017-\u003e2020",
+      "revId": "9639bb79f318120a9ca6ec030617b48a1251d4ca",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2b2d6b3d_5b29e18e",
+        "filename": "agent-ovs/ovs/include/TableDropStatsManager.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-12T23:44:46Z",
+      "side": 1,
+      "message": "13:30:23 Parsing file /w/workspace/opflex-verify-magne/w/workspace/opflex-verify-magnesium/agent-ovs/ovs/include/TableDropStatsManager.h:152: warning: Compound opflexagent::TableDropStatsManager is not documented.",
+      "revId": "9639bb79f318120a9ca6ec030617b48a1251d4ca",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
