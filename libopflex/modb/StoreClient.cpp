@@ -26,10 +26,6 @@ StoreClient::StoreClient(ObjectStore* store_, Region* region_, bool readOnly_)
 
 }
 
-const std::string& StoreClient::getOwner() const {
-    return region->getOwner();
-}
-
 static Region* checkOwner(ObjectStore* store, bool readOnly,
                           Region* region, class_id_t class_id) {
     if (readOnly)
@@ -199,13 +195,6 @@ void StoreClient::getChildren(class_id_t parent_class,
     Region* r = store->getRegion(child_class);
     r->getChildren(parent_class, parent_uri, parent_prop,
                    child_class, output);
-}
-
-std::pair<URI, prop_id_t>
-StoreClient::getParent(class_id_t child_class,
-                       const URI& child) {
-    Region* r = store->getRegion(child_class);
-    return r->getParent(child_class, child);
 }
 
 bool StoreClient::getParent(class_id_t child_class, const URI& child,
