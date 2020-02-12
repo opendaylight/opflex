@@ -16,14 +16,10 @@
 
 
 #include <arpa/inet.h>
-#include <cctype>
-#include <cstdlib>
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
 
-#include <boost/make_shared.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include <boost/functional/hash.hpp>
 
 #include "opflex/modb/MAC.h"
@@ -34,12 +30,6 @@ namespace modb {
 using std::string;
 using std::vector;
 using std::stringstream;
-using boost::algorithm::is_iequal;
-using boost::algorithm::split_iterator;
-using boost::algorithm::make_split_iterator;
-using boost::algorithm::first_finder;
-using boost::iterator_range;
-using boost::copy_range;
 
 static uint64_t parseMac(const string& macstr) {
     uint64_t result = 0;
@@ -75,7 +65,7 @@ MAC::MAC(uint64_t mac_) {
     }
 }
 
-MAC::MAC(uint8_t mac_[6]) : mac(0) {
+MAC::MAC(const uint8_t mac_[6]) : mac(0) {
     uint8_t* m8 = (uint8_t*)&mac;
     for(int i = 0; i < 6; ++i) {
         m8[i] = mac_[i];

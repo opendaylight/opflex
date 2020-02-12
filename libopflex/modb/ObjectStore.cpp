@@ -129,7 +129,7 @@ const ClassInfo& ObjectStore::getClassInfo(class_id_t class_id) const {
     return class_map.at(class_id).classInfo;
 }
 
-const ClassInfo& ObjectStore::getClassInfo(std::string class_name) const {
+const ClassInfo& ObjectStore::getClassInfo(const std::string& class_name) const {
     return *class_name_map.at(class_name);
 }
 

@@ -55,7 +55,7 @@ public:
      *
      * @param mac the mac represented as an array of 6 bytes
      */
-    explicit MAC(uint8_t mac[6]);
+    explicit MAC(const uint8_t mac[6]);
 
     /**
      * Destroy the MAC

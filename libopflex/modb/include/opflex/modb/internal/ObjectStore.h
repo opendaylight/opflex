@@ -79,7 +79,7 @@ public:
      * @return a const reference to the class info object
      * @throws std::out_of_range if there is no such class registered
      */
-    const ClassInfo& getClassInfo(std::string class_name) const;
+    const ClassInfo& getClassInfo(const std::string& class_name) const;
 
     /**
      * Get the class info object associated with the given property ID
@@ -140,18 +140,6 @@ public:
      * @return the store client
      */
     mointernal::StoreClient& getReadOnlyStoreClient();
-
-    /**
-     * Get a store client for the owner associated with the specified
-     * class ID
-     *
-     * @param class_id The class ID.
-     * @return the store client.  This memory is owned by the object
-     * store and must not be freed by the caller.
-     * @see ObjectStore::Client
-     * @throws std::out_of_range if there is no region with that owner
-     */
-    mointernal::StoreClient& getStoreClient(class_id_t class_id);
 
     /**
      * Get the Region for the specified owner.  This region object is
@@ -257,7 +245,6 @@ private:
     void queueNotification(class_id_t class_id, const URI& uri);
 
     friend class mointernal::StoreClient;
-    friend class NotifQueueProc;
 };
 
 } /* namespace modb */

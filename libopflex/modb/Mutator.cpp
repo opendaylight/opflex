@@ -24,7 +24,6 @@
 #include "opflex/modb/Mutator.h"
 #include "opflex/modb/mo-internal/StoreClient.h"
 #include "opflex/modb/internal/ObjectStore.h"
-#include "opflex/logging/internal/logging.hpp"
 #include "opflex/ofcore/OFTypes.h"
 #include "opflex/modb/internal/Region.h"
 
