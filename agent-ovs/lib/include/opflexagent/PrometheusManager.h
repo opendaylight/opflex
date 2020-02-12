@@ -121,6 +121,13 @@ public:
     void removePodSvcCounter(bool isEpToSvc,
                              const string& uuid);
 
+    /* OFPeerStats related APIs */
+    /**
+     * Create OFPeerStats metric family if its not present.
+     * Update OFPeerStats metric family if its already present
+     */
+    void addNUpdateOFPeerStats(void);
+
     // TODO: Other Counter related APIs
 
 private:
@@ -315,6 +322,66 @@ private:
                            const unordered_map<string, string>&  svc_attr_map);
     /* End of PodSvcCounter related apis and state */
 
+
+    /* Start of OFPeerStats related apis and state */
+    // Lock to safe guard OFPeerStats related state
+    mutex ofpeer_stats_mutex;
+
+    enum OFPEER_METRICS {
+        OFPEER_METRICS_MIN,
+        OFPEER_IDENT_REQS = OFPEER_METRICS_MIN,
+        OFPEER_IDENT_RESPS,
+        OFPEER_IDENT_ERRORS,
+        OFPEER_POL_RESOLVES,
+        OFPEER_POL_RESOLVE_RESPS,
+        OFPEER_POL_RESOLVE_ERRS,
+        OFPEER_POL_UNRESOLVES,
+        OFPEER_POL_UNRESOLVE_RESPS,
+        OFPEER_POL_UNRESOLVE_ERRS,
+        OFPEER_POL_UPDATES,
+        OFPEER_EP_DECLARES,
+        OFPEER_EP_DECLARE_RESPS,
+        OFPEER_EP_DECLARE_ERRS,
+        OFPEER_EP_UNDECLARES,
+        OFPEER_EP_UNDECLARE_RESPS,
+        OFPEER_EP_UNDECLARE_ERRS,
+        OFPEER_STATE_REPORTS,
+        OFPEER_STATE_REPORT_RESPS,
+        OFPEER_STATE_REPORT_ERRS,
+        OFPEER_METRICS_MAX = OFPEER_STATE_REPORT_ERRS
+    };
+
+    // Static Metric families and metrics
+    // metric families to track all OFPeerStats metrics
+    Family<Gauge>      *gauge_ofpeer_family_ptr[OFPEER_METRICS_MAX+1];
+
+    // create any ofpeer stats gauge metric families during start
+    void createStaticGaugeFamiliesOFPeer(void);
+    // remove any ofpeer stats gauge metric families during stop
+    void removeStaticGaugeFamiliesOFPeer(void);
+
+    // Dynamic Metric families and metrics
+    // CRUD for every OFPeer counter metric
+    // func to create gauge for OFPeerStats given metric type,
+    // peer: the unique peer (IP,port) tuple
+    void createDynamicGaugeOFPeer(OFPEER_METRICS metric,
+                                  const string& peer);
+
+    // func to get label map and Gauge for OFPeerStats given metric type, peer
+    Gauge * getDynamicGaugeOFPeer(OFPEER_METRICS metric, const string& peer);
+
+    // func to remove gauge for OFPeerStats given metric type, peer
+    bool removeDynamicGaugeOFPeer(OFPEER_METRICS metric, const string& peer);
+    // func to remove all gauge of every OFPeerStats for a metric type
+    void removeDynamicGaugeOFPeer(OFPEER_METRICS metric);
+    // func to remove all gauges of every OFPeerStats
+    void removeDynamicGaugeOFPeer(void);
+
+    /**
+     * cache Gauge ptr for every peer metric
+     */
+    unordered_map<string, Gauge*> ofpeer_gauge_map[OFPEER_METRICS_MAX+1];
+    /* End of OFPeerStats related apis and state */
 
     /* TODO: Other Counter related apis and state */
 };

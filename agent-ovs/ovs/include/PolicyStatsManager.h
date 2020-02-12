@@ -24,6 +24,14 @@
 #ifndef OPFLEXAGENT_POLICYSTATSMANAGER_H
 #define OPFLEXAGENT_POLICYSTATSMANAGER_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
+
 namespace opflexagent {
 
 class Agent;
@@ -338,6 +346,13 @@ protected:
      * The agent object
      */
     Agent* agent;
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    /**
+     * The prometheus manager that exports stats to prometheus server
+     */
+    PrometheusManager& prometheusManager;
+#endif
 
     /**
      * The switch manager that owns the bridges

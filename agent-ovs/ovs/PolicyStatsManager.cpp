@@ -49,6 +49,9 @@ PolicyStatsManager::PolicyStatsManager(Agent* agent_, IdGenerator& idGen_,
                                        SwitchManager& switchManager_,
                                        long timer_interval_)
     : idGen(idGen_), agent(agent_),
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager(agent->getPrometheusManager()),
+#endif
       switchManager(switchManager_),
       connection(NULL),
       timer_interval(timer_interval_),
@@ -300,6 +303,9 @@ on_timer_base(const error_code& ec,
     }
 
     mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.addNUpdateOFPeerStats();
+#endif
 }
 
 void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,

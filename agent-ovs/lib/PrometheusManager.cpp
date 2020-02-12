@@ -26,7 +26,6 @@
 
 namespace opflexagent {
 
-using boost::optional;
 using std::lock_guard;
 using std::regex;
 using std::regex_match;
@@ -80,6 +79,52 @@ static string podsvc_family_help[] =
   "endpoint to service packets",
   "service to endpoint bytes",
   "service to endpoint packets"
+};
+
+static string ofpeer_family_names[] =
+{
+  "opflex_peer_identity_req_count",
+  "opflex_peer_identity_resp_count",
+  "opflex_peer_identity_err_count",
+  "opflex_peer_policy_resolve_req_count",
+  "opflex_peer_policy_resolve_resp_count",
+  "opflex_peer_policy_resolve_err_count",
+  "opflex_peer_policy_unresolve_req_count",
+  "opflex_peer_policy_unresolve_resp_count",
+  "opflex_peer_policy_unresolve_err_count",
+  "opflex_peer_policy_update_receive_count",
+  "opflex_peer_ep_declare_req_count",
+  "opflex_peer_ep_declare_resp_count",
+  "opflex_peer_ep_declare_err_count",
+  "opflex_peer_ep_undeclare_req_count",
+  "opflex_peer_ep_undeclare_resp_count",
+  "opflex_peer_ep_undeclare_err_count",
+  "opflex_peer_state_report_req_count",
+  "opflex_peer_state_report_resp_count",
+  "opflex_peer_state_report_err_count"
+};
+
+static string ofpeer_family_help[] =
+{
+  "number of identity requests sent to opflex peer",
+  "number of identity responses received from opflex peer",
+  "number of identity error responses from opflex peer",
+  "number of policy resolves sent to opflex peer",
+  "number of policy resolve responses received from opflex peer",
+  "number of policy resolve error responses from opflex peer",
+  "number of policy unresolves sent to opflex peer",
+  "number of policy unresolve responses received from opflex peer",
+  "number of policy unresolve error responses from opflex peer",
+  "number of policy updates received from opflex peer",
+  "number of endpoint declares sent to opflex peer",
+  "number of endpoint declare responses received from opflex peer",
+  "number of endpoint declare error responses from opflex peer",
+  "number of endpoint undeclares sent to opflex peer",
+  "number of endpoint undeclare responses received from opflex peer",
+  "number of endpoint undeclare error responses from opflex peer",
+  "number of state reports sent to opflex peer",
+  "number of state reports responses received from opflex peer",
+  "number of state reports error repsonses from opflex peer"
 };
 
 static string metric_annotate_skip[] =
@@ -177,6 +222,11 @@ void PrometheusManager::removeDynamicGauges ()
         removeDynamicGaugePodSvc();
     }
 
+    // Remove OFPeerStat related gauges
+    {
+        const lock_guard<mutex> lock(ofpeer_stats_mutex);
+        removeDynamicGaugeOFPeer();
+    }
 }
 
 // remove all static ep counters during stop
@@ -197,6 +247,26 @@ void PrometheusManager::removeStaticCounters ()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         removeStaticCountersEp();
+    }
+}
+
+// create all OFPeer specific gauge families during start
+void PrometheusManager::createStaticGaugeFamiliesOFPeer (void)
+{
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+
+    for (OFPEER_METRICS metric=OFPEER_METRICS_MIN;
+            metric <= OFPEER_METRICS_MAX;
+                metric = OFPEER_METRICS(metric+1)) {
+        auto& gauge_ofpeer_family = BuildGauge()
+                             .Name(ofpeer_family_names[metric])
+                             .Help(ofpeer_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_ofpeer_family_ptr[metric] = &gauge_ofpeer_family;
     }
 }
 
@@ -258,6 +328,11 @@ void PrometheusManager::createStaticGaugeFamilies (void)
     {
         const lock_guard<mutex> lock(podsvc_counter_mutex);
         createStaticGaugeFamiliesPodSvc();
+    }
+
+    {
+        const lock_guard<mutex> lock(ofpeer_stats_mutex);
+        createStaticGaugeFamiliesOFPeer();
     }
 }
 
@@ -396,6 +471,21 @@ string PrometheusManager::sanitizeMetricName (string metric_name)
     }
 
     return metric_name;
+}
+
+// Create OFPeerStats gauge given metric type, peer (IP,port) tuple
+void PrometheusManager::createDynamicGaugeOFPeer (OFPEER_METRICS metric,
+                                                  const string& peer)
+{
+    // Retrieve the Gauge if its already created
+    if (getDynamicGaugeOFPeer(metric, peer))
+        return;
+
+    LOG(DEBUG) << "creating ofpeer dyn gauge family"
+               << " metric: " << metric
+               << " peer: " << peer;
+    auto& gauge = gauge_ofpeer_family_ptr[metric]->Add({{"peer", peer}});
+    ofpeer_gauge_map[metric][peer] = &gauge;
 }
 
 // Create PodSvcCounter gauge given metric type, ep+svc uuid & attr_maps
@@ -592,6 +682,23 @@ map<string,string> PrometheusManager::createLabelMapFromEpAttr (
     return label_map;
 }
 
+// Get OFPeer stats gauge given the metric, peer (IP,port) tuple
+Gauge * PrometheusManager::getDynamicGaugeOFPeer (OFPEER_METRICS metric,
+                                                  const string& peer)
+{
+    Gauge *pgauge = nullptr;
+    auto itr = ofpeer_gauge_map[metric].find(peer);
+    if (itr == ofpeer_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Dyn Gauge OFPeer stats not found"
+                   << " metric: " << metric
+                   << " peer: " << peer;
+    } else {
+        pgauge = itr->second;
+    }
+
+    return pgauge;
+}
+
 // Get PodSvcCounter gauge given the metric, uuid of Pod+Svc
 mgauge_pair_t PrometheusManager::getDynamicGaugePodSvc (PODSVC_METRICS metric,
                                                   const string& uuid)
@@ -622,6 +729,49 @@ hgauge_pair_t PrometheusManager::getDynamicGaugeEp (EP_METRICS metric,
     }
 
     return hgauge;
+}
+
+// Remove dynamic OFPeerStats gauge given a metic type and peer (IP,port) tuple
+// Note: The below api doesnt get called today. But keeping it in case we have
+// a requirement to delete a gauge metric per peer, in case a leaf goes down
+// or replaced. This can be used after changes to remove the corresponging
+// observer mo.
+bool PrometheusManager::removeDynamicGaugeOFPeer (OFPEER_METRICS metric,
+                                                  const string& peer)
+{
+    Gauge *pgauge = getDynamicGaugeOFPeer(metric, peer);
+    if (pgauge) {
+        ofpeer_gauge_map[metric].erase(peer);
+        gauge_ofpeer_family_ptr[metric]->Remove(pgauge);
+    } else {
+        LOG(DEBUG) << "remove dynamic gauge ofpeer stats not found peer:" << peer;
+        return false;
+    }
+    return true;
+}
+
+// Remove dynamic OFPeerStats gauge given a metric type
+void PrometheusManager::removeDynamicGaugeOFPeer (OFPEER_METRICS metric)
+{
+    auto itr = ofpeer_gauge_map[metric].begin();
+    while (itr != ofpeer_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Delete OFPeer stats peer: " << itr->first
+                   << " Gauge: " << itr->second;
+        gauge_ofpeer_family_ptr[metric]->Remove(itr->second);
+        itr++;
+    }
+
+    ofpeer_gauge_map[metric].clear();
+}
+
+// Remove dynamic OFPeerStats gauges for all metrics
+void PrometheusManager::removeDynamicGaugeOFPeer ()
+{
+    for (OFPEER_METRICS metric=OFPEER_METRICS_MIN;
+            metric <= OFPEER_METRICS_MAX;
+                metric = OFPEER_METRICS(metric+1)) {
+        removeDynamicGaugeOFPeer(metric);
+    }
 }
 
 // Remove dynamic PodSvcCounter gauge given a metic type and podsvc uuid
@@ -741,6 +891,16 @@ void PrometheusManager::removeStaticCounterFamilies ()
     }
 }
 
+// Remove all statically allocated OFPeer gauge families
+void PrometheusManager::removeStaticGaugeFamiliesOFPeer ()
+{
+    for (OFPEER_METRICS metric=OFPEER_METRICS_MIN;
+            metric <= OFPEER_METRICS_MAX;
+                metric = OFPEER_METRICS(metric+1)) {
+        gauge_ofpeer_family_ptr[metric] = nullptr;
+    }
+}
+
 // Remove all statically allocated podsvc gauge families
 void PrometheusManager::removeStaticGaugeFamiliesPodSvc()
 {
@@ -775,6 +935,12 @@ void PrometheusManager::removeStaticGaugeFamilies()
     {
         const lock_guard<mutex> lock(podsvc_counter_mutex);
         removeStaticGaugeFamiliesPodSvc();
+    }
+
+    // OFPeer stats specific
+    {
+        const lock_guard<mutex> lock(ofpeer_stats_mutex);
+        removeStaticGaugeFamiliesOFPeer();
     }
 }
 
@@ -878,6 +1044,104 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
             }
         } else {
             LOG(DEBUG) << "SvcToEpCounter yet to be created for uuid: " << uuid;
+        }
+    }
+}
+
+/* Function called from PolicyStatsManager to update OFPeerStats */
+void PrometheusManager::addNUpdateOFPeerStats (void)
+{
+    using namespace modelgbp::observer;
+
+    const lock_guard<mutex> lock(ofpeer_stats_mutex);
+    Mutator mutator(framework, "policyelement");
+    optional<shared_ptr<SysStatUniverse> > su =
+                            SysStatUniverse::resolve(framework);
+    std::unordered_map<string, OF_SHARED_PTR<OFStats>> stats;
+    agent.getFramework().getOpflexPeerStats(stats);
+    if (su) {
+        for (const auto& peerStat : stats) {
+            optional<shared_ptr<OpflexCounter>> counter =
+                       su.get()->resolveObserverOpflexCounter(peerStat.first);
+            if (!counter)
+                continue;
+
+            // Create gauge metrics if they arent present already
+            for (OFPEER_METRICS metric=OFPEER_METRICS_MIN;
+                    metric <= OFPEER_METRICS_MAX;
+                        metric = OFPEER_METRICS(metric+1))
+                createDynamicGaugeOFPeer(metric, peerStat.first);
+
+            // Update the metrics
+            for (OFPEER_METRICS metric=OFPEER_METRICS_MIN;
+                    metric <= OFPEER_METRICS_MAX;
+                        metric = OFPEER_METRICS(metric+1)) {
+                Gauge *pgauge = getDynamicGaugeOFPeer(metric, peerStat.first);
+                optional<uint64_t>   metric_opt;
+                switch (metric) {
+                case OFPEER_IDENT_REQS:
+                    metric_opt = counter.get()->getIdentReqs();
+                    break;
+                case OFPEER_IDENT_RESPS:
+                    metric_opt = counter.get()->getIdentResps();
+                    break;
+                case OFPEER_IDENT_ERRORS:
+                    metric_opt = counter.get()->getIdentErrs();
+                    break;
+                case OFPEER_POL_RESOLVES:
+                    metric_opt = counter.get()->getPolResolves();
+                    break;
+                case OFPEER_POL_RESOLVE_RESPS:
+                    metric_opt = counter.get()->getPolResolveResps();
+                    break;
+                case OFPEER_POL_RESOLVE_ERRS:
+                    metric_opt = counter.get()->getPolResolveErrs();
+                    break;
+                case OFPEER_POL_UNRESOLVES:
+                    metric_opt = counter.get()->getPolUnresolves();
+                    break;
+                case OFPEER_POL_UNRESOLVE_RESPS:
+                    metric_opt = counter.get()->getPolUnresolveResps();
+                    break;
+                case OFPEER_POL_UNRESOLVE_ERRS:
+                    metric_opt = counter.get()->getPolUnresolveErrs();
+                    break;
+                case OFPEER_POL_UPDATES:
+                    metric_opt = counter.get()->getPolUpdates();
+                    break;
+                case OFPEER_EP_DECLARES:
+                    metric_opt = counter.get()->getEpDeclares();
+                    break;
+                case OFPEER_EP_DECLARE_RESPS:
+                    metric_opt = counter.get()->getEpDeclareResps();
+                    break;
+                case OFPEER_EP_DECLARE_ERRS:
+                    metric_opt = counter.get()->getEpDeclareErrs();
+                    break;
+                case OFPEER_EP_UNDECLARES:
+                    metric_opt = counter.get()->getEpUndeclares();
+                    break;
+                case OFPEER_EP_UNDECLARE_RESPS:
+                    metric_opt = counter.get()->getEpUndeclareResps();
+                    break;
+                case OFPEER_EP_UNDECLARE_ERRS:
+                    metric_opt = counter.get()->getEpUndeclareErrs();
+                    break;
+                case OFPEER_STATE_REPORTS:
+                    metric_opt = counter.get()->getStateReports();
+                    break;
+                case OFPEER_STATE_REPORT_RESPS:
+                    metric_opt = counter.get()->getStateReportResps();
+                    break;
+                case OFPEER_STATE_REPORT_ERRS:
+                    metric_opt = counter.get()->getStateReportErrs();
+                    break;
+                default:
+                    LOG(ERROR) << "Unhandled ofpeer metric: " << metric;
+                }
+                if (metric_opt && pgauge)
+                    pgauge->Set(static_cast<double>(metric_opt.get()));
+            }
         }
     }
 }
