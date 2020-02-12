@@ -36,12 +36,6 @@ namespace mointernal {
  */
 class StoreClient : private boost::noncopyable {
 public:
-    /**
-     * Get the owner of this store client
-     *
-     * @return the string ID for the owner of this client
-     */
-    const std::string& getOwner() const;
 
     /**
      * Set the specified URI to the provided object instance,
@@ -175,19 +169,6 @@ public:
                   prop_id_t parent_prop,
                   class_id_t child_class,
                   const URI& child_uri);
-
-    /**
-     * Get the parent for the given child URI.
-     *
-     * @param child_class the class of the child object
-     * @param child the URI of the child object
-     * @return a (URI, prop_id_t) pair which is the URI of the parent
-     * and the property that represents the relation.
-     * @throws std::out_of_range of the child URI is not found or has
-     * no parent
-     */
-    std::pair<URI, prop_id_t> getParent(class_id_t child_class,
-                                        const URI& child);
 
     /**
      * Get the parent for the given child URI.
