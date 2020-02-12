@@ -79,12 +79,6 @@ AC_ARG_WITH(buildversion,
 dnl allow to create final builds with assert()s disabled
 AC_HEADER_ASSERT
 
-dnl Create an option to install communications library separately
-AC_ARG_ENABLE(separate-comms,
-              AC_HELP_STRING([--enable-separate-comms],
-                             [Install raw opflex communications library separately]))
-AM_CONDITIONAL(SEPARATE_COMMS, [test x$enable_separate_comms = 'xyes'])
-
 dnl Create an option to build unit tests only with make check
 AC_ARG_ENABLE(tests-make-all,
               AC_HELP_STRING([--disable-tests-make-all],

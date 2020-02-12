@@ -16,11 +16,7 @@ SUBDIRS = include
 lib_LTLIBRARIES =
 noinst_LTLIBRARIES  =
 noinst_LTLIBRARIES += librpcperfect.la
-if SEPARATE_COMMS
-  lib_LTLIBRARIES += libcomms.la
-else
-  noinst_LTLIBRARIES += libcomms.la
-endif
+noinst_LTLIBRARIES += libcomms.la
 
 AM_CPPFLAGS  =
 AM_CPPFLAGS += -Wall
@@ -85,10 +81,6 @@ librpcperfect_la_CXXFLAGS  = $(libcomms_la_CXXFLAGS)
 librpcperfect_la_CXXFLAGS += $(OUR_CXXFLAGS_COMPILE_TIME_HASH)
 
 librpcperfect_la_CPPFLAGS  = $(libcomms_la_CPPFLAGS)
-
-if SEPARATE_COMMS
-  libcomms_la_LIBADD += ../logging/liblogging.la
-endif
 
 # tests
 
