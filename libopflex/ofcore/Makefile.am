@@ -27,9 +27,26 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 	-DSDK_BVERSION='"@SDK_BVERSION@"' \
 	-DSDK_FULL_VERSION='"@SDK_FULL_VERSION@"'
 
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 noinst_LTLIBRARIES = libcore.la
 
 libcore_la_CXXFLAGS = $(UV_CFLAGS) $(RAPIDJSON_CFLAGS)
+
+if ENABLE_TSAN
+  libcore_la_CXXFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  libcore_la_CXXFLAGS += -fsanitize=address
+endif
+
 libcore_la_LIBADD = $(UV_LIBS)
 libcore_la_SOURCES = \
 	OFFramework.cpp \

@@ -20,7 +20,24 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/modb/test \
 	-I$(top_srcdir)/comms/include \
 	-I$(top_srcdir)/util/include
+
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 AM_LDFLAGS = $(BOOST_LDFLAGS)
+
+if ENABLE_TSAN
+  AM_LDFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_LDFLAGS += -fsanitize=address
+endif
 
 TESTS = engine_test
 engine_test_SOURCES = \

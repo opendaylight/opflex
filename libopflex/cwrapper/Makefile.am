@@ -16,6 +16,14 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
         -Wall \
         -I$(srcdir)/include -I$(top_srcdir)/include
 
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 noinst_LTLIBRARIES = libcwrapper.la
 
 libcwrapper_la_SOURCES = \

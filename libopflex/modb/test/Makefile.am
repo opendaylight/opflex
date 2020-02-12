@@ -14,11 +14,29 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-Wall \
 	-I$(srcdir)/../include \
 	-I$(top_srcdir)/include \
-	-I$(top_srcdir)/util/include 
+	-I$(top_srcdir)/util/include
+
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 TESTS = modb_test
 modb_test_CXXFLAGS = $(UV_CFLAGS)
+
+if ENABLE_TSAN
+  modb_test_CXXFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  modb_test_CXXFLAGS += -fsanitize=address
+endif
+
 modb_test_SOURCES = \
 	MDFixture.h \
 	BaseFixture.h \

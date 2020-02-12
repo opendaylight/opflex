@@ -16,11 +16,28 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
         -Wall \
         -I$(srcdir)/include -I$(top_srcdir)/include \
 	-I$(top_srcdir)/logging/include \
-	-I$(top_srcdir)/util/include 
+	-I$(top_srcdir)/util/include
+
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
 
 noinst_LTLIBRARIES = libmodb.la
 
 libmodb_la_CXXFLAGS = $(UV_CFLAGS)
+
+if ENABLE_TSAN
+  libmodb_la_CXXFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  libmodb_la_CXXFLAGS += -fsanitize=address
+endif
+
 libmodb_la_LIBADD = $(UV_LIBS)
 libmodb_la_SOURCES = \
 	include/opflex/modb/internal/ObjectStore.h \

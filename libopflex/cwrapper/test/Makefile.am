@@ -19,6 +19,15 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/logging/include \
 	-I$(top_srcdir)/util/include \
 	-I$(top_srcdir)/modb/test
+
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 TESTS = cwrapper_test
@@ -27,6 +36,15 @@ cwrapper_test_SOURCES = \
 	cwrapper_test.cpp
 
 cwrapper_test_CXXFLAGS = $(UV_CFLAGS)
+
+if ENABLE_TSAN
+  cwrapper_test_CXXFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  cwrapper_test_CXXFLAGS += -fsanitize=address
+endif
+
 cwrapper_test_LDADD = ../libcwrapper.la \
 	../../ofcore/libcore.la \
 	../../engine/libengine.la \

@@ -14,6 +14,14 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = -Wall
 
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 SUBDIRS  =
 SUBDIRS += util
 SUBDIRS += logging
@@ -89,6 +97,14 @@ libopflex_la_LIBADD += cwrapper/libcwrapper.la
 libopflex_la_LIBADD += util/libutil.la
 libopflex_la_LIBADD += logging/liblogging.la
 libopflex_la_LDFLAGS = -version-info ${VERSION_INFO}
+
+if ENABLE_TSAN
+  libopflex_la_LDFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  libopflex_la_LDFLAGS += -fsanitize=address
+endif
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libopflex.pc

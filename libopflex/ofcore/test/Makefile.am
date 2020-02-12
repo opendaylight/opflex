@@ -25,7 +25,23 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-DSDK_BVERSION='"@SDK_BVERSION@"' \
 	-DSDK_FULL_VERSION='"@SDK_FULL_VERSION@"'
 
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 AM_LDFLAGS = $(BOOST_LDFLAGS)
+
+if ENABLE_TSAN
+  AM_LDFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_LDFLAGS += -fsanitize=address
+endif
 
 TESTS = core_test
 core_test_SOURCES = \
@@ -41,6 +57,15 @@ core_test_SOURCES = \
 	MO_test.cpp
 
 core_test_CXXFLAGS = $(UV_CFLAGS)
+
+if ENABLE_TSAN
+  core_test_CXXFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  core_test_CXXFLAGS += -fsanitize=address
+endif
+
 core_test_LDADD = ../libcore.la \
 	../../engine/libengine.la \
 	../../modb/libmodb.la \

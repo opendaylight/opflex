@@ -18,6 +18,14 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/include \
 	-I$(top_srcdir)/include
 
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 liblogging_la_SOURCES = \
 	include/opflex/logging/internal/logging.hpp \
 	OFLogHandler.cpp \

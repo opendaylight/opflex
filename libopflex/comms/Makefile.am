@@ -27,11 +27,27 @@ AM_CPPFLAGS += -I$(top_srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/logging/include
 AM_CPPFLAGS += $(OPENSSL_CFLAGS) -DYAJR_HAS_OPENSSL
 
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
+
 libcomms_la_CPPFLAGS  = $(AM_CPPFLAGS)
 
 libcomms_la_CXXFLAGS  = $(AM_CXXFLAGS)
 libcomms_la_CXXFLAGS += $(UV_CFLAGS)
 libcomms_la_CXXFLAGS += $(RAPIDJSON_CFLAGS)
+
+if ENABLE_TSAN
+  libcomms_la_CXXFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  libcomms_la_CXXFLAGS += -fsanitize=address
+endif
 
 libcomms_la_CPPFLAGS += -DBOOST_EXCEPTION_DISABLE
 libcomms_la_CXXFLAGS += -fno-exceptions
@@ -150,6 +166,14 @@ comms_test_CXXFLAGS  = $(AM_CXXFLAGS)
 comms_test_LDFLAGS  = $(AM_LDFLAGS)
 comms_test_LDFLAGS += $(UV_LIBS)
 comms_test_LDFLAGS += $(OPENSSL_LIBS)
+
+if ENABLE_TSAN
+  comms_test_LDFLAGS += -fsanitize=thread
+endif
+
+if ENABLE_ASAN
+  comms_test_LDFLAGS += -fsanitize=address
+endif
 
 comms_test_LDADD  =
 comms_test_LDADD += libcomms.la
