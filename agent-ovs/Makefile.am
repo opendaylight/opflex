@@ -22,8 +22,20 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
 	-I$(top_srcdir)/ovs/include \
 	-I$(top_srcdir)/lib/include \
 	-DLOCALSTATEDIR='"$(localstatedir)"'
+if ENABLE_TSAN
+  AM_CPPFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  AM_CPPFLAGS += -fsanitize=address
+endif
 
 AM_LDFLAGS = $(BOOST_LDFLAGS)
+if ENABLE_TSAN
+  AM_LDFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  AM_LDFLAGS += -fsanitize=address
+endif
 
 noinst_LTLIBRARIES =
 lib_LTLIBRARIES = libopflex_agent.la
@@ -192,6 +204,12 @@ libopflex_agent_la_SOURCES += lib/PrometheusManager.cpp
 endif
 
 libopflex_agent_la_LDFLAGS = -shared -version-info ${VERSION_INFO}
+if ENABLE_TSAN
+  libopflex_agent_la_LDFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  libopflex_agent_la_LDFLAGS += -fsanitize=address
+endif
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libopflex_agent.pc
@@ -242,6 +260,12 @@ if RENDERER_OVS
 	$(OVS_ADDL_CFLAGS) \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)
+if ENABLE_TSAN
+  librenderer_openvswitch_la_CXXFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  librenderer_openvswitch_la_CXXFLAGS += -fsanitize=address
+endif
   librenderer_openvswitch_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
@@ -254,6 +278,12 @@ if RENDERER_OVS
 	librenderer_openvswitch.la
   libopflex_agent_renderer_openvswitch_la_LDFLAGS = \
 	-avoid-version -module -shared
+if ENABLE_TSAN
+  libopflex_agent_renderer_openvswitch_la_LDFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  libopflex_agent_renderer_openvswitch_la_LDFLAGS += -fsanitize=address
+endif
 endif
 
 bin_PROGRAMS=opflex_agent gbp_inspect mcast_daemon mock_server
@@ -282,6 +312,13 @@ opflex_agent_LDADD += $(PROMETHEUS_PULL_LIBS)
 endif
 
 gbp_inspect_CXXFLAGS = -DSYSCONFDIR='"$(sysconfdir)"'
+if ENABLE_TSAN
+  gbp_inspect_CXXFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  gbp_inspect_CXXFLAGS += -fsanitize=address
+endif
+
 gbp_inspect_SOURCES = \
 	cmd/gbp_inspect.cpp
 gbp_inspect_LDADD = \
@@ -293,6 +330,13 @@ gbp_inspect_LDADD = \
 	libopflex_agent.la
 
 mcast_daemon_CXXFLAGS = -DLOCALSTATEDIR='"$(localstatedir)"'
+if ENABLE_TSAN
+  mcast_daemon_CXXFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  mcast_daemon_CXXFLAGS += -fsanitize=address
+endif
+
 mcast_daemon_SOURCES = \
 	cmd/mcast_daemon.cpp
 mcast_daemon_LDADD = \
@@ -310,6 +354,12 @@ agent_test_CXXFLAGS = \
 	-I$(top_srcdir)/cmd/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS) \
 	-DBOOST_TEST_DYN_LINK
+if ENABLE_TSAN
+  agent_test_CXXFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  agent_test_CXXFLAGS += -fsanitize=address
+endif
 
 agent_test_includedir = $(includedir)/opflexagent/test
 agent_test_include_HEADERS = \
@@ -380,6 +430,12 @@ mock_server_CXXFLAGS = \
 if ENABLE_GRPC
 mock_server_CXXFLAGS += $(GRPC_CFLAGS)
 endif
+if ENABLE_TSAN
+mock_server_CXXFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+mock_server_CXXFLAGS += -fsanitize=address
+endif
 
 mock_server_SOURCES = \
 	cmd/test/include/Policies.h \
@@ -425,6 +481,13 @@ endif
 policy_repo_stress_CXXFLAGS = \
 	$(libopflex_CFLAGS) \
 	$(libmodelgbp_CFLAGS)
+if ENABLE_TSAN
+  policy_repo_stress_CXXFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  policy_repo_stress_CXXFLAGS += -fsanitize=address
+endif
+
 policy_repo_stress_SOURCES = \
 	cmd/test/policy_repo_stress.cpp
 policy_repo_stress_LDADD = \
@@ -484,12 +547,25 @@ endif
 integration_test_CXXFLAGS = \
 	$(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-I$(top_srcdir)/integration-test/include
+if ENABLE_TSAN
+  integration_test_CXXFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  integration_test_CXXFLAGS += -fsanitize=address
+endif
 
 integration_test_SOURCES = \
 	lib/integration-test/ctzone_test.cpp \
 	cmd/integration-test/integration_test.cpp
 
 integration_test_LDFLAGS = $(BOOST_LDFLAGS)
+if ENABLE_TSAN
+  integration_test_LDFLAGS += -fsanitize=thread
+endif
+if ENABLE_ASAN
+  integration_test_LDFLAGS += -fsanitize=address
+endif
+
 integration_test_LDADD = \
 	$(BOOST_SYSTEM_LIB) \
 	$(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
