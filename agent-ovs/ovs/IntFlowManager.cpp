@@ -3652,9 +3652,16 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
         switchManager.clearFlows(rdEnfPrefURIId, POL_TABLE_ID);
         idGen.erase(getIdNamespace(RoutingDomain::CLASS_ID), rdURI.toString());
         ctZoneManager.erase(rdURI.toString());
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        prometheusManager.removeRDDropCounter(rdURI.toString());
+#endif
         return;
     }
     LOG(DEBUG) << "Updating routing domain " << rdURI;
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.addNUpdateRDDropCounter(rdURI.toString(),
+                                              true);
+#endif
 
     FlowEntryList rdRouteFlows;
     FlowEntryList rdNatFlows;

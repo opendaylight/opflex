@@ -149,9 +149,14 @@ void ContractStatsManager::handleDropStats(struct ofputil_flow_stats* fentry) {
     oldCounters.packet_count = newCounters.packet_count;
     oldCounters.byte_count = newCounters.byte_count;
 
-    if (diffCounters.packet_count)
+    if (diffCounters.packet_count) {
         updatePolicyStatsDropCounters(idStr.get(),
                                       diffCounters);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        prometheusManager.addNUpdateRDDropCounter(idStr.get(),
+                                                  false);
+#endif
+    }
 }
 
 void ContractStatsManager::
