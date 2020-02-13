@@ -127,6 +127,18 @@ static string ofpeer_family_help[] =
   "number of state reports error repsonses from opflex peer"
 };
 
+static string rddrop_family_names[] =
+{
+  "opflex_policy_drop_bytes",
+  "opflex_policy_drop_packets"
+};
+
+static string rddrop_family_help[] =
+{
+  "number of policy/contract dropped bytes per routing domain",
+  "number of policy/contract dropped packets per routing domain"
+};
+
 static string metric_annotate_skip[] =
 {
   "vm-name",
@@ -142,7 +154,8 @@ PrometheusManager::PrometheusManager(Agent &agent_,
                                      opflex::ofcore::OFFramework &fwk_) :
                                      agent(agent_),
                                      framework(fwk_),
-                                     gauge_ep_total{0}  {}
+                                     gauge_ep_total{0},
+                                     rddrop_last_genId{0} {}
 
 // create all ep counter families during start
 void PrometheusManager::createStaticCounterFamiliesEp (void)
@@ -227,6 +240,12 @@ void PrometheusManager::removeDynamicGauges ()
         const lock_guard<mutex> lock(ofpeer_stats_mutex);
         removeDynamicGaugeOFPeer();
     }
+
+    // Remove RDDropCounter related gauges
+    {
+        const lock_guard<mutex> lock(rddrop_stats_mutex);
+        removeDynamicGaugeRDDrop();
+    }
 }
 
 // remove all static ep counters during stop
@@ -267,6 +286,26 @@ void PrometheusManager::createStaticGaugeFamiliesOFPeer (void)
                              .Labels({})
                              .Register(*registry_ptr);
         gauge_ofpeer_family_ptr[metric] = &gauge_ofpeer_family;
+    }
+}
+
+// create all RDDrop specific gauge families during start
+void PrometheusManager::createStaticGaugeFamiliesRDDrop (void)
+{
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+
+    for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
+            metric <= RDDROP_METRICS_MAX;
+                metric = RDDROP_METRICS(metric+1)) {
+        auto& gauge_rddrop_family = BuildGauge()
+                             .Name(rddrop_family_names[metric])
+                             .Help(rddrop_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_rddrop_family_ptr[metric] = &gauge_rddrop_family;
     }
 }
 
@@ -333,6 +372,11 @@ void PrometheusManager::createStaticGaugeFamilies (void)
     {
         const lock_guard<mutex> lock(ofpeer_stats_mutex);
         createStaticGaugeFamiliesOFPeer();
+    }
+
+    {
+        const lock_guard<mutex> lock(rddrop_stats_mutex);
+        createStaticGaugeFamiliesRDDrop();
     }
 }
 
@@ -486,6 +530,32 @@ void PrometheusManager::createDynamicGaugeOFPeer (OFPEER_METRICS metric,
                << " peer: " << peer;
     auto& gauge = gauge_ofpeer_family_ptr[metric]->Add({{"peer", peer}});
     ofpeer_gauge_map[metric][peer] = &gauge;
+}
+
+// Create RDDropCounter gauge given metric type, rdURI
+void PrometheusManager::createDynamicGaugeRDDrop (RDDROP_METRICS metric,
+                                                  const string& rdURI)
+{
+    // Retrieve the Gauge if its already created
+    if (getDynamicGaugeRDDrop(metric, rdURI))
+        return;
+
+    LOG(DEBUG) << "creating rddrop dyn gauge family"
+               << " metric: " << metric
+               << " rdURI: " << rdURI;
+
+    /* Example rdURI: /PolicyUniverse/PolicySpace/test/GbpRoutingDomain/rd/
+     * We want to just get the tenant name and the vrf. */
+    std::size_t tLow = rdURI.find("PolicySpace") + 12;
+    std::size_t gRDStart = rdURI.rfind("GbpRoutingDomain");
+    std::string tenant = rdURI.substr(tLow,gRDStart-tLow-1);
+    std::size_t rHigh = rdURI.size()-2;
+    std::size_t rLow = gRDStart+17;
+    std::string rd = rdURI.substr(rLow,rHigh-rLow+1);
+
+    auto& gauge = gauge_rddrop_family_ptr[metric]->Add({{"routing_domain",
+                                                         tenant+":"+rd}});
+    rddrop_gauge_map[metric][rdURI] = &gauge;
 }
 
 // Create PodSvcCounter gauge given metric type, ep+svc uuid & attr_maps
@@ -699,6 +769,23 @@ Gauge * PrometheusManager::getDynamicGaugeOFPeer (OFPEER_METRICS metric,
     return pgauge;
 }
 
+// Get RDDropCounter gauge given the metric, rdURI
+Gauge * PrometheusManager::getDynamicGaugeRDDrop (RDDROP_METRICS metric,
+                                                  const string& rdURI)
+{
+    Gauge *pgauge = nullptr;
+    auto itr = rddrop_gauge_map[metric].find(rdURI);
+    if (itr == rddrop_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Dyn Gauge RDDrop stats not found"
+                   << " metric: " << metric
+                   << " rdURI: " << rdURI;
+    } else {
+        pgauge = itr->second;
+    }
+
+    return pgauge;
+}
+
 // Get PodSvcCounter gauge given the metric, uuid of Pod+Svc
 mgauge_pair_t PrometheusManager::getDynamicGaugePodSvc (PODSVC_METRICS metric,
                                                   const string& uuid)
@@ -729,6 +816,45 @@ hgauge_pair_t PrometheusManager::getDynamicGaugeEp (EP_METRICS metric,
     }
 
     return hgauge;
+}
+
+// Remove dynamic RDDropCounter gauge given a metic type and rdURI
+bool PrometheusManager::removeDynamicGaugeRDDrop (RDDROP_METRICS metric,
+                                                  const string& rdURI)
+{
+    Gauge *pgauge = getDynamicGaugeRDDrop(metric, rdURI);
+    if (pgauge) {
+        rddrop_gauge_map[metric].erase(rdURI);
+        gauge_rddrop_family_ptr[metric]->Remove(pgauge);
+    } else {
+        LOG(DEBUG) << "remove dynamic gauge rddrop stats not found rdURI:" << rdURI;
+        return false;
+    }
+    return true;
+}
+
+// Remove dynamic RDDropCounter gauge given a metric type
+void PrometheusManager::removeDynamicGaugeRDDrop (RDDROP_METRICS metric)
+{
+    auto itr = rddrop_gauge_map[metric].begin();
+    while (itr != rddrop_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Delete RDDropCounter rdURI: " << itr->first
+                   << " Gauge: " << itr->second;
+        gauge_rddrop_family_ptr[metric]->Remove(itr->second);
+        itr++;
+    }
+
+    rddrop_gauge_map[metric].clear();
+}
+
+// Remove dynamic RDDropCounter gauges for all metrics
+void PrometheusManager::removeDynamicGaugeRDDrop ()
+{
+    for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
+            metric <= RDDROP_METRICS_MAX;
+                metric = RDDROP_METRICS(metric+1)) {
+        removeDynamicGaugeRDDrop(metric);
+    }
 }
 
 // Remove dynamic OFPeerStats gauge given a metic type and peer (IP,port) tuple
@@ -901,6 +1027,16 @@ void PrometheusManager::removeStaticGaugeFamiliesOFPeer ()
     }
 }
 
+// Remove all statically allocated RDDrop gauge families
+void PrometheusManager::removeStaticGaugeFamiliesRDDrop ()
+{
+    for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
+            metric <= RDDROP_METRICS_MAX;
+                metric = RDDROP_METRICS(metric+1)) {
+        gauge_rddrop_family_ptr[metric] = nullptr;
+    }
+}
+
 // Remove all statically allocated podsvc gauge families
 void PrometheusManager::removeStaticGaugeFamiliesPodSvc()
 {
@@ -941,6 +1077,12 @@ void PrometheusManager::removeStaticGaugeFamilies()
     {
         const lock_guard<mutex> lock(ofpeer_stats_mutex);
         removeStaticGaugeFamiliesOFPeer();
+    }
+
+    // RDDropCounter specific
+    {
+        const lock_guard<mutex> lock(rddrop_stats_mutex);
+        removeStaticGaugeFamiliesRDDrop();
     }
 }
 
@@ -1045,6 +1187,65 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
         } else {
             LOG(DEBUG) << "SvcToEpCounter yet to be created for uuid: " << uuid;
         }
+    }
+}
+
+/* Function called from ContractStatsManager to update RDDropCounter
+ * This will be called from IntFlowManager to create metrics. */
+void PrometheusManager::addNUpdateRDDropCounter (const string& rdURI,
+                                                 bool isAdd)
+{
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::observer;
+
+    const lock_guard<mutex> lock(rddrop_stats_mutex);
+
+    if (isAdd) {
+        LOG(DEBUG) << "create RDDropCounter rdURI: " << rdURI;
+        for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
+                metric <= RDDROP_METRICS_MAX;
+                    metric = RDDROP_METRICS(metric+1))
+            createDynamicGaugeRDDrop(metric, rdURI);
+        return;
+    }
+
+    Mutator mutator(framework, "policyelement");
+    optional<shared_ptr<PolicyStatUniverse> > su =
+                    PolicyStatUniverse::resolve(agent.getFramework());
+    if (su) {
+        std::vector<OF_SHARED_PTR<RoutingDomainDropCounter> > out;
+        su.get()->resolveGbpeRoutingDomainDropCounter(out);
+        for (const auto& counter : out) {
+            if (!counter)
+                continue;
+            if (rdURI.compare(counter.get()->getRoutingDomain("")))
+                continue;
+            if (counter.get()->getGenId(0) != (rddrop_last_genId+1))
+                continue;
+            rddrop_last_genId++;
+
+            // Update the metrics
+            for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
+                    metric <= RDDROP_METRICS_MAX;
+                        metric = RDDROP_METRICS(metric+1)) {
+                Gauge *pgauge = getDynamicGaugeRDDrop(metric, rdURI);
+                optional<uint64_t>   metric_opt;
+                switch (metric) {
+                case RDDROP_BYTES:
+                    metric_opt = counter.get()->getBytes();
+                    break;
+                case RDDROP_PACKETS:
+                    metric_opt = counter.get()->getPackets();
+                    break;
+                default:
+                    LOG(ERROR) << "Unhandled rddrop metric: " << metric;
+                }
+                if (metric_opt && pgauge)
+                    pgauge->Set(pgauge->Value() \
+                                + static_cast<double>(metric_opt.get()));
+            }
+        }
+        out.clear();
     }
 }
 
@@ -1279,6 +1480,20 @@ void PrometheusManager::removeEpCounter (const string& uuid,
             incStaticCounterEpRemove();
             updateStaticGaugeEpTotal(false);
         }
+    }
+}
+
+// Function called from IntFlowManager to remove RDDropCounter
+void PrometheusManager::removeRDDropCounter (const string& rdURI)
+{
+    const lock_guard<mutex> lock(rddrop_stats_mutex);
+    LOG(DEBUG) << "remove RDDropCounter rdURI: " << rdURI;
+
+    for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
+            metric <= RDDROP_METRICS_MAX;
+                metric = RDDROP_METRICS(metric+1)) {
+        if (!removeDynamicGaugeRDDrop(metric, rdURI))
+            break;
     }
 }
 

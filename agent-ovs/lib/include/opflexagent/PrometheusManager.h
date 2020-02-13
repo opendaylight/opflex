@@ -128,6 +128,25 @@ public:
      */
     void addNUpdateOFPeerStats(void);
 
+
+    /* RDDropCounter related APIs */
+    /**
+     * Create RDDropCounter metric family if its not present.
+     * Update RDDropCounter metric family if its already present
+     *
+     * @param rdURI       URI of routing domain
+     * @param isAdd       flag to indicate if its create or update
+     */
+    void addNUpdateRDDropCounter(const string& rdURI,
+                                 bool isAdd);
+    /**
+     * Remove RDDropCounter metric given the direciton and rdURI
+     *
+     * @param rdURI     URI of routing domain
+     */
+    void removeRDDropCounter(const string& rdURI);
+
+
     // TODO: Other Counter related APIs
 
 private:
@@ -382,6 +401,56 @@ private:
      */
     unordered_map<string, Gauge*> ofpeer_gauge_map[OFPEER_METRICS_MAX+1];
     /* End of OFPeerStats related apis and state */
+
+
+    /* Start of RDDropCounter related apis and state */
+    // Lock to safe guard RDDropCounter related state
+    mutex rddrop_stats_mutex;
+
+    enum RDDROP_METRICS {
+        RDDROP_METRICS_MIN,
+        RDDROP_BYTES = RDDROP_METRICS_MIN,
+        RDDROP_PACKETS,
+        RDDROP_METRICS_MAX = RDDROP_PACKETS
+    };
+
+    // Static Metric families and metrics
+    // metric families to track all RDDropCounter metrics
+    Family<Gauge>      *gauge_rddrop_family_ptr[RDDROP_METRICS_MAX+1];
+
+    // create any rddrop stats gauge metric families during start
+    void createStaticGaugeFamiliesRDDrop(void);
+    // remove any rddrop stats gauge metric families during stop
+    void removeStaticGaugeFamiliesRDDrop(void);
+
+    // Dynamic Metric families and metrics
+    // CRUD for every RDDrop counter metric
+    // func to create gauge for RDDrop given metric type,
+    // rdURI
+    void createDynamicGaugeRDDrop(RDDROP_METRICS metric,
+                                  const string& rdURI);
+
+    // func to get label map and Gauge for RDDropCounter given metric type, rdURI
+    Gauge * getDynamicGaugeRDDrop(RDDROP_METRICS metric, const string& rdURI);
+
+    // func to remove gauge for RDDropCounter given metric type, rdURI
+    bool removeDynamicGaugeRDDrop(RDDROP_METRICS metric, const string& rdURI);
+    // func to remove all gauge of every RDDropCounter for a metric type
+    void removeDynamicGaugeRDDrop(RDDROP_METRICS metric);
+    // func to remove all gauges of every RDDropCounter
+    void removeDynamicGaugeRDDrop(void);
+
+    // RDDropCounter diffs are stored in a circular buffer. Each buffer element
+    // has a unique running genID. Keep track of the last processed genId by
+    // PrometheusManager to avoid double counting
+    uint32_t rddrop_last_genId;
+
+    /**
+     * cache Gauge ptr for every RDDropCounter metric
+     */
+    unordered_map<string, Gauge*> rddrop_gauge_map[RDDROP_METRICS_MAX+1];
+    /* End of RDDropCounter related apis and state */
+
 
     /* TODO: Other Counter related apis and state */
 };
