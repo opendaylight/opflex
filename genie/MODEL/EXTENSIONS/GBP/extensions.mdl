@@ -306,7 +306,7 @@ module[gbpe]
         # A unique identifer for the destination endpointGroup.
         member[dstEpg; type=reference/URI]
 
-        # A unique identifer for the source endpointGroup.
+        # A unique identifer for the classifier.
         member[classifier; type=reference/URI]
 
         # number of packets sent from src to dst matching classifier
