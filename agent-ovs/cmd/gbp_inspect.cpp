@@ -23,7 +23,7 @@
 #include <boost/program_options.hpp>
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/stream.hpp>
-
+#include <opflex/version/Version.h>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -58,6 +58,7 @@ int main(int argc, char** argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help,h", "Print this help message")
+        ("version,v", "print version information and git hash")
         ("log", po::value<string>()->default_value(""),
          "Log to the specified file (default standard out)")
         ("level", po::value<string>()->default_value("warning"),
@@ -98,6 +99,7 @@ int main(int argc, char** argv) {
     bool followRefs = false;
     int truncate = 0;
     bool unresolved = false;
+    bool versioninfo = false;
     po::variables_map vm;
     try {
         po::store(po::command_line_parser(argc, argv).
@@ -117,6 +119,10 @@ int main(int argc, char** argv) {
             followRefs = true;
         if (vm.count("unresolved"))
             unresolved = true;
+        if (vm.count("version")) {
+            std::cout << "version = " << opflex::version::getVersionSummary() << "last git commit hash =" << opflex::version::getGitHash()<< "\n";
+            return 0;
+        }
 
         log_file = vm["log"].as<string>();
         level_str = vm["level"].as<string>();

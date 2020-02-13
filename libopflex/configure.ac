@@ -166,6 +166,7 @@ AC_CONFIG_FILES([              \
 	debian/changelog       \
         util/Makefile          \
         logging/Makefile       \
+	version/Makefile       \
         comms/Makefile         \
         comms/include/Makefile \
         modb/Makefile          \
