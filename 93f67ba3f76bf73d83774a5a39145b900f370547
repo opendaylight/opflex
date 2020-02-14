@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5ce8d95c_05486c8c",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-14T06:23:46Z",
+      "side": 1,
+      "message": "I don\u0027t think we should use hpp here. It\u0027s always sg in the genie model",
+      "revId": "93f67ba3f76bf73d83774a5a39145b900f370547",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ba2ba91e_eb1d3556",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-14T06:23:46Z",
+      "side": 1,
+      "message": "same comment here. hpp isn\u0027t part of the genie model. I think we should just refer to it as sg",
+      "revId": "93f67ba3f76bf73d83774a5a39145b900f370547",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ef3f6a4_5626f585",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-02-14T06:23:46Z",
+      "side": 1,
+      "message": "if the field isn\u0027t set, why include it all? It makes the string long no matter what. A lot of the time only a field or two will be set.",
+      "revId": "93f67ba3f76bf73d83774a5a39145b900f370547",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
