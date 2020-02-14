@@ -147,6 +147,22 @@ public:
     void removeRDDropCounter(const string& rdURI);
 
 
+    /* SecGrpClassifierCounter related APIs */
+    /**
+     * Create SGClassifierCounter metric family if its not present.
+     * Update SGClassifierCounter metric family if its already present
+     *
+     * @param classifier       name of the classifier
+     */
+    void addNUpdateSGClassifierCounter(const string& classifier);
+    /**
+     * Remove SGClassifierCounter metric given the classifier
+     *
+     * @param classifier       name of the classifier
+     */
+    void removeSGClassifierCounter(const string& classifier);
+
+
     // TODO: Other Counter related APIs
 
 private:
@@ -443,13 +459,74 @@ private:
     // RDDropCounter diffs are stored in a circular buffer. Each buffer element
     // has a unique running genID. Keep track of the last processed genId by
     // PrometheusManager to avoid double counting
-    uint32_t rddrop_last_genId;
+    uint64_t rddrop_last_genId;
 
     /**
      * cache Gauge ptr for every RDDropCounter metric
      */
     unordered_map<string, Gauge*> rddrop_gauge_map[RDDROP_METRICS_MAX+1];
     /* End of RDDropCounter related apis and state */
+
+
+    /* Start of SGClassifierCounter related apis and state */
+    // Lock to safe guard SGClassifierCounter related state
+    mutex sgclassifier_stats_mutex;
+
+    enum SGCLASSIFIER_METRICS {
+        SGCLASSIFIER_METRICS_MIN,
+        SGCLASSIFIER_TX_BYTES = SGCLASSIFIER_METRICS_MIN,
+        SGCLASSIFIER_TX_PACKETS,
+        SGCLASSIFIER_RX_BYTES,
+        SGCLASSIFIER_RX_PACKETS,
+        SGCLASSIFIER_METRICS_MAX = SGCLASSIFIER_RX_PACKETS
+    };
+
+    // Static Metric families and metrics
+    // metric families to track all SGClassifierCounter metrics
+    Family<Gauge>      *gauge_sgclassifier_family_ptr[SGCLASSIFIER_METRICS_MAX+1];
+
+    // create any sgclassifier stats gauge metric families during start
+    void createStaticGaugeFamiliesSGClassifier(void);
+    // remove any sgclassifier stats gauge metric families during stop
+    void removeStaticGaugeFamiliesSGClassifier(void);
+
+    // Dynamic Metric families and metrics
+    // CRUD for every SGClassifier counter metric
+    // func to create gauge for SGClassifier given metric type,
+    // name of classifier.
+    // return false if the metric is already created
+    bool createDynamicGaugeSGClassifier(SGCLASSIFIER_METRICS metric,
+                                        const string& classifier);
+
+    // func to get label map and Gauge for SGClassifierCounter given
+    // metric type, name of classifier
+    Gauge * getDynamicGaugeSGClassifier(SGCLASSIFIER_METRICS metric,
+                                        const string& classifier);
+
+    // func to remove gauge for SGClassifierCounter given metric type,
+    // name of classifier
+    bool removeDynamicGaugeSGClassifier(SGCLASSIFIER_METRICS metric,
+                                        const string& classifier);
+    // func to remove all gauge of every SGClassifierCounter for a metric type
+    void removeDynamicGaugeSGClassifier(SGCLASSIFIER_METRICS metric);
+    // func to remove all gauges of every SGClassifierCounter
+    void removeDynamicGaugeSGClassifier(void);
+
+    // SGClassifierCounter diffs are stored in a circular buffer. Each buffer element
+    // has a unique running genID. Keep track of the last processed genId by
+    // PrometheusManager to avoid double counting
+    uint64_t sgclassifier_last_genId;
+
+    /**
+     * cache Gauge ptr for every SGClassifierCounter metric
+     */
+    unordered_map<string, Gauge*> sgclassifier_gauge_map[SGCLASSIFIER_METRICS_MAX+1];
+
+    // Utility APIs
+    // API to compress a classifier to human readable format
+    string stringizeClassifier(const string& tenant,
+                               const string& classifier);
+    /* End of SGClassifierCounter related apis and state */
 
 
     /* TODO: Other Counter related apis and state */
