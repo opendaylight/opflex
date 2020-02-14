@@ -158,6 +158,9 @@ updatePolicyStatsCounters(const std::string& l24Classifier,
         }
     }
     mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.addNUpdateSGClassifierCounter(l24Classifier);
+#endif
 }
 
 void SecGrpStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
@@ -165,6 +168,9 @@ void SecGrpStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
     if (class_id == L24Classifier::CLASS_ID) {
         if (!L24Classifier::resolve(agent->getFramework(),uri)) {
             removeAllCounterObjects(uri.toString());
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            prometheusManager.removeSGClassifierCounter(uri.toString());
+#endif
         }
     }
 }

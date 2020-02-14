@@ -14,6 +14,7 @@
 #include <opflexagent/Agent.h>
 #include <opflexagent/PrometheusManager.h>
 #include <opflexagent/EndpointManager.h>
+#include <modelgbp/gbpe/L24Classifier.hpp>
 #include <map>
 #include <boost/optional.hpp>
 #include <regex>
@@ -26,6 +27,7 @@
 
 namespace opflexagent {
 
+using std::to_string;
 using std::lock_guard;
 using std::regex;
 using std::regex_match;
@@ -139,6 +141,22 @@ static string rddrop_family_help[] =
   "number of policy/contract dropped packets per routing domain"
 };
 
+static string sgclassifier_family_names[] =
+{
+  "opflex_hpp_tx_bytes",
+  "opflex_hpp_tx_packets",
+  "opflex_hpp_rx_bytes",
+  "opflex_hpp_rx_packets"
+};
+
+static string sgclassifier_family_help[] =
+{
+  "security-group/host-protection-policy classifier tx bytes",
+  "security-group/host-protection-policy classifier tx packets",
+  "security-group/host-protection-policy classifier rx bytes",
+  "security-group/host-protection-policy classifier rx packets"
+};
+
 static string metric_annotate_skip[] =
 {
   "vm-name",
@@ -155,7 +173,8 @@ PrometheusManager::PrometheusManager(Agent &agent_,
                                      agent(agent_),
                                      framework(fwk_),
                                      gauge_ep_total{0},
-                                     rddrop_last_genId{0} {}
+                                     rddrop_last_genId{0},
+                                     sgclassifier_last_genId{0} {}
 
 // create all ep counter families during start
 void PrometheusManager::createStaticCounterFamiliesEp (void)
@@ -246,6 +265,12 @@ void PrometheusManager::removeDynamicGauges ()
         const lock_guard<mutex> lock(rddrop_stats_mutex);
         removeDynamicGaugeRDDrop();
     }
+
+    // Remove SGClassifierCounter related gauges
+    {
+        const lock_guard<mutex> lock(sgclassifier_stats_mutex);
+        removeDynamicGaugeSGClassifier();
+    }
 }
 
 // remove all static ep counters during stop
@@ -286,6 +311,26 @@ void PrometheusManager::createStaticGaugeFamiliesOFPeer (void)
                              .Labels({})
                              .Register(*registry_ptr);
         gauge_ofpeer_family_ptr[metric] = &gauge_ofpeer_family;
+    }
+}
+
+// create all SGClassifier specific gauge families during start
+void PrometheusManager::createStaticGaugeFamiliesSGClassifier (void)
+{
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+
+    for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+            metric <= SGCLASSIFIER_METRICS_MAX;
+                metric = SGCLASSIFIER_METRICS(metric+1)) {
+        auto& gauge_sgclassifier_family = BuildGauge()
+                             .Name(sgclassifier_family_names[metric])
+                             .Help(sgclassifier_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_sgclassifier_family_ptr[metric] = &gauge_sgclassifier_family;
     }
 }
 
@@ -377,6 +422,11 @@ void PrometheusManager::createStaticGaugeFamilies (void)
     {
         const lock_guard<mutex> lock(rddrop_stats_mutex);
         createStaticGaugeFamiliesRDDrop();
+    }
+
+    {
+        const lock_guard<mutex> lock(sgclassifier_stats_mutex);
+        createStaticGaugeFamiliesSGClassifier();
     }
 }
 
@@ -530,6 +580,110 @@ void PrometheusManager::createDynamicGaugeOFPeer (OFPEER_METRICS metric,
                << " peer: " << peer;
     auto& gauge = gauge_ofpeer_family_ptr[metric]->Add({{"peer", peer}});
     ofpeer_gauge_map[metric][peer] = &gauge;
+}
+
+// Create SGClassifierCounter gauge given metric type, classifier
+bool PrometheusManager::createDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS metric,
+                                                        const string& classifier)
+{
+    // Retrieve the Gauge if its already created
+    if (getDynamicGaugeSGClassifier(metric, classifier))
+        return false;
+
+    LOG(DEBUG) << "creating sgclassifier dyn gauge family"
+               << " metric: " << metric
+               << " classifier: " << classifier;
+
+    /* Example classifier:
+     * /PolicyUniverse/PolicySpace/common/GbpeL24Classifier/34%7c2%7cIPv6/
+     * We want to produce these annotations for every metric:
+     * label_map: {{name: gibberishName},
+     *             {classifier: <string version of classifier>}}
+     */
+    std::size_t gL24Start = classifier.rfind("GbpeL24Classifier");
+    std::size_t nHigh = classifier.size()-2;
+    std::size_t nLow = gL24Start+18;
+    std::string name = classifier.substr(nLow,nHigh-nLow+1);
+
+    const auto& compressed = stringizeClassifier(classifier);
+    auto& gauge = gauge_sgclassifier_family_ptr[metric]->Add(
+                    {{"name", name},
+                     {"classifier", compressed}});
+    sgclassifier_gauge_map[metric][classifier] = &gauge;
+    return true;
+}
+
+// Get a compressed human readable form of classifier
+string PrometheusManager::stringizeClassifier (const string& classifier)
+{
+    using namespace modelgbp::gbpe;
+    string compressed;
+    const auto& counter = L24Classifier::resolve(agent.getFramework(),
+                                                 "PolicySpace",
+                                                 classifier);
+    if (counter) {
+        auto arp_opc = counter.get()->getArpOpc();
+        compressed += "arp_opc:";
+        if (arp_opc)
+            compressed += to_string(arp_opc.get());
+
+        auto etype = counter.get()->getEtherT();
+        compressed += ",etype:";
+        if (etype)
+            compressed += to_string(etype.get());
+
+        auto proto = counter.get()->getProt();
+        compressed += ",proto:";
+        if (proto)
+            compressed += to_string(proto.get());
+
+        auto s_from_port = counter.get()->getSFromPort();
+        compressed += ",sport:";
+        if (s_from_port)
+            compressed += to_string(s_from_port.get());
+
+        auto s_to_port = counter.get()->getSToPort();
+        compressed += "-";
+        if (s_to_port)
+            compressed += to_string(s_to_port.get());
+
+        auto d_from_port = counter.get()->getDFromPort();
+        compressed += ",dport:";
+        if (d_from_port)
+            compressed += to_string(d_from_port.get());
+
+        auto d_to_port = counter.get()->getDToPort();
+        compressed += "-";
+        if (d_to_port)
+            compressed += to_string(d_to_port.get());
+
+        auto frag_flags = counter.get()->getFragmentFlags();
+        compressed += ",frag_flags:";
+        if (frag_flags)
+            compressed += to_string(frag_flags.get());
+
+        auto icmp_code = counter.get()->getIcmpCode();
+        compressed += ",icmp_code:";
+        if (icmp_code)
+            compressed += to_string(icmp_code.get());
+
+        auto icmp_type = counter.get()->getIcmpType();
+        compressed += ",icmp_type:";
+        if (icmp_type)
+            compressed += to_string(icmp_type.get());
+
+        auto tcp_flags = counter.get()->getTcpFlags();
+        compressed += ",tcp_flags:";
+        if (tcp_flags)
+            compressed += to_string(tcp_flags.get());
+
+        auto ct = counter.get()->getConnectionTracking();
+        compressed += ",ct:";
+        if (ct)
+            compressed += to_string(ct.get());
+    }
+
+    return compressed;
 }
 
 // Create RDDropCounter gauge given metric type, rdURI
@@ -769,6 +923,23 @@ Gauge * PrometheusManager::getDynamicGaugeOFPeer (OFPEER_METRICS metric,
     return pgauge;
 }
 
+// Get SGClassifierCounter gauge given the metric, classifier
+Gauge * PrometheusManager::getDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS metric,
+                                                        const string& classifier)
+{
+    Gauge *pgauge = nullptr;
+    auto itr = sgclassifier_gauge_map[metric].find(classifier);
+    if (itr == sgclassifier_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Dyn Gauge SGClassifier stats not found"
+                   << " metric: " << metric
+                   << " classifier: " << classifier;
+    } else {
+        pgauge = itr->second;
+    }
+
+    return pgauge;
+}
+
 // Get RDDropCounter gauge given the metric, rdURI
 Gauge * PrometheusManager::getDynamicGaugeRDDrop (RDDROP_METRICS metric,
                                                   const string& rdURI)
@@ -816,6 +987,47 @@ hgauge_pair_t PrometheusManager::getDynamicGaugeEp (EP_METRICS metric,
     }
 
     return hgauge;
+}
+
+// Remove dynamic SGClassifierCounter gauge given a metic type and classifier
+bool PrometheusManager::removeDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS metric,
+                                                        const string& classifier)
+{
+    Gauge *pgauge = getDynamicGaugeSGClassifier(metric, classifier);
+    if (pgauge) {
+        sgclassifier_gauge_map[metric].erase(classifier);
+        gauge_sgclassifier_family_ptr[metric]->Remove(pgauge);
+    } else {
+        LOG(DEBUG) << "remove dynamic gauge sgclassifier stats not found"
+                   << " classifier:" << classifier;
+        return false;
+    }
+    return true;
+}
+
+// Remove dynamic SGClassifierCounter gauge given a metric type
+void PrometheusManager::removeDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS metric)
+{
+    auto itr = sgclassifier_gauge_map[metric].begin();
+    while (itr != sgclassifier_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Delete SGClassifierCounter"
+                   << " classifier: " << itr->first
+                   << " Gauge: " << itr->second;
+        gauge_sgclassifier_family_ptr[metric]->Remove(itr->second);
+        itr++;
+    }
+
+    sgclassifier_gauge_map[metric].clear();
+}
+
+// Remove dynamic SGClassifierCounter gauges for all metrics
+void PrometheusManager::removeDynamicGaugeSGClassifier ()
+{
+    for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+            metric <= SGCLASSIFIER_METRICS_MAX;
+                metric = SGCLASSIFIER_METRICS(metric+1)) {
+        removeDynamicGaugeSGClassifier(metric);
+    }
 }
 
 // Remove dynamic RDDropCounter gauge given a metic type and rdURI
@@ -1027,6 +1239,16 @@ void PrometheusManager::removeStaticGaugeFamiliesOFPeer ()
     }
 }
 
+// Remove all statically allocated SGClassifier gauge families
+void PrometheusManager::removeStaticGaugeFamiliesSGClassifier ()
+{
+    for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+            metric <= SGCLASSIFIER_METRICS_MAX;
+                metric = SGCLASSIFIER_METRICS(metric+1)) {
+        gauge_sgclassifier_family_ptr[metric] = nullptr;
+    }
+}
+
 // Remove all statically allocated RDDrop gauge families
 void PrometheusManager::removeStaticGaugeFamiliesRDDrop ()
 {
@@ -1083,6 +1305,12 @@ void PrometheusManager::removeStaticGaugeFamilies()
     {
         const lock_guard<mutex> lock(rddrop_stats_mutex);
         removeStaticGaugeFamiliesRDDrop();
+    }
+
+    // SGClassifierCounter specific
+    {
+        const lock_guard<mutex> lock(sgclassifier_stats_mutex);
+        removeStaticGaugeFamiliesSGClassifier();
     }
 }
 
@@ -1187,6 +1415,67 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
         } else {
             LOG(DEBUG) << "SvcToEpCounter yet to be created for uuid: " << uuid;
         }
+    }
+}
+
+/* Function called from SecGrpStatsManager to add/update SGClassifierCounter */
+void PrometheusManager::addNUpdateSGClassifierCounter (const string& classifier)
+{
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::observer;
+
+    const lock_guard<mutex> lock(sgclassifier_stats_mutex);
+
+    Mutator mutator(framework, "policyelement");
+    optional<shared_ptr<PolicyStatUniverse> > su =
+                    PolicyStatUniverse::resolve(agent.getFramework());
+    if (su) {
+        std::vector<OF_SHARED_PTR<modelgbp::gbpe::SecGrpClassifierCounter> > out;
+        su.get()->resolveGbpeSecGrpClassifierCounter(out);
+        for (const auto& counter : out) {
+            if (!counter)
+                continue;
+            if (classifier.compare(counter.get()->getClassifier("")))
+                continue;
+            if (counter.get()->getGenId(0) != (sgclassifier_last_genId+1))
+                continue;
+            sgclassifier_last_genId++;
+
+            for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+                    metric <= SGCLASSIFIER_METRICS_MAX;
+                        metric = SGCLASSIFIER_METRICS(metric+1))
+                if (!createDynamicGaugeSGClassifier(metric, classifier))
+                    break;
+
+            // Update the metrics
+            for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+                    metric <= SGCLASSIFIER_METRICS_MAX;
+                        metric = SGCLASSIFIER_METRICS(metric+1)) {
+                Gauge *pgauge = getDynamicGaugeSGClassifier(metric,
+                                                            classifier);
+                optional<uint64_t>   metric_opt;
+                switch (metric) {
+                case SGCLASSIFIER_RX_BYTES:
+                    metric_opt = counter.get()->getRxbytes();
+                    break;
+                case SGCLASSIFIER_RX_PACKETS:
+                    metric_opt = counter.get()->getRxpackets();
+                    break;
+                case SGCLASSIFIER_TX_BYTES:
+                    metric_opt = counter.get()->getTxbytes();
+                    break;
+                case SGCLASSIFIER_TX_PACKETS:
+                    metric_opt = counter.get()->getTxpackets();
+                    break;
+                default:
+                    LOG(ERROR) << "Unhandled sgclassifier metric: " << metric;
+                }
+                if (metric_opt && pgauge)
+                    pgauge->Set(pgauge->Value() \
+                                + static_cast<double>(metric_opt.get()));
+            }
+        }
+        out.clear();
     }
 }
 
@@ -1480,6 +1769,21 @@ void PrometheusManager::removeEpCounter (const string& uuid,
             incStaticCounterEpRemove();
             updateStaticGaugeEpTotal(false);
         }
+    }
+}
+
+// Function called from SecGrpStatsManager to remove SGClassifierCounter
+void PrometheusManager::removeSGClassifierCounter (const string& classifier)
+{
+    const lock_guard<mutex> lock(sgclassifier_stats_mutex);
+    LOG(DEBUG) << "remove SGClassifierCounter"
+               << " classifier: " << classifier;
+
+    for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+            metric <= SGCLASSIFIER_METRICS_MAX;
+                metric = SGCLASSIFIER_METRICS(metric+1)) {
+        if (!removeDynamicGaugeSGClassifier(metric, classifier))
+            break;
     }
 }
 
