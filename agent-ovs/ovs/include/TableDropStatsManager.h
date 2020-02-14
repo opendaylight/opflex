@@ -89,7 +89,6 @@ private:
     void on_timer_base(const boost::system::error_code& ec,
             flowCounterState_t& counterState,
             PolicyStatsManager::FlowStats_t& dropFlowCounter);
-
 };
 
 /**
