@@ -1035,6 +1035,47 @@ void PolicyManager::updateRedirectDestGroups(uri_set_t &notifyGroup) {
     }
 }
 
+void PolicyManager::addRoutingDomainToSubnets(const URI& subnets,
+                                              const URI& rd) {
+    lock_guard<mutex> guard(state_mutex);
+
+    uri_set_t& rdset = subnets_rd_map[subnets];
+    if (rdset.find(rd) != rdset.end())
+        return;
+
+    rdset.insert(rd);
+}
+
+void PolicyManager::deleteRoutingDomain(const URI& rd) {
+    lock_guard<mutex> guard(state_mutex);
+
+    auto it1 = subnets_rd_map.begin();
+    while (it1 != subnets_rd_map.end()) {
+        uri_set_t& rdset = it1->second;
+
+        auto it2 = rdset.find(rd);
+        if (it2 != rdset.end())
+            rdset.erase(it2);
+
+        if (rdset.empty())
+            it1 = subnets_rd_map.erase(it1);
+        else
+           it1++;
+    }
+}
+
+void PolicyManager::deleteSubnets(const URI& subnets) {
+    lock_guard<mutex> guard(state_mutex);
+
+    auto it = subnets_rd_map.find(subnets);
+
+    if (it != subnets_rd_map.end()) {
+        uri_set_t& rdset = it->second;
+        rdset.clear();
+        subnets_rd_map.erase(it);
+    }
+}
+
 void PolicyManager::resolveSubnets(OFFramework& framework,
                                    const optional<URI>& subnets_uri,
                                    /* out */ network::subnets_t& subnets_out) {
@@ -1044,7 +1085,10 @@ void PolicyManager::resolveSubnets(OFFramework& framework,
     if (!subnets_uri) return;
     optional<shared_ptr<Subnets> > subnets_obj =
         Subnets::resolve(framework, subnets_uri.get());
-    if (!subnets_obj) return;
+    if (!subnets_obj) {
+        LOG(DEBUG) << "subnets_obj is nil for subnet " << subnets_uri.get();
+        return;
+    }
 
     vector<shared_ptr<Subnet> > subnets;
     subnets_obj.get()->resolveGbpSubnet(subnets);
@@ -2020,6 +2064,29 @@ void PolicyManager::updateDomain(class_id_t class_id, const URI& uri) {
         itr = (toRemove ? ext_int_map.erase(itr) : ++itr);
     }
     notifyRds.erase(uri);   // Avoid updating twice
+
+    // Determine routing-domains that may be affected by changes to Subnet
+    if (class_id == modelgbp::gbp::Subnets::CLASS_ID) {
+
+        // Update routing domains that depend on this Subnets
+        auto it1 = subnets_rd_map.find(uri);
+        if (it1 != subnets_rd_map.end()) {
+            uri_set_t& rdset = it1->second;
+
+            for (auto it2 = rdset.begin(); it2 != rdset.end(); it2++) {
+                 if (notifyRds.find(*it2) != notifyRds.end())
+                     continue;
+                 notifyRds.insert(*it2);
+            }
+        }
+
+        // Delete the Subnets from subnets_rd map
+        optional<shared_ptr<Subnets> > subnets_obj =
+            Subnets::resolve(framework, uri);
+        if (!subnets_obj)
+            deleteSubnets(uri);
+    }
+
     guard.unlock();
 
     for (const URI& u : notifyGroups) {

@@ -865,6 +865,13 @@ public:
                   std::list<boost::asio::ip::address> &nhList,
                   bool &are_nhs_remote,
                   boost::optional<uint32_t> &sclass);
+    /**
+     * Manage subnets URI to a set of routing domains URIs map
+     */
+    void addRoutingDomainToSubnets(const opflex::modb::URI& subnets,
+                                   const opflex::modb::URI& rd);
+    void deleteRoutingDomain(const opflex::modb::URI& rd);
+    void deleteSubnets(const opflex::modb::URI& subnets);
 private:
     opflex::ofcore::OFFramework& framework;
     std::string opflexDomain;
@@ -933,6 +940,7 @@ private:
     ext_int_map_t;
     typedef std::unordered_map<opflex::modb::URI, ExternalNodeState> \
     ext_node_map_t;
+    typedef std::unordered_map<opflex::modb::URI, uri_set_t> subnets_rd_map_t;
     /**
      * A map from EPG URI to its state
      */
@@ -968,6 +976,11 @@ private:
      * networks that reference it as a nat EPG
      */
     uri_ref_map_t nat_epg_l3_ext;
+
+    /**
+     * A map from subnets URI to a set of routing domain URIs
+     */
+    subnets_rd_map_t subnets_rd_map;
 
     std::mutex state_mutex;
 
