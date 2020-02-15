@@ -625,6 +625,12 @@ bool PrometheusManager::createDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS met
         name += ",policy:" + results[0].substr(2); // Post "SG"
         name += ",subj:" + results[1].substr(2); // Post 7c
         name += ",rule:" + results[2].substr(2); // Post 7c
+
+        // Note: MO resolves dont work with encoded ascii "%7c"
+        // hence modifying the lookup string with actual ascii character '|'
+        cname = results[0] + "|"
+                    + results[1].substr(2) + "|"
+                    + results[2].substr(2);
     } else {
         name += ",policy:" + cname;
     }
