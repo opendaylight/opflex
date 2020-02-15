@@ -35,15 +35,13 @@ public class FSpecIn
     public static FileNameRule transformFileNameRule(FileNameRule aInFnr)
     {
         String lLibName = Config.getLibName();
-        FileNameRule lFnr = new FileNameRule(
+        return new FileNameRule(
                 aInFnr.getRelativePath(),
                 null,
                 aInFnr.getFilePrefix(),
                 aInFnr.getFileSuffix(),
                 aInFnr.getFileExtension(),
                 lLibName);
-
-        return lFnr;
     }
 
     public void firstLineCb()

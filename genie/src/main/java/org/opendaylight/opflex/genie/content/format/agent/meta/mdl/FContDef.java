@@ -75,7 +75,7 @@ public class FContDef
     private void genContained(int aInIndent, MClass aInParent)
     {
         TreeMap<Ident,MClass> lContained = new TreeMap<>();
-        aInParent.getContainsClasses(lContained, true, true);
+        aInParent.getContainsClasses(lContained);
         if (!lContained.isEmpty())
         {
             out.println(aInIndent, '{');

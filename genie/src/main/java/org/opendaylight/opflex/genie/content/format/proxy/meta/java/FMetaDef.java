@@ -242,7 +242,7 @@ public class FMetaDef
         aInClass.findProp(lProps,true);
 
         Map<Ident,MClass> lConts = new TreeMap<>();
-        aInClass.getContainsClasses(lConts, true, true);
+        aInClass.getContainsClasses(lConts);
 
         if (lProps.size() + lConts.size() == 0)
         {

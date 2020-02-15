@@ -151,7 +151,7 @@ public class FClassDef extends ItemFormatterTask
         out.println(aInIndent, getInclude("opflex/modb/MO.h", false));
 
         Map<Ident, MClass> lConts = new TreeMap<>();
-        aInClass.getContainsClasses(lConts, true, true);
+        aInClass.getContainsClasses(lConts);
         for (MClass lThis : lConts.values())
         {
             if (!isRelationshipResolver(lThis) && !isRelationshipTarget(lThis))
@@ -553,7 +553,7 @@ public class FClassDef extends ItemFormatterTask
     private void genChildrenResolvers(int aInIndent, MClass aInClass)
     {
         Map<Ident,MClass> lConts = new TreeMap<>();
-        aInClass.getContainsClasses(lConts, true, true);//true, true);
+        aInClass.getContainsClasses(lConts);
         for (MClass lChildClass : lConts.values())
         {
             genChildResolvers(aInIndent,aInClass,lChildClass);
@@ -675,7 +675,7 @@ public class FClassDef extends ItemFormatterTask
         MType lBaseType = lType.getBuiltInType();
         StringBuilder lRet = new StringBuilder();
         lRet.append(getPropEffSyntax(lBaseType));
-        lRet.append(" ");
+        lRet.append(' ');
         getPropParamName(aInClass, aInPropName, lRet);
         return lRet.toString();
     }

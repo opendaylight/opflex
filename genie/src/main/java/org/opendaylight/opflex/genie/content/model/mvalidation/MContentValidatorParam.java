@@ -18,9 +18,7 @@ public class MContentValidatorParam
         String aInTypeGNameOrNull)
     {
         super(MY_CAT,aInContentValidator,aInName);
-        boolean isValueInheritedFromContainer;
-        if (!(isValueInheritedFromContainer =
-                    (null == aInTypeGNameOrNull || aInTypeGNameOrNull.isEmpty())))
+        if (!(null == aInTypeGNameOrNull || aInTypeGNameOrNull.isEmpty()))
         {
             EXPLICIT_TYPE_REF.add(MY_CAT, getGID().getName(), MY_CAT, aInTypeGNameOrNull);
         }

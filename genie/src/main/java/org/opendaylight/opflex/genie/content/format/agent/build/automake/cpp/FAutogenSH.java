@@ -33,17 +33,14 @@ public class FAutogenSH
      */
     public static FileNameRule transformFileNameRule(FileNameRule aInFnr)
     {
-        FileNameRule lFnr = new FileNameRule(
+        return new FileNameRule(
                 aInFnr.getRelativePath(),
                 null,
                 aInFnr.getFilePrefix(),
                 aInFnr.getFileSuffix(),
                 aInFnr.getFileExtension(),
                 "autogen");
-
-        return lFnr;
     }
-
 
     public void firstLineCb()
     {

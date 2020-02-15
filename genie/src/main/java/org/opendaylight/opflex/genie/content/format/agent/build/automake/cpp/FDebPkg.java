@@ -60,14 +60,13 @@ public class FDebPkg
             suffix = "-dev";
             ext = ".install";
         }
-        FileNameRule lFnr = new FileNameRule(
+        return new FileNameRule(
                 aInFnr.getRelativePath(),
                 null,
                 aInFnr.getFilePrefix(),
                 suffix,
                 ext,
                 lLibName);
-        return lFnr;
     }
 
     public void firstLineCb()

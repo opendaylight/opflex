@@ -5,11 +5,6 @@ package org.opendaylight.opflex.genie.engine.format;
  */
 public abstract class GenericFormatterTask extends FormatterTask
 {
-    protected GenericFormatterTask(Formatter aInFormatter)
-    {
-        super(aInFormatter);
-    }
-
     protected GenericFormatterTask(FormatterCtx aInFormatterCtx,
                                    FileNameRule aInFileNameRule,
                                    Indenter aInIndenter,

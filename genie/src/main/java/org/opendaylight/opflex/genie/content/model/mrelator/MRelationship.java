@@ -29,7 +29,7 @@ public class MRelationship extends Item
         String lSrcClassGName = getSourceClassGName();
         int lSlashIdx = lSrcClassGName.indexOf('/');
         moduleName = lSrcClassGName.substring(0, lSlashIdx);
-        sourceClassLocalName = lSrcClassGName.substring(lSlashIdx + 1, lSrcClassGName.length());
+        sourceClassLocalName = lSrcClassGName.substring(lSlashIdx + 1);
         type = aInType;
         sourceCardinality = aInSourceCard;
         targetCardinality = aInTargetCard;

@@ -1,6 +1,5 @@
 package org.opendaylight.opflex.genie.engine.format;
 
-import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -26,8 +25,6 @@ public class HeaderLine
     {
         return line;
     }
-
-    public Collection<HeaderOption> getOptions() { return options; }
 
     public boolean hasOption(HeaderOption aIn)
     {

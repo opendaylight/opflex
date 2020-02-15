@@ -66,11 +66,6 @@ public class BlockFormatDirective
         return lineIndentOffset;
     }
 
-    public boolean hasIndentOffset()
-    {
-        return 0 < lineIndentOffset;
-    }
-
     private final String openerString;
     private final String lineStartString;
     private final String lineEndString;

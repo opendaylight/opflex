@@ -226,7 +226,7 @@ public class FMetaDef
         aInClass.findProp(lProps,true);
 
         TreeMap<Ident,MClass> lConts = new TreeMap<>();
-        aInClass.getContainsClasses(lConts, true, true);//false, true);
+        aInClass.getContainsClasses(lConts);
 
         if (lProps.size() + lConts.size() == 0)
         {
@@ -246,9 +246,7 @@ public class FMetaDef
                 int lLocalId = lProp.getPropId(aInClass);
 
                 if (isRelationshipSource(aInClass)) {
-                    if (lProp.getLID().getName().equalsIgnoreCase("targetClass"))
-                        continue;
-                    else if (lProp.getLID().getName().equalsIgnoreCase("targetName")) {
+                    if (lProp.getLID().getName().equalsIgnoreCase("targetName")) {
                         out.println(aInIndent + 1,
                                     (lIsFirst ?  "" : ",") + "(PropertyInfo(" + toUnsignedStr(lLocalId) + ", \"target\", PropertyInfo::REFERENCE, PropertyInfo::SCALAR)) // " + lProp.toString());
                         lIsFirst = false;

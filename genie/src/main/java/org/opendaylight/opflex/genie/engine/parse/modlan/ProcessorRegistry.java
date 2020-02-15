@@ -5,5 +5,5 @@ package org.opendaylight.opflex.genie.engine.parse.modlan;
  */
 public interface ProcessorRegistry
 {
-    public Processor getRoot();
+    Processor getRoot();
 }

@@ -7,12 +7,6 @@ import org.opendaylight.opflex.genie.engine.model.Item;
  */
 public abstract class ItemFormatterTask extends FormatterTask
 {
-    protected ItemFormatterTask(Formatter aInFormatter, Item aInItem)
-    {
-        super(aInFormatter);
-        item = aInItem;
-    }
-
     protected ItemFormatterTask(
         FormatterCtx aInFormatterCtx,
         FileNameRule aInFileNameRule,

@@ -34,15 +34,13 @@ public class FConfigureAC
      */
     public static FileNameRule transformFileNameRule(FileNameRule aInFnr)
     {
-        FileNameRule lFnr = new FileNameRule(
+        return new FileNameRule(
                 aInFnr.getRelativePath(),
                 null,
                 aInFnr.getFilePrefix(),
                 aInFnr.getFileSuffix(),
                 aInFnr.getFileExtension(),
                 "configure");
-
-        return lFnr;
     }
 
     public void generate()

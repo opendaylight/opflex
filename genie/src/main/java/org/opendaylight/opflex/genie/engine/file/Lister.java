@@ -18,7 +18,6 @@ public class Lister
         String aInSuffix
         )
     {
-        root = aInPath;
         explore(new File(aInPath), aInSuffix);
     }
 
@@ -33,7 +32,6 @@ public class Lister
         {
             if (aInFile.isDirectory())
             {
-                //Severity.INFO.report(aInFile.toURI().toString(), "model file search", "", "exploring.");
                 File[] lFiles = aInFile.listFiles();
                 Arrays.sort(lFiles);
                 for (File lThisF : lFiles)
@@ -46,8 +44,6 @@ public class Lister
                 if (null == aInSuffix || 0 == aInSuffix.length() ||
                     aInFile.getPath().endsWith(aInSuffix))
                 {
-                    //Severity.INFO.report(aInFile.toURI().toString(), "model file search", "", "incling.");
-
                     files.put(aInFile.toURI(), aInFile);
                 }
             }
@@ -63,5 +59,4 @@ public class Lister
     }
 
     private final TreeMap<URI, File> files = new TreeMap<>();
-    private final String root;
 }

@@ -10,7 +10,6 @@ public class Doer extends Thread
     public Doer(int aInId, Chnl aInChnl)
     {
         super("doer(" + aInId + ")");
-        id = aInId;
         chnl = aInChnl;
     }
 
@@ -23,9 +22,7 @@ public class Doer extends Thread
             {
                 try
                 {
-                    //Severity.INFO.report(toString(), "run", "task", "BEGIN: " + lTask);
                     lTask.run();
-                    //Severity.INFO.report(toString(), "run", "task", "END:" + lTask);
                 }
                 catch(Throwable lT)
                 {
@@ -46,5 +43,4 @@ public class Doer extends Thread
     }
 
     private final Chnl chnl;
-    private final int id;
 }

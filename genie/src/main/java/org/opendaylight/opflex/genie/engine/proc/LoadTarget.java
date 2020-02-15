@@ -12,8 +12,7 @@ import org.opendaylight.opflex.modlan.utils.Strings;
  */
 public class LoadTarget
 {
-
-    public LoadTarget(Dsptchr aInDisp, ProcessorTree aInPTree, String aInPaths[], String aInSuffix, boolean aInIsParallel)
+    public LoadTarget(Dsptchr aInDisp, ProcessorTree aInPTree, String[] aInPaths, String aInSuffix, boolean aInIsParallel)
     {
         disp = aInDisp;
         pTree = aInPTree;
@@ -77,19 +76,9 @@ public class LoadTarget
         }
     }
 
-    public String getSuffix()
-    {
-        return suffix;
-    }
-
-    public String[] getPaths()
-    {
-        return paths;
-    }
-
-    private final String paths[];
+    private final String[] paths;
     private final String suffix;
-    private final Lister listers[];
+    private final Lister[] listers;
     private final Dsptchr disp;
     private final ProcessorTree pTree;
 }

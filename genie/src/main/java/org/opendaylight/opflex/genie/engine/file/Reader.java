@@ -16,7 +16,7 @@ public class Reader implements org.opendaylight.opflex.modlan.parse.Ctx
     public Reader(File aInFile)
     {
         file = aInFile;
-        is = fileInputStreamFactory(aInFile);
+        FileInputStream is = fileInputStreamFactory(aInFile);
         isr = new InputStreamReader(is);
     }
 
@@ -110,16 +110,6 @@ public class Reader implements org.opendaylight.opflex.modlan.parse.Ctx
         return -1 != bufferIdx || 0 < (length - bufferIdx);
     }
 
-    private int getLength()
-    {
-        return length;
-    }
-
-    private char[] getBuffer()
-    {
-        return buffer;
-    }
-
     private static FileInputStream fileInputStreamFactory(File aInFile)
     {
         try
@@ -163,7 +153,6 @@ public class Reader implements org.opendaylight.opflex.modlan.parse.Ctx
     private int bufferIdx = -1;
     private boolean done = false;
     private final File file;
-    private final FileInputStream is;
     private final InputStreamReader isr;
     private final char[] buffer = new char[BUFF_SIZE];
 }

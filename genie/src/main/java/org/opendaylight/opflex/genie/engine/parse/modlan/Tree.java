@@ -19,12 +19,7 @@ public class Tree
 
     private void process()
     {
-        // TODO:
-        if (null != root)
-        {
-            //System.out.println("\n\nPROCESSING DATA: ------------------------------------\n\n");
-            root.process(preg.getRoot());
-        }
+        root.process(preg.getRoot());
     }
 
     public Engine getEngine()

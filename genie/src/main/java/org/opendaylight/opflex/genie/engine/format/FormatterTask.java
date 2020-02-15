@@ -16,33 +16,6 @@ public abstract class FormatterTask implements Task
     protected Formatter out = null;
 
     /**
-     * module path formatter. formats module path (package, namespace, ..._.
-     * this methid is overridable by subclasses for customization
-     * @return formatted module path
-     */
-    protected String formatModulePath()
-    {
-        return null;
-    }
-    /**
-     * name formatter. formats name
-     * this methid is overridable by subclasses for customization
-     * @return formatted name
-     */
-    protected String formatFileName()
-    {
-        return null;
-    }
-    /**
-     * description formatter
-     * @return description
-     */
-    protected String[] formatDescription()
-    {
-        return null;
-    }
-
-    /**
      * CODE GENERATION HANDLE.
      */
     public abstract void generate();
@@ -50,20 +23,6 @@ public abstract class FormatterTask implements Task
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // INTERNAL APIs
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    protected FormatterTask(Formatter aInFormatter)
-    {
-        this(
-          aInFormatter.getFormattedFile().getCtx(),
-          aInFormatter.getFormattedFile().getFileNameRule(),
-          aInFormatter.getIndenter(),
-          aInFormatter.getHeaderFormatDirective(),
-          aInFormatter.getCommentFormatDirective(),
-          !aInFormatter.getFormattedFile().isOverrideExisting()
-        );
-        file = aInFormatter.getFormattedFile();
-        out = aInFormatter;
-    }
 
     protected FormatterTask(
         FormatterCtx aInFormatterCtx,
@@ -81,12 +40,7 @@ public abstract class FormatterTask implements Task
         isUserFile = aInIsUserFile;
     }
 
-    public FormatterCtx getFormatterCtx() { return formatterCtx; }
-    public FileNameRule getFileNameRule() { return fileNameRule; }
     public Indenter getIndenter() { return indenter; }
-    public BlockFormatDirective getHeaderFormatDirective() { return headerFormatDirective; }
-    public BlockFormatDirective getCommentFormatDirective() { return commentFormatDirective; }
-    public boolean isUserFile() { return isUserFile; }
 
     public final void run()
     {
@@ -104,7 +58,7 @@ public abstract class FormatterTask implements Task
     {
         out.printHeaderComment(
                 -1,
-                out.getHeaderComments(formatDescription()));
+                out.getHeaderComments());
     }
 
     protected void init()
@@ -113,7 +67,7 @@ public abstract class FormatterTask implements Task
         {
             file = new FormattedFile(
                     formatterCtx,
-                    fileNameRule.makeSpecific(formatModulePath(), formatFileName()),
+                    fileNameRule.makeSpecific(null, null),
                     !isUserFile);
         }
         if (null == out)
@@ -136,6 +90,7 @@ public abstract class FormatterTask implements Task
         out.close();
     }
 
+    @Override
     public String toString()
     {
         return "formatter::task(" + fileNameRule.getName() + ')';

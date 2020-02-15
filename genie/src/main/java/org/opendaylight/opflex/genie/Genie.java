@@ -8,7 +8,6 @@ import org.opendaylight.opflex.genie.engine.proc.Processor;
  */
 public class Genie
 {
-
     /**
      * Genie main method.
      * arguments supported:
@@ -20,11 +19,8 @@ public class Genie
     {
         // trigger the processing
         new Processor(
-                1,
-                ParseRegistry.init(),
+            ParseRegistry.init(),
                 aInArgs
                 );
-
     }
-
 }

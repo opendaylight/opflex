@@ -73,8 +73,8 @@ public class Indenter
              aInStartWithEmpty,
              aInIsTab ? DEFAULT_FIRST_TAB : DEFAULT_FIRST,
              aInIsTab ? DEFAULT_LAST_TAB : DEFAULT_LAST,
-             aInIsTab ? DEFAULT_COMMON_TAB : DEFAULT_COMMON,
-             false);
+             aInIsTab ? DEFAULT_COMMON_TAB : DEFAULT_COMMON
+        );
     }
 
     /**
@@ -82,22 +82,19 @@ public class Indenter
      * each of (idx * aInSingleIndentSize) white spaces long.
      */
     public Indenter(
-            String aInName,
-            boolean aInIsTab,
-            int aInSize,
-            int aInSingleIndentSize,
-            boolean aInStartWithEmpty,
-            String aInFirst,
-            String aInLast,
-            String aInCommon,
-            boolean aInPrependWithIndex)
+        String aInName,
+        boolean aInIsTab,
+        int aInSize,
+        int aInSingleIndentSize,
+        boolean aInStartWithEmpty,
+        String aInFirst,
+        String aInLast,
+        String aInCommon)
     {
         name = aInName;
         isTab = aInIsTab;
         size = aInSize;
-        singleIndentSize = aInSingleIndentSize;
         highestDepthInTable = aInSize - 1;
-        startWithEmpty = aInStartWithEmpty;
         indent =  create(
                     aInSize,
                     aInSingleIndentSize,
@@ -105,8 +102,6 @@ public class Indenter
                     aInFirst,
                     aInLast,
                     aInCommon);
-
-        prependIndex = aInPrependWithIndex;
     }
 
     /**
@@ -141,7 +136,7 @@ public class Indenter
     /**
      * creates lookup indent table
      */
-    private final String[] create(
+    private String[] create(
             int aInSize,
             int aInSingleIndentSize,
             boolean aInStartWithEmpty,
@@ -166,25 +161,17 @@ public class Indenter
             }
             else
             {
-                $Tbl[i] = createEntry(
-                        i,
-                        aInSingleIndentSize,
-                        aInStartWithEmpty,
-                        aInFirst,
-                        aInLast,
-                        aInCommon);
+                $Tbl[i] = createEntry(i, aInFirst, aInLast, aInCommon);
             }
         }
         return $Tbl;
     }
 
     private String createEntry(
-            int aInDepth,
-            int aInSingleIndentSize,
-            boolean aInStartWithEmpty,
-            String aInFirst,
-            String aInLast,
-            String aInCommon)
+        int aInDepth,
+        String aInFirst,
+        String aInLast,
+        String aInCommon)
     {
         StringBuilder lSb = new StringBuilder();
         if (0 != aInDepth)
@@ -299,9 +286,6 @@ public class Indenter
     private final String name;
     private final String[] indent;
     private final int size;
-    private final int singleIndentSize;
     private final int highestDepthInTable;
-    private final boolean startWithEmpty;
-    private final boolean prependIndex;
     private final boolean isTab;
 }

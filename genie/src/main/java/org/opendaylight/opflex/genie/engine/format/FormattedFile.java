@@ -176,24 +176,9 @@ public class FormattedFile
         return fileNameRule;
     }
 
-    public String getFullPath()
-    {
-        return fullPath;
-    }
-
-    public String getDirPath()
-    {
-        return dirPath;
-    }
-
     public String getFullFileName()
     {
         return fullFileName;
-    }
-
-    public String getRootPath()
-    {
-        return formatterCtx.getRootPath();
     }
 
     public String getRelativePath()
@@ -229,11 +214,6 @@ public class FormattedFile
     public boolean isOverrideExisting()
     {
         return overrideExisting;
-    }
-
-    public PrintWriter getWriter()
-    {
-        return writer;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -294,7 +274,6 @@ public class FormattedFile
         lSb.append(lFnSb);
         fullPath = lSb.toString();
         fullFileName = lFnSb.toString();
-        //Severity.WARN.report(fileName,"","","|||||||||||||||" + this + "--> " + fullPath);
     }
 
     public File getDir()
@@ -348,10 +327,10 @@ public class FormattedFile
 
     private synchronized void initFile()
     {
-        file = new File(fullPath); //new File(dir, aInFileName);
+        file = new File(fullPath);
         if ((!overrideExisting) && file.exists())
         {
-            file = new File(fullPath + ".new");// new File(dir, aInFileName + ".new");
+            file = new File(fullPath + ".new");
         }
     }
 

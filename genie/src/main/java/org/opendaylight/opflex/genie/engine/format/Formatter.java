@@ -24,11 +24,11 @@ public class Formatter
         commentFormatDirective = aInCommentFormatDirective;
     }
 
-    protected String[] getHeaderComments(String[] aInDescription)
+    protected String[] getHeaderComments()
     {
         Header lHeader = Config.getHeaderFormat();
 
-        String[] lStr = new String[lHeader.getSize() + (null != aInDescription ? aInDescription.length : 0) + 1];
+        String[] lStr = new String[lHeader.getSize() + 1];
         try
         {
             int i = 0;
@@ -44,13 +44,6 @@ public class Formatter
                 i++;
             }
             lStr[i++] = " ";
-            if (null != aInDescription)
-            {
-                for (String lThatLine : aInDescription)
-                {
-                    lStr[i++] = lThatLine;
-                }
-            }
         }
         catch (Throwable lT)
         {
@@ -149,11 +142,6 @@ public class Formatter
                 println(aInIndent, aInFormatDirs.getTerminatorString());
             }
         }
-    }
-
-    public void print()
-    {
-
     }
 
     public void indent(int aInIndentDepth)

@@ -85,7 +85,7 @@ public class PNode
                 String lExplicit = aInData.getNamedValue("explicit", null, false);
 
                 // CHECK IF DIRECT PARSING CLASS DIRECTIVE IS SET
-                String lParserImplClassName = null;
+                String lParserImplClassName;
                 if (!Strings.isEmpty(lExplicit))
                 {
                     lParserImplClassName = lExplicit;

@@ -250,13 +250,9 @@ public class MClass
     /**
      * Retrieves subclasses of this class
      * @param aOut collection of returned subclasses of this class
-     * @param aInIsDirectOnly specifies if only direct subclasses are returned
-     * @param aInIsConcreteOnly specifies whether to return concrete classes only
+     *
      */
-    public void getSubclasses(
-            Map<Ident, MClass> aOut,
-            boolean aInIsDirectOnly,
-            boolean aInIsConcreteOnly)
+    public void getSubclasses(Map<Ident, MClass> aOut)
     {
         Relator lInvRel = SUPER_CAT.getInverseRelator(getGID().getName());
         if (null != lInvRel)
@@ -264,13 +260,13 @@ public class MClass
             for (Item lItem : lInvRel.getToItems())
             {
                 MClass lClass = (MClass) lItem;
-                if ((!aInIsConcreteOnly) || lClass.isConcrete())
+                if (lClass.isConcrete())
                 {
                     aOut.put(lClass.getGID(),lClass);
                 }
-                if (!(aInIsDirectOnly || lClass.isConcrete()))
+                if (!lClass.isConcrete())
                 {
-                    lClass.getSubclasses(aOut,aInIsDirectOnly, aInIsConcreteOnly);
+                    lClass.getSubclasses(aOut);
                 }
             }
         }
@@ -323,29 +319,21 @@ public class MClass
     /**
      * Gets a set of Classes that contain this class
      * @param aOut collection of containing classes
+     *
      */
-    public void getContainedByClasses(Map<Ident,MClass> aOut, boolean aInIsResolveToConcrete)
+    public void getContainedByClasses(Map<Ident, MClass> aOut)
     {
         MContained lCont = getContained();
         if (null != lCont)
         {
-            lCont.getParentClasses(aOut, aInIsResolveToConcrete);
+            lCont.getParentClasses(aOut);
         }
-    }
-
-    /**
-     * Gets a set of Classes that contain this class
-     * @param aOut collection of containing classes
-     * @param aInIncludeSuperclasses indication of whether to include superclasses in this search
-     */
-    public void getContainedByClasses(Map<Ident,MClass> aOut, boolean aInIncludeSuperclasses, boolean aInIsResolveToConcrete)
-    {
-        getContainedByClasses(aOut, aInIsResolveToConcrete);
-        if (aInIncludeSuperclasses)
+        for (MClass lClass = getSuperclass(); null != lClass; lClass = lClass.getSuperclass())
         {
-            for (MClass lClass = getSuperclass(); null != lClass; lClass = lClass.getSuperclass())
+            lCont = lClass.getContained();
+            if (null != lCont)
             {
-                lClass.getContainedByClasses(aOut, aInIsResolveToConcrete);
+                lCont.getParentClasses(aOut);
             }
         }
     }
@@ -360,33 +348,23 @@ public class MClass
     }
 
     /**
-     * Gets a set of classes that are contained by this class
-     * @param aOut collection of contained classes
-     * @param aInIsResolveToConcrete specifies if contained classes should be resolved to concrete
+     * Gets a set of classes that are contained by this class or any of its supeclasses
+     * @param aOut set of containment rules\
+     *
      */
-    public void getContainsClasses(Map<Ident,MClass> aOut, boolean aInIsResolveToConcrete)
+    public void getContainsClasses(Map<Ident, MClass> aOut)
     {
         MContainer lCont = getContains();
         if (null != lCont)
         {
-            lCont.getChildClasses(aOut, aInIsResolveToConcrete);
+            lCont.getChildClasses(aOut);
         }
-    }
-
-    /**
-     * Gets a set of classes that are contained by this class or any of its supeclasses
-     * @param aOut set of containment rules\
-     * @param aInIncludeSuperclasses indication of whether to include superclasses in this search
-     * @param aInIsResolveToConcrete specifies if contained classes should be resolved to concrete
-     */
-    public void getContainsClasses(Map<Ident, MClass> aOut, boolean aInIncludeSuperclasses, boolean aInIsResolveToConcrete)
-    {
-        getContainsClasses(aOut, aInIsResolveToConcrete);
-        if (aInIncludeSuperclasses)
+        for (MClass lClass = getSuperclass(); null != lClass; lClass = lClass.getSuperclass())
         {
-            for (MClass lClass = getSuperclass(); null != lClass; lClass = lClass.getSuperclass())
+            lCont = lClass.getContains();
+            if (null != lCont)
             {
-                lClass.getContainsClasses(aOut, aInIsResolveToConcrete);
+                lCont.getChildClasses(aOut);
             }
         }
     }
@@ -442,7 +420,7 @@ public class MClass
         {
             aInCurrStack.push(this);
             Map<Ident,MClass> lContainers = new TreeMap<>();
-            getContainedByClasses(lContainers, true, true);
+            getContainedByClasses(lContainers);
             if (0 == lContainers.size())
             {
                 // NO MORE CONTAINERS,
@@ -884,7 +862,6 @@ public class MClass
     public static Collection<MClass> getConcreteClasses()
     {
         Collection<MClass> lRet = new LinkedList<>();
-
         CatEntry lCatE = MY_CAT.getNodes();
         if (null != lCatE)
         {

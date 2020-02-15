@@ -110,9 +110,9 @@ public class MContainer
     /**
      * retrieves all child classes associated with a parent
      * @param aOut map of classes of contained/child objects
-     * @param aInResolveToConcrete specifies whether classes need to be resolved to concrete.
+     *
      */
-    public void getChildClasses(Map<Ident,MClass> aOut, boolean aInResolveToConcrete)
+    public void getChildClasses(Map<Ident, MClass> aOut)
     {
         LinkedList<Item> lItems = new LinkedList<>();
         getChildItems(MChild.MY_CAT, lItems);
@@ -121,9 +121,9 @@ public class MContainer
             MChild lChild = (MChild) lIt;
             MClass lThat = lChild.getTarget();
 
-            if (aInResolveToConcrete && !lThat.isConcrete())
+            if (!lThat.isConcrete())
             {
-                lThat.getSubclasses(aOut,false,aInResolveToConcrete);
+                lThat.getSubclasses(aOut);
             }
             else
             {

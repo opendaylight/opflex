@@ -202,10 +202,6 @@ public class FormatterTaskMeta
                 switch (type)
                 {
                     case ITEM:
-
-                        lModule = (String) moduleExtractor.invoke(null, aIn);
-                        break;
-
                     case CATEGORY:
 
                         lModule = (String) moduleExtractor.invoke(null, aIn);
@@ -226,7 +222,7 @@ public class FormatterTaskMeta
 
         if (null == lModule)
         {
-            if (null != aIn && aIn instanceof Item)
+            if (aIn instanceof Item)
             {
                 Item lItem = (Item) aIn;
                 for (; null != lItem.getParent(); lItem = lItem.getParent());
@@ -319,10 +315,6 @@ public class FormatterTaskMeta
                             lTask.setMeta(this);
                             Processor.get().getDsp().trigger(lTask);
                         }
-                        else
-                        {
-                            //Severity.INFO.report(toString(),"process", "task not accepted for: " + lItem, "this is normal, check the acceptor/shouldTriggerTask method on your formatter task:" + taskClass);
-                        }
                     }
                     break;
                 }
@@ -361,10 +353,6 @@ public class FormatterTaskMeta
 
                         lTask.setMeta(this);
                         Processor.get().getDsp().trigger(lTask);
-                    }
-                    else
-                    {
-                        //Severity.INFO.report(toString(),"process", "task not accepted", "this is normal, check the acceptor/shouldTriggerTask method on your formatter task:" + taskClass);
                     }
                     break;
                 }

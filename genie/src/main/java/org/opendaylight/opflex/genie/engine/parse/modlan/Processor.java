@@ -10,9 +10,9 @@ import org.opendaylight.opflex.genie.engine.model.Pair;
  */
 public interface Processor
 {
-    public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItemOrNull);
-    public void endCB(Node aInData, Item aInItemOrNull);
-    public Processor getChild(String aInName);
-    public boolean hasProp(String aInName);
-    public Collection<String> getPropNames();
+    Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItemOrNull);
+    void endCB(Node aInData, Item aInItemOrNull);
+    Processor getChild(String aInName);
+    boolean hasProp(String aInName);
+    Collection<String> getPropNames();
 }

@@ -219,7 +219,7 @@ public class FClassDef extends ItemFormatterTask
         // COMMENT
         //
         int lCommentSize = 2 + aInComments.size();
-        String lComment[] = new String[lCommentSize];
+        String[] lComment = new String[lCommentSize];
         int lCommentIdx = 0;
         lComment[lCommentIdx++] = "Check whether " + aInCheckName + " has been set";
         for (String lCommLine : aInComments)
@@ -346,7 +346,7 @@ public class FClassDef extends ItemFormatterTask
         out.println();
     }
 
-    private void genNamedPropMutators(int aInIndent, MClass aInClass, MClass aInRefClass,
+    private void genNamedPropMutators(int aInIndent, MClass aInRefClass,
                                       List<Pair<String, MNameRule>> aInNamingPath, boolean aInIsUniqueNaming,
                                       String aInMethName)
     {
@@ -436,8 +436,7 @@ public class FClassDef extends ItemFormatterTask
             boolean lIsUniqueNaming = lTargetClass.getNamingPaths(lNamingPaths, Language.JAVA);
             for (List<Pair<String, MNameRule>> lNamingPath : lNamingPaths)
             {
-                genNamedPropMutators(aInIndent, aInClass, lTargetClass, lNamingPath, lIsUniqueNaming,
-                        lName);
+                genNamedPropMutators(aInIndent, lTargetClass, lNamingPath, lIsUniqueNaming, lName);
             }
         }
     }
@@ -470,7 +469,7 @@ public class FClassDef extends ItemFormatterTask
     private void genChildrenResolvers(int aInIdent, MClass aInClass)
     {
         TreeMap<Ident,MClass> lConts = new TreeMap<>();
-        aInClass.getContainsClasses(lConts, true, true);
+        aInClass.getContainsClasses(lConts);
         for (MClass lChildClass : lConts.values())
         {
             genChildResolvers(aInIdent,aInClass,lChildClass);
@@ -526,7 +525,6 @@ public class FClassDef extends ItemFormatterTask
                 {
                     MClass lClass = MClass.get(lPathNode.getFirst());
                     Module lMod = lClass.getModule();
-                    lPathNode.getSecond();
 
                     lSb.append(Strings.upFirstLetter(lMod.getLID().getName()));
                     lSb.append(Strings.upFirstLetter(lClass.getLID().getName()));

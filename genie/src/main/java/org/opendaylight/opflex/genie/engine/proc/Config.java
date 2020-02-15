@@ -18,8 +18,7 @@ public class Config
     public static String getLibName() { return libName; }
     public static String getLibVersion() { return libVersion; }
     public static String getLibtoolVersion() { return libtoolVersion; }
-    public static String getHomePath() { return homePath; }
-    public static String getWorkingPath() { return workingPath; }
+
     public static String getConfigPath() { return configPath; }
     public static String getGenDestPath() { return genDestPath; }
     public static String getLogDirParent() { return logDirParent; }
@@ -28,7 +27,7 @@ public class Config
     public static Collection<SearchPath> getSyntaxPath() { return syntaxPath; }
     public static String[][] getSyntaxPathArray()
     {
-        String lRet[][] = new String[getSyntaxPath().size()][2];
+        String[][] lRet = new String[getSyntaxPath().size()][2];
         int lIdx = 0;
         for (SearchPath lSp : getSyntaxPath())
         {
@@ -45,7 +44,7 @@ public class Config
     public static String[][] getPreLoadPaths()
     {
         final int lSize = (getLoaderPath().size());
-        String lRet[][] = new String[lSize][2];
+        String[][] lRet = new String[lSize][2];
         int lIdx = 0;
         for (SearchPath lSp : getLoaderPath())
         {
@@ -58,7 +57,7 @@ public class Config
     public static String[][] getPostLoadPaths()
     {
         final int lSize = (getFormatterPath().size());
-        String lRet[][] = new String[lSize][2];
+        String[][] lRet = new String[lSize][2];
         int lIdx = 0;
         for (SearchPath lSp : getFormatterPath())
         {
@@ -89,7 +88,7 @@ public class Config
     public static void setSyntaxRelPath(String aIn, String aInSuffix)
     {
         syntaxPath.add(new SearchPath(concatPath(homePath,aIn), aInSuffix));
-    };
+    }
 
     public static void setLoaderRelPath(String aIn, String aInSuffix)
     {
@@ -108,12 +107,7 @@ public class Config
 
     public static void setGenDestPath(String aIn)
     {
-        genDestPath = concatPath(homePath,aIn);;
-    }
-
-    private static String initWorkingPath()
-    {
-        return System.getProperty("user.dir");
+        genDestPath = concatPath(homePath,aIn);
     }
 
     public static void setConfigFile(String aIn)
@@ -134,7 +128,7 @@ public class Config
     {
         if (null != aInOptional)
         {
-            setIsEnumSupport(aInOptional.booleanValue());
+            setIsEnumSupport(aInOptional);
         }
     }
 
@@ -187,7 +181,6 @@ public class Config
     public static String libVersion = null;
     public static String libtoolVersion= null;
     public static String homePath = null;
-    public static final String workingPath = initWorkingPath();
     public static final Collection<SearchPath> syntaxPath = new LinkedList<>();
     public static final Collection<SearchPath> loaderPath = new LinkedList<>();
     public static final Collection<SearchPath> formatterPath = new LinkedList<>();

@@ -2,8 +2,6 @@ package org.opendaylight.opflex.genie.engine.parse.load;
 
 import java.util.TreeMap;
 
-import org.opendaylight.opflex.modlan.report.Severity;
-
 /**
  * Created by midvorki on 7/25/14.
  */
@@ -47,18 +45,6 @@ public class LoaderDomainMeta
             features.put(aInName,lF);
         }
         return lF;
-    }
-
-    public void addFeature(LoaderFeatureMeta aIn)
-    {
-        if (!features.containsKey(aIn.getName()))
-        {
-            features.put(aIn.getName(),aIn);
-        }
-        else
-        {
-            Severity.DEATH.report(toString(),"","", "task already registered: " + aIn.getName());
-        }
     }
 
     public String toString()

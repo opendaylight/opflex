@@ -31,13 +31,10 @@ public class FormatterDomainMeta
 
     public void process(FormatterCtx aInCtx)
     {
-        //System.out.println(this + ".ptocess(" + aInCtx + ")");
         for (FormatterFeatureMeta lTask : tasks.values())
         {
             if (lTask.isEnabled())
             {
-                //System.out.println(this + ".ptocess(" + aInCtx + "): " + lTask);
-
                 lTask.process(aInCtx);
             }
         }

@@ -136,18 +136,11 @@ public class Node
      */
     public final void process(Processor aInParentProcessor)
     {
-        //System.out.println(this + ".process(parent-proc=" + aInParentProcessor + ")");
         Processor lProc = null;
         if (null != aInParentProcessor)
         {
             lProc = aInParentProcessor.getChild(name);
         }
-        else
-        {
-            // assume it's root
-            // TODO:
-        }
-        //System.out.println(this + ".process(parent-proc=" + aInParentProcessor + "): my-proc=" + lProc);
 
         if (null == lProc)
         {
@@ -190,9 +183,6 @@ public class Node
                     this.item.addParsingDataNode(this);
                 }
             }
-            //System.out.println(this + ".process(parent-proc=" + aInParentProcessor + "): item=" + this.item);
-
-            //System.out.println(this + ": NEW ITEM: " + item + " WITH PROC: " + lProc + " of class " + lProc.getClass());
 
             switch ((null == lRes || null == lRes.getFirst()) ?
                             ParseDirective.CONTINUE : lRes.getFirst())
@@ -214,8 +204,6 @@ public class Node
 
     private void processChildren(Processor aInProc)
     {
-       // System.out.println(this + ".processChildren(parent-proc=" + aInProc + ")");
-
         if (null != children)
         {
             for (java.util.LinkedList<Node> lNodes : children.values())
@@ -263,7 +251,6 @@ public class Node
         {
             comments = new java.util.LinkedList<>();
         }
-        //System.out.println(this + ".addComments(" + aIn + ")");
         for (String lThis : aIn)
         {
             comments.add(Strings.trimFirstN(lThis, 1));
@@ -316,17 +303,16 @@ public class Node
      */
     private String processComplex(String aInType,String aIn)
     {
-        String lRet = null;
         String[] lComponents = aIn.split(";|\n|\r");
 
-        lRet = lComponents[0].trim();
+        String lRet = lComponents[0].trim();
 
         for (int i = 0; i < lComponents.length; i++)
         {
             String lComponent = lComponents[i];
             if (!Strings.isEmpty(lComponent))
             {
-                String lNVPair[] = lComponent.split("=");
+                String[] lNVPair = lComponent.split("=");
 
                 for (int j = 0; j < lNVPair.length; j++)
                 {
@@ -434,29 +420,14 @@ public class Node
         fileName = aInFileName;
     }
 
-    public String getFileName()
-    {
-        return fileName;
-    }
-
     public void setLineNum(int aIn)
     {
         lineNum = aIn;
     }
 
-    public int getLineNum()
-    {
-        return lineNum;
-    }
-
     public void setColumnNum(int aIn)
     {
         columnNum = aIn;
-    }
-
-    public int getColumnNum()
-    {
-        return columnNum;
     }
 
     public final String validateBoolean(String aInName, String aInValue, boolean aInFull)

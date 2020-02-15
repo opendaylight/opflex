@@ -147,7 +147,7 @@ public class FClassDef extends ItemFormatterTask
         out.println(aInIndent,getInclude("opflex/modb/URIBuilder.h", false));
         out.println(aInIndent,getInclude("opflex/modb/mo-internal/MO.h", false));
         TreeMap<Ident, MClass> lConts = new TreeMap<>();
-        aInClass.getContainsClasses(lConts, true, true);
+        aInClass.getContainsClasses(lConts);
         for (MClass lThis : lConts.values())
         {
             out.printIncodeComment(aInIndent, "contains: " + lThis);
@@ -653,7 +653,7 @@ public class FClassDef extends ItemFormatterTask
     private void genChildrenResolvers(int aInIdent, MClass aInClass)
     {
         Map<Ident,MClass> lConts = new TreeMap<>();
-        aInClass.getContainsClasses(lConts, true, true);//true, true);
+        aInClass.getContainsClasses(lConts);
         for (MClass lChildClass : lConts.values())
         {
             genChildResolvers(aInIdent,aInClass,lChildClass);

@@ -128,7 +128,7 @@ public class MContained
      * retrieves collection of classes that are potential parents
      * @param aOut collection of classes of potential parents
      */
-    public void getParentClasses(Map<Ident,MClass> aOut, boolean aInResolveToConcrete)
+    public void getParentClasses(Map<Ident, MClass> aOut)
     {
         LinkedList<Item> lItems = new LinkedList<>();
         getChildItems(MParent.MY_CAT, lItems);
@@ -136,9 +136,9 @@ public class MContained
         {
             MParent lParent = (MParent) lIt;
             MClass lThat = lParent.getTarget();
-            if (aInResolveToConcrete && !lThat.isConcrete())
+            if (!lThat.isConcrete())
             {
-                lThat.getSubclasses(aOut,false,aInResolveToConcrete);
+                lThat.getSubclasses(aOut);
             }
             else
             {

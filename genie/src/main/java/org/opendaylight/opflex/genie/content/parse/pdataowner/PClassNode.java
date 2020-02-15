@@ -24,7 +24,7 @@ public class PClassNode extends ParseNode
 
     public Pair<ParseDirective,Item> beginCB(Node aInData, Item aInParentItem)
     {
-        MClassRule lRule = null;
+        MClassRule lRule;
 
         switch (scope)
         {

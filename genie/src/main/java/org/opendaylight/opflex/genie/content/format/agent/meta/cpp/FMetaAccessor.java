@@ -37,15 +37,13 @@ public class FMetaAccessor
         String lOldRelativePath = aInFnr.getRelativePath();
         String lNewRelativePath = lOldRelativePath + "/include/" + Config.getProjName() + "/metadata";
 
-        FileNameRule lFnr = new FileNameRule(
+        return new FileNameRule(
                 lNewRelativePath,
                 null,
                 aInFnr.getFilePrefix(),
                 aInFnr.getFileSuffix(),
                 aInFnr.getFileExtension(),
                 "metadata");
-
-        return lFnr;
     }
 
     public void generate()

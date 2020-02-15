@@ -29,15 +29,6 @@ public class CatEntry
     }
 
     /**
-     * category accessor
-     * @return category to which this node tracker corresponds to
-     */
-    public Cat getCat()
-    {
-        return cat;
-    }
-
-    /**
      * indicates whether tracking performed is global or local
      * @return if this tracker is global
      */
@@ -56,19 +47,9 @@ public class CatEntry
         return byName.get(aInName);
     }
 
-    /**
-     * retrieves tracked node by id
-     * @param aInId id of the node
-     * @return model node corresponding to the id in the category context
-     */
-    public Node get(int aInId)
-    {
-        return byName.get(aInId);
-    }
-
     public boolean isEmpty()
     {
-        return null == byName || byName.isEmpty();
+        return byName.isEmpty();
     }
 
     public void getItem(Collection<Item> aOut)
@@ -82,12 +63,6 @@ public class CatEntry
     public Item getItem(String aInName)
     {
         Node lNode = get(aInName);
-        return null == lNode ? null : lNode.getItem();
-    }
-
-    public Item getItem(int aInId)
-    {
-        Node lNode = get(aInId);
         return null == lNode ? null : lNode.getItem();
     }
 
@@ -123,15 +98,6 @@ public class CatEntry
         return lMap.values();
     }
 
-
-    /**
-     * maps tracked nodes by name
-     * @return map of nodes keyed by name
-     */
-    public Map<String, Node> getByName()
-    {
-        return byName;
-    }
 
     /**
      * maps tracked nodes by id
@@ -206,6 +172,4 @@ public class CatEntry
     private final String name;
     private final Cat cat;
     private final boolean global;
-    //private final int id = ++ID_GEN;
-    //private static int ID_GEN = 0;
 }

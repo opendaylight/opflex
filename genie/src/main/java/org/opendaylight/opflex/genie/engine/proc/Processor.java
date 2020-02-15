@@ -18,17 +18,13 @@ public class Processor
      * Constructor
      *
      * Creates, initializes and executes processing functions.
-     *
-     * @param aInParallelism indicates how many threads are to be created for processing - more threads, the better parallelism (within reason)
-     * @param aInPTree processor tree, a tree of base parser processors sufficient to establish all grammar rules
+     *  @param aInPTree processor tree, a tree of base parser processors sufficient to establish all grammar rules
      * @param aInArgs arguments that govern the behavior of the processor, arguments come in [[name]=[value]] or [name] format. The current arguments are home=[dir-location] config=[configfilename]
      */
     public Processor(
-            int aInParallelism,
-            ProcessorTree aInPTree,
-            String[] aInArgs)
+        ProcessorTree aInPTree,
+        String[] aInArgs)
     {
-        parallelism = aInParallelism;
         INSTANCE = this;
         pTree = aInPTree;
         init(aInArgs);
@@ -79,8 +75,7 @@ public class Processor
                 dsp,pTree,new String[]{ Config.getConfigPath(), null}, null, false);
         Severity.init(Config.getLogDirParent());
 
-        dsp = new Dsptchr(parallelism);
-
+        dsp = new Dsptchr();
 
         Severity.INFO.report("","", "",Config.print());
         metadataLoadPaths = Config.getSyntaxPathArray();
@@ -207,7 +202,7 @@ public class Processor
 
                     if (lArg.startsWith(lTag))
                     {
-                        return lArg.substring(lTag.length(), lArg.length());
+                        return lArg.substring(lTag.length());
                     }
                 }
             }
@@ -233,13 +228,12 @@ public class Processor
     {
         return "genie:processor";
     }
-    private String metadataLoadPaths[][];
-    private String modelPreLoadPaths[][];
-    private String modelPostLoadPaths[][];
+    private String[][] metadataLoadPaths;
+    private String[][] modelPreLoadPaths;
+    private String[][] modelPostLoadPaths;
 
     private final ProcessorTree pTree;
     private FormatterCtx[] formatterCtxs;
     private Dsptchr dsp;
     private static Processor INSTANCE = null;
-    private final int parallelism;
 }
