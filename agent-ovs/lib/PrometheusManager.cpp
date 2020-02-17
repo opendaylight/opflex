@@ -171,6 +171,18 @@ static string metric_annotate_skip[] =
   "pod-template-generation"
 };
 
+static string table_drop_family_names[] =
+{
+  "opflex_table_drop_bytes",
+  "opflex_table_drop_packets"
+};
+
+static string table_drop_family_help[] =
+{
+  "opflex table drop bytes",
+  "opflex table drop packets"
+};
+
 // construct PrometheusManager
 PrometheusManager::PrometheusManager(Agent &agent_,
                                      opflex::ofcore::OFFramework &fwk_) :
@@ -405,6 +417,45 @@ void PrometheusManager::createStaticGaugeFamiliesPodSvc (void)
     }
 }
 
+void PrometheusManager::createStaticGaugeFamiliesTableDrop(void) {
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+    const lock_guard<mutex> lock(table_drop_counter_mutex);
+
+    for (TABLE_DROP_METRICS metric=TABLE_DROP_METRICS_MIN;
+            metric <= TABLE_DROP_METRICS_MAX;
+                metric = TABLE_DROP_METRICS(metric+1)) {
+        auto& gauge_table_drop_family = BuildGauge()
+                             .Name(table_drop_family_names[metric])
+                             .Help(table_drop_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_table_drop_family_ptr[metric] = &gauge_table_drop_family;
+    }
+}
+
+// remove all static counters during stop
+void PrometheusManager::removeStaticGaugesTableDrop ()
+{
+    // Remove Table Drop related counter metrics
+    const lock_guard<mutex> lock(table_drop_counter_mutex);
+
+    for (TABLE_DROP_METRICS metric=TABLE_DROP_METRICS_MIN;
+                         metric <= TABLE_DROP_METRICS_MAX;
+                     metric = TABLE_DROP_METRICS(metric+1)) {
+        for (auto itr = table_drop_gauge_map[metric].begin();
+            itr != table_drop_gauge_map[metric].end(); itr++) {
+            LOG(DEBUG) << "Delete TableDrop " << itr->first
+                   << " Gauge: " << itr->second.get().second;
+            gauge_table_drop_family_ptr[metric]->Remove(
+                    itr->second.get().second);
+        }
+        table_drop_gauge_map[metric].clear();
+    }
+}
+
 // create all gauge families during start
 void PrometheusManager::createStaticGaugeFamilies (void)
 {
@@ -432,6 +483,7 @@ void PrometheusManager::createStaticGaugeFamilies (void)
         const lock_guard<mutex> lock(sgclassifier_stats_mutex);
         createStaticGaugeFamiliesSGClassifier();
     }
+    createStaticGaugeFamiliesTableDrop();
 }
 
 // create EpCounter gauges during start
@@ -468,6 +520,9 @@ void PrometheusManager::removeStaticGauges ()
         const lock_guard<mutex> lock(ep_counter_mutex);
         removeStaticGaugesEp();
     }
+    // Remove TableDropCounter related gauges
+    removeStaticGaugesTableDrop();
+
 }
 
 // Start of PrometheusManager instance
@@ -1302,6 +1357,16 @@ void PrometheusManager::removeStaticGaugeFamiliesEp()
     }
 }
 
+void PrometheusManager::removeStaticGaugeFamiliesTableDrop()
+{
+    const lock_guard<mutex> lock(table_drop_counter_mutex);
+    for (TABLE_DROP_METRICS metric = TABLE_DROP_BYTES;
+            metric <= TABLE_DROP_METRICS_MAX;
+                metric = TABLE_DROP_METRICS(metric+1)) {
+        gauge_table_drop_family_ptr[metric] = nullptr;
+    }
+}
+
 // Remove all statically allocated gauge families
 void PrometheusManager::removeStaticGaugeFamilies()
 {
@@ -1334,6 +1399,8 @@ void PrometheusManager::removeStaticGaugeFamilies()
         const lock_guard<mutex> lock(sgclassifier_stats_mutex);
         removeStaticGaugeFamiliesSGClassifier();
     }
+    // TableDrop specific
+    removeStaticGaugeFamiliesTableDrop();
 }
 
 // Return a rolling hash of attribute map for the ep
@@ -1821,6 +1888,94 @@ void PrometheusManager::removeRDDropCounter (const string& rdURI)
         if (!removeDynamicGaugeRDDrop(metric, rdURI))
             break;
     }
+}
+
+const map<string,string> PrometheusManager::createLabelMapFromTableDropKey(
+        const string& bridge_name,
+        const string& table_name)
+{
+   map<string,string>   label_map;
+   string table_str = bridge_name + string("_") + table_name;
+   label_map["table"] = table_str;
+   return label_map;
+}
+
+mgauge_pair_t PrometheusManager::getStaticGaugeTableDrop(TABLE_DROP_METRICS metric,
+                                          const string& bridge_name,
+                                          const string& table_name)
+{
+    const string table_drop_key = bridge_name + table_name;
+    const auto &gauge_itr = table_drop_gauge_map[metric].find(table_drop_key);
+    if(gauge_itr == table_drop_gauge_map[metric].end()){
+        returrn boost::none;
+    }
+    return gauge_itr->second;
+}
+
+void PrometheusManager::createStaticGaugeTableDrop (const string& bridge_name,
+                                                    const string& table_name)
+{
+    if ((bridge_name.empty() || table_name.empty()))
+        return;
+
+    auto const &label_map = createLabelMapFromTableDropKey(bridge_name,
+                                                           table_name);
+    {
+        const lock_guard<mutex> lock(table_drop_counter_mutex);
+        // Retrieve the Gauge if its already created
+        auto const &mgauge = getStaticGaugeTableDrop(TABLE_DROP_BYTES,
+                                                     bridge_name,
+                                                     table_name);
+        if(!mgauge) {
+            LOG(DEBUG) << "creating table drop static gauge"
+                       << " bridge_name: " << bridge_name
+                       << " table name: " << table_name;
+            for (TABLE_DROP_METRICS metric=TABLE_DROP_BYTES;
+                        metric <= TABLE_DROP_MAX;
+                        metric = TABLE_DROP_METRICS(metric+1)) {
+                auto& gauge = gauge_table_drop_family_ptr[metric]->Add(label_map);
+                string table_drop_key = bridge_name + table_name;
+                table_drop_gauge_map[metric][table_drop_key] =
+                        make_pair(std::move(label_map), &gauge);
+            }
+        }
+    }
+}
+
+void PrometheusManager::removeTableDropGauge (const string& bridge_name,
+                                              const string& table_name)
+{
+    string table_drop_key = bridge_name + table_name;
+    for(TABLE_DROP_METRICS metric = TABLE_DROP_BYTES;
+            metric <= TABLE_DROP_MAX; metric = TABLE_DROP_METRICS(metric+1)) {
+        gauge_table_drop_family_ptr[metric]->Remove(
+            table_drop_gauge_map[metric][table_drop_key].get().second);
+        table_drop_gauge_map[metric].erase(table_drop_key);
+    }
+}
+
+void PrometheusManager::updateTableDropGauge (const string& bridge_name,
+                                              const string& table_name,
+                                              const uint64_t &bytes,
+                                              const uint64_t &packets)
+{
+    const lock_guard<mutex> lock(table_drop_counter_mutex);
+    // Update the metrics
+    const mgauge_pair_t &mgauge_bytes = getStaticGaugeTableDrop(
+                                                    TABLE_DROP_BYTES,
+                                                    bridge_name,
+                                                    table_name);
+    if (mgauge_bytes) {
+        mgauge_bytes.get().second->Set(static_cast<double>(bytes));
+    }
+    const mgauge_pair_t &mgauge_packets = getStaticGaugeTableDrop(
+                                                        TABLE_DROP_PKTS,
+                                                        bridge_name,
+                                                        table_name);
+    if (mgauge_packets) {
+        mgauge_packets.get().second->Set(static_cast<double>(packets));
+    }
+
 }
 
 } /* namespace opflexagent */

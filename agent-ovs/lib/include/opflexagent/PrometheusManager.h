@@ -146,6 +146,36 @@ public:
      */
     void removeRDDropCounter(const string& rdURI);
 
+    /**
+     * Add TableDropGauge metric given bridge name and table name
+     *
+     * @param bridge_name     Name of the bridge
+     * @param table_name      Name of the table in the bridge
+     */
+    void addTableDropGauge(const string& bridge_name,
+                           const string& table_name) {
+        createStaticGaugeTableDrop(bridge_name, table_name);
+    }
+    /**
+     * Remove TableDropGauge metrics given the bridge and table
+     *
+     * @param bridge_name     Name of the bridge
+     * @param table_name      Name of the table in the bridge
+     */
+    void removeTableDropGauge(const string& bridge_name,
+                              const string& table_name);
+
+    /**
+     * Update TableDropGauge metrics given bridge name and table name
+     * @param bridge_name     Name of the bridge
+     * @param table_name      Name of the table in the bridge
+     * @param bytes           Bytes for this drop gauge
+     * @param packets         Packets for this drop gauge
+     */
+    void updateTableDropGauge(const string& bridge_name,
+                              const string& table_name,
+                              const uint64_t &bytes,
+                              const uint64_t &packets);
 
     /* SecGrpClassifierCounter related APIs */
     /**
@@ -467,6 +497,49 @@ private:
     unordered_map<string, Gauge*> rddrop_gauge_map[RDDROP_METRICS_MAX+1];
     /* End of RDDropCounter related apis and state */
 
+    /* Start of TableDropCounter related apis and state */
+    // Lock to safe guard TableDropCounter related state
+    mutex table_drop_counter_mutex;
+
+    enum TABLE_DROP_METRICS {
+        TABLE_DROP_METRICS_MIN,
+        TABLE_DROP_MIN = TABLE_DROP_METRICS_MIN,
+        TABLE_DROP_BYTES = TABLE_DROP_MIN,
+        TABLE_DROP_PKTS,
+        TABLE_DROP_MAX = TABLE_DROP_PKTS,
+        TABLE_DROP_METRICS_MAX = TABLE_DROP_MAX
+    };
+
+    // Static Metric families and metrics
+    // metric families to track all PodSvcCounter metrics
+    Family<Gauge>      *gauge_table_drop_family_ptr[TABLE_DROP_METRICS_MAX+1];
+
+    // create table drop gauge metric families during start
+    void createStaticGaugeFamiliesTableDrop(void);
+
+    // func to get label map and Gauge for TableDrop given metric type, bridge/table-name
+    mgauge_pair_t getStaticGaugeTableDrop(TABLE_DROP_METRICS metric,
+                                          const string& bridge_name,
+                                          const string& table_name);
+
+    // Create TableDrop gauge given metric type, bridge name and table name
+    void createStaticGaugeTableDrop (const string& bridge_name,
+                                     const string& table_name);
+
+    void removeStaticGaugesTableDrop ();
+
+    void removeStaticGaugeFamiliesTableDrop();
+    /**
+     * cache the label map and Gauge ptr for every table drop
+     */
+    unordered_map<string, mgauge_pair_t> table_drop_gauge_map[TABLE_DROP_METRICS_MAX+1];
+
+    //Utility apis
+    // Create a label map that can be used for annotation, given the bridge and table name
+    static const map<string,string> createLabelMapFromTableDropKey(
+            const string& bridge_name,
+            const string& table_name);
+    /* End of TableDropCounter related apis and state */
 
     /* Start of SGClassifierCounter related apis and state */
     // Lock to safe guard SGClassifierCounter related state
