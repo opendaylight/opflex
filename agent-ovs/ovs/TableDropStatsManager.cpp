@@ -19,7 +19,9 @@
 #include "TableDropStatsManager.h"
 
 #include "ovs-ofputil.h"
-
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
 extern "C" {
 #include <openvswitch/ofp-msgs.h>
 }
@@ -99,6 +101,11 @@ void BaseTableDropStatsManager::start(bool register_listener) {
                 .setBytes(0);
        }
        mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+       PrometheusManager &prometheusManager = agent->getPrometheusManager();
+       prometheusManager.addTableDropGauge(connection->getSwitchName(),
+                                            tbl_it.second.first);
+#endif
     }
     PolicyStatsManager::start(register_listener);
     {
@@ -111,7 +118,16 @@ void BaseTableDropStatsManager::stop(bool unregister_listener) {
     LOG(DEBUG) << "Stopping "
                << connection->getSwitchName()
                << " Table Drop stats manager";
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    PrometheusManager &prometheusManager = agent->getPrometheusManager();
+    for (const auto& tbl_it: tableDescMap) {
+        prometheusManager.removeTableDropGauge(
+                connection->getSwitchName(),
+                tbl_it.second.first);
+    }
+#endif
     stopping = true;
+
     PolicyStatsManager::stop(unregister_listener);
 }
 
@@ -285,6 +301,13 @@ void BaseTableDropStatsManager::on_timer(const boost::system::error_code& ec) {
                 .setBytes(byte_count);
         }
         mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        PrometheusManager &prometheusManager = agent->getPrometheusManager();
+        prometheusManager.updateTableDropGauge(connection->getSwitchName(),
+                                                tbl_it.second.first,
+                                                byte_count,
+                                                packet_count);
+#endif
 
     }
 
