@@ -27,7 +27,7 @@ m4_define([sdk_iversion], 0)
 AC_INIT([libopflex], [sdk_pversion.sdk_sversion.sdk_iversion])
 AC_SUBST(SDK_MARKETNAME, ["OpFlex Framework"])
 AC_DEFINE(SDK_MARKETNAME, ["OpFlex Framework"], [Marketing name for SDK])
-
+AC_DEFINE_UNQUOTED(GITHASH,["$m4_esyscmd([./configure.commit])"],[Git hash])
 dnl For more information on libtool versioning, see:
 dnl https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 dnl
@@ -167,6 +167,7 @@ AC_CONFIG_FILES([              \
         util/Makefile          \
         logging/Makefile       \
         comms/Makefile         \
+	version/Makefile       \
         comms/include/Makefile \
         modb/Makefile          \
         modb/test/Makefile     \
