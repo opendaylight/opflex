@@ -8,6 +8,9 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include <opflexagent/logging.h>
 #include <opflexagent/cmd.h>
@@ -58,6 +61,7 @@ int main(int argc, char** argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help,h", "Print this help message")
+         ("version,v", "print version information and git hash")
         ("log", po::value<string>()->default_value(""),
          "Log to the specified file (default standard out)")
         ("level", po::value<string>()->default_value("warning"),
@@ -107,6 +111,10 @@ int main(int argc, char** argv) {
         if (vm.count("help")) {
             std::cout << "Usage: " << argv[0] << " [options]\n";
             std::cout << desc;
+            return 0;
+        }
+         if (vm.count("version")) {
+            std::cout << "version = " << PACKAGE_VERSION << " last git commit hash = " << GITHASH << "\n";
             return 0;
         }
         if (vm.count("props"))

@@ -114,10 +114,10 @@ if HAVE_DOXYGEN
 	doc/html
 endif
 
-doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile 
+doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS) $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile 
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html
-doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile-internal
+doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS) $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile-internal
 	cd doc && ${DOXYGEN} Doxyfile-internal
 doc-internal: doc/html-internal
 install-data-local: doc
