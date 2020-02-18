@@ -43,6 +43,7 @@ AM_CONFIG_HEADER(config.h)
 LT_INIT([disable-static])
 AC_PROG_LIBTOOL
 AC_CONFIG_MACRO_DIR([m4])
+AC_DEFINE_UNQUOTED(GITHASH,["$m4_esyscmd([./configure.commit])"],[Git hash])
 
 m4_include([m4/ax_boost_base.m4])
 m4_include([m4/ax_boost_unit_test_framework.m4])
