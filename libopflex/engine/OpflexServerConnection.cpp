@@ -177,12 +177,21 @@ bool OpflexServerConnection::getUri(const opflex::modb::URI& uri) {
     if (!found) {
         boost::filesystem::path puri(uri.toString());
         puri = puri.parent_path();
+        if (puri == "") {
+            LOG(DEBUG) << "Not Found GET: " << uri;
+            return found;
+        }
         while (puri != "/") {
             opflex::modb::URI curi(puri.string() + "/");
             it = uri_map.find(curi);
             found = (it != uri_map.end());
             if (found)
                 break;
+            if (puri == "") {
+                LOG(ERROR) << "Missing leading / in GET: "
+                           << uri;
+                break;
+            }
             puri = puri.parent_path();
         }
     }

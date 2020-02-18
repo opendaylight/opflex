@@ -32,6 +32,7 @@ namespace gbpserver {
 };
 
 namespace opflexagent {
+class GbpClientImpl;
 
 class GbpClient {
 public:
@@ -47,6 +48,7 @@ private:
     std::thread thread_;
     opflex::test::MockOpflexServer& server_;
     bool stopping;
+    GbpClientImpl* client_;
 };
 
 } /* namespace opflexagent */

@@ -80,7 +80,7 @@ public:
                 const Value& uri = mo["uri"];
                 gbp->set_uri(uri.GetString());
             } else {
-                std:cerr << "Missing uri, skipping mo" << std::endl;
+                std::cerr << "Missing uri, skipping mo" << std::endl;
                 continue;
             }
 

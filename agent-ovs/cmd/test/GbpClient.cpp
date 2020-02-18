@@ -53,11 +53,13 @@ public:
     GbpClientImpl(std::shared_ptr<Channel> channel,
                   opflex::test::MockOpflexServer& server) :
         stub_(GBP::NewStub(channel)),
-        server_(server) {
+        server_(server),
+        stopping(false) {
         thread_ = std::thread(&GbpClientImpl::ListObjects, this);
     }
 
     void Wait() { thread_.join(); }
+    void Stop() { stopping = true; }
 
 private:
     void JsonDump(Document& d) {
@@ -139,6 +141,8 @@ private:
             stub_->ListObjects(&context, version));
         // The read operation should block until data is available
         while (reader->Read(&oper)) {
+            if (stopping)
+                return;
             jsonDoc.Clear();
             LOG(DEBUG) << "Operation " << oper.opcode()
                       << " of size " << oper.object_list_size();
@@ -178,6 +182,7 @@ private:
     std::unique_ptr<GBP::Stub> stub_;
     std::thread thread_;
     opflex::test::MockOpflexServer& server_;
+    bool stopping;
 };
 
 GbpClient::GbpClient(const std::string& address,
@@ -198,6 +203,7 @@ void GbpClient::Start(const std::string& address) {
             grpc::CreateChannel(address,
                                 grpc::InsecureChannelCredentials()),
                                 server_);
+        client_ = &client;
         client.Wait();
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
@@ -205,6 +211,8 @@ void GbpClient::Start(const std::string& address) {
 
 void GbpClient::Stop() {
     stopping = true;
+    if (client_)
+        client_->Stop();
     thread_.join();
 }
 
