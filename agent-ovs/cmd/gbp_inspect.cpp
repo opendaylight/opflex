@@ -19,6 +19,7 @@
 #include <opflex/modb/URI.h>
 #include <opflex/ofcore/OFConstants.h>
 #include <opflex/ofcore/InspectorClient.h>
+#include <opflex/version/Version.h>
 
 #include <boost/program_options.hpp>
 #include <boost/iostreams/device/file_descriptor.hpp>
@@ -58,6 +59,7 @@ int main(int argc, char** argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help,h", "Print this help message")
+         ("version,v", "print version information and git hash")
         ("log", po::value<string>()->default_value(""),
          "Log to the specified file (default standard out)")
         ("level", po::value<string>()->default_value("warning"),
@@ -107,6 +109,10 @@ int main(int argc, char** argv) {
         if (vm.count("help")) {
             std::cout << "Usage: " << argv[0] << " [options]\n";
             std::cout << desc;
+            return 0;
+        }
+         if (vm.count("version")) {
+            std::cout << "version = " << opflex::version::getVersionSummary() << " last git commit hash = " << opflex::version::getGitHash()<< "\n";
             return 0;
         }
         if (vm.count("props"))
