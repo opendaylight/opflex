@@ -25,6 +25,7 @@ endif
 SUBDIRS  =
 SUBDIRS += util
 SUBDIRS += logging
+SUBDIRS += version
 SUBDIRS += modb
 SUBDIRS += comms
 SUBDIRS += engine
@@ -62,6 +63,9 @@ core_include_HEADERS = \
 	include/opflex/ofcore/OFStats.h \
 	include/opflex/ofcore/OFTypes.h
 test_includedir = $(includedir)/opflex/test
+version_includedir = $(includedir)/opflex/version
+version_include_HEADERS = \
+    include/opflex/version/Version.h
 test_include_HEADERS = \
 	include/opflex/test/MockOpflexServer.h 
 logging_includedir = $(includedir)/opflex/logging
@@ -95,6 +99,7 @@ libopflex_la_LIBADD += engine/libengine.la
 libopflex_la_LIBADD += ofcore/libcore.la
 libopflex_la_LIBADD += cwrapper/libcwrapper.la
 libopflex_la_LIBADD += util/libutil.la
+libopflex_la_LIBADD += version/libversion.la
 libopflex_la_LIBADD += logging/liblogging.la
 libopflex_la_LDFLAGS = -version-info ${VERSION_INFO}
 
@@ -114,10 +119,10 @@ if HAVE_DOXYGEN
 	doc/html
 endif
 
-doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile 
+doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS) $(version_include_HEADERS) $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile 
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html
-doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile-internal
+doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS) $(version_include_HEADERS) $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile-internal
 	cd doc && ${DOXYGEN} Doxyfile-internal
 doc-internal: doc/html-internal
 install-data-local: doc
