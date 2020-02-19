@@ -161,6 +161,18 @@ static string sgclassifier_family_help[] =
   "security-group classifier rx packets"
 };
 
+static string contract_family_names[] =
+{
+  "opflex_contract_bytes",
+  "opflex_contract_packets"
+};
+
+static string contract_family_help[] =
+{
+  "contract classifier bytes",
+  "contract classifier packets",
+};
+
 static string metric_annotate_skip[] =
 {
   "vm-name",
@@ -178,7 +190,8 @@ PrometheusManager::PrometheusManager(Agent &agent_,
                                      framework(fwk_),
                                      gauge_ep_total{0},
                                      rddrop_last_genId{0},
-                                     sgclassifier_last_genId{0} {}
+                                     sgclassifier_last_genId{0},
+                                     contract_last_genId{0} {}
 
 // create all ep counter families during start
 void PrometheusManager::createStaticCounterFamiliesEp (void)
@@ -275,6 +288,12 @@ void PrometheusManager::removeDynamicGauges ()
         const lock_guard<mutex> lock(sgclassifier_stats_mutex);
         removeDynamicGaugeSGClassifier();
     }
+
+    // Remove ContractClassifierCounter related gauges
+    {
+        const lock_guard<mutex> lock(contract_stats_mutex);
+        removeDynamicGaugeContractClassifier();
+    }
 }
 
 // remove all static ep counters during stop
@@ -315,6 +334,26 @@ void PrometheusManager::createStaticGaugeFamiliesOFPeer (void)
                              .Labels({})
                              .Register(*registry_ptr);
         gauge_ofpeer_family_ptr[metric] = &gauge_ofpeer_family;
+    }
+}
+
+// create all ContractClassifier specific gauge families during start
+void PrometheusManager::createStaticGaugeFamiliesContractClassifier (void)
+{
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+
+    for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+            metric <= CONTRACT_METRICS_MAX;
+                metric = CONTRACT_METRICS(metric+1)) {
+        auto& gauge_contract_family = BuildGauge()
+                             .Name(contract_family_names[metric])
+                             .Help(contract_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_contract_family_ptr[metric] = &gauge_contract_family;
     }
 }
 
@@ -431,6 +470,11 @@ void PrometheusManager::createStaticGaugeFamilies (void)
     {
         const lock_guard<mutex> lock(sgclassifier_stats_mutex);
         createStaticGaugeFamiliesSGClassifier();
+    }
+
+    {
+        const lock_guard<mutex> lock(contract_stats_mutex);
+        createStaticGaugeFamiliesContractClassifier();
     }
 }
 
@@ -586,6 +630,38 @@ void PrometheusManager::createDynamicGaugeOFPeer (OFPEER_METRICS metric,
     ofpeer_gauge_map[metric][peer] = &gauge;
 }
 
+// Create ContractClassifierCounter gauge given metric type,
+// name of srcEpg, dstEpg & classifier
+bool PrometheusManager::createDynamicGaugeContractClassifier (CONTRACT_METRICS metric,
+                                                              const string& srcEpg,
+                                                              const string& dstEpg,
+                                                              const string& classifier)
+{
+    // Retrieve the Gauge if its already created
+    if (getDynamicGaugeContractClassifier(metric,
+                                          srcEpg,
+                                          dstEpg,
+                                          classifier))
+        return false;
+
+    LOG(DEBUG) << "creating contract dyn gauge family"
+               << " metric: " << metric
+               << " srcEpg: " << srcEpg
+               << " dstEpg: " << dstEpg
+               << " classifier: " << classifier;
+
+    auto& gauge = gauge_contract_family_ptr[metric]->Add(
+                    {
+                        {"src_epg", constructEpgLabel(srcEpg)},
+                        {"dst_epg", constructEpgLabel(dstEpg)},
+                        {"classifier", constructClassifierLabel(classifier,
+                                                                false)}
+                    });
+    const string& key = srcEpg+dstEpg+classifier;
+    contract_gauge_map[metric][key] = &gauge;
+    return true;
+}
+
 // Create SGClassifierCounter gauge given metric type, classifier
 bool PrometheusManager::createDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS metric,
                                                         const string& classifier)
@@ -598,11 +674,43 @@ bool PrometheusManager::createDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS met
                << " metric: " << metric
                << " classifier: " << classifier;
 
-    /* Example classifier:
+    auto& gauge = gauge_sgclassifier_family_ptr[metric]->Add(
+                    {
+                        {"classifier", constructClassifierLabel(classifier,
+                                                                true)}
+                    });
+    sgclassifier_gauge_map[metric][classifier] = &gauge;
+    return true;
+}
+
+// Construct label, given EPG URI
+string PrometheusManager::constructEpgLabel (const string& epg)
+{
+    /* Example EPG URI:
+     * /PolicyUniverse/PolicySpace/kube/GbpEpGroup/kubernetes%7ckube-system/
+     * We want to produce these annotations for every metric:
+     * label_map: {{src_epg: "tenant:kube,policy:kube-system"},
+     */
+    size_t tLow = epg.find("PolicySpace") + 12;
+    size_t gEpGStart = epg.rfind("GbpEpGroup");
+    string tenant = epg.substr(tLow,gEpGStart-tLow-1);
+    size_t nHigh = epg.size()-2;
+    size_t nLow = gEpGStart+11;
+    string ename = epg.substr(nLow,nHigh-nLow+1);
+    string name = "tenant:" + tenant;
+    name += ",policy:" + ename;
+    return name;
+}
+
+// Construct label, given classifier URI
+string PrometheusManager::constructClassifierLabel (const string& classifier,
+                                                    bool isSecGrp)
+{
+    /* Example classifier URI:
      * /PolicyUniverse/PolicySpace/kube/GbpeL24Classifier/SGkube_np_static-discovery%7cdiscovery%7carp-ingress/
      * We want to produce these annotations for every metric:
-     * label_map: {{name: "tenant:kube,policy:kube_np_static-discovery,subj:discovery,rule:arp-ingress"},
-     *             {classifier: <string version of classifier>}}
+     * label_map: {{classifier: "tenant:kube,policy:kube_np_static-discovery,subj:discovery,rule:arp-ingress,
+     *                           [string version of classifier]}}
      */
     size_t tLow = classifier.find("PolicySpace") + 12;
     size_t gL24Start = classifier.rfind("GbpeL24Classifier");
@@ -622,7 +730,10 @@ bool PrometheusManager::createDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS met
     split(results, cname, [](char c){return c == '%';});
     // 2 '|' will lead to 3 strings: policy, subj, and rule
     if (results.size() == 3) {
-        name += ",policy:" + results[0].substr(2); // Post "SG"
+        if (isSecGrp)
+            name += ",policy:" + results[0].substr(2); // Post "SG"
+        else
+            name += ",policy:" + results[0];
         name += ",subj:" + results[1].substr(2); // Post 7c
         name += ",rule:" + results[2].substr(2); // Post 7c
 
@@ -635,12 +746,7 @@ bool PrometheusManager::createDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS met
         name += ",policy:" + cname;
     }
 
-    const auto& compressed = stringizeClassifier(tenant,cname);
-    auto& gauge = gauge_sgclassifier_family_ptr[metric]->Add(
-                    {{"name", name},
-                     {"classifier", compressed}});
-    sgclassifier_gauge_map[metric][classifier] = &gauge;
-    return true;
+    return name+",["+stringizeClassifier(tenant, cname)+"]";
 }
 
 // Get a compressed human readable form of classifier
@@ -945,6 +1051,29 @@ Gauge * PrometheusManager::getDynamicGaugeOFPeer (OFPEER_METRICS metric,
     return pgauge;
 }
 
+// Get ContractClassifierCounter gauge given the metric,
+// name of srcEpg, dstEpg & classifier
+Gauge * PrometheusManager::getDynamicGaugeContractClassifier (CONTRACT_METRICS metric,
+                                                              const string& srcEpg,
+                                                              const string& dstEpg,
+                                                              const string& classifier)
+{
+    Gauge *pgauge = nullptr;
+    const string& key = srcEpg+dstEpg+classifier;
+    auto itr = contract_gauge_map[metric].find(key);
+    if (itr == contract_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Dyn Gauge ContractClassifier stats not found"
+                   << " metric: " << metric
+                   << " srcEpg: " << srcEpg
+                   << " dstEpg: " << dstEpg
+                   << " classifier: " << classifier;
+    } else {
+        pgauge = itr->second;
+    }
+
+    return pgauge;
+}
+
 // Get SGClassifierCounter gauge given the metric, classifier
 Gauge * PrometheusManager::getDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS metric,
                                                         const string& classifier)
@@ -1009,6 +1138,56 @@ hgauge_pair_t PrometheusManager::getDynamicGaugeEp (EP_METRICS metric,
     }
 
     return hgauge;
+}
+
+// Remove dynamic ContractClassifierCounter gauge given a metic type and
+// name of srcEpg, dstEpg & classifier
+bool PrometheusManager::removeDynamicGaugeContractClassifier (CONTRACT_METRICS metric,
+                                                              const string& srcEpg,
+                                                              const string& dstEpg,
+                                                              const string& classifier)
+{
+    Gauge *pgauge = getDynamicGaugeContractClassifier(metric,
+                                                      srcEpg,
+                                                      dstEpg,
+                                                      classifier);
+    if (pgauge) {
+        const string& key = srcEpg+dstEpg+classifier;
+        contract_gauge_map[metric].erase(key);
+        gauge_contract_family_ptr[metric]->Remove(pgauge);
+    } else {
+        LOG(DEBUG) << "remove dynamic gauge contract stats not found"
+                   << " srcEpg:" << srcEpg
+                   << " dstEpg:" << dstEpg
+                   << " classifier:" << classifier;
+        return false;
+    }
+    return true;
+}
+
+// Remove dynamic ContractClassifierCounter gauge given a metric type
+void PrometheusManager::removeDynamicGaugeContractClassifier (CONTRACT_METRICS metric)
+{
+    auto itr = contract_gauge_map[metric].begin();
+    while (itr != contract_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Delete ContractClassifierCounter"
+                   << " key: " << itr->first
+                   << " Gauge: " << itr->second;
+        gauge_contract_family_ptr[metric]->Remove(itr->second);
+        itr++;
+    }
+
+    contract_gauge_map[metric].clear();
+}
+
+// Remove dynamic ContractClassifierCounter gauges for all metrics
+void PrometheusManager::removeDynamicGaugeContractClassifier ()
+{
+    for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+            metric <= CONTRACT_METRICS_MAX;
+                metric = CONTRACT_METRICS(metric+1)) {
+        removeDynamicGaugeContractClassifier(metric);
+    }
 }
 
 // Remove dynamic SGClassifierCounter gauge given a metic type and classifier
@@ -1261,6 +1440,16 @@ void PrometheusManager::removeStaticGaugeFamiliesOFPeer ()
     }
 }
 
+// Remove all statically allocated ContractClassifier gauge families
+void PrometheusManager::removeStaticGaugeFamiliesContractClassifier ()
+{
+    for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+            metric <= CONTRACT_METRICS_MAX;
+                metric = CONTRACT_METRICS(metric+1)) {
+        gauge_contract_family_ptr[metric] = nullptr;
+    }
+}
+
 // Remove all statically allocated SGClassifier gauge families
 void PrometheusManager::removeStaticGaugeFamiliesSGClassifier ()
 {
@@ -1333,6 +1522,12 @@ void PrometheusManager::removeStaticGaugeFamilies()
     {
         const lock_guard<mutex> lock(sgclassifier_stats_mutex);
         removeStaticGaugeFamiliesSGClassifier();
+    }
+
+    // ContractClassifierCounter specific
+    {
+        const lock_guard<mutex> lock(contract_stats_mutex);
+        removeStaticGaugeFamiliesContractClassifier();
     }
 }
 
@@ -1437,6 +1632,72 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
         } else {
             LOG(DEBUG) << "SvcToEpCounter yet to be created for uuid: " << uuid;
         }
+    }
+}
+
+/* Function called from ContractStatsManager to add/update ContractClassifierCounter */
+void PrometheusManager::addNUpdateContractClassifierCounter (const string& srcEpg,
+                                                             const string& dstEpg,
+                                                             const string& classifier)
+{
+    using namespace modelgbp::gbpe;
+    using namespace modelgbp::observer;
+
+    const lock_guard<mutex> lock(contract_stats_mutex);
+
+    Mutator mutator(framework, "policyelement");
+    optional<shared_ptr<PolicyStatUniverse> > su =
+                    PolicyStatUniverse::resolve(agent.getFramework());
+    if (su) {
+        vector<OF_SHARED_PTR<L24ClassifierCounter> > out;
+        su.get()->resolveGbpeL24ClassifierCounter(out);
+        for (const auto& counter : out) {
+            if (!counter)
+                continue;
+            if (srcEpg.compare(counter.get()->getSrcEpg("")))
+                continue;
+            if (dstEpg.compare(counter.get()->getDstEpg("")))
+                continue;
+            if (classifier.compare(counter.get()->getClassifier("")))
+                continue;
+            if (counter.get()->getGenId(0) != (contract_last_genId+1))
+                continue;
+            contract_last_genId++;
+
+            for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+                    metric <= CONTRACT_METRICS_MAX;
+                        metric = CONTRACT_METRICS(metric+1))
+                if (!createDynamicGaugeContractClassifier(metric,
+                                                          srcEpg,
+                                                          dstEpg,
+                                                          classifier))
+                    break;
+
+            // Update the metrics
+            for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+                    metric <= CONTRACT_METRICS_MAX;
+                        metric = CONTRACT_METRICS(metric+1)) {
+                Gauge *pgauge = getDynamicGaugeContractClassifier(metric,
+                                                                  srcEpg,
+                                                                  dstEpg,
+                                                                  classifier);
+                optional<uint64_t>   metric_opt;
+                switch (metric) {
+                case CONTRACT_BYTES:
+                    metric_opt = counter.get()->getBytes();
+                    break;
+                case CONTRACT_PACKETS:
+                    metric_opt = counter.get()->getPackets();
+                    break;
+                default:
+                    LOG(ERROR) << "Unhandled contract metric: " << metric;
+                }
+                if (metric_opt && pgauge)
+                    pgauge->Set(pgauge->Value() \
+                                + static_cast<double>(metric_opt.get()));
+            }
+        }
+        out.clear();
     }
 }
 
@@ -1791,6 +2052,28 @@ void PrometheusManager::removeEpCounter (const string& uuid,
             incStaticCounterEpRemove();
             updateStaticGaugeEpTotal(false);
         }
+    }
+}
+
+// Function called from ContractStatsManager to remove ContractClassifierCounter
+void PrometheusManager::removeContractClassifierCounter (const string& srcEpg,
+                                                         const string& dstEpg,
+                                                         const string& classifier)
+{
+    const lock_guard<mutex> lock(contract_stats_mutex);
+    LOG(DEBUG) << "remove ContractClassifierCounter"
+               << " srcEpg: " << srcEpg
+               << " dstEpg: " << dstEpg
+               << " classifier: " << classifier;
+
+    for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+            metric <= CONTRACT_METRICS_MAX;
+                metric = CONTRACT_METRICS(metric+1)) {
+        if (!removeDynamicGaugeContractClassifier(metric,
+                                                  srcEpg,
+                                                  dstEpg,
+                                                  classifier))
+            break;
     }
 }
 

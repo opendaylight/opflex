@@ -163,6 +163,30 @@ public:
     void removeSGClassifierCounter(const string& classifier);
 
 
+    /* ContractClassifierCounter related APIs */
+    /**
+     * Create ContractClassifierCounter metric family if its not present.
+     * Update ContractClassifierCounter metric family if its already present
+     *
+     * @param srcEpg           name of the srcEpg
+     * @param dstEpg           name of the dstEpg
+     * @param classifier       name of the classifier
+     */
+    void addNUpdateContractClassifierCounter(const string& srcEpg,
+                                             const string& dstEpg,
+                                             const string& classifier);
+    /**
+     * Remove ContractClassifierCounter metric given the classifier
+     *
+     * @param srcEpg           name of the srcEpg
+     * @param dstEpg           name of the dstEpg
+     * @param classifier       name of the classifier
+     */
+    void removeContractClassifierCounter(const string& srcEpg,
+                                         const string& dstEpg,
+                                         const string& classifier);
+
+
     // TODO: Other Counter related APIs
 
 private:
@@ -526,7 +550,74 @@ private:
     // API to compress a classifier to human readable format
     string stringizeClassifier(const string& tenant,
                                const string& classifier);
+    // API to construct a label based out of classifier URI and flag to indicate
+    // contract vs secGrp
+    string constructClassifierLabel(const string& classifier, bool isSecGrp);
     /* End of SGClassifierCounter related apis and state */
+
+
+    /* Start of ContractClassifierCounter related apis and state */
+    // Lock to safe guard ContractClassifierCounter related state
+    mutex contract_stats_mutex;
+
+    enum CONTRACT_METRICS {
+        CONTRACT_METRICS_MIN,
+        CONTRACT_BYTES = CONTRACT_METRICS_MIN,
+        CONTRACT_PACKETS,
+        CONTRACT_METRICS_MAX = CONTRACT_PACKETS
+    };
+
+    // Static Metric families and metrics
+    // metric families to track all ContractClassifierCounter metrics
+    Family<Gauge>      *gauge_contract_family_ptr[CONTRACT_METRICS_MAX+1];
+
+    // create any contract stats gauge metric families during start
+    void createStaticGaugeFamiliesContractClassifier(void);
+    // remove any contract stats gauge metric families during stop
+    void removeStaticGaugeFamiliesContractClassifier(void);
+
+    // Dynamic Metric families and metrics
+    // CRUD for every ContractClassifier counter metric
+    // func to create gauge for ContractClassifier given metric type,
+    // name of srcEpg, dstEpg, & classifier.
+    // return false if the metric is already created
+    bool createDynamicGaugeContractClassifier(CONTRACT_METRICS metric,
+                                              const string& srcEpg,
+                                              const string& dstEpg,
+                                              const string& classifier);
+
+    // func to get label map and Gauge for ContractClassifierCounter given
+    // metric type, name of srcEpg, dstEpg, & classifier
+    Gauge * getDynamicGaugeContractClassifier(CONTRACT_METRICS metric,
+                                              const string& srcEpg,
+                                              const string& dstEpg,
+                                              const string& classifier);
+
+    // func to remove gauge for ContractClassifierCounter given metric type,
+    // name of srcEpg, dstEpg & classifier
+    bool removeDynamicGaugeContractClassifier(CONTRACT_METRICS metric,
+                                              const string& srcEpg,
+                                              const string& dstEpg,
+                                              const string& classifier);
+    // func to remove all gauge of every ContractClassifierCounter for a metric type
+    void removeDynamicGaugeContractClassifier(CONTRACT_METRICS metric);
+    // func to remove all gauges of every ContractClassifierCounter
+    void removeDynamicGaugeContractClassifier(void);
+
+    // ContractClassifierCounter diffs are stored in a circular buffer. Each buffer element
+    // has a unique running genID. Keep track of the last processed genId by
+    // PrometheusManager to avoid double counting
+    uint64_t contract_last_genId;
+
+    /**
+     * cache Gauge ptr for every ContractClassifierCounter metric
+     */
+    unordered_map<string, Gauge*> contract_gauge_map[CONTRACT_METRICS_MAX+1];
+
+    // Utility APIs
+    // API to construct a label based out of EPG URI
+    string constructEpgLabel(const string& epg);
+    /* End of ContractClassifierCounter related apis and state */
 
 
     /* TODO: Other Counter related apis and state */
