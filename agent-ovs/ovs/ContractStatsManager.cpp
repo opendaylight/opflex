@@ -179,6 +179,11 @@ updatePolicyStatsCounters(const std::string& srcEpg,
         counterObjectKeys_[nextId] = counter_key_t(l24Classifier,srcEpg,dstEpg);
     }
     mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.addNUpdateContractClassifierCounter(srcEpg,
+                                                          dstEpg,
+                                                          l24Classifier);
+#endif
 }
 
 void ContractStatsManager::clearCounterObject(const std::string& key,
@@ -191,6 +196,11 @@ void ContractStatsManager::clearCounterObject(const std::string& key,
                                  getAgentUUID(),genIdList_[key]
                                  ->uidList[index],srcEpg,dstEpg,l24Classifier);
     counterObjectKeys_.erase(counterObjectKeys_.find(uid));
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.removeContractClassifierCounter(srcEpg,
+                                                      dstEpg,
+                                                      l24Classifier);
+#endif
 }
 
 void ContractStatsManager::
