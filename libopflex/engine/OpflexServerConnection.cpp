@@ -23,7 +23,7 @@
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/logging/internal/logging.hpp"
-#include "opflex/engine/internal/MockOpflexServerImpl.h"
+#include "opflex/engine/internal/GbpOpflexServerImpl.h"
 #include "LockGuard.h"
 
 namespace opflex {
@@ -235,7 +235,7 @@ void OpflexServerConnection::sendTimeouts() {
 
 void OpflexServerConnection::on_policy_update_async(uv_async_t* handle) {
     OpflexServerConnection* conn = (OpflexServerConnection *)handle->data;
-    MockOpflexServerImpl* server = dynamic_cast<MockOpflexServerImpl*>
+    GbpOpflexServerImpl* server = dynamic_cast<GbpOpflexServerImpl*>
         (conn->listener->getHandlerFactory());
     std::lock_guard<std::mutex> lock(conn->uri_update_mutex);
 
@@ -251,7 +251,7 @@ void OpflexServerConnection::on_policy_update_async(uv_async_t* handle) {
 
 void OpflexServerConnection::on_prr_timer_async(uv_async_t* handle) {
     OpflexServerConnection* conn = (OpflexServerConnection *)handle->data;
-    MockOpflexServerImpl* server = dynamic_cast<MockOpflexServerImpl*>
+    GbpOpflexServerImpl* server = dynamic_cast<GbpOpflexServerImpl*>
         (conn->listener->getHandlerFactory());
     std::lock_guard<std::mutex> lock(conn->uri_update_mutex);
 

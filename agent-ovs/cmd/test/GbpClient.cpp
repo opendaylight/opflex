@@ -51,7 +51,7 @@ using opflex::gbp::PolicyUpdateOp;
 class GbpClientImpl {
 public:
     GbpClientImpl(std::shared_ptr<Channel> channel,
-                  opflex::test::MockOpflexServer& server) :
+                  opflex::test::GbpOpflexServer& server) :
         stub_(GBP::NewStub(channel)),
         server_(server),
         stopping(false) {
@@ -181,12 +181,12 @@ private:
 
     std::unique_ptr<GBP::Stub> stub_;
     std::thread thread_;
-    opflex::test::MockOpflexServer& server_;
+    opflex::test::GbpOpflexServer& server_;
     bool stopping;
 };
 
 GbpClient::GbpClient(const std::string& address,
-                     opflex::test::MockOpflexServer& server) :
+                     opflex::test::GbpOpflexServer& server) :
     server_(server), stopping(false) {
     thread_ = std::thread(&GbpClient::Start, this, address);
 }

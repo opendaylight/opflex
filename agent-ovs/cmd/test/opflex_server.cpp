@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Mock server standalone
+ * Opflex server
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -25,7 +25,7 @@
 
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/metadata/metadata.hpp>
-#include <opflex/test/MockOpflexServer.h>
+#include <opflex/test/GbpOpflexServer.h>
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/ofcore/OFConstants.h>
 
@@ -40,7 +40,7 @@
 using std::string;
 using std::make_pair;
 namespace po = boost::program_options;
-using opflex::test::MockOpflexServer;
+using opflex::test::GbpOpflexServer;
 using opflex::ofcore::OFConstants;
 using namespace opflexagent;
 
@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
          "Use the specified log level (default info)")
         ("sample", po::value<string>()->default_value(""),
          "Output a sample policy to the given file then exit")
-        ("daemon", "Run the mock server as a daemon")
+        ("daemon", "Run the opflex server as a daemon")
         ("policy,p", po::value<string>()->default_value(""),
          "Read the specified policy file to seed the MODB")
         ("ssl_castore", po::value<string>()->default_value("/etc/ssl/certs/"),
@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
     if (daemon)
         daemonize();
 
-    initLogging(level_str, false /*syslog*/, log_file, "mock-server");
+    initLogging(level_str, false /*syslog*/, log_file, "opflex-server");
 
     try {
         if (sample_file != "") {
@@ -188,16 +188,16 @@ int main(int argc, char** argv) {
             return 0;
         }
 
-        MockOpflexServer::peer_vec_t peer_vec;
+        GbpOpflexServer::peer_vec_t peer_vec;
         for (const std::string& pstr : peers)
             peer_vec.push_back(make_pair(SERVER_ROLES, pstr));
         if (peer_vec.size() == 0)
             peer_vec.push_back(make_pair(SERVER_ROLES, LOCALHOST":8009"));
 
-        MockOpflexServer server(8009, SERVER_ROLES, peer_vec,
-                                transport_mode_proxies,
-                                modelgbp::getMetadata(),
-                                prr_interval_secs);
+        GbpOpflexServer server(8009, SERVER_ROLES, peer_vec,
+                               transport_mode_proxies,
+                               modelgbp::getMetadata(),
+                               prr_interval_secs);
 #ifdef HAVE_GRPC_SUPPORT
 	LOG(INFO) << "Connecting to gbp-server at address: "
                   << grpc_address;

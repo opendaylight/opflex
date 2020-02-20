@@ -27,7 +27,7 @@
 #include "opflex/engine/internal/MOSerializer.h"
 #include "opflex/engine/Processor.h"
 #include "opflex/logging/StdOutLogHandler.h"
-#include "opflex/engine/internal/MockOpflexServerImpl.h"
+#include "opflex/engine/internal/GbpOpflexServerImpl.h"
 
 #include "BaseFixture.h"
 #include "TestListener.h"
@@ -47,7 +47,7 @@ using std::make_pair;
 using std::vector;
 using opflex::ofcore::OFConstants;
 using opflex::ofcore::PeerStatusListener;
-using opflex::test::MockOpflexServer;
+using opflex::test::GbpOpflexServer;
 using opflex::util::ThreadManager;
 
 #define SERVER_ROLES \
@@ -144,23 +144,23 @@ public:
 class ServerFixture : public Fixture {
 public:
     ServerFixture()
-        : mockServer(8009, SERVER_ROLES,
+        : opflexServer(8009, SERVER_ROLES,
                      list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
                      vector<std::string>(),
                      md, 60) {
-        mockServer.start();
-        WAIT_FOR(mockServer.getListener().isListening(), 1000);
+        opflexServer.start();
+        WAIT_FOR(opflexServer.getListener().isListening(), 1000);
     }
 
     ~ServerFixture() {
-        mockServer.stop();
+        opflexServer.stop();
     }
 
     void startClient() {
         processor.addPeer(LOCALHOST, 8009);
     }
 
-    MockOpflexServerImpl mockServer;
+    GbpOpflexServerImpl opflexServer;
 };
 
 static bool itemPresent(StoreClient* client,
@@ -222,7 +222,7 @@ static bool connReady(OpflexPool& pool, const char* host, int port) {
     return (conn != NULL && conn->isReady());
 }
 
-static void initServerSSL(MockOpflexServerImpl& server) {
+static void initServerSSL(GbpOpflexServerImpl& server) {
     server.enableSSL(SRCDIR"/comms/test/ca.pem",
                      SRCDIR"/comms/test/server.pem",
                      "password123", true);
@@ -232,21 +232,21 @@ static void initServerSSL(MockOpflexServerImpl& server) {
 void BasePFixture::testBootstrap(bool ssl, bool transport_mode) {
 typedef OFConstants::OpflexTransportModeState AgentState;
 using boost::asio::ip::address_v4;
-    MockOpflexServer::peer_t p1 =
+    GbpOpflexServer::peer_t p1 =
         make_pair(SERVER_ROLES, "127.0.0.1:8009");
-    MockOpflexServer::peer_t p2 =
+    GbpOpflexServer::peer_t p2 =
         make_pair(SERVER_ROLES, "127.0.0.1:8010");
 
-    MockOpflexServerImpl anycastServer(8011, 0, list_of(p1)(p2),
-                                       (transport_mode?
-                                       vector<std::string>(
-                                       {"1.1.1.1","2.2.2.2","3.3.3.3"}):
-                                       vector<std::string>()),
-                                       md, 60);
-    MockOpflexServerImpl peer1(8009, SERVER_ROLES, list_of(p1)(p2),
-                               vector<std::string>(), md, 60);
-    MockOpflexServerImpl peer2(8010, SERVER_ROLES, list_of(p1)(p2),
-                               vector<std::string>(), md, 60);
+    GbpOpflexServerImpl anycastServer(8011, 0, list_of(p1)(p2),
+                                      (transport_mode?
+                                      vector<std::string>(
+                                      {"1.1.1.1","2.2.2.2","3.3.3.3"}):
+                                      vector<std::string>()),
+                                      md, 60);
+    GbpOpflexServerImpl peer1(8009, SERVER_ROLES, list_of(p1)(p2),
+                              vector<std::string>(), md, 60);
+    GbpOpflexServerImpl peer2(8010, SERVER_ROLES, list_of(p1)(p2),
+                              vector<std::string>(), md, 60);
 
     if (ssl) {
         initServerSSL(anycastServer);
@@ -319,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE( bootstrap_ssl_transport, SSLFixtureTransportMode ) {
 }
 
 static bool make_flaky_pred(OpflexServerConnection* conn, void* user) {
-    MockServerHandler* handler = (MockServerHandler*)conn->getHandler();
+    OpflexServerHandler* handler = (OpflexServerHandler*)conn->getHandler();
     handler->setFlaky(true);
     return true;
 }
@@ -352,7 +352,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare, ServerFixture ) {
     client1->deliverNotifications(notifs);
     notifs.clear();
 
-    StoreClient* rclient = mockServer.getSystemClient();
+    StoreClient* rclient = opflexServer.getSystemClient();
     WAIT_FOR(itemPresent(rclient, 2, u2_1), 1000);
     WAIT_FOR(itemPresent(rclient, 2, u2_2), 1000);
     OF_SHARED_PTR<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
@@ -386,7 +386,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare_flaky, ServerFixture ) {
     startClient();
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
 
-    mockServer.getListener().applyConnPred(make_flaky_pred, NULL);
+    opflexServer.getListener().applyConnPred(make_flaky_pred, NULL);
 
     StoreClient::notif_t notifs;
 
@@ -411,7 +411,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare_flaky, ServerFixture ) {
     client1->deliverNotifications(notifs);
     notifs.clear();
 
-    StoreClient* rclient = mockServer.getSystemClient();
+    StoreClient* rclient = opflexServer.getSystemClient();
     WAIT_FOR(itemPresent(rclient, 2, u2_1), 1000);
     WAIT_FOR(itemPresent(rclient, 2, u2_2), 1000);
     OF_SHARED_PTR<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
@@ -419,13 +419,13 @@ BOOST_FIXTURE_TEST_CASE( endpoint_declare_flaky, ServerFixture ) {
 }
 
 BOOST_FIXTURE_TEST_CASE( main_loop_adaptor, SyncFixture ) {
-    MockOpflexServerImpl mockServer(8009,
-                                    SERVER_ROLES,
-                                    list_of(make_pair(SERVER_ROLES,
-                                                      LOCALHOST":8009")),
-                                    vector<std::string>(),
-                                    md, 60);
-    mockServer.start();
+    GbpOpflexServerImpl opflexServer(8009,
+                                     SERVER_ROLES,
+                                     list_of(make_pair(SERVER_ROLES,
+                                                       LOCALHOST":8009")),
+                                     vector<std::string>(),
+                                     md, 60);
+    opflexServer.start();
 
     processor.addPeer(LOCALHOST, 8009);
 
@@ -455,7 +455,7 @@ BOOST_FIXTURE_TEST_CASE( main_loop_adaptor, SyncFixture ) {
     client1->deliverNotifications(notifs);
     notifs.clear();
 
-    StoreClient* rclient = mockServer.getSystemClient();
+    StoreClient* rclient = opflexServer.getSystemClient();
     WAIT_FOR_DO(itemPresent(rclient, 2, u2_1), 1000, adaptor->runOnce());
     WAIT_FOR_DO(itemPresent(rclient, 2, u2_2), 1000, adaptor->runOnce());
     OF_SHARED_PTR<const ObjectInstance> roi2_2 = rclient->get(2, u2_2);
@@ -484,11 +484,11 @@ BOOST_FIXTURE_TEST_CASE( main_loop_adaptor, SyncFixture ) {
                 adaptor->runOnce());
     BOOST_CHECK(itemPresent(rclient, 2, u2_1));
 
-    mockServer.stop();
+    opflexServer.stop();
 }
 
 static bool resolutions_pred(OpflexServerConnection* conn, void* user) {
-    MockServerHandler* handler = (MockServerHandler*)conn->getHandler();
+    OpflexServerHandler* handler = (OpflexServerHandler*)conn->getHandler();
     return handler->hasResolutions();
 }
 
@@ -503,7 +503,7 @@ public:
     }
 
     void setup() {
-        rclient = mockServer.getSystemClient();
+        rclient = opflexServer.getSystemClient();
         root = OF_MAKE_SHARED<ObjectInstance>(1);
         oi4 = OF_MAKE_SHARED<ObjectInstance>(4);
         oi5 = OF_MAKE_SHARED<ObjectInstance>(5);
@@ -554,7 +554,7 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
     BOOST_CHECK_EQUAL("test", client2->get(4, c4u)->getString(9));
     BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
 
-    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+    WAIT_FOR(opflexServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 
     // perform object updates
     vector<reference_t> replace;
@@ -567,27 +567,27 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
     rclient->put(6, c6u, oi6);
 
     merge.push_back(make_pair(4, c4u));
-    mockServer.policyUpdate(replace, merge, del);
+    opflexServer.policyUpdate(replace, merge, del);
     WAIT_FOR("moretesting" == client2->get(4, c4u)->getString(9), 1000);
     BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
 
     oi4->setString(9, "evenmore");
     rclient->put(4, c4u, oi4);
     rclient->remove(6, c6u, false);
-    mockServer.policyUpdate(replace, merge, del);
+    opflexServer.policyUpdate(replace, merge, del);
     WAIT_FOR("evenmore" == client2->get(4, c4u)->getString(9), 1000);
     BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
 
     // replace
     merge.clear();
     replace.push_back(make_pair(4, c4u));
-    mockServer.policyUpdate(replace, merge, del);
+    opflexServer.policyUpdate(replace, merge, del);
     WAIT_FOR(!itemPresent(client2, 6, c6u), 1000);
 
     // delete
     replace.clear();
     del.push_back(make_pair(4, c4u));
-    mockServer.policyUpdate(replace, merge, del);
+    opflexServer.policyUpdate(replace, merge, del);
     WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
 
     // unresolve
@@ -596,7 +596,7 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
     client2->deliverNotifications(notifs);
     notifs.clear();
 
-    WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+    WAIT_FOR(!opflexServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 
     // simulate a delayed notification after item is removed
     WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
@@ -614,7 +614,7 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
     client2->deliverNotifications(notifs);
     notifs.clear();
 
-    WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+    WAIT_FOR(!opflexServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
 // test policy resolve after connection ready
@@ -636,7 +636,7 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve_flaky, PolicyFixture ) {
     startClient();
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
 
-    mockServer.getListener().applyConnPred(make_flaky_pred, NULL);
+    opflexServer.getListener().applyConnPred(make_flaky_pred, NULL);
     setup();
 
     // verify that the object is synced to the client
@@ -647,7 +647,7 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve_flaky, PolicyFixture ) {
     BOOST_CHECK_EQUAL("test", client2->get(4, c4u)->getString(9));
     BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
 
-    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+    WAIT_FOR(opflexServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
 class StateFixture : public ServerFixture {
@@ -661,7 +661,7 @@ public:
     }
 
     void setup() {
-        rclient = mockServer.getSystemClient();
+        rclient = opflexServer.getSystemClient();
         oi1 = OF_MAKE_SHARED<ObjectInstance>(1);
         oi2 = OF_MAKE_SHARED<ObjectInstance>(2);
         oi3 = OF_MAKE_SHARED<ObjectInstance>(3);
@@ -740,7 +740,7 @@ public:
 
     void setup() {
         // set up the server-side store
-        rclient = mockServer.getSystemClient();
+        rclient = opflexServer.getSystemClient();
         root = OF_MAKE_SHARED<ObjectInstance>(1);
         oi8 = OF_MAKE_SHARED<ObjectInstance>(8);
         oi10 = OF_MAKE_SHARED<ObjectInstance>(10);
@@ -789,7 +789,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve, EndpointResFixture ) {
     WAIT_FOR(itemPresent(client2, 10, c10u), 1000);
     BOOST_CHECK_EQUAL("test", client2->get(8, c8u)->getString(17));
     BOOST_CHECK_EQUAL("test2", client2->get(10, c10u)->getString(21));
-    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+    WAIT_FOR(opflexServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 
     // perform object updates
     vector<reference_t> replace;
@@ -803,21 +803,21 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve, EndpointResFixture ) {
 
     // replace
     replace.push_back(make_pair(8, c8u));
-    mockServer.endpointUpdate(replace, del);
+    opflexServer.endpointUpdate(replace, del);
     WAIT_FOR("moretesting" == client2->get(8, c8u)->getString(17), 1000);
     WAIT_FOR("moretesting2" == client2->get(10, c10u)->getString(21), 1000);
 
     oi8->setString(17, "evenmore");
     rclient->put(8, c8u, oi8);
     rclient->remove(10, c10u, false);
-    mockServer.endpointUpdate(replace, del);
+    opflexServer.endpointUpdate(replace, del);
     WAIT_FOR("evenmore" == client2->get(8, c8u)->getString(17), 1000);
     WAIT_FOR(!itemPresent(client2, 10, c10u), 1000);
 
     // delete
     replace.clear();
     del.push_back(make_pair(8, c8u));
-    mockServer.endpointUpdate(replace, del);
+    opflexServer.endpointUpdate(replace, del);
     WAIT_FOR(!itemPresent(client2, 8, c8u), 1000);
 
     // unresolve
@@ -826,7 +826,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve, EndpointResFixture ) {
     client2->deliverNotifications(notifs);
     notifs.clear();
 
-    WAIT_FOR(!mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+    WAIT_FOR(!opflexServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
 // test endpoint_resolve after connection ready
@@ -844,7 +844,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve_reconnect, EndpointResFixture ) {
     WAIT_FOR(itemPresent(client2, 10, c10u), 1000);
     BOOST_CHECK_EQUAL("test", client2->get(8, c8u)->getString(17));
     BOOST_CHECK_EQUAL("test2", client2->get(10, c10u)->getString(21));
-    WAIT_FOR(mockServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
+    WAIT_FOR(opflexServer.getListener().applyConnPred(resolutions_pred, NULL), 1000);
 }
 
 BOOST_FIXTURE_TEST_CASE( test_override_observale_reporting, BasePFixture ) {

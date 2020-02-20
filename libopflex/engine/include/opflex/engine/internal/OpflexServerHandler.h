@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file MockServerHandler.h
+ * @file OpflexServerHandler.h
  * @brief Interface definition file for OpFlex message handlers
  */
 /*
@@ -20,32 +20,32 @@
 #include "opflex/engine/internal/MOSerializer.h"
 
 #pragma once
-#ifndef OPFLEX_ENGINE_MOCKSERVERHANDLER_H
-#define OPFLEX_ENGINE_MOCKSERVERHANDLER_H
+#ifndef OPFLEX_ENGINE_OPFLEXSERVERHANDLER_H
+#define OPFLEX_ENGINE_OPFLEXSERVERHANDLER_H
 
 namespace opflex {
 namespace engine {
 namespace internal {
 
-class MockOpflexServerImpl;
+class GbpOpflexServerImpl;
 
 /**
  * An opflex handler for mocking a server implementation when writing
  * unit tests.
  */
-class MockServerHandler : public OpflexHandler {
+class OpflexServerHandler : public OpflexHandler {
 public:
     /**
      * Construct a new opflex PE handler associated with the given
      * connection
      */
-    MockServerHandler(OpflexConnection* conn, MockOpflexServerImpl* server_)
+    OpflexServerHandler(OpflexConnection* conn, GbpOpflexServerImpl* server_)
         : OpflexHandler(conn), server(server_), flakyMode(false) {}
 
     /**
      * Destroy the handler
      */
-    virtual ~MockServerHandler() {}
+    virtual ~OpflexServerHandler() {}
 
     /**
      * Check whether the server has recieved a specific resolution
@@ -92,7 +92,7 @@ public:
                                       const rapidjson::Value& payload);
 
 protected:
-    MockOpflexServerImpl* server;
+    GbpOpflexServerImpl* server;
     OF_UNORDERED_SET<modb::reference_t> resolutions;
     OF_UNORDERED_SET<modb::reference_t> declarations;
     boost::atomic<bool> flakyMode;

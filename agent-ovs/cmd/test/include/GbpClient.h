@@ -25,7 +25,7 @@
 #endif
 #define RAPIDJSON_HAS_STDSTRING 1
 #include <rapidjson/document.h>
-#include <opflex/test/MockOpflexServer.h>
+#include <opflex/test/GbpOpflexServer.h>
 
 namespace gbpserver {
     class GBPObject;
@@ -37,7 +37,7 @@ class GbpClientImpl;
 class GbpClient {
 public:
     GbpClient(const std::string& address,
-              opflex::test::MockOpflexServer& server);
+              opflex::test::GbpOpflexServer& server);
     ~GbpClient();
     void Stop();
 
@@ -46,7 +46,7 @@ private:
     void JsonDump(rapidjson::Document& d);
     void JsonDocAdd(rapidjson::Document& d, const gbpserver::GBPObject& gbp);
     std::thread thread_;
-    opflex::test::MockOpflexServer& server_;
+    opflex::test::GbpOpflexServer& server_;
     bool stopping;
     GbpClientImpl* client_;
 };

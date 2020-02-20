@@ -20,7 +20,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
 
-#include "opflex/engine/internal/MockOpflexServerImpl.h"
+#include "opflex/engine/internal/GbpOpflexServerImpl.h"
 
 #include "opflex/c/offramework_c.h"
 #include "opflex/c/ofpeerstatuslistener_c.h"
@@ -30,7 +30,7 @@
 #include "TestListener.h"
 
 using opflex::modb::MDFixture;
-using opflex::engine::internal::MockOpflexServerImpl;
+using opflex::engine::internal::GbpOpflexServerImpl;
 using opflex::ofcore::OFConstants;
 using std::make_pair;
 using boost::assign::list_of;
@@ -49,20 +49,20 @@ class ServerFixture : public MDFixture {
 public:
     ServerFixture()
         : MDFixture(),
-          mockServer(8009, SERVER_ROLES,
+          opflexServer(8009, SERVER_ROLES,
                      list_of(make_pair(SERVER_ROLES, LOCALHOST":8009")),
                      vector<string>(),
                      md, 60),
           peerStatus(-1), poolHealth(1) {
-        mockServer.start();
-        WAIT_FOR(mockServer.getListener().isListening(), 1000);
+        opflexServer.start();
+        WAIT_FOR(opflexServer.getListener().isListening(), 1000);
     }
 
     ~ServerFixture() {
-        mockServer.stop();
+        opflexServer.stop();
     }
 
-    MockOpflexServerImpl mockServer;
+    GbpOpflexServerImpl opflexServer;
     int peerStatus;
     int poolHealth;
 };

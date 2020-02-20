@@ -286,7 +286,7 @@ if ENABLE_ASAN
 endif
 endif
 
-bin_PROGRAMS=opflex_agent gbp_inspect mcast_daemon mock_server
+bin_PROGRAMS=opflex_agent gbp_inspect mcast_daemon opflex_server
 if ENABLE_GRPC
 bin_PROGRAMS += gbp_client_stress
 endif
@@ -424,39 +424,39 @@ if RENDERER_OVS
 	ovs/test/PacketDecoder_test.cpp
 endif
 
-mock_server_CXXFLAGS = \
+opflex_server_CXXFLAGS = \
 	-I$(top_srcdir)/cmd/test/include \
 	$(libopflex_CFLAGS) $(libmodelgbp_CFLAGS)
 if ENABLE_GRPC
-mock_server_CXXFLAGS += $(GRPC_CFLAGS)
+opflex_server_CXXFLAGS += $(GRPC_CFLAGS)
 endif
 if ENABLE_TSAN
-mock_server_CXXFLAGS += -fsanitize=thread
+opflex_server_CXXFLAGS += -fsanitize=thread
 endif
 if ENABLE_ASAN
-mock_server_CXXFLAGS += -fsanitize=address
+opflex_server_CXXFLAGS += -fsanitize=address
 endif
 
-mock_server_SOURCES = \
+opflex_server_SOURCES = \
 	cmd/test/include/Policies.h \
 	cmd/test/Policies.cpp \
-	cmd/test/mock_server.cpp
+	cmd/test/opflex_server.cpp
 if ENABLE_GRPC
 %.grpc.pb.cc %.grpc.pb.h %.pb.cc %.pb.h: %.proto
 	protoc --cpp_out=. $^
 	protoc --grpc_out=. --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $^
-mock_server_SOURCES += cmd/test/GbpClient.cpp
+opflex_server_SOURCES += cmd/test/GbpClient.cpp
 BUILT_SOURCES = cmd/test/gbp.pb.cc \
                 cmd/test/gbp.grpc.pb.cc \
                 cmd/test/gbp.pb.h \
                 cmd/test/gbp.grpc.pb.h
-nodist_mock_server_SOURCES = cmd/test/gbp.pb.cc \
+nodist_opflex_server_SOURCES = cmd/test/gbp.pb.cc \
                              cmd/test/gbp.grpc.pb.cc \
                              cmd/test/gbp.pb.h \
                              cmd/test/gbp.grpc.pb.h
 endif
 
-mock_server_LDADD = \
+opflex_server_LDADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIB) \
@@ -464,7 +464,7 @@ mock_server_LDADD = \
 	$(BOOST_SYSTEM_LIB) \
 	libopflex_agent.la
 if ENABLE_GRPC
-mock_server_LDADD += $(GRPC_LIBS) $(PROTOBUF_LIBS) -lgrpc++_reflection
+opflex_server_LDADD += $(GRPC_LIBS) $(PROTOBUF_LIBS) -lgrpc++_reflection
 endif
 
 if ENABLE_GRPC

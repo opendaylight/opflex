@@ -45,8 +45,8 @@ libengine_la_SOURCES = \
 	include/opflex/engine/internal/OpflexListener.h \
 	include/opflex/engine/internal/OpflexPool.h \
 	include/opflex/engine/internal/ProcessorMessage.h \
-	include/opflex/engine/internal/MockOpflexServerImpl.h \
-	include/opflex/engine/internal/MockServerHandler.h \
+	include/opflex/engine/internal/GbpOpflexServerImpl.h \
+	include/opflex/engine/internal/OpflexServerHandler.h \
 	include/opflex/engine/internal/InspectorServerHandler.h \
 	include/opflex/engine/internal/InspectorClientHandler.h \
 	include/opflex/engine/internal/InspectorClientConn.h \
@@ -65,8 +65,8 @@ libengine_la_SOURCES = \
 	OpflexServerConnection.cpp \
 	OpflexListener.cpp \
 	OpflexPool.cpp \
-	MockOpflexServer.cpp \
-	MockServerHandler.cpp \
+	GbpOpflexServer.cpp \
+	OpflexServerHandler.cpp \
 	Inspector.cpp \
 	InspectorServerHandler.cpp \
 	InspectorClientImpl.cpp \

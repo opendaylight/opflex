@@ -1,7 +1,7 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
  * Implementation of standalone GRPC server for serving opflex policy.
- * It can be used to serve policy file to mock_server.
+ * It can be used to serve policy file to opflex_server.
  * usage: gbp_client_stress <object-count-per-msg> <wait-internval-between-msgs> <policy-file>
  *
  * Copyright (c) 2019 Cisco Systems, Inc. and others.  All rights reserved.

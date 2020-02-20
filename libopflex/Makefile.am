@@ -63,7 +63,7 @@ core_include_HEADERS = \
 	include/opflex/ofcore/OFTypes.h
 test_includedir = $(includedir)/opflex/test
 test_include_HEADERS = \
-	include/opflex/test/MockOpflexServer.h 
+	include/opflex/test/GbpOpflexServer.h 
 logging_includedir = $(includedir)/opflex/logging
 logging_include_HEADERS = \
 	include/opflex/logging/OFLogHandler.h \
