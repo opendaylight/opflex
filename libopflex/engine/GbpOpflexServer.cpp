@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation for MockOpflexServer
+ * Implementation for GbpOpflexServer
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -18,60 +18,60 @@
 
 #include <boost/foreach.hpp>
 
-#include "opflex/test/MockOpflexServer.h"
+#include "opflex/test/GbpOpflexServer.h"
 #include "opflex/engine/internal/OpflexMessage.h"
-#include "opflex/engine/internal/MockOpflexServerImpl.h"
-#include "opflex/engine/internal/MockServerHandler.h"
+#include "opflex/engine/internal/GbpOpflexServerImpl.h"
+#include "opflex/engine/internal/OpflexServerHandler.h"
 
 namespace opflex {
 namespace test {
 
-MockOpflexServer::MockOpflexServer(int port, uint8_t roles,
-                                   const peer_vec_t& peers,
-                                   const std::vector<std::string>& proxies,
-                                   const modb::ModelMetadata& md,
-                                   int prr_interval_secs)
+GbpOpflexServer::GbpOpflexServer(int port, uint8_t roles,
+                                 const peer_vec_t& peers,
+                                 const std::vector<std::string>& proxies,
+                                 const modb::ModelMetadata& md,
+                                 int prr_interval_secs)
     : pimpl(new engine::internal
-            ::MockOpflexServerImpl(port, roles, peers, proxies, md,
-                                   prr_interval_secs)) { }
+            ::GbpOpflexServerImpl(port, roles, peers, proxies, md,
+                                  prr_interval_secs)) { }
 
-MockOpflexServer::~MockOpflexServer() {
+GbpOpflexServer::~GbpOpflexServer() {
     delete pimpl;
 }
 
-void MockOpflexServer::enableSSL(const std::string& caStorePath,
-                                 const std::string& serverKeyPath,
-                                 const std::string& serverKeyPass,
-                                 bool verifyPeers) {
+void GbpOpflexServer::enableSSL(const std::string& caStorePath,
+                                const std::string& serverKeyPath,
+                                const std::string& serverKeyPass,
+                                bool verifyPeers) {
     pimpl->enableSSL(caStorePath, serverKeyPath,
                      serverKeyPass, verifyPeers);
 }
-void MockOpflexServer::start() {
+void GbpOpflexServer::start() {
     pimpl->start();
 }
-void MockOpflexServer::stop() {
+void GbpOpflexServer::stop() {
     pimpl->stop();
 }
 
-void MockOpflexServer::readPolicy(const std::string& file) {
+void GbpOpflexServer::readPolicy(const std::string& file) {
     pimpl->readPolicy(file);
 }
 
-void MockOpflexServer::updatePolicy(rapidjson::Document& d,
-                                    gbp::PolicyUpdateOp op) {
+void GbpOpflexServer::updatePolicy(rapidjson::Document& d,
+                                   gbp::PolicyUpdateOp op) {
     pimpl->updatePolicy(d, op);
 }
 
-const MockOpflexServer::peer_vec_t& MockOpflexServer::getPeers() const {
+const GbpOpflexServer::peer_vec_t& GbpOpflexServer::getPeers() const {
     return pimpl->getPeers();
 }
 
-const std::vector<std::string>& MockOpflexServer::getProxies() const {
+const std::vector<std::string>& GbpOpflexServer::getProxies() const {
     return pimpl->getProxies();
 }
 
-int MockOpflexServer::getPort() const { return pimpl->getPort(); }
-uint8_t MockOpflexServer::getRoles() const { return pimpl->getRoles(); }
+int GbpOpflexServer::getPort() const { return pimpl->getPort(); }
+uint8_t GbpOpflexServer::getRoles() const { return pimpl->getRoles(); }
 
 } /* namespace test */
 
@@ -81,15 +81,15 @@ namespace internal {
 using rapidjson::Value;
 using rapidjson::Writer;
 using modb::mointernal::StoreClient;
-using test::MockOpflexServer;
+using test::GbpOpflexServer;
 using boost::asio::deadline_timer;
 using boost::posix_time::seconds;
 
-MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
-                                           const MockOpflexServer::peer_vec_t& peers_,
-                                           const std::vector<std::string>& proxies_,
-                                           const modb::ModelMetadata& md,
-                                           int prr_interval_secs_)
+GbpOpflexServerImpl::GbpOpflexServerImpl(int port_, uint8_t roles_,
+                                         const GbpOpflexServer::peer_vec_t& peers_,
+                                         const std::vector<std::string>& proxies_,
+                                         const modb::ModelMetadata& md,
+                                         int prr_interval_secs_)
     : port(port_), roles(roles_), peers(peers_),
       proxies(proxies_),
       listener(*this, port_, "name", "domain"),
@@ -99,19 +99,19 @@ MockOpflexServerImpl::MockOpflexServerImpl(int port_, uint8_t roles_,
     client = &db.getStoreClient("_SYSTEM_");
 }
 
-MockOpflexServerImpl::~MockOpflexServerImpl() {
+GbpOpflexServerImpl::~GbpOpflexServerImpl() {
 
 }
 
-void MockOpflexServerImpl::enableSSL(const std::string& caStorePath,
-                                     const std::string& serverKeyPath,
-                                     const std::string& serverKeyPass,
-                                     bool verifyPeers) {
+void GbpOpflexServerImpl::enableSSL(const std::string& caStorePath,
+                                    const std::string& serverKeyPath,
+                                    const std::string& serverKeyPass,
+                                    bool verifyPeers) {
     listener.enableSSL(caStorePath, serverKeyPath,
                        serverKeyPass, verifyPeers);
 }
 
-void MockOpflexServerImpl::start() {
+void GbpOpflexServerImpl::start() {
     db.start();
     prr_timer.reset(new deadline_timer(io, seconds(prr_interval_secs)));
     prr_timer->async_wait([this](const boost::system::error_code& ec) {
@@ -122,7 +122,7 @@ void MockOpflexServerImpl::start() {
     listener.listen();
 }
 
-void MockOpflexServerImpl::stop() {
+void GbpOpflexServerImpl::stop() {
     stopping = true;
 
     if (prr_timer) {
@@ -137,7 +137,7 @@ void MockOpflexServerImpl::stop() {
     client = NULL;
 }
 
-void MockOpflexServerImpl::on_timer(const boost::system::error_code& ec) {
+void GbpOpflexServerImpl::on_timer(const boost::system::error_code& ec) {
     if (ec) {
         prr_timer.reset();
         return;
@@ -154,7 +154,7 @@ void MockOpflexServerImpl::on_timer(const boost::system::error_code& ec) {
     }
 }
 
-void MockOpflexServerImpl::readPolicy(const std::string& file) {
+void GbpOpflexServerImpl::readPolicy(const std::string& file) {
     FILE* pfile = fopen(file.c_str(), "r");
     if (pfile == NULL) {
         LOG(ERROR) << "Could not open policy file "
@@ -167,21 +167,21 @@ void MockOpflexServerImpl::readPolicy(const std::string& file) {
               << " managed objects from policy file \"" << file << "\"";
 }
 
-void MockOpflexServerImpl::updatePolicy(rapidjson::Document& d,
-                                        gbp::PolicyUpdateOp op) {
+void GbpOpflexServerImpl::updatePolicy(rapidjson::Document& d,
+                                       gbp::PolicyUpdateOp op) {
     size_t objs = serializer.updateMOs(d, *getSystemClient(), op);
     LOG(INFO) << "Update " << objs
               << " managed objects from GRPC update";
     listener.sendUpdates();
 }
 
-OpflexHandler* MockOpflexServerImpl::newHandler(OpflexConnection* conn) {
-    return new MockServerHandler(conn, this);
+OpflexHandler* GbpOpflexServerImpl::newHandler(OpflexConnection* conn) {
+    return new OpflexServerHandler(conn, this);
 }
 
 class PolicyUpdateReq : public OpflexMessage {
 public:
-    PolicyUpdateReq(MockOpflexServerImpl& server_,
+    PolicyUpdateReq(GbpOpflexServerImpl& server_,
                     const std::vector<modb::reference_t>& replace_,
                     const std::vector<modb::reference_t>& merge_children_,
                     const std::vector<modb::reference_t>& del_)
@@ -249,24 +249,24 @@ public:
     }
 
 protected:
-    MockOpflexServerImpl& server;
+    GbpOpflexServerImpl& server;
     std::vector<modb::reference_t> replace;
     std::vector<modb::reference_t> merge_children;
     std::vector<modb::reference_t> del;
 };
 
-void MockOpflexServerImpl::policyUpdate(const std::vector<modb::reference_t>& replace,
-                                    const std::vector<modb::reference_t>& merge_children,
-                                    const std::vector<modb::reference_t>& del) {
+void GbpOpflexServerImpl::policyUpdate(const std::vector<modb::reference_t>& replace,
+                                       const std::vector<modb::reference_t>& merge_children,
+                                       const std::vector<modb::reference_t>& del) {
     PolicyUpdateReq* req =
         new PolicyUpdateReq(*this, replace, merge_children, del);
     listener.sendToAll(req);
 }
 
-void MockOpflexServerImpl::policyUpdate(OpflexServerConnection* conn,
-                                        const std::vector<modb::reference_t>& replace,
-                                        const std::vector<modb::reference_t>& merge_children,
-                                        const std::vector<modb::reference_t>& del) {
+void GbpOpflexServerImpl::policyUpdate(OpflexServerConnection* conn,
+                                       const std::vector<modb::reference_t>& replace,
+                                       const std::vector<modb::reference_t>& merge_children,
+                                       const std::vector<modb::reference_t>& del) {
     PolicyUpdateReq* req =
         new PolicyUpdateReq(*this, replace, merge_children, del);
     listener.sendToOne(conn, req);
@@ -274,9 +274,9 @@ void MockOpflexServerImpl::policyUpdate(OpflexServerConnection* conn,
 
 class EndpointUpdateReq : public OpflexMessage {
 public:
-    EndpointUpdateReq(MockOpflexServerImpl& server_,
-                    const std::vector<modb::reference_t>& replace_,
-                    const std::vector<modb::reference_t>& del_)
+    EndpointUpdateReq(GbpOpflexServerImpl& server_,
+                      const std::vector<modb::reference_t>& replace_,
+                      const std::vector<modb::reference_t>& del_)
         : OpflexMessage("endpoint_update", REQUEST),
           server(server_),
           replace(replace_),
@@ -331,20 +331,20 @@ public:
     }
 
 protected:
-    MockOpflexServerImpl& server;
+    GbpOpflexServerImpl& server;
     std::vector<modb::reference_t> replace;
     std::vector<modb::reference_t> del;
 };
 
-void MockOpflexServerImpl::endpointUpdate(const std::vector<modb::reference_t>& replace,
-                                          const std::vector<modb::reference_t>& del) {
+void GbpOpflexServerImpl::endpointUpdate(const std::vector<modb::reference_t>& replace,
+                                         const std::vector<modb::reference_t>& del) {
     EndpointUpdateReq* req = new EndpointUpdateReq(*this, replace, del);
     listener.sendToAll(req);
 }
 
-void MockOpflexServerImpl::remoteObjectUpdated(modb::class_id_t class_id,
-                                               const modb::URI& uri,
-                                               gbp::PolicyUpdateOp op) {
+void GbpOpflexServerImpl::remoteObjectUpdated(modb::class_id_t class_id,
+                                              const modb::URI& uri,
+                                              gbp::PolicyUpdateOp op) {
     listener.addPendingUpdate(class_id, uri, op);
 }
 

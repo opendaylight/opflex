@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation for MockServerHandler
+ * Implementation for OpflexServerHandler
  *
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -22,8 +22,8 @@
 
 #include "opflex/logging/internal/logging.hpp"
 #include "opflex/engine/internal/OpflexMessage.h"
-#include "opflex/engine/internal/MockServerHandler.h"
-#include "opflex/engine/internal/MockOpflexServerImpl.h"
+#include "opflex/engine/internal/OpflexServerHandler.h"
+#include "opflex/engine/internal/GbpOpflexServerImpl.h"
 
 namespace opflex {
 namespace engine {
@@ -34,18 +34,18 @@ using rapidjson::Value;
 using rapidjson::Writer;
 using modb::mointernal::StoreClient;
 using ofcore::OFConstants;
-using test::MockOpflexServer;
+using test::GbpOpflexServer;
 typedef OFConstants::OpflexTransportModeState AgentTransportState;
 
-void MockServerHandler::connected() {
+void OpflexServerHandler::connected() {
 
 }
 
-void MockServerHandler::disconnected() {
+void OpflexServerHandler::disconnected() {
 
 }
 
-void MockServerHandler::ready() {
+void OpflexServerHandler::ready() {
     LOG(INFO) << "[" << getConnection()->getRemotePeer() << "] "
               << "Handshake succeeded";
 
@@ -59,7 +59,7 @@ public:
                     const std::string& domain_,
                     const optional<std::string>& your_location_,
                     const uint8_t roles_,
-                    const test::MockOpflexServer::peer_vec_t& peers_,
+                    const test::GbpOpflexServer::peer_vec_t& peers_,
                     const std::vector<std::string>& proxies_)
         : OpflexMessage("send_identity", RESPONSE, &id),
           name(name_), domain(domain_), your_location(your_location_),
@@ -120,7 +120,7 @@ public:
         writer.EndArray();
         writer.String("peers");
         writer.StartArray();
-        BOOST_FOREACH(const MockOpflexServer::peer_t& peer, peers) {
+        BOOST_FOREACH(const GbpOpflexServer::peer_t& peer, peers) {
             writer.StartObject();
             writer.String("role");
             writer.StartArray();
@@ -147,14 +147,14 @@ private:
     std::string domain;
     optional<std::string> your_location;
     uint8_t roles;
-    test::MockOpflexServer::peer_vec_t peers;
+    test::GbpOpflexServer::peer_vec_t peers;
     std::vector<std::string> proxies;
 };
 
 class PolicyResolveRes : public OpflexMessage {
 public:
     PolicyResolveRes(const rapidjson::Value& id,
-                     MockOpflexServerImpl& server_,
+                     GbpOpflexServerImpl& server_,
                      const std::vector<modb::reference_t>& mos_)
         : OpflexMessage("policy_resolve", RESPONSE, &id),
           server(server_),
@@ -195,14 +195,14 @@ public:
     }
 
 protected:
-    MockOpflexServerImpl& server;
+    GbpOpflexServerImpl& server;
     std::vector<modb::reference_t> mos;
 };
 
 class EndpointResolveRes : public OpflexMessage {
 public:
     EndpointResolveRes(const rapidjson::Value& id,
-                     MockOpflexServerImpl& server_,
+                     GbpOpflexServerImpl& server_,
                      const std::vector<modb::reference_t>& mos_)
         : OpflexMessage("endpoint_resolve", RESPONSE, &id),
           server(server_),
@@ -243,12 +243,12 @@ public:
     }
 
 protected:
-    MockOpflexServerImpl& server;
+    GbpOpflexServerImpl& server;
     std::vector<modb::reference_t> mos;
 };
 
-void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
-                                              const Value& payload) {
+void OpflexServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
+                                                const Value& payload) {
     LOG(DEBUG) << "Got send_identity req";
     std::stringstream sb;
     sb << "127.0.0.1:" << server->getPort();
@@ -262,8 +262,8 @@ void MockServerHandler::handleSendIdentityReq(const rapidjson::Value& id,
     ready();
 }
 
-void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
-                                               const Value& payload) {
+void OpflexServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
+                                                 const Value& payload) {
     OpflexServerConnection* conn = dynamic_cast<OpflexServerConnection*>(getConnection());
 
     LOG(DEBUG) << "Got policy_resolve req from " << conn->getRemotePeer();
@@ -343,8 +343,8 @@ void MockServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
-                                                 const rapidjson::Value& payload) {
+void OpflexServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
+                                                   const rapidjson::Value& payload) {
     OpflexServerConnection* conn = dynamic_cast<OpflexServerConnection*>(getConnection());
 
     LOG(DEBUG) << "Got policy_unresolve req from " << conn->getRemotePeer();
@@ -401,8 +401,8 @@ void MockServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
-                                           const rapidjson::Value& payload) {
+void OpflexServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
+                                             const rapidjson::Value& payload) {
     LOG(DEBUG) << "Got endpoint_declare req";
     StoreClient::notif_t notifs;
     StoreClient& client = *server->getSystemClient();
@@ -466,8 +466,8 @@ void MockServerHandler::handleEPDeclareReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
-                                             const rapidjson::Value& payload) {
+void OpflexServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
+                                               const rapidjson::Value& payload) {
     StoreClient::notif_t notifs;
     StoreClient& client = *server->getSystemClient();
 
@@ -520,8 +520,8 @@ void MockServerHandler::handleEPUndeclareReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
-                                           const rapidjson::Value& payload) {
+void OpflexServerHandler::handleEPResolveReq(const rapidjson::Value& id,
+                                             const rapidjson::Value& payload) {
     Value::ConstValueIterator it;
     std::vector<modb::reference_t> mos;
     for (it = payload.Begin(); it != payload.End(); ++it) {
@@ -576,8 +576,8 @@ void MockServerHandler::handleEPResolveReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
-                                             const rapidjson::Value& payload) {
+void OpflexServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
+                                               const rapidjson::Value& payload) {
     LOG(DEBUG) << "Got endpoint_unresolve req";
     Value::ConstValueIterator it;
     for (it = payload.Begin(); it != payload.End(); ++it) {
@@ -631,13 +631,13 @@ void MockServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-void MockServerHandler::handleEPUpdateRes(uint64_t reqId,
-                                          const rapidjson::Value& payload) {
+void OpflexServerHandler::handleEPUpdateRes(uint64_t reqId,
+                                            const rapidjson::Value& payload) {
     // nothing to do
 }
 
-void MockServerHandler::handleStateReportReq(const rapidjson::Value& id,
-                                             const rapidjson::Value& payload) {
+void OpflexServerHandler::handleStateReportReq(const rapidjson::Value& id,
+                                               const rapidjson::Value& payload) {
     LOG(DEBUG) << "Got state_report req";
     StoreClient::notif_t notifs;
     StoreClient& client = *server->getSystemClient();
@@ -676,8 +676,8 @@ void MockServerHandler::handleStateReportReq(const rapidjson::Value& id,
     getConnection()->sendMessage(res, true);
 }
 
-bool MockServerHandler::hasResolution(modb::class_id_t class_id,
-                                      const modb::URI& uri) {
+bool OpflexServerHandler::hasResolution(modb::class_id_t class_id,
+                                        const modb::URI& uri) {
     return resolutions.find(std::make_pair(class_id, uri)) != resolutions.end();
 }
 

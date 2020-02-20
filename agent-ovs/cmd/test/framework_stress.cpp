@@ -19,7 +19,7 @@
 
 #include <modelgbp/dmtree/Root.hpp>
 #include <modelgbp/metadata/metadata.hpp>
-#include <opflex/test/MockOpflexServer.h>
+#include <opflex/test/GbpOpflexServer.h>
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/ofcore/OFConstants.h>
 
@@ -29,7 +29,7 @@ using std::string;
 using std::make_pair;
 using std::shared_ptr;
 namespace po = boost::program_options;
-using opflex::test::MockOpflexServer;
+using opflex::test::GbpOpflexServer;
 using opflex::ofcore::OFConstants;
 using namespace opflexagent;
 
@@ -104,9 +104,9 @@ int main(int argc, char** argv) {
     initLogging(level_str, false /*syslog*/, log_file, "framework-stress");
 
     try {
-        MockOpflexServer::peer_vec_t peer_vec;
+        GbpOpflexServer::peer_vec_t peer_vec;
         peer_vec.push_back(make_pair(SERVER_ROLES, LOCALHOST":8009"));
-        MockOpflexServer server(8009, SERVER_ROLES, peer_vec, std::vector<std::string>(),
+        GbpOpflexServer server(8009, SERVER_ROLES, peer_vec, std::vector<std::string>(),
                                 modelgbp::getMetadata(), 30);
 
         if (!policy_file.empty()) {

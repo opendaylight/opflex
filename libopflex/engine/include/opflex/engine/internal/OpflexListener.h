@@ -33,7 +33,7 @@ namespace engine {
 namespace internal {
 
 class OpflexPool;
-class MockOpflexServerImpl;
+class GbpOpflexServerImpl;
 
 /**
  * Represents a listen socket that will spawn OpflexServerConnections

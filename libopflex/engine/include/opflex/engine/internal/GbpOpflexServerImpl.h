@@ -1,7 +1,7 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file MockOpflexServer.h
- * @brief Interface definition file for MockOpflexServer
+ * @file GbpOpflexServer.h
+ * @brief Interface definition file for GbpOpflexServer
  */
 /*
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
@@ -11,13 +11,13 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include "opflex/test/MockOpflexServer.h"
+#include "opflex/test/GbpOpflexServer.h"
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/gbp/Policy.h"
 #include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexHandler.h"
-#include "opflex/engine/internal/MockServerHandler.h"
+#include "opflex/engine/internal/OpflexServerHandler.h"
 
 #include <thread>
 #include <atomic>
@@ -26,8 +26,8 @@
 #include <boost/asio/deadline_timer.hpp>
 
 #pragma once
-#ifndef OPFLEX_ENGINE_MOCKOPFLEXSERVERIMPL_H
-#define OPFLEX_ENGINE_MOCKOPFLEXSERVERIMPL_H
+#ifndef OPFLEX_ENGINE_GBPOPFLEXSERVERIMPL_H
+#define OPFLEX_ENGINE_GBPOPFLEXSERVERIMPL_H
 
 namespace opflex {
 namespace engine {
@@ -37,11 +37,11 @@ namespace internal {
  * An opflex server we can use for mocking interactions with a real
  * Opflex server
  */
-class MockOpflexServerImpl : public HandlerFactory,
-                             public MOSerializer::Listener {
+class GbpOpflexServerImpl : public HandlerFactory,
+                            public MOSerializer::Listener {
 public:
     /**
-     * Construct a new mock opflex server
+     * Construct a new gbp opflex server
      *
      * @param port listen port for the server
      * @param roles the opflex roles for this server
@@ -49,12 +49,12 @@ public:
      * @param md the model metadata for the server
      * @param prr_interval_secs how often to wakeup prr timer thread
      */
-    MockOpflexServerImpl(int port, uint8_t roles,
-                         const test::MockOpflexServer::peer_vec_t& peers,
-                         const std::vector<std::string>& proxies,
-                         const modb::ModelMetadata& md,
-                         int prr_interval_secs);
-    virtual ~MockOpflexServerImpl();
+    GbpOpflexServerImpl(int port, uint8_t roles,
+                        const test::GbpOpflexServer::peer_vec_t& peers,
+                        const std::vector<std::string>& proxies,
+                        const modb::ModelMetadata& md,
+                        int prr_interval_secs);
+    virtual ~GbpOpflexServerImpl();
 
     /**
      * Enable SSL for connections to opflex peers.  Call before start()
@@ -104,7 +104,7 @@ public:
      *
      * @return a vector of peer pairs
      */
-    const test::MockOpflexServer::peer_vec_t& getPeers() { return peers; }
+    const test::GbpOpflexServer::peer_vec_t& getPeers() { return peers; }
 
     /**
      * Get the proxies that this server was configured with
@@ -190,7 +190,7 @@ private:
     int port;
     uint8_t roles;
 
-    test::MockOpflexServer::peer_vec_t peers;
+    test::GbpOpflexServer::peer_vec_t peers;
 
     std::vector<std::string> proxies;
 
@@ -212,4 +212,4 @@ private:
 } /* namespace engine */
 } /* namespace opflex */
 
-#endif /* OPFLEX_ENGINE_MOCKOPFLEXSERVERIMPL_H */
+#endif /* OPFLEX_ENGINE_GBPOPFLEXSERVERIMPL_H */

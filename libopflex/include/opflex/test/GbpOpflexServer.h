@@ -1,7 +1,7 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file MockOpflexServer.h
- * @brief Interface definition file for MockOpflexServer
+ * @file GbpOpflexServer.h
+ * @brief Interface definition file for GbpOpflexServer
  */
 /*
  * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
@@ -19,15 +19,15 @@
 #include "opflex/gbp/Policy.h"
 
 #pragma once
-#ifndef OPFLEX_TEST_MOCKOPFLEXSERVER_H
-#define OPFLEX_TEST_MOCKOPFLEXSERVER_H
+#ifndef OPFLEX_TEST_GBPOPFLEXSERVER_H
+#define OPFLEX_TEST_GBPOPFLEXSERVER_H
 
 namespace opflex {
 
 namespace engine {
 namespace internal {
 
-class MockOpflexServerImpl;
+class GbpOpflexServerImpl;
 
 } /* namespace internal */
 } /* namespace engine */
@@ -38,7 +38,7 @@ namespace test {
  * An opflex server we can use for mocking interactions with a real
  * Opflex server
  */
-class MockOpflexServer {
+class GbpOpflexServer {
 public:
     /**
      * a pair of a role bitmask and connectivity string
@@ -51,7 +51,7 @@ public:
     typedef std::vector<peer_t> peer_vec_t;
 
     /**
-     * Construct a new mock opflex server
+     * Construct a new gbp opflex server
      *
      * @param port listen port for the server
      * @param roles the opflex roles for this server
@@ -60,15 +60,15 @@ public:
      * @param md the model metadata for the server
      * @param prr_interval_secs how often to wakeup prr timer thread
      */
-    MockOpflexServer(int port, uint8_t roles, const peer_vec_t& peers,
-                     const std::vector<std::string>& proxies,
-                     const modb::ModelMetadata& md,
-                     int prr_interval_secs);
+    GbpOpflexServer(int port, uint8_t roles, const peer_vec_t& peers,
+                    const std::vector<std::string>& proxies,
+                    const modb::ModelMetadata& md,
+                    int prr_interval_secs);
 
     /**
      * Destroy the opflex server
      */
-    ~MockOpflexServer();
+    ~GbpOpflexServer();
 
     /**
      * Start the server
@@ -142,11 +142,11 @@ public:
     uint8_t getRoles() const;
 
 private:
-    engine::internal::MockOpflexServerImpl* pimpl;
+    engine::internal::GbpOpflexServerImpl* pimpl;
 };
 
 } /* namespace test */
 } /* namespace opflex */
 
-#endif /* OPFLEX_TEST_MOCKOPFLEXSERVER_H */
+#endif /* OPFLEX_TEST_GBPOPFLEXSERVER_H */
 

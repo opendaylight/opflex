@@ -226,7 +226,7 @@ getent group opflexep >/dev/null || groupadd -r opflexep
 
 %files devel
 %defattr(-,root,root)
-%{_bindir}/mock_server
+%{_bindir}/opflex_server
 %{_libdir}/libopflex_agent.la
 %{_libdir}/libopflex_agent_renderer_openvswitch.la
 %{_libdir}/pkgconfig/libopflex_agent.pc
