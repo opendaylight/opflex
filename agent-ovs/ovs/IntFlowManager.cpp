@@ -3762,7 +3762,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
             net->resolveGbpExternalSubnet(extSubs);
             optional<shared_ptr<L3ExternalNetworkToNatEPGroupRSrc> > natRef =
                 net->resolveGbpL3ExternalNetworkToNatEPGroupRSrc();
-            optional<uint32_t> natEpgVnid = boost::none;
+            optional<uint32_t> natEpgVnid = boost::make_optional<uint32_t>(false, 0);
             if (natRef) {
                 optional<URI> natEpg = natRef.get()->getTargetURI();
                 if (natEpg)
