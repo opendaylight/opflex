@@ -983,6 +983,7 @@ private:
     subnets_rd_map_t subnets_rd_map;
 
     std::mutex state_mutex;
+    std::mutex subnets_rd_mutex;
 
     // Listen to changes related to forwarding domains
     class DomainListener : public opflex::modb::ObjectListener {
