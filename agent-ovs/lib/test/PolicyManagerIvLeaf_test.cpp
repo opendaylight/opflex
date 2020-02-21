@@ -357,6 +357,7 @@ BOOST_FIXTURE_TEST_CASE( redirect_action_rules, PolicyIvLeafFixture ) {
 
 BOOST_FIXTURE_TEST_CASE( static_route_add_mod_del, PolicyIvLeafFixture ) {
     using boost::asio::ip::address;
+    using modelgbp::epr::PeerRouteUniverse;
     PolicyManager& pm = agent.getPolicyManager();
     shared_ptr<RoutingDomain> rd_,rd2_;
     shared_ptr<modelgbp::gbpe::InstContext> rdInst_;
@@ -395,10 +396,11 @@ BOOST_FIXTURE_TEST_CASE( static_route_add_mod_del, PolicyIvLeafFixture ) {
     boost::optional<shared_ptr<LocalRouteDiscovered>> lD;
     boost::optional<shared_ptr<LocalRoute>> localRoute;
     boost::optional<shared_ptr<modelgbp::epr::ReportedRoute>> reportedRoute;
-    boost::optional<shared_ptr<modelgbp::epr::PeerRouteUniverse>> pU;
+    boost::optional<shared_ptr<PeerRouteUniverse>> pU
+            = boost::make_optional<shared_ptr<PeerRouteUniverse> >(false, nullptr);
     std::string repAddress;
     sleep(1);
-    pU = modelgbp::epr::PeerRouteUniverse::resolve(framework);
+    pU = PeerRouteUniverse::resolve(framework);
     localRoute = LocalRoute::resolve(framework,
                     rd_->getURI().toString(), addr_.to_string(), pfx_len);
     BOOST_CHECK(localRoute);
