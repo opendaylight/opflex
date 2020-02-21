@@ -369,8 +369,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     optional<shared_ptr<EndpointRetention> > newl3epretpolicy;
     optional<URI> nEpRetURI;
 
-    optional<class_id_t> domainClass;
-    optional<URI> domainURI;
+    optional<class_id_t> domainClass = boost::none;
+    optional<URI> domainURI = boost::none;
     optional<shared_ptr<EpGroupToNetworkRSrc> > ref =
         epg.get()->resolveGbpEpGroupToNetworkRSrc();
     if (ref) {
@@ -402,16 +402,14 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
     // walk up the chain of forwarding domains
     while (domainURI && domainClass) {
         URI du = domainURI.get();
-        optional<class_id_t> ndomainClass;
-        optional<URI> ndomainURI;
+        optional<class_id_t> ndomainClass = boost::none;
+        optional<URI> ndomainURI = boost::none;
 
         optional<shared_ptr<ForwardingBehavioralGroupToSubnetsRSrc> > fwdSns;
         switch (domainClass.get()) {
         case RoutingDomain::CLASS_ID:
             {
                 newrd = RoutingDomain::resolve(framework, du);
-                ndomainClass = boost::none;
-                ndomainURI = boost::none;
                 if (newrd) {
                     fwdSns = newrd.get()->
                         resolveGbpForwardingBehavioralGroupToSubnetsRSrc();
@@ -469,6 +467,8 @@ bool PolicyManager::updateEPGDomains(const URI& egURI, bool& toRemove) {
                 }
             }
             break;
+        default:
+            LOG(ERROR) << "Unhandled classid: " << domainClass.get();
         }
 
         // Update the subnet map for the group with all the subnets it
@@ -1568,12 +1568,12 @@ void PolicyManager::updateL3Nets(const opflex::modb::URI& rdURI,
                                  uri_set_t& notifyLocalRoutes) {
     using namespace modelgbp::gbp;
     using namespace modelgbp::epdr;
-    optional<shared_ptr<LocalRouteDiscovered>> lD;
+    optional<shared_ptr<LocalRouteDiscovered>> lD
+            = LocalRouteDiscovered::resolve(framework);
     optional<shared_ptr<LocalRoute>> localRoute;
     optional<shared_ptr<LocalRouteToRrtRSrc>> lrtToRrt;
     optional<shared_ptr<LocalRouteToPrtRSrc>> lrtToPrt;
     vector<shared_ptr<LocalRouteToSrtRSrc>> lrtToSrt;
-    lD = LocalRouteDiscovered::resolve(framework);
     RoutingDomainState& rds = rd_map[rdURI];
     optional<shared_ptr<RoutingDomain > > rd =
         RoutingDomain::resolve(framework, rdURI);
@@ -2217,7 +2217,8 @@ void PolicyManager::updateExternalNode(const URI& uri,
     using namespace modelgbp::epr;
     using namespace modelgbp::epdr;
 
-    optional<shared_ptr<RoutingDomain>> rd;
+    optional<shared_ptr<RoutingDomain>> rd
+            = boost::make_optional<shared_ptr<RoutingDomain> >(false, nullptr);
     optional<shared_ptr<InstContext>> rdInst;
     ExternalNodeState &ens = ext_node_map[uri];
     vector<shared_ptr<StaticRoute>> staticRoutes;
@@ -2280,14 +2281,14 @@ void PolicyManager::updateExternalNode(const URI& uri,
             auto it = static_route_map.insert(std::make_pair(route->getURI(),
                                                              newRoute));
             it.first->second->setPresent(true);
-            optional<shared_ptr<PeerRouteUniverse>> pU;
+            optional<shared_ptr<PeerRouteUniverse>> pU
+                        = PeerRouteUniverse::resolve(framework);
             shared_ptr<ReportedRoute> repRoute;
 
             // Report this new route
             // In case of static and dynamic routes with the same prefix
             // report the lower cost, static route always overwrites the cost
             Mutator mutator(framework, "policyelement");
-            pU = PeerRouteUniverse::resolve(framework);
 
             localRoute->addEpdrLocalRouteToSrtRSrc(route->getURI().toString());
             repRoute = pU.get()->addEprReportedRoute(
@@ -2752,7 +2753,6 @@ void PolicyManager::updateExternalNetworkPrefixes(
     }
     using namespace modelgbp::gbp;
     using namespace modelgbp::epdr;
-    optional<shared_ptr<LocalRouteDiscovered>> lD;
     optional<shared_ptr<LocalRoute>> localRoute;
     optional<shared_ptr<L3ExternalNetwork>> l3ext;
     LOG(DEBUG) << "updateExternalNetworkPrefixes for" << uri;
@@ -2761,7 +2761,6 @@ void PolicyManager::updateExternalNetworkPrefixes(
         return;
     }
     L3NetworkState &l3s = l3n_iter->second;
-    lD = LocalRouteDiscovered::resolve(framework);
 
     l3ext = L3ExternalNetwork::resolve(framework, uri);
     if(l3ext) {
