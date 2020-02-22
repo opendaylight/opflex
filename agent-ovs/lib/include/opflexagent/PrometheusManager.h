@@ -61,8 +61,11 @@ public:
     ~PrometheusManager() {};
     /**
      * Start the prometheus manager
+     *
+     * @param exposeLocalHostOnly     flag to indicate if the the exposer
+     *                                should be bound with local host only.
      */
-    void start();
+    void start(bool exposeLocalHostOnly);
     /**
      * Stop the prometheus manager
      */

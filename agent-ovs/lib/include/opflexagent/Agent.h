@@ -400,6 +400,11 @@ private:
     std::string ovsdbIpAddress;
     unsigned long ovsdbPort;
     std::string ovsdbBridge;
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    // Prometheus related parameters
+    bool prometheusExposeLocalHostOnly;
+#endif
 };
 
 } /* namespace opflexagent */

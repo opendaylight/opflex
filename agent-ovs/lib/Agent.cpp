@@ -142,6 +142,9 @@ void Agent::loadPlugin(const std::string& name) {
 
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string LOG_LEVEL("log.level");
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    static const std::string PROMETHEUS_LOCALHOST_ONLY("prometheus.localhost-only");
+#endif
     static const std::string ENDPOINT_SOURCE_FSPATH("endpoint-sources.filesystem");
     static const std::string ENDPOINT_SOURCE_MODEL_LOCAL("endpoint-sources.model-local");
     static const std::string SERVICE_SOURCE_PATH("service-sources.filesystem");
@@ -238,6 +241,17 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         for (const ptree::value_type &v : disabledFeatures.get())
             disabledFeaturesSet.insert(v.second.data());
     }
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusExposeLocalHostOnly = false;
+    boost::optional<bool> prometheusLocalHostOnly =
+                properties.get_optional<bool>(PROMETHEUS_LOCALHOST_ONLY);
+    if (prometheusLocalHostOnly) {
+        if (prometheusLocalHostOnly.get() == true)
+            prometheusExposeLocalHostOnly = true;
+    }
+#endif
+
     optional<const ptree&> fsEndpointSource =
         properties.get_child_optional(ENDPOINT_SOURCE_FSPATH);
 
@@ -543,7 +557,7 @@ void Agent::start() {
 
     // instantiate other components
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    prometheusManager.start();
+    prometheusManager.start(prometheusExposeLocalHostOnly);
 #endif
     policyManager.start();
     endpointManager.start();

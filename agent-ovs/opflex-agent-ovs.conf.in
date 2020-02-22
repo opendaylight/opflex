@@ -168,6 +168,14 @@
         "disabled": []
     },
 
+    // Configs related to prometheus
+    "prometheus": {
+    //    By default prometheus exposer will bind with all IPs. Set
+    //    localhost-only to true if prometheus export should happen only
+    //    on 127.0.0.1.
+    //    "localhost-only": "true"
+    },
+
     // Renderers enforce policy obtained via OpFlex.
     // Default: no renderers
     "renderers": {

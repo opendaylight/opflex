@@ -571,9 +571,9 @@ void PrometheusManager::removeStaticGauges ()
 }
 
 // Start of PrometheusManager instance
-void PrometheusManager::start()
+void PrometheusManager::start(bool exposeLocalHostOnly)
 {
-    LOG(DEBUG) << "starting prometheus manager";
+    LOG(DEBUG) << "starting prometheus manager, exposeLHOnly: " << exposeLocalHostOnly;
     /**
      * create an http server running on port 9612
      * Note: The third argument is the total worker thread count. Prometheus
@@ -583,7 +583,10 @@ void PrometheusManager::start()
      * Note: Port #9612 has been reserved for opflex here:
      * https://github.com/prometheus/prometheus/wiki/Default-port-allocations
      */
-    exposer_ptr = unique_ptr<Exposer>(new Exposer{"9612", "/metrics", 1});
+    if (exposeLocalHostOnly)
+        exposer_ptr = unique_ptr<Exposer>(new Exposer{"127.0.0.1:9612", "/metrics", 1});
+    else
+        exposer_ptr = unique_ptr<Exposer>(new Exposer{"9612", "/metrics", 1});
     registry_ptr = make_shared<Registry>();
 
     /* Initialize Metric families which can be created during
