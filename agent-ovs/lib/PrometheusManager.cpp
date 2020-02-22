@@ -1907,7 +1907,7 @@ mgauge_pair_t PrometheusManager::getStaticGaugeTableDrop(TABLE_DROP_METRICS metr
     const string table_drop_key = bridge_name + table_name;
     const auto &gauge_itr = table_drop_gauge_map[metric].find(table_drop_key);
     if(gauge_itr == table_drop_gauge_map[metric].end()){
-        returrn boost::none;
+        return boost::none;
     }
     return gauge_itr->second;
 }
