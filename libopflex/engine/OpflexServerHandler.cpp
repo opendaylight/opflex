@@ -35,7 +35,6 @@ using rapidjson::Writer;
 using modb::mointernal::StoreClient;
 using ofcore::OFConstants;
 using test::GbpOpflexServer;
-typedef OFConstants::OpflexTransportModeState AgentTransportState;
 
 void OpflexServerHandler::connected() {
 
