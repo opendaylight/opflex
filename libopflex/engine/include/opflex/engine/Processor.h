@@ -27,7 +27,6 @@
 
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/modb/mo-internal/StoreClient.h"
-
 #include "opflex/engine/internal/OpflexPool.h"
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/MOSerializer.h"
@@ -179,6 +178,16 @@ public:
      * Set the processing delay for unit tests
      */
     void setProcDelay(uint64_t delay) { processingDelay = delay; }
+
+    /**
+     * Set the status delivery interval
+     */
+    void setStatsReportingInterval(uint64_t delay);
+
+    /**
+     * Set stats interface reporting
+     */
+    void setStatReportingStatus(bool status) { statsStatus = status;  }
 
     /**
      * Set the message retry delay for unit tests
@@ -463,6 +472,54 @@ private:
     };
 
     /**
+     * A simple class which encapsulate  a stats delivery to opflexp
+     */
+    class StatDeliveryElem {
+    private:
+        Processor& processor;
+        internal::OpflexMessage* req = nullptr;
+        uint64_t& newexp;
+        ofcore::OFConstants::OpflexRole role;
+    public:
+        modb::URI uri;
+        StatDeliveryElem(Processor& processor,
+        const modb::URI& uri,
+        uint64_t& newexp,
+        internal::OpflexMessage* req,
+        ofcore::OFConstants::OpflexRole role):processor(processor),newexp(newexp),req(req),role(role),uri(uri){}
+        //Send stat message
+        void send();
+    };
+
+    /**
+     * Class to hold stats delivery in queue until a timer triggers it for delivery
+     */
+    class StatsDeliveryHandler {
+    public:
+        typedef std::unique_ptr<StatDeliveryElem> StatDeliveryElemPtr;
+        typedef std::unordered_map<std::string,StatDeliveryElemPtr> StatDeliveryMap;
+    private:
+        StatDeliveryMap statsDeliveryMap;
+    public:
+        StatsDeliveryHandler(){}
+
+        //This function would be invoked by a timer to trigger delivery
+        void deliverStats();
+
+        /**
+         * Adds stats for delivery, overrites stat if already exist
+         */
+        void addForDelivery(StatDeliveryElemPtr statDeliverElemPtr);
+
+        virtual ~StatsDeliveryHandler(){}
+    };
+
+    /**
+     * Manage stats delivery through a timer at a certain interval
+     */
+    StatsDeliveryHandler statsDeliveryHandler;
+
+    /**
      * Store and index the state of managed objects
      */
     object_state_t obj_state;
@@ -472,6 +529,16 @@ private:
      * Processing delay to allow batching updates
      */
     uint64_t processingDelay;
+
+    /**
+     * Stats delivery interval
+     */
+    uint64_t statsReportingInterval;
+
+    /**
+     * enable/disable stats reporting
+     */
+    bool statsStatus;
 
     /**
      * Amount of time to wait before retrying message sends
@@ -498,8 +565,10 @@ private:
     uv_async_t proc_async;
     uv_async_t connect_async;
     uv_timer_t proc_timer;
+    uv_timer_t stats_report_timer;
 
     static void timer_callback(uv_timer_t* handle);
+    static void timer_flush_reporting_stats_callback(uv_timer_t* handle);;
     static void cleanup_async_cb(uv_async_t *handle);
     static void proc_async_cb(uv_async_t *handle);
     static void connect_async_cb(uv_async_t *handle);
