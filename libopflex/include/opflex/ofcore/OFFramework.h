@@ -901,6 +901,22 @@ public:
      */
      void overrideObservableReporting(modb::class_id_t class_id, bool enabled);
 
+    /**
+     * Enable/Disable reporting of observable changes to registered observers
+     *
+     * @param class_id Observable class ID
+     * @param enabled Should reporting be enabled/disabled to observers
+     */
+     void setStatsReportingInterval(const uint64_t duration);
+
+     /**
+     * Enable/Disable reporting of observable changes to registered observers
+     *
+     * @param class_id Observable class ID
+     * @param enabled Should reporting be enabled/disabled to observers
+     */
+     void setStatsReportingStatus(bool status);
+
 private:
     /**
      * Get the object store that provides access to the managed object
