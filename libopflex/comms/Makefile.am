@@ -178,6 +178,7 @@ endif
 comms_test_LDADD  =
 comms_test_LDADD += libcomms.la
 comms_test_LDADD += ../logging/liblogging.la
+comms_test_LDADD += $(BOOST_SYSTEM_LIB)
 comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 EXTRA_DIST=test/server.pem test/ca.pem

@@ -233,8 +233,7 @@ void OpflexListener::messagesReady() {
 
 bool OpflexListener::isListening() {
     using yajr::comms::internal::Peer;
-    return !Peer::LoopData::getPeerList(&server_loop,
-                                       Peer::LoopData::LISTENING)->empty();
+    return Peer::LoopData::getPeerCount(&server_loop, Peer::LoopData::LISTENING) != 0;
 }
 
 } /* namespace internal */

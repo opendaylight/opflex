@@ -22,6 +22,8 @@
 #include <uv.h>
 
 #include <boost/intrusive/list.hpp>
+#include <boost/thread/lock_guard.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include <sstream>  /* for basic_stringstream<> */
 #include <iostream>
@@ -169,10 +171,19 @@ class Peer : public SafeListBaseHook {
             return static_cast<Peer::LoopData *>(uv_loop->data);
         }
 
-        static Peer::List * getPeerList(
+        static void addPeer(
+                uv_loop_t * uv_loop,
+                Peer::LoopData::PeerState peerState,
+                Peer* peer) {
+            boost::lock_guard<boost::mutex> lock(peerMutex);
+            (&getLoopData(uv_loop)->peers[peerState])->push_back(*peer);
+        }
+
+        static boost::intrusive::list_defaults::size_type getPeerCount(
                 uv_loop_t * uv_loop,
                 Peer::LoopData::PeerState peerState) {
-            return &getLoopData(uv_loop)->peers[peerState];
+            boost::lock_guard<boost::mutex> lock(peerMutex);
+            return (&getLoopData(uv_loop)->peers[peerState])->size();
         }
 
         void onPrepareLoop();
@@ -204,7 +215,7 @@ class Peer : public SafeListBaseHook {
 
         static void onPrepareLoop(uv_prepare_t *);
         static void fini(uv_handle_t *);
-
+        static boost::mutex peerMutex;
         uv_prepare_t prepare_;
         uv_async_t kickLibuv_;
         uv_timer_t prepareAgain_;
@@ -458,10 +469,6 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
     }
 
     void bumpLastHeard() const;
-
-    uint64_t getLastHeard() const {
-        return lastHeard_;
-    }
 
     uint64_t now() const {
         return uv_now(getUvLoop());

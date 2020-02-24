@@ -122,9 +122,8 @@ class CommsFixture {
         BOOST_CHECK(!rc);
 
         for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
-            BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                        internal::Peer::LoopData::PeerState(i))
-                    ->size(), 0u);
+            BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                        internal::Peer::LoopData::PeerState(i)), 0u);
         }
 
         internal::Peer::LoopData::getLoopData(CommsFixture::current_loop)->up();
@@ -196,18 +195,18 @@ class CommsFixture {
         size_t final_peers = 0, transient_peers = 0;
 
         size_t m;
-        if((m=internal::Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerCount(
                     CommsFixture::current_loop,
-                    internal::Peer::LoopData::ONLINE)->size())) {
+                    internal::Peer::LoopData::ONLINE))) {
             final_peers += m;
             dbgLog
                 << " online: "
                 << m
             ;
         }
-        if((m=internal::Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerCount(
                     CommsFixture::current_loop,
-                    internal::Peer::LoopData::LISTENING)->size())) {
+                    internal::Peer::LoopData::LISTENING))) {
             final_peers += m;
             dbgLog
                 << " listening: "
@@ -215,18 +214,18 @@ class CommsFixture {
             ;
         }
 
-        if((m=internal::Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerCount(
                     CommsFixture::current_loop,
-                    internal::Peer::LoopData::TO_RESOLVE)->size())) {
+                    internal::Peer::LoopData::TO_RESOLVE))) {
             transient_peers += m;
             dbgLog
                 << " to_resolve: "
                 << m
             ;
         }
-        if((m=internal::Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerCount(
                     CommsFixture::current_loop,
-                    internal::Peer::LoopData::TO_LISTEN)->size())) {
+                    internal::Peer::LoopData::TO_LISTEN))) {
             transient_peers += m;
             dbgLog
                 << " to_listen: "
@@ -234,27 +233,27 @@ class CommsFixture {
             ;
         }
 
-        if((m=internal::Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerCount(
                     CommsFixture::current_loop,
-                    internal::Peer::LoopData::RETRY_TO_CONNECT)->size())) {
+                    internal::Peer::LoopData::RETRY_TO_CONNECT))) {
             final_peers += m;
             dbgLog
                 << " retry-connecting: "
                 << m
             ;
         }
-        if((m=internal::Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerCount(
                     CommsFixture::current_loop,
-                    internal::Peer::LoopData::RETRY_TO_LISTEN)->size())) {
+                    internal::Peer::LoopData::RETRY_TO_LISTEN))) {
             final_peers += m;
             dbgLog
                 << " retry-listening: "
                 << m
             ;
         }
-        if((m=internal::Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerCount(
                     CommsFixture::current_loop,
-                    internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)->size())) {
+                    internal::Peer::LoopData::ATTEMPTING_TO_CONNECT))) {
             /* this is not a "final" state, from a test's perspective */
             transient_peers += m;
             dbgLog
@@ -262,9 +261,9 @@ class CommsFixture {
                 << m
             ;
         }
-        if((m=internal::Peer::LoopData::getPeerList(
+        if((m=internal::Peer::LoopData::getPeerCount(
                     CommsFixture::current_loop,
-                    internal::Peer::LoopData::PENDING_DELETE)->size())) {
+                    internal::Peer::LoopData::PENDING_DELETE))) {
             /* this is not a "final" state, from a test's perspective */
             transient_peers += m;
             dbgLog
@@ -309,60 +308,7 @@ class CommsFixture {
         return std::make_pair(final_peers, transient_peers);
     }
 
-    static void dump_peer_db_brief() {
-
-        static std::string oldDbgLog;
-        std::stringstream dbgLog;
-        std::string newDbgLog;
-
-#if 1
-        for (size_t i=0; i < internal::Peer::LoopData::TOTAL_STATES; ++i) {
-            internal::Peer::List * pL = internal::Peer::LoopData::getPeerList(
-                    CommsFixture::current_loop,
-                    internal::Peer::LoopData::PeerState(i));
-
-            dbgLog
-                << "\n"
-            ;
-
-            dbgLog
-                << " pL #"
-                << i
-                << " @"
-                << pL
-            ;
-
-            dbgLog
-                << "["
-                << static_cast<void*>(&*pL->begin())
-                << "->"
-                << static_cast<void*>(&*pL->end())
-                << "]{"
-                << (
-                        static_cast<char*>(static_cast<void*>(&*pL->end()))
-                    -
-                        static_cast<char*>(static_cast<void*>(&*pL->begin()))
-                   )
-                << "}"
-            ;
-        }
-#endif
-
-        newDbgLog = dbgLog.str();
-
-        if (oldDbgLog != newDbgLog) {
-            oldDbgLog = newDbgLog;
-
-            VLOG(6)
-                << newDbgLog
-            ;
-        }
-
-    }
-
     static void check_peer_db_cb(uv_prepare_t * handle) {
-
-        dump_peer_db_brief();
 
         /* at LEAST # required final peers must be in final state */
         if (
@@ -488,34 +434,26 @@ void pc_successful_connect(void) {
     LOG(DEBUG);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 0);
 
     /* non-empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 2);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 1);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 2);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 1);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 
 }
 
@@ -705,35 +643,26 @@ static void pc_non_existent(void) {
     LOG(DEBUG);
 
     /* non-empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 1);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
-
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_host, CommsFixture ) {
@@ -812,32 +741,24 @@ void pc_no_peers(void) {
     LOG(DEBUG);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 
 }
 
@@ -903,34 +824,26 @@ void pc_listening_peer(void) {
     LOG(DEBUG);
 
     /* one listener */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 1);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 
 }
 
@@ -1172,35 +1085,26 @@ void pc_retrying_client(void) {
     LOG(DEBUG);
 
     /* one listener */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 1);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
-
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_before_connect, CommsFixture ) {
@@ -1245,34 +1149,26 @@ void pc_retrying_peers(void) {
     LOG(DEBUG);
 
     /* one listener */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 1);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 1);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 1);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 
 }
 
@@ -1480,34 +1376,26 @@ void pc_no_server_and_client_gives_up(void) {
     LOG(DEBUG);
 
     /* no listener */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 0);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 
 }
 
@@ -1597,35 +1485,26 @@ static void pc_non_existent_slow_reattempt(void) {
     LOG(DEBUG);
 
     /* non-empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 1);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 1);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 0);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
-
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 }
 
 BOOST_FIXTURE_TEST_CASE( SLOW_test_non_routable_host, CommsFixture ) {
@@ -2358,35 +2237,26 @@ void pc_successful_connect200(void) {
     LOG(DEBUG);
 
     /* empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_CONNECT)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::RETRY_TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT)
-            ->size(), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_CONNECT), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::RETRY_TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ATTEMPTING_TO_CONNECT), 0);
 
     /* non-empty */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::ONLINE)
-            ->size(), 400);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::LISTENING)
-            ->size(), 200);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::ONLINE), 400);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::LISTENING), 200);
 
     /* no-transient guys */
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_RESOLVE)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::TO_LISTEN)
-            ->size(), 0);
-    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerList(CommsFixture::current_loop,
-                internal::Peer::LoopData::PENDING_DELETE)
-            ->size(), 0);
-
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_RESOLVE), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::TO_LISTEN), 0);
+    BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
+                internal::Peer::LoopData::PENDING_DELETE), 0);
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_several_SSL_peers, CommsFixture ) {

@@ -98,6 +98,8 @@ bool Peer::down() {
     return true;
 }
 
+boost::mutex Peer::LoopData::peerMutex{};
+
 void Peer::insert(Peer::LoopData::PeerState peerState) {
 
     VLOG(3)
@@ -106,8 +108,7 @@ void Peer::insert(Peer::LoopData::PeerState peerState) {
         << peerState
     ;
 
-    Peer::LoopData::getPeerList(getUvLoop(), peerState)->push_back(*this);
-
+    Peer::LoopData::addPeer(getUvLoop(), peerState, this);
 }
 
 void Peer::unlink() {
