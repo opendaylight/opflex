@@ -25,6 +25,7 @@ AM_CPPFLAGS += -I$(top_builddir)
 AM_CPPFLAGS += -I$(srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/logging/include
+AM_CPPFLAGS += -I$(top_srcdir)/util/include
 AM_CPPFLAGS += $(OPENSSL_CFLAGS) -DYAJR_HAS_OPENSSL
 
 if ENABLE_TSAN
@@ -178,6 +179,7 @@ endif
 comms_test_LDADD  =
 comms_test_LDADD += libcomms.la
 comms_test_LDADD += ../logging/liblogging.la
+comms_test_LDADD += ../util/libutil.la
 comms_test_LDADD += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 EXTRA_DIST=test/server.pem test/ca.pem
