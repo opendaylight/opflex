@@ -179,6 +179,9 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_STATS_MODE("opflex.statistics.mode");
     static const std::string OPFLEX_STATS_INTERFACE_SETTING("opflex.statistics.interface.enabled");
     static const std::string OPFLEX_STATS_INTERFACE_INTERVAL("opflex.statistics.interface.interval");
+    static const std::string OPFLEX_STATS_INTERFACE_REPORTING_SETTING("opflex.statistics.interface.reporting");
+    static const std::string OPFLEX_STATS_REPORTING_SETTING("opflex.statistics.reporting.enabled");
+    static const std::string OPFLEX_STATS_REPORTING_INTERVAL("opflex.statistics.reporting.interval");
     static const std::string OPFLEX_STATS_CONTRACT_SETTING("opflex.statistics.contract.enabled");
     static const std::string OPFLEX_STATS_CONTRACT_INTERVAL("opflex.statistics.contract.interval");
     static const std::string OPFLEX_STATS_SECGRP_SETTING("opflex.statistics.security-group.enabled");
@@ -188,6 +191,9 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OVSDB_PORT("ovsdb.port");
     static const std::string OVSDB_BRIDGE("ovsdb.bridge");
     static const std::string DISABLED_FEATURES("feature.disabled");
+    static const bool DEFAULT_STATS_REPORTING_STATUS = true;
+    static const int DEFAULT_STATS_REPORTING_INTERVAL = 30000; //ms
+    static const bool DEFAULT_INTERFACE_STATS_REPORTING_STATUS = true;
 
     // set feature flags to true
     clearFeatureFlags();
@@ -412,6 +418,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (statMode == StatMode::SIM) {
         LOG(INFO) << "Simulation of stats enabled";
         Agent::StatProps statProps;
+
         statProps.interval = 30;
         setSimStatProperties(OPFLEX_STATS_INTERFACE_SETTING, OPFLEX_STATS_INTERFACE_INTERVAL,
                              properties, statProps);
@@ -432,6 +439,35 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         LOG(INFO) << "security group interval set to " << securityGroupInterval << " millisecs";
         LOG(INFO) << "interface interval set to " << interfaceInterval << " millisecs";
     }
+
+    interfaceReportingStatus = DEFAULT_INTERFACE_STATS_REPORTING_STATUS;
+    boost::optional<bool> interface_reporting_enabled = properties.get_optional<bool>(OPFLEX_STATS_INTERFACE_REPORTING_SETTING);
+    if (interface_reporting_enabled) {
+        interfaceReportingStatus = interface_reporting_enabled.get();
+        if (interfaceReportingStatus) {
+            LOG(INFO) << "interface stats reporting is enabled";
+        }else{
+            LOG(INFO) << "interface stats reporting is disabled";
+        }
+    }
+
+    statsReportingStatus = DEFAULT_STATS_REPORTING_STATUS;
+    statsRportingInterval = DEFAULT_STATS_REPORTING_INTERVAL;
+    boost::optional<bool> reporting_enabled = properties.get_optional<bool>(OPFLEX_STATS_REPORTING_SETTING);
+    if (reporting_enabled) {
+        statsReportingStatus = reporting_enabled.get();
+        if (statsReportingStatus == true) {
+            boost::optional<long> interval =
+            properties.get_optional<long>(OPFLEX_STATS_REPORTING_INTERVAL);
+            if (interval) {
+                statsRportingInterval = interval.get();
+            }
+            LOG(INFO) << "stats reporting interval set to " << statsRportingInterval << " millisecs";
+        }else{
+            LOG(INFO) << "stats reporting is disabled";
+        }
+    }
+
    
     boost::optional<boost::uint_t<64>::fast> prr_timer_present = 
         properties.get_optional<boost::uint_t<64>::fast>(OPFLEX_PRR_INTERVAL);
@@ -530,6 +566,8 @@ void Agent::applyProperties() {
     }
      
     framework.setPrrTimerDuration(prr_timer);
+    framework.setStatsReportingInterval(statsRportingInterval);
+    framework.setStatsReportingStatus(statsReportingStatus);
 }
 
 void Agent::start() {
@@ -644,6 +682,10 @@ void Agent::start() {
     framework.overrideObservableReporting(modelgbp::gbpe::EpToSvcCounter::CLASS_ID, false);
     framework.overrideObservableReporting(modelgbp::gbpe::SvcToEpCounter::CLASS_ID, false);
     framework.overrideObservableReporting(modelgbp::gbpe::TableDropCounter::CLASS_ID, false);
+
+    if(!interfaceReportingStatus){
+       framework.overrideObservableReporting(modelgbp::gbpe::EpCounter::CLASS_ID, false);
+    }
 }
 
 void Agent::stop() {
