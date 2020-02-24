@@ -113,6 +113,14 @@ void OFFramework::setPrrTimerDuration(const uint64_t duration) {
     pimpl->processor.setPrrTimerDuration(duration);
 }
 
+void OFFramework::setStatsReportingInterval(const uint64_t duration) {
+    pimpl->processor.setStatsReportingInterval(duration);
+}
+
+void OFFramework::setStatsReportingStatus(bool status) {
+    pimpl->processor.setStatReportingStatus(status);
+}
+
 void OFFramework::start() {
     LOG(DEBUG) << "Starting OpFlex Framework";
     pimpl->started = true;
