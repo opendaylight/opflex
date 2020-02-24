@@ -18,9 +18,9 @@
 #include <vector>
 #include <unistd.h>
 
+#include <boost/thread/lock_guard.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
-#include <rapidjson/stringbuffer.h>
 
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/modb/MAC.h"
@@ -38,11 +38,9 @@ using namespace opflex::engine::internal;
 using namespace opflex::modb;
 using namespace opflex::modb::mointernal;
 using namespace opflex::logging;
-using namespace rapidjson;
 
 using boost::assign::list_of;
 using mointernal::ObjectInstance;
-using std::out_of_range;
 using std::make_pair;
 using std::vector;
 using opflex::ofcore::OFConstants;
@@ -62,18 +60,33 @@ class TestPeerStatusListener : public PeerStatusListener {
 public:
     TestPeerStatusListener() : latestHealth(PeerStatusListener::DOWN) {}
 
+    PeerStatus getPeerStatus(int peerPort) {
+        boost::lock_guard<boost::mutex> lock(status_mutex);
+        return statusMap[peerPort];
+    }
+
     void peerStatusUpdated(const std::string& peerHostname,
                            int peerPort,
                            PeerStatus peerStatus) {
+        boost::lock_guard<boost::mutex> lock(status_mutex);
         statusMap[peerPort] = peerStatus;
     }
 
+    Health getHealth() {
+        boost::lock_guard<boost::mutex> lock(status_mutex);
+        return latestHealth;
+    }
+
     void healthUpdated(Health health) {
+        boost::lock_guard<boost::mutex> lock(status_mutex);
         latestHealth = health;
     }
 
+
+private:
     OF_UNORDERED_MAP<int, PeerStatus> statusMap;
     Health latestHealth;
+    boost::mutex status_mutex;
 };
 
 class BasePFixture : public BaseFixture {
@@ -283,20 +296,20 @@ using boost::asio::ip::address_v4;
         BOOST_CHECK_EQUAL(processor.getPool().getMacProxy(),
                           address_v4(0x03030303));
     }
-    WAIT_FOR(PeerStatusListener::READY == peerStatus.statusMap[8009], 1000);
-    WAIT_FOR(PeerStatusListener::READY == peerStatus.statusMap[8010], 1000);
-    WAIT_FOR(PeerStatusListener::CLOSING == peerStatus.statusMap[8011], 1000);
-    WAIT_FOR(PeerStatusListener::HEALTHY == peerStatus.latestHealth, 1000);
+    WAIT_FOR(PeerStatusListener::READY == peerStatus.getPeerStatus(8009), 1000);
+    WAIT_FOR(PeerStatusListener::READY == peerStatus.getPeerStatus(8010), 1000);
+    WAIT_FOR(PeerStatusListener::CLOSING == peerStatus.getPeerStatus(8011), 1000);
+    WAIT_FOR(PeerStatusListener::HEALTHY == peerStatus.getHealth(), 1000);
 
     BOOST_CHECK_EQUAL(std::string("location_string"),
                       processor.getPool().getLocation().get());
 
     peer1.stop();
-    WAIT_FOR(peerStatus.latestHealth == PeerStatusListener::DEGRADED,
+    WAIT_FOR(peerStatus.getHealth() == PeerStatusListener::DEGRADED,
              1000);
 
     peer2.stop();
-    WAIT_FOR(peerStatus.latestHealth == PeerStatusListener::DOWN,
+    WAIT_FOR(peerStatus.getHealth() == PeerStatusListener::DOWN,
              1000);
 
     anycastServer.stop();
@@ -566,7 +579,7 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
     rclient->put(4, c4u, oi4);
     rclient->put(6, c6u, oi6);
 
-    merge.push_back(make_pair(4, c4u));
+    merge.emplace_back(4, c4u);
     opflexServer.policyUpdate(replace, merge, del);
     WAIT_FOR("moretesting" == client2->get(4, c4u)->getString(9), 1000);
     BOOST_CHECK_EQUAL("test2", client2->get(6, c6u)->getString(13));
@@ -580,13 +593,13 @@ BOOST_FIXTURE_TEST_CASE( policy_resolve, PolicyFixture ) {
 
     // replace
     merge.clear();
-    replace.push_back(make_pair(4, c4u));
+    replace.emplace_back(4, c4u);
     opflexServer.policyUpdate(replace, merge, del);
     WAIT_FOR(!itemPresent(client2, 6, c6u), 1000);
 
     // delete
     replace.clear();
-    del.push_back(make_pair(4, c4u));
+    del.emplace_back(4, c4u);
     opflexServer.policyUpdate(replace, merge, del);
     WAIT_FOR(!itemPresent(client2, 4, c4u), 1000);
 
@@ -802,7 +815,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve, EndpointResFixture ) {
     rclient->put(10, c10u, oi10);
 
     // replace
-    replace.push_back(make_pair(8, c8u));
+    replace.emplace_back(8, c8u);
     opflexServer.endpointUpdate(replace, del);
     WAIT_FOR("moretesting" == client2->get(8, c8u)->getString(17), 1000);
     WAIT_FOR("moretesting2" == client2->get(10, c10u)->getString(21), 1000);
@@ -816,7 +829,7 @@ BOOST_FIXTURE_TEST_CASE( endpoint_resolve, EndpointResFixture ) {
 
     // delete
     replace.clear();
-    del.push_back(make_pair(8, c8u));
+    del.emplace_back(8, c8u);
     opflexServer.endpointUpdate(replace, del);
     WAIT_FOR(!itemPresent(client2, 8, c8u), 1000);
 

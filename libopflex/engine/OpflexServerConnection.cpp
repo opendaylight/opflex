@@ -21,7 +21,6 @@
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
 #include "opflex/engine/internal/OpflexListener.h"
-#include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "opflex/engine/internal/GbpOpflexServerImpl.h"
 #include "LockGuard.h"
@@ -211,14 +210,14 @@ void OpflexServerConnection::addPendingUpdate(opflex::modb::class_id_t class_id,
     std::lock_guard<std::mutex> lock(uri_update_mutex);
     switch (op) {
     case PolicyUpdateOp::REPLACE:
-        replace.push_back(std::make_pair(class_id, uri));
+        replace.emplace_back(class_id, uri);
         break;
     case PolicyUpdateOp::DELETE:
     case PolicyUpdateOp::DELETE_RECURSIVE:
-        deleted.push_back(std::make_pair(class_id, uri));
+        deleted.emplace_back(class_id, uri);
         break;
     case PolicyUpdateOp::ADD:
-        merge.push_back(std::make_pair(class_id, uri));
+        merge.emplace_back(class_id, uri);
         break;
     default:
         break;
