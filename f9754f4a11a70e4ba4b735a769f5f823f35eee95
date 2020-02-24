@@ -16,6 +16,24 @@
       "revId": "f9754f4a11a70e4ba4b735a769f5f823f35eee95",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c8def3d4_2c0797ca",
+        "filename": "libopflex/version/Version.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 8560
+      },
+      "writtenOn": "2020-02-24T09:36:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "744a6be5_b8ed1794",
+      "revId": "f9754f4a11a70e4ba4b735a769f5f823f35eee95",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }

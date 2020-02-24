@@ -16,6 +16,24 @@
       "revId": "22fa47b387ec49b22e424d65fa2c35db127cceef",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a64f10ed_9a1ba270",
+        "filename": "libopflex/configure.ac",
+        "patchSetId": 7
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 8560
+      },
+      "writtenOn": "2020-02-24T09:36:17Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "aef5bf1c_68da90be",
+      "revId": "22fa47b387ec49b22e424d65fa2c35db127cceef",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
