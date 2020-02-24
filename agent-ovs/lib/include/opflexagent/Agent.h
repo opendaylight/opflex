@@ -252,6 +252,7 @@ public:
      * @param  interval - time in milliseconds
      */
     void setInterfaceInterval(const long interval) { interfaceInterval = interval; }
+
     /**
      * Set valid uplink mac discovered from TunnelEpManager.
      * @param  mac - Mac address in canonical form xx:xx (17 chars)
@@ -401,6 +402,9 @@ private:
     long contractInterval;
     long securityGroupInterval;
     long interfaceInterval;
+    bool interfaceReportingStatus;
+    long statsRportingInterval;
+    bool statsReportingStatus;
 
     SpanManager spanManager;
     NetFlowManager netflowManager;
