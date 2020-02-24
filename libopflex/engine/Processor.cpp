@@ -50,6 +50,7 @@ using util::ThreadManager;
 using namespace internal;
 
 static const uint64_t DEFAULT_PROC_DELAY = 250;
+static const uint64_t DEFAULT_STATS_DELIVERY_INTERVAL = 30000; //ms
 static const uint64_t DEFAULT_RETRY_DELAY = 1000*60*2;
 static const uint64_t FIRST_XID = (uint64_t)1 << 63;
 static const uint32_t MAX_PROCESS = 1024;
@@ -60,9 +61,10 @@ Processor::Processor(ObjectStore* store_, ThreadManager& threadManager_)
       threadManager(threadManager_),
       pool(*this, threadManager_), nextXid(FIRST_XID),
       processingDelay(DEFAULT_PROC_DELAY),
+      statsReportingInterval(DEFAULT_STATS_DELIVERY_INTERVAL),
       retryDelay(DEFAULT_RETRY_DELAY),
-      proc_active(false) {
-    uv_mutex_init(&item_mutex);
+      proc_active(false){
+      uv_mutex_init(&item_mutex);
 }
 
 Processor::~Processor() {
@@ -218,9 +220,39 @@ bool Processor::isParentSyncObject(const item& item) {
     return true;
 }
 
+void Processor::StatsDeliveryHandler::deliverStats(){
+    std::for_each(statsDeliveryMap.begin(),statsDeliveryMap.end(),[this](StatDeliveryMap::value_type& value){
+        value.second->send();
+    });
+    statsDeliveryMap.clear();
+}
+
+void Processor::StatsDeliveryHandler::addForDelivery(StatDeliveryElemPtr statDeliverElemPtr){
+    //It is guarded by item mutex already
+    statsDeliveryMap[statDeliverElemPtr->uri.toString()]=std::move(statDeliverElemPtr);
+}
+
+
+void Processor::setStatsReportingInterval(uint64_t delay) {
+    statsReportingInterval = delay;
+    LOG(DEBUG) << "Setting reporting time interval to " <<statsReportingInterval<<" ms";
+}
+
+void Processor::StatDeliveryElem::send(){
+    obj_state_by_uri& uri_index = processor.obj_state.get<uri_tag>();
+    obj_state_by_uri::iterator uit = uri_index.find(uri);
+    if (uit != uri_index.end()) {
+        processor.sendToRole(*uit,newexp,req,role);
+        LOG(DEBUG) << "Sending stats for " <<uri;
+    }else{
+        LOG(DEBUG) <<"Stats removed, not sending for " <<uri;
+    }
+}
+
 void Processor::sendToRole(const item& i, uint64_t& newexp,
                            OpflexMessage* req,
                            ofcore::OFConstants::OpflexRole role) {
+
     uint64_t xid = req->getReqXid();
     size_t pending = pool.sendToRole(req, role);
     i.details->pending_reqs = pending;
@@ -331,7 +363,7 @@ bool Processor::declareObj(ClassInfo::class_type_t type, const item& i,
             vector<reference_t> refs;
             refs.emplace_back(i.details->class_id, i.uri);
             StateReportReq* req = new StateReportReq(this, nextXid++, refs);
-            sendToRole(i, newexp, req, OFConstants::OBSERVER);
+            statsDeliveryHandler.addForDelivery(StatsDeliveryHandler::StatDeliveryElemPtr(new StatDeliveryElem(*this,i.uri,newexp, req, OFConstants::OBSERVER)));
         }
         return true;
     default:
@@ -562,10 +594,20 @@ void Processor::timer_callback(uv_timer_t* handle) {
     processor->doProcess();
 }
 
+void Processor::timer_flush_reporting_stats_callback(uv_timer_t* handle) {
+    Processor* processor = (Processor*)handle->data;
+    util::LockGuard guard(&processor->item_mutex);
+    processor->statsDeliveryHandler.deliverStats();
+}
+
 void Processor::cleanup_async_cb(uv_async_t* handle) {
     Processor* processor = (Processor*)handle->data;
     uv_timer_stop(&processor->proc_timer);
     uv_close((uv_handle_t*)&processor->proc_timer, NULL);
+    if(processor->statsStatus){
+        uv_timer_stop(&processor->stats_report_timer);
+        uv_close((uv_handle_t*)&processor->stats_report_timer, NULL);
+    }
     uv_close((uv_handle_t*)&processor->proc_async, NULL);
     uv_close((uv_handle_t*)&processor->connect_async, NULL);
     uv_close((uv_handle_t*)handle, NULL);
@@ -587,6 +629,7 @@ void Processor::start(ofcore::OFConstants::OpflexElementMode agent_mode) {
 
     proc_loop = threadManager.initTask("processor");
     uv_timer_init(proc_loop, &proc_timer);
+    uv_timer_init(proc_loop, &stats_report_timer);
     cleanup_async.data = this;
     uv_async_init(proc_loop, &cleanup_async, cleanup_async_cb);
     proc_async.data = this;
@@ -596,6 +639,12 @@ void Processor::start(ofcore::OFConstants::OpflexElementMode agent_mode) {
     proc_timer.data = this;
     uv_timer_start(&proc_timer, &timer_callback,
                    processingDelay, processingDelay);
+    stats_report_timer.data = this;
+    if(statsStatus){
+        uv_timer_start(&stats_report_timer, &timer_flush_reporting_stats_callback,
+            statsReportingInterval, statsReportingInterval);
+        LOG(DEBUG) << "Starting stats reporting timer with reporting interval as "<< statsReportingInterval<< " ms";
+    }
     threadManager.startTask("processor");
 
     pool.start();

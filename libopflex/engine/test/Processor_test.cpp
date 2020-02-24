@@ -713,8 +713,8 @@ BOOST_FIXTURE_TEST_CASE( state_report, StateFixture ) {
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
     setup();
 
-    // check add
-    WAIT_FOR(itemPresent(rclient, 3, u3), 1000);
+    // check add, default reporting time interval is 30sec, waiting for 33 seconds
+    WAIT_FOR(itemPresent(rclient, 3, u3), 33000);
     BOOST_CHECK_EQUAL(12, rclient->get(3, u3)->getInt64(6));
 
     // check update
@@ -724,7 +724,8 @@ BOOST_FIXTURE_TEST_CASE( state_report, StateFixture ) {
     client2->deliverNotifications(notifs);
     notifs.clear();
 
-    WAIT_FOR(rclient->get(3, u3)->isSet(16, PropertyInfo::STRING), 1000);
+    //default reporting time interval is 30sec, waiting for 33 seconds
+    WAIT_FOR(rclient->get(3, u3)->isSet(16, PropertyInfo::STRING), 33000);
     BOOST_REQUIRE(rclient->get(3, u3)->isSet(16, PropertyInfo::STRING));
     BOOST_CHECK_EQUAL("update", rclient->get(3, u3)->getString(16));
 }
@@ -736,8 +737,8 @@ BOOST_FIXTURE_TEST_CASE( state_report_reconnect, StateFixture ) {
     startClient();
     WAIT_FOR(connReady(processor.getPool(), LOCALHOST, 8009), 1000);
 
-    // check add
-    WAIT_FOR(itemPresent(rclient, 3, u3), 1000);
+    // check add, default reporting time interval is 30sec, waiting for 33 seconds
+    WAIT_FOR(itemPresent(rclient, 3, u3), 33000);
     BOOST_CHECK_EQUAL(12, rclient->get(3, u3)->getInt64(6));
 }
 
