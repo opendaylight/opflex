@@ -7,14 +7,14 @@ addons:
   apt:
     packages:
       - libuv1-dev
-      - liboost-all-dev
+      - libboost-all-dev
       - libssl-dev
       - rapidjson-dev
       - autoconf
       - openjdk-8-jdk-headless
       - maven
       - doxygen
-      - testlive-fond-utils
+      - texlive-font-utils
       - python-six
 
 env:
