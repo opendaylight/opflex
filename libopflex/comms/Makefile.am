@@ -20,6 +20,7 @@ noinst_LTLIBRARIES += libcomms.la
 
 AM_CPPFLAGS  =
 AM_CPPFLAGS += -Wall
+AM_CPPFLAGS += -Werror
 AM_CPPFLAGS += $(BOOST_CPPFLAGS)
 AM_CPPFLAGS += -I$(top_builddir)
 AM_CPPFLAGS += -I$(srcdir)/include
