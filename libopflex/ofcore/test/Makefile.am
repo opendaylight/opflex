@@ -12,6 +12,7 @@
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) -DBOOST_TEST_DYN_LINK \
 	-Wall \
+	-Werror \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/util/include \
 	-I$(top_srcdir)/comms/include \

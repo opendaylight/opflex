@@ -10,7 +10,7 @@
 #
 # Process this file with automake to produce a Makefile.in
 
-AM_CPPFLAGS = $(BOOST_CPPFLAGS) -Wall \
+AM_CPPFLAGS = $(BOOST_CPPFLAGS) -Wall -Werror \
         -I$(srcdir)/include -I$(top_srcdir)/include
 
 if ENABLE_TSAN

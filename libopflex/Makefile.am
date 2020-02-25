@@ -12,7 +12,7 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-AM_CPPFLAGS = -Wall
+AM_CPPFLAGS = -Wall -Werror
 
 if ENABLE_TSAN
   AM_CPPFLAGS += -fsanitize=thread
