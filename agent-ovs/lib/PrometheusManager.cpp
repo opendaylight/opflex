@@ -1089,9 +1089,6 @@ map<string,string> PrometheusManager::createLabelMapFromEpAttr (
                            << " sanitized name:" << label;
                 label_map[label] = allowed_itr->second;
             }
-        } else {
-            LOG(DEBUG) << "allowed: " << allowed
-                       << " not found in ep: " << ep_name;
         }
     }
 
