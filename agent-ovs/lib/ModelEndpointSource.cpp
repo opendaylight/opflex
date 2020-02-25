@@ -14,6 +14,8 @@
 #endif
 
 #include <opflexagent/ModelEndpointSource.h>
+#include <opflexagent/Agent.h>
+#include <opflexagent/EndpointManager.h>
 #include <opflexagent/logging.h>
 
 #include <modelgbp/inv/LocalInventoryEp.hpp>
@@ -170,7 +172,8 @@ void ModelEndpointSource::objectUpdated (opflex::modb::class_id_t class_id,
                 newep.setAttributeHash(
                     PrometheusManager::calcHashEpAttributes(
                                             acc_intf.get(),
-                                            newep.getAttributes()));
+                                            newep.getAttributes(),
+                                            manager->getAgent().getPrometheusEpAttributes()));
             }
 #endif
         }
@@ -205,7 +208,7 @@ void ModelEndpointSource::objectUpdated (opflex::modb::class_id_t class_id,
                     newd.addDnsServer(dns->getName().get());
                 }
 
-                vector<shared_ptr<StaticRoute>> staticRoutes;
+                vector<shared_ptr<modelgbp::inv::StaticRoute>> staticRoutes;
                 dhcpv4.get()->resolveInvStaticRoute(staticRoutes);
                 for (auto& staticRoute : staticRoutes) {
                     if (!staticRoute->isDestSet() ||

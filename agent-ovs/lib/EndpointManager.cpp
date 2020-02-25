@@ -174,6 +174,11 @@ void EndpointManager::notifyLocalExternalDomainListeners(
     }
 }
 
+Agent& EndpointManager::getAgent (void)
+{
+    return agent;
+}
+
 shared_ptr<const Endpoint> EndpointManager::getEndpoint(const string& uuid) {
     unique_lock<mutex> guard(ep_mutex);
 

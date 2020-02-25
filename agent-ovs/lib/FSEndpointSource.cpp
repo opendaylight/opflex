@@ -25,6 +25,8 @@
 #include <opflex/modb/URIBuilder.h>
 
 #include <opflexagent/FSEndpointSource.h>
+#include <opflexagent/Agent.h>
+#include <opflexagent/EndpointManager.h>
 #include <opflexagent/logging.h>
 #ifdef HAVE_PROMETHEUS_SUPPORT
 #include <opflexagent/PrometheusManager.h>
@@ -252,7 +254,8 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             newep.setAttributeHash(
                 PrometheusManager::calcHashEpAttributes(
                                             acc_intf.get(),
-                                            newep.getAttributes()));
+                                            newep.getAttributes(),
+                                            manager->getAgent().getPrometheusEpAttributes()));
         }
 #endif
 

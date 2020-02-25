@@ -34,6 +34,7 @@ using std::to_string;
 using std::lock_guard;
 using std::regex;
 using std::regex_match;
+using std::regex_replace;
 using std::make_shared;
 using std::make_pair;
 using namespace prometheus::detail;
@@ -171,16 +172,6 @@ static string contract_family_help[] =
 {
   "contract classifier bytes",
   "contract classifier packets",
-};
-
-static string metric_annotate_skip[] =
-{
-  "vm-name",
-  "namespace",
-  "interface-name",
-  "pod-template-hash",
-  "controller-revision-hash",
-  "pod-template-generation"
 };
 
 static string table_drop_family_names[] =
@@ -600,6 +591,11 @@ void PrometheusManager::start(bool exposeLocalHostOnly)
 
     // ask the exposer to scrape the registry on incoming scrapes
     exposer_ptr->RegisterCollectable(registry_ptr);
+
+    string allowed;
+    for (const auto& allow : agent.getPrometheusEpAttributes())
+        allowed += allow+",";
+    LOG(DEBUG) << "Agent config's allowed ep attributes: " << allowed;
 }
 
 // Stop of PrometheusManager instance
@@ -652,26 +648,41 @@ void PrometheusManager::updateStaticGaugeEpTotal (bool add)
 // Check if a given metric name is Prometheus compatible
 bool PrometheusManager::checkMetricName (const string& metric_name)
 {
-    // Prometheus doesnt like anything other than [a-zA-Z_:][a-zA-Z0-9_:]*
+    // Prometheus doesnt like anything other than:
+    // [a-zA-Z_:][a-zA-Z0-9_:]* for metric family name - these are static as on date
+    // [a-zA-Z_][a-zA-Z0-9_]* for label name
     // https://prometheus.io/docs/concepts/data_model/
-    static const regex metric_name_regex("[a-zA-Z_:][a-zA-Z0-9_:]*");
+    static const regex metric_name_regex("[a-zA-Z_][a-zA-Z0-9_]*");
     return regex_match(metric_name, metric_name_regex);
 }
 
 // sanitize metric family name for prometheus to accept
-string PrometheusManager::sanitizeMetricName (string metric_name)
+string PrometheusManager::sanitizeMetricName (const string& metric_name)
 {
-    char replace_from = '-', replace_to = '_';
-    size_t found = metric_name.find_first_of(replace_from);
-
-    // Prometheus doesnt like anything other than [a-zA-Z_:][a-zA-Z0-9_:]*
+    // Prometheus doesnt like anything other than:
+    // [a-zA-Z_:][a-zA-Z0-9_:]* for metric family name - these are static as on date
+    // [a-zA-Z_][a-zA-Z0-9_]* for label name
     // https://prometheus.io/docs/concepts/data_model/
-    while (found != string::npos) {
-        metric_name[found] = replace_to;
-        found = metric_name.find_first_of(replace_from, found+1);
-    }
 
-    return metric_name;
+    // Note: the below negation regex doesnt work correctly if there are numbers
+    // first char. This is mainly because multiple []'s and '*' doesnt work with
+    // regex_replace
+    //static const regex metric_name_regex("[^a-zA-Z_][^a-zA-Z0-9_]*");
+    static const regex regex1("[^a-zA-Z_]");
+    static const regex regex2("[^0-9a-zA-Z_]");
+    auto label1 = regex_replace(metric_name.substr(0,1), regex1, "_");
+    string label2;
+    if (metric_name.size() > 1)
+        label2 = regex_replace(metric_name.substr(1), regex2, "_");
+    auto label = label1+label2;
+
+    // Label names beginning with __ are reserved for internal use in
+    // prometheus.
+    auto reserved_for_internal_purposes = label.compare(0, 2, "__") == 0;
+    if (reserved_for_internal_purposes)
+        label[0] = 'a';
+
+    return label;
 }
 
 // Create OFPeerStats gauge given metric type, peer (IP,port) tuple
@@ -987,7 +998,9 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
         }
     }
 
-    auto label_map = createLabelMapFromEpAttr(ep_name, attr_map);
+    auto label_map = createLabelMapFromEpAttr(ep_name,
+                                              attr_map,
+                                              agent.getPrometheusEpAttributes());
     auto hash = hash_labels(label_map);
     LOG(DEBUG) << "creating ep dyn gauge family: " << ep_name
                << " label hash: " << hash;
@@ -1030,63 +1043,55 @@ const map<string,string> PrometheusManager::createLabelMapFromPodSvcAttr (
     return label_map;
 }
 
-// Max allowed annotations per metric
-int PrometheusManager::max_metric_attr_count = 5;
-
 // Create a label map that can be used for annotation, given the ep attr map
 map<string,string> PrometheusManager::createLabelMapFromEpAttr (
                                                            const string& ep_name,
-                                 const unordered_map<string, string>&    attr_map)
+                                 const unordered_map<string, string>&   attr_map,
+                                 const unordered_set<string>&        allowed_set)
 {
     map<string,string>   label_map;
-    label_map["if_name"] = ep_name;
-    int attr_count = 1; // Accounting for if_name
-
-    auto ns_itr = attr_map.find("namespace");
-    if (ns_itr != attr_map.end()) {
-        label_map["namespace"] = ns_itr->second;
-        attr_count++; // accounting for ns
-    }
 
     auto pod_itr = attr_map.find("vm-name");
-    if (pod_itr != attr_map.end()) {
-        label_map["pod"] = pod_itr->second;
-        attr_count++; // accounting for pod
+    if (pod_itr != attr_map.end())
+        label_map["name"] = pod_itr->second;
+    else {
+        // Note: if vm-name is not part of ep attributes, then just
+        // set the ep_name as "name". This is to avoid label clash between
+        // ep metrics that dont have vm-name.
+        label_map["name"] = ep_name;
     }
 
-    for (const auto &p : attr_map) {
-        if (attr_count == max_metric_attr_count) {
-            LOG(DEBUG) << "Exceeding max attr count " << attr_count;
-            break;
-        }
+    auto ns_itr = attr_map.find("namespace");
+    if (ns_itr != attr_map.end())
+        label_map["namespace"] = ns_itr->second;
 
-        // empty values can be discarded
-        if (p.second.empty())
+    for (const auto& allowed : allowed_set) {
+
+        if (!allowed.compare("vm-name")
+                || !allowed.compare("namespace"))
             continue;
 
-        bool metric_skip = false;
-        for (auto &skip_str : metric_annotate_skip) {
-            if (!p.first.compare(skip_str)) {
-                metric_skip = true;
-                break;
+        auto allowed_itr = attr_map.find(allowed);
+        if (allowed_itr != attr_map.end()) {
+            // empty values can be discarded
+            if (allowed_itr->second.empty())
+                continue;
+
+            // Label values can be anything in prometheus, but
+            // the key has to cater to specific regex
+            if (checkMetricName(allowed_itr->first)) {
+                label_map[allowed_itr->first] = allowed_itr->second;
+            } else {
+                const auto& label = sanitizeMetricName(allowed_itr->first);
+                LOG(DEBUG) << "ep attr not compatible with prometheus"
+                           << " K:" << allowed_itr->first
+                           << " V:" << allowed_itr->second
+                           << " sanitized name:" << label;
+                label_map[label] = allowed_itr->second;
             }
-        }
-        if (metric_skip)
-            continue;
-
-        // Label values can be anything in prometheus
-        if (checkMetricName(p.first)) {
-            label_map[p.first] = p.second;
-            /* Only prometheus compatible metrics are accounted against
-             * attr_count. If user appends valid attributes to ep file that
-             * exceeds the max_metric_attr_count, then only the first 5
-             * attributes from the attr map will be used for metric
-             * annotation */
-            attr_count++;
         } else {
-            LOG(ERROR) << "ep attr not compatible with prometheus"
-                       << " K:" << p.first
-                       << " V:" << p.second;
+            LOG(DEBUG) << "allowed: " << allowed
+                       << " not found in ep: " << ep_name;
         }
     }
 
@@ -1605,9 +1610,12 @@ void PrometheusManager::removeStaticGaugeFamilies()
 
 // Return a rolling hash of attribute map for the ep
 size_t PrometheusManager::calcHashEpAttributes (const string& ep_name,
-                      const unordered_map<string, string>&    attr_map)
+                      const unordered_map<string, string>&   attr_map,
+                      const unordered_set<string>&        allowed_set)
 {
-    auto label_map = createLabelMapFromEpAttr(ep_name, attr_map);
+    auto label_map = createLabelMapFromEpAttr(ep_name,
+                                              attr_map,
+                                              allowed_set);
     auto hash = hash_labels(label_map);
     LOG(DEBUG) << ep_name << ":calculated label hash = " << hash;
     return hash;

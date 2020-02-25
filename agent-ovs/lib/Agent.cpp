@@ -144,6 +144,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string LOG_LEVEL("log.level");
 #ifdef HAVE_PROMETHEUS_SUPPORT
     static const std::string PROMETHEUS_LOCALHOST_ONLY("prometheus.localhost-only");
+    static const std::string PROMETHEUS_EP_ATTRIBUTES("prometheus.ep-attributes");
 #endif
     static const std::string ENDPOINT_SOURCE_FSPATH("endpoint-sources.filesystem");
     static const std::string ENDPOINT_SOURCE_MODEL_LOCAL("endpoint-sources.model-local");
@@ -249,6 +250,13 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (prometheusLocalHostOnly) {
         if (prometheusLocalHostOnly.get() == true)
             prometheusExposeLocalHostOnly = true;
+    }
+
+    optional<const ptree&> epAttributes =
+        properties.get_child_optional(PROMETHEUS_EP_ATTRIBUTES);
+    if (epAttributes) {
+        for (const ptree::value_type &v : epAttributes.get())
+            prometheusEpAttributes.insert(v.second.data());
     }
 #endif
 

@@ -207,6 +207,13 @@ public:
                                     /* out */
                                     std::unordered_set<std::string>& eps);
 
+    /**
+     * Get opflex agent instance
+     *
+     * @return instance of opflex agent
+     */
+    Agent& getAgent (void);
+
    /**
     * Callback to receive updates on changes to Platform/Config
     *

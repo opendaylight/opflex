@@ -173,7 +173,15 @@
     //    By default prometheus exposer will bind with all IPs. Set
     //    localhost-only to true if prometheus export should happen only
     //    on 127.0.0.1.
-    //    "localhost-only": "true"
+    //    "localhost-only": "true",
+    //    EP annotation for metrics:
+    //    vm-name and namespace will be displayed as "name" and "namespace"
+    //    by default if they are available. In case, vm-name isnt available,
+    //    then "name" will be set as the interface-name of the EP.
+    //    Any other user defined metrics can be mentioned in the below list.
+    //    if these are present in EP file's attributes, then those will be
+    //    annotated as labels for EP metrics.
+    //    "ep-attributes": []
     },
 
     // Renderers enforce policy obtained via OpFlex.

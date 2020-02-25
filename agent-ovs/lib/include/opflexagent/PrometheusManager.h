@@ -29,6 +29,7 @@ namespace opflexagent {
 using std::string;
 using std::map;
 using std::unordered_map;
+using std::unordered_set;
 using std::unique_ptr;
 using std::shared_ptr;
 using std::mutex;
@@ -75,13 +76,16 @@ public:
     /**
      * Return a rolling hash of attribute map for the ep
      *
-     * @param ep_name     Name of the endpoint. Usually the
+     * @param ep_name       Name of the endpoint. Usually the
      * access interface name
-     * @param attr_map    The map of endpoint attributes
+     * @param attr_map      The map of endpoint attributes
+     * @param allowed_set   The set of allowed ep attributes from
+     * agent configuration file
      * @return            the hash value of endpoint attributes
      */
     static size_t calcHashEpAttributes(const string& ep_name,
-            const unordered_map<string, string>&    attr_map);
+            const unordered_map<string, string>&    attr_map,
+            const unordered_set<string>&        allowed_set);
     /**
      * Create EpCounter metric family if its not present.
      * Update EpCounter metric family if its already present
@@ -268,7 +272,7 @@ private:
      *
      * @return: the sanitized name that can be given to prometheus
      */
-    static string sanitizeMetricName(string metric_name);
+    static string sanitizeMetricName(const string& metric_name);
     // Api to check if the input metric_name is prometheus compatible.
     static bool checkMetricName(const string& metric_name);
 
@@ -350,8 +354,10 @@ private:
 
     //Utility apis
     // Create a label map that can be used for annotation, given the ep attr map
+    // and agent config's allowed ep-attribute-set
     static map<string,string> createLabelMapFromEpAttr(const string& ep_name_,
-                           const unordered_map<string, string>&    attr_map);
+                           const unordered_map<string, string>&      attr_map,
+                           const unordered_set<string>&          allowed_set);
     // Maximum number of labels that can be used for annotating a metric
     static int max_metric_attr_count;
     /* End of EpCounter related apis and state */

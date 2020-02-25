@@ -304,6 +304,17 @@ public:
      * clear feature flags. set them to true.
      */
     void clearFeatureFlags();
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    /**
+     * get allowed ep attributes specified in agent config file
+     * @return true if feature is enabled, false otherwise.
+     */
+    std::unordered_set<std::string> getPrometheusEpAttributes (void)
+    {
+        return prometheusEpAttributes;
+    }
+#endif
 private:
     boost::asio::io_service agent_io;
     std::unique_ptr<boost::asio::io_service::work> io_work;
@@ -404,6 +415,7 @@ private:
 #ifdef HAVE_PROMETHEUS_SUPPORT
     // Prometheus related parameters
     bool prometheusExposeLocalHostOnly;
+    std::unordered_set<std::string> prometheusEpAttributes;
 #endif
 };
 
