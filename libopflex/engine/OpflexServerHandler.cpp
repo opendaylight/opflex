@@ -320,9 +320,12 @@ void OpflexServerHandler::handlePolicyResolveReq(const rapidjson::Value& id,
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::reference_t mo(ci.getId(), puri);
 
-            if (resolutions.find(mo) == resolutions.end())
-                found = false;
-            resolutions.insert(mo);
+            {
+                boost::lock_guard<boost::mutex> guard(resolutionMutex);
+                if (resolutions.find(mo) == resolutions.end())
+                    found = false;
+                resolutions.insert(mo);
+            }
             mos.push_back(mo);
         } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
@@ -384,7 +387,10 @@ void OpflexServerHandler::handlePolicyUnresolveReq(const rapidjson::Value& id,
             const modb::ClassInfo& ci =
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
-            resolutions.erase(std::make_pair(ci.getId(), puri));
+            {
+                boost::lock_guard<boost::mutex> guard(resolutionMutex);
+                resolutions.erase(std::make_pair(ci.getId(), puri));
+            }
             conn->clearUri(puri);
         } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
@@ -560,7 +566,10 @@ void OpflexServerHandler::handleEPResolveReq(const rapidjson::Value& id,
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
             modb::reference_t mo(ci.getId(), puri);
-            resolutions.insert(mo);
+            {
+                boost::lock_guard<boost::mutex> guard(resolutionMutex);
+                resolutions.insert(mo);
+            }
             mos.push_back(mo);
         } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
@@ -615,7 +624,10 @@ void OpflexServerHandler::handleEPUnresolveReq(const rapidjson::Value& id,
             const modb::ClassInfo& ci =
                 server->getStore().getClassInfo(subjectv.GetString());
             modb::URI puri(puriv.GetString());
-            resolutions.erase(std::make_pair(ci.getId(), puri));
+            {
+                boost::lock_guard<boost::mutex> guard(resolutionMutex);
+                resolutions.erase(std::make_pair(ci.getId(), puri));
+            }
         } catch (const std::out_of_range& e) {
             sendErrorRes(id, "ERROR",
                          std::string("Unknown subject: ") +
@@ -677,6 +689,7 @@ void OpflexServerHandler::handleStateReportReq(const rapidjson::Value& id,
 
 bool OpflexServerHandler::hasResolution(modb::class_id_t class_id,
                                         const modb::URI& uri) {
+    boost::lock_guard<boost::mutex> guard(resolutionMutex);
     return resolutions.find(std::make_pair(class_id, uri)) != resolutions.end();
 }
 

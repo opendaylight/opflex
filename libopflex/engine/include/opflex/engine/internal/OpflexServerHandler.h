@@ -14,6 +14,8 @@
 #include <string>
 
 #include <boost/atomic.hpp>
+#include <boost/thread/lock_guard.hpp>
+#include <boost/thread/mutex.hpp>
 #include <rapidjson/document.h>
 
 #include "opflex/engine/internal/OpflexHandler.h"
@@ -55,7 +57,10 @@ public:
     /**
      * Check whether there are any active resolutions
      */
-    bool hasResolutions() { return resolutions.size() > 0; }
+    bool hasResolutions() {
+        boost::lock_guard<boost::mutex> guard(resolutionMutex);
+        return !resolutions.empty();
+    }
 
     /**
      * Enable or disable flaky mode.  When enabled, drop the first
@@ -93,6 +98,7 @@ public:
 
 protected:
     GbpOpflexServerImpl* server;
+    boost::mutex resolutionMutex;
     OF_UNORDERED_SET<modb::reference_t> resolutions;
     OF_UNORDERED_SET<modb::reference_t> declarations;
     boost::atomic<bool> flakyMode;
