@@ -58,14 +58,6 @@ core_test_SOURCES = \
 
 core_test_CXXFLAGS = $(UV_CFLAGS)
 
-if ENABLE_TSAN
-  core_test_CXXFLAGS += -fsanitize=thread
-endif
-
-if ENABLE_ASAN
-  core_test_CXXFLAGS += -fsanitize=address
-endif
-
 core_test_LDADD = ../libcore.la \
 	../../engine/libengine.la \
 	../../modb/libmodb.la \

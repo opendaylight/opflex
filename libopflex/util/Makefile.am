@@ -25,14 +25,6 @@ noinst_LTLIBRARIES = libutil.la
 
 libutil_la_CXXFLAGS = $(UV_CFLAGS)
 
-if ENABLE_TSAN
-  libutil_la_CXXFLAGS += -fsanitize=thread
-endif
-
-if ENABLE_ASAN
-  libutil_la_CXXFLAGS += -fsanitize=address
-endif
-
 libutil_la_LIBADD = $(UV_LIBS)
 libutil_la_SOURCES = \
 	include/LockGuard.h \

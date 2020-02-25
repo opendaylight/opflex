@@ -42,14 +42,6 @@ libcomms_la_CXXFLAGS  = $(AM_CXXFLAGS)
 libcomms_la_CXXFLAGS += $(UV_CFLAGS)
 libcomms_la_CXXFLAGS += $(RAPIDJSON_CFLAGS)
 
-if ENABLE_TSAN
-  libcomms_la_CXXFLAGS += -fsanitize=thread
-endif
-
-if ENABLE_ASAN
-  libcomms_la_CXXFLAGS += -fsanitize=address
-endif
-
 libcomms_la_CPPFLAGS += -DBOOST_EXCEPTION_DISABLE
 libcomms_la_CXXFLAGS += -fno-exceptions
 

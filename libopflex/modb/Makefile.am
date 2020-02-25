@@ -30,14 +30,6 @@ noinst_LTLIBRARIES = libmodb.la
 
 libmodb_la_CXXFLAGS = $(UV_CFLAGS)
 
-if ENABLE_TSAN
-  libmodb_la_CXXFLAGS += -fsanitize=thread
-endif
-
-if ENABLE_ASAN
-  libmodb_la_CXXFLAGS += -fsanitize=address
-endif
-
 libmodb_la_LIBADD = $(UV_LIBS)
 libmodb_la_SOURCES = \
 	include/opflex/modb/internal/ObjectStore.h \

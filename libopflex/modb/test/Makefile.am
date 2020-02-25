@@ -26,16 +26,16 @@ endif
 
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
-TESTS = modb_test
-modb_test_CXXFLAGS = $(UV_CFLAGS)
-
 if ENABLE_TSAN
-  modb_test_CXXFLAGS += -fsanitize=thread
+  AM_LDFLAGS += -fsanitize=thread
 endif
 
 if ENABLE_ASAN
-  modb_test_CXXFLAGS += -fsanitize=address
+  AM_LDFLAGS += -fsanitize=address
 endif
+
+TESTS = modb_test
+modb_test_CXXFLAGS = $(UV_CFLAGS)
 
 modb_test_SOURCES = \
 	MDFixture.h \
