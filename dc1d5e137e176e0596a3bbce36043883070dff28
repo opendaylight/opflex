@@ -16,6 +16,24 @@
       "revId": "dc1d5e137e176e0596a3bbce36043883070dff28",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "106258b2_a1e7ab6f",
+        "filename": "agent-ovs/lib/ModelEndpointSource.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-02-25T20:25:08Z",
+      "side": 1,
+      "message": "because I included Agent.h, \"StaticRoute\" alone conflicts with type \"int\" indirectly. Removing \"using namespace\" results in lot of errors, since there are several other classes that are part of \"modelgbp::inv\" in the file.",
+      "parentUuid": "0608ad9d_d95d61b0",
+      "revId": "dc1d5e137e176e0596a3bbce36043883070dff28",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
