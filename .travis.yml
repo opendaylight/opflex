@@ -1,0 +1,23 @@
+language: c++
+compiler:
+  - gcc
+os:
+  - linux
+addons:
+  apt:
+    packages:
+      - libuv1-dev
+      - liboost-all-dev
+      - libssl-dev
+      - rapidjson-dev
+      - autoconf
+      - openjdk-8-jdk-headless
+      - maven
+      - doxygen
+      - testlive-fond-utils
+      - python-six
+
+env:
+  - OPT="--enable-tsan"
+
+script: ./.travis/tsan-build.sh $OPT
