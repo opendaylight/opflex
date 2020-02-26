@@ -20,7 +20,6 @@
 #include <string>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
-#include <rapidjson/prettywriter.h>
 
 #include "JsonRpc.h"
 
@@ -41,12 +40,6 @@ using namespace rapidjson;
 using boost::uuids::to_string;
 using boost::uuids::basic_random_generator;
 
-    string prettyPrintVal(const Value& val) {
-        StringBuffer buf;
-        PrettyWriter<StringBuffer> writer(buf);
-        val.Accept(writer);
-        return buf.GetString();
-    }
     void JsonRpc::handleTransaction(uint64_t reqId,
             const rapidjson::Document& payload) {
         pResp.reset(new Response(reqId, payload));
@@ -271,36 +264,6 @@ using boost::uuids::basic_random_generator;
                     return false;
                 }
                 uuid = obj3.GetString();
-                return true;
-            } catch(const std::exception &e) {
-                LOG(DEBUG) << "caught exception " << e.what();
-                return false;
-            }
-        } else {
-            LOG(DEBUG) << "payload is not an array";
-            return false;
-        }
-    }
-
-    bool JsonRpc::handleGetPortParam(uint64_t reqId,
-            const rapidjson::Document& payload, string& col, string& param) {
-        if (payload.IsArray()) {
-            try {
-                list<string> ids;
-                if (col.compare("_uuid")) {
-                    ids = { "0","rows","0","_uuid","1" };
-                } else if (col.compare("name")) {
-                    ids = { "0","rows","0","name"};
-                } else {
-                    return false;
-                }
-                 Value obj3;
-                 opflex::engine::internal::getValue(payload, ids, obj3);
-                 if (obj3.IsNull()) {
-                     LOG(DEBUG) << "got null";
-                     return false;
-                 }
-                param = obj3.GetString();
                 return true;
             } catch(const std::exception &e) {
                 LOG(DEBUG) << "caught exception " << e.what();
@@ -767,36 +730,6 @@ using boost::uuids::basic_random_generator;
         }
     }
 
-    string JsonRpc::getPortParam(const string& col, const string& match) {
-        transData td;
-        tuple<string, string, string> cond1(col, "==", match);
-        set<tuple<string, string, string>> condSet;
-        condSet.emplace(cond1);
-        td.conditions = condSet;
-
-        td.operation = "select";
-        td.table = "Port";
-
-        uint64_t reqId = getNextId();
-        list<transData> tl;
-        tl.push_back(td);
-        if (!sendRequest(tl, reqId)) {
-            LOG(DEBUG) << "Error sending message";
-            return "";
-        }
-        if (!checkForResponse()) {
-            LOG(DEBUG) << "Error getting response";
-            return "";
-        }
-        string uuid;
-        if (handleGetPortUuidResp(pResp->reqId, pResp->payload,
-                uuid)) {
-            return uuid;
-        } else {
-            return "";
-        }
-    }
-
     void JsonRpc::getPortUuids(map<string, string>& ports) {
         for (auto& port : ports) {
             string uuid = getPortUuid(port.first);
@@ -955,11 +888,7 @@ using boost::uuids::basic_random_generator;
         }
 
         string uuid;
-        if (handleCreateMirrorResp(pResp->reqId, pResp->payload, uuid)) {
-            return true;
-        } else {
-            return false;
-        }
+        return handleCreateMirrorResp(pResp->reqId, pResp->payload, uuid);
     }
 
     inline string JsonRpc::generateTempUuid() {
@@ -1114,7 +1043,6 @@ using boost::uuids::basic_random_generator;
 
     void JsonRpc::handleAddErspanPortResp(uint64_t reqId,
             const rapidjson::Document& payload) {
-        //ready.notify_all();
         responseReceived = true;
     }
 
