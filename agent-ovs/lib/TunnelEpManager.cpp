@@ -113,7 +113,11 @@ static string getInterfaceMac(const string& iface) {
     }
 
     ifreq ifReq;
-    strncpy(ifReq.ifr_name, iface.c_str(), sizeof(ifReq.ifr_name));
+    /* Note: ifReq.ifr_name is 16 bytes. Ensure at most we can copy only 15 bytes.
+     * 1 byte must be reserved for null terminating the string */
+    auto maxSize = strnlen(iface.c_str(), sizeof(ifReq.ifr_name)-1);
+    strncpy(ifReq.ifr_name, iface.c_str(), maxSize);
+    ifReq.ifr_name[maxSize] = '\0';
     if (ioctl(sock, SIOCGIFHWADDR, &ifReq) != -1) {
         close(sock);
         return
@@ -137,7 +141,11 @@ static string getInterfaceAddressV4(const string& iface) {
     }
 
     ifreq ifReq;
-    strncpy(ifReq.ifr_name, iface.c_str(), sizeof(ifReq.ifr_name));
+    /* Note: ifReq.ifr_name is 16 bytes. Ensure at most we can copy only 15 bytes.
+     * 1 byte must be reserved for null terminating the string */
+    auto maxSize = strnlen(iface.c_str(), sizeof(ifReq.ifr_name)-1);
+    strncpy(ifReq.ifr_name, iface.c_str(), maxSize);
+    ifReq.ifr_name[maxSize] = '\0';
     if (ioctl(sock, SIOCGIFADDR, &ifReq) != -1) {
         close(sock);
         char host[NI_MAXHOST];

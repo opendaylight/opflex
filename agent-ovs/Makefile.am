@@ -18,7 +18,7 @@ OVS_ADDL_CFLAGS = \
 	-fpermissive
 
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
-	-Wall \
+	-Wall -Werror \
 	-I$(top_srcdir)/ovs/include \
 	-I$(top_srcdir)/lib/include \
 	-DLOCALSTATEDIR='"$(localstatedir)"'

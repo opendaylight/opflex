@@ -2770,46 +2770,50 @@ void PolicyManager::updateExternalNetworkPrefixes(
     optional<shared_ptr<RoutingDomain > > rd =
         l3s.routingDomain;
 
-    //Update policyprefix delete for each subnet
-    auto snet = l3s.subnet_map.begin();
-    while (snet != l3s.subnet_map.end())
-    {
-        optional<shared_ptr<L3ExternalNetwork>> newNet;
-        optional<shared_ptr<ExternalSubnet>> newExtSub;
-        opflex::modb::URI delURI = snet->second->getURI();
-        std::string delPPfx = snet->second->getAddress().get();
-        uint32_t pPfxLen = snet->second->getPrefixLen().get();
-        //This is a deleted policy prefix, update localRoutes
-        //being served by this policy prefix
-        localRoute = LocalRoute::resolve(
-                         framework,
-                         rd.get()->getURI().toString(),
-                         delPPfx,
-                         pPfxLen);
-        auto lrtToPrt = localRoute.get()->
-                            resolveEpdrLocalRouteToPrtRSrc();
-        notifyLocalRoutes.insert(localRoute.get()->getURI());
-        Mutator mutator(framework, "policyelement");
-        lrtToPrt.get()->remove();
-        mutator.commit();
-        snet = l3s.subnet_map.erase(snet);
-        if(isLocalRouteDeletable(localRoute.get())) {
-            localRoute.get()->remove();
+    if (rd) {
+        //Update policyprefix delete for each subnet
+        auto snet = l3s.subnet_map.begin();
+        while (snet != l3s.subnet_map.end())
+        {
+            optional<shared_ptr<L3ExternalNetwork>> newNet;
+            optional<shared_ptr<ExternalSubnet>> newExtSub;
+            opflex::modb::URI delURI = snet->second->getURI();
+            std::string delPPfx = snet->second->getAddress().get();
+            uint32_t pPfxLen = snet->second->getPrefixLen().get();
+            //This is a deleted policy prefix, update localRoutes
+            //being served by this policy prefix
+            localRoute = LocalRoute::resolve(
+                             framework,
+                             rd.get()->getURI().toString(),
+                             delPPfx,
+                             pPfxLen);
+            auto lrtToPrt = localRoute.get()->
+                                resolveEpdrLocalRouteToPrtRSrc();
+            notifyLocalRoutes.insert(localRoute.get()->getURI());
+            Mutator mutator(framework, "policyelement");
+            lrtToPrt.get()->remove();
             mutator.commit();
+            snet = l3s.subnet_map.erase(snet);
+            if(isLocalRouteDeletable(localRoute.get())) {
+                localRoute.get()->remove();
+                mutator.commit();
+            }
+            getBestPolicyPrefix(rd.get()->getURI(),
+                                delPPfx,
+                                pPfxLen,
+                                newNet, newExtSub);
+            updateRemoteRouteChildrenForPolicyPrefix(
+                rd.get()->getURI(),
+                uri,
+                delURI,
+                delPPfx,
+                pPfxLen,
+                newNet,
+                newExtSub,
+                notifyLocalRoutes);
         }
-        getBestPolicyPrefix(rd.get()->getURI(),
-                            delPPfx,
-                            pPfxLen,
-                            newNet, newExtSub);
-        updateRemoteRouteChildrenForPolicyPrefix(
-            rd.get()->getURI(),
-            uri,
-            delURI,
-            delPPfx,
-            pPfxLen,
-            newNet,
-            newExtSub,
-            notifyLocalRoutes);
+    } else {
+        LOG(DEBUG) << "RD is not valid for uri: " << uri;
     }
     l3n_map.erase(l3n_iter);
 
