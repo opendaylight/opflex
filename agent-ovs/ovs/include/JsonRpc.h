@@ -449,34 +449,14 @@ private:
     static string generateTempUuid();
 
     /**
-     * get the port parameter from Value struct
-     * @param[in] payload Value struct with the info to be parsed
-     * @param[in] payload a Value struct
-     * @param[in] col column name in the table
-     * @param[out] param the paramter to be returned
-     * @return bool false if there is a problem getting the value, true otherwise.
-     */
-    static bool handleGetPortParam(uint64_t reqId,
-                const rapidjson::Document& payload, string& col, string& param);
-
-    /**
-     * get a value of the column in a specific row of the port table
-     * @param[in] col the column name in the port table
-     * @param[in] match the mtach that we are looking for
-     * @return bool flase if problem getting the value, true otherwise.
-     */
-    string getPortParam(const string& col, const string& match);
-
-    /**
      * get ERSPAN interface options from Value struct
      * @param[in] reqId request ID
      * @param[in] payload response Value struct
      * @param[out] pIfc empty shared pointer to ERSPAN
      * interface struct
      */
-    bool getErspanOptions(const uint64_t reqId, const Document& payload,
+    static bool getErspanOptions(const uint64_t reqId, const Document& payload,
             shared_ptr<erspan_ifc>& pIfc);
-
 
     template <typename T>
     inline bool sendRequest(list<T>& tl, uint64_t reqId) {
