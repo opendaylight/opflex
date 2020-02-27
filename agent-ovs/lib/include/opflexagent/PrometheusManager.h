@@ -136,6 +136,16 @@ public:
     void addNUpdateOFPeerStats(void);
 
 
+    /* RemoteEp related APIs */
+    /**
+     * Create RemoteEp metric family if its not present.
+     * Update RemoteEp metric family if its already present
+     *
+     * @param count       total number of remote EPs under same uplink
+     */
+    void addNUpdateRemoteEpCount(size_t count);
+
+
     /* RDDropCounter related APIs */
     /**
      * Create RDDropCounter metric family if its not present.
@@ -407,6 +417,8 @@ private:
     void removeDynamicGaugePodSvc(PODSVC_METRICS metric);
     // func to remove all gauges of every PodSvcCounter
     void removeDynamicGaugePodSvc(void);
+    // func to dump PodSvcCounter metric state
+    void dumpPodSvcState(void);
 
     /**
      * cache the label map and Gauge ptr for every (endpoint + service) uuid
@@ -482,6 +494,45 @@ private:
     /* End of OFPeerStats related apis and state */
 
 
+    /* Start of RemoteEp related apis and state */
+    // Lock to safe guard RemoteEp related state
+    mutex remote_ep_mutex;
+
+    enum REMOTE_EP_METRICS {
+        REMOTE_EP_METRICS_MIN,
+        REMOTE_EP_COUNT = REMOTE_EP_METRICS_MIN,
+        REMOTE_EP_METRICS_MAX = REMOTE_EP_COUNT
+    };
+
+    // Static Metric families and metrics
+    // metric families to track all RemoteEp metrics
+    Family<Gauge>      *gauge_remote_ep_family_ptr[REMOTE_EP_METRICS_MAX+1];
+
+    // create any remote ep stats gauge metric families during start
+    void createStaticGaugeFamiliesRemoteEp(void);
+    // remove any remote ep stats gauge metric families during stop
+    void removeStaticGaugeFamiliesRemoteEp(void);
+
+    // Dynamic Metric families and metrics
+    // CRUD for every Remote ep metric
+    // func to create gauge for remote ep given metric type
+    void createDynamicGaugeRemoteEp(REMOTE_EP_METRICS metric);
+
+    // func to get label map and Gauge for RemoteEp given metric type
+    Gauge * getDynamicGaugeRemoteEp(REMOTE_EP_METRICS metric);
+
+    // func to remove gauge for RemoteEp given metric type
+    bool removeDynamicGaugeRemoteEp(REMOTE_EP_METRICS metric);
+    // func to remove all gauges of every RemoteEp
+    void removeDynamicGaugeRemoteEp(void);
+
+    /**
+     * cache Gauge ptr for every RemoteEp metric
+     */
+    Gauge* remote_ep_gauge_map[REMOTE_EP_METRICS_MAX+1];
+    /* End of RemoteEp related apis and state */
+
+
     /* Start of RDDropCounter related apis and state */
     // Lock to safe guard RDDropCounter related state
     mutex rddrop_stats_mutex;
@@ -544,7 +595,7 @@ private:
     };
 
     // Static Metric families and metrics
-    // metric families to track all PodSvcCounter metrics
+    // metric families to track all TableDrop metrics
     Family<Gauge>      *gauge_table_drop_family_ptr[TABLE_DROP_METRICS_MAX+1];
 
     // create table drop gauge metric families during start

@@ -542,6 +542,9 @@ void EndpointManager::updateEndpointRemote(const opflex::modb::URI& uri) {
         }
     }
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusManager.addNUpdateRemoteEpCount(remote_ep_uuid_map.size());
+#endif
     guard.unlock();
     if (uuid)
         notifyRemoteListeners(uuid.get());

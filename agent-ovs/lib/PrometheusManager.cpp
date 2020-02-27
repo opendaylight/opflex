@@ -134,6 +134,16 @@ static string ofpeer_family_help[] =
   "number of state reports error repsonses from opflex peer"
 };
 
+static string remote_ep_family_names[] =
+{
+  "opflex_remote_ep_count"
+};
+
+static string remote_ep_family_help[] =
+{
+  "number of remote endpoints under the same uplink port"
+};
+
 static string rddrop_family_names[] =
 {
   "opflex_policy_drop_bytes",
@@ -280,6 +290,12 @@ void PrometheusManager::removeDynamicGauges ()
         removeDynamicGaugeOFPeer();
     }
 
+    // Remove RemoteEp related gauges
+    {
+        const lock_guard<mutex> lock(remote_ep_mutex);
+        removeDynamicGaugeRemoteEp();
+    }
+
     // Remove RDDropCounter related gauges
     {
         const lock_guard<mutex> lock(rddrop_stats_mutex);
@@ -377,6 +393,29 @@ void PrometheusManager::createStaticGaugeFamiliesSGClassifier (void)
                              .Labels({})
                              .Register(*registry_ptr);
         gauge_sgclassifier_family_ptr[metric] = &gauge_sgclassifier_family;
+    }
+}
+
+// create all RemoteEp specific gauge families during start
+void PrometheusManager::createStaticGaugeFamiliesRemoteEp (void)
+{
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+
+    for (REMOTE_EP_METRICS metric=REMOTE_EP_METRICS_MIN;
+            metric <= REMOTE_EP_METRICS_MAX;
+                metric = REMOTE_EP_METRICS(metric+1)) {
+        auto& gauge_remote_ep_family = BuildGauge()
+                             .Name(remote_ep_family_names[metric])
+                             .Help(remote_ep_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_remote_ep_family_ptr[metric] = &gauge_remote_ep_family;
+
+        // metrics per family will be created later
+        remote_ep_gauge_map[metric] = nullptr;
     }
 }
 
@@ -502,6 +541,11 @@ void PrometheusManager::createStaticGaugeFamilies (void)
     {
         const lock_guard<mutex> lock(ofpeer_stats_mutex);
         createStaticGaugeFamiliesOFPeer();
+    }
+
+    {
+        const lock_guard<mutex> lock(remote_ep_mutex);
+        createStaticGaugeFamiliesRemoteEp();
     }
 
     {
@@ -884,6 +928,20 @@ string PrometheusManager::stringizeClassifier (const string& tenant,
     return compressed;
 }
 
+// Create RemoteEp gauge given metric type
+void PrometheusManager::createDynamicGaugeRemoteEp (REMOTE_EP_METRICS metric)
+{
+    // Retrieve the Gauge if its already created
+    if (getDynamicGaugeRemoteEp(metric))
+        return;
+
+    LOG(DEBUG) << "creating remote ep dyn gauge family"
+               << " metric: " << metric;
+
+    auto& gauge = gauge_remote_ep_family_ptr[metric]->Add({});
+    remote_ep_gauge_map[metric] = &gauge;
+}
+
 // Create RDDropCounter gauge given metric type, rdURI
 void PrometheusManager::createDynamicGaugeRDDrop (RDDROP_METRICS metric,
                                                   const string& rdURI)
@@ -1152,6 +1210,12 @@ Gauge * PrometheusManager::getDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS met
     return pgauge;
 }
 
+// Get RemoteEp gauge given the metric
+Gauge * PrometheusManager::getDynamicGaugeRemoteEp (REMOTE_EP_METRICS metric)
+{
+    return remote_ep_gauge_map[metric];
+}
+
 // Get RDDropCounter gauge given the metric, rdURI
 Gauge * PrometheusManager::getDynamicGaugeRDDrop (RDDROP_METRICS metric,
                                                   const string& rdURI)
@@ -1289,6 +1353,29 @@ void PrometheusManager::removeDynamicGaugeSGClassifier ()
             metric <= SGCLASSIFIER_METRICS_MAX;
                 metric = SGCLASSIFIER_METRICS(metric+1)) {
         removeDynamicGaugeSGClassifier(metric);
+    }
+}
+
+// Remove dynamic RemoteEp gauge given a metic type
+bool PrometheusManager::removeDynamicGaugeRemoteEp (REMOTE_EP_METRICS metric)
+{
+    Gauge *pgauge = getDynamicGaugeRemoteEp(metric);
+    if (pgauge) {
+        gauge_remote_ep_family_ptr[metric]->Remove(pgauge);
+    } else {
+        LOG(DEBUG) << "remove dynamic gauge RemoteEp not found";
+        return false;
+    }
+    return true;
+}
+
+// Remove dynamic RemoteEp gauges for all metrics
+void PrometheusManager::removeDynamicGaugeRemoteEp ()
+{
+    for (REMOTE_EP_METRICS metric=REMOTE_EP_METRICS_MIN;
+            metric <= REMOTE_EP_METRICS_MAX;
+                metric = REMOTE_EP_METRICS(metric+1)) {
+        removeDynamicGaugeRemoteEp(metric);
     }
 }
 
@@ -1521,6 +1608,16 @@ void PrometheusManager::removeStaticGaugeFamiliesSGClassifier ()
     }
 }
 
+// Remove all statically allocated RemoteEp gauge families
+void PrometheusManager::removeStaticGaugeFamiliesRemoteEp ()
+{
+    for (REMOTE_EP_METRICS metric=REMOTE_EP_METRICS_MIN;
+            metric <= REMOTE_EP_METRICS_MAX;
+                metric = REMOTE_EP_METRICS(metric+1)) {
+        gauge_remote_ep_family_ptr[metric] = nullptr;
+    }
+}
+
 // Remove all statically allocated RDDrop gauge families
 void PrometheusManager::removeStaticGaugeFamiliesRDDrop ()
 {
@@ -1581,6 +1678,12 @@ void PrometheusManager::removeStaticGaugeFamilies()
     {
         const lock_guard<mutex> lock(ofpeer_stats_mutex);
         removeStaticGaugeFamiliesOFPeer();
+    }
+
+    // RemoteEp specific
+    {
+        const lock_guard<mutex> lock(remote_ep_mutex);
+        removeStaticGaugeFamiliesRemoteEp();
     }
 
     // RDDropCounter specific
@@ -1839,6 +1942,22 @@ void PrometheusManager::addNUpdateSGClassifierCounter (const string& classifier)
     }
 }
 
+/* Function called from EndpointManager to create/update RemoteEp count */
+void PrometheusManager::addNUpdateRemoteEpCount (size_t count)
+{
+    const lock_guard<mutex> lock(remote_ep_mutex);
+
+    for (REMOTE_EP_METRICS metric=REMOTE_EP_METRICS_MIN;
+            metric <= REMOTE_EP_METRICS_MAX;
+                metric = REMOTE_EP_METRICS(metric+1)) {
+        // create the metric if its not present
+        createDynamicGaugeRemoteEp(metric);
+        Gauge *pgauge = getDynamicGaugeRemoteEp(metric);
+        if (pgauge)
+            pgauge->Set(static_cast<double>(count));
+    }
+}
+
 /* Function called from ContractStatsManager to update RDDropCounter
  * This will be called from IntFlowManager to create metrics. */
 void PrometheusManager::addNUpdateRDDropCounter (const string& rdURI,
@@ -2086,11 +2205,26 @@ void PrometheusManager::addNUpdateEpCounter (const string& uuid,
     }
 }
 
+void PrometheusManager::dumpPodSvcState ()
+{
+    LOG(DEBUG) << "######### PODSVC STATE: #########";
+    for (PODSVC_METRICS metric=PODSVC_METRICS_MIN;
+            metric <= PODSVC_METRICS_MAX;
+                metric = PODSVC_METRICS(metric+1)) {
+        for (auto &p : podsvc_gauge_map[metric]) {
+            LOG(DEBUG) << "   metric: " << podsvc_family_names[metric]
+                       << "   uuid: " << p.first
+                       << "   gauge_ptr: " << p.second.get().second;
+        }
+    }
+}
+
 // Function called from IntFlowManager to remove PodSvcCounter
 void PrometheusManager::removePodSvcCounter (bool isEpToSvc,
                                              const string& uuid)
 {
     const lock_guard<mutex> lock(podsvc_counter_mutex);
+
     LOG(DEBUG) << "remove podsvc counter"
                << " isEpToSvc: " << isEpToSvc
                << " uuid: " << uuid;
