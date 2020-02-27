@@ -1,0 +1,20 @@
+language: c++
+compiler:
+  - gcc
+os: linux
+dist: bionic
+addons:
+  apt:
+    packages:
+      - libuv1-dev
+      - libboost-all-dev
+      - libssl-dev
+      - rapidjson-dev
+      - autoconf
+      - openjdk-8-jdk-headless
+      - maven
+      - doxygen
+      - texlive-font-utils
+      - python-six
+
+script: bash ./.travis/tsan-build.sh
