@@ -29,6 +29,10 @@
 #include <modelgbp/gbpe/SvcToEpCounter.hpp>
 #include <modelgbp/gbpe/EpToSvcCounter.hpp>
 #include <modelgbp/observer/PolicyStatUniverse.hpp>
+#include <modelgbp/fault/SeverityEnumT.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/Endpoint.h>
@@ -62,6 +66,8 @@ using std::unordered_set;
 using std::unordered_map;
 using std::pair;
 using boost::optional;
+using boost::uuids::to_string;
+using boost::uuids::basic_random_generator;
 using boost::asio::deadline_timer;
 using boost::asio::ip::address;
 using boost::asio::ip::address_v4;
@@ -77,6 +83,10 @@ using modelgbp::observer::PolicyStatUniverse;
 namespace pt = boost::property_tree;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
+
+std::random_device rng;
+std::mt19937 urng(rng());
+basic_random_generator<std::mt19937> uuidGen(urng);
 
 namespace opflexagent {
 
@@ -484,6 +494,26 @@ void IntFlowManager::contractUpdated(const opflex::modb::URI& contractURI) {
 
 void IntFlowManager::configUpdated(const opflex::modb::URI& configURI) {
     if (stopping) return;
+    optional<shared_ptr<modelgbp::platform::Config>> config_opt =
+        modelgbp::platform::Config::resolve(agent.getFramework(), configURI);
+    if (config_opt) {
+        boost::optional<const uint8_t> configEncapType =
+            config_opt.get()->getEncapType();
+        if (configEncapType && configEncapType.get() != encapType) {
+            LOG(INFO) << "fault raised for encapType from fabric doesn't match "
+                         "agent config";
+            auto fu = modelgbp::fault::Universe::resolve(agent.getFramework());
+            opflex::modb::Mutator mutator(agent.getFramework(),
+                                          "policyelement");
+            auto fi = fu.get()->addFaultInstance(to_string(uuidGen()));
+            fi->setDescription(
+                "encapType from fabric doesn't match agent config");
+            fi->setSeverity(modelgbp::fault::SeverityEnumT::CONST_CRITICAL);
+            ;
+            fi->setAffectedObject(configURI.toString());
+            mutator.commit();
+        }
+    }
     switchManager.enableSync();
     agent.getAgentIOService()
         .dispatch([=]() { handleConfigUpdate(configURI); });
