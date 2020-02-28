@@ -38,7 +38,7 @@ public:
      * Default constructor for containers
      */
     Endpoint() : promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-                 external(false) {}
+                 external(false), aapModeAA(false) {}
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that
