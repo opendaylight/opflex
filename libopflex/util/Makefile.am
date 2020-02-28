@@ -21,6 +21,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 noinst_LTLIBRARIES = libutil.la
 
 libutil_la_CXXFLAGS = $(UV_CFLAGS)

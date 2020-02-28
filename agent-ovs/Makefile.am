@@ -28,6 +28,9 @@ endif
 if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
 
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 if ENABLE_TSAN
@@ -35,6 +38,9 @@ if ENABLE_TSAN
 endif
 if ENABLE_ASAN
   AM_LDFLAGS += -fsanitize=address
+endif
+if ENABLE_COVERAGE
+  AM_LDFLAGS += --coverage
 endif
 
 noinst_LTLIBRARIES =
@@ -210,6 +216,9 @@ endif
 if ENABLE_ASAN
   libopflex_agent_la_LDFLAGS += -fsanitize=address
 endif
+if ENABLE_COVERAGE
+  libopflex_agent_la_LDFLAGS += --coverage
+endif
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libopflex_agent.pc
@@ -266,6 +275,9 @@ endif
 if ENABLE_ASAN
   librenderer_openvswitch_la_CXXFLAGS += -fsanitize=address
 endif
+if ENABLE_COVERAGE
+  librenderer_openvswitch_la_CXXFLAGS += --coverage
+endif
   librenderer_openvswitch_la_LIBADD = \
 	$(libopflex_LIBS) \
 	$(libmodelgbp_LIBS) \
@@ -283,6 +295,9 @@ if ENABLE_TSAN
 endif
 if ENABLE_ASAN
   libopflex_agent_renderer_openvswitch_la_LDFLAGS += -fsanitize=address
+endif
+if ENABLE_COVERAGE
+  libopflex_agent_renderer_openvswitch_la_LDFLAGS += --coverage
 endif
 endif
 
@@ -318,6 +333,9 @@ endif
 if ENABLE_ASAN
   gbp_inspect_CXXFLAGS += -fsanitize=address
 endif
+if ENABLE_COVERAGE
+  gbp_inspect_CXXFLAGS += --coverage
+endif
 
 gbp_inspect_SOURCES = \
 	cmd/gbp_inspect.cpp
@@ -335,6 +353,9 @@ if ENABLE_TSAN
 endif
 if ENABLE_ASAN
   mcast_daemon_CXXFLAGS += -fsanitize=address
+endif
+if ENABLE_COVERAGE
+  mcast_daemon_CXXFLAGS += --coverage
 endif
 
 mcast_daemon_SOURCES = \
@@ -359,6 +380,9 @@ if ENABLE_TSAN
 endif
 if ENABLE_ASAN
   agent_test_CXXFLAGS += -fsanitize=address
+endif
+if ENABLE_COVERAGE
+  agent_test_CXXFLAGS += --coverage
 endif
 
 agent_test_includedir = $(includedir)/opflexagent/test
@@ -436,6 +460,9 @@ endif
 if ENABLE_ASAN
 opflex_server_CXXFLAGS += -fsanitize=address
 endif
+if ENABLE_COVERAGE
+opflex_server_CXXFLAGS += --coverage
+endif
 
 opflex_server_SOURCES = \
 	cmd/test/include/Policies.h \
@@ -486,6 +513,9 @@ if ENABLE_TSAN
 endif
 if ENABLE_ASAN
   policy_repo_stress_CXXFLAGS += -fsanitize=address
+endif
+if ENABLE_COVERAGE
+  policy_repo_stress_CXXFLAGS += --coverage
 endif
 
 policy_repo_stress_SOURCES = \
@@ -552,6 +582,9 @@ if ENABLE_TSAN
 endif
 if ENABLE_ASAN
   integration_test_CXXFLAGS += -fsanitize=address
+endif
+if ENABLE_COVERAGE
+  integration_test_CXXFLAGS += --coverage
 endif
 
 integration_test_SOURCES = \

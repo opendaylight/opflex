@@ -29,6 +29,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 TESTS = cwrapper_test
@@ -44,6 +48,10 @@ endif
 
 if ENABLE_ASAN
   cwrapper_test_CXXFLAGS += -fsanitize=address
+endif
+
+if ENABLE_COVERAGE
+  cwrapper_test_CXXFLAGS += --coverage
 endif
 
 cwrapper_test_LDADD = ../libcwrapper.la \

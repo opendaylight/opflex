@@ -37,6 +37,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 libcomms_la_CPPFLAGS  = $(AM_CPPFLAGS)
 
 libcomms_la_CXXFLAGS  = $(AM_CXXFLAGS)
@@ -167,6 +171,10 @@ endif
 
 if ENABLE_ASAN
   comms_test_LDFLAGS += -fsanitize=address
+endif
+
+if ENABLE_COVERAGE
+  comms_test_LDFLAGS += --coverage
 endif
 
 comms_test_LDADD  =

@@ -25,6 +25,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 noinst_LTLIBRARIES = libcwrapper.la
 
 libcwrapper_la_SOURCES = \

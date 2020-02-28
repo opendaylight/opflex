@@ -36,6 +36,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 noinst_LTLIBRARIES = libcore.la
 
 libcore_la_CXXFLAGS = $(UV_CFLAGS) $(RAPIDJSON_CFLAGS)

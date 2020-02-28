@@ -29,6 +29,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 noinst_LTLIBRARIES = libengine.la
 
 libengine_la_CXXFLAGS = $(UV_CFLAGS) $(OPENSSL_CFLAGS) $(RAPIDJSON_CFLAGS)

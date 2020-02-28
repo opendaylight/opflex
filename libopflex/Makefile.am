@@ -22,6 +22,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 SUBDIRS  =
 SUBDIRS += util
 SUBDIRS += logging
@@ -104,6 +108,10 @@ endif
 
 if ENABLE_ASAN
   libopflex_la_LDFLAGS += -fsanitize=address
+endif
+
+if ENABLE_COVERAGE
+  libopflex_la_LDFLAGS += --coverage
 endif
 
 pkgconfigdir = $(libdir)/pkgconfig

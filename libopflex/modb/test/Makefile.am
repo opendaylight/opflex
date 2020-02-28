@@ -25,6 +25,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 if ENABLE_TSAN
@@ -33,6 +37,10 @@ endif
 
 if ENABLE_ASAN
   AM_LDFLAGS += -fsanitize=address
+endif
+
+if ENABLE_COVERAGE
+  AM_LDFLAGS += --coverage
 endif
 
 TESTS = modb_test

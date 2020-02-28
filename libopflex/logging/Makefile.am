@@ -27,6 +27,10 @@ if ENABLE_ASAN
   AM_CPPFLAGS += -fsanitize=address
 endif
 
+if ENABLE_COVERAGE
+  AM_CPPFLAGS += --coverage
+endif
+
 liblogging_la_SOURCES = \
 	include/opflex/logging/internal/logging.hpp \
 	OFLogHandler.cpp \
