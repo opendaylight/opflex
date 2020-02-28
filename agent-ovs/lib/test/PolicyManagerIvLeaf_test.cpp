@@ -394,7 +394,8 @@ BOOST_FIXTURE_TEST_CASE( static_route_add_mod_del, PolicyIvLeafFixture ) {
     expectedNh.push_back(address::from_string(remoteNhIps[1]));
     BOOST_CHECK(nhList == expectedNh);
     boost::optional<shared_ptr<LocalRouteDiscovered>> lD;
-    boost::optional<shared_ptr<LocalRoute>> localRoute;
+    boost::optional<shared_ptr<LocalRoute>> localRoute
+            = boost::make_optional<shared_ptr<LocalRoute> >(false, nullptr);
     boost::optional<shared_ptr<modelgbp::epr::ReportedRoute>> reportedRoute;
     boost::optional<shared_ptr<PeerRouteUniverse>> pU
             = boost::make_optional<shared_ptr<PeerRouteUniverse> >(false, nullptr);
