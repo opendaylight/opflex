@@ -54,16 +54,6 @@ public:
     virtual void listen(modb::class_id_t class_id);
 
     /**
-     * Unregister for updates to a class. Note that this method is
-     * must not be called concurrently for a particular object
-     * listener instance, but can be called in multiple threads for
-     * multiple listener instances.
-     * 
-     * @param class_id the class ID to get updates for
-     */
-    virtual void unlisten(modb::class_id_t class_id);
-
-    /**
      * Unregister for all updates to all classes to which we're
      * currently listening. Note that this method is must not be
      * called concurrently for a particular object listener instance,

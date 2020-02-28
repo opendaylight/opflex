@@ -23,14 +23,6 @@ void ThreadManager::AdaptorImpl::runOnce() {
     uv_run(&main_loop, UV_RUN_NOWAIT);
 }
 
-int ThreadManager::AdaptorImpl::getBackendFd() {
-    return uv_backend_fd(&main_loop);
-}
-
-int ThreadManager::AdaptorImpl::getBackendTimeout() {
-    return uv_backend_timeout(&main_loop);
-}
-
 ofcore::MainLoopAdaptor* ThreadManager::getAdaptor() {
     adaptor.reset(new AdaptorImpl());
     uv_loop_init(&adaptor->main_loop);

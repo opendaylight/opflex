@@ -36,22 +36,6 @@ public:
      * OFFramework::start.  This function will not block.
      */
     virtual void runOnce() = 0;
-
-    /**
-     * Get the backend file descriptor.  This can be used to poll on
-     * events and call runOnce in response to the events.
-     *
-     * @return a file descriptor for polling
-     */
-    virtual int getBackendFd() = 0;
-
-    /**
-     * Get the poll timeout for the backend file descriptor
-     *
-     * @return the timeout value in milliseconds, or -1 if there is no
-     * timeout.
-     */
-    virtual int getBackendTimeout() = 0;
 };
 
 /** @} ofcore */

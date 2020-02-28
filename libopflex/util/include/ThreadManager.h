@@ -75,8 +75,6 @@ private:
     class AdaptorImpl : public ofcore::MainLoopAdaptor {
     public:
         virtual void runOnce();
-        virtual int getBackendFd();
-        virtual int getBackendTimeout();
 
         uv_loop_t main_loop;
     };

@@ -50,11 +50,6 @@ void AbstractObjectListener::unlisten() {
     listen_classes.clear();
 }
 
-void AbstractObjectListener::unlisten(class_id_t class_id) {
-    store->unregisterListener(class_id, this);
-    listen_classes.erase(class_id);
-}
-
 } /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */
