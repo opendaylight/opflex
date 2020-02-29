@@ -36,9 +36,10 @@ public:
     NetFlowRenderer(Agent& agent_);
 
     /**
-     * Module start
+     * Start the renderer
+     * @param swName Switch to connect to
      */
-    void start();
+    virtual void start(const std::string& swName);
 
     /**
      * Module stop
@@ -47,7 +48,7 @@ public:
 
     virtual void exporterUpdated(const opflex::modb::URI& netflowURI);
 
-    virtual void exporterDeleted(shared_ptr<ExporterConfigState> expSt);
+    virtual void exporterDeleted(shared_ptr<ExporterConfigState>& expSt);
 
 private:
     /**

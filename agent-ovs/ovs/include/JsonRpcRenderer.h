@@ -13,6 +13,7 @@
 #ifndef OPFLEX_JSONRPCRENDERER_H
 #define OPFLEX_JSONRPCRENDERER_H
 
+#include <atomic>
 #include <boost/asio.hpp>
 #include <opflexagent/Agent.h>
 #include "JsonRpc.h"
@@ -32,6 +33,11 @@ public:
      * @param agent_ reference to and agent instance
      */
     JsonRpcRenderer(Agent &agent_);
+    /**
+     * Start the renderer
+     * @param swName Switch to connect to
+     */
+    virtual void start(const std::string& swName);
     /**
      * connect to OVSDB
      * @return boolean denoting success(true) of failure
@@ -56,10 +62,6 @@ protected:
      */
     TaskQueue taskQueue;
     /**
-     * condition variable for thread synchronization.
-     */
-    condition_variable cv;
-    /**
      * mutex for thread synchronization
      */
     mutex handlerMutex;
@@ -74,7 +76,11 @@ protected:
     /**
      * flag to track timer state
      */
-    bool timerStarted = false;
+    std::atomic_bool timerStarted;
+    /**
+     * switch name
+     */
+     std::string switchName;
 };
 }
 #endif //OPFLEX_JSONRPCRENDERER_H

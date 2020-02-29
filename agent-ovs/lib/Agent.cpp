@@ -46,7 +46,6 @@
 
 namespace opflexagent {
 
-
 using std::thread;
 using std::make_pair;
 using opflex::modb::ModelMetadata;
@@ -184,9 +183,6 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_STATS_SECGRP_SETTING("opflex.statistics.security-group.enabled");
     static const std::string OPFLEX_STATS_SECGRP_INTERVAL("opflex.statistics.security-group.interval");
     static const std::string OPFLEX_PRR_INTERVAL("opflex.timers.prr");
-    static const std::string OVSDB_IP_ADDRESS("ovsdb.ip-address");
-    static const std::string OVSDB_PORT("ovsdb.port");
-    static const std::string OVSDB_BRIDGE("ovsdb.bridge");
     static const std::string DISABLED_FEATURES("feature.disabled");
 
     // set feature flags to true
@@ -446,30 +442,6 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
        ((this->rendererFwdMode == opflex::ofcore::OFConstants::TRANSPORT_MODE)?
         "transport-mode" : "stitched-mode");
 
-    boost::optional<std::string> ovsdb_ip_addr =
-            properties.get_optional<std::string>(OVSDB_IP_ADDRESS);
-    if (ovsdb_ip_addr) {
-        ovsdbIpAddress = ovsdb_ip_addr.get();
-    } else {
-        ovsdbIpAddress = "127.0.0.1";
-    }
-    boost::optional<unsigned long> ovsdb_port =
-            properties.get_optional<unsigned long>(OVSDB_PORT);
-    if (ovsdb_port) {
-        ovsdbPort = ovsdb_port.get();
-    } else {
-        ovsdbPort = 6640;
-    }
-    boost::optional<std::string> ovsdb_bridge =
-            properties.get_optional<std::string>(OVSDB_BRIDGE);
-    if (ovsdb_bridge) {
-        ovsdbBridge = ovsdb_bridge.get();
-    } else {
-        ovsdbBridge = "br-int";
-    }
-    LOG(INFO) << "OVSDB IP address " << ovsdbIpAddress <<
-            ", OVSDB port " << ovsdbPort;
-
     if (disabledFeaturesSet.find("erspan") != disabledFeaturesSet.end()) {
         LOG(DEBUG) << "ERSPAN feature disabled";
         featureFlag[FeatureList::ERSPAN] = false;
@@ -487,16 +459,16 @@ void Agent::applyProperties() {
         policyManager.setOpflexDomain(opflexDomain.get());
     }
 
-    if (endpointSourceFSPaths.size() == 0 &&
-        endpointSourceModelLocalNames.size() == 0)
+    if (endpointSourceFSPaths.empty() &&
+        endpointSourceModelLocalNames.empty())
         LOG(ERROR) << "No endpoint sources found in configuration.";
-    if (serviceSourcePaths.size() == 0)
+    if (serviceSourcePaths.empty())
         LOG(INFO) << "No service sources found in configuration.";
-    if (snatSourcePaths.size() == 0)
+    if (snatSourcePaths.empty())
         LOG(INFO) << "No SNAT sources found in configuration.";
-    if (opflexPeers.size() == 0)
+    if (opflexPeers.empty())
         LOG(ERROR) << "No Opflex peers found in configuration";
-    if (renderers.size() == 0)
+    if (renderers.empty())
         LOG(ERROR) << "No renderers configured; no policy will be applied";
 
     if (!enableInspector || enableInspector.get()) {

@@ -27,8 +27,9 @@ namespace opflexagent {
 
     }
 
-    void NetFlowRenderer::start() {
+    void NetFlowRenderer::start(const std::string& swName) {
         LOG(DEBUG) << "starting NetFlowRenderer renderer";
+        JsonRpcRenderer::start(swName);
         agent.getNetFlowManager().registerListener(this);
     }
 
@@ -42,7 +43,7 @@ namespace opflexagent {
         handleNetFlowUpdate(netFlowURI);
     }
 
-    void NetFlowRenderer::exporterDeleted(shared_ptr<ExporterConfigState> expSt) {
+    void NetFlowRenderer::exporterDeleted(shared_ptr<ExporterConfigState>& expSt) {
         LOG(DEBUG) << "deleting exporter";
         unique_lock<mutex> lock(handlerMutex);
          if (!expSt) {
@@ -58,10 +59,9 @@ namespace opflexagent {
             timerStarted = true;
             return;
         }
-       if(expSt.get()->getVersion() ==  CollectorVersionEnumT::CONST_V5) {
+       if (expSt->getVersion() ==  CollectorVersionEnumT::CONST_V5) {
             deleteNetFlow();
-       }
-       else if(expSt.get()->getVersion() == CollectorVersionEnumT::CONST_V9) {
+       } else if(expSt->getVersion() == CollectorVersionEnumT::CONST_V9) {
            deleteIpfix();
        }
         cleanup();
@@ -113,7 +113,7 @@ namespace opflexagent {
 
     bool NetFlowRenderer::deleteNetFlow() {
         LOG(DEBUG) << "deleting netflow";
-        if (!jRpc->deleteNetFlow(agent.getOvsdbBridge()))
+        if (!jRpc->deleteNetFlow(switchName))
         {
             LOG(DEBUG) << "Unable to delete netflow";
             cleanup();
@@ -124,7 +124,7 @@ namespace opflexagent {
 
       bool NetFlowRenderer::deleteIpfix() {
         LOG(DEBUG) << "deleting IPFIX";
-        if (!jRpc->deleteIpfix(agent.getOvsdbBridge()))
+        if (!jRpc->deleteIpfix(switchName))
         {
             LOG(DEBUG) << "Unable to delete ipfix";
             cleanup();
@@ -135,7 +135,7 @@ namespace opflexagent {
 
     bool NetFlowRenderer::createNetFlow(const string &targets, int timeout) {
         LOG(DEBUG) << "createNetFlow:";
-        string brUuid = jRpc->getBridgeUuid(agent.getOvsdbBridge());
+        string brUuid = jRpc->getBridgeUuid(switchName);
         LOG(DEBUG) << "bridge uuid " << brUuid;
         jRpc->createNetFlow(brUuid, targets, timeout);
         return true;
@@ -143,7 +143,7 @@ namespace opflexagent {
 
      bool NetFlowRenderer::createIpfix(const string &targets, int sampling) {
         LOG(DEBUG) << "createIpfix:";
-        string brUuid = jRpc->getBridgeUuid(agent.getOvsdbBridge());
+        string brUuid = jRpc->getBridgeUuid(switchName);
         LOG(DEBUG) << "bridge uuid " << brUuid << "sampling rate is" << sampling;
         jRpc->createIpfix(brUuid, targets, sampling);
         return true;

@@ -36,10 +36,9 @@ public:
         getRpcConnectionPtr()->start();
     }
 
-    virtual void connect(const string& host, int port) {
-        getRpcConnectionPtr()->connect(host, port);
+    virtual void connect() {
+        getRpcConnectionPtr()->connect();
     }
-
 };
 
 class MockSpanRenderer : public SpanRenderer {
@@ -48,8 +47,7 @@ public:
     virtual ~MockSpanRenderer() {};
 
     bool connect() {
-         // connect to OVSDB, destination is specified in agent config file.
-         // If not the default is applied
+         // connect to OVSDB
          // If connection fails, a timer is started to retry and
          // back off at periodic intervals.
          if (timerStarted) {
@@ -59,7 +57,7 @@ public:
          }
          jRpc.reset(new MockJsonRpc());
          jRpc->start();
-         jRpc->connect("localhost", 6640);
+         jRpc->connect();
          return true;
     }
 };
@@ -77,7 +75,7 @@ public:
     shared_ptr<MockSpanRenderer> spr;
 };
 
-static bool verifyCreateDestroy(shared_ptr<MockSpanRenderer> spr) {
+static bool verifyCreateDestroy(const shared_ptr<MockSpanRenderer>& spr) {
     spr->jRpc->setNextId(999);
     JsonRpc::mirror mir;
     if (!spr->jRpc->getOvsdbMirrorConfig(mir)) {
@@ -121,10 +119,7 @@ static bool verifyCreateDestroy(shared_ptr<MockSpanRenderer> spr) {
     if (brUuid.empty()) {
         return false;
     }
-    if (!spr->jRpc->createMirror(brUuid, "msandhu-sess1")) {
-        return false;
-    }
-    return true;
+    return spr->jRpc->createMirror(brUuid, "msandhu-sess1");
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {

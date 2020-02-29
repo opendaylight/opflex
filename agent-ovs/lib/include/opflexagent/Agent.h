@@ -275,21 +275,6 @@ public:
     };
 
     /**
-     * get OVSDB IP address
-     */
-    const std::string& getOvsdbIpAddress() { return ovsdbIpAddress; }
-
-    /**
-     * get OVSDB port
-     */
-    const unsigned long getOvsdbPort() { return ovsdbPort; }
-
-    /**
-     * get OVSDB bridge name
-     */
-    const std::string& getOvsdbBridge() { return ovsdbBridge; }
-
-    /**
      * Get packet event notification socket file name
      */
     const std::string& getPacketEventNotifSock() { return packetEventNotifSockPath; }
@@ -407,10 +392,6 @@ private:
 
     // feature flag array
     bool featureFlag[FeatureList::MAX];
-    // ovsdb parameters
-    std::string ovsdbIpAddress;
-    unsigned long ovsdbPort;
-    std::string ovsdbBridge;
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
     // Prometheus related parameters

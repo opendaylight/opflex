@@ -205,10 +205,8 @@ public:
 
     /**
      * create a tcp connection to peer
-     * @param[in] hostname host name of the peer.
-     * @param[in] port port number to connect to.
      */
-    virtual void connect(string const& hostname, int port);
+    virtual void connect();
 
     /**
      * create mirror

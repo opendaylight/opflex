@@ -117,10 +117,8 @@ class OvsdbConnection : public RpcConnection {
 
     /**
      * create a tcp connection to peer
-     * @param[in] hostname host name of the peer.
-     * @param[in] port port number to connect to.
      */
-    void connect(string const& hostname, int port);
+    void connect();
 
     /**
      * callback for invoking connect

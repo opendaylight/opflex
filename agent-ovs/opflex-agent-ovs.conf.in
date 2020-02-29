@@ -156,13 +156,6 @@
         "renderer": []
     },
 
-    // OVSDB parameters for client to connect
-    "ovsdb": {
-        "ip-address": "127.0.0.1",
-        "port": "6640",
-        "bridge": "br-int"
-    },
-
     // feature on/off switch
     "feature": {
         "disabled": []

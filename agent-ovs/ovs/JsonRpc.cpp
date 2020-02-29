@@ -1104,8 +1104,8 @@ using boost::uuids::basic_random_generator;
         pConn.reset();
     }
 
-    void JsonRpc::connect(string const& hostname, int port) {
-        pConn->connect(hostname, port);
+    void JsonRpc::connect() {
+        pConn->connect();
     }
 
     bool JsonRpc::isConnected() {

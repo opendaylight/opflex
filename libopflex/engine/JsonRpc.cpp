@@ -378,9 +378,7 @@ void RpcConnection::handleTransaction(uint64_t reqId,
     pTrans->handleTransaction(reqId, payload);
 }
 
-void OvsdbConnection::connect(string const& hostname, int port) {
-    this->hostname = hostname;
-    this->port = port;
+void OvsdbConnection::connect() {
     connect_async.data = this;
     uv_async_send(&connect_async);
 }
@@ -407,7 +405,6 @@ void ResponseDict::init() {
         d[i].Parse(response[i].c_str());
         dict.emplace(j, i);
     }
-
 }
 
     ResponseDict& ResponseDict::Instance() {
@@ -418,7 +415,6 @@ void ResponseDict::init() {
         }
         return inst;
     }
-
 }
 }
 }

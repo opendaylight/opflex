@@ -35,9 +35,10 @@ public:
     SpanRenderer(Agent& agent_);
 
     /**
-     * Module start
+     * Start the renderer
+     * @param swName Switch to connect to
      */
-    void start();
+    virtual void start(const std::string& swName);
 
     /**
      * Module stop
@@ -54,7 +55,7 @@ public:
      * delete span pointed to by the pointer
      * @param[in] sesSt shared pointer to a Session object
      */
-    virtual void spanDeleted(shared_ptr<SessionState> sesSt);
+    virtual void spanDeleted(shared_ptr<SessionState>& sesSt);
 
     /**
      * delete all span artifacts
@@ -68,7 +69,7 @@ private:
      * @param spanURI URI of the changed span object
      */
     void handleSpanUpdate(const opflex::modb::URI& spanURI);
-    virtual void sessionDeleted(shared_ptr<SessionState> sesSt);
+    virtual void sessionDeleted(shared_ptr<SessionState>& sesSt);
     virtual void sessionDeleted();
     bool deleteErspnPort(const string& name);
     bool deleteMirror(const string& session);

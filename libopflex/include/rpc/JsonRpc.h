@@ -321,10 +321,8 @@ class RpcConnection {
 
     /**
      * create a tcp connection to peer
-     * @param[in] hostname host name of the peer.
-     * @param[in] port port number to connect to.
      */
-    virtual void connect(string const& hostname, int port) = 0;
+    virtual void connect() = 0;
     /**
      * get state of connection
      * @return true if connected, false otherwise
@@ -379,10 +377,8 @@ public:
 
     /**
      * establish mock connection
-     * @param hostname name of host to connect to
-     * @param port port to connect to
      */
-    void connect(string const& hostname, int port) { connected = true;}
+    void connect() { connected = true;}
 
     /**
      * send transaction

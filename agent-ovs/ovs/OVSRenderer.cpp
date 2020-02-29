@@ -157,8 +157,8 @@ void OVSRenderer::start() {
     intFlowManager.start();
     intFlowManager.registerModbListeners();
     if (getAgent().isFeatureEnabled(FeatureList::ERSPAN))
-        spanRenderer.start();
-    netflowRenderer.start();
+        spanRenderer.start(intBridgeName);
+    netflowRenderer.start(intBridgeName);
 
     if (accessBridgeName != "") {
         accessFlowManager.start();

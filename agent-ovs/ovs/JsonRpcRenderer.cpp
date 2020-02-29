@@ -12,9 +12,14 @@
 
 namespace opflexagent {
 
-    JsonRpcRenderer::JsonRpcRenderer(Agent& agent_) : agent(agent_),taskQueue(agent.getAgentIOService()) {
-
+    JsonRpcRenderer::JsonRpcRenderer(Agent& agent_) :
+        agent(agent_),taskQueue(agent.getAgentIOService()), timerStarted(false) {
     }
+
+    void JsonRpcRenderer::start(const std::string& swName) {
+        switchName = swName;
+    }
+
     bool JsonRpcRenderer::connect() {
         // connect to OVSDB, destination is specified in agent config file.
         // If not the default is applied
@@ -27,7 +32,7 @@ namespace opflexagent {
         }
         jRpc = unique_ptr<JsonRpc>(new JsonRpc());
         jRpc->start();
-        jRpc->connect(agent.getOvsdbIpAddress(), agent.getOvsdbPort());
+        jRpc->connect();
         if (!jRpc->isConnected()) {
             return false;
         }

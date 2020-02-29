@@ -27,8 +27,9 @@ namespace opflexagent {
 
     }
 
-    void SpanRenderer::start() {
+    void SpanRenderer::start(const std::string& swName) {
         LOG(DEBUG) << "starting span renderer";
+        JsonRpcRenderer::start(swName);
         agent.getSpanManager().registerListener(this);
     }
 
@@ -41,7 +42,7 @@ namespace opflexagent {
         handleSpanUpdate(spanURI);
     }
 
-    void SpanRenderer::spanDeleted(shared_ptr<SessionState> seSt) {
+    void SpanRenderer::spanDeleted(shared_ptr<SessionState>& seSt) {
         unique_lock<mutex> lock(handlerMutex);
         if (!connect()) {
             LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY << " seconds";
@@ -109,14 +110,14 @@ namespace opflexagent {
         spanDeleted();
     }
 
-    void SpanRenderer::sessionDeleted(shared_ptr<SessionState> seSt) {
+    void SpanRenderer::sessionDeleted(shared_ptr<SessionState>& seSt) {
         deleteMirror(seSt->getName());
         // There is only one ERSPAN port.
         deleteErspnPort(ERSPAN_PORT_NAME);
     }
 
     void SpanRenderer::sessionDeleted() {
-        if (!jRpc->deleteMirror(agent.getOvsdbBridge())) {
+        if (!jRpc->deleteMirror(switchName)) {
             LOG(DEBUG) << "Unable to delete mirror";
             cleanup();
         }
@@ -175,7 +176,7 @@ namespace opflexagent {
         set<string> dstPort;
         modelgbp::gbp::DirectionEnumT dir;
 
-        for (auto src : seSt.get()->getSrcEndPointSet()) {
+        for (auto& src : seSt.get()->getSrcEndPointSet()) {
             if (src->getDirection() == dir.CONST_BIDIRECTIONAL ||
                     src->getDirection() == dir.CONST_OUT) {
                 srcPort.emplace(src->getPort());
@@ -200,7 +201,7 @@ namespace opflexagent {
         // has changed.
         for (auto itr = mir.src_ports.begin(); itr != mir.src_ports.end();
                 itr++) {
-            set<string>::iterator itr1 = srcPort.find(*itr);
+            auto itr1 = srcPort.find(*itr);
             if (itr1 != srcPort.end()) {
                 srcPort.erase(itr1);
             } else {
@@ -263,7 +264,7 @@ namespace opflexagent {
         set<string> dstPort;
         modelgbp::gbp::DirectionEnumT dir;
 
-        for (auto src : seSt->getSrcEndPointSet()) {
+        for (auto& src : seSt->getSrcEndPointSet()) {
             if (src->getDirection() == dir.CONST_BIDIRECTIONAL ||
                     src->getDirection() == dir.CONST_OUT) {
                 srcPort.emplace(src->getPort());
@@ -276,20 +277,20 @@ namespace opflexagent {
 
         // get the destination IPs
         set<address> dstIp;
-        for (auto dst : seSt->getDstEndPointMap()) {
+        for (auto& dst : seSt->getDstEndPointMap()) {
             dstIp.emplace(dst.second->getAddress());
         }
         // get the first element of the set as only one
         // destination is allowed in OVS 2.10
         string ipAddr = (*(dstIp.begin())).to_string();
-        addErspanPort(agent.getOvsdbBridge(), ipAddr, seSt->getVersion());
+        addErspanPort(switchName, ipAddr, seSt->getVersion());
         LOG(DEBUG) << "creating mirror";
         createMirror(seSt->getName(), srcPort, dstPort);
     }
 
     bool SpanRenderer::deleteMirror(const string &sess) {
         LOG(DEBUG) << "deleting mirror";
-        if (!jRpc->deleteMirror(agent.getOvsdbBridge())) {
+        if (!jRpc->deleteMirror(switchName)) {
             LOG(DEBUG) << "Unable to delete mirror";
             cleanup();
             return false;
@@ -332,7 +333,7 @@ namespace opflexagent {
         string erspanUuid = jRpc->getPortUuid(ERSPAN_PORT_NAME);
         LOG(DEBUG) << ERSPAN_PORT_NAME << " uuid: " << erspanUuid;
         JsonRpc::BrPortResult res;
-        if (jRpc->getBridgePortList(agent.getOvsdbBridge(), res)) {
+        if (jRpc->getBridgePortList(switchName, res)) {
             LOG(DEBUG) << "br UUID " << res.brUuid;
             for (auto& elem : res.portUuids) {
                 LOG(DEBUG) << elem;
@@ -347,11 +348,11 @@ namespace opflexagent {
     bool SpanRenderer::createMirror(const string& sess, const set<string>& srcPorts,
             const set<string>& dstPorts) {
 
-        JsonRpc::mirror mir;
+        JsonRpc::mirror mir{};
         mir.src_ports.insert(srcPorts.begin(), srcPorts.end());
         mir.dst_ports.insert(dstPorts.begin(), dstPorts.end());
         jRpc->addMirrorData("msandhu-sess1", mir);
-        string brUuid = jRpc->getBridgeUuid(agent.getOvsdbBridge());
+        string brUuid = jRpc->getBridgeUuid(switchName);
         LOG(DEBUG) << "bridge uuid " << brUuid;
 
         jRpc->createMirror(brUuid, "msandhu-sess1");
