@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a62cf016_b60d1919",
+        "filename": "genie/MODEL/OWNERSHIP/own.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-02-29T21:58:55Z",
+      "side": 1,
+      "message": "Should \"init\" own the service objects?",
+      "range": {
+        "startLine": 15,
+        "startChar": 22,
+        "endLine": 15,
+        "endChar": 23
+      },
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
