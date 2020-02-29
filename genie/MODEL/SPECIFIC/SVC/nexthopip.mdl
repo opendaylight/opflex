@@ -1,0 +1,38 @@
+module[svc]
+{
+    class[NexthopIPSet;
+          super=policy/Definition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=svc/ServiceMapping]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+            }
+        }
+    }
+
+    class[NexthopIP;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        contained
+        {
+            parent[class=svc/NexthopIPSet]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=ip]
+            }
+        }
+
+        # The IP of nexthop represented as a string
+        member[ip; type=ascii/String]
+    }
+}

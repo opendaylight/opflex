@@ -1,0 +1,40 @@
+module[svc]
+{
+    # class to represent mappings of services present in the svc universe.
+    class[ServiceMapping;
+          concrete;
+          ]
+    {
+        # IP of service mapping
+        member[serviceIP; type=ascii/String]
+
+        # Proto of service mapping
+        member[serviceProto; type=ascii/String]
+
+        # IP of service gateway
+        member[gatewayIP; type=ascii/String]
+
+        # Connection tracking - enabled or disabled
+        member[connectionTracking; type=ascii/String]
+
+        # service's L4 port
+        member[servicePort; type=scalar/UInt16]
+
+        # Nexthop's L4 port
+        member[nexthopPort; type=scalar/UInt16]
+
+        contained
+        {
+            parent[class=svc/Service]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=serviceIP]
+                component[prefix=-;member=serviceProto]
+                component[prefix=-;member=servicePort]
+            }
+        }
+    }
+}
