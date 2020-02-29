@@ -317,7 +317,8 @@ void AccessFlowManagerFixture::initExpStatic() {
          .actions().out(OUTPORT).done());
     ADDF(Bldr().table(OUT).priority(1)
          .isMdAct(flow::meta::access_out::PUSH_VLAN)
-         .actions().pushVlan().move(FD12, VLAN).out(OUTPORT).done());
+         .actions().out(OUTPORT).pushVlan()
+         .move(FD12, VLAN).out(OUTPORT).done());
     ADDF(Bldr().table(OUT).priority(1)
          .isMdAct(flow::meta::access_out::POP_VLAN)
          .isVlanTci("0x1000/0x1000")
@@ -351,6 +352,15 @@ void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
              .load(OUTPORT, uplink)
              .mdAct(flow::meta::access_out::POP_VLAN)
              .go(OUT).done());
+        if (ep->getAccessIfaceVlan()) {
+            ADDF(Bldr()
+                 .table(GRP).priority(200).udp().in(access)
+                 .isVlanTci("0x0000/0x1fff")
+                 .isTpSrc(68).isTpDst(67)
+                 .actions()
+                 .load(OUTPORT, uplink)
+                 .go(OUT).done());
+        }
     }
     if (ep->getDHCPv6Config()) {
         ADDF(Bldr()
@@ -361,6 +371,15 @@ void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
              .load(OUTPORT, uplink)
              .mdAct(flow::meta::access_out::POP_VLAN)
              .go(OUT).done());
+        if (ep->getAccessIfaceVlan()) {
+            ADDF(Bldr()
+                 .table(GRP).priority(200).udp6().in(access)
+                 .isVlanTci("0x0000/0x1fff")
+                 .isTpSrc(546).isTpDst(547)
+                 .actions()
+                 .load(OUTPORT, uplink)
+                 .go(OUT).done());
+        }
     }
 }
 
@@ -378,6 +397,12 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
              .load(RD, zoneId).load(SEPG, 1)
              .load(OUTPORT, uplink)
              .mdAct(flow::meta::access_out::POP_VLAN)
+             .go(OUT_POL).done());
+        ADDF(Bldr().table(GRP).priority(99).in(access)
+             .isVlanTci("0x0000/0x1fff")
+             .actions()
+             .load(RD, zoneId).load(SEPG, 1)
+             .load(OUTPORT, uplink)
              .go(OUT_POL).done());
         ADDF(Bldr().table(GRP).priority(100).in(uplink)
              .actions().load(RD, zoneId).load(SEPG, 1).load(OUTPORT, access)
