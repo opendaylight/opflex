@@ -1,0 +1,51 @@
+module[svc]
+{
+    type[ServiceMode; super=scalar/Enum8]
+    {
+        const[name=unknown; value=0]
+        const[name=lb; value=1]
+        const[name=anycast; value=2]
+    }
+
+    # class to represent services present in the svc universe.
+    class[Service;
+          concrete;
+          ]
+    {
+        # A unique identifer for the service
+        member[uuid; type=ascii/String]
+
+        # mode of service - can be LB or anycast
+        member[mode; type=svc/ServiceMode]
+
+        # service domain's URI
+        member[dom; type=reference/URI]
+
+        # interface name of service
+        member[interfaceName; type=ascii/String]
+
+        # interface encap type of service
+        member[interfaceEncapType; type=gbpe/EncapType]
+
+        # interface encap id of service
+        member[interfaceEncapId; type=gbpe/EncapId]
+
+        # interface IP of service
+        member[interfaceIP; type=address/IP]
+
+        # mac address of the service
+        member[mac; type=address/MAC]
+
+        contained
+        {
+            parent[class=svc/ServiceUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+    }
+}

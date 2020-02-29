@@ -12,6 +12,7 @@ owner[init]
     class[relator/Universe]
     class[policy/Universe]
     class[epr/Universe]
+    class[svc/Universe]
     class[inv/Universe]
     class[dci/Discoverer]
     class[dci/Ep]
@@ -72,6 +73,10 @@ owner[policyelement]
     class[gbpe/EpgMappingCtxToEpgMappingRSrc]
     class[gbpe/ReportedEpAttributeSet]
     class[gbpe/ReportedEpAttribute]
+    module[svc]
+    {
+        class[*]
+    }
     module[epr]
     {
         class[*]

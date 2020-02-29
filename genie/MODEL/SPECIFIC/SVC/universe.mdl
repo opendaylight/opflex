@@ -1,0 +1,28 @@
+module[svc]
+{
+
+    # Universe contains a set of corresponding services that are within the scope of
+    # the given universe.
+    class[Universe;
+          abstract;
+          ]
+    {
+        # All Universes are instantiated under the root
+        root
+    }
+
+    # Universe containing Service objects
+    class[ServiceUniverse;
+          super=svc/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[]
+            }
+        }
+    }
+}
