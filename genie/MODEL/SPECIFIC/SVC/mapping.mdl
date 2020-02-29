@@ -1,0 +1,46 @@
+module[svc]
+{
+    type[ConnTrack; super=scalar/Enum8]
+    {
+        const[name=disabled; value=0]
+        const[name=enabled; value=1]
+    }
+
+    # class to represent mappings of services present in the svc universe.
+    class[ServiceMapping;
+          concrete;
+          ]
+    {
+        # IP of service mapping
+        member[serviceIP; type=address/IP]
+
+        # Proto of service mapping
+        member[serviceProto; type=l3/IpProt]
+
+        # IP of service gateway
+        member[gatewayIP; type=address/IP]
+
+        # Connection tracking - enabled or disabled
+        member[connectionTracking; type=svc/ConnTrack]
+
+        # service's L4 port
+        member[servicePort; type=l4/Port]
+
+        # Nexthop's L4 port
+        member[nexthopPort; type=l4/Port]
+
+        contained
+        {
+            parent[class=svc/Service]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=serviceIP]
+                component[prefix=-;member=serviceProto]
+                component[prefix=-;member=servicePort]
+            }
+        }
+    }
+}
