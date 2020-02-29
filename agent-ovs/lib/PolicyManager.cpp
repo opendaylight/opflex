@@ -1508,7 +1508,8 @@ void PolicyManager::updateRemoteRouteChildrenForPolicyPrefix(
         bool is_exact_match = false;
         if(network::prefix_match( targetAddr, pfxLen,
                                  addr, prefixLen, is_exact_match)) {
-            optional<shared_ptr<LocalRoute>> localRoute;
+            optional<shared_ptr<LocalRoute>> localRoute
+                = boost::make_optional<shared_ptr<LocalRoute> >(false, nullptr);
             optional<shared_ptr<LocalRouteToPrtRSrc>> lrtToPrt;
             optional<shared_ptr<LocalRouteToPsrtRSrc>> lrtToPsrt;
             localRoute = LocalRoute::resolve(framework,
@@ -2461,7 +2462,8 @@ void PolicyManager::updatePolicyPrefixChildrenForRemoteRoute(
             bool is_exact_match = false;
             if(network::prefix_match(targetAddr, pfxLen, addr,
                                      prefixLen, is_exact_match)) {
-                optional<shared_ptr<LocalRoute>> localRoute;
+                optional<shared_ptr<LocalRoute>> localRoute
+                    = boost::make_optional<shared_ptr<LocalRoute> >(false, nullptr);
                 optional<shared_ptr<LocalRouteToRrtRSrc>> lrtToRrt;
                 optional<shared_ptr<LocalRouteToPrtRSrc>> lrtToPrt;
                 localRoute = LocalRoute::resolve(framework,
