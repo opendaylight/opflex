@@ -132,9 +132,6 @@ public:
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
         (*this)(writer);
     }
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
 
     virtual PolicyQueryReq* clone() {
         return new PolicyQueryReq(*this);

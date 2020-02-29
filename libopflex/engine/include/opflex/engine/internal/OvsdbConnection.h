@@ -29,8 +29,6 @@ public:
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer);
 
-    virtual void serializePayload(MessageWriter& writer);
-
     virtual TransactReq* clone(){
         return new TransactReq(*this);
     }
@@ -53,8 +51,6 @@ public:
     JsonReq(const list<transData>& tl, uint64_t reqId);
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer);
-
-    virtual void serializePayload(MessageWriter& writer);
 
     virtual JsonReq* clone(){
         return new JsonReq(*this);

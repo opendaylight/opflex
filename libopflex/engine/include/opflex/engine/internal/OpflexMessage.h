@@ -96,21 +96,6 @@ public:
      */
     const rapidjson::Value& getId() const { return *id; }
 
-    /**
-     * A rapidjson writer that should be used to serialize messages
-     */
-    typedef rapidjson::Writer<rapidjson::StringBuffer> MessageWriter;
-
-    /**
-     * Serialize the payload of the message.  The payload will be
-     * included in the json-rpc message in the appropriate location
-     * depending on the type of the message.  By default, the payload
-     * will be an empty object of the appropriate type
-     *
-     * @param writer the message writer to write the payload to
-     */
-    virtual void serializePayload(MessageWriter& writer) = 0;
-
     virtual void serializePayload(yajr::rpc::SendHandler& writer) = 0;
 
     /**
@@ -168,8 +153,6 @@ public:
     virtual GenericOpflexMessage* clone() {
         return new GenericOpflexMessage(*this);
     }
-
-    virtual void serializePayload(MessageWriter& writer);
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer);
 

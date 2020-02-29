@@ -57,10 +57,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual PolicyQueryRes* clone() {
         return new PolicyQueryRes(*this);
     }

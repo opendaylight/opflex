@@ -467,17 +467,6 @@ void Cb< ZeroCopyOpenSSL >::on_read(
     }
 
     if (nread < 0) {
-
-        VLOG(3)
-            << "nread = "
-            << nread
-            << " ["
-            << uv_err_name(nread)
-            << "] "
-            << uv_strerror(nread)
-            << " => closing"
-        ;
-
         peer->onDisconnect();
     }
 

@@ -67,10 +67,6 @@ namespace yajr {
                 return M->s;
             }
 
-            virtual MethodName * getMethodName() const {
-                return M;
-            }
-
         };
 
         template <MethodName * M>

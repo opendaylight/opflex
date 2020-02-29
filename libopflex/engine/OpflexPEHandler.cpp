@@ -67,10 +67,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual SendIdentityReq* clone() {
         return new SendIdentityReq(*this);
     }

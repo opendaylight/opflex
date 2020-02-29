@@ -72,10 +72,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual PolicyResolveReq* clone() {
         return new PolicyResolveReq(*this);
     }
@@ -132,10 +128,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual PolicyUnresolveReq* clone() {
         return new PolicyUnresolveReq(*this);
     }
@@ -188,10 +180,6 @@ public:
           endpoints(endpoints_) {}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
-        (*this)(writer);
-    }
-
-    virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
@@ -252,10 +240,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual EndpointUnresolveReq* clone() {
         return new EndpointUnresolveReq(*this);
     }
@@ -309,10 +293,6 @@ public:
           endpoints(endpoints_) {}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
-        (*this)(writer);
-    }
-
-    virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 
@@ -379,10 +359,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual EndpointUndeclareReq* clone() {
         return new EndpointUndeclareReq(*this);
     }
@@ -438,10 +414,6 @@ public:
           observables(observables_) {}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
-        (*this)(writer);
-    }
-
-    virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 

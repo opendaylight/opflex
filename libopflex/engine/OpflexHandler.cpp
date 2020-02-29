@@ -108,10 +108,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual ErrorRes* clone() {
         return new ErrorRes(*this);
     }

@@ -30,10 +30,6 @@ void GenericOpflexMessage::serializePayload(yajr::rpc::SendHandler& writer) {
     (*this)(writer);
 }
 
-void GenericOpflexMessage::serializePayload(MessageWriter& writer) {
-    (*this)(writer);
-}
-
 } /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */

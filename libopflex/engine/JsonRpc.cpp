@@ -51,11 +51,6 @@ void TransactReq::serializePayload(yajr::rpc::SendHandler& writer) {
     (*this)(writer);
 }
 
-void TransactReq::serializePayload(MessageWriter& writer) {
-    LOG(DEBUG) << "serializePayload message writer";
-    (*this)(writer);
-}
-
 JsonReq::JsonReq(const list<transData>& tl, uint64_t reqId)
     : OpflexMessage("transact", REQUEST), reqId(reqId)
 {
@@ -67,11 +62,6 @@ JsonReq::JsonReq(const list<transData>& tl, uint64_t reqId)
 
 void JsonReq::serializePayload(yajr::rpc::SendHandler& writer) {
     LOG(DEBUG) << "serializePayload send handler";
-    (*this)(writer);
-}
-
-void JsonReq::serializePayload(MessageWriter& writer) {
-    LOG(DEBUG) << "serializePayload message writer";
     (*this)(writer);
 }
 

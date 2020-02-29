@@ -195,10 +195,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual PolicyUpdateReq* clone() {
         return new PolicyUpdateReq(*this);
     }
@@ -283,10 +279,6 @@ public:
           del(del_) {}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
-        (*this)(writer);
-    }
-
-    virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 

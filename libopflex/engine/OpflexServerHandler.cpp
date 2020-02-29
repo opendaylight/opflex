@@ -68,10 +68,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual SendIdentityRes* clone() {
         return new SendIdentityRes(*this);
     }
@@ -163,10 +159,6 @@ public:
         (*this)(writer);
     }
 
-    virtual void serializePayload(MessageWriter& writer) {
-        (*this)(writer);
-    }
-
     virtual PolicyResolveRes* clone() {
         return new PolicyResolveRes(*this);
     }
@@ -208,10 +200,6 @@ public:
           mos(mos_) {}
 
     virtual void serializePayload(yajr::rpc::SendHandler& writer) {
-        (*this)(writer);
-    }
-
-    virtual void serializePayload(MessageWriter& writer) {
         (*this)(writer);
     }
 

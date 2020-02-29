@@ -51,7 +51,6 @@ class Identifier {
     virtual bool emitId(yajr::rpc::SendHandler & h) const = 0;
   protected:
     virtual char const * requestMethod() const = 0;
-    virtual MethodName * getMethodName() const = 0;
 };
 
 struct LocalId {
@@ -81,9 +80,6 @@ class LocalIdentifier : virtual public Identifier, private LocalId {
     char const * requestMethod() const {
         return methodName_->s;
     }
-    MethodName * getMethodName() const {
-        return methodName_;
-    }
 };
 
 class RemoteIdentifier : virtual public Identifier {
@@ -98,9 +94,7 @@ class RemoteIdentifier : virtual public Identifier {
     char const * requestMethod() const {
         return NULL;
     }
-    MethodName * getMethodName() const {
-        return NULL;
-    }
+
   private:
     rapidjson::Value const & id_;
 };
