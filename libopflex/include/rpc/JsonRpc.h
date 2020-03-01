@@ -72,7 +72,7 @@ public:
      * constructor
      * @param val_ string data value
      */
-    DValue(string val_) : val(val_) { type = Dtype::STRING; }
+    DValue(const string& val_) : val(val_) { type = Dtype::STRING; }
     /**
      * string data
      */

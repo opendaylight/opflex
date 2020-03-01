@@ -201,8 +201,7 @@ using boost::uuids::basic_random_generator;
         td.table = "Bridge";
 
         set<shared_ptr<BaseData>> pSet;
-        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
-        pTdSet->label = "set";
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
         td.rows.emplace("netflow", pTdSet);
 
         uint64_t reqId = getNextId();
@@ -232,8 +231,7 @@ using boost::uuids::basic_random_generator;
         td.table = "Bridge";
 
         set<shared_ptr<BaseData>> pSet;
-        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
-        pTdSet->label = "set";
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
         td.rows.emplace("ipfix", pTdSet);
 
         uint64_t reqId = getNextId();
@@ -364,8 +362,7 @@ using boost::uuids::basic_random_generator;
                     make_shared<TupleData<string>>("uuid", elem);
             pSet.emplace(tPtr);
         }
-        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
-        pTdSet->label = "set";
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
         td.rows.emplace("ports", pTdSet);
 
         uint64_t reqId = getNextId();
@@ -816,8 +813,7 @@ using boost::uuids::basic_random_generator;
                     make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
             pSet.emplace(tPtr);
         }
-        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
-        pTdSet->label = "set";
+        shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
         td1.rows.emplace("select_src_port", pTdSet);
 
         // dst ports
@@ -829,8 +825,7 @@ using boost::uuids::basic_random_generator;
                     make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
             pSet.emplace(tPtr);
         }
-        pTdSet.reset(new TupleDataSet(pSet));
-        pTdSet->label = "set";
+        pTdSet.reset(new TupleDataSet(pSet, "set"));
         td1.rows.emplace("select_dst_port", pTdSet);
 
         // output ports
@@ -844,8 +839,7 @@ using boost::uuids::basic_random_generator;
                     make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
             pSet.emplace(tPtr);
         }
-        pTdSet.reset(new TupleDataSet(pSet));
-        pTdSet->label = "set";
+        pTdSet.reset(new TupleDataSet(pSet, "set"));
         td1.rows.emplace("output_port", pTdSet);
 
         // name
@@ -963,8 +957,7 @@ using boost::uuids::basic_random_generator;
                     std::to_string(static_pointer_cast<erspan_ifc_v2>(port)->erspan_dir)));
             pSet.emplace(tPtr);
         }
-        pTdSet.reset(new TupleDataSet(pSet));
-        pTdSet->label = "map";
+        pTdSet.reset(new TupleDataSet(pSet, "map"));
         td1.rows.emplace("options", pTdSet);
 
         // type
@@ -1069,7 +1062,7 @@ using boost::uuids::basic_random_generator;
             td.table = "Bridge";
 
             set<shared_ptr<BaseData>> pSet;
-            shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+            shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
             pTdSet->label = "set";
             td.rows.emplace("mirrors", pTdSet);
 
