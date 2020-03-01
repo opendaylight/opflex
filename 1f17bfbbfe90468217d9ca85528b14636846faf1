@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "788fdcbc_7336de87",
+        "filename": "genie/MODEL/OWNERSHIP/own.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7e586f35_030e5764",
+      "range": {
+        "startLine": 15,
+        "startChar": 22,
+        "endLine": 15,
+        "endChar": 23
+      },
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c773a286_ff6e7dad",
         "filename": "genie/MODEL/SPECIFIC/SVC/attribute.mdl",
         "patchSetId": 1
@@ -63,6 +87,24 @@
       "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "07b08a18_374fd64d",
+        "filename": "genie/MODEL/SPECIFIC/SVC/attribute.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ideally not needed. I followed the same pattern as EpAttributeSet and ReportedEpAttributeSet. I will remove the \"Set\" class as suggested.",
+      "parentUuid": "c773a286_ff6e7dad",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     },
     {
       "key": {
@@ -83,6 +125,24 @@
     },
     {
       "key": {
+        "uuid": "6a7e3567_146a7175",
+        "filename": "genie/MODEL/SPECIFIC/SVC/mapping.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a125de54_03307d30",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "758f4b2e_cd5269b5",
         "filename": "genie/MODEL/SPECIFIC/SVC/mapping.mdl",
         "patchSetId": 1
@@ -100,6 +160,24 @@
     },
     {
       "key": {
+        "uuid": "8a1f23e0_0b07d026",
+        "filename": "genie/MODEL/SPECIFIC/SVC/mapping.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "758f4b2e_cd5269b5",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "247ae7d0_d34e674a",
         "filename": "genie/MODEL/SPECIFIC/SVC/mapping.mdl",
         "patchSetId": 1
@@ -111,6 +189,24 @@
       "writtenOn": "2020-03-01T00:57:50Z",
       "side": 1,
       "message": "gbp/ConnTrack type?",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c0ef4f7f_fa240af4",
+        "filename": "genie/MODEL/SPECIFIC/SVC/mapping.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "gbp/ConnTrack indicates what kind of connection tracking provided its enabled. I dont see this set under service. Since only enable/disable option is there, I will just add a new enum instead.",
+      "parentUuid": "247ae7d0_d34e674a",
       "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
@@ -134,6 +230,24 @@
     },
     {
       "key": {
+        "uuid": "d4b974c3_8ed5e161",
+        "filename": "genie/MODEL/SPECIFIC/SVC/mapping.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "98ad65bb_cd314dc3",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "458e22cc_03603c3e",
         "filename": "genie/MODEL/SPECIFIC/SVC/mapping.mdl",
         "patchSetId": 1
@@ -148,6 +262,24 @@
       "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b57f067c_d59cb81b",
+        "filename": "genie/MODEL/SPECIFIC/SVC/mapping.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "458e22cc_03603c3e",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     },
     {
       "key": {
@@ -168,6 +300,24 @@
     },
     {
       "key": {
+        "uuid": "c2eea801_3a04dfb3",
+        "filename": "genie/MODEL/SPECIFIC/SVC/nexthopip.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ideally not needed. I followed the same pattern as EpAttributeSet and ReportedEpAttributeSet. I will remove the \"Set\" class as suggested.",
+      "parentUuid": "27c0aac6_732eb44d",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "489b8502_db52937f",
         "filename": "genie/MODEL/SPECIFIC/SVC/nexthopip.mdl",
         "patchSetId": 1
@@ -182,6 +332,24 @@
       "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "456098c7_2a7006ba",
+        "filename": "genie/MODEL/SPECIFIC/SVC/nexthopip.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "489b8502_db52937f",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     },
     {
       "key": {
@@ -202,6 +370,24 @@
     },
     {
       "key": {
+        "uuid": "50ed1ad8_e2ab9332",
+        "filename": "genie/MODEL/SPECIFIC/SVC/service.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c84fb265_c770482c",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "11dfb713_066ccca9",
         "filename": "genie/MODEL/SPECIFIC/SVC/service.mdl",
         "patchSetId": 1
@@ -219,6 +405,24 @@
     },
     {
       "key": {
+        "uuid": "cebec1c0_9963682d",
+        "filename": "genie/MODEL/SPECIFIC/SVC/service.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "I dont see other encap types apart from VLAN supported for service. But I will add EncapId and EncapType to keep it generic.",
+      "parentUuid": "11dfb713_066ccca9",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0af98387_7433081f",
         "filename": "genie/MODEL/SPECIFIC/SVC/service.mdl",
         "patchSetId": 1
@@ -233,6 +437,24 @@
       "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87e5008b_f90b54f9",
+        "filename": "genie/MODEL/SPECIFIC/SVC/service.mdl",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-01T10:42:45Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0af98387_7433081f",
+      "revId": "1f17bfbbfe90468217d9ca85528b14636846faf1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
