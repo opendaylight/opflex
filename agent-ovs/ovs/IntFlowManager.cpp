@@ -2097,6 +2097,14 @@ void IntFlowManager::updatePodSvcStatsAttr (const std::shared_ptr<MO> &obj,
         else
             obj.get()->unsetSvcNs();
     }
+
+    {
+        auto svcItr = svcAttr.find("scope");
+        if (svcItr != svcAttr.end())
+            obj.get()->setSvcScope(svcItr->second);
+        else
+            obj.get()->unsetSvcScope();
+    }
 }
 
 // Called from PolicyStatsManager to update stats
