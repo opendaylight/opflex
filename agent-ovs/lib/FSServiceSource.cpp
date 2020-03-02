@@ -148,6 +148,22 @@ void FSServiceSource::updated(const fs::path& filePath) {
                 newserv.addAttribute("name", ifaceName.get());
         }
 
+        // Today service metrics in prometheus are created with service attribute's
+        // "name" and "namespace". There are cases where internal and external
+        // service will have same set of attributes but different service mapping IPs,
+        // which leads to same metric pointer allocated by prometheus. Due to this, stats
+        // will be incorrect and memory corruption can happen when one of the service
+        // files get removed/modified.To avoid this, check UUID of service to see if
+        // its internal vs external service for now. And annotate prometheus with
+        // "scope: cluster or ext". In future, hostagent will be setting an attribute
+        // named "scope" with either "cluster" or "ext" or "nodeport" or something else.
+        const auto& uuid = newserv.getUUID();
+        if ((uuid.size() > sizeof("-external"))
+                && boost::algorithm::ends_with(uuid, "-external"))
+            newserv.addAttribute("scope", "ext");
+        else
+            newserv.addAttribute("scope", "cluster");
+
         optional<ptree&> sms =
             properties.get_child_optional(SERVICE_MAPPING);
         if (sms) {
