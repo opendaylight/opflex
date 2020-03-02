@@ -664,6 +664,7 @@ void Agent::stop() {
     netflowManager.stop();
 #ifdef HAVE_PROMETHEUS_SUPPORT
     prometheusManager.stop();
+    LOG(DEBUG) << "Prometheus Manager stopped";
 #endif
 
     if (io_work) {
@@ -672,6 +673,7 @@ void Agent::stop() {
     if (io_service_thread) {
         io_service_thread->join();
         io_service_thread.reset();
+	LOG(DEBUG) << "IO service thread stopped";
     }
 
     framework.stop();

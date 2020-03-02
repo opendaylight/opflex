@@ -343,6 +343,8 @@ void OVSRenderer::stop() {
         contractStatsManager.stop();
     if (secGroupStatsEnabled)
         secGrpStatsManager.stop();
+    if(tableDropStatsEnabled)
+        tableDropStatsManager.stop();
 
     pktInHandler.stop();
 

@@ -217,6 +217,7 @@ private:
 
 int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGCHLD, SIG_IGN);
 
     // Parse command line options
     po::options_description desc("Allowed options");
