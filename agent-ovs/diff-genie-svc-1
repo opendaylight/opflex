@@ -1,0 +1,238 @@
+diff --git a/genie/MODEL/OWNERSHIP/own.mdl b/genie/MODEL/OWNERSHIP/own.mdl
+index 032428f..56b4c89 100644
+--- a/genie/MODEL/OWNERSHIP/own.mdl
++++ b/genie/MODEL/OWNERSHIP/own.mdl
+@@ -12,6 +12,7 @@ owner[init]
+     class[relator/Universe]
+     class[policy/Universe]
+     class[epr/Universe]
++    class[svc/Universe]
+     class[inv/Universe]
+     class[dci/Discoverer]
+     class[dci/Ep]
+@@ -72,6 +73,10 @@ owner[policyelement]
+     class[gbpe/EpgMappingCtxToEpgMappingRSrc]
+     class[gbpe/ReportedEpAttributeSet]
+     class[gbpe/ReportedEpAttribute]
++    module[svc]
++    {
++        class[*]
++    }
+     module[epr]
+     {
+         class[*]
+diff --git a/genie/MODEL/SPECIFIC/SVC/attribute.mdl b/genie/MODEL/SPECIFIC/SVC/attribute.mdl
+new file mode 100644
+index 0000000..f9ad5b0
+--- /dev/null
++++ b/genie/MODEL/SPECIFIC/SVC/attribute.mdl
+@@ -0,0 +1,38 @@
++module[svc]
++{
++    class[ServiceAttributeSet;
++          super=policy/Definition;
++          concrete]
++    {
++        contained
++        {
++            parent[class=svc/Service]
++        }
++        named
++        {
++            parent[class=*;]
++            {
++            }
++        }
++    }
++
++    class[ServiceAttribute;
++          super=policy/NamedDefinition;
++          concrete]
++    {
++        contained
++        {
++            parent[class=svc/ServiceAttributeSet]
++        }
++        named
++        {
++            parent[class=*;]
++            {
++                component[member=name]
++            }
++        }
++
++        # The value of the attribute represented as a string
++        member[value; type=ascii/String]
++    }
++}
+diff --git a/genie/MODEL/SPECIFIC/SVC/mapping.mdl b/genie/MODEL/SPECIFIC/SVC/mapping.mdl
+new file mode 100644
+index 0000000..42afe50
+--- /dev/null
++++ b/genie/MODEL/SPECIFIC/SVC/mapping.mdl
+@@ -0,0 +1,40 @@
++module[svc]
++{
++    # class to represent mappings of services present in the svc universe.
++    class[ServiceMapping;
++          concrete;
++          ]
++    {
++        # IP of service mapping
++        member[serviceIP; type=ascii/String]
++
++        # Proto of service mapping
++        member[serviceProto; type=ascii/String]
++
++        # IP of service gateway
++        member[gatewayIP; type=ascii/String]
++
++        # Connection tracking - enabled or disabled
++        member[connectionTracking; type=ascii/String]
++
++        # service's L4 port
++        member[servicePort; type=scalar/UInt16]
++
++        # Nexthop's L4 port
++        member[nexthopPort; type=scalar/UInt16]
++
++        contained
++        {
++            parent[class=svc/Service]
++        }
++        named
++        {
++            parent[class=*;]
++            {
++                component[member=serviceIP]
++                component[prefix=-;member=serviceProto]
++                component[prefix=-;member=servicePort]
++            }
++        }
++    }
++}
+diff --git a/genie/MODEL/SPECIFIC/SVC/nexthopip.mdl b/genie/MODEL/SPECIFIC/SVC/nexthopip.mdl
+new file mode 100644
+index 0000000..430adf0
+--- /dev/null
++++ b/genie/MODEL/SPECIFIC/SVC/nexthopip.mdl
+@@ -0,0 +1,38 @@
++module[svc]
++{
++    class[NexthopIPSet;
++          super=policy/Definition;
++          concrete]
++    {
++        contained
++        {
++            parent[class=svc/ServiceMapping]
++        }
++        named
++        {
++            parent[class=*;]
++            {
++            }
++        }
++    }
++
++    class[NexthopIP;
++          super=policy/NamedDefinition;
++          concrete]
++    {
++        contained
++        {
++            parent[class=svc/NexthopIPSet]
++        }
++        named
++        {
++            parent[class=*;]
++            {
++                component[member=ip]
++            }
++        }
++
++        # The IP of nexthop represented as a string
++        member[ip; type=ascii/String]
++    }
++}
+diff --git a/genie/MODEL/SPECIFIC/SVC/service.mdl b/genie/MODEL/SPECIFIC/SVC/service.mdl
+new file mode 100644
+index 0000000..1a62124
+--- /dev/null
++++ b/genie/MODEL/SPECIFIC/SVC/service.mdl
+@@ -0,0 +1,41 @@
++module[svc]
++{
++    # class to represent services present in the svc universe.
++    class[Service;
++          concrete;
++          ]
++    {
++        # A unique identifer for the service
++        member[uuid; type=ascii/String]
++
++        # mode of service - can be LB or anycast
++        member[mode; type=scalar/UInt8]
++
++        # service domain's URI
++        member[dom; type=reference/URI]
++
++        # interface name of service
++        member[interfaceName; type=ascii/String]
++
++        # interface vlan of service
++        member[interfaceVlan; type=scalar/UInt16]
++
++        # interface IP of service
++        member[interfaceIP; type=ascii/String]
++
++        # mac address of the service
++        member[mac; type=address/MAC]
++
++        contained
++        {
++            parent[class=svc/ServiceUniverse]
++        }
++        named
++        {
++            parent[class=*;]
++            {
++                component[member=uuid]
++            }
++        }
++    }
++}
+diff --git a/genie/MODEL/SPECIFIC/SVC/universe.mdl b/genie/MODEL/SPECIFIC/SVC/universe.mdl
+new file mode 100644
+index 0000000..dc1f87b
+--- /dev/null
++++ b/genie/MODEL/SPECIFIC/SVC/universe.mdl
+@@ -0,0 +1,28 @@
++module[svc]
++{
++
++    # Universe contains a set of corresponding services that are within the scope of
++    # the given universe.
++    class[Universe;
++          abstract;
++          ]
++    {
++        # All Universes are instantiated under the root
++        root
++    }
++
++    # Universe containing Service objects
++    class[ServiceUniverse;
++          super=svc/Universe;
++          concrete;
++          ]
++    {
++        named
++        {
++            parent[class=*;]
++            {
++                component[]
++            }
++        }
++    }
++}

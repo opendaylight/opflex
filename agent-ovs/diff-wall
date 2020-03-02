@@ -1,0 +1,136 @@
+diff --git a/agent-ovs/Makefile.am b/agent-ovs/Makefile.am
+index 9dbbd4d..bb4e847 100644
+--- a/agent-ovs/Makefile.am
++++ b/agent-ovs/Makefile.am
+@@ -18,7 +18,7 @@ OVS_ADDL_CFLAGS = \
+ 	-fpermissive
+ 
+ AM_CPPFLAGS = $(BOOST_CPPFLAGS) \
+-	-Wall \
++	-Wall -Werror \
+ 	-I$(top_srcdir)/ovs/include \
+ 	-I$(top_srcdir)/lib/include \
+ 	-DLOCALSTATEDIR='"$(localstatedir)"'
+diff --git a/agent-ovs/lib/PolicyManager.cpp b/agent-ovs/lib/PolicyManager.cpp
+index c0bfd83..4a682d3 100644
+--- a/agent-ovs/lib/PolicyManager.cpp
++++ b/agent-ovs/lib/PolicyManager.cpp
+@@ -2770,46 +2770,50 @@ void PolicyManager::updateExternalNetworkPrefixes(
+     optional<shared_ptr<RoutingDomain > > rd =
+         l3s.routingDomain;
+ 
+-    //Update policyprefix delete for each subnet
+-    auto snet = l3s.subnet_map.begin();
+-    while (snet != l3s.subnet_map.end())
+-    {
+-        optional<shared_ptr<L3ExternalNetwork>> newNet;
+-        optional<shared_ptr<ExternalSubnet>> newExtSub;
+-        opflex::modb::URI delURI = snet->second->getURI();
+-        std::string delPPfx = snet->second->getAddress().get();
+-        uint32_t pPfxLen = snet->second->getPrefixLen().get();
+-        //This is a deleted policy prefix, update localRoutes
+-        //being served by this policy prefix
+-        localRoute = LocalRoute::resolve(
+-                         framework,
+-                         rd.get()->getURI().toString(),
+-                         delPPfx,
+-                         pPfxLen);
+-        auto lrtToPrt = localRoute.get()->
+-                            resolveEpdrLocalRouteToPrtRSrc();
+-        notifyLocalRoutes.insert(localRoute.get()->getURI());
+-        Mutator mutator(framework, "policyelement");
+-        lrtToPrt.get()->remove();
+-        mutator.commit();
+-        snet = l3s.subnet_map.erase(snet);
+-        if(isLocalRouteDeletable(localRoute.get())) {
+-            localRoute.get()->remove();
++    if (rd) {
++        //Update policyprefix delete for each subnet
++        auto snet = l3s.subnet_map.begin();
++        while (snet != l3s.subnet_map.end())
++        {
++            optional<shared_ptr<L3ExternalNetwork>> newNet;
++            optional<shared_ptr<ExternalSubnet>> newExtSub;
++            opflex::modb::URI delURI = snet->second->getURI();
++            std::string delPPfx = snet->second->getAddress().get();
++            uint32_t pPfxLen = snet->second->getPrefixLen().get();
++            //This is a deleted policy prefix, update localRoutes
++            //being served by this policy prefix
++            localRoute = LocalRoute::resolve(
++                             framework,
++                             rd.get()->getURI().toString(),
++                             delPPfx,
++                             pPfxLen);
++            auto lrtToPrt = localRoute.get()->
++                                resolveEpdrLocalRouteToPrtRSrc();
++            notifyLocalRoutes.insert(localRoute.get()->getURI());
++            Mutator mutator(framework, "policyelement");
++            lrtToPrt.get()->remove();
+             mutator.commit();
++            snet = l3s.subnet_map.erase(snet);
++            if(isLocalRouteDeletable(localRoute.get())) {
++                localRoute.get()->remove();
++                mutator.commit();
++            }
++            getBestPolicyPrefix(rd.get()->getURI(),
++                                delPPfx,
++                                pPfxLen,
++                                newNet, newExtSub);
++            updateRemoteRouteChildrenForPolicyPrefix(
++                rd.get()->getURI(),
++                uri,
++                delURI,
++                delPPfx,
++                pPfxLen,
++                newNet,
++                newExtSub,
++                notifyLocalRoutes);
+         }
+-        getBestPolicyPrefix(rd.get()->getURI(),
+-                            delPPfx,
+-                            pPfxLen,
+-                            newNet, newExtSub);
+-        updateRemoteRouteChildrenForPolicyPrefix(
+-            rd.get()->getURI(),
+-            uri,
+-            delURI,
+-            delPPfx,
+-            pPfxLen,
+-            newNet,
+-            newExtSub,
+-            notifyLocalRoutes);
++    } else {
++        LOG(DEBUG) << "RD is not valid for uri: " << uri;
+     }
+     l3n_map.erase(l3n_iter);
+ 
+diff --git a/agent-ovs/lib/TunnelEpManager.cpp b/agent-ovs/lib/TunnelEpManager.cpp
+index 518e221..84ebbf7 100644
+--- a/agent-ovs/lib/TunnelEpManager.cpp
++++ b/agent-ovs/lib/TunnelEpManager.cpp
+@@ -113,7 +113,11 @@ static string getInterfaceMac(const string& iface) {
+     }
+ 
+     ifreq ifReq;
+-    strncpy(ifReq.ifr_name, iface.c_str(), sizeof(ifReq.ifr_name));
++    /* Note: ifReq.ifr_name is 16 bytes. Ensure at most we can copy only 15 bytes.
++     * 1 byte must be reserved for null terminating the string */
++    auto maxSize = strnlen(iface.c_str(), sizeof(ifReq.ifr_name)-1);
++    strncpy(ifReq.ifr_name, iface.c_str(), maxSize);
++    ifReq.ifr_name[maxSize] = '\0';
+     if (ioctl(sock, SIOCGIFHWADDR, &ifReq) != -1) {
+         close(sock);
+         return
+@@ -137,7 +141,11 @@ static string getInterfaceAddressV4(const string& iface) {
+     }
+ 
+     ifreq ifReq;
+-    strncpy(ifReq.ifr_name, iface.c_str(), sizeof(ifReq.ifr_name));
++    /* Note: ifReq.ifr_name is 16 bytes. Ensure at most we can copy only 15 bytes.
++     * 1 byte must be reserved for null terminating the string */
++    auto maxSize = strnlen(iface.c_str(), sizeof(ifReq.ifr_name)-1);
++    strncpy(ifReq.ifr_name, iface.c_str(), maxSize);
++    ifReq.ifr_name[maxSize] = '\0';
+     if (ioctl(sock, SIOCGIFADDR, &ifReq) != -1) {
+         close(sock);
+         char host[NI_MAXHOST];

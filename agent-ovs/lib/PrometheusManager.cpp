@@ -1098,6 +1098,11 @@ const map<string,string> PrometheusManager::createLabelMapFromPodSvcAttr (
         label_map["svc_namespace"] = svc_ns_itr->second;
     }
 
+    auto svc_scope_itr = svc_attr_map.find("scope");
+    if (svc_scope_itr != svc_attr_map.end()) {
+        label_map["svc_scope"] = svc_scope_itr->second;
+    }
+
     return label_map;
 }
 

@@ -354,6 +354,10 @@ module[gbpe]
         # name of the svc namespace; only populated in k8s
         member[svcNs; type=ascii/String]
 
+        # name of the svc scope; only populated in k8s
+        # host-agent can set this as cluster, ext or nodeport or anything else in future
+        member[svcScope; type=ascii/String]
+
         # number of packets sent from svc to ep
         member[packets; type=scalar/UInt64]
 
@@ -398,6 +402,10 @@ module[gbpe]
 
         # name of the svc namespace; only populated in k8s
         member[svcNs; type=ascii/String]
+
+        # name of the svc scope; only populated in k8s
+        # host-agent can set this as cluster, ext or nodeport or anything else in future
+        member[svcScope; type=ascii/String]
 
         # number of packets sent from ep to svc
         member[packets; type=scalar/UInt64]
