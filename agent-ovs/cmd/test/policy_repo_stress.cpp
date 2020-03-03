@@ -46,7 +46,8 @@ class TestAgent {
 public:
     TestAgent(std::string domain, std::string identity) :
         framework(new opflex::ofcore::OFFramework()),
-        agent(new opflexagent::Agent(*framework)) {
+        agent(new opflexagent::Agent(*framework,
+                                     std::make_tuple("debug",false,""))) {
         framework->setOpflexIdentity(identity, domain);
         agent->getPolicyManager().setOpflexDomain(domain);
     }
