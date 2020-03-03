@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "7577df33_6ee68345",
+        "filename": "agent-ovs/ovs/AccessFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2020-03-03T00:22:26Z",
+      "side": 1,
+      "message": "yes that is the fix. In the return path we dont know if we are sending to VLAN or non VLAN. So we duplicate the packet.",
+      "parentUuid": "4006a96c_844252c7",
+      "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c0b9975d_485633eb",
         "filename": "agent-ovs/ovs/PacketInHandler.cpp",
         "patchSetId": 2
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "6f2eab44_fa1a6dc9",
+        "filename": "agent-ovs/ovs/PacketInHandler.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2020-03-03T00:22:26Z",
+      "side": 1,
+      "message": "Its checked above. If it fails we would return or throw an exception so this line will not be reached.",
+      "parentUuid": "c0b9975d_485633eb",
+      "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d6d5c630_8d327358",
         "filename": "agent-ovs/ovs/PacketInHandler.cpp",
         "patchSetId": 2
@@ -47,6 +83,24 @@
       "writtenOn": "2020-03-03T00:15:50Z",
       "side": 1,
       "message": "Not related to this change. If accPort or accUplinkPort is OFPP_NONE, then we shouldnt be calling send_packet_out() i guess.\n\nCan we move both send_packet_out()\u0027s within the below if block:\nif (accPort !\u003d OFPP_NONE \u0026\u0026 accUplinkPort !\u003d OFPP_NONE) {\n    send_packet_out() \u003c-- with vlan\n    send_packet_out() \u003c-- without vlan\n}",
+      "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c7848fc4_fe1824ac",
+        "filename": "agent-ovs/ovs/PacketInHandler.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2020-03-03T00:22:26Z",
+      "side": 1,
+      "message": "I believe it cannot come to this function without an uplink port.",
+      "parentUuid": "d6d5c630_8d327358",
       "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
