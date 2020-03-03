@@ -21,7 +21,7 @@
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/logging/internal/logging.hpp"
-#include "LockGuard.h"
+#include "opflex/util/LockGuard.h"
 
 #include "yajr/transport/ZeroCopyOpenSSL.hpp"
 #include "yajr/rpc/message_factory.hpp"

@@ -23,7 +23,7 @@
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/engine/internal/OpflexPool.h"
 #include "opflex/logging/internal/logging.hpp"
-#include "RecursiveLockGuard.h"
+#include "opflex/util/RecursiveLockGuard.h"
 
 #include <yajr/internal/comms.hpp>
 

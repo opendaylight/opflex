@@ -25,7 +25,7 @@
 #include "opflex/engine/internal/OpflexPEHandler.h"
 #include "opflex/engine/internal/ProcessorMessage.h"
 #include "opflex/engine/Processor.h"
-#include "LockGuard.h"
+#include "opflex/util/LockGuard.h"
 #include "opflex/logging/internal/logging.hpp"
 
 namespace opflex {

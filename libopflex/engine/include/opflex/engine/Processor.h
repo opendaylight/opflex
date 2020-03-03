@@ -33,7 +33,7 @@
 #include "opflex/engine/internal/MOSerializer.h"
 #include "opflex/engine/internal/AbstractObjectListener.h"
 
-#include "ThreadManager.h"
+#include "opflex/util/ThreadManager.h"
 
 namespace opflex {
 namespace engine {

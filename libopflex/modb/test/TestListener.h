@@ -15,7 +15,7 @@
 #include <uv.h>
 
 #include "opflex/modb/ObjectListener.h"
-#include "LockGuard.h"
+#include "opflex/util/LockGuard.h"
 
 namespace opflex {
 namespace modb {

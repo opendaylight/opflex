@@ -14,8 +14,7 @@
 #  include <config.h>
 #endif
 
-
-#include "LockGuard.h"
+#include "opflex/util/LockGuard.h"
 
 namespace opflex {
 namespace util {

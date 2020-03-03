@@ -23,7 +23,7 @@
 #include <uv.h>
 
 #include "opflex/modb/URI.h"
-#include "ThreadManager.h"
+#include "opflex/util/ThreadManager.h"
 
 namespace opflex {
 namespace modb {

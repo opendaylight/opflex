@@ -27,7 +27,7 @@
 #include "opflex/modb/internal/ObjectStore.h"
 #include "opflex/modb/mo-internal/StoreClient.h"
 
-#include "ThreadManager.h"
+#include "opflex/util/ThreadManager.h"
 
 namespace opflex {
 namespace ofcore {

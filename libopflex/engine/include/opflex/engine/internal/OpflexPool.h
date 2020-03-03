@@ -30,7 +30,7 @@
 #include "opflex/ofcore/OFTypes.h"
 #include "opflex/modb/MAC.h"
 #include "yajr/transport/ZeroCopyOpenSSL.hpp"
-#include "ThreadManager.h"
+#include "opflex/util/ThreadManager.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXPOOL_H

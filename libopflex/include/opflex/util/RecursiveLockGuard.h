@@ -14,7 +14,7 @@
 #ifndef OPFLEX_UTIL_RECURSIVE_LOCKGUARD_H
 #define OPFLEX_UTIL_RECURSIVE_LOCKGUARD_H
 
-#include <LockGuard.h>
+#include "opflex/util/LockGuard.h"
 
 namespace opflex {
 namespace util {

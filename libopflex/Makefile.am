@@ -87,6 +87,11 @@ rpc_include_HEADERS = \
 gbp_includedir = $(includedir)/opflex/gbp
 gbp_include_HEADERS = \
 	include/opflex/gbp/Policy.h
+util_includedir = $(includedir)/opflex/util
+util_include_HEADERS = \
+	include/opflex/util/ThreadManager.h \
+    include/opflex/util/LockGuard.h \
+    include/opflex/util/RecursiveLockGuard.h
 
 lib_LTLIBRARIES = libopflex.la
 libopflex_la_SOURCES = 
@@ -122,10 +127,10 @@ if HAVE_DOXYGEN
 	doc/html
 endif
 
-doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile 
+doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) $(util_include_HEADERS) doc/Doxyfile
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html
-doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) doc/Doxyfile-internal
+doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) $(util_include_HEADERS) doc/Doxyfile-internal
 	cd doc && ${DOXYGEN} Doxyfile-internal
 doc-internal: doc/html-internal
 install-data-local: doc

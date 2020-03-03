@@ -23,7 +23,7 @@
 #include "opflex/engine/internal/OpflexListener.h"
 #include "opflex/logging/internal/logging.hpp"
 #include "opflex/engine/internal/GbpOpflexServerImpl.h"
-#include "LockGuard.h"
+#include "opflex/util/LockGuard.h"
 
 namespace opflex {
 namespace engine {

@@ -14,7 +14,7 @@
 #  include <config.h>
 #endif
 
-#include "ThreadManager.h"
+#include "opflex/util/ThreadManager.h"
 
 namespace opflex {
 namespace util {
@@ -62,7 +62,7 @@ void ThreadManager::startTask(const std::string& name) {
 }
 
 void ThreadManager::stopTask(const std::string& name) {
-    task_map_t::iterator it = task_map.find(name);
+    auto it = task_map.find(name);
     if (it != task_map.end()) {
         Task& task = it->second;
         uv_async_send(&task.cleanup);
