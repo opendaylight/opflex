@@ -98,9 +98,11 @@ bool isRebootConfigPath(const fs::path& file) {
 
 class AgentLauncher : FSWatcher::Watcher {
 public:
-    AgentLauncher(bool watch_, std::vector<string>& configFiles_)
+    AgentLauncher(bool watch_, std::vector<string>& configFiles_,
+    LogParams &logParams)
         : watch(watch_), configFiles(configFiles_),
-          stopped(false), need_reload(false) {}
+          stopped(false), need_reload(false),
+          log_level(_log_level), log_file(_log_file), toSyslog(_toSyslog) {}
 
     int run() {
         try {
@@ -113,7 +115,7 @@ public:
             while (true) {
                 std::unique_lock<std::mutex> lock(mutex);
                 opflex::ofcore::OFFramework framework;
-                Agent agent(framework);
+                Agent agent(framework, logParams);
 
                 configure(agent);
                 agent.start();
@@ -172,9 +174,11 @@ public:
 private:
     bool watch;
     std::vector<string>& configFiles;
-
     bool stopped;
     bool need_reload;
+    LogParams logParams;
+    std::string log_level, log_file;
+    bool toSyslog;
     std::mutex mutex;
     std::condition_variable cond;
 
@@ -292,8 +296,8 @@ int main(int argc, char** argv) {
     sigaddset(&waitset, SIGINT);
     sigaddset(&waitset, SIGTERM);
     sigprocmask(SIG_BLOCK, &waitset, NULL);
-
-    AgentLauncher launcher(watch, configFiles);
+    LogParams _logParams = std::make_tuple(level_str, logToSyslog, log_file);
+    AgentLauncher launcher(watch, configFiles, _logParams);
     std::thread signal_thread([&launcher, &waitset]() {
             int sig;
             int result = sigwait(&waitset, &sig);
