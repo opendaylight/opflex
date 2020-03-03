@@ -23,6 +23,8 @@
 #include <time.h>
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#include <iomanip>
+#include <sstream>
 
 using rapidjson::Writer;
 using rapidjson::StringBuffer;
@@ -109,10 +111,15 @@ struct ParseInfo {
             pendingOptionLength(0), inferredLength(0), inferredDataLength(0),
             scratchpad{0,0,0,0}, packetTuple() {
         time_t rawtime;
-        struct tm *time_info;
         time(&rawtime);
-        time_info = localtime ( &rawtime );
-        packetTuple.TimeStamp = std::string(asctime(time_info));
+        std::stringstream str;
+        str << std::put_time(localtime (&rawtime), "%a %b %d %H:%M:%S %Z %Y");
+        packetTuple.TimeStamp = str.str();
+        /*Remove trailing newline as it causes issues in JSON decoding*/
+        if(!packetTuple.TimeStamp.empty() &&
+           packetTuple.TimeStamp[packetTuple.TimeStamp.length() -1] == '\n') {
+           packetTuple.TimeStamp.erase(packetTuple.TimeStamp.length()-1);
+        }
     };
     /**
      * Packet decoder instance
