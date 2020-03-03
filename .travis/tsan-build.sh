@@ -15,16 +15,16 @@ pushd genie
 mvn compile exec:java
 pushd target/libmodelgbp
 bash autogen.sh
-./configure
-make
-sudo make install
+./configure &> /dev/null
+make &> /dev/null
+sudo make install &> /dev/null
 popd
 popd
 
 git clone https://github.com/openvswitch/ovs.git --branch v2.12.0 --depth 1
 pushd ovs
 ./boot.sh
-./configure  --enable-shared
+./configure  --enable-shared &> /dev/null
 make -j2 &> /dev/null
 sudo make install
 sudo mkdir -p /usr/local/include/openvswitch/openvswitch
