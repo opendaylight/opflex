@@ -31,17 +31,6 @@
     do {                                       \
         uv_handle_t * _h = h;                  \
         uv_close_cb _cb = cb;                  \
-        VLOG(2)                                \
-            << "uv_close("                     \
-            << #h                              \
-            << "="                             \
-            << reinterpret_cast< void * >(_h)  \
-            << ", "                            \
-            << #cb                             \
-            << "="                             \
-            << reinterpret_cast< void * >(_cb) \
-            << ")"                             \
-        ;                                      \
         uv_close(_h, _cb);                     \
     } while(0)
 

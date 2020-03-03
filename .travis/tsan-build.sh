@@ -31,7 +31,7 @@ sudo mkdir -p /usr/local/include/openvswitch/openvswitch
 sudo mv /usr/local/include/openvswitch/*.h /usr/local/include/openvswitch/openvswitch
 sudo mv /usr/local/include/openflow /usr/local/include/openvswitch
 sudo cp -t "/usr/local/include/openvswitch/" include/*.h
-sudo find lib -name "*.h" -exec cp --parents -t "/usr/local/include/openvswitch/" {} \
+sudo find lib -name "*.h" -exec cp --parents -t "/usr/local/include/openvswitch/" {} \;
 popd
 
 pushd agent-ovs
