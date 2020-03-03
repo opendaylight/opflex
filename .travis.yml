@@ -18,3 +18,6 @@ addons:
       - python-six
 
 script: bash ./.travis/tsan-build.sh
+
+after_failure:
+  - find . -name test-suite.log|xargs cat

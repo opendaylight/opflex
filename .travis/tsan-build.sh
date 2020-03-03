@@ -1,11 +1,13 @@
 #!/bin/bash
 
+set -o errtrace
+set -x
+
 pushd libopflex
 ./autogen.sh
 ./configure --enable-tsan
 make -j2
 make check
-
 sudo make install
 popd
 
@@ -23,7 +25,7 @@ git clone https://github.com/openvswitch/ovs.git --branch v2.12.0 --depth 1
 pushd ovs
 ./boot.sh
 ./configure  --enable-shared
-make -j2
+make -j2 &> /dev/null
 sudo make install
 sudo mkdir -p /usr/local/include/openvswitch/openvswitch
 sudo mv /usr/local/include/openvswitch/*.h /usr/local/include/openvswitch/openvswitch
@@ -34,7 +36,7 @@ popd
 
 pushd agent-ovs
 ./autogen.sh
-./configure --enable-tsan;
+./configure --enable-tsan
 make -j2
 make check
 
