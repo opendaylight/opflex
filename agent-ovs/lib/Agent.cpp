@@ -58,7 +58,7 @@ using boost::uuids::to_string;
 using boost::uuids::basic_random_generator;
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
-Agent::Agent(OFFramework& framework_)
+Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
     : framework(framework_),
       prometheusManager(*this, framework),
       policyManager(framework, agent_io),
@@ -67,9 +67,10 @@ Agent::Agent(OFFramework& framework_)
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
       spanManager(framework, agent_io),
-      netflowManager(framework,agent_io) {
+      netflowManager(framework,agent_io),
+      logParams(_logParams) {
 #else
-Agent::Agent(OFFramework& framework_)
+Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
     : framework(framework_),
       policyManager(framework, agent_io),
       endpointManager(*this, framework, policyManager),
@@ -77,7 +78,8 @@ Agent::Agent(OFFramework& framework_)
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
       spanManager(framework, agent_io),
-      netflowManager(framework,agent_io) {
+      netflowManager(framework,agent_io),
+      logParams(_logParams) {
 #endif
     std::random_device rng;
     std::mt19937 urng(rng());

@@ -44,6 +44,7 @@
 #include <vector>
 #include <unordered_map>
 #include <thread>
+#include <tuple>
 
 namespace opflexagent {
 
@@ -56,7 +57,7 @@ class LearningBridgeSource;
 class SnatSource;
 class SimStats;
 class FSPacketDropLogConfigSource;
-
+typedef std::tuple<std::string, bool, std::string> LogParams;
 enum StatMode { REAL, SIM, OFF };
 /**
  * feature list enum. Always keep MAX at the end.
@@ -75,8 +76,10 @@ public:
      * instance.
      *
      * @param framework the framework instance to use
+     * @param _logParams logging parameters passed on commandline
      */
-    Agent(opflex::ofcore::OFFramework& framework);
+    Agent(opflex::ofcore::OFFramework& framework,
+          const LogParams& _logParams);
 
     /**
      * Destroy the agent and clean up all state
@@ -300,6 +303,11 @@ public:
         return prometheusEpAttributes;
     }
 #endif
+    /**
+     * Get packet event notification socket file name
+     */
+    const std::tuple<std::string, bool, std::string>& getLogParams() { return logParams; }
+
 private:
     boost::asio::io_service agent_io;
     std::unique_ptr<boost::asio::io_service::work> io_work;
@@ -398,6 +406,7 @@ private:
     bool prometheusExposeLocalHostOnly;
     std::unordered_set<std::string> prometheusEpAttributes;
 #endif
+    std::tuple<std::string, bool, std::string> logParams;
 };
 
 } /* namespace opflexagent */
