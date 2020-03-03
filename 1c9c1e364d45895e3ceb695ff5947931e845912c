@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "0aba10ef_e3969e64",
+        "filename": "agent-ovs/ovs/AccessFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-03T00:57:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7577df33_6ee68345",
+      "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c0b9975d_485633eb",
         "filename": "agent-ovs/ovs/PacketInHandler.cpp",
         "patchSetId": 2
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "Its checked above. If it fails we would return or throw an exception so this line will not be reached.",
       "parentUuid": "c0b9975d_485633eb",
+      "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43fe9400_f3462959",
+        "filename": "agent-ovs/ovs/PacketInHandler.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-03T00:57:49Z",
+      "side": 1,
+      "message": "the exception is only for out_port not in range. So safe to check for ep. But since u mentioned ep is always going to be present its fine.",
+      "parentUuid": "6f2eab44_fa1a6dc9",
       "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
@@ -127,6 +163,30 @@
       "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "42d7a1ff_fba0dbe2",
+        "filename": "agent-ovs/ovs/test/AccessFlowManager_test.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-03T00:57:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "afd86e31_f38f437b",
+      "range": {
+        "startLine": 320,
+        "startChar": 24,
+        "endLine": 320,
+        "endChar": 31
+      },
+      "revId": "1c9c1e364d45895e3ceb695ff5947931e845912c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
