@@ -264,17 +264,17 @@ void OVSRenderer::start() {
             if (fd > 0)
                 close (fd);
         }
-        std::string netNs = "/var/run/netns/" + dropLogNs;
-        int ns_fd = open(netNs.c_str(), O_RDONLY);
+        int ns_fd = open(dropLogNs.c_str(), O_RDONLY);
         if(ns_fd < 0) {
             LOG(ERROR) << "PacketLogger: Failed to open namespace "
                        << dropLogNs << ":" << errno;
             exit(1);
         }
+
         int err = setns(ns_fd, CLONE_NEWNET);
         if(err) {
             LOG(ERROR) << "PacketLogger: Failed to switch to namespace "
-                       << netNs << ":" << err;
+                       << dropLogNs << ":" << err;
             exit(1);
         }
         pktLogger.setAddress(addr, dropLogRemotePort);
@@ -293,7 +293,6 @@ void OVSRenderer::start() {
             s << child_pid;
         }
         s.close();
-
         // Register signal handlers.
         sigset_t waitset;
         sigemptyset(&waitset);
@@ -506,7 +505,7 @@ void OVSRenderer::setProperties(const ptree& properties) {
         dropLogAccessIface = dropLogEncapGeneve.get().get<std::string>(ACC_BR_IFACE, "");
         dropLogRemoteIp = dropLogEncapGeneve.get().get<std::string>(REMOTE_IP, "");
         dropLogRemotePort = dropLogEncapGeneve.get().get<uint16_t>(REMOTE_PORT, 6081);
-        dropLogNs = dropLogEncapGeneve.get().get<std::string>(REMOTE_NAMESPACE, "DropLog");
+        dropLogNs = dropLogEncapGeneve.get().get<std::string>(REMOTE_NAMESPACE, "/var/run/netns/DropLog");
     }
 
     virtualRouter = properties.get<bool>(VIRTUAL_ROUTER, true);
