@@ -113,6 +113,11 @@ struct ParseInfo {
         time(&rawtime);
         time_info = localtime ( &rawtime );
         packetTuple.TimeStamp = std::string(asctime(time_info));
+        /*Remove trailing newline as it causes issues in JSON decoding*/
+        if(!packetTuple.TimeStamp.empty() &&
+           packetTuple.TimeStamp[packetTuple.TimeStamp.length() -1] == '\n') {
+           packetTuple.TimeStamp.erase(packetTuple.TimeStamp.length()-1);
+        }
     };
     /**
      * Packet decoder instance
