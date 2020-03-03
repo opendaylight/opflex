@@ -32,7 +32,7 @@ class BaseFixture {
 typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
 public:
     BaseFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE) :
-    agent(framework), tunnelEpManager(&agent) {
+    agent(framework, std::make_tuple("debug",false,"")), tunnelEpManager(&agent) {
         agent.setRendererForwardingMode(mode);
         if(mode == opflex_elem_t::TRANSPORT_MODE) {
             /**

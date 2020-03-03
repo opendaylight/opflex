@@ -198,6 +198,11 @@ void setLoggingLevel(const std::string& newLevelstr) {
     }
 
     logHandler.setLevel(level);
+    logHandler.setLevelString(levelstr);
+}
+
+const std::string &getLogLevelString() {
+    return logHandler.getLevelString();
 }
 
 } /* namespace opflexagent */
