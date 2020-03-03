@@ -81,9 +81,9 @@ c_include_HEADERS = \
 	include/opflex/c/ofpeerstatuslistener_c.h \
 	include/opflex/c/ofmutator_c.h \
 	include/opflex/c/offramework_c.h
-rpc_includedir = $(includedir)/rpc
+rpc_includedir = $(includedir)/opflex/rpc
 rpc_include_HEADERS = \
-	include/rpc/JsonRpc.h
+	include/opflex/rpc/JsonRpc.h
 gbp_includedir = $(includedir)/opflex/gbp
 gbp_include_HEADERS = \
 	include/opflex/gbp/Policy.h

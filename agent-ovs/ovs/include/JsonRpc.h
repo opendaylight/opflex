@@ -24,7 +24,7 @@
 #include <chrono>
 #include <thread>
 #include <rapidjson/document.h>
-#include "rpc/JsonRpc.h"
+#include <opflex/rpc/JsonRpc.h>
 #include <opflexagent/logging.h>
 
 #include <boost/optional.hpp>

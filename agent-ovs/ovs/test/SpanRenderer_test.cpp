@@ -12,7 +12,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "rpc/JsonRpc.h"
+#include <opflex/rpc/JsonRpc.h>
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
 #include <SpanRenderer.h>

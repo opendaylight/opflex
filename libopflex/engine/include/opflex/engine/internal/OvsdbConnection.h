@@ -16,7 +16,7 @@
 #ifndef OPFLEX_ENGINE_INTERNAL_OVSDBCONNECTION_H
 #define OPFLEX_ENGINE_INTERNAL_OVSDBCONNECTION_H
 
-#include "rpc/JsonRpc.h"
+#include "opflex/rpc/JsonRpc.h"
 #include "opflex/engine/internal/OpflexMessage.h"
 
 namespace opflex {

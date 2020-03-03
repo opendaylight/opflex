@@ -23,7 +23,7 @@
 
 #include "JsonRpc.h"
 
-#include "rpc/JsonRpc.h"
+#include <opflex/rpc/JsonRpc.h>
 
 #include <random>
 

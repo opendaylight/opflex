@@ -24,7 +24,7 @@
 #include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/ProcessorMessage.h"
 #include "opflex/engine/internal/OvsdbConnection.h"
-#include "rpc/JsonRpc.h"
+#include "opflex/rpc/JsonRpc.h"
 
 #include "opflex/logging/internal/logging.hpp"
 #include <yajr/yajr.hpp>

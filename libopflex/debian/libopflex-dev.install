@@ -1,5 +1,4 @@
 usr/include/opflex/*
-usr/include/rpc/*
 usr/lib/*/lib*.a
 usr/lib/*/lib*.la
 usr/lib/*/pkgconfig/*
