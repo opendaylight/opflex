@@ -46,6 +46,18 @@ public:
      * Implement opflex::logging::OFLogHandler::setLevel
      */
     void setLevel(opflex::logging::OFLogHandler::Level logLevel);
+    /**
+     * Set the log level string
+     * @param levelstr log level string
+     */
+    void setLevelString(std::string levelstr);
+    /** 
+     * Get the log level string
+     * @return the log level string
+     */ 
+    const std::string &getLevelString();
+private:
+    std::string logLevelStr;
 };
 
 } /* namespace opflexagent */

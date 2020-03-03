@@ -72,10 +72,18 @@ void LocalClient::run() {
             try {
                 boost::asio::write(clientSocket,
                         boost::asio::buffer(send_buffer, 4096));
-            } catch (std::exception &e) {
-                LOG(ERROR) << "Failed to write to socket " << e.what();
+                pendingData = false;
+            } catch (boost::system::system_error &bse ) {
+                LOG(ERROR) << "Failed to write to socket " << bse.what();
+                if(bse.code() !=
+                   boost::system::errc::resource_unavailable_try_again) {
+                    boost::system::error_code ec;
+                    clientSocket.cancel(ec);
+                    clientSocket.close(ec);
+                    connected = false;
+                }
+                /*TODO: deserialize and requeue events*/
             }
-            pendingData = false;
         }
     }
 }
