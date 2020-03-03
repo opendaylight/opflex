@@ -63,19 +63,27 @@ void LocalClient::run() {
                     event_count++;
                 }
                 writer.EndArray();
+                pendingDataLen = (buffer.GetSize()>4096? 4096: buffer.GetSize());
                 memcpy(send_buffer.data(), buffer.GetString(),
-                        (buffer.GetSize()>4096? 4096: buffer.GetSize()));
-                pendingData = true;
+                        pendingDataLen);
             }
         }
-        if(pendingData) {
+        if(pendingDataLen>0) {
             try {
                 boost::asio::write(clientSocket,
-                        boost::asio::buffer(send_buffer, 4096));
-            } catch (std::exception &e) {
-                LOG(ERROR) << "Failed to write to socket " << e.what();
+                        boost::asio::buffer(send_buffer, pendingDataLen));
+                pendingDataLen = 0;
+            } catch (boost::system::system_error &bse ) {
+                LOG(ERROR) << "Failed to write to socket " << bse.what();
+                if(bse.code() !=
+                   boost::system::errc::resource_unavailable_try_again) {
+                    boost::system::error_code ec;
+                    clientSocket.cancel(ec);
+                    clientSocket.close(ec);
+                    connected = false;
+                }
+                /*TODO: deserialize and requeue events*/
             }
-            pendingData = false;
         }
     }
 }

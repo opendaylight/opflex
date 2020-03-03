@@ -100,7 +100,7 @@ public:
             const std::string &socketFileName)
         : pktLogger(logHandler), clientSocket(client_io),
           remoteEndpoint(socketFileName), stopped(false),
-          connected(false), pendingData(false) {
+          connected(false), pendingDataLen(0) {
     }
     /**
      * Connect to a given local socket and export events
@@ -120,7 +120,7 @@ private:
     boost::array<unsigned char, 4096> send_buffer;
     bool stopped;
     bool connected;
-    bool pendingData;
+    unsigned pendingDataLen;
     static const unsigned maxEventsPerBuffer=10;
 };
 

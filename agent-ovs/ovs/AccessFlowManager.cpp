@@ -154,6 +154,9 @@ void AccessFlowManager::setDropLog(const string& dropLogPort, const string& drop
         LOG(ERROR) << "IPv6 drop-log tunnel destinations are not supported";
     } else {
         dropLogDst = tunDst;
+        LOG(INFO) << "DropLog port set to " << dropLogPort
+                   << " tunnel destination: " << dropLogRemoteIp
+                   << ":" <<_dropLogRemotePort;
     }
     dropLogRemotePort = _dropLogRemotePort;
 }
@@ -506,8 +509,9 @@ void AccessFlowManager::handleEndpointUpdate(const string& uuid) {
 void AccessFlowManager::handleDropLogPortUpdate() {
     FlowEntryList catchDropFlows;
     if(dropLogIface.empty() || !dropLogDst.is_v4()) {
-        LOG(WARNING) << "Ignoring dropLog port";
         switchManager.clearFlows("static", EXP_DROP_TABLE_ID);
+        LOG(WARNING) << "Ignoring dropLog port " << dropLogIface
+        << " " << dropLogDst;
         return;
     }
     int dropLogPort = switchManager.getPortMapper().FindPort(dropLogIface);
@@ -754,6 +758,7 @@ void AccessFlowManager::packetDropLogConfigUpdated(const opflex::modb::URI& drop
                 .action().go(GROUP_MAP_TABLE_ID)
                 .parent().build(dropLogFlows);
         switchManager.writeFlow("DropLogConfig", DROP_LOG_TABLE_ID, dropLogFlows);
+        LOG(INFO) << "Defaulting to droplog disabled";
         return;
     }
     if(dropLogCfg.get()->getDropLogEnable(0) != 0) {
@@ -766,8 +771,10 @@ void AccessFlowManager::packetDropLogConfigUpdated(const opflex::modb::URI& drop
                               flow::meta::DROP_LOG)
                     .go(GROUP_MAP_TABLE_ID)
                     .parent().build(dropLogFlows);
+            LOG(INFO) << "Droplog mode set to unfiltered";
         } else {
             switchManager.clearFlows("DropLogConfig", DROP_LOG_TABLE_ID);
+            LOG(INFO) << "Droplog mode set to filtered";
             return;
         }
     } else {
@@ -775,6 +782,7 @@ void AccessFlowManager::packetDropLogConfigUpdated(const opflex::modb::URI& drop
                 .action()
                 .go(GROUP_MAP_TABLE_ID)
                 .parent().build(dropLogFlows);
+        LOG(INFO) << "Droplog disabled";
     }
     switchManager.writeFlow("DropLogConfig", DROP_LOG_TABLE_ID, dropLogFlows);
 }

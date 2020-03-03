@@ -270,6 +270,9 @@ void IntFlowManager::setDropLog(const string& dropLogPort, const string& dropLog
         LOG(ERROR) << "IPv6 drop-log tunnel destinations are not supported";
     } else {
         dropLogDst = tunDst;
+        LOG(INFO) << "DropLog port set to " << dropLogPort
+                   << " tunnel destination: " << dropLogRemoteIp
+                   << ":" <<_dropLogRemotePort;
     }
     dropLogRemotePort = _dropLogRemotePort;
 }
@@ -377,6 +380,7 @@ void IntFlowManager::packetDropLogConfigUpdated(const opflex::modb::URI& dropLog
                 .action().go(IntFlowManager::SEC_TABLE_ID)
                 .parent().build(dropLogFlows);
         switchManager.writeFlow("DropLogConfig", DROP_LOG_TABLE_ID, dropLogFlows);
+        LOG(INFO) << "Defaulting to droplog disabled";
         return;
     }
     if(dropLogCfg.get()->getDropLogEnable(0) != 0) {
@@ -389,11 +393,14 @@ void IntFlowManager::packetDropLogConfigUpdated(const opflex::modb::URI& dropLog
                               flow::meta::DROP_LOG)
                     .go(IntFlowManager::SEC_TABLE_ID)
                     .parent().build(dropLogFlows);
+            LOG(INFO) << "Droplog mode set to unfiltered";
         } else {
             switchManager.clearFlows("DropLogConfig", DROP_LOG_TABLE_ID);
+            LOG(INFO) << "Droplog mode set to filtered";
             return;
         }
     } else {
+        LOG(INFO) << "Droplog disabled";
         FlowBuilder().priority(2)
                 .action()
                 .go(IntFlowManager::SEC_TABLE_ID)
@@ -4226,7 +4233,8 @@ void IntFlowManager::updateGroupTable() {
 void IntFlowManager::handleDropLogPortUpdate() {
     if(dropLogIface.empty() || !dropLogDst.is_v4()) {
         switchManager.clearFlows("DropLogStatic", EXP_DROP_TABLE_ID);
-        LOG(WARNING) << "Ignoring dropLog port";
+        LOG(WARNING) << "Ignoring dropLog port " << dropLogIface
+        << " " << dropLogDst;
         return;
     }
     FlowEntryList catchDropFlows;

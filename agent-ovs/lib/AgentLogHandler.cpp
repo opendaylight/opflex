@@ -25,6 +25,14 @@ void AgentLogHandler::setLevel(Level logLevel) {
     logLevel_ = logLevel;
 }
 
+void AgentLogHandler::setLevelString(std::string levelstr) {
+    logLevelStr = levelstr;
+}
+
+const std::string &AgentLogHandler::getLevelString() {
+    return logLevelStr;
+}
+
 void AgentLogHandler::handleMessage(const std::string& file,
                                    const int line,
                                    const std::string& function,
