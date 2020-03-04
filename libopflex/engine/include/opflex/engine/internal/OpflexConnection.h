@@ -22,8 +22,8 @@
 #include <rapidjson/stringbuffer.h>
 #include <uv.h>
 
-#include "yajr/yajr.hpp"
-#include "yajr/rpc/message_factory.hpp"
+#include "opflex/yajr/yajr.hpp"
+#include "opflex/yajr/rpc/message_factory.hpp"
 #include "opflex/engine/internal/OpflexMessage.h"
 
 #pragma once

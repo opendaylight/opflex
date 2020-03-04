@@ -26,22 +26,38 @@ namespace yajr {
         }
     }
 
-    namespace transport {
+namespace transport {
 
+/**
+ * Transport
+ */
 class Transport {
 
   public:
 
     struct Engine {};
 
+    /**
+     * Callbacks
+     */
     struct Callbacks {
+        /** alloc cb */
         uv_alloc_cb allocCb_;
+        /** read cb */
         uv_read_cb  onRead_;
+        /** send cb */
         int (*sendCb_)(comms::internal::CommunicationPeer const *);
+        /** on sent cb */
         void (*onSent_)(comms::internal::CommunicationPeer const *);
+        /** delete cb */
         void (*deleteCb_)(Transport::Engine *);
     };
 
+    /**
+     * Construct a transport instance
+     * @param callbacks callbacks
+     * @param data engine data
+     */
     Transport(Callbacks * callbacks, Engine * data)
         : callbacks_(callbacks), data_(data) {}
 
@@ -49,6 +65,11 @@ class Transport {
         callbacks_->deleteCb_(data_);
     }
 
+    /**
+     * Get the transport engine
+     * @tparam E type of engine
+     * @return transport engine
+     */
     template< class E >
     E * getEngine() const {
 
@@ -60,19 +81,49 @@ class Transport {
         return static_cast< E * >(data_);
     }
 
+    /** List of libuv callbacks */
     Callbacks const * callbacks_;
-    Transport::Engine * data_;
 
+  private:
+    /** transport engine data */
+    Transport::Engine * data_;
 };
 
+/**
+ * Callbacks
+ * @tparam E type
+ */
 template< class E>
 struct Cb {
+    /**
+     * libuv alloc cb
+     * @param _ libuv handle
+     * @param size size
+     * @param buf buffer
+     */
     static void alloc_cb(uv_handle_t * _, size_t size, uv_buf_t* buf);
+    /**
+     * libuv on read cb
+     * @param h libuv stream
+     * @param nread nread
+     * @param buf buffer
+     */
     static void on_read(uv_stream_t * h, ssize_t nread, uv_buf_t const * buf);
+    /**
+     * libuv send cb
+     * @return rc
+     */
     static int send_cb(comms::internal::CommunicationPeer const *);
+    /**
+     * on_sent cb
+     */
     static void on_sent(comms::internal::CommunicationPeer const *);
+    /**
+     * Called on delete
+     */
     static void __on_delete(Transport::Engine *);
 
+    /** callbacks */
     static Transport::Callbacks kCb;
 
     struct StaticHelpers;
@@ -101,9 +152,16 @@ void Cb< E >::__on_delete(Transport::Engine * data) {
     delete static_cast< E * >(data);
 }
 
+/**
+ * Transport Engine
+ * @tparam E Engine type
+ */
 template< class E >
 class TransportEngine : public Transport {
   public:
+    /**
+     * Construct a transport engine
+     */
     TransportEngine(E *);
     ~TransportEngine();
 };

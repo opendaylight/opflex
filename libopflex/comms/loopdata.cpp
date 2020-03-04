@@ -12,7 +12,7 @@
 #endif
 
 
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 
 #include <opflex/logging/internal/logging.hpp>
 
@@ -95,7 +95,7 @@ void internal::Peer::LoopData::onPrepareLoop() {
         /* if there are more, we will uv_timer_start() down below */
     }
 
-    if ((now - lastRun_ > 15000) && peers[RETRY_TO_LISTEN].size()) {
+    if ((now - lastRun_ > 15000) && !peers[RETRY_TO_LISTEN].empty()) {
 
         LOG(INFO)
             << "retrying all "
@@ -159,7 +159,6 @@ void internal::Peer::LoopData::destroy(bool now) {
     for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
         peers[Peer::LoopData::PeerState(i)]
             .clear_and_dispose(PeerDisposer(now));
-
     }
 }
 
@@ -290,7 +289,7 @@ Peer::LoopData::~LoopData() {
     ;
 
     for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
-        assert(!peers[Peer::LoopData::PeerState(i)].size());
+        assert(peers[Peer::LoopData::PeerState(i)].empty());
         /* delete all peers for final builds */
         peers[Peer::LoopData::PeerState(i)]
             .clear_and_dispose(PeerDeleter());

@@ -10,7 +10,7 @@
 #ifndef _________COMMS__INCLUDE__YAJR__RPC__GEN__ECHO_HPP
 #define _________COMMS__INCLUDE__YAJR__RPC__GEN__ECHO_HPP
 
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 
 namespace yajr {
     namespace comms {

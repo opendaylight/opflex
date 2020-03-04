@@ -10,9 +10,9 @@
 #ifndef _____COMMS__INCLUDE__YAJR__RPC__METHODS_HPP
 #define _____COMMS__INCLUDE__YAJR__RPC__METHODS_HPP
 
-#include <yajr/internal/comms.hpp> // for nextId()
-#include <yajr/rpc/rpc.hpp>
-#include <yajr/yajr.hpp>
+#include <opflex/yajr/internal/comms.hpp> // for nextId()
+#include <opflex/yajr/rpc/rpc.hpp>
+#include <opflex/yajr/yajr.hpp>
 
 #include <opflex/logging/internal/logging.hpp>
 
