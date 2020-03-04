@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f53df259_dfdc3e28",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-04T17:05:24Z",
+      "side": 1,
+      "message": "Note: Since label_map is empty for some of the counters we create, this is not used. But provisioned for future counters with labels.",
+      "revId": "032bc58d3617c61496d0b0774d81315c9ce5dc4a",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
