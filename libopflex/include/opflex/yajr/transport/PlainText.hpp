@@ -10,24 +10,26 @@
 #ifndef _____COMMS__INCLUDE__YAJR__TRANSPORT__PLAINTEXT_HPP
 #define _____COMMS__INCLUDE__YAJR__TRANSPORT__PLAINTEXT_HPP
 
-#include <yajr/transport/engine.hpp>
-
-#include <cassert>
+#include <opflex/yajr/transport/engine.hpp>
 
 namespace yajr {
-    namespace transport {
+namespace transport {
 
+/**
+ * Plain text transport
+ */
 class PlainText : public Transport::Engine {
   public:
+    /**
+     * Get the plain text transport
+     * @return transport
+     */
     static TransportEngine< PlainText > & getPlainTextTransport();
   private:
     PlainText();
     PlainText(const PlainText &);
     PlainText & operator=(const PlainText &);
 };
-
-template< >
-TransportEngine< PlainText >::TransportEngine(PlainText * _ /* = NULL */);
 
 template< >
 inline TransportEngine< PlainText >::~TransportEngine() {

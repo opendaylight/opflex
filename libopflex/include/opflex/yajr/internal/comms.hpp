@@ -10,11 +10,11 @@
 #ifndef _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
 #define _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
 
-#include <yajr/rpc/send_handler.hpp>
-#include <yajr/rpc/message_factory.hpp>
-#include <yajr/yajr.hpp>
-#include <yajr/rpc/rpc.hpp>
-#include <yajr/transport/PlainText.hpp>
+#include <opflex/yajr/rpc/send_handler.hpp>
+#include <opflex/yajr/rpc/message_factory.hpp>
+#include <opflex/yajr/yajr.hpp>
+#include <opflex/yajr/rpc/rpc.hpp>
+#include <opflex/yajr/transport/PlainText.hpp>
 
 #include <opflex/logging/OFLogHandler.h>
 #include "opflex/util/LockGuard.h"
@@ -100,12 +100,21 @@ typedef ::boost::intrusive::list_base_hook<
     ::boost::intrusive::link_mode< ::boost::intrusive::auto_unlink> >
     SafeListBaseHook;
 
+/**
+ * Peer
+ */
 class Peer : public SafeListBaseHook {
   public:
 
+    /**
+     * List of peers
+     */
     typedef ::boost::intrusive::list<Peer,
             ::boost::intrusive::constant_time_size<false> > List;
 
+    /**
+     * Data about a libuv loop
+     */
     class LoopData {
       public:
 
@@ -120,25 +129,39 @@ class Peer : public SafeListBaseHook {
           VaS(XX, ATTEMPTING_TO_CONNECT) \
           VaS(XX, PENDING_DELETE)
 
+        /** Peer state */
         typedef enum {
 #define XX(v, _) v,
           PEER_STATE_MAP(XX)
 #undef XX
-
           /* don't touch past here */
           TOTAL_STATES
         } PeerState;
 
+        /**
+         * Used to close a set of handles
+         */
         struct CloseHandle {
+            /** libuv loop data */
             LoopData const * loopData;
+            /** libuv close cb */
             uv_close_cb      closeCb;
         };
 
+        /**
+         * Used to count the number of handles
+         */
         struct CountHandle {
+            /** libuv loop data */
             LoopData const * loopData;
+            /** counter */
             size_t           counter;
         };
 
+        /**
+         * UV loop data
+         * @param loop uv loop
+         */
         explicit LoopData(uv_loop_t * loop)
         :
             lastRun_(uv_now(loop)),
@@ -153,12 +176,21 @@ class Peer : public SafeListBaseHook {
             uv_async_init(loop, &kickLibuv_, NULL);
         }
 
-        Peer::List peers[LoopData::TOTAL_STATES];
-
+        /**
+         * Get libuv loop data
+         * @param uv_loop libuv loop
+         * @return libuv loop data
+         */
         static Peer::LoopData * getLoopData(uv_loop_t * uv_loop) {
             return static_cast<Peer::LoopData *>(uv_loop->data);
         }
 
+        /**
+         * Add a new peer
+         * @param uv_loop libuv loop
+         * @param peerState initial peer state
+         * @param peer peer
+         */
         static void addPeer(
                 uv_loop_t * uv_loop,
                 Peer::LoopData::PeerState peerState,
@@ -167,6 +199,13 @@ class Peer : public SafeListBaseHook {
             (&getLoopData(uv_loop)->peers[peerState])->push_back(*peer);
         }
 
+        /**
+         * Get the current number of peers in the given state
+         *
+         * @param uv_loop libuv loop
+         * @param peerState Peer state to match on
+         * @return count of peers in given state
+         */
         static std::size_t getPeerCount(
                 uv_loop_t * uv_loop,
                 Peer::LoopData::PeerState peerState) {
@@ -174,20 +213,37 @@ class Peer : public SafeListBaseHook {
             return (&getLoopData(uv_loop)->peers[peerState])->size();
         }
 
-        void onPrepareLoop();
-
+        /**
+         * Destroy the peer
+         *
+         * @param now Whether the peer should be destroyed immediately
+         */
         void destroy(bool now = false);
 
+        /** Mark the peer up */
         void up();
 
+        /** Mark the peer down */
         void down();
 
+        /** Workaround libuv issues by manually */
         void kickLibuv() {
             /* workaround for libuv syncronous uv_pipe_connect() failures bug */
             uv_async_send(&kickLibuv_);
         }
 
+        /** Iterate over handles and close each one
+         *
+         * @param handle UV handle
+         * @param closeHandles Close handle
+         */
         static void walkAndCloseHandlesCb(uv_handle_t* handle, void* closeHandles);
+
+        /** Iterate and count the number of handles
+         *
+         * @param handle UV handle
+         * @param countHandles Resulting count
+         */
         static void walkAndCountHandlesCb(uv_handle_t* handle, void* countHandles);
 
       private:
@@ -201,6 +257,8 @@ class Peer : public SafeListBaseHook {
 
         struct PeerDeleter;
 
+        Peer::List peers[LoopData::TOTAL_STATES];
+        void onPrepareLoop();
         static void onPrepareLoop(uv_prepare_t *);
         static void fini(uv_handle_t *);
         static uv_mutex_t peerMutex;
@@ -210,20 +268,55 @@ class Peer : public SafeListBaseHook {
         uint64_t lastRun_;
         bool destroying_;
         uint64_t refCount_;
+
+        friend class Peer;
     };
 
+    /**
+     * Get the peer from the handle
+     *
+     * @tparam T Type of expected Peer
+     * @tparam U Type of handle
+     * @param h libuv handle
+     * @return Peer of type T
+     */
     template <typename T, typename U>
     static T * get(U * h);
 
+    /**
+     * Get the peer from the handle
+     *
+     * @param r libuv handle
+     * @return The associated Peer
+     */
     static CommunicationPeer * get(uv_write_t * r);
 
+    /**
+     * Get the peer from the handle
+     *
+     * @param h libuv handle
+     * @return The associated Peer
+     */
     static CommunicationPeer * get(uv_timer_t * h);
 
+    /**
+     * Get the peer from the handle
+     *
+     * @param r libuv handle
+     * @return The associated Peer
+     */
     static ActivePeer * get(uv_connect_t * r);
 
+    /**
+     * Get the peer from the handle
+     *
+     * @param r libuv handle
+     * @return The associated Peer
+     */
     static ActiveTcpPeer * get(uv_getaddrinfo_t * r);
 
     /* Ideally nested as Peer::PeerStatus, but this is only possible with C++11 */
+    /** Valid peer statuses */
     enum PeerStatus {
         kPS_ONLINE            = 0,  /* <--- don't touch these! */
         kPS_LISTENING         = 0,  /* <--- don't touch these! */
@@ -239,6 +332,13 @@ class Peer : public SafeListBaseHook {
 
         kPS_PENDING_DELETE    = 7,
     };
+    /**
+     * Construct a new peer
+     *
+     * @param passive Is this a passive peer
+     * @param uvLoopSelector Function pointer type for the uv_loop selector
+     * @param status Initial peer status
+     */
     explicit Peer(bool passive,
          ::yajr::Peer::UvLoopSelector uvLoopSelector = NULL,
          Peer::PeerStatus status = kPS_UNINITIALIZED)
@@ -258,15 +358,28 @@ class Peer : public SafeListBaseHook {
                 getHandle()->flags = 0x02 /* UV_CLOSED */;
             }
 
-
+    /**
+     * Retry connection to peer
+     */
     virtual void retry() = 0;
 
+    /**
+     * Mark the peer as up
+     */
     void up();
 
+    /**
+     * Mark the peer as down
+     *
+     * @return False if there are still other references to this peer
+     */
     bool down();
 
-    virtual void onDelete() {}
-
+    /**
+     * Destroy the peer
+     *
+     * @param now Destroy immediately or not
+     */
     virtual void destroy(bool now = false) = 0;
 
     /**
@@ -278,20 +391,25 @@ class Peer : public SafeListBaseHook {
         return getHandle()->loop;
     }
 
+    /** Add a new peer to the list */
     void insert(Peer::LoopData::PeerState peerState);
 
+    /** Manually unlink peer */
     void unlink();
 
+    /** libuv handles */
     union {
         uv_handle_t     handle_;
         uv_tcp_t    tcp_handle_;
         uv_pipe_t  pipe_handle_;
     };
 
+    /** Get the libuv handle */
     uv_handle_t * getHandle() {
         return &handle_;
     }
 
+    /** Get the libuv handle */
     uv_handle_t const * getHandle() const {
         return &handle_;
     }
@@ -308,31 +426,59 @@ class Peer : public SafeListBaseHook {
         } _;
         uv_timer_t keepAliveTimer_;
     };
+    /** Function pointer type for the uv_loop selector method to be used to
+     *  select which particular uv_loop to assign a peer to.
+     */
     ::yajr::Peer::UvLoopSelector uvLoopSelector_;
+    /** reference count */
     unsigned int  uvRefCnt_;
+    /** Is this peer connected */
     unsigned char connected_  :1;
+    /** Is the peer begin destroyed */
     unsigned char destroying_ :1;
+    /** Is this peer passive */
     unsigned char passive_    :1;
+    /** Is the peer currently choked */
     mutable
     unsigned char choked_     :1;
+    /** Did the peer creation fail */
     unsigned char createFail_ :1;
+    /** Current status of the peer */
     unsigned char status_     :3;
+    /** Should messages be null terminated */
     bool nullTermination;
 
   protected:
     /* don't leak memory! */
     virtual ~Peer();
+    /** Get the default UV loop */
     static uv_loop_t * uvDefaultLoop(void *) {
         return uv_default_loop();
     }
 
+    /** Called when peer is being deleted */
+    virtual void onDelete() {}
+
+    /**
+     * Get libuv loop data
+     *
+     * @return libuv loop data
+     */
     Peer::LoopData * getLoopData() const {
         return Peer::LoopData::getLoopData(getUvLoop());
     }
+
+    /**
+     * << operator
+     * @return stream
+     */
     friend std::ostream& operator<< (std::ostream&, Peer const *);
 };
 static_assert (sizeof(Peer) <= 4096, "Peer won't fit on one page");
 
+/**
+ * Abstract communication peer
+ */
 class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
     friend
@@ -363,6 +509,15 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
 
   public:
 
+    /**
+     * Construct a communication peer
+     *
+     * @param passive Is this a passive peer
+     * @param connectionHandler connection handler
+     * @param data opaque data
+     * @param uvLoopSelector uv loop selector
+     * @param status initial peer status
+     */
     explicit CommunicationPeer(bool passive,
         ::yajr::Peer::StateChangeCb connectionHandler,
         void * data,
@@ -385,59 +540,87 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 getLoopData()->up();
             }
 
+    /**
+     * Retry connection to peer
+     */
     virtual void retry() = 0;
 
-    size_t readChunk(char const * buffer) const {
-        ssize_t chunk_size = - ssIn_.tellp();
-        ssIn_ << buffer;
-        chunk_size += ssIn_.tellp();
-        return chunk_size;
-    }
-
+    /**
+     * Read from the buffer.
+     * This impl does not use null chars to delimit msgs
+     *
+     * @param buffer buffer
+     * @param nread Number of bytes
+     */
     void readBufNoNull(char* buffer,
                        size_t nread);
-    void readBuffer(
-            char * buffer,
-            size_t nread,
-            bool canWriteJustPastTheEnd = false) const;
-    void readBufferZ(
-            char const * bufferZ,
-            size_t n) const;
 
-    yajr::rpc::InboundMessage * parseFrame() const;
 
+    /** Called on write to peer */
     void onWrite();
 
-    bool delimitFrame() const {
+    /**
+     * Add frame delimiter
+     */
+    void delimitFrame() const {
         s_.Put('\0');
-
-        return true;
     }
 
+    /**
+     * Write to peer
+     * @return rc
+     */
     int write() const;
+
+    /**
+     * Write iovec to peer
+     * @return rc
+     */
     int writeIOV(std::vector<iovec> &) const;
 
+    /** Stop reading from the stream of data */
     int   choke() const;
+    /** Start reading from the stream of data again */
     int unchoke() const;
 
+    /** get opaque data associated with peer */
     void * getData() const {
         return data_;
     }
 
+    /** Called when peer is being deleted */
     virtual void onDelete() {
         connectionHandler_(dynamic_cast<yajr::Peer *>(this), data_, ::yajr::StateChange::DELETE, 0);
     }
 
+    /**
+     * Start TCP keepalive to peer
+     * @param begin delay before starting
+     * @param repeat repeat
+     * @param interval interval
+     */
     virtual void startKeepAlive(
             uint64_t begin    =  100,
             uint64_t repeat   = 1250,
             uint64_t interval = 9000);
 
+    /**
+     * Stop TCP keepalive
+     */
     virtual void stopKeepAlive();
 
+    /**
+     * CB for timer expiry
+     * @param timer libuv timer
+     */
     static void on_timeout(uv_timer_t * timer);
 
+    /** send echo req to peer */
     void sendEchoReq();
+
+    /**
+     * Called on timeout
+     */
     void timeout();
 
     /**
@@ -456,12 +639,23 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         return nextId_++;
     }
 
+    /**
+     * Bump the last time the peer was heard
+     */
     void bumpLastHeard() const;
 
+    /**
+     * Current timestamp in ms
+     * @return current timestamp in ms
+     */
     uint64_t now() const {
         return uv_now(getUvLoop());
     }
 
+    /**
+     * Called on error
+     * @param error rc
+     */
     void onError(int error) const {
         connectionHandler_(
                 const_cast<CommunicationPeer *>(this),
@@ -470,6 +664,10 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 error);
     }
 
+    /**
+     * Called on transport error
+     * @param error rc
+     */
     void onTransportError(int error) const {
         connectionHandler_(
                 const_cast<CommunicationPeer *>(this),
@@ -478,16 +676,30 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 error);
     }
 
+    /**
+     * Called on connect
+     */
     void onConnect();
 
+    /**
+     * Trigger cleanup of resource on a disconnect
+     */
     virtual void onDisconnect();
 
+    /**
+     * Disconnect a peer
+     * @param now Disconnect immediately if true
+     */
     virtual void disconnect(bool now = false) {
-
         onDisconnect();
-
     }
 
+    /**
+     * Get the peer name
+     * @param remoteAddress sockaddr
+     * @param len length
+     * @return peer name
+     */
     virtual int getPeerName(struct sockaddr* remoteAddress, int* len) const {
         return uv_tcp_getpeername(
                 reinterpret_cast<uv_tcp_t const *>(getHandle()),
@@ -495,6 +707,12 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 len);
     }
 
+    /**
+     * Get the socket name
+     * @param remoteAddress sockaddr
+     * @param len length
+     * @return socket name
+     */
     virtual int getSockName(struct sockaddr* remoteAddress, int* len) const {
         return uv_tcp_getsockname(
                 reinterpret_cast<uv_tcp_t const *>(getHandle()),
@@ -502,8 +720,18 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
                 len);
     }
 
+    /**
+     * Destroy the peer
+     *
+     * @param now Whether the peer should be destroyed immediately
+     */
     virtual void destroy(bool now = false);
 
+    /**
+     * Get the keepalive interval
+     *
+     * @return Current keepalive interval
+     */
     uint64_t getKeepAliveInterval() const {
         return keepAliveInterval_;
     }
@@ -515,18 +743,37 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         uv_req_t req_;
     };
 
+    /**
+     * Get writer
+     * @return writer
+     */
     ::yajr::rpc::SendHandler & getWriter() const {
         writer_.Reset(s_);
         return writer_;
     }
 
+    /**
+     * Initialize TCP
+     *
+     * @return 0 on success
+     */
     int tcpInit();
 
+    /**
+     * Get the transport engine associated with the peer
+     * @tparam E Type of transport engine
+     * @return Transport engine of type E
+     */
     template< class E >
     E * getEngine() const {
         return transport_.getEngine< E >();
     }
 
+    /**
+     * Detach transport
+     *
+     * @return Tranport pointer
+     */
     void * detachTransport() {
         transport_.~Transport();
 
@@ -564,11 +811,38 @@ class CommunicationPeer : public Peer, virtual public ::yajr::Peer {
         ssIn_.clear();
         ssIn_.copyfmt(initialFmt);
     }
+
+    yajr::rpc::InboundMessage * parseFrame() const;
+
+    void readBufferZ(
+            char const * bufferZ,
+            size_t n) const;
+
+    void readBuffer(
+            char * buffer,
+            size_t nread,
+            bool canWriteJustPastTheEnd = false) const;
+
+    size_t readChunk(char const * buffer) const {
+        ssize_t chunk_size = - ssIn_.tellp();
+        ssIn_ << buffer;
+        chunk_size += ssIn_.tellp();
+        return chunk_size;
+    }
 };
 static_assert (sizeof(CommunicationPeer) <= 4096, "CommunicationPeer won't fit on one page");
 
+/**
+ * Active peer
+ */
 class ActivePeer : public CommunicationPeer {
   public:
+    /**
+     * Construct a new active peer
+     * @param connectionHandler connection handler
+     * @param data opaque data
+     * @param uvLoopSelector uv loop selector
+     */
     explicit ActivePeer(
             ::yajr::Peer::StateChangeCb connectionHandler,
             void * data,
@@ -583,10 +857,23 @@ class ActivePeer : public CommunicationPeer {
         {
         }
 
+    /**
+     * Called on a failed connection
+     *
+     * @param rc return code received from failure
+     */
     virtual void onFailedConnect(int rc) = 0;
 
+    /**
+     * Retry connection to peer
+     */
     virtual void retry() = 0;
 
+    /**
+     * Destroy the peer
+     *
+     * @param now Whether the peer should be destroyed immediately
+     */
     virtual void destroy(bool now = false);
 
   protected:
@@ -595,8 +882,19 @@ class ActivePeer : public CommunicationPeer {
 };
 static_assert (sizeof(ActivePeer) <= 4096, "ActivePeer won't fit on one page");
 
+/**
+ * Active TCP peer
+ */
 class ActiveTcpPeer : public ActivePeer {
   public:
+    /**
+     * Construct an active TCP peer
+     * @param hostname hostname
+     * @param service service name
+     * @param connectionHandler connection handler
+     * @param data opaque data
+     * @param uvLoopSelector libuv loop selector
+     */
     explicit ActiveTcpPeer(
             std::string const & hostname,
             std::string const & service,
@@ -613,27 +911,55 @@ class ActiveTcpPeer : public ActivePeer {
         {
             createFail_ = 0;
         }
+
+    /**
+     * Called on a failed connection
+     *
+     * @param rc return code received from failure
+     */
     virtual void onFailedConnect(int rc);
 
+    /**
+     * Get hostname
+     * @return hostname
+     */
     char const * getHostname() const {
         return hostname_.c_str();
     }
 
+    /**
+     * Get the service name
+     * @return service name
+     */
     char const * getService() const {
         return service_.c_str();
     }
 
+    /**
+     * Retry the connection to the peer
+     */
     virtual void retry();
   protected:
     /* don't leak memory! */
     virtual ~ActiveTcpPeer() {}
+  private:
     std::string const hostname_;
     std::string const service_;
 };
 static_assert (sizeof(ActiveTcpPeer) <= 4096, "ActiveTcpPeer won't fit on one page");
 
+/**
+ * Active UNIX Peer
+ */
 class ActiveUnixPeer : public ActivePeer {
   public:
+    /**
+     * Construct an active UNIX peer
+     * @param socketName socket name
+     * @param connectionHandler connection handler
+     * @param data opaque data
+     * @param uvLoopSelector libuv loop selector
+     */
     explicit ActiveUnixPeer(
             std::string const & socketName,
             ::yajr::Peer::StateChangeCb connectionHandler,
@@ -649,17 +975,37 @@ class ActiveUnixPeer : public ActivePeer {
             _.ai = NULL;
             createFail_ = 0;
         }
+
+    /**
+     * Called on a failed connection
+     *
+     * @param rc return code received from failure
+     */
     virtual void onFailedConnect(int rc);
+    /**
+     * Retry the connection to the peer
+     */
     virtual void retry();
   protected:
     /* don't leak memory! */
     virtual ~ActiveUnixPeer() {}
+
+  private:
     std::string const socketName_;
 };
 static_assert (sizeof(ActiveUnixPeer) <= 4096, "ActiveUnixPeer won't fit on one page");
 
+/**
+ * Passive peer
+ */
 class PassivePeer : public CommunicationPeer {
   public:
+    /**
+     * Construct a passive peer
+     * @param connectionHandler connection handler
+     * @param data opaque data
+     * @param uvLoopSelector libuv loop selector
+     */
     explicit PassivePeer(
             ::yajr::Peer::StateChangeCb connectionHandler,
             void * data,
@@ -675,6 +1021,9 @@ class PassivePeer : public CommunicationPeer {
             createFail_ = 0;
         }
 
+    /**
+     * Retry connection to peer
+     */
     virtual void retry() {
         assert(0);
     }
@@ -685,8 +1034,19 @@ class PassivePeer : public CommunicationPeer {
 };
 static_assert (sizeof(PassivePeer) <= 4096, "PassivePeer won't fit on one page");
 
+/**
+ * Listening Peer
+ */
 class ListeningPeer : public Peer, virtual public ::yajr::Listener {
   public:
+    /**
+     * Construct a new listening peer
+     * @param connectionHandler connection handler
+     * @param acceptHandler accept handler
+     * @param data opaque data
+     * @param listenerUvLoop libuv loop listener
+     * @param uvLoopSelector libuv loop selector
+     */
     explicit ListeningPeer(
             ::yajr::Peer::StateChangeCb connectionHandler,
             ::yajr::Listener::AcceptCb acceptHandler,
@@ -704,21 +1064,46 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
             getLoopData()->up();
         }
 
+    /**
+     * Create a new passive peer
+     * @return passive peer
+     */
     virtual PassivePeer * getNewPassive() = 0;
 
+    /**
+     * Called on error
+     * @param error rc
+     */
     void onError(int error) {
         if(acceptHandler_) {
             acceptHandler_(this, data_, error);
         }
     }
+
+    /**
+     * Retry connection to peer
+     */
     virtual void retry() = 0;
 
+    /**
+     * Destroy the peer
+     *
+     * @param now Whether the peer should be destroyed immediately
+     */
     virtual void destroy(bool now = false);
 
+    /**
+     * Get the connection handler for the peer
+     * @return connection handler
+     */
     ::yajr::Peer::StateChangeCb getConnectionHandler() const {
         return connectionHandler_;
     }
 
+    /**
+     * Get the connection handler data
+     * @return connection handler data
+     */
     void * getConnectionHandlerData() {
         return
             acceptHandler_
@@ -728,6 +1113,10 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
             NULL;
     }
 
+    /**
+     * Get the libuv loop selector
+     * @return libuv loop selector
+     */
     ::yajr::Peer::UvLoopSelector getUvLoopSelector() const {
         return uvLoopSelector_;
     }
@@ -740,11 +1129,31 @@ class ListeningPeer : public Peer, virtual public ::yajr::Listener {
 };
 static_assert (sizeof(ListeningPeer) <= 4096, "ListeningPeer won't fit on one page");
 
+/**
+ * Listening TCP peer
+ */
 class ListeningTcpPeer : public ListeningPeer {
   public:
+    /**
+     * Retry the connection to the peer
+     */
     virtual void retry();
+    /**
+     * Set src ip/port
+     * @param ip_address src address
+     * @param port src port
+     * @return rc
+     */
     int setAddrFromIpAndPort(const std::string& ip_address, uint16_t port);
 
+    /**
+     * Construct a listening TCP peer
+     * @param connectionHandler connection handler
+     * @param acceptHandler accept handler
+     * @param data opaque data
+     * @param listenerUvLoop libuv loop listener
+     * @param uvLoopSelector libuv loop selector
+     */
     explicit ListeningTcpPeer(
             ::yajr::Peer::StateChangeCb connectionHandler,
             ::yajr::Listener::AcceptCb acceptHandler,
@@ -763,6 +1172,10 @@ class ListeningTcpPeer : public ListeningPeer {
               listen_on_ = sockaddr_storage();
           }
 
+    /**
+     * Create a new passive peer
+     * @return passive peer
+     */
     virtual PassivePeer * getNewPassive();
 
   private:
@@ -771,10 +1184,25 @@ class ListeningTcpPeer : public ListeningPeer {
 };
 static_assert (sizeof(ListeningTcpPeer) <= 4096, "ListeningTcpPeer won't fit on one page");
 
+/**
+ * Listening UNIX peer
+ */
 class ListeningUnixPeer : public ListeningPeer {
   public:
+    /**
+     * Retry connection to peer
+     */
     virtual void retry();
 
+    /**
+     * Construct a new ListeningUnixPeer
+     * @param socketName socket name
+     * @param connectionHandler connection handler
+     * @param acceptHandler accept handler
+     * @param data opaque data
+     * @param listenerUvLoop libuv loop
+     * @param uvLoopSelector libuv loop selector
+     */
     explicit ListeningUnixPeer(
             std::string const & socketName,
             ::yajr::Peer::StateChangeCb connectionHandler,
@@ -795,6 +1223,10 @@ class ListeningUnixPeer : public ListeningPeer {
             createFail_ = 0;
         }
 
+    /**
+     * Create a new passive peer
+     * @return passive peer
+     */
     virtual PassivePeer * getNewPassive();
 
   private:
@@ -802,24 +1234,34 @@ class ListeningUnixPeer : public ListeningPeer {
 };
 static_assert (sizeof(ListeningUnixPeer) <= 4096, "ListeningUnixPeer won't fit on one page");
 
+/** Peer disposer */
 struct Peer::LoopData::PeerDisposer {
 
+    /** () operator */
     void operator () (Peer *peer);
 
+    /**
+     * Construct a peer dispose
+     * @param now Should peer be disposed immediately
+     */
     PeerDisposer(bool now = false);
 
   private:
     bool const now_;
 };
 
+/** Peer retryer */
 struct Peer::LoopData::RetryPeer {
 
+    /** () operator */
     void operator () (Peer *peer);
 
 };
 
+/** Peer deleter */
 struct Peer::LoopData::PeerDeleter {
 
+    /** () operator */
     void operator () (Peer *peer);
 
 };
@@ -831,9 +1273,19 @@ T * Peer::get(U * h) {
     return peer;
 }
 
-
-
+/**
+ * Get libuv handle type
+ * @param h libuv handle
+ * @return type name
+ */
 char const * getUvHandleType(uv_handle_t * h);
+
+/**
+ * Get libuv handle field
+ * @param h libuv handle
+ * @param peer peer
+ * @return field name
+ */
 char const * getUvHandleField(uv_handle_t * h, internal::Peer * peer);
 
 } // namespace internal

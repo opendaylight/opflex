@@ -12,9 +12,9 @@
 #endif
 
 
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 #include <yajr/rpc/methods.hpp>
-#include <yajr/rpc/rpc.hpp>
+#include <opflex/yajr/rpc/rpc.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -170,18 +170,6 @@ bool OutboundMessage::send() {
 #endif
 
     return true;
-
-}
-
-bool OutboundRequest::send(
-        ::yajr::Peer const & peer
-    ) {
-
-    VLOG(3);
-
-    setPeer(&peer);
-
-    return send();
 }
 
 InboundResponse::InboundResponse(

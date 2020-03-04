@@ -13,8 +13,8 @@
 
 #include <yajr/rpc/gen/echo.hpp>
 #include <yajr/rpc/internal/json_stream_wrappers.hpp>
-#include <yajr/rpc/message_factory.inl.hpp>
-#include <yajr/internal/comms.hpp>
+#include <yajr/rpc/methods.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 
 #include <opflex/logging/internal/logging.hpp>
 
@@ -128,7 +128,6 @@ void CommunicationPeer::bumpLastHeard() const {
     ;
 
     lastHeard_ = now();
-
 }
 
 void CommunicationPeer::onConnect() {
@@ -160,16 +159,13 @@ void CommunicationPeer::onDisconnect() {
         << static_cast< bool >(connected_)
     ;
 
- // if (connected_) {
-        if (!uv_is_closing(getHandle())) {
-            VLOG(2)
-                << this
-                << " issuing close for tcp handle"
+    if (!uv_is_closing(getHandle())) {
+        VLOG(2)
+            << this
+            << " issuing close for tcp handle"
             ;
-            uv_close(getHandle(), on_close);
-         // uv_close(getHandle(), connected_? on_close : NULL);
-        }
- // }
+        uv_close(getHandle(), on_close);
+    }
 
     if (connected_) {
 
@@ -188,11 +184,9 @@ void CommunicationPeer::onDisconnect() {
         if (!uv_is_closing((uv_handle_t*)&keepAliveTimer_)) {
             uv_close((uv_handle_t*)&keepAliveTimer_, on_close);
         }
-     // uv_close((uv_handle_t*)getHandle(), on_close);
 
         /* FIXME: might be called too many times? */
         connectionHandler_(this, data_, ::yajr::StateChange::DISCONNECT, 0);
-
     }
 
     unlink();
@@ -222,7 +216,6 @@ void CommunicationPeer::onDisconnect() {
         insert(internal::Peer::LoopData::PENDING_DELETE);
         status_ = kPS_PENDING_DELETE;
     }
-
 }
 
 void CommunicationPeer::destroy(bool now) {
@@ -230,7 +223,6 @@ void CommunicationPeer::destroy(bool now) {
         << this
     ;
 
- // Peer::destroy();
     destroying_ = true;
     onDisconnect();
 }
@@ -248,9 +240,6 @@ int CommunicationPeer::tcpInit() {
         ;
         return rc;
     }
-
- // LOG(DEBUG) << "{" << this << "}AP up() for a tcp init";
- // up();
 
     if ((rc = uv_tcp_keepalive(reinterpret_cast<uv_tcp_t *>(getHandle()), 1, 60))) {
         LOG(WARNING)
@@ -460,7 +449,6 @@ int CommunicationPeer::write() const {
     int retVal = transport_.callbacks_->sendCb_(this);
 
     return retVal;
-
 }
 
 int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {

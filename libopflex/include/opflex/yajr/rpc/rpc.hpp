@@ -10,8 +10,8 @@
 #ifndef _____COMMS__INCLUDE__OPFLEX__RPC_HPP
 #define _____COMMS__INCLUDE__OPFLEX__RPC_HPP
 
-#include <yajr/rpc/send_handler.hpp>
-#include <yajr/yajr.hpp>
+#include <opflex/yajr/rpc/send_handler.hpp>
+#include <opflex/yajr/yajr.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
@@ -32,11 +32,19 @@ typedef rapidjson::Value::StringRefType const MethodName;
 typedef rapidjson::Writer< yajr::internal::StringQueue > SendHandler;
 typedef boost::function<bool (yajr::rpc::SendHandler &)> PayloadGenerator;
 
+/**
+ * Generate JSON from value
+ */
 class GeneratorFromValue {
 
   public:
+    /**
+     * Generate JSON from value
+     * @param v rapidjson value
+     */
     GeneratorFromValue(rapidjson::Value const & v) : v_(v) {}
 
+    /** () operator */
     bool operator()(yajr::rpc::SendHandler & h) {
         return v_.Accept(h);
     }
@@ -46,51 +54,115 @@ class GeneratorFromValue {
 
 };
 
+/**
+ * Identifier
+ */
 class Identifier {
   public:
+    /**
+     * Emit the identifier
+     * @param h handler
+     * @return valid ID
+     */
     virtual bool emitId(yajr::rpc::SendHandler & h) const = 0;
   protected:
+    /**
+     * Name of the request method
+     * @return name of the request method
+     */
     virtual char const * requestMethod() const = 0;
 };
 
+/**
+ * Loacl ID
+ */
 struct LocalId {
+    /**
+     * Construct a LocalId
+     * @param methodName method name
+     * @param id id
+     */
     LocalId(MethodName const * methodName, uint64_t id)
         :
             methodName_(methodName),
             id_(id)
         {}
+    /** method name */
     MethodName const * methodName_;
+    /** id */
     uint64_t id_;
 };
 
+/**
+ * Local identifier
+ */
 class LocalIdentifier : virtual public Identifier, private LocalId {
   public:
+    /**
+     * Construct a local identifier
+     * @param methodName method naem
+     * @param id id
+     */
     LocalIdentifier(MethodName const * methodName, uint64_t id)
         :
             LocalId(methodName, id)
         {}
 
+    /**
+     * Emit the identifier
+     * @param h handler
+     * @return valid ID
+     */
     bool emitId(yajr::rpc::SendHandler & h) const;
 
+    /**
+     * Get the local ID
+     * @return local ID
+     */
     LocalId const getLocalId() const {
         return LocalId(methodName_, id_);
     }
 
   protected:
+    /**
+     * Name of the request method
+     * @return name of the request method
+     */
     char const * requestMethod() const {
         return methodName_->s;
     }
 };
 
+/**
+ * Remote Identifier
+ */
 class RemoteIdentifier : virtual public Identifier {
   public:
+    /**
+     * Construct a remote identitier
+     * @param id JSON ID
+     */
     RemoteIdentifier(rapidjson::Value const & id) : id_(id) {}
+
+    /**
+     * Emit the identifier
+     * @param h handler
+     * @return valid ID
+     */
     bool emitId(yajr::rpc::SendHandler & h) const;
 
+    /**
+     * Get the remote ID
+     * @return remote ID
+     */
     rapidjson::Value const & getRemoteId() const {
         return id_;
     }
   protected:
+    /**
+     * Name of the request method
+     * @return name of the request method
+     */
     char const * requestMethod() const {
         return NULL;
     }
@@ -117,12 +189,17 @@ class Message {
 
     virtual ~Message() {}
 
+    /** Payload keys */
     typedef struct {
+        /** params */
         char const * const params;
+        /** result */
         char const * const result;
+        /** error */
         char const * const error;
     } PayloadKeys;
 
+    /** Payload keys */
     static PayloadKeys kPayloadKey;
 
   protected:
@@ -146,7 +223,7 @@ class Message {
      */
     uv_loop_t const * getUvLoop() const;
 
-    /* pointer so that it can be set multiple times */
+    /** pointer to the peer so that it can be set multiple times */
     yajr::Peer const * peer_;
 
 };
@@ -165,6 +242,10 @@ class InboundMessage : public Message {
      */
     virtual void process() const = 0;
 
+    /**
+     * When was the message received
+     * @return timestamp msg was received
+     */
     uint64_t getReceived() const {
         return received_;
     }
@@ -184,9 +265,12 @@ class InboundMessage : public Message {
      *
      * Construct a new inbound yajr message. Never invoke directly, but only
      * from derived classes' constructors.
+     *
+     * @param peer Peer
+     * @param payload payload
      */
     explicit InboundMessage(
-            yajr::Peer const & peer,               /**< [in] where to send to */
+            yajr::Peer const & peer,               /* < [in] where to send to */
             rapidjson::Value const & payload
             )
         :
@@ -253,8 +337,11 @@ class OutboundMessage : public Message, virtual public Identifier {
      */
     virtual char const * getPayloadKey() const = 0;
 
-    virtual bool isRequest() const = 0;
-
+    /**
+     * Method name
+     * @param handler send handler
+     * @return success or not
+     */
     virtual bool emitMethod(yajr::rpc::SendHandler& handler) = 0;
   private:
     PayloadGenerator const payloadGenerator_;
@@ -340,14 +427,10 @@ class OutboundResponse : public OutboundMessage, public RemoteIdentifier {
         }
 
     /**
-     * Tell if this is a request
-     *
-     * @return false, since this is a response
+     * Method name
+     * @param handler send handler
+     * @return success or not
      */
-    virtual bool isRequest() const {
-        return false;
-    }
-
     virtual bool emitMethod(yajr::rpc::SendHandler& handler) {
         return true;
     }
@@ -412,6 +495,9 @@ class OutboundResult : public OutboundResponse {
   public:
     /**
      * @brief Constructor for an outbound result message.
+     *
+     * @param inbReq Request we're replying to
+     * @param result Result of request
      */
     explicit OutboundResult(
         InboundRequest const * inbReq,          /**< [in] request we reply to */
@@ -423,6 +509,10 @@ class OutboundResult : public OutboundResponse {
 
     /**
      * @brief Constructor for an outbound result message.
+     *
+     * @param peer peer
+     * @param result result
+     * @param id identifier
      */
     explicit OutboundResult(
         yajr::Peer const & peer,            /**< [in] where to send to */
@@ -472,12 +562,17 @@ class OutboundRequest : public OutboundMessage,
      *
      * Construct a new yajr outbound message. Never invoke directly, but only
      * from derived classes' constructors.
+     *
+     * @param params params
+     * @param methodName method name
+     * @param id identifier
+     * @param peer peer
      */
     explicit OutboundRequest(
-        PayloadGenerator const & params,   /**< [in] the params value to send */
+        PayloadGenerator const & params,   /* < [in] the params value to send */
         MethodName const * methodName,
         uint64_t id, /* FIXME */
-        yajr::Peer const * peer                    /**< [in] where to send to */
+        yajr::Peer const * peer                    /* < [in] where to send to */
         )
         :
             OutboundMessage(params, peer),
@@ -489,7 +584,6 @@ class OutboundRequest : public OutboundMessage,
      * Send this message now!
      */
     using OutboundMessage::send;
-    bool send(::yajr::Peer const & peer);
 
   protected:
     /**
@@ -502,14 +596,10 @@ class OutboundRequest : public OutboundMessage,
     }
 
     /**
-     * Tell if this is a request
-     *
-     * @return true, since this is a request
+     * Method name
+     * @param handler send handler
+     * @return success or not
      */
-    virtual bool isRequest() const {
-        return true;
-    }
-
     virtual bool emitMethod(yajr::rpc::SendHandler& handler) {
 
         return handler.String("method")
@@ -562,6 +652,10 @@ class InboundResponse : public InboundMessage,
      *
      * Construct a new yajr inbound response message. Never invoke directly,
      * but only from derived classes' constructors.
+     *
+     * @param peer peer
+     * @param response response
+     * @param id identifier
      */
     InboundResponse(
         yajr::Peer const & peer,      /**< [in] where we received from */
@@ -578,6 +672,10 @@ class InboundError : public InboundResponse {
   public:
     /**
      * @brief Constructor for an inbound error response message
+     *
+     * @param peer peer
+     * @param error error
+     * @param id identifier
      */
     InboundError(
             yajr::Peer const & peer,  /**< [in] where we received from */
@@ -606,6 +704,10 @@ class InboundResult : public InboundResponse {
   public:
     /**
      * @brief Constructor for an inbound result response message
+     *
+     * @param peer peer
+     * @param result result
+     * @param id identifier
      */
     InboundResult(
             yajr::Peer const & peer,  /**< [in] where we received from */

@@ -17,34 +17,48 @@
 #include <deque>
 
 namespace yajr {
-    namespace internal {
+namespace internal {
 
 bool isLegitPunct(int c);
 
+/**
+ * Generic string queue
+ * @tparam Encoding String encoding
+ */
 template <typename Encoding = rapidjson::UTF8<> >
 struct GenericStringQueue {
 
+    /** Character */
     typedef typename Encoding::Ch Ch;
 
+    /** add char to queue */
     void Put(Ch c) {
         deque_.push_back(c);
         assert(::yajr::internal::isLegitPunct(c));
     }
 
+    /** Flush the buffer */
     void Flush() {}
 
+    /** Clear the buffer */
     void Clear() {
         deque_.clear();
     }
 
+    /** Shrink to fit */
     void ShrinkToFit() {
         deque_.shrink_to_fit();
     }
 
+    /**
+     * Size of string queue
+     * @return size
+     */
     size_t GetSize() const {
         return deque_.size();
     }
 
+    /** deque of chars */
     std::deque<Ch> deque_;
 };
 

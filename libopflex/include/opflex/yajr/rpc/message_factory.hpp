@@ -10,8 +10,8 @@
 #ifndef _COMMS__INCLUDE__OPFLEX__RPC__MESSAGE_FACTORY_HPP
 #define _COMMS__INCLUDE__OPFLEX__RPC__MESSAGE_FACTORY_HPP
 
-#include <yajr/rpc/send_handler.hpp>
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/rpc/send_handler.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
@@ -39,19 +39,28 @@ namespace rpc {
                 template <MethodName * M>
                 class OutReq;
 
+/**
+ * Message factory
+ */
 class MessageFactory {
 
   public:
 
+    /**
+     * Get inbound message
+     * @param peer peer
+     * @param doc json
+     * @return Inbound message
+     */
     static yajr::rpc::InboundMessage * getInboundMessage(
             yajr::Peer const & peer,
             rapidjson::Document const & doc);
 
-    template <MethodName * M>
-    static yajr::rpc::OutReq<M> * newReq(
-            yajr::rpc::PayloadGenerator const & payloadGenerator,
-            yajr::Peer const * peer = NULL);
-
+    /**
+     * Lookup method
+     * @param method method name
+     * @return method
+     */
     static MethodName const * lookupMethod(char const * method);
 
   private:

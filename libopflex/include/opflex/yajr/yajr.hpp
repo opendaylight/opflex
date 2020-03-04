@@ -10,7 +10,7 @@
 #ifndef _INCLUDE__YAJR__YAJR_HPP
 #define _INCLUDE__YAJR__YAJR_HPP
 
-#include <yajr/transport/engine.hpp>
+#include <opflex/yajr/transport/engine.hpp>
 
 #include <uv.h>
 
@@ -219,6 +219,10 @@ struct Peer {
      * start performing periodic keep-alive exchanges via the json-rpc
      * "echo" method. Abort the connection after 2 times interval worth of
      * silence from the other end.
+     *
+     * @param begin delay before starting
+     * @param repeat repeat
+     * @param interval interval
      */
     virtual void startKeepAlive(
             uint64_t                begin             = 100,
@@ -236,6 +240,9 @@ struct Peer {
     ~Peer() {}
 };
 
+/**
+ * Listener
+ */
 struct Listener {
 
   public:
