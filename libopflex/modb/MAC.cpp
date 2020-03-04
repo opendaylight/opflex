@@ -53,18 +53,6 @@ MAC::MAC(const std::string& mac_)
     : mac(parseMac(mac_)) {
 }
 
-MAC::MAC(uint64_t mac_) {
-    if (htonl(1) == 1) {
-        mac = (mac_ << 16);
-    } else {
-        uint32_t* mac32_ = (uint32_t*)&mac_;
-        uint32_t* mac32 = (uint32_t*)&mac;
-        mac32[0] = htonl(mac32_[1]);
-        mac32[1] = htonl(mac32_[0]);
-        mac = (mac >> 16);
-    }
-}
-
 MAC::MAC(const uint8_t mac_[6]) : mac(0) {
     uint8_t* m8 = (uint8_t*)&mac;
     for(int i = 0; i < 6; ++i) {

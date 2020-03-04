@@ -74,15 +74,6 @@ public:
 
 private:
     /**
-     * Construct a MAC using a uint64_t, which must be in host byte
-     * order, so that a constant such as 0x112233445566llu will
-     * correspond to 11:22:33:44:55:66.
-     *
-     * @param mac the mac address
-     */
-    explicit MAC(uint64_t mac);
-
-    /**
      * The MAC address, which will be stored in network byte order
      * using the leftmost 6 bytes
      */
