@@ -12,9 +12,9 @@
 #endif
 
 
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 #include <yajr/rpc/methods.hpp>
-#include <yajr/rpc/rpc.hpp>
+#include <opflex/yajr/rpc/rpc.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>

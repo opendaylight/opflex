@@ -14,7 +14,7 @@
 
 #include <yajr/rpc/internal/fnv_1a_64.hpp>
 #include <yajr/rpc/methods.hpp>
-#include <yajr/rpc/rpc.hpp>
+#include <opflex/yajr/rpc/rpc.hpp>
 
 namespace fnv_1a_64 = yajr::rpc::internal::fnv_1a_64;
 

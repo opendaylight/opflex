@@ -14,7 +14,7 @@
 #include <yajr/rpc/gen/echo.hpp>
 #include <yajr/rpc/internal/json_stream_wrappers.hpp>
 #include <yajr/rpc/message_factory.inl.hpp>
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 
 #include <opflex/logging/internal/logging.hpp>
 

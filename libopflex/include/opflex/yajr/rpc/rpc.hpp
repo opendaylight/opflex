@@ -10,8 +10,8 @@
 #ifndef _____COMMS__INCLUDE__OPFLEX__RPC_HPP
 #define _____COMMS__INCLUDE__OPFLEX__RPC_HPP
 
-#include <yajr/rpc/send_handler.hpp>
-#include <yajr/yajr.hpp>
+#include <opflex/yajr/rpc/send_handler.hpp>
+#include <opflex/yajr/yajr.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>

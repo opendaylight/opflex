@@ -25,7 +25,7 @@
 #include "opflex/logging/internal/logging.hpp"
 #include "opflex/util/RecursiveLockGuard.h"
 
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 
 namespace opflex {
 namespace engine {

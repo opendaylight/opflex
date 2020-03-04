@@ -28,7 +28,7 @@
 #include "opflex/engine/internal/OvsdbConnection.h"
 
 #include "opflex/logging/internal/logging.hpp"
-#include <yajr/rpc/rpc.hpp>
+#include <opflex/yajr/rpc/rpc.hpp>
 #include <yajr/rpc/methods.hpp>
 
 namespace opflex {

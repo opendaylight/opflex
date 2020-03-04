@@ -27,8 +27,8 @@
 #include "opflex/rpc/JsonRpc.h"
 
 #include "opflex/logging/internal/logging.hpp"
-#include <yajr/yajr.hpp>
-#include <yajr/rpc/rpc.hpp>
+#include <opflex/yajr/yajr.hpp>
+#include <opflex/yajr/rpc/rpc.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
