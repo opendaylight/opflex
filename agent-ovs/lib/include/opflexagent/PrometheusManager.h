@@ -248,6 +248,34 @@ private:
      * families to scrape.
      */
     shared_ptr<Registry>    registry_ptr;
+
+    // If the annotations are same, then we could land up in a situation where
+    // the gauge pointers are same across metrics. This could lead to memory
+    // corruption. Maintain a set of Gauge pointers to track any duplicates and
+    // use it to avoid creating duplicate metrics.
+    // 'T' can be one of the 4 supported metric types
+    template <typename T>
+    class MetricDupChecker {
+    public:
+        MetricDupChecker() {};
+        ~MetricDupChecker() {};
+        // check if a metric already exists
+        bool is_dup(T *);
+        // add metric ptr to checker
+        void add(T *);
+        // remove the metric from checker
+        void remove(T *);
+        // Erase all state
+        void clear(void);
+    private:
+        // Lock to safe guard duplicate metric check state
+        mutex dup_mutex;
+        unordered_set<T *>  metrics;
+    };
+
+    MetricDupChecker<Gauge> gauge_check;
+    MetricDupChecker<Counter> counter_check;
+
     // Create any gauge metrics during start
     void createStaticGauges(void);
     // remove any gauge metrics during stop

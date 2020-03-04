@@ -605,8 +605,40 @@ void PrometheusManager::removeStaticGauges ()
 
 }
 
+template <class T>
+bool PrometheusManager::MetricDupChecker<T>::is_dup (T *metric)
+{
+    const lock_guard<mutex> lock(dup_mutex);
+    if (metrics.count(metric)) {
+        LOG(ERROR) << "Duplicate metric detected: " << metric;
+        return true;
+    }
+    return false;
+}
+
+template <class T>
+void PrometheusManager::MetricDupChecker<T>::add (T *metric)
+{
+    const lock_guard<mutex> lock(dup_mutex);
+    metrics.insert(metric);
+}
+
+template <class T>
+void PrometheusManager::MetricDupChecker<T>::remove (T *metric)
+{
+    const lock_guard<mutex> lock(dup_mutex);
+    metrics.erase(metric);
+}
+
+template <class T>
+void PrometheusManager::MetricDupChecker<T>::clear (void)
+{
+    const lock_guard<mutex> lock(dup_mutex);
+    metrics.clear();
+}
+
 // Start of PrometheusManager instance
-void PrometheusManager::start(bool exposeLocalHostOnly)
+void PrometheusManager::start (bool exposeLocalHostOnly)
 {
     LOG(DEBUG) << "starting prometheus manager, exposeLHOnly: " << exposeLocalHostOnly;
     /**
@@ -643,7 +675,7 @@ void PrometheusManager::start(bool exposeLocalHostOnly)
 }
 
 // Stop of PrometheusManager instance
-void PrometheusManager::stop()
+void PrometheusManager::stop ()
 {
     LOG(DEBUG) << "stopping prometheus manager";
 
@@ -660,6 +692,9 @@ void PrometheusManager::stop()
     removeStaticGaugeFamilies();
     removeDynamicCounterFamilies();
     removeDynamicGaugeFamilies();
+
+    gauge_check.clear();
+    counter_check.clear();
 
     exposer_ptr.reset();
     exposer_ptr = nullptr;
@@ -737,10 +772,17 @@ void PrometheusManager::createDynamicGaugeOFPeer (OFPEER_METRICS metric,
     if (getDynamicGaugeOFPeer(metric, peer))
         return;
 
-    LOG(DEBUG) << "creating ofpeer dyn gauge family"
+    auto& gauge = gauge_ofpeer_family_ptr[metric]->Add({{"peer", peer}});
+    if (gauge_check.is_dup(&gauge)) {
+        LOG(ERROR) << "duplicate ofpeer dyn gauge family"
+                   << " metric: " << metric
+                   << " peer: " << peer;
+        return;
+    }
+    LOG(DEBUG) << "created ofpeer dyn gauge family"
                << " metric: " << metric
                << " peer: " << peer;
-    auto& gauge = gauge_ofpeer_family_ptr[metric]->Add({{"peer", peer}});
+    gauge_check.add(&gauge);
     ofpeer_gauge_map[metric][peer] = &gauge;
 }
 
@@ -758,11 +800,6 @@ bool PrometheusManager::createDynamicGaugeContractClassifier (CONTRACT_METRICS m
                                           classifier))
         return false;
 
-    LOG(DEBUG) << "creating contract dyn gauge family"
-               << " metric: " << metric
-               << " srcEpg: " << srcEpg
-               << " dstEpg: " << dstEpg
-               << " classifier: " << classifier;
 
     auto& gauge = gauge_contract_family_ptr[metric]->Add(
                     {
@@ -771,6 +808,20 @@ bool PrometheusManager::createDynamicGaugeContractClassifier (CONTRACT_METRICS m
                         {"classifier", constructClassifierLabel(classifier,
                                                                 false)}
                     });
+    if (gauge_check.is_dup(&gauge)) {
+        LOG(ERROR) << "duplicate contract dyn gauge family"
+                   << " metric: " << metric
+                   << " srcEpg: " << srcEpg
+                   << " dstEpg: " << dstEpg
+                   << " classifier: " << classifier;
+        return false;
+    }
+    LOG(DEBUG) << "created contract dyn gauge family"
+               << " metric: " << metric
+               << " srcEpg: " << srcEpg
+               << " dstEpg: " << dstEpg
+               << " classifier: " << classifier;
+    gauge_check.add(&gauge);
     const string& key = srcEpg+dstEpg+classifier;
     contract_gauge_map[metric][key] = &gauge;
     return true;
@@ -784,15 +835,21 @@ bool PrometheusManager::createDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS met
     if (getDynamicGaugeSGClassifier(metric, classifier))
         return false;
 
-    LOG(DEBUG) << "creating sgclassifier dyn gauge family"
-               << " metric: " << metric
-               << " classifier: " << classifier;
-
     auto& gauge = gauge_sgclassifier_family_ptr[metric]->Add(
                     {
                         {"classifier", constructClassifierLabel(classifier,
                                                                 true)}
                     });
+    if (gauge_check.is_dup(&gauge)) {
+        LOG(DEBUG) << "duplicate sgclassifier dyn gauge family"
+                   << " metric: " << metric
+                   << " classifier: " << classifier;
+        return false;
+    }
+    LOG(DEBUG) << "created sgclassifier dyn gauge family"
+               << " metric: " << metric
+               << " classifier: " << classifier;
+    gauge_check.add(&gauge);
     sgclassifier_gauge_map[metric][classifier] = &gauge;
     return true;
 }
@@ -950,10 +1007,6 @@ void PrometheusManager::createDynamicGaugeRDDrop (RDDROP_METRICS metric,
     if (getDynamicGaugeRDDrop(metric, rdURI))
         return;
 
-    LOG(DEBUG) << "creating rddrop dyn gauge family"
-               << " metric: " << metric
-               << " rdURI: " << rdURI;
-
     /* Example rdURI: /PolicyUniverse/PolicySpace/test/GbpRoutingDomain/rd/
      * We want to just get the tenant name and the vrf. */
     size_t tLow = rdURI.find("PolicySpace") + 12;
@@ -965,6 +1018,16 @@ void PrometheusManager::createDynamicGaugeRDDrop (RDDROP_METRICS metric,
 
     auto& gauge = gauge_rddrop_family_ptr[metric]->Add({{"routing_domain",
                                                          tenant+":"+rd}});
+    if (gauge_check.is_dup(&gauge)) {
+        LOG(DEBUG) << "duplicate rddrop dyn gauge family"
+                   << " metric: " << metric
+                   << " rdURI: " << rdURI;
+        return;
+    }
+    LOG(DEBUG) << "created rddrop dyn gauge family"
+               << " metric: " << metric
+               << " rdURI: " << rdURI;
+    gauge_check.add(&gauge);
     rddrop_gauge_map[metric][rdURI] = &gauge;
 }
 
@@ -1008,11 +1071,19 @@ void PrometheusManager::createDynamicGaugePodSvc (PODSVC_METRICS metric,
         return;
     }
 
-    LOG(DEBUG) << "creating podsvc dyn gauge family"
+    auto& gauge = gauge_podsvc_family_ptr[metric]->Add(label_map);
+    if (gauge_check.is_dup(&gauge)) {
+        LOG(ERROR) << "duplicate podsvc dyn gauge family"
+                   << " metric: " << metric
+                   << " uuid: " << uuid
+                   << " label hash: " << hash_new;
+        return;
+    }
+    LOG(DEBUG) << "created podsvc dyn gauge family"
                << " metric: " << metric
                << " uuid: " << uuid
                << " label hash: " << hash_new;
-    auto& gauge = gauge_podsvc_family_ptr[metric]->Add(label_map);
+    gauge_check.add(&gauge);
     podsvc_gauge_map[metric][uuid] = make_pair(std::move(label_map), &gauge);
 }
 
@@ -1060,9 +1131,25 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
                                               attr_map,
                                               agent.getPrometheusEpAttributes());
     auto hash = hash_labels(label_map);
-    LOG(DEBUG) << "creating ep dyn gauge family: " << ep_name
-               << " label hash: " << hash;
     auto& gauge = gauge_ep_family_ptr[metric]->Add(label_map);
+    if (gauge_check.is_dup(&gauge)) {
+        LOG(ERROR) << "duplicate ep dyn gauge family: " << ep_name
+                   << " metric: " << metric
+                   << " uuid: " << uuid
+                   << " label hash: " << hash
+                   << " gaugeptr: " << &gauge;
+        // Note: return true so that: if metrics are created before and later
+        // result in duplication due to change in attributes, the pre-duplicated
+        // metrics can get freed.
+        return true;
+    }
+    LOG(DEBUG) << "created ep dyn gauge family: " << ep_name
+               << " metric: " << metric
+               << " uuid: " << uuid
+               << " label hash: " << hash
+               << " gaugeptr: " << &gauge;
+    gauge_check.add(&gauge);
+
     ep_gauge_map[metric][uuid] = make_pair(hash, &gauge);
 
     return true;
@@ -1284,6 +1371,7 @@ bool PrometheusManager::removeDynamicGaugeContractClassifier (CONTRACT_METRICS m
     if (pgauge) {
         const string& key = srcEpg+dstEpg+classifier;
         contract_gauge_map[metric].erase(key);
+        gauge_check.remove(pgauge);
         gauge_contract_family_ptr[metric]->Remove(pgauge);
     } else {
         LOG(DEBUG) << "remove dynamic gauge contract stats not found"
@@ -1303,6 +1391,7 @@ void PrometheusManager::removeDynamicGaugeContractClassifier (CONTRACT_METRICS m
         LOG(DEBUG) << "Delete ContractClassifierCounter"
                    << " key: " << itr->first
                    << " Gauge: " << itr->second;
+        gauge_check.remove(itr->second);
         gauge_contract_family_ptr[metric]->Remove(itr->second);
         itr++;
     }
@@ -1327,6 +1416,7 @@ bool PrometheusManager::removeDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS met
     Gauge *pgauge = getDynamicGaugeSGClassifier(metric, classifier);
     if (pgauge) {
         sgclassifier_gauge_map[metric].erase(classifier);
+        gauge_check.remove(pgauge);
         gauge_sgclassifier_family_ptr[metric]->Remove(pgauge);
     } else {
         LOG(DEBUG) << "remove dynamic gauge sgclassifier stats not found"
@@ -1344,6 +1434,7 @@ void PrometheusManager::removeDynamicGaugeSGClassifier (SGCLASSIFIER_METRICS met
         LOG(DEBUG) << "Delete SGClassifierCounter"
                    << " classifier: " << itr->first
                    << " Gauge: " << itr->second;
+        gauge_check.remove(itr->second);
         gauge_sgclassifier_family_ptr[metric]->Remove(itr->second);
         itr++;
     }
@@ -1391,6 +1482,7 @@ bool PrometheusManager::removeDynamicGaugeRDDrop (RDDROP_METRICS metric,
     Gauge *pgauge = getDynamicGaugeRDDrop(metric, rdURI);
     if (pgauge) {
         rddrop_gauge_map[metric].erase(rdURI);
+        gauge_check.remove(pgauge);
         gauge_rddrop_family_ptr[metric]->Remove(pgauge);
     } else {
         LOG(DEBUG) << "remove dynamic gauge rddrop stats not found rdURI:" << rdURI;
@@ -1406,6 +1498,7 @@ void PrometheusManager::removeDynamicGaugeRDDrop (RDDROP_METRICS metric)
     while (itr != rddrop_gauge_map[metric].end()) {
         LOG(DEBUG) << "Delete RDDropCounter rdURI: " << itr->first
                    << " Gauge: " << itr->second;
+        gauge_check.remove(itr->second);
         gauge_rddrop_family_ptr[metric]->Remove(itr->second);
         itr++;
     }
@@ -1434,6 +1527,7 @@ bool PrometheusManager::removeDynamicGaugeOFPeer (OFPEER_METRICS metric,
     Gauge *pgauge = getDynamicGaugeOFPeer(metric, peer);
     if (pgauge) {
         ofpeer_gauge_map[metric].erase(peer);
+        gauge_check.remove(pgauge);
         gauge_ofpeer_family_ptr[metric]->Remove(pgauge);
     } else {
         LOG(DEBUG) << "remove dynamic gauge ofpeer stats not found peer:" << peer;
@@ -1449,6 +1543,7 @@ void PrometheusManager::removeDynamicGaugeOFPeer (OFPEER_METRICS metric)
     while (itr != ofpeer_gauge_map[metric].end()) {
         LOG(DEBUG) << "Delete OFPeer stats peer: " << itr->first
                    << " Gauge: " << itr->second;
+        gauge_check.remove(itr->second);
         gauge_ofpeer_family_ptr[metric]->Remove(itr->second);
         itr++;
     }
@@ -1475,6 +1570,7 @@ bool PrometheusManager::removeDynamicGaugePodSvc (PODSVC_METRICS metric,
         auto &mpair = podsvc_gauge_map[metric][uuid];
         mpair.get().first.clear(); // free the label map
         podsvc_gauge_map[metric].erase(uuid);
+        gauge_check.remove(mgauge.get().second);
         gauge_podsvc_family_ptr[metric]->Remove(mgauge.get().second);
     } else {
         LOG(DEBUG) << "remove dynamic gauge podsvc not found uuid:" << uuid;
@@ -1490,6 +1586,7 @@ void PrometheusManager::removeDynamicGaugePodSvc (PODSVC_METRICS metric)
     while (itr != podsvc_gauge_map[metric].end()) {
         LOG(DEBUG) << "Delete PodSvc uuid: " << itr->first
                    << " Gauge: " << itr->second.get().second;
+        gauge_check.remove(itr->second.get().second);
         gauge_podsvc_family_ptr[metric]->Remove(itr->second.get().second);
         itr->second.get().first.clear(); // free the label map
         itr++;
@@ -1515,6 +1612,7 @@ bool PrometheusManager::removeDynamicGaugeEp (EP_METRICS metric,
     auto hgauge = getDynamicGaugeEp(metric, uuid);
     if (hgauge) {
         ep_gauge_map[metric].erase(uuid);
+        gauge_check.remove(hgauge.get().second);
         gauge_ep_family_ptr[metric]->Remove(hgauge.get().second);
     } else {
         LOG(DEBUG) << "remove dynamic gauge ep not found uuid:" << uuid;
@@ -1531,6 +1629,7 @@ void PrometheusManager::removeDynamicGaugeEp (EP_METRICS metric)
         LOG(DEBUG) << "Delete Ep uuid: " << itr->first
                    << " hash: " << itr->second.get().first
                    << " Gauge: " << itr->second.get().second;
+        gauge_check.remove(itr->second.get().second);
         gauge_ep_family_ptr[metric]->Remove(itr->second.get().second);
         itr++;
 
@@ -1776,6 +1875,10 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
                 }
                 if (metric_opt && mgauge)
                     mgauge.get().second->Set(static_cast<double>(metric_opt.get()));
+                if (!mgauge) {
+                    LOG(ERROR) << "ep2svc stats invalid update for uuid: " << uuid;
+                    break;
+                }
             }
         } else {
             LOG(DEBUG) << "EpToSvcCounter yet to be created for uuid: " << uuid;
@@ -1813,6 +1916,10 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
                 }
                 if (metric_opt && mgauge)
                     mgauge.get().second->Set(static_cast<double>(metric_opt.get()));
+                if (!mgauge) {
+                    LOG(ERROR) << "svc2ep stats invalid update for uuid: " << uuid;
+                    break;
+                }
             }
         } else {
             LOG(DEBUG) << "SvcToEpCounter yet to be created for uuid: " << uuid;
@@ -1880,6 +1987,13 @@ void PrometheusManager::addNUpdateContractClassifierCounter (const string& srcEp
                 if (metric_opt && pgauge)
                     pgauge->Set(pgauge->Value() \
                                 + static_cast<double>(metric_opt.get()));
+                if (!pgauge) {
+                    LOG(ERROR) << "Invalid sgclassifier update"
+                               << " srcEpg: " << srcEpg
+                               << " dstEpg: " << dstEpg
+                               << " classifier: " << classifier;
+                    break;
+                }
             }
         }
         out.clear();
@@ -1941,6 +2055,10 @@ void PrometheusManager::addNUpdateSGClassifierCounter (const string& classifier)
                 if (metric_opt && pgauge)
                     pgauge->Set(pgauge->Value() \
                                 + static_cast<double>(metric_opt.get()));
+                if (!pgauge) {
+                    LOG(ERROR) << "Invalid sgclassifier update classifier: " << classifier;
+                    break;
+                }
             }
         }
         out.clear();
@@ -2016,6 +2134,10 @@ void PrometheusManager::addNUpdateRDDropCounter (const string& rdURI,
                 if (metric_opt && pgauge)
                     pgauge->Set(pgauge->Value() \
                                 + static_cast<double>(metric_opt.get()));
+                if (!pgauge) {
+                    LOG(ERROR) << "Invalid rddrop update rdURI: " << rdURI;
+                    break;
+                }
             }
         }
         out.clear();
@@ -2115,6 +2237,10 @@ void PrometheusManager::addNUpdateOFPeerStats (void)
                 }
                 if (metric_opt && pgauge)
                     pgauge->Set(static_cast<double>(metric_opt.get()));
+                if (!pgauge) {
+                    LOG(ERROR) << "Invalid ofpeer update peer: " << peerStat.first;
+                    break;
+                }
             }
         }
     }
@@ -2205,6 +2331,10 @@ void PrometheusManager::addNUpdateEpCounter (const string& uuid,
                 }
                 if (metric_opt && hgauge)
                     hgauge.get().second->Set(static_cast<double>(metric_opt.get()));
+                if (!hgauge) {
+                    LOG(ERROR) << "ep stats invalid update for uuid: " << uuid;
+                    break;
+                }
             }
         }
     }
@@ -2359,13 +2489,20 @@ void PrometheusManager::createStaticGaugeTableDrop (const string& bridge_name,
                                                      bridge_name,
                                                      table_name);
         if(!mgauge) {
-            LOG(DEBUG) << "creating table drop static gauge"
-                       << " bridge_name: " << bridge_name
-                       << " table name: " << table_name;
             for (TABLE_DROP_METRICS metric=TABLE_DROP_BYTES;
                         metric <= TABLE_DROP_MAX;
                         metric = TABLE_DROP_METRICS(metric+1)) {
                 auto& gauge = gauge_table_drop_family_ptr[metric]->Add(label_map);
+                if (gauge_check.is_dup(&gauge)) {
+                    LOG(ERROR) << "duplicate table drop static gauge"
+                               << " bridge_name: " << bridge_name
+                               << " table name: " << table_name;
+                    return;
+                }
+                LOG(DEBUG) << "created table drop static gauge"
+                           << " bridge_name: " << bridge_name
+                           << " table name: " << table_name;
+                gauge_check.add(&gauge);
                 string table_drop_key = bridge_name + table_name;
                 table_drop_gauge_map[metric][table_drop_key] =
                         make_pair(std::move(label_map), &gauge);
@@ -2378,11 +2515,21 @@ void PrometheusManager::removeTableDropGauge (const string& bridge_name,
                                               const string& table_name)
 {
     string table_drop_key = bridge_name + table_name;
+
+    const lock_guard<mutex> lock(table_drop_counter_mutex);
+
     for(TABLE_DROP_METRICS metric = TABLE_DROP_BYTES;
             metric <= TABLE_DROP_MAX; metric = TABLE_DROP_METRICS(metric+1)) {
-        gauge_table_drop_family_ptr[metric]->Remove(
-            table_drop_gauge_map[metric][table_drop_key].get().second);
-        table_drop_gauge_map[metric].erase(table_drop_key);
+        auto const &mgauge = getStaticGaugeTableDrop(metric,
+                                                     bridge_name,
+                                                     table_name);
+        // Note: mgauge can be boost::none if the create resulted in a
+        // duplicate metric.
+        if (mgauge) {
+            gauge_check.remove(mgauge.get().second);
+            gauge_table_drop_family_ptr[metric]->Remove(mgauge.get().second);
+            table_drop_gauge_map[metric].erase(table_drop_key);
+        }
     }
 }
 
@@ -2399,6 +2546,11 @@ void PrometheusManager::updateTableDropGauge (const string& bridge_name,
                                                     table_name);
     if (mgauge_bytes) {
         mgauge_bytes.get().second->Set(static_cast<double>(bytes));
+    } else {
+        LOG(ERROR) << "Invalid bytes update for table drop"
+                   << " bridge_name: " << bridge_name
+                   << " table_name: " << table_name;
+        return;
     }
     const mgauge_pair_t &mgauge_packets = getStaticGaugeTableDrop(
                                                         TABLE_DROP_PKTS,
@@ -2406,8 +2558,12 @@ void PrometheusManager::updateTableDropGauge (const string& bridge_name,
                                                         table_name);
     if (mgauge_packets) {
         mgauge_packets.get().second->Set(static_cast<double>(packets));
+    } else {
+        LOG(ERROR) << "Invalid pkts update for table drop"
+                   << " bridge_name: " << bridge_name
+                   << " table_name: " << table_name;
+        return;
     }
-
 }
 
 } /* namespace opflexagent */
