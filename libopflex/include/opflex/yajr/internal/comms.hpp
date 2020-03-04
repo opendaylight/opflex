@@ -10,11 +10,11 @@
 #ifndef _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
 #define _INCLUDE__OPFLEX__COMMS_INTERNAL_HPP
 
-#include <yajr/rpc/send_handler.hpp>
-#include <yajr/rpc/message_factory.hpp>
-#include <yajr/yajr.hpp>
-#include <yajr/rpc/rpc.hpp>
-#include <yajr/transport/PlainText.hpp>
+#include <opflex/yajr/rpc/send_handler.hpp>
+#include <opflex/yajr/rpc/message_factory.hpp>
+#include <opflex/yajr/yajr.hpp>
+#include <opflex/yajr/rpc/rpc.hpp>
+#include <opflex/yajr/transport/PlainText.hpp>
 
 #include <opflex/logging/OFLogHandler.h>
 #include "opflex/util/LockGuard.h"

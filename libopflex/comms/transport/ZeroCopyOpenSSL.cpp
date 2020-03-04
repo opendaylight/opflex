@@ -14,7 +14,7 @@
 
 #include <yajr/transport/ZeroCopyOpenSSL.hpp>
 
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 
 #include <opflex/logging/internal/logging.hpp>
 

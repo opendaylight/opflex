@@ -13,7 +13,7 @@
 
 
 #include <yajr/rpc/methods.hpp>
-#include <yajr/rpc/rpc.hpp>
+#include <opflex/yajr/rpc/rpc.hpp>
 
 namespace yajr {
 

@@ -12,8 +12,8 @@
 #endif
 
 
-#include <yajr/transport/PlainText.hpp>
-#include <yajr/internal/comms.hpp>
+#include <opflex/yajr/transport/PlainText.hpp>
+#include <opflex/yajr/internal/comms.hpp>
 
 #include <opflex/logging/internal/logging.hpp>
 

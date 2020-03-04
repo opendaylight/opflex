@@ -10,7 +10,7 @@
 #ifndef _____COMMS__INCLUDE__YAJR__TRANSPORT__PLAINTEXT_HPP
 #define _____COMMS__INCLUDE__YAJR__TRANSPORT__PLAINTEXT_HPP
 
-#include <yajr/transport/engine.hpp>
+#include <opflex/yajr/transport/engine.hpp>
 
 #include <cassert>
 

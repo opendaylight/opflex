@@ -18,7 +18,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/document.h>
 
-#include "yajr/rpc/message_factory.hpp"
+#include "opflex/yajr/rpc/message_factory.hpp"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXMESSAGE_H

@@ -24,7 +24,7 @@
 #include "opflex/util/LockGuard.h"
 
 #include "yajr/transport/ZeroCopyOpenSSL.hpp"
-#include "yajr/rpc/message_factory.hpp"
+#include "opflex/yajr/rpc/message_factory.hpp"
 
 static uv_once_t ssl_once = UV_ONCE_INIT;
 

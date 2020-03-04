@@ -10,7 +10,7 @@
 #ifndef _INCLUDE__YAJR__YAJR_HPP
 #define _INCLUDE__YAJR__YAJR_HPP
 
-#include <yajr/transport/engine.hpp>
+#include <opflex/yajr/transport/engine.hpp>
 
 #include <uv.h>
 
