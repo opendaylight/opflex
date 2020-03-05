@@ -802,7 +802,7 @@ class ListeningUnixPeer : public ListeningPeer {
 };
 static_assert (sizeof(ListeningUnixPeer) <= 4096, "ListeningUnixPeer won't fit on one page");
 
-struct internal::Peer::LoopData::PeerDisposer {
+struct Peer::LoopData::PeerDisposer {
 
     void operator () (Peer *peer);
 
@@ -812,13 +812,13 @@ struct internal::Peer::LoopData::PeerDisposer {
     bool const now_;
 };
 
-struct internal::Peer::LoopData::RetryPeer {
+struct Peer::LoopData::RetryPeer {
 
     void operator () (Peer *peer);
 
 };
 
-struct internal::Peer::LoopData::PeerDeleter {
+struct Peer::LoopData::PeerDeleter {
 
     void operator () (Peer *peer);
 
