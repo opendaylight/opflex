@@ -1,0 +1,112 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7987914c_bae86d1e",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 390,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-05T05:37:23Z",
+      "side": 1,
+      "message": "Is interfaceReportingStatus needed/used?",
+      "revId": "12706bac688af49213fb50cab9303f98b9689db2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ab72c110_d37ceced",
+        "filename": "agent-ovs/lib/include/opflexagent/Agent.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 391,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-05T05:37:23Z",
+      "side": 1,
+      "message": "typo - Rporting -\u003e Reporting",
+      "range": {
+        "startLine": 391,
+        "startChar": 9,
+        "endLine": 391,
+        "endChar": 30
+      },
+      "revId": "12706bac688af49213fb50cab9303f98b9689db2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "11db1cef_34abf4d1",
+        "filename": "libopflex/engine/Processor.cpp",
+        "patchSetId": 12
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-05T05:37:23Z",
+      "side": 1,
+      "message": "no locking required anywhere? Should you clone the map, clear the original, and then send the items in the clone to avoid contention on statsDeliveryMap",
+      "revId": "12706bac688af49213fb50cab9303f98b9689db2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "22ffbfb5_b6451c83",
+        "filename": "libopflex/include/opflex/ofcore/OFFramework.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 907,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-05T05:37:23Z",
+      "side": 1,
+      "message": "@param\u0027s don\u0027t match the code",
+      "revId": "12706bac688af49213fb50cab9303f98b9689db2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3025a0e5_c907d058",
+        "filename": "libopflex/include/opflex/ofcore/OFFramework.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 915,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-05T05:37:23Z",
+      "side": 1,
+      "message": "no class_id in signature",
+      "revId": "12706bac688af49213fb50cab9303f98b9689db2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e466e184_857b1d4c",
+        "filename": "libopflex/include/opflex/ofcore/OFFramework.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 916,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-05T05:37:23Z",
+      "side": 1,
+      "message": "enabled -\u003e status",
+      "revId": "12706bac688af49213fb50cab9303f98b9689db2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
