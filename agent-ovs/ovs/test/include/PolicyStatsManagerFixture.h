@@ -79,48 +79,73 @@ public:
                          shared_ptr<EpGroup> dstEpg = NULL) {
         optional<shared_ptr<PolicyStatUniverse> > su =
             PolicyStatUniverse::resolve(agent.getFramework());
-        if (srcEpg != NULL && dstEpg != NULL) {
+        if (srcEpg.get() && dstEpg.get()) {
             auto uuid =
                 boost::lexical_cast<std::string>(statsManager->getAgentUUID());
+            LOG(DEBUG) << "verifying stats for src_epg: " << srcEpg->getURI().toString()
+                        << " dst_epg: " << dstEpg->getURI().toString()
+                        << " classifier: " << classifier->getURI().toString();
             optional<shared_ptr<L24ClassifierCounter> > myCounter =
-                su.get()->resolveGbpeL24ClassifierCounter(uuid,
-                                                          statsManager
-                                                          ->getCurrClsfrGenId(),
-                                                          srcEpg->getURI()
-                                                          .toString(),
-                                                          dstEpg->getURI()
-                                                          .toString(),
-                                                          classifier->getURI()
-                                                           .toString());
-            if (myCounter) {
-                BOOST_CHECK_EQUAL(myCounter.get()->getPackets().get(),
-                                  packet_count);
-                BOOST_CHECK_EQUAL(myCounter.get()->getBytes().get(),
-                                  byte_count);
-            }
+                boost::make_optional<shared_ptr<L24ClassifierCounter> >(false, nullptr);
+            WAIT_FOR_DO_ONFAIL(
+               (myCounter && myCounter.get()
+                    && (myCounter.get()->getPackets().get() == packet_count)
+                    && (myCounter.get()->getBytes().get() == byte_count)),
+               500, // usleep(1000) * 500 = 500ms
+               (myCounter = su.get()->resolveGbpeL24ClassifierCounter(uuid,
+                                    statsManager->getCurrClsfrGenId(),
+                                    srcEpg->getURI().toString(),
+                                    dstEpg->getURI().toString(),
+                                    classifier->getURI().toString())),
+               if (myCounter && myCounter.get()) {
+                   BOOST_CHECK_EQUAL(myCounter.get()->getPackets().get(), packet_count);
+                   BOOST_CHECK_EQUAL(myCounter.get()->getBytes().get(), byte_count);
+               } else {
+                   LOG(DEBUG) << "L24classifiercounter mo isnt present";
+               });
         } else {
             auto uuid =
                 boost::lexical_cast<std::string>(statsManager->getAgentUUID());
             optional<shared_ptr<SecGrpClassifierCounter> > myCounter =
-                su.get()
-                   ->resolveGbpeSecGrpClassifierCounter(uuid,
-                                                        statsManager
-                                                        ->getCurrClsfrGenId(),
-                                                        classifier->getURI()
-                                                        .toString());
-            if (myCounter) {
-                if (table_id == AccessFlowManager::SEC_GROUP_IN_TABLE_ID) {
-                    BOOST_CHECK_EQUAL(myCounter.get()->getTxpackets().get(),
-                                      packet_count);
-                    BOOST_CHECK_EQUAL(myCounter.get()->getTxbytes().get(),
-                                      byte_count);
+                boost::make_optional<shared_ptr<SecGrpClassifierCounter> >(false, nullptr);
+            LOG(DEBUG) << "verifying stats for"
+                        << " classifier: " << classifier->getURI().toString();
+            WAIT_FOR_DO_ONFAIL(
+                (myCounter && myCounter.get()
+                    && (
+                        ((table_id == AccessFlowManager::SEC_GROUP_OUT_TABLE_ID)
+                        && (myCounter.get()->getTxpackets()
+                                && (myCounter.get()->getTxpackets().get() == packet_count))
+                        && (myCounter.get()->getTxbytes()
+                                && (myCounter.get()->getTxbytes().get() == byte_count)))
+                        ||
+                        ((table_id == AccessFlowManager::SEC_GROUP_IN_TABLE_ID)
+                        && (myCounter.get()->getRxpackets().get() == packet_count)
+                        && (myCounter.get()->getRxbytes().get() == byte_count))
+                       )),
+                500, // usleep(1000) * 500 = 500ms
+                (myCounter = su.get()->resolveGbpeSecGrpClassifierCounter(uuid,
+                                  statsManager->getCurrClsfrGenId(),
+                                  classifier->getURI().toString())),
+                if (myCounter && myCounter.get()) {
+                    if (table_id == AccessFlowManager::SEC_GROUP_OUT_TABLE_ID) {
+                        if (myCounter.get()->getTxpackets()) {
+                            BOOST_CHECK_EQUAL(myCounter.get()->getTxpackets().get(), packet_count);
+                        } else {
+                            LOG(DEBUG) << "tx pkts invalid";
+                        }
+                        if (myCounter.get()->getTxbytes()) {
+                            BOOST_CHECK_EQUAL(myCounter.get()->getTxbytes().get(), byte_count);
+                        } else {
+                            LOG(DEBUG) << "tx bytes invalid";
+                        }
+                    } else if (table_id == AccessFlowManager::SEC_GROUP_IN_TABLE_ID) {
+                        BOOST_CHECK_EQUAL(myCounter.get()->getRxpackets().get(), packet_count);
+                        BOOST_CHECK_EQUAL(myCounter.get()->getRxbytes().get(), byte_count);
+                    }
                 } else {
-                    BOOST_CHECK_EQUAL(myCounter.get()->getRxpackets().get(),
-                                      packet_count);
-                    BOOST_CHECK_EQUAL(myCounter.get()->getRxbytes().get(),
-                                      byte_count);
-                }
-            }
+                    LOG(DEBUG) << "SGclassifiercounter mo isnt present";
+                });
         }
     }
 
@@ -216,6 +241,9 @@ public:
         uint32_t cookie =
             idGen.getId(IntFlowManager::getIdNamespace(L24Classifier::CLASS_ID),
                         classifier->getURI().toString());
+        LOG(DEBUG) << "Received cookie: " << cookie << " for classifier: "
+                    << classifier->getURI().toString();
+
         if (srcEpg != NULL && dstEpg != NULL)
             {
                 WAIT_FOR(policyManager->getVnidForGroup(srcEpg->getURI()), 500);
@@ -225,11 +253,13 @@ public:
                     policyManager->getVnidForGroup(srcEpg->getURI()).get();
                 uint32_t epg2_vnid =
                     policyManager->getVnidForGroup(dstEpg->getURI()).get();
-                FlowBuilder().cookie(cookie).inPort(portNum).table(table_id)
+                FlowBuilder().cookie(ovs_htonll(cookie)).inPort(portNum).table(table_id)
+                    .flags(OFPUTIL_FF_SEND_FLOW_REM)
                     .priority(priority).reg(0,epg1_vnid).reg(2,epg2_vnid).
                     build(entryList);
             } else {
-            FlowBuilder().cookie(cookie).inPort(portNum).table(table_id)
+            FlowBuilder().cookie(ovs_htonll(cookie)).inPort(portNum).table(table_id)
+                .flags(OFPUTIL_FF_SEND_FLOW_REM)
                 .priority(priority).reg(0,1).build(entryList);
         }
         FlowEntryList entryListCopy(entryList);
@@ -258,13 +288,13 @@ public:
                                        INITIAL_PACKET_COUNT,
                                        table_id,
                                        entryList);
-        LOG(DEBUG) << "1 makeFlowStatReplyMessage successful";
+        LOG(DEBUG) << "1 makeFlowStatReplyMessage created";
         BOOST_REQUIRE(res_msg!=0);
 
         // send first flow stats reply message
         statsManager->Handle(&portConn,
                              OFPTYPE_FLOW_STATS_REPLY, res_msg);
-        LOG(DEBUG) << "1 FlowStatsReplyMessage handling successful";
+        LOG(DEBUG) << "1 FlowStatsReplyMessage handled";
         ofpbuf_delete(res_msg);
         uint64_t firstId = 0;
         for (int statCount = 0;
@@ -292,7 +322,7 @@ public:
             PolicyStatUniverse::resolve(agent.getFramework());
         auto uuid =
             boost::lexical_cast<std::string>(statsManager->getAgentUUID());
-        if (srcEpg != NULL && dstEpg != NULL) {
+        if (srcEpg.get() && dstEpg.get()) {
             optional<shared_ptr<L24ClassifierCounter> > myCounter =
                 su.get()->resolveGbpeL24ClassifierCounter(uuid,firstId,
                                                           srcEpg->getURI()
@@ -315,9 +345,9 @@ public:
     void testOneFlow(MockConnection& portConn,
                      shared_ptr<L24Classifier>& classifier,uint32_t table_id,
                      uint32_t portNum,PolicyStatsManager *statsManager,
+                     PolicyManager *policyManager = NULL,
                      shared_ptr<EpGroup> srcEpg = NULL,
-                     shared_ptr<EpGroup> dstEpg = NULL,
-                     PolicyManager *policyManager = NULL) {
+                     shared_ptr<EpGroup> dstEpg = NULL) {
         // add flows in switchManager
         FlowEntryList entryList;
         writeClassifierFlows(entryList,table_id,portNum,classifier,
@@ -328,6 +358,7 @@ public:
         // Call on_timer function to process the flow entries received from
         // switchManager.
         statsManager->on_timer(ec);
+        LOG(DEBUG) << "1 on_timer called";
 
         // create first flow stats reply message
         struct ofpbuf *res_msg =
@@ -335,13 +366,13 @@ public:
                                        INITIAL_PACKET_COUNT,
                                        table_id,
                                        entryList);
-        LOG(DEBUG) << "1 makeFlowStatReplyMessage successful";
+        LOG(DEBUG) << "1 makeFlowStatReplyMessage created";
         BOOST_REQUIRE(res_msg!=0);
 
         // send first flow stats reply message
         statsManager->Handle(&portConn,
                              OFPTYPE_FLOW_STATS_REPLY, res_msg);
-        LOG(DEBUG) << "1 FlowStatsReplyMessage handling successful";
+        LOG(DEBUG) << "1 FlowStatsReplyMessage handled";
         ofpbuf_delete(res_msg);
 
         // create second flow stats reply message
@@ -349,14 +380,19 @@ public:
                                              FINAL_PACKET_COUNT,
                                              table_id,
                                              entryList);
+        LOG(DEBUG) << "2 makeFlowStatReplyMessage created";
+        BOOST_REQUIRE(res_msg!=0);
+
         // send second flow stats reply message
         statsManager->Handle(&portConn,
                              OFPTYPE_FLOW_STATS_REPLY, res_msg);
+        LOG(DEBUG) << "2 FlowStatsReplyMessage handled";
         ofpbuf_delete(res_msg);
         // Call on_timer function to process the stats collected
         // and generate Genie objects for stats
 
         statsManager->on_timer(ec);
+        LOG(DEBUG) << "2 on_timer called";
 
         // calculate expected packet count and byte count
         // that we should have in Genie object
@@ -364,6 +400,7 @@ public:
         uint32_t num_flows = entryList.size();
         uint32_t exp_classifier_packet_count =
             (FINAL_PACKET_COUNT - INITIAL_PACKET_COUNT) * num_flows;
+        LOG(DEBUG) << "num_flows: " << num_flows << " exp: " << exp_classifier_packet_count;
 
         // Verify per classifier/per epg pair packet and byte count
 

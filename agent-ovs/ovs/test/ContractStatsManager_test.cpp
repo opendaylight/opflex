@@ -27,6 +27,7 @@
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/gbp/Contract.hpp>
 #include "ovs-ofputil.h"
+#include <modelgbp/gbpe/L24ClassifierCounter.hpp>
 
 extern "C" {
 #include <openvswitch/ofp-parse.h>
@@ -152,6 +153,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, ContractStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     contractStatsManager.registerConnection(&integrationPortConn);
     contractStatsManager.start();
+    LOG(DEBUG) << "### Contract flow stats start";
 
     contractStatsManager.Handle(NULL, OFPTYPE_FLOW_STATS_REPLY, NULL);
     contractStatsManager.Handle(&integrationPortConn,
@@ -161,10 +163,11 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, ContractStatsManagerFixture) {
                 IntFlowManager::POL_TABLE_ID,
                 1,
                 &contractStatsManager,
+                &policyManager,
                 epg1,
-                epg2,
-                &policyManager);
+                epg2);
 
+    LOG(DEBUG) << "### Contract flow stats end";
     contractStatsManager.stop();
 }
 
@@ -172,6 +175,7 @@ BOOST_FIXTURE_TEST_CASE(testRdDropStats, ContractStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     contractStatsManager.registerConnection(&integrationPortConn);
     contractStatsManager.start();
+    LOG(DEBUG) << "### rddrop stats start";
 
     // get rdId
     uint32_t rdId =
@@ -195,6 +199,7 @@ BOOST_FIXTURE_TEST_CASE(testRdDropStats, ContractStatsManagerFixture) {
 
     verifyRoutingDomainDropStats(rd0, packet_count, byte_count);
     LOG(DEBUG) << "testRd:FlowStatsReplyMessage verification successful";
+    LOG(DEBUG) << "### rddrop stats end";
     contractStatsManager.stop();
 }
 
@@ -202,6 +207,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, ContractStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     contractStatsManager.registerConnection(&integrationPortConn);
     contractStatsManager.start();
+    LOG(DEBUG) << "### Contract flow removed start";
 
     // Add flows in switchManager
     FlowEntryList entryList;
@@ -224,16 +230,19 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, ContractStatsManagerFixture) {
                                  LAST_PACKET_COUNT,
                                  IntFlowManager::POL_TABLE_ID,
                                  entryList);
+    LOG(DEBUG) << "1 makeFlowRemovedMessage_2 created";
     BOOST_REQUIRE(res_msg!=0);
 
     contractStatsManager.Handle(&integrationPortConn,
                                 OFPTYPE_FLOW_REMOVED, res_msg);
+    LOG(DEBUG) << "1 makeFlowRemovedMessage_2 handled";
     ofpbuf_delete(res_msg);
 
     // Call on_timer function to process the stats collected
     // and generate Genie objects for stats
 
     contractStatsManager.on_timer(ec);
+    LOG(DEBUG) << "1 on_timer called";
 
     // calculate expected packet count and byte count
     // that we should have in Genie object
@@ -244,6 +253,8 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, ContractStatsManagerFixture) {
                     IntFlowManager::POL_TABLE_ID,
                     &contractStatsManager,
                     epg1,epg2);
+    LOG(DEBUG) << "1 verifyflowstats successful";
+    LOG(DEBUG) << "### Contract flow removed stop";
     contractStatsManager.stop();
 }
 
@@ -251,10 +262,12 @@ BOOST_FIXTURE_TEST_CASE(testCircularBuffer, ContractStatsManagerFixture) {
     MockConnection intPortConn(TEST_CONN_TYPE_INT);
     contractStatsManager.registerConnection(&intPortConn);
     contractStatsManager.start();
+    LOG(DEBUG) << "### Contract circbuffer Start";
     // Add flows in switchManager
     testCircBuffer(intPortConn,classifier3,
                    IntFlowManager::POL_TABLE_ID,2,&contractStatsManager,
                    epg1,epg2,&policyManager);
+    LOG(DEBUG) << "### Contract circbuffer End";
     contractStatsManager.stop();
 
 }
@@ -263,6 +276,7 @@ BOOST_FIXTURE_TEST_CASE(testContractDelete, ContractStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     contractStatsManager.registerConnection(&integrationPortConn);
     contractStatsManager.start();
+    LOG(DEBUG) << "### Contract classifier Delete Start";
 
     contractStatsManager.Handle(&integrationPortConn,
                                 OFPTYPE_FLOW_STATS_REPLY, NULL);
@@ -272,25 +286,96 @@ BOOST_FIXTURE_TEST_CASE(testContractDelete, ContractStatsManagerFixture) {
                 IntFlowManager::POL_TABLE_ID,
                 1,
                 &contractStatsManager,
+                &policyManager,
                 epg1,
-                epg2,
-                &policyManager);
+                epg2);
     Mutator mutator(agent.getFramework(), "policyreg");
-    modelgbp::gbp::Contract::remove(agent.getFramework(),"tenant0","contract1");
+    // Note: In UTs, deleting the sg doesnt trigger classifier delete
+    //modelgbp::gbp::Contract::remove(agent.getFramework(),"tenant0","contract3");
+    modelgbp::gbpe::L24Classifier::remove(agent.getFramework(),"tenant0","classifier3");
     mutator.commit();
     optional<shared_ptr<PolicyStatUniverse> > su =
         PolicyStatUniverse::resolve(agent.getFramework());
     auto uuid =
         boost::lexical_cast<std::string>(contractStatsManager.getAgentUUID());
-    optional<shared_ptr<L24ClassifierCounter> > myCounter =
-        su.get()-> resolveGbpeL24ClassifierCounter(uuid,
-                                                   contractStatsManager.
-                                                   getCurrClsfrGenId(),
-                                                   epg1->getURI().toString(),
-                                                   epg2->getURI().toString(),
-                                                   classifier3->getURI()
-                                                   .toString());
-    WAIT_FOR(!myCounter,500);
+    optional<shared_ptr<L24ClassifierCounter> > myCounter;
+    WAIT_FOR_DO_ONFAIL(!(su.get()->resolveGbpeL24ClassifierCounter(uuid,
+                        contractStatsManager.getCurrClsfrGenId(),
+                        epg1->getURI().toString(),
+                        epg2->getURI().toString(),
+                        classifier3->getURI().toString()))
+                        ,500
+                        ,
+                        ,LOG(ERROR) << "Obj still present";);
+    LOG(DEBUG) << "### Contract classifier Delete End";
+    contractStatsManager.stop();
+}
+
+BOOST_FIXTURE_TEST_CASE(testSEpgDelete, ContractStatsManagerFixture) {
+    MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
+    contractStatsManager.registerConnection(&integrationPortConn);
+    contractStatsManager.start();
+    LOG(DEBUG) << "### Contract SEPG Delete Start";
+
+    testOneFlow(integrationPortConn,
+                classifier3,
+                IntFlowManager::POL_TABLE_ID,
+                1,
+                &contractStatsManager,
+                &policyManager,
+                epg1,
+                epg2);
+    Mutator mutator(agent.getFramework(), "policyreg");
+    modelgbp::gbp::EpGroup::remove(agent.getFramework(),"tenant0","epg1");
+    mutator.commit();
+    optional<shared_ptr<PolicyStatUniverse> > su =
+        PolicyStatUniverse::resolve(agent.getFramework());
+    auto uuid =
+        boost::lexical_cast<std::string>(contractStatsManager.getAgentUUID());
+    optional<shared_ptr<L24ClassifierCounter> > myCounter;
+    WAIT_FOR_DO_ONFAIL(!(su.get()->resolveGbpeL24ClassifierCounter(uuid,
+                        contractStatsManager.getCurrClsfrGenId(),
+                        epg1->getURI().toString(),
+                        epg2->getURI().toString(),
+                        classifier3->getURI().toString()))
+                        ,500
+                        ,
+                        ,LOG(ERROR) << "Obj still present";);
+    LOG(DEBUG) << "### Contract SEPG Delete End";
+    contractStatsManager.stop();
+}
+
+BOOST_FIXTURE_TEST_CASE(testrDSEpgDelete, ContractStatsManagerFixture) {
+    MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
+    contractStatsManager.registerConnection(&integrationPortConn);
+    contractStatsManager.start();
+    LOG(DEBUG) << "### Contract DSEPG Delete Start";
+
+    testOneFlow(integrationPortConn,
+                classifier3,
+                IntFlowManager::POL_TABLE_ID,
+                1,
+                &contractStatsManager,
+                &policyManager,
+                epg1,
+                epg2);
+    Mutator mutator(agent.getFramework(), "policyreg");
+    modelgbp::gbp::EpGroup::remove(agent.getFramework(),"tenant0","epg2");
+    mutator.commit();
+    optional<shared_ptr<PolicyStatUniverse> > su =
+        PolicyStatUniverse::resolve(agent.getFramework());
+    auto uuid =
+        boost::lexical_cast<std::string>(contractStatsManager.getAgentUUID());
+    optional<shared_ptr<L24ClassifierCounter> > myCounter;
+    WAIT_FOR_DO_ONFAIL(!(su.get()->resolveGbpeL24ClassifierCounter(uuid,
+                        contractStatsManager.getCurrClsfrGenId(),
+                        epg1->getURI().toString(),
+                        epg2->getURI().toString(),
+                        classifier3->getURI().toString()))
+                        ,500
+                        ,
+                        ,LOG(ERROR) << "Obj still present";);
+    LOG(DEBUG) << "### Contract DEPG Delete End";
     contractStatsManager.stop();
 }
 

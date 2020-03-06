@@ -333,7 +333,6 @@ void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
         byte_count = oldFlowCounters.last_byte_count.get();
 
         oldFlowCounters.visited = true;
-
         if ((flow_packet_count - packet_count) > 0) {
             oldFlowCounters.diff_packet_count =
                 flow_packet_count - packet_count;
@@ -632,6 +631,28 @@ generatePolicyStatsObjects(PolicyCounterMap_t *newCountersMap1,
                                           newCounters1);
             }
 
+        }
+    }
+
+    // handle SG OUT/Tx table alone is getting updated
+    if (!newCountersMap1->size() && newCountersMap2) {
+        for (PolicyCounterMap_t:: iterator itr = newCountersMap2->begin();
+             itr != newCountersMap2->end();
+             itr++) {
+            const PolicyFlowMatchKey_t& flowKey = itr->first;
+            FlowStats_t&  outCounters = itr->second;
+            FlowStats_t   inCounters;
+            boost::optional<std::string> idStr =
+                idGen.getStringForId(IntFlowManager::
+                                     getIdNamespace(L24Classifier::CLASS_ID),
+                                     flowKey.cookie);
+            if (idStr == boost::none) {
+                LOG(DEBUG) << "Cookie: " << flowKey.cookie
+                           << " to Classifier URI translation does not exist";
+                continue;
+            }
+            updatePolicyStatsCounters(idStr.get(),
+                                      inCounters,outCounters);
         }
     }
 }
