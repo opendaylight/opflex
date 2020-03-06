@@ -49,7 +49,7 @@ public:
      */
     explicit Endpoint(const std::string& uuid_)
         : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-          external(false), aapModeAA(false) {}
+          external(false), aapModeAA(false), disableAdv(false) {}
 
     /**
      * Get the endpoint group URI associated with this endpoint.  Note
