@@ -196,11 +196,6 @@ void ContractStatsManager::clearCounterObject(const std::string& key,
                                  getAgentUUID(),genIdList_[key]
                                  ->uidList[index],srcEpg,dstEpg,l24Classifier);
     counterObjectKeys_.erase(counterObjectKeys_.find(uid));
-#ifdef HAVE_PROMETHEUS_SUPPORT
-    prometheusManager.removeContractClassifierCounter(srcEpg,
-                                                      dstEpg,
-                                                      l24Classifier);
-#endif
 }
 
 void ContractStatsManager::
@@ -242,6 +237,23 @@ void ContractStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
                                          const opflex::modb::URI& uri) {
     if (class_id == L24Classifier::CLASS_ID) {
         if (!L24Classifier::resolve(agent->getFramework(),uri)) {
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            if (genIdList_.count(uri.toString())) {
+                for (size_t idx = 0; idx < genIdList_[uri.toString()]->uidList.size(); idx++) {
+                    std::string l24Classifier,srcEpg,dstEpg;
+                    auto uid = genIdList_[uri.toString()]->uidList[idx];
+                    std::tie(l24Classifier,srcEpg,dstEpg) = counterObjectKeys_[uid];
+                    // Note: For eeach entry in uidList, the src and dst epg
+                    // pairs could be different. So try to remove metric for each
+                    // element in the circular buffer. If all the elements belong
+                    // to the same EPG pair, then only first removal will be successful.
+                    // Remaining remove calls will just log messages and get ignored.
+                    prometheusManager.removeContractClassifierCounter(srcEpg,
+                                                                      dstEpg,
+                                                                      l24Classifier);
+                }
+            }
+#endif
             removeAllCounterObjects(uri.toString());
         }
     } else if (class_id == EpGroup::CLASS_ID) {
@@ -259,6 +271,11 @@ void ContractStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
                         counterObjectKeys_[uid];
                     if (srcEpg == epgName || dstEpg == epgName) {
                         clearCounterObject(it->first,i);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+                        prometheusManager.removeContractClassifierCounter(srcEpg,
+                                                                          dstEpg,
+                                                                          l24Classifier);
+#endif
                     }
                 }
             }

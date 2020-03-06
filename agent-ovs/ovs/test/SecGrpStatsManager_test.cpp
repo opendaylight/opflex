@@ -26,6 +26,7 @@
 
 #include "ovs-ofputil.h"
 #include <modelgbp/gbpe/SecGrpClassifierCounter.hpp>
+#include <modelgbp/gbpe/L24ClassifierCounter.hpp>
 #include <modelgbp/observer/PolicyStatUniverse.hpp>
 
 #include <opflex/modb/Mutator.h>
@@ -78,9 +79,11 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, SecGrpStatsManagerFixture) {
     MockConnection accPortConn(TEST_CONN_TYPE_ACC);
     secGrpStatsManager.registerConnection(&accPortConn);
     secGrpStatsManager.start();
+    LOG(DEBUG) << "### SecGrpClassifierCounter flow stats start";
     secGrpStatsManager.Handle(NULL, OFPTYPE_FLOW_STATS_REPLY, NULL);
     secGrpStatsManager.Handle(&accPortConn,
                               OFPTYPE_FLOW_STATS_REPLY, NULL);
+    LOG(DEBUG) << "### SecGrpClassifierCounter flow stats in start";
     // testing one flow only
     testOneFlow(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_IN_TABLE_ID,1,&secGrpStatsManager);
@@ -90,10 +93,14 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, SecGrpStatsManagerFixture) {
                 2,
                 &secGrpStatsManager);
     // changing flow table entry
+    // Note: If the portNum is set as 2, then it clashes with classifier2
+    // entry. So first classifier1 entry will get deleted. No new counter
+    // objeects will get generated and verifyflowstats will fail.
     testOneFlow(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
-                2,
+                3,
                 &secGrpStatsManager);
+    LOG(DEBUG) << "### SecGrpClassifierCounter flow stats out start";
     // same 3 steps above for OUT table
     testOneFlow(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
@@ -105,8 +112,9 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, SecGrpStatsManagerFixture) {
                 &secGrpStatsManager);
     testOneFlow(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
-                2,
+                3,
                 &secGrpStatsManager);
+    LOG(DEBUG) << "### SecGrpClassifierCounter flow stats stop";
     secGrpStatsManager.stop();
 
 }
@@ -117,6 +125,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
     MockConnection accPortConn(TEST_CONN_TYPE_ACC);
     secGrpStatsManager.registerConnection(&accPortConn);
     secGrpStatsManager.start();
+    LOG(DEBUG) << "### SecGrpClassifierCounter flow removed start";
 
     // Add flows in switchManager
     FlowEntryList entryList;
@@ -195,6 +204,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
                     LAST_PACKET_COUNT * PACKET_SIZE,
                     AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
                     &secGrpStatsManager);
+    LOG(DEBUG) << "### SecGrpClassifierCounter flow removed stop";
     secGrpStatsManager.stop();
 }
 
@@ -203,6 +213,7 @@ BOOST_FIXTURE_TEST_CASE(testCircularBuffer, SecGrpStatsManagerFixture) {
     secGrpStatsManager.registerConnection(&accPortConn);
     secGrpStatsManager.start();
 
+    LOG(DEBUG) << "### SecGrpClassifierCounter circbuffer start";
     // Add flows in switchManager
 
     testCircBuffer(accPortConn,
@@ -210,6 +221,7 @@ BOOST_FIXTURE_TEST_CASE(testCircularBuffer, SecGrpStatsManagerFixture) {
                    AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
                    2,
                    &secGrpStatsManager);
+    LOG(DEBUG) << "### SecGrpClassifierCounter circbuffer stop";
     secGrpStatsManager.stop();
 }
 
@@ -217,25 +229,31 @@ BOOST_FIXTURE_TEST_CASE(testSecGrpDelete, SecGrpStatsManagerFixture) {
     MockConnection accPortConn(TEST_CONN_TYPE_ACC);
     secGrpStatsManager.registerConnection(&accPortConn);
     secGrpStatsManager.start();
+
+    LOG(DEBUG) << "### SecGrpClassifierCounter Delete Start";
     secGrpStatsManager.Handle(&accPortConn,
                               OFPTYPE_FLOW_STATS_REPLY, NULL);
     // testing one flow only
     testOneFlow(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_IN_TABLE_ID,1,&secGrpStatsManager);
     Mutator mutator(agent.getFramework(), "policyreg");
-    modelgbp::gbp::SecGroup::remove(agent.getFramework(),"test","secgrp1");
+
+    // Note: In UTs, deleting the sg doesnt trigger classifier delete
+    //modelgbp::gbp::SecGroup::remove(agent.getFramework(),"tenant0","secgrp1");
+    modelgbp::gbpe::L24Classifier::remove(agent.getFramework(),"tenant0","classifier1");
     mutator.commit();
     optional<shared_ptr<PolicyStatUniverse> > su =
         PolicyStatUniverse::resolve(agent.getFramework());
     auto uuid =
         boost::lexical_cast<std::string>(secGrpStatsManager.getAgentUUID());
-    optional<shared_ptr<SecGrpClassifierCounter> > myCounter =
-        su.get()->resolveGbpeSecGrpClassifierCounter(uuid,
-                                                     secGrpStatsManager
-                                                     .getCurrClsfrGenId(),
-                                                     classifier1->getURI()
-                                                     .toString());
-    WAIT_FOR(!myCounter,500);
+    optional<shared_ptr<SecGrpClassifierCounter> > myCounter;
+    WAIT_FOR_DO_ONFAIL(!(su.get()->resolveGbpeSecGrpClassifierCounter(uuid,
+                        secGrpStatsManager.getCurrClsfrGenId(),
+                        classifier1->getURI().toString()))
+                        ,500
+                        ,
+                        ,LOG(ERROR) << "Obj still present";);
+    LOG(DEBUG) << "### SecGrpClassifierCounter Delete End";
     secGrpStatsManager.stop();
 }
 

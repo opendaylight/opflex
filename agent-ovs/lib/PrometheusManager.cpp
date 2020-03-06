@@ -1369,6 +1369,11 @@ bool PrometheusManager::removeDynamicGaugeContractClassifier (CONTRACT_METRICS m
                                                       dstEpg,
                                                       classifier);
     if (pgauge) {
+        LOG(DEBUG) << "remove ContractClassifierCounter"
+                   << " srcEpg: " << srcEpg
+                   << " dstEpg: " << dstEpg
+                   << " classifier: " << classifier
+                   << " metric: " << metric;
         const string& key = srcEpg+dstEpg+classifier;
         contract_gauge_map[metric].erase(key);
         gauge_check.remove(pgauge);
@@ -2407,11 +2412,6 @@ void PrometheusManager::removeContractClassifierCounter (const string& srcEpg,
                                                          const string& classifier)
 {
     const lock_guard<mutex> lock(contract_stats_mutex);
-    LOG(DEBUG) << "remove ContractClassifierCounter"
-               << " srcEpg: " << srcEpg
-               << " dstEpg: " << dstEpg
-               << " classifier: " << classifier;
-
     for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
             metric <= CONTRACT_METRICS_MAX;
                 metric = CONTRACT_METRICS(metric+1)) {
