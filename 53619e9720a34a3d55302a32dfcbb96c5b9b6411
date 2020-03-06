@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b686b1ea_efc0f86a",
+        "filename": "agent-ovs/cmd/opflex_agent.cpp",
+        "patchSetId": 8
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-06T20:41:01Z",
+      "side": 1,
+      "message": "These are already present in LogParams",
+      "revId": "53619e9720a34a3d55302a32dfcbb96c5b9b6411",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ecaf0c83_a154bfb6",
+        "filename": "agent-ovs/ovs/include/PacketDecoder.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-06T20:41:01Z",
+      "side": 1,
+      "message": "gcc 4.8 (used by our ODL build) doesn\u0027t seem to support std::put_time. Can you find an alternative impl",
+      "revId": "53619e9720a34a3d55302a32dfcbb96c5b9b6411",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
