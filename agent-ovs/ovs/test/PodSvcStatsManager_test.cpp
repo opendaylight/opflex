@@ -546,15 +546,17 @@ PodSvcStatsManagerFixture::checkObjectStats (const std::string& epToSvcUuid,
                 && (epToSvcCntr.get()->getPackets().get() == packet_count)),
            500, // usleep(1000) * 500 = 500ms
            (epToSvcCntr = su.get()->resolveGbpeEpToSvcCounter(aUuid, epToSvcUuid)),
-           BOOST_CHECK_EQUAL(epToSvcCntr.get()->getPackets().get(),
-                             packet_count));
+           if (epToSvcCntr) {
+               BOOST_CHECK_EQUAL(epToSvcCntr.get()->getPackets().get(), packet_count);
+           });
         WAIT_FOR_DO_ONFAIL(
            (epToSvcCntr
                 && (epToSvcCntr.get()->getBytes().get() == byte_count)),
            500, // usleep(1000) * 500 = 500ms
            (epToSvcCntr = su.get()->resolveGbpeEpToSvcCounter(aUuid, epToSvcUuid)),
-           BOOST_CHECK_EQUAL(epToSvcCntr.get()->getBytes().get(),
-                             byte_count));
+           if (epToSvcCntr) {
+               BOOST_CHECK_EQUAL(epToSvcCntr.get()->getBytes().get(), byte_count);
+           });
     } else {
         LOG(ERROR) << "EpToSvcCounter obj not present";
     }
@@ -567,15 +569,17 @@ PodSvcStatsManagerFixture::checkObjectStats (const std::string& epToSvcUuid,
                 && (svcToEpCntr.get()->getPackets().get() == packet_count)),
            500, // usleep(1000) * 500 = 500ms
            (svcToEpCntr = su.get()->resolveGbpeSvcToEpCounter(aUuid, svcToEpUuid)),
-           BOOST_CHECK_EQUAL(svcToEpCntr.get()->getPackets().get(),
-                             packet_count));
+           if (svcToEpCntr) {
+               BOOST_CHECK_EQUAL(svcToEpCntr.get()->getPackets().get(), packet_count);
+           });
         WAIT_FOR_DO_ONFAIL(
            (svcToEpCntr
                 && (svcToEpCntr.get()->getBytes().get() == byte_count)),
            500, // usleep(1000) * 500 = 500ms
            (svcToEpCntr = su.get()->resolveGbpeSvcToEpCounter(aUuid, svcToEpUuid)),
-           BOOST_CHECK_EQUAL(svcToEpCntr.get()->getBytes().get(),
-                             byte_count));
+           if (svcToEpCntr) {
+               BOOST_CHECK_EQUAL(svcToEpCntr.get()->getBytes().get(), byte_count);
+           });
     } else {
         LOG(ERROR) << "SvcToEpCounter obj not present";
     }
