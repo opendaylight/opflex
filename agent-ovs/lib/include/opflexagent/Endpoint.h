@@ -38,7 +38,7 @@ public:
      * Default constructor for containers
      */
     Endpoint() : promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-                 external(false), aapModeAA(false) {}
+                 external(false), aapModeAA(false), disableAdv(false) {}
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that
@@ -446,6 +446,15 @@ public:
     }
 
     /**
+     * Get the value of the Nat mode flag
+     *
+     * @return true if Nat mode is on
+     */
+    bool isNatMode() const {
+        return natMode;
+    }
+
+    /**
      * Set the Active Active allowed address pair mode
      * flag to the value specified
      *
@@ -468,12 +477,24 @@ public:
     }
 
     /**
-     * Get the value of the Nat mode flag
+     * Disable endpoint advertize for this endpoint
      *
-     * @return true if Nat mode is on
+     * @param disableAdv the new value for the
+     * disableAdv flag
      */
-    bool isNatMode() const {
-        return natMode;
+    void setDisableAdv(bool disableAdv) {
+        this->disableAdv = disableAdv;
+    }
+
+   /**
+    * Get the current value of disableAdv flag
+    * for this endpoint
+    *
+    * @return true if advertisements / grat arps
+    * are disabled for this endpoint
+    */
+    bool isDisableAdv() const {
+        return disableAdv;
     }
 
     /**
@@ -1275,6 +1296,7 @@ private:
     bool natMode;
     bool external;
     bool aapModeAA;
+    bool disableAdv;
     attr_map_t attributes;
 #ifdef HAVE_PROMETHEUS_SUPPORT
     /**

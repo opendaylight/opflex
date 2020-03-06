@@ -364,6 +364,7 @@ void AdvertManager::sendEndpointAdvs(const string& uuid) {
     shared_ptr<const Endpoint> ep = epMgr.getEndpoint(uuid);
     if (!ep) return;
     if (!ep->getMAC()) return;
+    if (ep->isDisableAdv()) return;
 
     optional<URI> epgURI = epMgr.getComputedEPG(uuid);
     if (!epgURI) return;

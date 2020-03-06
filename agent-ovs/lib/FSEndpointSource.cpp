@@ -114,6 +114,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
 
     static const std::string SNAT_UUIDS("snat-uuids");
     static const std::string ACTIVE_ACTIVE_AAP("active-active-aap");
+    static const std::string EP_DISABLE_ADV("disable-adv");
 
     try {
         using boost::property_tree::ptree;
@@ -441,6 +442,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             properties.get_optional<bool>(ACTIVE_ACTIVE_AAP);
         if (aapModeAA)
             newep.setAapModeAA(aapModeAA.get());
+
+        optional<bool> disableAdv =
+            properties.get_optional<bool>(EP_DISABLE_ADV);
+        if (disableAdv)
+            newep.setDisableAdv(disableAdv.get());
 
         optional<bool> ext_svi =
                 properties.get_optional<bool>(EP_EXT_SVI_FLAG);
