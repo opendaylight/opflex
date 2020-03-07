@@ -876,7 +876,7 @@ BOOST_FIXTURE_TEST_CASE( fsextsvisource, FSEndpointFixture ) {
        << "\"ip\":[\"10.1.0.3\"],"
        << "\"interface-name\":\"veth0\","
        << "\"policy-space-name\":\"test-ext-svi\","
-       << "\"ext-svi\" : true,"
+       << "\"provider-vlan\" : true,"
        << "\"ext-encap-id\": 1000,"
        << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/ExtSviBD1/\""
        << "}" << std::endl;
