@@ -403,6 +403,7 @@ private:
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
     // Prometheus related parameters
+    bool prometheusEnabled;
     bool prometheusExposeLocalHostOnly;
     std::unordered_set<std::string> prometheusEpAttributes;
 #endif

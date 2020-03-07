@@ -144,6 +144,7 @@ void Agent::loadPlugin(const std::string& name) {
 void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string LOG_LEVEL("log.level");
 #ifdef HAVE_PROMETHEUS_SUPPORT
+    static const std::string PROMETHEUS_ENABLED("prometheus.enabled");
     static const std::string PROMETHEUS_LOCALHOST_ONLY("prometheus.localhost-only");
     static const std::string PROMETHEUS_EP_ATTRIBUTES("prometheus.ep-attributes");
 #endif
@@ -247,6 +248,14 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     }
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
+    prometheusEnabled = true;
+    boost::optional<bool> prometheusIsEnabled =
+                properties.get_optional<bool>(PROMETHEUS_ENABLED);
+    if (prometheusIsEnabled) {
+        if (prometheusIsEnabled.get() == false)
+            prometheusEnabled = false;
+    }
+
     prometheusExposeLocalHostOnly = false;
     boost::optional<bool> prometheusLocalHostOnly =
                 properties.get_optional<bool>(PROMETHEUS_LOCALHOST_ONLY);
@@ -544,7 +553,11 @@ void Agent::start() {
 
     // instantiate other components
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    prometheusManager.start(prometheusExposeLocalHostOnly);
+    if (prometheusEnabled) {
+        prometheusManager.start(prometheusExposeLocalHostOnly);
+    } else {
+        LOG(DEBUG) << "prometheus not enabled";
+    }
 #endif
     policyManager.start();
     endpointManager.start();

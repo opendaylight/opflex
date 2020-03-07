@@ -196,6 +196,8 @@ static string table_drop_family_help[] =
   "opflex table drop packets"
 };
 
+#define RETURN_IF_DISABLED  if (disabled) {return;}
+
 // construct PrometheusManager
 PrometheusManager::PrometheusManager(Agent &agent_,
                                      opflex::ofcore::OFFramework &fwk_) :
@@ -204,7 +206,8 @@ PrometheusManager::PrometheusManager(Agent &agent_,
                                      gauge_ep_total{0},
                                      rddrop_last_genId{0},
                                      sgclassifier_last_genId{0},
-                                     contract_last_genId{0} {}
+                                     contract_last_genId{0},
+                                     disabled{true} {}
 
 // create all ep counter families during start
 void PrometheusManager::createStaticCounterFamiliesEp (void)
@@ -640,6 +643,7 @@ void PrometheusManager::MetricDupChecker<T>::clear (void)
 // Start of PrometheusManager instance
 void PrometheusManager::start (bool exposeLocalHostOnly)
 {
+    disabled = false;
     LOG(DEBUG) << "starting prometheus manager, exposeLHOnly: " << exposeLocalHostOnly;
     /**
      * create an http server running on port 9612
@@ -677,6 +681,8 @@ void PrometheusManager::start (bool exposeLocalHostOnly)
 // Stop of PrometheusManager instance
 void PrometheusManager::stop ()
 {
+    RETURN_IF_DISABLED
+    disabled = true;
     LOG(DEBUG) << "stopping prometheus manager";
 
     // Gracefully delete state
@@ -1836,6 +1842,7 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
                   const unordered_map<string, string>& ep_attr_map,
                   const unordered_map<string, string>& svc_attr_map)
 {
+    RETURN_IF_DISABLED
     using namespace opflex::modb;
     using namespace modelgbp::gbpe;
     using namespace modelgbp::observer;
@@ -1937,6 +1944,7 @@ void PrometheusManager::addNUpdateContractClassifierCounter (const string& srcEp
                                                              const string& dstEpg,
                                                              const string& classifier)
 {
+    RETURN_IF_DISABLED
     using namespace modelgbp::gbpe;
     using namespace modelgbp::observer;
 
@@ -2008,6 +2016,7 @@ void PrometheusManager::addNUpdateContractClassifierCounter (const string& srcEp
 /* Function called from SecGrpStatsManager to add/update SGClassifierCounter */
 void PrometheusManager::addNUpdateSGClassifierCounter (const string& classifier)
 {
+    RETURN_IF_DISABLED
     using namespace modelgbp::gbpe;
     using namespace modelgbp::observer;
 
@@ -2073,6 +2082,7 @@ void PrometheusManager::addNUpdateSGClassifierCounter (const string& classifier)
 /* Function called from EndpointManager to create/update RemoteEp count */
 void PrometheusManager::addNUpdateRemoteEpCount (size_t count)
 {
+    RETURN_IF_DISABLED
     const lock_guard<mutex> lock(remote_ep_mutex);
 
     for (REMOTE_EP_METRICS metric=REMOTE_EP_METRICS_MIN;
@@ -2091,6 +2101,7 @@ void PrometheusManager::addNUpdateRemoteEpCount (size_t count)
 void PrometheusManager::addNUpdateRDDropCounter (const string& rdURI,
                                                  bool isAdd)
 {
+    RETURN_IF_DISABLED
     using namespace modelgbp::gbpe;
     using namespace modelgbp::observer;
 
@@ -2152,6 +2163,7 @@ void PrometheusManager::addNUpdateRDDropCounter (const string& rdURI,
 /* Function called from PolicyStatsManager to update OFPeerStats */
 void PrometheusManager::addNUpdateOFPeerStats (void)
 {
+    RETURN_IF_DISABLED
     using namespace modelgbp::observer;
 
     const lock_guard<mutex> lock(ofpeer_stats_mutex);
@@ -2257,6 +2269,7 @@ void PrometheusManager::addNUpdateEpCounter (const string& uuid,
                                              const size_t& attr_hash,
                   const unordered_map<string, string>&    attr_map)
 {
+    RETURN_IF_DISABLED
     using namespace opflex::modb;
     using namespace modelgbp::gbpe;
     using namespace modelgbp::observer;
@@ -2363,6 +2376,7 @@ void PrometheusManager::dumpPodSvcState ()
 void PrometheusManager::removePodSvcCounter (bool isEpToSvc,
                                              const string& uuid)
 {
+    RETURN_IF_DISABLED
     const lock_guard<mutex> lock(podsvc_counter_mutex);
 
     LOG(DEBUG) << "remove podsvc counter"
@@ -2390,6 +2404,7 @@ void PrometheusManager::removePodSvcCounter (bool isEpToSvc,
 void PrometheusManager::removeEpCounter (const string& uuid,
                                          const string& ep_name)
 {
+    RETURN_IF_DISABLED
     const lock_guard<mutex> lock(ep_counter_mutex);
     LOG(DEBUG) << "remove ep counter " << ep_name;
 
@@ -2411,6 +2426,7 @@ void PrometheusManager::removeContractClassifierCounter (const string& srcEpg,
                                                          const string& dstEpg,
                                                          const string& classifier)
 {
+    RETURN_IF_DISABLED
     const lock_guard<mutex> lock(contract_stats_mutex);
     for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
             metric <= CONTRACT_METRICS_MAX;
@@ -2426,6 +2442,7 @@ void PrometheusManager::removeContractClassifierCounter (const string& srcEpg,
 // Function called from SecGrpStatsManager to remove SGClassifierCounter
 void PrometheusManager::removeSGClassifierCounter (const string& classifier)
 {
+    RETURN_IF_DISABLED
     const lock_guard<mutex> lock(sgclassifier_stats_mutex);
     LOG(DEBUG) << "remove SGClassifierCounter"
                << " classifier: " << classifier;
@@ -2441,6 +2458,7 @@ void PrometheusManager::removeSGClassifierCounter (const string& classifier)
 // Function called from IntFlowManager to remove RDDropCounter
 void PrometheusManager::removeRDDropCounter (const string& rdURI)
 {
+    RETURN_IF_DISABLED
     const lock_guard<mutex> lock(rddrop_stats_mutex);
     LOG(DEBUG) << "remove RDDropCounter rdURI: " << rdURI;
 
@@ -2477,6 +2495,7 @@ mgauge_pair_t PrometheusManager::getStaticGaugeTableDrop(TABLE_DROP_METRICS metr
 void PrometheusManager::createStaticGaugeTableDrop (const string& bridge_name,
                                                     const string& table_name)
 {
+    RETURN_IF_DISABLED
     if ((bridge_name.empty() || table_name.empty()))
         return;
 
@@ -2514,6 +2533,7 @@ void PrometheusManager::createStaticGaugeTableDrop (const string& bridge_name,
 void PrometheusManager::removeTableDropGauge (const string& bridge_name,
                                               const string& table_name)
 {
+    RETURN_IF_DISABLED
     string table_drop_key = bridge_name + table_name;
 
     const lock_guard<mutex> lock(table_drop_counter_mutex);
@@ -2538,6 +2558,7 @@ void PrometheusManager::updateTableDropGauge (const string& bridge_name,
                                               const uint64_t &bytes,
                                               const uint64_t &packets)
 {
+    RETURN_IF_DISABLED
     const lock_guard<mutex> lock(table_drop_counter_mutex);
     // Update the metrics
     const mgauge_pair_t &mgauge_bytes = getStaticGaugeTableDrop(

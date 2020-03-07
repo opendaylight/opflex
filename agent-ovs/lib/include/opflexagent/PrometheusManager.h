@@ -781,6 +781,12 @@ private:
     /* End of ContractClassifierCounter related apis and state */
 
 
+    // PrometheusManager specific state
+    /**
+     * True if shutting down or not start()'ed
+     */
+    std::atomic<bool> disabled;
+
     /* TODO: Other Counter related apis and state */
 };
 

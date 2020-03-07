@@ -163,6 +163,11 @@
 
     // Configs related to prometheus
     "prometheus": {
+    //    By default prometheus stats export will be enabled provided
+    //    "--enable-prometheus" is set during configuration. If the export
+    //    needs to be disabled during agent bootup, then set the below flag
+    //    to false
+    //    "enabled": "true",
     //    By default prometheus exposer will bind with all IPs. Set
     //    localhost-only to true if prometheus export should happen only
     //    on 127.0.0.1.
