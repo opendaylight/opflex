@@ -81,7 +81,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EP_NAT_MODE("nat-mode");
     static const std::string EP_ATTRIBUTE_VM_NAME("vm-name");
     static const std::string EP_ATTRIBUTES("attributes");
-    static const std::string EP_EXT_SVI_FLAG("ext-svi");
+    static const std::string EP_PROVIDER_VLAN_FLAG("provider-vlan");
     static const std::string EP_EXT_ENCAP_TYPE("ext-encap-type");
     static const std::string EP_EXT_ENCAP_ID("ext-encap-id");
 
@@ -448,9 +448,9 @@ void FSEndpointSource::updated(const fs::path& filePath) {
         if (disableAdv)
             newep.setDisableAdv(disableAdv.get());
 
-        optional<bool> ext_svi =
-                properties.get_optional<bool>(EP_EXT_SVI_FLAG);
-        if(ext_svi && ext_svi.get()) {
+        optional<bool> provider_vlan =
+                properties.get_optional<bool>(EP_PROVIDER_VLAN_FLAG);
+        if(provider_vlan && provider_vlan.get()) {
             newep.setExternal();
         }
 
