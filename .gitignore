@@ -11,3 +11,5 @@ genie.iml
 .tox/
 docs/_build/
 /build/
+*.gcno
+*.gcda
