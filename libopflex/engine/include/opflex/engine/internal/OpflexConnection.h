@@ -17,7 +17,6 @@
 #include <list>
 #include <utility>
 
-#include <boost/noncopyable.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <uv.h>
@@ -25,6 +24,7 @@
 #include "opflex/yajr/yajr.hpp"
 #include "opflex/yajr/rpc/message_factory.hpp"
 #include "opflex/engine/internal/OpflexMessage.h"
+#include "opflex/rpc/JsonRpcConnection.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXCONNECTION_H
@@ -43,7 +43,7 @@ class OpflexMessage;
  * Maintain the connection state information for a connection to an
  * opflex peer
  */
-class OpflexConnection : private boost::noncopyable {
+class OpflexConnection : opflex::jsonrpc::RpcConnection {
 public:
 
     /**
@@ -54,6 +54,13 @@ public:
      */
     OpflexConnection(HandlerFactory& handlerFactory);
     virtual ~OpflexConnection();
+
+    /**
+     * call back for transaction response
+     * @param[in] reqId request ID of the request for this response.
+     * @param[in] payload rapidjson::Value reference of the response body.
+     */
+    virtual void handleTransaction(uint64_t reqId, const rapidjson::Document& payload);
 
     /**
      * Initialize SSL global context

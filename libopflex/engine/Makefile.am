@@ -55,7 +55,6 @@ libengine_la_SOURCES = \
 	include/opflex/engine/internal/InspectorServerHandler.h \
 	include/opflex/engine/internal/InspectorClientHandler.h \
 	include/opflex/engine/internal/InspectorClientConn.h \
-	include/opflex/engine/internal/OvsdbConnection.h \
 	include/opflex/engine/Inspector.h \
 	include/opflex/engine/InspectorClientImpl.h \
 	include/opflex/engine/Processor.h \
@@ -77,5 +76,5 @@ libengine_la_SOURCES = \
 	InspectorClientImpl.cpp \
 	InspectorClientConn.cpp \
 	InspectorClientHandler.cpp \
-	JsonRpc.cpp
+	JsonRpcMessage.cpp
 

@@ -12,7 +12,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <opflex/rpc/JsonRpc.h>
+#include "OvsdbConnection.h"
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
 #include <SpanRenderer.h>
@@ -31,7 +31,7 @@ public:
 
     virtual void start() {
         LOG(DEBUG) << "Starting MockJsonRpc ...";
-        shared_ptr<MockRpcConnection> ptr = make_shared<MockRpcConnection>(*this);
+        shared_ptr<OvsdbConnection> ptr = make_shared<MockRpcConnection>(this);
         setRpcConnectionPtr(ptr);
         getRpcConnectionPtr()->start();
     }

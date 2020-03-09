@@ -83,7 +83,8 @@ c_include_HEADERS = \
 	include/opflex/c/offramework_c.h
 rpc_includedir = $(includedir)/opflex/rpc
 rpc_include_HEADERS = \
-	include/opflex/rpc/JsonRpc.h
+	include/opflex/rpc/JsonRpcConnection.h \
+	include/opflex/rpc/JsonRpcMessage.h
 gbp_includedir = $(includedir)/opflex/gbp
 gbp_include_HEADERS = \
 	include/opflex/gbp/Policy.h
